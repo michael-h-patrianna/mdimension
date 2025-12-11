@@ -16,31 +16,46 @@ export const Section: React.FC<SectionProps> = ({
   className = '',
 }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
+  const [shouldRender, setShouldRender] = useState(defaultOpen);
   const [height, setHeight] = useState<number | undefined>(defaultOpen ? undefined : 0);
   const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (contentRef.current) {
-      if (isOpen) {
-        const contentHeight = contentRef.current.scrollHeight;
-        setHeight(contentHeight);
-        // After animation completes, set height to auto for dynamic content
-        const timer = setTimeout(() => {
-          setHeight(undefined);
-        }, 300);
-        return () => clearTimeout(timer);
-      } else {
-        // First set to actual height for smooth animation
-        setHeight(contentRef.current.scrollHeight);
-        // Then trigger collapse
-        requestAnimationFrame(() => {
-          setHeight(0);
-        });
-        return undefined;
-      }
+    if (isOpen) {
+      setShouldRender(true);
+    } else {
+      const timer = setTimeout(() => {
+        setShouldRender(false);
+      }, 300);
+      return () => clearTimeout(timer);
     }
-    return undefined;
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!contentRef.current) return;
+
+    if (isOpen && shouldRender) {
+      // Opening animation
+      // Measure height after children are rendered
+      const contentHeight = contentRef.current.scrollHeight;
+      setHeight(contentHeight);
+
+      // After animation completes, set height to auto
+      const timer = setTimeout(() => {
+        setHeight(undefined);
+      }, 300);
+      return () => clearTimeout(timer);
+    } else if (!isOpen) {
+      // Closing animation
+      // First set to actual height
+      setHeight(contentRef.current.scrollHeight);
+      
+      // Then trigger collapse in next frame
+      requestAnimationFrame(() => {
+        setHeight(0);
+      });
+    }
+  }, [isOpen, shouldRender]);
 
   const toggleOpen = () => {
     setIsOpen((prev) => !prev);
@@ -93,7 +108,7 @@ export const Section: React.FC<SectionProps> = ({
         aria-hidden={!isOpen}
       >
         <div className="px-4 py-4">
-          {children}
+          {shouldRender && children}
         </div>
       </div>
     </div>
