@@ -16,7 +16,6 @@ import { TranslationControls } from './controls/TranslationControls';
 import { AnimationControls } from './controls/AnimationControls';
 import { CrossSectionControls } from './controls/CrossSectionControls';
 import { VisualControls } from './controls/VisualControls';
-import { PropertiesPanel } from './controls/PropertiesPanel';
 import { EducationPanel } from './controls/EducationPanel';
 import { KeyboardShortcuts } from './KeyboardShortcuts';
 import { ExportButton } from './ExportButton';
@@ -94,10 +93,6 @@ export const Layout: React.FC<LayoutProps> = ({
 
         <Section title="Visual" defaultOpen={false}>
           <VisualControls />
-        </Section>
-
-        <Section title="Properties" defaultOpen={false}>
-          <PropertiesPanel />
         </Section>
 
         <Section title="Export" defaultOpen={true}>

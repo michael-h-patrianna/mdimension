@@ -19,5 +19,3 @@ export { CrossSectionControls } from './CrossSectionControls';
 export type { CrossSectionControlsProps } from './CrossSectionControls';
 export { VisualControls } from './VisualControls';
 export type { VisualControlsProps } from './VisualControls';
-export { PropertiesPanel } from './PropertiesPanel';
-export type { PropertiesPanelProps } from './PropertiesPanel';
