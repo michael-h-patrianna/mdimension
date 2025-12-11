@@ -1,0 +1,176 @@
+/**
+ * Animation state management using Zustand
+ * Manages auto-rotation animation for n-dimensional objects
+ */
+
+import { create } from 'zustand';
+
+/** Minimum animation speed multiplier */
+export const MIN_SPEED = 0.1;
+
+/** Maximum animation speed multiplier */
+export const MAX_SPEED = 5.0;
+
+/** Default animation speed (1x = one full rotation per 10 seconds) */
+export const DEFAULT_SPEED = 1.0;
+
+/** Base rotation rate in radians per second at 1x speed */
+export const BASE_ROTATION_RATE = (2 * Math.PI) / 10; // Full rotation in 10 seconds
+
+interface AnimationState {
+  /** Whether animation is currently playing */
+  isPlaying: boolean;
+
+  /** Speed multiplier (0.1 to 5.0) */
+  speed: number;
+
+  /** Rotation direction: 1 = clockwise, -1 = counter-clockwise */
+  direction: 1 | -1;
+
+  /** Set of planes currently being animated */
+  animatingPlanes: Set<string>;
+
+  /** Whether isoclinic mode is enabled (4D: XY and ZW rotate together) */
+  isoclinicMode: boolean;
+
+  // Actions
+  play: () => void;
+  pause: () => void;
+  toggle: () => void;
+  setSpeed: (speed: number) => void;
+  toggleDirection: () => void;
+  togglePlane: (plane: string) => void;
+  setPlaneAnimating: (plane: string, animating: boolean) => void;
+  animateAll: (dimension: number) => void;
+  stopAll: () => void;
+  setIsoclinicMode: (enabled: boolean) => void;
+  reset: () => void;
+
+  /** Calculate the rotation delta for a given time delta */
+  getRotationDelta: (deltaTimeMs: number) => number;
+}
+
+/**
+ * Clamps speed to valid range
+ */
+function clampSpeed(speed: number): number {
+  return Math.max(MIN_SPEED, Math.min(MAX_SPEED, speed));
+}
+
+/**
+ * Axis naming for any dimension
+ * X, Y, Z, W, V, U for first 6, then A6, A7, A8... for higher
+ */
+const AXIS_NAMES = ['X', 'Y', 'Z', 'W', 'V', 'U'];
+
+function getAxisName(index: number): string {
+  if (index < AXIS_NAMES.length) {
+    return AXIS_NAMES[index]!;
+  }
+  return `A${index}`;
+}
+
+/**
+ * Gets all rotation planes for a given dimension
+ */
+function getAllPlanes(dimension: number): string[] {
+  const planes: string[] = [];
+
+  for (let i = 0; i < dimension; i++) {
+    for (let j = i + 1; j < dimension; j++) {
+      planes.push(getAxisName(i) + getAxisName(j));
+    }
+  }
+
+  return planes;
+}
+
+export const useAnimationStore = create<AnimationState>((set, get) => ({
+  isPlaying: false,
+  speed: DEFAULT_SPEED,
+  direction: 1,
+  animatingPlanes: new Set(),
+  isoclinicMode: false,
+
+  play: () => {
+    set({ isPlaying: true });
+  },
+
+  pause: () => {
+    set({ isPlaying: false });
+  },
+
+  toggle: () => {
+    set((state) => ({ isPlaying: !state.isPlaying }));
+  },
+
+  setSpeed: (speed: number) => {
+    set({ speed: clampSpeed(speed) });
+  },
+
+  toggleDirection: () => {
+    set((state) => ({ direction: state.direction === 1 ? -1 : 1 }));
+  },
+
+  togglePlane: (plane: string) => {
+    set((state) => {
+      const newPlanes = new Set(state.animatingPlanes);
+      if (newPlanes.has(plane)) {
+        newPlanes.delete(plane);
+      } else {
+        newPlanes.add(plane);
+      }
+      return { animatingPlanes: newPlanes };
+    });
+  },
+
+  setPlaneAnimating: (plane: string, animating: boolean) => {
+    set((state) => {
+      const newPlanes = new Set(state.animatingPlanes);
+      if (animating) {
+        newPlanes.add(plane);
+      } else {
+        newPlanes.delete(plane);
+      }
+      return { animatingPlanes: newPlanes };
+    });
+  },
+
+  animateAll: (dimension: number) => {
+    const planes = getAllPlanes(dimension);
+    set({ animatingPlanes: new Set(planes), isPlaying: true });
+  },
+
+  stopAll: () => {
+    set({ animatingPlanes: new Set(), isPlaying: false });
+  },
+
+  setIsoclinicMode: (enabled: boolean) => {
+    set((state) => {
+      if (enabled) {
+        // Enable isoclinic: add both XY and ZW to animating planes
+        const newPlanes = new Set(state.animatingPlanes);
+        newPlanes.add('XY');
+        newPlanes.add('ZW');
+        return { isoclinicMode: true, animatingPlanes: newPlanes };
+      }
+      return { isoclinicMode: false };
+    });
+  },
+
+  reset: () => {
+    set({
+      isPlaying: false,
+      speed: DEFAULT_SPEED,
+      direction: 1,
+      animatingPlanes: new Set(),
+      isoclinicMode: false,
+    });
+  },
+
+  getRotationDelta: (deltaTimeMs: number) => {
+    const state = get();
+    const deltaTimeSec = deltaTimeMs / 1000;
+    return BASE_ROTATION_RATE * state.speed * state.direction * deltaTimeSec;
+  },
+}));

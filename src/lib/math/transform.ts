@@ -1,0 +1,274 @@
+/**
+ * N-dimensional transformation operations
+ * Supports scale, shear, and translation transformations
+ * Transformation order: Scale → Rotation → Shear → Translation
+ */
+
+import type { MatrixND, VectorND } from './types';
+import { createIdentityMatrix, multiplyMatrices } from './matrix';
+
+/**
+ * Creates a non-uniform scale matrix
+ * Each dimension can be scaled independently
+ * Formula: S[i][i] = scales[i], all other elements = 0
+ * @param dimension - The dimensionality of the space
+ * @param scales - Array of scale factors for each dimension
+ * @returns The scale matrix
+ * @throws {Error} If scales array length doesn't match dimension
+ */
+export function createScaleMatrix(dimension: number, scales: number[]): MatrixND {
+  if (dimension <= 0 || !Number.isInteger(dimension)) {
+    throw new Error('Dimension must be a positive integer');
+  }
+
+  if (scales.length !== dimension) {
+    throw new Error(`Scales array length (${scales.length}) must match dimension (${dimension})`);
+  }
+
+  const matrix = createIdentityMatrix(dimension);
+
+  for (let i = 0; i < dimension; i++) {
+    matrix[i]![i] = scales[i]!;
+  }
+
+  return matrix;
+}
+
+/**
+ * Creates a uniform scale matrix
+ * All dimensions are scaled by the same factor
+ * Formula: S[i][i] = scale for all i, all other elements = 0
+ * @param dimension - The dimensionality of the space
+ * @param scale - Uniform scale factor
+ * @returns The scale matrix
+ */
+export function createUniformScaleMatrix(dimension: number, scale: number): MatrixND {
+  if (dimension <= 0 || !Number.isInteger(dimension)) {
+    throw new Error('Dimension must be a positive integer');
+  }
+
+  const scales = new Array(dimension).fill(scale);
+  return createScaleMatrix(dimension, scales);
+}
+
+/**
+ * Creates a shear matrix
+ * Shears along one axis based on another axis
+ *
+ * The shear operation modifies coordinates as:
+ * v'[shearAxis] = v[shearAxis] + amount * v[referenceAxis]
+ *
+ * Example in 3D: Shear X based on Y with amount=0.5
+ * - x' = x + 0.5*y
+ * - y' = y
+ * - z' = z
+ *
+ * @param dimension - The dimensionality of the space
+ * @param shearAxis - The axis to be modified
+ * @param referenceAxis - The axis that influences the shear
+ * @param amount - The shear factor
+ * @returns The shear matrix
+ * @throws {Error} If axes are invalid or equal
+ */
+export function createShearMatrix(
+  dimension: number,
+  shearAxis: number,
+  referenceAxis: number,
+  amount: number
+): MatrixND {
+  if (dimension <= 0 || !Number.isInteger(dimension)) {
+    throw new Error('Dimension must be a positive integer');
+  }
+
+  if (shearAxis < 0 || shearAxis >= dimension) {
+    throw new Error(`Shear axis ${shearAxis} out of range [0, ${dimension - 1}]`);
+  }
+
+  if (referenceAxis < 0 || referenceAxis >= dimension) {
+    throw new Error(`Reference axis ${referenceAxis} out of range [0, ${dimension - 1}]`);
+  }
+
+  if (shearAxis === referenceAxis) {
+    throw new Error('Shear axis and reference axis must be different');
+  }
+
+  const matrix = createIdentityMatrix(dimension);
+  matrix[shearAxis]![referenceAxis] = amount;
+
+  return matrix;
+}
+
+/**
+ * Creates a translation matrix in homogeneous coordinates
+ * For n-dimensional space, creates an (n+1)×(n+1) matrix
+ *
+ * The translation vector is placed in the last column:
+ * [1 0 0 ... tx]
+ * [0 1 0 ... ty]
+ * [0 0 1 ... tz]
+ * [... ... ...]
+ * [0 0 0 ... 1 ]
+ *
+ * To use: Convert vector to homogeneous (append 1), multiply, extract first n components
+ *
+ * @param dimension - The dimensionality of the space
+ * @param translation - Translation vector (length = dimension)
+ * @returns The translation matrix in homogeneous coordinates (dimension+1 × dimension+1)
+ * @throws {Error} If translation vector length doesn't match dimension
+ */
+export function createTranslationMatrix(dimension: number, translation: VectorND): MatrixND {
+  if (dimension <= 0 || !Number.isInteger(dimension)) {
+    throw new Error('Dimension must be a positive integer');
+  }
+
+  if (translation.length !== dimension) {
+    throw new Error(
+      `Translation vector length (${translation.length}) must match dimension (${dimension})`
+    );
+  }
+
+  // Create (n+1)×(n+1) identity matrix for homogeneous coordinates
+  const matrix = createIdentityMatrix(dimension + 1);
+
+  // Place translation values in the last column (except last row)
+  for (let i = 0; i < dimension; i++) {
+    matrix[i]![dimension] = translation[i]!;
+  }
+
+  return matrix;
+}
+
+/**
+ * Applies translation to a vector (non-homogeneous form)
+ * Simply adds the translation vector to the input
+ * Formula: v' = v + t
+ * @param vector - Input vector
+ * @param translation - Translation vector
+ * @returns Translated vector
+ * @throws {Error} If vectors have different dimensions
+ */
+export function translateVector(vector: VectorND, translation: VectorND): VectorND {
+  if (vector.length !== translation.length) {
+    throw new Error(
+      `Vector dimensions must match: ${vector.length} !== ${translation.length}`
+    );
+  }
+
+  return vector.map((val, i) => val + translation[i]!);
+}
+
+/**
+ * Converts a vector to homogeneous coordinates by appending 1
+ * @param vector - Input vector
+ * @returns Vector in homogeneous coordinates [x, y, z, ..., 1]
+ */
+export function toHomogeneous(vector: VectorND): VectorND {
+  return [...vector, 1];
+}
+
+/**
+ * Converts from homogeneous coordinates by dividing by last component and removing it
+ * @param vector - Vector in homogeneous coordinates
+ * @returns Vector in standard coordinates
+ * @throws {Error} If homogeneous coordinate is zero
+ */
+export function fromHomogeneous(vector: VectorND): VectorND {
+  if (vector.length === 0) {
+    throw new Error('Cannot convert empty vector from homogeneous coordinates');
+  }
+
+  const w = vector[vector.length - 1]!;
+
+  if (Math.abs(w) < 1e-10) {
+    throw new Error('Cannot convert from homogeneous coordinates: w component is zero');
+  }
+
+  const result: VectorND = [];
+  for (let i = 0; i < vector.length - 1; i++) {
+    result[i] = vector[i]! / w;
+  }
+
+  return result;
+}
+
+/**
+ * Composes multiple transformation matrices into a single matrix
+ * Transformations are applied right to left (last in the array is applied first)
+ *
+ * Standard order: [Translation, Shear, Rotation, Scale]
+ * So Scale is applied first, then Rotation, then Shear, then Translation
+ *
+ * @param matrices - Array of transformation matrices to compose
+ * @returns The composed transformation matrix
+ * @throws {Error} If matrices array is empty or matrices have incompatible dimensions
+ */
+export function composeTransformations(matrices: MatrixND[]): MatrixND {
+  if (matrices.length === 0) {
+    throw new Error('Cannot compose empty array of matrices');
+  }
+
+  if (matrices.length === 1) {
+    return matrices[0]!;
+  }
+
+  // Multiply from left to right (since we want right-to-left application)
+  let result = matrices[0]!;
+  for (let i = 1; i < matrices.length; i++) {
+    result = multiplyMatrices(result, matrices[i]!);
+  }
+
+  return result;
+}
+
+/**
+ * Creates a complete transformation matrix with all transformation types
+ * Applies transformations in the standard order: Scale → Rotation → Shear → Translation
+ *
+ * @param options - Transformation options
+ * @returns The composed transformation matrix
+ */
+export function createTransformMatrix(options: {
+  dimension: number;
+  scale?: number | number[];
+  rotation?: MatrixND;
+  shear?: Array<{ axis: number; reference: number; amount: number }>;
+  translation?: VectorND;
+}): MatrixND {
+  const { dimension, scale, rotation, shear, translation } = options;
+
+  const matrices: MatrixND[] = [];
+
+  // Translation (applied last, so added first to array)
+  if (translation) {
+    matrices.push(createTranslationMatrix(dimension, translation));
+  }
+
+  // Shear
+  if (shear) {
+    for (const s of shear) {
+      matrices.push(createShearMatrix(dimension, s.axis, s.reference, s.amount));
+    }
+  }
+
+  // Rotation
+  if (rotation) {
+    matrices.push(rotation);
+  }
+
+  // Scale (applied first, so added last to array)
+  if (scale !== undefined) {
+    if (typeof scale === 'number') {
+      matrices.push(createUniformScaleMatrix(dimension, scale));
+    } else {
+      matrices.push(createScaleMatrix(dimension, scale));
+    }
+  }
+
+  // If no transformations specified, return identity
+  if (matrices.length === 0) {
+    return createIdentityMatrix(dimension);
+  }
+
+  // Compose all transformations
+  return composeTransformations(matrices.reverse());
+}
