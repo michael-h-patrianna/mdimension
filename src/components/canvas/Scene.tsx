@@ -17,6 +17,12 @@ export interface SceneProps {
   backgroundColor?: string
   /** Enable auto-rotation (default: false) */
   autoRotate?: boolean
+  /** Opacity of the main polytope (default: 1.0) */
+  opacity?: number
+  /** Cross-section vertices (optional) */
+  crossSectionVertices?: Vector3D[]
+  /** Cross-section edges (optional) */
+  crossSectionEdges?: [number, number][]
 }
 
 /**
@@ -80,6 +86,9 @@ export function Scene({
   edges,
   showGrid = false,
   autoRotate = false,
+  opacity = 1.0,
+  crossSectionVertices,
+  crossSectionEdges,
 }: SceneProps) {
   return (
     <>
@@ -108,7 +117,18 @@ export function Scene({
 
       {/* Render polytope geometry if provided */}
       {vertices && edges && (
-        <PolytopeRenderer vertices={vertices} edges={edges} />
+        <PolytopeRenderer vertices={vertices} edges={edges} opacity={opacity} />
+      )}
+
+      {/* Render cross-section if provided */}
+      {crossSectionVertices && crossSectionEdges && crossSectionVertices.length > 0 && (
+        <PolytopeRenderer
+          vertices={crossSectionVertices}
+          edges={crossSectionEdges}
+          edgeColor="#FF6B00"
+          vertexColor="#FFAA00"
+          vertexSize={0.06}
+        />
       )}
     </>
   )

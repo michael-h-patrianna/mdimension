@@ -22,6 +22,8 @@ export interface PolytopeRendererProps {
   showVertices?: boolean
   /** Opacity of the faces (default: 0.15) */
   faceOpacity?: number
+  /** Overall opacity for the entire polytope (default: 1.0) */
+  opacity?: number
 }
 
 /**
@@ -73,6 +75,7 @@ export function PolytopeRenderer({
   vertexColor = '#FFFFFF',
   vertexSize = 0.04,
   showVertices = true,
+  opacity = 1.0,
 }: PolytopeRendererProps) {
   // Memoize edge geometries
   const edgeGeometries = useMemo(() => {
@@ -117,6 +120,8 @@ export function PolytopeRenderer({
             attach="material"
             color={edgeColor}
             linewidth={edgeThickness}
+            transparent={opacity < 1}
+            opacity={opacity}
           />
         </line>
       ))}
@@ -130,6 +135,8 @@ export function PolytopeRenderer({
               color={vertexColor}
               emissive={vertexColor}
               emissiveIntensity={0.2}
+              transparent={opacity < 1}
+              opacity={opacity}
             />
           </mesh>
         ))}

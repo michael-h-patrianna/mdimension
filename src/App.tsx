@@ -11,11 +11,13 @@ import { useGeometryStore } from '@/stores/geometryStore';
 import { useRotationStore } from '@/stores/rotationStore';
 import { useTransformStore } from '@/stores/transformStore';
 import { useAnimationStore } from '@/stores/animationStore';
+import { useCrossSectionStore } from '@/stores/crossSectionStore';
 import { useRotatedVertices } from '@/hooks/useRotatedVertices';
 import { useProjectedVertices } from '@/hooks/useProjectedVertices';
 import { useAnimationLoop } from '@/hooks/useAnimationLoop';
+import { useCrossSectionAnimation } from '@/hooks/useCrossSectionAnimation';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
-import { generatePolytope } from '@/lib/geometry';
+import { generatePolytope, computeCrossSection } from '@/lib/geometry';
 import {
   multiplyMatrixVector,
   createIdentityMatrix,
@@ -47,8 +49,17 @@ function Visualizer() {
   const shears = useTransformStore((state) => state.shears);
   const translation = useTransformStore((state) => state.translation);
 
+  // Get cross-section state
+  const crossSectionEnabled = useCrossSectionStore((state) => state.enabled);
+  const sliceW = useCrossSectionStore((state) => state.sliceW);
+  const showOriginal = useCrossSectionStore((state) => state.showOriginal);
+  const originalOpacity = useCrossSectionStore((state) => state.originalOpacity);
+
   // Run animation loop
   useAnimationLoop();
+
+  // Run cross-section animation
+  useCrossSectionAnimation();
 
   // Sync dimensions BEFORE render using useLayoutEffect
   useLayoutEffect(() => {
@@ -144,10 +155,47 @@ function Visualizer() {
     return geometry.edges as [number, number][];
   }, [geometry.edges]);
 
+  // Compute cross-section if enabled and dimension >= 4
+  const crossSectionResult = useMemo(() => {
+    if (!crossSectionEnabled || dimension < 4) {
+      return null;
+    }
+    // Build geometry with transformed vertices for cross-section computation
+    const transformedGeometry = {
+      vertices: translatedVertices,
+      edges: geometry.edges,
+      dimension,
+    };
+    return computeCrossSection(transformedGeometry, sliceW);
+  }, [crossSectionEnabled, dimension, translatedVertices, geometry.edges, sliceW]);
+
+  // Project cross-section vertices to 3D (just take x, y, z)
+  const crossSectionVertices = useMemo(() => {
+    if (!crossSectionResult || !crossSectionResult.hasIntersection) {
+      return undefined;
+    }
+    return crossSectionResult.points.map((p) => [p[0] ?? 0, p[1] ?? 0, p[2] ?? 0] as Vector3D);
+  }, [crossSectionResult]);
+
+  const crossSectionEdges = useMemo(() => {
+    if (!crossSectionResult || !crossSectionResult.hasIntersection) {
+      return undefined;
+    }
+    return crossSectionResult.edges;
+  }, [crossSectionResult]);
+
+  // Determine opacity for main polytope
+  const mainOpacity = crossSectionEnabled && crossSectionResult?.hasIntersection
+    ? (showOriginal ? originalOpacity : 0)
+    : 1.0;
+
   return (
     <Scene
-      vertices={projectedVertices as Vector3D[]}
-      edges={edges}
+      vertices={mainOpacity > 0 ? projectedVertices as Vector3D[] : undefined}
+      edges={mainOpacity > 0 ? edges : undefined}
+      opacity={mainOpacity}
+      crossSectionVertices={crossSectionVertices}
+      crossSectionEdges={crossSectionEdges}
       showGrid
     />
   );
