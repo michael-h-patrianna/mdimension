@@ -44,6 +44,7 @@ interface AnimationState {
   animateAll: (dimension: number) => void;
   stopAll: () => void;
   setIsoclinicMode: (enabled: boolean) => void;
+  setDimension: (dimension: number) => void;
   reset: () => void;
 
   /** Calculate the rotation delta for a given time delta */
@@ -155,6 +156,22 @@ export const useAnimationStore = create<AnimationState>((set, get) => ({
         return { isoclinicMode: true, animatingPlanes: newPlanes };
       }
       return { isoclinicMode: false };
+    });
+  },
+
+  setDimension: (dimension: number) => {
+    set((state) => {
+      // Filter animating planes to only include valid planes for new dimension
+      const validPlanes = new Set(getAllPlanes(dimension));
+      const newAnimatingPlanes = new Set<string>();
+
+      for (const plane of state.animatingPlanes) {
+        if (validPlanes.has(plane)) {
+          newAnimatingPlanes.add(plane);
+        }
+      }
+
+      return { animatingPlanes: newAnimatingPlanes };
     });
   },
 

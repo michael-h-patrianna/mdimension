@@ -207,4 +207,71 @@ describe('animationStore', () => {
       expect(useAnimationStore.getState().isoclinicMode).toBe(false);
     });
   });
+
+  describe('setDimension', () => {
+    it('should filter out invalid planes when dimension decreases', () => {
+      // Simulate the bug: animate 10D planes, then switch to 6D
+      useAnimationStore.getState().animateAll(10);
+      const planesBefore = useAnimationStore.getState().animatingPlanes;
+      expect(planesBefore.has('XA6')).toBe(true); // Valid in 10D
+      expect(planesBefore.has('XA7')).toBe(true);
+      expect(planesBefore.size).toBe(45); // 10D has 45 rotation planes
+
+      // Switch to 6D - should filter out invalid planes
+      useAnimationStore.getState().setDimension(6);
+      const planesAfter = useAnimationStore.getState().animatingPlanes;
+
+      // Should only have 6D planes (15 planes)
+      expect(planesAfter.size).toBe(15);
+      expect(planesAfter.has('XY')).toBe(true);
+      expect(planesAfter.has('XU')).toBe(true); // U is axis 5, valid in 6D
+      expect(planesAfter.has('XA6')).toBe(false); // A6 is axis 6, invalid in 6D
+      expect(planesAfter.has('XA7')).toBe(false);
+    });
+
+    it('should keep valid planes when dimension decreases', () => {
+      useAnimationStore.getState().togglePlane('XY');
+      useAnimationStore.getState().togglePlane('XZ');
+      useAnimationStore.getState().togglePlane('XW');
+
+      useAnimationStore.getState().setDimension(4);
+
+      const planes = useAnimationStore.getState().animatingPlanes;
+      expect(planes.has('XY')).toBe(true);
+      expect(planes.has('XZ')).toBe(true);
+      expect(planes.has('XW')).toBe(true);
+    });
+
+    it('should remove 4D planes when switching to 3D', () => {
+      useAnimationStore.getState().animateAll(4);
+      expect(useAnimationStore.getState().animatingPlanes.has('XW')).toBe(true);
+
+      useAnimationStore.getState().setDimension(3);
+
+      const planes = useAnimationStore.getState().animatingPlanes;
+      expect(planes.size).toBe(3); // Only XY, XZ, YZ
+      expect(planes.has('XW')).toBe(false);
+      expect(planes.has('YW')).toBe(false);
+      expect(planes.has('ZW')).toBe(false);
+    });
+
+    it('should handle switching from 11D to 4D', () => {
+      useAnimationStore.getState().animateAll(11);
+      expect(useAnimationStore.getState().animatingPlanes.size).toBe(55); // 11D has 55 planes
+
+      useAnimationStore.getState().setDimension(4);
+
+      const planes = useAnimationStore.getState().animatingPlanes;
+      expect(planes.size).toBe(6); // 4D has 6 planes
+    });
+
+    it('should not affect isPlaying state', () => {
+      useAnimationStore.getState().animateAll(10);
+      expect(useAnimationStore.getState().isPlaying).toBe(true);
+
+      useAnimationStore.getState().setDimension(4);
+
+      expect(useAnimationStore.getState().isPlaying).toBe(true);
+    });
+  });
 });

@@ -10,6 +10,7 @@ import { Layout } from '@/components/Layout';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useRotationStore } from '@/stores/rotationStore';
 import { useTransformStore } from '@/stores/transformStore';
+import { useAnimationStore } from '@/stores/animationStore';
 import { useRotatedVertices } from '@/hooks/useRotatedVertices';
 import { useProjectedVertices } from '@/hooks/useProjectedVertices';
 import { useAnimationLoop } from '@/hooks/useAnimationLoop';
@@ -37,6 +38,9 @@ function Visualizer() {
   // Sync transform store dimension with geometry store
   const setTransformDimension = useTransformStore((state) => state.setDimension);
 
+  // Sync animation store dimension with geometry store
+  const setAnimationDimension = useAnimationStore((state) => state.setDimension);
+
   // Get transform raw values (not methods that depend on internal dimension)
   const uniformScale = useTransformStore((state) => state.uniformScale);
   const perAxisScale = useTransformStore((state) => state.perAxisScale);
@@ -50,7 +54,8 @@ function Visualizer() {
   useLayoutEffect(() => {
     setRotationDimension(dimension);
     setTransformDimension(dimension);
-  }, [dimension, setRotationDimension, setTransformDimension]);
+    setAnimationDimension(dimension);
+  }, [dimension, setRotationDimension, setTransformDimension, setAnimationDimension]);
 
   // Generate the polytope geometry
   const geometry = useMemo(() => {
