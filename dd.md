@@ -1,0 +1,21 @@
+use your prd write skill to write the prd for this feature into docs/prd/ :
+
+in /Users/Spare/Documents/code/MultiScoper/src/rendering we have the rendering pipeline for an audio plugin written in c++. it has several shaders and post processing effects.
+
+we want to adapt parts of the rendering pipeline for our project:
+- all shaders are available
+- bloom post processing effect is available
+- additionally we need a shader that fills faces and supports specular
+- on top add a light source
+
+the sidebar "Visuals" section is refactored and allows to configure:
+- whether to show vertex "balls"
+- what shader to user
+- whether to use bloom and how strong
+- the color or color palette to use
+- whether the light source is on and the color of the light source
+- settings per shader (e.g. on the surface shader we want to control specular)
+
+uncertaintity which you should research and decide on:
+- we want visually stunning visuals but also be able to differentiate the different edges and faces. they cannot be just all be the same flat color
+- we want it to look and feel like real physical objects (how to achieve this?)
