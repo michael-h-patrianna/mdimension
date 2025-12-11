@@ -173,4 +173,21 @@ describe('RotationControls', () => {
 
     expect(screen.getByText('6th Dimension (U)')).toBeInTheDocument();
   });
+
+  it('should render 7D group in 7D mode', async () => {
+    const user = userEvent.setup();
+    useRotationStore.getState().setDimension(7);
+    render(<RotationControls />);
+
+    // Should show 7th dimension group
+    const group7D = screen.getByText('7th Dimension (A6)');
+    expect(group7D).toBeInTheDocument();
+
+    // Expand 7D group
+    await user.click(group7D);
+    
+    // Should show 7D planes (e.g. XA6)
+    // A6 is the 7th axis (index 6). X is index 0. Plane XA6.
+    expect(screen.getByText('XA6')).toBeInTheDocument();
+  });
 });

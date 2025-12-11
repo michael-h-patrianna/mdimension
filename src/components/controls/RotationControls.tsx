@@ -5,7 +5,7 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { useRotationStore } from '@/stores';
-import { getRotationPlanes } from '@/lib/math';
+import { getRotationPlanes, getAxisName } from '@/lib/math';
 import { RotationSlider } from './RotationSlider';
 
 interface PlaneGroup {
@@ -23,18 +23,16 @@ function getAxisColor(planeName: string): string {
   if (planeName.length === 2 && !planeName.includes('W') && !planeName.includes('V') && !planeName.includes('U')) {
     return 'blue';
   }
-  // W-axis planes (XW, YW, ZW): purple
-  if (planeName.includes('W')) {
-    return 'purple';
-  }
-  // V-axis planes (XV, YV, ZV, WV): orange
-  if (planeName.includes('V')) {
-    return 'orange';
-  }
-  // U-axis planes: green
-  if (planeName.includes('U')) {
-    return 'green';
-  }
+  
+  // High dimensions - cycle through colors
+  if (planeName.includes('W')) return 'purple';
+  if (planeName.includes('V')) return 'orange';
+  if (planeName.includes('U')) return 'green';
+  
+  // For A6+ (7D+), cycle colors or use a default
+  // Just simple heuristic based on the last character or presence of 'A'
+  if (planeName.includes('A')) return 'pink';
+  
   return 'blue';
 }
 
@@ -45,72 +43,46 @@ function groupPlanesByDimension(dimension: number): PlaneGroup[] {
   const planes = getRotationPlanes(dimension);
   const groups: PlaneGroup[] = [];
 
-  // 3D rotations (XY, XZ, YZ)
-  const plane3D = planes
-    .filter((p) => {
-      const name = p.name;
-      return (
-        !name.includes('W') &&
-        !name.includes('V') &&
-        !name.includes('U') &&
-        name.match(/^[XYZ]{2}$/)
-      );
-    })
+  // 1. Group 3D rotations (indices 0, 1, 2 only)
+  // These are planes where both indices are < 3.
+  const planes3D = planes
+    .filter((p) => Math.max(...p.indices) < 3)
     .map((p) => p.name);
 
-  if (plane3D.length > 0) {
+  if (planes3D.length > 0) {
     groups.push({
       title: '3D Rotations',
-      planes: plane3D,
+      planes: planes3D,
       defaultExpanded: true,
       color: 'blue',
     });
   }
 
-  // 4th dimension (W-axis)
-  if (dimension >= 4) {
-    const planesW = planes
-      .filter((p) => p.name.includes('W') && !p.name.includes('V') && !p.name.includes('U'))
+  // 2. Group higher dimensions (4D+)
+  // For each dimension d from 4 up to current dimension:
+  // The new axis is at index d-1.
+  // We collect planes where the highest index IS d-1.
+  for (let d = 4; d <= dimension; d++) {
+    const axisIndex = d - 1;
+    const axisName = getAxisName(axisIndex);
+    
+    const planesForDim = planes
+      .filter((p) => Math.max(...p.indices) === axisIndex)
       .map((p) => p.name);
 
-    if (planesW.length > 0) {
+    if (planesForDim.length > 0) {
+      // Determine color
+      let color = 'gray';
+      if (axisName === 'W') color = 'purple';
+      else if (axisName === 'V') color = 'orange';
+      else if (axisName === 'U') color = 'green';
+      else color = 'pink'; // 7D+
+
       groups.push({
-        title: '4th Dimension (W)',
-        planes: planesW,
+        title: `${d}th Dimension (${axisName})`,
+        planes: planesForDim,
         defaultExpanded: false,
-        color: 'purple',
-      });
-    }
-  }
-
-  // 5th dimension (V-axis)
-  if (dimension >= 5) {
-    const planesV = planes
-      .filter((p) => p.name.includes('V') && !p.name.includes('U'))
-      .map((p) => p.name);
-
-    if (planesV.length > 0) {
-      groups.push({
-        title: '5th Dimension (V)',
-        planes: planesV,
-        defaultExpanded: false,
-        color: 'orange',
-      });
-    }
-  }
-
-  // 6th dimension (U-axis)
-  if (dimension >= 6) {
-    const planesU = planes
-      .filter((p) => p.name.includes('U'))
-      .map((p) => p.name);
-
-    if (planesU.length > 0) {
-      groups.push({
-        title: '6th Dimension (U)',
-        planes: planesU,
-        defaultExpanded: false,
-        color: 'green',
+        color,
       });
     }
   }
@@ -130,13 +102,16 @@ export function RotationControls() {
   // Track which groups are expanded
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => {
     const initialExpanded = new Set<string>();
-    planeGroups.forEach((group) => {
-      if (group.defaultExpanded) {
-        initialExpanded.add(group.title);
-      }
-    });
-    return initialExpanded;
+    // Re-calculating initial expanded based on current logic is tricky if we want persistence across re-renders
+    // but the previous code just did this once on mount.
+    // However, since planeGroups changes with dimension, we might want to update this?
+    // The previous code initialized state once.
+    // Let's stick to simple init for "3D Rotations" usually.
+    return new Set(['3D Rotations']);
   });
+
+  // Effect to ensure new groups might be handled or keep 3D open. 
+  // Actually, standard behavior is fine. User opens what they want.
 
   const toggleGroup = useCallback((groupTitle: string) => {
     setExpandedGroups((prev) => {
