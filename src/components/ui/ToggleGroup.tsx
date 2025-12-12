@@ -37,7 +37,7 @@ export const ToggleGroup: React.FC<ToggleGroupProps> = ({
             disabled={disabled}
             className={`
               flex-1 relative px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-300
-              disabled:opacity-50 disabled:cursor-not-allowed
+              disabled:opacity-50 disabled:cursor-not-allowed bg-panel-border
               ${isSelected ? 'text-accent' : 'text-text-secondary hover:text-text-primary'}
             `}
             role="radio"

@@ -24,28 +24,15 @@ uncertaintity which you should research and decide on:
 
 
 Review this bug report:
-There is a duplicate Face Opacity slider in the Visual sidebar section that does nothing.
-
-Review this bug report:
-1. Line Thickness setting in the Visual section does nothing. It should modify the edge thickness on all shaders.
-
-2. Visual section in sidebar, Edge Color does nothing and never changes the edge color in no shader.
-
-Review this bug report:
-1. The "grid" plane that marks the x/z plane at y=0 is only visible when you "look" at it from the top but becomes invisible when you move the camera below it to look at its bottom
-2. the plan should also have a material so our object can cast shadow and also reflections on it, to have more the look and feel of an actual physical surface
-3. the Visuals sidebar section should have a toggle to turn the plan off/on
-4. the plane should be on a negative y value to always sit in some distance below the object to give a nice visual effect as if the object was floating above that surface (consider how to deal with situation when the object size increases e.g. through scaling or skewing)
+The Field of View setting in the sidebar changes nothing.
 
 Review this bug report:
 PNG export exports an empty image
 
 Review this bug report:
-for the surface shader, the Visuals section has no option to set the surface color(s) or texture
+In the sidebar, in the scaling section, when scaling is not locked to uniform scaling, the Uniform scaling slider must be disabled. At the moment is still enabled but changes nothing.
 
 Review this bug report:
-after some optimizations recently, our shaders or geometry no longer work correctly for more than 4 dimensions:
-1. wireframe shader: only vertices are correct, no lines drawn for the higher dimension planes
-2. double line shader: will only draw the lines correctly, when first switching to another shader and then back. if changing dimensions while shader is active, console shows: [.WebGL-0x134004a6c00] GL_INVALID_OPERATION: glDrawElementsInstanced: Vertex buffer is not big enough for the draw call.Understand this warning
-(index):1 WebGL: too many errors, no more errors will be reported to the console for this context.
-3. surface shader: shows faces more or less correctly, but overlays strange black flickering rectangles
+With cross section active + "animate slice" active + "show original" hidden, when the "Slice W Position" value/slider hits its minimum or maximum then two visual bugs are shortly showing:
+1. the surface plane will jump in the y position
+2. the original shape of the object will shortly appear while the cross section disappears

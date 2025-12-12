@@ -73,7 +73,7 @@ export const ScaleControls: React.FC<ScaleControlsProps> = ({
           className={`
             flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors
             ${scaleLocked
-              ? 'bg-accent-cyan/20 text-accent-cyan border border-accent-cyan/50'
+              ? 'bg-accent/20 text-accent border border-accent/50'
               : 'bg-panel-border text-text-secondary border border-panel-border'
             }
           `}

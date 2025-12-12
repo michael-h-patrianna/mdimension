@@ -95,7 +95,7 @@ async function runTests() {
     // Verify the button is now selected (has cyan border)
     const button = page.locator('[data-testid="dimension-selector-3"]');
     const classes = await button.getAttribute('class');
-    assert(classes?.includes('border-accent-cyan'), 'Expected 3D button to be selected');
+    assert(classes?.includes('border-accent'), 'Expected 3D button to be selected');
   });
 
   await page.screenshot({ path: `${SCREENSHOT_DIR}/02-3d-mode.png`, fullPage: true });

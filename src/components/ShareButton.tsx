@@ -99,7 +99,7 @@ export const ShareButton: React.FC<ShareButtonProps> = ({ className = '' }) => {
       </Button>
 
       {copied && (
-        <p className="text-xs text-accent-cyan">Link copied to clipboard</p>
+        <p className="text-xs text-accent">Link copied to clipboard</p>
       )}
     </div>
   );

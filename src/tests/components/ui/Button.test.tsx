@@ -21,7 +21,7 @@ describe('Button', () => {
   it('applies primary variant styles by default', () => {
     render(<Button>Primary</Button>);
     const button = screen.getByRole('button');
-    expect(button).toHaveClass('bg-accent-cyan');
+    expect(button).toHaveClass('bg-accent');
   });
 
   it('applies secondary variant styles', () => {

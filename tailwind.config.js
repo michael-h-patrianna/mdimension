@@ -11,6 +11,8 @@ export default {
         background: 'rgb(var(--color-bg-app) / <alpha-value>)',
         glass: 'rgb(var(--color-bg-glass) / <alpha-value>)',
         border: 'rgb(var(--color-border) / <alpha-value>)',
+        'panel-bg': 'rgb(var(--color-bg-glass) / 0.5)',
+        'panel-border': 'rgb(var(--color-border) / 0.1)',
         text: {
           primary: 'rgb(var(--color-text-primary) / <alpha-value>)',
           secondary: 'rgb(var(--color-text-secondary) / <alpha-value>)',

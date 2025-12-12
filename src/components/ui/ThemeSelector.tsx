@@ -7,7 +7,7 @@ export const ThemeSelector: React.FC = () => {
 
   const options = [
     { value: 'cyan', label: 'Neon Cyan' },
-    { value: 'gold', label: 'Neon Gold' },
+    { value: 'green', label: 'Neon Green' },
     { value: 'magenta', label: 'Neon Magenta' },
   ];
 

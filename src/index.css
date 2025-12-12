@@ -19,9 +19,9 @@
     --color-accent-glow: 0 212 255;
   }
 
-  [data-theme='gold'] {
-    --color-accent: 255 215 0;
-    --color-accent-glow: 255 200 0;
+  [data-theme='green'] {
+    --color-accent: 57 255 20;
+    --color-accent-glow: 50 255 50;
   }
 
   [data-theme='magenta'] {

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type Theme = 'cyan' | 'gold' | 'magenta';
+export type Theme = 'cyan' | 'green' | 'magenta';
 
 interface ThemeState {
   theme: Theme;

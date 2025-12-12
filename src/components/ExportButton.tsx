@@ -61,7 +61,7 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
       </Button>
 
       {lastExport && (
-        <p className="text-xs text-accent-cyan">
+        <p className="text-xs text-accent">
           Saved: {lastExport}.png
         </p>
       )}

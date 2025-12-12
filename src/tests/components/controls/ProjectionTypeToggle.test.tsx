@@ -20,7 +20,7 @@ describe('ProjectionTypeToggle', () => {
     const orthographicButton = screen.getByText('Orthographic');
 
     // Perspective should have cyan background
-    expect(perspectiveButton).toHaveClass('bg-accent-cyan');
+    expect(perspectiveButton).toHaveClass('bg-accent');
     expect(perspectiveButton).toHaveClass('text-app-bg');
 
     // Orthographic should have transparent background
@@ -36,7 +36,7 @@ describe('ProjectionTypeToggle', () => {
     const orthographicButton = screen.getByText('Orthographic');
 
     // Orthographic should have cyan background
-    expect(orthographicButton).toHaveClass('bg-accent-cyan');
+    expect(orthographicButton).toHaveClass('bg-accent');
     expect(orthographicButton).toHaveClass('text-app-bg');
 
     // Perspective should have transparent background

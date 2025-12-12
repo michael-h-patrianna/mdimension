@@ -37,9 +37,9 @@ describe('ShaderSelector', () => {
 
     // Default shader is 'wireframe'
     const wireframeButton = screen.getByTestId('shader-option-wireframe');
-    expect(wireframeButton).toHaveClass('bg-accent-cyan/20');
-    expect(wireframeButton).toHaveClass('text-accent-cyan');
-    expect(wireframeButton).toHaveClass('border-accent-cyan/50');
+    expect(wireframeButton).toHaveClass('bg-accent/20');
+    expect(wireframeButton).toHaveClass('text-accent');
+    expect(wireframeButton).toHaveClass('border-accent/50');
   });
 
   it('should update selection when clicking a shader option', () => {
@@ -53,8 +53,8 @@ describe('ShaderSelector', () => {
     expect(useVisualStore.getState().shaderType).toBe('dualOutline');
 
     // Check that the button is now highlighted
-    expect(dualOutlineButton).toHaveClass('bg-accent-cyan/20');
-    expect(dualOutlineButton).toHaveClass('text-accent-cyan');
+    expect(dualOutlineButton).toHaveClass('bg-accent/20');
+    expect(dualOutlineButton).toHaveClass('text-accent');
   });
 
   it('should switch between shader types correctly', () => {
@@ -92,15 +92,15 @@ describe('ShaderSelector', () => {
     const wireframeButton = screen.getByTestId('shader-option-wireframe');
     const dualOutlineButton = screen.getByTestId('shader-option-dualOutline');
 
-    expect(wireframeButton).toHaveClass('bg-accent-cyan/20');
-    expect(dualOutlineButton).not.toHaveClass('bg-accent-cyan/20');
+    expect(wireframeButton).toHaveClass('bg-accent/20');
+    expect(dualOutlineButton).not.toHaveClass('bg-accent/20');
 
     // Click dual outline
     fireEvent.click(dualOutlineButton);
 
     // Now only dual outline should be highlighted
-    expect(wireframeButton).not.toHaveClass('bg-accent-cyan/20');
-    expect(dualOutlineButton).toHaveClass('bg-accent-cyan/20');
+    expect(wireframeButton).not.toHaveClass('bg-accent/20');
+    expect(dualOutlineButton).toHaveClass('bg-accent/20');
   });
 
   it('should have proper ARIA labels for accessibility', () => {
@@ -138,8 +138,8 @@ describe('ShaderSelector', () => {
     render(<ShaderSelector />);
 
     const surfaceButton = screen.getByTestId('shader-option-surface');
-    expect(surfaceButton).toHaveClass('bg-accent-cyan/20');
-    expect(surfaceButton).toHaveClass('text-accent-cyan');
+    expect(surfaceButton).toHaveClass('bg-accent/20');
+    expect(surfaceButton).toHaveClass('text-accent');
   });
 
   it('should render all three shader options', () => {

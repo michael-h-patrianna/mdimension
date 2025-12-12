@@ -50,7 +50,7 @@ describe('ToggleGroup', () => {
     );
 
     const perspectiveButton = screen.getByRole('radio', { name: /perspective/i });
-    expect(perspectiveButton).toHaveClass('bg-accent-cyan', 'text-app-bg');
+    expect(perspectiveButton).toHaveClass('bg-accent', 'text-app-bg');
   });
 
   it('calls onChange when option is clicked', async () => {

@@ -99,7 +99,7 @@ export const ShaderSelector: React.FC<ShaderSelectorProps> = ({ className = '' }
               w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors
               ${
                 shaderType === shader
-                  ? 'bg-accent-cyan/20 text-accent-cyan border border-accent-cyan/50'
+                  ? 'bg-accent/20 text-accent border border-accent/50'
                   : 'bg-panel-border text-text-primary hover:bg-panel-border/80 border border-transparent'
               }
             `}

@@ -92,10 +92,10 @@ export const AnimationControls: React.FC<AnimationControlsProps> = ({
                 key={plane.name}
                 onClick={() => togglePlane(plane.name)}
                 className={`
-                  px-2 py-1 text-xs font-mono rounded transition-colors
+                  px-2 py-1 text-xs font-mono rounded transition-colors bg-panel-border
                   ${isActive
-                    ? 'bg-accent-cyan text-app-bg'
-                    : 'bg-panel-border text-text-secondary hover:bg-panel-border/80'
+                    ? 'text-accent'
+                    : ' text-text-secondary hover:bg-panel-border/80'
                   }
                 `}
                 aria-pressed={isActive}

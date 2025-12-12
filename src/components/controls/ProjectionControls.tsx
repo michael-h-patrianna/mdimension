@@ -15,7 +15,7 @@ export const ProjectionControls: React.FC = () => {
         </h3>
         <button
           onClick={resetToDefaults}
-          className="text-xs text-text-secondary hover:text-accent-cyan transition-colors"
+          className="text-xs text-text-secondary hover:text-accent transition-colors"
           aria-label="Reset to defaults"
         >
           Reset
@@ -57,7 +57,7 @@ export const ProjectionControls: React.FC = () => {
                 Projection Distance
               </label>
             </Tooltip>
-            <span className="text-sm text-accent-cyan font-mono">
+            <span className="text-sm text-accent font-mono">
               {distance.toFixed(1)}
             </span>
           </div>
@@ -73,14 +73,14 @@ export const ProjectionControls: React.FC = () => {
               [&::-webkit-slider-thumb]:w-4
               [&::-webkit-slider-thumb]:h-4
               [&::-webkit-slider-thumb]:rounded-full
-              [&::-webkit-slider-thumb]:bg-accent-cyan
+              [&::-webkit-slider-thumb]:bg-accent
               [&::-webkit-slider-thumb]:cursor-pointer
               [&::-webkit-slider-thumb]:transition-all
               [&::-webkit-slider-thumb]:hover:scale-110
               [&::-moz-range-thumb]:w-4
               [&::-moz-range-thumb]:h-4
               [&::-moz-range-thumb]:rounded-full
-              [&::-moz-range-thumb]:bg-accent-cyan
+              [&::-moz-range-thumb]:bg-accent
               [&::-moz-range-thumb]:cursor-pointer
               [&::-moz-range-thumb]:border-0
               [&::-moz-range-thumb]:transition-all
@@ -105,7 +105,7 @@ export const ProjectionControls: React.FC = () => {
               Field of View
             </label>
           </Tooltip>
-          <span className="text-sm text-accent-cyan font-mono">
+          <span className="text-sm text-accent font-mono">
             {fov}°
           </span>
         </div>
@@ -121,14 +121,14 @@ export const ProjectionControls: React.FC = () => {
             [&::-webkit-slider-thumb]:w-4
             [&::-webkit-slider-thumb]:h-4
             [&::-webkit-slider-thumb]:rounded-full
-            [&::-webkit-slider-thumb]:bg-accent-cyan
+            [&::-webkit-slider-thumb]:bg-accent
             [&::-webkit-slider-thumb]:cursor-pointer
             [&::-webkit-slider-thumb]:transition-all
             [&::-webkit-slider-thumb]:hover:scale-110
             [&::-moz-range-thumb]:w-4
             [&::-moz-range-thumb]:h-4
             [&::-moz-range-thumb]:rounded-full
-            [&::-moz-range-thumb]:bg-accent-cyan
+            [&::-moz-range-thumb]:bg-accent
             [&::-moz-range-thumb]:cursor-pointer
             [&::-moz-range-thumb]:border-0
             [&::-moz-range-thumb]:transition-all
