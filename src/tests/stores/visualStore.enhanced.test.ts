@@ -329,4 +329,32 @@ describe('visualStore - Enhanced Features', () => {
       expect(useVisualStore.getState().faceColor).toBe(DEFAULT_FACE_COLOR);
     });
   });
+
+  describe('Color Mode (Palette System)', () => {
+    it('should have default color mode of monochromatic', () => {
+      expect(useVisualStore.getState().colorMode).toBe('monochromatic');
+    });
+
+    it('should set color mode', () => {
+      useVisualStore.getState().setColorMode('complementary');
+      expect(useVisualStore.getState().colorMode).toBe('complementary');
+
+      useVisualStore.getState().setColorMode('triadic');
+      expect(useVisualStore.getState().colorMode).toBe('triadic');
+
+      useVisualStore.getState().setColorMode('analogous');
+      expect(useVisualStore.getState().colorMode).toBe('analogous');
+
+      useVisualStore.getState().setColorMode('splitComplementary');
+      expect(useVisualStore.getState().colorMode).toBe('splitComplementary');
+    });
+
+    it('should reset color mode to default on reset', () => {
+      useVisualStore.getState().setColorMode('triadic');
+      expect(useVisualStore.getState().colorMode).toBe('triadic');
+
+      useVisualStore.getState().reset();
+      expect(useVisualStore.getState().colorMode).toBe('monochromatic');
+    });
+  });
 });

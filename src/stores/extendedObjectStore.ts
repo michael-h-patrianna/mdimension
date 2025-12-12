@@ -29,7 +29,6 @@ import type {
   MandelbrotPalette,
   MandelbrotQualityPreset,
   MandelbrotRenderStyle,
-  MandelbulbPaletteMode,
 } from '@/lib/geometry/extended/types';
 import {
   DEFAULT_POLYTOPE_CONFIG,
@@ -106,7 +105,6 @@ interface ExtendedObjectState {
   setMandelbrotPointSize: (size: number) => void;
   setMandelbrotBoundaryThreshold: (threshold: [number, number]) => void;
   setMandelbrotMandelbulbPower: (power: number) => void;
-  setMandelbulbPaletteMode: (mode: MandelbulbPaletteMode) => void;
   initializeMandelbrotForDimension: (dimension: number) => void;
   getMandelbrotConfig: () => MandelbrotConfig;
 
@@ -405,12 +403,6 @@ export const useExtendedObjectStore = create<ExtendedObjectState>((set, get) => 
     const clampedPower = Math.max(2, Math.min(16, Math.floor(power)));
     set((state) => ({
       mandelbrot: { ...state.mandelbrot, mandelbulbPower: clampedPower },
-    }));
-  },
-
-  setMandelbulbPaletteMode: (mode: MandelbulbPaletteMode) => {
-    set((state) => ({
-      mandelbrot: { ...state.mandelbrot, mandelbulbPaletteMode: mode },
     }));
   },
 

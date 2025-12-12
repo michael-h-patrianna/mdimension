@@ -22,6 +22,7 @@ import {
   DEFAULT_SHADER_TYPE,
   DEFAULT_SHADER_SETTINGS,
 } from '@/lib/shaders/types';
+import { type ColorMode, DEFAULT_COLOR_MODE } from '@/lib/shaders/palette';
 
 // ============================================================================
 // Default Values
@@ -148,6 +149,8 @@ interface VisualState {
   faceOpacity: number;
   /** Color of faces (hex string) */
   faceColor: string;
+  /** Color palette mode for surface rendering */
+  colorMode: ColorMode;
   /** Background color (hex string) */
   backgroundColor: string;
 
@@ -225,6 +228,7 @@ interface VisualState {
   setVertexColor: (color: string) => void;
   setFaceOpacity: (opacity: number) => void;
   setFaceColor: (color: string) => void;
+  setColorMode: (mode: ColorMode) => void;
   setBackgroundColor: (color: string) => void;
 
   // --- Actions: Render Mode Toggles ---
@@ -285,6 +289,7 @@ const INITIAL_STATE: Omit<VisualState, keyof VisualStateFunctions> = {
   vertexColor: DEFAULT_VERTEX_COLOR,
   faceOpacity: DEFAULT_FACE_OPACITY,
   faceColor: DEFAULT_FACE_COLOR,
+  colorMode: DEFAULT_COLOR_MODE,
   backgroundColor: DEFAULT_BACKGROUND_COLOR,
 
   // Render mode toggles
@@ -329,7 +334,7 @@ const INITIAL_STATE: Omit<VisualState, keyof VisualStateFunctions> = {
 
 type VisualStateFunctions = Pick<VisualState,
   | 'setEdgeColor' | 'setEdgeThickness' | 'setVertexVisible' | 'setVertexSize' | 'setVertexColor'
-  | 'setFaceOpacity' | 'setFaceColor' | 'setBackgroundColor' | 'setEdgesVisible' | 'setFacesVisible'
+  | 'setFaceOpacity' | 'setFaceColor' | 'setColorMode' | 'setBackgroundColor' | 'setEdgesVisible' | 'setFacesVisible'
   | 'setShaderType' | 'setWireframeSettings' | 'setSurfaceSettings' | 'setBloomEnabled' | 'setBloomIntensity'
   | 'setBloomThreshold' | 'setBloomRadius' | 'setBloomSoftKnee' | 'setBloomLevels' | 'setLightEnabled'
   | 'setLightColor' | 'setLightHorizontalAngle' | 'setLightVerticalAngle' | 'setAmbientIntensity'
@@ -373,6 +378,10 @@ export const useVisualStore = create<VisualState>((set) => ({
 
   setFaceColor: (color: string) => {
     set({ faceColor: color });
+  },
+
+  setColorMode: (mode: ColorMode) => {
+    set({ colorMode: mode });
   },
 
   setBackgroundColor: (color: string) => {

@@ -232,14 +232,12 @@ export function lightenColor(hex: string, amount: number): string {
  * @param palette - Palette type
  * @param baseColor - User's vertex color from visualStore
  * @param steps - Number of color steps (typically 256)
- * @param customColors - Custom palette colors if palette='custom'
  * @returns Array of hex color strings
  */
 export function generatePalette(
   palette: MandelbrotPalette,
   baseColor: string,
-  steps: number = 256,
-  customColors?: { start: string; mid: string; end: string }
+  steps: number = 256
 ): string[] {
   const colors: string[] = [];
   const baseHsl = hexToHsl(baseColor);
@@ -334,23 +332,6 @@ export function generatePalette(
       break;
     }
 
-    case 'custom': {
-      // User-defined start/mid/end colors (independent of baseColor)
-      const start = customColors?.start ?? baseColor;
-      const mid = customColors?.mid ?? '#FFFFFF';
-      const end = customColors?.end ?? getComplementaryColor(baseColor);
-
-      for (let i = 0; i < steps; i++) {
-        const t = i / (steps - 1);
-        if (t < 0.5) {
-          colors.push(interpolateColor(start, mid, t * 2));
-        } else {
-          colors.push(interpolateColor(mid, end, (t - 0.5) * 2));
-        }
-      }
-      break;
-    }
-
     default: {
       // Default to monochrome if unknown palette
       return generatePalette('monochrome', baseColor, steps);
@@ -414,14 +395,13 @@ export function generatePointColors(
 ): string[] {
   const {
     palette: paletteType,
-    customPalette,
     invertColors,
     interiorColor,
     paletteCycles,
   } = config;
 
   // Generate the color palette from the base color
-  const palette = generatePalette(paletteType, baseColor, 256, customPalette);
+  const palette = generatePalette(paletteType, baseColor, 256);
 
   // Derive interior color from base color (very dark version)
   const effectiveInteriorColor = interiorColor === '#000000'

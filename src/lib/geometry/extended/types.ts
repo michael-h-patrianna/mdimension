@@ -228,15 +228,13 @@ export type MandelbrotColorMode =
  * - triadic: Uses vertexColor in a triadic scheme (120° shifts)
  * - analogous: vertexColor with ±60° hue variations
  * - shifted: vertexColor → 90° hue-shifted version
- * - custom: User-defined start/mid/end colors (independent of vertexColor)
  */
 export type MandelbrotPalette =
   | 'monochrome'
   | 'complement'
   | 'triadic'
   | 'analogous'
-  | 'shifted'
-  | 'custom';
+  | 'shifted';
 
 /**
  * Quality presets for Mandelbrot computation
@@ -249,23 +247,6 @@ export type MandelbrotQualityPreset = 'draft' | 'standard' | 'high' | 'ultra';
  * - rayMarching: Volumetric ray marching in shader (3D+ only)
  */
 export type MandelbrotRenderStyle = 'pointCloud' | 'rayMarching';
-
-/**
- * Color palette modes for raymarched Mandelbulb (3D).
- * Based on color theory principles used in tools like Adobe Color.
- *
- * - monochromatic: Same hue, vary only lightness (elegant, safe)
- * - analogous: Hue varies ±30° from base (harmonious, natural)
- * - complementary: Base + opposite hue 180° apart (high contrast)
- * - triadic: Three colors 120° apart (vibrant, balanced)
- * - splitComplementary: Base + two colors flanking the complement
- */
-export type MandelbulbPaletteMode =
-  | 'monochromatic'
-  | 'analogous'
-  | 'complementary'
-  | 'triadic'
-  | 'splitComplementary';
 
 /**
  * Configuration for n-dimensional Mandelbrot set generation
@@ -353,12 +334,6 @@ export interface MandelbrotConfig {
    */
   epsilon: number;
 
-  /**
-   * Color palette mode for raymarched Mandelbulb (3D).
-   * Based on color theory principles used in Adobe Color.
-   * Default: 'monochromatic'
-   */
-  mandelbulbPaletteMode: MandelbulbPaletteMode;
 }
 
 /**
@@ -397,7 +372,6 @@ export const DEFAULT_MANDELBROT_CONFIG: MandelbrotConfig = {
   boundaryThreshold: [0.1, 0.9],  // Show points with escape time 10%-90% of maxIter
   mandelbulbPower: 8,  // Classic Mandelbulb/Hyperbulb power
   epsilon: 1e-12,  // Numerical stability for hyperspherical calculations
-  mandelbulbPaletteMode: 'monochromatic',  // Color palette mode for raymarched 3D
 };
 
 // ============================================================================

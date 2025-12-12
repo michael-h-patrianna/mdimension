@@ -15,6 +15,8 @@ import {
   AdditiveBlending,
 } from 'three';
 import type { SurfaceSettings } from '../types';
+import { GLSL_PALETTE_FUNCTIONS } from '../palette';
+import type { ColorMode } from '../palette';
 
 /**
  * Configuration for surface material creation
@@ -234,6 +236,209 @@ export function updateFresnelMaterial(
     // Normalize and store in lightDir uniform
     const len = Math.sqrt(x * x + y * y + z * z);
     material.uniforms.lightDir!.value.setRGB(x / len, y / len, z / len);
+  }
+
+  material.needsUpdate = true;
+}
+
+// ============================================================================
+// Palette Surface Material (for depth-based color variation)
+// ============================================================================
+
+/**
+ * Configuration for palette surface material
+ */
+export interface PaletteSurfaceMaterialConfig extends SurfaceMaterialConfig {
+  /** Color mode for palette generation */
+  colorMode: ColorMode;
+}
+
+/**
+ * GLSL vertex shader for palette surface material.
+ * Passes faceDepth attribute to fragment shader for palette variation.
+ */
+const paletteVertexShader = `
+attribute float faceDepth;
+
+varying vec3 vNormal;
+varying vec3 vViewDir;
+varying float vDepth;
+
+void main() {
+  vNormal = normalize(normalMatrix * normal);
+  vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+  vViewDir = normalize(-mvPosition.xyz);
+  vDepth = faceDepth;
+  gl_Position = projectionMatrix * mvPosition;
+}
+`;
+
+/**
+ * GLSL fragment shader for palette surface material.
+ * Uses shared palette functions for color generation based on depth.
+ * Note: This must be concatenated with GLSL_PALETTE_FUNCTIONS.
+ */
+const paletteFragmentShaderCore = `
+uniform vec3 baseColor;
+uniform vec3 rimColor;
+uniform float opacity;
+uniform float fresnelIntensity;
+uniform float specularIntensity;
+uniform float specularPower;
+uniform vec3 lightDir;
+uniform int paletteMode;
+
+varying vec3 vNormal;
+varying vec3 vViewDir;
+varying float vDepth;
+
+void main() {
+  vec3 normal = normalize(vNormal);
+  vec3 viewDir = normalize(vViewDir);
+
+  // Convert base color to HSL and generate palette color
+  vec3 baseHSL = rgb2hsl(baseColor);
+  vec3 surfaceColor = getPaletteColor(baseHSL, vDepth, paletteMode);
+
+  // Fresnel effect (rim lighting)
+  float fresnel = pow(1.0 - abs(dot(normal, viewDir)), 3.0);
+
+  // Basic Phong-like diffuse
+  float diffuse = max(dot(normal, lightDir), 0.0) * 0.5 + 0.5;
+
+  // Specular highlight
+  vec3 reflectDir = reflect(-lightDir, normal);
+  float specular = pow(max(dot(viewDir, reflectDir), 0.0), specularPower) * specularIntensity;
+
+  // Combine colors
+  vec3 color = surfaceColor * diffuse;
+  color += vec3(1.0) * specular;
+  color = mix(color, rimColor, fresnel * fresnelIntensity);
+
+  gl_FragColor = vec4(color, opacity);
+}
+`;
+
+// Concatenate palette functions with core shader
+const paletteFragmentShader = GLSL_PALETTE_FUNCTIONS + paletteFragmentShaderCore;
+
+/**
+ * Create a palette-aware surface material with depth-based color variation.
+ *
+ * Uses custom ShaderMaterial with:
+ * - Per-face depth attribute for palette variation
+ * - Color theory-based palette modes (monochromatic, analogous, etc.)
+ * - Phong-like diffuse lighting
+ * - Specular highlights
+ * - Optional fresnel rim lighting
+ *
+ * @param config - Material configuration including colorMode
+ * @returns ShaderMaterial instance
+ *
+ * @example
+ * ```ts
+ * const material = createPaletteSurfaceMaterial({
+ *   color: '#8800FF',
+ *   edgeColor: '#00FFFF',
+ *   faceOpacity: 0.8,
+ *   specularIntensity: 1.0,
+ *   specularPower: 32,
+ *   fresnelEnabled: true,
+ *   colorMode: 'complementary',
+ * });
+ * ```
+ */
+export function createPaletteSurfaceMaterial(config: PaletteSurfaceMaterialConfig): ShaderMaterial {
+  const {
+    color,
+    edgeColor = '#FFFFFF',
+    faceOpacity,
+    specularIntensity,
+    specularPower,
+    fresnelEnabled,
+    colorMode,
+  } = config;
+
+  // Map colorMode string to int for shader
+  const modeMap: Record<ColorMode, number> = {
+    monochromatic: 0,
+    analogous: 1,
+    complementary: 2,
+    triadic: 3,
+    splitComplementary: 4,
+  };
+
+  return new ShaderMaterial({
+    vertexShader: paletteVertexShader,
+    fragmentShader: paletteFragmentShader,
+    uniforms: {
+      baseColor: { value: new Color(color) },
+      rimColor: { value: new Color(edgeColor) },
+      opacity: { value: faceOpacity },
+      fresnelIntensity: { value: fresnelEnabled ? 0.5 : 0.0 },
+      specularIntensity: { value: specularIntensity },
+      specularPower: { value: specularPower },
+      lightDir: { value: new Color(0.5, 0.5, 0.5) }, // Normalized light direction
+      paletteMode: { value: modeMap[colorMode] },
+    },
+    transparent: true,
+    side: DoubleSide,
+  });
+}
+
+/**
+ * Update palette material uniforms.
+ *
+ * Call this to update material properties without recreating the material.
+ *
+ * @param material - ShaderMaterial created by createPaletteSurfaceMaterial
+ * @param updates - Properties to update
+ */
+export function updatePaletteMaterial(
+  material: ShaderMaterial,
+  updates: Partial<{
+    color: string;
+    rimColor: string;
+    opacity: number;
+    fresnelIntensity: number;
+    specularIntensity: number;
+    specularPower: number;
+    lightDirection: [number, number, number];
+    colorMode: ColorMode;
+  }>
+): void {
+  if (updates.color !== undefined) {
+    material.uniforms.baseColor!.value = new Color(updates.color);
+  }
+  if (updates.rimColor !== undefined) {
+    material.uniforms.rimColor!.value = new Color(updates.rimColor);
+  }
+  if (updates.opacity !== undefined) {
+    material.uniforms.opacity!.value = updates.opacity;
+  }
+  if (updates.fresnelIntensity !== undefined) {
+    material.uniforms.fresnelIntensity!.value = updates.fresnelIntensity;
+  }
+  if (updates.specularIntensity !== undefined) {
+    material.uniforms.specularIntensity!.value = updates.specularIntensity;
+  }
+  if (updates.specularPower !== undefined) {
+    material.uniforms.specularPower!.value = updates.specularPower;
+  }
+  if (updates.lightDirection !== undefined) {
+    const [x, y, z] = updates.lightDirection;
+    const len = Math.sqrt(x * x + y * y + z * z);
+    material.uniforms.lightDir!.value.setRGB(x / len, y / len, z / len);
+  }
+  if (updates.colorMode !== undefined) {
+    const modeMap: Record<ColorMode, number> = {
+      monochromatic: 0,
+      analogous: 1,
+      complementary: 2,
+      triadic: 3,
+      splitComplementary: 4,
+    };
+    material.uniforms.paletteMode!.value = modeMap[updates.colorMode];
   }
 
   material.needsUpdate = true;

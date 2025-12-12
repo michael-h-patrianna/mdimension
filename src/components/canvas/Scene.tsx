@@ -43,6 +43,11 @@ export interface SceneProps {
    * accounted for in ground plane calculations.
    */
   minBoundingRadius?: number
+  /**
+   * Per-face depth values for palette color variation.
+   * Derived from higher-dimension (W+) coordinates or Y-coordinate fallback.
+   */
+  faceDepths?: number[]
 }
 
 /**
@@ -119,6 +124,7 @@ export function Scene({
   isPointCloud = false,
   pointColors,
   minBoundingRadius,
+  faceDepths,
 }: SceneProps) {
   // Get all visual settings with shallow comparison to prevent unnecessary re-renders
   const {
@@ -130,6 +136,7 @@ export function Scene({
     groundPlaneOffset,
     groundPlaneOpacity,
     groundPlaneReflectivity,
+    colorMode,
   } = useVisualStore(
     useShallow((state) => ({
       vertexVisible: state.vertexVisible,
@@ -140,6 +147,7 @@ export function Scene({
       groundPlaneOffset: state.groundPlaneOffset,
       groundPlaneOpacity: state.groundPlaneOpacity,
       groundPlaneReflectivity: state.groundPlaneReflectivity,
+      colorMode: state.colorMode,
     }))
   );
 
@@ -183,6 +191,8 @@ export function Scene({
           opacity={surfaceSettings.faceOpacity}
           specularIntensity={surfaceSettings.specularIntensity}
           specularPower={surfaceSettings.specularPower}
+          faceDepths={faceDepths}
+          colorMode={colorMode}
         />
       )}
 

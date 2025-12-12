@@ -37,7 +37,8 @@ import {
 } from 'three';
 import type { Vector3D } from '@/lib/math/types';
 import type { Face } from '@/lib/geometry/faces';
-import { createSurfaceMaterial } from '@/lib/shaders/materials';
+import { createPaletteSurfaceMaterial } from '@/lib/shaders/materials';
+import type { ColorMode } from '@/lib/shaders/palette';
 import {
   DEFAULT_FACE_COLOR,
   DEFAULT_FACE_OPACITY,
@@ -64,6 +65,10 @@ export interface FaceRendererProps {
   specularPower?: number;
   /** Whether faces are visible */
   visible?: boolean;
+  /** Per-face depth values for palette color variation (0-1 normalized) */
+  faceDepths?: number[];
+  /** Color mode for palette generation */
+  colorMode?: ColorMode;
 }
 
 /**
@@ -83,6 +88,8 @@ export interface FaceRendererProps {
  * @param props.specularIntensity
  * @param props.specularPower
  * @param props.visible
+ * @param props.faceDepths
+ * @param props.colorMode
  * @returns Three.js mesh with face geometry
  */
 export function FaceRenderer({
@@ -93,6 +100,8 @@ export function FaceRenderer({
   specularIntensity = DEFAULT_FACE_SPECULAR_INTENSITY,
   specularPower = DEFAULT_FACE_SPECULAR_POWER,
   visible = true,
+  faceDepths = [],
+  colorMode = 'monochromatic',
 }: FaceRendererProps) {
   // Get surface shader settings from store for fresnel support
   const shaderSettings = useVisualStore((state) => state.shaderSettings);
@@ -113,17 +122,18 @@ export function FaceRenderer({
     ab: new Vector3(),
   });
 
-  // Create surface material with fresnel support based on settings
+  // Create palette surface material with fresnel support based on settings
   const material = useMemo(() => {
-    return createSurfaceMaterial({
+    return createPaletteSurfaceMaterial({
       color,
       edgeColor, // Used as rim color for fresnel effect
       faceOpacity: opacity,
       specularIntensity,
       specularPower,
       fresnelEnabled: surfaceSettings.fresnelEnabled,
+      colorMode,
     });
-  }, [color, edgeColor, opacity, specularIntensity, specularPower, surfaceSettings.fresnelEnabled]);
+  }, [color, edgeColor, opacity, specularIntensity, specularPower, surfaceSettings.fresnelEnabled, colorMode]);
 
   // Dispose previous material when new one is created
   useEffect(() => {
@@ -158,6 +168,8 @@ export function FaceRenderer({
     // Allocate buffers
     geo.setAttribute('position', new Float32BufferAttribute(new Float32Array(vertexCount * 3), 3));
     geo.setAttribute('normal', new Float32BufferAttribute(new Float32Array(vertexCount * 3), 3));
+    // faceDepth attribute for palette color variation
+    geo.setAttribute('faceDepth', new Float32BufferAttribute(new Float32Array(vertexCount), 1));
 
     return geo;
   }, [faces]);
@@ -168,16 +180,18 @@ export function FaceRenderer({
 
     const positions = geometry.attributes.position!.array as Float32Array;
     const normals = geometry.attributes.normal!.array as Float32Array;
+    const depths = geometry.attributes.faceDepth!.array as Float32Array;
 
     let idx = 0;
+    let faceIdx = 0;
     // Use reusable Vector3 objects to avoid allocation every frame
     const { vA, vB, vC, cb, ab } = tempVectors.current;
 
     // Helper to set vertex data
-    const setVertex = (vIdx: number, pIdx: number, nx: number, ny: number, nz: number) => {
+    const setVertex = (vIdx: number, pIdx: number, nx: number, ny: number, nz: number, depth: number) => {
       const v = vertices[vIdx];
       if (!v) return;
-      
+
       const i = pIdx * 3;
       positions[i] = v[0];
       positions[i + 1] = v[1];
@@ -186,18 +200,29 @@ export function FaceRenderer({
       normals[i] = nx;
       normals[i + 1] = ny;
       normals[i + 2] = nz;
+
+      depths[pIdx] = depth;
     };
 
     for (const face of faces) {
       const vis = face.vertices;
-      if (vis.length < 3) continue;
+      if (vis.length < 3) {
+        faceIdx++;
+        continue;
+      }
+
+      // Get face depth from faceDepths array, or use 0.5 as fallback
+      const faceDepth = faceDepths[faceIdx] ?? 0.5;
 
       // Get vertices for normal calculation
       const v0 = vertices[vis[0]!];
       const v1 = vertices[vis[1]!];
       const v2 = vertices[vis[2]!];
 
-      if (!v0 || !v1 || !v2) continue;
+      if (!v0 || !v1 || !v2) {
+        faceIdx++;
+        continue;
+      }
 
       // Calculate normal: (v1-v0) x (v2-v0)
       vA.set(v0[0], v0[1], v0[2]);
@@ -222,29 +247,32 @@ export function FaceRenderer({
       const nz = cb.z;
 
       if (vis.length === 3) {
-        // Triangle
-        setVertex(vis[0]!, idx++, nx, ny, nz);
-        setVertex(vis[1]!, idx++, nx, ny, nz);
-        setVertex(vis[2]!, idx++, nx, ny, nz);
+        // Triangle - all vertices get same face depth
+        setVertex(vis[0]!, idx++, nx, ny, nz, faceDepth);
+        setVertex(vis[1]!, idx++, nx, ny, nz, faceDepth);
+        setVertex(vis[2]!, idx++, nx, ny, nz, faceDepth);
       } else if (vis.length === 4) {
-        // Quad -> 2 Triangles
+        // Quad -> 2 Triangles - all vertices get same face depth
         // Tri 1: 0, 1, 2
-        setVertex(vis[0]!, idx++, nx, ny, nz);
-        setVertex(vis[1]!, idx++, nx, ny, nz);
-        setVertex(vis[2]!, idx++, nx, ny, nz);
-        
+        setVertex(vis[0]!, idx++, nx, ny, nz, faceDepth);
+        setVertex(vis[1]!, idx++, nx, ny, nz, faceDepth);
+        setVertex(vis[2]!, idx++, nx, ny, nz, faceDepth);
+
         // Tri 2: 0, 2, 3
-        setVertex(vis[0]!, idx++, nx, ny, nz);
-        setVertex(vis[2]!, idx++, nx, ny, nz);
-        setVertex(vis[3]!, idx++, nx, ny, nz);
+        setVertex(vis[0]!, idx++, nx, ny, nz, faceDepth);
+        setVertex(vis[2]!, idx++, nx, ny, nz, faceDepth);
+        setVertex(vis[3]!, idx++, nx, ny, nz, faceDepth);
       }
+
+      faceIdx++;
     }
 
     geometry.attributes.position!.needsUpdate = true;
     geometry.attributes.normal!.needsUpdate = true;
+    geometry.attributes.faceDepth!.needsUpdate = true;
     geometry.computeBoundingSphere();
 
-  }, [vertices, faces, geometry]);
+  }, [vertices, faces, geometry, faceDepths]);
 
   // Dispose previous geometry when new one is created
   useEffect(() => {

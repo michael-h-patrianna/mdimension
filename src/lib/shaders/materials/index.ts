@@ -12,5 +12,7 @@ export {
   createSurfaceMaterial,
   updateFresnelMaterial,
   createGlowMaterial,
+  createPaletteSurfaceMaterial,
+  updatePaletteMaterial,
 } from './SurfaceMaterial';
-export type { SurfaceMaterialConfig } from './SurfaceMaterial';
+export type { SurfaceMaterialConfig, PaletteSurfaceMaterialConfig } from './SurfaceMaterial';

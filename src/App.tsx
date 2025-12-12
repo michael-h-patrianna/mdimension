@@ -21,6 +21,7 @@ import { useSyncedDimension } from '@/hooks/useSyncedDimension';
 import { useGeometryGenerator } from '@/hooks/useGeometryGenerator';
 import { useObjectTransformations } from '@/hooks/useObjectTransformations';
 import { useFaceDetection } from '@/hooks/useFaceDetection';
+import { useFaceDepths } from '@/hooks/useFaceDepths';
 import { useCrossSectionCalculator } from '@/hooks/useCrossSectionCalculator';
 import { useMandelbrotColors } from '@/hooks/useMandelbrotColors';
 import MandelbulbMesh from '@/components/canvas/Mandelbulb/MandelbulbMesh';
@@ -48,6 +49,9 @@ function Visualizer() {
 
   // 6. Detect faces for surface rendering
   const faces = useFaceDetection(geometry, objectType);
+
+  // 6b. Compute per-face depth values for palette color variation
+  const faceDepths = useFaceDepths(transformedVertices, faces, dimension);
 
   // 7. Calculate cross-sections if enabled
   const {
@@ -91,6 +95,7 @@ function Visualizer() {
         isPointCloud={geometry.isPointCloud}
         pointColors={pointColors}
         minBoundingRadius={minBoundingRadius}
+        faceDepths={mainOpacity > 0 ? faceDepths : undefined}
       />
       {isMandelbulbVisible && <MandelbulbMesh />}
     </>

@@ -22,8 +22,10 @@
 
 import React from 'react';
 import { Slider } from '@/components/ui/Slider';
+import { Select } from '@/components/ui/Select';
 import { useVisualStore } from '@/stores/visualStore';
 import { DEFAULT_SURFACE_SETTINGS } from '@/lib/shaders/types';
+import { COLOR_MODE_OPTIONS, type ColorMode } from '@/lib/shaders/palette';
 
 /**
  * Props for ShaderSettings component
@@ -52,6 +54,8 @@ export const ShaderSettings: React.FC<ShaderSettingsProps> = ({
   );
   const faceColor = useVisualStore((state) => state.faceColor);
   const setFaceColor = useVisualStore((state) => state.setFaceColor);
+  const colorMode = useVisualStore((state) => state.colorMode);
+  const setColorMode = useVisualStore((state) => state.setColorMode);
 
   // Get surface settings
   const surfaceSettings = shaderSettings.surface;
@@ -80,6 +84,17 @@ export const ShaderSettings: React.FC<ShaderSettingsProps> = ({
           </span>
         </div>
       </div>
+
+      {/* Color Mode dropdown - controls palette variation for surfaces */}
+      <Select
+        label="Color Mode"
+        options={COLOR_MODE_OPTIONS.map((opt) => ({
+          value: opt.value,
+          label: opt.label,
+        }))}
+        value={colorMode}
+        onChange={(v) => setColorMode(v as ColorMode)}
+      />
 
       <Slider
         label="Face Opacity"

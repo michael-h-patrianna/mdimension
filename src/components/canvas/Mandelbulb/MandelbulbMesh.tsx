@@ -7,18 +7,7 @@ import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useRotationStore } from '@/stores/rotationStore';
 import { useVisualStore } from '@/stores/visualStore';
 import { composeRotations } from '@/lib/math/rotation';
-
-/**
- * Map palette mode string to integer for shader uniform.
- * This must match the PALETTE_* defines in mandelbulb.frag.
- */
-const PALETTE_MODE_MAP: Record<string, number> = {
-  monochromatic: 0,
-  analogous: 1,
-  complementary: 2,
-  triadic: 3,
-  splitComplementary: 4,
-};
+import { COLOR_MODE_TO_INT } from '@/lib/shaders/palette';
 
 /**
  * Convert horizontal/vertical angles to a normalized direction vector.
@@ -42,10 +31,10 @@ const MandelbulbMesh = () => {
   const mandelbulbPower = useExtendedObjectStore((state) => state.mandelbrot.mandelbulbPower);
   const maxIterations = useExtendedObjectStore((state) => state.mandelbrot.maxIterations);
   const escapeRadius = useExtendedObjectStore((state) => state.mandelbrot.escapeRadius);
-  const paletteMode = useExtendedObjectStore((state) => state.mandelbrot.mandelbulbPaletteMode);
 
-  // Get color state
+  // Get color state from visual store (unified palette system)
   const faceColor = useVisualStore((state) => state.faceColor);
+  const colorMode = useVisualStore((state) => state.colorMode);
 
   // Get lighting settings from visual store
   const lightEnabled = useVisualStore((state) => state.lightEnabled);
@@ -91,7 +80,7 @@ const MandelbulbMesh = () => {
       if (material.uniforms.uIterations) material.uniforms.uIterations.value = maxIterations;
       if (material.uniforms.uEscapeRadius) material.uniforms.uEscapeRadius.value = escapeRadius;
       if (material.uniforms.uColor) material.uniforms.uColor.value.set(faceColor);
-      if (material.uniforms.uPaletteMode) material.uniforms.uPaletteMode.value = PALETTE_MODE_MAP[paletteMode] ?? 0;
+      if (material.uniforms.uPaletteMode) material.uniforms.uPaletteMode.value = COLOR_MODE_TO_INT[colorMode];
       if (material.uniforms.uProjectionMatrix) material.uniforms.uProjectionMatrix.value.copy(camera.projectionMatrix);
       if (material.uniforms.uViewMatrix) material.uniforms.uViewMatrix.value.copy(camera.matrixWorldInverse);
 

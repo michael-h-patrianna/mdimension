@@ -223,25 +223,6 @@ describe('generatePalette', () => {
     });
   });
 
-  describe('custom palette', () => {
-    it('should use custom colors when provided', () => {
-      const customColors = {
-        start: '#0000ff',
-        mid: '#ffffff',
-        end: '#ff0000',
-      };
-      const palette = generatePalette('custom', baseColor, 10, customColors);
-      expect(palette).toHaveLength(10);
-      // First should be start color
-      expect(palette[0]).toBe('#0000ff');
-    });
-
-    it('should fallback when custom colors not provided', () => {
-      const palette = generatePalette('custom', baseColor, 10);
-      expect(palette).toHaveLength(10);
-    });
-  });
-
   describe('palette sizes', () => {
     it('should generate correct number of colors', () => {
       const sizes = [5, 10, 50, 256];
