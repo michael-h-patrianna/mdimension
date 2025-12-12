@@ -16,15 +16,15 @@ describe('ProjectionTypeToggle', () => {
     const onChange = vi.fn();
     render(<ProjectionTypeToggle value="perspective" onChange={onChange} />);
 
-    const perspectiveButton = screen.getByText('Perspective');
-    const orthographicButton = screen.getByText('Orthographic');
+    const perspectiveButton = screen.getByText('Perspective').closest('button');
+    const orthographicButton = screen.getByText('Orthographic').closest('button');
 
-    // Perspective should have cyan background
-    expect(perspectiveButton).toHaveClass('bg-accent');
-    expect(perspectiveButton).toHaveClass('text-app-bg');
+    // Perspective should have accent styling (transparent bg with accent text)
+    expect(perspectiveButton).toHaveClass('bg-accent/20');
+    expect(perspectiveButton).toHaveClass('text-accent');
 
-    // Orthographic should have transparent background
-    expect(orthographicButton).toHaveClass('bg-transparent');
+    // Orthographic should have panel background
+    expect(orthographicButton).toHaveClass('bg-panel-border');
     expect(orthographicButton).toHaveClass('text-text-secondary');
   });
 
@@ -32,15 +32,15 @@ describe('ProjectionTypeToggle', () => {
     const onChange = vi.fn();
     render(<ProjectionTypeToggle value="orthographic" onChange={onChange} />);
 
-    const perspectiveButton = screen.getByText('Perspective');
-    const orthographicButton = screen.getByText('Orthographic');
+    const perspectiveButton = screen.getByText('Perspective').closest('button');
+    const orthographicButton = screen.getByText('Orthographic').closest('button');
 
-    // Orthographic should have cyan background
-    expect(orthographicButton).toHaveClass('bg-accent');
-    expect(orthographicButton).toHaveClass('text-app-bg');
+    // Orthographic should have accent styling (transparent bg with accent text)
+    expect(orthographicButton).toHaveClass('bg-accent/20');
+    expect(orthographicButton).toHaveClass('text-accent');
 
-    // Perspective should have transparent background
-    expect(perspectiveButton).toHaveClass('bg-transparent');
+    // Perspective should have panel background
+    expect(perspectiveButton).toHaveClass('bg-panel-border');
     expect(perspectiveButton).toHaveClass('text-text-secondary');
   });
 

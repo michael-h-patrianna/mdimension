@@ -7,8 +7,8 @@
 
 import type { ObjectType } from '@/lib/geometry/types';
 import type { ShaderType, AllShaderSettings } from '@/lib/shaders/types';
-import { DEFAULT_SHADER_TYPE, DEFAULT_SHADER_SETTINGS } from '@/lib/shaders/types';
 import { MAX_DIMENSION, MIN_DIMENSION } from '@/stores/geometryStore';
+import { DEFAULT_SHADER_TYPE, DEFAULT_SHADER_SETTINGS } from '@/stores/visualStore';
 
 /** Valid shader types for URL validation */
 const VALID_SHADER_TYPES: ShaderType[] = [

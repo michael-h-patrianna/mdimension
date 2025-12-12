@@ -20,17 +20,29 @@ export {
   generateClassicCliffordTorus,
   generateCliffordTorusPoints,
   buildCliffordTorusGridEdges,
+  buildCliffordTorusGridFaces,
 } from './classic';
 
 export {
   generateGeneralizedCliffordTorus,
   generateGeneralizedCliffordTorusPoints,
   buildGeneralizedCliffordTorusEdges,
+  buildGeneralizedCliffordTorusFaces,
 } from './generalized';
 
-export { generateAnnulus, generateAnnulusPoints, buildAnnulusGridEdges } from './annulus';
+export {
+  generateAnnulus,
+  generateAnnulusPoints,
+  buildAnnulusGridEdges,
+  buildAnnulusGridFaces,
+} from './annulus';
 
-export { generateTorus3D, generateTorus3DPoints, buildTorus3DGridEdges } from './torus3d';
+export {
+  generateTorus3D,
+  generateTorus3DPoints,
+  buildTorus3DGridEdges,
+  buildTorus3DGridFaces,
+} from './torus3d';
 
 export {
   verifyCliffordTorusOnSphere,

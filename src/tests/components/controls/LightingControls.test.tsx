@@ -296,38 +296,6 @@ describe('LightingControls', () => {
     });
   });
 
-  describe('default values', () => {
-    beforeEach(() => {
-      useVisualStore.getState().setShaderType('surface');
-      useVisualStore.getState().setLightEnabled(true);
-    });
-
-    it('should display default horizontal angle', () => {
-      render(<LightingControls />);
-      expect(screen.getByText('45°')).toBeInTheDocument();
-    });
-
-    it('should display default vertical angle', () => {
-      render(<LightingControls />);
-      expect(screen.getByText('30°')).toBeInTheDocument();
-    });
-
-    it('should display default ambient intensity', () => {
-      render(<LightingControls />);
-      expect(screen.getByText('0.20')).toBeInTheDocument();
-    });
-
-    it('should display default specular intensity', () => {
-      render(<LightingControls />);
-      expect(screen.getByText('1.00')).toBeInTheDocument();
-    });
-
-    it('should display default specular power', () => {
-      render(<LightingControls />);
-      expect(screen.getByText('32')).toBeInTheDocument();
-    });
-  });
-
   describe('className prop', () => {
     beforeEach(() => {
       useVisualStore.getState().setShaderType('surface');

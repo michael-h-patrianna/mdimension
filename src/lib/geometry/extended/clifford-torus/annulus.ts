@@ -110,6 +110,46 @@ export function buildAnnulusGridEdges(
 }
 
 /**
+ * Builds quad faces for the 2D annulus
+ *
+ * The annulus wraps around in the angular direction but NOT in the
+ * radial direction (it has inner and outer boundaries).
+ * Each grid cell (r, a) forms a quad connecting adjacent radial and angular neighbors.
+ *
+ * @param resolutionU - Number of angular steps
+ * @param resolutionV - Number of radial steps
+ * @returns Array of quad faces (4 vertex indices each, counter-clockwise winding)
+ */
+export function buildAnnulusGridFaces(
+  resolutionU: number,
+  resolutionV: number
+): number[][] {
+  const faces: number[][] = [];
+  const radialSteps = Math.max(2, resolutionV);
+  const angularSteps = resolutionU;
+
+  // Index function: (radial, angular) -> linear index
+  const index = (r: number, a: number): number => r * angularSteps + a;
+
+  for (let r = 0; r < radialSteps - 1; r++) {
+    // NO wrap in radial direction
+    for (let a = 0; a < angularSteps; a++) {
+      const aNext = (a + 1) % angularSteps; // Wrap in angular direction
+
+      // Quad vertices in counter-clockwise winding order
+      faces.push([
+        index(r, a),
+        index(r + 1, a),
+        index(r + 1, aNext),
+        index(r, aNext),
+      ]);
+    }
+  }
+
+  return faces;
+}
+
+/**
  * Generates a 2D annulus geometry
  *
  * The annulus is the 2D equivalent of the Clifford torus.

@@ -27,19 +27,19 @@ describe('useVertexSize', () => {
 
   describe('base vertex size calculation', () => {
     it('should calculate base size from store vertex size', () => {
-      // Default store vertex size is 4
+      // Default store vertex size is 1
       const { result } = renderHook(() => useVertexSize(8));
 
       // 8 vertices is below threshold, so no scaling
-      // Base size = 4 / 100 = 0.04
-      expect(result.current).toBeCloseTo(0.04, 4);
+      // Base size = 1 / 100 = 0.01
+      expect(result.current).toBeCloseTo(0.01, 4);
     });
 
     it('should update when store vertex size changes', () => {
       const { result } = renderHook(() => useVertexSize(8));
 
-      // Initial value
-      expect(result.current).toBeCloseTo(0.04, 4);
+      // Initial value = 1 / 100 = 0.01
+      expect(result.current).toBeCloseTo(0.01, 4);
 
       // Update store
       act(() => {
@@ -71,8 +71,8 @@ describe('useVertexSize', () => {
 
       for (const { count } of testCases) {
         const { result } = renderHook(() => useVertexSize(count));
-        // No scaling, full vertex size
-        expect(result.current).toBeCloseTo(0.04, 4);
+        // No scaling, full vertex size = 1 / 100 = 0.01
+        expect(result.current).toBeCloseTo(0.01, 4);
       }
     });
 

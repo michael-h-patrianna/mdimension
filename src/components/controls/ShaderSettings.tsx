@@ -20,12 +20,11 @@
  * @see {@link RenderModeToggles} for controlling facesVisible
  */
 
-import React from 'react';
-import { Slider } from '@/components/ui/Slider';
 import { Select } from '@/components/ui/Select';
-import { useVisualStore } from '@/stores/visualStore';
-import { DEFAULT_SURFACE_SETTINGS } from '@/lib/shaders/types';
+import { Slider } from '@/components/ui/Slider';
 import { COLOR_MODE_OPTIONS, type ColorMode } from '@/lib/shaders/palette';
+import { DEFAULT_SURFACE_SETTINGS, useVisualStore } from '@/stores/visualStore';
+import React from 'react';
 
 /**
  * Props for ShaderSettings component
@@ -60,7 +59,7 @@ export const ShaderSettings: React.FC<ShaderSettingsProps> = ({
   // Get surface settings
   const surfaceSettings = shaderSettings.surface;
 
-  // Only show surface settings when faces are visible
+  // Only show surface settings when faces are visible (per component spec)
   if (!facesVisible) {
     return null;
   }
@@ -131,10 +130,6 @@ export const ShaderSettings: React.FC<ShaderSettingsProps> = ({
           <span>Fresnel Rim</span>
         </button>
       </div>
-
-      <p className="text-xs text-text-secondary">
-        Configure lighting in the Lighting section below.
-      </p>
     </div>
   );
 };

@@ -108,6 +108,44 @@ export function buildTorus3DGridEdges(
 }
 
 /**
+ * Builds quad faces for the 3D torus surface
+ *
+ * Each grid cell (i, j) forms a quad with corners:
+ * - (i, j), (i+1, j), (i+1, j+1), (i, j+1)
+ * Both u and v directions wrap around (torus topology).
+ *
+ * @param resolutionU - Number of steps in the u direction (around the major circle)
+ * @param resolutionV - Number of steps in the v direction (around the tube)
+ * @returns Array of quad faces (4 vertex indices each, counter-clockwise winding)
+ */
+export function buildTorus3DGridFaces(
+  resolutionU: number,
+  resolutionV: number
+): number[][] {
+  const faces: number[][] = [];
+
+  // Index function: (i, j) -> linear index
+  const index = (i: number, j: number): number => i * resolutionV + j;
+
+  for (let i = 0; i < resolutionU; i++) {
+    for (let j = 0; j < resolutionV; j++) {
+      const iNext = (i + 1) % resolutionU;
+      const jNext = (j + 1) % resolutionV;
+
+      // Quad vertices in counter-clockwise winding order
+      faces.push([
+        index(i, j),
+        index(iNext, j),
+        index(iNext, jNext),
+        index(i, jNext),
+      ]);
+    }
+  }
+
+  return faces;
+}
+
+/**
  * Generates a 3D torus surface geometry
  *
  * This is a standard torus in R^3, not the Clifford torus which requires 4D.

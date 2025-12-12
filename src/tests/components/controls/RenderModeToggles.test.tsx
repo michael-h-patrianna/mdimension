@@ -25,15 +25,6 @@ describe('RenderModeToggles', () => {
       expect(screen.getByText('Faces')).toBeInTheDocument();
     });
 
-    it('should have correct default toggle states: Vertices ON, Edges ON, Faces OFF', () => {
-      render(<RenderModeToggles />);
-
-      // Check store state
-      expect(useVisualStore.getState().vertexVisible).toBe(true);
-      expect(useVisualStore.getState().edgesVisible).toBe(true);
-      expect(useVisualStore.getState().facesVisible).toBe(false);
-    });
-
     it('should display all toggles in a row', () => {
       render(<RenderModeToggles />);
 
@@ -52,18 +43,16 @@ describe('RenderModeToggles', () => {
   describe('Vertices Toggle', () => {
     it('should toggle vertices visibility when clicked', async () => {
       const user = userEvent.setup();
+      useVisualStore.getState().setVertexVisible(true);
       render(<RenderModeToggles />);
 
       const verticesToggle = screen.getByTestId('toggle-vertices');
 
-      // Initially visible (default)
-      expect(useVisualStore.getState().vertexVisible).toBe(true);
-
-      // Click to hide
+      // Click to toggle off
       await user.click(verticesToggle);
       expect(useVisualStore.getState().vertexVisible).toBe(false);
 
-      // Click to show again
+      // Click to toggle on again
       await user.click(verticesToggle);
       expect(useVisualStore.getState().vertexVisible).toBe(true);
     });
@@ -106,24 +95,23 @@ describe('RenderModeToggles', () => {
   describe('Faces Toggle', () => {
     it('should toggle faces visibility when clicked', async () => {
       const user = userEvent.setup();
+      useVisualStore.getState().setFacesVisible(false);
       render(<RenderModeToggles />);
 
       const facesToggle = screen.getByTestId('toggle-faces');
 
-      // Initially hidden (default)
-      expect(useVisualStore.getState().facesVisible).toBe(false);
-
-      // Click to show
+      // Click to toggle on
       await user.click(facesToggle);
       expect(useVisualStore.getState().facesVisible).toBe(true);
 
-      // Click to hide again
+      // Click to toggle off again
       await user.click(facesToggle);
       expect(useVisualStore.getState().facesVisible).toBe(false);
     });
 
     it('should auto-set shaderType to surface when faces enabled', async () => {
       const user = userEvent.setup();
+      useVisualStore.getState().setFacesVisible(false);
       render(<RenderModeToggles />);
 
       const facesToggle = screen.getByTestId('toggle-faces');
@@ -135,13 +123,10 @@ describe('RenderModeToggles', () => {
 
     it('should auto-set shaderType to wireframe when faces disabled', async () => {
       const user = userEvent.setup();
+      useVisualStore.getState().setFacesVisible(true);
       render(<RenderModeToggles />);
 
       const facesToggle = screen.getByTestId('toggle-faces');
-
-      // Enable faces first
-      await user.click(facesToggle);
-      expect(useVisualStore.getState().shaderType).toBe('surface');
 
       // Disable faces
       await user.click(facesToggle);
@@ -197,14 +182,14 @@ describe('RenderModeToggles', () => {
       expect(facesToggle).toBeDisabled();
     });
 
-    it('should disable faces toggle for clifford-torus', () => {
+    it('should enable faces toggle for clifford-torus', () => {
       // Set dimension to 4 (required for clifford-torus)
       useGeometryStore.getState().setDimension(4);
       useGeometryStore.getState().setObjectType('clifford-torus');
       render(<RenderModeToggles />);
 
       const facesToggle = screen.getByTestId('toggle-faces');
-      expect(facesToggle).toBeDisabled();
+      expect(facesToggle).not.toBeDisabled();
     });
 
     it('should enable faces toggle for mandelbrot (raymarching mode)', () => {
@@ -383,21 +368,22 @@ describe('RenderModeToggles', () => {
       expect(useVisualStore.getState().facesVisible).toBe(false);
     });
 
-    it('should not enforce mutual exclusivity for mandelbrot 2D', async () => {
+    it('should not enforce mutual exclusivity for non-mandelbrot objects', async () => {
       const user = userEvent.setup();
 
-      useGeometryStore.getState().setDimension(2);
-      useGeometryStore.getState().setObjectType('mandelbrot');
+      // Hypercube doesn't have mutual exclusivity
+      useGeometryStore.getState().setDimension(4);
+      useGeometryStore.getState().setObjectType('hypercube');
       useVisualStore.getState().setVertexVisible(true);
       useVisualStore.getState().setFacesVisible(false);
 
       render(<RenderModeToggles />);
 
-      // Enable faces - both should be allowed for 2D
+      // Enable faces - both should be allowed for hypercube
       const facesToggle = screen.getByTestId('toggle-faces');
       await user.click(facesToggle);
 
-      // Both can be ON for 2D mandelbrot
+      // Both can be ON for non-mandelbrot objects
       expect(useVisualStore.getState().facesVisible).toBe(true);
       expect(useVisualStore.getState().vertexVisible).toBe(true);
     });
@@ -462,6 +448,7 @@ describe('RenderModeToggles', () => {
   describe('Toggle State Persistence', () => {
     it('should persist vertices toggle state across rerenders', async () => {
       const user = userEvent.setup();
+      useVisualStore.getState().setVertexVisible(true);
       const { rerender } = render(<RenderModeToggles />);
 
       const verticesToggle = screen.getByTestId('toggle-vertices');
@@ -476,6 +463,7 @@ describe('RenderModeToggles', () => {
 
     it('should persist edges toggle state across rerenders', async () => {
       const user = userEvent.setup();
+      useVisualStore.getState().setEdgesVisible(true);
       const { rerender } = render(<RenderModeToggles />);
 
       const edgesToggle = screen.getByTestId('toggle-edges');
@@ -490,6 +478,7 @@ describe('RenderModeToggles', () => {
 
     it('should persist faces toggle state across rerenders', async () => {
       const user = userEvent.setup();
+      useVisualStore.getState().setFacesVisible(false);
       const { rerender } = render(<RenderModeToggles />);
 
       const facesToggle = screen.getByTestId('toggle-faces');

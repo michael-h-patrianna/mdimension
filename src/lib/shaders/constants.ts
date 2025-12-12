@@ -101,27 +101,7 @@ export const DEFAULT_CLIFFORD_RADIUS = 1.0;
 // ============================================================================
 // Face Rendering Constants
 // ============================================================================
-
-/**
- * Default color for face rendering (surface shader).
- * Purple color chosen for good visibility against common backgrounds.
- */
-export const DEFAULT_FACE_COLOR = '#8800FF';
-
-/**
- * Default opacity for face rendering.
- * Semi-transparent to show internal structure while maintaining surface visibility.
- */
-export const DEFAULT_FACE_OPACITY = 0.6;
-
-/**
- * Default specular intensity for face lighting.
- * Controls the brightness of specular highlights.
- */
-export const DEFAULT_FACE_SPECULAR_INTENSITY = 1.0;
-
-/**
- * Default specular power (shininess) for face lighting.
- * Higher values create smaller, sharper highlights.
- */
-export const DEFAULT_FACE_SPECULAR_POWER = 32;
+// NOTE: Face rendering defaults (color, opacity, specular settings) are
+// centralized in @/stores/visualStore.ts to avoid duplicate/conflicting values.
+// Import DEFAULT_FACE_COLOR, DEFAULT_FACE_OPACITY, DEFAULT_SPECULAR_INTENSITY,
+// DEFAULT_SPECULAR_POWER from visualStore instead.

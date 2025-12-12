@@ -6,9 +6,15 @@
  */
 
 import type { Vector3D } from '@/lib/math/types';
-import type { ObjectType } from './types';
+import type { GeometryMetadata, ObjectType } from './types';
 import { generateHypercubeFaces } from './hypercube';
 import { computeConvexHullFaces } from './extended/utils/convex-hull-faces';
+import {
+  buildTorus3DGridFaces,
+  buildCliffordTorusGridFaces,
+  buildGeneralizedCliffordTorusFaces,
+  buildAnnulusGridFaces,
+} from './extended/clifford-torus';
 
 /**
  * Represents a 2D face (polygon) of a polytope
@@ -288,16 +294,19 @@ function isCoplanarQuad(vertexIndices: number[], vertices: number[][]): boolean 
  * - Simplex: All faces are triangles (3 vertices)
  * - Cross-polytope: All faces are triangles (3 vertices)
  * - Root-system: Triangular faces from short-edge connections
- * - Other extended objects (hypersphere, clifford-torus): No faces (point clouds)
+ * - Clifford-torus: Quad faces from u/v grid (requires metadata for resolution)
+ * - Other extended objects (hypersphere): No faces (point clouds)
  *
  * The algorithm uses cycle detection in the connectivity graph.
  * For hypercubes, it specifically looks for 4-cycles without diagonals.
  * For simplices, cross-polytopes, and root-systems, it finds all 3-cycles (triangles).
+ * For clifford-torus, analytical face generation from the u/v grid structure.
  */
 export function detectFaces(
   vertices: number[][],
   edges: [number, number][],
-  objectType: ObjectType
+  objectType: ObjectType,
+  metadata?: GeometryMetadata
 ): Face[] {
   // Validate inputs
   if (vertices.length === 0) {
@@ -331,9 +340,38 @@ export function detectFaces(
     // This handles the complex face structure of root polytopes (A_n, D_n, E_8)
     const hullFaces = computeConvexHullFaces(vertices);
     return hullFaces.map(([v0, v1, v2]) => ({ vertices: [v0, v1, v2] }));
+  } else if (objectType === 'clifford-torus') {
+    // Clifford torus faces require metadata for resolution info
+    if (!metadata?.properties) {
+      return [];
+    }
+
+    const props = metadata.properties;
+    const mode = props.mode as string;
+
+    let faceIndices: number[][] = [];
+
+    if (mode === '2d-annulus') {
+      const resU = props.resolutionU as number;
+      const resV = props.resolutionV as number;
+      faceIndices = buildAnnulusGridFaces(resU, resV);
+    } else if (mode === '3d-torus') {
+      const resU = props.resolutionU as number;
+      const resV = props.resolutionV as number;
+      faceIndices = buildTorus3DGridFaces(resU, resV);
+    } else if (mode === 'classic') {
+      const resU = props.resolutionU as number;
+      const resV = props.resolutionV as number;
+      faceIndices = buildCliffordTorusGridFaces(resU, resV);
+    } else if (mode === 'generalized') {
+      const k = props.k as number;
+      const stepsPerCircle = props.stepsPerCircle as number;
+      faceIndices = buildGeneralizedCliffordTorusFaces(k, stepsPerCircle);
+    }
+
+    return faceIndices.map(indices => ({ vertices: indices }));
   } else {
-    // Extended objects like hypersphere and clifford-torus don't have faces
-    // (they're point clouds or parametric surfaces)
+    // Extended objects like hypersphere don't have faces (point clouds)
     return [];
   }
 }

@@ -42,10 +42,10 @@ import type { ColorMode } from '@/lib/shaders/palette';
 import {
   DEFAULT_FACE_COLOR,
   DEFAULT_FACE_OPACITY,
-  DEFAULT_FACE_SPECULAR_INTENSITY,
-  DEFAULT_FACE_SPECULAR_POWER,
-} from '@/lib/shaders/constants';
-import { useVisualStore } from '@/stores/visualStore';
+  DEFAULT_SPECULAR_INTENSITY,
+  DEFAULT_SPECULAR_POWER,
+  useVisualStore,
+} from '@/stores/visualStore';
 
 /**
  * Props for the FaceRenderer component
@@ -97,8 +97,8 @@ export function FaceRenderer({
   faces,
   color = DEFAULT_FACE_COLOR,
   opacity = DEFAULT_FACE_OPACITY,
-  specularIntensity = DEFAULT_FACE_SPECULAR_INTENSITY,
-  specularPower = DEFAULT_FACE_SPECULAR_POWER,
+  specularIntensity = DEFAULT_SPECULAR_INTENSITY,
+  specularPower = DEFAULT_SPECULAR_POWER,
   visible = true,
   faceDepths = [],
   colorMode = 'monochromatic',

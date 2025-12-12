@@ -161,6 +161,50 @@ export function buildGeneralizedCliffordTorusEdges(
 }
 
 /**
+ * Builds quad faces for a generalized Clifford k-torus
+ *
+ * Only generates faces when k=2 (the manifold is a 2D surface).
+ * For k>2, the torus is a higher-dimensional manifold where
+ * 2D faces are not geometrically meaningful.
+ * For k=1, a circle has no 2D faces.
+ *
+ * @param k - Torus dimension (only k=2 supported for faces)
+ * @param stepsPerCircle - Resolution per circular parameter
+ * @returns Array of quad faces (empty if k !== 2)
+ */
+export function buildGeneralizedCliffordTorusFaces(
+  k: number,
+  stepsPerCircle: number
+): number[][] {
+  // Only 2-torus (k=2) has well-defined 2D faces
+  if (k !== 2) {
+    return [];
+  }
+
+  const faces: number[][] = [];
+
+  // For k=2, use the multi-index system: (i, j) -> i * stepsPerCircle + j
+  const index = (i: number, j: number): number => i * stepsPerCircle + j;
+
+  for (let i = 0; i < stepsPerCircle; i++) {
+    for (let j = 0; j < stepsPerCircle; j++) {
+      const iNext = (i + 1) % stepsPerCircle;
+      const jNext = (j + 1) % stepsPerCircle;
+
+      // Quad vertices in counter-clockwise winding order
+      faces.push([
+        index(i, j),
+        index(iNext, j),
+        index(iNext, jNext),
+        index(i, jNext),
+      ]);
+    }
+  }
+
+  return faces;
+}
+
+/**
  * Generates a generalized Clifford torus geometry
  *
  * @param dimension - Ambient dimension n

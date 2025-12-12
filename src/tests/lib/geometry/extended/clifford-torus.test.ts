@@ -9,15 +9,21 @@ import {
   generateCliffordTorus,
   generateCliffordTorusPoints,
   buildCliffordTorusGridEdges,
+  buildCliffordTorusGridFaces,
   verifyCliffordTorusOnSphere,
   // Generalized exports
   generateGeneralizedCliffordTorus,
   generateGeneralizedCliffordTorusPoints,
   buildGeneralizedCliffordTorusEdges,
+  buildGeneralizedCliffordTorusFaces,
   verifyGeneralizedCliffordTorusOnSphere,
   verifyGeneralizedCliffordTorusCircleRadii,
   getMaxTorusDimension,
   getGeneralizedCliffordTorusPointCount,
+  // 3D torus exports
+  buildTorus3DGridFaces,
+  // Annulus exports
+  buildAnnulusGridFaces,
 } from '@/lib/geometry/extended/clifford-torus';
 import { DEFAULT_CLIFFORD_TORUS_CONFIG } from '@/lib/geometry/extended/types';
 import type { VectorND } from '@/lib/math/types';
@@ -683,5 +689,178 @@ describe('generateCliffordTorus dispatcher', () => {
     // Annulus uses resolutionU * max(2, resolutionV) points
     const expectedPoints = DEFAULT_CLIFFORD_TORUS_CONFIG.resolutionU * Math.max(2, DEFAULT_CLIFFORD_TORUS_CONFIG.resolutionV);
     expect(geometry.vertices).toHaveLength(expectedPoints);
+  });
+});
+
+// ============================================================================
+// Face Generation Tests
+// ============================================================================
+
+describe('buildTorus3DGridFaces', () => {
+  it('should generate resolutionU × resolutionV quad faces', () => {
+    const faces = buildTorus3DGridFaces(8, 8);
+    expect(faces).toHaveLength(64); // 8 * 8
+  });
+
+  it('should have all quad faces (4 vertices each)', () => {
+    const faces = buildTorus3DGridFaces(8, 8);
+    faces.forEach(face => {
+      expect(face).toHaveLength(4);
+    });
+  });
+
+  it('should have valid vertex indices', () => {
+    const resU = 8;
+    const resV = 8;
+    const maxIndex = resU * resV - 1;
+    const faces = buildTorus3DGridFaces(resU, resV);
+
+    faces.forEach(face => {
+      face.forEach(idx => {
+        expect(idx).toBeGreaterThanOrEqual(0);
+        expect(idx).toBeLessThanOrEqual(maxIndex);
+      });
+    });
+  });
+
+  it('should have unique faces (no duplicates)', () => {
+    const faces = buildTorus3DGridFaces(8, 8);
+    const faceSet = new Set<string>();
+
+    faces.forEach(face => {
+      const key = [...face].sort((a, b) => a - b).join(',');
+      expect(faceSet.has(key)).toBe(false);
+      faceSet.add(key);
+    });
+  });
+
+  it('should form closed surface with wrap-around', () => {
+    const resU = 4;
+    const resV = 4;
+    const faces = buildTorus3DGridFaces(resU, resV);
+
+    // Every edge should appear in exactly 2 faces (closed surface)
+    const edgeCounts = new Map<string, number>();
+
+    faces.forEach(face => {
+      for (let i = 0; i < 4; i++) {
+        const v1 = face[i]!;
+        const v2 = face[(i + 1) % 4]!;
+        const key = `${Math.min(v1, v2)},${Math.max(v1, v2)}`;
+        edgeCounts.set(key, (edgeCounts.get(key) || 0) + 1);
+      }
+    });
+
+    // All edges should appear exactly twice (shared by 2 faces)
+    for (const count of edgeCounts.values()) {
+      expect(count).toBe(2);
+    }
+  });
+});
+
+describe('buildCliffordTorusGridFaces', () => {
+  it('should generate correct number of faces', () => {
+    const faces = buildCliffordTorusGridFaces(16, 16);
+    expect(faces).toHaveLength(256);
+  });
+
+  it('should have all quad faces (4 vertices each)', () => {
+    const faces = buildCliffordTorusGridFaces(8, 8);
+    faces.forEach(face => {
+      expect(face).toHaveLength(4);
+    });
+  });
+
+  it('should have valid vertex indices', () => {
+    const resU = 16;
+    const resV = 16;
+    const maxIndex = resU * resV - 1;
+    const faces = buildCliffordTorusGridFaces(resU, resV);
+
+    faces.forEach(face => {
+      face.forEach(idx => {
+        expect(idx).toBeGreaterThanOrEqual(0);
+        expect(idx).toBeLessThanOrEqual(maxIndex);
+      });
+    });
+  });
+});
+
+describe('buildGeneralizedCliffordTorusFaces', () => {
+  it('should return empty array for k > 2', () => {
+    expect(buildGeneralizedCliffordTorusFaces(3, 8)).toHaveLength(0);
+    expect(buildGeneralizedCliffordTorusFaces(4, 8)).toHaveLength(0);
+  });
+
+  it('should generate faces for k = 2', () => {
+    const faces = buildGeneralizedCliffordTorusFaces(2, 8);
+    expect(faces).toHaveLength(64); // 8 * 8
+  });
+
+  it('should return empty array for k = 1 (circle has no faces)', () => {
+    expect(buildGeneralizedCliffordTorusFaces(1, 8)).toHaveLength(0);
+  });
+
+  it('should have valid vertex indices for k = 2', () => {
+    const stepsPerCircle = 8;
+    const maxIndex = stepsPerCircle * stepsPerCircle - 1;
+    const faces = buildGeneralizedCliffordTorusFaces(2, stepsPerCircle);
+
+    faces.forEach(face => {
+      face.forEach(idx => {
+        expect(idx).toBeGreaterThanOrEqual(0);
+        expect(idx).toBeLessThanOrEqual(maxIndex);
+      });
+    });
+  });
+});
+
+describe('buildAnnulusGridFaces', () => {
+  it('should generate (radialSteps-1) × angularSteps faces', () => {
+    const resU = 16;
+    const resV = 4;
+    const faces = buildAnnulusGridFaces(resU, resV);
+    // radialSteps = max(2, resV) = 4
+    // faces = (4-1) * 16 = 48
+    expect(faces).toHaveLength(48);
+  });
+
+  it('should have all quad faces (4 vertices each)', () => {
+    const faces = buildAnnulusGridFaces(8, 4);
+    faces.forEach(face => {
+      expect(face).toHaveLength(4);
+    });
+  });
+
+  it('should NOT wrap in radial direction', () => {
+    const resU = 8;
+    const resV = 4;
+    const radialSteps = Math.max(2, resV);
+    const faces = buildAnnulusGridFaces(resU, resV);
+
+    // Check that no face connects the innermost ring (r=0) to the outermost ring (r=radialSteps-1)
+    faces.forEach(face => {
+      const radialIndices = face.map(idx => Math.floor(idx / resU));
+      const minRadial = Math.min(...radialIndices);
+      const maxRadial = Math.max(...radialIndices);
+      // Adjacent radial indices only (difference should be at most 1)
+      expect(maxRadial - minRadial).toBeLessThanOrEqual(1);
+    });
+  });
+
+  it('should wrap in angular direction', () => {
+    const resU = 8;
+    const resV = 4;
+    const faces = buildAnnulusGridFaces(resU, resV);
+
+    // Check that some faces wrap around angularly (contain both index 0 and index resU-1 in same radial ring)
+    let hasAngularWrap = false;
+    faces.forEach(face => {
+      const angularIndices = face.map(idx => idx % resU);
+      if (angularIndices.includes(0) && angularIndices.includes(resU - 1)) {
+        hasAngularWrap = true;
+      }
+    });
+    expect(hasAngularWrap).toBe(true);
   });
 });

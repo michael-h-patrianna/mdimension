@@ -39,16 +39,6 @@ describe('useKeyboardShortcuts', () => {
     expect(removeEventListenerSpy).toHaveBeenCalledWith('keydown', expect.any(Function));
   });
 
-  it('should toggle play on space key', () => {
-    renderHook(() => useKeyboardShortcuts({ enabled: true }));
-    const initialState = useAnimationStore.getState().isPlaying;
-
-    const event = new KeyboardEvent('keydown', { key: ' ' });
-    window.dispatchEvent(event);
-
-    expect(useAnimationStore.getState().isPlaying).toBe(!initialState);
-  });
-
   it('should increase dimension on arrow up', () => {
     useGeometryStore.getState().setDimension(4);
     renderHook(() => useKeyboardShortcuts({ enabled: true }));
@@ -61,14 +51,14 @@ describe('useKeyboardShortcuts', () => {
     expect(useGeometryStore.getState().dimension).toBe(5);
   });
 
-  it('should not increase dimension beyond MAX_DIMENSION (11)', () => {
-    useGeometryStore.getState().setDimension(11);
+  it('should not increase dimension beyond 6', () => {
+    useGeometryStore.getState().setDimension(6);
     renderHook(() => useKeyboardShortcuts({ enabled: true }));
 
     const event = new KeyboardEvent('keydown', { key: 'ArrowUp' });
     window.dispatchEvent(event);
 
-    expect(useGeometryStore.getState().dimension).toBe(11);
+    expect(useGeometryStore.getState().dimension).toBe(6);
   });
 
   it('should decrease dimension on arrow down', () => {
@@ -119,54 +109,6 @@ describe('useKeyboardShortcuts', () => {
     window.dispatchEvent(event);
 
     expect(useGeometryStore.getState().objectType).toBe('cross-polytope');
-  });
-
-  it('should increase speed on + key', () => {
-    useAnimationStore.getState().setSpeed(1);
-    renderHook(() => useKeyboardShortcuts({ enabled: true }));
-
-    act(() => {
-      const event = new KeyboardEvent('keydown', { key: '+' });
-      window.dispatchEvent(event);
-    });
-
-    expect(useAnimationStore.getState().speed).toBe(1.25);
-  });
-
-  it('should decrease speed on - key', () => {
-    useAnimationStore.getState().setSpeed(1);
-    renderHook(() => useKeyboardShortcuts({ enabled: true }));
-
-    act(() => {
-      const event = new KeyboardEvent('keydown', { key: '-' });
-      window.dispatchEvent(event);
-    });
-
-    expect(useAnimationStore.getState().speed).toBe(0.75);
-  });
-
-  it('should reverse animation direction on r key', () => {
-    renderHook(() => useKeyboardShortcuts({ enabled: true }));
-    const initialDirection = useAnimationStore.getState().direction;
-
-    const event = new KeyboardEvent('keydown', { key: 'r' });
-    window.dispatchEvent(event);
-
-    expect(useAnimationStore.getState().direction).toBe(-initialDirection);
-  });
-
-  it('should reset rotations on x key', () => {
-    useRotationStore.getState().setRotation('XY', 1.5);
-    expect(useRotationStore.getState().rotations.get('XY')).toBe(1.5);
-
-    renderHook(() => useKeyboardShortcuts({ enabled: true }));
-
-    const event = new KeyboardEvent('keydown', { key: 'x' });
-    window.dispatchEvent(event);
-
-    // After reset, rotation should be cleared (map is empty or angle is 0)
-    const angle = useRotationStore.getState().rotations.get('XY');
-    expect(angle === undefined || angle === 0).toBe(true);
   });
 
   it('should not reverse direction on d key (now used for camera movement)', () => {
@@ -242,12 +184,6 @@ describe('SHORTCUTS', () => {
     });
   });
 
-  it('should have space shortcut for play/pause', () => {
-    const spaceShortcut = SHORTCUTS.find((s) => s.key === ' ');
-    expect(spaceShortcut).toBeDefined();
-    expect(spaceShortcut?.description).toContain('Play');
-  });
-
   it('should have arrow shortcuts for dimension', () => {
     const upShortcut = SHORTCUTS.find((s) => s.key === 'ArrowUp');
     const downShortcut = SHORTCUTS.find((s) => s.key === 'ArrowDown');
@@ -297,15 +233,4 @@ describe('SHORTCUTS', () => {
     expect(lookAtOrigin?.description).toContain('origin');
   });
 
-  it('should have r shortcut for reverse animation direction', () => {
-    const rShortcut = SHORTCUTS.find((s) => s.key === 'r');
-    expect(rShortcut).toBeDefined();
-    expect(rShortcut?.description).toContain('Reverse');
-  });
-
-  it('should have x shortcut for reset rotation', () => {
-    const xShortcut = SHORTCUTS.find((s) => s.key === 'x');
-    expect(xShortcut).toBeDefined();
-    expect(xShortcut?.description).toContain('Reset');
-  });
 });

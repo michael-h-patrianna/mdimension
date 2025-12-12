@@ -12,6 +12,7 @@ import { Select } from '@/components/ui/Select';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
+import { useRotationStore } from '@/stores/rotationStore';
 import { getAvailableTypes } from '@/lib/geometry';
 import type { ObjectType } from '@/lib/geometry/types';
 
@@ -27,6 +28,7 @@ export const ObjectTypeSelector: React.FC<ObjectTypeSelectorProps> = ({
   const objectType = useGeometryStore((state) => state.objectType);
   const setObjectType = useGeometryStore((state) => state.setObjectType);
   const dimension = useGeometryStore((state) => state.dimension);
+  const resetAllRotations = useRotationStore((state) => state.resetAllRotations);
   const initializeMandelbrotForDimension = useExtendedObjectStore(
     (state) => state.initializeMandelbrotForDimension
   );
@@ -60,6 +62,9 @@ export const ObjectTypeSelector: React.FC<ObjectTypeSelectorProps> = ({
     // Only set if the type is available for current dimension
     const typeInfo = availableTypes.find((t) => t.type === value);
     if (typeInfo?.available) {
+      // Reset rotation angles to prevent accumulated rotations from previous
+      // object type causing visual artifacts (e.g., spikes/distortion)
+      resetAllRotations();
       setObjectType(value as ObjectType);
     }
   };

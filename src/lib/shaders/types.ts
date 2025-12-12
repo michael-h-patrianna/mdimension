@@ -1,8 +1,8 @@
 /**
  * Shader Type System for Enhanced Visuals
  *
- * Defines shader types, per-shader settings interfaces, and defaults
- * for the enhanced visual rendering pipeline.
+ * Defines shader types and per-shader settings interfaces.
+ * Default values are centralized in @/stores/visualStore.ts to avoid conflicts.
  *
  * @see docs/prd/enhanced-visuals-rendering-pipeline.md
  */
@@ -41,31 +41,11 @@ export interface AllShaderSettings {
   surface: SurfaceSettings;
 }
 
-/** Default settings for wireframe shader */
-export const DEFAULT_WIREFRAME_SETTINGS: WireframeSettings = {
-  lineThickness: 2,
-};
-
-/** Default settings for surface shader */
-export const DEFAULT_SURFACE_SETTINGS: SurfaceSettings = {
-  faceOpacity: 0.8,
-  specularIntensity: 1.0,
-  specularPower: 32,
-  fresnelEnabled: true,
-};
-
-/** All default shader settings */
-export const DEFAULT_SHADER_SETTINGS: AllShaderSettings = {
-  wireframe: DEFAULT_WIREFRAME_SETTINGS,
-  surface: DEFAULT_SURFACE_SETTINGS,
-};
-
 // ============================================================================
-// Defaults
+// NOTE: Default values are defined in @/stores/visualStore.ts
+// This file contains only type definitions to avoid duplicate/conflicting defaults.
+// Import DEFAULT_SHADER_SETTINGS, DEFAULT_SURFACE_SETTINGS, etc. from visualStore.
 // ============================================================================
-
-/** Default shader type */
-export const DEFAULT_SHADER_TYPE: ShaderType = 'surface';
 
 /** Shader display names for UI */
 export const SHADER_DISPLAY_NAMES: Record<ShaderType, string> = {
@@ -99,10 +79,3 @@ export function isSurfaceSettings(
   return 'faceOpacity' in settings && 'specularPower' in settings;
 }
 
-/**
- * Get default settings for a specific shader type
- * @param shaderType
- */
-export function getDefaultSettingsForShader(shaderType: ShaderType): ShaderSettings {
-  return DEFAULT_SHADER_SETTINGS[shaderType];
-}

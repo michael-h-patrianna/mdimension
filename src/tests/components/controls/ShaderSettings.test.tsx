@@ -7,15 +7,17 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ShaderSettings } from '@/components/controls/ShaderSettings';
 import { useVisualStore } from '@/stores/visualStore';
 
-// Mock the store
+// Mock the store with actual default values from visualStore
 vi.mock('@/stores/visualStore', () => ({
   useVisualStore: vi.fn(),
-  DEFAULT_SURFACE_SETTINGS: { faceOpacity: 0.8, specularIntensity: 1, specularPower: 32, fresnelEnabled: true },
+  // Values must match visualStore.ts: DEFAULT_FACE_OPACITY=0.3, DEFAULT_SPECULAR_INTENSITY=0.5, DEFAULT_SPECULAR_POWER=12
+  DEFAULT_SURFACE_SETTINGS: { faceOpacity: 0.3, specularIntensity: 0.5, specularPower: 12, fresnelEnabled: true },
 }));
 
 describe('ShaderSettings', () => {
   const setFaceColorMock = vi.fn();
   const setSurfaceSettingsMock = vi.fn();
+  const setColorModeMock = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -23,11 +25,13 @@ describe('ShaderSettings', () => {
       const state = {
         facesVisible: true,
         faceColor: '#123456',
+        colorMode: 'monochromatic',
         shaderSettings: {
           surface: { faceOpacity: 0.5, fresnelEnabled: false },
         },
         setFaceColor: setFaceColorMock,
         setSurfaceSettings: setSurfaceSettingsMock,
+        setColorMode: setColorModeMock,
       };
       return selector(state);
     });
@@ -58,10 +62,10 @@ describe('ShaderSettings', () => {
       expect(screen.getByText('Fresnel Rim')).toBeInTheDocument();
     });
 
-    it('renders lighting configuration hint', () => {
+    it('renders color mode selector', () => {
       render(<ShaderSettings />);
 
-      expect(screen.getByText(/Configure lighting in the Lighting section/)).toBeInTheDocument();
+      expect(screen.getByText('Color Mode')).toBeInTheDocument();
     });
 
     it('updates face color when picker value changes', () => {
@@ -96,11 +100,13 @@ describe('ShaderSettings', () => {
         const state = {
           facesVisible: false,
           faceColor: '#123456',
+          colorMode: 'monochromatic',
           shaderSettings: {
             surface: { faceOpacity: 0.5, fresnelEnabled: false },
           },
           setFaceColor: setFaceColorMock,
           setSurfaceSettings: setSurfaceSettingsMock,
+          setColorMode: setColorModeMock,
         };
         return selector(state);
       });

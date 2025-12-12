@@ -118,6 +118,45 @@ export function buildCliffordTorusGridEdges(
 }
 
 /**
+ * Builds quad faces for the classic Clifford torus
+ *
+ * The Clifford torus uses the same u/v parametrization as the 3D torus,
+ * so face generation follows the identical pattern.
+ * Each grid cell (i, j) forms a quad with corners:
+ * - (i, j), (i+1, j), (i+1, j+1), (i, j+1)
+ *
+ * @param resolutionU - Number of steps in the u direction
+ * @param resolutionV - Number of steps in the v direction
+ * @returns Array of quad faces (4 vertex indices each, counter-clockwise winding)
+ */
+export function buildCliffordTorusGridFaces(
+  resolutionU: number,
+  resolutionV: number
+): number[][] {
+  const faces: number[][] = [];
+
+  // Index function: (i, j) -> linear index
+  const index = (i: number, j: number): number => i * resolutionV + j;
+
+  for (let i = 0; i < resolutionU; i++) {
+    for (let j = 0; j < resolutionV; j++) {
+      const iNext = (i + 1) % resolutionU;
+      const jNext = (j + 1) % resolutionV;
+
+      // Quad vertices in counter-clockwise winding order
+      faces.push([
+        index(i, j),
+        index(iNext, j),
+        index(iNext, jNext),
+        index(i, jNext),
+      ]);
+    }
+  }
+
+  return faces;
+}
+
+/**
  * Generates a classic Clifford torus geometry (T² ⊂ S³ ⊂ ℝ⁴)
  *
  * @param dimension - Dimensionality of the ambient space (must be >= 4)

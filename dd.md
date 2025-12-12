@@ -43,12 +43,12 @@ Soft Fill (good for hyppercubes)
 - Faces: on
 - Face opacity: 0.3
 - Surface color: #33cc9e
-- Fresnel Rim: off
+- Fresnel Rim: on
 - Bloom: on
 - Bloom intensity: 1.6
 - Bloom threshold: 0
 - Bloom soft knee: 0
-- Bloom radius: 1.65
+- Bloom radius: 0.30
 - Bloom blur levels: 4
 - Light: on
 - Light color: #ffffff
@@ -61,3 +61,10 @@ Soft Fill (good for hyppercubes)
 - Edge color: #19e697
 - Edge thickness: 1
 - Vertex size: 1
+
+
+hypercube: 1.8 (scale)
+simplex: 4 (scale)
+hypersphere: 3 (radius)
+root system: 2 - missing scale
+clifford torus: 3 (radius)

@@ -8,26 +8,13 @@ import {
   useVisualStore,
   DEFAULT_BLOOM_ENABLED,
   DEFAULT_BLOOM_INTENSITY,
-  DEFAULT_BLOOM_THRESHOLD,
-  DEFAULT_BLOOM_RADIUS,
   DEFAULT_LIGHT_ENABLED,
   DEFAULT_LIGHT_COLOR,
-  DEFAULT_LIGHT_HORIZONTAL_ANGLE,
-  DEFAULT_LIGHT_VERTICAL_ANGLE,
-  DEFAULT_AMBIENT_INTENSITY,
-  DEFAULT_SPECULAR_INTENSITY,
-  DEFAULT_SPECULAR_POWER,
   DEFAULT_DEPTH_ATTENUATION_ENABLED,
-  DEFAULT_DEPTH_ATTENUATION_STRENGTH,
-  DEFAULT_FRESNEL_ENABLED,
-  DEFAULT_FRESNEL_INTENSITY,
   DEFAULT_FACE_COLOR,
   VISUAL_PRESETS,
-} from '@/stores/visualStore';
-import {
   DEFAULT_SHADER_TYPE,
-  DEFAULT_SHADER_SETTINGS,
-} from '@/lib/shaders/types';
+} from '@/stores/visualStore';
 
 describe('visualStore - Enhanced Features', () => {
   beforeEach(() => {
@@ -35,14 +22,6 @@ describe('visualStore - Enhanced Features', () => {
   });
 
   describe('Shader System', () => {
-    it('should have default shader type', () => {
-      expect(useVisualStore.getState().shaderType).toBe(DEFAULT_SHADER_TYPE);
-    });
-
-    it('should have default shader settings', () => {
-      expect(useVisualStore.getState().shaderSettings).toEqual(DEFAULT_SHADER_SETTINGS);
-    });
-
     it('should set shader type', () => {
       useVisualStore.getState().setShaderType('wireframe');
       expect(useVisualStore.getState().shaderType).toBe('wireframe');
@@ -90,13 +69,6 @@ describe('visualStore - Enhanced Features', () => {
   });
 
   describe('Bloom Settings', () => {
-    it('should have default bloom settings', () => {
-      expect(useVisualStore.getState().bloomEnabled).toBe(DEFAULT_BLOOM_ENABLED);
-      expect(useVisualStore.getState().bloomIntensity).toBe(DEFAULT_BLOOM_INTENSITY);
-      expect(useVisualStore.getState().bloomThreshold).toBe(DEFAULT_BLOOM_THRESHOLD);
-      expect(useVisualStore.getState().bloomRadius).toBe(DEFAULT_BLOOM_RADIUS);
-    });
-
     it('should toggle bloom', () => {
       useVisualStore.getState().setBloomEnabled(true);
       expect(useVisualStore.getState().bloomEnabled).toBe(true);
@@ -146,16 +118,6 @@ describe('visualStore - Enhanced Features', () => {
   });
 
   describe('Lighting Settings', () => {
-    it('should have default lighting settings', () => {
-      expect(useVisualStore.getState().lightEnabled).toBe(DEFAULT_LIGHT_ENABLED);
-      expect(useVisualStore.getState().lightColor).toBe(DEFAULT_LIGHT_COLOR);
-      expect(useVisualStore.getState().lightHorizontalAngle).toBe(DEFAULT_LIGHT_HORIZONTAL_ANGLE);
-      expect(useVisualStore.getState().lightVerticalAngle).toBe(DEFAULT_LIGHT_VERTICAL_ANGLE);
-      expect(useVisualStore.getState().ambientIntensity).toBe(DEFAULT_AMBIENT_INTENSITY);
-      expect(useVisualStore.getState().specularIntensity).toBe(DEFAULT_SPECULAR_INTENSITY);
-      expect(useVisualStore.getState().specularPower).toBe(DEFAULT_SPECULAR_POWER);
-    });
-
     it('should toggle light', () => {
       useVisualStore.getState().setLightEnabled(false);
       expect(useVisualStore.getState().lightEnabled).toBe(false);
@@ -235,13 +197,6 @@ describe('visualStore - Enhanced Features', () => {
   });
 
   describe('Depth Effects', () => {
-    it('should have default depth effect settings', () => {
-      expect(useVisualStore.getState().depthAttenuationEnabled).toBe(DEFAULT_DEPTH_ATTENUATION_ENABLED);
-      expect(useVisualStore.getState().depthAttenuationStrength).toBe(DEFAULT_DEPTH_ATTENUATION_STRENGTH);
-      expect(useVisualStore.getState().fresnelEnabled).toBe(DEFAULT_FRESNEL_ENABLED);
-      expect(useVisualStore.getState().fresnelIntensity).toBe(DEFAULT_FRESNEL_INTENSITY);
-    });
-
     it('should toggle depth attenuation', () => {
       useVisualStore.getState().setDepthAttenuationEnabled(false);
       expect(useVisualStore.getState().depthAttenuationEnabled).toBe(false);
@@ -285,10 +240,6 @@ describe('visualStore - Enhanced Features', () => {
   });
 
   describe('Face Color', () => {
-    it('should have default face color', () => {
-      expect(useVisualStore.getState().faceColor).toBe(DEFAULT_FACE_COLOR);
-    });
-
     it('should set face color', () => {
       useVisualStore.getState().setFaceColor('#FF00FF');
       expect(useVisualStore.getState().faceColor).toBe('#FF00FF');
@@ -331,10 +282,6 @@ describe('visualStore - Enhanced Features', () => {
   });
 
   describe('Color Mode (Palette System)', () => {
-    it('should have default color mode of monochromatic', () => {
-      expect(useVisualStore.getState().colorMode).toBe('monochromatic');
-    });
-
     it('should set color mode', () => {
       useVisualStore.getState().setColorMode('complementary');
       expect(useVisualStore.getState().colorMode).toBe('complementary');

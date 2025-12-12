@@ -9,7 +9,7 @@
  *
  * Extended Objects:
  * - Hypersphere: mode, sample count, radius, wireframe
- * - Root System: type (A/D/E8) - uses global Scale, always has edges
+ * - Root System: type (A/D/E8), scale (0.5-2.0), always has edges
  * - Clifford Torus: radius, resolution, edge mode
  * - Mandelbrot Set: quality preset, iterations, escape radius, resolution
  */
@@ -20,6 +20,7 @@ import {
   DEFAULT_CLIFFORD_TORUS_CONFIG,
   DEFAULT_HYPERSPHERE_CONFIG,
   DEFAULT_POLYTOPE_CONFIG,
+  DEFAULT_ROOT_SYSTEM_CONFIG,
 } from '@/lib/geometry/extended/types';
 import { isPolytopeType } from '@/lib/geometry/types';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
@@ -137,12 +138,13 @@ function HypersphereSettings() {
  * Root System settings controls
  *
  * Root systems always have edges enabled (like polytopes).
- * Uses global Scale section for sizing.
+ * Provides scale control (0.5-2.0) for adjusting the size of the root system.
  */
 function RootSystemSettings() {
   const dimension = useGeometryStore((state) => state.dimension);
   const config = useExtendedObjectStore((state) => state.rootSystem);
   const setRootType = useExtendedObjectStore((state) => state.setRootSystemType);
+  const setScale = useExtendedObjectStore((state) => state.setRootSystemScale);
 
   // Build available root types based on dimension
   const rootTypeOptions = React.useMemo(() => {
@@ -174,6 +176,18 @@ function RootSystemSettings() {
         options={rootTypeOptions}
         value={config.rootType}
         onChange={setRootType}
+      />
+
+      {/* Scale slider */}
+      <Slider
+        label="Root System Scale"
+        min={0.5}
+        max={2.0}
+        step={0.1}
+        value={config.scale}
+        onChange={setScale}
+        onReset={() => setScale(DEFAULT_ROOT_SYSTEM_CONFIG.scale)}
+        showValue
       />
     </div>
   );

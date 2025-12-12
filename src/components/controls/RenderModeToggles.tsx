@@ -33,13 +33,18 @@ export interface RenderModeTogglesProps {
 
 /**
  * Checks if an object type supports face rendering
- * Polytopes (hypercube, simplex, cross-polytope), root-system, and mandelbrot (via raymarching) support faces
+ * Polytopes (hypercube, simplex, cross-polytope), root-system, clifford-torus, and mandelbrot (via raymarching) support faces
  * @param objectType - The current object type
  * @returns true if faces can be rendered for this object type
  */
 function canRenderFaces(objectType: string): boolean {
   const polytopeTypes = ['hypercube', 'simplex', 'cross-polytope'];
-  return polytopeTypes.includes(objectType) || objectType === 'root-system' || objectType === 'mandelbrot';
+  return (
+    polytopeTypes.includes(objectType) ||
+    objectType === 'root-system' ||
+    objectType === 'mandelbrot' ||
+    objectType === 'clifford-torus'
+  );
 }
 
 /**
@@ -68,7 +73,7 @@ function canRenderEdges(objectType: string): boolean {
  * @returns A row of toggle buttons for render mode control
  *
  * @remarks
- * - Faces toggle is disabled for hypersphere, clifford-torus (Mandelbrot allowed for Ray Marching)
+ * - Faces toggle is disabled for hypersphere (Mandelbrot allowed for Ray Marching)
  * - Edges toggle is disabled for Mandelbrot
  * - When switching to an incompatible object, faces/edges auto-turn off
  * - Faces toggle automatically sets shader type (surface vs wireframe)

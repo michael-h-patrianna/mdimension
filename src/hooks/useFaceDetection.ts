@@ -16,8 +16,11 @@ export function useFaceDetection(geometry: NdGeometry, objectType: ObjectType) {
       return [];
     }
 
-    // Polytopes and root-system support face detection
-    const supportsFaces = isPolytopeType(objectType) || objectType === 'root-system';
+    // Polytopes, root-system, and clifford-torus support face detection
+    const supportsFaces =
+      isPolytopeType(objectType) ||
+      objectType === 'root-system' ||
+      objectType === 'clifford-torus';
     if (!supportsFaces) {
       return [];
     }
@@ -27,11 +30,17 @@ export function useFaceDetection(geometry: NdGeometry, objectType: ObjectType) {
       return [];
     }
 
+    // Clifford-torus needs metadata for resolution info
+    if (objectType === 'clifford-torus' && !geometry.metadata?.properties) {
+      return [];
+    }
+
     try {
       return detectFaces(
         geometry.vertices,
         geometry.edges,
-        objectType
+        objectType,
+        geometry.metadata
       );
     } catch (e) {
       console.warn('Face detection failed:', e);
