@@ -17,6 +17,7 @@
 import React from 'react';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
+import { useVisualStore } from '@/stores/visualStore';
 import { isPolytopeType } from '@/lib/geometry/types';
 import { Slider } from '@/components/ui/Slider';
 import { Select } from '@/components/ui/Select';
@@ -74,14 +75,19 @@ function PolytopeSettings() {
 
 /**
  * Hypersphere settings controls
+ *
+ * Note: K-NN wireframe is now controlled by the Edges toggle in the render mode controls.
+ * The Neighbor Count slider is shown when edges are visible.
  */
 function HypersphereSettings() {
   const config = useExtendedObjectStore((state) => state.hypersphere);
   const setMode = useExtendedObjectStore((state) => state.setHypersphereMode);
   const setSampleCount = useExtendedObjectStore((state) => state.setHypersphereSampleCount);
   const setRadius = useExtendedObjectStore((state) => state.setHypersphereRadius);
-  const setWireframeEnabled = useExtendedObjectStore((state) => state.setHypersphereWireframeEnabled);
   const setNeighborCount = useExtendedObjectStore((state) => state.setHypersphereNeighborCount);
+
+  // Edges toggle controls wireframe visibility
+  const edgesVisible = useVisualStore((state) => state.edgesVisible);
 
   return (
     <div className="space-y-4">
@@ -123,25 +129,8 @@ function HypersphereSettings() {
         showValue
       />
 
-      {/* Wireframe toggle */}
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => setWireframeEnabled(!config.wireframeEnabled)}
-          className={`
-            flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors
-            ${config.wireframeEnabled
-              ? 'bg-accent/20 text-accent border border-accent/50'
-              : 'bg-panel-border text-text-secondary border border-panel-border'
-            }
-          `}
-          aria-pressed={config.wireframeEnabled}
-        >
-          <span>K-NN Wireframe</span>
-        </button>
-      </div>
-
-      {/* Neighbor count (only when wireframe enabled) */}
-      {config.wireframeEnabled && (
+      {/* Neighbor count (shown when Edges toggle is on) */}
+      {edgesVisible && (
         <Slider
           label="Neighbor Count (K)"
           min={2}

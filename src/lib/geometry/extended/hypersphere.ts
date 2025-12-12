@@ -166,7 +166,7 @@ export function generateHypersphere(
     ? sampleHypersphereSurface(dimension, sampleCount, radius)
     : sampleHypersphereSolid(dimension, sampleCount, radius);
 
-  // Optionally generate k-NN edges for wireframe
+  // Generate k-NN edges when wireframe is enabled (controlled by Edges toggle)
   const edges: [number, number][] = wireframeEnabled
     ? buildKnnEdges(vertices, neighborCount)
     : [];
