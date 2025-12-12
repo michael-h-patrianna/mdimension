@@ -15,6 +15,7 @@ interface RotationSliderProps {
 
 /**
  * Converts radians to degrees
+ * @param radians
  */
 function radiansToDegrees(radians: number): number {
   return (radians * 180) / Math.PI;
@@ -22,6 +23,7 @@ function radiansToDegrees(radians: number): number {
 
 /**
  * Converts degrees to radians
+ * @param degrees
  */
 function degreesToRadians(degrees: number): number {
   return (degrees * Math.PI) / 180;
@@ -29,6 +31,7 @@ function degreesToRadians(degrees: number): number {
 
 /**
  * Gets Tailwind badge color classes based on axis type
+ * @param color
  */
 function getBadgeColorClasses(color: string): string {
   const colorMap: Record<string, string> = {
@@ -83,15 +86,15 @@ export const RotationSlider = memo(function RotationSlider({
           value={degrees}
           onChange={handleSliderChange}
           onDoubleClick={handleDoubleClick}
-          className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider-cyan"
+          className="w-full h-2 bg-panel-border rounded-lg appearance-none cursor-pointer"
           style={{
-            background: `linear-gradient(to right, #00FFFF 0%, #00FFFF ${(degrees / 360) * 100}%, #374151 ${(degrees / 360) * 100}%, #374151 100%)`,
+            background: `linear-gradient(to right, var(--color-accent) 0%, var(--color-accent) ${(degrees / 360) * 100}%, var(--color-panel-border) ${(degrees / 360) * 100}%, var(--color-panel-border) 100%)`,
           }}
         />
       </div>
 
       {/* Degree value badge */}
-      <div className="px-3 py-1 bg-gray-800 rounded text-sm font-mono min-w-[4rem] text-center text-cyan-400">
+      <div className="px-3 py-1 bg-panel-border rounded text-sm font-mono min-w-[4rem] text-center text-accent">
         {Math.round(degrees)}°
       </div>
     </div>

@@ -7,6 +7,7 @@ import { detectFaces } from '@/lib/geometry/faces';
 import { generateHypercube } from '@/lib/geometry/hypercube';
 import { generateSimplex } from '@/lib/geometry/simplex';
 import { generateCrossPolytope } from '@/lib/geometry/cross-polytope';
+import { generateRootSystem } from '@/lib/geometry/extended/root-system';
 
 describe('detectFaces', () => {
   describe('input validation', () => {
@@ -421,6 +422,97 @@ describe('detectFaces', () => {
 
       const faces = detectFaces(vertices, edges, 'simplex');
       expect(faces).toHaveLength(0);
+    });
+  });
+
+  describe('root system faces (convex hull)', () => {
+    it('should detect faces for A_3 root system (4D)', () => {
+      const rootSystem = generateRootSystem(4, { rootType: 'A', scale: 1.0 });
+      const faces = detectFaces(rootSystem.vertices, rootSystem.edges, 'root-system');
+
+      // A_3 root polytope should have many triangular faces
+      expect(faces.length).toBeGreaterThan(0);
+
+      // All faces should be triangular
+      faces.forEach(face => {
+        expect(face.vertices).toHaveLength(3);
+      });
+
+      // All vertex indices should be valid
+      faces.forEach(face => {
+        face.vertices.forEach(idx => {
+          expect(idx).toBeGreaterThanOrEqual(0);
+          expect(idx).toBeLessThan(rootSystem.vertices.length);
+        });
+      });
+    });
+
+    it('should detect faces for D_4 root system (24-cell)', () => {
+      const rootSystem = generateRootSystem(4, { rootType: 'D', scale: 1.0 });
+      const faces = detectFaces(rootSystem.vertices, rootSystem.edges, 'root-system');
+
+      // D_4 (24-cell) has 96 triangular faces
+      expect(faces.length).toBeGreaterThan(0);
+
+      // All faces should be triangular
+      faces.forEach(face => {
+        expect(face.vertices).toHaveLength(3);
+      });
+    });
+
+    it('should detect faces for A_4 root system (5D)', () => {
+      const rootSystem = generateRootSystem(5, { rootType: 'A', scale: 1.0 });
+      const faces = detectFaces(rootSystem.vertices, rootSystem.edges, 'root-system');
+
+      expect(faces.length).toBeGreaterThan(0);
+
+      faces.forEach(face => {
+        expect(face.vertices).toHaveLength(3);
+      });
+    });
+
+    it('should detect faces for D_5 root system (5D)', () => {
+      const rootSystem = generateRootSystem(5, { rootType: 'D', scale: 1.0 });
+      const faces = detectFaces(rootSystem.vertices, rootSystem.edges, 'root-system');
+
+      expect(faces.length).toBeGreaterThan(0);
+
+      faces.forEach(face => {
+        expect(face.vertices).toHaveLength(3);
+      });
+    });
+
+    it('should detect faces for E_8 root system (8D)', () => {
+      const rootSystem = generateRootSystem(8, { rootType: 'E8', scale: 1.0 });
+      const faces = detectFaces(rootSystem.vertices, rootSystem.edges, 'root-system');
+
+      // E_8 polytope should have many triangular faces
+      expect(faces.length).toBeGreaterThan(0);
+
+      // All faces should be triangular
+      faces.forEach(face => {
+        expect(face.vertices).toHaveLength(3);
+      });
+
+      // All indices should be valid
+      faces.forEach(face => {
+        face.vertices.forEach(idx => {
+          expect(idx).toBeGreaterThanOrEqual(0);
+          expect(idx).toBeLessThan(240);
+        });
+      });
+    });
+
+    it('should have unique faces (no duplicates)', () => {
+      const rootSystem = generateRootSystem(4, { rootType: 'A', scale: 1.0 });
+      const faces = detectFaces(rootSystem.vertices, rootSystem.edges, 'root-system');
+
+      const faceSet = new Set<string>();
+      faces.forEach(face => {
+        const key = [...face.vertices].sort((a, b) => a - b).join(',');
+        expect(faceSet.has(key)).toBe(false);
+        faceSet.add(key);
+      });
     });
   });
 

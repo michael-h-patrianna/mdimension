@@ -261,11 +261,11 @@ interface VisualState {
 }
 
 // ============================================================================
-// Store Implementation
+// Initial State
 // ============================================================================
 
-export const useVisualStore = create<VisualState>((set) => ({
-  // --- Initial State: Basic Visual ---
+const INITIAL_STATE: Omit<VisualState, keyof VisualStateFunctions> = {
+  // Basic visual
   edgeColor: DEFAULT_EDGE_COLOR,
   edgeThickness: DEFAULT_EDGE_THICKNESS,
   vertexVisible: DEFAULT_VERTEX_VISIBLE,
@@ -275,11 +275,11 @@ export const useVisualStore = create<VisualState>((set) => ({
   faceColor: DEFAULT_FACE_COLOR,
   backgroundColor: DEFAULT_BACKGROUND_COLOR,
 
-  // --- Initial State: Shader System ---
+  // Shader system
   shaderType: DEFAULT_SHADER_TYPE,
   shaderSettings: { ...DEFAULT_SHADER_SETTINGS },
 
-  // --- Initial State: Bloom ---
+  // Bloom
   bloomEnabled: DEFAULT_BLOOM_ENABLED,
   bloomIntensity: DEFAULT_BLOOM_INTENSITY,
   bloomThreshold: DEFAULT_BLOOM_THRESHOLD,
@@ -287,7 +287,7 @@ export const useVisualStore = create<VisualState>((set) => ({
   bloomSoftKnee: DEFAULT_BLOOM_SOFT_KNEE,
   bloomLevels: DEFAULT_BLOOM_LEVELS,
 
-  // --- Initial State: Lighting ---
+  // Lighting
   lightEnabled: DEFAULT_LIGHT_ENABLED,
   lightColor: DEFAULT_LIGHT_COLOR,
   lightHorizontalAngle: DEFAULT_LIGHT_HORIZONTAL_ANGLE,
@@ -297,18 +297,38 @@ export const useVisualStore = create<VisualState>((set) => ({
   specularPower: DEFAULT_SPECULAR_POWER,
   showLightIndicator: DEFAULT_SHOW_LIGHT_INDICATOR,
 
-  // --- Initial State: Depth Effects ---
+  // Depth effects
   depthAttenuationEnabled: DEFAULT_DEPTH_ATTENUATION_ENABLED,
   depthAttenuationStrength: DEFAULT_DEPTH_ATTENUATION_STRENGTH,
   fresnelEnabled: DEFAULT_FRESNEL_ENABLED,
   fresnelIntensity: DEFAULT_FRESNEL_INTENSITY,
   perDimensionColorEnabled: DEFAULT_PER_DIMENSION_COLOR_ENABLED,
 
-  // --- Initial State: Ground Plane ---
+  // Ground plane
   showGroundPlane: DEFAULT_SHOW_GROUND_PLANE,
   groundPlaneOffset: DEFAULT_GROUND_PLANE_OFFSET,
   groundPlaneOpacity: DEFAULT_GROUND_PLANE_OPACITY,
   groundPlaneReflectivity: DEFAULT_GROUND_PLANE_REFLECTIVITY,
+};
+
+type VisualStateFunctions = Pick<VisualState, 
+  | 'setEdgeColor' | 'setEdgeThickness' | 'setVertexVisible' | 'setVertexSize' | 'setVertexColor'
+  | 'setFaceOpacity' | 'setFaceColor' | 'setBackgroundColor' | 'setShaderType' | 'setWireframeSettings'
+  | 'setDualOutlineSettings' | 'setSurfaceSettings' | 'setBloomEnabled' | 'setBloomIntensity'
+  | 'setBloomThreshold' | 'setBloomRadius' | 'setBloomSoftKnee' | 'setBloomLevels' | 'setLightEnabled'
+  | 'setLightColor' | 'setLightHorizontalAngle' | 'setLightVerticalAngle' | 'setAmbientIntensity'
+  | 'setSpecularIntensity' | 'setSpecularPower' | 'setShowLightIndicator' | 'setDepthAttenuationEnabled'
+  | 'setDepthAttenuationStrength' | 'setFresnelEnabled' | 'setFresnelIntensity' | 'setPerDimensionColorEnabled'
+  | 'setShowGroundPlane' | 'setGroundPlaneOffset' | 'setGroundPlaneOpacity' | 'setGroundPlaneReflectivity'
+  | 'applyPreset' | 'reset'
+>;
+
+// ============================================================================
+// Store Implementation
+// ============================================================================
+
+export const useVisualStore = create<VisualState>((set) => ({
+  ...INITIAL_STATE,
 
   // --- Actions: Basic Visual ---
   setEdgeColor: (color: string) => {
@@ -519,51 +539,6 @@ export const useVisualStore = create<VisualState>((set) => ({
   },
 
   reset: () => {
-    set({
-      // Basic visual
-      edgeColor: DEFAULT_EDGE_COLOR,
-      edgeThickness: DEFAULT_EDGE_THICKNESS,
-      vertexVisible: DEFAULT_VERTEX_VISIBLE,
-      vertexSize: DEFAULT_VERTEX_SIZE,
-      vertexColor: DEFAULT_VERTEX_COLOR,
-      faceOpacity: DEFAULT_FACE_OPACITY,
-      faceColor: DEFAULT_FACE_COLOR,
-      backgroundColor: DEFAULT_BACKGROUND_COLOR,
-
-      // Shader system
-      shaderType: DEFAULT_SHADER_TYPE,
-      shaderSettings: { ...DEFAULT_SHADER_SETTINGS },
-
-      // Bloom
-      bloomEnabled: DEFAULT_BLOOM_ENABLED,
-      bloomIntensity: DEFAULT_BLOOM_INTENSITY,
-      bloomThreshold: DEFAULT_BLOOM_THRESHOLD,
-      bloomRadius: DEFAULT_BLOOM_RADIUS,
-      bloomSoftKnee: DEFAULT_BLOOM_SOFT_KNEE,
-      bloomLevels: DEFAULT_BLOOM_LEVELS,
-
-      // Lighting
-      lightEnabled: DEFAULT_LIGHT_ENABLED,
-      lightColor: DEFAULT_LIGHT_COLOR,
-      lightHorizontalAngle: DEFAULT_LIGHT_HORIZONTAL_ANGLE,
-      lightVerticalAngle: DEFAULT_LIGHT_VERTICAL_ANGLE,
-      ambientIntensity: DEFAULT_AMBIENT_INTENSITY,
-      specularIntensity: DEFAULT_SPECULAR_INTENSITY,
-      specularPower: DEFAULT_SPECULAR_POWER,
-      showLightIndicator: DEFAULT_SHOW_LIGHT_INDICATOR,
-
-      // Depth effects
-      depthAttenuationEnabled: DEFAULT_DEPTH_ATTENUATION_ENABLED,
-      depthAttenuationStrength: DEFAULT_DEPTH_ATTENUATION_STRENGTH,
-      fresnelEnabled: DEFAULT_FRESNEL_ENABLED,
-      fresnelIntensity: DEFAULT_FRESNEL_INTENSITY,
-      perDimensionColorEnabled: DEFAULT_PER_DIMENSION_COLOR_ENABLED,
-
-      // Ground plane
-      showGroundPlane: DEFAULT_SHOW_GROUND_PLANE,
-      groundPlaneOffset: DEFAULT_GROUND_PLANE_OFFSET,
-      groundPlaneOpacity: DEFAULT_GROUND_PLANE_OPACITY,
-      groundPlaneReflectivity: DEFAULT_GROUND_PLANE_REFLECTIVITY,
-    });
+    set({ ...INITIAL_STATE });
   },
 }));

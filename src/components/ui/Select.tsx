@@ -1,21 +1,21 @@
 import React from 'react';
 
-export interface SelectOption {
-  value: string;
+export interface SelectOption<T extends string = string> {
+  value: T;
   label: string;
 }
 
-export interface SelectProps {
+export interface SelectProps<T extends string = string> {
   label?: string;
-  options: SelectOption[];
-  value: string;
-  onChange: (value: string) => void;
+  options: SelectOption<T>[];
+  value: T;
+  onChange: (value: T) => void;
   className?: string;
   disabled?: boolean;
   'data-testid'?: string;
 }
 
-export const Select: React.FC<SelectProps> = ({
+export const Select = <T extends string = string>({
   label,
   options,
   value,
@@ -23,9 +23,9 @@ export const Select: React.FC<SelectProps> = ({
   className = '',
   disabled = false,
   'data-testid': testId,
-}) => {
+}: SelectProps<T>) => {
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    onChange(e.target.value);
+    onChange(e.target.value as T);
   };
 
   return (
@@ -34,8 +34,6 @@ export const Select: React.FC<SelectProps> = ({
         <label className="text-sm font-medium text-text-secondary">
           {label}
         </label>
-
-
       )}
       <div className="relative">
         <select

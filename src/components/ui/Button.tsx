@@ -29,13 +29,13 @@ export const Button: React.FC<ButtonProps> = ({
   const variantStyles = {
     primary: 'bg-accent text-black hover:bg-accent/90 shadow-[0_0_15px_rgb(var(--color-accent)/0.4)] hover:shadow-[0_0_25px_rgb(var(--color-accent)/0.6)]',
     secondary: 'bg-panel-bg border border-panel-border text-text-primary hover:bg-panel-border/50',
-    ghost: 'text-text-secondary hover:text-text-primary hover:bg-white/5',
+    ghost: 'bg-transparent text-text-secondary hover:text-text-primary hover:bg-white/5',
   };
 
   const sizeStyles = {
-    sm: 'px-3 py-1.5 text-xs',
-    md: 'px-4 py-2 text-sm',
-    lg: 'px-6 py-3 text-base',
+    sm: 'px-3 py-1.5 text-sm',
+    md: 'px-4 py-2 text-base',
+    lg: 'px-6 py-3 text-lg',
   };
 
   return (

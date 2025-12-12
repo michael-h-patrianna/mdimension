@@ -9,6 +9,12 @@ import {
 } from 'three'
 import type { Vector3D } from '@/lib/math/types'
 import { useVisualStore } from '@/stores/visualStore'
+import {
+  DEFAULT_EMISSIVE_INTENSITY,
+  DEFAULT_MATERIAL_ROUGHNESS,
+  DEFAULT_MATERIAL_METALNESS,
+  VERTEX_SIZE_DIVISOR,
+} from '@/lib/shaders/constants'
 import { NativeWireframe } from './NativeWireframe'
 import { FatWireframe } from './FatWireframe'
 
@@ -45,6 +51,11 @@ const SHARED_SPHERE_GEOMETRY = new SphereGeometry(1, 16, 16);
 /**
  * Component to render vertices using InstancedMesh for memory efficiency.
  * Uses a single shared geometry and material for all vertex spheres.
+ * @param root0
+ * @param root0.vertices
+ * @param root0.vertexColor
+ * @param root0.vertexSize
+ * @param root0.opacity
  */
 function VertexInstances({
   vertices,
@@ -61,13 +72,16 @@ function VertexInstances({
   const tempObject = useMemo(() => new Object3D(), []);
 
   // Create shared material - only recreate when visual properties change
+  // Uses shared constants for visual consistency with PointCloudRenderer
   const material = useMemo(() => {
     return new MeshStandardMaterial({
       color: new Color(vertexColor),
       emissive: new Color(vertexColor),
-      emissiveIntensity: 0.2,
+      emissiveIntensity: DEFAULT_EMISSIVE_INTENSITY,
       transparent: opacity < 1,
       opacity: opacity,
+      roughness: DEFAULT_MATERIAL_ROUGHNESS,
+      metalness: DEFAULT_MATERIAL_METALNESS,
     });
   }, [vertexColor, opacity]);
 
@@ -118,6 +132,12 @@ function VertexInstances({
 
 /**
  * Renders edges using either NativeWireframe (1px, fast) or FatWireframe (thick, heavy)
+ * @param root0
+ * @param root0.vertices
+ * @param root0.edges
+ * @param root0.color
+ * @param root0.opacity
+ * @param root0.thickness
  */
 function Wireframe({
   vertices,
@@ -168,6 +188,14 @@ function Wireframe({
  * - Properly disposing Three.js resources on unmount
  *
  * @param props - PolytopeRenderer configuration
+ * @param props.vertices
+ * @param props.edges
+ * @param props.edgeColor
+ * @param props.edgeThickness
+ * @param props.vertexColor
+ * @param props.vertexSize
+ * @param props.showVertices
+ * @param props.opacity
  * @returns Three.js mesh group containing vertices, edges, and faces
  *
  * @example
@@ -232,7 +260,8 @@ export function PolytopeRenderer({
   const edgeColor = propEdgeColor ?? storeEdgeColor;
   const edgeThickness = propEdgeThickness ?? storeEdgeThickness;
   const vertexColor = propVertexColor ?? storeVertexColor;
-  const vertexSize = propVertexSize ?? (storeVertexSize / 100); // Convert from % to scale
+  // Convert from store value (1-10) to scale using shared constant
+  const vertexSize = propVertexSize ?? (storeVertexSize / VERTEX_SIZE_DIVISOR);
   const showVertices = propShowVertices ?? storeVertexVisible;
 
   // Get edge colors based on shader type

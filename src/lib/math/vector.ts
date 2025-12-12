@@ -25,6 +25,7 @@ export function createVector(dimension: number, fill = 0): VectorND {
  * Formula: c[i] = a[i] + b[i]
  * @param a - First vector
  * @param b - Second vector
+ * @param out
  * @returns New vector containing the sum
  * @throws {Error} If vectors have different dimensions
  */

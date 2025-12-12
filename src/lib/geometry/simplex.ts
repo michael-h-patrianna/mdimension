@@ -17,13 +17,14 @@ import type { PolytopeGeometry } from './types';
  * Construction uses standard simplex vertices then centers and normalizes:
  * - v_0 = origin
  * - v_i = unit vector along axis i (for i = 1 to n)
- * - Center at origin and scale to fit in [-1, 1]
+ * - Center at origin and scale to fit in [-scale, scale]
  *
  * @param dimension - Dimensionality of the space (must be >= 3)
+ * @param scale - Scale factor for vertex coordinates (default: 1.0, range: ±scale)
  * @returns PolytopeGeometry representing the simplex
  * @throws {Error} If dimension is less than 3
  */
-export function generateSimplex(dimension: number): PolytopeGeometry {
+export function generateSimplex(dimension: number, scale = 1.0): PolytopeGeometry {
   if (dimension < 3) {
     throw new Error('Simplex dimension must be at least 3');
   }
@@ -68,11 +69,12 @@ export function generateSimplex(dimension: number): PolytopeGeometry {
     }
   }
 
-  // Normalize to fit in [-1, 1]
+  // Normalize to fit in [-scale, scale]
   if (maxCoord > 0) {
+    const normFactor = scale / maxCoord;
     for (const vertex of vertices) {
       for (let i = 0; i < dimension; i++) {
-        vertex[i]! /= maxCoord;
+        vertex[i]! *= normFactor;
       }
     }
   }

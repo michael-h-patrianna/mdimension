@@ -44,6 +44,7 @@
 
 import React from 'react';
 import { Slider } from '@/components/ui/Slider';
+import { ToggleButton } from '@/components/ui/ToggleButton';
 import {
   useVisualStore,
   DEFAULT_BLOOM_INTENSITY,
@@ -59,6 +60,8 @@ export interface BloomControlsProps {
 
 /**
  * BloomControls component that provides UI for adjusting bloom post-processing settings.
+ * @param root0
+ * @param root0.className
  */
 export const BloomControls: React.FC<BloomControlsProps> = ({
   className = '',
@@ -80,21 +83,13 @@ export const BloomControls: React.FC<BloomControlsProps> = ({
   return (
     <div className={`space-y-4 ${className}`}>
       {/* Enable/Disable Bloom */}
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => setBloomEnabled(!bloomEnabled)}
-          className={`
-            flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors
-            ${bloomEnabled
-              ? 'bg-accent/20 text-accent border border-accent/50'
-              : 'bg-panel-border text-text-secondary border border-panel-border'
-            }
-          `}
-          aria-pressed={bloomEnabled}
-        >
-          <span>Enable Bloom</span>
-        </button>
-      </div>
+      <ToggleButton
+        pressed={bloomEnabled}
+        onToggle={setBloomEnabled}
+        ariaLabel={bloomEnabled ? "Disable Bloom" : "Enable Bloom"}
+      >
+        Enable Bloom
+      </ToggleButton>
 
       {/* Bloom controls - only visible when enabled */}
       {bloomEnabled && (

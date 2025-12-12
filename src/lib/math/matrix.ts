@@ -90,6 +90,7 @@ export function multiplyMatrices(a: MatrixND, b: MatrixND): MatrixND {
  * Formula: b[i] = Σ(M[i][j] * v[j])
  * @param m - Matrix (n×m)
  * @param v - Vector (m)
+ * @param out
  * @returns Result vector (n)
  * @throws {Error} If dimensions are incompatible
  */

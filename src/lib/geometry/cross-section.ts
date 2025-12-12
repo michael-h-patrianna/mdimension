@@ -4,7 +4,7 @@
  */
 
 import type { VectorND } from '@/lib/math/types';
-import type { PolytopeGeometry } from './types';
+import type { PolytopeGeometry, NdGeometry } from './types';
 import type { Face } from './faces';
 
 /**
@@ -20,18 +20,18 @@ export interface CrossSectionResult {
 }
 
 /**
- * Computes the cross-section of a polytope at a given W position
+ * Computes the cross-section of a geometry at a given W position
  *
- * For each edge of the polytope, checks if it crosses the hyperplane W = sliceW.
+ * For each edge of the geometry, checks if it crosses the hyperplane W = sliceW.
  * If so, computes the intersection point using linear interpolation.
  *
- * @param geometry - The polytope geometry (must be 4D or higher)
+ * @param geometry - The geometry (polytope or root system, must be 4D or higher)
  * @param sliceW - The W coordinate of the slicing hyperplane
  * @param faces - Optional array of faces to correctly reconstruct connectivity
  * @returns CrossSectionResult with intersection points and edges
  */
 export function computeCrossSection(
-  geometry: PolytopeGeometry,
+  geometry: PolytopeGeometry | NdGeometry,
   sliceW: number,
   faces?: Face[]
 ): CrossSectionResult {
@@ -160,12 +160,12 @@ export function projectCrossSectionTo3D(result: CrossSectionResult): VectorND[] 
 }
 
 /**
- * Computes the W-coordinate range of a polytope
+ * Computes the W-coordinate range of a geometry
  *
- * @param geometry - The polytope geometry
+ * @param geometry - The geometry (polytope or extended object)
  * @returns [minW, maxW] tuple
  */
-export function getWRange(geometry: PolytopeGeometry): [number, number] {
+export function getWRange(geometry: PolytopeGeometry | NdGeometry): [number, number] {
   if (geometry.dimension < 4 || geometry.vertices.length === 0) {
     return [0, 0];
   }

@@ -1,21 +1,100 @@
 /**
- * N-Dimensional Polytope Geometry Library
+ * N-Dimensional Geometry Library
  *
- * Provides generators for standard n-dimensional geometric objects:
+ * Provides generators for n-dimensional geometric objects:
+ *
+ * Standard Polytopes:
  * - Hypercube (n-cube): generalization of cube
  * - Simplex (n-simplex): generalization of tetrahedron
  * - Cross-polytope (n-orthoplex): generalization of octahedron
+ *
+ * Extended Objects:
+ * - Hypersphere: surface and solid point clouds
+ * - Root Systems: A, D, and E8 root polytopes
+ * - Clifford Torus: flat torus on S³
  */
 
-// Type exports
-export type { PolytopeType, PolytopeGeometry, PolytopeProperties } from './types';
+// Type exports from types.ts
+export type {
+  PolytopeType,
+  ExtendedObjectType,
+  ObjectType,
+  PolytopeGeometry,
+  PolytopeProperties,
+  NdGeometry,
+  GeometryMetadata,
+} from './types';
+export { isPolytopeType, isExtendedObjectType } from './types';
 export type { CrossSectionResult } from './cross-section';
 export type { Face } from './faces';
 
-// Generator exports
+// Extended object type exports (includes PolytopeConfig for unified API)
+export type {
+  PolytopeConfig,
+  HypersphereMode,
+  HypersphereConfig,
+  RootSystemType,
+  RootSystemConfig,
+  CliffordTorusEdgeMode,
+  CliffordTorusConfig,
+  MandelbrotColorMode,
+  MandelbrotPalette,
+  MandelbrotQualityPreset,
+  MandelbrotRenderStyle,
+  MandelbrotConfig,
+  MandelbrotSample,
+  ExtendedObjectParams,
+} from './extended';
+
+// Default configs for all object types
+export {
+  DEFAULT_POLYTOPE_CONFIG,
+  DEFAULT_HYPERSPHERE_CONFIG,
+  DEFAULT_ROOT_SYSTEM_CONFIG,
+  DEFAULT_CLIFFORD_TORUS_CONFIG,
+  DEFAULT_MANDELBROT_CONFIG,
+  MANDELBROT_QUALITY_PRESETS,
+  DEFAULT_EXTENDED_OBJECT_PARAMS,
+} from './extended';
+
+// Polytope generator exports
 export { generateHypercube } from './hypercube';
 export { generateSimplex } from './simplex';
 export { generateCrossPolytope } from './cross-polytope';
+
+// Extended object generator exports
+export {
+  generateExtendedObject,
+  generateHypersphere,
+  sampleHypersphereSurface,
+  sampleHypersphereSolid,
+  generateRootSystem,
+  generateARoots,
+  generateDRoots,
+  generateE8Roots,
+  getRootCount,
+  validateRootSystemType,
+  generateCliffordTorus,
+  generateCliffordTorusPoints,
+  buildCliffordTorusGridEdges,
+  verifyCliffordTorusOnSphere,
+  verifyE8Roots,
+  // Mandelbrot exports
+  generateMandelbrot,
+  mandelbrotStep,
+  mandelbrotEscapeTime,
+  mandelbrotSmoothEscapeTime,
+  normSquared,
+  generateSampleGrid,
+  filterSamples,
+  getMandelbrotStats,
+  // Utility exports
+  buildKnnEdges,
+  buildShortEdges,
+  computeConvexHullFaces,
+  hasValidConvexHull,
+  getConvexHullStats,
+} from './extended';
 
 // Face detection exports
 export { detectFaces } from './faces';
@@ -27,29 +106,91 @@ export {
   getWRange,
 } from './cross-section';
 
-import type { PolytopeType, PolytopeGeometry, PolytopeProperties } from './types';
+import type { PolytopeType, PolytopeGeometry, PolytopeProperties, ObjectType, NdGeometry } from './types';
+import { isPolytopeType } from './types';
 import { generateHypercube } from './hypercube';
 import { generateSimplex } from './simplex';
 import { generateCrossPolytope } from './cross-polytope';
+import { generateExtendedObject, DEFAULT_EXTENDED_OBJECT_PARAMS } from './extended';
+import type { ExtendedObjectParams } from './extended';
 
 /**
  * Generates a polytope of the specified type and dimension
  *
  * @param type - Type of polytope to generate
  * @param dimension - Dimensionality (must be >= 3)
+ * @param scale - Scale factor for the polytope (default: 1.0)
  * @returns PolytopeGeometry representing the polytope
  * @throws {Error} If dimension is less than 3 or type is invalid
  */
-export function generatePolytope(type: PolytopeType, dimension: number): PolytopeGeometry {
+export function generatePolytope(type: PolytopeType, dimension: number, scale = 1.0): PolytopeGeometry {
   switch (type) {
     case 'hypercube':
-      return generateHypercube(dimension);
+      return generateHypercube(dimension, scale);
     case 'simplex':
-      return generateSimplex(dimension);
+      return generateSimplex(dimension, scale);
     case 'cross-polytope':
-      return generateCrossPolytope(dimension);
+      return generateCrossPolytope(dimension, scale);
     default:
       throw new Error(`Unknown polytope type: ${type}`);
+  }
+}
+
+/**
+ * Generates geometry for any object type (polytope or extended)
+ *
+ * This is the unified dispatcher that handles all object types with
+ * consistent parameter handling. Both polytopes and extended objects
+ * can be configured through the params object.
+ *
+ * @param type - Object type to generate
+ * @param dimension - Dimensionality of the ambient space
+ * @param params - Parameters for all object types (optional, uses defaults)
+ * @returns NdGeometry representing the object
+ * @throws {Error} If type is invalid or dimension constraints are violated
+ *
+ * @example
+ * ```typescript
+ * // Generate a hypercube with custom scale
+ * const cube = generateGeometry('hypercube', 4, {
+ *   ...DEFAULT_EXTENDED_OBJECT_PARAMS,
+ *   polytope: { scale: 1.5 },
+ * });
+ *
+ * // Generate a hypersphere with matching radius
+ * const sphere = generateGeometry('hypersphere', 4, {
+ *   ...DEFAULT_EXTENDED_OBJECT_PARAMS,
+ *   hypersphere: { mode: 'surface', sampleCount: 3000, radius: 1.5 },
+ * });
+ * ```
+ */
+export function generateGeometry(
+  type: ObjectType,
+  dimension: number,
+  params?: ExtendedObjectParams
+): NdGeometry {
+  const effectiveParams = params ?? DEFAULT_EXTENDED_OBJECT_PARAMS;
+
+  if (isPolytopeType(type)) {
+    // Convert PolytopeGeometry to NdGeometry, using polytope config for scale
+    const scale = effectiveParams.polytope?.scale ?? 1.0;
+    const polytope = generatePolytope(type, dimension, scale);
+    return {
+      dimension: polytope.dimension,
+      type: polytope.type,
+      vertices: polytope.vertices,
+      edges: polytope.edges,
+      isPointCloud: false,
+      metadata: {
+        name: getTypeName(type),
+        properties: {
+          scale,
+        },
+      },
+    };
+  } else {
+    // Use extended object generator
+    return generateExtendedObject(type, dimension, effectiveParams);
   }
 }
 
@@ -87,16 +228,44 @@ export function getPolytopeProperties(geometry: PolytopeGeometry): PolytopePrope
 }
 
 /**
- * Returns metadata about all available polytope types
+ * Gets the display name for an object type
  *
- * @returns Array of polytope type information
+ * @param type - Object type
+ * @returns Human-readable name
  */
-export function getAvailableTypes(): Array<{
-  type: PolytopeType;
+function getTypeName(type: ObjectType): string {
+  const typeNames: Record<ObjectType, string> = {
+    'hypercube': 'Hypercube',
+    'simplex': 'Simplex',
+    'cross-polytope': 'Cross-Polytope',
+    'hypersphere': 'Hypersphere',
+    'root-system': 'Root System',
+    'clifford-torus': 'Clifford Torus',
+    'mandelbrot': 'Mandelbrot Set',
+  };
+  return typeNames[type] ?? type;
+}
+
+/**
+ * Returns metadata about all available object types
+ *
+ * @param dimension - Current dimension (for filtering dimension-constrained types)
+ * @returns Array of object type information with availability status
+ */
+export function getAvailableTypes(dimension?: number): Array<{
+  type: ObjectType;
   name: string;
   description: string;
+  available: boolean;
+  disabledReason?: string;
 }> {
-  return [
+  const types: Array<{
+    type: ObjectType;
+    name: string;
+    description: string;
+    minDimension?: number;
+    maxDimension?: number;
+  }> = [
     {
       type: 'hypercube',
       name: 'Hypercube',
@@ -112,5 +281,51 @@ export function getAvailableTypes(): Array<{
       name: 'Cross-Polytope',
       description: 'Generalization of an octahedron to n dimensions (n-orthoplex)',
     },
+    {
+      type: 'hypersphere',
+      name: 'Hypersphere',
+      description: 'N-dimensional sphere (surface or solid ball)',
+    },
+    {
+      type: 'root-system',
+      name: 'Root System',
+      description: 'Root polytopes from Lie algebra (A, D, or E₈)',
+    },
+    {
+      type: 'clifford-torus',
+      name: 'Clifford Torus',
+      description: 'Flat torus lying on the 3-sphere in 4D',
+      minDimension: 4,
+    },
+    {
+      type: 'mandelbrot',
+      name: 'Mandelbrot Set',
+      description: 'N-dimensional fractal via escape-time iteration',
+      minDimension: 3,
+      maxDimension: 11,
+    },
   ];
+
+  return types.map((t) => {
+    let available = true;
+    let disabledReason: string | undefined;
+
+    if (dimension !== undefined) {
+      if (t.minDimension && dimension < t.minDimension) {
+        available = false;
+        disabledReason = `Requires dimension >= ${t.minDimension}`;
+      } else if (t.maxDimension && dimension > t.maxDimension) {
+        available = false;
+        disabledReason = `Requires dimension <= ${t.maxDimension}`;
+      }
+    }
+
+    return {
+      type: t.type,
+      name: t.name,
+      description: t.description,
+      available,
+      disabledReason,
+    };
+  });
 }

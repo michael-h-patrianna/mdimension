@@ -38,6 +38,12 @@ import {
 import type { Vector3D } from '@/lib/math/types';
 import type { Face } from '@/lib/geometry/faces';
 import { createSurfaceMaterial } from '@/lib/shaders/materials';
+import {
+  DEFAULT_FACE_COLOR,
+  DEFAULT_FACE_OPACITY,
+  DEFAULT_FACE_SPECULAR_INTENSITY,
+  DEFAULT_FACE_SPECULAR_POWER,
+} from '@/lib/shaders/constants';
 import { useVisualStore } from '@/stores/visualStore';
 
 /**
@@ -70,15 +76,22 @@ export interface FaceRendererProps {
  * Optimized to use buffer updates instead of geometry recreation for 60 FPS performance.
  *
  * @param props - Component props
+ * @param props.vertices
+ * @param props.faces
+ * @param props.color
+ * @param props.opacity
+ * @param props.specularIntensity
+ * @param props.specularPower
+ * @param props.visible
  * @returns Three.js mesh with face geometry
  */
 export function FaceRenderer({
   vertices,
   faces,
-  color = '#8800FF',
-  opacity = 0.6,
-  specularIntensity = 1.0,
-  specularPower = 32,
+  color = DEFAULT_FACE_COLOR,
+  opacity = DEFAULT_FACE_OPACITY,
+  specularIntensity = DEFAULT_FACE_SPECULAR_INTENSITY,
+  specularPower = DEFAULT_FACE_SPECULAR_POWER,
   visible = true,
 }: FaceRendererProps) {
   // Get surface shader settings from store for fresnel support

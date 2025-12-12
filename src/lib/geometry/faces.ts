@@ -6,8 +6,9 @@
  */
 
 import type { Vector3D } from '@/lib/math/types';
-import type { PolytopeType } from './types';
+import type { ObjectType } from './types';
 import { generateHypercubeFaces } from './hypercube';
+import { computeConvexHullFaces } from './extended/utils/convex-hull-faces';
 
 /**
  * Represents a 2D face (polygon) of a polytope
@@ -259,7 +260,7 @@ function isCoplanarQuad(vertexIndices: number[], vertices: number[][]): boolean 
  *
  * @param vertices - Array of vertex positions in n-dimensional space
  * @param edges - Array of edge pairs (vertex indices)
- * @param objectType - Type of polytope (determines face finding strategy)
+ * @param objectType - Type of object (determines face finding strategy)
  * @returns Array of detected faces with vertex indices
  *
  * @throws {Error} If vertices or edges array is empty
@@ -276,21 +277,27 @@ function isCoplanarQuad(vertexIndices: number[], vertices: number[][]): boolean 
  * const tetrahedron = generateSimplex(3);
  * const faces = detectFaces(tetrahedron.vertices, tetrahedron.edges, 'simplex');
  * console.log(faces.length); // 4 triangular faces
+ *
+ * // Detect faces of a root system
+ * const rootSystem = generateRootSystem(4, config);
+ * const faces = detectFaces(rootSystem.vertices, rootSystem.edges, 'root-system');
  * ```
  *
  * @remarks
  * - Hypercube: All faces are quads (4 vertices)
  * - Simplex: All faces are triangles (3 vertices)
  * - Cross-polytope: All faces are triangles (3 vertices)
+ * - Root-system: Triangular faces from short-edge connections
+ * - Other extended objects (hypersphere, clifford-torus): No faces (point clouds)
  *
  * The algorithm uses cycle detection in the connectivity graph.
  * For hypercubes, it specifically looks for 4-cycles without diagonals.
- * For simplices and cross-polytopes, it finds all 3-cycles (triangles).
+ * For simplices, cross-polytopes, and root-systems, it finds all 3-cycles (triangles).
  */
 export function detectFaces(
   vertices: number[][],
   edges: [number, number][],
-  objectType: PolytopeType
+  objectType: ObjectType
 ): Face[] {
   // Validate inputs
   if (vertices.length === 0) {
@@ -316,8 +323,17 @@ export function detectFaces(
     // Hypercubes have quadrilateral faces - use optimized analytical generation
     const faceIndices = generateHypercubeFaces(Math.log2(vertices.length));
     return faceIndices.map(indices => ({ vertices: indices }));
-  } else {
+  } else if (objectType === 'simplex' || objectType === 'cross-polytope') {
     // Simplices and cross-polytopes have triangular faces
     return findTriangles(adjacency, vertices.length);
+  } else if (objectType === 'root-system') {
+    // Root systems use convex hull for proper face detection
+    // This handles the complex face structure of root polytopes (A_n, D_n, E_8)
+    const hullFaces = computeConvexHullFaces(vertices);
+    return hullFaces.map(([v0, v1, v2]) => ({ vertices: [v0, v1, v2] }));
+  } else {
+    // Extended objects like hypersphere and clifford-torus don't have faces
+    // (they're point clouds or parametric surfaces)
+    return [];
   }
 }

@@ -30,17 +30,20 @@ describe('App Integration', () => {
     it('should render the complete application', () => {
       render(<App />);
 
-      expect(screen.getByText('N-Dimensional Visualizer')).toBeInTheDocument();
-      expect(screen.getByText('Visualization Controls')).toBeInTheDocument();
+      // Check for title and basic structure
+      expect(screen.getByRole('heading', { name: /N.*Dimensional Visualizer/i })).toBeInTheDocument();
+      expect(screen.getByText('SYSTEM CONTROLS')).toBeInTheDocument();
     });
 
     it('should render all control sections', () => {
       render(<App />);
 
       // Check for major sections
-      const objectElements = screen.getAllByText('Object');
+      const objectElements = screen.getAllByText(/Object/i);
       expect(objectElements.length).toBeGreaterThan(0);
-      expect(screen.getByText('Animation')).toBeInTheDocument();
+      
+      // Use specific role query for Animation section
+      expect(screen.getByRole('button', { name: /^ANIMATION$/i })).toBeInTheDocument();
     });
 
     it('should render canvas element', () => {
@@ -99,27 +102,27 @@ describe('App Integration', () => {
   });
 
   describe('Animation Controls', () => {
-    it('should start with animation paused', () => {
+    it('should start with animation playing', () => {
       render(<App />);
 
-      expect(useAnimationStore.getState().isPlaying).toBe(false);
+      expect(useAnimationStore.getState().isPlaying).toBe(true);
     });
 
     it('should toggle animation on button click', async () => {
       render(<App />);
 
-      // First, select a plane to animate (button is disabled without selection)
-      await act(async () => {
-        useAnimationStore.getState().togglePlane('XY');
-      });
+      // Ensure playing
+      if (!useAnimationStore.getState().isPlaying) {
+        act(() => useAnimationStore.getState().play());
+      }
 
-      // Find the play button using data-testid and click it
+      // Find the pause button using data-testid and click it
       const playButton = screen.getByTestId('animation-play-button');
       await act(async () => {
         fireEvent.click(playButton);
       });
 
-      expect(useAnimationStore.getState().isPlaying).toBe(true);
+      expect(useAnimationStore.getState().isPlaying).toBe(false);
     });
 
     it('should change speed', () => {

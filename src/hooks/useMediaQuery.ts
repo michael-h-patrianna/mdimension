@@ -17,6 +17,7 @@ export const BREAKPOINTS: Record<Breakpoint, string> = {
 
 /**
  * Hook to match a media query
+ * @param query
  */
 export function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(() => {
@@ -49,6 +50,7 @@ export function useMediaQuery(query: string): boolean {
 
 /**
  * Hook to check if screen is at or above a breakpoint
+ * @param breakpoint
  */
 export function useBreakpoint(breakpoint: Breakpoint): boolean {
   return useMediaQuery(BREAKPOINTS[breakpoint]);

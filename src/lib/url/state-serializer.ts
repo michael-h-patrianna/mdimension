@@ -1,11 +1,14 @@
 /**
  * URL State Serializer
  * Serializes and deserializes app state to/from URL parameters
+ *
+ * Supports both polytope and extended object types.
  */
 
-import type { PolytopeType } from '@/lib/geometry/types';
+import type { ObjectType } from '@/lib/geometry/types';
 import type { ShaderType, AllShaderSettings } from '@/lib/shaders/types';
 import { DEFAULT_SHADER_TYPE, DEFAULT_SHADER_SETTINGS } from '@/lib/shaders/types';
+import { MAX_DIMENSION, MIN_DIMENSION } from '@/stores/geometryStore';
 
 /** Valid shader types for URL validation */
 const VALID_SHADER_TYPES: ShaderType[] = [
@@ -14,9 +17,20 @@ const VALID_SHADER_TYPES: ShaderType[] = [
   'surface',
 ];
 
+/** Valid object types for URL validation */
+const VALID_OBJECT_TYPES: ObjectType[] = [
+  'hypercube',
+  'simplex',
+  'cross-polytope',
+  'hypersphere',
+  'root-system',
+  'clifford-torus',
+  'mandelbrot',
+];
+
 export interface ShareableState {
   dimension: number;
-  objectType: PolytopeType;
+  objectType: ObjectType;
   rotationAngles?: Map<string, number>;
   projectionDistance?: number;
   uniformScale?: number;
@@ -39,6 +53,7 @@ export interface ShareableState {
 
 /**
  * Serializes state to URL search params
+ * @param state
  */
 export function serializeState(state: ShareableState): string {
   const params = new URLSearchParams();
@@ -152,6 +167,7 @@ export function serializeState(state: ShareableState): string {
 
 /**
  * Deserializes state from URL search params
+ * @param searchParams
  */
 export function deserializeState(searchParams: string): Partial<ShareableState> {
   const params = new URLSearchParams(searchParams);
@@ -160,14 +176,14 @@ export function deserializeState(searchParams: string): Partial<ShareableState> 
   const dimension = params.get('d');
   if (dimension) {
     const dim = parseInt(dimension, 10);
-    if (dim >= 3 && dim <= 6) {
+    if (dim >= MIN_DIMENSION && dim <= MAX_DIMENSION) {
       state.dimension = dim;
     }
   }
 
   const objectType = params.get('t');
-  if (objectType && ['hypercube', 'simplex', 'cross-polytope'].includes(objectType)) {
-    state.objectType = objectType as PolytopeType;
+  if (objectType && VALID_OBJECT_TYPES.includes(objectType as ObjectType)) {
+    state.objectType = objectType as ObjectType;
   }
 
   const projectionDistance = params.get('pd');
@@ -303,8 +319,11 @@ export function deserializeState(searchParams: string): Partial<ShareableState> 
         const defaultValue = defaultObj[key];
         if (defaultValue !== undefined) {
           if (typeof defaultValue === 'string') {
-            // Re-add # prefix to colors
-            currentSettings[key] = value.startsWith('#') ? value : `#${value}`;
+            // Re-add # prefix to colors and validate
+            const colorVal = value.startsWith('#') ? value : `#${value}`;
+            if (/^#[0-9A-Fa-f]{6}$/.test(colorVal)) {
+              currentSettings[key] = colorVal;
+            }
           } else if (typeof defaultValue === 'boolean') {
             currentSettings[key] = value === '1';
           } else if (typeof defaultValue === 'number') {
@@ -325,6 +344,7 @@ export function deserializeState(searchParams: string): Partial<ShareableState> 
 
 /**
  * Generates a shareable URL with current state
+ * @param state
  */
 export function generateShareUrl(state: ShareableState): string {
   const serialized = serializeState(state);

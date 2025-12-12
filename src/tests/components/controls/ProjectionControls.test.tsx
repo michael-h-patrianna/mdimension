@@ -30,7 +30,7 @@ describe('ProjectionControls', () => {
     it('should render FOV slider', () => {
       render(<ProjectionControls />);
       expect(screen.getByText('Field of View')).toBeInTheDocument();
-      expect(screen.getByLabelText('Field of view')).toBeInTheDocument();
+      expect(screen.getByLabelText('Field of View')).toBeInTheDocument();
     });
 
     it('should render info text for perspective', () => {
@@ -45,7 +45,7 @@ describe('ProjectionControls', () => {
       render(<ProjectionControls />);
 
       expect(screen.getByText('Projection Distance')).toBeInTheDocument();
-      expect(screen.getByLabelText('Projection distance')).toBeInTheDocument();
+      expect(screen.getByLabelText('Projection Distance')).toBeInTheDocument();
     });
 
     it('should display current distance value', () => {
@@ -53,7 +53,8 @@ describe('ProjectionControls', () => {
       useProjectionStore.getState().setDistance(6.5);
       render(<ProjectionControls />);
 
-      expect(screen.getByText('6.5')).toBeInTheDocument();
+      // Slider formats to 2 decimal places for step < 1
+      expect(screen.getByText('6.50')).toBeInTheDocument();
     });
 
     it('should display perspective info text', () => {
@@ -71,7 +72,7 @@ describe('ProjectionControls', () => {
       render(<ProjectionControls />);
 
       expect(screen.queryByText('Projection Distance')).not.toBeInTheDocument();
-      expect(screen.queryByLabelText('Projection distance')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Projection Distance')).not.toBeInTheDocument();
     });
 
     it('should display orthographic info text', () => {
@@ -105,7 +106,7 @@ describe('ProjectionControls', () => {
       useProjectionStore.getState().setType('perspective');
       render(<ProjectionControls />);
 
-      const slider = screen.getByLabelText('Projection distance') as HTMLInputElement;
+      const slider = screen.getByLabelText('Projection Distance') as HTMLInputElement;
 
       // For range inputs, use fireEvent.change
       fireEvent.change(slider, { target: { value: '7.5' } });
@@ -116,7 +117,7 @@ describe('ProjectionControls', () => {
     it('should update FOV slider', () => {
       render(<ProjectionControls />);
 
-      const slider = screen.getByLabelText('Field of view') as HTMLInputElement;
+      const slider = screen.getByLabelText('Field of View') as HTMLInputElement;
 
       // For range inputs, use fireEvent.change
       fireEvent.change(slider, { target: { value: '90' } });
@@ -166,17 +167,17 @@ describe('ProjectionControls', () => {
       useProjectionStore.getState().setType('perspective');
       render(<ProjectionControls />);
 
-      const slider = screen.getByLabelText('Projection distance') as HTMLInputElement;
+      const slider = screen.getByLabelText('Projection Distance') as HTMLInputElement;
 
-      expect(slider.min).toBe('2.0');
-      expect(slider.max).toBe('10.0');
+      expect(slider.min).toBe('2');
+      expect(slider.max).toBe('10'); // Also 10.0 might become 10
       expect(slider.step).toBe('0.1');
     });
 
     it('should have correct FOV slider range', () => {
       render(<ProjectionControls />);
 
-      const slider = screen.getByLabelText('Field of view') as HTMLInputElement;
+      const slider = screen.getByLabelText('Field of View') as HTMLInputElement;
 
       expect(slider.min).toBe('30');
       expect(slider.max).toBe('120');

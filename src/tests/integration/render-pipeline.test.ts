@@ -11,6 +11,10 @@ import type { MatrixND } from '@/lib/math/types';
 
 /**
  * Creates a rotation matrix for a specific plane
+ * @param dimension
+ * @param axis1
+ * @param axis2
+ * @param angle
  */
 function makeRotationMatrix(dimension: number, axis1: number, axis2: number, angle: number): MatrixND {
   const matrix = createIdentityMatrix(dimension);

@@ -1,7 +1,15 @@
 export { useRotationStore } from './rotationStore';
 export { useProjectionStore } from './projectionStore';
 export type { ProjectionType } from './projectionStore';
-export { useGeometryStore, MIN_DIMENSION, MAX_DIMENSION, DEFAULT_DIMENSION, DEFAULT_OBJECT_TYPE } from './geometryStore';
+export {
+  useGeometryStore,
+  MIN_DIMENSION,
+  MAX_DIMENSION,
+  DEFAULT_DIMENSION,
+  DEFAULT_OBJECT_TYPE,
+  validateObjectTypeForDimension,
+} from './geometryStore';
+export { useExtendedObjectStore } from './extendedObjectStore';
 export {
   useTransformStore,
   MIN_SCALE,

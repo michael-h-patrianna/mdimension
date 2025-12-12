@@ -35,11 +35,11 @@ describe('ShaderSelector', () => {
   it('should highlight the current selected shader', () => {
     render(<ShaderSelector />);
 
-    // Default shader is 'wireframe'
-    const wireframeButton = screen.getByTestId('shader-option-wireframe');
-    expect(wireframeButton).toHaveClass('bg-accent/20');
-    expect(wireframeButton).toHaveClass('text-accent');
-    expect(wireframeButton).toHaveClass('border-accent/50');
+    // Default shader is 'surface'
+    const surfaceButton = screen.getByTestId('shader-option-surface');
+    expect(surfaceButton).toHaveClass('bg-accent/20');
+    expect(surfaceButton).toHaveClass('text-accent');
+    expect(surfaceButton).toHaveClass('border-accent/50');
   });
 
   it('should update selection when clicking a shader option', () => {
@@ -60,20 +60,20 @@ describe('ShaderSelector', () => {
   it('should switch between shader types correctly', () => {
     render(<ShaderSelector />);
 
-    // Start with wireframe (default)
-    expect(useVisualStore.getState().shaderType).toBe('wireframe');
-
-    // Click Surface
-    fireEvent.click(screen.getByTestId('shader-option-surface'));
+    // Start with surface (default)
     expect(useVisualStore.getState().shaderType).toBe('surface');
+
+    // Click Wireframe
+    fireEvent.click(screen.getByTestId('shader-option-wireframe'));
+    expect(useVisualStore.getState().shaderType).toBe('wireframe');
 
     // Click Dual Outline
     fireEvent.click(screen.getByTestId('shader-option-dualOutline'));
     expect(useVisualStore.getState().shaderType).toBe('dualOutline');
 
-    // Click back to Wireframe
-    fireEvent.click(screen.getByTestId('shader-option-wireframe'));
-    expect(useVisualStore.getState().shaderType).toBe('wireframe');
+    // Click back to Surface
+    fireEvent.click(screen.getByTestId('shader-option-surface'));
+    expect(useVisualStore.getState().shaderType).toBe('surface');
   });
 
   it('should display correct shader names from constants', () => {
@@ -88,19 +88,19 @@ describe('ShaderSelector', () => {
   it('should show only one shader as selected at a time', () => {
     render(<ShaderSelector />);
 
-    // Initially wireframe is selected
+    // Initially surface is selected
+    const surfaceButton = screen.getByTestId('shader-option-surface');
     const wireframeButton = screen.getByTestId('shader-option-wireframe');
-    const dualOutlineButton = screen.getByTestId('shader-option-dualOutline');
 
-    expect(wireframeButton).toHaveClass('bg-accent/20');
-    expect(dualOutlineButton).not.toHaveClass('bg-accent/20');
-
-    // Click dual outline
-    fireEvent.click(dualOutlineButton);
-
-    // Now only dual outline should be highlighted
+    expect(surfaceButton).toHaveClass('bg-accent/20');
     expect(wireframeButton).not.toHaveClass('bg-accent/20');
-    expect(dualOutlineButton).toHaveClass('bg-accent/20');
+
+    // Click wireframe
+    fireEvent.click(wireframeButton);
+
+    // Now only wireframe should be highlighted
+    expect(surfaceButton).not.toHaveClass('bg-accent/20');
+    expect(wireframeButton).toHaveClass('bg-accent/20');
   });
 
   it('should have proper ARIA labels for accessibility', () => {

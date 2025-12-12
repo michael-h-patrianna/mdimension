@@ -2,12 +2,14 @@ import { useShallow } from 'zustand/react/shallow'
 import type { Vector3D } from '@/lib/math/types'
 import type { Face } from '@/lib/geometry/faces'
 import { PolytopeRenderer } from './PolytopeRenderer'
+import { PointCloudRenderer, PointCloudWithEdges } from './PointCloudRenderer'
 import { FaceRenderer } from './FaceRenderer'
 import { CameraController } from './CameraController'
 import { SceneLighting } from './SceneLighting'
 import { PostProcessing } from './PostProcessing'
 import { GroundPlane } from './GroundPlane'
 import { useVisualStore } from '@/stores/visualStore'
+import { useVertexSize } from '@/hooks/useVertexSize'
 
 /**
  * Props for the Scene component.
@@ -19,8 +21,6 @@ export interface SceneProps {
   edges?: [number, number][]
   /** Detected faces for surface rendering (PRD Story 2) */
   faces?: Face[]
-  /** Background color (default: #0F0F1A) */
-  backgroundColor?: string
   /** Enable auto-rotation (default: false) */
   autoRotate?: boolean
   /** Opacity of the main polytope (default: 1.0) */
@@ -29,6 +29,8 @@ export interface SceneProps {
   crossSectionVertices?: Vector3D[]
   /** Cross-section edges (optional) */
   crossSectionEdges?: [number, number][]
+  /** Whether this is a point cloud (uses PointCloudRenderer) */
+  isPointCloud?: boolean
 }
 
 /**
@@ -46,6 +48,14 @@ export interface SceneProps {
  * visual environment for all polytope visualizations.
  *
  * @param props - Scene configuration
+ * @param props.vertices
+ * @param props.edges
+ * @param props.faces
+ * @param props.autoRotate
+ * @param props.opacity
+ * @param props.crossSectionVertices
+ * @param props.crossSectionEdges
+ * @param props.isPointCloud
  * @returns Complete 3D scene with lighting, controls, and geometry
  *
  * @example
@@ -94,6 +104,7 @@ export function Scene({
   opacity = 1.0,
   crossSectionVertices,
   crossSectionEdges,
+  isPointCloud = false,
 }: SceneProps) {
   // Get all visual settings with shallow comparison to prevent unnecessary re-renders
   const {
@@ -116,11 +127,15 @@ export function Scene({
     }))
   );
 
-  // Determine if we should render faces (Surface shader only)
-  const shouldRenderFaces = shaderType === 'surface' && faces && faces.length > 0 && vertices;
+  // Determine if we should render faces (Surface shader only, not for point clouds)
+  const shouldRenderFaces = !isPointCloud && shaderType === 'surface' && faces && faces.length > 0 && vertices;
 
   // Get surface shader settings
   const surfaceSettings = shaderSettings.surface;
+
+  // Calculate vertex/point size based on vertex count using custom hook
+  const adjustedVertexSize = useVertexSize(vertices?.length ?? 0);
+  const crossSectionVertexSize = useVertexSize(crossSectionVertices?.length ?? 0);
 
   return (
     <>
@@ -154,19 +169,50 @@ export function Scene({
         />
       )}
 
-      {/* Render polytope edges and vertices */}
-      {vertices && edges && (
-        <PolytopeRenderer vertices={vertices} edges={edges} opacity={opacity} />
+      {/* Render based on geometry type */}
+      {vertices && (
+        isPointCloud ? (
+          // Point cloud rendering (hyperspheres, sampled manifolds)
+          // Uses same adjustedVertexSize as polytopes for visual consistency
+          edges && edges.length > 0 ? (
+            <PointCloudWithEdges
+              vertices={vertices}
+              edges={edges}
+              pointSize={adjustedVertexSize}
+              opacity={opacity}
+            />
+          ) : (
+            <PointCloudRenderer
+              vertices={vertices}
+              pointSize={adjustedVertexSize}
+              opacity={opacity}
+            />
+          )
+        ) : (
+          // Traditional polytope rendering (with density-adjusted vertex size)
+          edges && (
+            <PolytopeRenderer
+              vertices={vertices}
+              edges={edges}
+              opacity={opacity}
+              vertexSize={adjustedVertexSize}
+            />
+          )
+        )
       )}
 
       {/* Render cross-section if provided */}
+      {/* Uses distinctive orange/gold colors to differentiate from main object */}
+      {/* Vertex size scales with user settings using same density formula */}
+      {/* Opacity matches main object to maintain visual hierarchy */}
       {crossSectionVertices && crossSectionEdges && crossSectionVertices.length > 0 && (
         <PolytopeRenderer
           vertices={crossSectionVertices}
           edges={crossSectionEdges}
           edgeColor="#FF6B00"
           vertexColor="#FFAA00"
-          vertexSize={0.06}
+          vertexSize={crossSectionVertexSize}
+          opacity={opacity}
         />
       )}
     </>

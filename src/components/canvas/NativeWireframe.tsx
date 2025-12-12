@@ -9,6 +9,14 @@ export interface NativeWireframeProps {
   thickness?: number; // Ignored for native WebGL lines, kept for API compatibility
 }
 
+/**
+ *
+ * @param root0
+ * @param root0.vertices
+ * @param root0.edges
+ * @param root0.color
+ * @param root0.opacity
+ */
 export function NativeWireframe({
   vertices,
   edges,

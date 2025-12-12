@@ -14,6 +14,7 @@ import {
   DEFAULT_SLICE_W,
 } from '@/stores/crossSectionStore';
 import { useGeometryStore } from '@/stores/geometryStore';
+import { isPolytopeType } from '@/lib/geometry';
 
 export interface CrossSectionControlsProps {
   className?: string;
@@ -23,6 +24,7 @@ export const CrossSectionControls: React.FC<CrossSectionControlsProps> = ({
   className = '',
 }) => {
   const dimension = useGeometryStore((state) => state.dimension);
+  const objectType = useGeometryStore((state) => state.objectType);
 
   const enabled = useCrossSectionStore((state) => state.enabled);
   const sliceW = useCrossSectionStore((state) => state.sliceW);
@@ -37,14 +39,24 @@ export const CrossSectionControls: React.FC<CrossSectionControlsProps> = ({
   const setAnimateSlice = useCrossSectionStore((state) => state.setAnimateSlice);
   const reset = useCrossSectionStore((state) => state.reset);
 
-  // Cross-section only works for 4D+ objects
-  const isSupported = dimension >= 4;
+  // Cross-section only works for 4D+ polytopes and root systems (not point clouds)
+  const supportsFeature = isPolytopeType(objectType) || objectType === 'root-system';
+  const isSupported = dimension >= 4 && supportsFeature;
 
   if (!isSupported) {
+    let reason: string;
+    if (dimension < 4) {
+      reason = 'Cross-sections require 4D or higher dimensions.';
+    } else if (!supportsFeature) {
+      reason = `Cross-sections are not available for ${objectType}. They work with polytopes and root systems.`;
+    } else {
+      reason = 'Cross-sections are not available for this object type.';
+    }
+
     return (
       <div className={`space-y-2 ${className}`}>
         <p className="text-text-secondary text-sm">
-          Cross-sections require 4D or higher dimensions.
+          {reason}
         </p>
       </div>
     );

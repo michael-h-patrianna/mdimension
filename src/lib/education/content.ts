@@ -150,27 +150,51 @@ export const ROTATION_INFO: EducationTopic = {
   ],
 };
 
+/**
+ *
+ * @param dimension
+ */
 export function getDimensionInfo(dimension: number): DimensionInfo | undefined {
   return DIMENSION_INFO[dimension];
 }
 
+/**
+ *
+ * @param type
+ */
 export function getPolytopeInfo(type: string): EducationTopic | undefined {
   return POLYTOPE_INFO[type];
 }
 
+/**
+ *
+ * @param dimension
+ */
 export function getRotationPlaneCount(dimension: number): number {
   // Formula: n*(n-1)/2
   return (dimension * (dimension - 1)) / 2;
 }
 
+/**
+ *
+ * @param dimension
+ */
 export function getHypercubeVertexCount(dimension: number): number {
   return Math.pow(2, dimension);
 }
 
+/**
+ *
+ * @param dimension
+ */
 export function getSimplexVertexCount(dimension: number): number {
   return dimension + 1;
 }
 
+/**
+ *
+ * @param dimension
+ */
 export function getCrossPolytopeVertexCount(dimension: number): number {
   return 2 * dimension;
 }

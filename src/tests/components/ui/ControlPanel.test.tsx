@@ -21,7 +21,7 @@ describe('ControlPanel', () => {
       </ControlPanel>
     );
 
-    expect(screen.getByText('Controls')).toBeInTheDocument();
+    expect(screen.getByText('CONTROLS')).toBeInTheDocument();
   });
 
   it('renders with custom title', () => {
@@ -43,7 +43,7 @@ describe('ControlPanel', () => {
 
     const button = screen.getByRole('button', { name: /collapse control panel/i });
     expect(button).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByTestId('panel-content')).toBeInTheDocument();
+    expect(screen.getByTestId('control-panel-content')).not.toHaveClass('invisible');
   });
 
   it('is collapsed when defaultCollapsed is true', () => {
@@ -55,7 +55,7 @@ describe('ControlPanel', () => {
 
     const button = screen.getByRole('button', { name: /expand control panel/i });
     expect(button).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByTestId('panel-content')).not.toBeInTheDocument();
+    expect(screen.getByTestId('control-panel-content')).toHaveClass('invisible', 'opacity-0');
   });
 
   it('toggles collapsed state on button click', async () => {
@@ -68,14 +68,14 @@ describe('ControlPanel', () => {
     );
 
     // Initially expanded
-    expect(screen.getByTestId('panel-content')).toBeInTheDocument();
+    expect(screen.getByTestId('control-panel-content')).not.toHaveClass('invisible');
 
     // Click to collapse
     const collapseButton = screen.getByRole('button', { name: /collapse control panel/i });
     await user.click(collapseButton);
 
     await waitFor(() => {
-      expect(screen.queryByTestId('panel-content')).not.toBeInTheDocument();
+      expect(screen.getByTestId('control-panel-content')).toHaveClass('invisible');
       expect(screen.getByRole('button', { name: /expand control panel/i })).toBeInTheDocument();
     });
 
@@ -84,7 +84,7 @@ describe('ControlPanel', () => {
     await user.click(expandButton);
 
     await waitFor(() => {
-      expect(screen.getByTestId('panel-content')).toBeInTheDocument();
+      expect(screen.getByTestId('control-panel-content')).not.toHaveClass('invisible');
     });
   });
 
@@ -103,7 +103,7 @@ describe('ControlPanel', () => {
     await user.keyboard('{Enter}');
 
     await waitFor(() => {
-      expect(screen.queryByTestId('panel-content')).not.toBeInTheDocument();
+      expect(screen.getByTestId('control-panel-content')).toHaveClass('invisible');
     });
   });
 
@@ -122,7 +122,7 @@ describe('ControlPanel', () => {
     await user.keyboard(' ');
 
     await waitFor(() => {
-      expect(screen.queryByTestId('panel-content')).not.toBeInTheDocument();
+      expect(screen.getByTestId('control-panel-content')).toHaveClass('invisible');
     });
   });
 
@@ -135,7 +135,7 @@ describe('ControlPanel', () => {
       </ControlPanel>
     );
 
-    expect(screen.getByText('My Controls')).toBeInTheDocument();
+    expect(screen.getByText('My Controls')).toBeVisible();
 
     const button = screen.getByRole('button', { name: /collapse control panel/i });
     await user.click(button);
@@ -148,20 +148,20 @@ describe('ControlPanel', () => {
   it('changes width when collapsed', async () => {
     const user = userEvent.setup();
 
-    const { container } = render(
+    render(
       <ControlPanel>
         <div>Content</div>
       </ControlPanel>
     );
 
-    const panel = container.querySelector('aside');
-    expect(panel).not.toHaveClass('w-12');
+    const container = screen.getByTestId('control-panel-container');
+    expect(container).not.toHaveClass('w-14');
 
     const button = screen.getByRole('button', { name: /collapse control panel/i });
     await user.click(button);
 
     await waitFor(() => {
-      expect(panel).toHaveClass('w-12');
+      expect(container).toHaveClass('w-14');
     });
   });
 

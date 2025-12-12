@@ -43,8 +43,12 @@ export function useProjectedVertices(
 
     try {
       if (type === 'perspective') {
+        // Pre-calculate normalization factor for performance
+        // Math.sqrt(dimension - 3) is constant for all vertices
+        const normalizationFactor = dimension > 3 ? Math.sqrt(dimension - 3) : 1;
+
         for (let i = 0; i < rotatedVertices.length; i++) {
-          projectPerspective(rotatedVertices[i]!, distance, cache[i]);
+          projectPerspective(rotatedVertices[i]!, distance, cache[i], normalizationFactor);
         }
       } else {
         for (let i = 0; i < rotatedVertices.length; i++) {

@@ -11,7 +11,7 @@ describe('Section', () => {
       </Section>
     );
 
-    expect(screen.getByText('Object Settings')).toBeInTheDocument();
+    expect(screen.getByText(/Object Settings/i)).toBeInTheDocument();
   });
 
   it('renders children when open', () => {

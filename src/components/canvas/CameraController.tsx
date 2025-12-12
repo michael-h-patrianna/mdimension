@@ -42,6 +42,16 @@ export interface CameraControllerProps {
  * provides a consistent interface for camera manipulation across the application.
  *
  * @param props - CameraController configuration
+ * @param props.enableDamping
+ * @param props.dampingFactor
+ * @param props.minDistance
+ * @param props.maxDistance
+ * @param props.autoRotate
+ * @param props.autoRotateSpeed
+ * @param props.enablePan
+ * @param props.enableZoom
+ * @param props.rotateSpeed
+ * @param props.onReset
  * @returns OrbitControls integration for the scene
  *
  * @example

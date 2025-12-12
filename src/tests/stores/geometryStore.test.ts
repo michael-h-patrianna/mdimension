@@ -74,28 +74,75 @@ describe('geometryStore', () => {
   });
 
   describe('setObjectType', () => {
-    it('should set object type to hypercube', () => {
-      const { setObjectType } = useGeometryStore.getState();
-      setObjectType('hypercube');
-      expect(useGeometryStore.getState().objectType).toBe('hypercube');
+    describe('polytope types', () => {
+      it('should set object type to hypercube', () => {
+        const { setObjectType } = useGeometryStore.getState();
+        setObjectType('hypercube');
+        expect(useGeometryStore.getState().objectType).toBe('hypercube');
+      });
+
+      it('should set object type to simplex', () => {
+        const { setObjectType } = useGeometryStore.getState();
+        setObjectType('simplex');
+        expect(useGeometryStore.getState().objectType).toBe('simplex');
+      });
+
+      it('should set object type to cross-polytope', () => {
+        const { setObjectType } = useGeometryStore.getState();
+        setObjectType('cross-polytope');
+        expect(useGeometryStore.getState().objectType).toBe('cross-polytope');
+      });
     });
 
-    it('should set object type to simplex', () => {
-      const { setObjectType } = useGeometryStore.getState();
-      setObjectType('simplex');
-      expect(useGeometryStore.getState().objectType).toBe('simplex');
-    });
+    describe('extended object types', () => {
+      it('should set object type to hypersphere', () => {
+        const { setObjectType } = useGeometryStore.getState();
+        setObjectType('hypersphere');
+        expect(useGeometryStore.getState().objectType).toBe('hypersphere');
+      });
 
-    it('should set object type to cross-polytope', () => {
-      const { setObjectType } = useGeometryStore.getState();
-      setObjectType('cross-polytope');
-      expect(useGeometryStore.getState().objectType).toBe('cross-polytope');
+      it('should set object type to root-system', () => {
+        const { setObjectType } = useGeometryStore.getState();
+        setObjectType('root-system');
+        expect(useGeometryStore.getState().objectType).toBe('root-system');
+      });
+
+      it('should set object type to clifford-torus in 4D+', () => {
+        const { setObjectType, setDimension } = useGeometryStore.getState();
+        setDimension(4); // Clifford torus requires >= 4D
+        setObjectType('clifford-torus');
+        expect(useGeometryStore.getState().objectType).toBe('clifford-torus');
+      });
+
+      it('should not set clifford-torus in dimension < 4', () => {
+        const { setObjectType, setDimension } = useGeometryStore.getState();
+        setDimension(3);
+        setObjectType('hypercube'); // Start with hypercube
+        setObjectType('clifford-torus'); // Try to set clifford-torus
+        // Should remain hypercube since clifford-torus is invalid in 3D
+        expect(useGeometryStore.getState().objectType).toBe('hypercube');
+      });
     });
 
     it('should throw error for invalid object type', () => {
       const { setObjectType } = useGeometryStore.getState();
       // @ts-expect-error Testing invalid input
-      expect(() => setObjectType('invalid')).toThrow('Invalid polytope type');
+      expect(() => setObjectType('invalid')).toThrow('Invalid object type');
+    });
+  });
+
+  describe('dimension-type interactions', () => {
+    it('should fallback clifford-torus to hypercube when dimension drops below 4', () => {
+      const { setDimension, setObjectType } = useGeometryStore.getState();
+
+      // Set dimension to 4 and type to clifford-torus
+      setDimension(4);
+      setObjectType('clifford-torus');
+      expect(useGeometryStore.getState().objectType).toBe('clifford-torus');
+
+      // Lower dimension to 3 - should fallback to hypercube
+      setDimension(3);
+      expect(useGeometryStore.getState().objectType).toBe('hypercube');
     });
   });
 

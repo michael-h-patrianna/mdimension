@@ -38,6 +38,7 @@ export interface ShaderSettingsProps {
  * Renders per-shader settings controls based on selected shader type.
  *
  * @param props - Component props
+ * @param props.className
  * @returns Shader-specific settings UI
  */
 export const ShaderSettings: React.FC<ShaderSettingsProps> = ({

@@ -10,6 +10,7 @@ import { Section } from './ui/Section';
 import { ThemeSelector } from './ui/ThemeSelector';
 import { DimensionSelector } from './controls/DimensionSelector';
 import { ObjectTypeSelector } from './controls/ObjectTypeSelector';
+import { ObjectSettingsSection } from './controls/ObjectSettingsSection';
 import { RotationControls } from './controls/RotationControls';
 import { ProjectionControls } from './controls/ProjectionControls';
 import { ScaleControls } from './controls/ScaleControls';
@@ -35,7 +36,7 @@ export interface LayoutProps {
 
 export const Layout: React.FC<LayoutProps> = ({
   children,
-  // appTitle = 'MDimension',
+  appTitle = 'MDimension',
   showHeader = true,
 }) => {
   const theme = useThemeStore((state) => state.theme);
@@ -57,7 +58,7 @@ export const Layout: React.FC<LayoutProps> = ({
         <header className="absolute top-4 left-4 z-40 pointer-events-none">
           <div className="glass-panel px-6 py-3 rounded-full pointer-events-auto flex items-center gap-4">
             <h1 className="text-sm font-bold tracking-[0.2em] text-text-primary">
-              <span className="text-accent">M</span>DIMENSION
+              <span className="text-accent">{appTitle.charAt(0)}</span>{appTitle.slice(1).toUpperCase()}
             </h1>
             <div className="h-3 w-[1px] bg-border/20" />
             <span className="text-xs font-mono text-text-secondary">v0.1.0</span>
@@ -71,6 +72,7 @@ export const Layout: React.FC<LayoutProps> = ({
           <div className="space-y-4">
             <DimensionSelector />
             <ObjectTypeSelector />
+            <ObjectSettingsSection />
           </div>
         </Section>
 

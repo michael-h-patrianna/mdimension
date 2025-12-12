@@ -225,6 +225,11 @@ export function composeTransformations(matrices: MatrixND[]): MatrixND {
  * Applies transformations in the standard order: Scale → Rotation → Shear → Translation
  *
  * @param options - Transformation options
+ * @param options.dimension
+ * @param options.scale
+ * @param options.rotation
+ * @param options.shear
+ * @param options.translation
  * @returns The composed transformation matrix
  */
 export function createTransformMatrix(options: {

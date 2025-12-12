@@ -163,6 +163,11 @@ const ReflectiveSurface = memo(function ReflectiveSurface({
  * so it's visible from both above and below the plane.
  *
  * @param props - Component props
+ * @param props.vertices
+ * @param props.offset
+ * @param props.opacity
+ * @param props.reflectivity
+ * @param props.visible
  * @returns Ground plane mesh with reflective material and grid overlay
  */
 export function GroundPlane({

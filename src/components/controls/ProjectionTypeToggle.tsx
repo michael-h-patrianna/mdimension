@@ -16,7 +16,11 @@ export const ProjectionTypeToggle: React.FC<ProjectionTypeToggleProps> = ({
   ];
 
   return (
-    <div className="flex gap-1 p-1 bg-panel-bg border border-panel-border rounded-lg">
+    <div 
+      className="flex gap-1 p-1 bg-panel-bg border border-panel-border rounded-lg"
+      role="group"
+      aria-label="Projection Type"
+    >
       {options.map((option) => {
         const isSelected = value === option.value;
         return (

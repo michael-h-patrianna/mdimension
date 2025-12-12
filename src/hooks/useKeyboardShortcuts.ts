@@ -36,6 +36,10 @@ export const SHORTCUTS: Omit<ShortcutConfig, 'action'>[] = [
   { key: 'd', description: 'Reverse animation direction' },
 ];
 
+/**
+ *
+ * @param options
+ */
 export function useKeyboardShortcuts(
   options: UseKeyboardShortcutsOptions = {}
 ): void {
@@ -171,6 +175,10 @@ export function useKeyboardShortcuts(
   }, [enabled, handleKeyDown]);
 }
 
+/**
+ *
+ * @param shortcut
+ */
 export function getShortcutLabel(shortcut: Omit<ShortcutConfig, 'action'>): string {
   const parts: string[] = [];
   if (shortcut.ctrl) parts.push('Ctrl');

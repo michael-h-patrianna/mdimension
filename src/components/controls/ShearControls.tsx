@@ -14,71 +14,20 @@ import {
   DEFAULT_SHEAR,
 } from '@/stores/transformStore';
 import { useGeometryStore } from '@/stores/geometryStore';
-import { getRotationPlanes } from '@/lib/math';
+import { getShearPlaneGroups } from '@/utils/shearUtils';
 
 export interface ShearControlsProps {
   className?: string;
 }
 
-/**
- * Get shear plane groups for display
- */
-function getShearPlaneGroups(dimension: number) {
-  const planes = getRotationPlanes(dimension);
-  const groups: { title: string; planes: string[] }[] = [];
-
-  // 3D shears
-  const planes3D = planes
-    .filter(
-      (p) =>
-        !p.name.includes('W') &&
-        !p.name.includes('V') &&
-        !p.name.includes('U')
-    )
-    .map((p) => p.name);
-
-  if (planes3D.length > 0) {
-    groups.push({ title: '3D Shears', planes: planes3D });
-  }
-
-  // 4D shears (W-axis)
-  if (dimension >= 4) {
-    const planesW = planes
-      .filter(
-        (p) =>
-          p.name.includes('W') &&
-          !p.name.includes('V') &&
-          !p.name.includes('U')
-      )
-      .map((p) => p.name);
-
-    if (planesW.length > 0) {
-      groups.push({ title: '4th Dimension (W)', planes: planesW });
-    }
-  }
-
-  // 5D shears (V-axis)
-  if (dimension >= 5) {
-    const planesV = planes
-      .filter((p) => p.name.includes('V') && !p.name.includes('U'))
-      .map((p) => p.name);
-
-    if (planesV.length > 0) {
-      groups.push({ title: '5th Dimension (V)', planes: planesV });
-    }
-  }
-
-  // 6D shears (U-axis)
-  if (dimension >= 6) {
-    const planesU = planes.filter((p) => p.name.includes('U')).map((p) => p.name);
-
-    if (planesU.length > 0) {
-      groups.push({ title: '6th Dimension (U)', planes: planesU });
-    }
-  }
-
-  return groups;
-}
+const STYLES = {
+  container: "space-y-4",
+  group: "space-y-2",
+  groupTitle: "block text-sm font-medium text-text-secondary",
+  slidersContainer: "space-y-1",
+  tooltipText: "text-xs text-text-secondary",
+  resetButton: "w-full"
+} as const;
 
 export const ShearControls: React.FC<ShearControlsProps> = ({
   className = '',
@@ -93,24 +42,24 @@ export const ShearControls: React.FC<ShearControlsProps> = ({
   const hasActiveShears = shears.size > 0;
 
   return (
-    <div className={`space-y-4 ${className}`}>
+    <div className={`${STYLES.container} ${className}`}>
       {/* Info tooltip */}
       <Tooltip
         content="Shear skews the object. Formula: x' = x + s*y where s is the shear amount."
         position="top"
       >
-        <p className="text-xs text-text-secondary">
+        <p className={STYLES.tooltipText}>
           Shear transforms skew the object along axis pairs
         </p>
       </Tooltip>
 
       {/* Shear plane groups */}
       {planeGroups.map((group) => (
-        <div key={group.title} className="space-y-2">
-          <label className="block text-sm font-medium text-text-secondary">
+        <div key={group.title} className={STYLES.group}>
+          <label className={STYLES.groupTitle}>
             {group.title}
           </label>
-          <div className="space-y-1">
+          <div className={STYLES.slidersContainer}>
             {group.planes.map((plane) => (
               <Slider
                 key={plane}
@@ -134,7 +83,7 @@ export const ShearControls: React.FC<ShearControlsProps> = ({
         size="sm"
         onClick={resetAllShears}
         disabled={!hasActiveShears}
-        className="w-full"
+        className={STYLES.resetButton}
       >
         Reset Shears
       </Button>

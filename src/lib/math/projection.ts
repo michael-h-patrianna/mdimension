@@ -33,13 +33,16 @@ export const MIN_SAFE_DISTANCE = 0.01;
  *
  * @param vertex - N-dimensional vertex (n ≥ 3)
  * @param projectionDistance - Distance from projection plane (default: 4.0)
+ * @param out - Optional output vector to avoid allocation
+ * @param normalizationFactor - Optional pre-calculated Math.sqrt(n-3) for performance
  * @returns 3D projected point
  * @throws {Error} If vertex has less than 3 dimensions
  */
 export function projectPerspective(
   vertex: VectorND,
   projectionDistance: number = DEFAULT_PROJECTION_DISTANCE,
-  out?: Vector3D
+  out?: Vector3D,
+  normalizationFactor?: number
 ): Vector3D {
   if (vertex.length < 3) {
     throw new Error(`Cannot project ${vertex.length}D vertex to 3D: need at least 3 dimensions`);
@@ -75,7 +78,8 @@ export function projectPerspective(
 
   // Normalize: divide by sqrt of number of higher dimensions
   // This keeps the effective depth in a similar range regardless of dimension count
-  effectiveDepth = effectiveDepth / Math.sqrt(numHigherDims);
+  const norm = normalizationFactor ?? Math.sqrt(numHigherDims);
+  effectiveDepth = effectiveDepth / norm;
 
   // Apply single perspective division
   const denominator = projectionDistance - effectiveDepth;
@@ -104,6 +108,7 @@ export function projectPerspective(
  * This is useful for debugging or when perspective distortion is not desired
  *
  * @param vertex - N-dimensional vertex (n ≥ 3)
+ * @param out
  * @returns 3D projected point (first three coordinates)
  * @throws {Error} If vertex has less than 3 dimensions
  */

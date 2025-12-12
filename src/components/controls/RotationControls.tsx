@@ -5,91 +5,28 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { useRotationStore } from '@/stores';
-import { getRotationPlanes, getAxisName } from '@/lib/math';
 import { RotationSlider } from './RotationSlider';
+import { groupPlanesByDimension, getAxisColor } from '@/utils/rotationUtils';
 
-interface PlaneGroup {
-  title: string;
-  planes: string[];
-  defaultExpanded: boolean;
-  color: string;
-}
-
-/**
- * Determines which axis group a plane belongs to based on its name
- */
-function getAxisColor(planeName: string): string {
-  // 3D planes (XY, XZ, YZ): blue
-  if (planeName.length === 2 && !planeName.includes('W') && !planeName.includes('V') && !planeName.includes('U')) {
-    return 'blue';
-  }
-  
-  // High dimensions - cycle through colors
-  if (planeName.includes('W')) return 'purple';
-  if (planeName.includes('V')) return 'orange';
-  if (planeName.includes('U')) return 'green';
-  
-  // For A6+ (7D+), cycle colors or use a default
-  // Just simple heuristic based on the last character or presence of 'A'
-  if (planeName.includes('A')) return 'pink';
-  
-  return 'blue';
-}
+const STYLES = {
+  container: "p-4 bg-panel-bg rounded-lg shadow-lg",
+  header: "flex items-center justify-between mb-4",
+  title: "text-xl font-bold text-text-primary",
+  resetButton: "px-3 py-1 bg-accent/20 hover:bg-accent/30 text-accent text-sm rounded border border-accent/50 transition-colors",
+  groupsContainer: "space-y-3",
+  group: "bg-panel-border rounded-lg overflow-hidden",
+  groupHeader: "w-full px-4 py-2 flex items-center justify-between bg-black/20 hover:bg-black/30 transition-colors",
+  groupTitle: "font-semibold text-text-primary",
+  groupIcon: "text-text-secondary",
+  groupContent: "px-4 py-2 space-y-1"
+} as const;
 
 /**
- * Groups rotation planes by dimension level
+ * Main component for controlling object rotations in N-dimensional space.
+ * 
+ * Groups rotation sliders by the dimension they affect (3D, 4D, etc.).
+ * Allows resetting individual rotations or all rotations at once.
  */
-function groupPlanesByDimension(dimension: number): PlaneGroup[] {
-  const planes = getRotationPlanes(dimension);
-  const groups: PlaneGroup[] = [];
-
-  // 1. Group 3D rotations (indices 0, 1, 2 only)
-  // These are planes where both indices are < 3.
-  const planes3D = planes
-    .filter((p) => Math.max(...p.indices) < 3)
-    .map((p) => p.name);
-
-  if (planes3D.length > 0) {
-    groups.push({
-      title: '3D Rotations',
-      planes: planes3D,
-      defaultExpanded: true,
-      color: 'blue',
-    });
-  }
-
-  // 2. Group higher dimensions (4D+)
-  // For each dimension d from 4 up to current dimension:
-  // The new axis is at index d-1.
-  // We collect planes where the highest index IS d-1.
-  for (let d = 4; d <= dimension; d++) {
-    const axisIndex = d - 1;
-    const axisName = getAxisName(axisIndex);
-    
-    const planesForDim = planes
-      .filter((p) => Math.max(...p.indices) === axisIndex)
-      .map((p) => p.name);
-
-    if (planesForDim.length > 0) {
-      // Determine color
-      let color = 'gray';
-      if (axisName === 'W') color = 'purple';
-      else if (axisName === 'V') color = 'orange';
-      else if (axisName === 'U') color = 'green';
-      else color = 'pink'; // 7D+
-
-      groups.push({
-        title: `${d}th Dimension (${axisName})`,
-        planes: planesForDim,
-        defaultExpanded: false,
-        color,
-      });
-    }
-  }
-
-  return groups;
-}
-
 export function RotationControls() {
   const dimension = useRotationStore((state) => state.dimension);
   const rotations = useRotationStore((state) => state.rotations);
@@ -101,16 +38,8 @@ export function RotationControls() {
 
   // Track which groups are expanded
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => {
-    // Re-calculating initial expanded based on current logic is tricky if we want persistence across re-renders
-    // but the previous code just did this once on mount.
-    // However, since planeGroups changes with dimension, we might want to update this?
-    // The previous code initialized state once.
-    // Let's stick to simple init for "3D Rotations" usually.
     return new Set(['3D Rotations']);
   });
-
-  // Effect to ensure new groups might be handled or keep 3D open. 
-  // Actually, standard behavior is fine. User opens what they want.
 
   const toggleGroup = useCallback((groupTitle: string) => {
     setExpandedGroups((prev) => {
@@ -139,39 +68,39 @@ export function RotationControls() {
   );
 
   return (
-    <div className="p-4 bg-gray-900 rounded-lg shadow-lg">
+    <div className={STYLES.container}>
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold text-white">Rotation Controls</h2>
+      <div className={STYLES.header}>
+        <h2 className={STYLES.title}>Rotation Controls</h2>
         <button
           onClick={resetAllRotations}
-          className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded transition-colors"
+          className={STYLES.resetButton}
         >
           Reset All
         </button>
       </div>
 
       {/* Rotation plane groups */}
-      <div className="space-y-3">
+      <div className={STYLES.groupsContainer}>
         {planeGroups.map((group) => {
           const isExpanded = expandedGroups.has(group.title);
 
           return (
-            <div key={group.title} className="bg-gray-800 rounded-lg overflow-hidden">
+            <div key={group.title} className={STYLES.group}>
               {/* Group header */}
               <button
                 onClick={() => toggleGroup(group.title)}
-                className="w-full px-4 py-2 flex items-center justify-between bg-gray-750 hover:bg-gray-700 transition-colors"
+                className={STYLES.groupHeader}
               >
-                <span className="font-semibold text-white">{group.title}</span>
-                <span className="text-gray-400">
+                <span className={STYLES.groupTitle}>{group.title}</span>
+                <span className={STYLES.groupIcon}>
                   {isExpanded ? '▼' : '▶'}
                 </span>
               </button>
 
               {/* Group content */}
               {isExpanded && (
-                <div className="px-4 py-2 space-y-1">
+                <div className={STYLES.groupContent}>
                   {group.planes.map((plane) => (
                     <RotationSlider
                       key={plane}

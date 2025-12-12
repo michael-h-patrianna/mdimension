@@ -5,7 +5,7 @@
 
 import { useMemo, useRef } from 'react';
 import { useRotationStore } from '@/stores';
-import { multiplyMatrixVector, composeRotations, createIdentityMatrix } from '@/lib/math';
+import { multiplyMatrixVector, composeRotations, createIdentityMatrix, parsePlaneName } from '@/lib/math';
 import type { VectorND } from '@/lib/math';
 
 /**
@@ -31,32 +31,18 @@ export function useRotatedVertices(vertices: VectorND[], targetDimension?: numbe
 
     // Filter rotations to only include valid planes for this dimension
     const validRotations = new Map<string, number>();
-    const AXIS_NAMES = ['X', 'Y', 'Z', 'W', 'V', 'U'];
-
-    const parseAxisIndex = (name: string): number => {
-      const idx = AXIS_NAMES.indexOf(name);
-      if (idx !== -1) return idx;
-      if (name.startsWith('A')) {
-        const num = parseInt(name.slice(1), 10);
-        if (!isNaN(num)) return num;
-      }
-      return -1;
-    };
 
     for (const [plane, angle] of rotations.entries()) {
-      // Parse plane name to get axis indices
-      const parts = plane.length === 2
-        ? [plane[0], plane[1]]
-        : plane.match(/[A-Z][0-9]*/g);
-
-      if (parts && parts.length === 2) {
-        const axis1 = parseAxisIndex(parts[0]!);
-        const axis2 = parseAxisIndex(parts[1]!);
-
+      try {
+        const [axis1, axis2] = parsePlaneName(plane);
+        
         // Only include if both axes are within the target dimension
         if (axis1 >= 0 && axis1 < dimension && axis2 >= 0 && axis2 < dimension) {
           validRotations.set(plane, angle);
         }
+      } catch (e) {
+        // Ignore invalid plane names
+        console.warn(`Ignoring invalid rotation plane: ${plane}`);
       }
     }
 

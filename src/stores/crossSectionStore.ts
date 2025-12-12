@@ -46,6 +46,7 @@ interface CrossSectionState {
 
 /**
  * Clamps slice W to valid range
+ * @param w
  */
 function clampSliceW(w: number): number {
   return Math.max(MIN_SLICE_W, Math.min(MAX_SLICE_W, w));

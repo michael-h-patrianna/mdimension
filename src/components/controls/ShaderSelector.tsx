@@ -23,8 +23,10 @@
 
 import React from 'react';
 import { useVisualStore } from '@/stores/visualStore';
+import { useGeometryStore } from '@/stores/geometryStore';
 import type { ShaderType } from '@/lib/shaders/types';
 import { SHADER_DISPLAY_NAMES, SHADER_DESCRIPTIONS } from '@/lib/shaders/types';
+import { isPolytopeType } from '@/lib/geometry';
 
 /**
  * Color indicators for each shader type, used for visual identification
@@ -84,6 +86,11 @@ export interface ShaderSelectorProps {
 export const ShaderSelector: React.FC<ShaderSelectorProps> = ({ className = '' }) => {
   const shaderType = useVisualStore((state) => state.shaderType);
   const setShaderType = useVisualStore((state) => state.setShaderType);
+  const objectType = useGeometryStore((state) => state.objectType);
+
+  // Surface shader requires faces, which only polytopes and root-system have
+  const supportsFaces = isPolytopeType(objectType) || objectType === 'root-system';
+  const showSurfaceWarning = shaderType === 'surface' && !supportsFaces;
 
   return (
     <div className={`space-y-2 ${className}`}>
@@ -116,6 +123,11 @@ export const ShaderSelector: React.FC<ShaderSelectorProps> = ({ className = '' }
           </button>
         ))}
       </div>
+      {showSurfaceWarning && (
+        <p className="text-xs text-warning mt-2" data-testid="surface-shader-warning">
+          Surface shader has no effect on {objectType}. It works with polytopes and root systems.
+        </p>
+      )}
     </div>
   );
 };

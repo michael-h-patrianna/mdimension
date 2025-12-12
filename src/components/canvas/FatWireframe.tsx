@@ -29,6 +29,15 @@ export interface FatWireframeProps {
   thickness?: number;
 }
 
+/**
+ *
+ * @param root0
+ * @param root0.vertices
+ * @param root0.edges
+ * @param root0.color
+ * @param root0.opacity
+ * @param root0.thickness
+ */
 export function FatWireframe({
   vertices,
   edges,

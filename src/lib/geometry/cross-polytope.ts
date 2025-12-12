@@ -11,30 +11,31 @@ import type { PolytopeGeometry } from './types';
  * Generates a cross-polytope in n-dimensional space
  *
  * A cross-polytope has:
- * - Vertices: 2n (±1 along each axis)
+ * - Vertices: 2n (±scale along each axis)
  * - Edges: 2n(n-1) (connect vertices NOT on the same axis)
  *
  * @param dimension - Dimensionality of the cross-polytope (must be >= 3)
+ * @param scale - Scale factor for vertex coordinates (default: 1.0)
  * @returns PolytopeGeometry representing the cross-polytope
  * @throws {Error} If dimension is less than 3
  */
-export function generateCrossPolytope(dimension: number): PolytopeGeometry {
+export function generateCrossPolytope(dimension: number, scale = 1.0): PolytopeGeometry {
   if (dimension < 3) {
     throw new Error('Cross-polytope dimension must be at least 3');
   }
 
   const vertices: VectorND[] = [];
 
-  // Generate 2n vertices: ±1 along each axis
+  // Generate 2n vertices: ±scale along each axis
   for (let axis = 0; axis < dimension; axis++) {
     // Positive vertex
     const posVertex = createVector(dimension, 0);
-    posVertex[axis] = 1;
+    posVertex[axis] = scale;
     vertices.push(posVertex);
 
     // Negative vertex
     const negVertex = createVector(dimension, 0);
-    negVertex[axis] = -1;
+    negVertex[axis] = -scale;
     vertices.push(negVertex);
   }
 

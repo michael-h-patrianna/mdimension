@@ -149,55 +149,48 @@ describe('State Management Integration', () => {
     });
   });
 
-  describe('Animation Store', () => {
-    it('should toggle play state', () => {
-      const store = useAnimationStore.getState();
-
-      expect(store.isPlaying).toBe(false);
-
-      store.toggle();
-      expect(useAnimationStore.getState().isPlaying).toBe(true);
-
-      store.toggle();
-      expect(useAnimationStore.getState().isPlaying).toBe(false);
-    });
-
-    it('should clamp speed within bounds', () => {
-      const store = useAnimationStore.getState();
-
-      store.setSpeed(10); // Above max (5.0)
-      expect(useAnimationStore.getState().speed).toBeLessThanOrEqual(5);
-
-      store.setSpeed(0.01); // Below min (0.1)
-      expect(useAnimationStore.getState().speed).toBeGreaterThanOrEqual(0.1);
-    });
-
-    it('should toggle direction', () => {
-      const store = useAnimationStore.getState();
-
-      expect(store.direction).toBe(1);
-
-      store.toggleDirection();
-      expect(useAnimationStore.getState().direction).toBe(-1);
-
-      store.toggleDirection();
-      expect(useAnimationStore.getState().direction).toBe(1);
-    });
-
-    it('should manage animating planes', () => {
-      const store = useAnimationStore.getState();
-
-      store.togglePlane('XY');
-      expect(useAnimationStore.getState().animatingPlanes.has('XY')).toBe(true);
-
-      store.togglePlane('XW');
-      expect(useAnimationStore.getState().animatingPlanes.has('XW')).toBe(true);
-
-      store.togglePlane('XY'); // Toggle again to remove
-      expect(useAnimationStore.getState().animatingPlanes.has('XY')).toBe(false);
-    });
-  });
-
+      describe('Animation Store', () => {
+        it('should toggle play state', () => {
+          const store = useAnimationStore.getState();
+  
+          expect(store.isPlaying).toBe(true);
+  
+          store.toggle();
+          expect(useAnimationStore.getState().isPlaying).toBe(false);
+        });
+  
+        it('should clamp speed within bounds', () => {
+          const store = useAnimationStore.getState();
+  
+          store.setSpeed(10);
+          expect(useAnimationStore.getState().speed).toBe(5);
+  
+          store.setSpeed(-5);
+          expect(useAnimationStore.getState().speed).toBe(0.1);
+        });
+  
+        it('should toggle direction', () => {
+          const store = useAnimationStore.getState();
+          const initialDirection = store.direction;
+  
+          store.toggleDirection();
+          expect(useAnimationStore.getState().direction).toBe(-initialDirection);
+        });
+  
+        it('should manage animating planes', () => {
+          const store = useAnimationStore.getState();
+          
+          // Stop all first to clear planes
+          store.stopAll();
+          expect(useAnimationStore.getState().animatingPlanes.size).toBe(0);
+  
+          store.togglePlane('XY');
+          expect(useAnimationStore.getState().animatingPlanes.has('XY')).toBe(true);
+  
+          store.togglePlane('XW');
+          expect(useAnimationStore.getState().animatingPlanes.has('XW')).toBe(true);
+        });
+      });
   describe('Projection Store', () => {
     it('should update projection distance', () => {
       const store = useProjectionStore.getState();

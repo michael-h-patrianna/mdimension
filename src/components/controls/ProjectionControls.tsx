@@ -1,6 +1,7 @@
 import React from 'react';
 import { useProjectionStore } from '@/stores/projectionStore';
 import { ProjectionTypeToggle } from './ProjectionTypeToggle';
+import { Slider } from '@/components/ui/Slider';
 import { Tooltip } from '@/components/ui/Tooltip';
 
 export const ProjectionControls: React.FC = () => {
@@ -47,99 +48,42 @@ export const ProjectionControls: React.FC = () => {
 
       {/* Distance Slider (only for Perspective) */}
       {type === 'perspective' && (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Tooltip
-              content="Lower values create stronger perspective effects. Higher values reduce foreshortening."
-              position="top"
-            >
-              <label className="block text-sm font-medium text-text-primary cursor-help">
-                Projection Distance
-              </label>
-            </Tooltip>
-            <span className="text-sm text-accent font-mono">
-              {distance.toFixed(1)}
-            </span>
-          </div>
-          <input
-            type="range"
-            min="2.0"
-            max="10.0"
-            step="0.1"
+        <Tooltip
+          content="Lower values create stronger perspective effects. Higher values reduce foreshortening."
+          position="top"
+        >
+          <Slider
+            label="Projection Distance"
+            min={2.0}
+            max={10.0}
+            step={0.1}
             value={distance}
-            onChange={(e) => setDistance(parseFloat(e.target.value))}
-            className="w-full h-2 bg-panel-border rounded-lg appearance-none cursor-pointer
-              [&::-webkit-slider-thumb]:appearance-none
-              [&::-webkit-slider-thumb]:w-4
-              [&::-webkit-slider-thumb]:h-4
-              [&::-webkit-slider-thumb]:rounded-full
-              [&::-webkit-slider-thumb]:bg-accent
-              [&::-webkit-slider-thumb]:cursor-pointer
-              [&::-webkit-slider-thumb]:transition-all
-              [&::-webkit-slider-thumb]:hover:scale-110
-              [&::-moz-range-thumb]:w-4
-              [&::-moz-range-thumb]:h-4
-              [&::-moz-range-thumb]:rounded-full
-              [&::-moz-range-thumb]:bg-accent
-              [&::-moz-range-thumb]:cursor-pointer
-              [&::-moz-range-thumb]:border-0
-              [&::-moz-range-thumb]:transition-all
-              [&::-moz-range-thumb]:hover:scale-110"
-            aria-label="Projection distance"
+            onChange={setDistance}
+            onReset={() => setDistance(4.0)} // Default distance
+            minLabel="2.0 (Strong)"
+            maxLabel="10.0 (Weak)"
           />
-          <div className="flex justify-between text-xs text-text-secondary">
-            <span>2.0 (Strong)</span>
-            <span>10.0 (Weak)</span>
-          </div>
-        </div>
+        </Tooltip>
       )}
 
       {/* FOV Slider */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <Tooltip
-            content="Controls the Three.js camera field of view. Higher values create a wider angle view."
-            position="top"
-          >
-            <label className="block text-sm font-medium text-text-primary cursor-help">
-              Field of View
-            </label>
-          </Tooltip>
-          <span className="text-sm text-accent font-mono">
-            {fov}°
-          </span>
-        </div>
-        <input
-          type="range"
-          min="30"
-          max="120"
-          step="1"
+      <Tooltip
+        content="Controls the Three.js camera field of view. Higher values create a wider angle view."
+        position="top"
+      >
+        <Slider
+          label="Field of View"
+          min={30}
+          max={120}
+          step={1}
           value={fov}
-          onChange={(e) => setFov(parseInt(e.target.value, 10))}
-          className="w-full h-2 bg-panel-border rounded-lg appearance-none cursor-pointer
-            [&::-webkit-slider-thumb]:appearance-none
-            [&::-webkit-slider-thumb]:w-4
-            [&::-webkit-slider-thumb]:h-4
-            [&::-webkit-slider-thumb]:rounded-full
-            [&::-webkit-slider-thumb]:bg-accent
-            [&::-webkit-slider-thumb]:cursor-pointer
-            [&::-webkit-slider-thumb]:transition-all
-            [&::-webkit-slider-thumb]:hover:scale-110
-            [&::-moz-range-thumb]:w-4
-            [&::-moz-range-thumb]:h-4
-            [&::-moz-range-thumb]:rounded-full
-            [&::-moz-range-thumb]:bg-accent
-            [&::-moz-range-thumb]:cursor-pointer
-            [&::-moz-range-thumb]:border-0
-            [&::-moz-range-thumb]:transition-all
-            [&::-moz-range-thumb]:hover:scale-110"
-          aria-label="Field of view"
+          onChange={setFov}
+          onReset={() => setFov(60)} // Default FOV
+          unit="°"
+          minLabel="30° (Narrow)"
+          maxLabel="120° (Wide)"
         />
-        <div className="flex justify-between text-xs text-text-secondary">
-          <span>30° (Narrow)</span>
-          <span>120° (Wide)</span>
-        </div>
-      </div>
+      </Tooltip>
     </div>
   );
 };

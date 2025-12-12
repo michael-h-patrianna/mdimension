@@ -6,6 +6,7 @@
 import React from 'react';
 import { Slider } from '@/components/ui/Slider';
 import { Button } from '@/components/ui/Button';
+import { ToggleButton } from '@/components/ui/ToggleButton';
 import {
   useVisualStore,
   VISUAL_PRESETS,
@@ -78,6 +79,7 @@ export const VisualControls: React.FC<VisualControlsProps> = ({
             value={edgeColor}
             onChange={(e) => setEdgeColor(e.target.value)}
             className="w-10 h-10 rounded cursor-pointer border border-panel-border"
+            aria-label="Edge Color"
           />
           <span className="text-xs font-mono text-text-secondary">{edgeColor}</span>
         </div>
@@ -96,21 +98,13 @@ export const VisualControls: React.FC<VisualControlsProps> = ({
       />
 
       {/* Vertex Visibility */}
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => setVertexVisible(!vertexVisible)}
-          className={`
-            flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors
-            ${vertexVisible
-              ? 'bg-accent/20 text-accent border border-accent/50'
-              : 'bg-panel-border text-text-secondary border border-panel-border'
-            }
-          `}
-          aria-pressed={vertexVisible}
-        >
-          <span>Show Vertices</span>
-        </button>
-      </div>
+      <ToggleButton
+        pressed={vertexVisible}
+        onToggle={setVertexVisible}
+        ariaLabel="Show Vertices"
+      >
+        Show Vertices
+      </ToggleButton>
 
       {/* Vertex Color */}
       {vertexVisible && (
@@ -124,6 +118,7 @@ export const VisualControls: React.FC<VisualControlsProps> = ({
               value={vertexColor}
               onChange={(e) => setVertexColor(e.target.value)}
               className="w-10 h-10 rounded cursor-pointer border border-panel-border"
+              aria-label="Vertex Color"
             />
             <span className="text-xs font-mono text-text-secondary">{vertexColor}</span>
           </div>
@@ -155,27 +150,20 @@ export const VisualControls: React.FC<VisualControlsProps> = ({
             value={backgroundColor}
             onChange={(e) => setBackgroundColor(e.target.value)}
             className="w-10 h-10 rounded cursor-pointer border border-panel-border"
+            aria-label="Background Color"
           />
           <span className="text-xs font-mono text-text-secondary">{backgroundColor}</span>
         </div>
       </div>
 
       {/* Ground Plane Toggle */}
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => setShowGroundPlane(!showGroundPlane)}
-          className={`
-            flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors
-            ${showGroundPlane
-              ? 'bg-accent/20 text-accent border border-accent/50'
-              : 'bg-panel-border text-text-secondary border border-panel-border'
-            }
-          `}
-          aria-pressed={showGroundPlane}
-        >
-          <span>Show Ground Plane</span>
-        </button>
-      </div>
+      <ToggleButton
+        pressed={showGroundPlane}
+        onToggle={setShowGroundPlane}
+        ariaLabel="Show Ground Plane"
+      >
+        Show Ground Plane
+      </ToggleButton>
 
       {/* Reset */}
       <Button

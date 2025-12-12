@@ -30,6 +30,10 @@ export function exportCanvasToPNG(
 ): void {
   const opts = { ...DEFAULT_OPTIONS, ...options };
 
+  if (opts.scale !== 1 || opts.transparent) {
+    console.warn('Export options "scale" and "transparent" are not currently supported in this implementation.');
+  }
+
   // Get the data URL from canvas
   const dataUrl = canvas.toDataURL('image/png');
 

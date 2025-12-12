@@ -9,7 +9,10 @@ import {
   createScaleMatrix,
   createShearMatrix,
   createIdentityMatrix,
+  multiplyMatrices,
+  parsePlaneName,
 } from '@/lib/math';
+import { MAX_DIMENSION, MIN_DIMENSION } from './geometryStore';
 
 /** Minimum scale value */
 export const MIN_SCALE = 0.1;
@@ -86,6 +89,7 @@ interface TransformState {
 
 /**
  * Clamps a scale value to valid range
+ * @param value
  */
 function clampScale(value: number): number {
   return Math.max(MIN_SCALE, Math.min(MAX_SCALE, value));
@@ -93,6 +97,7 @@ function clampScale(value: number): number {
 
 /**
  * Clamps a shear value to valid range
+ * @param value
  */
 function clampShear(value: number): number {
   return Math.max(MIN_SHEAR, Math.min(MAX_SHEAR, value));
@@ -100,6 +105,7 @@ function clampShear(value: number): number {
 
 /**
  * Clamps a translation value to valid range
+ * @param value
  */
 function clampTranslation(value: number): number {
   return Math.max(MIN_TRANSLATION, Math.min(MAX_TRANSLATION, value));
@@ -107,6 +113,7 @@ function clampTranslation(value: number): number {
 
 /**
  * Creates default per-axis scale array for given dimension
+ * @param dimension
  */
 function createDefaultScales(dimension: number): number[] {
   return new Array(dimension).fill(DEFAULT_SCALE);
@@ -114,59 +121,10 @@ function createDefaultScales(dimension: number): number[] {
 
 /**
  * Creates default translation array for given dimension
+ * @param dimension
  */
 function createDefaultTranslation(dimension: number): number[] {
   return new Array(dimension).fill(DEFAULT_TRANSLATION);
-}
-
-/**
- * Axis naming for any dimension
- * X, Y, Z, W, V, U for first 6, then A6, A7, A8... for higher
- */
-const AXIS_NAMES = ['X', 'Y', 'Z', 'W', 'V', 'U'];
-
-/**
- * Parses a single axis name to its index
- */
-function parseAxisName(name: string): number {
-  const index = AXIS_NAMES.indexOf(name);
-  if (index !== -1) {
-    return index;
-  }
-  // Handle A6, A7, A8... format
-  if (name.startsWith('A')) {
-    const num = parseInt(name.slice(1), 10);
-    if (!isNaN(num) && num >= AXIS_NAMES.length) {
-      return num;
-    }
-  }
-  return -1;
-}
-
-/**
- * Parses a plane name like "XY" or "A6A7" to axis indices [0, 1]
- */
-function parsePlaneToAxes(plane: string): [number, number] {
-  // Try two-character format first (XY, XZ, etc.)
-  if (plane.length === 2) {
-    const axis1 = parseAxisName(plane[0]!);
-    const axis2 = parseAxisName(plane[1]!);
-    if (axis1 !== -1 && axis2 !== -1) {
-      return [axis1, axis2];
-    }
-  }
-
-  // Try split by capital letter for formats like "A6A7"
-  const parts = plane.match(/[A-Z][0-9]*/g);
-  if (parts && parts.length === 2) {
-    const axis1 = parseAxisName(parts[0]!);
-    const axis2 = parseAxisName(parts[1]!);
-    if (axis1 !== -1 && axis2 !== -1) {
-      return [axis1, axis2];
-    }
-  }
-
-  throw new Error(`Invalid plane name: ${plane}`);
 }
 
 export const useTransformStore = create<TransformState>((set, get) => ({
@@ -285,22 +243,10 @@ export const useTransformStore = create<TransformState>((set, get) => ({
     let result = createIdentityMatrix(state.dimension);
     for (const [plane, amount] of shearEntries) {
       try {
-        const [axis1, axis2] = parsePlaneToAxes(plane);
+        const [axis1, axis2] = parsePlaneName(plane);
         if (axis1 < state.dimension && axis2 < state.dimension) {
           const shearMatrix = createShearMatrix(state.dimension, axis1, axis2, amount);
-          // Simple composition - multiply matrices
-          const newResult: MatrixND = [];
-          for (let i = 0; i < state.dimension; i++) {
-            newResult[i] = [];
-            for (let j = 0; j < state.dimension; j++) {
-              let sum = 0;
-              for (let k = 0; k < state.dimension; k++) {
-                sum += result[i]![k]! * shearMatrix[k]![j]!;
-              }
-              newResult[i]![j] = sum;
-            }
-          }
-          result = newResult;
+          result = multiplyMatrices(result, shearMatrix);
         }
       } catch {
         // Skip invalid planes
@@ -342,7 +288,7 @@ export const useTransformStore = create<TransformState>((set, get) => ({
 
   // General actions
   setDimension: (dimension: number) => {
-    if (dimension < 3 || dimension > 6) {
+    if (dimension < MIN_DIMENSION || dimension > MAX_DIMENSION) {
       return;
     }
 
@@ -362,7 +308,7 @@ export const useTransformStore = create<TransformState>((set, get) => ({
       const newShears = new Map<string, number>();
       for (const [plane, amount] of state.shears.entries()) {
         try {
-          const [axis1, axis2] = parsePlaneToAxes(plane);
+          const [axis1, axis2] = parsePlaneName(plane);
           if (axis1 < dimension && axis2 < dimension) {
             newShears.set(plane, amount);
           }

@@ -104,6 +104,7 @@ export const SHADER_DESCRIPTIONS: Record<ShaderType, string> = {
 
 /**
  * Type guard to check if settings match a specific shader type
+ * @param settings
  */
 export function isWireframeSettings(
   settings: ShaderSettings
@@ -111,12 +112,20 @@ export function isWireframeSettings(
   return 'lineThickness' in settings;
 }
 
+/**
+ *
+ * @param settings
+ */
 export function isDualOutlineSettings(
   settings: ShaderSettings
 ): settings is DualOutlineSettings {
   return 'innerColor' in settings && 'outerColor' in settings && 'gap' in settings;
 }
 
+/**
+ *
+ * @param settings
+ */
 export function isSurfaceSettings(
   settings: ShaderSettings
 ): settings is SurfaceSettings {
@@ -125,6 +134,7 @@ export function isSurfaceSettings(
 
 /**
  * Get default settings for a specific shader type
+ * @param shaderType
  */
 export function getDefaultSettingsForShader(shaderType: ShaderType): ShaderSettings {
   return DEFAULT_SHADER_SETTINGS[shaderType];

@@ -78,17 +78,23 @@ describe('geometry library API', () => {
   });
 
   describe('getAvailableTypes', () => {
-    it('should return all three polytope types', () => {
+    it('should return all object types (polytopes and extended)', () => {
       const types = getAvailableTypes();
-      expect(types).toHaveLength(3);
+      expect(types).toHaveLength(7);
 
       const typeNames = types.map(t => t.type);
+      // Polytopes
       expect(typeNames).toContain('hypercube');
       expect(typeNames).toContain('simplex');
       expect(typeNames).toContain('cross-polytope');
+      // Extended objects
+      expect(typeNames).toContain('hypersphere');
+      expect(typeNames).toContain('root-system');
+      expect(typeNames).toContain('clifford-torus');
+      expect(typeNames).toContain('mandelbrot');
     });
 
-    it('should include name and description for each type', () => {
+    it('should include name, description, and availability for each type', () => {
       const types = getAvailableTypes();
 
       types.forEach(type => {
@@ -97,7 +103,39 @@ describe('geometry library API', () => {
         expect(type.description).toBeDefined();
         expect(typeof type.name).toBe('string');
         expect(typeof type.description).toBe('string');
+        expect(typeof type.available).toBe('boolean');
       });
+    });
+
+    it('should mark Clifford torus as unavailable for dimension 3', () => {
+      const types = getAvailableTypes(3);
+      const cliffordTorus = types.find(t => t.type === 'clifford-torus');
+      expect(cliffordTorus?.available).toBe(false);
+      expect(cliffordTorus?.disabledReason).toContain('4');
+    });
+
+    it('should mark all types as available for dimension 4', () => {
+      const types = getAvailableTypes(4);
+      types.forEach(type => {
+        expect(type.available).toBe(true);
+      });
+    });
+
+    it('should mark mandelbrot as available for dimensions 3-11', () => {
+      // Available for 3-11
+      for (const dim of [3, 4, 5, 6, 7, 8, 9, 10, 11]) {
+        const types = getAvailableTypes(dim);
+        const mandelbrot = types.find(t => t.type === 'mandelbrot');
+        expect(mandelbrot?.available).toBe(true);
+      }
+    });
+
+    it('should mark mandelbrot as unavailable for dimension > 11', () => {
+      // Currently app only supports up to dimension 6, but test the constraint
+      const types = getAvailableTypes(12);
+      const mandelbrot = types.find(t => t.type === 'mandelbrot');
+      expect(mandelbrot?.available).toBe(false);
+      expect(mandelbrot?.disabledReason).toContain('11');
     });
   });
 

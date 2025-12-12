@@ -62,6 +62,8 @@ export const ScaleControls: React.FC<ScaleControlsProps> = ({
             onChange={setUniformScale}
             onReset={() => setUniformScale(DEFAULT_SCALE)}
             showValue
+            disabled={!scaleLocked}
+            className={!scaleLocked ? 'opacity-50' : ''}
           />
         </Tooltip>
       </div>

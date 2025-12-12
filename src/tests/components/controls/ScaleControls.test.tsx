@@ -3,15 +3,17 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { ScaleControls } from '@/components/controls/ScaleControls';
 import { useTransformStore } from '@/stores/transformStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 
 describe('ScaleControls', () => {
   beforeEach(() => {
-    useTransformStore.getState().resetAll();
-    useGeometryStore.getState().reset();
+    act(() => {
+      useTransformStore.getState().resetAll();
+      useGeometryStore.getState().reset();
+    });
   });
 
   it('should render uniform scale slider', () => {
@@ -41,7 +43,9 @@ describe('ScaleControls', () => {
 
   it('should show correct number of axis sliders for dimension', () => {
     // Test with 3D
-    useGeometryStore.getState().setDimension(3);
+    act(() => {
+      useGeometryStore.getState().setDimension(3);
+    });
     const { rerender } = render(<ScaleControls />);
 
     // 3D should have X, Y, Z (but not W)
@@ -51,7 +55,9 @@ describe('ScaleControls', () => {
     expect(screen.queryByText('W')).not.toBeInTheDocument();
 
     // Test with 5D
-    useGeometryStore.getState().setDimension(5);
+    act(() => {
+      useGeometryStore.getState().setDimension(5);
+    });
     rerender(<ScaleControls />);
 
     expect(screen.getByText('V')).toBeInTheDocument();
@@ -91,6 +97,22 @@ describe('ScaleControls', () => {
     perAxisSliders.forEach((slider) => {
       expect(slider).not.toBeDisabled();
     });
+  });
+
+  it('should disable uniform scale slider when unlocked', () => {
+    useTransformStore.getState().setScaleLocked(false);
+    render(<ScaleControls />);
+
+    const uniformSlider = screen.getAllByRole('slider')[0]!;
+    expect(uniformSlider).toBeDisabled();
+  });
+
+  it('should enable uniform scale slider when locked', () => {
+    useTransformStore.getState().setScaleLocked(true);
+    render(<ScaleControls />);
+
+    const uniformSlider = screen.getAllByRole('slider')[0]!;
+    expect(uniformSlider).not.toBeDisabled();
   });
 
   it('should update uniform scale when slider changes', () => {

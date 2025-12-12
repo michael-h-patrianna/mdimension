@@ -4,6 +4,7 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from '@typescript-eslint/eslint-plugin'
 import tsparser from '@typescript-eslint/parser'
+import jsdoc from 'eslint-plugin-jsdoc'
 
 export default [
   {
@@ -23,6 +24,7 @@ export default [
       '@typescript-eslint': tseslint,
       'react-hooks': reactHooks,
       'react-refresh': reactRefresh,
+      'jsdoc': jsdoc,
     },
     rules: {
       ...js.configs.recommended.rules,
@@ -42,6 +44,22 @@ export default [
           varsIgnorePattern: '^_',
         },
       ],
+      // JSDoc Rules
+      'jsdoc/require-jsdoc': [
+        'warn',
+        {
+          publicOnly: true,
+          require: {
+            FunctionDeclaration: true,
+            ClassDeclaration: true,
+            ArrowFunctionExpression: false,
+            FunctionExpression: false,
+          },
+        },
+      ],
+      'jsdoc/require-param': 'warn',
+      'jsdoc/require-returns': 'warn',
+      'jsdoc/require-example': 'off',
     },
   },
 ]

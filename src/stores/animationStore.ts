@@ -4,6 +4,7 @@
  */
 
 import { create } from 'zustand';
+import { getRotationPlanes } from '@/lib/math/rotation';
 
 /** Minimum animation speed multiplier */
 export const MIN_SPEED = 0.1;
@@ -53,37 +54,18 @@ interface AnimationState {
 
 /**
  * Clamps speed to valid range
+ * @param speed
  */
 function clampSpeed(speed: number): number {
   return Math.max(MIN_SPEED, Math.min(MAX_SPEED, speed));
 }
 
 /**
- * Axis naming for any dimension
- * X, Y, Z, W, V, U for first 6, then A6, A7, A8... for higher
+ * Gets all rotation plane names for a given dimension
+ * @param dimension
  */
-const AXIS_NAMES = ['X', 'Y', 'Z', 'W', 'V', 'U'];
-
-function getAxisName(index: number): string {
-  if (index < AXIS_NAMES.length) {
-    return AXIS_NAMES[index]!;
-  }
-  return `A${index}`;
-}
-
-/**
- * Gets all rotation planes for a given dimension
- */
-function getAllPlanes(dimension: number): string[] {
-  const planes: string[] = [];
-
-  for (let i = 0; i < dimension; i++) {
-    for (let j = i + 1; j < dimension; j++) {
-      planes.push(getAxisName(i) + getAxisName(j));
-    }
-  }
-
-  return planes;
+function getAllPlaneNames(dimension: number): string[] {
+  return getRotationPlanes(dimension).map(p => p.name);
 }
 
 export const useAnimationStore = create<AnimationState>((set, get) => ({
@@ -138,7 +120,7 @@ export const useAnimationStore = create<AnimationState>((set, get) => ({
   },
 
   animateAll: (dimension: number) => {
-    const planes = getAllPlanes(dimension);
+    const planes = getAllPlaneNames(dimension);
     set({ animatingPlanes: new Set(planes), isPlaying: true });
   },
 
@@ -162,7 +144,7 @@ export const useAnimationStore = create<AnimationState>((set, get) => ({
   setDimension: (dimension: number) => {
     set((state) => {
       // Filter animating planes to only include valid planes for new dimension
-      const validPlanes = new Set(getAllPlanes(dimension));
+      const validPlanes = new Set(getAllPlaneNames(dimension));
       const newAnimatingPlanes = new Set<string>();
 
       for (const plane of state.animatingPlanes) {

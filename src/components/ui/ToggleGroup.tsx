@@ -1,32 +1,33 @@
-import React from 'react';
-
-export interface ToggleOption {
-  value: string;
+export interface ToggleOption<T extends string = string> {
+  value: T;
   label: string;
 }
 
-export interface ToggleGroupProps {
-  options: ToggleOption[];
-  value: string;
-  onChange: (value: string) => void;
+export interface ToggleGroupProps<T extends string = string> {
+  options: ToggleOption<T>[];
+  value: T;
+  onChange: (value: T) => void;
   className?: string;
   disabled?: boolean;
   ariaLabel?: string;
+  'data-testid'?: string;
 }
 
-export const ToggleGroup: React.FC<ToggleGroupProps> = ({
+export const ToggleGroup = <T extends string = string>({
   options,
   value,
   onChange,
   className = '',
   disabled = false,
   ariaLabel,
-}) => {
+  'data-testid': testId,
+}: ToggleGroupProps<T>) => {
   return (
     <div
       className={`flex p-1 bg-black/20 rounded-lg  ${className}`}
       role="radiogroup"
       aria-label={ariaLabel}
+      data-testid={testId}
     >
       {options.map((option) => {
         const isSelected = option.value === value;
@@ -42,6 +43,7 @@ export const ToggleGroup: React.FC<ToggleGroupProps> = ({
             `}
             role="radio"
             aria-checked={isSelected}
+            data-testid={testId ? `${testId}-${option.value}` : undefined}
           >
             {isSelected && (
               <div className="absolute inset-0 bg-white/5 rounded-md border border-white/5 shadow-inner" />
