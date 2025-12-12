@@ -77,6 +77,11 @@ node scripts/cleanup-vitest.mjs  # Clean up lingering workers
 
 
 ## MANDATORY DOCUMENT READS
+- Project architecture and folder structure: `docs/architecture.md`
+- Development environment: `docs/testing.md`
+- Testing setup: `docs/testing.md`
+- Frontend setup: `docs/frontend.md`
 - Coding agents must follow `docs/meta/styleguide.md` - No exceptions!
 - Understanding math used for object creation, transformation and projection: `docs/research/nd-dimensional-react-threejs-guide.md`
 - PRD: `docs/prd/ndimensional-visualizer.md`
+- Rendering pipeline PRD: `docs/prd/enhanced-visuals-rendering-pipeline.md`

@@ -23,6 +23,7 @@ export const Section: React.FC<SectionProps> = ({
   useEffect(() => {
     if (isOpen) {
       setShouldRender(true);
+      return;
     } else {
       const timer = setTimeout(() => {
         setShouldRender(false);
@@ -49,12 +50,14 @@ export const Section: React.FC<SectionProps> = ({
       // Closing animation
       // First set to actual height
       setHeight(contentRef.current.scrollHeight);
-      
+
       // Then trigger collapse in next frame
       requestAnimationFrame(() => {
         setHeight(0);
       });
+      return;
     }
+    return;
   }, [isOpen, shouldRender]);
 
   const toggleOpen = () => {

@@ -10,11 +10,15 @@
 // Type exports
 export type { PolytopeType, PolytopeGeometry, PolytopeProperties } from './types';
 export type { CrossSectionResult } from './cross-section';
+export type { Face } from './faces';
 
 // Generator exports
 export { generateHypercube } from './hypercube';
 export { generateSimplex } from './simplex';
 export { generateCrossPolytope } from './cross-polytope';
+
+// Face detection exports
+export { detectFaces } from './faces';
 
 // Cross-section exports
 export {

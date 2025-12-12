@@ -101,7 +101,6 @@ export function RotationControls() {
 
   // Track which groups are expanded
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => {
-    const initialExpanded = new Set<string>();
     // Re-calculating initial expanded based on current logic is tricky if we want persistence across re-renders
     // but the previous code just did this once on mount.
     // However, since planeGroups changes with dimension, we might want to update this?

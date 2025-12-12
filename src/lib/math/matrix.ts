@@ -93,7 +93,7 @@ export function multiplyMatrices(a: MatrixND, b: MatrixND): MatrixND {
  * @returns Result vector (n)
  * @throws {Error} If dimensions are incompatible
  */
-export function multiplyMatrixVector(m: MatrixND, v: VectorND): VectorND {
+export function multiplyMatrixVector(m: MatrixND, v: VectorND, out?: VectorND): VectorND {
   if (m.length === 0) {
     throw new Error('Cannot multiply with empty matrix');
   }
@@ -105,7 +105,14 @@ export function multiplyMatrixVector(m: MatrixND, v: VectorND): VectorND {
     throw new Error(`Matrix-vector dimensions incompatible: ${rows}×${cols} and ${v.length}`);
   }
 
-  const result: VectorND = new Array(rows);
+  const result: VectorND = out ?? new Array(rows);
+
+  // If reusing array, ensure it has correct length if needed (though caller should manage this for perf)
+  if (out && out.length !== rows) {
+    // We don't resize strictly to avoid allocation, but we assume it's big enough or we write up to rows.
+    // For safety in JS arrays:
+    // result.length = rows; 
+  }
 
   for (let i = 0; i < rows; i++) {
     let sum = 0;

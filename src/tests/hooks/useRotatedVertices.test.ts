@@ -345,11 +345,12 @@ describe('useRotatedVertices', () => {
     });
 
     it('should recompute when rotation changes', () => {
-      const vertices: VectorND[] = [[1, 0, 0]];
+      const vertices: VectorND = [[1, 0, 0]];
 
       const { result, rerender } = renderHook(() => useRotatedVertices(vertices));
 
-      const firstResult = result.current;
+      // Clone for comparison
+      const firstResult = result.current.map(v => [...v]);
 
       useRotationStore.getState().setRotation('XY', Math.PI / 4);
       rerender();
@@ -369,7 +370,8 @@ describe('useRotatedVertices', () => {
       let currentVertices = vertices1;
       const { result, rerender } = renderHook(() => useRotatedVertices(currentVertices));
 
-      const firstResult = result.current;
+      // Clone for comparison
+      const firstResult = result.current.map(v => [...v]);
 
       currentVertices = vertices2;
       rerender();

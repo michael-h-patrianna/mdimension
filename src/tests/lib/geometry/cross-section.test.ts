@@ -8,7 +8,8 @@ import {
   projectCrossSectionTo3D,
   getWRange,
 } from '@/lib/geometry/cross-section';
-import { generateHypercube } from '@/lib/geometry/hypercube';
+import { generateHypercube, generateHypercubeFaces } from '@/lib/geometry/hypercube';
+import type { Face } from '@/lib/geometry/faces';
 
 describe('cross-section', () => {
   describe('computeCrossSection', () => {
@@ -64,7 +65,11 @@ describe('cross-section', () => {
 
     it('should produce edges connecting related points', () => {
       const tesseract = generateHypercube(4);
-      const result = computeCrossSection(tesseract, 0);
+      // We need faces to generate correct edges now
+      const faceIndices = generateHypercubeFaces(4);
+      const faces: Face[] = faceIndices.map(indices => ({ vertices: indices }));
+      
+      const result = computeCrossSection(tesseract, 0, faces);
 
       if (result.hasIntersection) {
         // All edge indices should be valid
@@ -75,6 +80,18 @@ describe('cross-section', () => {
           expect(j).toBeLessThan(result.points.length);
         }
       }
+    });
+    
+    it('should form a correct 3D Cube (12 edges) when slicing a Tesseract', () => {
+      const tesseract = generateHypercube(4);
+      const faceIndices = generateHypercubeFaces(4);
+      const faces: Face[] = faceIndices.map(indices => ({ vertices: indices }));
+      
+      const result = computeCrossSection(tesseract, 0, faces);
+      
+      expect(result.hasIntersection).toBe(true);
+      expect(result.points.length).toBe(8);
+      expect(result.edges.length).toBe(12);
     });
 
     it('should handle negative W values', () => {

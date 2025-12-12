@@ -87,10 +87,10 @@ function getAllPlanes(dimension: number): string[] {
 }
 
 export const useAnimationStore = create<AnimationState>((set, get) => ({
-  isPlaying: false,
+  isPlaying: true,
   speed: DEFAULT_SPEED,
   direction: 1,
-  animatingPlanes: new Set(),
+  animatingPlanes: new Set(['XY', 'YZ', 'ZW']),
   isoclinicMode: false,
 
   play: () => {
@@ -177,10 +177,10 @@ export const useAnimationStore = create<AnimationState>((set, get) => ({
 
   reset: () => {
     set({
-      isPlaying: false,
-      speed: DEFAULT_SPEED,
+      isPlaying: true,
+      speed: 1,
       direction: 1,
-      animatingPlanes: new Set(),
+      animatingPlanes: new Set(['XY', 'YZ', 'ZW']),
       isoclinicMode: false,
     });
   },

@@ -17,8 +17,8 @@ describe('animationStore', () => {
   });
 
   describe('Initial State', () => {
-    it('should not be playing by default', () => {
-      expect(useAnimationStore.getState().isPlaying).toBe(false);
+    it('should be playing by default', () => {
+      expect(useAnimationStore.getState().isPlaying).toBe(true);
     });
 
     it('should have default speed of 1.0', () => {
@@ -29,8 +29,12 @@ describe('animationStore', () => {
       expect(useAnimationStore.getState().direction).toBe(1);
     });
 
-    it('should have no animating planes', () => {
-      expect(useAnimationStore.getState().animatingPlanes.size).toBe(0);
+    it('should have default animating planes', () => {
+      const planes = useAnimationStore.getState().animatingPlanes;
+      expect(planes.size).toBe(3);
+      expect(planes.has('XY')).toBe(true);
+      expect(planes.has('YZ')).toBe(true);
+      expect(planes.has('ZW')).toBe(true);
     });
 
     it('should have isoclinic mode disabled', () => {
@@ -52,9 +56,9 @@ describe('animationStore', () => {
 
     it('should toggle isPlaying', () => {
       useAnimationStore.getState().toggle();
-      expect(useAnimationStore.getState().isPlaying).toBe(true);
-      useAnimationStore.getState().toggle();
       expect(useAnimationStore.getState().isPlaying).toBe(false);
+      useAnimationStore.getState().toggle();
+      expect(useAnimationStore.getState().isPlaying).toBe(true);
     });
   });
 
@@ -90,12 +94,11 @@ describe('animationStore', () => {
 
   describe('togglePlane', () => {
     it('should add plane to animating set', () => {
-      useAnimationStore.getState().togglePlane('XY');
-      expect(useAnimationStore.getState().animatingPlanes.has('XY')).toBe(true);
+      useAnimationStore.getState().togglePlane('XZ');
+      expect(useAnimationStore.getState().animatingPlanes.has('XZ')).toBe(true);
     });
 
     it('should remove plane from animating set', () => {
-      useAnimationStore.getState().togglePlane('XY');
       useAnimationStore.getState().togglePlane('XY');
       expect(useAnimationStore.getState().animatingPlanes.has('XY')).toBe(false);
     });
@@ -200,10 +203,16 @@ describe('animationStore', () => {
 
       useAnimationStore.getState().reset();
 
-      expect(useAnimationStore.getState().isPlaying).toBe(false);
+      expect(useAnimationStore.getState().isPlaying).toBe(true);
       expect(useAnimationStore.getState().speed).toBe(DEFAULT_SPEED);
       expect(useAnimationStore.getState().direction).toBe(1);
-      expect(useAnimationStore.getState().animatingPlanes.size).toBe(0);
+      
+      const planes = useAnimationStore.getState().animatingPlanes;
+      expect(planes.size).toBe(3);
+      expect(planes.has('XY')).toBe(true);
+      expect(planes.has('YZ')).toBe(true);
+      expect(planes.has('ZW')).toBe(true);
+      
       expect(useAnimationStore.getState().isoclinicMode).toBe(false);
     });
   });
@@ -230,6 +239,10 @@ describe('animationStore', () => {
     });
 
     it('should keep valid planes when dimension decreases', () => {
+      // Clear defaults first
+      useAnimationStore.getState().stopAll();
+      
+      // Add specific planes
       useAnimationStore.getState().togglePlane('XY');
       useAnimationStore.getState().togglePlane('XZ');
       useAnimationStore.getState().togglePlane('XW');

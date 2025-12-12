@@ -67,7 +67,8 @@ describe('useProjectedVertices', () => {
       // Distance = 4.0 (default)
       const { result, rerender } = renderHook(() => useProjectedVertices([vertex]));
 
-      const projected1 = result.current[0]!;
+      // Clone to avoid mutation affecting comparison
+      const projected1 = [...result.current[0]!];
       // scale = 1/(4 - 1) = 1/3
       expect(projected1[0]).toBeCloseTo(2 / 3, 5);
 
@@ -222,11 +223,12 @@ describe('useProjectedVertices', () => {
     });
 
     it('should recompute when projection type changes', () => {
-      const vertices: VectorND[] = [[1, 1, 1, 1]];
+      const vertices: VectorND = [[1, 1, 1, 1]];
 
       const { result, rerender } = renderHook(() => useProjectedVertices(vertices));
 
-      const perspectiveResult = result.current[0];
+      // Clone to avoid mutation
+      const perspectiveResult = [...result.current[0]!];
 
       useProjectionStore.getState().setType('orthographic');
       rerender();
@@ -237,11 +239,12 @@ describe('useProjectedVertices', () => {
     });
 
     it('should recompute when distance changes (perspective only)', () => {
-      const vertices: VectorND[] = [[2, 2, 2, 1]];
+      const vertices: VectorND = [[2, 2, 2, 1]];
 
       const { result, rerender } = renderHook(() => useProjectedVertices(vertices));
 
-      const result1 = result.current[0];
+      // Clone to avoid mutation
+      const result1 = [...result.current[0]!];
 
       useProjectionStore.getState().setDistance(8.0);
       rerender();

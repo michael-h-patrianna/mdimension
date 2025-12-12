@@ -90,11 +90,22 @@ export function CameraController({
   const { camera, gl } = useThree()
   const controlsRef = useRef<OrbitControlsImpl | null>(null)
 
-  // Initialize controls
+  // Initialize controls ONLY when camera or gl changes (rare)
   useEffect(() => {
     const controls = new OrbitControlsImpl(camera, gl.domElement)
+    controlsRef.current = controls
 
-    // Configure controls
+    return () => {
+      controls.dispose()
+      controlsRef.current = null
+    }
+  }, [camera, gl])
+
+  // Update control properties when props change (without recreating controls)
+  useEffect(() => {
+    const controls = controlsRef.current
+    if (!controls) return
+
     controls.enableDamping = enableDamping
     controls.dampingFactor = dampingFactor
     controls.minDistance = minDistance
@@ -104,15 +115,7 @@ export function CameraController({
     controls.enablePan = enablePan
     controls.enableZoom = enableZoom
     controls.rotateSpeed = rotateSpeed
-
-    controlsRef.current = controls
-
-    return () => {
-      controls.dispose()
-    }
   }, [
-    camera,
-    gl,
     enableDamping,
     dampingFactor,
     minDistance,
@@ -147,28 +150,3 @@ export function CameraController({
   return null
 }
 
-/**
- * Hook to access camera reset functionality.
- *
- * @returns Object with reset function
- *
- * @example
- * ```tsx
- * function ResetButton() {
- *   const { reset } = useCameraReset()
- *   return <button onClick={reset}>Reset Camera</button>
- * }
- * ```
- */
-export function useCameraReset() {
-  const { camera } = useThree()
-
-  const reset = () => {
-    // Reset camera to initial position
-    camera.position.set(0, 0, 5)
-    camera.lookAt(0, 0, 0)
-    camera.updateProjectionMatrix()
-  }
-
-  return { reset }
-}

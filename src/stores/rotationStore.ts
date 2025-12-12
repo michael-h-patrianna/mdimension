@@ -14,6 +14,7 @@ interface RotationState {
   // Actions
   setDimension: (dimension: number) => void;
   setRotation: (plane: string, angleRadians: number) => void;
+  updateRotations: (updates: Map<string, number>) => void;
   resetRotation: (plane: string) => void;
   resetAllRotations: () => void;
 
@@ -73,6 +74,26 @@ export const useRotationStore = create<RotationState>((set, get) => ({
       return {
         rotations: newRotations,
       };
+    });
+  },
+
+  updateRotations: (updates: Map<string, number>) => {
+    set((state) => {
+      const validPlanes = getRotationPlanes(state.dimension);
+      const validPlaneNames = new Set(validPlanes.map(p => p.name));
+      const newRotations = new Map(state.rotations);
+      let changed = false;
+
+      for (const [plane, angle] of updates.entries()) {
+        if (validPlaneNames.has(plane)) {
+          // Normalize angle
+          const normalizedAngle = ((angle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+          newRotations.set(plane, normalizedAngle);
+          changed = true;
+        }
+      }
+
+      return changed ? { rotations: newRotations } : {};
     });
   },
 

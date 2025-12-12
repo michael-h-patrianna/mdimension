@@ -37,10 +37,10 @@ describe('Scene', () => {
     expect(container).toBeTruthy()
   })
 
-  it('should render with grid enabled', () => {
+  it('should render with auto-rotation disabled (default)', () => {
     const { container } = render(
       <Canvas>
-        <Scene showGrid />
+        <Scene autoRotate={false} />
       </Canvas>
     )
     expect(container).toBeTruthy()
@@ -70,9 +70,7 @@ describe('Scene', () => {
         <Scene
           vertices={sampleVertices}
           edges={sampleEdges}
-          showGrid
           autoRotate
-          backgroundColor="#000000"
         />
       </Canvas>
     )

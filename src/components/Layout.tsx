@@ -16,6 +16,10 @@ import { TranslationControls } from './controls/TranslationControls';
 import { AnimationControls } from './controls/AnimationControls';
 import { CrossSectionControls } from './controls/CrossSectionControls';
 import { VisualControls } from './controls/VisualControls';
+import { ShaderSelector } from './controls/ShaderSelector';
+import { ShaderSettings } from './controls/ShaderSettings';
+import { BloomControls } from './controls/BloomControls';
+import { LightingControls } from './controls/LightingControls';
 import { EducationPanel } from './controls/EducationPanel';
 import { KeyboardShortcuts } from './KeyboardShortcuts';
 import { ExportButton } from './ExportButton';
@@ -92,7 +96,22 @@ export const Layout: React.FC<LayoutProps> = ({
         </Section>
 
         <Section title="Visual" defaultOpen={false}>
-          <VisualControls />
+          <div className="space-y-6">
+            {/* Shader Selection (PRD Story 1) */}
+            <ShaderSelector />
+
+            {/* Per-Shader Settings (PRD Story 7) */}
+            <ShaderSettings />
+
+            {/* Bloom Controls (PRD Story 3) */}
+            <BloomControls />
+
+            {/* Lighting Controls - only for Surface shader (PRD Story 4) */}
+            <LightingControls />
+
+            {/* Color & Visual Settings (PRD Story 5, 6) */}
+            <VisualControls />
+          </div>
         </Section>
 
         <Section title="Export" defaultOpen={true}>

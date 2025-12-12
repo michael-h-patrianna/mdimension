@@ -62,3 +62,58 @@ export function generateHypercube(dimension: number): PolytopeGeometry {
     type: 'hypercube',
   };
 }
+
+/**
+ * Generates faces for a hypercube analytically.
+ * 
+ * A hypercube face is formed by varying exactly 2 coordinates while keeping
+ * the others fixed. This is much faster and more robust than graph cycle detection.
+ * 
+ * @param dimension - Dimensionality of the hypercube
+ * @returns Array of faces (arrays of 4 vertex indices)
+ */
+export function generateHypercubeFaces(dimension: number): number[][] {
+  const faces: number[][] = [];
+  
+  // Iterate over all pairs of dimensions that define the face plane
+  for (let d1 = 0; d1 < dimension; d1++) {
+    for (let d2 = d1 + 1; d2 < dimension; d2++) {
+      // Iterate over all combinations of the other (fixed) dimensions
+      // There are 2^(dimension - 2) faces for each plane orientation
+      const fixedCount = 1 << (dimension - 2);
+      
+      for (let i = 0; i < fixedCount; i++) {
+        // Construct the base vertex index.
+        // We map the bits of 'i' to the dimensions that are NOT d1 or d2.
+        let baseIndex = 0;
+        let currentBit = 0;
+        
+        for (let bit = 0; bit < dimension; bit++) {
+          if (bit === d1 || bit === d2) continue;
+          
+          if ((i >> currentBit) & 1) {
+            baseIndex |= (1 << bit);
+          }
+          currentBit++;
+        }
+        
+        // The 4 vertices of the face are formed by varying bits d1 and d2.
+        // We use Gray code order (00, 10, 11, 01) to ensure correct winding.
+        // Note: the order 00 -> 01 -> 11 -> 10 is also valid.
+        // Let's use:
+        // v1: 00 (base)
+        // v2: 01 (add d1 bit - wait, 1 << d1)
+        // v3: 11 (add d1 and d2 bits)
+        // v4: 10 (add d2 bit)
+        
+        const v1 = baseIndex;
+        const v2 = baseIndex | (1 << d1);
+        const v3 = baseIndex | (1 << d1) | (1 << d2);
+        const v4 = baseIndex | (1 << d2);
+        
+        faces.push([v1, v2, v3, v4]);
+      }
+    }
+  }
+  return faces;
+}

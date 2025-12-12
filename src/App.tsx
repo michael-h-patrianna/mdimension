@@ -12,19 +12,24 @@ import { useRotationStore } from '@/stores/rotationStore';
 import { useTransformStore } from '@/stores/transformStore';
 import { useAnimationStore } from '@/stores/animationStore';
 import { useCrossSectionStore } from '@/stores/crossSectionStore';
+import { useVisualStore } from '@/stores/visualStore';
+import { useProjectionStore } from '@/stores/projectionStore';
 import { useRotatedVertices } from '@/hooks/useRotatedVertices';
 import { useProjectedVertices } from '@/hooks/useProjectedVertices';
+import { useTransformedVertices } from '@/hooks/useTransformedVertices';
 import { useAnimationLoop } from '@/hooks/useAnimationLoop';
 import { useCrossSectionAnimation } from '@/hooks/useCrossSectionAnimation';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
-import { generatePolytope, computeCrossSection } from '@/lib/geometry';
+import { generatePolytope, computeCrossSection, detectFaces } from '@/lib/geometry';
+import { projectPerspective, projectOrthographic } from '@/lib/math/projection';
 import {
   multiplyMatrixVector,
+  multiplyMatrices,
   createIdentityMatrix,
   createScaleMatrix,
   createShearMatrix,
 } from '@/lib/math';
-import type { Vector3D, VectorND, MatrixND } from '@/lib/math/types';
+import type { Vector3D } from '@/lib/math/types';
 
 /**
  * Main visualization component that handles the render pipeline
@@ -54,6 +59,10 @@ function Visualizer() {
   const sliceW = useCrossSectionStore((state) => state.sliceW);
   const showOriginal = useCrossSectionStore((state) => state.showOriginal);
   const originalOpacity = useCrossSectionStore((state) => state.originalOpacity);
+
+  // Get projection state for cross-section rendering
+  const projectionType = useProjectionStore((state) => state.type);
+  const projectionDistance = useProjectionStore((state) => state.distance);
 
   // Run animation loop
   useAnimationLoop();
@@ -116,44 +125,53 @@ function Visualizer() {
         const axis2 = parseAxisName(parts[1]!);
         if (axis1 >= 0 && axis1 < dimension && axis2 >= 0 && axis2 < dimension) {
           const shearMat = createShearMatrix(dimension, axis1, axis2, amount);
-          // Multiply matrices
-          const newResult: MatrixND = [];
-          for (let i = 0; i < dimension; i++) {
-            newResult[i] = [];
-            for (let j = 0; j < dimension; j++) {
-              let sum = 0;
-              for (let k = 0; k < dimension; k++) {
-                sum += result[i]![k]! * shearMat[k]![j]!;
-              }
-              newResult[i]![j] = sum;
-            }
-          }
-          result = newResult;
+          result = multiplyMatrices(result, shearMat);
         }
       }
     }
     return result;
   }, [dimension, shears]);
 
-  // Apply shear transformation
-  const shearedVertices = useMemo(() => {
-    return rotatedVertices.map((v) => multiplyMatrixVector(shearMatrix, v));
-  }, [rotatedVertices, shearMatrix]);
+  // Apply shear and translation transformations using optimized hook
+  // Ensure translation vector matches current dimension
+  const effectiveTranslation = useMemo(() => {
+    const t = new Array(dimension).fill(0);
+    for (let i = 0; i < dimension; i++) {
+      if (i < translation.length) {
+        t[i] = translation[i];
+      }
+    }
+    return t;
+  }, [dimension, translation]);
 
-  // Apply translation
-  const translatedVertices = useMemo(() => {
-    return shearedVertices.map((v) =>
-      v.map((val, i) => val + (translation[i] ?? 0))
-    ) as VectorND[];
-  }, [shearedVertices, translation]);
+  const transformedVertices = useTransformedVertices(
+    rotatedVertices,
+    shearMatrix,
+    effectiveTranslation
+  );
 
   // Project to 3D
-  const projectedVertices = useProjectedVertices(translatedVertices);
+  const projectedVertices = useProjectedVertices(transformedVertices);
 
   // Convert edges to the format expected by Scene
   const edges = useMemo(() => {
     return geometry.edges as [number, number][];
   }, [geometry.edges]);
+
+  // Detect faces for Surface shader rendering (PRD Story 2)
+  // Compute once when geometry changes, using original n-dimensional vertices
+  const faces = useMemo(() => {
+    try {
+      return detectFaces(
+        geometry.vertices,
+        geometry.edges,
+        objectType
+      );
+    } catch (e) {
+      console.warn('Face detection failed:', e);
+      return [];
+    }
+  }, [geometry, objectType]);
 
   // Compute cross-section if enabled and dimension >= 4
   const crossSectionResult = useMemo(() => {
@@ -162,20 +180,32 @@ function Visualizer() {
     }
     // Build geometry with transformed vertices for cross-section computation
     const transformedGeometry = {
-      vertices: translatedVertices,
+      vertices: transformedVertices,
       edges: geometry.edges,
       dimension,
+      type: objectType,
     };
-    return computeCrossSection(transformedGeometry, sliceW);
-  }, [crossSectionEnabled, dimension, translatedVertices, geometry.edges, sliceW]);
+    return computeCrossSection(transformedGeometry, sliceW, faces);
+  }, [crossSectionEnabled, dimension, transformedVertices, geometry.edges, sliceW, objectType, faces]);
 
-  // Project cross-section vertices to 3D (just take x, y, z)
+  // Project cross-section vertices to 3D using the same projection as the main object
   const crossSectionVertices = useMemo(() => {
     if (!crossSectionResult || !crossSectionResult.hasIntersection) {
       return undefined;
     }
-    return crossSectionResult.points.map((p) => [p[0] ?? 0, p[1] ?? 0, p[2] ?? 0] as Vector3D);
-  }, [crossSectionResult]);
+
+    // Reuse 3D vectors to avoid allocation if possible, but for now map new ones
+    // We must apply the same 4D->3D projection that the main object uses
+    return crossSectionResult.points.map((p) => {
+      const out: Vector3D = [0, 0, 0];
+      if (projectionType === 'perspective') {
+        projectPerspective(p, projectionDistance, out);
+      } else {
+        projectOrthographic(p, out);
+      }
+      return out;
+    });
+  }, [crossSectionResult, projectionType, projectionDistance]);
 
   const crossSectionEdges = useMemo(() => {
     if (!crossSectionResult || !crossSectionResult.hasIntersection) {
@@ -193,10 +223,10 @@ function Visualizer() {
     <Scene
       vertices={mainOpacity > 0 ? projectedVertices as Vector3D[] : undefined}
       edges={mainOpacity > 0 ? edges : undefined}
+      faces={mainOpacity > 0 ? faces : undefined}
       opacity={mainOpacity}
       crossSectionVertices={crossSectionVertices}
       crossSectionEdges={crossSectionEdges}
-      showGrid
     />
   );
 }
@@ -205,14 +235,17 @@ function App() {
   // Enable keyboard shortcuts
   useKeyboardShortcuts();
 
+  // Get background color from visual store (PRD Story 6 AC7)
+  const backgroundColor = useVisualStore((state) => state.backgroundColor);
+
   return (
     <Layout appTitle="N-Dimensional Visualizer" showHeader>
       <Canvas
         camera={{
-          position: [0, 0, 5],
+          position: [2, 2, 2.5],
           fov: 60,
         }}
-        style={{ background: '#0F0F1A' }}
+        style={{ background: backgroundColor }}
       >
         <Visualizer />
       </Canvas>

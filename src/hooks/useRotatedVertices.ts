@@ -3,7 +3,7 @@
  * Memoizes computation for performance
  */
 
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { useRotationStore } from '@/stores';
 import { multiplyMatrixVector, composeRotations, createIdentityMatrix } from '@/lib/math';
 import type { VectorND } from '@/lib/math';
@@ -67,9 +67,32 @@ export function useRotatedVertices(vertices: VectorND[], targetDimension?: numbe
     return composeRotations(dimension, validRotations);
   }, [rotations, dimension]);
 
-  // Apply rotation to all vertices
+  // Apply rotation to all vertices - reuse cache arrays to minimize allocation
+  const cacheRef = useRef<VectorND[]>([]);
+
   const rotatedVertices = useMemo(() => {
-    return vertices.map((vertex) => multiplyMatrixVector(rotationMatrix, vertex));
+    if (vertices.length === 0) {
+      return [];
+    }
+
+    const numVertices = vertices.length;
+    const vertexDim = vertices[0]!.length;
+
+    // Check if we need to rebuild cache (count or dimension changed)
+    let cache = cacheRef.current;
+    if (cache.length !== numVertices || (numVertices > 0 && cache[0]?.length !== vertexDim)) {
+      cache = vertices.map(v => new Array(v.length).fill(0));
+      cacheRef.current = cache;
+    }
+
+    // Apply rotation in-place to cached arrays
+    for (let i = 0; i < numVertices; i++) {
+      multiplyMatrixVector(rotationMatrix, vertices[i]!, cache[i]);
+    }
+
+    // Return new array reference to trigger downstream updates
+    // The inner arrays are reused (cache[i]), only outer array is new
+    return [...cache];
   }, [vertices, rotationMatrix]);
 
   return rotatedVertices;

@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { render } from '@testing-library/react'
 import { Canvas } from '@react-three/fiber'
-import { CameraController, useCameraReset } from '@/components/canvas/CameraController'
+import { CameraController } from '@/components/canvas/CameraController'
+import { useCameraReset } from '@/hooks/useCameraReset'
 
 describe('CameraController', () => {
   it('should render without errors', () => {

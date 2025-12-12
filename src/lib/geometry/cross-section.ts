@@ -5,6 +5,7 @@
 
 import type { VectorND } from '@/lib/math/types';
 import type { PolytopeGeometry } from './types';
+import type { Face } from './faces';
 
 /**
  * Result of a cross-section computation
@@ -26,18 +27,24 @@ export interface CrossSectionResult {
  *
  * @param geometry - The polytope geometry (must be 4D or higher)
  * @param sliceW - The W coordinate of the slicing hyperplane
+ * @param faces - Optional array of faces to correctly reconstruct connectivity
  * @returns CrossSectionResult with intersection points and edges
  */
 export function computeCrossSection(
   geometry: PolytopeGeometry,
-  sliceW: number
+  sliceW: number,
+  faces?: Face[]
 ): CrossSectionResult {
   if (geometry.dimension < 4) {
     return { points: [], edges: [], hasIntersection: false };
   }
 
   const intersectionPoints: VectorND[] = [];
-  const pointMap = new Map<string, number>(); // Edge key -> point index
+  const edgeToPointIndex = new Map<string, number>(); // Edge key -> point index
+
+  // Helper to get edge key
+  const getEdgeKey = (v1: number, v2: number) => 
+    v1 < v2 ? `${v1}-${v2}` : `${v2}-${v1}`;
 
   // For each edge, check if it crosses the W = sliceW plane
   for (const [v1Idx, v2Idx] of geometry.edges) {
@@ -70,11 +77,9 @@ export function computeCrossSection(
         intersectionPoint[i] = coord1 + tClamped * (coord2 - coord1);
       }
 
-      // Create a key for this edge to track the point
-      const edgeKey = v1Idx < v2Idx ? `${v1Idx}-${v2Idx}` : `${v2Idx}-${v1Idx}`;
-
-      if (!pointMap.has(edgeKey)) {
-        pointMap.set(edgeKey, intersectionPoints.length);
+      const edgeKey = getEdgeKey(v1Idx, v2Idx);
+      if (!edgeToPointIndex.has(edgeKey)) {
+        edgeToPointIndex.set(edgeKey, intersectionPoints.length);
         intersectionPoints.push(intersectionPoint);
       }
     }
@@ -84,25 +89,51 @@ export function computeCrossSection(
     return { points: [], edges: [], hasIntersection: false };
   }
 
-  // Build edges for the cross-section
-  // Two cross-section points are connected if their original edges share a face
   const crossSectionEdges: [number, number][] = [];
-  const edgeKeys = Array.from(pointMap.keys());
 
-  // For simplicity, connect points that came from edges sharing a vertex
-  for (let i = 0; i < edgeKeys.length; i++) {
-    for (let j = i + 1; j < edgeKeys.length; j++) {
-      const key1 = edgeKeys[i]!;
-      const key2 = edgeKeys[j]!;
+  // Method 1: Face-based reconstruction (Correct)
+  if (faces && faces.length > 0) {
+    for (const face of faces) {
+      const faceIntersectionIndices: number[] = [];
 
-      const [a1, b1] = key1.split('-').map(Number);
-      const [a2, b2] = key2.split('-').map(Number);
+      // Iterate through edges of the face
+      // A face with vertices [v1, v2, v3, ...] has edges (v1,v2), (v2,v3), ..., (vn,v1)
+      const len = face.vertices.length;
+      for (let i = 0; i < len; i++) {
+        const v1 = face.vertices[i]!;
+        const v2 = face.vertices[(i + 1) % len]!;
+        
+        const key = getEdgeKey(v1, v2);
+        if (edgeToPointIndex.has(key)) {
+          faceIntersectionIndices.push(edgeToPointIndex.get(key)!);
+        }
+      }
 
-      // Check if edges share a vertex (they're part of the same face)
-      if (a1 === a2 || a1 === b2 || b1 === a2 || b1 === b2) {
-        const idx1 = pointMap.get(key1)!;
-        const idx2 = pointMap.get(key2)!;
-        crossSectionEdges.push([idx1, idx2]);
+      // If a face is intersected by a plane, it typically results in a line segment (2 points)
+      // If the face is non-convex or the slice is perfectly aligned, it could be more,
+      // but for convex polytope faces, 2 points mean 1 edge.
+      if (faceIntersectionIndices.length === 2) {
+        crossSectionEdges.push([faceIntersectionIndices[0]!, faceIntersectionIndices[1]!]);
+      }
+    }
+  } else {
+    // Method 2: Heuristic (Fallback - Flawed but kept for legacy/fallback)
+    // Connect points that came from edges sharing a vertex.
+    // This only works correctly for Simplex faces (triangles), not Hypercubes (quads).
+    const edgeKeys = Array.from(edgeToPointIndex.keys());
+    for (let i = 0; i < edgeKeys.length; i++) {
+      for (let j = i + 1; j < edgeKeys.length; j++) {
+        const key1 = edgeKeys[i]!;
+        const key2 = edgeKeys[j]!;
+
+        const [a1, b1] = key1.split('-').map(Number);
+        const [a2, b2] = key2.split('-').map(Number);
+
+        if (a1 === a2 || a1 === b2 || b1 === a2 || b1 === b2) {
+          const idx1 = edgeToPointIndex.get(key1)!;
+          const idx2 = edgeToPointIndex.get(key2)!;
+          crossSectionEdges.push([idx1, idx2]);
+        }
       }
     }
   }

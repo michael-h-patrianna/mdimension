@@ -19,3 +19,5 @@ export { CrossSectionControls } from './CrossSectionControls';
 export type { CrossSectionControlsProps } from './CrossSectionControls';
 export { VisualControls } from './VisualControls';
 export type { VisualControlsProps } from './VisualControls';
+export { ShaderSelector } from './ShaderSelector';
+export type { ShaderSelectorProps } from './ShaderSelector';

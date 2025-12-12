@@ -28,11 +28,16 @@ export function createVector(dimension: number, fill = 0): VectorND {
  * @returns New vector containing the sum
  * @throws {Error} If vectors have different dimensions
  */
-export function addVectors(a: VectorND, b: VectorND): VectorND {
+export function addVectors(a: VectorND, b: VectorND, out?: VectorND): VectorND {
   if (a.length !== b.length) {
     throw new Error(`Vector dimensions must match: ${a.length} !== ${b.length}`);
   }
-  return a.map((val, i) => val + b[i]!);
+  
+  const result = out ?? new Array(a.length);
+  for (let i = 0; i < a.length; i++) {
+    result[i] = a[i]! + b[i]!;
+  }
+  return result;
 }
 
 /**

@@ -1,7 +1,13 @@
-import { Grid } from '@react-three/drei'
+import { useShallow } from 'zustand/react/shallow'
 import type { Vector3D } from '@/lib/math/types'
+import type { Face } from '@/lib/geometry/faces'
 import { PolytopeRenderer } from './PolytopeRenderer'
+import { FaceRenderer } from './FaceRenderer'
 import { CameraController } from './CameraController'
+import { SceneLighting } from './SceneLighting'
+import { PostProcessing } from './PostProcessing'
+import { GroundPlane } from './GroundPlane'
+import { useVisualStore } from '@/stores/visualStore'
 
 /**
  * Props for the Scene component.
@@ -11,8 +17,8 @@ export interface SceneProps {
   vertices?: Vector3D[]
   /** Edge connections between vertices */
   edges?: [number, number][]
-  /** Whether to show the grid helper (default: false) */
-  showGrid?: boolean
+  /** Detected faces for surface rendering (PRD Story 2) */
+  faces?: Face[]
   /** Background color (default: #0F0F1A) */
   backgroundColor?: string
   /** Enable auto-rotation (default: false) */
@@ -31,7 +37,7 @@ export interface SceneProps {
  * This component provides the foundational 3D scene for rendering n-dimensional
  * objects. It includes:
  * - Ambient and directional lighting for proper 3D visualization
- * - Optional grid helper for spatial reference
+ * - Reflective ground plane with grid overlay (toggleable via visual store)
  * - Dark background optimized for visualizing colored geometry
  * - Camera controls with smooth interaction
  * - PolytopeRenderer for displaying geometry
@@ -67,7 +73,6 @@ export interface SceneProps {
  *   <Scene
  *     vertices={vertices}
  *     edges={edges}
- *     showGrid
  *     autoRotate
  *   />
  * </Canvas>
@@ -77,45 +82,79 @@ export interface SceneProps {
  * - Ambient light (intensity 0.4) provides base illumination
  * - Directional light (intensity 0.8) creates depth and shadows
  * - Dark background (#0F0F1A) enhances visibility of colored edges
- * - Grid helper is optional and toggleable
+ * - Ground plane is toggleable via visual store settings
  * - Camera controls support mouse/touch interaction
  * - Performance optimized for 60 FPS
  */
 export function Scene({
   vertices,
   edges,
-  showGrid = false,
+  faces,
   autoRotate = false,
   opacity = 1.0,
   crossSectionVertices,
   crossSectionEdges,
 }: SceneProps) {
+  // Get all visual settings with shallow comparison to prevent unnecessary re-renders
+  const {
+    shaderType,
+    faceColor,
+    shaderSettings,
+    showGroundPlane,
+    groundPlaneOffset,
+    groundPlaneOpacity,
+    groundPlaneReflectivity,
+  } = useVisualStore(
+    useShallow((state) => ({
+      shaderType: state.shaderType,
+      faceColor: state.faceColor,
+      shaderSettings: state.shaderSettings,
+      showGroundPlane: state.showGroundPlane,
+      groundPlaneOffset: state.groundPlaneOffset,
+      groundPlaneOpacity: state.groundPlaneOpacity,
+      groundPlaneReflectivity: state.groundPlaneReflectivity,
+    }))
+  );
+
+  // Determine if we should render faces (Surface shader only)
+  const shouldRenderFaces = shaderType === 'surface' && faces && faces.length > 0 && vertices;
+
+  // Get surface shader settings
+  const surfaceSettings = shaderSettings.surface;
+
   return (
     <>
-      {/* Lighting setup */}
-      <ambientLight intensity={0.4} />
-      <directionalLight position={[5, 5, 5]} intensity={0.8} castShadow />
+      {/* Scene lighting from visual store */}
+      <SceneLighting />
+
+      {/* Post-processing effects (bloom) */}
+      <PostProcessing />
 
       {/* Camera controls */}
       <CameraController autoRotate={autoRotate} />
 
-      {/* Optional grid helper */}
-      {showGrid && (
-        <Grid
-          args={[20, 20]}
-          cellSize={1}
-          cellThickness={0.5}
-          cellColor="#6e6e6e"
-          sectionSize={5}
-          sectionThickness={1}
-          sectionColor="#9d9d9d"
-          fadeDistance={25}
-          fadeStrength={1}
-          followCamera={false}
+      {/* Reflective ground plane with grid overlay */}
+      <GroundPlane
+        vertices={vertices}
+        offset={groundPlaneOffset}
+        opacity={groundPlaneOpacity}
+        reflectivity={groundPlaneReflectivity}
+        visible={showGroundPlane}
+      />
+
+      {/* Render faces when Surface shader is selected (PRD Story 2) */}
+      {shouldRenderFaces && (
+        <FaceRenderer
+          vertices={vertices}
+          faces={faces}
+          color={faceColor}
+          opacity={surfaceSettings.faceOpacity}
+          specularIntensity={surfaceSettings.specularIntensity}
+          specularPower={surfaceSettings.specularPower}
         />
       )}
 
-      {/* Render polytope geometry if provided */}
+      {/* Render polytope edges and vertices */}
       {vertices && edges && (
         <PolytopeRenderer vertices={vertices} edges={edges} opacity={opacity} />
       )}

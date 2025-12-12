@@ -3,7 +3,7 @@
  * Button for exporting the visualization as PNG
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from './ui/Button';
 import { exportSceneToPNG, generateTimestampFilename } from '@/lib/export';
 
@@ -16,6 +16,16 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
 }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [lastExport, setLastExport] = useState<string | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleExport = async () => {
     setIsExporting(true);
@@ -29,7 +39,10 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
     if (success) {
       setLastExport(filename);
       // Clear the success message after 3 seconds
-      setTimeout(() => setLastExport(null), 3000);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      timeoutRef.current = setTimeout(() => setLastExport(null), 3000);
     }
 
     setIsExporting(false);

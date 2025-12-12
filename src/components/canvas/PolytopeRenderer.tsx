@@ -1,6 +1,16 @@
-import { useMemo } from 'react'
-import { Vector3, BufferGeometry, Float32BufferAttribute } from 'three'
+import { useMemo, useRef, useEffect } from 'react'
+import { useShallow } from 'zustand/react/shallow'
+import {
+  SphereGeometry,
+  MeshStandardMaterial,
+  Object3D,
+  Color,
+  InstancedMesh as ThreeInstancedMesh,
+} from 'three'
 import type { Vector3D } from '@/lib/math/types'
+import { useVisualStore } from '@/stores/visualStore'
+import { NativeWireframe } from './NativeWireframe'
+import { FatWireframe } from './FatWireframe'
 
 /**
  * Props for the PolytopeRenderer component.
@@ -27,15 +37,135 @@ export interface PolytopeRendererProps {
 }
 
 /**
+ * Shared sphere geometry for all vertex instances.
+ * Created once and reused across all vertices.
+ */
+const SHARED_SPHERE_GEOMETRY = new SphereGeometry(1, 16, 16);
+
+/**
+ * Component to render vertices using InstancedMesh for memory efficiency.
+ * Uses a single shared geometry and material for all vertex spheres.
+ */
+function VertexInstances({
+  vertices,
+  vertexColor,
+  vertexSize,
+  opacity,
+}: {
+  vertices: Vector3D[]
+  vertexColor: string
+  vertexSize: number
+  opacity: number
+}) {
+  const instancedMeshRef = useRef<ThreeInstancedMesh>(null);
+  const tempObject = useMemo(() => new Object3D(), []);
+
+  // Create shared material - only recreate when visual properties change
+  const material = useMemo(() => {
+    return new MeshStandardMaterial({
+      color: new Color(vertexColor),
+      emissive: new Color(vertexColor),
+      emissiveIntensity: 0.2,
+      transparent: opacity < 1,
+      opacity: opacity,
+    });
+  }, [vertexColor, opacity]);
+
+  // Dispose material on change or unmount
+  const materialRef = useRef<MeshStandardMaterial | null>(null);
+  useEffect(() => {
+    if (materialRef.current && materialRef.current !== material) {
+      materialRef.current.dispose();
+    }
+    materialRef.current = material;
+
+    return () => {
+      if (materialRef.current) {
+        materialRef.current.dispose();
+        materialRef.current = null;
+      }
+    };
+  }, [material]);
+
+  // Update instance matrices when vertices change
+  useEffect(() => {
+    if (!instancedMeshRef.current) return;
+
+    const mesh = instancedMeshRef.current;
+
+    vertices.forEach((vertex, i) => {
+      tempObject.position.set(vertex[0], vertex[1], vertex[2]);
+      tempObject.scale.set(vertexSize, vertexSize, vertexSize);
+      tempObject.updateMatrix();
+      mesh.setMatrixAt(i, tempObject.matrix);
+    });
+
+    mesh.instanceMatrix.needsUpdate = true;
+    mesh.count = vertices.length;
+  }, [vertices, vertexSize, tempObject]);
+
+  // Don't render if no vertices
+  if (vertices.length === 0) return null;
+
+  return (
+    <instancedMesh
+      ref={instancedMeshRef}
+      args={[SHARED_SPHERE_GEOMETRY, material, vertices.length]}
+      frustumCulled={false}
+    />
+  );
+}
+
+/**
+ * Renders edges using either NativeWireframe (1px, fast) or FatWireframe (thick, heavy)
+ */
+function Wireframe({
+  vertices,
+  edges,
+  color,
+  opacity,
+  thickness,
+}: {
+  vertices: Vector3D[];
+  edges: [number, number][];
+  color: string;
+  opacity: number;
+  thickness: number;
+}) {
+  if (thickness > 1) {
+    return (
+      <FatWireframe
+        vertices={vertices}
+        edges={edges}
+        color={color}
+        opacity={opacity}
+        thickness={thickness}
+      />
+    );
+  }
+  return (
+    <NativeWireframe
+      vertices={vertices}
+      edges={edges}
+      color={color}
+      opacity={opacity}
+      thickness={thickness}
+    />
+  );
+}
+
+/**
  * Renders a polytope geometry as Three.js objects.
  *
  * This component visualizes n-dimensional objects projected into 3D space by rendering:
- * - Vertices as small spheres with slight emissive glow
+ * - Vertices as small spheres with slight emissive glow (using InstancedMesh for efficiency)
  * - Edges as cylindrical tubes connecting vertices
  * - Optional semi-transparent faces
  *
- * The component is optimized for performance by memoizing geometries and only
- * recreating them when the input data changes.
+ * The component is optimized for performance by:
+ * - Using InstancedMesh for vertices (single geometry shared across all vertices)
+ * - Using NativeWireframe or FatWireframe for edges based on thickness
+ * - Properly disposing Three.js resources on unmount
  *
  * @param props - PolytopeRenderer configuration
  * @returns Three.js mesh group containing vertices, edges, and faces
@@ -62,84 +192,96 @@ export interface PolytopeRendererProps {
  * ```
  *
  * @remarks
- * - Uses cylindrical tubes for edges to ensure consistent thickness at all zoom levels
+ * - Uses InstancedMesh for vertices to prevent geometry allocation per vertex
+ * - Uses NativeWireframe to render edges using a single BufferGeometry with reusable buffers
  * - Vertex spheres have slight emissive property for better visibility
- * - Edge and vertex geometries are memoized for performance
  * - Supports dynamic updates to vertices and edges
  */
 export function PolytopeRenderer({
   vertices,
   edges,
-  edgeColor = '#00FFFF',
-  edgeThickness = 2,
-  vertexColor = '#FFFFFF',
-  vertexSize = 0.04,
-  showVertices = true,
+  edgeColor: propEdgeColor,
+  edgeThickness: propEdgeThickness,
+  vertexColor: propVertexColor,
+  vertexSize: propVertexSize,
+  showVertices: propShowVertices,
   opacity = 1.0,
 }: PolytopeRendererProps) {
-  // Memoize edge geometries
-  const edgeGeometries = useMemo(() => {
-    return edges.map(([startIdx, endIdx]) => {
-      const startVertex = vertices[startIdx]
-      const endVertex = vertices[endIdx]
-      if (!startVertex || !endVertex) {
-        return null
-      }
-      const start = new Vector3(...startVertex)
-      const end = new Vector3(...endVertex)
+  // Get visual settings from store with shallow comparison (props override store values)
+  const {
+    storeEdgeColor,
+    storeEdgeThickness,
+    storeVertexColor,
+    storeVertexSize,
+    storeVertexVisible,
+    shaderType,
+    shaderSettings,
+  } = useVisualStore(
+    useShallow((state) => ({
+      storeEdgeColor: state.edgeColor,
+      storeEdgeThickness: state.edgeThickness,
+      storeVertexColor: state.vertexColor,
+      storeVertexSize: state.vertexSize,
+      storeVertexVisible: state.vertexVisible,
+      shaderType: state.shaderType,
+      shaderSettings: state.shaderSettings,
+    }))
+  );
 
-      // Create a cylinder geometry oriented along the edge
-      const direction = new Vector3().subVectors(end, start)
-      const length = direction.length()
-      const midpoint = new Vector3().addVectors(start, end).multiplyScalar(0.5)
+  // Use props if provided, otherwise use store values
+  const edgeColor = propEdgeColor ?? storeEdgeColor;
+  const edgeThickness = propEdgeThickness ?? storeEdgeThickness;
+  const vertexColor = propVertexColor ?? storeVertexColor;
+  const vertexSize = propVertexSize ?? (storeVertexSize / 100); // Convert from % to scale
+  const showVertices = propShowVertices ?? storeVertexVisible;
 
-      // Create geometry for the edge
-      const geometry = new BufferGeometry()
-      const positions = new Float32Array([
-        ...start.toArray(),
-        ...end.toArray(),
-      ])
-      geometry.setAttribute('position', new Float32BufferAttribute(positions, 3))
-
-      return { geometry, midpoint, length, direction }
-    }).filter((g): g is NonNullable<typeof g> => g !== null)
-  }, [vertices, edges])
-
-  // Memoize vertex positions
-  const vertexPositions = useMemo(() => {
-    return vertices.map((v) => new Vector3(...v))
-  }, [vertices])
+  // Get edge colors based on shader type
+  const { innerLineColor, outerLineColor, isDualOutline } = useMemo(() => {
+    if (shaderType === 'dualOutline') {
+      const settings = shaderSettings.dualOutline;
+      return {
+        innerLineColor: settings.innerColor,
+        outerLineColor: settings.outerColor,
+        isDualOutline: true,
+      };
+    }
+    return {
+      innerLineColor: edgeColor,
+      outerLineColor: edgeColor,
+      isDualOutline: false,
+    };
+  }, [shaderType, shaderSettings, edgeColor]);
 
   return (
     <group>
-      {/* Render edges */}
-      {edgeGeometries.map(({ geometry }, index) => (
-        <line key={`edge-${index}`}>
-          <bufferGeometry attach="geometry" {...geometry} />
-          <lineBasicMaterial
-            attach="material"
-            color={edgeColor}
-            linewidth={edgeThickness}
-            transparent={opacity < 1}
-            opacity={opacity}
-          />
-        </line>
-      ))}
+      {/* Render edges using Wireframe wrapper to handle thickness */}
+      {isDualOutline && (
+        <Wireframe
+          vertices={vertices}
+          edges={edges}
+          color={outerLineColor}
+          opacity={opacity * 0.7}
+          thickness={edgeThickness + 2}
+        />
+      )}
+      
+      <Wireframe
+        vertices={vertices}
+        edges={edges}
+        color={innerLineColor}
+        opacity={opacity}
+        thickness={edgeThickness}
+      />
 
-      {/* Render vertices */}
-      {showVertices &&
-        vertexPositions.map((position, index) => (
-          <mesh key={`vertex-${index}`} position={position}>
-            <sphereGeometry args={[vertexSize, 16, 16]} />
-            <meshStandardMaterial
-              color={vertexColor}
-              emissive={vertexColor}
-              emissiveIntensity={0.2}
-              transparent={opacity < 1}
-              opacity={opacity}
-            />
-          </mesh>
-        ))}
+      {/* Render vertices using InstancedMesh for memory efficiency */}
+      {showVertices && vertices.length > 0 && (
+        <VertexInstances
+          vertices={vertices}
+          vertexColor={vertexColor}
+          vertexSize={vertexSize}
+          opacity={opacity}
+        />
+      )}
     </group>
   )
 }

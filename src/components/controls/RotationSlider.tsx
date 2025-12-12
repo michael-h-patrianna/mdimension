@@ -3,7 +3,7 @@
  * Displays a slider for a single rotation plane with degree display
  */
 
-import { useCallback } from 'react';
+import { useCallback, memo, type ChangeEvent } from 'react';
 
 interface RotationSliderProps {
   plane: string; // e.g., "XY"
@@ -40,7 +40,7 @@ function getBadgeColorClasses(color: string): string {
   return colorMap[color] || 'bg-gray-500 text-white';
 }
 
-export function RotationSlider({
+export const RotationSlider = memo(function RotationSlider({
   plane,
   value,
   onChange,
@@ -50,7 +50,7 @@ export function RotationSlider({
   const degrees = radiansToDegrees(value);
 
   const handleSliderChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
+    (e: ChangeEvent<HTMLInputElement>) => {
       const newDegrees = parseFloat(e.target.value);
       const newRadians = degreesToRadians(newDegrees);
       onChange(newRadians);
@@ -96,4 +96,4 @@ export function RotationSlider({
       </div>
     </div>
   );
-}
+});

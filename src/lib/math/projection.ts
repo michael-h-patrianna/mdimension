@@ -38,7 +38,8 @@ export const MIN_SAFE_DISTANCE = 0.01;
  */
 export function projectPerspective(
   vertex: VectorND,
-  projectionDistance: number = DEFAULT_PROJECTION_DISTANCE
+  projectionDistance: number = DEFAULT_PROJECTION_DISTANCE,
+  out?: Vector3D
 ): Vector3D {
   if (vertex.length < 3) {
     throw new Error(`Cannot project ${vertex.length}D vertex to 3D: need at least 3 dimensions`);
@@ -48,9 +49,14 @@ export function projectPerspective(
     throw new Error('Projection distance must be positive');
   }
 
+  const result = out ?? [0, 0, 0];
+
   // For 3D, just extract the coordinates
   if (vertex.length === 3) {
-    return [vertex[0]!, vertex[1]!, vertex[2]!];
+    result[0] = vertex[0]!;
+    result[1] = vertex[1]!;
+    result[2] = vertex[2]!;
+    return result;
   }
 
   const x = vertex[0]!;
@@ -78,11 +84,17 @@ export function projectPerspective(
   if (Math.abs(denominator) < MIN_SAFE_DISTANCE) {
     const safeDistance = denominator >= 0 ? MIN_SAFE_DISTANCE : -MIN_SAFE_DISTANCE;
     const scale = 1 / safeDistance;
-    return [x * scale, y * scale, z * scale];
+    result[0] = x * scale;
+    result[1] = y * scale;
+    result[2] = z * scale;
+    return result;
   }
 
   const scale = 1 / denominator;
-  return [x * scale, y * scale, z * scale];
+  result[0] = x * scale;
+  result[1] = y * scale;
+  result[2] = z * scale;
+  return result;
 }
 
 /**
@@ -95,12 +107,16 @@ export function projectPerspective(
  * @returns 3D projected point (first three coordinates)
  * @throws {Error} If vertex has less than 3 dimensions
  */
-export function projectOrthographic(vertex: VectorND): Vector3D {
+export function projectOrthographic(vertex: VectorND, out?: Vector3D): Vector3D {
   if (vertex.length < 3) {
     throw new Error(`Cannot project ${vertex.length}D vertex to 3D: need at least 3 dimensions`);
   }
 
-  return [vertex[0]!, vertex[1]!, vertex[2]!];
+  const result = out ?? [0, 0, 0];
+  result[0] = vertex[0]!;
+  result[1] = vertex[1]!;
+  result[2] = vertex[2]!;
+  return result;
 }
 
 /**

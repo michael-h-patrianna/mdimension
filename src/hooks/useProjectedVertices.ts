@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { projectPerspective, projectOrthographic } from '@/lib/math/projection';
 import type { VectorND, Vector3D } from '@/lib/math/types';
 import { useProjectionStore } from '@/stores/projectionStore';
@@ -21,6 +21,7 @@ export function useProjectedVertices(
 ): Vector3D[] {
   const type = useProjectionStore((state) => state.type);
   const distance = useProjectionStore((state) => state.distance);
+  const cacheRef = useRef<Vector3D[]>([]);
 
   return useMemo(() => {
     if (rotatedVertices.length === 0) {
@@ -34,16 +35,25 @@ export function useProjectedVertices(
       return [];
     }
 
+    // Update cache size if needed
+    if (cacheRef.current.length !== rotatedVertices.length) {
+      cacheRef.current = rotatedVertices.map(() => [0, 0, 0]);
+    }
+    const cache = cacheRef.current;
+
     try {
       if (type === 'perspective') {
-        return rotatedVertices.map((vertex) =>
-          projectPerspective(vertex, distance)
-        );
+        for (let i = 0; i < rotatedVertices.length; i++) {
+          projectPerspective(rotatedVertices[i]!, distance, cache[i]);
+        }
       } else {
-        return rotatedVertices.map((vertex) =>
-          projectOrthographic(vertex)
-        );
+        for (let i = 0; i < rotatedVertices.length; i++) {
+          projectOrthographic(rotatedVertices[i]!, cache[i]);
+        }
       }
+      // Return new array reference to trigger downstream updates
+      // The inner arrays are reused (cache[i]), only outer array is new
+      return [...cache];
     } catch (error) {
       console.error('Projection error:', error);
       return [];

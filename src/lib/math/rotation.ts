@@ -30,6 +30,8 @@ export function getRotationPlaneCount(dimension: number): number {
   return (dimension * (dimension - 1)) / 2;
 }
 
+const planesCache = new Map<number, RotationPlane[]>();
+
 /**
  * Gets all rotation planes for a given dimension
  * Each plane is defined by a pair of axis indices
@@ -40,6 +42,10 @@ export function getRotationPlaneCount(dimension: number): number {
 export function getRotationPlanes(dimension: number): RotationPlane[] {
   if (dimension < 2) {
     throw new Error('Rotation requires at least 2 dimensions');
+  }
+
+  if (planesCache.has(dimension)) {
+    return planesCache.get(dimension)!;
   }
 
   const planes: RotationPlane[] = [];
@@ -54,6 +60,7 @@ export function getRotationPlanes(dimension: number): RotationPlane[] {
     }
   }
 
+  planesCache.set(dimension, planes);
   return planes;
 }
 

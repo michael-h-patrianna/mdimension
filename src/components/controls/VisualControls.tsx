@@ -11,7 +11,6 @@ import {
   VISUAL_PRESETS,
   DEFAULT_EDGE_THICKNESS,
   DEFAULT_VERTEX_SIZE,
-  DEFAULT_FACE_OPACITY,
 } from '@/stores/visualStore';
 import type { VisualPreset } from '@/stores/visualStore';
 
@@ -24,6 +23,7 @@ const PRESET_NAMES: Record<VisualPreset, string> = {
   blueprint: 'Blueprint',
   hologram: 'Hologram',
   scientific: 'Scientific',
+  synthwave: 'Synthwave',
 };
 
 export const VisualControls: React.FC<VisualControlsProps> = ({
@@ -34,16 +34,16 @@ export const VisualControls: React.FC<VisualControlsProps> = ({
   const vertexVisible = useVisualStore((state) => state.vertexVisible);
   const vertexSize = useVisualStore((state) => state.vertexSize);
   const vertexColor = useVisualStore((state) => state.vertexColor);
-  const faceOpacity = useVisualStore((state) => state.faceOpacity);
   const backgroundColor = useVisualStore((state) => state.backgroundColor);
+  const showGroundPlane = useVisualStore((state) => state.showGroundPlane);
 
   const setEdgeColor = useVisualStore((state) => state.setEdgeColor);
   const setEdgeThickness = useVisualStore((state) => state.setEdgeThickness);
   const setVertexVisible = useVisualStore((state) => state.setVertexVisible);
   const setVertexSize = useVisualStore((state) => state.setVertexSize);
   const setVertexColor = useVisualStore((state) => state.setVertexColor);
-  const setFaceOpacity = useVisualStore((state) => state.setFaceOpacity);
   const setBackgroundColor = useVisualStore((state) => state.setBackgroundColor);
+  const setShowGroundPlane = useVisualStore((state) => state.setShowGroundPlane);
   const applyPreset = useVisualStore((state) => state.applyPreset);
   const reset = useVisualStore((state) => state.reset);
 
@@ -144,21 +144,6 @@ export const VisualControls: React.FC<VisualControlsProps> = ({
         />
       )}
 
-      {/* Face Opacity */}
-      <Slider
-        label="Face Opacity"
-        min={0}
-        max={1}
-        step={0.1}
-        value={faceOpacity}
-        onChange={setFaceOpacity}
-        onReset={() => setFaceOpacity(DEFAULT_FACE_OPACITY)}
-        showValue
-      />
-      <p className="text-xs text-text-secondary">
-        0 = wireframe, 1 = solid faces
-      </p>
-
       {/* Background Color */}
       <div className="space-y-2">
         <label className="block text-sm font-medium text-text-secondary">
@@ -173,6 +158,23 @@ export const VisualControls: React.FC<VisualControlsProps> = ({
           />
           <span className="text-xs font-mono text-text-secondary">{backgroundColor}</span>
         </div>
+      </div>
+
+      {/* Ground Plane Toggle */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => setShowGroundPlane(!showGroundPlane)}
+          className={`
+            flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors
+            ${showGroundPlane
+              ? 'bg-accent-cyan/20 text-accent-cyan border border-accent-cyan/50'
+              : 'bg-panel-border text-text-secondary border border-panel-border'
+            }
+          `}
+          aria-pressed={showGroundPlane}
+        >
+          <span>Show Ground Plane</span>
+        </button>
       </div>
 
       {/* Reset */}

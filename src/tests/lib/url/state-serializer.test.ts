@@ -231,4 +231,212 @@ describe('URL state serializer', () => {
       );
     });
   });
+
+  describe('visual settings serialization (PRD Story 1 AC6)', () => {
+    it('should serialize shader type when not default', () => {
+      const state: ShareableState = {
+        dimension: 4,
+        objectType: 'hypercube',
+        shaderType: 'dualOutline',
+      };
+
+      const serialized = serializeState(state);
+      expect(serialized).toContain('sh=dualOutline');
+    });
+
+    it('should not serialize default shader type (wireframe)', () => {
+      const state: ShareableState = {
+        dimension: 4,
+        objectType: 'hypercube',
+        shaderType: 'wireframe',
+      };
+
+      const serialized = serializeState(state);
+      expect(serialized).not.toContain('sh=');
+    });
+
+    it('should serialize edge color', () => {
+      const state: ShareableState = {
+        dimension: 4,
+        objectType: 'hypercube',
+        edgeColor: '#FF00FF',
+      };
+
+      const serialized = serializeState(state);
+      expect(serialized).toContain('ec=FF00FF');
+    });
+
+    it('should serialize vertex color', () => {
+      const state: ShareableState = {
+        dimension: 4,
+        objectType: 'hypercube',
+        vertexColor: '#00FF00',
+      };
+
+      const serialized = serializeState(state);
+      expect(serialized).toContain('vc=00FF00');
+    });
+
+    it('should serialize background color', () => {
+      const state: ShareableState = {
+        dimension: 4,
+        objectType: 'hypercube',
+        backgroundColor: '#1A1A2E',
+      };
+
+      const serialized = serializeState(state);
+      expect(serialized).toContain('bg=1A1A2E');
+    });
+
+    it('should serialize bloom disabled', () => {
+      const state: ShareableState = {
+        dimension: 4,
+        objectType: 'hypercube',
+        bloomEnabled: false,
+      };
+
+      const serialized = serializeState(state);
+      expect(serialized).toContain('be=0');
+    });
+
+    it('should not serialize bloom enabled (default)', () => {
+      const state: ShareableState = {
+        dimension: 4,
+        objectType: 'hypercube',
+        bloomEnabled: true,
+      };
+
+      const serialized = serializeState(state);
+      expect(serialized).not.toContain('be=');
+    });
+
+    it('should serialize bloom intensity when not default', () => {
+      const state: ShareableState = {
+        dimension: 4,
+        objectType: 'hypercube',
+        bloomIntensity: 1.5,
+      };
+
+      const serialized = serializeState(state);
+      expect(serialized).toContain('bi=1.50');
+    });
+
+    it('should deserialize shader type', () => {
+      const state = deserializeState('d=4&t=hypercube&sh=surface');
+      expect(state.shaderType).toBe('surface');
+    });
+
+    it('should validate shader type', () => {
+      const state = deserializeState('d=4&t=hypercube&sh=invalid');
+      expect(state.shaderType).toBeUndefined();
+    });
+
+    it('should deserialize colors', () => {
+      const state = deserializeState('d=4&t=hypercube&ec=FF00FF&vc=00FF00&bg=1A1A2E');
+      expect(state.edgeColor).toBe('#FF00FF');
+      expect(state.vertexColor).toBe('#00FF00');
+      expect(state.backgroundColor).toBe('#1A1A2E');
+    });
+
+    it('should validate color format', () => {
+      const state = deserializeState('d=4&t=hypercube&ec=invalid&vc=12345&bg=1234567');
+      expect(state.edgeColor).toBeUndefined();
+      expect(state.vertexColor).toBeUndefined();
+      expect(state.backgroundColor).toBeUndefined();
+    });
+
+    it('should deserialize bloom settings', () => {
+      const state = deserializeState('d=4&t=hypercube&be=1&bi=1.50');
+      expect(state.bloomEnabled).toBe(true);
+      expect(state.bloomIntensity).toBe(1.5);
+    });
+
+    it('should validate bloom intensity range', () => {
+      const state = deserializeState('d=4&t=hypercube&bi=5.00');
+      expect(state.bloomIntensity).toBeUndefined();
+    });
+  });
+
+  describe('per-shader settings serialization (PRD Story 7 AC7)', () => {
+    it('should serialize dual outline settings', () => {
+      const state: ShareableState = {
+        dimension: 4,
+        objectType: 'hypercube',
+        shaderType: 'dualOutline',
+        shaderSettings: {
+          wireframe: { lineThickness: 2 },
+          dualOutline: { innerColor: '#FF0000', outerColor: '#00FF00', gap: 3 },
+          surface: { faceOpacity: 0.8, specularIntensity: 1.0, specularPower: 32, fresnelEnabled: true },
+        },
+      };
+
+      const serialized = serializeState(state);
+      const decoded = decodeURIComponent(serialized);
+      expect(decoded).toContain('ss=');
+      expect(decoded).toContain('innerColor:FF0000');
+      expect(decoded).toContain('outerColor:00FF00');
+      expect(decoded).toContain('gap:3');
+    });
+
+    it('should serialize surface settings', () => {
+      const state: ShareableState = {
+        dimension: 4,
+        objectType: 'hypercube',
+        shaderType: 'surface',
+        shaderSettings: {
+          wireframe: { lineThickness: 2 },
+          dualOutline: { innerColor: '#FFFFFF', outerColor: '#00FFFF', gap: 2 },
+          surface: { faceOpacity: 0.5, specularIntensity: 0.5, specularPower: 64, fresnelEnabled: false },
+        },
+      };
+
+      const serialized = serializeState(state);
+      const decoded = decodeURIComponent(serialized);
+      expect(decoded).toContain('ss=');
+      expect(decoded).toContain('faceOpacity:0.5');
+      expect(decoded).toContain('specularIntensity:0.5');
+      expect(decoded).toContain('specularPower:64');
+      expect(decoded).toContain('fresnelEnabled:0');
+    });
+
+    it('should deserialize per-shader settings', () => {
+      const state = deserializeState('d=4&t=hypercube&sh=dualOutline&ss=innerColor:FF0000,outerColor:00FF00,gap:3');
+      expect(state.shaderSettings).toBeDefined();
+      expect(state.shaderSettings?.dualOutline.innerColor).toBe('#FF0000');
+      expect(state.shaderSettings?.dualOutline.outerColor).toBe('#00FF00');
+      expect(state.shaderSettings?.dualOutline.gap).toBe(3);
+    });
+
+    it('should round-trip visual settings', () => {
+      const original: ShareableState = {
+        dimension: 4,
+        objectType: 'hypercube',
+        shaderType: 'surface',
+        edgeColor: '#FF00FF',
+        vertexColor: '#00FF00',
+        backgroundColor: '#1A1A2E',
+        bloomEnabled: false,
+        bloomIntensity: 1.5,
+        shaderSettings: {
+          wireframe: { lineThickness: 2 },
+          dualOutline: { innerColor: '#FFFFFF', outerColor: '#00FFFF', gap: 2 },
+          surface: { faceOpacity: 0.5, specularIntensity: 0.8, specularPower: 64, fresnelEnabled: false },
+        },
+      };
+
+      const serialized = serializeState(original);
+      const deserialized = deserializeState(serialized);
+
+      expect(deserialized.shaderType).toBe('surface');
+      expect(deserialized.edgeColor).toBe('#FF00FF');
+      expect(deserialized.vertexColor).toBe('#00FF00');
+      expect(deserialized.backgroundColor).toBe('#1A1A2E');
+      expect(deserialized.bloomEnabled).toBe(false);
+      expect(deserialized.bloomIntensity).toBeCloseTo(1.5, 2);
+      expect(deserialized.shaderSettings?.surface.faceOpacity).toBeCloseTo(0.5, 2);
+      expect(deserialized.shaderSettings?.surface.specularIntensity).toBeCloseTo(0.8, 2);
+      expect(deserialized.shaderSettings?.surface.specularPower).toBe(64);
+      expect(deserialized.shaderSettings?.surface.fresnelEnabled).toBe(false);
+    });
+  });
 });

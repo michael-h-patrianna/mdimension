@@ -4,6 +4,15 @@
  */
 
 import type { PolytopeType } from '@/lib/geometry/types';
+import type { ShaderType, AllShaderSettings } from '@/lib/shaders/types';
+import { DEFAULT_SHADER_TYPE, DEFAULT_SHADER_SETTINGS } from '@/lib/shaders/types';
+
+/** Valid shader types for URL validation */
+const VALID_SHADER_TYPES: ShaderType[] = [
+  'wireframe',
+  'dualOutline',
+  'surface',
+];
 
 export interface ShareableState {
   dimension: number;
@@ -13,6 +22,19 @@ export interface ShareableState {
   uniformScale?: number;
   isPlaying?: boolean;
   speed?: number;
+  // Visual settings (PRD Story 1 AC6, Story 7 AC7)
+  shaderType?: ShaderType;
+  shaderSettings?: AllShaderSettings;
+  edgeColor?: string;
+  vertexColor?: string;
+  backgroundColor?: string;
+  // Bloom settings (Dual Filter Bloom)
+  bloomEnabled?: boolean;
+  bloomIntensity?: number;
+  bloomThreshold?: number;
+  bloomRadius?: number;
+  bloomSoftKnee?: number;
+  bloomLevels?: number;
 }
 
 /**
@@ -50,6 +72,79 @@ export function serializeState(state: ShareableState): string {
 
   if (state.speed !== undefined && state.speed !== 1) {
     params.set('sp', state.speed.toFixed(2));
+  }
+
+  // Visual settings (PRD Story 1 AC6)
+  if (state.shaderType && state.shaderType !== DEFAULT_SHADER_TYPE) {
+    params.set('sh', state.shaderType);
+  }
+
+  if (state.edgeColor) {
+    params.set('ec', state.edgeColor.replace('#', ''));
+  }
+
+  if (state.vertexColor) {
+    params.set('vc', state.vertexColor.replace('#', ''));
+  }
+
+  if (state.backgroundColor) {
+    params.set('bg', state.backgroundColor.replace('#', ''));
+  }
+
+  // Bloom settings (Dual Filter Bloom)
+  if (state.bloomEnabled === false) {
+    params.set('be', '0');
+  }
+
+  if (state.bloomIntensity !== undefined && state.bloomIntensity !== 1.60) {
+    params.set('bi', state.bloomIntensity.toFixed(2));
+  }
+
+  if (state.bloomThreshold !== undefined && state.bloomThreshold !== 0) {
+    params.set('bt', state.bloomThreshold.toFixed(2));
+  }
+
+  if (state.bloomRadius !== undefined && state.bloomRadius !== 0.65) {
+    params.set('br', state.bloomRadius.toFixed(2));
+  }
+
+  if (state.bloomSoftKnee !== undefined && state.bloomSoftKnee !== 0) {
+    params.set('bk', state.bloomSoftKnee.toFixed(2));
+  }
+
+  if (state.bloomLevels !== undefined && state.bloomLevels !== 4) {
+    params.set('bl', state.bloomLevels.toString());
+  }
+
+  // Per-shader settings (PRD Story 7 AC7)
+  if (state.shaderSettings && state.shaderType) {
+    const settings = state.shaderSettings[state.shaderType];
+    if (settings) {
+      const defaultSettings = DEFAULT_SHADER_SETTINGS[state.shaderType];
+      const settingsParts: string[] = [];
+
+      // Serialize only non-default values
+      const settingsObj = settings as unknown as Record<string, unknown>;
+      const defaultObj = defaultSettings as unknown as Record<string, unknown>;
+
+      Object.entries(settingsObj).forEach(([key, value]) => {
+        const defaultValue = defaultObj[key];
+        if (value !== defaultValue) {
+          if (typeof value === 'string') {
+            // Remove # from colors
+            settingsParts.push(`${key}:${value.replace('#', '')}`);
+          } else if (typeof value === 'boolean') {
+            settingsParts.push(`${key}:${value ? '1' : '0'}`);
+          } else {
+            settingsParts.push(`${key}:${value}`);
+          }
+        }
+      });
+
+      if (settingsParts.length > 0) {
+        params.set('ss', settingsParts.join(','));
+      }
+    }
   }
 
   return params.toString();
@@ -119,6 +214,110 @@ export function deserializeState(searchParams: string): Partial<ShareableState> 
     if (!isNaN(sp) && sp > 0) {
       state.speed = sp;
     }
+  }
+
+  // Visual settings (PRD Story 1 AC6)
+  const shaderType = params.get('sh');
+  if (shaderType && VALID_SHADER_TYPES.includes(shaderType as ShaderType)) {
+    state.shaderType = shaderType as ShaderType;
+  }
+
+  const edgeColor = params.get('ec');
+  if (edgeColor && /^[0-9A-Fa-f]{6}$/.test(edgeColor)) {
+    state.edgeColor = `#${edgeColor}`;
+  }
+
+  const vertexColor = params.get('vc');
+  if (vertexColor && /^[0-9A-Fa-f]{6}$/.test(vertexColor)) {
+    state.vertexColor = `#${vertexColor}`;
+  }
+
+  const backgroundColor = params.get('bg');
+  if (backgroundColor && /^[0-9A-Fa-f]{6}$/.test(backgroundColor)) {
+    state.backgroundColor = `#${backgroundColor}`;
+  }
+
+  // Bloom settings (Dual Filter Bloom)
+  const bloomEnabled = params.get('be');
+  if (bloomEnabled === '0') {
+    state.bloomEnabled = false;
+  } else if (bloomEnabled === '1') {
+    state.bloomEnabled = true;
+  }
+
+  const bloomIntensity = params.get('bi');
+  if (bloomIntensity) {
+    const bi = parseFloat(bloomIntensity);
+    if (!isNaN(bi) && bi >= 0 && bi <= 2) {
+      state.bloomIntensity = bi;
+    }
+  }
+
+  const bloomThreshold = params.get('bt');
+  if (bloomThreshold) {
+    const bt = parseFloat(bloomThreshold);
+    if (!isNaN(bt) && bt >= 0 && bt <= 1) {
+      state.bloomThreshold = bt;
+    }
+  }
+
+  const bloomRadius = params.get('br');
+  if (bloomRadius) {
+    const br = parseFloat(bloomRadius);
+    if (!isNaN(br) && br >= 0 && br <= 1) {
+      state.bloomRadius = br;
+    }
+  }
+
+  const bloomSoftKnee = params.get('bk');
+  if (bloomSoftKnee) {
+    const bk = parseFloat(bloomSoftKnee);
+    if (!isNaN(bk) && bk >= 0 && bk <= 1) {
+      state.bloomSoftKnee = bk;
+    }
+  }
+
+  const bloomLevels = params.get('bl');
+  if (bloomLevels) {
+    const bl = parseInt(bloomLevels, 10);
+    if (!isNaN(bl) && bl >= 1 && bl <= 8) {
+      state.bloomLevels = bl;
+    }
+  }
+
+  // Per-shader settings (PRD Story 7 AC7)
+  const shaderSettingsStr = params.get('ss');
+  if (shaderSettingsStr && state.shaderType) {
+    const shaderSettings: AllShaderSettings = {
+      wireframe: { ...DEFAULT_SHADER_SETTINGS.wireframe },
+      dualOutline: { ...DEFAULT_SHADER_SETTINGS.dualOutline },
+      surface: { ...DEFAULT_SHADER_SETTINGS.surface },
+    };
+    const currentSettings = shaderSettings[state.shaderType] as unknown as Record<string, unknown>;
+    const defaultObj = DEFAULT_SHADER_SETTINGS[state.shaderType] as unknown as Record<string, unknown>;
+
+    shaderSettingsStr.split(',').forEach((pair) => {
+      const [key, value] = pair.split(':');
+      if (key && value) {
+        // Determine the type based on the default settings
+        const defaultValue = defaultObj[key];
+        if (defaultValue !== undefined) {
+          if (typeof defaultValue === 'string') {
+            // Re-add # prefix to colors
+            currentSettings[key] = value.startsWith('#') ? value : `#${value}`;
+          } else if (typeof defaultValue === 'boolean') {
+            currentSettings[key] = value === '1';
+          } else if (typeof defaultValue === 'number') {
+            const numValue = parseFloat(value);
+            if (!isNaN(numValue)) {
+              currentSettings[key] = numValue;
+            }
+          }
+        }
+      }
+    });
+
+    state.shaderSettings = shaderSettings;
   }
 
   return state;

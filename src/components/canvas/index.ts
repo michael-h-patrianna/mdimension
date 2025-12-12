@@ -8,5 +8,13 @@ export type { SceneProps } from './Scene'
 export { PolytopeRenderer } from './PolytopeRenderer'
 export type { PolytopeRendererProps } from './PolytopeRenderer'
 
-export { CameraController, useCameraReset } from './CameraController'
+export { CameraController } from './CameraController'
 export type { CameraControllerProps } from './CameraController'
+export { useCameraReset } from '@/hooks/useCameraReset'
+
+export { PostProcessing } from './PostProcessing'
+
+export { SceneLighting } from './SceneLighting'
+
+export { FaceRenderer } from './FaceRenderer'
+export type { FaceRendererProps } from './FaceRenderer'

@@ -16,7 +16,7 @@ export function useAnimationLoop(): void {
   const animatingPlanes = useAnimationStore((state) => state.animatingPlanes);
   const getRotationDelta = useAnimationStore((state) => state.getRotationDelta);
 
-  const setRotation = useRotationStore((state) => state.setRotation);
+  const updateRotations = useRotationStore((state) => state.updateRotations);
   const getRotationRadians = useCallback((plane: string) => {
     return useRotationStore.getState().rotations.get(plane) ?? 0;
   }, []);
@@ -40,6 +40,7 @@ export function useAnimationLoop(): void {
       }
 
       const rotationDelta = getRotationDelta(deltaTime);
+      const updates = new Map<string, number>();
 
       // Update each animating plane
       animatingPlanes.forEach((plane) => {
@@ -54,12 +55,16 @@ export function useAnimationLoop(): void {
         while (newAngle < 0) newAngle += 2 * Math.PI;
         while (newAngle >= 2 * Math.PI) newAngle -= 2 * Math.PI;
 
-        setRotation(plane, newAngle);
+        updates.set(plane, newAngle);
       });
+
+      if (updates.size > 0) {
+        updateRotations(updates);
+      }
 
       frameRef.current = requestAnimationFrame(animate);
     },
-    [animatingPlanes, getRotationDelta, getRotationRadians, setRotation]
+    [animatingPlanes, getRotationDelta, getRotationRadians, updateRotations]
   );
 
   useEffect(() => {
