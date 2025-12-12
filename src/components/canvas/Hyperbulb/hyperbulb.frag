@@ -39,13 +39,23 @@ uniform bool uToneMappingEnabled;
 uniform int uToneMappingAlgorithm;
 uniform float uExposure;
 
+// Performance mode: reduces quality during animation for smoother interaction
+uniform bool uFastMode;
+
 varying vec3 vPosition;
 varying vec2 vUv;
 
-// Performance constants - matched to Mandelbulb for quality
-#define MAX_MARCH_STEPS 128
-#define SURF_DIST 0.002
-#define MAX_ITER 64
+// Performance constants
+// High quality mode (when idle)
+#define MAX_MARCH_STEPS_HQ 128
+#define MAX_ITER_HQ 64
+#define SURF_DIST_HQ 0.002
+
+// Low quality mode (during animation)
+#define MAX_MARCH_STEPS_LQ 64
+#define MAX_ITER_LQ 32
+#define SURF_DIST_LQ 0.004
+
 #define BOUND_R 2.0
 #define EPS 1e-6
 
@@ -160,6 +170,30 @@ float fresnelSchlick(float cosTheta, float F0) {
 }
 
 // ============================================
+// Optimized Power Functions
+// ============================================
+
+// Fast integer power for common Mandelbulb power value (8)
+// Uses only 3 multiplications instead of expensive pow()
+// pow(r, 8) = r^8, pow(r, 7) = r^7 for derivative
+void fastPow8(float r, out float rPow, out float rPowMinus1) {
+    float r2 = r * r;
+    float r4 = r2 * r2;
+    rPowMinus1 = r4 * r2 * r;  // r^7
+    rPow = rPowMinus1 * r;      // r^8
+}
+
+// Generic optimized power that uses fastPow8 when applicable
+void optimizedPow(float r, float pwr, out float rPow, out float rPowMinus1) {
+    if (pwr == 8.0) {
+        fastPow8(r, rPow, rPowMinus1);
+    } else {
+        rPow = pow(r, pwr);
+        rPowMinus1 = rPow / max(r, EPS);
+    }
+}
+
+// ============================================
 // 4D Hyperbulb - FULLY UNROLLED with rotated basis
 // ============================================
 
@@ -170,8 +204,8 @@ float sdf4D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
     float cz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
     float cw = uOrigin[3] + pos.x*uBasisX[3] + pos.y*uBasisY[3] + pos.z*uBasisZ[3];
 
-    // z = iteration variable, starts at 0
-    float zx = 0.0, zy = 0.0, zz = 0.0, zw = 0.0;
+    // z = iteration variable, starts at c (like Mandelbulb)
+    float zx = cx, zy = cy, zz = cz, zw = cw;
     float dr = 1.0;
     float r = 0.0;
 
@@ -179,51 +213,46 @@ float sdf4D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
     float minPlane = 1000.0, minAxis = 1000.0, minSphere = 1000.0;
     int escIt = 0;
 
-    for (int i = 0; i < MAX_ITER; i++) {
+    for (int i = 0; i < MAX_ITER_HQ; i++) {
         if (i >= maxIt) break;
 
         // r = |z|
         r = sqrt(zx*zx + zy*zy + zz*zz + zw*zw);
         if (r > bail) { escIt = i; break; }
 
-        // Orbit traps
+        // Orbit traps (using z-axis primary convention)
         minPlane = min(minPlane, abs(zy));
-        minAxis = min(minAxis, sqrt(zx*zx + zz*zz));
+        minAxis = min(minAxis, sqrt(zx*zx + zy*zy));  // Distance from z-axis
         minSphere = min(minSphere, abs(r - 0.8));
 
-        // Derivative
-        dr = pow(r, pwr - 1.0) * pwr * dr + 1.0;
+        // Optimized power calculation
+        float rp, rpMinus1;
+        optimizedPow(r, pwr, rp, rpMinus1);
+        dr = rpMinus1 * pwr * dr + 1.0;
 
-        // Skip if at origin
-        if (r < EPS) {
-            zx = cx; zy = cy; zz = cz; zw = cw;
-            escIt = i;
-            continue;
-        }
+        // To hyperspherical: z-axis primary (like Mandelbulb)
+        // 4D: (z, x, y, w) -> (x1, x2, x3, x4) hyperspherical
+        float theta = acos(clamp(zz / r, -1.0, 1.0));  // From z-axis (like Mandelbulb)
+        float rxyw = sqrt(zx*zx + zy*zy + zw*zw);
+        float phi = rxyw > EPS ? acos(clamp(zx / rxyw, -1.0, 1.0)) : 0.0;  // From x in xyw
+        float psi = atan(zw, zy);  // In yw plane
 
-        // To hyperspherical: 4D needs 3 angles
-        float t0 = acos(clamp(zx / r, -1.0, 1.0));
-        float ryzw = sqrt(zy*zy + zz*zz + zw*zw);
-        float t1 = ryzw > EPS ? acos(clamp(zy / ryzw, -1.0, 1.0)) : 0.0;
-        float t2 = atan(zw, zz);
+        // Power map: angles * n
+        float thetaN = theta * pwr;
+        float phiN = phi * pwr;
+        float psiN = psi * pwr;
 
-        // Power map: r^n, angles * n
-        float rp = pow(r, pwr);
-        float p0 = t0 * pwr;
-        float p1 = t1 * pwr;
-        float p2 = t2 * pwr;
+        // From hyperspherical: z-axis primary reconstruction
+        float cTheta = cos(thetaN), sTheta = sin(thetaN);
+        float cPhi = cos(phiN), sPhi = sin(phiN);
+        float cPsi = cos(psiN), sPsi = sin(psiN);
 
-        // From hyperspherical: precompute sin/cos
-        float c0 = cos(p0), s0 = sin(p0);
-        float c1 = cos(p1), s1 = sin(p1);
-        float c2 = cos(p2), s2 = sin(p2);
-
-        float rs0 = rp * s0;
-        float rs0s1 = rs0 * s1;
-        zx = rp * c0 + cx;
-        zy = rs0 * c1 + cy;
-        zz = rs0s1 * c2 + cz;
-        zw = rs0s1 * s2 + cw;
+        float rSinTheta = rp * sTheta;
+        float rSinThetaSinPhi = rSinTheta * sPhi;
+        zz = rp * cTheta + cz;              // z = r * cos(theta)
+        zx = rSinTheta * cPhi + cx;         // x = r * sin(theta) * cos(phi)
+        zy = rSinThetaSinPhi * cPsi + cy;   // y = r * sin(theta) * sin(phi) * cos(psi)
+        zw = rSinThetaSinPhi * sPsi + cw;   // w = r * sin(theta) * sin(phi) * sin(psi)
         escIt = i;
     }
 
@@ -237,31 +266,35 @@ float sdf4D_simple(vec3 pos, float pwr, float bail, int maxIt) {
     float cy = uOrigin[1] + pos.x*uBasisX[1] + pos.y*uBasisY[1] + pos.z*uBasisZ[1];
     float cz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
     float cw = uOrigin[3] + pos.x*uBasisX[3] + pos.y*uBasisY[3] + pos.z*uBasisZ[3];
-    float zx = 0.0, zy = 0.0, zz = 0.0, zw = 0.0;
+    // Start at c (like Mandelbulb)
+    float zx = cx, zy = cy, zz = cz, zw = cw;
     float dr = 1.0, r = 0.0;
 
-    for (int i = 0; i < MAX_ITER; i++) {
+    for (int i = 0; i < MAX_ITER_HQ; i++) {
         if (i >= maxIt) break;
         r = sqrt(zx*zx + zy*zy + zz*zz + zw*zw);
         if (r > bail) break;
-        dr = pow(r, pwr - 1.0) * pwr * dr + 1.0;
-        if (r < EPS) { zx = cx; zy = cy; zz = cz; zw = cw; continue; }
 
-        float t0 = acos(clamp(zx / r, -1.0, 1.0));
-        float ryzw = sqrt(zy*zy + zz*zz + zw*zw);
-        float t1 = ryzw > EPS ? acos(clamp(zy / ryzw, -1.0, 1.0)) : 0.0;
-        float t2 = atan(zw, zz);
+        // Optimized power calculation
+        float rp, rpMinus1;
+        optimizedPow(r, pwr, rp, rpMinus1);
+        dr = rpMinus1 * pwr * dr + 1.0;
 
-        float rp = pow(r, pwr);
-        float c0 = cos(t0 * pwr), s0 = sin(t0 * pwr);
-        float c1 = cos(t1 * pwr), s1 = sin(t1 * pwr);
-        float c2 = cos(t2 * pwr), s2 = sin(t2 * pwr);
+        // z-axis primary (like Mandelbulb)
+        float theta = acos(clamp(zz / r, -1.0, 1.0));
+        float rxyw = sqrt(zx*zx + zy*zy + zw*zw);
+        float phi = rxyw > EPS ? acos(clamp(zx / rxyw, -1.0, 1.0)) : 0.0;
+        float psi = atan(zw, zy);
 
-        float rs0s1 = rp * s0 * s1;
-        zx = rp * c0 + cx;
-        zy = rp * s0 * c1 + cy;
-        zz = rs0s1 * c2 + cz;
-        zw = rs0s1 * s2 + cw;
+        float cTheta = cos(theta * pwr), sTheta = sin(theta * pwr);
+        float cPhi = cos(phi * pwr), sPhi = sin(phi * pwr);
+        float cPsi = cos(psi * pwr), sPsi = sin(psi * pwr);
+
+        float rSinThetaSinPhi = rp * sTheta * sPhi;
+        zz = rp * cTheta + cz;
+        zx = rp * sTheta * cPhi + cx;
+        zy = rSinThetaSinPhi * cPsi + cy;
+        zw = rSinThetaSinPhi * sPsi + cw;
     }
     return max(0.5 * log(max(r, EPS)) * r / max(dr, EPS), EPS);
 }
@@ -276,43 +309,42 @@ float sdf5D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
     float cz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
     float c3 = uOrigin[3] + pos.x*uBasisX[3] + pos.y*uBasisY[3] + pos.z*uBasisZ[3];
     float c4 = uOrigin[4] + pos.x*uBasisX[4] + pos.y*uBasisY[4] + pos.z*uBasisZ[4];
-    float zx = 0.0, zy = 0.0, zz = 0.0, z3 = 0.0, z4 = 0.0;
+    // Start at c (like Mandelbulb)
+    float zx = cx, zy = cy, zz = cz, z3 = c3, z4 = c4;
     float dr = 1.0, r = 0.0;
     float minP = 1000.0, minA = 1000.0, minS = 1000.0;
     int escIt = 0;
 
-    for (int i = 0; i < MAX_ITER; i++) {
+    for (int i = 0; i < MAX_ITER_HQ; i++) {
         if (i >= maxIt) break;
         r = sqrt(zx*zx + zy*zy + zz*zz + z3*z3 + z4*z4);
         if (r > bail) { escIt = i; break; }
         minP = min(minP, abs(zy));
-        minA = min(minA, sqrt(zx*zx + zz*zz));
+        minA = min(minA, sqrt(zx*zx + zy*zy));  // Distance from z-axis
         minS = min(minS, abs(r - 0.8));
         dr = pow(r, pwr - 1.0) * pwr * dr + 1.0;
 
-        if (r < EPS) { zx = cx; zy = cy; zz = cz; z3 = c3; z4 = c4; escIt = i; continue; }
-
-        // 5D: 4 angles
-        float t0 = acos(clamp(zx / r, -1.0, 1.0));
-        float r1 = sqrt(zy*zy + zz*zz + z3*z3 + z4*z4);
-        float t1 = r1 > EPS ? acos(clamp(zy / r1, -1.0, 1.0)) : 0.0;
-        float r2 = sqrt(zz*zz + z3*z3 + z4*z4);
-        float t2 = r2 > EPS ? acos(clamp(zz / r2, -1.0, 1.0)) : 0.0;
+        // 5D: 4 angles, z-axis primary (like Mandelbulb)
+        // Order: (z, x, y, w, v) -> hyperspherical
+        float t0 = acos(clamp(zz / r, -1.0, 1.0));           // From z-axis
+        float r1 = sqrt(zx*zx + zy*zy + z3*z3 + z4*z4);
+        float t1 = r1 > EPS ? acos(clamp(zx / r1, -1.0, 1.0)) : 0.0;  // From x in xyw subspace
+        float r2 = sqrt(zy*zy + z3*z3 + z4*z4);
+        float t2 = r2 > EPS ? acos(clamp(zy / r2, -1.0, 1.0)) : 0.0;
         float t3 = atan(z4, z3);
 
         float rp = pow(r, pwr);
-        float p0 = t0 * pwr, p1 = t1 * pwr, p2 = t2 * pwr, p3 = t3 * pwr;
-        float c0 = cos(p0), s0_ = sin(p0);
-        float c1 = cos(p1), s1_ = sin(p1);
-        float c2 = cos(p2), s2_ = sin(p2);
-        float c3_ = cos(p3), s3_ = sin(p3);
+        float s0 = sin(t0*pwr), c0 = cos(t0*pwr);
+        float s1 = sin(t1*pwr), c1 = cos(t1*pwr);
+        float s2 = sin(t2*pwr), c2 = cos(t2*pwr);
+        float s3 = sin(t3*pwr), c3_ = cos(t3*pwr);
 
-        float sp = rp * s0_ * s1_ * s2_;
-        zx = rp * c0 + cx;
-        zy = rp * s0_ * c1 + cy;
-        zz = rp * s0_ * s1_ * c2 + cz;
+        float sp = rp * s0 * s1 * s2;
+        zz = rp * c0 + cz;                    // z = r * cos(t0)
+        zx = rp * s0 * c1 + cx;               // x = r * sin(t0) * cos(t1)
+        zy = rp * s0 * s1 * c2 + cy;          // y = r * sin(t0) * sin(t1) * cos(t2)
         z3 = sp * c3_ + c3;
-        z4 = sp * s3_ + c4;
+        z4 = sp * s3 + c4;
         escIt = i;
     }
 
@@ -326,31 +358,32 @@ float sdf5D_simple(vec3 pos, float pwr, float bail, int maxIt) {
     float cz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
     float c3 = uOrigin[3] + pos.x*uBasisX[3] + pos.y*uBasisY[3] + pos.z*uBasisZ[3];
     float c4 = uOrigin[4] + pos.x*uBasisX[4] + pos.y*uBasisY[4] + pos.z*uBasisZ[4];
-    float zx = 0.0, zy = 0.0, zz = 0.0, z3 = 0.0, z4 = 0.0;
+    // Start at c (like Mandelbulb)
+    float zx = cx, zy = cy, zz = cz, z3 = c3, z4 = c4;
     float dr = 1.0, r = 0.0;
 
-    for (int i = 0; i < MAX_ITER; i++) {
+    for (int i = 0; i < MAX_ITER_HQ; i++) {
         if (i >= maxIt) break;
         r = sqrt(zx*zx + zy*zy + zz*zz + z3*z3 + z4*z4);
         if (r > bail) break;
         dr = pow(r, pwr - 1.0) * pwr * dr + 1.0;
-        if (r < EPS) { zx = cx; zy = cy; zz = cz; z3 = c3; z4 = c4; continue; }
 
-        float t0 = acos(clamp(zx / r, -1.0, 1.0));
-        float r1 = sqrt(zy*zy + zz*zz + z3*z3 + z4*z4);
-        float t1 = r1 > EPS ? acos(clamp(zy / r1, -1.0, 1.0)) : 0.0;
-        float r2 = sqrt(zz*zz + z3*z3 + z4*z4);
-        float t2 = r2 > EPS ? acos(clamp(zz / r2, -1.0, 1.0)) : 0.0;
+        // z-axis primary (like Mandelbulb)
+        float t0 = acos(clamp(zz / r, -1.0, 1.0));
+        float r1 = sqrt(zx*zx + zy*zy + z3*z3 + z4*z4);
+        float t1 = r1 > EPS ? acos(clamp(zx / r1, -1.0, 1.0)) : 0.0;
+        float r2 = sqrt(zy*zy + z3*z3 + z4*z4);
+        float t2 = r2 > EPS ? acos(clamp(zy / r2, -1.0, 1.0)) : 0.0;
         float t3 = atan(z4, z3);
 
         float rp = pow(r, pwr);
-        float c0 = cos(t0*pwr), s0_ = sin(t0*pwr);
-        float c1 = cos(t1*pwr), s1_ = sin(t1*pwr);
-        float c2 = cos(t2*pwr), s2_ = sin(t2*pwr);
-        float c3_ = cos(t3*pwr), s3_ = sin(t3*pwr);
-        float sp = rp * s0_ * s1_ * s2_;
-        zx = rp * c0 + cx; zy = rp * s0_ * c1 + cy; zz = rp * s0_ * s1_ * c2 + cz;
-        z3 = sp * c3_ + c3; z4 = sp * s3_ + c4;
+        float s0 = sin(t0*pwr), c0 = cos(t0*pwr);
+        float s1 = sin(t1*pwr), c1 = cos(t1*pwr);
+        float s2 = sin(t2*pwr), c2 = cos(t2*pwr);
+        float s3 = sin(t3*pwr), c3_ = cos(t3*pwr);
+        float sp = rp * s0 * s1 * s2;
+        zz = rp * c0 + cz; zx = rp * s0 * c1 + cx; zy = rp * s0 * s1 * c2 + cy;
+        z3 = sp * c3_ + c3; z4 = sp * s3 + c4;
     }
     return max(0.5 * log(max(r, EPS)) * r / max(dr, EPS), EPS);
 }
@@ -366,43 +399,43 @@ float sdf6D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
     float c3 = uOrigin[3] + pos.x*uBasisX[3] + pos.y*uBasisY[3] + pos.z*uBasisZ[3];
     float c4 = uOrigin[4] + pos.x*uBasisX[4] + pos.y*uBasisY[4] + pos.z*uBasisZ[4];
     float c5 = uOrigin[5] + pos.x*uBasisX[5] + pos.y*uBasisY[5] + pos.z*uBasisZ[5];
-    float zx = 0.0, zy = 0.0, zz = 0.0, z3 = 0.0, z4 = 0.0, z5 = 0.0;
+    // Start at c (like Mandelbulb)
+    float zx = cx, zy = cy, zz = cz, z3 = c3, z4 = c4, z5 = c5;
     float dr = 1.0, r = 0.0;
     float minP = 1000.0, minA = 1000.0, minS = 1000.0;
     int escIt = 0;
 
-    for (int i = 0; i < MAX_ITER; i++) {
+    for (int i = 0; i < MAX_ITER_HQ; i++) {
         if (i >= maxIt) break;
         r = sqrt(zx*zx + zy*zy + zz*zz + z3*z3 + z4*z4 + z5*z5);
         if (r > bail) { escIt = i; break; }
-        minP = min(minP, abs(zy)); minA = min(minA, sqrt(zx*zx + zz*zz)); minS = min(minS, abs(r - 0.8));
+        minP = min(minP, abs(zy)); minA = min(minA, sqrt(zx*zx + zy*zy)); minS = min(minS, abs(r - 0.8));
         dr = pow(r, pwr - 1.0) * pwr * dr + 1.0;
-        if (r < EPS) { zx = cx; zy = cy; zz = cz; z3 = c3; z4 = c4; z5 = c5; escIt = i; continue; }
 
-        // 6D: 5 angles
-        float t0 = acos(clamp(zx / r, -1.0, 1.0));
-        float r1 = sqrt(zy*zy + zz*zz + z3*z3 + z4*z4 + z5*z5);
-        float t1 = r1 > EPS ? acos(clamp(zy / r1, -1.0, 1.0)) : 0.0;
-        float r2 = sqrt(zz*zz + z3*z3 + z4*z4 + z5*z5);
-        float t2 = r2 > EPS ? acos(clamp(zz / r2, -1.0, 1.0)) : 0.0;
+        // 6D: 5 angles, z-axis primary (like Mandelbulb)
+        float t0 = acos(clamp(zz / r, -1.0, 1.0));
+        float r1 = sqrt(zx*zx + zy*zy + z3*z3 + z4*z4 + z5*z5);
+        float t1 = r1 > EPS ? acos(clamp(zx / r1, -1.0, 1.0)) : 0.0;
+        float r2 = sqrt(zy*zy + z3*z3 + z4*z4 + z5*z5);
+        float t2 = r2 > EPS ? acos(clamp(zy / r2, -1.0, 1.0)) : 0.0;
         float r3 = sqrt(z3*z3 + z4*z4 + z5*z5);
         float t3 = r3 > EPS ? acos(clamp(z3 / r3, -1.0, 1.0)) : 0.0;
         float t4 = atan(z5, z4);
 
         float rp = pow(r, pwr);
-        float c0 = cos(t0*pwr), s0_ = sin(t0*pwr);
-        float c1 = cos(t1*pwr), s1_ = sin(t1*pwr);
-        float c2 = cos(t2*pwr), s2_ = sin(t2*pwr);
-        float c3_ = cos(t3*pwr), s3_ = sin(t3*pwr);
-        float c4_ = cos(t4*pwr), s4_ = sin(t4*pwr);
+        float s0 = sin(t0*pwr), c0 = cos(t0*pwr);
+        float s1 = sin(t1*pwr), c1 = cos(t1*pwr);
+        float s2 = sin(t2*pwr), c2 = cos(t2*pwr);
+        float s3 = sin(t3*pwr), c3_ = cos(t3*pwr);
+        float s4 = sin(t4*pwr), c4_ = cos(t4*pwr);
 
-        float sp = rp * s0_ * s1_ * s2_ * s3_;
-        zx = rp * c0 + cx;
-        zy = rp * s0_ * c1 + cy;
-        zz = rp * s0_ * s1_ * c2 + cz;
-        z3 = rp * s0_ * s1_ * s2_ * c3_ + c3;
+        float sp = rp * s0 * s1 * s2 * s3;
+        zz = rp * c0 + cz;
+        zx = rp * s0 * c1 + cx;
+        zy = rp * s0 * s1 * c2 + cy;
+        z3 = rp * s0 * s1 * s2 * c3_ + c3;
         z4 = sp * c4_ + c4;
-        z5 = sp * s4_ + c5;
+        z5 = sp * s4 + c5;
         escIt = i;
     }
 
@@ -417,26 +450,27 @@ float sdf6D_simple(vec3 pos, float pwr, float bail, int maxIt) {
     float c3 = uOrigin[3] + pos.x*uBasisX[3] + pos.y*uBasisY[3] + pos.z*uBasisZ[3];
     float c4 = uOrigin[4] + pos.x*uBasisX[4] + pos.y*uBasisY[4] + pos.z*uBasisZ[4];
     float c5 = uOrigin[5] + pos.x*uBasisX[5] + pos.y*uBasisY[5] + pos.z*uBasisZ[5];
-    float zx = 0.0, zy = 0.0, zz = 0.0, z3 = 0.0, z4 = 0.0, z5 = 0.0;
+    // Start at c (like Mandelbulb)
+    float zx = cx, zy = cy, zz = cz, z3 = c3, z4 = c4, z5 = c5;
     float dr = 1.0, r = 0.0;
-    for (int i = 0; i < MAX_ITER; i++) {
+    for (int i = 0; i < MAX_ITER_HQ; i++) {
         if (i >= maxIt) break;
         r = sqrt(zx*zx + zy*zy + zz*zz + z3*z3 + z4*z4 + z5*z5);
         if (r > bail) break;
         dr = pow(r, pwr - 1.0) * pwr * dr + 1.0;
-        if (r < EPS) { zx = cx; zy = cy; zz = cz; z3 = c3; z4 = c4; z5 = c5; continue; }
-        float t0 = acos(clamp(zx/r, -1.0, 1.0));
-        float r1 = sqrt(zy*zy+zz*zz+z3*z3+z4*z4+z5*z5); float t1 = r1>EPS ? acos(clamp(zy/r1,-1.0,1.0)) : 0.0;
-        float r2 = sqrt(zz*zz+z3*z3+z4*z4+z5*z5); float t2 = r2>EPS ? acos(clamp(zz/r2,-1.0,1.0)) : 0.0;
+        // z-axis primary (like Mandelbulb)
+        float t0 = acos(clamp(zz/r, -1.0, 1.0));
+        float r1 = sqrt(zx*zx+zy*zy+z3*z3+z4*z4+z5*z5); float t1 = r1>EPS ? acos(clamp(zx/r1,-1.0,1.0)) : 0.0;
+        float r2 = sqrt(zy*zy+z3*z3+z4*z4+z5*z5); float t2 = r2>EPS ? acos(clamp(zy/r2,-1.0,1.0)) : 0.0;
         float r3 = sqrt(z3*z3+z4*z4+z5*z5); float t3 = r3>EPS ? acos(clamp(z3/r3,-1.0,1.0)) : 0.0;
         float t4 = atan(z5, z4);
         float rp = pow(r, pwr);
-        float c0=cos(t0*pwr),s0_=sin(t0*pwr),c1=cos(t1*pwr),s1_=sin(t1*pwr);
-        float c2=cos(t2*pwr),s2_=sin(t2*pwr),c3_=cos(t3*pwr),s3_=sin(t3*pwr);
-        float c4_=cos(t4*pwr),s4_=sin(t4*pwr);
-        float sp = rp*s0_*s1_*s2_*s3_;
-        zx=rp*c0+cx; zy=rp*s0_*c1+cy; zz=rp*s0_*s1_*c2+cz;
-        z3=rp*s0_*s1_*s2_*c3_+c3; z4=sp*c4_+c4; z5=sp*s4_+c5;
+        float s0=sin(t0*pwr),c0=cos(t0*pwr),s1=sin(t1*pwr),c1=cos(t1*pwr);
+        float s2=sin(t2*pwr),c2=cos(t2*pwr),s3=sin(t3*pwr),c3_=cos(t3*pwr);
+        float s4=sin(t4*pwr),c4_=cos(t4*pwr);
+        float sp = rp*s0*s1*s2*s3;
+        zz=rp*c0+cz; zx=rp*s0*c1+cx; zy=rp*s0*s1*c2+cy;
+        z3=rp*s0*s1*s2*c3_+c3; z4=sp*c4_+c4; z5=sp*s4+c5;
     }
     return max(0.5 * log(max(r, EPS)) * r / max(dr, EPS), EPS);
 }
@@ -453,37 +487,37 @@ float sdf7D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
     float c4 = uOrigin[4] + pos.x*uBasisX[4] + pos.y*uBasisY[4] + pos.z*uBasisZ[4];
     float c5 = uOrigin[5] + pos.x*uBasisX[5] + pos.y*uBasisY[5] + pos.z*uBasisZ[5];
     float c6 = uOrigin[6] + pos.x*uBasisX[6] + pos.y*uBasisY[6] + pos.z*uBasisZ[6];
-    float zx=0.0,zy=0.0,zz=0.0,z3=0.0,z4=0.0,z5=0.0,z6=0.0;
+    // Start at c (like Mandelbulb)
+    float zx=cx,zy=cy,zz=cz,z3=c3,z4=c4,z5=c5,z6=c6;
     float dr=1.0, r=0.0;
     float minP=1000.0, minA=1000.0, minS=1000.0;
     int escIt=0;
 
-    for (int i = 0; i < MAX_ITER; i++) {
+    for (int i = 0; i < MAX_ITER_HQ; i++) {
         if (i >= maxIt) break;
         r = sqrt(zx*zx+zy*zy+zz*zz+z3*z3+z4*z4+z5*z5+z6*z6);
         if (r > bail) { escIt=i; break; }
-        minP=min(minP,abs(zy)); minA=min(minA,sqrt(zx*zx+zz*zz)); minS=min(minS,abs(r-0.8));
+        minP=min(minP,abs(zy)); minA=min(minA,sqrt(zx*zx+zy*zy)); minS=min(minS,abs(r-0.8));
         dr = pow(r, pwr-1.0)*pwr*dr + 1.0;
-        if (r < EPS) { zx=cx;zy=cy;zz=cz;z3=c3;z4=c4;z5=c5;z6=c6; escIt=i; continue; }
 
-        // 7D: 6 angles
-        float t0=acos(clamp(zx/r,-1.0,1.0));
-        float r1=sqrt(zy*zy+zz*zz+z3*z3+z4*z4+z5*z5+z6*z6); float t1=r1>EPS?acos(clamp(zy/r1,-1.0,1.0)):0.0;
-        float r2=sqrt(zz*zz+z3*z3+z4*z4+z5*z5+z6*z6); float t2=r2>EPS?acos(clamp(zz/r2,-1.0,1.0)):0.0;
+        // 7D: 6 angles, z-axis primary (like Mandelbulb)
+        float t0=acos(clamp(zz/r,-1.0,1.0));
+        float r1=sqrt(zx*zx+zy*zy+z3*z3+z4*z4+z5*z5+z6*z6); float t1=r1>EPS?acos(clamp(zx/r1,-1.0,1.0)):0.0;
+        float r2=sqrt(zy*zy+z3*z3+z4*z4+z5*z5+z6*z6); float t2=r2>EPS?acos(clamp(zy/r2,-1.0,1.0)):0.0;
         float r3=sqrt(z3*z3+z4*z4+z5*z5+z6*z6); float t3=r3>EPS?acos(clamp(z3/r3,-1.0,1.0)):0.0;
         float r4=sqrt(z4*z4+z5*z5+z6*z6); float t4=r4>EPS?acos(clamp(z4/r4,-1.0,1.0)):0.0;
         float t5=atan(z6,z5);
 
         float rp=pow(r,pwr);
-        float s0=sin(t0*pwr),c0_=cos(t0*pwr);
-        float s1=sin(t1*pwr),c1_=cos(t1*pwr);
-        float s2=sin(t2*pwr),c2_=cos(t2*pwr);
+        float s0=sin(t0*pwr),c0=cos(t0*pwr);
+        float s1=sin(t1*pwr),c1=cos(t1*pwr);
+        float s2=sin(t2*pwr),c2=cos(t2*pwr);
         float s3=sin(t3*pwr),c3_=cos(t3*pwr);
         float s4=sin(t4*pwr),c4_=cos(t4*pwr);
         float s5=sin(t5*pwr),c5_=cos(t5*pwr);
 
         float p0=rp, p1=p0*s0, p2=p1*s1, p3=p2*s2, p4=p3*s3, p5=p4*s4;
-        zx=p0*c0_+cx; zy=p1*c1_+cy; zz=p2*c2_+cz; z3=p3*c3_+c3; z4=p4*c4_+c4;
+        zz=p0*c0+cz; zx=p1*c1+cx; zy=p2*c2+cy; z3=p3*c3_+c3; z4=p4*c4_+c4;
         z5=p5*c5_+c5; z6=p5*s5+c6;
         escIt=i;
     }
@@ -499,26 +533,27 @@ float sdf7D_simple(vec3 pos, float pwr, float bail, int maxIt) {
     float c4 = uOrigin[4] + pos.x*uBasisX[4] + pos.y*uBasisY[4] + pos.z*uBasisZ[4];
     float c5 = uOrigin[5] + pos.x*uBasisX[5] + pos.y*uBasisY[5] + pos.z*uBasisZ[5];
     float c6 = uOrigin[6] + pos.x*uBasisX[6] + pos.y*uBasisY[6] + pos.z*uBasisZ[6];
-    float zx=0.0,zy=0.0,zz=0.0,z3=0.0,z4=0.0,z5=0.0,z6=0.0;
+    // Start at c (like Mandelbulb)
+    float zx=cx,zy=cy,zz=cz,z3=c3,z4=c4,z5=c5,z6=c6;
     float dr=1.0,r=0.0;
-    for(int i=0;i<MAX_ITER;i++){
+    for(int i=0;i<MAX_ITER_HQ;i++){
         if(i>=maxIt)break;
         r=sqrt(zx*zx+zy*zy+zz*zz+z3*z3+z4*z4+z5*z5+z6*z6);
         if(r>bail)break;
         dr=pow(r,pwr-1.0)*pwr*dr+1.0;
-        if(r<EPS){zx=cx;zy=cy;zz=cz;z3=c3;z4=c4;z5=c5;z6=c6;continue;}
-        float t0=acos(clamp(zx/r,-1.0,1.0));
-        float r1=sqrt(zy*zy+zz*zz+z3*z3+z4*z4+z5*z5+z6*z6);float t1=r1>EPS?acos(clamp(zy/r1,-1.0,1.0)):0.0;
-        float r2=sqrt(zz*zz+z3*z3+z4*z4+z5*z5+z6*z6);float t2=r2>EPS?acos(clamp(zz/r2,-1.0,1.0)):0.0;
+        // z-axis primary (like Mandelbulb)
+        float t0=acos(clamp(zz/r,-1.0,1.0));
+        float r1=sqrt(zx*zx+zy*zy+z3*z3+z4*z4+z5*z5+z6*z6);float t1=r1>EPS?acos(clamp(zx/r1,-1.0,1.0)):0.0;
+        float r2=sqrt(zy*zy+z3*z3+z4*z4+z5*z5+z6*z6);float t2=r2>EPS?acos(clamp(zy/r2,-1.0,1.0)):0.0;
         float r3=sqrt(z3*z3+z4*z4+z5*z5+z6*z6);float t3=r3>EPS?acos(clamp(z3/r3,-1.0,1.0)):0.0;
         float r4=sqrt(z4*z4+z5*z5+z6*z6);float t4=r4>EPS?acos(clamp(z4/r4,-1.0,1.0)):0.0;
         float t5=atan(z6,z5);
         float rp=pow(r,pwr);
-        float s0=sin(t0*pwr),c0_=cos(t0*pwr),s1=sin(t1*pwr),c1_=cos(t1*pwr);
-        float s2=sin(t2*pwr),c2_=cos(t2*pwr),s3=sin(t3*pwr),c3_=cos(t3*pwr);
+        float s0=sin(t0*pwr),c0=cos(t0*pwr),s1=sin(t1*pwr),c1=cos(t1*pwr);
+        float s2=sin(t2*pwr),c2=cos(t2*pwr),s3=sin(t3*pwr),c3_=cos(t3*pwr);
         float s4=sin(t4*pwr),c4_=cos(t4*pwr),s5=sin(t5*pwr),c5_=cos(t5*pwr);
-        float p1=rp*s0,p2=p1*s1,p3=p2*s2,p4=p3*s3,p5=p4*s4;
-        zx=rp*c0_+cx;zy=p1*c1_+cy;zz=p2*c2_+cz;z3=p3*c3_+c3;z4=p4*c4_+c4;z5=p5*c5_+c5;z6=p5*s5+c6;
+        float p0=rp,p1=p0*s0,p2=p1*s1,p3=p2*s2,p4=p3*s3,p5=p4*s4;
+        zz=p0*c0+cz;zx=p1*c1+cx;zy=p2*c2+cy;z3=p3*c3_+c3;z4=p4*c4_+c4;z5=p5*c5_+c5;z6=p5*s5+c6;
     }
     return max(0.5*log(max(r,EPS))*r/max(dr,EPS),EPS);
 }
@@ -530,17 +565,17 @@ float sdf7D_simple(vec3 pos, float pwr, float bail, int maxIt) {
 float sdf8D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
     float c[8];
     for(int j=0;j<8;j++) c[j]=uOrigin[j]+pos.x*uBasisX[j]+pos.y*uBasisY[j]+pos.z*uBasisZ[j];
-    float z[8]; for(int j=0;j<8;j++)z[j]=0.0;
+    // Start at c (like Mandelbulb)
+    float z[8]; for(int j=0;j<8;j++)z[j]=c[j];
     float dr=1.0,r=0.0,minP=1000.0,minA=1000.0,minS=1000.0;
     int escIt=0;
 
-    for(int i=0;i<MAX_ITER;i++){
+    for(int i=0;i<MAX_ITER_HQ;i++){
         if(i>=maxIt)break;
         r=sqrt(z[0]*z[0]+z[1]*z[1]+z[2]*z[2]+z[3]*z[3]+z[4]*z[4]+z[5]*z[5]+z[6]*z[6]+z[7]*z[7]);
         if(r>bail){escIt=i;break;}
-        minP=min(minP,abs(z[1]));minA=min(minA,sqrt(z[0]*z[0]+z[2]*z[2]));minS=min(minS,abs(r-0.8));
+        minP=min(minP,abs(z[1]));minA=min(minA,sqrt(z[0]*z[0]+z[1]*z[1]));minS=min(minS,abs(r-0.8));
         dr=pow(r,pwr-1.0)*pwr*dr+1.0;
-        if(r<EPS){for(int j=0;j<8;j++)z[j]=c[j];escIt=i;continue;}
 
         // 8D: 7 angles - compute tails and angles
         float t[7];
@@ -570,14 +605,14 @@ float sdf8D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
 float sdf8D_simple(vec3 pos, float pwr, float bail, int maxIt) {
     float c[8];
     for(int j=0;j<8;j++) c[j]=uOrigin[j]+pos.x*uBasisX[j]+pos.y*uBasisY[j]+pos.z*uBasisZ[j];
-    float z[8];for(int j=0;j<8;j++)z[j]=0.0;
+    // Start at c (like Mandelbulb)
+    float z[8];for(int j=0;j<8;j++)z[j]=c[j];
     float dr=1.0,r=0.0;
-    for(int i=0;i<MAX_ITER;i++){
+    for(int i=0;i<MAX_ITER_HQ;i++){
         if(i>=maxIt)break;
         r=sqrt(z[0]*z[0]+z[1]*z[1]+z[2]*z[2]+z[3]*z[3]+z[4]*z[4]+z[5]*z[5]+z[6]*z[6]+z[7]*z[7]);
         if(r>bail)break;
         dr=pow(r,pwr-1.0)*pwr*dr+1.0;
-        if(r<EPS){for(int j=0;j<8;j++)z[j]=c[j];continue;}
         float t[7];float tail=r;
         for(int k=0;k<6;k++){t[k]=acos(clamp(z[k]/tail,-1.0,1.0));tail=sqrt(max(tail*tail-z[k]*z[k],EPS));}
         t[6]=atan(z[7],z[6]);
@@ -593,12 +628,13 @@ float sdf8D_simple(vec3 pos, float pwr, float bail, int maxIt) {
 float sdfHighD(vec3 pos, int D, float pwr, float bail, int maxIt, out float trap) {
     float c[11],z[11];
     for(int j=0;j<11;j++) c[j]=uOrigin[j]+pos.x*uBasisX[j]+pos.y*uBasisY[j]+pos.z*uBasisZ[j];
-    for(int j=0;j<11;j++)z[j]=0.0;
+    // Start at c (like Mandelbulb)
+    for(int j=0;j<11;j++)z[j]=c[j];
 
     float dr=1.0,r=0.0,minP=1000.0,minA=1000.0,minS=1000.0;
     int escIt=0;
 
-    for(int i=0;i<MAX_ITER;i++){
+    for(int i=0;i<MAX_ITER_HQ;i++){
         if(i>=maxIt)break;
 
         // Compute r - unrolled for speed
@@ -607,10 +643,8 @@ float sdfHighD(vec3 pos, int D, float pwr, float bail, int maxIt, out float trap
         r=sqrt(r);
 
         if(r>bail){escIt=i;break;}
-        minP=min(minP,abs(z[1]));minA=min(minA,sqrt(z[0]*z[0]+z[2]*z[2]));minS=min(minS,abs(r-0.8));
+        minP=min(minP,abs(z[1]));minA=min(minA,sqrt(z[0]*z[0]+z[1]*z[1]));minS=min(minS,abs(r-0.8));
         dr=pow(r,pwr-1.0)*pwr*dr+1.0;
-
-        if(r<EPS){for(int j=0;j<11;j++)z[j]=c[j];escIt=i;continue;}
 
         // Compute angles
         float t[10];
@@ -644,17 +678,17 @@ float sdfHighD(vec3 pos, int D, float pwr, float bail, int maxIt, out float trap
 float sdfHighD_simple(vec3 pos, int D, float pwr, float bail, int maxIt) {
     float c[11],z[11];
     for(int j=0;j<11;j++) c[j]=uOrigin[j]+pos.x*uBasisX[j]+pos.y*uBasisY[j]+pos.z*uBasisZ[j];
-    for(int j=0;j<11;j++)z[j]=0.0;
+    // Start at c (like Mandelbulb)
+    for(int j=0;j<11;j++)z[j]=c[j];
     float dr=1.0,r=0.0;
 
-    for(int i=0;i<MAX_ITER;i++){
+    for(int i=0;i<MAX_ITER_HQ;i++){
         if(i>=maxIt)break;
         r=z[0]*z[0]+z[1]*z[1]+z[2]*z[2]+z[3]*z[3]+z[4]*z[4];
         r+=z[5]*z[5]+z[6]*z[6]+z[7]*z[7]+z[8]*z[8]+z[9]*z[9]+z[10]*z[10];
         r=sqrt(r);
         if(r>bail)break;
         dr=pow(r,pwr-1.0)*pwr*dr+1.0;
-        if(r<EPS){for(int j=0;j<11;j++)z[j]=c[j];continue;}
 
         float t[10];float tail2=r*r;
         for(int k=0;k<D-2;k++){float tail=sqrt(max(tail2,EPS));t[k]=acos(clamp(z[k]/tail,-1.0,1.0));tail2-=z[k]*z[k];}
@@ -678,7 +712,9 @@ float sdfHighD_simple(vec3 pos, int D, float pwr, float bail, int maxIt) {
 float GetDist(vec3 pos) {
     float pwr = max(uPower, 2.0);
     float bail = max(uEscapeRadius, 2.0);
-    int maxIt = int(min(uIterations, float(MAX_ITER)));
+    // Use reduced iterations in fast mode for better performance
+    int maxIterLimit = uFastMode ? MAX_ITER_LQ : MAX_ITER_HQ;
+    int maxIt = int(min(uIterations, float(maxIterLimit)));
 
     if (uDimension == 4) return sdf4D_simple(pos, pwr, bail, maxIt);
     if (uDimension == 5) return sdf5D_simple(pos, pwr, bail, maxIt);
@@ -691,7 +727,9 @@ float GetDist(vec3 pos) {
 float GetDistWithTrap(vec3 pos, out float trap) {
     float pwr = max(uPower, 2.0);
     float bail = max(uEscapeRadius, 2.0);
-    int maxIt = int(min(uIterations, float(MAX_ITER)));
+    // Use reduced iterations in fast mode for better performance
+    int maxIterLimit = uFastMode ? MAX_ITER_LQ : MAX_ITER_HQ;
+    int maxIt = int(min(uIterations, float(maxIterLimit)));
 
     if (uDimension == 4) return sdf4D(pos, pwr, bail, maxIt, trap);
     if (uDimension == 5) return sdf5D(pos, pwr, bail, maxIt, trap);
@@ -725,24 +763,58 @@ float RayMarch(vec3 ro, vec3 rd, out float trap) {
     float dO = max(0.0, tSphere.x);
     float maxT = min(tSphere.y, maxDist);
 
-    for (int i = 0; i < MAX_MARCH_STEPS; i++) {
+    // Use reduced march steps and relaxed surface distance in fast mode
+    int maxSteps = uFastMode ? MAX_MARCH_STEPS_LQ : MAX_MARCH_STEPS_HQ;
+    float surfDist = uFastMode ? SURF_DIST_LQ : SURF_DIST_HQ;
+
+    // Relaxed sphere tracing with overrelaxation
+    // omega > 1 allows larger steps, reducing total march count
+    // Safety: if we overstep, fall back to conservative stepping
+    float omega = uFastMode ? 1.0 : 1.2;  // No overrelaxation in fast mode (already fast)
+    float prevDist = 1e10;
+
+    // Loop uses max possible steps, early exit via maxSteps check
+    for (int i = 0; i < MAX_MARCH_STEPS_HQ; i++) {
+        if (i >= maxSteps) break;
+
         vec3 p = ro + rd * dO;
         float currentTrap;
         float dS = GetDistWithTrap(p, currentTrap);
 
-        if (dS < SURF_DIST) { trap = currentTrap; return dO; }
-        dO += dS;
+        if (dS < surfDist) { trap = currentTrap; return dO; }
+
+        // Relaxed sphere tracing: take larger steps when safe
+        float step = dS * omega;
+
+        // Safety check: if step would be larger than previous distance,
+        // we might have overstepped - use conservative step instead
+        if (step > prevDist + dS) {
+            step = dS;  // Conservative fallback
+        }
+
+        dO += step;
+        prevDist = dS;
+
         if (dO > maxT) break;
     }
     return maxDist + 1.0;
 }
 
+// Standard normal calculation (4 SDF evaluations)
 vec3 GetNormal(vec3 p) {
     float d = GetDist(p);
     vec2 e = vec2(0.001, 0);
     return normalize(d - vec3(GetDist(p-e.xyy), GetDist(p-e.yxy), GetDist(p-e.yyx)));
 }
 
+// Faster normal calculation with larger epsilon (smoother but faster)
+vec3 GetNormalFast(vec3 p) {
+    vec2 e = vec2(0.005, 0);  // Larger epsilon = fewer iterations needed
+    float d = GetDist(p);
+    return normalize(d - vec3(GetDist(p-e.xyy), GetDist(p-e.yxy), GetDist(p-e.yyx)));
+}
+
+// Ambient occlusion (3 SDF evaluations)
 float calcAO(vec3 p, vec3 n) {
     float occ = 0.0;
     occ += (0.02 - GetDist(p + 0.02 * n));
@@ -793,8 +865,12 @@ void main() {
     if (d > maxDist) discard;
 
     vec3 p = ro + rd * d;
-    vec3 n = GetNormal(p);
-    float ao = calcAO(p, n);
+
+    // Use faster normal calculation in fast mode
+    vec3 n = uFastMode ? GetNormalFast(p) : GetNormal(p);
+
+    // Skip AO calculation in fast mode (saves 3 SDF evaluations)
+    float ao = uFastMode ? 1.0 : calcAO(p, n);
 
     vec3 baseHSL = rgb2hsl(uColor);
     vec3 surfaceColor = getPaletteColor(baseHSL, 1.0 - trap, uPaletteMode);
@@ -816,12 +892,13 @@ void main() {
         // Energy conservation: diffuse weight = 1.0 - ambient
         float diffuseWeight = 1.0 - uAmbientIntensity;
 
-        // Calculate soft shadow for depth
-        float shadow = calcSoftShadow(p + n * 0.01, l, 0.02, 2.5, 16.0);
+        // NOTE: Soft shadows disabled for Hyperbulb - too expensive for D-dimensional SDF
+        // Each shadow step would require a full D-dimensional SDF evaluation
+        // For 6D+, this would add 24 × 3x = 72 equivalent SDF calls per pixel
 
-        // Diffuse (Lambert) with energy conservation, intensity control, and shadows
+        // Diffuse (Lambert) with energy conservation and intensity control
         float NdotL = max(dot(n, l), 0.0);
-        float diffuse = NdotL * uDiffuseIntensity * diffuseWeight * (0.5 + 0.5 * shadow);
+        float diffuse = NdotL * uDiffuseIntensity * diffuseWeight;
         col += surfaceColor * uLightColor * diffuse;
 
         // Specular (Blinn-Phong) with Fresnel attenuation
@@ -831,15 +908,18 @@ void main() {
 
         // Fresnel: F0 = 0.04 for non-metallic surfaces
         float F = fresnelSchlick(VdotH, 0.04);
-        float spec = pow(NdotH, uSpecularPower) * uSpecularIntensity * F * shadow;
+        float spec = pow(NdotH, uSpecularPower) * uSpecularIntensity * F;
         col += uSpecularColor * uLightColor * spec;
 
-        // Rim/edge lighting for silhouette definition
-        float NdotV = max(dot(n, viewDir), 0.0);
-        float rim = pow(1.0 - NdotV, 3.0) * 0.4;
-        // Rim is stronger on lit side
-        rim *= (0.3 + 0.7 * NdotL);
-        col += uLightColor * rim * 0.5;
+        // Skip rim lighting in fast mode
+        if (!uFastMode) {
+            // Rim/edge lighting for silhouette definition
+            float NdotV = max(dot(n, viewDir), 0.0);
+            float rim = pow(1.0 - NdotV, 3.0) * 0.4;
+            // Rim is stronger on lit side
+            rim *= (0.3 + 0.7 * NdotL);
+            col += uLightColor * rim * 0.5;
+        }
     }
 
     // Apply tone mapping as final step

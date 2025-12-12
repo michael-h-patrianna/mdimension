@@ -1,5 +1,5 @@
 import { useFrame, useThree } from '@react-three/fiber';
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 import vertexShader from './hyperbulb.vert?raw';
 import fragmentShader from './hyperbulb.frag?raw';
@@ -11,6 +11,10 @@ import { composeRotations } from '@/lib/math/rotation';
 import { COLOR_MODE_TO_INT } from '@/lib/shaders/palette';
 import { TONE_MAPPING_TO_INT } from '@/lib/shaders/types';
 import type { MatrixND } from '@/lib/math/types';
+import type { RotationState } from '@/stores/rotationStore';
+
+/** Debounce time in ms before restoring high quality after rotation stops */
+const QUALITY_RESTORE_DELAY_MS = 150;
 
 /**
  * Convert horizontal/vertical angles to a normalized direction vector.
@@ -51,6 +55,11 @@ function applyRotation(matrix: MatrixND, vec: number[]): Float32Array {
 const HyperbulbMesh = () => {
   const meshRef = useRef<THREE.Mesh>(null);
   const { size, camera } = useThree();
+
+  // Performance optimization: track rotation changes for adaptive quality
+  const prevRotationsRef = useRef<RotationState['rotations'] | null>(null);
+  const fastModeRef = useRef(false);
+  const restoreQualityTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Get dimension from geometry store
   const dimension = useGeometryStore((state) => state.dimension);
@@ -123,13 +132,76 @@ const HyperbulbMesh = () => {
       uToneMappingEnabled: { value: true },
       uToneMappingAlgorithm: { value: 0 },
       uExposure: { value: 1.0 },
+
+      // Performance mode: reduces quality during rotation animations
+      uFastMode: { value: false },
     }),
     []
   );
 
+  /**
+   * Check if rotations have changed by comparing current vs previous state.
+   * Returns true if any rotation angle has changed.
+   */
+  const hasRotationsChanged = useCallback((
+    current: RotationState['rotations'],
+    previous: RotationState['rotations'] | null
+  ): boolean => {
+    if (!previous) return false;
+
+    // Compare all rotation planes
+    for (const key in current) {
+      if (current[key] !== previous[key]) {
+        return true;
+      }
+    }
+    // Also check if previous had keys that current doesn't
+    for (const key in previous) {
+      if (previous[key] !== current[key]) {
+        return true;
+      }
+    }
+    return false;
+  }, []);
+
   useFrame((state) => {
     if (meshRef.current) {
       const material = meshRef.current.material as THREE.ShaderMaterial;
+
+      // Get rotations from store first (needed for rotation change detection)
+      const rotations = useRotationStore.getState().rotations;
+
+      // ============================================
+      // Adaptive Quality: Detect rotation animation
+      // ============================================
+      const rotationsChanged = hasRotationsChanged(rotations, prevRotationsRef.current);
+
+      if (rotationsChanged) {
+        // Rotation is happening - switch to fast mode
+        fastModeRef.current = true;
+
+        // Clear any pending quality restore timeout
+        if (restoreQualityTimeoutRef.current) {
+          clearTimeout(restoreQualityTimeoutRef.current);
+          restoreQualityTimeoutRef.current = null;
+        }
+      } else if (fastModeRef.current) {
+        // Rotation stopped - schedule quality restore after delay
+        if (!restoreQualityTimeoutRef.current) {
+          restoreQualityTimeoutRef.current = setTimeout(() => {
+            fastModeRef.current = false;
+            restoreQualityTimeoutRef.current = null;
+          }, QUALITY_RESTORE_DELAY_MS);
+        }
+      }
+
+      // Store current rotations for next frame comparison
+      prevRotationsRef.current = { ...rotations };
+
+      // Update fast mode uniform
+      if (material.uniforms.uFastMode) {
+        material.uniforms.uFastMode.value = fastModeRef.current;
+      }
 
       // Update time and resolution
       if (material.uniforms.uTime) material.uniforms.uTime.value = state.clock.elapsedTime;
@@ -169,8 +241,7 @@ const HyperbulbMesh = () => {
       if (material.uniforms.uToneMappingAlgorithm) material.uniforms.uToneMappingAlgorithm.value = TONE_MAPPING_TO_INT[toneMappingAlgorithm];
       if (material.uniforms.uExposure) material.uniforms.uExposure.value = exposure;
 
-      // Get rotations and build FULL D-dimensional rotation matrix
-      const rotations = useRotationStore.getState().rotations;
+      // Build FULL D-dimensional rotation matrix
       const rotationMatrix = composeRotations(dimension, rotations);
 
       // Build basis vectors for the 3D slice in D-dimensional space

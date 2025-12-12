@@ -13,7 +13,7 @@ export const MIN_ROTATION = 0;
 /** Maximum rotation angle in radians (360 degrees) */
 export const MAX_ROTATION = 2 * Math.PI;
 
-interface RotationState {
+export interface RotationState {
   /** Map of plane name (e.g. "XY") to rotation angle in radians */
   rotations: Map<string, number>;
   
