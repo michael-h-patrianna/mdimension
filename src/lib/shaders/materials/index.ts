@@ -14,12 +14,3 @@ export {
   createGlowMaterial,
 } from './SurfaceMaterial';
 export type { SurfaceMaterialConfig } from './SurfaceMaterial';
-
-export {
-  createDualOutlineInnerMaterial,
-  createDualOutlineOuterMaterial,
-  createSimpleDualOutlineOuterMaterial,
-  createDualOutlineMaterials,
-  updateDualOutlineMaterial,
-} from './DualOutlineMaterial';
-export type { DualOutlineMaterialConfig } from './DualOutlineMaterial';

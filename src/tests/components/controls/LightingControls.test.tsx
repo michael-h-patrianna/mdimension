@@ -22,12 +22,6 @@ describe('LightingControls', () => {
       const { container } = render(<LightingControls />);
       expect(container).toBeEmptyDOMElement();
     });
-
-    it('should not render for dualOutline shader', () => {
-      useVisualStore.getState().setShaderType('dualOutline');
-      const { container } = render(<LightingControls />);
-      expect(container).toBeEmptyDOMElement();
-    });
   });
 
   describe('light toggle', () => {

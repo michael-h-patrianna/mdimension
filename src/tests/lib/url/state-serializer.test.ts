@@ -238,17 +238,6 @@ describe('URL state serializer', () => {
   });
 
   describe('visual settings serialization (PRD Story 1 AC6)', () => {
-    it('should serialize shader type when not default', () => {
-      const state: ShareableState = {
-        dimension: 4,
-        objectType: 'hypercube',
-        shaderType: 'dualOutline',
-      };
-
-      const serialized = serializeState(state);
-      expect(serialized).toContain('sh=dualOutline');
-    });
-
     it('should not serialize default shader type (surface)', () => {
       const state: ShareableState = {
         dimension: 4,
@@ -374,26 +363,6 @@ describe('URL state serializer', () => {
   });
 
   describe('per-shader settings serialization (PRD Story 7 AC7)', () => {
-    it('should serialize dual outline settings', () => {
-      const state: ShareableState = {
-        dimension: 4,
-        objectType: 'hypercube',
-        shaderType: 'dualOutline',
-        shaderSettings: {
-          wireframe: { lineThickness: 2 },
-          dualOutline: { innerColor: '#FF0000', outerColor: '#00FF00', gap: 3 },
-          surface: { faceOpacity: 0.8, specularIntensity: 1.0, specularPower: 32, fresnelEnabled: true },
-        },
-      };
-
-      const serialized = serializeState(state);
-      const decoded = decodeURIComponent(serialized);
-      expect(decoded).toContain('ss=');
-      expect(decoded).toContain('innerColor:FF0000');
-      expect(decoded).toContain('outerColor:00FF00');
-      expect(decoded).toContain('gap:3');
-    });
-
     it('should serialize surface settings', () => {
       const state: ShareableState = {
         dimension: 4,
@@ -401,7 +370,6 @@ describe('URL state serializer', () => {
         shaderType: 'surface',
         shaderSettings: {
           wireframe: { lineThickness: 2 },
-          dualOutline: { innerColor: '#FFFFFF', outerColor: '#00FFFF', gap: 2 },
           surface: { faceOpacity: 0.5, specularIntensity: 0.5, specularPower: 64, fresnelEnabled: false },
         },
       };
@@ -415,44 +383,138 @@ describe('URL state serializer', () => {
       expect(decoded).toContain('fresnelEnabled:0');
     });
 
-    it('should deserialize per-shader settings', () => {
-      const state = deserializeState('d=4&t=hypercube&sh=dualOutline&ss=innerColor:FF0000,outerColor:00FF00,gap:3');
+    it('should deserialize per-shader settings for surface', () => {
+      const state = deserializeState('d=4&t=hypercube&sh=surface&ss=faceOpacity:0.5,specularIntensity:0.5,specularPower:64,fresnelEnabled:0');
       expect(state.shaderSettings).toBeDefined();
-      expect(state.shaderSettings?.dualOutline.innerColor).toBe('#FF0000');
-      expect(state.shaderSettings?.dualOutline.outerColor).toBe('#00FF00');
-      expect(state.shaderSettings?.dualOutline.gap).toBe(3);
+      expect(state.shaderSettings?.surface.faceOpacity).toBe(0.5);
+      expect(state.shaderSettings?.surface.specularIntensity).toBe(0.5);
+      expect(state.shaderSettings?.surface.specularPower).toBe(64);
+      expect(state.shaderSettings?.surface.fresnelEnabled).toBe(false);
     });
 
     it('should round-trip visual settings', () => {
-      // Use dualOutline (non-default shader type) to ensure it gets serialized
+      // Use wireframe (non-default shader type) to ensure it gets serialized
       const original: ShareableState = {
         dimension: 4,
         objectType: 'hypercube',
-        shaderType: 'dualOutline',
+        shaderType: 'wireframe',
         edgeColor: '#FF00FF',
         vertexColor: '#00FF00',
         backgroundColor: '#1A1A2E',
         bloomEnabled: false,
         bloomIntensity: 1.5,
-        shaderSettings: {
-          wireframe: { lineThickness: 2 },
-          dualOutline: { innerColor: '#FF0000', outerColor: '#00FF00', gap: 4 },
-          surface: { faceOpacity: 0.5, specularIntensity: 0.8, specularPower: 64, fresnelEnabled: false },
-        },
       };
 
       const serialized = serializeState(original);
       const deserialized = deserializeState(serialized);
 
-      expect(deserialized.shaderType).toBe('dualOutline');
+      expect(deserialized.shaderType).toBe('wireframe');
       expect(deserialized.edgeColor).toBe('#FF00FF');
       expect(deserialized.vertexColor).toBe('#00FF00');
       expect(deserialized.backgroundColor).toBe('#1A1A2E');
       expect(deserialized.bloomEnabled).toBe(false);
       expect(deserialized.bloomIntensity).toBeCloseTo(1.5, 2);
-      expect(deserialized.shaderSettings?.dualOutline.innerColor).toBe('#FF0000');
-      expect(deserialized.shaderSettings?.dualOutline.outerColor).toBe('#00FF00');
-      expect(deserialized.shaderSettings?.dualOutline.gap).toBe(4);
+    });
+  });
+
+  describe('render mode toggles serialization (PRD: Render Mode Toggles)', () => {
+    it('should serialize edgesVisible when false', () => {
+      const state: ShareableState = {
+        dimension: 4,
+        objectType: 'hypercube',
+        edgesVisible: false,
+      };
+
+      const serialized = serializeState(state);
+      expect(serialized).toContain('ev=0');
+    });
+
+    it('should not serialize edgesVisible when true (default)', () => {
+      const state: ShareableState = {
+        dimension: 4,
+        objectType: 'hypercube',
+        edgesVisible: true,
+      };
+
+      const serialized = serializeState(state);
+      expect(serialized).not.toContain('ev=');
+    });
+
+    it('should serialize facesVisible when true', () => {
+      const state: ShareableState = {
+        dimension: 4,
+        objectType: 'hypercube',
+        facesVisible: true,
+      };
+
+      const serialized = serializeState(state);
+      expect(serialized).toContain('fv=1');
+    });
+
+    it('should not serialize facesVisible when false (default)', () => {
+      const state: ShareableState = {
+        dimension: 4,
+        objectType: 'hypercube',
+        facesVisible: false,
+      };
+
+      const serialized = serializeState(state);
+      expect(serialized).not.toContain('fv=');
+    });
+
+    it('should deserialize edgesVisible false', () => {
+      const state = deserializeState('d=4&t=hypercube&ev=0');
+      expect(state.edgesVisible).toBe(false);
+    });
+
+    it('should deserialize edgesVisible true', () => {
+      const state = deserializeState('d=4&t=hypercube&ev=1');
+      expect(state.edgesVisible).toBe(true);
+    });
+
+    it('should deserialize facesVisible true', () => {
+      const state = deserializeState('d=4&t=hypercube&fv=1');
+      expect(state.facesVisible).toBe(true);
+    });
+
+    it('should deserialize facesVisible false', () => {
+      const state = deserializeState('d=4&t=hypercube&fv=0');
+      expect(state.facesVisible).toBe(false);
+    });
+
+    it('should round-trip render mode toggles', () => {
+      const original: ShareableState = {
+        dimension: 4,
+        objectType: 'hypercube',
+        edgesVisible: false,
+        facesVisible: true,
+      };
+
+      const serialized = serializeState(original);
+      const deserialized = deserializeState(serialized);
+
+      expect(deserialized.edgesVisible).toBe(false);
+      expect(deserialized.facesVisible).toBe(true);
+    });
+  });
+
+  describe('backward compatibility', () => {
+    it('should map legacy dualOutline shader type to wireframe', () => {
+      const state = deserializeState('d=4&t=hypercube&sh=dualOutline');
+      expect(state.shaderType).toBe('wireframe');
+    });
+
+    it('should still accept valid shader types', () => {
+      const stateWireframe = deserializeState('d=4&t=hypercube&sh=wireframe');
+      expect(stateWireframe.shaderType).toBe('wireframe');
+
+      const stateSurface = deserializeState('d=4&t=hypercube&sh=surface');
+      expect(stateSurface.shaderType).toBe('surface');
+    });
+
+    it('should reject invalid shader types', () => {
+      const state = deserializeState('d=4&t=hypercube&sh=invalid');
+      expect(state.shaderType).toBeUndefined();
     });
   });
 });

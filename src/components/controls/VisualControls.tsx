@@ -13,6 +13,7 @@ import {
   DEFAULT_EDGE_THICKNESS,
   DEFAULT_VERTEX_SIZE,
 } from '@/stores/visualStore';
+// Note: ToggleButton is still used for Ground Plane toggle
 import type { VisualPreset } from '@/stores/visualStore';
 
 export interface VisualControlsProps {
@@ -32,7 +33,6 @@ export const VisualControls: React.FC<VisualControlsProps> = ({
 }) => {
   const edgeColor = useVisualStore((state) => state.edgeColor);
   const edgeThickness = useVisualStore((state) => state.edgeThickness);
-  const vertexVisible = useVisualStore((state) => state.vertexVisible);
   const vertexSize = useVisualStore((state) => state.vertexSize);
   const vertexColor = useVisualStore((state) => state.vertexColor);
   const backgroundColor = useVisualStore((state) => state.backgroundColor);
@@ -40,7 +40,6 @@ export const VisualControls: React.FC<VisualControlsProps> = ({
 
   const setEdgeColor = useVisualStore((state) => state.setEdgeColor);
   const setEdgeThickness = useVisualStore((state) => state.setEdgeThickness);
-  const setVertexVisible = useVisualStore((state) => state.setVertexVisible);
   const setVertexSize = useVisualStore((state) => state.setVertexSize);
   const setVertexColor = useVisualStore((state) => state.setVertexColor);
   const setBackgroundColor = useVisualStore((state) => state.setBackgroundColor);
@@ -97,47 +96,34 @@ export const VisualControls: React.FC<VisualControlsProps> = ({
         showValue
       />
 
-      {/* Vertex Visibility */}
-      <ToggleButton
-        pressed={vertexVisible}
-        onToggle={setVertexVisible}
-        ariaLabel="Show Vertices"
-      >
-        Show Vertices
-      </ToggleButton>
-
-      {/* Vertex Color */}
-      {vertexVisible && (
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-text-secondary">
-            Vertex Color
-          </label>
-          <div className="flex items-center gap-2">
-            <input
-              type="color"
-              value={vertexColor}
-              onChange={(e) => setVertexColor(e.target.value)}
-              className="w-10 h-10 rounded cursor-pointer border border-panel-border"
-              aria-label="Vertex Color"
-            />
-            <span className="text-xs font-mono text-text-secondary">{vertexColor}</span>
-          </div>
+      {/* Vertex Color - always visible, controlled by Vertices toggle at top */}
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-text-secondary">
+          Vertex Color
+        </label>
+        <div className="flex items-center gap-2">
+          <input
+            type="color"
+            value={vertexColor}
+            onChange={(e) => setVertexColor(e.target.value)}
+            className="w-10 h-10 rounded cursor-pointer border border-panel-border"
+            aria-label="Vertex Color"
+          />
+          <span className="text-xs font-mono text-text-secondary">{vertexColor}</span>
         </div>
-      )}
+      </div>
 
-      {/* Vertex Size */}
-      {vertexVisible && (
-        <Slider
-          label="Vertex Size"
-          min={1}
-          max={10}
-          step={1}
-          value={vertexSize}
-          onChange={setVertexSize}
-          onReset={() => setVertexSize(DEFAULT_VERTEX_SIZE)}
-          showValue
-        />
-      )}
+      {/* Vertex Size - always visible, controlled by Vertices toggle at top */}
+      <Slider
+        label="Vertex Size"
+        min={1}
+        max={10}
+        step={1}
+        value={vertexSize}
+        onChange={setVertexSize}
+        onReset={() => setVertexSize(DEFAULT_VERTEX_SIZE)}
+        showValue
+      />
 
       {/* Background Color */}
       <div className="space-y-2">

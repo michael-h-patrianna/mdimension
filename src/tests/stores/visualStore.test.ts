@@ -12,6 +12,8 @@ import {
   DEFAULT_VERTEX_COLOR,
   DEFAULT_FACE_OPACITY,
   DEFAULT_BACKGROUND_COLOR,
+  DEFAULT_EDGES_VISIBLE,
+  DEFAULT_FACES_VISIBLE,
   VISUAL_PRESETS,
 } from '@/stores/visualStore';
 
@@ -47,6 +49,14 @@ describe('visualStore', () => {
 
     it('should have default background color', () => {
       expect(useVisualStore.getState().backgroundColor).toBe(DEFAULT_BACKGROUND_COLOR);
+    });
+
+    it('should have edges visible by default', () => {
+      expect(useVisualStore.getState().edgesVisible).toBe(DEFAULT_EDGES_VISIBLE);
+    });
+
+    it('should have faces hidden by default', () => {
+      expect(useVisualStore.getState().facesVisible).toBe(DEFAULT_FACES_VISIBLE);
     });
   });
 
@@ -123,6 +133,41 @@ describe('visualStore', () => {
     });
   });
 
+  describe('setEdgesVisible', () => {
+    it('should set edges visibility', () => {
+      useVisualStore.getState().setEdgesVisible(false);
+      expect(useVisualStore.getState().edgesVisible).toBe(false);
+
+      useVisualStore.getState().setEdgesVisible(true);
+      expect(useVisualStore.getState().edgesVisible).toBe(true);
+    });
+  });
+
+  describe('setFacesVisible', () => {
+    it('should set faces visibility', () => {
+      useVisualStore.getState().setFacesVisible(true);
+      expect(useVisualStore.getState().facesVisible).toBe(true);
+
+      useVisualStore.getState().setFacesVisible(false);
+      expect(useVisualStore.getState().facesVisible).toBe(false);
+    });
+
+    it('should auto-set shaderType to surface when faces enabled', () => {
+      useVisualStore.getState().setFacesVisible(true);
+      expect(useVisualStore.getState().shaderType).toBe('surface');
+    });
+
+    it('should auto-set shaderType to wireframe when faces disabled', () => {
+      // First enable faces to set surface shader
+      useVisualStore.getState().setFacesVisible(true);
+      expect(useVisualStore.getState().shaderType).toBe('surface');
+
+      // Then disable faces
+      useVisualStore.getState().setFacesVisible(false);
+      expect(useVisualStore.getState().shaderType).toBe('wireframe');
+    });
+  });
+
   describe('applyPreset', () => {
     it('should apply neon preset', () => {
       useVisualStore.getState().applyPreset('neon');
@@ -155,6 +200,8 @@ describe('visualStore', () => {
       useVisualStore.getState().setVertexColor('#00FF00');
       useVisualStore.getState().setFaceOpacity(1);
       useVisualStore.getState().setBackgroundColor('#000000');
+      useVisualStore.getState().setEdgesVisible(false);
+      useVisualStore.getState().setFacesVisible(true);
 
       useVisualStore.getState().reset();
 
@@ -165,6 +212,8 @@ describe('visualStore', () => {
       expect(useVisualStore.getState().vertexColor).toBe(DEFAULT_VERTEX_COLOR);
       expect(useVisualStore.getState().faceOpacity).toBe(DEFAULT_FACE_OPACITY);
       expect(useVisualStore.getState().backgroundColor).toBe(DEFAULT_BACKGROUND_COLOR);
+      expect(useVisualStore.getState().edgesVisible).toBe(DEFAULT_EDGES_VISIBLE);
+      expect(useVisualStore.getState().facesVisible).toBe(DEFAULT_FACES_VISIBLE);
     });
   });
 });

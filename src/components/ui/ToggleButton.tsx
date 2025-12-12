@@ -7,6 +7,8 @@ export interface ToggleButtonProps {
   className?: string;
   ariaLabel?: string;
   disabled?: boolean;
+  /** Optional data-testid for testing */
+  'data-testid'?: string;
 }
 
 export const ToggleButton: React.FC<ToggleButtonProps> = ({
@@ -16,6 +18,7 @@ export const ToggleButton: React.FC<ToggleButtonProps> = ({
   className = '',
   ariaLabel,
   disabled = false,
+  'data-testid': dataTestId,
 }) => {
   return (
     <button
@@ -33,6 +36,7 @@ export const ToggleButton: React.FC<ToggleButtonProps> = ({
       aria-pressed={pressed}
       aria-label={ariaLabel}
       type="button"
+      data-testid={dataTestId}
     >
       {children}
     </button>

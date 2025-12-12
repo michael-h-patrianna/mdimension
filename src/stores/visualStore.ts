@@ -16,7 +16,6 @@ import type {
   ShaderType,
   AllShaderSettings,
   WireframeSettings,
-  DualOutlineSettings,
   SurfaceSettings,
 } from '@/lib/shaders/types';
 import {
@@ -37,6 +36,10 @@ export const DEFAULT_VERTEX_COLOR = '#FF00FF';
 export const DEFAULT_FACE_OPACITY = 0;
 export const DEFAULT_FACE_COLOR = '#1b1b1d';
 export const DEFAULT_BACKGROUND_COLOR = '#0F0F1A';
+
+/** Default render mode toggle settings */
+export const DEFAULT_EDGES_VISIBLE = true;
+export const DEFAULT_FACES_VISIBLE = false;
 
 /** Default bloom settings (matching original Dual Filter Bloom) */
 export const DEFAULT_BLOOM_ENABLED = true;
@@ -148,6 +151,12 @@ interface VisualState {
   /** Background color (hex string) */
   backgroundColor: string;
 
+  // --- Render Mode Toggles ---
+  /** Whether edges are visible (PRD: Render Mode Toggles) */
+  edgesVisible: boolean;
+  /** Whether faces are visible (PRD: Render Mode Toggles) */
+  facesVisible: boolean;
+
   // --- Shader System ---
   /** Currently selected shader type */
   shaderType: ShaderType;
@@ -218,10 +227,13 @@ interface VisualState {
   setFaceColor: (color: string) => void;
   setBackgroundColor: (color: string) => void;
 
+  // --- Actions: Render Mode Toggles ---
+  setEdgesVisible: (visible: boolean) => void;
+  setFacesVisible: (visible: boolean) => void;
+
   // --- Actions: Shader System ---
   setShaderType: (shaderType: ShaderType) => void;
   setWireframeSettings: (settings: Partial<WireframeSettings>) => void;
-  setDualOutlineSettings: (settings: Partial<DualOutlineSettings>) => void;
   setSurfaceSettings: (settings: Partial<SurfaceSettings>) => void;
 
   // --- Actions: Bloom ---
@@ -275,6 +287,10 @@ const INITIAL_STATE: Omit<VisualState, keyof VisualStateFunctions> = {
   faceColor: DEFAULT_FACE_COLOR,
   backgroundColor: DEFAULT_BACKGROUND_COLOR,
 
+  // Render mode toggles
+  edgesVisible: DEFAULT_EDGES_VISIBLE,
+  facesVisible: DEFAULT_FACES_VISIBLE,
+
   // Shader system
   shaderType: DEFAULT_SHADER_TYPE,
   shaderSettings: { ...DEFAULT_SHADER_SETTINGS },
@@ -311,10 +327,10 @@ const INITIAL_STATE: Omit<VisualState, keyof VisualStateFunctions> = {
   groundPlaneReflectivity: DEFAULT_GROUND_PLANE_REFLECTIVITY,
 };
 
-type VisualStateFunctions = Pick<VisualState, 
+type VisualStateFunctions = Pick<VisualState,
   | 'setEdgeColor' | 'setEdgeThickness' | 'setVertexVisible' | 'setVertexSize' | 'setVertexColor'
-  | 'setFaceOpacity' | 'setFaceColor' | 'setBackgroundColor' | 'setShaderType' | 'setWireframeSettings'
-  | 'setDualOutlineSettings' | 'setSurfaceSettings' | 'setBloomEnabled' | 'setBloomIntensity'
+  | 'setFaceOpacity' | 'setFaceColor' | 'setBackgroundColor' | 'setEdgesVisible' | 'setFacesVisible'
+  | 'setShaderType' | 'setWireframeSettings' | 'setSurfaceSettings' | 'setBloomEnabled' | 'setBloomIntensity'
   | 'setBloomThreshold' | 'setBloomRadius' | 'setBloomSoftKnee' | 'setBloomLevels' | 'setLightEnabled'
   | 'setLightColor' | 'setLightHorizontalAngle' | 'setLightVerticalAngle' | 'setAmbientIntensity'
   | 'setSpecularIntensity' | 'setSpecularPower' | 'setShowLightIndicator' | 'setDepthAttenuationEnabled'
@@ -363,6 +379,19 @@ export const useVisualStore = create<VisualState>((set) => ({
     set({ backgroundColor: color });
   },
 
+  // --- Actions: Render Mode Toggles ---
+  setEdgesVisible: (visible: boolean) => {
+    set({ edgesVisible: visible });
+  },
+
+  setFacesVisible: (visible: boolean) => {
+    // Auto-set shader type based on faces visibility (PRD: Faces Toggle Behavior)
+    set({
+      facesVisible: visible,
+      shaderType: visible ? 'surface' : 'wireframe',
+    });
+  },
+
   // --- Actions: Shader System ---
   setShaderType: (shaderType: ShaderType) => {
     set({ shaderType });
@@ -378,21 +407,6 @@ export const useVisualStore = create<VisualState>((set) => ({
           lineThickness: settings.lineThickness !== undefined
             ? Math.max(1, Math.min(5, settings.lineThickness))
             : state.shaderSettings.wireframe.lineThickness,
-        },
-      },
-    }));
-  },
-
-  setDualOutlineSettings: (settings: Partial<DualOutlineSettings>) => {
-    set((state) => ({
-      shaderSettings: {
-        ...state.shaderSettings,
-        dualOutline: {
-          ...state.shaderSettings.dualOutline,
-          ...settings,
-          gap: settings.gap !== undefined
-            ? Math.max(1, Math.min(5, settings.gap))
-            : state.shaderSettings.dualOutline.gap,
         },
       },
     }));

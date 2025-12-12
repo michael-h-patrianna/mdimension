@@ -242,8 +242,7 @@ export function PolytopeRenderer({
     storeVertexColor,
     storeVertexSize,
     storeVertexVisible,
-    shaderType,
-    shaderSettings,
+    edgesVisible,
   } = useVisualStore(
     useShallow((state) => ({
       storeEdgeColor: state.edgeColor,
@@ -251,8 +250,7 @@ export function PolytopeRenderer({
       storeVertexColor: state.vertexColor,
       storeVertexSize: state.vertexSize,
       storeVertexVisible: state.vertexVisible,
-      shaderType: state.shaderType,
-      shaderSettings: state.shaderSettings,
+      edgesVisible: state.edgesVisible,
     }))
   );
 
@@ -264,43 +262,18 @@ export function PolytopeRenderer({
   const vertexSize = propVertexSize ?? (storeVertexSize / VERTEX_SIZE_DIVISOR);
   const showVertices = propShowVertices ?? storeVertexVisible;
 
-  // Get edge colors based on shader type
-  const { innerLineColor, outerLineColor, isDualOutline } = useMemo(() => {
-    if (shaderType === 'dualOutline') {
-      const settings = shaderSettings.dualOutline;
-      return {
-        innerLineColor: settings.innerColor,
-        outerLineColor: settings.outerColor,
-        isDualOutline: true,
-      };
-    }
-    return {
-      innerLineColor: edgeColor,
-      outerLineColor: edgeColor,
-      isDualOutline: false,
-    };
-  }, [shaderType, shaderSettings, edgeColor]);
-
   return (
     <group>
-      {/* Render edges using Wireframe wrapper to handle thickness */}
-      {isDualOutline && (
+      {/* Render edges using Wireframe wrapper - controlled by edgesVisible toggle */}
+      {edgesVisible && (
         <Wireframe
           vertices={vertices}
           edges={edges}
-          color={outerLineColor}
-          opacity={opacity * 0.7}
-          thickness={edgeThickness + 2}
+          color={edgeColor}
+          opacity={opacity}
+          thickness={edgeThickness}
         />
       )}
-      
-      <Wireframe
-        vertices={vertices}
-        edges={edges}
-        color={innerLineColor}
-        opacity={opacity}
-        thickness={edgeThickness}
-      />
 
       {/* Render vertices using InstancedMesh for memory efficiency */}
       {showVertices && vertices.length > 0 && (

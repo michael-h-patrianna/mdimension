@@ -44,8 +44,8 @@ describe('visualStore - Enhanced Features', () => {
     });
 
     it('should set shader type', () => {
-      useVisualStore.getState().setShaderType('dualOutline');
-      expect(useVisualStore.getState().shaderType).toBe('dualOutline');
+      useVisualStore.getState().setShaderType('wireframe');
+      expect(useVisualStore.getState().shaderType).toBe('wireframe');
 
       useVisualStore.getState().setShaderType('surface');
       expect(useVisualStore.getState().shaderType).toBe('surface');
@@ -62,17 +62,6 @@ describe('visualStore - Enhanced Features', () => {
 
       useVisualStore.getState().setWireframeSettings({ lineThickness: 0 });
       expect(useVisualStore.getState().shaderSettings.wireframe.lineThickness).toBe(1);
-    });
-
-    it('should set dual outline settings', () => {
-      useVisualStore.getState().setDualOutlineSettings({
-        innerColor: '#FFFFFF',
-        outerColor: '#000000',
-        gap: 3,
-      });
-      expect(useVisualStore.getState().shaderSettings.dualOutline.innerColor).toBe('#FFFFFF');
-      expect(useVisualStore.getState().shaderSettings.dualOutline.outerColor).toBe('#000000');
-      expect(useVisualStore.getState().shaderSettings.dualOutline.gap).toBe(3);
     });
 
     it('should set surface settings', () => {

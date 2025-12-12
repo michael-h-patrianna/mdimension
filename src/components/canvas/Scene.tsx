@@ -108,7 +108,7 @@ export function Scene({
 }: SceneProps) {
   // Get all visual settings with shallow comparison to prevent unnecessary re-renders
   const {
-    shaderType,
+    facesVisible,
     faceColor,
     shaderSettings,
     showGroundPlane,
@@ -117,7 +117,7 @@ export function Scene({
     groundPlaneReflectivity,
   } = useVisualStore(
     useShallow((state) => ({
-      shaderType: state.shaderType,
+      facesVisible: state.facesVisible,
       faceColor: state.faceColor,
       shaderSettings: state.shaderSettings,
       showGroundPlane: state.showGroundPlane,
@@ -127,8 +127,8 @@ export function Scene({
     }))
   );
 
-  // Determine if we should render faces (Surface shader only, not for point clouds)
-  const shouldRenderFaces = !isPointCloud && shaderType === 'surface' && faces && faces.length > 0 && vertices;
+  // Determine if we should render faces (controlled by facesVisible toggle, not for point clouds)
+  const shouldRenderFaces = !isPointCloud && facesVisible && faces && faces.length > 0 && vertices;
 
   // Get surface shader settings
   const surfaceSettings = shaderSettings.surface;

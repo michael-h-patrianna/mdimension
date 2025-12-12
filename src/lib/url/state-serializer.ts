@@ -13,9 +13,11 @@ import { MAX_DIMENSION, MIN_DIMENSION } from '@/stores/geometryStore';
 /** Valid shader types for URL validation */
 const VALID_SHADER_TYPES: ShaderType[] = [
   'wireframe',
-  'dualOutline',
   'surface',
 ];
+
+/** Legacy shader type for backward compatibility */
+const LEGACY_SHADER_TYPE_DUAL_OUTLINE = 'dualOutline';
 
 /** Valid object types for URL validation */
 const VALID_OBJECT_TYPES: ObjectType[] = [
@@ -42,6 +44,9 @@ export interface ShareableState {
   edgeColor?: string;
   vertexColor?: string;
   backgroundColor?: string;
+  // Render mode toggles (PRD: Render Mode Toggles)
+  edgesVisible?: boolean;
+  facesVisible?: boolean;
   // Bloom settings (Dual Filter Bloom)
   bloomEnabled?: boolean;
   bloomIntensity?: number;
@@ -104,6 +109,17 @@ export function serializeState(state: ShareableState): string {
 
   if (state.backgroundColor) {
     params.set('bg', state.backgroundColor.replace('#', ''));
+  }
+
+  // Render mode toggles (PRD: Render Mode Toggles)
+  // ev=0 when edges are hidden (omit when true, the default)
+  if (state.edgesVisible === false) {
+    params.set('ev', '0');
+  }
+
+  // fv=1 when faces are visible (omit when false, the default)
+  if (state.facesVisible === true) {
+    params.set('fv', '1');
   }
 
   // Bloom settings (Dual Filter Bloom)
@@ -234,8 +250,13 @@ export function deserializeState(searchParams: string): Partial<ShareableState> 
 
   // Visual settings (PRD Story 1 AC6)
   const shaderType = params.get('sh');
-  if (shaderType && VALID_SHADER_TYPES.includes(shaderType as ShaderType)) {
-    state.shaderType = shaderType as ShaderType;
+  if (shaderType) {
+    if (VALID_SHADER_TYPES.includes(shaderType as ShaderType)) {
+      state.shaderType = shaderType as ShaderType;
+    } else if (shaderType === LEGACY_SHADER_TYPE_DUAL_OUTLINE) {
+      // Backward compatibility: map dualOutline to wireframe
+      state.shaderType = 'wireframe';
+    }
   }
 
   const edgeColor = params.get('ec');
@@ -251,6 +272,21 @@ export function deserializeState(searchParams: string): Partial<ShareableState> 
   const backgroundColor = params.get('bg');
   if (backgroundColor && /^[0-9A-Fa-f]{6}$/.test(backgroundColor)) {
     state.backgroundColor = `#${backgroundColor}`;
+  }
+
+  // Render mode toggles (PRD: Render Mode Toggles)
+  const edgesVisible = params.get('ev');
+  if (edgesVisible === '0') {
+    state.edgesVisible = false;
+  } else if (edgesVisible === '1') {
+    state.edgesVisible = true;
+  }
+
+  const facesVisible = params.get('fv');
+  if (facesVisible === '1') {
+    state.facesVisible = true;
+  } else if (facesVisible === '0') {
+    state.facesVisible = false;
   }
 
   // Bloom settings (Dual Filter Bloom)
@@ -306,7 +342,6 @@ export function deserializeState(searchParams: string): Partial<ShareableState> 
   if (shaderSettingsStr && state.shaderType) {
     const shaderSettings: AllShaderSettings = {
       wireframe: { ...DEFAULT_SHADER_SETTINGS.wireframe },
-      dualOutline: { ...DEFAULT_SHADER_SETTINGS.dualOutline },
       surface: { ...DEFAULT_SHADER_SETTINGS.surface },
     };
     const currentSettings = shaderSettings[state.shaderType] as unknown as Record<string, unknown>;

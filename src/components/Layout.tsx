@@ -19,7 +19,7 @@ import { TranslationControls } from './controls/TranslationControls';
 import { AnimationControls } from './controls/AnimationControls';
 import { CrossSectionControls } from './controls/CrossSectionControls';
 import { VisualControls } from './controls/VisualControls';
-import { ShaderSelector } from './controls/ShaderSelector';
+import { RenderModeToggles } from './controls/RenderModeToggles';
 import { ShaderSettings } from './controls/ShaderSettings';
 import { BloomControls } from './controls/BloomControls';
 import { LightingControls } from './controls/LightingControls';
@@ -68,6 +68,11 @@ export const Layout: React.FC<LayoutProps> = ({
 
       {/* Control panel (Floating HUD) */}
       <ControlPanel title="SYSTEM CONTROLS">
+        {/* Render Mode Toggles - always visible at top */}
+        <div className="pb-3 mb-3 border-b border-panel-border">
+          <RenderModeToggles />
+        </div>
+
         <Section title="Object Geometry" defaultOpen={true}>
           <div className="space-y-4">
             <DimensionSelector />
@@ -106,19 +111,16 @@ export const Layout: React.FC<LayoutProps> = ({
 
         <Section title="Visual" defaultOpen={false}>
           <div className="space-y-6">
-            {/* Shader Selection (PRD Story 1) */}
-            <ShaderSelector />
-
-            {/* Per-Shader Settings (PRD Story 7) */}
+            {/* Per-Shader Settings (shown when faces are visible) */}
             <ShaderSettings />
 
-            {/* Bloom Controls (PRD Story 3) */}
+            {/* Bloom Controls */}
             <BloomControls />
 
-            {/* Lighting Controls - only for Surface shader (PRD Story 4) */}
+            {/* Lighting Controls - for surface rendering */}
             <LightingControls />
 
-            {/* Color & Visual Settings (PRD Story 5, 6) */}
+            {/* Color & Visual Settings */}
             <VisualControls />
           </div>
         </Section>

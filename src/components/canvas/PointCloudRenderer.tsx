@@ -11,8 +11,7 @@
  * - Billboard-style points for better visibility
  *
  * Visual settings integration:
- * - Respects shaderType from visualStore (wireframe, dualOutline, surface)
- * - Applies dual outline shader colors when selected
+ * - Respects shaderType from visualStore (wireframe, surface)
  * - Uses edgeColor and edgeThickness from store
  */
 
@@ -114,7 +113,7 @@ export function PointCloudRenderer({
 
   /**
    * Create material - recreate only when visual properties change.
-   * Note: Shader settings (wireframe, dualOutline, surface) don't apply here
+   * Note: Shader settings (wireframe, surface) don't apply here
    * since this renderer only handles points without edges. Use PointCloudWithEdges
    * for edge rendering with shader support.
    */
@@ -269,15 +268,11 @@ export function PointCloudWithEdges({
     storeVertexColor,
     storeEdgeColor,
     storeEdgeThickness,
-    shaderType,
-    shaderSettings,
   } = useVisualStore(
     useShallow((state) => ({
       storeVertexColor: state.vertexColor,
       storeEdgeColor: state.edgeColor,
       storeEdgeThickness: state.edgeThickness,
-      shaderType: state.shaderType,
-      shaderSettings: state.shaderSettings,
     }))
   );
 
@@ -286,42 +281,19 @@ export function PointCloudWithEdges({
   const edgeThickness = propEdgeThickness ?? storeEdgeThickness;
   const effectivePointColor = pointColor ?? storeVertexColor;
 
-  // Get edge colors based on shader type (same logic as PolytopeRenderer)
-  const { innerLineColor, outerLineColor, isDualOutline } = useMemo(() => {
-    if (shaderType === 'dualOutline') {
-      const settings = shaderSettings.dualOutline;
-      return {
-        innerLineColor: settings.innerColor,
-        outerLineColor: settings.outerColor,
-        isDualOutline: true,
-      };
-    }
-    return {
-      innerLineColor: edgeColor,
-      outerLineColor: edgeColor,
-      isDualOutline: false,
-    };
-  }, [shaderType, shaderSettings, edgeColor]);
+  // Get edge color for wireframe rendering
+  const lineColor = useMemo(() => {
+    return edgeColor;
+  }, [edgeColor]);
 
   return (
     <group>
-      {/* Render outer edges first for dual outline effect */}
-      {edges && edges.length > 0 && isDualOutline && (
-        <Wireframe
-          vertices={vertices}
-          edges={edges}
-          color={outerLineColor}
-          opacity={opacity * 0.7}
-          thickness={edgeThickness + 2}
-        />
-      )}
-
-      {/* Render edges (inner line for dual outline, or main line for other shaders) */}
+      {/* Render edges */}
       {edges && edges.length > 0 && (
         <Wireframe
           vertices={vertices}
           edges={edges}
-          color={innerLineColor}
+          color={lineColor}
           opacity={opacity}
           thickness={edgeThickness}
         />
