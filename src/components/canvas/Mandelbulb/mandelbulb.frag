@@ -20,10 +20,11 @@ uniform float uSpecularPower;
 varying vec3 vPosition;
 varying vec2 vUv;
 
-#define MAX_MARCH_STEPS 200
-#define MAX_DIST 100.0
-#define SURF_DIST 0.001
-#define MAX_ITERATIONS 100
+// Performance tuning - balance quality vs speed
+#define MAX_MARCH_STEPS 128      // Reduced from 200
+#define SURF_DIST 0.002          // Increased from 0.001 - less precision needed
+#define MAX_ITERATIONS 64        // Reduced from 100 - still good quality
+#define BOUNDING_RADIUS 2.0      // Skip rays that miss the bounding sphere
 
 // Palette mode constants (must match PALETTE_MODE_MAP in MandelbulbMesh.tsx)
 #define PALETTE_MONOCHROMATIC 0
@@ -295,27 +296,60 @@ float GetDistWithTrap(vec3 pos, out float trap) {
 }
 
 // ============================================
+// Bounding Sphere Intersection
+// ============================================
+
+// Returns distance to sphere intersection, or -1 if no hit
+// Also returns exit distance in tExit
+vec2 intersectSphere(vec3 ro, vec3 rd, float radius) {
+    float b = dot(ro, rd);
+    float c = dot(ro, ro) - radius * radius;
+    float h = b * b - c;
+    if (h < 0.0) return vec2(-1.0);
+    h = sqrt(h);
+    return vec2(-b - h, -b + h);  // entry, exit
+}
+
+// ============================================
 // Raymarching
 // ============================================
 
 float RayMarch(vec3 ro, vec3 rd, out float trap) {
-    float dO = 0.0;
     trap = 0.0;
+
+    // Calculate max distance based on camera position
+    // Need to reach from camera through the entire bounding sphere
+    float camDist = length(ro);
+    float maxDist = camDist + BOUNDING_RADIUS * 2.0 + 1.0;
+
+    // Early out: check if ray intersects bounding sphere
+    vec2 tSphere = intersectSphere(ro, rd, BOUNDING_RADIUS);
+    if (tSphere.y < 0.0) {
+        // Sphere is entirely behind ray origin
+        return maxDist + 1.0;
+    }
+
+    // Start marching from sphere entry (or ray origin if inside sphere)
+    float dO = max(0.0, tSphere.x);
+    float maxT = min(tSphere.y, maxDist);  // Don't march past sphere exit
 
     for (int i = 0; i < MAX_MARCH_STEPS; i++) {
         vec3 p = ro + rd * dO;
         float currentTrap;
         float dS = GetDistWithTrap(p, currentTrap);
-        dO += dS;
 
         if (dS < SURF_DIST) {
             trap = currentTrap;
-            break;
+            return dO;
         }
-        if (dO > MAX_DIST) break;
+
+        dO += dS;
+
+        // Stop if we exit the bounding sphere
+        if (dO > maxT) break;
     }
 
-    return dO;
+    return maxDist + 1.0;
 }
 
 // ============================================
@@ -335,23 +369,22 @@ vec3 GetNormal(vec3 p) {
 }
 
 // ============================================
-// Ambient Occlusion
+// Ambient Occlusion (optimized - 3 samples instead of 5)
 // ============================================
 
 float calcAO(vec3 p, vec3 n) {
     float occ = 0.0;
-    float scale = 1.0;
 
-    // Sample at increasing distances along normal
-    for (int i = 0; i < 5; i++) {
-        float h = 0.02 + 0.15 * float(i) / 4.0;
-        float d = GetDist(p + h * n);
-        occ += (h - d) * scale;
-        scale *= 0.85;
-    }
+    // Reduced to 3 samples for performance
+    float h1 = 0.02;
+    float h2 = 0.08;
+    float h3 = 0.16;
 
-    // Moderate AO effect
-    return clamp(1.0 - 3.0 * occ, 0.0, 1.0);
+    occ += (h1 - GetDist(p + h1 * n)) * 1.0;
+    occ += (h2 - GetDist(p + h2 * n)) * 0.7;
+    occ += (h3 - GetDist(p + h3 * n)) * 0.5;
+
+    return clamp(1.0 - 2.5 * occ, 0.0, 1.0);
 }
 
 // ============================================
@@ -364,10 +397,14 @@ void main() {
     vec3 worldRayDir = normalize(vPosition - uCameraPosition);
     vec3 rd = normalize((uInverseModelMatrix * vec4(worldRayDir, 0.0)).xyz);
 
+    // Calculate max distance (must match RayMarch calculation)
+    float camDist = length(ro);
+    float maxDist = camDist + BOUNDING_RADIUS * 2.0 + 1.0;
+
     float trap;
     float d = RayMarch(ro, rd, trap);
 
-    if (d > MAX_DIST) {
+    if (d > maxDist) {
         discard;
     }
 
