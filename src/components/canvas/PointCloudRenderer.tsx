@@ -239,7 +239,8 @@ function Wireframe({
  * (e.g., k-NN wireframe on a hypersphere).
  *
  * Respects visual settings from store:
- * - shaderType: Applies dual outline when selected
+ * - vertexVisible: Controls point visibility (Vertices toggle)
+ * - edgesVisible: Controls edge visibility (Edges toggle)
  * - edgeColor/edgeThickness: Uses store values as defaults
  *
  * @param props - Configuration including edges
@@ -268,11 +269,15 @@ export function PointCloudWithEdges({
     storeVertexColor,
     storeEdgeColor,
     storeEdgeThickness,
+    vertexVisible,
+    edgesVisible,
   } = useVisualStore(
     useShallow((state) => ({
       storeVertexColor: state.vertexColor,
       storeEdgeColor: state.edgeColor,
       storeEdgeThickness: state.edgeThickness,
+      vertexVisible: state.vertexVisible,
+      edgesVisible: state.edgesVisible,
     }))
   );
 
@@ -288,8 +293,8 @@ export function PointCloudWithEdges({
 
   return (
     <group>
-      {/* Render edges */}
-      {edges && edges.length > 0 && (
+      {/* Render edges (controlled by Edges toggle) */}
+      {edgesVisible && edges && edges.length > 0 && (
         <Wireframe
           vertices={vertices}
           edges={edges}
@@ -299,14 +304,16 @@ export function PointCloudWithEdges({
         />
       )}
 
-      {/* Render points on top */}
-      <PointCloudRenderer
-        vertices={vertices}
-        pointColor={effectivePointColor}
-        pointSize={pointSize}
-        opacity={opacity}
-        emissiveIntensity={emissiveIntensity}
-      />
+      {/* Render points on top (controlled by Vertices toggle) */}
+      {vertexVisible && (
+        <PointCloudRenderer
+          vertices={vertices}
+          pointColor={effectivePointColor}
+          pointSize={pointSize}
+          opacity={opacity}
+          emissiveIntensity={emissiveIntensity}
+        />
+      )}
     </group>
   );
 }

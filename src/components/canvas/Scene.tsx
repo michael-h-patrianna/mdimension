@@ -108,6 +108,7 @@ export function Scene({
 }: SceneProps) {
   // Get all visual settings with shallow comparison to prevent unnecessary re-renders
   const {
+    vertexVisible,
     facesVisible,
     faceColor,
     shaderSettings,
@@ -117,6 +118,7 @@ export function Scene({
     groundPlaneReflectivity,
   } = useVisualStore(
     useShallow((state) => ({
+      vertexVisible: state.vertexVisible,
       facesVisible: state.facesVisible,
       faceColor: state.faceColor,
       shaderSettings: state.shaderSettings,
@@ -174,6 +176,7 @@ export function Scene({
         isPointCloud ? (
           // Point cloud rendering (hyperspheres, sampled manifolds)
           // Uses same adjustedVertexSize as polytopes for visual consistency
+          // PointCloudWithEdges handles visibility toggles internally
           edges && edges.length > 0 ? (
             <PointCloudWithEdges
               vertices={vertices}
@@ -182,11 +185,14 @@ export function Scene({
               opacity={opacity}
             />
           ) : (
-            <PointCloudRenderer
-              vertices={vertices}
-              pointSize={adjustedVertexSize}
-              opacity={opacity}
-            />
+            // Standalone point cloud (no edges) - respect Vertices toggle
+            vertexVisible && (
+              <PointCloudRenderer
+                vertices={vertices}
+                pointSize={adjustedVertexSize}
+                opacity={opacity}
+              />
+            )
           )
         ) : (
           // Traditional polytope rendering (with density-adjusted vertex size)
