@@ -109,6 +109,8 @@ export const MandelbrotControls: React.FC<MandelbrotControlsProps> = ({
   const setColorMode = useExtendedObjectStore((state) => state.setMandelbrotColorMode);
   const setBoundaryThreshold = useExtendedObjectStore((state) => state.setMandelbrotBoundaryThreshold);
   const setMandelbulbPower = useExtendedObjectStore((state) => state.setMandelbrotMandelbulbPower);
+  const setMandelbrotParameterValue = useExtendedObjectStore((state) => state.setMandelbrotParameterValue);
+  const resetMandelbrotParameters = useExtendedObjectStore((state) => state.resetMandelbrotParameters);
 
   // Get current dimension to show/hide 3D-specific controls
   const dimension = useGeometryStore((state) => state.dimension);
@@ -244,6 +246,39 @@ export const MandelbrotControls: React.FC<MandelbrotControlsProps> = ({
             {dimension === 3
               ? 'Controls the shape of the 3D Mandelbulb fractal'
               : `Controls the shape of the ${dimension}D Hyperbulb fractal`}
+          </p>
+        </div>
+      )}
+
+      {/* Slice Parameters - shown for 4D+ raymarching */}
+      {dimension >= 4 && isRayMarching && (
+        <div className="space-y-3">
+          <div className="flex justify-between items-center">
+            <label className="text-xs text-text-secondary">
+              Slice Parameters ({dimension - 3} dim{dimension > 4 ? 's' : ''})
+            </label>
+            <button
+              onClick={() => resetMandelbrotParameters()}
+              className="text-xs text-accent hover:underline"
+            >
+              Reset
+            </button>
+          </div>
+          {Array.from({ length: dimension - 3 }, (_, i) => (
+            <Slider
+              key={`slice-dim-${i + 3}`}
+              label={`Dim ${i + 3}`}
+              min={-2.0}
+              max={2.0}
+              step={0.1}
+              value={config.parameterValues[i] ?? 0}
+              onChange={(v) => setMandelbrotParameterValue(i, v)}
+              onReset={() => setMandelbrotParameterValue(i, 0)}
+              showValue
+            />
+          ))}
+          <p className="text-xs text-text-tertiary">
+            Explore different {dimension}D cross-sections
           </p>
         </div>
       )}

@@ -37,7 +37,7 @@ import {
 } from 'three';
 import type { Vector3D } from '@/lib/math/types';
 import type { Face } from '@/lib/geometry/faces';
-import { createPaletteSurfaceMaterial } from '@/lib/shaders/materials';
+import { createPaletteSurfaceMaterial, updatePaletteMaterial } from '@/lib/shaders/materials';
 import type { ColorMode } from '@/lib/shaders/palette';
 import {
   DEFAULT_FACE_COLOR,
@@ -108,6 +108,14 @@ export function FaceRenderer({
   const edgeColor = useVisualStore((state) => state.edgeColor);
   const surfaceSettings = shaderSettings.surface;
 
+  // Get lighting settings for dynamic updates
+  const ambientIntensity = useVisualStore((state) => state.ambientIntensity);
+  const lightEnabled = useVisualStore((state) => state.lightEnabled);
+  const lightHorizontalAngle = useVisualStore((state) => state.lightHorizontalAngle);
+  const lightVerticalAngle = useVisualStore((state) => state.lightVerticalAngle);
+  const storeSpecularIntensity = useVisualStore((state) => state.specularIntensity);
+  const storeSpecularPower = useVisualStore((state) => state.specularPower);
+
   // Refs to track previous resources for cleanup
   const geometryRef = useRef<BufferGeometry | null>(null);
   const materialRef = useRef<Material | null>(null);
@@ -134,6 +142,28 @@ export function FaceRenderer({
       colorMode,
     });
   }, [color, edgeColor, opacity, specularIntensity, specularPower, surfaceSettings.fresnelEnabled, colorMode]);
+
+  // Update material lighting uniforms when lighting settings change
+  useEffect(() => {
+    if (materialRef.current && 'uniforms' in materialRef.current) {
+      // Convert spherical angles to direction vector
+      const hRad = (lightHorizontalAngle * Math.PI) / 180;
+      const vRad = (lightVerticalAngle * Math.PI) / 180;
+      const lightDir: [number, number, number] = [
+        Math.cos(vRad) * Math.sin(hRad),
+        Math.sin(vRad),
+        Math.cos(vRad) * Math.cos(hRad),
+      ];
+
+      updatePaletteMaterial(materialRef.current as any, {
+        ambientIntensity,
+        lightEnabled,
+        lightDirection: lightDir,
+        specularIntensity: storeSpecularIntensity,
+        specularPower: storeSpecularPower,
+      });
+    }
+  }, [material, ambientIntensity, lightEnabled, lightHorizontalAngle, lightVerticalAngle, storeSpecularIntensity, storeSpecularPower]);
 
   // Dispose previous material when new one is created
   useEffect(() => {

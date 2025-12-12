@@ -419,7 +419,31 @@ export const useExtendedObjectStore = create<ExtendedObjectState>((set, get) => 
     // - 4D+: Hyperbulb with hyperspherical coordinates
 
     // Escape radius (bailout): Higher dimensions need larger values for stability
-    const escapeRadius = dimension >= 4 ? 8.0 : 4.0;
+    let escapeRadius: number;
+    if (dimension >= 9) {
+      escapeRadius = 12.0;  // 9D-11D: highest bailout for stability
+    } else if (dimension >= 7) {
+      escapeRadius = 10.0;  // 7D-8D: high bailout
+    } else if (dimension >= 4) {
+      escapeRadius = 8.0;   // 4D-6D: moderate bailout
+    } else {
+      escapeRadius = 4.0;   // 2D-3D: standard bailout
+    }
+
+    // Max iterations: Performance-aware defaults for raymarching
+    // Higher dimensions need more conservative values due to computational cost
+    let maxIterations: number;
+    if (dimension >= 9) {
+      maxIterations = 35;   // 9D-11D: very conservative
+    } else if (dimension >= 7) {
+      maxIterations = 40;   // 7D-8D: conservative
+    } else if (dimension >= 4) {
+      maxIterations = 50;   // 4D-6D: moderate
+    } else if (dimension === 3) {
+      maxIterations = 80;   // 3D Mandelbulb: good quality
+    } else {
+      maxIterations = 100;  // 2D: high quality (point cloud is fast)
+    }
 
     // Power: 2 for classic 2D Mandelbrot, 8 for Mandelbulb/Hyperbulb
     const power = dimension === 2 ? 2 : 8;
@@ -445,6 +469,7 @@ export const useExtendedObjectStore = create<ExtendedObjectState>((set, get) => 
         extent,
         escapeRadius,
         mandelbulbPower: power,
+        maxIterations,
       },
     }));
   },

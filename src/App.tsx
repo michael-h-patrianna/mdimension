@@ -25,6 +25,7 @@ import { useFaceDepths } from '@/hooks/useFaceDepths';
 import { useCrossSectionCalculator } from '@/hooks/useCrossSectionCalculator';
 import { useMandelbrotColors } from '@/hooks/useMandelbrotColors';
 import MandelbulbMesh from '@/components/canvas/Mandelbulb/MandelbulbMesh';
+import HyperbulbMesh from '@/components/canvas/Hyperbulb/HyperbulbMesh';
 import type { Vector3D } from '@/lib/math/types';
 
 /**
@@ -78,10 +79,11 @@ function Visualizer() {
   }, [geometry.edges]);
 
   // Calculate minimum bounding radius for ground plane positioning
-  // When raymarched Mandelbulb is visible, ensure ground plane accounts for it
-  // Mandelbulb has approximate radius of 1.5 for power 8
+  // When raymarched Mandelbulb/Hyperbulb is visible, ensure ground plane accounts for it
+  // Both have approximate radius of 1.5 for power 8
   const isMandelbulbVisible = objectType === 'mandelbrot' && facesVisible && dimension === 3;
-  const minBoundingRadius = isMandelbulbVisible ? 1.5 : undefined;
+  const isHyperbulbVisible = objectType === 'mandelbrot' && facesVisible && dimension >= 4;
+  const minBoundingRadius = (isMandelbulbVisible || isHyperbulbVisible) ? 1.5 : undefined;
 
   return (
     <>
@@ -98,6 +100,7 @@ function Visualizer() {
         faceDepths={mainOpacity > 0 ? faceDepths : undefined}
       />
       {isMandelbulbVisible && <MandelbulbMesh />}
+      {isHyperbulbVisible && <HyperbulbMesh />}
     </>
   );
 }
