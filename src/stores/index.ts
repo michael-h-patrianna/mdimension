@@ -17,10 +17,6 @@ export {
   DEFAULT_SCALE,
   SCALE_WARNING_LOW,
   SCALE_WARNING_HIGH,
-  MIN_SHEAR,
-  MAX_SHEAR,
-  MIN_TRANSLATION,
-  MAX_TRANSLATION,
 } from './transformStore';
 export {
   useAnimationStore,
@@ -29,12 +25,6 @@ export {
   DEFAULT_SPEED,
   BASE_ROTATION_RATE,
 } from './animationStore';
-export {
-  useCrossSectionStore,
-  MIN_SLICE_W,
-  MAX_SLICE_W,
-  DEFAULT_SLICE_W,
-} from './crossSectionStore';
 export {
   useVisualStore,
   DEFAULT_EDGE_COLOR,

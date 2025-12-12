@@ -66,9 +66,6 @@ export const DimensionSelector: React.FC<DimensionSelectorProps> = ({
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
-  // Calculate number of rotation planes: n * (n - 1) / 2
-  const rotationPlanes = (dimension * (dimension - 1)) / 2;
-
   const checkScroll = () => {
     if (scrollContainerRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
@@ -108,19 +105,14 @@ export const DimensionSelector: React.FC<DimensionSelectorProps> = ({
   };
 
   return (
-    <div className={`space-y-2 ${className}`}>
+    <div className={` ${className}`}>
       <div className="flex justify-between items-baseline">
         <Tooltip
-          content="Select the number of dimensions for the object. Higher dimensions have more rotation planes."
+          content="Select the number of dimensions for the object."
           position="top"
         >
-          <label className="block text-sm font-medium text-text-secondary">
-            Dimension
-          </label>
+
         </Tooltip>
-        <span className="text-xs text-text-tertiary">
-          {dimension}D space has {rotationPlanes} rotation planes
-        </span>
       </div>
 
       <div className="relative group">

@@ -16,10 +16,10 @@ export const Section: React.FC<SectionProps> = ({
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
-    <div className={`group ${className}`}>
+    <div className={`group rounded-lg transition-all duration-300 ${isOpen ? 'bg-white/5' : ''} ${className}`}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between py-2 text-left focus:outline-none"
+        className="w-full flex items-center justify-between py-2 px-3 text-left focus:outline-none"
         aria-expanded={isOpen}
       >
         <div className="flex items-center gap-2">
@@ -29,15 +29,15 @@ export const Section: React.FC<SectionProps> = ({
             {title.toUpperCase()}
           </span>
         </div>
-        
-        <svg 
-          width="10" 
-          height="6" 
-          viewBox="0 0 10 6" 
-          fill="none" 
-          stroke="currentColor" 
-          strokeWidth="1.5" 
-          strokeLinecap="round" 
+
+        <svg
+          width="10"
+          height="6"
+          viewBox="0 0 10 6"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
           strokeLinejoin="round"
           className={`text-text-tertiary transition-transform duration-300 ${isOpen ? 'rotate-180' : 'rotate-0'}`}
         >
@@ -50,8 +50,8 @@ export const Section: React.FC<SectionProps> = ({
         className={`grid transition-all duration-300 ease-in-out ${isOpen ? 'grid-rows-[1fr] opacity-100 mb-4' : 'grid-rows-[0fr] opacity-0'}`}
         aria-hidden={!isOpen}
       >
-        <div className="overflow-hidden">
-          <div className="pt-2 pl-3 border-l border-border/10 ml-[5px]">
+        <div className="overflow-hidden px-3">
+          <div className="pt-2 pb-2 border-border/10 ml-[5px]">
             {children}
           </div>
         </div>

@@ -33,11 +33,7 @@ const VALID_OBJECT_TYPES: ObjectType[] = [
 export interface ShareableState {
   dimension: number;
   objectType: ObjectType;
-  rotationAngles?: Map<string, number>;
-  projectionDistance?: number;
   uniformScale?: number;
-  isPlaying?: boolean;
-  speed?: number;
   // Visual settings (PRD Story 1 AC6, Story 7 AC7)
   shaderType?: ShaderType;
   shaderSettings?: AllShaderSettings;
@@ -66,32 +62,8 @@ export function serializeState(state: ShareableState): string {
   params.set('d', state.dimension.toString());
   params.set('t', state.objectType);
 
-  if (state.projectionDistance !== undefined) {
-    params.set('pd', state.projectionDistance.toFixed(2));
-  }
-
   if (state.uniformScale !== undefined && state.uniformScale !== 1) {
     params.set('s', state.uniformScale.toFixed(2));
-  }
-
-  if (state.rotationAngles && state.rotationAngles.size > 0) {
-    const rotations: string[] = [];
-    state.rotationAngles.forEach((angle, plane) => {
-      if (angle !== 0) {
-        rotations.push(`${plane}:${angle.toFixed(3)}`);
-      }
-    });
-    if (rotations.length > 0) {
-      params.set('r', rotations.join(','));
-    }
-  }
-
-  if (state.isPlaying) {
-    params.set('p', '1');
-  }
-
-  if (state.speed !== undefined && state.speed !== 1) {
-    params.set('sp', state.speed.toFixed(2));
   }
 
   // Visual settings (PRD Story 1 AC6)
@@ -202,49 +174,13 @@ export function deserializeState(searchParams: string): Partial<ShareableState> 
     state.objectType = objectType as ObjectType;
   }
 
-  const projectionDistance = params.get('pd');
-  if (projectionDistance) {
-    const pd = parseFloat(projectionDistance);
-    if (!isNaN(pd) && pd > 0) {
-      state.projectionDistance = pd;
-    }
-  }
+  // Note: 'pd' (projectionDistance) is no longer used but we ignore it for backward compatibility
 
   const uniformScale = params.get('s');
   if (uniformScale) {
     const s = parseFloat(uniformScale);
     if (!isNaN(s) && s > 0) {
       state.uniformScale = s;
-    }
-  }
-
-  const rotations = params.get('r');
-  if (rotations) {
-    const rotationAngles = new Map<string, number>();
-    rotations.split(',').forEach((pair) => {
-      const [plane, angleStr] = pair.split(':');
-      if (plane && angleStr) {
-        const angle = parseFloat(angleStr);
-        if (!isNaN(angle)) {
-          rotationAngles.set(plane, angle);
-        }
-      }
-    });
-    if (rotationAngles.size > 0) {
-      state.rotationAngles = rotationAngles;
-    }
-  }
-
-  const isPlaying = params.get('p');
-  if (isPlaying === '1') {
-    state.isPlaying = true;
-  }
-
-  const speed = params.get('sp');
-  if (speed) {
-    const sp = parseFloat(speed);
-    if (!isNaN(sp) && sp > 0) {
-      state.speed = sp;
     }
   }
 

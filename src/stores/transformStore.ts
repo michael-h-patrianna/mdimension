@@ -1,16 +1,12 @@
 /**
  * Transform state management using Zustand
- * Manages scale, shear, and translation transformations
+ * Manages scale transformations
  */
 
 import { create } from 'zustand';
-import type { MatrixND, VectorND } from '@/lib/math/types';
+import type { MatrixND } from '@/lib/math/types';
 import {
   createScaleMatrix,
-  createShearMatrix,
-  createIdentityMatrix,
-  multiplyMatrices,
-  parsePlaneName,
 } from '@/lib/math';
 import { MAX_DIMENSION, MIN_DIMENSION } from './geometryStore';
 
@@ -29,35 +25,11 @@ export const SCALE_WARNING_LOW = 0.2;
 /** Scale warning threshold (high) */
 export const SCALE_WARNING_HIGH = 2.5;
 
-/** Minimum shear value */
-export const MIN_SHEAR = -2.0;
-
-/** Maximum shear value */
-export const MAX_SHEAR = 2.0;
-
-/** Default shear value */
-export const DEFAULT_SHEAR = 0;
-
-/** Minimum translation value */
-export const MIN_TRANSLATION = -5.0;
-
-/** Maximum translation value */
-export const MAX_TRANSLATION = 5.0;
-
-/** Default translation value */
-export const DEFAULT_TRANSLATION = 0;
-
 interface TransformState {
   // Scale
   uniformScale: number;
   perAxisScale: number[];
   scaleLocked: boolean;
-
-  // Shear
-  shears: Map<string, number>; // "XY" -> amount
-
-  // Translation
-  translation: number[];
 
   // Current dimension (for generating correct sized arrays)
   dimension: number;
@@ -69,18 +41,6 @@ interface TransformState {
   resetScale: () => void;
   getScaleMatrix: () => MatrixND;
   isScaleExtreme: () => boolean;
-
-  // Shear actions
-  setShear: (plane: string, amount: number) => void;
-  resetShear: (plane: string) => void;
-  resetAllShears: () => void;
-  getShearMatrix: () => MatrixND;
-
-  // Translation actions
-  setTranslation: (axis: number, value: number) => void;
-  resetTranslation: () => void;
-  center: () => void;
-  getTranslationVector: () => VectorND;
 
   // General actions
   setDimension: (dimension: number) => void;
@@ -96,22 +56,6 @@ function clampScale(value: number): number {
 }
 
 /**
- * Clamps a shear value to valid range
- * @param value
- */
-function clampShear(value: number): number {
-  return Math.max(MIN_SHEAR, Math.min(MAX_SHEAR, value));
-}
-
-/**
- * Clamps a translation value to valid range
- * @param value
- */
-function clampTranslation(value: number): number {
-  return Math.max(MIN_TRANSLATION, Math.min(MAX_TRANSLATION, value));
-}
-
-/**
  * Creates default per-axis scale array for given dimension
  * @param dimension
  */
@@ -119,21 +63,11 @@ function createDefaultScales(dimension: number): number[] {
   return new Array(dimension).fill(DEFAULT_SCALE);
 }
 
-/**
- * Creates default translation array for given dimension
- * @param dimension
- */
-function createDefaultTranslation(dimension: number): number[] {
-  return new Array(dimension).fill(DEFAULT_TRANSLATION);
-}
-
 export const useTransformStore = create<TransformState>((set, get) => ({
   // Initial state
   uniformScale: DEFAULT_SCALE,
   perAxisScale: createDefaultScales(4),
   scaleLocked: true,
-  shears: new Map(),
-  translation: createDefaultTranslation(4),
   dimension: 4,
 
   // Scale actions
@@ -205,87 +139,6 @@ export const useTransformStore = create<TransformState>((set, get) => ({
     );
   },
 
-  // Shear actions
-  setShear: (plane: string, amount: number) => {
-    const clamped = clampShear(amount);
-    set((state) => {
-      const newShears = new Map(state.shears);
-      if (Math.abs(clamped) < 1e-6) {
-        newShears.delete(plane);
-      } else {
-        newShears.set(plane, clamped);
-      }
-      return { shears: newShears };
-    });
-  },
-
-  resetShear: (plane: string) => {
-    set((state) => {
-      const newShears = new Map(state.shears);
-      newShears.delete(plane);
-      return { shears: newShears };
-    });
-  },
-
-  resetAllShears: () => {
-    set({ shears: new Map() });
-  },
-
-  getShearMatrix: () => {
-    const state = get();
-    const shearEntries = Array.from(state.shears.entries());
-
-    if (shearEntries.length === 0) {
-      return createIdentityMatrix(state.dimension);
-    }
-
-    // Compose all shear matrices
-    let result = createIdentityMatrix(state.dimension);
-    for (const [plane, amount] of shearEntries) {
-      try {
-        const [axis1, axis2] = parsePlaneName(plane);
-        if (axis1 < state.dimension && axis2 < state.dimension) {
-          const shearMatrix = createShearMatrix(state.dimension, axis1, axis2, amount);
-          result = multiplyMatrices(result, shearMatrix);
-        }
-      } catch {
-        // Skip invalid planes
-      }
-    }
-
-    return result;
-  },
-
-  // Translation actions
-  setTranslation: (axis: number, value: number) => {
-    const clamped = clampTranslation(value);
-    set((state) => {
-      if (axis < 0 || axis >= state.dimension) {
-        return state;
-      }
-
-      const newTranslation = [...state.translation];
-      newTranslation[axis] = clamped;
-      return { translation: newTranslation };
-    });
-  },
-
-  resetTranslation: () => {
-    set((state) => ({
-      translation: createDefaultTranslation(state.dimension),
-    }));
-  },
-
-  center: () => {
-    set((state) => ({
-      translation: createDefaultTranslation(state.dimension),
-    }));
-  },
-
-  getTranslationVector: () => {
-    return get().translation;
-  },
-
   // General actions
   setDimension: (dimension: number) => {
     if (dimension < MIN_DIMENSION || dimension > MAX_DIMENSION) {
@@ -299,29 +152,9 @@ export const useTransformStore = create<TransformState>((set, get) => ({
         newPerAxisScale[i] = state.perAxisScale[i]!;
       }
 
-      const newTranslation = createDefaultTranslation(dimension);
-      for (let i = 0; i < Math.min(dimension, state.translation.length); i++) {
-        newTranslation[i] = state.translation[i]!;
-      }
-
-      // Filter shears to only include valid planes for new dimension
-      const newShears = new Map<string, number>();
-      for (const [plane, amount] of state.shears.entries()) {
-        try {
-          const [axis1, axis2] = parsePlaneName(plane);
-          if (axis1 < dimension && axis2 < dimension) {
-            newShears.set(plane, amount);
-          }
-        } catch {
-          // Skip invalid planes
-        }
-      }
-
       return {
         dimension,
         perAxisScale: newPerAxisScale,
-        translation: newTranslation,
-        shears: newShears,
       };
     });
   },
@@ -331,8 +164,6 @@ export const useTransformStore = create<TransformState>((set, get) => ({
       uniformScale: DEFAULT_SCALE,
       perAxisScale: createDefaultScales(state.dimension),
       scaleLocked: true,
-      shears: new Map(),
-      translation: createDefaultTranslation(state.dimension),
     }));
   },
 }));

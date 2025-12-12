@@ -5,6 +5,7 @@ export interface TooltipProps {
   children: React.ReactNode;
   position?: 'top' | 'bottom' | 'left' | 'right';
   delay?: number;
+  className?: string;
 }
 
 export const Tooltip: React.FC<TooltipProps> = ({
@@ -12,6 +13,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
   children,
   position = 'top',
   delay = 300,
+  className = '',
 }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [coords, setCoords] = useState({ x: 0, y: 0 });
@@ -79,7 +81,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
   };
 
   return (
-    <div className="relative inline-block">
+    <div className={`relative inline-block ${className}`}>
       <div
         ref={triggerRef}
         onMouseEnter={showTooltip}

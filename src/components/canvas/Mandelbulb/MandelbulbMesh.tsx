@@ -9,6 +9,9 @@ import { useVisualStore } from '@/stores/visualStore';
 import { composeRotations } from '@/lib/math/rotation';
 import { COLOR_MODE_TO_INT } from '@/lib/shaders/palette';
 
+/** MandelbulbMesh is always 3D - this constant ensures consistency */
+const MANDELBULB_DIMENSION = 3;
+
 /**
  * Convert horizontal/vertical angles to a normalized direction vector.
  * Matches the light direction calculation used in SceneLighting.
@@ -96,11 +99,20 @@ const MandelbulbMesh = () => {
       if (material.uniforms.uSpecularPower) material.uniforms.uSpecularPower.value = specularPower;
 
       // Access rotation state directly to avoid re-renders during animation
-      const rotations = useRotationStore.getState().rotations;
+      // Filter to only include 3D-valid planes (XY, XZ, YZ) to prevent errors
+      // when rotationStore still has 4D planes during dimension transitions
+      const allRotations = useRotationStore.getState().rotations;
+      const validPlanes = new Set(['XY', 'XZ', 'YZ']);
+      const rotations = new Map<string, number>();
+      for (const [plane, angle] of allRotations.entries()) {
+        if (validPlanes.has(plane)) {
+          rotations.set(plane, angle);
+        }
+      }
 
       // Build rotation matrix using the SAME function as point cloud vertices
       // This ensures identical rotation behavior between raymarched and point cloud
-      const rotationMatrix = composeRotations(3, rotations);
+      const rotationMatrix = composeRotations(MANDELBULB_DIMENSION, rotations);
 
       // Convert our row-major 3x3 matrix to THREE.js column-major 4x4 Matrix4
       // Our matrix: rotationMatrix[row][col]

@@ -19,3 +19,4 @@ remove from sidebar the section and all related functionality that is no longer 
 - Cross-Section
 - Translation
 - Rotation
+- Shear

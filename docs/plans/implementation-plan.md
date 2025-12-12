@@ -1274,7 +1274,6 @@ interface VisualState {
   setEdgeColor(color: string): void;
   // ... all setters
   applyPreset(name: string): void;
-  resetToDefaults(): void;
 }
 
 // src/components/controls/VisualControls.tsx

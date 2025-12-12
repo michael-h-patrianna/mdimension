@@ -1,10 +1,13 @@
 import { useMemo, useRef } from 'react';
-import { projectPerspective, projectOrthographic } from '@/lib/math/projection';
+import { projectPerspective, projectOrthographic, DEFAULT_PROJECTION_DISTANCE } from '@/lib/math/projection';
 import type { VectorND, Vector3D } from '@/lib/math/types';
 import { useProjectionStore } from '@/stores/projectionStore';
 
 /**
  * Hook that projects n-dimensional vertices to 3D space using current projection settings
+ *
+ * Uses a fixed projection distance (4.0) for consistent sizing across all dimensions.
+ * Camera zoom should be used to adjust overall object scale.
  *
  * @param rotatedVertices - Array of n-dimensional vertices (after rotation)
  * @returns Array of 3D projected vertices ready for rendering
@@ -20,7 +23,6 @@ export function useProjectedVertices(
   rotatedVertices: VectorND[]
 ): Vector3D[] {
   const type = useProjectionStore((state) => state.type);
-  const distance = useProjectionStore((state) => state.distance);
   const cacheRef = useRef<Vector3D[]>([]);
 
   return useMemo(() => {
@@ -48,7 +50,7 @@ export function useProjectedVertices(
         const normalizationFactor = dimension > 3 ? Math.sqrt(dimension - 3) : 1;
 
         for (let i = 0; i < rotatedVertices.length; i++) {
-          projectPerspective(rotatedVertices[i]!, distance, cache[i], normalizationFactor);
+          projectPerspective(rotatedVertices[i]!, DEFAULT_PROJECTION_DISTANCE, cache[i], normalizationFactor);
         }
       } else {
         for (let i = 0; i < rotatedVertices.length; i++) {
@@ -62,5 +64,5 @@ export function useProjectedVertices(
       console.error('Projection error:', error);
       return [];
     }
-  }, [rotatedVertices, type, distance]);
+  }, [rotatedVertices, type]);
 }

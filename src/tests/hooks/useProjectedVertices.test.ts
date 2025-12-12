@@ -17,8 +17,8 @@ describe('useProjectedVertices', () => {
     });
   });
 
-  describe('3D vertices (no projection needed)', () => {
-    it('should pass through 3D vertices unchanged', () => {
+  describe('3D vertices (consistent perspective scaling)', () => {
+    it('should apply perspective scaling to 3D vertices for consistency', () => {
       const vertices: VectorND[] = [
         [1, 2, 3],
         [4, 5, 6],
@@ -26,10 +26,14 @@ describe('useProjectedVertices', () => {
 
       const { result } = renderHook(() => useProjectedVertices(vertices));
 
-      expect(result.current).toEqual([
-        [1, 2, 3],
-        [4, 5, 6],
-      ]);
+      // With fixed projection distance of 4.0 and effectiveDepth=0:
+      // scale = 1/4 = 0.25
+      expect(result.current[0]![0]).toBeCloseTo(0.25, 5);
+      expect(result.current[0]![1]).toBeCloseTo(0.5, 5);
+      expect(result.current[0]![2]).toBeCloseTo(0.75, 5);
+      expect(result.current[1]![0]).toBeCloseTo(1, 5);
+      expect(result.current[1]![1]).toBeCloseTo(1.25, 5);
+      expect(result.current[1]![2]).toBeCloseTo(1.5, 5);
     });
   });
 
@@ -45,7 +49,7 @@ describe('useProjectedVertices', () => {
 
       const [innerProjected, outerProjected] = result.current;
 
-      // With distance = 4.0 (default):
+      // With distance = 4.0 (fixed):
       // Inner: scale = 1/(4 - (-1)) = 1/5 = 0.2, so (1,1,1) -> (0.2, 0.2, 0.2)
       // Outer: scale = 1/(4 - 1) = 1/3 = 0.333..., so (1,1,1) -> (0.333, 0.333, 0.333)
 
@@ -59,31 +63,6 @@ describe('useProjectedVertices', () => {
 
       // Inner cube should appear smaller (closer to 0) than outer cube
       expect(Math.abs(innerProjected![0]!)).toBeLessThan(Math.abs(outerProjected![0]!));
-    });
-
-    it('should respond to distance changes', () => {
-      const vertex: VectorND = [2, 2, 2, 1]; // w = 1
-
-      // Distance = 4.0 (default)
-      const { result, rerender } = renderHook(() => useProjectedVertices([vertex]));
-
-      // Clone to avoid mutation affecting comparison
-      const projected1 = [...result.current[0]!];
-      // scale = 1/(4 - 1) = 1/3
-      expect(projected1[0]).toBeCloseTo(2 / 3, 5);
-
-      // Change distance to 6.0
-      act(() => {
-        useProjectionStore.getState().setDistance(6.0);
-      });
-      rerender();
-
-      const projected2 = result.current[0]!;
-      // scale = 1/(6 - 1) = 1/5
-      expect(projected2[0]).toBeCloseTo(2 / 5, 5);
-
-      // Larger distance should produce smaller values
-      expect(Math.abs(projected2[0]!)).toBeLessThan(Math.abs(projected1[0]!));
     });
 
     it('should handle 5D vertices with recursive projection', () => {
@@ -110,6 +89,22 @@ describe('useProjectedVertices', () => {
       expect(Number.isNaN(projected[0])).toBe(false);
       expect(Number.isNaN(projected[1])).toBe(false);
       expect(Number.isNaN(projected[2])).toBe(false);
+    });
+
+    it('should handle 11D vertices (max dimension)', () => {
+      const vertex11D: VectorND = [1, 1, 1, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5];
+
+      const { result } = renderHook(() => useProjectedVertices([vertex11D]));
+      const projected = result.current[0]!;
+
+      // Should project without errors or NaN
+      expect(projected).toHaveLength(3);
+      expect(Number.isNaN(projected[0])).toBe(false);
+      expect(Number.isNaN(projected[1])).toBe(false);
+      expect(Number.isNaN(projected[2])).toBe(false);
+      expect(Number.isFinite(projected[0])).toBe(true);
+      expect(Number.isFinite(projected[1])).toBe(true);
+      expect(Number.isFinite(projected[2])).toBe(true);
     });
   });
 
@@ -200,16 +195,18 @@ describe('useProjectedVertices', () => {
       });
     });
 
-    it('should handle 2D vertices by projecting to X-Z plane', () => {
-      // 2D vertices are now valid and project to [x, 0, z]
+    it('should handle 2D vertices by projecting to X-Z plane with perspective scaling', () => {
+      // 2D vertices are now valid and project to [x * scale, 0, z * scale]
       const vertices2D: VectorND[] = [
         [1, 2], // 2D: [x, z]
       ];
 
       const { result } = renderHook(() => useProjectedVertices(vertices2D));
 
-      // Should project to [x, 0, z]
-      expect(result.current).toEqual([[1, 0, 2]]);
+      // With fixed projection distance 4.0: scale = 1/4 = 0.25
+      expect(result.current[0]![0]).toBeCloseTo(0.25, 5);
+      expect(result.current[0]![1]).toBe(0);
+      expect(result.current[0]![2]).toBeCloseTo(0.5, 5);
     });
 
     it('should handle invalid vertices gracefully', () => {
@@ -255,23 +252,22 @@ describe('useProjectedVertices', () => {
 
       expect(perspectiveResult).not.toEqual(orthographicResult);
     });
+  });
 
-    it('should recompute when distance changes (perspective only)', () => {
-      const vertices: VectorND[] = [[2, 2, 2, 1]];
+  describe('dimension consistency', () => {
+    it('should produce similar sized results for 3D, 4D, 5D objects at origin', () => {
+      // Test that objects at the origin project to similar sizes across dimensions
+      const vertex3D: VectorND = [1, 1, 1];
+      const vertex4D: VectorND = [1, 1, 1, 0]; // w=0, should be same scale as 3D
+      const vertex5D: VectorND = [1, 1, 1, 0, 0]; // w=v=0, should be same scale as 3D
 
-      const { result, rerender } = renderHook(() => useProjectedVertices(vertices));
+      const { result: result3D } = renderHook(() => useProjectedVertices([vertex3D]));
+      const { result: result4D } = renderHook(() => useProjectedVertices([vertex4D]));
+      const { result: result5D } = renderHook(() => useProjectedVertices([vertex5D]));
 
-      // Clone to avoid mutation
-      const result1 = [...result.current[0]!];
-
-      act(() => {
-        useProjectionStore.getState().setDistance(8.0);
-      });
-      rerender();
-
-      const result2 = result.current[0];
-
-      expect(result1).not.toEqual(result2);
+      // All should have the same projected x coordinate (scale = 1/4)
+      expect(result3D.current[0]![0]).toBeCloseTo(result4D.current[0]![0], 5);
+      expect(result3D.current[0]![0]).toBeCloseTo(result5D.current[0]![0], 5);
     });
   });
 });

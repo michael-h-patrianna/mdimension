@@ -15,14 +15,12 @@ import { useVisualStore } from '@/stores/visualStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useProjectedVertices } from '@/hooks/useProjectedVertices';
 import { useAnimationLoop } from '@/hooks/useAnimationLoop';
-import { useCrossSectionAnimation } from '@/hooks/useCrossSectionAnimation';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useSyncedDimension } from '@/hooks/useSyncedDimension';
 import { useGeometryGenerator } from '@/hooks/useGeometryGenerator';
 import { useObjectTransformations } from '@/hooks/useObjectTransformations';
 import { useFaceDetection } from '@/hooks/useFaceDetection';
 import { useFaceDepths } from '@/hooks/useFaceDepths';
-import { useCrossSectionCalculator } from '@/hooks/useCrossSectionCalculator';
 import { useMandelbrotColors } from '@/hooks/useMandelbrotColors';
 import MandelbulbMesh from '@/components/canvas/Mandelbulb/MandelbulbMesh';
 import HyperbulbMesh from '@/components/canvas/Hyperbulb/HyperbulbMesh';
@@ -37,7 +35,6 @@ function Visualizer() {
 
   // 2. Run animation loops
   useAnimationLoop();
-  useCrossSectionAnimation();
 
   // 3. Generate geometry based on store state
   const { geometry, dimension, objectType } = useGeometryGenerator();
@@ -53,19 +50,6 @@ function Visualizer() {
 
   // 6b. Compute per-face depth values for palette color variation
   const faceDepths = useFaceDepths(transformedVertices, faces, dimension);
-
-  // 7. Calculate cross-sections if enabled
-  const {
-    vertices: crossSectionVertices,
-    edges: crossSectionEdges,
-    mainOpacity
-  } = useCrossSectionCalculator(
-    transformedVertices,
-    geometry,
-    faces,
-    dimension,
-    objectType
-  );
 
   // 8. Compute Mandelbrot colors (derived from user's vertex color)
   const mandelbrotConfig = useExtendedObjectStore((state) => state.mandelbrot);
@@ -88,16 +72,13 @@ function Visualizer() {
   return (
     <>
       <Scene
-        vertices={mainOpacity > 0 ? projectedVertices as Vector3D[] : undefined}
-        edges={mainOpacity > 0 ? edges : undefined}
-        faces={mainOpacity > 0 ? faces : undefined}
-        opacity={mainOpacity}
-        crossSectionVertices={crossSectionVertices}
-        crossSectionEdges={crossSectionEdges}
+        vertices={projectedVertices as Vector3D[]}
+        edges={edges}
+        faces={faces}
         isPointCloud={geometry.isPointCloud}
         pointColors={pointColors}
         minBoundingRadius={minBoundingRadius}
-        faceDepths={mainOpacity > 0 ? faceDepths : undefined}
+        faceDepths={faceDepths}
       />
       {isMandelbulbVisible && <MandelbulbMesh />}
       {isHyperbulbVisible && <HyperbulbMesh />}

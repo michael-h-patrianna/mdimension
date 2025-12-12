@@ -2,14 +2,13 @@
  * Tests for ShareButton component
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ShareButton } from '@/components/ShareButton';
+import { useAnimationStore } from '@/stores/animationStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useRotationStore } from '@/stores/rotationStore';
-import { useProjectionStore } from '@/stores/projectionStore';
 import { useTransformStore } from '@/stores/transformStore';
-import { useAnimationStore } from '@/stores/animationStore';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock clipboard API
 const mockClipboard = {
@@ -26,7 +25,6 @@ describe('ShareButton', () => {
     mockClipboard.writeText.mockResolvedValue(undefined);
     useGeometryStore.getState().reset();
     useRotationStore.getState().resetAllRotations();
-    useProjectionStore.getState().resetToDefaults();
     useTransformStore.getState().resetAll();
     useAnimationStore.getState().reset();
   });

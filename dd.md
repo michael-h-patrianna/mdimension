@@ -23,14 +23,11 @@ uncertaintity which you should research and decide on:
 
 
 
-Review this bug report:
-The Field of View setting in the sidebar changes nothing.
 
 Review this bug report:
 PNG export exports an empty image
 
-Review this bug report:
-In the sidebar, in the scaling section, when scaling is not locked to uniform scaling, the Uniform scaling slider must be disabled. At the moment is still enabled but changes nothing.
+
 
 Review this bug report:
 With cross section active + "animate slice" active + "show original" hidden, when the "Slice W Position" value/slider hits its minimum or maximum then two visual bugs are shortly showing:

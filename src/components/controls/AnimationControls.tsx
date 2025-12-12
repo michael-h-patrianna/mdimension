@@ -5,6 +5,7 @@
 
 import { Button } from '@/components/ui/Button';
 import { Slider } from '@/components/ui/Slider';
+import { ToggleButton } from '@/components/ui/ToggleButton';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { getRotationPlanes } from '@/lib/math';
 import {
@@ -29,7 +30,6 @@ export const AnimationControls: React.FC<AnimationControlsProps> = ({
   const speed = useAnimationStore((state) => state.speed);
   const direction = useAnimationStore((state) => state.direction);
   const animatingPlanes = useAnimationStore((state) => state.animatingPlanes);
-  const isoclinicMode = useAnimationStore((state) => state.isoclinicMode);
 
   const toggle = useAnimationStore((state) => state.toggle);
   const setSpeed = useAnimationStore((state) => state.setSpeed);
@@ -37,7 +37,6 @@ export const AnimationControls: React.FC<AnimationControlsProps> = ({
   const togglePlane = useAnimationStore((state) => state.togglePlane);
   const animateAll = useAnimationStore((state) => state.animateAll);
   const stopAll = useAnimationStore((state) => state.stopAll);
-  const setIsoclinicMode = useAnimationStore((state) => state.setIsoclinicMode);
 
   // Get all rotation planes for current dimension
   const planes = useMemo(() => getRotationPlanes(dimension), [dimension]);
@@ -49,7 +48,7 @@ export const AnimationControls: React.FC<AnimationControlsProps> = ({
       {/* Play/Pause Button */}
       <div className="flex gap-2">
         <Button
-          variant={isPlaying ? 'secondary' : 'primary'}
+          variant='primary'
           size="md"
           onClick={toggle}
           className="flex-1"
@@ -88,20 +87,15 @@ export const AnimationControls: React.FC<AnimationControlsProps> = ({
           {planes.map((plane) => {
             const isActive = animatingPlanes.has(plane.name);
             return (
-              <button
+              <ToggleButton
                 key={plane.name}
-                onClick={() => togglePlane(plane.name)}
-                className={`
-                  px-2 py-1 text-xs font-mono rounded transition-colors bg-panel-border
-                  ${isActive
-                    ? 'text-accent'
-                    : ' text-text-secondary hover:bg-panel-border/80'
-                  }
-                `}
-                aria-pressed={isActive}
+                pressed={isActive}
+                onToggle={() => togglePlane(plane.name)}
+                className="text-xs font-mono "
+                ariaLabel={`Toggle animation for plane ${plane.name}`}
               >
                 {plane.name}
-              </button>
+              </ToggleButton>
             );
           })}
         </div>
@@ -127,30 +121,6 @@ export const AnimationControls: React.FC<AnimationControlsProps> = ({
           Stop All
         </Button>
       </div>
-
-      {/* Isoclinic Mode (4D only) */}
-      {dimension === 4 && (
-        <Tooltip content="Special 4D double rotation: XY and ZW rotate together at the same rate">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsoclinicMode(!isoclinicMode)}
-              className={`
-                flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors
-                ${isoclinicMode
-                  ? 'bg-accent-magenta/20 text-accent-magenta border border-accent-magenta/50'
-                  : 'bg-panel-border text-text-secondary border border-panel-border'
-                }
-              `}
-              aria-pressed={isoclinicMode}
-            >
-              <span>Isoclinic Rotation</span>
-            </button>
-          </div>
-        </Tooltip>
-      )}
-
-      {/* Status */}
-
     </div>
   );
 };

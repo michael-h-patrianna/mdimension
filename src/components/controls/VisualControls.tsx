@@ -3,16 +3,16 @@
  * Controls for customizing the visual appearance of polytopes
  */
 
-import React from 'react';
-import { Slider } from '@/components/ui/Slider';
 import { Button } from '@/components/ui/Button';
+import { Slider } from '@/components/ui/Slider';
 import { ToggleButton } from '@/components/ui/ToggleButton';
 import {
-  useVisualStore,
-  VISUAL_PRESETS,
   DEFAULT_EDGE_THICKNESS,
   DEFAULT_VERTEX_SIZE,
+  useVisualStore,
+  VISUAL_PRESETS,
 } from '@/stores/visualStore';
+import React from 'react';
 // Note: ToggleButton is still used for Ground Plane toggle
 import type { VisualPreset } from '@/stores/visualStore';
 
@@ -89,7 +89,7 @@ export const VisualControls: React.FC<VisualControlsProps> = ({
         label="Edge Thickness"
         min={1}
         max={5}
-        step={0.5}
+        step={0.1}
         value={edgeThickness}
         onChange={setEdgeThickness}
         onReset={() => setEdgeThickness(DEFAULT_EDGE_THICKNESS)}
@@ -118,7 +118,7 @@ export const VisualControls: React.FC<VisualControlsProps> = ({
         label="Vertex Size"
         min={1}
         max={10}
-        step={1}
+        step={0.1}
         value={vertexSize}
         onChange={setVertexSize}
         onReset={() => setVertexSize(DEFAULT_VERTEX_SIZE)}

@@ -14,19 +14,18 @@
  * - Mandelbrot Set: quality preset, iterations, escape radius, resolution
  */
 
-import React from 'react';
-import { useGeometryStore } from '@/stores/geometryStore';
-import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
-import { useVisualStore } from '@/stores/visualStore';
-import { isPolytopeType } from '@/lib/geometry/types';
-import { Slider } from '@/components/ui/Slider';
 import { Select } from '@/components/ui/Select';
-import { ToggleGroup } from '@/components/ui/ToggleGroup';
+import { Slider } from '@/components/ui/Slider';
 import {
-  DEFAULT_POLYTOPE_CONFIG,
-  DEFAULT_HYPERSPHERE_CONFIG,
   DEFAULT_CLIFFORD_TORUS_CONFIG,
+  DEFAULT_HYPERSPHERE_CONFIG,
+  DEFAULT_POLYTOPE_CONFIG,
 } from '@/lib/geometry/extended/types';
+import { isPolytopeType } from '@/lib/geometry/types';
+import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
+import { useGeometryStore } from '@/stores/geometryStore';
+import { useVisualStore } from '@/stores/visualStore';
+import React from 'react';
 import { MandelbrotControls } from './MandelbrotControls';
 
 export interface ObjectSettingsSectionProps {
@@ -91,19 +90,7 @@ function HypersphereSettings() {
 
   return (
     <div className="space-y-4">
-      {/* Mode selection */}
-      <div className="space-y-2">
-        <label className="text-xs text-text-secondary">Sampling Mode</label>
-        <ToggleGroup<'surface' | 'solid'>
-          options={[
-            { value: 'surface', label: 'Surface' },
-            { value: 'solid', label: 'Solid' },
-          ]}
-          value={config.mode}
-          onChange={setMode}
-          ariaLabel="Hypersphere sampling mode"
-        />
-      </div>
+
 
       {/* Sample count */}
       <Slider
@@ -206,7 +193,6 @@ function CliffordTorusSettings() {
   const setRadius = useExtendedObjectStore((state) => state.setCliffordTorusRadius);
   const setResolutionU = useExtendedObjectStore((state) => state.setCliffordTorusResolutionU);
   const setResolutionV = useExtendedObjectStore((state) => state.setCliffordTorusResolutionV);
-  const setEdgeMode = useExtendedObjectStore((state) => state.setCliffordTorusEdgeMode);
   const setK = useExtendedObjectStore((state) => state.setCliffordTorusK);
   const setStepsPerCircle = useExtendedObjectStore((state) => state.setCliffordTorusStepsPerCircle);
 
@@ -330,19 +316,7 @@ function CliffordTorusSettings() {
         </>
       )}
 
-      {/* Edge mode */}
-      <div className="space-y-2">
-        <label className="text-xs text-text-secondary">Edge Rendering</label>
-        <ToggleGroup<'none' | 'grid'>
-          options={[
-            { value: 'none', label: 'None' },
-            { value: 'grid', label: 'Grid' },
-          ]}
-          value={config.edgeMode}
-          onChange={setEdgeMode}
-          ariaLabel="Clifford torus edge mode"
-        />
-      </div>
+
 
       <p className="text-xs text-text-secondary">{infoText}</p>
     </div>

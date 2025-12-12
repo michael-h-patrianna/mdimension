@@ -24,7 +24,7 @@ export const ToggleGroup = <T extends string = string>({
 }: ToggleGroupProps<T>) => {
   return (
     <div
-      className={`flex p-1 bg-black/20 rounded-lg  ${className}`}
+      className={`flex p-1 gap-1 bg-black/20 rounded-lg ${className}`}
       role="radiogroup"
       aria-label={ariaLabel}
       data-testid={testId}
@@ -37,17 +37,17 @@ export const ToggleGroup = <T extends string = string>({
             onClick={() => !disabled && onChange(option.value)}
             disabled={disabled}
             className={`
-              flex-1 relative px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-300
-              disabled:opacity-50 disabled:cursor-not-allowed bg-panel-border
-              ${isSelected ? 'text-accent' : 'text-text-secondary hover:text-text-primary'}
+              flex-1 relative px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-300 border
+              disabled:opacity-50 disabled:cursor-not-allowed
+              ${isSelected
+                ? 'bg-accent/20 text-accent border-accent/50 shadow-[0_0_10px_rgb(var(--color-accent)/0.2)]'
+                : 'bg-panel-border text-text-secondary border-panel-border hover:text-text-primary hover:bg-panel-border/80'
+              }
             `}
             role="radio"
             aria-checked={isSelected}
             data-testid={testId ? `${testId}-${option.value}` : undefined}
           >
-            {isSelected && (
-              <div className="absolute inset-0 bg-white/5 rounded-md border border-white/5 shadow-inner" />
-            )}
             <span className="relative z-10">{option.label}</span>
           </button>
         );

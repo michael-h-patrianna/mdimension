@@ -55,18 +55,12 @@ export function projectPerspective(
   const result = out ?? [0, 0, 0];
 
   // For 2D, map [x, z] to [x, 0, z] (X-Z plane at Y=0)
+  // Apply same perspective scaling for consistency with higher dimensions
   if (vertex.length === 2) {
-    result[0] = vertex[0]!;
+    const scale = 1 / projectionDistance;
+    result[0] = vertex[0]! * scale;
     result[1] = 0;
-    result[2] = vertex[1]!;
-    return result;
-  }
-
-  // For 3D, just extract the coordinates
-  if (vertex.length === 3) {
-    result[0] = vertex[0]!;
-    result[1] = vertex[1]!;
-    result[2] = vertex[2]!;
+    result[2] = vertex[1]! * scale;
     return result;
   }
 
@@ -74,20 +68,22 @@ export function projectPerspective(
   const y = vertex[1]!;
   const z = vertex[2]!;
 
-  // Calculate effective depth from all higher dimensions
+  // Calculate effective depth from all higher dimensions (0 for 3D)
   // Use signed sum to preserve direction (like standard 4D projection uses w directly)
   // Normalize by number of extra dimensions to keep consistent scale
   const numHigherDims = vertex.length - 3;
   let effectiveDepth = 0;
 
-  for (let d = 3; d < vertex.length; d++) {
-    effectiveDepth += vertex[d]!;
-  }
+  if (numHigherDims > 0) {
+    for (let d = 3; d < vertex.length; d++) {
+      effectiveDepth += vertex[d]!;
+    }
 
-  // Normalize: divide by sqrt of number of higher dimensions
-  // This keeps the effective depth in a similar range regardless of dimension count
-  const norm = normalizationFactor ?? Math.sqrt(numHigherDims);
-  effectiveDepth = effectiveDepth / norm;
+    // Normalize: divide by sqrt of number of higher dimensions
+    // This keeps the effective depth in a similar range regardless of dimension count
+    const norm = normalizationFactor ?? Math.sqrt(numHigherDims);
+    effectiveDepth = effectiveDepth / norm;
+  }
 
   // Apply single perspective division
   const denominator = projectionDistance - effectiveDepth;

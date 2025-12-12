@@ -1,4 +1,5 @@
 import React from 'react';
+import { ToggleButton } from '@/components/ui/ToggleButton';
 import type { ProjectionType } from '@/stores/projectionStore';
 
 export interface ProjectionTypeToggleProps {
@@ -17,33 +18,21 @@ export const ProjectionTypeToggle: React.FC<ProjectionTypeToggleProps> = ({
 
   return (
     <div 
-      className="flex gap-1 p-1 bg-panel-bg border border-panel-border rounded-lg"
+      className="flex gap-2"
       role="group"
       aria-label="Projection Type"
     >
-      {options.map((option) => {
-        const isSelected = value === option.value;
-        return (
-          <button
-            key={option.value}
-            onClick={() => onChange(option.value)}
-            className={`
-              flex-1 px-4 py-2 text-sm font-medium rounded-md
-              transition-all duration-200
-              focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-app-bg
-              ${
-                isSelected
-                  ? 'bg-accent text-app-bg'
-                  : 'bg-transparent text-text-secondary hover:text-text-primary hover:bg-panel-border'
-              }
-            `}
-            aria-pressed={isSelected}
-            aria-label={`${option.label} projection`}
-          >
-            {option.label}
-          </button>
-        );
-      })}
+      {options.map((option) => (
+        <ToggleButton
+          key={option.value}
+          pressed={value === option.value}
+          onToggle={() => onChange(option.value)}
+          ariaLabel={`${option.label} projection`}
+          className="flex-1 justify-center"
+        >
+          {option.label}
+        </ToggleButton>
+      ))}
     </div>
   );
 };

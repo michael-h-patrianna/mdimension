@@ -25,10 +25,6 @@ export interface SceneProps {
   autoRotate?: boolean
   /** Opacity of the main polytope (default: 1.0) */
   opacity?: number
-  /** Cross-section vertices (optional) */
-  crossSectionVertices?: Vector3D[]
-  /** Cross-section edges (optional) */
-  crossSectionEdges?: [number, number][]
   /** Whether this is a point cloud (uses PointCloudRenderer) */
   isPointCloud?: boolean
   /**
@@ -70,8 +66,6 @@ export interface SceneProps {
  * @param props.faces
  * @param props.autoRotate
  * @param props.opacity
- * @param props.crossSectionVertices
- * @param props.crossSectionEdges
  * @param props.isPointCloud
  * @returns Complete 3D scene with lighting, controls, and geometry
  *
@@ -119,8 +113,6 @@ export function Scene({
   faces,
   autoRotate = false,
   opacity = 1.0,
-  crossSectionVertices,
-  crossSectionEdges,
   isPointCloud = false,
   pointColors,
   minBoundingRadius,
@@ -159,7 +151,6 @@ export function Scene({
 
   // Calculate vertex/point size based on vertex count using custom hook
   const adjustedVertexSize = useVertexSize(vertices?.length ?? 0);
-  const crossSectionVertexSize = useVertexSize(crossSectionVertices?.length ?? 0);
 
   return (
     <>
@@ -233,21 +224,6 @@ export function Scene({
             />
           )
         )
-      )}
-
-      {/* Render cross-section if provided */}
-      {/* Uses distinctive orange/gold colors to differentiate from main object */}
-      {/* Vertex size scales with user settings using same density formula */}
-      {/* Opacity matches main object to maintain visual hierarchy */}
-      {crossSectionVertices && crossSectionEdges && crossSectionVertices.length > 0 && (
-        <PolytopeRenderer
-          vertices={crossSectionVertices}
-          edges={crossSectionEdges}
-          edgeColor="#FF6B00"
-          vertexColor="#FFAA00"
-          vertexSize={crossSectionVertexSize}
-          opacity={opacity}
-        />
       )}
     </>
   )

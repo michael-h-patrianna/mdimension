@@ -11,12 +11,8 @@ import { ThemeSelector } from './ui/ThemeSelector';
 import { DimensionSelector } from './controls/DimensionSelector';
 import { ObjectTypeSelector } from './controls/ObjectTypeSelector';
 import { ObjectSettingsSection } from './controls/ObjectSettingsSection';
-import { RotationControls } from './controls/RotationControls';
 import { ProjectionControls } from './controls/ProjectionControls';
-import { ShearControls } from './controls/ShearControls';
-import { TranslationControls } from './controls/TranslationControls';
 import { AnimationControls } from './controls/AnimationControls';
-import { CrossSectionControls } from './controls/CrossSectionControls';
 import { VisualControls } from './controls/VisualControls';
 import { RenderModeToggles } from './controls/RenderModeToggles';
 import { ShaderSettings } from './controls/ShaderSettings';
@@ -84,24 +80,8 @@ export const Layout: React.FC<LayoutProps> = ({
           <AnimationControls />
         </Section>
 
-        <Section title="Rotation" defaultOpen={false}>
-          <RotationControls />
-        </Section>
-
         <Section title="Projection" defaultOpen={false}>
           <ProjectionControls />
-        </Section>
-
-        <Section title="Cross-Section" defaultOpen={false}>
-          <CrossSectionControls />
-        </Section>
-
-        <Section title="Shear" defaultOpen={false}>
-          <ShearControls />
-        </Section>
-
-        <Section title="Translation" defaultOpen={false}>
-          <TranslationControls />
         </Section>
 
         <Section title="Visual" defaultOpen={false}>

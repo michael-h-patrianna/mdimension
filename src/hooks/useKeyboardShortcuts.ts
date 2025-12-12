@@ -4,9 +4,7 @@
  */
 
 import { useEffect, useCallback } from 'react';
-import { useAnimationStore } from '@/stores/animationStore';
 import { useGeometryStore } from '@/stores/geometryStore';
-import { useRotationStore } from '@/stores/rotationStore';
 import { exportSceneToPNG, generateTimestampFilename } from '@/lib/export';
 
 export interface ShortcutConfig {
@@ -37,19 +35,12 @@ export const SHORTCUTS: Omit<ShortcutConfig, 'action'>[] = [
   // Camera Origin
   { key: '0', description: 'Move camera to origin' },
   { key: '0', shift: true, description: 'Look at origin' },
-  // Animation
-  { key: ' ', description: 'Play/Pause animation' },
-  { key: 'r', description: 'Reverse animation direction' },
-  { key: '+', description: 'Increase animation speed' },
-  { key: '-', description: 'Decrease animation speed' },
   // Geometry
   { key: 'ArrowUp', description: 'Increase dimension' },
   { key: 'ArrowDown', description: 'Decrease dimension' },
   { key: '1', description: 'Select hypercube' },
   { key: '2', description: 'Select simplex' },
   { key: '3', description: 'Select cross-polytope' },
-  // Rotation
-  { key: 'x', description: 'Reset rotation' },
   // Export
   { key: 's', ctrl: true, description: 'Export PNG' },
 ];
@@ -63,16 +54,9 @@ export function useKeyboardShortcuts(
 ): void {
   const { enabled = true } = options;
 
-  const toggle = useAnimationStore((state) => state.toggle);
-  const setSpeed = useAnimationStore((state) => state.setSpeed);
-  const speed = useAnimationStore((state) => state.speed);
-  const toggleDirection = useAnimationStore((state) => state.toggleDirection);
-
   const dimension = useGeometryStore((state) => state.dimension);
   const setDimension = useGeometryStore((state) => state.setDimension);
   const setObjectType = useGeometryStore((state) => state.setObjectType);
-
-  const resetAllRotations = useRotationStore((state) => state.resetAllRotations);
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
@@ -86,27 +70,6 @@ export function useKeyboardShortcuts(
 
       const { key, ctrlKey, metaKey } = event;
       const isCtrlOrMeta = ctrlKey || metaKey;
-
-      // Space - Play/Pause
-      if (key === ' ') {
-        event.preventDefault();
-        toggle();
-        return;
-      }
-
-      // R - Reverse animation direction
-      if (key === 'r' && !isCtrlOrMeta) {
-        event.preventDefault();
-        toggleDirection();
-        return;
-      }
-
-      // X - Reset rotation
-      if (key === 'x' && !isCtrlOrMeta) {
-        event.preventDefault();
-        resetAllRotations();
-        return;
-      }
 
       // Arrow Up - Increase dimension
       if (key === 'ArrowUp') {
@@ -155,31 +118,12 @@ export function useKeyboardShortcuts(
         return;
       }
 
-      // + - Increase speed
-      if (key === '+' || key === '=') {
-        event.preventDefault();
-        setSpeed(Math.min(speed + 0.25, 3));
-        return;
-      }
-
-      // - - Decrease speed
-      if (key === '-') {
-        event.preventDefault();
-        setSpeed(Math.max(speed - 0.25, 0.25));
-        return;
-      }
-
       // Note: WASD keys are handled by useCameraMovement hook for camera movement
     },
     [
-      toggle,
-      resetAllRotations,
       dimension,
       setDimension,
       setObjectType,
-      setSpeed,
-      speed,
-      toggleDirection,
     ]
   );
 

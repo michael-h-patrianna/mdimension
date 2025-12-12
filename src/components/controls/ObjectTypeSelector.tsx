@@ -69,15 +69,21 @@ export const ObjectTypeSelector: React.FC<ObjectTypeSelectorProps> = ({
       <Tooltip
         content="Select the type of geometric object to visualize"
         position="top"
+        className="w-full"
       >
-        <Select
-          label="Object Type"
-          options={options}
-          value={objectType}
-          onChange={handleChange}
-          disabled={disabled}
-          data-testid="object-type-selector"
-        />
+        <div className="flex items-center gap-3">
+          <label className="text-sm font-medium text-text-secondary">
+            Type
+          </label>
+          <Select
+            options={options}
+            value={objectType}
+            onChange={handleChange}
+            disabled={disabled}
+            data-testid="object-type-selector"
+            className="flex-1"
+          />
+        </div>
       </Tooltip>
       <p className="text-xs text-text-secondary">
         {description}

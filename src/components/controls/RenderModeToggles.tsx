@@ -90,9 +90,10 @@ export const RenderModeToggles: React.FC<RenderModeTogglesProps> = ({
   const objectType = useGeometryStore((state) => state.objectType);
   const dimension = useGeometryStore((state) => state.dimension);
 
-  // Track previous faces/edges state for compatible objects
-  const previousFacesState = useRef(facesVisible);
-  const previousEdgesState = useRef(edgesVisible);
+  // Track if faces/edges were auto-disabled due to object type switch
+  // Initialize to false - only set to true when we auto-disable, not for manual toggles
+  const previousFacesState = useRef(false);
+  const previousEdgesState = useRef(false);
 
   // Check support for current object type
   const facesSupported = canRenderFaces(objectType);
@@ -144,6 +145,26 @@ export const RenderModeToggles: React.FC<RenderModeTogglesProps> = ({
       previousEdgesState.current = false;
     }
   }, [edgesSupported, edgesVisible, setEdgesVisible]);
+
+  // Enforce mutual exclusivity for Mandelbrot 3D+ on object type switch
+  // When switching TO mandelbrot with both vertices and faces enabled, disable faces
+  useEffect(() => {
+    if (objectType === 'mandelbrot' && dimension >= 3) {
+      if (vertexVisible && facesVisible) {
+        // Both enabled - vertices takes priority, disable faces
+        setFacesVisible(false);
+      }
+    }
+  }, [objectType, dimension, vertexVisible, facesVisible, setFacesVisible]);
+
+  // Ensure at least one render mode is always active
+  // Fallback to vertices if all modes would be off
+  useEffect(() => {
+    const noModeActive = !vertexVisible && !edgesVisible && !facesVisible;
+    if (noModeActive) {
+      setVertexVisible(true);
+    }
+  }, [vertexVisible, edgesVisible, facesVisible, setVertexVisible]);
 
   return (
     <div className={`flex gap-2 ${className}`} data-testid="render-mode-toggles">

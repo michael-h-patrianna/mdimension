@@ -7,10 +7,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Button } from './ui/Button';
 import { generateShareUrl } from '@/lib/url';
 import { useGeometryStore } from '@/stores/geometryStore';
-import { useRotationStore } from '@/stores/rotationStore';
-import { useProjectionStore } from '@/stores/projectionStore';
 import { useTransformStore } from '@/stores/transformStore';
-import { useAnimationStore } from '@/stores/animationStore';
 import { useVisualStore } from '@/stores/visualStore';
 
 export interface ShareButtonProps {
@@ -23,11 +20,7 @@ export const ShareButton: React.FC<ShareButtonProps> = ({ className = '' }) => {
 
   const dimension = useGeometryStore((state) => state.dimension);
   const objectType = useGeometryStore((state) => state.objectType);
-  const rotations = useRotationStore((state) => state.rotations);
-  const projectionDistance = useProjectionStore((state) => state.distance);
   const uniformScale = useTransformStore((state) => state.uniformScale);
-  const isPlaying = useAnimationStore((state) => state.isPlaying);
-  const speed = useAnimationStore((state) => state.speed);
 
   // Visual settings (PRD Story 1 AC6, Story 7 AC7)
   const shaderType = useVisualStore((state) => state.shaderType);
@@ -55,11 +48,7 @@ export const ShareButton: React.FC<ShareButtonProps> = ({ className = '' }) => {
     const url = generateShareUrl({
       dimension,
       objectType,
-      rotationAngles: rotations,
-      projectionDistance,
       uniformScale,
-      isPlaying,
-      speed,
       // Visual settings
       shaderType,
       shaderSettings,

@@ -4,26 +4,25 @@
  */
 
 export interface EducationTopic {
-  id: string;
-  title: string;
-  description: string;
-  details: string[];
+  id: string
+  title: string
+  description: string
+  details: string[]
 }
 
 export interface DimensionInfo {
-  dimension: number;
-  name: string;
-  description: string;
-  examples: string[];
-  properties: string[];
+  dimension: number
+  name: string
+  description: string
+  examples: string[]
+  properties: string[]
 }
 
 export const DIMENSION_INFO: Record<number, DimensionInfo> = {
   3: {
     dimension: 3,
     name: '3D Space',
-    description:
-      'Three-dimensional space is the familiar physical space we inhabit.',
+    description: 'Three-dimensional space is the familiar physical space we inhabit.',
     examples: [
       'A cube has 8 vertices, 12 edges, and 6 faces',
       'We navigate 3D space using x, y, and z coordinates',
@@ -54,8 +53,7 @@ export const DIMENSION_INFO: Record<number, DimensionInfo> = {
   5: {
     dimension: 5,
     name: '5D Space',
-    description:
-      'Five-dimensional space adds a fifth perpendicular direction, often called V.',
+    description: 'Five-dimensional space adds a fifth perpendicular direction, often called V.',
     examples: [
       'A 5D hypercube (penteract) has 32 vertices',
       '10 rotation planes exist in 5D',
@@ -70,8 +68,7 @@ export const DIMENSION_INFO: Record<number, DimensionInfo> = {
   6: {
     dimension: 6,
     name: '6D Space',
-    description:
-      'Six-dimensional space extends into a sixth perpendicular direction.',
+    description: 'Six-dimensional space extends into a sixth perpendicular direction.',
     examples: [
       'A 6D hypercube (hexeract) has 64 vertices',
       '15 rotation planes exist in 6D',
@@ -83,14 +80,13 @@ export const DIMENSION_INFO: Record<number, DimensionInfo> = {
       'Used in theoretical physics models',
     ],
   },
-};
+}
 
 export const POLYTOPE_INFO: Record<string, EducationTopic> = {
   hypercube: {
     id: 'hypercube',
     title: 'Hypercube',
-    description:
-      'The n-dimensional analog of a cube. Each vertex has n perpendicular edges.',
+    description: 'The n-dimensional analog of a cube. Each vertex has n perpendicular edges.',
     details: [
       'In 3D: Cube (8 vertices, 12 edges, 6 faces)',
       'In 4D: Tesseract (16 vertices, 32 edges, 24 faces, 8 cells)',
@@ -122,7 +118,7 @@ export const POLYTOPE_INFO: Record<string, EducationTopic> = {
       'Vertices placed at +1 and -1 on each axis',
     ],
   },
-};
+}
 
 export const PROJECTION_INFO: EducationTopic = {
   id: 'projection',
@@ -135,27 +131,25 @@ export const PROJECTION_INFO: EducationTopic = {
     'We project 4D→3D, then 3D→2D for screen display',
     'Projection distance affects how "spread out" the object appears',
   ],
-};
+}
 
 export const ROTATION_INFO: EducationTopic = {
   id: 'rotation',
   title: 'Rotation',
-  description:
-    'In n dimensions, rotations occur in planes, not around axes.',
+  description: 'In n dimensions, rotations occur in planes, not around axes.',
   details: [
     'In 3D: 3 rotation planes (XY, XZ, YZ)',
     'In 4D: 6 rotation planes include XW, YW, ZW',
     'Each plane rotates two coordinates while others stay fixed',
-    'Isoclinic rotation: rotating in two planes simultaneously',
   ],
-};
+}
 
 /**
  *
  * @param dimension
  */
 export function getDimensionInfo(dimension: number): DimensionInfo | undefined {
-  return DIMENSION_INFO[dimension];
+  return DIMENSION_INFO[dimension]
 }
 
 /**
@@ -163,7 +157,7 @@ export function getDimensionInfo(dimension: number): DimensionInfo | undefined {
  * @param type
  */
 export function getPolytopeInfo(type: string): EducationTopic | undefined {
-  return POLYTOPE_INFO[type];
+  return POLYTOPE_INFO[type]
 }
 
 /**
@@ -172,7 +166,7 @@ export function getPolytopeInfo(type: string): EducationTopic | undefined {
  */
 export function getRotationPlaneCount(dimension: number): number {
   // Formula: n*(n-1)/2
-  return (dimension * (dimension - 1)) / 2;
+  return (dimension * (dimension - 1)) / 2
 }
 
 /**
@@ -180,7 +174,7 @@ export function getRotationPlaneCount(dimension: number): number {
  * @param dimension
  */
 export function getHypercubeVertexCount(dimension: number): number {
-  return Math.pow(2, dimension);
+  return Math.pow(2, dimension)
 }
 
 /**
@@ -188,7 +182,7 @@ export function getHypercubeVertexCount(dimension: number): number {
  * @param dimension
  */
 export function getSimplexVertexCount(dimension: number): number {
-  return dimension + 1;
+  return dimension + 1
 }
 
 /**
@@ -196,5 +190,5 @@ export function getSimplexVertexCount(dimension: number): number {
  * @param dimension
  */
 export function getCrossPolytopeVertexCount(dimension: number): number {
-  return 2 * dimension;
+  return 2 * dimension
 }
