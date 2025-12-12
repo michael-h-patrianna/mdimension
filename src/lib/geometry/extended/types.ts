@@ -208,22 +208,34 @@ export const DEFAULT_CLIFFORD_TORUS_CONFIG: CliffordTorusConfig = {
  * - smoothColoring: Continuous coloring without banding
  * - distanceEstimation: Color based on distance to set boundary
  * - interiorOnly: Show only points inside the set
+ * - boundaryOnly: Show only points near the boundary (useful for 3D+)
  */
 export type MandelbrotColorMode =
   | 'escapeTime'
   | 'smoothColoring'
   | 'distanceEstimation'
-  | 'interiorOnly';
+  | 'interiorOnly'
+  | 'boundaryOnly';
 
 /**
- * Color palette presets for Mandelbrot visualization
+ * Color palette presets for Mandelbrot visualization.
+ *
+ * All palettes (except 'custom') are derived from the user's vertexColor
+ * setting, ensuring visual consistency with the overall theme.
+ *
+ * - monochrome: Dark → vertexColor → White (shades of selected hue)
+ * - complement: vertexColor → White → complementary color (180° hue shift)
+ * - triadic: Uses vertexColor in a triadic scheme (120° shifts)
+ * - analogous: vertexColor with ±60° hue variations
+ * - shifted: vertexColor → 90° hue-shifted version
+ * - custom: User-defined start/mid/end colors (independent of vertexColor)
  */
 export type MandelbrotPalette =
-  | 'classic'
-  | 'fire'
-  | 'ocean'
-  | 'rainbow'
   | 'monochrome'
+  | 'complement'
+  | 'triadic'
+  | 'analogous'
+  | 'shifted'
   | 'custom';
 
 /**
@@ -234,29 +246,47 @@ export type MandelbrotQualityPreset = 'draft' | 'standard' | 'high' | 'ultra';
 /**
  * Rendering styles for Mandelbrot visualization
  * - pointCloud: Individual points (uses existing PointCloudRenderer)
- * - isosurface: Marching cubes surface (future)
- * - volume: Volumetric rendering (future)
+ * - rayMarching: Volumetric ray marching in shader (3D+ only)
  */
-export type MandelbrotRenderStyle = 'pointCloud' | 'isosurface' | 'volume';
+export type MandelbrotRenderStyle = 'pointCloud' | 'rayMarching';
 
 /**
- * Edge modes for Mandelbrot visualization
- * - none: No edges (point cloud only)
- * - grid: Connect adjacent points in the sampling grid
+ * Color palette modes for raymarched Mandelbulb (3D).
+ * Based on color theory principles used in tools like Adobe Color.
+ *
+ * - monochromatic: Same hue, vary only lightness (elegant, safe)
+ * - analogous: Hue varies ±30° from base (harmonious, natural)
+ * - complementary: Base + opposite hue 180° apart (high contrast)
+ * - triadic: Three colors 120° apart (vibrant, balanced)
+ * - splitComplementary: Base + two colors flanking the complement
  */
-export type MandelbrotEdgeMode = 'none' | 'grid';
+export type MandelbulbPaletteMode =
+  | 'monochromatic'
+  | 'analogous'
+  | 'complementary'
+  | 'triadic'
+  | 'splitComplementary';
 
 /**
  * Configuration for n-dimensional Mandelbrot set generation
  *
+ * Supports:
+ * - 2D: Classic Mandelbrot set (complex plane)
+ * - 3D: Mandelbulb (spherical coordinates)
+ * - 4D-11D: Hyperbulb (hyperspherical coordinates)
+ *
  * @see docs/prd/ndimensional-mandelbrot.md
- * @see docs/research/nd-mandelbrot-threejs-guide.md
+ * @see docs/research/hyperbulb-guide.md
  */
 export interface MandelbrotConfig {
   // Iteration parameters
   /** Maximum iterations before considering point bounded (10-500) */
   maxIterations: number;
-  /** Escape radius threshold (2.0-10.0) */
+  /**
+   * Escape radius threshold (2.0-16.0).
+   * Higher dimensions may need larger values (8-16) for stability.
+   * Also known as "bailout" in fractal literature.
+   */
   escapeRadius: number;
   /** Quality preset (affects iterations and resolution) */
   qualityPreset: MandelbrotQualityPreset;
@@ -298,12 +328,37 @@ export interface MandelbrotConfig {
   renderStyle: MandelbrotRenderStyle;
   /** Point size for point cloud mode */
   pointSize: number;
-  /** Threshold for isosurface mode (0.0-1.0) */
-  isosurfaceThreshold: number;
 
-  // Edge rendering
-  /** Edge mode: 'none' for point cloud only, 'grid' for grid connectivity */
-  edgeMode: MandelbrotEdgeMode;
+  // Boundary filtering (for 3D+ visualization)
+  /**
+   * Boundary threshold range for 'boundaryOnly' color mode.
+   * Points with escape time in [min*maxIter, max*maxIter] are shown.
+   * Default: [0.1, 0.9] shows points escaping between 10%-90% of maxIterations.
+   */
+  boundaryThreshold: [number, number];
+
+  // Mandelbulb/Hyperbulb settings (for 3D+)
+  /**
+   * Power for Mandelbulb/Hyperbulb formula (3D and higher).
+   * Default: 8 produces the classic bulb shape.
+   * Range: 2-16
+   */
+  mandelbulbPower: number;
+
+  /**
+   * Epsilon for numerical stability near origin.
+   * Used in hyperspherical coordinate calculations to avoid
+   * division by zero and undefined angles.
+   * Default: 1e-12
+   */
+  epsilon: number;
+
+  /**
+   * Color palette mode for raymarched Mandelbulb (3D).
+   * Based on color theory principles used in Adobe Color.
+   * Default: 'monochromatic'
+   */
+  mandelbulbPaletteMode: MandelbulbPaletteMode;
 }
 
 /**
@@ -330,17 +385,19 @@ export const DEFAULT_MANDELBROT_CONFIG: MandelbrotConfig = {
   visualizationAxes: [0, 1, 2],
   parameterValues: [],
   center: [],
-  extent: 2.5,
+  extent: 1.75,  // Adjusted for better 2D Mandelbrot framing (was 2.5)
   colorMode: 'escapeTime',
-  palette: 'classic',
+  palette: 'complement',
   customPalette: { start: '#0000ff', mid: '#ffffff', end: '#ff8000' },
   invertColors: false,
   interiorColor: '#000000',
   paletteCycles: 1,
   renderStyle: 'pointCloud',
   pointSize: 3,
-  isosurfaceThreshold: 0.5,
-  edgeMode: 'none',
+  boundaryThreshold: [0.1, 0.9],  // Show points with escape time 10%-90% of maxIter
+  mandelbulbPower: 8,  // Classic Mandelbulb/Hyperbulb power
+  epsilon: 1e-12,  // Numerical stability for hyperspherical calculations
+  mandelbulbPaletteMode: 'monochromatic',  // Color palette mode for raymarched 3D
 };
 
 // ============================================================================

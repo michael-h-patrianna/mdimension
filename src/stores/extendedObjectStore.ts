@@ -26,10 +26,10 @@ import type {
   CliffordTorusMode,
   MandelbrotConfig,
   MandelbrotColorMode,
-  MandelbrotEdgeMode,
   MandelbrotPalette,
   MandelbrotQualityPreset,
   MandelbrotRenderStyle,
+  MandelbulbPaletteMode,
 } from '@/lib/geometry/extended/types';
 import {
   DEFAULT_POLYTOPE_CONFIG,
@@ -104,8 +104,9 @@ interface ExtendedObjectState {
   setMandelbrotPaletteCycles: (cycles: number) => void;
   setMandelbrotRenderStyle: (style: MandelbrotRenderStyle) => void;
   setMandelbrotPointSize: (size: number) => void;
-  setMandelbrotIsosurfaceThreshold: (threshold: number) => void;
-  setMandelbrotEdgeMode: (mode: MandelbrotEdgeMode) => void;
+  setMandelbrotBoundaryThreshold: (threshold: [number, number]) => void;
+  setMandelbrotMandelbulbPower: (power: number) => void;
+  setMandelbulbPaletteMode: (mode: MandelbulbPaletteMode) => void;
   initializeMandelbrotForDimension: (dimension: number) => void;
   getMandelbrotConfig: () => MandelbrotConfig;
 
@@ -241,7 +242,8 @@ export const useExtendedObjectStore = create<ExtendedObjectState>((set, get) => 
   },
 
   setMandelbrotEscapeRadius: (value: number) => {
-    const clampedValue = Math.max(2.0, Math.min(10.0, value));
+    // Extended range to 16 for higher-dimensional Hyperbulb stability
+    const clampedValue = Math.max(2.0, Math.min(16.0, value));
     set((state) => ({
       mandelbrot: { ...state.mandelbrot, escapeRadius: clampedValue },
     }));
@@ -277,8 +279,11 @@ export const useExtendedObjectStore = create<ExtendedObjectState>((set, get) => 
   },
 
   setMandelbrotVisualizationAxis: (index: 0 | 1 | 2, dimIndex: number) => {
+    // Validate dimIndex is non-negative (upper bound validation requires knowing dimension)
+    // The dimension is stored in geometryStore, so we validate against reasonable max (11D)
+    const clampedDimIndex = Math.max(0, Math.min(10, Math.floor(dimIndex)));
     const current = [...get().mandelbrot.visualizationAxes] as [number, number, number];
-    current[index] = dimIndex;
+    current[index] = clampedDimIndex;
     set((state) => ({
       mandelbrot: { ...state.mandelbrot, visualizationAxes: current },
     }));
@@ -382,27 +387,72 @@ export const useExtendedObjectStore = create<ExtendedObjectState>((set, get) => 
     }));
   },
 
-  setMandelbrotIsosurfaceThreshold: (threshold: number) => {
-    const clampedThreshold = Math.max(0.0, Math.min(1.0, threshold));
+  setMandelbrotBoundaryThreshold: (threshold: [number, number]) => {
+    // Clamp values to [0, 1] and ensure min <= max
+    const [min, max] = threshold;
+    const clampedMin = Math.max(0, Math.min(1, min));
+    const clampedMax = Math.max(clampedMin, Math.min(1, max));
     set((state) => ({
-      mandelbrot: { ...state.mandelbrot, isosurfaceThreshold: clampedThreshold },
+      mandelbrot: {
+        ...state.mandelbrot,
+        boundaryThreshold: [clampedMin, clampedMax],
+      },
     }));
   },
 
-  setMandelbrotEdgeMode: (mode: MandelbrotEdgeMode) => {
+  setMandelbrotMandelbulbPower: (power: number) => {
+    // Clamp power to reasonable range (2-16)
+    const clampedPower = Math.max(2, Math.min(16, Math.floor(power)));
     set((state) => ({
-      mandelbrot: { ...state.mandelbrot, edgeMode: mode },
+      mandelbrot: { ...state.mandelbrot, mandelbulbPower: clampedPower },
+    }));
+  },
+
+  setMandelbulbPaletteMode: (mode: MandelbulbPaletteMode) => {
+    set((state) => ({
+      mandelbrot: { ...state.mandelbrot, mandelbulbPaletteMode: mode },
     }));
   },
 
   initializeMandelbrotForDimension: (dimension: number) => {
     const paramCount = Math.max(0, dimension - 3);
+
+    // For 3D+, use boundaryOnly mode to show the fractal surface
+    // For 2D, use escapeTime to show all points on the plane
+    const colorMode = dimension >= 3 ? 'boundaryOnly' : 'escapeTime';
+
+    // Dimension-specific defaults from hyperbulb guide:
+    // - 2D: Classic Mandelbrot with z^2 + c
+    // - 3D: Mandelbulb with spherical coordinates
+    // - 4D+: Hyperbulb with hyperspherical coordinates
+
+    // Escape radius (bailout): Higher dimensions need larger values for stability
+    const escapeRadius = dimension >= 4 ? 8.0 : 4.0;
+
+    // Power: 2 for classic 2D Mandelbrot, 8 for Mandelbulb/Hyperbulb
+    const power = dimension === 2 ? 2 : 8;
+
+    // Extent: Guide suggests [-2,2] for 4D+, smaller for 3D Mandelbulb
+    // 2D Mandelbrot: extent 1.75 centered at (-0.5, 0) works well
+    // 3D Mandelbulb: lives roughly within |x|,|y|,|z| < 1.2, so extent 1.5 is good
+    // 4D+ Hyperbulb: extent 2.0 for exploration
+    const extent = dimension === 2 ? 1.75 : (dimension === 3 ? 1.5 : 2.0);
+
+    // Center for 2D should be offset to show the classic cardioid
+    const center = dimension === 2
+      ? [-0.5, 0]
+      : new Array(dimension).fill(0);
+
     set((state) => ({
       mandelbrot: {
         ...state.mandelbrot,
         parameterValues: new Array(paramCount).fill(0),
-        center: new Array(dimension).fill(0),
+        center,
         visualizationAxes: [0, 1, 2],
+        colorMode: colorMode as 'escapeTime' | 'boundaryOnly',
+        extent,
+        escapeRadius,
+        mandelbulbPower: power,
       },
     }));
   },

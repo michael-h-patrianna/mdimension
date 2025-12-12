@@ -288,9 +288,9 @@ describe('extendedObjectStore', () => {
       setMandelbrotEscapeRadius(1.0);
       expect(useExtendedObjectStore.getState().mandelbrot.escapeRadius).toBe(2.0);
 
-      // Test clamping - too high
+      // Test clamping - too high (extended to 16 for Hyperbulb support)
       setMandelbrotEscapeRadius(20);
-      expect(useExtendedObjectStore.getState().mandelbrot.escapeRadius).toBe(10.0);
+      expect(useExtendedObjectStore.getState().mandelbrot.escapeRadius).toBe(16.0);
     });
 
     it('should set quality preset and update related settings', () => {
@@ -427,11 +427,11 @@ describe('extendedObjectStore', () => {
     it('should set palette', () => {
       const { setMandelbrotPalette } = useExtendedObjectStore.getState();
 
-      setMandelbrotPalette('fire');
-      expect(useExtendedObjectStore.getState().mandelbrot.palette).toBe('fire');
+      setMandelbrotPalette('triadic');
+      expect(useExtendedObjectStore.getState().mandelbrot.palette).toBe('triadic');
 
-      setMandelbrotPalette('ocean');
-      expect(useExtendedObjectStore.getState().mandelbrot.palette).toBe('ocean');
+      setMandelbrotPalette('analogous');
+      expect(useExtendedObjectStore.getState().mandelbrot.palette).toBe('analogous');
     });
 
     it('should set custom palette', () => {
@@ -477,8 +477,8 @@ describe('extendedObjectStore', () => {
     it('should set render style', () => {
       const { setMandelbrotRenderStyle } = useExtendedObjectStore.getState();
 
-      setMandelbrotRenderStyle('isosurface');
-      expect(useExtendedObjectStore.getState().mandelbrot.renderStyle).toBe('isosurface');
+      setMandelbrotRenderStyle('rayMarching');
+      expect(useExtendedObjectStore.getState().mandelbrot.renderStyle).toBe('rayMarching');
 
       setMandelbrotRenderStyle('pointCloud');
       expect(useExtendedObjectStore.getState().mandelbrot.renderStyle).toBe('pointCloud');
@@ -499,21 +499,6 @@ describe('extendedObjectStore', () => {
       expect(useExtendedObjectStore.getState().mandelbrot.pointSize).toBe(20);
     });
 
-    it('should set isosurface threshold with clamping', () => {
-      const { setMandelbrotIsosurfaceThreshold } = useExtendedObjectStore.getState();
-
-      setMandelbrotIsosurfaceThreshold(0.5);
-      expect(useExtendedObjectStore.getState().mandelbrot.isosurfaceThreshold).toBe(0.5);
-
-      // Test clamping - too low
-      setMandelbrotIsosurfaceThreshold(-0.5);
-      expect(useExtendedObjectStore.getState().mandelbrot.isosurfaceThreshold).toBe(0.0);
-
-      // Test clamping - too high
-      setMandelbrotIsosurfaceThreshold(1.5);
-      expect(useExtendedObjectStore.getState().mandelbrot.isosurfaceThreshold).toBe(1.0);
-    });
-
     it('should initialize for dimension', () => {
       const { initializeMandelbrotForDimension } = useExtendedObjectStore.getState();
 
@@ -525,6 +510,51 @@ describe('extendedObjectStore', () => {
       expect(state.center).toHaveLength(5);
       expect(state.center).toEqual([0, 0, 0, 0, 0]);
       expect(state.visualizationAxes).toEqual([0, 1, 2]);
+    });
+
+    it('should set boundary threshold with clamping and ordering', () => {
+      const { setMandelbrotBoundaryThreshold } = useExtendedObjectStore.getState();
+
+      // Normal setting
+      setMandelbrotBoundaryThreshold([0.2, 0.8]);
+      expect(useExtendedObjectStore.getState().mandelbrot.boundaryThreshold).toEqual([0.2, 0.8]);
+
+      // Clamp too low
+      setMandelbrotBoundaryThreshold([-0.5, 0.5]);
+      expect(useExtendedObjectStore.getState().mandelbrot.boundaryThreshold).toEqual([0, 0.5]);
+
+      // Clamp too high
+      setMandelbrotBoundaryThreshold([0.3, 1.5]);
+      expect(useExtendedObjectStore.getState().mandelbrot.boundaryThreshold).toEqual([0.3, 1]);
+
+      // Ensure min <= max (min is clamped, then max is clamped to be >= min)
+      setMandelbrotBoundaryThreshold([0.8, 0.3]);
+      const threshold = useExtendedObjectStore.getState().mandelbrot.boundaryThreshold;
+      expect(threshold[0]).toBeLessThanOrEqual(threshold[1]);
+    });
+
+    it('should set mandelbulb power with clamping and integer', () => {
+      const { setMandelbrotMandelbulbPower } = useExtendedObjectStore.getState();
+
+      // Normal setting
+      setMandelbrotMandelbulbPower(8);
+      expect(useExtendedObjectStore.getState().mandelbrot.mandelbulbPower).toBe(8);
+
+      // Different value
+      setMandelbrotMandelbulbPower(3);
+      expect(useExtendedObjectStore.getState().mandelbrot.mandelbulbPower).toBe(3);
+
+      // Clamp too low (min 2)
+      setMandelbrotMandelbulbPower(1);
+      expect(useExtendedObjectStore.getState().mandelbrot.mandelbulbPower).toBe(2);
+
+      // Clamp too high (max 16)
+      setMandelbrotMandelbulbPower(20);
+      expect(useExtendedObjectStore.getState().mandelbrot.mandelbulbPower).toBe(16);
+
+      // Should floor decimal values
+      setMandelbrotMandelbulbPower(5.7);
+      expect(useExtendedObjectStore.getState().mandelbrot.mandelbulbPower).toBe(5);
     });
 
     it('should get config as copy', () => {
@@ -551,7 +581,7 @@ describe('extendedObjectStore', () => {
       state.setRootSystemType('E8');
       state.setCliffordTorusRadius(2.5);
       state.setMandelbrotMaxIterations(200);
-      state.setMandelbrotPalette('fire');
+      state.setMandelbrotPalette('triadic');
 
       // Reset
       state.reset();

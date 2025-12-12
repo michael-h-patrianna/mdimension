@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RotationControls } from '@/components/controls/RotationControls';
 import { useRotationStore } from '@/stores/rotationStore';
@@ -7,8 +7,10 @@ import { useRotationStore } from '@/stores/rotationStore';
 describe('RotationControls', () => {
   beforeEach(() => {
     // Reset store before each test
-    useRotationStore.getState().resetAllRotations();
-    useRotationStore.getState().setDimension(3);
+    act(() => {
+      useRotationStore.getState().resetAllRotations();
+      useRotationStore.getState().setDimension(3);
+    });
   });
 
   it('should render with section header', () => {
@@ -40,7 +42,9 @@ describe('RotationControls', () => {
 
   it('should render exactly 6 sliders for 4D', async () => {
     const user = userEvent.setup();
-    useRotationStore.getState().setDimension(4);
+    act(() => {
+      useRotationStore.getState().setDimension(4);
+    });
     render(<RotationControls />);
 
     // Should show all 3D planes (expanded by default)
@@ -63,7 +67,9 @@ describe('RotationControls', () => {
 
   it('should render exactly 10 sliders for 5D', async () => {
     const user = userEvent.setup();
-    useRotationStore.getState().setDimension(5);
+    act(() => {
+      useRotationStore.getState().setDimension(5);
+    });
     render(<RotationControls />);
 
     // Should show 3D planes (expanded by default)
@@ -102,7 +108,9 @@ describe('RotationControls', () => {
 
   it('should toggle group expansion', async () => {
     const user = userEvent.setup();
-    useRotationStore.getState().setDimension(4);
+    act(() => {
+      useRotationStore.getState().setDimension(4);
+    });
     render(<RotationControls />);
 
     // Initially 4th dimension group should be collapsed
@@ -122,7 +130,9 @@ describe('RotationControls', () => {
     render(<RotationControls />);
 
     // Set rotation directly in the store
-    useRotationStore.getState().setRotation('XY', Math.PI / 2);
+    act(() => {
+      useRotationStore.getState().setRotation('XY', Math.PI / 2);
+    });
 
     // The rotation should be stored
     const state = useRotationStore.getState();
@@ -134,8 +144,10 @@ describe('RotationControls', () => {
     const user = userEvent.setup();
 
     // Set some rotations
-    useRotationStore.getState().setRotation('XY', Math.PI / 4);
-    useRotationStore.getState().setRotation('XZ', Math.PI / 6);
+    act(() => {
+      useRotationStore.getState().setRotation('XY', Math.PI / 4);
+      useRotationStore.getState().setRotation('XZ', Math.PI / 6);
+    });
 
     render(<RotationControls />);
 
@@ -148,7 +160,9 @@ describe('RotationControls', () => {
   });
 
   it('should group planes correctly by dimension', () => {
-    useRotationStore.getState().setDimension(4);
+    act(() => {
+      useRotationStore.getState().setDimension(4);
+    });
     render(<RotationControls />);
 
     // Should have 3D group and 4D group
@@ -160,7 +174,9 @@ describe('RotationControls', () => {
   });
 
   it('should not render 5D group in 4D mode', () => {
-    useRotationStore.getState().setDimension(4);
+    act(() => {
+      useRotationStore.getState().setDimension(4);
+    });
     render(<RotationControls />);
 
     expect(screen.queryByText('5th Dimension (V)')).not.toBeInTheDocument();
@@ -168,7 +184,9 @@ describe('RotationControls', () => {
   });
 
   it('should render 6D group in 6D mode', () => {
-    useRotationStore.getState().setDimension(6);
+    act(() => {
+      useRotationStore.getState().setDimension(6);
+    });
     render(<RotationControls />);
 
     expect(screen.getByText('6th Dimension (U)')).toBeInTheDocument();
@@ -176,7 +194,9 @@ describe('RotationControls', () => {
 
   it('should render 7D group in 7D mode', async () => {
     const user = userEvent.setup();
-    useRotationStore.getState().setDimension(7);
+    act(() => {
+      useRotationStore.getState().setDimension(7);
+    });
     render(<RotationControls />);
 
     // Should show 7th dimension group

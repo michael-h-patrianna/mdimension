@@ -33,13 +33,25 @@ export interface RenderModeTogglesProps {
 
 /**
  * Checks if an object type supports face rendering
- * Polytopes (hypercube, simplex, cross-polytope) and root-system support faces
+ * Polytopes (hypercube, simplex, cross-polytope), root-system, and mandelbrot (via raymarching) support faces
  * @param objectType - The current object type
  * @returns true if faces can be rendered for this object type
  */
 function canRenderFaces(objectType: string): boolean {
   const polytopeTypes = ['hypercube', 'simplex', 'cross-polytope'];
-  return polytopeTypes.includes(objectType) || objectType === 'root-system';
+  return polytopeTypes.includes(objectType) || objectType === 'root-system' || objectType === 'mandelbrot';
+}
+
+/**
+ * Checks if an object type supports edge rendering
+ * Mandelbrot does not support explicit edge rendering in Ray Marching mode
+ * @param objectType - The current object type
+ * @returns true if edges can be rendered for this object type
+ */
+function canRenderEdges(objectType: string): boolean {
+  // Mandelbrot uses raymarching or point cloud, explicit edges are visually chaotic/expensive and disabled
+  if (objectType === 'mandelbrot') return false;
+  return true;
 }
 
 /**
@@ -56,8 +68,9 @@ function canRenderFaces(objectType: string): boolean {
  * @returns A row of toggle buttons for render mode control
  *
  * @remarks
- * - Faces toggle is disabled for hypersphere, clifford-torus, and mandelbrot
- * - When switching to an incompatible object, faces auto-turn off
+ * - Faces toggle is disabled for hypersphere, clifford-torus (Mandelbrot allowed for Ray Marching)
+ * - Edges toggle is disabled for Mandelbrot
+ * - When switching to an incompatible object, faces/edges auto-turn off
  * - Faces toggle automatically sets shader type (surface vs wireframe)
  */
 export const RenderModeToggles: React.FC<RenderModeTogglesProps> = ({
@@ -75,12 +88,32 @@ export const RenderModeToggles: React.FC<RenderModeTogglesProps> = ({
 
   // Geometry store state
   const objectType = useGeometryStore((state) => state.objectType);
+  const dimension = useGeometryStore((state) => state.dimension);
 
-  // Track previous faces state for compatible objects
+  // Track previous faces/edges state for compatible objects
   const previousFacesState = useRef(facesVisible);
+  const previousEdgesState = useRef(edgesVisible);
 
-  // Check if faces are supported for current object type
+  // Check support for current object type
   const facesSupported = canRenderFaces(objectType);
+  const edgesSupported = canRenderEdges(objectType);
+
+  // Toggle handlers with mutual exclusivity logic for Mandelbrot 3D+
+  const handleVertexToggle = (visible: boolean) => {
+    setVertexVisible(visible);
+    // If enabling vertices for Mandelbrot 3D+, disable faces (Ray Marching)
+    if (visible && objectType === 'mandelbrot' && dimension >= 3) {
+      setFacesVisible(false);
+    }
+  };
+
+  const handleFaceToggle = (visible: boolean) => {
+    setFacesVisible(visible);
+    // If enabling faces (Ray Marching) for Mandelbrot 3D+, disable vertices
+    if (visible && objectType === 'mandelbrot' && dimension >= 3) {
+      setVertexVisible(false);
+    }
+  };
 
   // Auto-disable faces when switching to incompatible object
   useEffect(() => {
@@ -90,37 +123,59 @@ export const RenderModeToggles: React.FC<RenderModeTogglesProps> = ({
       setFacesVisible(false);
     } else if (facesSupported && previousFacesState.current && !facesVisible) {
       // Restore faces when switching back to compatible object
-      setFacesVisible(true);
-      previousFacesState.current = false;
+      // BUT: Check mutual exclusivity first (don't restore if Vertices are ON for Mandelbrot)
+      if (objectType === 'mandelbrot' && dimension >= 3 && vertexVisible) {
+        // Do not restore faces if vertices are already visible to respect exclusivity
+        previousFacesState.current = false;
+      } else {
+        setFacesVisible(true);
+        previousFacesState.current = false;
+      }
     }
-  }, [facesSupported, facesVisible, setFacesVisible]);
+  }, [facesSupported, facesVisible, setFacesVisible, objectType, dimension, vertexVisible]);
+
+  // Auto-disable edges when switching to incompatible object (Mandelbrot)
+  useEffect(() => {
+    if (!edgesSupported && edgesVisible) {
+      previousEdgesState.current = true;
+      setEdgesVisible(false);
+    } else if (edgesSupported && previousEdgesState.current && !edgesVisible) {
+      setEdgesVisible(true);
+      previousEdgesState.current = false;
+    }
+  }, [edgesSupported, edgesVisible, setEdgesVisible]);
 
   return (
     <div className={`flex gap-2 ${className}`} data-testid="render-mode-toggles">
       <ToggleButton
         pressed={vertexVisible}
-        onToggle={setVertexVisible}
+        onToggle={handleVertexToggle}
         ariaLabel="Toggle vertex visibility"
         data-testid="toggle-vertices"
       >
         Vertices
       </ToggleButton>
 
-      <ToggleButton
-        pressed={edgesVisible}
-        onToggle={setEdgesVisible}
-        ariaLabel="Toggle edge visibility"
-        data-testid="toggle-edges"
+      <div
+        title={!edgesSupported ? 'Edges not available for this object type' : undefined}
       >
-        Edges
-      </ToggleButton>
+        <ToggleButton
+          pressed={edgesVisible}
+          onToggle={setEdgesVisible}
+          ariaLabel="Toggle edge visibility"
+          disabled={!edgesSupported}
+          data-testid="toggle-edges"
+        >
+          Edges
+        </ToggleButton>
+      </div>
 
       <div
         title={!facesSupported ? 'Faces not available for this object type' : undefined}
       >
         <ToggleButton
           pressed={facesVisible}
-          onToggle={setFacesVisible}
+          onToggle={handleFaceToggle}
           ariaLabel="Toggle face visibility"
           disabled={!facesSupported}
           data-testid="toggle-faces"

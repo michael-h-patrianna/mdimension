@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RenderModeToggles } from '@/components/controls/RenderModeToggles';
 import { useVisualStore } from '@/stores/visualStore';
@@ -236,7 +236,6 @@ describe('RenderModeToggles', () => {
     });
 
     it('should auto-disable faces when switching to incompatible object', async () => {
-      const user = userEvent.setup();
       // Start with hypercube and faces ON
       useGeometryStore.getState().setObjectType('hypercube');
       useVisualStore.getState().setFacesVisible(true);
@@ -245,7 +244,9 @@ describe('RenderModeToggles', () => {
       expect(useVisualStore.getState().facesVisible).toBe(true);
 
       // Switch to hypersphere (incompatible)
-      useGeometryStore.getState().setObjectType('hypersphere');
+      act(() => {
+        useGeometryStore.getState().setObjectType('hypersphere');
+      });
       rerender(<RenderModeToggles />);
 
       // Faces should be auto-disabled
@@ -261,12 +262,16 @@ describe('RenderModeToggles', () => {
       expect(useVisualStore.getState().facesVisible).toBe(true);
 
       // Switch to hypersphere (incompatible) - faces auto-disabled
-      useGeometryStore.getState().setObjectType('hypersphere');
+      act(() => {
+        useGeometryStore.getState().setObjectType('hypersphere');
+      });
       rerender(<RenderModeToggles />);
       expect(useVisualStore.getState().facesVisible).toBe(false);
 
       // Switch back to hypercube (compatible) - faces should restore
-      useGeometryStore.getState().setObjectType('hypercube');
+      act(() => {
+        useGeometryStore.getState().setObjectType('hypercube');
+      });
       rerender(<RenderModeToggles />);
       expect(useVisualStore.getState().facesVisible).toBe(true);
     });
@@ -280,12 +285,16 @@ describe('RenderModeToggles', () => {
       expect(useVisualStore.getState().facesVisible).toBe(false);
 
       // Switch to hypersphere (incompatible)
-      useGeometryStore.getState().setObjectType('hypersphere');
+      act(() => {
+        useGeometryStore.getState().setObjectType('hypersphere');
+      });
       rerender(<RenderModeToggles />);
       expect(useVisualStore.getState().facesVisible).toBe(false);
 
       // Switch back to hypercube - faces should stay OFF (user's manual choice)
-      useGeometryStore.getState().setObjectType('hypercube');
+      act(() => {
+        useGeometryStore.getState().setObjectType('hypercube');
+      });
       rerender(<RenderModeToggles />);
       expect(useVisualStore.getState().facesVisible).toBe(false);
     });

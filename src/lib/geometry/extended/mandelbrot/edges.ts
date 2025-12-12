@@ -5,7 +5,7 @@
  * enabling wireframe and dual outline shader support.
  */
 
-import type { MandelbrotEdgeMode } from '../types';
+// import type { MandelbrotEdgeMode } from '../types';
 
 /**
  * Generate grid-based edges for a 3D grid of samples
@@ -14,14 +14,14 @@ import type { MandelbrotEdgeMode } from '../types';
  * This enables wireframe and shader effects that require edge data.
  *
  * @param resolution - Grid resolution (samples per axis)
- * @param edgeMode - Edge generation mode
+ * @param _edgeMode - Deprecated: Edge generation mode (unused)
  * @returns Array of edge pairs (vertex indices)
  */
 export function generateMandelbrotEdges(
   resolution: number,
-  edgeMode: MandelbrotEdgeMode
+  _edgeMode: 'none' | 'grid'
 ): [number, number][] {
-  if (edgeMode === 'none') {
+  if (_edgeMode === 'none') {
     return [];
   }
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { renderHook } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { useProjectedVertices } from '@/hooks/useProjectedVertices';
 import { useProjectionStore } from '@/stores/projectionStore';
 import type { VectorND } from '@/lib/math/types';
@@ -73,7 +73,9 @@ describe('useProjectedVertices', () => {
       expect(projected1[0]).toBeCloseTo(2 / 3, 5);
 
       // Change distance to 6.0
-      useProjectionStore.getState().setDistance(6.0);
+      act(() => {
+        useProjectionStore.getState().setDistance(6.0);
+      });
       rerender();
 
       const projected2 = result.current[0]!;
@@ -113,7 +115,9 @@ describe('useProjectedVertices', () => {
 
   describe('orthographic projection', () => {
     beforeEach(() => {
-      useProjectionStore.getState().setType('orthographic');
+      act(() => {
+        useProjectionStore.getState().setType('orthographic');
+      });
     });
 
     it('should ignore W coordinate completely', () => {
@@ -242,7 +246,9 @@ describe('useProjectedVertices', () => {
       // Clone to avoid mutation
       const perspectiveResult = [...result.current[0]!];
 
-      useProjectionStore.getState().setType('orthographic');
+      act(() => {
+        useProjectionStore.getState().setType('orthographic');
+      });
       rerender();
 
       const orthographicResult = result.current[0];
@@ -258,7 +264,9 @@ describe('useProjectedVertices', () => {
       // Clone to avoid mutation
       const result1 = [...result.current[0]!];
 
-      useProjectionStore.getState().setDistance(8.0);
+      act(() => {
+        useProjectionStore.getState().setDistance(8.0);
+      });
       rerender();
 
       const result2 = result.current[0];

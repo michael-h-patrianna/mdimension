@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ProjectionControls } from '@/components/controls/ProjectionControls';
 import { useProjectionStore } from '@/stores/projectionStore';
@@ -130,9 +130,11 @@ describe('ProjectionControls', () => {
       render(<ProjectionControls />);
 
       // Change values
-      useProjectionStore.getState().setType('orthographic');
-      useProjectionStore.getState().setDistance(8.0);
-      useProjectionStore.getState().setFov(90);
+      act(() => {
+        useProjectionStore.getState().setType('orthographic');
+        useProjectionStore.getState().setDistance(8.0);
+        useProjectionStore.getState().setFov(90);
+      });
 
       const resetButton = screen.getByLabelText('Reset to defaults');
       await user.click(resetButton);
@@ -155,7 +157,9 @@ describe('ProjectionControls', () => {
       const { rerender } = render(<ProjectionControls />);
       expect(screen.getByText('60°')).toBeInTheDocument();
 
-      useProjectionStore.getState().setFov(90);
+      act(() => {
+        useProjectionStore.getState().setFov(90);
+      });
       rerender(<ProjectionControls />);
 
       expect(screen.getByText('90°')).toBeInTheDocument();

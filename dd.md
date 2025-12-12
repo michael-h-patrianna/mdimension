@@ -36,3 +36,31 @@ Review this bug report:
 With cross section active + "animate slice" active + "show original" hidden, when the "Slice W Position" value/slider hits its minimum or maximum then two visual bugs are shortly showing:
 1. the surface plane will jump in the y position
 2. the original shape of the object will shortly appear while the cross section disappears
+
+
+
+
+Soft Fill (good for hyppercubes)
+- Vertices: off
+- Edges: on
+- Faces: on
+- Face opacity: 0.3
+- Surface color: #33cc9e
+- Fresnel Rim: off
+- Bloom: on
+- Bloom intensity: 1.6
+- Bloom threshold: 0
+- Bloom soft knee: 0
+- Bloom radius: 1.65
+- Bloom blur levels: 4
+- Light: on
+- Light color: #ffffff
+- Light horizontal angle: 45 degrees
+- Light vertical angle: 30 degrees
+- Ambient intensity: 0.30
+- Specular intensity: 1.00
+- Specular Power: 32
+- Vertex color: #19e697
+- Edge color: #19e697
+- Edge thickness: 1
+- Vertex size: 1

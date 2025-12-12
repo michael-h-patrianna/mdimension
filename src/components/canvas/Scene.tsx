@@ -31,6 +31,18 @@ export interface SceneProps {
   crossSectionEdges?: [number, number][]
   /** Whether this is a point cloud (uses PointCloudRenderer) */
   isPointCloud?: boolean
+  /**
+   * Per-point colors for point cloud rendering.
+   * Used for Mandelbrot visualization where each point has a unique color
+   * derived from escape time and the user's vertex color.
+   */
+  pointColors?: string[]
+  /**
+   * Minimum bounding radius for ground plane positioning.
+   * Used when external objects (like raymarched Mandelbulb) need to be
+   * accounted for in ground plane calculations.
+   */
+  minBoundingRadius?: number
 }
 
 /**
@@ -105,6 +117,8 @@ export function Scene({
   crossSectionVertices,
   crossSectionEdges,
   isPointCloud = false,
+  pointColors,
+  minBoundingRadius,
 }: SceneProps) {
   // Get all visual settings with shallow comparison to prevent unnecessary re-renders
   const {
@@ -157,6 +171,7 @@ export function Scene({
         opacity={groundPlaneOpacity}
         reflectivity={groundPlaneReflectivity}
         visible={showGroundPlane}
+        minBoundingRadius={minBoundingRadius}
       />
 
       {/* Render faces when Surface shader is selected (PRD Story 2) */}
@@ -174,15 +189,17 @@ export function Scene({
       {/* Render based on geometry type */}
       {vertices && (
         isPointCloud ? (
-          // Point cloud rendering (hyperspheres, sampled manifolds)
+          // Point cloud rendering (hyperspheres, sampled manifolds, Mandelbrot)
           // Uses same adjustedVertexSize as polytopes for visual consistency
           // PointCloudWithEdges handles visibility toggles internally
+          // pointColors enables per-point coloring for Mandelbrot visualization
           edges && edges.length > 0 ? (
             <PointCloudWithEdges
               vertices={vertices}
               edges={edges}
               pointSize={adjustedVertexSize}
               opacity={opacity}
+              pointColors={pointColors}
             />
           ) : (
             // Standalone point cloud (no edges) - respect Vertices toggle
@@ -191,6 +208,7 @@ export function Scene({
                 vertices={vertices}
                 pointSize={adjustedVertexSize}
                 opacity={opacity}
+                pointColors={pointColors}
               />
             )
           )

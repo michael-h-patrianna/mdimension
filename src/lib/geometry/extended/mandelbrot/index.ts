@@ -9,12 +9,36 @@ import type { NdGeometry } from '../../types';
 import type { VectorND } from '@/lib/math';
 import type { MandelbrotConfig } from '../types';
 import { generateSampleGrid, generateSampleGrid2D, filterSamples } from './sampling';
-import { generateMandelbrotEdges, generateMandelbrot2DEdges } from './edges';
 
-export { mandelbrotStep, normSquared, mandelbrotEscapeTime, mandelbrotSmoothEscapeTime } from './math';
+export { mandelbulbStep, mandelbrotStep, normSquared, mandelbrotEscapeTime, mandelbrotSmoothEscapeTime } from './math';
 export { generateSampleGrid, generateSampleGrid2D, filterSamples, type MandelbrotSample } from './sampling';
 export { getMandelbrotStats } from './utils';
+export {
+  toHyperspherical,
+  fromHyperspherical,
+  powMap,
+  hyperbulbStep,
+  hyperbulbEscapeTime,
+  hyperbulbSmoothEscapeTime,
+  norm,
+  clamp,
+  type HypersphericalCoords,
+} from './hyperspherical';
 export { generateMandelbrotEdges, generateMandelbrot2DEdges, calculateGridEdgeCount, calculate2DGridEdgeCount } from './edges';
+export {
+  generatePalette,
+  generatePointColors,
+  mapEscapeToColor,
+  hexToRgb,
+  rgbToHex,
+  hexToHsl,
+  hslToHex,
+  interpolateColor,
+  getComplementaryColor,
+  shiftHue,
+  darkenColor,
+  lightenColor,
+} from './colors';
 
 /**
  * Main generator function - returns point cloud geometry with optional edges
@@ -65,20 +89,28 @@ export function generateMandelbrot(
     t => t / config.maxIterations
   );
 
-  // Generate edges based on edge mode
-  // Use 2D edge generation for dimension 2
-  const edges =
-    config.edgeMode === 'grid' && config.colorMode !== 'interiorOnly'
-      ? dimension === 2
-        ? generateMandelbrot2DEdges(config.resolution)
-        : generateMandelbrotEdges(config.resolution, config.edgeMode)
-      : [];
+  // No Edges for Mandelbrot (Point Cloud / Ray Marching only)
+  // Edges are visually chaotic and computationally expensive for fractals
+  const edges: [number, number][] = [];
 
-  // Name based on dimension
+  // Name based on dimension using proper fractal terminology
+  // - 2D: Mandelbrot Set (classic complex plane)
+  // - 3D: Mandelbulb (spherical coordinates)
+  // - 4D+: Hyperbulb (hyperspherical coordinates)
   const name =
     dimension === 2
-      ? 'Classic Mandelbrot Set (complex plane)'
-      : `${dimension}D Mandelbrot Set`;
+      ? 'Mandelbrot Set'
+      : dimension === 3
+        ? 'Mandelbulb'
+        : `${dimension}D Hyperbulb`;
+
+  // Formula description based on dimension
+  const formula =
+    dimension === 2
+      ? 'z_{n+1} = z_n² + c (complex)'
+      : dimension === 3
+        ? 'z_{n+1} = powMap(z_n, p) + c (spherical)'
+        : `z_{n+1} = powMap(z_n, p) + c (hyperspherical, ${dimension - 1} angles)`;
 
   return {
     dimension,
@@ -88,12 +120,11 @@ export function generateMandelbrot(
     isPointCloud: true,
     metadata: {
       name,
-      formula: dimension === 2 ? 'z_{n+1} = z_n² + c' : 'z_{n+1} = f(z_n, c), |z| bounded',
+      formula,
       properties: {
         maxIterations: config.maxIterations,
         escapeRadius: config.escapeRadius,
         resolution: config.resolution,
-        edgeMode: config.edgeMode,
         sampleCount: allSamples.length,
         filteredCount: vertices.length,
         edgeCount: edges.length,

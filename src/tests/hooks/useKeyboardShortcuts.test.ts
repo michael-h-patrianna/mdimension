@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { useKeyboardShortcuts, getShortcutLabel, SHORTCUTS } from '@/hooks/useKeyboardShortcuts';
 import { useAnimationStore } from '@/stores/animationStore';
 import { useGeometryStore } from '@/stores/geometryStore';
@@ -53,8 +53,10 @@ describe('useKeyboardShortcuts', () => {
     useGeometryStore.getState().setDimension(4);
     renderHook(() => useKeyboardShortcuts({ enabled: true }));
 
-    const event = new KeyboardEvent('keydown', { key: 'ArrowUp' });
-    window.dispatchEvent(event);
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: 'ArrowUp' });
+      window.dispatchEvent(event);
+    });
 
     expect(useGeometryStore.getState().dimension).toBe(5);
   });
@@ -73,8 +75,10 @@ describe('useKeyboardShortcuts', () => {
     useGeometryStore.getState().setDimension(4);
     renderHook(() => useKeyboardShortcuts({ enabled: true }));
 
-    const event = new KeyboardEvent('keydown', { key: 'ArrowDown' });
-    window.dispatchEvent(event);
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: 'ArrowDown' });
+      window.dispatchEvent(event);
+    });
 
     expect(useGeometryStore.getState().dimension).toBe(3);
   });
@@ -121,8 +125,10 @@ describe('useKeyboardShortcuts', () => {
     useAnimationStore.getState().setSpeed(1);
     renderHook(() => useKeyboardShortcuts({ enabled: true }));
 
-    const event = new KeyboardEvent('keydown', { key: '+' });
-    window.dispatchEvent(event);
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: '+' });
+      window.dispatchEvent(event);
+    });
 
     expect(useAnimationStore.getState().speed).toBe(1.25);
   });
@@ -131,8 +137,10 @@ describe('useKeyboardShortcuts', () => {
     useAnimationStore.getState().setSpeed(1);
     renderHook(() => useKeyboardShortcuts({ enabled: true }));
 
-    const event = new KeyboardEvent('keydown', { key: '-' });
-    window.dispatchEvent(event);
+    act(() => {
+      const event = new KeyboardEvent('keydown', { key: '-' });
+      window.dispatchEvent(event);
+    });
 
     expect(useAnimationStore.getState().speed).toBe(0.75);
   });

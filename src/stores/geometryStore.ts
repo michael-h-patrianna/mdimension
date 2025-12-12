@@ -31,6 +31,19 @@ export const DIMENSION_CONSTRAINTS: Record<string, { min?: number; exact?: numbe
   'root-system': { min: 3 }, // Root systems not meaningful in 2D (A-type produces only 2 trivial roots)
 };
 
+/**
+ * Recommended dimensions for certain object types to get optimal visualization.
+ * When switching to these object types, the dimension will auto-switch if needed.
+ */
+export const RECOMMENDED_DIMENSIONS: Record<string, { dimension: number; reason: string }> = {
+  // Mandelbrot uses Mandelbulb formula only in 3D; dimension 2 gives classic 2D Mandelbrot
+  // Default to 3D for Mandelbulb visualization
+  'mandelbrot': {
+    dimension: 3,
+    reason: 'Uses Mandelbulb formula for true 3D fractal structure',
+  },
+};
+
 interface GeometryState {
   /** Current dimension (3-11) */
   dimension: number;
@@ -123,7 +136,17 @@ export const useGeometryStore = create<GeometryState>((set, get) => ({
       return;
     }
 
-    set({ objectType: type });
+    // Check if this object type has a recommended dimension
+    const recommended = RECOMMENDED_DIMENSIONS[type];
+    if (recommended && currentDimension !== recommended.dimension) {
+      // Auto-switch to recommended dimension for optimal visualization
+      set({
+        objectType: type,
+        dimension: recommended.dimension,
+      });
+    } else {
+      set({ objectType: type });
+    }
   },
 
   reset: () => {

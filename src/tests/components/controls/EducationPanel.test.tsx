@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import { EducationPanel } from '@/components/controls/EducationPanel';
 import { useGeometryStore } from '@/stores/geometryStore';
 
@@ -54,7 +54,9 @@ describe('EducationPanel', () => {
     const { rerender } = render(<EducationPanel />);
     expect(screen.getByText('4D Space')).toBeInTheDocument();
 
-    useGeometryStore.getState().setDimension(5);
+    act(() => {
+      useGeometryStore.getState().setDimension(5);
+    });
     rerender(<EducationPanel />);
 
     expect(screen.getByText('5D Space')).toBeInTheDocument();
@@ -64,7 +66,9 @@ describe('EducationPanel', () => {
     const { rerender } = render(<EducationPanel />);
     expect(screen.getByText('Hypercube')).toBeInTheDocument();
 
-    useGeometryStore.getState().setObjectType('simplex');
+    act(() => {
+      useGeometryStore.getState().setObjectType('simplex');
+    });
     rerender(<EducationPanel />);
 
     expect(screen.getByText('Simplex')).toBeInTheDocument();

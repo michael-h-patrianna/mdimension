@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { renderHook } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { useRotatedVertices } from '@/hooks/useRotatedVertices';
 import { useRotationStore } from '@/stores/rotationStore';
 import type { VectorND } from '@/lib/math/types';
@@ -299,7 +299,9 @@ describe('useRotatedVertices', () => {
       expect(result.current[0]).toEqual([1, 0, 0]);
 
       // Add rotation
-      useRotationStore.getState().setRotation('XY', Math.PI / 2);
+      act(() => {
+        useRotationStore.getState().setRotation('XY', Math.PI / 2);
+      });
       rerender();
 
       // Should now be rotated
@@ -318,12 +320,14 @@ describe('useRotatedVertices', () => {
       const { result, rerender } = renderHook(() => useRotatedVertices(vertices));
 
       // Should be rotated
-      let rotated = result.current[0]!;
+      const rotated = result.current[0]!;
       expect(rotated[0]).toBeCloseTo(0, 5);
       expect(rotated[1]).toBeCloseTo(1, 5);
 
       // Reset rotation
-      useRotationStore.getState().resetRotation('XY');
+      act(() => {
+        useRotationStore.getState().resetRotation('XY');
+      });
       rerender();
 
       // Should be back to original
@@ -352,7 +356,9 @@ describe('useRotatedVertices', () => {
       // Clone for comparison
       const firstResult = result.current.map(v => [...v]);
 
-      useRotationStore.getState().setRotation('XY', Math.PI / 4);
+      act(() => {
+        useRotationStore.getState().setRotation('XY', Math.PI / 4);
+      });
       rerender();
 
       const secondResult = result.current;

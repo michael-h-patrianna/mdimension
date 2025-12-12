@@ -7,10 +7,11 @@
  * - Extended: Hypersphere, Root System, Product Manifold, Clifford Torus
  */
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { Select } from '@/components/ui/Select';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { useGeometryStore } from '@/stores/geometryStore';
+import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { getAvailableTypes } from '@/lib/geometry';
 import type { ObjectType } from '@/lib/geometry/types';
 
@@ -26,6 +27,16 @@ export const ObjectTypeSelector: React.FC<ObjectTypeSelectorProps> = ({
   const objectType = useGeometryStore((state) => state.objectType);
   const setObjectType = useGeometryStore((state) => state.setObjectType);
   const dimension = useGeometryStore((state) => state.dimension);
+  const initializeMandelbrotForDimension = useExtendedObjectStore(
+    (state) => state.initializeMandelbrotForDimension
+  );
+
+  // Initialize Mandelbrot settings when objectType is 'mandelbrot' and dimension changes
+  useEffect(() => {
+    if (objectType === 'mandelbrot') {
+      initializeMandelbrotForDimension(dimension);
+    }
+  }, [objectType, dimension, initializeMandelbrotForDimension]);
 
   // Get available types based on current dimension
   const availableTypes = useMemo(() => getAvailableTypes(dimension), [dimension]);

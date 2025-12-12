@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BloomControls } from '@/components/controls/BloomControls';
 import { useVisualStore } from '@/stores/visualStore';
@@ -104,7 +104,9 @@ describe('BloomControls', () => {
     render(<BloomControls />);
 
     // Directly update the store (simulating slider interaction)
-    useVisualStore.getState().setBloomIntensity(1.5);
+    act(() => {
+      useVisualStore.getState().setBloomIntensity(1.5);
+    });
 
     expect(useVisualStore.getState().bloomIntensity).toBe(1.5);
   });
@@ -114,7 +116,9 @@ describe('BloomControls', () => {
     render(<BloomControls />);
 
     // Directly update the store (simulating slider interaction)
-    useVisualStore.getState().setBloomThreshold(0.6);
+    act(() => {
+      useVisualStore.getState().setBloomThreshold(0.6);
+    });
 
     expect(useVisualStore.getState().bloomThreshold).toBe(0.6);
   });
@@ -124,7 +128,9 @@ describe('BloomControls', () => {
     render(<BloomControls />);
 
     // Directly update the store (simulating slider interaction)
-    useVisualStore.getState().setBloomRadius(0.7);
+    act(() => {
+      useVisualStore.getState().setBloomRadius(0.7);
+    });
 
     expect(useVisualStore.getState().bloomRadius).toBe(0.7);
   });
@@ -162,7 +168,9 @@ describe('BloomControls', () => {
     render(<BloomControls />);
 
     // Directly update the store (simulating slider interaction)
-    useVisualStore.getState().setBloomSoftKnee(0.7);
+    act(() => {
+      useVisualStore.getState().setBloomSoftKnee(0.7);
+    });
 
     expect(useVisualStore.getState().bloomSoftKnee).toBe(0.7);
   });
@@ -172,7 +180,9 @@ describe('BloomControls', () => {
     render(<BloomControls />);
 
     // Directly update the store (simulating slider interaction)
-    useVisualStore.getState().setBloomLevels(4);
+    act(() => {
+      useVisualStore.getState().setBloomLevels(4);
+    });
 
     expect(useVisualStore.getState().bloomLevels).toBe(4);
   });
@@ -259,7 +269,9 @@ describe('BloomControls', () => {
     expect(useVisualStore.getState().bloomEnabled).toBe(false);
 
     // Enable bloom
-    useVisualStore.getState().setBloomEnabled(true);
+    act(() => {
+      useVisualStore.getState().setBloomEnabled(true);
+    });
     rerender(<BloomControls />);
 
     toggleButton = screen.getByText('Enable Bloom');

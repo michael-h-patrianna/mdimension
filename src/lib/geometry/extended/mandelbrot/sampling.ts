@@ -34,22 +34,31 @@ export function generateSampleGrid(
   dimension: number,
   config: MandelbrotConfig
 ): MandelbrotSample[] {
-  const { resolution, visualizationAxes, parameterValues, center, extent, maxIterations, escapeRadius, colorMode } = config;
+  const { resolution, visualizationAxes, parameterValues, center, extent, maxIterations, escapeRadius, colorMode, mandelbulbPower } = config;
   const [ax, ay, az] = visualizationAxes;
   const samples: MandelbrotSample[] = [];
+
+  // Guard against resolution=1 which would cause division by zero
+  // Config validation should prevent this, but add runtime safety
+  if (resolution < 2) {
+    throw new Error(`Resolution must be >= 2, got ${resolution}`);
+  }
 
   // Initialize center if not set
   const effectiveCenter = center.length === dimension ? center : new Array(dimension).fill(0);
 
   const useSmooth = colorMode === 'smoothColoring';
 
+  // Denominator for parametric mapping (safe since resolution >= 2)
+  const gridDenom = resolution - 1;
+
   for (let ix = 0; ix < resolution; ix++) {
     for (let iy = 0; iy < resolution; iy++) {
       for (let iz = 0; iz < resolution; iz++) {
         // Map grid indices to parametric [0,1] coordinates
-        const tx = ix / (resolution - 1);
-        const ty = iy / (resolution - 1);
-        const tz = iz / (resolution - 1);
+        const tx = ix / gridDenom;
+        const ty = iy / gridDenom;
+        const tz = iz / gridDenom;
 
         // Map to world coordinates centered at effectiveCenter with extent
         const x = (effectiveCenter[ax] ?? 0) - extent + 2 * extent * tx;
@@ -71,10 +80,10 @@ export function generateSampleGrid(
           }
         }
 
-        // Compute escape time
+        // Compute escape time (pass mandelbulbPower for 3D Mandelbulb)
         const escapeTime = useSmooth
-          ? mandelbrotSmoothEscapeTime(cVector, maxIterations, escapeRadius)
-          : mandelbrotEscapeTime(cVector, maxIterations, escapeRadius);
+          ? mandelbrotSmoothEscapeTime(cVector, maxIterations, escapeRadius, mandelbulbPower)
+          : mandelbrotEscapeTime(cVector, maxIterations, escapeRadius, mandelbulbPower);
 
         samples.push({
           worldPos: [x, y, z],
@@ -101,16 +110,24 @@ export function generateSampleGrid2D(config: MandelbrotConfig): MandelbrotSample
   const { resolution, center, extent, maxIterations, escapeRadius, colorMode } = config;
   const samples: MandelbrotSample[] = [];
 
+  // Guard against resolution=1 which would cause division by zero
+  if (resolution < 2) {
+    throw new Error(`Resolution must be >= 2, got ${resolution}`);
+  }
+
   // Initialize center if not set (default to classic Mandelbrot center at -0.5, 0)
   const effectiveCenter = center.length >= 2 ? center : [-0.5, 0];
 
   const useSmooth = colorMode === 'smoothColoring';
 
+  // Denominator for parametric mapping (safe since resolution >= 2)
+  const gridDenom = resolution - 1;
+
   for (let ix = 0; ix < resolution; ix++) {
     for (let iy = 0; iy < resolution; iy++) {
       // Map grid indices to parametric [0,1] coordinates
-      const tx = ix / (resolution - 1);
-      const ty = iy / (resolution - 1);
+      const tx = ix / gridDenom;
+      const ty = iy / gridDenom;
 
       // Map to complex plane: x = real, y = imaginary
       const x = (effectiveCenter[0] ?? -0.5) - extent + 2 * extent * tx;
@@ -142,6 +159,9 @@ export function generateSampleGrid2D(config: MandelbrotConfig): MandelbrotSample
  * For most modes, we keep ALL points - the fractal structure emerges
  * from the color pattern based on escape time, not from filtering.
  *
+ * For 'boundaryOnly' mode (useful for 3D+ visualization), we filter
+ * to show only points near the fractal boundary.
+ *
  * @param samples - All computed samples
  * @param config - Mandelbrot configuration
  * @returns Filtered array of samples to render
@@ -150,12 +170,23 @@ export function filterSamples(
   samples: MandelbrotSample[],
   config: MandelbrotConfig
 ): MandelbrotSample[] {
-  const { maxIterations, colorMode } = config;
+  const { maxIterations, colorMode, boundaryThreshold } = config;
 
   switch (colorMode) {
     case 'interiorOnly':
       // Only show points inside the set (bounded points)
       return samples.filter(s => s.escapeTime >= maxIterations);
+
+    case 'boundaryOnly': {
+      // Show only points near the boundary (useful for 3D+ visualization)
+      // This reveals the fractal surface structure instead of showing all grid points
+      const [minRatio, maxRatio] = boundaryThreshold;
+      const minIter = maxIterations * minRatio;
+      const maxIter = maxIterations * maxRatio;
+      return samples.filter(s =>
+        s.escapeTime >= minIter && s.escapeTime <= maxIter
+      );
+    }
 
     case 'escapeTime':
     case 'smoothColoring':

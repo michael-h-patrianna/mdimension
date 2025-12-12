@@ -44,6 +44,12 @@ export interface PointCloudRendererProps {
   /** Color of the points (uses vertex color from store if not provided) */
   pointColor?: string;
   /**
+   * Per-point colors - when provided, overrides pointColor for each point.
+   * Used for Mandelbrot visualization where each point has a unique color
+   * based on escape time.
+   */
+  pointColors?: string[];
+  /**
    * Size of the points (default: DEFAULT_BASE_VERTEX_SIZE = 0.04).
    * This matches PolytopeRenderer's baseline for visual consistency.
    * When using useVertexSize hook, density scaling is automatically applied.
@@ -94,12 +100,14 @@ const POINT_GEOMETRY = new SphereGeometry(1, 16, 16);
 export function PointCloudRenderer({
   vertices,
   pointColor: propPointColor,
+  pointColors,
   pointSize = DEFAULT_BASE_VERTEX_SIZE,
   opacity = 1.0,
   emissiveIntensity: propEmissiveIntensity,
 }: PointCloudRendererProps) {
   const instancedMeshRef = useRef<ThreeInstancedMesh>(null);
   const tempObject = useMemo(() => new Object3D(), []);
+  const tempColor = useMemo(() => new Color(), []);
 
   // Get vertex color from store if not provided via props
   const storeVertexColor = useVisualStore(
@@ -145,13 +153,14 @@ export function PointCloudRenderer({
     };
   }, [material]);
 
-  // Update instance matrices when vertices change
+  // Update instance matrices and colors when vertices/colors change
   useEffect(() => {
     if (!instancedMeshRef.current) return;
 
     const mesh = instancedMeshRef.current;
     const count = Math.min(vertices.length, mesh.count);
 
+    // Update positions and scales
     for (let i = 0; i < count; i++) {
       const vertex = vertices[i]!;
       tempObject.position.set(vertex[0], vertex[1], vertex[2]);
@@ -159,10 +168,22 @@ export function PointCloudRenderer({
       tempObject.updateMatrix();
       mesh.setMatrixAt(i, tempObject.matrix);
     }
-
     mesh.instanceMatrix.needsUpdate = true;
+
+    // Update per-instance colors if provided
+    if (pointColors && pointColors.length > 0) {
+      for (let i = 0; i < count; i++) {
+        const colorHex = pointColors[i] ?? pointColor;
+        tempColor.set(colorHex);
+        mesh.setColorAt(i, tempColor);
+      }
+      if (mesh.instanceColor) {
+        mesh.instanceColor.needsUpdate = true;
+      }
+    }
+
     mesh.count = count;
-  }, [vertices, pointSize, tempObject]);
+  }, [vertices, pointSize, tempObject, pointColors, pointColor, tempColor]);
 
   // Don't render if no vertices
   if (vertices.length === 0) return null;
@@ -210,7 +231,9 @@ function Wireframe({
   opacity: number;
   thickness: number;
 }) {
-  if (thickness > 1) {
+  // Use FatWireframe for thickness >= 1 (default is 2)
+  // NativeWireframe is only used for sub-pixel lines (thickness < 1)
+  if (thickness >= 1) {
     return (
       <FatWireframe
         vertices={vertices}
@@ -258,6 +281,7 @@ export function PointCloudWithEdges({
   vertices,
   edges,
   pointColor,
+  pointColors,
   pointSize,
   opacity = 1.0,
   emissiveIntensity,
@@ -309,6 +333,7 @@ export function PointCloudWithEdges({
         <PointCloudRenderer
           vertices={vertices}
           pointColor={effectivePointColor}
+          pointColors={pointColors}
           pointSize={pointSize}
           opacity={opacity}
           emissiveIntensity={emissiveIntensity}

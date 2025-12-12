@@ -1,0 +1,425 @@
+uniform vec3 uCameraPosition;
+uniform float uPower;
+uniform float uIterations;
+uniform float uEscapeRadius;
+uniform vec3 uColor;
+uniform int uPaletteMode;
+uniform mat4 uModelMatrix;
+uniform mat4 uInverseModelMatrix;
+uniform mat4 uProjectionMatrix;
+uniform mat4 uViewMatrix;
+
+// Lighting uniforms (from visual settings)
+uniform bool uLightEnabled;
+uniform vec3 uLightColor;
+uniform vec3 uLightDirection;
+uniform float uAmbientIntensity;
+uniform float uSpecularIntensity;
+uniform float uSpecularPower;
+
+varying vec3 vPosition;
+varying vec2 vUv;
+
+#define MAX_MARCH_STEPS 200
+#define MAX_DIST 100.0
+#define SURF_DIST 0.001
+#define MAX_ITERATIONS 100
+
+// Palette mode constants (must match PALETTE_MODE_MAP in MandelbulbMesh.tsx)
+#define PALETTE_MONOCHROMATIC 0
+#define PALETTE_ANALOGOUS 1
+#define PALETTE_COMPLEMENTARY 2
+#define PALETTE_TRIADIC 3
+#define PALETTE_SPLIT_COMPLEMENTARY 4
+
+// ============================================
+// HSL <-> RGB Conversion Functions
+// ============================================
+
+vec3 rgb2hsl(vec3 c) {
+    float maxC = max(max(c.r, c.g), c.b);
+    float minC = min(min(c.r, c.g), c.b);
+    float l = (maxC + minC) * 0.5;
+
+    if (maxC == minC) {
+        return vec3(0.0, 0.0, l); // achromatic
+    }
+
+    float d = maxC - minC;
+    float s = l > 0.5 ? d / (2.0 - maxC - minC) : d / (maxC + minC);
+
+    float h;
+    if (maxC == c.r) {
+        h = (c.g - c.b) / d + (c.g < c.b ? 6.0 : 0.0);
+    } else if (maxC == c.g) {
+        h = (c.b - c.r) / d + 2.0;
+    } else {
+        h = (c.r - c.g) / d + 4.0;
+    }
+    h /= 6.0;
+
+    return vec3(h, s, l);
+}
+
+float hue2rgb(float p, float q, float t) {
+    if (t < 0.0) t += 1.0;
+    if (t > 1.0) t -= 1.0;
+    if (t < 1.0/6.0) return p + (q - p) * 6.0 * t;
+    if (t < 1.0/2.0) return q;
+    if (t < 2.0/3.0) return p + (q - p) * (2.0/3.0 - t) * 6.0;
+    return p;
+}
+
+vec3 hsl2rgb(vec3 hsl) {
+    float h = hsl.x;
+    float s = hsl.y;
+    float l = hsl.z;
+
+    if (s == 0.0) {
+        return vec3(l); // achromatic
+    }
+
+    float q = l < 0.5 ? l * (1.0 + s) : l + s - l * s;
+    float p = 2.0 * l - q;
+
+    return vec3(
+        hue2rgb(p, q, h + 1.0/3.0),
+        hue2rgb(p, q, h),
+        hue2rgb(p, q, h - 1.0/3.0)
+    );
+}
+
+// ============================================
+// Palette Generation Based on Color Theory
+// ============================================
+
+/**
+ * Calculate lightness range based on base lightness.
+ * Provides wide dynamic range with bias toward darkness.
+ */
+vec2 getLightnessRange(float baseL) {
+    // Wide range: from near-black to bright highlights
+    // Dark base colors: [0, 0.7] - mostly dark with bright highlights
+    // Light base colors: [0.2, 1.0] - some shadow, mostly bright
+    // Mid base colors: [0.05, 0.85] - full range
+
+    float minL = baseL * 0.15;  // Dark colors get very dark minimum
+    float maxL = baseL + (1.0 - baseL) * 0.7;  // Expand toward bright
+
+    // Ensure minimum is always quite dark for contrast
+    minL = min(minL, 0.08);
+
+    return vec2(minL, maxL);
+}
+
+/**
+ * Generate a color from the palette based on trap value (0-1).
+ * Uses color theory principles from Adobe Color.
+ *
+ * For achromatic base colors (black, white, gray), adds subtle saturation
+ * to make palette modes meaningful.
+ *
+ * @param baseHSL - The base color in HSL (from user's surface color)
+ * @param t - Trap/variation value [0,1] controlling position in palette
+ * @param mode - Palette mode (see PALETTE_* defines)
+ */
+vec3 getPaletteColor(vec3 baseHSL, float t, int mode) {
+    float h = baseHSL.x;
+    float s = baseHSL.y;
+    float l = baseHSL.z;
+
+    // Calculate lightness range based on base color
+    vec2 lRange = getLightnessRange(l);
+    float minL = lRange.x;
+    float maxL = lRange.y;
+
+    // For achromatic colors, use red as default hue and add subtle saturation
+    // This makes palette modes meaningful for black/white/gray
+    bool isAchromatic = s < 0.1;
+    if (isAchromatic && mode != PALETTE_MONOCHROMATIC) {
+        h = 0.0;  // Red hue as starting point
+        s = 0.4;  // Add moderate saturation for color visibility
+    }
+
+    if (mode == PALETTE_MONOCHROMATIC) {
+        // Same hue, vary lightness only - true grayscale for achromatic
+        float newL = mix(minL, maxL, t);
+        return hsl2rgb(vec3(h, baseHSL.y, newL));  // Use original saturation
+    }
+    else if (mode == PALETTE_ANALOGOUS) {
+        // Hue varies ±30° from base
+        float hueShift = (t - 0.5) * 0.167;
+        float newH = fract(h + hueShift);
+        float newL = mix(minL, maxL, t);
+        return hsl2rgb(vec3(newH, s, newL));
+    }
+    else if (mode == PALETTE_COMPLEMENTARY) {
+        // Two distinct colors: base hue and complement (180° apart)
+        float complement = fract(h + 0.5);
+        float newH;
+        // Sharp transition between the two colors
+        if (t < 0.5) {
+            newH = h;
+        } else {
+            newH = complement;
+        }
+        // Vary lightness smoothly
+        float newL = mix(minL, maxL, t);
+        return hsl2rgb(vec3(newH, s, newL));
+    }
+    else if (mode == PALETTE_TRIADIC) {
+        // Three distinct colors 120° apart
+        float hue1 = h;
+        float hue2 = fract(h + 0.333);
+        float hue3 = fract(h + 0.667);
+        // Sharp transitions between the three hues
+        float newH;
+        if (t < 0.333) {
+            newH = hue1;
+        } else if (t < 0.667) {
+            newH = hue2;
+        } else {
+            newH = hue3;
+        }
+        float newL = mix(minL, maxL, t);
+        return hsl2rgb(vec3(newH, s, newL));
+    }
+    else if (mode == PALETTE_SPLIT_COMPLEMENTARY) {
+        // Three colors: base + two flanking complement (±30° from 180°)
+        float split1 = fract(h + 0.5 - 0.083); // 150° from base
+        float split2 = fract(h + 0.5 + 0.083); // 210° from base
+        // Sharp transitions
+        float newH;
+        if (t < 0.333) {
+            newH = h;
+        } else if (t < 0.667) {
+            newH = split1;
+        } else {
+            newH = split2;
+        }
+        float newL = mix(minL, maxL, t);
+        return hsl2rgb(vec3(newH, s, newL));
+    }
+
+    // Fallback: monochromatic
+    return hsl2rgb(vec3(h, baseHSL.y, mix(minL, maxL, t)));
+}
+
+// ============================================
+// Mandelbulb SDF with Orbit Trap
+// ============================================
+
+// Simple SDF for normal calculation and AO (no trap needed)
+float GetDist(vec3 pos) {
+    vec3 z = pos;
+    float dr = 1.0;
+    float r = 0.0;
+    float power = uPower < 1.0 ? 8.0 : uPower;
+    float escapeRadius = uEscapeRadius < 1.0 ? 2.0 : uEscapeRadius;
+    int iter = int(min(uIterations, float(MAX_ITERATIONS)));
+
+    for (int i = 0; i < MAX_ITERATIONS; i++) {
+        if (i >= iter) break;
+
+        r = length(z);
+        if (r > escapeRadius) break;
+
+        float theta = acos(z.z/r);
+        float phi = atan(z.y, z.x);
+
+        dr = pow(r, power-1.0) * power * dr + 1.0;
+
+        float zr = pow(r, power);
+        theta = theta * power;
+        phi = phi * power;
+
+        z = zr * vec3(sin(theta)*cos(phi), sin(phi)*sin(theta), cos(theta));
+        z += pos;
+    }
+    return 0.5 * log(r) * r / dr;
+}
+
+// SDF with orbit trap for coloring
+float GetDistWithTrap(vec3 pos, out float trap) {
+    vec3 z = pos;
+    float dr = 1.0;
+    float r = 0.0;
+    float power = uPower < 1.0 ? 8.0 : uPower;
+    float escapeRadius = uEscapeRadius < 1.0 ? 2.0 : uEscapeRadius;
+    int iter = int(min(uIterations, float(MAX_ITERATIONS)));
+
+    // Orbit trap: track minimum distance to geometric primitives
+    float minDistPlane = 1000.0;
+    float minDistAxis = 1000.0;
+    float minDistSphere = 1000.0;
+    int escapeIter = 0;
+
+    for (int i = 0; i < MAX_ITERATIONS; i++) {
+        if (i >= iter) break;
+
+        r = length(z);
+        if (r > escapeRadius) {
+            escapeIter = i;
+            break;
+        }
+
+        // Multiple orbit traps for richer variation
+        minDistPlane = min(minDistPlane, abs(z.y));                    // y=0 plane
+        minDistAxis = min(minDistAxis, length(z.xz));                  // y-axis distance
+        minDistSphere = min(minDistSphere, abs(length(z) - 0.8));      // sphere shell r=0.8
+
+        float theta = acos(z.z/r);
+        float phi = atan(z.y, z.x);
+
+        dr = pow(r, power-1.0) * power * dr + 1.0;
+
+        float zr = pow(r, power);
+        theta = theta * power;
+        phi = phi * power;
+
+        z = zr * vec3(sin(theta)*cos(phi), sin(phi)*sin(theta), cos(theta));
+        z += pos;
+        escapeIter = i;
+    }
+
+    // Combine multiple traps with different weights for complex patterns
+    float planeTrap = exp(-minDistPlane * 5.0);      // Sharp falloff
+    float axisTrap = exp(-minDistAxis * 3.0);        // Medium falloff
+    float sphereTrap = exp(-minDistSphere * 8.0);    // Sharp falloff
+    float iterTrap = float(escapeIter) / float(iter); // Iteration-based
+
+    // Create varied trap value by combining different sources
+    trap = planeTrap * 0.3 + axisTrap * 0.2 + sphereTrap * 0.2 + iterTrap * 0.3;
+
+    return 0.5 * log(r) * r / dr;
+}
+
+// ============================================
+// Raymarching
+// ============================================
+
+float RayMarch(vec3 ro, vec3 rd, out float trap) {
+    float dO = 0.0;
+    trap = 0.0;
+
+    for (int i = 0; i < MAX_MARCH_STEPS; i++) {
+        vec3 p = ro + rd * dO;
+        float currentTrap;
+        float dS = GetDistWithTrap(p, currentTrap);
+        dO += dS;
+
+        if (dS < SURF_DIST) {
+            trap = currentTrap;
+            break;
+        }
+        if (dO > MAX_DIST) break;
+    }
+
+    return dO;
+}
+
+// ============================================
+// Normal Calculation
+// ============================================
+
+vec3 GetNormal(vec3 p) {
+    float d = GetDist(p);
+    vec2 e = vec2(0.001, 0);
+
+    vec3 n = d - vec3(
+        GetDist(p-e.xyy),
+        GetDist(p-e.yxy),
+        GetDist(p-e.yyx));
+
+    return normalize(n);
+}
+
+// ============================================
+// Ambient Occlusion
+// ============================================
+
+float calcAO(vec3 p, vec3 n) {
+    float occ = 0.0;
+    float scale = 1.0;
+
+    // Sample at increasing distances along normal
+    for (int i = 0; i < 5; i++) {
+        float h = 0.02 + 0.15 * float(i) / 4.0;
+        float d = GetDist(p + h * n);
+        occ += (h - d) * scale;
+        scale *= 0.85;
+    }
+
+    // Moderate AO effect
+    return clamp(1.0 - 3.0 * occ, 0.0, 1.0);
+}
+
+// ============================================
+// Main
+// ============================================
+
+void main() {
+    // Transform ray origin and direction to object space
+    vec3 ro = (uInverseModelMatrix * vec4(uCameraPosition, 1.0)).xyz;
+    vec3 worldRayDir = normalize(vPosition - uCameraPosition);
+    vec3 rd = normalize((uInverseModelMatrix * vec4(worldRayDir, 0.0)).xyz);
+
+    float trap;
+    float d = RayMarch(ro, rd, trap);
+
+    if (d > MAX_DIST) {
+        discard;
+    }
+
+    vec3 p = ro + rd * d;
+    vec3 n = GetNormal(p);
+
+    // Calculate ambient occlusion
+    float ao = calcAO(p, n);
+
+    // Convert base color to HSL
+    vec3 baseHSL = rgb2hsl(uColor);
+
+    // Invert trap: high trap in crevices, but we want peaks bright, valleys dark
+    float t = 1.0 - trap;
+
+    // Get palette color based on trap value and palette mode
+    vec3 surfaceColor = getPaletteColor(baseHSL, t, uPaletteMode);
+
+    // Apply ambient occlusion to darken crevices more aggressively
+    surfaceColor *= (0.3 + 0.7 * ao);
+
+    // Lighting calculation using scene lighting settings
+    vec3 col;
+    if (uLightEnabled) {
+        // Transform light direction to object space
+        vec3 l = normalize((uInverseModelMatrix * vec4(uLightDirection, 0.0)).xyz);
+
+        // Diffuse lighting
+        float dif = clamp(dot(n, l), 0.0, 1.0);
+
+        // Apply lighting with configurable ambient
+        // Ambient provides base illumination, diffuse adds directionality
+        float diffuseStrength = 1.0 - uAmbientIntensity;
+        col = surfaceColor * (uAmbientIntensity + diffuseStrength * dif);
+
+        // Tint by light color
+        col *= uLightColor;
+
+        // Specular highlight with configurable intensity and power
+        vec3 ref = reflect(-l, n);
+        float spec = pow(max(dot(ref, -rd), 0.0), uSpecularPower);
+        col += uLightColor * spec * uSpecularIntensity * 0.5;
+    } else {
+        // No directional light - just ambient
+        col = surfaceColor * uAmbientIntensity;
+    }
+
+    // Compute correct depth for the raymarched surface
+    vec4 worldHitPos = uModelMatrix * vec4(p, 1.0);
+    vec4 clipPos = uProjectionMatrix * uViewMatrix * worldHitPos;
+    float depth = (clipPos.z / clipPos.w) * 0.5 + 0.5;
+    gl_FragDepth = clamp(depth, 0.0, 1.0);
+
+    gl_FragColor = vec4(col, 1.0);
+}

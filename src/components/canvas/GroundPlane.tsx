@@ -39,6 +39,12 @@ export interface GroundPlaneProps {
   reflectivity?: number;
   /** Whether the plane is visible (default: true) */
   visible?: boolean;
+  /**
+   * Minimum bounding radius to consider for positioning.
+   * Used when external objects (like raymarched Mandelbulb) need to be
+   * accounted for even if they don't contribute to vertices array.
+   */
+  minBoundingRadius?: number;
 }
 
 /**
@@ -48,22 +54,35 @@ export interface GroundPlaneProps {
  *
  * @param vertices - Array of 3D vertices
  * @param offset - Additional distance below the bounding sphere
+ * @param minBoundingRadius - Minimum radius to consider (for external objects like raymarched Mandelbulb)
  * @returns Y position for the ground plane (stable during rotation)
  */
-function calculateGroundY(vertices: Vector3D[] | undefined, offset: number): number {
-  if (!vertices || vertices.length === 0) {
-    // Default position when no vertices
-    return -2;
-  }
-
-  // Calculate bounding sphere radius (max distance from origin)
+function calculateGroundY(
+  vertices: Vector3D[] | undefined,
+  offset: number,
+  minBoundingRadius?: number
+): number {
+  // Calculate bounding sphere radius from vertices (max distance from origin)
   // This gives a stable position that doesn't change during rotation
   let maxRadius = 0;
-  for (const v of vertices) {
-    const dist = Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
-    if (dist > maxRadius) {
-      maxRadius = dist;
+  if (vertices && vertices.length > 0) {
+    for (const v of vertices) {
+      const dist = Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+      if (dist > maxRadius) {
+        maxRadius = dist;
+      }
     }
+  }
+
+  // Use the larger of calculated radius and minimum bounding radius
+  // This ensures ground plane accounts for external objects (e.g., raymarched Mandelbulb)
+  if (minBoundingRadius !== undefined && minBoundingRadius > maxRadius) {
+    maxRadius = minBoundingRadius;
+  }
+
+  // Default position when no vertices and no minBoundingRadius
+  if (maxRadius === 0) {
+    return -2;
   }
 
   // Round to nearest 0.25 to prevent jitter from small position changes
@@ -176,16 +195,17 @@ export function GroundPlane({
   opacity = 0.3,
   reflectivity = 0.4,
   visible = true,
+  minBoundingRadius,
 }: GroundPlaneProps) {
   // Calculate position and size based on vertex count (not positions)
   // This ensures stability during rotation while still adapting to object changes
   const vertexCount = vertices?.length ?? 0;
 
   const groundY = useMemo(
-    () => calculateGroundY(vertices, offset),
-    // Only recalculate when vertex count or offset changes, not during rotation
+    () => calculateGroundY(vertices, offset, minBoundingRadius),
+    // Only recalculate when vertex count, offset, or minBoundingRadius changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [vertexCount, offset]
+    [vertexCount, offset, minBoundingRadius]
   );
 
   const planeSize = useMemo(

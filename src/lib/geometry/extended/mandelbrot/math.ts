@@ -2,44 +2,102 @@
  * Core Mathematical Functions for Mandelbrot Generation
  *
  * Implements the iteration step, escape time checks, and norm calculations.
+ * - 2D: Classic complex Mandelbrot (z² + c)
+ * - 3D: Mandelbulb using spherical coordinates
+ * - 4D-11D: Hyperbulb using hyperspherical coordinates
+ *
+ * @see docs/research/hyperbulb-guide.md for the hyperbulb algorithm
  */
 
 import type { VectorND } from '@/lib/math';
+import { hyperbulbStep } from './hyperspherical';
+
+/**
+ * Mandelbulb iteration step using spherical coordinates.
+ *
+ * Implements the power-n Mandelbulb formula:
+ * z_{n+1} = r^n * (sin(n*theta)*cos(n*phi), sin(n*theta)*sin(n*phi), cos(n*theta)) + c
+ *
+ * This produces true fractal self-similarity for 3D Mandelbrot visualization.
+ * Power 8 produces the classic Mandelbulb shape.
+ *
+ * @param z - Current iterate [x, y, z]
+ * @param c - Constant c (the point being tested)
+ * @param power - Mandelbulb power (default 8)
+ * @returns Next iterate z_{n+1}
+ */
+export function mandelbulbStep(
+  z: VectorND,
+  c: VectorND,
+  power: number = 8
+): VectorND {
+  const x = z[0] ?? 0;
+  const y = z[1] ?? 0;
+  const zCoord = z[2] ?? 0;
+
+  const r = Math.sqrt(x * x + y * y + zCoord * zCoord);
+
+  // Handle origin case to avoid division by zero
+  if (r < 1e-10) {
+    return [c[0] ?? 0, c[1] ?? 0, c[2] ?? 0];
+  }
+
+  // Convert to spherical coordinates
+  const theta = Math.acos(zCoord / r);
+  const phi = Math.atan2(y, x);
+
+  // Apply power transformation
+  const rPow = Math.pow(r, power);
+  const newTheta = theta * power;
+  const newPhi = phi * power;
+
+  // Convert back to Cartesian and add c
+  return [
+    rPow * Math.sin(newTheta) * Math.cos(newPhi) + (c[0] ?? 0),
+    rPow * Math.sin(newTheta) * Math.sin(newPhi) + (c[1] ?? 0),
+    rPow * Math.cos(newTheta) + (c[2] ?? 0),
+  ];
+}
 
 /**
  * N-dimensional Mandelbrot-like iteration step
  *
  * Computes z_{n+1} = f(z_n, c) where:
- * - For dimensions 0,1 (Re, Im): standard complex square z^2 + c
- * - For dimensions >= 2: coupled quadratics with cross-interaction
+ * - For dimension 2 (complex plane): standard complex square z^2 + c
+ * - For dimension 3: Mandelbulb formula using spherical coordinates
+ * - For dimensions 4-11: Hyperbulb formula using hyperspherical coordinates
+ *
+ * The Hyperbulb generalizes the Mandelbulb to arbitrary dimensions by using
+ * D-1 angular coordinates instead of just 2 (theta, phi).
  *
  * @param z - Current iterate z_n
  * @param c - Constant c (the point being tested)
+ * @param power - Power for Mandelbulb/Hyperbulb (default 8)
  * @returns Next iterate z_{n+1}
  */
-export function mandelbrotStep(z: VectorND, c: VectorND): VectorND {
+export function mandelbrotStep(z: VectorND, c: VectorND, power: number = 8): VectorND {
   const d = z.length;
-  const out = new Array(d).fill(0);
 
-  // Complex square for first two coordinates (Re, Im)
-  const zx = z[0] ?? 0;
-  const zy = z[1] ?? 0;
-  const cx = c[0] ?? 0;
-  const cy = c[1] ?? 0;
-
-  out[0] = zx * zx - zy * zy + cx;
-  out[1] = 2 * zx * zy + cy;
-
-  // Coupled quadratics for higher dimensions
-  for (let i = 2; i < d; i++) {
-    const zi = z[i] ?? 0;
-    const ci = c[i] ?? 0;
-    // Cross-interaction creates n-dimensional structure
-    const coupling = zx * zi - zy * ci;
-    out[i] = zi * zi - ci * ci + ci + 0.1 * coupling;
+  // Dimension 2: Standard complex Mandelbrot
+  if (d === 2) {
+    const zx = z[0] ?? 0;
+    const zy = z[1] ?? 0;
+    const cx = c[0] ?? 0;
+    const cy = c[1] ?? 0;
+    return [
+      zx * zx - zy * zy + cx,
+      2 * zx * zy + cy,
+    ];
   }
 
-  return out;
+  // Dimension 3: Use Mandelbulb formula (spherical coordinates)
+  if (d === 3) {
+    return mandelbulbStep(z, c, power);
+  }
+
+  // Dimensions 4-11: Use Hyperbulb formula (hyperspherical coordinates)
+  // This properly generalizes the Mandelbulb to higher dimensions
+  return hyperbulbStep(z, c, power);
 }
 
 /**
@@ -64,18 +122,20 @@ export function normSquared(v: VectorND): number {
  * @param c - Point to test (N-dimensional)
  * @param maxIter - Maximum iterations before considering bounded
  * @param escapeRadius - Radius beyond which orbit has escaped
+ * @param power - Power for Mandelbulb formula (3D only), default 8
  * @returns Iteration count at escape (0 to maxIter-1), or maxIter if bounded
  */
 export function mandelbrotEscapeTime(
   c: VectorND,
   maxIter: number,
-  escapeRadius: number
+  escapeRadius: number,
+  power: number = 8
 ): number {
   let z = new Array(c.length).fill(0) as VectorND;
   const R2 = escapeRadius * escapeRadius;
 
   for (let iter = 0; iter < maxIter; iter++) {
-    z = mandelbrotStep(z, c);
+    z = mandelbrotStep(z, c, power);
     const norm2 = normSquared(z);
     if (norm2 > R2) {
       return iter; // Escaped after this iteration
@@ -99,18 +159,20 @@ export function mandelbrotEscapeTime(
  * @param c - Point to test (N-dimensional)
  * @param maxIter - Maximum iterations
  * @param escapeRadius - Escape radius
+ * @param power - Power for Mandelbulb formula (3D only), default 8
  * @returns Smooth escape time (fractional), or maxIter if bounded
  */
 export function mandelbrotSmoothEscapeTime(
   c: VectorND,
   maxIter: number,
-  escapeRadius: number
+  escapeRadius: number,
+  power: number = 8
 ): number {
   let z = new Array(c.length).fill(0) as VectorND;
   const R2 = escapeRadius * escapeRadius;
 
   for (let iter = 0; iter < maxIter; iter++) {
-    z = mandelbrotStep(z, c);
+    z = mandelbrotStep(z, c, power);
     const norm2 = normSquared(z);
     if (norm2 > R2) {
       // Smooth coloring formula using escaped z's magnitude

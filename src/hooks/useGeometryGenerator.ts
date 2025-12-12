@@ -38,7 +38,11 @@ export function useGeometryGenerator() {
     },
     rootSystem: rootSystemConfig,
     cliffordTorus: cliffordTorusConfig,
-    mandelbrot: mandelbrotConfig,
+    // Disable edges for Mandelbrot as they are computationally expensive and visually chaotic
+    mandelbrot: {
+      ...mandelbrotConfig,
+      edgeMode: 'none',
+    },
   }), [polytopeConfig, hypersphereConfig, edgesVisible, rootSystemConfig, cliffordTorusConfig, mandelbrotConfig]);
 
   const geometry = useMemo(() => {

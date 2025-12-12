@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { TranslationControls } from '@/components/controls/TranslationControls';
 import { useTransformStore } from '@/stores/transformStore';
 import { useGeometryStore } from '@/stores/geometryStore';
@@ -31,7 +31,9 @@ describe('TranslationControls', () => {
 
   it('should show correct number of axis sliders for dimension', () => {
     // Test with 3D
-    useGeometryStore.getState().setDimension(3);
+    act(() => {
+      useGeometryStore.getState().setDimension(3);
+    });
     const { rerender } = render(<TranslationControls />);
 
     expect(screen.getByText('X')).toBeInTheDocument();
@@ -40,7 +42,9 @@ describe('TranslationControls', () => {
     expect(screen.queryByText('W')).not.toBeInTheDocument();
 
     // Test with 5D
-    useGeometryStore.getState().setDimension(5);
+    act(() => {
+      useGeometryStore.getState().setDimension(5);
+    });
     rerender(<TranslationControls />);
 
     expect(screen.getByText('V')).toBeInTheDocument();
@@ -58,8 +62,10 @@ describe('TranslationControls', () => {
   });
 
   it('should center object when center button is clicked', () => {
-    useTransformStore.getState().setTranslation(0, 2);
-    useTransformStore.getState().setTranslation(1, -1);
+    act(() => {
+      useTransformStore.getState().setTranslation(0, 2);
+      useTransformStore.getState().setTranslation(1, -1);
+    });
     render(<TranslationControls />);
 
     const centerButton = screen.getByRole('button', { name: /center object/i });
@@ -76,7 +82,9 @@ describe('TranslationControls', () => {
   });
 
   it('should enable center button when translations are non-zero', () => {
-    useTransformStore.getState().setTranslation(0, 2);
+    act(() => {
+      useTransformStore.getState().setTranslation(0, 2);
+    });
     render(<TranslationControls />);
 
     const centerButton = screen.getByRole('button', { name: /center object/i });

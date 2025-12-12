@@ -103,9 +103,11 @@ describe('useCameraMovement', () => {
     });
 
     // Trigger frame update
-    if (frameCallback) {
-      frameCallback({ camera: mockCamera });
-    }
+    act(() => {
+      if (frameCallback) {
+        frameCallback({ camera: mockCamera });
+      }
+    });
 
     // Camera should move closer to what it's looking at (origin)
     const newDistance = mockCamera.position.length();
@@ -130,9 +132,11 @@ describe('useCameraMovement', () => {
     });
 
     // Trigger frame update
-    if (frameCallback) {
-      frameCallback({ camera: mockCamera });
-    }
+    act(() => {
+      if (frameCallback) {
+        frameCallback({ camera: mockCamera });
+      }
+    });
 
     // Camera should move further from what it's looking at (origin)
     const newDistance = mockCamera.position.length();
@@ -156,9 +160,11 @@ describe('useCameraMovement', () => {
     });
 
     // Trigger frame update
-    if (frameCallback) {
-      frameCallback({ camera: mockCamera });
-    }
+    act(() => {
+      if (frameCallback) {
+        frameCallback({ camera: mockCamera });
+      }
+    });
 
     // Camera should strafe left (negative X)
     expect(mockCamera.position.x).toBeLessThan(initialX);
@@ -181,9 +187,11 @@ describe('useCameraMovement', () => {
     });
 
     // Trigger frame update
-    if (frameCallback) {
-      frameCallback({ camera: mockCamera });
-    }
+    act(() => {
+      if (frameCallback) {
+        frameCallback({ camera: mockCamera });
+      }
+    });
 
     // Camera should strafe right (positive X)
     expect(mockCamera.position.x).toBeGreaterThan(initialX);
@@ -212,9 +220,11 @@ describe('useCameraMovement', () => {
     const positionBefore = mockCamera.position.z;
 
     // Trigger frame update
-    if (frameCallback) {
-      frameCallback({ camera: mockCamera });
-    }
+    act(() => {
+      if (frameCallback) {
+        frameCallback({ camera: mockCamera });
+      }
+    });
 
     // Camera should not move (no keys pressed)
     expect(mockCamera.position.z).toBe(positionBefore);
@@ -239,9 +249,11 @@ describe('useCameraMovement', () => {
     });
 
     // Trigger frame update
-    if (frameCallback) {
-      frameCallback({ camera: mockCamera });
-    }
+    act(() => {
+      if (frameCallback) {
+        frameCallback({ camera: mockCamera });
+      }
+    });
 
     // Camera should move both forward (closer to target) and right
     expect(mockCamera.position.length()).toBeLessThan(initialDistance); // Forward (closer)
@@ -272,9 +284,11 @@ describe('useCameraMovement', () => {
     });
 
     // Trigger frame update
-    if (frameCallback) {
-      frameCallback({ camera: mockCamera });
-    }
+    act(() => {
+      if (frameCallback) {
+        frameCallback({ camera: mockCamera });
+      }
+    });
 
     // Camera should not move
     expect(mockCamera.position.z).toBe(initialZ);
@@ -299,9 +313,11 @@ describe('useCameraMovement', () => {
     });
 
     // Trigger frame update
-    if (frameCallback) {
-      frameCallback({ camera: mockCamera });
-    }
+    act(() => {
+      if (frameCallback) {
+        frameCallback({ camera: mockCamera });
+      }
+    });
 
     // Target should also move forward
     expect(mockControlsRef.current?.target?.z).toBeLessThan(initialTargetZ);
@@ -330,9 +346,11 @@ describe('useCameraMovement', () => {
     const positionBefore = mockCamera.position.z;
 
     // Trigger frame update
-    if (frameCallback) {
-      frameCallback({ camera: mockCamera });
-    }
+    act(() => {
+      if (frameCallback) {
+        frameCallback({ camera: mockCamera });
+      }
+    });
 
     // Camera should not move (keys cleared on blur)
     expect(mockCamera.position.z).toBe(positionBefore);
@@ -355,9 +373,11 @@ describe('useCameraMovement', () => {
     });
 
     // Trigger frame update
-    if (frameCallback) {
-      frameCallback({ camera: mockCamera });
-    }
+    act(() => {
+      if (frameCallback) {
+        frameCallback({ camera: mockCamera });
+      }
+    });
 
     // Camera should still move forward
     expect(mockCamera.position.z).toBeLessThan(initialZ);
@@ -383,9 +403,11 @@ describe('useCameraMovement', () => {
     });
 
     // Trigger frame update
-    if (frameCallback) {
-      frameCallback({ camera: mockCamera });
-    }
+    act(() => {
+      if (frameCallback) {
+        frameCallback({ camera: mockCamera });
+      }
+    });
 
     // Camera should rotate up (Y position increases while maintaining distance)
     expect(mockCamera.position.y).toBeGreaterThan(initialY);
@@ -416,9 +438,11 @@ describe('useCameraMovement', () => {
     });
 
     // Trigger frame update
-    if (frameCallback) {
-      frameCallback({ camera: mockCamera });
-    }
+    act(() => {
+      if (frameCallback) {
+        frameCallback({ camera: mockCamera });
+      }
+    });
 
     // Camera should rotate down (Y position decreases)
     expect(mockCamera.position.y).toBeLessThan(initialY);
@@ -445,9 +469,11 @@ describe('useCameraMovement', () => {
     });
 
     // Trigger frame update
-    if (frameCallback) {
-      frameCallback({ camera: mockCamera });
-    }
+    act(() => {
+      if (frameCallback) {
+        frameCallback({ camera: mockCamera });
+      }
+    });
 
     // Camera should rotate left (X position changes)
     expect(mockCamera.position.x).not.toBe(initialX);
@@ -474,9 +500,11 @@ describe('useCameraMovement', () => {
     });
 
     // Trigger frame update
-    if (frameCallback) {
-      frameCallback({ camera: mockCamera });
-    }
+    act(() => {
+      if (frameCallback) {
+        frameCallback({ camera: mockCamera });
+      }
+    });
 
     // Camera should rotate right (X position changes)
     expect(mockCamera.position.x).not.toBe(initialX);
@@ -507,9 +535,11 @@ describe('useCameraMovement', () => {
     const initialDistance = mockCamera.position.length();
 
     // Trigger frame update - should now move, not rotate
-    if (frameCallback) {
-      frameCallback({ camera: mockCamera });
-    }
+    act(() => {
+      if (frameCallback) {
+        frameCallback({ camera: mockCamera });
+      }
+    });
 
     // Camera should move forward (closer to target)
     expect(mockCamera.position.length()).toBeLessThan(initialDistance);
@@ -538,9 +568,11 @@ describe('useCameraMovement', () => {
     const positionBefore = mockCamera.position.clone();
 
     // Trigger frame update
-    if (frameCallback) {
-      frameCallback({ camera: mockCamera });
-    }
+    act(() => {
+      if (frameCallback) {
+        frameCallback({ camera: mockCamera });
+      }
+    });
 
     // Camera should not move or rotate (all state cleared on blur)
     expect(mockCamera.position.equals(positionBefore)).toBe(true);
@@ -743,13 +775,13 @@ describe('CAMERA_ORIGIN_SHORTCUTS', () => {
   });
 
   it('should have 0 key for move to origin', () => {
-    const moveShortcut = CAMERA_ORIGIN_SHORTCUTS.find((s) => s.key === '0' && !s.shift);
+    const moveShortcut = CAMERA_ORIGIN_SHORTCUTS.find((s) => s.key === '0' && !('shift' in s));
     expect(moveShortcut).toBeDefined();
     expect(moveShortcut?.description).toContain('origin');
   });
 
   it('should have Shift+0 for look at origin', () => {
-    const lookShortcut = CAMERA_ORIGIN_SHORTCUTS.find((s) => s.key === '0' && s.shift);
+    const lookShortcut = CAMERA_ORIGIN_SHORTCUTS.find((s) => s.key === '0' && 'shift' in s && s.shift);
     expect(lookShortcut).toBeDefined();
     expect(lookShortcut?.description).toContain('Look');
     expect(lookShortcut?.description).toContain('origin');

@@ -4,7 +4,7 @@
  *
  * Supports both traditional polytopes and extended objects:
  * - Polytopes: Hypercube, Simplex, Cross-Polytope
- * - Extended: Hypersphere, Root System, Clifford Torus
+ * - Extended: Hypersphere, Root System, Clifford Torus, Mandelbrot
  */
 
 import { useMemo } from 'react';
@@ -12,6 +12,7 @@ import { Canvas } from '@react-three/fiber';
 import { Scene } from '@/components/canvas/Scene';
 import { Layout } from '@/components/Layout';
 import { useVisualStore } from '@/stores/visualStore';
+import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useProjectedVertices } from '@/hooks/useProjectedVertices';
 import { useAnimationLoop } from '@/hooks/useAnimationLoop';
 import { useCrossSectionAnimation } from '@/hooks/useCrossSectionAnimation';
@@ -21,6 +22,8 @@ import { useGeometryGenerator } from '@/hooks/useGeometryGenerator';
 import { useObjectTransformations } from '@/hooks/useObjectTransformations';
 import { useFaceDetection } from '@/hooks/useFaceDetection';
 import { useCrossSectionCalculator } from '@/hooks/useCrossSectionCalculator';
+import { useMandelbrotColors } from '@/hooks/useMandelbrotColors';
+import MandelbulbMesh from '@/components/canvas/Mandelbulb/MandelbulbMesh';
 import type { Vector3D } from '@/lib/math/types';
 
 /**
@@ -59,21 +62,38 @@ function Visualizer() {
     objectType
   );
 
+  // 8. Compute Mandelbrot colors (derived from user's vertex color)
+  const mandelbrotConfig = useExtendedObjectStore((state) => state.mandelbrot);
+  const vertexColor = useVisualStore((state) => state.vertexColor);
+  const pointColors = useMandelbrotColors(geometry, mandelbrotConfig, vertexColor);
+  const facesVisible = useVisualStore((state) => state.facesVisible);
+
   // Prepare edges for rendering
   const edges = useMemo(() => {
     return geometry.edges as [number, number][];
   }, [geometry.edges]);
 
+  // Calculate minimum bounding radius for ground plane positioning
+  // When raymarched Mandelbulb is visible, ensure ground plane accounts for it
+  // Mandelbulb has approximate radius of 1.5 for power 8
+  const isMandelbulbVisible = objectType === 'mandelbrot' && facesVisible && dimension === 3;
+  const minBoundingRadius = isMandelbulbVisible ? 1.5 : undefined;
+
   return (
-    <Scene
-      vertices={mainOpacity > 0 ? projectedVertices as Vector3D[] : undefined}
-      edges={mainOpacity > 0 ? edges : undefined}
-      faces={mainOpacity > 0 ? faces : undefined}
-      opacity={mainOpacity}
-      crossSectionVertices={crossSectionVertices}
-      crossSectionEdges={crossSectionEdges}
-      isPointCloud={geometry.isPointCloud}
-    />
+    <>
+      <Scene
+        vertices={mainOpacity > 0 ? projectedVertices as Vector3D[] : undefined}
+        edges={mainOpacity > 0 ? edges : undefined}
+        faces={mainOpacity > 0 ? faces : undefined}
+        opacity={mainOpacity}
+        crossSectionVertices={crossSectionVertices}
+        crossSectionEdges={crossSectionEdges}
+        isPointCloud={geometry.isPointCloud}
+        pointColors={pointColors}
+        minBoundingRadius={minBoundingRadius}
+      />
+      {isMandelbulbVisible && <MandelbulbMesh />}
+    </>
   );
 }
 
