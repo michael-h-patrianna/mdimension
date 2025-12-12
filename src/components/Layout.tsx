@@ -13,7 +13,6 @@ import { ObjectTypeSelector } from './controls/ObjectTypeSelector';
 import { ObjectSettingsSection } from './controls/ObjectSettingsSection';
 import { RotationControls } from './controls/RotationControls';
 import { ProjectionControls } from './controls/ProjectionControls';
-import { ScaleControls } from './controls/ScaleControls';
 import { ShearControls } from './controls/ShearControls';
 import { TranslationControls } from './controls/TranslationControls';
 import { AnimationControls } from './controls/AnimationControls';
@@ -95,10 +94,6 @@ export const Layout: React.FC<LayoutProps> = ({
 
         <Section title="Cross-Section" defaultOpen={false}>
           <CrossSectionControls />
-        </Section>
-
-        <Section title="Scale" defaultOpen={false}>
-          <ScaleControls />
         </Section>
 
         <Section title="Shear" defaultOpen={false}>

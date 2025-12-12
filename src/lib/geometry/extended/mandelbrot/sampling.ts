@@ -89,6 +89,54 @@ export function generateSampleGrid(
 }
 
 /**
+ * Generate 2D sample grid for classic Mandelbrot on the complex plane
+ *
+ * Creates a grid of sample points in 2D space, mapping to the classic
+ * Mandelbrot set visualization on the complex plane.
+ *
+ * @param config - Mandelbrot configuration
+ * @returns Array of sample points with world positions and c vectors
+ */
+export function generateSampleGrid2D(config: MandelbrotConfig): MandelbrotSample[] {
+  const { resolution, center, extent, maxIterations, escapeRadius, colorMode } = config;
+  const samples: MandelbrotSample[] = [];
+
+  // Initialize center if not set (default to classic Mandelbrot center at -0.5, 0)
+  const effectiveCenter = center.length >= 2 ? center : [-0.5, 0];
+
+  const useSmooth = colorMode === 'smoothColoring';
+
+  for (let ix = 0; ix < resolution; ix++) {
+    for (let iy = 0; iy < resolution; iy++) {
+      // Map grid indices to parametric [0,1] coordinates
+      const tx = ix / (resolution - 1);
+      const ty = iy / (resolution - 1);
+
+      // Map to complex plane: x = real, y = imaginary
+      const x = (effectiveCenter[0] ?? -0.5) - extent + 2 * extent * tx;
+      const y = (effectiveCenter[1] ?? 0) - extent + 2 * extent * ty;
+
+      // 2D c vector
+      const cVector: VectorND = [x, y];
+
+      // Compute escape time
+      const escapeTime = useSmooth
+        ? mandelbrotSmoothEscapeTime(cVector, maxIterations, escapeRadius)
+        : mandelbrotEscapeTime(cVector, maxIterations, escapeRadius);
+
+      samples.push({
+        // Map to 3D world position on X-Z plane at Y=0
+        worldPos: [x, 0, y],
+        cVector,
+        escapeTime,
+      });
+    }
+  }
+
+  return samples;
+}
+
+/**
  * Filter samples based on color mode
  *
  * For most modes, we keep ALL points - the fractal structure emerges

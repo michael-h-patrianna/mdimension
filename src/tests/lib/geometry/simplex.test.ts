@@ -7,10 +7,9 @@ import { generateSimplex } from '@/lib/geometry/simplex';
 
 describe('generateSimplex', () => {
   describe('dimension validation', () => {
-    it('should throw error for dimension < 3', () => {
-      expect(() => generateSimplex(2)).toThrow('Simplex dimension must be at least 3');
-      expect(() => generateSimplex(1)).toThrow('Simplex dimension must be at least 3');
-      expect(() => generateSimplex(0)).toThrow('Simplex dimension must be at least 3');
+    it('should throw error for dimension < 2', () => {
+      expect(() => generateSimplex(1)).toThrow('Simplex dimension must be at least 2');
+      expect(() => generateSimplex(0)).toThrow('Simplex dimension must be at least 2');
     });
 
     it('should accept dimension >= 3', () => {

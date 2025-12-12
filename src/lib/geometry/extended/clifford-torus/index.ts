@@ -1,13 +1,19 @@
 /**
  * Clifford Torus Generator
  *
- * Exports logic for generating classic and generalized Clifford tori.
+ * Exports logic for generating classic and generalized Clifford tori,
+ * as well as degraded forms for lower dimensions:
+ * - 2D: Annulus (ring)
+ * - 3D: Standard torus surface
+ * - 4D+: Classic or generalized Clifford torus
  */
 
 import type { NdGeometry } from '../../types';
 import type { CliffordTorusConfig } from '../types';
 import { generateClassicCliffordTorus } from './classic';
 import { generateGeneralizedCliffordTorus } from './generalized';
+import { generateAnnulus } from './annulus';
+import { generateTorus3D } from './torus3d';
 
 // Re-export specific generators and helpers
 export {
@@ -22,6 +28,10 @@ export {
   buildGeneralizedCliffordTorusEdges,
 } from './generalized';
 
+export { generateAnnulus, generateAnnulusPoints, buildAnnulusGridEdges } from './annulus';
+
+export { generateTorus3D, generateTorus3DPoints, buildTorus3DGridEdges } from './torus3d';
+
 export {
   verifyCliffordTorusOnSphere,
   verifyGeneralizedCliffordTorusOnSphere,
@@ -34,15 +44,34 @@ export {
 } from './utils';
 
 /**
- * Generates a Clifford torus geometry (dispatcher for both classic and generalized modes)
+ * Generates a Clifford torus geometry (dispatcher for all dimensions)
  *
- * @param dimension - Dimensionality of the ambient space
+ * Dispatches to the appropriate generator based on dimension:
+ * - 2D: Annulus (ring)
+ * - 3D: Standard torus surface
+ * - 4D+: Classic or generalized Clifford torus
+ *
+ * @param dimension - Dimensionality of the ambient space (2-11)
  * @param config - Clifford torus configuration
- * @returns NdGeometry representing the Clifford torus
- * @throws {Error} If dimension constraints are violated for the selected mode
+ * @returns NdGeometry representing the torus variant
+ * @throws {Error} If dimension < 2
  *
  * @example
  * ```typescript
+ * // 2D annulus
+ * const annulus = generateCliffordTorus(2, {
+ *   mode: 'classic',
+ *   radius: 1.0,
+ *   resolutionU: 32,
+ *   resolutionV: 8,
+ *   edgeMode: 'grid',
+ *   k: 2,
+ *   stepsPerCircle: 16,
+ * });
+ *
+ * // 3D torus surface
+ * const torus3d = generateCliffordTorus(3, { ... });
+ *
  * // Classic 4D Clifford torus
  * const classicTorus = generateCliffordTorus(4, {
  *   mode: 'classic',
@@ -70,11 +99,25 @@ export function generateCliffordTorus(
   dimension: number,
   config: CliffordTorusConfig
 ): NdGeometry {
-  // Dispatch based on mode
+  if (dimension < 2) {
+    throw new Error('Clifford torus requires dimension >= 2');
+  }
+
+  // 2D: Generate annulus (ring)
+  if (dimension === 2) {
+    return generateAnnulus(config);
+  }
+
+  // 3D: Generate standard torus surface
+  if (dimension === 3) {
+    return generateTorus3D(config);
+  }
+
+  // 4D+: Dispatch based on mode
   if (config.mode === 'generalized') {
     return generateGeneralizedCliffordTorus(dimension, config);
   }
 
-  // Classic mode (default)
+  // Classic mode (default) for 4D+
   return generateClassicCliffordTorus(dimension, config);
 }

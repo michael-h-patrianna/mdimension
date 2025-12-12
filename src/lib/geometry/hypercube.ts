@@ -14,14 +14,16 @@ import type { PolytopeGeometry } from './types';
  * - Vertices: 2^n (all combinations of ±scale in each coordinate)
  * - Edges: n * 2^(n-1) (connect vertices differing in exactly 1 coordinate)
  *
- * @param dimension - Dimensionality of the hypercube (must be >= 3)
+ * For 2D, this generates a square with 4 vertices and 4 edges.
+ *
+ * @param dimension - Dimensionality of the hypercube (must be >= 2)
  * @param scale - Scale factor for vertex coordinates (default: 1.0, range: ±scale)
  * @returns PolytopeGeometry representing the hypercube
- * @throws {Error} If dimension is less than 3
+ * @throws {Error} If dimension is less than 2
  */
 export function generateHypercube(dimension: number, scale = 1.0): PolytopeGeometry {
-  if (dimension < 3) {
-    throw new Error('Hypercube dimension must be at least 3');
+  if (dimension < 2) {
+    throw new Error('Hypercube dimension must be at least 2');
   }
 
   const vertices: VectorND[] = [];

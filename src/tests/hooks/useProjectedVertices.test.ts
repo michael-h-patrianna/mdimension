@@ -196,10 +196,22 @@ describe('useProjectedVertices', () => {
       });
     });
 
+    it('should handle 2D vertices by projecting to X-Z plane', () => {
+      // 2D vertices are now valid and project to [x, 0, z]
+      const vertices2D: VectorND[] = [
+        [1, 2], // 2D: [x, z]
+      ];
+
+      const { result } = renderHook(() => useProjectedVertices(vertices2D));
+
+      // Should project to [x, 0, z]
+      expect(result.current).toEqual([[1, 0, 2]]);
+    });
+
     it('should handle invalid vertices gracefully', () => {
-      // Invalid: less than 3 dimensions
+      // Invalid: less than 2 dimensions
       const invalidVertices: VectorND[] = [
-        [1, 2], // Only 2D
+        [1], // Only 1D
       ];
 
       const { result } = renderHook(() => useProjectedVertices(invalidVertices));

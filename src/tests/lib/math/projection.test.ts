@@ -33,8 +33,13 @@ describe('Projection Operations', () => {
       expect(projected).toEqual([1, 2, 3]);
     });
 
-    it('throws error for vectors with less than 3 dimensions', () => {
-      expect(() => projectOrthographic([1, 2])).toThrow();
+    it('projects 2D vector to XZ plane at Y=0', () => {
+      const v = [1, 2];
+      const projected = projectOrthographic(v);
+      expect(projected).toEqual([1, 0, 2]);
+    });
+
+    it('throws error for vectors with less than 2 dimensions', () => {
       expect(() => projectOrthographic([1])).toThrow();
     });
   });
@@ -133,8 +138,14 @@ describe('Projection Operations', () => {
       }
     });
 
-    it('throws error for vectors with less than 3 dimensions', () => {
-      expect(() => projectPerspective([1, 2], 4)).toThrow();
+    it('projects 2D vector to XZ plane at Y=0', () => {
+      const v = [1, 2];
+      const projected = projectPerspective(v, 4);
+      expect(projected).toEqual([1, 0, 2]);
+    });
+
+    it('throws error for vectors with less than 2 dimensions', () => {
+      expect(() => projectPerspective([1], 4)).toThrow();
     });
 
     it('throws error for non-positive projection distance', () => {

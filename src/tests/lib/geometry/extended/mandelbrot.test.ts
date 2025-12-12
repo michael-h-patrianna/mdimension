@@ -423,8 +423,16 @@ describe('generateMandelbrot', () => {
       expect(geometry.dimension).toBe(7);
     });
 
-    it('should throw for dimension < 3', () => {
-      expect(() => generateMandelbrot(2, config)).toThrow();
+    it('should generate classic 2D Mandelbrot for dimension 2', () => {
+      const geometry = generateMandelbrot(2, config);
+      expect(geometry.dimension).toBe(2);
+      expect(geometry.metadata?.name).toContain('Classic');
+      // 2D Mandelbrot uses resolution^2 samples
+      expect(geometry.vertices.length).toBe(config.resolution * config.resolution);
+    });
+
+    it('should throw for dimension < 2', () => {
+      expect(() => generateMandelbrot(1, config)).toThrow();
     });
   });
 

@@ -28,10 +28,10 @@ export function useProjectedVertices(
       return [];
     }
 
-    // Validate all vertices have at least 3 dimensions
+    // Validate all vertices have at least 2 dimensions
     const dimension = rotatedVertices[0]?.length ?? 0;
-    if (dimension < 3) {
-      console.warn(`Cannot project ${dimension}D vertices: need at least 3 dimensions`);
+    if (dimension < 2) {
+      console.warn(`Cannot project ${dimension}D vertices: need at least 2 dimensions`);
       return [];
     }
 

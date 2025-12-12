@@ -14,14 +14,17 @@ import type { PolytopeGeometry } from './types';
  * - Vertices: 2n (±scale along each axis)
  * - Edges: 2n(n-1) (connect vertices NOT on the same axis)
  *
- * @param dimension - Dimensionality of the cross-polytope (must be >= 3)
+ * For 2D, this generates a diamond (square rotated 45°) with 4 vertices at
+ * (±1, 0) and (0, ±1), and 4 edges.
+ *
+ * @param dimension - Dimensionality of the cross-polytope (must be >= 2)
  * @param scale - Scale factor for vertex coordinates (default: 1.0)
  * @returns PolytopeGeometry representing the cross-polytope
- * @throws {Error} If dimension is less than 3
+ * @throws {Error} If dimension is less than 2
  */
 export function generateCrossPolytope(dimension: number, scale = 1.0): PolytopeGeometry {
-  if (dimension < 3) {
-    throw new Error('Cross-polytope dimension must be at least 3');
+  if (dimension < 2) {
+    throw new Error('Cross-polytope dimension must be at least 2');
   }
 
   const vertices: VectorND[] = [];

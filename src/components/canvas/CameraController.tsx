@@ -1,6 +1,7 @@
 import { useRef, useEffect } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
+import { useCameraMovement } from '@/hooks/useCameraMovement'
 
 /**
  * Props for the CameraController component.
@@ -99,6 +100,9 @@ export function CameraController({
 }: CameraControllerProps) {
   const { camera, gl } = useThree()
   const controlsRef = useRef<OrbitControlsImpl | null>(null)
+
+  // Enable WASD camera movement with OrbitControls target sync
+  useCameraMovement({ enabled: true, controlsRef })
 
   // Initialize controls ONLY when camera or gl changes (rare)
   useEffect(() => {

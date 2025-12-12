@@ -122,10 +122,15 @@ describe('URL state serializer', () => {
     });
 
     it('should validate dimension range', () => {
+      // 2 is now valid (MIN_DIMENSION is 2)
       const state1 = deserializeState('d=2&t=hypercube');
-      expect(state1.dimension).toBeUndefined();
+      expect(state1.dimension).toBe(2);
 
-      // 7 is now valid (MAX_DIMENSION is 11)
+      // 1 is invalid (below MIN_DIMENSION)
+      const state1b = deserializeState('d=1&t=hypercube');
+      expect(state1b.dimension).toBeUndefined();
+
+      // 7 is valid (MAX_DIMENSION is 11)
       const state2 = deserializeState('d=7&t=hypercube');
       expect(state2.dimension).toBe(7);
 

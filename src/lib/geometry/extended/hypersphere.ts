@@ -135,10 +135,12 @@ export function sampleHypersphereSolid(
 /**
  * Generates a hypersphere geometry
  *
- * @param dimension - Dimensionality of the ambient space (3-11)
+ * For 2D, this generates a circle (S^1) or disk (B^2).
+ *
+ * @param dimension - Dimensionality of the ambient space (2-11)
  * @param config - Hypersphere configuration options
  * @returns NdGeometry representing the hypersphere
- * @throws {Error} If dimension is less than 3
+ * @throws {Error} If dimension is less than 2
  *
  * @example
  * ```typescript
@@ -155,8 +157,8 @@ export function generateHypersphere(
   dimension: number,
   config: HypersphereConfig
 ): NdGeometry {
-  if (dimension < 3) {
-    throw new Error('Hypersphere dimension must be at least 3');
+  if (dimension < 2) {
+    throw new Error('Hypersphere dimension must be at least 2');
   }
 
   const { mode, sampleCount, radius, wireframeEnabled, neighborCount } = config;

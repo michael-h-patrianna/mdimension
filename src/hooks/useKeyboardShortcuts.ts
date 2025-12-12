@@ -22,18 +22,36 @@ export interface UseKeyboardShortcutsOptions {
   enabled?: boolean;
 }
 
+/** Shortcut configuration for display (grouped by category) */
 export const SHORTCUTS: Omit<ShortcutConfig, 'action'>[] = [
+  // Camera Movement
+  { key: 'w', description: 'Move camera forward' },
+  { key: 'a', description: 'Strafe camera left' },
+  { key: 's', description: 'Move camera backward' },
+  { key: 'd', description: 'Strafe camera right' },
+  // Camera Rotation (Shift + WASD)
+  { key: 'w', shift: true, description: 'Rotate camera up' },
+  { key: 'a', shift: true, description: 'Rotate camera left' },
+  { key: 's', shift: true, description: 'Rotate camera down' },
+  { key: 'd', shift: true, description: 'Rotate camera right' },
+  // Camera Origin
+  { key: '0', description: 'Move camera to origin' },
+  { key: '0', shift: true, description: 'Look at origin' },
+  // Animation
   { key: ' ', description: 'Play/Pause animation' },
-  { key: 'r', description: 'Reset rotation' },
+  { key: 'r', description: 'Reverse animation direction' },
+  { key: '+', description: 'Increase animation speed' },
+  { key: '-', description: 'Decrease animation speed' },
+  // Geometry
   { key: 'ArrowUp', description: 'Increase dimension' },
   { key: 'ArrowDown', description: 'Decrease dimension' },
-  { key: 's', ctrl: true, description: 'Export PNG' },
   { key: '1', description: 'Select hypercube' },
   { key: '2', description: 'Select simplex' },
   { key: '3', description: 'Select cross-polytope' },
-  { key: '+', description: 'Increase animation speed' },
-  { key: '-', description: 'Decrease animation speed' },
-  { key: 'd', description: 'Reverse animation direction' },
+  // Rotation
+  { key: 'x', description: 'Reset rotation' },
+  // Export
+  { key: 's', ctrl: true, description: 'Export PNG' },
 ];
 
 /**
@@ -76,8 +94,15 @@ export function useKeyboardShortcuts(
         return;
       }
 
-      // R - Reset rotation
+      // R - Reverse animation direction
       if (key === 'r' && !isCtrlOrMeta) {
+        event.preventDefault();
+        toggleDirection();
+        return;
+      }
+
+      // X - Reset rotation
+      if (key === 'x' && !isCtrlOrMeta) {
         event.preventDefault();
         resetAllRotations();
         return;
@@ -144,12 +169,7 @@ export function useKeyboardShortcuts(
         return;
       }
 
-      // D - Toggle direction
-      if (key === 'd' && !isCtrlOrMeta) {
-        event.preventDefault();
-        toggleDirection();
-        return;
-      }
+      // Note: WASD keys are handled by useCameraMovement hook for camera movement
     },
     [
       toggle,

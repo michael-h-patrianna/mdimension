@@ -137,28 +137,39 @@ describe('useKeyboardShortcuts', () => {
     expect(useAnimationStore.getState().speed).toBe(0.75);
   });
 
-  it('should toggle direction on d key', () => {
+  it('should reverse animation direction on r key', () => {
+    renderHook(() => useKeyboardShortcuts({ enabled: true }));
+    const initialDirection = useAnimationStore.getState().direction;
+
+    const event = new KeyboardEvent('keydown', { key: 'r' });
+    window.dispatchEvent(event);
+
+    expect(useAnimationStore.getState().direction).toBe(-initialDirection);
+  });
+
+  it('should reset rotations on x key', () => {
+    useRotationStore.getState().setRotation('XY', 1.5);
+    expect(useRotationStore.getState().rotations.get('XY')).toBe(1.5);
+
+    renderHook(() => useKeyboardShortcuts({ enabled: true }));
+
+    const event = new KeyboardEvent('keydown', { key: 'x' });
+    window.dispatchEvent(event);
+
+    // After reset, rotation should be cleared (map is empty or angle is 0)
+    const angle = useRotationStore.getState().rotations.get('XY');
+    expect(angle === undefined || angle === 0).toBe(true);
+  });
+
+  it('should not reverse direction on d key (now used for camera movement)', () => {
     renderHook(() => useKeyboardShortcuts({ enabled: true }));
     const initialDirection = useAnimationStore.getState().direction;
 
     const event = new KeyboardEvent('keydown', { key: 'd' });
     window.dispatchEvent(event);
 
-    expect(useAnimationStore.getState().direction).toBe(-initialDirection);
-  });
-
-  it('should reset rotations on r key', () => {
-    useRotationStore.getState().setRotation('XY', 1.5);
-    expect(useRotationStore.getState().rotations.get('XY')).toBe(1.5);
-
-    renderHook(() => useKeyboardShortcuts({ enabled: true }));
-
-    const event = new KeyboardEvent('keydown', { key: 'r' });
-    window.dispatchEvent(event);
-
-    // After reset, rotation should be cleared (map is empty or angle is 0)
-    const angle = useRotationStore.getState().rotations.get('XY');
-    expect(angle === undefined || angle === 0).toBe(true);
+    // D key no longer affects animation direction (handled by useCameraMovement)
+    expect(useAnimationStore.getState().direction).toBe(initialDirection);
   });
 
   it('should not trigger shortcuts in input fields', () => {
@@ -234,5 +245,59 @@ describe('SHORTCUTS', () => {
     const downShortcut = SHORTCUTS.find((s) => s.key === 'ArrowDown');
     expect(upShortcut).toBeDefined();
     expect(downShortcut).toBeDefined();
+  });
+
+  it('should have WASD shortcuts for camera movement', () => {
+    const wShortcut = SHORTCUTS.find((s) => s.key === 'w' && !s.shift);
+    const aShortcut = SHORTCUTS.find((s) => s.key === 'a' && !s.shift);
+    const sShortcut = SHORTCUTS.find((s) => s.key === 's' && !s.ctrl && !s.shift);
+    const dShortcut = SHORTCUTS.find((s) => s.key === 'd' && !s.shift);
+
+    expect(wShortcut).toBeDefined();
+    expect(wShortcut?.description).toContain('forward');
+    expect(aShortcut).toBeDefined();
+    expect(aShortcut?.description).toContain('left');
+    expect(sShortcut).toBeDefined();
+    expect(sShortcut?.description).toContain('backward');
+    expect(dShortcut).toBeDefined();
+    expect(dShortcut?.description).toContain('right');
+  });
+
+  it('should have Shift+WASD shortcuts for camera rotation', () => {
+    const wShiftShortcut = SHORTCUTS.find((s) => s.key === 'w' && s.shift);
+    const aShiftShortcut = SHORTCUTS.find((s) => s.key === 'a' && s.shift);
+    const sShiftShortcut = SHORTCUTS.find((s) => s.key === 's' && s.shift);
+    const dShiftShortcut = SHORTCUTS.find((s) => s.key === 'd' && s.shift);
+
+    expect(wShiftShortcut).toBeDefined();
+    expect(wShiftShortcut?.description).toContain('Rotate');
+    expect(aShiftShortcut).toBeDefined();
+    expect(aShiftShortcut?.description).toContain('Rotate');
+    expect(sShiftShortcut).toBeDefined();
+    expect(sShiftShortcut?.description).toContain('Rotate');
+    expect(dShiftShortcut).toBeDefined();
+    expect(dShiftShortcut?.description).toContain('Rotate');
+  });
+
+  it('should have 0 and Shift+0 shortcuts for camera origin', () => {
+    const moveToOrigin = SHORTCUTS.find((s) => s.key === '0' && !s.shift);
+    const lookAtOrigin = SHORTCUTS.find((s) => s.key === '0' && s.shift);
+
+    expect(moveToOrigin).toBeDefined();
+    expect(moveToOrigin?.description).toContain('origin');
+    expect(lookAtOrigin).toBeDefined();
+    expect(lookAtOrigin?.description).toContain('origin');
+  });
+
+  it('should have r shortcut for reverse animation direction', () => {
+    const rShortcut = SHORTCUTS.find((s) => s.key === 'r');
+    expect(rShortcut).toBeDefined();
+    expect(rShortcut?.description).toContain('Reverse');
+  });
+
+  it('should have x shortcut for reset rotation', () => {
+    const xShortcut = SHORTCUTS.find((s) => s.key === 'x');
+    expect(xShortcut).toBeDefined();
+    expect(xShortcut?.description).toContain('Reset');
   });
 });

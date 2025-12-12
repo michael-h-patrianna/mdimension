@@ -19,14 +19,16 @@ import type { PolytopeGeometry } from './types';
  * - v_i = unit vector along axis i (for i = 1 to n)
  * - Center at origin and scale to fit in [-scale, scale]
  *
- * @param dimension - Dimensionality of the space (must be >= 3)
+ * For 2D, this generates an equilateral triangle with 3 vertices and 3 edges.
+ *
+ * @param dimension - Dimensionality of the space (must be >= 2)
  * @param scale - Scale factor for vertex coordinates (default: 1.0, range: ±scale)
  * @returns PolytopeGeometry representing the simplex
- * @throws {Error} If dimension is less than 3
+ * @throws {Error} If dimension is less than 2
  */
 export function generateSimplex(dimension: number, scale = 1.0): PolytopeGeometry {
-  if (dimension < 3) {
-    throw new Error('Simplex dimension must be at least 3');
+  if (dimension < 2) {
+    throw new Error('Simplex dimension must be at least 2');
   }
 
   const vertexCount = dimension + 1;

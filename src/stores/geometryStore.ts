@@ -12,7 +12,7 @@ import type { ObjectType } from '@/lib/geometry/types';
 import { isPolytopeType, isExtendedObjectType } from '@/lib/geometry/types';
 
 /** Minimum supported dimension */
-export const MIN_DIMENSION = 3;
+export const MIN_DIMENSION = 2;
 
 /** Maximum supported dimension */
 export const MAX_DIMENSION = 11;
@@ -25,10 +25,10 @@ export const DEFAULT_OBJECT_TYPE: ObjectType = 'hypercube';
 
 /**
  * Dimension constraints for certain object types
+ * Note: Clifford Torus now supports 2D (annulus) and 3D (torus surface)
  */
 export const DIMENSION_CONSTRAINTS: Record<string, { min?: number; exact?: number }> = {
-  'clifford-torus': { min: 4 },
-  'root-system': {}, // D_n requires min 4, E8 requires exact 8 - handled in root system config
+  'root-system': { min: 3 }, // Root systems not meaningful in 2D (A-type produces only 2 trivial roots)
 };
 
 interface GeometryState {
@@ -70,12 +70,12 @@ export function validateObjectTypeForDimension(
   type: ObjectType,
   dimension: number
 ): { valid: boolean; fallbackType?: ObjectType; message?: string } {
-  // Clifford torus requires dimension >= 4
-  if (type === 'clifford-torus' && dimension < 4) {
+  // Root system requires dimension >= 3 (A-type produces only 2 trivial roots in 2D)
+  if (type === 'root-system' && dimension < 3) {
     return {
       valid: false,
       fallbackType: 'hypercube',
-      message: 'Clifford Torus requires dimension >= 4',
+      message: 'Root System requires dimension >= 3',
     };
   }
 

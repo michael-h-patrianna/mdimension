@@ -31,8 +31,11 @@ describe('State Management Integration', () => {
       store.setDimension(12); // Above max (11)
       expect(useGeometryStore.getState().dimension).toBe(11);
 
-      store.setDimension(2); // Below min
-      expect(useGeometryStore.getState().dimension).toBe(3);
+      store.setDimension(1); // Below min (2)
+      expect(useGeometryStore.getState().dimension).toBe(2);
+
+      store.setDimension(2); // Valid (now minimum)
+      expect(useGeometryStore.getState().dimension).toBe(2);
 
       store.setDimension(5); // Valid
       expect(useGeometryStore.getState().dimension).toBe(5);

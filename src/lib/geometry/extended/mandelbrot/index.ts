@@ -8,13 +8,13 @@
 import type { NdGeometry } from '../../types';
 import type { VectorND } from '@/lib/math';
 import type { MandelbrotConfig } from '../types';
-import { generateSampleGrid, filterSamples } from './sampling';
-import { generateMandelbrotEdges } from './edges';
+import { generateSampleGrid, generateSampleGrid2D, filterSamples } from './sampling';
+import { generateMandelbrotEdges, generateMandelbrot2DEdges } from './edges';
 
 export { mandelbrotStep, normSquared, mandelbrotEscapeTime, mandelbrotSmoothEscapeTime } from './math';
-export { generateSampleGrid, filterSamples, type MandelbrotSample } from './sampling';
+export { generateSampleGrid, generateSampleGrid2D, filterSamples, type MandelbrotSample } from './sampling';
 export { getMandelbrotStats } from './utils';
-export { generateMandelbrotEdges, calculateGridEdgeCount } from './edges';
+export { generateMandelbrotEdges, generateMandelbrot2DEdges, calculateGridEdgeCount, calculate2DGridEdgeCount } from './edges';
 
 /**
  * Main generator function - returns point cloud geometry with optional edges
@@ -28,10 +28,12 @@ export { generateMandelbrotEdges, calculateGridEdgeCount } from './edges';
  *
  * Edge Modes:
  * - 'none': Point cloud only (default)
- * - 'grid': Connect adjacent points in the 3D sampling grid, enabling
+ * - 'grid': Connect adjacent points in the sampling grid, enabling
  *   wireframe and dual outline shader effects
  *
- * @param dimension - Dimensionality of the Mandelbrot space (3-11)
+ * For 2D, this generates the classic Mandelbrot set on the complex plane.
+ *
+ * @param dimension - Dimensionality of the Mandelbrot space (2-11)
  * @param config - Mandelbrot configuration parameters
  * @returns NdGeometry representing the Mandelbrot point cloud with escape values
  */
@@ -40,12 +42,15 @@ export function generateMandelbrot(
   config: MandelbrotConfig
 ): NdGeometry {
   // Validate dimension
-  if (dimension < 3) {
-    throw new Error(`Mandelbrot requires dimension >= 3, got ${dimension}`);
+  if (dimension < 2) {
+    throw new Error(`Mandelbrot requires dimension >= 2, got ${dimension}`);
   }
 
-  // Generate all samples
-  const allSamples = generateSampleGrid(dimension, config);
+  // Generate all samples - use 2D sampling for dimension 2
+  const allSamples =
+    dimension === 2
+      ? generateSampleGrid2D(config)
+      : generateSampleGrid(dimension, config);
 
   // Filter based on color mode (usually keeps all points)
   const filteredSamples = filterSamples(allSamples, config);
@@ -61,11 +66,19 @@ export function generateMandelbrot(
   );
 
   // Generate edges based on edge mode
-  // Note: Edge generation uses the UNFILTERED sample count to maintain grid connectivity
-  // If filtering removes points, grid edges may connect to non-existent points - handle in renderer
-  const edges = config.edgeMode === 'grid' && config.colorMode !== 'interiorOnly'
-    ? generateMandelbrotEdges(config.resolution, config.edgeMode)
-    : [];
+  // Use 2D edge generation for dimension 2
+  const edges =
+    config.edgeMode === 'grid' && config.colorMode !== 'interiorOnly'
+      ? dimension === 2
+        ? generateMandelbrot2DEdges(config.resolution)
+        : generateMandelbrotEdges(config.resolution, config.edgeMode)
+      : [];
+
+  // Name based on dimension
+  const name =
+    dimension === 2
+      ? 'Classic Mandelbrot Set (complex plane)'
+      : `${dimension}D Mandelbrot Set`;
 
   return {
     dimension,
@@ -74,8 +87,8 @@ export function generateMandelbrot(
     edges,
     isPointCloud: true,
     metadata: {
-      name: `${dimension}D Mandelbrot Set`,
-      formula: 'z_{n+1} = f(z_n, c), |z| bounded',
+      name,
+      formula: dimension === 2 ? 'z_{n+1} = z_n² + c' : 'z_{n+1} = f(z_n, c), |z| bounded',
       properties: {
         maxIterations: config.maxIterations,
         escapeRadius: config.escapeRadius,

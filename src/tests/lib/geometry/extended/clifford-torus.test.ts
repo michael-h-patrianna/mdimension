@@ -209,11 +209,23 @@ describe('generateCliffordTorus', () => {
   });
 
   describe('dimension validation', () => {
-    it('should throw for dimension < 4', () => {
-      expect(() => generateCliffordTorus(3, DEFAULT_CLIFFORD_TORUS_CONFIG)).toThrow();
+    it('should throw for dimension < 2', () => {
+      expect(() => generateCliffordTorus(1, DEFAULT_CLIFFORD_TORUS_CONFIG)).toThrow();
     });
 
-    it('should accept dimension >= 4', () => {
+    it('should generate annulus for dimension 2', () => {
+      const geometry = generateCliffordTorus(2, DEFAULT_CLIFFORD_TORUS_CONFIG);
+      expect(geometry.dimension).toBe(2);
+      expect(geometry.metadata?.properties?.mode).toBe('2d-annulus');
+    });
+
+    it('should generate 3D torus surface for dimension 3', () => {
+      const geometry = generateCliffordTorus(3, DEFAULT_CLIFFORD_TORUS_CONFIG);
+      expect(geometry.dimension).toBe(3);
+      expect(geometry.metadata?.properties?.mode).toBe('3d-torus');
+    });
+
+    it('should accept dimension >= 4 for classic mode', () => {
       expect(() => generateCliffordTorus(4, DEFAULT_CLIFFORD_TORUS_CONFIG)).not.toThrow();
       expect(() => generateCliffordTorus(8, DEFAULT_CLIFFORD_TORUS_CONFIG)).not.toThrow();
     });
@@ -647,14 +659,18 @@ describe('generateCliffordTorus dispatcher', () => {
     expect(geometry.metadata?.properties?.k).toBe(3);
   });
 
-  it('should throw for classic mode with dimension < 4', () => {
-    expect(() => generateCliffordTorus(3, {
+  it('should generate 3D torus for dimension 3 regardless of mode', () => {
+    // When dimension is 3, both classic and generalized modes generate torus3d
+    const geometry = generateCliffordTorus(3, {
       ...DEFAULT_CLIFFORD_TORUS_CONFIG,
       mode: 'classic',
-    })).toThrow();
+    });
+    expect(geometry.dimension).toBe(3);
+    expect(geometry.metadata?.properties?.mode).toBe('3d-torus');
   });
 
-  it('should allow generalized mode in dimension 2 with k=1', () => {
+  it('should generate 2D annulus for dimension 2 regardless of mode', () => {
+    // When dimension is 2, both classic and generalized modes generate annulus
     const geometry = generateCliffordTorus(2, {
       ...DEFAULT_CLIFFORD_TORUS_CONFIG,
       mode: 'generalized',
@@ -662,6 +678,10 @@ describe('generateCliffordTorus dispatcher', () => {
       stepsPerCircle: 16,
     });
 
-    expect(geometry.vertices).toHaveLength(16);
+    expect(geometry.dimension).toBe(2);
+    expect(geometry.metadata?.properties?.mode).toBe('2d-annulus');
+    // Annulus uses resolutionU * max(2, resolutionV) points
+    const expectedPoints = DEFAULT_CLIFFORD_TORUS_CONFIG.resolutionU * Math.max(2, DEFAULT_CLIFFORD_TORUS_CONFIG.resolutionV);
+    expect(geometry.vertices).toHaveLength(expectedPoints);
   });
 });

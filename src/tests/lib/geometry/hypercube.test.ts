@@ -7,10 +7,9 @@ import { generateHypercube } from '@/lib/geometry/hypercube';
 
 describe('generateHypercube', () => {
   describe('dimension validation', () => {
-    it('should throw error for dimension < 3', () => {
-      expect(() => generateHypercube(2)).toThrow('Hypercube dimension must be at least 3');
-      expect(() => generateHypercube(1)).toThrow('Hypercube dimension must be at least 3');
-      expect(() => generateHypercube(0)).toThrow('Hypercube dimension must be at least 3');
+    it('should throw error for dimension < 2', () => {
+      expect(() => generateHypercube(1)).toThrow('Hypercube dimension must be at least 2');
+      expect(() => generateHypercube(0)).toThrow('Hypercube dimension must be at least 2');
     });
 
     it('should accept dimension >= 3', () => {

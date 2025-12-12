@@ -145,8 +145,15 @@ describe('generateHypersphere', () => {
   });
 
   describe('dimension validation', () => {
-    it('should throw error for dimension < 3', () => {
-      expect(() => generateHypersphere(2, DEFAULT_HYPERSPHERE_CONFIG)).toThrow();
+    it('should throw error for dimension < 2', () => {
+      expect(() => generateHypersphere(1, DEFAULT_HYPERSPHERE_CONFIG)).toThrow();
+    });
+
+    it('should generate circle for dimension 2', () => {
+      const geometry = generateHypersphere(2, DEFAULT_HYPERSPHERE_CONFIG);
+      expect(geometry.dimension).toBe(2);
+      // S^1 is the circle (1-sphere in 2D)
+      expect(geometry.metadata?.name).toContain('S^1');
     });
 
     it('should accept dimension >= 3', () => {

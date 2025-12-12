@@ -270,38 +270,43 @@ export function getAvailableTypes(dimension?: number): Array<{
       type: 'hypercube',
       name: 'Hypercube',
       description: 'Generalization of a cube to n dimensions (n-cube)',
+      minDimension: 2,
     },
     {
       type: 'simplex',
       name: 'Simplex',
       description: 'Generalization of a tetrahedron to n dimensions (n-simplex)',
+      minDimension: 2,
     },
     {
       type: 'cross-polytope',
       name: 'Cross-Polytope',
       description: 'Generalization of an octahedron to n dimensions (n-orthoplex)',
+      minDimension: 2,
     },
     {
       type: 'hypersphere',
       name: 'Hypersphere',
       description: 'N-dimensional sphere (surface or solid ball)',
+      minDimension: 2,
     },
     {
       type: 'root-system',
       name: 'Root System',
       description: 'Root polytopes from Lie algebra (A, D, or E₈)',
+      minDimension: 3, // Not meaningful in 2D (A-type produces only 2 trivial roots)
     },
     {
       type: 'clifford-torus',
       name: 'Clifford Torus',
-      description: 'Flat torus lying on the 3-sphere in 4D',
-      minDimension: 4,
+      description: 'Torus variants (2D: annulus, 3D: torus surface, 4D+: Clifford torus)',
+      minDimension: 2,
     },
     {
       type: 'mandelbrot',
       name: 'Mandelbrot Set',
-      description: 'N-dimensional fractal via escape-time iteration',
-      minDimension: 3,
+      description: 'Fractal via escape-time iteration (2D: classic, 3D+: n-dimensional)',
+      minDimension: 2,
       maxDimension: 11,
     },
   ];

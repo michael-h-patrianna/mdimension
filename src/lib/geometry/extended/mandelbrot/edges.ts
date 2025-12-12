@@ -59,6 +59,56 @@ export function generateMandelbrotEdges(
 }
 
 /**
+ * Generate grid-based edges for a 2D grid of samples
+ *
+ * Connects adjacent points in the 2D sampling grid (4-connectivity: up/down/left/right).
+ * This enables wireframe effects for the classic 2D Mandelbrot visualization.
+ *
+ * @param resolution - Grid resolution (samples per axis)
+ * @returns Array of edge pairs (vertex indices)
+ */
+export function generateMandelbrot2DEdges(resolution: number): [number, number][] {
+  const edges: [number, number][] = [];
+
+  // Convert 2D grid coordinates to 1D index
+  const toIndex = (ix: number, iy: number): number => ix * resolution + iy;
+
+  // Generate edges along each axis for grid connectivity
+  for (let ix = 0; ix < resolution; ix++) {
+    for (let iy = 0; iy < resolution; iy++) {
+      const currentIdx = toIndex(ix, iy);
+
+      // Connect to next point in X direction
+      if (ix < resolution - 1) {
+        edges.push([currentIdx, toIndex(ix + 1, iy)]);
+      }
+
+      // Connect to next point in Y direction
+      if (iy < resolution - 1) {
+        edges.push([currentIdx, toIndex(ix, iy + 1)]);
+      }
+    }
+  }
+
+  return edges;
+}
+
+/**
+ * Calculate expected edge count for 2D grid connectivity
+ *
+ * For a resolution^2 grid with 4-connectivity:
+ * - X edges: (res-1) * res
+ * - Y edges: res * (res-1)
+ * Total: 2 * res * (res-1)
+ *
+ * @param resolution - Grid resolution
+ * @returns Expected number of edges
+ */
+export function calculate2DGridEdgeCount(resolution: number): number {
+  return 2 * resolution * (resolution - 1);
+}
+
+/**
  * Calculate expected edge count for grid connectivity
  *
  * For a resolution^3 grid with 6-connectivity:

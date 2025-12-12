@@ -7,10 +7,9 @@ import { generateCrossPolytope } from '@/lib/geometry/cross-polytope';
 
 describe('generateCrossPolytope', () => {
   describe('dimension validation', () => {
-    it('should throw error for dimension < 3', () => {
-      expect(() => generateCrossPolytope(2)).toThrow('Cross-polytope dimension must be at least 3');
-      expect(() => generateCrossPolytope(1)).toThrow('Cross-polytope dimension must be at least 3');
-      expect(() => generateCrossPolytope(0)).toThrow('Cross-polytope dimension must be at least 3');
+    it('should throw error for dimension < 2', () => {
+      expect(() => generateCrossPolytope(1)).toThrow('Cross-polytope dimension must be at least 2');
+      expect(() => generateCrossPolytope(0)).toThrow('Cross-polytope dimension must be at least 2');
     });
 
     it('should accept dimension >= 3', () => {
