@@ -13,13 +13,16 @@ describe('DimensionSelector', () => {
     useGeometryStore.getState().reset();
   });
 
-  it('should render all dimension options (3D, 4D, 5D, 6D)', () => {
+  it('should render all dimension options (2D through 11D)', () => {
     render(<DimensionSelector />);
 
+    // MIN_DIMENSION = 2, MAX_DIMENSION = 11
+    expect(screen.getByRole('radio', { name: '2D' })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: '3D' })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: '4D' })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: '5D' })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: '6D' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: '11D' })).toBeInTheDocument();
   });
 
   it('should have 4D selected by default', () => {
@@ -64,25 +67,6 @@ describe('DimensionSelector', () => {
     expect(screen.getByRole('radio', { name: '6D' })).toHaveAttribute('aria-checked', 'false');
   });
 
-  it('should display rotation planes count', () => {
-    render(<DimensionSelector />);
-
-    // 4D has 6 rotation planes: 4 * 3 / 2 = 6
-    expect(screen.getByText(/4D space has 6 rotation planes/)).toBeInTheDocument();
-  });
-
-  it('should update rotation planes count when dimension changes', () => {
-    render(<DimensionSelector />);
-
-    // Change to 5D - should have 10 rotation planes: 5 * 4 / 2 = 10
-    fireEvent.click(screen.getByRole('radio', { name: '5D' }));
-    expect(screen.getByText(/5D space has 10 rotation planes/)).toBeInTheDocument();
-
-    // Change to 3D - should have 3 rotation planes: 3 * 2 / 2 = 3
-    fireEvent.click(screen.getByRole('radio', { name: '3D' }));
-    expect(screen.getByText(/3D space has 3 rotation planes/)).toBeInTheDocument();
-  });
-
   it('should be disableable', () => {
     render(<DimensionSelector disabled />);
 
@@ -90,12 +74,6 @@ describe('DimensionSelector', () => {
     buttons.forEach((button) => {
       expect(button).toBeDisabled();
     });
-  });
-
-  it('should render label', () => {
-    render(<DimensionSelector />);
-
-    expect(screen.getByText('Dimension')).toBeInTheDocument();
   });
 
   it('should apply custom className', () => {

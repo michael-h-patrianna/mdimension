@@ -81,9 +81,9 @@ describe('extendedObjectStore', () => {
       setHypersphereRadius(0.1);
       expect(useExtendedObjectStore.getState().hypersphere.radius).toBe(0.5);
 
-      // Test clamping - too high
+      // Test clamping - too high (range is 0.5-6.0)
       setHypersphereRadius(10);
-      expect(useExtendedObjectStore.getState().hypersphere.radius).toBe(3.0);
+      expect(useExtendedObjectStore.getState().hypersphere.radius).toBe(6.0);
     });
 
     it('should set wireframe enabled', () => {
@@ -136,9 +136,9 @@ describe('extendedObjectStore', () => {
       setRootSystemScale(0.1);
       expect(useExtendedObjectStore.getState().rootSystem.scale).toBe(0.5);
 
-      // Test clamping - too high
+      // Test clamping - too high (range is 0.5-4.0)
       setRootSystemScale(5);
-      expect(useExtendedObjectStore.getState().rootSystem.scale).toBe(2.0);
+      expect(useExtendedObjectStore.getState().rootSystem.scale).toBe(4.0);
     });
   });
 
@@ -163,9 +163,9 @@ describe('extendedObjectStore', () => {
       setCliffordTorusRadius(0.1);
       expect(useExtendedObjectStore.getState().cliffordTorus.radius).toBe(0.5);
 
-      // Test clamping - too high
+      // Test clamping - too high (range is 0.5-6.0)
       setCliffordTorusRadius(10);
-      expect(useExtendedObjectStore.getState().cliffordTorus.radius).toBe(3.0);
+      expect(useExtendedObjectStore.getState().cliffordTorus.radius).toBe(6.0);
     });
 
     it('should set resolution U with clamping', () => {

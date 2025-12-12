@@ -89,18 +89,18 @@ describe('useVertexSize', () => {
       const { result } = renderHook(() => useVertexSize(vertexCount));
 
       // Manual calculation:
-      // baseSize = 4 / 100 = 0.04
+      // baseSize = 1 / 100 = 0.01
       // densityFactor = max(0.15, 1.0 / (256/8)^0.35)
       //               = max(0.15, 1.0 / 32^0.35)
       //               = max(0.15, 1.0 / 3.03...)
       //               ≈ max(0.15, 0.33)
       //               ≈ 0.33
-      // result = 0.04 * 0.33 ≈ 0.013
+      // result = 0.01 * 0.33 ≈ 0.0033
       const expectedFactor = Math.max(
         DENSITY_SCALING_MIN,
         1.0 / Math.pow(vertexCount / DENSITY_SCALING_BASE, DENSITY_SCALING_EXPONENT)
       );
-      const expectedSize = 0.04 * expectedFactor;
+      const expectedSize = 0.01 * expectedFactor;
 
       expect(result.current).toBeCloseTo(expectedSize, 4);
     });
@@ -110,20 +110,21 @@ describe('useVertexSize', () => {
       const { result } = renderHook(() => useVertexSize(100000));
 
       // With minimum scale 0.15:
-      // result >= 0.04 * 0.15 = 0.006
-      const minExpectedSize = 0.04 * DENSITY_SCALING_MIN;
+      // result >= 0.01 * 0.15 = 0.0015
+      const minExpectedSize = 0.01 * DENSITY_SCALING_MIN;
       expect(result.current).toBeGreaterThanOrEqual(minExpectedSize);
     });
 
     it('should produce consistent scaling for typical objects', () => {
-      // Typical vertex counts for different objects
+      // Typical vertex counts for different objects (with default vertexSize=1)
+      // baseSize = 1/100 = 0.01
       const testCases = [
-        { count: 8, expectedApprox: 0.04, name: '3D cube' },
-        { count: 16, expectedApprox: 0.04, name: '4D hypercube' },
-        { count: 32, expectedApprox: 0.028, name: '5D hypercube' },
-        { count: 64, expectedApprox: 0.020, name: '6D hypercube' },
-        { count: 2000, expectedApprox: 0.009, name: 'Typical hypersphere' },
-        { count: 5000, expectedApprox: 0.006, name: 'Dense point cloud' },
+        { count: 8, expectedApprox: 0.01, name: '3D cube' },
+        { count: 16, expectedApprox: 0.01, name: '4D hypercube' },
+        { count: 32, expectedApprox: 0.007, name: '5D hypercube' },
+        { count: 64, expectedApprox: 0.005, name: '6D hypercube' },
+        { count: 2000, expectedApprox: 0.002, name: 'Typical hypersphere' },
+        { count: 5000, expectedApprox: 0.0015, name: 'Dense point cloud' },
       ];
 
       for (const { count, expectedApprox } of testCases) {
@@ -137,21 +138,21 @@ describe('useVertexSize', () => {
   describe('edge cases', () => {
     it('should handle zero vertex count', () => {
       const { result } = renderHook(() => useVertexSize(0));
-      // Zero is below threshold, should get full size
-      expect(result.current).toBeCloseTo(0.04, 4);
+      // Zero is below threshold, should get full size = 1/100 = 0.01
+      expect(result.current).toBeCloseTo(0.01, 4);
     });
 
     it('should handle single vertex', () => {
       const { result } = renderHook(() => useVertexSize(1));
-      expect(result.current).toBeCloseTo(0.04, 4);
+      expect(result.current).toBeCloseTo(0.01, 4);
     });
 
     it('should handle very large vertex counts', () => {
       const { result } = renderHook(() => useVertexSize(1000000));
       // Should still return a positive value (not zero or negative)
       expect(result.current).toBeGreaterThan(0);
-      // Should be at minimum scale
-      expect(result.current).toBeCloseTo(0.04 * DENSITY_SCALING_MIN, 3);
+      // Should be at minimum scale = 0.01 * 0.15 = 0.0015
+      expect(result.current).toBeCloseTo(0.01 * DENSITY_SCALING_MIN, 3);
     });
 
     it('should handle minimum store vertex size', () => {
@@ -177,19 +178,19 @@ describe('useVertexSize', () => {
 
   describe('visual consistency', () => {
     it('should produce same base size as PointCloudRenderer default when using default settings', () => {
-      // PointCloudRenderer uses DEFAULT_BASE_VERTEX_SIZE = 0.04
+      // PointCloudRenderer uses storeVertexSize / 100
       const { result } = renderHook(() => useVertexSize(8));
 
-      // With default vertex size 4 and 8 vertices (no scaling)
-      // useVertexSize should produce 0.04, matching PointCloudRenderer default
-      expect(result.current).toBeCloseTo(0.04, 4);
+      // With default vertex size 1 and 8 vertices (no scaling)
+      // useVertexSize should produce 0.01
+      expect(result.current).toBeCloseTo(0.01, 4);
     });
 
     it('should produce same base size as PolytopeRenderer default', () => {
-      // PolytopeRenderer uses storeVertexSize / 100 = 4 / 100 = 0.04
+      // PolytopeRenderer uses storeVertexSize / 100 = 1 / 100 = 0.01
       const { result } = renderHook(() => useVertexSize(8));
 
-      expect(result.current).toBeCloseTo(0.04, 4);
+      expect(result.current).toBeCloseTo(0.01, 4);
     });
   });
 });

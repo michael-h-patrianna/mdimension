@@ -66,5 +66,5 @@ Soft Fill (good for hyppercubes)
 hypercube: 1.8 (scale)
 simplex: 4 (scale)
 hypersphere: 3 (radius)
-root system: 2 - missing scale
+root system: 2 - (scale)
 clifford torus: 3 (radius)

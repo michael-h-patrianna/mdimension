@@ -46,18 +46,28 @@
  */
 export interface PolytopeConfig {
   /**
-   * Scale factor for polytope generation (0.5-3.0).
+   * Scale factor for polytope generation (0.5-8.0).
    * Determines the bounding box: vertices lie in [-scale, scale] per axis.
-   * Default: 1.0 (matches extended object defaults)
+   * Default varies by type: hypercube 1.8, simplex 4.0, cross-polytope 1.8
    */
   scale: number;
 }
 
 /**
- * Default polytope configuration
+ * Type-specific default scales for polytopes.
+ * Different polytope types look best at different initial scales.
+ */
+export const DEFAULT_POLYTOPE_SCALES: Record<string, number> = {
+  'hypercube': 1.8,
+  'simplex': 4.0,
+  'cross-polytope': 1.8,
+};
+
+/**
+ * Default polytope configuration (uses hypercube as baseline)
  */
 export const DEFAULT_POLYTOPE_CONFIG: PolytopeConfig = {
-  scale: 1.0,
+  scale: 1.8,
 };
 
 // ============================================================================
@@ -91,7 +101,7 @@ export interface HypersphereConfig {
   mode: HypersphereMode;
   /** Number of sample points (200-10000) */
   sampleCount: number;
-  /** Radius of the hypersphere (0.5-3.0) */
+  /** Radius of the hypersphere (0.5-6.0) */
   radius: number;
   /** Whether to generate k-NN wireframe edges */
   wireframeEnabled: boolean;
@@ -105,7 +115,7 @@ export interface HypersphereConfig {
 export const DEFAULT_HYPERSPHERE_CONFIG: HypersphereConfig = {
   mode: 'surface',
   sampleCount: 2000,
-  radius: 1.0,
+  radius: 3.0,
   wireframeEnabled: false,
   neighborCount: 4,
 };
@@ -123,7 +133,7 @@ export const DEFAULT_HYPERSPHERE_CONFIG: HypersphereConfig = {
 export interface RootSystemConfig {
   /** Type of root system (A, D, or E8) */
   rootType: RootSystemType;
-  /** Scale factor for the roots (default 1.0) */
+  /** Scale factor for the roots (0.5-4.0, default 2.0) */
   scale: number;
 }
 
@@ -132,7 +142,7 @@ export interface RootSystemConfig {
  */
 export const DEFAULT_ROOT_SYSTEM_CONFIG: RootSystemConfig = {
   rootType: 'A',
-  scale: 1.0,
+  scale: 2.0,
 };
 
 // ============================================================================
@@ -161,7 +171,7 @@ export type CliffordTorusMode = 'classic' | 'generalized';
 export interface CliffordTorusConfig {
   /** Clifford torus mode: classic (4D) or generalized (nD) */
   mode: CliffordTorusMode;
-  /** Radius of the containing sphere (0.5-3.0) */
+  /** Radius of the containing sphere (0.5-6.0) */
   radius: number;
   /** Resolution in U direction for classic mode (8-128) */
   resolutionU: number;
@@ -190,7 +200,7 @@ export interface CliffordTorusConfig {
  */
 export const DEFAULT_CLIFFORD_TORUS_CONFIG: CliffordTorusConfig = {
   mode: 'classic',
-  radius: 1.0,
+  radius: 3.0,
   resolutionU: 32,
   resolutionV: 32,
   edgeMode: 'grid',

@@ -15,6 +15,7 @@ import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useRotationStore } from '@/stores/rotationStore';
 import { getAvailableTypes } from '@/lib/geometry';
 import type { ObjectType } from '@/lib/geometry/types';
+import { isPolytopeType } from '@/lib/geometry/types';
 
 export interface ObjectTypeSelectorProps {
   className?: string;
@@ -32,6 +33,9 @@ export const ObjectTypeSelector: React.FC<ObjectTypeSelectorProps> = ({
   const initializeMandelbrotForDimension = useExtendedObjectStore(
     (state) => state.initializeMandelbrotForDimension
   );
+  const initializePolytopeForType = useExtendedObjectStore(
+    (state) => state.initializePolytopeForType
+  );
 
   // Initialize Mandelbrot settings when objectType is 'mandelbrot' and dimension changes
   useEffect(() => {
@@ -39,6 +43,13 @@ export const ObjectTypeSelector: React.FC<ObjectTypeSelectorProps> = ({
       initializeMandelbrotForDimension(dimension);
     }
   }, [objectType, dimension, initializeMandelbrotForDimension]);
+
+  // Initialize polytope scale when switching to a polytope type
+  useEffect(() => {
+    if (isPolytopeType(objectType)) {
+      initializePolytopeForType(objectType);
+    }
+  }, [objectType, initializePolytopeForType]);
 
   // Get available types based on current dimension
   const availableTypes = useMemo(() => getAvailableTypes(dimension), [dimension]);

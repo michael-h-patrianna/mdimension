@@ -6,9 +6,16 @@
  */
 
 import type { ObjectType } from '@/lib/geometry/types';
-import type { ShaderType, AllShaderSettings } from '@/lib/shaders/types';
+import type { ShaderType, AllShaderSettings, ToneMappingAlgorithm } from '@/lib/shaders/types';
 import { MAX_DIMENSION, MIN_DIMENSION } from '@/stores/geometryStore';
-import { DEFAULT_SHADER_TYPE, DEFAULT_SHADER_SETTINGS } from '@/stores/visualStore';
+import {
+  DEFAULT_SHADER_TYPE,
+  DEFAULT_SHADER_SETTINGS,
+  DEFAULT_SPECULAR_COLOR,
+  DEFAULT_TONE_MAPPING_ALGORITHM,
+  DEFAULT_EXPOSURE,
+  DEFAULT_DIFFUSE_INTENSITY,
+} from '@/stores/visualStore';
 
 /** Valid shader types for URL validation */
 const VALID_SHADER_TYPES: ShaderType[] = [
@@ -50,6 +57,12 @@ export interface ShareableState {
   bloomRadius?: number;
   bloomSoftKnee?: number;
   bloomLevels?: number;
+  // Enhanced lighting settings
+  specularColor?: string;
+  toneMappingEnabled?: boolean;
+  toneMappingAlgorithm?: ToneMappingAlgorithm;
+  exposure?: number;
+  diffuseIntensity?: number;
 }
 
 /**
@@ -117,6 +130,28 @@ export function serializeState(state: ShareableState): string {
 
   if (state.bloomLevels !== undefined && state.bloomLevels !== 4) {
     params.set('bl', state.bloomLevels.toString());
+  }
+
+  // Enhanced lighting settings (omit defaults for shorter URLs)
+  if (state.specularColor && state.specularColor !== DEFAULT_SPECULAR_COLOR) {
+    params.set('sc', state.specularColor.replace('#', ''));
+  }
+
+  // tm=0 when tone mapping is disabled (omit when true, the default)
+  if (state.toneMappingEnabled === false) {
+    params.set('tm', '0');
+  }
+
+  if (state.toneMappingAlgorithm && state.toneMappingAlgorithm !== DEFAULT_TONE_MAPPING_ALGORITHM) {
+    params.set('ta', state.toneMappingAlgorithm);
+  }
+
+  if (state.exposure !== undefined && state.exposure !== DEFAULT_EXPOSURE) {
+    params.set('ex', state.exposure.toFixed(1));
+  }
+
+  if (state.diffuseIntensity !== undefined && state.diffuseIntensity !== DEFAULT_DIFFUSE_INTENSITY) {
+    params.set('di', state.diffuseIntensity.toFixed(1));
   }
 
   // Per-shader settings (PRD Story 7 AC7)
@@ -270,6 +305,43 @@ export function deserializeState(searchParams: string): Partial<ShareableState> 
     const bl = parseInt(bloomLevels, 10);
     if (!isNaN(bl) && bl >= 1 && bl <= 8) {
       state.bloomLevels = bl;
+    }
+  }
+
+  // Enhanced lighting settings
+  const specularColor = params.get('sc');
+  if (specularColor && /^[0-9A-Fa-f]{6}$/.test(specularColor)) {
+    state.specularColor = `#${specularColor}`;
+  }
+
+  const toneMappingEnabled = params.get('tm');
+  if (toneMappingEnabled === '0') {
+    state.toneMappingEnabled = false;
+  } else if (toneMappingEnabled === '1') {
+    state.toneMappingEnabled = true;
+  }
+
+  const toneMappingAlgorithm = params.get('ta');
+  if (toneMappingAlgorithm) {
+    const validAlgorithms: ToneMappingAlgorithm[] = ['reinhard', 'aces', 'uncharted2'];
+    if (validAlgorithms.includes(toneMappingAlgorithm as ToneMappingAlgorithm)) {
+      state.toneMappingAlgorithm = toneMappingAlgorithm as ToneMappingAlgorithm;
+    }
+  }
+
+  const exposure = params.get('ex');
+  if (exposure) {
+    const ex = parseFloat(exposure);
+    if (!isNaN(ex) && ex >= 0.1 && ex <= 3) {
+      state.exposure = ex;
+    }
+  }
+
+  const diffuseIntensity = params.get('di');
+  if (diffuseIntensity) {
+    const di = parseFloat(diffuseIntensity);
+    if (!isNaN(di) && di >= 0 && di <= 2) {
+      state.diffuseIntensity = di;
     }
   }
 

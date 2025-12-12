@@ -115,6 +115,12 @@ export function FaceRenderer({
   const lightVerticalAngle = useVisualStore((state) => state.lightVerticalAngle);
   const storeSpecularIntensity = useVisualStore((state) => state.specularIntensity);
   const storeSpecularPower = useVisualStore((state) => state.specularPower);
+  // Enhanced lighting settings
+  const specularColor = useVisualStore((state) => state.specularColor);
+  const diffuseIntensity = useVisualStore((state) => state.diffuseIntensity);
+  const toneMappingEnabled = useVisualStore((state) => state.toneMappingEnabled);
+  const toneMappingAlgorithm = useVisualStore((state) => state.toneMappingAlgorithm);
+  const exposure = useVisualStore((state) => state.exposure);
 
   // Refs to track previous resources for cleanup
   const geometryRef = useRef<BufferGeometry | null>(null);
@@ -161,9 +167,15 @@ export function FaceRenderer({
         lightDirection: lightDir,
         specularIntensity: storeSpecularIntensity,
         specularPower: storeSpecularPower,
+        // Enhanced lighting parameters
+        specularColor,
+        diffuseIntensity,
+        toneMappingEnabled,
+        toneMappingAlgorithm,
+        exposure,
       });
     }
-  }, [material, ambientIntensity, lightEnabled, lightHorizontalAngle, lightVerticalAngle, storeSpecularIntensity, storeSpecularPower]);
+  }, [material, ambientIntensity, lightEnabled, lightHorizontalAngle, lightVerticalAngle, storeSpecularIntensity, storeSpecularPower, specularColor, diffuseIntensity, toneMappingEnabled, toneMappingAlgorithm, exposure]);
 
   // Dispose previous material when new one is created
   useEffect(() => {

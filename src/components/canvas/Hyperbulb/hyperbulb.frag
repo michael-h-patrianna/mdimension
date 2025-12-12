@@ -32,14 +32,20 @@ uniform vec3 uLightDirection;
 uniform float uAmbientIntensity;
 uniform float uSpecularIntensity;
 uniform float uSpecularPower;
+// Enhanced lighting uniforms
+uniform vec3 uSpecularColor;
+uniform float uDiffuseIntensity;
+uniform bool uToneMappingEnabled;
+uniform int uToneMappingAlgorithm;
+uniform float uExposure;
 
 varying vec3 vPosition;
 varying vec2 vUv;
 
-// Performance constants - tuned for quality/speed balance
-#define MAX_MARCH_STEPS 96
-#define SURF_DIST 0.003
-#define MAX_ITER 48
+// Performance constants - matched to Mandelbulb for quality
+#define MAX_MARCH_STEPS 128
+#define SURF_DIST 0.002
+#define MAX_ITER 64
 #define BOUND_R 2.0
 #define EPS 1e-6
 
@@ -105,6 +111,52 @@ vec3 getPaletteColor(vec3 hsl, float t, int mode) {
         return hsl2rgb(vec3(nh, s, newL));
     }
     return hsl2rgb(vec3(h, hsl.y, newL));
+}
+
+// ============================================
+// Tone Mapping Functions
+// ============================================
+
+vec3 reinhardToneMap(vec3 c) {
+    return c / (c + vec3(1.0));
+}
+
+vec3 acesToneMap(vec3 c) {
+    // ACES filmic tone mapping approximation
+    const float a = 2.51;
+    const float b = 0.03;
+    const float c2 = 2.43;
+    const float d = 0.59;
+    const float e = 0.14;
+    return clamp((c * (a * c + b)) / (c * (c2 * c + d) + e), 0.0, 1.0);
+}
+
+vec3 uncharted2ToneMap(vec3 c) {
+    // Uncharted 2 filmic tone mapping
+    const float A = 0.15;
+    const float B = 0.50;
+    const float C = 0.10;
+    const float D = 0.20;
+    const float E = 0.02;
+    const float F = 0.30;
+    const float W = 11.2;
+
+    vec3 curr = ((c * (A * c + C * B) + D * E) / (c * (A * c + B) + D * F)) - E / F;
+    vec3 white = ((vec3(W) * (A * W + C * B) + D * E) / (vec3(W) * (A * W + B) + D * F)) - E / F;
+    return curr / white;
+}
+
+vec3 applyToneMapping(vec3 c, int algo, float exposure) {
+    vec3 exposed = c * exposure;
+    if (algo == 0) return reinhardToneMap(exposed);
+    if (algo == 1) return acesToneMap(exposed);
+    if (algo == 2) return uncharted2ToneMap(exposed);
+    return clamp(exposed, 0.0, 1.0); // fallback: simple clamp
+}
+
+// Fresnel (Schlick approximation)
+float fresnelSchlick(float cosTheta, float F0) {
+    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
 }
 
 // ============================================
@@ -678,9 +730,6 @@ float RayMarch(vec3 ro, vec3 rd, out float trap) {
         float currentTrap;
         float dS = GetDistWithTrap(p, currentTrap);
 
-        // Safety: clamp distance to reasonable range
-        dS = clamp(dS, SURF_DIST * 0.5, maxT);
-
         if (dS < SURF_DIST) { trap = currentTrap; return dO; }
         dO += dS;
         if (dO > maxT) break;
@@ -700,6 +749,34 @@ float calcAO(vec3 p, vec3 n) {
     occ += (0.08 - GetDist(p + 0.08 * n)) * 0.7;
     occ += (0.16 - GetDist(p + 0.16 * n)) * 0.5;
     return clamp(1.0 - 2.5 * occ, 0.0, 1.0);
+}
+
+// Soft shadow calculation - traces toward light to find occlusion
+float calcSoftShadow(vec3 ro, vec3 rd, float mint, float maxt, float k) {
+    float res = 1.0;
+    float t = mint;
+    for (int i = 0; i < 24; i++) {
+        if (t > maxt) break;
+        float h = GetDist(ro + rd * t);
+        if (h < 0.001) return 0.0;
+        res = min(res, k * h / t);
+        t += clamp(h, 0.01, 0.2);
+    }
+    return clamp(res, 0.0, 1.0);
+}
+
+// Compute rotation matrix from basis vectors for light transformation
+// The basis vectors define the orientation of the 3D slice in D-space
+// We use the first 3 components to build a 3x3 rotation matrix
+mat3 getBasisRotation() {
+    // Extract 3x3 from basis vectors (they form columns of the rotation matrix)
+    vec3 bx = vec3(uBasisX[0], uBasisX[1], uBasisX[2]);
+    vec3 by = vec3(uBasisY[0], uBasisY[1], uBasisY[2]);
+    vec3 bz = vec3(uBasisZ[0], uBasisZ[1], uBasisZ[2]);
+
+    // Build rotation matrix (basis vectors as columns)
+    // This transforms from world space to object space
+    return mat3(bx, by, bz);
 }
 
 void main() {
@@ -723,17 +800,51 @@ void main() {
     vec3 surfaceColor = getPaletteColor(baseHSL, 1.0 - trap, uPaletteMode);
     surfaceColor *= (0.3 + 0.7 * ao);
 
-    vec3 col;
+    // Get basis rotation matrix for proper light transformation
+    mat3 basisRot = getBasisRotation();
+
+    // Lighting calculation using scene lighting settings
+    // Start with ambient
+    vec3 col = surfaceColor * uAmbientIntensity;
+
     if (uLightEnabled) {
-        vec3 l = normalize((uInverseModelMatrix * vec4(uLightDirection, 0.0)).xyz);
-        float dif = clamp(dot(n, l), 0.0, 1.0);
-        float diffStr = 1.0 - uAmbientIntensity;
-        col = surfaceColor * (uAmbientIntensity + diffStr * dif) * uLightColor;
-        vec3 ref = reflect(-l, n);
-        float spec = pow(max(dot(ref, -rd), 0.0), uSpecularPower);
-        col += uLightColor * spec * uSpecularIntensity * 0.5;
-    } else {
-        col = surfaceColor * uAmbientIntensity;
+        // Transform light direction using basis rotation matrix
+        // This makes light respond to D-dimensional rotations
+        vec3 l = normalize(basisRot * uLightDirection);
+        vec3 viewDir = -rd;
+
+        // Energy conservation: diffuse weight = 1.0 - ambient
+        float diffuseWeight = 1.0 - uAmbientIntensity;
+
+        // Calculate soft shadow for depth
+        float shadow = calcSoftShadow(p + n * 0.01, l, 0.02, 2.5, 16.0);
+
+        // Diffuse (Lambert) with energy conservation, intensity control, and shadows
+        float NdotL = max(dot(n, l), 0.0);
+        float diffuse = NdotL * uDiffuseIntensity * diffuseWeight * (0.5 + 0.5 * shadow);
+        col += surfaceColor * uLightColor * diffuse;
+
+        // Specular (Blinn-Phong) with Fresnel attenuation
+        vec3 halfDir = normalize(l + viewDir);
+        float NdotH = max(dot(n, halfDir), 0.0);
+        float VdotH = max(dot(viewDir, halfDir), 0.0);
+
+        // Fresnel: F0 = 0.04 for non-metallic surfaces
+        float F = fresnelSchlick(VdotH, 0.04);
+        float spec = pow(NdotH, uSpecularPower) * uSpecularIntensity * F * shadow;
+        col += uSpecularColor * uLightColor * spec;
+
+        // Rim/edge lighting for silhouette definition
+        float NdotV = max(dot(n, viewDir), 0.0);
+        float rim = pow(1.0 - NdotV, 3.0) * 0.4;
+        // Rim is stronger on lit side
+        rim *= (0.3 + 0.7 * NdotL);
+        col += uLightColor * rim * 0.5;
+    }
+
+    // Apply tone mapping as final step
+    if (uToneMappingEnabled) {
+        col = applyToneMapping(col, uToneMappingAlgorithm, uExposure);
     }
 
     vec4 worldHitPos = uModelMatrix * vec4(p, 1.0);

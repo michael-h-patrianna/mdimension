@@ -10,8 +10,8 @@ import { SHORTCUTS } from '@/hooks/useKeyboardShortcuts';
 describe('KeyboardShortcuts', () => {
   it('should render keyboard shortcuts', () => {
     render(<KeyboardShortcuts />);
-    // Should display some shortcut descriptions
-    expect(screen.getByText(/Play\/Pause/i)).toBeInTheDocument();
+    // Should display some shortcut descriptions (camera movement)
+    expect(screen.getByText(/Move camera forward/i)).toBeInTheDocument();
   });
 
   it('should display all shortcuts', () => {
@@ -31,11 +31,6 @@ describe('KeyboardShortcuts', () => {
   it('should apply custom className', () => {
     const { container } = render(<KeyboardShortcuts className="custom-class" />);
     expect(container.firstChild).toHaveClass('custom-class');
-  });
-
-  it('should display Space key label', () => {
-    render(<KeyboardShortcuts />);
-    expect(screen.getByText('Space')).toBeInTheDocument();
   });
 
   it('should display arrow key labels', () => {

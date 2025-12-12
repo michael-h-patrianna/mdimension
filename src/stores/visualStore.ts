@@ -16,6 +16,7 @@ import type {
   AllShaderSettings,
   ShaderType,
   SurfaceSettings,
+  ToneMappingAlgorithm,
   WireframeSettings,
 } from '@/lib/shaders/types'
 import { create } from 'zustand'
@@ -55,6 +56,13 @@ export const DEFAULT_AMBIENT_INTENSITY = 0.01
 export const DEFAULT_SPECULAR_INTENSITY = 0.5
 export const DEFAULT_SPECULAR_POWER = 12
 export const DEFAULT_SHOW_LIGHT_INDICATOR = false
+
+/** Enhanced lighting settings */
+export const DEFAULT_SPECULAR_COLOR = '#FFFFFF'
+export const DEFAULT_DIFFUSE_INTENSITY = 1.0
+export const DEFAULT_TONE_MAPPING_ENABLED = true
+export const DEFAULT_TONE_MAPPING_ALGORITHM: ToneMappingAlgorithm = 'reinhard'
+export const DEFAULT_EXPOSURE = 1.0
 
 /** Default depth effect settings */
 export const DEFAULT_DEPTH_ATTENUATION_ENABLED = true
@@ -216,6 +224,18 @@ interface VisualState {
   /** Whether to show light direction indicator */
   showLightIndicator: boolean
 
+  // --- Enhanced Lighting ---
+  /** Specular highlight color (hex string) */
+  specularColor: string
+  /** Diffuse intensity multiplier (0-2) */
+  diffuseIntensity: number
+  /** Whether tone mapping is enabled */
+  toneMappingEnabled: boolean
+  /** Tone mapping algorithm */
+  toneMappingAlgorithm: ToneMappingAlgorithm
+  /** Exposure multiplier for tone mapping (0.1-3.0) */
+  exposure: number
+
   // --- Depth Effects ---
   /** Whether depth attenuation is enabled */
   depthAttenuationEnabled: boolean
@@ -275,6 +295,13 @@ interface VisualState {
   setSpecularIntensity: (intensity: number) => void
   setSpecularPower: (power: number) => void
   setShowLightIndicator: (show: boolean) => void
+
+  // --- Actions: Enhanced Lighting ---
+  setSpecularColor: (color: string) => void
+  setDiffuseIntensity: (intensity: number) => void
+  setToneMappingEnabled: (enabled: boolean) => void
+  setToneMappingAlgorithm: (algorithm: ToneMappingAlgorithm) => void
+  setExposure: (exposure: number) => void
 
   // --- Actions: Depth Effects ---
   setDepthAttenuationEnabled: (enabled: boolean) => void
@@ -336,6 +363,13 @@ const INITIAL_STATE: Omit<VisualState, keyof VisualStateFunctions> = {
   specularPower: DEFAULT_SPECULAR_POWER,
   showLightIndicator: DEFAULT_SHOW_LIGHT_INDICATOR,
 
+  // Enhanced lighting
+  specularColor: DEFAULT_SPECULAR_COLOR,
+  diffuseIntensity: DEFAULT_DIFFUSE_INTENSITY,
+  toneMappingEnabled: DEFAULT_TONE_MAPPING_ENABLED,
+  toneMappingAlgorithm: DEFAULT_TONE_MAPPING_ALGORITHM,
+  exposure: DEFAULT_EXPOSURE,
+
   // Depth effects
   depthAttenuationEnabled: DEFAULT_DEPTH_ATTENUATION_ENABLED,
   depthAttenuationStrength: DEFAULT_DEPTH_ATTENUATION_STRENGTH,
@@ -380,6 +414,11 @@ type VisualStateFunctions = Pick<
   | 'setSpecularIntensity'
   | 'setSpecularPower'
   | 'setShowLightIndicator'
+  | 'setSpecularColor'
+  | 'setDiffuseIntensity'
+  | 'setToneMappingEnabled'
+  | 'setToneMappingAlgorithm'
+  | 'setExposure'
   | 'setDepthAttenuationEnabled'
   | 'setDepthAttenuationStrength'
   | 'setFresnelEnabled'
@@ -553,6 +592,27 @@ export const useVisualStore = create<VisualState>((set) => ({
 
   setShowLightIndicator: (show: boolean) => {
     set({ showLightIndicator: show })
+  },
+
+  // --- Actions: Enhanced Lighting ---
+  setSpecularColor: (color: string) => {
+    set({ specularColor: color })
+  },
+
+  setDiffuseIntensity: (intensity: number) => {
+    set({ diffuseIntensity: Math.max(0, Math.min(2, intensity)) })
+  },
+
+  setToneMappingEnabled: (enabled: boolean) => {
+    set({ toneMappingEnabled: enabled })
+  },
+
+  setToneMappingAlgorithm: (algorithm: ToneMappingAlgorithm) => {
+    set({ toneMappingAlgorithm: algorithm })
+  },
+
+  setExposure: (exposure: number) => {
+    set({ exposure: Math.max(0.1, Math.min(3, exposure)) })
   },
 
   // --- Actions: Depth Effects ---

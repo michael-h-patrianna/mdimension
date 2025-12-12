@@ -309,7 +309,7 @@ describe('LightingControls', () => {
 
     it('should apply default empty className when not provided', () => {
       const { container } = render(<LightingControls />);
-      const wrapper = container.querySelector('.space-y-4');
+      const wrapper = container.querySelector('.space-y-3');
       expect(wrapper).toBeInTheDocument();
     });
   });

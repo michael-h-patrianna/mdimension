@@ -32,6 +32,7 @@ import type {
 } from '@/lib/geometry/extended/types';
 import {
   DEFAULT_POLYTOPE_CONFIG,
+  DEFAULT_POLYTOPE_SCALES,
   DEFAULT_HYPERSPHERE_CONFIG,
   DEFAULT_ROOT_SYSTEM_CONFIG,
   DEFAULT_CLIFFORD_TORUS_CONFIG,
@@ -61,6 +62,7 @@ interface ExtendedObjectState {
 
   // --- Polytope Actions ---
   setPolytopeScale: (scale: number) => void;
+  initializePolytopeForType: (polytopeType: string) => void;
 
   // --- Hypersphere Actions ---
   setHypersphereMode: (mode: HypersphereMode) => void;
@@ -126,10 +128,17 @@ export const useExtendedObjectStore = create<ExtendedObjectState>((set, get) => 
 
   // --- Polytope Actions ---
   setPolytopeScale: (scale: number) => {
-    // Same range as hypersphere radius for consistency (0.5-3.0)
-    const clampedScale = Math.max(0.5, Math.min(3.0, scale));
+    // Range 0.5-8.0 to accommodate different polytope types (simplex needs up to 8)
+    const clampedScale = Math.max(0.5, Math.min(8.0, scale));
     set((state) => ({
       polytope: { ...state.polytope, scale: clampedScale },
+    }));
+  },
+
+  initializePolytopeForType: (polytopeType: string) => {
+    const defaultScale = DEFAULT_POLYTOPE_SCALES[polytopeType] ?? DEFAULT_POLYTOPE_CONFIG.scale;
+    set((state) => ({
+      polytope: { ...state.polytope, scale: defaultScale },
     }));
   },
 
@@ -148,7 +157,7 @@ export const useExtendedObjectStore = create<ExtendedObjectState>((set, get) => 
   },
 
   setHypersphereRadius: (radius: number) => {
-    const clampedRadius = Math.max(0.5, Math.min(3.0, radius));
+    const clampedRadius = Math.max(0.5, Math.min(6.0, radius));
     set((state) => ({
       hypersphere: { ...state.hypersphere, radius: clampedRadius },
     }));
@@ -175,7 +184,7 @@ export const useExtendedObjectStore = create<ExtendedObjectState>((set, get) => 
   },
 
   setRootSystemScale: (scale: number) => {
-    const clampedScale = Math.max(0.5, Math.min(2.0, scale));
+    const clampedScale = Math.max(0.5, Math.min(4.0, scale));
     set((state) => ({
       rootSystem: { ...state.rootSystem, scale: clampedScale },
     }));
@@ -189,7 +198,7 @@ export const useExtendedObjectStore = create<ExtendedObjectState>((set, get) => 
   },
 
   setCliffordTorusRadius: (radius: number) => {
-    const clampedRadius = Math.max(0.5, Math.min(3.0, radius));
+    const clampedRadius = Math.max(0.5, Math.min(6.0, radius));
     set((state) => ({
       cliffordTorus: { ...state.cliffordTorus, radius: clampedRadius },
     }));

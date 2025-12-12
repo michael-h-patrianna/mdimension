@@ -20,6 +20,7 @@ import {
   DEFAULT_CLIFFORD_TORUS_CONFIG,
   DEFAULT_HYPERSPHERE_CONFIG,
   DEFAULT_POLYTOPE_CONFIG,
+  DEFAULT_POLYTOPE_SCALES,
   DEFAULT_ROOT_SYSTEM_CONFIG,
 } from '@/lib/geometry/extended/types';
 import { isPolytopeType } from '@/lib/geometry/types';
@@ -53,21 +54,27 @@ function PolytopeSettings() {
   };
   const typeName = typeNames[objectType] ?? 'Polytope';
 
+  // Get type-specific default scale
+  const defaultScale = DEFAULT_POLYTOPE_SCALES[objectType] ?? DEFAULT_POLYTOPE_CONFIG.scale;
+
+  // Simplex needs a larger range due to its default of 4.0
+  const maxScale = objectType === 'simplex' ? 8.0 : 5.0;
+
   return (
     <div className="space-y-4">
-      {/* Scale slider - matches hypersphere radius range for consistency */}
+      {/* Scale slider with type-specific range */}
       <Slider
         label={`${typeName} Scale`}
         min={0.5}
-        max={3.0}
+        max={maxScale}
         step={0.1}
         value={config.scale}
         onChange={setScale}
-        onReset={() => setScale(DEFAULT_POLYTOPE_CONFIG.scale)}
+        onReset={() => setScale(defaultScale)}
         showValue
       />
       <p className="text-xs text-text-secondary">
-        Vertices in [-scale, scale] per axis. Scale 1.0 matches hypersphere radius 1.0.
+        Vertices in [-scale, scale] per axis.
       </p>
     </div>
   );
@@ -109,7 +116,7 @@ function HypersphereSettings() {
       <Slider
         label="Radius"
         min={0.5}
-        max={3.0}
+        max={6.0}
         step={0.1}
         value={config.radius}
         onChange={setRadius}
@@ -182,7 +189,7 @@ function RootSystemSettings() {
       <Slider
         label="Root System Scale"
         min={0.5}
-        max={2.0}
+        max={4.0}
         step={0.1}
         value={config.scale}
         onChange={setScale}
@@ -265,7 +272,7 @@ function CliffordTorusSettings() {
       <Slider
         label="Radius"
         min={0.5}
-        max={3.0}
+        max={6.0}
         step={0.1}
         value={config.radius}
         onChange={setRadius}

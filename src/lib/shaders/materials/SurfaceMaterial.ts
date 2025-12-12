@@ -17,7 +17,8 @@ import {
 } from 'three'
 import type { ColorMode } from '../palette'
 import { GLSL_PALETTE_FUNCTIONS } from '../palette'
-import type { SurfaceSettings } from '../types'
+import type { SurfaceSettings, ToneMappingAlgorithm } from '../types'
+import { TONE_MAPPING_TO_INT } from '../types'
 
 /**
  * Configuration for surface material creation
@@ -266,9 +267,59 @@ void main() {
 }
 `
 
-// Concatenate palette functions with core shader
+// ============================================================================
+// GLSL Tone Mapping Functions
+// ============================================================================
+
+const GLSL_TONE_MAPPING = `
+// Tone mapping functions
+vec3 reinhardToneMap(vec3 c) {
+  return c / (c + vec3(1.0));
+}
+
+vec3 acesToneMap(vec3 c) {
+  // ACES filmic tone mapping approximation
+  const float a = 2.51;
+  const float b = 0.03;
+  const float c2 = 2.43;
+  const float d = 0.59;
+  const float e = 0.14;
+  return clamp((c * (a * c + b)) / (c * (c2 * c + d) + e), 0.0, 1.0);
+}
+
+vec3 uncharted2ToneMap(vec3 c) {
+  // Uncharted 2 filmic tone mapping
+  const float A = 0.15;
+  const float B = 0.50;
+  const float C = 0.10;
+  const float D = 0.20;
+  const float E = 0.02;
+  const float F = 0.30;
+  const float W = 11.2;
+
+  vec3 curr = ((c * (A * c + C * B) + D * E) / (c * (A * c + B) + D * F)) - E / F;
+  vec3 white = ((vec3(W) * (A * W + C * B) + D * E) / (vec3(W) * (A * W + B) + D * F)) - E / F;
+  return curr / white;
+}
+
+vec3 applyToneMapping(vec3 c, int algo, float exposure) {
+  vec3 exposed = c * exposure;
+  if (algo == 0) return reinhardToneMap(exposed);
+  if (algo == 1) return acesToneMap(exposed);
+  if (algo == 2) return uncharted2ToneMap(exposed);
+  return clamp(exposed, 0.0, 1.0); // fallback: simple clamp
+}
+
+// Fresnel (Schlick approximation)
+float fresnelSchlick(float cosTheta, float F0) {
+  return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+}
+`
+
+// Concatenate palette functions with tone mapping and core shader
 const paletteFragmentShader =
   GLSL_PALETTE_FUNCTIONS +
+  GLSL_TONE_MAPPING +
   `
 uniform vec3 baseColor;
 uniform vec3 rimColor;
@@ -280,6 +331,12 @@ uniform float uSpecularIntensity;
 uniform float uSpecularPower;
 uniform vec3 uLightDir;
 uniform bool uLightEnabled;
+// Enhanced lighting uniforms
+uniform vec3 uSpecularColor;
+uniform float uDiffuseIntensity;
+uniform bool uToneMappingEnabled;
+uniform int uToneMappingAlgorithm;
+uniform float uExposure;
 
 varying float vDepth;
 varying vec3 vNormal;
@@ -293,27 +350,40 @@ void main() {
   vec3 baseHSL = rgb2hsl(baseColor);
   vec3 surfaceColor = getPaletteColor(baseHSL, vDepth, paletteMode);
 
-  // Fresnel effect (rim lighting)
-  float fresnel = pow(1.0 - abs(dot(normal, viewDir)), 3.0);
+  // Fresnel rim effect (for rim lighting)
+  float rimFresnel = pow(1.0 - abs(dot(normal, viewDir)), 3.0);
 
   // Start with ambient light
   vec3 lighting = surfaceColor * uAmbientIntensity;
 
   // Add directional light contribution if enabled
   if (uLightEnabled) {
-    // Diffuse (Lambert)
-    float diffuse = max(dot(normal, uLightDir), 0.0);
+    // Energy conservation: diffuse weight = 1.0 - ambient
+    float diffuseWeight = 1.0 - uAmbientIntensity;
+
+    // Diffuse (Lambert) with energy conservation and intensity control
+    float NdotL = max(dot(normal, uLightDir), 0.0);
+    float diffuse = NdotL * uDiffuseIntensity * diffuseWeight;
     lighting += surfaceColor * diffuse;
 
-    // Specular (Blinn-Phong)
+    // Specular (Blinn-Phong) with Fresnel attenuation
     vec3 halfDir = normalize(uLightDir + viewDir);
-    float specAngle = max(dot(normal, halfDir), 0.0);
-    float specular = pow(specAngle, uSpecularPower) * uSpecularIntensity;
-    lighting += vec3(1.0) * specular;
+    float NdotH = max(dot(normal, halfDir), 0.0);
+    float VdotH = max(dot(viewDir, halfDir), 0.0);
+
+    // Fresnel: F0 = 0.04 for non-metallic surfaces
+    float F = fresnelSchlick(VdotH, 0.04);
+    float specular = pow(NdotH, uSpecularPower) * uSpecularIntensity * F;
+    lighting += uSpecularColor * specular;
   }
 
   // Apply fresnel rim
-  vec3 outgoingLight = mix(lighting, rimColor, fresnel * fresnelIntensity);
+  vec3 outgoingLight = mix(lighting, rimColor, rimFresnel * fresnelIntensity);
+
+  // Apply tone mapping as final step
+  if (uToneMappingEnabled) {
+    outgoingLight = applyToneMapping(outgoingLight, uToneMappingAlgorithm, uExposure);
+  }
 
   gl_FragColor = vec4(outgoingLight, opacity);
 }
@@ -366,6 +436,12 @@ export function createPaletteSurfaceMaterial(config: PaletteSurfaceMaterialConfi
       uSpecularPower: { value: specularPower },
       uLightDir: { value: new Vector3(0.5, 0.5, 0.5).normalize() },
       uLightEnabled: { value: true },
+      // Enhanced lighting uniforms
+      uSpecularColor: { value: new Color('#FFFFFF') },
+      uDiffuseIntensity: { value: 1.0 },
+      uToneMappingEnabled: { value: true },
+      uToneMappingAlgorithm: { value: 0 }, // 0 = reinhard
+      uExposure: { value: 1.0 },
     },
     transparent: true,
     side: DoubleSide,
@@ -393,6 +469,12 @@ export function updatePaletteMaterial(
     lightDirection: [number, number, number]
     lightEnabled: boolean
     colorMode: ColorMode
+    // Enhanced lighting parameters
+    specularColor: string
+    diffuseIntensity: number
+    toneMappingEnabled: boolean
+    toneMappingAlgorithm: ToneMappingAlgorithm
+    exposure: number
   }>
 ): void {
   if (updates.color !== undefined) {
@@ -432,6 +514,23 @@ export function updatePaletteMaterial(
       splitComplementary: 4,
     }
     material.uniforms.paletteMode!.value = modeMap[updates.colorMode]
+  }
+  // Enhanced lighting parameters
+  if (updates.specularColor !== undefined) {
+    material.uniforms.uSpecularColor!.value = new Color(updates.specularColor)
+  }
+  if (updates.diffuseIntensity !== undefined) {
+    material.uniforms.uDiffuseIntensity!.value = updates.diffuseIntensity
+  }
+  if (updates.toneMappingEnabled !== undefined) {
+    material.uniforms.uToneMappingEnabled!.value = updates.toneMappingEnabled
+  }
+  if (updates.toneMappingAlgorithm !== undefined) {
+    material.uniforms.uToneMappingAlgorithm!.value =
+      TONE_MAPPING_TO_INT[updates.toneMappingAlgorithm]
+  }
+  if (updates.exposure !== undefined) {
+    material.uniforms.uExposure!.value = updates.exposure
   }
 
   material.needsUpdate = true

@@ -9,6 +9,7 @@ import { useRotationStore } from '@/stores/rotationStore';
 import { useVisualStore } from '@/stores/visualStore';
 import { composeRotations } from '@/lib/math/rotation';
 import { COLOR_MODE_TO_INT } from '@/lib/shaders/palette';
+import { TONE_MAPPING_TO_INT } from '@/lib/shaders/types';
 import type { MatrixND } from '@/lib/math/types';
 
 /**
@@ -72,6 +73,12 @@ const HyperbulbMesh = () => {
   const ambientIntensity = useVisualStore((state) => state.ambientIntensity);
   const specularIntensity = useVisualStore((state) => state.specularIntensity);
   const specularPower = useVisualStore((state) => state.specularPower);
+  // Enhanced lighting settings
+  const specularColor = useVisualStore((state) => state.specularColor);
+  const diffuseIntensity = useVisualStore((state) => state.diffuseIntensity);
+  const toneMappingEnabled = useVisualStore((state) => state.toneMappingEnabled);
+  const toneMappingAlgorithm = useVisualStore((state) => state.toneMappingAlgorithm);
+  const exposure = useVisualStore((state) => state.exposure);
 
   const uniforms = useMemo(
     () => ({
@@ -110,6 +117,12 @@ const HyperbulbMesh = () => {
       uAmbientIntensity: { value: 0.2 },
       uSpecularIntensity: { value: 1.0 },
       uSpecularPower: { value: 32.0 },
+      // Enhanced lighting uniforms
+      uSpecularColor: { value: new THREE.Color('#FFFFFF') },
+      uDiffuseIntensity: { value: 1.0 },
+      uToneMappingEnabled: { value: true },
+      uToneMappingAlgorithm: { value: 0 },
+      uExposure: { value: 1.0 },
     }),
     []
   );
@@ -149,6 +162,12 @@ const HyperbulbMesh = () => {
       if (material.uniforms.uAmbientIntensity) material.uniforms.uAmbientIntensity.value = ambientIntensity;
       if (material.uniforms.uSpecularIntensity) material.uniforms.uSpecularIntensity.value = specularIntensity;
       if (material.uniforms.uSpecularPower) material.uniforms.uSpecularPower.value = specularPower;
+      // Enhanced lighting uniforms
+      if (material.uniforms.uSpecularColor) material.uniforms.uSpecularColor.value.set(specularColor);
+      if (material.uniforms.uDiffuseIntensity) material.uniforms.uDiffuseIntensity.value = diffuseIntensity;
+      if (material.uniforms.uToneMappingEnabled) material.uniforms.uToneMappingEnabled.value = toneMappingEnabled;
+      if (material.uniforms.uToneMappingAlgorithm) material.uniforms.uToneMappingAlgorithm.value = TONE_MAPPING_TO_INT[toneMappingAlgorithm];
+      if (material.uniforms.uExposure) material.uniforms.uExposure.value = exposure;
 
       // Get rotations and build FULL D-dimensional rotation matrix
       const rotations = useRotationStore.getState().rotations;

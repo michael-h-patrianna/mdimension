@@ -59,6 +59,27 @@ export const SHADER_DESCRIPTIONS: Record<ShaderType, string> = {
   surface: 'Filled faces with lighting',
 };
 
+// ============================================================================
+// Tone Mapping Types
+// ============================================================================
+
+/** Available tone mapping algorithms */
+export type ToneMappingAlgorithm = 'reinhard' | 'aces' | 'uncharted2';
+
+/** Tone mapping algorithm options for UI dropdown */
+export const TONE_MAPPING_OPTIONS = [
+  { value: 'reinhard' as const, label: 'Reinhard' },
+  { value: 'aces' as const, label: 'ACES Filmic' },
+  { value: 'uncharted2' as const, label: 'Uncharted 2' },
+] as const;
+
+/** Tone mapping algorithm to shader int mapping */
+export const TONE_MAPPING_TO_INT: Record<ToneMappingAlgorithm, number> = {
+  reinhard: 0,
+  aces: 1,
+  uncharted2: 2,
+};
+
 /**
  * Type guard to check if settings match a specific shader type
  * @param settings

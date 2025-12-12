@@ -18,7 +18,8 @@ describe('App', () => {
     // Object appears multiple times, so use getAllByText with regex
     const objectElements = screen.getAllByText(/Object/i);
     expect(objectElements.length).toBeGreaterThan(0);
-    expect(screen.getByText('Dimension')).toBeInTheDocument();
+    // Dimension selector shows dimension buttons (4D is default)
+    expect(screen.getByRole('radio', { name: '4D' })).toBeInTheDocument();
   });
 
   it('renders the Rotation section', () => {

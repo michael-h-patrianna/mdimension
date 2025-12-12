@@ -16,6 +16,12 @@ uniform vec3 uLightDirection;
 uniform float uAmbientIntensity;
 uniform float uSpecularIntensity;
 uniform float uSpecularPower;
+// Enhanced lighting uniforms
+uniform vec3 uSpecularColor;
+uniform float uDiffuseIntensity;
+uniform bool uToneMappingEnabled;
+uniform int uToneMappingAlgorithm;
+uniform float uExposure;
 
 varying vec3 vPosition;
 varying vec2 vUv;
@@ -204,6 +210,52 @@ vec3 getPaletteColor(vec3 baseHSL, float t, int mode) {
 
     // Fallback: monochromatic
     return hsl2rgb(vec3(h, baseHSL.y, mix(minL, maxL, t)));
+}
+
+// ============================================
+// Tone Mapping Functions
+// ============================================
+
+vec3 reinhardToneMap(vec3 c) {
+    return c / (c + vec3(1.0));
+}
+
+vec3 acesToneMap(vec3 c) {
+    // ACES filmic tone mapping approximation
+    const float a = 2.51;
+    const float b = 0.03;
+    const float c2 = 2.43;
+    const float d = 0.59;
+    const float e = 0.14;
+    return clamp((c * (a * c + b)) / (c * (c2 * c + d) + e), 0.0, 1.0);
+}
+
+vec3 uncharted2ToneMap(vec3 c) {
+    // Uncharted 2 filmic tone mapping
+    const float A = 0.15;
+    const float B = 0.50;
+    const float C = 0.10;
+    const float D = 0.20;
+    const float E = 0.02;
+    const float F = 0.30;
+    const float W = 11.2;
+
+    vec3 curr = ((c * (A * c + C * B) + D * E) / (c * (A * c + B) + D * F)) - E / F;
+    vec3 white = ((vec3(W) * (A * W + C * B) + D * E) / (vec3(W) * (A * W + B) + D * F)) - E / F;
+    return curr / white;
+}
+
+vec3 applyToneMapping(vec3 c, int algo, float exposure) {
+    vec3 exposed = c * exposure;
+    if (algo == 0) return reinhardToneMap(exposed);
+    if (algo == 1) return acesToneMap(exposed);
+    if (algo == 2) return uncharted2ToneMap(exposed);
+    return clamp(exposed, 0.0, 1.0); // fallback: simple clamp
+}
+
+// Fresnel (Schlick approximation)
+float fresnelSchlick(float cosTheta, float F0) {
+    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
 }
 
 // ============================================
@@ -427,29 +479,36 @@ void main() {
     surfaceColor *= (0.3 + 0.7 * ao);
 
     // Lighting calculation using scene lighting settings
-    vec3 col;
+    // Start with ambient
+    vec3 col = surfaceColor * uAmbientIntensity;
+
     if (uLightEnabled) {
         // Transform light direction to object space
         vec3 l = normalize((uInverseModelMatrix * vec4(uLightDirection, 0.0)).xyz);
+        vec3 viewDir = -rd;
 
-        // Diffuse lighting
-        float dif = clamp(dot(n, l), 0.0, 1.0);
+        // Energy conservation: diffuse weight = 1.0 - ambient
+        float diffuseWeight = 1.0 - uAmbientIntensity;
 
-        // Apply lighting with configurable ambient
-        // Ambient provides base illumination, diffuse adds directionality
-        float diffuseStrength = 1.0 - uAmbientIntensity;
-        col = surfaceColor * (uAmbientIntensity + diffuseStrength * dif);
+        // Diffuse (Lambert) with energy conservation and intensity control
+        float NdotL = max(dot(n, l), 0.0);
+        float diffuse = NdotL * uDiffuseIntensity * diffuseWeight;
+        col += surfaceColor * uLightColor * diffuse;
 
-        // Tint by light color
-        col *= uLightColor;
+        // Specular (Blinn-Phong) with Fresnel attenuation
+        vec3 halfDir = normalize(l + viewDir);
+        float NdotH = max(dot(n, halfDir), 0.0);
+        float VdotH = max(dot(viewDir, halfDir), 0.0);
 
-        // Specular highlight with configurable intensity and power
-        vec3 ref = reflect(-l, n);
-        float spec = pow(max(dot(ref, -rd), 0.0), uSpecularPower);
-        col += uLightColor * spec * uSpecularIntensity * 0.5;
-    } else {
-        // No directional light - just ambient
-        col = surfaceColor * uAmbientIntensity;
+        // Fresnel: F0 = 0.04 for non-metallic surfaces
+        float F = fresnelSchlick(VdotH, 0.04);
+        float spec = pow(NdotH, uSpecularPower) * uSpecularIntensity * F;
+        col += uSpecularColor * uLightColor * spec;
+    }
+
+    // Apply tone mapping as final step
+    if (uToneMappingEnabled) {
+        col = applyToneMapping(col, uToneMappingAlgorithm, uExposure);
     }
 
     // Compute correct depth for the raymarched surface

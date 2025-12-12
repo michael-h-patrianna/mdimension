@@ -9,8 +9,9 @@
  * - Toggle for enabling/disabling directional light
  * - Color picker for light color
  * - Spherical coordinate controls (horizontal/vertical angles)
- * - Ambient intensity slider
- * - Specular highlight configuration
+ * - Ambient and diffuse intensity sliders
+ * - Specular color and highlight configuration
+ * - Tone mapping with algorithm selection and exposure
  * - Visual light direction indicator toggle
  *
  * @example
@@ -30,6 +31,7 @@
 
 import React from 'react';
 import { Slider } from '@/components/ui/Slider';
+import { Select } from '@/components/ui/Select';
 import {
   useVisualStore,
   DEFAULT_LIGHT_HORIZONTAL_ANGLE,
@@ -37,7 +39,14 @@ import {
   DEFAULT_AMBIENT_INTENSITY,
   DEFAULT_SPECULAR_INTENSITY,
   DEFAULT_SPECULAR_POWER,
+  DEFAULT_SPECULAR_COLOR,
+  DEFAULT_DIFFUSE_INTENSITY,
+  DEFAULT_TONE_MAPPING_ENABLED,
+  DEFAULT_TONE_MAPPING_ALGORITHM,
+  DEFAULT_EXPOSURE,
 } from '@/stores/visualStore';
+import type { ToneMappingAlgorithm } from '@/lib/shaders/types';
+import { TONE_MAPPING_OPTIONS } from '@/lib/shaders/types';
 
 /**
  * Props for LightingControls component.
@@ -46,6 +55,15 @@ export interface LightingControlsProps {
   /** Optional CSS class name for styling */
   className?: string;
 }
+
+/**
+ * Section header component for grouping controls
+ */
+const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
+  <div className="text-xs font-semibold text-text-secondary uppercase tracking-wider pt-2 pb-1 border-t border-panel-border mt-2 first:mt-0 first:border-t-0 first:pt-0">
+    {title}
+  </div>
+);
 
 /**
  * Renders lighting configuration controls for the Surface shader.
@@ -71,6 +89,16 @@ export const LightingControls: React.FC<LightingControlsProps> = ({
   const specularPower = useVisualStore((state) => state.specularPower);
   const showLightIndicator = useVisualStore((state) => state.showLightIndicator);
 
+  // Enhanced lighting state
+  const specularColor = useVisualStore((state) => state.specularColor);
+  const diffuseIntensity = useVisualStore((state) => state.diffuseIntensity);
+  const toneMappingEnabled = useVisualStore((state) => state.toneMappingEnabled);
+  const toneMappingAlgorithm = useVisualStore((state) => state.toneMappingAlgorithm);
+  const exposure = useVisualStore((state) => state.exposure);
+
+  // Fresnel state from shader settings
+  const fresnelEnabled = useVisualStore((state) => state.shaderSettings.surface.fresnelEnabled);
+
   // Lighting actions
   const setLightEnabled = useVisualStore((state) => state.setLightEnabled);
   const setLightColor = useVisualStore((state) => state.setLightColor);
@@ -81,13 +109,26 @@ export const LightingControls: React.FC<LightingControlsProps> = ({
   const setSpecularPower = useVisualStore((state) => state.setSpecularPower);
   const setShowLightIndicator = useVisualStore((state) => state.setShowLightIndicator);
 
+  // Enhanced lighting actions
+  const setSpecularColor = useVisualStore((state) => state.setSpecularColor);
+  const setDiffuseIntensity = useVisualStore((state) => state.setDiffuseIntensity);
+  const setToneMappingEnabled = useVisualStore((state) => state.setToneMappingEnabled);
+  const setToneMappingAlgorithm = useVisualStore((state) => state.setToneMappingAlgorithm);
+  const setExposure = useVisualStore((state) => state.setExposure);
+
+  // Fresnel actions
+  const setSurfaceSettings = useVisualStore((state) => state.setSurfaceSettings);
+
   // Only show lighting controls for Surface shader
   if (shaderType !== 'surface') {
     return null;
   }
 
   return (
-    <div className={`space-y-4 ${className}`}>
+    <div className={`space-y-3 ${className}`}>
+      {/* ============ GROUP 1: Light Source ============ */}
+      <SectionHeader title="Light Source" />
+
       {/* Light Enable Toggle */}
       <div className="flex items-center gap-2">
         <button
@@ -153,46 +194,6 @@ export const LightingControls: React.FC<LightingControlsProps> = ({
         />
       )}
 
-      {/* Ambient Intensity */}
-      <Slider
-        label="Ambient Intensity"
-        min={0}
-        max={1}
-        step={0.1}
-        value={ambientIntensity}
-        onChange={setAmbientIntensity}
-        onReset={() => setAmbientIntensity(DEFAULT_AMBIENT_INTENSITY)}
-        showValue
-      />
-
-      {/* Specular Intensity */}
-      {lightEnabled && (
-        <Slider
-          label="Specular Intensity"
-          min={0}
-          max={2}
-          step={0.1}
-          value={specularIntensity}
-          onChange={setSpecularIntensity}
-          onReset={() => setSpecularIntensity(DEFAULT_SPECULAR_INTENSITY)}
-          showValue
-        />
-      )}
-
-      {/* Specular Power */}
-      {lightEnabled && (
-        <Slider
-          label="Specular Power"
-          min={1}
-          max={128}
-          step={1}
-          value={specularPower}
-          onChange={setSpecularPower}
-          onReset={() => setSpecularPower(DEFAULT_SPECULAR_POWER)}
-          showValue
-        />
-      )}
-
       {/* Show Light Indicator */}
       {lightEnabled && (
         <div className="flex items-center gap-2">
@@ -210,6 +211,175 @@ export const LightingControls: React.FC<LightingControlsProps> = ({
             <span>Show Light Indicator</span>
           </button>
         </div>
+      )}
+
+      {/* ============ GROUP 2: Ambient / Diffuse ============ */}
+      <SectionHeader title="Ambient / Diffuse" />
+
+      {/* Ambient Intensity */}
+      <Slider
+        label="Ambient Intensity"
+        min={0}
+        max={1}
+        step={0.1}
+        value={ambientIntensity}
+        onChange={setAmbientIntensity}
+        onReset={() => setAmbientIntensity(DEFAULT_AMBIENT_INTENSITY)}
+        showValue
+      />
+
+      {/* Diffuse Intensity */}
+      {lightEnabled && (
+        <Slider
+          label="Diffuse Intensity"
+          min={0}
+          max={2}
+          step={0.1}
+          value={diffuseIntensity}
+          onChange={setDiffuseIntensity}
+          onReset={() => setDiffuseIntensity(DEFAULT_DIFFUSE_INTENSITY)}
+          showValue
+        />
+      )}
+
+      {/* ============ GROUP 3: Specular ============ */}
+      {lightEnabled && (
+        <>
+          <SectionHeader title="Specular" />
+
+          {/* Specular Color */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-text-secondary">
+              Specular Color
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={specularColor}
+                onChange={(e) => setSpecularColor(e.target.value)}
+                className="w-10 h-10 rounded cursor-pointer border border-panel-border"
+              />
+              <span className="text-xs font-mono text-text-secondary">{specularColor}</span>
+              {specularColor !== DEFAULT_SPECULAR_COLOR && (
+                <button
+                  onClick={() => setSpecularColor(DEFAULT_SPECULAR_COLOR)}
+                  className="text-xs text-accent hover:text-accent/80 transition-colors"
+                  title="Reset to default"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Specular Intensity */}
+          <Slider
+            label="Specular Intensity"
+            min={0}
+            max={2}
+            step={0.1}
+            value={specularIntensity}
+            onChange={setSpecularIntensity}
+            onReset={() => setSpecularIntensity(DEFAULT_SPECULAR_INTENSITY)}
+            showValue
+          />
+
+          {/* Specular Power */}
+          <Slider
+            label="Specular Power"
+            min={1}
+            max={128}
+            step={1}
+            value={specularPower}
+            onChange={setSpecularPower}
+            onReset={() => setSpecularPower(DEFAULT_SPECULAR_POWER)}
+            showValue
+          />
+        </>
+      )}
+
+      {/* ============ GROUP 4: Fresnel ============ */}
+      <SectionHeader title="Fresnel Rim" />
+
+      {/* Fresnel Toggle */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => setSurfaceSettings({ fresnelEnabled: !fresnelEnabled })}
+          className={`
+            flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors
+            ${fresnelEnabled
+              ? 'bg-accent/20 text-accent border border-accent/50'
+              : 'bg-panel-border text-text-secondary border border-panel-border'
+            }
+          `}
+          aria-pressed={fresnelEnabled}
+        >
+          <span>Fresnel Rim</span>
+        </button>
+      </div>
+
+      {/* ============ GROUP 5: Tone Mapping ============ */}
+      <SectionHeader title="Tone Mapping" />
+
+      {/* Tone Mapping Toggle */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => setToneMappingEnabled(!toneMappingEnabled)}
+          className={`
+            flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors
+            ${toneMappingEnabled
+              ? 'bg-accent/20 text-accent border border-accent/50'
+              : 'bg-panel-border text-text-secondary border border-panel-border'
+            }
+          `}
+          aria-pressed={toneMappingEnabled}
+        >
+          <span>Tone Mapping</span>
+        </button>
+        {toneMappingEnabled !== DEFAULT_TONE_MAPPING_ENABLED && (
+          <button
+            onClick={() => setToneMappingEnabled(DEFAULT_TONE_MAPPING_ENABLED)}
+            className="text-xs text-accent hover:text-accent/80 transition-colors"
+            title="Reset to default"
+          >
+            Reset
+          </button>
+        )}
+      </div>
+
+      {/* Tone Mapping Algorithm */}
+      {toneMappingEnabled && (
+        <div className="space-y-2">
+          <Select
+            label="Algorithm"
+            options={TONE_MAPPING_OPTIONS.map(opt => ({ value: opt.value, label: opt.label }))}
+            value={toneMappingAlgorithm}
+            onChange={(value) => setToneMappingAlgorithm(value as ToneMappingAlgorithm)}
+          />
+          {toneMappingAlgorithm !== DEFAULT_TONE_MAPPING_ALGORITHM && (
+            <button
+              onClick={() => setToneMappingAlgorithm(DEFAULT_TONE_MAPPING_ALGORITHM)}
+              className="text-xs text-accent hover:text-accent/80 transition-colors"
+              title="Reset to default"
+            >
+              Reset
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Exposure */}
+      {toneMappingEnabled && (
+        <Slider
+          label="Exposure"
+          min={0.1}
+          max={3}
+          step={0.1}
+          value={exposure}
+          onChange={setExposure}
+          onReset={() => setExposure(DEFAULT_EXPOSURE)}
+          showValue
+        />
       )}
     </div>
   );
