@@ -4,8 +4,10 @@
  */
 
 import React from 'react';
+import { useThemeStore } from '../stores/themeStore';
 import { ControlPanel } from './ui/ControlPanel';
 import { Section } from './ui/Section';
+import { ThemeSelector } from './ui/ThemeSelector';
 import { DimensionSelector } from './controls/DimensionSelector';
 import { ObjectTypeSelector } from './controls/ObjectTypeSelector';
 import { RotationControls } from './controls/RotationControls';
@@ -33,34 +35,39 @@ export interface LayoutProps {
 
 export const Layout: React.FC<LayoutProps> = ({
   children,
-  appTitle = 'MDimension',
+  // appTitle = 'MDimension',
   showHeader = true,
 }) => {
+  const theme = useThemeStore((state) => state.theme);
+
   return (
-    <div className="flex h-screen bg-app-bg overflow-hidden">
-      {/* Main canvas area */}
-      <main className="flex-1 relative flex flex-col">
-        {showHeader && (
-          <header className="h-16 flex items-center justify-between px-6 border-b border-panel-border bg-panel-bg/50 backdrop-blur-sm">
-            <h1 className="text-xl font-bold text-text-primary">{appTitle}</h1>
-            <div className="flex items-center gap-4">
-              {/* Future: Add global controls, theme toggle, etc. */}
-            </div>
-          </header>
+    <div className="relative w-screen h-screen bg-background overflow-hidden selection:bg-accent selection:text-black" data-theme={theme}>
+      
+      {/* Background/Canvas Layer */}
+      <div className="absolute inset-0 z-0">
+        {children || (
+          <div className="w-full h-full flex items-center justify-center">
+            <p className="text-text-secondary text-lg font-mono tracking-widest">INITIALIZING VISUALIZER...</p>
+          </div>
         )}
+      </div>
 
-        <div className="flex-1 overflow-hidden">
-          {children || (
-            <div className="w-full h-full flex items-center justify-center">
-              <p className="text-text-secondary text-lg">Canvas area</p>
-            </div>
-          )}
-        </div>
-      </main>
+      {/* Floating Header */}
+      {showHeader && (
+        <header className="absolute top-4 left-4 z-40 pointer-events-none">
+          <div className="glass-panel px-6 py-3 rounded-full pointer-events-auto flex items-center gap-4">
+            <h1 className="text-sm font-bold tracking-[0.2em] text-text-primary">
+              <span className="text-accent">M</span>DIMENSION
+            </h1>
+            <div className="h-3 w-[1px] bg-border/20" />
+            <span className="text-xs font-mono text-text-secondary">v0.1.0</span>
+          </div>
+        </header>
+      )}
 
-      {/* Control panel */}
-      <ControlPanel title="Visualization Controls">
-        <Section title="Object" defaultOpen={true}>
+      {/* Control panel (Floating HUD) */}
+      <ControlPanel title="SYSTEM CONTROLS">
+        <Section title="Object Geometry" defaultOpen={true}>
           <div className="space-y-4">
             <DimensionSelector />
             <ObjectTypeSelector />
@@ -114,18 +121,22 @@ export const Layout: React.FC<LayoutProps> = ({
           </div>
         </Section>
 
-        <Section title="Export" defaultOpen={true}>
+        <Section title="Settings" defaultOpen={true}>
+          <ThemeSelector />
+        </Section>
+
+        <Section title="Export & Share" defaultOpen={true}>
           <div className="space-y-3">
             <ExportButton />
             <ShareButton />
           </div>
         </Section>
 
-        <Section title="Learn" defaultOpen={false}>
+        <Section title="Documentation" defaultOpen={false}>
           <EducationPanel />
         </Section>
 
-        <Section title="Keyboard Shortcuts" defaultOpen={false}>
+        <Section title="Shortcuts" defaultOpen={false}>
           <KeyboardShortcuts />
         </Section>
       </ControlPanel>

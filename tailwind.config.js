@@ -8,46 +8,27 @@ export default {
   theme: {
     extend: {
       colors: {
-        'app-bg': '#0F0F1A',
-        'panel': {
-          bg: '#1A1A2E',
-          border: '#2A2A4E',
+        background: 'rgb(var(--color-bg-app) / <alpha-value>)',
+        glass: 'rgb(var(--color-bg-glass) / <alpha-value>)',
+        border: 'rgb(var(--color-border) / <alpha-value>)',
+        text: {
+          primary: 'rgb(var(--color-text-primary) / <alpha-value>)',
+          secondary: 'rgb(var(--color-text-secondary) / <alpha-value>)',
+          tertiary: 'rgb(var(--color-text-tertiary) / <alpha-value>)',
         },
-        'accent': {
-          cyan: '#00D4FF',
-          magenta: '#FF00FF',
+        accent: {
+          DEFAULT: 'rgb(var(--color-accent) / <alpha-value>)',
+          glow: 'rgb(var(--color-accent-glow) / <alpha-value>)',
         },
-        'text': {
-          primary: '#FFFFFF',
-          secondary: '#A0A0B0',
-        },
-        'success': '#00FF88',
-        'warning': '#FFD700',
-        dark: {
-          bg: '#0a0a0a',
-          surface: '#1a1a1a',
-          border: '#2a2a2a',
-          text: {
-            primary: '#ffffff',
-            secondary: '#a0a0a0',
-            tertiary: '#707070',
-          },
-        },
-        primary: {
-          50: '#f0f9ff',
-          100: '#e0f2fe',
-          200: '#bae6fd',
-          300: '#7dd3fc',
-          400: '#38bdf8',
-          500: '#0ea5e9',
-          600: '#0284c7',
-          700: '#0369a1',
-          800: '#075985',
-          900: '#0c4a6e',
-        },
+      },
+      fontFamily: {
+        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        mono: ['JetBrains Mono', 'Menlo', 'Monaco', 'Courier New', 'monospace'],
+      },
+      animation: {
+        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       },
     },
   },
   plugins: [],
 }
-

@@ -133,7 +133,7 @@ function findTriangles(adjacency: AdjacencyList, vertexCount: number): Face[] {
  * This implementation finds simple 4-cycles by checking if four vertices
  * form a closed loop where each consecutive pair is connected.
  */
-function findQuads(
+export function findQuads(
   adjacency: AdjacencyList,
   vertices: number[][],
   vertexCount: number

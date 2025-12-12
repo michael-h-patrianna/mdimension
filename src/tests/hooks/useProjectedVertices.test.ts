@@ -223,7 +223,7 @@ describe('useProjectedVertices', () => {
     });
 
     it('should recompute when projection type changes', () => {
-      const vertices: VectorND = [[1, 1, 1, 1]];
+      const vertices: VectorND[] = [[1, 1, 1, 1]];
 
       const { result, rerender } = renderHook(() => useProjectedVertices(vertices));
 
@@ -239,7 +239,7 @@ describe('useProjectedVertices', () => {
     });
 
     it('should recompute when distance changes (perspective only)', () => {
-      const vertices: VectorND = [[2, 2, 2, 1]];
+      const vertices: VectorND[] = [[2, 2, 2, 1]];
 
       const { result, rerender } = renderHook(() => useProjectedVertices(vertices));
 

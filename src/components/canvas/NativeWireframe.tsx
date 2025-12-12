@@ -57,9 +57,9 @@ export function NativeWireframe({
     // Copy vertices to buffer
     for (let i = 0; i < vertexCount; i++) {
       const v = vertices[i]!;
-      positions[i * 3] = v[0];
-      positions[i * 3 + 1] = v[1];
-      positions[i * 3 + 2] = v[2];
+      positions[i * 3] = v[0] ?? 0;
+      positions[i * 3 + 1] = v[1] ?? 0;
+      positions[i * 3 + 2] = v[2] ?? 0;
     }
 
     // Signal Three.js to upload updated data to GPU

@@ -153,8 +153,8 @@ export function FaceRenderer({
   useLayoutEffect(() => {
     if (!geometry || !vertices || vertices.length === 0) return;
 
-    const positions = geometry.attributes.position.array as Float32Array;
-    const normals = geometry.attributes.normal.array as Float32Array;
+    const positions = geometry.attributes.position!.array as Float32Array;
+    const normals = geometry.attributes.normal!.array as Float32Array;
 
     let idx = 0;
     // Use reusable Vector3 objects to avoid allocation every frame
@@ -227,8 +227,8 @@ export function FaceRenderer({
       }
     }
 
-    geometry.attributes.position.needsUpdate = true;
-    geometry.attributes.normal.needsUpdate = true;
+    geometry.attributes.position!.needsUpdate = true;
+    geometry.attributes.normal!.needsUpdate = true;
     geometry.computeBoundingSphere();
 
   }, [vertices, faces, geometry]);

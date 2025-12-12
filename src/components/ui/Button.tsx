@@ -23,18 +23,19 @@ export const Button: React.FC<ButtonProps> = ({
   ariaLabel,
   'data-testid': testId,
 }) => {
-  const baseStyles = 'font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-accent-cyan focus:ring-offset-2 focus:ring-offset-app-bg disabled:opacity-50 disabled:cursor-not-allowed';
+  
+  const baseStyles = 'relative overflow-hidden font-medium rounded-lg transition-all duration-300 focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50 disabled:cursor-not-allowed';
 
   const variantStyles = {
-    primary: 'bg-accent-cyan text-app-bg hover:bg-accent-cyan/90 active:bg-accent-cyan/80',
-    secondary: 'bg-panel-bg text-text-primary border border-panel-border hover:bg-panel-border active:bg-panel-border/80',
-    ghost: 'bg-transparent text-text-primary border border-panel-border hover:bg-panel-bg active:bg-panel-border',
+    primary: 'bg-accent text-black hover:bg-accent/90 shadow-[0_0_15px_rgb(var(--color-accent)/0.4)] hover:shadow-[0_0_25px_rgb(var(--color-accent)/0.6)]',
+    secondary: 'bg-white/5 border border-white/10 text-text-primary hover:bg-white/10 hover:border-white/20',
+    ghost: 'text-text-secondary hover:text-text-primary hover:bg-white/5',
   };
 
   const sizeStyles = {
-    sm: 'px-3 py-1.5 text-sm',
-    md: 'px-4 py-2 text-base',
-    lg: 'px-6 py-3 text-lg',
+    sm: 'px-3 py-1.5 text-xs',
+    md: 'px-4 py-2 text-sm',
+    lg: 'px-6 py-3 text-base',
   };
 
   return (

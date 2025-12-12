@@ -9,73 +9,59 @@ export interface ControlPanelProps {
 
 export const ControlPanel: React.FC<ControlPanelProps> = ({
   children,
-  title = 'Controls',
+  title = 'CONTROLS',
   className = '',
   defaultCollapsed = false,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
 
-  const toggleCollapsed = () => {
-    setIsCollapsed((prev) => !prev);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      toggleCollapsed();
-    }
-  };
-
   return (
     <aside
-      className={`fixed right-0 top-0 h-screen bg-panel-bg border-l border-panel-border transition-all duration-300 ease-in-out ${
-        isCollapsed ? 'w-12' : 'w-80 md:w-96'
-      } ${className}`}
-      aria-label="Control panel"
+      className={`fixed right-4 top-4 bottom-4 transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] z-50 flex flex-col items-end pointer-events-none ${className}`}
     >
-      {/* Header */}
-      <div className="h-16 flex items-center justify-between px-4 border-b border-panel-border bg-panel-bg">
-        {!isCollapsed && (
-          <h2 className="text-lg font-bold text-text-primary">{title}</h2>
-        )}
-        <button
-          type="button"
-          onClick={toggleCollapsed}
-          onKeyDown={handleKeyDown}
-          className="p-2 rounded-lg hover:bg-panel-border transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-accent-cyan ml-auto"
-          aria-label={isCollapsed ? 'Expand control panel' : 'Collapse control panel'}
-          aria-expanded={!isCollapsed}
-        >
-          <svg
-            className={`w-5 h-5 text-text-secondary transition-transform duration-300 ${
-              isCollapsed ? 'rotate-180' : 'rotate-0'
-            }`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+      {/* Floating Glass Card Container */}
+      <div 
+        className={`pointer-events-auto glass-panel rounded-2xl flex flex-col overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] ${
+          isCollapsed ? 'w-14 h-14 rounded-full' : 'w-80 h-full'
+        }`}
+      >
+        {/* Header */}
+        <div className="flex-none h-14 flex items-center justify-between px-4 border-b border-border/10 bg-glass/20">
+          {!isCollapsed && (
+            <h2 className="text-xs font-bold tracking-[0.2em] text-accent text-glow select-none">
+              {title}
+            </h2>
+          )}
+          
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className={`flex items-center justify-center w-8 h-8 rounded-lg text-text-secondary hover:text-accent hover:bg-white/5 transition-colors ${isCollapsed ? 'w-full h-full rounded-full' : ''}`}
+            aria-label={isCollapsed ? "Expand" : "Collapse"}
           >
-            <path
-              strokeLinecap="round"
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              width="18" 
+              height="18" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="2" 
+              strokeLinecap="round" 
               strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 19l-7-7 7-7"
-            />
-          </svg>
-        </button>
-      </div>
+              className={`transition-transform duration-500 ${isCollapsed ? 'rotate-180' : ''}`}
+            >
+              <path d="M18 15l-6-6-6 6"/>
+            </svg>
+          </button>
+        </div>
 
-      {/* Scrollable content */}
-      {!isCollapsed && (
-        <div
-          className="h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-panel-border scrollbar-track-transparent"
-          style={{
-            scrollbarWidth: 'thin',
-            scrollbarColor: '#2A2A4E transparent',
-          }}
+        {/* Content Area */}
+        <div 
+          className={`flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4 opacity-100 transition-opacity duration-300 ${isCollapsed ? 'opacity-0 pointer-events-none' : ''}`}
         >
           {children}
         </div>
-      )}
+      </div>
     </aside>
   );
 };

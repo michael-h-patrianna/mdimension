@@ -79,14 +79,13 @@ export function FatWireframe({
       const v1 = vertices[start];
       const v2 = vertices[end];
       if (v1 && v2) {
-        targetBuffer[i++] = v1[0];
-        targetBuffer[i++] = v1[1];
-        targetBuffer[i++] = v1[2];
+                targetBuffer[i++] = v1[0] ?? 0;
+                targetBuffer[i++] = v1[1] ?? 0;
+                targetBuffer[i++] = v1[2] ?? 0;
         
-        targetBuffer[i++] = v2[0];
-        targetBuffer[i++] = v2[1];
-        targetBuffer[i++] = v2[2];
-      }
+                targetBuffer[i++] = v2[0] ?? 0;
+                targetBuffer[i++] = v2[1] ?? 0;
+                targetBuffer[i++] = v2[2] ?? 0;      }
     }
 
     if (needsResize) {

@@ -3,10 +3,10 @@
  * Allows users to select the number of dimensions (3D, 4D, 5D, 6D)
  */
 
-import React, { useRef, useState, useEffect } from 'react';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { Tooltip } from '@/components/ui/Tooltip';
-import { useGeometryStore, MIN_DIMENSION, MAX_DIMENSION } from '@/stores/geometryStore';
+import { MAX_DIMENSION, MIN_DIMENSION, useGeometryStore } from '@/stores/geometryStore';
+import React, { useEffect, useRef, useState } from 'react';
 
 export interface DimensionSelectorProps {
   className?: string;
@@ -114,7 +114,7 @@ export const DimensionSelector: React.FC<DimensionSelectorProps> = ({
           Dimension
         </label>
       </Tooltip>
-      
+
       <div className="relative group">
         {canScrollLeft && (
           <button
@@ -155,9 +155,6 @@ export const DimensionSelector: React.FC<DimensionSelectorProps> = ({
         )}
       </div>
 
-      <p className="text-xs text-text-secondary">
-        {dimension}D space has {(dimension * (dimension - 1)) / 2} rotation planes
-      </p>
     </div>
   );
 };

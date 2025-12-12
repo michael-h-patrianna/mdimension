@@ -3,18 +3,18 @@
  * Controls for auto-rotating the visualization
  */
 
-import React, { useMemo } from 'react';
-import { Slider } from '@/components/ui/Slider';
 import { Button } from '@/components/ui/Button';
+import { Slider } from '@/components/ui/Slider';
 import { Tooltip } from '@/components/ui/Tooltip';
+import { getRotationPlanes } from '@/lib/math';
 import {
-  useAnimationStore,
-  MIN_SPEED,
-  MAX_SPEED,
   DEFAULT_SPEED,
+  MAX_SPEED,
+  MIN_SPEED,
+  useAnimationStore,
 } from '@/stores/animationStore';
 import { useGeometryStore } from '@/stores/geometryStore';
-import { getRotationPlanes } from '@/lib/math';
+import React, { useMemo } from 'react';
 
 export interface AnimationControlsProps {
   className?: string;
@@ -56,7 +56,7 @@ export const AnimationControls: React.FC<AnimationControlsProps> = ({
           disabled={!hasAnimatingPlanes}
           data-testid="animation-play-button"
         >
-          {isPlaying ? '⏸ Pause' : '▶ Play'}
+          {isPlaying ? 'Pause' : 'Play'}
         </Button>
 
         <Tooltip content={direction === 1 ? 'Clockwise' : 'Counter-clockwise'}>
@@ -150,11 +150,7 @@ export const AnimationControls: React.FC<AnimationControlsProps> = ({
       )}
 
       {/* Status */}
-      {hasAnimatingPlanes && (
-        <p className="text-xs text-text-secondary">
-          Animating: {Array.from(animatingPlanes).join(', ')}
-        </p>
-      )}
+
     </div>
   );
 };

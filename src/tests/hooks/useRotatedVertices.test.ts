@@ -345,7 +345,7 @@ describe('useRotatedVertices', () => {
     });
 
     it('should recompute when rotation changes', () => {
-      const vertices: VectorND = [[1, 0, 0]];
+      const vertices: VectorND[] = [[1, 0, 0]];
 
       const { result, rerender } = renderHook(() => useRotatedVertices(vertices));
 

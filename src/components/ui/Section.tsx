@@ -1,8 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 
 export interface SectionProps {
   title: string;
-  icon?: React.ReactNode;
   defaultOpen?: boolean;
   children: React.ReactNode;
   className?: string;
@@ -10,108 +9,48 @@ export interface SectionProps {
 
 export const Section: React.FC<SectionProps> = ({
   title,
-  icon,
-  defaultOpen = true,
+  defaultOpen = false, // Default to closed for cleaner initial look? Or open? Let's stick to user preference usually.
   children,
   className = '',
 }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
-  const [shouldRender, setShouldRender] = useState(defaultOpen);
-  const [height, setHeight] = useState<number | undefined>(defaultOpen ? undefined : 0);
-  const contentRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (isOpen) {
-      setShouldRender(true);
-      return;
-    } else {
-      const timer = setTimeout(() => {
-        setShouldRender(false);
-      }, 300);
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (!contentRef.current) return;
-
-    if (isOpen && shouldRender) {
-      // Opening animation
-      // Measure height after children are rendered
-      const contentHeight = contentRef.current.scrollHeight;
-      setHeight(contentHeight);
-
-      // After animation completes, set height to auto
-      const timer = setTimeout(() => {
-        setHeight(undefined);
-      }, 300);
-      return () => clearTimeout(timer);
-    } else if (!isOpen) {
-      // Closing animation
-      // First set to actual height
-      setHeight(contentRef.current.scrollHeight);
-
-      // Then trigger collapse in next frame
-      requestAnimationFrame(() => {
-        setHeight(0);
-      });
-      return;
-    }
-    return;
-  }, [isOpen, shouldRender]);
-
-  const toggleOpen = () => {
-    setIsOpen((prev) => !prev);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      toggleOpen();
-    }
-  };
 
   return (
-    <div className={`border-b border-panel-border ${className}`}>
+    <div className={`group ${className}`}>
       <button
-        type="button"
-        onClick={toggleOpen}
-        onKeyDown={handleKeyDown}
-        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-panel-border/30 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-accent-cyan"
-        aria-expanded={isOpen}
-        aria-controls={`section-content-${title}`}
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between py-2 text-left focus:outline-none"
       >
-        <div className="flex items-center gap-3">
-          {icon && <span className="text-accent-cyan">{icon}</span>}
-          <h3 className="text-sm font-semibold text-text-primary uppercase tracking-wider">
-            {title}
-          </h3>
+        <div className="flex items-center gap-2">
+          {/* Decorative indicator */}
+          <div className={`w-1 h-1 rounded-full transition-colors duration-300 ${isOpen ? 'bg-accent shadow-[0_0_8px_rgb(var(--color-accent))]' : 'bg-text-tertiary'}`} />
+          <span className={`text-xs font-semibold tracking-wider transition-colors duration-300 ${isOpen ? 'text-text-primary' : 'text-text-secondary group-hover:text-text-primary'}`}>
+            {title.toUpperCase()}
+          </span>
         </div>
-        <svg
-          className={`w-5 h-5 text-text-secondary transition-transform duration-300 ${
-            isOpen ? 'rotate-180' : 'rotate-0'
-          }`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
+        
+        <svg 
+          width="10" 
+          height="6" 
+          viewBox="0 0 10 6" 
+          fill="none" 
+          stroke="currentColor" 
+          strokeWidth="1.5" 
+          strokeLinecap="round" 
+          strokeLinejoin="round"
+          className={`text-text-tertiary transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M19 9l-7 7-7-7"
-          />
+          <path d="M1 1L5 5L9 1" />
         </svg>
       </button>
+
       <div
-        id={`section-content-${title}`}
-        ref={contentRef}
-        className="overflow-hidden transition-all duration-300 ease-in-out"
-        style={{ height: height !== undefined ? `${height}px` : 'auto' }}
-        aria-hidden={!isOpen}
+        className={`grid transition-all duration-300 ease-in-out ${isOpen ? 'grid-rows-[1fr] opacity-100 mb-4' : 'grid-rows-[0fr] opacity-0'}`}
       >
-        <div className="px-4 py-4">
-          {shouldRender && children}
+        <div className="overflow-hidden">
+          <div className="pt-2 pl-3 border-l border-border/10 ml-[5px]">
+            {children}
+          </div>
         </div>
       </div>
     </div>

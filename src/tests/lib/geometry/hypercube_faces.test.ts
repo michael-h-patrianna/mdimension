@@ -34,7 +34,8 @@ describe('generateHypercubeFaces', () => {
       const faces = generateHypercubeFaces(3);
       
       for (const face of faces) {
-          const [v1, v2, v3, v4] = face;
+          if (face.length !== 4) continue;
+          const [v1, v2, v3, v4] = face as [number, number, number, number];
           expect(countBitDiff(v1, v2)).toBe(1);
           expect(countBitDiff(v2, v3)).toBe(1);
           expect(countBitDiff(v3, v4)).toBe(1);

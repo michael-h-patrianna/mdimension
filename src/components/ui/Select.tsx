@@ -31,16 +31,18 @@ export const Select: React.FC<SelectProps> = ({
   return (
     <div className={`flex flex-col gap-2 ${className}`}>
       {label && (
-        <label className="text-sm font-medium text-text-primary">
+        <label className="text-sm font-medium text-text-secondary">
           {label}
         </label>
+
+
       )}
       <div className="relative">
         <select
           value={value}
           onChange={handleChange}
           disabled={disabled}
-          className="w-full px-4 py-2 bg-panel-bg text-text-primary border border-panel-border rounded-lg appearance-none cursor-pointer transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-accent-cyan focus:border-accent-cyan disabled:opacity-50 disabled:cursor-not-allowed hover:bg-panel-border/50"
+          className="w-full px-4 py-1 bg-panel-bg text-text-primary border border-panel-border rounded-lg appearance-none cursor-pointer transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-accent-primary disabled:opacity-50 disabled:cursor-not-allowed hover:bg-panel-border/50"
           aria-label={label}
           data-testid={testId}
         >
