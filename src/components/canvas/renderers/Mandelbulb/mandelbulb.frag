@@ -16,6 +16,7 @@ uniform vec3 uLightDirection;
 uniform float uAmbientIntensity;
 uniform float uSpecularIntensity;
 uniform float uSpecularPower;
+uniform float uLightStrength;
 // Enhanced lighting uniforms
 uniform vec3 uSpecularColor;
 uniform float uDiffuseIntensity;
@@ -508,14 +509,14 @@ void main() {
 
         // Diffuse (Lambert) with energy conservation and intensity control
         float NdotL = max(dot(worldNormal, l), 0.0);
-        float diffuse = NdotL * uDiffuseIntensity * diffuseWeight;
+        float diffuse = NdotL * uDiffuseIntensity * diffuseWeight * uLightStrength;
         col += surfaceColor * uLightColor * diffuse;
 
         // Specular (Blinn-Phong) - simple without Fresnel for clearer highlights
         // Matches Three.js MeshPhongMaterial: pow(NdotH, shininess) * specularColor
         vec3 halfDir = normalize(l + worldViewDir);
         float NdotH = max(dot(worldNormal, halfDir), 0.0);
-        float spec = pow(NdotH, uSpecularPower) * uSpecularIntensity;
+        float spec = pow(NdotH, uSpecularPower) * uSpecularIntensity * uLightStrength;
         col += uSpecularColor * uLightColor * spec;
 
         // Fresnel rim lighting (controlled by Edges render mode)

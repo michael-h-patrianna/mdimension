@@ -50,6 +50,7 @@ const MandelbulbMesh = () => {
   // Enhanced lighting settings
   const specularColor = useVisualStore((state) => state.specularColor);
   const diffuseIntensity = useVisualStore((state) => state.diffuseIntensity);
+  const lightStrength = useVisualStore((state) => state.lightStrength);
 
   // Edges render mode controls fresnel rim lighting for Mandelbulb
   const edgesVisible = useVisualStore((state) => state.edgesVisible);
@@ -77,6 +78,7 @@ const MandelbulbMesh = () => {
       uAmbientIntensity: { value: 0.2 },
       uSpecularIntensity: { value: 1.0 },
       uSpecularPower: { value: 32.0 },
+      uLightStrength: { value: 1.0 },
       // Enhanced lighting uniforms
       uSpecularColor: { value: new THREE.Color('#FFFFFF') },
       uDiffuseIntensity: { value: 1.0 },
@@ -114,6 +116,7 @@ const MandelbulbMesh = () => {
       if (material.uniforms.uAmbientIntensity) material.uniforms.uAmbientIntensity.value = ambientIntensity;
       if (material.uniforms.uSpecularIntensity) material.uniforms.uSpecularIntensity.value = specularIntensity;
       if (material.uniforms.uSpecularPower) material.uniforms.uSpecularPower.value = shininess;
+      if (material.uniforms.uLightStrength) material.uniforms.uLightStrength.value = lightStrength ?? 1.0;
       // Enhanced lighting uniforms
       if (material.uniforms.uSpecularColor) material.uniforms.uSpecularColor.value.set(specularColor);
       if (material.uniforms.uDiffuseIntensity) material.uniforms.uDiffuseIntensity.value = diffuseIntensity;

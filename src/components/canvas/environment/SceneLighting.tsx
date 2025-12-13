@@ -57,6 +57,7 @@ export const SceneLighting = memo(function SceneLighting() {
   const lightVerticalAngle = useVisualStore((state) => state.lightVerticalAngle);
   const ambientIntensity = useVisualStore((state) => state.ambientIntensity);
   const diffuseIntensity = useVisualStore((state) => state.diffuseIntensity);
+  const lightStrength = useVisualStore((state) => state.lightStrength);
   const showLightIndicator = useVisualStore((state) => state.showLightIndicator);
 
   /**
@@ -111,7 +112,7 @@ export const SceneLighting = memo(function SceneLighting() {
         <pointLight
           position={lightPosition}
           color={lightColor}
-          intensity={diffuseIntensity * 10}
+          intensity={diffuseIntensity * (lightStrength ?? 1.0) * 10}
           distance={0}
           decay={0}
         />
