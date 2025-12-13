@@ -15,6 +15,7 @@ import {
   VISUAL_PRESETS,
   DEFAULT_SHADER_TYPE,
 } from '@/stores/visualStore';
+import { DEFAULT_COLOR_MODE } from '@/lib/shaders/palette';
 
 describe('visualStore - Enhanced Features', () => {
   beforeEach(() => {
@@ -301,7 +302,7 @@ describe('visualStore - Enhanced Features', () => {
       expect(useVisualStore.getState().colorMode).toBe('triadic');
 
       useVisualStore.getState().reset();
-      expect(useVisualStore.getState().colorMode).toBe('monochromatic');
+      expect(useVisualStore.getState().colorMode).toBe(DEFAULT_COLOR_MODE);
     });
   });
 });

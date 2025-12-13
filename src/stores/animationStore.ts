@@ -142,7 +142,7 @@ export const useAnimationStore = create<AnimationState>((set, get) => ({
   reset: () => {
     set({
       isPlaying: true,
-      speed: 1,
+      speed: DEFAULT_SPEED,
       direction: 1,
       animatingPlanes: new Set(['XY', 'YZ', 'ZW']),
     })

@@ -102,8 +102,10 @@ export function useProjectedVertices(
           projectOrthographic(rotatedVertices[i]!, cache[i]);
         }
       }
-      // Return new array reference to trigger downstream updates
-      // The inner arrays are reused (cache[i]), only outer array is new
+      // Return a new array reference each time to trigger downstream re-renders.
+      // The inner arrays (cache[i]) are mutated in place for memory efficiency,
+      // but we need a new outer array reference so React components with
+      // useEffect([vertices, ...]) dependencies properly re-run.
       return [...cache];
     } catch (error) {
       console.error('Projection error:', error);

@@ -181,7 +181,9 @@ export function useCameraMovement(options: UseCameraMovementOptions = {}): void 
     }
 
     const controls = controlsRef?.current;
-    const target = controls?.target ?? new Vector3(0, 0, 0);
+    // Use pre-allocated vector to avoid allocation in render loop
+    // If no controls, default target is origin (reusing ORIGIN constant)
+    const target = controls?.target ?? ORIGIN;
 
     // Shift+WASD: Rotate camera around the target
     if (shiftPressed.current) {

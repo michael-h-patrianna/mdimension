@@ -48,6 +48,7 @@ export const Slider: React.FC<SliderProps> = ({
         </label>
         {showValue && (
           <button
+            type="button"
             onDoubleClick={onReset}
             disabled={disabled || !onReset}
             className="text-[10px] font-mono text-accent bg-accent/10 px-1.5 py-0.5 rounded border border-accent/20 hover:bg-accent/20 transition-colors disabled:opacity-50 disabled:cursor-default"

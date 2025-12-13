@@ -27,7 +27,7 @@
  * @see {@link createSurfaceMaterial} for surface material creation
  */
 
-import { useMemo, useEffect, useRef, useLayoutEffect } from 'react';
+import React, { useMemo, useEffect, useRef, useLayoutEffect } from 'react';
 import {
   BufferGeometry,
   Float32BufferAttribute,
@@ -92,7 +92,7 @@ export interface FaceRendererProps {
  * @param props.colorMode
  * @returns Three.js mesh with face geometry
  */
-export function FaceRenderer({
+export const FaceRenderer = React.memo(function FaceRenderer({
   vertices,
   faces,
   color = DEFAULT_FACE_COLOR,
@@ -364,4 +364,4 @@ export function FaceRenderer({
       <primitive object={material} attach="material" />
     </mesh>
   );
-}
+});

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
 import { Canvas } from '@react-three/fiber';
-import HyperbulbMesh from '@/components/canvas/Hyperbulb/HyperbulbMesh';
+import HyperbulbMesh from '@/components/canvas/renderers/Hyperbulb/HyperbulbMesh';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useVisualStore } from '@/stores/visualStore';

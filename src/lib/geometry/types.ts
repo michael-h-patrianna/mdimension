@@ -24,17 +24,19 @@ export type ObjectType = PolytopeType | ExtendedObjectType;
 
 /**
  * Type guard for polytope types
- * @param type
+ * Accepts string to allow validation of unknown inputs
+ * @param type - String or ObjectType to check
  */
-export function isPolytopeType(type: ObjectType): type is PolytopeType {
+export function isPolytopeType(type: string): type is PolytopeType {
   return type === 'hypercube' || type === 'simplex' || type === 'cross-polytope';
 }
 
 /**
  * Type guard for extended object types
- * @param type
+ * Accepts string to allow validation of unknown inputs
+ * @param type - String or ObjectType to check
  */
-export function isExtendedObjectType(type: ObjectType): type is ExtendedObjectType {
+export function isExtendedObjectType(type: string): type is ExtendedObjectType {
   return type === 'hypersphere' || type === 'root-system' || type === 'clifford-torus' || type === 'mandelbrot';
 }
 

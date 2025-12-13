@@ -1,5 +1,5 @@
 import { useRef, useLayoutEffect, useMemo, useEffect } from 'react';
-import { BufferGeometry, BufferAttribute, Color, LineBasicMaterial } from 'three';
+import { BufferGeometry, BufferAttribute, Color, LineBasicMaterial, DynamicDrawUsage } from 'three';
 
 export interface NativeWireframeProps {
   vertices: number[][]; // [x, y, z] arrays
@@ -54,7 +54,7 @@ export function NativeWireframe({
       // Only create new buffer when size changes (rare - topology change)
       const positions = new Float32Array(requiredSize);
       attr = new BufferAttribute(positions, 3);
-      attr.setUsage(35048); // THREE.DynamicDrawUsage for frequent updates
+      attr.setUsage(DynamicDrawUsage);
       positionAttrRef.current = attr;
       geometry.setAttribute('position', attr);
     } else {
@@ -76,8 +76,8 @@ export function NativeWireframe({
     // Signal Three.js to upload updated data to GPU
     attr.needsUpdate = true;
 
-    // Bounding sphere update is needed for frustum culling
-    geometry.computeBoundingSphere();
+    // Note: computeBoundingSphere() is NOT needed because frustumCulled={false}
+    // Removing this avoids O(n) per-vertex calculation every frame
 
   }, [vertices, geometry]);
 

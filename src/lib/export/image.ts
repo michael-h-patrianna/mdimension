@@ -83,7 +83,15 @@ export function exportSceneToPNG(options: ExportOptions = {}): boolean {
     exportCanvasToPNG(canvas, options);
     return true;
   } catch (error) {
-    console.error('Export failed:', error);
+    // Handle specific error cases with helpful messages
+    if (error instanceof DOMException && error.name === 'SecurityError') {
+      console.error(
+        'Export failed: Canvas is tainted by cross-origin content. ' +
+        'This can happen when external textures or images are used without CORS headers.'
+      );
+    } else {
+      console.error('Export failed:', error);
+    }
     return false;
   }
 }

@@ -18,6 +18,7 @@ export function useTransformedVertices(
   translation: VectorND
 ): VectorND[] {
   const cacheRef = useRef<VectorND[]>([]);
+  const lastWarnedMismatchRef = useRef<string | null>(null);
 
   return useMemo(() => {
     if (vertices.length === 0) {
@@ -53,15 +54,27 @@ export function useTransformedVertices(
       // Note: translation might have different length if dimension changed but store update is pending
       // We assume translation matches dimension or treat missing as 0
       
-      // We manually add here to handle potential dimension mismatch gracefully (optional safety)
-      // or just use addVectors if we trust types.
-      // addVectors checks length. Let's trust it but ensure translation is correct size.
-      
+      // Apply translation - dimensions must match for correct transformation
       if (translation.length === dimension) {
         addVectors(cache[i]!, translation, cache[i]);
+      } else if (translation.length > 0 && translation.some(v => v !== 0)) {
+        // Only warn once per dimension mismatch to avoid console spam
+        const mismatchKey = `${translation.length}-${dimension}`;
+        if (lastWarnedMismatchRef.current !== mismatchKey) {
+          console.warn(
+            `useTransformedVertices: Translation dimension (${translation.length}) does not match vertex dimension (${dimension}). Translation skipped.`
+          );
+          lastWarnedMismatchRef.current = mismatchKey;
+        }
       }
     }
 
+    // Return a new array reference each time to trigger downstream re-renders.
+    // The inner arrays (cache[i]) are mutated in place for memory efficiency,
+    // but we need a new outer array reference so React components with
+    // useEffect([vertices, ...]) dependencies properly re-run.
+    // Note: FaceRenderer uses useLayoutEffect and reads values imperatively,
+    // but VertexInstances and wireframes use useEffect with array dependencies.
     return [...cache];
   }, [vertices, shearMatrix, translation]);
 }

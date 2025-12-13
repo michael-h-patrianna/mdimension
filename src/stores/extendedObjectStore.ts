@@ -300,7 +300,12 @@ export const useExtendedObjectStore = create<ExtendedObjectState>((set, get) => 
     const values = [...get().mandelbrot.parameterValues];
     // Validate dimIndex to prevent sparse arrays or out-of-bounds access
     if (dimIndex < 0 || dimIndex >= values.length) {
-      return; // Invalid index, silently ignore
+      if (import.meta.env.DEV) {
+        console.warn(
+          `setMandelbrotParameterValue: Invalid dimension index ${dimIndex} (valid range: 0-${values.length - 1})`
+        );
+      }
+      return;
     }
     // Clamp to reasonable range for Mandelbrot exploration
     const clampedValue = Math.max(-2.0, Math.min(2.0, value));
@@ -424,7 +429,7 @@ export const useExtendedObjectStore = create<ExtendedObjectState>((set, get) => 
 
     // For 3D+, use boundaryOnly mode to show the fractal surface
     // For 2D, use escapeTime to show all points on the plane
-    const colorMode = dimension >= 3 ? 'boundaryOnly' : 'escapeTime';
+    const colorMode: 'escapeTime' | 'boundaryOnly' = dimension >= 3 ? 'boundaryOnly' : 'escapeTime';
 
     // Dimension-specific defaults from hyperbulb guide:
     // - 2D: Classic Mandelbrot with z^2 + c
@@ -478,7 +483,7 @@ export const useExtendedObjectStore = create<ExtendedObjectState>((set, get) => 
         parameterValues: new Array(paramCount).fill(0),
         center,
         visualizationAxes: [0, 1, 2],
-        colorMode: colorMode as 'escapeTime' | 'boundaryOnly',
+        colorMode,
         extent,
         escapeRadius,
         mandelbulbPower: power,

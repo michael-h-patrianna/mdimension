@@ -77,6 +77,11 @@ export const DEFAULT_GROUND_PLANE_OFFSET = 0.5 // Distance below object's lowest
 export const DEFAULT_GROUND_PLANE_OPACITY = 0.3
 export const DEFAULT_GROUND_PLANE_REFLECTIVITY = 0.4
 
+/** Default animation bias settings */
+export const DEFAULT_ANIMATION_BIAS = 0
+export const MIN_ANIMATION_BIAS = 0
+export const MAX_ANIMATION_BIAS = 1
+
 /** Default shader type */
 export const DEFAULT_SHADER_TYPE: ShaderType = 'surface'
 
@@ -258,6 +263,10 @@ interface VisualState {
   /** Ground plane reflectivity (0-1) */
   groundPlaneReflectivity: number
 
+  // --- Animation ---
+  /** Animation bias: 0 = uniform rotation, 1 = wildly different per plane (0-1) */
+  animationBias: number
+
   // --- Actions: Basic Visual ---
   setEdgeColor: (color: string) => void
   setEdgeThickness: (thickness: number) => void
@@ -315,6 +324,9 @@ interface VisualState {
   setGroundPlaneOffset: (offset: number) => void
   setGroundPlaneOpacity: (opacity: number) => void
   setGroundPlaneReflectivity: (reflectivity: number) => void
+
+  // --- Actions: Animation ---
+  setAnimationBias: (bias: number) => void
 
   // --- Actions: Presets & Reset ---
   applyPreset: (preset: VisualPreset) => void
@@ -382,6 +394,9 @@ const INITIAL_STATE: Omit<VisualState, keyof VisualStateFunctions> = {
   groundPlaneOffset: DEFAULT_GROUND_PLANE_OFFSET,
   groundPlaneOpacity: DEFAULT_GROUND_PLANE_OPACITY,
   groundPlaneReflectivity: DEFAULT_GROUND_PLANE_REFLECTIVITY,
+
+  // Animation
+  animationBias: DEFAULT_ANIMATION_BIAS,
 }
 
 type VisualStateFunctions = Pick<
@@ -428,6 +443,7 @@ type VisualStateFunctions = Pick<
   | 'setGroundPlaneOffset'
   | 'setGroundPlaneOpacity'
   | 'setGroundPlaneReflectivity'
+  | 'setAnimationBias'
   | 'applyPreset'
   | 'reset'
 >
@@ -651,6 +667,11 @@ export const useVisualStore = create<VisualState>((set) => ({
 
   setGroundPlaneReflectivity: (reflectivity: number) => {
     set({ groundPlaneReflectivity: Math.max(0, Math.min(1, reflectivity)) })
+  },
+
+  // --- Actions: Animation ---
+  setAnimationBias: (bias: number) => {
+    set({ animationBias: Math.max(0, Math.min(1, bias)) })
   },
 
   // --- Actions: Presets & Reset ---

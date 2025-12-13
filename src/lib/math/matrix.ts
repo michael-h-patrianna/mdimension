@@ -108,11 +108,14 @@ export function multiplyMatrixVector(m: MatrixND, v: VectorND, out?: VectorND): 
 
   const result: VectorND = out ?? new Array(rows);
 
-  // If reusing array, ensure it has correct length if needed (though caller should manage this for perf)
-  if (out && out.length !== rows) {
-    // We don't resize strictly to avoid allocation, but we assume it's big enough or we write up to rows.
-    // For safety in JS arrays:
-    // result.length = rows; 
+  // If reusing array, ensure it has correct length (caller should manage this for perf)
+  if (out && out.length < rows) {
+    // Output array is too small to hold all results
+    if (import.meta.env.DEV) {
+      console.warn(
+        `multiplyMatrixVector: Output array length (${out.length}) is smaller than result rows (${rows}). Results may be truncated.`
+      );
+    }
   }
 
   for (let i = 0; i < rows; i++) {

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect } from 'react'
+import React, { useMemo, useRef, useEffect } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import {
   SphereGeometry,
@@ -225,7 +225,7 @@ function Wireframe({
  * - Vertex spheres have slight emissive property for better visibility
  * - Supports dynamic updates to vertices and edges
  */
-export function PolytopeRenderer({
+export const PolytopeRenderer = React.memo(function PolytopeRenderer({
   vertices,
   edges,
   edgeColor: propEdgeColor,
@@ -286,4 +286,4 @@ export function PolytopeRenderer({
       )}
     </group>
   )
-}
+});

@@ -1,5 +1,5 @@
 import { useFrame, useThree } from '@react-three/fiber';
-import { useMemo, useRef, useCallback } from 'react';
+import { useMemo, useRef, useCallback, useEffect } from 'react';
 import * as THREE from 'three';
 import vertexShader from './hyperbulb.vert?raw';
 import fragmentShader from './hyperbulb.frag?raw';
@@ -60,6 +60,16 @@ const HyperbulbMesh = () => {
   const prevRotationsRef = useRef<RotationState['rotations'] | null>(null);
   const fastModeRef = useRef(false);
   const restoreQualityTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup timeout on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (restoreQualityTimeoutRef.current) {
+        clearTimeout(restoreQualityTimeoutRef.current);
+        restoreQualityTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   // Get dimension from geometry store
   const dimension = useGeometryStore((state) => state.dimension);
@@ -202,8 +212,11 @@ const HyperbulbMesh = () => {
         }
       }
 
-      // Store current rotations for next frame comparison (create a new Map copy)
-      prevRotationsRef.current = new Map(rotations);
+      // Store current rotations for next frame comparison only when changed
+      // (avoids creating garbage every frame)
+      if (rotationsChanged || !prevRotationsRef.current) {
+        prevRotationsRef.current = new Map(rotations);
+      }
 
       // Update fast mode uniform
       if (material.uniforms.uFastMode) {

@@ -2,10 +2,11 @@ import { describe, it, expect } from 'vitest'
 import { render } from '@testing-library/react'
 import { Canvas } from '@react-three/fiber'
 import { Scene } from '@/components/canvas/Scene'
+import type { NdGeometry } from '@/lib/geometry/types'
 import type { Vector3D } from '@/lib/math/types'
 
 describe('Scene', () => {
-  const sampleVertices: Vector3D[] = [
+  const sampleVertices = [
     [-1, -1, -1],
     [1, -1, -1],
     [1, 1, -1],
@@ -19,19 +20,52 @@ describe('Scene', () => {
     [3, 0],
   ]
 
+  const sampleGeometry: NdGeometry = {
+    dimension: 3,
+    type: 'hypercube',
+    vertices: sampleVertices,
+    edges: sampleEdges,
+    isPointCloud: false,
+  }
+
+  const emptyGeometry: NdGeometry = {
+    dimension: 3,
+    type: 'hypercube',
+    vertices: [],
+    edges: [],
+    isPointCloud: false,
+  }
+
+  const projectedVertices: Vector3D[] = [
+    [-1, -1, -1],
+    [1, -1, -1],
+    [1, 1, -1],
+    [-1, 1, -1],
+  ]
+
   it('should render without errors', () => {
     const { container } = render(
       <Canvas>
-        <Scene />
+        <Scene
+          geometry={sampleGeometry}
+          dimension={3}
+          objectType="hypercube"
+          projectedVertices={projectedVertices}
+        />
       </Canvas>
     )
     expect(container).toBeTruthy()
   })
 
-  it('should render with vertices and edges', () => {
+  it('should render with geometry', () => {
     const { container } = render(
       <Canvas>
-        <Scene vertices={sampleVertices} edges={sampleEdges} />
+        <Scene
+          geometry={sampleGeometry}
+          dimension={3}
+          objectType="hypercube"
+          projectedVertices={projectedVertices}
+        />
       </Canvas>
     )
     expect(container).toBeTruthy()
@@ -40,7 +74,13 @@ describe('Scene', () => {
   it('should render with auto-rotation disabled (default)', () => {
     const { container } = render(
       <Canvas>
-        <Scene autoRotate={false} />
+        <Scene
+          geometry={sampleGeometry}
+          dimension={3}
+          objectType="hypercube"
+          autoRotate={false}
+          projectedVertices={projectedVertices}
+        />
       </Canvas>
     )
     expect(container).toBeTruthy()
@@ -49,16 +89,26 @@ describe('Scene', () => {
   it('should render with auto-rotation enabled', () => {
     const { container } = render(
       <Canvas>
-        <Scene autoRotate />
+        <Scene
+          geometry={sampleGeometry}
+          dimension={3}
+          objectType="hypercube"
+          autoRotate
+          projectedVertices={projectedVertices}
+        />
       </Canvas>
     )
     expect(container).toBeTruthy()
   })
 
-  it('should handle empty vertices array', () => {
+  it('should handle empty geometry', () => {
     const { container } = render(
       <Canvas>
-        <Scene vertices={[]} edges={[]} />
+        <Scene
+          geometry={emptyGeometry}
+          dimension={3}
+          objectType="hypercube"
+        />
       </Canvas>
     )
     expect(container).toBeTruthy()
@@ -68,28 +118,49 @@ describe('Scene', () => {
     const { container } = render(
       <Canvas>
         <Scene
-          vertices={sampleVertices}
-          edges={sampleEdges}
+          geometry={sampleGeometry}
+          dimension={4}
+          objectType="hypercube"
           autoRotate
+          opacity={0.8}
+          projectedVertices={projectedVertices}
         />
       </Canvas>
     )
     expect(container).toBeTruthy()
   })
 
-  it('should not render PolytopeRenderer when vertices are undefined', () => {
+  it('should render point cloud geometry', () => {
+    const pointCloudGeometry: NdGeometry = {
+      dimension: 4,
+      type: 'hypersphere',
+      vertices: sampleVertices,
+      edges: [],
+      isPointCloud: true,
+    }
     const { container } = render(
       <Canvas>
-        <Scene edges={sampleEdges} />
+        <Scene
+          geometry={pointCloudGeometry}
+          dimension={4}
+          objectType="hypersphere"
+          projectedVertices={projectedVertices}
+        />
       </Canvas>
     )
     expect(container).toBeTruthy()
   })
 
-  it('should not render PolytopeRenderer when edges are undefined', () => {
+  it('should render with minBoundingRadius for raymarched objects', () => {
     const { container } = render(
       <Canvas>
-        <Scene vertices={sampleVertices} />
+        <Scene
+          geometry={sampleGeometry}
+          dimension={3}
+          objectType="mandelbrot"
+          minBoundingRadius={1.5}
+          projectedVertices={projectedVertices}
+        />
       </Canvas>
     )
     expect(container).toBeTruthy()

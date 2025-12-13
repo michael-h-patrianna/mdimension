@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
 import { Canvas } from '@react-three/fiber';
-import { PostProcessing } from '@/components/canvas/PostProcessing';
+import { PostProcessing } from '@/components/canvas/environment/PostProcessing';
 import { useVisualStore } from '@/stores/visualStore';
 
 describe('PostProcessing', () => {

@@ -1,26 +1,13 @@
-use your prd write skill to write the prd for this feature into docs/prd/ :
-
-in /Users/Spare/Documents/code/MultiScoper/src/rendering we have the rendering pipeline for an audio plugin written in c++. it has several shaders and post processing effects.
-
-we want to adapt parts of the rendering pipeline for our project:
-- all shaders are available
-- bloom post processing effect is available
-- additionally we need a shader that fills faces and supports specular
-- on top add a light source
-
-the sidebar "Visuals" section is refactored and allows to configure:
-- whether to show vertex "balls"
-- what shader to user
-- whether to use bloom and how strong
-- the color or color palette to use
-- whether the light source is on and the color of the light source
-- settings per shader (e.g. on the surface shader we want to control specular)
-
-uncertaintity which you should research and decide on:
-- we want visually stunning visuals but also be able to differentiate the different edges and faces. they cannot be just all be the same flat color
-- we want it to look and feel like real physical objects (how to achieve this?)
+x Use threejs orbitcontrols for camera movement
 
 
+Scene settings
+- Add new sidebar section "Scene" -> code goes into src/components/sidebar/Scene
+- Extend visualstore to also store information about the scene setup itself
+- Settings to start with
+  - Axis Helper: toggle (on/off) - whether to use  scene.add(new THREE.AxesHelper(5)
+- Ground color: move from the "Visual" section in the sidebar
+- Ground visible: move from the "Visual" section in the sidebar
 
 
 
@@ -29,11 +16,11 @@ PNG export exports an empty image
 
 
 
-Review this bug report:
-With cross section active + "animate slice" active + "show original" hidden, when the "Slice W Position" value/slider hits its minimum or maximum then two visual bugs are shortly showing:
-1. the surface plane will jump in the y position
-2. the original shape of the object will shortly appear while the cross section disappears
+next task is to clean up and standardize the sidebar sections
+1. each section has a folder in src/components/sidebar/ where the section component itself is and all components that are specifically made for it, e.g. the "Object Geometry" section is in src/components/sidebar/Geometry/ and also the src/components/controls/DimensionSelector.tsx dimension selector goes into this folder because only the object geometry section is using it
+2. the sidebar.tsx itself only loads the sections and does not control what is in the section
 
+refactor sidebar:
 
 
 
@@ -68,3 +55,10 @@ simplex: 4 (scale)
 hypersphere: 3 (radius)
 root system: 2 - (scale)
 clifford torus: 3 (radius)
+
+1. Integrate GPU shaders into renderers - Replace CPU transforms in PolytopeScene/PointCloudScene with the new UnifiedMaterial system for additional performance gains
+  1. Performance benchmarking - Measure actual FPS improvements and memory usage
+  2. Visual feature enhancements - The UnifiedMaterial system supports:
+    - Palette color gradients
+    - Fresnel rim lighting
+    - Depth-based coloring

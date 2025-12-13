@@ -60,19 +60,16 @@ export const ShareButton: React.FC<ShareButtonProps> = ({ className = '' }) => {
     });
 
     try {
+      // Modern Clipboard API (supported by all modern browsers)
       await navigator.clipboard.writeText(url);
       setCopied(true);
       timeoutRef.current = setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Fallback for browsers that don't support clipboard API
-      const textArea = document.createElement('textarea');
-      textArea.value = url;
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textArea);
-      setCopied(true);
-      timeoutRef.current = setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      // Clipboard API failed (e.g., no permission, insecure context)
+      // Log error and provide user feedback
+      console.warn('Clipboard API failed:', error);
+      // Since Clipboard API has 95%+ support, provide manual copy fallback
+      window.prompt('Copy this URL to share:', url);
     }
   };
 

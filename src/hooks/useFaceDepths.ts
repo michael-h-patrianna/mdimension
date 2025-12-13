@@ -25,13 +25,19 @@ export function useFaceDepths(
       return [];
     }
 
-    // Calculate raw depth for each face
+    // Calculate raw depth for each face while tracking min/max in single pass
+    // (avoids separate Math.min/max spread operations which are O(n) each)
+    let minDepth = Infinity;
+    let maxDepth = -Infinity;
+
     const rawDepths = faces.map((face) => {
       const vertexIndices = face.vertices;
 
       if (vertexIndices.length === 0) {
         return 0;
       }
+
+      let depth: number;
 
       if (dimension > 3) {
         // For 4D+: Average the W+ coordinates (indices 3 and beyond)
@@ -49,7 +55,7 @@ export function useFaceDepths(
           }
         }
 
-        return count > 0 ? sum / count : 0;
+        depth = count > 0 ? sum / count : 0;
       } else {
         // For 3D: Use Y-coordinate of face centroid
         let sumY = 0;
@@ -63,8 +69,14 @@ export function useFaceDepths(
           }
         }
 
-        return validCount > 0 ? sumY / validCount : 0;
+        depth = validCount > 0 ? sumY / validCount : 0;
       }
+
+      // Track min/max during iteration (single pass)
+      if (depth < minDepth) minDepth = depth;
+      if (depth > maxDepth) maxDepth = depth;
+
+      return depth;
     });
 
     // Normalize to [0, 1] range
@@ -72,8 +84,6 @@ export function useFaceDepths(
       return [];
     }
 
-    const minDepth = Math.min(...rawDepths);
-    const maxDepth = Math.max(...rawDepths);
     const range = maxDepth - minDepth;
 
     // Avoid division by zero if all depths are the same

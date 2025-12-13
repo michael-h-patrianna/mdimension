@@ -1,156 +1,87 @@
+/**
+ * Scene Component
+ *
+ * Provides the Three.js scene foundation with lighting, camera, post-processing,
+ * and ground plane. Delegates all object rendering to UnifiedRenderer.
+ *
+ * Architecture:
+ * - Scene: Lighting, camera, effects, ground plane
+ * - UnifiedRenderer: Routes to appropriate high-performance renderer
+ */
+
+import React from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import type { Vector3D } from '@/lib/math/types'
 import type { Face } from '@/lib/geometry/faces'
-import { PolytopeRenderer } from './PolytopeRenderer'
-import { PointCloudRenderer, PointCloudWithEdges } from './PointCloudRenderer'
-import { FaceRenderer } from './FaceRenderer'
+import type { NdGeometry, ObjectType } from '@/lib/geometry/types'
+import { UnifiedRenderer } from './renderers/UnifiedRenderer'
 import { CameraController } from './CameraController'
-import { SceneLighting } from './SceneLighting'
-import { PostProcessing } from './PostProcessing'
-import { GroundPlane } from './GroundPlane'
+import { SceneLighting } from './environment/SceneLighting'
+import { PostProcessing } from './environment/PostProcessing'
+import { GroundPlane } from './environment/GroundPlane'
 import { useVisualStore } from '@/stores/visualStore'
-import { useVertexSize } from '@/hooks/useVertexSize'
 
 /**
  * Props for the Scene component.
  */
 export interface SceneProps {
-  /** 3D projected vertices to render */
-  vertices?: Vector3D[]
-  /** Edge connections between vertices */
-  edges?: [number, number][]
-  /** Detected faces for surface rendering (PRD Story 2) */
+  /** Generated geometry containing vertices, edges, and metadata */
+  geometry: NdGeometry
+  /** Current dimension of the object */
+  dimension: number
+  /** Type of object being rendered */
+  objectType: ObjectType
+  /** Detected faces for surface rendering */
   faces?: Face[]
+  /** Per-face depth values for palette coloring */
+  faceDepths?: number[]
+  /** Per-point colors for point cloud rendering */
+  pointColors?: string[]
+  /** 3D projected vertices for ground plane positioning */
+  projectedVertices?: Vector3D[]
   /** Enable auto-rotation (default: false) */
   autoRotate?: boolean
-  /** Opacity of the main polytope (default: 1.0) */
+  /** Overall opacity (default: 1.0) */
   opacity?: number
-  /** Whether this is a point cloud (uses PointCloudRenderer) */
-  isPointCloud?: boolean
-  /**
-   * Per-point colors for point cloud rendering.
-   * Used for Mandelbrot visualization where each point has a unique color
-   * derived from escape time and the user's vertex color.
-   */
-  pointColors?: string[]
   /**
    * Minimum bounding radius for ground plane positioning.
-   * Used when external objects (like raymarched Mandelbulb) need to be
-   * accounted for in ground plane calculations.
+   * Used when raymarched objects need to be accounted for.
    */
   minBoundingRadius?: number
-  /**
-   * Per-face depth values for palette color variation.
-   * Derived from higher-dimension (W+) coordinates or Y-coordinate fallback.
-   */
-  faceDepths?: number[]
 }
 
 /**
- * Main Three.js scene component with lighting and rendering setup.
+ * Main Three.js scene component.
  *
- * This component provides the foundational 3D scene for rendering n-dimensional
- * objects. It includes:
- * - Ambient and directional lighting for proper 3D visualization
- * - Reflective ground plane with grid overlay (toggleable via visual store)
- * - Dark background optimized for visualizing colored geometry
- * - Camera controls with smooth interaction
- * - PolytopeRenderer for displaying geometry
- *
- * The scene is optimized for 60 FPS performance and provides a consistent
- * visual environment for all polytope visualizations.
- *
- * @param props - Scene configuration
- * @param props.vertices
- * @param props.edges
- * @param props.faces
- * @param props.autoRotate
- * @param props.opacity
- * @param props.isPointCloud
- * @returns Complete 3D scene with lighting, controls, and geometry
- *
- * @example
- * ```tsx
- * // Basic scene with default settings
- * <Canvas>
- *   <Scene />
- * </Canvas>
- * ```
- *
- * @example
- * ```tsx
- * // Scene with custom geometry
- * const vertices: Vector3D[] = [
- *   [-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1],
- *   [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]
- * ]
- * const edges: [number, number][] = [
- *   [0, 1], [1, 2], [2, 3], [3, 0],
- *   [4, 5], [5, 6], [6, 7], [7, 4],
- *   [0, 4], [1, 5], [2, 6], [3, 7]
- * ]
- *
- * <Canvas>
- *   <Scene
- *     vertices={vertices}
- *     edges={edges}
- *     autoRotate
- *   />
- * </Canvas>
- * ```
- *
- * @remarks
- * - Ambient light (intensity 0.4) provides base illumination
- * - Directional light (intensity 0.8) creates depth and shadows
- * - Dark background (#0F0F1A) enhances visibility of colored edges
- * - Ground plane is toggleable via visual store settings
- * - Camera controls support mouse/touch interaction
- * - Performance optimized for 60 FPS
+ * Provides the scene foundation and delegates rendering to UnifiedRenderer.
+ * All object rendering uses useFrame for high-performance animation.
  */
-export function Scene({
-  vertices,
-  edges,
+export const Scene = React.memo(function Scene({
+  geometry,
+  dimension,
+  objectType,
   faces,
+  faceDepths,
+  pointColors,
+  projectedVertices,
   autoRotate = false,
   opacity = 1.0,
-  isPointCloud = false,
-  pointColors,
   minBoundingRadius,
-  faceDepths,
 }: SceneProps) {
-  // Get all visual settings with shallow comparison to prevent unnecessary re-renders
+  // Get ground plane settings with shallow comparison
   const {
-    vertexVisible,
-    facesVisible,
-    faceColor,
-    shaderSettings,
     showGroundPlane,
     groundPlaneOffset,
     groundPlaneOpacity,
     groundPlaneReflectivity,
-    colorMode,
   } = useVisualStore(
     useShallow((state) => ({
-      vertexVisible: state.vertexVisible,
-      facesVisible: state.facesVisible,
-      faceColor: state.faceColor,
-      shaderSettings: state.shaderSettings,
       showGroundPlane: state.showGroundPlane,
       groundPlaneOffset: state.groundPlaneOffset,
       groundPlaneOpacity: state.groundPlaneOpacity,
       groundPlaneReflectivity: state.groundPlaneReflectivity,
-      colorMode: state.colorMode,
     }))
-  );
-
-  // Determine if we should render faces (controlled by facesVisible toggle, not for point clouds)
-  const shouldRenderFaces = !isPointCloud && facesVisible && faces && faces.length > 0 && vertices;
-
-  // Get surface shader settings
-  const surfaceSettings = shaderSettings.surface;
-
-  // Calculate vertex/point size based on vertex count using custom hook
-  const adjustedVertexSize = useVertexSize(vertices?.length ?? 0);
+  )
 
   return (
     <>
@@ -165,7 +96,7 @@ export function Scene({
 
       {/* Reflective ground plane with grid overlay */}
       <GroundPlane
-        vertices={vertices}
+        vertices={projectedVertices}
         offset={groundPlaneOffset}
         opacity={groundPlaneOpacity}
         reflectivity={groundPlaneReflectivity}
@@ -173,57 +104,16 @@ export function Scene({
         minBoundingRadius={minBoundingRadius}
       />
 
-      {/* Render faces when Surface shader is selected (PRD Story 2) */}
-      {/* Note: FaceRenderer reads specular settings directly from store for consistency with LightingControls */}
-      {shouldRenderFaces && (
-        <FaceRenderer
-          vertices={vertices}
-          faces={faces}
-          color={faceColor}
-          opacity={surfaceSettings.faceOpacity}
-          faceDepths={faceDepths}
-          colorMode={colorMode}
-        />
-      )}
-
-      {/* Render based on geometry type */}
-      {vertices && (
-        isPointCloud ? (
-          // Point cloud rendering (hyperspheres, sampled manifolds, Mandelbrot)
-          // Uses same adjustedVertexSize as polytopes for visual consistency
-          // PointCloudWithEdges handles visibility toggles internally
-          // pointColors enables per-point coloring for Mandelbrot visualization
-          edges && edges.length > 0 ? (
-            <PointCloudWithEdges
-              vertices={vertices}
-              edges={edges}
-              pointSize={adjustedVertexSize}
-              opacity={opacity}
-              pointColors={pointColors}
-            />
-          ) : (
-            // Standalone point cloud (no edges) - respect Vertices toggle
-            vertexVisible && (
-              <PointCloudRenderer
-                vertices={vertices}
-                pointSize={adjustedVertexSize}
-                opacity={opacity}
-                pointColors={pointColors}
-              />
-            )
-          )
-        ) : (
-          // Traditional polytope rendering (with density-adjusted vertex size)
-          edges && (
-            <PolytopeRenderer
-              vertices={vertices}
-              edges={edges}
-              opacity={opacity}
-              vertexSize={adjustedVertexSize}
-            />
-          )
-        )
-      )}
+      {/* Unified renderer for all object types */}
+      <UnifiedRenderer
+        geometry={geometry}
+        dimension={dimension}
+        objectType={objectType}
+        faces={faces}
+        faceDepths={faceDepths}
+        pointColors={pointColors}
+        opacity={opacity}
+      />
     </>
   )
-}
+})

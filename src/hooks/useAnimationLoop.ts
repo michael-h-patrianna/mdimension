@@ -5,6 +5,8 @@
 
 import { useAnimationStore } from '@/stores/animationStore'
 import { useRotationStore } from '@/stores/rotationStore'
+import { useVisualStore } from '@/stores/visualStore'
+import { getPlaneMultiplier } from '@/lib/animation/biasCalculation'
 import { useCallback, useEffect, useRef } from 'react'
 
 /**
@@ -23,6 +25,8 @@ export function useAnimationLoop(): void {
 
   const lastTimeRef = useRef<number | null>(null)
   const frameRef = useRef<number | null>(null)
+  // Reusable Map for rotation updates (avoids allocation every frame)
+  const updatesRef = useRef(new Map<string, number>())
 
   const animate = useCallback(
     (currentTime: number) => {
@@ -40,18 +44,30 @@ export function useAnimationLoop(): void {
       }
 
       const rotationDelta = getRotationDelta(deltaTime)
-      const updates = new Map<string, number>()
+      // Get animation bias from visual store (0 = uniform, 1 = wildly different)
+      const animationBias = useVisualStore.getState().animationBias
+      // Get fresh animating planes from store to avoid stale closure
+      const currentAnimatingPlanes = useAnimationStore.getState().animatingPlanes
+      // Reuse Map instance to avoid allocation every frame (60 FPS = 60 allocations/sec)
+      const updates = updatesRef.current
+      updates.clear()
 
-      // Update each animating plane
-      animatingPlanes.forEach((plane) => {
+      // Update each animating plane with per-plane bias multiplier
+      const totalPlanes = currentAnimatingPlanes.size
+      let planeIndex = 0
+      currentAnimatingPlanes.forEach((plane) => {
         const currentAngle = getRotationRadians(plane)
-        let newAngle = currentAngle + rotationDelta
+        // Apply per-plane bias multiplier using golden ratio spread
+        const multiplier = getPlaneMultiplier(planeIndex, totalPlanes, animationBias)
+        const biasedDelta = rotationDelta * multiplier
+        let newAngle = currentAngle + biasedDelta
 
         // Normalize to [0, 2π)
         while (newAngle < 0) newAngle += 2 * Math.PI
         while (newAngle >= 2 * Math.PI) newAngle -= 2 * Math.PI
 
         updates.set(plane, newAngle)
+        planeIndex++
       })
 
       if (updates.size > 0) {

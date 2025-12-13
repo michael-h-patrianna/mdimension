@@ -18,6 +18,7 @@ export const Section: React.FC<SectionProps> = ({
   return (
     <div className={`group rounded-lg transition-all duration-300 ${isOpen ? 'bg-white/5' : ''} ${className}`}>
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center justify-between py-2 px-3 text-left focus:outline-none"
         aria-expanded={isOpen}

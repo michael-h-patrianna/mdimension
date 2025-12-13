@@ -45,6 +45,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           )}
           
           <button
+            type="button"
             onClick={() => setIsCollapsed(!isCollapsed)}
             className={`${STYLES.button} ${isCollapsed ? 'w-full h-full rounded-full' : ''}`}
             aria-label={isCollapsed ? "Expand control panel" : "Collapse control panel"}

@@ -81,24 +81,51 @@ describe('useTransformedVertices', () => {
     expect(firstResult).toBe(secondResult);
   });
 
-  it('should update when inputs change', () => {
+  it('should update values and return new reference when inputs change', () => {
     const vertices: VectorND[] = [[1, 2]];
     const shear: MatrixND = [[1, 0], [0, 1]];
     const translation: VectorND = [0, 0];
 
-    const { result, rerender } = renderHook((props) => 
+    const { result, rerender } = renderHook((props) =>
       useTransformedVertices(props.vertices, props.shear, props.translation),
       { initialProps: { vertices, shear, translation } }
     );
 
     const firstResult = result.current;
+    // Initial values
+    expect(firstResult[0]).toEqual([1, 2]);
 
     // Change translation
     rerender({ vertices, shear, translation: [1, 1] });
-    
-    const secondResult = result.current;
 
-    expect(firstResult).not.toBe(secondResult);
+    const secondResult = result.current;
+    // Values should update
     expect(secondResult[0]).toEqual([2, 3]);
+    // Array reference should change to trigger downstream re-renders
+    expect(firstResult).not.toBe(secondResult);
+  });
+
+  it('should return new array reference when vertex count changes', () => {
+    const vertices1: VectorND[] = [[1, 2]];
+    const vertices2: VectorND[] = [[1, 2], [3, 4]];
+    const shear: MatrixND = [[1, 0], [0, 1]];
+    const translation: VectorND = [0, 0];
+
+    const { result, rerender } = renderHook((props) =>
+      useTransformedVertices(props.vertices, props.shear, props.translation),
+      { initialProps: { vertices: vertices1, shear, translation } }
+    );
+
+    const firstResult = result.current;
+    expect(firstResult).toHaveLength(1);
+
+    // Change to more vertices
+    rerender({ vertices: vertices2, shear, translation });
+
+    const secondResult = result.current;
+    expect(secondResult).toHaveLength(2);
+
+    // Array reference should change when length changes
+    expect(firstResult).not.toBe(secondResult);
   });
 });

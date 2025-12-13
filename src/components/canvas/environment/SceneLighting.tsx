@@ -30,7 +30,7 @@
  */
 
 import { useMemo, useRef, useEffect, memo } from 'react';
-import { SphereGeometry, MeshBasicMaterial, Color } from 'three';
+import { SphereGeometry, MeshBasicMaterial } from 'three';
 import { useVisualStore } from '@/stores/visualStore';
 
 /**
@@ -78,8 +78,9 @@ export const SceneLighting = memo(function SceneLighting() {
   }, [lightHorizontalAngle, lightVerticalAngle]);
 
   // Create light indicator material only when color changes
+  // Note: MeshBasicMaterial accepts string color directly, no need for Color object
   const indicatorMaterial = useMemo(() => {
-    return new MeshBasicMaterial({ color: new Color(lightColor) });
+    return new MeshBasicMaterial({ color: lightColor });
   }, [lightColor]);
 
   // Dispose material on change or unmount

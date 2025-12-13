@@ -285,7 +285,9 @@ float GetDist(vec3 pos) {
         r = length(z);
         if (r > escapeRadius) break;
 
-        float theta = acos(z.z/r);
+        // Guard against division by zero at origin
+        float safeR = max(r, 1e-6);
+        float theta = acos(clamp(z.z / safeR, -1.0, 1.0));
         float phi = atan(z.y, z.x);
 
         dr = pow(r, power-1.0) * power * dr + 1.0;
@@ -329,7 +331,9 @@ float GetDistWithTrap(vec3 pos, out float trap) {
         minDistAxis = min(minDistAxis, length(z.xz));                  // y-axis distance
         minDistSphere = min(minDistSphere, abs(length(z) - 0.8));      // sphere shell r=0.8
 
-        float theta = acos(z.z/r);
+        // Guard against division by zero at origin
+        float safeR = max(r, 1e-6);
+        float theta = acos(clamp(z.z / safeR, -1.0, 1.0));
         float phi = atan(z.y, z.x);
 
         dr = pow(r, power-1.0) * power * dr + 1.0;

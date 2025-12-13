@@ -98,7 +98,8 @@ export function toHyperspherical(v: Float32Array, eps: number = 1e-12): Hypersph
     theta[i] = Math.acos(cosAngle);
 
     // Remove v[i]^2 from tail for next iteration
-    tail2 -= vi * vi;
+    // Use Math.max to prevent negative values from floating-point precision loss
+    tail2 = Math.max(0, tail2 - vi * vi);
   }
 
   // Last angle theta[D-2] uses atan2 for full circle coverage

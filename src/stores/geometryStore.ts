@@ -69,7 +69,7 @@ function clampDimension(dim: number): number {
  * @param type
  */
 function isValidObjectType(type: string): type is ObjectType {
-  return isPolytopeType(type as ObjectType) || isExtendedObjectType(type as ObjectType);
+  return isPolytopeType(type) || isExtendedObjectType(type);
 }
 
 /**

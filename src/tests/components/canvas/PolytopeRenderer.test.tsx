@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { render } from '@testing-library/react'
 import { Canvas } from '@react-three/fiber'
-import { PolytopeRenderer } from '@/components/canvas/PolytopeRenderer'
+import { PolytopeRenderer } from '@/components/canvas/renderers/PolytopeRenderer'
 import type { Vector3D } from '@/lib/math/types'
 
 describe('PolytopeRenderer', () => {

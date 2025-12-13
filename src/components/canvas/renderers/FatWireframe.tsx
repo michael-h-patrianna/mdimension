@@ -72,6 +72,8 @@ export function FatWireframe({
   const { size } = useThree();
   const materialRef = useRef<LineMaterial>(null);
   const meshRef = useRef<LineSegments2>(null);
+  // Reusable Vector2 for resolution updates (avoids allocation on every size change)
+  const resolutionRef = useRef(new Vector2());
 
   // Initialize geometry (topology)
   // Geometry object is created once; positions are updated in useLayoutEffect when edges/vertices change.
@@ -107,6 +109,7 @@ export function FatWireframe({
 
     // Fill buffer
     let i = 0;
+    let invalidEdgeCount = 0;
     for (const [start, end] of edges) {
       const v1 = vertices[start];
       const v2 = vertices[end];
@@ -118,7 +121,23 @@ export function FatWireframe({
         targetBuffer[i++] = v2[0] ?? 0;
         targetBuffer[i++] = v2[1] ?? 0;
         targetBuffer[i++] = v2[2] ?? 0;
+      } else {
+        // Invalid edge - use degenerate line (zero-length) to maintain buffer alignment
+        invalidEdgeCount++;
+        targetBuffer[i++] = 0;
+        targetBuffer[i++] = 0;
+        targetBuffer[i++] = 0;
+        targetBuffer[i++] = 0;
+        targetBuffer[i++] = 0;
+        targetBuffer[i++] = 0;
       }
+    }
+
+    // Warn once per render if invalid edges were detected (dev only)
+    if (invalidEdgeCount > 0 && import.meta.env.DEV) {
+      console.warn(
+        `FatWireframe: ${invalidEdgeCount} edge(s) reference non-existent vertices (vertices.length=${vertices.length})`
+      );
     }
 
     if (needsResize) {
@@ -132,10 +151,11 @@ export function FatWireframe({
 
   }, [vertices, edges, geometry]);
 
-  // Update material resolution
+  // Update material resolution (reuses Vector2 instance to avoid allocation)
   useLayoutEffect(() => {
     if (materialRef.current) {
-      materialRef.current.resolution = new Vector2(size.width, size.height);
+      resolutionRef.current.set(size.width, size.height);
+      materialRef.current.resolution = resolutionRef.current;
     }
   }, [size]);
 

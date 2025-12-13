@@ -34,6 +34,7 @@
  */
 
 import { memo } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { useVisualStore } from '@/stores/visualStore';
 
@@ -42,12 +43,24 @@ import { useVisualStore } from '@/stores/visualStore';
  * Implements Dual Filter Bloom matching the original C++ implementation.
  */
 export const PostProcessing = memo(function PostProcessing() {
-  const bloomEnabled = useVisualStore((state) => state.bloomEnabled);
-  const bloomIntensity = useVisualStore((state) => state.bloomIntensity);
-  const bloomThreshold = useVisualStore((state) => state.bloomThreshold);
-  const bloomRadius = useVisualStore((state) => state.bloomRadius);
-  const bloomSoftKnee = useVisualStore((state) => state.bloomSoftKnee);
-  const bloomLevels = useVisualStore((state) => state.bloomLevels);
+  // Consolidate all visual store subscriptions with useShallow to reduce re-renders
+  const {
+    bloomEnabled,
+    bloomIntensity,
+    bloomThreshold,
+    bloomRadius,
+    bloomSoftKnee,
+    bloomLevels,
+  } = useVisualStore(
+    useShallow((state) => ({
+      bloomEnabled: state.bloomEnabled,
+      bloomIntensity: state.bloomIntensity,
+      bloomThreshold: state.bloomThreshold,
+      bloomRadius: state.bloomRadius,
+      bloomSoftKnee: state.bloomSoftKnee,
+      bloomLevels: state.bloomLevels,
+    }))
+  );
 
   // Don't render effect composer if bloom is disabled
   if (!bloomEnabled) return null;

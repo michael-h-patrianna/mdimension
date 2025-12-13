@@ -19,6 +19,7 @@
  */
 
 import React, { useEffect, useRef } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { ToggleButton } from '@/components/ui/ToggleButton';
 import { useVisualStore } from '@/stores/visualStore';
 import { useGeometryStore } from '@/stores/geometryStore';
@@ -50,10 +51,10 @@ function canRenderFaces(objectType: string): boolean {
 /**
  * Checks if an object type supports edge rendering
  * For Mandelbrot, "Edges" controls fresnel rim lighting on the raymarched surface
- * @param objectType - The current object type
+ * @param _objectType - The current object type (unused - all types support edges)
  * @returns true if edges can be rendered for this object type
  */
-function canRenderEdges(objectType: string): boolean {
+function canRenderEdges(_objectType: string): boolean {
   // All object types support edges (Mandelbrot uses fresnel rim lighting as "edges")
   return true;
 }
@@ -77,22 +78,35 @@ function canRenderEdges(objectType: string): boolean {
  * - When switching to an incompatible object, faces/edges auto-turn off
  * - Faces toggle automatically sets shader type (surface vs wireframe)
  */
-export const RenderModeToggles: React.FC<RenderModeTogglesProps> = ({
+export const RenderModeToggles: React.FC<RenderModeTogglesProps> = React.memo(({
   className = '',
 }) => {
-  // Visual store state
-  const vertexVisible = useVisualStore((state) => state.vertexVisible);
-  const edgesVisible = useVisualStore((state) => state.edgesVisible);
-  const facesVisible = useVisualStore((state) => state.facesVisible);
+  // Consolidate visual store selectors with useShallow to reduce subscriptions
+  const {
+    vertexVisible,
+    edgesVisible,
+    facesVisible,
+    setVertexVisible,
+    setEdgesVisible,
+    setFacesVisible,
+  } = useVisualStore(
+    useShallow((state) => ({
+      vertexVisible: state.vertexVisible,
+      edgesVisible: state.edgesVisible,
+      facesVisible: state.facesVisible,
+      setVertexVisible: state.setVertexVisible,
+      setEdgesVisible: state.setEdgesVisible,
+      setFacesVisible: state.setFacesVisible,
+    }))
+  );
 
-  // Visual store actions
-  const setVertexVisible = useVisualStore((state) => state.setVertexVisible);
-  const setEdgesVisible = useVisualStore((state) => state.setEdgesVisible);
-  const setFacesVisible = useVisualStore((state) => state.setFacesVisible);
-
-  // Geometry store state
-  const objectType = useGeometryStore((state) => state.objectType);
-  const dimension = useGeometryStore((state) => state.dimension);
+  // Consolidate geometry store selectors with useShallow
+  const { objectType, dimension } = useGeometryStore(
+    useShallow((state) => ({
+      objectType: state.objectType,
+      dimension: state.dimension,
+    }))
+  );
 
   // Track if faces/edges were auto-disabled due to object type switch
   // Initialize to false - only set to true when we auto-disable, not for manual toggles
@@ -244,4 +258,4 @@ export const RenderModeToggles: React.FC<RenderModeTogglesProps> = ({
       </div>
     </div>
   );
-};
+});

@@ -5,29 +5,43 @@
  * Supports both traditional polytopes and extended objects:
  * - Polytopes: Hypercube, Simplex, Cross-Polytope
  * - Extended: Hypersphere, Root System, Clifford Torus, Mandelbrot
+ *
+ * Unified Architecture:
+ * All rendering uses useFrame-based high-performance pipelines that bypass React
+ * re-renders during animation. UnifiedRenderer routes to the appropriate renderer:
+ * - PolytopeScene: For polytopes with faces/edges/vertices (GPU shaders)
+ * - PointCloudScene: For hyperspheres, root systems, Mandelbrot point clouds (GPU shaders)
+ * - MandelbulbMesh/HyperbulbMesh: For raymarched 3D/4D surfaces
  */
 
 import { useMemo } from 'react';
-import { Canvas } from '@react-three/fiber';
 import { Scene } from '@/components/canvas/Scene';
-import { Layout } from '@/components/Layout';
-import { useVisualStore } from '@/stores/visualStore';
-import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
-import { useProjectedVertices } from '@/hooks/useProjectedVertices';
+import { Layout } from '@/components/layout/Layout';
 import { useAnimationLoop } from '@/hooks/useAnimationLoop';
-import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
-import { useSyncedDimension } from '@/hooks/useSyncedDimension';
-import { useGeometryGenerator } from '@/hooks/useGeometryGenerator';
-import { useObjectTransformations } from '@/hooks/useObjectTransformations';
-import { useFaceDetection } from '@/hooks/useFaceDetection';
 import { useFaceDepths } from '@/hooks/useFaceDepths';
+import { useFaceDetection } from '@/hooks/useFaceDetection';
+import { useGeometryGenerator } from '@/hooks/useGeometryGenerator';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useMandelbrotColors } from '@/hooks/useMandelbrotColors';
-import MandelbulbMesh from '@/components/canvas/Mandelbulb/MandelbulbMesh';
-import HyperbulbMesh from '@/components/canvas/Hyperbulb/HyperbulbMesh';
-import type { Vector3D } from '@/lib/math/types';
+import { useSyncedDimension } from '@/hooks/useSyncedDimension';
+import type { VectorND, Vector3D } from '@/lib/math/types';
+import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
+import { useVisualStore } from '@/stores/visualStore';
+import { Canvas } from '@react-three/fiber';
 
 /**
- * Main visualization component that handles the render pipeline
+ * Extract 3D positions from N-D vertices for ground plane bounds calculation.
+ * This is much cheaper than full transform + projection pipeline.
+ */
+function extractBasePositions(vertices: VectorND[]): Vector3D[] {
+  return vertices.map((v) => [v[0] ?? 0, v[1] ?? 0, v[2] ?? 0] as Vector3D);
+}
+
+/**
+ * Main visualization component that handles the render pipeline.
+ *
+ * Unified architecture: All renderers use useFrame for GPU-based transformations,
+ * reading from stores via getState() to bypass React's render cycle.
  */
 function Visualizer() {
   // 1. Synchronize dimensions across stores
@@ -39,50 +53,42 @@ function Visualizer() {
   // 3. Generate geometry based on store state
   const { geometry, dimension, objectType } = useGeometryGenerator();
 
-  // 4. Apply scale, rotation, shear, and translation
-  const transformedVertices = useObjectTransformations(geometry.vertices, dimension);
-
-  // 5. Project to 3D for rendering
-  const projectedVertices = useProjectedVertices(transformedVertices);
-
-  // 6. Detect faces for surface rendering
+  // 4. Detect faces for surface rendering (polytopes only)
   const faces = useFaceDetection(geometry, objectType);
 
-  // 6b. Compute per-face depth values for palette color variation
-  const faceDepths = useFaceDepths(transformedVertices, faces, dimension);
+  // 5. Extract base 3D positions for ground plane bounds (no transform needed)
+  // Ground plane only recalculates on vertex count change, not during animation
+  const basePositions = useMemo(
+    () => extractBasePositions(geometry.vertices),
+    [geometry.vertices.length]
+  );
 
-  // 8. Compute Mandelbrot colors (derived from user's vertex color)
+  // 6. Compute per-face depth values for palette color variation (polytopes only)
+  const faceDepths = useFaceDepths(geometry.vertices, faces, dimension);
+
+  // 7. Compute Mandelbrot colors (derived from user's vertex color)
   const mandelbrotConfig = useExtendedObjectStore((state) => state.mandelbrot);
   const vertexColor = useVisualStore((state) => state.vertexColor);
   const pointColors = useMandelbrotColors(geometry, mandelbrotConfig, vertexColor);
   const facesVisible = useVisualStore((state) => state.facesVisible);
 
-  // Prepare edges for rendering
-  const edges = useMemo(() => {
-    return geometry.edges as [number, number][];
-  }, [geometry.edges]);
-
   // Calculate minimum bounding radius for ground plane positioning
   // When raymarched Mandelbulb/Hyperbulb is visible, ensure ground plane accounts for it
-  // Both have approximate radius of 1.5 for power 8
   const isMandelbulbVisible = objectType === 'mandelbrot' && facesVisible && dimension === 3;
   const isHyperbulbVisible = objectType === 'mandelbrot' && facesVisible && dimension >= 4;
   const minBoundingRadius = (isMandelbulbVisible || isHyperbulbVisible) ? 1.5 : undefined;
 
   return (
-    <>
-      <Scene
-        vertices={projectedVertices as Vector3D[]}
-        edges={edges}
-        faces={faces}
-        isPointCloud={geometry.isPointCloud}
-        pointColors={pointColors}
-        minBoundingRadius={minBoundingRadius}
-        faceDepths={faceDepths}
-      />
-      {isMandelbulbVisible && <MandelbulbMesh />}
-      {isHyperbulbVisible && <HyperbulbMesh />}
-    </>
+    <Scene
+      geometry={geometry}
+      dimension={dimension}
+      objectType={objectType}
+      faces={faces}
+      faceDepths={faceDepths}
+      pointColors={pointColors}
+      projectedVertices={basePositions}
+      minBoundingRadius={minBoundingRadius}
+    />
   );
 }
 

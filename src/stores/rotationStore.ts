@@ -7,6 +7,25 @@ import { create } from 'zustand';
 import { getRotationPlanes } from '@/lib/math/rotation';
 import { MAX_DIMENSION, MIN_DIMENSION } from './geometryStore';
 
+/**
+ * Cache for valid plane names by dimension.
+ * Avoids recreating Set on every setRotation/updateRotations call.
+ */
+const validPlanesCache = new Map<number, Set<string>>();
+
+/**
+ * Get cached Set of valid plane names for a dimension.
+ * Creates and caches if not yet present.
+ */
+function getValidPlanesSet(dimension: number): Set<string> {
+  let cached = validPlanesCache.get(dimension);
+  if (!cached) {
+    cached = new Set(getRotationPlanes(dimension).map(p => p.name));
+    validPlanesCache.set(dimension, cached);
+  }
+  return cached;
+}
+
 /** Minimum rotation angle in radians (0 degrees) */
 export const MIN_ROTATION = 0;
 
@@ -52,7 +71,8 @@ export const useRotationStore = create<RotationState>((set) => ({
   setRotation: (plane: string, angle: number) => {
     set((state) => {
       // Only set rotation if plane is valid for current dimension
-      const validPlanes = new Set(getRotationPlanes(state.dimension).map(p => p.name));
+      // Use cached Set to avoid recreation on every call
+      const validPlanes = getValidPlanesSet(state.dimension);
       if (!validPlanes.has(plane)) {
         return state; // Ignore invalid plane
       }
@@ -65,7 +85,8 @@ export const useRotationStore = create<RotationState>((set) => ({
   updateRotations: (updates: Map<string, number>) => {
     set((state) => {
       // Filter updates to only include valid planes for current dimension
-      const validPlanes = new Set(getRotationPlanes(state.dimension).map(p => p.name));
+      // Use cached Set to avoid recreation on every call
+      const validPlanes = getValidPlanesSet(state.dimension);
       const newRotations = new Map(state.rotations);
       for (const [plane, angle] of updates.entries()) {
         if (validPlanes.has(plane)) {

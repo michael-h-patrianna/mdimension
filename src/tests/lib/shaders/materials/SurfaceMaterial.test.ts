@@ -6,12 +6,37 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import type { WebGLProgramParametersWithUniforms, WebGLRenderer, IUniform } from 'three';
 import { MeshPhongMaterial, DoubleSide } from 'three';
 import {
   createPhongPaletteMaterial,
   updatePhongPaletteMaterial,
   createBasicSurfaceMaterial,
 } from '@/lib/shaders/materials';
+
+/** Mock shader structure for testing onBeforeCompile - minimal subset for testing */
+interface MockShader {
+  vertexShader: string;
+  fragmentShader: string;
+  uniforms: Record<string, IUniform>;
+}
+
+/**
+ * Creates a mock shader object for testing onBeforeCompile
+ * The mock provides only the fields our code modifies, cast to full type
+ */
+function createMockShader(): WebGLProgramParametersWithUniforms {
+  const mockShader: MockShader = {
+    vertexShader: '#define PHONG\n#include <begin_vertex>',
+    fragmentShader: '#include <common>\n#include <color_fragment>\n#include <opaque_fragment>\n#include <tonemapping_fragment>',
+    uniforms: {},
+  };
+  // Cast to full type - we only use vertexShader, fragmentShader, and uniforms in tests
+  return mockShader as unknown as WebGLProgramParametersWithUniforms;
+}
+
+/** Mock WebGL renderer - only the type is needed for the test */
+const mockRenderer = null as unknown as WebGLRenderer;
 
 describe('SurfaceMaterial', () => {
   describe('createBasicSurfaceMaterial', () => {
@@ -382,15 +407,8 @@ describe('SurfaceMaterial', () => {
         colorMode: 'analogous',
       });
 
-      // Create a mock shader object to test onBeforeCompile
-      const mockShader = {
-        vertexShader: '#define PHONG\n#include <begin_vertex>',
-        fragmentShader: '#include <common>\n#include <color_fragment>\n#include <opaque_fragment>\n#include <tonemapping_fragment>',
-        uniforms: {},
-      };
-
-      // Call onBeforeCompile (second arg is renderer, not needed for this test)
-      material.onBeforeCompile(mockShader as any, null as any);
+      const mockShader = createMockShader();
+      material.onBeforeCompile(mockShader, mockRenderer);
 
       // Check vertex shader modifications
       // Note: vNormal is already provided by Three.js Phong shader, so we don't inject it
@@ -411,13 +429,8 @@ describe('SurfaceMaterial', () => {
         colorMode: 'analogous',
       });
 
-      const mockShader = {
-        vertexShader: '#define PHONG\n#include <begin_vertex>',
-        fragmentShader: '#include <common>\n#include <color_fragment>\n#include <opaque_fragment>\n#include <tonemapping_fragment>',
-        uniforms: {},
-      };
-
-      material.onBeforeCompile(mockShader as any, null as any);
+      const mockShader = createMockShader();
+      material.onBeforeCompile(mockShader, mockRenderer);
 
       // Check fragment shader modifications
       expect(mockShader.fragmentShader).toContain('uniform vec3 uRimColor');
@@ -438,13 +451,8 @@ describe('SurfaceMaterial', () => {
         colorMode: 'analogous',
       });
 
-      const mockShader = {
-        vertexShader: '#define PHONG\n#include <begin_vertex>',
-        fragmentShader: '#include <common>\n#include <color_fragment>\n#include <opaque_fragment>\n#include <tonemapping_fragment>',
-        uniforms: {},
-      };
-
-      material.onBeforeCompile(mockShader as any, null as any);
+      const mockShader = createMockShader();
+      material.onBeforeCompile(mockShader, mockRenderer);
 
       // Fresnel code is injected in the opaque_fragment replacement
       expect(mockShader.fragmentShader).toContain('uFresnelIntensity > 0.0');
@@ -463,13 +471,8 @@ describe('SurfaceMaterial', () => {
         colorMode: 'analogous',
       });
 
-      const mockShader = {
-        vertexShader: '#define PHONG\n#include <begin_vertex>',
-        fragmentShader: '#include <common>\n#include <color_fragment>\n#include <opaque_fragment>\n#include <tonemapping_fragment>',
-        uniforms: {},
-      };
-
-      material.onBeforeCompile(mockShader as any, null as any);
+      const mockShader = createMockShader();
+      material.onBeforeCompile(mockShader, mockRenderer);
 
       expect(material.userData.shader).toBe(mockShader);
     });
@@ -485,13 +488,8 @@ describe('SurfaceMaterial', () => {
         colorMode: 'analogous',
       });
 
-      const mockShader = {
-        vertexShader: '#define PHONG\n#include <begin_vertex>',
-        fragmentShader: '#include <common>\n#include <color_fragment>\n#include <opaque_fragment>\n#include <tonemapping_fragment>',
-        uniforms: {},
-      };
-
-      material.onBeforeCompile(mockShader as any, null as any);
+      const mockShader = createMockShader();
+      material.onBeforeCompile(mockShader, mockRenderer);
 
       expect(mockShader.uniforms).toHaveProperty('uRimColor');
       expect(mockShader.uniforms).toHaveProperty('uFresnelIntensity');
@@ -514,12 +512,8 @@ describe('SurfaceMaterial', () => {
       });
 
       // Simulate shader compilation by calling onBeforeCompile
-      const mockShader = {
-        vertexShader: '#define PHONG\n#include <begin_vertex>',
-        fragmentShader: '#include <common>\n#include <color_fragment>\n#include <opaque_fragment>\n#include <tonemapping_fragment>',
-        uniforms: {},
-      };
-      material.onBeforeCompile(mockShader as any, null as any);
+      const mockShader = createMockShader();
+      material.onBeforeCompile(mockShader, mockRenderer);
 
       // Now update the material
       updatePhongPaletteMaterial(material, {
@@ -529,11 +523,10 @@ describe('SurfaceMaterial', () => {
       });
 
       // Both shader.uniforms and userData.customUniforms should be updated
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const uniforms = mockShader.uniforms as any;
-      expect(uniforms.uFresnelIntensity.value).toBe(0.9);
-      expect(uniforms.uPaletteMode.value).toBe(2); // complementary
-      expect(uniforms.uExposure.value).toBe(2.0);
+      const uniforms = mockShader.uniforms;
+      expect(uniforms.uFresnelIntensity?.value).toBe(0.9);
+      expect(uniforms.uPaletteMode?.value).toBe(2); // complementary
+      expect(uniforms.uExposure?.value).toBe(2.0);
     });
   });
 });

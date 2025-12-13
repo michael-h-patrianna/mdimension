@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
 import { Canvas } from '@react-three/fiber';
-import { SceneLighting } from '@/components/canvas/SceneLighting';
+import { SceneLighting } from '@/components/canvas/environment/SceneLighting';
 import { useVisualStore } from '@/stores/visualStore';
 
 describe('SceneLighting', () => {

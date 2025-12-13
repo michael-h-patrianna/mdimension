@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render } from '@testing-library/react';
-import { FatWireframe } from '@/components/canvas/FatWireframe';
+import { FatWireframe } from '@/components/canvas/renderers/FatWireframe';
 
 // Mock Three.js and R3F context
 vi.mock('@react-three/fiber', () => ({

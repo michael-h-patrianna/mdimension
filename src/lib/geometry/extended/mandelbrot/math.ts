@@ -119,6 +119,9 @@ export function normSquared(v: VectorND): number {
  * Following standard Mandelbrot convention: step first, then check escape.
  * This ensures escape time 0 means escaped after first iteration (z₁).
  *
+ * Performance: Uses in-place buffer mutation to avoid array allocations
+ * in the hot iteration loop (can have millions of calls).
+ *
  * @param c - Point to test (N-dimensional)
  * @param maxIter - Maximum iterations before considering bounded
  * @param escapeRadius - Radius beyond which orbit has escaped
@@ -131,8 +134,65 @@ export function mandelbrotEscapeTime(
   escapeRadius: number,
   power: number = 8
 ): number {
-  let z = new Array(c.length).fill(0) as VectorND;
+  const d = c.length;
   const R2 = escapeRadius * escapeRadius;
+
+  // Dimension 2: Optimized complex Mandelbrot (no array allocation)
+  if (d === 2) {
+    let zx = 0;
+    let zy = 0;
+    const cx = c[0] ?? 0;
+    const cy = c[1] ?? 0;
+
+    for (let iter = 0; iter < maxIter; iter++) {
+      const zx2 = zx * zx;
+      const zy2 = zy * zy;
+      if (zx2 + zy2 > R2) {
+        return iter;
+      }
+      // z = z² + c
+      const newZx = zx2 - zy2 + cx;
+      zy = 2 * zx * zy + cy;
+      zx = newZx;
+    }
+    return maxIter;
+  }
+
+  // Dimension 3: Optimized Mandelbulb (reuse buffer)
+  if (d === 3) {
+    let zx = 0, zy = 0, zz = 0;
+    const cx = c[0] ?? 0;
+    const cy = c[1] ?? 0;
+    const cz = c[2] ?? 0;
+
+    for (let iter = 0; iter < maxIter; iter++) {
+      const r2 = zx * zx + zy * zy + zz * zz;
+      if (r2 > R2) {
+        return iter;
+      }
+
+      const r = Math.sqrt(r2);
+      if (r < 1e-10) {
+        zx = cx;
+        zy = cy;
+        zz = cz;
+      } else {
+        const theta = Math.acos(zz / r);
+        const phi = Math.atan2(zy, zx);
+        const rPow = Math.pow(r, power);
+        const newTheta = theta * power;
+        const newPhi = phi * power;
+        zx = rPow * Math.sin(newTheta) * Math.cos(newPhi) + cx;
+        zy = rPow * Math.sin(newTheta) * Math.sin(newPhi) + cy;
+        zz = rPow * Math.cos(newTheta) + cz;
+      }
+    }
+    return maxIter;
+  }
+
+  // Dimensions 4+: Use fallback with array (hyperbulb)
+  // Note: hyperspherical.ts has its own optimized version
+  let z = new Array(c.length).fill(0) as VectorND;
 
   for (let iter = 0; iter < maxIter; iter++) {
     z = mandelbrotStep(z, c, power);
@@ -156,6 +216,9 @@ export function mandelbrotEscapeTime(
  * Following standard Mandelbrot convention: step first, then check escape.
  * The smooth formula uses the norm of z that just escaped.
  *
+ * Performance: Uses in-place buffer mutation to avoid array allocations
+ * in the hot iteration loop (can have millions of calls).
+ *
  * @param c - Point to test (N-dimensional)
  * @param maxIter - Maximum iterations
  * @param escapeRadius - Escape radius
@@ -168,8 +231,71 @@ export function mandelbrotSmoothEscapeTime(
   escapeRadius: number,
   power: number = 8
 ): number {
-  let z = new Array(c.length).fill(0) as VectorND;
+  const d = c.length;
   const R2 = escapeRadius * escapeRadius;
+  const logR = Math.log(escapeRadius);
+  const log2 = Math.log(2);
+
+  // Dimension 2: Optimized complex Mandelbrot (no array allocation)
+  if (d === 2) {
+    let zx = 0;
+    let zy = 0;
+    const cx = c[0] ?? 0;
+    const cy = c[1] ?? 0;
+
+    for (let iter = 0; iter < maxIter; iter++) {
+      const zx2 = zx * zx;
+      const zy2 = zy * zy;
+      const norm2 = zx2 + zy2;
+      if (norm2 > R2) {
+        const log_zn = Math.log(norm2) / 2;
+        const nu = Math.log(log_zn / logR) / log2;
+        return iter + 1 - nu;
+      }
+      // z = z² + c
+      const newZx = zx2 - zy2 + cx;
+      zy = 2 * zx * zy + cy;
+      zx = newZx;
+    }
+    return maxIter;
+  }
+
+  // Dimension 3: Optimized Mandelbulb (reuse buffer)
+  if (d === 3) {
+    let zx = 0, zy = 0, zz = 0;
+    const cx = c[0] ?? 0;
+    const cy = c[1] ?? 0;
+    const cz = c[2] ?? 0;
+
+    for (let iter = 0; iter < maxIter; iter++) {
+      const r2 = zx * zx + zy * zy + zz * zz;
+      if (r2 > R2) {
+        const log_zn = Math.log(r2) / 2;
+        const nu = Math.log(log_zn / logR) / log2;
+        return iter + 1 - nu;
+      }
+
+      const r = Math.sqrt(r2);
+      if (r < 1e-10) {
+        zx = cx;
+        zy = cy;
+        zz = cz;
+      } else {
+        const theta = Math.acos(zz / r);
+        const phi = Math.atan2(zy, zx);
+        const rPow = Math.pow(r, power);
+        const newTheta = theta * power;
+        const newPhi = phi * power;
+        zx = rPow * Math.sin(newTheta) * Math.cos(newPhi) + cx;
+        zy = rPow * Math.sin(newTheta) * Math.sin(newPhi) + cy;
+        zz = rPow * Math.cos(newTheta) + cz;
+      }
+    }
+    return maxIter;
+  }
+
+  // Dimensions 4+: Use fallback with array (hyperbulb)
+  let z = new Array(c.length).fill(0) as VectorND;
 
   for (let iter = 0; iter < maxIter; iter++) {
     z = mandelbrotStep(z, c, power);
@@ -177,7 +303,7 @@ export function mandelbrotSmoothEscapeTime(
     if (norm2 > R2) {
       // Smooth coloring formula using escaped z's magnitude
       const log_zn = Math.log(norm2) / 2; // log(|z|) = log(sqrt(norm2))
-      const nu = Math.log(log_zn / Math.log(escapeRadius)) / Math.log(2);
+      const nu = Math.log(log_zn / logR) / log2;
       return iter + 1 - nu;
     }
   }

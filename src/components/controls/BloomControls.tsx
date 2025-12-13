@@ -43,6 +43,7 @@
  */
 
 import React from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { Slider } from '@/components/ui/Slider';
 import { ToggleButton } from '@/components/ui/ToggleButton';
 import {
@@ -63,22 +64,41 @@ export interface BloomControlsProps {
  * @param root0
  * @param root0.className
  */
-export const BloomControls: React.FC<BloomControlsProps> = ({
+export const BloomControls: React.FC<BloomControlsProps> = React.memo(({
   className = '',
 }) => {
-  const bloomEnabled = useVisualStore((state) => state.bloomEnabled);
-  const bloomIntensity = useVisualStore((state) => state.bloomIntensity);
-  const bloomThreshold = useVisualStore((state) => state.bloomThreshold);
-  const bloomRadius = useVisualStore((state) => state.bloomRadius);
-  const bloomSoftKnee = useVisualStore((state) => state.bloomSoftKnee);
-  const bloomLevels = useVisualStore((state) => state.bloomLevels);
-
-  const setBloomEnabled = useVisualStore((state) => state.setBloomEnabled);
-  const setBloomIntensity = useVisualStore((state) => state.setBloomIntensity);
-  const setBloomThreshold = useVisualStore((state) => state.setBloomThreshold);
-  const setBloomRadius = useVisualStore((state) => state.setBloomRadius);
-  const setBloomSoftKnee = useVisualStore((state) => state.setBloomSoftKnee);
-  const setBloomLevels = useVisualStore((state) => state.setBloomLevels);
+  // Consolidate all visual store subscriptions with useShallow to reduce re-renders
+  const {
+    bloomEnabled,
+    bloomIntensity,
+    bloomThreshold,
+    bloomRadius,
+    bloomSoftKnee,
+    bloomLevels,
+    setBloomEnabled,
+    setBloomIntensity,
+    setBloomThreshold,
+    setBloomRadius,
+    setBloomSoftKnee,
+    setBloomLevels,
+  } = useVisualStore(
+    useShallow((state) => ({
+      // State
+      bloomEnabled: state.bloomEnabled,
+      bloomIntensity: state.bloomIntensity,
+      bloomThreshold: state.bloomThreshold,
+      bloomRadius: state.bloomRadius,
+      bloomSoftKnee: state.bloomSoftKnee,
+      bloomLevels: state.bloomLevels,
+      // Actions
+      setBloomEnabled: state.setBloomEnabled,
+      setBloomIntensity: state.setBloomIntensity,
+      setBloomThreshold: state.setBloomThreshold,
+      setBloomRadius: state.setBloomRadius,
+      setBloomSoftKnee: state.setBloomSoftKnee,
+      setBloomLevels: state.setBloomLevels,
+    }))
+  );
 
   return (
     <div className={`space-y-4 ${className}`}>
@@ -157,4 +177,4 @@ export const BloomControls: React.FC<BloomControlsProps> = ({
       )}
     </div>
   );
-};
+});

@@ -14,6 +14,7 @@ import {
   DEFAULT_BACKGROUND_COLOR,
   DEFAULT_EDGES_VISIBLE,
   DEFAULT_FACES_VISIBLE,
+  DEFAULT_ANIMATION_BIAS,
   VISUAL_PRESETS,
 } from '@/stores/visualStore';
 
@@ -202,6 +203,7 @@ describe('visualStore', () => {
       useVisualStore.getState().setBackgroundColor('#000000');
       useVisualStore.getState().setEdgesVisible(false);
       useVisualStore.getState().setFacesVisible(true);
+      useVisualStore.getState().setAnimationBias(0.8);
 
       useVisualStore.getState().reset();
 
@@ -214,6 +216,38 @@ describe('visualStore', () => {
       expect(useVisualStore.getState().backgroundColor).toBe(DEFAULT_BACKGROUND_COLOR);
       expect(useVisualStore.getState().edgesVisible).toBe(DEFAULT_EDGES_VISIBLE);
       expect(useVisualStore.getState().facesVisible).toBe(DEFAULT_FACES_VISIBLE);
+      expect(useVisualStore.getState().animationBias).toBe(DEFAULT_ANIMATION_BIAS);
+    });
+  });
+
+  describe('animationBias', () => {
+    it('should have default animation bias of 0', () => {
+      expect(useVisualStore.getState().animationBias).toBe(DEFAULT_ANIMATION_BIAS);
+      expect(DEFAULT_ANIMATION_BIAS).toBe(0);
+    });
+
+    it('should set animation bias', () => {
+      useVisualStore.getState().setAnimationBias(0.5);
+      expect(useVisualStore.getState().animationBias).toBe(0.5);
+    });
+
+    it('should clamp animation bias to [0, 1]', () => {
+      useVisualStore.getState().setAnimationBias(-0.5);
+      expect(useVisualStore.getState().animationBias).toBe(0);
+
+      useVisualStore.getState().setAnimationBias(1.5);
+      expect(useVisualStore.getState().animationBias).toBe(1);
+    });
+
+    it('should allow full range of valid values', () => {
+      useVisualStore.getState().setAnimationBias(0);
+      expect(useVisualStore.getState().animationBias).toBe(0);
+
+      useVisualStore.getState().setAnimationBias(0.25);
+      expect(useVisualStore.getState().animationBias).toBe(0.25);
+
+      useVisualStore.getState().setAnimationBias(1);
+      expect(useVisualStore.getState().animationBias).toBe(1);
     });
   });
 });

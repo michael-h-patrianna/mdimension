@@ -158,7 +158,7 @@ describe('animationStore', () => {
   describe('getRotationDelta', () => {
     it('should calculate correct delta at default speed', () => {
       const delta = useAnimationStore.getState().getRotationDelta(1000) // 1 second
-      expect(delta).toBeCloseTo(BASE_ROTATION_RATE)
+      expect(delta).toBeCloseTo(BASE_ROTATION_RATE * DEFAULT_SPEED)
     })
 
     it('should scale delta with speed', () => {
@@ -170,7 +170,7 @@ describe('animationStore', () => {
     it('should reverse delta with direction', () => {
       useAnimationStore.getState().toggleDirection()
       const delta = useAnimationStore.getState().getRotationDelta(1000)
-      expect(delta).toBeCloseTo(-BASE_ROTATION_RATE)
+      expect(delta).toBeCloseTo(-BASE_ROTATION_RATE * DEFAULT_SPEED)
     })
   })
 

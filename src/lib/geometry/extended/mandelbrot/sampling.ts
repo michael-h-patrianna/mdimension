@@ -52,38 +52,50 @@ export function generateSampleGrid(
   // Denominator for parametric mapping (safe since resolution >= 2)
   const gridDenom = resolution - 1;
 
+  // Pre-compute base center values
+  const centerAx = effectiveCenter[ax] ?? 0;
+  const centerAy = effectiveCenter[ay] ?? 0;
+  const centerAz = effectiveCenter[az] ?? 0;
+
+  // Pre-build template cVector with parameter values (reusable)
+  // Only the three visualization axes (ax, ay, az) change per sample
+  const templateCVector: VectorND = new Array(dimension).fill(0);
+  let paramIdx = 0;
+  for (let d = 0; d < dimension; d++) {
+    if (d !== ax && d !== ay && d !== az) {
+      templateCVector[d] = parameterValues[paramIdx] ?? 0;
+      paramIdx++;
+    }
+  }
+
+  // Reusable cVector for escape time computation (avoid allocation per sample)
+  const workingCVector: VectorND = [...templateCVector];
+
   for (let ix = 0; ix < resolution; ix++) {
+    // Map grid indices to parametric [0,1] coordinates
+    const tx = ix / gridDenom;
+    const x = centerAx - extent + 2 * extent * tx;
+
     for (let iy = 0; iy < resolution; iy++) {
+      const ty = iy / gridDenom;
+      const y = centerAy - extent + 2 * extent * ty;
+
       for (let iz = 0; iz < resolution; iz++) {
-        // Map grid indices to parametric [0,1] coordinates
-        const tx = ix / gridDenom;
-        const ty = iy / gridDenom;
         const tz = iz / gridDenom;
+        const z = centerAz - extent + 2 * extent * tz;
 
-        // Map to world coordinates centered at effectiveCenter with extent
-        const x = (effectiveCenter[ax] ?? 0) - extent + 2 * extent * tx;
-        const y = (effectiveCenter[ay] ?? 0) - extent + 2 * extent * ty;
-        const z = (effectiveCenter[az] ?? 0) - extent + 2 * extent * tz;
-
-        // Build N-dimensional c vector
-        const cVector: VectorND = new Array(dimension).fill(0);
-        cVector[ax] = x;
-        cVector[ay] = y;
-        cVector[az] = z;
-
-        // Fill non-visualized dimensions with parameter values
-        let paramIdx = 0;
-        for (let d = 0; d < dimension; d++) {
-          if (d !== ax && d !== ay && d !== az) {
-            cVector[d] = parameterValues[paramIdx] ?? 0;
-            paramIdx++;
-          }
-        }
+        // Update working cVector in-place (only 3 values change)
+        workingCVector[ax] = x;
+        workingCVector[ay] = y;
+        workingCVector[az] = z;
 
         // Compute escape time (pass mandelbulbPower for 3D Mandelbulb)
         const escapeTime = useSmooth
-          ? mandelbrotSmoothEscapeTime(cVector, maxIterations, escapeRadius, mandelbulbPower)
-          : mandelbrotEscapeTime(cVector, maxIterations, escapeRadius, mandelbulbPower);
+          ? mandelbrotSmoothEscapeTime(workingCVector, maxIterations, escapeRadius, mandelbulbPower)
+          : mandelbrotEscapeTime(workingCVector, maxIterations, escapeRadius, mandelbulbPower);
+
+        // Create a copy of cVector for storage (samples need their own copy)
+        const cVector: VectorND = [...workingCVector];
 
         samples.push({
           worldPos: [x, y, z],
