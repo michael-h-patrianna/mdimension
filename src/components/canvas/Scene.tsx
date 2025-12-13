@@ -68,18 +68,20 @@ export const Scene = React.memo(function Scene({
   opacity = 1.0,
   minBoundingRadius,
 }: SceneProps) {
-  // Get ground plane settings with shallow comparison
+  // Get environment settings with shallow comparison
   const {
     showGroundPlane,
     groundPlaneOffset,
     groundPlaneOpacity,
     groundPlaneReflectivity,
+    showAxisHelper,
   } = useVisualStore(
     useShallow((state) => ({
       showGroundPlane: state.showGroundPlane,
       groundPlaneOffset: state.groundPlaneOffset,
       groundPlaneOpacity: state.groundPlaneOpacity,
       groundPlaneReflectivity: state.groundPlaneReflectivity,
+      showAxisHelper: state.showAxisHelper,
     }))
   )
 
@@ -103,6 +105,9 @@ export const Scene = React.memo(function Scene({
         visible={showGroundPlane}
         minBoundingRadius={minBoundingRadius}
       />
+
+      {/* Axis helper for orientation reference */}
+      {showAxisHelper && <axesHelper args={[5]} />}
 
       {/* Unified renderer for all object types */}
       <UnifiedRenderer

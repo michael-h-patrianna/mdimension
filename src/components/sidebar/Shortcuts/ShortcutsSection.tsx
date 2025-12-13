@@ -1,0 +1,22 @@
+/**
+ * Shortcuts Section Component
+ * Section wrapper for keyboard shortcuts display
+ */
+
+import { Section } from '@/components/ui/Section';
+import React from 'react';
+import { KeyboardShortcuts } from './KeyboardShortcuts';
+
+export interface ShortcutsSectionProps {
+  defaultOpen?: boolean;
+}
+
+export const ShortcutsSection: React.FC<ShortcutsSectionProps> = ({
+  defaultOpen = false,
+}) => {
+  return (
+    <Section title="Shortcuts" defaultOpen={defaultOpen}>
+      <KeyboardShortcuts />
+    </Section>
+  );
+};

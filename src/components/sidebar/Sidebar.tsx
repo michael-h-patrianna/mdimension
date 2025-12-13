@@ -1,26 +1,20 @@
 /**
  * Sidebar Component
- * Main control panel sidebar with all settings sections
+ * Main control panel sidebar that loads all section components
  */
 
-import { AnimationControls } from '@/components/controls/AnimationControls';
-import { BloomControls } from '@/components/controls/BloomControls';
-import { DimensionSelector } from '@/components/controls/DimensionSelector';
-import { EducationPanel } from '@/components/controls/EducationPanel';
-import { LightingControls } from '@/components/controls/LightingControls';
-import { ObjectSettingsSection } from '@/components/controls/ObjectSettingsSection';
-import { ObjectTypeSelector } from '@/components/controls/ObjectTypeSelector';
-import { ProjectionControls } from '@/components/controls/ProjectionControls';
-import { RenderModeToggles } from '@/components/controls/RenderModeToggles';
-import { ShaderSettings } from '@/components/controls/ShaderSettings';
-import { VisualControls } from '@/components/controls/VisualControls';
-import { ExportButton } from '@/components/ExportButton';
-import { KeyboardShortcuts } from '@/components/KeyboardShortcuts';
-import { ShareButton } from '@/components/ShareButton';
 import { ControlPanel } from '@/components/ui/ControlPanel';
-import { Section } from '@/components/ui/Section';
-import { ThemeSelector } from '@/components/ui/ThemeSelector';
 import React from 'react';
+import { AnimationSection } from './Animation';
+import { DocumentationSection } from './Documentation';
+import { EnvironmentSection } from './Environment';
+import { ExportSection } from './Export';
+import { GeometrySection } from './Geometry';
+import { ProjectionSection } from './Projection';
+import { RenderModeToggles } from './RenderMode';
+import { SettingsSection } from './Settings';
+import { ShortcutsSection } from './Shortcuts';
+import { VisualSection } from './Visual';
 
 export interface SidebarProps {
   title?: string;
@@ -36,56 +30,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <RenderModeToggles />
       </div>
 
-      <Section title="Object Geometry" defaultOpen={true}>
-        <div className="space-y-4">
-          <DimensionSelector />
-          <ObjectTypeSelector />
-          <ObjectSettingsSection />
-        </div>
-      </Section>
-
-      <Section title="Animation" defaultOpen={true}>
-        <AnimationControls />
-      </Section>
-
-      <Section title="Projection" defaultOpen={false}>
-        <ProjectionControls />
-      </Section>
-
-      <Section title="Visual" defaultOpen={false}>
-        <div className="space-y-6">
-          {/* Per-Shader Settings (shown when faces are visible) */}
-          <ShaderSettings />
-
-          {/* Bloom Controls */}
-          <BloomControls />
-
-          {/* Lighting Controls - for surface rendering */}
-          <LightingControls />
-
-          {/* Color & Visual Settings */}
-          <VisualControls />
-        </div>
-      </Section>
-
-      <Section title="Settings" defaultOpen={true}>
-        <ThemeSelector />
-      </Section>
-
-      <Section title="Export & Share" defaultOpen={true}>
-        <div className="space-y-3">
-          <ExportButton />
-          <ShareButton />
-        </div>
-      </Section>
-
-      <Section title="Documentation" defaultOpen={false}>
-        <EducationPanel />
-      </Section>
-
-      <Section title="Shortcuts" defaultOpen={false}>
-        <KeyboardShortcuts />
-      </Section>
+      <GeometrySection defaultOpen={true} />
+      <AnimationSection defaultOpen={true} />
+      <ProjectionSection defaultOpen={false} />
+      <VisualSection defaultOpen={false} />
+      <EnvironmentSection defaultOpen={false} />
+      <SettingsSection defaultOpen={false} />
+      <ExportSection defaultOpen={false} />
+      <DocumentationSection defaultOpen={false} />
+      <ShortcutsSection defaultOpen={false} />
     </ControlPanel>
   );
 };

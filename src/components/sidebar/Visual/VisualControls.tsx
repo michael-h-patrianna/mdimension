@@ -5,7 +5,6 @@
 
 import { useShallow } from 'zustand/react/shallow';
 import { Slider } from '@/components/ui/Slider';
-import { ToggleButton } from '@/components/ui/ToggleButton';
 import {
   DEFAULT_EDGE_THICKNESS,
   DEFAULT_VERTEX_SIZE,
@@ -26,28 +25,20 @@ export const VisualControls: React.FC<VisualControlsProps> = React.memo(({
     edgeThickness,
     vertexSize,
     vertexColor,
-    backgroundColor,
-    showGroundPlane,
     setEdgeColor,
     setEdgeThickness,
     setVertexSize,
     setVertexColor,
-    setBackgroundColor,
-    setShowGroundPlane,
   } = useVisualStore(
     useShallow((state) => ({
       edgeColor: state.edgeColor,
       edgeThickness: state.edgeThickness,
       vertexSize: state.vertexSize,
       vertexColor: state.vertexColor,
-      backgroundColor: state.backgroundColor,
-      showGroundPlane: state.showGroundPlane,
       setEdgeColor: state.setEdgeColor,
       setEdgeThickness: state.setEdgeThickness,
       setVertexSize: state.setVertexSize,
       setVertexColor: state.setVertexColor,
-      setBackgroundColor: state.setBackgroundColor,
-      setShowGroundPlane: state.setShowGroundPlane,
     }))
   );
 
@@ -111,32 +102,6 @@ export const VisualControls: React.FC<VisualControlsProps> = React.memo(({
         onReset={() => setVertexSize(DEFAULT_VERTEX_SIZE)}
         showValue
       />
-
-      {/* Background Color */}
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-text-secondary">
-          Background Color
-        </label>
-        <div className="flex items-center gap-2">
-          <input
-            type="color"
-            value={backgroundColor}
-            onChange={(e) => setBackgroundColor(e.target.value)}
-            className="w-10 h-10 rounded cursor-pointer border border-panel-border"
-            aria-label="Background Color"
-          />
-          <span className="text-xs font-mono text-text-secondary">{backgroundColor}</span>
-        </div>
-      </div>
-
-      {/* Ground Plane Toggle */}
-      <ToggleButton
-        pressed={showGroundPlane}
-        onToggle={setShowGroundPlane}
-        ariaLabel="Show Ground Plane"
-      >
-        Show Ground Plane
-      </ToggleButton>
     </div>
   );
 });

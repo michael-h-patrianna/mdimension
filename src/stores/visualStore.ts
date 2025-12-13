@@ -77,6 +77,9 @@ export const DEFAULT_GROUND_PLANE_OFFSET = 0.5 // Distance below object's lowest
 export const DEFAULT_GROUND_PLANE_OPACITY = 0.3
 export const DEFAULT_GROUND_PLANE_REFLECTIVITY = 0.4
 
+/** Default axis helper settings */
+export const DEFAULT_SHOW_AXIS_HELPER = false
+
 /** Default animation bias settings */
 export const DEFAULT_ANIMATION_BIAS = 0
 export const MIN_ANIMATION_BIAS = 0
@@ -263,6 +266,10 @@ interface VisualState {
   /** Ground plane reflectivity (0-1) */
   groundPlaneReflectivity: number
 
+  // --- Axis Helper ---
+  /** Whether axis helper is visible */
+  showAxisHelper: boolean
+
   // --- Animation ---
   /** Animation bias: 0 = uniform rotation, 1 = wildly different per plane (0-1) */
   animationBias: number
@@ -324,6 +331,9 @@ interface VisualState {
   setGroundPlaneOffset: (offset: number) => void
   setGroundPlaneOpacity: (opacity: number) => void
   setGroundPlaneReflectivity: (reflectivity: number) => void
+
+  // --- Actions: Axis Helper ---
+  setShowAxisHelper: (show: boolean) => void
 
   // --- Actions: Animation ---
   setAnimationBias: (bias: number) => void
@@ -395,6 +405,9 @@ const INITIAL_STATE: Omit<VisualState, keyof VisualStateFunctions> = {
   groundPlaneOpacity: DEFAULT_GROUND_PLANE_OPACITY,
   groundPlaneReflectivity: DEFAULT_GROUND_PLANE_REFLECTIVITY,
 
+  // Axis helper
+  showAxisHelper: DEFAULT_SHOW_AXIS_HELPER,
+
   // Animation
   animationBias: DEFAULT_ANIMATION_BIAS,
 }
@@ -443,6 +456,7 @@ type VisualStateFunctions = Pick<
   | 'setGroundPlaneOffset'
   | 'setGroundPlaneOpacity'
   | 'setGroundPlaneReflectivity'
+  | 'setShowAxisHelper'
   | 'setAnimationBias'
   | 'applyPreset'
   | 'reset'
@@ -667,6 +681,11 @@ export const useVisualStore = create<VisualState>((set) => ({
 
   setGroundPlaneReflectivity: (reflectivity: number) => {
     set({ groundPlaneReflectivity: Math.max(0, Math.min(1, reflectivity)) })
+  },
+
+  // --- Actions: Axis Helper ---
+  setShowAxisHelper: (show: boolean) => {
+    set({ showAxisHelper: show })
   },
 
   // --- Actions: Animation ---
