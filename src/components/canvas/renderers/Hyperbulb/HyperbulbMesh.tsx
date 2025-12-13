@@ -8,7 +8,7 @@ import { useGeometryStore } from '@/stores/geometryStore';
 import { useRotationStore } from '@/stores/rotationStore';
 import { useVisualStore } from '@/stores/visualStore';
 import { composeRotations } from '@/lib/math/rotation';
-import { COLOR_MODE_TO_INT } from '@/lib/shaders/palette';
+import { COLOR_ALGORITHM_TO_INT } from '@/lib/shaders/palette';
 import type { MatrixND } from '@/lib/math/types';
 import type { RotationState } from '@/stores/rotationStore';
 
@@ -81,7 +81,14 @@ const HyperbulbMesh = () => {
 
   // Get color state from visual store
   const faceColor = useVisualStore((state) => state.faceColor);
-  const colorMode = useVisualStore((state) => state.colorMode);
+
+  // Advanced color system state
+  const colorAlgorithm = useVisualStore((state) => state.colorAlgorithm);
+  const cosineCoefficients = useVisualStore((state) => state.cosineCoefficients);
+  const distribution = useVisualStore((state) => state.distribution);
+  const lchLightness = useVisualStore((state) => state.lchLightness);
+  const lchChroma = useVisualStore((state) => state.lchChroma);
+  const multiSourceWeights = useVisualStore((state) => state.multiSourceWeights);
 
   // Get lighting settings from visual store
   const lightEnabled = useVisualStore((state) => state.lightEnabled);
@@ -123,7 +130,6 @@ const HyperbulbMesh = () => {
 
       // Color and palette
       uColor: { value: new THREE.Color() },
-      uPaletteMode: { value: 0 },
 
       // 3D transformation matrices (for camera/view only)
       uModelMatrix: { value: new THREE.Matrix4() },
@@ -150,6 +156,18 @@ const HyperbulbMesh = () => {
 
       // Performance mode: reduces quality during rotation animations
       uFastMode: { value: false },
+      // Advanced Color System uniforms
+      uColorAlgorithm: { value: 1 },
+      uCosineA: { value: new THREE.Vector3(0.5, 0.5, 0.5) },
+      uCosineB: { value: new THREE.Vector3(0.5, 0.5, 0.5) },
+      uCosineC: { value: new THREE.Vector3(1.0, 1.0, 1.0) },
+      uCosineD: { value: new THREE.Vector3(0.0, 0.33, 0.67) },
+      uDistPower: { value: 1.0 },
+      uDistCycles: { value: 1.0 },
+      uDistOffset: { value: 0.0 },
+      uLchLightness: { value: 0.7 },
+      uLchChroma: { value: 0.15 },
+      uMultiSourceWeights: { value: new THREE.Vector3(0.5, 0.3, 0.2) },
     }),
     []
   );
@@ -233,7 +251,6 @@ const HyperbulbMesh = () => {
 
       // Update color and palette
       if (material.uniforms.uColor) material.uniforms.uColor.value.set(faceColor);
-      if (material.uniforms.uPaletteMode) material.uniforms.uPaletteMode.value = COLOR_MODE_TO_INT[colorMode];
 
       // Update camera matrices
       if (material.uniforms.uProjectionMatrix) material.uniforms.uProjectionMatrix.value.copy(camera.projectionMatrix);
@@ -258,6 +275,19 @@ const HyperbulbMesh = () => {
       if (material.uniforms.uFresnelEnabled) material.uniforms.uFresnelEnabled.value = edgesVisible;
       if (material.uniforms.uFresnelIntensity) material.uniforms.uFresnelIntensity.value = fresnelIntensity;
       if (material.uniforms.uRimColor) material.uniforms.uRimColor.value.set(edgeColor);
+
+      // Advanced Color System uniforms
+      if (material.uniforms.uColorAlgorithm) material.uniforms.uColorAlgorithm.value = COLOR_ALGORITHM_TO_INT[colorAlgorithm];
+      if (material.uniforms.uCosineA) material.uniforms.uCosineA.value.set(cosineCoefficients.a[0], cosineCoefficients.a[1], cosineCoefficients.a[2]);
+      if (material.uniforms.uCosineB) material.uniforms.uCosineB.value.set(cosineCoefficients.b[0], cosineCoefficients.b[1], cosineCoefficients.b[2]);
+      if (material.uniforms.uCosineC) material.uniforms.uCosineC.value.set(cosineCoefficients.c[0], cosineCoefficients.c[1], cosineCoefficients.c[2]);
+      if (material.uniforms.uCosineD) material.uniforms.uCosineD.value.set(cosineCoefficients.d[0], cosineCoefficients.d[1], cosineCoefficients.d[2]);
+      if (material.uniforms.uDistPower) material.uniforms.uDistPower.value = distribution.power;
+      if (material.uniforms.uDistCycles) material.uniforms.uDistCycles.value = distribution.cycles;
+      if (material.uniforms.uDistOffset) material.uniforms.uDistOffset.value = distribution.offset;
+      if (material.uniforms.uLchLightness) material.uniforms.uLchLightness.value = lchLightness;
+      if (material.uniforms.uLchChroma) material.uniforms.uLchChroma.value = lchChroma;
+      if (material.uniforms.uMultiSourceWeights) material.uniforms.uMultiSourceWeights.value.set(multiSourceWeights.depth, multiSourceWeights.orbitTrap, multiSourceWeights.normal);
 
       // Build FULL D-dimensional rotation matrix
       const rotationMatrix = composeRotations(dimension, rotations);

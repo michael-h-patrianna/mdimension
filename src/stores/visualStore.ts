@@ -11,7 +11,16 @@
  * @see docs/prd/enhanced-visuals-rendering-pipeline.md
  */
 
-import { type ColorMode, DEFAULT_COLOR_MODE } from '@/lib/shaders/palette'
+import {
+  type ColorAlgorithm,
+  type CosineCoefficients,
+  type DistributionSettings,
+  type MultiSourceWeights,
+  DEFAULT_COLOR_ALGORITHM,
+  DEFAULT_COSINE_COEFFICIENTS,
+  DEFAULT_DISTRIBUTION,
+  DEFAULT_MULTI_SOURCE_WEIGHTS,
+} from '@/lib/shaders/palette'
 import type {
   AllShaderSettings,
   ShaderType,
@@ -75,6 +84,10 @@ export const DEFAULT_DEPTH_ATTENUATION_STRENGTH = 0.3
 export const DEFAULT_FRESNEL_ENABLED = true
 export const DEFAULT_FRESNEL_INTENSITY = 0.1
 export const DEFAULT_PER_DIMENSION_COLOR_ENABLED = false
+
+/** Default LCH coloring settings */
+export const DEFAULT_LCH_LIGHTNESS = 0.7
+export const DEFAULT_LCH_CHROMA = 0.15
 
 /** Default ground plane settings */
 export const DEFAULT_SHOW_GROUND_PLANE = true
@@ -188,10 +201,22 @@ interface VisualState {
   faceOpacity: number
   /** Color of faces (hex string) */
   faceColor: string
-  /** Color palette mode for surface rendering */
-  colorMode: ColorMode
   /** Background color (hex string) */
   backgroundColor: string
+
+  // --- Advanced Color System ---
+  /** Color algorithm selection */
+  colorAlgorithm: ColorAlgorithm
+  /** Cosine palette coefficients */
+  cosineCoefficients: CosineCoefficients
+  /** Distribution settings for value remapping */
+  distribution: DistributionSettings
+  /** Multi-source blend weights (for multiSource algorithm) */
+  multiSourceWeights: MultiSourceWeights
+  /** LCH lightness value (for lch algorithm) */
+  lchLightness: number
+  /** LCH chroma value (for lch algorithm) */
+  lchChroma: number
 
   // --- Render Mode Toggles ---
   /** Whether edges are visible (PRD: Render Mode Toggles) */
@@ -295,8 +320,20 @@ interface VisualState {
   setVertexColor: (color: string) => void
   setFaceOpacity: (opacity: number) => void
   setFaceColor: (color: string) => void
-  setColorMode: (mode: ColorMode) => void
   setBackgroundColor: (color: string) => void
+
+  // --- Actions: Advanced Color System ---
+  setColorAlgorithm: (algorithm: ColorAlgorithm) => void
+  setCosineCoefficients: (coefficients: CosineCoefficients) => void
+  setCosineCoefficient: (
+    key: 'a' | 'b' | 'c' | 'd',
+    index: number,
+    value: number
+  ) => void
+  setDistribution: (settings: Partial<DistributionSettings>) => void
+  setMultiSourceWeights: (weights: Partial<MultiSourceWeights>) => void
+  setLchLightness: (lightness: number) => void
+  setLchChroma: (chroma: number) => void
 
   // --- Actions: Render Mode Toggles ---
   setEdgesVisible: (visible: boolean) => void
@@ -374,8 +411,15 @@ const INITIAL_STATE: Omit<VisualState, keyof VisualStateFunctions> = {
   vertexColor: DEFAULT_VERTEX_COLOR,
   faceOpacity: DEFAULT_FACE_OPACITY,
   faceColor: DEFAULT_FACE_COLOR,
-  colorMode: DEFAULT_COLOR_MODE,
   backgroundColor: DEFAULT_BACKGROUND_COLOR,
+
+  // Advanced color system
+  colorAlgorithm: DEFAULT_COLOR_ALGORITHM,
+  cosineCoefficients: { ...DEFAULT_COSINE_COEFFICIENTS },
+  distribution: { ...DEFAULT_DISTRIBUTION },
+  multiSourceWeights: { ...DEFAULT_MULTI_SOURCE_WEIGHTS },
+  lchLightness: DEFAULT_LCH_LIGHTNESS,
+  lchChroma: DEFAULT_LCH_CHROMA,
 
   // Render mode toggles
   edgesVisible: DEFAULT_EDGES_VISIBLE,
@@ -444,8 +488,14 @@ type VisualStateFunctions = Pick<
   | 'setVertexColor'
   | 'setFaceOpacity'
   | 'setFaceColor'
-  | 'setColorMode'
   | 'setBackgroundColor'
+  | 'setColorAlgorithm'
+  | 'setCosineCoefficients'
+  | 'setCosineCoefficient'
+  | 'setDistribution'
+  | 'setMultiSourceWeights'
+  | 'setLchLightness'
+  | 'setLchChroma'
   | 'setEdgesVisible'
   | 'setFacesVisible'
   | 'setShaderType'
@@ -524,12 +574,79 @@ export const useVisualStore = create<VisualState>((set) => ({
     set({ faceColor: color })
   },
 
-  setColorMode: (mode: ColorMode) => {
-    set({ colorMode: mode })
-  },
-
   setBackgroundColor: (color: string) => {
     set({ backgroundColor: color })
+  },
+
+  // --- Actions: Advanced Color System ---
+  setColorAlgorithm: (algorithm: ColorAlgorithm) => {
+    set({ colorAlgorithm: algorithm })
+  },
+
+  setCosineCoefficients: (coefficients: CosineCoefficients) => {
+    set({ cosineCoefficients: { ...coefficients } })
+  },
+
+  setCosineCoefficient: (
+    key: 'a' | 'b' | 'c' | 'd',
+    index: number,
+    value: number
+  ) => {
+    set((state) => {
+      const newCoefficients = { ...state.cosineCoefficients }
+      const arr = [...newCoefficients[key]] as [number, number, number]
+      arr[index] = Math.max(0, Math.min(2, value))
+      newCoefficients[key] = arr
+      return { cosineCoefficients: newCoefficients }
+    })
+  },
+
+  setDistribution: (settings: Partial<DistributionSettings>) => {
+    set((state) => ({
+      distribution: {
+        ...state.distribution,
+        power:
+          settings.power !== undefined
+            ? Math.max(0.25, Math.min(4, settings.power))
+            : state.distribution.power,
+        cycles:
+          settings.cycles !== undefined
+            ? Math.max(0.5, Math.min(5, settings.cycles))
+            : state.distribution.cycles,
+        offset:
+          settings.offset !== undefined
+            ? Math.max(0, Math.min(1, settings.offset))
+            : state.distribution.offset,
+      },
+    }))
+  },
+
+  setMultiSourceWeights: (weights: Partial<MultiSourceWeights>) => {
+    set((state) => ({
+      multiSourceWeights: {
+        ...state.multiSourceWeights,
+        depth:
+          weights.depth !== undefined
+            ? Math.max(0, Math.min(1, weights.depth))
+            : state.multiSourceWeights.depth,
+        orbitTrap:
+          weights.orbitTrap !== undefined
+            ? Math.max(0, Math.min(1, weights.orbitTrap))
+            : state.multiSourceWeights.orbitTrap,
+        normal:
+          weights.normal !== undefined
+            ? Math.max(0, Math.min(1, weights.normal))
+            : state.multiSourceWeights.normal,
+      },
+    }))
+  },
+
+  setLchLightness: (lightness: number) => {
+    set({ lchLightness: Math.max(0.1, Math.min(1, lightness)) })
+  },
+
+  setLchChroma: (chroma: number) => {
+    set({ lchChroma: Math.max(0, Math.min(0.4, chroma)) })
   },
 
   // --- Actions: Render Mode Toggles ---

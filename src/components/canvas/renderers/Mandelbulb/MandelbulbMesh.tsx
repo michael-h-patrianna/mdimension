@@ -7,7 +7,7 @@ import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useRotationStore } from '@/stores/rotationStore';
 import { useVisualStore } from '@/stores/visualStore';
 import { composeRotations } from '@/lib/math/rotation';
-import { COLOR_MODE_TO_INT } from '@/lib/shaders/palette';
+import { COLOR_ALGORITHM_TO_INT } from '@/lib/shaders/palette';
 
 /** MandelbulbMesh is always 3D - this constant ensures consistency */
 const MANDELBULB_DIMENSION = 3;
@@ -37,7 +37,14 @@ const MandelbulbMesh = () => {
 
   // Get color state from visual store (unified palette system)
   const faceColor = useVisualStore((state) => state.faceColor);
-  const colorMode = useVisualStore((state) => state.colorMode);
+
+  // Advanced color system state
+  const colorAlgorithm = useVisualStore((state) => state.colorAlgorithm);
+  const cosineCoefficients = useVisualStore((state) => state.cosineCoefficients);
+  const distribution = useVisualStore((state) => state.distribution);
+  const lchLightness = useVisualStore((state) => state.lchLightness);
+  const lchChroma = useVisualStore((state) => state.lchChroma);
+  const multiSourceWeights = useVisualStore((state) => state.multiSourceWeights);
 
   // Get lighting settings from visual store
   const lightEnabled = useVisualStore((state) => state.lightEnabled);
@@ -66,7 +73,6 @@ const MandelbulbMesh = () => {
       uIterations: { value: 10.0 },
       uEscapeRadius: { value: 4.0 },
       uColor: { value: new THREE.Color() },
-      uPaletteMode: { value: 0 },
       uModelMatrix: { value: new THREE.Matrix4() },
       uInverseModelMatrix: { value: new THREE.Matrix4() },
       uProjectionMatrix: { value: new THREE.Matrix4() },
@@ -88,6 +94,18 @@ const MandelbulbMesh = () => {
       uRimColor: { value: new THREE.Color('#FFFFFF') },
       // Performance mode
       uFastMode: { value: false },
+      // Advanced Color System uniforms
+      uColorAlgorithm: { value: 1 },
+      uCosineA: { value: new THREE.Vector3(0.5, 0.5, 0.5) },
+      uCosineB: { value: new THREE.Vector3(0.5, 0.5, 0.5) },
+      uCosineC: { value: new THREE.Vector3(1.0, 1.0, 1.0) },
+      uCosineD: { value: new THREE.Vector3(0.0, 0.33, 0.67) },
+      uDistPower: { value: 1.0 },
+      uDistCycles: { value: 1.0 },
+      uDistOffset: { value: 0.0 },
+      uLchLightness: { value: 0.7 },
+      uLchChroma: { value: 0.15 },
+      uMultiSourceWeights: { value: new THREE.Vector3(0.5, 0.3, 0.2) },
     }),
     []
   );
@@ -102,7 +120,6 @@ const MandelbulbMesh = () => {
       if (material.uniforms.uIterations) material.uniforms.uIterations.value = maxIterations;
       if (material.uniforms.uEscapeRadius) material.uniforms.uEscapeRadius.value = escapeRadius;
       if (material.uniforms.uColor) material.uniforms.uColor.value.set(faceColor);
-      if (material.uniforms.uPaletteMode) material.uniforms.uPaletteMode.value = COLOR_MODE_TO_INT[colorMode];
       if (material.uniforms.uProjectionMatrix) material.uniforms.uProjectionMatrix.value.copy(camera.projectionMatrix);
       if (material.uniforms.uViewMatrix) material.uniforms.uViewMatrix.value.copy(camera.matrixWorldInverse);
 
@@ -125,6 +142,19 @@ const MandelbulbMesh = () => {
       if (material.uniforms.uFresnelEnabled) material.uniforms.uFresnelEnabled.value = edgesVisible;
       if (material.uniforms.uFresnelIntensity) material.uniforms.uFresnelIntensity.value = fresnelIntensity;
       if (material.uniforms.uRimColor) material.uniforms.uRimColor.value.set(edgeColor);
+
+      // Advanced Color System uniforms
+      if (material.uniforms.uColorAlgorithm) material.uniforms.uColorAlgorithm.value = COLOR_ALGORITHM_TO_INT[colorAlgorithm];
+      if (material.uniforms.uCosineA) material.uniforms.uCosineA.value.set(cosineCoefficients.a[0], cosineCoefficients.a[1], cosineCoefficients.a[2]);
+      if (material.uniforms.uCosineB) material.uniforms.uCosineB.value.set(cosineCoefficients.b[0], cosineCoefficients.b[1], cosineCoefficients.b[2]);
+      if (material.uniforms.uCosineC) material.uniforms.uCosineC.value.set(cosineCoefficients.c[0], cosineCoefficients.c[1], cosineCoefficients.c[2]);
+      if (material.uniforms.uCosineD) material.uniforms.uCosineD.value.set(cosineCoefficients.d[0], cosineCoefficients.d[1], cosineCoefficients.d[2]);
+      if (material.uniforms.uDistPower) material.uniforms.uDistPower.value = distribution.power;
+      if (material.uniforms.uDistCycles) material.uniforms.uDistCycles.value = distribution.cycles;
+      if (material.uniforms.uDistOffset) material.uniforms.uDistOffset.value = distribution.offset;
+      if (material.uniforms.uLchLightness) material.uniforms.uLchLightness.value = lchLightness;
+      if (material.uniforms.uLchChroma) material.uniforms.uLchChroma.value = lchChroma;
+      if (material.uniforms.uMultiSourceWeights) material.uniforms.uMultiSourceWeights.value.set(multiSourceWeights.depth, multiSourceWeights.orbitTrap, multiSourceWeights.normal);
 
       // Access rotation state directly to avoid re-renders during animation
       // Filter to only include 3D-valid planes (XY, XZ, YZ) to prevent errors

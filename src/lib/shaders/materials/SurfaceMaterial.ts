@@ -15,8 +15,8 @@ import {
   ShaderMaterial,
   Vector3,
 } from 'three'
-import type { ColorMode } from '../palette'
-import { GLSL_PALETTE_FUNCTIONS } from '../palette'
+import type { ColorAlgorithm, CosineCoefficients, DistributionSettings } from '../palette'
+import { GLSL_PALETTE_FUNCTIONS, GLSL_COSINE_PALETTE, COLOR_ALGORITHM_TO_INT } from '../palette'
 import type { SurfaceSettings } from '../types'
 
 /**
@@ -272,8 +272,16 @@ export function updateFresnelMaterial(
  * Configuration for palette surface material
  */
 export interface PaletteSurfaceMaterialConfig extends SurfaceMaterialConfig {
-  /** Color mode for palette generation */
-  colorMode: ColorMode
+  /** Color algorithm selection */
+  colorAlgorithm?: ColorAlgorithm
+  /** Cosine palette coefficients */
+  cosineCoefficients?: CosineCoefficients
+  /** Distribution settings */
+  distribution?: DistributionSettings
+  /** LCH lightness (for lch algorithm) */
+  lchLightness?: number
+  /** LCH chroma (for lch algorithm) */
+  lchChroma?: number
 }
 
 /**
@@ -331,13 +339,14 @@ void main() {
  * - Light direction is fixed in world space regardless of camera position
  */
 const paletteFragmentShader =
+  GLSL_COSINE_PALETTE +
   GLSL_PALETTE_FUNCTIONS +
   `
 uniform vec3 baseColor;
 uniform vec3 rimColor;
 uniform float opacity;
 uniform float fresnelIntensity;
-uniform int paletteMode;
+uniform int uColorAlgorithm;
 uniform float uAmbientIntensity;
 uniform float uSpecularIntensity;
 uniform float uShininess;
@@ -347,6 +356,16 @@ uniform vec3 uLightColor;
 // Enhanced lighting uniforms
 uniform vec3 uSpecularColor;
 uniform float uDiffuseIntensity;
+// Cosine palette uniforms
+uniform vec3 uCosineA;
+uniform vec3 uCosineB;
+uniform vec3 uCosineC;
+uniform vec3 uCosineD;
+uniform float uDistPower;
+uniform float uDistCycles;
+uniform float uDistOffset;
+uniform float uLchLightness;
+uniform float uLchChroma;
 
 varying float vDepth;
 varying vec3 vNormal;
@@ -358,9 +377,40 @@ void main() {
   vec3 viewDir = normalize(vViewDir);
   vec3 lightDir = normalize(uLightDir);
 
-  // Convert base color to HSL and generate palette color per-fragment
+  // Generate surface color based on selected algorithm
+  vec3 surfaceColor;
   vec3 baseHSL = rgb2hsl(baseColor);
-  vec3 surfaceColor = getPaletteColor(baseHSL, vDepth, paletteMode);
+
+  if (uColorAlgorithm == 0) {
+    // Monochromatic: Same hue, varying lightness
+    float t = applyDistribution(vDepth, uDistPower, uDistCycles, uDistOffset);
+    float newL = 0.3 + t * 0.4;
+    surfaceColor = hsl2rgb(vec3(baseHSL.x, baseHSL.y, newL));
+  } else if (uColorAlgorithm == 1) {
+    // Analogous: Hue varies ±30° from base
+    float t = applyDistribution(vDepth, uDistPower, uDistCycles, uDistOffset);
+    float hueOffset = (t - 0.5) * 0.167;
+    float newH = fract(baseHSL.x + hueOffset);
+    surfaceColor = hsl2rgb(vec3(newH, baseHSL.y, baseHSL.z));
+  } else if (uColorAlgorithm == 2) {
+    // Cosine: Smooth gradient palette
+    surfaceColor = getCosinePaletteColor(vDepth, uCosineA, uCosineB, uCosineC, uCosineD, uDistPower, uDistCycles, uDistOffset);
+  } else if (uColorAlgorithm == 3) {
+    // Normal-based coloring
+    surfaceColor = normalBasedColor(normal, uCosineA, uCosineB, uCosineC, uCosineD, uDistPower, uDistCycles, uDistOffset);
+  } else if (uColorAlgorithm == 4) {
+    // Distance field (using depth as distance proxy)
+    surfaceColor = getCosinePaletteColor(vDepth, uCosineA, uCosineB, uCosineC, uCosineD, uDistPower, uDistCycles, uDistOffset);
+  } else if (uColorAlgorithm == 5) {
+    // LCH perceptual
+    float t = applyDistribution(vDepth, uDistPower, uDistCycles, uDistOffset);
+    surfaceColor = lchColor(t, uLchLightness, uLchChroma);
+  } else {
+    // Multi-source (blend depth and normal)
+    float normalT = normal.y * 0.5 + 0.5;
+    float blendedT = vDepth * 0.7 + normalT * 0.3;
+    surfaceColor = getCosinePaletteColor(blendedT, uCosineA, uCosineB, uCosineC, uCosineD, uDistPower, uDistCycles, uDistOffset);
+  }
 
   // Start with ambient light
   vec3 col = surfaceColor * uAmbientIntensity;
@@ -402,12 +452,12 @@ void main() {
  *
  * Uses custom ShaderMaterial with:
  * - Per-face depth attribute for palette variation
- * - Color theory-based palette modes (monochromatic, analogous, etc.)
+ * - Color algorithm selection (monochromatic, analogous, cosine, etc.)
  * - Phong-like diffuse lighting (using Three.js lights)
  * - Specular highlights
  * - Optional fresnel rim lighting
  *
- * @param config - Material configuration including colorMode
+ * @param config - Material configuration including colorAlgorithm
  * @returns ShaderMaterial instance
  */
 export function createPaletteSurfaceMaterial(config: PaletteSurfaceMaterialConfig): ShaderMaterial {
@@ -418,17 +468,12 @@ export function createPaletteSurfaceMaterial(config: PaletteSurfaceMaterialConfi
     specularIntensity,
     shininess,
     fresnelEnabled,
-    colorMode,
+    colorAlgorithm = 'cosine',
+    cosineCoefficients = { a: [0.5, 0.5, 0.5], b: [0.5, 0.5, 0.5], c: [1, 1, 1], d: [0, 0.33, 0.67] },
+    distribution = { power: 1.0, cycles: 1.0, offset: 0.0 },
+    lchLightness = 0.7,
+    lchChroma = 0.15,
   } = config
-
-  // Map colorMode string to int for shader
-  const modeMap: Record<ColorMode, number> = {
-    monochromatic: 0,
-    analogous: 1,
-    complementary: 2,
-    triadic: 3,
-    splitComplementary: 4,
-  }
 
   return new ShaderMaterial({
     vertexShader: paletteVertexShader,
@@ -438,7 +483,7 @@ export function createPaletteSurfaceMaterial(config: PaletteSurfaceMaterialConfi
       rimColor: { value: new Color(edgeColor) },
       opacity: { value: faceOpacity },
       fresnelIntensity: { value: fresnelEnabled ? 0.5 : 0.0 },
-      paletteMode: { value: modeMap[colorMode] },
+      uColorAlgorithm: { value: COLOR_ALGORITHM_TO_INT[colorAlgorithm] },
       uAmbientIntensity: { value: 0.5 },
       uSpecularIntensity: { value: specularIntensity },
       uShininess: { value: shininess },
@@ -448,6 +493,16 @@ export function createPaletteSurfaceMaterial(config: PaletteSurfaceMaterialConfi
       // Enhanced lighting uniforms
       uSpecularColor: { value: new Color('#FFFFFF') },
       uDiffuseIntensity: { value: 1.0 },
+      // Cosine palette uniforms
+      uCosineA: { value: new Vector3(...cosineCoefficients.a) },
+      uCosineB: { value: new Vector3(...cosineCoefficients.b) },
+      uCosineC: { value: new Vector3(...cosineCoefficients.c) },
+      uCosineD: { value: new Vector3(...cosineCoefficients.d) },
+      uDistPower: { value: distribution.power },
+      uDistCycles: { value: distribution.cycles },
+      uDistOffset: { value: distribution.offset },
+      uLchLightness: { value: lchLightness },
+      uLchChroma: { value: lchChroma },
     },
     transparent: true,
     side: DoubleSide,
@@ -475,10 +530,15 @@ export function updatePaletteMaterial(
     lightDirection: [number, number, number]
     lightEnabled: boolean
     lightColor: string
-    colorMode: ColorMode
+    colorAlgorithm: ColorAlgorithm
     // Enhanced lighting parameters
     specularColor: string
     diffuseIntensity: number
+    // Cosine palette parameters
+    cosineCoefficients: CosineCoefficients
+    distribution: DistributionSettings
+    lchLightness: number
+    lchChroma: number
   }>
 ): void {
   if (updates.color !== undefined) {
@@ -512,15 +572,8 @@ export function updatePaletteMaterial(
   if (updates.lightColor !== undefined) {
     material.uniforms.uLightColor!.value = new Color(updates.lightColor)
   }
-  if (updates.colorMode !== undefined) {
-    const modeMap: Record<ColorMode, number> = {
-      monochromatic: 0,
-      analogous: 1,
-      complementary: 2,
-      triadic: 3,
-      splitComplementary: 4,
-    }
-    material.uniforms.paletteMode!.value = modeMap[updates.colorMode]
+  if (updates.colorAlgorithm !== undefined) {
+    material.uniforms.uColorAlgorithm!.value = COLOR_ALGORITHM_TO_INT[updates.colorAlgorithm]
   }
   // Enhanced lighting parameters
   if (updates.specularColor !== undefined) {
@@ -528,6 +581,26 @@ export function updatePaletteMaterial(
   }
   if (updates.diffuseIntensity !== undefined) {
     material.uniforms.uDiffuseIntensity!.value = updates.diffuseIntensity
+  }
+  // Cosine palette parameters
+  if (updates.cosineCoefficients !== undefined) {
+    const c = updates.cosineCoefficients
+    material.uniforms.uCosineA!.value.set(c.a[0], c.a[1], c.a[2])
+    material.uniforms.uCosineB!.value.set(c.b[0], c.b[1], c.b[2])
+    material.uniforms.uCosineC!.value.set(c.c[0], c.c[1], c.c[2])
+    material.uniforms.uCosineD!.value.set(c.d[0], c.d[1], c.d[2])
+  }
+  if (updates.distribution !== undefined) {
+    const d = updates.distribution
+    material.uniforms.uDistPower!.value = d.power
+    material.uniforms.uDistCycles!.value = d.cycles
+    material.uniforms.uDistOffset!.value = d.offset
+  }
+  if (updates.lchLightness !== undefined) {
+    material.uniforms.uLchLightness!.value = updates.lchLightness
+  }
+  if (updates.lchChroma !== undefined) {
+    material.uniforms.uLchChroma!.value = updates.lchChroma
   }
 
   material.needsUpdate = true
@@ -545,7 +618,18 @@ const PHONG_CUSTOM_UNIFORMS_GLSL = `
 // Custom uniforms for palette and fresnel
 uniform vec3 uRimColor;
 uniform float uFresnelIntensity;
-uniform int uPaletteMode;
+
+// Advanced color system uniforms
+uniform int uColorAlgorithm;
+uniform vec3 uCosineA;
+uniform vec3 uCosineB;
+uniform vec3 uCosineC;
+uniform vec3 uCosineD;
+uniform float uDistPower;
+uniform float uDistCycles;
+uniform float uDistOffset;
+uniform float uLchLightness;
+uniform float uLchChroma;
 
 // Custom varyings (vNormal is already provided by Three.js Phong shader)
 varying float vDepth;
@@ -583,20 +667,6 @@ gl_FragColor = vec4( outgoingLight, diffuseColor.a );
 `
 
 /**
- * Helper to convert ColorMode string to int for shader uniform.
- */
-function colorModeToInt(mode: ColorMode): number {
-  const modeMap: Record<ColorMode, number> = {
-    monochromatic: 0,
-    analogous: 1,
-    complementary: 2,
-    triadic: 3,
-    splitComplementary: 4,
-  }
-  return modeMap[mode]
-}
-
-/**
  * Updates interface for MeshPhongMaterial with custom uniforms.
  */
 export interface PhongPaletteMaterialUpdates {
@@ -607,7 +677,12 @@ export interface PhongPaletteMaterialUpdates {
   specularIntensity: number
   specularColor: string
   shininess: number
-  colorMode: ColorMode
+  // Advanced color system
+  colorAlgorithm: ColorAlgorithm
+  cosineCoefficients: CosineCoefficients
+  distribution: DistributionSettings
+  lchLightness: number
+  lchChroma: number
 }
 
 /**
@@ -621,7 +696,7 @@ export interface PhongPaletteMaterialUpdates {
  * This approach leverages Three.js native lighting while adding custom features,
  * reducing maintenance burden and ensuring compatibility with future Three.js updates.
  *
- * @param config - Material configuration including colorMode
+ * @param config - Material configuration including colorAlgorithm
  * @returns MeshPhongMaterial with custom shader modifications
  *
  * @example
@@ -633,7 +708,7 @@ export interface PhongPaletteMaterialUpdates {
  *   specularIntensity: 0.5,
  *   shininess: 30,
  *   fresnelEnabled: true,
- *   colorMode: 'analogous',
+ *   colorAlgorithm: 'cosine',
  * });
  * ```
  */
@@ -645,7 +720,11 @@ export function createPhongPaletteMaterial(config: PaletteSurfaceMaterialConfig)
     specularIntensity,
     shininess,
     fresnelEnabled,
-    colorMode,
+    colorAlgorithm = 'cosine',
+    cosineCoefficients = { a: [0.5, 0.5, 0.5], b: [0.5, 0.5, 0.5], c: [1, 1, 1], d: [0, 0.33, 0.67] },
+    distribution = { power: 1.0, cycles: 1.0, offset: 0.0 },
+    lchLightness = 0.7,
+    lchChroma = 0.15,
   } = config
 
   // Create base MeshPhongMaterial with standard Phong properties
@@ -663,7 +742,17 @@ export function createPhongPaletteMaterial(config: PaletteSurfaceMaterialConfig)
   const customUniforms = {
     uRimColor: { value: new Color(edgeColor) },
     uFresnelIntensity: { value: fresnelEnabled ? 0.5 : 0.0 },
-    uPaletteMode: { value: colorModeToInt(colorMode) },
+    // Advanced color system uniforms
+    uColorAlgorithm: { value: COLOR_ALGORITHM_TO_INT[colorAlgorithm] },
+    uCosineA: { value: new Vector3(...cosineCoefficients.a) },
+    uCosineB: { value: new Vector3(...cosineCoefficients.b) },
+    uCosineC: { value: new Vector3(...cosineCoefficients.c) },
+    uCosineD: { value: new Vector3(...cosineCoefficients.d) },
+    uDistPower: { value: distribution.power },
+    uDistCycles: { value: distribution.cycles },
+    uDistOffset: { value: distribution.offset },
+    uLchLightness: { value: lchLightness },
+    uLchChroma: { value: lchChroma },
   }
 
   // Store custom uniforms for later access via update function
@@ -701,6 +790,7 @@ vWorldPosition = (modelMatrix * vec4(position, 1.0)).xyz;`
       '#include <common>',
       `#include <common>
 ${PHONG_CUSTOM_UNIFORMS_GLSL}
+${GLSL_COSINE_PALETTE}
 ${GLSL_PALETTE_FUNCTIONS}`
     )
 
@@ -708,10 +798,42 @@ ${GLSL_PALETTE_FUNCTIONS}`
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <color_fragment>',
       `#include <color_fragment>
-// Apply palette-based color variation using faceDepth
+// Apply color variation using selected algorithm
 {
-  vec3 baseHSL = rgb2hsl(diffuseColor.rgb);
-  diffuseColor.rgb = getPaletteColor(baseHSL, vDepth, uPaletteMode);
+  if (uColorAlgorithm == 0) {
+    // Monochromatic: Same hue, varying lightness
+    vec3 baseHSL = rgb2hsl(diffuseColor.rgb);
+    float t = applyDistribution(vDepth, uDistPower, uDistCycles, uDistOffset);
+    float newL = 0.3 + t * 0.4;
+    diffuseColor.rgb = hsl2rgb(vec3(baseHSL.x, baseHSL.y, newL));
+  } else if (uColorAlgorithm == 1) {
+    // Analogous: Hue varies ±30° from base
+    vec3 baseHSL = rgb2hsl(diffuseColor.rgb);
+    float t = applyDistribution(vDepth, uDistPower, uDistCycles, uDistOffset);
+    float hueOffset = (t - 0.5) * 0.167;
+    float newH = fract(baseHSL.x + hueOffset);
+    diffuseColor.rgb = hsl2rgb(vec3(newH, baseHSL.y, baseHSL.z));
+  } else if (uColorAlgorithm == 2) {
+    // Cosine: Smooth gradient palette
+    diffuseColor.rgb = getCosinePaletteColor(vDepth, uCosineA, uCosineB, uCosineC, uCosineD, uDistPower, uDistCycles, uDistOffset);
+  } else if (uColorAlgorithm == 3) {
+    // Normal-based coloring
+    vec3 normalDir = normalize(vNormal);
+    diffuseColor.rgb = normalBasedColor(normalDir, uCosineA, uCosineB, uCosineC, uCosineD, uDistPower, uDistCycles, uDistOffset);
+  } else if (uColorAlgorithm == 4) {
+    // Distance field (using depth as distance proxy)
+    diffuseColor.rgb = getCosinePaletteColor(vDepth, uCosineA, uCosineB, uCosineC, uCosineD, uDistPower, uDistCycles, uDistOffset);
+  } else if (uColorAlgorithm == 5) {
+    // LCH perceptual
+    float t = applyDistribution(vDepth, uDistPower, uDistCycles, uDistOffset);
+    diffuseColor.rgb = lchColor(t, uLchLightness, uLchChroma);
+  } else if (uColorAlgorithm == 6) {
+    // Multi-source (blend depth and normal)
+    vec3 normalDir = normalize(vNormal);
+    float normalT = normalDir.y * 0.5 + 0.5;
+    float blendedT = vDepth * 0.7 + normalT * 0.3;
+    diffuseColor.rgb = getCosinePaletteColor(blendedT, uCosineA, uCosineB, uCosineC, uCosineD, uDistPower, uDistCycles, uDistOffset);
+  }
 }`
     )
 
@@ -747,7 +869,7 @@ ${GLSL_PALETTE_FUNCTIONS}`
  * updatePhongPaletteMaterial(material, {
  *   color: '#FF0000',
  *   fresnelIntensity: 0.8,
- *   colorMode: 'complementary',
+ *   colorAlgorithm: 'cosine',
  * });
  * ```
  */
@@ -781,8 +903,28 @@ export function updatePhongPaletteMaterial(
     if (updates.fresnelIntensity !== undefined) {
       shader.uniforms.uFresnelIntensity.value = updates.fresnelIntensity
     }
-    if (updates.colorMode !== undefined) {
-      shader.uniforms.uPaletteMode.value = colorModeToInt(updates.colorMode)
+    // Advanced color system uniforms
+    if (updates.colorAlgorithm !== undefined) {
+      shader.uniforms.uColorAlgorithm.value = COLOR_ALGORITHM_TO_INT[updates.colorAlgorithm]
+    }
+    if (updates.cosineCoefficients !== undefined) {
+      const c = updates.cosineCoefficients
+      shader.uniforms.uCosineA.value.set(c.a[0], c.a[1], c.a[2])
+      shader.uniforms.uCosineB.value.set(c.b[0], c.b[1], c.b[2])
+      shader.uniforms.uCosineC.value.set(c.c[0], c.c[1], c.c[2])
+      shader.uniforms.uCosineD.value.set(c.d[0], c.d[1], c.d[2])
+    }
+    if (updates.distribution !== undefined) {
+      const d = updates.distribution
+      shader.uniforms.uDistPower.value = d.power
+      shader.uniforms.uDistCycles.value = d.cycles
+      shader.uniforms.uDistOffset.value = d.offset
+    }
+    if (updates.lchLightness !== undefined) {
+      shader.uniforms.uLchLightness.value = updates.lchLightness
+    }
+    if (updates.lchChroma !== undefined) {
+      shader.uniforms.uLchChroma.value = updates.lchChroma
     }
   }
 
@@ -795,8 +937,28 @@ export function updatePhongPaletteMaterial(
     if (updates.fresnelIntensity !== undefined) {
       customUniforms.uFresnelIntensity.value = updates.fresnelIntensity
     }
-    if (updates.colorMode !== undefined) {
-      customUniforms.uPaletteMode.value = colorModeToInt(updates.colorMode)
+    // Advanced color system uniforms
+    if (updates.colorAlgorithm !== undefined) {
+      customUniforms.uColorAlgorithm.value = COLOR_ALGORITHM_TO_INT[updates.colorAlgorithm]
+    }
+    if (updates.cosineCoefficients !== undefined) {
+      const c = updates.cosineCoefficients
+      customUniforms.uCosineA.value.set(c.a[0], c.a[1], c.a[2])
+      customUniforms.uCosineB.value.set(c.b[0], c.b[1], c.b[2])
+      customUniforms.uCosineC.value.set(c.c[0], c.c[1], c.c[2])
+      customUniforms.uCosineD.value.set(c.d[0], c.d[1], c.d[2])
+    }
+    if (updates.distribution !== undefined) {
+      const d = updates.distribution
+      customUniforms.uDistPower.value = d.power
+      customUniforms.uDistCycles.value = d.cycles
+      customUniforms.uDistOffset.value = d.offset
+    }
+    if (updates.lchLightness !== undefined) {
+      customUniforms.uLchLightness.value = updates.lchLightness
+    }
+    if (updates.lchChroma !== undefined) {
+      customUniforms.uLchChroma.value = updates.lchChroma
     }
   }
 

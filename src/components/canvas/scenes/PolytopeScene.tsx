@@ -33,6 +33,7 @@ import { composeRotations } from '@/lib/math/rotation';
 import { DEFAULT_PROJECTION_DISTANCE } from '@/lib/math/projection';
 import { VERTEX_SIZE_DIVISOR } from '@/lib/shaders/constants';
 import { matrixToGPUUniforms } from '@/lib/shaders/transforms/ndTransform';
+import { COLOR_ALGORITHM_TO_INT } from '@/lib/shaders/palette';
 
 /**
  * Props for PolytopeScene component
@@ -156,9 +157,13 @@ function buildFaceVertexShader(): string {
     attribute float aExtraDim5;
     attribute float aExtraDim6;
 
+    // Face depth attribute for color algorithm
+    attribute float aFaceDepth;
+
     // Varyings for fragment shader
     varying vec3 vWorldPosition;
     varying vec3 vViewDir;
+    varying float vFaceDepth;
 
     vec3 transformND() {
       float scaledInputs[11];
@@ -214,18 +219,34 @@ function buildFaceVertexShader(): string {
       // Pass world position for normal calculation in fragment shader
       vWorldPosition = worldPos.xyz;
       vViewDir = normalize(cameraPosition - worldPos.xyz);
+      vFaceDepth = aFaceDepth;
     }
   `;
 }
 
 /**
  * Build fragment shader with full lighting (matches Mandelbulb approach)
+ * Includes advanced color system with cosine palettes, LCH, and multi-source algorithms
  */
 function buildFaceFragmentShader(): string {
   return `
     // Color uniforms
     uniform vec3 uColor;
     uniform float uOpacity;
+
+    // Advanced Color System uniforms
+    // 0=monochromatic, 1=analogous, 2=cosine, 3=normal, 4=distance, 5=lch, 6=multiSource
+    uniform int uColorAlgorithm;
+    uniform vec3 uCosineA;
+    uniform vec3 uCosineB;
+    uniform vec3 uCosineC;
+    uniform vec3 uCosineD;
+    uniform float uDistPower;
+    uniform float uDistCycles;
+    uniform float uDistOffset;
+    uniform float uLchLightness;
+    uniform float uLchChroma;
+    uniform vec3 uMultiSourceWeights;
 
     // Lighting uniforms
     uniform bool uLightEnabled;
@@ -246,6 +267,148 @@ function buildFaceFragmentShader(): string {
     // Varyings
     varying vec3 vWorldPosition;
     varying vec3 vViewDir;
+    varying float vFaceDepth;
+
+    // ============================================================
+    // Cosine Gradient Palette Functions (Inigo Quilez technique)
+    // ============================================================
+
+    // Cosine gradient: a + b * cos(2π * (c * t + d))
+    vec3 cosinePalette(float t, vec3 a, vec3 b, vec3 c, vec3 d) {
+      return a + b * cos(6.28318 * (c * t + d));
+    }
+
+    // Apply distribution curve to t value
+    float applyDistribution(float t, float power, float cycles, float offset) {
+      float curved = pow(clamp(t, 0.0, 1.0), power);
+      float cycled = fract(curved * cycles + offset);
+      return cycled;
+    }
+
+    // Main cosine palette function with distribution
+    vec3 getCosinePaletteColor(float t) {
+      float distributedT = applyDistribution(t, uDistPower, uDistCycles, uDistOffset);
+      return cosinePalette(distributedT, uCosineA, uCosineB, uCosineC, uCosineD);
+    }
+
+    // ============================================================
+    // Oklab / LCH Color Space Functions (perceptually uniform)
+    // ============================================================
+
+    vec3 oklabToLinearSrgb(vec3 c) {
+      float l_ = c.x + 0.3963377774 * c.y + 0.2158037573 * c.z;
+      float m_ = c.x - 0.1055613458 * c.y - 0.0638541728 * c.z;
+      float s_ = c.x - 0.0894841775 * c.y - 1.2914855480 * c.z;
+
+      float l = l_ * l_ * l_;
+      float m = m_ * m_ * m_;
+      float s = s_ * s_ * s_;
+
+      return vec3(
+        +4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+        -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+        -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s
+      );
+    }
+
+    vec3 lchColor(float t, float lightness, float chroma) {
+      float hue = t * 6.28318;
+      vec3 oklab = vec3(lightness, chroma * cos(hue), chroma * sin(hue));
+      vec3 rgb = oklabToLinearSrgb(oklab);
+      return clamp(rgb, 0.0, 1.0);
+    }
+
+    // ============================================================
+    // HSL Color Space Functions (for monochromatic/analogous)
+    // ============================================================
+
+    vec3 hsl2rgb(vec3 hsl) {
+      float h = hsl.x;
+      float s = hsl.y;
+      float l = hsl.z;
+      float c = (1.0 - abs(2.0 * l - 1.0)) * s;
+      float x = c * (1.0 - abs(mod(h * 6.0, 2.0) - 1.0));
+      float m = l - c / 2.0;
+      vec3 rgb;
+      if (h < 1.0/6.0) rgb = vec3(c, x, 0.0);
+      else if (h < 2.0/6.0) rgb = vec3(x, c, 0.0);
+      else if (h < 3.0/6.0) rgb = vec3(0.0, c, x);
+      else if (h < 4.0/6.0) rgb = vec3(0.0, x, c);
+      else if (h < 5.0/6.0) rgb = vec3(x, 0.0, c);
+      else rgb = vec3(c, 0.0, x);
+      return rgb + m;
+    }
+
+    vec3 rgb2hsl(vec3 rgb) {
+      float maxC = max(max(rgb.r, rgb.g), rgb.b);
+      float minC = min(min(rgb.r, rgb.g), rgb.b);
+      float l = (maxC + minC) / 2.0;
+      if (maxC == minC) return vec3(0.0, 0.0, l);
+      float d = maxC - minC;
+      float s = l > 0.5 ? d / (2.0 - maxC - minC) : d / (maxC + minC);
+      float h;
+      if (maxC == rgb.r) h = mod((rgb.g - rgb.b) / d + 6.0, 6.0) / 6.0;
+      else if (maxC == rgb.g) h = ((rgb.b - rgb.r) / d + 2.0) / 6.0;
+      else h = ((rgb.r - rgb.g) / d + 4.0) / 6.0;
+      return vec3(h, s, l);
+    }
+
+    // Monochromatic: Same hue, varying lightness based on t
+    vec3 getMonochromaticColor(vec3 baseHSL, float t) {
+      float litVar = mix(0.3, 0.7, t);
+      return hsl2rgb(vec3(baseHSL.x, baseHSL.y, litVar));
+    }
+
+    // Analogous: Hue varies ±30° from base color based on t
+    vec3 getAnalogousColor(vec3 baseHSL, float t) {
+      float hueOffset = (t - 0.5) * 0.167; // ±30° = ±0.0833, doubled for full range
+      return hsl2rgb(vec3(fract(baseHSL.x + hueOffset), baseHSL.y, baseHSL.z));
+    }
+
+    // ============================================================
+    // Multi-Source Color Mapping
+    // ============================================================
+
+    vec3 getMultiSourceColor(float depth, float orbitTrap, vec3 normal) {
+      vec3 w = uMultiSourceWeights / (uMultiSourceWeights.x + uMultiSourceWeights.y + uMultiSourceWeights.z);
+      float normalFactor = dot(normal, vec3(0.0, 1.0, 0.0)) * 0.5 + 0.5;
+      float t = w.x * depth + w.y * orbitTrap + w.z * normalFactor;
+      return getCosinePaletteColor(t);
+    }
+
+    // ============================================================
+    // Unified Color Algorithm Selector
+    // 0=monochromatic, 1=analogous, 2=cosine, 3=normal, 4=distance, 5=lch, 6=multiSource
+    // ============================================================
+
+    vec3 getColorByAlgorithm(float t, vec3 normal, vec3 baseHSL) {
+      if (uColorAlgorithm == 0) {
+        // Monochromatic: Same hue, varying lightness
+        return getMonochromaticColor(baseHSL, t);
+      } else if (uColorAlgorithm == 1) {
+        // Analogous: Hue varies ±30° from base
+        return getAnalogousColor(baseHSL, t);
+      } else if (uColorAlgorithm == 2) {
+        // Cosine gradient palette
+        return getCosinePaletteColor(t);
+      } else if (uColorAlgorithm == 3) {
+        // Normal-based coloring
+        float normalT = dot(normal, vec3(0.0, 1.0, 0.0)) * 0.5 + 0.5;
+        float distributedT = applyDistribution(normalT, uDistPower, uDistCycles, uDistOffset);
+        return cosinePalette(distributedT, uCosineA, uCosineB, uCosineC, uCosineD);
+      } else if (uColorAlgorithm == 4) {
+        // Distance-field coloring (uses t as distance)
+        return getCosinePaletteColor(t);
+      } else if (uColorAlgorithm == 5) {
+        // LCH/Oklab perceptual
+        float distributedT = applyDistribution(t, uDistPower, uDistCycles, uDistOffset);
+        return lchColor(distributedT, uLchLightness, uLchChroma);
+      } else if (uColorAlgorithm == 6) {
+        // Multi-source mapping (uses depth and normal)
+        return getMultiSourceColor(t, t, normal);
+      }
+      return getCosinePaletteColor(t);
+    }
 
     void main() {
       // Compute face normal from screen-space derivatives of world position
@@ -254,15 +417,19 @@ function buildFaceFragmentShader(): string {
       vec3 normal = normalize(cross(dPdx, dPdy));
       vec3 viewDir = normalize(vViewDir);
 
+      // Get base color from algorithm using face depth as t value
+      vec3 baseHSL = rgb2hsl(uColor);
+      vec3 baseColor = getColorByAlgorithm(vFaceDepth, normal, baseHSL);
+
       // Start with ambient
-      vec3 col = uColor * uAmbientIntensity;
+      vec3 col = baseColor * uAmbientIntensity;
 
       if (uLightEnabled) {
         vec3 lightDir = normalize(uLightDirection);
 
         // Diffuse (Lambert) - multiplied by light strength
         float NdotL = max(dot(normal, lightDir), 0.0);
-        col += uColor * uLightColor * NdotL * uDiffuseIntensity * uLightStrength;
+        col += baseColor * uLightColor * NdotL * uDiffuseIntensity * uLightStrength;
 
         // Specular (Blinn-Phong) - multiplied by light strength
         vec3 halfDir = normalize(lightDir + viewDir);
@@ -286,6 +453,7 @@ function buildFaceFragmentShader(): string {
 
 /**
  * Create face ShaderMaterial with custom lighting (same approach as Mandelbulb)
+ * Includes advanced color system uniforms for cosine palettes, LCH, and multi-source algorithms
  */
 function createFaceShaderMaterial(
   faceColor: string,
@@ -298,6 +466,18 @@ function createFaceShaderMaterial(
       // Color
       uColor: { value: new Color(faceColor) },
       uOpacity: { value: opacity },
+      // Advanced Color System uniforms
+      uColorAlgorithm: { value: 2 }, // Default to cosine
+      uCosineA: { value: new Vector3(0.5, 0.5, 0.5) },
+      uCosineB: { value: new Vector3(0.5, 0.5, 0.5) },
+      uCosineC: { value: new Vector3(1.0, 1.0, 1.0) },
+      uCosineD: { value: new Vector3(0.0, 0.33, 0.67) },
+      uDistPower: { value: 1.0 },
+      uDistCycles: { value: 1.0 },
+      uDistOffset: { value: 0.0 },
+      uLchLightness: { value: 0.7 },
+      uLchChroma: { value: 0.15 },
+      uMultiSourceWeights: { value: new Vector3(0.5, 0.3, 0.2) },
       // Lighting (updated every frame from store)
       uLightEnabled: { value: true },
       uLightColor: { value: new Color('#ffffff') },
@@ -834,7 +1014,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     const { uniformScale, perAxisScale } = useTransformStore.getState();
     const projectionType = useProjectionStore.getState().type;
 
-    // Read lighting settings from store
+    // Read lighting and color settings from store
     const visualState = useVisualStore.getState();
     const lightEnabled = visualState.lightEnabled;
     const lightColor = visualState.lightColor;
@@ -849,6 +1029,14 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     const fresnelEnabled = visualState.shaderSettings.surface.fresnelEnabled;
     const fresnelIntensity = visualState.fresnelIntensity;
     const rimColor = visualState.edgeColor;
+
+    // Read advanced color system state
+    const colorAlgorithm = visualState.colorAlgorithm;
+    const cosineCoefficients = visualState.cosineCoefficients;
+    const distribution = visualState.distribution;
+    const lchLightness = visualState.lchLightness;
+    const lchChroma = visualState.lchChroma;
+    const multiSourceWeights = visualState.multiSourceWeights;
 
     // Calculate light direction from angles
     const lightDirection = anglesToDirection(lightHorizontalAngle, lightVerticalAngle);
@@ -894,6 +1082,19 @@ export const PolytopeScene = React.memo(function PolytopeScene({
         if (u.uFresnelEnabled) u.uFresnelEnabled.value = fresnelEnabled;
         if (u.uFresnelIntensity) u.uFresnelIntensity.value = fresnelIntensity;
         if (u.uRimColor) (u.uRimColor.value as Color).set(rimColor);
+
+        // Update advanced color system uniforms (only for face materials)
+        if (u.uColorAlgorithm) u.uColorAlgorithm.value = COLOR_ALGORITHM_TO_INT[colorAlgorithm];
+        if (u.uCosineA) (u.uCosineA.value as Vector3).set(cosineCoefficients.a[0], cosineCoefficients.a[1], cosineCoefficients.a[2]);
+        if (u.uCosineB) (u.uCosineB.value as Vector3).set(cosineCoefficients.b[0], cosineCoefficients.b[1], cosineCoefficients.b[2]);
+        if (u.uCosineC) (u.uCosineC.value as Vector3).set(cosineCoefficients.c[0], cosineCoefficients.c[1], cosineCoefficients.c[2]);
+        if (u.uCosineD) (u.uCosineD.value as Vector3).set(cosineCoefficients.d[0], cosineCoefficients.d[1], cosineCoefficients.d[2]);
+        if (u.uDistPower) u.uDistPower.value = distribution.power;
+        if (u.uDistCycles) u.uDistCycles.value = distribution.cycles;
+        if (u.uDistOffset) u.uDistOffset.value = distribution.offset;
+        if (u.uLchLightness) u.uLchLightness.value = lchLightness;
+        if (u.uLchChroma) u.uLchChroma.value = lchChroma;
+        if (u.uMultiSourceWeights) (u.uMultiSourceWeights.value as Vector3).set(multiSourceWeights.depth, multiSourceWeights.orbitTrap, multiSourceWeights.normal);
       }
     }
   });

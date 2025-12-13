@@ -15,7 +15,7 @@ import {
   VISUAL_PRESETS,
   DEFAULT_SHADER_TYPE,
 } from '@/stores/visualStore';
-import { DEFAULT_COLOR_MODE } from '@/lib/shaders/palette';
+import { DEFAULT_COLOR_ALGORITHM } from '@/lib/shaders/palette';
 
 describe('visualStore - Enhanced Features', () => {
   beforeEach(() => {
@@ -282,27 +282,27 @@ describe('visualStore - Enhanced Features', () => {
     });
   });
 
-  describe('Color Mode (Palette System)', () => {
-    it('should set color mode', () => {
-      useVisualStore.getState().setColorMode('complementary');
-      expect(useVisualStore.getState().colorMode).toBe('complementary');
+  describe('Color Algorithm', () => {
+    it('should set color algorithm', () => {
+      useVisualStore.getState().setColorAlgorithm('monochromatic');
+      expect(useVisualStore.getState().colorAlgorithm).toBe('monochromatic');
 
-      useVisualStore.getState().setColorMode('triadic');
-      expect(useVisualStore.getState().colorMode).toBe('triadic');
+      useVisualStore.getState().setColorAlgorithm('analogous');
+      expect(useVisualStore.getState().colorAlgorithm).toBe('analogous');
 
-      useVisualStore.getState().setColorMode('analogous');
-      expect(useVisualStore.getState().colorMode).toBe('analogous');
+      useVisualStore.getState().setColorAlgorithm('cosine');
+      expect(useVisualStore.getState().colorAlgorithm).toBe('cosine');
 
-      useVisualStore.getState().setColorMode('splitComplementary');
-      expect(useVisualStore.getState().colorMode).toBe('splitComplementary');
+      useVisualStore.getState().setColorAlgorithm('lch');
+      expect(useVisualStore.getState().colorAlgorithm).toBe('lch');
     });
 
-    it('should reset color mode to default on reset', () => {
-      useVisualStore.getState().setColorMode('triadic');
-      expect(useVisualStore.getState().colorMode).toBe('triadic');
+    it('should reset color algorithm to default on reset', () => {
+      useVisualStore.getState().setColorAlgorithm('lch');
+      expect(useVisualStore.getState().colorAlgorithm).toBe('lch');
 
       useVisualStore.getState().reset();
-      expect(useVisualStore.getState().colorMode).toBe(DEFAULT_COLOR_MODE);
+      expect(useVisualStore.getState().colorAlgorithm).toBe(DEFAULT_COLOR_ALGORITHM);
     });
   });
 });

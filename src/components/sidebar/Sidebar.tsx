@@ -9,6 +9,7 @@ import { AnimationSection } from './Animation';
 import { DocumentationSection } from './Documentation';
 import { EnvironmentSection } from './Environment';
 import { ExportSection } from './Export';
+import { FacesSection } from './Faces';
 import { GeometrySection } from './Geometry';
 import { LightsSection } from './Lights';
 import { PostProcessingSection } from './PostProcessing';
@@ -34,6 +35,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       <GeometrySection defaultOpen={true} />
       <AnimationSection defaultOpen={true} />
+      <FacesSection defaultOpen={false} />
       <ProjectionSection defaultOpen={false} />
       <VisualSection defaultOpen={false} />
       <LightsSection defaultOpen={false} />

@@ -5,16 +5,16 @@
  * Only visible when using Surface shader with light enabled.
  */
 
-import React from 'react';
-import { useShallow } from 'zustand/react/shallow';
 import { Slider } from '@/components/ui/Slider';
 import {
-  useVisualStore,
-  DEFAULT_SPECULAR_INTENSITY,
+  DEFAULT_DIFFUSE_INTENSITY,
   DEFAULT_SHININESS,
   DEFAULT_SPECULAR_COLOR,
-  DEFAULT_DIFFUSE_INTENSITY,
+  DEFAULT_SPECULAR_INTENSITY,
+  useVisualStore,
 } from '@/stores/visualStore';
+import React from 'react';
+import { useShallow } from 'zustand/react/shallow';
 
 export interface MaterialControlsProps {
   className?: string;
@@ -68,7 +68,7 @@ export const MaterialControls: React.FC<MaterialControlsProps> = React.memo(({
         label="Diffuse Intensity"
         min={0}
         max={2}
-        step={0.1}
+        step={0.01}
         value={diffuseIntensity}
         onChange={setDiffuseIntensity}
         onReset={() => setDiffuseIntensity(DEFAULT_DIFFUSE_INTENSITY)}

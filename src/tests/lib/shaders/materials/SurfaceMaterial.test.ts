@@ -90,7 +90,7 @@ describe('SurfaceMaterial', () => {
         specularIntensity: 0.5,
         shininess: 30,
         fresnelEnabled: true,
-        colorMode: 'analogous',
+        colorAlgorithm: 'cosine',
       });
 
       expect(material).toBeInstanceOf(MeshPhongMaterial);
@@ -104,7 +104,7 @@ describe('SurfaceMaterial', () => {
         specularIntensity: 0.5,
         shininess: 64,
         fresnelEnabled: true,
-        colorMode: 'complementary',
+        colorAlgorithm: 'cosine',
       });
 
       expect(material.transparent).toBe(true);
@@ -122,16 +122,21 @@ describe('SurfaceMaterial', () => {
         specularIntensity: 0.5,
         shininess: 30,
         fresnelEnabled: true,
-        colorMode: 'analogous',
+        colorAlgorithm: 'cosine',
       });
 
       expect(material.userData.customUniforms).toBeDefined();
       expect(material.userData.customUniforms.uRimColor).toBeDefined();
       expect(material.userData.customUniforms.uFresnelIntensity).toBeDefined();
-      expect(material.userData.customUniforms.uPaletteMode).toBeDefined();
-      expect(material.userData.customUniforms.uToneMappingCustomEnabled).toBeDefined();
-      expect(material.userData.customUniforms.uToneMappingAlgorithm).toBeDefined();
-      expect(material.userData.customUniforms.uExposure).toBeDefined();
+      // Advanced color system uniforms
+      expect(material.userData.customUniforms.uColorAlgorithm).toBeDefined();
+      expect(material.userData.customUniforms.uCosineA).toBeDefined();
+      expect(material.userData.customUniforms.uCosineB).toBeDefined();
+      expect(material.userData.customUniforms.uCosineC).toBeDefined();
+      expect(material.userData.customUniforms.uCosineD).toBeDefined();
+      expect(material.userData.customUniforms.uDistPower).toBeDefined();
+      expect(material.userData.customUniforms.uDistCycles).toBeDefined();
+      expect(material.userData.customUniforms.uDistOffset).toBeDefined();
     });
 
     it('should set fresnel intensity based on fresnelEnabled', () => {
@@ -141,7 +146,7 @@ describe('SurfaceMaterial', () => {
         specularIntensity: 0.5,
         shininess: 30,
         fresnelEnabled: true,
-        colorMode: 'monochromatic',
+        colorAlgorithm: 'monochromatic',
       });
 
       const materialWithoutFresnel = createPhongPaletteMaterial({
@@ -150,28 +155,29 @@ describe('SurfaceMaterial', () => {
         specularIntensity: 0.5,
         shininess: 30,
         fresnelEnabled: false,
-        colorMode: 'monochromatic',
+        colorAlgorithm: 'monochromatic',
       });
 
       expect(materialWithFresnel.userData.customUniforms.uFresnelIntensity.value).toBe(0.5);
       expect(materialWithoutFresnel.userData.customUniforms.uFresnelIntensity.value).toBe(0.0);
     });
 
-    it('should set palette mode correctly', () => {
-      const modes = ['monochromatic', 'analogous', 'complementary', 'triadic', 'splitComplementary'] as const;
-      const expectedValues = [0, 1, 2, 3, 4];
+    it('should set color algorithm correctly', () => {
+      // New algorithm numbering: 0=monochromatic, 1=analogous, 2=cosine, 3=normal, 4=distance, 5=lch, 6=multiSource
+      const algorithms = ['monochromatic', 'analogous', 'cosine', 'normal', 'distance', 'lch', 'multiSource'] as const;
+      const expectedValues = [0, 1, 2, 3, 4, 5, 6];
 
-      modes.forEach((mode, index) => {
+      algorithms.forEach((algo, index) => {
         const material = createPhongPaletteMaterial({
           color: '#8800FF',
           faceOpacity: 0.8,
           specularIntensity: 0.5,
           shininess: 30,
           fresnelEnabled: false,
-          colorMode: mode,
+          colorAlgorithm: algo,
         });
 
-        expect(material.userData.customUniforms.uPaletteMode.value).toBe(expectedValues[index]);
+        expect(material.userData.customUniforms.uColorAlgorithm.value).toBe(expectedValues[index]);
       });
     });
 
@@ -182,7 +188,7 @@ describe('SurfaceMaterial', () => {
         specularIntensity: 0.5,
         shininess: 30,
         fresnelEnabled: true,
-        colorMode: 'analogous',
+        colorAlgorithm: 'cosine',
       });
 
       expect(material.onBeforeCompile).toBeDefined();
@@ -196,7 +202,7 @@ describe('SurfaceMaterial', () => {
         specularIntensity: 0.5,
         shininess: 30,
         fresnelEnabled: true,
-        colorMode: 'analogous',
+        colorAlgorithm: 'cosine',
       });
 
       expect(material.customProgramCacheKey).toBeDefined();
@@ -211,7 +217,7 @@ describe('SurfaceMaterial', () => {
         specularIntensity: 0.5,
         shininess: 30,
         fresnelEnabled: true,
-        colorMode: 'analogous',
+        colorAlgorithm: 'cosine',
       });
 
       expect(material.userData.customUniforms.uRimColor.value.getHexString()).toBe('00ff00');
@@ -224,7 +230,7 @@ describe('SurfaceMaterial', () => {
         specularIntensity: 0.5,
         shininess: 30,
         fresnelEnabled: true,
-        colorMode: 'analogous',
+        colorAlgorithm: 'cosine',
       });
 
       expect(material.userData.customUniforms.uRimColor.value.getHexString()).toBe('ffffff');
@@ -239,7 +245,7 @@ describe('SurfaceMaterial', () => {
         specularIntensity: 0.5,
         shininess: 30,
         fresnelEnabled: true,
-        colorMode: 'analogous',
+        colorAlgorithm: 'cosine',
       });
 
       updatePhongPaletteMaterial(material, { color: '#FF0000' });
@@ -254,7 +260,7 @@ describe('SurfaceMaterial', () => {
         specularIntensity: 0.5,
         shininess: 30,
         fresnelEnabled: true,
-        colorMode: 'analogous',
+        colorAlgorithm: 'cosine',
       });
 
       updatePhongPaletteMaterial(material, { opacity: 0.5 });
@@ -269,7 +275,7 @@ describe('SurfaceMaterial', () => {
         specularIntensity: 0.5,
         shininess: 30,
         fresnelEnabled: true,
-        colorMode: 'analogous',
+        colorAlgorithm: 'cosine',
       });
 
       updatePhongPaletteMaterial(material, { specularIntensity: 0.9 });
@@ -287,7 +293,7 @@ describe('SurfaceMaterial', () => {
         specularIntensity: 0.5,
         shininess: 30,
         fresnelEnabled: true,
-        colorMode: 'analogous',
+        colorAlgorithm: 'cosine',
       });
 
       updatePhongPaletteMaterial(material, { specularColor: '#FF0000' });
@@ -302,7 +308,7 @@ describe('SurfaceMaterial', () => {
         specularIntensity: 0.5,
         shininess: 30,
         fresnelEnabled: true,
-        colorMode: 'analogous',
+        colorAlgorithm: 'cosine',
       });
 
       updatePhongPaletteMaterial(material, { shininess: 100 });
@@ -317,25 +323,19 @@ describe('SurfaceMaterial', () => {
         specularIntensity: 0.5,
         shininess: 30,
         fresnelEnabled: true,
-        colorMode: 'analogous',
+        colorAlgorithm: 'cosine',
       });
 
       updatePhongPaletteMaterial(material, {
         rimColor: '#00FF00',
         fresnelIntensity: 0.8,
-        colorMode: 'triadic',
-        toneMappingEnabled: false,
-        toneMappingAlgorithm: 'aces',
-        exposure: 1.5,
+        colorAlgorithm: 'normal',
       });
 
       const uniforms = material.userData.customUniforms;
       expect(uniforms.uRimColor.value.getHexString()).toBe('00ff00');
       expect(uniforms.uFresnelIntensity.value).toBe(0.8);
-      expect(uniforms.uPaletteMode.value).toBe(3); // triadic = 3
-      expect(uniforms.uToneMappingCustomEnabled.value).toBe(false);
-      expect(uniforms.uToneMappingAlgorithm.value).toBe(1); // aces = 1
-      expect(uniforms.uExposure.value).toBe(1.5);
+      expect(uniforms.uColorAlgorithm.value).toBe(3); // normal = 3
     });
 
     it('should handle partial updates', () => {
@@ -345,7 +345,7 @@ describe('SurfaceMaterial', () => {
         specularIntensity: 0.5,
         shininess: 30,
         fresnelEnabled: true,
-        colorMode: 'analogous',
+        colorAlgorithm: 'cosine',
       });
 
       // Only update color
@@ -354,44 +354,26 @@ describe('SurfaceMaterial', () => {
       // Other properties should remain unchanged
       expect(material.opacity).toBe(0.8);
       expect(material.shininess).toBe(30);
-      expect(material.userData.customUniforms.uPaletteMode.value).toBe(1); // analogous = 1
+      expect(material.userData.customUniforms.uColorAlgorithm.value).toBe(2); // cosine = 2
     });
 
-    it('should update all color modes correctly', () => {
+    it('should update all color algorithms correctly', () => {
       const material = createPhongPaletteMaterial({
         color: '#8800FF',
         faceOpacity: 0.8,
         specularIntensity: 0.5,
         shininess: 30,
         fresnelEnabled: true,
-        colorMode: 'monochromatic',
+        colorAlgorithm: 'monochromatic',
       });
 
-      const modes = ['monochromatic', 'analogous', 'complementary', 'triadic', 'splitComplementary'] as const;
-      const expectedValues = [0, 1, 2, 3, 4];
-
-      modes.forEach((mode, index) => {
-        updatePhongPaletteMaterial(material, { colorMode: mode });
-        expect(material.userData.customUniforms.uPaletteMode.value).toBe(expectedValues[index]);
-      });
-    });
-
-    it('should update all tone mapping algorithms correctly', () => {
-      const material = createPhongPaletteMaterial({
-        color: '#8800FF',
-        faceOpacity: 0.8,
-        specularIntensity: 0.5,
-        shininess: 30,
-        fresnelEnabled: true,
-        colorMode: 'monochromatic',
-      });
-
-      const algorithms = ['reinhard', 'aces', 'uncharted2'] as const;
-      const expectedValues = [0, 1, 2];
+      // New algorithm numbering: 0=monochromatic, 1=analogous, 2=cosine, 3=normal, 4=distance, 5=lch, 6=multiSource
+      const algorithms = ['monochromatic', 'analogous', 'cosine', 'normal', 'distance', 'lch', 'multiSource'] as const;
+      const expectedValues = [0, 1, 2, 3, 4, 5, 6];
 
       algorithms.forEach((algo, index) => {
-        updatePhongPaletteMaterial(material, { toneMappingAlgorithm: algo });
-        expect(material.userData.customUniforms.uToneMappingAlgorithm.value).toBe(expectedValues[index]);
+        updatePhongPaletteMaterial(material, { colorAlgorithm: algo });
+        expect(material.userData.customUniforms.uColorAlgorithm.value).toBe(expectedValues[index]);
       });
     });
   });
@@ -404,7 +386,7 @@ describe('SurfaceMaterial', () => {
         specularIntensity: 0.5,
         shininess: 30,
         fresnelEnabled: true,
-        colorMode: 'analogous',
+        colorAlgorithm: 'cosine',
       });
 
       const mockShader = createMockShader();
@@ -426,7 +408,7 @@ describe('SurfaceMaterial', () => {
         specularIntensity: 0.5,
         shininess: 30,
         fresnelEnabled: true,
-        colorMode: 'analogous',
+        colorAlgorithm: 'cosine',
       });
 
       const mockShader = createMockShader();
@@ -435,10 +417,11 @@ describe('SurfaceMaterial', () => {
       // Check fragment shader modifications
       expect(mockShader.fragmentShader).toContain('uniform vec3 uRimColor');
       expect(mockShader.fragmentShader).toContain('uniform float uFresnelIntensity');
-      expect(mockShader.fragmentShader).toContain('uniform int uPaletteMode');
       expect(mockShader.fragmentShader).toContain('rgb2hsl');
-      expect(mockShader.fragmentShader).toContain('getPaletteColor');
-      expect(mockShader.fragmentShader).toContain('applyToneMapping');
+      expect(mockShader.fragmentShader).toContain('hsl2rgb');
+      // Advanced color system - cosine palette functions
+      expect(mockShader.fragmentShader).toContain('cosinePalette');
+      expect(mockShader.fragmentShader).toContain('uColorAlgorithm');
     });
 
     it('should inject fresnel rim lighting code in opaque_fragment', () => {
@@ -448,7 +431,7 @@ describe('SurfaceMaterial', () => {
         specularIntensity: 0.5,
         shininess: 30,
         fresnelEnabled: true,
-        colorMode: 'analogous',
+        colorAlgorithm: 'cosine',
       });
 
       const mockShader = createMockShader();
@@ -468,7 +451,7 @@ describe('SurfaceMaterial', () => {
         specularIntensity: 0.5,
         shininess: 30,
         fresnelEnabled: true,
-        colorMode: 'analogous',
+        colorAlgorithm: 'cosine',
       });
 
       const mockShader = createMockShader();
@@ -485,7 +468,7 @@ describe('SurfaceMaterial', () => {
         specularIntensity: 0.5,
         shininess: 30,
         fresnelEnabled: true,
-        colorMode: 'analogous',
+        colorAlgorithm: 'cosine',
       });
 
       const mockShader = createMockShader();
@@ -493,10 +476,13 @@ describe('SurfaceMaterial', () => {
 
       expect(mockShader.uniforms).toHaveProperty('uRimColor');
       expect(mockShader.uniforms).toHaveProperty('uFresnelIntensity');
-      expect(mockShader.uniforms).toHaveProperty('uPaletteMode');
-      expect(mockShader.uniforms).toHaveProperty('uToneMappingCustomEnabled');
-      expect(mockShader.uniforms).toHaveProperty('uToneMappingAlgorithm');
-      expect(mockShader.uniforms).toHaveProperty('uExposure');
+      // Advanced color system uniforms
+      expect(mockShader.uniforms).toHaveProperty('uColorAlgorithm');
+      expect(mockShader.uniforms).toHaveProperty('uCosineA');
+      expect(mockShader.uniforms).toHaveProperty('uCosineB');
+      expect(mockShader.uniforms).toHaveProperty('uCosineC');
+      expect(mockShader.uniforms).toHaveProperty('uCosineD');
+      expect(mockShader.uniforms).toHaveProperty('uDistPower');
     });
   });
 
@@ -508,7 +494,7 @@ describe('SurfaceMaterial', () => {
         specularIntensity: 0.5,
         shininess: 30,
         fresnelEnabled: true,
-        colorMode: 'analogous',
+        colorAlgorithm: 'cosine',
       });
 
       // Simulate shader compilation by calling onBeforeCompile
@@ -518,15 +504,13 @@ describe('SurfaceMaterial', () => {
       // Now update the material
       updatePhongPaletteMaterial(material, {
         fresnelIntensity: 0.9,
-        colorMode: 'complementary',
-        exposure: 2.0,
+        colorAlgorithm: 'lch',
       });
 
       // Both shader.uniforms and userData.customUniforms should be updated
       const uniforms = mockShader.uniforms;
       expect(uniforms.uFresnelIntensity?.value).toBe(0.9);
-      expect(uniforms.uPaletteMode?.value).toBe(2); // complementary
-      expect(uniforms.uExposure?.value).toBe(2.0);
+      expect(uniforms.uColorAlgorithm?.value).toBe(5); // lch = 5
     });
   });
 });

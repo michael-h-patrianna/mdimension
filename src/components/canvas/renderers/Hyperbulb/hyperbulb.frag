@@ -11,7 +11,6 @@ uniform float uPower;
 uniform float uIterations;
 uniform float uEscapeRadius;
 uniform vec3 uColor;
-uniform int uPaletteMode;
 uniform mat4 uModelMatrix;
 uniform mat4 uInverseModelMatrix;
 uniform mat4 uProjectionMatrix;
@@ -44,6 +43,20 @@ uniform float uExposure;
 uniform bool uFresnelEnabled;
 uniform float uFresnelIntensity;
 uniform vec3 uRimColor;
+
+// Advanced Color System uniforms
+// 0=monochromatic, 1=analogous, 2=cosine, 3=normal, 4=distance, 5=lch, 6=multiSource
+uniform int uColorAlgorithm;
+uniform vec3 uCosineA;
+uniform vec3 uCosineB;
+uniform vec3 uCosineC;
+uniform vec3 uCosineD;
+uniform float uDistPower;
+uniform float uDistCycles;
+uniform float uDistOffset;
+uniform float uLchLightness;
+uniform float uLchChroma;
+uniform vec3 uMultiSourceWeights;
 
 // Performance mode: reduces quality during animation for smoother interaction
 uniform bool uFastMode;
@@ -127,6 +140,118 @@ vec3 getPaletteColor(vec3 hsl, float t, int mode) {
         return hsl2rgb(vec3(nh, s, newL));
     }
     return hsl2rgb(vec3(h, hsl.y, newL));
+}
+
+// ============================================
+// Cosine Gradient Palette Functions
+// Based on Inigo Quilez's technique
+// ============================================
+
+vec3 cosinePalette(float t, vec3 a, vec3 b, vec3 c, vec3 d) {
+  return a + b * cos(6.28318 * (c * t + d));
+}
+
+float applyDistribution(float t, float power, float cycles, float offset) {
+  float clamped = clamp(t, 0.0, 1.0);
+  float curved = pow(clamped, power);
+  float cycled = fract(curved * cycles + offset);
+  return cycled;
+}
+
+vec3 getCosinePaletteColor(
+  float t,
+  vec3 a, vec3 b, vec3 c, vec3 d,
+  float power, float cycles, float offset
+) {
+  float distributedT = applyDistribution(t, power, cycles, offset);
+  return cosinePalette(distributedT, a, b, c, d);
+}
+
+// ============================================
+// Oklab Color Space Functions (for LCH algorithm)
+// ============================================
+
+vec3 oklabToLinearSrgb(vec3 lab) {
+  float l_ = lab.x + 0.3963377774 * lab.y + 0.2158037573 * lab.z;
+  float m_ = lab.x - 0.1055613458 * lab.y - 0.0638541728 * lab.z;
+  float s_ = lab.x - 0.0894841775 * lab.y - 1.2914855480 * lab.z;
+
+  float l = l_ * l_ * l_;
+  float m = m_ * m_ * m_;
+  float s = s_ * s_ * s_;
+
+  return vec3(
+    +4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+    -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+    -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s
+  );
+}
+
+vec3 lchColor(float t, float lightness, float chroma) {
+  float hue = t * 6.28318;
+  vec3 oklab = vec3(lightness, chroma * cos(hue), chroma * sin(hue));
+  vec3 rgb = oklabToLinearSrgb(oklab);
+  return clamp(rgb, 0.0, 1.0);
+}
+
+// ============================================
+// Unified Color Algorithm Selector
+// ============================================
+
+vec3 getColorByAlgorithm(float t, vec3 normal, vec3 baseHSL) {
+  // Algorithm 0: Monochromatic - same hue, varying lightness
+  if (uColorAlgorithm == 0) {
+    float distributedT = applyDistribution(t, uDistPower, uDistCycles, uDistOffset);
+    float newL = 0.3 + distributedT * 0.4;
+    return hsl2rgb(vec3(baseHSL.x, baseHSL.y, newL));
+  }
+
+  // Algorithm 1: Analogous - hue varies ±30° from base
+  if (uColorAlgorithm == 1) {
+    float distributedT = applyDistribution(t, uDistPower, uDistCycles, uDistOffset);
+    float hueOffset = (distributedT - 0.5) * 0.167;
+    float newH = fract(baseHSL.x + hueOffset);
+    return hsl2rgb(vec3(newH, baseHSL.y, baseHSL.z));
+  }
+
+  // Algorithm 2: Cosine gradient palette
+  if (uColorAlgorithm == 2) {
+    return getCosinePaletteColor(t, uCosineA, uCosineB, uCosineC, uCosineD,
+                                  uDistPower, uDistCycles, uDistOffset);
+  }
+
+  // Algorithm 3: Normal-based coloring
+  if (uColorAlgorithm == 3) {
+    float normalT = normal.y * 0.5 + 0.5;
+    return getCosinePaletteColor(normalT, uCosineA, uCosineB, uCosineC, uCosineD,
+                                  uDistPower, uDistCycles, uDistOffset);
+  }
+
+  // Algorithm 4: Distance-field coloring
+  if (uColorAlgorithm == 4) {
+    return getCosinePaletteColor(t, uCosineA, uCosineB, uCosineC, uCosineD,
+                                  uDistPower, uDistCycles, uDistOffset);
+  }
+
+  // Algorithm 5: LCH/Oklab perceptual
+  if (uColorAlgorithm == 5) {
+    float distributedT = applyDistribution(t, uDistPower, uDistCycles, uDistOffset);
+    return lchColor(distributedT, uLchLightness, uLchChroma);
+  }
+
+  // Algorithm 6: Multi-source mapping
+  if (uColorAlgorithm == 6) {
+    float totalWeight = uMultiSourceWeights.x + uMultiSourceWeights.y + uMultiSourceWeights.z;
+    vec3 w = uMultiSourceWeights / max(totalWeight, 0.001);
+    float normalValue = normal.y * 0.5 + 0.5;
+    float blendedT = w.x * t + w.y * t + w.z * normalValue;
+    return getCosinePaletteColor(blendedT, uCosineA, uCosineB, uCosineC, uCosineD,
+                                  uDistPower, uDistCycles, uDistOffset);
+  }
+
+  // Fallback: cosine palette
+  return getCosinePaletteColor(t, uCosineA, uCosineB, uCosineC, uCosineD,
+                                uDistPower, uDistCycles, uDistOffset);
 }
 
 // ============================================
@@ -878,8 +1003,13 @@ void main() {
     // Skip AO calculation in fast mode (saves 3 SDF evaluations)
     float ao = uFastMode ? 1.0 : calcAO(p, n);
 
+    // Convert base color to HSL (needed for legacy algorithm)
     vec3 baseHSL = rgb2hsl(uColor);
-    vec3 surfaceColor = getPaletteColor(baseHSL, 1.0 - trap, uPaletteMode);
+
+    // Get color using the selected algorithm
+    // Invert trap: high trap in crevices, but we want peaks bright, valleys dark
+    float t = 1.0 - trap;
+    vec3 surfaceColor = getColorByAlgorithm(t, n, baseHSL);
     surfaceColor *= (0.3 + 0.7 * ao);
 
     // Lighting calculation using scene lighting settings
