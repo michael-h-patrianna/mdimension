@@ -1,11 +1,13 @@
 /**
  * PostProcessing Section Component
- * Section wrapper for post-processing controls (bloom, tone mapping)
+ * Section wrapper for post-processing controls (bloom, bokeh, tone mapping)
  */
 
-import React from 'react';
 import { Section } from '@/components/ui/Section';
+import { Tabs } from '@/components/ui/Tabs';
+import React, { useState } from 'react';
 import { BloomControls } from './BloomControls';
+import { BokehControls } from './BokehControls';
 import { ToneMappingControls } from './ToneMappingControls';
 
 export interface PostProcessingSectionProps {
@@ -15,15 +17,34 @@ export interface PostProcessingSectionProps {
 export const PostProcessingSection: React.FC<PostProcessingSectionProps> = ({
   defaultOpen = false,
 }) => {
+  const [activeTab, setActiveTab] = useState('bloom');
+
   return (
     <Section title="Post-Processing" defaultOpen={defaultOpen}>
-      <div className="space-y-6">
-        {/* Bloom Controls */}
-        <BloomControls />
+      <Tabs
+        value={activeTab}
+        onChange={setActiveTab}
+        className="-mx-3"
+        contentClassName="px-0"
+        tabs={[
+          {
+            id: 'bloom',
+            label: 'Bloom',
+            content: <BloomControls />,
+          },
 
-        {/* Tone Mapping Controls */}
-        <ToneMappingControls />
-      </div>
+          {
+            id: 'tonemapping',
+            label: 'Tone Map',
+            content: <ToneMappingControls />,
+          },
+          {
+            id: 'bokeh',
+            label: 'Bokeh',
+            content: <BokehControls />,
+          },        ]}
+        data-testid="postprocessing-tabs"
+      />
     </Section>
   );
 };

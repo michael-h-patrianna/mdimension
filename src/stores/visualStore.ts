@@ -45,6 +45,12 @@ export const DEFAULT_BLOOM_INTENSITY = 0.3
 export const DEFAULT_BLOOM_THRESHOLD = 0.35
 export const DEFAULT_BLOOM_RADIUS = 0.15
 
+/** Default bokeh (depth of field) settings */
+export const DEFAULT_BOKEH_ENABLED = false
+export const DEFAULT_BOKEH_FOCUS = 1.0
+export const DEFAULT_BOKEH_APERTURE = 0.025
+export const DEFAULT_BOKEH_MAX_BLUR = 0.01
+
 /** Default lighting settings */
 export const DEFAULT_LIGHT_ENABLED = true
 export const DEFAULT_LIGHT_COLOR = '#FFFFFF'
@@ -209,6 +215,16 @@ interface VisualState {
   /** Bloom radius/spread (0-1) */
   bloomRadius: number
 
+  // --- Bokeh (Depth of Field) Post-Processing ---
+  /** Whether bokeh/depth of field effect is enabled */
+  bokehEnabled: boolean
+  /** Focus distance from camera (0.1-10) */
+  bokehFocus: number
+  /** Camera aperture size - affects blur amount (0.001-0.1) */
+  bokehAperture: number
+  /** Maximum blur intensity (0-0.1) */
+  bokehMaxBlur: number
+
   // --- Lighting ---
   /** Whether directional light is enabled */
   lightEnabled: boolean
@@ -297,6 +313,12 @@ interface VisualState {
   setBloomThreshold: (threshold: number) => void
   setBloomRadius: (radius: number) => void
 
+  // --- Actions: Bokeh ---
+  setBokehEnabled: (enabled: boolean) => void
+  setBokehFocus: (focus: number) => void
+  setBokehAperture: (aperture: number) => void
+  setBokehMaxBlur: (maxBlur: number) => void
+
   // --- Actions: Lighting ---
   setLightEnabled: (enabled: boolean) => void
   setLightColor: (color: string) => void
@@ -369,6 +391,12 @@ const INITIAL_STATE: Omit<VisualState, keyof VisualStateFunctions> = {
   bloomThreshold: DEFAULT_BLOOM_THRESHOLD,
   bloomRadius: DEFAULT_BLOOM_RADIUS,
 
+  // Bokeh (Depth of Field)
+  bokehEnabled: DEFAULT_BOKEH_ENABLED,
+  bokehFocus: DEFAULT_BOKEH_FOCUS,
+  bokehAperture: DEFAULT_BOKEH_APERTURE,
+  bokehMaxBlur: DEFAULT_BOKEH_MAX_BLUR,
+
   // Lighting
   lightEnabled: DEFAULT_LIGHT_ENABLED,
   lightColor: DEFAULT_LIGHT_COLOR,
@@ -427,6 +455,10 @@ type VisualStateFunctions = Pick<
   | 'setBloomIntensity'
   | 'setBloomThreshold'
   | 'setBloomRadius'
+  | 'setBokehEnabled'
+  | 'setBokehFocus'
+  | 'setBokehAperture'
+  | 'setBokehMaxBlur'
   | 'setLightEnabled'
   | 'setLightColor'
   | 'setLightHorizontalAngle'
@@ -573,6 +605,23 @@ export const useVisualStore = create<VisualState>((set) => ({
 
   setBloomRadius: (radius: number) => {
     set({ bloomRadius: Math.max(0, Math.min(1, radius)) })
+  },
+
+  // --- Actions: Bokeh ---
+  setBokehEnabled: (enabled: boolean) => {
+    set({ bokehEnabled: enabled })
+  },
+
+  setBokehFocus: (focus: number) => {
+    set({ bokehFocus: Math.max(0.1, Math.min(10, focus)) })
+  },
+
+  setBokehAperture: (aperture: number) => {
+    set({ bokehAperture: Math.max(0.001, Math.min(0.1, aperture)) })
+  },
+
+  setBokehMaxBlur: (maxBlur: number) => {
+    set({ bokehMaxBlur: Math.max(0, Math.min(0.1, maxBlur)) })
   },
 
   // --- Actions: Lighting ---

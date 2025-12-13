@@ -24,3 +24,6 @@ export { ErrorBoundary } from './ErrorBoundary';
 export { ToggleButton } from './ToggleButton';
 export type { ToggleButtonProps } from './ToggleButton';
 
+export { Tabs } from './Tabs';
+export type { TabsProps, Tab } from './Tabs';
+

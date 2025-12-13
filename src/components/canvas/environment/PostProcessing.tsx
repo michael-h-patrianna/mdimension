@@ -1,10 +1,13 @@
 /**
  * PostProcessing Component
  *
- * Manages post-processing effects for the Three.js scene using UnrealBloomPass.
- * Matches the official Three.js bloom example configuration.
+ * Manages post-processing effects for the Three.js scene including:
+ * - UnrealBloomPass for glow effects
+ * - BokehPass for depth of field
+ * - OutputPass for tone mapping
  *
  * @see https://threejs.org/examples/webgl_postprocessing_unreal_bloom.html
+ * @see https://threejs.org/docs/#examples/en/postprocessing/BokehPass
  */
 
 import { memo, useEffect, useMemo, useRef } from 'react';
@@ -14,6 +17,7 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { BokehPass } from 'three/examples/jsm/postprocessing/BokehPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { useVisualStore } from '@/stores/visualStore';
 import { TONE_MAPPING_TO_THREE } from '@/lib/shaders/types';
@@ -31,6 +35,10 @@ export const PostProcessing = memo(function PostProcessing() {
     bloomIntensity,
     bloomThreshold,
     bloomRadius,
+    bokehEnabled,
+    bokehFocus,
+    bokehAperture,
+    bokehMaxBlur,
     toneMappingEnabled,
     toneMappingAlgorithm,
     exposure,
@@ -40,6 +48,10 @@ export const PostProcessing = memo(function PostProcessing() {
       bloomIntensity: state.bloomIntensity,
       bloomThreshold: state.bloomThreshold,
       bloomRadius: state.bloomRadius,
+      bokehEnabled: state.bokehEnabled,
+      bokehFocus: state.bokehFocus,
+      bokehAperture: state.bokehAperture,
+      bokehMaxBlur: state.bokehMaxBlur,
       toneMappingEnabled: state.toneMappingEnabled,
       toneMappingAlgorithm: state.toneMappingAlgorithm,
       exposure: state.exposure,
@@ -85,10 +97,19 @@ export const PostProcessing = memo(function PostProcessing() {
     );
     effectComposer.addPass(bloomPass);
 
+    // BokehPass for depth of field effect
+    const bokehPass = new BokehPass(scene, camera, {
+      focus: bokehFocus,
+      aperture: bokehAperture,
+      maxblur: bokehMaxBlur,
+    });
+    bokehPass.enabled = bokehEnabled;
+    effectComposer.addPass(bokehPass);
+
     const outputPass = new OutputPass();
     effectComposer.addPass(outputPass);
 
-    return { composer: effectComposer, bloomPass };
+    return { composer: effectComposer, bloomPass, bokehPass };
   }, [gl, scene, camera, size.width, size.height]);
 
   // Update bloom parameters when they change
@@ -97,6 +118,16 @@ export const PostProcessing = memo(function PostProcessing() {
     composer.bloomPass.threshold = bloomThreshold;
     composer.bloomPass.radius = bloomRadius;
   }, [composer, bloomIntensity, bloomThreshold, bloomRadius]);
+
+  // Update bokeh parameters when they change
+  useEffect(() => {
+    composer.bokehPass.enabled = bokehEnabled;
+    // BokehPass uniforms are typed as Record<string, unknown> in Three.js
+    const uniforms = composer.bokehPass.uniforms as Record<string, { value: number } | undefined>;
+    if (uniforms?.['focus']) uniforms['focus'].value = bokehFocus;
+    if (uniforms?.['aperture']) uniforms['aperture'].value = bokehAperture;
+    if (uniforms?.['maxblur']) uniforms['maxblur'].value = bokehMaxBlur;
+  }, [composer, bokehEnabled, bokehFocus, bokehAperture, bokehMaxBlur]);
 
   // Handle resize
   useEffect(() => {

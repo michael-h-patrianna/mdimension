@@ -1,13 +1,2 @@
-export { ProjectionControls } from './ProjectionControls';
-export { ProjectionTypeToggle } from './ProjectionTypeToggle';
-export type { ProjectionTypeToggleProps } from './ProjectionTypeToggle';
-export { DimensionSelector } from './DimensionSelector';
-export type { DimensionSelectorProps } from './DimensionSelector';
-export { ObjectTypeSelector } from './ObjectTypeSelector';
-export type { ObjectTypeSelectorProps } from './ObjectTypeSelector';
-export { AnimationControls } from './AnimationControls';
-export type { AnimationControlsProps } from './AnimationControls';
-export { VisualControls } from './VisualControls';
-export type { VisualControlsProps } from './VisualControls';
-export { RenderModeToggles } from './RenderModeToggles';
-export type { RenderModeTogglesProps } from './RenderModeToggles';
+export { RenderModeToggles } from './RenderModeToggles'
+export type { RenderModeTogglesProps } from './RenderModeToggles'
