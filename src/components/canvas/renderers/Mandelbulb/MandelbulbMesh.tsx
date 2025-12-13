@@ -54,6 +54,7 @@ const MandelbulbMesh = () => {
   const lightHorizontalAngle = useVisualStore((state) => state.lightHorizontalAngle);
   const lightVerticalAngle = useVisualStore((state) => state.lightVerticalAngle);
   const ambientIntensity = useVisualStore((state) => state.ambientIntensity);
+  const ambientColor = useVisualStore((state) => state.ambientColor);
   const specularIntensity = useVisualStore((state) => state.specularIntensity);
   const shininess = useVisualStore((state) => state.shininess);
   // Enhanced lighting settings
@@ -87,6 +88,7 @@ const MandelbulbMesh = () => {
       uLightColor: { value: new THREE.Color() },
       uLightDirection: { value: new THREE.Vector3() },
       uAmbientIntensity: { value: 0.2 },
+      uAmbientColor: { value: new THREE.Color('#FFFFFF') },
       uSpecularIntensity: { value: 1.0 },
       uSpecularPower: { value: 32.0 },
       uLightStrength: { value: 1.0 },
@@ -146,6 +148,7 @@ const MandelbulbMesh = () => {
         material.uniforms.uLightDirection.value.copy(dir);
       }
       if (material.uniforms.uAmbientIntensity) material.uniforms.uAmbientIntensity.value = ambientIntensity;
+      if (material.uniforms.uAmbientColor) material.uniforms.uAmbientColor.value.set(ambientColor);
       if (material.uniforms.uSpecularIntensity) material.uniforms.uSpecularIntensity.value = specularIntensity;
       if (material.uniforms.uSpecularPower) material.uniforms.uSpecularPower.value = shininess;
       if (material.uniforms.uLightStrength) material.uniforms.uLightStrength.value = lightStrength ?? 1.0;

@@ -101,6 +101,7 @@ uniform float shininess;
 uniform vec3 lightDir;
 uniform vec3 lightColor;
 uniform float ambientIntensity;
+uniform vec3 ambientColor;
 
 // Multi-Light System Constants and Uniforms
 #define MAX_LIGHTS 4
@@ -144,7 +145,7 @@ float getSpotAttenuation(int lightIndex, vec3 lightToFrag) {
 }
 
 vec3 calculateMultiLighting(vec3 fragPos, vec3 normal, vec3 viewDir, vec3 surfaceColor) {
-  vec3 col = surfaceColor * ambientIntensity;
+  vec3 col = surfaceColor * ambientColor * ambientIntensity;
 
   for (int i = 0; i < MAX_LIGHTS; i++) {
     if (i >= uNumLights) break;
@@ -208,7 +209,7 @@ void main() {
     vec3 light = normalize(lightDir);
 
     // Start with ambient
-    col = baseColor * ambientIntensity;
+    col = baseColor * ambientColor * ambientIntensity;
 
     // Diffuse (Lambert): NdotL * lightColor * diffuseColor
     float NdotL = max(dot(normal, light), 0.0);
@@ -272,6 +273,7 @@ export function createFresnelSurfaceMaterial(config: SurfaceMaterialConfig): Sha
       lightDir: { value: new Vector3(0.5, 0.5, 0.5).normalize() },
       lightColor: { value: new Color('#FFFFFF') },
       ambientIntensity: { value: 0.5 },
+      ambientColor: { value: new Color('#FFFFFF') },
       // Multi-light system uniforms
       uNumLights: { value: 0 },
       uLightsEnabled: { value: [false, false, false, false] },
@@ -339,6 +341,7 @@ export function updateFresnelMaterial(
     lightDirection: [number, number, number]
     lightColor: string
     ambientIntensity: number
+    ambientColor: string
   }>
 ): void {
   if (updates.color !== undefined) {
@@ -368,6 +371,9 @@ export function updateFresnelMaterial(
   }
   if (updates.ambientIntensity !== undefined) {
     material.uniforms.ambientIntensity!.value = updates.ambientIntensity
+  }
+  if (updates.ambientColor !== undefined) {
+    material.uniforms.ambientColor!.value = new Color(updates.ambientColor)
   }
 
   material.needsUpdate = true
@@ -457,6 +463,7 @@ uniform float opacity;
 uniform float fresnelIntensity;
 uniform int uColorAlgorithm;
 uniform float uAmbientIntensity;
+uniform vec3 uAmbientColor;
 uniform float uSpecularIntensity;
 uniform float uShininess;
 uniform vec3 uLightDir;
@@ -517,7 +524,7 @@ float getPaletteSpotAttenuation(int lightIndex, vec3 lightToFrag) {
 }
 
 vec3 calculatePaletteMultiLighting(vec3 fragPos, vec3 normal, vec3 viewDir, vec3 surfaceColor) {
-  vec3 col = surfaceColor * uAmbientIntensity;
+  vec3 col = surfaceColor * uAmbientColor * uAmbientIntensity;
 
   for (int i = 0; i < MAX_LIGHTS; i++) {
     if (i >= uNumLights) break;
@@ -621,7 +628,7 @@ void main() {
     }
   } else if (uLightEnabled) {
     // Legacy single-light fallback
-    col = surfaceColor * uAmbientIntensity;
+    col = surfaceColor * uAmbientColor * uAmbientIntensity;
 
     // Diffuse (Lambert): NdotL * lightColor * diffuseColor
     float NdotL = max(dot(normal, lightDir), 0.0);
@@ -644,7 +651,7 @@ void main() {
     }
   } else {
     // No lighting - just ambient
-    col = surfaceColor * uAmbientIntensity;
+    col = surfaceColor * uAmbientColor * uAmbientIntensity;
   }
 
   gl_FragColor = vec4(col, opacity);
@@ -689,6 +696,7 @@ export function createPaletteSurfaceMaterial(config: PaletteSurfaceMaterialConfi
       fresnelIntensity: { value: fresnelEnabled ? 0.5 : 0.0 },
       uColorAlgorithm: { value: COLOR_ALGORITHM_TO_INT[colorAlgorithm] },
       uAmbientIntensity: { value: 0.5 },
+      uAmbientColor: { value: new Color('#FFFFFF') },
       uSpecularIntensity: { value: specularIntensity },
       uShininess: { value: shininess },
       uLightDir: { value: new Vector3(0.5, 0.5, 0.5).normalize() },
@@ -741,6 +749,7 @@ export function updatePaletteMaterial(
     specularIntensity: number
     shininess: number
     ambientIntensity: number
+    ambientColor: string
     lightDirection: [number, number, number]
     lightEnabled: boolean
     lightColor: string
@@ -775,6 +784,9 @@ export function updatePaletteMaterial(
   }
   if (updates.ambientIntensity !== undefined) {
     material.uniforms.uAmbientIntensity!.value = updates.ambientIntensity
+  }
+  if (updates.ambientColor !== undefined) {
+    material.uniforms.uAmbientColor!.value = new Color(updates.ambientColor)
   }
   if (updates.lightDirection !== undefined) {
     const [x, y, z] = updates.lightDirection

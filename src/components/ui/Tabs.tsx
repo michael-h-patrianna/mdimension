@@ -93,6 +93,13 @@ const ChevronRight = () => (
 /**
  * Tabs component for switching between content panels.
  * @param props - Component props
+ * @param props.tabs
+ * @param props.value
+ * @param props.onChange
+ * @param props.className
+ * @param props.tabListClassName
+ * @param props.contentClassName
+ * @param props.'data-testid'
  */
 export const Tabs: React.FC<TabsProps> = ({
   tabs,
@@ -255,7 +262,7 @@ export const Tabs: React.FC<TabsProps> = ({
           role="tabpanel"
           aria-labelledby={`tab-${activeTab.id}`}
           tabIndex={0}
-          className={`bg-black/20 rounded-b-md p-4 ${contentClassName}`}
+          className={`pt-4 pb-4 ${contentClassName}`}
           data-testid={testId ? `${testId}-panel-${activeTab.id}` : undefined}
         >
           {activeTab.content}

@@ -17,6 +17,7 @@ import { Switch } from '@/components/ui/Switch';
 import {
   useVisualStore,
   DEFAULT_AMBIENT_INTENSITY,
+  DEFAULT_AMBIENT_COLOR,
 } from '@/stores/visualStore';
 import { LightList } from './LightList';
 import { LightEditor } from './LightEditor';
@@ -34,8 +35,10 @@ export const LightingControls: React.FC<LightingControlsProps> = React.memo(({
     selectedLightId,
     showLightGizmos,
     ambientIntensity,
+    ambientColor,
     setShowLightGizmos,
     setAmbientIntensity,
+    setAmbientColor,
   } = useVisualStore(
     useShallow((state) => ({
       shaderType: state.shaderType,
@@ -43,8 +46,10 @@ export const LightingControls: React.FC<LightingControlsProps> = React.memo(({
       selectedLightId: state.selectedLightId,
       showLightGizmos: state.showLightGizmos,
       ambientIntensity: state.ambientIntensity,
+      ambientColor: state.ambientColor,
       setShowLightGizmos: state.setShowLightGizmos,
       setAmbientIntensity: state.setAmbientIntensity,
+      setAmbientColor: state.setAmbientColor,
     }))
   );
 
@@ -79,10 +84,38 @@ export const LightingControls: React.FC<LightingControlsProps> = React.memo(({
         </div>
       )}
 
-      {/* Ambient Intensity (always visible) */}
-      <div className="border-t border-panel-border pt-4">
+      {/* Ambient Light (always visible) */}
+      <div className="border-t border-panel-border pt-4 space-y-3">
+        <h4 className="text-xs font-medium text-text-secondary uppercase tracking-wide">
+          Ambient Light
+        </h4>
+
+        {/* Ambient Color */}
+        <div className="space-y-1">
+          <label className="block text-xs font-medium text-text-secondary">Color</label>
+          <div className="flex items-center gap-2">
+            <input
+              type="color"
+              value={ambientColor}
+              onChange={(e) => setAmbientColor(e.target.value)}
+              className="w-10 h-8 rounded cursor-pointer border border-panel-border"
+            />
+            <span className="text-xs font-mono text-text-secondary">{ambientColor}</span>
+            {ambientColor !== DEFAULT_AMBIENT_COLOR && (
+              <button
+                onClick={() => setAmbientColor(DEFAULT_AMBIENT_COLOR)}
+                className="ml-auto text-xs text-text-tertiary hover:text-accent transition-colors"
+                title="Reset to default"
+              >
+                Reset
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Ambient Intensity */}
         <Slider
-          label="Ambient Intensity"
+          label="Intensity"
           min={0}
           max={1}
           step={0.05}

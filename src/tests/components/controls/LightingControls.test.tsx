@@ -50,22 +50,38 @@ describe('LightingControls', () => {
     });
   });
 
-  describe('ambient intensity slider', () => {
+  describe('ambient light section', () => {
     beforeEach(() => {
       useVisualStore.getState().setShaderType('surface');
     });
 
-    it('should render ambient intensity slider', () => {
+    it('should render ambient light section', () => {
       render(<LightingControls />);
-      expect(screen.getByText('Ambient Intensity')).toBeInTheDocument();
+      expect(screen.getByText('Ambient Light')).toBeInTheDocument();
+      expect(screen.getByText('Intensity')).toBeInTheDocument();
     });
 
     it('should update ambient intensity', () => {
       render(<LightingControls />);
-      const slider = screen.getByLabelText('Ambient Intensity') as HTMLInputElement;
+      const slider = screen.getByLabelText('Intensity') as HTMLInputElement;
 
       fireEvent.change(slider, { target: { value: '0.5' } });
       expect(useVisualStore.getState().ambientIntensity).toBe(0.5);
+    });
+
+    it('should render ambient color picker', () => {
+      render(<LightingControls />);
+      expect(screen.getByText('Color')).toBeInTheDocument();
+      const colorInput = document.querySelector('input[type="color"]');
+      expect(colorInput).toBeInTheDocument();
+    });
+
+    it('should update ambient color', () => {
+      render(<LightingControls />);
+      const colorInput = document.querySelector('input[type="color"]') as HTMLInputElement;
+
+      fireEvent.change(colorInput, { target: { value: '#ff0000' } });
+      expect(useVisualStore.getState().ambientColor).toBe('#ff0000');
     });
   });
 

@@ -1,13 +1,13 @@
 /**
  * Ground Plane Component
  *
- * Renders a reflective ground plane below the polytope for visual depth.
+ * Renders a ground plane below the polytope for visual depth.
  * Features:
- * - DoubleSide rendering (visible from above and below)
- * - Reflective material with configurable reflectivity
+ * - Two surface types: 'two-sided' (visible from above and below) or 'plane' (single-sided, transparent from below)
+ * - Configurable surface color
+ * - Optional grid overlay with customizable color and spacing
  * - Shadow receiving for realistic lighting
  * - Dynamic positioning based on object bounds
- * - Grid overlay for spatial reference
  *
  * @example
  * ```tsx
@@ -16,14 +16,20 @@
  *   offset={0.5}
  *   opacity={0.3}
  *   reflectivity={0.4}
+ *   color="#101010"
+ *   surfaceType="two-sided"
+ *   showGrid={true}
+ *   gridColor="#3a3a3a"
+ *   gridSpacing={1}
  * />
  * ```
  */
 
-import { useMemo, useRef, useEffect, memo } from 'react';
-import { DoubleSide, PlaneGeometry } from 'three';
-import { Grid, MeshReflectorMaterial } from '@react-three/drei';
+import { useMemo } from 'react';
+import { FrontSide, DoubleSide, Color } from 'three';
+import { Grid } from '@react-three/drei';
 import type { Vector3D } from '@/lib/math/types';
+import type { GroundPlaneType } from '@/stores/visualStore';
 
 /**
  * Props for the GroundPlane component
@@ -45,6 +51,22 @@ export interface GroundPlaneProps {
    * accounted for even if they don't contribute to vertices array.
    */
   minBoundingRadius?: number;
+  /** Surface color (default: '#101010') */
+  color?: string;
+  /** Surface type: 'two-sided' (visible from above and below) or 'plane' (single-sided, transparent from below) */
+  surfaceType?: GroundPlaneType;
+  /** Whether to show the grid overlay (default: true) */
+  showGrid?: boolean;
+  /** Grid line color (default: '#3a3a3a') */
+  gridColor?: string;
+  /** Grid cell spacing (default: 1) */
+  gridSpacing?: number;
+  /** Material roughness (0-1, lower = shinier) */
+  roughness?: number;
+  /** Material metalness (0-1, higher = more metallic) */
+  metalness?: number;
+  /** Environment map intensity (0-1) */
+  envMapIntensity?: number;
 }
 
 /**
@@ -124,70 +146,104 @@ function calculatePlaneSize(vertices: Vector3D[] | undefined): number {
 }
 
 /**
- * Internal reflective surface component - memoized to prevent re-renders during animation.
- * MeshReflectorMaterial creates expensive render targets that leak if recreated frequently.
+ * Lighten a hex color by a percentage for grid section lines.
+ *
+ * @param hex - Hex color string (e.g., '#3a3a3a')
+ * @param percent - Amount to lighten (0-100)
+ * @returns Lightened hex color
  */
-const ReflectiveSurface = memo(function ReflectiveSurface({
-  geometry,
-  opacity,
-  reflectivity,
-}: {
-  geometry: PlaneGeometry;
-  opacity: number;
-  reflectivity: number;
-}) {
-  // Track material ref for cleanup
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const materialRef = useRef<any>(null);
+function lightenColor(hex: string, percent: number): string {
+  const color = new Color(hex);
+  const hsl = { h: 0, s: 0, l: 0 };
+  color.getHSL(hsl);
+  hsl.l = Math.min(1, hsl.l + percent / 100);
+  color.setHSL(hsl.h, hsl.s, hsl.l);
+  return '#' + color.getHexString();
+}
 
-  // Dispose render targets on unmount to prevent memory leak
-  useEffect(() => {
-    return () => {
-      if (materialRef.current) {
-        // MeshReflectorMaterial has internal FBOs that need disposal
-        materialRef.current.dispose();
-        materialRef.current = null;
-      }
-    };
-  }, []);
+/** Material props shared by both surface types */
+interface SurfaceMaterialProps {
+  size: number;
+  color: string;
+  roughness: number;
+  metalness: number;
+  envMapIntensity: number;
+}
 
+/**
+ * Single-sided plane surface - only visible from above.
+ */
+function PlaneSurface({
+  size,
+  color,
+  roughness,
+  metalness,
+  envMapIntensity,
+}: SurfaceMaterialProps) {
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow geometry={geometry}>
-      <MeshReflectorMaterial
-        ref={materialRef}
-        blur={[300, 100]}
-        resolution={1024}
-        mixBlur={1}
-        mixStrength={reflectivity}
-        roughness={1}
-        depthScale={1.2}
-        minDepthThreshold={0.4}
-        maxDepthThreshold={1.4}
-        color="#101010"
-        metalness={0.5}
-        transparent
-        opacity={opacity}
-        side={DoubleSide}
-        mirror={0}
+    <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      <planeGeometry args={[size, size]} />
+      <meshStandardMaterial
+        color={color}
+        side={FrontSide}
+        roughness={roughness}
+        metalness={metalness}
+        envMapIntensity={envMapIntensity}
       />
     </mesh>
   );
-});
+}
+
+/** Height of the two-sided box surface */
+const TWO_SIDED_HEIGHT = 0.01;
 
 /**
- * Renders a reflective ground plane with grid overlay.
+ * Two-sided surface using a thin box - visible from both above and below
+ * with proper normals for correct lighting on both sides.
+ */
+function TwoSidedSurface({
+  size,
+  color,
+  roughness,
+  metalness,
+  envMapIntensity,
+}: SurfaceMaterialProps) {
+  // Thin box to simulate a two-sided plane with proper normals on both faces
+  // Position offset so top face is at y=0 (aligned with grid)
+  return (
+    <mesh receiveShadow position={[0, -TWO_SIDED_HEIGHT / 2, 0]}>
+      <boxGeometry args={[size, TWO_SIDED_HEIGHT, size]} />
+      <meshStandardMaterial
+        color={color}
+        roughness={roughness}
+        metalness={metalness}
+        envMapIntensity={envMapIntensity}
+      />
+    </mesh>
+  );
+}
+
+/**
+ * Renders a ground plane with optional grid overlay.
  *
  * The plane automatically positions itself below the object and scales
- * to provide adequate visual coverage. Features DoubleSide rendering
- * so it's visible from both above and below the plane.
+ * to provide adequate visual coverage. Supports two surface types:
+ * - 'two-sided': DoubleSide rendering, visible from above and below (default)
+ * - 'plane': Single-sided rendering, transparent when viewed from below
  *
  * @param props - Component props
- * @param props.vertices
- * @param props.offset
- * @param props.opacity
- * @param props.reflectivity
- * @param props.visible
- * @returns Ground plane mesh with reflective material and grid overlay
+ * @param props.vertices - 3D vertices to calculate bounds from
+ * @param props.offset - Distance below object's lowest point
+ * @param props.opacity - Surface opacity
+ * @param props.reflectivity - Reflection strength (reflective mode only)
+ * @param props.visible - Whether the surface is visible
+ * @param props.minBoundingRadius - Minimum radius for positioning
+ * @param props.color - Surface color
+ * @param props.surfaceType - 'two-sided' or 'plane'
+ * @param props.showGrid - Whether to show grid overlay
+ * @param props.gridColor - Grid line color
+ * @param props.gridSpacing - Grid cell size
+ * @returns Ground plane mesh with optional grid overlay
  */
 export function GroundPlane({
   vertices,
@@ -196,6 +252,14 @@ export function GroundPlane({
   reflectivity = 0.4,
   visible = true,
   minBoundingRadius,
+  color = '#101010',
+  surfaceType = 'two-sided',
+  showGrid = true,
+  gridColor = '#3a3a3a',
+  gridSpacing = 1,
+  roughness = 0.3,
+  metalness = 0.5,
+  envMapIntensity = 0.5,
 }: GroundPlaneProps) {
   // Calculate position and size based on vertex count (not positions)
   // This ensures stability during rotation while still adapting to object changes
@@ -215,26 +279,11 @@ export function GroundPlane({
     [vertexCount]
   );
 
-  // Create plane geometry - only recreate when size changes
-  const geometry = useMemo(() => {
-    return new PlaneGeometry(planeSize, planeSize);
-  }, [planeSize]);
-
-  // Dispose previous geometry when new one is created
-  const geometryRef = useRef<PlaneGeometry | null>(null);
-  useEffect(() => {
-    if (geometryRef.current && geometryRef.current !== geometry) {
-      geometryRef.current.dispose();
-    }
-    geometryRef.current = geometry;
-
-    return () => {
-      if (geometryRef.current) {
-        geometryRef.current.dispose();
-        geometryRef.current = null;
-      }
-    };
-  }, [geometry]);
+  // Calculate grid section color (lighter version of grid color)
+  const sectionColor = useMemo(
+    () => lightenColor(gridColor, 15),
+    [gridColor]
+  );
 
   if (!visible) {
     return null;
@@ -242,28 +291,42 @@ export function GroundPlane({
 
   return (
     <group position={[0, groundY, 0]}>
-      {/* Reflective ground surface - memoized to prevent render target leaks */}
-      <ReflectiveSurface
-        geometry={geometry}
-        opacity={opacity}
-        reflectivity={reflectivity}
-      />
+      {/* Ground surface - either two-sided box or single-sided plane */}
+      {surfaceType === 'two-sided' ? (
+        <TwoSidedSurface
+          size={planeSize}
+          color={color}
+          roughness={roughness}
+          metalness={metalness}
+          envMapIntensity={envMapIntensity}
+        />
+      ) : (
+        <PlaneSurface
+          size={planeSize}
+          color={color}
+          roughness={roughness}
+          metalness={metalness}
+          envMapIntensity={envMapIntensity}
+        />
+      )}
 
-      {/* Grid overlay for spatial reference */}
-      <Grid
-        args={[planeSize, planeSize]}
-        cellSize={1}
-        cellThickness={0.5}
-        cellColor="#3a3a3a"
-        sectionSize={5}
-        sectionThickness={1}
-        sectionColor="#5a5a5a"
-        fadeDistance={planeSize * 0.8}
-        fadeStrength={1}
-        followCamera={false}
-        side={DoubleSide}
-        position={[0, 0.001, 0]}
-      />
+      {/* Optional grid overlay for spatial reference */}
+      {showGrid && (
+        <Grid
+          args={[planeSize, planeSize]}
+          cellSize={gridSpacing}
+          cellThickness={0.5}
+          cellColor={gridColor}
+          sectionSize={gridSpacing * 5}
+          sectionThickness={1}
+          sectionColor={sectionColor}
+          fadeDistance={planeSize * 0.8}
+          fadeStrength={1}
+          followCamera={false}
+          side={surfaceType === 'two-sided' ? DoubleSide : FrontSide}
+          position={[0, 0.001, 0]}
+        />
+      )}
     </group>
   );
 }

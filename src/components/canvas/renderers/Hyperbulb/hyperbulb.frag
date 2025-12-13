@@ -29,6 +29,7 @@ uniform bool uLightEnabled;
 uniform vec3 uLightColor;
 uniform vec3 uLightDirection;
 uniform float uAmbientIntensity;
+uniform vec3 uAmbientColor;
 uniform float uSpecularIntensity;
 uniform float uSpecularPower;
 uniform float uLightStrength;
@@ -1009,7 +1010,7 @@ void main() {
 
     // Lighting calculation using scene lighting settings
     // Start with ambient
-    vec3 col = surfaceColor * uAmbientIntensity;
+    vec3 col = surfaceColor * uAmbientColor * uAmbientIntensity;
 
     if (uLightEnabled) {
         // Light direction stays fixed in world space (no transformation)

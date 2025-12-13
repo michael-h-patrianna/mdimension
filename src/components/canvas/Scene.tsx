@@ -75,6 +75,14 @@ export const Scene = React.memo(function Scene({
     groundPlaneOffset,
     groundPlaneOpacity,
     groundPlaneReflectivity,
+    groundPlaneColor,
+    groundPlaneType,
+    showGroundGrid,
+    groundGridColor,
+    groundGridSpacing,
+    groundMaterialRoughness,
+    groundMaterialMetalness,
+    groundMaterialEnvMapIntensity,
     showAxisHelper,
   } = useVisualStore(
     useShallow((state) => ({
@@ -82,6 +90,14 @@ export const Scene = React.memo(function Scene({
       groundPlaneOffset: state.groundPlaneOffset,
       groundPlaneOpacity: state.groundPlaneOpacity,
       groundPlaneReflectivity: state.groundPlaneReflectivity,
+      groundPlaneColor: state.groundPlaneColor,
+      groundPlaneType: state.groundPlaneType,
+      showGroundGrid: state.showGroundGrid,
+      groundGridColor: state.groundGridColor,
+      groundGridSpacing: state.groundGridSpacing,
+      groundMaterialRoughness: state.groundMaterialRoughness,
+      groundMaterialMetalness: state.groundMaterialMetalness,
+      groundMaterialEnvMapIntensity: state.groundMaterialEnvMapIntensity,
       showAxisHelper: state.showAxisHelper,
     }))
   )
@@ -100,7 +116,7 @@ export const Scene = React.memo(function Scene({
       {/* Camera controls */}
       <CameraController autoRotate={autoRotate} />
 
-      {/* Reflective ground plane with grid overlay */}
+      {/* Ground plane with optional grid overlay */}
       <GroundPlane
         vertices={projectedVertices}
         offset={groundPlaneOffset}
@@ -108,6 +124,14 @@ export const Scene = React.memo(function Scene({
         reflectivity={groundPlaneReflectivity}
         visible={showGroundPlane}
         minBoundingRadius={minBoundingRadius}
+        color={groundPlaneColor}
+        surfaceType={groundPlaneType}
+        showGrid={showGroundGrid}
+        gridColor={groundGridColor}
+        gridSpacing={groundGridSpacing}
+        roughness={groundMaterialRoughness}
+        metalness={groundMaterialMetalness}
+        envMapIntensity={groundMaterialEnvMapIntensity}
       />
 
       {/* Axis helper for orientation reference */}

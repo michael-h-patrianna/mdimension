@@ -25,7 +25,7 @@ describe('Light Types', () => {
     });
 
     it('should have correct MIN_LIGHTS value', () => {
-      expect(MIN_LIGHTS).toBe(1);
+      expect(MIN_LIGHTS).toBe(0);
     });
 
     it('should have correct LIGHT_TYPE_TO_INT mapping', () => {

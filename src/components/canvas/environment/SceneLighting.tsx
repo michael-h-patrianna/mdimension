@@ -162,6 +162,7 @@ export const SceneLighting = memo(function SceneLighting() {
   const lightHorizontalAngle = useVisualStore((state) => state.lightHorizontalAngle);
   const lightVerticalAngle = useVisualStore((state) => state.lightVerticalAngle);
   const ambientIntensity = useVisualStore((state) => state.ambientIntensity);
+  const ambientColor = useVisualStore((state) => state.ambientColor);
   const diffuseIntensity = useVisualStore((state) => state.diffuseIntensity);
   const lightStrength = useVisualStore((state) => state.lightStrength);
   const showLightIndicator = useVisualStore((state) => state.showLightIndicator);
@@ -205,7 +206,7 @@ export const SceneLighting = memo(function SceneLighting() {
 
   return (
     <>
-      <ambientLight intensity={ambientIntensity} />
+      <ambientLight intensity={ambientIntensity} color={ambientColor} />
 
       {useMultiLight ? (
         // Multi-light system

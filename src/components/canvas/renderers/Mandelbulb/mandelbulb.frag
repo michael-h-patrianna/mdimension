@@ -13,6 +13,7 @@ uniform bool uLightEnabled;
 uniform vec3 uLightColor;
 uniform vec3 uLightDirection;
 uniform float uAmbientIntensity;
+uniform vec3 uAmbientColor;
 uniform float uSpecularIntensity;
 uniform float uSpecularPower;
 uniform float uLightStrength;
@@ -463,7 +464,7 @@ vec3 calculateMultiLighting(
     vec3 viewDir,
     vec3 baseColor
 ) {
-    vec3 col = baseColor * uAmbientIntensity;
+    vec3 col = baseColor * uAmbientColor * uAmbientIntensity;
 
     for (int i = 0; i < MAX_LIGHTS; i++) {
         if (i >= uNumLights) break;
@@ -753,7 +754,7 @@ void main() {
         }
     } else if (uLightEnabled) {
         // Fallback: Legacy single-light system for backward compatibility
-        col = surfaceColor * uAmbientIntensity;
+        col = surfaceColor * uAmbientColor * uAmbientIntensity;
         vec3 l = normalize(uLightDirection);
 
         // Energy conservation: diffuse weight = 1.0 - ambient
@@ -779,7 +780,7 @@ void main() {
         }
     } else {
         // No lighting - just ambient
-        col = surfaceColor * uAmbientIntensity;
+        col = surfaceColor * uAmbientColor * uAmbientIntensity;
     }
 
     // Apply tone mapping as final step

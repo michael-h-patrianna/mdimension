@@ -118,12 +118,15 @@ describe('visualStore - Multi-Light System', () => {
       expect(useVisualStore.getState().lights).toHaveLength(1);
     });
 
-    it('should not remove the last light (MIN_LIGHTS)', () => {
+    it('should allow removing all lights (MIN_LIGHTS is 0)', () => {
+      // Start with the default light
       const { lights } = useVisualStore.getState();
-      expect(lights).toHaveLength(MIN_LIGHTS);
+      expect(lights).toHaveLength(1);
 
+      // Should be able to remove it since MIN_LIGHTS is 0
       useVisualStore.getState().removeLight(lights[0]!.id);
       expect(useVisualStore.getState().lights).toHaveLength(MIN_LIGHTS);
+      expect(MIN_LIGHTS).toBe(0);
     });
 
     it('should deselect if removed light was selected', () => {

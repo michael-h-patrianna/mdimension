@@ -77,6 +77,7 @@ export const DEFAULT_LIGHT_COLOR = '#FFFFFF'
 export const DEFAULT_LIGHT_HORIZONTAL_ANGLE = 45
 export const DEFAULT_LIGHT_VERTICAL_ANGLE = 30
 export const DEFAULT_AMBIENT_INTENSITY = 0.01
+export const DEFAULT_AMBIENT_COLOR = '#FFFFFF'
 export const DEFAULT_SPECULAR_INTENSITY = 0.5
 export const DEFAULT_SHININESS = 30 // Three.js default
 export const DEFAULT_SHOW_LIGHT_INDICATOR = false
@@ -105,6 +106,19 @@ export const DEFAULT_SHOW_GROUND_PLANE = true
 export const DEFAULT_GROUND_PLANE_OFFSET = 0.5 // Distance below object's lowest point
 export const DEFAULT_GROUND_PLANE_OPACITY = 0.3
 export const DEFAULT_GROUND_PLANE_REFLECTIVITY = 0.4
+export const DEFAULT_GROUND_PLANE_COLOR = '#101010'
+export const DEFAULT_GROUND_PLANE_TYPE: GroundPlaneType = 'two-sided'
+export const DEFAULT_SHOW_GROUND_GRID = true
+export const DEFAULT_GROUND_GRID_COLOR = '#3a3a3a'
+export const DEFAULT_GROUND_GRID_SPACING = 1
+
+/** Ground plane surface type */
+export type GroundPlaneType = 'two-sided' | 'plane'
+
+/** Default ground material settings */
+export const DEFAULT_GROUND_MATERIAL_ROUGHNESS = 0.3
+export const DEFAULT_GROUND_MATERIAL_METALNESS = 0.5
+export const DEFAULT_GROUND_MATERIAL_ENVMAP_INTENSITY = 0.5
 
 /** Default axis helper settings */
 export const DEFAULT_SHOW_AXIS_HELPER = false
@@ -278,6 +292,8 @@ interface VisualState {
   lightVerticalAngle: number
   /** Ambient light intensity (0-1) */
   ambientIntensity: number
+  /** Ambient light color (hex string) */
+  ambientColor: string
   /** Specular highlight intensity (0-2) */
   specularIntensity: number
   /** Shininess - controls specular highlight size (1-128, Three.js default: 30) */
@@ -320,6 +336,24 @@ interface VisualState {
   groundPlaneOpacity: number
   /** Ground plane reflectivity (0-1) */
   groundPlaneReflectivity: number
+  /** Ground plane surface color (hex string) */
+  groundPlaneColor: string
+  /** Ground plane surface type */
+  groundPlaneType: GroundPlaneType
+  /** Whether ground grid is visible */
+  showGroundGrid: boolean
+  /** Ground grid line color (hex string) */
+  groundGridColor: string
+  /** Ground grid spacing/cell size (0.5-5) */
+  groundGridSpacing: number
+
+  // --- Ground Material ---
+  /** Ground material roughness (0-1, lower = shinier) */
+  groundMaterialRoughness: number
+  /** Ground material metalness (0-1, higher = more metallic) */
+  groundMaterialMetalness: number
+  /** Ground material environment map intensity (0-1) */
+  groundMaterialEnvMapIntensity: number
 
   // --- Axis Helper ---
   /** Whether axis helper is visible */
@@ -391,6 +425,7 @@ interface VisualState {
   setLightHorizontalAngle: (angle: number) => void
   setLightVerticalAngle: (angle: number) => void
   setAmbientIntensity: (intensity: number) => void
+  setAmbientColor: (color: string) => void
   setSpecularIntensity: (intensity: number) => void
   setShininess: (shininess: number) => void
   setShowLightIndicator: (show: boolean) => void
@@ -415,6 +450,16 @@ interface VisualState {
   setGroundPlaneOffset: (offset: number) => void
   setGroundPlaneOpacity: (opacity: number) => void
   setGroundPlaneReflectivity: (reflectivity: number) => void
+  setGroundPlaneColor: (color: string) => void
+  setGroundPlaneType: (type: GroundPlaneType) => void
+  setShowGroundGrid: (show: boolean) => void
+  setGroundGridColor: (color: string) => void
+  setGroundGridSpacing: (spacing: number) => void
+
+  // --- Actions: Ground Material ---
+  setGroundMaterialRoughness: (roughness: number) => void
+  setGroundMaterialMetalness: (metalness: number) => void
+  setGroundMaterialEnvMapIntensity: (intensity: number) => void
 
   // --- Actions: Axis Helper ---
   setShowAxisHelper: (show: boolean) => void
@@ -494,6 +539,7 @@ const INITIAL_STATE: Omit<VisualState, keyof VisualStateFunctions> = {
   lightHorizontalAngle: DEFAULT_LIGHT_HORIZONTAL_ANGLE,
   lightVerticalAngle: DEFAULT_LIGHT_VERTICAL_ANGLE,
   ambientIntensity: DEFAULT_AMBIENT_INTENSITY,
+  ambientColor: DEFAULT_AMBIENT_COLOR,
   specularIntensity: DEFAULT_SPECULAR_INTENSITY,
   shininess: DEFAULT_SHININESS,
   showLightIndicator: DEFAULT_SHOW_LIGHT_INDICATOR,
@@ -518,6 +564,16 @@ const INITIAL_STATE: Omit<VisualState, keyof VisualStateFunctions> = {
   groundPlaneOffset: DEFAULT_GROUND_PLANE_OFFSET,
   groundPlaneOpacity: DEFAULT_GROUND_PLANE_OPACITY,
   groundPlaneReflectivity: DEFAULT_GROUND_PLANE_REFLECTIVITY,
+  groundPlaneColor: DEFAULT_GROUND_PLANE_COLOR,
+  groundPlaneType: DEFAULT_GROUND_PLANE_TYPE,
+  showGroundGrid: DEFAULT_SHOW_GROUND_GRID,
+  groundGridColor: DEFAULT_GROUND_GRID_COLOR,
+  groundGridSpacing: DEFAULT_GROUND_GRID_SPACING,
+
+  // Ground material
+  groundMaterialRoughness: DEFAULT_GROUND_MATERIAL_ROUGHNESS,
+  groundMaterialMetalness: DEFAULT_GROUND_MATERIAL_METALNESS,
+  groundMaterialEnvMapIntensity: DEFAULT_GROUND_MATERIAL_ENVMAP_INTENSITY,
 
   // Axis helper
   showAxisHelper: DEFAULT_SHOW_AXIS_HELPER,
@@ -568,6 +624,7 @@ type VisualStateFunctions = Pick<
   | 'setLightHorizontalAngle'
   | 'setLightVerticalAngle'
   | 'setAmbientIntensity'
+  | 'setAmbientColor'
   | 'setSpecularIntensity'
   | 'setShininess'
   | 'setShowLightIndicator'
@@ -586,6 +643,14 @@ type VisualStateFunctions = Pick<
   | 'setGroundPlaneOffset'
   | 'setGroundPlaneOpacity'
   | 'setGroundPlaneReflectivity'
+  | 'setGroundPlaneColor'
+  | 'setGroundPlaneType'
+  | 'setShowGroundGrid'
+  | 'setGroundGridColor'
+  | 'setGroundGridSpacing'
+  | 'setGroundMaterialRoughness'
+  | 'setGroundMaterialMetalness'
+  | 'setGroundMaterialEnvMapIntensity'
   | 'setShowAxisHelper'
   | 'setAnimationBias'
   | 'addLight'
@@ -826,6 +891,10 @@ export const useVisualStore = create<VisualState>((set) => ({
     set({ ambientIntensity: Math.max(0, Math.min(1, intensity)) })
   },
 
+  setAmbientColor: (color: string) => {
+    set({ ambientColor: color })
+  },
+
   setSpecularIntensity: (intensity: number) => {
     set({ specularIntensity: Math.max(0, Math.min(2, intensity)) })
   },
@@ -899,6 +968,39 @@ export const useVisualStore = create<VisualState>((set) => ({
 
   setGroundPlaneReflectivity: (reflectivity: number) => {
     set({ groundPlaneReflectivity: Math.max(0, Math.min(1, reflectivity)) })
+  },
+
+  setGroundPlaneColor: (color: string) => {
+    set({ groundPlaneColor: color })
+  },
+
+  setGroundPlaneType: (type: GroundPlaneType) => {
+    set({ groundPlaneType: type })
+  },
+
+  setShowGroundGrid: (show: boolean) => {
+    set({ showGroundGrid: show })
+  },
+
+  setGroundGridColor: (color: string) => {
+    set({ groundGridColor: color })
+  },
+
+  setGroundGridSpacing: (spacing: number) => {
+    set({ groundGridSpacing: Math.max(0.5, Math.min(5, spacing)) })
+  },
+
+  // --- Actions: Ground Material ---
+  setGroundMaterialRoughness: (roughness: number) => {
+    set({ groundMaterialRoughness: Math.max(0, Math.min(1, roughness)) })
+  },
+
+  setGroundMaterialMetalness: (metalness: number) => {
+    set({ groundMaterialMetalness: Math.max(0, Math.min(1, metalness)) })
+  },
+
+  setGroundMaterialEnvMapIntensity: (intensity: number) => {
+    set({ groundMaterialEnvMapIntensity: Math.max(0, Math.min(1, intensity)) })
   },
 
   // --- Actions: Axis Helper ---
