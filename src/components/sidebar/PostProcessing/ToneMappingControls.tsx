@@ -14,7 +14,6 @@ import { Select } from '@/components/ui/Select';
 import { Switch } from '@/components/ui/Switch';
 import {
   useVisualStore,
-  DEFAULT_TONE_MAPPING_ALGORITHM,
   DEFAULT_EXPOSURE,
 } from '@/stores/visualStore';
 import { TONE_MAPPING_OPTIONS, type ToneMappingAlgorithm } from '@/lib/shaders/types';

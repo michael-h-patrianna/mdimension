@@ -40,8 +40,8 @@ class MockResizeObserver {
 }
 ;(globalThis as unknown as { ResizeObserver: typeof MockResizeObserver }).ResizeObserver = MockResizeObserver
 
-// Mock WebGL context for Three.js
-HTMLCanvasElement.prototype.getContext = vi.fn(() => ({
+// Mock canvas contexts for Three.js (WebGL) and UI components (2D)
+const webglContextMock = {
   canvas: {},
   getExtension: vi.fn(),
   getParameter: vi.fn(),
@@ -57,7 +57,41 @@ HTMLCanvasElement.prototype.getContext = vi.fn(() => ({
   viewport: vi.fn(),
   clearColor: vi.fn(),
   clear: vi.fn(),
-})) as unknown as typeof HTMLCanvasElement.prototype.getContext
+}
+
+const canvas2dContextMock = {
+  canvas: {},
+  clearRect: vi.fn(),
+  fillRect: vi.fn(),
+  fillStyle: '',
+  strokeStyle: '',
+  beginPath: vi.fn(),
+  moveTo: vi.fn(),
+  lineTo: vi.fn(),
+  stroke: vi.fn(),
+  fill: vi.fn(),
+  arc: vi.fn(),
+  closePath: vi.fn(),
+  save: vi.fn(),
+  restore: vi.fn(),
+  scale: vi.fn(),
+  translate: vi.fn(),
+  rotate: vi.fn(),
+  measureText: vi.fn(() => ({ width: 0 })),
+  getImageData: vi.fn(() => ({ data: new Uint8ClampedArray(4) })),
+  putImageData: vi.fn(),
+  createLinearGradient: vi.fn(() => ({ addColorStop: vi.fn() })),
+  createRadialGradient: vi.fn(() => ({ addColorStop: vi.fn() })),
+  drawImage: vi.fn(),
+}
+
+HTMLCanvasElement.prototype.getContext = vi.fn((contextType: string) => {
+  if (contextType === '2d') {
+    return canvas2dContextMock
+  }
+  // webgl, webgl2, or experimental-webgl
+  return webglContextMock
+}) as unknown as typeof HTMLCanvasElement.prototype.getContext
 
 // Cleanup after each test case
 afterEach(() => {

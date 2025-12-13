@@ -256,8 +256,6 @@ describe('Tabs', () => {
     });
 
     it('calls scrollBy when scroll button is clicked', async () => {
-      const user = userEvent.setup();
-
       // We need to render with overflow state already set
       // Since we can't easily mock the ref, we'll just verify the scroll buttons render with proper aria labels
       render(<Tabs tabs={manyTabs} value="tab1" onChange={() => {}} data-testid="test-tabs" />);

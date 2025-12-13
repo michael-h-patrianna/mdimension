@@ -19,9 +19,10 @@
  * - analogous: Hue varies ±30° from base color
  * - cosine: Smooth cosine gradient palette (Inigo Quilez technique)
  * - normal: Color based on surface normal direction
- * - distance: Color based on distance field value
+ * - distance: Color based on distance field value (orbit trap)
  * - lch: Perceptually uniform LCH/Oklab color space
  * - multiSource: Blend multiple value sources for complex coloring
+ * - radial: Color based on 3D distance from origin (spherical gradient)
  */
 export type ColorAlgorithm =
   | 'monochromatic'
@@ -31,6 +32,7 @@ export type ColorAlgorithm =
   | 'distance'
   | 'lch'
   | 'multiSource'
+  | 'radial'
 
 /**
  * Options for the Color Algorithm dropdown in the UI.
@@ -43,6 +45,7 @@ export const COLOR_ALGORITHM_OPTIONS = [
   { value: 'distance' as const, label: 'Distance Field' },
   { value: 'lch' as const, label: 'LCH Perceptual' },
   { value: 'multiSource' as const, label: 'Multi-Source' },
+  { value: 'radial' as const, label: 'Radial (from center)' },
 ] as const
 
 /**
@@ -56,6 +59,7 @@ export const COLOR_ALGORITHM_TO_INT: Record<ColorAlgorithm, number> = {
   distance: 4,
   lch: 5,
   multiSource: 6,
+  radial: 7,
 }
 
 /**
@@ -110,7 +114,7 @@ export const DEFAULT_DISTRIBUTION: DistributionSettings = {
 /**
  * Default color algorithm for new sessions.
  */
-export const DEFAULT_COLOR_ALGORITHM: ColorAlgorithm = 'cosine'
+export const DEFAULT_COLOR_ALGORITHM: ColorAlgorithm = 'monochromatic'
 
 /**
  * Multi-source weight configuration for blending different value sources.
@@ -132,3 +136,31 @@ export const DEFAULT_MULTI_SOURCE_WEIGHTS: MultiSourceWeights = {
   orbitTrap: 0.3,
   normal: 0.2,
 }
+
+// ============================================================================
+// LCH Preset System
+// ============================================================================
+
+/**
+ * LCH preset configuration with lightness and chroma values.
+ */
+export interface LchPreset {
+  value: string
+  label: string
+  lightness: number
+  chroma: number
+}
+
+/**
+ * Built-in LCH presets for perceptually uniform coloring.
+ */
+export const LCH_PRESET_OPTIONS: LchPreset[] = [
+  { value: 'vibrant', label: 'Vibrant', lightness: 0.7, chroma: 0.15 },
+  { value: 'pastel', label: 'Pastel', lightness: 0.85, chroma: 0.08 },
+  { value: 'deep', label: 'Deep', lightness: 0.5, chroma: 0.2 },
+  { value: 'muted', label: 'Muted', lightness: 0.65, chroma: 0.06 },
+  { value: 'neon', label: 'Neon', lightness: 0.75, chroma: 0.25 },
+  { value: 'earth', label: 'Earth Tones', lightness: 0.55, chroma: 0.1 },
+  { value: 'candy', label: 'Candy', lightness: 0.8, chroma: 0.18 },
+  { value: 'jewel', label: 'Jewel Tones', lightness: 0.45, chroma: 0.22 },
+]

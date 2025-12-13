@@ -370,6 +370,7 @@ uniform float uLchChroma;
 varying float vDepth;
 varying vec3 vNormal;
 varying vec3 vViewDir;
+varying vec3 vWorldPosition;
 
 void main() {
   // All vectors are in WORLD SPACE
@@ -405,11 +406,18 @@ void main() {
     // LCH perceptual
     float t = applyDistribution(vDepth, uDistPower, uDistCycles, uDistOffset);
     surfaceColor = lchColor(t, uLchLightness, uLchChroma);
-  } else {
+  } else if (uColorAlgorithm == 6) {
     // Multi-source (blend depth and normal)
     float normalT = normal.y * 0.5 + 0.5;
     float blendedT = vDepth * 0.7 + normalT * 0.3;
     surfaceColor = getCosinePaletteColor(blendedT, uCosineA, uCosineB, uCosineC, uCosineD, uDistPower, uDistCycles, uDistOffset);
+  } else if (uColorAlgorithm == 7) {
+    // Radial: color based on 3D distance from origin
+    float radialT = clamp(length(vWorldPosition) / 2.0, 0.0, 1.0);
+    surfaceColor = getCosinePaletteColor(radialT, uCosineA, uCosineB, uCosineC, uCosineD, uDistPower, uDistCycles, uDistOffset);
+  } else {
+    // Fallback: cosine palette
+    surfaceColor = getCosinePaletteColor(vDepth, uCosineA, uCosineB, uCosineC, uCosineD, uDistPower, uDistCycles, uDistOffset);
   }
 
   // Start with ambient light
@@ -833,6 +841,10 @@ ${GLSL_PALETTE_FUNCTIONS}`
     float normalT = normalDir.y * 0.5 + 0.5;
     float blendedT = vDepth * 0.7 + normalT * 0.3;
     diffuseColor.rgb = getCosinePaletteColor(blendedT, uCosineA, uCosineB, uCosineC, uCosineD, uDistPower, uDistCycles, uDistOffset);
+  } else if (uColorAlgorithm == 7) {
+    // Radial: color based on 3D distance from origin
+    float radialT = clamp(length(vWorldPosition) / 2.0, 0.0, 1.0);
+    diffuseColor.rgb = getCosinePaletteColor(radialT, uCosineA, uCosineB, uCosineC, uCosineD, uDistPower, uDistCycles, uDistOffset);
   }
 }`
     )

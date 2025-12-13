@@ -4,6 +4,7 @@
  */
 
 export { PostProcessingSection } from './PostProcessingSection';
+export type { PostProcessingSectionProps } from './PostProcessingSection';
 export { BloomControls } from './BloomControls';
 export { BokehControls } from './BokehControls';
 export { ToneMappingControls } from './ToneMappingControls';

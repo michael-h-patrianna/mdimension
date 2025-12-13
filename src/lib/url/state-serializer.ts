@@ -323,7 +323,7 @@ export function deserializeState(searchParams: string): Partial<ShareableState> 
 
   const toneMappingAlgorithm = params.get('ta');
   if (toneMappingAlgorithm) {
-    const validAlgorithms: ToneMappingAlgorithm[] = ['reinhard', 'aces', 'uncharted2'];
+    const validAlgorithms: ToneMappingAlgorithm[] = ['none', 'linear', 'reinhard', 'cineon', 'aces', 'agx', 'neutral'];
     if (validAlgorithms.includes(toneMappingAlgorithm as ToneMappingAlgorithm)) {
       state.toneMappingAlgorithm = toneMappingAlgorithm as ToneMappingAlgorithm;
     }

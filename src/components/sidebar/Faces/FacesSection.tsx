@@ -1,37 +1,49 @@
 /**
  * Faces Section Component
  *
- * Sidebar section for all face/surface color settings.
- * Contains the advanced color system with algorithm selection,
- * cosine gradient palettes, distribution controls, and presets.
+ * Sidebar section for all face/surface settings organized in tabs:
+ * - Colors: Color algorithm selection and configuration
+ * - Material: Opacity, diffuse, and specular settings
+ * - FX: Fresnel rim effects
  *
  * Only visible when facesVisible is true.
  */
 
 import { Section } from '@/components/ui/Section';
 import { Slider } from '@/components/ui/Slider';
+import { Switch } from '@/components/ui/Switch';
+import { Tabs } from '@/components/ui/Tabs';
 import {
+  DEFAULT_DIFFUSE_INTENSITY,
   DEFAULT_FRESNEL_INTENSITY,
   DEFAULT_LCH_CHROMA,
   DEFAULT_LCH_LIGHTNESS,
+  DEFAULT_SHININESS,
+  DEFAULT_SPECULAR_COLOR,
+  DEFAULT_SPECULAR_INTENSITY,
   DEFAULT_SURFACE_SETTINGS,
   useVisualStore,
 } from '@/stores/visualStore';
-import React from 'react';
+import React, { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { ColorAlgorithmSelector } from './ColorAlgorithmSelector';
 import { ColorPreview } from './ColorPreview';
 import { CosineGradientEditor } from './CosineGradientEditor';
 import { DistributionControls } from './DistributionControls';
+import { LchPresetSelector } from './LchPresetSelector';
 import { PresetSelector } from './PresetSelector';
 
 export interface FacesSectionProps {
   defaultOpen?: boolean;
 }
 
+type FacesTabId = 'colors' | 'material' | 'fx';
+
 export const FacesSection: React.FC<FacesSectionProps> = ({
   defaultOpen = false,
 }) => {
+  const [activeTab, setActiveTab] = useState<FacesTabId>('colors');
+
   const {
     facesVisible,
     colorAlgorithm,
@@ -45,6 +57,17 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
     setLchLightness,
     lchChroma,
     setLchChroma,
+    // Material settings
+    shaderType,
+    lightEnabled,
+    specularIntensity,
+    shininess,
+    specularColor,
+    diffuseIntensity,
+    setSpecularIntensity,
+    setShininess,
+    setSpecularColor,
+    setDiffuseIntensity,
   } = useVisualStore(
     useShallow((state) => ({
       facesVisible: state.facesVisible,
@@ -59,6 +82,17 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
       setLchLightness: state.setLchLightness,
       lchChroma: state.lchChroma,
       setLchChroma: state.setLchChroma,
+      // Material settings
+      shaderType: state.shaderType,
+      lightEnabled: state.lightEnabled,
+      specularIntensity: state.specularIntensity,
+      shininess: state.shininess,
+      specularColor: state.specularColor,
+      diffuseIntensity: state.diffuseIntensity,
+      setSpecularIntensity: state.setSpecularIntensity,
+      setShininess: state.setShininess,
+      setSpecularColor: state.setSpecularColor,
+      setDiffuseIntensity: state.setDiffuseIntensity,
     }))
   );
 
@@ -69,156 +103,374 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
     return null;
   }
 
+  // Check if lighting controls should be shown
+  const showLightingControls = shaderType === 'surface' && lightEnabled;
+
+  const tabs = [
+    {
+      id: 'colors' as const,
+      label: 'Colors',
+      content: (
+        <ColorsTabContent
+          colorAlgorithm={colorAlgorithm}
+          faceColor={faceColor}
+          setFaceColor={setFaceColor}
+          lchLightness={lchLightness}
+          setLchLightness={setLchLightness}
+          lchChroma={lchChroma}
+          setLchChroma={setLchChroma}
+        />
+      ),
+    },
+    {
+      id: 'material' as const,
+      label: 'Material',
+      content: (
+        <MaterialTabContent
+          faceOpacity={surfaceSettings.faceOpacity}
+          setFaceOpacity={(value) => setSurfaceSettings({ faceOpacity: value })}
+          showLightingControls={showLightingControls}
+          diffuseIntensity={diffuseIntensity}
+          setDiffuseIntensity={setDiffuseIntensity}
+          specularColor={specularColor}
+          setSpecularColor={setSpecularColor}
+          specularIntensity={specularIntensity}
+          setSpecularIntensity={setSpecularIntensity}
+          shininess={shininess}
+          setShininess={setShininess}
+        />
+      ),
+    },
+    {
+      id: 'fx' as const,
+      label: 'FX',
+      content: (
+        <FxTabContent
+          fresnelEnabled={surfaceSettings.fresnelEnabled}
+          setFresnelEnabled={(enabled) =>
+            setSurfaceSettings({ fresnelEnabled: enabled })
+          }
+          fresnelIntensity={fresnelIntensity}
+          setFresnelIntensity={setFresnelIntensity}
+        />
+      ),
+    },
+  ];
+
   return (
     <Section title="Faces" defaultOpen={defaultOpen}>
-      <div className="space-y-6">
-        {/* Color Algorithm Selection */}
-        <ColorAlgorithmSelector />
-
-        {/* Live Preview */}
-        <ColorPreview />
-
-        {/* Algorithm-Specific Controls */}
-        {/* Monochromatic and Analogous use base color */}
-        {(colorAlgorithm === 'monochromatic' || colorAlgorithm === 'analogous') && (
-          <div className="space-y-4">
-            {/* Base Color Picker */}
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-text-secondary">
-                Base Color
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={faceColor}
-                  onChange={(e) => setFaceColor(e.target.value)}
-                  className="w-10 h-10 rounded cursor-pointer border border-panel-border"
-                />
-                <span className="text-xs font-mono text-text-secondary">
-                  {faceColor}
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {colorAlgorithm === 'cosine' && (
-          <div className="space-y-4">
-            <PresetSelector />
-            <CosineGradientEditor />
-            <DistributionControls />
-          </div>
-        )}
-
-        {colorAlgorithm === 'normal' && (
-          <div className="space-y-4">
-            <PresetSelector />
-            <CosineGradientEditor />
-            <DistributionControls />
-          </div>
-        )}
-
-        {colorAlgorithm === 'distance' && (
-          <div className="space-y-4">
-            <PresetSelector />
-            <CosineGradientEditor />
-            <DistributionControls />
-          </div>
-        )}
-
-        {colorAlgorithm === 'lch' && (
-          <div className="space-y-4">
-            <Slider
-              label="Lightness"
-              min={0.1}
-              max={1}
-              step={0.01}
-              value={lchLightness}
-              onChange={setLchLightness}
-              onReset={() => setLchLightness(DEFAULT_LCH_LIGHTNESS)}
-              showValue
-              tooltip="Controls overall brightness of colors"
-            />
-            <Slider
-              label="Chroma"
-              min={0}
-              max={0.4}
-              step={0.01}
-              value={lchChroma}
-              onChange={setLchChroma}
-              onReset={() => setLchChroma(DEFAULT_LCH_CHROMA)}
-              showValue
-              tooltip="Controls color saturation"
-            />
-            <DistributionControls />
-          </div>
-        )}
-
-        {colorAlgorithm === 'multiSource' && (
-          <div className="space-y-4">
-            <PresetSelector />
-            <CosineGradientEditor />
-            <DistributionControls />
-            <MultiSourceWeightsEditor />
-          </div>
-        )}
-
-        {/* Common Controls - Always Visible */}
-        <div className="pt-4 border-t border-panel-border space-y-4">
-          <Slider
-            label="Face Opacity"
-            min={0}
-            max={1}
-            step={0.1}
-            value={surfaceSettings.faceOpacity}
-            onChange={(value) => setSurfaceSettings({ faceOpacity: value })}
-            onReset={() =>
-              setSurfaceSettings({
-                faceOpacity: DEFAULT_SURFACE_SETTINGS.faceOpacity,
-              })
-            }
-            showValue
-          />
-
-          {/* Fresnel Toggle and Intensity */}
-          <div className="space-y-2">
-            <button
-              onClick={() =>
-                setSurfaceSettings({
-                  fresnelEnabled: !surfaceSettings.fresnelEnabled,
-                })
-              }
-              className={`
-                flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors
-                ${
-                  surfaceSettings.fresnelEnabled
-                    ? 'bg-accent/20 text-accent border border-accent/50'
-                    : 'bg-panel-border text-text-secondary border border-panel-border'
-                }
-              `}
-              aria-pressed={surfaceSettings.fresnelEnabled}
-            >
-              <span>Fresnel Rim</span>
-            </button>
-
-            {surfaceSettings.fresnelEnabled && (
-              <Slider
-                label="Fresnel Intensity"
-                min={0}
-                max={1}
-                step={0.1}
-                value={fresnelIntensity}
-                onChange={setFresnelIntensity}
-                onReset={() => setFresnelIntensity(DEFAULT_FRESNEL_INTENSITY)}
-                showValue
-              />
-            )}
-          </div>
-        </div>
-      </div>
+      <Tabs
+        tabs={tabs}
+        value={activeTab}
+        onChange={(id) => setActiveTab(id as FacesTabId)}
+        tabListClassName="mb-4"
+      />
     </Section>
   );
 };
+
+// =============================================================================
+// Colors Tab Content
+// =============================================================================
+
+interface ColorsTabContentProps {
+  colorAlgorithm: string;
+  faceColor: string;
+  setFaceColor: (color: string) => void;
+  lchLightness: number;
+  setLchLightness: (value: number) => void;
+  lchChroma: number;
+  setLchChroma: (value: number) => void;
+}
+
+const ColorsTabContent: React.FC<ColorsTabContentProps> = ({
+  colorAlgorithm,
+  faceColor,
+  setFaceColor,
+  lchLightness,
+  setLchLightness,
+  lchChroma,
+  setLchChroma,
+}) => {
+  return (
+    <div className="space-y-4">
+      {/* Color Algorithm Selection */}
+      <ColorAlgorithmSelector />
+
+      {/* Live Preview */}
+      <ColorPreview />
+
+      {/* Algorithm-Specific Controls */}
+      {/* Monochromatic and Analogous use base color */}
+      {(colorAlgorithm === 'monochromatic' ||
+        colorAlgorithm === 'analogous') && (
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-text-secondary">
+            Base Color
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              type="color"
+              value={faceColor}
+              onChange={(e) => setFaceColor(e.target.value)}
+              className="w-10 h-10 rounded cursor-pointer border border-panel-border"
+            />
+            <span className="text-xs font-mono text-text-secondary">
+              {faceColor}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {colorAlgorithm === 'cosine' && (
+        <div className="space-y-4">
+          <PresetSelector />
+          <CosineGradientEditor />
+          <DistributionControls />
+        </div>
+      )}
+
+      {colorAlgorithm === 'normal' && (
+        <div className="space-y-4">
+          <PresetSelector />
+          <CosineGradientEditor />
+          <DistributionControls />
+        </div>
+      )}
+
+      {colorAlgorithm === 'distance' && (
+        <div className="space-y-4">
+          <PresetSelector />
+          <CosineGradientEditor />
+          <DistributionControls />
+        </div>
+      )}
+
+      {colorAlgorithm === 'lch' && (
+        <div className="space-y-4">
+          <LchPresetSelector />
+          <Slider
+            label="Lightness"
+            min={0.1}
+            max={1}
+            step={0.01}
+            value={lchLightness}
+            onChange={setLchLightness}
+            onReset={() => setLchLightness(DEFAULT_LCH_LIGHTNESS)}
+            showValue
+          />
+          <Slider
+            label="Chroma"
+            min={0}
+            max={0.4}
+            step={0.01}
+            value={lchChroma}
+            onChange={setLchChroma}
+            onReset={() => setLchChroma(DEFAULT_LCH_CHROMA)}
+            showValue
+          />
+          <DistributionControls />
+        </div>
+      )}
+
+      {colorAlgorithm === 'multiSource' && (
+        <div className="space-y-4">
+          <PresetSelector />
+          <CosineGradientEditor />
+          <DistributionControls />
+          <MultiSourceWeightsEditor />
+        </div>
+      )}
+
+      {colorAlgorithm === 'radial' && (
+        <div className="space-y-4">
+          <PresetSelector />
+          <CosineGradientEditor />
+          <DistributionControls />
+        </div>
+      )}
+    </div>
+  );
+};
+
+// =============================================================================
+// Material Tab Content
+// =============================================================================
+
+interface MaterialTabContentProps {
+  faceOpacity: number;
+  setFaceOpacity: (value: number) => void;
+  showLightingControls: boolean;
+  diffuseIntensity: number;
+  setDiffuseIntensity: (value: number) => void;
+  specularColor: string;
+  setSpecularColor: (color: string) => void;
+  specularIntensity: number;
+  setSpecularIntensity: (value: number) => void;
+  shininess: number;
+  setShininess: (value: number) => void;
+}
+
+const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
+  <div className="text-xs font-semibold text-text-secondary uppercase tracking-wider pt-2 pb-1 border-t border-panel-border mt-2 first:mt-0 first:border-t-0 first:pt-0">
+    {title}
+  </div>
+);
+
+const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
+  faceOpacity,
+  setFaceOpacity,
+  showLightingControls,
+  diffuseIntensity,
+  setDiffuseIntensity,
+  specularColor,
+  setSpecularColor,
+  specularIntensity,
+  setSpecularIntensity,
+  shininess,
+  setShininess,
+}) => {
+  return (
+    <div className="space-y-3">
+      {/* Face Opacity - Always shown */}
+      <Slider
+        label="Face Opacity"
+        min={0}
+        max={1}
+        step={0.1}
+        value={faceOpacity}
+        onChange={setFaceOpacity}
+        onReset={() => setFaceOpacity(DEFAULT_SURFACE_SETTINGS.faceOpacity)}
+        showValue
+      />
+
+      {/* Diffuse and Specular - Only when lighting is enabled */}
+      {showLightingControls && (
+        <>
+          {/* Diffuse */}
+          <SectionHeader title="Diffuse" />
+          <Slider
+            label="Diffuse Intensity"
+            min={0}
+            max={2}
+            step={0.01}
+            value={diffuseIntensity}
+            onChange={setDiffuseIntensity}
+            onReset={() => setDiffuseIntensity(DEFAULT_DIFFUSE_INTENSITY)}
+            showValue
+          />
+
+          {/* Specular */}
+          <SectionHeader title="Specular" />
+
+          {/* Specular Color */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-text-secondary">
+              Specular Color
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={specularColor}
+                onChange={(e) => setSpecularColor(e.target.value)}
+                className="w-10 h-10 rounded cursor-pointer border border-panel-border"
+              />
+              <span className="text-xs font-mono text-text-secondary">
+                {specularColor}
+              </span>
+              {specularColor !== DEFAULT_SPECULAR_COLOR && (
+                <button
+                  onClick={() => setSpecularColor(DEFAULT_SPECULAR_COLOR)}
+                  className="text-xs text-accent hover:text-accent/80 transition-colors"
+                  title="Reset to default"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Specular Intensity */}
+          <Slider
+            label="Specular Intensity"
+            min={0}
+            max={2}
+            step={0.1}
+            value={specularIntensity}
+            onChange={setSpecularIntensity}
+            onReset={() => setSpecularIntensity(DEFAULT_SPECULAR_INTENSITY)}
+            showValue
+          />
+
+          {/* Shininess */}
+          <Slider
+            label="Shininess"
+            min={1}
+            max={128}
+            step={1}
+            value={shininess}
+            onChange={setShininess}
+            onReset={() => setShininess(DEFAULT_SHININESS)}
+            showValue
+          />
+        </>
+      )}
+
+      {!showLightingControls && (
+        <p className="text-xs text-text-secondary italic">
+          Enable lighting in the Visual section to access diffuse and specular
+          settings.
+        </p>
+      )}
+    </div>
+  );
+};
+
+// =============================================================================
+// FX Tab Content
+// =============================================================================
+
+interface FxTabContentProps {
+  fresnelEnabled: boolean;
+  setFresnelEnabled: (enabled: boolean) => void;
+  fresnelIntensity: number;
+  setFresnelIntensity: (value: number) => void;
+}
+
+const FxTabContent: React.FC<FxTabContentProps> = ({
+  fresnelEnabled,
+  setFresnelEnabled,
+  fresnelIntensity,
+  setFresnelIntensity,
+}) => {
+  return (
+    <div className="space-y-4">
+      {/* Fresnel Rim Effect */}
+      <Switch
+        checked={fresnelEnabled}
+        onCheckedChange={setFresnelEnabled}
+        label="Fresnel Rim"
+      />
+
+      {fresnelEnabled && (
+        <Slider
+          label="Fresnel Intensity"
+          min={0}
+          max={1}
+          step={0.1}
+          value={fresnelIntensity}
+          onChange={setFresnelIntensity}
+          onReset={() => setFresnelIntensity(DEFAULT_FRESNEL_INTENSITY)}
+          showValue
+        />
+      )}
+    </div>
+  );
+};
+
+// =============================================================================
+// Multi-Source Weights Editor
+// =============================================================================
 
 /**
  * Multi-Source Weights Editor for multiSource algorithm

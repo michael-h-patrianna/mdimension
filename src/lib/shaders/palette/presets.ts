@@ -80,8 +80,8 @@ export const COSINE_PRESETS: Record<PresetKey, CosineCoefficients> = {
   },
   grayscale: {
     a: [0.5, 0.5, 0.5],
-    b: [0.5, 0.5, 0.5],
-    c: [0.0, 0.0, 0.0],
+    b: [-0.5, -0.5, -0.5], // Negative amplitude for dark-to-light gradient
+    c: [0.5, 0.5, 0.5],    // Half cycle (0->1 maps to black->white)
     d: [0.0, 0.0, 0.0],
   },
   ice: {

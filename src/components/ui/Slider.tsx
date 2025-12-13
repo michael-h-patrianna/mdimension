@@ -14,6 +14,8 @@ export interface SliderProps {
   disabled?: boolean;
   minLabel?: string;
   maxLabel?: string;
+  /** Tooltip text shown on hover (currently display via title attribute) */
+  tooltip?: string;
 }
 
 export const Slider: React.FC<SliderProps> = ({
@@ -30,6 +32,7 @@ export const Slider: React.FC<SliderProps> = ({
   disabled = false,
   minLabel,
   maxLabel,
+  tooltip,
 }) => {
   const id = useId();
   const percentage = max > min ? ((value - min) / (max - min)) * 100 : 0;
@@ -40,9 +43,10 @@ export const Slider: React.FC<SliderProps> = ({
   return (
     <div className={`group ${className}`}>
       <div className="flex items-center justify-between mb-2">
-        <label 
+        <label
           htmlFor={id}
           className="text-xs font-medium text-text-secondary group-hover:text-text-primary transition-colors cursor-pointer"
+          title={tooltip}
         >
           {label}
         </label>

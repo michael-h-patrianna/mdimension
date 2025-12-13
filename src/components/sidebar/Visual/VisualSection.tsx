@@ -1,11 +1,13 @@
 /**
  * Visual Section Component
  * Section wrapper for visual appearance controls
+ *
+ * Note: Material controls (diffuse, specular) have been moved to the
+ * Faces section's Material tab for better organization.
  */
 
 import { Section } from '@/components/ui/Section';
 import React from 'react';
-import { MaterialControls } from './MaterialControls';
 import { ShaderSettings } from './ShaderSettings';
 import { VisualControls } from './VisualControls';
 
@@ -21,9 +23,6 @@ export const VisualSection: React.FC<VisualSectionProps> = ({
       <div className="space-y-6">
         {/* Per-Shader Settings (shown when faces are visible) */}
         <ShaderSettings />
-
-        {/* Material Controls - Diffuse & Specular */}
-        <MaterialControls />
 
         {/* Color & Visual Settings */}
         <VisualControls />

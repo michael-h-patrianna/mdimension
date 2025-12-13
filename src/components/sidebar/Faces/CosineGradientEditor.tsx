@@ -5,7 +5,6 @@
  * Shows collapsible advanced mode with individual RGB sliders.
  */
 
-import { Slider } from '@/components/ui/Slider';
 import { DEFAULT_COSINE_COEFFICIENTS } from '@/lib/shaders/palette';
 import { useVisualStore } from '@/stores/visualStore';
 import React, { useState } from 'react';
@@ -111,7 +110,7 @@ export const CosineGradientEditor: React.FC<CosineGradientEditorProps> = ({
                       className="w-full h-2 bg-panel-border rounded-lg appearance-none cursor-pointer accent-accent"
                     />
                     <div className="text-xs text-text-muted text-center">
-                      {cosineCoefficients[key][index].toFixed(2)}
+                      {(cosineCoefficients[key][index] ?? 0).toFixed(2)}
                     </div>
                   </div>
                 ))}

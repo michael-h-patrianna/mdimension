@@ -61,6 +61,9 @@ export {
   // Multi-source types
   type MultiSourceWeights,
   DEFAULT_MULTI_SOURCE_WEIGHTS,
+  // LCH preset types
+  type LchPreset,
+  LCH_PRESET_OPTIONS,
 } from './types';
 
 // Presets
