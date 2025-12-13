@@ -4,13 +4,23 @@
  * Organized into tabs: Walls (surface/grid) and Misc (helpers)
  */
 
-import { Switch } from '@/components/ui/Switch';
+import { MultiToggleGroup } from '@/components/ui/MultiToggleGroup';
 import { Select } from '@/components/ui/Select';
 import { Slider } from '@/components/ui/Slider';
+import { Switch } from '@/components/ui/Switch';
 import { Tabs } from '@/components/ui/Tabs';
-import { useVisualStore, type GroundPlaneType } from '@/stores/visualStore';
+import { useVisualStore, type GroundPlaneType, type WallPosition } from '@/stores/visualStore';
 import React, { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
+
+/** Options for wall position toggle group */
+const WALL_OPTIONS: { value: WallPosition; label: string }[] = [
+  { value: 'floor', label: 'Floor' },
+  { value: 'back', label: 'Back' },
+  { value: 'left', label: 'Left' },
+  { value: 'right', label: 'Right' },
+  { value: 'top', label: 'Top' },
+];
 
 /** Options for surface type select */
 const SURFACE_TYPE_OPTIONS: { value: GroundPlaneType; label: string }[] = [
@@ -28,9 +38,11 @@ export const EnvironmentControls: React.FC<EnvironmentControlsProps> = React.mem
   const [activeTab, setActiveTab] = useState('walls');
 
   const {
-    showGroundPlane,
+    activeWalls,
+    groundPlaneOffset,
     groundPlaneColor,
     groundPlaneType,
+    groundPlaneSizeScale,
     showGroundGrid,
     groundGridColor,
     groundGridSpacing,
@@ -38,9 +50,11 @@ export const EnvironmentControls: React.FC<EnvironmentControlsProps> = React.mem
     groundMaterialMetalness,
     groundMaterialEnvMapIntensity,
     showAxisHelper,
-    setShowGroundPlane,
+    setActiveWalls,
+    setGroundPlaneOffset,
     setGroundPlaneColor,
     setGroundPlaneType,
+    setGroundPlaneSizeScale,
     setShowGroundGrid,
     setGroundGridColor,
     setGroundGridSpacing,
@@ -50,9 +64,11 @@ export const EnvironmentControls: React.FC<EnvironmentControlsProps> = React.mem
     setShowAxisHelper,
   } = useVisualStore(
     useShallow((state) => ({
-      showGroundPlane: state.showGroundPlane,
+      activeWalls: state.activeWalls,
+      groundPlaneOffset: state.groundPlaneOffset,
       groundPlaneColor: state.groundPlaneColor,
       groundPlaneType: state.groundPlaneType,
+      groundPlaneSizeScale: state.groundPlaneSizeScale,
       showGroundGrid: state.showGroundGrid,
       groundGridColor: state.groundGridColor,
       groundGridSpacing: state.groundGridSpacing,
@@ -60,9 +76,11 @@ export const EnvironmentControls: React.FC<EnvironmentControlsProps> = React.mem
       groundMaterialMetalness: state.groundMaterialMetalness,
       groundMaterialEnvMapIntensity: state.groundMaterialEnvMapIntensity,
       showAxisHelper: state.showAxisHelper,
-      setShowGroundPlane: state.setShowGroundPlane,
+      setActiveWalls: state.setActiveWalls,
+      setGroundPlaneOffset: state.setGroundPlaneOffset,
       setGroundPlaneColor: state.setGroundPlaneColor,
       setGroundPlaneType: state.setGroundPlaneType,
+      setGroundPlaneSizeScale: state.setGroundPlaneSizeScale,
       setShowGroundGrid: state.setShowGroundGrid,
       setGroundGridColor: state.setGroundGridColor,
       setGroundGridSpacing: state.setGroundGridSpacing,
@@ -73,14 +91,30 @@ export const EnvironmentControls: React.FC<EnvironmentControlsProps> = React.mem
     }))
   );
 
-  /** Walls tab content - ground plane and grid settings */
+  /**
+   * Walls tab content - ground plane and grid settings
+   * @param e
+   */
   const wallsContent = (
     <div className="space-y-4">
-      {/* Ground Plane Toggle */}
-      <Switch
-        checked={showGroundPlane}
-        onCheckedChange={setShowGroundPlane}
-        label="Show Ground Plane"
+      {/* Wall Selection Toggle Group */}
+      <MultiToggleGroup
+        options={WALL_OPTIONS}
+        value={activeWalls}
+        onChange={setActiveWalls}
+        label="Visible Walls"
+        ariaLabel="Select which walls to display"
+      />
+
+      {/* Distance Offset */}
+      <Slider
+        label="Distance Offset"
+        value={groundPlaneOffset}
+        min={0}
+        max={10}
+        step={0.5}
+        onChange={setGroundPlaneOffset}
+        tooltip="Additional distance offset for walls from center"
       />
 
       {/* Surface Color */}
@@ -106,6 +140,17 @@ export const EnvironmentControls: React.FC<EnvironmentControlsProps> = React.mem
         options={SURFACE_TYPE_OPTIONS}
         value={groundPlaneType}
         onChange={setGroundPlaneType}
+      />
+
+      {/* Surface Size */}
+      <Slider
+        label="Surface Size"
+        value={groundPlaneSizeScale}
+        min={1}
+        max={10}
+        step={0.5}
+        onChange={setGroundPlaneSizeScale}
+        tooltip="Scale multiplier for ground surface size"
       />
 
       {/* Grid Toggle */}

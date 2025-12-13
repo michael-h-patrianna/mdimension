@@ -73,10 +73,18 @@ function Visualizer() {
   const facesVisible = useVisualStore((state) => state.facesVisible);
 
   // Calculate minimum bounding radius for ground plane positioning
-  // When raymarched Mandelbulb/Hyperbulb is visible, ensure ground plane accounts for it
+  // When raymarched objects are visible, ensure ground plane accounts for them
   const isMandelbulbVisible = objectType === 'mandelbrot' && facesVisible && dimension === 3;
   const isHyperbulbVisible = objectType === 'mandelbrot' && facesVisible && dimension >= 4;
-  const minBoundingRadius = (isMandelbulbVisible || isHyperbulbVisible) ? 1.5 : undefined;
+  // Mandelbox has a larger bounding radius (BOUND_R = 4.0 in shader)
+  const isMandelboxVisible = objectType === 'mandelbox' && facesVisible && dimension >= 3;
+
+  // Mandelbox needs larger radius (4.0) than Mandelbulb/Hyperbulb (1.5)
+  const minBoundingRadius = isMandelboxVisible
+    ? 4.0
+    : (isMandelbulbVisible || isHyperbulbVisible)
+      ? 1.5
+      : undefined;
 
   return (
     <Scene

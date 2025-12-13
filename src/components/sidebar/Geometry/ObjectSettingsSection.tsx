@@ -12,6 +12,7 @@
  * - Root System: type (A/D/E8), scale (0.5-2.0), always has edges
  * - Clifford Torus: radius, resolution, edge mode
  * - Mandelbrot Set: quality preset, iterations, escape radius, resolution
+ * - Mandelbox: scale, folding limit, radii, iterations, escape radius
  */
 
 import { Select } from '@/components/ui/Select';
@@ -28,6 +29,7 @@ import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useVisualStore } from '@/stores/visualStore';
 import React from 'react';
+import { MandelboxControls } from './MandelboxControls';
 import { MandelbrotControls } from './MandelbrotControls';
 
 export interface ObjectSettingsSectionProps {
@@ -380,6 +382,7 @@ export const ObjectSettingsSection: React.FC<ObjectSettingsSectionProps> = ({
       {objectType === 'root-system' && <RootSystemSettings />}
       {objectType === 'clifford-torus' && <CliffordTorusSettings />}
       {objectType === 'mandelbrot' && <MandelbrotControls />}
+      {objectType === 'mandelbox' && <MandelboxControls />}
     </div>
   );
 };

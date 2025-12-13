@@ -33,6 +33,9 @@ export const ObjectTypeSelector: React.FC<ObjectTypeSelectorProps> = ({
   const initializeMandelbrotForDimension = useExtendedObjectStore(
     (state) => state.initializeMandelbrotForDimension
   );
+  const initializeMandelboxForDimension = useExtendedObjectStore(
+    (state) => state.initializeMandelboxForDimension
+  );
   const initializePolytopeForType = useExtendedObjectStore(
     (state) => state.initializePolytopeForType
   );
@@ -43,6 +46,13 @@ export const ObjectTypeSelector: React.FC<ObjectTypeSelectorProps> = ({
       initializeMandelbrotForDimension(dimension);
     }
   }, [objectType, dimension, initializeMandelbrotForDimension]);
+
+  // Initialize Mandelbox settings when objectType is 'mandelbox' and dimension changes
+  useEffect(() => {
+    if (objectType === 'mandelbox') {
+      initializeMandelboxForDimension(dimension);
+    }
+  }, [objectType, dimension, initializeMandelboxForDimension]);
 
   // Initialize polytope scale when switching to a polytope type
   useEffect(() => {

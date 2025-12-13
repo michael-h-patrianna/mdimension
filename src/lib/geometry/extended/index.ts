@@ -151,6 +151,23 @@ export function generateExtendedObject(
     case 'mandelbrot':
       return generateMandelbrot(dimension, params.mandelbrot ?? DEFAULT_EXTENDED_OBJECT_PARAMS.mandelbrot);
 
+    case 'mandelbox':
+      // Mandelbox uses GPU raymarching exclusively - no CPU geometry needed
+      // Return minimal geometry that signals to UnifiedRenderer to use MandelboxMesh
+      return {
+        dimension,
+        type: 'mandelbox',
+        vertices: [],
+        edges: [],
+        isPointCloud: false,
+        metadata: {
+          name: 'Mandelbox',
+          properties: {
+            renderMode: 'raymarching',
+          },
+        },
+      };
+
     default:
       throw new Error(`Unknown extended object type: ${type}`);
   }

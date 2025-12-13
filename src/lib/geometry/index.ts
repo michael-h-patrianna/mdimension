@@ -242,6 +242,7 @@ function getTypeName(type: ObjectType): string {
     'root-system': 'Root System',
     'clifford-torus': 'Clifford Torus',
     'mandelbrot': 'Mandelbrot Set',
+    'mandelbox': 'Mandelbox',
   };
   return typeNames[type] ?? type;
 }
@@ -307,6 +308,13 @@ export function getAvailableTypes(dimension?: number): Array<{
       name: 'Mandelbrot Set',
       description: 'Fractal via escape-time iteration (2D: classic, 3D+: n-dimensional)',
       minDimension: 2,
+      maxDimension: 11,
+    },
+    {
+      type: 'mandelbox',
+      name: 'Mandelbox',
+      description: 'Fractal with box/sphere folding (3D-11D raymarched)',
+      minDimension: 3,
       maxDimension: 11,
     },
   ];

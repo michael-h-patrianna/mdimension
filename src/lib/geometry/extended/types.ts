@@ -385,6 +385,83 @@ export const DEFAULT_MANDELBROT_CONFIG: MandelbrotConfig = {
 };
 
 // ============================================================================
+// Mandelbox Configuration
+// ============================================================================
+
+/**
+ * Configuration for n-dimensional Mandelbox fractal generation
+ *
+ * The Mandelbox is a box-like fractal discovered by Tom Lowe in 2010.
+ * Unlike the Mandelbulb (which uses hyperspherical coordinate transformations),
+ * the Mandelbox uses simple geometric operations—conditional reflections and
+ * sphere inversions—that generalize naturally to any dimension.
+ *
+ * Supports 3D to 11D with the same algorithm (no dimension-specific code needed).
+ *
+ * @see docs/prd/mandelbox.md
+ */
+export interface MandelboxConfig {
+  /**
+   * Iteration scale factor (-3.0 to 3.0, default -1.5).
+   * Controls the character of the fractal:
+   * - -1.5: Classic folded/organic look
+   * - -2.0: Sponge-like patterns
+   * - -1.0: Soft, flower-like shapes
+   * - 1.0: Abstract geometric
+   * - 2.0: Boxy, structured
+   */
+  scale: number;
+
+  /**
+   * Box fold boundary (0.5 to 2.0, default 1.0).
+   * Controls the folding limit for box fold operation.
+   */
+  foldingLimit: number;
+
+  /**
+   * Inner sphere radius for sphere fold (0.1 to 1.0, default 0.5).
+   * Points closer than this are scaled up.
+   */
+  minRadius: number;
+
+  /**
+   * Outer sphere radius for sphere fold (0.5 to 2.0, default 1.0).
+   * Points between minRadius and fixedRadius are inverted.
+   */
+  fixedRadius: number;
+
+  /**
+   * Maximum iterations before considering point bounded (10 to 100, default 50).
+   */
+  maxIterations: number;
+
+  /**
+   * Escape radius threshold (4.0 to 100.0, default 10.0).
+   * Higher dimensions may need larger values for stability.
+   */
+  escapeRadius: number;
+
+  /**
+   * Fixed values for dimensions beyond the 3D slice (for 4D+).
+   * Array length = dimension - 3.
+   */
+  parameterValues: number[];
+}
+
+/**
+ * Default Mandelbox configuration
+ */
+export const DEFAULT_MANDELBOX_CONFIG: MandelboxConfig = {
+  scale: -1.5,          // Classic folded/organic look
+  foldingLimit: 1.0,    // Standard box fold boundary
+  minRadius: 0.5,       // Standard inner sphere
+  fixedRadius: 1.0,     // Standard outer sphere
+  maxIterations: 50,    // Balanced quality/performance
+  escapeRadius: 10.0,   // Safe bailout for most dimensions
+  parameterValues: [],  // No extra dimensions by default
+};
+
+// ============================================================================
 // Combined Object Parameters
 // ============================================================================
 
@@ -412,6 +489,8 @@ export interface ExtendedObjectParams {
   cliffordTorus: CliffordTorusConfig;
   /** Configuration for Mandelbrot set generation */
   mandelbrot: MandelbrotConfig;
+  /** Configuration for Mandelbox fractal generation */
+  mandelbox: MandelboxConfig;
 }
 
 /**
@@ -423,4 +502,5 @@ export const DEFAULT_EXTENDED_OBJECT_PARAMS: ExtendedObjectParams = {
   rootSystem: DEFAULT_ROOT_SYSTEM_CONFIG,
   cliffordTorus: DEFAULT_CLIFFORD_TORUS_CONFIG,
   mandelbrot: DEFAULT_MANDELBROT_CONFIG,
+  mandelbox: DEFAULT_MANDELBOX_CONFIG,
 };

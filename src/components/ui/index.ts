@@ -13,6 +13,9 @@ export type { SliderProps } from './Slider';
 export { ToggleGroup } from './ToggleGroup';
 export type { ToggleGroupProps, ToggleOption } from './ToggleGroup';
 
+export { MultiToggleGroup } from './MultiToggleGroup';
+export type { MultiToggleGroupProps, MultiToggleOption } from './MultiToggleGroup';
+
 export { Section } from './Section';
 export type { SectionProps } from './Section';
 

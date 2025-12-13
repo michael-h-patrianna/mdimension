@@ -1,9 +1,10 @@
 /**
  * Ground Plane Component
  *
- * Renders a ground plane below the polytope for visual depth.
+ * Renders environment walls around the polytope for visual depth.
  * Features:
- * - Two surface types: 'two-sided' (visible from above and below) or 'plane' (single-sided, transparent from below)
+ * - Multiple wall positions: floor, back, left, right, top
+ * - Two surface types: 'two-sided' (visible from both sides) or 'plane' (single-sided)
  * - Configurable surface color
  * - Optional grid overlay with customizable color and spacing
  * - Shadow receiving for realistic lighting
@@ -14,8 +15,7 @@
  * <GroundPlane
  *   vertices={projectedVertices}
  *   offset={0.5}
- *   opacity={0.3}
- *   reflectivity={0.4}
+ *   activeWalls={['floor', 'back']}
  *   color="#101010"
  *   surfaceType="two-sided"
  *   showGrid={true}
@@ -29,7 +29,7 @@ import { useMemo } from 'react';
 import { FrontSide, DoubleSide, Color } from 'three';
 import { Grid } from '@react-three/drei';
 import type { Vector3D } from '@/lib/math/types';
-import type { GroundPlaneType } from '@/stores/visualStore';
+import type { GroundPlaneType, WallPosition } from '@/stores/visualStore';
 
 /**
  * Props for the GroundPlane component
@@ -43,8 +43,8 @@ export interface GroundPlaneProps {
   opacity?: number;
   /** Reflectivity strength (default: 0.4) */
   reflectivity?: number;
-  /** Whether the plane is visible (default: true) */
-  visible?: boolean;
+  /** Which walls are currently active/visible */
+  activeWalls?: WallPosition[];
   /**
    * Minimum bounding radius to consider for positioning.
    * Used when external objects (like raymarched Mandelbulb) need to be
@@ -53,7 +53,7 @@ export interface GroundPlaneProps {
   minBoundingRadius?: number;
   /** Surface color (default: '#101010') */
   color?: string;
-  /** Surface type: 'two-sided' (visible from above and below) or 'plane' (single-sided, transparent from below) */
+  /** Surface type: 'two-sided' (visible from both sides) or 'plane' (single-sided) */
   surfaceType?: GroundPlaneType;
   /** Whether to show the grid overlay (default: true) */
   showGrid?: boolean;
@@ -67,19 +67,21 @@ export interface GroundPlaneProps {
   metalness?: number;
   /** Environment map intensity (0-1) */
   envMapIntensity?: number;
+  /** Size scale multiplier (1-5, 1 = auto-calculated minimum) */
+  sizeScale?: number;
 }
 
 /**
- * Calculate the Y position for the ground plane based on object's bounding sphere.
+ * Calculate the wall distance based on object's bounding sphere.
  * Uses the maximum distance from origin to ensure stable positioning during rotation.
  * The result is rounded to prevent jitter from small vertex position changes.
  *
  * @param vertices - Array of 3D vertices
- * @param offset - Additional distance below the bounding sphere
+ * @param offset - Additional distance from the bounding sphere
  * @param minBoundingRadius - Minimum radius to consider (for external objects like raymarched Mandelbulb)
- * @returns Y position for the ground plane (stable during rotation)
+ * @returns Distance for wall positioning (positive value)
  */
-function calculateGroundY(
+function calculateWallDistance(
   vertices: Vector3D[] | undefined,
   offset: number,
   minBoundingRadius?: number
@@ -97,28 +99,28 @@ function calculateGroundY(
   }
 
   // Use the larger of calculated radius and minimum bounding radius
-  // This ensures ground plane accounts for external objects (e.g., raymarched Mandelbulb)
+  // This ensures walls account for external objects (e.g., raymarched Mandelbulb)
   if (minBoundingRadius !== undefined && minBoundingRadius > maxRadius) {
     maxRadius = minBoundingRadius;
   }
 
-  // Default position when no vertices and no minBoundingRadius
+  // Default distance when no vertices and no minBoundingRadius
   if (maxRadius === 0) {
-    return -2;
+    return 2;
   }
 
   // Round to nearest 0.25 to prevent jitter from small position changes
   const roundedRadius = Math.ceil(maxRadius * 4) / 4;
 
-  // Position plane below the bounding sphere
-  return -roundedRadius - offset;
+  // Return distance from origin
+  return roundedRadius + offset;
 }
 
 /**
  * Calculate appropriate plane size based on object extents.
  *
  * @param vertices - Array of 3D vertices
- * @returns Size for the ground plane (width/depth)
+ * @returns Size for the wall surfaces (width/depth)
  */
 function calculatePlaneSize(vertices: Vector3D[] | undefined): number {
   if (!vertices || vertices.length === 0) {
@@ -161,7 +163,96 @@ function lightenColor(hex: string, percent: number): string {
   return '#' + color.getHexString();
 }
 
-/** Material props shared by both surface types */
+/** Configuration for a single wall */
+interface WallConfig {
+  position: [number, number, number];
+  surfaceRotation: [number, number, number];
+  gridRotation: [number, number, number];
+  /** Offset for grid to prevent z-fighting (in direction of wall normal) */
+  gridOffset: [number, number, number];
+}
+
+/** Small offset to prevent z-fighting between grid and surface */
+const Z_OFFSET = 0.002;
+
+/**
+ * Get wall configuration for a given wall position and distance.
+ *
+ * PlaneGeometry default: XY plane, normal +Z
+ * drei Grid default: XZ plane (horizontal), normal -Y (faces down)
+ *
+ * @param wall - Wall position type
+ * @param distance - Distance from origin
+ * @returns Wall configuration with position and rotations
+ */
+function getWallConfig(wall: WallPosition, distance: number): WallConfig {
+  switch (wall) {
+    case 'floor':
+      // Floor at y=-distance, horizontal, facing up
+      // Surface: rotate -90° around X to lay flat (XY -> XZ, normal +Z -> +Y)
+      // Grid: flip 180° around X to face up (normal -Y -> +Y)
+      // Grid offset: +Y (up, toward interior)
+      return {
+        position: [0, -distance, 0],
+        surfaceRotation: [-Math.PI / 2, 0, 0],
+        gridRotation: [Math.PI, 0, 0],
+        gridOffset: [0, Z_OFFSET, 0],
+      };
+    case 'top':
+      // Ceiling at y=+distance, horizontal, facing down
+      // Surface: rotate +90° around X (XY -> XZ, normal +Z -> -Y)
+      // Grid: default faces down, no rotation needed
+      // Grid offset: -Y (down, toward interior)
+      return {
+        position: [0, distance, 0],
+        surfaceRotation: [Math.PI / 2, 0, 0],
+        gridRotation: [0, 0, 0],
+        gridOffset: [0, -Z_OFFSET, 0],
+      };
+    case 'back':
+      // Back wall at z=-distance, vertical (XY plane), facing +Z
+      // Surface: no rotation needed (already XY, normal +Z)
+      // Grid: rotate -90° around X to stand vertical (XZ -> XY, normal -Y -> +Z)
+      // Grid offset: +Z (forward, toward interior)
+      return {
+        position: [0, 0, -distance],
+        surfaceRotation: [0, 0, 0],
+        gridRotation: [-Math.PI / 2, 0, 0],
+        gridOffset: [0, 0, Z_OFFSET],
+      };
+    case 'left':
+      // Left wall at x=-distance, vertical (YZ plane), facing +X
+      // Surface: rotate +90° around Y (XY -> YZ, normal +Z -> +X)
+      // Grid: rotate to be vertical in YZ plane facing +X
+      // Grid offset: +X (right, toward interior)
+      return {
+        position: [-distance, 0, 0],
+        surfaceRotation: [0, Math.PI / 2, 0],
+        gridRotation: [0, 0, Math.PI / 2],
+        gridOffset: [Z_OFFSET, 0, 0],
+      };
+    case 'right':
+      // Right wall at x=+distance, vertical (YZ plane), facing -X
+      // Surface: rotate -90° around Y (XY -> YZ, normal +Z -> -X)
+      // Grid: rotate to be vertical in YZ plane facing -X
+      // Grid offset: -X (left, toward interior)
+      return {
+        position: [distance, 0, 0],
+        surfaceRotation: [0, -Math.PI / 2, 0],
+        gridRotation: [0, 0, -Math.PI / 2],
+        gridOffset: [-Z_OFFSET, 0, 0],
+      };
+    default:
+      return {
+        position: [0, -distance, 0],
+        surfaceRotation: [-Math.PI / 2, 0, 0],
+        gridRotation: [Math.PI, 0, 0],
+        gridOffset: [0, Z_OFFSET, 0],
+      };
+  }
+}
+
+/** Material props shared by surface components */
 interface SurfaceMaterialProps {
   size: number;
   color: string;
@@ -170,87 +261,103 @@ interface SurfaceMaterialProps {
   envMapIntensity: number;
 }
 
-/**
- * Single-sided plane surface - only visible from above.
- */
-function PlaneSurface({
-  size,
-  color,
-  roughness,
-  metalness,
-  envMapIntensity,
-}: SurfaceMaterialProps) {
-  return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-      <planeGeometry args={[size, size]} />
-      <meshStandardMaterial
-        color={color}
-        side={FrontSide}
-        roughness={roughness}
-        metalness={metalness}
-        envMapIntensity={envMapIntensity}
-      />
-    </mesh>
-  );
-}
-
 /** Height of the two-sided box surface */
 const TWO_SIDED_HEIGHT = 0.01;
 
+/** Props for a single wall */
+interface WallProps extends SurfaceMaterialProps {
+  wall: WallPosition;
+  distance: number;
+  surfaceType: GroundPlaneType;
+  showGrid: boolean;
+  gridColor: string;
+  gridSpacing: number;
+  sectionColor: string;
+}
+
 /**
- * Two-sided surface using a thin box - visible from both above and below
- * with proper normals for correct lighting on both sides.
+ * Renders a single wall surface with optional grid overlay.
  */
-function TwoSidedSurface({
+function Wall({
+  wall,
+  distance,
   size,
   color,
   roughness,
   metalness,
   envMapIntensity,
-}: SurfaceMaterialProps) {
-  // Thin box to simulate a two-sided plane with proper normals on both faces
-  // Position offset so top face is at y=0 (aligned with grid)
+  surfaceType,
+  showGrid,
+  gridColor,
+  gridSpacing,
+  sectionColor,
+}: WallProps) {
+  const config = getWallConfig(wall, distance);
+
   return (
-    <mesh receiveShadow position={[0, -TWO_SIDED_HEIGHT / 2, 0]}>
-      <boxGeometry args={[size, TWO_SIDED_HEIGHT, size]} />
-      <meshStandardMaterial
-        color={color}
-        roughness={roughness}
-        metalness={metalness}
-        envMapIntensity={envMapIntensity}
-      />
-    </mesh>
+    <group position={config.position}>
+      {/* Wall surface - PlaneGeometry is in XY plane by default */}
+      {surfaceType === 'two-sided' ? (
+        <mesh receiveShadow rotation={config.surfaceRotation} position={[0, 0, -TWO_SIDED_HEIGHT / 2]}>
+          <boxGeometry args={[size, size, TWO_SIDED_HEIGHT]} />
+          <meshStandardMaterial
+            color={color}
+            roughness={roughness}
+            metalness={metalness}
+            envMapIntensity={envMapIntensity}
+          />
+        </mesh>
+      ) : (
+        <mesh receiveShadow rotation={config.surfaceRotation}>
+          <planeGeometry args={[size, size]} />
+          <meshStandardMaterial
+            color={color}
+            side={FrontSide}
+            roughness={roughness}
+            metalness={metalness}
+            envMapIntensity={envMapIntensity}
+          />
+        </mesh>
+      )}
+
+      {/* Optional grid overlay */}
+      {showGrid && (
+        <Grid
+          args={[size, size]}
+          rotation={config.gridRotation}
+          cellSize={gridSpacing}
+          cellThickness={0.5}
+          cellColor={gridColor}
+          sectionSize={gridSpacing * 5}
+          sectionThickness={1}
+          sectionColor={sectionColor}
+          fadeDistance={size * 3}
+          fadeStrength={2}
+          followCamera={false}
+          side={surfaceType === 'two-sided' ? DoubleSide : FrontSide}
+          position={config.gridOffset}
+        />
+      )}
+    </group>
   );
 }
 
 /**
- * Renders a ground plane with optional grid overlay.
+ * Renders environment walls with optional grid overlay.
  *
- * The plane automatically positions itself below the object and scales
- * to provide adequate visual coverage. Supports two surface types:
- * - 'two-sided': DoubleSide rendering, visible from above and below (default)
- * - 'plane': Single-sided rendering, transparent when viewed from below
+ * The walls automatically position themselves around the object and scale
+ * to provide adequate visual coverage. Supports multiple wall positions
+ * and two surface types.
  *
  * @param props - Component props
- * @param props.vertices - 3D vertices to calculate bounds from
- * @param props.offset - Distance below object's lowest point
- * @param props.opacity - Surface opacity
- * @param props.reflectivity - Reflection strength (reflective mode only)
- * @param props.visible - Whether the surface is visible
- * @param props.minBoundingRadius - Minimum radius for positioning
- * @param props.color - Surface color
- * @param props.surfaceType - 'two-sided' or 'plane'
- * @param props.showGrid - Whether to show grid overlay
- * @param props.gridColor - Grid line color
- * @param props.gridSpacing - Grid cell size
- * @returns Ground plane mesh with optional grid overlay
+ * @returns Environment walls with optional grid overlay
  */
 export function GroundPlane({
   vertices,
   offset = 0.5,
   opacity = 0.3,
   reflectivity = 0.4,
-  visible = true,
+  activeWalls = ['floor'],
   minBoundingRadius,
   color = '#101010',
   surfaceType = 'two-sided',
@@ -260,24 +367,28 @@ export function GroundPlane({
   roughness = 0.3,
   metalness = 0.5,
   envMapIntensity = 0.5,
+  sizeScale = 1,
 }: GroundPlaneProps) {
   // Calculate position and size based on vertex count (not positions)
   // This ensures stability during rotation while still adapting to object changes
   const vertexCount = vertices?.length ?? 0;
 
-  const groundY = useMemo(
-    () => calculateGroundY(vertices, offset, minBoundingRadius),
+  const wallDistance = useMemo(
+    () => calculateWallDistance(vertices, offset, minBoundingRadius),
     // Only recalculate when vertex count, offset, or minBoundingRadius changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [vertexCount, offset, minBoundingRadius]
   );
 
-  const planeSize = useMemo(
+  const basePlaneSize = useMemo(
     () => calculatePlaneSize(vertices),
     // Only recalculate when vertex count changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [vertexCount]
   );
+
+  // Apply size scale to the base plane size
+  const planeSize = basePlaneSize * sizeScale;
 
   // Calculate grid section color (lighter version of grid color)
   const sectionColor = useMemo(
@@ -285,48 +396,30 @@ export function GroundPlane({
     [gridColor]
   );
 
-  if (!visible) {
+  // Don't render if no walls are active
+  if (!activeWalls || activeWalls.length === 0) {
     return null;
   }
 
   return (
-    <group position={[0, groundY, 0]}>
-      {/* Ground surface - either two-sided box or single-sided plane */}
-      {surfaceType === 'two-sided' ? (
-        <TwoSidedSurface
+    <>
+      {activeWalls.map((wall) => (
+        <Wall
+          key={wall}
+          wall={wall}
+          distance={wallDistance}
           size={planeSize}
           color={color}
           roughness={roughness}
           metalness={metalness}
           envMapIntensity={envMapIntensity}
-        />
-      ) : (
-        <PlaneSurface
-          size={planeSize}
-          color={color}
-          roughness={roughness}
-          metalness={metalness}
-          envMapIntensity={envMapIntensity}
-        />
-      )}
-
-      {/* Optional grid overlay for spatial reference */}
-      {showGrid && (
-        <Grid
-          args={[planeSize, planeSize]}
-          cellSize={gridSpacing}
-          cellThickness={0.5}
-          cellColor={gridColor}
-          sectionSize={gridSpacing * 5}
-          sectionThickness={1}
+          surfaceType={surfaceType}
+          showGrid={showGrid}
+          gridColor={gridColor}
+          gridSpacing={gridSpacing}
           sectionColor={sectionColor}
-          fadeDistance={planeSize * 0.8}
-          fadeStrength={1}
-          followCamera={false}
-          side={surfaceType === 'two-sided' ? DoubleSide : FrontSide}
-          position={[0, 0.001, 0]}
         />
-      )}
-    </group>
+      ))}
+    </>
   );
 }

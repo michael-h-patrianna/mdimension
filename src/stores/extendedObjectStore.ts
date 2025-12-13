@@ -7,6 +7,7 @@
  * - Root Systems (A, D, E8 polytopes)
  * - Clifford Torus (flat torus on S^3)
  * - Mandelbrot Set (n-dimensional fractal)
+ * - Mandelbox (n-dimensional box fractal)
  *
  * The unified configuration ensures visual consistency across all object types.
  *
@@ -29,6 +30,7 @@ import type {
   MandelbrotPalette,
   MandelbrotQualityPreset,
   MandelbrotRenderStyle,
+  MandelboxConfig,
 } from '@/lib/geometry/extended/types';
 import {
   DEFAULT_POLYTOPE_CONFIG,
@@ -37,6 +39,7 @@ import {
   DEFAULT_ROOT_SYSTEM_CONFIG,
   DEFAULT_CLIFFORD_TORUS_CONFIG,
   DEFAULT_MANDELBROT_CONFIG,
+  DEFAULT_MANDELBOX_CONFIG,
   MANDELBROT_QUALITY_PRESETS,
 } from '@/lib/geometry/extended/types';
 
@@ -59,6 +62,9 @@ interface ExtendedObjectState {
 
   // --- Mandelbrot State ---
   mandelbrot: MandelbrotConfig;
+
+  // --- Mandelbox State ---
+  mandelbox: MandelboxConfig;
 
   // --- Polytope Actions ---
   setPolytopeScale: (scale: number) => void;
@@ -110,6 +116,19 @@ interface ExtendedObjectState {
   initializeMandelbrotForDimension: (dimension: number) => void;
   getMandelbrotConfig: () => MandelbrotConfig;
 
+  // --- Mandelbox Actions ---
+  setMandelboxScale: (scale: number) => void;
+  setMandelboxFoldingLimit: (limit: number) => void;
+  setMandelboxMinRadius: (radius: number) => void;
+  setMandelboxFixedRadius: (radius: number) => void;
+  setMandelboxMaxIterations: (iterations: number) => void;
+  setMandelboxEscapeRadius: (radius: number) => void;
+  setMandelboxParameterValue: (dimIndex: number, value: number) => void;
+  setMandelboxParameterValues: (values: number[]) => void;
+  resetMandelboxParameters: () => void;
+  initializeMandelboxForDimension: (dimension: number) => void;
+  getMandelboxConfig: () => MandelboxConfig;
+
   // --- Reset Action ---
   reset: () => void;
 }
@@ -125,6 +144,7 @@ export const useExtendedObjectStore = create<ExtendedObjectState>((set, get) => 
   rootSystem: { ...DEFAULT_ROOT_SYSTEM_CONFIG },
   cliffordTorus: { ...DEFAULT_CLIFFORD_TORUS_CONFIG },
   mandelbrot: { ...DEFAULT_MANDELBROT_CONFIG },
+  mandelbox: { ...DEFAULT_MANDELBOX_CONFIG },
 
   // --- Polytope Actions ---
   setPolytopeScale: (scale: number) => {
@@ -496,6 +516,126 @@ export const useExtendedObjectStore = create<ExtendedObjectState>((set, get) => 
     return { ...get().mandelbrot };
   },
 
+  // --- Mandelbox Actions ---
+  setMandelboxScale: (scale: number) => {
+    // Range -3.0 to 3.0 for various fractal characters
+    const clampedScale = Math.max(-3.0, Math.min(3.0, scale));
+    set((state) => ({
+      mandelbox: { ...state.mandelbox, scale: clampedScale },
+    }));
+  },
+
+  setMandelboxFoldingLimit: (limit: number) => {
+    // Range 0.5 to 2.0
+    const clampedLimit = Math.max(0.5, Math.min(2.0, limit));
+    set((state) => ({
+      mandelbox: { ...state.mandelbox, foldingLimit: clampedLimit },
+    }));
+  },
+
+  setMandelboxMinRadius: (radius: number) => {
+    // Range 0.1 to 1.0
+    const clampedRadius = Math.max(0.1, Math.min(1.0, radius));
+    set((state) => ({
+      mandelbox: { ...state.mandelbox, minRadius: clampedRadius },
+    }));
+  },
+
+  setMandelboxFixedRadius: (radius: number) => {
+    // Range 0.5 to 2.0
+    const clampedRadius = Math.max(0.5, Math.min(2.0, radius));
+    set((state) => ({
+      mandelbox: { ...state.mandelbox, fixedRadius: clampedRadius },
+    }));
+  },
+
+  setMandelboxMaxIterations: (iterations: number) => {
+    // Range 10 to 100
+    const clampedIterations = Math.max(10, Math.min(100, Math.floor(iterations)));
+    set((state) => ({
+      mandelbox: { ...state.mandelbox, maxIterations: clampedIterations },
+    }));
+  },
+
+  setMandelboxEscapeRadius: (radius: number) => {
+    // Range 4.0 to 100.0
+    const clampedRadius = Math.max(4.0, Math.min(100.0, radius));
+    set((state) => ({
+      mandelbox: { ...state.mandelbox, escapeRadius: clampedRadius },
+    }));
+  },
+
+  setMandelboxParameterValue: (dimIndex: number, value: number) => {
+    const values = [...get().mandelbox.parameterValues];
+    // Validate dimIndex to prevent sparse arrays or out-of-bounds access
+    if (dimIndex < 0 || dimIndex >= values.length) {
+      if (import.meta.env.DEV) {
+        console.warn(
+          `setMandelboxParameterValue: Invalid dimension index ${dimIndex} (valid range: 0-${values.length - 1})`
+        );
+      }
+      return;
+    }
+    // Clamp to reasonable range for Mandelbox exploration
+    const clampedValue = Math.max(-4.0, Math.min(4.0, value));
+    values[dimIndex] = clampedValue;
+    set((state) => ({
+      mandelbox: { ...state.mandelbox, parameterValues: values },
+    }));
+  },
+
+  setMandelboxParameterValues: (values: number[]) => {
+    const clampedValues = values.map(v => Math.max(-4.0, Math.min(4.0, v)));
+    set((state) => ({
+      mandelbox: { ...state.mandelbox, parameterValues: clampedValues },
+    }));
+  },
+
+  resetMandelboxParameters: () => {
+    const len = get().mandelbox.parameterValues.length;
+    set((state) => ({
+      mandelbox: { ...state.mandelbox, parameterValues: new Array(len).fill(0) },
+    }));
+  },
+
+  initializeMandelboxForDimension: (dimension: number) => {
+    const paramCount = Math.max(0, dimension - 3);
+
+    // Dimension-specific defaults for Mandelbox:
+    // Higher dimensions may need larger escape radius for stability
+    let escapeRadius: number;
+    if (dimension >= 9) {
+      escapeRadius = 20.0;  // 9D-11D: higher bailout for stability
+    } else if (dimension >= 7) {
+      escapeRadius = 15.0;  // 7D-8D: high bailout
+    } else {
+      escapeRadius = 10.0;  // 3D-6D: standard bailout
+    }
+
+    // Max iterations: Performance-aware defaults for raymarching
+    let maxIterations: number;
+    if (dimension >= 9) {
+      maxIterations = 35;   // 9D-11D: very conservative
+    } else if (dimension >= 7) {
+      maxIterations = 40;   // 7D-8D: conservative
+    } else {
+      maxIterations = 50;   // 3D-6D: balanced
+    }
+
+    set((state) => ({
+      mandelbox: {
+        ...state.mandelbox,
+        parameterValues: new Array(paramCount).fill(0),
+        escapeRadius,
+        maxIterations,
+      },
+    }));
+  },
+
+  getMandelboxConfig: (): MandelboxConfig => {
+    return { ...get().mandelbox };
+  },
+
   // --- Reset Action ---
   reset: () => {
     set({
@@ -504,6 +644,7 @@ export const useExtendedObjectStore = create<ExtendedObjectState>((set, get) => 
       rootSystem: { ...DEFAULT_ROOT_SYSTEM_CONFIG },
       cliffordTorus: { ...DEFAULT_CLIFFORD_TORUS_CONFIG },
       mandelbrot: { ...DEFAULT_MANDELBROT_CONFIG },
+      mandelbox: { ...DEFAULT_MANDELBOX_CONFIG },
     });
   },
 }));

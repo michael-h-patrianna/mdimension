@@ -71,12 +71,13 @@ export const Scene = React.memo(function Scene({
 }: SceneProps) {
   // Get environment settings with shallow comparison
   const {
-    showGroundPlane,
+    activeWalls,
     groundPlaneOffset,
     groundPlaneOpacity,
     groundPlaneReflectivity,
     groundPlaneColor,
     groundPlaneType,
+    groundPlaneSizeScale,
     showGroundGrid,
     groundGridColor,
     groundGridSpacing,
@@ -86,12 +87,13 @@ export const Scene = React.memo(function Scene({
     showAxisHelper,
   } = useVisualStore(
     useShallow((state) => ({
-      showGroundPlane: state.showGroundPlane,
+      activeWalls: state.activeWalls,
       groundPlaneOffset: state.groundPlaneOffset,
       groundPlaneOpacity: state.groundPlaneOpacity,
       groundPlaneReflectivity: state.groundPlaneReflectivity,
       groundPlaneColor: state.groundPlaneColor,
       groundPlaneType: state.groundPlaneType,
+      groundPlaneSizeScale: state.groundPlaneSizeScale,
       showGroundGrid: state.showGroundGrid,
       groundGridColor: state.groundGridColor,
       groundGridSpacing: state.groundGridSpacing,
@@ -116,16 +118,17 @@ export const Scene = React.memo(function Scene({
       {/* Camera controls */}
       <CameraController autoRotate={autoRotate} />
 
-      {/* Ground plane with optional grid overlay */}
+      {/* Environment walls with optional grid overlay */}
       <GroundPlane
         vertices={projectedVertices}
         offset={groundPlaneOffset}
         opacity={groundPlaneOpacity}
         reflectivity={groundPlaneReflectivity}
-        visible={showGroundPlane}
+        activeWalls={activeWalls}
         minBoundingRadius={minBoundingRadius}
         color={groundPlaneColor}
         surfaceType={groundPlaneType}
+        sizeScale={groundPlaneSizeScale}
         showGrid={showGroundGrid}
         gridColor={groundGridColor}
         gridSpacing={groundGridSpacing}

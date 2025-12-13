@@ -9,6 +9,7 @@ import {
   DEFAULT_ROOT_SYSTEM_CONFIG,
   DEFAULT_CLIFFORD_TORUS_CONFIG,
   DEFAULT_MANDELBROT_CONFIG,
+  DEFAULT_MANDELBOX_CONFIG,
 } from '@/lib/geometry/extended/types';
 
 describe('extendedObjectStore', () => {
@@ -35,6 +36,11 @@ describe('extendedObjectStore', () => {
     it('should have default mandelbrot config', () => {
       const state = useExtendedObjectStore.getState();
       expect(state.mandelbrot).toEqual(DEFAULT_MANDELBROT_CONFIG);
+    });
+
+    it('should have default mandelbox config', () => {
+      const state = useExtendedObjectStore.getState();
+      expect(state.mandelbox).toEqual(DEFAULT_MANDELBOX_CONFIG);
     });
   });
 
@@ -571,6 +577,174 @@ describe('extendedObjectStore', () => {
     });
   });
 
+  describe('mandelbox actions', () => {
+    it('should set scale with clamping', () => {
+      const { setMandelboxScale } = useExtendedObjectStore.getState();
+
+      setMandelboxScale(-1.5);
+      expect(useExtendedObjectStore.getState().mandelbox.scale).toBe(-1.5);
+
+      // Test clamping - too low (min -3.0)
+      setMandelboxScale(-5.0);
+      expect(useExtendedObjectStore.getState().mandelbox.scale).toBe(-3.0);
+
+      // Test clamping - too high (max 3.0)
+      setMandelboxScale(5.0);
+      expect(useExtendedObjectStore.getState().mandelbox.scale).toBe(3.0);
+    });
+
+    it('should set folding limit with clamping', () => {
+      const { setMandelboxFoldingLimit } = useExtendedObjectStore.getState();
+
+      setMandelboxFoldingLimit(1.5);
+      expect(useExtendedObjectStore.getState().mandelbox.foldingLimit).toBe(1.5);
+
+      // Test clamping - too low (min 0.5)
+      setMandelboxFoldingLimit(0.1);
+      expect(useExtendedObjectStore.getState().mandelbox.foldingLimit).toBe(0.5);
+
+      // Test clamping - too high (max 2.0)
+      setMandelboxFoldingLimit(5.0);
+      expect(useExtendedObjectStore.getState().mandelbox.foldingLimit).toBe(2.0);
+    });
+
+    it('should set min radius with clamping', () => {
+      const { setMandelboxMinRadius } = useExtendedObjectStore.getState();
+
+      setMandelboxMinRadius(0.5);
+      expect(useExtendedObjectStore.getState().mandelbox.minRadius).toBe(0.5);
+
+      // Test clamping - too low (min 0.1)
+      setMandelboxMinRadius(0.01);
+      expect(useExtendedObjectStore.getState().mandelbox.minRadius).toBe(0.1);
+
+      // Test clamping - too high (max 1.0)
+      setMandelboxMinRadius(2.0);
+      expect(useExtendedObjectStore.getState().mandelbox.minRadius).toBe(1.0);
+    });
+
+    it('should set fixed radius with clamping', () => {
+      const { setMandelboxFixedRadius } = useExtendedObjectStore.getState();
+
+      setMandelboxFixedRadius(1.0);
+      expect(useExtendedObjectStore.getState().mandelbox.fixedRadius).toBe(1.0);
+
+      // Test clamping - too low (min 0.5)
+      setMandelboxFixedRadius(0.1);
+      expect(useExtendedObjectStore.getState().mandelbox.fixedRadius).toBe(0.5);
+
+      // Test clamping - too high (max 2.0)
+      setMandelboxFixedRadius(5.0);
+      expect(useExtendedObjectStore.getState().mandelbox.fixedRadius).toBe(2.0);
+    });
+
+    it('should set max iterations with clamping', () => {
+      const { setMandelboxMaxIterations } = useExtendedObjectStore.getState();
+
+      setMandelboxMaxIterations(50);
+      expect(useExtendedObjectStore.getState().mandelbox.maxIterations).toBe(50);
+
+      // Test clamping - too low (min 10)
+      setMandelboxMaxIterations(5);
+      expect(useExtendedObjectStore.getState().mandelbox.maxIterations).toBe(10);
+
+      // Test clamping - too high (max 100)
+      setMandelboxMaxIterations(200);
+      expect(useExtendedObjectStore.getState().mandelbox.maxIterations).toBe(100);
+    });
+
+    it('should floor max iterations to integer', () => {
+      const { setMandelboxMaxIterations } = useExtendedObjectStore.getState();
+
+      setMandelboxMaxIterations(45.8);
+      expect(useExtendedObjectStore.getState().mandelbox.maxIterations).toBe(45);
+    });
+
+    it('should set escape radius with clamping', () => {
+      const { setMandelboxEscapeRadius } = useExtendedObjectStore.getState();
+
+      setMandelboxEscapeRadius(10.0);
+      expect(useExtendedObjectStore.getState().mandelbox.escapeRadius).toBe(10.0);
+
+      // Test clamping - too low (min 4.0)
+      setMandelboxEscapeRadius(1.0);
+      expect(useExtendedObjectStore.getState().mandelbox.escapeRadius).toBe(4.0);
+
+      // Test clamping - too high (max 100.0)
+      setMandelboxEscapeRadius(200.0);
+      expect(useExtendedObjectStore.getState().mandelbox.escapeRadius).toBe(100.0);
+    });
+
+    it('should set parameter value with clamping', () => {
+      const { setMandelboxParameterValues, setMandelboxParameterValue } = useExtendedObjectStore.getState();
+
+      // First set up some parameter values
+      setMandelboxParameterValues([0, 0, 0]);
+
+      setMandelboxParameterValue(1, 0.5);
+      expect(useExtendedObjectStore.getState().mandelbox.parameterValues[1]).toBe(0.5);
+
+      // Test clamping (range -4.0 to 4.0 for Mandelbox exploration)
+      setMandelboxParameterValue(0, 5.0);
+      expect(useExtendedObjectStore.getState().mandelbox.parameterValues[0]).toBe(4.0);
+
+      setMandelboxParameterValue(2, -5.0);
+      expect(useExtendedObjectStore.getState().mandelbox.parameterValues[2]).toBe(-4.0);
+    });
+
+    it('should set parameter values with clamping', () => {
+      const { setMandelboxParameterValues } = useExtendedObjectStore.getState();
+
+      setMandelboxParameterValues([0.1, -0.2, 0.3]);
+      expect(useExtendedObjectStore.getState().mandelbox.parameterValues).toEqual([0.1, -0.2, 0.3]);
+
+      // Test clamping (range -4.0 to 4.0 for Mandelbox exploration)
+      setMandelboxParameterValues([5, -5, 1]);
+      expect(useExtendedObjectStore.getState().mandelbox.parameterValues).toEqual([4.0, -4.0, 1]);
+    });
+
+    it('should reset parameters to zeros', () => {
+      const { setMandelboxParameterValues, resetMandelboxParameters } = useExtendedObjectStore.getState();
+
+      setMandelboxParameterValues([0.5, -0.3, 0.2]);
+      resetMandelboxParameters();
+      expect(useExtendedObjectStore.getState().mandelbox.parameterValues).toEqual([0, 0, 0]);
+    });
+
+    it('should initialize for dimension', () => {
+      const { initializeMandelboxForDimension } = useExtendedObjectStore.getState();
+
+      initializeMandelboxForDimension(5);
+
+      const state = useExtendedObjectStore.getState().mandelbox;
+      expect(state.parameterValues).toHaveLength(2); // 5 - 3 = 2
+      expect(state.parameterValues).toEqual([0, 0]);
+    });
+
+    it('should initialize for 3D with empty parameter values', () => {
+      const { initializeMandelboxForDimension } = useExtendedObjectStore.getState();
+
+      initializeMandelboxForDimension(3);
+
+      const state = useExtendedObjectStore.getState().mandelbox;
+      expect(state.parameterValues).toHaveLength(0); // 3 - 3 = 0
+      expect(state.parameterValues).toEqual([]);
+    });
+
+    it('should get config as copy', () => {
+      const { getMandelboxConfig, setMandelboxMaxIterations } = useExtendedObjectStore.getState();
+
+      setMandelboxMaxIterations(75);
+      const config = getMandelboxConfig();
+
+      expect(config.maxIterations).toBe(75);
+
+      // Should be a copy, not a reference
+      config.maxIterations = 999;
+      expect(useExtendedObjectStore.getState().mandelbox.maxIterations).toBe(75);
+    });
+  });
+
   describe('reset', () => {
     it('should reset all configs to defaults', () => {
       const state = useExtendedObjectStore.getState();
@@ -582,6 +756,8 @@ describe('extendedObjectStore', () => {
       state.setCliffordTorusRadius(2.5);
       state.setMandelbrotMaxIterations(200);
       state.setMandelbrotPalette('triadic');
+      state.setMandelboxScale(-2.5);
+      state.setMandelboxMaxIterations(75);
 
       // Reset
       state.reset();
@@ -592,6 +768,7 @@ describe('extendedObjectStore', () => {
       expect(newState.rootSystem).toEqual(DEFAULT_ROOT_SYSTEM_CONFIG);
       expect(newState.cliffordTorus).toEqual(DEFAULT_CLIFFORD_TORUS_CONFIG);
       expect(newState.mandelbrot).toEqual(DEFAULT_MANDELBROT_CONFIG);
+      expect(newState.mandelbox).toEqual(DEFAULT_MANDELBOX_CONFIG);
     });
   });
 });

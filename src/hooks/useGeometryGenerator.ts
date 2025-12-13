@@ -28,6 +28,7 @@ export function useGeometryGenerator() {
   const rootSystemConfig = useExtendedObjectStore((state) => state.rootSystem);
   const cliffordTorusConfig = useExtendedObjectStore((state) => state.cliffordTorus);
   const mandelbrotConfig = useExtendedObjectStore((state) => state.mandelbrot);
+  const mandelboxConfig = useExtendedObjectStore((state) => state.mandelbox);
 
   const extendedParams: ExtendedObjectParams = useMemo(() => ({
     polytope: polytopeConfig,
@@ -43,7 +44,9 @@ export function useGeometryGenerator() {
       ...mandelbrotConfig,
       edgeMode: 'none',
     },
-  }), [polytopeConfig, hypersphereConfig, edgesVisible, rootSystemConfig, cliffordTorusConfig, mandelbrotConfig]);
+    // Mandelbox config (used by MandelboxMesh directly, but needed for type completeness)
+    mandelbox: mandelboxConfig,
+  }), [polytopeConfig, hypersphereConfig, edgesVisible, rootSystemConfig, cliffordTorusConfig, mandelbrotConfig, mandelboxConfig]);
 
   const geometry = useMemo(() => {
     return generateGeometry(objectType, dimension, extendedParams);

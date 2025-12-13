@@ -11,6 +11,17 @@
  * @see docs/prd/enhanced-visuals-rendering-pipeline.md
  */
 
+import type { LightSource, LightType, TransformMode } from '@/lib/lights/types'
+import {
+  MAX_LIGHTS,
+  MIN_LIGHTS,
+  clampConeAngle,
+  clampIntensity,
+  clampPenumbra,
+  cloneLight,
+  createDefaultLight,
+  createNewLight,
+} from '@/lib/lights/types'
 import {
   type ColorAlgorithm,
   type CosineCoefficients,
@@ -28,17 +39,6 @@ import type {
   ToneMappingAlgorithm,
   WireframeSettings,
 } from '@/lib/shaders/types'
-import type { LightSource, LightType, TransformMode } from '@/lib/lights/types'
-import {
-  MAX_LIGHTS,
-  MIN_LIGHTS,
-  createDefaultLight,
-  createNewLight,
-  cloneLight,
-  clampIntensity,
-  clampConeAngle,
-  clampPenumbra,
-} from '@/lib/lights/types'
 import { create } from 'zustand'
 
 // ============================================================================
@@ -101,23 +101,30 @@ export const DEFAULT_PER_DIMENSION_COLOR_ENABLED = false
 export const DEFAULT_LCH_LIGHTNESS = 0.7
 export const DEFAULT_LCH_CHROMA = 0.15
 
+/** Wall position types for environment surfaces */
+export type WallPosition = 'floor' | 'back' | 'left' | 'right' | 'top'
+
+/** All wall positions */
+export const ALL_WALL_POSITIONS: WallPosition[] = ['floor', 'back', 'left', 'right', 'top']
+
 /** Default ground plane settings */
-export const DEFAULT_SHOW_GROUND_PLANE = true
-export const DEFAULT_GROUND_PLANE_OFFSET = 0.5 // Distance below object's lowest point
+export const DEFAULT_ACTIVE_WALLS: WallPosition[] = ['floor'] // Which walls are visible
+export const DEFAULT_GROUND_PLANE_OFFSET = 2 // Additional distance offset for walls from center
 export const DEFAULT_GROUND_PLANE_OPACITY = 0.3
 export const DEFAULT_GROUND_PLANE_REFLECTIVITY = 0.4
 export const DEFAULT_GROUND_PLANE_COLOR = '#101010'
-export const DEFAULT_GROUND_PLANE_TYPE: GroundPlaneType = 'two-sided'
+export const DEFAULT_GROUND_PLANE_TYPE: GroundPlaneType = 'plane'
+export const DEFAULT_GROUND_PLANE_SIZE_SCALE = 1 // Multiplier for ground plane size (1 = auto-calculated minimum)
 export const DEFAULT_SHOW_GROUND_GRID = true
-export const DEFAULT_GROUND_GRID_COLOR = '#3a3a3a'
-export const DEFAULT_GROUND_GRID_SPACING = 1
+export const DEFAULT_GROUND_GRID_COLOR = '#ff00dd'
+export const DEFAULT_GROUND_GRID_SPACING = 1.0
 
 /** Ground plane surface type */
 export type GroundPlaneType = 'two-sided' | 'plane'
 
 /** Default ground material settings */
-export const DEFAULT_GROUND_MATERIAL_ROUGHNESS = 0.3
-export const DEFAULT_GROUND_MATERIAL_METALNESS = 0.5
+export const DEFAULT_GROUND_MATERIAL_ROUGHNESS = 0.85
+export const DEFAULT_GROUND_MATERIAL_METALNESS = 0.85
 export const DEFAULT_GROUND_MATERIAL_ENVMAP_INTENSITY = 0.5
 
 /** Default axis helper settings */
@@ -328,8 +335,8 @@ interface VisualState {
   perDimensionColorEnabled: boolean
 
   // --- Ground Plane ---
-  /** Whether ground plane is visible */
-  showGroundPlane: boolean
+  /** Which walls are currently active/visible */
+  activeWalls: WallPosition[]
   /** Ground plane offset below object (0-2) */
   groundPlaneOffset: number
   /** Ground plane opacity (0-1) */
@@ -340,6 +347,8 @@ interface VisualState {
   groundPlaneColor: string
   /** Ground plane surface type */
   groundPlaneType: GroundPlaneType
+  /** Ground plane size scale multiplier (1-5, 1 = auto-calculated minimum) */
+  groundPlaneSizeScale: number
   /** Whether ground grid is visible */
   showGroundGrid: boolean
   /** Ground grid line color (hex string) */
@@ -388,11 +397,7 @@ interface VisualState {
   // --- Actions: Advanced Color System ---
   setColorAlgorithm: (algorithm: ColorAlgorithm) => void
   setCosineCoefficients: (coefficients: CosineCoefficients) => void
-  setCosineCoefficient: (
-    key: 'a' | 'b' | 'c' | 'd',
-    index: number,
-    value: number
-  ) => void
+  setCosineCoefficient: (key: 'a' | 'b' | 'c' | 'd', index: number, value: number) => void
   setDistribution: (settings: Partial<DistributionSettings>) => void
   setMultiSourceWeights: (weights: Partial<MultiSourceWeights>) => void
   setLchLightness: (lightness: number) => void
@@ -446,12 +451,14 @@ interface VisualState {
   setPerDimensionColorEnabled: (enabled: boolean) => void
 
   // --- Actions: Ground Plane ---
-  setShowGroundPlane: (show: boolean) => void
+  setActiveWalls: (walls: WallPosition[]) => void
+  toggleWall: (wall: WallPosition) => void
   setGroundPlaneOffset: (offset: number) => void
   setGroundPlaneOpacity: (opacity: number) => void
   setGroundPlaneReflectivity: (reflectivity: number) => void
   setGroundPlaneColor: (color: string) => void
   setGroundPlaneType: (type: GroundPlaneType) => void
+  setGroundPlaneSizeScale: (scale: number) => void
   setShowGroundGrid: (show: boolean) => void
   setGroundGridColor: (color: string) => void
   setGroundGridSpacing: (spacing: number) => void
@@ -560,12 +567,13 @@ const INITIAL_STATE: Omit<VisualState, keyof VisualStateFunctions> = {
   perDimensionColorEnabled: DEFAULT_PER_DIMENSION_COLOR_ENABLED,
 
   // Ground plane
-  showGroundPlane: DEFAULT_SHOW_GROUND_PLANE,
+  activeWalls: [...DEFAULT_ACTIVE_WALLS],
   groundPlaneOffset: DEFAULT_GROUND_PLANE_OFFSET,
   groundPlaneOpacity: DEFAULT_GROUND_PLANE_OPACITY,
   groundPlaneReflectivity: DEFAULT_GROUND_PLANE_REFLECTIVITY,
   groundPlaneColor: DEFAULT_GROUND_PLANE_COLOR,
   groundPlaneType: DEFAULT_GROUND_PLANE_TYPE,
+  groundPlaneSizeScale: DEFAULT_GROUND_PLANE_SIZE_SCALE,
   showGroundGrid: DEFAULT_SHOW_GROUND_GRID,
   groundGridColor: DEFAULT_GROUND_GRID_COLOR,
   groundGridSpacing: DEFAULT_GROUND_GRID_SPACING,
@@ -639,12 +647,14 @@ type VisualStateFunctions = Pick<
   | 'setFresnelEnabled'
   | 'setFresnelIntensity'
   | 'setPerDimensionColorEnabled'
-  | 'setShowGroundPlane'
+  | 'setActiveWalls'
+  | 'toggleWall'
   | 'setGroundPlaneOffset'
   | 'setGroundPlaneOpacity'
   | 'setGroundPlaneReflectivity'
   | 'setGroundPlaneColor'
   | 'setGroundPlaneType'
+  | 'setGroundPlaneSizeScale'
   | 'setShowGroundGrid'
   | 'setGroundGridColor'
   | 'setGroundGridSpacing'
@@ -714,11 +724,7 @@ export const useVisualStore = create<VisualState>((set) => ({
     set({ cosineCoefficients: { ...coefficients } })
   },
 
-  setCosineCoefficient: (
-    key: 'a' | 'b' | 'c' | 'd',
-    index: number,
-    value: number
-  ) => {
+  setCosineCoefficient: (key: 'a' | 'b' | 'c' | 'd', index: number, value: number) => {
     set((state) => {
       const newCoefficients = { ...state.cosineCoefficients }
       const arr = [...newCoefficients[key]] as [number, number, number]
@@ -954,12 +960,23 @@ export const useVisualStore = create<VisualState>((set) => ({
   },
 
   // --- Actions: Ground Plane ---
-  setShowGroundPlane: (show: boolean) => {
-    set({ showGroundPlane: show })
+  setActiveWalls: (walls: WallPosition[]) => {
+    set({ activeWalls: [...walls] })
+  },
+
+  toggleWall: (wall: WallPosition) => {
+    set((state) => {
+      const isActive = state.activeWalls.includes(wall)
+      if (isActive) {
+        return { activeWalls: state.activeWalls.filter((w) => w !== wall) }
+      } else {
+        return { activeWalls: [...state.activeWalls, wall] }
+      }
+    })
   },
 
   setGroundPlaneOffset: (offset: number) => {
-    set({ groundPlaneOffset: Math.max(0, Math.min(2, offset)) })
+    set({ groundPlaneOffset: Math.max(0, Math.min(10, offset)) })
   },
 
   setGroundPlaneOpacity: (opacity: number) => {
@@ -976,6 +993,10 @@ export const useVisualStore = create<VisualState>((set) => ({
 
   setGroundPlaneType: (type: GroundPlaneType) => {
     set({ groundPlaneType: type })
+  },
+
+  setGroundPlaneSizeScale: (scale: number) => {
+    set({ groundPlaneSizeScale: Math.max(1, Math.min(5, scale)) })
   },
 
   setShowGroundGrid: (show: boolean) => {
@@ -1044,15 +1065,12 @@ export const useVisualStore = create<VisualState>((set) => ({
           ...light,
           ...updates,
           // Apply validation for specific fields
-          intensity: updates.intensity !== undefined
-            ? clampIntensity(updates.intensity)
-            : light.intensity,
-          coneAngle: updates.coneAngle !== undefined
-            ? clampConeAngle(updates.coneAngle)
-            : light.coneAngle,
-          penumbra: updates.penumbra !== undefined
-            ? clampPenumbra(updates.penumbra)
-            : light.penumbra,
+          intensity:
+            updates.intensity !== undefined ? clampIntensity(updates.intensity) : light.intensity,
+          coneAngle:
+            updates.coneAngle !== undefined ? clampConeAngle(updates.coneAngle) : light.coneAngle,
+          penumbra:
+            updates.penumbra !== undefined ? clampPenumbra(updates.penumbra) : light.penumbra,
         }
       }),
     }))

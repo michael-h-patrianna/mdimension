@@ -29,6 +29,7 @@ export const DEFAULT_OBJECT_TYPE: ObjectType = 'hypercube';
  */
 export const DIMENSION_CONSTRAINTS: Record<string, { min?: number; exact?: number }> = {
   'root-system': { min: 3 }, // Root systems not meaningful in 2D (A-type produces only 2 trivial roots)
+  'mandelbox': { min: 3 },   // Mandelbox requires 3D+ for raymarching
 };
 
 /**
@@ -41,6 +42,11 @@ export const RECOMMENDED_DIMENSIONS: Record<string, { dimension: number; reason:
   'mandelbrot': {
     dimension: 3,
     reason: 'Uses Mandelbulb formula for true 3D fractal structure',
+  },
+  // Mandelbox works 3D-11D but 3D shows the classic box fractal best
+  'mandelbox': {
+    dimension: 3,
+    reason: 'Classic Mandelbox fractal visualization',
   },
 };
 
@@ -89,6 +95,15 @@ export function validateObjectTypeForDimension(
       valid: false,
       fallbackType: 'hypercube',
       message: 'Root System requires dimension >= 3',
+    };
+  }
+
+  // Mandelbox requires dimension >= 3 (raymarching needs 3D space)
+  if (type === 'mandelbox' && dimension < 3) {
+    return {
+      valid: false,
+      fallbackType: 'mandelbrot',
+      message: 'Mandelbox requires dimension >= 3',
     };
   }
 

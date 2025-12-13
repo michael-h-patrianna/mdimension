@@ -21,12 +21,13 @@ import { PolytopeScene } from '../scenes/PolytopeScene';
 import { PointCloudScene } from '../scenes/PointCloudScene';
 import MandelbulbMesh from './Mandelbulb/MandelbulbMesh';
 import HyperbulbMesh from './Hyperbulb/HyperbulbMesh';
+import MandelboxMesh from './Mandelbox/MandelboxMesh';
 import { useVisualStore } from '@/stores/visualStore';
 
 /**
  * Render mode types
  */
-export type RenderMode = 'polytope' | 'pointcloud' | 'raymarch-3d' | 'raymarch-4d+' | 'none';
+export type RenderMode = 'polytope' | 'pointcloud' | 'raymarch-3d' | 'raymarch-4d+' | 'raymarch-mandelbox' | 'none';
 
 /**
  * Props for UnifiedRenderer
@@ -57,6 +58,13 @@ export function determineRenderMode(
   dimension: number,
   facesVisible: boolean
 ): RenderMode {
+  // Mandelbox uses raymarching when faces are visible (no point cloud fallback)
+  // Edges toggle controls fresnel rim lighting within MandelboxMesh
+  // Vertices are disabled for mandelbox
+  if (objectType === 'mandelbox' && dimension >= 3) {
+    return facesVisible ? 'raymarch-mandelbox' : 'none';
+  }
+
   // Mandelbrot with faces visible uses raymarching
   if (objectType === 'mandelbrot' && facesVisible) {
     if (dimension === 3) return 'raymarch-3d';
@@ -139,6 +147,9 @@ export const UnifiedRenderer = React.memo(function UnifiedRenderer({
 
       {/* Raymarched 4D+ Hyperbulb surface */}
       {renderMode === 'raymarch-4d+' && <HyperbulbMesh />}
+
+      {/* Raymarched 3D-11D Mandelbox surface */}
+      {renderMode === 'raymarch-mandelbox' && <MandelboxMesh />}
     </>
   );
 });
