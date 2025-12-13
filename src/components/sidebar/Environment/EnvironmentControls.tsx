@@ -3,10 +3,10 @@
  * Controls for scene environment settings (background, ground plane, axis helper)
  */
 
-import { useShallow } from 'zustand/react/shallow';
-import { ToggleButton } from '@/components/ui/ToggleButton';
+import { Switch } from '@/components/ui/Switch';
 import { useVisualStore } from '@/stores/visualStore';
 import React from 'react';
+import { useShallow } from 'zustand/react/shallow';
 
 export interface EnvironmentControlsProps {
   className?: string;
@@ -53,22 +53,18 @@ export const EnvironmentControls: React.FC<EnvironmentControlsProps> = React.mem
       </div>
 
       {/* Ground Plane Toggle */}
-      <ToggleButton
-        pressed={showGroundPlane}
-        onToggle={setShowGroundPlane}
-        ariaLabel="Show Ground Plane"
-      >
-        Show Ground Plane
-      </ToggleButton>
+      <Switch
+        checked={showGroundPlane}
+        onCheckedChange={setShowGroundPlane}
+        label="Show Ground Plane"
+      />
 
       {/* Axis Helper Toggle */}
-      <ToggleButton
-        pressed={showAxisHelper}
-        onToggle={setShowAxisHelper}
-        ariaLabel="Show Axis Helper"
-      >
-        Show Axis Helper
-      </ToggleButton>
+      <Switch
+        checked={showAxisHelper}
+        onCheckedChange={setShowAxisHelper}
+        label="Show Axis Helper"
+      />
     </div>
   );
 });

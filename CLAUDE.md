@@ -75,6 +75,47 @@ node scripts/cleanup-vitest.mjs  # Clean up lingering workers
 
 === END CIB-001 ===
 
+## TECH STACK
+
+### Core Framework
+- **React** 19.2.3 - UI library
+- **TypeScript** 5.6.3 - Type-safe JavaScript
+- **Vite** 7.2.7 - Build tool and dev server
+
+### 3D Graphics & Rendering
+- **Three.js** 0.181.0 - WebGL 3D library
+- **@react-three/fiber** 9.4.2 - React renderer for Three.js
+- **@react-three/drei** 10.7.7 - Three.js utilities
+- **@react-three/postprocessing** 3.0.4 - Post-processing effects
+- **postprocessing** 6.38.0 - Post-processing library
+
+### UI & Styling
+- **Tailwind CSS** 4.1.18 - Utility-first CSS framework
+- **@tailwindcss/vite** 4.1.18 - Vite plugin for Tailwind
+- **Motion** 12.23.26 - Animation library
+
+### State Management & Utilities
+- **Zustand** 5.0.2 - State management
+- **convex-hull** 1.0.3 - Computational geometry
+
+### Testing
+- **Vitest** 4.0.15 - Unit testing framework
+- **@testing-library/react** 16.3.0 - React testing utilities
+- **@testing-library/jest-dom** 6.6.3 - Custom matchers
+- **@testing-library/user-event** 14.6.1 - User interaction simulation
+- **happy-dom** 15.11.7 - DOM implementation for testing
+- **jsdom** 25.0.1 - Alternative DOM implementation
+- **Playwright** 1.57.0 - E2E testing
+
+### Development Tools
+- **ESLint** 9.15.0 - Code linting
+- **@typescript-eslint/parser** 8.15.0 - TypeScript ESLint parser
+- **@typescript-eslint/eslint-plugin** 8.15.0 - TypeScript linting rules
+- **eslint-plugin-react-hooks** 5.0.0 - React Hooks linting
+- **eslint-plugin-react-refresh** 0.4.14 - React Refresh linting
+- **eslint-plugin-jsdoc** 61.5.0 - JSDoc linting
+- **Prettier** 3.4.1 - Code formatting
+- **@vitejs/plugin-react** 5.1.2 - Vite React plugin
 
 ## MANDATORY DOCUMENT READS
 - Project architecture and folder structure: `docs/architecture.md`

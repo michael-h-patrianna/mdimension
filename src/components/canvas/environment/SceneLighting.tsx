@@ -1,14 +1,14 @@
 /**
  * Scene Lighting Component
  *
- * Manages ambient and directional lighting for the 3D scene with dynamic positioning
+ * Manages ambient and point lighting for the 3D scene with dynamic positioning
  * based on spherical coordinates. The light position is calculated from horizontal
- * and vertical angles to provide intuitive control over light direction.
+ * and vertical angles to provide intuitive control over light position.
  *
  * Features:
  * - Ambient light with configurable intensity
- * - Directional light with spherical coordinate positioning
- * - Optional visual indicator for light direction
+ * - Point light with spherical coordinate positioning
+ * - Optional visual indicator for light position
  * - Reactive to visual store state changes
  *
  * @example
@@ -40,7 +40,13 @@ import { useVisualStore } from '@/stores/visualStore';
 const LIGHT_INDICATOR_GEOMETRY = new SphereGeometry(1, 16, 16);
 
 /**
- * Renders ambient and directional lighting for the scene.
+ * Default distance for the point light from the origin.
+ * PointLight has distance falloff, so this affects the scene uniformly.
+ */
+const LIGHT_DISTANCE = 10;
+
+/**
+ * Renders ambient and point lighting for the scene.
  *
  * @returns Three.js light components configured from visual store
  */
@@ -57,10 +63,10 @@ export const SceneLighting = memo(function SceneLighting() {
    * Calculate light position from spherical coordinates.
    *
    * Converts horizontal and vertical angles to Cartesian coordinates
-   * for positioning the directional light in 3D space.
+   * for positioning the point light in 3D space.
    *
    * @remarks
-   * - Distance is fixed at 10 units from origin
+   * - Distance is fixed at LIGHT_DISTANCE units from origin
    * - Uses standard spherical coordinate conversion:
    *   - x = r * cos(v) * cos(h)
    *   - y = r * sin(v)
@@ -69,11 +75,10 @@ export const SceneLighting = memo(function SceneLighting() {
   const lightPosition = useMemo(() => {
     const h = (lightHorizontalAngle * Math.PI) / 180;
     const v = (lightVerticalAngle * Math.PI) / 180;
-    const distance = 10;
     return [
-      Math.cos(v) * Math.cos(h) * distance,
-      Math.sin(v) * distance,
-      Math.cos(v) * Math.sin(h) * distance,
+      Math.cos(v) * Math.cos(h) * LIGHT_DISTANCE,
+      Math.sin(v) * LIGHT_DISTANCE,
+      Math.cos(v) * Math.sin(h) * LIGHT_DISTANCE,
     ] as [number, number, number];
   }, [lightHorizontalAngle, lightVerticalAngle]);
 
@@ -103,10 +108,12 @@ export const SceneLighting = memo(function SceneLighting() {
     <>
       <ambientLight intensity={ambientIntensity} />
       {lightEnabled && (
-        <directionalLight
+        <pointLight
           position={lightPosition}
           color={lightColor}
-          intensity={diffuseIntensity * 0.6}
+          intensity={diffuseIntensity * 10}
+          distance={0}
+          decay={0}
         />
       )}
       {showLightIndicator && lightEnabled && (

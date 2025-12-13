@@ -5,8 +5,7 @@
 
 import { Section } from '@/components/ui/Section';
 import React from 'react';
-import { BloomControls } from './BloomControls';
-import { LightingControls } from './LightingControls';
+import { MaterialControls } from './MaterialControls';
 import { ShaderSettings } from './ShaderSettings';
 import { VisualControls } from './VisualControls';
 
@@ -23,11 +22,8 @@ export const VisualSection: React.FC<VisualSectionProps> = ({
         {/* Per-Shader Settings (shown when faces are visible) */}
         <ShaderSettings />
 
-        {/* Bloom Controls */}
-        <BloomControls />
-
-        {/* Lighting Controls - for surface rendering */}
-        <LightingControls />
+        {/* Material Controls - Diffuse & Specular */}
+        <MaterialControls />
 
         {/* Color & Visual Settings */}
         <VisualControls />

@@ -56,82 +56,6 @@ export interface PolytopeSceneProps {
 const MAX_EXTRA_DIMS = 7;
 
 /**
- * Build N-D vertex shader code (shared between all materials)
- */
-function buildNDVertexShaderCore(): string {
-  return `
-    // Transformation uniforms
-    uniform mat4 uRotationMatrix4D;
-    uniform int uDimension;
-    uniform vec4 uScale4D;
-    uniform float uExtraScales[${MAX_EXTRA_DIMS}];
-    uniform float uProjectionDistance;
-    uniform int uProjectionType;
-    uniform float uExtraRotationCols[${MAX_EXTRA_DIMS * 4}];
-    uniform float uDepthRowSums[11];
-
-    // Extra dimension attributes
-    attribute float aExtraDim0;
-    attribute float aExtraDim1;
-    attribute float aExtraDim2;
-    attribute float aExtraDim3;
-    attribute float aExtraDim4;
-    attribute float aExtraDim5;
-    attribute float aExtraDim6;
-
-    vec3 transformND() {
-      // Collect scaled input dimensions
-      float scaledInputs[11];
-      scaledInputs[0] = position.x * uScale4D.x;
-      scaledInputs[1] = position.y * uScale4D.y;
-      scaledInputs[2] = position.z * uScale4D.z;
-      scaledInputs[3] = aExtraDim0 * uScale4D.w;
-      scaledInputs[4] = aExtraDim1 * uExtraScales[0];
-      scaledInputs[5] = aExtraDim2 * uExtraScales[1];
-      scaledInputs[6] = aExtraDim3 * uExtraScales[2];
-      scaledInputs[7] = aExtraDim4 * uExtraScales[3];
-      scaledInputs[8] = aExtraDim5 * uExtraScales[4];
-      scaledInputs[9] = aExtraDim6 * uExtraScales[5];
-      scaledInputs[10] = 0.0;
-
-      // Apply 4x4 rotation to first 4 dimensions
-      vec4 scaledPos = vec4(scaledInputs[0], scaledInputs[1], scaledInputs[2], scaledInputs[3]);
-      vec4 rotated = uRotationMatrix4D * scaledPos;
-
-      // Add contributions from extra dimensions (5+) to x,y,z,w
-      for (int i = 0; i < ${MAX_EXTRA_DIMS}; i++) {
-        if (i + 5 <= uDimension) {
-          float extraDimValue = scaledInputs[i + 4];
-          rotated.x += uExtraRotationCols[i * 4 + 0] * extraDimValue;
-          rotated.y += uExtraRotationCols[i * 4 + 1] * extraDimValue;
-          rotated.z += uExtraRotationCols[i * 4 + 2] * extraDimValue;
-          rotated.w += uExtraRotationCols[i * 4 + 3] * extraDimValue;
-        }
-      }
-
-      // Project to 3D
-      vec3 projected;
-      if (uProjectionType == 0) {
-        projected = rotated.xyz;
-      } else {
-        float effectiveDepth = rotated.w;
-        for (int j = 0; j < 11; j++) {
-          if (j < uDimension) {
-            effectiveDepth += uDepthRowSums[j] * scaledInputs[j];
-          }
-        }
-        float normFactor = uDimension > 4 ? sqrt(float(uDimension - 3)) : 1.0;
-        effectiveDepth /= normFactor;
-        float factor = 1.0 / (uProjectionDistance - effectiveDepth);
-        projected = rotated.xyz * factor;
-      }
-
-      return projected;
-    }
-  `;
-}
-
-/**
  * Create base uniforms for N-D transformation (shared by all materials)
  */
 function createNDUniforms(): Record<string, { value: unknown }> {
@@ -148,17 +72,31 @@ function createNDUniforms(): Record<string, { value: unknown }> {
 }
 
 /**
- * Update N-D uniforms on a shader material
+ * Update N-D uniforms on a material.
+ * Works with both ShaderMaterial (uniforms on material) and
+ * MeshPhongMaterial with onBeforeCompile (uniforms in userData).
  */
 function updateNDUniforms(
-  material: ShaderMaterial,
+  material: THREE.Material,
   gpuData: ReturnType<typeof matrixToGPUUniforms>,
   dimension: number,
   scales: number[],
   projectionDistance: number,
   projectionType: string
 ): void {
-  const u = material.uniforms;
+  // Get uniforms - either from ShaderMaterial directly or from userData for Phong
+  let u: Record<string, { value: unknown }> | undefined;
+
+  if ('uniforms' in material && material.uniforms) {
+    // ShaderMaterial
+    u = (material as ShaderMaterial).uniforms;
+  } else if (material.userData?.ndUniforms) {
+    // MeshPhongMaterial with onBeforeCompile
+    u = material.userData.ndUniforms;
+  }
+
+  if (!u) return;
+
   if (u.uRotationMatrix4D) (u.uRotationMatrix4D.value as Matrix4).copy(gpuData.rotationMatrix4D);
   if (u.uDimension) u.uDimension.value = dimension;
   if (u.uScale4D) u.uScale4D.value = [scales[0] ?? 1, scales[1] ?? 1, scales[2] ?? 1, scales[3] ?? 1];
@@ -179,79 +117,204 @@ function updateNDUniforms(
 }
 
 /**
- * Generate GPU face shader material with N-D transforms
+ * Convert horizontal/vertical angles to a normalized direction vector.
+ * MUST match the light position calculation in SceneLighting.tsx exactly.
+ * This is the direction FROM origin TO light (same as light position normalized).
+ */
+function anglesToDirection(horizontalDeg: number, verticalDeg: number): THREE.Vector3 {
+  const hRad = (horizontalDeg * Math.PI) / 180;
+  const vRad = (verticalDeg * Math.PI) / 180;
+  // Match SceneLighting: x = cos(v)*cos(h), y = sin(v), z = cos(v)*sin(h)
+  return new THREE.Vector3(
+    Math.cos(vRad) * Math.cos(hRad),
+    Math.sin(vRad),
+    Math.cos(vRad) * Math.sin(hRad)
+  ).normalize();
+}
+
+/**
+ * Build vertex shader for N-D transformation with lighting varyings
+ */
+function buildFaceVertexShader(): string {
+  return `
+    // N-D Transformation uniforms
+    uniform mat4 uRotationMatrix4D;
+    uniform int uDimension;
+    uniform vec4 uScale4D;
+    uniform float uExtraScales[${MAX_EXTRA_DIMS}];
+    uniform float uProjectionDistance;
+    uniform int uProjectionType;
+    uniform float uExtraRotationCols[${MAX_EXTRA_DIMS * 4}];
+    uniform float uDepthRowSums[11];
+
+    // Extra dimension attributes
+    attribute float aExtraDim0;
+    attribute float aExtraDim1;
+    attribute float aExtraDim2;
+    attribute float aExtraDim3;
+    attribute float aExtraDim4;
+    attribute float aExtraDim5;
+    attribute float aExtraDim6;
+
+    // Varyings for fragment shader
+    varying vec3 vWorldPosition;
+    varying vec3 vViewDir;
+
+    vec3 transformND() {
+      float scaledInputs[11];
+      scaledInputs[0] = position.x * uScale4D.x;
+      scaledInputs[1] = position.y * uScale4D.y;
+      scaledInputs[2] = position.z * uScale4D.z;
+      scaledInputs[3] = aExtraDim0 * uScale4D.w;
+      scaledInputs[4] = aExtraDim1 * uExtraScales[0];
+      scaledInputs[5] = aExtraDim2 * uExtraScales[1];
+      scaledInputs[6] = aExtraDim3 * uExtraScales[2];
+      scaledInputs[7] = aExtraDim4 * uExtraScales[3];
+      scaledInputs[8] = aExtraDim5 * uExtraScales[4];
+      scaledInputs[9] = aExtraDim6 * uExtraScales[5];
+      scaledInputs[10] = 0.0;
+
+      vec4 scaledPos = vec4(scaledInputs[0], scaledInputs[1], scaledInputs[2], scaledInputs[3]);
+      vec4 rotated = uRotationMatrix4D * scaledPos;
+
+      for (int i = 0; i < ${MAX_EXTRA_DIMS}; i++) {
+        if (i + 5 <= uDimension) {
+          float extraDimValue = scaledInputs[i + 4];
+          rotated.x += uExtraRotationCols[i * 4 + 0] * extraDimValue;
+          rotated.y += uExtraRotationCols[i * 4 + 1] * extraDimValue;
+          rotated.z += uExtraRotationCols[i * 4 + 2] * extraDimValue;
+          rotated.w += uExtraRotationCols[i * 4 + 3] * extraDimValue;
+        }
+      }
+
+      vec3 projected;
+      if (uProjectionType == 0) {
+        projected = rotated.xyz;
+      } else {
+        float effectiveDepth = rotated.w;
+        for (int j = 0; j < 11; j++) {
+          if (j < uDimension) {
+            effectiveDepth += uDepthRowSums[j] * scaledInputs[j];
+          }
+        }
+        float normFactor = uDimension > 4 ? sqrt(float(uDimension - 3)) : 1.0;
+        effectiveDepth /= normFactor;
+        float factor = 1.0 / (uProjectionDistance - effectiveDepth);
+        projected = rotated.xyz * factor;
+      }
+
+      return projected;
+    }
+
+    void main() {
+      vec3 transformed = transformND();
+      vec4 worldPos = modelMatrix * vec4(transformed, 1.0);
+      gl_Position = projectionMatrix * viewMatrix * worldPos;
+
+      // Pass world position for normal calculation in fragment shader
+      vWorldPosition = worldPos.xyz;
+      vViewDir = normalize(cameraPosition - worldPos.xyz);
+    }
+  `;
+}
+
+/**
+ * Build fragment shader with full lighting (matches Mandelbulb approach)
+ */
+function buildFaceFragmentShader(): string {
+  return `
+    // Color uniforms
+    uniform vec3 uColor;
+    uniform float uOpacity;
+
+    // Lighting uniforms
+    uniform bool uLightEnabled;
+    uniform vec3 uLightColor;
+    uniform vec3 uLightDirection;
+    uniform float uLightStrength;
+    uniform float uAmbientIntensity;
+    uniform float uDiffuseIntensity;
+    uniform float uSpecularIntensity;
+    uniform float uSpecularPower;
+    uniform vec3 uSpecularColor;
+
+    // Fresnel uniforms
+    uniform bool uFresnelEnabled;
+    uniform float uFresnelIntensity;
+    uniform vec3 uRimColor;
+
+    // Varyings
+    varying vec3 vWorldPosition;
+    varying vec3 vViewDir;
+
+    void main() {
+      // Compute face normal from screen-space derivatives of world position
+      vec3 dPdx = dFdx(vWorldPosition);
+      vec3 dPdy = dFdy(vWorldPosition);
+      vec3 normal = normalize(cross(dPdx, dPdy));
+      vec3 viewDir = normalize(vViewDir);
+
+      // Start with ambient
+      vec3 col = uColor * uAmbientIntensity;
+
+      if (uLightEnabled) {
+        vec3 lightDir = normalize(uLightDirection);
+
+        // Diffuse (Lambert) - multiplied by light strength
+        float NdotL = max(dot(normal, lightDir), 0.0);
+        col += uColor * uLightColor * NdotL * uDiffuseIntensity * uLightStrength;
+
+        // Specular (Blinn-Phong) - multiplied by light strength
+        vec3 halfDir = normalize(lightDir + viewDir);
+        float NdotH = max(dot(normal, halfDir), 0.0);
+        float spec = pow(NdotH, uSpecularPower) * uSpecularIntensity * uLightStrength;
+        col += uSpecularColor * uLightColor * spec;
+
+        // Fresnel rim lighting
+        if (uFresnelEnabled && uFresnelIntensity > 0.0) {
+          float NdotV = max(dot(normal, viewDir), 0.0);
+          float rim = pow(1.0 - NdotV, 3.0) * uFresnelIntensity * 2.0;
+          rim *= (0.3 + 0.7 * NdotL);
+          col += uRimColor * rim;
+        }
+      }
+
+      gl_FragColor = vec4(col, uOpacity);
+    }
+  `;
+}
+
+/**
+ * Create face ShaderMaterial with custom lighting (same approach as Mandelbulb)
  */
 function createFaceShaderMaterial(
   faceColor: string,
-  edgeColor: string,
-  opacity: number,
-  fresnelEnabled: boolean,
-  colorMode: string
+  opacity: number
 ): ShaderMaterial {
-  const vertexShader = `
-    ${buildNDVertexShaderCore()}
-
-    attribute float aFaceDepth;
-    varying vec3 vNormal;
-    varying vec3 vViewPosition;
-    varying float vFaceDepth;
-
-    void main() {
-      vec3 projected = transformND();
-      vec4 mvPosition = modelViewMatrix * vec4(projected, 1.0);
-      gl_Position = projectionMatrix * mvPosition;
-      vNormal = normalize(normalMatrix * normal);
-      vViewPosition = -mvPosition.xyz;
-      vFaceDepth = aFaceDepth;
-    }
-  `;
-
-  const fragmentShader = `
-    uniform vec3 uFaceColor;
-    uniform vec3 uEdgeColor;
-    uniform float uOpacity;
-    uniform int uColorMode;
-    uniform bool uFresnelEnabled;
-
-    varying vec3 vNormal;
-    varying vec3 vViewPosition;
-    varying float vFaceDepth;
-
-    void main() {
-      vec3 normal = normalize(vNormal);
-      vec3 viewDir = normalize(vViewPosition);
-
-      vec3 baseColor;
-      if (uColorMode == 0) {
-        baseColor = uFaceColor;
-      } else {
-        baseColor = mix(uFaceColor, uEdgeColor, vFaceDepth);
-      }
-
-      float ambient = 0.4;
-      float diffuse = max(dot(normal, vec3(0.5, 1.0, 0.5)), 0.0) * 0.6;
-      vec3 litColor = baseColor * (ambient + diffuse);
-
-      if (uFresnelEnabled) {
-        float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 3.0);
-        litColor += vec3(fresnel * 0.3);
-      }
-
-      gl_FragColor = vec4(litColor, uOpacity);
-    }
-  `;
-
   return new ShaderMaterial({
     uniforms: {
+      // N-D transformation uniforms
       ...createNDUniforms(),
-      uFaceColor: { value: new Color(faceColor) },
-      uEdgeColor: { value: new Color(edgeColor) },
+      // Color
+      uColor: { value: new Color(faceColor) },
       uOpacity: { value: opacity },
-      uColorMode: { value: colorMode === 'palette' ? 1 : 0 },
-      uFresnelEnabled: { value: fresnelEnabled },
+      // Lighting (updated every frame from store)
+      uLightEnabled: { value: true },
+      uLightColor: { value: new Color('#ffffff') },
+      uLightDirection: { value: new Vector3(0.5, 1, 0.5).normalize() },
+      uLightStrength: { value: 1.0 },
+      uAmbientIntensity: { value: 0.3 },
+      uDiffuseIntensity: { value: 1.0 },
+      uSpecularIntensity: { value: 1.0 },
+      uSpecularPower: { value: 32.0 },
+      uSpecularColor: { value: new Color('#ffffff') },
+      // Fresnel
+      uFresnelEnabled: { value: false },
+      uFresnelIntensity: { value: 0.5 },
+      uRimColor: { value: new Color('#ffffff') },
     },
-    vertexShader,
-    fragmentShader,
+    vertexShader: buildFaceVertexShader(),
+    fragmentShader: buildFaceFragmentShader(),
     transparent: opacity < 1,
     side: DoubleSide,
     depthWrite: opacity >= 1,
@@ -259,83 +322,128 @@ function createFaceShaderMaterial(
 }
 
 /**
- * Generate GPU edge shader material with N-D transforms
+ * Build edge vertex shader (N-D transformation only, no lighting)
  */
-function createEdgeShaderMaterial(edgeColor: string, opacity: number): ShaderMaterial {
-  const vertexShader = `
-    ${buildNDVertexShaderCore()}
+function buildEdgeVertexShader(): string {
+  return `
+    uniform mat4 uRotationMatrix4D;
+    uniform int uDimension;
+    uniform vec4 uScale4D;
+    uniform float uExtraScales[${MAX_EXTRA_DIMS}];
+    uniform float uProjectionDistance;
+    uniform int uProjectionType;
+    uniform float uExtraRotationCols[${MAX_EXTRA_DIMS * 4}];
+    uniform float uDepthRowSums[11];
+
+    attribute float aExtraDim0;
+    attribute float aExtraDim1;
+    attribute float aExtraDim2;
+    attribute float aExtraDim3;
+    attribute float aExtraDim4;
+    attribute float aExtraDim5;
+    attribute float aExtraDim6;
+
+    vec3 transformND() {
+      float scaledInputs[11];
+      scaledInputs[0] = position.x * uScale4D.x;
+      scaledInputs[1] = position.y * uScale4D.y;
+      scaledInputs[2] = position.z * uScale4D.z;
+      scaledInputs[3] = aExtraDim0 * uScale4D.w;
+      scaledInputs[4] = aExtraDim1 * uExtraScales[0];
+      scaledInputs[5] = aExtraDim2 * uExtraScales[1];
+      scaledInputs[6] = aExtraDim3 * uExtraScales[2];
+      scaledInputs[7] = aExtraDim4 * uExtraScales[3];
+      scaledInputs[8] = aExtraDim5 * uExtraScales[4];
+      scaledInputs[9] = aExtraDim6 * uExtraScales[5];
+      scaledInputs[10] = 0.0;
+
+      vec4 scaledPos = vec4(scaledInputs[0], scaledInputs[1], scaledInputs[2], scaledInputs[3]);
+      vec4 rotated = uRotationMatrix4D * scaledPos;
+
+      for (int i = 0; i < ${MAX_EXTRA_DIMS}; i++) {
+        if (i + 5 <= uDimension) {
+          float extraDimValue = scaledInputs[i + 4];
+          rotated.x += uExtraRotationCols[i * 4 + 0] * extraDimValue;
+          rotated.y += uExtraRotationCols[i * 4 + 1] * extraDimValue;
+          rotated.z += uExtraRotationCols[i * 4 + 2] * extraDimValue;
+          rotated.w += uExtraRotationCols[i * 4 + 3] * extraDimValue;
+        }
+      }
+
+      vec3 projected;
+      if (uProjectionType == 0) {
+        projected = rotated.xyz;
+      } else {
+        float effectiveDepth = rotated.w;
+        for (int j = 0; j < 11; j++) {
+          if (j < uDimension) {
+            effectiveDepth += uDepthRowSums[j] * scaledInputs[j];
+          }
+        }
+        float normFactor = uDimension > 4 ? sqrt(float(uDimension - 3)) : 1.0;
+        effectiveDepth /= normFactor;
+        float factor = 1.0 / (uProjectionDistance - effectiveDepth);
+        projected = rotated.xyz * factor;
+      }
+
+      return projected;
+    }
 
     void main() {
       vec3 projected = transformND();
       gl_Position = projectionMatrix * modelViewMatrix * vec4(projected, 1.0);
     }
   `;
+}
 
-  const fragmentShader = `
-    uniform vec3 uColor;
-    uniform float uOpacity;
-
-    void main() {
-      gl_FragColor = vec4(uColor, uOpacity);
-    }
-  `;
-
+/**
+ * Create edge material with N-D transformation (no lighting)
+ */
+function createEdgeMaterial(edgeColor: string, opacity: number): ShaderMaterial {
   return new ShaderMaterial({
     uniforms: {
       ...createNDUniforms(),
       uColor: { value: new Color(edgeColor) },
       uOpacity: { value: opacity },
     },
-    vertexShader,
-    fragmentShader,
+    vertexShader: buildEdgeVertexShader(),
+    fragmentShader: `
+      uniform vec3 uColor;
+      uniform float uOpacity;
+      void main() {
+        gl_FragColor = vec4(uColor, uOpacity);
+      }
+    `,
     transparent: opacity < 1,
     depthWrite: opacity >= 1,
   });
 }
 
 /**
- * Generate GPU vertex cube face shader material (solid color, simple lighting)
+ * Create vertex cube ShaderMaterial with custom lighting (same as face material)
  */
-function createVertexCubeFaceMaterial(vertexColor: string, opacity: number): ShaderMaterial {
-  const vertexShader = `
-    ${buildNDVertexShaderCore()}
-
-    varying vec3 vNormal;
-    varying vec3 vViewPosition;
-
-    void main() {
-      vec3 projected = transformND();
-      vec4 mvPosition = modelViewMatrix * vec4(projected, 1.0);
-      gl_Position = projectionMatrix * mvPosition;
-      vNormal = normalize(normalMatrix * normal);
-      vViewPosition = -mvPosition.xyz;
-    }
-  `;
-
-  const fragmentShader = `
-    uniform vec3 uColor;
-    uniform float uOpacity;
-
-    varying vec3 vNormal;
-    varying vec3 vViewPosition;
-
-    void main() {
-      vec3 normal = normalize(vNormal);
-      float ambient = 0.5;
-      float diffuse = max(dot(normal, vec3(0.5, 1.0, 0.5)), 0.0) * 0.5;
-      vec3 litColor = uColor * (ambient + diffuse);
-      gl_FragColor = vec4(litColor, uOpacity);
-    }
-  `;
-
+function createVertexCubeShaderMaterial(vertexColor: string, opacity: number): ShaderMaterial {
   return new ShaderMaterial({
     uniforms: {
       ...createNDUniforms(),
       uColor: { value: new Color(vertexColor) },
       uOpacity: { value: opacity },
+      // Lighting
+      uLightEnabled: { value: true },
+      uLightColor: { value: new Color('#ffffff') },
+      uLightDirection: { value: new Vector3(0.5, 1, 0.5).normalize() },
+      uLightStrength: { value: 1.0 },
+      uAmbientIntensity: { value: 0.3 },
+      uDiffuseIntensity: { value: 1.0 },
+      uSpecularIntensity: { value: 1.0 },
+      uSpecularPower: { value: 32.0 },
+      uSpecularColor: { value: new Color('#ffffff') },
+      uFresnelEnabled: { value: false },
+      uFresnelIntensity: { value: 0.5 },
+      uRimColor: { value: new Color('#ffffff') },
     },
-    vertexShader,
-    fragmentShader,
+    vertexShader: buildFaceVertexShader(),
+    fragmentShader: buildFaceFragmentShader(),
     transparent: opacity < 1,
     side: DoubleSide,
     depthWrite: opacity >= 1,
@@ -452,7 +560,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     edgeColor,
     faceColor,
     shaderSettings,
-    colorMode,
   } = useVisualStore(
     useShallow((state) => ({
       vertexVisible: state.vertexVisible,
@@ -463,7 +570,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
       edgeColor: state.edgeColor,
       faceColor: state.faceColor,
       shaderSettings: state.shaderSettings,
-      colorMode: state.colorMode,
     }))
   );
 
@@ -471,26 +577,21 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   const surfaceSettings = shaderSettings.surface;
 
   // ============ MATERIALS ============
+  // Uses custom ShaderMaterial with lighting (same approach as Mandelbulb)
   const faceMaterial = useMemo(() => {
-    return createFaceShaderMaterial(
-      faceColor,
-      edgeColor,
-      surfaceSettings.faceOpacity,
-      surfaceSettings.fresnelEnabled,
-      colorMode
-    );
-  }, [faceColor, edgeColor, surfaceSettings.faceOpacity, surfaceSettings.fresnelEnabled, colorMode]);
+    return createFaceShaderMaterial(faceColor, surfaceSettings.faceOpacity);
+  }, [faceColor, surfaceSettings.faceOpacity]);
 
   const edgeMaterial = useMemo(() => {
-    return createEdgeShaderMaterial(edgeColor, opacity);
+    return createEdgeMaterial(edgeColor, opacity);
   }, [edgeColor, opacity]);
 
   const vertexCubeFaceMaterial = useMemo(() => {
-    return createVertexCubeFaceMaterial(vertexColor, opacity);
+    return createVertexCubeShaderMaterial(vertexColor, opacity);
   }, [vertexColor, opacity]);
 
   const vertexCubeEdgeMaterial = useMemo(() => {
-    return createEdgeShaderMaterial(vertexColor, opacity);
+    return createEdgeMaterial(vertexColor, opacity);
   }, [vertexColor, opacity]);
 
   // ============ FACE GEOMETRY ============
@@ -506,7 +607,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
 
     const geo = new BufferGeometry();
     const positions = new Float32Array(vertexCount * 3);
-    const normals = new Float32Array(vertexCount * 3);
     const extraDim0 = new Float32Array(vertexCount);
     const extraDim1 = new Float32Array(vertexCount);
     const extraDim2 = new Float32Array(vertexCount);
@@ -519,13 +619,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     let idx = 0;
     let faceIdx = 0;
 
-    const tempVA = new Vector3();
-    const tempVB = new Vector3();
-    const tempVC = new Vector3();
-    const tempCB = new Vector3();
-    const tempAB = new Vector3();
-
-    const setVertex = (vIdx: number, depth: number, nx: number, ny: number, nz: number) => {
+    const setVertex = (vIdx: number, depth: number) => {
       const v = baseVertices[vIdx];
       if (!v) return;
 
@@ -533,10 +627,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
       positions[i3] = v[0] ?? 0;
       positions[i3 + 1] = v[1] ?? 0;
       positions[i3 + 2] = v[2] ?? 0;
-
-      normals[i3] = nx;
-      normals[i3 + 1] = ny;
-      normals[i3 + 2] = nz;
 
       extraDim0[idx] = v[3] ?? 0;
       extraDim1[idx] = v[4] ?? 0;
@@ -558,44 +648,26 @@ export const PolytopeScene = React.memo(function PolytopeScene({
       }
 
       const depth = faceDepths[faceIdx] ?? 0.5;
-      const v0 = baseVertices[vis[0]!];
-      const v1 = baseVertices[vis[1]!];
-      const v2 = baseVertices[vis[2]!];
 
-      if (!v0 || !v1 || !v2) {
-        faceIdx++;
-        continue;
-      }
-
-      tempVA.set(v0[0] ?? 0, v0[1] ?? 0, v0[2] ?? 0);
-      tempVB.set(v1[0] ?? 0, v1[1] ?? 0, v1[2] ?? 0);
-      tempVC.set(v2[0] ?? 0, v2[1] ?? 0, v2[2] ?? 0);
-      tempCB.subVectors(tempVC, tempVB);
-      tempAB.subVectors(tempVA, tempVB);
-      tempCB.cross(tempAB).normalize();
-
-      const nx = tempCB.x;
-      const ny = tempCB.y;
-      const nz = tempCB.z;
-
+      // Normals computed in fragment shader via dFdx/dFdy - no need to calculate here
       if (vis.length === 3) {
-        setVertex(vis[0]!, depth, nx, ny, nz);
-        setVertex(vis[1]!, depth, nx, ny, nz);
-        setVertex(vis[2]!, depth, nx, ny, nz);
+        setVertex(vis[0]!, depth);
+        setVertex(vis[1]!, depth);
+        setVertex(vis[2]!, depth);
       } else if (vis.length === 4) {
-        setVertex(vis[0]!, depth, nx, ny, nz);
-        setVertex(vis[1]!, depth, nx, ny, nz);
-        setVertex(vis[2]!, depth, nx, ny, nz);
-        setVertex(vis[0]!, depth, nx, ny, nz);
-        setVertex(vis[2]!, depth, nx, ny, nz);
-        setVertex(vis[3]!, depth, nx, ny, nz);
+        setVertex(vis[0]!, depth);
+        setVertex(vis[1]!, depth);
+        setVertex(vis[2]!, depth);
+        setVertex(vis[0]!, depth);
+        setVertex(vis[2]!, depth);
+        setVertex(vis[3]!, depth);
       }
 
       faceIdx++;
     }
 
     geo.setAttribute('position', new Float32BufferAttribute(positions, 3));
-    geo.setAttribute('normal', new Float32BufferAttribute(normals, 3));
+    // Note: normals are computed in fragment shader via dFdx/dFdy derivatives
     geo.setAttribute('aExtraDim0', new Float32BufferAttribute(extraDim0, 1));
     geo.setAttribute('aExtraDim1', new Float32BufferAttribute(extraDim1, 1));
     geo.setAttribute('aExtraDim2', new Float32BufferAttribute(extraDim2, 1));
@@ -762,6 +834,25 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     const { uniformScale, perAxisScale } = useTransformStore.getState();
     const projectionType = useProjectionStore.getState().type;
 
+    // Read lighting settings from store
+    const visualState = useVisualStore.getState();
+    const lightEnabled = visualState.lightEnabled;
+    const lightColor = visualState.lightColor;
+    const lightHorizontalAngle = visualState.lightHorizontalAngle;
+    const lightVerticalAngle = visualState.lightVerticalAngle;
+    const lightStrength = visualState.lightStrength ?? 1.0;
+    const ambientIntensity = visualState.ambientIntensity;
+    const diffuseIntensity = visualState.diffuseIntensity;
+    const specularIntensity = visualState.specularIntensity;
+    const shininess = visualState.shininess;
+    const specularColor = visualState.specularColor;
+    const fresnelEnabled = visualState.shaderSettings.surface.fresnelEnabled;
+    const fresnelIntensity = visualState.fresnelIntensity;
+    const rimColor = visualState.edgeColor;
+
+    // Calculate light direction from angles
+    const lightDirection = anglesToDirection(lightHorizontalAngle, lightVerticalAngle);
+
     // Build transformation data
     const scales: number[] = [];
     for (let i = 0; i < dimension; i++) {
@@ -785,9 +876,24 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     for (const ref of meshRefs) {
       if (ref.current) {
         const material = ref.current.material as ShaderMaterial;
-        if (material.uniforms) {
-          updateNDUniforms(material, gpuData, dimension, scales, projectionDistance, projectionType);
-        }
+
+        // Update N-D transformation uniforms
+        updateNDUniforms(material, gpuData, dimension, scales, projectionDistance, projectionType);
+
+        // Update lighting uniforms (only for materials that have them)
+        const u = material.uniforms;
+        if (u.uLightEnabled) u.uLightEnabled.value = lightEnabled;
+        if (u.uLightColor) (u.uLightColor.value as Color).set(lightColor);
+        if (u.uLightDirection) (u.uLightDirection.value as Vector3).copy(lightDirection);
+        if (u.uLightStrength) u.uLightStrength.value = lightStrength;
+        if (u.uAmbientIntensity) u.uAmbientIntensity.value = ambientIntensity;
+        if (u.uDiffuseIntensity) u.uDiffuseIntensity.value = diffuseIntensity;
+        if (u.uSpecularIntensity) u.uSpecularIntensity.value = specularIntensity;
+        if (u.uSpecularPower) u.uSpecularPower.value = shininess;
+        if (u.uSpecularColor) (u.uSpecularColor.value as Color).set(specularColor);
+        if (u.uFresnelEnabled) u.uFresnelEnabled.value = fresnelEnabled;
+        if (u.uFresnelIntensity) u.uFresnelIntensity.value = fresnelIntensity;
+        if (u.uRimColor) (u.uRimColor.value as Color).set(rimColor);
       }
     }
   });

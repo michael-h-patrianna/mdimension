@@ -42,10 +42,8 @@ export const DEFAULT_FACES_VISIBLE = true
 /** Default bloom settings (matching original Dual Filter Bloom) */
 export const DEFAULT_BLOOM_ENABLED = true
 export const DEFAULT_BLOOM_INTENSITY = 0.3
-export const DEFAULT_BLOOM_THRESHOLD = 0
-export const DEFAULT_BLOOM_RADIUS = 0.3
-export const DEFAULT_BLOOM_SOFT_KNEE = 0 // Soft transition at threshold edge
-export const DEFAULT_BLOOM_LEVELS = 4 // Mip levels (matches original kMaxMipLevels)
+export const DEFAULT_BLOOM_THRESHOLD = 0.35
+export const DEFAULT_BLOOM_RADIUS = 0.15
 
 /** Default lighting settings */
 export const DEFAULT_LIGHT_ENABLED = true
@@ -60,9 +58,10 @@ export const DEFAULT_SHOW_LIGHT_INDICATOR = false
 /** Enhanced lighting settings */
 export const DEFAULT_SPECULAR_COLOR = '#FFFFFF'
 export const DEFAULT_DIFFUSE_INTENSITY = 1.0
+export const DEFAULT_LIGHT_STRENGTH = 1.0
 export const DEFAULT_TONE_MAPPING_ENABLED = true
-export const DEFAULT_TONE_MAPPING_ALGORITHM: ToneMappingAlgorithm = 'reinhard'
-export const DEFAULT_EXPOSURE = 1.0
+export const DEFAULT_TONE_MAPPING_ALGORITHM: ToneMappingAlgorithm = 'aces'
+export const DEFAULT_EXPOSURE = 0.7
 
 /** Default depth effect settings */
 export const DEFAULT_DEPTH_ATTENUATION_ENABLED = true
@@ -209,10 +208,6 @@ interface VisualState {
   bloomThreshold: number
   /** Bloom radius/spread (0-1) */
   bloomRadius: number
-  /** Soft knee - smooth transition at threshold edge (0-1) */
-  bloomSoftKnee: number
-  /** Number of mip levels for blur chain (1-8) */
-  bloomLevels: number
 
   // --- Lighting ---
   /** Whether directional light is enabled */
@@ -237,6 +232,8 @@ interface VisualState {
   specularColor: string
   /** Diffuse intensity multiplier (0-2) */
   diffuseIntensity: number
+  /** Light strength multiplier (0-3) */
+  lightStrength: number
   /** Whether tone mapping is enabled */
   toneMappingEnabled: boolean
   /** Tone mapping algorithm */
@@ -299,8 +296,6 @@ interface VisualState {
   setBloomIntensity: (intensity: number) => void
   setBloomThreshold: (threshold: number) => void
   setBloomRadius: (radius: number) => void
-  setBloomSoftKnee: (softKnee: number) => void
-  setBloomLevels: (levels: number) => void
 
   // --- Actions: Lighting ---
   setLightEnabled: (enabled: boolean) => void
@@ -315,6 +310,7 @@ interface VisualState {
   // --- Actions: Enhanced Lighting ---
   setSpecularColor: (color: string) => void
   setDiffuseIntensity: (intensity: number) => void
+  setLightStrength: (strength: number) => void
   setToneMappingEnabled: (enabled: boolean) => void
   setToneMappingAlgorithm: (algorithm: ToneMappingAlgorithm) => void
   setExposure: (exposure: number) => void
@@ -372,8 +368,6 @@ const INITIAL_STATE: Omit<VisualState, keyof VisualStateFunctions> = {
   bloomIntensity: DEFAULT_BLOOM_INTENSITY,
   bloomThreshold: DEFAULT_BLOOM_THRESHOLD,
   bloomRadius: DEFAULT_BLOOM_RADIUS,
-  bloomSoftKnee: DEFAULT_BLOOM_SOFT_KNEE,
-  bloomLevels: DEFAULT_BLOOM_LEVELS,
 
   // Lighting
   lightEnabled: DEFAULT_LIGHT_ENABLED,
@@ -388,6 +382,7 @@ const INITIAL_STATE: Omit<VisualState, keyof VisualStateFunctions> = {
   // Enhanced lighting
   specularColor: DEFAULT_SPECULAR_COLOR,
   diffuseIntensity: DEFAULT_DIFFUSE_INTENSITY,
+  lightStrength: DEFAULT_LIGHT_STRENGTH,
   toneMappingEnabled: DEFAULT_TONE_MAPPING_ENABLED,
   toneMappingAlgorithm: DEFAULT_TONE_MAPPING_ALGORITHM,
   exposure: DEFAULT_EXPOSURE,
@@ -432,8 +427,6 @@ type VisualStateFunctions = Pick<
   | 'setBloomIntensity'
   | 'setBloomThreshold'
   | 'setBloomRadius'
-  | 'setBloomSoftKnee'
-  | 'setBloomLevels'
   | 'setLightEnabled'
   | 'setLightColor'
   | 'setLightHorizontalAngle'
@@ -444,6 +437,7 @@ type VisualStateFunctions = Pick<
   | 'setShowLightIndicator'
   | 'setSpecularColor'
   | 'setDiffuseIntensity'
+  | 'setLightStrength'
   | 'setToneMappingEnabled'
   | 'setToneMappingAlgorithm'
   | 'setExposure'
@@ -581,14 +575,6 @@ export const useVisualStore = create<VisualState>((set) => ({
     set({ bloomRadius: Math.max(0, Math.min(1, radius)) })
   },
 
-  setBloomSoftKnee: (softKnee: number) => {
-    set({ bloomSoftKnee: Math.max(0, Math.min(1, softKnee)) })
-  },
-
-  setBloomLevels: (levels: number) => {
-    set({ bloomLevels: Math.max(1, Math.min(8, Math.round(levels))) })
-  },
-
   // --- Actions: Lighting ---
   setLightEnabled: (enabled: boolean) => {
     set({ lightEnabled: enabled })
@@ -631,6 +617,10 @@ export const useVisualStore = create<VisualState>((set) => ({
 
   setDiffuseIntensity: (intensity: number) => {
     set({ diffuseIntensity: Math.max(0, Math.min(2, intensity)) })
+  },
+
+  setLightStrength: (strength: number) => {
+    set({ lightStrength: Math.max(0, Math.min(3, strength)) })
   },
 
   setToneMappingEnabled: (enabled: boolean) => {

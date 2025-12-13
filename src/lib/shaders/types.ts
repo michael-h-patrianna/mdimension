@@ -61,23 +61,46 @@ export const SHADER_DESCRIPTIONS: Record<ShaderType, string> = {
 
 // ============================================================================
 // Tone Mapping Types
+// Maps to Three.js ToneMapping constants
+// @see https://threejs.org/docs/#api/en/constants/Renderer
 // ============================================================================
 
-/** Available tone mapping algorithms */
-export type ToneMappingAlgorithm = 'reinhard' | 'aces' | 'uncharted2';
+/**
+ * Available tone mapping algorithms matching Three.js constants.
+ * CustomToneMapping is excluded as it requires custom shader code.
+ */
+export type ToneMappingAlgorithm =
+  | 'none'
+  | 'linear'
+  | 'reinhard'
+  | 'cineon'
+  | 'aces'
+  | 'agx'
+  | 'neutral';
 
 /** Tone mapping algorithm options for UI dropdown */
 export const TONE_MAPPING_OPTIONS = [
-  { value: 'reinhard' as const, label: 'Reinhard' },
-  { value: 'aces' as const, label: 'ACES Filmic' },
-  { value: 'uncharted2' as const, label: 'Uncharted 2' },
+  { value: 'none' as const, label: 'None', description: 'No tone mapping' },
+  { value: 'linear' as const, label: 'Linear', description: 'Simple linear mapping' },
+  { value: 'reinhard' as const, label: 'Reinhard', description: 'Classic HDR algorithm' },
+  { value: 'cineon' as const, label: 'Cineon', description: 'Film-like response' },
+  { value: 'aces' as const, label: 'ACES Filmic', description: 'Industry standard for HDR' },
+  { value: 'agx' as const, label: 'AgX', description: 'Modern filmic look' },
+  { value: 'neutral' as const, label: 'Neutral', description: 'Balanced output' },
 ] as const;
 
-/** Tone mapping algorithm to shader int mapping */
-export const TONE_MAPPING_TO_INT: Record<ToneMappingAlgorithm, number> = {
-  reinhard: 0,
-  aces: 1,
-  uncharted2: 2,
+/**
+ * Maps our algorithm names to Three.js ToneMapping constant values.
+ * These match THREE.NoToneMapping (0), THREE.LinearToneMapping (1), etc.
+ */
+export const TONE_MAPPING_TO_THREE: Record<ToneMappingAlgorithm, number> = {
+  none: 0,      // THREE.NoToneMapping
+  linear: 1,    // THREE.LinearToneMapping
+  reinhard: 2,  // THREE.ReinhardToneMapping
+  cineon: 3,    // THREE.CineonToneMapping
+  aces: 4,      // THREE.ACESFilmicToneMapping
+  agx: 6,       // THREE.AgXToneMapping
+  neutral: 7,   // THREE.NeutralToneMapping
 };
 
 /**

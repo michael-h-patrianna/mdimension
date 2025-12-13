@@ -43,9 +43,6 @@ export { useCameraReset } from '@/hooks/useCameraReset'
 export { PolytopeRenderer } from './renderers/PolytopeRenderer'
 export type { PolytopeRendererProps } from './renderers/PolytopeRenderer'
 
-export { FaceRenderer } from './renderers/FaceRenderer'
-export type { FaceRendererProps } from './renderers/FaceRenderer'
-
 export { NativeWireframe } from './renderers/NativeWireframe'
 export type { NativeWireframeProps } from './renderers/NativeWireframe'
 

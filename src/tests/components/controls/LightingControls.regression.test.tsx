@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
-import { LightingControls } from '@/components/controls/LightingControls';
+import { LightingControls } from '@/components/sidebar/Lights/LightingControls';
 import { useVisualStore } from '@/stores/visualStore';
 
 describe('LightingControls Regression Tests', () => {

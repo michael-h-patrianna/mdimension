@@ -10,7 +10,6 @@ import {
 import type { Vector3D } from '@/lib/math/types'
 import { useVisualStore } from '@/stores/visualStore'
 import {
-  DEFAULT_EMISSIVE_INTENSITY,
   DEFAULT_MATERIAL_ROUGHNESS,
   DEFAULT_MATERIAL_METALNESS,
   VERTEX_SIZE_DIVISOR,
@@ -76,8 +75,6 @@ function VertexInstances({
   const material = useMemo(() => {
     return new MeshStandardMaterial({
       color: new Color(vertexColor),
-      emissive: new Color(vertexColor),
-      emissiveIntensity: DEFAULT_EMISSIVE_INTENSITY,
       transparent: opacity < 1,
       opacity: opacity,
       roughness: DEFAULT_MATERIAL_ROUGHNESS,

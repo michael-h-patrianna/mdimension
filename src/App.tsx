@@ -109,6 +109,8 @@ function App() {
           position: [2, 2, 2.5],
           fov: 60,
         }}
+        flat
+        gl={{ alpha: false }}
         style={{ background: backgroundColor }}
       >
         <Visualizer />

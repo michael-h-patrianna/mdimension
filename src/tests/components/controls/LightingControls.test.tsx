@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { LightingControls } from '@/components/controls/LightingControls';
+import { LightingControls } from '@/components/sidebar/Lights/LightingControls';
 import { useVisualStore } from '@/stores/visualStore';
 
 describe('LightingControls', () => {
@@ -190,63 +190,7 @@ describe('LightingControls', () => {
     });
   });
 
-  describe('specular controls', () => {
-    beforeEach(() => {
-      useVisualStore.getState().setShaderType('surface');
-      useVisualStore.getState().setLightEnabled(true);
-    });
-
-    it('should render specular intensity slider when light enabled', () => {
-      render(<LightingControls />);
-      expect(screen.getByText('Specular Intensity')).toBeInTheDocument();
-    });
-
-    it('should render specular power slider when light enabled', () => {
-      render(<LightingControls />);
-      expect(screen.getByText('Shininess')).toBeInTheDocument();
-    });
-
-    it('should not render specular controls when light disabled', () => {
-      useVisualStore.getState().setLightEnabled(false);
-      render(<LightingControls />);
-      expect(screen.queryByText('Specular Intensity')).not.toBeInTheDocument();
-      expect(screen.queryByText('Shininess')).not.toBeInTheDocument();
-    });
-
-    it('should update specular intensity', () => {
-      render(<LightingControls />);
-      const slider = screen.getByLabelText('Specular Intensity') as HTMLInputElement;
-
-      fireEvent.change(slider, { target: { value: '1.5' } });
-      expect(useVisualStore.getState().specularIntensity).toBe(1.5);
-    });
-
-    it('should update specular power', () => {
-      render(<LightingControls />);
-      const slider = screen.getByLabelText('Shininess') as HTMLInputElement;
-
-      fireEvent.change(slider, { target: { value: '64' } });
-      expect(useVisualStore.getState().shininess).toBe(64);
-    });
-
-    it('should have correct specular intensity range', () => {
-      render(<LightingControls />);
-      const slider = screen.getByLabelText('Specular Intensity') as HTMLInputElement;
-
-      expect(slider.min).toBe('0');
-      expect(slider.max).toBe('2');
-      expect(slider.step).toBe('0.1');
-    });
-
-    it('should have correct shininess range', () => {
-      render(<LightingControls />);
-      const slider = screen.getByLabelText('Shininess') as HTMLInputElement;
-
-      expect(slider.min).toBe('1');
-      expect(slider.max).toBe('128');
-      expect(slider.step).toBe('1');
-    });
-  });
+  // Note: Specular controls (Specular Intensity, Shininess) were moved to MaterialControls
 
   describe('light indicator toggle', () => {
     beforeEach(() => {

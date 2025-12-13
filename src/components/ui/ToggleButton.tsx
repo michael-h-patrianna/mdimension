@@ -1,44 +1,36 @@
 import React from 'react';
 
-export interface ToggleButtonProps {
+export interface ToggleButtonProps extends Omit<React.ComponentPropsWithoutRef<'button'>, 'onToggle'> {
   pressed: boolean;
   onToggle: (pressed: boolean) => void;
-  children: React.ReactNode;
+  ariaLabel: string;
   className?: string;
-  ariaLabel?: string;
-  disabled?: boolean;
-  /** Optional data-testid for testing */
-  'data-testid'?: string;
+  children: React.ReactNode;
 }
 
-export const ToggleButton: React.FC<ToggleButtonProps> = ({
-  pressed,
-  onToggle,
-  children,
-  className = '',
-  ariaLabel,
-  disabled = false,
-  'data-testid': dataTestId,
-}) => {
-  return (
-    <button
-      onClick={() => !disabled && onToggle(!pressed)}
-      disabled={disabled}
-      className={`
-        flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors border
-        ${pressed
-          ? 'bg-accent/20 text-accent border-accent/50 shadow-[0_0_10px_color-mix(in_oklch,var(--color-accent)_20%,transparent)]'
-          : 'bg-panel-border text-text-secondary border-panel-border hover:text-text-primary hover:bg-panel-border/80'
-        }
-        ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-        ${className}
-      `}
-      aria-pressed={pressed}
-      aria-label={ariaLabel}
-      type="button"
-      data-testid={dataTestId}
-    >
-      {children}
-    </button>
-  );
-};
+export const ToggleButton = React.forwardRef<HTMLButtonElement, ToggleButtonProps>(
+  ({ pressed, onToggle, ariaLabel, className = '', children, ...props }, ref) => {
+    return (
+      <button
+        ref={ref}
+        type="button"
+        aria-pressed={pressed}
+        onClick={() => onToggle(!pressed)}
+        className={`
+          px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-300 border
+          ${pressed
+            ? 'bg-accent/20 text-accent border-accent/50 shadow-[0_0_10px_color-mix(in_oklch,var(--color-accent)_20%,transparent)]'
+            : 'bg-panel-border text-text-secondary border-panel-border hover:text-text-primary hover:bg-panel-border/80'
+          }
+          ${className}
+        `}
+        aria-label={ariaLabel}
+        {...props}
+      >
+        {children}
+      </button>
+    );
+  }
+);
+
+ToggleButton.displayName = 'ToggleButton';

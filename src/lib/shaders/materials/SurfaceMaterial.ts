@@ -17,8 +17,7 @@ import {
 } from 'three'
 import type { ColorMode } from '../palette'
 import { GLSL_PALETTE_FUNCTIONS } from '../palette'
-import type { SurfaceSettings, ToneMappingAlgorithm } from '../types'
-import { TONE_MAPPING_TO_INT } from '../types'
+import type { SurfaceSettings } from '../types'
 
 /**
  * Configuration for surface material creation
@@ -317,51 +316,7 @@ void main() {
 }
 `
 
-// ============================================================================
-// GLSL Tone Mapping Functions
-// ============================================================================
-
-const GLSL_TONE_MAPPING = `
-// Tone mapping functions
-vec3 reinhardToneMap(vec3 c) {
-  return c / (c + vec3(1.0));
-}
-
-vec3 acesToneMap(vec3 c) {
-  // ACES filmic tone mapping approximation
-  const float a = 2.51;
-  const float b = 0.03;
-  const float c2 = 2.43;
-  const float d = 0.59;
-  const float e = 0.14;
-  return clamp((c * (a * c + b)) / (c * (c2 * c + d) + e), 0.0, 1.0);
-}
-
-vec3 uncharted2ToneMap(vec3 c) {
-  // Uncharted 2 filmic tone mapping
-  const float A = 0.15;
-  const float B = 0.50;
-  const float C = 0.10;
-  const float D = 0.20;
-  const float E = 0.02;
-  const float F = 0.30;
-  const float W = 11.2;
-
-  vec3 curr = ((c * (A * c + C * B) + D * E) / (c * (A * c + B) + D * F)) - E / F;
-  vec3 white = ((vec3(W) * (A * W + C * B) + D * E) / (vec3(W) * (A * W + B) + D * F)) - E / F;
-  return curr / white;
-}
-
-vec3 applyToneMapping(vec3 c, int algo, float exposure) {
-  vec3 exposed = c * exposure;
-  if (algo == 0) return reinhardToneMap(exposed);
-  if (algo == 1) return acesToneMap(exposed);
-  if (algo == 2) return uncharted2ToneMap(exposed);
-  return clamp(exposed, 0.0, 1.0); // fallback: simple clamp
-}
-`
-
-// Concatenate palette functions with tone mapping and core shader
+// Concatenate palette functions with core shader
 /**
  * Fragment shader for palette surface material with world-space lighting.
  *
@@ -377,7 +332,6 @@ vec3 applyToneMapping(vec3 c, int algo, float exposure) {
  */
 const paletteFragmentShader =
   GLSL_PALETTE_FUNCTIONS +
-  GLSL_TONE_MAPPING +
   `
 uniform vec3 baseColor;
 uniform vec3 rimColor;
@@ -393,9 +347,6 @@ uniform vec3 uLightColor;
 // Enhanced lighting uniforms
 uniform vec3 uSpecularColor;
 uniform float uDiffuseIntensity;
-uniform bool uToneMappingEnabled;
-uniform int uToneMappingAlgorithm;
-uniform float uExposure;
 
 varying float vDepth;
 varying vec3 vNormal;
@@ -440,11 +391,6 @@ void main() {
       rim *= (0.3 + 0.7 * NdotL);
       col += rimColor * rim;
     }
-  }
-
-  // Apply tone mapping as final step
-  if (uToneMappingEnabled) {
-    col = applyToneMapping(col, uToneMappingAlgorithm, uExposure);
   }
 
   gl_FragColor = vec4(col, opacity);
@@ -502,9 +448,6 @@ export function createPaletteSurfaceMaterial(config: PaletteSurfaceMaterialConfi
       // Enhanced lighting uniforms
       uSpecularColor: { value: new Color('#FFFFFF') },
       uDiffuseIntensity: { value: 1.0 },
-      uToneMappingEnabled: { value: true },
-      uToneMappingAlgorithm: { value: 0 }, // 0 = reinhard
-      uExposure: { value: 1.0 },
     },
     transparent: true,
     side: DoubleSide,
@@ -536,9 +479,6 @@ export function updatePaletteMaterial(
     // Enhanced lighting parameters
     specularColor: string
     diffuseIntensity: number
-    toneMappingEnabled: boolean
-    toneMappingAlgorithm: ToneMappingAlgorithm
-    exposure: number
   }>
 ): void {
   if (updates.color !== undefined) {
@@ -589,16 +529,6 @@ export function updatePaletteMaterial(
   if (updates.diffuseIntensity !== undefined) {
     material.uniforms.uDiffuseIntensity!.value = updates.diffuseIntensity
   }
-  if (updates.toneMappingEnabled !== undefined) {
-    material.uniforms.uToneMappingEnabled!.value = updates.toneMappingEnabled
-  }
-  if (updates.toneMappingAlgorithm !== undefined) {
-    material.uniforms.uToneMappingAlgorithm!.value =
-      TONE_MAPPING_TO_INT[updates.toneMappingAlgorithm]
-  }
-  if (updates.exposure !== undefined) {
-    material.uniforms.uExposure!.value = updates.exposure
-  }
 
   material.needsUpdate = true
 }
@@ -612,13 +542,10 @@ export function updatePaletteMaterial(
  * These are added after #include <common> in the fragment shader.
  */
 const PHONG_CUSTOM_UNIFORMS_GLSL = `
-// Custom uniforms for palette, fresnel, and tone mapping
+// Custom uniforms for palette and fresnel
 uniform vec3 uRimColor;
 uniform float uFresnelIntensity;
 uniform int uPaletteMode;
-uniform bool uToneMappingCustomEnabled;
-uniform int uToneMappingAlgorithm;
-uniform float uExposure;
 
 // Custom varyings (vNormal is already provided by Three.js Phong shader)
 varying float vDepth;
@@ -656,17 +583,6 @@ gl_FragColor = vec4( outgoingLight, diffuseColor.a );
 `
 
 /**
- * GLSL custom tone mapping replacement.
- * Replaces #include <tonemapping_fragment> with custom tone mapping.
- */
-const PHONG_TONEMAPPING_INJECTION_GLSL = `
-// Custom tone mapping (replaces Three.js default)
-if (uToneMappingCustomEnabled) {
-  gl_FragColor.rgb = applyToneMapping(gl_FragColor.rgb, uToneMappingAlgorithm, uExposure);
-}
-`
-
-/**
  * Helper to convert ColorMode string to int for shader uniform.
  */
 function colorModeToInt(mode: ColorMode): number {
@@ -692,19 +608,15 @@ export interface PhongPaletteMaterialUpdates {
   specularColor: string
   shininess: number
   colorMode: ColorMode
-  toneMappingEnabled: boolean
-  toneMappingAlgorithm: ToneMappingAlgorithm
-  exposure: number
 }
 
 /**
- * Create a MeshPhongMaterial with custom shader injection for palette colors,
- * fresnel rim lighting, and tone mapping.
+ * Create a MeshPhongMaterial with custom shader injection for palette colors
+ * and fresnel rim lighting.
  *
  * Uses Three.js built-in Phong lighting with `onBeforeCompile` to inject:
  * - faceDepth attribute for per-face palette color variation
  * - Fresnel rim lighting effect
- * - Custom tone mapping algorithms
  *
  * This approach leverages Three.js native lighting while adding custom features,
  * reducing maintenance burden and ensuring compatibility with future Three.js updates.
@@ -752,9 +664,6 @@ export function createPhongPaletteMaterial(config: PaletteSurfaceMaterialConfig)
     uRimColor: { value: new Color(edgeColor) },
     uFresnelIntensity: { value: fresnelEnabled ? 0.5 : 0.0 },
     uPaletteMode: { value: colorModeToInt(colorMode) },
-    uToneMappingCustomEnabled: { value: true },
-    uToneMappingAlgorithm: { value: 0 }, // 0 = reinhard
-    uExposure: { value: 1.0 },
   }
 
   // Store custom uniforms for later access via update function
@@ -787,13 +696,12 @@ vWorldPosition = (modelMatrix * vec4(position, 1.0)).xyz;`
 
     // ========== FRAGMENT SHADER MODIFICATIONS ==========
 
-    // 1. Add custom uniforms, palette functions, and tone mapping after <common>
+    // 1. Add custom uniforms and palette functions after <common>
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <common>',
       `#include <common>
 ${PHONG_CUSTOM_UNIFORMS_GLSL}
-${GLSL_PALETTE_FUNCTIONS}
-${GLSL_TONE_MAPPING}`
+${GLSL_PALETTE_FUNCTIONS}`
     )
 
     // 2. Apply palette color to diffuseColor after <color_fragment>
@@ -811,12 +719,6 @@ ${GLSL_TONE_MAPPING}`
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <opaque_fragment>',
       PHONG_OPAQUE_WITH_FRESNEL_GLSL
-    )
-
-    // 4. Replace tonemapping_fragment with custom tone mapping
-    shader.fragmentShader = shader.fragmentShader.replace(
-      '#include <tonemapping_fragment>',
-      PHONG_TONEMAPPING_INJECTION_GLSL
     )
 
     // Store shader reference for uniform updates
@@ -882,15 +784,6 @@ export function updatePhongPaletteMaterial(
     if (updates.colorMode !== undefined) {
       shader.uniforms.uPaletteMode.value = colorModeToInt(updates.colorMode)
     }
-    if (updates.toneMappingEnabled !== undefined) {
-      shader.uniforms.uToneMappingCustomEnabled.value = updates.toneMappingEnabled
-    }
-    if (updates.toneMappingAlgorithm !== undefined) {
-      shader.uniforms.uToneMappingAlgorithm.value = TONE_MAPPING_TO_INT[updates.toneMappingAlgorithm]
-    }
-    if (updates.exposure !== undefined) {
-      shader.uniforms.uExposure.value = updates.exposure
-    }
   }
 
   // Also update userData.customUniforms for pre-compilation state
@@ -904,15 +797,6 @@ export function updatePhongPaletteMaterial(
     }
     if (updates.colorMode !== undefined) {
       customUniforms.uPaletteMode.value = colorModeToInt(updates.colorMode)
-    }
-    if (updates.toneMappingEnabled !== undefined) {
-      customUniforms.uToneMappingCustomEnabled.value = updates.toneMappingEnabled
-    }
-    if (updates.toneMappingAlgorithm !== undefined) {
-      customUniforms.uToneMappingAlgorithm.value = TONE_MAPPING_TO_INT[updates.toneMappingAlgorithm]
-    }
-    if (updates.exposure !== undefined) {
-      customUniforms.uExposure.value = updates.exposure
     }
   }
 

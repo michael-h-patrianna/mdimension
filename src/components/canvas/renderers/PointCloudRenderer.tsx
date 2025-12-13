@@ -28,7 +28,6 @@ import type { Vector3D } from '@/lib/math/types';
 import { useVisualStore } from '@/stores/visualStore';
 import {
   DEFAULT_BASE_VERTEX_SIZE,
-  DEFAULT_EMISSIVE_INTENSITY,
   DEFAULT_MATERIAL_ROUGHNESS,
   DEFAULT_MATERIAL_METALNESS,
 } from '@/lib/shaders/constants';
@@ -57,11 +56,6 @@ export interface PointCloudRendererProps {
   pointSize?: number;
   /** Overall opacity (default: 1.0) */
   opacity?: number;
-  /**
-   * Emissive intensity for glow effect (default: DEFAULT_EMISSIVE_INTENSITY = 0.2).
-   * Matches PolytopeRenderer for visual consistency across object types.
-   */
-  emissiveIntensity?: number;
 }
 
 /**
@@ -83,7 +77,6 @@ const POINT_GEOMETRY = new SphereGeometry(1, 16, 16);
  * @param props.pointColor
  * @param props.pointSize
  * @param props.opacity
- * @param props.emissiveIntensity
  * @returns InstancedMesh containing all points
  *
  * @example
@@ -103,7 +96,6 @@ export function PointCloudRenderer({
   pointColors,
   pointSize = DEFAULT_BASE_VERTEX_SIZE,
   opacity = 1.0,
-  emissiveIntensity: propEmissiveIntensity,
 }: PointCloudRendererProps) {
   const instancedMeshRef = useRef<ThreeInstancedMesh>(null);
   const tempObject = useMemo(() => new Object3D(), []);
@@ -116,9 +108,6 @@ export function PointCloudRenderer({
 
   const pointColor = propPointColor ?? storeVertexColor;
 
-  // Default emissive intensity matches PolytopeRenderer for visual consistency
-  const emissiveIntensity = propEmissiveIntensity ?? DEFAULT_EMISSIVE_INTENSITY;
-
   /**
    * Create material - recreate only when visual properties change.
    * Note: Shader settings (wireframe, surface) don't apply here
@@ -128,14 +117,12 @@ export function PointCloudRenderer({
   const material = useMemo(() => {
     return new MeshStandardMaterial({
       color: new Color(pointColor),
-      emissive: new Color(pointColor),
-      emissiveIntensity: emissiveIntensity,
       transparent: opacity < 1,
       opacity: opacity,
       roughness: DEFAULT_MATERIAL_ROUGHNESS,
       metalness: DEFAULT_MATERIAL_METALNESS,
     });
-  }, [pointColor, opacity, emissiveIntensity]);
+  }, [pointColor, opacity]);
 
   // Dispose material on change or unmount
   const materialRef = useRef<MeshStandardMaterial | null>(null);
@@ -272,7 +259,6 @@ function Wireframe({
  * @param props.pointColor
  * @param props.pointSize
  * @param props.opacity
- * @param props.emissiveIntensity
  * @param props.edgeColor
  * @param props.edgeThickness
  * @returns Point cloud with optional wireframe overlay
@@ -284,7 +270,6 @@ export function PointCloudWithEdges({
   pointColors,
   pointSize,
   opacity = 1.0,
-  emissiveIntensity,
   edgeColor: propEdgeColor,
   edgeThickness: propEdgeThickness,
 }: PointCloudWithEdgesProps) {
@@ -336,7 +321,6 @@ export function PointCloudWithEdges({
           pointColors={pointColors}
           pointSize={pointSize}
           opacity={opacity}
-          emissiveIntensity={emissiveIntensity}
         />
       )}
     </group>
