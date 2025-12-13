@@ -47,12 +47,12 @@ describe('visualStore - Enhanced Features', () => {
       useVisualStore.getState().setSurfaceSettings({
         faceOpacity: 0.5,
         specularIntensity: 1.5,
-        specularPower: 64,
+        shininess: 64,
         fresnelEnabled: false,
       });
       expect(useVisualStore.getState().shaderSettings.surface.faceOpacity).toBe(0.5);
       expect(useVisualStore.getState().shaderSettings.surface.specularIntensity).toBe(1.5);
-      expect(useVisualStore.getState().shaderSettings.surface.specularPower).toBe(64);
+      expect(useVisualStore.getState().shaderSettings.surface.shininess).toBe(64);
       expect(useVisualStore.getState().shaderSettings.surface.fresnelEnabled).toBe(false);
     });
 
@@ -60,11 +60,11 @@ describe('visualStore - Enhanced Features', () => {
       useVisualStore.getState().setSurfaceSettings({
         faceOpacity: 2,
         specularIntensity: 10,
-        specularPower: 200,
+        shininess: 200,
       });
       expect(useVisualStore.getState().shaderSettings.surface.faceOpacity).toBe(1);
       expect(useVisualStore.getState().shaderSettings.surface.specularIntensity).toBe(2);
-      expect(useVisualStore.getState().shaderSettings.surface.specularPower).toBe(128);
+      expect(useVisualStore.getState().shaderSettings.surface.shininess).toBe(128);
     });
   });
 
@@ -177,17 +177,17 @@ describe('visualStore - Enhanced Features', () => {
       expect(useVisualStore.getState().specularIntensity).toBe(2);
     });
 
-    it('should set specular power', () => {
-      useVisualStore.getState().setSpecularPower(64);
-      expect(useVisualStore.getState().specularPower).toBe(64);
+    it('should set shininess', () => {
+      useVisualStore.getState().setShininess(64);
+      expect(useVisualStore.getState().shininess).toBe(64);
     });
 
-    it('should clamp specular power to [1, 128]', () => {
-      useVisualStore.getState().setSpecularPower(200);
-      expect(useVisualStore.getState().specularPower).toBe(128);
+    it('should clamp shininess to [1, 128]', () => {
+      useVisualStore.getState().setShininess(200);
+      expect(useVisualStore.getState().shininess).toBe(128);
 
-      useVisualStore.getState().setSpecularPower(0);
-      expect(useVisualStore.getState().specularPower).toBe(1);
+      useVisualStore.getState().setShininess(0);
+      expect(useVisualStore.getState().shininess).toBe(1);
     });
 
     it('should toggle light indicator', () => {

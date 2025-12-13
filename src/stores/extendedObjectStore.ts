@@ -286,8 +286,8 @@ export const useExtendedObjectStore = create<ExtendedObjectState>((set, get) => 
   },
 
   setMandelbrotVisualizationAxis: (index: 0 | 1 | 2, dimIndex: number) => {
-    // Validate dimIndex is non-negative (upper bound validation requires knowing dimension)
-    // The dimension is stored in geometryStore, so we validate against reasonable max (11D)
+    // Validate dimIndex to valid range [0, MAX_DIMENSION-1]
+    // MAX_DIMENSION is 11, so valid indices are 0-10 (representing X through 11th axis)
     const clampedDimIndex = Math.max(0, Math.min(10, Math.floor(dimIndex)));
     const current = [...get().mandelbrot.visualizationAxes] as [number, number, number];
     current[index] = clampedDimIndex;
@@ -298,6 +298,10 @@ export const useExtendedObjectStore = create<ExtendedObjectState>((set, get) => 
 
   setMandelbrotParameterValue: (dimIndex: number, value: number) => {
     const values = [...get().mandelbrot.parameterValues];
+    // Validate dimIndex to prevent sparse arrays or out-of-bounds access
+    if (dimIndex < 0 || dimIndex >= values.length) {
+      return; // Invalid index, silently ignore
+    }
     // Clamp to reasonable range for Mandelbrot exploration
     const clampedValue = Math.max(-2.0, Math.min(2.0, value));
     values[dimIndex] = clampedValue;

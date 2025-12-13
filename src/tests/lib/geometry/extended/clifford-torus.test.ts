@@ -835,7 +835,6 @@ describe('buildAnnulusGridFaces', () => {
   it('should NOT wrap in radial direction', () => {
     const resU = 8;
     const resV = 4;
-    const radialSteps = Math.max(2, resV);
     const faces = buildAnnulusGridFaces(resU, resV);
 
     // Check that no face connects the innermost ring (r=0) to the outermost ring (r=radialSteps-1)

@@ -81,13 +81,18 @@ const HyperbulbMesh = () => {
   const lightVerticalAngle = useVisualStore((state) => state.lightVerticalAngle);
   const ambientIntensity = useVisualStore((state) => state.ambientIntensity);
   const specularIntensity = useVisualStore((state) => state.specularIntensity);
-  const specularPower = useVisualStore((state) => state.specularPower);
+  const shininess = useVisualStore((state) => state.shininess);
   // Enhanced lighting settings
   const specularColor = useVisualStore((state) => state.specularColor);
   const diffuseIntensity = useVisualStore((state) => state.diffuseIntensity);
   const toneMappingEnabled = useVisualStore((state) => state.toneMappingEnabled);
   const toneMappingAlgorithm = useVisualStore((state) => state.toneMappingAlgorithm);
   const exposure = useVisualStore((state) => state.exposure);
+
+  // Edges render mode controls fresnel rim lighting for Hyperbulb
+  const edgesVisible = useVisualStore((state) => state.edgesVisible);
+  const fresnelIntensity = useVisualStore((state) => state.fresnelIntensity);
+  const edgeColor = useVisualStore((state) => state.edgeColor);
 
   const uniforms = useMemo(
     () => ({
@@ -133,6 +138,11 @@ const HyperbulbMesh = () => {
       uToneMappingAlgorithm: { value: 0 },
       uExposure: { value: 1.0 },
 
+      // Fresnel rim lighting uniforms
+      uFresnelEnabled: { value: true },
+      uFresnelIntensity: { value: 0.5 },
+      uRimColor: { value: new THREE.Color('#FFFFFF') },
+
       // Performance mode: reduces quality during rotation animations
       uFastMode: { value: false },
     }),
@@ -149,15 +159,12 @@ const HyperbulbMesh = () => {
   ): boolean => {
     if (!previous) return false;
 
-    // Compare all rotation planes
-    for (const key in current) {
-      if (current[key] !== previous[key]) {
-        return true;
-      }
-    }
-    // Also check if previous had keys that current doesn't
-    for (const key in previous) {
-      if (previous[key] !== current[key]) {
+    // Check if sizes differ
+    if (current.size !== previous.size) return true;
+
+    // Compare all rotation planes using Map methods
+    for (const [key, value] of current.entries()) {
+      if (previous.get(key) !== value) {
         return true;
       }
     }
@@ -195,8 +202,8 @@ const HyperbulbMesh = () => {
         }
       }
 
-      // Store current rotations for next frame comparison
-      prevRotationsRef.current = { ...rotations };
+      // Store current rotations for next frame comparison (create a new Map copy)
+      prevRotationsRef.current = new Map(rotations);
 
       // Update fast mode uniform
       if (material.uniforms.uFastMode) {
@@ -233,13 +240,18 @@ const HyperbulbMesh = () => {
       }
       if (material.uniforms.uAmbientIntensity) material.uniforms.uAmbientIntensity.value = ambientIntensity;
       if (material.uniforms.uSpecularIntensity) material.uniforms.uSpecularIntensity.value = specularIntensity;
-      if (material.uniforms.uSpecularPower) material.uniforms.uSpecularPower.value = specularPower;
+      if (material.uniforms.uSpecularPower) material.uniforms.uSpecularPower.value = shininess;
       // Enhanced lighting uniforms
       if (material.uniforms.uSpecularColor) material.uniforms.uSpecularColor.value.set(specularColor);
       if (material.uniforms.uDiffuseIntensity) material.uniforms.uDiffuseIntensity.value = diffuseIntensity;
       if (material.uniforms.uToneMappingEnabled) material.uniforms.uToneMappingEnabled.value = toneMappingEnabled;
       if (material.uniforms.uToneMappingAlgorithm) material.uniforms.uToneMappingAlgorithm.value = TONE_MAPPING_TO_INT[toneMappingAlgorithm];
       if (material.uniforms.uExposure) material.uniforms.uExposure.value = exposure;
+
+      // Fresnel rim lighting (controlled by Edges render mode)
+      if (material.uniforms.uFresnelEnabled) material.uniforms.uFresnelEnabled.value = edgesVisible;
+      if (material.uniforms.uFresnelIntensity) material.uniforms.uFresnelIntensity.value = fresnelIntensity;
+      if (material.uniforms.uRimColor) material.uniforms.uRimColor.value.set(edgeColor);
 
       // Build FULL D-dimensional rotation matrix
       const rotationMatrix = composeRotations(dimension, rotations);

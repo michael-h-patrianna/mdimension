@@ -109,7 +109,7 @@ describe('rotationStore', () => {
   });
 
   describe('setDimension', () => {
-    it('should filter out invalid planes when dimension decreases', () => {
+    it('should reset all rotations when dimension decreases', () => {
       const { setRotation, setDimension } = useRotationStore.getState();
 
       // Set some 4D rotations
@@ -117,16 +117,15 @@ describe('rotationStore', () => {
       setRotation('ZW', Math.PI / 2);
       setRotation('XW', Math.PI / 3);
 
-      // Decrease to 3D
+      // Decrease to 3D - should reset ALL rotations to prevent erratic behavior
       setDimension(3);
 
-      const { rotations } = useRotationStore.getState();
-      expect(rotations.get('XY')).toBeCloseTo(Math.PI / 4);
-      expect(rotations.has('ZW')).toBe(false);  // ZW is 4D only
-      expect(rotations.has('XW')).toBe(false);  // XW is 4D only
+      const { rotations, dimension } = useRotationStore.getState();
+      expect(dimension).toBe(3);
+      expect(rotations.size).toBe(0);  // All rotations reset
     });
 
-    it('should preserve valid planes when dimension increases', () => {
+    it('should reset all rotations when dimension increases', () => {
       // Start in 3D
       useRotationStore.setState({ dimension: 3 });
       const { setRotation, setDimension } = useRotationStore.getState();
@@ -135,12 +134,27 @@ describe('rotationStore', () => {
       setRotation('XY', Math.PI / 4);
       setRotation('XZ', Math.PI / 2);
 
-      // Increase to 4D
+      // Increase to 4D - should reset ALL rotations to prevent erratic behavior
+      setDimension(4);
+
+      const { rotations, dimension } = useRotationStore.getState();
+      expect(dimension).toBe(4);
+      expect(rotations.size).toBe(0);  // All rotations reset
+    });
+
+    it('should not reset rotations if dimension stays the same', () => {
+      const { setRotation, setDimension } = useRotationStore.getState();
+
+      // Set some 4D rotations
+      setRotation('XY', Math.PI / 4);
+      setRotation('XZ', Math.PI / 2);
+
+      // Set dimension to same value
       setDimension(4);
 
       const { rotations } = useRotationStore.getState();
-      expect(rotations.get('XY')).toBeCloseTo(Math.PI / 4);
-      expect(rotations.get('XZ')).toBeCloseTo(Math.PI / 2);
+      expect(rotations.get('XY')).toBeCloseTo(Math.PI / 4);  // Should preserve
+      expect(rotations.get('XZ')).toBeCloseTo(Math.PI / 2);  // Should preserve
     });
 
     it('should reject invalid dimensions', () => {

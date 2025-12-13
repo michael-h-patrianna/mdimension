@@ -81,8 +81,11 @@ export function useCameraMovement(options: UseCameraMovementOptions = {}): void 
 
   // Set up keyboard event listeners
   useEffect(() => {
+    // Capture ref values at effect time for cleanup
+    const keysPressedSet = keysPressed.current;
+
     if (!enabled) {
-      keysPressed.current.clear();
+      keysPressedSet.clear();
       shiftPressed.current = false;
       return;
     }
@@ -154,7 +157,7 @@ export function useCameraMovement(options: UseCameraMovementOptions = {}): void 
 
     // Clear keys when window loses focus
     const handleBlur = (): void => {
-      keysPressed.current.clear();
+      keysPressedSet.clear();
       shiftPressed.current = false;
     };
 
@@ -166,10 +169,10 @@ export function useCameraMovement(options: UseCameraMovementOptions = {}): void 
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
       window.removeEventListener('blur', handleBlur);
-      keysPressed.current.clear();
+      keysPressedSet.clear();
       shiftPressed.current = false;
     };
-  }, [enabled]);
+  }, [enabled, camera, controlsRef]);
 
   // Per-frame movement/rotation update
   useFrame(() => {

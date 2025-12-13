@@ -146,16 +146,16 @@ export const useTransformStore = create<TransformState>((set, get) => ({
     }
 
     set((state) => {
-      // Preserve existing values where possible, extend or truncate as needed
-      const newPerAxisScale = createDefaultScales(dimension);
-      for (let i = 0; i < Math.min(dimension, state.perAxisScale.length); i++) {
-        newPerAxisScale[i] = state.perAxisScale[i]!;
+      // Reset scales completely when dimension changes to prevent accumulated
+      // scale values from causing issues in the new dimension space
+      if (state.dimension !== dimension) {
+        return {
+          dimension,
+          perAxisScale: createDefaultScales(dimension),
+          uniformScale: DEFAULT_SCALE,
+        };
       }
-
-      return {
-        dimension,
-        perAxisScale: newPerAxisScale,
-      };
+      return state;
     });
   },
 

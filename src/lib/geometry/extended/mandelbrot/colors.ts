@@ -363,6 +363,11 @@ export function mapEscapeToColor(
     return interiorColor;
   }
 
+  // Handle empty palette case
+  if (palette.length === 0) {
+    return interiorColor;
+  }
+
   // Apply inversion if requested
   let value = invertColors ? 1 - normalizedValue : normalizedValue;
 

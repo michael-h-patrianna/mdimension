@@ -10,10 +10,10 @@ import { create } from 'zustand'
 export const MIN_SPEED = 0.1
 
 /** Maximum animation speed multiplier */
-export const MAX_SPEED = 5.0
+export const MAX_SPEED = 3.0
 
 /** Default animation speed (1x = one full rotation per 10 seconds) */
-export const DEFAULT_SPEED = 1.0
+export const DEFAULT_SPEED = 0.4
 
 /** Base rotation rate in radians per second at 1x speed */
 export const BASE_ROTATION_RATE = (2 * Math.PI) / 10 // Full rotation in 10 seconds

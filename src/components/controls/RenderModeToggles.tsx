@@ -49,13 +49,12 @@ function canRenderFaces(objectType: string): boolean {
 
 /**
  * Checks if an object type supports edge rendering
- * Mandelbrot does not support explicit edge rendering in Ray Marching mode
+ * For Mandelbrot, "Edges" controls fresnel rim lighting on the raymarched surface
  * @param objectType - The current object type
  * @returns true if edges can be rendered for this object type
  */
 function canRenderEdges(objectType: string): boolean {
-  // Mandelbrot uses raymarching or point cloud, explicit edges are visually chaotic/expensive and disabled
-  if (objectType === 'mandelbrot') return false;
+  // All object types support edges (Mandelbrot uses fresnel rim lighting as "edges")
   return true;
 }
 
@@ -105,19 +104,44 @@ export const RenderModeToggles: React.FC<RenderModeTogglesProps> = ({
   const edgesSupported = canRenderEdges(objectType);
 
   // Toggle handlers with mutual exclusivity logic for Mandelbrot 3D+
+  // Rules:
+  // - Vertices ON → Edges OFF, Faces OFF
+  // - Edges ON → Faces ON, Vertices OFF
+  // - Faces can be ON independently, but if Edges is ON, Faces must stay ON
   const handleVertexToggle = (visible: boolean) => {
-    setVertexVisible(visible);
-    // If enabling vertices for Mandelbrot 3D+, disable faces (Ray Marching)
     if (visible && objectType === 'mandelbrot' && dimension >= 3) {
+      // Vertices mode: disable Edges and Faces
+      setVertexVisible(true);
+      setEdgesVisible(false);
       setFacesVisible(false);
+    } else {
+      setVertexVisible(visible);
+    }
+  };
+
+  const handleEdgeToggle = (visible: boolean) => {
+    if (visible && objectType === 'mandelbrot' && dimension >= 3) {
+      // Edges mode: enable Faces, disable Vertices
+      setEdgesVisible(true);
+      setFacesVisible(true);
+      setVertexVisible(false);
+    } else {
+      setEdgesVisible(visible);
+      // If turning off edges, that's fine - faces can stay on independently
     }
   };
 
   const handleFaceToggle = (visible: boolean) => {
-    setFacesVisible(visible);
-    // If enabling faces (Ray Marching) for Mandelbrot 3D+, disable vertices
     if (visible && objectType === 'mandelbrot' && dimension >= 3) {
+      // Faces mode: disable Vertices (Edges can stay as-is)
+      setFacesVisible(true);
       setVertexVisible(false);
+    } else if (!visible && objectType === 'mandelbrot' && dimension >= 3 && edgesVisible) {
+      // Cannot turn off Faces while Edges is on for Mandelbrot
+      // Keep faces on
+      return;
+    } else {
+      setFacesVisible(visible);
     }
   };
 
@@ -152,15 +176,24 @@ export const RenderModeToggles: React.FC<RenderModeTogglesProps> = ({
   }, [edgesSupported, edgesVisible, setEdgesVisible]);
 
   // Enforce mutual exclusivity for Mandelbrot 3D+ on object type switch
-  // When switching TO mandelbrot with both vertices and faces enabled, disable faces
+  // Rules:
+  // - Vertices ON → Edges OFF, Faces OFF
+  // - Edges ON → Faces must be ON, Vertices OFF
   useEffect(() => {
     if (objectType === 'mandelbrot' && dimension >= 3) {
-      if (vertexVisible && facesVisible) {
-        // Both enabled - vertices takes priority, disable faces
+      if (vertexVisible && (facesVisible || edgesVisible)) {
+        // Vertices takes priority - disable faces and edges
         setFacesVisible(false);
+        setEdgesVisible(false);
+      } else if (edgesVisible && !facesVisible) {
+        // Edges requires faces to be on
+        setFacesVisible(true);
+      } else if (edgesVisible && vertexVisible) {
+        // Edges mode - disable vertices
+        setVertexVisible(false);
       }
     }
-  }, [objectType, dimension, vertexVisible, facesVisible, setFacesVisible]);
+  }, [objectType, dimension, vertexVisible, facesVisible, edgesVisible, setFacesVisible, setEdgesVisible, setVertexVisible]);
 
   // Ensure at least one render mode is always active
   // Fallback to vertices if all modes would be off
@@ -187,7 +220,7 @@ export const RenderModeToggles: React.FC<RenderModeTogglesProps> = ({
       >
         <ToggleButton
           pressed={edgesVisible}
-          onToggle={setEdgesVisible}
+          onToggle={handleEdgeToggle}
           ariaLabel="Toggle edge visibility"
           disabled={!edgesSupported}
           data-testid="toggle-edges"

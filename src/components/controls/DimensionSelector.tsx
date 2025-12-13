@@ -4,7 +4,6 @@
  */
 
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
-import { Tooltip } from '@/components/ui/Tooltip';
 import { MAX_DIMENSION, MIN_DIMENSION, useGeometryStore } from '@/stores/geometryStore';
 import React, { useEffect, useRef, useState } from 'react';
 
@@ -105,16 +104,7 @@ export const DimensionSelector: React.FC<DimensionSelectorProps> = ({
   };
 
   return (
-    <div className={` ${className}`}>
-      <div className="flex justify-between items-baseline">
-        <Tooltip
-          content="Select the number of dimensions for the object."
-          position="top"
-        >
-
-        </Tooltip>
-      </div>
-
+    <div className={`${className}`}>
       <div className="relative group">
         {canScrollLeft && (
           <button

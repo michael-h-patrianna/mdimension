@@ -38,7 +38,7 @@ import {
   DEFAULT_LIGHT_VERTICAL_ANGLE,
   DEFAULT_AMBIENT_INTENSITY,
   DEFAULT_SPECULAR_INTENSITY,
-  DEFAULT_SPECULAR_POWER,
+  DEFAULT_SHININESS,
   DEFAULT_SPECULAR_COLOR,
   DEFAULT_DIFFUSE_INTENSITY,
   DEFAULT_TONE_MAPPING_ENABLED,
@@ -86,7 +86,7 @@ export const LightingControls: React.FC<LightingControlsProps> = ({
   const lightVerticalAngle = useVisualStore((state) => state.lightVerticalAngle);
   const ambientIntensity = useVisualStore((state) => state.ambientIntensity);
   const specularIntensity = useVisualStore((state) => state.specularIntensity);
-  const specularPower = useVisualStore((state) => state.specularPower);
+  const shininess = useVisualStore((state) => state.shininess);
   const showLightIndicator = useVisualStore((state) => state.showLightIndicator);
 
   // Enhanced lighting state
@@ -96,8 +96,6 @@ export const LightingControls: React.FC<LightingControlsProps> = ({
   const toneMappingAlgorithm = useVisualStore((state) => state.toneMappingAlgorithm);
   const exposure = useVisualStore((state) => state.exposure);
 
-  // Fresnel state from shader settings
-  const fresnelEnabled = useVisualStore((state) => state.shaderSettings.surface.fresnelEnabled);
 
   // Lighting actions
   const setLightEnabled = useVisualStore((state) => state.setLightEnabled);
@@ -106,7 +104,7 @@ export const LightingControls: React.FC<LightingControlsProps> = ({
   const setLightVerticalAngle = useVisualStore((state) => state.setLightVerticalAngle);
   const setAmbientIntensity = useVisualStore((state) => state.setAmbientIntensity);
   const setSpecularIntensity = useVisualStore((state) => state.setSpecularIntensity);
-  const setSpecularPower = useVisualStore((state) => state.setSpecularPower);
+  const setShininess = useVisualStore((state) => state.setShininess);
   const setShowLightIndicator = useVisualStore((state) => state.setShowLightIndicator);
 
   // Enhanced lighting actions
@@ -115,9 +113,6 @@ export const LightingControls: React.FC<LightingControlsProps> = ({
   const setToneMappingEnabled = useVisualStore((state) => state.setToneMappingEnabled);
   const setToneMappingAlgorithm = useVisualStore((state) => state.setToneMappingAlgorithm);
   const setExposure = useVisualStore((state) => state.setExposure);
-
-  // Fresnel actions
-  const setSurfaceSettings = useVisualStore((state) => state.setSurfaceSettings);
 
   // Only show lighting controls for Surface shader
   if (shaderType !== 'surface') {
@@ -284,41 +279,21 @@ export const LightingControls: React.FC<LightingControlsProps> = ({
             showValue
           />
 
-          {/* Specular Power */}
+          {/* Shininess (Three.js naming) */}
           <Slider
-            label="Specular Power"
+            label="Shininess"
             min={1}
             max={128}
             step={1}
-            value={specularPower}
-            onChange={setSpecularPower}
-            onReset={() => setSpecularPower(DEFAULT_SPECULAR_POWER)}
+            value={shininess}
+            onChange={setShininess}
+            onReset={() => setShininess(DEFAULT_SHININESS)}
             showValue
           />
         </>
       )}
 
-      {/* ============ GROUP 4: Fresnel ============ */}
-      <SectionHeader title="Fresnel Rim" />
-
-      {/* Fresnel Toggle */}
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => setSurfaceSettings({ fresnelEnabled: !fresnelEnabled })}
-          className={`
-            flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors
-            ${fresnelEnabled
-              ? 'bg-accent/20 text-accent border border-accent/50'
-              : 'bg-panel-border text-text-secondary border border-panel-border'
-            }
-          `}
-          aria-pressed={fresnelEnabled}
-        >
-          <span>Fresnel Rim</span>
-        </button>
-      </div>
-
-      {/* ============ GROUP 5: Tone Mapping ============ */}
+      {/* ============ GROUP 4: Tone Mapping ============ */}
       <SectionHeader title="Tone Mapping" />
 
       {/* Tone Mapping Toggle */}

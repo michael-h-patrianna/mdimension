@@ -23,6 +23,7 @@ const DEFAULT_OPTIONS: Required<ExportOptions> = {
  *
  * @param canvas - The canvas element to export
  * @param options - Export options
+ * @throws {Error} If document.body is not available (SSR/non-browser context)
  */
 export function exportCanvasToPNG(
   canvas: HTMLCanvasElement,
@@ -34,7 +35,12 @@ export function exportCanvasToPNG(
     console.warn('Export options "scale" and "transparent" are not currently supported in this implementation.');
   }
 
-  // Get the data URL from canvas
+  // Validate we're in a browser context with document.body
+  if (typeof document === 'undefined' || !document.body) {
+    throw new Error('Export requires browser context with document.body');
+  }
+
+  // Get the data URL from canvas (can throw if canvas is tainted)
   const dataUrl = canvas.toDataURL('image/png');
 
   // Create download link

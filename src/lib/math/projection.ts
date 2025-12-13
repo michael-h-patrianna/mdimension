@@ -157,11 +157,16 @@ export function projectVertices(
   }
 
   // Validate all vertices have same dimension
-  const dimension = vertices[0]!.length;
+  const firstVertex = vertices[0];
+  if (!firstVertex) {
+    return [];
+  }
+  const dimension = firstVertex.length;
   for (let i = 1; i < vertices.length; i++) {
-    if (vertices[i]!.length !== dimension) {
+    const vertex = vertices[i];
+    if (!vertex || vertex.length !== dimension) {
       throw new Error(
-        `All vertices must have same dimension: vertex 0 has ${dimension}, vertex ${i} has ${vertices[i]!.length}`
+        `All vertices must have same dimension: vertex 0 has ${dimension}, vertex ${i} has ${vertex?.length ?? 'undefined'}`
       );
     }
   }

@@ -21,7 +21,7 @@ export type ColorMode =
   | 'analogous'
   | 'complementary'
   | 'triadic'
-  | 'splitComplementary';
+  | 'splitComplementary'
 
 /**
  * Options for the Color Mode dropdown in the UI.
@@ -33,7 +33,7 @@ export const COLOR_MODE_OPTIONS = [
   { value: 'complementary' as const, label: 'Complementary' },
   { value: 'triadic' as const, label: 'Triadic' },
   { value: 'splitComplementary' as const, label: 'Split Complementary' },
-] as const;
+] as const
 
 /**
  * Map from ColorMode string to integer for shader uniform.
@@ -45,9 +45,9 @@ export const COLOR_MODE_TO_INT: Record<ColorMode, number> = {
   complementary: 2,
   triadic: 3,
   splitComplementary: 4,
-};
+}
 
 /**
  * Default color mode for new sessions.
  */
-export const DEFAULT_COLOR_MODE: ColorMode = 'monochromatic';
+export const DEFAULT_COLOR_MODE: ColorMode = 'analogous'

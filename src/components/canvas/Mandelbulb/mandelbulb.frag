@@ -23,6 +23,14 @@ uniform bool uToneMappingEnabled;
 uniform int uToneMappingAlgorithm;
 uniform float uExposure;
 
+// Fresnel rim lighting uniforms
+uniform bool uFresnelEnabled;
+uniform float uFresnelIntensity;
+uniform vec3 uRimColor;
+
+// Performance mode: reduces quality during animation
+uniform bool uFastMode;
+
 varying vec3 vPosition;
 varying vec2 vUv;
 
@@ -483,27 +491,37 @@ void main() {
     vec3 col = surfaceColor * uAmbientIntensity;
 
     if (uLightEnabled) {
-        // Transform light direction to object space
-        vec3 l = normalize((uInverseModelMatrix * vec4(uLightDirection, 0.0)).xyz);
-        vec3 viewDir = -rd;
+        // Light direction stays fixed in world space
+        vec3 l = normalize(uLightDirection);
+
+        // Transform normal and view direction from object space to world space
+        // (raymarching happens in object space, lighting uses world space)
+        vec3 worldNormal = normalize((uModelMatrix * vec4(n, 0.0)).xyz);
+        vec3 worldViewDir = normalize((uModelMatrix * vec4(-rd, 0.0)).xyz);
 
         // Energy conservation: diffuse weight = 1.0 - ambient
         float diffuseWeight = 1.0 - uAmbientIntensity;
 
         // Diffuse (Lambert) with energy conservation and intensity control
-        float NdotL = max(dot(n, l), 0.0);
+        float NdotL = max(dot(worldNormal, l), 0.0);
         float diffuse = NdotL * uDiffuseIntensity * diffuseWeight;
         col += surfaceColor * uLightColor * diffuse;
 
-        // Specular (Blinn-Phong) with Fresnel attenuation
-        vec3 halfDir = normalize(l + viewDir);
-        float NdotH = max(dot(n, halfDir), 0.0);
-        float VdotH = max(dot(viewDir, halfDir), 0.0);
-
-        // Fresnel: F0 = 0.04 for non-metallic surfaces
-        float F = fresnelSchlick(VdotH, 0.04);
-        float spec = pow(NdotH, uSpecularPower) * uSpecularIntensity * F;
+        // Specular (Blinn-Phong) - simple without Fresnel for clearer highlights
+        // Matches Three.js MeshPhongMaterial: pow(NdotH, shininess) * specularColor
+        vec3 halfDir = normalize(l + worldViewDir);
+        float NdotH = max(dot(worldNormal, halfDir), 0.0);
+        float spec = pow(NdotH, uSpecularPower) * uSpecularIntensity;
         col += uSpecularColor * uLightColor * spec;
+
+        // Fresnel rim lighting (controlled by Edges render mode)
+        if (uFresnelEnabled && uFresnelIntensity > 0.0) {
+            float NdotV = max(dot(worldNormal, worldViewDir), 0.0);
+            float rim = pow(1.0 - NdotV, 3.0) * uFresnelIntensity * 2.0;
+            // Rim is stronger on lit side
+            rim *= (0.3 + 0.7 * NdotL);
+            col += uRimColor * rim;
+        }
     }
 
     // Apply tone mapping as final step

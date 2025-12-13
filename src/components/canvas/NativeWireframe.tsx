@@ -49,22 +49,25 @@ export function NativeWireframe({
     // Check if we need to create or resize the buffer attribute
     const existingAttr = positionAttrRef.current;
 
+    let attr: BufferAttribute;
     if (!existingAttr || existingAttr.array.length !== requiredSize) {
       // Only create new buffer when size changes (rare - topology change)
       const positions = new Float32Array(requiredSize);
-      const newAttr = new BufferAttribute(positions, 3);
-      newAttr.setUsage(35048); // THREE.DynamicDrawUsage for frequent updates
-      positionAttrRef.current = newAttr;
-      geometry.setAttribute('position', newAttr);
+      attr = new BufferAttribute(positions, 3);
+      attr.setUsage(35048); // THREE.DynamicDrawUsage for frequent updates
+      positionAttrRef.current = attr;
+      geometry.setAttribute('position', attr);
+    } else {
+      attr = existingAttr;
     }
 
     // Get the reusable buffer and update positions in-place
-    const attr = positionAttrRef.current!;
     const positions = attr.array as Float32Array;
 
     // Copy vertices to buffer
     for (let i = 0; i < vertexCount; i++) {
-      const v = vertices[i]!;
+      const v = vertices[i];
+      if (!v) continue; // Safety check for sparse arrays
       positions[i * 3] = v[0] ?? 0;
       positions[i * 3 + 1] = v[1] ?? 0;
       positions[i * 3 + 2] = v[2] ?? 0;

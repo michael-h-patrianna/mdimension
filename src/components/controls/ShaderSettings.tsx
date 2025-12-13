@@ -23,7 +23,7 @@
 import { Select } from '@/components/ui/Select';
 import { Slider } from '@/components/ui/Slider';
 import { COLOR_MODE_OPTIONS, type ColorMode } from '@/lib/shaders/palette';
-import { DEFAULT_SURFACE_SETTINGS, useVisualStore } from '@/stores/visualStore';
+import { DEFAULT_SURFACE_SETTINGS, DEFAULT_FRESNEL_INTENSITY, useVisualStore } from '@/stores/visualStore';
 import React from 'react';
 
 /**
@@ -55,6 +55,8 @@ export const ShaderSettings: React.FC<ShaderSettingsProps> = ({
   const setFaceColor = useVisualStore((state) => state.setFaceColor);
   const colorMode = useVisualStore((state) => state.colorMode);
   const setColorMode = useVisualStore((state) => state.setColorMode);
+  const fresnelIntensity = useVisualStore((state) => state.fresnelIntensity);
+  const setFresnelIntensity = useVisualStore((state) => state.setFresnelIntensity);
 
   // Get surface settings
   const surfaceSettings = shaderSettings.surface;
@@ -130,6 +132,19 @@ export const ShaderSettings: React.FC<ShaderSettingsProps> = ({
           <span>Fresnel Rim</span>
         </button>
       </div>
+
+      {surfaceSettings.fresnelEnabled && (
+        <Slider
+          label="Fresnel Intensity"
+          min={0}
+          max={1}
+          step={0.1}
+          value={fresnelIntensity}
+          onChange={setFresnelIntensity}
+          onReset={() => setFresnelIntensity(DEFAULT_FRESNEL_INTENSITY)}
+          showValue
+        />
+      )}
     </div>
   );
 };

@@ -39,6 +39,11 @@ uniform bool uToneMappingEnabled;
 uniform int uToneMappingAlgorithm;
 uniform float uExposure;
 
+// Fresnel rim lighting uniforms
+uniform bool uFresnelEnabled;
+uniform float uFresnelIntensity;
+uniform vec3 uRimColor;
+
 // Performance mode: reduces quality during animation for smoother interaction
 uniform bool uFastMode;
 
@@ -876,49 +881,38 @@ void main() {
     vec3 surfaceColor = getPaletteColor(baseHSL, 1.0 - trap, uPaletteMode);
     surfaceColor *= (0.3 + 0.7 * ao);
 
-    // Get basis rotation matrix for proper light transformation
-    mat3 basisRot = getBasisRotation();
-
     // Lighting calculation using scene lighting settings
     // Start with ambient
     vec3 col = surfaceColor * uAmbientIntensity;
 
     if (uLightEnabled) {
-        // Transform light direction using basis rotation matrix
-        // This makes light respond to D-dimensional rotations
-        vec3 l = normalize(basisRot * uLightDirection);
+        // Light direction stays fixed in world space (no transformation)
+        // The normal 'n' computed from the SDF already reflects the D-dimensional rotation
+        // because the SDF uses the rotated basis vectors
+        vec3 l = normalize(uLightDirection);
         vec3 viewDir = -rd;
-
-        // Energy conservation: diffuse weight = 1.0 - ambient
-        float diffuseWeight = 1.0 - uAmbientIntensity;
 
         // NOTE: Soft shadows disabled for Hyperbulb - too expensive for D-dimensional SDF
         // Each shadow step would require a full D-dimensional SDF evaluation
-        // For 6D+, this would add 24 × 3x = 72 equivalent SDF calls per pixel
 
-        // Diffuse (Lambert) with energy conservation and intensity control
+        // Diffuse (Lambert) - simple and matches Three.js MeshPhongMaterial behavior
         float NdotL = max(dot(n, l), 0.0);
-        float diffuse = NdotL * uDiffuseIntensity * diffuseWeight;
-        col += surfaceColor * uLightColor * diffuse;
+        col += surfaceColor * uLightColor * NdotL * uDiffuseIntensity;
 
-        // Specular (Blinn-Phong) with Fresnel attenuation
+        // Specular (Blinn-Phong) - simple without Fresnel for clearer highlights
+        // Matches Three.js MeshPhongMaterial: pow(NdotH, shininess) * specularColor
         vec3 halfDir = normalize(l + viewDir);
         float NdotH = max(dot(n, halfDir), 0.0);
-        float VdotH = max(dot(viewDir, halfDir), 0.0);
-
-        // Fresnel: F0 = 0.04 for non-metallic surfaces
-        float F = fresnelSchlick(VdotH, 0.04);
-        float spec = pow(NdotH, uSpecularPower) * uSpecularIntensity * F;
+        float spec = pow(NdotH, uSpecularPower) * uSpecularIntensity;
         col += uSpecularColor * uLightColor * spec;
 
-        // Skip rim lighting in fast mode
-        if (!uFastMode) {
-            // Rim/edge lighting for silhouette definition
+        // Fresnel rim lighting (controlled by Edges render mode)
+        if (uFresnelEnabled && uFresnelIntensity > 0.0) {
             float NdotV = max(dot(n, viewDir), 0.0);
-            float rim = pow(1.0 - NdotV, 3.0) * 0.4;
+            float rim = pow(1.0 - NdotV, 3.0) * uFresnelIntensity * 2.0;
             // Rim is stronger on lit side
             rim *= (0.3 + 0.7 * NdotL);
-            col += uLightColor * rim * 0.5;
+            col += uRimColor * rim;
         }
     }
 

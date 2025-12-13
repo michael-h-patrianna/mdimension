@@ -26,7 +26,12 @@ export function useTransformedVertices(
 
     // Rebuild cache if size or dimension changes
     const numVertices = vertices.length;
-    const dimension = vertices[0]!.length;
+    // Safe: we've verified vertices.length > 0 above
+    const firstVertex = vertices[0];
+    if (!firstVertex) {
+      return [];
+    }
+    const dimension = firstVertex.length;
     
     if (
       cacheRef.current.length !== numVertices ||

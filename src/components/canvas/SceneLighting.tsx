@@ -50,6 +50,7 @@ export const SceneLighting = memo(function SceneLighting() {
   const lightHorizontalAngle = useVisualStore((state) => state.lightHorizontalAngle);
   const lightVerticalAngle = useVisualStore((state) => state.lightVerticalAngle);
   const ambientIntensity = useVisualStore((state) => state.ambientIntensity);
+  const diffuseIntensity = useVisualStore((state) => state.diffuseIntensity);
   const showLightIndicator = useVisualStore((state) => state.showLightIndicator);
 
   /**
@@ -104,7 +105,7 @@ export const SceneLighting = memo(function SceneLighting() {
         <directionalLight
           position={lightPosition}
           color={lightColor}
-          intensity={1.0}
+          intensity={diffuseIntensity * 0.6}
         />
       )}
       {showLightIndicator && lightEnabled && (

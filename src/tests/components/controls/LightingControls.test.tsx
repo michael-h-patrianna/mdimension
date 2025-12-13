@@ -203,14 +203,14 @@ describe('LightingControls', () => {
 
     it('should render specular power slider when light enabled', () => {
       render(<LightingControls />);
-      expect(screen.getByText('Specular Power')).toBeInTheDocument();
+      expect(screen.getByText('Shininess')).toBeInTheDocument();
     });
 
     it('should not render specular controls when light disabled', () => {
       useVisualStore.getState().setLightEnabled(false);
       render(<LightingControls />);
       expect(screen.queryByText('Specular Intensity')).not.toBeInTheDocument();
-      expect(screen.queryByText('Specular Power')).not.toBeInTheDocument();
+      expect(screen.queryByText('Shininess')).not.toBeInTheDocument();
     });
 
     it('should update specular intensity', () => {
@@ -223,10 +223,10 @@ describe('LightingControls', () => {
 
     it('should update specular power', () => {
       render(<LightingControls />);
-      const slider = screen.getByLabelText('Specular Power') as HTMLInputElement;
+      const slider = screen.getByLabelText('Shininess') as HTMLInputElement;
 
       fireEvent.change(slider, { target: { value: '64' } });
-      expect(useVisualStore.getState().specularPower).toBe(64);
+      expect(useVisualStore.getState().shininess).toBe(64);
     });
 
     it('should have correct specular intensity range', () => {
@@ -238,9 +238,9 @@ describe('LightingControls', () => {
       expect(slider.step).toBe('0.1');
     });
 
-    it('should have correct specular power range', () => {
+    it('should have correct shininess range', () => {
       render(<LightingControls />);
-      const slider = screen.getByLabelText('Specular Power') as HTMLInputElement;
+      const slider = screen.getByLabelText('Shininess') as HTMLInputElement;
 
       expect(slider.min).toBe('1');
       expect(slider.max).toBe('128');

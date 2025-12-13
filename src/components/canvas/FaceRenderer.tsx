@@ -32,18 +32,18 @@ import {
   BufferGeometry,
   Float32BufferAttribute,
   Vector3,
-  Material,
+  MeshPhongMaterial,
   Mesh,
 } from 'three';
 import type { Vector3D } from '@/lib/math/types';
 import type { Face } from '@/lib/geometry/faces';
-import { createPaletteSurfaceMaterial, updatePaletteMaterial } from '@/lib/shaders/materials';
+import { createPhongPaletteMaterial, updatePhongPaletteMaterial } from '@/lib/shaders/materials';
 import type { ColorMode } from '@/lib/shaders/palette';
 import {
   DEFAULT_FACE_COLOR,
   DEFAULT_FACE_OPACITY,
   DEFAULT_SPECULAR_INTENSITY,
-  DEFAULT_SPECULAR_POWER,
+  DEFAULT_SHININESS,
   useVisualStore,
 } from '@/stores/visualStore';
 
@@ -61,8 +61,8 @@ export interface FaceRendererProps {
   opacity?: number;
   /** Specular intensity for lighting */
   specularIntensity?: number;
-  /** Specular power/shininess */
-  specularPower?: number;
+  /** Shininess - controls specular highlight size (Three.js naming) */
+  shininess?: number;
   /** Whether faces are visible */
   visible?: boolean;
   /** Per-face depth values for palette color variation (0-1 normalized) */
@@ -86,7 +86,7 @@ export interface FaceRendererProps {
  * @param props.color
  * @param props.opacity
  * @param props.specularIntensity
- * @param props.specularPower
+ * @param props.shininess
  * @param props.visible
  * @param props.faceDepths
  * @param props.colorMode
@@ -97,34 +97,36 @@ export function FaceRenderer({
   faces,
   color = DEFAULT_FACE_COLOR,
   opacity = DEFAULT_FACE_OPACITY,
-  specularIntensity = DEFAULT_SPECULAR_INTENSITY,
-  specularPower = DEFAULT_SPECULAR_POWER,
+  // Props ignored - using store values for consistency with LightingControls
+  specularIntensity: _specularIntensity = DEFAULT_SPECULAR_INTENSITY,
+  shininess: _shininess = DEFAULT_SHININESS,
   visible = true,
   faceDepths = [],
   colorMode = 'monochromatic',
 }: FaceRendererProps) {
+  // Suppress unused variable warnings - props kept for API compatibility
+  void _specularIntensity;
+  void _shininess;
   // Get surface shader settings from store for fresnel support
   const shaderSettings = useVisualStore((state) => state.shaderSettings);
   const edgeColor = useVisualStore((state) => state.edgeColor);
   const surfaceSettings = shaderSettings.surface;
+  // Get fresnel intensity from store (top-level, not in surfaceSettings)
+  const fresnelIntensity = useVisualStore((state) => state.fresnelIntensity);
 
-  // Get lighting settings for dynamic updates
-  const ambientIntensity = useVisualStore((state) => state.ambientIntensity);
-  const lightEnabled = useVisualStore((state) => state.lightEnabled);
-  const lightHorizontalAngle = useVisualStore((state) => state.lightHorizontalAngle);
-  const lightVerticalAngle = useVisualStore((state) => state.lightVerticalAngle);
+  // Get specular and tone mapping settings for material updates
+  // Note: lightEnabled, lightColor, lightDirection, ambientIntensity, diffuseIntensity
+  // are handled by scene lights (SceneLighting.tsx) - MeshPhongMaterial uses scene lights
   const storeSpecularIntensity = useVisualStore((state) => state.specularIntensity);
-  const storeSpecularPower = useVisualStore((state) => state.specularPower);
-  // Enhanced lighting settings
+  const storeShininess = useVisualStore((state) => state.shininess);
   const specularColor = useVisualStore((state) => state.specularColor);
-  const diffuseIntensity = useVisualStore((state) => state.diffuseIntensity);
   const toneMappingEnabled = useVisualStore((state) => state.toneMappingEnabled);
   const toneMappingAlgorithm = useVisualStore((state) => state.toneMappingAlgorithm);
   const exposure = useVisualStore((state) => state.exposure);
 
   // Refs to track previous resources for cleanup
   const geometryRef = useRef<BufferGeometry | null>(null);
-  const materialRef = useRef<Material | null>(null);
+  const materialRef = useRef<MeshPhongMaterial | null>(null);
   const meshRef = useRef<Mesh>(null);
 
   // Reusable Vector3 objects for normal calculation (avoid allocation in render loop)
@@ -136,53 +138,75 @@ export function FaceRenderer({
     ab: new Vector3(),
   });
 
-  // Create palette surface material with fresnel support based on settings
+  // Create MeshPhongMaterial with custom shader injection
+  // Uses Three.js native Phong lighting + onBeforeCompile for custom features
+  // Only recreate when fresnelEnabled changes (all other properties updated via uniforms)
   const material = useMemo(() => {
-    return createPaletteSurfaceMaterial({
-      color,
-      edgeColor, // Used as rim color for fresnel effect
-      faceOpacity: opacity,
-      specularIntensity,
-      specularPower,
+    return createPhongPaletteMaterial({
+      color: DEFAULT_FACE_COLOR, // Use defaults - will be updated immediately
+      edgeColor: DEFAULT_FACE_COLOR,
+      faceOpacity: DEFAULT_FACE_OPACITY,
+      specularIntensity: DEFAULT_SPECULAR_INTENSITY,
+      shininess: DEFAULT_SHININESS,
       fresnelEnabled: surfaceSettings.fresnelEnabled,
-      colorMode,
+      colorMode: 'monochromatic',
     });
-  }, [color, edgeColor, opacity, specularIntensity, specularPower, surfaceSettings.fresnelEnabled, colorMode]);
+  }, [surfaceSettings.fresnelEnabled]); // Only recreate when fresnel toggle changes
 
-  // Update material lighting uniforms when lighting settings change
+  // Update material properties when visual settings change
+  // MeshPhongMaterial uses scene lights (DirectionalLight, AmbientLight) for lighting
+  // Custom uniforms (palette, fresnel, tone mapping) are updated via shader reference
+  useLayoutEffect(() => {
+    if (!material) return;
+
+    // Update material properties - both native MeshPhongMaterial props and custom uniforms
+    // Note: lightEnabled, lightColor, lightDirection, ambientIntensity, diffuseIntensity
+    // are now handled by scene lights (SceneLighting.tsx)
+    updatePhongPaletteMaterial(material, {
+      // Color properties
+      color,
+      rimColor: edgeColor,
+      opacity,
+      colorMode,
+      // Fresnel
+      fresnelIntensity: surfaceSettings.fresnelEnabled ? fresnelIntensity : 0,
+      // Specular (native MeshPhongMaterial properties)
+      specularIntensity: storeSpecularIntensity,
+      specularColor,
+      shininess: storeShininess,
+      // Tone mapping (custom uniforms)
+      toneMappingEnabled,
+      toneMappingAlgorithm,
+      exposure,
+    });
+  }, [
+    material,
+    // Color properties
+    color,
+    edgeColor,
+    opacity,
+    colorMode,
+    // Fresnel
+    surfaceSettings.fresnelEnabled,
+    fresnelIntensity,
+    // Specular
+    storeSpecularIntensity,
+    specularColor,
+    storeShininess,
+    // Tone mapping
+    toneMappingEnabled,
+    toneMappingAlgorithm,
+    exposure,
+  ]);
+
+  // Cleanup material on unmount or when recreated
   useEffect(() => {
-    if (materialRef.current && 'uniforms' in materialRef.current) {
-      // Convert spherical angles to direction vector
-      const hRad = (lightHorizontalAngle * Math.PI) / 180;
-      const vRad = (lightVerticalAngle * Math.PI) / 180;
-      const lightDir: [number, number, number] = [
-        Math.cos(vRad) * Math.sin(hRad),
-        Math.sin(vRad),
-        Math.cos(vRad) * Math.cos(hRad),
-      ];
-
-      updatePaletteMaterial(materialRef.current as any, {
-        ambientIntensity,
-        lightEnabled,
-        lightDirection: lightDir,
-        specularIntensity: storeSpecularIntensity,
-        specularPower: storeSpecularPower,
-        // Enhanced lighting parameters
-        specularColor,
-        diffuseIntensity,
-        toneMappingEnabled,
-        toneMappingAlgorithm,
-        exposure,
-      });
-    }
-  }, [material, ambientIntensity, lightEnabled, lightHorizontalAngle, lightVerticalAngle, storeSpecularIntensity, storeSpecularPower, specularColor, diffuseIntensity, toneMappingEnabled, toneMappingAlgorithm, exposure]);
-
-  // Dispose previous material when new one is created
-  useEffect(() => {
-    if (materialRef.current && materialRef.current !== material) {
+    const currentMaterial = material;
+    // Track for cleanup
+    if (materialRef.current && materialRef.current !== currentMaterial) {
       materialRef.current.dispose();
     }
-    materialRef.current = material;
+    materialRef.current = currentMaterial;
 
     return () => {
       if (materialRef.current) {

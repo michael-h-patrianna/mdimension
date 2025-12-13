@@ -86,20 +86,15 @@ export const useRotationStore = create<RotationState>((set) => ({
     }
 
     set((state) => {
-      // Filter rotations to only include valid planes for new dimension
-      const validPlanes = new Set(getRotationPlanes(dimension).map(p => p.name));
-      const newRotations = new Map<string, number>();
-      
-      for (const [plane, angle] of state.rotations.entries()) {
-        if (validPlanes.has(plane)) {
-          newRotations.set(plane, angle);
-        }
+      // Reset all rotations when dimension changes to prevent accumulated angles
+      // from causing erratic behavior in the new dimension space
+      if (state.dimension !== dimension) {
+        return {
+          dimension,
+          rotations: new Map(),
+        };
       }
-
-      return {
-        dimension,
-        rotations: newRotations,
-      };
+      return state;
     });
   },
 }));

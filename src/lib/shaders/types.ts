@@ -24,8 +24,8 @@ export interface SurfaceSettings {
   faceOpacity: number;
   /** Specular intensity multiplier (0-2) */
   specularIntensity: number;
-  /** Specular power/shininess (1-128) */
-  specularPower: number;
+  /** Shininess - controls specular highlight size (1-128, Three.js default: 30) */
+  shininess: number;
   /** Enable fresnel rim lighting effect */
   fresnelEnabled: boolean;
 }
@@ -97,6 +97,6 @@ export function isWireframeSettings(
 export function isSurfaceSettings(
   settings: ShaderSettings
 ): settings is SurfaceSettings {
-  return 'faceOpacity' in settings && 'specularPower' in settings;
+  return 'faceOpacity' in settings && 'shininess' in settings;
 }
 

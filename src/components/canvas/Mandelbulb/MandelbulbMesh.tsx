@@ -47,13 +47,18 @@ const MandelbulbMesh = () => {
   const lightVerticalAngle = useVisualStore((state) => state.lightVerticalAngle);
   const ambientIntensity = useVisualStore((state) => state.ambientIntensity);
   const specularIntensity = useVisualStore((state) => state.specularIntensity);
-  const specularPower = useVisualStore((state) => state.specularPower);
+  const shininess = useVisualStore((state) => state.shininess);
   // Enhanced lighting settings
   const specularColor = useVisualStore((state) => state.specularColor);
   const diffuseIntensity = useVisualStore((state) => state.diffuseIntensity);
   const toneMappingEnabled = useVisualStore((state) => state.toneMappingEnabled);
   const toneMappingAlgorithm = useVisualStore((state) => state.toneMappingAlgorithm);
   const exposure = useVisualStore((state) => state.exposure);
+
+  // Edges render mode controls fresnel rim lighting for Mandelbulb
+  const edgesVisible = useVisualStore((state) => state.edgesVisible);
+  const fresnelIntensity = useVisualStore((state) => state.fresnelIntensity);
+  const edgeColor = useVisualStore((state) => state.edgeColor);
 
   const uniforms = useMemo(
     () => ({
@@ -82,6 +87,12 @@ const MandelbulbMesh = () => {
       uToneMappingEnabled: { value: true },
       uToneMappingAlgorithm: { value: 0 },
       uExposure: { value: 1.0 },
+      // Fresnel rim lighting uniforms
+      uFresnelEnabled: { value: true },
+      uFresnelIntensity: { value: 0.5 },
+      uRimColor: { value: new THREE.Color('#FFFFFF') },
+      // Performance mode
+      uFastMode: { value: false },
     }),
     []
   );
@@ -109,13 +120,18 @@ const MandelbulbMesh = () => {
       }
       if (material.uniforms.uAmbientIntensity) material.uniforms.uAmbientIntensity.value = ambientIntensity;
       if (material.uniforms.uSpecularIntensity) material.uniforms.uSpecularIntensity.value = specularIntensity;
-      if (material.uniforms.uSpecularPower) material.uniforms.uSpecularPower.value = specularPower;
+      if (material.uniforms.uSpecularPower) material.uniforms.uSpecularPower.value = shininess;
       // Enhanced lighting uniforms
       if (material.uniforms.uSpecularColor) material.uniforms.uSpecularColor.value.set(specularColor);
       if (material.uniforms.uDiffuseIntensity) material.uniforms.uDiffuseIntensity.value = diffuseIntensity;
       if (material.uniforms.uToneMappingEnabled) material.uniforms.uToneMappingEnabled.value = toneMappingEnabled;
       if (material.uniforms.uToneMappingAlgorithm) material.uniforms.uToneMappingAlgorithm.value = TONE_MAPPING_TO_INT[toneMappingAlgorithm];
       if (material.uniforms.uExposure) material.uniforms.uExposure.value = exposure;
+
+      // Fresnel rim lighting (controlled by Edges render mode)
+      if (material.uniforms.uFresnelEnabled) material.uniforms.uFresnelEnabled.value = edgesVisible;
+      if (material.uniforms.uFresnelIntensity) material.uniforms.uFresnelIntensity.value = fresnelIntensity;
+      if (material.uniforms.uRimColor) material.uniforms.uRimColor.value.set(edgeColor);
 
       // Access rotation state directly to avoid re-renders during animation
       // Filter to only include 3D-valid planes (XY, XZ, YZ) to prevent errors

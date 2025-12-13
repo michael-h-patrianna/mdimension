@@ -174,14 +174,13 @@ export function Scene({
       />
 
       {/* Render faces when Surface shader is selected (PRD Story 2) */}
+      {/* Note: FaceRenderer reads specular settings directly from store for consistency with LightingControls */}
       {shouldRenderFaces && (
         <FaceRenderer
           vertices={vertices}
           faces={faces}
           color={faceColor}
           opacity={surfaceSettings.faceOpacity}
-          specularIntensity={surfaceSettings.specularIntensity}
-          specularPower={surfaceSettings.specularPower}
           faceDepths={faceDepths}
           colorMode={colorMode}
         />

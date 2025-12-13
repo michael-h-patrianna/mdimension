@@ -88,7 +88,6 @@ function PolytopeSettings() {
  */
 function HypersphereSettings() {
   const config = useExtendedObjectStore((state) => state.hypersphere);
-  const setMode = useExtendedObjectStore((state) => state.setHypersphereMode);
   const setSampleCount = useExtendedObjectStore((state) => state.setHypersphereSampleCount);
   const setRadius = useExtendedObjectStore((state) => state.setHypersphereRadius);
   const setNeighborCount = useExtendedObjectStore((state) => state.setHypersphereNeighborCount);

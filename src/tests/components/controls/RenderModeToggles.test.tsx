@@ -403,15 +403,16 @@ describe('RenderModeToggles', () => {
       expect(useVisualStore.getState().vertexVisible).toBe(false);
       expect(useVisualStore.getState().facesVisible).toBe(false);
 
-      // Switch to mandelbrot (edges not supported)
+      // Switch to mandelbrot (edges now supported - controls fresnel rim lighting)
       act(() => {
         useGeometryStore.getState().setObjectType('mandelbrot');
       });
       rerender(<RenderModeToggles />);
 
-      // Edges should be auto-disabled, vertices should auto-enable as fallback
-      expect(useVisualStore.getState().edgesVisible).toBe(false);
-      expect(useVisualStore.getState().vertexVisible).toBe(true);
+      // For Mandelbrot 3D+: Edges requires Faces to be on, Vertices must be off
+      expect(useVisualStore.getState().edgesVisible).toBe(true);
+      expect(useVisualStore.getState().facesVisible).toBe(true);
+      expect(useVisualStore.getState().vertexVisible).toBe(false);
     });
 
     it('should auto-enable vertices when all render modes are manually disabled', async () => {

@@ -54,7 +54,7 @@ export const DEFAULT_LIGHT_HORIZONTAL_ANGLE = 45
 export const DEFAULT_LIGHT_VERTICAL_ANGLE = 30
 export const DEFAULT_AMBIENT_INTENSITY = 0.01
 export const DEFAULT_SPECULAR_INTENSITY = 0.5
-export const DEFAULT_SPECULAR_POWER = 12
+export const DEFAULT_SHININESS = 30 // Three.js default
 export const DEFAULT_SHOW_LIGHT_INDICATOR = false
 
 /** Enhanced lighting settings */
@@ -68,7 +68,7 @@ export const DEFAULT_EXPOSURE = 1.0
 export const DEFAULT_DEPTH_ATTENUATION_ENABLED = true
 export const DEFAULT_DEPTH_ATTENUATION_STRENGTH = 0.3
 export const DEFAULT_FRESNEL_ENABLED = true
-export const DEFAULT_FRESNEL_INTENSITY = 0.5
+export const DEFAULT_FRESNEL_INTENSITY = 0.1
 export const DEFAULT_PER_DIMENSION_COLOR_ENABLED = false
 
 /** Default ground plane settings */
@@ -89,7 +89,7 @@ export const DEFAULT_WIREFRAME_SETTINGS: WireframeSettings = {
 export const DEFAULT_SURFACE_SETTINGS: SurfaceSettings = {
   faceOpacity: DEFAULT_FACE_OPACITY,
   specularIntensity: DEFAULT_SPECULAR_INTENSITY,
-  specularPower: DEFAULT_SPECULAR_POWER,
+  shininess: DEFAULT_SHININESS,
   fresnelEnabled: DEFAULT_FRESNEL_ENABLED,
 }
 
@@ -219,8 +219,8 @@ interface VisualState {
   ambientIntensity: number
   /** Specular highlight intensity (0-2) */
   specularIntensity: number
-  /** Specular power/shininess (1-128) */
-  specularPower: number
+  /** Shininess - controls specular highlight size (1-128, Three.js default: 30) */
+  shininess: number
   /** Whether to show light direction indicator */
   showLightIndicator: boolean
 
@@ -293,7 +293,7 @@ interface VisualState {
   setLightVerticalAngle: (angle: number) => void
   setAmbientIntensity: (intensity: number) => void
   setSpecularIntensity: (intensity: number) => void
-  setSpecularPower: (power: number) => void
+  setShininess: (shininess: number) => void
   setShowLightIndicator: (show: boolean) => void
 
   // --- Actions: Enhanced Lighting ---
@@ -360,7 +360,7 @@ const INITIAL_STATE: Omit<VisualState, keyof VisualStateFunctions> = {
   lightVerticalAngle: DEFAULT_LIGHT_VERTICAL_ANGLE,
   ambientIntensity: DEFAULT_AMBIENT_INTENSITY,
   specularIntensity: DEFAULT_SPECULAR_INTENSITY,
-  specularPower: DEFAULT_SPECULAR_POWER,
+  shininess: DEFAULT_SHININESS,
   showLightIndicator: DEFAULT_SHOW_LIGHT_INDICATOR,
 
   // Enhanced lighting
@@ -412,7 +412,7 @@ type VisualStateFunctions = Pick<
   | 'setLightVerticalAngle'
   | 'setAmbientIntensity'
   | 'setSpecularIntensity'
-  | 'setSpecularPower'
+  | 'setShininess'
   | 'setShowLightIndicator'
   | 'setSpecularColor'
   | 'setDiffuseIntensity'
@@ -525,10 +525,10 @@ export const useVisualStore = create<VisualState>((set) => ({
             settings.specularIntensity !== undefined
               ? Math.max(0, Math.min(2, settings.specularIntensity))
               : state.shaderSettings.surface.specularIntensity,
-          specularPower:
-            settings.specularPower !== undefined
-              ? Math.max(1, Math.min(128, settings.specularPower))
-              : state.shaderSettings.surface.specularPower,
+          shininess:
+            settings.shininess !== undefined
+              ? Math.max(1, Math.min(128, settings.shininess))
+              : state.shaderSettings.surface.shininess,
         },
       },
     }))
@@ -586,8 +586,8 @@ export const useVisualStore = create<VisualState>((set) => ({
     set({ specularIntensity: Math.max(0, Math.min(2, intensity)) })
   },
 
-  setSpecularPower: (power: number) => {
-    set({ specularPower: Math.max(1, Math.min(128, power)) })
+  setShininess: (shininess: number) => {
+    set({ shininess: Math.max(1, Math.min(128, shininess)) })
   },
 
   setShowLightIndicator: (show: boolean) => {
