@@ -29,8 +29,8 @@ import { create } from 'zustand'
 export const DEFAULT_EDGE_COLOR = '#19e697'
 export const DEFAULT_EDGE_THICKNESS = 1
 export const DEFAULT_VERTEX_VISIBLE = false
-export const DEFAULT_VERTEX_SIZE = 1
-export const DEFAULT_VERTEX_COLOR = '#19e697'
+export const DEFAULT_VERTEX_SIZE = 3
+export const DEFAULT_VERTEX_COLOR = '#e619d5'
 export const DEFAULT_FACE_OPACITY = 0.3
 export const DEFAULT_FACE_COLOR = '#33cc9e'
 export const DEFAULT_BACKGROUND_COLOR = '#0F0F1A'
