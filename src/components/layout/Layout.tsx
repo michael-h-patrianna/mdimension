@@ -5,7 +5,7 @@
 
 import { Sidebar } from '@/components/sidebar';
 import { useThemeStore } from '@/stores/themeStore';
-import React from 'react';
+import React, { useEffect } from 'react';
 
 export interface LayoutProps {
   children?: React.ReactNode;
@@ -20,8 +20,13 @@ export const Layout: React.FC<LayoutProps> = ({
 }) => {
   const theme = useThemeStore((state) => state.theme);
 
+  // Apply theme to document root for CSS variable inheritance
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
   return (
-    <div className="relative w-screen h-screen bg-background overflow-hidden selection:bg-accent selection:text-black" data-theme={theme}>
+    <div className="relative w-screen h-screen bg-background overflow-hidden selection:bg-accent selection:text-black">
 
       {/* Background/Canvas Layer */}
       <div className="absolute inset-0 z-0">

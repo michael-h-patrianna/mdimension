@@ -64,7 +64,7 @@ export const Slider: React.FC<SliderProps> = ({
         <div className="absolute w-full h-1 bg-white/10 rounded-full overflow-hidden">
            {/* Fill Track */}
            <div 
-             className="h-full bg-accent shadow-[0_0_10px_rgb(var(--color-accent))]" 
+             className="h-full bg-accent shadow-[0_0_10px_var(--color-accent)]" 
              style={{ width: `${percentage}%` }}
            />
         </div>
@@ -88,7 +88,7 @@ export const Slider: React.FC<SliderProps> = ({
         
         {/* Custom Thumb Indicator */}
         <div 
-          className="absolute h-3 w-3 bg-white rounded-full shadow-[0_0_10px_rgb(var(--color-accent))] pointer-events-none transition-transform duration-100 ease-out group-hover:scale-125"
+          className="absolute h-3 w-3 bg-white rounded-full shadow-[0_0_10px_var(--color-accent)] pointer-events-none transition-transform duration-100 ease-out group-hover:scale-125"
           style={{ left: `calc(${percentage}% - 6px)` }}
         />
       </div>

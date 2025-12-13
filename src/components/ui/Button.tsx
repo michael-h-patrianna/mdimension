@@ -24,10 +24,10 @@ export const Button: React.FC<ButtonProps> = ({
   'data-testid': testId,
 }) => {
   
-  const baseStyles = 'relative overflow-hidden font-medium rounded-lg transition-all duration-300 focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50 disabled:cursor-not-allowed';
+  const baseStyles = 'relative overflow-hidden font-medium rounded-lg transition-all duration-300 focus:outline-hidden focus:ring-1 focus:ring-accent disabled:opacity-50 disabled:cursor-not-allowed';
 
   const variantStyles = {
-    primary: 'bg-accent text-black hover:bg-accent/90 shadow-[0_0_15px_rgb(var(--color-accent)/0.4)] hover:shadow-[0_0_25px_rgb(var(--color-accent)/0.6)]',
+    primary: 'bg-accent text-black hover:bg-accent/90 shadow-[0_0_15px_color-mix(in_oklch,var(--color-accent)_40%,transparent)] hover:shadow-[0_0_25px_color-mix(in_oklch,var(--color-accent)_60%,transparent)]',
     secondary: 'bg-panel-bg border border-panel-border text-text-primary hover:bg-panel-border/50',
     ghost: 'bg-transparent text-text-secondary hover:text-text-primary hover:bg-white/5',
   };

@@ -27,7 +27,7 @@ export const ToggleButton: React.FC<ToggleButtonProps> = ({
       className={`
         flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors border
         ${pressed
-          ? 'bg-accent/20 text-accent border-accent/50 shadow-[0_0_10px_rgb(var(--color-accent)/0.2)]'
+          ? 'bg-accent/20 text-accent border-accent/50 shadow-[0_0_10px_color-mix(in_oklch,var(--color-accent)_20%,transparent)]'
           : 'bg-panel-border text-text-secondary border-panel-border hover:text-text-primary hover:bg-panel-border/80'
         }
         ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}

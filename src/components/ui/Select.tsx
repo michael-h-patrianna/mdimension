@@ -40,7 +40,7 @@ export const Select = <T extends string = string>({
           value={value}
           onChange={handleChange}
           disabled={disabled}
-          className="w-full px-4 py-1 bg-panel-bg text-text-primary border border-panel-border rounded-lg appearance-none cursor-pointer transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent disabled:opacity-50 disabled:cursor-not-allowed hover:bg-panel-border/50"
+          className="w-full px-4 py-1 bg-panel-bg text-text-primary border border-panel-border rounded-lg appearance-none cursor-pointer transition-all duration-200 focus:outline-hidden focus:ring-2 focus:ring-accent focus:border-accent disabled:opacity-50 disabled:cursor-not-allowed hover:bg-panel-border/50"
           aria-label={label}
           data-testid={testId}
         >

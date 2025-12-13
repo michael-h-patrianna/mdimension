@@ -1,73 +1,90 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  /* Custom Colors */
+  --color-background: oklch(6% 0.02 270);
+  --color-glass: oklch(10% 0.02 270);
+  --color-panel-bg: oklch(10% 0.02 270 / 0.5);
+  --color-panel-border: oklch(100% 0 0 / 0.1);
+  --color-border: oklch(100% 0 0 / 0.1);
+
+  --color-text-primary: oklch(98% 0 0);
+  --color-text-secondary: oklch(70% 0.01 270);
+  --color-text-tertiary: oklch(55% 0.01 270);
+
+  --color-accent: var(--theme-accent, oklch(75% 0.15 200));
+  --color-accent-glow: var(--theme-accent-glow, oklch(75% 0.15 200));
+
+  /* Font Families */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', Menlo, Monaco, 'Courier New', monospace;
+
+  /* Custom Animation */
+  --animate-pulse-slow: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
 
 @layer base {
   :root {
-    /* Core Colors - Zinc/Neutral for the base interface */
-    --color-bg-app: 3 3 5; /* Deepest black/blue */
-    --color-bg-glass: 10 10 12; /* Slightly lighter for panels */
-    --color-border: 255 255 255; /* White, to be used with low opacity */
-    
-    /* Text Colors */
-    --color-text-primary: 250 250 250;
-    --color-text-secondary: 161 161 170; /* Zinc-400 */
-    --color-text-tertiary: 113 113 122; /* Zinc-500 */
-
-    /* Theme Accents - Default to Cyan */
-    --color-accent: 0 212 255; 
-    --color-accent-glow: 0 212 255;
+    /* Theme accent colors - can be overridden by data-theme */
+    --theme-accent: oklch(75% 0.15 200);
+    --theme-accent-glow: oklch(75% 0.15 200);
   }
 
   [data-theme='green'] {
-    --color-accent: 57 255 20;
-    --color-accent-glow: 50 255 50;
+    --theme-accent: oklch(80% 0.25 140);
+    --theme-accent-glow: oklch(80% 0.25 140);
   }
 
   [data-theme='magenta'] {
-    --color-accent: 255 0 255;
-    --color-accent-glow: 255 0 255;
+    --theme-accent: oklch(70% 0.25 320);
+    --theme-accent-glow: oklch(70% 0.25 320);
   }
 }
 
-@layer utilities {
-  .glass-panel {
-    @apply bg-[rgb(var(--color-bg-glass)/0.6)] backdrop-blur-xl border border-[rgb(var(--color-border)/0.08)] shadow-2xl;
-  }
-  
-  .glass-input {
-    @apply bg-[rgb(var(--color-bg-glass)/0.4)] border border-[rgb(var(--color-border)/0.1)] focus:border-[rgb(var(--color-accent)/0.5)];
-  }
-
-  .text-glow {
-    text-shadow: 0 0 10px rgb(var(--color-accent-glow) / 0.5);
-  }
-  
-  .border-glow {
-    box-shadow: 0 0 10px rgb(var(--color-accent-glow) / 0.2);
-  }
+@utility glass-panel {
+  background-color: oklch(10% 0.02 270 / 0.6);
+  backdrop-filter: blur(24px);
+  border: 1px solid oklch(100% 0 0 / 0.08);
+  box-shadow: 0 25px 50px -12px oklch(0% 0 0 / 0.4);
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+@utility glass-input {
+  background-color: oklch(10% 0.02 270 / 0.4);
+  border: 1px solid oklch(100% 0 0 / 0.1);
 }
 
-body {
-  @apply bg-[rgb(var(--color-bg-app))] text-[rgb(var(--color-text-primary))] font-sans antialiased overflow-hidden;
+@utility text-glow {
+  text-shadow: 0 0 10px var(--theme-accent-glow);
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
+@utility border-glow {
+  box-shadow: 0 0 10px color-mix(in oklch, var(--theme-accent-glow) 20%, transparent);
 }
-::-webkit-scrollbar-track {
-  @apply bg-transparent;
-}
-::-webkit-scrollbar-thumb {
-  @apply bg-[rgb(var(--color-border)/0.1)] rounded-full;
-}
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-[rgb(var(--color-border)/0.2)];
+
+@layer base {
+  body {
+    background-color: var(--color-background);
+    color: var(--color-text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow: hidden;
+  }
+
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: oklch(100% 0 0 / 0.1);
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: oklch(100% 0 0 / 0.2);
+  }
 }

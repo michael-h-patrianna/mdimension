@@ -21,6 +21,7 @@
 import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useShallow } from 'zustand/react/shallow';
+import * as THREE from 'three';
 import {
   BufferGeometry,
   Float32BufferAttribute,
@@ -395,8 +396,8 @@ export const PolytopeScene = React.memo(function PolytopeScene({
 
   // ============ REFS ============
   const vertexMeshRef = useRef<ThreeInstancedMesh>(null);
-  const faceMaterialRef = useRef<ShaderMaterial | null>(null);
-  const edgeMaterialRef = useRef<ShaderMaterial | null>(null);
+  const faceMeshRef = useRef<THREE.Mesh>(null);
+  const edgeMeshRef = useRef<THREE.LineSegments>(null);
 
   // Working buffers for vertex sphere positions (still CPU for instancing)
   const workingBuffers = useRef<{
@@ -453,20 +454,17 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   }, [vertexColor, opacity]);
 
   const faceMaterial = useMemo(() => {
-    const mat = createFaceShaderMaterial(
+    return createFaceShaderMaterial(
       faceColor,
       edgeColor,
       surfaceSettings.faceOpacity,
       surfaceSettings.fresnelEnabled,
       colorMode
     );
-    faceMaterialRef.current = mat;
-    return mat;
   }, [faceColor, edgeColor, surfaceSettings.faceOpacity, surfaceSettings.fresnelEnabled, colorMode]);
 
   const edgeMaterial = useMemo(() => {
     const mat = createEdgeShaderMaterial(edgeColor, opacity);
-    edgeMaterialRef.current = mat;
     return mat;
   }, [edgeColor, opacity]);
 
@@ -682,42 +680,58 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     const normalizationFactor = dimension > 3 ? Math.sqrt(dimension - 3) : 1;
     const projectionDistance = calculateSafeProjectionDistance(baseVertices, normalizationFactor);
 
-    // Update face material uniforms
-    if (faceMaterialRef.current) {
-      const u = faceMaterialRef.current.uniforms;
-      u.uRotationMatrix4D!.value = gpuData.rotationMatrix4D;
-      u.uDimension!.value = dimension;
-      u.uScale4D!.value = [scales[0] ?? 1, scales[1] ?? 1, scales[2] ?? 1, scales[3] ?? 1];
-      const extraScales = u.uExtraScales!.value as Float32Array;
-      for (let i = 0; i < MAX_EXTRA_DIMS; i++) {
-        extraScales[i] = scales[i + 4] ?? 1;
+    // Update face material uniforms through mesh ref (R3F v9 pattern)
+    if (faceMeshRef.current) {
+      const material = faceMeshRef.current.material as ShaderMaterial;
+      if (material.uniforms) {
+        const u = material.uniforms;
+        if (u.uRotationMatrix4D) (u.uRotationMatrix4D.value as Matrix4).copy(gpuData.rotationMatrix4D);
+        if (u.uDimension) u.uDimension.value = dimension;
+        if (u.uScale4D) u.uScale4D.value = [scales[0] ?? 1, scales[1] ?? 1, scales[2] ?? 1, scales[3] ?? 1];
+        if (u.uExtraScales) {
+          const extraScales = u.uExtraScales.value as Float32Array;
+          for (let i = 0; i < MAX_EXTRA_DIMS; i++) {
+            extraScales[i] = scales[i + 4] ?? 1;
+          }
+        }
+        if (u.uExtraRotationCols) {
+          const extraCols = u.uExtraRotationCols.value as Float32Array;
+          extraCols.set(gpuData.extraRotationCols);
+        }
+        if (u.uDepthRowSums) {
+          const depthSums = u.uDepthRowSums.value as Float32Array;
+          depthSums.set(gpuData.depthRowSums);
+        }
+        if (u.uProjectionDistance) u.uProjectionDistance.value = projectionDistance;
+        if (u.uProjectionType) u.uProjectionType.value = projectionType === 'perspective' ? 1 : 0;
       }
-      // Copy extra rotation data for full N-D rotation
-      const extraCols = u.uExtraRotationCols!.value as Float32Array;
-      extraCols.set(gpuData.extraRotationCols);
-      const depthSums = u.uDepthRowSums!.value as Float32Array;
-      depthSums.set(gpuData.depthRowSums);
-      u.uProjectionDistance!.value = projectionDistance;
-      u.uProjectionType!.value = projectionType === 'perspective' ? 1 : 0;
     }
 
-    // Update edge material uniforms
-    if (edgeMaterialRef.current) {
-      const u = edgeMaterialRef.current.uniforms;
-      u.uRotationMatrix4D!.value = gpuData.rotationMatrix4D;
-      u.uDimension!.value = dimension;
-      u.uScale4D!.value = [scales[0] ?? 1, scales[1] ?? 1, scales[2] ?? 1, scales[3] ?? 1];
-      const extraScales = u.uExtraScales!.value as Float32Array;
-      for (let i = 0; i < MAX_EXTRA_DIMS; i++) {
-        extraScales[i] = scales[i + 4] ?? 1;
+    // Update edge material uniforms through mesh ref (R3F v9 pattern)
+    if (edgeMeshRef.current) {
+      const material = edgeMeshRef.current.material as ShaderMaterial;
+      if (material.uniforms) {
+        const u = material.uniforms;
+        if (u.uRotationMatrix4D) (u.uRotationMatrix4D.value as Matrix4).copy(gpuData.rotationMatrix4D);
+        if (u.uDimension) u.uDimension.value = dimension;
+        if (u.uScale4D) u.uScale4D.value = [scales[0] ?? 1, scales[1] ?? 1, scales[2] ?? 1, scales[3] ?? 1];
+        if (u.uExtraScales) {
+          const extraScales = u.uExtraScales.value as Float32Array;
+          for (let i = 0; i < MAX_EXTRA_DIMS; i++) {
+            extraScales[i] = scales[i + 4] ?? 1;
+          }
+        }
+        if (u.uExtraRotationCols) {
+          const extraCols = u.uExtraRotationCols.value as Float32Array;
+          extraCols.set(gpuData.extraRotationCols);
+        }
+        if (u.uDepthRowSums) {
+          const depthSums = u.uDepthRowSums.value as Float32Array;
+          depthSums.set(gpuData.depthRowSums);
+        }
+        if (u.uProjectionDistance) u.uProjectionDistance.value = projectionDistance;
+        if (u.uProjectionType) u.uProjectionType.value = projectionType === 'perspective' ? 1 : 0;
       }
-      // Copy extra rotation data for full N-D rotation
-      const extraCols = u.uExtraRotationCols!.value as Float32Array;
-      extraCols.set(gpuData.extraRotationCols);
-      const depthSums = u.uDepthRowSums!.value as Float32Array;
-      depthSums.set(gpuData.depthRowSums);
-      u.uProjectionDistance!.value = projectionDistance;
-      u.uProjectionType!.value = projectionType === 'perspective' ? 1 : 0;
     }
 
     // Vertex spheres still use CPU (InstancedMesh is already efficient)
@@ -758,12 +772,12 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     <group>
       {/* GPU-rendered faces */}
       {facesVisible && faceGeometry && (
-        <mesh geometry={faceGeometry} material={faceMaterial} />
+        <mesh ref={faceMeshRef} geometry={faceGeometry} material={faceMaterial} />
       )}
 
       {/* GPU-rendered edges */}
       {edgesVisible && edgeGeometry && (
-        <lineSegments geometry={edgeGeometry} material={edgeMaterial} />
+        <lineSegments ref={edgeMeshRef} geometry={edgeGeometry} material={edgeMaterial} />
       )}
 
       {/* CPU-rendered vertex spheres (InstancedMesh) */}

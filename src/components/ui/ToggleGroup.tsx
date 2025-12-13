@@ -40,7 +40,7 @@ export const ToggleGroup = <T extends string = string>({
               flex-1 relative px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-300 border
               disabled:opacity-50 disabled:cursor-not-allowed
               ${isSelected
-                ? 'bg-accent/20 text-accent border-accent/50 shadow-[0_0_10px_rgb(var(--color-accent)/0.2)]'
+                ? 'bg-accent/20 text-accent border-accent/50 shadow-[0_0_10px_color-mix(in_oklch,var(--color-accent)_20%,transparent)]'
                 : 'bg-panel-border text-text-secondary border-panel-border hover:text-text-primary hover:bg-panel-border/80'
               }
             `}

@@ -1,6 +1,6 @@
 import { useRef, useLayoutEffect, useMemo } from 'react';
 import { Vector2, InstancedInterleavedBuffer } from 'three';
-import { extend, ReactThreeFiber, useThree } from '@react-three/fiber';
+import { extend, useThree, type ThreeElement } from '@react-three/fiber';
 import { LineSegments2 } from 'three-stdlib';
 import { LineMaterial } from 'three-stdlib';
 import { LineSegmentsGeometry } from 'three-stdlib';
@@ -8,18 +8,14 @@ import { LineSegmentsGeometry } from 'three-stdlib';
 // Extend Three.js elements for R3F
 extend({ LineSegments2, LineMaterial, LineSegmentsGeometry });
 
-// Add types for the extended elements
-/* eslint-disable @typescript-eslint/no-namespace */
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      lineSegments2: ReactThreeFiber.Object3DNode<LineSegments2, typeof LineSegments2>;
-      lineMaterial: ReactThreeFiber.MaterialNode<LineMaterial, typeof LineMaterial>;
-      lineSegmentsGeometry: ReactThreeFiber.Object3DNode<LineSegmentsGeometry, typeof LineSegmentsGeometry>;
-    }
+// Add types for the extended elements (R3F v9 syntax)
+declare module '@react-three/fiber' {
+  interface ThreeElements {
+    lineSegments2: ThreeElement<typeof LineSegments2>;
+    lineMaterial: ThreeElement<typeof LineMaterial>;
+    lineSegmentsGeometry: ThreeElement<typeof LineSegmentsGeometry>;
   }
 }
-/* eslint-enable @typescript-eslint/no-namespace */
 
 /**
  * Internal attributes structure for LineSegmentsGeometry.

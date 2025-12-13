@@ -20,12 +20,12 @@ export const Section: React.FC<SectionProps> = ({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between py-2 px-3 text-left focus:outline-none"
+        className="w-full flex items-center justify-between py-2 px-3 text-left focus:outline-hidden"
         aria-expanded={isOpen}
       >
         <div className="flex items-center gap-2">
           {/* Decorative indicator */}
-          <div className={`w-1 h-1 rounded-full transition-colors duration-300 ${isOpen ? 'bg-accent shadow-[0_0_8px_rgb(var(--color-accent))]' : 'bg-text-tertiary'}`} />
+          <div className={`w-1 h-1 rounded-full transition-colors duration-300 ${isOpen ? 'bg-accent shadow-[0_0_8px_var(--color-accent)]' : 'bg-text-tertiary'}`} />
           <span className={`text-xs font-semibold tracking-wider transition-colors duration-300 ${isOpen ? 'text-text-primary' : 'text-text-secondary group-hover:text-text-primary'}`}>
             {title.toUpperCase()}
           </span>

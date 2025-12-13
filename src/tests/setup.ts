@@ -33,13 +33,12 @@ console.error = (...args) => {
 }
 
 // Mock ResizeObserver for Three.js components
-;(globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver = vi
-  .fn()
-  .mockImplementation(() => ({
-    observe: vi.fn(),
-    unobserve: vi.fn(),
-    disconnect: vi.fn(),
-  }))
+class MockResizeObserver {
+  observe = vi.fn()
+  unobserve = vi.fn()
+  disconnect = vi.fn()
+}
+;(globalThis as unknown as { ResizeObserver: typeof MockResizeObserver }).ResizeObserver = MockResizeObserver
 
 // Mock WebGL context for Three.js
 HTMLCanvasElement.prototype.getContext = vi.fn(() => ({
