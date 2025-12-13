@@ -5,7 +5,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import {
-  DEFAULT_HYPERSPHERE_CONFIG,
   DEFAULT_ROOT_SYSTEM_CONFIG,
   DEFAULT_CLIFFORD_TORUS_CONFIG,
   DEFAULT_MANDELBROT_CONFIG,
@@ -18,11 +17,6 @@ describe('extendedObjectStore', () => {
   });
 
   describe('initial state', () => {
-    it('should have default hypersphere config', () => {
-      const state = useExtendedObjectStore.getState();
-      expect(state.hypersphere).toEqual(DEFAULT_HYPERSPHERE_CONFIG);
-    });
-
     it('should have default root system config', () => {
       const state = useExtendedObjectStore.getState();
       expect(state.rootSystem).toEqual(DEFAULT_ROOT_SYSTEM_CONFIG);
@@ -41,80 +35,6 @@ describe('extendedObjectStore', () => {
     it('should have default mandelbox config', () => {
       const state = useExtendedObjectStore.getState();
       expect(state.mandelbox).toEqual(DEFAULT_MANDELBOX_CONFIG);
-    });
-  });
-
-  describe('hypersphere actions', () => {
-    it('should set mode', () => {
-      const { setHypersphereMode } = useExtendedObjectStore.getState();
-
-      setHypersphereMode('solid');
-      expect(useExtendedObjectStore.getState().hypersphere.mode).toBe('solid');
-
-      setHypersphereMode('surface');
-      expect(useExtendedObjectStore.getState().hypersphere.mode).toBe('surface');
-    });
-
-    it('should set sample count with clamping', () => {
-      const { setHypersphereSampleCount } = useExtendedObjectStore.getState();
-
-      setHypersphereSampleCount(1000);
-      expect(useExtendedObjectStore.getState().hypersphere.sampleCount).toBe(1000);
-
-      // Test clamping - too low
-      setHypersphereSampleCount(50);
-      expect(useExtendedObjectStore.getState().hypersphere.sampleCount).toBe(200);
-
-      // Test clamping - too high
-      setHypersphereSampleCount(50000);
-      expect(useExtendedObjectStore.getState().hypersphere.sampleCount).toBe(10000);
-    });
-
-    it('should floor sample count to integer', () => {
-      const { setHypersphereSampleCount } = useExtendedObjectStore.getState();
-
-      setHypersphereSampleCount(1500.7);
-      expect(useExtendedObjectStore.getState().hypersphere.sampleCount).toBe(1500);
-    });
-
-    it('should set radius with clamping', () => {
-      const { setHypersphereRadius } = useExtendedObjectStore.getState();
-
-      setHypersphereRadius(1.5);
-      expect(useExtendedObjectStore.getState().hypersphere.radius).toBe(1.5);
-
-      // Test clamping - too low
-      setHypersphereRadius(0.1);
-      expect(useExtendedObjectStore.getState().hypersphere.radius).toBe(0.5);
-
-      // Test clamping - too high (range is 0.5-6.0)
-      setHypersphereRadius(10);
-      expect(useExtendedObjectStore.getState().hypersphere.radius).toBe(6.0);
-    });
-
-    it('should set wireframe enabled', () => {
-      const { setHypersphereWireframeEnabled } = useExtendedObjectStore.getState();
-
-      setHypersphereWireframeEnabled(true);
-      expect(useExtendedObjectStore.getState().hypersphere.wireframeEnabled).toBe(true);
-
-      setHypersphereWireframeEnabled(false);
-      expect(useExtendedObjectStore.getState().hypersphere.wireframeEnabled).toBe(false);
-    });
-
-    it('should set neighbor count with clamping', () => {
-      const { setHypersphereNeighborCount } = useExtendedObjectStore.getState();
-
-      setHypersphereNeighborCount(6);
-      expect(useExtendedObjectStore.getState().hypersphere.neighborCount).toBe(6);
-
-      // Test clamping - too low
-      setHypersphereNeighborCount(1);
-      expect(useExtendedObjectStore.getState().hypersphere.neighborCount).toBe(2);
-
-      // Test clamping - too high
-      setHypersphereNeighborCount(20);
-      expect(useExtendedObjectStore.getState().hypersphere.neighborCount).toBe(10);
     });
   });
 
@@ -750,8 +670,6 @@ describe('extendedObjectStore', () => {
       const state = useExtendedObjectStore.getState();
 
       // Modify all configs
-      state.setHypersphereMode('solid');
-      state.setHypersphereSampleCount(5000);
       state.setRootSystemType('E8');
       state.setCliffordTorusRadius(2.5);
       state.setMandelbrotMaxIterations(200);
@@ -764,7 +682,6 @@ describe('extendedObjectStore', () => {
 
       // Verify all reset to defaults
       const newState = useExtendedObjectStore.getState();
-      expect(newState.hypersphere).toEqual(DEFAULT_HYPERSPHERE_CONFIG);
       expect(newState.rootSystem).toEqual(DEFAULT_ROOT_SYSTEM_CONFIG);
       expect(newState.cliffordTorus).toEqual(DEFAULT_CLIFFORD_TORUS_CONFIG);
       expect(newState.mandelbrot).toEqual(DEFAULT_MANDELBROT_CONFIG);

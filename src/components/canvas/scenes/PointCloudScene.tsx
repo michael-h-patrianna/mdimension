@@ -7,7 +7,7 @@
  * 2. Performing rotation/scale/projection in vertex shader
  * 3. Only updating uniform values in useFrame (no buffer copies)
  *
- * Used for: Hyperspheres, Root Systems, Clifford Torus, Mandelbrot (point cloud mode)
+ * Used for: Root Systems, Clifford Torus, Mandelbrot (point cloud mode)
  */
 
 import React, { useRef, useMemo, useEffect } from 'react';

@@ -8,7 +8,6 @@
  * - Hypercube, Simplex, Cross-polytope: scale (0.5-3.0)
  *
  * Extended Objects:
- * - Hypersphere: mode, sample count, radius, wireframe
  * - Root System: type (A/D/E8), scale (0.5-2.0), always has edges
  * - Clifford Torus: radius, resolution, edge mode
  * - Mandelbrot Set: quality preset, iterations, escape radius, resolution
@@ -19,7 +18,6 @@ import { Select } from '@/components/ui/Select';
 import { Slider } from '@/components/ui/Slider';
 import {
   DEFAULT_CLIFFORD_TORUS_CONFIG,
-  DEFAULT_HYPERSPHERE_CONFIG,
   DEFAULT_POLYTOPE_CONFIG,
   DEFAULT_POLYTOPE_SCALES,
   DEFAULT_ROOT_SYSTEM_CONFIG,
@@ -27,7 +25,6 @@ import {
 import { isPolytopeType } from '@/lib/geometry/types';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
-import { useVisualStore } from '@/stores/visualStore';
 import React from 'react';
 import { MandelboxControls } from './MandelboxControls';
 import { MandelbrotControls } from './MandelbrotControls';
@@ -78,66 +75,6 @@ function PolytopeSettings() {
       <p className="text-xs text-text-secondary">
         Vertices in [-scale, scale] per axis.
       </p>
-    </div>
-  );
-}
-
-/**
- * Hypersphere settings controls
- *
- * Note: K-NN wireframe is now controlled by the Edges toggle in the render mode controls.
- * The Neighbor Count slider is shown when edges are visible.
- */
-function HypersphereSettings() {
-  const config = useExtendedObjectStore((state) => state.hypersphere);
-  const setSampleCount = useExtendedObjectStore((state) => state.setHypersphereSampleCount);
-  const setRadius = useExtendedObjectStore((state) => state.setHypersphereRadius);
-  const setNeighborCount = useExtendedObjectStore((state) => state.setHypersphereNeighborCount);
-
-  // Edges toggle controls wireframe visibility
-  const edgesVisible = useVisualStore((state) => state.edgesVisible);
-
-  return (
-    <div className="space-y-4">
-
-
-      {/* Sample count */}
-      <Slider
-        label="Sample Count"
-        min={200}
-        max={5000}
-        step={100}
-        value={config.sampleCount}
-        onChange={setSampleCount}
-        onReset={() => setSampleCount(DEFAULT_HYPERSPHERE_CONFIG.sampleCount)}
-        showValue
-      />
-
-      {/* Radius */}
-      <Slider
-        label="Radius"
-        min={0.5}
-        max={6.0}
-        step={0.1}
-        value={config.radius}
-        onChange={setRadius}
-        onReset={() => setRadius(DEFAULT_HYPERSPHERE_CONFIG.radius)}
-        showValue
-      />
-
-      {/* Neighbor count (shown when Edges toggle is on) */}
-      {edgesVisible && (
-        <Slider
-          label="Neighbor Count (K)"
-          min={2}
-          max={10}
-          step={1}
-          value={config.neighborCount}
-          onChange={setNeighborCount}
-          onReset={() => setNeighborCount(DEFAULT_HYPERSPHERE_CONFIG.neighborCount)}
-          showValue
-        />
-      )}
     </div>
   );
 }
@@ -378,7 +315,6 @@ export const ObjectSettingsSection: React.FC<ObjectSettingsSectionProps> = ({
       {isPolytopeType(objectType) && <PolytopeSettings />}
 
       {/* Extended object settings */}
-      {objectType === 'hypersphere' && <HypersphereSettings />}
       {objectType === 'root-system' && <RootSystemSettings />}
       {objectType === 'clifford-torus' && <CliffordTorusSettings />}
       {objectType === 'mandelbrot' && <MandelbrotControls />}

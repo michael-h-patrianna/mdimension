@@ -2,10 +2,10 @@
  * Type definitions for extended n-dimensional objects
  *
  * Configuration interfaces for:
- * - Hypersphere (surface/solid point clouds)
  * - Root Systems (A, D, E8 polytopes)
  * - Clifford Torus (flat torus on S^3)
  * - Mandelbrot Set (n-dimensional fractal)
+ * - Mandelbox (box-like fractal)
  *
  * ## Scale Consistency
  *
@@ -15,14 +15,8 @@
  *   Use scale=1.0, creating vertices in [-1, 1] per axis.
  *   Bounding box is a cube of side length 2.
  *
- * - **Hypersphere** (radius=1.0):
- *   Points lie on or within a sphere of radius 1.0.
- *   The sphere inscribes the polytope's bounding box (touches face centers).
- *   For visual consistency with hypercube corners, users may increase radius to ~1.41 (√2 in 4D).
- *
  * - **Clifford Torus** (radius=1.0):
  *   Points lie on a torus embedded in S³ with sphere radius 1.0.
- *   Similar inscribed relationship as hypersphere.
  *
  * - **Root Systems** (scale=1.0):
  *   Roots are normalized to have maximum coordinate extent ≈ 1.0.
@@ -83,44 +77,6 @@ export const DEFAULT_POLYTOPE_CONFIG: PolytopeConfig = {
 export type RootSystemType = 'A' | 'D' | 'E8';
 
 // ============================================================================
-// Hypersphere Configuration
-// ============================================================================
-
-/**
- * Hypersphere sampling mode
- * - surface: Points on the (n-1)-sphere boundary
- * - solid: Points distributed throughout the n-ball interior
- */
-export type HypersphereMode = 'surface' | 'solid';
-
-/**
- * Configuration for hypersphere generation
- */
-export interface HypersphereConfig {
-  /** Sampling mode: surface or solid */
-  mode: HypersphereMode;
-  /** Number of sample points (200-10000) */
-  sampleCount: number;
-  /** Radius of the hypersphere (0.5-6.0) */
-  radius: number;
-  /** Whether to generate k-NN wireframe edges */
-  wireframeEnabled: boolean;
-  /** Number of nearest neighbors for wireframe (2-10) */
-  neighborCount: number;
-}
-
-/**
- * Default hypersphere configuration
- */
-export const DEFAULT_HYPERSPHERE_CONFIG: HypersphereConfig = {
-  mode: 'surface',
-  sampleCount: 2000,
-  radius: 3.0,
-  wireframeEnabled: false,
-  neighborCount: 4,
-};
-
-// ============================================================================
 // Root System Configuration
 // ============================================================================
 
@@ -157,7 +113,7 @@ export type CliffordTorusEdgeMode = 'grid' | 'none';
 /**
  * Clifford torus mode
  * - classic: 2D torus T² in S³ ⊂ ℝ⁴ (only works for n >= 4)
- * - generalized: k-torus Tᵏ in S^(2k-1) ⊂ ℝ^(2k) (works for n >= 2, with k ≤ floor(n/2))
+ * - generalized: k-torus Tᵏ in S^(2k-1) ⊂ ℝ^(2k) (works for n >= 3, with k ≤ floor(n/2))
  */
 export type CliffordTorusMode = 'classic' | 'generalized';
 
@@ -262,7 +218,6 @@ export type MandelbrotRenderStyle = 'pointCloud' | 'rayMarching';
  * Configuration for n-dimensional Mandelbrot set generation
  *
  * Supports:
- * - 2D: Classic Mandelbrot set (complex plane)
  * - 3D: Mandelbulb (spherical coordinates)
  * - 4D-11D: Hyperbulb (hyperspherical coordinates)
  *
@@ -370,7 +325,7 @@ export const DEFAULT_MANDELBROT_CONFIG: MandelbrotConfig = {
   visualizationAxes: [0, 1, 2],
   parameterValues: [],
   center: [],
-  extent: 1.75,  // Adjusted for better 2D Mandelbrot framing (was 2.5)
+  extent: 2.0,  // Default extent for 3D+ Mandelbulb/Hyperbulb
   colorMode: 'escapeTime',
   palette: 'complement',
   customPalette: { start: '#0000ff', mid: '#ffffff', end: '#ff8000' },
@@ -493,8 +448,8 @@ export const DEFAULT_MANDELBOX_CONFIG: MandelboxConfig = {
  * @example
  * ```typescript
  * const params: ExtendedObjectParams = {
- *   polytope: { scale: 1.5 },  // Larger polytope
- *   hypersphere: { ...DEFAULT_HYPERSPHERE_CONFIG, radius: 1.5 }, // Matching sphere
+ *   polytope: { scale: 1.5 },
+ *   rootSystem: { ...DEFAULT_ROOT_SYSTEM_CONFIG, scale: 2.0 },
  *   ...
  * };
  * ```
@@ -502,8 +457,6 @@ export const DEFAULT_MANDELBOX_CONFIG: MandelboxConfig = {
 export interface ExtendedObjectParams {
   /** Configuration for standard polytopes (hypercube, simplex, cross-polytope) */
   polytope: PolytopeConfig;
-  /** Configuration for hypersphere generation */
-  hypersphere: HypersphereConfig;
   /** Configuration for root system generation */
   rootSystem: RootSystemConfig;
   /** Configuration for Clifford torus generation */
@@ -519,7 +472,6 @@ export interface ExtendedObjectParams {
  */
 export const DEFAULT_EXTENDED_OBJECT_PARAMS: ExtendedObjectParams = {
   polytope: DEFAULT_POLYTOPE_CONFIG,
-  hypersphere: DEFAULT_HYPERSPHERE_CONFIG,
   rootSystem: DEFAULT_ROOT_SYSTEM_CONFIG,
   cliffordTorus: DEFAULT_CLIFFORD_TORUS_CONFIG,
   mandelbrot: DEFAULT_MANDELBROT_CONFIG,

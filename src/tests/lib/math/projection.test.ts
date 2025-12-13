@@ -33,14 +33,9 @@ describe('Projection Operations', () => {
       expect(projected).toEqual([1, 2, 3]);
     });
 
-    it('projects 2D vector to XZ plane at Y=0', () => {
-      const v = [1, 2];
-      const projected = projectOrthographic(v);
-      expect(projected).toEqual([1, 0, 2]);
-    });
-
-    it('throws error for vectors with less than 2 dimensions', () => {
+    it('throws error for vectors with less than 3 dimensions', () => {
       expect(() => projectOrthographic([1])).toThrow();
+      expect(() => projectOrthographic([1, 2])).toThrow();
     });
   });
 
@@ -142,18 +137,9 @@ describe('Projection Operations', () => {
       }
     });
 
-    it('projects 2D vector to XZ plane at Y=0 with perspective scaling', () => {
-      const v = [1, 2];
-      const d = 4;
-      // For 2D: scale = 1/d = 1/4 = 0.25
-      const projected = projectPerspective(v, d);
-      expect(projected[0]).toBeCloseTo(0.25, 10);
-      expect(projected[1]).toBe(0);
-      expect(projected[2]).toBeCloseTo(0.5, 10);
-    });
-
-    it('throws error for vectors with less than 2 dimensions', () => {
+    it('throws error for vectors with less than 3 dimensions', () => {
       expect(() => projectPerspective([1], 4)).toThrow();
+      expect(() => projectPerspective([1, 2], 4)).toThrow();
     });
 
     it('throws error for non-positive projection distance', () => {

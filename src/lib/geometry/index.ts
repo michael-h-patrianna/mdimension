@@ -9,9 +9,10 @@
  * - Cross-polytope (n-orthoplex): generalization of octahedron
  *
  * Extended Objects:
- * - Hypersphere: surface and solid point clouds
  * - Root Systems: A, D, and E8 root polytopes
  * - Clifford Torus: flat torus on S³
+ * - Mandelbrot: N-dimensional fractal (Mandelbulb/Hyperbulb)
+ * - Mandelbox: Box-like fractal with sphere/box folding
  */
 
 // Type exports from types.ts
@@ -31,8 +32,6 @@ export type { Face } from './faces';
 // Extended object type exports (includes PolytopeConfig for unified API)
 export type {
   PolytopeConfig,
-  HypersphereMode,
-  HypersphereConfig,
   RootSystemType,
   RootSystemConfig,
   CliffordTorusEdgeMode,
@@ -49,7 +48,6 @@ export type {
 // Default configs for all object types
 export {
   DEFAULT_POLYTOPE_CONFIG,
-  DEFAULT_HYPERSPHERE_CONFIG,
   DEFAULT_ROOT_SYSTEM_CONFIG,
   DEFAULT_CLIFFORD_TORUS_CONFIG,
   DEFAULT_MANDELBROT_CONFIG,
@@ -65,9 +63,6 @@ export { generateCrossPolytope } from './cross-polytope';
 // Extended object generator exports
 export {
   generateExtendedObject,
-  generateHypersphere,
-  sampleHypersphereSurface,
-  sampleHypersphereSolid,
   generateRootSystem,
   generateARoots,
   generateDRoots,
@@ -157,10 +152,10 @@ export function generatePolytope(type: PolytopeType, dimension: number, scale = 
  *   polytope: { scale: 1.5 },
  * });
  *
- * // Generate a hypersphere with matching radius
- * const sphere = generateGeometry('hypersphere', 4, {
+ * // Generate a root system
+ * const roots = generateGeometry('root-system', 4, {
  *   ...DEFAULT_EXTENDED_OBJECT_PARAMS,
- *   hypersphere: { mode: 'surface', sampleCount: 3000, radius: 1.5 },
+ *   rootSystem: { rootType: 'D', scale: 2.0 },
  * });
  * ```
  */
@@ -238,7 +233,6 @@ function getTypeName(type: ObjectType): string {
     'hypercube': 'Hypercube',
     'simplex': 'Simplex',
     'cross-polytope': 'Cross-Polytope',
-    'hypersphere': 'Hypersphere',
     'root-system': 'Root System',
     'clifford-torus': 'Clifford Torus',
     'mandelbrot': 'Mandelbrot Set',
@@ -271,43 +265,37 @@ export function getAvailableTypes(dimension?: number): Array<{
       type: 'hypercube',
       name: 'Hypercube',
       description: 'Generalization of a cube to n dimensions (n-cube)',
-      minDimension: 2,
+      minDimension: 3,
     },
     {
       type: 'simplex',
       name: 'Simplex',
       description: 'Generalization of a tetrahedron to n dimensions (n-simplex)',
-      minDimension: 2,
+      minDimension: 3,
     },
     {
       type: 'cross-polytope',
       name: 'Cross-Polytope',
       description: 'Generalization of an octahedron to n dimensions (n-orthoplex)',
-      minDimension: 2,
-    },
-    {
-      type: 'hypersphere',
-      name: 'Hypersphere',
-      description: 'N-dimensional sphere (surface or solid ball)',
-      minDimension: 2,
+      minDimension: 3,
     },
     {
       type: 'root-system',
       name: 'Root System',
       description: 'Root polytopes from Lie algebra (A, D, or E₈)',
-      minDimension: 3, // Not meaningful in 2D (A-type produces only 2 trivial roots)
+      minDimension: 3,
     },
     {
       type: 'clifford-torus',
       name: 'Clifford Torus',
-      description: 'Torus variants (2D: annulus, 3D: torus surface, 4D+: Clifford torus)',
-      minDimension: 2,
+      description: 'Torus variants (3D: torus surface, 4D+: Clifford torus)',
+      minDimension: 3,
     },
     {
       type: 'mandelbrot',
       name: 'Mandelbrot Set',
-      description: 'Fractal via escape-time iteration (2D: classic, 3D+: n-dimensional)',
-      minDimension: 2,
+      description: 'Fractal via escape-time iteration (3D: Mandelbulb, 4D+: n-dimensional)',
+      minDimension: 3,
       maxDimension: 11,
     },
     {

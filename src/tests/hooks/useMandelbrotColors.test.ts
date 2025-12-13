@@ -38,10 +38,10 @@ describe('useMandelbrotColors', () => {
       expect(result.current).toBeUndefined();
     });
 
-    it('should return undefined for hypersphere geometry', () => {
+    it('should return undefined for root-system geometry', () => {
       const geometry: NdGeometry = {
         dimension: 4,
-        type: 'hypersphere',
+        type: 'root-system',
         vertices: [[1, 0, 0, 0]],
         edges: [],
         isPointCloud: true,

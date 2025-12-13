@@ -3,7 +3,6 @@
  *
  * Manages parameters for all object types including:
  * - Polytopes (hypercube, simplex, cross-polytope) - scale configuration
- * - Hypersphere (surface/solid point clouds)
  * - Root Systems (A, D, E8 polytopes)
  * - Clifford Torus (flat torus on S^3)
  * - Mandelbrot Set (n-dimensional fractal)
@@ -18,8 +17,6 @@
 import { create } from 'zustand';
 import type {
   PolytopeConfig,
-  HypersphereConfig,
-  HypersphereMode,
   RootSystemConfig,
   RootSystemType,
   CliffordTorusConfig,
@@ -35,7 +32,6 @@ import type {
 import {
   DEFAULT_POLYTOPE_CONFIG,
   DEFAULT_POLYTOPE_SCALES,
-  DEFAULT_HYPERSPHERE_CONFIG,
   DEFAULT_ROOT_SYSTEM_CONFIG,
   DEFAULT_CLIFFORD_TORUS_CONFIG,
   DEFAULT_MANDELBROT_CONFIG,
@@ -50,9 +46,6 @@ import {
 interface ExtendedObjectState {
   // --- Polytope State (for unified scale control) ---
   polytope: PolytopeConfig;
-
-  // --- Hypersphere State ---
-  hypersphere: HypersphereConfig;
 
   // --- Root System State ---
   rootSystem: RootSystemConfig;
@@ -69,13 +62,6 @@ interface ExtendedObjectState {
   // --- Polytope Actions ---
   setPolytopeScale: (scale: number) => void;
   initializePolytopeForType: (polytopeType: string) => void;
-
-  // --- Hypersphere Actions ---
-  setHypersphereMode: (mode: HypersphereMode) => void;
-  setHypersphereSampleCount: (count: number) => void;
-  setHypersphereRadius: (radius: number) => void;
-  setHypersphereWireframeEnabled: (enabled: boolean) => void;
-  setHypersphereNeighborCount: (count: number) => void;
 
   // --- Root System Actions ---
   setRootSystemType: (type: RootSystemType) => void;
@@ -141,7 +127,6 @@ interface ExtendedObjectState {
 export const useExtendedObjectStore = create<ExtendedObjectState>((set, get) => ({
   // --- Initial State ---
   polytope: { ...DEFAULT_POLYTOPE_CONFIG },
-  hypersphere: { ...DEFAULT_HYPERSPHERE_CONFIG },
   rootSystem: { ...DEFAULT_ROOT_SYSTEM_CONFIG },
   cliffordTorus: { ...DEFAULT_CLIFFORD_TORUS_CONFIG },
   mandelbrot: { ...DEFAULT_MANDELBROT_CONFIG },
@@ -160,40 +145,6 @@ export const useExtendedObjectStore = create<ExtendedObjectState>((set, get) => 
     const defaultScale = DEFAULT_POLYTOPE_SCALES[polytopeType] ?? DEFAULT_POLYTOPE_CONFIG.scale;
     set((state) => ({
       polytope: { ...state.polytope, scale: defaultScale },
-    }));
-  },
-
-  // --- Hypersphere Actions ---
-  setHypersphereMode: (mode: HypersphereMode) => {
-    set((state) => ({
-      hypersphere: { ...state.hypersphere, mode },
-    }));
-  },
-
-  setHypersphereSampleCount: (count: number) => {
-    const clampedCount = Math.max(200, Math.min(10000, Math.floor(count)));
-    set((state) => ({
-      hypersphere: { ...state.hypersphere, sampleCount: clampedCount },
-    }));
-  },
-
-  setHypersphereRadius: (radius: number) => {
-    const clampedRadius = Math.max(0.5, Math.min(6.0, radius));
-    set((state) => ({
-      hypersphere: { ...state.hypersphere, radius: clampedRadius },
-    }));
-  },
-
-  setHypersphereWireframeEnabled: (enabled: boolean) => {
-    set((state) => ({
-      hypersphere: { ...state.hypersphere, wireframeEnabled: enabled },
-    }));
-  },
-
-  setHypersphereNeighborCount: (count: number) => {
-    const clampedCount = Math.max(2, Math.min(10, Math.floor(count)));
-    set((state) => ({
-      hypersphere: { ...state.hypersphere, neighborCount: clampedCount },
     }));
   },
 
@@ -448,12 +399,10 @@ export const useExtendedObjectStore = create<ExtendedObjectState>((set, get) => 
   initializeMandelbrotForDimension: (dimension: number) => {
     const paramCount = Math.max(0, dimension - 3);
 
-    // For 3D+, use boundaryOnly mode to show the fractal surface
-    // For 2D, use escapeTime to show all points on the plane
-    const colorMode: 'escapeTime' | 'boundaryOnly' = dimension >= 3 ? 'boundaryOnly' : 'escapeTime';
+    // Use boundaryOnly mode to show the fractal surface
+    const colorMode: MandelbrotColorMode = 'boundaryOnly';
 
     // Dimension-specific defaults from hyperbulb guide:
-    // - 2D: Classic Mandelbrot with z^2 + c
     // - 3D: Mandelbulb with spherical coordinates
     // - 4D+: Hyperbulb with hyperspherical coordinates
 
@@ -466,7 +415,7 @@ export const useExtendedObjectStore = create<ExtendedObjectState>((set, get) => 
     } else if (dimension >= 4) {
       escapeRadius = 8.0;   // 4D-6D: moderate bailout
     } else {
-      escapeRadius = 4.0;   // 2D-3D: standard bailout
+      escapeRadius = 4.0;   // 3D: standard bailout
     }
 
     // Max iterations: Performance-aware defaults for raymarching
@@ -478,25 +427,20 @@ export const useExtendedObjectStore = create<ExtendedObjectState>((set, get) => 
       maxIterations = 40;   // 7D-8D: conservative
     } else if (dimension >= 4) {
       maxIterations = 50;   // 4D-6D: moderate
-    } else if (dimension === 3) {
-      maxIterations = 80;   // 3D Mandelbulb: good quality
     } else {
-      maxIterations = 100;  // 2D: high quality (point cloud is fast)
+      maxIterations = 80;   // 3D Mandelbulb: good quality
     }
 
-    // Power: 2 for classic 2D Mandelbrot, 8 for Mandelbulb/Hyperbulb
-    const power = dimension === 2 ? 2 : 8;
+    // Power: 8 for Mandelbulb/Hyperbulb
+    const power = 8;
 
     // Extent: Guide suggests [-2,2] for 4D+, smaller for 3D Mandelbulb
-    // 2D Mandelbrot: extent 1.75 centered at (-0.5, 0) works well
     // 3D Mandelbulb: lives roughly within |x|,|y|,|z| < 1.2, so extent 1.5 is good
     // 4D+ Hyperbulb: extent 2.0 for exploration
-    const extent = dimension === 2 ? 1.75 : (dimension === 3 ? 1.5 : 2.0);
+    const extent = dimension === 3 ? 1.5 : 2.0;
 
-    // Center for 2D should be offset to show the classic cardioid
-    const center = dimension === 2
-      ? [-0.5, 0]
-      : new Array(dimension).fill(0);
+    // Center at origin for all dimensions
+    const center = new Array(dimension).fill(0);
 
     set((state) => ({
       mandelbrot: {
@@ -649,7 +593,6 @@ export const useExtendedObjectStore = create<ExtendedObjectState>((set, get) => 
   reset: () => {
     set({
       polytope: { ...DEFAULT_POLYTOPE_CONFIG },
-      hypersphere: { ...DEFAULT_HYPERSPHERE_CONFIG },
       rootSystem: { ...DEFAULT_ROOT_SYSTEM_CONFIG },
       cliffordTorus: { ...DEFAULT_CLIFFORD_TORUS_CONFIG },
       mandelbrot: { ...DEFAULT_MANDELBROT_CONFIG },

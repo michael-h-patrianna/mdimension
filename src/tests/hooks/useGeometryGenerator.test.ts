@@ -4,7 +4,7 @@ import { useGeometryStore } from '@/stores/geometryStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { act } from 'react';
-import { DEFAULT_HYPERSPHERE_CONFIG } from '@/lib/geometry/extended';
+import { DEFAULT_ROOT_SYSTEM_CONFIG } from '@/lib/geometry/extended';
 
 // We will use the real stores, but we need to reset them
 // Since they are persistent, we might need to manually set them to defaults
@@ -61,15 +61,14 @@ describe('useGeometryGenerator', () => {
     const { result } = renderHook(() => useGeometryGenerator());
 
     act(() => {
-      useGeometryStore.setState({ objectType: 'hypersphere', dimension: 3 });
+      useGeometryStore.setState({ objectType: 'root-system', dimension: 3 });
       useExtendedObjectStore.setState({
-        hypersphere: { ...DEFAULT_HYPERSPHERE_CONFIG, mode: 'surface', sampleCount: 100 }
+        rootSystem: { ...DEFAULT_ROOT_SYSTEM_CONFIG, rootType: 'A', scale: 2.0 }
       });
     });
 
-    expect(result.current.objectType).toBe('hypersphere');
-    // We can't easily check the sample count on the geometry without inspecting vertices
-    // But we know it generates points.
+    expect(result.current.objectType).toBe('root-system');
+    // Root system generates vertices for the selected root type
     expect(result.current.geometry.vertices.length).toBeGreaterThan(0);
   });
 });

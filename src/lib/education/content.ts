@@ -100,9 +100,9 @@ export const POLYTOPE_INFO: Record<string, EducationTopic> = {
     description:
       'The simplest polytope in n dimensions. Has n+1 vertices, all mutually equidistant.',
     details: [
-      'In 2D: Triangle (3 vertices)',
       'In 3D: Tetrahedron (4 vertices)',
       'In 4D: 5-cell/Pentachoron (5 vertices)',
+      'In 5D: 5-simplex (6 vertices)',
       'Every vertex is connected to every other vertex',
     ],
   },
@@ -112,9 +112,9 @@ export const POLYTOPE_INFO: Record<string, EducationTopic> = {
     description:
       'The n-dimensional analog of an octahedron. Has 2n vertices arranged along the axes.',
     details: [
-      'In 2D: Square (4 vertices)',
       'In 3D: Octahedron (6 vertices)',
       'In 4D: 16-cell (8 vertices)',
+      'In 5D: 5-orthoplex (10 vertices)',
       'Vertices placed at +1 and -1 on each axis',
     ],
   },
@@ -124,11 +124,11 @@ export const PROJECTION_INFO: EducationTopic = {
   id: 'projection',
   title: 'Projection',
   description:
-    'Projection reduces higher-dimensional objects to lower dimensions for visualization.',
+    'Projection reduces higher-dimensional objects to 3D for visualization.',
   details: [
     'Perspective projection: objects farther away appear smaller',
     'Orthographic projection: parallel lines stay parallel',
-    'We project 4D→3D, then 3D→2D for screen display',
+    'Higher dimensions (4D+) are projected to 3D for display',
     'Projection distance affects how "spread out" the object appears',
   ],
 }

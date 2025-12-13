@@ -251,7 +251,6 @@ describe('visualStore - Enhanced Features', () => {
     it('should apply synthwave preset', () => {
       useVisualStore.getState().applyPreset('synthwave');
       expect(useVisualStore.getState().edgeColor).toBe(VISUAL_PRESETS.synthwave.edgeColor);
-      expect(useVisualStore.getState().vertexColor).toBe(VISUAL_PRESETS.synthwave.vertexColor);
       expect(useVisualStore.getState().backgroundColor).toBe(VISUAL_PRESETS.synthwave.backgroundColor);
       expect(useVisualStore.getState().faceColor).toBe(VISUAL_PRESETS.synthwave.faceColor);
     });

@@ -48,9 +48,6 @@ import { create } from 'zustand'
 /** Default visual settings */
 export const DEFAULT_EDGE_COLOR = '#19e697'
 export const DEFAULT_EDGE_THICKNESS = 1
-export const DEFAULT_VERTEX_VISIBLE = false
-export const DEFAULT_VERTEX_SIZE = 3
-export const DEFAULT_VERTEX_COLOR = '#e619d5'
 export const DEFAULT_FACE_OPACITY = 0.3
 export const DEFAULT_FACE_COLOR = '#33cc9e'
 export const DEFAULT_BACKGROUND_COLOR = '#0F0F1A'
@@ -171,8 +168,6 @@ export const DEFAULT_SHADER_SETTINGS: AllShaderSettings = {
 export interface VisualPresetConfig {
   edgeColor: string
   edgeThickness: number
-  vertexColor: string
-  vertexSize: number
   backgroundColor: string
   faceColor?: string
 }
@@ -182,36 +177,26 @@ export const VISUAL_PRESETS = {
   neon: {
     edgeColor: '#00FF88',
     edgeThickness: 3,
-    vertexColor: '#FF00FF',
-    vertexSize: 5,
     backgroundColor: '#0A0A12',
   },
   blueprint: {
     edgeColor: '#4488FF',
     edgeThickness: 1,
-    vertexColor: '#88AAFF',
-    vertexSize: 3,
     backgroundColor: '#0A1628',
   },
   hologram: {
     edgeColor: '#00FFFF',
     edgeThickness: 2,
-    vertexColor: '#00FFFF',
-    vertexSize: 4,
     backgroundColor: '#000011',
   },
   scientific: {
     edgeColor: '#FFFFFF',
     edgeThickness: 1,
-    vertexColor: '#FF4444',
-    vertexSize: 3,
     backgroundColor: '#1A1A2E',
   },
   synthwave: {
     edgeColor: '#FF00FF',
     edgeThickness: 2,
-    vertexColor: '#00FFFF',
-    vertexSize: 4,
     backgroundColor: '#1A0A2E',
     faceColor: '#8800FF',
   },
@@ -229,12 +214,6 @@ interface VisualState {
   edgeColor: string
   /** Thickness of edges in pixels (1-5) */
   edgeThickness: number
-  /** Whether vertices are visible */
-  vertexVisible: boolean
-  /** Size of vertex points (1-10) */
-  vertexSize: number
-  /** Color of vertices (hex string) */
-  vertexColor: string
   /** Opacity of faces (0-1, 0 = wireframe) */
   faceOpacity: number
   /** Color of faces (hex string) */
@@ -387,9 +366,6 @@ interface VisualState {
   // --- Actions: Basic Visual ---
   setEdgeColor: (color: string) => void
   setEdgeThickness: (thickness: number) => void
-  setVertexVisible: (visible: boolean) => void
-  setVertexSize: (size: number) => void
-  setVertexColor: (color: string) => void
   setFaceOpacity: (opacity: number) => void
   setFaceColor: (color: string) => void
   setBackgroundColor: (color: string) => void
@@ -505,9 +481,6 @@ const INITIAL_STATE: Omit<VisualState, keyof VisualStateFunctions> = {
   // Basic visual
   edgeColor: DEFAULT_EDGE_COLOR,
   edgeThickness: DEFAULT_EDGE_THICKNESS,
-  vertexVisible: DEFAULT_VERTEX_VISIBLE,
-  vertexSize: DEFAULT_VERTEX_SIZE,
-  vertexColor: DEFAULT_VERTEX_COLOR,
   faceOpacity: DEFAULT_FACE_OPACITY,
   faceColor: DEFAULT_FACE_COLOR,
   backgroundColor: DEFAULT_BACKGROUND_COLOR,
@@ -601,9 +574,6 @@ type VisualStateFunctions = Pick<
   VisualState,
   | 'setEdgeColor'
   | 'setEdgeThickness'
-  | 'setVertexVisible'
-  | 'setVertexSize'
-  | 'setVertexColor'
   | 'setFaceOpacity'
   | 'setFaceColor'
   | 'setBackgroundColor'
@@ -689,18 +659,6 @@ export const useVisualStore = create<VisualState>((set) => ({
 
   setEdgeThickness: (thickness: number) => {
     set({ edgeThickness: Math.max(1, Math.min(5, thickness)) })
-  },
-
-  setVertexVisible: (visible: boolean) => {
-    set({ vertexVisible: visible })
-  },
-
-  setVertexSize: (size: number) => {
-    set({ vertexSize: Math.max(1, Math.min(10, size)) })
-  },
-
-  setVertexColor: (color: string) => {
-    set({ vertexColor: color })
   },
 
   setFaceOpacity: (opacity: number) => {
@@ -1114,8 +1072,6 @@ export const useVisualStore = create<VisualState>((set) => ({
     const updates: Partial<VisualState> = {
       edgeColor: settings.edgeColor,
       edgeThickness: settings.edgeThickness,
-      vertexColor: settings.vertexColor,
-      vertexSize: settings.vertexSize,
       backgroundColor: settings.backgroundColor,
     }
 

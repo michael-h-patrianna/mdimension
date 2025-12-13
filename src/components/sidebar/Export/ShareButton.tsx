@@ -26,7 +26,6 @@ export const ShareButton: React.FC<ShareButtonProps> = ({ className = '' }) => {
   const shaderType = useVisualStore((state) => state.shaderType);
   const shaderSettings = useVisualStore((state) => state.shaderSettings);
   const edgeColor = useVisualStore((state) => state.edgeColor);
-  const vertexColor = useVisualStore((state) => state.vertexColor);
   const backgroundColor = useVisualStore((state) => state.backgroundColor);
   const bloomEnabled = useVisualStore((state) => state.bloomEnabled);
   const bloomIntensity = useVisualStore((state) => state.bloomIntensity);
@@ -53,7 +52,6 @@ export const ShareButton: React.FC<ShareButtonProps> = ({ className = '' }) => {
       shaderType,
       shaderSettings,
       edgeColor,
-      vertexColor,
       backgroundColor,
       bloomEnabled,
       bloomIntensity,

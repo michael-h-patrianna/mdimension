@@ -144,15 +144,11 @@ export const MandelbrotControls: React.FC<MandelbrotControlsProps> = React.memo(
   const isRayMarching = dimension >= 3 && facesVisible;
 
   // Calculate estimated sample and edge counts for display
-  // 2D uses resolution^2 (2D grid), 3D+ uses resolution^3 (3D volume)
-  const estimatedSamples = dimension === 2
-    ? config.resolution ** 2
-    : config.resolution ** 3;
+  // 3D+ uses resolution^3 (3D volume)
+  const estimatedSamples = config.resolution ** 3;
   // Edges are generated when the general "Edges" toggle is enabled
   const estimatedEdges = edgesVisible
-    ? (dimension === 2
-        ? 2 * config.resolution * (config.resolution - 1) // 2D grid edges
-        : calculateGridEdgeCount(config.resolution))       // 3D grid edges
+    ? calculateGridEdgeCount(config.resolution)
     : 0;
 
   return (

@@ -12,7 +12,7 @@ import type { ObjectType } from '@/lib/geometry/types';
 import { isPolytopeType, isExtendedObjectType } from '@/lib/geometry/types';
 
 /** Minimum supported dimension */
-export const MIN_DIMENSION = 2;
+export const MIN_DIMENSION = 3;
 
 /** Maximum supported dimension */
 export const MAX_DIMENSION = 11;
@@ -25,10 +25,10 @@ export const DEFAULT_OBJECT_TYPE: ObjectType = 'hypercube';
 
 /**
  * Dimension constraints for certain object types
- * Note: Clifford Torus now supports 2D (annulus) and 3D (torus surface)
+ * Note: Clifford Torus supports 3D (torus surface) and 4D+ (Clifford torus)
  */
 export const DIMENSION_CONSTRAINTS: Record<string, { min?: number; exact?: number }> = {
-  'root-system': { min: 3 }, // Root systems not meaningful in 2D (A-type produces only 2 trivial roots)
+  'root-system': { min: 3 }, // Root systems require at least 3D
   'mandelbox': { min: 3 },   // Mandelbox requires 3D+ for raymarching
 };
 
@@ -37,8 +37,7 @@ export const DIMENSION_CONSTRAINTS: Record<string, { min?: number; exact?: numbe
  * When switching to these object types, the dimension will auto-switch if needed.
  */
 export const RECOMMENDED_DIMENSIONS: Record<string, { dimension: number; reason: string }> = {
-  // Mandelbrot uses Mandelbulb formula only in 3D; dimension 2 gives classic 2D Mandelbrot
-  // Default to 3D for Mandelbulb visualization
+  // Mandelbrot uses Mandelbulb formula in 3D for best visualization
   'mandelbrot': {
     dimension: 3,
     reason: 'Uses Mandelbulb formula for true 3D fractal structure',
@@ -89,7 +88,7 @@ export function validateObjectTypeForDimension(
   type: ObjectType,
   dimension: number
 ): { valid: boolean; fallbackType?: ObjectType; message?: string } {
-  // Root system requires dimension >= 3 (A-type produces only 2 trivial roots in 2D)
+  // Root system requires dimension >= 3
   if (type === 'root-system' && dimension < 3) {
     return {
       valid: false,

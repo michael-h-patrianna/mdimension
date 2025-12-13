@@ -563,17 +563,9 @@ describe('generateMandelbrot', () => {
       expect(geometry.dimension).toBe(7);
     });
 
-    it('should generate classic 2D Mandelbrot for dimension 2', () => {
-      const geometry = generateMandelbrot(2, config);
-      expect(geometry.dimension).toBe(2);
-      // 2D is named 'Mandelbrot Set'
-      expect(geometry.metadata?.name).toBe('Mandelbrot Set');
-      // 2D Mandelbrot uses resolution^2 samples
-      expect(geometry.vertices.length).toBe(config.resolution * config.resolution);
-    });
-
-    it('should throw for dimension < 2', () => {
+    it('should throw for dimension < 3', () => {
       expect(() => generateMandelbrot(1, config)).toThrow();
+      expect(() => generateMandelbrot(2, config)).toThrow();
     });
   });
 
@@ -1095,11 +1087,6 @@ describe('generateMandelbrot with Hyperbulb', () => {
   };
 
   describe('naming conventions', () => {
-    it('should name 2D as Mandelbrot Set', () => {
-      const geometry = generateMandelbrot(2, config);
-      expect(geometry.metadata?.name).toBe('Mandelbrot Set');
-    });
-
     it('should name 3D as Mandelbulb', () => {
       const geometry = generateMandelbrot(3, {
         ...config,
@@ -1122,11 +1109,6 @@ describe('generateMandelbrot with Hyperbulb', () => {
   });
 
   describe('formula descriptions', () => {
-    it('should describe 2D formula correctly', () => {
-      const geometry = generateMandelbrot(2, config);
-      expect(geometry.metadata?.formula).toContain('complex');
-    });
-
     it('should describe 3D formula correctly', () => {
       const geometry = generateMandelbrot(3, {
         ...config,

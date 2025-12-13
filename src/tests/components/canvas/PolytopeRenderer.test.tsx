@@ -41,19 +41,6 @@ describe('PolytopeRenderer', () => {
     expect(container).toBeTruthy()
   })
 
-  it('should accept custom vertex color', () => {
-    const { container } = render(
-      <Canvas>
-        <PolytopeRenderer
-          vertices={sampleVertices}
-          edges={sampleEdges}
-          vertexColor="#00FF00"
-        />
-      </Canvas>
-    )
-    expect(container).toBeTruthy()
-  })
-
   it('should accept custom edge thickness', () => {
     const { container } = render(
       <Canvas>
@@ -61,32 +48,6 @@ describe('PolytopeRenderer', () => {
           vertices={sampleVertices}
           edges={sampleEdges}
           edgeThickness={4}
-        />
-      </Canvas>
-    )
-    expect(container).toBeTruthy()
-  })
-
-  it('should accept custom vertex size', () => {
-    const { container } = render(
-      <Canvas>
-        <PolytopeRenderer
-          vertices={sampleVertices}
-          edges={sampleEdges}
-          vertexSize={0.1}
-        />
-      </Canvas>
-    )
-    expect(container).toBeTruthy()
-  })
-
-  it('should hide vertices when showVertices is false', () => {
-    const { container } = render(
-      <Canvas>
-        <PolytopeRenderer
-          vertices={sampleVertices}
-          edges={sampleEdges}
-          showVertices={false}
         />
       </Canvas>
     )
@@ -147,9 +108,6 @@ describe('PolytopeRenderer', () => {
           edges={sampleEdges}
           edgeColor="#FF00FF"
           edgeThickness={3}
-          vertexColor="#FFFF00"
-          vertexSize={0.08}
-          showVertices={true}
           faceOpacity={0.25}
         />
       </Canvas>

@@ -4,14 +4,14 @@
  *
  * Supports both traditional polytopes and extended objects:
  * - Polytopes: Hypercube, Simplex, Cross-Polytope
- * - Extended: Hypersphere, Root System, Clifford Torus, Mandelbrot
+ * - Extended: Root System, Clifford Torus, Mandelbrot, Mandelbox
  *
  * Unified Architecture:
  * All rendering uses useFrame-based high-performance pipelines that bypass React
  * re-renders during animation. UnifiedRenderer routes to the appropriate renderer:
  * - PolytopeScene: For polytopes with faces/edges/vertices (GPU shaders)
- * - PointCloudScene: For hyperspheres, root systems, Mandelbrot point clouds (GPU shaders)
- * - MandelbulbMesh/HyperbulbMesh: For raymarched 3D/4D surfaces
+ * - PointCloudScene: For root systems, Clifford torus, Mandelbrot point clouds (GPU shaders)
+ * - MandelbulbMesh/HyperbulbMesh/MandelboxMesh: For raymarched 3D/4D surfaces
  */
 
 import { useMemo } from 'react';
@@ -66,10 +66,10 @@ function Visualizer() {
   // 6. Compute per-face depth values for palette color variation (polytopes only)
   const faceDepths = useFaceDepths(geometry.vertices, faces, dimension);
 
-  // 7. Compute Mandelbrot colors (derived from user's vertex color)
+  // 7. Compute Mandelbrot colors (derived from user's edge color)
   const mandelbrotConfig = useExtendedObjectStore((state) => state.mandelbrot);
-  const vertexColor = useVisualStore((state) => state.vertexColor);
-  const pointColors = useMandelbrotColors(geometry, mandelbrotConfig, vertexColor);
+  const edgeColorForMandelbrot = useVisualStore((state) => state.edgeColor);
+  const pointColors = useMandelbrotColors(geometry, mandelbrotConfig, edgeColorForMandelbrot);
   const facesVisible = useVisualStore((state) => state.facesVisible);
 
   // Calculate minimum bounding radius for ground plane positioning

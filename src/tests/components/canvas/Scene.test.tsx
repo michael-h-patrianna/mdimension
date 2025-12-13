@@ -133,7 +133,7 @@ describe('Scene', () => {
   it('should render point cloud geometry', () => {
     const pointCloudGeometry: NdGeometry = {
       dimension: 4,
-      type: 'hypersphere',
+      type: 'root-system',
       vertices: sampleVertices,
       edges: [],
       isPointCloud: true,
@@ -143,7 +143,7 @@ describe('Scene', () => {
         <Scene
           geometry={pointCloudGeometry}
           dimension={4}
-          objectType="hypersphere"
+          objectType="root-system"
           projectedVertices={projectedVertices}
         />
       </Canvas>

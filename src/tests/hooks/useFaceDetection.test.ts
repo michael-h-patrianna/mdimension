@@ -9,10 +9,10 @@ describe('useFaceDetection', () => {
       vertices: [[1,1,1]],
       edges: [],
       dimension: 3,
-      type: 'hypersphere',
+      type: 'root-system',
       isPointCloud: true
     };
-    const { result } = renderHook(() => useFaceDetection(geometry, 'hypersphere'));
+    const { result } = renderHook(() => useFaceDetection(geometry, 'root-system'));
     expect(result.current).toEqual([]);
   });
 

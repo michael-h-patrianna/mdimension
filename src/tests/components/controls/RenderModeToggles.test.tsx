@@ -17,10 +17,9 @@ describe('RenderModeToggles', () => {
   });
 
   describe('Initial Display', () => {
-    it('should render three toggle buttons: Vertices, Edges, Faces', () => {
+    it('should render two toggle buttons: Edges, Faces', () => {
       render(<RenderModeToggles />);
 
-      expect(screen.getByText('Vertices')).toBeInTheDocument();
       expect(screen.getByText('Edges')).toBeInTheDocument();
       expect(screen.getByText('Faces')).toBeInTheDocument();
     });
@@ -37,31 +36,6 @@ describe('RenderModeToggles', () => {
 
       const container = screen.getByTestId('render-mode-toggles');
       expect(container).toHaveClass('custom-class');
-    });
-  });
-
-  describe('Vertices Toggle', () => {
-    it('should toggle vertices visibility when clicked', async () => {
-      const user = userEvent.setup();
-      useVisualStore.getState().setVertexVisible(true);
-      render(<RenderModeToggles />);
-
-      const verticesToggle = screen.getByTestId('toggle-vertices');
-
-      // Click to toggle off
-      await user.click(verticesToggle);
-      expect(useVisualStore.getState().vertexVisible).toBe(false);
-
-      // Click to toggle on again
-      await user.click(verticesToggle);
-      expect(useVisualStore.getState().vertexVisible).toBe(true);
-    });
-
-    it('should have correct aria-label', () => {
-      render(<RenderModeToggles />);
-
-      const verticesToggle = screen.getByTestId('toggle-vertices');
-      expect(verticesToggle).toHaveAttribute('aria-label', 'Toggle vertex visibility');
     });
   });
 
@@ -174,14 +148,6 @@ describe('RenderModeToggles', () => {
       expect(facesToggle).not.toBeDisabled();
     });
 
-    it('should disable faces toggle for hypersphere', () => {
-      useGeometryStore.getState().setObjectType('hypersphere');
-      render(<RenderModeToggles />);
-
-      const facesToggle = screen.getByTestId('toggle-faces');
-      expect(facesToggle).toBeDisabled();
-    });
-
     it('should enable faces toggle for clifford-torus', () => {
       // Set dimension to 4 (required for clifford-torus)
       useGeometryStore.getState().setDimension(4);
@@ -201,16 +167,6 @@ describe('RenderModeToggles', () => {
       expect(facesToggle).not.toBeDisabled();
     });
 
-    it('should show tooltip when faces toggle is disabled', () => {
-      useGeometryStore.getState().setObjectType('hypersphere');
-      render(<RenderModeToggles />);
-
-      // The wrapper div should have the title attribute
-      const facesToggle = screen.getByTestId('toggle-faces');
-      const wrapper = facesToggle.closest('div[title]');
-      expect(wrapper).toHaveAttribute('title', 'Faces not available for this object type');
-    });
-
     it('should not show tooltip when faces toggle is enabled', () => {
       useGeometryStore.getState().setObjectType('hypercube');
       render(<RenderModeToggles />);
@@ -221,247 +177,39 @@ describe('RenderModeToggles', () => {
       expect(wrapper?.getAttribute('title')).toBeNull();
     });
 
-    it('should auto-disable faces when switching to incompatible object', async () => {
-      // Start with hypercube and faces ON
-      useGeometryStore.getState().setObjectType('hypercube');
-      useVisualStore.getState().setFacesVisible(true);
-
-      const { rerender } = render(<RenderModeToggles />);
-      expect(useVisualStore.getState().facesVisible).toBe(true);
-
-      // Switch to hypersphere (incompatible)
-      act(() => {
-        useGeometryStore.getState().setObjectType('hypersphere');
-      });
-      rerender(<RenderModeToggles />);
-
-      // Faces should be auto-disabled
-      expect(useVisualStore.getState().facesVisible).toBe(false);
-    });
-
-    it('should auto-restore faces when switching back to compatible object', async () => {
-      // Start with hypercube and faces ON
-      useGeometryStore.getState().setObjectType('hypercube');
-      useVisualStore.getState().setFacesVisible(true);
-
-      const { rerender } = render(<RenderModeToggles />);
-      expect(useVisualStore.getState().facesVisible).toBe(true);
-
-      // Switch to hypersphere (incompatible) - faces auto-disabled
-      act(() => {
-        useGeometryStore.getState().setObjectType('hypersphere');
-      });
-      rerender(<RenderModeToggles />);
-      expect(useVisualStore.getState().facesVisible).toBe(false);
-
-      // Switch back to hypercube (compatible) - faces should restore
-      act(() => {
-        useGeometryStore.getState().setObjectType('hypercube');
-      });
-      rerender(<RenderModeToggles />);
-      expect(useVisualStore.getState().facesVisible).toBe(true);
-    });
-
-    it('should not auto-restore faces if they were manually off before switch', async () => {
-      // Start with hypercube and faces OFF (manual choice)
-      useGeometryStore.getState().setObjectType('hypercube');
-      useVisualStore.getState().setFacesVisible(false);
-
-      const { rerender } = render(<RenderModeToggles />);
-      expect(useVisualStore.getState().facesVisible).toBe(false);
-
-      // Switch to hypersphere (incompatible)
-      act(() => {
-        useGeometryStore.getState().setObjectType('hypersphere');
-      });
-      rerender(<RenderModeToggles />);
-      expect(useVisualStore.getState().facesVisible).toBe(false);
-
-      // Switch back to hypercube - faces should stay OFF (user's manual choice)
-      act(() => {
-        useGeometryStore.getState().setObjectType('hypercube');
-      });
-      rerender(<RenderModeToggles />);
-      expect(useVisualStore.getState().facesVisible).toBe(false);
-    });
-  });
-
-  describe('Mandelbrot Mutual Exclusivity', () => {
-    it('should disable faces when switching to mandelbrot 3D+ with both vertices and faces enabled', async () => {
-      // Start with hypercube dimension 4 with both vertices and faces ON
-      useGeometryStore.getState().setDimension(4);
-      useGeometryStore.getState().setObjectType('hypercube');
-      useVisualStore.getState().setVertexVisible(true);
-      useVisualStore.getState().setFacesVisible(true);
-
-      const { rerender } = render(<RenderModeToggles />);
-      expect(useVisualStore.getState().vertexVisible).toBe(true);
-      expect(useVisualStore.getState().facesVisible).toBe(true);
-
-      // Switch to mandelbrot (3D+)
-      act(() => {
-        useGeometryStore.getState().setObjectType('mandelbrot');
-      });
-      rerender(<RenderModeToggles />);
-
-      // Vertices should stay ON, faces should be auto-disabled (mutual exclusivity)
-      expect(useVisualStore.getState().vertexVisible).toBe(true);
-      expect(useVisualStore.getState().facesVisible).toBe(false);
-    });
-
-    it('should keep faces enabled when switching to mandelbrot 3D+ with only faces enabled', async () => {
-      // Start with hypercube with only faces ON
-      useGeometryStore.getState().setDimension(4);
-      useGeometryStore.getState().setObjectType('hypercube');
-      useVisualStore.getState().setVertexVisible(false);
-      useVisualStore.getState().setFacesVisible(true);
-      useVisualStore.getState().setEdgesVisible(false);
-
-      const { rerender } = render(<RenderModeToggles />);
-
-      // Switch to mandelbrot
-      act(() => {
-        useGeometryStore.getState().setObjectType('mandelbrot');
-      });
-      rerender(<RenderModeToggles />);
-
-      // Faces should stay ON since vertices are OFF (no conflict)
-      expect(useVisualStore.getState().facesVisible).toBe(true);
-      expect(useVisualStore.getState().vertexVisible).toBe(false);
-    });
-
-    it('should disable vertices when enabling faces for mandelbrot 3D+', async () => {
-      const user = userEvent.setup();
-
-      useGeometryStore.getState().setDimension(3);
-      useGeometryStore.getState().setObjectType('mandelbrot');
-      useVisualStore.getState().setVertexVisible(true);
-      useVisualStore.getState().setFacesVisible(false);
-
-      render(<RenderModeToggles />);
-
-      // Enable faces
-      const facesToggle = screen.getByTestId('toggle-faces');
-      await user.click(facesToggle);
-
-      // Faces ON should disable vertices (mutual exclusivity)
-      expect(useVisualStore.getState().facesVisible).toBe(true);
-      expect(useVisualStore.getState().vertexVisible).toBe(false);
-    });
-
-    it('should disable faces when enabling vertices for mandelbrot 3D+', async () => {
-      const user = userEvent.setup();
-
-      useGeometryStore.getState().setDimension(3);
-      useGeometryStore.getState().setObjectType('mandelbrot');
-      useVisualStore.getState().setVertexVisible(false);
-      useVisualStore.getState().setFacesVisible(true);
-
-      render(<RenderModeToggles />);
-
-      // Enable vertices
-      const verticesToggle = screen.getByTestId('toggle-vertices');
-      await user.click(verticesToggle);
-
-      // Vertices ON should disable faces (mutual exclusivity)
-      expect(useVisualStore.getState().vertexVisible).toBe(true);
-      expect(useVisualStore.getState().facesVisible).toBe(false);
-    });
-
-    it('should not enforce mutual exclusivity for non-mandelbrot objects', async () => {
-      const user = userEvent.setup();
-
-      // Hypercube doesn't have mutual exclusivity
-      useGeometryStore.getState().setDimension(4);
-      useGeometryStore.getState().setObjectType('hypercube');
-      useVisualStore.getState().setVertexVisible(true);
-      useVisualStore.getState().setFacesVisible(false);
-
-      render(<RenderModeToggles />);
-
-      // Enable faces - both should be allowed for hypercube
-      const facesToggle = screen.getByTestId('toggle-faces');
-      await user.click(facesToggle);
-
-      // Both can be ON for non-mandelbrot objects
-      expect(useVisualStore.getState().facesVisible).toBe(true);
-      expect(useVisualStore.getState().vertexVisible).toBe(true);
-    });
   });
 
   describe('Render Mode Fallback', () => {
-    it('should auto-enable vertices when switching to mandelbrot with only edges enabled', async () => {
-      // Start with hypercube with only edges ON
-      useGeometryStore.getState().setDimension(4);
-      useGeometryStore.getState().setObjectType('hypercube');
-      useVisualStore.getState().setVertexVisible(false);
-      useVisualStore.getState().setEdgesVisible(true);
-      useVisualStore.getState().setFacesVisible(false);
-
-      const { rerender } = render(<RenderModeToggles />);
-      expect(useVisualStore.getState().edgesVisible).toBe(true);
-      expect(useVisualStore.getState().vertexVisible).toBe(false);
-      expect(useVisualStore.getState().facesVisible).toBe(false);
-
-      // Switch to mandelbrot (edges now supported - controls fresnel rim lighting)
-      act(() => {
-        useGeometryStore.getState().setObjectType('mandelbrot');
-      });
-      rerender(<RenderModeToggles />);
-
-      // For Mandelbrot 3D+: Edges requires Faces to be on, Vertices must be off
-      expect(useVisualStore.getState().edgesVisible).toBe(true);
-      expect(useVisualStore.getState().facesVisible).toBe(true);
-      expect(useVisualStore.getState().vertexVisible).toBe(false);
-    });
-
-    it('should auto-enable vertices when all render modes are manually disabled', async () => {
+    it('should auto-enable edges when all render modes are manually disabled', async () => {
       useGeometryStore.getState().setObjectType('hypercube');
 
       const { rerender } = render(<RenderModeToggles />);
 
       // Manually disable all modes via store
       act(() => {
-        useVisualStore.getState().setVertexVisible(false);
         useVisualStore.getState().setEdgesVisible(false);
         useVisualStore.getState().setFacesVisible(false);
       });
       rerender(<RenderModeToggles />);
 
-      // At least one mode must be active - vertices should auto-enable
-      expect(useVisualStore.getState().vertexVisible).toBe(true);
+      // At least one mode must be active - edges should auto-enable
+      expect(useVisualStore.getState().edgesVisible).toBe(true);
     });
 
-    it('should not auto-enable vertices if at least one mode is already active', async () => {
+    it('should not auto-enable edges if at least one mode is already active', async () => {
       useGeometryStore.getState().setObjectType('hypercube');
-      useVisualStore.getState().setVertexVisible(false);
       useVisualStore.getState().setEdgesVisible(false);
       useVisualStore.getState().setFacesVisible(true);
 
       render(<RenderModeToggles />);
 
-      // Faces is ON, so vertices should not auto-enable
-      expect(useVisualStore.getState().vertexVisible).toBe(false);
+      // Faces is ON, so edges should not auto-enable
+      expect(useVisualStore.getState().edgesVisible).toBe(false);
       expect(useVisualStore.getState().facesVisible).toBe(true);
     });
   });
 
   describe('Toggle State Persistence', () => {
-    it('should persist vertices toggle state across rerenders', async () => {
-      const user = userEvent.setup();
-      useVisualStore.getState().setVertexVisible(true);
-      const { rerender } = render(<RenderModeToggles />);
-
-      const verticesToggle = screen.getByTestId('toggle-vertices');
-      await user.click(verticesToggle);
-
-      expect(useVisualStore.getState().vertexVisible).toBe(false);
-
-      rerender(<RenderModeToggles />);
-
-      expect(useVisualStore.getState().vertexVisible).toBe(false);
-    });
-
     it('should persist edges toggle state across rerenders', async () => {
       const user = userEvent.setup();
       useVisualStore.getState().setEdgesVisible(true);

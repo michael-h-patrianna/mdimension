@@ -31,10 +31,10 @@ const VALID_OBJECT_TYPES: ObjectType[] = [
   'hypercube',
   'simplex',
   'cross-polytope',
-  'hypersphere',
   'root-system',
   'clifford-torus',
   'mandelbrot',
+  'mandelbox',
 ];
 
 export interface ShareableState {
@@ -45,7 +45,6 @@ export interface ShareableState {
   shaderType?: ShaderType;
   shaderSettings?: AllShaderSettings;
   edgeColor?: string;
-  vertexColor?: string;
   backgroundColor?: string;
   // Render mode toggles (PRD: Render Mode Toggles)
   edgesVisible?: boolean;
@@ -86,10 +85,6 @@ export function serializeState(state: ShareableState): string {
 
   if (state.edgeColor) {
     params.set('ec', state.edgeColor.replace('#', ''));
-  }
-
-  if (state.vertexColor) {
-    params.set('vc', state.vertexColor.replace('#', ''));
   }
 
   if (state.backgroundColor) {
@@ -233,11 +228,6 @@ export function deserializeState(searchParams: string): Partial<ShareableState> 
   const edgeColor = params.get('ec');
   if (edgeColor && /^[0-9A-Fa-f]{6}$/.test(edgeColor)) {
     state.edgeColor = `#${edgeColor}`;
-  }
-
-  const vertexColor = params.get('vc');
-  if (vertexColor && /^[0-9A-Fa-f]{6}$/.test(vertexColor)) {
-    state.vertexColor = `#${vertexColor}`;
   }
 
   const backgroundColor = params.get('bg');

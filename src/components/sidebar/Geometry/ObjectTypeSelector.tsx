@@ -4,7 +4,7 @@
  *
  * Supports both traditional polytopes and extended objects:
  * - Polytopes: Hypercube, Simplex, Cross-Polytope
- * - Extended: Hypersphere, Root System, Product Manifold, Clifford Torus
+ * - Extended: Root System, Clifford Torus, Mandelbrot, Mandelbox
  */
 
 import React, { useMemo, useEffect } from 'react';

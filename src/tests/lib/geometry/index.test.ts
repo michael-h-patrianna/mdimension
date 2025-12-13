@@ -80,7 +80,7 @@ describe('geometry library API', () => {
   describe('getAvailableTypes', () => {
     it('should return all object types (polytopes and extended)', () => {
       const types = getAvailableTypes();
-      expect(types).toHaveLength(8);
+      expect(types).toHaveLength(7);
 
       const typeNames = types.map(t => t.type);
       // Polytopes
@@ -88,7 +88,6 @@ describe('geometry library API', () => {
       expect(typeNames).toContain('simplex');
       expect(typeNames).toContain('cross-polytope');
       // Extended objects
-      expect(typeNames).toContain('hypersphere');
       expect(typeNames).toContain('root-system');
       expect(typeNames).toContain('clifford-torus');
       expect(typeNames).toContain('mandelbrot');
@@ -108,22 +107,14 @@ describe('geometry library API', () => {
       });
     });
 
-    it('should mark Clifford torus as available for dimension 2 and 3', () => {
-      // Clifford torus now supports 2D (annulus) and 3D (torus surface)
-      const types2D = getAvailableTypes(2);
-      const cliffordTorus2D = types2D.find(t => t.type === 'clifford-torus');
-      expect(cliffordTorus2D?.available).toBe(true);
-
+    it('should mark Clifford torus as available for dimension 3+', () => {
       const types3D = getAvailableTypes(3);
       const cliffordTorus3D = types3D.find(t => t.type === 'clifford-torus');
       expect(cliffordTorus3D?.available).toBe(true);
-    });
 
-    it('should mark root-system as unavailable for dimension 2', () => {
-      const types = getAvailableTypes(2);
-      const rootSystem = types.find(t => t.type === 'root-system');
-      expect(rootSystem?.available).toBe(false);
-      expect(rootSystem?.disabledReason).toContain('3');
+      const types4D = getAvailableTypes(4);
+      const cliffordTorus4D = types4D.find(t => t.type === 'clifford-torus');
+      expect(cliffordTorus4D?.available).toBe(true);
     });
 
     it('should mark all types as available for dimension 4', () => {

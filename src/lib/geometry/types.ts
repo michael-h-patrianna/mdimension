@@ -2,7 +2,7 @@
  * Type definitions for n-dimensional geometry
  *
  * Supports both traditional polytopes (hypercube, simplex, cross-polytope)
- * and extended objects (hypersphere, root systems, Clifford torus)
+ * and extended objects (root systems, Clifford torus, Mandelbrot, Mandelbox)
  */
 
 import type { VectorND } from '@/lib/math';
@@ -15,7 +15,7 @@ export type PolytopeType = 'hypercube' | 'simplex' | 'cross-polytope';
 /**
  * Extended object types (point clouds and special mathematical objects)
  */
-export type ExtendedObjectType = 'hypersphere' | 'root-system' | 'clifford-torus' | 'mandelbrot' | 'mandelbox';
+export type ExtendedObjectType = 'root-system' | 'clifford-torus' | 'mandelbrot' | 'mandelbox';
 
 /**
  * All supported object types
@@ -37,7 +37,7 @@ export function isPolytopeType(type: string): type is PolytopeType {
  * @param type - String or ObjectType to check
  */
 export function isExtendedObjectType(type: string): type is ExtendedObjectType {
-  return type === 'hypersphere' || type === 'root-system' || type === 'clifford-torus' || type === 'mandelbrot' || type === 'mandelbox';
+  return type === 'root-system' || type === 'clifford-torus' || type === 'mandelbrot' || type === 'mandelbox';
 }
 
 /**

@@ -2,7 +2,7 @@
  * Unified Polytope Scene Component - GPU Accelerated
  *
  * High-performance renderer using GPU shaders for N-dimensional transformations.
- * All geometry (faces, edges, vertex cubes) uses the same GPU pipeline:
+ * All geometry (faces, edges) uses the same GPU pipeline:
  * 1. Store base N-D vertices as shader attributes
  * 2. Perform rotation/scale/projection in vertex shader
  * 3. Only update uniform values in useFrame (no CPU transformation)
@@ -24,14 +24,12 @@ import {
 
 import type { VectorND } from '@/lib/math/types';
 import type { Face } from '@/lib/geometry/faces';
-import { generateVertexCubes } from '@/lib/geometry/vertexCubes';
 import { useRotationStore } from '@/stores/rotationStore';
 import { useTransformStore } from '@/stores/transformStore';
 import { useProjectionStore } from '@/stores/projectionStore';
 import { useVisualStore } from '@/stores/visualStore';
 import { composeRotations } from '@/lib/math/rotation';
 import { DEFAULT_PROJECTION_DISTANCE } from '@/lib/math/projection';
-import { VERTEX_SIZE_DIVISOR } from '@/lib/shaders/constants';
 import { matrixToGPUUniforms } from '@/lib/shaders/transforms/ndTransform';
 import { COLOR_ALGORITHM_TO_INT } from '@/lib/shaders/palette';
 import { MAX_LIGHTS, LIGHT_TYPE_TO_INT, rotationToDirection } from '@/lib/lights/types';
@@ -705,59 +703,6 @@ function createEdgeMaterial(edgeColor: string, opacity: number): ShaderMaterial 
 }
 
 /**
- * Create vertex cube ShaderMaterial with custom lighting (same as face material)
- */
-function createVertexCubeShaderMaterial(vertexColor: string, opacity: number): ShaderMaterial {
-  return new ShaderMaterial({
-    uniforms: {
-      ...createNDUniforms(),
-      uColor: { value: new Color(vertexColor) },
-      uOpacity: { value: opacity },
-      // Advanced Color System uniforms (needed for fragment shader)
-      uColorAlgorithm: { value: 0 }, // Monochromatic for vertex cubes
-      uCosineA: { value: new Vector3(0.5, 0.5, 0.5) },
-      uCosineB: { value: new Vector3(0.5, 0.5, 0.5) },
-      uCosineC: { value: new Vector3(1.0, 1.0, 1.0) },
-      uCosineD: { value: new Vector3(0.0, 0.33, 0.67) },
-      uDistPower: { value: 1.0 },
-      uDistCycles: { value: 1.0 },
-      uDistOffset: { value: 0.0 },
-      uLchLightness: { value: 0.7 },
-      uLchChroma: { value: 0.15 },
-      uMultiSourceWeights: { value: new Vector3(0.5, 0.3, 0.2) },
-      // Lighting
-      uLightEnabled: { value: true },
-      uLightColor: { value: new Color('#ffffff') },
-      uLightDirection: { value: new Vector3(0.5, 1, 0.5).normalize() },
-      uLightStrength: { value: 1.0 },
-      uAmbientIntensity: { value: 0.3 },
-      uDiffuseIntensity: { value: 1.0 },
-      uSpecularIntensity: { value: 1.0 },
-      uSpecularPower: { value: 32.0 },
-      uSpecularColor: { value: new Color('#ffffff') },
-      uFresnelEnabled: { value: false },
-      uFresnelIntensity: { value: 0.5 },
-      uRimColor: { value: new Color('#ffffff') },
-      // Multi-light system uniforms
-      uNumLights: { value: 0 },
-      uLightsEnabled: { value: [false, false, false, false] },
-      uLightTypes: { value: [0, 0, 0, 0] },
-      uLightPositions: { value: [new Vector3(0, 5, 0), new Vector3(0, 5, 0), new Vector3(0, 5, 0), new Vector3(0, 5, 0)] },
-      uLightDirections: { value: [new Vector3(0, -1, 0), new Vector3(0, -1, 0), new Vector3(0, -1, 0), new Vector3(0, -1, 0)] },
-      uLightColors: { value: [new Color('#FFFFFF'), new Color('#FFFFFF'), new Color('#FFFFFF'), new Color('#FFFFFF')] },
-      uLightIntensities: { value: [1.0, 1.0, 1.0, 1.0] },
-      uSpotAngles: { value: [Math.PI / 6, Math.PI / 6, Math.PI / 6, Math.PI / 6] },
-      uSpotPenumbras: { value: [0.5, 0.5, 0.5, 0.5] },
-    },
-    vertexShader: buildFaceVertexShader(),
-    fragmentShader: buildFaceFragmentShader(),
-    transparent: opacity < 1,
-    side: DoubleSide,
-    depthWrite: opacity >= 1,
-  });
-}
-
-/**
  * Calculate safe projection distance
  */
 function calculateSafeProjectionDistance(
@@ -854,33 +799,24 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   // ============ REFS ============
   const faceMeshRef = useRef<THREE.Mesh>(null);
   const edgeMeshRef = useRef<THREE.LineSegments>(null);
-  const vertexCubeFaceMeshRef = useRef<THREE.Mesh>(null);
-  const vertexCubeEdgeMeshRef = useRef<THREE.LineSegments>(null);
 
   // ============ VISUAL SETTINGS ============
   const {
-    vertexVisible,
     edgesVisible,
     facesVisible,
-    vertexColor,
-    vertexSize: storeVertexSize,
     edgeColor,
     faceColor,
     shaderSettings,
   } = useVisualStore(
     useShallow((state) => ({
-      vertexVisible: state.vertexVisible,
       edgesVisible: state.edgesVisible,
       facesVisible: state.facesVisible,
-      vertexColor: state.vertexColor,
-      vertexSize: state.vertexSize,
       edgeColor: state.edgeColor,
       faceColor: state.faceColor,
       shaderSettings: state.shaderSettings,
     }))
   );
 
-  const vertexCubeHalfSize = storeVertexSize / VERTEX_SIZE_DIVISOR;
   const surfaceSettings = shaderSettings.surface;
 
   // ============ MATERIALS ============
@@ -892,14 +828,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   const edgeMaterial = useMemo(() => {
     return createEdgeMaterial(edgeColor, opacity);
   }, [edgeColor, opacity]);
-
-  const vertexCubeFaceMaterial = useMemo(() => {
-    return createVertexCubeShaderMaterial(vertexColor, opacity);
-  }, [vertexColor, opacity]);
-
-  const vertexCubeEdgeMaterial = useMemo(() => {
-    return createEdgeMaterial(vertexColor, opacity);
-  }, [vertexColor, opacity]);
 
   // ============ FACE GEOMETRY ============
   const faceGeometry = useMemo(() => {
@@ -1003,133 +931,19 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     return buildNDGeometry(edgeVertices);
   }, [numEdges, edges, baseVertices]);
 
-  // ============ VERTEX CUBE GEOMETRY ============
-  const { vertexCubeFaceGeometry, vertexCubeEdgeGeometry } = useMemo(() => {
-    if (numVertices === 0) {
-      return { vertexCubeFaceGeometry: null, vertexCubeEdgeGeometry: null };
-    }
-
-    const cubeData = generateVertexCubes(baseVertices, vertexCubeHalfSize, dimension);
-
-    // Build face geometry with normals
-    const faceVertices: VectorND[] = [];
-    const faceNormals: [number, number, number][] = [];
-
-    // Cube face normals (6 faces, 2 triangles each = 12 triangles, 3 vertices each = 36 vertices per cube)
-    // But our generateVertexCubes returns Face objects with vertex indices
-    // We need to expand them into actual vertex data
-
-    const tempV0 = new Vector3();
-    const tempV1 = new Vector3();
-    const tempV2 = new Vector3();
-    const tempCB = new Vector3();
-    const tempAB = new Vector3();
-
-    for (const face of cubeData.faces) {
-      const vis = face.vertices;
-      if (vis.length < 3) continue;
-
-      const v0 = cubeData.vertices[vis[0]!];
-      const v1 = cubeData.vertices[vis[1]!];
-      const v2 = cubeData.vertices[vis[2]!];
-
-      if (!v0 || !v1 || !v2) continue;
-
-      // Calculate normal
-      tempV0.set(v0[0] ?? 0, v0[1] ?? 0, v0[2] ?? 0);
-      tempV1.set(v1[0] ?? 0, v1[1] ?? 0, v1[2] ?? 0);
-      tempV2.set(v2[0] ?? 0, v2[1] ?? 0, v2[2] ?? 0);
-      tempCB.subVectors(tempV2, tempV1);
-      tempAB.subVectors(tempV0, tempV1);
-      tempCB.cross(tempAB).normalize();
-
-      const normal: [number, number, number] = [tempCB.x, tempCB.y, tempCB.z];
-
-      faceVertices.push(v0, v1, v2);
-      faceNormals.push(normal, normal, normal);
-    }
-
-    // Build face geometry
-    const faceGeo = new BufferGeometry();
-    const faceCount = faceVertices.length;
-    const facePositions = new Float32Array(faceCount * 3);
-    const faceNormalsArr = new Float32Array(faceCount * 3);
-    const faceExtraDim0 = new Float32Array(faceCount);
-    const faceExtraDim1 = new Float32Array(faceCount);
-    const faceExtraDim2 = new Float32Array(faceCount);
-    const faceExtraDim3 = new Float32Array(faceCount);
-    const faceExtraDim4 = new Float32Array(faceCount);
-    const faceExtraDim5 = new Float32Array(faceCount);
-    const faceExtraDim6 = new Float32Array(faceCount);
-
-    for (let i = 0; i < faceCount; i++) {
-      const v = faceVertices[i]!;
-      const n = faceNormals[i]!;
-      const i3 = i * 3;
-      facePositions[i3] = v[0] ?? 0;
-      facePositions[i3 + 1] = v[1] ?? 0;
-      facePositions[i3 + 2] = v[2] ?? 0;
-      faceNormalsArr[i3] = n[0];
-      faceNormalsArr[i3 + 1] = n[1];
-      faceNormalsArr[i3 + 2] = n[2];
-      faceExtraDim0[i] = v[3] ?? 0;
-      faceExtraDim1[i] = v[4] ?? 0;
-      faceExtraDim2[i] = v[5] ?? 0;
-      faceExtraDim3[i] = v[6] ?? 0;
-      faceExtraDim4[i] = v[7] ?? 0;
-      faceExtraDim5[i] = v[8] ?? 0;
-      faceExtraDim6[i] = v[9] ?? 0;
-    }
-
-    faceGeo.setAttribute('position', new Float32BufferAttribute(facePositions, 3));
-    faceGeo.setAttribute('normal', new Float32BufferAttribute(faceNormalsArr, 3));
-    faceGeo.setAttribute('aExtraDim0', new Float32BufferAttribute(faceExtraDim0, 1));
-    faceGeo.setAttribute('aExtraDim1', new Float32BufferAttribute(faceExtraDim1, 1));
-    faceGeo.setAttribute('aExtraDim2', new Float32BufferAttribute(faceExtraDim2, 1));
-    faceGeo.setAttribute('aExtraDim3', new Float32BufferAttribute(faceExtraDim3, 1));
-    faceGeo.setAttribute('aExtraDim4', new Float32BufferAttribute(faceExtraDim4, 1));
-    faceGeo.setAttribute('aExtraDim5', new Float32BufferAttribute(faceExtraDim5, 1));
-    faceGeo.setAttribute('aExtraDim6', new Float32BufferAttribute(faceExtraDim6, 1));
-
-    // Build edge geometry
-    const edgeVertices: VectorND[] = [];
-    for (const [a, b] of cubeData.edges) {
-      const vA = cubeData.vertices[a];
-      const vB = cubeData.vertices[b];
-      if (vA && vB) {
-        edgeVertices.push(vA, vB);
-      }
-    }
-
-    const edgeGeo = buildNDGeometry(edgeVertices);
-
-    return {
-      vertexCubeFaceGeometry: faceGeo,
-      vertexCubeEdgeGeometry: edgeGeo,
-    };
-  }, [numVertices, baseVertices, vertexCubeHalfSize, dimension]);
-
   // ============ CLEANUP ============
   useEffect(() => {
     return () => {
       faceMaterial.dispose();
       edgeMaterial.dispose();
-      vertexCubeFaceMaterial.dispose();
-      vertexCubeEdgeMaterial.dispose();
       faceGeometry?.dispose();
       edgeGeometry?.dispose();
-      vertexCubeFaceGeometry?.dispose();
-      vertexCubeEdgeGeometry?.dispose();
     };
   }, [
     faceMaterial,
     edgeMaterial,
-    vertexCubeFaceMaterial,
-    vertexCubeEdgeMaterial,
     faceGeometry,
     edgeGeometry,
-    vertexCubeFaceGeometry,
-    vertexCubeEdgeGeometry,
   ]);
 
   // ============ USEFRAME: UPDATE UNIFORMS ONLY ============
@@ -1184,8 +998,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     const meshRefs = [
       faceMeshRef,
       edgeMeshRef,
-      vertexCubeFaceMeshRef,
-      vertexCubeEdgeMeshRef,
     ];
 
     for (const ref of meshRefs) {
@@ -1267,16 +1079,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
       {/* Polytope edges */}
       {edgesVisible && edgeGeometry && (
         <lineSegments ref={edgeMeshRef} geometry={edgeGeometry} material={edgeMaterial} />
-      )}
-
-      {/* Vertex cube faces */}
-      {vertexVisible && vertexCubeFaceGeometry && (
-        <mesh ref={vertexCubeFaceMeshRef} geometry={vertexCubeFaceGeometry} material={vertexCubeFaceMaterial} />
-      )}
-
-      {/* Vertex cube edges */}
-      {vertexVisible && vertexCubeEdgeGeometry && (
-        <lineSegments ref={vertexCubeEdgeMeshRef} geometry={vertexCubeEdgeGeometry} material={vertexCubeEdgeMaterial} />
       )}
     </group>
   );

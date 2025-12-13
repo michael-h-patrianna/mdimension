@@ -6,7 +6,7 @@
  *
  * Render modes:
  * - polytope: Traditional polytopes (hypercube, simplex, cross-polytope) with faces/edges/vertices
- * - pointcloud: Point cloud objects (hypersphere, root system, Clifford torus, Mandelbrot points)
+ * - pointcloud: Point cloud objects (root system, Clifford torus, Mandelbrot points)
  * - raymarch: Raymarched 3D surfaces (Mandelbulb at 3D, Hyperbulb at 4D+)
  *
  * All renderers use useFrame for transformations, reading from stores via getState()
@@ -131,7 +131,7 @@ export const UnifiedRenderer = React.memo(function UnifiedRenderer({
         />
       )}
 
-      {/* Point cloud rendering (hypersphere, root system, Clifford torus, Mandelbrot points) */}
+      {/* Point cloud rendering (root system, Clifford torus, Mandelbrot points) */}
       {renderMode === 'pointcloud' && (
         <PointCloudScene
           baseVertices={geometry.vertices}

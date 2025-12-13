@@ -1,7 +1,7 @@
 /**
  * PointCloudRenderer Component
  *
- * Optimized renderer for point cloud geometries (hyperspheres, sampled manifolds).
+ * Optimized renderer for point cloud geometries (root systems, Clifford torus, sampled manifolds).
  * Uses InstancedMesh for efficient rendering of large numbers of points.
  *
  * Key differences from PolytopeRenderer:
@@ -81,7 +81,7 @@ const POINT_GEOMETRY = new SphereGeometry(1, 16, 16);
  *
  * @example
  * ```tsx
- * // Render a hypersphere point cloud
+ * // Render a point cloud
  * <PointCloudRenderer
  *   vertices={projectedVertices}
  *   pointColor="#00FF88"
@@ -246,7 +246,7 @@ function Wireframe({
  * Renders a point cloud with optional wireframe edges.
  *
  * Use this when you want to show both points and their connectivity
- * (e.g., k-NN wireframe on a hypersphere).
+ * (e.g., k-NN wireframe on a point cloud).
  *
  * Respects visual settings from store:
  * - vertexVisible: Controls point visibility (Vertices toggle)

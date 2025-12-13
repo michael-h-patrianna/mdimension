@@ -22,8 +22,6 @@ import {
   getGeneralizedCliffordTorusPointCount,
   // 3D torus exports
   buildTorus3DGridFaces,
-  // Annulus exports
-  buildAnnulusGridFaces,
 } from '@/lib/geometry/extended/clifford-torus';
 import { DEFAULT_CLIFFORD_TORUS_CONFIG } from '@/lib/geometry/extended/types';
 import type { VectorND } from '@/lib/math/types';
@@ -215,14 +213,9 @@ describe('generateCliffordTorus', () => {
   });
 
   describe('dimension validation', () => {
-    it('should throw for dimension < 2', () => {
+    it('should throw for dimension < 3', () => {
       expect(() => generateCliffordTorus(1, DEFAULT_CLIFFORD_TORUS_CONFIG)).toThrow();
-    });
-
-    it('should generate annulus for dimension 2', () => {
-      const geometry = generateCliffordTorus(2, DEFAULT_CLIFFORD_TORUS_CONFIG);
-      expect(geometry.dimension).toBe(2);
-      expect(geometry.metadata?.properties?.mode).toBe('2d-annulus');
+      expect(() => generateCliffordTorus(2, DEFAULT_CLIFFORD_TORUS_CONFIG)).toThrow();
     });
 
     it('should generate 3D torus surface for dimension 3', () => {
@@ -675,21 +668,6 @@ describe('generateCliffordTorus dispatcher', () => {
     expect(geometry.metadata?.properties?.mode).toBe('3d-torus');
   });
 
-  it('should generate 2D annulus for dimension 2 regardless of mode', () => {
-    // When dimension is 2, both classic and generalized modes generate annulus
-    const geometry = generateCliffordTorus(2, {
-      ...DEFAULT_CLIFFORD_TORUS_CONFIG,
-      mode: 'generalized',
-      k: 1,
-      stepsPerCircle: 16,
-    });
-
-    expect(geometry.dimension).toBe(2);
-    expect(geometry.metadata?.properties?.mode).toBe('2d-annulus');
-    // Annulus uses resolutionU * max(2, resolutionV) points
-    const expectedPoints = DEFAULT_CLIFFORD_TORUS_CONFIG.resolutionU * Math.max(2, DEFAULT_CLIFFORD_TORUS_CONFIG.resolutionV);
-    expect(geometry.vertices).toHaveLength(expectedPoints);
-  });
 });
 
 // ============================================================================
@@ -815,51 +793,3 @@ describe('buildGeneralizedCliffordTorusFaces', () => {
   });
 });
 
-describe('buildAnnulusGridFaces', () => {
-  it('should generate (radialSteps-1) × angularSteps faces', () => {
-    const resU = 16;
-    const resV = 4;
-    const faces = buildAnnulusGridFaces(resU, resV);
-    // radialSteps = max(2, resV) = 4
-    // faces = (4-1) * 16 = 48
-    expect(faces).toHaveLength(48);
-  });
-
-  it('should have all quad faces (4 vertices each)', () => {
-    const faces = buildAnnulusGridFaces(8, 4);
-    faces.forEach(face => {
-      expect(face).toHaveLength(4);
-    });
-  });
-
-  it('should NOT wrap in radial direction', () => {
-    const resU = 8;
-    const resV = 4;
-    const faces = buildAnnulusGridFaces(resU, resV);
-
-    // Check that no face connects the innermost ring (r=0) to the outermost ring (r=radialSteps-1)
-    faces.forEach(face => {
-      const radialIndices = face.map(idx => Math.floor(idx / resU));
-      const minRadial = Math.min(...radialIndices);
-      const maxRadial = Math.max(...radialIndices);
-      // Adjacent radial indices only (difference should be at most 1)
-      expect(maxRadial - minRadial).toBeLessThanOrEqual(1);
-    });
-  });
-
-  it('should wrap in angular direction', () => {
-    const resU = 8;
-    const resV = 4;
-    const faces = buildAnnulusGridFaces(resU, resV);
-
-    // Check that some faces wrap around angularly (contain both index 0 and index resU-1 in same radial ring)
-    let hasAngularWrap = false;
-    faces.forEach(face => {
-      const angularIndices = face.map(idx => idx % resU);
-      if (angularIndices.includes(0) && angularIndices.includes(resU - 1)) {
-        hasAngularWrap = true;
-      }
-    });
-    expect(hasAngularWrap).toBe(true);
-  });
-});

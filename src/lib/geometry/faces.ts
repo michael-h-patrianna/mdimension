@@ -13,7 +13,6 @@ import {
   buildTorus3DGridFaces,
   buildCliffordTorusGridFaces,
   buildGeneralizedCliffordTorusFaces,
-  buildAnnulusGridFaces,
 } from './extended/clifford-torus';
 
 /**
@@ -295,7 +294,7 @@ function isCoplanarQuad(vertexIndices: number[], vertices: number[][]): boolean 
  * - Cross-polytope: All faces are triangles (3 vertices)
  * - Root-system: Triangular faces from short-edge connections
  * - Clifford-torus: Quad faces from u/v grid (requires metadata for resolution)
- * - Other extended objects (hypersphere): No faces (point clouds)
+ * - Other extended objects: No faces (point clouds)
  *
  * The algorithm uses cycle detection in the connectivity graph.
  * For hypercubes, it specifically looks for 4-cycles without diagonals.
@@ -351,11 +350,7 @@ export function detectFaces(
 
     let faceIndices: number[][] = [];
 
-    if (mode === '2d-annulus') {
-      const resU = props.resolutionU as number;
-      const resV = props.resolutionV as number;
-      faceIndices = buildAnnulusGridFaces(resU, resV);
-    } else if (mode === '3d-torus') {
+    if (mode === '3d-torus') {
       const resU = props.resolutionU as number;
       const resV = props.resolutionV as number;
       faceIndices = buildTorus3DGridFaces(resU, resV);
@@ -371,7 +366,7 @@ export function detectFaces(
 
     return faceIndices.map(indices => ({ vertices: indices }));
   } else {
-    // Extended objects like hypersphere don't have faces (point clouds)
+    // Extended objects don't have faces (point clouds)
     return [];
   }
 }

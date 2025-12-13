@@ -195,30 +195,21 @@ describe('useProjectedVertices', () => {
       });
     });
 
-    it('should handle 2D vertices by projecting to X-Z plane with perspective scaling', () => {
-      // 2D vertices are now valid and project to [x * scale, 0, z * scale]
-      const vertices2D: VectorND[] = [
-        [1, 2], // 2D: [x, z]
-      ];
-
-      const { result } = renderHook(() => useProjectedVertices(vertices2D));
-
-      // With fixed projection distance 4.0: scale = 1/4 = 0.25
-      expect(result.current[0]![0]).toBeCloseTo(0.25, 5);
-      expect(result.current[0]![1]).toBe(0);
-      expect(result.current[0]![2]).toBeCloseTo(0.5, 5);
-    });
-
     it('should handle invalid vertices gracefully', () => {
-      // Invalid: less than 2 dimensions
-      const invalidVertices: VectorND[] = [
+      // Invalid: less than 3 dimensions
+      const invalidVertices1D: VectorND[] = [
         [1], // Only 1D
       ];
+      const invalidVertices2D: VectorND[] = [
+        [1, 2], // Only 2D
+      ];
 
-      const { result } = renderHook(() => useProjectedVertices(invalidVertices));
+      const { result: result1D } = renderHook(() => useProjectedVertices(invalidVertices1D));
+      const { result: result2D } = renderHook(() => useProjectedVertices(invalidVertices2D));
 
       // Should return empty array and log warning
-      expect(result.current).toEqual([]);
+      expect(result1D.current).toEqual([]);
+      expect(result2D.current).toEqual([]);
     });
   });
 

@@ -87,10 +87,10 @@ export const DENSITY_SCALING_MIN = 0.15;
 export const DEFAULT_POLYTOPE_SCALE = 1.0;
 
 /**
- * Default radius for hypersphere generation.
- * Matches DEFAULT_POLYTOPE_SCALE so hyperspheres inscribe polytopes.
+ * Default radius for point cloud generation.
+ * Matches DEFAULT_POLYTOPE_SCALE for visual consistency.
  */
-export const DEFAULT_HYPERSPHERE_RADIUS = 1.0;
+export const DEFAULT_POINT_CLOUD_RADIUS = 1.0;
 
 /**
  * Default radius for Clifford torus generation.

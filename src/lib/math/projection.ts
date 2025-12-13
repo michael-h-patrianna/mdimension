@@ -44,8 +44,8 @@ export function projectPerspective(
   out?: Vector3D,
   normalizationFactor?: number
 ): Vector3D {
-  if (vertex.length < 2) {
-    throw new Error(`Cannot project ${vertex.length}D vertex to 3D: need at least 2 dimensions`);
+  if (vertex.length < 3) {
+    throw new Error(`Cannot project ${vertex.length}D vertex to 3D: need at least 3 dimensions`);
   }
 
   if (projectionDistance <= 0) {
@@ -53,16 +53,6 @@ export function projectPerspective(
   }
 
   const result = out ?? [0, 0, 0];
-
-  // For 2D, map [x, z] to [x, 0, z] (X-Z plane at Y=0)
-  // Apply same perspective scaling for consistency with higher dimensions
-  if (vertex.length === 2) {
-    const scale = 1 / projectionDistance;
-    result[0] = vertex[0]! * scale;
-    result[1] = 0;
-    result[2] = vertex[1]! * scale;
-    return result;
-  }
 
   const x = vertex[0]!;
   const y = vertex[1]!;
@@ -117,19 +107,11 @@ export function projectPerspective(
  * @throws {Error} If vertex has less than 3 dimensions
  */
 export function projectOrthographic(vertex: VectorND, out?: Vector3D): Vector3D {
-  if (vertex.length < 2) {
-    throw new Error(`Cannot project ${vertex.length}D vertex to 3D: need at least 2 dimensions`);
+  if (vertex.length < 3) {
+    throw new Error(`Cannot project ${vertex.length}D vertex to 3D: need at least 3 dimensions`);
   }
 
   const result = out ?? [0, 0, 0];
-
-  // For 2D, map [x, z] to [x, 0, z] (X-Z plane at Y=0)
-  if (vertex.length === 2) {
-    result[0] = vertex[0]!;
-    result[1] = 0;
-    result[2] = vertex[1]!;
-    return result;
-  }
 
   result[0] = vertex[0]!;
   result[1] = vertex[1]!;

@@ -95,27 +95,17 @@ describe('geometryStore', () => {
     });
 
     describe('extended object types', () => {
-      it('should set object type to hypersphere', () => {
-        const { setObjectType } = useGeometryStore.getState();
-        setObjectType('hypersphere');
-        expect(useGeometryStore.getState().objectType).toBe('hypersphere');
-      });
-
       it('should set object type to root-system', () => {
         const { setObjectType } = useGeometryStore.getState();
         setObjectType('root-system');
         expect(useGeometryStore.getState().objectType).toBe('root-system');
       });
 
-      it('should set object type to clifford-torus in all dimensions >= 2', () => {
+      it('should set object type to clifford-torus in all dimensions >= 3', () => {
         const { setObjectType, setDimension } = useGeometryStore.getState();
 
         // Clifford torus generates dimension-appropriate shapes:
-        // 2D: annulus, 3D: torus surface, 4D+: classic Clifford torus
-        setDimension(2);
-        setObjectType('clifford-torus');
-        expect(useGeometryStore.getState().objectType).toBe('clifford-torus');
-
+        // 3D: torus surface, 4D+: classic Clifford torus
         setDimension(3);
         setObjectType('clifford-torus');
         expect(useGeometryStore.getState().objectType).toBe('clifford-torus');
@@ -134,7 +124,7 @@ describe('geometryStore', () => {
   });
 
   describe('dimension-type interactions', () => {
-    it('should keep clifford-torus when dimension changes (valid in all dimensions >= 2)', () => {
+    it('should keep clifford-torus when dimension changes (valid in all dimensions >= 3)', () => {
       const { setDimension, setObjectType } = useGeometryStore.getState();
 
       // Set dimension to 4 and type to clifford-torus
@@ -145,23 +135,19 @@ describe('geometryStore', () => {
       // Lower dimension to 3 - should stay clifford-torus (3D torus surface)
       setDimension(3);
       expect(useGeometryStore.getState().objectType).toBe('clifford-torus');
-
-      // Lower dimension to 2 - should stay clifford-torus (2D annulus)
-      setDimension(2);
-      expect(useGeometryStore.getState().objectType).toBe('clifford-torus');
     });
 
-    it('should fallback root-system to hypercube when dimension drops below 3', () => {
+    it('should keep root-system when changing between valid dimensions', () => {
       const { setDimension, setObjectType } = useGeometryStore.getState();
 
-      // Set dimension to 3 and type to root-system
-      setDimension(3);
+      // Set dimension to 4 and type to root-system
+      setDimension(4);
       setObjectType('root-system');
       expect(useGeometryStore.getState().objectType).toBe('root-system');
 
-      // Lower dimension to 2 - should fallback to hypercube
-      setDimension(2);
-      expect(useGeometryStore.getState().objectType).toBe('hypercube');
+      // Lower dimension to 3 - should stay root-system
+      setDimension(3);
+      expect(useGeometryStore.getState().objectType).toBe('root-system');
     });
   });
 
@@ -201,8 +187,8 @@ describe('geometryStore', () => {
   });
 
   describe('constants', () => {
-    it('should have MIN_DIMENSION of 2 (supports 2D)', () => {
-      expect(MIN_DIMENSION).toBe(2);
+    it('should have MIN_DIMENSION of 3', () => {
+      expect(MIN_DIMENSION).toBe(3);
     });
 
     it('should have MAX_DIMENSION of 11', () => {
