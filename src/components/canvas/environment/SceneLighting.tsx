@@ -1,15 +1,16 @@
 /**
  * Scene Lighting Component
  *
- * Manages ambient and point lighting for the 3D scene with dynamic positioning
- * based on spherical coordinates. The light position is calculated from horizontal
- * and vertical angles to provide intuitive control over light position.
+ * Manages ambient and multi-light system for the 3D scene. Supports up to 4 lights
+ * of type Point, Directional, or Spot with full configuration.
  *
  * Features:
  * - Ambient light with configurable intensity
- * - Point light with spherical coordinate positioning
- * - Optional visual indicator for light position
- * - Reactive to visual store state changes
+ * - Multi-light system with up to 4 lights (Point, Directional, Spot)
+ * - Per-light enable/disable, color, intensity, position, rotation
+ * - Spot light cone angle and penumbra
+ * - Optional visual indicators for light positions
+ * - Backward compatible with legacy single-light system
  *
  * @example
  * ```tsx
@@ -19,19 +20,14 @@
  * </Canvas>
  * ```
  *
- * @remarks
- * - Light position is calculated at a fixed distance of 10 units from origin
- * - Spherical coordinates use standard mathematical convention:
- *   - Horizontal angle: 0-360 degrees (rotation around Y-axis)
- *   - Vertical angle: -90 to 90 degrees (elevation from XZ plane)
- * - Light indicator is only visible when both lightEnabled and showLightIndicator are true
- *
  * @see {@link useVisualStore} for lighting configuration state
  */
 
 import { useMemo, useRef, useEffect, memo } from 'react';
-import { SphereGeometry, MeshBasicMaterial } from 'three';
+import { SphereGeometry, MeshBasicMaterial, Vector3 } from 'three';
 import { useVisualStore } from '@/stores/visualStore';
+import { rotationToDirection } from '@/lib/lights/types';
+import type { LightSource } from '@/lib/lights/types';
 
 /**
  * Shared sphere geometry for the light indicator.
@@ -40,56 +36,46 @@ import { useVisualStore } from '@/stores/visualStore';
 const LIGHT_INDICATOR_GEOMETRY = new SphereGeometry(1, 16, 16);
 
 /**
- * Default distance for the point light from the origin.
- * PointLight has distance falloff, so this affects the scene uniformly.
+ * Default distance for the legacy point light from the origin.
  */
 const LIGHT_DISTANCE = 10;
 
 /**
- * Renders ambient and point lighting for the scene.
- *
- * @returns Three.js light components configured from visual store
+ * Individual light renderer component for the multi-light system.
+ * Renders the appropriate Three.js light based on light type.
  */
-export const SceneLighting = memo(function SceneLighting() {
-  const lightEnabled = useVisualStore((state) => state.lightEnabled);
-  const lightColor = useVisualStore((state) => state.lightColor);
-  const lightHorizontalAngle = useVisualStore((state) => state.lightHorizontalAngle);
-  const lightVerticalAngle = useVisualStore((state) => state.lightVerticalAngle);
-  const ambientIntensity = useVisualStore((state) => state.ambientIntensity);
-  const diffuseIntensity = useVisualStore((state) => state.diffuseIntensity);
-  const lightStrength = useVisualStore((state) => state.lightStrength);
-  const showLightIndicator = useVisualStore((state) => state.showLightIndicator);
+interface LightRendererProps {
+  light: LightSource;
+  showIndicator: boolean;
+}
 
-  /**
-   * Calculate light position from spherical coordinates.
-   *
-   * Converts horizontal and vertical angles to Cartesian coordinates
-   * for positioning the point light in 3D space.
-   *
-   * @remarks
-   * - Distance is fixed at LIGHT_DISTANCE units from origin
-   * - Uses standard spherical coordinate conversion:
-   *   - x = r * cos(v) * cos(h)
-   *   - y = r * sin(v)
-   *   - z = r * cos(v) * sin(h)
-   */
-  const lightPosition = useMemo(() => {
-    const h = (lightHorizontalAngle * Math.PI) / 180;
-    const v = (lightVerticalAngle * Math.PI) / 180;
+const LightRenderer = memo(function LightRenderer({ light, showIndicator }: LightRendererProps) {
+  const position = light.position as [number, number, number];
+  const direction = useMemo(() => {
+    const dir = rotationToDirection(light.rotation);
+    return new Vector3(dir[0], dir[1], dir[2]);
+  }, [light.rotation]);
+
+  // For directional/spot lights, calculate target position from direction
+  const targetPosition = useMemo((): [number, number, number] => {
+    // Target is position + direction
     return [
-      Math.cos(v) * Math.cos(h) * LIGHT_DISTANCE,
-      Math.sin(v) * LIGHT_DISTANCE,
-      Math.cos(v) * Math.sin(h) * LIGHT_DISTANCE,
-    ] as [number, number, number];
-  }, [lightHorizontalAngle, lightVerticalAngle]);
+      light.position[0] + direction.x * 10,
+      light.position[1] + direction.y * 10,
+      light.position[2] + direction.z * 10,
+    ];
+  }, [light.position, direction]);
 
-  // Create light indicator material only when color changes
-  // Note: MeshBasicMaterial accepts string color directly, no need for Color object
+  // Create light indicator material
   const indicatorMaterial = useMemo(() => {
-    return new MeshBasicMaterial({ color: lightColor });
-  }, [lightColor]);
+    return new MeshBasicMaterial({
+      color: light.color,
+      transparent: !light.enabled,
+      opacity: light.enabled ? 1.0 : 0.3,
+    });
+  }, [light.color, light.enabled]);
 
-  // Dispose material on change or unmount
+  // Dispose material on change
   const materialRef = useRef<MeshBasicMaterial | null>(null);
   useEffect(() => {
     if (materialRef.current && materialRef.current !== indicatorMaterial) {
@@ -105,25 +91,154 @@ export const SceneLighting = memo(function SceneLighting() {
     };
   }, [indicatorMaterial]);
 
+  if (!light.enabled) {
+    // Only render indicator for disabled lights
+    return showIndicator ? (
+      <mesh
+        position={position}
+        scale={0.15}
+        geometry={LIGHT_INDICATOR_GEOMETRY}
+        material={indicatorMaterial}
+      />
+    ) : null;
+  }
+
   return (
     <>
-      <ambientLight intensity={ambientIntensity} />
-      {lightEnabled && (
+      {light.type === 'point' && (
         <pointLight
-          position={lightPosition}
-          color={lightColor}
-          intensity={diffuseIntensity * (lightStrength ?? 1.0) * 10}
+          position={position}
+          color={light.color}
+          intensity={light.intensity * 10}
           distance={0}
           decay={0}
         />
       )}
-      {showLightIndicator && lightEnabled && (
+      {light.type === 'directional' && (
+        <directionalLight
+          position={position}
+          color={light.color}
+          intensity={light.intensity}
+          target-position={targetPosition}
+        />
+      )}
+      {light.type === 'spot' && (
+        <spotLight
+          position={position}
+          color={light.color}
+          intensity={light.intensity * 10}
+          distance={0}
+          angle={(light.coneAngle * Math.PI) / 180}
+          penumbra={light.penumbra}
+          decay={0}
+          target-position={targetPosition}
+        />
+      )}
+      {showIndicator && (
         <mesh
-          position={lightPosition}
+          position={position}
           scale={0.2}
           geometry={LIGHT_INDICATOR_GEOMETRY}
           material={indicatorMaterial}
         />
+      )}
+    </>
+  );
+});
+
+/**
+ * Renders ambient and multi-light system for the scene.
+ *
+ * @returns Three.js light components configured from visual store
+ */
+export const SceneLighting = memo(function SceneLighting() {
+  // Multi-light system state
+  const lights = useVisualStore((state) => state.lights);
+  const showLightGizmos = useVisualStore((state) => state.showLightGizmos);
+
+  // Legacy single-light state (for backward compatibility)
+  const lightEnabled = useVisualStore((state) => state.lightEnabled);
+  const lightColor = useVisualStore((state) => state.lightColor);
+  const lightHorizontalAngle = useVisualStore((state) => state.lightHorizontalAngle);
+  const lightVerticalAngle = useVisualStore((state) => state.lightVerticalAngle);
+  const ambientIntensity = useVisualStore((state) => state.ambientIntensity);
+  const diffuseIntensity = useVisualStore((state) => state.diffuseIntensity);
+  const lightStrength = useVisualStore((state) => state.lightStrength);
+  const showLightIndicator = useVisualStore((state) => state.showLightIndicator);
+
+  /**
+   * Legacy light position from spherical coordinates (backward compatibility)
+   */
+  const legacyLightPosition = useMemo(() => {
+    const h = (lightHorizontalAngle * Math.PI) / 180;
+    const v = (lightVerticalAngle * Math.PI) / 180;
+    return [
+      Math.cos(v) * Math.cos(h) * LIGHT_DISTANCE,
+      Math.sin(v) * LIGHT_DISTANCE,
+      Math.cos(v) * Math.sin(h) * LIGHT_DISTANCE,
+    ] as [number, number, number];
+  }, [lightHorizontalAngle, lightVerticalAngle]);
+
+  // Create legacy light indicator material
+  const legacyIndicatorMaterial = useMemo(() => {
+    return new MeshBasicMaterial({ color: lightColor });
+  }, [lightColor]);
+
+  // Dispose legacy material on change or unmount
+  const materialRef = useRef<MeshBasicMaterial | null>(null);
+  useEffect(() => {
+    if (materialRef.current && materialRef.current !== legacyIndicatorMaterial) {
+      materialRef.current.dispose();
+    }
+    materialRef.current = legacyIndicatorMaterial;
+
+    return () => {
+      if (materialRef.current) {
+        materialRef.current.dispose();
+        materialRef.current = null;
+      }
+    };
+  }, [legacyIndicatorMaterial]);
+
+  // Determine if we should use multi-light or legacy
+  const useMultiLight = lights.length > 0;
+
+  return (
+    <>
+      <ambientLight intensity={ambientIntensity} />
+
+      {useMultiLight ? (
+        // Multi-light system
+        <>
+          {lights.map((light) => (
+            <LightRenderer
+              key={light.id}
+              light={light}
+              showIndicator={showLightGizmos}
+            />
+          ))}
+        </>
+      ) : (
+        // Legacy single-light (backward compatibility)
+        <>
+          {lightEnabled && (
+            <pointLight
+              position={legacyLightPosition}
+              color={lightColor}
+              intensity={diffuseIntensity * (lightStrength ?? 1.0) * 10}
+              distance={0}
+              decay={0}
+            />
+          )}
+          {showLightIndicator && lightEnabled && (
+            <mesh
+              position={legacyLightPosition}
+              scale={0.2}
+              geometry={LIGHT_INDICATOR_GEOMETRY}
+              material={legacyIndicatorMaterial}
+            />
+          )}
+        </>
       )}
     </>
   );

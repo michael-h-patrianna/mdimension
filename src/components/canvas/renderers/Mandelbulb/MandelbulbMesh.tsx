@@ -8,6 +8,8 @@ import { useRotationStore } from '@/stores/rotationStore';
 import { useVisualStore } from '@/stores/visualStore';
 import { composeRotations } from '@/lib/math/rotation';
 import { COLOR_ALGORITHM_TO_INT } from '@/lib/shaders/palette';
+import { MAX_LIGHTS, LIGHT_TYPE_TO_INT, rotationToDirection } from '@/lib/lights/types';
+import type { LightSource } from '@/lib/lights/types';
 
 /** MandelbulbMesh is always 3D - this constant ensures consistency */
 const MANDELBULB_DIMENSION = 3;
@@ -64,6 +66,9 @@ const MandelbulbMesh = () => {
   const fresnelIntensity = useVisualStore((state) => state.fresnelIntensity);
   const edgeColor = useVisualStore((state) => state.edgeColor);
 
+  // Multi-light system state
+  const lights = useVisualStore((state) => state.lights);
+
   const uniforms = useMemo(
     () => ({
       uTime: { value: 0 },
@@ -106,6 +111,16 @@ const MandelbulbMesh = () => {
       uLchLightness: { value: 0.7 },
       uLchChroma: { value: 0.15 },
       uMultiSourceWeights: { value: new THREE.Vector3(0.5, 0.3, 0.2) },
+      // Multi-light system uniforms
+      uNumLights: { value: 0 },
+      uLightsEnabled: { value: Array(MAX_LIGHTS).fill(false) },
+      uLightTypes: { value: Array(MAX_LIGHTS).fill(0) },
+      uLightPositions: { value: Array.from({ length: MAX_LIGHTS }, () => new THREE.Vector3(0, 5, 0)) },
+      uLightDirections: { value: Array.from({ length: MAX_LIGHTS }, () => new THREE.Vector3(0, -1, 0)) },
+      uLightColors: { value: Array.from({ length: MAX_LIGHTS }, () => new THREE.Color('#FFFFFF')) },
+      uLightIntensities: { value: Array(MAX_LIGHTS).fill(1.0) },
+      uSpotAngles: { value: Array(MAX_LIGHTS).fill(Math.PI / 6) },
+      uSpotPenumbras: { value: Array(MAX_LIGHTS).fill(0.5) },
     }),
     []
   );
@@ -155,6 +170,36 @@ const MandelbulbMesh = () => {
       if (material.uniforms.uLchLightness) material.uniforms.uLchLightness.value = lchLightness;
       if (material.uniforms.uLchChroma) material.uniforms.uLchChroma.value = lchChroma;
       if (material.uniforms.uMultiSourceWeights) material.uniforms.uMultiSourceWeights.value.set(multiSourceWeights.depth, multiSourceWeights.orbitTrap, multiSourceWeights.normal);
+
+      // Multi-light system uniform updates
+      const u = material.uniforms;
+      if (u.uNumLights && u.uLightsEnabled && u.uLightTypes && u.uLightPositions &&
+          u.uLightDirections && u.uLightColors && u.uLightIntensities &&
+          u.uSpotAngles && u.uSpotPenumbras) {
+        const numLights = Math.min(lights.length, MAX_LIGHTS);
+        u.uNumLights.value = numLights;
+
+        for (let i = 0; i < MAX_LIGHTS; i++) {
+          const light: LightSource | undefined = lights[i];
+
+          if (light) {
+            u.uLightsEnabled.value[i] = light.enabled;
+            u.uLightTypes.value[i] = LIGHT_TYPE_TO_INT[light.type];
+            u.uLightPositions.value[i].set(light.position[0], light.position[1], light.position[2]);
+
+            // Calculate direction from rotation
+            const dir = rotationToDirection(light.rotation);
+            u.uLightDirections.value[i].set(dir[0], dir[1], dir[2]);
+
+            u.uLightColors.value[i].set(light.color);
+            u.uLightIntensities.value[i] = light.intensity;
+            u.uSpotAngles.value[i] = (light.coneAngle * Math.PI) / 180;
+            u.uSpotPenumbras.value[i] = light.penumbra;
+          } else {
+            u.uLightsEnabled.value[i] = false;
+          }
+        }
+      }
 
       // Access rotation state directly to avoid re-renders during animation
       // Filter to only include 3D-valid planes (XY, XZ, YZ) to prevent errors

@@ -7,11 +7,13 @@
 
 import { describe, it, expect } from 'vitest';
 import type { WebGLProgramParametersWithUniforms, WebGLRenderer, IUniform } from 'three';
-import { MeshPhongMaterial, DoubleSide } from 'three';
+import { MeshPhongMaterial, DoubleSide, ShaderMaterial, Vector3 } from 'three';
 import {
   createPhongPaletteMaterial,
   updatePhongPaletteMaterial,
   createBasicSurfaceMaterial,
+  createFresnelSurfaceMaterial,
+  createPaletteSurfaceMaterial,
 } from '@/lib/shaders/materials';
 
 /** Mock shader structure for testing onBeforeCompile - minimal subset for testing */
@@ -511,6 +513,221 @@ describe('SurfaceMaterial', () => {
       const uniforms = mockShader.uniforms;
       expect(uniforms.uFresnelIntensity?.value).toBe(0.9);
       expect(uniforms.uColorAlgorithm?.value).toBe(5); // lch = 5
+    });
+  });
+
+  describe('createFresnelSurfaceMaterial - Multi-Light Support', () => {
+    it('should create a ShaderMaterial', () => {
+      const material = createFresnelSurfaceMaterial({
+        color: '#FF0000',
+        faceOpacity: 0.8,
+        specularIntensity: 0.5,
+        shininess: 30,
+        fresnelEnabled: true,
+      });
+
+      expect(material).toBeInstanceOf(ShaderMaterial);
+    });
+
+    it('should include multi-light uniforms', () => {
+      const material = createFresnelSurfaceMaterial({
+        color: '#FF0000',
+        faceOpacity: 0.8,
+        specularIntensity: 0.5,
+        shininess: 30,
+        fresnelEnabled: true,
+      });
+
+      const uniforms = material.uniforms;
+      expect(uniforms.uNumLights).toBeDefined();
+      expect(uniforms.uLightsEnabled).toBeDefined();
+      expect(uniforms.uLightTypes).toBeDefined();
+      expect(uniforms.uLightPositions).toBeDefined();
+      expect(uniforms.uLightDirections).toBeDefined();
+      expect(uniforms.uLightColors).toBeDefined();
+      expect(uniforms.uLightIntensities).toBeDefined();
+      expect(uniforms.uSpotAngles).toBeDefined();
+      expect(uniforms.uSpotPenumbras).toBeDefined();
+      expect(uniforms.uDiffuseIntensity).toBeDefined();
+      expect(uniforms.uSpecularColor).toBeDefined();
+    });
+
+    it('should initialize uNumLights to 0', () => {
+      const material = createFresnelSurfaceMaterial({
+        color: '#FF0000',
+        faceOpacity: 0.8,
+        specularIntensity: 0.5,
+        shininess: 30,
+        fresnelEnabled: true,
+      });
+
+      expect(material.uniforms.uNumLights!.value).toBe(0);
+    });
+
+    it('should initialize light arrays with 4 elements', () => {
+      const material = createFresnelSurfaceMaterial({
+        color: '#FF0000',
+        faceOpacity: 0.8,
+        specularIntensity: 0.5,
+        shininess: 30,
+        fresnelEnabled: true,
+      });
+
+      expect((material.uniforms.uLightsEnabled!.value as boolean[]).length).toBe(4);
+      expect((material.uniforms.uLightTypes!.value as number[]).length).toBe(4);
+      expect((material.uniforms.uLightPositions!.value as Vector3[]).length).toBe(4);
+      expect((material.uniforms.uLightDirections!.value as Vector3[]).length).toBe(4);
+      expect((material.uniforms.uLightColors!.value as unknown[]).length).toBe(4);
+      expect((material.uniforms.uLightIntensities!.value as number[]).length).toBe(4);
+      expect((material.uniforms.uSpotAngles!.value as number[]).length).toBe(4);
+      expect((material.uniforms.uSpotPenumbras!.value as number[]).length).toBe(4);
+    });
+
+    it('should initialize all lights as disabled', () => {
+      const material = createFresnelSurfaceMaterial({
+        color: '#FF0000',
+        faceOpacity: 0.8,
+        specularIntensity: 0.5,
+        shininess: 30,
+        fresnelEnabled: true,
+      });
+
+      const enabled = material.uniforms.uLightsEnabled!.value as boolean[];
+      enabled.forEach((value) => {
+        expect(value).toBe(false);
+      });
+    });
+
+    it('should include multi-light functions in fragment shader', () => {
+      const material = createFresnelSurfaceMaterial({
+        color: '#FF0000',
+        faceOpacity: 0.8,
+        specularIntensity: 0.5,
+        shininess: 30,
+        fresnelEnabled: true,
+      });
+
+      expect(material.fragmentShader).toContain('getLightDirection');
+      expect(material.fragmentShader).toContain('getSpotAttenuation');
+      expect(material.fragmentShader).toContain('calculateMultiLighting');
+      expect(material.fragmentShader).toContain('LIGHT_TYPE_POINT');
+      expect(material.fragmentShader).toContain('LIGHT_TYPE_DIRECTIONAL');
+      expect(material.fragmentShader).toContain('LIGHT_TYPE_SPOT');
+    });
+
+    it('should include vWorldPosition varying in vertex shader', () => {
+      const material = createFresnelSurfaceMaterial({
+        color: '#FF0000',
+        faceOpacity: 0.8,
+        specularIntensity: 0.5,
+        shininess: 30,
+        fresnelEnabled: true,
+      });
+
+      expect(material.vertexShader).toContain('vWorldPosition');
+    });
+  });
+
+  describe('createPaletteSurfaceMaterial - Multi-Light Support', () => {
+    it('should create a ShaderMaterial', () => {
+      const material = createPaletteSurfaceMaterial({
+        color: '#FF0000',
+        faceOpacity: 0.8,
+        specularIntensity: 0.5,
+        shininess: 30,
+        fresnelEnabled: true,
+        colorAlgorithm: 'cosine',
+      });
+
+      expect(material).toBeInstanceOf(ShaderMaterial);
+    });
+
+    it('should include multi-light uniforms', () => {
+      const material = createPaletteSurfaceMaterial({
+        color: '#FF0000',
+        faceOpacity: 0.8,
+        specularIntensity: 0.5,
+        shininess: 30,
+        fresnelEnabled: true,
+        colorAlgorithm: 'cosine',
+      });
+
+      const uniforms = material.uniforms;
+      expect(uniforms.uNumLights).toBeDefined();
+      expect(uniforms.uLightsEnabled).toBeDefined();
+      expect(uniforms.uLightTypes).toBeDefined();
+      expect(uniforms.uLightPositions).toBeDefined();
+      expect(uniforms.uLightDirections).toBeDefined();
+      expect(uniforms.uLightColors).toBeDefined();
+      expect(uniforms.uLightIntensities).toBeDefined();
+      expect(uniforms.uSpotAngles).toBeDefined();
+      expect(uniforms.uSpotPenumbras).toBeDefined();
+    });
+
+    it('should initialize uNumLights to 0', () => {
+      const material = createPaletteSurfaceMaterial({
+        color: '#FF0000',
+        faceOpacity: 0.8,
+        specularIntensity: 0.5,
+        shininess: 30,
+        fresnelEnabled: true,
+        colorAlgorithm: 'cosine',
+      });
+
+      expect(material.uniforms.uNumLights!.value).toBe(0);
+    });
+
+    it('should initialize light arrays with 4 elements', () => {
+      const material = createPaletteSurfaceMaterial({
+        color: '#FF0000',
+        faceOpacity: 0.8,
+        specularIntensity: 0.5,
+        shininess: 30,
+        fresnelEnabled: true,
+        colorAlgorithm: 'cosine',
+      });
+
+      expect((material.uniforms.uLightsEnabled!.value as boolean[]).length).toBe(4);
+      expect((material.uniforms.uLightTypes!.value as number[]).length).toBe(4);
+      expect((material.uniforms.uLightPositions!.value as Vector3[]).length).toBe(4);
+      expect((material.uniforms.uLightDirections!.value as Vector3[]).length).toBe(4);
+      expect((material.uniforms.uLightColors!.value as unknown[]).length).toBe(4);
+      expect((material.uniforms.uLightIntensities!.value as number[]).length).toBe(4);
+      expect((material.uniforms.uSpotAngles!.value as number[]).length).toBe(4);
+      expect((material.uniforms.uSpotPenumbras!.value as number[]).length).toBe(4);
+    });
+
+    it('should include multi-light functions in fragment shader', () => {
+      const material = createPaletteSurfaceMaterial({
+        color: '#FF0000',
+        faceOpacity: 0.8,
+        specularIntensity: 0.5,
+        shininess: 30,
+        fresnelEnabled: true,
+        colorAlgorithm: 'cosine',
+      });
+
+      expect(material.fragmentShader).toContain('getPaletteLightDirection');
+      expect(material.fragmentShader).toContain('getPaletteSpotAttenuation');
+      expect(material.fragmentShader).toContain('calculatePaletteMultiLighting');
+      expect(material.fragmentShader).toContain('LIGHT_TYPE_POINT');
+      expect(material.fragmentShader).toContain('LIGHT_TYPE_DIRECTIONAL');
+      expect(material.fragmentShader).toContain('LIGHT_TYPE_SPOT');
+    });
+
+    it('should support legacy single-light fallback in fragment shader', () => {
+      const material = createPaletteSurfaceMaterial({
+        color: '#FF0000',
+        faceOpacity: 0.8,
+        specularIntensity: 0.5,
+        shininess: 30,
+        fresnelEnabled: true,
+        colorAlgorithm: 'cosine',
+      });
+
+      // Fragment shader should check uNumLights and fall back to legacy single-light
+      expect(material.fragmentShader).toContain('if (uNumLights > 0)');
+      expect(material.fragmentShader).toContain('else if (uLightEnabled)');
     });
   });
 });

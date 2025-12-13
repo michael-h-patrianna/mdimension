@@ -23,6 +23,22 @@ uniform bool uToneMappingEnabled;
 uniform int uToneMappingAlgorithm;
 uniform float uExposure;
 
+// Multi-Light System Constants and Uniforms
+#define MAX_LIGHTS 4
+#define LIGHT_TYPE_POINT 0
+#define LIGHT_TYPE_DIRECTIONAL 1
+#define LIGHT_TYPE_SPOT 2
+
+uniform int uNumLights;
+uniform bool uLightsEnabled[MAX_LIGHTS];
+uniform int uLightTypes[MAX_LIGHTS];
+uniform vec3 uLightPositions[MAX_LIGHTS];
+uniform vec3 uLightDirections[MAX_LIGHTS];
+uniform vec3 uLightColors[MAX_LIGHTS];
+uniform float uLightIntensities[MAX_LIGHTS];
+uniform float uSpotAngles[MAX_LIGHTS];
+uniform float uSpotPenumbras[MAX_LIGHTS];
+
 // Fresnel rim lighting uniforms
 uniform bool uFresnelEnabled;
 uniform float uFresnelIntensity;
@@ -404,6 +420,82 @@ float fresnelSchlick(float cosTheta, float F0) {
 }
 
 // ============================================
+// Multi-Light Helper Functions
+// ============================================
+
+/**
+ * Calculate light direction for a given light index.
+ * Returns normalized direction FROM fragment TO light source.
+ */
+vec3 getLightDirection(int lightIndex, vec3 fragPos) {
+    int lightType = uLightTypes[lightIndex];
+
+    if (lightType == LIGHT_TYPE_POINT) {
+        return normalize(uLightPositions[lightIndex] - fragPos);
+    }
+    else if (lightType == LIGHT_TYPE_DIRECTIONAL) {
+        return normalize(uLightDirections[lightIndex]);
+    }
+    else if (lightType == LIGHT_TYPE_SPOT) {
+        return normalize(uLightPositions[lightIndex] - fragPos);
+    }
+
+    return vec3(0.0, 1.0, 0.0);
+}
+
+/**
+ * Calculate spot light cone attenuation with penumbra falloff.
+ */
+float getSpotAttenuation(int lightIndex, vec3 lightToFrag) {
+    float cosAngle = dot(lightToFrag, normalize(uLightDirections[lightIndex]));
+    float innerCos = cos(uSpotAngles[lightIndex] * (1.0 - uSpotPenumbras[lightIndex]));
+    float outerCos = cos(uSpotAngles[lightIndex]);
+    return smoothstep(outerCos, innerCos, cosAngle);
+}
+
+/**
+ * Calculate total lighting from all active lights.
+ * Uses Blinn-Phong model consistent with existing single-light implementation.
+ */
+vec3 calculateMultiLighting(
+    vec3 fragPos,
+    vec3 normal,
+    vec3 viewDir,
+    vec3 baseColor
+) {
+    vec3 col = baseColor * uAmbientIntensity;
+
+    for (int i = 0; i < MAX_LIGHTS; i++) {
+        if (i >= uNumLights) break;
+        if (!uLightsEnabled[i]) continue;
+
+        vec3 lightDir = getLightDirection(i, fragPos);
+        float attenuation = uLightIntensities[i];
+
+        // Apply spot light cone attenuation
+        if (uLightTypes[i] == LIGHT_TYPE_SPOT) {
+            vec3 lightToFrag = normalize(fragPos - uLightPositions[i]);
+            attenuation *= getSpotAttenuation(i, lightToFrag);
+        }
+
+        // Skip negligible contributions
+        if (attenuation < 0.001) continue;
+
+        // Diffuse (Lambert)
+        float NdotL = max(dot(normal, lightDir), 0.0);
+        col += baseColor * uLightColors[i] * NdotL * uDiffuseIntensity * attenuation;
+
+        // Specular (Blinn-Phong)
+        vec3 halfDir = normalize(lightDir + viewDir);
+        float NdotH = max(dot(normal, halfDir), 0.0);
+        float spec = pow(NdotH, uSpecularPower) * uSpecularIntensity * attenuation;
+        col += uSpecularColor * uLightColors[i] * spec;
+    }
+
+    return col;
+}
+
+// ============================================
 // Mandelbulb SDF with Orbit Trap
 // ============================================
 
@@ -628,18 +720,41 @@ void main() {
     // Apply ambient occlusion to darken crevices more aggressively
     surfaceColor *= (0.3 + 0.7 * ao);
 
-    // Lighting calculation using scene lighting settings
-    // Start with ambient
-    vec3 col = surfaceColor * uAmbientIntensity;
+    // Transform to world space for lighting calculations
+    vec3 worldPos = (uModelMatrix * vec4(p, 1.0)).xyz;
+    vec3 worldNormal = normalize((uModelMatrix * vec4(n, 0.0)).xyz);
+    vec3 worldViewDir = normalize((uModelMatrix * vec4(-rd, 0.0)).xyz);
 
-    if (uLightEnabled) {
-        // Light direction stays fixed in world space
+    // Multi-light calculation
+    vec3 col;
+    if (uNumLights > 0) {
+        // Use multi-light system
+        col = calculateMultiLighting(worldPos, worldNormal, worldViewDir, surfaceColor);
+
+        // Fresnel rim lighting (applied once for all lights combined)
+        if (uFresnelEnabled && uFresnelIntensity > 0.0) {
+            float NdotV = max(dot(worldNormal, worldViewDir), 0.0);
+            float rim = pow(1.0 - NdotV, 3.0) * uFresnelIntensity * 2.0;
+            // Estimate average light direction for rim modulation
+            float avgNdotL = 0.0;
+            int activeLights = 0;
+            for (int i = 0; i < MAX_LIGHTS; i++) {
+                if (i >= uNumLights) break;
+                if (!uLightsEnabled[i]) continue;
+                vec3 lightDir = getLightDirection(i, worldPos);
+                avgNdotL += max(dot(worldNormal, lightDir), 0.0);
+                activeLights++;
+            }
+            if (activeLights > 0) {
+                avgNdotL /= float(activeLights);
+            }
+            rim *= (0.3 + 0.7 * avgNdotL);
+            col += uRimColor * rim;
+        }
+    } else if (uLightEnabled) {
+        // Fallback: Legacy single-light system for backward compatibility
+        col = surfaceColor * uAmbientIntensity;
         vec3 l = normalize(uLightDirection);
-
-        // Transform normal and view direction from object space to world space
-        // (raymarching happens in object space, lighting uses world space)
-        vec3 worldNormal = normalize((uModelMatrix * vec4(n, 0.0)).xyz);
-        vec3 worldViewDir = normalize((uModelMatrix * vec4(-rd, 0.0)).xyz);
 
         // Energy conservation: diffuse weight = 1.0 - ambient
         float diffuseWeight = 1.0 - uAmbientIntensity;
@@ -649,21 +764,22 @@ void main() {
         float diffuse = NdotL * uDiffuseIntensity * diffuseWeight * uLightStrength;
         col += surfaceColor * uLightColor * diffuse;
 
-        // Specular (Blinn-Phong) - simple without Fresnel for clearer highlights
-        // Matches Three.js MeshPhongMaterial: pow(NdotH, shininess) * specularColor
+        // Specular (Blinn-Phong)
         vec3 halfDir = normalize(l + worldViewDir);
         float NdotH = max(dot(worldNormal, halfDir), 0.0);
         float spec = pow(NdotH, uSpecularPower) * uSpecularIntensity * uLightStrength;
         col += uSpecularColor * uLightColor * spec;
 
-        // Fresnel rim lighting (controlled by Edges render mode)
+        // Fresnel rim lighting
         if (uFresnelEnabled && uFresnelIntensity > 0.0) {
             float NdotV = max(dot(worldNormal, worldViewDir), 0.0);
             float rim = pow(1.0 - NdotV, 3.0) * uFresnelIntensity * 2.0;
-            // Rim is stronger on lit side
             rim *= (0.3 + 0.7 * NdotL);
             col += uRimColor * rim;
         }
+    } else {
+        // No lighting - just ambient
+        col = surfaceColor * uAmbientIntensity;
     }
 
     // Apply tone mapping as final step

@@ -19,6 +19,7 @@ import { CameraController } from './CameraController'
 import { SceneLighting } from './environment/SceneLighting'
 import { PostProcessing } from './environment/PostProcessing'
 import { GroundPlane } from './environment/GroundPlane'
+import { LightGizmoManager } from './gizmos/LightGizmoManager'
 import { useVisualStore } from '@/stores/visualStore'
 
 /**
@@ -89,6 +90,9 @@ export const Scene = React.memo(function Scene({
     <>
       {/* Scene lighting from visual store */}
       <SceneLighting />
+
+      {/* Light gizmos for manipulating lights */}
+      <LightGizmoManager />
 
       {/* Post-processing effects (bloom) */}
       <PostProcessing />

@@ -5,6 +5,7 @@
 
 import { useEffect, useCallback } from 'react';
 import { useGeometryStore } from '@/stores/geometryStore';
+import { useVisualStore } from '@/stores/visualStore';
 import { exportSceneToPNG, generateTimestampFilename } from '@/lib/export';
 
 export interface ShortcutConfig {
@@ -43,6 +44,12 @@ export const SHORTCUTS: Omit<ShortcutConfig, 'action'>[] = [
   { key: '3', description: 'Select cross-polytope' },
   // Export
   { key: 's', ctrl: true, description: 'Export PNG' },
+  // Light controls (when light selected)
+  { key: 'w', description: 'Light: Move mode*' },
+  { key: 'e', description: 'Light: Rotate mode*' },
+  { key: 'd', description: 'Light: Duplicate*' },
+  { key: 'Delete', description: 'Light: Remove*' },
+  { key: 'Escape', description: 'Light: Deselect*' },
 ];
 
 /**
@@ -58,6 +65,13 @@ export function useKeyboardShortcuts(
   const setDimension = useGeometryStore((state) => state.setDimension);
   const setObjectType = useGeometryStore((state) => state.setObjectType);
 
+  // Light-related state and actions
+  const selectedLightId = useVisualStore((state) => state.selectedLightId);
+  const setTransformMode = useVisualStore((state) => state.setTransformMode);
+  const selectLight = useVisualStore((state) => state.selectLight);
+  const removeLight = useVisualStore((state) => state.removeLight);
+  const duplicateLight = useVisualStore((state) => state.duplicateLight);
+
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
       // Don't trigger shortcuts when typing in input fields
@@ -68,8 +82,51 @@ export function useKeyboardShortcuts(
         return;
       }
 
-      const { key, ctrlKey, metaKey } = event;
+      const { key, ctrlKey, metaKey, shiftKey } = event;
       const isCtrlOrMeta = ctrlKey || metaKey;
+
+      // Light-specific shortcuts (when a light is selected)
+      if (selectedLightId) {
+        const lowerKey = key.toLowerCase();
+
+        // W - Move mode (only when no shift)
+        if (lowerKey === 'w' && !shiftKey && !isCtrlOrMeta) {
+          event.preventDefault();
+          setTransformMode('translate');
+          return;
+        }
+
+        // E - Rotate mode
+        if (lowerKey === 'e' && !shiftKey && !isCtrlOrMeta) {
+          event.preventDefault();
+          setTransformMode('rotate');
+          return;
+        }
+
+        // D - Duplicate light (only when no shift)
+        if (lowerKey === 'd' && !shiftKey && !isCtrlOrMeta) {
+          event.preventDefault();
+          const newId = duplicateLight(selectedLightId);
+          if (newId) {
+            selectLight(newId);
+          }
+          return;
+        }
+
+        // Delete/Backspace - Remove light
+        if (key === 'Delete' || key === 'Backspace') {
+          event.preventDefault();
+          removeLight(selectedLightId);
+          return;
+        }
+
+        // Escape - Deselect light
+        if (key === 'Escape') {
+          event.preventDefault();
+          selectLight(null);
+          return;
+        }
+      }
 
       // Arrow Up - Increase dimension
       if (key === 'ArrowUp') {
@@ -119,11 +176,17 @@ export function useKeyboardShortcuts(
       }
 
       // Note: WASD keys are handled by useCameraMovement hook for camera movement
+      // When a light is selected, W and D are intercepted by light shortcuts above
     },
     [
       dimension,
       setDimension,
       setObjectType,
+      selectedLightId,
+      setTransformMode,
+      selectLight,
+      removeLight,
+      duplicateLight,
     ]
   );
 

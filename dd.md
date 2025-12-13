@@ -62,3 +62,18 @@ clifford torus: 3 (radius)
     - Palette color gradients
     - Fresnel rim lighting
     - Depth-based coloring
+
+
+
+// Old Film Look
+  filmPass = new THREE.FilmPass();
+  composer.addPass(filmPass);
+
+  // Vignette Shader
+  shaderVignette = THREE.VignetteShader;
+  effectVignette = new THREE.ShaderPass(shaderVignette);
+
+  effectVignette.uniforms["offset"].value = 1.5;
+  effectVignette.uniforms["darkness"].value = .9;
+  effectVignette.renderToScreen = true;
+  composer.addPass(effectVignette);

@@ -34,6 +34,8 @@ import { DEFAULT_PROJECTION_DISTANCE } from '@/lib/math/projection';
 import { VERTEX_SIZE_DIVISOR } from '@/lib/shaders/constants';
 import { matrixToGPUUniforms } from '@/lib/shaders/transforms/ndTransform';
 import { COLOR_ALGORITHM_TO_INT } from '@/lib/shaders/palette';
+import { MAX_LIGHTS, LIGHT_TYPE_TO_INT, rotationToDirection } from '@/lib/lights/types';
+import type { LightSource } from '@/lib/lights/types';
 
 /**
  * Props for PolytopeScene component
@@ -248,7 +250,7 @@ function buildFaceFragmentShader(): string {
     uniform float uLchChroma;
     uniform vec3 uMultiSourceWeights;
 
-    // Lighting uniforms
+    // Lighting uniforms (legacy single-light)
     uniform bool uLightEnabled;
     uniform vec3 uLightColor;
     uniform vec3 uLightDirection;
@@ -258,6 +260,22 @@ function buildFaceFragmentShader(): string {
     uniform float uSpecularIntensity;
     uniform float uSpecularPower;
     uniform vec3 uSpecularColor;
+
+    // Multi-Light System Constants and Uniforms
+    #define MAX_LIGHTS 4
+    #define LIGHT_TYPE_POINT 0
+    #define LIGHT_TYPE_DIRECTIONAL 1
+    #define LIGHT_TYPE_SPOT 2
+
+    uniform int uNumLights;
+    uniform bool uLightsEnabled[MAX_LIGHTS];
+    uniform int uLightTypes[MAX_LIGHTS];
+    uniform vec3 uLightPositions[MAX_LIGHTS];
+    uniform vec3 uLightDirections[MAX_LIGHTS];
+    uniform vec3 uLightColors[MAX_LIGHTS];
+    uniform float uLightIntensities[MAX_LIGHTS];
+    uniform float uSpotAngles[MAX_LIGHTS];
+    uniform float uSpotPenumbras[MAX_LIGHTS];
 
     // Fresnel uniforms
     uniform bool uFresnelEnabled;
@@ -410,6 +428,58 @@ function buildFaceFragmentShader(): string {
       return getCosinePaletteColor(t);
     }
 
+    // ============================================================
+    // Multi-Light Helper Functions
+    // ============================================================
+
+    vec3 getLightDirection(int lightIndex, vec3 fragPos) {
+      int lightType = uLightTypes[lightIndex];
+      if (lightType == LIGHT_TYPE_POINT) {
+        return normalize(uLightPositions[lightIndex] - fragPos);
+      } else if (lightType == LIGHT_TYPE_DIRECTIONAL) {
+        return normalize(uLightDirections[lightIndex]);
+      } else if (lightType == LIGHT_TYPE_SPOT) {
+        return normalize(uLightPositions[lightIndex] - fragPos);
+      }
+      return vec3(0.0, 1.0, 0.0);
+    }
+
+    float getSpotAttenuation(int lightIndex, vec3 lightToFrag) {
+      float cosAngle = dot(lightToFrag, normalize(uLightDirections[lightIndex]));
+      float innerCos = cos(uSpotAngles[lightIndex] * (1.0 - uSpotPenumbras[lightIndex]));
+      float outerCos = cos(uSpotAngles[lightIndex]);
+      return smoothstep(outerCos, innerCos, cosAngle);
+    }
+
+    vec3 calculateMultiLighting(vec3 fragPos, vec3 normal, vec3 viewDir, vec3 baseColor) {
+      vec3 col = baseColor * uAmbientIntensity;
+
+      for (int i = 0; i < MAX_LIGHTS; i++) {
+        if (i >= uNumLights) break;
+        if (!uLightsEnabled[i]) continue;
+
+        vec3 lightDir = getLightDirection(i, fragPos);
+        float attenuation = uLightIntensities[i];
+
+        if (uLightTypes[i] == LIGHT_TYPE_SPOT) {
+          vec3 lightToFrag = normalize(fragPos - uLightPositions[i]);
+          attenuation *= getSpotAttenuation(i, lightToFrag);
+        }
+
+        if (attenuation < 0.001) continue;
+
+        float NdotL = max(dot(normal, lightDir), 0.0);
+        col += baseColor * uLightColors[i] * NdotL * uDiffuseIntensity * attenuation;
+
+        vec3 halfDir = normalize(lightDir + viewDir);
+        float NdotH = max(dot(normal, halfDir), 0.0);
+        float spec = pow(NdotH, uSpecularPower) * uSpecularIntensity * attenuation;
+        col += uSpecularColor * uLightColors[i] * spec;
+      }
+
+      return col;
+    }
+
     void main() {
       // Compute face normal from screen-space derivatives of world position
       vec3 dPdx = dFdx(vWorldPosition);
@@ -421,29 +491,54 @@ function buildFaceFragmentShader(): string {
       vec3 baseHSL = rgb2hsl(uColor);
       vec3 baseColor = getColorByAlgorithm(vFaceDepth, normal, baseHSL);
 
-      // Start with ambient
-      vec3 col = baseColor * uAmbientIntensity;
+      // Multi-light calculation
+      vec3 col;
+      if (uNumLights > 0) {
+        // Use multi-light system
+        col = calculateMultiLighting(vWorldPosition, normal, viewDir, baseColor);
 
-      if (uLightEnabled) {
+        // Fresnel rim lighting (applied once for all lights combined)
+        if (uFresnelEnabled && uFresnelIntensity > 0.0) {
+          float NdotV = max(dot(normal, viewDir), 0.0);
+          float rim = pow(1.0 - NdotV, 3.0) * uFresnelIntensity * 2.0;
+          // Average NdotL for rim modulation
+          float avgNdotL = 0.0;
+          int activeLights = 0;
+          for (int i = 0; i < MAX_LIGHTS; i++) {
+            if (i >= uNumLights) break;
+            if (!uLightsEnabled[i]) continue;
+            vec3 lightDir = getLightDirection(i, vWorldPosition);
+            avgNdotL += max(dot(normal, lightDir), 0.0);
+            activeLights++;
+          }
+          if (activeLights > 0) {
+            avgNdotL /= float(activeLights);
+          }
+          rim *= (0.3 + 0.7 * avgNdotL);
+          col += uRimColor * rim;
+        }
+      } else if (uLightEnabled) {
+        // Legacy single-light fallback
+        col = baseColor * uAmbientIntensity;
         vec3 lightDir = normalize(uLightDirection);
 
-        // Diffuse (Lambert) - multiplied by light strength
         float NdotL = max(dot(normal, lightDir), 0.0);
         col += baseColor * uLightColor * NdotL * uDiffuseIntensity * uLightStrength;
 
-        // Specular (Blinn-Phong) - multiplied by light strength
         vec3 halfDir = normalize(lightDir + viewDir);
         float NdotH = max(dot(normal, halfDir), 0.0);
         float spec = pow(NdotH, uSpecularPower) * uSpecularIntensity * uLightStrength;
         col += uSpecularColor * uLightColor * spec;
 
-        // Fresnel rim lighting
         if (uFresnelEnabled && uFresnelIntensity > 0.0) {
           float NdotV = max(dot(normal, viewDir), 0.0);
           float rim = pow(1.0 - NdotV, 3.0) * uFresnelIntensity * 2.0;
           rim *= (0.3 + 0.7 * NdotL);
           col += uRimColor * rim;
         }
+      } else {
+        // No lighting - just ambient
+        col = baseColor * uAmbientIntensity;
       }
 
       gl_FragColor = vec4(col, uOpacity);
@@ -492,6 +587,16 @@ function createFaceShaderMaterial(
       uFresnelEnabled: { value: false },
       uFresnelIntensity: { value: 0.5 },
       uRimColor: { value: new Color('#ffffff') },
+      // Multi-light system uniforms
+      uNumLights: { value: 0 },
+      uLightsEnabled: { value: [false, false, false, false] },
+      uLightTypes: { value: [0, 0, 0, 0] },
+      uLightPositions: { value: [new Vector3(0, 5, 0), new Vector3(0, 5, 0), new Vector3(0, 5, 0), new Vector3(0, 5, 0)] },
+      uLightDirections: { value: [new Vector3(0, -1, 0), new Vector3(0, -1, 0), new Vector3(0, -1, 0), new Vector3(0, -1, 0)] },
+      uLightColors: { value: [new Color('#FFFFFF'), new Color('#FFFFFF'), new Color('#FFFFFF'), new Color('#FFFFFF')] },
+      uLightIntensities: { value: [1.0, 1.0, 1.0, 1.0] },
+      uSpotAngles: { value: [Math.PI / 6, Math.PI / 6, Math.PI / 6, Math.PI / 6] },
+      uSpotPenumbras: { value: [0.5, 0.5, 0.5, 0.5] },
     },
     vertexShader: buildFaceVertexShader(),
     fragmentShader: buildFaceFragmentShader(),
@@ -608,6 +713,18 @@ function createVertexCubeShaderMaterial(vertexColor: string, opacity: number): S
       ...createNDUniforms(),
       uColor: { value: new Color(vertexColor) },
       uOpacity: { value: opacity },
+      // Advanced Color System uniforms (needed for fragment shader)
+      uColorAlgorithm: { value: 0 }, // Monochromatic for vertex cubes
+      uCosineA: { value: new Vector3(0.5, 0.5, 0.5) },
+      uCosineB: { value: new Vector3(0.5, 0.5, 0.5) },
+      uCosineC: { value: new Vector3(1.0, 1.0, 1.0) },
+      uCosineD: { value: new Vector3(0.0, 0.33, 0.67) },
+      uDistPower: { value: 1.0 },
+      uDistCycles: { value: 1.0 },
+      uDistOffset: { value: 0.0 },
+      uLchLightness: { value: 0.7 },
+      uLchChroma: { value: 0.15 },
+      uMultiSourceWeights: { value: new Vector3(0.5, 0.3, 0.2) },
       // Lighting
       uLightEnabled: { value: true },
       uLightColor: { value: new Color('#ffffff') },
@@ -621,6 +738,16 @@ function createVertexCubeShaderMaterial(vertexColor: string, opacity: number): S
       uFresnelEnabled: { value: false },
       uFresnelIntensity: { value: 0.5 },
       uRimColor: { value: new Color('#ffffff') },
+      // Multi-light system uniforms
+      uNumLights: { value: 0 },
+      uLightsEnabled: { value: [false, false, false, false] },
+      uLightTypes: { value: [0, 0, 0, 0] },
+      uLightPositions: { value: [new Vector3(0, 5, 0), new Vector3(0, 5, 0), new Vector3(0, 5, 0), new Vector3(0, 5, 0)] },
+      uLightDirections: { value: [new Vector3(0, -1, 0), new Vector3(0, -1, 0), new Vector3(0, -1, 0), new Vector3(0, -1, 0)] },
+      uLightColors: { value: [new Color('#FFFFFF'), new Color('#FFFFFF'), new Color('#FFFFFF'), new Color('#FFFFFF')] },
+      uLightIntensities: { value: [1.0, 1.0, 1.0, 1.0] },
+      uSpotAngles: { value: [Math.PI / 6, Math.PI / 6, Math.PI / 6, Math.PI / 6] },
+      uSpotPenumbras: { value: [0.5, 0.5, 0.5, 0.5] },
     },
     vertexShader: buildFaceVertexShader(),
     fragmentShader: buildFaceFragmentShader(),
@@ -1095,6 +1222,36 @@ export const PolytopeScene = React.memo(function PolytopeScene({
         if (u.uLchLightness) u.uLchLightness.value = lchLightness;
         if (u.uLchChroma) u.uLchChroma.value = lchChroma;
         if (u.uMultiSourceWeights) (u.uMultiSourceWeights.value as Vector3).set(multiSourceWeights.depth, multiSourceWeights.orbitTrap, multiSourceWeights.normal);
+
+        // Update multi-light system uniforms
+        if (u.uNumLights && u.uLightsEnabled && u.uLightTypes && u.uLightPositions &&
+            u.uLightDirections && u.uLightColors && u.uLightIntensities &&
+            u.uSpotAngles && u.uSpotPenumbras) {
+          const lights = visualState.lights;
+          const numLights = Math.min(lights.length, MAX_LIGHTS);
+          u.uNumLights.value = numLights;
+
+          for (let i = 0; i < MAX_LIGHTS; i++) {
+            const light: LightSource | undefined = lights[i];
+
+            if (light) {
+              (u.uLightsEnabled.value as boolean[])[i] = light.enabled;
+              (u.uLightTypes.value as number[])[i] = LIGHT_TYPE_TO_INT[light.type];
+              (u.uLightPositions.value as Vector3[])[i]!.set(light.position[0], light.position[1], light.position[2]);
+
+              // Calculate direction from rotation
+              const dir = rotationToDirection(light.rotation);
+              (u.uLightDirections.value as Vector3[])[i]!.set(dir[0], dir[1], dir[2]);
+
+              (u.uLightColors.value as Color[])[i]!.set(light.color);
+              (u.uLightIntensities.value as number[])[i] = light.intensity;
+              (u.uSpotAngles.value as number[])[i] = (light.coneAngle * Math.PI) / 180;
+              (u.uSpotPenumbras.value as number[])[i] = light.penumbra;
+            } else {
+              (u.uLightsEnabled.value as boolean[])[i] = false;
+            }
+          }
+        }
       }
     }
   });

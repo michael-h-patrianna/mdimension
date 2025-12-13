@@ -102,6 +102,14 @@ function App() {
   // Get background color from visual store (PRD Story 6 AC7)
   const backgroundColor = useVisualStore((state) => state.backgroundColor);
 
+  // Get selectLight action for click-to-deselect
+  const selectLight = useVisualStore((state) => state.selectLight);
+
+  // Handle clicks on empty space to deselect lights
+  const handlePointerMissed = () => {
+    selectLight(null);
+  };
+
   return (
     <Layout appTitle="N-Dimensional Visualizer" showHeader>
       <Canvas
@@ -112,6 +120,7 @@ function App() {
         flat
         gl={{ alpha: false }}
         style={{ background: backgroundColor }}
+        onPointerMissed={handlePointerMissed}
       >
         <Visualizer />
       </Canvas>

@@ -68,17 +68,18 @@ export function createBasicSurfaceMaterial(config: SurfaceMaterialConfig): MeshP
 const fresnelVertexShader = `
 varying vec3 vNormal;
 varying vec3 vViewDir;
+varying vec3 vWorldPosition;
 
 void main() {
   // Transform position to world space
   vec4 worldPos4 = modelMatrix * vec4(position, 1.0);
-  vec3 worldPosition = worldPos4.xyz;
+  vWorldPosition = worldPos4.xyz;
 
   // Transform normal to world space
   vNormal = normalize((modelMatrix * vec4(normal, 0.0)).xyz);
 
   // World-space view direction: from vertex to camera
-  vViewDir = normalize(cameraPosition - worldPosition);
+  vViewDir = normalize(cameraPosition - vWorldPosition);
 
   gl_Position = projectionMatrix * viewMatrix * worldPos4;
 }
@@ -88,6 +89,7 @@ void main() {
  * GLSL fragment shader for fresnel surface material.
  * All lighting calculations in WORLD SPACE.
  * Simple Three.js MeshPhongMaterial approach (NOT PBR).
+ * Supports multi-light system with up to 4 lights.
  */
 const fresnelFragmentShader = `
 uniform vec3 baseColor;
@@ -100,36 +102,131 @@ uniform vec3 lightDir;
 uniform vec3 lightColor;
 uniform float ambientIntensity;
 
+// Multi-Light System Constants and Uniforms
+#define MAX_LIGHTS 4
+#define LIGHT_TYPE_POINT 0
+#define LIGHT_TYPE_DIRECTIONAL 1
+#define LIGHT_TYPE_SPOT 2
+
+uniform int uNumLights;
+uniform bool uLightsEnabled[MAX_LIGHTS];
+uniform int uLightTypes[MAX_LIGHTS];
+uniform vec3 uLightPositions[MAX_LIGHTS];
+uniform vec3 uLightDirections[MAX_LIGHTS];
+uniform vec3 uLightColors[MAX_LIGHTS];
+uniform float uLightIntensities[MAX_LIGHTS];
+uniform float uSpotAngles[MAX_LIGHTS];
+uniform float uSpotPenumbras[MAX_LIGHTS];
+uniform float uDiffuseIntensity;
+uniform vec3 uSpecularColor;
+
 varying vec3 vNormal;
 varying vec3 vViewDir;
+varying vec3 vWorldPosition;
+
+vec3 getLightDirection(int lightIndex, vec3 fragPos) {
+  int lightType = uLightTypes[lightIndex];
+  if (lightType == LIGHT_TYPE_POINT) {
+    return normalize(uLightPositions[lightIndex] - fragPos);
+  } else if (lightType == LIGHT_TYPE_DIRECTIONAL) {
+    return normalize(uLightDirections[lightIndex]);
+  } else if (lightType == LIGHT_TYPE_SPOT) {
+    return normalize(uLightPositions[lightIndex] - fragPos);
+  }
+  return vec3(0.0, 1.0, 0.0);
+}
+
+float getSpotAttenuation(int lightIndex, vec3 lightToFrag) {
+  float cosAngle = dot(lightToFrag, normalize(uLightDirections[lightIndex]));
+  float innerCos = cos(uSpotAngles[lightIndex] * (1.0 - uSpotPenumbras[lightIndex]));
+  float outerCos = cos(uSpotAngles[lightIndex]);
+  return smoothstep(outerCos, innerCos, cosAngle);
+}
+
+vec3 calculateMultiLighting(vec3 fragPos, vec3 normal, vec3 viewDir, vec3 surfaceColor) {
+  vec3 col = surfaceColor * ambientIntensity;
+
+  for (int i = 0; i < MAX_LIGHTS; i++) {
+    if (i >= uNumLights) break;
+    if (!uLightsEnabled[i]) continue;
+
+    vec3 lightDirection = getLightDirection(i, fragPos);
+    float attenuation = uLightIntensities[i];
+
+    if (uLightTypes[i] == LIGHT_TYPE_SPOT) {
+      vec3 lightToFrag = normalize(fragPos - uLightPositions[i]);
+      attenuation *= getSpotAttenuation(i, lightToFrag);
+    }
+
+    if (attenuation < 0.001) continue;
+
+    float NdotL = max(dot(normal, lightDirection), 0.0);
+    col += surfaceColor * uLightColors[i] * NdotL * uDiffuseIntensity * attenuation;
+
+    vec3 halfDir = normalize(lightDirection + viewDir);
+    float NdotH = max(dot(normal, halfDir), 0.0);
+    float spec = pow(NdotH, shininess) * specularIntensity * attenuation;
+    col += uSpecularColor * uLightColors[i] * spec;
+  }
+
+  return col;
+}
 
 void main() {
   // All vectors in WORLD SPACE
   vec3 normal = normalize(vNormal);
   vec3 viewDir = normalize(vViewDir);
-  vec3 light = normalize(lightDir);
 
-  // Start with ambient
-  vec3 col = baseColor * ambientIntensity;
+  vec3 col;
 
-  // Diffuse (Lambert): NdotL * lightColor * diffuseColor
-  float NdotL = max(dot(normal, light), 0.0);
-  col += NdotL * lightColor * baseColor;
+  if (uNumLights > 0) {
+    // Use multi-light system
+    col = calculateMultiLighting(vWorldPosition, normal, viewDir, baseColor);
 
-  // Specular (Blinn-Phong): pow(NdotH, shininess) * lightColor * specularIntensity
-  // Simple Three.js Phong - NO Fresnel on specular, NO microfacet terms
-  vec3 halfDir = normalize(light + viewDir);
-  float NdotH = max(dot(normal, halfDir), 0.0);
-  float specularTerm = pow(NdotH, shininess) * specularIntensity;
-  col += lightColor * specularTerm;
+    // Fresnel rim lighting (applied once for combined lights)
+    if (fresnelIntensity > 0.0) {
+      float NdotV = max(dot(normal, viewDir), 0.0);
+      float rim = pow(1.0 - NdotV, 3.0) * fresnelIntensity;
+      // Average NdotL for rim modulation
+      float avgNdotL = 0.0;
+      int activeLights = 0;
+      for (int i = 0; i < MAX_LIGHTS; i++) {
+        if (i >= uNumLights) break;
+        if (!uLightsEnabled[i]) continue;
+        vec3 lightDirection = getLightDirection(i, vWorldPosition);
+        avgNdotL += max(dot(normal, lightDirection), 0.0);
+        activeLights++;
+      }
+      if (activeLights > 0) {
+        avgNdotL /= float(activeLights);
+      }
+      rim *= (0.3 + 0.7 * avgNdotL);
+      col += rimColor * rim;
+    }
+  } else {
+    // Legacy single-light fallback
+    vec3 light = normalize(lightDir);
 
-  // Rim lighting (additive, modulated by light direction)
-  // This is the only place fresnel effect is applied - for silhouette glow
-  if (fresnelIntensity > 0.0) {
-    float NdotV = max(dot(normal, viewDir), 0.0);
-    float rim = pow(1.0 - NdotV, 3.0) * fresnelIntensity;
-    rim *= (0.3 + 0.7 * NdotL);
-    col += rimColor * rim;
+    // Start with ambient
+    col = baseColor * ambientIntensity;
+
+    // Diffuse (Lambert): NdotL * lightColor * diffuseColor
+    float NdotL = max(dot(normal, light), 0.0);
+    col += NdotL * lightColor * baseColor;
+
+    // Specular (Blinn-Phong): pow(NdotH, shininess) * lightColor * specularIntensity
+    vec3 halfDir = normalize(light + viewDir);
+    float NdotH = max(dot(normal, halfDir), 0.0);
+    float specularTerm = pow(NdotH, shininess) * specularIntensity;
+    col += lightColor * specularTerm;
+
+    // Rim lighting (additive, modulated by light direction)
+    if (fresnelIntensity > 0.0) {
+      float NdotV = max(dot(normal, viewDir), 0.0);
+      float rim = pow(1.0 - NdotV, 3.0) * fresnelIntensity;
+      rim *= (0.3 + 0.7 * NdotL);
+      col += rimColor * rim;
+    }
   }
 
   gl_FragColor = vec4(col, opacity);
@@ -175,6 +272,18 @@ export function createFresnelSurfaceMaterial(config: SurfaceMaterialConfig): Sha
       lightDir: { value: new Vector3(0.5, 0.5, 0.5).normalize() },
       lightColor: { value: new Color('#FFFFFF') },
       ambientIntensity: { value: 0.5 },
+      // Multi-light system uniforms
+      uNumLights: { value: 0 },
+      uLightsEnabled: { value: [false, false, false, false] },
+      uLightTypes: { value: [0, 0, 0, 0] },
+      uLightPositions: { value: [new Vector3(0, 5, 0), new Vector3(0, 5, 0), new Vector3(0, 5, 0), new Vector3(0, 5, 0)] },
+      uLightDirections: { value: [new Vector3(0, -1, 0), new Vector3(0, -1, 0), new Vector3(0, -1, 0), new Vector3(0, -1, 0)] },
+      uLightColors: { value: [new Color('#FFFFFF'), new Color('#FFFFFF'), new Color('#FFFFFF'), new Color('#FFFFFF')] },
+      uLightIntensities: { value: [1.0, 1.0, 1.0, 1.0] },
+      uSpotAngles: { value: [Math.PI / 6, Math.PI / 6, Math.PI / 6, Math.PI / 6] },
+      uSpotPenumbras: { value: [0.5, 0.5, 0.5, 0.5] },
+      uDiffuseIntensity: { value: 1.0 },
+      uSpecularColor: { value: new Color('#FFFFFF') },
     },
     transparent: true,
     side: DoubleSide,
@@ -367,10 +476,74 @@ uniform float uDistOffset;
 uniform float uLchLightness;
 uniform float uLchChroma;
 
+// Multi-Light System Constants and Uniforms
+#define MAX_LIGHTS 4
+#define LIGHT_TYPE_POINT 0
+#define LIGHT_TYPE_DIRECTIONAL 1
+#define LIGHT_TYPE_SPOT 2
+
+uniform int uNumLights;
+uniform bool uLightsEnabled[MAX_LIGHTS];
+uniform int uLightTypes[MAX_LIGHTS];
+uniform vec3 uLightPositions[MAX_LIGHTS];
+uniform vec3 uLightDirections[MAX_LIGHTS];
+uniform vec3 uLightColors[MAX_LIGHTS];
+uniform float uLightIntensities[MAX_LIGHTS];
+uniform float uSpotAngles[MAX_LIGHTS];
+uniform float uSpotPenumbras[MAX_LIGHTS];
+
 varying float vDepth;
 varying vec3 vNormal;
 varying vec3 vViewDir;
 varying vec3 vWorldPosition;
+
+vec3 getPaletteLightDirection(int lightIndex, vec3 fragPos) {
+  int lightType = uLightTypes[lightIndex];
+  if (lightType == LIGHT_TYPE_POINT) {
+    return normalize(uLightPositions[lightIndex] - fragPos);
+  } else if (lightType == LIGHT_TYPE_DIRECTIONAL) {
+    return normalize(uLightDirections[lightIndex]);
+  } else if (lightType == LIGHT_TYPE_SPOT) {
+    return normalize(uLightPositions[lightIndex] - fragPos);
+  }
+  return vec3(0.0, 1.0, 0.0);
+}
+
+float getPaletteSpotAttenuation(int lightIndex, vec3 lightToFrag) {
+  float cosAngle = dot(lightToFrag, normalize(uLightDirections[lightIndex]));
+  float innerCos = cos(uSpotAngles[lightIndex] * (1.0 - uSpotPenumbras[lightIndex]));
+  float outerCos = cos(uSpotAngles[lightIndex]);
+  return smoothstep(outerCos, innerCos, cosAngle);
+}
+
+vec3 calculatePaletteMultiLighting(vec3 fragPos, vec3 normal, vec3 viewDir, vec3 surfaceColor) {
+  vec3 col = surfaceColor * uAmbientIntensity;
+
+  for (int i = 0; i < MAX_LIGHTS; i++) {
+    if (i >= uNumLights) break;
+    if (!uLightsEnabled[i]) continue;
+
+    vec3 lightDirection = getPaletteLightDirection(i, fragPos);
+    float attenuation = uLightIntensities[i];
+
+    if (uLightTypes[i] == LIGHT_TYPE_SPOT) {
+      vec3 lightToFrag = normalize(fragPos - uLightPositions[i]);
+      attenuation *= getPaletteSpotAttenuation(i, lightToFrag);
+    }
+
+    if (attenuation < 0.001) continue;
+
+    float NdotL = max(dot(normal, lightDirection), 0.0);
+    col += surfaceColor * uLightColors[i] * NdotL * uDiffuseIntensity * attenuation;
+
+    vec3 halfDir = normalize(lightDirection + viewDir);
+    float NdotH = max(dot(normal, halfDir), 0.0);
+    float spec = pow(NdotH, uShininess) * uSpecularIntensity * attenuation;
+    col += uSpecularColor * uLightColors[i] * spec;
+  }
+
+  return col;
+}
 
 void main() {
   // All vectors are in WORLD SPACE
@@ -420,35 +593,58 @@ void main() {
     surfaceColor = getCosinePaletteColor(vDepth, uCosineA, uCosineB, uCosineC, uCosineD, uDistPower, uDistCycles, uDistOffset);
   }
 
-  // Start with ambient light
-  vec3 col = surfaceColor * uAmbientIntensity;
+  vec3 col;
 
-  // Diffuse and specular need NdotL for both lighting and rim modulation
-  float NdotL = 0.0;
+  if (uNumLights > 0) {
+    // Use multi-light system
+    col = calculatePaletteMultiLighting(vWorldPosition, normal, viewDir, surfaceColor);
 
-  // Add directional light contribution if enabled
-  // Using simple Three.js MeshPhongMaterial approach (NOT PBR)
-  if (uLightEnabled) {
+    // Fresnel rim lighting (applied once for combined lights)
+    if (fresnelIntensity > 0.0) {
+      float NdotV = max(dot(normal, viewDir), 0.0);
+      float rim = pow(1.0 - NdotV, 3.0) * fresnelIntensity;
+      // Average NdotL for rim modulation
+      float avgNdotL = 0.0;
+      int activeLights = 0;
+      for (int i = 0; i < MAX_LIGHTS; i++) {
+        if (i >= uNumLights) break;
+        if (!uLightsEnabled[i]) continue;
+        vec3 lightDirection = getPaletteLightDirection(i, vWorldPosition);
+        avgNdotL += max(dot(normal, lightDirection), 0.0);
+        activeLights++;
+      }
+      if (activeLights > 0) {
+        avgNdotL /= float(activeLights);
+      }
+      rim *= (0.3 + 0.7 * avgNdotL);
+      col += rimColor * rim;
+    }
+  } else if (uLightEnabled) {
+    // Legacy single-light fallback
+    col = surfaceColor * uAmbientIntensity;
+
     // Diffuse (Lambert): NdotL * lightColor * diffuseColor
-    NdotL = max(dot(normal, lightDir), 0.0);
+    float NdotL = max(dot(normal, lightDir), 0.0);
     vec3 diffuse = NdotL * uLightColor * surfaceColor * uDiffuseIntensity;
     col += diffuse;
 
     // Specular (Blinn-Phong): pow(NdotH, shininess) * lightColor * specularColor
-    // Simple Three.js Phong - NO Fresnel, NO microfacet terms
     vec3 halfDir = normalize(lightDir + viewDir);
     float NdotH = max(dot(normal, halfDir), 0.0);
     float specularTerm = pow(NdotH, uShininess) * uSpecularIntensity;
     vec3 specular = specularTerm * uLightColor * uSpecularColor;
     col += specular;
 
-    // Rim/edge lighting for silhouette definition (optional extra, not in Three.js Phong)
+    // Rim/edge lighting for silhouette definition
     if (fresnelIntensity > 0.0) {
       float NdotV = max(dot(normal, viewDir), 0.0);
       float rim = pow(1.0 - NdotV, 3.0) * fresnelIntensity;
       rim *= (0.3 + 0.7 * NdotL);
       col += rimColor * rim;
     }
+  } else {
+    // No lighting - just ambient
+    col = surfaceColor * uAmbientIntensity;
   }
 
   gl_FragColor = vec4(col, opacity);
@@ -511,6 +707,16 @@ export function createPaletteSurfaceMaterial(config: PaletteSurfaceMaterialConfi
       uDistOffset: { value: distribution.offset },
       uLchLightness: { value: lchLightness },
       uLchChroma: { value: lchChroma },
+      // Multi-light system uniforms
+      uNumLights: { value: 0 },
+      uLightsEnabled: { value: [false, false, false, false] },
+      uLightTypes: { value: [0, 0, 0, 0] },
+      uLightPositions: { value: [new Vector3(0, 5, 0), new Vector3(0, 5, 0), new Vector3(0, 5, 0), new Vector3(0, 5, 0)] },
+      uLightDirections: { value: [new Vector3(0, -1, 0), new Vector3(0, -1, 0), new Vector3(0, -1, 0), new Vector3(0, -1, 0)] },
+      uLightColors: { value: [new Color('#FFFFFF'), new Color('#FFFFFF'), new Color('#FFFFFF'), new Color('#FFFFFF')] },
+      uLightIntensities: { value: [1.0, 1.0, 1.0, 1.0] },
+      uSpotAngles: { value: [Math.PI / 6, Math.PI / 6, Math.PI / 6, Math.PI / 6] },
+      uSpotPenumbras: { value: [0.5, 0.5, 0.5, 0.5] },
     },
     transparent: true,
     side: DoubleSide,

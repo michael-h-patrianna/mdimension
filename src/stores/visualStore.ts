@@ -28,6 +28,17 @@ import type {
   ToneMappingAlgorithm,
   WireframeSettings,
 } from '@/lib/shaders/types'
+import type { LightSource, LightType, TransformMode } from '@/lib/lights/types'
+import {
+  MAX_LIGHTS,
+  MIN_LIGHTS,
+  createDefaultLight,
+  createNewLight,
+  cloneLight,
+  clampIntensity,
+  clampConeAngle,
+  clampPenumbra,
+} from '@/lib/lights/types'
 import { create } from 'zustand'
 
 // ============================================================================
@@ -100,6 +111,12 @@ export const DEFAULT_SHOW_AXIS_HELPER = false
 
 /** Default animation bias settings */
 export const DEFAULT_ANIMATION_BIAS = 0
+
+/** Default multi-light settings */
+export const DEFAULT_LIGHTS: LightSource[] = [createDefaultLight()]
+export const DEFAULT_SELECTED_LIGHT_ID: string | null = null
+export const DEFAULT_TRANSFORM_MODE: TransformMode = 'translate'
+export const DEFAULT_SHOW_LIGHT_GIZMOS = false
 export const MIN_ANIMATION_BIAS = 0
 export const MAX_ANIMATION_BIAS = 1
 
@@ -312,6 +329,18 @@ interface VisualState {
   /** Animation bias: 0 = uniform rotation, 1 = wildly different per plane (0-1) */
   animationBias: number
 
+  // --- Multi-Light System ---
+  /** Array of light sources (max 4) */
+  lights: LightSource[]
+  /** Currently selected light ID for gizmo manipulation */
+  selectedLightId: string | null
+  /** Transform mode for selected light (translate or rotate) */
+  transformMode: TransformMode
+  /** Whether light gizmos are visible in the scene */
+  showLightGizmos: boolean
+  /** Whether a light is currently being dragged (disables camera controls) */
+  isDraggingLight: boolean
+
   // --- Actions: Basic Visual ---
   setEdgeColor: (color: string) => void
   setEdgeThickness: (thickness: number) => void
@@ -392,6 +421,24 @@ interface VisualState {
 
   // --- Actions: Animation ---
   setAnimationBias: (bias: number) => void
+
+  // --- Actions: Multi-Light System ---
+  /** Add a new light source (returns light ID or null if at max) */
+  addLight: (type: LightType) => string | null
+  /** Remove a light source by ID */
+  removeLight: (id: string) => void
+  /** Update a light source's properties */
+  updateLight: (id: string, updates: Partial<Omit<LightSource, 'id'>>) => void
+  /** Duplicate a light source (returns new light ID or null if at max) */
+  duplicateLight: (id: string) => string | null
+  /** Select a light for manipulation (null to deselect) */
+  selectLight: (id: string | null) => void
+  /** Set transform mode (translate or rotate) */
+  setTransformMode: (mode: TransformMode) => void
+  /** Set light gizmos visibility */
+  setShowLightGizmos: (show: boolean) => void
+  /** Set whether a light is currently being dragged */
+  setIsDraggingLight: (dragging: boolean) => void
 
   // --- Actions: Presets & Reset ---
   applyPreset: (preset: VisualPreset) => void
@@ -477,6 +524,13 @@ const INITIAL_STATE: Omit<VisualState, keyof VisualStateFunctions> = {
 
   // Animation
   animationBias: DEFAULT_ANIMATION_BIAS,
+
+  // Multi-light system
+  lights: DEFAULT_LIGHTS,
+  selectedLightId: DEFAULT_SELECTED_LIGHT_ID,
+  transformMode: DEFAULT_TRANSFORM_MODE,
+  showLightGizmos: DEFAULT_SHOW_LIGHT_GIZMOS,
+  isDraggingLight: false,
 }
 
 type VisualStateFunctions = Pick<
@@ -534,6 +588,14 @@ type VisualStateFunctions = Pick<
   | 'setGroundPlaneReflectivity'
   | 'setShowAxisHelper'
   | 'setAnimationBias'
+  | 'addLight'
+  | 'removeLight'
+  | 'updateLight'
+  | 'duplicateLight'
+  | 'selectLight'
+  | 'setTransformMode'
+  | 'setShowLightGizmos'
+  | 'setIsDraggingLight'
   | 'applyPreset'
   | 'reset'
 >
@@ -847,6 +909,81 @@ export const useVisualStore = create<VisualState>((set) => ({
   // --- Actions: Animation ---
   setAnimationBias: (bias: number) => {
     set({ animationBias: Math.max(0, Math.min(1, bias)) })
+  },
+
+  // --- Actions: Multi-Light System ---
+  addLight: (type: LightType) => {
+    const state = useVisualStore.getState()
+    if (state.lights.length >= MAX_LIGHTS) {
+      return null
+    }
+    const newLight = createNewLight(type, state.lights.length)
+    set({ lights: [...state.lights, newLight], selectedLightId: newLight.id })
+    return newLight.id
+  },
+
+  removeLight: (id: string) => {
+    const state = useVisualStore.getState()
+    // Cannot remove if only one light remains
+    if (state.lights.length <= MIN_LIGHTS) {
+      return
+    }
+    const newLights = state.lights.filter((light) => light.id !== id)
+    // If the removed light was selected, deselect
+    const newSelectedId = state.selectedLightId === id ? null : state.selectedLightId
+    set({ lights: newLights, selectedLightId: newSelectedId })
+  },
+
+  updateLight: (id: string, updates: Partial<Omit<LightSource, 'id'>>) => {
+    set((state) => ({
+      lights: state.lights.map((light) => {
+        if (light.id !== id) return light
+        return {
+          ...light,
+          ...updates,
+          // Apply validation for specific fields
+          intensity: updates.intensity !== undefined
+            ? clampIntensity(updates.intensity)
+            : light.intensity,
+          coneAngle: updates.coneAngle !== undefined
+            ? clampConeAngle(updates.coneAngle)
+            : light.coneAngle,
+          penumbra: updates.penumbra !== undefined
+            ? clampPenumbra(updates.penumbra)
+            : light.penumbra,
+        }
+      }),
+    }))
+  },
+
+  duplicateLight: (id: string) => {
+    const state = useVisualStore.getState()
+    if (state.lights.length >= MAX_LIGHTS) {
+      return null
+    }
+    const sourceLight = state.lights.find((light) => light.id === id)
+    if (!sourceLight) {
+      return null
+    }
+    const newLight = cloneLight(sourceLight)
+    set({ lights: [...state.lights, newLight], selectedLightId: newLight.id })
+    return newLight.id
+  },
+
+  selectLight: (id: string | null) => {
+    set({ selectedLightId: id })
+  },
+
+  setTransformMode: (mode: TransformMode) => {
+    set({ transformMode: mode })
+  },
+
+  setShowLightGizmos: (show: boolean) => {
+    set({ showLightGizmos: show })
+  },
+
+  setIsDraggingLight: (dragging: boolean) => {
+    set({ isDraggingLight: dragging })
   },
 
   // --- Actions: Presets & Reset ---

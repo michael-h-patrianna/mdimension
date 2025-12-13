@@ -1,0 +1,240 @@
+/**
+ * Light Gizmo Component
+ *
+ * Renders a visual gizmo for a single light source with type-specific visualization:
+ * - Point Light: Sphere icon
+ * - Directional Light: Sun icon with arrow
+ * - Spot Light: Cone wireframe
+ *
+ * Features:
+ * - Camera-distance scaling (constant screen size)
+ * - Selection highlighting
+ * - Click-to-select interaction
+ * - Disabled state visualization (30% opacity)
+ */
+
+import { memo, useMemo, useRef } from 'react';
+import { useFrame, useThree } from '@react-three/fiber';
+import * as THREE from 'three';
+import { rotationToDirection } from '@/lib/lights/types';
+import type { LightSource } from '@/lib/lights/types';
+
+/**
+ * Props for LightGizmo component
+ */
+export interface LightGizmoProps {
+  /** Light configuration */
+  light: LightSource;
+  /** Whether this light is selected */
+  isSelected: boolean;
+  /** Callback when gizmo is clicked */
+  onSelect: () => void;
+}
+
+/** Base size for gizmos (before camera-distance scaling) */
+const BASE_GIZMO_SIZE = 0.3;
+
+/** Minimum scale to prevent gizmo from becoming too small */
+const MIN_SCALE = 0.1;
+
+/** Maximum scale to prevent gizmo from becoming too large */
+const MAX_SCALE = 2.0;
+
+/**
+ * Point Light Gizmo - Sphere icon
+ */
+const PointLightGizmo = memo(function PointLightGizmo({
+  light,
+  isSelected,
+}: {
+  light: LightSource;
+  isSelected: boolean;
+}) {
+  const meshRef = useRef<THREE.Mesh>(null);
+
+  const material = useMemo(() => {
+    const color = new THREE.Color(light.color);
+    return new THREE.MeshBasicMaterial({
+      color,
+      transparent: !light.enabled,
+      opacity: light.enabled ? 1.0 : 0.3,
+      wireframe: !isSelected,
+    });
+  }, [light.color, light.enabled, isSelected]);
+
+  return (
+    <mesh ref={meshRef}>
+      <icosahedronGeometry args={[1, 2]} />
+      <primitive object={material} />
+      {isSelected && (
+        <mesh>
+          <ringGeometry args={[1.2, 1.4, 32]} />
+          <meshBasicMaterial color="#00ff00" transparent opacity={0.8} side={THREE.DoubleSide} />
+        </mesh>
+      )}
+    </mesh>
+  );
+});
+
+/**
+ * Directional Light Gizmo - Sun with arrow
+ */
+const DirectionalLightGizmo = memo(function DirectionalLightGizmo({
+  light,
+  isSelected,
+}: {
+  light: LightSource;
+  isSelected: boolean;
+}) {
+  const direction = useMemo(() => {
+    const dir = rotationToDirection(light.rotation);
+    return new THREE.Vector3(dir[0], dir[1], dir[2]);
+  }, [light.rotation]);
+
+  const material = useMemo(() => {
+    const color = new THREE.Color(light.color);
+    return new THREE.MeshBasicMaterial({
+      color,
+      transparent: !light.enabled,
+      opacity: light.enabled ? 1.0 : 0.3,
+    });
+  }, [light.color, light.enabled]);
+
+  // Arrow direction and length
+  const arrowLength = 2;
+  const arrowHelper = useMemo(() => {
+    const helper = new THREE.ArrowHelper(
+      direction,
+      new THREE.Vector3(0, 0, 0),
+      arrowLength,
+      light.enabled ? 0xffff00 : 0x666666,
+      0.3,
+      0.15
+    );
+    return helper;
+  }, [direction, light.enabled]);
+
+  return (
+    <group>
+      {/* Sun icon */}
+      <mesh>
+        <octahedronGeometry args={[1, 0]} />
+        <primitive object={material} />
+      </mesh>
+      {/* Direction arrow */}
+      <primitive object={arrowHelper} />
+      {isSelected && (
+        <mesh>
+          <ringGeometry args={[1.2, 1.4, 32]} />
+          <meshBasicMaterial color="#00ff00" transparent opacity={0.8} side={THREE.DoubleSide} />
+        </mesh>
+      )}
+    </group>
+  );
+});
+
+/**
+ * Spot Light Gizmo - Cone wireframe
+ */
+const SpotLightGizmo = memo(function SpotLightGizmo({
+  light,
+  isSelected,
+}: {
+  light: LightSource;
+  isSelected: boolean;
+}) {
+  const direction = useMemo(() => {
+    const dir = rotationToDirection(light.rotation);
+    return new THREE.Vector3(dir[0], dir[1], dir[2]);
+  }, [light.rotation]);
+
+  // Calculate cone geometry from angle
+  const coneHeight = 2;
+  const coneRadius = Math.tan((light.coneAngle * Math.PI) / 180) * coneHeight;
+
+  const material = useMemo(() => {
+    const color = new THREE.Color(light.color);
+    return new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity: light.enabled ? 0.5 : 0.15,
+      wireframe: true,
+    });
+  }, [light.color, light.enabled]);
+
+  // Rotation to align cone with direction
+  const coneRotation = useMemo(() => {
+    const quaternion = new THREE.Quaternion();
+    const defaultDir = new THREE.Vector3(0, -1, 0); // Cone default points down
+    quaternion.setFromUnitVectors(defaultDir, direction);
+    const euler = new THREE.Euler().setFromQuaternion(quaternion);
+    return [euler.x, euler.y, euler.z] as [number, number, number];
+  }, [direction]);
+
+  return (
+    <group>
+      {/* Apex sphere */}
+      <mesh>
+        <sphereGeometry args={[0.3, 8, 8]} />
+        <meshBasicMaterial
+          color={light.color}
+          transparent={!light.enabled}
+          opacity={light.enabled ? 1.0 : 0.3}
+        />
+      </mesh>
+      {/* Cone wireframe */}
+      <mesh rotation={coneRotation} position={direction.clone().multiplyScalar(coneHeight / 2).toArray()}>
+        <coneGeometry args={[coneRadius, coneHeight, 16, 1, true]} />
+        <primitive object={material} />
+      </mesh>
+      {isSelected && (
+        <mesh>
+          <ringGeometry args={[0.5, 0.6, 32]} />
+          <meshBasicMaterial color="#00ff00" transparent opacity={0.8} side={THREE.DoubleSide} />
+        </mesh>
+      )}
+    </group>
+  );
+});
+
+/**
+ * Light Gizmo - Unified wrapper with camera-distance scaling
+ */
+export const LightGizmo = memo(function LightGizmo({
+  light,
+  isSelected,
+  onSelect,
+}: LightGizmoProps) {
+  const groupRef = useRef<THREE.Group>(null);
+  const { camera } = useThree();
+
+  // Update scale based on camera distance
+  useFrame(() => {
+    if (groupRef.current) {
+      const position = new THREE.Vector3(light.position[0], light.position[1], light.position[2]);
+      const distance = camera.position.distanceTo(position);
+      const scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, distance * 0.1)) * BASE_GIZMO_SIZE;
+      groupRef.current.scale.setScalar(scale);
+    }
+  });
+
+  // Handle click
+  const handleClick = (e: THREE.Event) => {
+    e.stopPropagation?.();
+    onSelect();
+  };
+
+  return (
+    <group
+      ref={groupRef}
+      position={[light.position[0], light.position[1], light.position[2]]}
+      onClick={handleClick}
+    >
+      {light.type === 'point' && <PointLightGizmo light={light} isSelected={isSelected} />}
+      {light.type === 'directional' && <DirectionalLightGizmo light={light} isSelected={isSelected} />}
+      {light.type === 'spot' && <SpotLightGizmo light={light} isSelected={isSelected} />}
+    </group>
+  );
+});
+
+export default LightGizmo;
