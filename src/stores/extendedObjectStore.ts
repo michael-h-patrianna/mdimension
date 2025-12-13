@@ -123,6 +123,7 @@ interface ExtendedObjectState {
   setMandelboxFixedRadius: (radius: number) => void;
   setMandelboxMaxIterations: (iterations: number) => void;
   setMandelboxEscapeRadius: (radius: number) => void;
+  setMandelboxIterationRotation: (rotation: number) => void;
   setMandelboxParameterValue: (dimIndex: number, value: number) => void;
   setMandelboxParameterValues: (values: number[]) => void;
   resetMandelboxParameters: () => void;
@@ -562,6 +563,14 @@ export const useExtendedObjectStore = create<ExtendedObjectState>((set, get) => 
     const clampedRadius = Math.max(4.0, Math.min(100.0, radius));
     set((state) => ({
       mandelbox: { ...state.mandelbox, escapeRadius: clampedRadius },
+    }));
+  },
+
+  setMandelboxIterationRotation: (rotation: number) => {
+    // Range 0.0 to 0.5 radians (0 to ~28.6 degrees per iteration)
+    const clampedRotation = Math.max(0.0, Math.min(0.5, rotation));
+    set((state) => ({
+      mandelbox: { ...state.mandelbox, iterationRotation: clampedRotation },
     }));
   },
 

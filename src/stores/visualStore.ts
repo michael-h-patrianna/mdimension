@@ -114,7 +114,7 @@ export const DEFAULT_GROUND_PLANE_OPACITY = 0.3
 export const DEFAULT_GROUND_PLANE_REFLECTIVITY = 0.4
 export const DEFAULT_GROUND_PLANE_COLOR = '#101010'
 export const DEFAULT_GROUND_PLANE_TYPE: GroundPlaneType = 'plane'
-export const DEFAULT_GROUND_PLANE_SIZE_SCALE = 1 // Multiplier for ground plane size (1 = auto-calculated minimum)
+export const DEFAULT_GROUND_PLANE_SIZE_SCALE = 4 // Multiplier for ground plane size (1 = auto-calculated minimum)
 export const DEFAULT_SHOW_GROUND_GRID = true
 export const DEFAULT_GROUND_GRID_COLOR = '#ff00dd'
 export const DEFAULT_GROUND_GRID_SPACING = 1.0

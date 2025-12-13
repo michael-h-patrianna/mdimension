@@ -46,6 +46,65 @@ function applyRotation(matrix: MatrixND, vec: number[]): Float32Array {
 }
 
 /**
+ * Golden ratio for creating maximally-spaced, non-repeating patterns.
+ */
+const GOLDEN_RATIO = (1 + Math.sqrt(5)) / 2;
+
+/**
+ * Phase offset to ensure dimension 0 doesn't start at sin(0) = 0.
+ */
+const PHASE_OFFSET = Math.PI / 4;
+
+/**
+ * Maximum deviation for fold limits at full bias.
+ * More conservative than rotation bias to avoid breaking the fractal math.
+ * At bias=1: fold limits range from (1-0.3)*base to (1+0.3)*base = 0.7 to 1.3
+ */
+const FOLD_MAX_DEVIATION = 0.3;
+
+/**
+ * Computes per-dimension fold limit multipliers based on animation bias.
+ * Uses golden ratio spread to create non-repeating patterns across dimensions.
+ *
+ * @param dimension - Current dimension (3-11)
+ * @param bias - Animation bias (0 = uniform, 1 = maximum variation)
+ * @param baseFold - Base folding limit value
+ * @returns Float32Array of fold limits per dimension
+ */
+function computeBiasedFoldLimits(dimension: number, bias: number, baseFold: number): Float32Array {
+  const result = new Float32Array(11);
+
+  for (let i = 0; i < 11; i++) {
+    if (i >= dimension) {
+      // Unused dimensions get base value
+      result[i] = baseFold;
+      continue;
+    }
+
+    if (i < 3 || bias === 0) {
+      // First 3 dimensions (X, Y, Z) always use base fold to preserve 3D structure
+      // Also skip if no bias
+      result[i] = baseFold;
+    } else {
+      // Higher dimensions get biased fold limits
+      // Use golden ratio spread for non-repeating pattern
+      const dimIndex = i - 3; // 0-based index for dimensions 4+
+      const goldenAngle = PHASE_OFFSET + dimIndex * GOLDEN_RATIO * 2 * Math.PI;
+      const spread = Math.sin(goldenAngle); // Value in [-1, 1]
+
+      // Calculate multiplier: at bias=0, mult=1; at bias=1, mult ranges 0.7-1.3
+      const multiplier = 1 + bias * spread * FOLD_MAX_DEVIATION;
+
+      // Safety clamp to avoid extreme values
+      const clampedMult = Math.max(0.5, Math.min(1.5, multiplier));
+      result[i] = baseFold * clampedMult;
+    }
+  }
+
+  return result;
+}
+
+/**
  * MandelboxMesh - Renders 3D-11D Mandelbox fractals using GPU raymarching
  *
  * The Mandelbox uses box fold + sphere fold operations that work identically
@@ -81,6 +140,7 @@ const MandelboxMesh = () => {
   const fixedRadius = useExtendedObjectStore((state) => state.mandelbox.fixedRadius);
   const maxIterations = useExtendedObjectStore((state) => state.mandelbox.maxIterations);
   const escapeRadius = useExtendedObjectStore((state) => state.mandelbox.escapeRadius);
+  const iterationRotation = useExtendedObjectStore((state) => state.mandelbox.iterationRotation);
   const parameterValues = useExtendedObjectStore((state) => state.mandelbox.parameterValues);
 
   // Get color state from visual store
@@ -113,6 +173,9 @@ const MandelboxMesh = () => {
   const fresnelIntensity = useVisualStore((state) => state.fresnelIntensity);
   const edgeColor = useVisualStore((state) => state.edgeColor);
 
+  // Animation bias for per-dimension fold limit variation
+  const animationBias = useVisualStore((state) => state.animationBias);
+
   const uniforms = useMemo(
     () => ({
       // Time and resolution
@@ -124,10 +187,12 @@ const MandelboxMesh = () => {
       uDimension: { value: 3 },
       uScale: { value: -1.5 },
       uFoldingLimit: { value: 1.0 },
+      uFoldLimits: { value: new Float32Array(11).fill(1.0) }, // Per-dimension fold limits (bias-controlled)
       uMinRadius2: { value: 0.25 },    // minRadius squared
       uFixedRadius2: { value: 1.0 },   // fixedRadius squared
       uIterations: { value: 50.0 },
       uEscapeRadius: { value: 10.0 },
+      uIterationRotation: { value: 0.1 }, // Intra-iteration rotation for N-D mixing
 
       // D-dimensional rotated coordinate system
       uBasisX: { value: new Float32Array(11) },
@@ -240,10 +305,21 @@ const MandelboxMesh = () => {
       // Update Mandelbox parameters
       if (material.uniforms.uScale) material.uniforms.uScale.value = scale;
       if (material.uniforms.uFoldingLimit) material.uniforms.uFoldingLimit.value = foldingLimit;
+
+      // Compute per-dimension fold limits based on animation bias
+      // At bias=0: all dimensions use the same fold limit
+      // At bias>0: higher dimensions (4+) get varying fold limits for asymmetric structure
+      if (material.uniforms.uFoldLimits) {
+        const biasedFolds = computeBiasedFoldLimits(dimension, animationBias, foldingLimit);
+        const arr = material.uniforms.uFoldLimits.value as Float32Array;
+        for (let i = 0; i < 11; i++) arr[i] = biasedFolds[i] ?? foldingLimit;
+      }
+
       if (material.uniforms.uMinRadius2) material.uniforms.uMinRadius2.value = minRadius * minRadius;
       if (material.uniforms.uFixedRadius2) material.uniforms.uFixedRadius2.value = fixedRadius * fixedRadius;
       if (material.uniforms.uIterations) material.uniforms.uIterations.value = maxIterations;
       if (material.uniforms.uEscapeRadius) material.uniforms.uEscapeRadius.value = escapeRadius;
+      if (material.uniforms.uIterationRotation) material.uniforms.uIterationRotation.value = iterationRotation;
 
       // Update color
       if (material.uniforms.uColor) material.uniforms.uColor.value.set(faceColor);

@@ -13,6 +13,8 @@ uniform float uMinRadius2;      // minRadius squared
 uniform float uFixedRadius2;    // fixedRadius squared
 uniform float uIterations;
 uniform float uEscapeRadius;
+uniform float uIterationRotation; // Rotation per iteration for N-D mixing
+uniform float uFoldLimits[11];    // Per-dimension fold limits (bias-controlled)
 uniform vec3 uColor;
 uniform mat4 uModelMatrix;
 uniform mat4 uInverseModelMatrix;
@@ -297,6 +299,87 @@ float sphereFold(float r2, float minR2, float fixedR2) {
 }
 
 // ============================================
+// Intra-Iteration Rotation Functions
+// These create genuine N-dimensional structure by mixing dimensions during iteration
+// ============================================
+
+// Apply 2D rotation in a plane
+void rotate2D(inout float a, inout float b, float angle) {
+    float c = cos(angle);
+    float s = sin(angle);
+    float ta = a;
+    a = c * ta - s * b;
+    b = s * ta + c * b;
+}
+
+// Apply rotations in multiple planes for 4D (XW, YW, ZW planes)
+// This breaks SO(N) symmetry and creates genuine 4D structure
+void applyIterRotation4D(inout float zx, inout float zy, inout float zz, inout float zw, float angle, int iter) {
+    // Vary rotation angle slightly per iteration for richer structure
+    float a = angle * (1.0 + 0.1 * float(iter % 3));
+    // Rotate in XW plane
+    rotate2D(zx, zw, a);
+    // Rotate in YW plane (smaller angle)
+    rotate2D(zy, zw, a * 0.7);
+}
+
+// Apply rotations for 5D (XW, YW, ZW, X5, Y5 planes)
+void applyIterRotation5D(inout float zx, inout float zy, inout float zz, inout float z3, inout float z4, float angle, int iter) {
+    float a = angle * (1.0 + 0.1 * float(iter % 3));
+    // Rotate in primary planes involving 4th dimension
+    rotate2D(zx, z3, a);
+    rotate2D(zy, z3, a * 0.7);
+    // Rotate in planes involving 5th dimension
+    rotate2D(zz, z4, a * 0.5);
+    rotate2D(zx, z4, a * 0.3);
+}
+
+// Apply rotations for 6D
+void applyIterRotation6D(inout float zx, inout float zy, inout float zz, inout float z3, inout float z4, inout float z5, float angle, int iter) {
+    float a = angle * (1.0 + 0.1 * float(iter % 3));
+    rotate2D(zx, z3, a);
+    rotate2D(zy, z4, a * 0.7);
+    rotate2D(zz, z5, a * 0.5);
+    rotate2D(z3, z5, a * 0.3);
+}
+
+// Apply rotations for 7D
+void applyIterRotation7D(inout float zx, inout float zy, inout float zz, inout float z3, inout float z4, inout float z5, inout float z6, float angle, int iter) {
+    float a = angle * (1.0 + 0.1 * float(iter % 3));
+    rotate2D(zx, z3, a);
+    rotate2D(zy, z4, a * 0.7);
+    rotate2D(zz, z5, a * 0.5);
+    rotate2D(z3, z6, a * 0.4);
+    rotate2D(z4, z6, a * 0.3);
+}
+
+// Apply rotations for high-D (8D-11D) using array - rotates pairs of dimensions
+void applyIterRotationHighD(inout float z[11], int D, float angle, int iter) {
+    float a = angle * (1.0 + 0.1 * float(iter % 3));
+    // Rotate each low dimension with a higher dimension
+    // This creates interdimensional mixing for all dimensions
+    for (int i = 0; i < 3; i++) {
+        int highDim = 3 + i;
+        if (highDim < D) {
+            float scaling = 1.0 - 0.2 * float(i);  // 1.0, 0.8, 0.6
+            rotate2D(z[i], z[highDim], a * scaling);
+        }
+    }
+    // Additional rotations between higher dimensions
+    if (D >= 6) {
+        rotate2D(z[3], z[5], a * 0.4);
+    }
+    if (D >= 8) {
+        rotate2D(z[4], z[6], a * 0.3);
+        rotate2D(z[5], z[7], a * 0.2);
+    }
+    if (D >= 10) {
+        rotate2D(z[6], z[8], a * 0.2);
+        rotate2D(z[7], z[9], a * 0.15);
+    }
+}
+
+// ============================================
 // 3D Mandelbox SDF - FULLY UNROLLED
 // ============================================
 
@@ -386,8 +469,14 @@ float sdf4D(vec3 pos, float scale, float fold, float minR2, float fixedR2, float
     for (int i = 0; i < MAX_ITER_HQ; i++) {
         if (i >= maxIt) break;
 
-        zx = boxFold(zx, fold); zy = boxFold(zy, fold);
-        zz = boxFold(zz, fold); zw = boxFold(zw, fold);
+        // Box fold with per-dimension fold limits
+        zx = boxFold(zx, uFoldLimits[0]); zy = boxFold(zy, uFoldLimits[1]);
+        zz = boxFold(zz, uFoldLimits[2]); zw = boxFold(zw, uFoldLimits[3]);
+
+        // Apply intra-iteration rotation to mix dimensions (creates genuine 4D structure)
+        if (uIterationRotation > 0.0) {
+            applyIterRotation4D(zx, zy, zz, zw, uIterationRotation, i);
+        }
 
         float r2 = zx*zx + zy*zy + zz*zz + zw*zw;
         float sf = sphereFold(r2, minR2, fixedR2);
@@ -422,8 +511,15 @@ float sdf4D_simple(vec3 pos, float scale, float fold, float minR2, float fixedR2
     for (int i = 0; i < MAX_ITER_HQ; i++) {
         if (i >= maxIt) break;
 
-        zx = boxFold(zx, fold); zy = boxFold(zy, fold);
-        zz = boxFold(zz, fold); zw = boxFold(zw, fold);
+        // Box fold with per-dimension fold limits
+        zx = boxFold(zx, uFoldLimits[0]); zy = boxFold(zy, uFoldLimits[1]);
+        zz = boxFold(zz, uFoldLimits[2]); zw = boxFold(zw, uFoldLimits[3]);
+
+        // Apply intra-iteration rotation
+        if (uIterationRotation > 0.0) {
+            applyIterRotation4D(zx, zy, zz, zw, uIterationRotation, i);
+        }
+
         float r2 = zx*zx + zy*zy + zz*zz + zw*zw;
         float sf = sphereFold(r2, minR2, fixedR2);
         zx *= sf; zy *= sf; zz *= sf; zw *= sf; dr *= sf;
@@ -457,8 +553,14 @@ float sdf5D(vec3 pos, float scale, float fold, float minR2, float fixedR2, float
     for (int i = 0; i < MAX_ITER_HQ; i++) {
         if (i >= maxIt) break;
 
-        zx = boxFold(zx, fold); zy = boxFold(zy, fold);
-        zz = boxFold(zz, fold); z3 = boxFold(z3, fold); z4 = boxFold(z4, fold);
+        // Box fold with per-dimension fold limits
+        zx = boxFold(zx, uFoldLimits[0]); zy = boxFold(zy, uFoldLimits[1]);
+        zz = boxFold(zz, uFoldLimits[2]); z3 = boxFold(z3, uFoldLimits[3]); z4 = boxFold(z4, uFoldLimits[4]);
+
+        // Apply intra-iteration rotation
+        if (uIterationRotation > 0.0) {
+            applyIterRotation5D(zx, zy, zz, z3, z4, uIterationRotation, i);
+        }
 
         float r2 = zx*zx + zy*zy + zz*zz + z3*z3 + z4*z4;
         float sf = sphereFold(r2, minR2, fixedR2);
@@ -494,8 +596,15 @@ float sdf5D_simple(vec3 pos, float scale, float fold, float minR2, float fixedR2
     for (int i = 0; i < MAX_ITER_HQ; i++) {
         if (i >= maxIt) break;
 
-        zx = boxFold(zx, fold); zy = boxFold(zy, fold);
-        zz = boxFold(zz, fold); z3 = boxFold(z3, fold); z4 = boxFold(z4, fold);
+        // Box fold with per-dimension fold limits
+        zx = boxFold(zx, uFoldLimits[0]); zy = boxFold(zy, uFoldLimits[1]);
+        zz = boxFold(zz, uFoldLimits[2]); z3 = boxFold(z3, uFoldLimits[3]); z4 = boxFold(z4, uFoldLimits[4]);
+
+        // Apply intra-iteration rotation
+        if (uIterationRotation > 0.0) {
+            applyIterRotation5D(zx, zy, zz, z3, z4, uIterationRotation, i);
+        }
+
         float r2 = zx*zx + zy*zy + zz*zz + z3*z3 + z4*z4;
         float sf = sphereFold(r2, minR2, fixedR2);
         zx *= sf; zy *= sf; zz *= sf; z3 *= sf; z4 *= sf; dr *= sf;
@@ -530,8 +639,14 @@ float sdf6D(vec3 pos, float scale, float fold, float minR2, float fixedR2, float
     for (int i = 0; i < MAX_ITER_HQ; i++) {
         if (i >= maxIt) break;
 
-        zx = boxFold(zx, fold); zy = boxFold(zy, fold); zz = boxFold(zz, fold);
-        z3 = boxFold(z3, fold); z4 = boxFold(z4, fold); z5 = boxFold(z5, fold);
+        // Box fold with per-dimension fold limits
+        zx = boxFold(zx, uFoldLimits[0]); zy = boxFold(zy, uFoldLimits[1]); zz = boxFold(zz, uFoldLimits[2]);
+        z3 = boxFold(z3, uFoldLimits[3]); z4 = boxFold(z4, uFoldLimits[4]); z5 = boxFold(z5, uFoldLimits[5]);
+
+        // Apply intra-iteration rotation
+        if (uIterationRotation > 0.0) {
+            applyIterRotation6D(zx, zy, zz, z3, z4, z5, uIterationRotation, i);
+        }
 
         float r2 = zx*zx + zy*zy + zz*zz + z3*z3 + z4*z4 + z5*z5;
         float sf = sphereFold(r2, minR2, fixedR2);
@@ -568,8 +683,15 @@ float sdf6D_simple(vec3 pos, float scale, float fold, float minR2, float fixedR2
     for (int i = 0; i < MAX_ITER_HQ; i++) {
         if (i >= maxIt) break;
 
-        zx = boxFold(zx, fold); zy = boxFold(zy, fold); zz = boxFold(zz, fold);
-        z3 = boxFold(z3, fold); z4 = boxFold(z4, fold); z5 = boxFold(z5, fold);
+        // Box fold with per-dimension fold limits
+        zx = boxFold(zx, uFoldLimits[0]); zy = boxFold(zy, uFoldLimits[1]); zz = boxFold(zz, uFoldLimits[2]);
+        z3 = boxFold(z3, uFoldLimits[3]); z4 = boxFold(z4, uFoldLimits[4]); z5 = boxFold(z5, uFoldLimits[5]);
+
+        // Apply intra-iteration rotation
+        if (uIterationRotation > 0.0) {
+            applyIterRotation6D(zx, zy, zz, z3, z4, z5, uIterationRotation, i);
+        }
+
         float r2 = zx*zx + zy*zy + zz*zz + z3*z3 + z4*z4 + z5*z5;
         float sf = sphereFold(r2, minR2, fixedR2);
         zx *= sf; zy *= sf; zz *= sf; z3 *= sf; z4 *= sf; z5 *= sf; dr *= sf;
@@ -605,9 +727,15 @@ float sdf7D(vec3 pos, float scale, float fold, float minR2, float fixedR2, float
     for (int i = 0; i < MAX_ITER_HQ; i++) {
         if (i >= maxIt) break;
 
-        zx = boxFold(zx, fold); zy = boxFold(zy, fold); zz = boxFold(zz, fold);
-        z3 = boxFold(z3, fold); z4 = boxFold(z4, fold); z5 = boxFold(z5, fold);
-        z6 = boxFold(z6, fold);
+        // Box fold with per-dimension fold limits
+        zx = boxFold(zx, uFoldLimits[0]); zy = boxFold(zy, uFoldLimits[1]); zz = boxFold(zz, uFoldLimits[2]);
+        z3 = boxFold(z3, uFoldLimits[3]); z4 = boxFold(z4, uFoldLimits[4]); z5 = boxFold(z5, uFoldLimits[5]);
+        z6 = boxFold(z6, uFoldLimits[6]);
+
+        // Apply intra-iteration rotation
+        if (uIterationRotation > 0.0) {
+            applyIterRotation7D(zx, zy, zz, z3, z4, z5, z6, uIterationRotation, i);
+        }
 
         float r2 = zx*zx + zy*zy + zz*zz + z3*z3 + z4*z4 + z5*z5 + z6*z6;
         float sf = sphereFold(r2, minR2, fixedR2);
@@ -646,9 +774,16 @@ float sdf7D_simple(vec3 pos, float scale, float fold, float minR2, float fixedR2
     for (int i = 0; i < MAX_ITER_HQ; i++) {
         if (i >= maxIt) break;
 
-        zx = boxFold(zx, fold); zy = boxFold(zy, fold); zz = boxFold(zz, fold);
-        z3 = boxFold(z3, fold); z4 = boxFold(z4, fold); z5 = boxFold(z5, fold);
-        z6 = boxFold(z6, fold);
+        // Box fold with per-dimension fold limits
+        zx = boxFold(zx, uFoldLimits[0]); zy = boxFold(zy, uFoldLimits[1]); zz = boxFold(zz, uFoldLimits[2]);
+        z3 = boxFold(z3, uFoldLimits[3]); z4 = boxFold(z4, uFoldLimits[4]); z5 = boxFold(z5, uFoldLimits[5]);
+        z6 = boxFold(z6, uFoldLimits[6]);
+
+        // Apply intra-iteration rotation
+        if (uIterationRotation > 0.0) {
+            applyIterRotation7D(zx, zy, zz, z3, z4, z5, z6, uIterationRotation, i);
+        }
+
         float r2 = zx*zx + zy*zy + zz*zz + z3*z3 + z4*z4 + z5*z5 + z6*z6;
         float sf = sphereFold(r2, minR2, fixedR2);
         zx *= sf; zy *= sf; zz *= sf; z3 *= sf; z4 *= sf; z5 *= sf; z6 *= sf; dr *= sf;
@@ -682,10 +817,15 @@ float sdfHighD(vec3 pos, int D, float scale, float fold, float minR2, float fixe
     for (int i = 0; i < MAX_ITER_HQ; i++) {
         if (i >= maxIt) break;
 
-        // Box fold all dimensions
+        // Box fold all dimensions with per-dimension fold limits
         for (int j = 0; j < 11; j++) {
             if (j >= D) break;
-            z[j] = boxFold(z[j], fold);
+            z[j] = boxFold(z[j], uFoldLimits[j]);
+        }
+
+        // Apply intra-iteration rotation for high-D
+        if (uIterationRotation > 0.0) {
+            applyIterRotationHighD(z, D, uIterationRotation, i);
         }
 
         // Compute r²
@@ -740,7 +880,13 @@ float sdfHighD_simple(vec3 pos, int D, float scale, float fold, float minR2, flo
     for (int i = 0; i < MAX_ITER_HQ; i++) {
         if (i >= maxIt) break;
 
-        for (int j = 0; j < 11; j++) { if (j >= D) break; z[j] = boxFold(z[j], fold); }
+        // Box fold with per-dimension fold limits
+        for (int j = 0; j < 11; j++) { if (j >= D) break; z[j] = boxFold(z[j], uFoldLimits[j]); }
+
+        // Apply intra-iteration rotation
+        if (uIterationRotation > 0.0) {
+            applyIterRotationHighD(z, D, uIterationRotation, i);
+        }
 
         float r2 = 0.0;
         for (int j = 0; j < 11; j++) { if (j >= D) break; r2 += z[j] * z[j]; }

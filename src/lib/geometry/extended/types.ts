@@ -398,6 +398,10 @@ export const DEFAULT_MANDELBROT_CONFIG: MandelbrotConfig = {
  *
  * Supports 3D to 11D with the same algorithm (no dimension-specific code needed).
  *
+ * NOTE: To create genuine N-dimensional structure (vs just a 3D fractal embedded
+ * in higher dimensions), enable intra-iteration rotations. This breaks the SO(N)
+ * symmetry of the standard Mandelbox operations and creates interdimensional mixing.
+ *
  * @see docs/prd/mandelbox.md
  */
 export interface MandelboxConfig {
@@ -446,19 +450,36 @@ export interface MandelboxConfig {
    * Array length = dimension - 3.
    */
   parameterValues: number[];
+
+  /**
+   * Rotation angle (in radians) applied per iteration in higher-dimensional planes.
+   * Range: 0.0 to 0.5 (0 to ~28.6 degrees), default 0.1.
+   *
+   * This is the key parameter for creating genuine N-dimensional Mandelbox structure.
+   * Without iteration rotation, the Mandelbox is SO(N) symmetric and looks identical
+   * from all rotation angles. With iteration rotation, dimensions mix during iteration,
+   * creating unique cross-sections when rotating in XW, YW, etc. planes.
+   *
+   * Higher values create more dramatic interdimensional mixing but may produce
+   * chaotic-looking results. Start with 0.05-0.15 for best visual results.
+   *
+   * Only affects 4D+ dimensions (3D Mandelbox is inherently 3D).
+   */
+  iterationRotation: number;
 }
 
 /**
  * Default Mandelbox configuration
  */
 export const DEFAULT_MANDELBOX_CONFIG: MandelboxConfig = {
-  scale: -1.5,          // Classic folded/organic look
-  foldingLimit: 1.0,    // Standard box fold boundary
-  minRadius: 0.5,       // Standard inner sphere
-  fixedRadius: 1.0,     // Standard outer sphere
-  maxIterations: 50,    // Balanced quality/performance
-  escapeRadius: 10.0,   // Safe bailout for most dimensions
-  parameterValues: [],  // No extra dimensions by default
+  scale: -1.5,              // Classic folded/organic look
+  foldingLimit: 1.0,        // Standard box fold boundary
+  minRadius: 0.5,           // Standard inner sphere
+  fixedRadius: 1.0,         // Standard outer sphere
+  maxIterations: 50,        // Balanced quality/performance
+  escapeRadius: 10.0,       // Safe bailout for most dimensions
+  parameterValues: [],      // No extra dimensions by default
+  iterationRotation: 0.1,   // Moderate interdimensional mixing for 4D+
 };
 
 // ============================================================================

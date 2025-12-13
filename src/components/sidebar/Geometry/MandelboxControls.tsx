@@ -72,6 +72,7 @@ export const MandelboxControls: React.FC<MandelboxControlsProps> = React.memo(({
     setFixedRadius,
     setMaxIterations,
     setEscapeRadius,
+    setIterationRotation,
     setParameterValue,
     resetParameters,
   } = useExtendedObjectStore(
@@ -83,6 +84,7 @@ export const MandelboxControls: React.FC<MandelboxControlsProps> = React.memo(({
       setFixedRadius: state.setMandelboxFixedRadius,
       setMaxIterations: state.setMandelboxMaxIterations,
       setEscapeRadius: state.setMandelboxEscapeRadius,
+      setIterationRotation: state.setMandelboxIterationRotation,
       setParameterValue: state.setMandelboxParameterValue,
       resetParameters: state.resetMandelboxParameters,
     }))
@@ -185,6 +187,26 @@ export const MandelboxControls: React.FC<MandelboxControlsProps> = React.memo(({
         onReset={() => setEscapeRadius(DEFAULT_MANDELBOX_CONFIG.escapeRadius)}
         showValue
       />
+
+      {/* Iteration Rotation - key for N-D structure in 4D+ */}
+      {dimension >= 4 && (
+        <div className="space-y-2">
+          <Slider
+            label="Iteration Rotation"
+            min={0.0}
+            max={0.5}
+            step={0.01}
+            value={config.iterationRotation}
+            onChange={setIterationRotation}
+            onReset={() => setIterationRotation(DEFAULT_MANDELBOX_CONFIG.iterationRotation)}
+            showValue
+          />
+          <p className="text-xs text-text-tertiary">
+            Creates genuine {dimension}D structure by mixing dimensions during iteration.
+            Higher values produce more interdimensional mixing.
+          </p>
+        </div>
+      )}
 
       {/* Slice Parameters - shown for 4D+ */}
       {dimension >= 4 && (
