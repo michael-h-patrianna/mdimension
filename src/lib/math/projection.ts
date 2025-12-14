@@ -3,18 +3,18 @@
  * Supports both perspective and orthographic projections
  */
 
-import type { VectorND, Vector3D } from './types';
+import type { Vector3D, VectorND } from './types'
 
 /**
  * Default projection distance for perspective projection
  * A larger value creates less extreme perspective effects
  */
-export const DEFAULT_PROJECTION_DISTANCE = 4.0;
+export const DEFAULT_PROJECTION_DISTANCE = 4.0
 
 /**
  * Minimum safe distance from projection plane to avoid division issues
  */
-export const MIN_SAFE_DISTANCE = 0.01;
+export const MIN_SAFE_DISTANCE = 0.01
 
 /**
  * Projects an n-dimensional point to 3D using perspective projection
@@ -45,54 +45,54 @@ export function projectPerspective(
   normalizationFactor?: number
 ): Vector3D {
   if (vertex.length < 3) {
-    throw new Error(`Cannot project ${vertex.length}D vertex to 3D: need at least 3 dimensions`);
+    throw new Error(`Cannot project ${vertex.length}D vertex to 3D: need at least 3 dimensions`)
   }
 
   if (projectionDistance <= 0) {
-    throw new Error('Projection distance must be positive');
+    throw new Error('Projection distance must be positive')
   }
 
-  const result = out ?? [0, 0, 0];
+  const result = out ?? [0, 0, 0]
 
-  const x = vertex[0]!;
-  const y = vertex[1]!;
-  const z = vertex[2]!;
+  const x = vertex[0]!
+  const y = vertex[1]!
+  const z = vertex[2]!
 
   // Calculate effective depth from all higher dimensions (0 for 3D)
   // Use signed sum to preserve direction (like standard 4D projection uses w directly)
   // Normalize by number of extra dimensions to keep consistent scale
-  const numHigherDims = vertex.length - 3;
-  let effectiveDepth = 0;
+  const numHigherDims = vertex.length - 3
+  let effectiveDepth = 0
 
   if (numHigherDims > 0) {
     for (let d = 3; d < vertex.length; d++) {
-      effectiveDepth += vertex[d]!;
+      effectiveDepth += vertex[d]!
     }
 
     // Normalize: divide by sqrt of number of higher dimensions
     // This keeps the effective depth in a similar range regardless of dimension count
-    const norm = normalizationFactor ?? Math.sqrt(numHigherDims);
-    effectiveDepth = effectiveDepth / norm;
+    const norm = normalizationFactor ?? Math.sqrt(numHigherDims)
+    effectiveDepth = effectiveDepth / norm
   }
 
   // Apply single perspective division
-  const denominator = projectionDistance - effectiveDepth;
+  const denominator = projectionDistance - effectiveDepth
 
   // Check for singularity
   if (Math.abs(denominator) < MIN_SAFE_DISTANCE) {
-    const safeDistance = denominator >= 0 ? MIN_SAFE_DISTANCE : -MIN_SAFE_DISTANCE;
-    const scale = 1 / safeDistance;
-    result[0] = x * scale;
-    result[1] = y * scale;
-    result[2] = z * scale;
-    return result;
+    const safeDistance = denominator >= 0 ? MIN_SAFE_DISTANCE : -MIN_SAFE_DISTANCE
+    const scale = 1 / safeDistance
+    result[0] = x * scale
+    result[1] = y * scale
+    result[2] = z * scale
+    return result
   }
 
-  const scale = 1 / denominator;
-  result[0] = x * scale;
-  result[1] = y * scale;
-  result[2] = z * scale;
-  return result;
+  const scale = 1 / denominator
+  result[0] = x * scale
+  result[1] = y * scale
+  result[2] = z * scale
+  return result
 }
 
 /**
@@ -108,15 +108,15 @@ export function projectPerspective(
  */
 export function projectOrthographic(vertex: VectorND, out?: Vector3D): Vector3D {
   if (vertex.length < 3) {
-    throw new Error(`Cannot project ${vertex.length}D vertex to 3D: need at least 3 dimensions`);
+    throw new Error(`Cannot project ${vertex.length}D vertex to 3D: need at least 3 dimensions`)
   }
 
-  const result = out ?? [0, 0, 0];
+  const result = out ?? [0, 0, 0]
 
-  result[0] = vertex[0]!;
-  result[1] = vertex[1]!;
-  result[2] = vertex[2]!;
-  return result;
+  result[0] = vertex[0]!
+  result[1] = vertex[1]!
+  result[2] = vertex[2]!
+  return result
 }
 
 /**
@@ -126,39 +126,61 @@ export function projectOrthographic(vertex: VectorND, out?: Vector3D): Vector3D 
  * @param vertices - Array of n-dimensional vertices
  * @param projectionDistance - Distance from projection plane
  * @param usePerspective - If true, use perspective projection; if false, use orthographic
+ * @param out - Optional output array to avoid allocation
  * @returns Array of 3D projected points
  * @throws {Error} If any vertex has less than 3 dimensions
  */
 export function projectVertices(
   vertices: VectorND[],
   projectionDistance: number = DEFAULT_PROJECTION_DISTANCE,
-  usePerspective = true
+  usePerspective = true,
+  out?: Vector3D[]
 ): Vector3D[] {
-  if (vertices.length === 0) {
-    return [];
+  const len = vertices.length
+  if (len === 0) {
+    return []
   }
 
   // Validate all vertices have same dimension
-  const firstVertex = vertices[0];
+  const firstVertex = vertices[0]
   if (!firstVertex) {
-    return [];
+    return []
   }
-  const dimension = firstVertex.length;
-  for (let i = 1; i < vertices.length; i++) {
-    const vertex = vertices[i];
+  const dimension = firstVertex.length
+  for (let i = 1; i < len; i++) {
+    const vertex = vertices[i]
     if (!vertex || vertex.length !== dimension) {
       throw new Error(
         `All vertices must have same dimension: vertex 0 has ${dimension}, vertex ${i} has ${vertex?.length ?? 'undefined'}`
-      );
+      )
     }
   }
 
+  // Use provided output or allocate new array
+  const result = out ?? new Array(len)
+
+  // Ensure output array has Vector3D elements
+  for (let i = 0; i < len; i++) {
+    if (!result[i]) {
+      result[i] = [0, 0, 0]
+    }
+  }
+
+  // Pre-calculate normalization factor once
+  const normalizationFactor = dimension > 3 ? Math.sqrt(dimension - 3) : 1
+
   // Project each vertex
   if (usePerspective) {
-    return vertices.map(v => projectPerspective(v, projectionDistance));
+    for (let i = 0; i < len; i++) {
+      projectPerspective(vertices[i]!, projectionDistance, result[i], normalizationFactor)
+    }
   } else {
-    return vertices.map(v => projectOrthographic(v));
+    for (let i = 0; i < len; i++) {
+      projectOrthographic(vertices[i]!, result[i])
+    }
   }
+
+  return result
 }
 
 /**
@@ -174,16 +196,19 @@ export function projectVertices(
  */
 export function calculateDepth(vertex: VectorND): number {
   if (vertex.length <= 3) {
-    return 0;
+    return 0
   }
 
-  let sumSquares = 0;
+  let sumSquares = 0
   for (let i = 3; i < vertex.length; i++) {
-    sumSquares += vertex[i]! * vertex[i]!;
+    sumSquares += vertex[i]! * vertex[i]!
   }
 
-  return Math.sqrt(sumSquares);
+  return Math.sqrt(sumSquares)
 }
+
+// Module-level scratch array for depth sorting (avoids allocation per call)
+let depthScratch: { index: number; depth: number }[] = []
 
 /**
  * Sorts vertices by depth (furthest first) for proper rendering order
@@ -193,17 +218,33 @@ export function calculateDepth(vertex: VectorND): number {
  * @returns Array of indices sorted by depth (furthest first)
  */
 export function sortByDepth(vertices: VectorND[]): number[] {
-  // Calculate depth for each vertex
-  const depthIndices = vertices.map((vertex, index) => ({
-    index,
-    depth: calculateDepth(vertex),
-  }));
+  const len = vertices.length
 
-  // Sort by depth (descending - furthest first)
-  depthIndices.sort((a, b) => b.depth - a.depth);
+  // Resize scratch array if needed
+  if (depthScratch.length < len) {
+    const oldLen = depthScratch.length
+    depthScratch.length = len
+    for (let i = oldLen; i < len; i++) {
+      depthScratch[i] = { index: 0, depth: 0 }
+    }
+  }
 
-  // Return sorted indices
-  return depthIndices.map(item => item.index);
+  // Fill scratch array with depth calculations
+  for (let i = 0; i < len; i++) {
+    depthScratch[i]!.index = i
+    depthScratch[i]!.depth = calculateDepth(vertices[i]!)
+  }
+
+  // Sort only the portion we're using (slice creates new array but it's necessary for sort)
+  const slice = depthScratch.slice(0, len)
+  slice.sort((a, b) => b.depth - a.depth)
+
+  // Extract indices into result array
+  const result = new Array(len)
+  for (let i = 0; i < len; i++) {
+    result[i] = slice[i]!.index
+  }
+  return result
 }
 
 /**
@@ -217,25 +258,25 @@ export function sortByDepth(vertices: VectorND[]): number[] {
  */
 export function calculateProjectionDistance(vertices: VectorND[], margin = 2.0): number {
   if (vertices.length === 0) {
-    return DEFAULT_PROJECTION_DISTANCE;
+    return DEFAULT_PROJECTION_DISTANCE
   }
 
-  const dimension = vertices[0]!.length;
+  const dimension = vertices[0]!.length
 
   if (dimension <= 3) {
-    return DEFAULT_PROJECTION_DISTANCE;
+    return DEFAULT_PROJECTION_DISTANCE
   }
 
   // Find maximum absolute value in higher dimensions (4D+)
-  let maxHigherDim = 0;
+  let maxHigherDim = 0
   for (const vertex of vertices) {
     for (let i = 3; i < vertex.length; i++) {
-      maxHigherDim = Math.max(maxHigherDim, Math.abs(vertex[i]!));
+      maxHigherDim = Math.max(maxHigherDim, Math.abs(vertex[i]!))
     }
   }
 
   // Add margin to ensure we don't get too close to singularities
-  return maxHigherDim * margin + 1.0;
+  return maxHigherDim * margin + 1.0
 }
 
 /**
@@ -253,35 +294,35 @@ export function clipLine(
   projectionDistance: number
 ): { shouldDraw: boolean; v1: VectorND; v2: VectorND } | null {
   if (v1.length !== v2.length) {
-    throw new Error('Vertices must have same dimension');
+    throw new Error('Vertices must have same dimension')
   }
 
   if (v1.length <= 3) {
     // No clipping needed for 3D
-    return { shouldDraw: true, v1, v2 };
+    return { shouldDraw: true, v1, v2 }
   }
 
   // Check if both vertices are on the visible side
   // For simplicity, we check the highest dimension coordinate
-  const dim = v1.length - 1;
-  const w1 = v1[dim]!;
-  const w2 = v2[dim]!;
+  const dim = v1.length - 1
+  const w1 = v1[dim]!
+  const w2 = v2[dim]!
 
-  const d1 = projectionDistance - w1;
-  const d2 = projectionDistance - w2;
+  const d1 = projectionDistance - w1
+  const d2 = projectionDistance - w2
 
   // Both behind projection plane - don't draw
   if (d1 <= MIN_SAFE_DISTANCE && d2 <= MIN_SAFE_DISTANCE) {
-    return null;
+    return null
   }
 
   // Both in front - draw as is
   if (d1 > MIN_SAFE_DISTANCE && d2 > MIN_SAFE_DISTANCE) {
-    return { shouldDraw: true, v1, v2 };
+    return { shouldDraw: true, v1, v2 }
   }
 
   // Line crosses projection plane - would need clipping
   // For now, we'll skip drawing lines that cross the plane
   // A full implementation would interpolate to find the intersection point
-  return null;
+  return null
 }

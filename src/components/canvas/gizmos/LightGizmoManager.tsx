@@ -205,6 +205,7 @@ export const LightGizmoManager = memo(function LightGizmoManager() {
           onPositionChange={(position) => handleGroundPositionChange(light.id, position)}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
+          onSelect={() => handleSelect(light.id)}
         />
       ))}
 

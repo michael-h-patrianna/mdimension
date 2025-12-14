@@ -216,6 +216,8 @@ export const PointCloudScene = React.memo(function PointCloudScene({
   const fatEdgeGeometryRef = useRef<LineSegmentsGeometry | null>(null);
   const fatLineMaterialRef = useRef<LineMaterial>(null);
   const resolutionRef = useRef(new Vector2());
+  // Scratch rotation matrix to avoid allocation in useFrame
+  const rotationMatrixRef = useRef<number[][] | null>(null);
 
   // Working buffer for fat line positions (CPU transformed)
   const workingBuffers = useRef<{
@@ -445,7 +447,13 @@ export const PointCloudScene = React.memo(function PointCloudScene({
       scales.push(perAxisScale[i] ?? uniformScale);
     }
 
-    const rotationMatrix = composeRotations(dimension, rotations);
+    // Use scratch rotation matrix to avoid allocation per frame
+    if (!rotationMatrixRef.current || rotationMatrixRef.current.length !== dimension) {
+      rotationMatrixRef.current = composeRotations(dimension, rotations);
+    } else {
+      composeRotations(dimension, rotations, rotationMatrixRef.current);
+    }
+    const rotationMatrix = rotationMatrixRef.current;
     const gpuData = matrixToGPUUniforms(rotationMatrix, dimension);
 
     const normalizationFactor = dimension > 3 ? Math.sqrt(dimension - 3) : 1;

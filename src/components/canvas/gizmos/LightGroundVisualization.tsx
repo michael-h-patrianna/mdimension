@@ -53,6 +53,8 @@ export interface LightGroundVisualizationProps {
   onDragStart: () => void;
   /** Callback when drag ends */
   onDragEnd: () => void;
+  /** Callback to select this light */
+  onSelect: () => void;
 }
 
 /**
@@ -261,6 +263,7 @@ const DraggableGroundTarget = memo(function DraggableGroundTarget({
   onRotationChange,
   onDragStart,
   onDragEnd,
+  onSelect,
 }: {
   light: LightSource;
   intersection: THREE.Vector3;
@@ -268,6 +271,7 @@ const DraggableGroundTarget = memo(function DraggableGroundTarget({
   onRotationChange: (rotation: [number, number, number]) => void;
   onDragStart: () => void;
   onDragEnd: () => void;
+  onSelect: () => void;
 }) {
   const groupRef = useRef<THREE.Group>(null);
   const lightPosRef = useRef(new THREE.Vector3());
@@ -281,10 +285,11 @@ const DraggableGroundTarget = memo(function DraggableGroundTarget({
     matrix.current.setPosition(intersection.x, GROUND_Y + 0.02, intersection.z);
   }, [intersection.x, intersection.z]);
 
-  // Handle drag start - disable camera controls
+  // Handle drag start - select light and disable camera controls
   const handleDragStart = useCallback(() => {
+    onSelect();
     onDragStart();
-  }, [onDragStart]);
+  }, [onSelect, onDragStart]);
 
   // Handle drag - extract position from world matrix and calculate new rotation
   const handleDrag = useCallback(
@@ -369,6 +374,7 @@ const PointLightGroundCircle = memo(function PointLightGroundCircle({
   onPositionChange,
   onDragStart,
   onDragEnd,
+  onSelect,
 }: {
   light: LightSource;
   intersection: { center: THREE.Vector3; radius: number };
@@ -376,6 +382,7 @@ const PointLightGroundCircle = memo(function PointLightGroundCircle({
   onPositionChange: (position: [number, number, number]) => void;
   onDragStart: () => void;
   onDragEnd: () => void;
+  onSelect: () => void;
 }) {
   const groupRef = useRef<THREE.Group>(null);
   const tempPosition = useRef(new THREE.Vector3());
@@ -414,10 +421,11 @@ const PointLightGroundCircle = memo(function PointLightGroundCircle({
     return light.color;
   }, [light.enabled, isSelected, light.color]);
 
-  // Handle drag start - disable camera controls
+  // Handle drag start - select light and disable camera controls
   const handleDragStart = useCallback(() => {
+    onSelect();
     onDragStart();
-  }, [onDragStart]);
+  }, [onSelect, onDragStart]);
 
   // Handle drag - updates X,Z position (keeps Y unchanged)
   const handleDrag = useCallback(
@@ -500,6 +508,7 @@ export const LightGroundVisualization = memo(function LightGroundVisualization({
   onPositionChange,
   onDragStart,
   onDragEnd,
+  onSelect,
 }: LightGroundVisualizationProps) {
   // Handle POINT LIGHTS - sphere intersection with ground
   if (light.type === 'point') {
@@ -521,6 +530,7 @@ export const LightGroundVisualization = memo(function LightGroundVisualization({
         onPositionChange={onPositionChange}
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
+        onSelect={onSelect}
       />
     );
   }
@@ -564,6 +574,7 @@ export const LightGroundVisualization = memo(function LightGroundVisualization({
         onRotationChange={onRotationChange}
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
+        onSelect={onSelect}
       />
     </group>
   );

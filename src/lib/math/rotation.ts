@@ -3,13 +3,78 @@
  * Implements rotation in arbitrary planes with mathematically correct formulas
  */
 
-import type { MatrixND, RotationPlane } from './types';
-import { createIdentityMatrix, multiplyMatrices } from './matrix';
+import { copyMatrix, createIdentityMatrix, multiplyMatrices } from './matrix'
+import type { MatrixND, RotationPlane } from './types'
 
 /**
  * Axis naming convention for display
  */
-const AXIS_NAMES = ['X', 'Y', 'Z', 'W', 'V', 'U'];
+const AXIS_NAMES = ['X', 'Y', 'Z', 'W', 'V', 'U']
+
+/**
+ * Module-level scratch matrices for rotation composition
+ * Avoids allocation during 60fps animation loops
+ */
+const scratchMatrices = new Map<number, { rotation: MatrixND; temp: MatrixND }>()
+
+/**
+ * Gets or creates scratch matrices for a given dimension
+ * @param dimension - The dimensionality of the space
+ * @returns Scratch matrices for rotation and temp multiplication result
+ */
+function getScratchMatrices(dimension: number): { rotation: MatrixND; temp: MatrixND } {
+  let scratch = scratchMatrices.get(dimension)
+  if (!scratch) {
+    scratch = {
+      rotation: createIdentityMatrix(dimension),
+      temp: createIdentityMatrix(dimension),
+    }
+    scratchMatrices.set(dimension, scratch)
+  }
+  return scratch
+}
+
+/**
+ * Resets a matrix to identity in-place
+ * @param matrix - Matrix to reset
+ * @param dimension - Matrix dimension
+ */
+function resetToIdentity(matrix: MatrixND, dimension: number): void {
+  for (let i = 0; i < dimension; i++) {
+    for (let j = 0; j < dimension; j++) {
+      matrix[i]![j] = i === j ? 1 : 0
+    }
+  }
+}
+
+/**
+ * Creates a rotation matrix directly into an output buffer
+ * Avoids allocation when called in hot paths
+ * @param out - Output matrix buffer (must be dimension x dimension)
+ * @param dimension - Matrix dimension
+ * @param planeIndex1 - First axis of the rotation plane
+ * @param planeIndex2 - Second axis of the rotation plane
+ * @param angleRadians - Rotation angle in radians
+ */
+function createRotationMatrixInto(
+  out: MatrixND,
+  dimension: number,
+  planeIndex1: number,
+  planeIndex2: number,
+  angleRadians: number
+): void {
+  // Reset to identity
+  resetToIdentity(out, dimension)
+
+  const cos = Math.cos(angleRadians)
+  const sin = Math.sin(angleRadians)
+
+  // Set rotation plane elements
+  out[planeIndex1]![planeIndex1] = cos
+  out[planeIndex2]![planeIndex2] = cos
+  out[planeIndex1]![planeIndex2] = -sin
+  out[planeIndex2]![planeIndex1] = sin
+}
 
 /**
  * Calculates the number of independent rotation planes in n-dimensional space
@@ -25,12 +90,12 @@ const AXIS_NAMES = ['X', 'Y', 'Z', 'W', 'V', 'U'];
  */
 export function getRotationPlaneCount(dimension: number): number {
   if (dimension < 2) {
-    throw new Error('Rotation requires at least 2 dimensions');
+    throw new Error('Rotation requires at least 2 dimensions')
   }
-  return (dimension * (dimension - 1)) / 2;
+  return (dimension * (dimension - 1)) / 2
 }
 
-const planesCache = new Map<number, RotationPlane[]>();
+const planesCache = new Map<number, RotationPlane[]>()
 
 /**
  * Gets all rotation planes for a given dimension
@@ -41,27 +106,27 @@ const planesCache = new Map<number, RotationPlane[]>();
  */
 export function getRotationPlanes(dimension: number): RotationPlane[] {
   if (dimension < 2) {
-    throw new Error('Rotation requires at least 2 dimensions');
+    throw new Error('Rotation requires at least 2 dimensions')
   }
 
   if (planesCache.has(dimension)) {
-    return planesCache.get(dimension)!;
+    return planesCache.get(dimension)!
   }
 
-  const planes: RotationPlane[] = [];
+  const planes: RotationPlane[] = []
 
   for (let i = 0; i < dimension; i++) {
     for (let j = i + 1; j < dimension; j++) {
-      const name = getAxisName(i) + getAxisName(j);
+      const name = getAxisName(i) + getAxisName(j)
       planes.push({
         indices: [i, j],
         name,
-      });
+      })
     }
   }
 
-  planesCache.set(dimension, planes);
-  return planes;
+  planesCache.set(dimension, planes)
+  return planes
 }
 
 /**
@@ -71,13 +136,13 @@ export function getRotationPlanes(dimension: number): RotationPlane[] {
  */
 export function getAxisName(index: number): string {
   if (index < 0) {
-    throw new Error('Axis index must be non-negative');
+    throw new Error('Axis index must be non-negative')
   }
   if (index < AXIS_NAMES.length) {
-    return AXIS_NAMES[index]!;
+    return AXIS_NAMES[index]!
   }
   // For dimensions beyond U, use numeric notation
-  return `A${index}`;
+  return `A${index}`
 }
 
 /**
@@ -109,34 +174,34 @@ export function createRotationMatrix(
   angleRadians: number
 ): MatrixND {
   if (dimension < 2) {
-    throw new Error('Rotation requires at least 2 dimensions');
+    throw new Error('Rotation requires at least 2 dimensions')
   }
 
   if (planeIndex1 < 0 || planeIndex2 < 0 || planeIndex1 >= dimension || planeIndex2 >= dimension) {
-    throw new Error(`Plane indices must be in range [0, ${dimension - 1}]`);
+    throw new Error(`Plane indices must be in range [0, ${dimension - 1}]`)
   }
 
   if (planeIndex1 === planeIndex2) {
-    throw new Error('Plane indices must be different');
+    throw new Error('Plane indices must be different')
   }
 
   if (planeIndex1 > planeIndex2) {
-    throw new Error('First plane index must be less than second plane index');
+    throw new Error('First plane index must be less than second plane index')
   }
 
   // Start with identity matrix
-  const matrix = createIdentityMatrix(dimension);
+  const matrix = createIdentityMatrix(dimension)
 
-  const cos = Math.cos(angleRadians);
-  const sin = Math.sin(angleRadians);
+  const cos = Math.cos(angleRadians)
+  const sin = Math.sin(angleRadians)
 
   // Set rotation plane elements
-  matrix[planeIndex1]![planeIndex1] = cos;
-  matrix[planeIndex2]![planeIndex2] = cos;
-  matrix[planeIndex1]![planeIndex2] = -sin;
-  matrix[planeIndex2]![planeIndex1] = sin;
+  matrix[planeIndex1]![planeIndex1] = cos
+  matrix[planeIndex2]![planeIndex2] = cos
+  matrix[planeIndex1]![planeIndex2] = -sin
+  matrix[planeIndex2]![planeIndex1] = sin
 
-  return matrix;
+  return matrix
 }
 
 /**
@@ -145,50 +210,63 @@ export function createRotationMatrix(
  *
  * @param dimension - The dimensionality of the space
  * @param angles - Map from plane name (e.g., "XY", "XW") to angle in radians
+ * @param out - Optional output matrix to avoid allocation (must be dimension x dimension)
  * @returns The composed rotation matrix
  * @throws {Error} If invalid plane names are provided
  */
 export function composeRotations(
   dimension: number,
-  angles: Map<string, number>
+  angles: Map<string, number>,
+  out?: MatrixND
 ): MatrixND {
   if (dimension < 2) {
-    throw new Error('Rotation requires at least 2 dimensions');
+    throw new Error('Rotation requires at least 2 dimensions')
   }
 
-  // Start with identity
-  let result = createIdentityMatrix(dimension);
+  // Use provided output or allocate new matrix
+  const result = out ?? createIdentityMatrix(dimension)
+
+  // Reset to identity if reusing
+  if (out) {
+    resetToIdentity(result, dimension)
+  }
+
+  // Early exit if no rotations
+  if (angles.size === 0) {
+    return result
+  }
 
   // Get all valid planes for validation
-  const validPlanes = getRotationPlanes(dimension);
-  const validPlaneNames = new Set(validPlanes.map(p => p.name));
+  const validPlanes = getRotationPlanes(dimension)
+  const validPlaneNames = new Set(validPlanes.map((p) => p.name))
+
+  // Get scratch matrices for this dimension
+  const scratch = getScratchMatrices(dimension)
 
   // Apply each rotation
   for (const [planeName, angle] of angles.entries()) {
     // Validate plane name
     if (!validPlaneNames.has(planeName)) {
-      throw new Error(`Invalid plane name "${planeName}" for ${dimension}D space`);
+      throw new Error(`Invalid plane name "${planeName}" for ${dimension}D space`)
     }
 
     // Find the plane
-    const plane = validPlanes.find(p => p.name === planeName);
+    const plane = validPlanes.find((p) => p.name === planeName)
     if (!plane) {
-      throw new Error(`Plane "${planeName}" not found`);
+      throw new Error(`Plane "${planeName}" not found`)
     }
 
-    // Create rotation matrix for this plane
-    const rotationMatrix = createRotationMatrix(
-      dimension,
-      plane.indices[0],
-      plane.indices[1],
-      angle
-    );
+    // Create rotation matrix directly into scratch buffer
+    createRotationMatrixInto(scratch.rotation, dimension, plane.indices[0], plane.indices[1], angle)
 
-    // Compose with existing rotations
-    result = multiplyMatrices(result, rotationMatrix);
+    // Multiply: temp = result * rotation
+    multiplyMatrices(result, scratch.rotation, scratch.temp)
+
+    // Copy temp back to result
+    copyMatrix(scratch.temp, result)
   }
 
-  return result;
+  return result
 }
 
 /**
@@ -197,18 +275,18 @@ export function composeRotations(
  * @returns The axis index, or -1 if invalid
  */
 function parseAxisNameToIndex(name: string): number {
-  const index = AXIS_NAMES.indexOf(name);
+  const index = AXIS_NAMES.indexOf(name)
   if (index !== -1) {
-    return index;
+    return index
   }
   // Handle A6, A7, A8... format for dimensions > 6
   if (name.startsWith('A')) {
-    const num = parseInt(name.slice(1), 10);
+    const num = parseInt(name.slice(1), 10)
     if (!isNaN(num) && num >= AXIS_NAMES.length) {
-      return num;
+      return num
     }
   }
-  return -1;
+  return -1
 }
 
 /**
@@ -218,35 +296,35 @@ function parseAxisNameToIndex(name: string): number {
  * @throws {Error} If plane name is invalid
  */
 export function parsePlaneName(planeName: string): [number, number] {
-  let index1: number;
-  let index2: number;
+  let index1: number
+  let index2: number
 
   // Try two-character format first (XY, XZ, etc.)
   if (planeName.length === 2) {
-    index1 = parseAxisNameToIndex(planeName[0]!);
-    index2 = parseAxisNameToIndex(planeName[1]!);
+    index1 = parseAxisNameToIndex(planeName[0]!)
+    index2 = parseAxisNameToIndex(planeName[1]!)
     if (index1 !== -1 && index2 !== -1) {
       if (index1 === index2) {
-        throw new Error(`Plane axes must be different: "${planeName}"`);
+        throw new Error(`Plane axes must be different: "${planeName}"`)
       }
-      return index1 < index2 ? [index1, index2] : [index2, index1];
+      return index1 < index2 ? [index1, index2] : [index2, index1]
     }
   }
 
   // Try split by capital letter for formats like "A6A7", "XA6", etc.
-  const parts = planeName.match(/[A-Z][0-9]*/g);
+  const parts = planeName.match(/[A-Z][0-9]*/g)
   if (parts && parts.length === 2) {
-    index1 = parseAxisNameToIndex(parts[0]!);
-    index2 = parseAxisNameToIndex(parts[1]!);
+    index1 = parseAxisNameToIndex(parts[0]!)
+    index2 = parseAxisNameToIndex(parts[1]!)
     if (index1 !== -1 && index2 !== -1) {
       if (index1 === index2) {
-        throw new Error(`Plane axes must be different: "${planeName}"`);
+        throw new Error(`Plane axes must be different: "${planeName}"`)
       }
-      return index1 < index2 ? [index1, index2] : [index2, index1];
+      return index1 < index2 ? [index1, index2] : [index2, index1]
     }
   }
 
-  throw new Error(`Invalid plane name "${planeName}"`);
+  throw new Error(`Invalid plane name "${planeName}"`)
 }
 
 /**
@@ -256,7 +334,7 @@ export function parsePlaneName(planeName: string): [number, number] {
  * @returns The plane name (e.g., "XY", "XW")
  */
 export function createPlaneName(index1: number, index2: number): string {
-  const i = Math.min(index1, index2);
-  const j = Math.max(index1, index2);
-  return getAxisName(i) + getAxisName(j);
+  const i = Math.min(index1, index2)
+  const j = Math.max(index1, index2)
+  return getAxisName(i) + getAxisName(j)
 }
