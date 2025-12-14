@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @theme {
   /* Custom Colors */
@@ -106,5 +106,16 @@
 
   ::-webkit-scrollbar-thumb:hover {
     background: oklch(100% 0 0 / 0.2);
+  }
+
+  /* Prevent text selection during resize drag */
+  .resize-dragging {
+    cursor: col-resize !important;
+    -webkit-user-select: none !important;
+    user-select: none !important;
+  }
+
+  .resize-dragging * {
+    cursor: col-resize !important;
   }
 }

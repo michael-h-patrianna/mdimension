@@ -25,8 +25,11 @@ export const MIN_CANVAS_WIDTH = 300
 /** Minimum sidebar width in pixels */
 export const MIN_SIDEBAR_WIDTH = 280
 
-/** Default sidebar width in pixels */
+/** Default sidebar width in pixels (overlay mode) */
 export const DEFAULT_SIDEBAR_WIDTH = 320
+
+/** Default sidebar width in pixels for side-by-side mode (≥1024px) */
+export const DEFAULT_SIDEBAR_WIDTH_LARGE = 420
 
 /** Maximum sidebar width in pixels (absolute max, further constrained by viewport) */
 export const MAX_SIDEBAR_WIDTH = 480
@@ -104,12 +107,24 @@ export function getLayoutMode(viewportWidth: number): LayoutMode {
   return viewportWidth >= SIDE_BY_SIDE_BREAKPOINT ? 'side-by-side' : 'overlay'
 }
 
+/**
+ * Get the default sidebar width based on viewport width.
+ * Returns 420px for side-by-side mode, 320px for overlay mode.
+ * @param viewportWidth - Current viewport width
+ * @returns Default sidebar width in pixels
+ */
+export function getDefaultSidebarWidth(viewportWidth: number): number {
+  return viewportWidth >= SIDE_BY_SIDE_BREAKPOINT
+    ? DEFAULT_SIDEBAR_WIDTH_LARGE
+    : DEFAULT_SIDEBAR_WIDTH
+}
+
 // ============================================================================
 // Initial State
 // ============================================================================
 
 const INITIAL_STATE: LayoutState = {
-  sidebarWidth: DEFAULT_SIDEBAR_WIDTH,
+  sidebarWidth: DEFAULT_SIDEBAR_WIDTH_LARGE, // Default to large screen width (420px)
   isCollapsed: false,
 }
 

@@ -16,6 +16,8 @@ export {
 } from './geometryStore'
 export {
   DEFAULT_SIDEBAR_WIDTH,
+  DEFAULT_SIDEBAR_WIDTH_LARGE,
+  getDefaultSidebarWidth,
   getLayoutMode,
   getMaxSidebarWidth,
   MAX_SIDEBAR_WIDTH,
