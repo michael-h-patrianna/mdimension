@@ -70,6 +70,26 @@
     overflow: hidden;
   }
 
+  /* r3f-perf Performance Monitor Theming */
+  .perf-monitor {
+    --perf-bg-color: oklch(10% 0.02 270 / 0.9);
+    --perf-text-color: oklch(98% 0 0);
+    --perf-chart-bg-color: oklch(6% 0.02 270 / 0.8);
+    font-family: var(--font-mono) !important;
+    backdrop-filter: blur(16px);
+    border: 1px solid oklch(100% 0 0 / 0.1) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 10px 40px oklch(0% 0 0 / 0.5) !important;
+  }
+
+  .perf-monitor b {
+    color: var(--theme-accent) !important;
+  }
+
+  .perf-monitor i {
+    color: oklch(70% 0.01 270) !important;
+  }
+
   /* Custom Scrollbar */
   ::-webkit-scrollbar {
     width: 6px;

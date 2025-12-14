@@ -1,23 +1,32 @@
-import { useFrame, useThree } from '@react-three/fiber';
-import { useMemo, useRef, useCallback, useEffect } from 'react';
-import * as THREE from 'three';
-import vertexShader from './menger.vert?raw';
-import fragmentShader from './menger.frag?raw';
+import { composeRotations } from '@/lib/math/rotation';
+import type { MatrixND } from '@/lib/math/types';
+import { COLOR_ALGORITHM_TO_INT } from '@/lib/shaders/palette';
+import { useAnimationStore } from '@/stores/animationStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
+import type { RotationState } from '@/stores/rotationStore';
 import { useRotationStore } from '@/stores/rotationStore';
 import { useVisualStore } from '@/stores/visualStore';
-import { useAnimationStore } from '@/stores/animationStore';
-import { composeRotations } from '@/lib/math/rotation';
-import { COLOR_ALGORITHM_TO_INT } from '@/lib/shaders/palette';
-import type { MatrixND } from '@/lib/math/types';
-import type { RotationState } from '@/stores/rotationStore';
+import { useFrame, useThree } from '@react-three/fiber';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
+import * as THREE from 'three';
+import fragmentShader from './menger.frag?raw';
+import vertexShader from './menger.vert?raw';
 
 /** Debounce time in ms before restoring high quality after rotation stops */
 const QUALITY_RESTORE_DELAY_MS = 150;
 
+/** Maximum supported dimension */
+const MAX_DIMENSION = 11;
+
+/** Golden ratio for non-repeating phase offsets across dimensions */
+const GOLDEN_RATIO = 1.618033988749895;
+
 /**
  * Convert horizontal/vertical angles to a normalized direction vector.
+ * @param horizontalDeg - Horizontal angle in degrees
+ * @param verticalDeg - Vertical angle in degrees
+ * @returns Normalized direction vector
  */
 function anglesToDirection(horizontalDeg: number, verticalDeg: number): THREE.Vector3 {
   const hRad = (horizontalDeg * Math.PI) / 180;
@@ -30,20 +39,55 @@ function anglesToDirection(horizontalDeg: number, verticalDeg: number): THREE.Ve
 }
 
 /**
- * Apply D-dimensional rotation matrix to a vector.
+ * Apply D-dimensional rotation matrix to a vector, writing result into pre-allocated output.
  * Matrix is row-major: result[i] = sum(matrix[i][j] * vec[j])
+ * @param matrix - D×D rotation matrix
+ * @param vec - Input vector (length D)
+ * @param out - Pre-allocated output Float32Array (length MAX_DIMENSION)
  */
-function applyRotation(matrix: MatrixND, vec: number[]): Float32Array {
+function applyRotationInPlace(matrix: MatrixND, vec: number[], out: Float32Array): void {
   const D = matrix.length;
-  const result = new Float32Array(11); // Max dimension
+  // Clear output first (for dimensions beyond D)
+  for (let i = 0; i < MAX_DIMENSION; i++) out[i] = 0;
   for (let i = 0; i < D; i++) {
     let sum = 0;
     for (let j = 0; j < D; j++) {
       sum += (matrix[i]?.[j] ?? 0) * (vec[j] ?? 0);
     }
-    result[i] = sum;
+    out[i] = sum;
   }
-  return result;
+}
+
+/**
+ * Pre-allocated working arrays to avoid per-frame allocations.
+ */
+interface WorkingArrays {
+  unitX: number[];
+  unitY: number[];
+  unitZ: number[];
+  origin: number[];
+  rotatedX: Float32Array;
+  rotatedY: Float32Array;
+  rotatedZ: Float32Array;
+  rotatedOrigin: Float32Array;
+}
+
+/**
+ * Create pre-allocated working arrays for rotation calculations.
+ * All arrays sized to MAX_DIMENSION to handle any dimension without reallocation.
+ * @returns Pre-allocated working arrays for basis vector computations
+ */
+function createWorkingArrays(): WorkingArrays {
+  return {
+    unitX: new Array(MAX_DIMENSION).fill(0),
+    unitY: new Array(MAX_DIMENSION).fill(0),
+    unitZ: new Array(MAX_DIMENSION).fill(0),
+    origin: new Array(MAX_DIMENSION).fill(0),
+    rotatedX: new Float32Array(MAX_DIMENSION),
+    rotatedY: new Float32Array(MAX_DIMENSION),
+    rotatedZ: new Float32Array(MAX_DIMENSION),
+    rotatedOrigin: new Float32Array(MAX_DIMENSION),
+  };
 }
 
 /**
@@ -51,6 +95,7 @@ function applyRotation(matrix: MatrixND, vec: number[]): Float32Array {
  *
  * The Menger sponge uses KIFS fold operations (absolute value, sort, scale)
  * that work identically across all dimensions with a true geometric SDF.
+ * @returns Three.js mesh with raymarching shader
  */
 const MengerMesh = () => {
   const meshRef = useRef<THREE.Mesh>(null);
@@ -60,6 +105,15 @@ const MengerMesh = () => {
   const prevRotationsRef = useRef<RotationState['rotations'] | null>(null);
   const fastModeRef = useRef(false);
   const restoreQualityTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Pre-allocated working arrays to avoid per-frame allocations
+  const workingArraysRef = useRef<WorkingArrays>(createWorkingArrays());
+
+  // Cached rotation matrix and basis vectors - only recomputed when rotations/dimension/params change
+  const cachedRotationMatrixRef = useRef<MatrixND | null>(null);
+  const prevDimensionRef = useRef<number | null>(null);
+  const prevParamValuesRef = useRef<number[] | null>(null);
+  const basisVectorsDirtyRef = useRef(true);
 
   // Cleanup timeout on unmount to prevent memory leaks
   useEffect(() => {
@@ -199,12 +253,14 @@ const MengerMesh = () => {
 
   /**
    * Check if rotations have changed by comparing current vs previous state.
+   * Returns true if any rotation angle has changed, or if this is the first comparison.
    */
   const hasRotationsChanged = useCallback((
     current: RotationState['rotations'],
     previous: RotationState['rotations'] | null
   ): boolean => {
-    if (!previous) return false;
+    // First frame or no previous state - consider it a change to ensure initial computation
+    if (!previous) return true;
     if (current.size !== previous.size) return true;
     for (const [key, value] of current.entries()) {
       if (previous.get(key) !== value) return true;
@@ -323,71 +379,113 @@ const MengerMesh = () => {
       if (material.uniforms.uLchChroma) material.uniforms.uLchChroma.value = lchChroma;
       if (material.uniforms.uMultiSourceWeights) material.uniforms.uMultiSourceWeights.value.set(multiSourceWeights.depth, multiSourceWeights.orbitTrap, multiSourceWeights.normal);
 
-      // Build D-dimensional rotation matrix
-      const rotationMatrix = composeRotations(dimension, rotations);
-
-      // Build basis vectors for the 3D slice in D-dimensional space
+      // ============================================
+      // Optimized D-dimensional Rotation & Basis Vectors
+      // Only recompute when rotations, dimension, or params change
+      // Note: Slice sweep animation requires recomputing origin every frame when active
+      // ============================================
       const D = dimension;
+      const work = workingArraysRef.current;
 
-      // Create unrotated basis vectors
-      const unitX = new Array(D).fill(0);
-      unitX[0] = 1;
-      const unitY = new Array(D).fill(0);
-      unitY[1] = 1;
-      const unitZ = new Array(D).fill(0);
-      unitZ[2] = 1;
+      // Slice sweep animation runs every frame when enabled
+      const sliceSweepActive = sliceSweepEnabled && dimension >= 4 && sliceSweepAmplitude > 0 && sliceSweepSpeed > 0;
 
-      // Create origin with slice values in dimensions 3+
-      const origin = new Array(D).fill(0);
-      for (let i = 3; i < D; i++) {
-        origin[i] = parameterValues[i - 3] ?? 0;
+      // Check if parameterValues changed (shallow array comparison)
+      const paramsChanged = !prevParamValuesRef.current ||
+        prevParamValuesRef.current.length !== parameterValues.length ||
+        parameterValues.some((v, i) => prevParamValuesRef.current![i] !== v);
+
+      // Determine if we need to recompute basis vectors (X, Y, Z)
+      // These only depend on rotations and dimension, not on slice sweep
+      const needsBasisRecompute = rotationsChanged ||
+        dimension !== prevDimensionRef.current ||
+        basisVectorsDirtyRef.current;
+
+      // Origin needs recompute if basis needs it, params changed, or slice sweep is animating
+      const needsOriginRecompute = needsBasisRecompute || paramsChanged || sliceSweepActive;
+
+      if (needsBasisRecompute) {
+        // Compute rotation matrix only when needed
+        cachedRotationMatrixRef.current = composeRotations(dimension, rotations);
+
+        // Prepare unit vectors in pre-allocated arrays (no allocation)
+        // Clear and set up unitX = [1, 0, 0, ...]
+        for (let i = 0; i < MAX_DIMENSION; i++) work.unitX[i] = 0;
+        work.unitX[0] = 1;
+
+        // Clear and set up unitY = [0, 1, 0, ...]
+        for (let i = 0; i < MAX_DIMENSION; i++) work.unitY[i] = 0;
+        work.unitY[1] = 1;
+
+        // Clear and set up unitZ = [0, 0, 1, ...]
+        for (let i = 0; i < MAX_DIMENSION; i++) work.unitZ[i] = 0;
+        work.unitZ[2] = 1;
+
+        // Apply rotation to basis vectors using pre-allocated output arrays
+        applyRotationInPlace(cachedRotationMatrixRef.current, work.unitX, work.rotatedX);
+        applyRotationInPlace(cachedRotationMatrixRef.current, work.unitY, work.rotatedY);
+        applyRotationInPlace(cachedRotationMatrixRef.current, work.unitZ, work.rotatedZ);
+
+        // Update basis vector uniforms
+        if (material.uniforms.uBasisX) {
+          const arr = material.uniforms.uBasisX.value as Float32Array;
+          arr.set(work.rotatedX);
+        }
+        if (material.uniforms.uBasisY) {
+          const arr = material.uniforms.uBasisY.value as Float32Array;
+          arr.set(work.rotatedY);
+        }
+        if (material.uniforms.uBasisZ) {
+          const arr = material.uniforms.uBasisZ.value as Float32Array;
+          arr.set(work.rotatedZ);
+        }
+
+        // Update tracking refs
+        prevDimensionRef.current = dimension;
+        basisVectorsDirtyRef.current = false;
       }
 
-      // Slice Sweep Animation (4D+ only)
-      // Uses golden ratio for non-repeating phase offsets across dimensions
-      if (sliceSweepEnabled && dimension >= 4 && sliceSweepAmplitude > 0 && sliceSweepSpeed > 0) {
-        const GOLDEN_RATIO = 1.618033988749895;
+      if (needsOriginRecompute) {
+        // Ensure we have a rotation matrix (might not have recomputed basis)
+        if (!cachedRotationMatrixRef.current) {
+          cachedRotationMatrixRef.current = composeRotations(dimension, rotations);
+        }
+
+        // Clear and set up origin = [0, 0, 0, slice[0], slice[1], ...]
+        for (let i = 0; i < MAX_DIMENSION; i++) work.origin[i] = 0;
         for (let i = 3; i < D; i++) {
-          const dimIndex = i - 3;
-          const phase = dimIndex * GOLDEN_RATIO * Math.PI * 2;
-          const baseValue = parameterValues[dimIndex] ?? 0;
-          const sweep = sliceSweepAmplitude *
-            Math.sin(animationTimeRef.current * sliceSweepSpeed + phase);
-          origin[i] = baseValue + sweep;
+          work.origin[i] = parameterValues[i - 3] ?? 0;
+        }
+
+        // Slice Sweep Animation (4D+ only)
+        if (sliceSweepActive) {
+          for (let i = 3; i < D; i++) {
+            const dimIndex = i - 3;
+            const phase = dimIndex * GOLDEN_RATIO * Math.PI * 2;
+            const baseValue = parameterValues[dimIndex] ?? 0;
+            const sweep = sliceSweepAmplitude *
+              Math.sin(animationTimeRef.current * sliceSweepSpeed + phase);
+            work.origin[i] = baseValue + sweep;
+          }
+        }
+
+        // Apply rotation to origin
+        applyRotationInPlace(cachedRotationMatrixRef.current, work.origin, work.rotatedOrigin);
+
+        // Update origin uniform
+        if (material.uniforms.uOrigin) {
+          const arr = material.uniforms.uOrigin.value as Float32Array;
+          arr.set(work.rotatedOrigin);
+        }
+
+        // Update params tracking (only when not animating, to avoid unnecessary copies)
+        if (!sliceSweepActive) {
+          prevParamValuesRef.current = [...parameterValues];
         }
       }
 
-      // Apply D-dimensional rotation to get rotated basis vectors
-      const rotatedX = applyRotation(rotationMatrix, unitX);
-      const rotatedY = applyRotation(rotationMatrix, unitY);
-      const rotatedZ = applyRotation(rotationMatrix, unitZ);
-      const rotatedOrigin = applyRotation(rotationMatrix, origin);
-
-      // Update uniforms in place
-      if (material.uniforms.uBasisX) {
-        const arr = material.uniforms.uBasisX.value as Float32Array;
-        for (let i = 0; i < 11; i++) arr[i] = rotatedX[i] ?? 0;
-      }
-      if (material.uniforms.uBasisY) {
-        const arr = material.uniforms.uBasisY.value as Float32Array;
-        for (let i = 0; i < 11; i++) arr[i] = rotatedY[i] ?? 0;
-      }
-      if (material.uniforms.uBasisZ) {
-        const arr = material.uniforms.uBasisZ.value as Float32Array;
-        for (let i = 0; i < 11; i++) arr[i] = rotatedZ[i] ?? 0;
-      }
-      if (material.uniforms.uOrigin) {
-        const arr = material.uniforms.uOrigin.value as Float32Array;
-        for (let i = 0; i < 11; i++) arr[i] = rotatedOrigin[i] ?? 0;
-      }
-
-      // Use identity for model matrix (rotation handled by basis vectors)
-      if (material.uniforms.uModelMatrix) {
-        material.uniforms.uModelMatrix.value.identity();
-      }
-      if (material.uniforms.uInverseModelMatrix) {
-        material.uniforms.uInverseModelMatrix.value.identity();
-      }
+      // Model matrices are always identity for Menger - no need to set every frame
+      // (they are already identity from useMemo initialization)
     }
   });
 

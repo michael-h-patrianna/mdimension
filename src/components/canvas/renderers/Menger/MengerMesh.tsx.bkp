@@ -1,85 +1,58 @@
-import { createLightUniforms, updateLightUniforms, type LightUniforms } from '@/lib/lights/uniforms';
-import { composeRotations } from '@/lib/math/rotation';
-import type { MatrixND } from '@/lib/math/types';
-import { COLOR_ALGORITHM_TO_INT } from '@/lib/shaders/palette';
+import { useFrame, useThree } from '@react-three/fiber';
+import { useMemo, useRef, useCallback, useEffect } from 'react';
+import * as THREE from 'three';
+import vertexShader from './menger.vert?raw';
+import fragmentShader from './menger.frag?raw';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
-import type { RotationState } from '@/stores/rotationStore';
 import { useRotationStore } from '@/stores/rotationStore';
 import { useVisualStore } from '@/stores/visualStore';
-import { useFrame, useThree } from '@react-three/fiber';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
-import * as THREE from 'three';
-import fragmentShader from './hyperbulb.frag?raw';
-import vertexShader from './hyperbulb.vert?raw';
+import { useAnimationStore } from '@/stores/animationStore';
+import { composeRotations } from '@/lib/math/rotation';
+import { COLOR_ALGORITHM_TO_INT } from '@/lib/shaders/palette';
+import type { MatrixND } from '@/lib/math/types';
+import type { RotationState } from '@/stores/rotationStore';
 
 /** Debounce time in ms before restoring high quality after rotation stops */
 const QUALITY_RESTORE_DELAY_MS = 150;
 
-/** Maximum supported dimension */
-const MAX_DIMENSION = 11;
+/**
+ * Convert horizontal/vertical angles to a normalized direction vector.
+ */
+function anglesToDirection(horizontalDeg: number, verticalDeg: number): THREE.Vector3 {
+  const hRad = (horizontalDeg * Math.PI) / 180;
+  const vRad = (verticalDeg * Math.PI) / 180;
+  return new THREE.Vector3(
+    Math.cos(vRad) * Math.sin(hRad),
+    Math.sin(vRad),
+    Math.cos(vRad) * Math.cos(hRad)
+  ).normalize();
+}
 
 /**
- * Apply D-dimensional rotation matrix to a vector, writing result into pre-allocated output.
+ * Apply D-dimensional rotation matrix to a vector.
  * Matrix is row-major: result[i] = sum(matrix[i][j] * vec[j])
- * @param matrix - D×D rotation matrix
- * @param vec - Input vector (length D)
- * @param out - Pre-allocated output Float32Array (length MAX_DIMENSION)
  */
-function applyRotationInPlace(matrix: MatrixND, vec: number[], out: Float32Array): void {
+function applyRotation(matrix: MatrixND, vec: number[]): Float32Array {
   const D = matrix.length;
-  // Clear output first (for dimensions beyond D)
-  for (let i = 0; i < MAX_DIMENSION; i++) out[i] = 0;
+  const result = new Float32Array(11); // Max dimension
   for (let i = 0; i < D; i++) {
     let sum = 0;
     for (let j = 0; j < D; j++) {
       sum += (matrix[i]?.[j] ?? 0) * (vec[j] ?? 0);
     }
-    out[i] = sum;
+    result[i] = sum;
   }
+  return result;
 }
 
 /**
- * Pre-allocated working arrays to avoid per-frame allocations.
- * These are module-level to ensure single allocation across component lifecycle.
- */
-interface WorkingArrays {
-  unitX: number[];
-  unitY: number[];
-  unitZ: number[];
-  origin: number[];
-  rotatedX: Float32Array;
-  rotatedY: Float32Array;
-  rotatedZ: Float32Array;
-  rotatedOrigin: Float32Array;
-}
-
-/**
- * Create pre-allocated working arrays for rotation calculations.
- * All arrays sized to MAX_DIMENSION to handle any dimension without reallocation.
- * @returns Pre-allocated working arrays for basis vector computations
- */
-function createWorkingArrays(): WorkingArrays {
-  return {
-    unitX: new Array(MAX_DIMENSION).fill(0),
-    unitY: new Array(MAX_DIMENSION).fill(0),
-    unitZ: new Array(MAX_DIMENSION).fill(0),
-    origin: new Array(MAX_DIMENSION).fill(0),
-    rotatedX: new Float32Array(MAX_DIMENSION),
-    rotatedY: new Float32Array(MAX_DIMENSION),
-    rotatedZ: new Float32Array(MAX_DIMENSION),
-    rotatedOrigin: new Float32Array(MAX_DIMENSION),
-  };
-}
-
-/**
- * HyperbulbMesh - Renders 4D-11D Hyperbulb fractals using GPU raymarching
+ * MengerMesh - Renders 3D-11D Menger Sponge using GPU raymarching
  *
- * Supports full D-dimensional rotation through all rotation planes (XY, XZ, YZ, XW, YW, ZW, etc.)
- * The 3D slice plane is rotated through D-dimensional space using rotated basis vectors.
- * @returns Three.js mesh with raymarching shader
+ * The Menger sponge uses KIFS fold operations (absolute value, sort, scale)
+ * that work identically across all dimensions with a true geometric SDF.
  */
-const HyperbulbMesh = () => {
+const MengerMesh = () => {
   const meshRef = useRef<THREE.Mesh>(null);
   const { size, camera } = useThree();
 
@@ -87,15 +60,6 @@ const HyperbulbMesh = () => {
   const prevRotationsRef = useRef<RotationState['rotations'] | null>(null);
   const fastModeRef = useRef(false);
   const restoreQualityTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Pre-allocated working arrays to avoid per-frame allocations
-  const workingArraysRef = useRef<WorkingArrays>(createWorkingArrays());
-
-  // Cached rotation matrix and basis vectors - only recomputed when rotations/dimension/params change
-  const cachedRotationMatrixRef = useRef<MatrixND | null>(null);
-  const prevDimensionRef = useRef<number | null>(null);
-  const prevParamValuesRef = useRef<number[] | null>(null);
-  const basisVectorsDirtyRef = useRef(true);
 
   // Cleanup timeout on unmount to prevent memory leaks
   useEffect(() => {
@@ -110,11 +74,28 @@ const HyperbulbMesh = () => {
   // Get dimension from geometry store
   const dimension = useGeometryStore((state) => state.dimension);
 
-  // Get Mandelbrot/Hyperbulb config from store
-  const mandelbulbPower = useExtendedObjectStore((state) => state.mandelbrot.mandelbulbPower);
-  const maxIterations = useExtendedObjectStore((state) => state.mandelbrot.maxIterations);
-  const escapeRadius = useExtendedObjectStore((state) => state.mandelbrot.escapeRadius);
-  const parameterValues = useExtendedObjectStore((state) => state.mandelbrot.parameterValues);
+  // Get Menger config from store
+  const iterations = useExtendedObjectStore((state) => state.menger.iterations);
+  const scale = useExtendedObjectStore((state) => state.menger.scale);
+  const parameterValues = useExtendedObjectStore((state) => state.menger.parameterValues);
+
+  // Fold Twist Animation
+  const foldTwistEnabled = useExtendedObjectStore((state) => state.menger.foldTwistEnabled);
+  const foldTwistAngle = useExtendedObjectStore((state) => state.menger.foldTwistAngle);
+  const foldTwistSpeed = useExtendedObjectStore((state) => state.menger.foldTwistSpeed);
+
+  // Scale Pulse Animation
+  const scalePulseEnabled = useExtendedObjectStore((state) => state.menger.scalePulseEnabled);
+  const scalePulseAmplitude = useExtendedObjectStore((state) => state.menger.scalePulseAmplitude);
+  const scalePulseSpeed = useExtendedObjectStore((state) => state.menger.scalePulseSpeed);
+
+  // Slice Sweep Animation
+  const sliceSweepEnabled = useExtendedObjectStore((state) => state.menger.sliceSweepEnabled);
+  const sliceSweepAmplitude = useExtendedObjectStore((state) => state.menger.sliceSweepAmplitude);
+  const sliceSweepSpeed = useExtendedObjectStore((state) => state.menger.sliceSweepSpeed);
+
+  // Animation time tracking (respects isPlaying state)
+  const animationTimeRef = useRef(0);
 
   // Get color state from visual store
   const faceColor = useVisualStore((state) => state.faceColor);
@@ -127,10 +108,11 @@ const HyperbulbMesh = () => {
   const lchChroma = useVisualStore((state) => state.lchChroma);
   const multiSourceWeights = useVisualStore((state) => state.multiSourceWeights);
 
-  // Get multi-light system from visual store
-  const lights = useVisualStore((state) => state.lights);
-
-  // Get global lighting settings from visual store
+  // Get lighting settings from visual store
+  const lightEnabled = useVisualStore((state) => state.lightEnabled);
+  const lightColor = useVisualStore((state) => state.lightColor);
+  const lightHorizontalAngle = useVisualStore((state) => state.lightHorizontalAngle);
+  const lightVerticalAngle = useVisualStore((state) => state.lightVerticalAngle);
   const ambientIntensity = useVisualStore((state) => state.ambientIntensity);
   const ambientColor = useVisualStore((state) => state.ambientColor);
   const specularIntensity = useVisualStore((state) => state.specularIntensity);
@@ -138,9 +120,9 @@ const HyperbulbMesh = () => {
   // Enhanced lighting settings
   const specularColor = useVisualStore((state) => state.specularColor);
   const diffuseIntensity = useVisualStore((state) => state.diffuseIntensity);
+  const lightStrength = useVisualStore((state) => state.lightStrength);
 
-
-  // Edges render mode controls fresnel rim lighting for Hyperbulb
+  // Edges render mode controls fresnel rim lighting
   const edgesVisible = useVisualStore((state) => state.edgesVisible);
   const fresnelIntensity = useVisualStore((state) => state.fresnelIntensity);
   const edgeColor = useVisualStore((state) => state.edgeColor);
@@ -152,14 +134,12 @@ const HyperbulbMesh = () => {
       uResolution: { value: new THREE.Vector2() },
       uCameraPosition: { value: new THREE.Vector3() },
 
-      // Hyperbulb parameters
-      uDimension: { value: 4 },
-      uPower: { value: 8.0 },
-      uIterations: { value: 48.0 },
-      uEscapeRadius: { value: 8.0 },
+      // Menger parameters
+      uDimension: { value: 3 },
+      uIterations: { value: 5.0 },
+      uScale: { value: 1.0 },
 
       // D-dimensional rotated coordinate system
-      // c = uOrigin + pos.x * uBasisX + pos.y * uBasisY + pos.z * uBasisZ
       uBasisX: { value: new Float32Array(11) },
       uBasisY: { value: new Float32Array(11) },
       uBasisZ: { value: new Float32Array(11) },
@@ -168,31 +148,39 @@ const HyperbulbMesh = () => {
       // Color and palette
       uColor: { value: new THREE.Color() },
 
-      // 3D transformation matrices (for camera/view only)
+      // 3D transformation matrices
       uModelMatrix: { value: new THREE.Matrix4() },
       uInverseModelMatrix: { value: new THREE.Matrix4() },
       uProjectionMatrix: { value: new THREE.Matrix4() },
       uViewMatrix: { value: new THREE.Matrix4() },
 
-      // Multi-light system uniforms
-      ...createLightUniforms(),
-
-      // Global lighting uniforms
+      // Lighting uniforms
+      uLightEnabled: { value: true },
+      uLightColor: { value: new THREE.Color() },
+      uLightDirection: { value: new THREE.Vector3() },
       uAmbientIntensity: { value: 0.2 },
       uAmbientColor: { value: new THREE.Color('#FFFFFF') },
       uSpecularIntensity: { value: 1.0 },
       uSpecularPower: { value: 32.0 },
-      // Enhanced lighting uniforms
+      uLightStrength: { value: 1.0 },
       uSpecularColor: { value: new THREE.Color('#FFFFFF') },
       uDiffuseIntensity: { value: 1.0 },
+      uToneMappingEnabled: { value: false },
+      uToneMappingAlgorithm: { value: 0 },
+      uExposure: { value: 1.0 },
 
       // Fresnel rim lighting uniforms
       uFresnelEnabled: { value: true },
       uFresnelIntensity: { value: 0.5 },
       uRimColor: { value: new THREE.Color('#FFFFFF') },
 
-      // Performance mode: reduces quality during rotation animations
+      // Performance mode
       uFastMode: { value: false },
+
+      // Fold Twist Animation uniforms
+      uFoldTwistEnabled: { value: false },
+      uFoldTwistAngle: { value: 0.0 },
+
       // Advanced Color System uniforms
       uColorAlgorithm: { value: 1 },
       uCosineA: { value: new THREE.Vector3(0.5, 0.5, 0.5) },
@@ -211,23 +199,15 @@ const HyperbulbMesh = () => {
 
   /**
    * Check if rotations have changed by comparing current vs previous state.
-   * Returns true if any rotation angle has changed, or if this is the first comparison.
    */
   const hasRotationsChanged = useCallback((
     current: RotationState['rotations'],
     previous: RotationState['rotations'] | null
   ): boolean => {
-    // First frame or no previous state - consider it a change to ensure initial computation
-    if (!previous) return true;
-
-    // Check if sizes differ
+    if (!previous) return false;
     if (current.size !== previous.size) return true;
-
-    // Compare all rotation planes using Map methods
     for (const [key, value] of current.entries()) {
-      if (previous.get(key) !== value) {
-        return true;
-      }
+      if (previous.get(key) !== value) return true;
     }
     return false;
   }, []);
@@ -236,25 +216,19 @@ const HyperbulbMesh = () => {
     if (meshRef.current) {
       const material = meshRef.current.material as THREE.ShaderMaterial;
 
-      // Get rotations from store first (needed for rotation change detection)
+      // Get rotations from store
       const rotations = useRotationStore.getState().rotations;
 
-      // ============================================
       // Adaptive Quality: Detect rotation animation
-      // ============================================
       const rotationsChanged = hasRotationsChanged(rotations, prevRotationsRef.current);
 
       if (rotationsChanged) {
-        // Rotation is happening - switch to fast mode
         fastModeRef.current = true;
-
-        // Clear any pending quality restore timeout
         if (restoreQualityTimeoutRef.current) {
           clearTimeout(restoreQualityTimeoutRef.current);
           restoreQualityTimeoutRef.current = null;
         }
       } else if (fastModeRef.current) {
-        // Rotation stopped - schedule quality restore after delay
         if (!restoreQualityTimeoutRef.current) {
           restoreQualityTimeoutRef.current = setTimeout(() => {
             fastModeRef.current = false;
@@ -263,8 +237,6 @@ const HyperbulbMesh = () => {
         }
       }
 
-      // Store current rotations for next frame comparison only when changed
-      // (avoids creating garbage every frame)
       if (rotationsChanged || !prevRotationsRef.current) {
         prevRotationsRef.current = new Map(rotations);
       }
@@ -272,6 +244,12 @@ const HyperbulbMesh = () => {
       // Update fast mode uniform
       if (material.uniforms.uFastMode) {
         material.uniforms.uFastMode.value = fastModeRef.current;
+      }
+
+      // Track animation time (respects isPlaying state)
+      const isPlaying = useAnimationStore.getState().isPlaying;
+      if (isPlaying) {
+        animationTimeRef.current += state.clock.getDelta();
       }
 
       // Update time and resolution
@@ -282,31 +260,52 @@ const HyperbulbMesh = () => {
       // Update dimension
       if (material.uniforms.uDimension) material.uniforms.uDimension.value = dimension;
 
-      // Update Hyperbulb parameters
-      if (material.uniforms.uPower) material.uniforms.uPower.value = mandelbulbPower;
-      if (material.uniforms.uIterations) material.uniforms.uIterations.value = maxIterations;
-      if (material.uniforms.uEscapeRadius) material.uniforms.uEscapeRadius.value = escapeRadius;
+      // Update Menger parameters
+      if (material.uniforms.uIterations) material.uniforms.uIterations.value = iterations;
 
-      // Update color and palette
+      // Scale Pulse Animation: compute effective scale
+      let effectiveScale = scale;
+      if (scalePulseEnabled && scalePulseAmplitude > 0 && scalePulseSpeed > 0) {
+        effectiveScale = scale + scalePulseAmplitude *
+          Math.sin(animationTimeRef.current * scalePulseSpeed * Math.PI);
+      }
+      if (material.uniforms.uScale) material.uniforms.uScale.value = effectiveScale;
+
+      // Fold Twist Animation
+      if (material.uniforms.uFoldTwistEnabled) {
+        material.uniforms.uFoldTwistEnabled.value = foldTwistEnabled;
+      }
+      if (material.uniforms.uFoldTwistAngle) {
+        let angle = foldTwistAngle;
+        if (foldTwistEnabled && foldTwistSpeed > 0) {
+          angle += animationTimeRef.current * foldTwistSpeed;
+        }
+        material.uniforms.uFoldTwistAngle.value = angle;
+      }
+
+      // Update color
       if (material.uniforms.uColor) material.uniforms.uColor.value.set(faceColor);
 
       // Update camera matrices
       if (material.uniforms.uProjectionMatrix) material.uniforms.uProjectionMatrix.value.copy(camera.projectionMatrix);
       if (material.uniforms.uViewMatrix) material.uniforms.uViewMatrix.value.copy(camera.matrixWorldInverse);
 
-      // Update multi-light uniforms
-      updateLightUniforms(material.uniforms as unknown as LightUniforms, lights);
-
-      // Update global lighting uniforms
+      // Update lighting uniforms
+      if (material.uniforms.uLightEnabled) material.uniforms.uLightEnabled.value = lightEnabled;
+      if (material.uniforms.uLightColor) material.uniforms.uLightColor.value.set(lightColor);
+      if (material.uniforms.uLightDirection) {
+        const dir = anglesToDirection(lightHorizontalAngle, lightVerticalAngle);
+        material.uniforms.uLightDirection.value.copy(dir);
+      }
       if (material.uniforms.uAmbientIntensity) material.uniforms.uAmbientIntensity.value = ambientIntensity;
       if (material.uniforms.uAmbientColor) material.uniforms.uAmbientColor.value.set(ambientColor);
       if (material.uniforms.uSpecularIntensity) material.uniforms.uSpecularIntensity.value = specularIntensity;
       if (material.uniforms.uSpecularPower) material.uniforms.uSpecularPower.value = shininess;
-      // Enhanced lighting uniforms
+      if (material.uniforms.uLightStrength) material.uniforms.uLightStrength.value = lightStrength ?? 1.0;
       if (material.uniforms.uSpecularColor) material.uniforms.uSpecularColor.value.set(specularColor);
       if (material.uniforms.uDiffuseIntensity) material.uniforms.uDiffuseIntensity.value = diffuseIntensity;
 
-      // Fresnel rim lighting (controlled by Edges render mode)
+      // Fresnel rim lighting
       if (material.uniforms.uFresnelEnabled) material.uniforms.uFresnelEnabled.value = edgesVisible;
       if (material.uniforms.uFresnelIntensity) material.uniforms.uFresnelIntensity.value = fresnelIntensity;
       if (material.uniforms.uRimColor) material.uniforms.uRimColor.value.set(edgeColor);
@@ -324,84 +323,77 @@ const HyperbulbMesh = () => {
       if (material.uniforms.uLchChroma) material.uniforms.uLchChroma.value = lchChroma;
       if (material.uniforms.uMultiSourceWeights) material.uniforms.uMultiSourceWeights.value.set(multiSourceWeights.depth, multiSourceWeights.orbitTrap, multiSourceWeights.normal);
 
-      // ============================================
-      // Optimized D-dimensional Rotation & Basis Vectors
-      // Only recompute when rotations, dimension, or params change
-      // ============================================
+      // Build D-dimensional rotation matrix
+      const rotationMatrix = composeRotations(dimension, rotations);
+
+      // Build basis vectors for the 3D slice in D-dimensional space
       const D = dimension;
-      const work = workingArraysRef.current;
 
-      // Check if parameterValues changed (shallow array comparison)
-      const paramsChanged = !prevParamValuesRef.current ||
-        prevParamValuesRef.current.length !== parameterValues.length ||
-        parameterValues.some((v, i) => prevParamValuesRef.current![i] !== v);
+      // Create unrotated basis vectors
+      const unitX = new Array(D).fill(0);
+      unitX[0] = 1;
+      const unitY = new Array(D).fill(0);
+      unitY[1] = 1;
+      const unitZ = new Array(D).fill(0);
+      unitZ[2] = 1;
 
-      // Determine if we need to recompute basis vectors
-      const needsRecompute = rotationsChanged ||
-        dimension !== prevDimensionRef.current ||
-        paramsChanged ||
-        basisVectorsDirtyRef.current;
-
-      if (needsRecompute) {
-        // Compute rotation matrix only when needed
-        cachedRotationMatrixRef.current = composeRotations(dimension, rotations);
-
-        // Prepare unit vectors in pre-allocated arrays (no allocation)
-        // Clear and set up unitX = [1, 0, 0, ...]
-        for (let i = 0; i < MAX_DIMENSION; i++) work.unitX[i] = 0;
-        work.unitX[0] = 1;
-
-        // Clear and set up unitY = [0, 1, 0, ...]
-        for (let i = 0; i < MAX_DIMENSION; i++) work.unitY[i] = 0;
-        work.unitY[1] = 1;
-
-        // Clear and set up unitZ = [0, 0, 1, ...]
-        for (let i = 0; i < MAX_DIMENSION; i++) work.unitZ[i] = 0;
-        work.unitZ[2] = 1;
-
-        // Clear and set up origin = [0, 0, 0, slice[0], slice[1], ...]
-        for (let i = 0; i < MAX_DIMENSION; i++) work.origin[i] = 0;
-        for (let i = 3; i < D; i++) {
-          work.origin[i] = parameterValues[i - 3] ?? 0;
-        }
-
-        // Apply rotation to basis vectors using pre-allocated output arrays
-        applyRotationInPlace(cachedRotationMatrixRef.current, work.unitX, work.rotatedX);
-        applyRotationInPlace(cachedRotationMatrixRef.current, work.unitY, work.rotatedY);
-        applyRotationInPlace(cachedRotationMatrixRef.current, work.unitZ, work.rotatedZ);
-        applyRotationInPlace(cachedRotationMatrixRef.current, work.origin, work.rotatedOrigin);
-
-        // Update basis vector uniforms
-        if (material.uniforms.uBasisX) {
-          const arr = material.uniforms.uBasisX.value as Float32Array;
-          arr.set(work.rotatedX);
-        }
-        if (material.uniforms.uBasisY) {
-          const arr = material.uniforms.uBasisY.value as Float32Array;
-          arr.set(work.rotatedY);
-        }
-        if (material.uniforms.uBasisZ) {
-          const arr = material.uniforms.uBasisZ.value as Float32Array;
-          arr.set(work.rotatedZ);
-        }
-        if (material.uniforms.uOrigin) {
-          const arr = material.uniforms.uOrigin.value as Float32Array;
-          arr.set(work.rotatedOrigin);
-        }
-
-        // Update tracking refs
-        prevDimensionRef.current = dimension;
-        prevParamValuesRef.current = [...parameterValues];
-        basisVectorsDirtyRef.current = false;
+      // Create origin with slice values in dimensions 3+
+      const origin = new Array(D).fill(0);
+      for (let i = 3; i < D; i++) {
+        origin[i] = parameterValues[i - 3] ?? 0;
       }
 
-      // Model matrices are always identity for Hyperbulb - no need to set every frame
-      // (they are already identity from useMemo initialization)
+      // Slice Sweep Animation (4D+ only)
+      // Uses golden ratio for non-repeating phase offsets across dimensions
+      if (sliceSweepEnabled && dimension >= 4 && sliceSweepAmplitude > 0 && sliceSweepSpeed > 0) {
+        const GOLDEN_RATIO = 1.618033988749895;
+        for (let i = 3; i < D; i++) {
+          const dimIndex = i - 3;
+          const phase = dimIndex * GOLDEN_RATIO * Math.PI * 2;
+          const baseValue = parameterValues[dimIndex] ?? 0;
+          const sweep = sliceSweepAmplitude *
+            Math.sin(animationTimeRef.current * sliceSweepSpeed + phase);
+          origin[i] = baseValue + sweep;
+        }
+      }
+
+      // Apply D-dimensional rotation to get rotated basis vectors
+      const rotatedX = applyRotation(rotationMatrix, unitX);
+      const rotatedY = applyRotation(rotationMatrix, unitY);
+      const rotatedZ = applyRotation(rotationMatrix, unitZ);
+      const rotatedOrigin = applyRotation(rotationMatrix, origin);
+
+      // Update uniforms in place
+      if (material.uniforms.uBasisX) {
+        const arr = material.uniforms.uBasisX.value as Float32Array;
+        for (let i = 0; i < 11; i++) arr[i] = rotatedX[i] ?? 0;
+      }
+      if (material.uniforms.uBasisY) {
+        const arr = material.uniforms.uBasisY.value as Float32Array;
+        for (let i = 0; i < 11; i++) arr[i] = rotatedY[i] ?? 0;
+      }
+      if (material.uniforms.uBasisZ) {
+        const arr = material.uniforms.uBasisZ.value as Float32Array;
+        for (let i = 0; i < 11; i++) arr[i] = rotatedZ[i] ?? 0;
+      }
+      if (material.uniforms.uOrigin) {
+        const arr = material.uniforms.uOrigin.value as Float32Array;
+        for (let i = 0; i < 11; i++) arr[i] = rotatedOrigin[i] ?? 0;
+      }
+
+      // Use identity for model matrix (rotation handled by basis vectors)
+      if (material.uniforms.uModelMatrix) {
+        material.uniforms.uModelMatrix.value.identity();
+      }
+      if (material.uniforms.uInverseModelMatrix) {
+        material.uniforms.uInverseModelMatrix.value.identity();
+      }
     }
   });
 
   return (
     <mesh ref={meshRef}>
+      {/* Menger is bounded within unit cube * scale, give some margin */}
       <boxGeometry args={[4, 4, 4]} />
       <shaderMaterial
         vertexShader={vertexShader}
@@ -413,4 +405,4 @@ const HyperbulbMesh = () => {
   );
 };
 
-export default HyperbulbMesh;
+export default MengerMesh;

@@ -6,6 +6,9 @@
  * - Custom depth-based bokeh for depth of field
  * - OutputPass for tone mapping
  *
+ * Resources are created lazily and disposed when effects are disabled,
+ * minimizing GPU memory usage when effects are not in use.
+ *
  * We capture depth by rendering to a WebGLRenderTarget with DepthTexture attached,
  * which correctly captures gl_FragDepth from all custom shaders.
  */
@@ -353,6 +356,7 @@ export const PostProcessing = memo(function PostProcessing() {
   }, [gl, toneMappingEnabled, toneMappingAlgorithm, exposure]);
 
   // Create render target for scene + depth, and composer
+  // Resources are always created but passes are enabled/disabled dynamically
   const { composer, bloomPass, bokehPass, sceneTarget, texturePass } = useMemo(() => {
     // Create render target with depth texture - matching Three.js examples exactly
     const target = new THREE.WebGLRenderTarget(size.width, size.height, {
@@ -378,7 +382,7 @@ export const PostProcessing = memo(function PostProcessing() {
     const texPass = new TexturePass(target.texture);
     effectComposer.addPass(texPass);
 
-    // Bloom
+    // Bloom - always created, enabled/disabled dynamically
     const bloom = new UnrealBloomPass(
       new THREE.Vector2(size.width, size.height),
       bloomIntensity,
@@ -387,7 +391,7 @@ export const PostProcessing = memo(function PostProcessing() {
     );
     effectComposer.addPass(bloom);
 
-    // Bokeh
+    // Bokeh - always created, enabled/disabled dynamically
     const bokeh = new ShaderPass(CustomBokehShader);
     bokeh.enabled = false;
     effectComposer.addPass(bokeh);
@@ -405,14 +409,17 @@ export const PostProcessing = memo(function PostProcessing() {
     };
   }, [gl, size.width, size.height]);
 
-  // Update bloom
+  // Update bloom pass enabled state and parameters
   useEffect(() => {
-    bloomPass.strength = bloomIntensity;
-    bloomPass.threshold = bloomThreshold;
-    bloomPass.radius = bloomRadius;
-  }, [bloomPass, bloomIntensity, bloomThreshold, bloomRadius]);
+    bloomPass.enabled = bloomEnabled;
+    if (bloomEnabled) {
+      bloomPass.strength = bloomIntensity;
+      bloomPass.threshold = bloomThreshold;
+      bloomPass.radius = bloomRadius;
+    }
+  }, [bloomPass, bloomEnabled, bloomIntensity, bloomThreshold, bloomRadius]);
 
-  // Update bokeh enabled
+  // Update bokeh enabled state
   useEffect(() => {
     bokehPass.enabled = bokehEnabled;
   }, [bokehPass, bokehEnabled]);
@@ -430,7 +437,7 @@ export const PostProcessing = memo(function PostProcessing() {
     uniforms.aspect.value = size.height / size.width;
   }, [composer, bloomPass, bokehPass, sceneTarget, texturePass, size.width, size.height]);
 
-  // Cleanup
+  // Cleanup on unmount only
   useEffect(() => {
     return () => {
       composer.dispose();
@@ -440,7 +447,17 @@ export const PostProcessing = memo(function PostProcessing() {
 
   // Render
   useFrame((_, delta) => {
-    bloomPass.strength = bloomEnabled ? bloomIntensity : 0;
+    // Read current enabled states from store to avoid stale closures
+    const state = useVisualStore.getState();
+    const currentBloomEnabled = state.bloomEnabled;
+    const currentBokehEnabled = state.bokehEnabled;
+
+    // Update pass enabled states every frame to ensure sync
+    bloomPass.enabled = currentBloomEnabled;
+    bokehPass.enabled = currentBokehEnabled;
+
+    // Set bloom strength (0 when disabled for smooth transition)
+    bloomPass.strength = currentBloomEnabled ? state.bloomIntensity : 0;
 
     // Save renderer state
     const currentAutoClear = gl.autoClear;
@@ -479,11 +496,11 @@ export const PostProcessing = memo(function PostProcessing() {
     // Update texture pass
     texturePass.map = sceneTarget.texture;
 
-    if (bokehEnabled && camera instanceof THREE.PerspectiveCamera) {
-      let targetFocus = bokehWorldFocusDistance;
+    if (currentBokehEnabled && camera instanceof THREE.PerspectiveCamera) {
+      let targetFocus = state.bokehWorldFocusDistance;
 
       // Auto-focus: raycast to find depth at screen center
-      if (bokehFocusMode === 'auto-center' || bokehFocusMode === 'auto-mouse') {
+      if (state.bokehFocusMode === 'auto-center' || state.bokehFocusMode === 'auto-mouse') {
         // Use screen center for auto-center, could add mouse position for auto-mouse
         autoFocusRaycaster.setFromCamera(screenCenter, camera);
         const intersects = autoFocusRaycaster.intersectObjects(scene.children, true);
@@ -496,7 +513,7 @@ export const PostProcessing = memo(function PostProcessing() {
       }
 
       // Smooth focus transition
-      const smoothFactor = bokehSmoothTime > 0 ? 1 - Math.exp(-delta / bokehSmoothTime) : 1;
+      const smoothFactor = state.bokehSmoothTime > 0 ? 1 - Math.exp(-delta / state.bokehSmoothTime) : 1;
       currentFocusRef.current += (targetFocus - currentFocusRef.current) * smoothFactor;
 
       const uniforms = bokehPass.uniforms as unknown as BokehUniforms;
@@ -505,22 +522,22 @@ export const PostProcessing = memo(function PostProcessing() {
 
       // Focus range: the depth range where objects stay sharp (in world units)
       // This creates a "dead zone" around the focus point
-      uniforms.focusRange.value = bokehWorldFocusRange;
+      uniforms.focusRange.value = state.bokehWorldFocusRange;
 
       // Aperture: controls how quickly blur increases beyond the focus range
       // bokehScale: 0-3 maps to aperture: 0-0.015
       // Lower values = more gradual blur falloff
-      uniforms.aperture.value = bokehScale * 0.005;
+      uniforms.aperture.value = state.bokehScale * 0.005;
 
       // Maxblur: cap the maximum blur amount (typical: 0.01-0.05)
       // bokehScale: 0-3 maps to maxblur: 0-0.06
-      uniforms.maxblur.value = bokehScale * 0.02;
+      uniforms.maxblur.value = state.bokehScale * 0.02;
 
       uniforms.nearClip.value = camera.near;
       uniforms.farClip.value = camera.far;
 
       // Debug mode: 1=raw depth, 2=linear depth, 3=focus zones
-      uniforms.debugMode.value = bokehShowDebug ? 3 : 0;
+      uniforms.debugMode.value = state.bokehShowDebug ? 3 : 0;
 
       // Blur method: 0=disc, 1=jittered, 2=separable, 3=hexagonal
       const blurMethodMap: Record<string, number> = {
@@ -529,7 +546,7 @@ export const PostProcessing = memo(function PostProcessing() {
         separable: 2,
         hexagonal: 3,
       };
-      uniforms.blurMethod.value = blurMethodMap[bokehBlurMethod] ?? 3;
+      uniforms.blurMethod.value = blurMethodMap[state.bokehBlurMethod] ?? 3;
 
       // Time for jittered blur animation (prevents static noise patterns)
       uniforms.time.value = performance.now() * 0.001;

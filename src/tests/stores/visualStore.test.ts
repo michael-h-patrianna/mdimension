@@ -14,6 +14,7 @@ import {
   DEFAULT_EDGES_VISIBLE,
   DEFAULT_FACES_VISIBLE,
   DEFAULT_ANIMATION_BIAS,
+  DEFAULT_SHOW_PERF_MONITOR,
   VISUAL_PRESETS,
 } from '@/stores/visualStore';
 
@@ -240,6 +241,34 @@ describe('visualStore', () => {
 
       useVisualStore.getState().setEdgeRoughness(1.5);
       expect(useVisualStore.getState().edgeRoughness).toBe(1);
+    });
+  });
+
+  describe('showPerfMonitor', () => {
+    it('should have default showPerfMonitor of true', () => {
+      expect(useVisualStore.getState().showPerfMonitor).toBe(DEFAULT_SHOW_PERF_MONITOR);
+      expect(DEFAULT_SHOW_PERF_MONITOR).toBe(true);
+    });
+
+    it('should set showPerfMonitor to true', () => {
+      useVisualStore.getState().setShowPerfMonitor(true);
+      expect(useVisualStore.getState().showPerfMonitor).toBe(true);
+    });
+
+    it('should set showPerfMonitor to false', () => {
+      useVisualStore.getState().setShowPerfMonitor(true);
+      expect(useVisualStore.getState().showPerfMonitor).toBe(true);
+
+      useVisualStore.getState().setShowPerfMonitor(false);
+      expect(useVisualStore.getState().showPerfMonitor).toBe(false);
+    });
+
+    it('should reset showPerfMonitor to default', () => {
+      useVisualStore.getState().setShowPerfMonitor(true);
+      expect(useVisualStore.getState().showPerfMonitor).toBe(true);
+
+      useVisualStore.getState().reset();
+      expect(useVisualStore.getState().showPerfMonitor).toBe(DEFAULT_SHOW_PERF_MONITOR);
     });
   });
 });

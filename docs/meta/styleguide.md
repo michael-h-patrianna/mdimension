@@ -18,6 +18,37 @@
 - `config/` exposes typed context providers and helpers for runtime configuration, feature flags, and environment wiring.
 - `theme/`, `constants/`, and `utils/` collect shared primitives. Avoid leaking implementation details across domains or importing from deep paths.
 
+### Import Patterns
+
+Prefer **direct file imports** over barrel exports (`index.ts` re-exports):
+
+```tsx
+// ✅ Good: Direct imports are explicit and navigable
+import { AnimationSection } from './Animation/AnimationSection'
+import { GeometrySection } from './Geometry/GeometrySection'
+
+// ❌ Avoid: Barrel imports obscure the actual file location
+import { AnimationSection } from './Animation'
+import { GeometrySection } from './Geometry'
+```
+
+**When to use barrel exports:**
+
+- **Module boundary exports only**: A single `index.ts` at the module root to expose the public API (e.g., `components/sidebar/index.ts` exports only `Sidebar`).
+- **Shared libraries**: When creating a reusable package consumed by multiple projects.
+
+**When to avoid barrel exports:**
+
+- **Internal folder organization**: Subfolders within a module should not have `index.ts` files if their contents are only used by sibling files.
+- **Components with single consumers**: If `AnimationControls` is only used by `AnimationSection` in the same folder, no barrel is needed.
+
+**Benefits of direct imports:**
+
+- **Explicitness**: Import path matches file path—no indirection to trace.
+- **IDE navigation**: Cmd+click goes directly to the implementation file.
+- **Tree-shaking**: Some bundlers handle direct imports more efficiently than barrels.
+- **Reduced maintenance**: No need to update barrel files when adding/removing components.
+
 ### State & Effects
 
 - Model complex flows with a state machine and typed events. Document transitions in `docs/` so newcomers can trace the lifecycle.

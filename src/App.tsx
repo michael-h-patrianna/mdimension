@@ -28,6 +28,7 @@ import type { VectorND, Vector3D } from '@/lib/math/types';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useVisualStore } from '@/stores/visualStore';
 import { Canvas } from '@react-three/fiber';
+import { Perf } from 'r3f-perf';
 
 /**
  * Extract 3D positions from N-D vertices for ground plane bounds calculation.
@@ -72,6 +73,9 @@ function Visualizer() {
   const pointColors = useMandelbrotColors(geometry, mandelbrotConfig, edgeColorForMandelbrot);
   const facesVisible = useVisualStore((state) => state.facesVisible);
 
+  // 8. Get performance monitor state
+  const showPerfMonitor = useVisualStore((state) => state.showPerfMonitor);
+
   // Calculate minimum bounding radius for ground plane positioning
   // When raymarched objects are visible, ensure ground plane accounts for them
   const isMandelbulbVisible = objectType === 'mandelbrot' && facesVisible && dimension === 3;
@@ -91,16 +95,28 @@ function Visualizer() {
         : undefined;
 
   return (
-    <Scene
-      geometry={geometry}
-      dimension={dimension}
-      objectType={objectType}
-      faces={faces}
-      faceDepths={faceDepths}
-      pointColors={pointColors}
-      projectedVertices={basePositions}
-      minBoundingRadius={minBoundingRadius}
-    />
+    <>
+      {/* Performance monitor - only mounted when enabled (zero overhead when off) */}
+      {showPerfMonitor && (
+        <Perf
+          position="bottom-left"
+          className="perf-monitor"
+          showGraph={true}
+          antialias={true}
+          logsPerSecond={10}
+        />
+      )}
+      <Scene
+        geometry={geometry}
+        dimension={dimension}
+        objectType={objectType}
+        faces={faces}
+        faceDepths={faceDepths}
+        pointColors={pointColors}
+        projectedVertices={basePositions}
+        minBoundingRadius={minBoundingRadius}
+      />
+    </>
   );
 }
 

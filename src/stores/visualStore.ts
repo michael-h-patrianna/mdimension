@@ -145,6 +145,9 @@ export const DEFAULT_GROUND_MATERIAL_ENVMAP_INTENSITY = 0.5
 /** Default axis helper settings */
 export const DEFAULT_SHOW_AXIS_HELPER = false
 
+/** Default performance monitor settings */
+export const DEFAULT_SHOW_PERF_MONITOR = true
+
 /** Default animation bias settings */
 export const DEFAULT_ANIMATION_BIAS = 0
 
@@ -379,6 +382,10 @@ interface VisualState {
   /** Whether axis helper is visible */
   showAxisHelper: boolean
 
+  // --- Performance Monitor ---
+  /** Whether performance monitor is visible */
+  showPerfMonitor: boolean
+
   // --- Animation ---
   /** Animation bias: 0 = uniform rotation, 1 = wildly different per plane (0-1) */
   animationBias: number
@@ -485,6 +492,9 @@ interface VisualState {
 
   // --- Actions: Axis Helper ---
   setShowAxisHelper: (show: boolean) => void
+
+  // --- Actions: Performance Monitor ---
+  setShowPerfMonitor: (show: boolean) => void
 
   // --- Actions: Animation ---
   setAnimationBias: (bias: number) => void
@@ -605,6 +615,9 @@ const INITIAL_STATE: Omit<VisualState, keyof VisualStateFunctions> = {
   // Axis helper
   showAxisHelper: DEFAULT_SHOW_AXIS_HELPER,
 
+  // Performance monitor
+  showPerfMonitor: DEFAULT_SHOW_PERF_MONITOR,
+
   // Animation
   animationBias: DEFAULT_ANIMATION_BIAS,
 
@@ -685,6 +698,7 @@ type VisualStateFunctions = Pick<
   | 'setGroundMaterialMetalness'
   | 'setGroundMaterialEnvMapIntensity'
   | 'setShowAxisHelper'
+  | 'setShowPerfMonitor'
   | 'setAnimationBias'
   | 'addLight'
   | 'removeLight'
@@ -1066,6 +1080,11 @@ export const useVisualStore = create<VisualState>((set) => ({
   // --- Actions: Axis Helper ---
   setShowAxisHelper: (show: boolean) => {
     set({ showAxisHelper: show })
+  },
+
+  // --- Actions: Performance Monitor ---
+  setShowPerfMonitor: (show: boolean) => {
+    set({ showPerfMonitor: show })
   },
 
   // --- Actions: Animation ---

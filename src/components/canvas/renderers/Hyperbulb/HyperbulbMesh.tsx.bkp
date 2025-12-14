@@ -1,75 +1,36 @@
-import { createLightUniforms, updateLightUniforms, type LightUniforms } from '@/lib/lights/uniforms';
-import { composeRotations } from '@/lib/math/rotation';
-import type { MatrixND } from '@/lib/math/types';
-import { COLOR_ALGORITHM_TO_INT } from '@/lib/shaders/palette';
+import { useFrame, useThree } from '@react-three/fiber';
+import { useMemo, useRef, useCallback, useEffect } from 'react';
+import * as THREE from 'three';
+import vertexShader from './hyperbulb.vert?raw';
+import fragmentShader from './hyperbulb.frag?raw';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
-import type { RotationState } from '@/stores/rotationStore';
 import { useRotationStore } from '@/stores/rotationStore';
 import { useVisualStore } from '@/stores/visualStore';
-import { useFrame, useThree } from '@react-three/fiber';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
-import * as THREE from 'three';
-import fragmentShader from './hyperbulb.frag?raw';
-import vertexShader from './hyperbulb.vert?raw';
+import { composeRotations } from '@/lib/math/rotation';
+import { COLOR_ALGORITHM_TO_INT } from '@/lib/shaders/palette';
+import { createLightUniforms, updateLightUniforms, type LightUniforms } from '@/lib/lights/uniforms';
+import type { MatrixND } from '@/lib/math/types';
+import type { RotationState } from '@/stores/rotationStore';
 
 /** Debounce time in ms before restoring high quality after rotation stops */
 const QUALITY_RESTORE_DELAY_MS = 150;
 
-/** Maximum supported dimension */
-const MAX_DIMENSION = 11;
-
 /**
- * Apply D-dimensional rotation matrix to a vector, writing result into pre-allocated output.
+ * Apply D-dimensional rotation matrix to a vector.
  * Matrix is row-major: result[i] = sum(matrix[i][j] * vec[j])
- * @param matrix - D×D rotation matrix
- * @param vec - Input vector (length D)
- * @param out - Pre-allocated output Float32Array (length MAX_DIMENSION)
  */
-function applyRotationInPlace(matrix: MatrixND, vec: number[], out: Float32Array): void {
+function applyRotation(matrix: MatrixND, vec: number[]): Float32Array {
   const D = matrix.length;
-  // Clear output first (for dimensions beyond D)
-  for (let i = 0; i < MAX_DIMENSION; i++) out[i] = 0;
+  const result = new Float32Array(11); // Max dimension
   for (let i = 0; i < D; i++) {
     let sum = 0;
     for (let j = 0; j < D; j++) {
       sum += (matrix[i]?.[j] ?? 0) * (vec[j] ?? 0);
     }
-    out[i] = sum;
+    result[i] = sum;
   }
-}
-
-/**
- * Pre-allocated working arrays to avoid per-frame allocations.
- * These are module-level to ensure single allocation across component lifecycle.
- */
-interface WorkingArrays {
-  unitX: number[];
-  unitY: number[];
-  unitZ: number[];
-  origin: number[];
-  rotatedX: Float32Array;
-  rotatedY: Float32Array;
-  rotatedZ: Float32Array;
-  rotatedOrigin: Float32Array;
-}
-
-/**
- * Create pre-allocated working arrays for rotation calculations.
- * All arrays sized to MAX_DIMENSION to handle any dimension without reallocation.
- * @returns Pre-allocated working arrays for basis vector computations
- */
-function createWorkingArrays(): WorkingArrays {
-  return {
-    unitX: new Array(MAX_DIMENSION).fill(0),
-    unitY: new Array(MAX_DIMENSION).fill(0),
-    unitZ: new Array(MAX_DIMENSION).fill(0),
-    origin: new Array(MAX_DIMENSION).fill(0),
-    rotatedX: new Float32Array(MAX_DIMENSION),
-    rotatedY: new Float32Array(MAX_DIMENSION),
-    rotatedZ: new Float32Array(MAX_DIMENSION),
-    rotatedOrigin: new Float32Array(MAX_DIMENSION),
-  };
+  return result;
 }
 
 /**
@@ -77,7 +38,6 @@ function createWorkingArrays(): WorkingArrays {
  *
  * Supports full D-dimensional rotation through all rotation planes (XY, XZ, YZ, XW, YW, ZW, etc.)
  * The 3D slice plane is rotated through D-dimensional space using rotated basis vectors.
- * @returns Three.js mesh with raymarching shader
  */
 const HyperbulbMesh = () => {
   const meshRef = useRef<THREE.Mesh>(null);
@@ -87,15 +47,6 @@ const HyperbulbMesh = () => {
   const prevRotationsRef = useRef<RotationState['rotations'] | null>(null);
   const fastModeRef = useRef(false);
   const restoreQualityTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Pre-allocated working arrays to avoid per-frame allocations
-  const workingArraysRef = useRef<WorkingArrays>(createWorkingArrays());
-
-  // Cached rotation matrix and basis vectors - only recomputed when rotations/dimension/params change
-  const cachedRotationMatrixRef = useRef<MatrixND | null>(null);
-  const prevDimensionRef = useRef<number | null>(null);
-  const prevParamValuesRef = useRef<number[] | null>(null);
-  const basisVectorsDirtyRef = useRef(true);
 
   // Cleanup timeout on unmount to prevent memory leaks
   useEffect(() => {
@@ -138,7 +89,6 @@ const HyperbulbMesh = () => {
   // Enhanced lighting settings
   const specularColor = useVisualStore((state) => state.specularColor);
   const diffuseIntensity = useVisualStore((state) => state.diffuseIntensity);
-
 
   // Edges render mode controls fresnel rim lighting for Hyperbulb
   const edgesVisible = useVisualStore((state) => state.edgesVisible);
@@ -211,14 +161,13 @@ const HyperbulbMesh = () => {
 
   /**
    * Check if rotations have changed by comparing current vs previous state.
-   * Returns true if any rotation angle has changed, or if this is the first comparison.
+   * Returns true if any rotation angle has changed.
    */
   const hasRotationsChanged = useCallback((
     current: RotationState['rotations'],
     previous: RotationState['rotations'] | null
   ): boolean => {
-    // First frame or no previous state - consider it a change to ensure initial computation
-    if (!previous) return true;
+    if (!previous) return false;
 
     // Check if sizes differ
     if (current.size !== previous.size) return true;
@@ -324,79 +273,64 @@ const HyperbulbMesh = () => {
       if (material.uniforms.uLchChroma) material.uniforms.uLchChroma.value = lchChroma;
       if (material.uniforms.uMultiSourceWeights) material.uniforms.uMultiSourceWeights.value.set(multiSourceWeights.depth, multiSourceWeights.orbitTrap, multiSourceWeights.normal);
 
-      // ============================================
-      // Optimized D-dimensional Rotation & Basis Vectors
-      // Only recompute when rotations, dimension, or params change
-      // ============================================
+      // Build FULL D-dimensional rotation matrix
+      const rotationMatrix = composeRotations(dimension, rotations);
+
+      // Build basis vectors for the 3D slice in D-dimensional space
+      // Before rotation: X=[1,0,0,0,...], Y=[0,1,0,0,...], Z=[0,0,1,0,...]
+      // Origin = [0,0,0, slice[0], slice[1], ...]
       const D = dimension;
-      const work = workingArraysRef.current;
 
-      // Check if parameterValues changed (shallow array comparison)
-      const paramsChanged = !prevParamValuesRef.current ||
-        prevParamValuesRef.current.length !== parameterValues.length ||
-        parameterValues.some((v, i) => prevParamValuesRef.current![i] !== v);
+      // Create unrotated basis vectors
+      const unitX = new Array(D).fill(0);
+      unitX[0] = 1;
+      const unitY = new Array(D).fill(0);
+      unitY[1] = 1;
+      const unitZ = new Array(D).fill(0);
+      unitZ[2] = 1;
 
-      // Determine if we need to recompute basis vectors
-      const needsRecompute = rotationsChanged ||
-        dimension !== prevDimensionRef.current ||
-        paramsChanged ||
-        basisVectorsDirtyRef.current;
-
-      if (needsRecompute) {
-        // Compute rotation matrix only when needed
-        cachedRotationMatrixRef.current = composeRotations(dimension, rotations);
-
-        // Prepare unit vectors in pre-allocated arrays (no allocation)
-        // Clear and set up unitX = [1, 0, 0, ...]
-        for (let i = 0; i < MAX_DIMENSION; i++) work.unitX[i] = 0;
-        work.unitX[0] = 1;
-
-        // Clear and set up unitY = [0, 1, 0, ...]
-        for (let i = 0; i < MAX_DIMENSION; i++) work.unitY[i] = 0;
-        work.unitY[1] = 1;
-
-        // Clear and set up unitZ = [0, 0, 1, ...]
-        for (let i = 0; i < MAX_DIMENSION; i++) work.unitZ[i] = 0;
-        work.unitZ[2] = 1;
-
-        // Clear and set up origin = [0, 0, 0, slice[0], slice[1], ...]
-        for (let i = 0; i < MAX_DIMENSION; i++) work.origin[i] = 0;
-        for (let i = 3; i < D; i++) {
-          work.origin[i] = parameterValues[i - 3] ?? 0;
-        }
-
-        // Apply rotation to basis vectors using pre-allocated output arrays
-        applyRotationInPlace(cachedRotationMatrixRef.current, work.unitX, work.rotatedX);
-        applyRotationInPlace(cachedRotationMatrixRef.current, work.unitY, work.rotatedY);
-        applyRotationInPlace(cachedRotationMatrixRef.current, work.unitZ, work.rotatedZ);
-        applyRotationInPlace(cachedRotationMatrixRef.current, work.origin, work.rotatedOrigin);
-
-        // Update basis vector uniforms
-        if (material.uniforms.uBasisX) {
-          const arr = material.uniforms.uBasisX.value as Float32Array;
-          arr.set(work.rotatedX);
-        }
-        if (material.uniforms.uBasisY) {
-          const arr = material.uniforms.uBasisY.value as Float32Array;
-          arr.set(work.rotatedY);
-        }
-        if (material.uniforms.uBasisZ) {
-          const arr = material.uniforms.uBasisZ.value as Float32Array;
-          arr.set(work.rotatedZ);
-        }
-        if (material.uniforms.uOrigin) {
-          const arr = material.uniforms.uOrigin.value as Float32Array;
-          arr.set(work.rotatedOrigin);
-        }
-
-        // Update tracking refs
-        prevDimensionRef.current = dimension;
-        prevParamValuesRef.current = [...parameterValues];
-        basisVectorsDirtyRef.current = false;
+      // Create origin with slice values in dimensions 3+
+      const origin = new Array(D).fill(0);
+      for (let i = 3; i < D; i++) {
+        origin[i] = parameterValues[i - 3] ?? 0;
       }
 
-      // Model matrices are always identity for Hyperbulb - no need to set every frame
-      // (they are already identity from useMemo initialization)
+      // Apply D-dimensional rotation to get rotated basis vectors
+      const rotatedX = applyRotation(rotationMatrix, unitX);
+      const rotatedY = applyRotation(rotationMatrix, unitY);
+      const rotatedZ = applyRotation(rotationMatrix, unitZ);
+      const rotatedOrigin = applyRotation(rotationMatrix, origin);
+
+      // Update uniforms in place
+      if (material.uniforms.uBasisX) {
+        const arr = material.uniforms.uBasisX.value as Float32Array;
+        for (let i = 0; i < 11; i++) arr[i] = rotatedX[i] ?? 0;
+      }
+      if (material.uniforms.uBasisY) {
+        const arr = material.uniforms.uBasisY.value as Float32Array;
+        for (let i = 0; i < 11; i++) arr[i] = rotatedY[i] ?? 0;
+      }
+      if (material.uniforms.uBasisZ) {
+        const arr = material.uniforms.uBasisZ.value as Float32Array;
+        for (let i = 0; i < 11; i++) arr[i] = rotatedZ[i] ?? 0;
+      }
+      if (material.uniforms.uOrigin) {
+        const arr = material.uniforms.uOrigin.value as Float32Array;
+        for (let i = 0; i < 11; i++) arr[i] = rotatedOrigin[i] ?? 0;
+      }
+
+      // For Hyperbulb, the D-dimensional rotation is handled entirely by the basis vectors.
+      // We use identity for the 3D model matrix because:
+      // 1. The fractal rotation happens in D-dimensional space via uBasisX/Y/Z
+      // 2. Extracting a 3x3 from a D-dimensional rotation can produce singular matrices
+      //    (e.g., when XW rotation puts X axis into W dimension, the 3x3 has a zero row)
+      // 3. Using identity keeps camera/lighting in world space, which is correct
+      if (material.uniforms.uModelMatrix) {
+        material.uniforms.uModelMatrix.value.identity();
+      }
+      if (material.uniforms.uInverseModelMatrix) {
+        material.uniforms.uInverseModelMatrix.value.identity();
+      }
     }
   });
 
