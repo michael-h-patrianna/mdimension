@@ -59,12 +59,13 @@ export function computeCrossSection(
     // Check if edge crosses the slice plane
     if ((w1 <= sliceW && w2 >= sliceW) || (w1 >= sliceW && w2 <= sliceW)) {
       // Skip if both points are exactly on the plane (edge lies in plane)
-      if (Math.abs(w1 - sliceW) < 1e-10 && Math.abs(w2 - sliceW) < 1e-10) {
+      if (Math.abs(w1 - sliceW) < 1e-8 && Math.abs(w2 - sliceW) < 1e-8) {
         continue;
       }
 
       // Compute intersection point using linear interpolation
-      const t = Math.abs(w2 - w1) < 1e-10 ? 0 : (sliceW - w1) / (w2 - w1);
+      // Use 1e-8 epsilon to handle near-parallel edges with better floating-point tolerance
+      const t = Math.abs(w2 - w1) < 1e-8 ? 0 : (sliceW - w1) / (w2 - w1);
 
       // Clamp t to [0, 1] for numerical stability
       const tClamped = Math.max(0, Math.min(1, t));

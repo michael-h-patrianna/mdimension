@@ -287,10 +287,13 @@ vec3 getColorByAlgorithm(float t, vec3 normal, vec3 baseHSL, vec3 position) {
     return lchColor(distributedT, uLchLightness, uLchChroma);
   } else if (uColorAlgorithm == 6) {
     // Algorithm 6: Multi-source mapping
+    // Blends depth (t), orbitTrap (position-based), and normal contributions
     float totalWeight = uMultiSourceWeights.x + uMultiSourceWeights.y + uMultiSourceWeights.z;
     vec3 w = uMultiSourceWeights / max(totalWeight, 0.001);
     float normalValue = normal.y * 0.5 + 0.5;
-    float blendedT = w.x * t + w.y * t + w.z * normalValue;
+    // Use position-based orbit trap instead of duplicating t
+    float orbitTrap = clamp(length(position) / BOUND_R, 0.0, 1.0);
+    float blendedT = w.x * t + w.y * orbitTrap + w.z * normalValue;
     return getCosinePaletteColor(blendedT, uCosineA, uCosineB, uCosineC, uCosineD,
                                   uDistPower, uDistCycles, uDistOffset);
   } else if (uColorAlgorithm == 7) {
@@ -334,12 +337,15 @@ void fastPow8(float r, out float rPow, out float rPowMinus1) {
 }
 
 // Generic optimized power that uses fastPow8 when applicable
+// Returns r^pwr and r^(pwr-1) for derivative calculation
 void optimizedPow(float r, float pwr, out float rPow, out float rPowMinus1) {
     if (pwr == 8.0) {
         fastPow8(r, rPow, rPowMinus1);
     } else {
+        // Use direct exponentiation for stability
+        // pow(r, pwr-1.0) is more stable than rPow/r when r is small
         rPow = pow(r, pwr);
-        rPowMinus1 = rPow / max(r, EPS);
+        rPowMinus1 = pow(max(r, EPS), pwr - 1.0);
     }
 }
 

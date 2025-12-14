@@ -154,10 +154,15 @@ export const GLSL_ND_PROJECTION = `
         }
       }
 
-      float normFactor = dimension > 4 ? sqrt(float(dimension - 3)) : 1.0;
+      // Normalize depth by sqrt(dimension - 3) for dimensions > 4
+      // Use max(1.0, ...) to prevent sqrt of negative/zero values
+      float normFactor = dimension > 4 ? sqrt(max(1.0, float(dimension - 3))) : 1.0;
       effectiveDepth /= normFactor;
 
-      float factor = 1.0 / (projectionDistance - effectiveDepth);
+      // Add safety check for perspective denominator to prevent division by zero
+      // Clamp denominator to ensure we don't get infinite or negative factors
+      float denominator = projectionDistance - effectiveDepth;
+      float factor = 1.0 / max(denominator, 0.001);
       return rotated.xyz * factor;
     }
 `

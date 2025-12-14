@@ -26,6 +26,9 @@ export function generateCliffordTorusPoints(
 
   const { radius, resolutionU, resolutionV } = config;
   const points: VectorND[] = [];
+  // Classic Clifford torus: T² ⊂ S³ ⊂ ℝ⁴
+  // Each circular component has radius R/√2 so that |z₁|² + |z₂|² = R²
+  // This ensures the torus lies on S³ with radius R
   const factor = radius / Math.sqrt(2);
 
   for (let i = 0; i < resolutionU; i++) {

@@ -15,7 +15,13 @@ import {
   buildCliffordTorusGridFaces,
   buildGeneralizedCliffordTorusFaces,
   buildHopfTorus4DFaces,
+  buildTorus5DFaces,
+  buildTorus6DFaces,
+  buildTorus7DFaces,
   buildHopfTorus8DFaces,
+  buildTorus9DFaces,
+  buildTorus10DFaces,
+  buildTorus11DFaces,
 } from './extended/clifford-torus';
 
 /**
@@ -221,7 +227,8 @@ function to3D(v: number[]): VectorND {
  * Verifies that all four vertices lie in the same plane by checking
  * if the fourth vertex lies in the plane defined by the first three.
  *
- * Uses the scalar triple product: if (e1 × e2) · e3 ≈ 0, points are coplanar.
+ * For 3D: Uses the scalar triple product: if (e1 × e2) · e3 ≈ 0, points are coplanar.
+ * For N-D: Checks if e3 lies in the span of {e1, e2} using orthogonal projection.
  *
  * @param vertexIndices - Array of 4 vertex indices
  * @param vertices - Array of all vertex positions
@@ -238,10 +245,10 @@ function isCoplanarQuad(vertexIndices: number[], vertices: number[][]): boolean 
 
   if (!v0 || !v1 || !v2 || !v3) return false;
 
-  // Get the minimum dimension (handle both 3D and higher dimensions)
-  const dim = Math.min(v0.length, v1.length, v2.length, v3.length, 3);
+  // Get the minimum dimension across all vertices
+  const dim = Math.min(v0.length, v1.length, v2.length, v3.length);
 
-  // For 3D, use library functions for clarity
+  // For 3D, use library functions for clarity and efficiency
   if (dim === 3) {
     // Create edge vectors from v0 to other points (first 3 coords only)
     const p0 = to3D(v0);
@@ -256,8 +263,123 @@ function isCoplanarQuad(vertexIndices: number[], vertices: number[][]): boolean 
     return Math.abs(scalarTripleProduct) < 1e-6;
   }
 
-  // For higher dimensions, assume coplanar (simplified check)
-  return true;
+  // For N-D: Check if edge vectors e1, e2, e3 have rank ≤ 2
+  // (i.e., e3 lies in the span of {e1, e2})
+  // Uses Gram-Schmidt orthogonalization to project e3 onto span{e1, e2}
+  return isCoplanarND(v0, v1, v2, v3);
+}
+
+/**
+ * N-dimensional coplanarity check using Gram-Schmidt projection
+ *
+ * Four points are coplanar if the three edge vectors from v0 to v1, v2, v3
+ * span at most a 2D subspace. This is verified by:
+ * 1. Orthonormalizing e1, e2 to form basis {u1, u2}
+ * 2. Projecting e3 onto span{u1, u2}
+ * 3. Checking if the residual (orthogonal component) is near zero
+ *
+ * @param v0 - First vertex (reference point)
+ * @param v1 - Second vertex
+ * @param v2 - Third vertex
+ * @param v3 - Fourth vertex
+ * @returns True if all four points are coplanar
+ */
+function isCoplanarND(
+  v0: number[],
+  v1: number[],
+  v2: number[],
+  v3: number[]
+): boolean {
+  const dim = v0.length;
+  const epsilon = 1e-6;
+
+  // Compute edge vectors e1 = v1 - v0, e2 = v2 - v0, e3 = v3 - v0
+  const e1 = new Array(dim);
+  const e2 = new Array(dim);
+  const e3 = new Array(dim);
+
+  for (let i = 0; i < dim; i++) {
+    e1[i] = (v1[i] ?? 0) - (v0[i] ?? 0);
+    e2[i] = (v2[i] ?? 0) - (v0[i] ?? 0);
+    e3[i] = (v3[i] ?? 0) - (v0[i] ?? 0);
+  }
+
+  // Gram-Schmidt: orthonormalize e1, e2
+  // u1 = normalize(e1)
+  let norm1Sq = 0;
+  for (let i = 0; i < dim; i++) {
+    norm1Sq += e1[i] * e1[i];
+  }
+
+  // Degenerate case: e1 is zero vector
+  if (norm1Sq < epsilon * epsilon) {
+    return true; // Points v0, v1 coincide - trivially coplanar
+  }
+
+  const invNorm1 = 1 / Math.sqrt(norm1Sq);
+  const u1 = e1.map((x: number) => x * invNorm1);
+
+  // e2_perp = e2 - (e2 · u1) * u1
+  let e2DotU1 = 0;
+  for (let i = 0; i < dim; i++) {
+    e2DotU1 += e2[i] * u1[i];
+  }
+
+  const e2Perp = new Array(dim);
+  for (let i = 0; i < dim; i++) {
+    e2Perp[i] = e2[i] - e2DotU1 * u1[i];
+  }
+
+  // u2 = normalize(e2_perp)
+  let norm2Sq = 0;
+  for (let i = 0; i < dim; i++) {
+    norm2Sq += e2Perp[i] * e2Perp[i];
+  }
+
+  // If e2_perp is near zero, e1 and e2 are parallel (1D span)
+  // In this case, we need to check if e3 is also in the same direction
+  if (norm2Sq < epsilon * epsilon) {
+    // e1 and e2 are parallel; check if e3 is parallel to e1
+    // e3_perp = e3 - (e3 · u1) * u1
+    let e3DotU1 = 0;
+    for (let i = 0; i < dim; i++) {
+      e3DotU1 += e3[i] * u1[i];
+    }
+    let e3PerpNormSq = 0;
+    for (let i = 0; i < dim; i++) {
+      const comp = e3[i] - e3DotU1 * u1[i];
+      e3PerpNormSq += comp * comp;
+    }
+    // Coplanar if e3 is also in the 1D span (collinear)
+    return e3PerpNormSq < epsilon * epsilon * norm1Sq;
+  }
+
+  const invNorm2 = 1 / Math.sqrt(norm2Sq);
+  const u2 = e2Perp.map((x: number) => x * invNorm2);
+
+  // Project e3 onto span{u1, u2} and compute residual
+  // projection = (e3 · u1) * u1 + (e3 · u2) * u2
+  // residual = e3 - projection
+  let e3DotU1 = 0;
+  let e3DotU2 = 0;
+  for (let i = 0; i < dim; i++) {
+    e3DotU1 += e3[i] * u1[i];
+    e3DotU2 += e3[i] * u2[i];
+  }
+
+  // Compute ||e3 - projection||² = ||e3||² - (e3·u1)² - (e3·u2)²
+  let e3NormSq = 0;
+  for (let i = 0; i < dim; i++) {
+    e3NormSq += e3[i] * e3[i];
+  }
+
+  const residualSq = e3NormSq - e3DotU1 * e3DotU1 - e3DotU2 * e3DotU2;
+
+  // Points are coplanar if residual is small relative to edge lengths
+  // Use relative tolerance based on the maximum edge length
+  const maxEdgeLengthSq = Math.max(norm1Sq, norm2Sq, e3NormSq);
+
+  return residualSq < epsilon * epsilon * maxEdgeLengthSq;
 }
 
 /**
@@ -360,23 +482,43 @@ export function detectFaces(
 
     // First check for new visualization modes
     if (visualizationMode === 'nested') {
-      // Nested (Hopf) mode
+      // Nested mode - all dimensions use same 2D grid structure
       const dimension = props.intrinsicDimension as number;
-      if (dimension === 4) {
-        const resXi1 = props.resolutionXi1 as number;
-        const resXi2 = props.resolutionXi2 as number;
-        const torusCount = props.torusCount as number ?? 1;
-        // Generate faces for each nested torus
-        for (let t = 0; t < torusCount; t++) {
-          const offset = t * resXi1 * resXi2;
-          const torusFaces = buildHopfTorus4DFaces(resXi1, resXi2, offset);
-          faceIndices = faceIndices.concat(torusFaces);
+      const resXi1 = props.resolutionXi1 as number;
+      const resXi2 = props.resolutionXi2 as number;
+
+      switch (dimension) {
+        case 4: {
+          const torusCount = props.torusCount as number ?? 1;
+          // Generate faces for each nested torus
+          for (let t = 0; t < torusCount; t++) {
+            const offset = t * resXi1 * resXi2;
+            const torusFaces = buildHopfTorus4DFaces(resXi1, resXi2, offset);
+            faceIndices = faceIndices.concat(torusFaces);
+          }
+          break;
         }
-      } else if (dimension === 8) {
-        // 8D: Same 2D grid structure as 4D
-        const resXi1 = props.resolutionXi1 as number;
-        const resXi2 = props.resolutionXi2 as number;
-        faceIndices = buildHopfTorus8DFaces(resXi1, resXi2);
+        case 5:
+          faceIndices = buildTorus5DFaces(resXi1, resXi2);
+          break;
+        case 6:
+          faceIndices = buildTorus6DFaces(resXi1, resXi2);
+          break;
+        case 7:
+          faceIndices = buildTorus7DFaces(resXi1, resXi2);
+          break;
+        case 8:
+          faceIndices = buildHopfTorus8DFaces(resXi1, resXi2);
+          break;
+        case 9:
+          faceIndices = buildTorus9DFaces(resXi1, resXi2);
+          break;
+        case 10:
+          faceIndices = buildTorus10DFaces(resXi1, resXi2);
+          break;
+        case 11:
+          faceIndices = buildTorus11DFaces(resXi1, resXi2);
+          break;
       }
     } else {
       // Flat mode or legacy mode - check internal mode

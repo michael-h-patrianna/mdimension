@@ -238,6 +238,7 @@ function createEdgeMaterial(edgeColor: string, opacity: number): ShaderMaterial 
     fragmentShader: buildEdgeFragmentShader(),
     transparent: opacity < 1,
     depthWrite: opacity >= 1,
+    glslVersion: THREE.GLSL3,
   });
 }
 

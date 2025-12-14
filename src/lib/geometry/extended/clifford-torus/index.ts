@@ -3,7 +3,7 @@
  *
  * Exports logic for generating Clifford tori with two visualization modes:
  * - Flat (2D-11D): Grid-like, independent circles (classic/generalized)
- * - Nested (4D, 8D): Hopf fibration with coupled angles
+ * - Nested (4D-11D): Coupled tori with Hopf-like structure
  *
  * @see docs/prd/clifford-torus-modes.md
  */
@@ -12,7 +12,16 @@ import type { NdGeometry } from '../../types';
 import type { CliffordTorusConfig } from '../types';
 import { generateClassicCliffordTorus } from './classic';
 import { generateGeneralizedCliffordTorus } from './generalized';
-import { generateNestedHopfTorus4D, generateNestedHopfTorus8D } from './nested';
+import {
+  generateNestedHopfTorus4D,
+  generateNestedTorus5D,
+  generateNestedTorus6D,
+  generateNestedTorus7D,
+  generateNestedHopfTorus8D,
+  generateNestedTorus9D,
+  generateNestedTorus10D,
+  generateNestedTorus11D,
+} from './nested';
 import { generateTorus3D } from './torus3d';
 
 // Re-export specific generators and helpers - Flat mode (classic)
@@ -39,16 +48,48 @@ export {
   buildTorus3DGridFaces,
 } from './torus3d';
 
-// Re-export - Nested (Hopf) mode
+// Re-export - Nested mode (4D-11D)
 export {
+  // 4D Hopf
   generateNestedHopfTorus4D,
-  generateNestedHopfTorus8D,
   generateHopfTorus4DPoints,
   buildHopfTorus4DEdges,
   buildHopfTorus4DFaces,
+  // 5D twisted 2-torus
+  generateNestedTorus5D,
+  generateTorus5DPoints,
+  buildTorus5DEdges,
+  buildTorus5DFaces,
+  // 6D 3-torus
+  generateNestedTorus6D,
+  generateTorus6DPoints,
+  buildTorus6DEdges,
+  buildTorus6DFaces,
+  // 7D twisted 3-torus
+  generateNestedTorus7D,
+  generateTorus7DPoints,
+  buildTorus7DEdges,
+  buildTorus7DFaces,
+  // 8D Hopf
+  generateNestedHopfTorus8D,
   generateHopfTorus8DPoints,
   buildHopfTorus8DEdges,
   buildHopfTorus8DFaces,
+  // 9D twisted 4-torus
+  generateNestedTorus9D,
+  generateTorus9DPoints,
+  buildTorus9DEdges,
+  buildTorus9DFaces,
+  // 10D 5-torus
+  generateNestedTorus10D,
+  generateTorus10DPoints,
+  buildTorus10DEdges,
+  buildTorus10DFaces,
+  // 11D twisted 5-torus
+  generateNestedTorus11D,
+  generateTorus11DPoints,
+  buildTorus11DEdges,
+  buildTorus11DFaces,
 } from './nested';
 
 // Re-export - Verification utilities
@@ -74,9 +115,15 @@ export {
  *   - 4D: Classic Clifford torus (T² ⊂ S³)
  *   - 5D+: Generalized k-torus (Tᵏ ⊂ S^(2k-1))
  *
- * - **Nested (Hopf) mode** (4D, 8D only):
+ * - **Nested mode** (4D-11D):
  *   - 4D: Hopf fibration torus (S³ → S²)
+ *   - 5D: Twisted 2-torus (T² + helix)
+ *   - 6D: 3-torus (T³) with coupled angles
+ *   - 7D: Twisted 3-torus (T³ + helix)
  *   - 8D: Quaternionic Hopf torus (S⁷ → S⁴)
+ *   - 9D: Twisted 4-torus (T⁴ + helix)
+ *   - 10D: 5-torus (T⁵) with coupled angles
+ *   - 11D: Twisted 5-torus (T⁵ + helix)
  *
  * @param dimension - Dimensionality of the ambient space (2-11)
  * @param config - Clifford torus configuration
@@ -157,31 +204,49 @@ function generateFlatTorus(
 }
 
 /**
- * Generates a Nested (Hopf) mode torus
+ * Generates a Nested mode torus
  *
- * Only valid for 4D (S³ → S²) and 8D (S⁷ → S⁴) Hopf fibrations.
+ * Valid for all dimensions 4-11:
+ * - 4D: Hopf fibration (S³ → S²)
+ * - 5D: Twisted 2-torus (T² + helix)
+ * - 6D: 3-torus (T³) with coupled angles
+ * - 7D: Twisted 3-torus (T³ + helix)
+ * - 8D: Quaternionic Hopf (S⁷ → S⁴)
+ * - 9D: Twisted 4-torus (T⁴ + helix)
+ * - 10D: 5-torus (T⁵) with coupled angles
+ * - 11D: Twisted 5-torus (T⁵ + helix)
  *
- * @param dimension - Ambient dimension (must be 4 or 8)
+ * @param dimension - Ambient dimension (must be 4-11)
  * @param config - Configuration
  * @returns NdGeometry
- * @throws {Error} If dimension is not 4 or 8
+ * @throws {Error} If dimension is not 4-11
  */
 function generateNestedTorus(
   dimension: number,
   config: CliffordTorusConfig
 ): NdGeometry {
-  if (dimension === 4) {
-    return generateNestedHopfTorus4D(config);
+  switch (dimension) {
+    case 4:
+      return generateNestedHopfTorus4D(config);
+    case 5:
+      return generateNestedTorus5D(config);
+    case 6:
+      return generateNestedTorus6D(config);
+    case 7:
+      return generateNestedTorus7D(config);
+    case 8:
+      return generateNestedHopfTorus8D(config);
+    case 9:
+      return generateNestedTorus9D(config);
+    case 10:
+      return generateNestedTorus10D(config);
+    case 11:
+      return generateNestedTorus11D(config);
+    default:
+      throw new Error(
+        `Nested mode requires dimension 4-11, got ${dimension}.`
+      );
   }
-
-  if (dimension === 8) {
-    return generateNestedHopfTorus8D(config);
-  }
-
-  throw new Error(
-    `Nested (Hopf) mode requires dimension 4 or 8, got ${dimension}. ` +
-    'Hopf fibrations only exist for S³ → S² (4D) and S⁷ → S⁴ (8D).'
-  );
 }
 
 /**
@@ -200,7 +265,8 @@ export function isVisualizationModeAvailable(
       return dimension >= 2 && dimension <= 11;
 
     case 'nested':
-      return dimension === 4 || dimension === 8;
+      // All dimensions 4-11 supported
+      return dimension >= 4 && dimension <= 11;
 
     default:
       return false;
@@ -227,7 +293,7 @@ export function getVisualizationModeUnavailableReason(
       return 'Flat mode requires dimension 2-11';
 
     case 'nested':
-      return 'Hopf fibration requires 4D or 8D';
+      return 'Nested mode requires dimension 4-11';
 
     default:
       return 'Unknown mode';

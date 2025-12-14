@@ -572,16 +572,17 @@ export const PostProcessing = memo(function PostProcessing() {
       // Depth-only pass - disable color writes for performance
       const glContext = gl.getContext();
       glContext.colorMask(false, false, false, false);
-      gl.render(scene, camera);
-      glContext.colorMask(true, true, true, true);
-
-      // Restore original depthWrite settings
-      savedDepthWriteForObjectPass.forEach((value, mat) => {
-        mat.depthWrite = value;
-      });
-
-      // Restore camera layers
-      camera.layers.mask = savedCameraLayers;
+      try {
+        gl.render(scene, camera);
+      } finally {
+        // Restore colorMask and depthWrite even if render throws
+        glContext.colorMask(true, true, true, true);
+        savedDepthWriteForObjectPass.forEach((value, mat) => {
+          mat.depthWrite = value;
+        });
+        // Restore camera layers
+        camera.layers.mask = savedCameraLayers;
+      }
     }
 
     // Render full scene to capture color and depth
@@ -606,18 +607,18 @@ export const PostProcessing = memo(function PostProcessing() {
       }
     });
 
-    gl.render(scene, camera);
-
-    // Restore original depthWrite settings
-    savedDepthWrite.forEach((value, mat) => {
-      mat.depthWrite = value;
-    });
-
-    gl.setRenderTarget(null);
-
-    // Restore renderer state
-    gl.autoClear = currentAutoClear;
-    gl.setClearColor(currentClearColor, currentClearAlpha);
+    try {
+      gl.render(scene, camera);
+    } finally {
+      // Restore original depthWrite settings even if render throws
+      savedDepthWrite.forEach((value, mat) => {
+        mat.depthWrite = value;
+      });
+      gl.setRenderTarget(null);
+      // Restore renderer state
+      gl.autoClear = currentAutoClear;
+      gl.setClearColor(currentClearColor, currentClearAlpha);
+    }
 
     // Use object-only depth for all effects (excludes walls, gizmos)
     // Only available when renderObjectDepth is true (effects are enabled)

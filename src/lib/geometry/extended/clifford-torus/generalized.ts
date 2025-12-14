@@ -50,10 +50,16 @@ export function generateGeneralizedCliffordTorusPoints(
   if (2 * k > n) {
     throw new Error(`Generalized Clifford torus with k=${k} requires n >= ${2 * k}, but n=${n}`);
   }
+  // For k=1 (1-torus = circle), we need at least 2 dimensions for embedding
+  if (k === 1 && n < 2) {
+    throw new Error('1-torus (circle) requires dimension >= 2');
+  }
 
   const points: VectorND[] = [];
-  const baseRadius = 1 / Math.sqrt(k); // Each |zₘ| = 1/√k
-  const R = baseRadius * radiusScale; // Optional global scale
+  // Each |zₘ| = 1/√k is the constraint for Tᵏ ⊂ S^(2k-1)
+  // The radiusScale parameter uniformly scales the entire torus
+  // R is the effective radius for each circular component: R/√k per component
+  const R = radiusScale / Math.sqrt(k);
 
   /**
    * Recursively builds the k-dimensional grid over angles θ₁...θₖ
@@ -255,7 +261,8 @@ export function generateGeneralizedCliffordTorus(
     isPointCloud: edgeMode === 'none' || !hasFaces,
     metadata: {
       name: `Generalized Clifford T${superscript(k)} (${k}-torus on S${superscript(2 * k - 1)})`,
-      formula: `∑|zₘ|² = ${(radius * radius).toFixed(2)}, |zₘ| = ${(radius / Math.sqrt(k)).toFixed(3)}`,
+      // Each |zₘ| = radius/√k, so ∑|zₘ|² = k × (radius/√k)² = radius²
+      formula: `each |zₘ| = ${(radius / Math.sqrt(k)).toFixed(3)}, ∑|zₘ|² = ${(radius * radius).toFixed(2)}`,
       properties: {
         mode: 'generalized',
         radius,

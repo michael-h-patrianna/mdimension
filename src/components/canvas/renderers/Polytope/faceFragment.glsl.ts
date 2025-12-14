@@ -190,8 +190,9 @@ export function buildFaceFragmentShader(): string {
     // Multi-Source Color Mapping
     // ============================================================
 
+    // Blends depth, orbitTrap (position-based), and normal contributions
     vec3 getMultiSourceColor(float depth, float orbitTrap, vec3 normal) {
-      vec3 w = uMultiSourceWeights / (uMultiSourceWeights.x + uMultiSourceWeights.y + uMultiSourceWeights.z);
+      vec3 w = uMultiSourceWeights / max(uMultiSourceWeights.x + uMultiSourceWeights.y + uMultiSourceWeights.z, 0.001);
       float normalFactor = dot(normal, vec3(0.0, 1.0, 0.0)) * 0.5 + 0.5;
       float t = w.x * depth + w.y * orbitTrap + w.z * normalFactor;
       return getCosinePaletteColor(t);
@@ -225,8 +226,10 @@ export function buildFaceFragmentShader(): string {
         float distributedT = applyDistribution(t, uDistPower, uDistCycles, uDistOffset);
         return lchColor(distributedT, uLchLightness, uLchChroma);
       } else if (uColorAlgorithm == 6) {
-        // Multi-source mapping (uses depth and normal)
-        return getMultiSourceColor(t, t, normal);
+        // Multi-source mapping (uses depth, position-based trap, and normal)
+        // For polytope faces, compute orbitTrap from world position
+        float orbitTrap = length(vWorldPosition) * 0.25; // Scale to ~0-1 range
+        return getMultiSourceColor(t, orbitTrap, normal);
       }
       return getCosinePaletteColor(t);
     }

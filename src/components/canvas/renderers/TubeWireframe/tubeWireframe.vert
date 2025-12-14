@@ -73,9 +73,12 @@ vec3 transformNDPoint(vec3 pos, vec4 extraA, vec4 extraB) {
         effectiveDepth += uDepthRowSums[j] * scaledInputs[j];
       }
     }
-    float normFactor = uDimension > 4 ? sqrt(float(uDimension - 3)) : 1.0;
+    // Use max(1.0, ...) to prevent sqrt of negative/zero values
+    float normFactor = uDimension > 4 ? sqrt(max(1.0, float(uDimension - 3))) : 1.0;
     effectiveDepth /= normFactor;
-    float factor = 1.0 / (uProjectionDistance - effectiveDepth);
+    // Add safety check for perspective denominator
+    float denominator = uProjectionDistance - effectiveDepth;
+    float factor = 1.0 / max(denominator, 0.0001);
     projected = rotated.xyz * factor;
   }
 
@@ -100,9 +103,20 @@ void main() {
   }
 
   // Build orthonormal basis for tube orientation
-  // Find a vector not parallel to tubeDir
+  // Find a vector not parallel to tubeDir using robust selection
+  // Check if tubeDir is nearly parallel to the default up vector (0,1,0)
+  // If so, use (1,0,0) instead to ensure a valid cross product
   vec3 up = abs(tubeDir.y) < 0.99 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
-  vec3 tangent = normalize(cross(up, tubeDir));
+  vec3 tangent = cross(up, tubeDir);
+  // Guard against degenerate cross product (can happen if tubeDir is very close to up)
+  float tangentLen = length(tangent);
+  if (tangentLen < 0.0001) {
+    // Fallback: use a different up vector
+    up = vec3(0.0, 0.0, 1.0);
+    tangent = cross(up, tubeDir);
+    tangentLen = length(tangent);
+  }
+  tangent = tangent / max(tangentLen, 0.0001);
   vec3 bitangent = cross(tubeDir, tangent);
 
   // CylinderGeometry has Y as the axis, centered at origin, height 1

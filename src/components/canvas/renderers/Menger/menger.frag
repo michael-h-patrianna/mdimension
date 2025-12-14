@@ -250,10 +250,15 @@ vec3 getColorByAlgorithm(float t, vec3 normal, vec3 baseHSL, vec3 position) {
     float distributedT = applyDistribution(t, uDistPower, uDistCycles, uDistOffset);
     return lchColor(distributedT, uLchLightness, uLchChroma);
   } else if (uColorAlgorithm == 6) {
+    // Multi-source color blending: depth (t), orbitTrap, and normal
+    // Note: For raymarched fractals, orbitTrap comes from the SDF calculation
+    // Here we use trap value passed via the 't' parameter as depth proxy
     float totalWeight = uMultiSourceWeights.x + uMultiSourceWeights.y + uMultiSourceWeights.z;
     vec3 w = uMultiSourceWeights / max(totalWeight, 0.001);
     float normalValue = normal.y * 0.5 + 0.5;
-    float blendedT = w.x * t + w.y * t + w.z * normalValue;
+    // w.x = depth weight, w.y = orbitTrap weight (use position-based trap), w.z = normal weight
+    float orbitTrap = clamp(length(position) / BOUND_R, 0.0, 1.0);
+    float blendedT = w.x * t + w.y * orbitTrap + w.z * normalValue;
     return getCosinePaletteColor(blendedT, uCosineA, uCosineB, uCosineC, uCosineD,
                                   uDistPower, uDistCycles, uDistOffset);
   } else if (uColorAlgorithm == 7) {

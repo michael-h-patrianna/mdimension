@@ -174,8 +174,8 @@ function CliffordTorusSettings() {
   // Note: 8D now uses the same controls as 4D (resolutionXi1, resolutionXi2, eta)
   // The old fiberResolution/baseResolution are no longer used
 
-  // Mode availability
-  const nestedAvailable = dimension === 4 || dimension === 8;
+  // Mode availability: All dimensions 4-11 support nested mode
+  const nestedAvailable = dimension >= 4 && dimension <= 11;
 
   // Auto-switch mode when dimension changes
   React.useEffect(() => {
@@ -195,7 +195,7 @@ function CliffordTorusSettings() {
     { value: 'flat', label: 'Flat' },
     {
       value: 'nested',
-      label: nestedAvailable ? 'Nested (Hopf)' : 'Nested (Hopf) - 4D/8D only',
+      label: nestedAvailable ? 'Nested' : 'Nested - 4D+ only',
       disabled: !nestedAvailable,
     },
   ], [nestedAvailable]);
@@ -227,8 +227,8 @@ function CliffordTorusSettings() {
         }
         return Math.pow(config.stepsPerCircle, Math.min(config.k, maxK));
       case 'nested':
-        // Both 4D and 8D now use the same 2D surface structure
-        if (dimension === 4 || dimension === 8) {
+        // All dimensions 4-11 use the same 2D surface structure
+        if (dimension >= 4 && dimension <= 11) {
           const base = config.resolutionXi1 * config.resolutionXi2;
           return config.showNestedTori && dimension === 4 ? base * config.numberOfTori : base;
         }
@@ -266,8 +266,26 @@ function CliffordTorusSettings() {
         {config.visualizationMode === 'nested' && dimension === 4 && (
           <span>Hopf fibration: linked circles on S³</span>
         )}
+        {config.visualizationMode === 'nested' && dimension === 5 && (
+          <span>Twisted 2-torus: T² + helix</span>
+        )}
+        {config.visualizationMode === 'nested' && dimension === 6 && (
+          <span>3-torus (T³): three coupled circles</span>
+        )}
+        {config.visualizationMode === 'nested' && dimension === 7 && (
+          <span>Twisted 3-torus: T³ + helix</span>
+        )}
         {config.visualizationMode === 'nested' && dimension === 8 && (
           <span>Quaternionic Hopf: S³ fibers over S⁴</span>
+        )}
+        {config.visualizationMode === 'nested' && dimension === 9 && (
+          <span>Twisted 4-torus: T⁴ + helix</span>
+        )}
+        {config.visualizationMode === 'nested' && dimension === 10 && (
+          <span>5-torus (T⁵): five coupled circles</span>
+        )}
+        {config.visualizationMode === 'nested' && dimension === 11 && (
+          <span>Twisted 5-torus: T⁵ + helix</span>
         )}
       </div>
 
@@ -398,6 +416,53 @@ function CliffordTorusSettings() {
         </>
       )}
 
+      {/* ===== NESTED MODE SETTINGS - 6D (3-Torus) ===== */}
+      {/* Uses the same 2D surface controls as 4D/8D (resolutionXi1/Xi2, eta) */}
+      {config.visualizationMode === 'nested' && dimension === 6 && (
+        <>
+          <Slider
+            label="Radius"
+            min={0.5}
+            max={6.0}
+            step={0.1}
+            value={config.radius}
+            onChange={setRadius}
+            onReset={() => setRadius(DEFAULT_CLIFFORD_TORUS_CONFIG.radius)}
+            showValue
+          />
+          <Slider
+            label={`Circle Balance (η = ${(config.eta / Math.PI).toFixed(2)}π)`}
+            min={Math.PI / 64}
+            max={Math.PI / 2 - Math.PI / 64}
+            step={0.01}
+            value={config.eta}
+            onChange={setEta}
+            onReset={() => setEta(DEFAULT_CLIFFORD_TORUS_CONFIG.eta)}
+            showValue={false}
+          />
+          <Slider
+            label="Resolution ξ₁"
+            min={8}
+            max={64}
+            step={4}
+            value={config.resolutionXi1}
+            onChange={setResolutionXi1}
+            onReset={() => setResolutionXi1(DEFAULT_CLIFFORD_TORUS_CONFIG.resolutionXi1)}
+            showValue
+          />
+          <Slider
+            label="Resolution ξ₂"
+            min={8}
+            max={64}
+            step={4}
+            value={config.resolutionXi2}
+            onChange={setResolutionXi2}
+            onReset={() => setResolutionXi2(DEFAULT_CLIFFORD_TORUS_CONFIG.resolutionXi2)}
+            showValue
+          />
+        </>
+      )}
+
       {/* ===== NESTED (HOPF) MODE SETTINGS - 8D ===== */}
       {/* Uses the same 2D surface controls as 4D (resolutionXi1/Xi2, eta) */}
       {config.visualizationMode === 'nested' && dimension === 8 && (
@@ -445,7 +510,54 @@ function CliffordTorusSettings() {
         </>
       )}
 
-      {/* Point count and warnings (same for both 4D and 8D now) */}
+      {/* ===== NESTED MODE SETTINGS - 5D, 7D, 9D, 10D, 11D ===== */}
+      {/* All these dimensions use the same 2D surface controls */}
+      {config.visualizationMode === 'nested' && [5, 7, 9, 10, 11].includes(dimension) && (
+        <>
+          <Slider
+            label="Radius"
+            min={0.5}
+            max={6.0}
+            step={0.1}
+            value={config.radius}
+            onChange={setRadius}
+            onReset={() => setRadius(DEFAULT_CLIFFORD_TORUS_CONFIG.radius)}
+            showValue
+          />
+          <Slider
+            label={`Circle Balance (η = ${(config.eta / Math.PI).toFixed(2)}π)`}
+            min={Math.PI / 64}
+            max={Math.PI / 2 - Math.PI / 64}
+            step={0.01}
+            value={config.eta}
+            onChange={setEta}
+            onReset={() => setEta(DEFAULT_CLIFFORD_TORUS_CONFIG.eta)}
+            showValue={false}
+          />
+          <Slider
+            label="Resolution ξ₁"
+            min={8}
+            max={64}
+            step={4}
+            value={config.resolutionXi1}
+            onChange={setResolutionXi1}
+            onReset={() => setResolutionXi1(DEFAULT_CLIFFORD_TORUS_CONFIG.resolutionXi1)}
+            showValue
+          />
+          <Slider
+            label="Resolution ξ₂"
+            min={8}
+            max={64}
+            step={4}
+            value={config.resolutionXi2}
+            onChange={setResolutionXi2}
+            onReset={() => setResolutionXi2(DEFAULT_CLIFFORD_TORUS_CONFIG.resolutionXi2)}
+            showValue
+          />
+        </>
+      )}
+
+      {/* Point count and warnings */}
       <p className="text-xs text-text-secondary">
         {pointCount.toLocaleString()} points
         {config.visualizationMode === 'nested' && (

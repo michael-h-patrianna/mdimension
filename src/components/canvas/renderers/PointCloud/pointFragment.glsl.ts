@@ -156,6 +156,7 @@ export function buildPointFragmentShader(): string {
     }
 
     // Algorithm 6: Multi-Source blending
+    // Blends depth, orbitTrap, and normal-based contributions
     vec3 getMultiSourceColor(float depth, float orbitTrap, vec3 normal) {
       vec3 w = uMultiSourceWeights / max(uMultiSourceWeights.x + uMultiSourceWeights.y + uMultiSourceWeights.z, ${SHADER_EPSILON});
       float normalFactor = dot(normal, vec3(0.0, 1.0, 0.0)) * 0.5 + 0.5;
@@ -190,8 +191,10 @@ export function buildPointFragmentShader(): string {
         float distributedT = applyDistribution(t, uDistPower, uDistCycles, uDistOffset);
         return lchColor(distributedT, uLchLightness, uLchChroma);
       } else if (uColorAlgorithm == 6) {
-        // Multi-source mapping (uses depth and normal)
-        return getMultiSourceColor(t, t, normal);
+        // Multi-source mapping (uses depth, position-based trap, and normal)
+        // For point clouds, we compute a position-based orbitTrap from world position
+        float orbitTrap = length(vWorldPosition) * 0.25; // Scale to ~0-1 range
+        return getMultiSourceColor(t, orbitTrap, normal);
       } else {
         // 7=radial, default to cosine
         float distributedT = applyDistribution(t, uDistPower, uDistCycles, uDistOffset);
