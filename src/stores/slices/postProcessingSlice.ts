@@ -229,7 +229,7 @@ export const createPostProcessingSlice: StateCreator<
   },
 
   setSSRThickness: (thickness: number) => {
-    set({ ssrThickness: Math.max(0.01, Math.min(1, thickness)) })
+    set({ ssrThickness: Math.max(0.01, Math.min(2, thickness)) })
   },
 
   setSSRFadeStart: (start: number) => {

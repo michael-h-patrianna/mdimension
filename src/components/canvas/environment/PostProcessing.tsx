@@ -26,6 +26,7 @@ import { useVisualStore, SSR_QUALITY_STEPS, type SSRQuality } from '@/stores/vis
 import { TONE_MAPPING_TO_THREE } from '@/lib/shaders/types';
 import { SSRShader, type SSRUniforms } from '@/lib/shaders/postprocessing/SSRShader';
 import { RefractionShader, type RefractionUniforms } from '@/lib/shaders/postprocessing/RefractionShader';
+import { RENDER_LAYERS, needsObjectOnlyDepth } from '@/lib/rendering/layers';
 
 /**
  * Type for bokeh shader uniforms
@@ -244,9 +245,9 @@ const CustomBokehShader = {
         return;
       }
 
-      // Debug mode 2: show linear depth normalized to focus distance
+      // Debug mode 2: show linear depth normalized to camera range (near=black, far=white)
       if (debugMode > 1.5 && debugMode < 2.5) {
-        float normalized = viewZ / (focus * 2.0);
+        float normalized = (viewZ - nearClip) / (farClip - nearClip);
         gl_FragColor = vec4(vec3(clamp(normalized, 0.0, 1.0)), 1.0);
         return;
       }
@@ -288,8 +289,9 @@ const CustomBokehShader = {
   `,
 };
 
-/** Raycaster for auto-focus depth detection */
+/** Raycaster for auto-focus depth detection - only targets main object layer */
 const autoFocusRaycaster = new THREE.Raycaster();
+autoFocusRaycaster.layers.set(RENDER_LAYERS.MAIN_OBJECT);
 const screenCenter = new THREE.Vector2(0, 0);
 /** Reusable Color object for getClearColor (avoid per-frame allocation) */
 const tempClearColor = new THREE.Color();
@@ -307,6 +309,7 @@ export const PostProcessing = memo(function PostProcessing() {
     bloomThreshold,
     bloomRadius,
     bokehEnabled,
+    showDepthBuffer,
     ssrEnabled,
     refractionEnabled,
     toneMappingEnabled,
@@ -319,6 +322,7 @@ export const PostProcessing = memo(function PostProcessing() {
       bloomThreshold: state.bloomThreshold,
       bloomRadius: state.bloomRadius,
       bokehEnabled: state.bokehEnabled,
+      showDepthBuffer: state.showDepthBuffer,
       ssrEnabled: state.ssrEnabled,
       refractionEnabled: state.refractionEnabled,
       toneMappingEnabled: state.toneMappingEnabled,
@@ -350,8 +354,8 @@ export const PostProcessing = memo(function PostProcessing() {
   // Create render target for scene with depth texture
   // Using a single render target instead of MRT for compatibility with Three.js built-in materials
   // SSR/refraction use depth-based normal reconstruction as fallback
-  const { composer, bloomPass, bokehPass, ssrPass, refractionPass, sceneTarget, texturePass } = useMemo(() => {
-    // Create single render target with depth texture
+  const { composer, bloomPass, bokehPass, ssrPass, refractionPass, sceneTarget, objectDepthTarget, texturePass } = useMemo(() => {
+    // Create single render target with depth texture (full scene)
     const renderTarget = new THREE.WebGLRenderTarget(size.width, size.height, {
       minFilter: THREE.NearestFilter,
       magFilter: THREE.NearestFilter,
@@ -361,14 +365,27 @@ export const PostProcessing = memo(function PostProcessing() {
     });
 
     renderTarget.texture.name = 'SceneColor';
+    // Mark texture as containing linear color data (our shaders output linear values)
+    // OutputPass will handle the linear-to-sRGB conversion for display
+    renderTarget.texture.colorSpace = THREE.LinearSRGBColorSpace;
+    // Note: depthBuffer is enabled by default for z-testing, but we don't need
+    // a DepthTexture here since all effects use object-only depth
 
-    // Create and attach depth texture
-    const depthTex = new THREE.DepthTexture(size.width, size.height);
-    depthTex.format = THREE.DepthFormat;
-    depthTex.type = THREE.UnsignedShortType;
-    depthTex.minFilter = THREE.NearestFilter;
-    depthTex.magFilter = THREE.NearestFilter;
-    renderTarget.depthTexture = depthTex;
+    // Create object-only depth target for SSR/refraction/bokeh
+    // This excludes environment objects (walls, gizmos) from depth-based effects
+    const objectDepth = new THREE.WebGLRenderTarget(size.width, size.height, {
+      minFilter: THREE.NearestFilter,
+      magFilter: THREE.NearestFilter,
+      depthBuffer: true,
+      stencilBuffer: false,
+    });
+    objectDepth.texture.name = 'ObjectDepthColor';
+    const objectDepthTex = new THREE.DepthTexture(size.width, size.height);
+    objectDepthTex.format = THREE.DepthFormat;
+    objectDepthTex.type = THREE.UnsignedShortType;
+    objectDepthTex.minFilter = THREE.NearestFilter;
+    objectDepthTex.magFilter = THREE.NearestFilter;
+    objectDepth.depthTexture = objectDepthTex;
 
     // Create composer - we'll manually render scene to target, then use TexturePass
     const effectComposer = new EffectComposer(gl);
@@ -412,6 +429,7 @@ export const PostProcessing = memo(function PostProcessing() {
       ssrPass: ssr,
       refractionPass: refraction,
       sceneTarget: renderTarget,
+      objectDepthTarget: objectDepth,
       texturePass: texPass,
     };
   }, [gl, size.width, size.height]);
@@ -426,10 +444,10 @@ export const PostProcessing = memo(function PostProcessing() {
     }
   }, [bloomPass, bloomEnabled, bloomIntensity, bloomThreshold, bloomRadius]);
 
-  // Update bokeh enabled state
+  // Update bokeh enabled state (also enabled when showing depth buffer)
   useEffect(() => {
-    bokehPass.enabled = bokehEnabled;
-  }, [bokehPass, bokehEnabled]);
+    bokehPass.enabled = bokehEnabled || showDepthBuffer;
+  }, [bokehPass, bokehEnabled, showDepthBuffer]);
 
   // Update SSR enabled state
   useEffect(() => {
@@ -446,6 +464,7 @@ export const PostProcessing = memo(function PostProcessing() {
     composer.setSize(size.width, size.height);
     bloomPass.resolution.set(size.width, size.height);
     sceneTarget.setSize(size.width, size.height);
+    objectDepthTarget.setSize(size.width, size.height);
 
     // Update texture pass with new texture reference after resize (color buffer)
     texturePass.map = sceneTarget.texture;
@@ -460,15 +479,16 @@ export const PostProcessing = memo(function PostProcessing() {
     // Update refraction uniforms
     const refractionUniforms = refractionPass.uniforms as unknown as RefractionUniforms;
     refractionUniforms.resolution.value.set(size.width, size.height);
-  }, [composer, bloomPass, bokehPass, ssrPass, refractionPass, sceneTarget, texturePass, size.width, size.height]);
+  }, [composer, bloomPass, bokehPass, ssrPass, refractionPass, sceneTarget, objectDepthTarget, texturePass, size.width, size.height]);
 
   // Cleanup on unmount only
   useEffect(() => {
     return () => {
       composer.dispose();
       sceneTarget.dispose();
+      objectDepthTarget.dispose();
     };
-  }, [composer, sceneTarget]);
+  }, [composer, sceneTarget, objectDepthTarget]);
 
   // Render
   useFrame((_, delta) => {
@@ -476,12 +496,16 @@ export const PostProcessing = memo(function PostProcessing() {
     const state = useVisualStore.getState();
     const currentBloomEnabled = state.bloomEnabled;
     const currentBokehEnabled = state.bokehEnabled;
+    const currentShowDepthBuffer = state.showDepthBuffer;
     const currentSSREnabled = state.ssrEnabled;
     const currentRefractionEnabled = state.refractionEnabled;
 
+    // Bokeh pass also runs when showing depth buffer (uses same shader)
+    const bokehOrDepthEnabled = currentBokehEnabled || currentShowDepthBuffer;
+
     // Update pass enabled states every frame to ensure sync
     bloomPass.enabled = currentBloomEnabled;
-    bokehPass.enabled = currentBokehEnabled;
+    bokehPass.enabled = bokehOrDepthEnabled;
     ssrPass.enabled = currentSSREnabled;
     refractionPass.enabled = currentRefractionEnabled;
 
@@ -493,7 +517,60 @@ export const PostProcessing = memo(function PostProcessing() {
     const currentClearColor = gl.getClearColor(tempClearColor);
     const currentClearAlpha = gl.getClearAlpha();
 
-    // Render scene to our target to capture depth
+    // Check if we need object-only depth for SSR/refraction/bokeh/depth visualization
+    const renderObjectDepth = needsObjectOnlyDepth({
+      ssrEnabled: currentSSREnabled,
+      refractionEnabled: currentRefractionEnabled,
+      bokehEnabled: bokehOrDepthEnabled,
+      bokehFocusMode: state.bokehFocusMode,
+    });
+
+    // Render object-only depth pass (excludes walls, gizmos, axes)
+    // Only rendered when SSR, refraction, or bokeh auto-focus needs it
+    if (renderObjectDepth && camera instanceof THREE.PerspectiveCamera) {
+      const savedCameraLayers = camera.layers.mask;
+
+      // Only render main object layer
+      camera.layers.set(RENDER_LAYERS.MAIN_OBJECT);
+
+      gl.autoClear = false;
+      gl.setRenderTarget(objectDepthTarget);
+      gl.setClearColor(0x000000, 0);
+      gl.clear(true, true, false); // Clear color and depth
+
+      // Force all materials to write depth during object-only pass
+      // This ensures transparent faces (like polytope faces with opacity < 1) write to depth
+      const savedDepthWriteForObjectPass: Map<THREE.Material, boolean> = new Map();
+      scene.traverse((obj) => {
+        if ((obj as THREE.Mesh).isMesh) {
+          const mat = (obj as THREE.Mesh).material as THREE.Material;
+          savedDepthWriteForObjectPass.set(mat, mat.depthWrite);
+          mat.depthWrite = true;
+        }
+      });
+
+      // Depth-only pass - disable color writes for performance
+      const glContext = gl.getContext();
+      glContext.colorMask(false, false, false, false);
+      gl.render(scene, camera);
+      glContext.colorMask(true, true, true, true);
+
+      // Restore original depthWrite settings
+      savedDepthWriteForObjectPass.forEach((value, mat) => {
+        mat.depthWrite = value;
+      });
+
+      // Restore camera layers
+      camera.layers.mask = savedCameraLayers;
+    }
+
+    // Render full scene to capture color and depth
+    // Ensure camera sees both environment (layer 0) and main object (layer 1)
+    if (camera instanceof THREE.PerspectiveCamera) {
+      camera.layers.enable(RENDER_LAYERS.ENVIRONMENT);
+      camera.layers.enable(RENDER_LAYERS.MAIN_OBJECT);
+    }
+
     gl.autoClear = false;
     gl.setRenderTarget(sceneTarget);
     gl.setClearColor(0x000000, 0);
@@ -522,10 +599,14 @@ export const PostProcessing = memo(function PostProcessing() {
     gl.autoClear = currentAutoClear;
     gl.setClearColor(currentClearColor, currentClearAlpha);
 
+    // Use object-only depth for all effects (excludes walls, gizmos)
+    // Only available when renderObjectDepth is true (effects are enabled)
+    const effectDepthTexture = objectDepthTarget.depthTexture;
+
     // Update texture pass (color buffer from MRT)
     texturePass.map = sceneTarget.texture;
 
-    if (currentBokehEnabled && camera instanceof THREE.PerspectiveCamera) {
+    if (bokehOrDepthEnabled && camera instanceof THREE.PerspectiveCamera) {
       let targetFocus = state.bokehWorldFocusDistance;
 
       // Auto-focus: raycast to find depth at screen center
@@ -546,7 +627,8 @@ export const PostProcessing = memo(function PostProcessing() {
       currentFocusRef.current += (targetFocus - currentFocusRef.current) * smoothFactor;
 
       const uniforms = bokehPass.uniforms as unknown as BokehUniforms;
-      uniforms.tDepth.value = sceneTarget.depthTexture;
+      // Use object-only depth for bokeh to focus on main object, not walls
+      uniforms.tDepth.value = effectDepthTexture;
       uniforms.focus.value = currentFocusRef.current;
 
       // Focus range: the depth range where objects stay sharp (in world units)
@@ -565,8 +647,16 @@ export const PostProcessing = memo(function PostProcessing() {
       uniforms.nearClip.value = camera.near;
       uniforms.farClip.value = camera.far;
 
-      // Debug mode: 1=raw depth, 2=linear depth, 3=focus zones
-      uniforms.debugMode.value = state.bokehShowDebug ? 3 : 0;
+      // Debug mode: 0=normal, 1=raw depth, 2=linear depth, 3=focus zones
+      // showDepthBuffer (from Settings) shows linear depth visualization
+      // bokehShowDebug (from Bokeh controls) shows focus zones
+      let debugMode = 0;
+      if (state.showDepthBuffer) {
+        debugMode = 2; // Linear depth
+      } else if (state.bokehShowDebug) {
+        debugMode = 3; // Focus zones
+      }
+      uniforms.debugMode.value = debugMode;
 
       // Blur method: 0=disc, 1=jittered, 2=separable, 3=hexagonal
       const blurMethodMap: Record<string, number> = {
@@ -585,7 +675,8 @@ export const PostProcessing = memo(function PostProcessing() {
     if (currentSSREnabled && camera instanceof THREE.PerspectiveCamera) {
       const ssrUniforms = ssrPass.uniforms as unknown as SSRUniforms;
       ssrUniforms.tNormal.value = null; // No normal buffer - SSR will use depth-based reconstruction
-      ssrUniforms.tDepth.value = sceneTarget.depthTexture;
+      // Use object-only depth for SSR to only reflect main object, not walls
+      ssrUniforms.tDepth.value = effectDepthTexture;
       ssrUniforms.projMatrix.value.copy(camera.projectionMatrix);
       ssrUniforms.invProjMatrix.value.copy(camera.projectionMatrixInverse);
       ssrUniforms.uViewMat.value.copy(camera.matrixWorldInverse);
@@ -603,7 +694,9 @@ export const PostProcessing = memo(function PostProcessing() {
     if (currentRefractionEnabled && camera instanceof THREE.PerspectiveCamera) {
       const refractionUniforms = refractionPass.uniforms as unknown as RefractionUniforms;
       refractionUniforms.tNormal.value = null; // No normal buffer - refraction will use depth-based reconstruction
-      refractionUniforms.tDepth.value = sceneTarget.depthTexture;
+      // Use object-only depth for refraction to only distort main object, not walls
+      refractionUniforms.tDepth.value = effectDepthTexture;
+      refractionUniforms.invProjMatrix.value.copy(camera.projectionMatrixInverse);
       refractionUniforms.ior.value = state.refractionIOR;
       refractionUniforms.strength.value = state.refractionStrength;
       refractionUniforms.chromaticAberration.value = state.refractionChromaticAberration;

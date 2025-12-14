@@ -20,6 +20,9 @@
  */
 export function buildFaceFragmentShader(): string {
   return `
+    precision highp float;
+    precision highp int;
+
     // MRT output declarations for WebGL2
     layout(location = 0) out vec4 gColor;
     layout(location = 1) out vec4 gNormal;
@@ -51,6 +54,7 @@ export function buildFaceFragmentShader(): string {
     uniform vec3 uLightDirection;
     uniform float uLightStrength;
     uniform float uAmbientIntensity;
+    uniform vec3 uAmbientColor;
     uniform float uDiffuseIntensity;
     uniform float uSpecularIntensity;
     uniform float uSpecularPower;
@@ -271,7 +275,7 @@ export function buildFaceFragmentShader(): string {
     }
 
     vec3 calculateMultiLighting(vec3 fragPos, vec3 normal, vec3 viewDir, vec3 baseColor) {
-      vec3 col = baseColor * uAmbientIntensity;
+      vec3 col = baseColor * uAmbientColor * uAmbientIntensity;
 
       for (int i = 0; i < MAX_LIGHTS; i++) {
         if (i >= uNumLights) break;
@@ -346,7 +350,7 @@ export function buildFaceFragmentShader(): string {
         }
       } else if (uLightEnabled) {
         // Legacy single-light fallback
-        col = baseColor * uAmbientIntensity;
+        col = baseColor * uAmbientColor * uAmbientIntensity;
         vec3 lightDir = normalize(uLightDirection);
 
         float NdotL = max(dot(normal, lightDir), 0.0);
@@ -365,7 +369,7 @@ export function buildFaceFragmentShader(): string {
         }
       } else {
         // No lighting - just ambient
-        col = baseColor * uAmbientIntensity;
+        col = baseColor * uAmbientColor * uAmbientIntensity;
       }
 
       // Output to MRT (Multiple Render Targets)

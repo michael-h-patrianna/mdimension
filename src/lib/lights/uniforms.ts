@@ -8,6 +8,8 @@
  */
 
 import { Color, Vector3 } from 'three'
+import type { LightColorCache } from '@/lib/colors/linearCache'
+import { updateLightColorUniform } from '@/lib/colors/linearCache'
 import type { LightSource } from './types'
 import { LIGHT_TYPE_TO_INT, MAX_LIGHTS, rotationToDirection } from './types'
 
@@ -104,8 +106,13 @@ export function createLightUniforms(): LightUniforms {
  *
  * @param uniforms - Existing uniforms object to update
  * @param lights - Array of light source configurations
+ * @param colorCache - Optional cache for per-light color conversions (avoids per-frame pow())
  */
-export function updateLightUniforms(uniforms: LightUniforms, lights: LightSource[]): void {
+export function updateLightUniforms(
+  uniforms: LightUniforms,
+  lights: LightSource[],
+  colorCache?: LightColorCache
+): void {
   const numLights = Math.min(lights.length, MAX_LIGHTS)
   uniforms.uNumLights.value = numLights
 
@@ -135,7 +142,12 @@ export function updateLightUniforms(uniforms: LightUniforms, lights: LightSource
       const dir = rotationToDirection(light.rotation)
       directions[i]!.set(dir[0], dir[1], dir[2])
 
-      colors[i]!.set(light.color)
+      // Update color with optional caching (avoids per-frame sRGB->linear conversion)
+      if (colorCache) {
+        updateLightColorUniform(colorCache, i, colors[i]!, light.color)
+      } else {
+        colors[i]!.set(light.color).convertSRGBToLinear()
+      }
       intensities[i] = light.intensity
 
       // Convert cone angle from degrees to radians
@@ -274,7 +286,7 @@ vec3 calculateMultiLighting(
   vec3 viewDir,
   vec3 baseColor
 ) {
-  vec3 col = baseColor * uAmbientIntensity;
+  vec3 col = baseColor * uAmbientColor * uAmbientIntensity;
 
   for (int i = 0; i < MAX_LIGHTS; i++) {
     if (i >= uNumLights) break;

@@ -21,6 +21,9 @@ import { MAX_EXTRA_DIMS } from './constants'
  */
 export function buildFaceVertexShader(): string {
   return `
+    precision highp float;
+    precision highp int;
+
     // N-D Transformation uniforms
     uniform mat4 uRotationMatrix4D;
     uniform int uDimension;

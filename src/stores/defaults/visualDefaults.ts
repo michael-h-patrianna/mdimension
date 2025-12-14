@@ -68,12 +68,12 @@ export const DEFAULT_BOKEH_SHOW_DEBUG = false
 export type SSRQuality = 'low' | 'medium' | 'high'
 
 export const DEFAULT_SSR_ENABLED = false
-export const DEFAULT_SSR_INTENSITY = 0.5
-export const DEFAULT_SSR_MAX_DISTANCE = 20
-export const DEFAULT_SSR_THICKNESS = 0.1
-export const DEFAULT_SSR_FADE_START = 0.5
+export const DEFAULT_SSR_INTENSITY = 0.8
+export const DEFAULT_SSR_MAX_DISTANCE = 30
+export const DEFAULT_SSR_THICKNESS = 0.5
+export const DEFAULT_SSR_FADE_START = 0.7
 export const DEFAULT_SSR_FADE_END = 1.0
-export const DEFAULT_SSR_QUALITY: SSRQuality = 'medium'
+export const DEFAULT_SSR_QUALITY: SSRQuality = 'high'
 
 /** Map SSR quality to ray march steps */
 export const SSR_QUALITY_STEPS: Record<SSRQuality, number> = {
@@ -203,6 +203,7 @@ export const DEFAULT_SHADER_SETTINGS = {
 
 export const DEFAULT_SHOW_AXIS_HELPER = false
 export const DEFAULT_SHOW_PERF_MONITOR = true
+export const DEFAULT_SHOW_DEPTH_BUFFER = false
 export const DEFAULT_ANIMATION_BIAS = 0
 export const MIN_ANIMATION_BIAS = 0
 export const MAX_ANIMATION_BIAS = 1

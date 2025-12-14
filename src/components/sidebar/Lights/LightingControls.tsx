@@ -115,7 +115,7 @@ export const LightingControls: React.FC<LightingControlsProps> = React.memo(({
         <Slider
           label="Intensity"
           min={0}
-          max={1}
+          max={3}
           step={0.05}
           value={ambientIntensity}
           onChange={setAmbientIntensity}

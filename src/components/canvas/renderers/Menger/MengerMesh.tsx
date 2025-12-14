@@ -5,6 +5,7 @@ import type { LightUniforms } from '@/lib/lights/uniforms';
 import { OPACITY_MODE_TO_INT, SAMPLE_QUALITY_TO_INT } from '@/lib/opacity/types';
 import { COLOR_ALGORITHM_TO_INT } from '@/lib/shaders/palette';
 import { SHADOW_QUALITY_TO_INT, SHADOW_ANIMATION_MODE_TO_INT } from '@/lib/shadows/types';
+import { RENDER_LAYERS } from '@/lib/rendering/layers';
 import { useAnimationStore } from '@/stores/animationStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
@@ -111,6 +112,13 @@ const MengerMesh = () => {
         restoreQualityTimeoutRef.current = null;
       }
     };
+  }, []);
+
+  // Assign main object layer for depth-based effects (SSR, refraction, bokeh)
+  useEffect(() => {
+    if (meshRef.current?.layers) {
+      meshRef.current.layers.set(RENDER_LAYERS.MAIN_OBJECT);
+    }
   }, []);
 
   // Get dimension from geometry store

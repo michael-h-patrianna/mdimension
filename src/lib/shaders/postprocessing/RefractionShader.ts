@@ -16,6 +16,7 @@ export interface RefractionUniforms {
   tDiffuse: { value: THREE.Texture | null };
   tNormal: { value: THREE.Texture | null };
   tDepth: { value: THREE.DepthTexture | null };
+  invProjMatrix: { value: THREE.Matrix4 };
   ior: { value: number };
   strength: { value: number };
   chromaticAberration: { value: number };
@@ -31,6 +32,7 @@ export const RefractionShader = {
     tDiffuse: { value: null as THREE.Texture | null },
     tNormal: { value: null as THREE.Texture | null },
     tDepth: { value: null as THREE.DepthTexture | null },
+    invProjMatrix: { value: new THREE.Matrix4() },
     ior: { value: 1.5 },
     strength: { value: 0.1 },
     chromaticAberration: { value: 0.0 },
@@ -53,6 +55,7 @@ export const RefractionShader = {
     uniform sampler2D tDiffuse;
     uniform sampler2D tNormal;
     uniform sampler2D tDepth;
+    uniform mat4 invProjMatrix;
     uniform float ior;
     uniform float strength;
     uniform float chromaticAberration;
@@ -68,22 +71,42 @@ export const RefractionShader = {
       return perspectiveDepthToViewZ(depth, nearClip, farClip);
     }
 
-    // Reconstruct normal from depth buffer using screen-space derivatives
+    // Get view-space position from UV and depth
+    vec3 getViewPosition(vec2 uv, float depth) {
+      vec4 clipPos = vec4(uv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+      vec4 viewPos = invProjMatrix * clipPos;
+      return viewPos.xyz / viewPos.w;
+    }
+
+    // Reconstruct VIEW-SPACE normal from depth buffer
+    // Uses neighboring depth samples to compute view-space positions,
+    // then calculates the surface normal from the cross product of tangent vectors
     vec3 reconstructNormal(vec2 coord) {
       vec2 texel = 1.0 / resolution;
 
-      // Sample depth at neighboring pixels
-      float depthL = getLinearDepth(coord - vec2(texel.x, 0.0));
-      float depthR = getLinearDepth(coord + vec2(texel.x, 0.0));
-      float depthU = getLinearDepth(coord - vec2(0.0, texel.y));
-      float depthD = getLinearDepth(coord + vec2(0.0, texel.y));
+      // Sample depth at center and neighboring pixels
+      float depthC = texture2D(tDepth, coord).x;
+      float depthL = texture2D(tDepth, coord - vec2(texel.x, 0.0)).x;
+      float depthR = texture2D(tDepth, coord + vec2(texel.x, 0.0)).x;
+      float depthU = texture2D(tDepth, coord - vec2(0.0, texel.y)).x;
+      float depthD = texture2D(tDepth, coord + vec2(0.0, texel.y)).x;
 
-      // Calculate screen-space derivatives
-      float dzdx = (depthR - depthL) * 0.5;
-      float dzdy = (depthD - depthU) * 0.5;
+      // Reconstruct view-space positions
+      vec3 posC = getViewPosition(coord, depthC);
+      vec3 posL = getViewPosition(coord - vec2(texel.x, 0.0), depthL);
+      vec3 posR = getViewPosition(coord + vec2(texel.x, 0.0), depthR);
+      vec3 posU = getViewPosition(coord - vec2(0.0, texel.y), depthU);
+      vec3 posD = getViewPosition(coord + vec2(0.0, texel.y), depthD);
 
-      // Reconstruct normal from gradient
-      vec3 normal = normalize(vec3(-dzdx, -dzdy, 1.0));
+      // Calculate tangent vectors using central differences for better accuracy
+      // Use the smaller difference to avoid artifacts at depth discontinuities
+      vec3 ddx = (abs(posR.z - posC.z) < abs(posC.z - posL.z)) ? (posR - posC) : (posC - posL);
+      vec3 ddy = (abs(posD.z - posC.z) < abs(posC.z - posU.z)) ? (posD - posC) : (posC - posU);
+
+      // Cross product gives the surface normal in view space
+      // Note: In view space, camera looks down -Z, so we use ddy × ddx for correct orientation
+      vec3 normal = normalize(cross(ddy, ddx));
+
       return normal;
     }
 

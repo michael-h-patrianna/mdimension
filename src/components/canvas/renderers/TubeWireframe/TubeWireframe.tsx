@@ -8,7 +8,7 @@
  * @see docs/prd/enhanced-visuals-rendering-pipeline.md
  */
 
-import React, { useRef, useLayoutEffect, useMemo } from 'react'
+import React, { useRef, useLayoutEffect, useMemo, useEffect } from 'react'
 import {
   CylinderGeometry,
   InstancedBufferAttribute,
@@ -20,6 +20,8 @@ import {
   GLSL3,
 } from 'three'
 import { useFrame } from '@react-three/fiber'
+import { RENDER_LAYERS } from '@/lib/rendering/layers'
+import { createColorCache, createLightColorCache, updateLinearColorUniform } from '@/lib/colors/linearCache'
 
 import type { VectorND } from '@/lib/math/types'
 import { useRotationStore } from '@/stores/rotationStore'
@@ -77,6 +79,17 @@ export function TubeWireframe({
 }: TubeWireframeProps): React.JSX.Element | null {
   const meshRef = useRef<InstancedMesh>(null)
 
+  // Cached linear colors - avoid per-frame sRGB->linear conversion
+  const colorCacheRef = useRef(createColorCache())
+  const lightColorCacheRef = useRef(createLightColorCache())
+
+  // Assign main object layer for depth-based effects (SSR, refraction, bokeh)
+  useEffect(() => {
+    if (meshRef.current?.layers) {
+      meshRef.current.layers.set(RENDER_LAYERS.MAIN_OBJECT)
+    }
+  }, [])
+
   // Base cylinder geometry (Y-axis aligned, height 1, centered at origin)
   const geometry = useMemo(() => {
     return new CylinderGeometry(1, 1, 1, CYLINDER_SEGMENTS, 1, false)
@@ -84,7 +97,8 @@ export function TubeWireframe({
 
   // Create shader material with all uniforms
   const material = useMemo(() => {
-    const colorValue = new Color(color)
+    // Convert colors from sRGB to linear for physically correct lighting
+    const colorValue = new Color(color).convertSRGBToLinear()
     const lightUniforms = createLightUniforms()
 
     const mat = new ShaderMaterial({
@@ -92,7 +106,7 @@ export function TubeWireframe({
       vertexShader,
       fragmentShader,
       uniforms: {
-        // Material
+        // Material (colors converted to linear space)
         uColor: { value: colorValue },
         uOpacity: { value: opacity },
         uMetallic: { value: metallic },
@@ -109,18 +123,18 @@ export function TubeWireframe({
         uProjectionDistance: { value: DEFAULT_PROJECTION_DISTANCE },
         uProjectionType: { value: 1 },
 
-        // Global lighting
+        // Global lighting (colors converted to linear space)
         uAmbientIntensity: { value: 0.01 },
-        uAmbientColor: { value: new Color('#FFFFFF') },
+        uAmbientColor: { value: new Color('#FFFFFF').convertSRGBToLinear() },
         uSpecularIntensity: { value: 0.5 },
         uSpecularPower: { value: 30 },
-        uSpecularColor: { value: new Color('#FFFFFF') },
+        uSpecularColor: { value: new Color('#FFFFFF').convertSRGBToLinear() },
         uDiffuseIntensity: { value: 1.0 },
 
-        // Fresnel
+        // Fresnel (colors converted to linear space)
         uFresnelEnabled: { value: true },
         uFresnelIntensity: { value: 0.1 },
-        uRimColor: { value: new Color(color) },
+        uRimColor: { value: new Color(color).convertSRGBToLinear() },
 
         // Multi-light system
         ...lightUniforms,
@@ -272,28 +286,29 @@ export function TubeWireframe({
     u.uProjectionDistance!.value = projectionDistance
     u.uProjectionType!.value = projectionType === 'perspective' ? 1 : 0
 
-    // Update material properties
-    ;(u.uColor!.value as Color).set(color)
+    // Update material properties (cached linear conversion)
+    const cache = colorCacheRef.current
+    updateLinearColorUniform(cache.edgeColor, u.uColor!.value as Color, color)
     u.uOpacity!.value = opacity
     u.uMetallic!.value = metallic
     u.uRoughness!.value = roughness
     u.uRadius!.value = radius
 
-    // Update lighting uniforms from visual store
+    // Update lighting uniforms from visual store (cached linear conversion)
     u.uAmbientIntensity!.value = visualState.ambientIntensity
-    ;(u.uAmbientColor!.value as Color).set(visualState.ambientColor)
+    updateLinearColorUniform(cache.ambientColor, u.uAmbientColor!.value as Color, visualState.ambientColor)
     u.uSpecularIntensity!.value = visualState.specularIntensity
     u.uSpecularPower!.value = visualState.shininess
-    ;(u.uSpecularColor!.value as Color).set(visualState.specularColor)
+    updateLinearColorUniform(cache.specularColor, u.uSpecularColor!.value as Color, visualState.specularColor)
     u.uDiffuseIntensity!.value = visualState.diffuseIntensity
 
-    // Fresnel
+    // Fresnel (cached linear conversion)
     u.uFresnelEnabled!.value = visualState.fresnelEnabled
     u.uFresnelIntensity!.value = visualState.fresnelIntensity
-    ;(u.uRimColor!.value as Color).set(visualState.edgeColor)
+    updateLinearColorUniform(cache.rimColor, u.uRimColor!.value as Color, visualState.edgeColor)
 
-    // Update multi-light system
-    updateLightUniforms(u as unknown as LightUniforms, visualState.lights)
+    // Update multi-light system (with cached linear color conversion)
+    updateLightUniforms(u as unknown as LightUniforms, visualState.lights, lightColorCacheRef.current)
   })
 
   // Don't render if no valid data

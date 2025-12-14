@@ -17,6 +17,7 @@ import {
   BufferGeometry,
   Color,
   Float32BufferAttribute,
+  Group,
   InstancedInterleavedBuffer,
   Matrix4,
   NormalBlending,
@@ -32,6 +33,7 @@ import { composeRotations } from '@/lib/math/rotation';
 import type { VectorND } from '@/lib/math/types';
 import { VERTEX_SIZE_DIVISOR } from '@/lib/shaders/constants';
 import { matrixToGPUUniforms } from '@/lib/shaders/transforms/ndTransform';
+import { RENDER_LAYERS } from '@/lib/rendering/layers';
 import { useProjectionStore } from '@/stores/projectionStore';
 import { useRotationStore } from '@/stores/rotationStore';
 import { useTransformStore } from '@/stores/transformStore';
@@ -211,6 +213,7 @@ export const PointCloudScene = React.memo(function PointCloudScene({
   const { size } = useThree();
 
   // ============ REFS ============
+  const groupRef = useRef<Group>(null);
   const pointMaterialRef = useRef<ShaderMaterial | null>(null);
   const edgeMaterialRef = useRef<ShaderMaterial | null>(null);
   const fatEdgeGeometryRef = useRef<LineSegmentsGeometry | null>(null);
@@ -218,6 +221,17 @@ export const PointCloudScene = React.memo(function PointCloudScene({
   const resolutionRef = useRef(new Vector2());
   // Scratch rotation matrix to avoid allocation in useFrame
   const rotationMatrixRef = useRef<number[][] | null>(null);
+
+  // Assign main object layer for depth-based effects (SSR, refraction, bokeh)
+  useEffect(() => {
+    if (groupRef.current) {
+      groupRef.current.traverse((obj) => {
+        if (obj.layers) {
+          obj.layers.set(RENDER_LAYERS.MAIN_OBJECT);
+        }
+      });
+    }
+  }, []);
 
   // Working buffer for fat line positions (CPU transformed)
   // Only stores transformedVertices - projection writes directly to Float32Array
@@ -556,7 +570,7 @@ export const PointCloudScene = React.memo(function PointCloudScene({
 
   // ============ RENDER ============
   return (
-    <group>
+    <group ref={groupRef}>
       {/* GPU-rendered thin edges */}
       {edgesVisible && thinEdgeGeometry && !useFatLines && (
         <lineSegments geometry={thinEdgeGeometry} material={thinEdgeMaterial} frustumCulled={false} />

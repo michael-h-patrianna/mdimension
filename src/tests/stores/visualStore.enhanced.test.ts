@@ -160,9 +160,9 @@ describe('visualStore - Enhanced Features', () => {
       expect(useVisualStore.getState().ambientIntensity).toBe(0.5);
     });
 
-    it('should clamp ambient intensity to [0, 1]', () => {
-      useVisualStore.getState().setAmbientIntensity(2);
-      expect(useVisualStore.getState().ambientIntensity).toBe(1);
+    it('should clamp ambient intensity to [0, 3]', () => {
+      useVisualStore.getState().setAmbientIntensity(5);
+      expect(useVisualStore.getState().ambientIntensity).toBe(3);
 
       useVisualStore.getState().setAmbientIntensity(-0.5);
       expect(useVisualStore.getState().ambientIntensity).toBe(0);

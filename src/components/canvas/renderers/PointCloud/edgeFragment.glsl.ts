@@ -13,14 +13,12 @@
  */
 export function buildEdgeFragmentShader(): string {
   return `
-    // Output declaration for WebGL2
-    layout(location = 0) out vec4 fragColor;
-
     uniform vec3 uEdgeColor;
     uniform float uOpacity;
 
     void main() {
-      fragColor = vec4(uEdgeColor, uOpacity);
+      // Three.js GLSL3 provides pc_fragColor output automatically
+      pc_fragColor = vec4(uEdgeColor, uOpacity);
     }
   `
 }

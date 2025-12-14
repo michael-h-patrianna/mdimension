@@ -22,6 +22,7 @@ import {
 } from 'three';
 import { useShallow } from 'zustand/react/shallow';
 
+import { createColorCache, createLightColorCache, updateLightColorUniform, updateLinearColorUniform } from '@/lib/colors/linearCache';
 import type { Face } from '@/lib/geometry/faces';
 import type { LightSource } from '@/lib/lights/types';
 import { LIGHT_TYPE_TO_INT, MAX_LIGHTS, rotationToDirection } from '@/lib/lights/types';
@@ -30,6 +31,7 @@ import { composeRotations } from '@/lib/math/rotation';
 import type { VectorND } from '@/lib/math/types';
 import { COLOR_ALGORITHM_TO_INT } from '@/lib/shaders/palette';
 import { matrixToGPUUniforms } from '@/lib/shaders/transforms/ndTransform';
+import { RENDER_LAYERS } from '@/lib/rendering/layers';
 import { useProjectionStore } from '@/stores/projectionStore';
 import { useRotationStore } from '@/stores/rotationStore';
 import { useTransformStore } from '@/stores/transformStore';
@@ -161,8 +163,8 @@ function createFaceShaderMaterial(
     uniforms: {
       // N-D transformation uniforms
       ...createNDUniforms(),
-      // Color
-      uColor: { value: new Color(faceColor) },
+      // Color (converted to linear space for physically correct lighting)
+      uColor: { value: new Color(faceColor).convertSRGBToLinear() },
       uOpacity: { value: opacity },
       // Material properties for G-buffer
       uMetallic: { value: 0.0 },
@@ -178,27 +180,28 @@ function createFaceShaderMaterial(
       uLchLightness: { value: 0.7 },
       uLchChroma: { value: 0.15 },
       uMultiSourceWeights: { value: new Vector3(0.5, 0.3, 0.2) },
-      // Lighting (updated every frame from store)
+      // Lighting (updated every frame from store, colors converted to linear space)
       uLightEnabled: { value: true },
-      uLightColor: { value: new Color('#ffffff') },
+      uLightColor: { value: new Color('#ffffff').convertSRGBToLinear() },
       uLightDirection: { value: new Vector3(0.5, 1, 0.5).normalize() },
       uLightStrength: { value: 1.0 },
       uAmbientIntensity: { value: 0.3 },
+      uAmbientColor: { value: new Color('#FFFFFF').convertSRGBToLinear() },
       uDiffuseIntensity: { value: 1.0 },
       uSpecularIntensity: { value: 1.0 },
       uSpecularPower: { value: 32.0 },
-      uSpecularColor: { value: new Color('#ffffff') },
-      // Fresnel
+      uSpecularColor: { value: new Color('#ffffff').convertSRGBToLinear() },
+      // Fresnel (colors converted to linear space)
       uFresnelEnabled: { value: false },
       uFresnelIntensity: { value: 0.5 },
-      uRimColor: { value: new Color('#ffffff') },
-      // Multi-light system uniforms
+      uRimColor: { value: new Color('#ffffff').convertSRGBToLinear() },
+      // Multi-light system uniforms (colors converted to linear space)
       uNumLights: { value: 0 },
       uLightsEnabled: { value: [false, false, false, false] },
       uLightTypes: { value: [0, 0, 0, 0] },
       uLightPositions: { value: [new Vector3(0, 5, 0), new Vector3(0, 5, 0), new Vector3(0, 5, 0), new Vector3(0, 5, 0)] },
       uLightDirections: { value: [new Vector3(0, -1, 0), new Vector3(0, -1, 0), new Vector3(0, -1, 0), new Vector3(0, -1, 0)] },
-      uLightColors: { value: [new Color('#FFFFFF'), new Color('#FFFFFF'), new Color('#FFFFFF'), new Color('#FFFFFF')] },
+      uLightColors: { value: [new Color('#FFFFFF').convertSRGBToLinear(), new Color('#FFFFFF').convertSRGBToLinear(), new Color('#FFFFFF').convertSRGBToLinear(), new Color('#FFFFFF').convertSRGBToLinear()] },
       uLightIntensities: { value: [1.0, 1.0, 1.0, 1.0] },
       uSpotAngles: { value: [Math.PI / 6, Math.PI / 6, Math.PI / 6, Math.PI / 6] },
       uSpotPenumbras: { value: [0.5, 0.5, 0.5, 0.5] },
@@ -228,7 +231,7 @@ function createEdgeMaterial(edgeColor: string, opacity: number): ShaderMaterial 
   return new ShaderMaterial({
     uniforms: {
       ...createNDUniforms(),
-      uColor: { value: new Color(edgeColor) },
+      uColor: { value: new Color(edgeColor).convertSRGBToLinear() },
       uOpacity: { value: opacity },
     },
     vertexShader: buildEdgeVertexShader(),
@@ -339,6 +342,20 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   // ============ REFS ============
   const faceMeshRef = useRef<THREE.Mesh>(null);
   const edgeMeshRef = useRef<THREE.LineSegments>(null);
+
+  // Cached linear colors - avoid per-frame sRGB->linear conversion
+  const colorCacheRef = useRef(createColorCache());
+  const lightColorCacheRef = useRef(createLightColorCache());
+
+  // Assign main object layer for depth-based effects (SSR, refraction, bokeh)
+  useEffect(() => {
+    if (faceMeshRef.current?.layers) {
+      faceMeshRef.current.layers.set(RENDER_LAYERS.MAIN_OBJECT);
+    }
+    if (edgeMeshRef.current?.layers) {
+      edgeMeshRef.current.layers.set(RENDER_LAYERS.MAIN_OBJECT);
+    }
+  }, []);
 
   // ============ VISUAL SETTINGS ============
   const {
@@ -513,6 +530,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     const lightVerticalAngle = visualState.lightVerticalAngle;
     const lightStrength = visualState.lightStrength ?? 1.0;
     const ambientIntensity = visualState.ambientIntensity;
+    const ambientColor = visualState.ambientColor;
     const diffuseIntensity = visualState.diffuseIntensity;
     const specularIntensity = visualState.specularIntensity;
     const shininess = visualState.shininess;
@@ -544,6 +562,9 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     const normalizationFactor = dimension > 3 ? Math.sqrt(dimension - 3) : 1;
     const projectionDistance = calculateSafeProjectionDistance(baseVertices, normalizationFactor);
 
+    // Cached linear colors - avoid per-frame sRGB->linear conversion
+    const cache = colorCacheRef.current;
+
     // Update all materials through mesh refs
     const meshRefs = [
       faceMeshRef,
@@ -558,19 +579,21 @@ export const PolytopeScene = React.memo(function PolytopeScene({
         updateNDUniforms(material, gpuData, dimension, scales, projectionDistance, projectionType);
 
         // Update lighting uniforms (only for materials that have them)
+        // Colors use cached linear conversion for performance
         const u = material.uniforms;
         if (u.uLightEnabled) u.uLightEnabled.value = lightEnabled;
-        if (u.uLightColor) (u.uLightColor.value as Color).set(lightColor);
+        if (u.uLightColor) updateLinearColorUniform(cache.faceColor, u.uLightColor.value as Color, lightColor);
         if (u.uLightDirection) (u.uLightDirection.value as Vector3).copy(lightDirection);
         if (u.uLightStrength) u.uLightStrength.value = lightStrength;
         if (u.uAmbientIntensity) u.uAmbientIntensity.value = ambientIntensity;
+        if (u.uAmbientColor) updateLinearColorUniform(cache.ambientColor, u.uAmbientColor.value as Color, ambientColor);
         if (u.uDiffuseIntensity) u.uDiffuseIntensity.value = diffuseIntensity;
         if (u.uSpecularIntensity) u.uSpecularIntensity.value = specularIntensity;
         if (u.uSpecularPower) u.uSpecularPower.value = shininess;
-        if (u.uSpecularColor) (u.uSpecularColor.value as Color).set(specularColor);
+        if (u.uSpecularColor) updateLinearColorUniform(cache.specularColor, u.uSpecularColor.value as Color, specularColor);
         if (u.uFresnelEnabled) u.uFresnelEnabled.value = fresnelEnabled;
         if (u.uFresnelIntensity) u.uFresnelIntensity.value = fresnelIntensity;
-        if (u.uRimColor) (u.uRimColor.value as Color).set(rimColor);
+        if (u.uRimColor) updateLinearColorUniform(cache.rimColor, u.uRimColor.value as Color, rimColor);
 
         // Update advanced color system uniforms (only for face materials)
         if (u.uColorAlgorithm) u.uColorAlgorithm.value = COLOR_ALGORITHM_TO_INT[colorAlgorithm];
@@ -606,7 +629,8 @@ export const PolytopeScene = React.memo(function PolytopeScene({
               const dir = rotationToDirection(light.rotation);
               (u.uLightDirections.value as Vector3[])[i]!.set(dir[0], dir[1], dir[2]);
 
-              (u.uLightColors.value as Color[])[i]!.set(light.color);
+              // Update light color with cached linear conversion
+              updateLightColorUniform(lightColorCacheRef.current, i, (u.uLightColors.value as Color[])[i]!, light.color);
               (u.uLightIntensities.value as number[])[i] = light.intensity;
               // Precompute spotlight cone cosines on CPU to avoid per-fragment trig
               const outerAngleRad = (light.coneAngle * Math.PI) / 180;

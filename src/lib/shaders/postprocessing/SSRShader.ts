@@ -94,24 +94,35 @@ export const SSRShader = {
       return viewPos.xyz / viewPos.w;
     }
 
-    // Reconstruct normal from depth buffer using screen-space derivatives
-    // This is a fallback when no G-buffer normal is available
+    // Reconstruct VIEW-SPACE normal from depth buffer
+    // Uses neighboring depth samples to compute view-space positions,
+    // then calculates the surface normal from the cross product of tangent vectors
     vec3 reconstructNormal(vec2 coord) {
       vec2 texel = 1.0 / resolution;
 
-      // Sample depth at neighboring pixels
-      float depthC = getLinearDepth(coord);
-      float depthL = getLinearDepth(coord - vec2(texel.x, 0.0));
-      float depthR = getLinearDepth(coord + vec2(texel.x, 0.0));
-      float depthU = getLinearDepth(coord - vec2(0.0, texel.y));
-      float depthD = getLinearDepth(coord + vec2(0.0, texel.y));
+      // Sample depth at center and neighboring pixels
+      float depthC = texture2D(tDepth, coord).x;
+      float depthL = texture2D(tDepth, coord - vec2(texel.x, 0.0)).x;
+      float depthR = texture2D(tDepth, coord + vec2(texel.x, 0.0)).x;
+      float depthU = texture2D(tDepth, coord - vec2(0.0, texel.y)).x;
+      float depthD = texture2D(tDepth, coord + vec2(0.0, texel.y)).x;
 
-      // Calculate screen-space derivatives
-      float dzdx = (depthR - depthL) * 0.5;
-      float dzdy = (depthD - depthU) * 0.5;
+      // Reconstruct view-space positions
+      vec3 posC = getViewPosition(coord, depthC);
+      vec3 posL = getViewPosition(coord - vec2(texel.x, 0.0), depthL);
+      vec3 posR = getViewPosition(coord + vec2(texel.x, 0.0), depthR);
+      vec3 posU = getViewPosition(coord - vec2(0.0, texel.y), depthU);
+      vec3 posD = getViewPosition(coord + vec2(0.0, texel.y), depthD);
 
-      // Reconstruct normal from gradient
-      vec3 normal = normalize(vec3(-dzdx, -dzdy, 1.0));
+      // Calculate tangent vectors using central differences for better accuracy
+      // Use the smaller difference to avoid artifacts at depth discontinuities
+      vec3 ddx = (abs(posR.z - posC.z) < abs(posC.z - posL.z)) ? (posR - posC) : (posC - posL);
+      vec3 ddy = (abs(posD.z - posC.z) < abs(posC.z - posU.z)) ? (posD - posC) : (posC - posU);
+
+      // Cross product gives the surface normal in view space
+      // Note: In view space, camera looks down -Z, so we use ddy × ddx for correct orientation
+      vec3 normal = normalize(cross(ddy, ddx));
+
       return normal;
     }
 
@@ -130,11 +141,11 @@ export const SSRShader = {
     }
 
     // Get reflectivity from G-buffer alpha channel
-    // Falls back to a default value if not available
+    // Falls back to full reflectivity when no G-buffer (let intensity control strength)
     float getReflectivity(vec2 coord) {
       vec4 normalData = texture2D(tNormal, coord);
-      // If alpha is 0 (no G-buffer), use metallic approximation from scene
-      return normalData.a > 0.0 ? normalData.a : 0.3;
+      // If alpha is 0 (no G-buffer), use full reflectivity - user controls via intensity
+      return normalData.a > 0.0 ? normalData.a : 1.0;
     }
 
     // Project view-space position to screen UV
@@ -184,7 +195,8 @@ export const SSRShader = {
       vec3 reflectDir = reflect(-viewDir, normal);
 
       // Fresnel effect - more reflection at grazing angles
-      float fresnelFactor = fresnel(viewDir, normal, 0.04);
+      // Using higher f0 (0.5) for stylized look - ensures visible reflections at all angles
+      float fresnelFactor = fresnel(viewDir, normal, 0.5);
 
       // Ray march in view space
       vec3 rayOrigin = viewPos;

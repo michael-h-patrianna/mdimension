@@ -131,8 +131,8 @@ export const SSRControls: React.FC<SSRControlsProps> = React.memo(({
           <Slider
             label="Thickness"
             min={0.01}
-            max={1}
-            step={0.01}
+            max={2}
+            step={0.05}
             value={ssrThickness}
             onChange={setSSRThickness}
             onReset={() => setSSRThickness(DEFAULT_SSR_THICKNESS)}

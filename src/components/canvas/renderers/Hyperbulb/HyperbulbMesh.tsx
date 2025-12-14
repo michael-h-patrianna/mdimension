@@ -1,9 +1,11 @@
+import { createColorCache, createLightColorCache, updateLinearColorUniform } from '@/lib/colors/linearCache';
 import { createLightUniforms, updateLightUniforms, type LightUniforms } from '@/lib/lights/uniforms';
 import { composeRotations } from '@/lib/math/rotation';
 import type { MatrixND } from '@/lib/math/types';
 import { OPACITY_MODE_TO_INT, SAMPLE_QUALITY_TO_INT } from '@/lib/opacity/types';
 import { COLOR_ALGORITHM_TO_INT } from '@/lib/shaders/palette';
 import { SHADOW_QUALITY_TO_INT, SHADOW_ANIMATION_MODE_TO_INT } from '@/lib/shadows/types';
+import { RENDER_LAYERS } from '@/lib/rendering/layers';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import type { RotationState } from '@/stores/rotationStore';
@@ -99,6 +101,10 @@ const HyperbulbMesh = () => {
   const prevParamValuesRef = useRef<number[] | null>(null);
   const basisVectorsDirtyRef = useRef(true);
 
+  // Cached linear colors - avoid per-frame sRGB->linear conversion
+  const colorCacheRef = useRef(createColorCache());
+  const lightColorCacheRef = useRef(createLightColorCache());
+
   // Cleanup timeout on unmount to prevent memory leaks
   useEffect(() => {
     return () => {
@@ -107,6 +113,13 @@ const HyperbulbMesh = () => {
         restoreQualityTimeoutRef.current = null;
       }
     };
+  }, []);
+
+  // Assign main object layer for depth-based effects (SSR, refraction, bokeh)
+  useEffect(() => {
+    if (meshRef.current?.layers) {
+      meshRef.current.layers.set(RENDER_LAYERS.MAIN_OBJECT);
+    }
   }, []);
 
   // Get dimension from geometry store
@@ -176,8 +189,8 @@ const HyperbulbMesh = () => {
       uBasisZ: { value: new Float32Array(11) },
       uOrigin: { value: new Float32Array(11) },
 
-      // Color and palette
-      uColor: { value: new THREE.Color() },
+      // Color and palette (converted to linear for physically correct lighting)
+      uColor: { value: new THREE.Color().convertSRGBToLinear() },
 
       // 3D transformation matrices (for camera/view only)
       uModelMatrix: { value: new THREE.Matrix4() },
@@ -188,21 +201,21 @@ const HyperbulbMesh = () => {
       // Multi-light system uniforms
       ...createLightUniforms(),
 
-      // Global lighting uniforms
+      // Global lighting uniforms (colors converted to linear for physically correct lighting)
       uAmbientIntensity: { value: 0.2 },
-      uAmbientColor: { value: new THREE.Color('#FFFFFF') },
+      uAmbientColor: { value: new THREE.Color('#FFFFFF').convertSRGBToLinear() },
       uSpecularIntensity: { value: 1.0 },
       uSpecularPower: { value: 32.0 },
       // Enhanced lighting uniforms
-      uSpecularColor: { value: new THREE.Color('#FFFFFF') },
+      uSpecularColor: { value: new THREE.Color('#FFFFFF').convertSRGBToLinear() },
       uDiffuseIntensity: { value: 1.0 },
       // Material property for G-buffer (reflectivity for SSR)
       uMetallic: { value: 0.0 },
 
-      // Fresnel rim lighting uniforms
+      // Fresnel rim lighting uniforms (color converted to linear)
       uFresnelEnabled: { value: true },
       uFresnelIntensity: { value: 0.5 },
-      uRimColor: { value: new THREE.Color('#FFFFFF') },
+      uRimColor: { value: new THREE.Color('#FFFFFF').convertSRGBToLinear() },
 
       // Performance mode: reduces quality during rotation animations
       uFastMode: { value: false },
@@ -316,29 +329,38 @@ const HyperbulbMesh = () => {
       if (material.uniforms.uIterations) material.uniforms.uIterations.value = maxIterations;
       if (material.uniforms.uEscapeRadius) material.uniforms.uEscapeRadius.value = escapeRadius;
 
-      // Update color and palette
-      if (material.uniforms.uColor) material.uniforms.uColor.value.set(faceColor);
+      // Update color and palette (cached linear conversion - only converts when color changes)
+      const cache = colorCacheRef.current;
+      if (material.uniforms.uColor) {
+        updateLinearColorUniform(cache.faceColor, material.uniforms.uColor.value as THREE.Color, faceColor);
+      }
 
       // Update camera matrices
       if (material.uniforms.uProjectionMatrix) material.uniforms.uProjectionMatrix.value.copy(camera.projectionMatrix);
       if (material.uniforms.uViewMatrix) material.uniforms.uViewMatrix.value.copy(camera.matrixWorldInverse);
 
-      // Update multi-light uniforms
-      updateLightUniforms(material.uniforms as unknown as LightUniforms, lights);
+      // Update multi-light uniforms (with cached color conversion)
+      updateLightUniforms(material.uniforms as unknown as LightUniforms, lights, lightColorCacheRef.current);
 
-      // Update global lighting uniforms
+      // Update global lighting uniforms (cached linear conversion)
       if (material.uniforms.uAmbientIntensity) material.uniforms.uAmbientIntensity.value = ambientIntensity;
-      if (material.uniforms.uAmbientColor) material.uniforms.uAmbientColor.value.set(ambientColor);
+      if (material.uniforms.uAmbientColor) {
+        updateLinearColorUniform(cache.ambientColor, material.uniforms.uAmbientColor.value as THREE.Color, ambientColor);
+      }
       if (material.uniforms.uSpecularIntensity) material.uniforms.uSpecularIntensity.value = specularIntensity;
       if (material.uniforms.uSpecularPower) material.uniforms.uSpecularPower.value = shininess;
       // Enhanced lighting uniforms
-      if (material.uniforms.uSpecularColor) material.uniforms.uSpecularColor.value.set(specularColor);
+      if (material.uniforms.uSpecularColor) {
+        updateLinearColorUniform(cache.specularColor, material.uniforms.uSpecularColor.value as THREE.Color, specularColor);
+      }
       if (material.uniforms.uDiffuseIntensity) material.uniforms.uDiffuseIntensity.value = diffuseIntensity;
 
-      // Fresnel rim lighting (controlled by Edges render mode)
+      // Fresnel rim lighting (controlled by Edges render mode, cached linear conversion)
       if (material.uniforms.uFresnelEnabled) material.uniforms.uFresnelEnabled.value = edgesVisible;
       if (material.uniforms.uFresnelIntensity) material.uniforms.uFresnelIntensity.value = fresnelIntensity;
-      if (material.uniforms.uRimColor) material.uniforms.uRimColor.value.set(edgeColor);
+      if (material.uniforms.uRimColor) {
+        updateLinearColorUniform(cache.rimColor, material.uniforms.uRimColor.value as THREE.Color, edgeColor);
+      }
 
       // Advanced Color System uniforms
       if (material.uniforms.uColorAlgorithm) material.uniforms.uColorAlgorithm.value = COLOR_ALGORITHM_TO_INT[colorAlgorithm];

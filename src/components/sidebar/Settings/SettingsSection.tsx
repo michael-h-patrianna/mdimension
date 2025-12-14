@@ -3,6 +3,7 @@
  * Section wrapper for app settings controls
  */
 
+import { needsObjectOnlyDepth } from '@/lib/rendering/layers';
 import { Section } from '@/components/ui/Section';
 import { Slider } from '@/components/ui/Slider';
 import { Switch } from '@/components/ui/Switch';
@@ -29,8 +30,23 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
   const setShowPerfMonitor = useVisualStore((state) => state.setShowPerfMonitor);
   const showAxisHelper = useVisualStore((state) => state.showAxisHelper);
   const setShowAxisHelper = useVisualStore((state) => state.setShowAxisHelper);
+  const showDepthBuffer = useVisualStore((state) => state.showDepthBuffer);
+  const setShowDepthBuffer = useVisualStore((state) => state.setShowDepthBuffer);
   const maxFps = useVisualStore((state) => state.maxFps);
   const setMaxFps = useVisualStore((state) => state.setMaxFps);
+
+  // Check if depth buffer is available (any depth-based effect is enabled)
+  const bokehEnabled = useVisualStore((state) => state.bokehEnabled);
+  const ssrEnabled = useVisualStore((state) => state.ssrEnabled);
+  const refractionEnabled = useVisualStore((state) => state.refractionEnabled);
+  const bokehFocusMode = useVisualStore((state) => state.bokehFocusMode);
+
+  const depthBufferAvailable = needsObjectOnlyDepth({
+    ssrEnabled,
+    refractionEnabled,
+    bokehEnabled,
+    bokehFocusMode,
+  });
 
   return (
     <Section title="Settings" defaultOpen={defaultOpen}>
@@ -48,6 +64,14 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
           checked={showAxisHelper}
           onCheckedChange={setShowAxisHelper}
           label="Show Axis Helper"
+        />
+      </div>
+      <div className="mt-3 pt-3 border-t border-panel-border">
+        <Switch
+          checked={showDepthBuffer && depthBufferAvailable}
+          onCheckedChange={setShowDepthBuffer}
+          disabled={!depthBufferAvailable}
+          label="Show Depth Buffer"
         />
       </div>
       <div className="mt-3 pt-3 border-t border-panel-border">

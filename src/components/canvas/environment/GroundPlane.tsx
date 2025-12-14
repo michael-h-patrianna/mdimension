@@ -172,8 +172,11 @@ interface WallConfig {
   gridOffset: [number, number, number];
 }
 
-/** Small offset to prevent z-fighting between grid and surface */
-const Z_OFFSET = 0.002;
+/**
+ * Offset to prevent z-fighting between grid and surface.
+ * Must be greater than TWO_SIDED_HEIGHT / 2 (0.005) to ensure grid is outside the box.
+ */
+const Z_OFFSET = 0.01;
 
 /**
  * Get wall configuration for a given wall position and distance.

@@ -1,3 +1,4 @@
+import { createColorCache, createLightColorCache, updateLinearColorUniform } from '@/lib/colors/linearCache';
 import { composeRotations } from '@/lib/math/rotation';
 import type { MatrixND } from '@/lib/math/types';
 import { createLightUniforms, updateLightUniforms } from '@/lib/lights/uniforms';
@@ -5,6 +6,7 @@ import type { LightUniforms } from '@/lib/lights/uniforms';
 import { OPACITY_MODE_TO_INT, SAMPLE_QUALITY_TO_INT } from '@/lib/opacity/types';
 import { COLOR_ALGORITHM_TO_INT } from '@/lib/shaders/palette';
 import { SHADOW_QUALITY_TO_INT, SHADOW_ANIMATION_MODE_TO_INT } from '@/lib/shadows/types';
+import { RENDER_LAYERS } from '@/lib/rendering/layers';
 import { useAnimationStore } from '@/stores/animationStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
@@ -185,6 +187,10 @@ const MandelboxMesh = () => {
   const prevParamValuesRef = useRef<number[] | null>(null);
   const basisVectorsDirtyRef = useRef(true);
 
+  // Cached linear colors - avoid per-frame sRGB->linear conversion
+  const colorCacheRef = useRef(createColorCache());
+  const lightColorCacheRef = useRef(createLightColorCache());
+
   // Animation time tracking - only advances when isPlaying is true
   const animationTimeRef = useRef(0);
   const lastFrameTimeRef = useRef(0);
@@ -197,6 +203,13 @@ const MandelboxMesh = () => {
         restoreQualityTimeoutRef.current = null;
       }
     };
+  }, []);
+
+  // Assign main object layer for depth-based effects (SSR, refraction, bokeh)
+  useEffect(() => {
+    if (meshRef.current?.layers) {
+      meshRef.current.layers.set(RENDER_LAYERS.MAIN_OBJECT);
+    }
   }, []);
 
   // Get dimension from geometry store
@@ -292,8 +305,8 @@ const MandelboxMesh = () => {
       uBasisZ: { value: new Float32Array(11) },
       uOrigin: { value: new Float32Array(11) },
 
-      // Color and palette
-      uColor: { value: new THREE.Color() },
+      // Color and palette (converted to linear for physically correct lighting)
+      uColor: { value: new THREE.Color().convertSRGBToLinear() },
 
       // 3D transformation matrices
       uModelMatrix: { value: new THREE.Matrix4() },
@@ -303,20 +316,20 @@ const MandelboxMesh = () => {
 
       // Multi-light system uniforms
       ...createLightUniforms(),
-      // Global lighting uniforms
+      // Global lighting uniforms (colors converted to linear for physically correct lighting)
       uAmbientIntensity: { value: 0.2 },
-      uAmbientColor: { value: new THREE.Color('#FFFFFF') },
+      uAmbientColor: { value: new THREE.Color('#FFFFFF').convertSRGBToLinear() },
       uSpecularIntensity: { value: 1.0 },
       uSpecularPower: { value: 32.0 },
-      uSpecularColor: { value: new THREE.Color('#FFFFFF') },
+      uSpecularColor: { value: new THREE.Color('#FFFFFF').convertSRGBToLinear() },
       uDiffuseIntensity: { value: 1.0 },
       // Material property for G-buffer (reflectivity for SSR)
       uMetallic: { value: 0.0 },
 
-      // Fresnel rim lighting uniforms
+      // Fresnel rim lighting uniforms (color converted to linear)
       uFresnelEnabled: { value: true },
       uFresnelIntensity: { value: 0.5 },
-      uRimColor: { value: new THREE.Color('#FFFFFF') },
+      uRimColor: { value: new THREE.Color('#FFFFFF').convertSRGBToLinear() },
 
       // Performance mode
       uFastMode: { value: false },
@@ -453,27 +466,36 @@ const MandelboxMesh = () => {
         for (let i = 0; i < 11; i++) arr[i] = juliaC[i] ?? 0;
       }
 
-      // Update color
-      if (material.uniforms.uColor) material.uniforms.uColor.value.set(faceColor);
+      // Update color (cached linear conversion - only converts when color changes)
+      const cache = colorCacheRef.current;
+      if (material.uniforms.uColor) {
+        updateLinearColorUniform(cache.faceColor, material.uniforms.uColor.value as THREE.Color, faceColor);
+      }
 
       // Update camera matrices
       if (material.uniforms.uProjectionMatrix) material.uniforms.uProjectionMatrix.value.copy(camera.projectionMatrix);
       if (material.uniforms.uViewMatrix) material.uniforms.uViewMatrix.value.copy(camera.matrixWorldInverse);
 
-      // Update multi-light system uniforms
-      updateLightUniforms(material.uniforms as unknown as LightUniforms, lights);
-      // Update global lighting uniforms
+      // Update multi-light system uniforms (with cached linear color conversion)
+      updateLightUniforms(material.uniforms as unknown as LightUniforms, lights, lightColorCacheRef.current);
+      // Update global lighting uniforms (cached linear conversion)
       if (material.uniforms.uAmbientIntensity) material.uniforms.uAmbientIntensity.value = ambientIntensity;
-      if (material.uniforms.uAmbientColor) material.uniforms.uAmbientColor.value.set(ambientColor);
+      if (material.uniforms.uAmbientColor) {
+        updateLinearColorUniform(cache.ambientColor, material.uniforms.uAmbientColor.value as THREE.Color, ambientColor);
+      }
       if (material.uniforms.uSpecularIntensity) material.uniforms.uSpecularIntensity.value = specularIntensity;
       if (material.uniforms.uSpecularPower) material.uniforms.uSpecularPower.value = shininess;
-      if (material.uniforms.uSpecularColor) material.uniforms.uSpecularColor.value.set(specularColor);
+      if (material.uniforms.uSpecularColor) {
+        updateLinearColorUniform(cache.specularColor, material.uniforms.uSpecularColor.value as THREE.Color, specularColor);
+      }
       if (material.uniforms.uDiffuseIntensity) material.uniforms.uDiffuseIntensity.value = diffuseIntensity;
 
-      // Fresnel rim lighting
+      // Fresnel rim lighting (cached linear conversion)
       if (material.uniforms.uFresnelEnabled) material.uniforms.uFresnelEnabled.value = edgesVisible;
       if (material.uniforms.uFresnelIntensity) material.uniforms.uFresnelIntensity.value = fresnelIntensity;
-      if (material.uniforms.uRimColor) material.uniforms.uRimColor.value.set(edgeColor);
+      if (material.uniforms.uRimColor) {
+        updateLinearColorUniform(cache.rimColor, material.uniforms.uRimColor.value as THREE.Color, edgeColor);
+      }
 
       // Advanced Color System uniforms
       if (material.uniforms.uColorAlgorithm) material.uniforms.uColorAlgorithm.value = COLOR_ALGORITHM_TO_INT[colorAlgorithm];

@@ -18,9 +18,6 @@
  */
 export function buildPointFragmentShader(): string {
   return `
-    // Output declaration for WebGL2
-    layout(location = 0) out vec4 fragColor;
-
     uniform vec3 uPointColor;
     uniform float uOpacity;
     uniform bool uUseVertexColors;
@@ -38,7 +35,8 @@ export function buildPointFragmentShader(): string {
       float dist = length(center) * 2.0;
       float alpha = smoothstep(1.0, 0.7, dist) * uOpacity;
 
-      fragColor = vec4(color, alpha);
+      // Three.js GLSL3 provides pc_fragColor output automatically
+      pc_fragColor = vec4(color, alpha);
     }
   `
 }
