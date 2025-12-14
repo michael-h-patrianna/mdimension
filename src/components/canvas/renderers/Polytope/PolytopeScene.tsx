@@ -581,8 +581,12 @@ export const PolytopeScene = React.memo(function PolytopeScene({
         // Update lighting uniforms (only for materials that have them)
         // Colors use cached linear conversion for performance
         const u = material.uniforms;
+
+        // Update face surface color (critical for color algorithm changes)
+        if (u.uColor) updateLinearColorUniform(cache.faceColor, u.uColor.value as Color, visualState.faceColor);
+
         if (u.uLightEnabled) u.uLightEnabled.value = lightEnabled;
-        if (u.uLightColor) updateLinearColorUniform(cache.faceColor, u.uLightColor.value as Color, lightColor);
+        if (u.uLightColor) updateLinearColorUniform(cache.lightColor, u.uLightColor.value as Color, lightColor);
         if (u.uLightDirection) (u.uLightDirection.value as Vector3).copy(lightDirection);
         if (u.uLightStrength) u.uLightStrength.value = lightStrength;
         if (u.uAmbientIntensity) u.uAmbientIntensity.value = ambientIntensity;

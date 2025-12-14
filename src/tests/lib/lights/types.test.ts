@@ -83,7 +83,7 @@ describe('Light Types', () => {
 
     it('should have default range and decay values', () => {
       const light = createDefaultLight()
-      expect(light.range).toBe(0) // 0 = infinite range
+      expect(light.range).toBe(15) // Main light has finite range for better visuals
       expect(light.decay).toBe(2) // 2 = physically correct inverse square
     })
   })

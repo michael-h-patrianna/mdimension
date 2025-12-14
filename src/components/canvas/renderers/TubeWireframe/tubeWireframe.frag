@@ -230,6 +230,10 @@ void main() {
   // Final color (tone mapping is applied by post-processing OutputPass)
   vec3 color = Lo;
 
+  // Explicitly write depth to ensure it's captured in depth-only passes
+  // This is necessary for MRT shaders rendering to single-attachment targets
+  gl_FragDepth = gl_FragCoord.z;
+
   // Output to MRT (Multiple Render Targets)
   // gColor: Color buffer (RGBA)
   // gNormal: Normal buffer (RGB = normal * 0.5 + 0.5, A = reflectivity/metallic)

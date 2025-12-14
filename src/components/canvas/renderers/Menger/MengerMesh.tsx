@@ -1,3 +1,4 @@
+import { createColorCache, createLightColorCache, updateLinearColorUniform } from '@/lib/colors/linearCache';
 import { composeRotations } from '@/lib/math/rotation';
 import type { MatrixND } from '@/lib/math/types';
 import { createLightUniforms, updateLightUniforms } from '@/lib/lights/uniforms';
@@ -146,6 +147,10 @@ const MengerMesh = () => {
 
   // Animation time tracking (respects isPlaying state)
   const animationTimeRef = useRef(0);
+
+  // Cached linear colors - avoid per-frame sRGB->linear conversion
+  const colorCacheRef = useRef(createColorCache());
+  const lightColorCacheRef = useRef(createLightColorCache());
 
   // Get color state from visual store
   const faceColor = useVisualStore((state) => state.faceColor);
@@ -353,27 +358,36 @@ const MengerMesh = () => {
         material.uniforms.uFoldTwistAngle.value = angle;
       }
 
-      // Update color
-      if (material.uniforms.uColor) material.uniforms.uColor.value.set(faceColor);
+      // Update color (cached linear conversion - only converts when color changes)
+      const cache = colorCacheRef.current;
+      if (material.uniforms.uColor) {
+        updateLinearColorUniform(cache.faceColor, material.uniforms.uColor.value as THREE.Color, faceColor);
+      }
 
       // Update camera matrices
       if (material.uniforms.uProjectionMatrix) material.uniforms.uProjectionMatrix.value.copy(camera.projectionMatrix);
       if (material.uniforms.uViewMatrix) material.uniforms.uViewMatrix.value.copy(camera.matrixWorldInverse);
 
-      // Update multi-light system uniforms
-      updateLightUniforms(material.uniforms as unknown as LightUniforms, lights);
-      // Update global lighting uniforms
+      // Update multi-light system uniforms (with cached linear color conversion)
+      updateLightUniforms(material.uniforms as unknown as LightUniforms, lights, lightColorCacheRef.current);
+      // Update global lighting uniforms (cached linear conversion)
       if (material.uniforms.uAmbientIntensity) material.uniforms.uAmbientIntensity.value = ambientIntensity;
-      if (material.uniforms.uAmbientColor) material.uniforms.uAmbientColor.value.set(ambientColor);
+      if (material.uniforms.uAmbientColor) {
+        updateLinearColorUniform(cache.ambientColor, material.uniforms.uAmbientColor.value as THREE.Color, ambientColor);
+      }
       if (material.uniforms.uSpecularIntensity) material.uniforms.uSpecularIntensity.value = specularIntensity;
       if (material.uniforms.uSpecularPower) material.uniforms.uSpecularPower.value = shininess;
-      if (material.uniforms.uSpecularColor) material.uniforms.uSpecularColor.value.set(specularColor);
+      if (material.uniforms.uSpecularColor) {
+        updateLinearColorUniform(cache.specularColor, material.uniforms.uSpecularColor.value as THREE.Color, specularColor);
+      }
       if (material.uniforms.uDiffuseIntensity) material.uniforms.uDiffuseIntensity.value = diffuseIntensity;
 
-      // Fresnel rim lighting
+      // Fresnel rim lighting (cached linear conversion)
       if (material.uniforms.uFresnelEnabled) material.uniforms.uFresnelEnabled.value = edgesVisible;
       if (material.uniforms.uFresnelIntensity) material.uniforms.uFresnelIntensity.value = fresnelIntensity;
-      if (material.uniforms.uRimColor) material.uniforms.uRimColor.value.set(edgeColor);
+      if (material.uniforms.uRimColor) {
+        updateLinearColorUniform(cache.rimColor, material.uniforms.uRimColor.value as THREE.Color, edgeColor);
+      }
 
       // Advanced Color System uniforms
       if (material.uniforms.uColorAlgorithm) material.uniforms.uColorAlgorithm.value = COLOR_ALGORITHM_TO_INT[colorAlgorithm];

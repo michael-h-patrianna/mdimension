@@ -40,6 +40,21 @@ class MockResizeObserver {
 }
 ;(globalThis as unknown as { ResizeObserver: typeof MockResizeObserver }).ResizeObserver = MockResizeObserver
 
+// Mock window.matchMedia for media query hooks (not provided by JSDOM)
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: vi.fn().mockImplementation((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(), // deprecated
+    removeListener: vi.fn(), // deprecated
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
+})
+
 // Mock canvas contexts for Three.js (WebGL) and UI components (2D)
 const webglContextMock = {
   canvas: {},

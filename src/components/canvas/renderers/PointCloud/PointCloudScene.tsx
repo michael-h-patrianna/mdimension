@@ -27,6 +27,7 @@ import {
 import { LineMaterial, LineSegments2, LineSegmentsGeometry } from 'three-stdlib';
 import { useShallow } from 'zustand/react/shallow';
 
+import { createColorCache, updateLinearColorUniform } from '@/lib/colors/linearCache';
 import { createScaleMatrix, multiplyMatrixVector } from '@/lib/math';
 import { DEFAULT_PROJECTION_DISTANCE, projectEdgesToPositions } from '@/lib/math/projection';
 import { composeRotations } from '@/lib/math/rotation';
@@ -221,6 +222,8 @@ export const PointCloudScene = React.memo(function PointCloudScene({
   const resolutionRef = useRef(new Vector2());
   // Scratch rotation matrix to avoid allocation in useFrame
   const rotationMatrixRef = useRef<number[][] | null>(null);
+  // Cached linear colors - avoid per-frame sRGB->linear conversion
+  const colorCacheRef = useRef(createColorCache());
 
   // Assign main object layer for depth-based effects (SSR, refraction, bokeh)
   useEffect(() => {
@@ -489,7 +492,8 @@ export const PointCloudScene = React.memo(function PointCloudScene({
       depthSums.set(gpuData.depthRowSums);
       u.uProjectionDistance!.value = projectionDistance;
       u.uProjectionType!.value = projectionType === 'perspective' ? 1 : 0;
-      u.uPointColor!.value = new Color(vertexColor);
+      // Use cached linear color conversion
+      updateLinearColorUniform(colorCacheRef.current.pointColor, u.uPointColor!.value as Color, vertexColor);
       u.uPointSize!.value = vertexSize * 10;
     }
 
@@ -510,7 +514,8 @@ export const PointCloudScene = React.memo(function PointCloudScene({
       depthSums.set(gpuData.depthRowSums);
       u.uProjectionDistance!.value = projectionDistance;
       u.uProjectionType!.value = projectionType === 'perspective' ? 1 : 0;
-      u.uEdgeColor!.value = new Color(edgeColor);
+      // Use cached linear color conversion
+      updateLinearColorUniform(colorCacheRef.current.edgeColor, u.uEdgeColor!.value as Color, edgeColor);
     }
 
     // Fat lines still need CPU transform (LineSegments2 uses its own shader)

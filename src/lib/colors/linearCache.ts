@@ -86,6 +86,8 @@ export function createColorCache() {
   return {
     faceColor: createCachedLinearColor(),
     edgeColor: createCachedLinearColor(),
+    pointColor: createCachedLinearColor(),
+    lightColor: createCachedLinearColor(),
     ambientColor: createCachedLinearColor(),
     specularColor: createCachedLinearColor(),
     rimColor: createCachedLinearColor(),
