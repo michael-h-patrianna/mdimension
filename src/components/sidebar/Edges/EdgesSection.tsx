@@ -8,24 +8,24 @@
 
 import { Section } from '@/components/ui/Section';
 import React from 'react';
+import { EdgeControls } from './EdgeControls';
 import { ShaderSettings } from './ShaderSettings';
-import { VisualControls } from './VisualControls';
 
-export interface VisualSectionProps {
+export interface EdgesSectionProps {
   defaultOpen?: boolean;
 }
 
-export const VisualSection: React.FC<VisualSectionProps> = ({
+export const EdgesSection: React.FC<EdgesSectionProps> = ({
   defaultOpen = false,
 }) => {
   return (
-    <Section title="Visual" defaultOpen={defaultOpen}>
+    <Section title="Edges" defaultOpen={defaultOpen}>
       <div className="space-y-6">
         {/* Per-Shader Settings (shown when faces are visible) */}
         <ShaderSettings />
 
-        {/* Color & Visual Settings */}
-        <VisualControls />
+
+        <EdgeControls />
       </div>
     </Section>
   );

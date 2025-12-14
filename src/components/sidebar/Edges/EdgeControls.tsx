@@ -1,22 +1,22 @@
 /**
  * Visual Controls Component
- * Controls for customizing the visual appearance of polytopes
+ * Controls for customizing the visual appearance of polytopes edges and raymarching rim lighting (which appears as pseudo-edges).
  */
 
-import { useShallow } from 'zustand/react/shallow';
 import { Slider } from '@/components/ui/Slider';
 import {
   DEFAULT_EDGE_THICKNESS,
   useVisualStore
 } from '@/stores/visualStore';
 import React from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { EdgeMaterialControls } from './EdgeMaterialControls';
 
-export interface VisualControlsProps {
+export interface EdgesControlsProps {
   className?: string;
 }
 
-export const VisualControls: React.FC<VisualControlsProps> = React.memo(({
+export const EdgeControls: React.FC<EdgesControlsProps> = React.memo(({
   className = '',
 }) => {
   // Consolidate visual store selectors with useShallow to reduce subscriptions

@@ -7,6 +7,7 @@ import { ControlPanel } from '@/components/ui/ControlPanel';
 import React from 'react';
 import { AnimationSection } from './Animation';
 import { DocumentationSection } from './Documentation';
+import { EdgesSection } from './Edges';
 import { EnvironmentSection } from './Environment';
 import { ExportSection } from './Export';
 import { FacesSection } from './Faces';
@@ -17,7 +18,6 @@ import { ProjectionSection } from './Projection';
 import { RenderModeToggles } from './RenderMode';
 import { SettingsSection } from './Settings';
 import { ShortcutsSection } from './Shortcuts';
-import { VisualSection } from './Visual';
 
 export interface SidebarProps {
   title?: string;
@@ -36,7 +36,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <GeometrySection defaultOpen={true} />
       <AnimationSection defaultOpen={true} />
       <FacesSection defaultOpen={false} />
-      <VisualSection defaultOpen={false} />
+      <EdgesSection defaultOpen={false} />
       <LightsSection defaultOpen={false} />
       <EnvironmentSection defaultOpen={false} />
       <PostProcessingSection defaultOpen={false} />

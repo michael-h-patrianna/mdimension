@@ -3,10 +3,10 @@
  * @vitest-environment jsdom
  */
 
-import { describe, it, expect, beforeEach } from 'vitest'
+import { EdgeMaterialControls } from '@/components/sidebar/Edges/EdgeMaterialControls'
+import { DEFAULT_EDGE_METALLIC, DEFAULT_EDGE_ROUGHNESS, useVisualStore } from '@/stores/visualStore'
 import { render, screen } from '@testing-library/react'
-import { EdgeMaterialControls } from '@/components/sidebar/Visual/EdgeMaterialControls'
-import { useVisualStore, DEFAULT_EDGE_METALLIC, DEFAULT_EDGE_ROUGHNESS } from '@/stores/visualStore'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 describe('EdgeMaterialControls', () => {
   beforeEach(() => {
