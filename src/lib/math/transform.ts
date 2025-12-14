@@ -190,10 +190,11 @@ export function toHomogeneous(vector: VectorND, out?: VectorND): VectorND {
 /**
  * Converts from homogeneous coordinates by dividing by last component and removing it
  * @param vector - Vector in homogeneous coordinates
+ * @param out - Optional output vector to avoid allocation (must have length = vector.length - 1)
  * @returns Vector in standard coordinates
  * @throws {Error} If homogeneous coordinate is zero
  */
-export function fromHomogeneous(vector: VectorND): VectorND {
+export function fromHomogeneous(vector: VectorND, out?: VectorND): VectorND {
   if (vector.length === 0) {
     throw new Error('Cannot convert empty vector from homogeneous coordinates')
   }
@@ -204,8 +205,9 @@ export function fromHomogeneous(vector: VectorND): VectorND {
     throw new Error('Cannot convert from homogeneous coordinates: w component is zero')
   }
 
-  const result: VectorND = []
-  for (let i = 0; i < vector.length - 1; i++) {
+  const len = vector.length - 1
+  const result = out ?? new Array(len)
+  for (let i = 0; i < len; i++) {
     result[i] = vector[i]! / w
   }
 

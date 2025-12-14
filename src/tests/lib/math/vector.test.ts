@@ -13,6 +13,7 @@ import {
   normalize,
   vectorsEqual,
   copyVector,
+  crossProduct3D,
   EPSILON,
 } from '@/lib/math';
 
@@ -248,6 +249,71 @@ describe('Vector Operations', () => {
 
       copy[0] = 999;
       expect(original[0]).toBe(1);
+    });
+  });
+
+  describe('crossProduct3D', () => {
+    it('computes cross product of standard basis vectors', () => {
+      // i × j = k
+      expect(crossProduct3D([1, 0, 0], [0, 1, 0])).toEqual([0, 0, 1]);
+      // j × k = i
+      expect(crossProduct3D([0, 1, 0], [0, 0, 1])).toEqual([1, 0, 0]);
+      // k × i = j
+      expect(crossProduct3D([0, 0, 1], [1, 0, 0])).toEqual([0, 1, 0]);
+    });
+
+    it('is anti-commutative (a × b = -(b × a))', () => {
+      const a = [1, 2, 3];
+      const b = [4, 5, 6];
+      const axb = crossProduct3D(a, b);
+      const bxa = crossProduct3D(b, a);
+
+      expect(axb[0]).toBeCloseTo(-bxa[0]!, 10);
+      expect(axb[1]).toBeCloseTo(-bxa[1]!, 10);
+      expect(axb[2]).toBeCloseTo(-bxa[2]!, 10);
+    });
+
+    it('returns zero for parallel vectors', () => {
+      const a = [1, 2, 3];
+      const b = [2, 4, 6]; // 2 * a
+      const result = crossProduct3D(a, b);
+
+      expect(result[0]).toBeCloseTo(0, 10);
+      expect(result[1]).toBeCloseTo(0, 10);
+      expect(result[2]).toBeCloseTo(0, 10);
+    });
+
+    it('result is perpendicular to both input vectors', () => {
+      const a = [1, 2, 3];
+      const b = [4, 5, 6];
+      const result = crossProduct3D(a, b);
+
+      // Dot product with either input should be 0
+      expect(dotProduct(result, a)).toBeCloseTo(0, 10);
+      expect(dotProduct(result, b)).toBeCloseTo(0, 10);
+    });
+
+    it('computes correct magnitude (|a × b| = |a||b|sin(θ))', () => {
+      // For perpendicular unit vectors, |a × b| = 1
+      const a = [1, 0, 0];
+      const b = [0, 1, 0];
+      const result = crossProduct3D(a, b);
+      expect(magnitude(result)).toBeCloseTo(1, 10);
+    });
+
+    it('throws error for non-3D vectors in DEV mode', () => {
+      expect(() => crossProduct3D([1, 2], [3, 4])).toThrow();
+      expect(() => crossProduct3D([1, 2, 3, 4], [5, 6, 7, 8])).toThrow();
+    });
+
+    it('uses out parameter when provided', () => {
+      const a = [1, 0, 0];
+      const b = [0, 1, 0];
+      const out = [0, 0, 0];
+      const result = crossProduct3D(a, b, out);
+
+      expect(result).toBe(out);
+      expect(out).toEqual([0, 0, 1]);
     });
   });
 });

@@ -4,7 +4,7 @@
  * Sidebar section for all face/surface settings organized in tabs:
  * - Colors: Color algorithm selection and configuration
  * - Material: Opacity, diffuse, and specular settings
- * - FX: Fresnel rim effects
+ * - FX: Fresnel rim effects and shadow controls
  *
  * Only visible when facesVisible is true.
  */
@@ -36,6 +36,7 @@ import {
   SHADOW_SOFTNESS_RANGE,
 } from '@/lib/shadows/constants';
 import type { ShadowAnimationMode, ShadowQuality } from '@/lib/shadows/types';
+import { isRaymarchingFractal } from '@/lib/geometry';
 import { useGeometryStore } from '@/stores/geometryStore';
 import {
   DEFAULT_DIFFUSE_INTENSITY,
@@ -68,9 +69,9 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<FacesTabId>('colors');
 
-  // Get object type to check if we're viewing a hyperbulb
+  // Get object type to check if we're viewing a raymarching fractal
   const objectType = useGeometryStore((state) => state.objectType);
-  const isHyperbulb = objectType === 'mandelbrot';
+  const isRaymarchingFractalType = isRaymarchingFractal(objectType);
 
   const {
     facesVisible,
@@ -97,7 +98,7 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
     setSpecularColor,
     setDiffuseIntensity,
     // Opacity settings
-    hyperbulbOpacitySettings,
+    opacitySettings,
     hasSeenVolumetricWarning,
     setOpacityMode,
     setSimpleAlphaOpacity,
@@ -143,7 +144,7 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
       setSpecularColor: state.setSpecularColor,
       setDiffuseIntensity: state.setDiffuseIntensity,
       // Opacity settings
-      hyperbulbOpacitySettings: state.hyperbulbOpacitySettings,
+      opacitySettings: state.opacitySettings,
       hasSeenVolumetricWarning: state.hasSeenVolumetricWarning,
       setOpacityMode: state.setOpacityMode,
       setSimpleAlphaOpacity: state.setSimpleAlphaOpacity,
@@ -211,15 +212,15 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
           setSpecularIntensity={setSpecularIntensity}
           shininess={shininess}
           setShininess={setShininess}
-          // Hyperbulb opacity props
-          isHyperbulb={isHyperbulb}
-          opacityMode={hyperbulbOpacitySettings.mode}
-          simpleAlphaOpacity={hyperbulbOpacitySettings.simpleAlphaOpacity}
-          layerCount={hyperbulbOpacitySettings.layerCount}
-          layerOpacity={hyperbulbOpacitySettings.layerOpacity}
-          volumetricDensity={hyperbulbOpacitySettings.volumetricDensity}
-          sampleQuality={hyperbulbOpacitySettings.sampleQuality}
-          volumetricAnimationQuality={hyperbulbOpacitySettings.volumetricAnimationQuality}
+          // Opacity props (raymarching fractals)
+          isRaymarchingFractalType={isRaymarchingFractalType}
+          opacityMode={opacitySettings.mode}
+          simpleAlphaOpacity={opacitySettings.simpleAlphaOpacity}
+          layerCount={opacitySettings.layerCount}
+          layerOpacity={opacitySettings.layerOpacity}
+          volumetricDensity={opacitySettings.volumetricDensity}
+          sampleQuality={opacitySettings.sampleQuality}
+          volumetricAnimationQuality={opacitySettings.volumetricAnimationQuality}
           hasSeenVolumetricWarning={hasSeenVolumetricWarning}
           onOpacityModeChange={setOpacityMode}
           onSimpleAlphaChange={setSimpleAlphaOpacity}
@@ -229,16 +230,6 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
           onSampleQualityChange={setSampleQuality}
           onVolumetricAnimationQualityChange={setVolumetricAnimationQuality}
           onSeenVolumetricWarning={() => setHasSeenVolumetricWarning(true)}
-          // Shadow props
-          hasEnabledLights={hasEnabledLights}
-          shadowEnabled={shadowEnabled}
-          shadowQuality={shadowQuality}
-          shadowSoftness={shadowSoftness}
-          shadowAnimationMode={shadowAnimationMode}
-          onShadowEnabledChange={setShadowEnabled}
-          onShadowQualityChange={setShadowQuality}
-          onShadowSoftnessChange={setShadowSoftness}
-          onShadowAnimationModeChange={setShadowAnimationMode}
         />
       ),
     },
@@ -253,6 +244,17 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
           }
           fresnelIntensity={fresnelIntensity}
           setFresnelIntensity={setFresnelIntensity}
+          // Shadow props
+          isRaymarchingFractalType={isRaymarchingFractalType}
+          hasEnabledLights={hasEnabledLights}
+          shadowEnabled={shadowEnabled}
+          shadowQuality={shadowQuality}
+          shadowSoftness={shadowSoftness}
+          shadowAnimationMode={shadowAnimationMode}
+          onShadowEnabledChange={setShadowEnabled}
+          onShadowQualityChange={setShadowQuality}
+          onShadowSoftnessChange={setShadowSoftness}
+          onShadowAnimationModeChange={setShadowAnimationMode}
         />
       ),
     },
@@ -410,8 +412,8 @@ interface MaterialTabContentProps {
   setSpecularIntensity: (value: number) => void;
   shininess: number;
   setShininess: (value: number) => void;
-  // Hyperbulb opacity props
-  isHyperbulb: boolean;
+  // Raymarching fractals opacity props
+  isRaymarchingFractalType: boolean;
   opacityMode: OpacityMode;
   simpleAlphaOpacity: number;
   layerCount: 2 | 3 | 4;
@@ -428,16 +430,6 @@ interface MaterialTabContentProps {
   onSampleQualityChange: (quality: SampleQuality) => void;
   onVolumetricAnimationQualityChange: (quality: VolumetricAnimationQuality) => void;
   onSeenVolumetricWarning: () => void;
-  // Shadow props
-  hasEnabledLights: boolean;
-  shadowEnabled: boolean;
-  shadowQuality: ShadowQuality;
-  shadowSoftness: number;
-  shadowAnimationMode: ShadowAnimationMode;
-  onShadowEnabledChange: (enabled: boolean) => void;
-  onShadowQualityChange: (quality: ShadowQuality) => void;
-  onShadowSoftnessChange: (softness: number) => void;
-  onShadowAnimationModeChange: (mode: ShadowAnimationMode) => void;
 }
 
 const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
@@ -458,8 +450,8 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
   setSpecularIntensity,
   shininess,
   setShininess,
-  // Hyperbulb opacity props
-  isHyperbulb,
+  // Raymarching fractals opacity props
+  isRaymarchingFractalType,
   opacityMode,
   simpleAlphaOpacity,
   layerCount,
@@ -476,16 +468,6 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
   onSampleQualityChange,
   onVolumetricAnimationQualityChange,
   onSeenVolumetricWarning,
-  // Shadow props
-  hasEnabledLights,
-  shadowEnabled,
-  shadowQuality,
-  shadowSoftness,
-  shadowAnimationMode,
-  onShadowEnabledChange,
-  onShadowQualityChange,
-  onShadowSoftnessChange,
-  onShadowAnimationModeChange,
 }) => {
   // State for volumetric warning toast
   const [showVolumetricWarning, setShowVolumetricWarning] = useState(false);
@@ -513,8 +495,8 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
 
   return (
     <div className="space-y-3">
-      {/* Hyperbulb Opacity Mode Controls */}
-      {isHyperbulb && (
+      {/* Raymarching Fractals Opacity Mode Controls */}
+      {isRaymarchingFractalType && (
         <>
           <SectionHeader title="Opacity Mode" />
 
@@ -645,7 +627,7 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
       )}
 
       {/* Face Opacity - Only shown for non-hyperbulb objects */}
-      {!isHyperbulb && (
+      {!isRaymarchingFractalType && (
         <Slider
           label="Face Opacity"
           min={0}
@@ -730,8 +712,79 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
         </>
       )}
 
-      {/* Shadow Controls - Only for Hyperbulb with enabled lights */}
-      {isHyperbulb && hasEnabledLights && (
+      {!showLightingControls && (
+        <p className="text-xs text-text-secondary italic">
+          Enable lighting in the Visual section to access diffuse and specular
+          settings.
+        </p>
+      )}
+    </div>
+  );
+};
+
+// =============================================================================
+// FX Tab Content
+// =============================================================================
+
+interface FxTabContentProps {
+  fresnelEnabled: boolean;
+  setFresnelEnabled: (enabled: boolean) => void;
+  fresnelIntensity: number;
+  setFresnelIntensity: (value: number) => void;
+  // Shadow props
+  isRaymarchingFractalType: boolean;
+  hasEnabledLights: boolean;
+  shadowEnabled: boolean;
+  shadowQuality: ShadowQuality;
+  shadowSoftness: number;
+  shadowAnimationMode: ShadowAnimationMode;
+  onShadowEnabledChange: (enabled: boolean) => void;
+  onShadowQualityChange: (quality: ShadowQuality) => void;
+  onShadowSoftnessChange: (softness: number) => void;
+  onShadowAnimationModeChange: (mode: ShadowAnimationMode) => void;
+}
+
+const FxTabContent: React.FC<FxTabContentProps> = ({
+  fresnelEnabled,
+  setFresnelEnabled,
+  fresnelIntensity,
+  setFresnelIntensity,
+  // Shadow props
+  isRaymarchingFractalType,
+  hasEnabledLights,
+  shadowEnabled,
+  shadowQuality,
+  shadowSoftness,
+  shadowAnimationMode,
+  onShadowEnabledChange,
+  onShadowQualityChange,
+  onShadowSoftnessChange,
+  onShadowAnimationModeChange,
+}) => {
+  return (
+    <div className="space-y-4">
+      {/* Fresnel Rim Effect */}
+      <Switch
+        checked={fresnelEnabled}
+        onCheckedChange={setFresnelEnabled}
+        label="Fresnel Rim"
+      />
+
+      {fresnelEnabled && (
+        <Slider
+          label="Fresnel Intensity"
+          min={0}
+          max={1}
+          step={0.1}
+          value={fresnelIntensity}
+          onChange={setFresnelIntensity}
+          onReset={() => setFresnelIntensity(DEFAULT_FRESNEL_INTENSITY)}
+          showValue
+        />
+      )}
+
+      {/* Shadow Controls - Only for raymarching fractals with enabled lights */}
+      {isRaymarchingFractalType && hasEnabledLights && (
         <>
           <SectionHeader title="Shadows" />
 
@@ -807,55 +860,6 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
             </>
           )}
         </>
-      )}
-
-      {!showLightingControls && (
-        <p className="text-xs text-text-secondary italic">
-          Enable lighting in the Visual section to access diffuse and specular
-          settings.
-        </p>
-      )}
-    </div>
-  );
-};
-
-// =============================================================================
-// FX Tab Content
-// =============================================================================
-
-interface FxTabContentProps {
-  fresnelEnabled: boolean;
-  setFresnelEnabled: (enabled: boolean) => void;
-  fresnelIntensity: number;
-  setFresnelIntensity: (value: number) => void;
-}
-
-const FxTabContent: React.FC<FxTabContentProps> = ({
-  fresnelEnabled,
-  setFresnelEnabled,
-  fresnelIntensity,
-  setFresnelIntensity,
-}) => {
-  return (
-    <div className="space-y-4">
-      {/* Fresnel Rim Effect */}
-      <Switch
-        checked={fresnelEnabled}
-        onCheckedChange={setFresnelEnabled}
-        label="Fresnel Rim"
-      />
-
-      {fresnelEnabled && (
-        <Slider
-          label="Fresnel Intensity"
-          min={0}
-          max={1}
-          step={0.1}
-          value={fresnelIntensity}
-          onChange={setFresnelIntensity}
-          onReset={() => setFresnelIntensity(DEFAULT_FRESNEL_INTENSITY)}
-          showValue
-        />
       )}
     </div>
   );

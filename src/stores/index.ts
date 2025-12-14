@@ -14,6 +14,17 @@ export {
   useGeometryStore,
   validateObjectTypeForDimension,
 } from './geometryStore'
+export {
+  DEFAULT_SIDEBAR_WIDTH,
+  getLayoutMode,
+  getMaxSidebarWidth,
+  MAX_SIDEBAR_WIDTH,
+  MIN_CANVAS_WIDTH,
+  MIN_SIDEBAR_WIDTH,
+  SIDE_BY_SIDE_BREAKPOINT,
+  useLayoutStore,
+} from './layoutStore'
+export type { LayoutMode, LayoutState } from './layoutStore'
 export { useProjectionStore } from './projectionStore'
 export type { ProjectionType } from './projectionStore'
 export { useRotationStore } from './rotationStore'

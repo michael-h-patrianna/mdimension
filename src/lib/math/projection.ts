@@ -216,14 +216,28 @@ export function calculateDepth(vertex: VectorND): number {
 let depthScratch: { index: number; depth: number }[] = []
 
 /**
+ * Comparator for sorting by depth (furthest first)
+ */
+function depthComparator(a: { depth: number }, b: { depth: number }): number {
+  return b.depth - a.depth
+}
+
+/**
  * Sorts vertices by depth (furthest first) for proper rendering order
  * In perspective rendering, distant objects should be drawn before near objects
  *
+ * Uses module-level scratch buffers to avoid allocation in hot paths.
+ *
  * @param vertices - Array of n-dimensional vertices
+ * @param out - Optional output array to avoid allocation
  * @returns Array of indices sorted by depth (furthest first)
  */
-export function sortByDepth(vertices: VectorND[]): number[] {
+export function sortByDepth(vertices: VectorND[], out?: number[]): number[] {
   const len = vertices.length
+
+  if (len === 0) {
+    return out ?? []
+  }
 
   // Resize scratch array if needed
   if (depthScratch.length < len) {
@@ -240,15 +254,22 @@ export function sortByDepth(vertices: VectorND[]): number[] {
     depthScratch[i]!.depth = calculateDepth(vertices[i]!)
   }
 
-  // Sort only the portion we're using (slice creates new array but it's necessary for sort)
-  const slice = depthScratch.slice(0, len)
-  slice.sort((a, b) => b.depth - a.depth)
+  // Sort in-place using a custom sort that only considers the first `len` elements
+  // We sort the entire scratch but only use the first `len` entries
+  // This avoids the slice() allocation
+  depthScratch.length = len
+  depthScratch.sort(depthComparator)
+
+  // Use provided output or allocate new array
+  // Note: We always allocate if no `out` provided because the result must be
+  // a stable array the caller can keep. For true zero-alloc, caller must provide `out`.
+  const result = out ?? new Array(len)
 
   // Extract indices into result array
-  const result = new Array(len)
   for (let i = 0; i < len; i++) {
-    result[i] = slice[i]!.index
+    result[i] = depthScratch[i]!.index
   }
+
   return result
 }
 

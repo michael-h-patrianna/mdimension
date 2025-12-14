@@ -5,7 +5,8 @@
  * and finding cycles of length 3-4 that form closed polygons.
  */
 
-import type { Vector3D } from '@/lib/math/types';
+import type { Vector3D, VectorND } from '@/lib/math/types';
+import { crossProduct3D, dotProduct, subtractVectors } from '@/lib/math';
 import type { GeometryMetadata, ObjectType } from './types';
 import { generateHypercubeFaces } from './hypercube';
 import { computeConvexHullFaces } from './extended/utils/convex-hull-faces';
@@ -204,18 +205,25 @@ export function findQuads(
 }
 
 /**
+ * Extracts the first 3 coordinates of a vertex as a 3D vector
+ * @param v - N-dimensional vertex
+ * @returns 3D vector [x, y, z]
+ */
+function to3D(v: number[]): VectorND {
+  return [v[0] ?? 0, v[1] ?? 0, v[2] ?? 0];
+}
+
+/**
  * Checks if four vertices form a planar quadrilateral
  *
  * Verifies that all four vertices lie in the same plane by checking
  * if the fourth vertex lies in the plane defined by the first three.
  *
+ * Uses the scalar triple product: if (e1 × e2) · e3 ≈ 0, points are coplanar.
+ *
  * @param vertexIndices - Array of 4 vertex indices
  * @param vertices - Array of all vertex positions
  * @returns True if the quad is coplanar (within epsilon)
- *
- * @remarks
- * Uses the scalar triple product to check if the fourth point
- * lies in the plane of the first three points.
  */
 function isCoplanarQuad(vertexIndices: number[], vertices: number[][]): boolean {
   if (vertexIndices.length !== 4) return false;
@@ -231,22 +239,19 @@ function isCoplanarQuad(vertexIndices: number[], vertices: number[][]): boolean 
   // Get the minimum dimension (handle both 3D and higher dimensions)
   const dim = Math.min(v0.length, v1.length, v2.length, v3.length, 3);
 
-  // Create vectors from v0 to other points (using only first 3 coords)
-  const e1 = Array(dim).fill(0).map((_, i) => v1[i]! - v0[i]!);
-  const e2 = Array(dim).fill(0).map((_, i) => v2[i]! - v0[i]!);
-  const e3 = Array(dim).fill(0).map((_, i) => v3[i]! - v0[i]!);
-
-  // For 3D, compute cross product e1 × e2
+  // For 3D, use library functions for clarity
   if (dim === 3) {
-    const normal = [
-      e1[1]! * e2[2]! - e1[2]! * e2[1]!,
-      e1[2]! * e2[0]! - e1[0]! * e2[2]!,
-      e1[0]! * e2[1]! - e1[1]! * e2[0]!,
-    ];
+    // Create edge vectors from v0 to other points (first 3 coords only)
+    const p0 = to3D(v0);
+    const e1 = subtractVectors(to3D(v1), p0);
+    const e2 = subtractVectors(to3D(v2), p0);
+    const e3 = subtractVectors(to3D(v3), p0);
 
-    // Dot product with e3 should be ~0 if coplanar
-    const dotProduct = normal[0]! * e3[0]! + normal[1]! * e3[1]! + normal[2]! * e3[2]!;
-    return Math.abs(dotProduct) < 1e-6;
+    // Compute normal via cross product, then check if e3 is perpendicular
+    const normal = crossProduct3D(e1, e2);
+    const scalarTripleProduct = dotProduct(normal, e3);
+
+    return Math.abs(scalarTripleProduct) < 1e-6;
   }
 
   // For higher dimensions, assume coplanar (simplified check)

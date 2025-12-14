@@ -147,8 +147,8 @@ const HyperbulbMesh = () => {
   const fresnelIntensity = useVisualStore((state) => state.fresnelIntensity);
   const edgeColor = useVisualStore((state) => state.edgeColor);
 
-  // Opacity settings for hyperbulb
-  const opacitySettings = useVisualStore((state) => state.hyperbulbOpacitySettings);
+  // Opacity settings (shared global state)
+  const opacitySettings = useVisualStore((state) => state.opacitySettings);
 
   // Shadow settings
   const shadowEnabled = useVisualStore((state) => state.shadowEnabled);

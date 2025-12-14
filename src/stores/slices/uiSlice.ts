@@ -5,7 +5,7 @@
  * - Axis helper visibility
  * - Performance monitor visibility
  * - Animation bias
- * - Hyperbulb opacity settings (fractal-specific)
+ * - Opacity settings (for raymarching fractals)
  */
 
 import type { StateCreator } from 'zustand'
@@ -39,8 +39,8 @@ export interface UISliceState {
   // --- Animation ---
   animationBias: number
 
-  // --- Hyperbulb Opacity ---
-  hyperbulbOpacitySettings: HyperbulbOpacitySettings
+  // --- Opacity (raymarching fractals) ---
+  opacitySettings: HyperbulbOpacitySettings
   hasSeenVolumetricWarning: boolean
 }
 
@@ -52,7 +52,7 @@ export interface UISliceActions {
   // --- Animation Actions ---
   setAnimationBias: (bias: number) => void
 
-  // --- Hyperbulb Opacity Actions ---
+  // --- Opacity Actions ---
   setOpacityMode: (mode: OpacityMode) => void
   setSimpleAlphaOpacity: (opacity: number) => void
   setLayerCount: (count: 2 | 3 | 4) => void
@@ -78,8 +78,8 @@ export const UI_INITIAL_STATE: UISliceState = {
   // Animation
   animationBias: DEFAULT_ANIMATION_BIAS,
 
-  // Hyperbulb opacity
-  hyperbulbOpacitySettings: { ...DEFAULT_OPACITY_SETTINGS },
+  // Opacity (raymarching fractals)
+  opacitySettings: { ...DEFAULT_OPACITY_SETTINGS },
   hasSeenVolumetricWarning: false,
 }
 
@@ -104,11 +104,11 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set) => ({
     set({ animationBias: Math.max(0, Math.min(1, bias)) })
   },
 
-  // --- Hyperbulb Opacity Actions ---
+  // --- Opacity Actions ---
   setOpacityMode: (mode: OpacityMode) => {
     set((state) => ({
-      hyperbulbOpacitySettings: {
-        ...state.hyperbulbOpacitySettings,
+      opacitySettings: {
+        ...state.opacitySettings,
         mode,
       },
     }))
@@ -116,8 +116,8 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set) => ({
 
   setSimpleAlphaOpacity: (opacity: number) => {
     set((state) => ({
-      hyperbulbOpacitySettings: {
-        ...state.hyperbulbOpacitySettings,
+      opacitySettings: {
+        ...state.opacitySettings,
         simpleAlphaOpacity: Math.max(
           SIMPLE_ALPHA_RANGE.min,
           Math.min(SIMPLE_ALPHA_RANGE.max, opacity)
@@ -128,8 +128,8 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set) => ({
 
   setLayerCount: (count: 2 | 3 | 4) => {
     set((state) => ({
-      hyperbulbOpacitySettings: {
-        ...state.hyperbulbOpacitySettings,
+      opacitySettings: {
+        ...state.opacitySettings,
         layerCount: count,
       },
     }))
@@ -137,8 +137,8 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set) => ({
 
   setLayerOpacity: (opacity: number) => {
     set((state) => ({
-      hyperbulbOpacitySettings: {
-        ...state.hyperbulbOpacitySettings,
+      opacitySettings: {
+        ...state.opacitySettings,
         layerOpacity: Math.max(
           LAYER_OPACITY_RANGE.min,
           Math.min(LAYER_OPACITY_RANGE.max, opacity)
@@ -149,8 +149,8 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set) => ({
 
   setVolumetricDensity: (density: number) => {
     set((state) => ({
-      hyperbulbOpacitySettings: {
-        ...state.hyperbulbOpacitySettings,
+      opacitySettings: {
+        ...state.opacitySettings,
         volumetricDensity: Math.max(
           VOLUMETRIC_DENSITY_RANGE.min,
           Math.min(VOLUMETRIC_DENSITY_RANGE.max, density)
@@ -161,8 +161,8 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set) => ({
 
   setSampleQuality: (quality: SampleQuality) => {
     set((state) => ({
-      hyperbulbOpacitySettings: {
-        ...state.hyperbulbOpacitySettings,
+      opacitySettings: {
+        ...state.opacitySettings,
         sampleQuality: quality,
       },
     }))
@@ -170,8 +170,8 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set) => ({
 
   setVolumetricAnimationQuality: (quality: VolumetricAnimationQuality) => {
     set((state) => ({
-      hyperbulbOpacitySettings: {
-        ...state.hyperbulbOpacitySettings,
+      opacitySettings: {
+        ...state.opacitySettings,
         volumetricAnimationQuality: quality,
       },
     }))
@@ -183,8 +183,8 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set) => ({
 
   setOpacitySettings: (settings: Partial<HyperbulbOpacitySettings>) => {
     set((state) => ({
-      hyperbulbOpacitySettings: {
-        ...state.hyperbulbOpacitySettings,
+      opacitySettings: {
+        ...state.opacitySettings,
         ...settings,
         simpleAlphaOpacity:
           settings.simpleAlphaOpacity !== undefined
@@ -192,21 +192,21 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set) => ({
                 SIMPLE_ALPHA_RANGE.min,
                 Math.min(SIMPLE_ALPHA_RANGE.max, settings.simpleAlphaOpacity)
               )
-            : state.hyperbulbOpacitySettings.simpleAlphaOpacity,
+            : state.opacitySettings.simpleAlphaOpacity,
         layerOpacity:
           settings.layerOpacity !== undefined
             ? Math.max(
                 LAYER_OPACITY_RANGE.min,
                 Math.min(LAYER_OPACITY_RANGE.max, settings.layerOpacity)
               )
-            : state.hyperbulbOpacitySettings.layerOpacity,
+            : state.opacitySettings.layerOpacity,
         volumetricDensity:
           settings.volumetricDensity !== undefined
             ? Math.max(
                 VOLUMETRIC_DENSITY_RANGE.min,
                 Math.min(VOLUMETRIC_DENSITY_RANGE.max, settings.volumetricDensity)
               )
-            : state.hyperbulbOpacitySettings.volumetricDensity,
+            : state.opacitySettings.volumetricDensity,
       },
     }))
   },

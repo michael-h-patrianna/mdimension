@@ -4,7 +4,7 @@
  */
 
 import type { VectorND } from '@/lib/math';
-import { createVector } from '@/lib/math';
+import { addVectors, createVector, scaleVector, subtractVectors } from '@/lib/math';
 import type { PolytopeGeometry } from './types';
 
 /**
@@ -45,22 +45,16 @@ export function generateSimplex(dimension: number, scale = 1.0): PolytopeGeometr
     vertices.push(vertex);
   }
 
-  // Calculate centroid
-  const centroid = createVector(dimension, 0);
+  // Calculate centroid using library functions
+  let centroid = createVector(dimension, 0);
   for (const vertex of vertices) {
-    for (let i = 0; i < dimension; i++) {
-      centroid[i]! += vertex[i]!;
-    }
+    centroid = addVectors(centroid, vertex);
   }
-  for (let i = 0; i < dimension; i++) {
-    centroid[i]! /= vertexCount;
-  }
+  centroid = scaleVector(centroid, 1 / vertexCount);
 
-  // Center vertices at origin
+  // Center vertices at origin using library functions
   for (let i = 0; i < vertices.length; i++) {
-    for (let j = 0; j < dimension; j++) {
-      vertices[i]![j]! -= centroid[j]!;
-    }
+    vertices[i] = subtractVectors(vertices[i]!, centroid);
   }
 
   // Find max coordinate value for normalization
@@ -71,13 +65,11 @@ export function generateSimplex(dimension: number, scale = 1.0): PolytopeGeometr
     }
   }
 
-  // Normalize to fit in [-scale, scale]
+  // Normalize to fit in [-scale, scale] using library function
   if (maxCoord > 0) {
     const normFactor = scale / maxCoord;
-    for (const vertex of vertices) {
-      for (let i = 0; i < dimension; i++) {
-        vertex[i]! *= normFactor;
-      }
+    for (let i = 0; i < vertices.length; i++) {
+      vertices[i] = scaleVector(vertices[i]!, normFactor);
     }
   }
 

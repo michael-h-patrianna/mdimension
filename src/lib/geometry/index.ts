@@ -18,6 +18,7 @@
 // Type exports from types.ts
 export type { CrossSectionResult } from './cross-section'
 export type { Face } from './faces'
+export { isRaymarchingFractal, RAYMARCHING_FRACTAL_TYPES } from './helpers'
 export { isExtendedObjectType, isPolytopeType } from './types'
 export type {
   ExtendedObjectType,

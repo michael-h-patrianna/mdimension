@@ -88,6 +88,22 @@ uniform vec3 uMultiSourceWeights;
 // Performance mode
 uniform bool uFastMode;
 
+// Opacity Mode System uniforms
+// Mode: 0=solid, 1=simpleAlpha, 2=layeredSurfaces, 3=volumetricDensity
+uniform int uOpacityMode;
+uniform float uSimpleAlpha;           // 0.0-1.0 for simple alpha mode
+uniform int uLayerCount;              // 2-4 for layered surfaces mode
+uniform float uLayerOpacity;          // 0.1-0.9 per-layer opacity
+uniform float uVolumetricDensity;     // 0.1-2.0 for volumetric mode
+uniform int uSampleQuality;           // 0=low, 1=medium, 2=high
+uniform bool uVolumetricReduceOnAnim; // Whether to reduce volumetric quality during animation
+
+// Shadow System uniforms
+uniform bool uShadowEnabled;
+uniform int uShadowQuality;           // 0=low, 1=medium, 2=high, 3=ultra
+uniform float uShadowSoftness;        // 0.0-2.0 penumbra softness
+uniform int uShadowAnimationMode;     // 0=pause, 1=low, 2=full
+
 varying vec3 vPosition;
 varying vec2 vUv;
 
@@ -111,6 +127,12 @@ varying vec2 vUv;
 #define PAL_COMP 2
 #define PAL_TRIAD 3
 #define PAL_SPLIT 4
+
+// Opacity modes
+#define OPACITY_SOLID 0
+#define OPACITY_SIMPLE_ALPHA 1
+#define OPACITY_LAYERED 2
+#define OPACITY_VOLUMETRIC 3
 
 // ============================================
 // Color utilities
@@ -1175,6 +1197,142 @@ float getDistanceAttenuation(int lightIndex, float distance) {
     return pow(rangeAttenuation, decay);
 }
 
+// ============================================
+// Shadow System Functions
+// ============================================
+
+// Quality-aware soft shadow with variable sample count and improved penumbra
+// quality: 0=low(8), 1=medium(16), 2=high(24), 3=ultra(32)
+// softness: 0.0-2.0 controls penumbra size (0=hard, 2=very soft)
+float calcSoftShadowQuality(vec3 ro, vec3 rd, float mint, float maxt, float softness, int quality) {
+    // Sample counts based on quality level
+    int maxSteps = 8 + quality * 8;
+
+    float res = 1.0;
+    float t = mint;
+    float ph = 1e10;
+
+    // Softness affects penumbra size (k parameter)
+    // softness=0 -> k=64 (hard shadows), softness=2 -> k=4 (very soft)
+    float k = mix(64.0, 4.0, softness * 0.5);
+
+    // Unrolled loop with max 32 iterations (ultra quality)
+    for (int i = 0; i < 32; i++) {
+        if (i >= maxSteps || t > maxt) break;
+
+        float h = GetDist(ro + rd * t);
+        if (h < 0.001) return 0.0;
+
+        // Improved soft shadow technique (Inigo Quilez)
+        float y = h * h / (2.0 * ph);
+        float d = sqrt(h * h - y * y);
+        res = min(res, k * d / max(0.0, t - y));
+        ph = h;
+
+        t += clamp(h, 0.02, 0.25);
+    }
+    return clamp(res, 0.0, 1.0);
+}
+
+// ============================================
+// Opacity Mode Functions
+// ============================================
+
+/**
+ * Solid mode: fully opaque (alpha = 1.0)
+ */
+float calculateSolidAlpha() {
+    return 1.0;
+}
+
+/**
+ * Simple alpha mode: uniform transparency
+ */
+float calculateSimpleAlpha() {
+    return uSimpleAlpha;
+}
+
+/**
+ * Layered surfaces mode: calculate alpha based on ray depth and layer count
+ * Creates visible depth layers by modulating alpha based on hit distance
+ * @param depth - Distance from ray origin to hit point
+ * @param maxDepth - Maximum ray distance (for normalization)
+ */
+float calculateLayeredAlpha(float depth, float maxDepth) {
+    // Normalize depth to 0-1 range
+    float normalizedDepth = clamp(depth / maxDepth, 0.0, 1.0);
+
+    // Calculate which layer this hit belongs to
+    float layerSize = 1.0 / float(uLayerCount);
+    int layerIndex = int(normalizedDepth / layerSize);
+    layerIndex = min(layerIndex, uLayerCount - 1);
+
+    // Base alpha from layer opacity setting
+    float alpha = uLayerOpacity;
+
+    // Slight gradation: outer layers (lower index) are slightly more opaque
+    // This creates visual depth distinction between layers
+    float layerFactor = 1.0 - float(layerIndex) * 0.1;
+    alpha *= layerFactor;
+
+    return clamp(alpha, 0.1, 1.0);
+}
+
+/**
+ * Volumetric density mode: cloud-like accumulation based on distance in volume
+ * @param distanceInVolume - How far the ray traveled inside the fractal volume
+ */
+float calculateVolumetricAlpha(float distanceInVolume) {
+    // Determine sample quality (affects density accumulation rate)
+    // Higher quality = more samples = smoother gradients
+    float densityMultiplier = 1.0;
+
+    // Check if we should reduce quality during animation
+    bool reduceQuality = uFastMode && uVolumetricReduceOnAnim;
+
+    if (reduceQuality) {
+        // Reduced quality during animation for performance
+        densityMultiplier = 0.5;
+    } else {
+        // Apply sample quality setting
+        if (uSampleQuality == 0) {
+            densityMultiplier = 0.6;  // Low: less dense
+        } else if (uSampleQuality == 2) {
+            densityMultiplier = 1.5;  // High: more dense
+        }
+        // Medium (1) stays at 1.0
+    }
+
+    // Beer-Lambert law for volume absorption
+    // alpha = 1 - exp(-density * distance)
+    float effectiveDensity = uVolumetricDensity * densityMultiplier;
+    float alpha = 1.0 - exp(-effectiveDensity * distanceInVolume);
+
+    return clamp(alpha, 0.0, 1.0);
+}
+
+/**
+ * Dispatch to appropriate opacity calculation based on mode
+ * @param hitDist - Distance from ray origin to hit point
+ * @param sphereEntry - Distance where ray enters the bounding sphere
+ * @param maxDepth - Maximum possible ray distance
+ */
+float calculateOpacityAlpha(float hitDist, float sphereEntry, float maxDepth) {
+    if (uOpacityMode == OPACITY_SOLID) {
+        return calculateSolidAlpha();
+    } else if (uOpacityMode == OPACITY_SIMPLE_ALPHA) {
+        return calculateSimpleAlpha();
+    } else if (uOpacityMode == OPACITY_LAYERED) {
+        return calculateLayeredAlpha(hitDist, maxDepth);
+    } else if (uOpacityMode == OPACITY_VOLUMETRIC) {
+        // Calculate distance traveled inside the bounding sphere
+        float distanceInVolume = hitDist - max(0.0, sphereEntry);
+        return calculateVolumetricAlpha(distanceInVolume);
+    }
+    // Fallback to solid
+    return 1.0;
+}
+
 void main() {
     vec3 ro = (uInverseModelMatrix * vec4(uCameraPosition, 1.0)).xyz;
     vec3 worldRayDir = normalize(vPosition - uCameraPosition);
@@ -1182,6 +1340,11 @@ void main() {
 
     float camDist = length(ro);
     float maxDist = camDist + BOUND_R * 2.0 + 1.0;
+
+    // Compute sphere intersection for opacity calculations
+    // sphereEntry is where the ray enters the bounding sphere (0 if camera inside)
+    vec2 tSphere = intersectSphere(ro, rd, BOUND_R);
+    float sphereEntry = max(0.0, tSphere.x);
 
     float trap;
     float d = RayMarch(ro, rd, trap);
@@ -1230,14 +1393,50 @@ void main() {
         // Skip negligible contributions
         if (attenuation < 0.001) continue;
 
-        // Diffuse (Lambert)
-        float NdotL = max(dot(n, l), 0.0);
-        col += surfaceColor * uLightColors[i] * NdotL * uDiffuseIntensity * attenuation;
+        // Calculate shadow
+        // uShadowAnimationMode: 0=pause (skip in fast mode), 1=low (use low quality), 2=full
+        float shadow = 1.0;
+        if (uShadowEnabled) {
+            bool shouldRenderShadow = !uFastMode || uShadowAnimationMode > 0;
 
-        // Specular (Blinn-Phong)
+            if (shouldRenderShadow) {
+                vec3 shadowOrigin = p + n * 0.02; // Offset to avoid self-shadowing
+                vec3 shadowDir = l;
+                float shadowMaxDist;
+
+                if (lightType == LIGHT_TYPE_DIRECTIONAL) {
+                    shadowMaxDist = 10.0;
+                } else {
+                    shadowMaxDist = length(uLightPositions[i] - p);
+                }
+
+                // Determine quality to use
+                int effectiveQuality = uShadowQuality;
+                if (uFastMode && uShadowAnimationMode == 1) {
+                    effectiveQuality = 0; // Force low quality during animation
+                }
+
+                // For spot lights, only calculate shadow if within cone
+                if (lightType == LIGHT_TYPE_SPOT) {
+                    vec3 lightToFrag = normalize(p - uLightPositions[i]);
+                    float spotEffect = getSpotAttenuation(i, lightToFrag);
+                    if (spotEffect > 0.001) {
+                        shadow = calcSoftShadowQuality(shadowOrigin, shadowDir, 0.02, shadowMaxDist, uShadowSoftness, effectiveQuality);
+                    }
+                } else {
+                    shadow = calcSoftShadowQuality(shadowOrigin, shadowDir, 0.02, shadowMaxDist, uShadowSoftness, effectiveQuality);
+                }
+            }
+        }
+
+        // Diffuse (Lambert) with shadow
+        float NdotL = max(dot(n, l), 0.0);
+        col += surfaceColor * uLightColors[i] * NdotL * uDiffuseIntensity * attenuation * shadow;
+
+        // Specular (Blinn-Phong) with shadow
         vec3 halfDir = normalize(l + viewDir);
         float NdotH = max(dot(n, halfDir), 0.0);
-        float spec = pow(NdotH, uSpecularPower) * uSpecularIntensity * attenuation;
+        float spec = pow(NdotH, uSpecularPower) * uSpecularIntensity * attenuation * shadow;
         col += uSpecularColor * uLightColors[i] * spec;
 
         // Track total light for fresnel calculation
@@ -1262,5 +1461,8 @@ void main() {
     vec4 clipPos = uProjectionMatrix * uViewMatrix * worldHitPos;
     gl_FragDepth = clamp((clipPos.z / clipPos.w) * 0.5 + 0.5, 0.0, 1.0);
 
-    gl_FragColor = vec4(col, 1.0);
+    // Calculate opacity based on selected mode
+    float alpha = calculateOpacityAlpha(d, sphereEntry, maxDist);
+
+    gl_FragColor = vec4(col, alpha);
 }

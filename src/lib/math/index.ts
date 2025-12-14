@@ -18,6 +18,7 @@ export {
   addVectors,
   copyVector,
   createVector,
+  crossProduct3D,
   dotProduct,
   magnitude,
   normalize,

@@ -67,20 +67,20 @@ async function runTests() {
     assert(canvas > 0, 'Expected canvas element to be present');
   });
 
-  // Navigate to Material tab (Faces section)
-  await test('Can open Material tab', async () => {
+  // Navigate to FX tab (Faces section) where shadows are located
+  await test('Can open FX tab', async () => {
     errors.length = 0;
-    // Look for Material tab button - it should be in the Faces section
-    const materialTab = page.locator('button:has-text("Material")');
-    const count = await materialTab.count();
+    // Look for FX tab button - it should be in the Faces section
+    const fxTab = page.locator('button:has-text("FX")');
+    const count = await fxTab.count();
     if (count > 0) {
-      await materialTab.click();
+      await fxTab.click();
       await page.waitForTimeout(300);
     }
     assertNoErrors();
   });
 
-  await page.screenshot({ path: `${SCREENSHOT_DIR}/01-material-tab.png`, fullPage: true });
+  await page.screenshot({ path: `${SCREENSHOT_DIR}/01-fx-tab.png`, fullPage: true });
 
   // Enable a light first (shadows need lights)
   await test('Can enable a light for shadows', async () => {
@@ -109,13 +109,13 @@ async function runTests() {
 
   await page.screenshot({ path: `${SCREENSHOT_DIR}/02-light-enabled.png`, fullPage: true });
 
-  // Go back to Material tab
-  await test('Can return to Material tab', async () => {
+  // Go back to FX tab
+  await test('Can return to FX tab', async () => {
     errors.length = 0;
-    const materialTab = page.locator('button:has-text("Material")');
-    const count = await materialTab.count();
+    const fxTab = page.locator('button:has-text("FX")');
+    const count = await fxTab.count();
     if (count > 0) {
-      await materialTab.click();
+      await fxTab.click();
       await page.waitForTimeout(300);
     }
     assertNoErrors();
@@ -275,11 +275,11 @@ async function runTests() {
 
   await test('Can toggle shadows off', async () => {
     errors.length = 0;
-    // Navigate to Material tab first
-    const materialTab = page.locator('button:has-text("Material")');
-    const tabCount = await materialTab.count();
+    // Navigate to FX tab first
+    const fxTab = page.locator('button:has-text("FX")');
+    const tabCount = await fxTab.count();
     if (tabCount > 0) {
-      await materialTab.click();
+      await fxTab.click();
       await page.waitForTimeout(300);
     }
 
@@ -306,11 +306,11 @@ async function runTests() {
     await page.goto(`${BASE_URL}?t=hypercube`, { waitUntil: 'networkidle', timeout: 30000 });
     await page.waitForTimeout(1500);
 
-    // Navigate to Material tab
-    const materialTab = page.locator('button:has-text("Material")');
-    const tabCount = await materialTab.count();
+    // Navigate to FX tab
+    const fxTab = page.locator('button:has-text("FX")');
+    const tabCount = await fxTab.count();
     if (tabCount > 0) {
-      await materialTab.click();
+      await fxTab.click();
       await page.waitForTimeout(300);
     }
 

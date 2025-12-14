@@ -163,3 +163,25 @@ export function copyVector(v: VectorND, out?: VectorND): VectorND {
   }
   return result
 }
+
+/**
+ * Computes the cross product of two 3D vectors
+ * Formula: a × b = (a_y*b_z - a_z*b_y, a_z*b_x - a_x*b_z, a_x*b_y - a_y*b_x)
+ * @param a - First 3D vector
+ * @param b - Second 3D vector
+ * @param out - Optional output vector to avoid allocation
+ * @returns The cross product vector (perpendicular to both inputs)
+ * @throws {Error} If vectors don't have exactly 3 components (DEV only)
+ * @note Only defined for 3D vectors
+ */
+export function crossProduct3D(a: VectorND, b: VectorND, out?: VectorND): VectorND {
+  if (import.meta.env.DEV && (a.length !== 3 || b.length !== 3)) {
+    throw new Error(`Cross product requires 3D vectors: got ${a.length}D and ${b.length}D`)
+  }
+
+  const result = out ?? new Array(3)
+  result[0] = a[1]! * b[2]! - a[2]! * b[1]!
+  result[1] = a[2]! * b[0]! - a[0]! * b[2]!
+  result[2] = a[0]! * b[1]! - a[1]! * b[0]!
+  return result
+}

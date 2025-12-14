@@ -9,6 +9,8 @@
 
 // @ts-expect-error - convex-hull is a CommonJS module without types
 import convexHull from 'convex-hull';
+import type { VectorND } from '@/lib/math/types';
+import { dotProduct, magnitude, scaleVector, subtractVectors } from '@/lib/math';
 
 /**
  * Projects points to their affine hull (removes degeneracy)
@@ -16,8 +18,9 @@ import convexHull from 'convex-hull';
  * Some point sets (like A_n roots) lie in a hyperplane. This function
  * projects them to their actual dimension for proper convex hull computation.
  *
- * Uses PCA-like approach: find basis vectors from point differences.
- * @param vertices
+ * Uses Gram-Schmidt orthogonalization to find basis vectors from point differences.
+ * @param vertices - Array of n-dimensional vertices
+ * @returns Projected vertices and their actual dimension
  */
 function projectToAffineHull(vertices: number[][]): {
   projected: number[][];
@@ -29,35 +32,32 @@ function projectToAffineHull(vertices: number[][]): {
 
   const n = vertices.length;
   const d = vertices[0]!.length;
-  const origin = vertices[0]!;
+  const origin = vertices[0]! as VectorND;
 
-  // Compute differences from first point
-  const diffs: number[][] = [];
+  // Compute differences from first point using library function
+  const diffs: VectorND[] = [];
   for (let i = 1; i < n; i++) {
-    const diff = vertices[i]!.map((v, j) => v - origin[j]!);
-    diffs.push(diff);
+    diffs.push(subtractVectors(vertices[i]! as VectorND, origin));
   }
 
   // Find orthonormal basis using Gram-Schmidt (find ALL linearly independent vectors)
-  const basis: number[][] = [];
+  const basis: VectorND[] = [];
   const epsilon = 1e-10;
 
   for (const diff of diffs) {
-    // Project out existing basis vectors
-    const projected = [...diff];
+    // Project out existing basis vectors using library functions
+    let projected: VectorND = [...diff];
     for (const b of basis) {
-      const dot = projected.reduce((sum, v, i) => sum + v * b[i]!, 0);
-      for (let i = 0; i < d; i++) {
-        projected[i] = projected[i]! - dot * b[i]!;
-      }
+      const dot = dotProduct(projected, b);
+      const projection = scaleVector(b, dot);
+      projected = subtractVectors(projected, projection);
     }
 
     // Check if there's a new direction
-    const norm = Math.sqrt(projected.reduce((sum, v) => sum + v * v, 0));
+    const norm = magnitude(projected);
     if (norm > epsilon) {
       // Normalize and add to basis
-      const normalized = projected.map((v) => v / norm);
-      basis.push(normalized);
+      basis.push(scaleVector(projected, 1 / norm));
     }
 
     // Stop if we've found a full basis (d vectors for d dimensions)
@@ -75,10 +75,10 @@ function projectToAffineHull(vertices: number[][]): {
   // Points lie in a lower-dimensional subspace - project to that subspace
   const projectedPoints: number[][] = [];
   for (const vertex of vertices) {
-    const centered = vertex.map((v, i) => v - origin[i]!);
+    const centered = subtractVectors(vertex as VectorND, origin);
     const coords: number[] = [];
     for (const b of basis) {
-      coords.push(centered.reduce((sum, v, i) => sum + v * b[i]!, 0));
+      coords.push(dotProduct(centered, b));
     }
     projectedPoints.push(coords);
   }
