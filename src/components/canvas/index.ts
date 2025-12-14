@@ -20,11 +20,11 @@ export { determineRenderMode, UnifiedRenderer } from './renderers/UnifiedRendere
 export type { RenderMode, UnifiedRendererProps } from './renderers/UnifiedRenderer'
 
 // High-performance useFrame-based scene renderers
-export { PolytopeScene } from './scenes/PolytopeScene'
-export type { PolytopeSceneProps } from './scenes/PolytopeScene'
+export { PolytopeScene } from './renderers/Polytope'
+export type { PolytopeSceneProps } from './renderers/Polytope'
 
-export { PointCloudScene } from './scenes/PointCloudScene'
-export type { PointCloudSceneProps } from './scenes/PointCloudScene'
+export { PointCloudScene } from './renderers/PointCloud'
+export type { PointCloudSceneProps } from './renderers/PointCloud'
 
 // Environment components
 export { GroundPlane } from './environment/GroundPlane'

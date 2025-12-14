@@ -82,3 +82,44 @@ clifford torus: 3 (radius)
  review the animations for the menger box. currently we have as only settings: bias (impact rotation delta n) and animation planes. research what other values we could animate
   how and should give as an option to the user in the sidebar's Animation section for the object type to create even more interesting, visually stunning animations at different dimension numbers.
   use websearch for research. discuss with sequential thinking and make a few suggestions
+
+
+CameraController.tsx:113 [Violation] Added non-passive event listener to a scroll-blocking 'wheel' event. Consider marking event handler as 'passive' to make the page more responsive. See https://www.chromestatus.com/feature/5745543795965952
+OrbitControls.connect @ chunk-KWWNF4DW.js?v=835f2dbc:38636
+OrbitControls @ chunk-KWWNF4DW.js?v=835f2dbc:39196
+(anonymous) @ CameraController.tsx:113
+react-stack-bottom-frame @ chunk-I3FAUOZW.js?v=835f2dbc:10537
+runWithFiberInDEV @ chunk-I3FAUOZW.js?v=835f2dbc:918
+commitHookEffectListMount @ chunk-I3FAUOZW.js?v=835f2dbc:6958
+commitHookPassiveMountEffects @ chunk-I3FAUOZW.js?v=835f2dbc:7016
+reconnectPassiveEffects @ chunk-I3FAUOZW.js?v=835f2dbc:8417
+recursivelyTraverseReconnectPassiveEffects @ chunk-I3FAUOZW.js?v=835f2dbc:8396
+reconnectPassiveEffects @ chunk-I3FAUOZW.js?v=835f2dbc:8410
+recursivelyTraverseReconnectPassiveEffects @ chunk-I3FAUOZW.js?v=835f2dbc:8396
+reconnectPassiveEffects @ chunk-I3FAUOZW.js?v=835f2dbc:8410
+recursivelyTraverseReconnectPassiveEffects @ chunk-I3FAUOZW.js?v=835f2dbc:8396
+commitPassiveMountOnFiber @ chunk-I3FAUOZW.js?v=835f2dbc:8363
+recursivelyTraversePassiveMountEffects @ chunk-I3FAUOZW.js?v=835f2dbc:8283
+commitPassiveMountOnFiber @ chunk-I3FAUOZW.js?v=835f2dbc:8385
+recursivelyTraversePassiveMountEffects @ chunk-I3FAUOZW.js?v=835f2dbc:8283
+commitPassiveMountOnFiber @ chunk-I3FAUOZW.js?v=835f2dbc:8385
+recursivelyTraversePassiveMountEffects @ chunk-I3FAUOZW.js?v=835f2dbc:8283
+commitPassiveMountOnFiber @ chunk-I3FAUOZW.js?v=835f2dbc:8385
+recursivelyTraversePassiveMountEffects @ chunk-I3FAUOZW.js?v=835f2dbc:8283
+commitPassiveMountOnFiber @ chunk-I3FAUOZW.js?v=835f2dbc:8385
+recursivelyTraversePassiveMountEffects @ chunk-I3FAUOZW.js?v=835f2dbc:8283
+commitPassiveMountOnFiber @ chunk-I3FAUOZW.js?v=835f2dbc:8296
+recursivelyTraversePassiveMountEffects @ chunk-I3FAUOZW.js?v=835f2dbc:8283
+commitPassiveMountOnFiber @ chunk-I3FAUOZW.js?v=835f2dbc:8385
+recursivelyTraversePassiveMountEffects @ chunk-I3FAUOZW.js?v=835f2dbc:8283
+commitPassiveMountOnFiber @ chunk-I3FAUOZW.js?v=835f2dbc:8296
+recursivelyTraversePassiveMountEffects @ chunk-I3FAUOZW.js?v=835f2dbc:8283
+commitPassiveMountOnFiber @ chunk-I3FAUOZW.js?v=835f2dbc:8385
+recursivelyTraversePassiveMountEffects @ chunk-I3FAUOZW.js?v=835f2dbc:8283
+commitPassiveMountOnFiber @ chunk-I3FAUOZW.js?v=835f2dbc:8296
+recursivelyTraversePassiveMountEffects @ chunk-I3FAUOZW.js?v=835f2dbc:8283
+commitPassiveMountOnFiber @ chunk-I3FAUOZW.js?v=835f2dbc:8306
+flushPassiveEffects @ chunk-I3FAUOZW.js?v=835f2dbc:9682
+(anonymous) @ chunk-I3FAUOZW.js?v=835f2dbc:9605
+performWorkUntilDeadline @ chunk-I3FAUOZW.js?v=835f2dbc:238
+chunk-I3FAUOZW.js?v=835f2dbc:14218 [Violation] 'requestAnimationFrame' handler took 141ms

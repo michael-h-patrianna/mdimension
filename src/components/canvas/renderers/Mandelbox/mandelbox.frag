@@ -34,14 +34,32 @@ uniform float uBasisY[11];
 uniform float uBasisZ[11];
 uniform float uOrigin[11];
 
-uniform bool uLightEnabled;
-uniform vec3 uLightColor;
-uniform vec3 uLightDirection;
+// Multi-Light System Constants
+#define MAX_LIGHTS 4
+#define LIGHT_TYPE_POINT 0
+#define LIGHT_TYPE_DIRECTIONAL 1
+#define LIGHT_TYPE_SPOT 2
+
+// Multi-Light System Uniforms
+uniform int uNumLights;
+uniform bool uLightsEnabled[MAX_LIGHTS];
+uniform int uLightTypes[MAX_LIGHTS];
+uniform vec3 uLightPositions[MAX_LIGHTS];
+uniform vec3 uLightDirections[MAX_LIGHTS];
+uniform vec3 uLightColors[MAX_LIGHTS];
+uniform float uLightIntensities[MAX_LIGHTS];
+uniform float uSpotAngles[MAX_LIGHTS];
+uniform float uSpotPenumbras[MAX_LIGHTS];
+uniform float uSpotCosInner[MAX_LIGHTS];
+uniform float uSpotCosOuter[MAX_LIGHTS];
+uniform float uLightRanges[MAX_LIGHTS];
+uniform float uLightDecays[MAX_LIGHTS];
+
+// Global lighting uniforms
 uniform float uAmbientIntensity;
 uniform vec3 uAmbientColor;
 uniform float uSpecularIntensity;
 uniform float uSpecularPower;
-uniform float uLightStrength;
 // Enhanced lighting uniforms
 uniform vec3 uSpecularColor;
 uniform float uDiffuseIntensity;
@@ -1100,6 +1118,63 @@ mat3 getBasisRotation() {
     return mat3(bx, by, bz);
 }
 
+// ============================================
+// Multi-Light System Helper Functions
+// ============================================
+
+/**
+ * Calculate light direction for a given light index.
+ * Returns normalized direction FROM fragment TO light source.
+ */
+vec3 getLightDirection(int lightIndex, vec3 fragPos) {
+    int lightType = uLightTypes[lightIndex];
+
+    if (lightType == LIGHT_TYPE_POINT) {
+        return normalize(uLightPositions[lightIndex] - fragPos);
+    }
+    else if (lightType == LIGHT_TYPE_DIRECTIONAL) {
+        // Directional lights: use the stored direction (pointing toward surface)
+        return normalize(uLightDirections[lightIndex]);
+    }
+    else if (lightType == LIGHT_TYPE_SPOT) {
+        return normalize(uLightPositions[lightIndex] - fragPos);
+    }
+
+    return vec3(0.0, 1.0, 0.0);
+}
+
+/**
+ * Calculate spot light cone attenuation with penumbra falloff.
+ * Uses precomputed cosines (uSpotCosInner/uSpotCosOuter) to avoid per-fragment trig.
+ */
+float getSpotAttenuation(int lightIndex, vec3 lightToFrag) {
+    float cosAngle = dot(lightToFrag, normalize(uLightDirections[lightIndex]));
+    return smoothstep(uSpotCosOuter[lightIndex], uSpotCosInner[lightIndex], cosAngle);
+}
+
+/**
+ * Calculate distance attenuation for point and spot lights.
+ * range = 0: infinite range (no falloff)
+ * range > 0: light reaches zero intensity at this distance
+ * decay = 0: no decay, 1: linear, 2: physically correct inverse square
+ */
+float getDistanceAttenuation(int lightIndex, float distance) {
+    float range = uLightRanges[lightIndex];
+    float decay = uLightDecays[lightIndex];
+
+    // No distance falloff when range is 0 (infinite range)
+    if (range <= 0.0) {
+        return 1.0;
+    }
+
+    // Clamp distance to prevent division by zero
+    float d = max(distance, 0.0001);
+
+    // Three.js attenuation formula
+    float rangeAttenuation = clamp(1.0 - d / range, 0.0, 1.0);
+    return pow(rangeAttenuation, decay);
+}
+
 void main() {
     vec3 ro = (uInverseModelMatrix * vec4(uCameraPosition, 1.0)).xyz;
     vec3 worldRayDir = normalize(vPosition - uCameraPosition);
@@ -1122,26 +1197,61 @@ void main() {
     vec3 surfaceColor = getColorByAlgorithm(t, n, baseHSL, p);
     surfaceColor *= (0.3 + 0.7 * ao);
 
+    // Lighting calculation using multi-light system
+    // Start with ambient
     vec3 col = surfaceColor * uAmbientColor * uAmbientIntensity;
+    vec3 viewDir = -rd;
 
-    if (uLightEnabled) {
-        vec3 l = normalize(uLightDirection);
-        vec3 viewDir = -rd;
+    // Accumulator for total light contribution (for fresnel rim calculation)
+    float totalNdotL = 0.0;
 
+    // Loop over all active lights
+    for (int i = 0; i < MAX_LIGHTS; i++) {
+        if (i >= uNumLights) break;
+        if (!uLightsEnabled[i]) continue;
+
+        // Get light direction based on light type
+        vec3 l = getLightDirection(i, p);
+        float attenuation = uLightIntensities[i];
+
+        // Apply distance attenuation for point and spot lights
+        int lightType = uLightTypes[i];
+        if (lightType == LIGHT_TYPE_POINT || lightType == LIGHT_TYPE_SPOT) {
+            float distance = length(uLightPositions[i] - p);
+            attenuation *= getDistanceAttenuation(i, distance);
+        }
+
+        // Apply spot light cone attenuation
+        if (lightType == LIGHT_TYPE_SPOT) {
+            vec3 lightToFrag = normalize(p - uLightPositions[i]);
+            attenuation *= getSpotAttenuation(i, lightToFrag);
+        }
+
+        // Skip negligible contributions
+        if (attenuation < 0.001) continue;
+
+        // Diffuse (Lambert)
         float NdotL = max(dot(n, l), 0.0);
-        col += surfaceColor * uLightColor * NdotL * uDiffuseIntensity * uLightStrength;
+        col += surfaceColor * uLightColors[i] * NdotL * uDiffuseIntensity * attenuation;
 
+        // Specular (Blinn-Phong)
         vec3 halfDir = normalize(l + viewDir);
         float NdotH = max(dot(n, halfDir), 0.0);
-        float spec = pow(NdotH, uSpecularPower) * uSpecularIntensity * uLightStrength;
-        col += uSpecularColor * uLightColor * spec;
+        float spec = pow(NdotH, uSpecularPower) * uSpecularIntensity * attenuation;
+        col += uSpecularColor * uLightColors[i] * spec;
 
-        if (uFresnelEnabled && uFresnelIntensity > 0.0) {
-            float NdotV = max(dot(n, viewDir), 0.0);
-            float rim = pow(1.0 - NdotV, 3.0) * uFresnelIntensity * 2.0;
-            rim *= (0.3 + 0.7 * NdotL);
-            col += uRimColor * rim;
-        }
+        // Track total light for fresnel calculation
+        totalNdotL = max(totalNdotL, NdotL * attenuation);
+    }
+
+    // Fresnel rim lighting (controlled by Edges render mode)
+    // Uses combined light contribution from all lights
+    if (uFresnelEnabled && uFresnelIntensity > 0.0) {
+        float NdotV = max(dot(n, viewDir), 0.0);
+        float rim = pow(1.0 - NdotV, 3.0) * uFresnelIntensity * 2.0;
+        // Rim is stronger on lit side (use total light contribution)
+        rim *= (0.3 + 0.7 * totalNdotL);
+        col += uRimColor * rim;
     }
 
     if (uToneMappingEnabled) {

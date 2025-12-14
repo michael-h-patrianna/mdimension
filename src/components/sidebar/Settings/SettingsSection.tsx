@@ -25,6 +25,8 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
 }) => {
   const showPerfMonitor = useVisualStore((state) => state.showPerfMonitor);
   const setShowPerfMonitor = useVisualStore((state) => state.setShowPerfMonitor);
+  const showAxisHelper = useVisualStore((state) => state.showAxisHelper);
+  const setShowAxisHelper = useVisualStore((state) => state.setShowAxisHelper);
 
   return (
     <Section title="Settings" defaultOpen={defaultOpen}>
@@ -35,6 +37,13 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
           onCheckedChange={setShowPerfMonitor}
           label="Performance Monitor"
           data-testid="perf-monitor-toggle"
+        />
+      </div>
+      <div className="mt-3 pt-3 border-t border-panel-border">
+        <Switch
+          checked={showAxisHelper}
+          onCheckedChange={setShowAxisHelper}
+          label="Show Axis Helper"
         />
       </div>
     </Section>

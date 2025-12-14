@@ -23,11 +23,11 @@
  * @see {@link useVisualStore} for lighting configuration state
  */
 
-import { useMemo, useRef, useEffect, memo } from 'react';
-import { SphereGeometry, MeshBasicMaterial, Vector3 } from 'three';
-import { useVisualStore } from '@/stores/visualStore';
-import { rotationToDirection } from '@/lib/lights/types';
 import type { LightSource } from '@/lib/lights/types';
+import { rotationToDirection } from '@/lib/lights/types';
+import { useVisualStore } from '@/stores/visualStore';
+import { memo, useEffect, useMemo, useRef } from 'react';
+import { MeshBasicMaterial, SphereGeometry, Vector3 } from 'three';
 
 /**
  * Shared sphere geometry for the light indicator.
@@ -110,8 +110,8 @@ const LightRenderer = memo(function LightRenderer({ light, showIndicator }: Ligh
           position={position}
           color={light.color}
           intensity={light.intensity * 10}
-          distance={0}
-          decay={0}
+          distance={light.range}
+          decay={light.decay}
         />
       )}
       {light.type === 'directional' && (
@@ -127,10 +127,10 @@ const LightRenderer = memo(function LightRenderer({ light, showIndicator }: Ligh
           position={position}
           color={light.color}
           intensity={light.intensity * 10}
-          distance={0}
+          distance={light.range}
           angle={(light.coneAngle * Math.PI) / 180}
           penumbra={light.penumbra}
-          decay={0}
+          decay={light.decay}
           target-position={targetPosition}
         />
       )}

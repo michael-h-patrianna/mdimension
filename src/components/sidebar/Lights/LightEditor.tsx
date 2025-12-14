@@ -14,14 +14,14 @@
  * - Transform mode toggle (Move/Rotate)
  */
 
+import { Select } from '@/components/ui/Select';
+import { Slider } from '@/components/ui/Slider';
+import { ToggleButton } from '@/components/ui/ToggleButton';
+import type { LightType, TransformMode } from '@/lib/lights/types';
+import { useVisualStore } from '@/stores/visualStore';
 import React, { memo, useCallback } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { useVisualStore } from '@/stores/visualStore';
-import { Slider } from '@/components/ui/Slider';
-import { Select } from '@/components/ui/Select';
-import { ToggleButton } from '@/components/ui/ToggleButton';
 import { Vector3Input } from './Vector3Input';
-import type { LightType, TransformMode } from '@/lib/lights/types';
 
 export interface LightEditorProps {
   className?: string;
@@ -142,6 +142,24 @@ export const LightEditor: React.FC<LightEditorProps> = memo(function LightEditor
     [selectedLightId, updateLight]
   );
 
+  const handleRangeChange = useCallback(
+    (range: number) => {
+      if (selectedLightId) {
+        updateLight(selectedLightId, { range });
+      }
+    },
+    [selectedLightId, updateLight]
+  );
+
+  const handleDecayChange = useCallback(
+    (decay: number) => {
+      if (selectedLightId) {
+        updateLight(selectedLightId, { decay });
+      }
+    },
+    [selectedLightId, updateLight]
+  );
+
   const handleDuplicate = useCallback(() => {
     if (selectedLightId) {
       const newId = duplicateLight(selectedLightId);
@@ -230,7 +248,7 @@ export const LightEditor: React.FC<LightEditorProps> = memo(function LightEditor
       {/* Intensity slider */}
       <Slider
         label="Intensity"
-        min={0}
+        min={0.1}
         max={3}
         step={0.1}
         value={selectedLight.intensity}
@@ -238,6 +256,33 @@ export const LightEditor: React.FC<LightEditorProps> = memo(function LightEditor
         onReset={() => handleIntensityChange(1.0)}
         showValue
       />
+
+      {/* Range and Decay sliders (point and spot lights only) */}
+      {(selectedLight.type === 'point' || selectedLight.type === 'spot') && (
+        <>
+          <Slider
+            label="Range"
+            min={1}
+            max={100}
+            step={1}
+            value={selectedLight.range}
+            onChange={handleRangeChange}
+            onReset={() => handleRangeChange(0)}
+            showValue
+          />
+
+          <Slider
+            label="Decay"
+            min={0.1}
+            max={3}
+            step={0.1}
+            value={selectedLight.decay}
+            onChange={handleDecayChange}
+            onReset={() => handleDecayChange(2)}
+            showValue
+          />
+        </>
+      )}
 
       {/* Position input */}
       <Vector3Input

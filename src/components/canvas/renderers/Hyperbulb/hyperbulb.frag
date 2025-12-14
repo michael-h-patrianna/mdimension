@@ -43,6 +43,8 @@ uniform float uSpotAngles[MAX_LIGHTS];
 uniform float uSpotPenumbras[MAX_LIGHTS];
 uniform float uSpotCosInner[MAX_LIGHTS];
 uniform float uSpotCosOuter[MAX_LIGHTS];
+uniform float uLightRanges[MAX_LIGHTS];
+uniform float uLightDecays[MAX_LIGHTS];
 
 // Global lighting uniforms
 uniform float uAmbientIntensity;
@@ -78,6 +80,16 @@ uniform vec3 uMultiSourceWeights;
 // Performance mode: reduces quality during animation for smoother interaction
 uniform bool uFastMode;
 
+// Opacity Mode System uniforms
+// Mode: 0=solid, 1=simpleAlpha, 2=layeredSurfaces, 3=volumetricDensity
+uniform int uOpacityMode;
+uniform float uSimpleAlpha;           // 0.0-1.0 for simple alpha mode
+uniform int uLayerCount;              // 2-4 for layered surfaces mode
+uniform float uLayerOpacity;          // 0.1-0.9 per-layer opacity
+uniform float uVolumetricDensity;     // 0.1-2.0 for volumetric mode
+uniform int uSampleQuality;           // 0=low, 1=medium, 2=high
+uniform bool uVolumetricReduceOnAnim; // Whether to reduce volumetric quality during animation
+
 varying vec3 vPosition;
 varying vec2 vUv;
 
@@ -97,6 +109,12 @@ varying vec2 vUv;
 
 #define PI 3.14159265359
 #define HALF_PI 1.57079632679
+
+// Opacity modes
+#define OPACITY_SOLID 0
+#define OPACITY_SIMPLE_ALPHA 1
+#define OPACITY_LAYERED 2
+#define OPACITY_VOLUMETRIC 3
 
 // Palette modes
 #define PAL_MONO 0
@@ -1133,6 +1151,128 @@ float getSpotAttenuation(int lightIndex, vec3 lightToFrag) {
     return smoothstep(uSpotCosOuter[lightIndex], uSpotCosInner[lightIndex], cosAngle);
 }
 
+/**
+ * Calculate distance attenuation for point and spot lights.
+ * range = 0: infinite range (no falloff)
+ * range > 0: light reaches zero intensity at this distance
+ * decay = 0: no decay, 1: linear, 2: physically correct inverse square
+ */
+float getDistanceAttenuation(int lightIndex, float distance) {
+    float range = uLightRanges[lightIndex];
+    float decay = uLightDecays[lightIndex];
+
+    // No distance falloff when range is 0 (infinite range)
+    if (range <= 0.0) {
+        return 1.0;
+    }
+
+    // Clamp distance to prevent division by zero
+    float d = max(distance, 0.0001);
+
+    // Three.js attenuation formula
+    float rangeAttenuation = clamp(1.0 - d / range, 0.0, 1.0);
+    return pow(rangeAttenuation, decay);
+}
+
+// ============================================
+// Opacity Mode Functions
+// ============================================
+
+/**
+ * Solid mode: fully opaque (alpha = 1.0)
+ */
+float calculateSolidAlpha() {
+    return 1.0;
+}
+
+/**
+ * Simple alpha mode: uniform transparency
+ */
+float calculateSimpleAlpha() {
+    return uSimpleAlpha;
+}
+
+/**
+ * Layered surfaces mode: calculate alpha based on ray depth and layer count
+ * Creates visible depth layers by modulating alpha based on hit distance
+ * @param depth - Distance from ray origin to hit point
+ * @param maxDepth - Maximum ray distance (for normalization)
+ */
+float calculateLayeredAlpha(float depth, float maxDepth) {
+    // Normalize depth to 0-1 range
+    float normalizedDepth = clamp(depth / maxDepth, 0.0, 1.0);
+
+    // Calculate which layer this hit belongs to
+    float layerSize = 1.0 / float(uLayerCount);
+    int layerIndex = int(normalizedDepth / layerSize);
+    layerIndex = min(layerIndex, uLayerCount - 1);
+
+    // Base alpha from layer opacity setting
+    float alpha = uLayerOpacity;
+
+    // Slight gradation: outer layers (lower index) are slightly more opaque
+    // This creates visual depth distinction between layers
+    float layerFactor = 1.0 - float(layerIndex) * 0.1;
+    alpha *= layerFactor;
+
+    return clamp(alpha, 0.1, 1.0);
+}
+
+/**
+ * Volumetric density mode: cloud-like accumulation based on distance in volume
+ * @param distanceInVolume - How far the ray traveled inside the fractal volume
+ */
+float calculateVolumetricAlpha(float distanceInVolume) {
+    // Determine sample quality (affects density accumulation rate)
+    // Higher quality = more samples = smoother gradients
+    float densityMultiplier = 1.0;
+
+    // Check if we should reduce quality during animation
+    bool reduceQuality = uFastMode && uVolumetricReduceOnAnim;
+
+    if (reduceQuality) {
+        // Reduced quality during animation for performance
+        densityMultiplier = 0.5;
+    } else {
+        // Apply sample quality setting
+        if (uSampleQuality == 0) {
+            densityMultiplier = 0.6;  // Low: less dense
+        } else if (uSampleQuality == 2) {
+            densityMultiplier = 1.5;  // High: more dense
+        }
+        // Medium (1) stays at 1.0
+    }
+
+    // Beer-Lambert law for volume absorption
+    // alpha = 1 - exp(-density * distance)
+    float effectiveDensity = uVolumetricDensity * densityMultiplier;
+    float alpha = 1.0 - exp(-effectiveDensity * distanceInVolume);
+
+    return clamp(alpha, 0.0, 1.0);
+}
+
+/**
+ * Dispatch to appropriate opacity calculation based on mode
+ * @param hitDist - Distance from ray origin to hit point
+ * @param sphereEntry - Distance where ray enters the bounding sphere
+ * @param maxDepth - Maximum possible ray distance
+ */
+float calculateOpacityAlpha(float hitDist, float sphereEntry, float maxDepth) {
+    if (uOpacityMode == OPACITY_SOLID) {
+        return calculateSolidAlpha();
+    } else if (uOpacityMode == OPACITY_SIMPLE_ALPHA) {
+        return calculateSimpleAlpha();
+    } else if (uOpacityMode == OPACITY_LAYERED) {
+        return calculateLayeredAlpha(hitDist, maxDepth);
+    } else if (uOpacityMode == OPACITY_VOLUMETRIC) {
+        // Calculate distance traveled inside the bounding sphere
+        float distanceInVolume = hitDist - max(0.0, sphereEntry);
+        return calculateVolumetricAlpha(distanceInVolume);
+    }
+    // Fallback to solid
+    return 1.0;
+}
+
 void main() {
     vec3 ro = (uInverseModelMatrix * vec4(uCameraPosition, 1.0)).xyz;
     vec3 worldRayDir = normalize(vPosition - uCameraPosition);
@@ -1140,6 +1280,11 @@ void main() {
 
     float camDist = length(ro);
     float maxDist = camDist + BOUND_R * 2.0 + 1.0;
+
+    // Compute sphere intersection for opacity calculations
+    // sphereEntry is where the ray enters the bounding sphere (0 if camera inside)
+    vec2 tSphere = intersectSphere(ro, rd, BOUND_R);
+    float sphereEntry = max(0.0, tSphere.x);
 
     float trap;
     float d = RayMarch(ro, rd, trap);
@@ -1180,8 +1325,15 @@ void main() {
         vec3 l = getLightDirection(i, p);
         float attenuation = uLightIntensities[i];
 
+        // Apply distance attenuation for point and spot lights
+        int lightType = uLightTypes[i];
+        if (lightType == LIGHT_TYPE_POINT || lightType == LIGHT_TYPE_SPOT) {
+            float distance = length(uLightPositions[i] - p);
+            attenuation *= getDistanceAttenuation(i, distance);
+        }
+
         // Apply spot light cone attenuation
-        if (uLightTypes[i] == LIGHT_TYPE_SPOT) {
+        if (lightType == LIGHT_TYPE_SPOT) {
             vec3 lightToFrag = normalize(p - uLightPositions[i]);
             attenuation *= getSpotAttenuation(i, lightToFrag);
         }
@@ -1222,5 +1374,8 @@ void main() {
     vec4 clipPos = uProjectionMatrix * uViewMatrix * worldHitPos;
     gl_FragDepth = clamp((clipPos.z / clipPos.w) * 0.5 + 0.5, 0.0, 1.0);
 
-    gl_FragColor = vec4(col, 1.0);
+    // Calculate opacity based on selected mode
+    float alpha = calculateOpacityAlpha(d, sphereEntry, maxDist);
+
+    gl_FragColor = vec4(col, alpha);
 }

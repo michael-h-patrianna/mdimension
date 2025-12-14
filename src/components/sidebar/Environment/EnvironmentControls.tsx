@@ -49,7 +49,6 @@ export const EnvironmentControls: React.FC<EnvironmentControlsProps> = React.mem
     groundMaterialRoughness,
     groundMaterialMetalness,
     groundMaterialEnvMapIntensity,
-    showAxisHelper,
     setActiveWalls,
     setGroundPlaneOffset,
     setGroundPlaneColor,
@@ -61,7 +60,6 @@ export const EnvironmentControls: React.FC<EnvironmentControlsProps> = React.mem
     setGroundMaterialRoughness,
     setGroundMaterialMetalness,
     setGroundMaterialEnvMapIntensity,
-    setShowAxisHelper,
   } = useVisualStore(
     useShallow((state) => ({
       activeWalls: state.activeWalls,
@@ -75,7 +73,6 @@ export const EnvironmentControls: React.FC<EnvironmentControlsProps> = React.mem
       groundMaterialRoughness: state.groundMaterialRoughness,
       groundMaterialMetalness: state.groundMaterialMetalness,
       groundMaterialEnvMapIntensity: state.groundMaterialEnvMapIntensity,
-      showAxisHelper: state.showAxisHelper,
       setActiveWalls: state.setActiveWalls,
       setGroundPlaneOffset: state.setGroundPlaneOffset,
       setGroundPlaneColor: state.setGroundPlaneColor,
@@ -87,7 +84,6 @@ export const EnvironmentControls: React.FC<EnvironmentControlsProps> = React.mem
       setGroundMaterialRoughness: state.setGroundMaterialRoughness,
       setGroundMaterialMetalness: state.setGroundMaterialMetalness,
       setGroundMaterialEnvMapIntensity: state.setGroundMaterialEnvMapIntensity,
-      setShowAxisHelper: state.setShowAxisHelper,
     }))
   );
 
@@ -228,18 +224,6 @@ export const EnvironmentControls: React.FC<EnvironmentControlsProps> = React.mem
     </div>
   );
 
-  /** Misc tab content - axis helper and other utilities */
-  const miscContent = (
-    <div className="space-y-4">
-      {/* Axis Helper Toggle */}
-      <Switch
-        checked={showAxisHelper}
-        onCheckedChange={setShowAxisHelper}
-        label="Show Axis Helper"
-      />
-    </div>
-  );
-
   return (
     <div className={className}>
       <Tabs
@@ -248,7 +232,6 @@ export const EnvironmentControls: React.FC<EnvironmentControlsProps> = React.mem
         tabs={[
           { id: 'walls', label: 'Walls', content: wallsContent },
           { id: 'material', label: 'Material', content: materialContent },
-          { id: 'misc', label: 'Misc', content: miscContent },
         ]}
       />
     </div>

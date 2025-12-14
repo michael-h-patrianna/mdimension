@@ -7,9 +7,9 @@
  * @see docs/prd/advanced-lighting-system.md
  */
 
-import { Color, Vector3 } from 'three';
-import type { LightSource } from './types';
-import { MAX_LIGHTS, LIGHT_TYPE_TO_INT, rotationToDirection } from './types';
+import { Color, Vector3 } from 'three'
+import type { LightSource } from './types'
+import { LIGHT_TYPE_TO_INT, MAX_LIGHTS, rotationToDirection } from './types'
 
 /**
  * Light uniform structure for Three.js ShaderMaterial.
@@ -17,27 +17,31 @@ import { MAX_LIGHTS, LIGHT_TYPE_TO_INT, rotationToDirection } from './types';
  */
 export interface LightUniforms {
   /** Number of active lights (0 to MAX_LIGHTS) */
-  uNumLights: { value: number };
+  uNumLights: { value: number }
   /** Whether each light is enabled */
-  uLightsEnabled: { value: boolean[] };
+  uLightsEnabled: { value: boolean[] }
   /** Light type integers (0=point, 1=directional, 2=spot) */
-  uLightTypes: { value: number[] };
+  uLightTypes: { value: number[] }
   /** World-space positions */
-  uLightPositions: { value: Vector3[] };
+  uLightPositions: { value: Vector3[] }
   /** Normalized direction vectors */
-  uLightDirections: { value: Vector3[] };
+  uLightDirections: { value: Vector3[] }
   /** RGB colors */
-  uLightColors: { value: Color[] };
+  uLightColors: { value: Color[] }
   /** Intensity multipliers */
-  uLightIntensities: { value: number[] };
+  uLightIntensities: { value: number[] }
   /** Spot light cone angles in radians */
-  uSpotAngles: { value: number[] };
+  uSpotAngles: { value: number[] }
   /** Spot light penumbra values */
-  uSpotPenumbras: { value: number[] };
+  uSpotPenumbras: { value: number[] }
   /** Precomputed cos(innerAngle) for spotlight cone - avoids per-fragment trig */
-  uSpotCosInner: { value: number[] };
+  uSpotCosInner: { value: number[] }
   /** Precomputed cos(outerAngle) for spotlight cone - avoids per-fragment trig */
-  uSpotCosOuter: { value: number[] };
+  uSpotCosOuter: { value: number[] }
+  /** Light range/distance for attenuation (0 = infinite) */
+  uLightRanges: { value: number[] }
+  /** Light decay rate (0 = no decay, 2 = physically correct inverse square) */
+  uLightDecays: { value: number[] }
 }
 
 /**
@@ -47,30 +51,34 @@ export interface LightUniforms {
  * @returns Light uniform object ready for ShaderMaterial
  */
 export function createLightUniforms(): LightUniforms {
-  const enabled: boolean[] = [];
-  const types: number[] = [];
-  const positions: Vector3[] = [];
-  const directions: Vector3[] = [];
-  const colors: Color[] = [];
-  const intensities: number[] = [];
-  const spotAngles: number[] = [];
-  const spotPenumbras: number[] = [];
-  const spotCosInner: number[] = [];
-  const spotCosOuter: number[] = [];
+  const enabled: boolean[] = []
+  const types: number[] = []
+  const positions: Vector3[] = []
+  const directions: Vector3[] = []
+  const colors: Color[] = []
+  const intensities: number[] = []
+  const spotAngles: number[] = []
+  const spotPenumbras: number[] = []
+  const spotCosInner: number[] = []
+  const spotCosOuter: number[] = []
+  const ranges: number[] = []
+  const decays: number[] = []
 
   for (let i = 0; i < MAX_LIGHTS; i++) {
-    enabled.push(false);
-    types.push(0);
-    positions.push(new Vector3(0, 5, 0));
-    directions.push(new Vector3(0, -1, 0));
-    colors.push(new Color('#FFFFFF'));
-    intensities.push(1.0);
-    spotAngles.push(Math.PI / 6); // 30 degrees
-    spotPenumbras.push(0.5);
+    enabled.push(false)
+    types.push(0)
+    positions.push(new Vector3(0, 5, 0))
+    directions.push(new Vector3(0, -1, 0))
+    colors.push(new Color('#FFFFFF'))
+    intensities.push(1.0)
+    spotAngles.push(Math.PI / 6) // 30 degrees
+    spotPenumbras.push(0.5)
     // Precompute cosines for default 30° cone with 0.5 penumbra
     // Inner angle = 30° * (1 - 0.5) = 15°, Outer angle = 30°
-    spotCosInner.push(Math.cos((Math.PI / 6) * 0.5)); // cos(15°) ≈ 0.966
-    spotCosOuter.push(Math.cos(Math.PI / 6)); // cos(30°) ≈ 0.866
+    spotCosInner.push(Math.cos((Math.PI / 6) * 0.5)) // cos(15°) ≈ 0.966
+    spotCosOuter.push(Math.cos(Math.PI / 6)) // cos(30°) ≈ 0.866
+    ranges.push(0) // 0 = infinite range
+    decays.push(2) // 2 = physically correct inverse square
   }
 
   return {
@@ -85,7 +93,9 @@ export function createLightUniforms(): LightUniforms {
     uSpotPenumbras: { value: spotPenumbras },
     uSpotCosInner: { value: spotCosInner },
     uSpotCosOuter: { value: spotCosOuter },
-  };
+    uLightRanges: { value: ranges },
+    uLightDecays: { value: decays },
+  }
 }
 
 /**
@@ -95,51 +105,54 @@ export function createLightUniforms(): LightUniforms {
  * @param uniforms - Existing uniforms object to update
  * @param lights - Array of light source configurations
  */
-export function updateLightUniforms(
-  uniforms: LightUniforms,
-  lights: LightSource[]
-): void {
-  const numLights = Math.min(lights.length, MAX_LIGHTS);
-  uniforms.uNumLights.value = numLights;
+export function updateLightUniforms(uniforms: LightUniforms, lights: LightSource[]): void {
+  const numLights = Math.min(lights.length, MAX_LIGHTS)
+  uniforms.uNumLights.value = numLights
 
-  const enabled = uniforms.uLightsEnabled.value;
-  const types = uniforms.uLightTypes.value;
-  const positions = uniforms.uLightPositions.value;
-  const directions = uniforms.uLightDirections.value;
-  const colors = uniforms.uLightColors.value;
-  const intensities = uniforms.uLightIntensities.value;
-  const spotAngles = uniforms.uSpotAngles.value;
-  const spotPenumbras = uniforms.uSpotPenumbras.value;
-  const spotCosInner = uniforms.uSpotCosInner.value;
-  const spotCosOuter = uniforms.uSpotCosOuter.value;
+  const enabled = uniforms.uLightsEnabled.value
+  const types = uniforms.uLightTypes.value
+  const positions = uniforms.uLightPositions.value
+  const directions = uniforms.uLightDirections.value
+  const colors = uniforms.uLightColors.value
+  const intensities = uniforms.uLightIntensities.value
+  const spotAngles = uniforms.uSpotAngles.value
+  const spotPenumbras = uniforms.uSpotPenumbras.value
+  const spotCosInner = uniforms.uSpotCosInner.value
+  const spotCosOuter = uniforms.uSpotCosOuter.value
+  const ranges = uniforms.uLightRanges.value
+  const decays = uniforms.uLightDecays.value
 
   for (let i = 0; i < MAX_LIGHTS; i++) {
-    const light = lights[i];
+    const light = lights[i]
 
     if (light) {
-      enabled[i] = light.enabled;
-      types[i] = LIGHT_TYPE_TO_INT[light.type];
+      enabled[i] = light.enabled
+      types[i] = LIGHT_TYPE_TO_INT[light.type]
       // Arrays are pre-populated with MAX_LIGHTS elements, safe to use non-null assertion
-      positions[i]!.set(light.position[0], light.position[1], light.position[2]);
+      positions[i]!.set(light.position[0], light.position[1], light.position[2])
 
       // Calculate direction from rotation for directional/spot lights
-      const dir = rotationToDirection(light.rotation);
-      directions[i]!.set(dir[0], dir[1], dir[2]);
+      const dir = rotationToDirection(light.rotation)
+      directions[i]!.set(dir[0], dir[1], dir[2])
 
-      colors[i]!.set(light.color);
-      intensities[i] = light.intensity;
+      colors[i]!.set(light.color)
+      intensities[i] = light.intensity
 
       // Convert cone angle from degrees to radians
-      const outerAngleRad = (light.coneAngle * Math.PI) / 180;
-      const innerAngleRad = outerAngleRad * (1.0 - light.penumbra);
-      spotAngles[i] = outerAngleRad;
-      spotPenumbras[i] = light.penumbra;
+      const outerAngleRad = (light.coneAngle * Math.PI) / 180
+      const innerAngleRad = outerAngleRad * (1.0 - light.penumbra)
+      spotAngles[i] = outerAngleRad
+      spotPenumbras[i] = light.penumbra
       // Precompute cosines on CPU to avoid per-fragment trig in shader
-      spotCosOuter[i] = Math.cos(outerAngleRad);
-      spotCosInner[i] = Math.cos(innerAngleRad);
+      spotCosOuter[i] = Math.cos(outerAngleRad)
+      spotCosInner[i] = Math.cos(innerAngleRad)
+
+      // Range and decay for distance attenuation
+      ranges[i] = light.range
+      decays[i] = light.decay
     } else {
       // Disable unused light slots
-      enabled[i] = false;
+      enabled[i] = false
     }
   }
 }
@@ -170,7 +183,9 @@ uniform float uSpotAngles[MAX_LIGHTS];
 uniform float uSpotPenumbras[MAX_LIGHTS];
 uniform float uSpotCosInner[MAX_LIGHTS];
 uniform float uSpotCosOuter[MAX_LIGHTS];
-`;
+uniform float uLightRanges[MAX_LIGHTS];
+uniform float uLightDecays[MAX_LIGHTS];
+`
 }
 
 /**
@@ -208,7 +223,38 @@ float getSpotAttenuation(int lightIndex, vec3 lightToFrag) {
   float cosAngle = dot(lightToFrag, normalize(uLightDirections[lightIndex]));
   return smoothstep(uSpotCosOuter[lightIndex], uSpotCosInner[lightIndex], cosAngle);
 }
-`;
+
+/**
+ * Calculate distance attenuation for point and spot lights.
+ * Implements Three.js-compatible attenuation:
+ * - range = 0: no distance falloff (infinite range)
+ * - range > 0: light reaches zero intensity at this distance
+ * - decay = 0: no decay (constant intensity)
+ * - decay = 1: linear falloff
+ * - decay = 2: physically correct inverse square falloff
+ *
+ * Based on Three.js PointLight distance attenuation formula.
+ */
+float getDistanceAttenuation(int lightIndex, float distance) {
+  float range = uLightRanges[lightIndex];
+  float decay = uLightDecays[lightIndex];
+
+  // No distance falloff when range is 0 (infinite range)
+  if (range <= 0.0) {
+    return 1.0;
+  }
+
+  // Clamp distance to prevent division by zero
+  float d = max(distance, 0.0001);
+
+  // Three.js attenuation formula:
+  // pow(saturate(-distance / range + 1.0), decay)
+  float rangeAttenuation = clamp(1.0 - d / range, 0.0, 1.0);
+
+  // Apply decay exponent
+  return pow(rangeAttenuation, decay);
+}
+`
 }
 
 /**
@@ -237,8 +283,15 @@ vec3 calculateMultiLighting(
     vec3 lightDir = getLightDirection(i, fragPos);
     float attenuation = uLightIntensities[i];
 
+    // Apply distance attenuation for point and spot lights
+    int lightType = uLightTypes[i];
+    if (lightType == LIGHT_TYPE_POINT || lightType == LIGHT_TYPE_SPOT) {
+      float distance = length(uLightPositions[i] - fragPos);
+      attenuation *= getDistanceAttenuation(i, distance);
+    }
+
     // Apply spot light cone attenuation
-    if (uLightTypes[i] == LIGHT_TYPE_SPOT) {
+    if (lightType == LIGHT_TYPE_SPOT) {
       vec3 lightToFrag = normalize(fragPos - uLightPositions[i]);
       attenuation *= getSpotAttenuation(i, lightToFrag);
     }
@@ -259,7 +312,7 @@ vec3 calculateMultiLighting(
 
   return col;
 }
-`;
+`
 }
 
 /**
@@ -272,9 +325,9 @@ vec3 calculateMultiLighting(
 export function mergeLightUniforms<T extends Record<string, { value: unknown }>>(
   existingUniforms: T
 ): T & LightUniforms {
-  const lightUniforms = createLightUniforms();
+  const lightUniforms = createLightUniforms()
   return {
     ...existingUniforms,
     ...lightUniforms,
-  };
+  }
 }

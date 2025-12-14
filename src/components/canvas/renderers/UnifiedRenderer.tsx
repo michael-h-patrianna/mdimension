@@ -15,16 +15,16 @@
  * to bypass React's render cycle completely during animation.
  */
 
-import React, { useMemo } from 'react';
-import { useShallow } from 'zustand/react/shallow';
 import type { Face } from '@/lib/geometry/faces';
 import type { NdGeometry, ObjectType } from '@/lib/geometry/types';
-import { PolytopeScene } from '../scenes/PolytopeScene';
-import { PointCloudScene } from '../scenes/PointCloudScene';
+import { useVisualStore } from '@/stores/visualStore';
+import React, { useMemo } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import HyperbulbMesh from './Hyperbulb/HyperbulbMesh';
 import MandelboxMesh from './Mandelbox/MandelboxMesh';
 import MengerMesh from './Menger/MengerMesh';
-import { useVisualStore } from '@/stores/visualStore';
+import { PointCloudScene } from './PointCloud';
+import { PolytopeScene } from './Polytope';
 
 /**
  * Render mode types

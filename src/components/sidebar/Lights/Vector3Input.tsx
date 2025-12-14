@@ -5,7 +5,7 @@
  * Used for light position and rotation inputs.
  */
 
-import React, { memo, useCallback, useState, useEffect } from 'react';
+import React, { memo, useCallback, useState, useEffect, useRef } from 'react';
 
 export interface Vector3InputProps {
   label: string;
@@ -35,14 +35,39 @@ export const Vector3Input: React.FC<Vector3InputProps> = memo(function Vector3In
     (value[2] * displayMultiplier).toFixed(1),
   ]);
 
-  // Update local values when prop value changes
+  // Track which input is focused to prevent resetting during editing
+  const focusedIndex = useRef<number | null>(null);
+
+  // Track previous values to detect actual changes (not just reference changes)
+  const prevValueRef = useRef<[number, number, number]>(value);
+
+  // Update local values when prop value actually changes (deep comparison)
   useEffect(() => {
-    setLocalValues([
-      (value[0] * displayMultiplier).toFixed(1),
-      (value[1] * displayMultiplier).toFixed(1),
-      (value[2] * displayMultiplier).toFixed(1),
-    ]);
+    const prevValue = prevValueRef.current;
+    const hasChanged =
+      value[0] !== prevValue[0] ||
+      value[1] !== prevValue[1] ||
+      value[2] !== prevValue[2];
+
+    if (hasChanged) {
+      prevValueRef.current = value;
+
+      // Update all unfocused inputs, keep focused input as-is
+      setLocalValues((prev) => {
+        const newLocal = [...prev] as [string, string, string];
+        for (let i = 0; i < 3; i++) {
+          if (focusedIndex.current !== i) {
+            newLocal[i] = (value[i] * displayMultiplier).toFixed(1);
+          }
+        }
+        return newLocal;
+      });
+    }
   }, [value, displayMultiplier]);
+
+  const handleFocus = useCallback((index: number) => {
+    focusedIndex.current = index;
+  }, []);
 
   const handleChange = useCallback(
     (index: number, inputValue: string) => {
@@ -64,6 +89,8 @@ export const Vector3Input: React.FC<Vector3InputProps> = memo(function Vector3In
 
   const handleBlur = useCallback(
     (index: 0 | 1 | 2) => {
+      focusedIndex.current = null;
+
       // Reset to actual value on blur if invalid
       const localValue = localValues[index];
       const parsed = parseFloat(localValue);
@@ -93,6 +120,7 @@ export const Vector3Input: React.FC<Vector3InputProps> = memo(function Vector3In
             <input
               type="number"
               value={localValues[i]}
+              onFocus={() => handleFocus(i)}
               onChange={(e) => handleChange(i, e.target.value)}
               onBlur={() => handleBlur(i as 0 | 1 | 2)}
               step={step * displayMultiplier}

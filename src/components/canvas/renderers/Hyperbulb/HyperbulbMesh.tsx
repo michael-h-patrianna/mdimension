@@ -1,6 +1,7 @@
 import { createLightUniforms, updateLightUniforms, type LightUniforms } from '@/lib/lights/uniforms';
 import { composeRotations } from '@/lib/math/rotation';
 import type { MatrixND } from '@/lib/math/types';
+import { OPACITY_MODE_TO_INT, SAMPLE_QUALITY_TO_INT } from '@/lib/opacity/types';
 import { COLOR_ALGORITHM_TO_INT } from '@/lib/shaders/palette';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
@@ -145,6 +146,9 @@ const HyperbulbMesh = () => {
   const fresnelIntensity = useVisualStore((state) => state.fresnelIntensity);
   const edgeColor = useVisualStore((state) => state.edgeColor);
 
+  // Opacity settings for hyperbulb
+  const opacitySettings = useVisualStore((state) => state.hyperbulbOpacitySettings);
+
   const uniforms = useMemo(
     () => ({
       // Time and resolution
@@ -193,6 +197,16 @@ const HyperbulbMesh = () => {
 
       // Performance mode: reduces quality during rotation animations
       uFastMode: { value: false },
+
+      // Opacity Mode System uniforms
+      uOpacityMode: { value: 0 },
+      uSimpleAlpha: { value: 0.7 },
+      uLayerCount: { value: 2 },
+      uLayerOpacity: { value: 0.5 },
+      uVolumetricDensity: { value: 1.0 },
+      uSampleQuality: { value: 1 },
+      uVolumetricReduceOnAnim: { value: true },
+
       // Advanced Color System uniforms
       uColorAlgorithm: { value: 1 },
       uCosineA: { value: new THREE.Vector3(0.5, 0.5, 0.5) },
@@ -323,6 +337,37 @@ const HyperbulbMesh = () => {
       if (material.uniforms.uLchLightness) material.uniforms.uLchLightness.value = lchLightness;
       if (material.uniforms.uLchChroma) material.uniforms.uLchChroma.value = lchChroma;
       if (material.uniforms.uMultiSourceWeights) material.uniforms.uMultiSourceWeights.value.set(multiSourceWeights.depth, multiSourceWeights.orbitTrap, multiSourceWeights.normal);
+
+      // Opacity Mode System uniforms
+      if (material.uniforms.uOpacityMode) {
+        material.uniforms.uOpacityMode.value = OPACITY_MODE_TO_INT[opacitySettings.mode];
+      }
+      if (material.uniforms.uSimpleAlpha) {
+        material.uniforms.uSimpleAlpha.value = opacitySettings.simpleAlphaOpacity;
+      }
+      if (material.uniforms.uLayerCount) {
+        material.uniforms.uLayerCount.value = opacitySettings.layerCount;
+      }
+      if (material.uniforms.uLayerOpacity) {
+        material.uniforms.uLayerOpacity.value = opacitySettings.layerOpacity;
+      }
+      if (material.uniforms.uVolumetricDensity) {
+        material.uniforms.uVolumetricDensity.value = opacitySettings.volumetricDensity;
+      }
+      if (material.uniforms.uSampleQuality) {
+        material.uniforms.uSampleQuality.value = SAMPLE_QUALITY_TO_INT[opacitySettings.sampleQuality];
+      }
+      if (material.uniforms.uVolumetricReduceOnAnim) {
+        material.uniforms.uVolumetricReduceOnAnim.value = opacitySettings.volumetricAnimationQuality === 'reduce';
+      }
+
+      // Configure material transparency based on opacity mode
+      const isTransparent = opacitySettings.mode !== 'solid';
+      if (material.transparent !== isTransparent) {
+        material.transparent = isTransparent;
+        material.depthWrite = !isTransparent;
+        material.needsUpdate = true;
+      }
 
       // ============================================
       // Optimized D-dimensional Rotation & Basis Vectors

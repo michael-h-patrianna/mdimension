@@ -21,7 +21,20 @@ import {
   cloneLight,
   createDefaultLight,
   createNewLight,
+  normalizeRotationTuple,
 } from '@/lib/lights/types'
+import type {
+  HyperbulbOpacitySettings,
+  OpacityMode,
+  SampleQuality,
+  VolumetricAnimationQuality,
+} from '@/lib/opacity/types'
+import {
+  DEFAULT_OPACITY_SETTINGS,
+  LAYER_OPACITY_RANGE,
+  SIMPLE_ALPHA_RANGE,
+  VOLUMETRIC_DENSITY_RANGE,
+} from '@/lib/opacity/constants'
 import {
   type ColorAlgorithm,
   type CosineCoefficients,
@@ -402,6 +415,12 @@ interface VisualState {
   /** Whether a light is currently being dragged (disables camera controls) */
   isDraggingLight: boolean
 
+  // --- Hyperbulb Opacity Settings ---
+  /** Opacity settings for hyperbulb fractal rendering */
+  hyperbulbOpacitySettings: HyperbulbOpacitySettings
+  /** Whether the volumetric performance warning has been shown this session */
+  hasSeenVolumetricWarning: boolean
+
   // --- Actions: Basic Visual ---
   setEdgeColor: (color: string) => void
   setEdgeThickness: (thickness: number) => void
@@ -517,6 +536,26 @@ interface VisualState {
   /** Set whether a light is currently being dragged */
   setIsDraggingLight: (dragging: boolean) => void
 
+  // --- Actions: Hyperbulb Opacity ---
+  /** Set the opacity mode (solid, simpleAlpha, layeredSurfaces, volumetricDensity) */
+  setOpacityMode: (mode: OpacityMode) => void
+  /** Set simple alpha opacity value (0.0-1.0) */
+  setSimpleAlphaOpacity: (opacity: number) => void
+  /** Set layer count for layered surfaces mode (2, 3, or 4) */
+  setLayerCount: (count: 2 | 3 | 4) => void
+  /** Set layer opacity for layered surfaces mode (0.1-0.9) */
+  setLayerOpacity: (opacity: number) => void
+  /** Set volumetric density (0.1-2.0) */
+  setVolumetricDensity: (density: number) => void
+  /** Set sample quality for volumetric mode (low, medium, high) */
+  setSampleQuality: (quality: SampleQuality) => void
+  /** Set volumetric animation quality preference (reduce or full) */
+  setVolumetricAnimationQuality: (quality: VolumetricAnimationQuality) => void
+  /** Mark that the volumetric performance warning has been shown */
+  setHasSeenVolumetricWarning: (seen: boolean) => void
+  /** Update multiple opacity settings at once */
+  setOpacitySettings: (settings: Partial<HyperbulbOpacitySettings>) => void
+
   // --- Actions: Presets & Reset ---
   applyPreset: (preset: VisualPreset) => void
   reset: () => void
@@ -627,6 +666,10 @@ const INITIAL_STATE: Omit<VisualState, keyof VisualStateFunctions> = {
   transformMode: DEFAULT_TRANSFORM_MODE,
   showLightGizmos: DEFAULT_SHOW_LIGHT_GIZMOS,
   isDraggingLight: false,
+
+  // Hyperbulb opacity settings
+  hyperbulbOpacitySettings: { ...DEFAULT_OPACITY_SETTINGS },
+  hasSeenVolumetricWarning: false,
 }
 
 type VisualStateFunctions = Pick<
@@ -708,6 +751,15 @@ type VisualStateFunctions = Pick<
   | 'setTransformMode'
   | 'setShowLightGizmos'
   | 'setIsDraggingLight'
+  | 'setOpacityMode'
+  | 'setSimpleAlphaOpacity'
+  | 'setLayerCount'
+  | 'setLayerOpacity'
+  | 'setVolumetricDensity'
+  | 'setSampleQuality'
+  | 'setVolumetricAnimationQuality'
+  | 'setHasSeenVolumetricWarning'
+  | 'setOpacitySettings'
   | 'applyPreset'
   | 'reset'
 >
@@ -1129,6 +1181,10 @@ export const useVisualStore = create<VisualState>((set) => ({
             updates.coneAngle !== undefined ? clampConeAngle(updates.coneAngle) : light.coneAngle,
           penumbra:
             updates.penumbra !== undefined ? clampPenumbra(updates.penumbra) : light.penumbra,
+          rotation:
+            updates.rotation !== undefined
+              ? normalizeRotationTuple(updates.rotation)
+              : light.rotation,
         }
       }),
     }))
@@ -1162,6 +1218,114 @@ export const useVisualStore = create<VisualState>((set) => ({
 
   setIsDraggingLight: (dragging: boolean) => {
     set({ isDraggingLight: dragging })
+  },
+
+  // --- Actions: Hyperbulb Opacity ---
+  setOpacityMode: (mode: OpacityMode) => {
+    set((state) => ({
+      hyperbulbOpacitySettings: {
+        ...state.hyperbulbOpacitySettings,
+        mode,
+      },
+    }))
+  },
+
+  setSimpleAlphaOpacity: (opacity: number) => {
+    set((state) => ({
+      hyperbulbOpacitySettings: {
+        ...state.hyperbulbOpacitySettings,
+        simpleAlphaOpacity: Math.max(
+          SIMPLE_ALPHA_RANGE.min,
+          Math.min(SIMPLE_ALPHA_RANGE.max, opacity)
+        ),
+      },
+    }))
+  },
+
+  setLayerCount: (count: 2 | 3 | 4) => {
+    set((state) => ({
+      hyperbulbOpacitySettings: {
+        ...state.hyperbulbOpacitySettings,
+        layerCount: count,
+      },
+    }))
+  },
+
+  setLayerOpacity: (opacity: number) => {
+    set((state) => ({
+      hyperbulbOpacitySettings: {
+        ...state.hyperbulbOpacitySettings,
+        layerOpacity: Math.max(
+          LAYER_OPACITY_RANGE.min,
+          Math.min(LAYER_OPACITY_RANGE.max, opacity)
+        ),
+      },
+    }))
+  },
+
+  setVolumetricDensity: (density: number) => {
+    set((state) => ({
+      hyperbulbOpacitySettings: {
+        ...state.hyperbulbOpacitySettings,
+        volumetricDensity: Math.max(
+          VOLUMETRIC_DENSITY_RANGE.min,
+          Math.min(VOLUMETRIC_DENSITY_RANGE.max, density)
+        ),
+      },
+    }))
+  },
+
+  setSampleQuality: (quality: SampleQuality) => {
+    set((state) => ({
+      hyperbulbOpacitySettings: {
+        ...state.hyperbulbOpacitySettings,
+        sampleQuality: quality,
+      },
+    }))
+  },
+
+  setVolumetricAnimationQuality: (quality: VolumetricAnimationQuality) => {
+    set((state) => ({
+      hyperbulbOpacitySettings: {
+        ...state.hyperbulbOpacitySettings,
+        volumetricAnimationQuality: quality,
+      },
+    }))
+  },
+
+  setHasSeenVolumetricWarning: (seen: boolean) => {
+    set({ hasSeenVolumetricWarning: seen })
+  },
+
+  setOpacitySettings: (settings: Partial<HyperbulbOpacitySettings>) => {
+    set((state) => ({
+      hyperbulbOpacitySettings: {
+        ...state.hyperbulbOpacitySettings,
+        ...settings,
+        // Apply clamping for numeric values if provided
+        simpleAlphaOpacity:
+          settings.simpleAlphaOpacity !== undefined
+            ? Math.max(
+                SIMPLE_ALPHA_RANGE.min,
+                Math.min(SIMPLE_ALPHA_RANGE.max, settings.simpleAlphaOpacity)
+              )
+            : state.hyperbulbOpacitySettings.simpleAlphaOpacity,
+        layerOpacity:
+          settings.layerOpacity !== undefined
+            ? Math.max(
+                LAYER_OPACITY_RANGE.min,
+                Math.min(LAYER_OPACITY_RANGE.max, settings.layerOpacity)
+              )
+            : state.hyperbulbOpacitySettings.layerOpacity,
+        volumetricDensity:
+          settings.volumetricDensity !== undefined
+            ? Math.max(
+                VOLUMETRIC_DENSITY_RANGE.min,
+                Math.min(VOLUMETRIC_DENSITY_RANGE.max, settings.volumetricDensity)
+              )
+            : state.hyperbulbOpacitySettings.volumetricDensity,
+      },
+    }))
   },
 
   // --- Actions: Presets & Reset ---

@@ -29,6 +29,8 @@ uniform float uSpotAngles[MAX_LIGHTS];
 uniform float uSpotPenumbras[MAX_LIGHTS];
 uniform float uSpotCosInner[MAX_LIGHTS];
 uniform float uSpotCosOuter[MAX_LIGHTS];
+uniform float uLightRanges[MAX_LIGHTS];
+uniform float uLightDecays[MAX_LIGHTS];
 
 // Global lighting uniforms
 uniform float uAmbientIntensity;
@@ -121,6 +123,29 @@ float getSpotAttenuation(int lightIndex, vec3 lightToFrag) {
   return smoothstep(uSpotCosOuter[lightIndex], uSpotCosInner[lightIndex], cosAngle);
 }
 
+/**
+ * Calculate distance attenuation for point and spot lights.
+ * range = 0: infinite range (no falloff)
+ * range > 0: light reaches zero intensity at this distance
+ * decay = 0: no decay, 1: linear, 2: physically correct inverse square
+ */
+float getDistanceAttenuation(int lightIndex, float distance) {
+  float range = uLightRanges[lightIndex];
+  float decay = uLightDecays[lightIndex];
+
+  // No distance falloff when range is 0 (infinite range)
+  if (range <= 0.0) {
+    return 1.0;
+  }
+
+  // Clamp distance to prevent division by zero
+  float d = max(distance, 0.0001);
+
+  // Three.js attenuation formula
+  float rangeAttenuation = clamp(1.0 - d / range, 0.0, 1.0);
+  return pow(rangeAttenuation, decay);
+}
+
 // ============================================
 // Tone Mapping Functions
 // ============================================
@@ -177,8 +202,15 @@ void main() {
 
     float attenuation = uLightIntensities[i];
 
+    // Apply distance attenuation for point and spot lights
+    int lightType = uLightTypes[i];
+    if (lightType == LIGHT_TYPE_POINT || lightType == LIGHT_TYPE_SPOT) {
+      float distance = length(uLightPositions[i] - vWorldPosition);
+      attenuation *= getDistanceAttenuation(i, distance);
+    }
+
     // Apply spot light cone attenuation
-    if (uLightTypes[i] == LIGHT_TYPE_SPOT) {
+    if (lightType == LIGHT_TYPE_SPOT) {
       vec3 lightToFrag = normalize(vWorldPosition - uLightPositions[i]);
       attenuation *= getSpotAttenuation(i, lightToFrag);
     }

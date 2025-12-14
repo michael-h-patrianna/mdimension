@@ -47,6 +47,18 @@ export interface LightSource {
   coneAngle: number
   /** Spot light penumbra/softness (0-1, where 0=hard edge, 1=fully soft) */
   penumbra: number
+  /**
+   * Maximum range/distance for light attenuation (point/spot only).
+   * 0 = infinite range (no distance falloff), matching Three.js default.
+   * Range: 0-100, where 0 disables attenuation.
+   */
+  range: number
+  /**
+   * Rate of light decay over distance (point/spot only).
+   * 0 = no decay, 1 = linear, 2 = physically correct inverse square.
+   * Range: 0-3, default 2 for physically accurate lighting.
+   */
+  decay: number
 }
 
 /** Maximum number of dynamic lights supported */
@@ -67,19 +79,26 @@ export const LIGHT_TYPE_TO_INT: Record<LightType, number> = {
 
 /**
  * Default values for new lights by type.
+ * range: 0 = infinite (no falloff), decay: 2 = physically accurate inverse square
  */
 export const DEFAULT_LIGHT_VALUES: Record<LightType, Partial<LightSource>> = {
   point: {
     coneAngle: 30,
     penumbra: 0.5,
+    range: 0,
+    decay: 2,
   },
   directional: {
     coneAngle: 30,
     penumbra: 0.5,
+    range: 0,
+    decay: 2,
   },
   spot: {
     coneAngle: 30,
     penumbra: 0.2,
+    range: 0,
+    decay: 2,
   },
 } as const
 
@@ -116,7 +135,32 @@ export function createDefaultLight(): LightSource {
     intensity: 1.0,
     coneAngle: 30,
     penumbra: 0.5,
+    range: 15,
+    decay: 2,
   }
+}
+
+/**
+ * Calculate rotation to point from a position toward the origin.
+ *
+ * @param position - Light position [x, y, z]
+ * @returns Rotation that points toward origin
+ */
+function calculateRotationTowardOrigin(
+  position: [number, number, number]
+): [number, number, number] {
+  const [px, py, pz] = position
+
+  // Direction from position to origin: normalize(-position)
+  const length = Math.sqrt(px * px + py * py + pz * pz)
+
+  // If at origin, default to pointing down
+  if (length < 0.001) {
+    return [-Math.PI / 2, 0, 0]
+  }
+
+  const direction: [number, number, number] = [-px / length, -py / length, -pz / length]
+  return directionToRotation(direction)
 }
 
 /**
@@ -140,17 +184,24 @@ export function createNewLight(type: LightType, existingCount: number): LightSou
   const typeName = type.charAt(0).toUpperCase() + type.slice(1)
   const name = `${typeName} Light ${existingCount + 1}`
 
+  // For spot and directional lights, calculate rotation to point at origin
+  // Point lights radiate in all directions, so rotation doesn't matter
+  const rotation: [number, number, number] =
+    type === 'point' ? [0, 0, 0] : calculateRotationTowardOrigin(position)
+
   return {
     id,
     name,
     type,
     enabled: true,
     position: [position[0], position[1], position[2]] as [number, number, number],
-    rotation: [0, 0, 0] as [number, number, number],
+    rotation,
     color: '#FFFFFF',
     intensity: 1.0,
     coneAngle: typeDefaults.coneAngle ?? 30,
     penumbra: typeDefaults.penumbra ?? 0.5,
+    range: typeDefaults.range ?? 0,
+    decay: typeDefaults.decay ?? 2,
   }
 }
 
@@ -192,13 +243,34 @@ export function rotationToDirection(rotation: [number, number, number]): [number
 }
 
 /**
+ * Calculate Euler rotation angles from a direction vector.
+ * Inverse of rotationToDirection().
+ *
+ * @param direction - Normalized direction vector [x, y, z]
+ * @returns Euler angles in radians [rx, ry, rz] (rz is always 0)
+ */
+export function directionToRotation(direction: [number, number, number]): [number, number, number] {
+  const [dx, dy, dz] = direction
+
+  // Pitch (rotation around X axis) from Y component
+  // Clamp to [-1, 1] to avoid NaN from asin
+  const rx = Math.asin(Math.max(-1, Math.min(1, dy)))
+
+  // Yaw (rotation around Y axis) from X and Z components
+  const ry = Math.atan2(-dx, -dz)
+
+  // Roll is always 0 for this use case
+  return [rx, ry, 0]
+}
+
+/**
  * Validate light intensity is within bounds.
  *
  * @param intensity - Input intensity value
- * @returns Clamped intensity (0-3)
+ * @returns Clamped intensity (0.1-3)
  */
 export function clampIntensity(intensity: number): number {
-  return Math.max(0, Math.min(3, intensity))
+  return Math.max(0.1, Math.min(3, intensity))
 }
 
 /**
@@ -219,4 +291,60 @@ export function clampConeAngle(angle: number): number {
  */
 export function clampPenumbra(penumbra: number): number {
   return Math.max(0, Math.min(1, penumbra))
+}
+
+/**
+ * Validate range is within bounds.
+ *
+ * @param range - Input range value
+ * @returns Clamped range (1-100)
+ */
+export function clampRange(range: number): number {
+  return Math.max(1, Math.min(100, range))
+}
+
+/**
+ * Validate decay is within bounds.
+ * 1 = linear, 2 = physically correct inverse square.
+ *
+ * @param decay - Input decay value
+ * @returns Clamped decay (0.1-3)
+ */
+export function clampDecay(decay: number): number {
+  return Math.max(0.1, Math.min(3, decay))
+}
+
+/**
+ * Normalize a rotation angle to the range [0, 2π) radians.
+ *
+ * @param angle - Input angle in radians
+ * @returns Normalized angle in [0, 2π) radians
+ */
+export function normalizeRotation(angle: number): number {
+  const TWO_PI = Math.PI * 2
+
+  // Fast path: already in valid range
+  if (angle >= 0 && angle < TWO_PI) {
+    return angle
+  }
+
+  // Handle negative angles and angles >= 2π
+  const normalized = ((angle % TWO_PI) + TWO_PI) % TWO_PI
+  return normalized
+}
+
+/**
+ * Normalize a rotation tuple to the range [0, 2π) radians for each component.
+ *
+ * @param rotation - Euler angles in radians [x, y, z]
+ * @returns Normalized rotation tuple
+ */
+export function normalizeRotationTuple(
+  rotation: [number, number, number]
+): [number, number, number] {
+  return [
+    normalizeRotation(rotation[0]),
+    normalizeRotation(rotation[1]),
+    normalizeRotation(rotation[2]),
+  ]
 }

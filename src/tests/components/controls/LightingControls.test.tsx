@@ -1,13 +1,13 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { LightEditor } from '@/components/sidebar/Lights/LightEditor';
 import { LightingControls } from '@/components/sidebar/Lights/LightingControls';
 import { LightList } from '@/components/sidebar/Lights/LightList';
 import { LightListItem } from '@/components/sidebar/Lights/LightListItem';
-import { LightEditor } from '@/components/sidebar/Lights/LightEditor';
 import { Vector3Input } from '@/components/sidebar/Lights/Vector3Input';
-import { useVisualStore } from '@/stores/visualStore';
 import type { LightSource } from '@/lib/lights/types';
+import { useVisualStore } from '@/stores/visualStore';
+import { fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 describe('LightingControls', () => {
   beforeEach(() => {
@@ -245,6 +245,8 @@ describe('LightListItem', () => {
     intensity: 1.0,
     coneAngle: 30,
     penumbra: 0.5,
+    range: 0,
+    decay: 2,
   };
 
   const mockHandlers = {

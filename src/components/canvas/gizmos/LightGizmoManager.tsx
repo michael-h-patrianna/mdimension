@@ -16,6 +16,7 @@ import { TransformControls } from '@react-three/drei';
 import type * as THREE from 'three';
 import { useVisualStore } from '@/stores/visualStore';
 import { LightGizmo } from './LightGizmo';
+import { LightGroundVisualization } from './LightGroundVisualization';
 import type { LightSource, TransformMode } from '@/lib/lights/types';
 
 /**
@@ -154,6 +155,29 @@ export const LightGizmoManager = memo(function LightGizmoManager() {
     setIsDraggingLight(false);
   }, [setIsDraggingLight]);
 
+  // Handle rotation change from ground visualization drag (spot/directional lights)
+  const handleGroundRotationChange = useCallback(
+    (lightId: string, rotation: [number, number, number]) => {
+      updateLight(lightId, { rotation });
+    },
+    [updateLight]
+  );
+
+  // Handle position change from ground visualization drag (point lights)
+  const handleGroundPositionChange = useCallback(
+    (lightId: string, position: [number, number, number]) => {
+      updateLight(lightId, { position });
+    },
+    [updateLight]
+  );
+
+  // Reset isDraggingLight when gizmos are hidden to prevent stuck state
+  useEffect(() => {
+    if (!showLightGizmos) {
+      setIsDraggingLight(false);
+    }
+  }, [showLightGizmos, setIsDraggingLight]);
+
   // Don't render if gizmos are hidden
   if (!showLightGizmos) {
     return null;
@@ -168,6 +192,19 @@ export const LightGizmoManager = memo(function LightGizmoManager() {
           light={light}
           isSelected={light.id === selectedLightId}
           onSelect={() => handleSelect(light.id)}
+        />
+      ))}
+
+      {/* Render ground visualizations for all light types */}
+      {lights.map((light) => (
+        <LightGroundVisualization
+          key={`ground-vis-${light.id}`}
+          light={light}
+          isSelected={light.id === selectedLightId}
+          onRotationChange={(rotation) => handleGroundRotationChange(light.id, rotation)}
+          onPositionChange={(position) => handleGroundPositionChange(light.id, position)}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
         />
       ))}
 

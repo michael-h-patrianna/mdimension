@@ -36,6 +36,13 @@ import { useProjectionStore } from '@/stores/projectionStore';
 import { useRotationStore } from '@/stores/rotationStore';
 import { useTransformStore } from '@/stores/transformStore';
 import { useVisualStore } from '@/stores/visualStore';
+import {
+  buildEdgeFragmentShader,
+  buildEdgeVertexShader,
+  buildPointFragmentShader,
+  buildPointVertexShader,
+  MAX_EXTRA_DIMS,
+} from './index';
 
 // Extend for fat lines
 extend({ LineSegments2, LineMaterial, LineSegmentsGeometry });
@@ -57,9 +64,6 @@ declare module '@react-three/fiber' {
     };
   }
 }
-
-// Maximum extra dimensions (beyond XYZ + W)
-const MAX_EXTRA_DIMS = 7;
 
 /**
  * Props for PointCloudScene component
@@ -83,8 +87,9 @@ export interface PointCloudSceneProps {
 
 /**
  * Calculate safe projection distance based on vertex positions
- * @param vertices
- * @param normalizationFactor
+ * @param vertices - The N-dimensional vertices
+ * @param normalizationFactor - Factor based on dimension
+ * @returns Safe projection distance that avoids singularities
  */
 function calculateSafeProjectionDistance(
   vertices: VectorND[],
@@ -130,120 +135,16 @@ function hasInstanceBuffer(
 
 /**
  * Create GPU point shader material with full N-D transforms
- * @param pointColor
- * @param opacity
- * @param pointSize
+ * @param pointColor - Color for the points
+ * @param opacity - Material opacity
+ * @param pointSize - Size of points
+ * @returns Configured ShaderMaterial for point rendering
  */
 function createPointShaderMaterial(
   pointColor: string,
   opacity: number,
   pointSize: number
 ): ShaderMaterial {
-  const vertexShader = `
-    uniform mat4 uRotationMatrix4D;
-    uniform int uDimension;
-    uniform vec4 uScale4D;
-    uniform float uExtraScales[${MAX_EXTRA_DIMS}];
-    uniform float uExtraRotationCols[${MAX_EXTRA_DIMS * 4}];
-    uniform float uDepthRowSums[11];
-    uniform float uProjectionDistance;
-    uniform int uProjectionType;
-    uniform float uPointSize;
-
-    attribute float aExtraDim0;
-    attribute float aExtraDim1;
-    attribute float aExtraDim2;
-    attribute float aExtraDim3;
-    attribute float aExtraDim4;
-    attribute float aExtraDim5;
-    attribute float aExtraDim6;
-    attribute vec3 aColor;
-
-    varying vec3 vColor;
-
-    void main() {
-      // Collect scaled input dimensions
-      float scaledInputs[11];
-      scaledInputs[0] = position.x * uScale4D.x;
-      scaledInputs[1] = position.y * uScale4D.y;
-      scaledInputs[2] = position.z * uScale4D.z;
-      scaledInputs[3] = aExtraDim0 * uScale4D.w;
-      scaledInputs[4] = aExtraDim1 * uExtraScales[0];
-      scaledInputs[5] = aExtraDim2 * uExtraScales[1];
-      scaledInputs[6] = aExtraDim3 * uExtraScales[2];
-      scaledInputs[7] = aExtraDim4 * uExtraScales[3];
-      scaledInputs[8] = aExtraDim5 * uExtraScales[4];
-      scaledInputs[9] = aExtraDim6 * uExtraScales[5];
-      scaledInputs[10] = 0.0;
-
-      // Apply 4x4 rotation to first 4 dimensions
-      vec4 scaledPos = vec4(scaledInputs[0], scaledInputs[1], scaledInputs[2], scaledInputs[3]);
-      vec4 rotated = uRotationMatrix4D * scaledPos;
-
-      // Add contributions from extra dimensions (5+) to x,y,z,w
-      for (int i = 0; i < ${MAX_EXTRA_DIMS}; i++) {
-        if (i + 5 <= uDimension) {
-          float extraDimValue = scaledInputs[i + 4];
-          rotated.x += uExtraRotationCols[i * 4 + 0] * extraDimValue;
-          rotated.y += uExtraRotationCols[i * 4 + 1] * extraDimValue;
-          rotated.z += uExtraRotationCols[i * 4 + 2] * extraDimValue;
-          rotated.w += uExtraRotationCols[i * 4 + 3] * extraDimValue;
-        }
-      }
-
-      // Project to 3D
-      vec3 projected;
-      if (uProjectionType == 0) {
-        // Orthographic
-        projected = rotated.xyz;
-      } else {
-        // Perspective with proper rotated depth
-        float effectiveDepth = rotated.w;
-        for (int j = 0; j < 11; j++) {
-          if (j < uDimension) {
-            effectiveDepth += uDepthRowSums[j] * scaledInputs[j];
-          }
-        }
-        float normFactor = uDimension > 4 ? sqrt(float(uDimension - 3)) : 1.0;
-        effectiveDepth /= normFactor;
-
-        float factor = 1.0 / (uProjectionDistance - effectiveDepth);
-        projected = rotated.xyz * factor;
-      }
-
-      vec4 mvPosition = modelViewMatrix * vec4(projected, 1.0);
-      gl_Position = projectionMatrix * mvPosition;
-
-      // Point size with perspective
-      gl_PointSize = uPointSize * (300.0 / -mvPosition.z);
-
-      // Pass color
-      vColor = aColor;
-    }
-  `;
-
-  const fragmentShader = `
-    uniform vec3 uPointColor;
-    uniform float uOpacity;
-    uniform bool uUseVertexColors;
-
-    varying vec3 vColor;
-
-    void main() {
-      // Circular point shape
-      vec2 center = gl_PointCoord - vec2(0.5);
-      if (length(center) > 0.5) discard;
-
-      vec3 color = uUseVertexColors ? vColor : uPointColor;
-
-      // Soft edge
-      float dist = length(center) * 2.0;
-      float alpha = smoothstep(1.0, 0.7, dist) * uOpacity;
-
-      gl_FragColor = vec4(color, alpha);
-    }
-  `;
-
   return new ShaderMaterial({
     uniforms: {
       uRotationMatrix4D: { value: new Matrix4() },
@@ -259,8 +160,8 @@ function createPointShaderMaterial(
       uPointSize: { value: pointSize },
       uUseVertexColors: { value: false },
     },
-    vertexShader,
-    fragmentShader,
+    vertexShader: buildPointVertexShader(),
+    fragmentShader: buildPointFragmentShader(),
     transparent: true,
     depthWrite: opacity >= 1,
     blending: opacity < 1 ? AdditiveBlending : NormalBlending,
@@ -269,88 +170,11 @@ function createPointShaderMaterial(
 
 /**
  * Create GPU edge shader material with full N-D transforms
- * @param edgeColor
- * @param opacity
+ * @param edgeColor - Color for edges
+ * @param opacity - Material opacity
+ * @returns Configured ShaderMaterial for edge rendering
  */
 function createEdgeShaderMaterial(edgeColor: string, opacity: number): ShaderMaterial {
-  const vertexShader = `
-    uniform mat4 uRotationMatrix4D;
-    uniform int uDimension;
-    uniform vec4 uScale4D;
-    uniform float uExtraScales[${MAX_EXTRA_DIMS}];
-    uniform float uExtraRotationCols[${MAX_EXTRA_DIMS * 4}];
-    uniform float uDepthRowSums[11];
-    uniform float uProjectionDistance;
-    uniform int uProjectionType;
-
-    attribute float aExtraDim0;
-    attribute float aExtraDim1;
-    attribute float aExtraDim2;
-    attribute float aExtraDim3;
-    attribute float aExtraDim4;
-    attribute float aExtraDim5;
-    attribute float aExtraDim6;
-
-    void main() {
-      // Collect scaled input dimensions
-      float scaledInputs[11];
-      scaledInputs[0] = position.x * uScale4D.x;
-      scaledInputs[1] = position.y * uScale4D.y;
-      scaledInputs[2] = position.z * uScale4D.z;
-      scaledInputs[3] = aExtraDim0 * uScale4D.w;
-      scaledInputs[4] = aExtraDim1 * uExtraScales[0];
-      scaledInputs[5] = aExtraDim2 * uExtraScales[1];
-      scaledInputs[6] = aExtraDim3 * uExtraScales[2];
-      scaledInputs[7] = aExtraDim4 * uExtraScales[3];
-      scaledInputs[8] = aExtraDim5 * uExtraScales[4];
-      scaledInputs[9] = aExtraDim6 * uExtraScales[5];
-      scaledInputs[10] = 0.0;
-
-      // Apply 4x4 rotation to first 4 dimensions
-      vec4 scaledPos = vec4(scaledInputs[0], scaledInputs[1], scaledInputs[2], scaledInputs[3]);
-      vec4 rotated = uRotationMatrix4D * scaledPos;
-
-      // Add contributions from extra dimensions (5+) to x,y,z,w
-      for (int i = 0; i < ${MAX_EXTRA_DIMS}; i++) {
-        if (i + 5 <= uDimension) {
-          float extraDimValue = scaledInputs[i + 4];
-          rotated.x += uExtraRotationCols[i * 4 + 0] * extraDimValue;
-          rotated.y += uExtraRotationCols[i * 4 + 1] * extraDimValue;
-          rotated.z += uExtraRotationCols[i * 4 + 2] * extraDimValue;
-          rotated.w += uExtraRotationCols[i * 4 + 3] * extraDimValue;
-        }
-      }
-
-      vec3 projected;
-      if (uProjectionType == 0) {
-        projected = rotated.xyz;
-      } else {
-        // Compute rotated depth properly
-        float effectiveDepth = rotated.w;
-        for (int j = 0; j < 11; j++) {
-          if (j < uDimension) {
-            effectiveDepth += uDepthRowSums[j] * scaledInputs[j];
-          }
-        }
-        float normFactor = uDimension > 4 ? sqrt(float(uDimension - 3)) : 1.0;
-        effectiveDepth /= normFactor;
-        float factor = 1.0 / (uProjectionDistance - effectiveDepth);
-        projected = rotated.xyz * factor;
-      }
-
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(projected, 1.0);
-    }
-  `;
-
-  const fragmentShader = `
-    uniform vec3 uEdgeColor;
-    uniform float uOpacity;
-
-    void main() {
-      gl_FragColor = vec4(uEdgeColor, uOpacity);
-    }
-  `;
-
   return new ShaderMaterial({
     uniforms: {
       uRotationMatrix4D: { value: new Matrix4() },
@@ -364,8 +188,8 @@ function createEdgeShaderMaterial(edgeColor: string, opacity: number): ShaderMat
       uEdgeColor: { value: new Color(edgeColor) },
       uOpacity: { value: opacity },
     },
-    vertexShader,
-    fragmentShader,
+    vertexShader: buildEdgeVertexShader(),
+    fragmentShader: buildEdgeFragmentShader(),
     transparent: opacity < 1,
     depthWrite: opacity >= 1,
   });
@@ -404,7 +228,7 @@ export const PointCloudScene = React.memo(function PointCloudScene({
       transformedVertices: baseVertices.map(v => new Array(v.length).fill(0) as VectorND),
       projectedVertices: baseVertices.map(() => [0, 0, 0] as Vector3D),
     };
-  }, [numVertices, dimension]);
+  }, [baseVertices]);
 
   // ============ VISUAL SETTINGS ============
   const {

@@ -14,6 +14,19 @@ import { Slider } from '@/components/ui/Slider';
 import { Switch } from '@/components/ui/Switch';
 import { Tabs } from '@/components/ui/Tabs';
 import {
+  LAYER_COUNT_OPTIONS,
+  LAYER_OPACITY_RANGE,
+  OPACITY_MODE_LABELS,
+  OPACITY_MODE_OPTIONS,
+  OPACITY_MODE_TOOLTIPS,
+  SAMPLE_QUALITY_LABELS,
+  SAMPLE_QUALITY_OPTIONS,
+  SIMPLE_ALPHA_RANGE,
+  VOLUMETRIC_DENSITY_RANGE,
+} from '@/lib/opacity/constants';
+import type { OpacityMode, SampleQuality, VolumetricAnimationQuality } from '@/lib/opacity/types';
+import { useGeometryStore } from '@/stores/geometryStore';
+import {
   DEFAULT_DIFFUSE_INTENSITY,
   DEFAULT_FRESNEL_INTENSITY,
   DEFAULT_LCH_CHROMA,
@@ -24,7 +37,7 @@ import {
   DEFAULT_SURFACE_SETTINGS,
   useVisualStore,
 } from '@/stores/visualStore';
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { ColorAlgorithmSelector } from './ColorAlgorithmSelector';
 import { ColorPreview } from './ColorPreview';
@@ -43,6 +56,10 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
   defaultOpen = false,
 }) => {
   const [activeTab, setActiveTab] = useState<FacesTabId>('colors');
+
+  // Get object type to check if we're viewing a hyperbulb
+  const objectType = useGeometryStore((state) => state.objectType);
+  const isHyperbulb = objectType === 'mandelbrot';
 
   const {
     facesVisible,
@@ -68,6 +85,17 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
     setShininess,
     setSpecularColor,
     setDiffuseIntensity,
+    // Opacity settings
+    hyperbulbOpacitySettings,
+    hasSeenVolumetricWarning,
+    setOpacityMode,
+    setSimpleAlphaOpacity,
+    setLayerCount,
+    setLayerOpacity,
+    setVolumetricDensity,
+    setSampleQuality,
+    setVolumetricAnimationQuality,
+    setHasSeenVolumetricWarning,
   } = useVisualStore(
     useShallow((state) => ({
       facesVisible: state.facesVisible,
@@ -93,6 +121,17 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
       setShininess: state.setShininess,
       setSpecularColor: state.setSpecularColor,
       setDiffuseIntensity: state.setDiffuseIntensity,
+      // Opacity settings
+      hyperbulbOpacitySettings: state.hyperbulbOpacitySettings,
+      hasSeenVolumetricWarning: state.hasSeenVolumetricWarning,
+      setOpacityMode: state.setOpacityMode,
+      setSimpleAlphaOpacity: state.setSimpleAlphaOpacity,
+      setLayerCount: state.setLayerCount,
+      setLayerOpacity: state.setLayerOpacity,
+      setVolumetricDensity: state.setVolumetricDensity,
+      setSampleQuality: state.setSampleQuality,
+      setVolumetricAnimationQuality: state.setVolumetricAnimationQuality,
+      setHasSeenVolumetricWarning: state.setHasSeenVolumetricWarning,
     }))
   );
 
@@ -138,6 +177,24 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
           setSpecularIntensity={setSpecularIntensity}
           shininess={shininess}
           setShininess={setShininess}
+          // Hyperbulb opacity props
+          isHyperbulb={isHyperbulb}
+          opacityMode={hyperbulbOpacitySettings.mode}
+          simpleAlphaOpacity={hyperbulbOpacitySettings.simpleAlphaOpacity}
+          layerCount={hyperbulbOpacitySettings.layerCount}
+          layerOpacity={hyperbulbOpacitySettings.layerOpacity}
+          volumetricDensity={hyperbulbOpacitySettings.volumetricDensity}
+          sampleQuality={hyperbulbOpacitySettings.sampleQuality}
+          volumetricAnimationQuality={hyperbulbOpacitySettings.volumetricAnimationQuality}
+          hasSeenVolumetricWarning={hasSeenVolumetricWarning}
+          onOpacityModeChange={setOpacityMode}
+          onSimpleAlphaChange={setSimpleAlphaOpacity}
+          onLayerCountChange={setLayerCount}
+          onLayerOpacityChange={setLayerOpacity}
+          onVolumetricDensityChange={setVolumetricDensity}
+          onSampleQualityChange={setSampleQuality}
+          onVolumetricAnimationQualityChange={setVolumetricAnimationQuality}
+          onSeenVolumetricWarning={() => setHasSeenVolumetricWarning(true)}
         />
       ),
     },
@@ -309,6 +366,24 @@ interface MaterialTabContentProps {
   setSpecularIntensity: (value: number) => void;
   shininess: number;
   setShininess: (value: number) => void;
+  // Hyperbulb opacity props
+  isHyperbulb: boolean;
+  opacityMode: OpacityMode;
+  simpleAlphaOpacity: number;
+  layerCount: 2 | 3 | 4;
+  layerOpacity: number;
+  volumetricDensity: number;
+  sampleQuality: SampleQuality;
+  volumetricAnimationQuality: VolumetricAnimationQuality;
+  hasSeenVolumetricWarning: boolean;
+  onOpacityModeChange: (mode: OpacityMode) => void;
+  onSimpleAlphaChange: (value: number) => void;
+  onLayerCountChange: (count: 2 | 3 | 4) => void;
+  onLayerOpacityChange: (value: number) => void;
+  onVolumetricDensityChange: (value: number) => void;
+  onSampleQualityChange: (quality: SampleQuality) => void;
+  onVolumetricAnimationQualityChange: (quality: VolumetricAnimationQuality) => void;
+  onSeenVolumetricWarning: () => void;
 }
 
 const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
@@ -329,20 +404,195 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
   setSpecularIntensity,
   shininess,
   setShininess,
+  // Hyperbulb opacity props
+  isHyperbulb,
+  opacityMode,
+  simpleAlphaOpacity,
+  layerCount,
+  layerOpacity,
+  volumetricDensity,
+  sampleQuality,
+  volumetricAnimationQuality,
+  hasSeenVolumetricWarning,
+  onOpacityModeChange,
+  onSimpleAlphaChange,
+  onLayerCountChange,
+  onLayerOpacityChange,
+  onVolumetricDensityChange,
+  onSampleQualityChange,
+  onVolumetricAnimationQualityChange,
+  onSeenVolumetricWarning,
 }) => {
+  // State for volumetric warning toast
+  const [showVolumetricWarning, setShowVolumetricWarning] = useState(false);
+
+  // Handle opacity mode change with volumetric warning
+  const handleOpacityModeChange = useCallback(
+    (mode: OpacityMode) => {
+      if (mode === 'volumetricDensity' && !hasSeenVolumetricWarning) {
+        setShowVolumetricWarning(true);
+        onSeenVolumetricWarning();
+      }
+      onOpacityModeChange(mode);
+    },
+    [hasSeenVolumetricWarning, onOpacityModeChange, onSeenVolumetricWarning]
+  );
+
+  // Auto-dismiss warning after 3 seconds
+  useEffect(() => {
+    if (showVolumetricWarning) {
+      const timer = setTimeout(() => setShowVolumetricWarning(false), 3000);
+      return () => clearTimeout(timer);
+    }
+    return undefined;
+  }, [showVolumetricWarning]);
+
   return (
     <div className="space-y-3">
-      {/* Face Opacity - Always shown */}
-      <Slider
-        label="Face Opacity"
-        min={0}
-        max={1}
-        step={0.1}
-        value={faceOpacity}
-        onChange={setFaceOpacity}
-        onReset={() => setFaceOpacity(DEFAULT_SURFACE_SETTINGS.faceOpacity)}
-        showValue
-      />
+      {/* Hyperbulb Opacity Mode Controls */}
+      {isHyperbulb && (
+        <>
+          <SectionHeader title="Opacity Mode" />
+
+          {/* Opacity Mode Dropdown */}
+          <div className="space-y-2">
+            <select
+              value={opacityMode}
+              onChange={(e) => handleOpacityModeChange(e.target.value as OpacityMode)}
+              className="w-full px-3 py-2 bg-control-bg border border-panel-border rounded text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+              title={OPACITY_MODE_TOOLTIPS[opacityMode]}
+            >
+              {OPACITY_MODE_OPTIONS.map((mode) => (
+                <option key={mode} value={mode}>
+                  {OPACITY_MODE_LABELS[mode]}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-text-secondary">
+              {OPACITY_MODE_TOOLTIPS[opacityMode]}
+            </p>
+          </div>
+
+          {/* Volumetric Warning Toast */}
+          {showVolumetricWarning && (
+            <div className="bg-warning/20 border border-warning/50 rounded px-3 py-2 text-xs text-warning">
+              Volumetric mode may reduce performance on some devices.
+            </div>
+          )}
+
+          {/* Simple Alpha Mode Controls */}
+          {opacityMode === 'simpleAlpha' && (
+            <Slider
+              label="Face Opacity"
+              min={SIMPLE_ALPHA_RANGE.min}
+              max={SIMPLE_ALPHA_RANGE.max}
+              step={SIMPLE_ALPHA_RANGE.step}
+              value={simpleAlphaOpacity}
+              onChange={onSimpleAlphaChange}
+              onReset={() => onSimpleAlphaChange(SIMPLE_ALPHA_RANGE.default)}
+              showValue
+            />
+          )}
+
+          {/* Layered Surfaces Mode Controls */}
+          {opacityMode === 'layeredSurfaces' && (
+            <>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-text-secondary">
+                  Layer Count
+                </label>
+                <select
+                  value={layerCount}
+                  onChange={(e) => onLayerCountChange(Number(e.target.value) as 2 | 3 | 4)}
+                  className="w-full px-3 py-2 bg-control-bg border border-panel-border rounded text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                >
+                  {LAYER_COUNT_OPTIONS.map((count) => (
+                    <option key={count} value={count}>
+                      {count} Layers
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <Slider
+                label="Layer Opacity"
+                min={LAYER_OPACITY_RANGE.min}
+                max={LAYER_OPACITY_RANGE.max}
+                step={LAYER_OPACITY_RANGE.step}
+                value={layerOpacity}
+                onChange={onLayerOpacityChange}
+                onReset={() => onLayerOpacityChange(LAYER_OPACITY_RANGE.default)}
+                showValue
+              />
+            </>
+          )}
+
+          {/* Volumetric Density Mode Controls */}
+          {opacityMode === 'volumetricDensity' && (
+            <>
+              <Slider
+                label="Density"
+                min={VOLUMETRIC_DENSITY_RANGE.min}
+                max={VOLUMETRIC_DENSITY_RANGE.max}
+                step={VOLUMETRIC_DENSITY_RANGE.step}
+                value={volumetricDensity}
+                onChange={onVolumetricDensityChange}
+                onReset={() => onVolumetricDensityChange(VOLUMETRIC_DENSITY_RANGE.default)}
+                showValue
+              />
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-text-secondary">
+                  Sample Quality
+                </label>
+                <select
+                  value={sampleQuality}
+                  onChange={(e) => onSampleQualityChange(e.target.value as SampleQuality)}
+                  className="w-full px-3 py-2 bg-control-bg border border-panel-border rounded text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                >
+                  {SAMPLE_QUALITY_OPTIONS.map((quality) => (
+                    <option key={quality} value={quality}>
+                      {SAMPLE_QUALITY_LABELS[quality]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-text-secondary">
+                  Animation Quality
+                </label>
+                <select
+                  value={volumetricAnimationQuality}
+                  onChange={(e) =>
+                    onVolumetricAnimationQualityChange(e.target.value as VolumetricAnimationQuality)
+                  }
+                  className="w-full px-3 py-2 bg-control-bg border border-panel-border rounded text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                >
+                  <option value="reduce">Reduce during animation</option>
+                  <option value="full">Full quality always</option>
+                </select>
+                <p className="text-xs text-text-secondary">
+                  {volumetricAnimationQuality === 'reduce'
+                    ? 'Lower quality during rotation for better performance'
+                    : 'Maintain full quality (may affect performance)'}
+                </p>
+              </div>
+            </>
+          )}
+        </>
+      )}
+
+      {/* Face Opacity - Only shown for non-hyperbulb objects */}
+      {!isHyperbulb && (
+        <Slider
+          label="Face Opacity"
+          min={0}
+          max={1}
+          step={0.1}
+          value={faceOpacity}
+          onChange={setFaceOpacity}
+          onReset={() => setFaceOpacity(DEFAULT_SURFACE_SETTINGS.faceOpacity)}
+          showValue
+        />
+      )}
 
       {/* Diffuse and Specular - Only when lighting is enabled */}
       {showLightingControls && (

@@ -15,6 +15,7 @@
 
 import { memo, useMemo, useRef, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
+import { Billboard } from '@react-three/drei';
 import * as THREE from 'three';
 import { rotationToDirection } from '@/lib/lights/types';
 import type { LightSource } from '@/lib/lights/types';
@@ -74,10 +75,12 @@ const PointLightGizmo = memo(function PointLightGizmo({
       <icosahedronGeometry args={[1, 2]} />
       <primitive object={material} />
       {isSelected && (
-        <mesh>
-          <ringGeometry args={[1.2, 1.4, 32]} />
-          <meshBasicMaterial color="#00ff00" transparent opacity={0.8} side={THREE.DoubleSide} />
-        </mesh>
+        <Billboard>
+          <mesh>
+            <ringGeometry args={[1.2, 1.4, 32]} />
+            <meshBasicMaterial color="#00ff00" transparent opacity={0.8} side={THREE.DoubleSide} />
+          </mesh>
+        </Billboard>
       )}
     </mesh>
   );
@@ -145,10 +148,12 @@ const DirectionalLightGizmo = memo(function DirectionalLightGizmo({
       {/* Direction arrow */}
       <primitive object={arrowHelper} />
       {isSelected && (
-        <mesh>
-          <ringGeometry args={[1.2, 1.4, 32]} />
-          <meshBasicMaterial color="#00ff00" transparent opacity={0.8} side={THREE.DoubleSide} />
-        </mesh>
+        <Billboard>
+          <mesh>
+            <ringGeometry args={[1.2, 1.4, 32]} />
+            <meshBasicMaterial color="#00ff00" transparent opacity={0.8} side={THREE.DoubleSide} />
+          </mesh>
+        </Billboard>
       )}
     </group>
   );
@@ -216,10 +221,12 @@ const SpotLightGizmo = memo(function SpotLightGizmo({
         <primitive object={material} />
       </mesh>
       {isSelected && (
-        <mesh>
-          <ringGeometry args={[0.5, 0.6, 32]} />
-          <meshBasicMaterial color="#00ff00" transparent opacity={0.8} side={THREE.DoubleSide} />
-        </mesh>
+        <Billboard>
+          <mesh>
+            <ringGeometry args={[0.5, 0.6, 32]} />
+            <meshBasicMaterial color="#00ff00" transparent opacity={0.8} side={THREE.DoubleSide} />
+          </mesh>
+        </Billboard>
       )}
     </group>
   );
