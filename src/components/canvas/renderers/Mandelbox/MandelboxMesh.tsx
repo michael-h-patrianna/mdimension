@@ -310,6 +310,8 @@ const MandelboxMesh = () => {
       uSpecularPower: { value: 32.0 },
       uSpecularColor: { value: new THREE.Color('#FFFFFF') },
       uDiffuseIntensity: { value: 1.0 },
+      // Material property for G-buffer (reflectivity for SSR)
+      uMetallic: { value: 0.0 },
 
       // Fresnel rim lighting uniforms
       uFresnelEnabled: { value: true },
@@ -612,6 +614,7 @@ const MandelboxMesh = () => {
       {/* Larger bounding box for Mandelbox (extends further than Hyperbulb) */}
       <boxGeometry args={[8, 8, 8]} />
       <shaderMaterial
+        glslVersion={THREE.GLSL3}
         vertexShader={vertexShader}
         fragmentShader={fragmentShader}
         uniforms={uniforms}

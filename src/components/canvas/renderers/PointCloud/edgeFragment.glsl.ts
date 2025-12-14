@@ -13,11 +13,14 @@
  */
 export function buildEdgeFragmentShader(): string {
   return `
+    // Output declaration for WebGL2
+    layout(location = 0) out vec4 fragColor;
+
     uniform vec3 uEdgeColor;
     uniform float uOpacity;
 
     void main() {
-      gl_FragColor = vec4(uEdgeColor, uOpacity);
+      fragColor = vec4(uEdgeColor, uOpacity);
     }
   `
 }

@@ -17,6 +17,7 @@ import {
   ShaderMaterial,
   DoubleSide,
   InstancedMesh,
+  GLSL3,
 } from 'three'
 import { useFrame } from '@react-three/fiber'
 
@@ -56,6 +57,8 @@ export interface TubeWireframeProps {
   metallic?: number
   /** Roughness value for PBR (0-1) */
   roughness?: number
+  /** Whether shadows are enabled */
+  shadowEnabled?: boolean
 }
 
 /**
@@ -70,6 +73,7 @@ export function TubeWireframe({
   radius = 0.02,
   metallic = 0.0,
   roughness = 0.5,
+  shadowEnabled = false,
 }: TubeWireframeProps): React.JSX.Element | null {
   const meshRef = useRef<InstancedMesh>(null)
 
@@ -84,6 +88,7 @@ export function TubeWireframe({
     const lightUniforms = createLightUniforms()
 
     const mat = new ShaderMaterial({
+      glslVersion: GLSL3,
       vertexShader,
       fragmentShader,
       uniforms: {
@@ -116,11 +121,6 @@ export function TubeWireframe({
         uFresnelEnabled: { value: true },
         uFresnelIntensity: { value: 0.1 },
         uRimColor: { value: new Color(color) },
-
-        // Tone mapping
-        uToneMappingEnabled: { value: true },
-        uToneMappingAlgorithm: { value: 1 }, // ACES
-        uExposure: { value: 0.7 },
 
         // Multi-light system
         ...lightUniforms,
@@ -292,16 +292,6 @@ export function TubeWireframe({
     u.uFresnelIntensity!.value = visualState.fresnelIntensity
     ;(u.uRimColor!.value as Color).set(visualState.edgeColor)
 
-    // Tone mapping
-    u.uToneMappingEnabled!.value = visualState.toneMappingEnabled
-    u.uToneMappingAlgorithm!.value =
-      visualState.toneMappingAlgorithm === 'aces'
-        ? 1
-        : visualState.toneMappingAlgorithm === 'reinhard'
-          ? 0
-          : 2
-    u.uExposure!.value = visualState.exposure
-
     // Update multi-light system
     updateLightUniforms(u as unknown as LightUniforms, visualState.lights)
   })
@@ -316,6 +306,8 @@ export function TubeWireframe({
       ref={meshRef}
       args={[geometry, material, edges.length]}
       frustumCulled={false}
+      castShadow={shadowEnabled}
+      receiveShadow={shadowEnabled}
     />
   )
 }

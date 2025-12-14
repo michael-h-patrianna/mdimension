@@ -61,6 +61,37 @@ export const DEFAULT_BOKEH_SMOOTH_TIME = 0.25
 export const DEFAULT_BOKEH_SHOW_DEBUG = false
 
 // ============================================================================
+// SSR (Screen-Space Reflections) Defaults
+// ============================================================================
+
+/** SSR quality level - controls ray march steps */
+export type SSRQuality = 'low' | 'medium' | 'high'
+
+export const DEFAULT_SSR_ENABLED = false
+export const DEFAULT_SSR_INTENSITY = 0.5
+export const DEFAULT_SSR_MAX_DISTANCE = 20
+export const DEFAULT_SSR_THICKNESS = 0.1
+export const DEFAULT_SSR_FADE_START = 0.5
+export const DEFAULT_SSR_FADE_END = 1.0
+export const DEFAULT_SSR_QUALITY: SSRQuality = 'medium'
+
+/** Map SSR quality to ray march steps */
+export const SSR_QUALITY_STEPS: Record<SSRQuality, number> = {
+  low: 16,
+  medium: 32,
+  high: 64,
+}
+
+// ============================================================================
+// Screen-Space Refraction Defaults
+// ============================================================================
+
+export const DEFAULT_REFRACTION_ENABLED = false
+export const DEFAULT_REFRACTION_IOR = 1.5
+export const DEFAULT_REFRACTION_STRENGTH = 0.1
+export const DEFAULT_REFRACTION_CHROMATIC_ABERRATION = 0.0
+
+// ============================================================================
 // Lighting Defaults
 // ============================================================================
 
@@ -175,6 +206,11 @@ export const DEFAULT_SHOW_PERF_MONITOR = true
 export const DEFAULT_ANIMATION_BIAS = 0
 export const MIN_ANIMATION_BIAS = 0
 export const MAX_ANIMATION_BIAS = 1
+
+// FPS Limiting
+export const DEFAULT_MAX_FPS = 60
+export const MIN_MAX_FPS = 15
+export const MAX_MAX_FPS = 120
 
 // ============================================================================
 // Visual Presets

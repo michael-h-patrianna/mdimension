@@ -25,9 +25,30 @@
 
 import type { LightSource } from '@/lib/lights/types';
 import { rotationToDirection } from '@/lib/lights/types';
+import type { ShadowQuality } from '@/lib/shadows/types';
 import { useVisualStore } from '@/stores/visualStore';
 import { memo, useEffect, useMemo, useRef } from 'react';
 import { MeshBasicMaterial, SphereGeometry, Vector3 } from 'three';
+
+/**
+ * Shadow map size for each quality level.
+ * Higher resolution = sharper shadows but more GPU memory.
+ */
+const SHADOW_MAP_SIZES: Record<ShadowQuality, number> = {
+  low: 512,
+  medium: 1024,
+  high: 2048,
+  ultra: 4096,
+};
+
+/**
+ * Convert shadow softness (0-2) to shadow radius for PCFSoftShadowMap.
+ * Higher radius = softer shadow edges.
+ */
+function getShadowRadius(softness: number): number {
+  // Scale softness (0-2) to radius (0-8)
+  return softness * 4;
+}
 
 /**
  * Shared sphere geometry for the light indicator.
@@ -47,9 +68,18 @@ const LIGHT_DISTANCE = 10;
 interface LightRendererProps {
   light: LightSource;
   showIndicator: boolean;
+  shadowEnabled: boolean;
+  shadowMapSize: number;
+  shadowRadius: number;
 }
 
-const LightRenderer = memo(function LightRenderer({ light, showIndicator }: LightRendererProps) {
+const LightRenderer = memo(function LightRenderer({
+  light,
+  showIndicator,
+  shadowEnabled,
+  shadowMapSize,
+  shadowRadius,
+}: LightRendererProps) {
   const position = light.position as [number, number, number];
   const direction = useMemo(() => {
     const dir = rotationToDirection(light.rotation);
@@ -120,6 +150,17 @@ const LightRenderer = memo(function LightRenderer({ light, showIndicator }: Ligh
           color={light.color}
           intensity={light.intensity}
           target-position={targetPosition}
+          castShadow={shadowEnabled}
+          shadow-mapSize-width={shadowMapSize}
+          shadow-mapSize-height={shadowMapSize}
+          shadow-camera-near={0.5}
+          shadow-camera-far={50}
+          shadow-camera-left={-10}
+          shadow-camera-right={10}
+          shadow-camera-top={10}
+          shadow-camera-bottom={-10}
+          shadow-bias={-0.0001}
+          shadow-radius={shadowRadius}
         />
       )}
       {light.type === 'spot' && (
@@ -132,6 +173,13 @@ const LightRenderer = memo(function LightRenderer({ light, showIndicator }: Ligh
           penumbra={light.penumbra}
           decay={light.decay}
           target-position={targetPosition}
+          castShadow={shadowEnabled}
+          shadow-mapSize-width={shadowMapSize}
+          shadow-mapSize-height={shadowMapSize}
+          shadow-camera-near={0.5}
+          shadow-camera-far={light.range || 50}
+          shadow-bias={-0.0001}
+          shadow-radius={shadowRadius}
         />
       )}
       {showIndicator && (
@@ -155,6 +203,15 @@ export const SceneLighting = memo(function SceneLighting() {
   // Multi-light system state
   const lights = useVisualStore((state) => state.lights);
   const showLightGizmos = useVisualStore((state) => state.showLightGizmos);
+
+  // Shadow system state
+  const shadowEnabled = useVisualStore((state) => state.shadowEnabled);
+  const shadowQuality = useVisualStore((state) => state.shadowQuality);
+  const shadowSoftness = useVisualStore((state) => state.shadowSoftness);
+
+  // Compute shadow map size and radius from settings
+  const shadowMapSize = SHADOW_MAP_SIZES[shadowQuality];
+  const shadowRadiusValue = getShadowRadius(shadowSoftness);
 
   // Legacy single-light state (for backward compatibility)
   const lightEnabled = useVisualStore((state) => state.lightEnabled);
@@ -216,6 +273,9 @@ export const SceneLighting = memo(function SceneLighting() {
               key={light.id}
               light={light}
               showIndicator={showLightGizmos}
+              shadowEnabled={shadowEnabled}
+              shadowMapSize={shadowMapSize}
+              shadowRadius={shadowRadiusValue}
             />
           ))}
         </>

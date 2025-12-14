@@ -18,6 +18,7 @@ WHY: Tracks progress, maintains focus
 
 ## MANDATORY CODE STYLE AND ARCHITECTURE RULES
 Coding agents must follow `docs/meta/styleguide.md` - No exceptions!
+All shaders MUST use WebGL2/GLSL ES 3.00 syntax (`in`/`out`, `layout`, no `attribute`/`varying`/`gl_FragColor`).
 
 ## MANDATORY EXECUTION PROTOCOL
 1. Always complete all tasks fully. Do not simplify approaches, do not skip tasks.

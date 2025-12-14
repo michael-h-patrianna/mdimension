@@ -18,11 +18,14 @@
  */
 export function buildPointFragmentShader(): string {
   return `
+    // Output declaration for WebGL2
+    layout(location = 0) out vec4 fragColor;
+
     uniform vec3 uPointColor;
     uniform float uOpacity;
     uniform bool uUseVertexColors;
 
-    varying vec3 vColor;
+    in vec3 vColor;
 
     void main() {
       // Circular point shape
@@ -35,7 +38,7 @@ export function buildPointFragmentShader(): string {
       float dist = length(center) * 2.0;
       float alpha = smoothstep(1.0, 0.7, dist) * uOpacity;
 
-      gl_FragColor = vec4(color, alpha);
+      fragColor = vec4(color, alpha);
     }
   `
 }

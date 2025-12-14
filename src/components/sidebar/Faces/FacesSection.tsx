@@ -245,7 +245,6 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
           fresnelIntensity={fresnelIntensity}
           setFresnelIntensity={setFresnelIntensity}
           // Shadow props
-          isRaymarchingFractalType={isRaymarchingFractalType}
           hasEnabledLights={hasEnabledLights}
           shadowEnabled={shadowEnabled}
           shadowQuality={shadowQuality}
@@ -732,7 +731,6 @@ interface FxTabContentProps {
   fresnelIntensity: number;
   setFresnelIntensity: (value: number) => void;
   // Shadow props
-  isRaymarchingFractalType: boolean;
   hasEnabledLights: boolean;
   shadowEnabled: boolean;
   shadowQuality: ShadowQuality;
@@ -750,7 +748,6 @@ const FxTabContent: React.FC<FxTabContentProps> = ({
   fresnelIntensity,
   setFresnelIntensity,
   // Shadow props
-  isRaymarchingFractalType,
   hasEnabledLights,
   shadowEnabled,
   shadowQuality,
@@ -783,8 +780,8 @@ const FxTabContent: React.FC<FxTabContentProps> = ({
         />
       )}
 
-      {/* Shadow Controls - Only for raymarching fractals with enabled lights */}
-      {isRaymarchingFractalType && hasEnabledLights && (
+      {/* Shadow Controls - Available for any object type with enabled lights */}
+      {hasEnabledLights && (
         <>
           <SectionHeader title="Shadows" />
 

@@ -32,21 +32,21 @@ export function buildFaceVertexShader(): string {
     uniform float uDepthRowSums[11];
 
     // Extra dimension attributes
-    attribute float aExtraDim0;
-    attribute float aExtraDim1;
-    attribute float aExtraDim2;
-    attribute float aExtraDim3;
-    attribute float aExtraDim4;
-    attribute float aExtraDim5;
-    attribute float aExtraDim6;
+    in float aExtraDim0;
+    in float aExtraDim1;
+    in float aExtraDim2;
+    in float aExtraDim3;
+    in float aExtraDim4;
+    in float aExtraDim5;
+    in float aExtraDim6;
 
     // Face depth attribute for color algorithm
-    attribute float aFaceDepth;
+    in float aFaceDepth;
 
-    // Varyings for fragment shader
-    varying vec3 vWorldPosition;
-    varying vec3 vViewDir;
-    varying float vFaceDepth;
+    // Outputs to fragment shader
+    out vec3 vWorldPosition;
+    out vec3 vViewDir;
+    out float vFaceDepth;
 
     vec3 transformND() {
       float scaledInputs[11];

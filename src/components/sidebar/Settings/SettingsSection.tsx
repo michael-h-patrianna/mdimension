@@ -4,7 +4,9 @@
  */
 
 import { Section } from '@/components/ui/Section';
+import { Slider } from '@/components/ui/Slider';
 import { Switch } from '@/components/ui/Switch';
+import { DEFAULT_MAX_FPS } from '@/stores/defaults/visualDefaults';
 import { useVisualStore } from '@/stores/visualStore';
 import React from 'react';
 import { ThemeSelector } from './ThemeSelector';
@@ -27,6 +29,8 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
   const setShowPerfMonitor = useVisualStore((state) => state.setShowPerfMonitor);
   const showAxisHelper = useVisualStore((state) => state.showAxisHelper);
   const setShowAxisHelper = useVisualStore((state) => state.setShowAxisHelper);
+  const maxFps = useVisualStore((state) => state.maxFps);
+  const setMaxFps = useVisualStore((state) => state.setMaxFps);
 
   return (
     <Section title="Settings" defaultOpen={defaultOpen}>
@@ -44,6 +48,20 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
           checked={showAxisHelper}
           onCheckedChange={setShowAxisHelper}
           label="Show Axis Helper"
+        />
+      </div>
+      <div className="mt-3 pt-3 border-t border-panel-border">
+        <Slider
+          label="Max FPS"
+          value={maxFps}
+          min={15}
+          max={120}
+          step={1}
+          onChange={setMaxFps}
+          onReset={() => setMaxFps(DEFAULT_MAX_FPS)}
+          unit=" fps"
+          tooltip="Limit frame rate to reduce power consumption"
+          data-testid="max-fps-slider"
         />
       </div>
     </Section>

@@ -14,11 +14,12 @@
 - **Vite** 7.2.7 - Build tool and dev server
 
 ### 3D Graphics & Rendering
-- **Three.js** 0.181.0 - WebGL 3D library
+- **Three.js** 0.181.0 - WebGL2 3D library
 - **@react-three/fiber** 9.4.2 - React renderer for Three.js
 - **@react-three/drei** 10.7.7 - Three.js utilities
 - **@react-three/postprocessing** 3.0.4 - Post-processing effects
 - **postprocessing** 6.38.0 - Post-processing library
+- **WebGL2 / GLSL ES 3.00** - All shaders use modern GLSL syntax (no `attribute`/`varying`/`gl_FragColor`)
 
 ### UI & Styling
 - **Tailwind CSS** 4.1.18 - Utility-first CSS framework

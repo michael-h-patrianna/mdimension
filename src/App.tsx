@@ -15,6 +15,7 @@
  */
 
 import { useMemo } from 'react';
+import { FpsController } from '@/components/canvas/FpsController';
 import { Scene } from '@/components/canvas/Scene';
 import { Layout } from '@/components/layout/Layout';
 import { useAnimationLoop } from '@/hooks/useAnimationLoop';
@@ -73,9 +74,6 @@ function Visualizer() {
   const pointColors = useMandelbrotColors(geometry, mandelbrotConfig, edgeColorForMandelbrot);
   const facesVisible = useVisualStore((state) => state.facesVisible);
 
-  // 8. Get performance monitor state
-  const showPerfMonitor = useVisualStore((state) => state.showPerfMonitor);
-
   // Calculate minimum bounding radius for ground plane positioning
   // When raymarched objects are visible, ensure ground plane accounts for them
   const isMandelbulbVisible = objectType === 'mandelbrot' && facesVisible && dimension === 3;
@@ -95,28 +93,16 @@ function Visualizer() {
         : undefined;
 
   return (
-    <>
-      {/* Performance monitor - only mounted when enabled (zero overhead when off) */}
-      {showPerfMonitor && (
-        <Perf
-          position="bottom-left"
-          className="perf-monitor"
-          showGraph={true}
-          antialias={true}
-          logsPerSecond={10}
-        />
-      )}
-      <Scene
-        geometry={geometry}
-        dimension={dimension}
-        objectType={objectType}
-        faces={faces}
-        faceDepths={faceDepths}
-        pointColors={pointColors}
-        projectedVertices={basePositions}
-        minBoundingRadius={minBoundingRadius}
-      />
-    </>
+    <Scene
+      geometry={geometry}
+      dimension={dimension}
+      objectType={objectType}
+      faces={faces}
+      faceDepths={faceDepths}
+      pointColors={pointColors}
+      projectedVertices={basePositions}
+      minBoundingRadius={minBoundingRadius}
+    />
   );
 }
 
@@ -133,6 +119,9 @@ function App() {
   // Get selectLight action for click-to-deselect
   const selectLight = useVisualStore((state) => state.selectLight);
 
+  // Get performance monitor state
+  const showPerfMonitor = useVisualStore((state) => state.showPerfMonitor);
+
   // Handle clicks on empty space to deselect lights
   const handlePointerMissed = () => {
     selectLight(null);
@@ -140,18 +129,24 @@ function App() {
 
   return (
     <Layout appTitle="N-Dimensional Visualizer" showHeader>
-      <Canvas
-        camera={{
-          position: [2, 2, 2.5],
-          fov: 60,
-        }}
-        flat
-        gl={{ alpha: false }}
-        style={{ background: backgroundColor }}
-        onPointerMissed={handlePointerMissed}
-      >
-        <Visualizer />
-      </Canvas>
+      <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+        <Canvas
+          frameloop="never"
+          camera={{
+            position: [2, 2, 2.5],
+            fov: 60,
+          }}
+          shadows="soft"
+          flat
+          gl={{ alpha: false }}
+          style={{ background: backgroundColor }}
+          onPointerMissed={handlePointerMissed}
+        >
+          <FpsController />
+          <Visualizer />
+          {showPerfMonitor && <Perf position="bottom-left" />}
+        </Canvas>
+      </div>
     </Layout>
   );
 }

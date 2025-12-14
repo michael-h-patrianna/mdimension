@@ -22,8 +22,10 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { TexturePass } from 'three/examples/jsm/postprocessing/TexturePass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { useVisualStore } from '@/stores/visualStore';
+import { useVisualStore, SSR_QUALITY_STEPS, type SSRQuality } from '@/stores/visualStore';
 import { TONE_MAPPING_TO_THREE } from '@/lib/shaders/types';
+import { SSRShader, type SSRUniforms } from '@/lib/shaders/postprocessing/SSRShader';
+import { RefractionShader, type RefractionUniforms } from '@/lib/shaders/postprocessing/RefractionShader';
 
 /**
  * Type for bokeh shader uniforms
@@ -305,13 +307,8 @@ export const PostProcessing = memo(function PostProcessing() {
     bloomThreshold,
     bloomRadius,
     bokehEnabled,
-    bokehFocusMode,
-    bokehBlurMethod,
-    bokehWorldFocusDistance,
-    bokehWorldFocusRange,
-    bokehScale,
-    bokehSmoothTime,
-    bokehShowDebug,
+    ssrEnabled,
+    refractionEnabled,
     toneMappingEnabled,
     toneMappingAlgorithm,
     exposure,
@@ -322,13 +319,8 @@ export const PostProcessing = memo(function PostProcessing() {
       bloomThreshold: state.bloomThreshold,
       bloomRadius: state.bloomRadius,
       bokehEnabled: state.bokehEnabled,
-      bokehFocusMode: state.bokehFocusMode,
-      bokehBlurMethod: state.bokehBlurMethod,
-      bokehWorldFocusDistance: state.bokehWorldFocusDistance,
-      bokehWorldFocusRange: state.bokehWorldFocusRange,
-      bokehScale: state.bokehScale,
-      bokehSmoothTime: state.bokehSmoothTime,
-      bokehShowDebug: state.bokehShowDebug,
+      ssrEnabled: state.ssrEnabled,
+      refractionEnabled: state.refractionEnabled,
       toneMappingEnabled: state.toneMappingEnabled,
       toneMappingAlgorithm: state.toneMappingAlgorithm,
       exposure: state.exposure,
@@ -355,11 +347,12 @@ export const PostProcessing = memo(function PostProcessing() {
     }
   }, [gl, toneMappingEnabled, toneMappingAlgorithm, exposure]);
 
-  // Create render target for scene + depth, and composer
-  // Resources are always created but passes are enabled/disabled dynamically
-  const { composer, bloomPass, bokehPass, sceneTarget, texturePass } = useMemo(() => {
-    // Create render target with depth texture - matching Three.js examples exactly
-    const target = new THREE.WebGLRenderTarget(size.width, size.height, {
+  // Create render target for scene with depth texture
+  // Using a single render target instead of MRT for compatibility with Three.js built-in materials
+  // SSR/refraction use depth-based normal reconstruction as fallback
+  const { composer, bloomPass, bokehPass, ssrPass, refractionPass, sceneTarget, texturePass } = useMemo(() => {
+    // Create single render target with depth texture
+    const renderTarget = new THREE.WebGLRenderTarget(size.width, size.height, {
       minFilter: THREE.NearestFilter,
       magFilter: THREE.NearestFilter,
       type: THREE.HalfFloatType,
@@ -367,19 +360,21 @@ export const PostProcessing = memo(function PostProcessing() {
       stencilBuffer: false,
     });
 
-    // Create and attach depth texture after render target creation
+    renderTarget.texture.name = 'SceneColor';
+
+    // Create and attach depth texture
     const depthTex = new THREE.DepthTexture(size.width, size.height);
     depthTex.format = THREE.DepthFormat;
     depthTex.type = THREE.UnsignedShortType;
     depthTex.minFilter = THREE.NearestFilter;
     depthTex.magFilter = THREE.NearestFilter;
-    target.depthTexture = depthTex;
+    renderTarget.depthTexture = depthTex;
 
     // Create composer - we'll manually render scene to target, then use TexturePass
     const effectComposer = new EffectComposer(gl);
 
     // TexturePass to copy from our pre-rendered scene
-    const texPass = new TexturePass(target.texture);
+    const texPass = new TexturePass(renderTarget.texture);
     effectComposer.addPass(texPass);
 
     // Bloom - always created, enabled/disabled dynamically
@@ -396,6 +391,16 @@ export const PostProcessing = memo(function PostProcessing() {
     bokeh.enabled = false;
     effectComposer.addPass(bokeh);
 
+    // SSR - always created, enabled/disabled dynamically
+    const ssr = new ShaderPass(SSRShader);
+    ssr.enabled = false;
+    effectComposer.addPass(ssr);
+
+    // Refraction - always created, enabled/disabled dynamically
+    const refraction = new ShaderPass(RefractionShader);
+    refraction.enabled = false;
+    effectComposer.addPass(refraction);
+
     // Output
     const outputPass = new OutputPass();
     effectComposer.addPass(outputPass);
@@ -404,7 +409,9 @@ export const PostProcessing = memo(function PostProcessing() {
       composer: effectComposer,
       bloomPass: bloom,
       bokehPass: bokeh,
-      sceneTarget: target,
+      ssrPass: ssr,
+      refractionPass: refraction,
+      sceneTarget: renderTarget,
       texturePass: texPass,
     };
   }, [gl, size.width, size.height]);
@@ -424,18 +431,36 @@ export const PostProcessing = memo(function PostProcessing() {
     bokehPass.enabled = bokehEnabled;
   }, [bokehPass, bokehEnabled]);
 
+  // Update SSR enabled state
+  useEffect(() => {
+    ssrPass.enabled = ssrEnabled;
+  }, [ssrPass, ssrEnabled]);
+
+  // Update refraction enabled state
+  useEffect(() => {
+    refractionPass.enabled = refractionEnabled;
+  }, [refractionPass, refractionEnabled]);
+
   // Resize
   useEffect(() => {
     composer.setSize(size.width, size.height);
     bloomPass.resolution.set(size.width, size.height);
     sceneTarget.setSize(size.width, size.height);
 
-    // Update texture pass with new texture reference after resize
+    // Update texture pass with new texture reference after resize (color buffer)
     texturePass.map = sceneTarget.texture;
 
-    const uniforms = bokehPass.uniforms as unknown as BokehUniforms;
-    uniforms.aspect.value = size.height / size.width;
-  }, [composer, bloomPass, bokehPass, sceneTarget, texturePass, size.width, size.height]);
+    const bokehUniforms = bokehPass.uniforms as unknown as BokehUniforms;
+    bokehUniforms.aspect.value = size.height / size.width;
+
+    // Update SSR uniforms
+    const ssrUniforms = ssrPass.uniforms as unknown as SSRUniforms;
+    ssrUniforms.resolution.value.set(size.width, size.height);
+
+    // Update refraction uniforms
+    const refractionUniforms = refractionPass.uniforms as unknown as RefractionUniforms;
+    refractionUniforms.resolution.value.set(size.width, size.height);
+  }, [composer, bloomPass, bokehPass, ssrPass, refractionPass, sceneTarget, texturePass, size.width, size.height]);
 
   // Cleanup on unmount only
   useEffect(() => {
@@ -451,10 +476,14 @@ export const PostProcessing = memo(function PostProcessing() {
     const state = useVisualStore.getState();
     const currentBloomEnabled = state.bloomEnabled;
     const currentBokehEnabled = state.bokehEnabled;
+    const currentSSREnabled = state.ssrEnabled;
+    const currentRefractionEnabled = state.refractionEnabled;
 
     // Update pass enabled states every frame to ensure sync
     bloomPass.enabled = currentBloomEnabled;
     bokehPass.enabled = currentBokehEnabled;
+    ssrPass.enabled = currentSSREnabled;
+    refractionPass.enabled = currentRefractionEnabled;
 
     // Set bloom strength (0 when disabled for smooth transition)
     bloomPass.strength = currentBloomEnabled ? state.bloomIntensity : 0;
@@ -493,7 +522,7 @@ export const PostProcessing = memo(function PostProcessing() {
     gl.autoClear = currentAutoClear;
     gl.setClearColor(currentClearColor, currentClearAlpha);
 
-    // Update texture pass
+    // Update texture pass (color buffer from MRT)
     texturePass.map = sceneTarget.texture;
 
     if (currentBokehEnabled && camera instanceof THREE.PerspectiveCamera) {
@@ -550,6 +579,36 @@ export const PostProcessing = memo(function PostProcessing() {
 
       // Time for jittered blur animation (prevents static noise patterns)
       uniforms.time.value = performance.now() * 0.001;
+    }
+
+    // Update SSR uniforms
+    if (currentSSREnabled && camera instanceof THREE.PerspectiveCamera) {
+      const ssrUniforms = ssrPass.uniforms as unknown as SSRUniforms;
+      ssrUniforms.tNormal.value = null; // No normal buffer - SSR will use depth-based reconstruction
+      ssrUniforms.tDepth.value = sceneTarget.depthTexture;
+      ssrUniforms.projMatrix.value.copy(camera.projectionMatrix);
+      ssrUniforms.invProjMatrix.value.copy(camera.projectionMatrixInverse);
+      ssrUniforms.uViewMat.value.copy(camera.matrixWorldInverse);
+      ssrUniforms.intensity.value = state.ssrIntensity;
+      ssrUniforms.maxDistance.value = state.ssrMaxDistance;
+      ssrUniforms.thickness.value = state.ssrThickness;
+      ssrUniforms.fadeStart.value = state.ssrFadeStart;
+      ssrUniforms.fadeEnd.value = state.ssrFadeEnd;
+      ssrUniforms.maxSteps.value = SSR_QUALITY_STEPS[state.ssrQuality as SSRQuality] ?? 32;
+      ssrUniforms.nearClip.value = camera.near;
+      ssrUniforms.farClip.value = camera.far;
+    }
+
+    // Update refraction uniforms
+    if (currentRefractionEnabled && camera instanceof THREE.PerspectiveCamera) {
+      const refractionUniforms = refractionPass.uniforms as unknown as RefractionUniforms;
+      refractionUniforms.tNormal.value = null; // No normal buffer - refraction will use depth-based reconstruction
+      refractionUniforms.tDepth.value = sceneTarget.depthTexture;
+      refractionUniforms.ior.value = state.refractionIOR;
+      refractionUniforms.strength.value = state.refractionStrength;
+      refractionUniforms.chromaticAberration.value = state.refractionChromaticAberration;
+      refractionUniforms.nearClip.value = camera.near;
+      refractionUniforms.farClip.value = camera.far;
     }
 
     composer.render();

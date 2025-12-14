@@ -157,12 +157,15 @@ function createFaceShaderMaterial(
   opacity: number
 ): ShaderMaterial {
   return new ShaderMaterial({
+    glslVersion: THREE.GLSL3,
     uniforms: {
       // N-D transformation uniforms
       ...createNDUniforms(),
       // Color
       uColor: { value: new Color(faceColor) },
       uOpacity: { value: opacity },
+      // Material properties for G-buffer
+      uMetallic: { value: 0.0 },
       // Advanced Color System uniforms
       uColorAlgorithm: { value: 2 }, // Default to cosine
       uCosineA: { value: new Vector3(0.5, 0.5, 0.5) },
@@ -347,6 +350,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     edgeRoughness,
     faceColor,
     shaderSettings,
+    shadowEnabled,
   } = useVisualStore(
     useShallow((state) => ({
       edgesVisible: state.edgesVisible,
@@ -357,6 +361,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
       edgeRoughness: state.edgeRoughness,
       faceColor: state.faceColor,
       shaderSettings: state.shaderSettings,
+      shadowEnabled: state.shadowEnabled,
     }))
   );
 
@@ -627,7 +632,13 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     <group>
       {/* Polytope faces */}
       {facesVisible && faceGeometry && (
-        <mesh ref={faceMeshRef} geometry={faceGeometry} material={faceMaterial} />
+        <mesh
+          ref={faceMeshRef}
+          geometry={faceGeometry}
+          material={faceMaterial}
+          castShadow={shadowEnabled}
+          receiveShadow={shadowEnabled}
+        />
       )}
 
       {/* Polytope edges - use TubeWireframe for thick lines, native lineSegments for thin */}
@@ -641,6 +652,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
           radius={edgeThickness * 0.015}
           metallic={edgeMetallic}
           roughness={edgeRoughness}
+          shadowEnabled={shadowEnabled}
         />
       )}
       {edgesVisible && !useFatWireframe && edgeGeometry && (

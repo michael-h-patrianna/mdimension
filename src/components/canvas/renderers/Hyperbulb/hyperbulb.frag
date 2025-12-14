@@ -6,6 +6,10 @@
 
 precision highp float;
 
+// MRT output declarations for WebGL2
+layout(location = 0) out vec4 gColor;
+layout(location = 1) out vec4 gNormal;
+
 uniform vec3 uCameraPosition;
 uniform float uPower;
 uniform float uIterations;
@@ -54,9 +58,8 @@ uniform float uSpecularPower;
 // Enhanced lighting uniforms
 uniform vec3 uSpecularColor;
 uniform float uDiffuseIntensity;
-uniform bool uToneMappingEnabled;
-uniform int uToneMappingAlgorithm;
-uniform float uExposure;
+// Material property for G-buffer (reflectivity for SSR)
+uniform float uMetallic;
 
 // Fresnel rim lighting uniforms
 uniform bool uFresnelEnabled;
@@ -96,8 +99,8 @@ uniform int uShadowQuality;           // 0=low, 1=medium, 2=high, 3=ultra
 uniform float uShadowSoftness;        // 0.0-2.0 penumbra softness
 uniform int uShadowAnimationMode;     // 0=pause, 1=low, 2=full
 
-varying vec3 vPosition;
-varying vec2 vUv;
+in vec3 vPosition;
+in vec2 vUv;
 
 // Performance constants
 // High quality mode (when idle)
@@ -288,47 +291,6 @@ vec3 getColorByAlgorithm(float t, vec3 normal, vec3 baseHSL, vec3 position) {
     return getCosinePaletteColor(t, uCosineA, uCosineB, uCosineC, uCosineD,
                                   uDistPower, uDistCycles, uDistOffset);
   }
-}
-
-// ============================================
-// Tone Mapping Functions
-// ============================================
-
-vec3 reinhardToneMap(vec3 c) {
-    return c / (c + vec3(1.0));
-}
-
-vec3 acesToneMap(vec3 c) {
-    // ACES filmic tone mapping approximation
-    const float a = 2.51;
-    const float b = 0.03;
-    const float c2 = 2.43;
-    const float d = 0.59;
-    const float e = 0.14;
-    return clamp((c * (a * c + b)) / (c * (c2 * c + d) + e), 0.0, 1.0);
-}
-
-vec3 uncharted2ToneMap(vec3 c) {
-    // Uncharted 2 filmic tone mapping
-    const float A = 0.15;
-    const float B = 0.50;
-    const float C = 0.10;
-    const float D = 0.20;
-    const float E = 0.02;
-    const float F = 0.30;
-    const float W = 11.2;
-
-    vec3 curr = ((c * (A * c + C * B) + D * E) / (c * (A * c + B) + D * F)) - E / F;
-    vec3 white = ((vec3(W) * (A * W + C * B) + D * E) / (vec3(W) * (A * W + B) + D * F)) - E / F;
-    return curr / white;
-}
-
-vec3 applyToneMapping(vec3 c, int algo, float exposure) {
-    vec3 exposed = c * exposure;
-    if (algo == 0) return reinhardToneMap(exposed);
-    if (algo == 1) return acesToneMap(exposed);
-    if (algo == 2) return uncharted2ToneMap(exposed);
-    return clamp(exposed, 0.0, 1.0); // fallback: simple clamp
 }
 
 // Fresnel (Schlick approximation)
@@ -1440,10 +1402,7 @@ void main() {
         col += uRimColor * rim;
     }
 
-    // Apply tone mapping as final step
-    if (uToneMappingEnabled) {
-        col = applyToneMapping(col, uToneMappingAlgorithm, uExposure);
-    }
+    // Tone mapping is applied by post-processing OutputPass
 
     vec4 worldHitPos = uModelMatrix * vec4(p, 1.0);
     vec4 clipPos = uProjectionMatrix * uViewMatrix * worldHitPos;
@@ -1452,5 +1411,9 @@ void main() {
     // Calculate opacity based on selected mode
     float alpha = calculateOpacityAlpha(d, sphereEntry, maxDist);
 
-    gl_FragColor = vec4(col, alpha);
+    // Output to MRT (Multiple Render Targets)
+    // gColor: Color buffer (RGBA)
+    // gNormal: Normal buffer (RGB = normal * 0.5 + 0.5, A = reflectivity/metallic)
+    gColor = vec4(col, alpha);
+    gNormal = vec4(n * 0.5 + 0.5, uMetallic);
 }

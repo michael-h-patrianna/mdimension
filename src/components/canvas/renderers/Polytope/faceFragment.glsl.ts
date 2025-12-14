@@ -20,9 +20,16 @@
  */
 export function buildFaceFragmentShader(): string {
   return `
+    // MRT output declarations for WebGL2
+    layout(location = 0) out vec4 gColor;
+    layout(location = 1) out vec4 gNormal;
+
     // Color uniforms
     uniform vec3 uColor;
     uniform float uOpacity;
+
+    // Material properties for G-buffer
+    uniform float uMetallic;  // Reflectivity for SSR
 
     // Advanced Color System uniforms
     // 0=monochromatic, 1=analogous, 2=cosine, 3=normal, 4=distance, 5=lch, 6=multiSource
@@ -74,10 +81,10 @@ export function buildFaceFragmentShader(): string {
     uniform float uFresnelIntensity;
     uniform vec3 uRimColor;
 
-    // Varyings
-    varying vec3 vWorldPosition;
-    varying vec3 vViewDir;
-    varying float vFaceDepth;
+    // Inputs from vertex shader
+    in vec3 vWorldPosition;
+    in vec3 vViewDir;
+    in float vFaceDepth;
 
     // ============================================================
     // Cosine Gradient Palette Functions (Inigo Quilez technique)
@@ -361,7 +368,11 @@ export function buildFaceFragmentShader(): string {
         col = baseColor * uAmbientIntensity;
       }
 
-      gl_FragColor = vec4(col, uOpacity);
+      // Output to MRT (Multiple Render Targets)
+      // gColor: Color buffer (RGBA)
+      // gNormal: Normal buffer (RGB = normal * 0.5 + 0.5, A = reflectivity)
+      gColor = vec4(col, uOpacity);
+      gNormal = vec4(normal * 0.5 + 0.5, uMetallic);
     }
   `
 }

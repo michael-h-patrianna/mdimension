@@ -6,6 +6,13 @@
 
 precision highp float;
 
+// MRT output declarations for WebGL2
+layout(location = 0) out vec4 gColor;
+layout(location = 1) out vec4 gNormal;
+
+// Material property for G-buffer (reflectivity for SSR)
+uniform float uMetallic;
+
 uniform vec3 uCameraPosition;
 uniform float uIterations;      // Recursion depth (3-8)
 uniform float uScale;           // Bounding box scale
@@ -98,8 +105,8 @@ uniform int uShadowAnimationMode;     // 0=pause, 1=low, 2=full
 uniform bool uFoldTwistEnabled;
 uniform float uFoldTwistAngle;  // Current angle (includes time if animated)
 
-varying vec3 vPosition;
-varying vec2 vUv;
+in vec3 vPosition;
+in vec2 vUv;
 
 // Performance constants
 #define MAX_MARCH_STEPS_HQ 128
@@ -947,5 +954,9 @@ void main() {
     // Calculate opacity based on selected mode
     float alpha = calculateOpacityAlpha(d, sphereEntry, maxDist);
 
-    gl_FragColor = vec4(col, alpha);
+    // Output to MRT (Multiple Render Targets)
+    // gColor: Color buffer (RGBA)
+    // gNormal: Normal buffer (RGB = normal * 0.5 + 0.5, A = reflectivity/metallic)
+    gColor = vec4(col, alpha);
+    gNormal = vec4(n * 0.5 + 0.5, uMetallic);
 }

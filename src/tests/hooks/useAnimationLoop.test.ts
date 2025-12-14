@@ -159,4 +159,51 @@ describe('useAnimationLoop', () => {
       expect(useVisualStore.getState().animationBias).toBeGreaterThanOrEqual(0);
     });
   });
+
+  describe('FPS limiting', () => {
+    it('should read maxFps from visual store', () => {
+      const maxFps = useVisualStore.getState().maxFps;
+      expect(typeof maxFps).toBe('number');
+      expect(maxFps).toBeGreaterThanOrEqual(15);
+      expect(maxFps).toBeLessThanOrEqual(120);
+    });
+
+    it('should default to 60 FPS', () => {
+      // Reset to ensure default
+      useVisualStore.getState().reset();
+      expect(useVisualStore.getState().maxFps).toBe(60);
+    });
+
+    it('should allow changing maxFps', () => {
+      useVisualStore.getState().setMaxFps(30);
+      expect(useVisualStore.getState().maxFps).toBe(30);
+
+      useVisualStore.getState().setMaxFps(90);
+      expect(useVisualStore.getState().maxFps).toBe(90);
+    });
+
+    it('should calculate frame interval from maxFps', () => {
+      // Reset to ensure default of 60 FPS
+      useVisualStore.getState().reset();
+      const maxFps = useVisualStore.getState().maxFps;
+      const frameInterval = 1000 / maxFps;
+
+      // At 60 FPS, frame interval should be ~16.67ms
+      expect(frameInterval).toBeCloseTo(16.67, 1);
+    });
+
+    it('should have correct frame interval at different FPS values', () => {
+      // 30 FPS = 33.33ms per frame
+      useVisualStore.getState().setMaxFps(30);
+      expect(1000 / useVisualStore.getState().maxFps).toBeCloseTo(33.33, 1);
+
+      // 120 FPS = 8.33ms per frame
+      useVisualStore.getState().setMaxFps(120);
+      expect(1000 / useVisualStore.getState().maxFps).toBeCloseTo(8.33, 1);
+
+      // 15 FPS = 66.67ms per frame
+      useVisualStore.getState().setMaxFps(15);
+      expect(1000 / useVisualStore.getState().maxFps).toBeCloseTo(66.67, 1);
+    });
+  });
 });

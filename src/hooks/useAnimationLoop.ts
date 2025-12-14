@@ -35,13 +35,25 @@ export function useAnimationLoop(): void {
       }
 
       const deltaTime = currentTime - lastTimeRef.current
-      lastTimeRef.current = currentTime
 
       // Skip if delta is too large (e.g., tab was inactive)
       if (deltaTime > 100) {
+        lastTimeRef.current = currentTime
         frameRef.current = requestAnimationFrame(animate)
         return
       }
+
+      // Throttle based on maxFps setting
+      const maxFps = useVisualStore.getState().maxFps
+      const frameInterval = 1000 / maxFps
+
+      if (deltaTime < frameInterval) {
+        frameRef.current = requestAnimationFrame(animate)
+        return
+      }
+
+      // Snap to frame boundary to prevent drift
+      lastTimeRef.current = currentTime - (deltaTime % frameInterval)
 
       const rotationDelta = getRotationDelta(deltaTime)
       // Get animation bias from visual store (0 = uniform, 1 = wildly different)

@@ -6,14 +6,14 @@
 precision highp float;
 
 // Instance attributes for tube endpoints
-attribute vec3 instanceStart;
-attribute vec3 instanceEnd;
+in vec3 instanceStart;
+in vec3 instanceEnd;
 // Packed extra dimensions: ExtraA = (W, Extra0, Extra1, Extra2)
 // ExtraB = (Extra3, Extra4, Extra5, Extra6)
-attribute vec4 instanceStartExtraA;
-attribute vec4 instanceStartExtraB;
-attribute vec4 instanceEndExtraA;
-attribute vec4 instanceEndExtraB;
+in vec4 instanceStartExtraA;
+in vec4 instanceStartExtraB;
+in vec4 instanceEndExtraA;
+in vec4 instanceEndExtraB;
 
 // N-D Transformation uniforms
 uniform mat4 uRotationMatrix4D;
@@ -30,9 +30,9 @@ uniform float uDepthRowSums[11];
 uniform float uRadius;
 
 // Outputs to fragment shader
-varying vec3 vNormal;
-varying vec3 vWorldPosition;
-varying vec3 vViewDirection;
+out vec3 vNormal;
+out vec3 vWorldPosition;
+out vec3 vViewDirection;
 
 // Transform an N-dimensional point through rotation and projection
 vec3 transformNDPoint(vec3 pos, vec4 extraA, vec4 extraB) {

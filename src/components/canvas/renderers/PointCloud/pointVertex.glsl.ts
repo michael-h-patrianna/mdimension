@@ -32,16 +32,16 @@ export function buildPointVertexShader(): string {
     uniform int uProjectionType;
     uniform float uPointSize;
 
-    attribute float aExtraDim0;
-    attribute float aExtraDim1;
-    attribute float aExtraDim2;
-    attribute float aExtraDim3;
-    attribute float aExtraDim4;
-    attribute float aExtraDim5;
-    attribute float aExtraDim6;
-    attribute vec3 aColor;
+    in float aExtraDim0;
+    in float aExtraDim1;
+    in float aExtraDim2;
+    in float aExtraDim3;
+    in float aExtraDim4;
+    in float aExtraDim5;
+    in float aExtraDim6;
+    in vec3 aColor;
 
-    varying vec3 vColor;
+    out vec3 vColor;
 
     void main() {
       // Collect scaled input dimensions

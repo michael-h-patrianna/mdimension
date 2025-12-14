@@ -5,6 +5,10 @@
 
 precision highp float;
 
+// MRT output declarations for WebGL2
+layout(location = 0) out vec4 gColor;
+layout(location = 1) out vec4 gNormal;
+
 #define PI 3.14159265359
 #define MAX_LIGHTS 4
 #define LIGHT_TYPE_POINT 0
@@ -45,15 +49,10 @@ uniform bool uFresnelEnabled;
 uniform float uFresnelIntensity;
 uniform vec3 uRimColor;
 
-// Tone mapping uniforms
-uniform bool uToneMappingEnabled;
-uniform int uToneMappingAlgorithm;
-uniform float uExposure;
-
 // Inputs from vertex shader
-varying vec3 vNormal;
-varying vec3 vWorldPosition;
-varying vec3 vViewDirection;
+in vec3 vNormal;
+in vec3 vWorldPosition;
+in vec3 vViewDirection;
 
 // ============================================
 // PBR Helper Functions
@@ -147,30 +146,6 @@ float getDistanceAttenuation(int lightIndex, float distance) {
 }
 
 // ============================================
-// Tone Mapping Functions
-// ============================================
-
-vec3 reinhardToneMap(vec3 c) {
-  return c / (c + vec3(1.0));
-}
-
-vec3 acesToneMap(vec3 c) {
-  const float a = 2.51;
-  const float b = 0.03;
-  const float c2 = 2.43;
-  const float d = 0.59;
-  const float e = 0.14;
-  return clamp((c * (a * c + b)) / (c * (c2 * c + d) + e), 0.0, 1.0);
-}
-
-vec3 applyToneMapping(vec3 c, int algo, float exposure) {
-  vec3 exposed = c * exposure;
-  if (algo == 0) return reinhardToneMap(exposed);
-  if (algo == 1) return acesToneMap(exposed);
-  return clamp(exposed, 0.0, 1.0);
-}
-
-// ============================================
 // Main
 // ============================================
 
@@ -252,11 +227,12 @@ void main() {
     Lo += uRimColor * rim;
   }
 
-  // Apply tone mapping
+  // Final color (tone mapping is applied by post-processing OutputPass)
   vec3 color = Lo;
-  if (uToneMappingEnabled) {
-    color = applyToneMapping(color, uToneMappingAlgorithm, uExposure);
-  }
 
-  gl_FragColor = vec4(color, uOpacity);
+  // Output to MRT (Multiple Render Targets)
+  // gColor: Color buffer (RGBA)
+  // gNormal: Normal buffer (RGB = normal * 0.5 + 0.5, A = reflectivity/metallic)
+  gColor = vec4(color, uOpacity);
+  gNormal = vec4(N * 0.5 + 0.5, uMetallic);
 }

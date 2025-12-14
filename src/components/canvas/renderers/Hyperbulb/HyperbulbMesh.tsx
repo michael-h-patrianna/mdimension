@@ -196,6 +196,8 @@ const HyperbulbMesh = () => {
       // Enhanced lighting uniforms
       uSpecularColor: { value: new THREE.Color('#FFFFFF') },
       uDiffuseIntensity: { value: 1.0 },
+      // Material property for G-buffer (reflectivity for SSR)
+      uMetallic: { value: 0.0 },
 
       // Fresnel rim lighting uniforms
       uFresnelEnabled: { value: true },
@@ -476,6 +478,7 @@ const HyperbulbMesh = () => {
     <mesh ref={meshRef}>
       <boxGeometry args={[4, 4, 4]} />
       <shaderMaterial
+        glslVersion={THREE.GLSL3}
         vertexShader={vertexShader}
         fragmentShader={fragmentShader}
         uniforms={uniforms}

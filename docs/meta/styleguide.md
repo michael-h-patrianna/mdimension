@@ -1,5 +1,50 @@
 # Front-End Engineering Style Guide
 
+## WebGL2 / GLSL ES 3.00 Standard
+
+**All shaders MUST use WebGL2 and GLSL ES 3.00 syntax.** This is a mandatory requirement with no exceptions.
+
+### Required GLSL ES 3.00 Syntax
+
+| WebGL1 (Forbidden) | WebGL2 (Required) |
+|-------------------|-------------------|
+| `attribute` | `in` (vertex shader) |
+| `varying` (vertex) | `out` |
+| `varying` (fragment) | `in` |
+| `gl_FragColor` | `layout(location = N) out vec4 varName;` |
+| `texture2D()` | `texture()` |
+| `textureCube()` | `texture()` |
+
+### MRT (Multiple Render Target) Declaration Pattern
+
+```glsl
+// Fragment shader output declarations (WebGL2 MRT)
+layout(location = 0) out vec4 gColor;   // Color buffer
+layout(location = 1) out vec4 gNormal;  // Normal buffer (packed: RGB = normal, A = metallic)
+```
+
+### Shader File Conventions
+
+- `.frag` / `.vert` files: Raw GLSL for raymarching shaders
+- `.glsl.ts` files: TypeScript template strings for dynamic shader generation
+- Always include `precision highp float;` at the top of fragment shaders
+- Use `in`/`out` keywords, never `attribute`/`varying`
+
+### Three.js Integration
+
+When using ShaderMaterial, set `glslVersion: THREE.GLSL3` to enable WebGL2 mode:
+
+```typescript
+const material = new THREE.ShaderMaterial({
+  glslVersion: THREE.GLSL3,
+  vertexShader: myVertexShader,
+  fragmentShader: myFragmentShader,
+  uniforms: { ... }
+});
+```
+
+---
+
 ## Core Engineering Principles
 
 - **Intentional architecture:** Every module should have a single responsibility, clearly expressed through its folder structure and exports. Domain-specific logic lives in hooks or services, while UI components stay presentational.

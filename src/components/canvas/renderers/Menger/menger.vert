@@ -3,8 +3,8 @@
 // Standard pass-through for raymarching
 // ============================================
 
-varying vec3 vPosition;
-varying vec2 vUv;
+out vec3 vPosition;
+out vec2 vUv;
 
 void main() {
     vPosition = position;

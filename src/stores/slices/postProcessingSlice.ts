@@ -10,6 +10,7 @@ import type { StateCreator } from 'zustand'
 import {
   type BokehBlurMethod,
   type BokehFocusMode,
+  type SSRQuality,
   DEFAULT_BLOOM_ENABLED,
   DEFAULT_BLOOM_INTENSITY,
   DEFAULT_BLOOM_RADIUS,
@@ -23,6 +24,17 @@ import {
   DEFAULT_BOKEH_SMOOTH_TIME,
   DEFAULT_BOKEH_WORLD_FOCUS_DISTANCE,
   DEFAULT_BOKEH_WORLD_FOCUS_RANGE,
+  DEFAULT_SSR_ENABLED,
+  DEFAULT_SSR_INTENSITY,
+  DEFAULT_SSR_MAX_DISTANCE,
+  DEFAULT_SSR_THICKNESS,
+  DEFAULT_SSR_FADE_START,
+  DEFAULT_SSR_FADE_END,
+  DEFAULT_SSR_QUALITY,
+  DEFAULT_REFRACTION_ENABLED,
+  DEFAULT_REFRACTION_IOR,
+  DEFAULT_REFRACTION_STRENGTH,
+  DEFAULT_REFRACTION_CHROMATIC_ABERRATION,
 } from '../defaults/visualDefaults'
 
 // ============================================================================
@@ -46,6 +58,21 @@ export interface PostProcessingSliceState {
   bokehFocalLength: number
   bokehSmoothTime: number
   bokehShowDebug: boolean
+
+  // --- SSR (Screen-Space Reflections) ---
+  ssrEnabled: boolean
+  ssrIntensity: number
+  ssrMaxDistance: number
+  ssrThickness: number
+  ssrFadeStart: number
+  ssrFadeEnd: number
+  ssrQuality: SSRQuality
+
+  // --- Screen-Space Refraction ---
+  refractionEnabled: boolean
+  refractionIOR: number
+  refractionStrength: number
+  refractionChromaticAberration: number
 }
 
 export interface PostProcessingSliceActions {
@@ -65,6 +92,21 @@ export interface PostProcessingSliceActions {
   setBokehFocalLength: (length: number) => void
   setBokehSmoothTime: (time: number) => void
   setBokehShowDebug: (show: boolean) => void
+
+  // --- SSR Actions ---
+  setSSREnabled: (enabled: boolean) => void
+  setSSRIntensity: (intensity: number) => void
+  setSSRMaxDistance: (distance: number) => void
+  setSSRThickness: (thickness: number) => void
+  setSSRFadeStart: (start: number) => void
+  setSSRFadeEnd: (end: number) => void
+  setSSRQuality: (quality: SSRQuality) => void
+
+  // --- Refraction Actions ---
+  setRefractionEnabled: (enabled: boolean) => void
+  setRefractionIOR: (ior: number) => void
+  setRefractionStrength: (strength: number) => void
+  setRefractionChromaticAberration: (ca: number) => void
 }
 
 export type PostProcessingSlice = PostProcessingSliceState & PostProcessingSliceActions
@@ -90,6 +132,21 @@ export const POST_PROCESSING_INITIAL_STATE: PostProcessingSliceState = {
   bokehFocalLength: DEFAULT_BOKEH_FOCAL_LENGTH,
   bokehSmoothTime: DEFAULT_BOKEH_SMOOTH_TIME,
   bokehShowDebug: DEFAULT_BOKEH_SHOW_DEBUG,
+
+  // SSR
+  ssrEnabled: DEFAULT_SSR_ENABLED,
+  ssrIntensity: DEFAULT_SSR_INTENSITY,
+  ssrMaxDistance: DEFAULT_SSR_MAX_DISTANCE,
+  ssrThickness: DEFAULT_SSR_THICKNESS,
+  ssrFadeStart: DEFAULT_SSR_FADE_START,
+  ssrFadeEnd: DEFAULT_SSR_FADE_END,
+  ssrQuality: DEFAULT_SSR_QUALITY,
+
+  // Refraction
+  refractionEnabled: DEFAULT_REFRACTION_ENABLED,
+  refractionIOR: DEFAULT_REFRACTION_IOR,
+  refractionStrength: DEFAULT_REFRACTION_STRENGTH,
+  refractionChromaticAberration: DEFAULT_REFRACTION_CHROMATIC_ABERRATION,
 }
 
 // ============================================================================
@@ -156,5 +213,51 @@ export const createPostProcessingSlice: StateCreator<
 
   setBokehShowDebug: (show: boolean) => {
     set({ bokehShowDebug: show })
+  },
+
+  // --- SSR Actions ---
+  setSSREnabled: (enabled: boolean) => {
+    set({ ssrEnabled: enabled })
+  },
+
+  setSSRIntensity: (intensity: number) => {
+    set({ ssrIntensity: Math.max(0, Math.min(1, intensity)) })
+  },
+
+  setSSRMaxDistance: (distance: number) => {
+    set({ ssrMaxDistance: Math.max(1, Math.min(50, distance)) })
+  },
+
+  setSSRThickness: (thickness: number) => {
+    set({ ssrThickness: Math.max(0.01, Math.min(1, thickness)) })
+  },
+
+  setSSRFadeStart: (start: number) => {
+    set({ ssrFadeStart: Math.max(0, Math.min(1, start)) })
+  },
+
+  setSSRFadeEnd: (end: number) => {
+    set({ ssrFadeEnd: Math.max(0, Math.min(1, end)) })
+  },
+
+  setSSRQuality: (quality: SSRQuality) => {
+    set({ ssrQuality: quality })
+  },
+
+  // --- Refraction Actions ---
+  setRefractionEnabled: (enabled: boolean) => {
+    set({ refractionEnabled: enabled })
+  },
+
+  setRefractionIOR: (ior: number) => {
+    set({ refractionIOR: Math.max(1.0, Math.min(2.5, ior)) })
+  },
+
+  setRefractionStrength: (strength: number) => {
+    set({ refractionStrength: Math.max(0, Math.min(1, strength)) })
+  },
+
+  setRefractionChromaticAberration: (ca: number) => {
+    set({ refractionChromaticAberration: Math.max(0, Math.min(1, ca)) })
   },
 })
