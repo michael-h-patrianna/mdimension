@@ -5,19 +5,19 @@
 
 import { ControlPanel } from '@/components/ui/ControlPanel';
 import React from 'react';
-import { AnimationSection } from './Animation';
-import { DocumentationSection } from './Documentation';
-import { EdgesSection } from './Edges';
-import { EnvironmentSection } from './Environment';
-import { ExportSection } from './Export';
-import { FacesSection } from './Faces';
-import { GeometrySection } from './Geometry';
-import { LightsSection } from './Lights';
-import { PostProcessingSection } from './PostProcessing';
-import { ProjectionSection } from './Projection';
-import { RenderModeToggles } from './RenderMode';
-import { SettingsSection } from './Settings';
-import { ShortcutsSection } from './Shortcuts';
+import { AnimationSection } from './Animation/AnimationSection';
+import { DocumentationSection } from './Documentation/DocumentationSection';
+import { EdgesSection } from './Edges/EdgesSection';
+import { EnvironmentSection } from './Environment/EnvironmentSection';
+import { ExportSection } from './Export/ExportSection';
+import { FacesSection } from './Faces/FacesSection';
+import { GeometrySection } from './Geometry/GeometrySection';
+import { LightsSection } from './Lights/LightsSection';
+import { PostProcessingSection } from './PostProcessing/PostProcessingSection';
+import { ProjectionSection } from './Projection/ProjectionSection';
+import { RenderModeToggles } from './RenderMode/RenderModeToggles';
+import { SettingsSection } from './Settings/SettingsSection';
+import { ShortcutsSection } from './Shortcuts/ShortcutsSection';
 
 export interface SidebarProps {
   title?: string;

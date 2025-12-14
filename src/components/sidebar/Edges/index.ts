@@ -1,8 +1,0 @@
-export { EdgeControls } from './EdgeControls'
-export type { EdgesControlsProps } from './EdgeControls'
-export { EdgesSection } from './EdgesSection'
-export type { EdgesSectionProps } from './EdgesSection'
-export { MaterialControls } from './MaterialControls'
-export type { MaterialControlsProps } from './MaterialControls'
-export { ShaderSettings } from './ShaderSettings'
-export type { ShaderSettingsProps } from './ShaderSettings'
