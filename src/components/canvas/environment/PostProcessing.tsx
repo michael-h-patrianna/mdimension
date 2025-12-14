@@ -23,6 +23,7 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { TexturePass } from 'three/examples/jsm/postprocessing/TexturePass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { useVisualStore, SSR_QUALITY_STEPS, type SSRQuality } from '@/stores/visualStore';
+import { usePerformanceStore, getEffectiveSSRQuality } from '@/stores';
 import { TONE_MAPPING_TO_THREE } from '@/lib/shaders/types';
 import { SSRShader, type SSRUniforms } from '@/lib/shaders/postprocessing/SSRShader';
 import { RefractionShader, type RefractionUniforms } from '@/lib/shaders/postprocessing/RefractionShader';
@@ -354,9 +355,16 @@ export const PostProcessing = memo(function PostProcessing() {
   // Create render target for scene with depth texture
   // Using a single render target instead of MRT for compatibility with Three.js built-in materials
   // SSR/refraction use depth-based normal reconstruction as fallback
+  //
+  // IMPORTANT: We create these once and resize them separately to avoid
+  // recreating the entire pipeline on every resolution change (which causes black flashes)
   const { composer, bloomPass, bokehPass, ssrPass, refractionPass, sceneTarget, objectDepthTarget, texturePass } = useMemo(() => {
+    // Use a reasonable initial size - will be resized immediately in useEffect
+    const initialWidth = Math.max(1, size.width);
+    const initialHeight = Math.max(1, size.height);
+
     // Create single render target with depth texture (full scene)
-    const renderTarget = new THREE.WebGLRenderTarget(size.width, size.height, {
+    const renderTarget = new THREE.WebGLRenderTarget(initialWidth, initialHeight, {
       minFilter: THREE.NearestFilter,
       magFilter: THREE.NearestFilter,
       type: THREE.HalfFloatType,
@@ -373,14 +381,14 @@ export const PostProcessing = memo(function PostProcessing() {
 
     // Create object-only depth target for SSR/refraction/bokeh
     // This excludes environment objects (walls, gizmos) from depth-based effects
-    const objectDepth = new THREE.WebGLRenderTarget(size.width, size.height, {
+    const objectDepth = new THREE.WebGLRenderTarget(initialWidth, initialHeight, {
       minFilter: THREE.NearestFilter,
       magFilter: THREE.NearestFilter,
       depthBuffer: true,
       stencilBuffer: false,
     });
     objectDepth.texture.name = 'ObjectDepthColor';
-    const objectDepthTex = new THREE.DepthTexture(size.width, size.height);
+    const objectDepthTex = new THREE.DepthTexture(initialWidth, initialHeight);
     objectDepthTex.format = THREE.DepthFormat;
     objectDepthTex.type = THREE.UnsignedShortType;
     objectDepthTex.minFilter = THREE.NearestFilter;
@@ -396,7 +404,7 @@ export const PostProcessing = memo(function PostProcessing() {
 
     // Bloom - always created, enabled/disabled dynamically
     const bloom = new UnrealBloomPass(
-      new THREE.Vector2(size.width, size.height),
+      new THREE.Vector2(initialWidth, initialHeight),
       bloomIntensity,
       bloomRadius,
       bloomThreshold
@@ -432,7 +440,8 @@ export const PostProcessing = memo(function PostProcessing() {
       objectDepthTarget: objectDepth,
       texturePass: texPass,
     };
-  }, [gl, size.width, size.height]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gl]); // Only recreate when gl changes, NOT on size changes
 
   // Update bloom pass enabled state and parameters
   useEffect(() => {
@@ -459,26 +468,37 @@ export const PostProcessing = memo(function PostProcessing() {
     refractionPass.enabled = refractionEnabled;
   }, [refractionPass, refractionEnabled]);
 
-  // Resize
+  // Resize - handles both window resize and resolution scaling changes
   useEffect(() => {
-    composer.setSize(size.width, size.height);
-    bloomPass.resolution.set(size.width, size.height);
-    sceneTarget.setSize(size.width, size.height);
-    objectDepthTarget.setSize(size.width, size.height);
+    const width = Math.max(1, size.width);
+    const height = Math.max(1, size.height);
+
+    composer.setSize(width, height);
+    bloomPass.resolution.set(width, height);
+    sceneTarget.setSize(width, height);
+
+    // Resize object depth target and its depth texture
+    objectDepthTarget.setSize(width, height);
+    // DepthTexture needs manual resize via image property
+    if (objectDepthTarget.depthTexture) {
+      objectDepthTarget.depthTexture.image.width = width;
+      objectDepthTarget.depthTexture.image.height = height;
+      objectDepthTarget.depthTexture.needsUpdate = true;
+    }
 
     // Update texture pass with new texture reference after resize (color buffer)
     texturePass.map = sceneTarget.texture;
 
     const bokehUniforms = bokehPass.uniforms as unknown as BokehUniforms;
-    bokehUniforms.aspect.value = size.height / size.width;
+    bokehUniforms.aspect.value = height / width;
 
     // Update SSR uniforms
     const ssrUniforms = ssrPass.uniforms as unknown as SSRUniforms;
-    ssrUniforms.resolution.value.set(size.width, size.height);
+    ssrUniforms.resolution.value.set(width, height);
 
     // Update refraction uniforms
     const refractionUniforms = refractionPass.uniforms as unknown as RefractionUniforms;
-    refractionUniforms.resolution.value.set(size.width, size.height);
+    refractionUniforms.resolution.value.set(width, height);
   }, [composer, bloomPass, bokehPass, ssrPass, refractionPass, sceneTarget, objectDepthTarget, texturePass, size.width, size.height]);
 
   // Cleanup on unmount only
@@ -685,7 +705,13 @@ export const PostProcessing = memo(function PostProcessing() {
       ssrUniforms.thickness.value = state.ssrThickness;
       ssrUniforms.fadeStart.value = state.ssrFadeStart;
       ssrUniforms.fadeEnd.value = state.ssrFadeEnd;
-      ssrUniforms.maxSteps.value = SSR_QUALITY_STEPS[state.ssrQuality as SSRQuality] ?? 32;
+      // Progressive refinement: scale SSR quality from low → user's target
+      const qualityMultiplier = usePerformanceStore.getState().qualityMultiplier;
+      const effectiveSSRQuality = getEffectiveSSRQuality(
+        state.ssrQuality as SSRQuality,
+        qualityMultiplier
+      );
+      ssrUniforms.maxSteps.value = SSR_QUALITY_STEPS[effectiveSSRQuality] ?? 32;
       ssrUniforms.nearClip.value = camera.near;
       ssrUniforms.farClip.value = camera.far;
     }

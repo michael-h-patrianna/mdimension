@@ -71,18 +71,19 @@ export const Slider: React.FC<SliderProps> = ({
           </button>
         )}
       </div>
-      
-      <div className="relative h-4 flex items-center">
+
+      {/* Increased hit area for better touch/click interaction */}
+      <div className="relative h-8 flex items-center select-none">
         {/* Track Background */}
         <div className="absolute w-full h-1 bg-white/10 rounded-full overflow-hidden">
            {/* Fill Track */}
-           <div 
-             className="h-full bg-accent shadow-[0_0_10px_var(--color-accent)]" 
+           <div
+             className="h-full bg-accent shadow-[0_0_10px_var(--color-accent)]"
              style={{ width: `${percentage}%` }}
            />
         </div>
 
-        {/* Thumb (Invisible native input on top) */}
+        {/* Thumb (Invisible native input on top) - Full height for easier clicking */}
         <input
           id={id}
           type="range"
@@ -91,18 +92,21 @@ export const Slider: React.FC<SliderProps> = ({
           step={step}
           value={value}
           onChange={(e) => onChange(Number(e.target.value))}
+          onDragStart={(e) => e.preventDefault()}
+          onMouseDown={(e) => e.stopPropagation()}
           disabled={disabled}
-          className="absolute w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+          className="absolute w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed touch-none"
+          style={{ WebkitAppearance: 'none' }}
           aria-label={label}
           aria-valuemin={min}
           aria-valuemax={max}
           aria-valuenow={value}
         />
-        
-        {/* Custom Thumb Indicator */}
-        <div 
-          className="absolute h-3 w-3 bg-white rounded-full shadow-[0_0_10px_var(--color-accent)] pointer-events-none transition-transform duration-100 ease-out group-hover:scale-125"
-          style={{ left: `calc(${percentage}% - 6px)` }}
+
+        {/* Custom Thumb Indicator - Larger visual target */}
+        <div
+          className="absolute h-4 w-4 bg-white rounded-full shadow-[0_0_10px_var(--color-accent)] pointer-events-none transition-transform duration-100 ease-out group-hover:scale-125"
+          style={{ left: `calc(${percentage}% - 8px)` }}
         />
       </div>
 

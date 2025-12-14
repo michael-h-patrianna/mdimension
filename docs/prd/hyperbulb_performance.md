@@ -1,8 +1,24 @@
-# Hyperbulb Performance Optimizations
+# Performance Optimizations
 
 ## Overview
 
-This feature implements four performance optimization techniques for hyperbulb fractal rendering: Temporal Reprojection (reusing previous frame data), Resolution Scaling (rendering at lower resolution), Progressive Refinement (incremental quality improvement), and 3D Texture SDF Cache (precomputed distance field). These optimizations enable smoother interaction and higher quality static renders, especially for higher-dimensional fractals (8D-11D).
+This feature implements four performance optimization techniques for fractal and polytope rendering:
+- **Temporal Reprojection** (reusing previous frame data) - *Fractals only*
+- **Resolution Scaling** (rendering at lower resolution) - *All object types*
+- **Progressive Refinement** (incremental quality improvement) - *All object types*
+- **3D Texture SDF Cache** (precomputed distance field) - *Fractals only*
+
+These optimizations enable smoother interaction and higher quality static renders, especially for higher-dimensional objects (8D-11D).
+
+### Scope by Object Type
+
+| Feature | Hyperbulb | Mandelbox | Menger | Polytopes |
+|---------|-----------|-----------|--------|-----------|
+| Performance Panel | ✅ | ✅ | ✅ | ✅ |
+| Temporal Reprojection | ✅ | ✅ | ✅ | ❌ |
+| Resolution Scaling | ✅ | ✅ | ✅ | ✅ |
+| Progressive Refinement | ✅ | ✅ | ✅ | ✅ |
+| SDF Cache | ✅ | ✅ | ✅ | ❌ |
 
 ---
 
@@ -11,38 +27,31 @@ This feature implements four performance optimization techniques for hyperbulb f
 **User story:** As a user, I want to access performance optimization settings so that I can tune rendering behavior for my device and use case.
 
 **Acceptance criteria**
-1. User sees a "Performance" section in the sidebar (after Post-Processing, before Projection)
-2. Section is collapsible with default state closed
-3. Section contains subsections for each optimization technique
-4. Each optimization has an enable/disable toggle
-5. Section header shows overall performance status indicator (icon: green=all optimized, yellow=some, gray=none)
-6. Tooltip on header: "Configure rendering optimizations for better performance"
-7. Settings persist across sessions (stored in browser)
-8. All performance settings are excluded from share URLs (they're device-specific)
+1. User sees a "Performance" section in the sidebar, positioned above the "Settings" section
+2. Section contains all four optimization controls, always visible regardless of object type:
+   - Resolution Scaling (toggle + slider)
+   - Progressive Refinement (toggle + progress indicator)
+   - Temporal Reprojection (toggle) - only affects fractals, but always shown
+   - SDF Cache (toggle + resolution + generate/clear) - only affects fractals, but always shown
+3. Each optimization has an enable/disable toggle
+4. All performance settings are excluded from share URLs (they're device-specific)
+5. Controls that don't affect the current object type still function (settings are preserved when switching object types)
 
 **Test scenarios**
 
 Scenario 1: Access performance settings
 - Given the user opens the sidebar
-- When the user expands the "Performance" section
-- Then the user sees optimization controls organized by technique
+- When the user scrolls to the "Performance" section
+- Then the user sees all four optimization controls organized by technique
+- And the section is positioned above "Settings"
 
-Scenario 2: Performance indicator
-- Given Temporal Reprojection and Resolution Scaling are enabled
-- When the user looks at the Performance section header
-- Then a yellow indicator shows "Some optimizations enabled"
+Scenario 2: Settings persist across object types
+- Given the user enables Temporal Reprojection while viewing a Hyperbulb
+- When the user switches to a Hypercube (polytope)
+- Then Temporal Reprojection remains enabled in the UI
+- And the setting takes effect again when switching back to a fractal
 
-Scenario 3: All optimizations enabled
-- Given all four optimization techniques are enabled
-- When the user looks at the Performance section header
-- Then a green indicator shows "All optimizations enabled"
-
-Scenario 4: Settings persist
-- Given the user enables Resolution Scaling
-- When the user closes and reopens the browser
-- Then Resolution Scaling remains enabled
-
-Scenario 5: Settings not in URL
+Scenario 3: Settings not in URL
 - Given the user has custom performance settings
 - When the user copies the share URL
 - Then the URL does not contain performance settings
@@ -267,139 +276,281 @@ Scenario 9: Dimension change invalidates
 
 ---
 
-## User Story 6: Dimension-Adaptive Quality
+## Implementation Plan
 
-**User story:** As a user, I want the renderer to automatically adjust quality based on fractal dimension so that higher-dimensional fractals remain interactive.
+### Phase 1: Foundation (Store + UI Structure)
 
-**Acceptance criteria**
-1. User sees "Auto-Adjust for Dimension" toggle in Performance section
-2. Default state is ON (enabled)
-3. When enabled, raymarching quality automatically scales with dimension:
-   - 3D-4D: Full quality (128 steps, 64 iterations)
-   - 5D-6D: High quality (96 steps, 48 iterations)
-   - 7D-8D: Medium quality (64 steps, 32 iterations)
-   - 9D-11D: Low quality (48 steps, 24 iterations)
-4. Quality reduction is automatic and seamless
-5. User sees current quality level indicator: "Quality: High (6D adjusted)"
-6. Can be disabled to force full quality at all dimensions
-7. When disabled, warning appears for 9D+: "Full quality at high dimensions may reduce performance"
+#### 1.1 Create Performance Store
+**File**: `src/stores/performanceStore.ts`
 
-**Test scenarios**
+```typescript
+interface PerformanceState {
+  // Resolution Scaling (ALL objects)
+  resolutionScalingEnabled: boolean; // default: true
+  interactionScale: number; // 0.25-1.0, step 0.05, default: 0.5
 
-Scenario 1: Enable dimension-adaptive quality
-- Given Auto-Adjust is disabled
-- When the user toggles it ON
-- Then quality automatically adjusts based on current dimension
+  // Progressive Refinement (ALL objects)
+  progressiveRefinementEnabled: boolean; // default: true
+  refinementProgress: number; // 0-100, read-only UI state
 
-Scenario 2: Low dimension full quality
-- Given Auto-Adjust is enabled
-- When the user views a 3D or 4D hyperbulb
-- Then full quality is used (no reduction)
+  // Temporal Reprojection (Fractals only)
+  temporalReprojectionEnabled: boolean; // default: true
 
-Scenario 3: High dimension reduced quality
-- Given Auto-Adjust is enabled
-- When the user switches to 10D
-- Then quality automatically reduces to Low tier
-- And quality indicator shows "Quality: Low (10D adjusted)"
+  // SDF Cache (Fractals only)
+  sdfCacheEnabled: boolean; // default: false
+  sdfCacheResolution: 64 | 128 | 256; // default: 128
+  sdfCacheGenerated: boolean; // read-only state
+  sdfCacheProgress: number; // 0-100 during generation
+}
+```
 
-Scenario 4: Quality improves when dimension decreases
-- Given the user is viewing 9D with Low quality
-- When the user switches to 5D
-- Then quality automatically increases to High tier
+#### 1.2 Exclude from URL Serialization
+- Update share URL logic to explicitly exclude `performanceStore` state
+- Performance settings are device-specific, not shareable
 
-Scenario 5: Disable for full quality
-- Given the user is viewing 10D with Auto-Adjust enabled (Low quality)
-- When the user disables Auto-Adjust
-- Then full quality is used (may reduce frame rate)
-- And warning appears about potential performance impact
+#### 1.3 Create UI Folder Structure
+```
+src/components/sidebar/Performance/
+├── index.ts
+├── PerformanceSection.tsx            # Top-level collapsible section
+├── ResolutionScalingControls.tsx     # Toggle + scale slider
+├── ProgressiveRefinementControls.tsx # Toggle + progress indicator
+├── TemporalReprojectionControls.tsx  # Toggle (affects fractals only)
+└── SDFCacheControls.tsx              # Toggle + resolution + buttons (affects fractals only)
+```
 
-Scenario 6: Quality indicator updates
-- Given Auto-Adjust is enabled
-- When the user changes dimension from 4D to 7D
-- Then the quality indicator updates from "Quality: Full (4D)" to "Quality: Medium (7D adjusted)"
+#### 1.4 Add Section to Sidebar
+- Add `<PerformanceSection />` to `Sidebar.tsx`
+- Position above the "Settings" section
+- All controls always visible (no conditional rendering based on object type)
 
 ---
 
-## User Story 7: Performance Preset Profiles
+### Phase 2: Resolution Scaling (All Objects)
 
-**User story:** As a user, I want to select predefined performance profiles so that I can quickly configure all optimizations for my use case.
+#### 2.1 Interaction Detection Hook
+**File**: `src/hooks/useInteractionState.ts`
 
-**Acceptance criteria**
-1. User sees "Performance Profile" dropdown at top of Performance section
-2. Options: "Custom", "Fastest", "Balanced" (default), "Quality", "Screenshot"
-3. Selecting a profile configures all optimization settings:
-   - **Fastest**: All optimizations ON, aggressive settings (scale 0.25, cache ON)
-   - **Balanced**: Temporal + Resolution (0.5) + Progressive ON, Cache OFF
-   - **Quality**: Only Progressive ON, all others OFF
-   - **Screenshot**: All OFF (maximum quality for static capture)
-4. Changing any individual setting switches profile to "Custom"
-5. Profile persists across sessions
-6. Tooltip for each profile explains its purpose
+- Track camera position/rotation changes via `useFrame`
+- Track mouse/touch drag state via event listeners
+- Export `isInteracting: boolean` and `lastInteractionTime: number`
+- 150ms debounce before `isInteracting` becomes false
 
-**Test scenarios**
+#### 2.2 Resolution Scaling Hook
+**File**: `src/hooks/useResolutionScaling.ts`
 
-Scenario 1: Select Fastest profile
-- Given the user selects "Fastest" profile
-- When viewing the performance settings
-- Then all optimizations are enabled with aggressive values (scale 0.25)
+- Manage WebGLRenderTarget with dynamic size
+- Calculate scaled size: `canvasSize * interactionScale`
+- Handle render target resize on canvas resize
+- Provide `currentScale` and `targetScale` for smooth transitions
 
-Scenario 2: Select Screenshot profile
-- Given the user selects "Screenshot" profile
-- When viewing the performance settings
-- Then all optimizations are disabled for maximum quality
+#### 2.3 Scaled Renderer Component
+**File**: `src/components/canvas/ScaledRenderer.tsx`
 
-Scenario 3: Custom profile on change
-- Given the user has "Balanced" profile selected
-- When the user changes Resolution Scale from 0.5 to 0.75
-- Then the profile automatically switches to "Custom"
+- Wrap scene content with FBO rendering
+- Render to scaled target during interaction
+- Cross-fade to full resolution over 300ms when interaction stops
+- Use custom shader for bilinear upscaling
 
-Scenario 4: Balanced default
-- Given the user opens the application for the first time
-- When viewing Performance section
-- Then "Balanced" profile is selected
+#### 2.4 Resolution Indicator
+**File**: `src/components/ui/ResolutionIndicator.tsx`
 
-Scenario 5: Profile persistence
-- Given the user selects "Quality" profile
-- When the user closes and reopens the browser
-- Then "Quality" profile is still selected
+- Overlay showing "50%" (or current scale) during interaction
+- Positioned in viewport corner
+- Fade in/out with interaction state
 
 ---
 
-## Specification Summary
+### Phase 3: Progressive Refinement (All Objects)
 
-**Feature**: Hyperbulb Performance Optimizations
-**User Stories (Jira Tickets)**: 7
-**Acceptance Criteria**: 62
-**Test Scenarios**: 40
+#### 3.1 Refinement State Machine
+**File**: `src/hooks/useProgressiveRefinement.ts`
 
-### Stories Overview
-| # | Story | Role | Est. Size | Dependencies |
-|---|-------|------|-----------|--------------|
-| 1 | Performance Settings Panel | User | ~1 day | None |
-| 2 | Temporal Reprojection | User | ~2 days | Story 1 |
-| 3 | Resolution Scaling | User | ~1.5 days | Story 1 |
-| 4 | Progressive Refinement | User | ~2 days | Story 1 |
-| 5 | 3D Texture SDF Cache | User | ~3 days | Story 1 |
-| 6 | Dimension-Adaptive Quality | User | ~1 day | Story 1 |
-| 7 | Performance Preset Profiles | User | ~1 day | Stories 2-6 |
+```typescript
+type RefinementStage = 'low' | 'medium' | 'high' | 'final';
 
-### Coverage
-- Happy paths: 22
-- Error handling: 4
-- Edge cases: 8
-- Performance: 18
-- System behavior: 8
+// Stage timing after interaction stops:
+// low (instant) → medium (100ms) → high (300ms) → final (500ms)
 
-### Placeholders Requiring Confirmation
-- None
+// Quality multipliers per stage:
+// low: 0.25, medium: 0.50, high: 0.75, final: 1.0
+```
 
-### Open Questions
-- Should SDF Cache support animation (regenerate cache per frame for animated parameters)?
-- Should there be a "target frame rate" setting that auto-adjusts quality to maintain fps?
-- Should resolution scaling apply to post-processing (bloom, bokeh) as well?
+#### 3.2 Shader Quality Uniform
+- Add `uQualityMultiplier` uniform to all shaders
+- Fractals: `maxIterations * uQualityMultiplier`
+- Polytopes: Adjust edge quality / sample count
 
-### Dependencies Between Stories
-- Stories 2-6 depend on Story 1 (settings panel infrastructure)
-- Story 7 depends on Stories 2-6 (profiles configure all optimizations)
+#### 3.3 Refinement Progress Indicator
+**File**: `src/components/ui/RefinementIndicator.tsx`
 
-### Ready for Development: YES
+- Visual progress bar: 0% → 25% → 50% → 75% → 100%
+- Fade out after reaching 100%
+- Reset instantly on interaction
+
+---
+
+### Phase 4: Temporal Reprojection (Fractals Only)
+
+#### 4.1 Ping-Pong Depth Buffer Hook
+**File**: `src/hooks/useTemporalDepth.ts`
+
+- Create two WebGLRenderTargets with depth texture attachment
+- Swap each frame: current ↔ previous
+- Store previous camera view-projection matrix
+- Detect camera teleport (large delta) to disable for 1 frame
+
+#### 4.2 Shader Modifications
+**Files**: `hyperbulb.frag`, `mandelbox.frag`, `menger.frag`
+
+New uniforms:
+```glsl
+uniform sampler2D uPreviousDepth;
+uniform mat4 uPreviousViewProjection;
+uniform mat4 uCurrentViewProjectionInverse;
+uniform bool uTemporalEnabled;
+```
+
+Reprojection logic:
+```glsl
+// Reproject current pixel to previous frame
+vec4 prevClip = uPreviousViewProjection * worldPos;
+vec2 prevUV = prevClip.xy / prevClip.w * 0.5 + 0.5;
+
+// Sample previous depth and start ray closer
+if (validUV(prevUV)) {
+  float prevDepth = texture(uPreviousDepth, prevUV).r;
+  startDistance = prevDepth * 0.9; // Safety margin
+}
+```
+
+#### 4.3 Mesh Component Updates
+**Files**: `HyperbulbMesh.tsx`, `MandelboxMesh.tsx`, `MengerMesh.tsx`
+
+- Integrate `useTemporalDepth` hook
+- Update uniforms each frame
+- Handle teleport detection (preset camera, reset)
+
+---
+
+### Phase 5: SDF Cache (Fractals Only)
+
+#### 5.1 SDF Cache Generator
+**File**: `src/lib/sdf/SDFCacheGenerator.ts`
+
+```typescript
+class SDFCacheGenerator {
+  async generate(
+    fractalType: 'hyperbulb' | 'mandelbox' | 'menger',
+    params: FractalParams,
+    resolution: 64 | 128 | 256,
+    onProgress: (percent: number) => void
+  ): Promise<THREE.Data3DTexture>
+}
+```
+
+Generation approach:
+- Compute SDF values on CPU in chunks (avoid blocking UI)
+- Use `requestIdleCallback` or Web Worker for background computation
+- Create `THREE.Data3DTexture` from Float32Array
+
+#### 5.2 SDF Cache Hook
+**File**: `src/hooks/useSDFCache.ts`
+
+- Manage cache lifecycle (generate, clear, invalidate)
+- Track generation progress
+- Detect param changes that invalidate cache
+
+#### 5.3 Shader Modifications
+**Files**: `hyperbulb.frag`, `mandelbox.frag`, `menger.frag`
+
+New uniforms:
+```glsl
+uniform sampler3D uSDFCache;
+uniform bool uUseSDFCache;
+uniform vec3 uCacheBoundsMin;
+uniform vec3 uCacheBoundsMax;
+```
+
+Cached SDF lookup:
+```glsl
+float getDistance(vec3 p) {
+  if (uUseSDFCache) {
+    vec3 uv = (p - uCacheBoundsMin) / (uCacheBoundsMax - uCacheBoundsMin);
+    return texture(uSDFCache, uv).r;
+  }
+  return fractalSDF(p);
+}
+```
+
+#### 5.4 Memory Estimates
+| Resolution | Voxels | Memory |
+|------------|--------|--------|
+| 64³ | 262K | ~1 MB |
+| 128³ | 2.1M | ~8 MB |
+| 256³ | 16.8M | ~64 MB |
+
+---
+
+### New Files Summary
+
+```
+src/
+├── stores/
+│   └── performanceStore.ts           # NEW
+├── hooks/
+│   ├── useInteractionState.ts        # NEW
+│   ├── useResolutionScaling.ts       # NEW
+│   ├── useProgressiveRefinement.ts   # NEW
+│   ├── useTemporalDepth.ts           # NEW
+│   └── useSDFCache.ts                # NEW
+├── lib/
+│   └── sdf/
+│       ├── types.ts                  # NEW
+│       └── SDFCacheGenerator.ts      # NEW
+├── components/
+│   ├── canvas/
+│   │   └── ScaledRenderer.tsx        # NEW
+│   ├── ui/
+│   │   ├── ResolutionIndicator.tsx   # NEW
+│   │   └── RefinementIndicator.tsx   # NEW
+│   └── sidebar/
+│       └── Performance/              # NEW top-level section
+│           ├── index.ts                      # NEW
+│           ├── PerformanceSection.tsx        # NEW
+│           ├── ResolutionScalingControls.tsx # NEW
+│           ├── ProgressiveRefinementControls.tsx # NEW
+│           ├── TemporalReprojectionControls.tsx  # NEW
+│           └── SDFCacheControls.tsx              # NEW
+└── tests/
+    ├── stores/performanceStore.test.ts           # NEW
+    ├── hooks/useInteractionState.test.ts         # NEW
+    ├── hooks/useResolutionScaling.test.ts        # NEW
+    ├── hooks/useProgressiveRefinement.test.ts    # NEW
+    ├── hooks/useTemporalDepth.test.ts            # NEW
+    └── hooks/useSDFCache.test.ts                 # NEW
+```
+
+### Files to Modify
+
+- `src/stores/index.ts` - Export performanceStore
+- `src/components/sidebar/Sidebar.tsx` - Add PerformanceSection above Settings
+- `src/lib/shaders/hyperbulb.frag` - Add temporal + SDF cache uniforms
+- `src/lib/shaders/mandelbox.frag` - Add temporal + SDF cache uniforms
+- `src/lib/shaders/menger.frag` - Add temporal + SDF cache uniforms
+- `src/components/canvas/renderers/Hyperbulb/HyperbulbMesh.tsx` - New uniform handling
+- `src/components/canvas/renderers/Mandelbox/MandelboxMesh.tsx` - New uniform handling
+- `src/components/canvas/renderers/Menger/MengerMesh.tsx` - New uniform handling
+- Share URL serialization logic - Exclude performance settings
+
+---
+
+### Implementation Order
+
+1. **Phase 1** (Foundation) - Required first, ~2-3 files
+2. **Phase 2** (Resolution Scaling) - Can start after Phase 1
+3. **Phase 3** (Progressive Refinement) - Can start after Phase 2 (uses same infrastructure)
+4. **Phase 4** (Temporal Reprojection) - Can start after Phase 1, independent of 2/3
+5. **Phase 5** (SDF Cache) - Can start after Phase 1, most complex
+
+Phases 2-5 can be developed in parallel once Phase 1 is complete.

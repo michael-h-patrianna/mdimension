@@ -14,6 +14,8 @@ import {
   buildTorus3DGridFaces,
   buildCliffordTorusGridFaces,
   buildGeneralizedCliffordTorusFaces,
+  buildHopfTorus4DFaces,
+  buildHopfTorus8DFaces,
 } from './extended/clifford-torus';
 
 /**
@@ -351,22 +353,46 @@ export function detectFaces(
     }
 
     const props = metadata.properties;
+    const visualizationMode = props.visualizationMode as string | undefined;
     const mode = props.mode as string;
 
     let faceIndices: number[][] = [];
 
-    if (mode === '3d-torus') {
-      const resU = props.resolutionU as number;
-      const resV = props.resolutionV as number;
-      faceIndices = buildTorus3DGridFaces(resU, resV);
-    } else if (mode === 'classic') {
-      const resU = props.resolutionU as number;
-      const resV = props.resolutionV as number;
-      faceIndices = buildCliffordTorusGridFaces(resU, resV);
-    } else if (mode === 'generalized') {
-      const k = props.k as number;
-      const stepsPerCircle = props.stepsPerCircle as number;
-      faceIndices = buildGeneralizedCliffordTorusFaces(k, stepsPerCircle);
+    // First check for new visualization modes
+    if (visualizationMode === 'nested') {
+      // Nested (Hopf) mode
+      const dimension = props.intrinsicDimension as number;
+      if (dimension === 4) {
+        const resXi1 = props.resolutionXi1 as number;
+        const resXi2 = props.resolutionXi2 as number;
+        const torusCount = props.torusCount as number ?? 1;
+        // Generate faces for each nested torus
+        for (let t = 0; t < torusCount; t++) {
+          const offset = t * resXi1 * resXi2;
+          const torusFaces = buildHopfTorus4DFaces(resXi1, resXi2, offset);
+          faceIndices = faceIndices.concat(torusFaces);
+        }
+      } else if (dimension === 8) {
+        // 8D: Same 2D grid structure as 4D
+        const resXi1 = props.resolutionXi1 as number;
+        const resXi2 = props.resolutionXi2 as number;
+        faceIndices = buildHopfTorus8DFaces(resXi1, resXi2);
+      }
+    } else {
+      // Flat mode or legacy mode - check internal mode
+      if (mode === '3d-torus') {
+        const resU = props.resolutionU as number;
+        const resV = props.resolutionV as number;
+        faceIndices = buildTorus3DGridFaces(resU, resV);
+      } else if (mode === 'classic') {
+        const resU = props.resolutionU as number;
+        const resV = props.resolutionV as number;
+        faceIndices = buildCliffordTorusGridFaces(resU, resV);
+      } else if (mode === 'generalized') {
+        const k = props.k as number;
+        const stepsPerCircle = props.stepsPerCircle as number;
+        faceIndices = buildGeneralizedCliffordTorusFaces(k, stepsPerCircle);
+      }
     }
 
     return faceIndices.map(indices => ({ vertices: indices }));

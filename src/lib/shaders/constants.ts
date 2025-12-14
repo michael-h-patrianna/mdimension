@@ -99,6 +99,51 @@ export const DEFAULT_POINT_CLOUD_RADIUS = 1.0;
 export const DEFAULT_CLIFFORD_RADIUS = 1.0;
 
 // ============================================================================
+// Point/Vertex Shader Constants
+// ============================================================================
+
+/**
+ * Scale factor for perspective-correct point sizing.
+ * Used in vertex shader: gl_PointSize = uPointSize * (PERSPECTIVE_POINT_SCALE / -mvPosition.z)
+ * Higher values create larger points at the same camera distance.
+ */
+export const PERSPECTIVE_POINT_SCALE = 300.0;
+
+// ============================================================================
+// Fragment Shader Math Constants
+// ============================================================================
+
+/**
+ * Small epsilon value for division safety in shaders.
+ * Prevents division by zero in weight normalization.
+ */
+export const SHADER_EPSILON = 0.001;
+
+/**
+ * Minimum distance for attenuation calculations.
+ * Prevents singularities at zero distance.
+ */
+export const MIN_DISTANCE_ATTENUATION = 0.0001;
+
+/**
+ * Fresnel effect power exponent.
+ * Controls the sharpness of rim lighting falloff.
+ */
+export const FRESNEL_POWER = 3.0;
+
+/**
+ * Rim lighting base factor (minimum rim contribution).
+ * Combined with NdotL modulation for smooth rim effect.
+ */
+export const RIM_BASE_FACTOR = 0.3;
+
+/**
+ * Rim lighting NdotL modulation factor.
+ * Controls how much light direction affects rim visibility.
+ */
+export const RIM_NDOTL_FACTOR = 0.7;
+
+// ============================================================================
 // Face Rendering Constants
 // ============================================================================
 // NOTE: Face rendering defaults (color, opacity, specular settings) are

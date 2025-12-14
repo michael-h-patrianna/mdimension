@@ -7,9 +7,15 @@ import { OPACITY_MODE_TO_INT, SAMPLE_QUALITY_TO_INT } from '@/lib/opacity/types'
 import { COLOR_ALGORITHM_TO_INT } from '@/lib/shaders/palette';
 import { SHADOW_QUALITY_TO_INT, SHADOW_ANIMATION_MODE_TO_INT } from '@/lib/shadows/types';
 import { RENDER_LAYERS } from '@/lib/rendering/layers';
+import { createTemporalDepthUniforms } from '@/hooks';
 import { useAnimationStore } from '@/stores/animationStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
+import {
+  getEffectiveSampleQuality,
+  getEffectiveShadowQuality,
+  usePerformanceStore,
+} from '@/stores/performanceStore';
 import type { RotationState } from '@/stores/rotationStore';
 import { useRotationStore } from '@/stores/rotationStore';
 import { useVisualStore } from '@/stores/visualStore';
@@ -235,6 +241,9 @@ const MengerMesh = () => {
       // Performance mode
       uFastMode: { value: false },
 
+      // Progressive refinement quality multiplier (0.25-1.0)
+      uQualityMultiplier: { value: 1.0 },
+
       // Fold Twist Animation uniforms
       uFoldTwistEnabled: { value: false },
       uFoldTwistAngle: { value: 0.0 },
@@ -266,6 +275,9 @@ const MengerMesh = () => {
       uLchLightness: { value: 0.7 },
       uLchChroma: { value: 0.15 },
       uMultiSourceWeights: { value: new THREE.Vector3(0.5, 0.3, 0.2) },
+
+      // Temporal Reprojection uniforms
+      ...createTemporalDepthUniforms(),
     }),
     []
   );
@@ -319,6 +331,13 @@ const MengerMesh = () => {
       // Update fast mode uniform
       if (material.uniforms.uFastMode) {
         material.uniforms.uFastMode.value = fastModeRef.current;
+      }
+
+      // Get progressive refinement quality multiplier from performance store
+      // Used for raymarching quality and to compute effective quality for other effects
+      const qualityMultiplier = usePerformanceStore.getState().qualityMultiplier;
+      if (material.uniforms.uQualityMultiplier) {
+        material.uniforms.uQualityMultiplier.value = qualityMultiplier;
       }
 
       // Track animation time (respects isPlaying state)
@@ -419,7 +438,12 @@ const MengerMesh = () => {
         material.uniforms.uVolumetricDensity.value = opacitySettings.volumetricDensity;
       }
       if (material.uniforms.uSampleQuality) {
-        material.uniforms.uSampleQuality.value = SAMPLE_QUALITY_TO_INT[opacitySettings.sampleQuality];
+        // Progressive refinement: scale volumetric quality from low → user's target
+        const effectiveSampleQuality = getEffectiveSampleQuality(
+          opacitySettings.sampleQuality,
+          qualityMultiplier
+        );
+        material.uniforms.uSampleQuality.value = SAMPLE_QUALITY_TO_INT[effectiveSampleQuality];
       }
       if (material.uniforms.uVolumetricReduceOnAnim) {
         material.uniforms.uVolumetricReduceOnAnim.value = opacitySettings.volumetricAnimationQuality === 'reduce';
@@ -430,7 +454,12 @@ const MengerMesh = () => {
         material.uniforms.uShadowEnabled.value = shadowEnabled;
       }
       if (material.uniforms.uShadowQuality) {
-        material.uniforms.uShadowQuality.value = SHADOW_QUALITY_TO_INT[shadowQuality];
+        // Progressive refinement: scale shadow quality from low → user's target
+        const effectiveShadowQuality = getEffectiveShadowQuality(
+          shadowQuality,
+          qualityMultiplier
+        );
+        material.uniforms.uShadowQuality.value = SHADOW_QUALITY_TO_INT[effectiveShadowQuality];
       }
       if (material.uniforms.uShadowSoftness) {
         material.uniforms.uShadowSoftness.value = shadowSoftness;
@@ -562,6 +591,7 @@ const MengerMesh = () => {
       {/* Menger is bounded within unit cube * scale, give some margin */}
       <boxGeometry args={[4, 4, 4]} />
       <shaderMaterial
+        glslVersion={THREE.GLSL3}
         vertexShader={vertexShader}
         fragmentShader={fragmentShader}
         uniforms={uniforms}

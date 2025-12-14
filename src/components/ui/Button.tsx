@@ -23,8 +23,8 @@ export const Button: React.FC<ButtonProps> = ({
   ariaLabel,
   'data-testid': testId,
 }) => {
-  
-  const baseStyles = 'relative overflow-hidden font-medium rounded-lg transition-all duration-300 focus:outline-hidden focus:ring-1 focus:ring-accent disabled:opacity-50 disabled:cursor-not-allowed';
+
+  const baseStyles = 'relative overflow-hidden font-medium rounded-lg transition-all duration-300 focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50 disabled:cursor-not-allowed';
 
   const variantStyles = {
     primary: 'bg-accent text-black hover:bg-accent/90 shadow-[0_0_15px_color-mix(in_oklch,var(--color-accent)_40%,transparent)] hover:shadow-[0_0_25px_color-mix(in_oklch,var(--color-accent)_60%,transparent)]',

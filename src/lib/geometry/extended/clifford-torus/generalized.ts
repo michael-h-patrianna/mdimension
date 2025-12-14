@@ -242,12 +242,17 @@ export function generateGeneralizedCliffordTorus(
 
   const pointCount = Math.pow(stepsPerCircle, k);
 
+  // Only k=2 produces a 2D surface with proper faces
+  // For k=1 (circle) and k>=3 (higher-dim tori), use point cloud rendering
+  // to ensure vertices are visible even without faces
+  const hasFaces = k === 2;
+
   return {
     dimension,
     type: 'clifford-torus',
     vertices,
     edges,
-    isPointCloud: edgeMode === 'none',
+    isPointCloud: edgeMode === 'none' || !hasFaces,
     metadata: {
       name: `Generalized Clifford T${superscript(k)} (${k}-torus on S${superscript(2 * k - 1)})`,
       formula: `∑|zₘ|² = ${(radius * radius).toFixed(2)}, |zₘ| = ${(radius / Math.sqrt(k)).toFixed(3)}`,

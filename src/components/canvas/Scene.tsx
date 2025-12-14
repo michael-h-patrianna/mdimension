@@ -16,6 +16,7 @@ import type { Face } from '@/lib/geometry/faces'
 import type { NdGeometry, ObjectType } from '@/lib/geometry/types'
 import { UnifiedRenderer } from './renderers/UnifiedRenderer'
 import { CameraController } from './CameraController'
+import { PerformanceManager } from './PerformanceManager'
 import { SceneLighting } from './environment/SceneLighting'
 import { PostProcessing } from './environment/PostProcessing'
 import { GroundPlane } from './environment/GroundPlane'
@@ -106,6 +107,9 @@ export const Scene = React.memo(function Scene({
 
   return (
     <>
+      {/* Performance optimization manager */}
+      <PerformanceManager />
+
       {/* Scene lighting from visual store */}
       <SceneLighting />
 

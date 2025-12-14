@@ -47,3 +47,21 @@ export {
   VISUAL_PRESETS,
 } from './visualStore'
 export type { VisualPreset } from './visualStore'
+export {
+  getEffectiveSampleQuality,
+  getEffectiveShadowQuality,
+  getEffectiveSSRQuality,
+  INTERACTION_RESTORE_DELAY,
+  REFINEMENT_STAGE_QUALITY,
+  REFINEMENT_STAGE_TIMING,
+  REFINEMENT_STAGES,
+  selectProgressiveRefinement,
+  selectTemporalReprojection,
+  usePerformanceStore,
+} from './performanceStore'
+export type {
+  RefinementStage,
+  SampleQualityLevel,
+  ShadowQualityLevel,
+  SSRQualityLevel,
+} from './performanceStore'

@@ -142,35 +142,68 @@ function RootSystemSettings() {
 /**
  * Clifford Torus settings controls
  *
- * Mode is automatically selected based on dimension:
- * - Dimension 4: Classic Clifford torus (T² ⊂ S³ ⊂ ℝ⁴)
- * - Other dimensions: Generalized Clifford torus (Tᵏ ⊂ S^(2k-1) ⊂ ℝ^(2k))
+ * Supports two visualization modes with dimension-specific availability:
+ * - Flat (2D-11D): Grid-like, independent circles
+ * - Nested (4D, 8D): Hopf fibration with coupled angles
  */
 function CliffordTorusSettings() {
   const dimension = useGeometryStore((state) => state.dimension);
   const config = useExtendedObjectStore((state) => state.cliffordTorus);
-  const setMode = useExtendedObjectStore((state) => state.setCliffordTorusMode);
+
+  // Visualization mode actions
+  const setVisualizationMode = useExtendedObjectStore((state) => state.setCliffordTorusVisualizationMode);
+  const initializeForDimension = useExtendedObjectStore((state) => state.initializeCliffordTorusForDimension);
+
+  // Shared actions
   const setRadius = useExtendedObjectStore((state) => state.setCliffordTorusRadius);
+
+  // Flat mode actions
+  const setMode = useExtendedObjectStore((state) => state.setCliffordTorusMode);
   const setResolutionU = useExtendedObjectStore((state) => state.setCliffordTorusResolutionU);
   const setResolutionV = useExtendedObjectStore((state) => state.setCliffordTorusResolutionV);
   const setK = useExtendedObjectStore((state) => state.setCliffordTorusK);
   const setStepsPerCircle = useExtendedObjectStore((state) => state.setCliffordTorusStepsPerCircle);
 
-  // Determine mode based on dimension: classic for 4D, generalized otherwise
-  const isClassicMode = dimension === 4;
-  const effectiveMode = isClassicMode ? 'classic' : 'generalized';
+  // Nested (Hopf) 4D actions
+  const setEta = useExtendedObjectStore((state) => state.setCliffordTorusEta);
+  const setResolutionXi1 = useExtendedObjectStore((state) => state.setCliffordTorusResolutionXi1);
+  const setResolutionXi2 = useExtendedObjectStore((state) => state.setCliffordTorusResolutionXi2);
+  const setShowNestedTori = useExtendedObjectStore((state) => state.setCliffordTorusShowNestedTori);
+  const setNumberOfTori = useExtendedObjectStore((state) => state.setCliffordTorusNumberOfTori);
 
-  // Update store mode when dimension changes (synchronize with UI logic)
+  // Note: 8D now uses the same controls as 4D (resolutionXi1, resolutionXi2, eta)
+  // The old fiberResolution/baseResolution are no longer used
+
+  // Mode availability
+  const nestedAvailable = dimension === 4 || dimension === 8;
+
+  // Auto-switch mode when dimension changes
   React.useEffect(() => {
-    if (config.mode !== effectiveMode) {
+    initializeForDimension(dimension);
+  }, [dimension, initializeForDimension]);
+
+  // Update flat mode internal setting based on dimension
+  React.useEffect(() => {
+    const effectiveMode = dimension === 4 ? 'classic' : 'generalized';
+    if (config.mode !== effectiveMode && config.visualizationMode === 'flat') {
       setMode(effectiveMode);
     }
-  }, [effectiveMode, config.mode, setMode]);
+  }, [dimension, config.mode, config.visualizationMode, setMode]);
 
-  // Calculate max k for generalized mode
+  // Build visualization mode options
+  const visualizationModeOptions = React.useMemo(() => [
+    { value: 'flat', label: 'Flat' },
+    {
+      value: 'nested',
+      label: nestedAvailable ? 'Nested (Hopf)' : 'Nested (Hopf) - 4D/8D only',
+      disabled: !nestedAvailable,
+    },
+  ], [nestedAvailable]);
+
+  // Calculate max k for flat/generalized mode
   const maxK = Math.floor(dimension / 2);
 
-  // Build k options for generalized mode
+  // Build k options for flat/generalized mode
   const kOptions = React.useMemo(() => {
     const options = [];
     for (let k = 1; k <= maxK; k++) {
@@ -185,114 +218,247 @@ function CliffordTorusSettings() {
     return options;
   }, [maxK, config.stepsPerCircle]);
 
-  // Calculate point count for display
-  const pointCount = isClassicMode
-    ? config.resolutionU * config.resolutionV
-    : Math.pow(config.stepsPerCircle, Math.min(config.k, maxK));
+  // Calculate point counts for each mode
+  const getPointCount = () => {
+    switch (config.visualizationMode) {
+      case 'flat':
+        if (dimension === 4) {
+          return config.resolutionU * config.resolutionV;
+        }
+        return Math.pow(config.stepsPerCircle, Math.min(config.k, maxK));
+      case 'nested':
+        // Both 4D and 8D now use the same 2D surface structure
+        if (dimension === 4 || dimension === 8) {
+          const base = config.resolutionXi1 * config.resolutionXi2;
+          return config.showNestedTori && dimension === 4 ? base * config.numberOfTori : base;
+        }
+        return 0;
+      default:
+        return 0;
+    }
+  };
 
-  // Info text
-  const effectiveK = Math.min(config.k, maxK);
-  const infoText = isClassicMode
-    ? `${pointCount} vertices on T² ⊂ S³ ⊂ ℝ⁴`
-    : `${pointCount} vertices on T${superscript(effectiveK)} ⊂ S${superscript(2 * effectiveK - 1)} ⊂ ℝ${superscript(2 * effectiveK)}`;
+  const pointCount = getPointCount();
+
+  // Number of tori options for nested mode
+  const numberOfToriOptions = [
+    { value: '2', label: '2 tori' },
+    { value: '3', label: '3 tori' },
+    { value: '4', label: '4 tori' },
+    { value: '5', label: '5 tori' },
+  ];
 
   return (
     <div className="space-y-4">
-      {/* Mode indicator (read-only) */}
+      {/* Visualization Mode Selector */}
+      <Select
+        label="Visualization Mode"
+        options={visualizationModeOptions}
+        value={config.visualizationMode}
+        onChange={(v) => setVisualizationMode(v as 'flat' | 'nested')}
+      />
+
+      {/* Mode descriptions */}
       <div className="text-xs text-text-secondary">
-        {isClassicMode ? (
-          <span>Classic Clifford Torus (T² on S³)</span>
-        ) : (
-          <span>Generalized Clifford Torus (Tᵏ on S²ᵏ⁻¹)</span>
+        {config.visualizationMode === 'flat' && (
+          <span>Independent circles in perpendicular planes</span>
+        )}
+        {config.visualizationMode === 'nested' && dimension === 4 && (
+          <span>Hopf fibration: linked circles on S³</span>
+        )}
+        {config.visualizationMode === 'nested' && dimension === 8 && (
+          <span>Quaternionic Hopf: S³ fibers over S⁴</span>
         )}
       </div>
 
-      {/* Radius (shared) */}
-      <Slider
-        label="Radius"
-        min={0.5}
-        max={6.0}
-        step={0.1}
-        value={config.radius}
-        onChange={setRadius}
-        onReset={() => setRadius(DEFAULT_CLIFFORD_TORUS_CONFIG.radius)}
-        showValue
-      />
-
-      {/* Classic mode settings (dimension === 4) */}
-      {isClassicMode && (
+      {/* ===== FLAT MODE SETTINGS ===== */}
+      {config.visualizationMode === 'flat' && (
         <>
           <Slider
-            label="Resolution U"
-            min={8}
-            max={64}
-            step={4}
-            value={config.resolutionU}
-            onChange={setResolutionU}
-            onReset={() => setResolutionU(DEFAULT_CLIFFORD_TORUS_CONFIG.resolutionU)}
-            showValue
-          />
-          <Slider
-            label="Resolution V"
-            min={8}
-            max={64}
-            step={4}
-            value={config.resolutionV}
-            onChange={setResolutionV}
-            onReset={() => setResolutionV(DEFAULT_CLIFFORD_TORUS_CONFIG.resolutionV)}
-            showValue
-          />
-        </>
-      )}
-
-      {/* Generalized mode settings (dimension !== 4) */}
-      {!isClassicMode && (
-        <>
-          {/* K selection */}
-          <Select
-            label="Torus Dimension (k)"
-            options={kOptions}
-            value={String(Math.min(config.k, maxK))}
-            onChange={(v) => setK(parseInt(v, 10))}
-          />
-
-          {/* Steps per circle */}
-          <Slider
-            label="Steps Per Circle"
-            min={4}
-            max={32}
-            step={2}
-            value={config.stepsPerCircle}
-            onChange={setStepsPerCircle}
-            onReset={() => setStepsPerCircle(DEFAULT_CLIFFORD_TORUS_CONFIG.stepsPerCircle)}
+            label="Radius"
+            min={0.5}
+            max={6.0}
+            step={0.1}
+            value={config.radius}
+            onChange={setRadius}
+            onReset={() => setRadius(DEFAULT_CLIFFORD_TORUS_CONFIG.radius)}
             showValue
           />
 
-          {effectiveK >= 3 && pointCount > 5000 && (
-            <p className="text-xs text-warning">
-              High point count ({pointCount}). Consider reducing steps or k.
-            </p>
+          {/* 4D Classic mode */}
+          {dimension === 4 && (
+            <>
+              <Slider
+                label="Resolution U"
+                min={8}
+                max={64}
+                step={4}
+                value={config.resolutionU}
+                onChange={setResolutionU}
+                onReset={() => setResolutionU(DEFAULT_CLIFFORD_TORUS_CONFIG.resolutionU)}
+                showValue
+              />
+              <Slider
+                label="Resolution V"
+                min={8}
+                max={64}
+                step={4}
+                value={config.resolutionV}
+                onChange={setResolutionV}
+                onReset={() => setResolutionV(DEFAULT_CLIFFORD_TORUS_CONFIG.resolutionV)}
+                showValue
+              />
+            </>
+          )}
+
+          {/* Generalized mode (non-4D) */}
+          {dimension !== 4 && (
+            <>
+              <Select
+                label="Torus Dimension (k)"
+                options={kOptions}
+                value={String(Math.min(config.k, maxK))}
+                onChange={(v) => setK(parseInt(v, 10))}
+              />
+              <Slider
+                label="Steps Per Circle"
+                min={4}
+                max={32}
+                step={2}
+                value={config.stepsPerCircle}
+                onChange={setStepsPerCircle}
+                onReset={() => setStepsPerCircle(DEFAULT_CLIFFORD_TORUS_CONFIG.stepsPerCircle)}
+                showValue
+              />
+            </>
           )}
         </>
       )}
 
+      {/* ===== NESTED (HOPF) MODE SETTINGS - 4D ===== */}
+      {config.visualizationMode === 'nested' && dimension === 4 && (
+        <>
+          <Slider
+            label="Radius"
+            min={0.5}
+            max={6.0}
+            step={0.1}
+            value={config.radius}
+            onChange={setRadius}
+            onReset={() => setRadius(DEFAULT_CLIFFORD_TORUS_CONFIG.radius)}
+            showValue
+          />
+          <Slider
+            label={`Torus Position (η = ${(config.eta / Math.PI).toFixed(2)}π)`}
+            min={Math.PI / 64}
+            max={Math.PI / 2 - Math.PI / 64}
+            step={0.01}
+            value={config.eta}
+            onChange={setEta}
+            onReset={() => setEta(DEFAULT_CLIFFORD_TORUS_CONFIG.eta)}
+            showValue={false}
+          />
+          <Slider
+            label="Resolution ξ₁"
+            min={8}
+            max={64}
+            step={4}
+            value={config.resolutionXi1}
+            onChange={setResolutionXi1}
+            onReset={() => setResolutionXi1(DEFAULT_CLIFFORD_TORUS_CONFIG.resolutionXi1)}
+            showValue
+          />
+          <Slider
+            label="Resolution ξ₂"
+            min={8}
+            max={64}
+            step={4}
+            value={config.resolutionXi2}
+            onChange={setResolutionXi2}
+            onReset={() => setResolutionXi2(DEFAULT_CLIFFORD_TORUS_CONFIG.resolutionXi2)}
+            showValue
+          />
+          <div className="flex items-center justify-between">
+            <span className="text-sm">Show Nested Tori</span>
+            <input
+              type="checkbox"
+              checked={config.showNestedTori}
+              onChange={(e) => setShowNestedTori(e.target.checked)}
+              className="h-4 w-4"
+            />
+          </div>
+          {config.showNestedTori && (
+            <Select
+              label="Number of Tori"
+              options={numberOfToriOptions}
+              value={String(config.numberOfTori)}
+              onChange={(v) => setNumberOfTori(parseInt(v, 10))}
+            />
+          )}
+        </>
+      )}
 
+      {/* ===== NESTED (HOPF) MODE SETTINGS - 8D ===== */}
+      {/* Uses the same 2D surface controls as 4D (resolutionXi1/Xi2, eta) */}
+      {config.visualizationMode === 'nested' && dimension === 8 && (
+        <>
+          <Slider
+            label="Radius"
+            min={0.5}
+            max={6.0}
+            step={0.1}
+            value={config.radius}
+            onChange={setRadius}
+            onReset={() => setRadius(DEFAULT_CLIFFORD_TORUS_CONFIG.radius)}
+            showValue
+          />
+          <Slider
+            label={`Torus Position (η = ${(config.eta / Math.PI).toFixed(2)}π)`}
+            min={Math.PI / 64}
+            max={Math.PI / 2 - Math.PI / 64}
+            step={0.01}
+            value={config.eta}
+            onChange={setEta}
+            onReset={() => setEta(DEFAULT_CLIFFORD_TORUS_CONFIG.eta)}
+            showValue={false}
+          />
+          <Slider
+            label="Resolution ξ₁"
+            min={8}
+            max={64}
+            step={4}
+            value={config.resolutionXi1}
+            onChange={setResolutionXi1}
+            onReset={() => setResolutionXi1(DEFAULT_CLIFFORD_TORUS_CONFIG.resolutionXi1)}
+            showValue
+          />
+          <Slider
+            label="Resolution ξ₂"
+            min={8}
+            max={64}
+            step={4}
+            value={config.resolutionXi2}
+            onChange={setResolutionXi2}
+            onReset={() => setResolutionXi2(DEFAULT_CLIFFORD_TORUS_CONFIG.resolutionXi2)}
+            showValue
+          />
+        </>
+      )}
 
-      <p className="text-xs text-text-secondary">{infoText}</p>
+      {/* Point count and warnings (same for both 4D and 8D now) */}
+      <p className="text-xs text-text-secondary">
+        {pointCount.toLocaleString()} points
+        {config.visualizationMode === 'nested' && (
+          <span> · {(config.resolutionXi1 * config.resolutionXi2 * 2).toLocaleString()} edges</span>
+        )}
+      </p>
+      {pointCount > 10000 && (
+        <p className="text-xs text-warning">
+          High point count may affect performance
+        </p>
+      )}
     </div>
   );
-}
-
-/**
- * Helper function for superscript display in UI
- * @param n
- */
-function superscript(n: number): string {
-  const map: Record<string, string> = {
-    '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
-    '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
-  };
-  return String(n).split('').map(c => map[c] ?? c).join('');
 }
 
 /**

@@ -44,20 +44,26 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   const sidebarWidth = useLayoutStore((state) => state.sidebarWidth)
 
   const isSideBySide = layoutMode === 'side-by-side'
+  const isSideBySideCollapsed = isSideBySide && isCollapsed
 
-  // Styles vary based on layout mode
-  const asideStyles = isSideBySide
-    ? 'relative flex flex-col h-full pointer-events-auto'
-    : 'fixed right-4 top-4 bottom-4 transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] z-50 flex flex-col items-end pointer-events-none'
+  // Styles vary based on layout mode and collapsed state
+  // When side-by-side AND collapsed, the parent handles positioning, so use simpler styles
+  const asideStyles = isSideBySideCollapsed
+    ? 'relative pointer-events-auto' // Collapsed in side-by-side: parent handles positioning
+    : isSideBySide
+      ? 'relative flex flex-col h-full pointer-events-auto' // Expanded in side-by-side: flex item
+      : 'fixed right-4 top-4 bottom-4 transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] z-50 flex flex-col items-end pointer-events-none' // Overlay mode
 
-  const containerStyles = isSideBySide
-    ? 'glass-panel rounded-2xl flex flex-col overflow-hidden h-full transition-all duration-300'
-    : 'pointer-events-auto glass-panel rounded-2xl flex flex-col overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]'
+  const containerStyles = isSideBySideCollapsed
+    ? 'pointer-events-auto glass-panel rounded-full flex flex-col overflow-hidden transition-all duration-300' // Collapsed: circular button
+    : isSideBySide
+      ? 'glass-panel rounded-2xl flex flex-col overflow-hidden h-full transition-all duration-300' // Expanded side-by-side
+      : 'pointer-events-auto glass-panel rounded-2xl flex flex-col overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]' // Overlay mode
 
   // Width handling
   const getContainerWidth = () => {
     if (isCollapsed) {
-      return isSideBySide ? 'w-14' : 'w-14 h-14 rounded-full'
+      return 'w-14 h-14' // Collapsed: small circular button
     }
     if (isSideBySide) {
       return '' // Width set via inline style
@@ -73,7 +79,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     <aside
       className={`${asideStyles} ${className}`}
       aria-label="Control Panel"
-      style={isSideBySide ? { width: isCollapsed ? '56px' : `${sidebarWidth}px` } : undefined}
+      style={isSideBySide && !isCollapsed ? { width: `${sidebarWidth}px` } : undefined}
     >
       {/* Resize handle - only in side-by-side mode when expanded */}
       {isSideBySide && !isCollapsed && <ResizeHandle />}

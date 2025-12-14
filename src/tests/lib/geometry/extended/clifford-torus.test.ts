@@ -213,9 +213,14 @@ describe('generateCliffordTorus', () => {
   });
 
   describe('dimension validation', () => {
-    it('should throw for dimension < 3', () => {
+    it('should throw for dimension < 2', () => {
       expect(() => generateCliffordTorus(1, DEFAULT_CLIFFORD_TORUS_CONFIG)).toThrow();
-      expect(() => generateCliffordTorus(2, DEFAULT_CLIFFORD_TORUS_CONFIG)).toThrow();
+    });
+
+    it('should generate 2D circle for dimension 2', () => {
+      const geometry = generateCliffordTorus(2, DEFAULT_CLIFFORD_TORUS_CONFIG);
+      expect(geometry.dimension).toBe(2);
+      // Dimension 2 uses generalized mode with k=1 (a circle)
     });
 
     it('should generate 3D torus surface for dimension 3', () => {

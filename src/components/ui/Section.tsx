@@ -20,7 +20,9 @@ export const Section: React.FC<SectionProps> = ({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between py-2 px-3 text-left focus:outline-hidden"
+       className={`w-full flex items-center justify-between py-2 px-3 text-left focus:outline-none
+  ${isOpen ? 'border border-accent/50 shadow-[0_0_10px_color-mix(in_oklch,var(--color-accent)_20%,transparent)]' : ''}
+`}
         aria-expanded={isOpen}
       >
         <div className="flex items-center gap-2">

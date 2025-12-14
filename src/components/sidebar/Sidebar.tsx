@@ -14,6 +14,7 @@ import { ExportSection } from './Export/ExportSection'
 import { FacesSection } from './Faces/FacesSection'
 import { GeometrySection } from './Geometry/GeometrySection'
 import { LightsSection } from './Lights/LightsSection'
+import { PerformanceSection } from './Performance/PerformanceSection'
 import { PostProcessingSection } from './PostProcessing/PostProcessingSection'
 import { ProjectionSection } from './Projection/ProjectionSection'
 import { RenderModeToggles } from './RenderMode/RenderModeToggles'
@@ -53,6 +54,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <EnvironmentSection defaultOpen={false} />
       <PostProcessingSection defaultOpen={false} />
       <ProjectionSection defaultOpen={false} />
+      <PerformanceSection defaultOpen={false} />
       <SettingsSection defaultOpen={false} />
       <ExportSection defaultOpen={false} />
       <DocumentationSection defaultOpen={false} />

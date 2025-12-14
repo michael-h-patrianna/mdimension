@@ -79,8 +79,6 @@ export const Layout: React.FC<LayoutProps> = ({
 
   // Side-by-side layout: flex row with canvas taking remaining space
   if (layoutMode === 'side-by-side') {
-    const effectiveSidebarWidth = isCollapsed ? 56 : sidebarWidth
-
     return (
       <div className="flex w-screen h-screen bg-background overflow-hidden selection:bg-accent selection:text-black">
         {/* Canvas container - takes remaining space, min 300px */}
@@ -112,15 +110,24 @@ export const Layout: React.FC<LayoutProps> = ({
               </div>
             </header>
           )}
+
+          {/* Collapsed sidebar - fixed position overlay in top-right corner */}
+          {isCollapsed && (
+            <div className="absolute top-4 right-4 z-50">
+              <Sidebar layoutMode={layoutMode} />
+            </div>
+          )}
         </div>
 
-        {/* Sidebar - fixed width, flex-shrink-0 */}
-        <div
-          className="flex-shrink-0 h-full p-4 pl-0 transition-[width] duration-300"
-          style={{ width: `${effectiveSidebarWidth + 16}px` }}
-        >
-          <Sidebar layoutMode={layoutMode} />
-        </div>
+        {/* Sidebar - fixed width, flex-shrink-0 (only when expanded) */}
+        {!isCollapsed && (
+          <div
+            className="flex-shrink-0 h-full p-4 pl-0 transition-[width] duration-300"
+            style={{ width: `${sidebarWidth + 16}px` }}
+          >
+            <Sidebar layoutMode={layoutMode} />
+          </div>
+        )}
       </div>
     )
   }

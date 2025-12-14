@@ -18,6 +18,7 @@ import { useMemo } from 'react';
 import { FpsController } from '@/components/canvas/FpsController';
 import { Scene } from '@/components/canvas/Scene';
 import { Layout } from '@/components/layout/Layout';
+import { RefinementIndicator } from '@/components/ui/RefinementIndicator';
 import { useAnimationLoop } from '@/hooks/useAnimationLoop';
 import { useFaceDepths } from '@/hooks/useFaceDepths';
 import { useFaceDetection } from '@/hooks/useFaceDetection';
@@ -130,6 +131,9 @@ function App() {
   return (
     <Layout appTitle="N-Dimensional Visualizer" showHeader>
       <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+        {/* Performance indicators */}
+        <RefinementIndicator position="bottom-right" />
+
         <Canvas
           frameloop="never"
           camera={{

@@ -12,6 +12,7 @@
 
 import { extend, useFrame, useThree } from '@react-three/fiber';
 import React, { useEffect, useMemo, useRef } from 'react';
+import * as THREE from 'three';
 import {
   AdditiveBlending,
   BufferGeometry,
@@ -27,7 +28,8 @@ import {
 import { LineMaterial, LineSegments2, LineSegmentsGeometry } from 'three-stdlib';
 import { useShallow } from 'zustand/react/shallow';
 
-import { createColorCache, updateLinearColorUniform } from '@/lib/colors/linearCache';
+import { createColorCache, createLightColorCache } from '@/lib/colors/linearCache';
+import { createLightUniforms } from '@/lib/lights/uniforms';
 import { createScaleMatrix, multiplyMatrixVector } from '@/lib/math';
 import { DEFAULT_PROJECTION_DISTANCE, projectEdgesToPositions } from '@/lib/math/projection';
 import { composeRotations } from '@/lib/math/rotation';
@@ -46,6 +48,14 @@ import {
   buildPointVertexShader,
   MAX_EXTRA_DIMS,
 } from './index';
+import {
+  updateNDTransformUniforms,
+  updateColorPaletteUniforms,
+  updateLightingUniforms,
+  updatePointMaterialUniforms,
+  updateEdgeMaterialUniforms,
+  type NDTransformParams,
+} from './uniformHelpers';
 
 // Extend for fat lines
 extend({ LineSegments2, LineMaterial, LineSegmentsGeometry });
@@ -137,7 +147,7 @@ function hasInstanceBuffer(
 }
 
 /**
- * Create GPU point shader material with full N-D transforms
+ * Create GPU point shader material with full N-D transforms and lighting
  * @param pointColor - Color for the points
  * @param opacity - Material opacity
  * @param pointSize - Size of points
@@ -148,8 +158,12 @@ function createPointShaderMaterial(
   opacity: number,
   pointSize: number
 ): ShaderMaterial {
+  // Get light uniforms from helper
+  const lightUniforms = createLightUniforms();
+
   return new ShaderMaterial({
     uniforms: {
+      // N-D transformation uniforms
       uRotationMatrix4D: { value: new Matrix4() },
       uDimension: { value: 4 },
       uScale4D: { value: [1, 1, 1, 1] },
@@ -158,16 +172,55 @@ function createPointShaderMaterial(
       uDepthRowSums: { value: new Float32Array(11) },
       uProjectionDistance: { value: DEFAULT_PROJECTION_DISTANCE },
       uProjectionType: { value: 1 },
-      uPointColor: { value: new Color(pointColor) },
-      uOpacity: { value: opacity },
       uPointSize: { value: pointSize },
+
+      // Color uniforms (renamed from uPointColor to uColor for consistency)
+      uColor: { value: new Color(pointColor).convertSRGBToLinear() },
+      uOpacity: { value: opacity },
       uUseVertexColors: { value: false },
+
+      // Material properties for G-buffer
+      uMetallic: { value: 0.0 },
+
+      // Advanced color system uniforms
+      uColorAlgorithm: { value: 2 }, // Default to cosine
+      uCosineA: { value: new Vector3(0.5, 0.5, 0.5) },
+      uCosineB: { value: new Vector3(0.5, 0.5, 0.5) },
+      uCosineC: { value: new Vector3(1.0, 1.0, 1.0) },
+      uCosineD: { value: new Vector3(0.0, 0.33, 0.67) },
+      uDistPower: { value: 1.0 },
+      uDistCycles: { value: 1.0 },
+      uDistOffset: { value: 0.0 },
+      uLchLightness: { value: 0.7 },
+      uLchChroma: { value: 0.15 },
+      uMultiSourceWeights: { value: new Vector3(0.5, 0.3, 0.2) },
+
+      // Legacy single-light uniforms
+      uLightEnabled: { value: false },
+      uLightColor: { value: new Color('#FFFFFF') },
+      uLightDirection: { value: new Vector3(0, 1, 0) },
+      uLightStrength: { value: 1.0 },
+      uAmbientIntensity: { value: 0.3 },
+      uAmbientColor: { value: new Color('#FFFFFF') },
+      uDiffuseIntensity: { value: 0.7 },
+      uSpecularIntensity: { value: 0.5 },
+      uSpecularPower: { value: 32.0 },
+      uSpecularColor: { value: new Color('#FFFFFF') },
+
+      // Multi-light system uniforms
+      ...lightUniforms,
+
+      // Fresnel uniforms
+      uFresnelEnabled: { value: false },
+      uFresnelIntensity: { value: 0.5 },
+      uRimColor: { value: new Color('#FFFFFF') },
     },
     vertexShader: buildPointVertexShader(),
     fragmentShader: buildPointFragmentShader(),
     transparent: true,
     depthWrite: opacity >= 1,
     blending: opacity < 1 ? AdditiveBlending : NormalBlending,
+    glslVersion: THREE.GLSL3,
   });
 }
 
@@ -188,13 +241,14 @@ function createEdgeShaderMaterial(edgeColor: string, opacity: number): ShaderMat
       uDepthRowSums: { value: new Float32Array(11) },
       uProjectionDistance: { value: DEFAULT_PROJECTION_DISTANCE },
       uProjectionType: { value: 1 },
-      uEdgeColor: { value: new Color(edgeColor) },
+      uEdgeColor: { value: new Color(edgeColor).convertSRGBToLinear() },
       uOpacity: { value: opacity },
     },
     vertexShader: buildEdgeVertexShader(),
     fragmentShader: buildEdgeFragmentShader(),
     transparent: opacity < 1,
     depthWrite: opacity >= 1,
+    glslVersion: THREE.GLSL3,
   });
 }
 
@@ -224,6 +278,8 @@ export const PointCloudScene = React.memo(function PointCloudScene({
   const rotationMatrixRef = useRef<number[][] | null>(null);
   // Cached linear colors - avoid per-frame sRGB->linear conversion
   const colorCacheRef = useRef(createColorCache());
+  // Cached light colors for multi-light system
+  const lightColorCacheRef = useRef(createLightColorCache());
 
   // Assign main object layer for depth-based effects (SSR, refraction, bokeh)
   useEffect(() => {
@@ -253,11 +309,19 @@ export const PointCloudScene = React.memo(function PointCloudScene({
     edgesVisible,
     edgeColor,
     edgeThickness,
+    shadowEnabled,
+    faceColor,
+    faceOpacity,
+    edgeMetallic,
   } = useVisualStore(
     useShallow((state) => ({
       edgesVisible: state.edgesVisible,
       edgeColor: state.edgeColor,
       edgeThickness: state.edgeThickness,
+      shadowEnabled: state.shadowEnabled,
+      faceColor: state.faceColor,
+      faceOpacity: state.faceOpacity,
+      edgeMetallic: state.edgeMetallic,
     }))
   );
 
@@ -445,6 +509,8 @@ export const PointCloudScene = React.memo(function PointCloudScene({
       pointGeometry?.dispose();
       thinEdgeGeometry?.dispose();
       fatEdgeGeometry?.dispose();
+      // Clear working buffers to help GC
+      workingBuffers.current = null;
     };
   }, [pointMaterial, thinEdgeMaterial, pointGeometry, thinEdgeGeometry, fatEdgeGeometry]);
 
@@ -452,12 +518,13 @@ export const PointCloudScene = React.memo(function PointCloudScene({
   useFrame(() => {
     if (numVertices === 0) return;
 
-    // Read current state
+    // Read current state from stores
     const rotations = useRotationStore.getState().rotations;
     const { uniformScale, perAxisScale } = useTransformStore.getState();
     const projectionType = useProjectionStore.getState().type;
+    const visualState = useVisualStore.getState();
 
-    // Build transformation data
+    // Build scales array
     const scales: number[] = [];
     for (let i = 0; i < dimension; i++) {
       scales.push(perAxisScale[i] ?? uniformScale);
@@ -472,106 +539,125 @@ export const PointCloudScene = React.memo(function PointCloudScene({
     const rotationMatrix = rotationMatrixRef.current;
     const gpuData = matrixToGPUUniforms(rotationMatrix, dimension);
 
+    // Calculate projection distance
     const normalizationFactor = dimension > 3 ? Math.sqrt(dimension - 3) : 1;
     const projectionDistance = calculateSafeProjectionDistance(baseVertices, normalizationFactor);
 
+    // Build N-D transform params
+    const transformParams: NDTransformParams = {
+      dimension,
+      scales,
+      gpuData,
+      projectionDistance,
+      projectionType,
+    };
+
     // Update point material uniforms
     if (pointMaterialRef.current) {
-      const u = pointMaterialRef.current.uniforms;
-      u.uRotationMatrix4D!.value = gpuData.rotationMatrix4D;
-      u.uDimension!.value = dimension;
-      u.uScale4D!.value = [scales[0] ?? 1, scales[1] ?? 1, scales[2] ?? 1, scales[3] ?? 1];
-      const extraScales = u.uExtraScales!.value as Float32Array;
-      for (let i = 0; i < MAX_EXTRA_DIMS; i++) {
-        extraScales[i] = scales[i + 4] ?? 1;
-      }
-      // Copy extra rotation data for full N-D rotation
-      const extraCols = u.uExtraRotationCols!.value as Float32Array;
-      extraCols.set(gpuData.extraRotationCols);
-      const depthSums = u.uDepthRowSums!.value as Float32Array;
-      depthSums.set(gpuData.depthRowSums);
-      u.uProjectionDistance!.value = projectionDistance;
-      u.uProjectionType!.value = projectionType === 'perspective' ? 1 : 0;
-      // Use cached linear color conversion
-      updateLinearColorUniform(colorCacheRef.current.pointColor, u.uPointColor!.value as Color, vertexColor);
-      u.uPointSize!.value = vertexSize * 10;
+      updateNDTransformUniforms(pointMaterialRef.current, transformParams);
+      updatePointMaterialUniforms(
+        pointMaterialRef.current,
+        colorCacheRef.current,
+        faceColor,
+        faceOpacity,
+        edgeMetallic,
+        vertexSize
+      );
+      updateColorPaletteUniforms(pointMaterialRef.current, visualState);
+      updateLightingUniforms(
+        pointMaterialRef.current,
+        visualState,
+        colorCacheRef.current,
+        lightColorCacheRef.current
+      );
     }
 
     // Update thin edge material uniforms
     if (edgeMaterialRef.current && !useFatLines) {
-      const u = edgeMaterialRef.current.uniforms;
-      u.uRotationMatrix4D!.value = gpuData.rotationMatrix4D;
-      u.uDimension!.value = dimension;
-      u.uScale4D!.value = [scales[0] ?? 1, scales[1] ?? 1, scales[2] ?? 1, scales[3] ?? 1];
-      const extraScales = u.uExtraScales!.value as Float32Array;
-      for (let i = 0; i < MAX_EXTRA_DIMS; i++) {
-        extraScales[i] = scales[i + 4] ?? 1;
-      }
-      // Copy extra rotation data for full N-D rotation
-      const extraCols = u.uExtraRotationCols!.value as Float32Array;
-      extraCols.set(gpuData.extraRotationCols);
-      const depthSums = u.uDepthRowSums!.value as Float32Array;
-      depthSums.set(gpuData.depthRowSums);
-      u.uProjectionDistance!.value = projectionDistance;
-      u.uProjectionType!.value = projectionType === 'perspective' ? 1 : 0;
-      // Use cached linear color conversion
-      updateLinearColorUniform(colorCacheRef.current.edgeColor, u.uEdgeColor!.value as Color, edgeColor);
+      updateNDTransformUniforms(edgeMaterialRef.current, transformParams);
+      updateEdgeMaterialUniforms(edgeMaterialRef.current, colorCacheRef.current, edgeColor);
     }
 
     // Fat lines still need CPU transform (LineSegments2 uses its own shader)
     if (useFatLines && edgesVisible && fatEdgeGeometryRef.current && workingBuffers.current) {
-      const buffers = workingBuffers.current;
-      const scaleMatrix = createScaleMatrix(dimension, scales);
+      updateFatLineGeometry(
+        fatEdgeGeometryRef.current,
+        workingBuffers.current,
+        baseVertices,
+        edges,
+        rotationMatrix,
+        scales,
+        dimension,
+        projectionDistance,
+        projectionType
+      );
+    }
+  });
 
-      // Transform vertices (apply scale + rotation)
-      for (let i = 0; i < numVertices; i++) {
-        const baseV = baseVertices[i]!;
-        const transformedV = buffers.transformedVertices[i]!;
+  /**
+   * Update fat line geometry with CPU-transformed vertices.
+   * Fat lines (LineSegments2) use their own shader so we must do CPU transforms.
+   */
+  function updateFatLineGeometry(
+    geometry: LineSegmentsGeometry,
+    buffers: { transformedVertices: VectorND[] },
+    vertices: VectorND[],
+    edgeList: [number, number][],
+    rotation: number[][],
+    scaleFactors: number[],
+    dim: number,
+    projDist: number,
+    projType: 'perspective' | 'orthographic'
+  ): void {
+    const scaleMatrix = createScaleMatrix(dim, scaleFactors);
 
-        multiplyMatrixVector(scaleMatrix, baseV, transformedV);
-        const temp = [...transformedV];
-        multiplyMatrixVector(rotationMatrix, temp, transformedV);
-      }
+    // Transform vertices (apply scale + rotation)
+    for (let i = 0; i < vertices.length; i++) {
+      const baseV = vertices[i]!;
+      const transformedV = buffers.transformedVertices[i]!;
 
-      // Build fat line positions buffer
-      const segmentCount = numEdges;
-      const positionCount = segmentCount * 6;
+      multiplyMatrixVector(scaleMatrix, baseV, transformedV);
+      const temp = [...transformedV];
+      multiplyMatrixVector(rotation, temp, transformedV);
+    }
 
-      let targetBuffer: Float32Array;
-      let needsResize = true;
-      let instanceBuffer: InstancedInterleavedBuffer | null = null;
+    // Build fat line positions buffer
+    const segmentCount = edgeList.length;
+    const positionCount = segmentCount * 6;
 
-      if (hasInstanceBuffer(fatEdgeGeometryRef.current.attributes)) {
-        const bufferData = fatEdgeGeometryRef.current.attributes.instanceStart.data;
-        if (bufferData.array.length === positionCount) {
-          targetBuffer = bufferData.array as Float32Array;
-          instanceBuffer = bufferData;
-          needsResize = false;
-        } else {
-          targetBuffer = new Float32Array(positionCount);
-        }
+    let targetBuffer: Float32Array;
+    let needsResize = true;
+    let instanceBuffer: InstancedInterleavedBuffer | null = null;
+
+    if (hasInstanceBuffer(geometry.attributes)) {
+      const bufferData = geometry.attributes.instanceStart.data;
+      if (bufferData.array.length === positionCount) {
+        targetBuffer = bufferData.array as Float32Array;
+        instanceBuffer = bufferData;
+        needsResize = false;
       } else {
         targetBuffer = new Float32Array(positionCount);
       }
-
-      // Project edges directly into the Float32Array buffer
-      // This eliminates intermediate Vector3D[] allocation and manual copy loop
-      projectEdgesToPositions(
-        buffers.transformedVertices,
-        edges,
-        targetBuffer,
-        projectionDistance,
-        projectionType === 'perspective'
-      );
-
-      if (needsResize) {
-        fatEdgeGeometryRef.current.setPositions(targetBuffer);
-      } else if (instanceBuffer) {
-        instanceBuffer.needsUpdate = true;
-        fatEdgeGeometryRef.current.computeBoundingSphere();
-      }
+    } else {
+      targetBuffer = new Float32Array(positionCount);
     }
-  });
+
+    // Project edges directly into the Float32Array buffer
+    projectEdgesToPositions(
+      buffers.transformedVertices,
+      edgeList,
+      targetBuffer,
+      projDist,
+      projType === 'perspective'
+    );
+
+    if (needsResize) {
+      geometry.setPositions(targetBuffer);
+    } else if (instanceBuffer) {
+      instanceBuffer.needsUpdate = true;
+      geometry.computeBoundingSphere();
+    }
+  }
 
   // ============ RENDER ============
   return (
@@ -600,7 +686,13 @@ export const PointCloudScene = React.memo(function PointCloudScene({
 
       {/* GPU-rendered points */}
       {vertexVisible && pointGeometry && (
-        <points geometry={pointGeometry} material={pointMaterial} frustumCulled={false} />
+        <points
+          geometry={pointGeometry}
+          material={pointMaterial}
+          frustumCulled={false}
+          castShadow={shadowEnabled}
+          receiveShadow={shadowEnabled}
+        />
       )}
     </group>
   );

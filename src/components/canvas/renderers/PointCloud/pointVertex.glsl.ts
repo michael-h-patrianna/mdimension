@@ -7,7 +7,12 @@
  * @module
  */
 
-import { MAX_EXTRA_DIMS } from './constants'
+import { PERSPECTIVE_POINT_SCALE } from './constants'
+import {
+  GLSL_ND_TRANSFORM_UNIFORMS,
+  GLSL_ND_TRANSFORM_ATTRIBUTES,
+  GLSL_ND_TRANSFORM_FUNCTIONS,
+} from './ndTransform.glsl'
 
 /**
  * Build vertex shader for GPU point rendering with N-D transforms.
@@ -22,85 +27,73 @@ import { MAX_EXTRA_DIMS } from './constants'
  */
 export function buildPointVertexShader(): string {
   return `
-    uniform mat4 uRotationMatrix4D;
-    uniform int uDimension;
-    uniform vec4 uScale4D;
-    uniform float uExtraScales[${MAX_EXTRA_DIMS}];
-    uniform float uExtraRotationCols[${MAX_EXTRA_DIMS * 4}];
-    uniform float uDepthRowSums[11];
-    uniform float uProjectionDistance;
-    uniform int uProjectionType;
+    precision highp float;
+    precision highp int;
+
+    // N-D transformation uniforms
+    ${GLSL_ND_TRANSFORM_UNIFORMS}
     uniform float uPointSize;
 
-    in float aExtraDim0;
-    in float aExtraDim1;
-    in float aExtraDim2;
-    in float aExtraDim3;
-    in float aExtraDim4;
-    in float aExtraDim5;
-    in float aExtraDim6;
+    // Extra dimension attributes
+    ${GLSL_ND_TRANSFORM_ATTRIBUTES}
     in vec3 aColor;
 
+    // Varyings for fragment shader
     out vec3 vColor;
+    out float vDepth;
+    out vec3 vWorldPosition;
+    out vec3 vViewDir;
+
+    // N-D transformation functions
+    ${GLSL_ND_TRANSFORM_FUNCTIONS}
 
     void main() {
-      // Collect scaled input dimensions
+      // Collect and scale input dimensions
       float scaledInputs[11];
-      scaledInputs[0] = position.x * uScale4D.x;
-      scaledInputs[1] = position.y * uScale4D.y;
-      scaledInputs[2] = position.z * uScale4D.z;
-      scaledInputs[3] = aExtraDim0 * uScale4D.w;
-      scaledInputs[4] = aExtraDim1 * uExtraScales[0];
-      scaledInputs[5] = aExtraDim2 * uExtraScales[1];
-      scaledInputs[6] = aExtraDim3 * uExtraScales[2];
-      scaledInputs[7] = aExtraDim4 * uExtraScales[3];
-      scaledInputs[8] = aExtraDim5 * uExtraScales[4];
-      scaledInputs[9] = aExtraDim6 * uExtraScales[5];
-      scaledInputs[10] = 0.0;
+      collectScaledInputs(
+        position,
+        aExtraDim0, aExtraDim1, aExtraDim2,
+        aExtraDim3, aExtraDim4, aExtraDim5, aExtraDim6,
+        uScale4D, uExtraScales,
+        scaledInputs
+      );
 
-      // Apply 4x4 rotation to first 4 dimensions
-      vec4 scaledPos = vec4(scaledInputs[0], scaledInputs[1], scaledInputs[2], scaledInputs[3]);
-      vec4 rotated = uRotationMatrix4D * scaledPos;
-
-      // Add contributions from extra dimensions (5+) to x,y,z,w
-      for (int i = 0; i < ${MAX_EXTRA_DIMS}; i++) {
-        if (i + 5 <= uDimension) {
-          float extraDimValue = scaledInputs[i + 4];
-          rotated.x += uExtraRotationCols[i * 4 + 0] * extraDimValue;
-          rotated.y += uExtraRotationCols[i * 4 + 1] * extraDimValue;
-          rotated.z += uExtraRotationCols[i * 4 + 2] * extraDimValue;
-          rotated.w += uExtraRotationCols[i * 4 + 3] * extraDimValue;
-        }
-      }
+      // Apply N-D rotation
+      vec4 rotated = applyNDRotation(
+        scaledInputs,
+        uRotationMatrix4D,
+        uExtraRotationCols,
+        uDimension
+      );
 
       // Project to 3D
-      vec3 projected;
-      if (uProjectionType == 0) {
-        // Orthographic
-        projected = rotated.xyz;
-      } else {
-        // Perspective with proper rotated depth
-        float effectiveDepth = rotated.w;
-        for (int j = 0; j < 11; j++) {
-          if (j < uDimension) {
-            effectiveDepth += uDepthRowSums[j] * scaledInputs[j];
-          }
-        }
-        float normFactor = uDimension > 4 ? sqrt(float(uDimension - 3)) : 1.0;
-        effectiveDepth /= normFactor;
+      vec3 projected = projectTo3D(
+        rotated,
+        scaledInputs,
+        uDepthRowSums,
+        uProjectionDistance,
+        uProjectionType,
+        uDimension
+      );
 
-        float factor = 1.0 / (uProjectionDistance - effectiveDepth);
-        projected = rotated.xyz * factor;
-      }
-
+      // Standard MVP transform
       vec4 mvPosition = modelViewMatrix * vec4(projected, 1.0);
       gl_Position = projectionMatrix * mvPosition;
 
       // Point size with perspective
-      gl_PointSize = uPointSize * (300.0 / -mvPosition.z);
+      gl_PointSize = uPointSize * (${PERSPECTIVE_POINT_SCALE} / -mvPosition.z);
 
       // Pass color
       vColor = aColor;
+
+      // Pass world position and view direction for lighting
+      vWorldPosition = projected;
+      vViewDir = normalize(-mvPosition.xyz);
+
+      // Compute normalized depth for palette coloring (0-1 range based on position in scene)
+      // Use the w component (4th dimension) normalized by projection distance
+      float depthValue = uProjectionType == 0 ? rotated.w : (rotated.w / uProjectionDistance);
+      vDepth = clamp(depthValue * 0.5 + 0.5, 0.0, 1.0);
     }
   `
 }

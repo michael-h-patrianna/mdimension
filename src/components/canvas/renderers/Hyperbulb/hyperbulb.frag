@@ -83,6 +83,19 @@ uniform vec3 uMultiSourceWeights;
 // Performance mode: reduces quality during animation for smoother interaction
 uniform bool uFastMode;
 
+// Progressive refinement quality multiplier (0.25-1.0)
+// Used for fine-grained quality control after interaction stops
+// 0.25 = lowest quality, 1.0 = full quality
+uniform float uQualityMultiplier;
+
+// Temporal Reprojection uniforms
+// Reuses previous frame depth to accelerate raymarching
+uniform sampler2D uPrevDepthTexture;
+uniform mat4 uPrevViewProjectionMatrix;
+uniform mat4 uPrevInverseViewProjectionMatrix;
+uniform bool uTemporalEnabled;
+uniform vec2 uDepthBufferResolution;
+
 // Opacity Mode System uniforms
 // Mode: 0=solid, 1=simpleAlpha, 2=layeredSurfaces, 3=volumetricDensity
 uniform int uOpacityMode;
@@ -960,8 +973,18 @@ float GetDist(vec3 pos) {
 float GetDistWithTrap(vec3 pos, out float trap) {
     float pwr = max(uPower, 2.0);
     float bail = max(uEscapeRadius, 2.0);
-    // Use reduced iterations in fast mode for better performance
-    int maxIterLimit = uFastMode ? MAX_ITER_LQ : MAX_ITER_HQ;
+    // Calculate iteration limit based on performance mode and quality multiplier
+    // Fast mode: use LQ settings immediately
+    // Normal mode: interpolate between LQ and HQ based on quality multiplier (0.25-1.0)
+    int maxIterLimit;
+    if (uFastMode) {
+        maxIterLimit = MAX_ITER_LQ;
+    } else {
+        // Progressive refinement: interpolate iterations based on quality multiplier
+        // At 0.25: use LQ iterations, at 1.0: use HQ iterations
+        float t = clamp((uQualityMultiplier - 0.25) / 0.75, 0.0, 1.0);
+        maxIterLimit = int(mix(float(MAX_ITER_LQ), float(MAX_ITER_HQ), t));
+    }
     int maxIt = int(min(uIterations, float(maxIterLimit)));
 
     if (uDimension == 3) return sdf3D(pos, pwr, bail, maxIt, trap);
@@ -971,6 +994,39 @@ float GetDistWithTrap(vec3 pos, out float trap) {
     if (uDimension == 7) return sdf7D(pos, pwr, bail, maxIt, trap);
     if (uDimension == 8) return sdf8D(pos, pwr, bail, maxIt, trap);
     return sdfHighD(pos, uDimension, pwr, bail, maxIt, trap);
+}
+
+// ============================================
+// Temporal Reprojection
+// ============================================
+
+/**
+ * Reproject current pixel to previous frame and sample depth.
+ * Returns the reprojected depth distance, or -1.0 if invalid.
+ *
+ * @param ro Ray origin (camera position)
+ * @param rd Ray direction (normalized)
+ * @param currentViewProj Current frame's view-projection matrix
+ * @return Reprojected depth distance, or -1.0 if out of bounds or disabled
+ */
+float getTemporalDepth(vec3 ro, vec3 rd, mat4 currentViewProj) {
+    if (!uTemporalEnabled) return -1.0;
+
+    // We need to find where the ray at some distance would have been in the previous frame
+    // For simplicity, we'll sample the previous depth at the current screen position
+    // This works well for small camera movements
+
+    // Get current screen UV from vUv (already available)
+    vec2 screenUV = vUv;
+
+    // Sample previous depth (stored as linear depth from camera)
+    float prevDepth = texture(uPrevDepthTexture, screenUV).r;
+
+    // Validate depth (0 means no hit, very large means miss)
+    if (prevDepth <= 0.0 || prevDepth > 100.0) return -1.0;
+
+    // Apply a small bias to avoid surface acne
+    return max(0.0, prevDepth - 0.01);
 }
 
 // ============================================
@@ -997,14 +1053,38 @@ float RayMarch(vec3 ro, vec3 rd, out float trap) {
     float dO = max(0.0, tSphere.x);
     float maxT = min(tSphere.y, maxDist);
 
-    // Use reduced march steps and relaxed surface distance in fast mode
-    int maxSteps = uFastMode ? MAX_MARCH_STEPS_LQ : MAX_MARCH_STEPS_HQ;
-    float surfDist = uFastMode ? SURF_DIST_LQ : SURF_DIST_HQ;
+    // Temporal Reprojection: Use previous frame's depth as starting point
+    // This can skip many empty-space march steps
+    float temporalDepth = getTemporalDepth(ro, rd, uViewMatrix * uModelMatrix);
+    if (temporalDepth > 0.0 && temporalDepth < maxT) {
+        // Start from the temporal hint, with safety margin
+        // We step back slightly in case the surface moved closer
+        float temporalStart = max(dO, temporalDepth * 0.95);
+        dO = temporalStart;
+    }
+
+    // Calculate march steps and surface distance based on performance mode and quality multiplier
+    // Fast mode: use LQ settings immediately
+    // Normal mode: interpolate between LQ and HQ based on quality multiplier (0.25-1.0)
+    int maxSteps;
+    float surfDist;
+    float omega;
+
+    if (uFastMode) {
+        maxSteps = MAX_MARCH_STEPS_LQ;
+        surfDist = SURF_DIST_LQ;
+        omega = 1.0;  // No overrelaxation in fast mode (already fast)
+    } else {
+        // Progressive refinement: interpolate based on quality multiplier
+        float t = clamp((uQualityMultiplier - 0.25) / 0.75, 0.0, 1.0);
+        maxSteps = int(mix(float(MAX_MARCH_STEPS_LQ), float(MAX_MARCH_STEPS_HQ), t));
+        surfDist = mix(SURF_DIST_LQ, SURF_DIST_HQ, t);
+        omega = mix(1.0, 1.2, t);  // Gradually enable overrelaxation as quality increases
+    }
 
     // Relaxed sphere tracing with overrelaxation
     // omega > 1 allows larger steps, reducing total march count
     // Safety: if we overstep, fall back to conservative stepping
-    float omega = uFastMode ? 1.0 : 1.2;  // No overrelaxation in fast mode (already fast)
     float prevDist = 1e10;
 
     // Loop uses max possible steps, early exit via maxSteps check

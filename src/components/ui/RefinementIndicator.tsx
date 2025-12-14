@@ -1,0 +1,103 @@
+/**
+ * Refinement Indicator Component
+ * Displays progressive refinement progress
+ */
+
+import { usePerformanceStore } from '@/stores';
+import React, { useEffect, useState } from 'react';
+
+export interface RefinementIndicatorProps {
+  /** Position in the viewport */
+  position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+  /** Auto-hide delay after reaching 100% (ms) */
+  autoHideDelay?: number;
+}
+
+/**
+ * Overlay indicator showing progressive refinement progress.
+ * Shows during refinement and auto-hides after completion.
+ */
+export const RefinementIndicator: React.FC<RefinementIndicatorProps> = ({
+  position = 'bottom-right',
+  autoHideDelay = 1000,
+}) => {
+  const enabled = usePerformanceStore((s) => s.progressiveRefinementEnabled);
+  const stage = usePerformanceStore((s) => s.refinementStage);
+  const progress = usePerformanceStore((s) => s.refinementProgress);
+  const isInteracting = usePerformanceStore((s) => s.isInteracting);
+
+  const [isVisible, setIsVisible] = useState(false);
+  const [fadeOut, setFadeOut] = useState(false);
+
+  // Show/hide logic
+  useEffect(() => {
+    if (!enabled) {
+      setIsVisible(false);
+      return undefined;
+    }
+
+    if (isInteracting) {
+      // During interaction - hide immediately
+      setIsVisible(false);
+      setFadeOut(false);
+      return undefined;
+    }
+
+    if (progress < 100) {
+      // During refinement - show
+      setIsVisible(true);
+      setFadeOut(false);
+      return undefined;
+    }
+
+    if (progress >= 100 && stage === 'final') {
+      // Complete - start fade out
+      setFadeOut(true);
+      const timer = setTimeout(() => {
+        setIsVisible(false);
+        setFadeOut(false);
+      }, autoHideDelay);
+      return () => clearTimeout(timer);
+    }
+
+    return undefined;
+  }, [enabled, isInteracting, progress, stage, autoHideDelay]);
+
+  // Don't render if not visible
+  if (!isVisible && !fadeOut) {
+    return null;
+  }
+
+  // Position classes
+  const positionClasses = {
+    'top-left': 'top-4 left-4',
+    'top-right': 'top-4 right-4',
+    'bottom-left': 'bottom-20 left-4',
+    'bottom-right': 'bottom-20 right-4',
+  };
+
+  return (
+    <div
+      className={`fixed ${positionClasses[position]} z-50 pointer-events-none transition-opacity duration-500 ${fadeOut ? 'opacity-0' : 'opacity-100'}`}
+      data-testid="refinement-indicator"
+    >
+      <div className="bg-black/60 backdrop-blur-sm px-3 py-2 rounded-lg border border-white/10 min-w-[80px]">
+        {/* Progress bar */}
+        <div className="relative h-1 bg-white/20 rounded-full overflow-hidden mb-1.5">
+          <div
+            className="absolute inset-y-0 left-0 bg-accent transition-all duration-100"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+
+        {/* Stage label */}
+        <div className="flex justify-between items-center">
+          <span className="text-xs text-white/60 capitalize">{stage}</span>
+          <span className="text-xs font-mono text-white/80">
+            {Math.round(progress)}%
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+};

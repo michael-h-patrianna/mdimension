@@ -111,32 +111,56 @@ export const DEFAULT_ROOT_SYSTEM_CONFIG: RootSystemConfig = {
 export type CliffordTorusEdgeMode = 'grid' | 'none';
 
 /**
- * Clifford torus mode
+ * Clifford torus internal mode (for Flat visualization mode implementation)
  * - classic: 2D torus T² in S³ ⊂ ℝ⁴ (only works for n >= 4)
  * - generalized: k-torus Tᵏ in S^(2k-1) ⊂ ℝ^(2k) (works for n >= 3, with k ≤ floor(n/2))
  */
 export type CliffordTorusMode = 'classic' | 'generalized';
 
 /**
+ * User-facing visualization modes for Clifford torus
+ * - flat: Grid-like structure with independent circles (current implementation, 2D-11D)
+ * - nested: Hopf fibration with coupled angles, flowing/interlinked circles (4D and 8D only)
+ */
+export type CliffordTorusVisualizationMode = 'flat' | 'nested';
+
+/**
  * Configuration for Clifford torus generation
  *
- * Supports both the classic 4D Clifford torus and generalized higher-dimensional tori.
+ * Supports two visualization modes with dimension-specific availability:
+ * - Flat (2D-11D): Classic/generalized Clifford tori
+ * - Nested (4D, 8D only): Hopf fibration tori
  *
+ * @see docs/prd/clifford-torus-modes.md
  * @see docs/research/clifford-tori-guide.md
  */
 export interface CliffordTorusConfig {
-  /** Clifford torus mode: classic (4D) or generalized (nD) */
-  mode: CliffordTorusMode;
+  // ============== User-Facing Mode Selection ==============
+
+  /**
+   * Visualization mode: flat or nested.
+   * - flat: Available for all dimensions (2D-11D)
+   * - nested: Only available for 4D and 8D (Hopf fibrations)
+   */
+  visualizationMode: CliffordTorusVisualizationMode;
+
+  // ============== Shared Properties ==============
+
   /** Radius of the containing sphere (0.5-6.0) */
   radius: number;
-  /** Resolution in U direction for classic mode (8-128) */
-  resolutionU: number;
-  /** Resolution in V direction for classic mode (8-128) */
-  resolutionV: number;
   /** Edge display mode */
   edgeMode: CliffordTorusEdgeMode;
+
+  // ============== Flat Mode Properties ==============
+
+  /** Internal mode for Flat visualization: classic (4D) or generalized (nD) */
+  mode: CliffordTorusMode;
+  /** Resolution in U direction for classic/flat mode (8-128) */
+  resolutionU: number;
+  /** Resolution in V direction for classic/flat mode (8-128) */
+  resolutionV: number;
   /**
-   * Torus dimension k for generalized mode.
+   * Torus dimension k for generalized/flat mode.
    * Creates a k-torus Tᵏ living on S^(2k-1) ⊂ ℝ^(2k).
    * Must satisfy: 1 ≤ k ≤ floor(n/2)
    * - k=1: circle (trivial)
@@ -145,23 +169,73 @@ export interface CliffordTorusConfig {
    */
   k: number;
   /**
-   * Angular resolution per circle for generalized mode.
+   * Angular resolution per circle for generalized/flat mode.
    * Total points = stepsPerCircle^k (use carefully for k >= 3)
    */
   stepsPerCircle: number;
+
+  // ============== Nested (Hopf) Mode Properties - 4D ==============
+
+  /**
+   * Torus position (η) in the Hopf fibration (4D only).
+   * Range: 0.05 to ~1.52 radians (π/64 to π/2 - π/64).
+   * - η = π/4 (0.785): Main Clifford torus with equal circle radii
+   * - η → 0: Degenerates to a circle in x₂x₃ plane
+   * - η → π/2: Degenerates to a circle in x₀x₁ plane
+   */
+  eta: number;
+  /** Resolution in ξ₁ direction for Hopf mode (8-128) */
+  resolutionXi1: number;
+  /** Resolution in ξ₂ direction for Hopf mode (8-128) */
+  resolutionXi2: number;
+  /** Display multiple tori at different η values */
+  showNestedTori: boolean;
+  /** Number of nested tori to display when showNestedTori is true (2-5) */
+  numberOfTori: number;
+
+  // ============== Nested (Hopf) Mode Properties - 8D ==============
+
+  /** S³ fiber sampling resolution for 8D quaternionic Hopf (4-32) */
+  fiberResolution: number;
+  /** S⁴ base sampling resolution for 8D quaternionic Hopf (4-32) */
+  baseResolution: number;
+  /** Connect points along S³ fibers to reveal fibration structure */
+  showFiberStructure: boolean;
+
 }
 
 /**
  * Default Clifford torus configuration
  */
 export const DEFAULT_CLIFFORD_TORUS_CONFIG: CliffordTorusConfig = {
-  mode: 'classic',
+  // User-facing mode (default to flat for backward compatibility)
+  visualizationMode: 'flat',
+
+  // Shared
   radius: 3.0,
+  edgeMode: 'grid',
+
+  // Flat mode (existing defaults)
+  mode: 'classic',
   resolutionU: 32,
   resolutionV: 32,
-  edgeMode: 'grid',
   k: 2,
   stepsPerCircle: 16,
+
+  // Nested (Hopf) 4D mode
+  eta: Math.PI / 4,  // Main Clifford torus position
+  resolutionXi1: 48,
+  resolutionXi2: 48,
+  showNestedTori: false,
+  numberOfTori: 3,
+
+  // Nested (Hopf) 8D mode
+  // NOTE: Face count = fiberRes³ × baseRes² - keep low to avoid memory issues
+  // With fiberRes=6, baseRes=8: 216 × 64 = 13,824 faces (manageable)
+  // With fiberRes=12, baseRes=12: 1728 × 144 = 248,832 faces (too many!)
+  fiberResolution: 6,
+  baseResolution: 8,
+  showFiberStructure: true,
 };
 
 // ============================================================================

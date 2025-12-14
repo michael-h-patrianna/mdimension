@@ -18,6 +18,7 @@ import type {
   CliffordTorusConfig,
   CliffordTorusEdgeMode,
   CliffordTorusMode,
+  CliffordTorusVisualizationMode,
   MandelboxConfig,
   MandelbrotColorMode,
   MandelbrotConfig,
@@ -73,13 +74,32 @@ interface ExtendedObjectState {
   setRootSystemScale: (scale: number) => void
 
   // --- Clifford Torus Actions ---
-  setCliffordTorusMode: (mode: CliffordTorusMode) => void
+  // Visualization mode
+  setCliffordTorusVisualizationMode: (mode: CliffordTorusVisualizationMode) => void
+  initializeCliffordTorusForDimension: (dimension: number) => void
+
+  // Shared
   setCliffordTorusRadius: (radius: number) => void
+  setCliffordTorusEdgeMode: (mode: CliffordTorusEdgeMode) => void
+
+  // Flat mode (existing)
+  setCliffordTorusMode: (mode: CliffordTorusMode) => void
   setCliffordTorusResolutionU: (resolution: number) => void
   setCliffordTorusResolutionV: (resolution: number) => void
-  setCliffordTorusEdgeMode: (mode: CliffordTorusEdgeMode) => void
   setCliffordTorusK: (k: number) => void
   setCliffordTorusStepsPerCircle: (steps: number) => void
+
+  // Nested (Hopf) 4D mode
+  setCliffordTorusEta: (eta: number) => void
+  setCliffordTorusResolutionXi1: (resolution: number) => void
+  setCliffordTorusResolutionXi2: (resolution: number) => void
+  setCliffordTorusShowNestedTori: (show: boolean) => void
+  setCliffordTorusNumberOfTori: (count: number) => void
+
+  // Nested (Hopf) 8D mode
+  setCliffordTorusFiberResolution: (resolution: number) => void
+  setCliffordTorusBaseResolution: (resolution: number) => void
+  setCliffordTorusShowFiberStructure: (show: boolean) => void
 
   // --- Mandelbrot Actions ---
   setMandelbrotMaxIterations: (value: number) => void
@@ -245,6 +265,108 @@ export const useExtendedObjectStore = create<ExtendedObjectState>((set, get) => 
     const clampedSteps = Math.max(4, Math.min(64, Math.floor(steps)))
     set((state) => ({
       cliffordTorus: { ...state.cliffordTorus, stepsPerCircle: clampedSteps },
+    }))
+  },
+
+  // --- Clifford Torus Visualization Mode Actions ---
+  setCliffordTorusVisualizationMode: (mode: CliffordTorusVisualizationMode) => {
+    set((state) => ({
+      cliffordTorus: { ...state.cliffordTorus, visualizationMode: mode },
+    }))
+  },
+
+  initializeCliffordTorusForDimension: (dimension: number) => {
+    const current = get().cliffordTorus
+    const currentMode = current.visualizationMode
+
+    // Auto-switch logic: if current mode is not available for this dimension, switch to 'flat'
+    let newMode = currentMode
+
+    // Nested mode only available in 4D and 8D
+    if (currentMode === 'nested' && dimension !== 4 && dimension !== 8) {
+      newMode = 'flat'
+    }
+
+    // Update flat mode internal settings based on dimension
+    const flatMode = dimension === 4 ? 'classic' : 'generalized'
+
+    // Check if any values actually changed to avoid unnecessary state updates
+    const modeChanged = newMode !== currentMode
+    const flatModeChanged = flatMode !== current.mode
+
+    // Only update if something actually changed
+    if (modeChanged || flatModeChanged) {
+      set((state) => ({
+        cliffordTorus: {
+          ...state.cliffordTorus,
+          visualizationMode: newMode,
+          mode: flatMode,
+        },
+      }))
+    }
+
+    // Return whether mode was auto-switched (for notification purposes)
+    return modeChanged
+  },
+
+  // --- Nested (Hopf) 4D Mode Actions ---
+  setCliffordTorusEta: (eta: number) => {
+    // Range: π/64 to π/2 - π/64 (approximately 0.05 to 1.52)
+    const minEta = Math.PI / 64
+    const maxEta = Math.PI / 2 - Math.PI / 64
+    const clampedEta = Math.max(minEta, Math.min(maxEta, eta))
+    set((state) => ({
+      cliffordTorus: { ...state.cliffordTorus, eta: clampedEta },
+    }))
+  },
+
+  setCliffordTorusResolutionXi1: (resolution: number) => {
+    const clampedResolution = Math.max(8, Math.min(128, Math.floor(resolution)))
+    set((state) => ({
+      cliffordTorus: { ...state.cliffordTorus, resolutionXi1: clampedResolution },
+    }))
+  },
+
+  setCliffordTorusResolutionXi2: (resolution: number) => {
+    const clampedResolution = Math.max(8, Math.min(128, Math.floor(resolution)))
+    set((state) => ({
+      cliffordTorus: { ...state.cliffordTorus, resolutionXi2: clampedResolution },
+    }))
+  },
+
+  setCliffordTorusShowNestedTori: (show: boolean) => {
+    set((state) => ({
+      cliffordTorus: { ...state.cliffordTorus, showNestedTori: show },
+    }))
+  },
+
+  setCliffordTorusNumberOfTori: (count: number) => {
+    const clampedCount = Math.max(2, Math.min(5, Math.floor(count)))
+    set((state) => ({
+      cliffordTorus: { ...state.cliffordTorus, numberOfTori: clampedCount },
+    }))
+  },
+
+  // --- Nested (Hopf) 8D Mode Actions ---
+  // NOTE: Face count = fiberRes³ × baseRes² - limits kept low to avoid memory issues
+  // Max safe: 8³ × 12² = 512 × 144 = 73,728 faces
+  setCliffordTorusFiberResolution: (resolution: number) => {
+    const clampedResolution = Math.max(4, Math.min(8, Math.floor(resolution)))
+    set((state) => ({
+      cliffordTorus: { ...state.cliffordTorus, fiberResolution: clampedResolution },
+    }))
+  },
+
+  setCliffordTorusBaseResolution: (resolution: number) => {
+    const clampedResolution = Math.max(4, Math.min(12, Math.floor(resolution)))
+    set((state) => ({
+      cliffordTorus: { ...state.cliffordTorus, baseResolution: clampedResolution },
+    }))
+  },
+
+  setCliffordTorusShowFiberStructure: (show: boolean) => {
+    set((state) => ({
+      cliffordTorus: { ...state.cliffordTorus, showFiberStructure: show },
     }))
   },
 
