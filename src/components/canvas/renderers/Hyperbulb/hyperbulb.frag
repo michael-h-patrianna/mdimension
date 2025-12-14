@@ -25,14 +25,28 @@ uniform float uBasisY[11];
 uniform float uBasisZ[11];
 uniform float uOrigin[11];
 
-uniform bool uLightEnabled;
-uniform vec3 uLightColor;
-uniform vec3 uLightDirection;
+// Multi-Light System Constants
+#define MAX_LIGHTS 4
+#define LIGHT_TYPE_POINT 0
+#define LIGHT_TYPE_DIRECTIONAL 1
+#define LIGHT_TYPE_SPOT 2
+
+// Multi-Light System Uniforms
+uniform int uNumLights;
+uniform bool uLightsEnabled[MAX_LIGHTS];
+uniform int uLightTypes[MAX_LIGHTS];
+uniform vec3 uLightPositions[MAX_LIGHTS];
+uniform vec3 uLightDirections[MAX_LIGHTS];
+uniform vec3 uLightColors[MAX_LIGHTS];
+uniform float uLightIntensities[MAX_LIGHTS];
+uniform float uSpotAngles[MAX_LIGHTS];
+uniform float uSpotPenumbras[MAX_LIGHTS];
+
+// Global lighting uniforms
 uniform float uAmbientIntensity;
 uniform vec3 uAmbientColor;
 uniform float uSpecularIntensity;
 uniform float uSpecularPower;
-uniform float uLightStrength;
 // Enhanced lighting uniforms
 uniform vec3 uSpecularColor;
 uniform float uDiffuseIntensity;
@@ -318,6 +332,101 @@ void optimizedPow(float r, float pwr, out float rPow, out float rPowMinus1) {
         rPow = pow(r, pwr);
         rPowMinus1 = rPow / max(r, EPS);
     }
+}
+
+// ============================================
+// 3D Mandelbulb - Standard spherical coordinates
+// (Hyperbulb in 3D reduces to standard Mandelbulb)
+// ============================================
+
+float sdf3D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
+    // For 3D, we use standard spherical coordinates
+    // c = uOrigin + pos.x * uBasisX + pos.y * uBasisY + pos.z * uBasisZ
+    // But in 3D, this simplifies to just pos (with possible slice offset)
+    float cx = uOrigin[0] + pos.x*uBasisX[0] + pos.y*uBasisY[0] + pos.z*uBasisZ[0];
+    float cy = uOrigin[1] + pos.x*uBasisX[1] + pos.y*uBasisY[1] + pos.z*uBasisZ[1];
+    float cz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
+
+    // z = iteration variable, starts at c (like Mandelbulb)
+    float zx = cx, zy = cy, zz = cz;
+    float dr = 1.0;
+    float r = 0.0;
+
+    // Orbit traps
+    float minPlane = 1000.0, minAxis = 1000.0, minSphere = 1000.0;
+    int escIt = 0;
+
+    for (int i = 0; i < MAX_ITER_HQ; i++) {
+        if (i >= maxIt) break;
+
+        // r = |z|
+        r = sqrt(zx*zx + zy*zy + zz*zz);
+        if (r > bail) { escIt = i; break; }
+
+        // Orbit traps (using z-axis primary convention)
+        minPlane = min(minPlane, abs(zy));
+        minAxis = min(minAxis, sqrt(zx*zx + zy*zy));  // Distance from z-axis
+        minSphere = min(minSphere, abs(r - 0.8));
+
+        // Optimized power calculation
+        float rp, rpMinus1;
+        optimizedPow(r, pwr, rp, rpMinus1);
+        dr = rpMinus1 * pwr * dr + 1.0;
+
+        // To spherical: z-axis primary (standard Mandelbulb)
+        // theta = angle from z-axis, phi = angle in xy-plane
+        float theta = acos(clamp(zz / r, -1.0, 1.0));  // From z-axis
+        float phi = atan(zy, zx);  // In xy plane
+
+        // Power map: angles * n
+        float thetaN = theta * pwr;
+        float phiN = phi * pwr;
+
+        // From spherical: z-axis primary reconstruction
+        float cTheta = cos(thetaN), sTheta = sin(thetaN);
+        float cPhi = cos(phiN), sPhi = sin(phiN);
+
+        zz = rp * cTheta + cz;              // z = r * cos(theta)
+        zx = rp * sTheta * cPhi + cx;       // x = r * sin(theta) * cos(phi)
+        zy = rp * sTheta * sPhi + cy;       // y = r * sin(theta) * sin(phi)
+        escIt = i;
+    }
+
+    trap = exp(-minPlane * 5.0) * 0.3 + exp(-minAxis * 3.0) * 0.2 +
+           exp(-minSphere * 8.0) * 0.2 + float(escIt) / float(maxIt) * 0.3;
+    return max(0.5 * log(max(r, EPS)) * r / max(dr, EPS), EPS);
+}
+
+float sdf3D_simple(vec3 pos, float pwr, float bail, int maxIt) {
+    float cx = uOrigin[0] + pos.x*uBasisX[0] + pos.y*uBasisY[0] + pos.z*uBasisZ[0];
+    float cy = uOrigin[1] + pos.x*uBasisX[1] + pos.y*uBasisY[1] + pos.z*uBasisZ[1];
+    float cz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
+    // Start at c (like Mandelbulb)
+    float zx = cx, zy = cy, zz = cz;
+    float dr = 1.0, r = 0.0;
+
+    for (int i = 0; i < MAX_ITER_HQ; i++) {
+        if (i >= maxIt) break;
+        r = sqrt(zx*zx + zy*zy + zz*zz);
+        if (r > bail) break;
+
+        // Optimized power calculation
+        float rp, rpMinus1;
+        optimizedPow(r, pwr, rp, rpMinus1);
+        dr = rpMinus1 * pwr * dr + 1.0;
+
+        // z-axis primary (standard Mandelbulb)
+        float theta = acos(clamp(zz / r, -1.0, 1.0));
+        float phi = atan(zy, zx);
+
+        float cTheta = cos(theta * pwr), sTheta = sin(theta * pwr);
+        float cPhi = cos(phi * pwr), sPhi = sin(phi * pwr);
+
+        zz = rp * cTheta + cz;
+        zx = rp * sTheta * cPhi + cx;
+        zy = rp * sTheta * sPhi + cy;
+    }
+    return max(0.5 * log(max(r, EPS)) * r / max(dr, EPS), EPS);
 }
 
 // ============================================
@@ -843,6 +952,7 @@ float GetDist(vec3 pos) {
     int maxIterLimit = uFastMode ? MAX_ITER_LQ : MAX_ITER_HQ;
     int maxIt = int(min(uIterations, float(maxIterLimit)));
 
+    if (uDimension == 3) return sdf3D_simple(pos, pwr, bail, maxIt);
     if (uDimension == 4) return sdf4D_simple(pos, pwr, bail, maxIt);
     if (uDimension == 5) return sdf5D_simple(pos, pwr, bail, maxIt);
     if (uDimension == 6) return sdf6D_simple(pos, pwr, bail, maxIt);
@@ -858,6 +968,7 @@ float GetDistWithTrap(vec3 pos, out float trap) {
     int maxIterLimit = uFastMode ? MAX_ITER_LQ : MAX_ITER_HQ;
     int maxIt = int(min(uIterations, float(maxIterLimit)));
 
+    if (uDimension == 3) return sdf3D(pos, pwr, bail, maxIt, trap);
     if (uDimension == 4) return sdf4D(pos, pwr, bail, maxIt, trap);
     if (uDimension == 5) return sdf5D(pos, pwr, bail, maxIt, trap);
     if (uDimension == 6) return sdf6D(pos, pwr, bail, maxIt, trap);
@@ -978,6 +1089,41 @@ mat3 getBasisRotation() {
     return mat3(bx, by, bz);
 }
 
+// ============================================
+// Multi-Light System Helper Functions
+// ============================================
+
+/**
+ * Calculate light direction for a given light index.
+ * Returns normalized direction FROM fragment TO light source.
+ */
+vec3 getLightDirection(int lightIndex, vec3 fragPos) {
+    int lightType = uLightTypes[lightIndex];
+
+    if (lightType == LIGHT_TYPE_POINT) {
+        return normalize(uLightPositions[lightIndex] - fragPos);
+    }
+    else if (lightType == LIGHT_TYPE_DIRECTIONAL) {
+        // Directional lights: use the stored direction (pointing toward surface)
+        return normalize(uLightDirections[lightIndex]);
+    }
+    else if (lightType == LIGHT_TYPE_SPOT) {
+        return normalize(uLightPositions[lightIndex] - fragPos);
+    }
+
+    return vec3(0.0, 1.0, 0.0);
+}
+
+/**
+ * Calculate spot light cone attenuation with penumbra falloff.
+ */
+float getSpotAttenuation(int lightIndex, vec3 lightToFrag) {
+    float cosAngle = dot(lightToFrag, normalize(uLightDirections[lightIndex]));
+    float innerCos = cos(uSpotAngles[lightIndex] * (1.0 - uSpotPenumbras[lightIndex]));
+    float outerCos = cos(uSpotAngles[lightIndex]);
+    return smoothstep(outerCos, innerCos, cosAngle);
+}
+
 void main() {
     vec3 ro = (uInverseModelMatrix * vec4(uCameraPosition, 1.0)).xyz;
     vec3 worldRayDir = normalize(vPosition - uCameraPosition);
@@ -1008,39 +1154,54 @@ void main() {
     vec3 surfaceColor = getColorByAlgorithm(t, n, baseHSL, p);
     surfaceColor *= (0.3 + 0.7 * ao);
 
-    // Lighting calculation using scene lighting settings
+    // Lighting calculation using multi-light system
     // Start with ambient
     vec3 col = surfaceColor * uAmbientColor * uAmbientIntensity;
+    vec3 viewDir = -rd;
 
-    if (uLightEnabled) {
-        // Light direction stays fixed in world space (no transformation)
-        // The normal 'n' computed from the SDF already reflects the D-dimensional rotation
-        // because the SDF uses the rotated basis vectors
-        vec3 l = normalize(uLightDirection);
-        vec3 viewDir = -rd;
+    // Accumulator for total light contribution (for fresnel rim calculation)
+    float totalNdotL = 0.0;
 
-        // NOTE: Soft shadows disabled for Hyperbulb - too expensive for D-dimensional SDF
-        // Each shadow step would require a full D-dimensional SDF evaluation
+    // Loop over all active lights
+    for (int i = 0; i < MAX_LIGHTS; i++) {
+        if (i >= uNumLights) break;
+        if (!uLightsEnabled[i]) continue;
 
-        // Diffuse (Lambert) - simple and matches Three.js MeshPhongMaterial behavior
+        // Get light direction based on light type
+        vec3 l = getLightDirection(i, p);
+        float attenuation = uLightIntensities[i];
+
+        // Apply spot light cone attenuation
+        if (uLightTypes[i] == LIGHT_TYPE_SPOT) {
+            vec3 lightToFrag = normalize(p - uLightPositions[i]);
+            attenuation *= getSpotAttenuation(i, lightToFrag);
+        }
+
+        // Skip negligible contributions
+        if (attenuation < 0.001) continue;
+
+        // Diffuse (Lambert)
         float NdotL = max(dot(n, l), 0.0);
-        col += surfaceColor * uLightColor * NdotL * uDiffuseIntensity * uLightStrength;
+        col += surfaceColor * uLightColors[i] * NdotL * uDiffuseIntensity * attenuation;
 
-        // Specular (Blinn-Phong) - simple without Fresnel for clearer highlights
-        // Matches Three.js MeshPhongMaterial: pow(NdotH, shininess) * specularColor
+        // Specular (Blinn-Phong)
         vec3 halfDir = normalize(l + viewDir);
         float NdotH = max(dot(n, halfDir), 0.0);
-        float spec = pow(NdotH, uSpecularPower) * uSpecularIntensity * uLightStrength;
-        col += uSpecularColor * uLightColor * spec;
+        float spec = pow(NdotH, uSpecularPower) * uSpecularIntensity * attenuation;
+        col += uSpecularColor * uLightColors[i] * spec;
 
-        // Fresnel rim lighting (controlled by Edges render mode)
-        if (uFresnelEnabled && uFresnelIntensity > 0.0) {
-            float NdotV = max(dot(n, viewDir), 0.0);
-            float rim = pow(1.0 - NdotV, 3.0) * uFresnelIntensity * 2.0;
-            // Rim is stronger on lit side
-            rim *= (0.3 + 0.7 * NdotL);
-            col += uRimColor * rim;
-        }
+        // Track total light for fresnel calculation
+        totalNdotL = max(totalNdotL, NdotL * attenuation);
+    }
+
+    // Fresnel rim lighting (controlled by Edges render mode)
+    // Uses combined light contribution from all lights
+    if (uFresnelEnabled && uFresnelIntensity > 0.0) {
+        float NdotV = max(dot(n, viewDir), 0.0);
+        float rim = pow(1.0 - NdotV, 3.0) * uFresnelIntensity * 2.0;
+        // Rim is stronger on lit side (use total light contribution)
+        rim *= (0.3 + 0.7 * totalNdotL);
+        col += uRimColor * rim;
     }
 
     // Apply tone mapping as final step

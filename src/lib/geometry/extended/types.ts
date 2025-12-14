@@ -421,6 +421,54 @@ export interface MandelboxConfig {
    * Only affects 4D+ dimensions (3D Mandelbox is inherently 3D).
    */
   iterationRotation: number;
+
+  // === Scale Animation ===
+
+  /**
+   * Enable/disable scale oscillation animation.
+   * When enabled, scale oscillates around scaleCenter with the specified amplitude.
+   */
+  scaleAnimationEnabled: boolean;
+
+  /**
+   * Center value for scale oscillation (-3.0 to 3.0, default -1.5).
+   * The scale oscillates around this value.
+   */
+  scaleCenter: number;
+
+  /**
+   * Amplitude of scale oscillation (0.0 to 1.5, default 0.5).
+   * Scale ranges from (scaleCenter - amplitude) to (scaleCenter + amplitude).
+   */
+  scaleAmplitude: number;
+
+  /**
+   * Speed multiplier for scale oscillation (0.1 to 2.0, default 1.0).
+   * Higher values create faster oscillation.
+   */
+  scaleSpeed: number;
+
+  // === Julia Mode ===
+
+  /**
+   * Enable Julia mode for Mandelbox iteration.
+   * When enabled, uses a global animated 'c' constant instead of per-pixel c.
+   * Creates smooth morphing through different Julia-like fractal shapes.
+   */
+  juliaMode: boolean;
+
+  /**
+   * Speed of Julia c orbit animation (0.1 to 2.0, default 1.0).
+   * Controls how fast the c constant orbits through N-dimensional space.
+   */
+  juliaSpeed: number;
+
+  /**
+   * Radius/amplitude of Julia c orbit (0.5 to 2.0, default 1.0).
+   * Controls the magnitude of c values during animation.
+   * Higher values explore more extreme regions of parameter space.
+   */
+  juliaRadius: number;
 }
 
 /**
@@ -435,6 +483,144 @@ export const DEFAULT_MANDELBOX_CONFIG: MandelboxConfig = {
   escapeRadius: 10.0,       // Safe bailout for most dimensions
   parameterValues: [],      // No extra dimensions by default
   iterationRotation: 0.1,   // Moderate interdimensional mixing for 4D+
+  // Scale Animation defaults
+  scaleAnimationEnabled: false,
+  scaleCenter: -1.5,
+  scaleAmplitude: 0.5,
+  scaleSpeed: 1.0,
+  // Julia Mode defaults
+  juliaMode: false,
+  juliaSpeed: 1.0,
+  juliaRadius: 1.0,
+};
+
+// ============================================================================
+// Menger Sponge Configuration
+// ============================================================================
+
+/**
+ * Configuration for n-dimensional Menger Sponge (Sierpinski N-cube) generation
+ *
+ * The Menger sponge is a geometric IFS fractal defined by recursive removal:
+ * - Divide cube into 3^N subcubes
+ * - Remove subcubes where 2+ coordinates are in the "middle third"
+ * - Repeat recursively
+ *
+ * Unlike escape-time fractals (Mandelbrot, Mandelbox), the Menger sponge has a
+ * TRUE SDF via KIFS (Kaleidoscopic IFS) fold operations, making it computationally
+ * efficient and visually consistent across all dimensions.
+ *
+ * Supports 3D to 11D with identical algorithm (coordinate sorting + cross subtraction).
+ *
+ * @see docs/prd/menger-sponge.md
+ */
+export interface MengerConfig {
+  /**
+   * Recursion depth / detail level (3 to 8, default 5).
+   * Higher values create finer holes but cost more computation.
+   * - 3: Coarse, clearly visible cube structure
+   * - 5: Good balance of detail and performance
+   * - 7-8: Very fine detail, may impact performance
+   */
+  iterations: number;
+
+  /**
+   * Bounding cube scale (0.5 to 2.0, default 1.0).
+   * Controls the overall size of the Menger sponge.
+   */
+  scale: number;
+
+  /**
+   * Fixed values for dimensions beyond the 3D slice (for 4D+).
+   * Array length = dimension - 3.
+   * Controls which cross-section of the N-dimensional Menger hypersponge is visible.
+   */
+  parameterValues: number[];
+
+  // === Fold Twist Animation ===
+
+  /**
+   * Enable/disable fold twist animation.
+   * When enabled, rotates geometry within each KIFS iteration,
+   * creating spiraling kaleidoscopic effects.
+   */
+  foldTwistEnabled: boolean;
+
+  /**
+   * Static fold twist angle in radians (-π to π, default 0).
+   * When animation is enabled, this is the base angle before time is added.
+   */
+  foldTwistAngle: number;
+
+  /**
+   * Speed multiplier for fold twist animation (0.0 to 2.0, default 0.5).
+   * Higher values create faster spinning.
+   */
+  foldTwistSpeed: number;
+
+  // === Scale Pulse Animation ===
+
+  /**
+   * Enable/disable scale pulse (breathing) animation.
+   * When enabled, the iteration scale factor oscillates,
+   * creating an organic breathing effect.
+   */
+  scalePulseEnabled: boolean;
+
+  /**
+   * Amplitude of scale pulse (0.0 to 0.5, default 0.2).
+   * Scale oscillates as: scale ± amplitude
+   */
+  scalePulseAmplitude: number;
+
+  /**
+   * Speed multiplier for scale pulse animation (0.0 to 2.0, default 1.0).
+   * Higher values create faster breathing.
+   */
+  scalePulseSpeed: number;
+
+  // === Slice Sweep Animation (4D+ only) ===
+
+  /**
+   * Enable/disable slice sweep animation.
+   * When enabled (and dimension >= 4), automatically animates the
+   * parameterValues with phase-offset sine waves, creating smooth
+   * cross-section sweeps through higher-dimensional space.
+   */
+  sliceSweepEnabled: boolean;
+
+  /**
+   * Amplitude of slice sweep (0.0 to 2.0, default 1.0).
+   * Controls how far the cross-section sweeps in each extra dimension.
+   */
+  sliceSweepAmplitude: number;
+
+  /**
+   * Speed multiplier for slice sweep animation (0.0 to 2.0, default 0.5).
+   * Higher values create faster sweeping.
+   */
+  sliceSweepSpeed: number;
+}
+
+/**
+ * Default Menger sponge configuration
+ */
+export const DEFAULT_MENGER_CONFIG: MengerConfig = {
+  iterations: 5,           // Good balance of detail and performance
+  scale: 1.0,              // Unit cube bounding box
+  parameterValues: [],     // No extra dimensions by default
+  // Fold Twist Animation defaults
+  foldTwistEnabled: false,
+  foldTwistAngle: 0.0,
+  foldTwistSpeed: 0.5,
+  // Scale Pulse Animation defaults
+  scalePulseEnabled: false,
+  scalePulseAmplitude: 0.2,
+  scalePulseSpeed: 1.0,
+  // Slice Sweep Animation defaults
+  sliceSweepEnabled: false,
+  sliceSweepAmplitude: 1.0,
+  sliceSweepSpeed: 0.5,
 };
 
 // ============================================================================
@@ -465,6 +651,8 @@ export interface ExtendedObjectParams {
   mandelbrot: MandelbrotConfig;
   /** Configuration for Mandelbox fractal generation */
   mandelbox: MandelboxConfig;
+  /** Configuration for Menger sponge fractal generation */
+  menger: MengerConfig;
 }
 
 /**
@@ -476,4 +664,5 @@ export const DEFAULT_EXTENDED_OBJECT_PARAMS: ExtendedObjectParams = {
   cliffordTorus: DEFAULT_CLIFFORD_TORUS_CONFIG,
   mandelbrot: DEFAULT_MANDELBROT_CONFIG,
   mandelbox: DEFAULT_MANDELBOX_CONFIG,
+  menger: DEFAULT_MENGER_CONFIG,
 };

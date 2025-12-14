@@ -104,6 +104,21 @@ export const TONE_MAPPING_TO_THREE: Record<ToneMappingAlgorithm, number> = {
 };
 
 /**
+ * Maps our algorithm names to postprocessing ToneMappingMode enum values.
+ * Used by @react-three/postprocessing EffectComposer.
+ * @see postprocessing ToneMappingMode enum
+ */
+export const TONE_MAPPING_TO_POSTPROCESSING: Record<ToneMappingAlgorithm, number> = {
+  none: 0,      // ToneMappingMode.LINEAR (no mapping effect)
+  linear: 0,    // ToneMappingMode.LINEAR
+  reinhard: 1,  // ToneMappingMode.REINHARD
+  cineon: 6,    // ToneMappingMode.CINEON
+  aces: 7,      // ToneMappingMode.ACES_FILMIC
+  agx: 8,       // ToneMappingMode.AGX
+  neutral: 9,   // ToneMappingMode.NEUTRAL
+};
+
+/**
  * Type guard to check if settings match a specific shader type
  * @param settings
  */

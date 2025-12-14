@@ -34,6 +34,8 @@ import { matrixToGPUUniforms } from '@/lib/shaders/transforms/ndTransform';
 import { COLOR_ALGORITHM_TO_INT } from '@/lib/shaders/palette';
 import { MAX_LIGHTS, LIGHT_TYPE_TO_INT, rotationToDirection } from '@/lib/lights/types';
 import type { LightSource } from '@/lib/lights/types';
+import { FatWireframe } from '../renderers/FatWireframe';
+import { TubeWireframe } from '../renderers/TubeWireframe';
 
 /**
  * Props for PolytopeScene component
@@ -805,6 +807,9 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     edgesVisible,
     facesVisible,
     edgeColor,
+    edgeThickness,
+    edgeMetallic,
+    edgeRoughness,
     faceColor,
     shaderSettings,
   } = useVisualStore(
@@ -812,12 +817,17 @@ export const PolytopeScene = React.memo(function PolytopeScene({
       edgesVisible: state.edgesVisible,
       facesVisible: state.facesVisible,
       edgeColor: state.edgeColor,
+      edgeThickness: state.edgeThickness,
+      edgeMetallic: state.edgeMetallic,
+      edgeRoughness: state.edgeRoughness,
       faceColor: state.faceColor,
       shaderSettings: state.shaderSettings,
     }))
   );
 
   const surfaceSettings = shaderSettings.surface;
+  // Use TubeWireframe for thick lines (>1), native lineSegments for thin lines (1)
+  const useFatWireframe = edgeThickness > 1;
 
   // ============ MATERIALS ============
   // Uses custom ShaderMaterial with lighting (same approach as Mandelbulb)
@@ -1076,8 +1086,20 @@ export const PolytopeScene = React.memo(function PolytopeScene({
         <mesh ref={faceMeshRef} geometry={faceGeometry} material={faceMaterial} />
       )}
 
-      {/* Polytope edges */}
-      {edgesVisible && edgeGeometry && (
+      {/* Polytope edges - use TubeWireframe for thick lines, native lineSegments for thin */}
+      {edgesVisible && useFatWireframe && (
+        <TubeWireframe
+          vertices={baseVertices}
+          edges={edges}
+          dimension={dimension}
+          color={edgeColor}
+          opacity={opacity}
+          radius={edgeThickness * 0.015}
+          metallic={edgeMetallic}
+          roughness={edgeRoughness}
+        />
+      )}
+      {edgesVisible && !useFatWireframe && edgeGeometry && (
         <lineSegments ref={edgeMeshRef} geometry={edgeGeometry} material={edgeMaterial} />
       )}
     </group>

@@ -1,13 +1,13 @@
 import { useFrame, useThree } from '@react-three/fiber';
 import { useMemo, useRef, useCallback, useEffect } from 'react';
 import * as THREE from 'three';
-import vertexShader from './mandelbox.vert?raw';
-import fragmentShader from './mandelbox.frag?raw';
-import { useAnimationStore } from '@/stores/animationStore';
+import vertexShader from './menger.vert?raw';
+import fragmentShader from './menger.frag?raw';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useRotationStore } from '@/stores/rotationStore';
 import { useVisualStore } from '@/stores/visualStore';
+import { useAnimationStore } from '@/stores/animationStore';
 import { composeRotations } from '@/lib/math/rotation';
 import { COLOR_ALGORITHM_TO_INT } from '@/lib/shaders/palette';
 import type { MatrixND } from '@/lib/math/types';
@@ -47,97 +47,12 @@ function applyRotation(matrix: MatrixND, vec: number[]): Float32Array {
 }
 
 /**
- * Golden ratio for creating maximally-spaced, non-repeating patterns.
- */
-const GOLDEN_RATIO = (1 + Math.sqrt(5)) / 2;
-
-/**
- * Phase offset to ensure dimension 0 doesn't start at sin(0) = 0.
- */
-const PHASE_OFFSET = Math.PI / 4;
-
-/**
- * Maximum deviation for fold limits at full bias.
- * More conservative than rotation bias to avoid breaking the fractal math.
- * At bias=1: fold limits range from (1-0.3)*base to (1+0.3)*base = 0.7 to 1.3
- */
-const FOLD_MAX_DEVIATION = 0.3;
-
-/**
- * Base frequency for scale animation oscillation.
- */
-const SCALE_BASE_FREQUENCY = 0.5;
-
-/**
- * Computes per-dimension fold limit multipliers based on animation bias.
- * Uses golden ratio spread to create non-repeating patterns across dimensions.
+ * MengerMesh - Renders 3D-11D Menger Sponge using GPU raymarching
  *
- * @param dimension - Current dimension (3-11)
- * @param bias - Animation bias (0 = uniform, 1 = maximum variation)
- * @param baseFold - Base folding limit value
- * @returns Float32Array of fold limits per dimension
+ * The Menger sponge uses KIFS fold operations (absolute value, sort, scale)
+ * that work identically across all dimensions with a true geometric SDF.
  */
-function computeBiasedFoldLimits(dimension: number, bias: number, baseFold: number): Float32Array {
-  const result = new Float32Array(11);
-
-  for (let i = 0; i < 11; i++) {
-    if (i >= dimension) {
-      // Unused dimensions get base value
-      result[i] = baseFold;
-      continue;
-    }
-
-    if (i < 3 || bias === 0) {
-      // First 3 dimensions (X, Y, Z) always use base fold to preserve 3D structure
-      // Also skip if no bias
-      result[i] = baseFold;
-    } else {
-      // Higher dimensions get biased fold limits
-      // Use golden ratio spread for non-repeating pattern
-      const dimIndex = i - 3; // 0-based index for dimensions 4+
-      const goldenAngle = PHASE_OFFSET + dimIndex * GOLDEN_RATIO * 2 * Math.PI;
-      const spread = Math.sin(goldenAngle); // Value in [-1, 1]
-
-      // Calculate multiplier: at bias=0, mult=1; at bias=1, mult ranges 0.7-1.3
-      const multiplier = 1 + bias * spread * FOLD_MAX_DEVIATION;
-
-      // Safety clamp to avoid extreme values
-      const clampedMult = Math.max(0.5, Math.min(1.5, multiplier));
-      result[i] = baseFold * clampedMult;
-    }
-  }
-
-  return result;
-}
-
-/**
- * Computes Julia mode c constant for each dimension using golden ratio spread.
- * Creates smooth, non-repeating orbits across all dimensions.
- *
- * @param dimension - Current dimension (3-11)
- * @param time - Current animation time (seconds)
- * @param speed - Animation speed multiplier
- * @param radius - Amplitude of the orbit
- * @returns Float32Array of c values per dimension
- */
-function computeJuliaC(dimension: number, time: number, speed: number, radius: number): Float32Array {
-  const result = new Float32Array(11);
-  const baseTime = time * speed * 0.3;
-  for (let i = 0; i < dimension && i < 11; i++) {
-    const goldenAngle = PHASE_OFFSET + i * GOLDEN_RATIO * 2 * Math.PI;
-    result[i] = radius * Math.sin(baseTime + goldenAngle);
-  }
-  return result;
-}
-
-/**
- * MandelboxMesh - Renders 3D-11D Mandelbox fractals using GPU raymarching
- *
- * The Mandelbox uses box fold + sphere fold operations that work identically
- * across all dimensions, unlike the Hyperbulb which uses dimension-specific
- * hyperspherical coordinates.
- */
-const MandelboxMesh = () => {
+const MengerMesh = () => {
   const meshRef = useRef<THREE.Mesh>(null);
   const { size, camera } = useThree();
 
@@ -145,10 +60,6 @@ const MandelboxMesh = () => {
   const prevRotationsRef = useRef<RotationState['rotations'] | null>(null);
   const fastModeRef = useRef(false);
   const restoreQualityTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Animation time tracking - only advances when isPlaying is true
-  const animationTimeRef = useRef(0);
-  const lastFrameTimeRef = useRef(0);
 
   // Cleanup timeout on unmount to prevent memory leaks
   useEffect(() => {
@@ -163,29 +74,28 @@ const MandelboxMesh = () => {
   // Get dimension from geometry store
   const dimension = useGeometryStore((state) => state.dimension);
 
-  // Get Mandelbox config from store
-  const scale = useExtendedObjectStore((state) => state.mandelbox.scale);
-  const foldingLimit = useExtendedObjectStore((state) => state.mandelbox.foldingLimit);
-  const minRadius = useExtendedObjectStore((state) => state.mandelbox.minRadius);
-  const fixedRadius = useExtendedObjectStore((state) => state.mandelbox.fixedRadius);
-  const maxIterations = useExtendedObjectStore((state) => state.mandelbox.maxIterations);
-  const escapeRadius = useExtendedObjectStore((state) => state.mandelbox.escapeRadius);
-  const iterationRotation = useExtendedObjectStore((state) => state.mandelbox.iterationRotation);
-  const parameterValues = useExtendedObjectStore((state) => state.mandelbox.parameterValues);
+  // Get Menger config from store
+  const iterations = useExtendedObjectStore((state) => state.menger.iterations);
+  const scale = useExtendedObjectStore((state) => state.menger.scale);
+  const parameterValues = useExtendedObjectStore((state) => state.menger.parameterValues);
 
-  // Scale animation parameters
-  const scaleAnimationEnabled = useExtendedObjectStore((state) => state.mandelbox.scaleAnimationEnabled);
-  const scaleCenter = useExtendedObjectStore((state) => state.mandelbox.scaleCenter);
-  const scaleAmplitude = useExtendedObjectStore((state) => state.mandelbox.scaleAmplitude);
-  const scaleSpeed = useExtendedObjectStore((state) => state.mandelbox.scaleSpeed);
+  // Fold Twist Animation
+  const foldTwistEnabled = useExtendedObjectStore((state) => state.menger.foldTwistEnabled);
+  const foldTwistAngle = useExtendedObjectStore((state) => state.menger.foldTwistAngle);
+  const foldTwistSpeed = useExtendedObjectStore((state) => state.menger.foldTwistSpeed);
 
-  // Julia mode parameters
-  const juliaMode = useExtendedObjectStore((state) => state.mandelbox.juliaMode);
-  const juliaSpeed = useExtendedObjectStore((state) => state.mandelbox.juliaSpeed);
-  const juliaRadius = useExtendedObjectStore((state) => state.mandelbox.juliaRadius);
+  // Scale Pulse Animation
+  const scalePulseEnabled = useExtendedObjectStore((state) => state.menger.scalePulseEnabled);
+  const scalePulseAmplitude = useExtendedObjectStore((state) => state.menger.scalePulseAmplitude);
+  const scalePulseSpeed = useExtendedObjectStore((state) => state.menger.scalePulseSpeed);
 
-  // Animation playback state - controls whether scale/julia animations run
-  const isPlaying = useAnimationStore((state) => state.isPlaying);
+  // Slice Sweep Animation
+  const sliceSweepEnabled = useExtendedObjectStore((state) => state.menger.sliceSweepEnabled);
+  const sliceSweepAmplitude = useExtendedObjectStore((state) => state.menger.sliceSweepAmplitude);
+  const sliceSweepSpeed = useExtendedObjectStore((state) => state.menger.sliceSweepSpeed);
+
+  // Animation time tracking (respects isPlaying state)
+  const animationTimeRef = useRef(0);
 
   // Get color state from visual store
   const faceColor = useVisualStore((state) => state.faceColor);
@@ -217,9 +127,6 @@ const MandelboxMesh = () => {
   const fresnelIntensity = useVisualStore((state) => state.fresnelIntensity);
   const edgeColor = useVisualStore((state) => state.edgeColor);
 
-  // Animation bias for per-dimension fold limit variation
-  const animationBias = useVisualStore((state) => state.animationBias);
-
   const uniforms = useMemo(
     () => ({
       // Time and resolution
@@ -227,20 +134,10 @@ const MandelboxMesh = () => {
       uResolution: { value: new THREE.Vector2() },
       uCameraPosition: { value: new THREE.Vector3() },
 
-      // Mandelbox parameters
+      // Menger parameters
       uDimension: { value: 3 },
-      uScale: { value: -1.5 },
-      uFoldingLimit: { value: 1.0 },
-      uFoldLimits: { value: new Float32Array(11).fill(1.0) }, // Per-dimension fold limits (bias-controlled)
-      uMinRadius2: { value: 0.25 },    // minRadius squared
-      uFixedRadius2: { value: 1.0 },   // fixedRadius squared
-      uIterations: { value: 50.0 },
-      uEscapeRadius: { value: 10.0 },
-      uIterationRotation: { value: 0.1 }, // Intra-iteration rotation for N-D mixing
-
-      // Julia Mode uniforms
-      uJuliaMode: { value: false },
-      uJuliaC: { value: new Float32Array(11) },
+      uIterations: { value: 5.0 },
+      uScale: { value: 1.0 },
 
       // D-dimensional rotated coordinate system
       uBasisX: { value: new Float32Array(11) },
@@ -268,6 +165,9 @@ const MandelboxMesh = () => {
       uLightStrength: { value: 1.0 },
       uSpecularColor: { value: new THREE.Color('#FFFFFF') },
       uDiffuseIntensity: { value: 1.0 },
+      uToneMappingEnabled: { value: false },
+      uToneMappingAlgorithm: { value: 0 },
+      uExposure: { value: 1.0 },
 
       // Fresnel rim lighting uniforms
       uFresnelEnabled: { value: true },
@@ -276,6 +176,10 @@ const MandelboxMesh = () => {
 
       // Performance mode
       uFastMode: { value: false },
+
+      // Fold Twist Animation uniforms
+      uFoldTwistEnabled: { value: false },
+      uFoldTwistAngle: { value: 0.0 },
 
       // Advanced Color System uniforms
       uColorAlgorithm: { value: 1 },
@@ -309,14 +213,6 @@ const MandelboxMesh = () => {
   }, []);
 
   useFrame((state) => {
-    // Update animation time - only advances when isPlaying is true
-    const currentTime = state.clock.elapsedTime;
-    const deltaTime = currentTime - lastFrameTimeRef.current;
-    lastFrameTimeRef.current = currentTime;
-    if (isPlaying) {
-      animationTimeRef.current += deltaTime;
-    }
-
     if (meshRef.current) {
       const material = meshRef.current.material as THREE.ShaderMaterial;
 
@@ -350,6 +246,12 @@ const MandelboxMesh = () => {
         material.uniforms.uFastMode.value = fastModeRef.current;
       }
 
+      // Track animation time (respects isPlaying state)
+      const isPlaying = useAnimationStore.getState().isPlaying;
+      if (isPlaying) {
+        animationTimeRef.current += state.clock.getDelta();
+      }
+
       // Update time and resolution
       if (material.uniforms.uTime) material.uniforms.uTime.value = state.clock.elapsedTime;
       if (material.uniforms.uResolution) material.uniforms.uResolution.value.set(size.width, size.height);
@@ -358,38 +260,27 @@ const MandelboxMesh = () => {
       // Update dimension
       if (material.uniforms.uDimension) material.uniforms.uDimension.value = dimension;
 
-      // Update Mandelbox parameters
-      // Scale Animation: oscillate around center with amplitude (respects isPlaying)
+      // Update Menger parameters
+      if (material.uniforms.uIterations) material.uniforms.uIterations.value = iterations;
+
+      // Scale Pulse Animation: compute effective scale
       let effectiveScale = scale;
-      if (scaleAnimationEnabled) {
-        effectiveScale = scaleCenter + scaleAmplitude * Math.sin(
-          animationTimeRef.current * scaleSpeed * SCALE_BASE_FREQUENCY
-        );
+      if (scalePulseEnabled && scalePulseAmplitude > 0 && scalePulseSpeed > 0) {
+        effectiveScale = scale + scalePulseAmplitude *
+          Math.sin(animationTimeRef.current * scalePulseSpeed * Math.PI);
       }
       if (material.uniforms.uScale) material.uniforms.uScale.value = effectiveScale;
-      if (material.uniforms.uFoldingLimit) material.uniforms.uFoldingLimit.value = foldingLimit;
 
-      // Compute per-dimension fold limits based on animation bias
-      // At bias=0: all dimensions use the same fold limit
-      // At bias>0: higher dimensions (4+) get varying fold limits for asymmetric structure
-      if (material.uniforms.uFoldLimits) {
-        const biasedFolds = computeBiasedFoldLimits(dimension, animationBias, foldingLimit);
-        const arr = material.uniforms.uFoldLimits.value as Float32Array;
-        for (let i = 0; i < 11; i++) arr[i] = biasedFolds[i] ?? foldingLimit;
+      // Fold Twist Animation
+      if (material.uniforms.uFoldTwistEnabled) {
+        material.uniforms.uFoldTwistEnabled.value = foldTwistEnabled;
       }
-
-      if (material.uniforms.uMinRadius2) material.uniforms.uMinRadius2.value = minRadius * minRadius;
-      if (material.uniforms.uFixedRadius2) material.uniforms.uFixedRadius2.value = fixedRadius * fixedRadius;
-      if (material.uniforms.uIterations) material.uniforms.uIterations.value = maxIterations;
-      if (material.uniforms.uEscapeRadius) material.uniforms.uEscapeRadius.value = escapeRadius;
-      if (material.uniforms.uIterationRotation) material.uniforms.uIterationRotation.value = iterationRotation;
-
-      // Julia Mode: animated global c constant instead of per-pixel (respects isPlaying)
-      if (material.uniforms.uJuliaMode) material.uniforms.uJuliaMode.value = juliaMode;
-      if (juliaMode && material.uniforms.uJuliaC) {
-        const juliaC = computeJuliaC(dimension, animationTimeRef.current, juliaSpeed, juliaRadius);
-        const arr = material.uniforms.uJuliaC.value as Float32Array;
-        for (let i = 0; i < 11; i++) arr[i] = juliaC[i] ?? 0;
+      if (material.uniforms.uFoldTwistAngle) {
+        let angle = foldTwistAngle;
+        if (foldTwistEnabled && foldTwistSpeed > 0) {
+          angle += animationTimeRef.current * foldTwistSpeed;
+        }
+        material.uniforms.uFoldTwistAngle.value = angle;
       }
 
       // Update color
@@ -452,6 +343,20 @@ const MandelboxMesh = () => {
         origin[i] = parameterValues[i - 3] ?? 0;
       }
 
+      // Slice Sweep Animation (4D+ only)
+      // Uses golden ratio for non-repeating phase offsets across dimensions
+      if (sliceSweepEnabled && dimension >= 4 && sliceSweepAmplitude > 0 && sliceSweepSpeed > 0) {
+        const GOLDEN_RATIO = 1.618033988749895;
+        for (let i = 3; i < D; i++) {
+          const dimIndex = i - 3;
+          const phase = dimIndex * GOLDEN_RATIO * Math.PI * 2;
+          const baseValue = parameterValues[dimIndex] ?? 0;
+          const sweep = sliceSweepAmplitude *
+            Math.sin(animationTimeRef.current * sliceSweepSpeed + phase);
+          origin[i] = baseValue + sweep;
+        }
+      }
+
       // Apply D-dimensional rotation to get rotated basis vectors
       const rotatedX = applyRotation(rotationMatrix, unitX);
       const rotatedY = applyRotation(rotationMatrix, unitY);
@@ -488,8 +393,8 @@ const MandelboxMesh = () => {
 
   return (
     <mesh ref={meshRef}>
-      {/* Larger bounding box for Mandelbox (extends further than Hyperbulb) */}
-      <boxGeometry args={[8, 8, 8]} />
+      {/* Menger is bounded within unit cube * scale, give some margin */}
+      <boxGeometry args={[4, 4, 4]} />
       <shaderMaterial
         vertexShader={vertexShader}
         fragmentShader={fragmentShader}
@@ -500,4 +405,4 @@ const MandelboxMesh = () => {
   );
 };
 
-export default MandelboxMesh;
+export default MengerMesh;

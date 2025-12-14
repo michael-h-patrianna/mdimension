@@ -77,3 +77,8 @@ clifford torus: 3 (radius)
   effectVignette.uniforms["darkness"].value = .9;
   effectVignette.renderToScreen = true;
   composer.addPass(effectVignette);
+
+
+ review the animations for the menger box. currently we have as only settings: bias (impact rotation delta n) and animation planes. research what other values we could animate
+  how and should give as an option to the user in the sidebar's Animation section for the object type to create even more interesting, visually stunning animations at different dimension numbers.
+  use websearch for research. discuss with sequential thinking and make a few suggestions

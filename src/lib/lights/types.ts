@@ -13,14 +13,14 @@
  * - directional: Parallel rays in a fixed direction (like sunlight)
  * - spot: Cone of light from position in a specific direction
  */
-export type LightType = 'point' | 'directional' | 'spot';
+export type LightType = 'point' | 'directional' | 'spot'
 
 /**
  * Transform manipulation mode for gizmo controls.
  * - translate: Move light position via XYZ axis arrows
  * - rotate: Rotate light direction via XYZ rotation rings
  */
-export type TransformMode = 'translate' | 'rotate';
+export type TransformMode = 'translate' | 'rotate'
 
 /**
  * Light source configuration.
@@ -28,32 +28,32 @@ export type TransformMode = 'translate' | 'rotate';
  */
 export interface LightSource {
   /** Unique identifier for the light */
-  id: string;
+  id: string
   /** Display name shown in sidebar */
-  name: string;
+  name: string
   /** Light type (point, directional, spot) */
-  type: LightType;
+  type: LightType
   /** Whether the light is currently active */
-  enabled: boolean;
+  enabled: boolean
   /** World-space position [x, y, z] */
-  position: [number, number, number];
+  position: [number, number, number]
   /** Euler rotation angles in radians [x, y, z] for direction */
-  rotation: [number, number, number];
+  rotation: [number, number, number]
   /** Light color as hex string (e.g., '#FFFFFF') */
-  color: string;
+  color: string
   /** Light intensity multiplier (0-3) */
-  intensity: number;
+  intensity: number
   /** Spot light cone angle in degrees (1-120) */
-  coneAngle: number;
+  coneAngle: number
   /** Spot light penumbra/softness (0-1, where 0=hard edge, 1=fully soft) */
-  penumbra: number;
+  penumbra: number
 }
 
 /** Maximum number of dynamic lights supported */
-export const MAX_LIGHTS = 4;
+export const MAX_LIGHTS = 4
 
 /** Minimum number of lights required (0 = can delete all lights) */
-export const MIN_LIGHTS = 0;
+export const MIN_LIGHTS = 0
 
 /**
  * Light type to GLSL shader integer mapping.
@@ -63,7 +63,7 @@ export const LIGHT_TYPE_TO_INT: Record<LightType, number> = {
   point: 0,
   directional: 1,
   spot: 2,
-} as const;
+} as const
 
 /**
  * Default values for new lights by type.
@@ -81,7 +81,7 @@ export const DEFAULT_LIGHT_VALUES: Record<LightType, Partial<LightSource>> = {
     coneAngle: 30,
     penumbra: 0.2,
   },
-} as const;
+} as const
 
 /**
  * Default position offset when adding new lights.
@@ -92,7 +92,7 @@ export const DEFAULT_NEW_LIGHT_POSITIONS: [number, number, number][] = [
   [-5, 5, 5],
   [5, 5, -5],
   [-5, 5, -5],
-];
+]
 
 /**
  * Create a default light matching the current single-light behavior.
@@ -101,26 +101,22 @@ export const DEFAULT_NEW_LIGHT_POSITIONS: [number, number, number][] = [
 export function createDefaultLight(): LightSource {
   // Convert spherical coordinates to Cartesian
   // h=45deg, v=30deg, d=10 => x~6.12, y=5, z~6.12
-  const h = (45 * Math.PI) / 180;
-  const v = (30 * Math.PI) / 180;
-  const d = 10;
+  const h = (45 * Math.PI) / 180
+  const v = (130 * Math.PI) / 180
+  const d = 8
 
   return {
     id: 'light-default',
     name: 'Main Light',
     type: 'point',
     enabled: true,
-    position: [
-      Math.cos(v) * Math.cos(h) * d,
-      Math.sin(v) * d,
-      Math.cos(v) * Math.sin(h) * d,
-    ],
+    position: [Math.cos(v) * Math.cos(h) * d, Math.sin(v) * d, Math.cos(v) * Math.sin(h) * d],
     rotation: [0, 0, 0],
     color: '#FFFFFF',
     intensity: 1.0,
     coneAngle: 30,
     penumbra: 0.5,
-  };
+  }
 }
 
 /**
@@ -130,21 +126,19 @@ export function createDefaultLight(): LightSource {
  * @param existingCount - Number of existing lights (for position offset)
  * @returns New light source configuration
  */
-export function createNewLight(
-  type: LightType,
-  existingCount: number
-): LightSource {
-  const positionIndex = Math.min(existingCount, DEFAULT_NEW_LIGHT_POSITIONS.length - 1);
+export function createNewLight(type: LightType, existingCount: number): LightSource {
+  const positionIndex = Math.min(existingCount, DEFAULT_NEW_LIGHT_POSITIONS.length - 1)
   // Fallback to [5,5,5] if somehow index is out of bounds (shouldn't happen)
-  const position = DEFAULT_NEW_LIGHT_POSITIONS[positionIndex] ?? [5, 5, 5] as [number, number, number];
-  const typeDefaults = DEFAULT_LIGHT_VALUES[type];
+  const position =
+    DEFAULT_NEW_LIGHT_POSITIONS[positionIndex] ?? ([5, 5, 5] as [number, number, number])
+  const typeDefaults = DEFAULT_LIGHT_VALUES[type]
 
   // Generate unique ID
-  const id = `light-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const id = `light-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
 
   // Generate name based on type
-  const typeName = type.charAt(0).toUpperCase() + type.slice(1);
-  const name = `${typeName} Light ${existingCount + 1}`;
+  const typeName = type.charAt(0).toUpperCase() + type.slice(1)
+  const name = `${typeName} Light ${existingCount + 1}`
 
   return {
     id,
@@ -157,7 +151,7 @@ export function createNewLight(
     intensity: 1.0,
     coneAngle: typeDefaults.coneAngle ?? 30,
     penumbra: typeDefaults.penumbra ?? 0.5,
-  };
+  }
 }
 
 /**
@@ -167,18 +161,14 @@ export function createNewLight(
  * @returns New light source with offset position
  */
 export function cloneLight(source: LightSource): LightSource {
-  const id = `light-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const id = `light-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
 
   return {
     ...source,
     id,
     name: `${source.name} (Copy)`,
-    position: [
-      source.position[0] + 1,
-      source.position[1],
-      source.position[2],
-    ],
-  };
+    position: [source.position[0] + 1, source.position[1], source.position[2]],
+  }
 }
 
 /**
@@ -188,23 +178,17 @@ export function cloneLight(source: LightSource): LightSource {
  * @param rotation - Euler angles in radians [x, y, z]
  * @returns Normalized direction vector [x, y, z]
  */
-export function rotationToDirection(
-  rotation: [number, number, number]
-): [number, number, number] {
-  const [rx, ry] = rotation;
+export function rotationToDirection(rotation: [number, number, number]): [number, number, number] {
+  const [rx, ry] = rotation
 
   // Start with forward direction (0, 0, -1) and apply rotations
   // Apply Y rotation (yaw) then X rotation (pitch)
-  const cosX = Math.cos(rx);
-  const sinX = Math.sin(rx);
-  const cosY = Math.cos(ry);
-  const sinY = Math.sin(ry);
+  const cosX = Math.cos(rx)
+  const sinX = Math.sin(rx)
+  const cosY = Math.cos(ry)
+  const sinY = Math.sin(ry)
 
-  return [
-    -sinY * cosX,
-    sinX,
-    -cosY * cosX,
-  ];
+  return [-sinY * cosX, sinX, -cosY * cosX]
 }
 
 /**
@@ -214,7 +198,7 @@ export function rotationToDirection(
  * @returns Clamped intensity (0-3)
  */
 export function clampIntensity(intensity: number): number {
-  return Math.max(0, Math.min(3, intensity));
+  return Math.max(0, Math.min(3, intensity))
 }
 
 /**
@@ -224,7 +208,7 @@ export function clampIntensity(intensity: number): number {
  * @returns Clamped angle (1-120)
  */
 export function clampConeAngle(angle: number): number {
-  return Math.max(1, Math.min(120, angle));
+  return Math.max(1, Math.min(120, angle))
 }
 
 /**
@@ -234,5 +218,5 @@ export function clampConeAngle(angle: number): number {
  * @returns Clamped penumbra (0-1)
  */
 export function clampPenumbra(penumbra: number): number {
-  return Math.max(0, Math.min(1, penumbra));
+  return Math.max(0, Math.min(1, penumbra))
 }

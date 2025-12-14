@@ -4,7 +4,7 @@
  *
  * Supports both traditional polytopes and extended objects:
  * - Polytopes: Hypercube, Simplex, Cross-Polytope
- * - Extended: Root System, Clifford Torus, Mandelbrot, Mandelbox
+ * - Extended: Root System, Clifford Torus, Mandelbrot, Mandelbox, Menger
  */
 
 import React, { useMemo, useEffect } from 'react';
@@ -36,6 +36,9 @@ export const ObjectTypeSelector: React.FC<ObjectTypeSelectorProps> = ({
   const initializeMandelboxForDimension = useExtendedObjectStore(
     (state) => state.initializeMandelboxForDimension
   );
+  const initializeMengerForDimension = useExtendedObjectStore(
+    (state) => state.initializeMengerForDimension
+  );
   const initializePolytopeForType = useExtendedObjectStore(
     (state) => state.initializePolytopeForType
   );
@@ -53,6 +56,13 @@ export const ObjectTypeSelector: React.FC<ObjectTypeSelectorProps> = ({
       initializeMandelboxForDimension(dimension);
     }
   }, [objectType, dimension, initializeMandelboxForDimension]);
+
+  // Initialize Menger settings when objectType is 'menger' and dimension changes
+  useEffect(() => {
+    if (objectType === 'menger') {
+      initializeMengerForDimension(dimension);
+    }
+  }, [objectType, dimension, initializeMengerForDimension]);
 
   // Initialize polytope scale when switching to a polytope type
   useEffect(() => {

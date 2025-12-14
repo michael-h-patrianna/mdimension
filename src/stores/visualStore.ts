@@ -48,6 +48,8 @@ import { create } from 'zustand'
 /** Default visual settings */
 export const DEFAULT_EDGE_COLOR = '#19e697'
 export const DEFAULT_EDGE_THICKNESS = 1
+export const DEFAULT_EDGE_METALLIC = 0.0
+export const DEFAULT_EDGE_ROUGHNESS = 0.5
 export const DEFAULT_FACE_OPACITY = 0.3
 export const DEFAULT_FACE_COLOR = '#33cc9e'
 export const DEFAULT_BACKGROUND_COLOR = '#0F0F1A'
@@ -62,16 +64,23 @@ export const DEFAULT_BLOOM_INTENSITY = 0.3
 export const DEFAULT_BLOOM_THRESHOLD = 0.35
 export const DEFAULT_BLOOM_RADIUS = 0.15
 
+/** Bokeh focus mode type */
+export type BokehFocusMode = 'auto-center' | 'auto-mouse' | 'manual'
+
 /** Default bokeh (depth of field) settings */
 export const DEFAULT_BOKEH_ENABLED = false
-export const DEFAULT_BOKEH_FOCUS = 1.0
-export const DEFAULT_BOKEH_APERTURE = 0.025
-export const DEFAULT_BOKEH_MAX_BLUR = 0.01
+export const DEFAULT_BOKEH_FOCUS_MODE: BokehFocusMode = 'auto-center'
+export const DEFAULT_BOKEH_WORLD_FOCUS_DISTANCE = 10
+export const DEFAULT_BOKEH_WORLD_FOCUS_RANGE = 5
+export const DEFAULT_BOKEH_SCALE = 2
+export const DEFAULT_BOKEH_FOCAL_LENGTH = 0.1
+export const DEFAULT_BOKEH_SMOOTH_TIME = 0.25
+export const DEFAULT_BOKEH_SHOW_DEBUG = false
 
 /** Default lighting settings */
 export const DEFAULT_LIGHT_ENABLED = true
 export const DEFAULT_LIGHT_COLOR = '#FFFFFF'
-export const DEFAULT_LIGHT_HORIZONTAL_ANGLE = 45
+export const DEFAULT_LIGHT_HORIZONTAL_ANGLE = 145
 export const DEFAULT_LIGHT_VERTICAL_ANGLE = 30
 export const DEFAULT_AMBIENT_INTENSITY = 0.01
 export const DEFAULT_AMBIENT_COLOR = '#FFFFFF'
@@ -106,15 +115,15 @@ export const ALL_WALL_POSITIONS: WallPosition[] = ['floor', 'back', 'left', 'rig
 
 /** Default ground plane settings */
 export const DEFAULT_ACTIVE_WALLS: WallPosition[] = ['floor'] // Which walls are visible
-export const DEFAULT_GROUND_PLANE_OFFSET = 2 // Additional distance offset for walls from center
+export const DEFAULT_GROUND_PLANE_OFFSET = 10 // Additional distance offset for walls from center
 export const DEFAULT_GROUND_PLANE_OPACITY = 0.3
 export const DEFAULT_GROUND_PLANE_REFLECTIVITY = 0.4
 export const DEFAULT_GROUND_PLANE_COLOR = '#101010'
 export const DEFAULT_GROUND_PLANE_TYPE: GroundPlaneType = 'plane'
-export const DEFAULT_GROUND_PLANE_SIZE_SCALE = 4 // Multiplier for ground plane size (1 = auto-calculated minimum)
+export const DEFAULT_GROUND_PLANE_SIZE_SCALE = 10 // Multiplier for ground plane size (1 = auto-calculated minimum)
 export const DEFAULT_SHOW_GROUND_GRID = true
-export const DEFAULT_GROUND_GRID_COLOR = '#ff00dd'
-export const DEFAULT_GROUND_GRID_SPACING = 1.0
+export const DEFAULT_GROUND_GRID_COLOR = '#dbdcdb'
+export const DEFAULT_GROUND_GRID_SPACING = 5.0
 
 /** Ground plane surface type */
 export type GroundPlaneType = 'two-sided' | 'plane'
@@ -214,6 +223,10 @@ interface VisualState {
   edgeColor: string
   /** Thickness of edges in pixels (1-5) */
   edgeThickness: number
+  /** Edge metallic value for PBR lighting (0-1, only used when edgeThickness > 1) */
+  edgeMetallic: number
+  /** Edge roughness value for PBR lighting (0-1, only used when edgeThickness > 1) */
+  edgeRoughness: number
   /** Opacity of faces (0-1, 0 = wireframe) */
   faceOpacity: number
   /** Color of faces (hex string) */
@@ -260,12 +273,20 @@ interface VisualState {
   // --- Bokeh (Depth of Field) Post-Processing ---
   /** Whether bokeh/depth of field effect is enabled */
   bokehEnabled: boolean
-  /** Focus distance from camera (0.1-10) */
-  bokehFocus: number
-  /** Camera aperture size - affects blur amount (0.001-0.1) */
-  bokehAperture: number
-  /** Maximum blur intensity (0-0.1) */
-  bokehMaxBlur: number
+  /** Focus mode: auto-center, auto-mouse, or manual */
+  bokehFocusMode: BokehFocusMode
+  /** Focus distance from camera in world units (1-100) - used in manual mode */
+  bokehWorldFocusDistance: number
+  /** Focus range/depth of field in world units (0.5-50) */
+  bokehWorldFocusRange: number
+  /** Blur intensity/bokeh scale (0-10) */
+  bokehScale: number
+  /** Focal length for DOF calculation (0.01-1) */
+  bokehFocalLength: number
+  /** Smooth time for autofocus transitions in seconds (0-2) */
+  bokehSmoothTime: number
+  /** Show debug visualization for focus point */
+  bokehShowDebug: boolean
 
   // --- Lighting ---
   /** Whether directional light is enabled */
@@ -366,6 +387,8 @@ interface VisualState {
   // --- Actions: Basic Visual ---
   setEdgeColor: (color: string) => void
   setEdgeThickness: (thickness: number) => void
+  setEdgeMetallic: (metallic: number) => void
+  setEdgeRoughness: (roughness: number) => void
   setFaceOpacity: (opacity: number) => void
   setFaceColor: (color: string) => void
   setBackgroundColor: (color: string) => void
@@ -396,9 +419,13 @@ interface VisualState {
 
   // --- Actions: Bokeh ---
   setBokehEnabled: (enabled: boolean) => void
-  setBokehFocus: (focus: number) => void
-  setBokehAperture: (aperture: number) => void
-  setBokehMaxBlur: (maxBlur: number) => void
+  setBokehFocusMode: (mode: BokehFocusMode) => void
+  setBokehWorldFocusDistance: (distance: number) => void
+  setBokehWorldFocusRange: (range: number) => void
+  setBokehScale: (scale: number) => void
+  setBokehFocalLength: (length: number) => void
+  setBokehSmoothTime: (time: number) => void
+  setBokehShowDebug: (show: boolean) => void
 
   // --- Actions: Lighting ---
   setLightEnabled: (enabled: boolean) => void
@@ -481,6 +508,8 @@ const INITIAL_STATE: Omit<VisualState, keyof VisualStateFunctions> = {
   // Basic visual
   edgeColor: DEFAULT_EDGE_COLOR,
   edgeThickness: DEFAULT_EDGE_THICKNESS,
+  edgeMetallic: DEFAULT_EDGE_METALLIC,
+  edgeRoughness: DEFAULT_EDGE_ROUGHNESS,
   faceOpacity: DEFAULT_FACE_OPACITY,
   faceColor: DEFAULT_FACE_COLOR,
   backgroundColor: DEFAULT_BACKGROUND_COLOR,
@@ -509,9 +538,13 @@ const INITIAL_STATE: Omit<VisualState, keyof VisualStateFunctions> = {
 
   // Bokeh (Depth of Field)
   bokehEnabled: DEFAULT_BOKEH_ENABLED,
-  bokehFocus: DEFAULT_BOKEH_FOCUS,
-  bokehAperture: DEFAULT_BOKEH_APERTURE,
-  bokehMaxBlur: DEFAULT_BOKEH_MAX_BLUR,
+  bokehFocusMode: DEFAULT_BOKEH_FOCUS_MODE,
+  bokehWorldFocusDistance: DEFAULT_BOKEH_WORLD_FOCUS_DISTANCE,
+  bokehWorldFocusRange: DEFAULT_BOKEH_WORLD_FOCUS_RANGE,
+  bokehScale: DEFAULT_BOKEH_SCALE,
+  bokehFocalLength: DEFAULT_BOKEH_FOCAL_LENGTH,
+  bokehSmoothTime: DEFAULT_BOKEH_SMOOTH_TIME,
+  bokehShowDebug: DEFAULT_BOKEH_SHOW_DEBUG,
 
   // Lighting
   lightEnabled: DEFAULT_LIGHT_ENABLED,
@@ -574,6 +607,8 @@ type VisualStateFunctions = Pick<
   VisualState,
   | 'setEdgeColor'
   | 'setEdgeThickness'
+  | 'setEdgeMetallic'
+  | 'setEdgeRoughness'
   | 'setFaceOpacity'
   | 'setFaceColor'
   | 'setBackgroundColor'
@@ -594,9 +629,13 @@ type VisualStateFunctions = Pick<
   | 'setBloomThreshold'
   | 'setBloomRadius'
   | 'setBokehEnabled'
-  | 'setBokehFocus'
-  | 'setBokehAperture'
-  | 'setBokehMaxBlur'
+  | 'setBokehFocusMode'
+  | 'setBokehWorldFocusDistance'
+  | 'setBokehWorldFocusRange'
+  | 'setBokehScale'
+  | 'setBokehFocalLength'
+  | 'setBokehSmoothTime'
+  | 'setBokehShowDebug'
   | 'setLightEnabled'
   | 'setLightColor'
   | 'setLightHorizontalAngle'
@@ -659,6 +698,14 @@ export const useVisualStore = create<VisualState>((set) => ({
 
   setEdgeThickness: (thickness: number) => {
     set({ edgeThickness: Math.max(1, Math.min(5, thickness)) })
+  },
+
+  setEdgeMetallic: (metallic: number) => {
+    set({ edgeMetallic: Math.max(0, Math.min(1, metallic)) })
+  },
+
+  setEdgeRoughness: (roughness: number) => {
+    set({ edgeRoughness: Math.max(0, Math.min(1, roughness)) })
   },
 
   setFaceOpacity: (opacity: number) => {
@@ -820,16 +867,32 @@ export const useVisualStore = create<VisualState>((set) => ({
     set({ bokehEnabled: enabled })
   },
 
-  setBokehFocus: (focus: number) => {
-    set({ bokehFocus: Math.max(0.1, Math.min(10, focus)) })
+  setBokehFocusMode: (mode: BokehFocusMode) => {
+    set({ bokehFocusMode: mode })
   },
 
-  setBokehAperture: (aperture: number) => {
-    set({ bokehAperture: Math.max(0.001, Math.min(0.1, aperture)) })
+  setBokehWorldFocusDistance: (distance: number) => {
+    set({ bokehWorldFocusDistance: Math.max(1, Math.min(100, distance)) })
   },
 
-  setBokehMaxBlur: (maxBlur: number) => {
-    set({ bokehMaxBlur: Math.max(0, Math.min(0.1, maxBlur)) })
+  setBokehWorldFocusRange: (range: number) => {
+    set({ bokehWorldFocusRange: Math.max(0.5, Math.min(50, range)) })
+  },
+
+  setBokehScale: (scale: number) => {
+    set({ bokehScale: Math.max(0, Math.min(10, scale)) })
+  },
+
+  setBokehFocalLength: (length: number) => {
+    set({ bokehFocalLength: Math.max(0.01, Math.min(1, length)) })
+  },
+
+  setBokehSmoothTime: (time: number) => {
+    set({ bokehSmoothTime: Math.max(0, Math.min(2, time)) })
+  },
+
+  setBokehShowDebug: (show: boolean) => {
+    set({ bokehShowDebug: show })
   },
 
   // --- Actions: Lighting ---
@@ -954,7 +1017,7 @@ export const useVisualStore = create<VisualState>((set) => ({
   },
 
   setGroundPlaneSizeScale: (scale: number) => {
-    set({ groundPlaneSizeScale: Math.max(1, Math.min(5, scale)) })
+    set({ groundPlaneSizeScale: Math.max(1, Math.min(10, scale)) })
   },
 
   setShowGroundGrid: (show: boolean) => {

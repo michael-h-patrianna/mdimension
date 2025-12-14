@@ -78,13 +78,17 @@ function Visualizer() {
   const isHyperbulbVisible = objectType === 'mandelbrot' && facesVisible && dimension >= 4;
   // Mandelbox has a larger bounding radius (BOUND_R = 4.0 in shader)
   const isMandelboxVisible = objectType === 'mandelbox' && facesVisible && dimension >= 3;
+  // Menger sponge is bounded within unit cube (BOUND_R = 2.0 in shader)
+  const isMengerVisible = objectType === 'menger' && facesVisible && dimension >= 3;
 
-  // Mandelbox needs larger radius (4.0) than Mandelbulb/Hyperbulb (1.5)
+  // Mandelbox needs larger radius (4.0), Menger/Mandelbulb/Hyperbulb need smaller (2.0/1.5)
   const minBoundingRadius = isMandelboxVisible
     ? 4.0
-    : (isMandelbulbVisible || isHyperbulbVisible)
-      ? 1.5
-      : undefined;
+    : isMengerVisible
+      ? 2.0
+      : (isMandelbulbVisible || isHyperbulbVisible)
+        ? 1.5
+        : undefined;
 
   return (
     <Scene

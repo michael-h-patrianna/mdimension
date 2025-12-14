@@ -7,6 +7,8 @@ import {
   useVisualStore,
   DEFAULT_EDGE_COLOR,
   DEFAULT_EDGE_THICKNESS,
+  DEFAULT_EDGE_METALLIC,
+  DEFAULT_EDGE_ROUGHNESS,
   DEFAULT_FACE_OPACITY,
   DEFAULT_BACKGROUND_COLOR,
   DEFAULT_EDGES_VISIBLE,
@@ -198,6 +200,46 @@ describe('visualStore', () => {
 
       useVisualStore.getState().setAnimationBias(1);
       expect(useVisualStore.getState().animationBias).toBe(1);
+    });
+  });
+
+  describe('edgeMetallic', () => {
+    it('should have default edge metallic of 0', () => {
+      expect(useVisualStore.getState().edgeMetallic).toBe(DEFAULT_EDGE_METALLIC);
+      expect(DEFAULT_EDGE_METALLIC).toBe(0);
+    });
+
+    it('should set edge metallic', () => {
+      useVisualStore.getState().setEdgeMetallic(0.5);
+      expect(useVisualStore.getState().edgeMetallic).toBe(0.5);
+    });
+
+    it('should clamp edge metallic to [0, 1]', () => {
+      useVisualStore.getState().setEdgeMetallic(-0.5);
+      expect(useVisualStore.getState().edgeMetallic).toBe(0);
+
+      useVisualStore.getState().setEdgeMetallic(1.5);
+      expect(useVisualStore.getState().edgeMetallic).toBe(1);
+    });
+  });
+
+  describe('edgeRoughness', () => {
+    it('should have default edge roughness of 0.5', () => {
+      expect(useVisualStore.getState().edgeRoughness).toBe(DEFAULT_EDGE_ROUGHNESS);
+      expect(DEFAULT_EDGE_ROUGHNESS).toBe(0.5);
+    });
+
+    it('should set edge roughness', () => {
+      useVisualStore.getState().setEdgeRoughness(0.8);
+      expect(useVisualStore.getState().edgeRoughness).toBe(0.8);
+    });
+
+    it('should clamp edge roughness to [0, 1]', () => {
+      useVisualStore.getState().setEdgeRoughness(-0.5);
+      expect(useVisualStore.getState().edgeRoughness).toBe(0);
+
+      useVisualStore.getState().setEdgeRoughness(1.5);
+      expect(useVisualStore.getState().edgeRoughness).toBe(1);
     });
   });
 });

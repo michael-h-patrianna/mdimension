@@ -9,24 +9,12 @@ import { useRotationStore } from '@/stores/rotationStore';
 import { useVisualStore } from '@/stores/visualStore';
 import { composeRotations } from '@/lib/math/rotation';
 import { COLOR_ALGORITHM_TO_INT } from '@/lib/shaders/palette';
+import { createLightUniforms, updateLightUniforms, type LightUniforms } from '@/lib/lights/uniforms';
 import type { MatrixND } from '@/lib/math/types';
 import type { RotationState } from '@/stores/rotationStore';
 
 /** Debounce time in ms before restoring high quality after rotation stops */
 const QUALITY_RESTORE_DELAY_MS = 150;
-
-/**
- * Convert horizontal/vertical angles to a normalized direction vector.
- */
-function anglesToDirection(horizontalDeg: number, verticalDeg: number): THREE.Vector3 {
-  const hRad = (horizontalDeg * Math.PI) / 180;
-  const vRad = (verticalDeg * Math.PI) / 180;
-  return new THREE.Vector3(
-    Math.cos(vRad) * Math.sin(hRad),
-    Math.sin(vRad),
-    Math.cos(vRad) * Math.cos(hRad)
-  ).normalize();
-}
 
 /**
  * Apply D-dimensional rotation matrix to a vector.
@@ -90,11 +78,10 @@ const HyperbulbMesh = () => {
   const lchChroma = useVisualStore((state) => state.lchChroma);
   const multiSourceWeights = useVisualStore((state) => state.multiSourceWeights);
 
-  // Get lighting settings from visual store
-  const lightEnabled = useVisualStore((state) => state.lightEnabled);
-  const lightColor = useVisualStore((state) => state.lightColor);
-  const lightHorizontalAngle = useVisualStore((state) => state.lightHorizontalAngle);
-  const lightVerticalAngle = useVisualStore((state) => state.lightVerticalAngle);
+  // Get multi-light system from visual store
+  const lights = useVisualStore((state) => state.lights);
+
+  // Get global lighting settings from visual store
   const ambientIntensity = useVisualStore((state) => state.ambientIntensity);
   const ambientColor = useVisualStore((state) => state.ambientColor);
   const specularIntensity = useVisualStore((state) => state.specularIntensity);
@@ -102,7 +89,6 @@ const HyperbulbMesh = () => {
   // Enhanced lighting settings
   const specularColor = useVisualStore((state) => state.specularColor);
   const diffuseIntensity = useVisualStore((state) => state.diffuseIntensity);
-  const lightStrength = useVisualStore((state) => state.lightStrength);
 
   // Edges render mode controls fresnel rim lighting for Hyperbulb
   const edgesVisible = useVisualStore((state) => state.edgesVisible);
@@ -138,15 +124,14 @@ const HyperbulbMesh = () => {
       uProjectionMatrix: { value: new THREE.Matrix4() },
       uViewMatrix: { value: new THREE.Matrix4() },
 
-      // Lighting uniforms
-      uLightEnabled: { value: true },
-      uLightColor: { value: new THREE.Color() },
-      uLightDirection: { value: new THREE.Vector3() },
+      // Multi-light system uniforms
+      ...createLightUniforms(),
+
+      // Global lighting uniforms
       uAmbientIntensity: { value: 0.2 },
       uAmbientColor: { value: new THREE.Color('#FFFFFF') },
       uSpecularIntensity: { value: 1.0 },
       uSpecularPower: { value: 32.0 },
-      uLightStrength: { value: 1.0 },
       // Enhanced lighting uniforms
       uSpecularColor: { value: new THREE.Color('#FFFFFF') },
       uDiffuseIntensity: { value: 1.0 },
@@ -258,18 +243,14 @@ const HyperbulbMesh = () => {
       if (material.uniforms.uProjectionMatrix) material.uniforms.uProjectionMatrix.value.copy(camera.projectionMatrix);
       if (material.uniforms.uViewMatrix) material.uniforms.uViewMatrix.value.copy(camera.matrixWorldInverse);
 
-      // Update lighting uniforms
-      if (material.uniforms.uLightEnabled) material.uniforms.uLightEnabled.value = lightEnabled;
-      if (material.uniforms.uLightColor) material.uniforms.uLightColor.value.set(lightColor);
-      if (material.uniforms.uLightDirection) {
-        const dir = anglesToDirection(lightHorizontalAngle, lightVerticalAngle);
-        material.uniforms.uLightDirection.value.copy(dir);
-      }
+      // Update multi-light uniforms
+      updateLightUniforms(material.uniforms as unknown as LightUniforms, lights);
+
+      // Update global lighting uniforms
       if (material.uniforms.uAmbientIntensity) material.uniforms.uAmbientIntensity.value = ambientIntensity;
       if (material.uniforms.uAmbientColor) material.uniforms.uAmbientColor.value.set(ambientColor);
       if (material.uniforms.uSpecularIntensity) material.uniforms.uSpecularIntensity.value = specularIntensity;
       if (material.uniforms.uSpecularPower) material.uniforms.uSpecularPower.value = shininess;
-      if (material.uniforms.uLightStrength) material.uniforms.uLightStrength.value = lightStrength ?? 1.0;
       // Enhanced lighting uniforms
       if (material.uniforms.uSpecularColor) material.uniforms.uSpecularColor.value.set(specularColor);
       if (material.uniforms.uDiffuseIntensity) material.uniforms.uDiffuseIntensity.value = diffuseIntensity;

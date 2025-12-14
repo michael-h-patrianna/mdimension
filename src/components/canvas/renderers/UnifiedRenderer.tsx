@@ -7,7 +7,9 @@
  * Render modes:
  * - polytope: Traditional polytopes (hypercube, simplex, cross-polytope) with faces/edges/vertices
  * - pointcloud: Point cloud objects (root system, Clifford torus, Mandelbrot points)
- * - raymarch: Raymarched 3D surfaces (Mandelbulb at 3D, Hyperbulb at 4D+)
+ * - raymarch-mandelbrot: Raymarched 3D-11D surfaces (unified Hyperbulb for all dimensions)
+ * - raymarch-mandelbox: Raymarched 3D-11D Mandelbox fractals
+ * - raymarch-menger: Raymarched 3D-11D Menger sponge fractals
  *
  * All renderers use useFrame for transformations, reading from stores via getState()
  * to bypass React's render cycle completely during animation.
@@ -19,15 +21,15 @@ import type { Face } from '@/lib/geometry/faces';
 import type { NdGeometry, ObjectType } from '@/lib/geometry/types';
 import { PolytopeScene } from '../scenes/PolytopeScene';
 import { PointCloudScene } from '../scenes/PointCloudScene';
-import MandelbulbMesh from './Mandelbulb/MandelbulbMesh';
 import HyperbulbMesh from './Hyperbulb/HyperbulbMesh';
 import MandelboxMesh from './Mandelbox/MandelboxMesh';
+import MengerMesh from './Menger/MengerMesh';
 import { useVisualStore } from '@/stores/visualStore';
 
 /**
  * Render mode types
  */
-export type RenderMode = 'polytope' | 'pointcloud' | 'raymarch-3d' | 'raymarch-4d+' | 'raymarch-mandelbox' | 'none';
+export type RenderMode = 'polytope' | 'pointcloud' | 'raymarch-mandelbrot' | 'raymarch-mandelbox' | 'raymarch-menger' | 'none';
 
 /**
  * Props for UnifiedRenderer
@@ -65,10 +67,15 @@ export function determineRenderMode(
     return facesVisible ? 'raymarch-mandelbox' : 'none';
   }
 
-  // Mandelbrot with faces visible uses raymarching
-  if (objectType === 'mandelbrot' && facesVisible) {
-    if (dimension === 3) return 'raymarch-3d';
-    if (dimension >= 4) return 'raymarch-4d+';
+  // Menger uses raymarching when faces are visible (no point cloud fallback)
+  // Similar to Mandelbox - edges toggle controls fresnel rim lighting
+  if (objectType === 'menger' && dimension >= 3) {
+    return facesVisible ? 'raymarch-menger' : 'none';
+  }
+
+  // Mandelbrot/Hyperbulb with faces visible uses raymarching (3D-11D unified)
+  if (objectType === 'mandelbrot' && facesVisible && dimension >= 3) {
+    return 'raymarch-mandelbrot';
   }
 
   // Point clouds use PointCloudScene
@@ -142,14 +149,14 @@ export const UnifiedRenderer = React.memo(function UnifiedRenderer({
         />
       )}
 
-      {/* Raymarched 3D Mandelbulb surface */}
-      {renderMode === 'raymarch-3d' && <MandelbulbMesh />}
-
-      {/* Raymarched 4D+ Hyperbulb surface */}
-      {renderMode === 'raymarch-4d+' && <HyperbulbMesh />}
+      {/* Raymarched 3D-11D Mandelbulb/Hyperbulb surface (unified renderer) */}
+      {renderMode === 'raymarch-mandelbrot' && <HyperbulbMesh />}
 
       {/* Raymarched 3D-11D Mandelbox surface */}
       {renderMode === 'raymarch-mandelbox' && <MandelboxMesh />}
+
+      {/* Raymarched 3D-11D Menger Sponge */}
+      {renderMode === 'raymarch-menger' && <MengerMesh />}
     </>
   );
 });

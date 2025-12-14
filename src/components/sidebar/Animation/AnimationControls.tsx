@@ -3,11 +3,11 @@
  * Controls for auto-rotating the visualization
  */
 
-import { useShallow } from 'zustand/react/shallow';
 import { Button } from '@/components/ui/Button';
 import { Slider } from '@/components/ui/Slider';
 import { ToggleButton } from '@/components/ui/ToggleButton';
 import { Tooltip } from '@/components/ui/Tooltip';
+import { DEFAULT_MANDELBOX_CONFIG } from '@/lib/geometry/extended/types';
 import { getRotationPlanes } from '@/lib/math';
 import {
   DEFAULT_SPEED,
@@ -15,6 +15,7 @@ import {
   MIN_SPEED,
   useAnimationStore,
 } from '@/stores/animationStore';
+import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import {
   DEFAULT_ANIMATION_BIAS,
@@ -23,6 +24,7 @@ import {
   useVisualStore,
 } from '@/stores/visualStore';
 import React, { useMemo } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 
 export interface AnimationControlsProps {
   className?: string;
@@ -32,6 +34,30 @@ export const AnimationControls: React.FC<AnimationControlsProps> = React.memo(({
   className = '',
 }) => {
   const dimension = useGeometryStore((state) => state.dimension);
+  const objectType = useGeometryStore((state) => state.objectType);
+
+  // Mandelbox-specific animation settings
+  const {
+    mandelboxConfig,
+    setScaleAnimationEnabled,
+    setScaleCenter,
+    setScaleAmplitude,
+    setScaleSpeed,
+    setJuliaMode,
+    setJuliaSpeed,
+    setJuliaRadius,
+  } = useExtendedObjectStore(
+    useShallow((state) => ({
+      mandelboxConfig: state.mandelbox,
+      setScaleAnimationEnabled: state.setMandelboxScaleAnimationEnabled,
+      setScaleCenter: state.setMandelboxScaleCenter,
+      setScaleAmplitude: state.setMandelboxScaleAmplitude,
+      setScaleSpeed: state.setMandelboxScaleSpeed,
+      setJuliaMode: state.setMandelboxJuliaMode,
+      setJuliaSpeed: state.setMandelboxJuliaSpeed,
+      setJuliaRadius: state.setMandelboxJuliaRadius,
+    }))
+  );
 
   // Consolidate animation store selectors with useShallow to reduce subscriptions
   const {
@@ -161,6 +187,107 @@ export const AnimationControls: React.FC<AnimationControlsProps> = React.memo(({
           Stop All
         </Button>
       </div>
+
+      {/* Mandelbox-specific Animation Controls */}
+      {objectType === 'mandelbox' && (
+        <>
+          {/* Scale Animation Section */}
+          <div className="space-y-2 border-t border-white/10 pt-3">
+            <label className="text-xs text-text-secondary font-medium">
+              Scale Animation
+            </label>
+            <ToggleButton
+              pressed={mandelboxConfig.scaleAnimationEnabled}
+              onToggle={() => setScaleAnimationEnabled(!mandelboxConfig.scaleAnimationEnabled)}
+              ariaLabel="Toggle scale animation"
+              className="w-full"
+            >
+              {mandelboxConfig.scaleAnimationEnabled ? 'Enabled' : 'Disabled'}
+            </ToggleButton>
+            {mandelboxConfig.scaleAnimationEnabled && (
+              <div className="space-y-2 pl-2">
+                <Slider
+                  label="Center"
+                  min={-3}
+                  max={3}
+                  step={0.1}
+                  value={mandelboxConfig.scaleCenter}
+                  onChange={setScaleCenter}
+                  onReset={() => setScaleCenter(DEFAULT_MANDELBOX_CONFIG.scaleCenter)}
+                  showValue
+                />
+                <Slider
+                  label="Amplitude"
+                  min={0}
+                  max={1.5}
+                  step={0.05}
+                  value={mandelboxConfig.scaleAmplitude}
+                  onChange={setScaleAmplitude}
+                  onReset={() => setScaleAmplitude(DEFAULT_MANDELBOX_CONFIG.scaleAmplitude)}
+                  showValue
+                />
+                <Slider
+                  label="Speed"
+                  min={0.1}
+                  max={2}
+                  step={0.1}
+                  value={mandelboxConfig.scaleSpeed}
+                  onChange={setScaleSpeed}
+                  onReset={() => setScaleSpeed(DEFAULT_MANDELBOX_CONFIG.scaleSpeed)}
+                  unit="x"
+                  showValue
+                />
+                <p className="text-xs text-text-tertiary">
+                  Animates scale from {(mandelboxConfig.scaleCenter - mandelboxConfig.scaleAmplitude).toFixed(1)} to {(mandelboxConfig.scaleCenter + mandelboxConfig.scaleAmplitude).toFixed(1)}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Julia Mode Section */}
+          <div className="space-y-2 border-t border-white/10 pt-3">
+            <label className="text-xs text-text-secondary font-medium">
+              Julia Mode
+            </label>
+            <ToggleButton
+              pressed={mandelboxConfig.juliaMode}
+              onToggle={() => setJuliaMode(!mandelboxConfig.juliaMode)}
+              ariaLabel="Toggle Julia mode"
+              className="w-full"
+            >
+              {mandelboxConfig.juliaMode ? 'Enabled' : 'Disabled'}
+            </ToggleButton>
+            {mandelboxConfig.juliaMode && (
+              <div className="space-y-2 pl-2">
+                <Slider
+                  label="Speed"
+                  min={0.1}
+                  max={2}
+                  step={0.1}
+                  value={mandelboxConfig.juliaSpeed}
+                  onChange={setJuliaSpeed}
+                  onReset={() => setJuliaSpeed(DEFAULT_MANDELBOX_CONFIG.juliaSpeed)}
+                  unit="x"
+                  showValue
+                />
+                <Slider
+                  label="Radius"
+                  min={0.5}
+                  max={10}
+                  step={0.1}
+                  value={mandelboxConfig.juliaRadius}
+                  onChange={setJuliaRadius}
+                  onReset={() => setJuliaRadius(DEFAULT_MANDELBOX_CONFIG.juliaRadius)}
+                  showValue
+                />
+                <p className="text-xs text-text-tertiary">
+                  Uses a global animated constant instead of per-pixel values, creating smooth morphing transitions.
+                </p>
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 });

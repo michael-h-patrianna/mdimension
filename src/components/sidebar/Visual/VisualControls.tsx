@@ -10,6 +10,7 @@ import {
   useVisualStore
 } from '@/stores/visualStore';
 import React from 'react';
+import { EdgeMaterialControls } from './EdgeMaterialControls';
 
 export interface VisualControlsProps {
   className?: string;
@@ -64,6 +65,9 @@ export const VisualControls: React.FC<VisualControlsProps> = React.memo(({
         onReset={() => setEdgeThickness(DEFAULT_EDGE_THICKNESS)}
         showValue
       />
+
+      {/* Edge Material Controls (only visible when thickness > 1) */}
+      <EdgeMaterialControls />
     </div>
   );
 });

@@ -35,7 +35,7 @@ export interface RenderModeTogglesProps {
 /**
  * Checks if an object type supports face rendering
  * Polytopes (hypercube, simplex, cross-polytope), root-system, clifford-torus,
- * mandelbrot (via raymarching), and mandelbox (via raymarching) support faces
+ * mandelbrot (via raymarching), mandelbox (via raymarching), and menger (via raymarching) support faces
  * @param objectType - The current object type
  * @returns true if faces can be rendered for this object type
  */
@@ -46,6 +46,7 @@ function canRenderFaces(objectType: string): boolean {
     objectType === 'root-system' ||
     objectType === 'mandelbrot' ||
     objectType === 'mandelbox' ||
+    objectType === 'menger' ||
     objectType === 'clifford-torus'
   );
 }
@@ -62,7 +63,7 @@ function canRenderEdges(_objectType: string): boolean {
 }
 
 /**
- * Checks if an object type is a raymarched fractal (mandelbrot 3D+ or mandelbox)
+ * Checks if an object type is a raymarched fractal (mandelbrot 3D+, mandelbox, or menger)
  * These types have special mutual exclusivity rules for render modes
  * @param objectType - The current object type
  * @param dimension - Current dimension
@@ -71,7 +72,8 @@ function canRenderEdges(_objectType: string): boolean {
 function isRaymarchedFractal(objectType: string, dimension: number): boolean {
   return (
     (objectType === 'mandelbrot' && dimension >= 3) ||
-    (objectType === 'mandelbox' && dimension >= 3)
+    (objectType === 'mandelbox' && dimension >= 3) ||
+    (objectType === 'menger' && dimension >= 3)
   );
 }
 

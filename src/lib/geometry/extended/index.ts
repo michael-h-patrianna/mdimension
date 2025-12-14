@@ -155,6 +155,23 @@ export function generateExtendedObject(
         },
       };
 
+    case 'menger':
+      // Menger Sponge uses GPU raymarching (KIFS) exclusively - no CPU geometry needed
+      // Return minimal geometry that signals to UnifiedRenderer to use MengerMesh
+      return {
+        dimension,
+        type: 'menger',
+        vertices: [],
+        edges: [],
+        isPointCloud: false,
+        metadata: {
+          name: 'Menger Sponge',
+          properties: {
+            renderMode: 'raymarching',
+          },
+        },
+      };
+
     default:
       throw new Error(`Unknown extended object type: ${type}`);
   }

@@ -9,6 +9,7 @@ import {
   DEFAULT_CLIFFORD_TORUS_CONFIG,
   DEFAULT_MANDELBROT_CONFIG,
   DEFAULT_MANDELBOX_CONFIG,
+  DEFAULT_MENGER_CONFIG,
 } from '@/lib/geometry/extended/types';
 
 describe('extendedObjectStore', () => {
@@ -35,6 +36,11 @@ describe('extendedObjectStore', () => {
     it('should have default mandelbox config', () => {
       const state = useExtendedObjectStore.getState();
       expect(state.mandelbox).toEqual(DEFAULT_MANDELBOX_CONFIG);
+    });
+
+    it('should have default menger config', () => {
+      const state = useExtendedObjectStore.getState();
+      expect(state.menger).toEqual(DEFAULT_MENGER_CONFIG);
     });
   });
 
@@ -665,6 +671,240 @@ describe('extendedObjectStore', () => {
     });
   });
 
+  describe('menger actions', () => {
+    it('should set iterations with clamping', () => {
+      const { setMengerIterations } = useExtendedObjectStore.getState();
+
+      setMengerIterations(6);
+      expect(useExtendedObjectStore.getState().menger.iterations).toBe(6);
+
+      // Test clamping - too low (min 3)
+      setMengerIterations(1);
+      expect(useExtendedObjectStore.getState().menger.iterations).toBe(3);
+
+      // Test clamping - too high (max 8)
+      setMengerIterations(15);
+      expect(useExtendedObjectStore.getState().menger.iterations).toBe(8);
+    });
+
+    it('should floor iterations to integer', () => {
+      const { setMengerIterations } = useExtendedObjectStore.getState();
+
+      setMengerIterations(5.8);
+      expect(useExtendedObjectStore.getState().menger.iterations).toBe(5);
+    });
+
+    it('should set scale with clamping', () => {
+      const { setMengerScale } = useExtendedObjectStore.getState();
+
+      setMengerScale(1.5);
+      expect(useExtendedObjectStore.getState().menger.scale).toBe(1.5);
+
+      // Test clamping - too low (min 0.5)
+      setMengerScale(0.1);
+      expect(useExtendedObjectStore.getState().menger.scale).toBe(0.5);
+
+      // Test clamping - too high (max 2.0)
+      setMengerScale(5.0);
+      expect(useExtendedObjectStore.getState().menger.scale).toBe(2.0);
+    });
+
+    it('should set parameter value with clamping', () => {
+      const { setMengerParameterValues, setMengerParameterValue } = useExtendedObjectStore.getState();
+
+      // First set up some parameter values
+      setMengerParameterValues([0, 0, 0]);
+
+      setMengerParameterValue(1, 0.5);
+      expect(useExtendedObjectStore.getState().menger.parameterValues[1]).toBe(0.5);
+
+      // Test clamping (range -2.0 to 2.0)
+      setMengerParameterValue(0, 5.0);
+      expect(useExtendedObjectStore.getState().menger.parameterValues[0]).toBe(2.0);
+
+      setMengerParameterValue(2, -5.0);
+      expect(useExtendedObjectStore.getState().menger.parameterValues[2]).toBe(-2.0);
+    });
+
+    it('should set parameter values with clamping', () => {
+      const { setMengerParameterValues } = useExtendedObjectStore.getState();
+
+      setMengerParameterValues([0.1, -0.2, 0.3]);
+      expect(useExtendedObjectStore.getState().menger.parameterValues).toEqual([0.1, -0.2, 0.3]);
+
+      // Test clamping (range -2.0 to 2.0)
+      setMengerParameterValues([5, -5, 1]);
+      expect(useExtendedObjectStore.getState().menger.parameterValues).toEqual([2.0, -2.0, 1]);
+    });
+
+    it('should reset parameters to zeros', () => {
+      const { setMengerParameterValues, resetMengerParameters } = useExtendedObjectStore.getState();
+
+      setMengerParameterValues([0.5, -0.3, 0.2]);
+      resetMengerParameters();
+      expect(useExtendedObjectStore.getState().menger.parameterValues).toEqual([0, 0, 0]);
+    });
+
+    it('should initialize for dimension', () => {
+      const { initializeMengerForDimension } = useExtendedObjectStore.getState();
+
+      initializeMengerForDimension(5);
+
+      const state = useExtendedObjectStore.getState().menger;
+      expect(state.parameterValues).toHaveLength(2); // 5 - 3 = 2
+      expect(state.parameterValues).toEqual([0, 0]);
+    });
+
+    it('should initialize for 3D with empty parameter values', () => {
+      const { initializeMengerForDimension } = useExtendedObjectStore.getState();
+
+      initializeMengerForDimension(3);
+
+      const state = useExtendedObjectStore.getState().menger;
+      expect(state.parameterValues).toHaveLength(0); // 3 - 3 = 0
+      expect(state.parameterValues).toEqual([]);
+    });
+
+    it('should get config as copy', () => {
+      const { getMengerConfig, setMengerIterations } = useExtendedObjectStore.getState();
+
+      setMengerIterations(7);
+      const config = getMengerConfig();
+
+      expect(config.iterations).toBe(7);
+
+      // Should be a copy, not a reference
+      config.iterations = 999;
+      expect(useExtendedObjectStore.getState().menger.iterations).toBe(7);
+    });
+  });
+
+  describe('menger fold twist animation actions', () => {
+    it('should set fold twist enabled', () => {
+      const { setMengerFoldTwistEnabled } = useExtendedObjectStore.getState();
+
+      setMengerFoldTwistEnabled(true);
+      expect(useExtendedObjectStore.getState().menger.foldTwistEnabled).toBe(true);
+
+      setMengerFoldTwistEnabled(false);
+      expect(useExtendedObjectStore.getState().menger.foldTwistEnabled).toBe(false);
+    });
+
+    it('should set fold twist angle with clamping', () => {
+      const { setMengerFoldTwistAngle } = useExtendedObjectStore.getState();
+
+      setMengerFoldTwistAngle(1.0);
+      expect(useExtendedObjectStore.getState().menger.foldTwistAngle).toBe(1.0);
+
+      // Test clamping - too low (min -π)
+      setMengerFoldTwistAngle(-5.0);
+      expect(useExtendedObjectStore.getState().menger.foldTwistAngle).toBe(-Math.PI);
+
+      // Test clamping - too high (max π)
+      setMengerFoldTwistAngle(5.0);
+      expect(useExtendedObjectStore.getState().menger.foldTwistAngle).toBe(Math.PI);
+    });
+
+    it('should set fold twist speed with clamping', () => {
+      const { setMengerFoldTwistSpeed } = useExtendedObjectStore.getState();
+
+      setMengerFoldTwistSpeed(1.0);
+      expect(useExtendedObjectStore.getState().menger.foldTwistSpeed).toBe(1.0);
+
+      // Test clamping - too low (min 0)
+      setMengerFoldTwistSpeed(-1.0);
+      expect(useExtendedObjectStore.getState().menger.foldTwistSpeed).toBe(0);
+
+      // Test clamping - too high (max 2)
+      setMengerFoldTwistSpeed(5.0);
+      expect(useExtendedObjectStore.getState().menger.foldTwistSpeed).toBe(2);
+    });
+  });
+
+  describe('menger scale pulse animation actions', () => {
+    it('should set scale pulse enabled', () => {
+      const { setMengerScalePulseEnabled } = useExtendedObjectStore.getState();
+
+      setMengerScalePulseEnabled(true);
+      expect(useExtendedObjectStore.getState().menger.scalePulseEnabled).toBe(true);
+
+      setMengerScalePulseEnabled(false);
+      expect(useExtendedObjectStore.getState().menger.scalePulseEnabled).toBe(false);
+    });
+
+    it('should set scale pulse amplitude with clamping', () => {
+      const { setMengerScalePulseAmplitude } = useExtendedObjectStore.getState();
+
+      setMengerScalePulseAmplitude(0.3);
+      expect(useExtendedObjectStore.getState().menger.scalePulseAmplitude).toBe(0.3);
+
+      // Test clamping - too low (min 0)
+      setMengerScalePulseAmplitude(-0.5);
+      expect(useExtendedObjectStore.getState().menger.scalePulseAmplitude).toBe(0);
+
+      // Test clamping - too high (max 0.5)
+      setMengerScalePulseAmplitude(1.0);
+      expect(useExtendedObjectStore.getState().menger.scalePulseAmplitude).toBe(0.5);
+    });
+
+    it('should set scale pulse speed with clamping', () => {
+      const { setMengerScalePulseSpeed } = useExtendedObjectStore.getState();
+
+      setMengerScalePulseSpeed(1.5);
+      expect(useExtendedObjectStore.getState().menger.scalePulseSpeed).toBe(1.5);
+
+      // Test clamping - too low (min 0)
+      setMengerScalePulseSpeed(-1.0);
+      expect(useExtendedObjectStore.getState().menger.scalePulseSpeed).toBe(0);
+
+      // Test clamping - too high (max 2)
+      setMengerScalePulseSpeed(5.0);
+      expect(useExtendedObjectStore.getState().menger.scalePulseSpeed).toBe(2);
+    });
+  });
+
+  describe('menger slice sweep animation actions', () => {
+    it('should set slice sweep enabled', () => {
+      const { setMengerSliceSweepEnabled } = useExtendedObjectStore.getState();
+
+      setMengerSliceSweepEnabled(true);
+      expect(useExtendedObjectStore.getState().menger.sliceSweepEnabled).toBe(true);
+
+      setMengerSliceSweepEnabled(false);
+      expect(useExtendedObjectStore.getState().menger.sliceSweepEnabled).toBe(false);
+    });
+
+    it('should set slice sweep amplitude with clamping', () => {
+      const { setMengerSliceSweepAmplitude } = useExtendedObjectStore.getState();
+
+      setMengerSliceSweepAmplitude(1.5);
+      expect(useExtendedObjectStore.getState().menger.sliceSweepAmplitude).toBe(1.5);
+
+      // Test clamping - too low (min 0)
+      setMengerSliceSweepAmplitude(-1.0);
+      expect(useExtendedObjectStore.getState().menger.sliceSweepAmplitude).toBe(0);
+
+      // Test clamping - too high (max 2)
+      setMengerSliceSweepAmplitude(5.0);
+      expect(useExtendedObjectStore.getState().menger.sliceSweepAmplitude).toBe(2);
+    });
+
+    it('should set slice sweep speed with clamping', () => {
+      const { setMengerSliceSweepSpeed } = useExtendedObjectStore.getState();
+
+      setMengerSliceSweepSpeed(1.0);
+      expect(useExtendedObjectStore.getState().menger.sliceSweepSpeed).toBe(1.0);
+
+      // Test clamping - too low (min 0)
+      setMengerSliceSweepSpeed(-1.0);
+      expect(useExtendedObjectStore.getState().menger.sliceSweepSpeed).toBe(0);
+
+      // Test clamping - too high (max 2)
+      setMengerSliceSweepSpeed(5.0);
+      expect(useExtendedObjectStore.getState().menger.sliceSweepSpeed).toBe(2);
+    });
+  });
+
   describe('reset', () => {
     it('should reset all configs to defaults', () => {
       const state = useExtendedObjectStore.getState();
@@ -676,6 +916,8 @@ describe('extendedObjectStore', () => {
       state.setMandelbrotPalette('triadic');
       state.setMandelboxScale(-2.5);
       state.setMandelboxMaxIterations(75);
+      state.setMengerIterations(7);
+      state.setMengerScale(1.8);
 
       // Reset
       state.reset();
@@ -686,6 +928,7 @@ describe('extendedObjectStore', () => {
       expect(newState.cliffordTorus).toEqual(DEFAULT_CLIFFORD_TORUS_CONFIG);
       expect(newState.mandelbrot).toEqual(DEFAULT_MANDELBROT_CONFIG);
       expect(newState.mandelbox).toEqual(DEFAULT_MANDELBOX_CONFIG);
+      expect(newState.menger).toEqual(DEFAULT_MENGER_CONFIG);
     });
   });
 });

@@ -28,6 +28,7 @@ import { useGeometryStore } from '@/stores/geometryStore';
 import React from 'react';
 import { MandelboxControls } from './MandelboxControls';
 import { MandelbrotControls } from './MandelbrotControls';
+import { MengerControls } from './MengerControls';
 
 export interface ObjectSettingsSectionProps {
   className?: string;
@@ -319,6 +320,7 @@ export const ObjectSettingsSection: React.FC<ObjectSettingsSectionProps> = ({
       {objectType === 'clifford-torus' && <CliffordTorusSettings />}
       {objectType === 'mandelbrot' && <MandelbrotControls />}
       {objectType === 'mandelbox' && <MandelboxControls />}
+      {objectType === 'menger' && <MengerControls />}
     </div>
   );
 };

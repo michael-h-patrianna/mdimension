@@ -23,6 +23,10 @@ uniform mat4 uViewMatrix;
 
 uniform int uDimension;
 
+// Julia Mode uniforms
+uniform bool uJuliaMode;
+uniform float uJuliaC[11];
+
 // D-dimensional rotated coordinate system
 // c = uOrigin + pos.x * uBasisX + pos.y * uBasisY + pos.z * uBasisZ
 uniform float uBasisX[11];
@@ -388,6 +392,11 @@ float sdf3D(vec3 pos, float scale, float fold, float minR2, float fixedR2, float
     float cy = uOrigin[1] + pos.x*uBasisX[1] + pos.y*uBasisY[1] + pos.z*uBasisZ[1];
     float cz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
 
+    // Julia mode: use global c constant for iteration
+    float jx = uJuliaMode ? uJuliaC[0] : cx;
+    float jy = uJuliaMode ? uJuliaC[1] : cy;
+    float jz = uJuliaMode ? uJuliaC[2] : cz;
+
     float zx = cx, zy = cy, zz = cz;
     float dr = 1.0;
     float minDist = 1000.0;
@@ -407,10 +416,10 @@ float sdf3D(vec3 pos, float scale, float fold, float minR2, float fixedR2, float
         zx *= sf; zy *= sf; zz *= sf;
         dr *= sf;
 
-        // Scale and translate
-        zx = scale * zx + cx;
-        zy = scale * zy + cy;
-        zz = scale * zz + cz;
+        // Scale and translate - use Julia c or per-pixel c
+        zx = scale * zx + jx;
+        zy = scale * zy + jy;
+        zz = scale * zz + jz;
         dr = dr * abs(scale) + 1.0;
 
         // Track orbit trap
@@ -431,6 +440,11 @@ float sdf3D_simple(vec3 pos, float scale, float fold, float minR2, float fixedR2
     float cy = uOrigin[1] + pos.x*uBasisX[1] + pos.y*uBasisY[1] + pos.z*uBasisZ[1];
     float cz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
 
+    // Julia mode: use global c constant for iteration
+    float jx = uJuliaMode ? uJuliaC[0] : cx;
+    float jy = uJuliaMode ? uJuliaC[1] : cy;
+    float jz = uJuliaMode ? uJuliaC[2] : cz;
+
     float zx = cx, zy = cy, zz = cz;
     float dr = 1.0;
 
@@ -441,7 +455,7 @@ float sdf3D_simple(vec3 pos, float scale, float fold, float minR2, float fixedR2
         float r2 = zx*zx + zy*zy + zz*zz;
         float sf = sphereFold(r2, minR2, fixedR2);
         zx *= sf; zy *= sf; zz *= sf; dr *= sf;
-        zx = scale * zx + cx; zy = scale * zy + cy; zz = scale * zz + cz;
+        zx = scale * zx + jx; zy = scale * zy + jy; zz = scale * zz + jz;
         dr = dr * abs(scale) + 1.0;
 
         if (r2 > bail*bail) break;
@@ -460,6 +474,12 @@ float sdf4D(vec3 pos, float scale, float fold, float minR2, float fixedR2, float
     float cy = uOrigin[1] + pos.x*uBasisX[1] + pos.y*uBasisY[1] + pos.z*uBasisZ[1];
     float cz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
     float cw = uOrigin[3] + pos.x*uBasisX[3] + pos.y*uBasisY[3] + pos.z*uBasisZ[3];
+
+    // Julia mode: use global c constant for iteration
+    float jx = uJuliaMode ? uJuliaC[0] : cx;
+    float jy = uJuliaMode ? uJuliaC[1] : cy;
+    float jz = uJuliaMode ? uJuliaC[2] : cz;
+    float jw = uJuliaMode ? uJuliaC[3] : cw;
 
     float zx = cx, zy = cy, zz = cz, zw = cw;
     float dr = 1.0;
@@ -483,8 +503,8 @@ float sdf4D(vec3 pos, float scale, float fold, float minR2, float fixedR2, float
         zx *= sf; zy *= sf; zz *= sf; zw *= sf;
         dr *= sf;
 
-        zx = scale * zx + cx; zy = scale * zy + cy;
-        zz = scale * zz + cz; zw = scale * zw + cw;
+        zx = scale * zx + jx; zy = scale * zy + jy;
+        zz = scale * zz + jz; zw = scale * zw + jw;
         dr = dr * abs(scale) + 1.0;
 
         float dist = sqrt(r2);
@@ -505,6 +525,12 @@ float sdf4D_simple(vec3 pos, float scale, float fold, float minR2, float fixedR2
     float cz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
     float cw = uOrigin[3] + pos.x*uBasisX[3] + pos.y*uBasisY[3] + pos.z*uBasisZ[3];
 
+    // Julia mode: use global c constant for iteration
+    float jx = uJuliaMode ? uJuliaC[0] : cx;
+    float jy = uJuliaMode ? uJuliaC[1] : cy;
+    float jz = uJuliaMode ? uJuliaC[2] : cz;
+    float jw = uJuliaMode ? uJuliaC[3] : cw;
+
     float zx = cx, zy = cy, zz = cz, zw = cw;
     float dr = 1.0;
 
@@ -523,8 +549,8 @@ float sdf4D_simple(vec3 pos, float scale, float fold, float minR2, float fixedR2
         float r2 = zx*zx + zy*zy + zz*zz + zw*zw;
         float sf = sphereFold(r2, minR2, fixedR2);
         zx *= sf; zy *= sf; zz *= sf; zw *= sf; dr *= sf;
-        zx = scale * zx + cx; zy = scale * zy + cy;
-        zz = scale * zz + cz; zw = scale * zw + cw;
+        zx = scale * zx + jx; zy = scale * zy + jy;
+        zz = scale * zz + jz; zw = scale * zw + jw;
         dr = dr * abs(scale) + 1.0;
 
         if (r2 > bail*bail) break;
@@ -544,6 +570,13 @@ float sdf5D(vec3 pos, float scale, float fold, float minR2, float fixedR2, float
     float cz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
     float c3 = uOrigin[3] + pos.x*uBasisX[3] + pos.y*uBasisY[3] + pos.z*uBasisZ[3];
     float c4 = uOrigin[4] + pos.x*uBasisX[4] + pos.y*uBasisY[4] + pos.z*uBasisZ[4];
+
+    // Julia mode: use global c constant for iteration
+    float jx = uJuliaMode ? uJuliaC[0] : cx;
+    float jy = uJuliaMode ? uJuliaC[1] : cy;
+    float jz = uJuliaMode ? uJuliaC[2] : cz;
+    float j3 = uJuliaMode ? uJuliaC[3] : c3;
+    float j4 = uJuliaMode ? uJuliaC[4] : c4;
 
     float zx = cx, zy = cy, zz = cz, z3 = c3, z4 = c4;
     float dr = 1.0;
@@ -567,8 +600,8 @@ float sdf5D(vec3 pos, float scale, float fold, float minR2, float fixedR2, float
         zx *= sf; zy *= sf; zz *= sf; z3 *= sf; z4 *= sf;
         dr *= sf;
 
-        zx = scale * zx + cx; zy = scale * zy + cy;
-        zz = scale * zz + cz; z3 = scale * z3 + c3; z4 = scale * z4 + c4;
+        zx = scale * zx + jx; zy = scale * zy + jy;
+        zz = scale * zz + jz; z3 = scale * z3 + j3; z4 = scale * z4 + j4;
         dr = dr * abs(scale) + 1.0;
 
         float dist = sqrt(r2);
@@ -590,6 +623,13 @@ float sdf5D_simple(vec3 pos, float scale, float fold, float minR2, float fixedR2
     float c3 = uOrigin[3] + pos.x*uBasisX[3] + pos.y*uBasisY[3] + pos.z*uBasisZ[3];
     float c4 = uOrigin[4] + pos.x*uBasisX[4] + pos.y*uBasisY[4] + pos.z*uBasisZ[4];
 
+    // Julia mode: use global c constant for iteration
+    float jx = uJuliaMode ? uJuliaC[0] : cx;
+    float jy = uJuliaMode ? uJuliaC[1] : cy;
+    float jz = uJuliaMode ? uJuliaC[2] : cz;
+    float j3 = uJuliaMode ? uJuliaC[3] : c3;
+    float j4 = uJuliaMode ? uJuliaC[4] : c4;
+
     float zx = cx, zy = cy, zz = cz, z3 = c3, z4 = c4;
     float dr = 1.0;
 
@@ -608,8 +648,8 @@ float sdf5D_simple(vec3 pos, float scale, float fold, float minR2, float fixedR2
         float r2 = zx*zx + zy*zy + zz*zz + z3*z3 + z4*z4;
         float sf = sphereFold(r2, minR2, fixedR2);
         zx *= sf; zy *= sf; zz *= sf; z3 *= sf; z4 *= sf; dr *= sf;
-        zx = scale * zx + cx; zy = scale * zy + cy;
-        zz = scale * zz + cz; z3 = scale * z3 + c3; z4 = scale * z4 + c4;
+        zx = scale * zx + jx; zy = scale * zy + jy;
+        zz = scale * zz + jz; z3 = scale * z3 + j3; z4 = scale * z4 + j4;
         dr = dr * abs(scale) + 1.0;
 
         if (r2 > bail*bail) break;
@@ -630,6 +670,14 @@ float sdf6D(vec3 pos, float scale, float fold, float minR2, float fixedR2, float
     float c3 = uOrigin[3] + pos.x*uBasisX[3] + pos.y*uBasisY[3] + pos.z*uBasisZ[3];
     float c4 = uOrigin[4] + pos.x*uBasisX[4] + pos.y*uBasisY[4] + pos.z*uBasisZ[4];
     float c5 = uOrigin[5] + pos.x*uBasisX[5] + pos.y*uBasisY[5] + pos.z*uBasisZ[5];
+
+    // Julia mode: use global c constant for iteration
+    float jx = uJuliaMode ? uJuliaC[0] : cx;
+    float jy = uJuliaMode ? uJuliaC[1] : cy;
+    float jz = uJuliaMode ? uJuliaC[2] : cz;
+    float j3 = uJuliaMode ? uJuliaC[3] : c3;
+    float j4 = uJuliaMode ? uJuliaC[4] : c4;
+    float j5 = uJuliaMode ? uJuliaC[5] : c5;
 
     float zx = cx, zy = cy, zz = cz, z3 = c3, z4 = c4, z5 = c5;
     float dr = 1.0;
@@ -653,8 +701,8 @@ float sdf6D(vec3 pos, float scale, float fold, float minR2, float fixedR2, float
         zx *= sf; zy *= sf; zz *= sf; z3 *= sf; z4 *= sf; z5 *= sf;
         dr *= sf;
 
-        zx = scale * zx + cx; zy = scale * zy + cy; zz = scale * zz + cz;
-        z3 = scale * z3 + c3; z4 = scale * z4 + c4; z5 = scale * z5 + c5;
+        zx = scale * zx + jx; zy = scale * zy + jy; zz = scale * zz + jz;
+        z3 = scale * z3 + j3; z4 = scale * z4 + j4; z5 = scale * z5 + j5;
         dr = dr * abs(scale) + 1.0;
 
         float dist = sqrt(r2);
@@ -677,6 +725,14 @@ float sdf6D_simple(vec3 pos, float scale, float fold, float minR2, float fixedR2
     float c4 = uOrigin[4] + pos.x*uBasisX[4] + pos.y*uBasisY[4] + pos.z*uBasisZ[4];
     float c5 = uOrigin[5] + pos.x*uBasisX[5] + pos.y*uBasisY[5] + pos.z*uBasisZ[5];
 
+    // Julia mode: use global c constant for iteration
+    float jx = uJuliaMode ? uJuliaC[0] : cx;
+    float jy = uJuliaMode ? uJuliaC[1] : cy;
+    float jz = uJuliaMode ? uJuliaC[2] : cz;
+    float j3 = uJuliaMode ? uJuliaC[3] : c3;
+    float j4 = uJuliaMode ? uJuliaC[4] : c4;
+    float j5 = uJuliaMode ? uJuliaC[5] : c5;
+
     float zx = cx, zy = cy, zz = cz, z3 = c3, z4 = c4, z5 = c5;
     float dr = 1.0;
 
@@ -695,8 +751,8 @@ float sdf6D_simple(vec3 pos, float scale, float fold, float minR2, float fixedR2
         float r2 = zx*zx + zy*zy + zz*zz + z3*z3 + z4*z4 + z5*z5;
         float sf = sphereFold(r2, minR2, fixedR2);
         zx *= sf; zy *= sf; zz *= sf; z3 *= sf; z4 *= sf; z5 *= sf; dr *= sf;
-        zx = scale * zx + cx; zy = scale * zy + cy; zz = scale * zz + cz;
-        z3 = scale * z3 + c3; z4 = scale * z4 + c4; z5 = scale * z5 + c5;
+        zx = scale * zx + jx; zy = scale * zy + jy; zz = scale * zz + jz;
+        z3 = scale * z3 + j3; z4 = scale * z4 + j4; z5 = scale * z5 + j5;
         dr = dr * abs(scale) + 1.0;
 
         if (r2 > bail*bail) break;
@@ -718,6 +774,15 @@ float sdf7D(vec3 pos, float scale, float fold, float minR2, float fixedR2, float
     float c4 = uOrigin[4] + pos.x*uBasisX[4] + pos.y*uBasisY[4] + pos.z*uBasisZ[4];
     float c5 = uOrigin[5] + pos.x*uBasisX[5] + pos.y*uBasisY[5] + pos.z*uBasisZ[5];
     float c6 = uOrigin[6] + pos.x*uBasisX[6] + pos.y*uBasisY[6] + pos.z*uBasisZ[6];
+
+    // Julia mode: use global c constant for iteration
+    float jx = uJuliaMode ? uJuliaC[0] : cx;
+    float jy = uJuliaMode ? uJuliaC[1] : cy;
+    float jz = uJuliaMode ? uJuliaC[2] : cz;
+    float j3 = uJuliaMode ? uJuliaC[3] : c3;
+    float j4 = uJuliaMode ? uJuliaC[4] : c4;
+    float j5 = uJuliaMode ? uJuliaC[5] : c5;
+    float j6 = uJuliaMode ? uJuliaC[6] : c6;
 
     float zx = cx, zy = cy, zz = cz, z3 = c3, z4 = c4, z5 = c5, z6 = c6;
     float dr = 1.0;
@@ -742,9 +807,9 @@ float sdf7D(vec3 pos, float scale, float fold, float minR2, float fixedR2, float
         zx *= sf; zy *= sf; zz *= sf; z3 *= sf; z4 *= sf; z5 *= sf; z6 *= sf;
         dr *= sf;
 
-        zx = scale * zx + cx; zy = scale * zy + cy; zz = scale * zz + cz;
-        z3 = scale * z3 + c3; z4 = scale * z4 + c4; z5 = scale * z5 + c5;
-        z6 = scale * z6 + c6;
+        zx = scale * zx + jx; zy = scale * zy + jy; zz = scale * zz + jz;
+        z3 = scale * z3 + j3; z4 = scale * z4 + j4; z5 = scale * z5 + j5;
+        z6 = scale * z6 + j6;
         dr = dr * abs(scale) + 1.0;
 
         float dist = sqrt(r2);
@@ -768,6 +833,15 @@ float sdf7D_simple(vec3 pos, float scale, float fold, float minR2, float fixedR2
     float c5 = uOrigin[5] + pos.x*uBasisX[5] + pos.y*uBasisY[5] + pos.z*uBasisZ[5];
     float c6 = uOrigin[6] + pos.x*uBasisX[6] + pos.y*uBasisY[6] + pos.z*uBasisZ[6];
 
+    // Julia mode: use global c constant for iteration
+    float jx = uJuliaMode ? uJuliaC[0] : cx;
+    float jy = uJuliaMode ? uJuliaC[1] : cy;
+    float jz = uJuliaMode ? uJuliaC[2] : cz;
+    float j3 = uJuliaMode ? uJuliaC[3] : c3;
+    float j4 = uJuliaMode ? uJuliaC[4] : c4;
+    float j5 = uJuliaMode ? uJuliaC[5] : c5;
+    float j6 = uJuliaMode ? uJuliaC[6] : c6;
+
     float zx = cx, zy = cy, zz = cz, z3 = c3, z4 = c4, z5 = c5, z6 = c6;
     float dr = 1.0;
 
@@ -787,9 +861,9 @@ float sdf7D_simple(vec3 pos, float scale, float fold, float minR2, float fixedR2
         float r2 = zx*zx + zy*zy + zz*zz + z3*z3 + z4*z4 + z5*z5 + z6*z6;
         float sf = sphereFold(r2, minR2, fixedR2);
         zx *= sf; zy *= sf; zz *= sf; z3 *= sf; z4 *= sf; z5 *= sf; z6 *= sf; dr *= sf;
-        zx = scale * zx + cx; zy = scale * zy + cy; zz = scale * zz + cz;
-        z3 = scale * z3 + c3; z4 = scale * z4 + c4; z5 = scale * z5 + c5;
-        z6 = scale * z6 + c6;
+        zx = scale * zx + jx; zy = scale * zy + jy; zz = scale * zz + jz;
+        z3 = scale * z3 + j3; z4 = scale * z4 + j4; z5 = scale * z5 + j5;
+        z6 = scale * z6 + j6;
         dr = dr * abs(scale) + 1.0;
 
         if (r2 > bail*bail) break;
@@ -804,10 +878,12 @@ float sdf7D_simple(vec3 pos, float scale, float fold, float minR2, float fixedR2
 // ============================================
 
 float sdfHighD(vec3 pos, int D, float scale, float fold, float minR2, float fixedR2, float bail, int maxIt, out float trap) {
-    float c[11], z[11];
+    float c[11], z[11], juliaC[11];
     for (int j = 0; j < 11; j++) {
         c[j] = uOrigin[j] + pos.x*uBasisX[j] + pos.y*uBasisY[j] + pos.z*uBasisZ[j];
         z[j] = c[j];
+        // Julia mode: use global c constant for iteration
+        juliaC[j] = uJuliaMode ? uJuliaC[j] : c[j];
     }
 
     float dr = 1.0;
@@ -843,10 +919,10 @@ float sdfHighD(vec3 pos, int D, float scale, float fold, float minR2, float fixe
         }
         dr *= sf;
 
-        // Scale and translate
+        // Scale and translate - use Julia c or per-pixel c
         for (int j = 0; j < 11; j++) {
             if (j >= D) break;
-            z[j] = scale * z[j] + c[j];
+            z[j] = scale * z[j] + juliaC[j];
         }
         dr = dr * abs(scale) + 1.0;
 
@@ -869,10 +945,12 @@ float sdfHighD(vec3 pos, int D, float scale, float fold, float minR2, float fixe
 }
 
 float sdfHighD_simple(vec3 pos, int D, float scale, float fold, float minR2, float fixedR2, float bail, int maxIt) {
-    float c[11], z[11];
+    float c[11], z[11], juliaC[11];
     for (int j = 0; j < 11; j++) {
         c[j] = uOrigin[j] + pos.x*uBasisX[j] + pos.y*uBasisY[j] + pos.z*uBasisZ[j];
         z[j] = c[j];
+        // Julia mode: use global c constant for iteration
+        juliaC[j] = uJuliaMode ? uJuliaC[j] : c[j];
     }
 
     float dr = 1.0;
@@ -895,7 +973,8 @@ float sdfHighD_simple(vec3 pos, int D, float scale, float fold, float minR2, flo
         for (int j = 0; j < 11; j++) { if (j >= D) break; z[j] *= sf; }
         dr *= sf;
 
-        for (int j = 0; j < 11; j++) { if (j >= D) break; z[j] = scale * z[j] + c[j]; }
+        // Scale and translate - use Julia c or per-pixel c
+        for (int j = 0; j < 11; j++) { if (j >= D) break; z[j] = scale * z[j] + juliaC[j]; }
         dr = dr * abs(scale) + 1.0;
 
         if (r2 > bail*bail) break;

@@ -16,98 +16,100 @@
  */
 
 // Type exports from types.ts
+export type { CrossSectionResult } from './cross-section'
+export type { Face } from './faces'
+export { isExtendedObjectType, isPolytopeType } from './types'
 export type {
-  PolytopeType,
   ExtendedObjectType,
+  GeometryMetadata,
+  NdGeometry,
   ObjectType,
   PolytopeGeometry,
   PolytopeProperties,
-  NdGeometry,
-  GeometryMetadata,
-} from './types';
-export { isPolytopeType, isExtendedObjectType } from './types';
-export type { CrossSectionResult } from './cross-section';
-export type { Face } from './faces';
+  PolytopeType,
+} from './types'
 
 // Extended object type exports (includes PolytopeConfig for unified API)
 export type {
-  PolytopeConfig,
-  RootSystemType,
-  RootSystemConfig,
-  CliffordTorusEdgeMode,
   CliffordTorusConfig,
+  CliffordTorusEdgeMode,
+  ExtendedObjectParams,
   MandelbrotColorMode,
+  MandelbrotConfig,
   MandelbrotPalette,
   MandelbrotQualityPreset,
   MandelbrotRenderStyle,
-  MandelbrotConfig,
   MandelbrotSample,
-  ExtendedObjectParams,
-} from './extended';
+  PolytopeConfig,
+  RootSystemConfig,
+  RootSystemType,
+} from './extended'
 
 // Default configs for all object types
 export {
+  DEFAULT_CLIFFORD_TORUS_CONFIG,
+  DEFAULT_EXTENDED_OBJECT_PARAMS,
+  DEFAULT_MANDELBROT_CONFIG,
   DEFAULT_POLYTOPE_CONFIG,
   DEFAULT_ROOT_SYSTEM_CONFIG,
-  DEFAULT_CLIFFORD_TORUS_CONFIG,
-  DEFAULT_MANDELBROT_CONFIG,
   MANDELBROT_QUALITY_PRESETS,
-  DEFAULT_EXTENDED_OBJECT_PARAMS,
-} from './extended';
+} from './extended'
 
 // Polytope generator exports
-export { generateHypercube } from './hypercube';
-export { generateSimplex } from './simplex';
-export { generateCrossPolytope } from './cross-polytope';
+export { generateCrossPolytope } from './cross-polytope'
+export { generateHypercube } from './hypercube'
+export { generateSimplex } from './simplex'
 
 // Extended object generator exports
 export {
-  generateExtendedObject,
-  generateRootSystem,
-  generateARoots,
-  generateDRoots,
-  generateE8Roots,
-  getRootCount,
-  validateRootSystemType,
-  generateCliffordTorus,
-  generateCliffordTorusPoints,
   buildCliffordTorusGridEdges,
-  verifyCliffordTorusOnSphere,
-  verifyE8Roots,
-  // Mandelbrot exports
-  generateMandelbrot,
-  mandelbrotStep,
-  mandelbrotEscapeTime,
-  mandelbrotSmoothEscapeTime,
-  normSquared,
-  generateSampleGrid,
-  filterSamples,
-  getMandelbrotStats,
   // Utility exports
   buildKnnEdges,
   buildShortEdges,
   computeConvexHullFaces,
-  hasValidConvexHull,
+  filterSamples,
+  generateARoots,
+  generateCliffordTorus,
+  generateCliffordTorusPoints,
+  generateDRoots,
+  generateE8Roots,
+  generateExtendedObject,
+  // Mandelbrot exports
+  generateMandelbrot,
+  generateRootSystem,
+  generateSampleGrid,
   getConvexHullStats,
-} from './extended';
+  getMandelbrotStats,
+  getRootCount,
+  hasValidConvexHull,
+  mandelbrotEscapeTime,
+  mandelbrotSmoothEscapeTime,
+  mandelbrotStep,
+  normSquared,
+  validateRootSystemType,
+  verifyCliffordTorusOnSphere,
+  verifyE8Roots,
+} from './extended'
 
 // Face detection exports
-export { detectFaces } from './faces';
+export { detectFaces } from './faces'
 
 // Cross-section exports
-export {
-  computeCrossSection,
-  projectCrossSectionTo3D,
-  getWRange,
-} from './cross-section';
+export { computeCrossSection, getWRange, projectCrossSectionTo3D } from './cross-section'
 
-import type { PolytopeType, PolytopeGeometry, PolytopeProperties, ObjectType, NdGeometry } from './types';
-import { isPolytopeType } from './types';
-import { generateHypercube } from './hypercube';
-import { generateSimplex } from './simplex';
-import { generateCrossPolytope } from './cross-polytope';
-import { generateExtendedObject, DEFAULT_EXTENDED_OBJECT_PARAMS } from './extended';
-import type { ExtendedObjectParams } from './extended';
+import { generateCrossPolytope } from './cross-polytope'
+import type { ExtendedObjectParams } from './extended'
+import { DEFAULT_EXTENDED_OBJECT_PARAMS, generateExtendedObject } from './extended'
+import { generateHypercube } from './hypercube'
+import { generateSimplex } from './simplex'
+import type {
+  NdGeometry,
+  ObjectType,
+  PolytopeGeometry,
+  PolytopeProperties,
+  PolytopeType,
+} from './types'
+import { isPolytopeType } from './types'
 
 /**
  * Generates a polytope of the specified type and dimension
@@ -118,16 +120,20 @@ import type { ExtendedObjectParams } from './extended';
  * @returns PolytopeGeometry representing the polytope
  * @throws {Error} If dimension is less than 3 or type is invalid
  */
-export function generatePolytope(type: PolytopeType, dimension: number, scale = 1.0): PolytopeGeometry {
+export function generatePolytope(
+  type: PolytopeType,
+  dimension: number,
+  scale = 1.0
+): PolytopeGeometry {
   switch (type) {
     case 'hypercube':
-      return generateHypercube(dimension, scale);
+      return generateHypercube(dimension, scale)
     case 'simplex':
-      return generateSimplex(dimension, scale);
+      return generateSimplex(dimension, scale)
     case 'cross-polytope':
-      return generateCrossPolytope(dimension, scale);
+      return generateCrossPolytope(dimension, scale)
     default:
-      throw new Error(`Unknown polytope type: ${type}`);
+      throw new Error(`Unknown polytope type: ${type}`)
   }
 }
 
@@ -164,12 +170,12 @@ export function generateGeometry(
   dimension: number,
   params?: ExtendedObjectParams
 ): NdGeometry {
-  const effectiveParams = params ?? DEFAULT_EXTENDED_OBJECT_PARAMS;
+  const effectiveParams = params ?? DEFAULT_EXTENDED_OBJECT_PARAMS
 
   if (isPolytopeType(type)) {
     // Convert PolytopeGeometry to NdGeometry, using polytope config for scale
-    const scale = effectiveParams.polytope?.scale ?? 1.0;
-    const polytope = generatePolytope(type, dimension, scale);
+    const scale = effectiveParams.polytope?.scale ?? 1.0
+    const polytope = generatePolytope(type, dimension, scale)
     return {
       dimension: polytope.dimension,
       type: polytope.type,
@@ -182,10 +188,10 @@ export function generateGeometry(
           scale,
         },
       },
-    };
+    }
   } else {
     // Use extended object generator
-    return generateExtendedObject(type, dimension, effectiveParams);
+    return generateExtendedObject(type, dimension, effectiveParams)
   }
 }
 
@@ -196,22 +202,22 @@ export function generateGeometry(
  * @returns Properties including counts and formulas
  */
 export function getPolytopeProperties(geometry: PolytopeGeometry): PolytopeProperties {
-  let vertexFormula: string;
-  let edgeFormula: string;
+  let vertexFormula: string
+  let edgeFormula: string
 
   switch (geometry.type) {
     case 'hypercube':
-      vertexFormula = '2^n';
-      edgeFormula = 'n·2^(n-1)';
-      break;
+      vertexFormula = '2^n'
+      edgeFormula = 'n·2^(n-1)'
+      break
     case 'simplex':
-      vertexFormula = 'n+1';
-      edgeFormula = '(n+1)·n/2';
-      break;
+      vertexFormula = 'n+1'
+      edgeFormula = '(n+1)·n/2'
+      break
     case 'cross-polytope':
-      vertexFormula = '2n';
-      edgeFormula = '2n(n-1)';
-      break;
+      vertexFormula = '2n'
+      edgeFormula = '2n(n-1)'
+      break
   }
 
   return {
@@ -219,7 +225,7 @@ export function getPolytopeProperties(geometry: PolytopeGeometry): PolytopePrope
     edgeCount: geometry.edges.length,
     vertexFormula,
     edgeFormula,
-  };
+  }
 }
 
 /**
@@ -230,15 +236,16 @@ export function getPolytopeProperties(geometry: PolytopeGeometry): PolytopePrope
  */
 function getTypeName(type: ObjectType): string {
   const typeNames: Record<ObjectType, string> = {
-    'hypercube': 'Hypercube',
-    'simplex': 'Simplex',
+    hypercube: 'Hypercube',
+    simplex: 'Simplex',
     'cross-polytope': 'Cross-Polytope',
     'root-system': 'Root System',
     'clifford-torus': 'Clifford Torus',
-    'mandelbrot': 'Mandelbrot Set',
-    'mandelbox': 'Mandelbox',
-  };
-  return typeNames[type] ?? type;
+    mandelbrot: 'Mandelbulb',
+    mandelbox: 'Mandelbox',
+    menger: 'Menger Sponge',
+  }
+  return typeNames[type] ?? type
 }
 
 /**
@@ -248,18 +255,18 @@ function getTypeName(type: ObjectType): string {
  * @returns Array of object type information with availability status
  */
 export function getAvailableTypes(dimension?: number): Array<{
-  type: ObjectType;
-  name: string;
-  description: string;
-  available: boolean;
-  disabledReason?: string;
+  type: ObjectType
+  name: string
+  description: string
+  available: boolean
+  disabledReason?: string
 }> {
   const types: Array<{
-    type: ObjectType;
-    name: string;
-    description: string;
-    minDimension?: number;
-    maxDimension?: number;
+    type: ObjectType
+    name: string
+    description: string
+    minDimension?: number
+    maxDimension?: number
   }> = [
     {
       type: 'hypercube',
@@ -293,7 +300,7 @@ export function getAvailableTypes(dimension?: number): Array<{
     },
     {
       type: 'mandelbrot',
-      name: 'Mandelbrot Set',
+      name: 'Mandelbulb',
       description: 'Fractal via escape-time iteration (3D: Mandelbulb, 4D+: n-dimensional)',
       minDimension: 3,
       maxDimension: 11,
@@ -305,19 +312,26 @@ export function getAvailableTypes(dimension?: number): Array<{
       minDimension: 3,
       maxDimension: 11,
     },
-  ];
+    {
+      type: 'menger',
+      name: 'Menger Sponge',
+      description: 'Geometric IFS fractal with recursive cube subdivision (3D-11D raymarched)',
+      minDimension: 3,
+      maxDimension: 11,
+    },
+  ]
 
   return types.map((t) => {
-    let available = true;
-    let disabledReason: string | undefined;
+    let available = true
+    let disabledReason: string | undefined
 
     if (dimension !== undefined) {
       if (t.minDimension && dimension < t.minDimension) {
-        available = false;
-        disabledReason = `Requires dimension >= ${t.minDimension}`;
+        available = false
+        disabledReason = `Requires dimension >= ${t.minDimension}`
       } else if (t.maxDimension && dimension > t.maxDimension) {
-        available = false;
-        disabledReason = `Requires dimension <= ${t.maxDimension}`;
+        available = false
+        disabledReason = `Requires dimension <= ${t.maxDimension}`
       }
     }
 
@@ -327,6 +341,6 @@ export function getAvailableTypes(dimension?: number): Array<{
       description: t.description,
       available,
       disabledReason,
-    };
-  });
+    }
+  })
 }

@@ -2,42 +2,36 @@
  * BokehControls Component
  *
  * UI controls for managing bokeh (depth of field) post-processing effects.
- * Uses Three.js BokehPass for realistic depth blur.
+ * Uses @react-three/postprocessing DepthOfField and Autofocus components.
  *
  * Controls:
  * - Enable/Disable toggle: Turns bokeh effect on/off
- * - Focus slider: Distance from camera where objects are in focus (0.1-10)
- * - Aperture slider: Camera aperture size - affects blur amount (0.001-0.1)
- * - Max Blur slider: Maximum blur intensity (0-0.1)
+ * - Focus Mode: Auto (Center), Auto (Mouse), or Manual
+ * - Focus Distance: World units distance to focus point (manual mode only)
+ * - Focus Range: Depth of field range in world units
+ * - Blur Intensity: Bokeh scale/strength
+ * - Focus Speed: Smooth time for autofocus transitions
+ * - Show Focus Point: Debug visualization toggle
  *
  * @param props - Component props
  * @param props.className - Optional CSS class name for styling
  *
  * @returns UI controls for bokeh post-processing
  *
- * @example
- * ```tsx
- * <ControlPanel>
- *   <BokehControls />
- * </ControlPanel>
- * ```
- *
- * @remarks
- * - All values are validated and clamped in the visual store
- * - Double-click on value badge to reset individual parameters
- * - Higher aperture values create stronger blur effect
- *
  * @see {@link PostProcessing} for the bokeh effect implementation
  * @see {@link useVisualStore} for state management
- * @see https://threejs.org/docs/#examples/en/postprocessing/BokehPass
+ * @see docs/prd/bokeh-postprocessing-refactor.md
  */
 
+import { Select } from '@/components/ui/Select';
 import { Slider } from '@/components/ui/Slider';
 import { Switch } from '@/components/ui/Switch';
 import {
-  DEFAULT_BOKEH_APERTURE,
-  DEFAULT_BOKEH_FOCUS,
-  DEFAULT_BOKEH_MAX_BLUR,
+  type BokehFocusMode,
+  DEFAULT_BOKEH_SCALE,
+  DEFAULT_BOKEH_SMOOTH_TIME,
+  DEFAULT_BOKEH_WORLD_FOCUS_DISTANCE,
+  DEFAULT_BOKEH_WORLD_FOCUS_RANGE,
   useVisualStore,
 } from '@/stores/visualStore';
 import React from 'react';
@@ -47,38 +41,59 @@ export interface BokehControlsProps {
   className?: string;
 }
 
+/** Focus mode options for the dropdown */
+const FOCUS_MODE_OPTIONS = [
+  { value: 'auto-center' as const, label: 'Auto (Center)' },
+  { value: 'auto-mouse' as const, label: 'Auto (Mouse)' },
+  { value: 'manual' as const, label: 'Manual' },
+];
+
 /**
  * BokehControls component that provides UI for adjusting bokeh/depth of field settings.
- * @param root0
- * @param root0.className
+ * @param root0 - Component props
+ * @param root0.className - Optional CSS class name
  */
 export const BokehControls: React.FC<BokehControlsProps> = React.memo(({
   className = '',
 }) => {
-  // Consolidate all visual store subscriptions with useShallow to reduce re-renders
   const {
     bokehEnabled,
-    bokehFocus,
-    bokehAperture,
-    bokehMaxBlur,
+    bokehFocusMode,
+    bokehWorldFocusDistance,
+    bokehWorldFocusRange,
+    bokehScale,
+    bokehSmoothTime,
+    bokehShowDebug,
     setBokehEnabled,
-    setBokehFocus,
-    setBokehAperture,
-    setBokehMaxBlur,
+    setBokehFocusMode,
+    setBokehWorldFocusDistance,
+    setBokehWorldFocusRange,
+    setBokehScale,
+    setBokehSmoothTime,
+    setBokehShowDebug,
   } = useVisualStore(
     useShallow((state) => ({
       // State
       bokehEnabled: state.bokehEnabled,
-      bokehFocus: state.bokehFocus,
-      bokehAperture: state.bokehAperture,
-      bokehMaxBlur: state.bokehMaxBlur,
+      bokehFocusMode: state.bokehFocusMode,
+      bokehWorldFocusDistance: state.bokehWorldFocusDistance,
+      bokehWorldFocusRange: state.bokehWorldFocusRange,
+      bokehScale: state.bokehScale,
+      bokehSmoothTime: state.bokehSmoothTime,
+      bokehShowDebug: state.bokehShowDebug,
       // Actions
       setBokehEnabled: state.setBokehEnabled,
-      setBokehFocus: state.setBokehFocus,
-      setBokehAperture: state.setBokehAperture,
-      setBokehMaxBlur: state.setBokehMaxBlur,
+      setBokehFocusMode: state.setBokehFocusMode,
+      setBokehWorldFocusDistance: state.setBokehWorldFocusDistance,
+      setBokehWorldFocusRange: state.setBokehWorldFocusRange,
+      setBokehScale: state.setBokehScale,
+      setBokehSmoothTime: state.setBokehSmoothTime,
+      setBokehShowDebug: state.setBokehShowDebug,
     }))
   );
+
+  const isManualMode = bokehFocusMode === 'manual';
+  const isAutofocusMode = !isManualMode;
 
   return (
     <div className={`space-y-4 ${className}`}>
@@ -92,40 +107,72 @@ export const BokehControls: React.FC<BokehControlsProps> = React.memo(({
       {/* Bokeh controls - only visible when enabled */}
       {bokehEnabled && (
         <>
-          {/* Focus Distance */}
+          {/* Focus Mode Selector */}
+          <Select<BokehFocusMode>
+            label="Focus Mode"
+            options={FOCUS_MODE_OPTIONS}
+            value={bokehFocusMode}
+            onChange={setBokehFocusMode}
+            data-testid="bokeh-focus-mode"
+          />
+
+          {/* Focus Distance - only shown in manual mode */}
+          {isManualMode && (
+            <Slider
+              label="Focus Distance"
+              min={1}
+              max={100}
+              step={0.5}
+              value={bokehWorldFocusDistance}
+              onChange={setBokehWorldFocusDistance}
+              onReset={() => setBokehWorldFocusDistance(DEFAULT_BOKEH_WORLD_FOCUS_DISTANCE)}
+              showValue
+            />
+          )}
+
+          {/* Focus Range (depth of field) */}
           <Slider
-            label="Focus"
-            min={0.1}
+            label="Focus Range"
+            min={0.5}
+            max={50}
+            step={0.5}
+            value={bokehWorldFocusRange}
+            onChange={setBokehWorldFocusRange}
+            onReset={() => setBokehWorldFocusRange(DEFAULT_BOKEH_WORLD_FOCUS_RANGE)}
+            showValue
+          />
+
+          {/* Blur Intensity */}
+          <Slider
+            label="Blur Intensity"
+            min={0}
             max={10}
             step={0.1}
-            value={bokehFocus}
-            onChange={setBokehFocus}
-            onReset={() => setBokehFocus(DEFAULT_BOKEH_FOCUS)}
+            value={bokehScale}
+            onChange={setBokehScale}
+            onReset={() => setBokehScale(DEFAULT_BOKEH_SCALE)}
             showValue
           />
 
-          {/* Aperture */}
-          <Slider
-            label="Aperture"
-            min={0.001}
-            max={0.1}
-            step={0.001}
-            value={bokehAperture}
-            onChange={setBokehAperture}
-            onReset={() => setBokehAperture(DEFAULT_BOKEH_APERTURE)}
-            showValue
-          />
+          {/* Focus Speed - only shown in autofocus modes */}
+          {isAutofocusMode && (
+            <Slider
+              label="Focus Speed"
+              min={0}
+              max={2}
+              step={0.05}
+              value={bokehSmoothTime}
+              onChange={setBokehSmoothTime}
+              onReset={() => setBokehSmoothTime(DEFAULT_BOKEH_SMOOTH_TIME)}
+              showValue
+            />
+          )}
 
-          {/* Max Blur */}
-          <Slider
-            label="Max Blur"
-            min={0}
-            max={0.1}
-            step={0.0005}
-            value={bokehMaxBlur}
-            onChange={setBokehMaxBlur}
-            onReset={() => setBokehMaxBlur(DEFAULT_BOKEH_MAX_BLUR)}
-            showValue
+          {/* Debug Visualization Toggle */}
+          <Switch
+            checked={bokehShowDebug}
+            onCheckedChange={setBokehShowDebug}
+            label="Show Focus Point"
           />
         </>
       )}

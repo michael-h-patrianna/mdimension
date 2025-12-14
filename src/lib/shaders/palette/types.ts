@@ -93,13 +93,14 @@ export interface DistributionSettings {
 }
 
 /**
- * Default cosine coefficients (rainbow gradient).
+ * Default cosine coefficients (Crimson Fade - smooth red to pink gradient).
+ * Uses half-cycle frequency for smooth, non-rainbow gradients.
  */
 export const DEFAULT_COSINE_COEFFICIENTS: CosineCoefficients = {
-  a: [0.5, 0.5, 0.5],
-  b: [0.5, 0.5, 0.5],
-  c: [1.0, 1.0, 1.0],
-  d: [0.0, 0.33, 0.67],
+  a: [0.6, 0.2, 0.3],
+  b: [0.4, 0.3, 0.3],
+  c: [0.5, 0.5, 0.5],
+  d: [0.0, 0.0, 0.0],
 }
 
 /**
