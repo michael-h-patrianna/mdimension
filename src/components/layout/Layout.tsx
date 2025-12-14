@@ -12,8 +12,10 @@
 import { Sidebar } from '@/components/sidebar'
 import { useBreakpoint } from '@/hooks/useMediaQuery'
 import {
+  DEFAULT_SIDEBAR_WIDTH,
+  DEFAULT_SIDEBAR_WIDTH_LARGE,
   MIN_CANVAS_WIDTH,
-  useLayoutStore
+  useLayoutStore,
 } from '@/stores/layoutStore'
 import { useThemeStore } from '@/stores/themeStore'
 import React, { useEffect, useMemo } from 'react'
