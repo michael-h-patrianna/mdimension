@@ -67,12 +67,21 @@ export const DEFAULT_BLOOM_RADIUS = 0.15
 /** Bokeh focus mode type */
 export type BokehFocusMode = 'auto-center' | 'auto-mouse' | 'manual'
 
-/** Default bokeh (depth of field) settings */
+/** Bokeh blur method type */
+export type BokehBlurMethod = 'disc' | 'jittered' | 'separable' | 'hexagonal'
+
+/** Default bokeh (depth of field) settings
+ * Based on typical Three.js BokehPass values:
+ * - aperture: 0.01-0.05 (controls blur falloff speed)
+ * - maxblur: 0.01-0.03 (caps maximum blur amount)
+ * - focus: scene-dependent world units
+ */
 export const DEFAULT_BOKEH_ENABLED = false
 export const DEFAULT_BOKEH_FOCUS_MODE: BokehFocusMode = 'auto-center'
-export const DEFAULT_BOKEH_WORLD_FOCUS_DISTANCE = 10
-export const DEFAULT_BOKEH_WORLD_FOCUS_RANGE = 5
-export const DEFAULT_BOKEH_SCALE = 2
+export const DEFAULT_BOKEH_BLUR_METHOD: BokehBlurMethod = 'hexagonal'
+export const DEFAULT_BOKEH_WORLD_FOCUS_DISTANCE = 15 // Typical camera distance
+export const DEFAULT_BOKEH_WORLD_FOCUS_RANGE = 10 // Moderate DOF depth
+export const DEFAULT_BOKEH_SCALE = 1.0 // Subtle blur by default
 export const DEFAULT_BOKEH_FOCAL_LENGTH = 0.1
 export const DEFAULT_BOKEH_SMOOTH_TIME = 0.25
 export const DEFAULT_BOKEH_SHOW_DEBUG = false
@@ -275,6 +284,8 @@ interface VisualState {
   bokehEnabled: boolean
   /** Focus mode: auto-center, auto-mouse, or manual */
   bokehFocusMode: BokehFocusMode
+  /** Blur method: disc, jittered, separable, or hexagonal */
+  bokehBlurMethod: BokehBlurMethod
   /** Focus distance from camera in world units (1-100) - used in manual mode */
   bokehWorldFocusDistance: number
   /** Focus range/depth of field in world units (0.5-50) */
@@ -420,6 +431,7 @@ interface VisualState {
   // --- Actions: Bokeh ---
   setBokehEnabled: (enabled: boolean) => void
   setBokehFocusMode: (mode: BokehFocusMode) => void
+  setBokehBlurMethod: (method: BokehBlurMethod) => void
   setBokehWorldFocusDistance: (distance: number) => void
   setBokehWorldFocusRange: (range: number) => void
   setBokehScale: (scale: number) => void
@@ -539,6 +551,7 @@ const INITIAL_STATE: Omit<VisualState, keyof VisualStateFunctions> = {
   // Bokeh (Depth of Field)
   bokehEnabled: DEFAULT_BOKEH_ENABLED,
   bokehFocusMode: DEFAULT_BOKEH_FOCUS_MODE,
+  bokehBlurMethod: DEFAULT_BOKEH_BLUR_METHOD,
   bokehWorldFocusDistance: DEFAULT_BOKEH_WORLD_FOCUS_DISTANCE,
   bokehWorldFocusRange: DEFAULT_BOKEH_WORLD_FOCUS_RANGE,
   bokehScale: DEFAULT_BOKEH_SCALE,
@@ -630,6 +643,7 @@ type VisualStateFunctions = Pick<
   | 'setBloomRadius'
   | 'setBokehEnabled'
   | 'setBokehFocusMode'
+  | 'setBokehBlurMethod'
   | 'setBokehWorldFocusDistance'
   | 'setBokehWorldFocusRange'
   | 'setBokehScale'
@@ -871,16 +885,20 @@ export const useVisualStore = create<VisualState>((set) => ({
     set({ bokehFocusMode: mode })
   },
 
+  setBokehBlurMethod: (method: BokehBlurMethod) => {
+    set({ bokehBlurMethod: method })
+  },
+
   setBokehWorldFocusDistance: (distance: number) => {
-    set({ bokehWorldFocusDistance: Math.max(1, Math.min(100, distance)) })
+    set({ bokehWorldFocusDistance: Math.max(1, Math.min(50, distance)) })
   },
 
   setBokehWorldFocusRange: (range: number) => {
-    set({ bokehWorldFocusRange: Math.max(0.5, Math.min(50, range)) })
+    set({ bokehWorldFocusRange: Math.max(1, Math.min(100, range)) })
   },
 
   setBokehScale: (scale: number) => {
-    set({ bokehScale: Math.max(0, Math.min(10, scale)) })
+    set({ bokehScale: Math.max(0, Math.min(3, scale)) })
   },
 
   setBokehFocalLength: (length: number) => {

@@ -27,6 +27,7 @@ import { Select } from '@/components/ui/Select';
 import { Slider } from '@/components/ui/Slider';
 import { Switch } from '@/components/ui/Switch';
 import {
+  type BokehBlurMethod,
   type BokehFocusMode,
   DEFAULT_BOKEH_SCALE,
   DEFAULT_BOKEH_SMOOTH_TIME,
@@ -48,6 +49,14 @@ const FOCUS_MODE_OPTIONS = [
   { value: 'manual' as const, label: 'Manual' },
 ];
 
+/** Blur method options for the dropdown */
+const BLUR_METHOD_OPTIONS = [
+  { value: 'disc' as const, label: 'Disc (Basic)' },
+  { value: 'jittered' as const, label: 'Jittered (Smooth)' },
+  { value: 'separable' as const, label: 'Separable (Fast)' },
+  { value: 'hexagonal' as const, label: 'Hexagonal (Cinematic)' },
+];
+
 /**
  * BokehControls component that provides UI for adjusting bokeh/depth of field settings.
  * @param root0 - Component props
@@ -59,6 +68,7 @@ export const BokehControls: React.FC<BokehControlsProps> = React.memo(({
   const {
     bokehEnabled,
     bokehFocusMode,
+    bokehBlurMethod,
     bokehWorldFocusDistance,
     bokehWorldFocusRange,
     bokehScale,
@@ -66,6 +76,7 @@ export const BokehControls: React.FC<BokehControlsProps> = React.memo(({
     bokehShowDebug,
     setBokehEnabled,
     setBokehFocusMode,
+    setBokehBlurMethod,
     setBokehWorldFocusDistance,
     setBokehWorldFocusRange,
     setBokehScale,
@@ -76,6 +87,7 @@ export const BokehControls: React.FC<BokehControlsProps> = React.memo(({
       // State
       bokehEnabled: state.bokehEnabled,
       bokehFocusMode: state.bokehFocusMode,
+      bokehBlurMethod: state.bokehBlurMethod,
       bokehWorldFocusDistance: state.bokehWorldFocusDistance,
       bokehWorldFocusRange: state.bokehWorldFocusRange,
       bokehScale: state.bokehScale,
@@ -84,6 +96,7 @@ export const BokehControls: React.FC<BokehControlsProps> = React.memo(({
       // Actions
       setBokehEnabled: state.setBokehEnabled,
       setBokehFocusMode: state.setBokehFocusMode,
+      setBokehBlurMethod: state.setBokehBlurMethod,
       setBokehWorldFocusDistance: state.setBokehWorldFocusDistance,
       setBokehWorldFocusRange: state.setBokehWorldFocusRange,
       setBokehScale: state.setBokehScale,
@@ -116,12 +129,21 @@ export const BokehControls: React.FC<BokehControlsProps> = React.memo(({
             data-testid="bokeh-focus-mode"
           />
 
+          {/* Blur Method Selector */}
+          <Select<BokehBlurMethod>
+            label="Blur Method"
+            options={BLUR_METHOD_OPTIONS}
+            value={bokehBlurMethod}
+            onChange={setBokehBlurMethod}
+            data-testid="bokeh-blur-method"
+          />
+
           {/* Focus Distance - only shown in manual mode */}
           {isManualMode && (
             <Slider
               label="Focus Distance"
               min={1}
-              max={100}
+              max={50}
               step={0.5}
               value={bokehWorldFocusDistance}
               onChange={setBokehWorldFocusDistance}
@@ -130,23 +152,23 @@ export const BokehControls: React.FC<BokehControlsProps> = React.memo(({
             />
           )}
 
-          {/* Focus Range (depth of field) */}
+          {/* Focus Range (depth of field) - wider = more in focus */}
           <Slider
             label="Focus Range"
-            min={0.5}
-            max={50}
-            step={0.5}
+            min={1}
+            max={100}
+            step={1}
             value={bokehWorldFocusRange}
             onChange={setBokehWorldFocusRange}
             onReset={() => setBokehWorldFocusRange(DEFAULT_BOKEH_WORLD_FOCUS_RANGE)}
             showValue
           />
 
-          {/* Blur Intensity */}
+          {/* Blur Intensity - how blurry out-of-focus areas get */}
           <Slider
             label="Blur Intensity"
             min={0}
-            max={10}
+            max={3}
             step={0.1}
             value={bokehScale}
             onChange={setBokehScale}

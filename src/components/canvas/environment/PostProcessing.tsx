@@ -3,11 +3,11 @@
  *
  * Manages post-processing effects for the Three.js scene including:
  * - UnrealBloomPass for glow effects
- * - BokehPass for depth of field
+ * - Custom depth-based bokeh for depth of field
  * - OutputPass for tone mapping
  *
- * @see https://threejs.org/examples/webgl_postprocessing_unreal_bloom.html
- * @see https://threejs.org/docs/#examples/en/postprocessing/BokehPass
+ * We capture depth by rendering to a WebGLRenderTarget with DepthTexture attached,
+ * which correctly captures gl_FragDepth from all custom shaders.
  */
 
 import { memo, useEffect, useMemo, useRef } from 'react';
@@ -15,20 +15,284 @@ import { useThree, useFrame } from '@react-three/fiber';
 import { useShallow } from 'zustand/react/shallow';
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { BokehPass } from 'three/examples/jsm/postprocessing/BokehPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { TexturePass } from 'three/examples/jsm/postprocessing/TexturePass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { useVisualStore } from '@/stores/visualStore';
 import { TONE_MAPPING_TO_THREE } from '@/lib/shaders/types';
 
 /**
- * PostProcessing component that applies UnrealBloomPass to the rendered scene.
+ * Type for bokeh shader uniforms
  */
+interface BokehUniforms {
+  tDiffuse: { value: THREE.Texture | null };
+  tDepth: { value: THREE.DepthTexture | null };
+  focus: { value: number };
+  focusRange: { value: number };
+  aperture: { value: number };
+  maxblur: { value: number };
+  nearClip: { value: number };
+  farClip: { value: number };
+  aspect: { value: number };
+  debugMode: { value: number };
+  blurMethod: { value: number };
+  time: { value: number };
+}
+
+/**
+ * Custom BokehShader - simplified and working with depth texture
+ */
+const CustomBokehShader = {
+  name: 'CustomBokehShader',
+
+  uniforms: {
+    tDiffuse: { value: null as THREE.Texture | null },
+    tDepth: { value: null as THREE.DepthTexture | null },
+    focus: { value: 10.0 },
+    focusRange: { value: 5.0 },
+    aperture: { value: 0.01 },
+    maxblur: { value: 0.1 },
+    nearClip: { value: 0.1 },
+    farClip: { value: 1000.0 },
+    aspect: { value: 1.0 },
+    debugMode: { value: 0.0 },
+    blurMethod: { value: 3.0 }, // 0=disc, 1=jittered, 2=separable, 3=hexagonal
+    time: { value: 0.0 },
+  },
+
+  vertexShader: /* glsl */ `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+
+  fragmentShader: /* glsl */ `
+    #include <packing>
+
+    uniform sampler2D tDiffuse;
+    uniform sampler2D tDepth;
+    uniform float focus;
+    uniform float focusRange;
+    uniform float aperture;
+    uniform float maxblur;
+    uniform float nearClip;
+    uniform float farClip;
+    uniform float aspect;
+    uniform float debugMode;
+    uniform float blurMethod;
+    uniform float time;
+
+    varying vec2 vUv;
+
+    // Pseudo-random function for jittered sampling
+    float rand(vec2 co) {
+      return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453);
+    }
+
+    float getDepth(vec2 coord) {
+      return texture2D(tDepth, coord).x;
+    }
+
+    float getViewZ(float depth) {
+      return perspectiveDepthToViewZ(depth, nearClip, farClip);
+    }
+
+    // Method 0: Basic disc blur (17 samples in circular pattern)
+    vec4 discBlur(vec2 uv, vec2 blur) {
+      vec4 col = vec4(0.0);
+      col += texture2D(tDiffuse, uv);
+      col += texture2D(tDiffuse, uv + blur * vec2(0.0, 0.4));
+      col += texture2D(tDiffuse, uv + blur * vec2(0.15, 0.37));
+      col += texture2D(tDiffuse, uv + blur * vec2(0.29, 0.29));
+      col += texture2D(tDiffuse, uv + blur * vec2(-0.37, 0.15));
+      col += texture2D(tDiffuse, uv + blur * vec2(0.4, 0.0));
+      col += texture2D(tDiffuse, uv + blur * vec2(0.37, -0.15));
+      col += texture2D(tDiffuse, uv + blur * vec2(0.29, -0.29));
+      col += texture2D(tDiffuse, uv + blur * vec2(-0.15, -0.37));
+      col += texture2D(tDiffuse, uv + blur * vec2(0.0, -0.4));
+      col += texture2D(tDiffuse, uv + blur * vec2(-0.15, 0.37));
+      col += texture2D(tDiffuse, uv + blur * vec2(-0.29, 0.29));
+      col += texture2D(tDiffuse, uv + blur * vec2(0.37, 0.15));
+      col += texture2D(tDiffuse, uv + blur * vec2(-0.4, 0.0));
+      col += texture2D(tDiffuse, uv + blur * vec2(-0.37, -0.15));
+      col += texture2D(tDiffuse, uv + blur * vec2(-0.29, -0.29));
+      col += texture2D(tDiffuse, uv + blur * vec2(0.15, -0.37));
+      return col / 17.0;
+    }
+
+    // Method 1: Jittered blur (randomized sample positions for smoother result)
+    vec4 jitteredBlur(vec2 uv, vec2 blur) {
+      vec4 col = vec4(0.0);
+      float total = 0.0;
+
+      // Use pixel position + time for varying noise
+      vec2 noise = vec2(rand(uv + time), rand(uv.yx + time)) * 2.0 - 1.0;
+
+      // 25 samples with jitter
+      for (float x = -2.0; x <= 2.0; x += 1.0) {
+        for (float y = -2.0; y <= 2.0; y += 1.0) {
+          vec2 offset = vec2(x, y) / 2.0;
+          // Add small random jitter to each sample
+          vec2 jitter = vec2(rand(uv + vec2(x, y)), rand(uv + vec2(y, x))) * 0.5 - 0.25;
+          offset += jitter;
+
+          // Weight by distance from center (gaussian-like)
+          float weight = 1.0 - length(offset) * 0.3;
+          weight = max(weight, 0.0);
+
+          col += texture2D(tDiffuse, uv + blur * offset) * weight;
+          total += weight;
+        }
+      }
+      return col / total;
+    }
+
+    // Method 2: Separable blur (horizontal + vertical, more efficient)
+    vec4 separableBlur(vec2 uv, vec2 blur) {
+      vec4 col = vec4(0.0);
+      float total = 0.0;
+
+      // Gaussian weights for 9-tap filter
+      float weights[5];
+      weights[0] = 0.227027;
+      weights[1] = 0.1945946;
+      weights[2] = 0.1216216;
+      weights[3] = 0.054054;
+      weights[4] = 0.016216;
+
+      // Horizontal samples
+      for (int i = -4; i <= 4; i++) {
+        float w = weights[int(abs(float(i)))];
+        col += texture2D(tDiffuse, uv + vec2(blur.x * float(i) * 0.25, 0.0)) * w;
+        total += w;
+      }
+
+      // Vertical samples
+      for (int i = -4; i <= 4; i++) {
+        float w = weights[int(abs(float(i)))];
+        col += texture2D(tDiffuse, uv + vec2(0.0, blur.y * float(i) * 0.25)) * w;
+        total += w;
+      }
+
+      return col / total;
+    }
+
+    // Method 3: Hexagonal bokeh (cinematic look with weighted samples)
+    vec4 hexagonalBlur(vec2 uv, vec2 blur) {
+      vec4 col = vec4(0.0);
+      float total = 0.0;
+
+      // Hexagonal pattern with 3 rings + center
+      // Ring 0: center
+      col += texture2D(tDiffuse, uv) * 1.0;
+      total += 1.0;
+
+      // Ring 1: 6 samples at distance 0.33
+      float r1 = 0.33;
+      for (int i = 0; i < 6; i++) {
+        float angle = float(i) * 1.0472; // 60 degrees = PI/3
+        vec2 offset = vec2(cos(angle), sin(angle)) * r1;
+        col += texture2D(tDiffuse, uv + blur * offset) * 0.9;
+        total += 0.9;
+      }
+
+      // Ring 2: 12 samples at distance 0.67
+      float r2 = 0.67;
+      for (int i = 0; i < 12; i++) {
+        float angle = float(i) * 0.5236; // 30 degrees = PI/6
+        vec2 offset = vec2(cos(angle), sin(angle)) * r2;
+        col += texture2D(tDiffuse, uv + blur * offset) * 0.7;
+        total += 0.7;
+      }
+
+      // Ring 3: 18 samples at distance 1.0
+      float r3 = 1.0;
+      for (int i = 0; i < 18; i++) {
+        float angle = float(i) * 0.349; // 20 degrees
+        vec2 offset = vec2(cos(angle), sin(angle)) * r3;
+        col += texture2D(tDiffuse, uv + blur * offset) * 0.5;
+        total += 0.5;
+      }
+
+      return col / total;
+    }
+
+    void main() {
+      float depth = getDepth(vUv);
+      float viewZ = -getViewZ(depth);
+
+      // Calculate distance from focus point
+      float diff = viewZ - focus;
+      float absDiff = abs(diff);
+
+      // Calculate blur factor with focus range dead zone
+      // Objects within focusRange of the focus point stay sharp
+      float blurFactor = max(0.0, absDiff - focusRange) * aperture;
+      blurFactor = min(blurFactor, maxblur);
+
+      // Debug mode 1: show raw depth buffer (inverted so near=white, far=black)
+      if (debugMode > 0.5 && debugMode < 1.5) {
+        gl_FragColor = vec4(vec3(1.0 - depth), 1.0);
+        return;
+      }
+
+      // Debug mode 2: show linear depth normalized to focus distance
+      if (debugMode > 1.5 && debugMode < 2.5) {
+        float normalized = viewZ / (focus * 2.0);
+        gl_FragColor = vec4(vec3(clamp(normalized, 0.0, 1.0)), 1.0);
+        return;
+      }
+
+      // Debug mode 3: show focus zones (green=in focus, red/blue=out of focus)
+      if (debugMode > 2.5) {
+        // Green channel: in-focus zone (within focusRange)
+        float inFocus = 1.0 - clamp(absDiff / focusRange, 0.0, 1.0);
+        // Red: behind focus (positive diff), Blue: in front (negative diff)
+        float behind = clamp(diff / (focusRange * 3.0), 0.0, 1.0);
+        float infront = clamp(-diff / (focusRange * 3.0), 0.0, 1.0);
+        gl_FragColor = vec4(behind, inFocus, infront, 1.0);
+        return;
+      }
+
+      // Apply blur based on selected method
+      vec2 dofblur = vec2(blurFactor);
+      dofblur *= vec2(1.0, aspect);
+
+      vec4 col;
+
+      if (blurMethod < 0.5) {
+        // Method 0: Disc
+        col = discBlur(vUv, dofblur);
+      } else if (blurMethod < 1.5) {
+        // Method 1: Jittered
+        col = jitteredBlur(vUv, dofblur);
+      } else if (blurMethod < 2.5) {
+        // Method 2: Separable
+        col = separableBlur(vUv, dofblur);
+      } else {
+        // Method 3: Hexagonal
+        col = hexagonalBlur(vUv, dofblur);
+      }
+
+      gl_FragColor = col;
+      gl_FragColor.a = 1.0;
+    }
+  `,
+};
+
+/** Raycaster for auto-focus depth detection */
+const autoFocusRaycaster = new THREE.Raycaster();
+const screenCenter = new THREE.Vector2(0, 0);
+
 export const PostProcessing = memo(function PostProcessing() {
   const { gl, scene, camera, size } = useThree();
   const originalToneMapping = useRef<THREE.ToneMapping>(gl.toneMapping);
   const originalExposure = useRef<number>(gl.toneMappingExposure);
+  const currentFocusRef = useRef<number>(15);
+  const autoFocusDistanceRef = useRef<number>(15);
 
   const {
     bloomEnabled,
@@ -36,9 +300,13 @@ export const PostProcessing = memo(function PostProcessing() {
     bloomThreshold,
     bloomRadius,
     bokehEnabled,
-    bokehFocus,
-    bokehAperture,
-    bokehMaxBlur,
+    bokehFocusMode,
+    bokehBlurMethod,
+    bokehWorldFocusDistance,
+    bokehWorldFocusRange,
+    bokehScale,
+    bokehSmoothTime,
+    bokehShowDebug,
     toneMappingEnabled,
     toneMappingAlgorithm,
     exposure,
@@ -49,29 +317,29 @@ export const PostProcessing = memo(function PostProcessing() {
       bloomThreshold: state.bloomThreshold,
       bloomRadius: state.bloomRadius,
       bokehEnabled: state.bokehEnabled,
-      bokehFocus: state.bokehFocus,
-      bokehAperture: state.bokehAperture,
-      bokehMaxBlur: state.bokehMaxBlur,
+      bokehFocusMode: state.bokehFocusMode,
+      bokehBlurMethod: state.bokehBlurMethod,
+      bokehWorldFocusDistance: state.bokehWorldFocusDistance,
+      bokehWorldFocusRange: state.bokehWorldFocusRange,
+      bokehScale: state.bokehScale,
+      bokehSmoothTime: state.bokehSmoothTime,
+      bokehShowDebug: state.bokehShowDebug,
       toneMappingEnabled: state.toneMappingEnabled,
       toneMappingAlgorithm: state.toneMappingAlgorithm,
       exposure: state.exposure,
     }))
   );
 
-  // Set up tone mapping for OutputPass
-  // Using Canvas flat prop disables R3F's default tone mapping,
-  // so we set it here for OutputPass to use
+  // Tone mapping setup
   useEffect(() => {
     originalToneMapping.current = gl.toneMapping;
     originalExposure.current = gl.toneMappingExposure;
-
     return () => {
       gl.toneMapping = originalToneMapping.current;
       gl.toneMappingExposure = originalExposure.current;
     };
   }, [gl]);
 
-  // Update tone mapping when settings change
   useEffect(() => {
     if (toneMappingEnabled) {
       gl.toneMapping = TONE_MAPPING_TO_THREE[toneMappingAlgorithm] as THREE.ToneMapping;
@@ -82,73 +350,190 @@ export const PostProcessing = memo(function PostProcessing() {
     }
   }, [gl, toneMappingEnabled, toneMappingAlgorithm, exposure]);
 
-  // Create composer and passes - matching Three.js example exactly
-  const composer = useMemo(() => {
+  // Create render target for scene + depth, and composer
+  const { composer, bloomPass, bokehPass, sceneTarget, texturePass } = useMemo(() => {
+    // Create render target with depth texture - matching Three.js examples exactly
+    const target = new THREE.WebGLRenderTarget(size.width, size.height, {
+      minFilter: THREE.NearestFilter,
+      magFilter: THREE.NearestFilter,
+      type: THREE.HalfFloatType,
+      depthBuffer: true,
+      stencilBuffer: false,
+    });
+
+    // Create and attach depth texture after render target creation
+    const depthTex = new THREE.DepthTexture(size.width, size.height);
+    depthTex.format = THREE.DepthFormat;
+    depthTex.type = THREE.UnsignedShortType;
+    depthTex.minFilter = THREE.NearestFilter;
+    depthTex.magFilter = THREE.NearestFilter;
+    target.depthTexture = depthTex;
+
+    // Create composer - we'll manually render scene to target, then use TexturePass
     const effectComposer = new EffectComposer(gl);
 
-    const renderPass = new RenderPass(scene, camera);
-    effectComposer.addPass(renderPass);
+    // TexturePass to copy from our pre-rendered scene
+    const texPass = new TexturePass(target.texture);
+    effectComposer.addPass(texPass);
 
-    const bloomPass = new UnrealBloomPass(
+    // Bloom
+    const bloom = new UnrealBloomPass(
       new THREE.Vector2(size.width, size.height),
-      bloomIntensity, // strength
-      bloomRadius,    // radius
-      bloomThreshold  // threshold
+      bloomIntensity,
+      bloomRadius,
+      bloomThreshold
     );
-    effectComposer.addPass(bloomPass);
+    effectComposer.addPass(bloom);
 
-    // BokehPass for depth of field effect
-    const bokehPass = new BokehPass(scene, camera, {
-      focus: bokehFocus,
-      aperture: bokehAperture,
-      maxblur: bokehMaxBlur,
-    });
-    bokehPass.enabled = bokehEnabled;
-    effectComposer.addPass(bokehPass);
+    // Bokeh
+    const bokeh = new ShaderPass(CustomBokehShader);
+    bokeh.enabled = false;
+    effectComposer.addPass(bokeh);
 
+    // Output
     const outputPass = new OutputPass();
     effectComposer.addPass(outputPass);
 
-    return { composer: effectComposer, bloomPass, bokehPass };
-  }, [gl, scene, camera, size.width, size.height]);
+    return {
+      composer: effectComposer,
+      bloomPass: bloom,
+      bokehPass: bokeh,
+      sceneTarget: target,
+      texturePass: texPass,
+    };
+  }, [gl, size.width, size.height]);
 
-  // Update bloom parameters when they change
+  // Update bloom
   useEffect(() => {
-    composer.bloomPass.strength = bloomIntensity;
-    composer.bloomPass.threshold = bloomThreshold;
-    composer.bloomPass.radius = bloomRadius;
-  }, [composer, bloomIntensity, bloomThreshold, bloomRadius]);
+    bloomPass.strength = bloomIntensity;
+    bloomPass.threshold = bloomThreshold;
+    bloomPass.radius = bloomRadius;
+  }, [bloomPass, bloomIntensity, bloomThreshold, bloomRadius]);
 
-  // Update bokeh parameters when they change
+  // Update bokeh enabled
   useEffect(() => {
-    composer.bokehPass.enabled = bokehEnabled;
-    // BokehPass uniforms are typed as Record<string, unknown> in Three.js
-    const uniforms = composer.bokehPass.uniforms as Record<string, { value: number } | undefined>;
-    if (uniforms?.['focus']) uniforms['focus'].value = bokehFocus;
-    if (uniforms?.['aperture']) uniforms['aperture'].value = bokehAperture;
-    if (uniforms?.['maxblur']) uniforms['maxblur'].value = bokehMaxBlur;
-  }, [composer, bokehEnabled, bokehFocus, bokehAperture, bokehMaxBlur]);
+    bokehPass.enabled = bokehEnabled;
+  }, [bokehPass, bokehEnabled]);
 
-  // Handle resize
+  // Resize
   useEffect(() => {
-    composer.composer.setSize(size.width, size.height);
-    composer.bloomPass.resolution.set(size.width, size.height);
-  }, [composer, size.width, size.height]);
+    composer.setSize(size.width, size.height);
+    bloomPass.resolution.set(size.width, size.height);
+    sceneTarget.setSize(size.width, size.height);
 
-  // Cleanup on unmount
+    // Update texture pass with new texture reference after resize
+    texturePass.map = sceneTarget.texture;
+
+    const uniforms = bokehPass.uniforms as unknown as BokehUniforms;
+    uniforms.aspect.value = size.height / size.width;
+  }, [composer, bloomPass, bokehPass, sceneTarget, texturePass, size.width, size.height]);
+
+  // Cleanup
   useEffect(() => {
     return () => {
-      composer.composer.dispose();
+      composer.dispose();
+      sceneTarget.dispose();
     };
-  }, [composer]);
+  }, [composer, sceneTarget]);
 
-  // Render loop - always use composer for consistent tone mapping
-  // When bloom is disabled, set strength to 0 so bloom has no effect
-  // but the rendering pipeline (including tone mapping via OutputPass) stays consistent
-  useFrame(() => {
-    // Temporarily set bloom strength based on enabled state
-    composer.bloomPass.strength = bloomEnabled ? bloomIntensity : 0;
-    composer.composer.render();
+  // Render
+  useFrame((_, delta) => {
+    bloomPass.strength = bloomEnabled ? bloomIntensity : 0;
+
+    // Save renderer state
+    const currentAutoClear = gl.autoClear;
+    const currentClearColor = gl.getClearColor(new THREE.Color());
+    const currentClearAlpha = gl.getClearAlpha();
+
+    // Render scene to our target to capture depth
+    gl.autoClear = false;
+    gl.setRenderTarget(sceneTarget);
+    gl.setClearColor(0x000000, 0);
+    gl.clear(true, true, true); // Clear color, depth, stencil
+
+    // Force all materials to write depth during this pass
+    const savedDepthWrite: Map<THREE.Material, boolean> = new Map();
+    scene.traverse((obj) => {
+      if ((obj as THREE.Mesh).isMesh) {
+        const mat = (obj as THREE.Mesh).material as THREE.Material;
+        savedDepthWrite.set(mat, mat.depthWrite);
+        mat.depthWrite = true;
+      }
+    });
+
+    gl.render(scene, camera);
+
+    // Restore original depthWrite settings
+    savedDepthWrite.forEach((value, mat) => {
+      mat.depthWrite = value;
+    });
+
+    gl.setRenderTarget(null);
+
+    // Restore renderer state
+    gl.autoClear = currentAutoClear;
+    gl.setClearColor(currentClearColor, currentClearAlpha);
+
+    // Update texture pass
+    texturePass.map = sceneTarget.texture;
+
+    if (bokehEnabled && camera instanceof THREE.PerspectiveCamera) {
+      let targetFocus = bokehWorldFocusDistance;
+
+      // Auto-focus: raycast to find depth at screen center
+      if (bokehFocusMode === 'auto-center' || bokehFocusMode === 'auto-mouse') {
+        // Use screen center for auto-center, could add mouse position for auto-mouse
+        autoFocusRaycaster.setFromCamera(screenCenter, camera);
+        const intersects = autoFocusRaycaster.intersectObjects(scene.children, true);
+
+        if (intersects.length > 0) {
+          // Use the distance to the first intersection
+          autoFocusDistanceRef.current = intersects[0].distance;
+        }
+        targetFocus = autoFocusDistanceRef.current;
+      }
+
+      // Smooth focus transition
+      const smoothFactor = bokehSmoothTime > 0 ? 1 - Math.exp(-delta / bokehSmoothTime) : 1;
+      currentFocusRef.current += (targetFocus - currentFocusRef.current) * smoothFactor;
+
+      const uniforms = bokehPass.uniforms as unknown as BokehUniforms;
+      uniforms.tDepth.value = sceneTarget.depthTexture;
+      uniforms.focus.value = currentFocusRef.current;
+
+      // Focus range: the depth range where objects stay sharp (in world units)
+      // This creates a "dead zone" around the focus point
+      uniforms.focusRange.value = bokehWorldFocusRange;
+
+      // Aperture: controls how quickly blur increases beyond the focus range
+      // bokehScale: 0-3 maps to aperture: 0-0.015
+      // Lower values = more gradual blur falloff
+      uniforms.aperture.value = bokehScale * 0.005;
+
+      // Maxblur: cap the maximum blur amount (typical: 0.01-0.05)
+      // bokehScale: 0-3 maps to maxblur: 0-0.06
+      uniforms.maxblur.value = bokehScale * 0.02;
+
+      uniforms.nearClip.value = camera.near;
+      uniforms.farClip.value = camera.far;
+
+      // Debug mode: 1=raw depth, 2=linear depth, 3=focus zones
+      uniforms.debugMode.value = bokehShowDebug ? 3 : 0;
+
+      // Blur method: 0=disc, 1=jittered, 2=separable, 3=hexagonal
+      const blurMethodMap: Record<string, number> = {
+        disc: 0,
+        jittered: 1,
+        separable: 2,
+        hexagonal: 3,
+      };
+      uniforms.blurMethod.value = blurMethodMap[bokehBlurMethod] ?? 3;
+
+      // Time for jittered blur animation (prevents static noise patterns)
+      uniforms.time.value = performance.now() * 0.001;
+    }
+
+    composer.render();
   }, 1);
 
   return null;
