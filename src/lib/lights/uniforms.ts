@@ -34,6 +34,10 @@ export interface LightUniforms {
   uSpotAngles: { value: number[] };
   /** Spot light penumbra values */
   uSpotPenumbras: { value: number[] };
+  /** Precomputed cos(innerAngle) for spotlight cone - avoids per-fragment trig */
+  uSpotCosInner: { value: number[] };
+  /** Precomputed cos(outerAngle) for spotlight cone - avoids per-fragment trig */
+  uSpotCosOuter: { value: number[] };
 }
 
 /**
@@ -51,6 +55,8 @@ export function createLightUniforms(): LightUniforms {
   const intensities: number[] = [];
   const spotAngles: number[] = [];
   const spotPenumbras: number[] = [];
+  const spotCosInner: number[] = [];
+  const spotCosOuter: number[] = [];
 
   for (let i = 0; i < MAX_LIGHTS; i++) {
     enabled.push(false);
@@ -61,6 +67,10 @@ export function createLightUniforms(): LightUniforms {
     intensities.push(1.0);
     spotAngles.push(Math.PI / 6); // 30 degrees
     spotPenumbras.push(0.5);
+    // Precompute cosines for default 30° cone with 0.5 penumbra
+    // Inner angle = 30° * (1 - 0.5) = 15°, Outer angle = 30°
+    spotCosInner.push(Math.cos((Math.PI / 6) * 0.5)); // cos(15°) ≈ 0.966
+    spotCosOuter.push(Math.cos(Math.PI / 6)); // cos(30°) ≈ 0.866
   }
 
   return {
@@ -73,6 +83,8 @@ export function createLightUniforms(): LightUniforms {
     uLightIntensities: { value: intensities },
     uSpotAngles: { value: spotAngles },
     uSpotPenumbras: { value: spotPenumbras },
+    uSpotCosInner: { value: spotCosInner },
+    uSpotCosOuter: { value: spotCosOuter },
   };
 }
 
@@ -98,6 +110,8 @@ export function updateLightUniforms(
   const intensities = uniforms.uLightIntensities.value;
   const spotAngles = uniforms.uSpotAngles.value;
   const spotPenumbras = uniforms.uSpotPenumbras.value;
+  const spotCosInner = uniforms.uSpotCosInner.value;
+  const spotCosOuter = uniforms.uSpotCosOuter.value;
 
   for (let i = 0; i < MAX_LIGHTS; i++) {
     const light = lights[i];
@@ -116,8 +130,13 @@ export function updateLightUniforms(
       intensities[i] = light.intensity;
 
       // Convert cone angle from degrees to radians
-      spotAngles[i] = (light.coneAngle * Math.PI) / 180;
+      const outerAngleRad = (light.coneAngle * Math.PI) / 180;
+      const innerAngleRad = outerAngleRad * (1.0 - light.penumbra);
+      spotAngles[i] = outerAngleRad;
       spotPenumbras[i] = light.penumbra;
+      // Precompute cosines on CPU to avoid per-fragment trig in shader
+      spotCosOuter[i] = Math.cos(outerAngleRad);
+      spotCosInner[i] = Math.cos(innerAngleRad);
     } else {
       // Disable unused light slots
       enabled[i] = false;
@@ -149,6 +168,8 @@ uniform vec3 uLightColors[MAX_LIGHTS];
 uniform float uLightIntensities[MAX_LIGHTS];
 uniform float uSpotAngles[MAX_LIGHTS];
 uniform float uSpotPenumbras[MAX_LIGHTS];
+uniform float uSpotCosInner[MAX_LIGHTS];
+uniform float uSpotCosOuter[MAX_LIGHTS];
 `;
 }
 
@@ -181,12 +202,11 @@ vec3 getLightDirection(int lightIndex, vec3 fragPos) {
 
 /**
  * Calculate spot light cone attenuation with penumbra falloff.
+ * Uses precomputed cosines (uSpotCosInner/uSpotCosOuter) to avoid per-fragment trig.
  */
 float getSpotAttenuation(int lightIndex, vec3 lightToFrag) {
   float cosAngle = dot(lightToFrag, normalize(uLightDirections[lightIndex]));
-  float innerCos = cos(uSpotAngles[lightIndex] * (1.0 - uSpotPenumbras[lightIndex]));
-  float outerCos = cos(uSpotAngles[lightIndex]);
-  return smoothstep(outerCos, innerCos, cosAngle);
+  return smoothstep(uSpotCosOuter[lightIndex], uSpotCosInner[lightIndex], cosAngle);
 }
 `;
 }

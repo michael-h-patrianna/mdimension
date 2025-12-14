@@ -41,6 +41,8 @@ uniform vec3 uLightColors[MAX_LIGHTS];
 uniform float uLightIntensities[MAX_LIGHTS];
 uniform float uSpotAngles[MAX_LIGHTS];
 uniform float uSpotPenumbras[MAX_LIGHTS];
+uniform float uSpotCosInner[MAX_LIGHTS];
+uniform float uSpotCosOuter[MAX_LIGHTS];
 
 // Global lighting uniforms
 uniform float uAmbientIntensity;
@@ -1124,12 +1126,11 @@ vec3 getLightDirection(int lightIndex, vec3 fragPos) {
 
 /**
  * Calculate spot light cone attenuation with penumbra falloff.
+ * Uses precomputed cosines (uSpotCosInner/uSpotCosOuter) to avoid per-fragment trig.
  */
 float getSpotAttenuation(int lightIndex, vec3 lightToFrag) {
     float cosAngle = dot(lightToFrag, normalize(uLightDirections[lightIndex]));
-    float innerCos = cos(uSpotAngles[lightIndex] * (1.0 - uSpotPenumbras[lightIndex]));
-    float outerCos = cos(uSpotAngles[lightIndex]);
-    return smoothstep(outerCos, innerCos, cosAngle);
+    return smoothstep(uSpotCosOuter[lightIndex], uSpotCosInner[lightIndex], cosAngle);
 }
 
 void main() {

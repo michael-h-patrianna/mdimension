@@ -275,6 +275,8 @@ function buildFaceFragmentShader(): string {
     uniform float uLightIntensities[MAX_LIGHTS];
     uniform float uSpotAngles[MAX_LIGHTS];
     uniform float uSpotPenumbras[MAX_LIGHTS];
+    uniform float uSpotCosInner[MAX_LIGHTS];
+    uniform float uSpotCosOuter[MAX_LIGHTS];
 
     // Fresnel uniforms
     uniform bool uFresnelEnabled;
@@ -445,9 +447,8 @@ function buildFaceFragmentShader(): string {
 
     float getSpotAttenuation(int lightIndex, vec3 lightToFrag) {
       float cosAngle = dot(lightToFrag, normalize(uLightDirections[lightIndex]));
-      float innerCos = cos(uSpotAngles[lightIndex] * (1.0 - uSpotPenumbras[lightIndex]));
-      float outerCos = cos(uSpotAngles[lightIndex]);
-      return smoothstep(outerCos, innerCos, cosAngle);
+      // Use precomputed cosines to avoid per-fragment trig
+      return smoothstep(uSpotCosOuter[lightIndex], uSpotCosInner[lightIndex], cosAngle);
     }
 
     vec3 calculateMultiLighting(vec3 fragPos, vec3 normal, vec3 viewDir, vec3 baseColor) {
@@ -596,6 +597,9 @@ function createFaceShaderMaterial(
       uLightIntensities: { value: [1.0, 1.0, 1.0, 1.0] },
       uSpotAngles: { value: [Math.PI / 6, Math.PI / 6, Math.PI / 6, Math.PI / 6] },
       uSpotPenumbras: { value: [0.5, 0.5, 0.5, 0.5] },
+      // Precomputed cosines: default 30° cone with 0.5 penumbra → inner=15°, outer=30°
+      uSpotCosInner: { value: [Math.cos(Math.PI / 12), Math.cos(Math.PI / 12), Math.cos(Math.PI / 12), Math.cos(Math.PI / 12)] },
+      uSpotCosOuter: { value: [Math.cos(Math.PI / 6), Math.cos(Math.PI / 6), Math.cos(Math.PI / 6), Math.cos(Math.PI / 6)] },
     },
     vertexShader: buildFaceVertexShader(),
     fragmentShader: buildFaceFragmentShader(),
@@ -1047,7 +1051,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
         // Update multi-light system uniforms
         if (u.uNumLights && u.uLightsEnabled && u.uLightTypes && u.uLightPositions &&
             u.uLightDirections && u.uLightColors && u.uLightIntensities &&
-            u.uSpotAngles && u.uSpotPenumbras) {
+            u.uSpotAngles && u.uSpotPenumbras && u.uSpotCosInner && u.uSpotCosOuter) {
           const lights = visualState.lights;
           const numLights = Math.min(lights.length, MAX_LIGHTS);
           u.uNumLights.value = numLights;
@@ -1066,8 +1070,13 @@ export const PolytopeScene = React.memo(function PolytopeScene({
 
               (u.uLightColors.value as Color[])[i]!.set(light.color);
               (u.uLightIntensities.value as number[])[i] = light.intensity;
-              (u.uSpotAngles.value as number[])[i] = (light.coneAngle * Math.PI) / 180;
+              // Precompute spotlight cone cosines on CPU to avoid per-fragment trig
+              const outerAngleRad = (light.coneAngle * Math.PI) / 180;
+              const innerAngleRad = outerAngleRad * (1.0 - light.penumbra);
+              (u.uSpotAngles.value as number[])[i] = outerAngleRad;
               (u.uSpotPenumbras.value as number[])[i] = light.penumbra;
+              (u.uSpotCosOuter.value as number[])[i] = Math.cos(outerAngleRad);
+              (u.uSpotCosInner.value as number[])[i] = Math.cos(innerAngleRad);
             } else {
               (u.uLightsEnabled.value as boolean[])[i] = false;
             }

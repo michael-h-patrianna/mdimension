@@ -28,6 +28,8 @@ describe('Light Uniforms', () => {
       expect(uniforms).toHaveProperty('uLightIntensities');
       expect(uniforms).toHaveProperty('uSpotAngles');
       expect(uniforms).toHaveProperty('uSpotPenumbras');
+      expect(uniforms).toHaveProperty('uSpotCosInner');
+      expect(uniforms).toHaveProperty('uSpotCosOuter');
     });
 
     it('should initialize uNumLights to 0', () => {
@@ -46,6 +48,22 @@ describe('Light Uniforms', () => {
       expect(uniforms.uLightIntensities.value).toHaveLength(MAX_LIGHTS);
       expect(uniforms.uSpotAngles.value).toHaveLength(MAX_LIGHTS);
       expect(uniforms.uSpotPenumbras.value).toHaveLength(MAX_LIGHTS);
+      expect(uniforms.uSpotCosInner.value).toHaveLength(MAX_LIGHTS);
+      expect(uniforms.uSpotCosOuter.value).toHaveLength(MAX_LIGHTS);
+    });
+
+    it('should initialize precomputed cosines with correct default values', () => {
+      const uniforms = createLightUniforms();
+      // Default: 30° cone (π/6) with 0.5 penumbra → inner=15° (π/12), outer=30° (π/6)
+      const expectedCosInner = Math.cos(Math.PI / 12); // cos(15°) ≈ 0.966
+      const expectedCosOuter = Math.cos(Math.PI / 6);  // cos(30°) ≈ 0.866
+
+      uniforms.uSpotCosInner.value.forEach((cosInner) => {
+        expect(cosInner).toBeCloseTo(expectedCosInner, 5);
+      });
+      uniforms.uSpotCosOuter.value.forEach((cosOuter) => {
+        expect(cosOuter).toBeCloseTo(expectedCosOuter, 5);
+      });
     });
 
     it('should initialize all lights as disabled', () => {
@@ -192,6 +210,50 @@ describe('Light Uniforms', () => {
       expect(uniforms.uSpotPenumbras.value[0]).toBe(0.7);
     });
 
+    it('should precompute spotlight cone cosines correctly', () => {
+      const uniforms = createLightUniforms();
+      const lights: LightSource[] = [
+        { ...createTestLight('1'), coneAngle: 60, penumbra: 0.5 },
+      ];
+
+      updateLightUniforms(uniforms, lights);
+
+      // outer angle = 60°, inner angle = 60° * (1 - 0.5) = 30°
+      const expectedCosOuter = Math.cos((60 * Math.PI) / 180); // cos(60°) = 0.5
+      const expectedCosInner = Math.cos((30 * Math.PI) / 180); // cos(30°) ≈ 0.866
+
+      expect(uniforms.uSpotCosOuter.value[0]).toBeCloseTo(expectedCosOuter, 5);
+      expect(uniforms.uSpotCosInner.value[0]).toBeCloseTo(expectedCosInner, 5);
+    });
+
+    it('should handle penumbra=0 (hard edge spotlight)', () => {
+      const uniforms = createLightUniforms();
+      const lights: LightSource[] = [
+        { ...createTestLight('1'), coneAngle: 45, penumbra: 0 },
+      ];
+
+      updateLightUniforms(uniforms, lights);
+
+      // With penumbra=0, inner angle = outer angle = 45°
+      const expectedCos = Math.cos((45 * Math.PI) / 180); // cos(45°) ≈ 0.707
+
+      expect(uniforms.uSpotCosOuter.value[0]).toBeCloseTo(expectedCos, 5);
+      expect(uniforms.uSpotCosInner.value[0]).toBeCloseTo(expectedCos, 5);
+    });
+
+    it('should handle penumbra=1 (fully soft spotlight)', () => {
+      const uniforms = createLightUniforms();
+      const lights: LightSource[] = [
+        { ...createTestLight('1'), coneAngle: 90, penumbra: 1 },
+      ];
+
+      updateLightUniforms(uniforms, lights);
+
+      // With penumbra=1, inner angle = 0° (cos=1), outer angle = 90° (cos=0)
+      expect(uniforms.uSpotCosOuter.value[0]).toBeCloseTo(0, 5);
+      expect(uniforms.uSpotCosInner.value[0]).toBeCloseTo(1, 5);
+    });
+
     it('should disable unused light slots', () => {
       const uniforms = createLightUniforms();
       // First add 3 lights
@@ -278,6 +340,8 @@ describe('Light Uniforms', () => {
         expect(glsl).toContain('uniform float uLightIntensities[MAX_LIGHTS]');
         expect(glsl).toContain('uniform float uSpotAngles[MAX_LIGHTS]');
         expect(glsl).toContain('uniform float uSpotPenumbras[MAX_LIGHTS]');
+        expect(glsl).toContain('uniform float uSpotCosInner[MAX_LIGHTS]');
+        expect(glsl).toContain('uniform float uSpotCosOuter[MAX_LIGHTS]');
       });
     });
 
@@ -290,6 +354,15 @@ describe('Light Uniforms', () => {
       it('should include getSpotAttenuation function', () => {
         const glsl = getLightHelperFunctions();
         expect(glsl).toContain('float getSpotAttenuation(int lightIndex, vec3 lightToFrag)');
+      });
+
+      it('should use precomputed cosines in getSpotAttenuation (no per-fragment trig)', () => {
+        const glsl = getLightHelperFunctions();
+        // Should use precomputed uniforms
+        expect(glsl).toContain('uSpotCosOuter[lightIndex]');
+        expect(glsl).toContain('uSpotCosInner[lightIndex]');
+        // Should NOT compute cos() per fragment
+        expect(glsl).not.toContain('cos(uSpotAngles');
       });
 
       it('should handle all light types in getLightDirection', () => {
