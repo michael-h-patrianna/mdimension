@@ -355,8 +355,8 @@ function Wall({
 export function GroundPlane({
   vertices,
   offset = 0.5,
-  opacity = 0.3,
-  reflectivity = 0.4,
+  opacity: _opacity = 0.3,
+  reflectivity: _reflectivity = 0.4,
   activeWalls = ['floor'],
   minBoundingRadius,
   color = '#101010',

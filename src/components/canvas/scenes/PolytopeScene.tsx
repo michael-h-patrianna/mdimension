@@ -34,7 +34,6 @@ import { matrixToGPUUniforms } from '@/lib/shaders/transforms/ndTransform';
 import { COLOR_ALGORITHM_TO_INT } from '@/lib/shaders/palette';
 import { MAX_LIGHTS, LIGHT_TYPE_TO_INT, rotationToDirection } from '@/lib/lights/types';
 import type { LightSource } from '@/lib/lights/types';
-import { FatWireframe } from '../renderers/FatWireframe';
 import { TubeWireframe } from '../renderers/TubeWireframe';
 
 /**

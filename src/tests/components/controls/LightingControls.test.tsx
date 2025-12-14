@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { LightingControls } from '@/components/sidebar/Lights/LightingControls';
 import { LightList } from '@/components/sidebar/Lights/LightList';
@@ -128,8 +128,10 @@ describe('LightList', () => {
     beforeEach(() => {
       // Remove all lights to test empty state (use while loop to avoid iteration issues)
       while (useVisualStore.getState().lights.length > 0) {
-        const lightId = useVisualStore.getState().lights[0].id;
-        useVisualStore.getState().removeLight(lightId);
+        const firstLight = useVisualStore.getState().lights[0];
+        if (firstLight) {
+          useVisualStore.getState().removeLight(firstLight.id);
+        }
       }
     });
 
@@ -172,7 +174,8 @@ describe('LightList', () => {
       expect(useVisualStore.getState().lights.length).toBe(initialCount + 1);
       // Newest light is the last one
       const lights = useVisualStore.getState().lights;
-      expect(lights[lights.length - 1].type).toBe('point');
+      const newestLight = lights[lights.length - 1];
+      expect(newestLight?.type).toBe('point');
     });
 
     it('should add directional light when selected', async () => {
@@ -185,7 +188,8 @@ describe('LightList', () => {
 
       expect(useVisualStore.getState().lights.length).toBe(initialCount + 1);
       const lights = useVisualStore.getState().lights;
-      expect(lights[lights.length - 1].type).toBe('directional');
+      const newestLight = lights[lights.length - 1];
+      expect(newestLight?.type).toBe('directional');
     });
 
     it('should add spot light when selected', async () => {
@@ -198,7 +202,8 @@ describe('LightList', () => {
 
       expect(useVisualStore.getState().lights.length).toBe(initialCount + 1);
       const lights = useVisualStore.getState().lights;
-      expect(lights[lights.length - 1].type).toBe('spot');
+      const newestLight = lights[lights.length - 1];
+      expect(newestLight?.type).toBe('spot');
     });
 
     it('should disable add button when 4 lights exist', () => {
@@ -325,7 +330,7 @@ describe('LightListItem', () => {
 
   it('should show disabled styling when light is disabled', () => {
     const disabledLight = { ...mockLight, enabled: false };
-    const { container } = render(
+    render(
       <LightListItem
         light={disabledLight}
         isSelected={false}

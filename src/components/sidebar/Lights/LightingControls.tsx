@@ -31,7 +31,6 @@ export const LightingControls: React.FC<LightingControlsProps> = React.memo(({
 }) => {
   const {
     shaderType,
-    lights,
     selectedLightId,
     showLightGizmos,
     ambientIntensity,
@@ -42,7 +41,6 @@ export const LightingControls: React.FC<LightingControlsProps> = React.memo(({
   } = useVisualStore(
     useShallow((state) => ({
       shaderType: state.shaderType,
-      lights: state.lights,
       selectedLightId: state.selectedLightId,
       showLightGizmos: state.showLightGizmos,
       ambientIntensity: state.ambientIntensity,

@@ -16,8 +16,8 @@ export { Scene } from './Scene'
 export type { SceneProps } from './Scene'
 
 // Unified rendering architecture
-export { UnifiedRenderer, determineRenderMode } from './renderers/UnifiedRenderer'
-export type { UnifiedRendererProps, RenderMode } from './renderers/UnifiedRenderer'
+export { determineRenderMode, UnifiedRenderer } from './renderers/UnifiedRenderer'
+export type { RenderMode, UnifiedRendererProps } from './renderers/UnifiedRenderer'
 
 // High-performance useFrame-based scene renderers
 export { PolytopeScene } from './scenes/PolytopeScene'
@@ -35,23 +35,9 @@ export { PostProcessing } from './environment/PostProcessing'
 export { SceneLighting } from './environment/SceneLighting'
 
 // Camera control
+export { useCameraReset } from '@/hooks/useCameraReset'
 export { CameraController } from './CameraController'
 export type { CameraControllerProps } from './CameraController'
-export { useCameraReset } from '@/hooks/useCameraReset'
-
-// Renderers (lower-level components)
-export { PolytopeRenderer } from './renderers/PolytopeRenderer'
-export type { PolytopeRendererProps } from './renderers/PolytopeRenderer'
-
-export { NativeWireframe } from './renderers/NativeWireframe'
-export type { NativeWireframeProps } from './renderers/NativeWireframe'
-
-export { FatWireframe } from './renderers/FatWireframe'
-export type { FatWireframeProps } from './renderers/FatWireframe'
-
-export { PointCloudRenderer } from './renderers/PointCloudRenderer'
-export type { PointCloudRendererProps } from './renderers/PointCloudRenderer'
 
 // Raymarched renderers
-export { default as MandelbulbMesh } from './renderers/Mandelbulb/MandelbulbMesh'
 export { default as HyperbulbMesh } from './renderers/Hyperbulb/HyperbulbMesh'

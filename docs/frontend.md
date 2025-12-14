@@ -1,7 +1,10 @@
 # Frontend Guide for LLM Coding Agents
 
 **Purpose**: Instructions for creating React components, Three.js renderers, and UI patterns.
-**Stack**: React 18 + React Three Fiber + Zustand + Tailwind CSS
+
+**Read This When**: Creating UI components, 3D renderers, or working with state management.
+
+**Stack**: React 19 + React Three Fiber + Zustand + Tailwind CSS 4
 
 ## Component Categories
 
@@ -426,3 +429,135 @@ import { NewControls } from './controls/NewControls';
 
 **Don't**: Forget cleanup in useEffect
 **Do**: Return cleanup function for subscriptions/timers
+
+---
+
+## How to Add data-testid for E2E Testing
+
+Always add `data-testid` to interactive elements:
+
+```tsx
+<button
+  data-testid="dimension-selector-4"
+  onClick={() => setDimension(4)}
+>
+  4D
+</button>
+
+<select
+  data-testid="object-type-selector"
+  value={objectType}
+  onChange={(e) => setObjectType(e.target.value)}
+>
+  ...
+</select>
+```
+
+---
+
+## Sidebar Section Template
+
+**Location**: `src/components/sidebar/{Name}/`
+
+**File structure**:
+```
+src/components/sidebar/{Name}/
+├── index.ts           # Export section
+└── {Name}Section.tsx  # Section component
+```
+
+**Template** (`{Name}Section.tsx`):
+```tsx
+/**
+ * {Name} Section Component
+ */
+
+import React from 'react';
+import { Section } from '@/components/ui/Section';
+import { Slider } from '@/components/ui/Slider';
+import { use{Domain}Store } from '@/stores/{domain}Store';
+
+export interface {Name}SectionProps {
+  defaultOpen?: boolean;
+}
+
+export const {Name}Section: React.FC<{Name}SectionProps> = ({
+  defaultOpen = false,
+}) => {
+  // Use individual selectors
+  const value = use{Domain}Store((state) => state.value);
+  const setValue = use{Domain}Store((state) => state.setValue);
+
+  return (
+    <Section title="{Name}" defaultOpen={defaultOpen}>
+      <div className="space-y-4">
+        <Slider
+          label="Value"
+          min={0}
+          max={100}
+          value={value}
+          onChange={setValue}
+        />
+      </div>
+    </Section>
+  );
+};
+```
+
+**Template** (`index.ts`):
+```typescript
+export { {Name}Section } from './{Name}Section';
+```
+
+---
+
+## Hook Decision Tree
+
+| Need to... | Create hook in... | Pattern |
+|------------|-------------------|---------|
+| Connect store to component | `src/hooks/use{Name}.ts` | Return store values + memoized callbacks |
+| Animate in Three.js | `src/hooks/use{Name}.ts` | Use `useFrame` from R3F |
+| Transform geometry | `src/hooks/use{Name}.ts` | Memoize with useMemo based on inputs |
+| Handle keyboard input | `src/hooks/use{Name}.ts` | Use useEffect with event listeners |
+| Sync multiple stores | `src/hooks/useSynced{Name}.ts` | Use useLayoutEffect |
+
+---
+
+## Tailwind CSS 4 Notes
+
+This project uses Tailwind CSS 4 with the Vite plugin. Key differences:
+
+1. **No tailwind.config.js** - Configuration in CSS
+2. **CSS variables for theming** - `--color-accent`, `--color-panel-bg`, etc.
+3. **`@theme` directive** - Define design tokens in CSS
+
+```css
+/* Theme variables available */
+var(--color-accent)
+var(--color-panel-bg)
+var(--color-panel-border)
+var(--color-text-primary)
+var(--color-text-secondary)
+```
+
+---
+
+## More Common Mistakes
+
+❌ **Don't**: Create new components without Props interface
+✅ **Do**: Always define and export `{Name}Props` interface
+
+❌ **Don't**: Use `any` type
+✅ **Do**: Define proper TypeScript types
+
+❌ **Don't**: Forget to export from index files
+✅ **Do**: Add exports to `src/components/ui/index.ts` or similar
+
+❌ **Don't**: Create components without tests
+✅ **Do**: Create test file in `src/tests/components/`
+
+❌ **Don't**: Mix HTML and Three.js elements
+✅ **Do**: Keep DOM components and Canvas components separate
+
+❌ **Don't**: Import Three.js in non-canvas components
+✅ **Do**: Only use Three.js in `src/components/canvas/` and `src/lib/`

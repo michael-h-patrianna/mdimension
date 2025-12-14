@@ -1,7 +1,12 @@
 # Architecture Guide for LLM Coding Agents
 
-**Purpose**: This document helps you make architectural decisions and locate/place code correctly.
-## TECH STACK
+**Purpose**: Instructions for where to put code, what patterns to follow, and how to create new features.
+
+**Read This When**: Creating new files, implementing features, or unsure about project structure.
+
+---
+
+## Tech Stack
 
 ### Core Framework
 - **React** 19.2.3 - UI library
@@ -155,3 +160,167 @@ export function ControlPanel() {
 
 ❌ **Don't**: Use `useState` for rapidly changing animation values (causes re-renders).
 ✅ **Do**: Use `useRef` or `useFrame` for animation loops.
+
+❌ **Don't**: Create geometry generators that return different vertex counts on each call.
+✅ **Do**: Return deterministic vertex arrays based on dimension/parameters.
+
+❌ **Don't**: Put new scripts in project root.
+✅ **Do**: Put Playwright scripts in `scripts/playwright/`, utilities in `scripts/tools/`.
+
+❌ **Don't**: Add new stores without exporting from `src/stores/index.ts`.
+✅ **Do**: Always export new stores from the index file.
+
+❌ **Don't**: Create components without accompanying tests.
+✅ **Do**: Create test file in `src/tests/` mirroring source structure.
+
+---
+
+## How to Create a New Geometry Generator
+
+**Location**: `src/lib/geometry/`
+**Template**:
+```typescript
+/**
+ * {Name} generation
+ * {Brief mathematical description}
+ */
+
+import type { VectorND } from '@/lib/math';
+import { createVector } from '@/lib/math';
+import type { PolytopeGeometry } from './types';
+
+/**
+ * Generates a {name} in n-dimensional space
+ *
+ * @param dimension - Dimensionality (must be >= 2)
+ * @param scale - Scale factor (default: 1.0)
+ * @returns PolytopeGeometry representing the {name}
+ * @throws {Error} If dimension < 2
+ */
+export function generate{Name}(dimension: number, scale = 1.0): PolytopeGeometry {
+  if (dimension < 2) {
+    throw new Error('{Name} dimension must be at least 2');
+  }
+
+  const vertices: VectorND[] = [];
+  const edges: [number, number][] = [];
+
+  // Generate vertices
+  // [Your vertex generation logic]
+
+  // Generate edges
+  // [Your edge generation logic]
+
+  return {
+    vertices,
+    edges,
+    dimension,
+    type: '{name}' as const,
+  };
+}
+```
+
+**Steps**:
+1. Create file at `src/lib/geometry/{name}.ts`
+2. Add type to `ObjectType` in `src/lib/geometry/types.ts`
+3. Add generator to `useGeometryGenerator` hook
+4. Create tests in `src/tests/lib/geometry/{name}.test.ts`
+
+---
+
+## How to Create a New Zustand Store
+
+**Location**: `src/stores/`
+**Template**:
+```typescript
+/**
+ * {Name} state management using Zustand
+ */
+
+import { create } from 'zustand';
+
+/** Default values */
+export const DEFAULT_VALUE = 1;
+export const MIN_VALUE = 0;
+export const MAX_VALUE = 10;
+
+interface {Name}State {
+  /** State property */
+  value: number;
+
+  // Actions
+  setValue: (value: number) => void;
+  reset: () => void;
+}
+
+export const use{Name}Store = create<{Name}State>((set) => ({
+  value: DEFAULT_VALUE,
+
+  setValue: (value: number) => {
+    const clamped = Math.max(MIN_VALUE, Math.min(MAX_VALUE, value));
+    set({ value: clamped });
+  },
+
+  reset: () => {
+    set({ value: DEFAULT_VALUE });
+  },
+}));
+```
+
+**Steps**:
+1. Create file at `src/stores/{name}Store.ts`
+2. Export from `src/stores/index.ts`
+3. Create tests in `src/tests/stores/{name}Store.test.ts`
+
+---
+
+## How to Add a Sidebar Section
+
+**Location**: `src/components/sidebar/`
+**Steps**:
+1. Create folder: `src/components/sidebar/{Name}/`
+2. Create component: `{Name}Section.tsx`
+3. Create index: `index.ts` exporting the section
+4. Add to `Sidebar.tsx`:
+```tsx
+import { {Name}Section } from './{Name}';
+// In render:
+<{Name}Section defaultOpen={false} />
+```
+
+---
+
+## File Naming Conventions
+
+| Type | Pattern | Example |
+|------|---------|---------|
+| Component | `PascalCase.tsx` | `DimensionSelector.tsx` |
+| Hook | `useCamelCase.ts` | `useAnimationLoop.ts` |
+| Store | `camelCaseStore.ts` | `geometryStore.ts` |
+| Utility | `camelCase.ts` | `axisUtils.ts` |
+| Test | `*.test.ts(x)` | `Button.test.tsx` |
+| Types | `types.ts` or `index.ts` | `src/lib/geometry/types.ts` |
+
+---
+
+## Import Aliases
+
+Always use path aliases instead of relative imports:
+```typescript
+// GOOD
+import { Button } from '@/components/ui/Button';
+import { useGeometryStore } from '@/stores';
+import { createVector } from '@/lib/math';
+
+// BAD
+import { Button } from '../../../components/ui/Button';
+```
+
+Available aliases (from vite.config.ts):
+- `@/` → `src/`
+- `@/components` → `src/components`
+- `@/lib` → `src/lib`
+- `@/hooks` → `src/hooks`
+- `@/stores` → `src/stores`
+- `@/types` → `src/types`
+- `@/utils` → `src/utils`

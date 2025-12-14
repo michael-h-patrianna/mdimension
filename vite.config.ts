@@ -1,19 +1,15 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
-import path from 'path'
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+import react from '@vitejs/plugin-react'
+import path, { dirname } from 'path'
+import { fileURLToPath } from 'url'
+import { defineConfig } from 'vite'
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [
-    tailwindcss(),
-    react(),
-  ],
+  plugins: [tailwindcss(), react()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -35,8 +31,18 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
+          // Core React
           'react-vendor': ['react', 'react-dom'],
-          'three-vendor': ['three', '@react-three/fiber', '@react-three/drei'],
+          // Three.js core
+          'three-core': ['three'],
+          // React Three Fiber ecosystem
+          'r3f-fiber': ['@react-three/fiber'],
+          'r3f-drei': ['@react-three/drei'],
+          'r3f-postprocessing': ['@react-three/postprocessing', 'postprocessing'],
+          // State management
+          zustand: ['zustand'],
+          // Animation
+          motion: ['motion'],
         },
       },
     },

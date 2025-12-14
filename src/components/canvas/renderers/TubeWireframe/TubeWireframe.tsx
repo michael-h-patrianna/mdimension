@@ -8,7 +8,7 @@
  * @see docs/prd/enhanced-visuals-rendering-pipeline.md
  */
 
-import { useRef, useLayoutEffect, useMemo } from 'react'
+import React, { useRef, useLayoutEffect, useMemo } from 'react'
 import {
   CylinderGeometry,
   InstancedBufferAttribute,
@@ -16,9 +16,9 @@ import {
   Color,
   ShaderMaterial,
   DoubleSide,
-  Vector3,
+  InstancedMesh,
 } from 'three'
-import { useThree, useFrame } from '@react-three/fiber'
+import { useFrame } from '@react-three/fiber'
 
 import type { VectorND } from '@/lib/math/types'
 import { useRotationStore } from '@/stores/rotationStore'
@@ -70,9 +70,8 @@ export function TubeWireframe({
   radius = 0.02,
   metallic = 0.0,
   roughness = 0.5,
-}: TubeWireframeProps): JSX.Element | null {
-  const meshRef = useRef<THREE.InstancedMesh>(null)
-  const materialRef = useRef<ShaderMaterial>(null)
+}: TubeWireframeProps): React.JSX.Element | null {
+  const meshRef = useRef<InstancedMesh>(null)
 
   // Base cylinder geometry (Y-axis aligned, height 1, centered at origin)
   const geometry = useMemo(() => {

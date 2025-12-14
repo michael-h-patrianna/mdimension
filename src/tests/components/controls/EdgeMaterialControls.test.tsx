@@ -5,7 +5,6 @@
 
 import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { EdgeMaterialControls } from '@/components/sidebar/Visual/EdgeMaterialControls'
 import { useVisualStore, DEFAULT_EDGE_METALLIC, DEFAULT_EDGE_ROUGHNESS } from '@/stores/visualStore'
 

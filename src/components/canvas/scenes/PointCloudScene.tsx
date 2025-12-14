@@ -10,36 +10,53 @@
  * Used for: Root Systems, Clifford Torus, Mandelbrot (point cloud mode)
  */
 
-import React, { useRef, useMemo, useEffect } from 'react';
-import { useFrame, useThree } from '@react-three/fiber';
-import { useShallow } from 'zustand/react/shallow';
+import { extend, useFrame, useThree } from '@react-three/fiber';
+import React, { useEffect, useMemo, useRef } from 'react';
 import {
-  BufferGeometry,
-  Float32BufferAttribute,
-  Vector2,
-  ShaderMaterial,
-  Color,
-  Matrix4,
   AdditiveBlending,
-  NormalBlending,
+  BufferGeometry,
+  Color,
+  Float32BufferAttribute,
   InstancedInterleavedBuffer,
+  Matrix4,
+  NormalBlending,
+  ShaderMaterial,
+  Vector2,
 } from 'three';
-import { extend } from '@react-three/fiber';
-import { LineSegments2, LineMaterial, LineSegmentsGeometry } from 'three-stdlib';
+import { LineMaterial, LineSegments2, LineSegmentsGeometry } from 'three-stdlib';
+import { useShallow } from 'zustand/react/shallow';
 
-import type { VectorND, Vector3D } from '@/lib/math/types';
-import { useRotationStore } from '@/stores/rotationStore';
-import { useTransformStore } from '@/stores/transformStore';
-import { useProjectionStore } from '@/stores/projectionStore';
-import { useVisualStore } from '@/stores/visualStore';
+import { createScaleMatrix, multiplyMatrixVector } from '@/lib/math';
+import { DEFAULT_PROJECTION_DISTANCE, projectOrthographic, projectPerspective } from '@/lib/math/projection';
 import { composeRotations } from '@/lib/math/rotation';
-import { multiplyMatrixVector, createScaleMatrix } from '@/lib/math';
-import { projectPerspective, projectOrthographic, DEFAULT_PROJECTION_DISTANCE } from '@/lib/math/projection';
+import type { Vector3D, VectorND } from '@/lib/math/types';
 import { VERTEX_SIZE_DIVISOR } from '@/lib/shaders/constants';
 import { matrixToGPUUniforms } from '@/lib/shaders/transforms/ndTransform';
+import { useProjectionStore } from '@/stores/projectionStore';
+import { useRotationStore } from '@/stores/rotationStore';
+import { useTransformStore } from '@/stores/transformStore';
+import { useVisualStore } from '@/stores/visualStore';
 
 // Extend for fat lines
 extend({ LineSegments2, LineMaterial, LineSegmentsGeometry });
+
+// Type declarations for extended R3F elements
+declare module '@react-three/fiber' {
+  interface ThreeElements {
+    lineSegments2: React.JSX.IntrinsicElements['mesh'] & { geometry?: LineSegmentsGeometry };
+    lineMaterial: React.JSX.IntrinsicElements['meshBasicMaterial'] & {
+      color?: string | Color;
+      linewidth?: number;
+      resolution?: Vector2;
+      transparent?: boolean;
+      opacity?: number;
+      depthWrite?: boolean;
+      dashed?: boolean;
+      alphaToCoverage?: boolean;
+      depthTest?: boolean;
+    };
+  }
+}
 
 // Maximum extra dimensions (beyond XYZ + W)
 const MAX_EXTRA_DIMS = 7;
@@ -66,6 +83,8 @@ export interface PointCloudSceneProps {
 
 /**
  * Calculate safe projection distance based on vertex positions
+ * @param vertices
+ * @param normalizationFactor
  */
 function calculateSafeProjectionDistance(
   vertices: VectorND[],
@@ -111,6 +130,9 @@ function hasInstanceBuffer(
 
 /**
  * Create GPU point shader material with full N-D transforms
+ * @param pointColor
+ * @param opacity
+ * @param pointSize
  */
 function createPointShaderMaterial(
   pointColor: string,
@@ -247,6 +269,8 @@ function createPointShaderMaterial(
 
 /**
  * Create GPU edge shader material with full N-D transforms
+ * @param edgeColor
+ * @param opacity
  */
 function createEdgeShaderMaterial(edgeColor: string, opacity: number): ShaderMaterial {
   const vertexShader = `
@@ -384,24 +408,21 @@ export const PointCloudScene = React.memo(function PointCloudScene({
 
   // ============ VISUAL SETTINGS ============
   const {
-    vertexVisible,
     edgesVisible,
-    vertexColor,
-    vertexSize: storeVertexSize,
     edgeColor,
     edgeThickness,
   } = useVisualStore(
     useShallow((state) => ({
-      vertexVisible: state.vertexVisible,
       edgesVisible: state.edgesVisible,
-      vertexColor: state.vertexColor,
-      vertexSize: state.vertexSize,
       edgeColor: state.edgeColor,
       edgeThickness: state.edgeThickness,
     }))
   );
 
-  const vertexSize = storeVertexSize / VERTEX_SIZE_DIVISOR;
+  // Use edge color as the point color and constants for vertex properties
+  const vertexColor = edgeColor;
+  const vertexSize = 4 / VERTEX_SIZE_DIVISOR; // Default vertex size of 4
+  const vertexVisible = true; // Points are always visible in point cloud scenes
   const useFatLines = edgeThickness >= 1;
 
   // ============ GPU POINT GEOMETRY ============

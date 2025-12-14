@@ -286,6 +286,8 @@ const CustomBokehShader = {
 /** Raycaster for auto-focus depth detection */
 const autoFocusRaycaster = new THREE.Raycaster();
 const screenCenter = new THREE.Vector2(0, 0);
+/** Reusable Color object for getClearColor (avoid per-frame allocation) */
+const tempClearColor = new THREE.Color();
 
 export const PostProcessing = memo(function PostProcessing() {
   const { gl, scene, camera, size } = useThree();
@@ -442,7 +444,7 @@ export const PostProcessing = memo(function PostProcessing() {
 
     // Save renderer state
     const currentAutoClear = gl.autoClear;
-    const currentClearColor = gl.getClearColor(new THREE.Color());
+    const currentClearColor = gl.getClearColor(tempClearColor);
     const currentClearAlpha = gl.getClearAlpha();
 
     // Render scene to our target to capture depth
@@ -486,7 +488,7 @@ export const PostProcessing = memo(function PostProcessing() {
         autoFocusRaycaster.setFromCamera(screenCenter, camera);
         const intersects = autoFocusRaycaster.intersectObjects(scene.children, true);
 
-        if (intersects.length > 0) {
+        if (intersects.length > 0 && intersects[0]) {
           // Use the distance to the first intersection
           autoFocusDistanceRef.current = intersects[0].distance;
         }

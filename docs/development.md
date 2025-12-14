@@ -2,7 +2,11 @@
 
 **Purpose**: Instructions for setup, running, building, and development workflow.
 
-## Setup
+**Read This When**: Setting up the project, running commands, or troubleshooting.
+
+---
+
+## Quick Start
 
 ```bash
 # 1. Install dependencies
@@ -12,10 +16,10 @@ npm install
 npm run dev
 
 # 3. Open in browser
-# Default: http://localhost:5173
+# Default: http://localhost:3000
 ```
 
-No additional configuration needed. The app runs client-side only.
+No additional configuration needed. Client-side only React app.
 
 ## Key Commands
 
@@ -219,3 +223,104 @@ Settings sync with project:
   "editor.defaultFormatter": "esbenp.prettier-vscode"
 }
 ```
+
+---
+
+## Verification Checklist
+
+**Before claiming work is complete, run ALL of these**:
+
+```bash
+# 1. Type check
+npx tsc --noEmit
+
+# 2. Run all tests
+npm test
+
+# 3. Lint check
+npm run lint
+
+# 4. Build succeeds
+npm run build
+```
+
+**All must pass with zero errors.**
+
+---
+
+## Common Development Tasks
+
+### Adding a New Feature
+
+1. Create feature files in appropriate directories
+2. Create tests in `src/tests/` mirroring source structure
+3. Run `npm test` to verify tests pass
+4. Run `npx tsc --noEmit` to verify types
+5. Run `npm run lint` to verify code style
+
+### Modifying Existing Code
+
+1. Read existing tests to understand expected behavior
+2. Make changes
+3. Run `npm test` to verify nothing broke
+4. Update tests if behavior intentionally changed
+
+### Debugging Failing Tests
+
+```bash
+# Run single file with verbose output
+npx vitest run src/tests/path/to/file.test.ts --reporter=verbose
+
+# Run with pattern matching
+npx vitest run -t "test name pattern"
+```
+
+---
+
+## Directory Rules (CRITICAL)
+
+| Activity | Required Directory |
+|----------|-------------------|
+| Playwright scripts | `scripts/playwright/` |
+| Utility scripts | `scripts/tools/` |
+| Screenshots | `screenshots/` |
+| Documentation | `docs/` |
+| Experiments | `src/dev-tools/` |
+
+**NEVER place scripts, screenshots, or docs in project root.**
+
+---
+
+## Port Configuration
+
+| Service | Port |
+|---------|------|
+| Dev server | 3000 |
+| Preview | 4173 |
+
+If port 3000 is busy:
+```bash
+npm run dev -- --port 3001
+```
+
+---
+
+## Common Mistakes
+
+❌ **Don't**: Skip type checking before commit
+✅ **Do**: Always run `npx tsc --noEmit`
+
+❌ **Don't**: Use relative imports like `../../../`
+✅ **Do**: Use path aliases like `@/components/...`
+
+❌ **Don't**: Leave tests failing
+✅ **Do**: Fix tests or update expected values if behavior changed intentionally
+
+❌ **Don't**: Commit without running full verification
+✅ **Do**: Run `npm test && npx tsc --noEmit && npm run lint && npm run build`
+
+❌ **Don't**: Run vitest in watch mode during automation
+✅ **Do**: Use `npm test` which runs `vitest run`
+
+❌ **Don't**: Modify vitest worker count (causes OOM)
+✅ **Do**: Keep `maxWorkers: 4` in vitest.config.ts

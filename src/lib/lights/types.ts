@@ -96,11 +96,11 @@ export const DEFAULT_NEW_LIGHT_POSITIONS: [number, number, number][] = [
 
 /**
  * Create a default light matching the current single-light behavior.
- * Position derived from: horizontal=45deg, vertical=30deg, distance=10
+ * Position derived from: horizontal=45deg, vertical=130deg, distance=8
  */
 export function createDefaultLight(): LightSource {
   // Convert spherical coordinates to Cartesian
-  // h=45deg, v=30deg, d=10 => x~6.12, y=5, z~6.12
+  // h=45deg, v=130deg, d=8 => x~-3.64, y~6.13, z~-3.64
   const h = (45 * Math.PI) / 180
   const v = (130 * Math.PI) / 180
   const d = 8

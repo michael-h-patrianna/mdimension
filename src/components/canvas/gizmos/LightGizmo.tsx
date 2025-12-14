@@ -13,7 +13,7 @@
  * - Disabled state visualization (30% opacity)
  */
 
-import { memo, useMemo, useRef } from 'react';
+import { memo, useMemo, useRef, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { rotationToDirection } from '@/lib/lights/types';
@@ -62,6 +62,13 @@ const PointLightGizmo = memo(function PointLightGizmo({
     });
   }, [light.color, light.enabled, isSelected]);
 
+  // Cleanup material on unmount
+  useEffect(() => {
+    return () => {
+      material.dispose();
+    };
+  }, [material]);
+
   return (
     <mesh ref={meshRef}>
       <icosahedronGeometry args={[1, 2]} />
@@ -100,6 +107,13 @@ const DirectionalLightGizmo = memo(function DirectionalLightGizmo({
     });
   }, [light.color, light.enabled]);
 
+  // Cleanup material on unmount
+  useEffect(() => {
+    return () => {
+      material.dispose();
+    };
+  }, [material]);
+
   // Arrow direction and length
   const arrowLength = 2;
   const arrowHelper = useMemo(() => {
@@ -113,6 +127,13 @@ const DirectionalLightGizmo = memo(function DirectionalLightGizmo({
     );
     return helper;
   }, [direction, light.enabled]);
+
+  // Cleanup arrowHelper on unmount (ArrowHelper has its own geometry and materials)
+  useEffect(() => {
+    return () => {
+      arrowHelper.dispose();
+    };
+  }, [arrowHelper]);
 
   return (
     <group>
@@ -162,6 +183,13 @@ const SpotLightGizmo = memo(function SpotLightGizmo({
     });
   }, [light.color, light.enabled]);
 
+  // Cleanup material on unmount
+  useEffect(() => {
+    return () => {
+      material.dispose();
+    };
+  }, [material]);
+
   // Rotation to align cone with direction
   const coneRotation = useMemo(() => {
     const quaternion = new THREE.Quaternion();
@@ -200,6 +228,9 @@ const SpotLightGizmo = memo(function SpotLightGizmo({
 /**
  * Light Gizmo - Unified wrapper with camera-distance scaling
  */
+/** Reusable Vector3 for distance calculation (avoid per-frame allocation) */
+const tempLightPosition = new THREE.Vector3();
+
 export const LightGizmo = memo(function LightGizmo({
   light,
   isSelected,
@@ -211,15 +242,15 @@ export const LightGizmo = memo(function LightGizmo({
   // Update scale based on camera distance
   useFrame(() => {
     if (groupRef.current) {
-      const position = new THREE.Vector3(light.position[0], light.position[1], light.position[2]);
-      const distance = camera.position.distanceTo(position);
+      tempLightPosition.set(light.position[0], light.position[1], light.position[2]);
+      const distance = camera.position.distanceTo(tempLightPosition);
       const scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, distance * 0.1)) * BASE_GIZMO_SIZE;
       groupRef.current.scale.setScalar(scale);
     }
   });
 
   // Handle click
-  const handleClick = (e: THREE.Event) => {
+  const handleClick = (e: { stopPropagation?: () => void }) => {
     e.stopPropagation?.();
     onSelect();
   };

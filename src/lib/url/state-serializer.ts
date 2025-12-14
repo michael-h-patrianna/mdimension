@@ -35,6 +35,7 @@ const VALID_OBJECT_TYPES: ObjectType[] = [
   'clifford-torus',
   'mandelbrot',
   'mandelbox',
+  'menger',
 ];
 
 export interface ShareableState {

@@ -27,6 +27,7 @@
     "strictPropertyInitialization": true,
     "noImplicitReturns": true,
     "noUncheckedIndexedAccess": true,
+    "forceConsistentCasingInFileNames": true,
 
     /* Path aliases */
     "baseUrl": ".",

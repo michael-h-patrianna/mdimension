@@ -16,6 +16,8 @@ export interface SliderProps {
   maxLabel?: string;
   /** Tooltip text shown on hover (currently display via title attribute) */
   tooltip?: string;
+  /** Custom value formatter function (overrides default formatting) */
+  formatValue?: (value: number) => string;
 }
 
 export const Slider: React.FC<SliderProps> = ({
@@ -33,12 +35,16 @@ export const Slider: React.FC<SliderProps> = ({
   minLabel,
   maxLabel,
   tooltip,
+  formatValue,
 }) => {
   const id = useId();
   const percentage = max > min ? ((value - min) / (max - min)) * 100 : 0;
 
   // Determine decimal places based on step
   const decimals = step < 1 ? 2 : 0;
+
+  // Format the displayed value
+  const displayValue = formatValue ? formatValue(value) : `${value.toFixed(decimals)}${unit}`;
 
   return (
     <div className={`group ${className}`}>
@@ -58,7 +64,7 @@ export const Slider: React.FC<SliderProps> = ({
             className="text-[10px] font-mono text-accent bg-accent/10 px-1.5 py-0.5 rounded border border-accent/20 hover:bg-accent/20 transition-colors disabled:opacity-50 disabled:cursor-default"
             title={onReset ? 'Double-click to reset' : undefined}
           >
-            {value.toFixed(decimals)}{unit}
+            {displayValue}
           </button>
         )}
       </div>

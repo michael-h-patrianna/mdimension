@@ -63,9 +63,10 @@ export const Vector3Input: React.FC<Vector3InputProps> = memo(function Vector3In
   );
 
   const handleBlur = useCallback(
-    (index: number) => {
+    (index: 0 | 1 | 2) => {
       // Reset to actual value on blur if invalid
-      const parsed = parseFloat(localValues[index]);
+      const localValue = localValues[index];
+      const parsed = parseFloat(localValue);
       if (isNaN(parsed)) {
         const newLocal = [...localValues] as [string, string, string];
         newLocal[index] = (value[index] * displayMultiplier).toFixed(1);
@@ -93,7 +94,7 @@ export const Vector3Input: React.FC<Vector3InputProps> = memo(function Vector3In
               type="number"
               value={localValues[i]}
               onChange={(e) => handleChange(i, e.target.value)}
-              onBlur={() => handleBlur(i)}
+              onBlur={() => handleBlur(i as 0 | 1 | 2)}
               step={step * displayMultiplier}
               className="w-full pl-6 pr-2 py-1.5 text-xs font-mono bg-panel-border/50 border border-panel-border rounded text-text-primary focus:outline-none focus:border-accent"
               aria-label={`${label} ${axis}`}
