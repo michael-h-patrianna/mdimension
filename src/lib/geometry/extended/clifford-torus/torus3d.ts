@@ -5,9 +5,9 @@
  * This is a regular torus in R^3, not the Clifford embedding which requires 4D.
  */
 
-import type { VectorND } from '@/lib/math/types';
-import type { NdGeometry } from '../../types';
-import type { CliffordTorusConfig } from '../types';
+import type { VectorND } from '@/lib/math/types'
+import type { NdGeometry } from '../../types'
+import type { CliffordTorusConfig } from '../types'
 
 /**
  * Generates points on a 3D torus surface
@@ -23,36 +23,32 @@ import type { CliffordTorusConfig } from '../types';
  * @returns Array of 3D points on the torus surface
  */
 export function generateTorus3DPoints(config: CliffordTorusConfig): VectorND[] {
-  const { radius, resolutionU, resolutionV } = config;
-  const points: VectorND[] = [];
+  const { radius, resolutionU, resolutionV } = config
+  const points: VectorND[] = []
 
   // Major radius (distance from center to tube center)
-  const R = radius;
+  const R = radius
   // Minor radius (tube radius) - 40% of major radius for good visual balance
-  const r = radius * 0.4;
+  const r = radius * 0.4
 
   for (let i = 0; i < resolutionU; i++) {
-    const u = (2 * Math.PI * i) / resolutionU;
-    const cu = Math.cos(u);
-    const su = Math.sin(u);
+    const u = (2 * Math.PI * i) / resolutionU
+    const cu = Math.cos(u)
+    const su = Math.sin(u)
 
     for (let j = 0; j < resolutionV; j++) {
-      const v = (2 * Math.PI * j) / resolutionV;
-      const cv = Math.cos(v);
-      const sv = Math.sin(v);
+      const v = (2 * Math.PI * j) / resolutionV
+      const cv = Math.cos(v)
+      const sv = Math.sin(v)
 
       // 3D point on the torus
-      const p: VectorND = [
-        (R + r * cv) * cu,
-        (R + r * cv) * su,
-        r * sv,
-      ];
+      const p: VectorND = [(R + r * cv) * cu, (R + r * cv) * su, r * sv]
 
-      points.push(p);
+      points.push(p)
     }
   }
 
-  return points;
+  return points
 }
 
 /**
@@ -69,42 +65,42 @@ export function buildTorus3DGridEdges(
   resolutionU: number,
   resolutionV: number
 ): [number, number][] {
-  const edges: [number, number][] = [];
+  const edges: [number, number][] = []
 
   // Index function: (i, j) -> linear index
-  const index = (i: number, j: number): number => i * resolutionV + j;
+  const index = (i: number, j: number): number => i * resolutionV + j
 
   for (let i = 0; i < resolutionU; i++) {
     for (let j = 0; j < resolutionV; j++) {
-      const iNext = (i + 1) % resolutionU;
-      const jNext = (j + 1) % resolutionV;
+      const iNext = (i + 1) % resolutionU
+      const jNext = (j + 1) % resolutionV
 
-      const idx = index(i, j);
+      const idx = index(i, j)
 
       // Edge along u direction (around major circle)
-      edges.push([idx, index(iNext, j)]);
+      edges.push([idx, index(iNext, j)])
 
       // Edge along v direction (around tube)
-      edges.push([idx, index(i, jNext)]);
+      edges.push([idx, index(i, jNext)])
     }
   }
 
   // Normalize edges (smaller index first) and dedupe
-  const normalizedEdges: [number, number][] = [];
-  const edgeSet = new Set<string>();
+  const normalizedEdges: [number, number][] = []
+  const edgeSet = new Set<string>()
 
   for (const [a, b] of edges) {
-    const minIdx = Math.min(a, b);
-    const maxIdx = Math.max(a, b);
-    const key = `${minIdx},${maxIdx}`;
+    const minIdx = Math.min(a, b)
+    const maxIdx = Math.max(a, b)
+    const key = `${minIdx},${maxIdx}`
 
     if (!edgeSet.has(key)) {
-      edgeSet.add(key);
-      normalizedEdges.push([minIdx, maxIdx]);
+      edgeSet.add(key)
+      normalizedEdges.push([minIdx, maxIdx])
     }
   }
 
-  return normalizedEdges;
+  return normalizedEdges
 }
 
 /**
@@ -118,31 +114,23 @@ export function buildTorus3DGridEdges(
  * @param resolutionV - Number of steps in the v direction (around the tube)
  * @returns Array of quad faces (4 vertex indices each, counter-clockwise winding)
  */
-export function buildTorus3DGridFaces(
-  resolutionU: number,
-  resolutionV: number
-): number[][] {
-  const faces: number[][] = [];
+export function buildTorus3DGridFaces(resolutionU: number, resolutionV: number): number[][] {
+  const faces: number[][] = []
 
   // Index function: (i, j) -> linear index
-  const index = (i: number, j: number): number => i * resolutionV + j;
+  const index = (i: number, j: number): number => i * resolutionV + j
 
   for (let i = 0; i < resolutionU; i++) {
     for (let j = 0; j < resolutionV; j++) {
-      const iNext = (i + 1) % resolutionU;
-      const jNext = (j + 1) % resolutionV;
+      const iNext = (i + 1) % resolutionU
+      const jNext = (j + 1) % resolutionV
 
       // Quad vertices in counter-clockwise winding order
-      faces.push([
-        index(i, j),
-        index(iNext, j),
-        index(iNext, jNext),
-        index(i, jNext),
-      ]);
+      faces.push([index(i, j), index(iNext, j), index(iNext, jNext), index(i, jNext)])
     }
   }
 
-  return faces;
+  return faces
 }
 
 /**
@@ -155,26 +143,26 @@ export function buildTorus3DGridFaces(
  * @returns NdGeometry representing the 3D torus surface
  */
 export function generateTorus3D(config: CliffordTorusConfig): NdGeometry {
-  const { radius, resolutionU, resolutionV, edgeMode } = config;
+  const { radius, resolutionU, resolutionV, edgeMode } = config
 
   // Generate points
-  const vertices = generateTorus3DPoints(config);
+  const vertices = generateTorus3DPoints(config)
 
   // Generate edges based on mode
   const edges: [number, number][] =
-    edgeMode === 'grid' ? buildTorus3DGridEdges(resolutionU, resolutionV) : [];
+    edgeMode === 'grid' ? buildTorus3DGridEdges(resolutionU, resolutionV) : []
 
-  const pointCount = resolutionU * resolutionV;
+  const pointCount = resolutionU * resolutionV
 
   // Minor radius (tube radius)
-  const r = radius * 0.4;
+  const r = radius * 0.4
 
   return {
     dimension: 3,
     type: 'clifford-torus',
     vertices,
     edges,
-    isPointCloud: edgeMode === 'none',
+
     metadata: {
       name: 'Torus Surface (3D)',
       formula: `(R - √(x² + y²))² + z² = r², R=${radius.toFixed(2)}, r=${r.toFixed(2)}`,
@@ -190,5 +178,5 @@ export function generateTorus3D(config: CliffordTorusConfig): NdGeometry {
         intrinsicDimension: 3,
       },
     },
-  };
+  }
 }

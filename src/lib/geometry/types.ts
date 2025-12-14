@@ -5,22 +5,27 @@
  * and extended objects (root systems, Clifford torus, Mandelbrot, Mandelbox)
  */
 
-import type { VectorND } from '@/lib/math';
+import type { VectorND } from '@/lib/math'
 
 /**
  * Supported polytope types (traditional finite vertex/edge objects)
  */
-export type PolytopeType = 'hypercube' | 'simplex' | 'cross-polytope';
+export type PolytopeType = 'hypercube' | 'simplex' | 'cross-polytope'
 
 /**
  * Extended object types (point clouds and special mathematical objects)
  */
-export type ExtendedObjectType = 'root-system' | 'clifford-torus' | 'mandelbrot' | 'mandelbox' | 'menger';
+export type ExtendedObjectType =
+  | 'root-system'
+  | 'clifford-torus'
+  | 'mandelbrot'
+  | 'mandelbox'
+  | 'menger'
 
 /**
  * All supported object types
  */
-export type ObjectType = PolytopeType | ExtendedObjectType;
+export type ObjectType = PolytopeType | ExtendedObjectType
 
 /**
  * Type guard for polytope types
@@ -28,7 +33,7 @@ export type ObjectType = PolytopeType | ExtendedObjectType;
  * @param type - String or ObjectType to check
  */
 export function isPolytopeType(type: string): type is PolytopeType {
-  return type === 'hypercube' || type === 'simplex' || type === 'cross-polytope';
+  return type === 'hypercube' || type === 'simplex' || type === 'cross-polytope'
 }
 
 /**
@@ -37,7 +42,13 @@ export function isPolytopeType(type: string): type is PolytopeType {
  * @param type - String or ObjectType to check
  */
 export function isExtendedObjectType(type: string): type is ExtendedObjectType {
-  return type === 'root-system' || type === 'clifford-torus' || type === 'mandelbrot' || type === 'mandelbox' || type === 'menger';
+  return (
+    type === 'root-system' ||
+    type === 'clifford-torus' ||
+    type === 'mandelbrot' ||
+    type === 'mandelbox' ||
+    type === 'menger'
+  )
 }
 
 /**
@@ -45,13 +56,13 @@ export function isExtendedObjectType(type: string): type is ExtendedObjectType {
  */
 export interface PolytopeGeometry {
   /** Array of vertex positions in n-dimensional space */
-  vertices: VectorND[];
+  vertices: VectorND[]
   /** Array of edge pairs (vertex indices) */
-  edges: [number, number][];
+  edges: [number, number][]
   /** Dimensionality of the polytope */
-  dimension: number;
+  dimension: number
   /** Type of polytope */
-  type: PolytopeType;
+  type: PolytopeType
 }
 
 /**
@@ -59,11 +70,11 @@ export interface PolytopeGeometry {
  */
 export interface GeometryMetadata {
   /** Display name for the object */
-  name?: string;
+  name?: string
   /** Mathematical formula or description */
-  formula?: string;
+  formula?: string
   /** Additional properties specific to the object type */
-  properties?: Record<string, unknown>;
+  properties?: Record<string, unknown>
 }
 
 /**
@@ -72,17 +83,16 @@ export interface GeometryMetadata {
  */
 export interface NdGeometry {
   /** Dimensionality of the object */
-  dimension: number;
+  dimension: number
   /** Type of object */
-  type: ObjectType;
+  type: ObjectType
   /** Array of vertex/point positions in n-dimensional space */
-  vertices: VectorND[];
+  vertices: VectorND[]
   /** Array of edge pairs (vertex indices) - may be empty for point clouds */
-  edges: [number, number][];
-  /** Whether this is a point cloud (no natural edge structure) */
-  isPointCloud?: boolean;
+  edges: [number, number][]
+
   /** Optional metadata about the geometry */
-  metadata?: GeometryMetadata;
+  metadata?: GeometryMetadata
 }
 
 /**
@@ -90,11 +100,11 @@ export interface NdGeometry {
  */
 export interface PolytopeProperties {
   /** Number of vertices in the polytope */
-  vertexCount: number;
+  vertexCount: number
   /** Number of edges in the polytope */
-  edgeCount: number;
+  edgeCount: number
   /** Formula for vertex count as function of dimension */
-  vertexFormula: string;
+  vertexFormula: string
   /** Formula for edge count as function of dimension */
-  edgeFormula: string;
+  edgeFormula: string
 }

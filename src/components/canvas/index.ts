@@ -4,7 +4,7 @@
  * Architecture:
  * - Scene: Entry point with lighting, camera, effects, ground plane
  * - UnifiedRenderer: Routes to appropriate high-performance renderer
- * - scenes/: PolytopeScene, PointCloudScene (useFrame-based)
+ * - scenes/: PolytopeScene
  * - renderers/: Lower-level render components
  * - environment/: Lighting, post-processing, ground plane
  *
@@ -22,9 +22,6 @@ export type { RenderMode, UnifiedRendererProps } from './renderers/UnifiedRender
 // High-performance useFrame-based scene renderers
 export { PolytopeScene } from './renderers/Polytope'
 export type { PolytopeSceneProps } from './renderers/Polytope'
-
-export { PointCloudScene } from './renderers/PointCloud'
-export type { PointCloudSceneProps } from './renderers/PointCloud'
 
 // Environment components
 export { GroundPlane } from './environment/GroundPlane'

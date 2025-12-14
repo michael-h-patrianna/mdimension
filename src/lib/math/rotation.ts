@@ -219,7 +219,7 @@ export function createRotationMatrix(
  *
  * Uses swap-based composition with pre-allocated scratch buffers to avoid
  * intermediate allocations during animation loops. This is critical for
- * 60fps performance in all renderers (PolytopeScene, PointCloudScene, etc.).
+ * 60fps performance in all renderers (PolytopeScene, etc.).
  *
  * @param dimension - The dimensionality of the space
  * @param angles - Map from plane name (e.g., "XY", "XW") to angle in radians

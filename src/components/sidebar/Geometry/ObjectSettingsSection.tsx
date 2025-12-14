@@ -161,7 +161,6 @@ function CliffordTorusSettings() {
   const setMode = useExtendedObjectStore((state) => state.setCliffordTorusMode);
   const setResolutionU = useExtendedObjectStore((state) => state.setCliffordTorusResolutionU);
   const setResolutionV = useExtendedObjectStore((state) => state.setCliffordTorusResolutionV);
-  const setK = useExtendedObjectStore((state) => state.setCliffordTorusK);
   const setStepsPerCircle = useExtendedObjectStore((state) => state.setCliffordTorusStepsPerCircle);
 
   // Nested (Hopf) 4D actions
@@ -203,20 +202,7 @@ function CliffordTorusSettings() {
   // Calculate max k for flat/generalized mode
   const maxK = Math.floor(dimension / 2);
 
-  // Build k options for flat/generalized mode
-  const kOptions = React.useMemo(() => {
-    const options = [];
-    for (let k = 1; k <= maxK; k++) {
-      const pointCount = Math.pow(config.stepsPerCircle, k);
-      const label = k === 1
-        ? `k=1 (circle, ${pointCount} pts)`
-        : k === 2
-          ? `k=2 (2-torus, ${pointCount} pts)`
-          : `k=${k} (${k}-torus, ${pointCount} pts)`;
-      options.push({ value: String(k), label });
-    }
-    return options;
-  }, [maxK, config.stepsPerCircle]);
+
 
   // Calculate point counts for each mode
   const getPointCount = () => {
@@ -332,12 +318,6 @@ function CliffordTorusSettings() {
           {/* Generalized mode (non-4D) */}
           {dimension !== 4 && (
             <>
-              <Select
-                label="Torus Dimension (k)"
-                options={kOptions}
-                value={String(Math.min(config.k, maxK))}
-                onChange={(v) => setK(parseInt(v, 10))}
-              />
               <Slider
                 label="Steps Per Circle"
                 min={4}

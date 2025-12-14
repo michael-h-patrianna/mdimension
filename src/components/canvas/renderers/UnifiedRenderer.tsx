@@ -6,7 +6,6 @@
  *
  * Render modes:
  * - polytope: Traditional polytopes (hypercube, simplex, cross-polytope) with faces/edges/vertices
- * - pointcloud: Point cloud objects (root system, Clifford torus, Mandelbrot points)
  * - raymarch-mandelbrot: Raymarched 3D-11D surfaces (unified Hyperbulb for all dimensions)
  * - raymarch-mandelbox: Raymarched 3D-11D Mandelbox fractals
  * - raymarch-menger: Raymarched 3D-11D Menger sponge fractals
@@ -23,13 +22,12 @@ import { useShallow } from 'zustand/react/shallow';
 import HyperbulbMesh from './Hyperbulb/HyperbulbMesh';
 import MandelboxMesh from './Mandelbox/MandelboxMesh';
 import MengerMesh from './Menger/MengerMesh';
-import { PointCloudScene } from './PointCloud';
 import { PolytopeScene } from './Polytope';
 
 /**
  * Render mode types
  */
-export type RenderMode = 'polytope' | 'pointcloud' | 'raymarch-mandelbrot' | 'raymarch-mandelbox' | 'raymarch-menger' | 'none';
+export type RenderMode = 'polytope' |'raymarch-mandelbrot' | 'raymarch-mandelbox' | 'raymarch-menger' | 'none';
 
 /**
  * Props for UnifiedRenderer
@@ -53,6 +51,10 @@ export interface UnifiedRendererProps {
 
 /**
  * Determines the appropriate render mode based on object type and settings
+ * @param geometry
+ * @param objectType
+ * @param dimension
+ * @param facesVisible
  */
 export function determineRenderMode(
   geometry: NdGeometry,
@@ -76,11 +78,6 @@ export function determineRenderMode(
   // Mandelbrot/Hyperbulb with faces visible uses raymarching (3D-11D unified)
   if (objectType === 'mandelbrot' && facesVisible && dimension >= 3) {
     return 'raymarch-mandelbrot';
-  }
-
-  // Point clouds use PointCloudScene
-  if (geometry.isPointCloud) {
-    return 'pointcloud';
   }
 
   // Traditional polytopes use PolytopeScene
@@ -134,17 +131,6 @@ export const UnifiedRenderer = React.memo(function UnifiedRenderer({
           faces={faces}
           dimension={dimension}
           faceDepths={faceDepths}
-          opacity={opacity}
-        />
-      )}
-
-      {/* Point cloud rendering (root system, Clifford torus, Mandelbrot points) */}
-      {renderMode === 'pointcloud' && (
-        <PointCloudScene
-          baseVertices={geometry.vertices}
-          dimension={dimension}
-          edges={edges}
-          pointColors={pointColors}
           opacity={opacity}
         />
       )}

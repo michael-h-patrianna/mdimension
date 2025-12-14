@@ -10,7 +10,6 @@
  * All rendering uses useFrame-based high-performance pipelines that bypass React
  * re-renders during animation. UnifiedRenderer routes to the appropriate renderer:
  * - PolytopeScene: For polytopes with faces/edges/vertices (GPU shaders)
- * - PointCloudScene: For root systems, Clifford torus, Mandelbrot point clouds (GPU shaders)
  * - MandelbulbMesh/HyperbulbMesh/MandelboxMesh: For raymarched 3D/4D surfaces
  */
 

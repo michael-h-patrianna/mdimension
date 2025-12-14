@@ -86,7 +86,6 @@ interface ExtendedObjectState {
   setCliffordTorusMode: (mode: CliffordTorusMode) => void
   setCliffordTorusResolutionU: (resolution: number) => void
   setCliffordTorusResolutionV: (resolution: number) => void
-  setCliffordTorusK: (k: number) => void
   setCliffordTorusStepsPerCircle: (steps: number) => void
 
   // Nested (Hopf) 4D mode
@@ -249,14 +248,6 @@ export const useExtendedObjectStore = create<ExtendedObjectState>((set, get) => 
   setCliffordTorusEdgeMode: (mode: CliffordTorusEdgeMode) => {
     set((state) => ({
       cliffordTorus: { ...state.cliffordTorus, edgeMode: mode },
-    }))
-  },
-
-  setCliffordTorusK: (k: number) => {
-    // k must be at least 1 (for a circle), no upper limit here - validated at generation time
-    const clampedK = Math.max(1, Math.floor(k))
-    set((state) => ({
-      cliffordTorus: { ...state.cliffordTorus, k: clampedK },
     }))
   },
 

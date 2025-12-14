@@ -13,84 +13,80 @@
 
 // Type exports
 export type {
-  PolytopeConfig,
-  RootSystemType,
-  RootSystemConfig,
+  CliffordTorusConfig,
   CliffordTorusEdgeMode,
   CliffordTorusMode,
-  CliffordTorusConfig,
+  ExtendedObjectParams,
   MandelbrotColorMode,
+  MandelbrotConfig,
   MandelbrotPalette,
   MandelbrotQualityPreset,
   MandelbrotRenderStyle,
-  MandelbrotConfig,
-  ExtendedObjectParams,
-} from './types';
+  PolytopeConfig,
+  RootSystemConfig,
+  RootSystemType,
+} from './types'
 
 // Default configs
 export {
+  DEFAULT_CLIFFORD_TORUS_CONFIG,
+  DEFAULT_EXTENDED_OBJECT_PARAMS,
+  DEFAULT_MANDELBROT_CONFIG,
   DEFAULT_POLYTOPE_CONFIG,
   DEFAULT_ROOT_SYSTEM_CONFIG,
-  DEFAULT_CLIFFORD_TORUS_CONFIG,
-  DEFAULT_MANDELBROT_CONFIG,
   MANDELBROT_QUALITY_PRESETS,
-  DEFAULT_EXTENDED_OBJECT_PARAMS,
-} from './types';
+} from './types'
 
 // Root system exports
 export {
-  generateRootSystem,
   generateARoots,
   generateDRoots,
+  generateRootSystem,
   getRootCount,
   validateRootSystemType,
-} from './root-system';
+} from './root-system'
 
 // E8 roots exports
-export {
-  generateE8Roots,
-  verifyE8Roots,
-} from './e8-roots';
+export { generateE8Roots, verifyE8Roots } from './e8-roots'
 
 // Clifford Torus
 export {
+  buildCliffordTorusGridEdges,
   generateCliffordTorus,
   generateCliffordTorusPoints,
-  buildCliffordTorusGridEdges,
   verifyCliffordTorusOnSphere,
-} from './clifford-torus';
-
+} from './clifford-torus'
 
 // Mandelbrot
 export {
+  filterSamples,
   generateMandelbrot,
-  mandelbrotStep,
+  generateSampleGrid,
+  getMandelbrotStats,
   mandelbrotEscapeTime,
   mandelbrotSmoothEscapeTime,
+  mandelbrotStep,
   normSquared,
-  generateSampleGrid,
-  filterSamples,
-  getMandelbrotStats,
-} from './mandelbrot';
-export type { MandelbrotSample } from './mandelbrot';
+} from './mandelbrot'
+export type { MandelbrotSample } from './mandelbrot'
 
 // Utility exports
-export { buildKnnEdges } from './utils/knn-edges';
-export { buildShortEdges } from './utils/short-edges';
 export {
   computeConvexHullFaces,
-  hasValidConvexHull,
   getConvexHullStats,
-} from './utils/convex-hull-faces';
+  hasValidConvexHull,
+} from './utils/convex-hull-faces'
+export { buildKnnEdges } from './utils/knn-edges'
+export { buildShortEdges } from './utils/short-edges'
 
 // Re-import for unified generator
-import type { NdGeometry, ObjectType } from '../types';
-import { isPolytopeType } from '../types';
-import type { ExtendedObjectParams } from './types';
-import { DEFAULT_EXTENDED_OBJECT_PARAMS } from './types';
-import { generateRootSystem } from './root-system';
-import { generateCliffordTorus } from './clifford-torus';
-import { generateMandelbrot } from './mandelbrot';
+import type { NdGeometry, ObjectType } from '../types'
+import { isPolytopeType } from '../types'
+import { generateCliffordTorus } from './clifford-torus'
+import { generateMandelbrot } from './mandelbrot'
+import { generateRootSystem } from './root-system'
+import type { ExtendedObjectParams } from './types'
+import { DEFAULT_EXTENDED_OBJECT_PARAMS } from './types'
 
 /**
  * Generates geometry for an extended object type
@@ -125,18 +121,23 @@ export function generateExtendedObject(
 ): NdGeometry {
   // Validate that this is an extended object type
   if (isPolytopeType(type)) {
-    throw new Error(`${type} is a polytope type, not an extended object type. Use generatePolytope instead.`);
+    throw new Error(
+      `${type} is a polytope type, not an extended object type. Use generatePolytope instead.`
+    )
   }
 
   switch (type) {
     case 'root-system':
-      return generateRootSystem(dimension, params.rootSystem);
+      return generateRootSystem(dimension, params.rootSystem)
 
     case 'clifford-torus':
-      return generateCliffordTorus(dimension, params.cliffordTorus);
+      return generateCliffordTorus(dimension, params.cliffordTorus)
 
     case 'mandelbrot':
-      return generateMandelbrot(dimension, params.mandelbrot ?? DEFAULT_EXTENDED_OBJECT_PARAMS.mandelbrot);
+      return generateMandelbrot(
+        dimension,
+        params.mandelbrot ?? DEFAULT_EXTENDED_OBJECT_PARAMS.mandelbrot
+      )
 
     case 'mandelbox':
       // Mandelbox uses GPU raymarching exclusively - no CPU geometry needed
@@ -146,14 +147,13 @@ export function generateExtendedObject(
         type: 'mandelbox',
         vertices: [],
         edges: [],
-        isPointCloud: false,
         metadata: {
           name: 'Mandelbox',
           properties: {
             renderMode: 'raymarching',
           },
         },
-      };
+      }
 
     case 'menger':
       // Menger Sponge uses GPU raymarching (KIFS) exclusively - no CPU geometry needed
@@ -163,16 +163,15 @@ export function generateExtendedObject(
         type: 'menger',
         vertices: [],
         edges: [],
-        isPointCloud: false,
         metadata: {
           name: 'Menger Sponge',
           properties: {
             renderMode: 'raymarching',
           },
         },
-      };
+      }
 
     default:
-      throw new Error(`Unknown extended object type: ${type}`);
+      throw new Error(`Unknown extended object type: ${type}`)
   }
 }

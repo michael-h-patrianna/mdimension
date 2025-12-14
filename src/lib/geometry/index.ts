@@ -182,7 +182,6 @@ export function generateGeometry(
       type: polytope.type,
       vertices: polytope.vertices,
       edges: polytope.edges,
-      isPointCloud: false,
       metadata: {
         name: getTypeName(type),
         properties: {

@@ -9,11 +9,11 @@
  * @see docs/research/nd-extended-objects-guide.md Section 2
  */
 
-import type { VectorND } from '@/lib/math/types';
-import type { NdGeometry } from '../types';
-import type { RootSystemConfig, RootSystemType } from './types';
-import { buildShortEdges } from './utils/short-edges';
-import { generateE8Roots } from './e8-roots';
+import type { VectorND } from '@/lib/math/types'
+import type { NdGeometry } from '../types'
+import { generateE8Roots } from './e8-roots'
+import type { RootSystemConfig, RootSystemType } from './types'
+import { buildShortEdges } from './utils/short-edges'
 
 /**
  * Generates Type A_{n-1} root system in R^n
@@ -32,28 +32,28 @@ import { generateE8Roots } from './e8-roots';
  * ```
  */
 export function generateARoots(dimension: number, scale: number = 1.0): VectorND[] {
-  const n = dimension;
-  const roots: VectorND[] = [];
-  const normalizer = Math.sqrt(2); // Normalize to unit length
+  const n = dimension
+  const roots: VectorND[] = []
+  const normalizer = Math.sqrt(2) // Normalize to unit length
 
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < n; j++) {
-      if (i === j) continue;
+      if (i === j) continue
 
-      const v: VectorND = new Array(n).fill(0);
-      v[i] = 1;
-      v[j] = -1;
+      const v: VectorND = new Array(n).fill(0)
+      v[i] = 1
+      v[j] = -1
 
       // Normalize and scale
       for (let k = 0; k < n; k++) {
-        v[k] = (v[k]! / normalizer) * scale;
+        v[k] = (v[k]! / normalizer) * scale
       }
 
-      roots.push(v);
+      roots.push(v)
     }
   }
 
-  return roots;
+  return roots
 }
 
 /**
@@ -75,38 +75,38 @@ export function generateARoots(dimension: number, scale: number = 1.0): VectorND
  */
 export function generateDRoots(dimension: number, scale: number = 1.0): VectorND[] {
   if (dimension < 4) {
-    throw new Error('D_n root system requires dimension >= 4');
+    throw new Error('D_n root system requires dimension >= 4')
   }
 
-  const n = dimension;
-  const roots: VectorND[] = [];
-  const normalizer = Math.sqrt(2);
+  const n = dimension
+  const roots: VectorND[] = []
+  const normalizer = Math.sqrt(2)
 
   const signPairs: [number, number][] = [
     [1, 1],
     [1, -1],
     [-1, 1],
     [-1, -1],
-  ];
+  ]
 
   for (let i = 0; i < n; i++) {
     for (let j = i + 1; j < n; j++) {
       for (const [si, sj] of signPairs) {
-        const v: VectorND = new Array(n).fill(0);
-        v[i] = si;
-        v[j] = sj;
+        const v: VectorND = new Array(n).fill(0)
+        v[i] = si
+        v[j] = sj
 
         // Normalize and scale
         for (let k = 0; k < n; k++) {
-          v[k] = (v[k]! / normalizer) * scale;
+          v[k] = (v[k]! / normalizer) * scale
         }
 
-        roots.push(v);
+        roots.push(v)
       }
     }
   }
 
-  return roots;
+  return roots
 }
 
 /**
@@ -126,61 +126,57 @@ export function generateDRoots(dimension: number, scale: number = 1.0): VectorND
  * });
  * ```
  */
-export function generateRootSystem(
-  dimension: number,
-  config: RootSystemConfig
-): NdGeometry {
+export function generateRootSystem(dimension: number, config: RootSystemConfig): NdGeometry {
   if (dimension < 3) {
-    throw new Error('Root system dimension must be at least 3');
+    throw new Error('Root system dimension must be at least 3')
   }
 
-  const { rootType, scale } = config;
+  const { rootType, scale } = config
 
   // Generate roots based on type
-  let vertices: VectorND[];
-  let rootTypeName: string;
-  let rootFormula: string;
-  let expectedCount: number;
+  let vertices: VectorND[]
+  let rootTypeName: string
+  let rootFormula: string
+  let expectedCount: number
 
   switch (rootType) {
     case 'E8':
       if (dimension !== 8) {
-        throw new Error('E8 root system requires dimension = 8');
+        throw new Error('E8 root system requires dimension = 8')
       }
-      vertices = generateE8Roots(scale);
-      rootTypeName = 'E₈';
-      rootFormula = '240 roots';
-      expectedCount = 240;
-      break;
+      vertices = generateE8Roots(scale)
+      rootTypeName = 'E₈'
+      rootFormula = '240 roots'
+      expectedCount = 240
+      break
 
     case 'D':
       if (dimension < 4) {
-        throw new Error('D_n root system requires dimension >= 4');
+        throw new Error('D_n root system requires dimension >= 4')
       }
-      vertices = generateDRoots(dimension, scale);
-      rootTypeName = `D_${dimension}`;
-      rootFormula = `2n(n-1) = ${2 * dimension * (dimension - 1)}`;
-      expectedCount = 2 * dimension * (dimension - 1);
-      break;
+      vertices = generateDRoots(dimension, scale)
+      rootTypeName = `D_${dimension}`
+      rootFormula = `2n(n-1) = ${2 * dimension * (dimension - 1)}`
+      expectedCount = 2 * dimension * (dimension - 1)
+      break
 
     case 'A':
     default:
-      vertices = generateARoots(dimension, scale);
-      rootTypeName = `A_${dimension - 1}`;
-      rootFormula = `n(n-1) = ${dimension * (dimension - 1)}`;
-      expectedCount = dimension * (dimension - 1);
-      break;
+      vertices = generateARoots(dimension, scale)
+      rootTypeName = `A_${dimension - 1}`
+      rootFormula = `n(n-1) = ${dimension * (dimension - 1)}`
+      expectedCount = dimension * (dimension - 1)
+      break
   }
 
   // Always generate edges (root systems behave like polytopes)
-  const edges: [number, number][] = buildShortEdges(vertices);
+  const edges: [number, number][] = buildShortEdges(vertices)
 
   return {
     dimension,
     type: 'root-system',
     vertices,
     edges,
-    isPointCloud: false, // Root systems always have edges, like polytopes
     metadata: {
       name: `${rootTypeName} Root System`,
       formula: rootFormula,
@@ -192,7 +188,7 @@ export function generateRootSystem(
         edgeCount: edges.length,
       },
     },
-  };
+  }
 }
 
 /**
@@ -205,12 +201,12 @@ export function generateRootSystem(
 export function getRootCount(rootType: RootSystemType, dimension: number): number {
   switch (rootType) {
     case 'E8':
-      return 240;
+      return 240
     case 'D':
-      return 2 * dimension * (dimension - 1);
+      return 2 * dimension * (dimension - 1)
     case 'A':
     default:
-      return dimension * (dimension - 1);
+      return dimension * (dimension - 1)
   }
 }
 
@@ -229,15 +225,15 @@ export function validateRootSystemType(
     return {
       valid: false,
       message: 'E₈ is only defined in 8 dimensions',
-    };
+    }
   }
 
   if (rootType === 'D' && dimension < 4) {
     return {
       valid: false,
       message: 'D_n requires dimension >= 4',
-    };
+    }
   }
 
-  return { valid: true };
+  return { valid: true }
 }

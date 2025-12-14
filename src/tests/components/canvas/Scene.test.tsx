@@ -1,9 +1,9 @@
-import { describe, it, expect } from 'vitest'
-import { render } from '@testing-library/react'
-import { Canvas } from '@react-three/fiber'
 import { Scene } from '@/components/canvas/Scene'
 import type { NdGeometry } from '@/lib/geometry/types'
 import type { Vector3D } from '@/lib/math/types'
+import { Canvas } from '@react-three/fiber'
+import { render } from '@testing-library/react'
+import { describe, expect, it } from 'vitest'
 
 describe('Scene', () => {
   const sampleVertices = [
@@ -25,7 +25,6 @@ describe('Scene', () => {
     type: 'hypercube',
     vertices: sampleVertices,
     edges: sampleEdges,
-    isPointCloud: false,
   }
 
   const emptyGeometry: NdGeometry = {
@@ -33,7 +32,6 @@ describe('Scene', () => {
     type: 'hypercube',
     vertices: [],
     edges: [],
-    isPointCloud: false,
   }
 
   const projectedVertices: Vector3D[] = [
@@ -130,26 +128,6 @@ describe('Scene', () => {
     expect(container).toBeTruthy()
   })
 
-  it('should render point cloud geometry', () => {
-    const pointCloudGeometry: NdGeometry = {
-      dimension: 4,
-      type: 'root-system',
-      vertices: sampleVertices,
-      edges: [],
-      isPointCloud: true,
-    }
-    const { container } = render(
-      <Canvas>
-        <Scene
-          geometry={pointCloudGeometry}
-          dimension={4}
-          objectType="root-system"
-          projectedVertices={projectedVertices}
-        />
-      </Canvas>
-    )
-    expect(container).toBeTruthy()
-  })
 
   it('should render with minBoundingRadius for raymarched objects', () => {
     const { container } = render(

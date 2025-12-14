@@ -44,7 +44,7 @@ export interface PolytopeConfig {
    * Determines the bounding box: vertices lie in [-scale, scale] per axis.
    * Default varies by type: hypercube 1.8, simplex 4.0, cross-polytope 1.8
    */
-  scale: number;
+  scale: number
 }
 
 /**
@@ -52,17 +52,17 @@ export interface PolytopeConfig {
  * Different polytope types look best at different initial scales.
  */
 export const DEFAULT_POLYTOPE_SCALES: Record<string, number> = {
-  'hypercube': 1.8,
-  'simplex': 4.0,
+  hypercube: 1.8,
+  simplex: 4.0,
   'cross-polytope': 1.8,
-};
+}
 
 /**
  * Default polytope configuration (uses hypercube as baseline)
  */
 export const DEFAULT_POLYTOPE_CONFIG: PolytopeConfig = {
   scale: 1.8,
-};
+}
 
 // ============================================================================
 // Root System Types
@@ -74,7 +74,7 @@ export const DEFAULT_POLYTOPE_CONFIG: PolytopeConfig = {
  * - D: Type D_n roots (2n(n-1) roots, requires n >= 4)
  * - E8: Exceptional E8 roots (240 roots, requires n = 8)
  */
-export type RootSystemType = 'A' | 'D' | 'E8';
+export type RootSystemType = 'A' | 'D' | 'E8'
 
 // ============================================================================
 // Root System Configuration
@@ -88,9 +88,9 @@ export type RootSystemType = 'A' | 'D' | 'E8';
  */
 export interface RootSystemConfig {
   /** Type of root system (A, D, or E8) */
-  rootType: RootSystemType;
+  rootType: RootSystemType
   /** Scale factor for the roots (0.5-4.0, default 2.0) */
-  scale: number;
+  scale: number
 }
 
 /**
@@ -99,7 +99,7 @@ export interface RootSystemConfig {
 export const DEFAULT_ROOT_SYSTEM_CONFIG: RootSystemConfig = {
   rootType: 'A',
   scale: 2.0,
-};
+}
 
 // ============================================================================
 // Clifford Torus Configuration
@@ -108,21 +108,21 @@ export const DEFAULT_ROOT_SYSTEM_CONFIG: RootSystemConfig = {
 /**
  * Edge display modes for Clifford torus
  */
-export type CliffordTorusEdgeMode = 'grid' | 'none';
+export type CliffordTorusEdgeMode = 'grid' | 'none'
 
 /**
  * Clifford torus internal mode (for Flat visualization mode implementation)
  * - classic: 2D torus T² in S³ ⊂ ℝ⁴ (only works for n >= 4)
  * - generalized: k-torus Tᵏ in S^(2k-1) ⊂ ℝ^(2k) (works for n >= 3, with k ≤ floor(n/2))
  */
-export type CliffordTorusMode = 'classic' | 'generalized';
+export type CliffordTorusMode = 'classic' | 'generalized'
 
 /**
  * User-facing visualization modes for Clifford torus
  * - flat: Grid-like structure with independent circles (current implementation, 2D-11D)
  * - nested: Hopf fibration with coupled angles, flowing/interlinked circles (4D and 8D only)
  */
-export type CliffordTorusVisualizationMode = 'flat' | 'nested';
+export type CliffordTorusVisualizationMode = 'flat' | 'nested'
 
 /**
  * Configuration for Clifford torus generation
@@ -142,23 +142,23 @@ export interface CliffordTorusConfig {
    * - flat: Available for all dimensions (2D-11D)
    * - nested: Only available for 4D and 8D (Hopf fibrations)
    */
-  visualizationMode: CliffordTorusVisualizationMode;
+  visualizationMode: CliffordTorusVisualizationMode
 
   // ============== Shared Properties ==============
 
   /** Radius of the containing sphere (0.5-6.0) */
-  radius: number;
+  radius: number
   /** Edge display mode */
-  edgeMode: CliffordTorusEdgeMode;
+  edgeMode: CliffordTorusEdgeMode
 
   // ============== Flat Mode Properties ==============
 
   /** Internal mode for Flat visualization: classic (4D) or generalized (nD) */
-  mode: CliffordTorusMode;
+  mode: CliffordTorusMode
   /** Resolution in U direction for classic/flat mode (8-128) */
-  resolutionU: number;
+  resolutionU: number
   /** Resolution in V direction for classic/flat mode (8-128) */
-  resolutionV: number;
+  resolutionV: number
   /**
    * Torus dimension k for generalized/flat mode.
    * Creates a k-torus Tᵏ living on S^(2k-1) ⊂ ℝ^(2k).
@@ -167,12 +167,12 @@ export interface CliffordTorusConfig {
    * - k=2: classic 2-torus (same as classic mode in 4D)
    * - k=3: 3-torus in 6D, etc.
    */
-  k: number;
+  k: number
   /**
    * Angular resolution per circle for generalized/flat mode.
    * Total points = stepsPerCircle^k (use carefully for k >= 3)
    */
-  stepsPerCircle: number;
+  stepsPerCircle: number
 
   // ============== Nested (Hopf) Mode Properties - 4D ==============
 
@@ -183,25 +183,24 @@ export interface CliffordTorusConfig {
    * - η → 0: Degenerates to a circle in x₂x₃ plane
    * - η → π/2: Degenerates to a circle in x₀x₁ plane
    */
-  eta: number;
+  eta: number
   /** Resolution in ξ₁ direction for Hopf mode (8-128) */
-  resolutionXi1: number;
+  resolutionXi1: number
   /** Resolution in ξ₂ direction for Hopf mode (8-128) */
-  resolutionXi2: number;
+  resolutionXi2: number
   /** Display multiple tori at different η values */
-  showNestedTori: boolean;
+  showNestedTori: boolean
   /** Number of nested tori to display when showNestedTori is true (2-5) */
-  numberOfTori: number;
+  numberOfTori: number
 
   // ============== Nested (Hopf) Mode Properties - 8D ==============
 
   /** S³ fiber sampling resolution for 8D quaternionic Hopf (4-32) */
-  fiberResolution: number;
+  fiberResolution: number
   /** S⁴ base sampling resolution for 8D quaternionic Hopf (4-32) */
-  baseResolution: number;
+  baseResolution: number
   /** Connect points along S³ fibers to reveal fibration structure */
-  showFiberStructure: boolean;
-
+  showFiberStructure: boolean
 }
 
 /**
@@ -223,7 +222,7 @@ export const DEFAULT_CLIFFORD_TORUS_CONFIG: CliffordTorusConfig = {
   stepsPerCircle: 16,
 
   // Nested (Hopf) 4D mode
-  eta: Math.PI / 4,  // Main Clifford torus position
+  eta: Math.PI / 4, // Main Clifford torus position
   resolutionXi1: 48,
   resolutionXi2: 48,
   showNestedTori: false,
@@ -236,7 +235,7 @@ export const DEFAULT_CLIFFORD_TORUS_CONFIG: CliffordTorusConfig = {
   fiberResolution: 6,
   baseResolution: 8,
   showFiberStructure: true,
-};
+}
 
 // ============================================================================
 // Mandelbrot Set Configuration
@@ -255,7 +254,7 @@ export type MandelbrotColorMode =
   | 'smoothColoring'
   | 'distanceEstimation'
   | 'interiorOnly'
-  | 'boundaryOnly';
+  | 'boundaryOnly'
 
 /**
  * Color palette presets for Mandelbrot visualization.
@@ -269,24 +268,18 @@ export type MandelbrotColorMode =
  * - analogous: vertexColor with ±60° hue variations
  * - shifted: vertexColor → 90° hue-shifted version
  */
-export type MandelbrotPalette =
-  | 'monochrome'
-  | 'complement'
-  | 'triadic'
-  | 'analogous'
-  | 'shifted';
+export type MandelbrotPalette = 'monochrome' | 'complement' | 'triadic' | 'analogous' | 'shifted'
 
 /**
  * Quality presets for Mandelbrot computation
  */
-export type MandelbrotQualityPreset = 'draft' | 'standard' | 'high' | 'ultra';
+export type MandelbrotQualityPreset = 'draft' | 'standard' | 'high' | 'ultra'
 
 /**
  * Rendering styles for Mandelbrot visualization
- * - pointCloud: Individual points (uses existing PointCloudRenderer)
  * - rayMarching: Volumetric ray marching in shader (3D+ only)
  */
-export type MandelbrotRenderStyle = 'pointCloud' | 'rayMarching';
+export type MandelbrotRenderStyle = 'rayMarching'
 
 /**
  * Configuration for n-dimensional Mandelbrot set generation
@@ -301,53 +294,53 @@ export type MandelbrotRenderStyle = 'pointCloud' | 'rayMarching';
 export interface MandelbrotConfig {
   // Iteration parameters
   /** Maximum iterations before considering point bounded (10-500) */
-  maxIterations: number;
+  maxIterations: number
   /**
    * Escape radius threshold (2.0-16.0).
    * Higher dimensions may need larger values (8-16) for stability.
    * Also known as "bailout" in fractal literature.
    */
-  escapeRadius: number;
+  escapeRadius: number
   /** Quality preset (affects iterations and resolution) */
-  qualityPreset: MandelbrotQualityPreset;
+  qualityPreset: MandelbrotQualityPreset
 
   // Sampling resolution
   /** Samples per axis in the 3D grid (16-128) */
-  resolution: number;
+  resolution: number
 
   // Visualization axes (which 3 of N dimensions to render)
   /** Indices of dimensions to map to X, Y, Z */
-  visualizationAxes: [number, number, number];
+  visualizationAxes: [number, number, number]
 
   // Parameter values for non-visualized dimensions
   /** Fixed values for dimensions not being visualized */
-  parameterValues: number[];
+  parameterValues: number[]
 
   // Navigation (zoom/pan)
   /** Center coordinates in N-dimensional space */
-  center: number[];
+  center: number[]
   /** Extent (zoom level) - half-width of viewing region */
-  extent: number;
+  extent: number
 
   // Color mapping
   /** Color algorithm to use */
-  colorMode: MandelbrotColorMode;
+  colorMode: MandelbrotColorMode
   /** Color palette preset */
-  palette: MandelbrotPalette;
+  palette: MandelbrotPalette
   /** Custom palette colors (used when palette='custom') */
-  customPalette: { start: string; mid: string; end: string };
+  customPalette: { start: string; mid: string; end: string }
   /** Whether to invert color mapping */
-  invertColors: boolean;
+  invertColors: boolean
   /** Color for points inside the set */
-  interiorColor: string;
+  interiorColor: string
   /** Number of palette cycles (1-20) */
-  paletteCycles: number;
+  paletteCycles: number
 
   // Rendering style
   /** How to render the point cloud */
-  renderStyle: MandelbrotRenderStyle;
+  renderStyle: MandelbrotRenderStyle
   /** Point size for point cloud mode */
-  pointSize: number;
+  pointSize: number
 
   // Boundary filtering (for 3D+ visualization)
   /**
@@ -355,7 +348,7 @@ export interface MandelbrotConfig {
    * Points with escape time in [min*maxIter, max*maxIter] are shown.
    * Default: [0.1, 0.9] shows points escaping between 10%-90% of maxIterations.
    */
-  boundaryThreshold: [number, number];
+  boundaryThreshold: [number, number]
 
   // Mandelbulb/Hyperbulb settings (for 3D+)
   /**
@@ -363,7 +356,7 @@ export interface MandelbrotConfig {
    * Default: 8 produces the classic bulb shape.
    * Range: 2-16
    */
-  mandelbulbPower: number;
+  mandelbulbPower: number
 
   /**
    * Epsilon for numerical stability near origin.
@@ -371,8 +364,7 @@ export interface MandelbrotConfig {
    * division by zero and undefined angles.
    * Default: 1e-12
    */
-  epsilon: number;
-
+  epsilon: number
 }
 
 /**
@@ -386,7 +378,7 @@ export const MANDELBROT_QUALITY_PRESETS: Record<
   standard: { maxIterations: 80, resolution: 32 },
   high: { maxIterations: 200, resolution: 64 },
   ultra: { maxIterations: 500, resolution: 96 },
-};
+}
 
 /**
  * Default Mandelbrot configuration
@@ -399,19 +391,19 @@ export const DEFAULT_MANDELBROT_CONFIG: MandelbrotConfig = {
   visualizationAxes: [0, 1, 2],
   parameterValues: [],
   center: [],
-  extent: 2.0,  // Default extent for 3D+ Mandelbulb/Hyperbulb
+  extent: 2.0, // Default extent for 3D+ Mandelbulb/Hyperbulb
   colorMode: 'escapeTime',
   palette: 'complement',
   customPalette: { start: '#0000ff', mid: '#ffffff', end: '#ff8000' },
   invertColors: false,
   interiorColor: '#000000',
   paletteCycles: 1,
-  renderStyle: 'pointCloud',
+  renderStyle: 'rayMarching',
   pointSize: 3,
-  boundaryThreshold: [0.1, 0.9],  // Show points with escape time 10%-90% of maxIter
-  mandelbulbPower: 8,  // Classic Mandelbulb/Hyperbulb power
-  epsilon: 1e-12,  // Numerical stability for hyperspherical calculations
-};
+  boundaryThreshold: [0.1, 0.9], // Show points with escape time 10%-90% of maxIter
+  mandelbulbPower: 8, // Classic Mandelbulb/Hyperbulb power
+  epsilon: 1e-12, // Numerical stability for hyperspherical calculations
+}
 
 // ============================================================================
 // Mandelbox Configuration
@@ -443,42 +435,42 @@ export interface MandelboxConfig {
    * - 1.0: Abstract geometric
    * - 2.0: Boxy, structured
    */
-  scale: number;
+  scale: number
 
   /**
    * Box fold boundary (0.5 to 2.0, default 1.0).
    * Controls the folding limit for box fold operation.
    */
-  foldingLimit: number;
+  foldingLimit: number
 
   /**
    * Inner sphere radius for sphere fold (0.1 to 1.0, default 0.5).
    * Points closer than this are scaled up.
    */
-  minRadius: number;
+  minRadius: number
 
   /**
    * Outer sphere radius for sphere fold (0.5 to 2.0, default 1.0).
    * Points between minRadius and fixedRadius are inverted.
    */
-  fixedRadius: number;
+  fixedRadius: number
 
   /**
    * Maximum iterations before considering point bounded (10 to 100, default 50).
    */
-  maxIterations: number;
+  maxIterations: number
 
   /**
    * Escape radius threshold (4.0 to 100.0, default 10.0).
    * Higher dimensions may need larger values for stability.
    */
-  escapeRadius: number;
+  escapeRadius: number
 
   /**
    * Fixed values for dimensions beyond the 3D slice (for 4D+).
    * Array length = dimension - 3.
    */
-  parameterValues: number[];
+  parameterValues: number[]
 
   /**
    * Rotation angle (in radians) applied per iteration in higher-dimensional planes.
@@ -494,7 +486,7 @@ export interface MandelboxConfig {
    *
    * Only affects 4D+ dimensions (3D Mandelbox is inherently 3D).
    */
-  iterationRotation: number;
+  iterationRotation: number
 
   // === Scale Animation ===
 
@@ -502,25 +494,25 @@ export interface MandelboxConfig {
    * Enable/disable scale oscillation animation.
    * When enabled, scale oscillates around scaleCenter with the specified amplitude.
    */
-  scaleAnimationEnabled: boolean;
+  scaleAnimationEnabled: boolean
 
   /**
    * Center value for scale oscillation (-3.0 to 3.0, default -1.5).
    * The scale oscillates around this value.
    */
-  scaleCenter: number;
+  scaleCenter: number
 
   /**
    * Amplitude of scale oscillation (0.0 to 1.5, default 0.5).
    * Scale ranges from (scaleCenter - amplitude) to (scaleCenter + amplitude).
    */
-  scaleAmplitude: number;
+  scaleAmplitude: number
 
   /**
    * Speed multiplier for scale oscillation (0.1 to 2.0, default 1.0).
    * Higher values create faster oscillation.
    */
-  scaleSpeed: number;
+  scaleSpeed: number
 
   // === Julia Mode ===
 
@@ -529,34 +521,34 @@ export interface MandelboxConfig {
    * When enabled, uses a global animated 'c' constant instead of per-pixel c.
    * Creates smooth morphing through different Julia-like fractal shapes.
    */
-  juliaMode: boolean;
+  juliaMode: boolean
 
   /**
    * Speed of Julia c orbit animation (0.1 to 2.0, default 1.0).
    * Controls how fast the c constant orbits through N-dimensional space.
    */
-  juliaSpeed: number;
+  juliaSpeed: number
 
   /**
    * Radius/amplitude of Julia c orbit (0.5 to 2.0, default 1.0).
    * Controls the magnitude of c values during animation.
    * Higher values explore more extreme regions of parameter space.
    */
-  juliaRadius: number;
+  juliaRadius: number
 }
 
 /**
  * Default Mandelbox configuration
  */
 export const DEFAULT_MANDELBOX_CONFIG: MandelboxConfig = {
-  scale: -1.5,              // Classic folded/organic look
-  foldingLimit: 1.0,        // Standard box fold boundary
-  minRadius: 0.5,           // Standard inner sphere
-  fixedRadius: 1.0,         // Standard outer sphere
-  maxIterations: 50,        // Balanced quality/performance
-  escapeRadius: 10.0,       // Safe bailout for most dimensions
-  parameterValues: [],      // No extra dimensions by default
-  iterationRotation: 0.1,   // Moderate interdimensional mixing for 4D+
+  scale: -1.5, // Classic folded/organic look
+  foldingLimit: 1.0, // Standard box fold boundary
+  minRadius: 0.5, // Standard inner sphere
+  fixedRadius: 1.0, // Standard outer sphere
+  maxIterations: 50, // Balanced quality/performance
+  escapeRadius: 10.0, // Safe bailout for most dimensions
+  parameterValues: [], // No extra dimensions by default
+  iterationRotation: 0.1, // Moderate interdimensional mixing for 4D+
   // Scale Animation defaults
   scaleAnimationEnabled: false,
   scaleCenter: -1.5,
@@ -566,7 +558,7 @@ export const DEFAULT_MANDELBOX_CONFIG: MandelboxConfig = {
   juliaMode: false,
   juliaSpeed: 1.0,
   juliaRadius: 1.0,
-};
+}
 
 // ============================================================================
 // Menger Sponge Configuration
@@ -596,20 +588,20 @@ export interface MengerConfig {
    * - 5: Good balance of detail and performance
    * - 7-8: Very fine detail, may impact performance
    */
-  iterations: number;
+  iterations: number
 
   /**
    * Bounding cube scale (0.5 to 2.0, default 1.0).
    * Controls the overall size of the Menger sponge.
    */
-  scale: number;
+  scale: number
 
   /**
    * Fixed values for dimensions beyond the 3D slice (for 4D+).
    * Array length = dimension - 3.
    * Controls which cross-section of the N-dimensional Menger hypersponge is visible.
    */
-  parameterValues: number[];
+  parameterValues: number[]
 
   // === Fold Twist Animation ===
 
@@ -618,19 +610,19 @@ export interface MengerConfig {
    * When enabled, rotates geometry within each KIFS iteration,
    * creating spiraling kaleidoscopic effects.
    */
-  foldTwistEnabled: boolean;
+  foldTwistEnabled: boolean
 
   /**
    * Static fold twist angle in radians (-π to π, default 0).
    * When animation is enabled, this is the base angle before time is added.
    */
-  foldTwistAngle: number;
+  foldTwistAngle: number
 
   /**
    * Speed multiplier for fold twist animation (0.0 to 2.0, default 0.5).
    * Higher values create faster spinning.
    */
-  foldTwistSpeed: number;
+  foldTwistSpeed: number
 
   // === Scale Pulse Animation ===
 
@@ -639,19 +631,19 @@ export interface MengerConfig {
    * When enabled, the iteration scale factor oscillates,
    * creating an organic breathing effect.
    */
-  scalePulseEnabled: boolean;
+  scalePulseEnabled: boolean
 
   /**
    * Amplitude of scale pulse (0.0 to 0.5, default 0.2).
    * Scale oscillates as: scale ± amplitude
    */
-  scalePulseAmplitude: number;
+  scalePulseAmplitude: number
 
   /**
    * Speed multiplier for scale pulse animation (0.0 to 2.0, default 1.0).
    * Higher values create faster breathing.
    */
-  scalePulseSpeed: number;
+  scalePulseSpeed: number
 
   // === Slice Sweep Animation (4D+ only) ===
 
@@ -661,28 +653,28 @@ export interface MengerConfig {
    * parameterValues with phase-offset sine waves, creating smooth
    * cross-section sweeps through higher-dimensional space.
    */
-  sliceSweepEnabled: boolean;
+  sliceSweepEnabled: boolean
 
   /**
    * Amplitude of slice sweep (0.0 to 2.0, default 1.0).
    * Controls how far the cross-section sweeps in each extra dimension.
    */
-  sliceSweepAmplitude: number;
+  sliceSweepAmplitude: number
 
   /**
    * Speed multiplier for slice sweep animation (0.0 to 2.0, default 0.5).
    * Higher values create faster sweeping.
    */
-  sliceSweepSpeed: number;
+  sliceSweepSpeed: number
 }
 
 /**
  * Default Menger sponge configuration
  */
 export const DEFAULT_MENGER_CONFIG: MengerConfig = {
-  iterations: 5,           // Good balance of detail and performance
-  scale: 1.0,              // Unit cube bounding box
-  parameterValues: [],     // No extra dimensions by default
+  iterations: 5, // Good balance of detail and performance
+  scale: 1.0, // Unit cube bounding box
+  parameterValues: [], // No extra dimensions by default
   // Fold Twist Animation defaults
   foldTwistEnabled: false,
   foldTwistAngle: 0.0,
@@ -695,7 +687,7 @@ export const DEFAULT_MENGER_CONFIG: MengerConfig = {
   sliceSweepEnabled: false,
   sliceSweepAmplitude: 1.0,
   sliceSweepSpeed: 0.5,
-};
+}
 
 // ============================================================================
 // Combined Object Parameters
@@ -716,17 +708,17 @@ export const DEFAULT_MENGER_CONFIG: MengerConfig = {
  */
 export interface ExtendedObjectParams {
   /** Configuration for standard polytopes (hypercube, simplex, cross-polytope) */
-  polytope: PolytopeConfig;
+  polytope: PolytopeConfig
   /** Configuration for root system generation */
-  rootSystem: RootSystemConfig;
+  rootSystem: RootSystemConfig
   /** Configuration for Clifford torus generation */
-  cliffordTorus: CliffordTorusConfig;
+  cliffordTorus: CliffordTorusConfig
   /** Configuration for Mandelbrot set generation */
-  mandelbrot: MandelbrotConfig;
+  mandelbrot: MandelbrotConfig
   /** Configuration for Mandelbox fractal generation */
-  mandelbox: MandelboxConfig;
+  mandelbox: MandelboxConfig
   /** Configuration for Menger sponge fractal generation */
-  menger: MengerConfig;
+  menger: MengerConfig
 }
 
 /**
@@ -739,4 +731,4 @@ export const DEFAULT_EXTENDED_OBJECT_PARAMS: ExtendedObjectParams = {
   mandelbrot: DEFAULT_MANDELBROT_CONFIG,
   mandelbox: DEFAULT_MANDELBOX_CONFIG,
   menger: DEFAULT_MENGER_CONFIG,
-};
+}

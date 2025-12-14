@@ -4,9 +4,9 @@
  * Implements generation logic for the classic Clifford torus in 4D.
  */
 
-import type { VectorND } from '@/lib/math/types';
-import type { NdGeometry } from '../../types';
-import type { CliffordTorusConfig } from '../types';
+import type { VectorND } from '@/lib/math/types'
+import type { NdGeometry } from '../../types'
+import type { CliffordTorusConfig } from '../types'
 
 /**
  * Generates points on the classic Clifford torus
@@ -21,39 +21,39 @@ export function generateCliffordTorusPoints(
   config: CliffordTorusConfig
 ): VectorND[] {
   if (dimension < 4) {
-    throw new Error('Clifford torus requires ambient dimension >= 4');
+    throw new Error('Clifford torus requires ambient dimension >= 4')
   }
 
-  const { radius, resolutionU, resolutionV } = config;
-  const points: VectorND[] = [];
+  const { radius, resolutionU, resolutionV } = config
+  const points: VectorND[] = []
   // Classic Clifford torus: T² ⊂ S³ ⊂ ℝ⁴
   // Each circular component has radius R/√2 so that |z₁|² + |z₂|² = R²
   // This ensures the torus lies on S³ with radius R
-  const factor = radius / Math.sqrt(2);
+  const factor = radius / Math.sqrt(2)
 
   for (let i = 0; i < resolutionU; i++) {
-    const u = (2 * Math.PI * i) / resolutionU;
-    const cu = Math.cos(u);
-    const su = Math.sin(u);
+    const u = (2 * Math.PI * i) / resolutionU
+    const cu = Math.cos(u)
+    const su = Math.sin(u)
 
     for (let j = 0; j < resolutionV; j++) {
-      const v = (2 * Math.PI * j) / resolutionV;
-      const cv = Math.cos(v);
-      const sv = Math.sin(v);
+      const v = (2 * Math.PI * j) / resolutionV
+      const cv = Math.cos(v)
+      const sv = Math.sin(v)
 
       // Create n-dimensional point
-      const p: VectorND = new Array(dimension).fill(0);
-      p[0] = factor * cu;
-      p[1] = factor * su;
-      p[2] = factor * cv;
-      p[3] = factor * sv;
+      const p: VectorND = new Array(dimension).fill(0)
+      p[0] = factor * cu
+      p[1] = factor * su
+      p[2] = factor * cv
+      p[3] = factor * sv
       // Coordinates 4..(n-1) remain 0
 
-      points.push(p);
+      points.push(p)
     }
   }
 
-  return points;
+  return points
 }
 
 /**
@@ -69,55 +69,55 @@ export function buildCliffordTorusGridEdges(
   resolutionU: number,
   resolutionV: number
 ): [number, number][] {
-  const edges: [number, number][] = [];
+  const edges: [number, number][] = []
 
   // Index function: (i, j) -> linear index
-  const index = (i: number, j: number): number => i * resolutionV + j;
+  const index = (i: number, j: number): number => i * resolutionV + j
 
   for (let i = 0; i < resolutionU; i++) {
     for (let j = 0; j < resolutionV; j++) {
-      const iNext = (i + 1) % resolutionU;
-      const jNext = (j + 1) % resolutionV;
+      const iNext = (i + 1) % resolutionU
+      const jNext = (j + 1) % resolutionV
 
-      const idx = index(i, j);
-      const idxU = index(iNext, j);
-      const idxV = index(i, jNext);
+      const idx = index(i, j)
+      const idxU = index(iNext, j)
+      const idxV = index(i, jNext)
 
       // Edge along u direction
       // Only add if it creates a valid edge (avoid duplicates)
       if (i < resolutionU - 1) {
-        edges.push([idx, idxU]);
+        edges.push([idx, idxU])
       } else {
         // Wraparound edge for u
-        edges.push([index(iNext, j), idx]);
+        edges.push([index(iNext, j), idx])
       }
 
       // Edge along v direction
       if (j < resolutionV - 1) {
-        edges.push([idx, idxV]);
+        edges.push([idx, idxV])
       } else {
         // Wraparound edge for v
-        edges.push([index(i, jNext), idx]);
+        edges.push([index(i, jNext), idx])
       }
     }
   }
 
   // Remove any edges where first index > second index and dedupe
-  const normalizedEdges: [number, number][] = [];
-  const edgeSet = new Set<string>();
+  const normalizedEdges: [number, number][] = []
+  const edgeSet = new Set<string>()
 
   for (const [a, b] of edges) {
-    const minIdx = Math.min(a, b);
-    const maxIdx = Math.max(a, b);
-    const key = `${minIdx},${maxIdx}`;
+    const minIdx = Math.min(a, b)
+    const maxIdx = Math.max(a, b)
+    const key = `${minIdx},${maxIdx}`
 
     if (!edgeSet.has(key)) {
-      edgeSet.add(key);
-      normalizedEdges.push([minIdx, maxIdx]);
+      edgeSet.add(key)
+      normalizedEdges.push([minIdx, maxIdx])
     }
   }
 
-  return normalizedEdges;
+  return normalizedEdges
 }
 
 /**
@@ -132,31 +132,23 @@ export function buildCliffordTorusGridEdges(
  * @param resolutionV - Number of steps in the v direction
  * @returns Array of quad faces (4 vertex indices each, counter-clockwise winding)
  */
-export function buildCliffordTorusGridFaces(
-  resolutionU: number,
-  resolutionV: number
-): number[][] {
-  const faces: number[][] = [];
+export function buildCliffordTorusGridFaces(resolutionU: number, resolutionV: number): number[][] {
+  const faces: number[][] = []
 
   // Index function: (i, j) -> linear index
-  const index = (i: number, j: number): number => i * resolutionV + j;
+  const index = (i: number, j: number): number => i * resolutionV + j
 
   for (let i = 0; i < resolutionU; i++) {
     for (let j = 0; j < resolutionV; j++) {
-      const iNext = (i + 1) % resolutionU;
-      const jNext = (j + 1) % resolutionV;
+      const iNext = (i + 1) % resolutionU
+      const jNext = (j + 1) % resolutionV
 
       // Quad vertices in counter-clockwise winding order
-      faces.push([
-        index(i, j),
-        index(iNext, j),
-        index(iNext, jNext),
-        index(i, jNext),
-      ]);
+      faces.push([index(i, j), index(iNext, j), index(iNext, jNext), index(i, jNext)])
     }
   }
 
-  return faces;
+  return faces
 }
 
 /**
@@ -172,27 +164,25 @@ export function generateClassicCliffordTorus(
   config: CliffordTorusConfig
 ): NdGeometry {
   if (dimension < 4) {
-    throw new Error('Classic Clifford torus requires dimension >= 4');
+    throw new Error('Classic Clifford torus requires dimension >= 4')
   }
 
-  const { radius, resolutionU, resolutionV, edgeMode } = config;
+  const { radius, resolutionU, resolutionV, edgeMode } = config
 
   // Generate points
-  const vertices = generateCliffordTorusPoints(dimension, config);
+  const vertices = generateCliffordTorusPoints(dimension, config)
 
   // Generate edges based on mode
-  const edges: [number, number][] = edgeMode === 'grid'
-    ? buildCliffordTorusGridEdges(resolutionU, resolutionV)
-    : [];
+  const edges: [number, number][] =
+    edgeMode === 'grid' ? buildCliffordTorusGridEdges(resolutionU, resolutionV) : []
 
-  const pointCount = resolutionU * resolutionV;
+  const pointCount = resolutionU * resolutionV
 
   return {
     dimension,
     type: 'clifford-torus',
     vertices,
     edges,
-    isPointCloud: edgeMode === 'none',
     metadata: {
       name: 'Clifford Torus (flat torus T² on S³)',
       formula: `x₁² + x₂² + x₃² + x₄² = ${(radius * radius).toFixed(2)}`,
@@ -209,5 +199,5 @@ export function generateClassicCliffordTorus(
         intrinsicDimension: 4,
       },
     },
-  };
+  }
 }
