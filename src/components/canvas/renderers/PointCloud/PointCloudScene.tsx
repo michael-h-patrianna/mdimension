@@ -27,9 +27,9 @@ import { LineMaterial, LineSegments2, LineSegmentsGeometry } from 'three-stdlib'
 import { useShallow } from 'zustand/react/shallow';
 
 import { createScaleMatrix, multiplyMatrixVector } from '@/lib/math';
-import { DEFAULT_PROJECTION_DISTANCE, projectOrthographic, projectPerspective } from '@/lib/math/projection';
+import { DEFAULT_PROJECTION_DISTANCE, projectEdgesToPositions } from '@/lib/math/projection';
 import { composeRotations } from '@/lib/math/rotation';
-import type { Vector3D, VectorND } from '@/lib/math/types';
+import type { VectorND } from '@/lib/math/types';
 import { VERTEX_SIZE_DIVISOR } from '@/lib/shaders/constants';
 import { matrixToGPUUniforms } from '@/lib/shaders/transforms/ndTransform';
 import { useProjectionStore } from '@/stores/projectionStore';
@@ -220,15 +220,14 @@ export const PointCloudScene = React.memo(function PointCloudScene({
   const rotationMatrixRef = useRef<number[][] | null>(null);
 
   // Working buffer for fat line positions (CPU transformed)
+  // Only stores transformedVertices - projection writes directly to Float32Array
   const workingBuffers = useRef<{
     transformedVertices: VectorND[];
-    projectedVertices: Vector3D[];
   } | null>(null);
 
   useMemo(() => {
     workingBuffers.current = {
       transformedVertices: baseVertices.map(v => new Array(v.length).fill(0) as VectorND),
-      projectedVertices: baseVertices.map(() => [0, 0, 0] as Vector3D),
     };
   }, [baseVertices]);
 
@@ -505,7 +504,7 @@ export const PointCloudScene = React.memo(function PointCloudScene({
       const buffers = workingBuffers.current;
       const scaleMatrix = createScaleMatrix(dimension, scales);
 
-      // Transform vertices
+      // Transform vertices (apply scale + rotation)
       for (let i = 0; i < numVertices; i++) {
         const baseV = baseVertices[i]!;
         const transformedV = buffers.transformedVertices[i]!;
@@ -515,23 +514,7 @@ export const PointCloudScene = React.memo(function PointCloudScene({
         multiplyMatrixVector(rotationMatrix, temp, transformedV);
       }
 
-      // Project to 3D
-      for (let i = 0; i < numVertices; i++) {
-        if (projectionType === 'perspective') {
-          projectPerspective(
-            buffers.transformedVertices[i]!,
-            projectionDistance,
-            buffers.projectedVertices[i]!,
-            normalizationFactor
-          );
-        } else {
-          projectOrthographic(buffers.transformedVertices[i]!, buffers.projectedVertices[i]!);
-        }
-      }
-
-      const projected = buffers.projectedVertices;
-
-      // Build fat line positions
+      // Build fat line positions buffer
       const segmentCount = numEdges;
       const positionCount = segmentCount * 6;
 
@@ -552,27 +535,15 @@ export const PointCloudScene = React.memo(function PointCloudScene({
         targetBuffer = new Float32Array(positionCount);
       }
 
-      // Fill buffer
-      let idx = 0;
-      for (const [start, end] of edges) {
-        const v1 = projected[start];
-        const v2 = projected[end];
-        if (v1 && v2) {
-          targetBuffer[idx++] = v1[0];
-          targetBuffer[idx++] = v1[1];
-          targetBuffer[idx++] = v1[2];
-          targetBuffer[idx++] = v2[0];
-          targetBuffer[idx++] = v2[1];
-          targetBuffer[idx++] = v2[2];
-        } else {
-          targetBuffer[idx++] = 0;
-          targetBuffer[idx++] = 0;
-          targetBuffer[idx++] = 0;
-          targetBuffer[idx++] = 0;
-          targetBuffer[idx++] = 0;
-          targetBuffer[idx++] = 0;
-        }
-      }
+      // Project edges directly into the Float32Array buffer
+      // This eliminates intermediate Vector3D[] allocation and manual copy loop
+      projectEdgesToPositions(
+        buffers.transformedVertices,
+        edges,
+        targetBuffer,
+        projectionDistance,
+        projectionType === 'perspective'
+      );
 
       if (needsResize) {
         fatEdgeGeometryRef.current.setPositions(targetBuffer);

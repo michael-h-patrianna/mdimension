@@ -23,6 +23,19 @@ import {
   URL_KEY_VOLUMETRIC_ANIM_QUALITY,
   URL_KEY_VOLUMETRIC_DENSITY,
 } from '@/lib/opacity/constants';
+import type { ShadowAnimationMode, ShadowQuality } from '@/lib/shadows/types';
+import {
+  DEFAULT_SHADOW_QUALITY,
+  DEFAULT_SHADOW_SOFTNESS,
+  DEFAULT_SHADOW_ANIMATION_MODE,
+  SHADOW_QUALITY_OPTIONS,
+  SHADOW_ANIMATION_MODE_OPTIONS,
+  SHADOW_SOFTNESS_RANGE,
+  URL_KEY_SHADOW_ENABLED,
+  URL_KEY_SHADOW_QUALITY,
+  URL_KEY_SHADOW_SOFTNESS,
+  URL_KEY_SHADOW_ANIMATION_MODE,
+} from '@/lib/shadows/constants';
 import type { ShaderType, AllShaderSettings, ToneMappingAlgorithm } from '@/lib/shaders/types';
 import { MAX_DIMENSION, MIN_DIMENSION } from '@/stores/geometryStore';
 import {
@@ -88,6 +101,11 @@ export interface ShareableState {
   volumetricDensity?: number;
   sampleQuality?: SampleQuality;
   volumetricAnimationQuality?: VolumetricAnimationQuality;
+  // Shadow settings
+  shadowEnabled?: boolean;
+  shadowQuality?: ShadowQuality;
+  shadowSoftness?: number;
+  shadowAnimationMode?: ShadowAnimationMode;
 }
 
 /**
@@ -242,6 +260,20 @@ export function serializeState(state: ShareableState): string {
         params.set(URL_KEY_VOLUMETRIC_ANIM_QUALITY, vaqMap[state.volumetricAnimationQuality]);
       }
     }
+  }
+
+  // Shadow settings (omit defaults for shorter URLs)
+  if (state.shadowEnabled === true) {
+    params.set(URL_KEY_SHADOW_ENABLED, '1');
+  }
+  if (state.shadowQuality && state.shadowQuality !== DEFAULT_SHADOW_QUALITY) {
+    params.set(URL_KEY_SHADOW_QUALITY, state.shadowQuality);
+  }
+  if (state.shadowSoftness !== undefined && state.shadowSoftness !== DEFAULT_SHADOW_SOFTNESS) {
+    params.set(URL_KEY_SHADOW_SOFTNESS, state.shadowSoftness.toFixed(1));
+  }
+  if (state.shadowAnimationMode && state.shadowAnimationMode !== DEFAULT_SHADOW_ANIMATION_MODE) {
+    params.set(URL_KEY_SHADOW_ANIMATION_MODE, state.shadowAnimationMode);
   }
 
   return params.toString();
@@ -496,6 +528,39 @@ export function deserializeState(searchParams: string): Partial<ShareableState> 
           }
         }
       }
+    }
+  }
+
+  // Shadow settings
+  const shadowEnabled = params.get(URL_KEY_SHADOW_ENABLED);
+  if (shadowEnabled === '1') {
+    state.shadowEnabled = true;
+  } else if (shadowEnabled === '0') {
+    state.shadowEnabled = false;
+  }
+
+  const shadowQuality = params.get(URL_KEY_SHADOW_QUALITY);
+  if (shadowQuality) {
+    if (SHADOW_QUALITY_OPTIONS.includes(shadowQuality as ShadowQuality)) {
+      state.shadowQuality = shadowQuality as ShadowQuality;
+    } else {
+      // Invalid quality param = disable shadows (PRD AC: invalid defaults to OFF)
+      state.shadowEnabled = false;
+    }
+  }
+
+  const shadowSoftness = params.get(URL_KEY_SHADOW_SOFTNESS);
+  if (shadowSoftness) {
+    const softness = parseFloat(shadowSoftness);
+    if (!isNaN(softness) && softness >= SHADOW_SOFTNESS_RANGE.min && softness <= SHADOW_SOFTNESS_RANGE.max) {
+      state.shadowSoftness = softness;
+    }
+  }
+
+  const shadowAnimationMode = params.get(URL_KEY_SHADOW_ANIMATION_MODE);
+  if (shadowAnimationMode) {
+    if (SHADOW_ANIMATION_MODE_OPTIONS.includes(shadowAnimationMode as ShadowAnimationMode)) {
+      state.shadowAnimationMode = shadowAnimationMode as ShadowAnimationMode;
     }
   }
 

@@ -3,6 +3,7 @@ import { composeRotations } from '@/lib/math/rotation';
 import type { MatrixND } from '@/lib/math/types';
 import { OPACITY_MODE_TO_INT, SAMPLE_QUALITY_TO_INT } from '@/lib/opacity/types';
 import { COLOR_ALGORITHM_TO_INT } from '@/lib/shaders/palette';
+import { SHADOW_QUALITY_TO_INT, SHADOW_ANIMATION_MODE_TO_INT } from '@/lib/shadows/types';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import type { RotationState } from '@/stores/rotationStore';
@@ -149,6 +150,12 @@ const HyperbulbMesh = () => {
   // Opacity settings for hyperbulb
   const opacitySettings = useVisualStore((state) => state.hyperbulbOpacitySettings);
 
+  // Shadow settings
+  const shadowEnabled = useVisualStore((state) => state.shadowEnabled);
+  const shadowQuality = useVisualStore((state) => state.shadowQuality);
+  const shadowSoftness = useVisualStore((state) => state.shadowSoftness);
+  const shadowAnimationMode = useVisualStore((state) => state.shadowAnimationMode);
+
   const uniforms = useMemo(
     () => ({
       // Time and resolution
@@ -206,6 +213,12 @@ const HyperbulbMesh = () => {
       uVolumetricDensity: { value: 1.0 },
       uSampleQuality: { value: 1 },
       uVolumetricReduceOnAnim: { value: true },
+
+      // Shadow System uniforms
+      uShadowEnabled: { value: false },
+      uShadowQuality: { value: 1 },
+      uShadowSoftness: { value: 1.0 },
+      uShadowAnimationMode: { value: 0 },
 
       // Advanced Color System uniforms
       uColorAlgorithm: { value: 1 },
@@ -359,6 +372,20 @@ const HyperbulbMesh = () => {
       }
       if (material.uniforms.uVolumetricReduceOnAnim) {
         material.uniforms.uVolumetricReduceOnAnim.value = opacitySettings.volumetricAnimationQuality === 'reduce';
+      }
+
+      // Shadow System uniforms
+      if (material.uniforms.uShadowEnabled) {
+        material.uniforms.uShadowEnabled.value = shadowEnabled;
+      }
+      if (material.uniforms.uShadowQuality) {
+        material.uniforms.uShadowQuality.value = SHADOW_QUALITY_TO_INT[shadowQuality];
+      }
+      if (material.uniforms.uShadowSoftness) {
+        material.uniforms.uShadowSoftness.value = shadowSoftness;
+      }
+      if (material.uniforms.uShadowAnimationMode) {
+        material.uniforms.uShadowAnimationMode.value = SHADOW_ANIMATION_MODE_TO_INT[shadowAnimationMode];
       }
 
       // Configure material transparency based on opacity mode

@@ -36,7 +36,8 @@ export const MIN_SAFE_DISTANCE = 0.01
  * @param out - Optional output vector to avoid allocation
  * @param normalizationFactor - Optional pre-calculated Math.sqrt(n-3) for performance
  * @returns 3D projected point
- * @throws {Error} If vertex has less than 3 dimensions
+ * @throws {Error} If vertex has less than 3 dimensions (DEV only)
+ * @note Validation is DEV-only for performance in production hot paths
  */
 export function projectPerspective(
   vertex: VectorND,
@@ -44,12 +45,13 @@ export function projectPerspective(
   out?: Vector3D,
   normalizationFactor?: number
 ): Vector3D {
-  if (vertex.length < 3) {
-    throw new Error(`Cannot project ${vertex.length}D vertex to 3D: need at least 3 dimensions`)
-  }
-
-  if (projectionDistance <= 0) {
-    throw new Error('Projection distance must be positive')
+  if (import.meta.env.DEV) {
+    if (vertex.length < 3) {
+      throw new Error(`Cannot project ${vertex.length}D vertex to 3D: need at least 3 dimensions`)
+    }
+    if (projectionDistance <= 0) {
+      throw new Error('Projection distance must be positive')
+    }
   }
 
   const result = out ?? [0, 0, 0]
@@ -128,7 +130,8 @@ export function projectOrthographic(vertex: VectorND, out?: Vector3D): Vector3D 
  * @param usePerspective - If true, use perspective projection; if false, use orthographic
  * @param out - Optional output array to avoid allocation
  * @returns Array of 3D projected points
- * @throws {Error} If any vertex has less than 3 dimensions
+ * @throws {Error} If any vertex has less than 3 dimensions (DEV only)
+ * @note Validation is DEV-only for performance in production hot paths
  */
 export function projectVertices(
   vertices: VectorND[],
@@ -141,18 +144,20 @@ export function projectVertices(
     return []
   }
 
-  // Validate all vertices have same dimension
+  // Validate all vertices have same dimension (DEV only)
   const firstVertex = vertices[0]
   if (!firstVertex) {
     return []
   }
   const dimension = firstVertex.length
-  for (let i = 1; i < len; i++) {
-    const vertex = vertices[i]
-    if (!vertex || vertex.length !== dimension) {
-      throw new Error(
-        `All vertices must have same dimension: vertex 0 has ${dimension}, vertex ${i} has ${vertex?.length ?? 'undefined'}`
-      )
+  if (import.meta.env.DEV) {
+    for (let i = 1; i < len; i++) {
+      const vertex = vertices[i]
+      if (!vertex || vertex.length !== dimension) {
+        throw new Error(
+          `All vertices must have same dimension: vertex 0 has ${dimension}, vertex ${i} has ${vertex?.length ?? 'undefined'}`
+        )
+      }
     }
   }
 
@@ -325,4 +330,240 @@ export function clipLine(
   // For now, we'll skip drawing lines that cross the plane
   // A full implementation would interpolate to find the intersection point
   return null
+}
+
+// ============================================================================
+// HIGH-PERFORMANCE BUFFER PROJECTION API
+// ============================================================================
+// These functions write directly into Float32Array buffers for Three.js
+// BufferAttribute.array, eliminating intermediate Vector3D[] allocations.
+
+/**
+ * Projects an array of n-dimensional vertices directly into a Float32Array.
+ * This is the high-performance API for Three.js buffer updates.
+ *
+ * Instead of creating intermediate Vector3D[] arrays, this writes projected
+ * (x, y, z) values directly into a Float32Array suitable for BufferAttribute.
+ *
+ * @param vertices - Array of n-dimensional vertices to project
+ * @param positions - Target Float32Array to write into (must have length >= vertices.length * 3)
+ * @param projectionDistance - Distance from projection plane (default: 4.0)
+ * @param usePerspective - If true, use perspective projection; if false, use orthographic
+ * @param offset - Starting offset in the positions array (default: 0)
+ * @returns Number of vertices written (same as vertices.length on success)
+ * @throws {Error} If positions array is too small or vertices have < 3 dimensions (DEV only)
+ * @note Validation is DEV-only for performance in production hot paths
+ *
+ * @example
+ * ```ts
+ * const positions = new Float32Array(vertices.length * 3);
+ * projectVerticesToPositions(vertices, positions, 4.0, true);
+ * geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
+ * ```
+ */
+export function projectVerticesToPositions(
+  vertices: VectorND[],
+  positions: Float32Array,
+  projectionDistance: number = DEFAULT_PROJECTION_DISTANCE,
+  usePerspective = true,
+  offset = 0
+): number {
+  const len = vertices.length
+  if (len === 0) return 0
+
+  if (import.meta.env.DEV) {
+    const requiredSize = offset + len * 3
+    if (positions.length < requiredSize) {
+      throw new Error(`Positions array too small: need ${requiredSize}, got ${positions.length}`)
+    }
+  }
+
+  const firstVertex = vertices[0]
+  if (import.meta.env.DEV && (!firstVertex || firstVertex.length < 3)) {
+    throw new Error('Vertices must have at least 3 dimensions')
+  }
+
+  const dimension = firstVertex!.length
+  const numHigherDims = dimension - 3
+  const normalizationFactor = numHigherDims > 0 ? Math.sqrt(numHigherDims) : 1
+
+  if (usePerspective) {
+    for (let i = 0; i < len; i++) {
+      const vertex = vertices[i]!
+      const x = vertex[0]!
+      const y = vertex[1]!
+      const z = vertex[2]!
+
+      // Calculate effective depth from higher dimensions
+      let effectiveDepth = 0
+      if (numHigherDims > 0) {
+        for (let d = 3; d < dimension; d++) {
+          effectiveDepth += vertex[d]!
+        }
+        effectiveDepth = effectiveDepth / normalizationFactor
+      }
+
+      // Apply perspective division
+      let denominator = projectionDistance - effectiveDepth
+      if (Math.abs(denominator) < MIN_SAFE_DISTANCE) {
+        denominator = denominator >= 0 ? MIN_SAFE_DISTANCE : -MIN_SAFE_DISTANCE
+      }
+      const scale = 1 / denominator
+
+      const idx = offset + i * 3
+      positions[idx] = x * scale
+      positions[idx + 1] = y * scale
+      positions[idx + 2] = z * scale
+    }
+  } else {
+    // Orthographic: just copy first 3 coordinates
+    for (let i = 0; i < len; i++) {
+      const vertex = vertices[i]!
+      const idx = offset + i * 3
+      positions[idx] = vertex[0]!
+      positions[idx + 1] = vertex[1]!
+      positions[idx + 2] = vertex[2]!
+    }
+  }
+
+  return len
+}
+
+/**
+ * Projects edge pairs directly into a Float32Array for LineSegments2 geometry.
+ * Each edge is written as 6 floats: [x1, y1, z1, x2, y2, z2].
+ *
+ * This eliminates the need for intermediate Vector3D[] buffers when updating
+ * fat line geometry in the animation loop.
+ *
+ * @param vertices - Array of n-dimensional vertices (source positions)
+ * @param edges - Array of edge pairs as [startIndex, endIndex]
+ * @param positions - Target Float32Array (must have length >= edges.length * 6)
+ * @param projectionDistance - Distance from projection plane (default: 4.0)
+ * @param usePerspective - If true, use perspective projection; if false, use orthographic
+ * @param offset - Starting offset in the positions array (default: 0)
+ * @returns Number of edges written (same as edges.length on success)
+ * @throws {Error} If positions array is too small or vertices have < 3 dimensions (DEV only)
+ * @note Validation is DEV-only for performance in production hot paths
+ *
+ * @example
+ * ```ts
+ * const positions = new Float32Array(edges.length * 6);
+ * projectEdgesToPositions(vertices, edges, positions, 4.0, true);
+ * fatLineGeometry.setPositions(positions);
+ * ```
+ */
+export function projectEdgesToPositions(
+  vertices: VectorND[],
+  edges: ReadonlyArray<readonly [number, number]> | [number, number][],
+  positions: Float32Array,
+  projectionDistance: number = DEFAULT_PROJECTION_DISTANCE,
+  usePerspective = true,
+  offset = 0
+): number {
+  const numEdges = edges.length
+  if (numEdges === 0) return 0
+
+  if (import.meta.env.DEV) {
+    const requiredSize = offset + numEdges * 6
+    if (positions.length < requiredSize) {
+      throw new Error(`Positions array too small: need ${requiredSize}, got ${positions.length}`)
+    }
+  }
+
+  if (vertices.length === 0) return 0
+
+  const firstVertex = vertices[0]
+  if (import.meta.env.DEV && (!firstVertex || firstVertex.length < 3)) {
+    throw new Error('Vertices must have at least 3 dimensions')
+  }
+
+  const dimension = firstVertex!.length
+  const numHigherDims = dimension - 3
+  const normalizationFactor = numHigherDims > 0 ? Math.sqrt(numHigherDims) : 1
+
+  if (usePerspective) {
+    for (let e = 0; e < numEdges; e++) {
+      const [startIdx, endIdx] = edges[e]!
+      const v1 = vertices[startIdx]
+      const v2 = vertices[endIdx]
+
+      const idx = offset + e * 6
+
+      if (!v1 || !v2) {
+        // Write zeros for invalid edges
+        positions[idx] = 0
+        positions[idx + 1] = 0
+        positions[idx + 2] = 0
+        positions[idx + 3] = 0
+        positions[idx + 4] = 0
+        positions[idx + 5] = 0
+        continue
+      }
+
+      // Project first vertex
+      let effectiveDepth1 = 0
+      if (numHigherDims > 0) {
+        for (let d = 3; d < dimension; d++) {
+          effectiveDepth1 += v1[d]!
+        }
+        effectiveDepth1 = effectiveDepth1 / normalizationFactor
+      }
+      let denom1 = projectionDistance - effectiveDepth1
+      if (Math.abs(denom1) < MIN_SAFE_DISTANCE) {
+        denom1 = denom1 >= 0 ? MIN_SAFE_DISTANCE : -MIN_SAFE_DISTANCE
+      }
+      const scale1 = 1 / denom1
+
+      positions[idx] = v1[0]! * scale1
+      positions[idx + 1] = v1[1]! * scale1
+      positions[idx + 2] = v1[2]! * scale1
+
+      // Project second vertex
+      let effectiveDepth2 = 0
+      if (numHigherDims > 0) {
+        for (let d = 3; d < dimension; d++) {
+          effectiveDepth2 += v2[d]!
+        }
+        effectiveDepth2 = effectiveDepth2 / normalizationFactor
+      }
+      let denom2 = projectionDistance - effectiveDepth2
+      if (Math.abs(denom2) < MIN_SAFE_DISTANCE) {
+        denom2 = denom2 >= 0 ? MIN_SAFE_DISTANCE : -MIN_SAFE_DISTANCE
+      }
+      const scale2 = 1 / denom2
+
+      positions[idx + 3] = v2[0]! * scale2
+      positions[idx + 4] = v2[1]! * scale2
+      positions[idx + 5] = v2[2]! * scale2
+    }
+  } else {
+    // Orthographic projection
+    for (let e = 0; e < numEdges; e++) {
+      const [startIdx, endIdx] = edges[e]!
+      const v1 = vertices[startIdx]
+      const v2 = vertices[endIdx]
+
+      const idx = offset + e * 6
+
+      if (!v1 || !v2) {
+        positions[idx] = 0
+        positions[idx + 1] = 0
+        positions[idx + 2] = 0
+        positions[idx + 3] = 0
+        positions[idx + 4] = 0
+        positions[idx + 5] = 0
+        continue
+      }
+
+      positions[idx] = v1[0]!
+      positions[idx + 1] = v1[1]!
+      positions[idx + 2] = v1[2]!
+      positions[idx + 3] = v2[0]!
+      positions[idx + 4] = v2[1]!
+      positions[idx + 5] = v2[2]!
+    }
+  }
+
+  return numEdges
 }

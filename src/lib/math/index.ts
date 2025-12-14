@@ -10,68 +10,71 @@
  */
 
 // Type definitions
-export type { VectorND, MatrixND, Vector3D, RotationPlane } from './types';
-export { EPSILON } from './types';
+export { EPSILON } from './types'
+export type { MatrixND, RotationPlane, Vector3D, VectorND } from './types'
 
 // Vector operations
 export {
-  createVector,
   addVectors,
-  subtractVectors,
-  scaleVector,
+  copyVector,
+  createVector,
   dotProduct,
   magnitude,
   normalize,
+  scaleVector,
+  subtractVectors,
   vectorsEqual,
-  copyVector,
-} from './vector';
+} from './vector'
 
 // Matrix operations
 export {
+  copyMatrix,
   createIdentityMatrix,
   createZeroMatrix,
+  determinant,
+  getMatrixDimensions,
+  matricesEqual,
   multiplyMatrices,
+  multiplyMatricesInto,
   multiplyMatrixVector,
   transposeMatrix,
-  determinant,
-  matricesEqual,
-  copyMatrix,
-  getMatrixDimensions,
-} from './matrix';
+} from './matrix'
 
 // Rotation operations
 export {
+  composeRotations,
+  createPlaneName,
+  createRotationMatrix,
+  getAxisName,
   getRotationPlaneCount,
   getRotationPlanes,
-  getAxisName,
-  createRotationMatrix,
-  composeRotations,
   parsePlaneName,
-  createPlaneName,
-} from './rotation';
+} from './rotation'
 
 // Transformation operations
 export {
-  createScaleMatrix,
-  createUniformScaleMatrix,
-  createShearMatrix,
-  createTranslationMatrix,
-  translateVector,
-  toHomogeneous,
-  fromHomogeneous,
   composeTransformations,
+  createScaleMatrix,
+  createShearMatrix,
   createTransformMatrix,
-} from './transform';
+  createTranslationMatrix,
+  createUniformScaleMatrix,
+  fromHomogeneous,
+  toHomogeneous,
+  translateVector,
+} from './transform'
 
 // Projection operations
 export {
-  DEFAULT_PROJECTION_DISTANCE,
-  MIN_SAFE_DISTANCE,
-  projectPerspective,
-  projectOrthographic,
-  projectVertices,
   calculateDepth,
-  sortByDepth,
   calculateProjectionDistance,
   clipLine,
-} from './projection';
+  DEFAULT_PROJECTION_DISTANCE,
+  MIN_SAFE_DISTANCE,
+  projectEdgesToPositions,
+  projectOrthographic,
+  projectPerspective,
+  projectVertices,
+  projectVerticesToPositions,
+  sortByDepth,
+} from './projection'

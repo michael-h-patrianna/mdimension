@@ -18,6 +18,8 @@ export interface SliderProps {
   tooltip?: string;
   /** Custom value formatter function (overrides default formatting) */
   formatValue?: (value: number) => string;
+  /** Test ID for E2E testing */
+  'data-testid'?: string;
 }
 
 export const Slider: React.FC<SliderProps> = ({
@@ -36,6 +38,7 @@ export const Slider: React.FC<SliderProps> = ({
   maxLabel,
   tooltip,
   formatValue,
+  'data-testid': dataTestId,
 }) => {
   const id = useId();
   const percentage = max > min ? ((value - min) / (max - min)) * 100 : 0;
@@ -47,7 +50,7 @@ export const Slider: React.FC<SliderProps> = ({
   const displayValue = formatValue ? formatValue(value) : `${value.toFixed(decimals)}${unit}`;
 
   return (
-    <div className={`group ${className}`}>
+    <div className={`group ${className}`} data-testid={dataTestId}>
       <div className="flex items-center justify-between mb-2">
         <label
           htmlFor={id}

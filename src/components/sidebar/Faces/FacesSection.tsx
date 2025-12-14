@@ -25,6 +25,17 @@ import {
   VOLUMETRIC_DENSITY_RANGE,
 } from '@/lib/opacity/constants';
 import type { OpacityMode, SampleQuality, VolumetricAnimationQuality } from '@/lib/opacity/types';
+import {
+  DEFAULT_SHADOW_SOFTNESS,
+  SHADOW_ANIMATION_MODE_LABELS,
+  SHADOW_ANIMATION_MODE_OPTIONS,
+  SHADOW_ANIMATION_MODE_TOOLTIPS,
+  SHADOW_QUALITY_LABELS,
+  SHADOW_QUALITY_OPTIONS,
+  SHADOW_QUALITY_TOOLTIPS,
+  SHADOW_SOFTNESS_RANGE,
+} from '@/lib/shadows/constants';
+import type { ShadowAnimationMode, ShadowQuality } from '@/lib/shadows/types';
 import { useGeometryStore } from '@/stores/geometryStore';
 import {
   DEFAULT_DIFFUSE_INTENSITY,
@@ -96,6 +107,16 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
     setSampleQuality,
     setVolumetricAnimationQuality,
     setHasSeenVolumetricWarning,
+    // Shadow settings
+    lights,
+    shadowEnabled,
+    shadowQuality,
+    shadowSoftness,
+    shadowAnimationMode,
+    setShadowEnabled,
+    setShadowQuality,
+    setShadowSoftness,
+    setShadowAnimationMode,
   } = useVisualStore(
     useShallow((state) => ({
       facesVisible: state.facesVisible,
@@ -132,10 +153,23 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
       setSampleQuality: state.setSampleQuality,
       setVolumetricAnimationQuality: state.setVolumetricAnimationQuality,
       setHasSeenVolumetricWarning: state.setHasSeenVolumetricWarning,
+      // Shadow settings
+      lights: state.lights,
+      shadowEnabled: state.shadowEnabled,
+      shadowQuality: state.shadowQuality,
+      shadowSoftness: state.shadowSoftness,
+      shadowAnimationMode: state.shadowAnimationMode,
+      setShadowEnabled: state.setShadowEnabled,
+      setShadowQuality: state.setShadowQuality,
+      setShadowSoftness: state.setShadowSoftness,
+      setShadowAnimationMode: state.setShadowAnimationMode,
     }))
   );
 
   const surfaceSettings = shaderSettings.surface;
+
+  // Check if any light is enabled for shadow controls
+  const hasEnabledLights = lights.some((light) => light.enabled);
 
   // Only show when faces are visible
   if (!facesVisible) {
@@ -195,6 +229,16 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
           onSampleQualityChange={setSampleQuality}
           onVolumetricAnimationQualityChange={setVolumetricAnimationQuality}
           onSeenVolumetricWarning={() => setHasSeenVolumetricWarning(true)}
+          // Shadow props
+          hasEnabledLights={hasEnabledLights}
+          shadowEnabled={shadowEnabled}
+          shadowQuality={shadowQuality}
+          shadowSoftness={shadowSoftness}
+          shadowAnimationMode={shadowAnimationMode}
+          onShadowEnabledChange={setShadowEnabled}
+          onShadowQualityChange={setShadowQuality}
+          onShadowSoftnessChange={setShadowSoftness}
+          onShadowAnimationModeChange={setShadowAnimationMode}
         />
       ),
     },
@@ -384,6 +428,16 @@ interface MaterialTabContentProps {
   onSampleQualityChange: (quality: SampleQuality) => void;
   onVolumetricAnimationQualityChange: (quality: VolumetricAnimationQuality) => void;
   onSeenVolumetricWarning: () => void;
+  // Shadow props
+  hasEnabledLights: boolean;
+  shadowEnabled: boolean;
+  shadowQuality: ShadowQuality;
+  shadowSoftness: number;
+  shadowAnimationMode: ShadowAnimationMode;
+  onShadowEnabledChange: (enabled: boolean) => void;
+  onShadowQualityChange: (quality: ShadowQuality) => void;
+  onShadowSoftnessChange: (softness: number) => void;
+  onShadowAnimationModeChange: (mode: ShadowAnimationMode) => void;
 }
 
 const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
@@ -422,6 +476,16 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
   onSampleQualityChange,
   onVolumetricAnimationQualityChange,
   onSeenVolumetricWarning,
+  // Shadow props
+  hasEnabledLights,
+  shadowEnabled,
+  shadowQuality,
+  shadowSoftness,
+  shadowAnimationMode,
+  onShadowEnabledChange,
+  onShadowQualityChange,
+  onShadowSoftnessChange,
+  onShadowAnimationModeChange,
 }) => {
   // State for volumetric warning toast
   const [showVolumetricWarning, setShowVolumetricWarning] = useState(false);
@@ -663,6 +727,85 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
             onReset={() => setShininess(DEFAULT_SHININESS)}
             showValue
           />
+        </>
+      )}
+
+      {/* Shadow Controls - Only for Hyperbulb with enabled lights */}
+      {isHyperbulb && hasEnabledLights && (
+        <>
+          <SectionHeader title="Shadows" />
+
+          {/* Shadow Toggle */}
+          <Switch
+            checked={shadowEnabled}
+            onCheckedChange={onShadowEnabledChange}
+            label="Shadows"
+            data-testid="shadow-enabled-toggle"
+          />
+
+          {/* Shadow Quality & Softness - Only when shadows enabled */}
+          {shadowEnabled && (
+            <>
+              {/* Shadow Quality */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-text-secondary">
+                  Shadow Quality
+                </label>
+                <select
+                  value={shadowQuality}
+                  onChange={(e) => onShadowQualityChange(e.target.value as ShadowQuality)}
+                  className="w-full px-3 py-2 bg-control-bg border border-panel-border rounded text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                  title={SHADOW_QUALITY_TOOLTIPS[shadowQuality]}
+                  data-testid="shadow-quality-select"
+                >
+                  {SHADOW_QUALITY_OPTIONS.map((quality) => (
+                    <option key={quality} value={quality}>
+                      {SHADOW_QUALITY_LABELS[quality]}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-text-secondary">
+                  {SHADOW_QUALITY_TOOLTIPS[shadowQuality]}
+                </p>
+              </div>
+
+              {/* Shadow Softness */}
+              <Slider
+                label="Shadow Softness"
+                min={SHADOW_SOFTNESS_RANGE.min}
+                max={SHADOW_SOFTNESS_RANGE.max}
+                step={SHADOW_SOFTNESS_RANGE.step}
+                value={shadowSoftness}
+                onChange={onShadowSoftnessChange}
+                onReset={() => onShadowSoftnessChange(DEFAULT_SHADOW_SOFTNESS)}
+                showValue
+                data-testid="shadow-softness-slider"
+              />
+
+              {/* Shadow Animation Mode */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-text-secondary">
+                  Animation Quality
+                </label>
+                <select
+                  value={shadowAnimationMode}
+                  onChange={(e) => onShadowAnimationModeChange(e.target.value as ShadowAnimationMode)}
+                  className="w-full px-3 py-2 bg-control-bg border border-panel-border rounded text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                  title={SHADOW_ANIMATION_MODE_TOOLTIPS[shadowAnimationMode]}
+                  data-testid="shadow-animation-mode-select"
+                >
+                  {SHADOW_ANIMATION_MODE_OPTIONS.map((mode) => (
+                    <option key={mode} value={mode}>
+                      {SHADOW_ANIMATION_MODE_LABELS[mode]}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-text-secondary">
+                  {SHADOW_ANIMATION_MODE_TOOLTIPS[shadowAnimationMode]}
+                </p>
+              </div>
+            </>
+          )}
         </>
       )}
 

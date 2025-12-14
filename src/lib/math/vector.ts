@@ -27,10 +27,11 @@ export function createVector(dimension: number, fill = 0): VectorND {
  * @param b - Second vector
  * @param out
  * @returns New vector containing the sum
- * @throws {Error} If vectors have different dimensions
+ * @throws {Error} If vectors have different dimensions (DEV only)
+ * @note Validation is DEV-only for performance in production hot paths
  */
 export function addVectors(a: VectorND, b: VectorND, out?: VectorND): VectorND {
-  if (a.length !== b.length) {
+  if (import.meta.env.DEV && a.length !== b.length) {
     throw new Error(`Vector dimensions must match: ${a.length} !== ${b.length}`)
   }
 
@@ -48,10 +49,11 @@ export function addVectors(a: VectorND, b: VectorND, out?: VectorND): VectorND {
  * @param b - Second vector (subtracted from first)
  * @param out - Optional output vector to avoid allocation
  * @returns Vector containing the difference
- * @throws {Error} If vectors have different dimensions
+ * @throws {Error} If vectors have different dimensions (DEV only)
+ * @note Validation is DEV-only for performance in production hot paths
  */
 export function subtractVectors(a: VectorND, b: VectorND, out?: VectorND): VectorND {
-  if (a.length !== b.length) {
+  if (import.meta.env.DEV && a.length !== b.length) {
     throw new Error(`Vector dimensions must match: ${a.length} !== ${b.length}`)
   }
   const result = out ?? new Array(a.length)
@@ -83,10 +85,11 @@ export function scaleVector(v: VectorND, scalar: number, out?: VectorND): Vector
  * @param a - First vector
  * @param b - Second vector
  * @returns The scalar dot product
- * @throws {Error} If vectors have different dimensions
+ * @throws {Error} If vectors have different dimensions (DEV only)
+ * @note Validation is DEV-only for performance in production hot paths
  */
 export function dotProduct(a: VectorND, b: VectorND): number {
-  if (a.length !== b.length) {
+  if (import.meta.env.DEV && a.length !== b.length) {
     throw new Error(`Vector dimensions must match: ${a.length} !== ${b.length}`)
   }
   let sum = 0

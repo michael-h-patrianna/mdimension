@@ -3,7 +3,7 @@
  * Implements rotation in arbitrary planes with mathematically correct formulas
  */
 
-import { copyMatrix, createIdentityMatrix, multiplyMatrices } from './matrix'
+import { copyMatrix, createIdentityMatrix, multiplyMatricesInto } from './matrix'
 import type { MatrixND, RotationPlane } from './types'
 
 /**
@@ -13,21 +13,30 @@ const AXIS_NAMES = ['X', 'Y', 'Z', 'W', 'V', 'U']
 
 /**
  * Module-level scratch matrices for rotation composition
- * Avoids allocation during 60fps animation loops
+ * Avoids allocation during 60fps animation loops.
+ * Uses swap-based composition: resultA and resultB alternate as current/next.
  */
-const scratchMatrices = new Map<number, { rotation: MatrixND; temp: MatrixND }>()
+const scratchMatrices = new Map<
+  number,
+  { rotation: MatrixND; resultA: MatrixND; resultB: MatrixND }
+>()
 
 /**
  * Gets or creates scratch matrices for a given dimension
  * @param dimension - The dimensionality of the space
- * @returns Scratch matrices for rotation and temp multiplication result
+ * @returns Scratch matrices for rotation and two result buffers for swap-based composition
  */
-function getScratchMatrices(dimension: number): { rotation: MatrixND; temp: MatrixND } {
+function getScratchMatrices(dimension: number): {
+  rotation: MatrixND
+  resultA: MatrixND
+  resultB: MatrixND
+} {
   let scratch = scratchMatrices.get(dimension)
   if (!scratch) {
     scratch = {
       rotation: createIdentityMatrix(dimension),
-      temp: createIdentityMatrix(dimension),
+      resultA: createIdentityMatrix(dimension),
+      resultB: createIdentityMatrix(dimension),
     }
     scratchMatrices.set(dimension, scratch)
   }
@@ -208,18 +217,23 @@ export function createRotationMatrix(
  * Composes multiple rotations from a map of plane names to angles
  * Rotations are applied in the order they appear when iterating the map
  *
+ * Uses swap-based composition with pre-allocated scratch buffers to avoid
+ * intermediate allocations during animation loops. This is critical for
+ * 60fps performance in all renderers (PolytopeScene, PointCloudScene, etc.).
+ *
  * @param dimension - The dimensionality of the space
  * @param angles - Map from plane name (e.g., "XY", "XW") to angle in radians
  * @param out - Optional output matrix to avoid allocation (must be dimension x dimension)
  * @returns The composed rotation matrix
- * @throws {Error} If invalid plane names are provided
+ * @throws {Error} If invalid plane names are provided (DEV only)
+ * @note Validation is DEV-only for performance in production hot paths
  */
 export function composeRotations(
   dimension: number,
   angles: Map<string, number>,
   out?: MatrixND
 ): MatrixND {
-  if (dimension < 2) {
+  if (import.meta.env.DEV && dimension < 2) {
     throw new Error('Rotation requires at least 2 dimensions')
   }
 
@@ -238,33 +252,49 @@ export function composeRotations(
 
   // Get all valid planes for validation
   const validPlanes = getRotationPlanes(dimension)
-  const validPlaneNames = new Set(validPlanes.map((p) => p.name))
+  const validPlaneNames = import.meta.env.DEV ? new Set(validPlanes.map((p) => p.name)) : null
 
   // Get scratch matrices for this dimension
   const scratch = getScratchMatrices(dimension)
 
-  // Apply each rotation
+  // Initialize swap buffers: start with identity in resultA
+  resetToIdentity(scratch.resultA, dimension)
+  let current = scratch.resultA
+  let next = scratch.resultB
+
+  // Apply each rotation using swap-based composition
   for (const [planeName, angle] of angles.entries()) {
-    // Validate plane name
-    if (!validPlaneNames.has(planeName)) {
+    // Validate plane name (DEV only)
+    if (import.meta.env.DEV && validPlaneNames && !validPlaneNames.has(planeName)) {
       throw new Error(`Invalid plane name "${planeName}" for ${dimension}D space`)
     }
 
     // Find the plane
     const plane = validPlanes.find((p) => p.name === planeName)
-    if (!plane) {
+    if (import.meta.env.DEV && !plane) {
       throw new Error(`Plane "${planeName}" not found`)
     }
 
     // Create rotation matrix directly into scratch buffer
-    createRotationMatrixInto(scratch.rotation, dimension, plane.indices[0], plane.indices[1], angle)
+    createRotationMatrixInto(
+      scratch.rotation,
+      dimension,
+      plane!.indices[0],
+      plane!.indices[1],
+      angle
+    )
 
-    // Multiply: temp = result * rotation
-    multiplyMatrices(result, scratch.rotation, scratch.temp)
+    // Multiply: next = current * rotation (no intermediate allocation)
+    multiplyMatricesInto(next, current, scratch.rotation)
 
-    // Copy temp back to result
-    copyMatrix(scratch.temp, result)
+    // Swap references for next iteration
+    const temp = current
+    current = next
+    next = temp
   }
+
+  // Copy final result to output
+  copyMatrix(current, result)
 
   return result
 }

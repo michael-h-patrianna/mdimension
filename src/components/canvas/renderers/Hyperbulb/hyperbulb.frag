@@ -90,6 +90,12 @@ uniform float uVolumetricDensity;     // 0.1-2.0 for volumetric mode
 uniform int uSampleQuality;           // 0=low, 1=medium, 2=high
 uniform bool uVolumetricReduceOnAnim; // Whether to reduce volumetric quality during animation
 
+// Shadow System uniforms
+uniform bool uShadowEnabled;
+uniform int uShadowQuality;           // 0=low, 1=medium, 2=high, 3=ultra
+uniform float uShadowSoftness;        // 0.0-2.0 penumbra softness
+uniform int uShadowAnimationMode;     // 0=pause, 1=low, 2=full
+
 varying vec3 vPosition;
 varying vec2 vUv;
 
@@ -1103,6 +1109,39 @@ float calcSoftShadow(vec3 ro, vec3 rd, float mint, float maxt, float k) {
     return clamp(res, 0.0, 1.0);
 }
 
+// Quality-aware soft shadow with variable sample count and improved penumbra
+// quality: 0=low(8), 1=medium(16), 2=high(24), 3=ultra(32)
+// softness: 0.0-2.0 controls penumbra size (0=hard, 2=very soft)
+float calcSoftShadowQuality(vec3 ro, vec3 rd, float mint, float maxt, float softness, int quality) {
+    // Sample counts based on quality level
+    int maxSteps = 8 + quality * 8;
+
+    float res = 1.0;
+    float t = mint;
+    float ph = 1e10;
+
+    // Softness affects penumbra size (k parameter)
+    // softness=0 -> k=64 (hard shadows), softness=2 -> k=4 (very soft)
+    float k = mix(64.0, 4.0, softness * 0.5);
+
+    // Unrolled loop with max 32 iterations (ultra quality)
+    for (int i = 0; i < 32; i++) {
+        if (i >= maxSteps || t > maxt) break;
+
+        float h = GetDist(ro + rd * t);
+        if (h < 0.001) return 0.0;
+
+        // Improved soft shadow technique (Inigo Quilez)
+        float y = h * h / (2.0 * ph);
+        float d = sqrt(h * h - y * y);
+        res = min(res, k * d / max(0.0, t - y));
+        ph = h;
+
+        t += clamp(h, 0.02, 0.25);
+    }
+    return clamp(res, 0.0, 1.0);
+}
+
 // Compute rotation matrix from basis vectors for light transformation
 // The basis vectors define the orientation of the 3D slice in D-space
 // We use the first 3 components to build a 3x3 rotation matrix
@@ -1341,14 +1380,50 @@ void main() {
         // Skip negligible contributions
         if (attenuation < 0.001) continue;
 
-        // Diffuse (Lambert)
-        float NdotL = max(dot(n, l), 0.0);
-        col += surfaceColor * uLightColors[i] * NdotL * uDiffuseIntensity * attenuation;
+        // Calculate shadow
+        // uShadowAnimationMode: 0=pause (skip in fast mode), 1=low (use low quality), 2=full
+        float shadow = 1.0;
+        if (uShadowEnabled) {
+            bool shouldRenderShadow = !uFastMode || uShadowAnimationMode > 0;
 
-        // Specular (Blinn-Phong)
+            if (shouldRenderShadow) {
+                vec3 shadowOrigin = p + n * 0.02; // Offset to avoid self-shadowing
+                vec3 shadowDir = l;
+                float shadowMaxDist;
+
+                if (lightType == LIGHT_TYPE_DIRECTIONAL) {
+                    shadowMaxDist = 10.0;
+                } else {
+                    shadowMaxDist = length(uLightPositions[i] - p);
+                }
+
+                // Determine quality to use
+                int effectiveQuality = uShadowQuality;
+                if (uFastMode && uShadowAnimationMode == 1) {
+                    effectiveQuality = 0; // Force low quality during animation
+                }
+
+                // For spot lights, only calculate shadow if within cone
+                if (lightType == LIGHT_TYPE_SPOT) {
+                    vec3 lightToFrag = normalize(p - uLightPositions[i]);
+                    float spotEffect = getSpotAttenuation(i, lightToFrag);
+                    if (spotEffect > 0.001) {
+                        shadow = calcSoftShadowQuality(shadowOrigin, shadowDir, 0.02, shadowMaxDist, uShadowSoftness, effectiveQuality);
+                    }
+                } else {
+                    shadow = calcSoftShadowQuality(shadowOrigin, shadowDir, 0.02, shadowMaxDist, uShadowSoftness, effectiveQuality);
+                }
+            }
+        }
+
+        // Diffuse (Lambert) with shadow
+        float NdotL = max(dot(n, l), 0.0);
+        col += surfaceColor * uLightColors[i] * NdotL * uDiffuseIntensity * attenuation * shadow;
+
+        // Specular (Blinn-Phong) with shadow
         vec3 halfDir = normalize(l + viewDir);
         float NdotH = max(dot(n, halfDir), 0.0);
-        float spec = pow(NdotH, uSpecularPower) * uSpecularIntensity * attenuation;
+        float spec = pow(NdotH, uSpecularPower) * uSpecularIntensity * attenuation * shadow;
         col += uSpecularColor * uLightColors[i] * spec;
 
         // Track total light for fresnel calculation

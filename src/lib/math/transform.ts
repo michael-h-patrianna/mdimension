@@ -4,8 +4,15 @@
  * Transformation order: Scale → Rotation → Shear → Translation
  */
 
-import { createIdentityMatrix, multiplyMatrices } from './matrix'
+import { copyMatrix, createIdentityMatrix, createZeroMatrix, multiplyMatricesInto } from './matrix'
 import type { MatrixND, VectorND } from './types'
+
+/**
+ * Module-level scratch matrices for composition operations.
+ * Keyed by dimension to support different matrix sizes.
+ * Avoids allocation during animation loops.
+ */
+const compositionScratch = new Map<number, { a: MatrixND; b: MatrixND }>()
 
 /**
  * Creates a non-uniform scale matrix
@@ -149,10 +156,11 @@ export function createTranslationMatrix(dimension: number, translation: VectorND
  * @param translation - Translation vector
  * @param out - Optional output vector to avoid allocation
  * @returns Translated vector
- * @throws {Error} If vectors have different dimensions
+ * @throws {Error} If vectors have different dimensions (DEV only)
+ * @note Validation is DEV-only for performance in production hot paths
  */
 export function translateVector(vector: VectorND, translation: VectorND, out?: VectorND): VectorND {
-  if (vector.length !== translation.length) {
+  if (import.meta.env.DEV && vector.length !== translation.length) {
     throw new Error(`Vector dimensions must match: ${vector.length} !== ${translation.length}`)
   }
 
@@ -211,12 +219,16 @@ export function fromHomogeneous(vector: VectorND): VectorND {
  * Standard order: [Translation, Shear, Rotation, Scale]
  * So Scale is applied first, then Rotation, then Shear, then Translation
  *
+ * Uses pre-allocated scratch buffers and swap-based composition to avoid
+ * intermediate allocations during animation loops.
+ *
  * @param matrices - Array of transformation matrices to compose
  * @returns The composed transformation matrix
- * @throws {Error} If matrices array is empty or matrices have incompatible dimensions
+ * @throws {Error} If matrices array is empty or matrices have incompatible dimensions (DEV only)
+ * @note Validation is DEV-only for performance in production hot paths
  */
 export function composeTransformations(matrices: MatrixND[]): MatrixND {
-  if (matrices.length === 0) {
+  if (import.meta.env.DEV && matrices.length === 0) {
     throw new Error('Cannot compose empty array of matrices')
   }
 
@@ -224,11 +236,40 @@ export function composeTransformations(matrices: MatrixND[]): MatrixND {
     return matrices[0]!
   }
 
-  // Multiply from left to right (since we want right-to-left application)
-  let result = matrices[0]!
-  for (let i = 1; i < matrices.length; i++) {
-    result = multiplyMatrices(result, matrices[i]!)
+  // Get matrix dimensions (all must be same size for square transformation matrices)
+  const dim = matrices[0]!.length
+
+  // Get or create scratch buffers for this dimension
+  let scratch = compositionScratch.get(dim)
+  if (!scratch) {
+    scratch = {
+      a: createZeroMatrix(dim, dim),
+      b: createZeroMatrix(dim, dim),
+    }
+    compositionScratch.set(dim, scratch)
   }
+
+  // Copy first matrix into scratch.a
+  copyMatrix(matrices[0]!, scratch.a)
+
+  // Swap-based composition: alternate between a and b buffers
+  let current = scratch.a
+  let next = scratch.b
+
+  for (let i = 1; i < matrices.length; i++) {
+    // Multiply current * matrices[i] into next
+    multiplyMatricesInto(next, current, matrices[i]!)
+
+    // Swap references
+    const temp = current
+    current = next
+    next = temp
+  }
+
+  // Create a new result matrix and copy the final result
+  // (We return a new matrix to avoid aliasing issues with the scratch buffers)
+  const result = createZeroMatrix(dim, dim)
+  copyMatrix(current, result)
 
   return result
 }

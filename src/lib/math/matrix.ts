@@ -90,6 +90,85 @@ export function multiplyMatrices(a: MatrixND, b: MatrixND, out?: MatrixND): Matr
 }
 
 /**
+ * Module-level scratch matrix for aliasing protection in multiplyMatricesInto.
+ * Keyed by "rows,cols" to support different matrix sizes.
+ */
+const aliasScratchMatrices = new Map<string, MatrixND>()
+
+/**
+ * Gets or creates a scratch matrix for aliasing protection
+ * @param rows - Number of rows
+ * @param cols - Number of columns
+ * @returns A scratch matrix of the specified size
+ */
+function getAliasScratch(rows: number, cols: number): MatrixND {
+  const key = `${rows},${cols}`
+  let scratch = aliasScratchMatrices.get(key)
+  if (!scratch) {
+    scratch = createZeroMatrix(rows, cols)
+    aliasScratchMatrices.set(key, scratch)
+  }
+  return scratch
+}
+
+/**
+ * Multiplies two matrices and writes the result directly into an output buffer.
+ * This is the allocation-free variant for hot paths (animation loops).
+ *
+ * Formula: out[i][j] = Σ(A[i][k] * B[k][j])
+ *
+ * IMPORTANT: Handles aliasing safely - if out === a or out === b, uses internal
+ * scratch buffer to compute result before copying to out.
+ *
+ * @param out - Pre-allocated output matrix (must be aRows × bCols). Modified in place.
+ * @param a - First matrix (m×n)
+ * @param b - Second matrix (n×p)
+ * @throws {Error} If matrix dimensions are incompatible (DEV only)
+ * @note Validation is DEV-only for performance in production hot paths
+ */
+export function multiplyMatricesInto(out: MatrixND, a: MatrixND, b: MatrixND): void {
+  const aRows = a.length
+  const aCols = a[0]!.length
+  const bRows = b.length
+  const bCols = b[0]!.length
+
+  if (import.meta.env.DEV) {
+    if (aRows === 0 || bRows === 0) {
+      throw new Error('Cannot multiply empty matrices')
+    }
+    if (aCols !== bRows) {
+      throw new Error(
+        `Matrix dimensions incompatible for multiplication: ${aRows}×${aCols} and ${bRows}×${bCols}`
+      )
+    }
+  }
+
+  // Handle aliasing: if out is the same reference as a or b, we need a temp buffer
+  const isAliased = out === a || out === b
+  const target = isAliased ? getAliasScratch(aRows, bCols) : out
+
+  // Compute matrix multiplication into target
+  for (let i = 0; i < aRows; i++) {
+    for (let j = 0; j < bCols; j++) {
+      let sum = 0
+      for (let k = 0; k < aCols; k++) {
+        sum += a[i]![k]! * b[k]![j]!
+      }
+      target[i]![j] = sum
+    }
+  }
+
+  // Copy from scratch to out if we used aliasing protection
+  if (isAliased) {
+    for (let i = 0; i < aRows; i++) {
+      for (let j = 0; j < bCols; j++) {
+        out[i]![j] = target[i]![j]!
+      }
+    }
+  }
+}
+
+/**
  * Multiplies a matrix by a vector
  * Formula: b[i] = Σ(M[i][j] * v[j])
  * @param m - Matrix (n×m)
