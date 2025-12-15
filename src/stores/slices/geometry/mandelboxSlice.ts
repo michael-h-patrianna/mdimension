@@ -185,4 +185,128 @@ export const createMandelboxSlice: StateCreator<ExtendedObjectSlice, [], [], Man
       mandelbox: { ...state.mandelbox, juliaRadius: clampedRadius },
     }))
   },
+
+  // --- Dimension Mixing Actions (Technique A) ---
+  setMandelboxDimensionMixEnabled: (enabled) => {
+    set((state) => ({
+      mandelbox: { ...state.mandelbox, dimensionMixEnabled: enabled },
+    }))
+  },
+
+  setMandelboxMixIntensity: (intensity) => {
+    // Range 0.0 to 0.3
+    const clampedIntensity = Math.max(0.0, Math.min(0.3, intensity))
+    set((state) => ({
+      mandelbox: { ...state.mandelbox, mixIntensity: clampedIntensity },
+    }))
+  },
+
+  setMandelboxMixFrequency: (frequency) => {
+    // Range 0.1 to 2.0
+    const clampedFrequency = Math.max(0.1, Math.min(2.0, frequency))
+    set((state) => ({
+      mandelbox: { ...state.mandelbox, mixFrequency: clampedFrequency },
+    }))
+  },
+
+  // --- Transform Alternation Actions (Technique B) ---
+  setMandelboxAlternateTransformEnabled: (enabled) => {
+    set((state) => ({
+      mandelbox: { ...state.mandelbox, alternateTransformEnabled: enabled },
+    }))
+  },
+
+  setMandelboxAlternatePeriod: (period) => {
+    // Only allow 2 or 3
+    const validPeriod = period === 3 ? 3 : 2
+    set((state) => ({
+      mandelbox: { ...state.mandelbox, alternatePeriod: validPeriod },
+    }))
+  },
+
+  setMandelboxAlternateType: (type) => {
+    // Validate type
+    const validTypes = ['twist', 'power', 'shift'] as const
+    const validType = validTypes.includes(type) ? type : 'twist'
+    set((state) => ({
+      mandelbox: { ...state.mandelbox, alternateType: validType },
+    }))
+  },
+
+  setMandelboxAlternateIntensity: (intensity) => {
+    // Range 0.0 to 1.0
+    const clampedIntensity = Math.max(0.0, Math.min(1.0, intensity))
+    set((state) => ({
+      mandelbox: { ...state.mandelbox, alternateIntensity: clampedIntensity },
+    }))
+  },
+
+  setMandelboxAlternateTwistAngle: (angle) => {
+    // Range 0.0 to PI/4
+    const clampedAngle = Math.max(0.0, Math.min(Math.PI / 4, angle))
+    set((state) => ({
+      mandelbox: { ...state.mandelbox, alternateTwistAngle: clampedAngle },
+    }))
+  },
+
+  setMandelboxAlternatePowerExponent: (exponent) => {
+    // Range 1.5 to 4.0
+    const clampedExponent = Math.max(1.5, Math.min(4.0, exponent))
+    set((state) => ({
+      mandelbox: { ...state.mandelbox, alternatePowerExponent: clampedExponent },
+    }))
+  },
+
+  setMandelboxAlternateAnimationEnabled: (enabled) => {
+    set((state) => ({
+      mandelbox: { ...state.mandelbox, alternateAnimationEnabled: enabled },
+    }))
+  },
+
+  setMandelboxAlternateAnimationSpeed: (speed) => {
+    // Range 0.1 to 2.0
+    const clampedSpeed = Math.max(0.1, Math.min(2.0, speed))
+    set((state) => ({
+      mandelbox: { ...state.mandelbox, alternateAnimationSpeed: clampedSpeed },
+    }))
+  },
+
+  setMandelboxAlternateAnimationAmplitude: (amplitude) => {
+    // Range 0.0 to 0.5
+    const clampedAmplitude = Math.max(0.0, Math.min(0.5, amplitude))
+    set((state) => ({
+      mandelbox: { ...state.mandelbox, alternateAnimationAmplitude: clampedAmplitude },
+    }))
+  },
+
+  // --- Origin Drift Actions (Technique C) ---
+  setMandelboxOriginDriftEnabled: (enabled) => {
+    set((state) => ({
+      mandelbox: { ...state.mandelbox, originDriftEnabled: enabled },
+    }))
+  },
+
+  setMandelboxDriftAmplitude: (amplitude) => {
+    // Range 0.01 to 0.5
+    const clampedAmplitude = Math.max(0.01, Math.min(0.5, amplitude))
+    set((state) => ({
+      mandelbox: { ...state.mandelbox, driftAmplitude: clampedAmplitude },
+    }))
+  },
+
+  setMandelboxDriftBaseFrequency: (frequency) => {
+    // Range 0.01 to 0.5 (allow very slow animations to avoid jitter)
+    const clampedFrequency = Math.max(0.01, Math.min(0.5, frequency))
+    set((state) => ({
+      mandelbox: { ...state.mandelbox, driftBaseFrequency: clampedFrequency },
+    }))
+  },
+
+  setMandelboxDriftFrequencySpread: (spread) => {
+    // Range 0.0 to 1.0
+    const clampedSpread = Math.max(0.0, Math.min(1.0, spread))
+    set((state) => ({
+      mandelbox: { ...state.mandelbox, driftFrequencySpread: clampedSpread },
+    }))
+  },
 })

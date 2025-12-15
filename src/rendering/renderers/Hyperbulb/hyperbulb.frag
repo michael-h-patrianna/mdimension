@@ -114,6 +114,21 @@ uniform int uShadowQuality;           // 0=low, 1=medium, 2=high, 3=ultra
 uniform float uShadowSoftness;        // 0.0-2.0 penumbra softness
 uniform int uShadowAnimationMode;     // 0=pause, 1=low, 2=full
 
+// Power Animation uniforms (Technique B - power oscillation)
+uniform bool uPowerAnimationEnabled;
+uniform float uAnimatedPower;         // Computed on CPU: center + amplitude * sin(time * speed)
+
+// Alternate Power uniforms (Technique B variant - blend between two powers)
+uniform bool uAlternatePowerEnabled;
+uniform float uAlternatePowerValue;   // Second power value to blend with
+uniform float uAlternatePowerBlend;   // 0.0-1.0 blend factor
+
+// Dimension Mixing uniforms (Technique A - shear matrix inside iteration)
+// Note: Actual shader implementation pending - uniforms reserved for future use
+uniform bool uDimensionMixEnabled;
+uniform float uMixIntensity;          // 0.0-0.3 strength of mixing
+uniform float uMixTime;               // Animated time for mixing matrix
+
 in vec3 vPosition;
 in vec2 vUv;
 
@@ -146,6 +161,24 @@ in vec2 vUv;
 #define PAL_COMP 2
 #define PAL_TRIAD 3
 #define PAL_SPLIT 4
+
+// ============================================
+// Power animation helper (Technique B)
+// Returns effective power value considering animation and alternate power
+// ============================================
+
+float getEffectivePower() {
+    // Start with base power (possibly animated)
+    float basePower = uPowerAnimationEnabled ? uAnimatedPower : uPower;
+
+    // Apply alternate power blending if enabled
+    if (uAlternatePowerEnabled) {
+        basePower = mix(basePower, uAlternatePowerValue, uAlternatePowerBlend);
+    }
+
+    // Clamp to minimum safe value
+    return max(basePower, 2.0);
+}
 
 // ============================================
 // Color utilities (kept minimal)
@@ -963,7 +996,7 @@ float sdfHighD_simple(vec3 pos, int D, float pwr, float bail, int maxIt) {
 // ============================================
 
 float GetDist(vec3 pos) {
-    float pwr = max(uPower, 2.0);
+    float pwr = getEffectivePower();
     float bail = max(uEscapeRadius, 2.0);
     // Use reduced iterations in fast mode for better performance
     int maxIterLimit = uFastMode ? MAX_ITER_LQ : MAX_ITER_HQ;
@@ -979,7 +1012,7 @@ float GetDist(vec3 pos) {
 }
 
 float GetDistWithTrap(vec3 pos, out float trap) {
-    float pwr = max(uPower, 2.0);
+    float pwr = getEffectivePower();
     float bail = max(uEscapeRadius, 2.0);
     // Calculate iteration limit based on performance mode and quality multiplier
     // Fast mode: use LQ settings immediately

@@ -151,4 +151,58 @@ export const createMengerSlice: StateCreator<ExtendedObjectSlice, [], [], Menger
       menger: { ...state.menger, sliceSweepSpeed: clampedSpeed },
     }))
   },
+
+  // --- Dimension Mixing Actions (Technique A) ---
+  setMengerDimensionMixEnabled: (enabled) => {
+    set((state) => ({
+      menger: { ...state.menger, dimensionMixEnabled: enabled },
+    }))
+  },
+
+  setMengerMixIntensity: (intensity) => {
+    // Range 0.0 to 0.3
+    const clampedIntensity = Math.max(0.0, Math.min(0.3, intensity))
+    set((state) => ({
+      menger: { ...state.menger, mixIntensity: clampedIntensity },
+    }))
+  },
+
+  setMengerMixFrequency: (frequency) => {
+    // Range 0.1 to 2.0
+    const clampedFrequency = Math.max(0.1, Math.min(2.0, frequency))
+    set((state) => ({
+      menger: { ...state.menger, mixFrequency: clampedFrequency },
+    }))
+  },
+
+  // --- Origin Drift Actions (Technique C) ---
+  setMengerOriginDriftEnabled: (enabled) => {
+    set((state) => ({
+      menger: { ...state.menger, originDriftEnabled: enabled },
+    }))
+  },
+
+  setMengerDriftAmplitude: (amplitude) => {
+    // Range 0.01 to 0.5
+    const clampedAmplitude = Math.max(0.01, Math.min(0.5, amplitude))
+    set((state) => ({
+      menger: { ...state.menger, driftAmplitude: clampedAmplitude },
+    }))
+  },
+
+  setMengerDriftBaseFrequency: (frequency) => {
+    // Range 0.01 to 0.5 (allow very slow animations to avoid jitter)
+    const clampedFrequency = Math.max(0.01, Math.min(0.5, frequency))
+    set((state) => ({
+      menger: { ...state.menger, driftBaseFrequency: clampedFrequency },
+    }))
+  },
+
+  setMengerDriftFrequencySpread: (spread) => {
+    // Range 0.0 to 1.0
+    const clampedSpread = Math.max(0.0, Math.min(1.0, spread))
+    set((state) => ({
+      menger: { ...state.menger, driftFrequencySpread: clampedSpread },
+    }))
+  },
 })

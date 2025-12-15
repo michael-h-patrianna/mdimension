@@ -191,7 +191,7 @@ export const DEFAULT_GROUND_MATERIAL_ENVMAP_INTENSITY = 1.6
 // Skybox Defaults
 // ============================================================================
 
-export type SkyboxTexture = 'space_blue' | 'space_lightblue' | 'space_red' | 'none'
+export type SkyboxTexture = 'space_blue' | 'space_lightblue' | 'space_red' | 'quantum_void' | 'none'
 
 export const DEFAULT_SKYBOX_ENABLED = true
 export const DEFAULT_SKYBOX_TEXTURE: SkyboxTexture = 'space_blue'

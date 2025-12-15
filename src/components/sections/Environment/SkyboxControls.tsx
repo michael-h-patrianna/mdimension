@@ -10,6 +10,7 @@ import { SkyboxTexture, SkyboxAnimationMode } from '@/stores/defaults/visualDefa
 import spaceBlueThumb from '@/assets/skyboxes/space_blue/thumbnail.png';
 import spaceLightBlueThumb from '@/assets/skyboxes/space_lightblue/thumbnail.png';
 import spaceRedThumb from '@/assets/skyboxes/space_red/thumbnail.png';
+import quantumVoidThumb from '@/assets/skyboxes/quantum_void/thumbnail.png';
 import checkmarkIcon from '@/assets/icons/checkmark.svg';
 import blockedIcon from '@/assets/icons/blocked.svg';
 import undoIcon from '@/assets/icons/undo.svg';
@@ -26,6 +27,7 @@ const SKYBOX_OPTIONS: SkyboxOption[] = [
   { id: 'space_blue', name: 'Deep Space', thumbnail: spaceBlueThumb, description: 'Cold, deep space environment' },
   { id: 'space_lightblue', name: 'Nebula', thumbnail: spaceLightBlueThumb, description: 'Bright nebula with stars' },
   { id: 'space_red', name: 'Red Giant', thumbnail: spaceRedThumb, description: 'Warm, intense red space' },
+  { id: 'quantum_void', name: 'Quantum Void', thumbnail: quantumVoidThumb, description: 'Deep, abstract void' },
 ];
 
 const ANIMATION_MODES: { value: SkyboxAnimationMode; label: string }[] = [

@@ -379,6 +379,99 @@ export interface MandelbrotConfig {
    * Default: 1e-12
    */
   epsilon: number
+
+  // === Power Animation (Hyperbulb-specific) ===
+
+  /**
+   * Enable/disable power animation.
+   * Animates the mandelbulbPower parameter for dramatic morphing.
+   * Uses multi-frequency organic motion for non-repeating patterns.
+   */
+  powerAnimationEnabled: boolean
+
+  /**
+   * Minimum power value during animation (2.0 to 10.0, default 5.0).
+   * Lower values create more "blobby" shapes.
+   */
+  powerMin: number
+
+  /**
+   * Maximum power value during animation (4.0 to 16.0, default 12.0).
+   * Higher values create more detailed, spiky shapes.
+   */
+  powerMax: number
+
+  /**
+   * Speed of power animation (0.01 to 0.2, default 0.03).
+   * Lower values create slower, more dramatic morphing.
+   * Uses multi-frequency curve for organic, non-repeating motion.
+   */
+  powerSpeed: number
+
+  // === Alternate Power (Hyperbulb variant of Technique B) ===
+
+  /**
+   * Enable/disable power alternation per iteration.
+   * Uses different power values for even/odd iterations.
+   */
+  alternatePowerEnabled: boolean
+
+  /**
+   * Power value for odd iterations (2.0 to 16.0, default 4.0).
+   * Creates hybrid bulb forms by mixing two powers.
+   */
+  alternatePowerValue: number
+
+  /**
+   * Blend factor between base and alternate power (0.0 to 1.0, default 0.5).
+   * 0 = fully base power, 1 = fully alternate on odd iterations.
+   */
+  alternatePowerBlend: number
+
+  // === Dimension Mixing Animation (Technique A) ===
+
+  /**
+   * Enable/disable dimension mixing inside iteration.
+   * Applies a time-varying shear matrix to create morphing during rotation.
+   */
+  dimensionMixEnabled: boolean
+
+  /**
+   * Strength of off-diagonal mixing (0.0 to 0.3, default 0.1).
+   * Higher values create more dramatic cross-dimensional coupling.
+   */
+  mixIntensity: number
+
+  /**
+   * How fast the mixing matrix evolves (0.1 to 2.0, default 0.5).
+   * Multiplied by global animation speed.
+   */
+  mixFrequency: number
+
+  // === Origin Drift Animation (Technique C) ===
+
+  /**
+   * Enable/disable origin drift in extra dimensions.
+   * Creates slow multi-frequency wandering for feature birth/death effects.
+   */
+  originDriftEnabled: boolean
+
+  /**
+   * Maximum displacement in extra dimensions (0.01 to 0.5, default 0.1).
+   */
+  driftAmplitude: number
+
+  /**
+   * Base oscillation frequency in Hz (0.05 to 0.5, default 0.1).
+   * Multiplied by global animation speed.
+   */
+  driftBaseFrequency: number
+
+  /**
+   * Per-dimension frequency variation (0.0 to 1.0, default 0.3).
+   * Higher values create more beating patterns between dimensions.
+   */
+  driftFrequencySpread: number
 }
 
 /**
@@ -417,6 +510,26 @@ export const DEFAULT_MANDELBROT_CONFIG: MandelbrotConfig = {
   boundaryThreshold: [0.1, 0.9], // Show points with escape time 10%-90% of maxIter
   mandelbulbPower: 8, // Classic Mandelbulb/Hyperbulb power
   epsilon: 1e-12, // Numerical stability for hyperspherical calculations
+  // Power Animation defaults (Hyperbulb-specific)
+  // Uses multi-frequency organic motion for smooth, non-repeating animation
+  powerAnimationEnabled: false,
+  powerMin: 5.0, // Creates blobby shapes at low end
+  powerMax: 12.0, // Creates detailed shapes at high end
+  powerSpeed: 0.03, // Very slow organic wandering
+  // Alternate Power defaults
+  alternatePowerEnabled: false,
+  alternatePowerValue: 4.0,
+  alternatePowerBlend: 0.5,
+  // Dimension Mixing defaults (Technique A)
+  dimensionMixEnabled: false,
+  mixIntensity: 0.1,
+  mixFrequency: 0.5,
+  // Origin Drift defaults (Technique C)
+  // NOTE: Conservative defaults for smooth, slow morphing
+  originDriftEnabled: false,
+  driftAmplitude: 0.03, // Very subtle displacement to avoid jitter
+  driftBaseFrequency: 0.04, // Slow oscillation (~25 second cycle)
+  driftFrequencySpread: 0.2, // Moderate phase spread
 }
 
 // ============================================================================
@@ -549,6 +662,105 @@ export interface MandelboxConfig {
    * Higher values explore more extreme regions of parameter space.
    */
   juliaRadius: number
+
+  // === Dimension Mixing Animation (Technique A) ===
+
+  /**
+   * Enable/disable dimension mixing inside iteration.
+   * Applies a time-varying shear matrix to create morphing during rotation.
+   */
+  dimensionMixEnabled: boolean
+
+  /**
+   * Strength of off-diagonal mixing (0.0 to 0.3, default 0.1).
+   * Higher values create more dramatic cross-dimensional coupling.
+   */
+  mixIntensity: number
+
+  /**
+   * How fast the mixing matrix evolves (0.1 to 2.0, default 0.5).
+   * Multiplied by global animation speed.
+   */
+  mixFrequency: number
+
+  // === Transform Alternation Animation (Technique B) ===
+
+  /**
+   * Enable/disable transform alternation per iteration.
+   * Alternates between standard and alternate transforms for organic morphing.
+   */
+  alternateTransformEnabled: boolean
+
+  /**
+   * Period of alternation (2 or 3).
+   * 2 = even/odd iterations, 3 = cycle through 3 variants.
+   */
+  alternatePeriod: 2 | 3
+
+  /**
+   * Type of alternate transform to apply.
+   * - twist: Rotation around an axis
+   * - power: Bulb-like power mapping
+   * - shift: Offset fold center
+   */
+  alternateType: 'twist' | 'power' | 'shift'
+
+  /**
+   * Blend factor for alternate transform (0.0 to 1.0, default 0.5).
+   * 0 = fully standard, 1 = fully alternate.
+   */
+  alternateIntensity: number
+
+  /**
+   * Rotation angle for twist type (0.0 to PI/4, default PI/8).
+   */
+  alternateTwistAngle: number
+
+  /**
+   * Power exponent for power type (1.5 to 4.0, default 2.0).
+   */
+  alternatePowerExponent: number
+
+  /**
+   * Enable animation of alternate intensity.
+   * When enabled, intensity oscillates over time.
+   */
+  alternateAnimationEnabled: boolean
+
+  /**
+   * Speed of intensity oscillation (0.1 to 2.0, default 0.5).
+   */
+  alternateAnimationSpeed: number
+
+  /**
+   * Amplitude of intensity oscillation (0.0 to 0.5, default 0.2).
+   */
+  alternateAnimationAmplitude: number
+
+  // === Origin Drift Animation (Technique C) ===
+
+  /**
+   * Enable/disable origin drift in extra dimensions.
+   * Creates slow multi-frequency wandering for feature birth/death effects.
+   */
+  originDriftEnabled: boolean
+
+  /**
+   * Maximum displacement in extra dimensions (0.01 to 0.5, default 0.1).
+   */
+  driftAmplitude: number
+
+  /**
+   * Base oscillation frequency in Hz (0.05 to 0.5, default 0.1).
+   * Multiplied by global animation speed.
+   */
+  driftBaseFrequency: number
+
+  /**
+   * Per-dimension frequency variation (0.0 to 1.0, default 0.3).
+   * Higher values create more beating patterns between dimensions.
+   */
+  driftFrequencySpread: number
 }
 
 /**
@@ -572,6 +784,26 @@ export const DEFAULT_MANDELBOX_CONFIG: MandelboxConfig = {
   juliaMode: false,
   juliaSpeed: 1.0,
   juliaRadius: 1.0,
+  // Dimension Mixing defaults (Technique A)
+  dimensionMixEnabled: false,
+  mixIntensity: 0.1,
+  mixFrequency: 0.5,
+  // Transform Alternation defaults (Technique B)
+  alternateTransformEnabled: false,
+  alternatePeriod: 2,
+  alternateType: 'twist',
+  alternateIntensity: 0.5,
+  alternateTwistAngle: Math.PI / 8,
+  alternatePowerExponent: 2.0,
+  alternateAnimationEnabled: false,
+  alternateAnimationSpeed: 0.5,
+  alternateAnimationAmplitude: 0.2,
+  // Origin Drift defaults (Technique C)
+  // NOTE: Conservative defaults for smooth, slow morphing
+  originDriftEnabled: false,
+  driftAmplitude: 0.03, // Very subtle displacement to avoid jitter
+  driftBaseFrequency: 0.04, // Slow oscillation (~25 second cycle)
+  driftFrequencySpread: 0.2, // Moderate phase spread
 }
 
 // ============================================================================
@@ -680,6 +912,51 @@ export interface MengerConfig {
    * Higher values create faster sweeping.
    */
   sliceSweepSpeed: number
+
+  // === Dimension Mixing Animation (Technique A) ===
+
+  /**
+   * Enable/disable dimension mixing inside iteration.
+   * Applies a time-varying shear matrix to create morphing during rotation.
+   */
+  dimensionMixEnabled: boolean
+
+  /**
+   * Strength of off-diagonal mixing (0.0 to 0.3, default 0.1).
+   * Higher values create more dramatic cross-dimensional coupling.
+   */
+  mixIntensity: number
+
+  /**
+   * How fast the mixing matrix evolves (0.1 to 2.0, default 0.5).
+   * Multiplied by global animation speed.
+   */
+  mixFrequency: number
+
+  // === Origin Drift Animation (Technique C) ===
+
+  /**
+   * Enable/disable origin drift in extra dimensions.
+   * Creates slow multi-frequency wandering for feature birth/death effects.
+   */
+  originDriftEnabled: boolean
+
+  /**
+   * Maximum displacement in extra dimensions (0.01 to 0.5, default 0.1).
+   */
+  driftAmplitude: number
+
+  /**
+   * Base oscillation frequency in Hz (0.05 to 0.5, default 0.1).
+   * Multiplied by global animation speed.
+   */
+  driftBaseFrequency: number
+
+  /**
+   * Per-dimension frequency variation (0.0 to 1.0, default 0.3).
+   * Higher values create more beating patterns between dimensions.
+   */
+  driftFrequencySpread: number
 }
 
 /**
@@ -701,6 +978,16 @@ export const DEFAULT_MENGER_CONFIG: MengerConfig = {
   sliceSweepEnabled: false,
   sliceSweepAmplitude: 1.0,
   sliceSweepSpeed: 0.5,
+  // Dimension Mixing defaults (Technique A)
+  dimensionMixEnabled: false,
+  mixIntensity: 0.1,
+  mixFrequency: 0.5,
+  // Origin Drift defaults (Technique C)
+  // NOTE: Conservative defaults for smooth, slow morphing
+  originDriftEnabled: false,
+  driftAmplitude: 0.03, // Very subtle displacement to avoid jitter
+  driftBaseFrequency: 0.04, // Slow oscillation (~25 second cycle)
+  driftFrequencySpread: 0.2, // Moderate phase spread
 }
 
 // ============================================================================

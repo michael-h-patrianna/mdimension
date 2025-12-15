@@ -262,4 +262,112 @@ export const createMandelbrotSlice: StateCreator<ExtendedObjectSlice, [], [], Ma
   getMandelbrotConfig: () => {
     return { ...get().mandelbrot }
   },
+
+  // --- Power Animation Actions (Hyperbulb-specific) ---
+  setMandelbrotPowerAnimationEnabled: (enabled) => {
+    set((state) => ({
+      mandelbrot: { ...state.mandelbrot, powerAnimationEnabled: enabled },
+    }))
+  },
+
+  setMandelbrotPowerMin: (min) => {
+    // Range 2.0 to 16.0 (expanded for more variety)
+    const clampedMin = Math.max(2.0, Math.min(16.0, min))
+    set((state) => ({
+      mandelbrot: { ...state.mandelbrot, powerMin: clampedMin },
+    }))
+  },
+
+  setMandelbrotPowerMax: (max) => {
+    // Range 3.0 to 24.0 (expanded for more variety)
+    const clampedMax = Math.max(3.0, Math.min(24.0, max))
+    set((state) => ({
+      mandelbrot: { ...state.mandelbrot, powerMax: clampedMax },
+    }))
+  },
+
+  setMandelbrotPowerSpeed: (speed) => {
+    // Range 0.01 to 0.2 (very slow for organic wandering)
+    const clampedSpeed = Math.max(0.01, Math.min(0.2, speed))
+    set((state) => ({
+      mandelbrot: { ...state.mandelbrot, powerSpeed: clampedSpeed },
+    }))
+  },
+
+  // --- Alternate Power Actions (Technique B variant) ---
+  setMandelbrotAlternatePowerEnabled: (enabled) => {
+    set((state) => ({
+      mandelbrot: { ...state.mandelbrot, alternatePowerEnabled: enabled },
+    }))
+  },
+
+  setMandelbrotAlternatePowerValue: (power) => {
+    // Range 2.0 to 16.0
+    const clampedPower = Math.max(2.0, Math.min(16.0, power))
+    set((state) => ({
+      mandelbrot: { ...state.mandelbrot, alternatePowerValue: clampedPower },
+    }))
+  },
+
+  setMandelbrotAlternatePowerBlend: (blend) => {
+    // Range 0.0 to 1.0
+    const clampedBlend = Math.max(0.0, Math.min(1.0, blend))
+    set((state) => ({
+      mandelbrot: { ...state.mandelbrot, alternatePowerBlend: clampedBlend },
+    }))
+  },
+
+  // --- Dimension Mixing Actions (Technique A) ---
+  setMandelbrotDimensionMixEnabled: (enabled) => {
+    set((state) => ({
+      mandelbrot: { ...state.mandelbrot, dimensionMixEnabled: enabled },
+    }))
+  },
+
+  setMandelbrotMixIntensity: (intensity) => {
+    // Range 0.0 to 0.3
+    const clampedIntensity = Math.max(0.0, Math.min(0.3, intensity))
+    set((state) => ({
+      mandelbrot: { ...state.mandelbrot, mixIntensity: clampedIntensity },
+    }))
+  },
+
+  setMandelbrotMixFrequency: (frequency) => {
+    // Range 0.1 to 2.0
+    const clampedFrequency = Math.max(0.1, Math.min(2.0, frequency))
+    set((state) => ({
+      mandelbrot: { ...state.mandelbrot, mixFrequency: clampedFrequency },
+    }))
+  },
+
+  // --- Origin Drift Actions (Technique C) ---
+  setMandelbrotOriginDriftEnabled: (enabled) => {
+    set((state) => ({
+      mandelbrot: { ...state.mandelbrot, originDriftEnabled: enabled },
+    }))
+  },
+
+  setMandelbrotDriftAmplitude: (amplitude) => {
+    // Range 0.01 to 0.5
+    const clampedAmplitude = Math.max(0.01, Math.min(0.5, amplitude))
+    set((state) => ({
+      mandelbrot: { ...state.mandelbrot, driftAmplitude: clampedAmplitude },
+    }))
+  },
+
+  setMandelbrotDriftBaseFrequency: (frequency) => {
+    // Range 0.01 to 0.5 (allow very slow animations to avoid jitter)
+    const clampedFrequency = Math.max(0.01, Math.min(0.5, frequency))
+    set((state) => ({
+      mandelbrot: { ...state.mandelbrot, driftBaseFrequency: clampedFrequency },
+    }))
+  },
+
+  setMandelbrotDriftFrequencySpread: (spread) => {
+    // Range 0.0 to 1.0
+    const clampedSpread = Math.max(0.0, Math.min(1.0, spread))
+    set((state) => ({
+      mandelbrot: { ...state.mandelbrot, driftFrequencySpread: clampedSpread },
+    }))
+  },
 })

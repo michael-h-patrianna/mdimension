@@ -115,6 +115,12 @@ uniform int uShadowQuality;           // 0=low, 1=medium, 2=high, 3=ultra
 uniform float uShadowSoftness;        // 0.0-2.0 penumbra softness
 uniform int uShadowAnimationMode;     // 0=pause, 1=low, 2=full
 
+// Dimension Mixing uniforms (Technique A - shear matrix inside iteration)
+// Note: Actual shader implementation pending - uniforms reserved for future use
+uniform bool uDimensionMixEnabled;
+uniform float uMixIntensity;          // 0.0-0.3 strength of mixing
+uniform float uMixTime;               // Animated time for mixing matrix
+
 // Fold Twist Animation
 uniform bool uFoldTwistEnabled;
 uniform float uFoldTwistAngle;  // Current angle (includes time if animated)

@@ -1,4 +1,5 @@
 import { createColorCache, createLightColorCache, updateLinearColorUniform } from '@/rendering/colors/linearCache';
+import { computeDriftedOrigin, type OriginDriftConfig } from '@/lib/animation/originDrift';
 import { createLightUniforms, updateLightUniforms, type LightUniforms } from '@/rendering/lights/uniforms';
 import { composeRotations } from '@/lib/math/rotation';
 import type { MatrixND } from '@/lib/math/types';
@@ -8,6 +9,7 @@ import { SHADOW_QUALITY_TO_INT, SHADOW_ANIMATION_MODE_TO_INT } from '@/rendering
 import { RENDER_LAYERS } from '@/rendering/core/layers';
 import { TemporalDepthManager } from '@/rendering/core/TemporalDepthManager';
 import { createTemporalDepthUniforms } from '@/hooks';
+import { useAnimationStore } from '@/stores/animationStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import {
@@ -140,6 +142,36 @@ const HyperbulbMesh = () => {
   const escapeRadius = useExtendedObjectStore((state) => state.mandelbrot.escapeRadius);
   const parameterValues = useExtendedObjectStore((state) => state.mandelbrot.parameterValues);
 
+  // Power animation parameters (organic multi-frequency motion)
+  const powerAnimationEnabled = useExtendedObjectStore((state) => state.mandelbrot.powerAnimationEnabled);
+  const powerMin = useExtendedObjectStore((state) => state.mandelbrot.powerMin);
+  const powerMax = useExtendedObjectStore((state) => state.mandelbrot.powerMax);
+  const powerSpeed = useExtendedObjectStore((state) => state.mandelbrot.powerSpeed);
+
+  // Alternate power parameters (Technique B - blend between two powers)
+  const alternatePowerEnabled = useExtendedObjectStore((state) => state.mandelbrot.alternatePowerEnabled);
+  const alternatePowerValue = useExtendedObjectStore((state) => state.mandelbrot.alternatePowerValue);
+  const alternatePowerBlend = useExtendedObjectStore((state) => state.mandelbrot.alternatePowerBlend);
+
+  // Origin drift parameters (Technique C - animate slice origin in extra dims)
+  const originDriftEnabled = useExtendedObjectStore((state) => state.mandelbrot.originDriftEnabled);
+  const driftAmplitude = useExtendedObjectStore((state) => state.mandelbrot.driftAmplitude);
+  const driftBaseFrequency = useExtendedObjectStore((state) => state.mandelbrot.driftBaseFrequency);
+  const driftFrequencySpread = useExtendedObjectStore((state) => state.mandelbrot.driftFrequencySpread);
+
+  // Dimension mixing parameters (Technique A - shear matrix inside iteration)
+  const dimensionMixEnabled = useExtendedObjectStore((state) => state.mandelbrot.dimensionMixEnabled);
+  const mixIntensity = useExtendedObjectStore((state) => state.mandelbrot.mixIntensity);
+  const mixFrequency = useExtendedObjectStore((state) => state.mandelbrot.mixFrequency);
+
+  // Animation bias for per-dimension variation
+  const animationBias = useUIStore((state) => state.animationBias);
+
+  // Animation time tracking - only advances when isPlaying is true
+  const animationTimeRef = useRef(0);
+  const lastFrameTimeRef = useRef(0);
+  const lastPowerRef = useRef(8.0); // Track last power to avoid micro-updates
+
   // Get color state from visual store
   const faceColor = useAppearanceStore((state) => state.faceColor);
 
@@ -190,6 +222,20 @@ const HyperbulbMesh = () => {
       uPower: { value: 8.0 },
       uIterations: { value: 48.0 },
       uEscapeRadius: { value: 8.0 },
+
+      // Power Animation uniforms (Technique B - power oscillation)
+      uPowerAnimationEnabled: { value: false },
+      uAnimatedPower: { value: 8.0 },  // Computed power = center + amplitude * sin(time * speed)
+
+      // Alternate Power uniforms (Technique B variant - blend two powers)
+      uAlternatePowerEnabled: { value: false },
+      uAlternatePowerValue: { value: 4.0 },
+      uAlternatePowerBlend: { value: 0.5 },
+
+      // Dimension Mixing uniforms (Technique A - shear matrix)
+      uDimensionMixEnabled: { value: false },
+      uMixIntensity: { value: 0.1 },
+      uMixTime: { value: 0 },  // Animated mix time = animTime * mixFrequency
 
       // D-dimensional rotated coordinate system
       // c = uOrigin + pos.x * uBasisX + pos.y * uBasisY + pos.z * uBasisZ
@@ -290,6 +336,15 @@ const HyperbulbMesh = () => {
   }, []);
 
   useFrame((state) => {
+    // Update animation time - only advances when isPlaying is true
+    const currentTime = state.clock.elapsedTime;
+    const deltaTime = currentTime - lastFrameTimeRef.current;
+    lastFrameTimeRef.current = currentTime;
+    const isPlaying = useAnimationStore.getState().isPlaying;
+    if (isPlaying) {
+      animationTimeRef.current += deltaTime;
+    }
+
     if (meshRef.current) {
       const material = meshRef.current.material as THREE.ShaderMaterial;
 
@@ -347,9 +402,57 @@ const HyperbulbMesh = () => {
       if (material.uniforms.uDimension) material.uniforms.uDimension.value = dimension;
 
       // Update Hyperbulb parameters
-      if (material.uniforms.uPower) material.uniforms.uPower.value = mandelbulbPower;
       if (material.uniforms.uIterations) material.uniforms.uIterations.value = maxIterations;
       if (material.uniforms.uEscapeRadius) material.uniforms.uEscapeRadius.value = escapeRadius;
+
+      // Power: either animated or static
+      // When animated, directly set uPower (same as manually moving the slider)
+      if (material.uniforms.uPower) {
+        if (powerAnimationEnabled) {
+          // Use raw clock time directly (convert ms to seconds)
+          // powerSpeed 0.03 = one full cycle (back and forth) every ~33 seconds
+          const timeInSeconds = state.clock.elapsedTime / 1000;
+
+          // Sine wave oscillation - naturally eases at the peaks and troughs
+          // This creates smooth back-and-forth motion without any jump cuts
+          const t = timeInSeconds * powerSpeed * 2 * Math.PI;
+          const normalized = (Math.sin(t) + 1) / 2; // Maps [-1, 1] to [0, 1]
+
+          const targetPower = powerMin + normalized * (powerMax - powerMin);
+          material.uniforms.uPower.value = targetPower;
+        } else {
+          material.uniforms.uPower.value = mandelbulbPower;
+        }
+      }
+
+      // Disable the separate animation uniform system (not needed anymore)
+      if (material.uniforms.uPowerAnimationEnabled) {
+        material.uniforms.uPowerAnimationEnabled.value = false;
+      }
+
+      // Alternate Power (Technique B): blend between primary and alternate powers
+      if (material.uniforms.uAlternatePowerEnabled) {
+        material.uniforms.uAlternatePowerEnabled.value = alternatePowerEnabled;
+      }
+      if (material.uniforms.uAlternatePowerValue) {
+        material.uniforms.uAlternatePowerValue.value = alternatePowerValue;
+      }
+      if (material.uniforms.uAlternatePowerBlend) {
+        material.uniforms.uAlternatePowerBlend.value = alternatePowerBlend;
+      }
+
+      // Dimension Mixing (Technique A): update uniforms for shader-side mixing matrix
+      if (material.uniforms.uDimensionMixEnabled) {
+        material.uniforms.uDimensionMixEnabled.value = dimensionMixEnabled;
+      }
+      if (material.uniforms.uMixIntensity) {
+        material.uniforms.uMixIntensity.value = mixIntensity;
+      }
+      if (material.uniforms.uMixTime) {
+        // Mix time advances based on animation time and frequency
+        // The shader will use this to compute sin/cos values for the mixing matrix
+        material.uniforms.uMixTime.value = animationTimeRef.current * mixFrequency * 2 * Math.PI;
+      }
 
       // Update color and palette (cached linear conversion - only converts when color changes)
       const cache = colorCacheRef.current;
@@ -511,17 +614,10 @@ const HyperbulbMesh = () => {
         for (let i = 0; i < MAX_DIMENSION; i++) work.unitZ[i] = 0;
         work.unitZ[2] = 1;
 
-        // Clear and set up origin = [0, 0, 0, slice[0], slice[1], ...]
-        for (let i = 0; i < MAX_DIMENSION; i++) work.origin[i] = 0;
-        for (let i = 3; i < D; i++) {
-          work.origin[i] = parameterValues[i - 3] ?? 0;
-        }
-
         // Apply rotation to basis vectors using pre-allocated output arrays
         applyRotationInPlace(cachedRotationMatrixRef.current, work.unitX, work.rotatedX);
         applyRotationInPlace(cachedRotationMatrixRef.current, work.unitY, work.rotatedY);
         applyRotationInPlace(cachedRotationMatrixRef.current, work.unitZ, work.rotatedZ);
-        applyRotationInPlace(cachedRotationMatrixRef.current, work.origin, work.rotatedOrigin);
 
         // Update basis vector uniforms
         if (material.uniforms.uBasisX) {
@@ -536,15 +632,59 @@ const HyperbulbMesh = () => {
           const arr = material.uniforms.uBasisZ.value as Float32Array;
           arr.set(work.rotatedZ);
         }
-        if (material.uniforms.uOrigin) {
-          const arr = material.uniforms.uOrigin.value as Float32Array;
-          arr.set(work.rotatedOrigin);
-        }
 
         // Update tracking refs
         prevDimensionRef.current = dimension;
         prevParamValuesRef.current = [...parameterValues];
         basisVectorsDirtyRef.current = false;
+      }
+
+      // ============================================
+      // Origin Update (separate from basis vectors)
+      // Must update every frame when origin drift is enabled
+      // ============================================
+      const needsOriginUpdate = needsRecompute || originDriftEnabled;
+
+      if (needsOriginUpdate && cachedRotationMatrixRef.current) {
+        // Clear and set up origin = [0, 0, 0, slice[0], slice[1], ...]
+        for (let i = 0; i < MAX_DIMENSION; i++) work.origin[i] = 0;
+
+        // Apply origin drift if enabled (Technique C)
+        if (originDriftEnabled && D > 3) {
+          const driftConfig: OriginDriftConfig = {
+            enabled: true,
+            amplitude: driftAmplitude,
+            baseFrequency: driftBaseFrequency,
+            frequencySpread: driftFrequencySpread,
+          };
+          // Get animation speed from store for consistent drift timing
+          const animationSpeed = useAnimationStore.getState().speed;
+          const driftedOrigin = computeDriftedOrigin(
+            parameterValues,
+            animationTimeRef.current,
+            driftConfig,
+            animationSpeed,
+            animationBias
+          );
+          // Set drifted values for extra dimensions
+          for (let i = 3; i < D; i++) {
+            work.origin[i] = driftedOrigin[i - 3] ?? 0;
+          }
+        } else {
+          // No drift - use static parameter values
+          for (let i = 3; i < D; i++) {
+            work.origin[i] = parameterValues[i - 3] ?? 0;
+          }
+        }
+
+        // Apply rotation to origin
+        applyRotationInPlace(cachedRotationMatrixRef.current, work.origin, work.rotatedOrigin);
+
+        // Update origin uniform
+        if (material.uniforms.uOrigin) {
+          const arr = material.uniforms.uOrigin.value as Float32Array;
+          arr.set(work.rotatedOrigin);
+        }
       }
 
       // Model matrices are always identity for Hyperbulb - no need to set every frame

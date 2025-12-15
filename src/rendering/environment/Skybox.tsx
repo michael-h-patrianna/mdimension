@@ -1,7 +1,8 @@
+import { createSkyboxShaderDefaults, skyboxFragmentShader, skyboxVertexShader } from '@/rendering/shaders/materials/SkyboxShader';
 import { useAnimationStore } from '@/stores/animationStore';
 import { useEnvironmentStore } from '@/stores/environmentStore';
 import { Environment, shaderMaterial } from '@react-three/drei';
-import { extend, Object3DNode, useFrame, useThree } from '@react-three/fiber';
+import { extend, useFrame, useThree } from '@react-three/fiber';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader';
@@ -209,113 +210,12 @@ function usePMREMTexture(texture: THREE.CubeTexture | undefined): PMREMResult {
 // Import all skybox ktx2 files as URLs
 const skyboxAssets = import.meta.glob('/src/assets/skyboxes/**/*.ktx2', { eager: true, import: 'default', query: '?url' }) as Record<string, string>;
 
-// Standard cubemap order for Three.js
-const ORDER = ['right', 'left', 'top', 'bottom', 'front', 'back'];
-
-
 // --- Shader Definition ---
 
 const SkyboxMaterial = shaderMaterial(
-  {
-    uTex: null,
-    uRotation: new THREE.Matrix3(),
-    uBlur: 0,
-    uIntensity: 1,
-    uHue: 0,
-    uSaturation: 1,
-    uDistortion: 0,
-    uTime: 0,
-    uAberration: 0,
-  },
-  // Vertex Shader
-  `
-    varying vec3 vWorldDirection;
-    uniform mat3 uRotation;
-
-    void main() {
-      // Rotate the direction based on the matrix calculated in JS
-      vec3 worldPosition = (modelMatrix * vec4(position, 1.0)).xyz;
-      vWorldDirection = uRotation * normalize(worldPosition);
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-    }
-  `,
-  // Fragment Shader
-  `
-    uniform samplerCube uTex;
-    uniform float uBlur;
-    uniform float uIntensity;
-    uniform float uHue;
-    uniform float uSaturation;
-    uniform float uDistortion;
-    uniform float uAberration;
-    uniform float uTime;
-
-    varying vec3 vWorldDirection;
-
-    // HSV Helper
-    vec3 rgb2hsv(vec3 c) {
-        vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
-        vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
-        vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
-        float d = q.x - min(q.w, q.y);
-        float e = 1.0e-10;
-        return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
-    }
-
-    vec3 hsv2rgb(vec3 c) {
-        vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
-        vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
-        return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
-    }
-
-    void main() {
-        vec3 dir = normalize(vWorldDirection);
-
-        // Distortion (Heatwave effect)
-        if (uDistortion > 0.0) {
-            float noise = sin(dir.y * 20.0 + uTime * 2.0) * 0.01 * uDistortion;
-            dir.x += noise;
-            dir.z += noise;
-            dir = normalize(dir);
-        }
-
-        vec4 color;
-
-        // Chromatic Aberration
-        if (uAberration > 0.0) {
-            vec3 dirR = dir;
-            vec3 dirG = dir;
-            vec3 dirB = dir;
-
-            float spread = uAberration * 0.02;
-            dirR.x += spread;
-            dirB.x -= spread;
-
-            // Standard texture lookup (manual LOD approximation usually requires extension,
-            // but standard linear interpolation works for basic blur)
-            // Note: textureCubeLod requires GLSL3 or extension. We rely on bias for now if available.
-            float r = textureCube(uTex, dirR).r;
-            float g = textureCube(uTex, dirG).g;
-            float b = textureCube(uTex, dirB).b;
-            color = vec4(r, g, b, 1.0);
-        } else {
-            color = textureCube(uTex, dir);
-        }
-
-        // Apply Intensity
-        color.rgb *= uIntensity;
-
-        // Apply Hue/Saturation
-        if (uHue != 0.0 || uSaturation != 1.0) {
-            vec3 hsv = rgb2hsv(color.rgb);
-            hsv.x += uHue;
-            hsv.y *= uSaturation;
-            color.rgb = hsv2rgb(hsv);
-        }
-
-        gl_FragColor = color;
-    }
-  `
+  createSkyboxShaderDefaults(),
+  skyboxVertexShader,
+  skyboxFragmentShader
 );
 
 extend({ SkyboxMaterial });
@@ -323,15 +223,9 @@ extend({ SkyboxMaterial });
 // Add type definition for JSX
 declare module '@react-three/fiber' {
   interface ThreeElements {
-    skyboxMaterial: Object3DNode<THREE.ShaderMaterial, typeof SkyboxMaterial>
+    skyboxMaterial: React.JSX.IntrinsicElements['shaderMaterial']
   }
 }
-
-// --- Helpers ---
-
-const organicNoise = (t: number, seed: number = 0) => {
-  return Math.sin(t) * 0.5 + Math.sin(t * 2.13 + seed) * 0.25 + Math.sin(t * 0.87 + seed + 2) * 0.15;
-};
 
 // --- Main Component ---
 
@@ -447,7 +341,8 @@ const SkyboxMesh: React.FC<{ texture: THREE.CubeTexture }> = ({ texture }) => {
 
   return (
     <mesh>
-        <boxGeometry args={[1000, 1000, 1000]} />
+        {/* Use sphere geometry instead of box - no visible seams at corners */}
+        <sphereGeometry args={[500, 64, 32]} />
         <skyboxMaterial
             ref={materialRef}
             side={THREE.BackSide}
@@ -464,6 +359,10 @@ const SkyboxMesh: React.FC<{ texture: THREE.CubeTexture }> = ({ texture }) => {
             uDistortion={0}
             uAberration={0}
             uTime={0}
+            // Quality enhancement uniforms
+            uVignette={0.15}
+            uGrain={0.015}
+            uAtmosphere={0.0}
         />
     </mesh>
   );
@@ -522,7 +421,13 @@ const SkyboxLoader: React.FC = () => {
       ktx2Path,
       (loadedTexture) => {
         if (!cancelled) {
-          setTexture(loadedTexture as THREE.CubeTexture);
+          const cubeTexture = loadedTexture as THREE.CubeTexture;
+          // Configure texture for best quality
+          cubeTexture.minFilter = THREE.LinearMipmapLinearFilter;
+          cubeTexture.magFilter = THREE.LinearFilter;
+          cubeTexture.generateMipmaps = true;
+          cubeTexture.needsUpdate = true;
+          setTexture(cubeTexture);
           // Signal loading complete - resume animation and quality refinement
           setSkyboxLoading(false);
         }

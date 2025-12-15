@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState, type FC } from 'react';
 import { useAnimationStore, MIN_SPEED, MAX_SPEED } from '@/stores/animationStore';
 import { useUIStore } from '@/stores/uiStore';
 import { MIN_ANIMATION_BIAS, MAX_ANIMATION_BIAS } from '@/stores/defaults/visualDefaults'; // Constants can stay for now or move to defaults
@@ -9,7 +9,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { ToggleButton } from '@/components/ui/ToggleButton';
 import { AnimatePresence, m } from 'motion/react';
 
-export const TimelineControls: React.FC = () => {
+export const TimelineControls: FC = () => {
     const dimension = useGeometryStore((state) => state.dimension);
     const objectType = useGeometryStore((state) => state.objectType);
     
@@ -24,7 +24,7 @@ export const TimelineControls: React.FC = () => {
         toggleDirection,
         togglePlane,
         animateAll,
-        resetToFirstPlane
+        clearAllPlanes
     } = useAnimationStore(
         useShallow((state) => ({
             isPlaying: state.isPlaying,
@@ -36,39 +36,62 @@ export const TimelineControls: React.FC = () => {
             toggleDirection: state.toggleDirection,
             togglePlane: state.togglePlane,
             animateAll: state.animateAll,
-            resetToFirstPlane: state.resetToFirstPlane,
+            clearAllPlanes: state.clearAllPlanes,
         }))
     );
 
     const animationBias = useUIStore((state) => state.animationBias);
     const setAnimationBias = useUIStore((state) => state.setAnimationBias);
-    
-    // Mandelbox Settings
+
+    // Menger Settings (origin drift only)
     const {
-        mandelboxConfig,
-        setScaleAnimationEnabled,
-        setScaleCenter,
-        setScaleAmplitude,
-        setScaleSpeed,
-        setJuliaMode,
-        setJuliaSpeed,
-        setJuliaRadius,
+        mengerConfig,
+        setMengerOriginDriftEnabled,
+        setMengerDriftAmplitude,
+        setMengerDriftBaseFrequency,
     } = useExtendedObjectStore(
         useShallow((state) => ({
-          mandelboxConfig: state.mandelbox,
-          setScaleAnimationEnabled: state.setMandelboxScaleAnimationEnabled,
-          setScaleCenter: state.setMandelboxScaleCenter,
-          setScaleAmplitude: state.setMandelboxScaleAmplitude,
-          setScaleSpeed: state.setMandelboxScaleSpeed,
-          setJuliaMode: state.setMandelboxJuliaMode,
-          setJuliaSpeed: state.setMandelboxJuliaSpeed,
-          setJuliaRadius: state.setMandelboxJuliaRadius,
+          mengerConfig: state.menger,
+          setMengerOriginDriftEnabled: state.setMengerOriginDriftEnabled,
+          setMengerDriftAmplitude: state.setMengerDriftAmplitude,
+          setMengerDriftBaseFrequency: state.setMengerDriftBaseFrequency,
+        }))
+    );
+
+    // Hyperbulb Settings (power animation only)
+    const {
+        hyperbulbConfig,
+        setMandelbrotPowerAnimationEnabled,
+        setMandelbrotPowerMin,
+        setMandelbrotPowerMax,
+        setMandelbrotPowerSpeed,
+    } = useExtendedObjectStore(
+        useShallow((state) => ({
+          hyperbulbConfig: state.mandelbrot,
+          setMandelbrotPowerAnimationEnabled: state.setMandelbrotPowerAnimationEnabled,
+          setMandelbrotPowerMin: state.setMandelbrotPowerMin,
+          setMandelbrotPowerMax: state.setMandelbrotPowerMax,
+          setMandelbrotPowerSpeed: state.setMandelbrotPowerSpeed,
         }))
     );
 
     const planes = useMemo(() => getRotationPlanes(dimension), [dimension]);
     const hasAnimatingPlanes = animatingPlanes.size > 0;
-    
+
+    // Check if any fractal animation is enabled
+    const hasAnyFractalAnimation = useMemo(() => {
+        // Menger: origin drift only
+        const mengerAnimating = mengerConfig.originDriftEnabled;
+
+        // Hyperbulb: power animation only
+        const hyperbulbAnimating = hyperbulbConfig.powerAnimationEnabled;
+
+        return mengerAnimating || hyperbulbAnimating;
+    }, [mengerConfig.originDriftEnabled, hyperbulbConfig.powerAnimationEnabled]);
+
+    // Animation should only be paused when NOTHING is animating
+    const hasAnythingToAnimate = hasAnimatingPlanes || hasAnyFractalAnimation;
+
     const [showRotation, setShowRotation] = useState(false);
     const [showFractalAnim, setShowFractalAnim] = useState(false);
 
@@ -95,7 +118,7 @@ export const TimelineControls: React.FC = () => {
                                         Select All
                                     </button>
                                     <button
-                                        onClick={() => resetToFirstPlane(dimension)}
+                                        onClick={() => clearAllPlanes()}
                                         className="text-[10px] uppercase font-bold text-text-secondary hover:text-text-primary hover:bg-white/10 px-2 py-1 rounded transition-colors"
                                     >
                                         Deselect All
@@ -126,8 +149,9 @@ export const TimelineControls: React.FC = () => {
                     </m.div>
                 )}
 
-                {/* Fractal Animation Drawer */}
-                {showFractalAnim && objectType === 'mandelbox' && (
+
+                {/* Menger Fractal Animation Drawer */}
+                {showFractalAnim && objectType === 'menger' && (
                     <m.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -135,64 +159,77 @@ export const TimelineControls: React.FC = () => {
                         transition={{ duration: 0.2 }}
                         className="absolute bottom-full left-0 right-0 bg-panel-bg/95 backdrop-blur-xl border-t border-b border-panel-border z-20 shadow-2xl"
                     >
-                        <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-8">
-                            {/* Scale Animation */}
-                            <div className="space-y-3">
+                        <div className="p-4">
+                            {/* Origin Drift */}
+                            <div className="space-y-3 max-w-md">
                                 <div className="flex items-center justify-between">
-                                    <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">Scale Animation</label>
+                                    <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">Origin Drift</label>
                                     <ToggleButton
-                                        pressed={mandelboxConfig.scaleAnimationEnabled}
-                                        onToggle={() => setScaleAnimationEnabled(!mandelboxConfig.scaleAnimationEnabled)}
+                                        pressed={mengerConfig.originDriftEnabled}
+                                        onToggle={() => setMengerOriginDriftEnabled(!mengerConfig.originDriftEnabled)}
                                         className="text-xs px-2 py-1 h-auto"
-                                        ariaLabel="Toggle scale animation"
+                                        ariaLabel="Toggle origin drift"
                                     >
-                                        {mandelboxConfig.scaleAnimationEnabled ? 'ON' : 'OFF'}
+                                        {mengerConfig.originDriftEnabled ? 'ON' : 'OFF'}
                                     </ToggleButton>
                                 </div>
-                                
-                                <div className={`space-y-3 ${!mandelboxConfig.scaleAnimationEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
-                                     <div className="flex items-center gap-3">
-                                        <span className="text-xs text-text-secondary w-16">Center</span>
-                                        <input type="range" min={-3} max={3} step={0.1} value={mandelboxConfig.scaleCenter} onChange={(e) => setScaleCenter(parseFloat(e.target.value))} className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer" />
-                                        <span className="text-xs font-mono w-8 text-right">{mandelboxConfig.scaleCenter.toFixed(1)}</span>
-                                    </div>
-                                     <div className="flex items-center gap-3">
+
+                                <div className={`space-y-3 ${!mengerConfig.originDriftEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
+                                    <div className="flex items-center gap-3">
                                         <span className="text-xs text-text-secondary w-16">Amplitude</span>
-                                        <input type="range" min={0} max={1.5} step={0.05} value={mandelboxConfig.scaleAmplitude} onChange={(e) => setScaleAmplitude(parseFloat(e.target.value))} className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer" />
-                                        <span className="text-xs font-mono w-8 text-right">{mandelboxConfig.scaleAmplitude.toFixed(2)}</span>
+                                        <input type="range" min={0.01} max={0.5} step={0.01} value={mengerConfig.driftAmplitude} onChange={(e) => setMengerDriftAmplitude(parseFloat(e.target.value))} className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer" />
+                                        <span className="text-xs font-mono w-8 text-right">{mengerConfig.driftAmplitude.toFixed(2)}</span>
                                     </div>
-                                     <div className="flex items-center gap-3">
-                                        <span className="text-xs text-text-secondary w-16">Speed</span>
-                                        <input type="range" min={0.1} max={2} step={0.1} value={mandelboxConfig.scaleSpeed} onChange={(e) => setScaleSpeed(parseFloat(e.target.value))} className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer" />
-                                        <span className="text-xs font-mono w-8 text-right">{mandelboxConfig.scaleSpeed.toFixed(1)}x</span>
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-xs text-text-secondary w-16">Frequency</span>
+                                        <input type="range" min={0.05} max={0.5} step={0.01} value={mengerConfig.driftBaseFrequency} onChange={(e) => setMengerDriftBaseFrequency(parseFloat(e.target.value))} className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer" />
+                                        <span className="text-xs font-mono w-8 text-right">{mengerConfig.driftBaseFrequency.toFixed(2)}</span>
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                    </m.div>
+                )}
 
-                            {/* Julia Animation */}
-                            <div className="space-y-3">
+                {/* Mandelbrot/Hyperbulb Fractal Animation Drawer */}
+                {showFractalAnim && objectType === 'mandelbrot' && (
+                    <m.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 20 }}
+                        transition={{ duration: 0.2 }}
+                        className="absolute bottom-full left-0 right-0 bg-panel-bg/95 backdrop-blur-xl border-t border-b border-panel-border z-20 shadow-2xl"
+                    >
+                        <div className="p-4">
+                            {/* Power Animation */}
+                            <div className="space-y-3 max-w-md">
                                 <div className="flex items-center justify-between">
-                                    <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">Julia Morphing</label>
+                                    <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">Power Animation</label>
                                     <ToggleButton
-                                        pressed={mandelboxConfig.juliaMode}
-                                        onToggle={() => setJuliaMode(!mandelboxConfig.juliaMode)}
+                                        pressed={hyperbulbConfig.powerAnimationEnabled}
+                                        onToggle={() => setMandelbrotPowerAnimationEnabled(!hyperbulbConfig.powerAnimationEnabled)}
                                         className="text-xs px-2 py-1 h-auto"
-                                        ariaLabel="Toggle Julia mode"
+                                        ariaLabel="Toggle power animation"
                                     >
-                                        {mandelboxConfig.juliaMode ? 'ON' : 'OFF'}
+                                        {hyperbulbConfig.powerAnimationEnabled ? 'ON' : 'OFF'}
                                     </ToggleButton>
                                 </div>
-                                
-                                 <div className={`space-y-3 ${!mandelboxConfig.juliaMode ? 'opacity-50 pointer-events-none' : ''}`}>
-                                     <div className="flex items-center gap-3">
-                                        <span className="text-xs text-text-secondary w-16">Speed</span>
-                                        <input type="range" min={0.1} max={2} step={0.1} value={mandelboxConfig.juliaSpeed} onChange={(e) => setJuliaSpeed(parseFloat(e.target.value))} className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer" />
-                                        <span className="text-xs font-mono w-8 text-right">{mandelboxConfig.juliaSpeed.toFixed(1)}x</span>
+
+                                <div className={`space-y-3 ${!hyperbulbConfig.powerAnimationEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-xs text-text-secondary w-16">Min</span>
+                                        <input type="range" min={2} max={16} step={0.5} value={hyperbulbConfig.powerMin} onChange={(e) => setMandelbrotPowerMin(parseFloat(e.target.value))} className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer" />
+                                        <span className="text-xs font-mono w-8 text-right">{hyperbulbConfig.powerMin.toFixed(1)}</span>
                                     </div>
-                                     <div className="flex items-center gap-3">
-                                        <span className="text-xs text-text-secondary w-16">Radius</span>
-                                        <input type="range" min={0.5} max={10} step={0.1} value={mandelboxConfig.juliaRadius} onChange={(e) => setJuliaRadius(parseFloat(e.target.value))} className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer" />
-                                        <span className="text-xs font-mono w-8 text-right">{mandelboxConfig.juliaRadius.toFixed(1)}</span>
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-xs text-text-secondary w-16">Max</span>
+                                        <input type="range" min={3} max={24} step={0.5} value={hyperbulbConfig.powerMax} onChange={(e) => setMandelbrotPowerMax(parseFloat(e.target.value))} className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer" />
+                                        <span className="text-xs font-mono w-8 text-right">{hyperbulbConfig.powerMax.toFixed(1)}</span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-xs text-text-secondary w-16">Speed</span>
+                                        <input type="range" min={0.01} max={0.2} step={0.01} value={hyperbulbConfig.powerSpeed} onChange={(e) => setMandelbrotPowerSpeed(parseFloat(e.target.value))} className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer" />
+                                        <span className="text-xs font-mono w-10 text-right">{hyperbulbConfig.powerSpeed.toFixed(2)}</span>
                                     </div>
                                 </div>
                             </div>
@@ -207,14 +244,14 @@ export const TimelineControls: React.FC = () => {
                 <div className="flex items-center gap-2 shrink-0">
                      <button
                         onClick={toggle}
-                        disabled={!hasAnimatingPlanes && !mandelboxConfig.scaleAnimationEnabled && !mandelboxConfig.juliaMode}
+                        disabled={!hasAnythingToAnimate}
                         className={`
                             flex items-center justify-center w-10 h-10 rounded-full transition-all shrink-0
-                            ${isPlaying 
-                                ? 'bg-accent text-black hover:bg-accent/90 shadow-[0_0_15px_var(--color-accent)]' 
+                            ${isPlaying
+                                ? 'bg-accent text-black hover:bg-accent/90 shadow-[0_0_15px_var(--color-accent)]'
                                 : 'bg-panel-border hover:bg-white/20 text-text-primary'
                             }
-                            ${(!hasAnimatingPlanes && !mandelboxConfig.scaleAnimationEnabled && !mandelboxConfig.juliaMode) ? 'opacity-50 cursor-not-allowed' : ''}
+                            ${!hasAnythingToAnimate ? 'opacity-50 cursor-not-allowed' : ''}
                         `}
                         title={isPlaying ? "Pause" : "Play"}
                     >
@@ -273,8 +310,8 @@ export const TimelineControls: React.FC = () => {
 
                  {/* Advanced Toggles */}
                  <div className="flex items-center gap-2 shrink-0">
-                    {objectType === 'mandelbox' && (
-                         <button 
+                    {(objectType === 'menger' || objectType === 'mandelbrot') && (
+                         <button
                             onClick={() => { setShowFractalAnim(!showFractalAnim); setShowRotation(false); }}
                             className={`
                                 text-xs font-medium uppercase tracking-wider px-3 py-1.5 rounded transition-colors

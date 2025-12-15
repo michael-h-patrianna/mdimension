@@ -1,4 +1,5 @@
 import { createColorCache, createLightColorCache, updateLinearColorUniform } from '@/rendering/colors/linearCache';
+import { computeDriftedOrigin, type OriginDriftConfig } from '@/lib/animation/originDrift';
 import { composeRotations } from '@/lib/math/rotation';
 import type { MatrixND } from '@/lib/math/types';
 import { createLightUniforms, updateLightUniforms } from '@/rendering/lights/uniforms';
@@ -154,6 +155,20 @@ const MengerMesh = () => {
   const sliceSweepAmplitude = useExtendedObjectStore((state) => state.menger.sliceSweepAmplitude);
   const sliceSweepSpeed = useExtendedObjectStore((state) => state.menger.sliceSweepSpeed);
 
+  // Origin drift parameters (Technique C - animate slice origin in extra dims)
+  const originDriftEnabled = useExtendedObjectStore((state) => state.menger.originDriftEnabled);
+  const driftAmplitude = useExtendedObjectStore((state) => state.menger.driftAmplitude);
+  const driftBaseFrequency = useExtendedObjectStore((state) => state.menger.driftBaseFrequency);
+  const driftFrequencySpread = useExtendedObjectStore((state) => state.menger.driftFrequencySpread);
+
+  // Dimension mixing parameters (Technique A - shear matrix inside iteration)
+  const dimensionMixEnabled = useExtendedObjectStore((state) => state.menger.dimensionMixEnabled);
+  const mixIntensity = useExtendedObjectStore((state) => state.menger.mixIntensity);
+  const mixFrequency = useExtendedObjectStore((state) => state.menger.mixFrequency);
+
+  // Animation bias for per-dimension variation
+  const animationBias = useUIStore((state) => state.animationBias);
+
   // Animation time tracking (respects isPlaying state)
   const animationTimeRef = useRef(0);
 
@@ -250,6 +265,11 @@ const MengerMesh = () => {
       // Fold Twist Animation uniforms
       uFoldTwistEnabled: { value: false },
       uFoldTwistAngle: { value: 0.0 },
+
+      // Dimension Mixing uniforms (Technique A - shear matrix)
+      uDimensionMixEnabled: { value: false },
+      uMixIntensity: { value: 0.1 },
+      uMixTime: { value: 0 },  // Animated mix time = animTime * mixFrequency
 
       // Opacity Mode System uniforms
       uOpacityMode: { value: 0 },
@@ -378,6 +398,19 @@ const MengerMesh = () => {
           angle += animationTimeRef.current * foldTwistSpeed;
         }
         material.uniforms.uFoldTwistAngle.value = angle;
+      }
+
+      // Dimension Mixing (Technique A): update uniforms for shader-side mixing matrix
+      if (material.uniforms.uDimensionMixEnabled) {
+        material.uniforms.uDimensionMixEnabled.value = dimensionMixEnabled;
+      }
+      if (material.uniforms.uMixIntensity) {
+        material.uniforms.uMixIntensity.value = mixIntensity;
+      }
+      if (material.uniforms.uMixTime) {
+        // Mix time advances based on animation time and frequency
+        // The shader will use this to compute sin/cos values for the mixing matrix
+        material.uniforms.uMixTime.value = animationTimeRef.current * mixFrequency * 2 * Math.PI;
       }
 
       // Update color (cached linear conversion - only converts when color changes)
@@ -514,6 +547,9 @@ const MengerMesh = () => {
       // Slice sweep animation runs every frame when enabled
       const sliceSweepActive = sliceSweepEnabled && dimension >= 4 && sliceSweepAmplitude > 0 && sliceSweepSpeed > 0;
 
+      // Origin drift animation runs every frame when enabled (Technique C)
+      const originDriftActive = originDriftEnabled && dimension > 3;
+
       // Check if parameterValues changed (shallow array comparison)
       const paramsChanged = !prevParamValuesRef.current ||
         prevParamValuesRef.current.length !== parameterValues.length ||
@@ -525,8 +561,8 @@ const MengerMesh = () => {
         dimension !== prevDimensionRef.current ||
         basisVectorsDirtyRef.current;
 
-      // Origin needs recompute if basis needs it, params changed, or slice sweep is animating
-      const needsOriginRecompute = needsBasisRecompute || paramsChanged || sliceSweepActive;
+      // Origin needs recompute if basis needs it, params changed, or any origin animation is active
+      const needsOriginRecompute = needsBasisRecompute || paramsChanged || sliceSweepActive || originDriftActive;
 
       if (needsBasisRecompute) {
         // Compute rotation matrix only when needed
@@ -577,12 +613,31 @@ const MengerMesh = () => {
 
         // Clear and set up origin = [0, 0, 0, slice[0], slice[1], ...]
         for (let i = 0; i < MAX_DIMENSION; i++) work.origin[i] = 0;
-        for (let i = 3; i < D; i++) {
-          work.origin[i] = parameterValues[i - 3] ?? 0;
-        }
 
-        // Slice Sweep Animation (4D+ only)
-        if (sliceSweepActive) {
+        // Apply origin drift if enabled (Technique C - new morphing animation)
+        // Origin drift takes precedence over slice sweep when enabled
+        if (originDriftActive) {
+          const driftConfig: OriginDriftConfig = {
+            enabled: true,
+            amplitude: driftAmplitude,
+            baseFrequency: driftBaseFrequency,
+            frequencySpread: driftFrequencySpread,
+          };
+          // Get animation speed from store for consistent drift timing
+          const animationSpeed = useAnimationStore.getState().speed;
+          const driftedOrigin = computeDriftedOrigin(
+            parameterValues,
+            animationTimeRef.current,
+            driftConfig,
+            animationSpeed,
+            animationBias
+          );
+          // Set drifted values for extra dimensions
+          for (let i = 3; i < D; i++) {
+            work.origin[i] = driftedOrigin[i - 3] ?? 0;
+          }
+        } else if (sliceSweepActive) {
+          // Slice Sweep Animation (4D+ only) - legacy animation
           for (let i = 3; i < D; i++) {
             const dimIndex = i - 3;
             const phase = dimIndex * GOLDEN_RATIO * Math.PI * 2;
@@ -590,6 +645,11 @@ const MengerMesh = () => {
             const sweep = sliceSweepAmplitude *
               Math.sin(animationTimeRef.current * sliceSweepSpeed + phase);
             work.origin[i] = baseValue + sweep;
+          }
+        } else {
+          // No animation - use static parameter values
+          for (let i = 3; i < D; i++) {
+            work.origin[i] = parameterValues[i - 3] ?? 0;
           }
         }
 
@@ -603,7 +663,7 @@ const MengerMesh = () => {
         }
 
         // Update params tracking (only when not animating, to avoid unnecessary copies)
-        if (!sliceSweepActive) {
+        if (!sliceSweepActive && !originDriftActive) {
           prevParamValuesRef.current = [...parameterValues];
         }
       }

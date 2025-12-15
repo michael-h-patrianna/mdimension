@@ -16,3 +16,11 @@ export {
   updateUnifiedMaterialVisuals,
 } from './UnifiedMaterial'
 export type { UnifiedColorMode, UnifiedMaterialOptions, UnifiedRenderMode } from './UnifiedMaterial'
+
+// Skybox Shader
+export {
+  skyboxVertexShader,
+  skyboxFragmentShader,
+  createSkyboxShaderDefaults,
+} from './SkyboxShader'
+export type { SkyboxShaderUniforms } from './SkyboxShader'

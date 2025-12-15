@@ -1,4 +1,5 @@
 import { createColorCache, createLightColorCache, updateLinearColorUniform } from '@/rendering/colors/linearCache';
+import { computeDriftedOrigin, type OriginDriftConfig } from '@/lib/animation/originDrift';
 import { composeRotations } from '@/lib/math/rotation';
 import type { MatrixND } from '@/lib/math/types';
 import { createLightUniforms, updateLightUniforms } from '@/rendering/lights/uniforms';
@@ -245,6 +246,17 @@ const MandelboxMesh = () => {
   const juliaSpeed = useExtendedObjectStore((state) => state.mandelbox.juliaSpeed);
   const juliaRadius = useExtendedObjectStore((state) => state.mandelbox.juliaRadius);
 
+  // Origin drift parameters (Technique C - animate slice origin in extra dims)
+  const originDriftEnabled = useExtendedObjectStore((state) => state.mandelbox.originDriftEnabled);
+  const driftAmplitude = useExtendedObjectStore((state) => state.mandelbox.driftAmplitude);
+  const driftBaseFrequency = useExtendedObjectStore((state) => state.mandelbox.driftBaseFrequency);
+  const driftFrequencySpread = useExtendedObjectStore((state) => state.mandelbox.driftFrequencySpread);
+
+  // Dimension mixing parameters (Technique A - shear matrix inside iteration)
+  const dimensionMixEnabled = useExtendedObjectStore((state) => state.mandelbox.dimensionMixEnabled);
+  const mixIntensity = useExtendedObjectStore((state) => state.mandelbox.mixIntensity);
+  const mixFrequency = useExtendedObjectStore((state) => state.mandelbox.mixFrequency);
+
   // Animation playback state - controls whether scale/julia animations run
   const isPlaying = useAnimationStore((state) => state.isPlaying);
 
@@ -307,6 +319,11 @@ const MandelboxMesh = () => {
       // Julia Mode uniforms
       uJuliaMode: { value: false },
       uJuliaC: { value: new Float32Array(11) },
+
+      // Dimension Mixing uniforms (Technique A - shear matrix)
+      uDimensionMixEnabled: { value: false },
+      uMixIntensity: { value: 0.1 },
+      uMixTime: { value: 0 },  // Animated mix time = animTime * mixFrequency
 
       // D-dimensional rotated coordinate system
       uBasisX: { value: new Float32Array(11) },
@@ -488,6 +505,19 @@ const MandelboxMesh = () => {
         for (let i = 0; i < 11; i++) arr[i] = juliaC[i] ?? 0;
       }
 
+      // Dimension Mixing (Technique A): update uniforms for shader-side mixing matrix
+      if (material.uniforms.uDimensionMixEnabled) {
+        material.uniforms.uDimensionMixEnabled.value = dimensionMixEnabled;
+      }
+      if (material.uniforms.uMixIntensity) {
+        material.uniforms.uMixIntensity.value = mixIntensity;
+      }
+      if (material.uniforms.uMixTime) {
+        // Mix time advances based on animation time and frequency
+        // The shader will use this to compute sin/cos values for the mixing matrix
+        material.uniforms.uMixTime.value = animationTimeRef.current * mixFrequency * 2 * Math.PI;
+      }
+
       // Update color (cached linear conversion - only converts when color changes)
       const cache = colorCacheRef.current;
       if (material.uniforms.uColor) {
@@ -646,17 +676,10 @@ const MandelboxMesh = () => {
         for (let i = 0; i < MAX_DIMENSION; i++) work.unitZ[i] = 0;
         work.unitZ[2] = 1;
 
-        // Clear and set up origin = [0, 0, 0, slice[0], slice[1], ...]
-        for (let i = 0; i < MAX_DIMENSION; i++) work.origin[i] = 0;
-        for (let i = 3; i < D; i++) {
-          work.origin[i] = parameterValues[i - 3] ?? 0;
-        }
-
         // Apply rotation to basis vectors using pre-allocated output arrays
         applyRotationInPlace(cachedRotationMatrixRef.current, work.unitX, work.rotatedX);
         applyRotationInPlace(cachedRotationMatrixRef.current, work.unitY, work.rotatedY);
         applyRotationInPlace(cachedRotationMatrixRef.current, work.unitZ, work.rotatedZ);
-        applyRotationInPlace(cachedRotationMatrixRef.current, work.origin, work.rotatedOrigin);
 
         // Update basis vector uniforms
         if (material.uniforms.uBasisX) {
@@ -671,15 +694,59 @@ const MandelboxMesh = () => {
           const arr = material.uniforms.uBasisZ.value as Float32Array;
           arr.set(work.rotatedZ);
         }
-        if (material.uniforms.uOrigin) {
-          const arr = material.uniforms.uOrigin.value as Float32Array;
-          arr.set(work.rotatedOrigin);
-        }
 
         // Update tracking refs
         prevDimensionRef.current = dimension;
         prevParamValuesRef.current = [...parameterValues];
         basisVectorsDirtyRef.current = false;
+      }
+
+      // ============================================
+      // Origin Update (separate from basis vectors)
+      // Must update every frame when origin drift is enabled
+      // ============================================
+      const needsOriginUpdate = needsRecompute || originDriftEnabled;
+
+      if (needsOriginUpdate && cachedRotationMatrixRef.current) {
+        // Clear and set up origin = [0, 0, 0, slice[0], slice[1], ...]
+        for (let i = 0; i < MAX_DIMENSION; i++) work.origin[i] = 0;
+
+        // Apply origin drift if enabled (Technique C)
+        if (originDriftEnabled && D > 3) {
+          const driftConfig: OriginDriftConfig = {
+            enabled: true,
+            amplitude: driftAmplitude,
+            baseFrequency: driftBaseFrequency,
+            frequencySpread: driftFrequencySpread,
+          };
+          // Get animation speed from store for consistent drift timing
+          const animationSpeed = useAnimationStore.getState().speed;
+          const driftedOrigin = computeDriftedOrigin(
+            parameterValues,
+            animationTimeRef.current,
+            driftConfig,
+            animationSpeed,
+            animationBias
+          );
+          // Set drifted values for extra dimensions
+          for (let i = 3; i < D; i++) {
+            work.origin[i] = driftedOrigin[i - 3] ?? 0;
+          }
+        } else {
+          // No drift - use static parameter values
+          for (let i = 3; i < D; i++) {
+            work.origin[i] = parameterValues[i - 3] ?? 0;
+          }
+        }
+
+        // Apply rotation to origin
+        applyRotationInPlace(cachedRotationMatrixRef.current, work.origin, work.rotatedOrigin);
+
+        // Update origin uniform
+        if (material.uniforms.uOrigin) {
+          const arr = material.uniforms.uOrigin.value as Float32Array;
+          arr.set(work.rotatedOrigin);
+        }
       }
 
       // Model matrices are always identity for Mandelbox - no need to set every frame

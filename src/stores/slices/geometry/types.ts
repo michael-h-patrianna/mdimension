@@ -118,6 +118,24 @@ export interface MandelbrotSliceActions {
   setMandelbrotConfig: (config: Partial<MandelbrotConfig>) => void
   initializeMandelbrotForDimension: (dimension: number) => void
   getMandelbrotConfig: () => MandelbrotConfig
+  // Power Animation (Hyperbulb-specific)
+  setMandelbrotPowerAnimationEnabled: (enabled: boolean) => void
+  setMandelbrotPowerMin: (min: number) => void
+  setMandelbrotPowerMax: (max: number) => void
+  setMandelbrotPowerSpeed: (speed: number) => void
+  // Alternate Power (Technique B variant)
+  setMandelbrotAlternatePowerEnabled: (enabled: boolean) => void
+  setMandelbrotAlternatePowerValue: (power: number) => void
+  setMandelbrotAlternatePowerBlend: (blend: number) => void
+  // Dimension Mixing (Technique A)
+  setMandelbrotDimensionMixEnabled: (enabled: boolean) => void
+  setMandelbrotMixIntensity: (intensity: number) => void
+  setMandelbrotMixFrequency: (frequency: number) => void
+  // Origin Drift (Technique C)
+  setMandelbrotOriginDriftEnabled: (enabled: boolean) => void
+  setMandelbrotDriftAmplitude: (amplitude: number) => void
+  setMandelbrotDriftBaseFrequency: (frequency: number) => void
+  setMandelbrotDriftFrequencySpread: (spread: number) => void
 }
 
 export type MandelbrotSlice = MandelbrotSliceState & MandelbrotSliceActions
@@ -151,6 +169,25 @@ export interface MandelboxSliceActions {
   setMandelboxJuliaMode: (enabled: boolean) => void
   setMandelboxJuliaSpeed: (speed: number) => void
   setMandelboxJuliaRadius: (radius: number) => void
+  // Dimension Mixing (Technique A)
+  setMandelboxDimensionMixEnabled: (enabled: boolean) => void
+  setMandelboxMixIntensity: (intensity: number) => void
+  setMandelboxMixFrequency: (frequency: number) => void
+  // Transform Alternation (Technique B)
+  setMandelboxAlternateTransformEnabled: (enabled: boolean) => void
+  setMandelboxAlternatePeriod: (period: 2 | 3) => void
+  setMandelboxAlternateType: (type: 'twist' | 'power' | 'shift') => void
+  setMandelboxAlternateIntensity: (intensity: number) => void
+  setMandelboxAlternateTwistAngle: (angle: number) => void
+  setMandelboxAlternatePowerExponent: (exponent: number) => void
+  setMandelboxAlternateAnimationEnabled: (enabled: boolean) => void
+  setMandelboxAlternateAnimationSpeed: (speed: number) => void
+  setMandelboxAlternateAnimationAmplitude: (amplitude: number) => void
+  // Origin Drift (Technique C)
+  setMandelboxOriginDriftEnabled: (enabled: boolean) => void
+  setMandelboxDriftAmplitude: (amplitude: number) => void
+  setMandelboxDriftBaseFrequency: (frequency: number) => void
+  setMandelboxDriftFrequencySpread: (spread: number) => void
 }
 
 export type MandelboxSlice = MandelboxSliceState & MandelboxSliceActions
@@ -170,7 +207,7 @@ export interface MengerSliceActions {
   resetMengerParameters: () => void
   initializeMengerForDimension: (dimension: number) => void
   getMengerConfig: () => MengerConfig
-  // Animations
+  // Existing Animations
   setMengerFoldTwistEnabled: (enabled: boolean) => void
   setMengerFoldTwistAngle: (angle: number) => void
   setMengerFoldTwistSpeed: (speed: number) => void
@@ -180,6 +217,15 @@ export interface MengerSliceActions {
   setMengerSliceSweepEnabled: (enabled: boolean) => void
   setMengerSliceSweepAmplitude: (amplitude: number) => void
   setMengerSliceSweepSpeed: (speed: number) => void
+  // Dimension Mixing (Technique A)
+  setMengerDimensionMixEnabled: (enabled: boolean) => void
+  setMengerMixIntensity: (intensity: number) => void
+  setMengerMixFrequency: (frequency: number) => void
+  // Origin Drift (Technique C)
+  setMengerOriginDriftEnabled: (enabled: boolean) => void
+  setMengerDriftAmplitude: (amplitude: number) => void
+  setMengerDriftBaseFrequency: (frequency: number) => void
+  setMengerDriftFrequencySpread: (spread: number) => void
 }
 
 export type MengerSlice = MengerSliceState & MengerSliceActions
