@@ -260,12 +260,13 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
   ];
 
   return (
-    <Section title="Faces" defaultOpen={defaultOpen}>
+    <Section title="Faces" defaultOpen={defaultOpen} data-testid="section-faces">
       <Tabs
         tabs={tabs}
         value={activeTab}
         onChange={(id) => setActiveTab(id as FacesTabId)}
         tabListClassName="mb-4"
+        data-testid="faces-tabs"
       />
     </Section>
   );
@@ -636,6 +637,7 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
           onChange={setFaceOpacity}
           onReset={() => setFaceOpacity(DEFAULT_SURFACE_SETTINGS.faceOpacity)}
           showValue
+          data-testid="slider-face-opacity"
         />
       )}
 

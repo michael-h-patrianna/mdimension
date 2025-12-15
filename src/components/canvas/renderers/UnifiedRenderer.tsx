@@ -103,7 +103,6 @@ export const UnifiedRenderer = React.memo(function UnifiedRenderer({
   objectType,
   faces = [],
   faceDepths = [],
-  pointColors,
   opacity = 1.0,
 }: UnifiedRendererProps) {
   // Get facesVisible from store to determine raymarch mode

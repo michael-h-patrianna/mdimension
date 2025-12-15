@@ -50,6 +50,8 @@ export interface LayoutState {
   isCollapsed: boolean
   /** Whether keyboard shortcuts overlay is visible */
   showShortcuts: boolean
+  /** Whether cinematic mode is active (hides all UI) */
+  isCinematicMode: boolean
 }
 
 export interface LayoutActions {
@@ -72,6 +74,12 @@ export interface LayoutActions {
 
   /** Set shortcuts overlay explicitly */
   setShowShortcuts: (show: boolean) => void
+
+  /** Toggle cinematic mode */
+  toggleCinematicMode: () => void
+
+  /** Set cinematic mode explicitly */
+  setCinematicMode: (enabled: boolean) => void
 
   /** Reset to default values */
   reset: () => void
@@ -135,6 +143,7 @@ const INITIAL_STATE: LayoutState = {
   sidebarWidth: DEFAULT_SIDEBAR_WIDTH_LARGE, // Default to large screen width (420px)
   isCollapsed: false,
   showShortcuts: false,
+  isCinematicMode: false,
 }
 
 // ============================================================================
@@ -167,6 +176,14 @@ export const useLayoutStore = create<LayoutStore>()(
         set({ showShortcuts: show })
       },
 
+      toggleCinematicMode: () => {
+        set((state) => ({ isCinematicMode: !state.isCinematicMode }))
+      },
+
+      setCinematicMode: (enabled: boolean) => {
+        set({ isCinematicMode: enabled })
+      },
+
       reset: () => {
         set(INITIAL_STATE)
       },
@@ -177,6 +194,8 @@ export const useLayoutStore = create<LayoutStore>()(
       partialize: (state) => ({
         sidebarWidth: state.sidebarWidth,
         isCollapsed: state.isCollapsed,
+        // Cinematic mode should probably not be persisted, or maybe it should?
+        // Let's not persist it for now to avoid confusion on reload.
       }),
     }
   )

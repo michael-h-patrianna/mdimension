@@ -257,14 +257,14 @@ function computeEffectiveQuality<T extends string>(
   if (targetIndex === -1) return targetQuality; // Unknown quality, return as-is
 
   // If target is lowest, always return lowest (can't go lower)
-  if (targetIndex === 0) return qualityOrder[0];
+  if (targetIndex === 0) return qualityOrder[0]!;
 
   // Normalize multiplier from 0.25-1.0 to 0-1
   const normalizedMultiplier = Math.max(0, Math.min(1, (qualityMultiplier - 0.25) / 0.75));
 
   // Interpolate from index 0 to targetIndex
   const effectiveIndex = Math.round(normalizedMultiplier * targetIndex);
-  return qualityOrder[effectiveIndex];
+  return qualityOrder[effectiveIndex]!;
 }
 
 /**

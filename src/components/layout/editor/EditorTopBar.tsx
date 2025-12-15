@@ -1,5 +1,5 @@
 import React from 'react';
-import { RenderModeToggles } from '@/components/sidebar/RenderMode/RenderModeToggles';
+import { TopBarControls } from '@/components/layout/editor/TopBarControls';
 import { DropdownMenu } from '@/components/ui/DropdownMenu';
 import { exportSceneToPNG, generateTimestampFilename } from '@/lib/export';
 import { generateShareUrl } from '@/lib/url';
@@ -9,7 +9,8 @@ import { useVisualStore } from '@/stores/visualStore';
 import { PRESETS } from '@/lib/presets';
 import { useToast } from '@/contexts/ToastContext';
 import { useLayoutStore } from '@/stores/layoutStore';
-import { useAnimationStore } from '@/stores/animationStore';
+import { usePresetStore } from '@/stores/presetStore';
+import { useThemeStore } from '@/stores/themeStore';
 
 interface EditorTopBarProps {
   showLeftPanel: boolean;
@@ -26,6 +27,14 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
 }) => {
   const { addToast } = useToast();
   const toggleShortcuts = useLayoutStore((state) => state.toggleShortcuts);
+  const { savedPresets, saveCurrentAsPreset, loadPreset } = usePresetStore();
+  const { theme, setTheme } = useThemeStore();
+
+  const toggleTheme = () => {
+      if (theme === 'cyan') setTheme('green');
+      else if (theme === 'green') setTheme('magenta');
+      else setTheme('cyan');
+  };
 
   // Store access for Share URL generation
   const dimension = useGeometryStore((state) => state.dimension);
@@ -73,22 +82,8 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
     addToast(`Loaded preset: ${preset.label}`, 'info');
   };
 
-  const toggleCinematic = () => {
-    const areBothHidden = !showLeftPanel && !showRightPanel;
-    if (areBothHidden) {
-      setShowLeftPanel(true);
-      if (!showRightPanel) toggleRightPanel(); // Assuming toggleRightPanel toggles state
-    } else {
-      setShowLeftPanel(false);
-      if (showRightPanel) toggleRightPanel();
-    }
-    
-    // Auto-rotate if entering cinematic mode
-    if (!areBothHidden) {
-       useAnimationStore.getState().play();
-       addToast('Cinematic Mode Enabled', 'info');
-    }
-  };
+  // Cinematic toggle logic is now in TopBarControls, but kept here for menu item compatibility
+  const toggleCinematic = useLayoutStore((state) => state.toggleCinematicMode);
 
   const fileItems = [
     { label: 'Export Image (PNG)', onClick: handleExport, shortcut: '⌘E', 'data-testid': 'menu-export' },
@@ -98,15 +93,37 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
   const viewItems = [
     { label: showLeftPanel ? 'Hide Explorer' : 'Show Explorer', onClick: () => setShowLeftPanel(!showLeftPanel) },
     { label: showRightPanel ? 'Hide Inspector' : 'Show Inspector', onClick: toggleRightPanel },
+    { label: `Theme: ${theme.charAt(0).toUpperCase() + theme.slice(1)}`, onClick: toggleTheme },
     { label: 'Cinematic Mode', onClick: toggleCinematic, shortcut: 'C' },
     { label: 'Keyboard Shortcuts', onClick: toggleShortcuts, shortcut: '?' },
   ];
 
-  const presetItems = PRESETS.map(p => ({
-    label: p.label,
-    onClick: () => handleApplyPreset(p),
-    'data-testid': `preset-${p.id}`
-  }));
+  const handleSavePreset = () => {
+      setTimeout(() => {
+          const name = window.prompt('Enter a name for this preset:');
+          if (name) {
+              saveCurrentAsPreset(name);
+              addToast(`Preset "${name}" saved!`, 'success');
+          }
+      }, 10);
+  };
+
+  const presetItems = [
+    { label: '+ Save Current State...', onClick: handleSavePreset, 'data-testid': 'preset-save-new' },
+    ...savedPresets.map(p => ({
+        label: `📂 ${p.name}`,
+        onClick: () => {
+            loadPreset(p.id);
+            addToast(`Loaded preset: ${p.name}`, 'info');
+        },
+        'data-testid': `preset-saved-${p.id}`
+    })),
+    ...PRESETS.map(p => ({
+      label: p.label,
+      onClick: () => handleApplyPreset(p),
+      'data-testid': `preset-${p.id}`
+    }))
+  ];
 
   return (
     <div className="h-12 bg-panel-bg/80 backdrop-blur-md border-b border-panel-border flex items-center justify-between px-4 z-20 shrink-0 select-none relative" data-testid="top-bar">
@@ -150,27 +167,12 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
       {/* Center: Global Controls */}
       <div className="flex-1 flex justify-center absolute left-1/2 -translate-x-1/2 pointer-events-none">
         <div className="pointer-events-auto">
-             <RenderModeToggles />
+             <TopBarControls />
         </div>
       </div>
 
       {/* Right: Tools */}
       <div className="flex items-center gap-2">
-         {/* Cinematic Toggle */}
-         <button
-            onClick={toggleCinematic}
-            className={`p-1.5 rounded-md transition-colors text-text-secondary hover:text-accent hover:bg-white/5`}
-            title="Cinematic Mode (C)"
-            data-testid="toggle-cinematic"
-        >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-               <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-               <circle cx="12" cy="12" r="3" />
-            </svg>
-        </button>
-
-         <div className="h-4 w-px bg-panel-border mx-1" />
-         
          {/* Right Panel Toggle */}
          <button
             onClick={toggleRightPanel}

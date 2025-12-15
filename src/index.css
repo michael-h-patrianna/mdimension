@@ -80,6 +80,7 @@
     border: 1px solid oklch(100% 0 0 / 0.1) !important;
     border-radius: 8px !important;
     box-shadow: 0 10px 40px oklch(0% 0 0 / 0.5) !important;
+    z-index: 100 !important;
   }
 
   .perf-monitor b {

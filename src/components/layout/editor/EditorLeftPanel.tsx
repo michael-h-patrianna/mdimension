@@ -41,6 +41,7 @@ export const EditorLeftPanel: React.FC = () => {
           className="flex-1 flex flex-col min-h-0"
           tabListClassName="px-2 pt-2 border-b border-panel-border bg-panel-bg/50 backdrop-blur-sm"
           contentClassName="flex-1 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-panel-border hover:scrollbar-thumb-text-secondary/50"
+          data-testid="left-panel-tabs"
         />
     </div>
   );

@@ -57,7 +57,7 @@ export const Vector3Input: React.FC<Vector3InputProps> = memo(function Vector3In
         const newLocal = [...prev] as [string, string, string];
         for (let i = 0; i < 3; i++) {
           if (focusedIndex.current !== i) {
-            newLocal[i] = (value[i] * displayMultiplier).toFixed(1);
+            newLocal[i] = (value[i as 0 | 1 | 2] * displayMultiplier).toFixed(1);
           }
         }
         return newLocal;

@@ -242,7 +242,7 @@ export function generateGeneralizedCliffordTorus(
   // Only k=2 produces a 2D surface with proper faces
   // For k=1 (circle) and k>=3 (higher-dim tori), use point cloud rendering
   // to ensure vertices are visible even without faces
-  const hasFaces = k === 2
+  // const hasFaces = k === 2
 
   return {
     dimension,

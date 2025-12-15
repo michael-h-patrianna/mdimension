@@ -552,7 +552,7 @@ export const PostProcessing = memo(function PostProcessing() {
     edgesMaterial.defines['SMAA_THRESHOLD'] = smaaThreshold.toFixed(3);
 
     // Force shader recompilation by incrementing version and marking for update
-    edgesMaterial.version++;
+    (edgesMaterial as any).version++;
     edgesMaterial.needsUpdate = true;
   }, [smaaPass, smaaThreshold]);
 

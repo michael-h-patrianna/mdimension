@@ -35,6 +35,7 @@ function TestWrapper({
   onPositionChange = vi.fn(),
   onDragStart = vi.fn(),
   onDragEnd = vi.fn(),
+  onSelect = vi.fn(),
 }: {
   light: LightSource;
   isSelected?: boolean;
@@ -42,6 +43,7 @@ function TestWrapper({
   onPositionChange?: (position: [number, number, number]) => void;
   onDragStart?: () => void;
   onDragEnd?: () => void;
+  onSelect?: () => void;
 }) {
   return (
     <Canvas>
@@ -52,6 +54,7 @@ function TestWrapper({
         onPositionChange={onPositionChange}
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
+        onSelect={onSelect}
       />
     </Canvas>
   );

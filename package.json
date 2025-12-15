@@ -21,7 +21,6 @@
     "convex-hull": "^1.0.3",
     "motion": "^12.23.26",
     "postprocessing": "^6.38.0",
-    "r3f-perf": "^7.2.3",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "tailwindcss": "^4.1.18",

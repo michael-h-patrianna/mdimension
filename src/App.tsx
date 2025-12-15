@@ -29,7 +29,7 @@ import type { VectorND, Vector3D } from '@/lib/math/types';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useVisualStore } from '@/stores/visualStore';
 import { Canvas } from '@react-three/fiber';
-import { Perf } from 'r3f-perf';
+import { PerformanceMonitor } from '@/components/canvas/PerformanceMonitor';
 import { ToastProvider } from '@/contexts/ToastContext';
 
 /**
@@ -149,7 +149,7 @@ function App() {
           >
             <FpsController />
             <Visualizer />
-            {showPerfMonitor && <Perf position="bottom-left" />}
+            {showPerfMonitor && <PerformanceMonitor />}
           </Canvas>
         </div>
       </EditorLayout>

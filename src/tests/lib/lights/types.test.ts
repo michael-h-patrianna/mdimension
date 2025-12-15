@@ -198,9 +198,9 @@ describe('Light Types', () => {
         const length = Math.sqrt(pos[0] ** 2 + pos[1] ** 2 + pos[2] ** 2)
         const expectedDir = [-pos[0] / length, -pos[1] / length, -pos[2] / length]
 
-        expect(dir[0]).toBeCloseTo(expectedDir[0], 3)
-        expect(dir[1]).toBeCloseTo(expectedDir[1], 3)
-        expect(dir[2]).toBeCloseTo(expectedDir[2], 3)
+        expect(dir[0]).toBeCloseTo(expectedDir[0]!, 3)
+        expect(dir[1]).toBeCloseTo(expectedDir[1]!, 3)
+        expect(dir[2]).toBeCloseTo(expectedDir[2]!, 3)
       }
     })
   })
@@ -400,7 +400,7 @@ describe('Light Types', () => {
     it('should handle normalized and non-normalized directions', () => {
       // Both should give same result (function clamps internally)
       const normalized = directionToRotation([0, -0.707, -0.707])
-      const scaled = directionToRotation([0, -7.07, -7.07])
+      directionToRotation([0, -7.07, -7.07])
 
       // Non-normalized will give different result because we don't normalize input
       // But the Y component is used directly with asin which clamps to [-1, 1]
