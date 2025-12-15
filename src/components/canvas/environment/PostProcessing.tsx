@@ -757,12 +757,29 @@ export const PostProcessing = memo(function PostProcessing() {
     // This gives accurate geometry counts (faces, edges, vertices) without
     // inflation from bloom/SSR/bokeh passes which each add full-screen quads
     const sceneRenderStats = gl.info.render;
+    
+    // Count unique vertices from actual geometry buffers (not processed vertices)
+    // This shows the real memory savings from indexed geometry
+    let uniqueVertices = 0;
+    scene.traverse((obj) => {
+      if ((obj as THREE.Mesh).isMesh || (obj as THREE.LineSegments).isLineSegments) {
+        const geo = (obj as THREE.Mesh).geometry;
+        if (geo) {
+          const posAttr = geo.getAttribute('position');
+          if (posAttr) {
+            uniqueVertices += posAttr.count;
+          }
+        }
+      }
+    });
+    
     usePerformanceMetricsStore.getState().updateMetrics({
       sceneGpu: {
         calls: sceneRenderStats.calls,
         triangles: sceneRenderStats.triangles,
         points: sceneRenderStats.points,
         lines: sceneRenderStats.lines,
+        uniqueVertices,
       },
     });
 

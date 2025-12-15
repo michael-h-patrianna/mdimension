@@ -147,19 +147,16 @@ it is not displayed at all after:
 note: the feature itself is working and in the sidebar performance optimization section you can see the sidebar control updating. it is just that the RefinementIndicator is not displayed in all cases when it should be displayed.
 
 
-3d
-vertices: 41
-triangles: 171
-lines: 24
+reorganize the codebase file folder structure:
+1.
 
-4d
-vertices: 113
-triangles: 467
-lines: 64
+edges deactivate, only faces and nothing else in the scene
 
-5d
-vertices: 337
-triangles: 1.3k
-lines: 160
+3d: 12 tris, 36 verts
+4d: 48 tris, 144 verts
+5d: 160 tris, 480 verts
 
-not in view
+edges only, no faces:
+3d: 24 verts
+4d: 64 verts
+5d: 160 verts

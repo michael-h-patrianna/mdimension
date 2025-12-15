@@ -121,7 +121,10 @@ export function PerformanceMonitor() {
 
   // Use scene-only stats for accurate geometry counts (excludes post-processing passes)
   const sceneStats = stats.sceneGpu;
-  const vertexCount = sceneStats.triangles * 3 + sceneStats.lines * 2 + sceneStats.points;
+  // Processed vertices = triangles*3 + lines*2 (what GPU vertex shader processes)
+  const processedVertices = sceneStats.triangles * 3 + sceneStats.lines * 2 + sceneStats.points;
+  // Unique vertices = actual vertex buffer count (shows indexed geometry savings)
+  const uniqueVertices = sceneStats.uniqueVertices ?? processedVertices;
 
   // -- Raymarching Info --
   const isRaymarching = ['mandelbrot', 'mandelbox', 'menger', 'hypercube'].includes(objectType);
@@ -167,7 +170,8 @@ export function PerformanceMonitor() {
               <div className="space-y-2.5">
                 <StatItem label="Draw Calls" value={sceneStats.calls} />
                 <StatItem label="Triangles" value={formatMetric(sceneStats.triangles)} />
-                <StatItem label="Vertices" value={formatMetric(vertexCount)} />
+                <StatItem label="Unique Verts" value={formatMetric(uniqueVertices)} />
+                <StatItem label="Processed" value={formatMetric(processedVertices)} />
                 {sceneStats.lines > 0 && <StatItem label="Lines" value={formatMetric(sceneStats.lines)} />}
               </div>
             </div>

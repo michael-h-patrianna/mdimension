@@ -43,13 +43,11 @@ export function buildFaceVertexShader(): string {
     in float aExtraDim5;
     in float aExtraDim6;
 
-    // Face depth attribute for color algorithm
-    in float aFaceDepth;
-
     // Outputs to fragment shader
     out vec3 vWorldPosition;
     out vec3 vViewDir;
-    out float vFaceDepth;
+    // Face depth for color algorithms - flat interpolation means first vertex wins
+    flat out float vFaceDepth;
 
     vec3 transformND() {
       float scaledInputs[11];
@@ -105,7 +103,13 @@ export function buildFaceVertexShader(): string {
       // Pass world position for normal calculation in fragment shader
       vWorldPosition = worldPos.xyz;
       vViewDir = normalize(cameraPosition - worldPos.xyz);
-      vFaceDepth = aFaceDepth;
+      
+      // Compute face depth from higher dimension coordinates
+      // Sum of extra dimensions gives depth variation across faces
+      // With flat interpolation, first vertex of each triangle sets the value
+      float extraSum = aExtraDim0 + aExtraDim1 + aExtraDim2 + aExtraDim3 + aExtraDim4 + aExtraDim5 + aExtraDim6;
+      // Map to roughly 0-1 range (coordinates typically in -1 to 1)
+      vFaceDepth = clamp(extraSum * 0.15 + 0.5, 0.0, 1.0);
     }
   `
 }

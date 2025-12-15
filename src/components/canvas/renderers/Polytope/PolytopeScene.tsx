@@ -398,18 +398,24 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     return createEdgeMaterial(edgeColor, opacity);
   }, [edgeColor, opacity]);
 
-  // ============ FACE GEOMETRY ============
+  // ============ FACE GEOMETRY (INDEXED) ============
+  // Uses indexed geometry for efficiency - vertices are shared, indices define triangles
+  // Face depths are passed via uniform array indexed by gl_PrimitiveID
   const faceGeometry = useMemo(() => {
-    if (numFaces === 0) return null;
+    if (numFaces === 0 || baseVertices.length === 0) return null;
 
-    let vertexCount = 0;
+    // Count triangles for index buffer sizing
+    let triangleCount = 0;
     for (const face of faces) {
-      if (face.vertices.length === 3) vertexCount += 3;
-      else if (face.vertices.length === 4) vertexCount += 6;
+      if (face.vertices.length === 3) triangleCount += 1;
+      else if (face.vertices.length === 4) triangleCount += 2;
     }
-    if (vertexCount === 0) return null;
+    if (triangleCount === 0) return null;
 
     const geo = new BufferGeometry();
+    const vertexCount = baseVertices.length;
+
+    // Build vertex attributes from baseVertices (no duplication)
     const positions = new Float32Array(vertexCount * 3);
     const extraDim0 = new Float32Array(vertexCount);
     const extraDim1 = new Float32Array(vertexCount);
@@ -418,60 +424,46 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     const extraDim4 = new Float32Array(vertexCount);
     const extraDim5 = new Float32Array(vertexCount);
     const extraDim6 = new Float32Array(vertexCount);
-    const faceDepthAttr = new Float32Array(vertexCount);
 
-    let idx = 0;
-    let faceIdx = 0;
-
-    const setVertex = (vIdx: number, depth: number) => {
-      const v = baseVertices[vIdx];
-      if (!v) return;
-
-      const i3 = idx * 3;
+    for (let i = 0; i < vertexCount; i++) {
+      const v = baseVertices[i]!;
+      const i3 = i * 3;
       positions[i3] = v[0] ?? 0;
       positions[i3 + 1] = v[1] ?? 0;
       positions[i3 + 2] = v[2] ?? 0;
+      extraDim0[i] = v[3] ?? 0;
+      extraDim1[i] = v[4] ?? 0;
+      extraDim2[i] = v[5] ?? 0;
+      extraDim3[i] = v[6] ?? 0;
+      extraDim4[i] = v[7] ?? 0;
+      extraDim5[i] = v[8] ?? 0;
+      extraDim6[i] = v[9] ?? 0;
+    }
 
-      extraDim0[idx] = v[3] ?? 0;
-      extraDim1[idx] = v[4] ?? 0;
-      extraDim2[idx] = v[5] ?? 0;
-      extraDim3[idx] = v[6] ?? 0;
-      extraDim4[idx] = v[7] ?? 0;
-      extraDim5[idx] = v[8] ?? 0;
-      extraDim6[idx] = v[9] ?? 0;
-      faceDepthAttr[idx] = depth;
-
-      idx++;
-    };
+    // Build index buffer (triangulate faces)
+    const indices = new Uint16Array(triangleCount * 3);
+    let indexIdx = 0;
 
     for (const face of faces) {
       const vis = face.vertices;
-      if (vis.length < 3) {
-        faceIdx++;
-        continue;
-      }
-
-      const depth = faceDepths[faceIdx] ?? 0.5;
-
-      // Normals computed in fragment shader via dFdx/dFdy - no need to calculate here
       if (vis.length === 3) {
-        setVertex(vis[0]!, depth);
-        setVertex(vis[1]!, depth);
-        setVertex(vis[2]!, depth);
+        // Triangle: 3 indices
+        indices[indexIdx++] = vis[0]!;
+        indices[indexIdx++] = vis[1]!;
+        indices[indexIdx++] = vis[2]!;
       } else if (vis.length === 4) {
-        setVertex(vis[0]!, depth);
-        setVertex(vis[1]!, depth);
-        setVertex(vis[2]!, depth);
-        setVertex(vis[0]!, depth);
-        setVertex(vis[2]!, depth);
-        setVertex(vis[3]!, depth);
+        // Quad: split into 2 triangles (0,1,2) and (0,2,3)
+        indices[indexIdx++] = vis[0]!;
+        indices[indexIdx++] = vis[1]!;
+        indices[indexIdx++] = vis[2]!;
+        indices[indexIdx++] = vis[0]!;
+        indices[indexIdx++] = vis[2]!;
+        indices[indexIdx++] = vis[3]!;
       }
-
-      faceIdx++;
     }
 
+    geo.setIndex(new THREE.BufferAttribute(indices, 1));
     geo.setAttribute('position', new Float32BufferAttribute(positions, 3));
-    // Note: normals are computed in fragment shader via dFdx/dFdy derivatives
     geo.setAttribute('aExtraDim0', new Float32BufferAttribute(extraDim0, 1));
     geo.setAttribute('aExtraDim1', new Float32BufferAttribute(extraDim1, 1));
     geo.setAttribute('aExtraDim2', new Float32BufferAttribute(extraDim2, 1));
@@ -479,10 +471,9 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     geo.setAttribute('aExtraDim4', new Float32BufferAttribute(extraDim4, 1));
     geo.setAttribute('aExtraDim5', new Float32BufferAttribute(extraDim5, 1));
     geo.setAttribute('aExtraDim6', new Float32BufferAttribute(extraDim6, 1));
-    geo.setAttribute('aFaceDepth', new Float32BufferAttribute(faceDepthAttr, 1));
 
     return geo;
-  }, [numFaces, faces, baseVertices, faceDepths]);
+  }, [numFaces, faces, baseVertices]);
 
   // ============ EDGE GEOMETRY ============
   const edgeGeometry = useMemo(() => {

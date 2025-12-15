@@ -88,7 +88,8 @@ export function buildFaceFragmentShader(): string {
     // Inputs from vertex shader
     in vec3 vWorldPosition;
     in vec3 vViewDir;
-    in float vFaceDepth;
+    // Face depth with flat interpolation - first vertex of each triangle wins
+    flat in float vFaceDepth;
 
     // ============================================================
     // Cosine Gradient Palette Functions (Inigo Quilez technique)
@@ -322,6 +323,7 @@ export function buildFaceFragmentShader(): string {
       vec3 viewDir = normalize(vViewDir);
 
       // Get base color from algorithm using face depth as t value
+      // vFaceDepth is computed from higher dimension coords with flat interpolation
       vec3 baseHSL = rgb2hsl(uColor);
       vec3 baseColor = getColorByAlgorithm(vFaceDepth, normal, baseHSL);
 
