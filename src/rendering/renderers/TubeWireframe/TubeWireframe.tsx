@@ -8,34 +8,34 @@
  * @see docs/prd/enhanced-visuals-rendering-pipeline.md
  */
 
-import React, { useRef, useLayoutEffect, useMemo, useEffect } from 'react'
-import {
-  CylinderGeometry,
-  InstancedBufferAttribute,
-  Matrix4,
-  Color,
-  ShaderMaterial,
-  DoubleSide,
-  InstancedMesh,
-  GLSL3,
-} from 'three'
-import { useFrame } from '@react-three/fiber'
-import { RENDER_LAYERS } from '@/rendering/core/layers'
 import { createColorCache, createLightColorCache, updateLinearColorUniform } from '@/rendering/colors/linearCache'
+import { RENDER_LAYERS } from '@/rendering/core/layers'
+import { useFrame } from '@react-three/fiber'
+import React, { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
+import {
+    Color,
+    CylinderGeometry,
+    DoubleSide,
+    GLSL3,
+    InstancedBufferAttribute,
+    InstancedMesh,
+    Matrix4,
+    ShaderMaterial,
+} from 'three'
 
+import { DEFAULT_PROJECTION_DISTANCE } from '@/lib/math/projection'
+import { composeRotations } from '@/lib/math/rotation'
 import type { VectorND } from '@/lib/math/types'
-import { useRotationStore } from '@/stores/rotationStore'
-import { useTransformStore } from '@/stores/transformStore'
-import { useProjectionStore } from '@/stores/projectionStore'
+import { createLightUniforms, updateLightUniforms, type LightUniforms } from '@/rendering/lights/uniforms'
+import { matrixToGPUUniforms } from '@/rendering/shaders/transforms/ndTransform'
 import { useAppearanceStore } from '@/stores/appearanceStore'
 import { useLightingStore } from '@/stores/lightingStore'
-import { composeRotations } from '@/lib/math/rotation'
-import { DEFAULT_PROJECTION_DISTANCE } from '@/lib/math/projection'
-import { matrixToGPUUniforms } from '@/rendering/shaders/transforms/ndTransform'
-import { createLightUniforms, updateLightUniforms, type LightUniforms } from '@/rendering/lights/uniforms'
+import { useProjectionStore } from '@/stores/projectionStore'
+import { useRotationStore } from '@/stores/rotationStore'
+import { useTransformStore } from '@/stores/transformStore'
 
-import vertexShader from './tubeWireframe.vert?raw'
 import fragmentShader from './tubeWireframe.frag?raw'
+import vertexShader from './tubeWireframe.vert?raw'
 
 // Maximum extra dimensions (beyond XYZ + W)
 const MAX_EXTRA_DIMS = 7
@@ -148,6 +148,30 @@ export function TubeWireframe({
 
     return mat
   }, [color, opacity, metallic, roughness, radius, dimension])
+
+  // Cleanup geometry and material on unmount or when they change
+  const prevGeometryRef = useRef<CylinderGeometry | null>(null)
+  const prevMaterialRef = useRef<ShaderMaterial | null>(null)
+
+  useEffect(() => {
+    // Dispose old resources if they exist and differ from current
+    if (prevGeometryRef.current && prevGeometryRef.current !== geometry) {
+      prevGeometryRef.current.dispose()
+    }
+    if (prevMaterialRef.current && prevMaterialRef.current !== material) {
+      prevMaterialRef.current.dispose()
+    }
+
+    // Update refs to current values
+    prevGeometryRef.current = geometry
+    prevMaterialRef.current = material
+
+    // Cleanup on unmount
+    return () => {
+      geometry.dispose()
+      material.dispose()
+    }
+  }, [geometry, material])
 
   // Update instance attributes when vertices/edges change
   useLayoutEffect(() => {

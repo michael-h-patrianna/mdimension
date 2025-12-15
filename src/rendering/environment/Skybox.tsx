@@ -10,17 +10,50 @@ import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader';
 // PMREM Cache - Module-level cache to avoid regenerating PMREM for same textures
 // ============================================================================
 
+/** Maximum number of PMREM textures to keep in cache (LRU eviction) */
+const PMREM_CACHE_MAX_SIZE = 6;
+
 interface PMREMCacheEntry {
   pmremTexture: THREE.Texture;
   /** Track usage count to know when to dispose */
   refCount: number;
+  /** Last access timestamp for LRU eviction */
+  lastAccess: number;
 }
 
 /**
  * Module-level cache for PMREM textures.
  * Keyed by the source texture UUID to avoid regenerating when switching skyboxes.
+ * Uses LRU eviction when cache exceeds PMREM_CACHE_MAX_SIZE.
  */
 const pmremCache = new Map<string, PMREMCacheEntry>();
+
+/**
+ * Evict least recently used entries when cache exceeds max size.
+ * Only evicts entries with refCount === 0 (not currently in use).
+ */
+function evictLRUCacheEntries(): void {
+  if (pmremCache.size <= PMREM_CACHE_MAX_SIZE) return;
+
+  // Collect entries eligible for eviction (refCount === 0)
+  const evictable: Array<[string, PMREMCacheEntry]> = [];
+  for (const [key, entry] of pmremCache) {
+    if (entry.refCount === 0) {
+      evictable.push([key, entry]);
+    }
+  }
+
+  // Sort by lastAccess (oldest first)
+  evictable.sort((a, b) => a[1].lastAccess - b[1].lastAccess);
+
+  // Evict until we're at or below max size
+  const numToEvict = pmremCache.size - PMREM_CACHE_MAX_SIZE;
+  for (let i = 0; i < Math.min(numToEvict, evictable.length); i++) {
+    const [key, entry] = evictable[i]!;
+    entry.pmremTexture.dispose();
+    pmremCache.delete(key);
+  }
+}
 
 /** Shared PMREMGenerator instance - reused across all conversions */
 let sharedPMREMGenerator: THREE.PMREMGenerator | null = null;
@@ -84,8 +117,9 @@ function usePMREMTexture(texture: THREE.CubeTexture | undefined): PMREMResult {
     // Check cache first
     const cached = pmremCache.get(textureUuid);
     if (cached) {
-      // Increment ref count and use cached texture
+      // Increment ref count, update access time, and use cached texture
       cached.refCount++;
+      cached.lastAccess = Date.now();
       currentTextureUuid.current = textureUuid;
       setPmremTexture(cached.pmremTexture);
       setIsGenerating(false);
@@ -115,11 +149,15 @@ function usePMREMTexture(texture: THREE.CubeTexture | undefined): PMREMResult {
           const envMap = renderTarget.texture;
           envMap.colorSpace = THREE.SRGBColorSpace;
 
-          // Store in cache
+          // Store in cache with LRU eviction
           pmremCache.set(textureUuid, {
             pmremTexture: envMap,
             refCount: 1,
+            lastAccess: Date.now(),
           });
+
+          // Evict old entries if cache is too large
+          evictLRUCacheEntries();
 
           currentTextureUuid.current = textureUuid;
           setPmremTexture(envMap);

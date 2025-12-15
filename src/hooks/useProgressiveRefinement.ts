@@ -4,7 +4,12 @@
  */
 
 import type { RefinementStage } from '@/stores'
-import { REFINEMENT_STAGE_TIMING, REFINEMENT_STAGES, usePerformanceStore } from '@/stores'
+import {
+  REFINEMENT_STAGE_TIMING,
+  REFINEMENT_STAGES,
+  useEnvironmentStore,
+  usePerformanceStore,
+} from '@/stores'
 import { useCallback, useEffect, useRef } from 'react'
 
 export interface UseProgressiveRefinementOptions {
@@ -46,9 +51,10 @@ export function useProgressiveRefinement(
   const progress = usePerformanceStore((s) => s.refinementProgress)
   const qualityMultiplier = usePerformanceStore((s) => s.qualityMultiplier)
   const isInteracting = usePerformanceStore((s) => s.isInteracting)
+  const sceneTransitioning = usePerformanceStore((s) => s.sceneTransitioning)
   const setRefinementStage = usePerformanceStore((s) => s.setRefinementStage)
   const setRefinementProgress = usePerformanceStore((s) => s.setRefinementProgress)
-  
+
   // Skybox loading state - keep low quality while loading
   const skyboxLoading = useEnvironmentStore((s) => s.skyboxLoading)
 
@@ -114,7 +120,7 @@ export function useProgressiveRefinement(
     setRefinementProgress(0)
   }, [clearTimers, setRefinementStage, setRefinementProgress])
 
-  // React to interaction state and skybox loading changes
+  // React to interaction state, skybox loading, and scene transitions
   useEffect(() => {
     if (!enabled) {
       // If disabled, ensure we're at final quality
@@ -123,12 +129,12 @@ export function useProgressiveRefinement(
       return
     }
 
-    // Keep low quality while skybox is loading or during interaction
-    if (isInteracting || skyboxLoading) {
-      // Interaction started or skybox loading - reset to low quality
+    // Keep low quality while skybox is loading, during interaction, or scene transition
+    if (isInteracting || skyboxLoading || sceneTransitioning) {
+      // Interaction/loading/transition - reset to low quality
       stopRefinement()
     } else {
-      // Interaction stopped and skybox loaded - start refinement sequence
+      // All clear - start refinement sequence
       startRefinement()
     }
 
@@ -137,6 +143,7 @@ export function useProgressiveRefinement(
     enabled,
     isInteracting,
     skyboxLoading,
+    sceneTransitioning,
     startRefinement,
     stopRefinement,
     clearTimers,

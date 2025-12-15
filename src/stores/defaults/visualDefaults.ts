@@ -194,7 +194,7 @@ export const DEFAULT_GROUND_MATERIAL_ENVMAP_INTENSITY = 1.6
 export type SkyboxTexture = 'space_blue' | 'space_lightblue' | 'space_red' | 'none'
 
 export const DEFAULT_SKYBOX_ENABLED = true
-export const DEFAULT_SKYBOX_TEXTURE: SkyboxTexture = 'space_red'
+export const DEFAULT_SKYBOX_TEXTURE: SkyboxTexture = 'space_blue'
 export const DEFAULT_SKYBOX_BLUR = 0
 export const DEFAULT_SKYBOX_INTENSITY = 1
 export const DEFAULT_SKYBOX_ROTATION = 0
@@ -208,7 +208,7 @@ export type SkyboxAnimationMode =
   | 'ethereal' // Complex rot + Shimmer (The "Magic")
   | 'nebula' // Color shifting (The "Cosmic")
 
-export const DEFAULT_SKYBOX_ANIMATION_MODE: SkyboxAnimationMode = 'none'
+export const DEFAULT_SKYBOX_ANIMATION_MODE: SkyboxAnimationMode = 'heatwave'
 export const DEFAULT_SKYBOX_ANIMATION_SPEED = 0.01
 
 // ============================================================================

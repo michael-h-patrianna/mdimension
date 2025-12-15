@@ -9,23 +9,24 @@
  * - UnifiedRenderer: Routes to appropriate high-performance renderer
  */
 
-import React from 'react'
-import { useShallow } from 'zustand/react/shallow'
-import type { Vector3D } from '@/lib/math/types'
+import { CameraController } from '@/components/canvas/CameraController'
+import { LightGizmoManager } from '@/components/canvas/gizmos/LightGizmoManager'
+import { PerformanceManager } from '@/components/canvas/PerformanceManager'
+import { useSmoothResizing } from '@/hooks/useSmoothResizing'
+import { useViewportOffset } from '@/hooks/useViewportOffset'
+import { useWebGLCleanup } from '@/hooks/useWebGLCleanup'
 import type { Face } from '@/lib/geometry/faces'
 import type { NdGeometry, ObjectType } from '@/lib/geometry/types'
-import { UnifiedRenderer } from '@/rendering/renderers/UnifiedRenderer'
-import { CameraController } from '@/components/canvas/CameraController'
-import { PerformanceManager } from '@/components/canvas/PerformanceManager'
-import { SceneLighting } from '@/rendering/environment/SceneLighting'
-import { PostProcessing } from '@/rendering/environment/PostProcessing'
+import type { Vector3D } from '@/lib/math/types'
 import { GroundPlane } from '@/rendering/environment/GroundPlane'
+import { PostProcessing } from '@/rendering/environment/PostProcessing'
+import { SceneLighting } from '@/rendering/environment/SceneLighting'
 import { Skybox } from '@/rendering/environment/Skybox'
-import { LightGizmoManager } from '@/components/canvas/gizmos/LightGizmoManager'
+import { UnifiedRenderer } from '@/rendering/renderers/UnifiedRenderer'
 import { useEnvironmentStore } from '@/stores/environmentStore'
 import { useUIStore } from '@/stores/uiStore'
-import { useViewportOffset } from '@/hooks/useViewportOffset'
-import { useSmoothResizing } from '@/hooks/useSmoothResizing'
+import React from 'react'
+import { useShallow } from 'zustand/react/shallow'
 
 /**
  * Props for the Scene component.
@@ -114,6 +115,9 @@ export const Scene = React.memo(function Scene({
 
   // Handle smooth resizing for browser chrome changes (fullscreen)
   useSmoothResizing()
+
+  // Clean up WebGL state during scene transitions to prevent memory accumulation
+  useWebGLCleanup()
 
   return (
     <>

@@ -6,6 +6,7 @@
 import { getPlaneMultiplier } from '@/lib/animation/biasCalculation'
 import { useAnimationStore } from '@/stores/animationStore'
 import { useEnvironmentStore } from '@/stores/environmentStore'
+import { usePerformanceStore } from '@/stores/performanceStore'
 import { useRotationStore } from '@/stores/rotationStore'
 import { useUIStore } from '@/stores/uiStore'
 import { useCallback, useEffect, useRef } from 'react'
@@ -13,13 +14,14 @@ import { useCallback, useEffect, useRef } from 'react'
 /**
  * Hook that runs the animation loop when animation is playing
  * Updates rotation angles for all animating planes
- * Pauses during skybox loading to avoid visual distraction
+ * Pauses during skybox loading or scene transitions to avoid visual artifacts
  */
 export function useAnimationLoop(): void {
   const isPlaying = useAnimationStore((state) => state.isPlaying)
   const animatingPlanes = useAnimationStore((state) => state.animatingPlanes)
   const getRotationDelta = useAnimationStore((state) => state.getRotationDelta)
   const skyboxLoading = useEnvironmentStore((state) => state.skyboxLoading)
+  const sceneTransitioning = usePerformanceStore((state) => state.sceneTransitioning)
 
   const updateRotations = useRotationStore((state) => state.updateRotations)
   const getRotationRadians = useCallback((plane: string) => {
@@ -95,8 +97,10 @@ export function useAnimationLoop(): void {
   )
 
   useEffect(() => {
-    // Don't animate while skybox is loading to avoid distraction
-    if (isPlaying && animatingPlanes.size > 0 && !skyboxLoading) {
+    // Don't animate while skybox is loading or scene is transitioning to avoid artifacts
+    const shouldAnimate =
+      isPlaying && animatingPlanes.size > 0 && !skyboxLoading && !sceneTransitioning
+    if (shouldAnimate) {
       lastTimeRef.current = null
       frameRef.current = requestAnimationFrame(animate)
     }
@@ -107,5 +111,5 @@ export function useAnimationLoop(): void {
         frameRef.current = null
       }
     }
-  }, [isPlaying, animatingPlanes, animate, skyboxLoading])
+  }, [isPlaying, animatingPlanes, animate, skyboxLoading, sceneTransitioning])
 }

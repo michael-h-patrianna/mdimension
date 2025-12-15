@@ -22,14 +22,14 @@ import {
 } from 'three';
 import { useShallow } from 'zustand/react/shallow';
 
-import { createColorCache, createLightColorCache, updateLightColorUniform, updateLinearColorUniform } from '@/rendering/colors/linearCache';
 import type { Face } from '@/lib/geometry/faces';
-import type { LightSource } from '@/rendering/lights/types';
-import { LIGHT_TYPE_TO_INT, MAX_LIGHTS, rotationToDirection } from '@/rendering/lights/types';
 import { DEFAULT_PROJECTION_DISTANCE } from '@/lib/math/projection';
 import { composeRotations } from '@/lib/math/rotation';
 import type { VectorND } from '@/lib/math/types';
+import { createColorCache, createLightColorCache, updateLightColorUniform, updateLinearColorUniform } from '@/rendering/colors/linearCache';
 import { RENDER_LAYERS } from '@/rendering/core/layers';
+import type { LightSource } from '@/rendering/lights/types';
+import { LIGHT_TYPE_TO_INT, MAX_LIGHTS, rotationToDirection } from '@/rendering/lights/types';
 import { COLOR_ALGORITHM_TO_INT } from '@/rendering/shaders/palette';
 import { matrixToGPUUniforms } from '@/rendering/shaders/transforms/ndTransform';
 import { useAppearanceStore } from '@/stores/appearanceStore';
@@ -492,19 +492,42 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   }, [numEdges, edges, baseVertices]);
 
   // ============ CLEANUP ============
+  // Track previous resources for proper disposal when dependencies change
+  const prevFaceMaterialRef = useRef<THREE.ShaderMaterial | null>(null);
+  const prevEdgeMaterialRef = useRef<THREE.ShaderMaterial | null>(null);
+  const prevFaceGeometryRef = useRef<THREE.BufferGeometry | null>(null);
+  const prevEdgeGeometryRef = useRef<THREE.BufferGeometry | null>(null);
+
+  // Dispose previous resources when new ones are created
   useEffect(() => {
+    // Dispose old resources if they exist and differ from current
+    if (prevFaceMaterialRef.current && prevFaceMaterialRef.current !== faceMaterial) {
+      prevFaceMaterialRef.current.dispose();
+    }
+    if (prevEdgeMaterialRef.current && prevEdgeMaterialRef.current !== edgeMaterial) {
+      prevEdgeMaterialRef.current.dispose();
+    }
+    if (prevFaceGeometryRef.current && prevFaceGeometryRef.current !== faceGeometry) {
+      prevFaceGeometryRef.current.dispose();
+    }
+    if (prevEdgeGeometryRef.current && prevEdgeGeometryRef.current !== edgeGeometry) {
+      prevEdgeGeometryRef.current.dispose();
+    }
+
+    // Update refs to current values
+    prevFaceMaterialRef.current = faceMaterial;
+    prevEdgeMaterialRef.current = edgeMaterial;
+    prevFaceGeometryRef.current = faceGeometry;
+    prevEdgeGeometryRef.current = edgeGeometry;
+
+    // Cleanup on unmount - dispose current resources
     return () => {
       faceMaterial.dispose();
       edgeMaterial.dispose();
       faceGeometry?.dispose();
       edgeGeometry?.dispose();
     };
-  }, [
-    faceMaterial,
-    edgeMaterial,
-    faceGeometry,
-    edgeGeometry,
-  ]);
+  }, [faceMaterial, edgeMaterial, faceGeometry, edgeGeometry]);
 
   // ============ USEFRAME: UPDATE UNIFORMS ONLY ============
   useFrame(() => {
