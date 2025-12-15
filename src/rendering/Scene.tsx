@@ -23,6 +23,7 @@ import { GroundPlane } from '@/rendering/environment/GroundPlane'
 import { LightGizmoManager } from '@/components/canvas/gizmos/LightGizmoManager'
 import { useEnvironmentStore } from '@/stores/environmentStore'
 import { useUIStore } from '@/stores/uiStore'
+import { useViewportOffset } from '@/hooks/useViewportOffset'
 
 /**
  * Props for the Scene component.
@@ -105,6 +106,9 @@ export const Scene = React.memo(function Scene({
   )
 
   const showAxisHelper = useUIStore((state) => state.showAxisHelper)
+
+  // Handle camera viewport offset for smooth sidebar animations
+  useViewportOffset()
 
   return (
     <>

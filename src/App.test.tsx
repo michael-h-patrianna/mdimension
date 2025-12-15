@@ -50,14 +50,14 @@ describe('App', () => {
     expect(screen.getAllByText(/Faces/i).length).toBeGreaterThan(0);
   });
 
-  it('renders the Projection section when Scene tab is selected', () => {
+  it('renders the Projection section when System tab is selected', () => {
     render(<App />);
     
-    // Find Scene tab
-    const sceneTab = screen.getByRole('tab', { name: /Scene/i });
-    fireEvent.click(sceneTab);
+    // Find System tab
+    const systemTab = screen.getByRole('tab', { name: /System/i });
+    fireEvent.click(systemTab);
 
-    // Projection appears in Scene tab
+    // Projection appears in System tab
     const projectionElements = screen.getAllByText(/Projection/i);
     expect(projectionElements.length).toBeGreaterThan(0);
   });
