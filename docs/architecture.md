@@ -31,13 +31,9 @@
 - **convex-hull** 1.0.3 - Computational geometry
 
 ### Testing
-- **Vitest** 4.0.15 - Unit testing framework
-- **@testing-library/react** 16.3.0 - React testing utilities
-- **@testing-library/jest-dom** 6.6.3 - Custom matchers
-- **@testing-library/user-event** 14.6.1 - User interaction simulation
+- **vitest** 4.0.15 - Unit testing framework
 - **happy-dom** 15.11.7 - DOM implementation for testing
-- **jsdom** 25.0.1 - Alternative DOM implementation
-- **Playwright** 1.57.0 - E2E testing
+- **playwright** 1.57.0 - E2E testing framework
 
 ### Development Tools
 - **ESLint** 9.15.0 - Code linting

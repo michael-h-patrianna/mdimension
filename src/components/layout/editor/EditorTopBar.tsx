@@ -13,20 +13,16 @@ import { usePresetStore } from '@/stores/presetStore';
 import { useThemeStore } from '@/stores/themeStore';
 
 interface EditorTopBarProps {
-  showLeftPanel: boolean;
-  setShowLeftPanel: (show: boolean) => void;
   showRightPanel: boolean;
   toggleRightPanel: () => void;
 }
 
 export const EditorTopBar: React.FC<EditorTopBarProps> = ({
-  showLeftPanel,
-  setShowLeftPanel,
   showRightPanel,
   toggleRightPanel,
 }) => {
   const { addToast } = useToast();
-  const toggleShortcuts = useLayoutStore((state) => state.toggleShortcuts);
+  const { toggleShortcuts, showLeftPanel, toggleLeftPanel } = useLayoutStore();
   const { savedPresets, saveCurrentAsPreset, loadPreset } = usePresetStore();
   const { theme, setTheme } = useThemeStore();
 
@@ -91,7 +87,7 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
   ];
 
   const viewItems = [
-    { label: showLeftPanel ? 'Hide Explorer' : 'Show Explorer', onClick: () => setShowLeftPanel(!showLeftPanel) },
+    { label: showLeftPanel ? 'Hide Explorer' : 'Show Explorer', onClick: toggleLeftPanel },
     { label: showRightPanel ? 'Hide Inspector' : 'Show Inspector', onClick: toggleRightPanel },
     { label: `Theme: ${theme.charAt(0).toUpperCase() + theme.slice(1)}`, onClick: toggleTheme },
     { label: 'Cinematic Mode', onClick: toggleCinematic, shortcut: 'C' },
@@ -131,7 +127,7 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
       <div className="flex items-center gap-4">
         {/* Left Panel Toggle */}
         <button
-            onClick={() => setShowLeftPanel(!showLeftPanel)}
+            onClick={toggleLeftPanel}
             className={`p-1.5 rounded-md transition-colors ${
               showLeftPanel ? 'bg-accent/10 text-accent' : 'text-text-secondary hover:text-text-primary hover:bg-white/5'
             }`}

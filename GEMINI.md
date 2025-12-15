@@ -43,8 +43,7 @@ Coding agents must follow `docs/meta/styleguide.md` - No exceptions!
 ### Configuration Safeguards (DO NOT MODIFY without review)
 - `maxWorkers: 4` in `vitest.config.ts` - Prevents excessive process spawning
 - `pool: 'threads'` - Uses memory-efficient threading instead of forks
-- `environment: 'node'` default - Only loads JSDOM for component tests
-- `environmentMatchGlobs` - Restricts heavy JSDOM to UI tests only
+- `environment: 'happy-dom'` - Fast DOM implementation for all tests
 
 ### Before Changing Test Configuration
 1. **VERIFY**: Worker count stays ≤ 4, total memory < 2GB
@@ -53,7 +52,7 @@ Coding agents must follow `docs/meta/styleguide.md` - No exceptions!
 ### Writing Memory-Safe Tests
 - **DON'T**: Generate 1000+ data points in a single test without batching
 - **DO**: Process in batches of 100 and clear arrays between batches
-- **DON'T**: Load JSDOM for pure logic tests (use `.test.ts` not `.test.tsx`)
+- **DON'T**: Rely on DOM for pure logic tests if not needed
 - **DO**: Use component tests (`.test.tsx`) only for UI components
 - **DON'T**: Forget to cleanup timers/listeners in afterEach
 - **DO**: Call `cleanup()` from @testing-library/react in test teardown

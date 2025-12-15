@@ -6,7 +6,9 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Vector3, Euler } from 'three';
+import { useShallow } from 'zustand/react/shallow';
 import { INTERACTION_RESTORE_DELAY, usePerformanceStore } from '@/stores';
+import { useLayoutStore } from '@/stores/layoutStore';
 
 /** Threshold for detecting camera movement */
 const POSITION_THRESHOLD = 0.0001;
@@ -249,6 +251,35 @@ export function useInteractionState(
     // Always update previous size
     prevSizeRef.current = { width: size.width, height: size.height };
   }, [enabled, size.width, size.height, startInteraction, stopInteraction]);
+
+  // Listen to layout changes (sidebar toggle, cinematic mode)
+  // This ensures progressive refinement is triggered even if resize detection is missed
+  const { isCollapsed, showLeftPanel, isCinematicMode } = useLayoutStore(
+    useShallow((state) => ({
+      isCollapsed: state.isCollapsed,
+      showLeftPanel: state.showLeftPanel,
+      isCinematicMode: state.isCinematicMode,
+    }))
+  );
+
+  useEffect(() => {
+    if (!enabled) return;
+    startInteraction();
+    stopInteraction();
+  }, [enabled, isCollapsed, showLeftPanel, isCinematicMode, startInteraction, stopInteraction]);
+
+  // Listen to fullscreen changes
+  useEffect(() => {
+    if (!enabled) return;
+    
+    const handleFullscreenChange = () => {
+      startInteraction();
+      stopInteraction();
+    };
+    
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, [enabled, startInteraction, stopInteraction]);
 
   return {
     isInteracting: isInteractingRef.current,

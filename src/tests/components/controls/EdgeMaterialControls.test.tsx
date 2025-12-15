@@ -1,11 +1,10 @@
 /**
  * Tests for EdgeMaterialControls component
- * @vitest-environment jsdom
  */
 
 import { EdgeMaterialControls } from '@/components/sidebar/Edges/EdgeMaterialControls'
 import { DEFAULT_EDGE_METALLIC, DEFAULT_EDGE_ROUGHNESS, useVisualStore } from '@/stores/visualStore'
-import { render, screen } from '@testing-library/react'
+import { render, screen, act } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 describe('EdgeMaterialControls', () => {
@@ -69,7 +68,9 @@ describe('EdgeMaterialControls', () => {
       render(<EdgeMaterialControls />)
 
       // Update via store
-      useVisualStore.getState().setEdgeMetallic(0.8)
+      act(() => {
+        useVisualStore.getState().setEdgeMetallic(0.8)
+      })
 
       expect(useVisualStore.getState().edgeMetallic).toBe(0.8)
     })
@@ -98,7 +99,9 @@ describe('EdgeMaterialControls', () => {
       render(<EdgeMaterialControls />)
 
       // Update via store
-      useVisualStore.getState().setEdgeRoughness(0.3)
+      act(() => {
+        useVisualStore.getState().setEdgeRoughness(0.3)
+      })
 
       expect(useVisualStore.getState().edgeRoughness).toBe(0.3)
     })

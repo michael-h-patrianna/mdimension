@@ -70,7 +70,6 @@ export const AnimationControls: React.FC<AnimationControlsProps> = React.memo(({
     toggleDirection,
     togglePlane,
     animateAll,
-    stopAll,
   } = useAnimationStore(
     useShallow((state) => ({
       isPlaying: state.isPlaying,
@@ -82,7 +81,6 @@ export const AnimationControls: React.FC<AnimationControlsProps> = React.memo(({
       toggleDirection: state.toggleDirection,
       togglePlane: state.togglePlane,
       animateAll: state.animateAll,
-      stopAll: state.stopAll,
     }))
   );
 
@@ -176,26 +174,16 @@ export const AnimationControls: React.FC<AnimationControlsProps> = React.memo(({
         </div>
       </div>
 
-      {/* Animate All / Stop All */}
-      <div className="flex gap-2">
+      {/* Animate All */}
+      <div>
         <Button
           variant="secondary"
           size="sm"
           onClick={() => animateAll(dimension)}
-          className="flex-1"
+          className="w-full"
           data-testid="animation-all"
         >
           Animate All
-        </Button>
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={stopAll}
-          disabled={!hasAnimatingPlanes && !isPlaying}
-          className="flex-1"
-          data-testid="animation-stop"
-        >
-          Stop All
         </Button>
       </div>
 

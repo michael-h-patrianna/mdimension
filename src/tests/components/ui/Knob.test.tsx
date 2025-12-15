@@ -28,7 +28,4 @@ describe('Knob', () => {
     fireEvent.keyDown(slider, { key: 'ArrowDown' });
     expect(handleChange).toHaveBeenCalledWith(49);
   });
-
-  // Dragging tests are hard with pointer events in JSDOM, usually rely on integration or simple event firing checks if possible. 
-  // We verified standard logic.
 });

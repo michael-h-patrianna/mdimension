@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import { MandelboxControls } from '@/components/sidebar/Geometry/MandelboxControls';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
@@ -166,12 +166,16 @@ describe('MandelboxControls', () => {
 
   it('should display dimension info correctly for different dimensions', () => {
     // Test 3D
-    useGeometryStore.getState().setDimension(3);
+    act(() => {
+      useGeometryStore.getState().setDimension(3);
+    });
     const { rerender } = render(<MandelboxControls />);
     expect(screen.getByText('3D Mandelbox fractal')).toBeInTheDocument();
 
     // Test 6D
-    useGeometryStore.getState().setDimension(6);
+    act(() => {
+      useGeometryStore.getState().setDimension(6);
+    });
     rerender(<MandelboxControls />);
     expect(screen.getByText('6D Mandelbox fractal')).toBeInTheDocument();
   });

@@ -11,7 +11,7 @@ export default defineConfig({
   plugins: [react()],
   test: {
     globals: true,
-    environment: 'jsdom',
+    environment: 'happy-dom',
     setupFiles: './src/tests/setup.ts',
     css: true,
     pool: 'threads',

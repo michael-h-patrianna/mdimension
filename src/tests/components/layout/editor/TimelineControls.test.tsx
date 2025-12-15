@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { TimelineControls } from '@/components/layout/editor/TimelineControls';
 
 vi.mock('@/stores/geometryStore', () => ({
@@ -24,6 +24,8 @@ vi.mock('@/stores/animationStore', () => ({
       toggleDirection: vi.fn(),
       togglePlane: vi.fn(),
       stopAll: vi.fn(),
+      animateAll: vi.fn(),
+      resetToFirstPlane: vi.fn(),
     };
     return selector ? selector(state) : state;
   }),
@@ -72,7 +74,7 @@ vi.mock('zustand/react/shallow', () => ({
 }));
 
 describe('TimelineControls', () => {
-  it('toggles Rotation drawer when button is clicked', () => {
+  it('toggles Rotation drawer when button is clicked', async () => {
     render(<TimelineControls />);
     
     // Check initial state
@@ -90,6 +92,22 @@ describe('TimelineControls', () => {
     
     // Click Rotation again to close
     fireEvent.click(rotButton);
-    expect(screen.queryByText('XY', { selector: 'button' })).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText('XY', { selector: 'button' })).not.toBeInTheDocument();
+    });
+  });
+
+  it('does not show Stop All button in main bar, but shows Deselect All in drawer', () => {
+    render(<TimelineControls />);
+
+    // Stop All button should be removed from main bar
+    expect(screen.queryByTitle("Stop All")).not.toBeInTheDocument();
+
+    // Open drawer
+    const rotButton = screen.getByText(/Rotation/i);
+    fireEvent.click(rotButton);
+
+    // Deselect All button (functionally the stop button) should be in drawer
+    expect(screen.getByText("Deselect All")).toBeInTheDocument();
   });
 });

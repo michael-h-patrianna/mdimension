@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
+import { m, AnimatePresence } from 'motion/react';
 import { useThemeStore } from '@/stores/themeStore';
 import { useLayoutStore } from '@/stores/layoutStore';
 import { EditorTopBar } from './EditorTopBar';
@@ -6,6 +7,7 @@ import { EditorLeftPanel } from './EditorLeftPanel';
 import { EditorRightPanel } from './EditorRightPanel';
 import { EditorBottomPanel } from './EditorBottomPanel';
 import { ShortcutsOverlay } from '@/components/ui/ShortcutsOverlay';
+import { useIsDesktop } from '@/hooks/useMediaQuery';
 
 interface EditorLayoutProps {
   children?: React.ReactNode;
@@ -13,13 +15,49 @@ interface EditorLayoutProps {
 
 export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
   const theme = useThemeStore((state) => state.theme);
-  const { isCollapsed, toggleCollapsed, isCinematicMode, toggleCinematicMode } = useLayoutStore();
-  const [showLeftPanel, setShowLeftPanel] = useState(true);
+  const { 
+    isCollapsed, 
+    toggleCollapsed, 
+    isCinematicMode, 
+    toggleCinematicMode, 
+    setCollapsed,
+    showLeftPanel,
+    setLeftPanel 
+  } = useLayoutStore();
+  
+  const isDesktop = useIsDesktop();
 
   // Apply theme
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
+
+  // Handle overlay mode interactions
+  const handleOverlayClick = () => {
+    if (!isDesktop) {
+        setLeftPanel(false);
+        setCollapsed(true);
+    }
+  };
+
+  // Auto-collapse on mobile init
+  useEffect(() => {
+    if (!isDesktop) {
+        setLeftPanel(false);
+        setCollapsed(true);
+    } else {
+        setLeftPanel(true);
+        setCollapsed(false);
+    }
+  }, [isDesktop, setCollapsed, setLeftPanel]);
+
+  const panelVariants = {
+    hiddenLeft: { x: -320, opacity: 0 },
+    visible: { x: 0, opacity: 1 },
+    hiddenRight: { x: 320, opacity: 0 },
+  };
+
+  const transition = { type: 'spring' as const, damping: 25, stiffness: 200 };
 
   return (
     <div className="flex flex-col h-screen w-screen bg-background overflow-hidden selection:bg-accent selection:text-black font-sans text-text-primary relative">
@@ -28,39 +66,70 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
       
       {!isCinematicMode && (
           <EditorTopBar 
-            showLeftPanel={showLeftPanel}
-            setShowLeftPanel={setShowLeftPanel}
             showRightPanel={!isCollapsed}
             toggleRightPanel={toggleCollapsed}
           />
       )}
       
       {/* Floating Exit Cinematic Button */}
-      {isCinematicMode && (
-        <button
-            onClick={toggleCinematicMode}
-            className="fixed top-4 right-4 z-50 p-2 rounded-full bg-black/50 backdrop-blur-md text-white/50 hover:text-white hover:bg-black/70 transition-all border border-white/10 shadow-lg group"
-            title="Exit Cinematic Mode (C)"
-        >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:scale-110 transition-transform">
-                 <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
-        </button>
-      )}
+      <AnimatePresence>
+        {isCinematicMode && (
+            <m.button
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0, opacity: 0 }}
+                onClick={toggleCinematicMode}
+                className="fixed top-4 right-4 z-50 p-2 rounded-full bg-black/50 backdrop-blur-md text-white/50 hover:text-white hover:bg-black/70 transition-all border border-white/10 shadow-lg group"
+                title="Exit Cinematic Mode (C)"
+                data-testid="exit-cinematic"
+            >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:scale-110 transition-transform">
+                    <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+            </m.button>
+        )}
+      </AnimatePresence>
 
       <div className="flex flex-1 min-h-0 overflow-hidden relative z-10">
+        
+        {/* Mobile Overlay Backdrop */}
+        <AnimatePresence>
+            {!isDesktop && !isCinematicMode && (showLeftPanel || !isCollapsed) && (
+                <m.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={handleOverlayClick}
+                    className="absolute inset-0 bg-black/60 backdrop-blur-sm z-20"
+                />
+            )}
+        </AnimatePresence>
+
         {/* Left Panel */}
-        <div 
-            className={`bg-panel-bg/80 backdrop-blur-xl border-r border-panel-border transition-all duration-500 ease-[cubic-bezier(0.32,0.725,0,1)] overflow-hidden ${!isCinematicMode && showLeftPanel ? 'w-80 opacity-100 translate-x-0' : 'w-0 opacity-0 -translate-x-10 border-r-0'}`}
-        >
-            <div className="w-80 h-full overflow-y-auto custom-scrollbar">
-                <EditorLeftPanel />
-            </div>
-        </div>
+        <AnimatePresence mode="popLayout">
+            {!isCinematicMode && showLeftPanel && (
+                <m.div 
+                    initial="hiddenLeft"
+                    animate="visible"
+                    exit="hiddenLeft"
+                    variants={panelVariants}
+                    transition={transition}
+                    className={`
+                        bg-panel-bg/80 backdrop-blur-xl border-r border-panel-border 
+                        h-full overflow-hidden w-80
+                        ${!isDesktop ? 'absolute left-0 top-0 z-30 shadow-2xl' : 'relative z-20'}
+                    `}
+                >
+                    <div className="w-full h-full overflow-y-auto custom-scrollbar">
+                        <EditorLeftPanel />
+                    </div>
+                </m.div>
+            )}
+        </AnimatePresence>
         
         {/* Center Canvas Area */}
-        <div className="flex-1 flex flex-col min-w-0 relative">
-            <div className="flex-1 relative z-0 w-full h-full">
+        <div className="flex-1 flex flex-col min-w-0 relative z-0">
+            <div className="flex-1 relative w-full h-full">
                 {children || (
                      <div className="w-full h-full flex flex-col items-center justify-center text-text-tertiary">
                         <div className="w-16 h-16 border-2 border-dashed border-text-tertiary/20 rounded-full flex items-center justify-center mb-4 animate-spin-slow">
@@ -70,17 +139,30 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
                     </div>
                 )}
             </div>
-            {!isCinematicMode && <EditorBottomPanel />}
+            {!isCinematicMode && isDesktop && <EditorBottomPanel />}
         </div>
 
         {/* Right Panel */}
-        <div 
-            className={`bg-panel-bg/80 backdrop-blur-xl border-l border-panel-border transition-all duration-500 ease-[cubic-bezier(0.32,0.725,0,1)] overflow-hidden ${!isCinematicMode && !isCollapsed ? 'w-80 opacity-100 translate-x-0' : 'w-0 opacity-0 translate-x-10 border-l-0'}`}
-        >
-            <div className="w-80 h-full overflow-y-auto custom-scrollbar">
-                <EditorRightPanel />
-            </div>
-        </div>
+        <AnimatePresence mode="popLayout">
+            {!isCinematicMode && !isCollapsed && (
+                <m.div 
+                    initial="hiddenRight"
+                    animate="visible"
+                    exit="hiddenRight"
+                    variants={panelVariants}
+                    transition={transition}
+                    className={`
+                        bg-panel-bg/80 backdrop-blur-xl border-l border-panel-border 
+                        h-full overflow-hidden w-80
+                        ${!isDesktop ? 'absolute right-0 top-0 z-30 shadow-2xl' : 'relative z-20'}
+                    `}
+                >
+                    <div className="w-full h-full overflow-y-auto custom-scrollbar">
+                        <EditorRightPanel />
+                    </div>
+                </m.div>
+            )}
+        </AnimatePresence>
       </div>
       
       {!isCinematicMode && <ShortcutsOverlay />}

@@ -41,8 +41,7 @@ All shaders MUST use WebGL2/GLSL ES 3.00 syntax (`in`/`out`, `layout`, no `attri
 ### Configuration Safeguards (DO NOT MODIFY without review)
 - `maxWorkers: 4` in `vitest.config.ts` - Prevents excessive process spawning
 - `pool: 'threads'` - Uses memory-efficient threading instead of forks
-- `environment: 'node'` default - Only loads JSDOM for component tests
-- `environmentMatchGlobs` - Restricts heavy JSDOM to UI tests only
+- `environment: 'happy-dom'` - Fast DOM implementation for all tests
 
 ### Before Changing Test Configuration
 1. **VERIFY**: Worker count stays ≤ 4, total memory < 2GB
@@ -51,7 +50,7 @@ All shaders MUST use WebGL2/GLSL ES 3.00 syntax (`in`/`out`, `layout`, no `attri
 ### Writing Memory-Safe Tests
 - **DON'T**: Generate 1000+ data points in a single test without batching
 - **DO**: Process in batches of 100 and clear arrays between batches
-- **DON'T**: Load JSDOM for pure logic tests (use `.test.ts` not `.test.tsx`)
+- **DON'T**: Rely on DOM for pure logic tests if not needed (keep them simple)
 - **DO**: Use component tests (`.test.tsx`) only for UI components
 - **DON'T**: Forget to cleanup timers/listeners in afterEach
 - **DO**: Call `cleanup()` from @testing-library/react in test teardown
@@ -100,13 +99,9 @@ node scripts/cleanup-vitest.mjs  # Clean up lingering workers
 - **convex-hull** 1.0.3 - Computational geometry
 
 ### Testing
-- **Vitest** 4.0.15 - Unit testing framework
-- **@testing-library/react** 16.3.0 - React testing utilities
-- **@testing-library/jest-dom** 6.6.3 - Custom matchers
-- **@testing-library/user-event** 14.6.1 - User interaction simulation
+- **vitest** 4.0.15 - Unit testing framework
 - **happy-dom** 15.11.7 - DOM implementation for testing
-- **jsdom** 25.0.1 - Alternative DOM implementation
-- **Playwright** 1.57.0 - E2E testing
+- **playwright** 1.57.0 - E2E testing framework
 
 ### Development Tools
 - **ESLint** 9.15.0 - Code linting

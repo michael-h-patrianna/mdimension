@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, m } from 'motion/react';
 
 type ToastType = 'success' | 'error' | 'info';
 
@@ -32,7 +32,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none">
         <AnimatePresence>
           {toasts.map((toast) => (
-            <motion.div
+            <m.div
               key={toast.id}
               initial={{ opacity: 0, y: 20, scale: 0.9 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -50,7 +50,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                  'bg-accent shadow-[0_0_8px_var(--color-accent)]'
                }`} />
               <span className="text-sm font-medium">{toast.message}</span>
-            </motion.div>
+            </m.div>
           ))}
         </AnimatePresence>
       </div>

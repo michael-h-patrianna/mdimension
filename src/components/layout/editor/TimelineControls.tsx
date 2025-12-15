@@ -6,7 +6,7 @@ import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { getRotationPlanes } from '@/lib/math';
 import { useShallow } from 'zustand/react/shallow';
 import { ToggleButton } from '@/components/ui/ToggleButton';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, m } from 'motion/react';
 
 export const TimelineControls: React.FC = () => {
     const dimension = useGeometryStore((state) => state.dimension);
@@ -22,8 +22,8 @@ export const TimelineControls: React.FC = () => {
         setSpeed,
         toggleDirection,
         togglePlane,
-        stopAll,
-        animateAll
+        animateAll,
+        resetToFirstPlane
     } = useAnimationStore(
         useShallow((state) => ({
             isPlaying: state.isPlaying,
@@ -34,8 +34,8 @@ export const TimelineControls: React.FC = () => {
             setSpeed: state.setSpeed,
             toggleDirection: state.toggleDirection,
             togglePlane: state.togglePlane,
-            stopAll: state.stopAll,
             animateAll: state.animateAll,
+            resetToFirstPlane: state.resetToFirstPlane,
         }))
     );
 
@@ -76,7 +76,7 @@ export const TimelineControls: React.FC = () => {
             <AnimatePresence>
                 {/* Rotation Drawer */}
                 {showRotation && (
-                    <motion.div
+                    <m.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 20 }}
@@ -94,7 +94,7 @@ export const TimelineControls: React.FC = () => {
                                         Select All
                                     </button>
                                     <button
-                                        onClick={stopAll}
+                                        onClick={() => resetToFirstPlane(dimension)}
                                         className="text-[10px] uppercase font-bold text-text-secondary hover:text-text-primary hover:bg-white/10 px-2 py-1 rounded transition-colors"
                                     >
                                         Deselect All
@@ -122,12 +122,12 @@ export const TimelineControls: React.FC = () => {
                                 })}
                             </div>
                         </div>
-                    </motion.div>
+                    </m.div>
                 )}
 
                 {/* Fractal Animation Drawer */}
                 {showFractalAnim && objectType === 'mandelbox' && (
-                    <motion.div
+                    <m.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 20 }}
@@ -196,7 +196,7 @@ export const TimelineControls: React.FC = () => {
                                 </div>
                             </div>
                         </div>
-                    </motion.div>
+                    </m.div>
                 )}
             </AnimatePresence>
 
@@ -222,15 +222,6 @@ export const TimelineControls: React.FC = () => {
                         ) : (
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="ml-1"><path d="M5 3l14 9-14 9V3z" /></svg>
                         )}
-                    </button>
-                    
-                    <button
-                        onClick={stopAll}
-                        disabled={!hasAnimatingPlanes}
-                        className="p-2 rounded hover:bg-white/10 text-text-secondary hover:text-red-400 transition-colors disabled:opacity-30 shrink-0"
-                        title="Stop All"
-                    >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" /></svg>
                     </button>
                 </div>
 

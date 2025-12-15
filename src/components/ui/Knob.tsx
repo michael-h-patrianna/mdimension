@@ -1,4 +1,4 @@
-import { motion, PanInfo } from 'motion/react';
+import { m, PanInfo } from 'motion/react';
 import React, { useCallback, useId } from 'react';
 
 export interface KnobProps {
@@ -89,7 +89,7 @@ export const Knob: React.FC<KnobProps> = ({
 
   return (
     <div className={`flex flex-col items-center gap-2 ${className}`}>
-      <motion.div
+      <m.div
         className={`relative select-none touch-none outline-hidden group cursor-grab active:cursor-grabbing`}
         style={{ width: size, height: size }}
         onPan={handlePan}
@@ -157,7 +157,7 @@ export const Knob: React.FC<KnobProps> = ({
           />
 
           {/* Dial Group (Scales via Motion whileTap, so we don't need group-hover:scale CSS here, or we can keep it for hover) */}
-          <motion.g
+          <m.g
             className="origin-center"
             // We use whileTap on parent, but we can also animate this group if needed.
             // The CSS hover scale is still nice.
@@ -178,21 +178,21 @@ export const Knob: React.FC<KnobProps> = ({
 
              {/* Hover Highlight Overlay - managed by CSS for opacity */}
              <circle cx="20" cy="20" r="14" fill="white" className="opacity-0 group-hover:opacity-5 transition-opacity duration-200" />
-          </motion.g>
+          </m.g>
 
           {/* Indicator Dot (Rotates) */}
-          <motion.g
+          <m.g
             animate={{ rotate: rotation }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }} // Smooth spring animation for rotation
             style={{ originX: "20px", originY: "20px" }} // SVG origin is tricky in Motion, usually handled by transformOrigin style
           >
              <circle cx="20" cy="8" r="1.5" fill="var(--color-accent)" filter={`url(#glow-${id})`} />
-          </motion.g>
+          </m.g>
         </svg>
 
         {/* Focus Ring */}
         <div className="absolute inset-0 rounded-full ring-2 ring-accent opacity-0 group-focus:opacity-50 pointer-events-none transition-opacity" />
-      </motion.div>
+      </m.div>
 
       {label && (
         <span className="text-xs font-medium text-text-secondary select-none tracking-wide uppercase">

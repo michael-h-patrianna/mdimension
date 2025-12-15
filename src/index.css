@@ -45,6 +45,7 @@
   background-color: oklch(10% 0.02 270 / 0.6);
   backdrop-filter: blur(24px);
   border: 1px solid oklch(100% 0 0 / 0.08);
+  border-top: 1px solid oklch(100% 0 0 / 0.15);
   box-shadow: 0 25px 50px -12px oklch(0% 0 0 / 0.4);
 }
 
@@ -59,6 +60,16 @@
 
 @utility border-glow {
   box-shadow: 0 0 10px color-mix(in oklch, var(--theme-accent-glow) 20%, transparent);
+}
+
+@utility hover-glow {
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 300ms;
+  &:hover {
+      box-shadow: 0 0 15px color-mix(in oklch, var(--theme-accent-glow) 30%, transparent);
+      border-color: var(--theme-accent);
+  }
 }
 
 @layer base {
@@ -80,7 +91,7 @@
     border: 1px solid oklch(100% 0 0 / 0.1) !important;
     border-radius: 8px !important;
     box-shadow: 0 10px 40px oklch(0% 0 0 / 0.5) !important;
-    z-index: 100 !important;
+    z-index: 5 !important;
   }
 
   .perf-monitor b {

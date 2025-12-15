@@ -6,6 +6,7 @@
 import { useEffect, useCallback } from 'react';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useVisualStore } from '@/stores/visualStore';
+import { useLayoutStore } from '@/stores/layoutStore';
 import { exportSceneToPNG, generateTimestampFilename } from '@/lib/export';
 
 export interface ShortcutConfig {
@@ -42,6 +43,8 @@ export const SHORTCUTS: Omit<ShortcutConfig, 'action'>[] = [
   { key: '1', description: 'Select hypercube' },
   { key: '2', description: 'Select simplex' },
   { key: '3', description: 'Select cross-polytope' },
+  // View
+  { key: 'c', description: 'Toggle cinematic mode' },
   // Export
   { key: 's', ctrl: true, description: 'Export PNG' },
   // Light controls (when light selected)
@@ -64,6 +67,8 @@ export function useKeyboardShortcuts(
   const dimension = useGeometryStore((state) => state.dimension);
   const setDimension = useGeometryStore((state) => state.setDimension);
   const setObjectType = useGeometryStore((state) => state.setObjectType);
+  
+  const toggleCinematicMode = useLayoutStore((state) => state.toggleCinematicMode);
 
   // Light-related state and actions
   const selectedLightId = useVisualStore((state) => state.selectedLightId);
@@ -146,6 +151,13 @@ export function useKeyboardShortcuts(
         return;
       }
 
+      // C - Toggle Cinematic Mode
+      if (key.toLowerCase() === 'c' && !isCtrlOrMeta && !shiftKey) {
+        event.preventDefault();
+        toggleCinematicMode();
+        return;
+      }
+
       // Ctrl/Cmd + S - Export PNG
       if (key === 's' && isCtrlOrMeta) {
         event.preventDefault();
@@ -187,6 +199,7 @@ export function useKeyboardShortcuts(
       selectLight,
       removeLight,
       duplicateLight,
+      toggleCinematicMode,
     ]
   );
 

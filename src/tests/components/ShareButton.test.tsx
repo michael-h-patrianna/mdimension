@@ -15,8 +15,10 @@ const mockClipboard = {
   writeText: vi.fn().mockResolvedValue(undefined),
 };
 
-Object.assign(navigator, {
-  clipboard: mockClipboard,
+Object.defineProperty(navigator, 'clipboard', {
+  value: mockClipboard,
+  writable: true,
+  configurable: true,
 });
 
 describe('ShareButton', () => {

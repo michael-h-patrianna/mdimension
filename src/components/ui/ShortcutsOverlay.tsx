@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { m, AnimatePresence } from 'motion/react';
 import { SHORTCUTS, getShortcutLabel } from '@/hooks/useKeyboardShortcuts';
 import { useLayoutStore } from '@/stores/layoutStore';
 
@@ -20,7 +20,7 @@ export const ShortcutsOverlay: React.FC = () => {
   return (
     <AnimatePresence>
       {showShortcuts && (
-        <motion.div
+        <m.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -29,7 +29,7 @@ export const ShortcutsOverlay: React.FC = () => {
           onClick={() => setShowShortcuts(false)}
           data-testid="shortcuts-overlay"
         >
-          <motion.div
+          <m.div
             initial={{ scale: 0.9, y: 20 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.9, y: 20 }}
@@ -72,8 +72,8 @@ export const ShortcutsOverlay: React.FC = () => {
             <div className="p-4 border-t border-panel-border bg-black/20 text-center text-xs text-text-tertiary">
               Press <kbd className="px-1 py-0.5 bg-white/10 rounded font-mono text-text-secondary">?</kbd> to toggle this menu anytime
             </div>
-          </motion.div>
-        </motion.div>
+          </m.div>
+        </m.div>
       )}
     </AnimatePresence>
   );

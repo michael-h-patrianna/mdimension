@@ -113,7 +113,11 @@ import { W } from '@/hooks/...'
 Vitest with React Testing Library. Key settings:
 - `maxWorkers: 4` (memory safety)
 - `pool: 'threads'` (not forks)
-- `environment: 'jsdom'`
+  test: {
+    globals: true,
+    environment: 'happy-dom',
+    setupFiles: './src/tests/setup.ts',
+  },
 
 Playwright tests are separate in `scripts/playwright/`.
 

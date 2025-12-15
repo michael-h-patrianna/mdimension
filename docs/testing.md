@@ -394,7 +394,10 @@ node scripts/playwright/e2e.test.mjs
 ❌ **Don't**: Generate 1000+ data points in a single test
 ✅ **Do**: Process in batches, clear arrays between batches
 
-❌ **Don't**: Load JSDOM for pure logic tests
+4.  **No Logic in UI Tests**: Pure logic should be tested in `.test.ts` files, not `.test.tsx`.
+    *   ✅ **Do**: `expect(calculateLayout(data)).toEqual(expected)`
+    *   ❌ **Don't**: Load DOM environment for pure logic tests
+    *   **Why**: DOM environments are expensive (memory/CPU). Pure logic tests run 10x faster in a raw Node environment (though current config uses happy-dom globally for simplicity, keeping logic separate is still good practice).
 ✅ **Do**: Use `.test.ts` for logic, `.test.tsx` only for components
 
 ❌ **Don't**: Test implementation details (internal state)

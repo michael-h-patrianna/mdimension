@@ -6,7 +6,7 @@ import { chromium } from 'playwright';
 import { strict as assert } from 'assert';
 import { mkdirSync } from 'fs';
 
-const BASE_URL = 'http://localhost:3000';
+const BASE_URL = process.env.TEST_URL || 'http://localhost:3000';
 const SCREENSHOT_DIR = 'screenshots/e2e';
 
 // Ensure screenshot directory exists
@@ -233,14 +233,14 @@ async function runTests() {
   
     // --- View Features ---
     await test('Cinematic Mode Toggle', async () => {
-        await page.getByTestId('toggle-cinematic').click();
+        await page.getByTestId('control-cinematic-mode').click();
         await page.waitForTimeout(1000); // Wait for transition
         // Panels should be hidden (width 0 or opacity 0)
         // Hard to test visuals without extensive selectors, but check errors
         assertNoErrors();
         
         // Toggle back
-        await page.getByTestId('toggle-cinematic').click();
+        await page.getByTestId('exit-cinematic').click();
         await page.waitForTimeout(1000);
     });
   

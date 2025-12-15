@@ -31,6 +31,7 @@ import { useVisualStore } from '@/stores/visualStore';
 import { Canvas } from '@react-three/fiber';
 import { PerformanceMonitor } from '@/components/canvas/PerformanceMonitor';
 import { ToastProvider } from '@/contexts/ToastContext';
+import { LazyMotion, domMax } from 'motion/react';
 
 /**
  * Extract 3D positions from N-D vertices for ground plane bounds calculation.
@@ -129,31 +130,33 @@ function App() {
   };
 
   return (
-    <ToastProvider>
-      <EditorLayout>
-        <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-          {/* Performance indicators */}
-          <RefinementIndicator position="bottom-right" />
+    <LazyMotion features={domMax} strict>
+      <ToastProvider>
+        <EditorLayout>
+          <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+            {/* Performance indicators */}
+            <RefinementIndicator position="bottom-right" />
 
-          <Canvas
-            frameloop="never"
-            camera={{
-              position: [2, 2, 2.5],
-              fov: 60,
-            }}
-            shadows="soft"
-            flat
-            gl={{ alpha: false, antialias: false }}
-            style={{ background: backgroundColor }}
-            onPointerMissed={handlePointerMissed}
-          >
-            <FpsController />
-            <Visualizer />
-            {showPerfMonitor && <PerformanceMonitor />}
-          </Canvas>
-        </div>
-      </EditorLayout>
-    </ToastProvider>
+            <Canvas
+              frameloop="never"
+              camera={{
+                position: [2, 2, 2.5],
+                fov: 60,
+              }}
+              shadows="soft"
+              flat
+              gl={{ alpha: false, antialias: false }}
+              style={{ background: backgroundColor }}
+              onPointerMissed={handlePointerMissed}
+            >
+              <FpsController />
+              <Visualizer />
+              {showPerfMonitor && <PerformanceMonitor />}
+            </Canvas>
+          </div>
+        </EditorLayout>
+      </ToastProvider>
+    </LazyMotion>
   );
 }
 

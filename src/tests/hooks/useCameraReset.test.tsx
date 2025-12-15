@@ -2,8 +2,8 @@
  * Tests for useCameraReset hook
  *
  * Note: The useCameraReset hook requires React Three Fiber context (useThree).
- * Testing it directly is challenging because Canvas doesn't work well in JSDOM.
- * These tests verify the hook's API structure without full 3D context.
+ * Testing it directly is challenging because Canvas doesn't work well in happy-dom.
+ * We'll mock the hook and test the integration.
  */
 
 import { describe, it, expect } from 'vitest';

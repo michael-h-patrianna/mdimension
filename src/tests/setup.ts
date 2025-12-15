@@ -40,7 +40,7 @@ class MockResizeObserver {
 }
 ;(globalThis as unknown as { ResizeObserver: typeof MockResizeObserver }).ResizeObserver = MockResizeObserver
 
-// Mock window.matchMedia for media query hooks (not provided by JSDOM)
+// Mock window.matchMedia for media query hooks (not provided by happy-dom)
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: vi.fn().mockImplementation((query: string) => ({

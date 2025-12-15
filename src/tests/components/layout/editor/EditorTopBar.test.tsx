@@ -12,11 +12,19 @@ vi.mock('@/lib/url', () => ({
   generateShareUrl: vi.fn(() => 'https://example.com/share'),
 }));
 
+vi.mock('@/contexts/ToastContext', () => ({
+  useToast: () => ({
+    addToast: vi.fn(),
+  }),
+}));
+
 // Mock clipboard
-Object.assign(navigator, {
-  clipboard: {
+Object.defineProperty(navigator, 'clipboard', {
+  value: {
     writeText: vi.fn(),
   },
+  writable: true,
+  configurable: true,
 });
 
 describe('EditorTopBar', () => {

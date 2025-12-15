@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import { MengerControls } from '@/components/sidebar/Geometry/MengerControls';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
@@ -66,42 +66,58 @@ describe('MengerControls', () => {
   });
 
   it('should update iterations value in store', () => {
-    useExtendedObjectStore.getState().setMengerIterations(7);
+    act(() => {
+      useExtendedObjectStore.getState().setMengerIterations(7);
+    });
     expect(useExtendedObjectStore.getState().menger.iterations).toBe(7);
   });
 
   it('should update scale value in store', () => {
-    useExtendedObjectStore.getState().setMengerScale(1.5);
+    act(() => {
+      useExtendedObjectStore.getState().setMengerScale(1.5);
+    });
     expect(useExtendedObjectStore.getState().menger.scale).toBe(1.5);
   });
 
   it('should clamp iterations value to valid range', () => {
     // Test below minimum (3)
-    useExtendedObjectStore.getState().setMengerIterations(1);
+    act(() => {
+      useExtendedObjectStore.getState().setMengerIterations(1);
+    });
     expect(useExtendedObjectStore.getState().menger.iterations).toBe(3);
 
     // Test above maximum (8)
-    useExtendedObjectStore.getState().setMengerIterations(15);
+    act(() => {
+      useExtendedObjectStore.getState().setMengerIterations(15);
+    });
     expect(useExtendedObjectStore.getState().menger.iterations).toBe(8);
   });
 
   it('should clamp scale value to valid range', () => {
     // Test below minimum (0.5)
-    useExtendedObjectStore.getState().setMengerScale(0.1);
+    act(() => {
+      useExtendedObjectStore.getState().setMengerScale(0.1);
+    });
     expect(useExtendedObjectStore.getState().menger.scale).toBe(0.5);
 
     // Test above maximum (2.0)
-    useExtendedObjectStore.getState().setMengerScale(5.0);
+    act(() => {
+      useExtendedObjectStore.getState().setMengerScale(5.0);
+    });
     expect(useExtendedObjectStore.getState().menger.scale).toBe(2.0);
   });
 
   it('should reset to default values', () => {
     // Set custom values
-    useExtendedObjectStore.getState().setMengerIterations(7);
-    useExtendedObjectStore.getState().setMengerScale(1.8);
+    act(() => {
+      useExtendedObjectStore.getState().setMengerIterations(7);
+      useExtendedObjectStore.getState().setMengerScale(1.8);
+    });
 
     // Reset
-    useExtendedObjectStore.getState().reset();
+    act(() => {
+      useExtendedObjectStore.getState().reset();
+    });
 
     // Verify defaults
     expect(useExtendedObjectStore.getState().menger).toEqual(DEFAULT_MENGER_CONFIG);
@@ -114,12 +130,16 @@ describe('MengerControls', () => {
 
   it('should display dimension info correctly for different dimensions', () => {
     // Test 3D
-    useGeometryStore.getState().setDimension(3);
+    act(() => {
+      useGeometryStore.getState().setDimension(3);
+    });
     const { rerender } = render(<MengerControls />);
     expect(screen.getByText('3D Menger Sponge')).toBeInTheDocument();
 
     // Test 6D
-    useGeometryStore.getState().setDimension(6);
+    act(() => {
+      useGeometryStore.getState().setDimension(6);
+    });
     rerender(<MengerControls />);
     expect(screen.getByText('6D Menger Sponge')).toBeInTheDocument();
   });
@@ -183,28 +203,37 @@ describe('MengerControls', () => {
       expect(amplitudeLabels.length).toBe(0);
     });
 
-    it('should update fold twist enabled in store', () => {
-      useExtendedObjectStore.getState().setMengerFoldTwistEnabled(true);
-      expect(useExtendedObjectStore.getState().menger.foldTwistEnabled).toBe(true);
-
-      useExtendedObjectStore.getState().setMengerFoldTwistEnabled(false);
-      expect(useExtendedObjectStore.getState().menger.foldTwistEnabled).toBe(false);
-    });
-
-    it('should update scale pulse enabled in store', () => {
-      useExtendedObjectStore.getState().setMengerScalePulseEnabled(true);
-      expect(useExtendedObjectStore.getState().menger.scalePulseEnabled).toBe(true);
-
-      useExtendedObjectStore.getState().setMengerScalePulseEnabled(false);
-      expect(useExtendedObjectStore.getState().menger.scalePulseEnabled).toBe(false);
-    });
-
-    it('should update slice sweep enabled in store', () => {
-      useExtendedObjectStore.getState().setMengerSliceSweepEnabled(true);
-      expect(useExtendedObjectStore.getState().menger.sliceSweepEnabled).toBe(true);
-
-      useExtendedObjectStore.getState().setMengerSliceSweepEnabled(false);
-      expect(useExtendedObjectStore.getState().menger.sliceSweepEnabled).toBe(false);
-    });
-  });
+      it('should update fold twist enabled in store', () => {
+        act(() => {
+          useExtendedObjectStore.getState().setMengerFoldTwistEnabled(true);
+        });
+        expect(useExtendedObjectStore.getState().menger.foldTwistEnabled).toBe(true);
+    
+        act(() => {
+          useExtendedObjectStore.getState().setMengerFoldTwistEnabled(false);
+        });
+        expect(useExtendedObjectStore.getState().menger.foldTwistEnabled).toBe(false);
+      });
+      it('should update scale pulse enabled in store', () => {
+        act(() => {
+          useExtendedObjectStore.getState().setMengerScalePulseEnabled(true);
+        });
+        expect(useExtendedObjectStore.getState().menger.scalePulseEnabled).toBe(true);
+    
+        act(() => {
+          useExtendedObjectStore.getState().setMengerScalePulseEnabled(false);
+        });
+        expect(useExtendedObjectStore.getState().menger.scalePulseEnabled).toBe(false);
+      });
+      it('should update slice sweep enabled in store', () => {
+        act(() => {
+          useExtendedObjectStore.getState().setMengerSliceSweepEnabled(true);
+        });
+        expect(useExtendedObjectStore.getState().menger.sliceSweepEnabled).toBe(true);
+    
+        act(() => {
+          useExtendedObjectStore.getState().setMengerSliceSweepEnabled(false);
+        });
+        expect(useExtendedObjectStore.getState().menger.sliceSweepEnabled).toBe(false);
+      });  });
 });

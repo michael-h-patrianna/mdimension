@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { m, AnimatePresence } from 'motion/react';
 
 export interface TooltipProps {
   content: string | React.ReactNode;
@@ -94,7 +94,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
       </div>
       <AnimatePresence>
         {isVisible && (
-          <motion.div
+          <m.div
             ref={tooltipRef}
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -112,7 +112,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
             <div
               className={`absolute w-0 h-0 border-4 ${arrowStyles[position]}`}
             />
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </div>

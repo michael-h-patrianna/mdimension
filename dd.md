@@ -123,3 +123,21 @@ flushPassiveEffects @ chunk-I3FAUOZW.js?v=835f2dbc:9682
 (anonymous) @ chunk-I3FAUOZW.js?v=835f2dbc:9605
 performWorkUntilDeadline @ chunk-I3FAUOZW.js?v=835f2dbc:238
 chunk-I3FAUOZW.js?v=835f2dbc:14218 [Violation] 'requestAnimationFrame' handler took 141ms
+
+
+this is broken. the "Progressive Refinement" feature is supposed to trigger when:
+- zooming or moving or rotating the camera
+- when the canvas gets resized
+
+it is now triggered when:
+- user hides the right sidebar
+- user switches cinematic mode on
+
+missing are:
+- all the camera related actions that were working before
+- user toggles the right sidebar visible
+- users switches cinematic mode off
+- user toggles the left sidebar visible
+- user hides the left sidebar
+- user switches full screen mode on
+- user switches full screen mode off

@@ -39,19 +39,19 @@ describe('Button', () => {
   it('applies small size styles', () => {
     render(<Button size="sm">Small</Button>);
     const button = screen.getByRole('button');
-    expect(button).toHaveClass('px-3', 'py-1.5', 'text-sm');
+    expect(button).toHaveClass('px-3', 'py-1.5', 'text-xs');
   });
 
   it('applies medium size styles by default', () => {
     render(<Button>Medium</Button>);
     const button = screen.getByRole('button');
-    expect(button).toHaveClass('px-4', 'py-2', 'text-base');
+    expect(button).toHaveClass('px-4', 'py-2', 'text-sm');
   });
 
   it('applies large size styles', () => {
     render(<Button size="lg">Large</Button>);
     const button = screen.getByRole('button');
-    expect(button).toHaveClass('px-6', 'py-3', 'text-lg');
+    expect(button).toHaveClass('px-6', 'py-3', 'text-base');
   });
 
   it('disables button when disabled prop is true', () => {

@@ -31,6 +31,7 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { m } from 'motion/react';
 
 export interface Tab {
   /** Unique identifier for the tab */
@@ -223,18 +224,25 @@ export const Tabs: React.FC<TabsProps> = ({
                   onClick={() => onChange(tab.id)}
                   onKeyDown={(e) => handleKeyDown(e, index)}
                   className={`
-                    flex-1 px-3 py-2 text-xs font-medium uppercase tracking-wider whitespace-nowrap
-                    transition-all duration-200 border-b-2
+                    relative flex-1 px-3 py-2 text-xs font-medium uppercase tracking-wider whitespace-nowrap
+                    transition-colors duration-200
                     focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-inset
                     ${
                       isActive
-                        ? 'text-accent border-accent bg-white/5'
-                        : 'text-text-secondary border-transparent hover:text-text-primary hover:bg-white/5'
+                        ? 'text-accent'
+                        : 'text-text-secondary hover:text-text-primary hover:bg-white/5'
                     }
                   `}
                   data-testid={testId ? `${testId}-tab-${tab.id}` : undefined}
                 >
-                  {tab.label}
+                  {isActive && (
+                    <m.div
+                      layoutId="activeTab"
+                      className="absolute bottom-0 left-0 right-0 h-[2px] bg-accent z-20"
+                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                    />
+                  )}
+                  <span className="relative z-10">{tab.label}</span>
                 </button>
               );
             })}

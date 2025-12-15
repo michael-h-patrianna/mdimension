@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion, HTMLMotionProps } from 'motion/react';
+import { m, HTMLMotionProps } from 'motion/react';
 
 export interface ButtonProps extends Omit<HTMLMotionProps<"button">, "ref"> {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
@@ -46,7 +46,7 @@ export const Button: React.FC<ButtonProps> = ({
   const glowStyle = glow ? 'shadow-[0_0_20px_var(--color-accent)]' : '';
 
   return (
-    <motion.button
+    <m.button
       type={type}
       onClick={onClick}
       disabled={disabled}
@@ -58,6 +58,6 @@ export const Button: React.FC<ButtonProps> = ({
       {...props}
     >
       {children}
-    </motion.button>
+    </m.button>
   );
 };

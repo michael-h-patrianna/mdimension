@@ -1,8 +1,24 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import App from './App';
 
 describe('App', () => {
+  beforeAll(() => {
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: vi.fn().mockImplementation((query) => ({
+        matches: true, // Force desktop mode for App tests
+        media: query,
+        onchange: null,
+        addListener: vi.fn(), // deprecated
+        removeListener: vi.fn(), // deprecated
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    });
+  });
+
   it('renders the application title in header', () => {
     render(<App />);
     expect(screen.getByText('MDIMENSION')).toBeInTheDocument();

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { m, AnimatePresence } from 'motion/react';
 
 export interface SectionProps {
   title: string;
@@ -57,7 +57,7 @@ export const Section: React.FC<SectionProps> = ({
             </span>
           </div>
 
-          <motion.svg
+          <m.svg
             width="10"
             height="6"
             viewBox="0 0 10 6"
@@ -71,7 +71,7 @@ export const Section: React.FC<SectionProps> = ({
             transition={{ duration: 0.2 }}
           >
             <path d="M1 1L5 5L9 1" />
-          </motion.svg>
+          </m.svg>
         </button>
 
         {isOpen && onReset && (
@@ -94,7 +94,7 @@ export const Section: React.FC<SectionProps> = ({
 
       <AnimatePresence initial={false}>
         {isOpen && (
-          <motion.div
+          <m.div
             id={`section-content-${title}`}
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
@@ -105,7 +105,7 @@ export const Section: React.FC<SectionProps> = ({
             <div className="px-3 pb-4 pt-2 border-l border-white/5 ml-[19px] space-y-4">
               {children}
             </div>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </div>

@@ -48,6 +48,8 @@ export interface LayoutState {
   sidebarWidth: number
   /** Whether sidebar is collapsed */
   isCollapsed: boolean
+  /** Whether left sidebar is visible */
+  showLeftPanel: boolean
   /** Whether keyboard shortcuts overlay is visible */
   showShortcuts: boolean
   /** Whether cinematic mode is active (hides all UI) */
@@ -68,6 +70,12 @@ export interface LayoutActions {
 
   /** Set collapsed state explicitly */
   setCollapsed: (collapsed: boolean) => void
+
+  /** Toggle left sidebar visibility */
+  toggleLeftPanel: () => void
+
+  /** Set left sidebar visibility explicitly */
+  setLeftPanel: (show: boolean) => void
 
   /** Toggle shortcuts overlay */
   toggleShortcuts: () => void
@@ -142,6 +150,7 @@ export function getDefaultSidebarWidth(viewportWidth: number): number {
 const INITIAL_STATE: LayoutState = {
   sidebarWidth: DEFAULT_SIDEBAR_WIDTH_LARGE, // Default to large screen width (420px)
   isCollapsed: false,
+  showLeftPanel: true,
   showShortcuts: false,
   isCinematicMode: false,
 }
@@ -166,6 +175,14 @@ export const useLayoutStore = create<LayoutStore>()(
 
       setCollapsed: (collapsed: boolean) => {
         set({ isCollapsed: collapsed })
+      },
+
+      toggleLeftPanel: () => {
+        set((state) => ({ showLeftPanel: !state.showLeftPanel }))
+      },
+
+      setLeftPanel: (show: boolean) => {
+        set({ showLeftPanel: show })
       },
 
       toggleShortcuts: () => {
@@ -194,6 +211,7 @@ export const useLayoutStore = create<LayoutStore>()(
       partialize: (state) => ({
         sidebarWidth: state.sidebarWidth,
         isCollapsed: state.isCollapsed,
+        showLeftPanel: state.showLeftPanel,
         // Cinematic mode should probably not be persisted, or maybe it should?
         // Let's not persist it for now to avoid confusion on reload.
       }),

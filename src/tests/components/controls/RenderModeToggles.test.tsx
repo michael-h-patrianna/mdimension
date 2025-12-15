@@ -1,5 +1,5 @@
 /**
- * @vitest-environment jsdom
+ * Tests for RenderModeToggles
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';

@@ -40,6 +40,7 @@ interface AnimationState {
   togglePlane: (plane: string) => void
   setPlaneAnimating: (plane: string, animating: boolean) => void
   animateAll: (dimension: number) => void
+  resetToFirstPlane: (dimension: number) => void
   stopAll: () => void
   setDimension: (dimension: number) => void
   reset: () => void
@@ -117,6 +118,13 @@ export const useAnimationStore = create<AnimationState>((set, get) => ({
   animateAll: (dimension: number) => {
     const planes = getAllPlaneNames(dimension)
     set({ animatingPlanes: new Set(planes), isPlaying: true })
+  },
+
+  resetToFirstPlane: (dimension: number) => {
+    const planes = getAllPlaneNames(dimension)
+    if (planes.length > 0 && planes[0]) {
+      set({ animatingPlanes: new Set([planes[0]]), isPlaying: true })
+    }
   },
 
   stopAll: () => {
