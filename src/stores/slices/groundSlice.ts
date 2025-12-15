@@ -171,6 +171,6 @@ export const createGroundSlice: StateCreator<GroundSlice, [], [], GroundSlice> =
   },
 
   setGroundMaterialEnvMapIntensity: (intensity: number) => {
-    set({ groundMaterialEnvMapIntensity: Math.max(0, Math.min(1, intensity)) })
+    set({ groundMaterialEnvMapIntensity: Math.max(0, Math.min(2, intensity)) })
   },
 })

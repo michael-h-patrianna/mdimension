@@ -5,7 +5,7 @@
  */
 
 import type { TransformMode } from '@/rendering/lights/types'
-import { createDefaultLight } from '@/rendering/lights/types'
+import { createDefaultLight, createDefaultSpotLight } from '@/rendering/lights/types'
 import { DEFAULT_OPACITY_SETTINGS } from '@/rendering/opacity/constants'
 import type { HyperbulbOpacitySettings } from '@/rendering/opacity/types'
 import {
@@ -126,7 +126,7 @@ export const DEFAULT_TONE_MAPPING_ALGORITHM: ToneMappingAlgorithm = 'aces'
 export const DEFAULT_EXPOSURE = 0.7
 
 // Multi-light system
-export const DEFAULT_LIGHTS = [createDefaultLight()]
+export const DEFAULT_LIGHTS = [createDefaultLight(), createDefaultSpotLight()]
 export const DEFAULT_SELECTED_LIGHT_ID: string | null = null
 export const DEFAULT_TRANSFORM_MODE: TransformMode = 'translate'
 export const DEFAULT_SHOW_LIGHT_GIZMOS = false
@@ -173,9 +173,9 @@ export type GroundPlaneType = 'two-sided' | 'plane'
 
 export const DEFAULT_ACTIVE_WALLS: WallPosition[] = ['floor']
 export const DEFAULT_GROUND_PLANE_OFFSET = 10
-export const DEFAULT_GROUND_PLANE_OPACITY = 0.3
+export const DEFAULT_GROUND_PLANE_OPACITY = 0.5
 export const DEFAULT_GROUND_PLANE_REFLECTIVITY = 0.4
-export const DEFAULT_GROUND_PLANE_COLOR = '#101010'
+export const DEFAULT_GROUND_PLANE_COLOR = '#ead6e8'
 export const DEFAULT_GROUND_PLANE_TYPE: GroundPlaneType = 'plane'
 export const DEFAULT_GROUND_PLANE_SIZE_SCALE = 10
 export const DEFAULT_SHOW_GROUND_GRID = true
@@ -183,9 +183,33 @@ export const DEFAULT_GROUND_GRID_COLOR = '#dbdcdb'
 export const DEFAULT_GROUND_GRID_SPACING = 5.0
 
 // Ground material
-export const DEFAULT_GROUND_MATERIAL_ROUGHNESS = 0.85
-export const DEFAULT_GROUND_MATERIAL_METALNESS = 0.85
-export const DEFAULT_GROUND_MATERIAL_ENVMAP_INTENSITY = 0.5
+export const DEFAULT_GROUND_MATERIAL_ROUGHNESS = 0.2
+export const DEFAULT_GROUND_MATERIAL_METALNESS = 0.6
+export const DEFAULT_GROUND_MATERIAL_ENVMAP_INTENSITY = 1.6
+
+// ============================================================================
+// Skybox Defaults
+// ============================================================================
+
+export type SkyboxTexture = 'space_blue' | 'space_lightblue' | 'space_red' | 'none'
+
+export const DEFAULT_SKYBOX_ENABLED = true
+export const DEFAULT_SKYBOX_TEXTURE: SkyboxTexture = 'space_red'
+export const DEFAULT_SKYBOX_BLUR = 0
+export const DEFAULT_SKYBOX_INTENSITY = 1
+export const DEFAULT_SKYBOX_ROTATION = 0
+export const DEFAULT_SKYBOX_HIGH_QUALITY = false
+
+export type SkyboxAnimationMode =
+  | 'none'
+  | 'cinematic' // Smooth Y orbit + subtle vertical bob (The "Standard")
+  | 'heatwave' // UV Distortion (The "Hot")
+  | 'tumble' // Chaotic tumbling (The "Disaster")
+  | 'ethereal' // Complex rot + Shimmer (The "Magic")
+  | 'nebula' // Color shifting (The "Cosmic")
+
+export const DEFAULT_SKYBOX_ANIMATION_MODE: SkyboxAnimationMode = 'none'
+export const DEFAULT_SKYBOX_ANIMATION_SPEED = 0.01
 
 // ============================================================================
 // Shader Defaults

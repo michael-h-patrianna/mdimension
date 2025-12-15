@@ -6,6 +6,7 @@
  * - Clifford Torus: Flat torus on S³
  * - Mandelbrot: N-dimensional fractal (Mandelbulb/Hyperbulb)
  * - Mandelbox: Box-like fractal with sphere/box folding
+ * - Menger: Kaleidoscopic IFS fractal (Menger Sponge)
  *
  * @see docs/prd/extended-objects.md
  * @see docs/research/nd-extended-objects-guide.md

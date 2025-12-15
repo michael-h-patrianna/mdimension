@@ -85,20 +85,20 @@ export const DEFAULT_LIGHT_VALUES: Record<LightType, Partial<LightSource>> = {
   point: {
     coneAngle: 30,
     penumbra: 0.5,
-    range: 0,
-    decay: 2,
+    range: 100,
+    decay: 0.9,
   },
   directional: {
     coneAngle: 30,
     penumbra: 0.5,
-    range: 0,
-    decay: 2,
+    range: 100,
+    decay: 0.9,
   },
   spot: {
     coneAngle: 30,
     penumbra: 0.2,
-    range: 0,
-    decay: 2,
+    range: 100,
+    decay: 0.9,
   },
 } as const
 
@@ -135,8 +135,32 @@ export function createDefaultLight(): LightSource {
     intensity: 1.0,
     coneAngle: 30,
     penumbra: 0.5,
-    range: 15,
-    decay: 2,
+    range: 100,
+    decay: 0.9,
+  }
+}
+
+/**
+ * Create a default spot light positioned opposite to the main point light.
+ * Points toward the origin.
+ */
+export function createDefaultSpotLight(): LightSource {
+  const position: [number, number, number] = [-5, 5, 5]
+  const rotation = calculateRotationTowardOrigin(position)
+
+  return {
+    id: 'light-default-spot',
+    name: 'Spot Light',
+    type: 'spot',
+    enabled: true,
+    position,
+    rotation,
+    color: '#FFFFFF',
+    intensity: 1.0,
+    coneAngle: 30,
+    penumbra: 0.2,
+    range: 100,
+    decay: 0.9,
   }
 }
 

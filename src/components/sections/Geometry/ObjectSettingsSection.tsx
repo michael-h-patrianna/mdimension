@@ -12,6 +12,7 @@
  * - Clifford Torus: radius, resolution, edge mode
  * - Mandelbrot Set: quality preset, iterations, escape radius, resolution
  * - Mandelbox: scale, folding limit, radii, iterations, escape radius
+ * - Menger: scale, iterations, escape radius
  */
 
 import { isPolytopeType } from '@/lib/geometry/types';

@@ -27,7 +27,7 @@ import { PolytopeScene } from './Polytope';
 /**
  * Render mode types
  */
-export type RenderMode = 'polytope' |'raymarch-mandelbrot' | 'raymarch-mandelbox' | 'raymarch-menger' | 'none';
+export type RenderMode = 'polytope' | 'raymarch-mandelbrot' | 'raymarch-mandelbox' | 'raymarch-menger' | 'none';
 
 /**
  * Props for UnifiedRenderer

@@ -122,7 +122,7 @@ export function PerformanceMonitor() {
   const uniqueVertices = sceneStats.uniqueVertices ?? processedVertices;
 
   // -- Raymarching Info --
-  const isRaymarching = ['mandelbrot', 'mandelbox', 'menger', 'hypercube'].includes(objectType);
+  const isRaymarching = ['mandelbrot', 'mandelbox', 'menger'].includes(objectType);
   const raySteps = objectType === 'mandelbrot' ? mandelbulbConfig.maxIterations :
                    objectType === 'mandelbox' ? mandelboxConfig.maxIterations : 0;
 

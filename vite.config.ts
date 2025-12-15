@@ -25,6 +25,7 @@ export default defineConfig({
     port: 3000,
     open: true,
   },
+  assetsInclude: ['**/*.ktx2'],
   build: {
     outDir: 'dist',
     sourcemap: true,

@@ -13,6 +13,7 @@ import { type GroundPlaneType, type WallPosition } from '@/stores/defaults/visua
 import { useEnvironmentStore } from '@/stores/environmentStore';
 import React, { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
+import { SkyboxControls } from './SkyboxControls';
 
 /** Options for wall position toggle group */
 const WALL_OPTIONS: { value: WallPosition; label: string }[] = [
@@ -184,12 +185,12 @@ export const EnvironmentControls: React.FC<EnvironmentControlsProps> = React.mem
         onChange={setGroundGridSpacing}
         tooltip="Distance between grid lines"
       />
-    </div>
-  );
 
-  /** Material tab content - shared material properties for ground surfaces */
-  const materialContent = (
-    <div className="space-y-4">
+      {/* --- Material Subsection --- */}
+      <div className="flex items-center justify-between border-b border-panel-border pb-2 mt-4">
+        <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Wall Material</span>
+      </div>
+
       {/* Roughness */}
       <Slider
         label="Roughness"
@@ -198,7 +199,7 @@ export const EnvironmentControls: React.FC<EnvironmentControlsProps> = React.mem
         max={1}
         step={0.05}
         onChange={setGroundMaterialRoughness}
-        tooltip="Surface roughness (0 = mirror-like, 1 = matte)"
+        tooltip="Surface roughness (0 = sharp reflections, 1 = matte)"
       />
 
       {/* Metalness */}
@@ -220,7 +221,7 @@ export const EnvironmentControls: React.FC<EnvironmentControlsProps> = React.mem
         max={2}
         step={0.1}
         onChange={setGroundMaterialEnvMapIntensity}
-        tooltip="Environment map reflection intensity"
+        tooltip="Brightness of reflections (requires low Roughness to be visible)"
       />
     </div>
   );
@@ -232,7 +233,7 @@ export const EnvironmentControls: React.FC<EnvironmentControlsProps> = React.mem
         onChange={setActiveTab}
         tabs={[
           { id: 'walls', label: 'Walls', content: wallsContent },
-          { id: 'material', label: 'Material', content: materialContent },
+          { id: 'skybox', label: 'Skybox', content: <SkyboxControls /> },
         ]}
       />
     </div>

@@ -3,20 +3,23 @@
  * Uses requestAnimationFrame to animate rotations
  */
 
+import { getPlaneMultiplier } from '@/lib/animation/biasCalculation'
 import { useAnimationStore } from '@/stores/animationStore'
+import { useEnvironmentStore } from '@/stores/environmentStore'
 import { useRotationStore } from '@/stores/rotationStore'
 import { useUIStore } from '@/stores/uiStore'
-import { getPlaneMultiplier } from '@/lib/animation/biasCalculation'
 import { useCallback, useEffect, useRef } from 'react'
 
 /**
  * Hook that runs the animation loop when animation is playing
  * Updates rotation angles for all animating planes
+ * Pauses during skybox loading to avoid visual distraction
  */
 export function useAnimationLoop(): void {
   const isPlaying = useAnimationStore((state) => state.isPlaying)
   const animatingPlanes = useAnimationStore((state) => state.animatingPlanes)
   const getRotationDelta = useAnimationStore((state) => state.getRotationDelta)
+  const skyboxLoading = useEnvironmentStore((state) => state.skyboxLoading)
 
   const updateRotations = useRotationStore((state) => state.updateRotations)
   const getRotationRadians = useCallback((plane: string) => {
@@ -92,7 +95,8 @@ export function useAnimationLoop(): void {
   )
 
   useEffect(() => {
-    if (isPlaying && animatingPlanes.size > 0) {
+    // Don't animate while skybox is loading to avoid distraction
+    if (isPlaying && animatingPlanes.size > 0 && !skyboxLoading) {
       lastTimeRef.current = null
       frameRef.current = requestAnimationFrame(animate)
     }
@@ -103,5 +107,5 @@ export function useAnimationLoop(): void {
         frameRef.current = null
       }
     }
-  }, [isPlaying, animatingPlanes, animate])
+  }, [isPlaying, animatingPlanes, animate, skyboxLoading])
 }

@@ -42,7 +42,7 @@ export type { ExtendedObjectSlice as ExtendedObjectState } from './slices/geomet
 
 export const useExtendedObjectStore = create<ExtendedObjectSlice>()((...a) => {
   const [set] = a
-  
+
   return {
     ...createPolytopeSlice(...a),
     ...createRootSystemSlice(...a),

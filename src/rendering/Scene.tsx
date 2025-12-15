@@ -20,6 +20,7 @@ import { PerformanceManager } from '@/components/canvas/PerformanceManager'
 import { SceneLighting } from '@/rendering/environment/SceneLighting'
 import { PostProcessing } from '@/rendering/environment/PostProcessing'
 import { GroundPlane } from '@/rendering/environment/GroundPlane'
+import { Skybox } from '@/rendering/environment/Skybox'
 import { LightGizmoManager } from '@/components/canvas/gizmos/LightGizmoManager'
 import { useEnvironmentStore } from '@/stores/environmentStore'
 import { useUIStore } from '@/stores/uiStore'
@@ -118,6 +119,9 @@ export const Scene = React.memo(function Scene({
     <>
       {/* Performance optimization manager */}
       <PerformanceManager />
+
+      {/* Skybox Environment */}
+      <Skybox />
 
       {/* Scene lighting from visual store */}
       <SceneLighting />

@@ -98,50 +98,7 @@ void sphereInvert(inout float z[11], float center[11], float radius2, int D) {
 
 ---
 
-### 3. Pseudo-Kleinian (Modified Sphere Inversion)
-
-**What it is**: A variant of Kleinian group limit sets that produces more solid, varied structures than pure Apollonian packing.
-
-**Why it works in N-D**:
-- Uses the same conformal operations as Apollonian
-- Adds box folds for more structure
-- Combination: `boxFold → sphereInvert → scale → translate`
-
-**Iteration**:
-```glsl
-for (int i = 0; i < maxIter; i++) {
-    // Box fold (same as Mandelbox)
-    for (int j = 0; j < D; j++) {
-        z[j] = clamp(z[j], -foldLimit, foldLimit) * 2.0 - z[j];
-    }
-
-    // Sphere inversion at origin
-    float r2 = dot(z, z);  // Works in any D
-    if (r2 < minR2) {
-        float t = fixedR2 / minR2;
-        z *= t; dr *= t;
-    } else if (r2 < fixedR2) {
-        float t = fixedR2 / r2;
-        z *= t; dr *= t;
-    }
-
-    // Different from Mandelbox: use CSize vector
-    z = scale * z + cSize;
-    dr = abs(scale) * dr + 1.0;
-}
-```
-
-**Animation potential**: ⭐⭐⭐⭐⭐
-- `cSize` vector in N-D provides rich parameter space
-- Produces organic tentacles, alien landscapes
-- Very parameter-sensitive → high animation variety
-
-**Complexity**: Medium
-**Visual character**: Alien, organic, varied (tentacles, caves, landscapes)
-
----
-
-### 4. Hybrid Fractals (Operation Mixing)
+### 3. Hybrid Fractals (Operation Mixing)
 
 **What it is**: Combining operations from different fractals in sequence, potentially alternating between them.
 
@@ -290,7 +247,6 @@ float crossPolytopeFractal(float z[11], int D, int maxIter) {
 | **Menger Sponge** | ✅ | Iterations only | ⭐⭐ | Fast | ⭐⭐⭐ |
 | **KIFS Platonic** | ✅ | Fold angles, rotation | ⭐⭐⭐⭐⭐ | Fast | ⭐⭐⭐⭐⭐ |
 | **Apollonian** | ✅ | Inversion centers/radii | ⭐⭐⭐⭐ | Medium | ⭐⭐⭐⭐ |
-| **Pseudo-Kleinian** | ✅ | cSize, scales, radii | ⭐⭐⭐⭐⭐ | Medium | ⭐⭐⭐⭐⭐ |
 | **Hybrids** | ✅ | Mix ratios + all above | ⭐⭐⭐⭐⭐ | Slow | ⭐⭐⭐⭐⭐ |
 | **Sierpiński N-D** | ✅ | Iterations only | ⭐⭐⭐ | Fast | ⭐⭐⭐ |
 
@@ -300,15 +256,14 @@ float crossPolytopeFractal(float z[11], int D, int maxIter) {
 
 ### Tier 1: High Impact, Proven Feasibility
 1. **KIFS Platonic** — Rich variety, fast, well-documented
-2. **Pseudo-Kleinian** — Organic morphing, alien aesthetics
+2. **Apollonian Gasket** — Distinctive bubble aesthetics
 
 ### Tier 2: Unique Visual Character
-3. **Apollonian Gasket** — Distinctive bubble aesthetics
-4. **Hybrids** — Infinite combination possibilities
+3. **Hybrids** — Infinite combination possibilities
+4. **Sierpiński N-D** — Classic fractal, educational value
 
 ### Tier 3: Completeness
-5. **Sierpiński N-D** — Simple but beautiful symmetry
-6. **Cross-Polytope Fractal** — Fast, good for high iterations
+5. **Cross-Polytope Fractal** — Fast, good for high iterations
 
 ---
 

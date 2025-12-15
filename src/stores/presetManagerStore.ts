@@ -122,7 +122,13 @@ export const usePresetManagerStore = create<PresetManagerState>()(
         useAppearanceStore.setState(style.data.appearance);
         useLightingStore.setState(style.data.lighting);
         usePostProcessingStore.setState(style.data.postProcessing);
-        useEnvironmentStore.setState(style.data.environment);
+        
+        // Handle legacy environment data (fallback to no skybox)
+        const envData = { ...style.data.environment };
+        if (envData.skyboxEnabled === undefined) {
+          envData.skyboxEnabled = false;
+        }
+        useEnvironmentStore.setState(envData);
       },
 
       deleteStyle: (id) => {
@@ -194,7 +200,13 @@ export const usePresetManagerStore = create<PresetManagerState>()(
         useAppearanceStore.setState(scene.data.appearance);
         useLightingStore.setState(scene.data.lighting);
         usePostProcessingStore.setState(scene.data.postProcessing);
-        useEnvironmentStore.setState(scene.data.environment);
+        
+        // Handle legacy environment data
+        const envData = { ...scene.data.environment };
+        if (envData.skyboxEnabled === undefined) {
+          envData.skyboxEnabled = false;
+        }
+        useEnvironmentStore.setState(envData);
 
         // Restore Scene components
         useGeometryStore.setState(scene.data.geometry);
