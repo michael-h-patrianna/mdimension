@@ -8,7 +8,6 @@ import { useTransformStore } from '@/stores/transformStore';
 import { useVisualStore } from '@/stores/visualStore';
 import { PRESETS } from '@/lib/presets';
 import { useToast } from '@/contexts/ToastContext';
-import { useRotationStore } from '@/stores/rotationStore';
 import { useLayoutStore } from '@/stores/layoutStore';
 import { useAnimationStore } from '@/stores/animationStore';
 

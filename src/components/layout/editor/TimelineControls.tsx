@@ -201,7 +201,7 @@ export const TimelineControls: React.FC = () => {
             </AnimatePresence>
 
             {/* Main Timeline Bar */}
-            <div className="h-12 flex items-center px-4 gap-4 border-b border-panel-border shrink-0 overflow-x-auto no-scrollbar z-30 bg-panel-bg relative">
+            <div className="h-12 flex items-center px-4 gap-4 border-t border-panel-border shrink-0 overflow-x-auto no-scrollbar z-30 bg-panel-bg/80 backdrop-blur-md relative">
                 {/* Playback Controls */}
                 <div className="flex items-center gap-2 shrink-0">
                      <button

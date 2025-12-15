@@ -1,5 +1,4 @@
 import { useGeometryStore } from '@/stores/geometryStore';
-import { useRotationStore } from '@/stores/rotationStore';
 import { useVisualStore } from '@/stores/visualStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useAnimationStore } from '@/stores/animationStore';
@@ -42,7 +41,7 @@ export const PRESETS = [
       useGeometryStore.getState().setDimension(3);
       useGeometryStore.getState().setObjectType('mandelbrot');
       useVisualStore.getState().setFacesVisible(true); // Needed for raymarching
-      useExtendedObjectStore.getState().setMandelbrotConfig({ power: 8, iterations: 5 });
+      useExtendedObjectStore.getState().setMandelbrotConfig({ mandelbulbPower: 8, maxIterations: 5 });
     }
   },
   {

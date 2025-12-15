@@ -37,7 +37,6 @@ export const Slider: React.FC<SliderProps> = ({
   minLabel,
   maxLabel,
   tooltip,
-  formatValue,
   'data-testid': dataTestId,
 }) => {
   const id = useId();
