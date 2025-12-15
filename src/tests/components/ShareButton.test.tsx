@@ -2,7 +2,7 @@
  * Tests for ShareButton component
  */
 
-import { ShareButton } from '@/components/ShareButton';
+import { ShareButton } from '@/components/controls/ShareButton';
 import { useAnimationStore } from '@/stores/animationStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useRotationStore } from '@/stores/rotationStore';

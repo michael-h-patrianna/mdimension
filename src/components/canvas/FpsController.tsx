@@ -16,7 +16,7 @@
 
 import { useLayoutEffect, useRef } from 'react'
 import { useThree } from '@react-three/fiber'
-import { useVisualStore } from '@/stores/visualStore'
+import { useUIStore } from '@/stores/uiStore'
 
 /**
  * FPS Controller that triggers renders at a controlled rate.
@@ -47,7 +47,7 @@ export function FpsController(): null {
     const tick = (now: number): void => {
       rafRef.current = requestAnimationFrame(tick)
 
-      const maxFps = useVisualStore.getState().maxFps
+      const maxFps = useUIStore.getState().maxFps
       const interval = 1000 / maxFps
       const elapsed = now - thenRef.current
 

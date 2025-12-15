@@ -29,7 +29,7 @@ import {
 } from '@/lib/geometry/extended/types';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
-import { useVisualStore } from '@/stores/visualStore';
+import { useAppearanceStore } from '@/stores/appearanceStore';
 import React from 'react';
 
 /**
@@ -133,7 +133,7 @@ export const MandelbrotControls: React.FC<MandelbrotControlsProps> = React.memo(
   const dimension = useGeometryStore((state) => state.dimension);
 
   // Consolidate visual store selectors with useShallow
-  const { edgesVisible, facesVisible } = useVisualStore(
+  const { edgesVisible, facesVisible } = useAppearanceStore(
     useShallow((state) => ({
       edgesVisible: state.edgesVisible,
       facesVisible: state.facesVisible,

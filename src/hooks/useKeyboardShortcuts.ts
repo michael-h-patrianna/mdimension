@@ -5,7 +5,7 @@
 
 import { useEffect, useCallback } from 'react';
 import { useGeometryStore } from '@/stores/geometryStore';
-import { useVisualStore } from '@/stores/visualStore';
+import { useLightingStore } from '@/stores/lightingStore';
 import { useLayoutStore } from '@/stores/layoutStore';
 import { exportSceneToPNG, generateTimestampFilename } from '@/lib/export';
 
@@ -71,11 +71,11 @@ export function useKeyboardShortcuts(
   const toggleCinematicMode = useLayoutStore((state) => state.toggleCinematicMode);
 
   // Light-related state and actions
-  const selectedLightId = useVisualStore((state) => state.selectedLightId);
-  const setTransformMode = useVisualStore((state) => state.setTransformMode);
-  const selectLight = useVisualStore((state) => state.selectLight);
-  const removeLight = useVisualStore((state) => state.removeLight);
-  const duplicateLight = useVisualStore((state) => state.duplicateLight);
+  const selectedLightId = useLightingStore((state) => state.selectedLightId);
+  const setTransformMode = useLightingStore((state) => state.setTransformMode);
+  const selectLight = useLightingStore((state) => state.selectLight);
+  const removeLight = useLightingStore((state) => state.removeLight);
+  const duplicateLight = useLightingStore((state) => state.duplicateLight);
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
@@ -89,106 +89,79 @@ export function useKeyboardShortcuts(
 
       const { key, ctrlKey, metaKey, shiftKey } = event;
       const isCtrlOrMeta = ctrlKey || metaKey;
+      const lowerKey = key.toLowerCase();
 
-      // Light-specific shortcuts (when a light is selected)
+      // --- Light-specific shortcuts (High Priority) ---
       if (selectedLightId) {
-        const lowerKey = key.toLowerCase();
-
-        // W - Move mode (only when no shift)
-        if (lowerKey === 'w' && !shiftKey && !isCtrlOrMeta) {
-          event.preventDefault();
-          setTransformMode('translate');
-          return;
-        }
-
-        // E - Rotate mode
-        if (lowerKey === 'e' && !shiftKey && !isCtrlOrMeta) {
-          event.preventDefault();
-          setTransformMode('rotate');
-          return;
-        }
-
-        // D - Duplicate light (only when no shift)
-        if (lowerKey === 'd' && !shiftKey && !isCtrlOrMeta) {
-          event.preventDefault();
-          const newId = duplicateLight(selectedLightId);
-          if (newId) {
-            selectLight(newId);
-          }
-          return;
-        }
-
-        // Delete/Backspace - Remove light
+        // Actions that ignore modifiers (mostly) or handle them specifically
         if (key === 'Delete' || key === 'Backspace') {
           event.preventDefault();
           removeLight(selectedLightId);
           return;
         }
 
-        // Escape - Deselect light
         if (key === 'Escape') {
           event.preventDefault();
           selectLight(null);
           return;
         }
-      }
 
-      // Arrow Up - Increase dimension
-      if (key === 'ArrowUp') {
-        event.preventDefault();
-        if (dimension < 6) {
-          setDimension(dimension + 1);
+        // Mode switching / Actions requiring NO modifiers
+        if (!shiftKey && !isCtrlOrMeta) {
+          const lightActions: Record<string, () => void> = {
+            'w': () => setTransformMode('translate'),
+            'e': () => setTransformMode('rotate'),
+            'd': () => {
+              const newId = duplicateLight(selectedLightId);
+              if (newId) selectLight(newId);
+            }
+          };
+
+          if (lightActions[lowerKey]) {
+            event.preventDefault();
+            lightActions[lowerKey]();
+            return;
+          }
         }
-        return;
       }
 
-      // Arrow Down - Decrease dimension
-      if (key === 'ArrowDown') {
-        event.preventDefault();
-        if (dimension > 3) {
-          setDimension(dimension - 1);
-        }
-        return;
-      }
+      // --- Global Shortcuts ---
 
-      // C - Toggle Cinematic Mode
-      if (key.toLowerCase() === 'c' && !isCtrlOrMeta && !shiftKey) {
-        event.preventDefault();
-        toggleCinematicMode();
-        return;
-      }
-
-      // Ctrl/Cmd + S - Export PNG
-      if (key === 's' && isCtrlOrMeta) {
+      // 1. Modifier-specific actions
+      if (isCtrlOrMeta && lowerKey === 's') {
         event.preventDefault();
         const filename = generateTimestampFilename('ndimensional');
         exportSceneToPNG({ filename });
         return;
       }
 
-      // 1 - Hypercube
-      if (key === '1') {
+      if (!isCtrlOrMeta && !shiftKey && lowerKey === 'c') {
         event.preventDefault();
-        setObjectType('hypercube');
+        toggleCinematicMode();
         return;
       }
 
-      // 2 - Simplex
-      if (key === '2') {
-        event.preventDefault();
-        setObjectType('simplex');
-        return;
-      }
+      // 2. Simple Key Map (Modifiers ignored/allowed as per original implementation)
+      // Note: Original implementation allowed modifiers for Arrows and Numbers
+      const globalKeyMap: Record<string, () => void> = {
+        'ArrowUp': () => {
+          if (dimension < 6) setDimension(dimension + 1);
+        },
+        'ArrowDown': () => {
+          if (dimension > 3) setDimension(dimension - 1);
+        },
+        '1': () => setObjectType('hypercube'),
+        '2': () => setObjectType('simplex'),
+        '3': () => setObjectType('cross-polytope'),
+      };
 
-      // 3 - Cross-polytope
-      if (key === '3') {
+      if (globalKeyMap[key]) {
         event.preventDefault();
-        setObjectType('cross-polytope');
+        globalKeyMap[key]();
         return;
       }
 
       // Note: WASD keys are handled by useCameraMovement hook for camera movement
-      // When a light is selected, W and D are intercepted by light shortcuts above
     },
     [
       dimension,

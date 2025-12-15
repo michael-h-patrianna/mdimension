@@ -47,8 +47,10 @@ import {
   DEFAULT_SPECULAR_COLOR,
   DEFAULT_SPECULAR_INTENSITY,
   DEFAULT_SURFACE_SETTINGS,
-  useVisualStore,
-} from '@/stores/visualStore';
+} from '@/stores/defaults/visualDefaults';
+import { useAppearanceStore } from '@/stores/appearanceStore';
+import { useLightingStore } from '@/stores/lightingStore';
+import { useUIStore } from '@/stores/uiStore';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { ColorAlgorithmSelector } from './ColorAlgorithmSelector';
@@ -73,6 +75,7 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
   const objectType = useGeometryStore((state) => state.objectType);
   const isRaymarchingFractalType = isRaymarchingFractal(objectType);
 
+  // Appearance settings
   const {
     facesVisible,
     colorAlgorithm,
@@ -86,39 +89,8 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
     setLchLightness,
     lchChroma,
     setLchChroma,
-    // Material settings
     shaderType,
-    lightEnabled,
-    specularIntensity,
-    shininess,
-    specularColor,
-    diffuseIntensity,
-    setSpecularIntensity,
-    setShininess,
-    setSpecularColor,
-    setDiffuseIntensity,
-    // Opacity settings
-    opacitySettings,
-    hasSeenVolumetricWarning,
-    setOpacityMode,
-    setSimpleAlphaOpacity,
-    setLayerCount,
-    setLayerOpacity,
-    setVolumetricDensity,
-    setSampleQuality,
-    setVolumetricAnimationQuality,
-    setHasSeenVolumetricWarning,
-    // Shadow settings
-    lights,
-    shadowEnabled,
-    shadowQuality,
-    shadowSoftness,
-    shadowAnimationMode,
-    setShadowEnabled,
-    setShadowQuality,
-    setShadowSoftness,
-    setShadowAnimationMode,
-  } = useVisualStore(
+  } = useAppearanceStore(
     useShallow((state) => ({
       facesVisible: state.facesVisible,
       colorAlgorithm: state.colorAlgorithm,
@@ -132,8 +104,32 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
       setLchLightness: state.setLchLightness,
       lchChroma: state.lchChroma,
       setLchChroma: state.setLchChroma,
-      // Material settings
       shaderType: state.shaderType,
+    }))
+  );
+
+  // Lighting settings
+  const {
+    lightEnabled,
+    specularIntensity,
+    shininess,
+    specularColor,
+    diffuseIntensity,
+    setSpecularIntensity,
+    setShininess,
+    setSpecularColor,
+    setDiffuseIntensity,
+    lights,
+    shadowEnabled,
+    shadowQuality,
+    shadowSoftness,
+    shadowAnimationMode,
+    setShadowEnabled,
+    setShadowQuality,
+    setShadowSoftness,
+    setShadowAnimationMode,
+  } = useLightingStore(
+    useShallow((state) => ({
       lightEnabled: state.lightEnabled,
       specularIntensity: state.specularIntensity,
       shininess: state.shininess,
@@ -143,7 +139,32 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
       setShininess: state.setShininess,
       setSpecularColor: state.setSpecularColor,
       setDiffuseIntensity: state.setDiffuseIntensity,
-      // Opacity settings
+      lights: state.lights,
+      shadowEnabled: state.shadowEnabled,
+      shadowQuality: state.shadowQuality,
+      shadowSoftness: state.shadowSoftness,
+      shadowAnimationMode: state.shadowAnimationMode,
+      setShadowEnabled: state.setShadowEnabled,
+      setShadowQuality: state.setShadowQuality,
+      setShadowSoftness: state.setShadowSoftness,
+      setShadowAnimationMode: state.setShadowAnimationMode,
+    }))
+  );
+
+  // UI settings (Opacity)
+  const {
+    opacitySettings,
+    hasSeenVolumetricWarning,
+    setOpacityMode,
+    setSimpleAlphaOpacity,
+    setLayerCount,
+    setLayerOpacity,
+    setVolumetricDensity,
+    setSampleQuality,
+    setVolumetricAnimationQuality,
+    setHasSeenVolumetricWarning,
+  } = useUIStore(
+    useShallow((state) => ({
       opacitySettings: state.opacitySettings,
       hasSeenVolumetricWarning: state.hasSeenVolumetricWarning,
       setOpacityMode: state.setOpacityMode,
@@ -154,16 +175,6 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
       setSampleQuality: state.setSampleQuality,
       setVolumetricAnimationQuality: state.setVolumetricAnimationQuality,
       setHasSeenVolumetricWarning: state.setHasSeenVolumetricWarning,
-      // Shadow settings
-      lights: state.lights,
-      shadowEnabled: state.shadowEnabled,
-      shadowQuality: state.shadowQuality,
-      shadowSoftness: state.shadowSoftness,
-      shadowAnimationMode: state.shadowAnimationMode,
-      setShadowEnabled: state.setShadowEnabled,
-      setShadowQuality: state.setShadowQuality,
-      setShadowSoftness: state.setShadowSoftness,
-      setShadowAnimationMode: state.setShadowAnimationMode,
     }))
   );
 
@@ -872,7 +883,7 @@ const FxTabContent: React.FC<FxTabContentProps> = ({
  * Multi-Source Weights Editor for multiSource algorithm
  */
 const MultiSourceWeightsEditor: React.FC = () => {
-  const { multiSourceWeights, setMultiSourceWeights } = useVisualStore(
+  const { multiSourceWeights, setMultiSourceWeights } = useAppearanceStore(
     useShallow((state) => ({
       multiSourceWeights: state.multiSourceWeights,
       setMultiSourceWeights: state.setMultiSourceWeights,

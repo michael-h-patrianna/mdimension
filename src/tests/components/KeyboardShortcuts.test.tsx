@@ -4,7 +4,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { KeyboardShortcuts } from '@/components/KeyboardShortcuts';
+import { KeyboardShortcuts } from '@/components/ui/KeyboardShortcuts';
 import { SHORTCUTS } from '@/hooks/useKeyboardShortcuts';
 
 describe('KeyboardShortcuts', () => {

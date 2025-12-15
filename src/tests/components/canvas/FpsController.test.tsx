@@ -9,19 +9,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, cleanup } from '@testing-library/react'
 import { Canvas } from '@react-three/fiber'
 import { FpsController } from '@/components/canvas/FpsController'
-import { useVisualStore } from '@/stores/visualStore'
+import { useUIStore } from '@/stores/uiStore'
+import { UI_INITIAL_STATE } from '@/stores/slices/uiSlice'
 
 describe('FpsController', () => {
   beforeEach(() => {
     // Reset store to initial state
-    useVisualStore.getState().reset()
+    useUIStore.setState(UI_INITIAL_STATE)
     // Use fake timers for interval testing
     vi.useFakeTimers()
   })
 
   afterEach(() => {
     cleanup()
-    useVisualStore.getState().reset()
+    useUIStore.setState(UI_INITIAL_STATE)
     vi.useRealTimers()
   })
 
@@ -41,12 +42,12 @@ describe('FpsController', () => {
       </Canvas>
     )
     expect(container).toBeTruthy()
-    expect(useVisualStore.getState().maxFps).toBe(60)
+    expect(useUIStore.getState().maxFps).toBe(60)
   })
 
   it('should work with custom maxFps setting', () => {
     // Set custom FPS before rendering
-    useVisualStore.getState().setMaxFps(30)
+    useUIStore.getState().setMaxFps(30)
 
     const { container } = render(
       <Canvas frameloop="never">
@@ -54,7 +55,7 @@ describe('FpsController', () => {
       </Canvas>
     )
     expect(container).toBeTruthy()
-    expect(useVisualStore.getState().maxFps).toBe(30)
+    expect(useUIStore.getState().maxFps).toBe(30)
   })
 
   it('should respond to maxFps changes', () => {
@@ -65,13 +66,13 @@ describe('FpsController', () => {
     )
 
     // Change FPS while component is mounted
-    useVisualStore.getState().setMaxFps(90)
-    expect(useVisualStore.getState().maxFps).toBe(90)
+    useUIStore.getState().setMaxFps(90)
+    expect(useUIStore.getState().maxFps).toBe(90)
     expect(container).toBeTruthy()
   })
 
   it('should work with minimum FPS setting', () => {
-    useVisualStore.getState().setMaxFps(15)
+    useUIStore.getState().setMaxFps(15)
 
     const { container } = render(
       <Canvas frameloop="never">
@@ -79,11 +80,11 @@ describe('FpsController', () => {
       </Canvas>
     )
     expect(container).toBeTruthy()
-    expect(useVisualStore.getState().maxFps).toBe(15)
+    expect(useUIStore.getState().maxFps).toBe(15)
   })
 
   it('should work with maximum FPS setting', () => {
-    useVisualStore.getState().setMaxFps(120)
+    useUIStore.getState().setMaxFps(120)
 
     const { container } = render(
       <Canvas frameloop="never">
@@ -91,7 +92,7 @@ describe('FpsController', () => {
       </Canvas>
     )
     expect(container).toBeTruthy()
-    expect(useVisualStore.getState().maxFps).toBe(120)
+    expect(useUIStore.getState().maxFps).toBe(120)
   })
 
   it('should cleanup on unmount', () => {

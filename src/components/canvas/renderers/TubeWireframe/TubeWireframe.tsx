@@ -27,7 +27,8 @@ import type { VectorND } from '@/lib/math/types'
 import { useRotationStore } from '@/stores/rotationStore'
 import { useTransformStore } from '@/stores/transformStore'
 import { useProjectionStore } from '@/stores/projectionStore'
-import { useVisualStore } from '@/stores/visualStore'
+import { useAppearanceStore } from '@/stores/appearanceStore'
+import { useLightingStore } from '@/stores/lightingStore'
 import { composeRotations } from '@/lib/math/rotation'
 import { DEFAULT_PROJECTION_DISTANCE } from '@/lib/math/projection'
 import { matrixToGPUUniforms } from '@/lib/shaders/transforms/ndTransform'
@@ -243,7 +244,8 @@ export function TubeWireframe({
     const rotations = useRotationStore.getState().rotations
     const { uniformScale, perAxisScale } = useTransformStore.getState()
     const projectionType = useProjectionStore.getState().type
-    const visualState = useVisualStore.getState()
+    const appearanceState = useAppearanceStore.getState()
+    const lightingState = useLightingStore.getState()
 
     // Build scales array
     const scales: number[] = []
@@ -295,20 +297,20 @@ export function TubeWireframe({
     u.uRadius!.value = radius
 
     // Update lighting uniforms from visual store (cached linear conversion)
-    u.uAmbientIntensity!.value = visualState.ambientIntensity
-    updateLinearColorUniform(cache.ambientColor, u.uAmbientColor!.value as Color, visualState.ambientColor)
-    u.uSpecularIntensity!.value = visualState.specularIntensity
-    u.uSpecularPower!.value = visualState.shininess
-    updateLinearColorUniform(cache.specularColor, u.uSpecularColor!.value as Color, visualState.specularColor)
-    u.uDiffuseIntensity!.value = visualState.diffuseIntensity
+    u.uAmbientIntensity!.value = lightingState.ambientIntensity
+    updateLinearColorUniform(cache.ambientColor, u.uAmbientColor!.value as Color, lightingState.ambientColor)
+    u.uSpecularIntensity!.value = lightingState.specularIntensity
+    u.uSpecularPower!.value = lightingState.shininess
+    updateLinearColorUniform(cache.specularColor, u.uSpecularColor!.value as Color, lightingState.specularColor)
+    u.uDiffuseIntensity!.value = lightingState.diffuseIntensity
 
     // Fresnel (cached linear conversion)
-    u.uFresnelEnabled!.value = visualState.fresnelEnabled
-    u.uFresnelIntensity!.value = visualState.fresnelIntensity
-    updateLinearColorUniform(cache.rimColor, u.uRimColor!.value as Color, visualState.edgeColor)
+    u.uFresnelEnabled!.value = appearanceState.shaderSettings.surface.fresnelEnabled
+    u.uFresnelIntensity!.value = appearanceState.fresnelIntensity
+    updateLinearColorUniform(cache.rimColor, u.uRimColor!.value as Color, appearanceState.edgeColor)
 
     // Update multi-light system (with cached linear color conversion)
-    updateLightUniforms(u as unknown as LightUniforms, visualState.lights, lightColorCacheRef.current)
+    updateLightUniforms(u as unknown as LightUniforms, lightingState.lights, lightColorCacheRef.current)
   })
 
   // Don't render if no valid data

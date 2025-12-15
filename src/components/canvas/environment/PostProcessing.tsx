@@ -19,7 +19,10 @@ import { RefractionShader, type RefractionUniforms } from '@/lib/shaders/postpro
 import { SSRShader, type SSRUniforms } from '@/lib/shaders/postprocessing/SSRShader';
 import { TONE_MAPPING_TO_THREE } from '@/lib/shaders/types';
 import { getEffectiveSSRQuality, usePerformanceStore } from '@/stores';
-import { SSR_QUALITY_STEPS, useVisualStore, type SSRQuality } from '@/stores/visualStore';
+import { SSR_QUALITY_STEPS, type SSRQuality } from '@/stores/defaults/visualDefaults';
+import { usePostProcessingStore } from '@/stores/postProcessingStore';
+import { useLightingStore } from '@/stores/lightingStore';
+import { useUIStore } from '@/stores/uiStore';
 import { useFrame, useThree } from '@react-three/fiber';
 import { memo, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
@@ -329,29 +332,42 @@ export const PostProcessing = memo(function PostProcessing() {
     bloomThreshold,
     bloomRadius,
     bokehEnabled,
-    showDepthBuffer,
     ssrEnabled,
     refractionEnabled,
     antiAliasingMethod,
     smaaThreshold,
-    toneMappingEnabled,
-    toneMappingAlgorithm,
-    exposure,
-  } = useVisualStore(
+  } = usePostProcessingStore(
     useShallow((state) => ({
       bloomEnabled: state.bloomEnabled,
       bloomIntensity: state.bloomIntensity,
       bloomThreshold: state.bloomThreshold,
       bloomRadius: state.bloomRadius,
       bokehEnabled: state.bokehEnabled,
-      showDepthBuffer: state.showDepthBuffer,
       ssrEnabled: state.ssrEnabled,
       refractionEnabled: state.refractionEnabled,
       antiAliasingMethod: state.antiAliasingMethod,
       smaaThreshold: state.smaaThreshold,
+    }))
+  );
+
+  const {
+    toneMappingEnabled,
+    toneMappingAlgorithm,
+    exposure,
+  } = useLightingStore(
+    useShallow((state) => ({
       toneMappingEnabled: state.toneMappingEnabled,
       toneMappingAlgorithm: state.toneMappingAlgorithm,
       exposure: state.exposure,
+    }))
+  );
+
+  const {
+    showDepthBuffer,
+  } = useUIStore(
+    useShallow((state) => ({
+      showDepthBuffer: state.showDepthBuffer,
+      showTemporalDepthBuffer: state.showTemporalDepthBuffer,
     }))
   );
 
@@ -608,16 +624,18 @@ export const PostProcessing = memo(function PostProcessing() {
   // Render
   useFrame((_, delta) => {
     // Read current enabled states from store to avoid stale closures
-    const state = useVisualStore.getState();
-    const currentBloomEnabled = state.bloomEnabled;
-    const currentBokehEnabled = state.bokehEnabled;
-    const currentShowDepthBuffer = state.showDepthBuffer;
-    const currentSSREnabled = state.ssrEnabled;
-    const currentRefractionEnabled = state.refractionEnabled;
-    const currentAntiAliasingMethod = state.antiAliasingMethod;
+    const ppState = usePostProcessingStore.getState();
+    const uiState = useUIStore.getState();
+    
+    const currentBloomEnabled = ppState.bloomEnabled;
+    const currentBokehEnabled = ppState.bokehEnabled;
+    const currentShowDepthBuffer = uiState.showDepthBuffer;
+    const currentSSREnabled = ppState.ssrEnabled;
+    const currentRefractionEnabled = ppState.refractionEnabled;
+    const currentAntiAliasingMethod = ppState.antiAliasingMethod;
 
     // Bokeh pass also runs when showing depth buffer or temporal depth (uses same shader)
-    const bokehOrDepthEnabled = currentBokehEnabled || currentShowDepthBuffer || state.showTemporalDepthBuffer;
+    const bokehOrDepthEnabled = currentBokehEnabled || currentShowDepthBuffer || uiState.showTemporalDepthBuffer;
 
     // Update pass enabled states every frame to ensure sync
     bloomPass.enabled = currentBloomEnabled;
@@ -628,7 +646,7 @@ export const PostProcessing = memo(function PostProcessing() {
     smaaPass.enabled = currentAntiAliasingMethod === 'smaa';
 
     // Set bloom strength (0 when disabled for smooth transition)
-    bloomPass.strength = currentBloomEnabled ? state.bloomIntensity : 0;
+    bloomPass.strength = currentBloomEnabled ? ppState.bloomIntensity : 0;
 
     // Update temporal depth manager camera matrices (before any rendering)
     TemporalDepthManager.updateCameraMatrices(camera);
@@ -644,7 +662,7 @@ export const PostProcessing = memo(function PostProcessing() {
       ssrEnabled: currentSSREnabled,
       refractionEnabled: currentRefractionEnabled,
       bokehEnabled: bokehOrDepthEnabled,
-      bokehFocusMode: state.bokehFocusMode,
+      bokehFocusMode: ppState.bokehFocusMode,
       temporalReprojectionEnabled,
     });
 
@@ -737,10 +755,10 @@ export const PostProcessing = memo(function PostProcessing() {
     texturePass.map = sceneTarget.texture;
 
     if (bokehOrDepthEnabled && camera instanceof THREE.PerspectiveCamera) {
-      let targetFocus = state.bokehWorldFocusDistance;
+      let targetFocus = ppState.bokehWorldFocusDistance;
 
       // Auto-focus: raycast to find depth at screen center
-      if (state.bokehFocusMode === 'auto-center' || state.bokehFocusMode === 'auto-mouse') {
+      if (ppState.bokehFocusMode === 'auto-center' || ppState.bokehFocusMode === 'auto-mouse') {
         // Use screen center for auto-center, could add mouse position for auto-mouse
         autoFocusRaycaster.setFromCamera(screenCenter, camera);
         const intersects = autoFocusRaycaster.intersectObjects(scene.children, true);
@@ -753,7 +771,7 @@ export const PostProcessing = memo(function PostProcessing() {
       }
 
       // Smooth focus transition
-      const smoothFactor = state.bokehSmoothTime > 0 ? 1 - Math.exp(-delta / state.bokehSmoothTime) : 1;
+      const smoothFactor = ppState.bokehSmoothTime > 0 ? 1 - Math.exp(-delta / ppState.bokehSmoothTime) : 1;
       currentFocusRef.current += (targetFocus - currentFocusRef.current) * smoothFactor;
 
       const uniforms = bokehPass.uniforms as unknown as BokehUniforms;
@@ -763,31 +781,31 @@ export const PostProcessing = memo(function PostProcessing() {
 
       // Focus range: the depth range where objects stay sharp (in world units)
       // This creates a "dead zone" around the focus point
-      uniforms.focusRange.value = state.bokehWorldFocusRange;
+      uniforms.focusRange.value = ppState.bokehWorldFocusRange;
 
       // Aperture: controls how quickly blur increases beyond the focus range
       // bokehScale: 0-3 maps to aperture: 0-0.015
       // Lower values = more gradual blur falloff
-      uniforms.aperture.value = state.bokehScale * 0.005;
+      uniforms.aperture.value = ppState.bokehScale * 0.005;
 
       // Maxblur: cap the maximum blur amount (typical: 0.01-0.05)
       // bokehScale: 0-3 maps to maxblur: 0-0.06
-      uniforms.maxblur.value = state.bokehScale * 0.02;
+      uniforms.maxblur.value = ppState.bokehScale * 0.02;
 
       uniforms.nearClip.value = camera.near;
       uniforms.farClip.value = camera.far;
 
       // Debug modes: 0=normal, 1=raw depth, 2=linear depth, 3=focus zones
       let debugMode = 0;
-      if (state.showDepthBuffer) {
+      if (uiState.showDepthBuffer) {
         debugMode = 2; // Linear depth
-      } else if (state.bokehShowDebug) {
+      } else if (ppState.bokehShowDebug) {
         debugMode = 3; // Focus zones
       }
       uniforms.debugMode.value = debugMode;
 
       // Temporal depth visualization (separate from debug modes)
-      uniforms.showTemporalDepth.value = state.showTemporalDepthBuffer;
+      uniforms.showTemporalDepth.value = uiState.showTemporalDepthBuffer;
       const temporalUniforms = TemporalDepthManager.getUniforms();
       uniforms.tTemporalDepth.value = temporalUniforms.uPrevDepthTexture;
 
@@ -798,7 +816,7 @@ export const PostProcessing = memo(function PostProcessing() {
         separable: 2,
         hexagonal: 3,
       };
-      uniforms.blurMethod.value = blurMethodMap[state.bokehBlurMethod] ?? 3;
+      uniforms.blurMethod.value = blurMethodMap[ppState.bokehBlurMethod] ?? 3;
 
       // Time for jittered blur animation (prevents static noise patterns)
       uniforms.time.value = performance.now() * 0.001;
@@ -813,15 +831,15 @@ export const PostProcessing = memo(function PostProcessing() {
       ssrUniforms.projMatrix.value.copy(camera.projectionMatrix);
       ssrUniforms.invProjMatrix.value.copy(camera.projectionMatrixInverse);
       ssrUniforms.uViewMat.value.copy(camera.matrixWorldInverse);
-      ssrUniforms.intensity.value = state.ssrIntensity;
-      ssrUniforms.maxDistance.value = state.ssrMaxDistance;
-      ssrUniforms.thickness.value = state.ssrThickness;
-      ssrUniforms.fadeStart.value = state.ssrFadeStart;
-      ssrUniforms.fadeEnd.value = state.ssrFadeEnd;
+      ssrUniforms.intensity.value = ppState.ssrIntensity;
+      ssrUniforms.maxDistance.value = ppState.ssrMaxDistance;
+      ssrUniforms.thickness.value = ppState.ssrThickness;
+      ssrUniforms.fadeStart.value = ppState.ssrFadeStart;
+      ssrUniforms.fadeEnd.value = ppState.ssrFadeEnd;
       // Progressive refinement: scale SSR quality from low → user's target
       const qualityMultiplier = usePerformanceStore.getState().qualityMultiplier;
       const effectiveSSRQuality = getEffectiveSSRQuality(
-        state.ssrQuality as SSRQuality,
+        ppState.ssrQuality as SSRQuality,
         qualityMultiplier
       );
       ssrUniforms.maxSteps.value = SSR_QUALITY_STEPS[effectiveSSRQuality] ?? 32;
@@ -836,9 +854,9 @@ export const PostProcessing = memo(function PostProcessing() {
       // Use object-only depth for refraction to only distort main object, not walls
       refractionUniforms.tDepth.value = effectDepthTexture;
       refractionUniforms.invProjMatrix.value.copy(camera.projectionMatrixInverse);
-      refractionUniforms.ior.value = state.refractionIOR;
-      refractionUniforms.strength.value = state.refractionStrength;
-      refractionUniforms.chromaticAberration.value = state.refractionChromaticAberration;
+      refractionUniforms.ior.value = ppState.refractionIOR;
+      refractionUniforms.strength.value = ppState.refractionStrength;
+      refractionUniforms.chromaticAberration.value = ppState.refractionChromaticAberration;
       refractionUniforms.nearClip.value = camera.near;
       refractionUniforms.farClip.value = camera.far;
     }

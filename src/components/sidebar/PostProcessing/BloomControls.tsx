@@ -28,7 +28,7 @@
  * - Intensity 0 produces no visible bloom (same as off)
  *
  * @see {@link PostProcessing} for the bloom effect implementation
- * @see {@link useVisualStore} for state management
+ * @see {@link usePostProcessingStore} for state management
  * @see https://threejs.org/examples/webgl_postprocessing_unreal_bloom.html
  */
 
@@ -37,11 +37,11 @@ import { useShallow } from 'zustand/react/shallow';
 import { Slider } from '@/components/ui/Slider';
 import { Switch } from '@/components/ui/Switch';
 import {
-  useVisualStore,
   DEFAULT_BLOOM_INTENSITY,
   DEFAULT_BLOOM_THRESHOLD,
   DEFAULT_BLOOM_RADIUS,
-} from '@/stores/visualStore';
+} from '@/stores/defaults/visualDefaults';
+import { usePostProcessingStore } from '@/stores/postProcessingStore';
 
 export interface BloomControlsProps {
   className?: string;
@@ -65,7 +65,7 @@ export const BloomControls: React.FC<BloomControlsProps> = React.memo(({
     setBloomIntensity,
     setBloomThreshold,
     setBloomRadius,
-  } = useVisualStore(
+  } = usePostProcessingStore(
     useShallow((state) => ({
       // State
       bloomEnabled: state.bloomEnabled,

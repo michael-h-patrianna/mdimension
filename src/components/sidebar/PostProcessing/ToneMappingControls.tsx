@@ -13,9 +13,9 @@ import { Slider } from '@/components/ui/Slider';
 import { Select } from '@/components/ui/Select';
 import { Switch } from '@/components/ui/Switch';
 import {
-  useVisualStore,
   DEFAULT_EXPOSURE,
-} from '@/stores/visualStore';
+} from '@/stores/defaults/visualDefaults';
+import { useLightingStore } from '@/stores/lightingStore';
 import { TONE_MAPPING_OPTIONS, type ToneMappingAlgorithm } from '@/lib/shaders/types';
 
 export interface ToneMappingControlsProps {
@@ -35,7 +35,7 @@ export const ToneMappingControls: React.FC<ToneMappingControlsProps> = React.mem
     setToneMappingEnabled,
     setToneMappingAlgorithm,
     setExposure,
-  } = useVisualStore(
+  } = useLightingStore(
     useShallow((state) => ({
       toneMappingEnabled: state.toneMappingEnabled,
       toneMappingAlgorithm: state.toneMappingAlgorithm,

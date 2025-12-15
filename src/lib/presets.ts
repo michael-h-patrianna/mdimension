@@ -1,5 +1,6 @@
 import { useGeometryStore } from '@/stores/geometryStore';
-import { useVisualStore } from '@/stores/visualStore';
+import { useAppearanceStore } from '@/stores/appearanceStore';
+import { usePostProcessingStore } from '@/stores/postProcessingStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useAnimationStore } from '@/stores/animationStore';
 
@@ -12,7 +13,7 @@ export const PRESETS = [
     apply: () => {
       useGeometryStore.getState().setDimension(4);
       useGeometryStore.getState().setObjectType('hypercube');
-      useVisualStore.getState().setFacesVisible(true);
+      useAppearanceStore.getState().setFacesVisible(true);
       // Enable standard 4D rotations
       useAnimationStore.getState().stopAll();
       useAnimationStore.getState().setPlaneAnimating('XW', true);
@@ -40,7 +41,7 @@ export const PRESETS = [
     apply: () => {
       useGeometryStore.getState().setDimension(3);
       useGeometryStore.getState().setObjectType('mandelbrot');
-      useVisualStore.getState().setFacesVisible(true); // Needed for raymarching
+      useAppearanceStore.getState().setFacesVisible(true); // Needed for raymarching
       useExtendedObjectStore.getState().setMandelbrotConfig({ mandelbulbPower: 8, maxIterations: 5 });
     }
   },
@@ -51,7 +52,7 @@ export const PRESETS = [
     apply: () => {
       useGeometryStore.getState().setDimension(4);
       useGeometryStore.getState().setObjectType('mandelbrot');
-      useVisualStore.getState().setFacesVisible(true);
+      useAppearanceStore.getState().setFacesVisible(true);
       useAnimationStore.getState().stopAll();
       useAnimationStore.getState().setPlaneAnimating('XW', true); // Rotate in 4th dim
       useAnimationStore.getState().setSpeed(0.2);
@@ -64,11 +65,10 @@ export const PRESETS = [
     description: 'Glowing 4D Cross-Polytope',
     apply: () => {
       useGeometryStore.getState().setDimension(4);
-      useGeometryStore.getState().setObjectType('cross-polytope');
-      useVisualStore.getState().setFacesVisible(true);
-      useVisualStore.getState().setBloomEnabled(true);
-      useVisualStore.getState().setBloomIntensity(2.5);
-      useVisualStore.getState().setEdgeColor('#00ffcc');
+useAppearanceStore.getState().setFacesVisible(true);
+      usePostProcessingStore.getState().setBloomEnabled(true);
+      usePostProcessingStore.getState().setBloomIntensity(2.5);
+      useAppearanceStore.getState().setEdgeColor('#00ffcc');
     }
   }
 ];

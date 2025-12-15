@@ -8,7 +8,8 @@ import { Section } from '@/components/ui/Section';
 import { Slider } from '@/components/ui/Slider';
 import { Switch } from '@/components/ui/Switch';
 import { DEFAULT_MAX_FPS } from '@/stores/defaults/visualDefaults';
-import { useVisualStore } from '@/stores/visualStore';
+import { useUIStore } from '@/stores/uiStore';
+import { usePostProcessingStore } from '@/stores/postProcessingStore';
 import { usePerformanceStore } from '@/stores';
 import React from 'react';
 import { ThemeSelector } from './ThemeSelector';
@@ -27,22 +28,22 @@ export interface SettingsSectionProps {
 export const SettingsSection: React.FC<SettingsSectionProps> = ({
   defaultOpen = true,
 }) => {
-  const showPerfMonitor = useVisualStore((state) => state.showPerfMonitor);
-  const setShowPerfMonitor = useVisualStore((state) => state.setShowPerfMonitor);
-  const showAxisHelper = useVisualStore((state) => state.showAxisHelper);
-  const setShowAxisHelper = useVisualStore((state) => state.setShowAxisHelper);
-  const showDepthBuffer = useVisualStore((state) => state.showDepthBuffer);
-  const setShowDepthBuffer = useVisualStore((state) => state.setShowDepthBuffer);
-  const showTemporalDepthBuffer = useVisualStore((state) => state.showTemporalDepthBuffer);
-  const setShowTemporalDepthBuffer = useVisualStore((state) => state.setShowTemporalDepthBuffer);
-  const maxFps = useVisualStore((state) => state.maxFps);
-  const setMaxFps = useVisualStore((state) => state.setMaxFps);
+  const showPerfMonitor = useUIStore((state) => state.showPerfMonitor);
+  const setShowPerfMonitor = useUIStore((state) => state.setShowPerfMonitor);
+  const showAxisHelper = useUIStore((state) => state.showAxisHelper);
+  const setShowAxisHelper = useUIStore((state) => state.setShowAxisHelper);
+  const showDepthBuffer = useUIStore((state) => state.showDepthBuffer);
+  const setShowDepthBuffer = useUIStore((state) => state.setShowDepthBuffer);
+  const showTemporalDepthBuffer = useUIStore((state) => state.showTemporalDepthBuffer);
+  const setShowTemporalDepthBuffer = useUIStore((state) => state.setShowTemporalDepthBuffer);
+  const maxFps = useUIStore((state) => state.maxFps);
+  const setMaxFps = useUIStore((state) => state.setMaxFps);
 
   // Check if depth buffer is available (any depth-based effect is enabled)
-  const bokehEnabled = useVisualStore((state) => state.bokehEnabled);
-  const ssrEnabled = useVisualStore((state) => state.ssrEnabled);
-  const refractionEnabled = useVisualStore((state) => state.refractionEnabled);
-  const bokehFocusMode = useVisualStore((state) => state.bokehFocusMode);
+  const bokehEnabled = usePostProcessingStore((state) => state.bokehEnabled);
+  const ssrEnabled = usePostProcessingStore((state) => state.ssrEnabled);
+  const refractionEnabled = usePostProcessingStore((state) => state.refractionEnabled);
+  const bokehFocusMode = usePostProcessingStore((state) => state.bokehFocusMode);
 
   const depthBufferAvailable = needsObjectOnlyDepth({
     ssrEnabled,

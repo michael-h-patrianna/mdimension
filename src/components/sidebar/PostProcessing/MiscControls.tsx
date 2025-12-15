@@ -8,14 +8,14 @@
  * - SMAA threshold slider (when SMAA is selected)
  *
  * @see {@link PostProcessing} for the effect implementation
- * @see {@link useVisualStore} for state management
+ * @see {@link usePostProcessingStore} for state management
  * @see https://threejs.org/docs/#examples/en/postprocessing/SMAAPass
  */
 
 import { Select, type SelectOption } from '@/components/ui/Select';
 import { Slider } from '@/components/ui/Slider';
 import { type AntiAliasingMethod, DEFAULT_SMAA_THRESHOLD } from '@/stores/defaults/visualDefaults';
-import { useVisualStore } from '@/stores/visualStore';
+import { usePostProcessingStore } from '@/stores/postProcessingStore';
 import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -41,7 +41,7 @@ export const MiscControls: React.FC<MiscControlsProps> = React.memo(({
     setAntiAliasingMethod,
     smaaThreshold,
     setSmaaThreshold,
-  } = useVisualStore(
+  } = usePostProcessingStore(
     useShallow((state) => ({
       antiAliasingMethod: state.antiAliasingMethod,
       setAntiAliasingMethod: state.setAntiAliasingMethod,

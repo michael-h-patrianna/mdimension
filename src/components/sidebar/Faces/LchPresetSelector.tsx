@@ -7,7 +7,7 @@
 
 import { Select } from '@/components/ui/Select';
 import { LCH_PRESET_OPTIONS } from '@/lib/shaders/palette';
-import { useVisualStore } from '@/stores/visualStore';
+import { useAppearanceStore } from '@/stores/appearanceStore';
 import React, { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -18,7 +18,7 @@ export interface LchPresetSelectorProps {
 export const LchPresetSelector: React.FC<LchPresetSelectorProps> = ({
   className = '',
 }) => {
-  const { lchLightness, lchChroma, setLchLightness, setLchChroma } = useVisualStore(
+  const { lchLightness, lchChroma, setLchLightness, setLchChroma } = useAppearanceStore(
     useShallow((state) => ({
       lchLightness: state.lchLightness,
       lchChroma: state.lchChroma,

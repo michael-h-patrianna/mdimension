@@ -38,14 +38,7 @@ import {
 } from '@/lib/shadows/constants';
 import type { ShaderType, AllShaderSettings, ToneMappingAlgorithm } from '@/lib/shaders/types';
 import { MAX_DIMENSION, MIN_DIMENSION } from '@/stores/geometryStore';
-import {
-  DEFAULT_SHADER_TYPE,
-  DEFAULT_SHADER_SETTINGS,
-  DEFAULT_SPECULAR_COLOR,
-  DEFAULT_TONE_MAPPING_ALGORITHM,
-  DEFAULT_EXPOSURE,
-  DEFAULT_DIFFUSE_INTENSITY,
-} from '@/stores/visualStore';
+import { DEFAULT_SHADER_TYPE, DEFAULT_SHADER_SETTINGS, DEFAULT_TONE_MAPPING_ALGORITHM, DEFAULT_EXPOSURE, DEFAULT_SPECULAR_COLOR, DEFAULT_DIFFUSE_INTENSITY } from '@/stores/defaults/visualDefaults';
 
 /** Valid shader types for URL validation */
 const VALID_SHADER_TYPES: ShaderType[] = [

@@ -9,7 +9,8 @@ import { Select } from '@/components/ui/Select';
 import { Slider } from '@/components/ui/Slider';
 import { Switch } from '@/components/ui/Switch';
 import { Tabs } from '@/components/ui/Tabs';
-import { useVisualStore, type GroundPlaneType, type WallPosition } from '@/stores/visualStore';
+import { type GroundPlaneType, type WallPosition } from '@/stores/defaults/visualDefaults'; // Types can stay or move if exported from environmentStore
+import { useEnvironmentStore } from '@/stores/environmentStore';
 import React, { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -60,7 +61,7 @@ export const EnvironmentControls: React.FC<EnvironmentControlsProps> = React.mem
     setGroundMaterialRoughness,
     setGroundMaterialMetalness,
     setGroundMaterialEnvMapIntensity,
-  } = useVisualStore(
+  } = useEnvironmentStore(
     useShallow((state) => ({
       activeWalls: state.activeWalls,
       groundPlaneOffset: state.groundPlaneOffset,

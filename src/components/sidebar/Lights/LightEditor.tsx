@@ -18,7 +18,7 @@ import { Select } from '@/components/ui/Select';
 import { Slider } from '@/components/ui/Slider';
 import { ToggleButton } from '@/components/ui/ToggleButton';
 import type { LightType, TransformMode } from '@/lib/lights/types';
-import { useVisualStore } from '@/stores/visualStore';
+import { useLightingStore } from '@/stores/lightingStore';
 import React, { memo, useCallback } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { Vector3Input } from './Vector3Input';
@@ -48,7 +48,7 @@ export const LightEditor: React.FC<LightEditorProps> = memo(function LightEditor
     setTransformMode,
     duplicateLight,
     selectLight,
-  } = useVisualStore(
+  } = useLightingStore(
     useShallow((state) => ({
       lights: state.lights,
       selectedLightId: state.selectedLightId,

@@ -7,7 +7,7 @@
 
 import { Slider } from '@/components/ui/Slider';
 import { DEFAULT_DISTRIBUTION } from '@/lib/shaders/palette';
-import { useVisualStore } from '@/stores/visualStore';
+import { useAppearanceStore } from '@/stores/appearanceStore';
 import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -18,7 +18,7 @@ export interface DistributionControlsProps {
 export const DistributionControls: React.FC<DistributionControlsProps> = ({
   className = '',
 }) => {
-  const { distribution, setDistribution } = useVisualStore(
+  const { distribution, setDistribution } = useAppearanceStore(
     useShallow((state) => ({
       distribution: state.distribution,
       setDistribution: state.setDistribution,

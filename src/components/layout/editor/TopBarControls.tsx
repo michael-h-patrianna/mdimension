@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ToggleButton } from '@/components/ui/ToggleButton';
 import { useGeometryStore } from '@/stores/geometryStore';
-import { useVisualStore } from '@/stores/visualStore';
+import { useAppearanceStore } from '@/stores/appearanceStore';
+import { useUIStore } from '@/stores/uiStore';
 import { useAnimationStore } from '@/stores/animationStore';
 import { useLayoutStore } from '@/stores/layoutStore';
 import { useShallow } from 'zustand/react/shallow';
@@ -64,14 +65,20 @@ export const TopBarControls: React.FC = () => {
     facesVisible,
     setEdgesVisible,
     setFacesVisible,
-    showPerfMonitor,
-    setShowPerfMonitor
-  } = useVisualStore(
+  } = useAppearanceStore(
     useShallow((state) => ({
       edgesVisible: state.edgesVisible,
       facesVisible: state.facesVisible,
       setEdgesVisible: state.setEdgesVisible,
       setFacesVisible: state.setFacesVisible,
+    }))
+  );
+
+  const {
+    showPerfMonitor,
+    setShowPerfMonitor
+  } = useUIStore(
+    useShallow((state) => ({
       showPerfMonitor: state.showPerfMonitor,
       setShowPerfMonitor: state.setShowPerfMonitor
     }))

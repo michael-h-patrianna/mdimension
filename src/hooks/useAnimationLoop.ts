@@ -5,7 +5,7 @@
 
 import { useAnimationStore } from '@/stores/animationStore'
 import { useRotationStore } from '@/stores/rotationStore'
-import { useVisualStore } from '@/stores/visualStore'
+import { useUIStore } from '@/stores/uiStore'
 import { getPlaneMultiplier } from '@/lib/animation/biasCalculation'
 import { useCallback, useEffect, useRef } from 'react'
 
@@ -44,7 +44,7 @@ export function useAnimationLoop(): void {
       }
 
       // Throttle based on maxFps setting
-      const maxFps = useVisualStore.getState().maxFps
+      const maxFps = useUIStore.getState().maxFps
       const frameInterval = 1000 / maxFps
 
       if (deltaTime < frameInterval) {
@@ -57,7 +57,7 @@ export function useAnimationLoop(): void {
 
       const rotationDelta = getRotationDelta(deltaTime)
       // Get animation bias from visual store (0 = uniform, 1 = wildly different)
-      const animationBias = useVisualStore.getState().animationBias
+      const animationBias = useUIStore.getState().animationBias
       // Get fresh animating planes from store to avoid stale closure
       const currentAnimatingPlanes = useAnimationStore.getState().animatingPlanes
       // Reuse Map instance to avoid allocation every frame (60 FPS = 60 allocations/sec)

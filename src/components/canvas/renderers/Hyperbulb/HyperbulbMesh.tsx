@@ -17,7 +17,9 @@ import {
 } from '@/stores/performanceStore';
 import type { RotationState } from '@/stores/rotationStore';
 import { useRotationStore } from '@/stores/rotationStore';
-import { useVisualStore } from '@/stores/visualStore';
+import { useAppearanceStore } from '@/stores/appearanceStore';
+import { useLightingStore } from '@/stores/lightingStore';
+import { useUIStore } from '@/stores/uiStore';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
@@ -139,42 +141,42 @@ const HyperbulbMesh = () => {
   const parameterValues = useExtendedObjectStore((state) => state.mandelbrot.parameterValues);
 
   // Get color state from visual store
-  const faceColor = useVisualStore((state) => state.faceColor);
+  const faceColor = useAppearanceStore((state) => state.faceColor);
 
   // Advanced color system state
-  const colorAlgorithm = useVisualStore((state) => state.colorAlgorithm);
-  const cosineCoefficients = useVisualStore((state) => state.cosineCoefficients);
-  const distribution = useVisualStore((state) => state.distribution);
-  const lchLightness = useVisualStore((state) => state.lchLightness);
-  const lchChroma = useVisualStore((state) => state.lchChroma);
-  const multiSourceWeights = useVisualStore((state) => state.multiSourceWeights);
+  const colorAlgorithm = useAppearanceStore((state) => state.colorAlgorithm);
+  const cosineCoefficients = useAppearanceStore((state) => state.cosineCoefficients);
+  const distribution = useAppearanceStore((state) => state.distribution);
+  const lchLightness = useAppearanceStore((state) => state.lchLightness);
+  const lchChroma = useAppearanceStore((state) => state.lchChroma);
+  const multiSourceWeights = useAppearanceStore((state) => state.multiSourceWeights);
 
   // Get multi-light system from visual store
-  const lights = useVisualStore((state) => state.lights);
+  const lights = useLightingStore((state) => state.lights);
 
   // Get global lighting settings from visual store
-  const ambientIntensity = useVisualStore((state) => state.ambientIntensity);
-  const ambientColor = useVisualStore((state) => state.ambientColor);
-  const specularIntensity = useVisualStore((state) => state.specularIntensity);
-  const shininess = useVisualStore((state) => state.shininess);
+  const ambientIntensity = useLightingStore((state) => state.ambientIntensity);
+  const ambientColor = useLightingStore((state) => state.ambientColor);
+  const specularIntensity = useLightingStore((state) => state.specularIntensity);
+  const shininess = useLightingStore((state) => state.shininess);
   // Enhanced lighting settings
-  const specularColor = useVisualStore((state) => state.specularColor);
-  const diffuseIntensity = useVisualStore((state) => state.diffuseIntensity);
+  const specularColor = useLightingStore((state) => state.specularColor);
+  const diffuseIntensity = useLightingStore((state) => state.diffuseIntensity);
 
 
   // Edges render mode controls fresnel rim lighting for Hyperbulb
-  const edgesVisible = useVisualStore((state) => state.edgesVisible);
-  const fresnelIntensity = useVisualStore((state) => state.fresnelIntensity);
-  const edgeColor = useVisualStore((state) => state.edgeColor);
+  const edgesVisible = useAppearanceStore((state) => state.edgesVisible);
+  const fresnelIntensity = useAppearanceStore((state) => state.fresnelIntensity);
+  const edgeColor = useAppearanceStore((state) => state.edgeColor);
 
   // Opacity settings (shared global state)
-  const opacitySettings = useVisualStore((state) => state.opacitySettings);
+  const opacitySettings = useUIStore((state) => state.opacitySettings);
 
   // Shadow settings
-  const shadowEnabled = useVisualStore((state) => state.shadowEnabled);
-  const shadowQuality = useVisualStore((state) => state.shadowQuality);
-  const shadowSoftness = useVisualStore((state) => state.shadowSoftness);
-  const shadowAnimationMode = useVisualStore((state) => state.shadowAnimationMode);
+  const shadowEnabled = useLightingStore((state) => state.shadowEnabled);
+  const shadowQuality = useLightingStore((state) => state.shadowQuality);
+  const shadowSoftness = useLightingStore((state) => state.shadowSoftness);
+  const shadowAnimationMode = useLightingStore((state) => state.shadowAnimationMode);
 
   const uniforms = useMemo(
     () => ({

@@ -2,12 +2,13 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
 import { Canvas } from '@react-three/fiber';
 import { SceneLighting } from '@/components/canvas/environment/SceneLighting';
-import { useVisualStore } from '@/stores/visualStore';
+import { useLightingStore } from '@/stores/lightingStore';
+import { LIGHTING_INITIAL_STATE } from '@/stores/slices/lightingSlice';
 
 describe('SceneLighting', () => {
   beforeEach(() => {
     // Reset store before each test
-    useVisualStore.getState().reset();
+    useLightingStore.setState(LIGHTING_INITIAL_STATE);
   });
 
   describe('rendering', () => {
@@ -32,7 +33,7 @@ describe('SceneLighting', () => {
 
   describe('directional light', () => {
     it('should render directional light when enabled', () => {
-      useVisualStore.getState().setLightEnabled(true);
+      useLightingStore.getState().setLightEnabled(true);
       const { container } = render(
         <Canvas>
           <SceneLighting />
@@ -42,7 +43,7 @@ describe('SceneLighting', () => {
     });
 
     it('should not render directional light when disabled', () => {
-      useVisualStore.getState().setLightEnabled(false);
+      useLightingStore.getState().setLightEnabled(false);
       const { container } = render(
         <Canvas>
           <SceneLighting />
@@ -52,8 +53,8 @@ describe('SceneLighting', () => {
     });
 
     it('should update when light color changes', () => {
-      useVisualStore.getState().setLightEnabled(true);
-      useVisualStore.getState().setLightColor('#FF0000');
+      useLightingStore.getState().setLightEnabled(true);
+      useLightingStore.getState().setLightColor('#FF0000');
       const { container } = render(
         <Canvas>
           <SceneLighting />
@@ -63,9 +64,9 @@ describe('SceneLighting', () => {
     });
 
     it('should update when light angles change', () => {
-      useVisualStore.getState().setLightEnabled(true);
-      useVisualStore.getState().setLightHorizontalAngle(90);
-      useVisualStore.getState().setLightVerticalAngle(45);
+      useLightingStore.getState().setLightEnabled(true);
+      useLightingStore.getState().setLightHorizontalAngle(90);
+      useLightingStore.getState().setLightVerticalAngle(45);
       const { container } = render(
         <Canvas>
           <SceneLighting />
@@ -77,8 +78,8 @@ describe('SceneLighting', () => {
 
   describe('light indicator', () => {
     it('should render light indicator when both enabled and indicator shown', () => {
-      useVisualStore.getState().setLightEnabled(true);
-      useVisualStore.getState().setShowLightIndicator(true);
+      useLightingStore.getState().setLightEnabled(true);
+      useLightingStore.getState().setShowLightIndicator(true);
       const { container } = render(
         <Canvas>
           <SceneLighting />
@@ -88,8 +89,8 @@ describe('SceneLighting', () => {
     });
 
     it('should not render light indicator when light disabled', () => {
-      useVisualStore.getState().setLightEnabled(false);
-      useVisualStore.getState().setShowLightIndicator(true);
+      useLightingStore.getState().setLightEnabled(false);
+      useLightingStore.getState().setShowLightIndicator(true);
       const { container } = render(
         <Canvas>
           <SceneLighting />
@@ -99,8 +100,8 @@ describe('SceneLighting', () => {
     });
 
     it('should not render light indicator when indicator hidden', () => {
-      useVisualStore.getState().setLightEnabled(true);
-      useVisualStore.getState().setShowLightIndicator(false);
+      useLightingStore.getState().setLightEnabled(true);
+      useLightingStore.getState().setShowLightIndicator(false);
       const { container } = render(
         <Canvas>
           <SceneLighting />
@@ -112,7 +113,7 @@ describe('SceneLighting', () => {
 
   describe('ambient light', () => {
     it('should update when ambient intensity changes', () => {
-      useVisualStore.getState().setAmbientIntensity(0.5);
+      useLightingStore.getState().setAmbientIntensity(0.5);
       const { container } = render(
         <Canvas>
           <SceneLighting />
@@ -122,7 +123,7 @@ describe('SceneLighting', () => {
     });
 
     it('should render with minimum ambient intensity', () => {
-      useVisualStore.getState().setAmbientIntensity(0);
+      useLightingStore.getState().setAmbientIntensity(0);
       const { container } = render(
         <Canvas>
           <SceneLighting />
@@ -132,7 +133,7 @@ describe('SceneLighting', () => {
     });
 
     it('should render with maximum ambient intensity', () => {
-      useVisualStore.getState().setAmbientIntensity(1);
+      useLightingStore.getState().setAmbientIntensity(1);
       const { container } = render(
         <Canvas>
           <SceneLighting />
@@ -144,9 +145,9 @@ describe('SceneLighting', () => {
 
   describe('light position calculation', () => {
     it('should calculate position for 0,0 angles', () => {
-      useVisualStore.getState().setLightEnabled(true);
-      useVisualStore.getState().setLightHorizontalAngle(0);
-      useVisualStore.getState().setLightVerticalAngle(0);
+      useLightingStore.getState().setLightEnabled(true);
+      useLightingStore.getState().setLightHorizontalAngle(0);
+      useLightingStore.getState().setLightVerticalAngle(0);
       const { container } = render(
         <Canvas>
           <SceneLighting />
@@ -156,9 +157,9 @@ describe('SceneLighting', () => {
     });
 
     it('should calculate position for 90,45 angles', () => {
-      useVisualStore.getState().setLightEnabled(true);
-      useVisualStore.getState().setLightHorizontalAngle(90);
-      useVisualStore.getState().setLightVerticalAngle(45);
+      useLightingStore.getState().setLightEnabled(true);
+      useLightingStore.getState().setLightHorizontalAngle(90);
+      useLightingStore.getState().setLightVerticalAngle(45);
       const { container } = render(
         <Canvas>
           <SceneLighting />
@@ -168,9 +169,9 @@ describe('SceneLighting', () => {
     });
 
     it('should calculate position for 180,0 angles', () => {
-      useVisualStore.getState().setLightEnabled(true);
-      useVisualStore.getState().setLightHorizontalAngle(180);
-      useVisualStore.getState().setLightVerticalAngle(0);
+      useLightingStore.getState().setLightEnabled(true);
+      useLightingStore.getState().setLightHorizontalAngle(180);
+      useLightingStore.getState().setLightVerticalAngle(0);
       const { container } = render(
         <Canvas>
           <SceneLighting />
@@ -180,9 +181,9 @@ describe('SceneLighting', () => {
     });
 
     it('should calculate position for negative vertical angle', () => {
-      useVisualStore.getState().setLightEnabled(true);
-      useVisualStore.getState().setLightHorizontalAngle(45);
-      useVisualStore.getState().setLightVerticalAngle(-30);
+      useLightingStore.getState().setLightEnabled(true);
+      useLightingStore.getState().setLightHorizontalAngle(45);
+      useLightingStore.getState().setLightVerticalAngle(-30);
       const { container } = render(
         <Canvas>
           <SceneLighting />
@@ -200,14 +201,14 @@ describe('SceneLighting', () => {
         </Canvas>
       );
 
-      useVisualStore.getState().setLightEnabled(false);
+      useLightingStore.getState().setLightEnabled(false);
       rerender(
         <Canvas>
           <SceneLighting />
         </Canvas>
       );
 
-      expect(useVisualStore.getState().lightEnabled).toBe(false);
+      expect(useLightingStore.getState().lightEnabled).toBe(false);
     });
 
     it('should re-render when light angles change', () => {
@@ -217,8 +218,8 @@ describe('SceneLighting', () => {
         </Canvas>
       );
 
-      useVisualStore.getState().setLightHorizontalAngle(180);
-      useVisualStore.getState().setLightVerticalAngle(-45);
+      useLightingStore.getState().setLightHorizontalAngle(180);
+      useLightingStore.getState().setLightVerticalAngle(-45);
 
       rerender(
         <Canvas>
@@ -226,8 +227,8 @@ describe('SceneLighting', () => {
         </Canvas>
       );
 
-      expect(useVisualStore.getState().lightHorizontalAngle).toBe(180);
-      expect(useVisualStore.getState().lightVerticalAngle).toBe(-45);
+      expect(useLightingStore.getState().lightHorizontalAngle).toBe(180);
+      expect(useLightingStore.getState().lightVerticalAngle).toBe(-45);
     });
   });
 });

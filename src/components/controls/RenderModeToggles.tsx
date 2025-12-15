@@ -20,7 +20,7 @@
 
 import { ToggleButton } from '@/components/ui/ToggleButton';
 import { useGeometryStore } from '@/stores/geometryStore';
-import { useVisualStore } from '@/stores/visualStore';
+import { useAppearanceStore } from '@/stores/appearanceStore';
 import React, { useEffect, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -100,7 +100,7 @@ export const RenderModeToggles: React.FC<RenderModeTogglesProps> = React.memo(({
     facesVisible,
     setEdgesVisible,
     setFacesVisible,
-  } = useVisualStore(
+  } = useAppearanceStore(
     useShallow((state) => ({
       edgesVisible: state.edgesVisible,
       facesVisible: state.facesVisible,

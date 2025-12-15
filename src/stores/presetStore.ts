@@ -1,6 +1,10 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { useVisualStore } from './visualStore';
+import { useAppearanceStore } from './appearanceStore';
+import { useLightingStore } from './lightingStore';
+import { usePostProcessingStore } from './postProcessingStore';
+import { useUIStore } from './uiStore';
+import { useEnvironmentStore } from './environmentStore';
 import { useGeometryStore } from './geometryStore';
 import { useExtendedObjectStore } from './extendedObjectStore';
 import { useTransformStore } from './transformStore';
@@ -10,7 +14,12 @@ export interface SavedPreset {
   name: string;
   timestamp: number;
   data: {
-    visual: any;
+    visual?: any; // Legacy support
+    appearance: any;
+    lighting: any;
+    postProcessing: any;
+    ui: any;
+    environment: any;
     geometry: any;
     extended: any;
     transform: any;
@@ -40,7 +49,11 @@ export const usePresetStore = create<PresetState>()(
     (set, get) => ({
       savedPresets: [],
       saveCurrentAsPreset: (name) => {
-        const visual = cleanState(useVisualStore.getState());
+        const appearance = cleanState(useAppearanceStore.getState());
+        const lighting = cleanState(useLightingStore.getState());
+        const postProcessing = cleanState(usePostProcessingStore.getState());
+        const ui = cleanState(useUIStore.getState());
+        const environment = cleanState(useEnvironmentStore.getState());
         const geometry = cleanState(useGeometryStore.getState());
         const extended = cleanState(useExtendedObjectStore.getState());
         const transform = cleanState(useTransformStore.getState());
@@ -50,7 +63,11 @@ export const usePresetStore = create<PresetState>()(
           name,
           timestamp: Date.now(),
           data: {
-            visual,
+            appearance,
+            lighting,
+            postProcessing,
+            ui,
+            environment,
             geometry,
             extended,
             transform,
@@ -64,23 +81,28 @@ export const usePresetStore = create<PresetState>()(
         if (!preset) return;
 
         // Restore stores
-        // Note: setState is available on the store hook itself, but here we use the store instance if we exported it.
-        // Since we imported hooks, we can use their setState methods if they were exposed, but typically we use store.setState
-        
-        // We need to access the store instances directly. 
-        // Since we imported hooks, we rely on Zustand's singleton nature if the hooks are just wrappers.
-        // However, usually hooks don't expose setState directly unless we import the store definition.
-        
-        // Assuming we can just use the hooks' `setState` (not standard API for hooks) 
-        // or we need to import the vanilla store. 
-        // For now, let's assume we can define actions in those stores to "loadState" or we accept we might need to manually set properties.
-        // Or we use the hooks to get setters. This is tricky inside a function.
-        
-        // Better approach: use `useVisualStore.setState(preset.data.visual)` which IS valid in Zustand v4+ 
-        useVisualStore.setState(preset.data.visual);
         useGeometryStore.setState(preset.data.geometry);
         useExtendedObjectStore.setState(preset.data.extended);
         useTransformStore.setState(preset.data.transform);
+
+        // Handle migration from legacy single visual store to split stores
+        if (preset.data.visual) {
+          // If legacy preset, try to map properties (best effort)
+          // Since this is internal state, we might just accept that old presets might break or we can implement a mapper
+          // For now, let's assume we can set state on new stores if properties match
+          useAppearanceStore.setState(preset.data.visual);
+          useLightingStore.setState(preset.data.visual);
+          usePostProcessingStore.setState(preset.data.visual);
+          useUIStore.setState(preset.data.visual);
+          useEnvironmentStore.setState(preset.data.visual);
+        } else {
+          // New format
+          useAppearanceStore.setState(preset.data.appearance);
+          useLightingStore.setState(preset.data.lighting);
+          usePostProcessingStore.setState(preset.data.postProcessing);
+          useUIStore.setState(preset.data.ui);
+          useEnvironmentStore.setState(preset.data.environment);
+        }
       },
       deletePreset: (id) => {
         set((state) => ({ savedPresets: state.savedPresets.filter((p) => p.id !== id) }));

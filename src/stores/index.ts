@@ -38,15 +38,11 @@ export {
   SCALE_WARNING_LOW,
   useTransformStore,
 } from './transformStore'
-export {
-  DEFAULT_BACKGROUND_COLOR,
-  DEFAULT_EDGE_COLOR,
-  DEFAULT_EDGE_THICKNESS,
-  DEFAULT_FACE_OPACITY,
-  useVisualStore,
-  VISUAL_PRESETS,
-} from './visualStore'
-export type { VisualPreset } from './visualStore'
+export { useAppearanceStore } from './appearanceStore'
+export { useLightingStore } from './lightingStore'
+export { usePostProcessingStore } from './postProcessingStore'
+export { useUIStore } from './uiStore'
+export { useEnvironmentStore } from './environmentStore'
 export {
   getEffectiveSampleQuality,
   getEffectiveShadowQuality,

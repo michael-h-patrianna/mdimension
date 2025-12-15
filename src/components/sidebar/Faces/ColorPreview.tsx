@@ -10,7 +10,7 @@
  */
 
 import { getCosinePaletteColorTS, applyDistributionTS } from '@/lib/shaders/palette';
-import { useVisualStore } from '@/stores/visualStore';
+import { useAppearanceStore } from '@/stores/appearanceStore';
 import React, { useEffect, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -28,7 +28,7 @@ export const ColorPreview: React.FC<ColorPreviewProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const { colorAlgorithm, cosineCoefficients, distribution, lchLightness, lchChroma, faceColor } =
-    useVisualStore(
+    useAppearanceStore(
       useShallow((state) => ({
         colorAlgorithm: state.colorAlgorithm,
         cosineCoefficients: state.cosineCoefficients,

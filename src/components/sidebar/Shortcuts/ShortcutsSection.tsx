@@ -5,7 +5,7 @@
 
 import { Section } from '@/components/ui/Section';
 import React from 'react';
-import { KeyboardShortcuts } from './KeyboardShortcuts';
+import { KeyboardShortcuts } from '@/components/ui/KeyboardShortcuts';
 
 export interface ShortcutsSectionProps {
   defaultOpen?: boolean;

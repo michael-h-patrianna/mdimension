@@ -33,14 +33,17 @@ vi.mock('@/stores/animationStore', () => ({
   MAX_SPEED: 5,
 }));
 
-vi.mock('@/stores/visualStore', () => ({
-  useVisualStore: vi.fn((selector) => {
+vi.mock('@/stores/uiStore', () => ({
+  useUIStore: vi.fn((selector) => {
     const state = {
       animationBias: 0,
       setAnimationBias: vi.fn(),
     };
     return selector ? selector(state) : state;
   }),
+}));
+
+vi.mock('@/stores/defaults/visualDefaults', () => ({
   MIN_ANIMATION_BIAS: 0,
   MAX_ANIMATION_BIAS: 1,
 }));

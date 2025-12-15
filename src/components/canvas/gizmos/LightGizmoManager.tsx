@@ -14,7 +14,7 @@
 import { memo, useRef, useCallback, useEffect, useState } from 'react';
 import { TransformControls } from '@react-three/drei';
 import type * as THREE from 'three';
-import { useVisualStore } from '@/stores/visualStore';
+import { useLightingStore } from '@/stores/lightingStore';
 import { LightGizmo } from './LightGizmo';
 import { LightGroundVisualization } from './LightGroundVisualization';
 import type { LightSource, TransformMode } from '@/lib/lights/types';
@@ -112,13 +112,13 @@ const TransformTarget = memo(function TransformTarget({
  */
 export const LightGizmoManager = memo(function LightGizmoManager() {
   // Get state from store
-  const lights = useVisualStore((state) => state.lights);
-  const selectedLightId = useVisualStore((state) => state.selectedLightId);
-  const transformMode = useVisualStore((state) => state.transformMode);
-  const showLightGizmos = useVisualStore((state) => state.showLightGizmos);
-  const selectLight = useVisualStore((state) => state.selectLight);
-  const updateLight = useVisualStore((state) => state.updateLight);
-  const setIsDraggingLight = useVisualStore((state) => state.setIsDraggingLight);
+  const lights = useLightingStore((state) => state.lights);
+  const selectedLightId = useLightingStore((state) => state.selectedLightId);
+  const transformMode = useLightingStore((state) => state.transformMode);
+  const showLightGizmos = useLightingStore((state) => state.showLightGizmos);
+  const selectLight = useLightingStore((state) => state.selectLight);
+  const updateLight = useLightingStore((state) => state.updateLight);
+  const setIsDraggingLight = useLightingStore((state) => state.setIsDraggingLight);
 
   // Find selected light
   const selectedLight = lights.find((l) => l.id === selectedLightId);

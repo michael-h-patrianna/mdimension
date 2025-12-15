@@ -1,22 +1,17 @@
-import { Html } from '@react-three/drei';
-import { useFrame, useThree } from '@react-three/fiber';
-import { useEffect, useRef, useState } from 'react';
-import { m, LazyMotion, domMax } from 'motion/react';
-import * as THREE from 'three';
+import { useRef, useState, useLayoutEffect } from 'react';
+import { m, LazyMotion, domMax, useMotionValue } from 'motion/react';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { Tabs } from '@/components/ui/Tabs';
+import { usePerformanceMetricsStore } from '@/stores/performanceMetricsStore';
 
 /**
- * Custom Performance Monitor
- * A high-fidelity, "Wow" factor performance HUD.
+ * Custom Performance Monitor UI
  * 
  * Features:
- * - FPS/Frame Time/CPU Latency
- * - GPU Stats (Calls, Tris, Verts, Points)
- * - Memory (VRAM estimation, Geometries, Textures, Shaders)
- * - Hardware Info (GPU Tier, Resolution, Limits)
- * - Raymarching Metrics (Steps, Iterations)
+ * - Reads from usePerformanceMetricsStore (populated by PerformanceStatsCollector)
+ * - Pure UI component (no R3F hooks)
+ * - Draggable, Expandable
  */
 
 // --- Icons (Inline SVGs) ---
@@ -50,16 +45,6 @@ const Icons = {
   ),
 };
 
-// --- Constants & Types ---
-interface GraphData {
-  fps: number[];
-  cpu: number[];
-  mem: number[];
-}
-
-const GRAPH_POINTS = 40;
-const VRAM_UPDATE_INTERVAL = 2000; // ms
-
 // --- Helper Functions ---
 function formatMetric(value: number, unit = '', decimals = 1): string {
   if (value === 0) return `0${unit}`;
@@ -77,187 +62,60 @@ function formatBytes(bytes: number, decimals = 1): string {
 }
 
 export function PerformanceMonitor() {
-  const { gl, scene, size, viewport } = useThree((state) => ({ 
-    gl: state.gl, 
-    scene: state.scene,
-    size: state.size,
-    viewport: state.viewport 
-  }));
-  
   // -- Store Connectors --
   const objectType = useGeometryStore(state => state.objectType);
   const mandelbulbConfig = useExtendedObjectStore(state => state.mandelbrot);
   const mandelboxConfig = useExtendedObjectStore(state => state.mandelbox);
   
+  // -- Perf Stats --
+  const stats = usePerformanceMetricsStore();
+  
   // -- State --
   const [expanded, setExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState<'perf' | 'sys'>('perf');
-  const [gpuName, setGpuName] = useState<string>('Unknown GPU');
-  
-  // -- Stats State --
-  const [stats, setStats] = useState({
-    fps: 60,
-    minFps: Infinity,
-    maxFps: 0,
-    frameTime: 0,
-    cpuTime: 0,
-    gpu: { calls: 0, triangles: 0, points: 0, lines: 0 },
-    memory: { geometries: 0, textures: 0, programs: 0, heap: 0 },
-    vram: { geometries: 0, textures: 0, total: 0 },
-  });
-
-  // -- Graph History --
-  const [history, setHistory] = useState<GraphData>({
-    fps: new Array(GRAPH_POINTS).fill(60),
-    cpu: new Array(GRAPH_POINTS).fill(0),
-    mem: new Array(GRAPH_POINTS).fill(0),
-  });
-
-  // Accumulators
-  const framesRef = useRef(0);
-  const prevTimeRef = useRef(performance.now());
-  const cpuAccumulatorRef = useRef(0);
-  const minFpsRef = useRef(Infinity);
-  const maxFpsRef = useRef(0);
-  
-  // Store render stats from the most recent completed frame
-  const lastFrameStatsRef = useRef({ calls: 0, triangles: 0, points: 0, lines: 0 });
-  // Accumulate stats for the current frame (resets every frame)
-  const activeFrameStatsRef = useRef({ calls: 0, triangles: 0, points: 0, lines: 0 });
-
-  // Drag State (to prevent toggle on drag)
+  const [expandDirection, setExpandDirection] = useState<'up' | 'down'>('up');
   const isDraggingRef = useRef(false);
-  const lastVramUpdateRef = useRef(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  const previousHeightRef = useRef(0);
+  
+  // Motion value for Y position to allow manual adjustment
+  const y = useMotionValue(0);
 
-  // Initialization: Hardware Detection
-  useEffect(() => {
-    // Attempt to get GPU renderer name
-    const debugInfo = gl.getContext().getExtension('WEBGL_debug_renderer_info');
-    if (debugInfo) {
-      const renderer = gl.getContext().getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
-      // Clean up strings like "ANGLE (Apple, Apple M1 Pro, OpenGL 4.1)"
-      const cleanName = renderer.replace(/angle\s*\((.+)\)/i, '$1').split(',')[1]?.trim() || renderer;
-      setGpuName(cleanName);
-    }
-  }, [gl]);
-
-  // Hook: Render Instrumentation
-  useEffect(() => {
-    const originalRender = gl.render;
-    gl.render = function (...args) {
-      const start = performance.now();
-      originalRender.apply(this, args);
-      const end = performance.now();
-      cpuAccumulatorRef.current += (end - start);
-      
-      // Accumulate stats from this render pass
-      // gl.info.render resets automatically at start of render(), so we can safely add its values
-      activeFrameStatsRef.current.calls += gl.info.render.calls;
-      activeFrameStatsRef.current.triangles += gl.info.render.triangles;
-      activeFrameStatsRef.current.points += gl.info.render.points;
-      activeFrameStatsRef.current.lines += gl.info.render.lines;
-    };
-    return () => { gl.render = originalRender; };
-  }, [gl]);
-
-  // Hook: VRAM Estimation (Periodic)
-  const updateVRAM = () => {
-    let geomMem = 0;
-    let texMem = 0;
-
-    scene.traverse((object) => {
-      if (object instanceof THREE.Mesh) {
-        if (object.geometry) {
-           // Estimate attributes
-           const geom = object.geometry;
-           if (geom.attributes) {
-             Object.values(geom.attributes).forEach((attr: any) => {
-               if (attr.array) geomMem += attr.array.byteLength;
-             });
-           }
-           if (geom.index && geom.index.array) {
-             geomMem += geom.index.array.byteLength;
-           }
-        }
-        if (object.material) {
-           const mats = Array.isArray(object.material) ? object.material : [object.material];
-           mats.forEach((mat) => {
-             Object.values(mat).forEach((prop) => {
-               if (prop && prop instanceof THREE.Texture && prop.image) {
-                 const w = prop.image.width || 0;
-                 const h = prop.image.height || 0;
-                 // RGBA = 4 bytes, estimate mips * 1.33
-                 texMem += (w * h * 4) * 1.33;
-               }
-             });
-           });
-        }
+  const toggleExpanded = () => {
+    if (!isDraggingRef.current) {
+      if (!expanded && containerRef.current) {
+        // Before expanding, decide direction based on current position
+        const rect = containerRef.current.getBoundingClientRect();
+        // If the top is in the upper 40% of the screen, force expand down
+        const isNearTop = rect.top < window.innerHeight * 0.4;
+        setExpandDirection(isNearTop ? 'down' : 'up');
+        // Use offsetHeight to capture unscaled layout height
+        previousHeightRef.current = containerRef.current.offsetHeight;
+      } else if (expanded && containerRef.current) {
+        // Before collapsing, capture height
+        previousHeightRef.current = containerRef.current.offsetHeight;
       }
-    });
-
-    return { geometries: geomMem, textures: texMem, total: geomMem + texMem };
+      setExpanded(!expanded);
+    }
   };
 
-  // Frame Loop
-  useFrame(() => {
-    // 1. Snapshot accumulated stats from previous frame
-    lastFrameStatsRef.current = { ...activeFrameStatsRef.current };
-    
-    // 2. Reset accumulator for the current frame
-    activeFrameStatsRef.current = { calls: 0, triangles: 0, points: 0, lines: 0 };
-
-    framesRef.current++;
-    const time = performance.now();
-    const delta = time - prevTimeRef.current;
-
-    // Update at 2Hz (every 500ms)
-    if (delta >= 500) {
-      const fps = Math.round((framesRef.current * 1000) / delta);
-      const avgCpuTime = cpuAccumulatorRef.current / framesRef.current;
-      const frameTime = delta / framesRef.current;
-
-      minFpsRef.current = Math.min(minFpsRef.current, fps);
-      if (time > 3000) maxFpsRef.current = Math.max(maxFpsRef.current, fps);
-
-      const heap = (performance as any).memory 
-        ? Math.round((performance as any).memory.usedJSHeapSize / 1048576) 
-        : 0;
+  // Adjust Y position after expansion to simulate "expanding downwards" if needed
+  useLayoutEffect(() => {
+    if (containerRef.current) {
+      // Use offsetHeight to capture unscaled layout height
+      const newHeight = containerRef.current.offsetHeight;
       
-      // Update VRAM periodically
-      let vram = stats.vram;
-      if (time - lastVramUpdateRef.current > VRAM_UPDATE_INTERVAL) {
-        vram = updateVRAM();
-        lastVramUpdateRef.current = time;
+      // If we are in "Top Mode" (expanding downwards)
+      // We need to shift Y to compensate for the height change because CSS is anchored at bottom
+      if (expandDirection === 'down') {
+        const delta = newHeight - previousHeightRef.current;
+        y.set(y.get() + delta);
       }
-
-      setStats({
-        fps,
-        minFps: minFpsRef.current === Infinity ? fps : minFpsRef.current,
-        maxFps: maxFpsRef.current,
-        frameTime: parseFloat(frameTime.toFixed(1)),
-        cpuTime: parseFloat(avgCpuTime.toFixed(2)),
-        gpu: lastFrameStatsRef.current,
-        memory: {
-          geometries: gl.info.memory.geometries,
-          textures: gl.info.memory.textures,
-          programs: gl.info.programs?.length ?? 0,
-          heap,
-        },
-        vram
-      });
-
-      // Graph History Update
-      setHistory(prev => ({
-        fps: [...prev.fps.slice(1), fps],
-        cpu: [...prev.cpu.slice(1), avgCpuTime],
-        mem: [...prev.mem.slice(1), heap],
-      }));
-
-      framesRef.current = 0;
-      prevTimeRef.current = time;
-      cpuAccumulatorRef.current = 0;
+      
+      previousHeightRef.current = newHeight;
     }
-  });
+  }, [expanded, activeTab, y, expandDirection]); // activeTab also changes height
 
   const fpsColor = getHealthColor(stats.fps, 55, 30);
   const vertexCount = stats.gpu.triangles * 3 + stats.gpu.lines * 2 + stats.gpu.points;
@@ -286,7 +144,7 @@ export function PerformanceMonitor() {
               <span>{stats.minFps} - {stats.maxFps}</span>
             </div>
             <div className="h-12 w-full flex items-end gap-0.5 opacity-80">
-              {history.fps.map((v, i) => (
+              {stats.history.fps.map((v, i) => (
                 <div 
                   key={i} 
                   className="w-full bg-current rounded-t-[1px] transition-all duration-300"
@@ -363,26 +221,23 @@ export function PerformanceMonitor() {
               <SectionHeader icon={<Icons.Chip />} label="Hardware" />
               <div className="p-2 bg-white/5 rounded-lg border border-white/5">
                  <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1">Renderer</div>
-                 <div className="text-xs text-zinc-200 font-mono leading-tight break-words">{gpuName}</div>
+                 <div className="text-xs text-zinc-200 font-mono leading-tight break-words">{stats.gpuName}</div>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                 <div className="p-2 bg-white/5 rounded-lg border border-white/5">
-                    <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1">Max Tex</div>
-                    <div className="text-xs text-zinc-200 font-mono">{gl.capabilities.maxTextureSize}px</div>
-                 </div>
-                 <div className="p-2 bg-white/5 rounded-lg border border-white/5">
-                    <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1">Anisotropy</div>
-                    <div className="text-xs text-zinc-200 font-mono">{gl.capabilities.getMaxAnisotropy()}x</div>
-                 </div>
+                 {/* 
+                   Note: maxTextureSize and anisotropy are hard to get without context.
+                   We could add them to the collector if needed, but for now we'll skip or rely on store if added later.
+                   For now, omitting detailed capabilities to keep store simple, or we can assume defaults.
+                 */}
               </div>
            </div>
 
            <div className="space-y-3">
               <SectionHeader icon={<Icons.Monitor />} label="Viewport" />
               <div className="space-y-2.5">
-                 <StatItem label="Resolution" value={`${size.width} × ${size.height}`} />
-                 <StatItem label="DPR" value={`${viewport.dpr.toFixed(1)}x`} />
-                 <StatItem label="Aspect" value={(size.width / size.height).toFixed(2)} />
+                 <StatItem label="Resolution" value={`${stats.viewport.width} × ${stats.viewport.height}`} />
+                 <StatItem label="DPR" value={`${stats.viewport.dpr.toFixed(1)}x`} />
+                 <StatItem label="Aspect" value={(stats.viewport.width / stats.viewport.height || 1).toFixed(2)} />
               </div>
            </div>
 
@@ -422,71 +277,71 @@ export function PerformanceMonitor() {
   ];
 
   return (
-    <Html fullscreen className="pointer-events-none" style={{ zIndex: 999 }}>
-      <LazyMotion features={domMax}>
-        <m.div
-          drag
-          dragMomentum={false}
-          onDragStart={() => { isDraggingRef.current = true; }}
-          onDragEnd={() => { setTimeout(() => { isDraggingRef.current = false; }, 100); }}
-          initial={{ scale: 0.95, opacity: 0.9 }}
-          animate={{ scale: expanded ? 1 : 0.95, opacity: expanded ? 1 : 0.9 }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
-          className="absolute bottom-4 left-4 pointer-events-auto origin-bottom-left"
-        >
-          <div className="
-            bg-zinc-950/90 backdrop-blur-xl 
-            border border-white/10 
-            rounded-xl overflow-hidden shadow-2xl 
-            text-xs font-mono text-zinc-400
-            min-w-[300px] flex flex-col
-          ">
-            
-            {/* --- Header --- */}
-            <div 
-              className="flex items-center justify-between p-3.5 bg-white/5 cursor-pointer hover:bg-white/10 transition-colors border-b border-white/5"
-              onClick={() => { if (!isDraggingRef.current) setExpanded(!expanded); }}
-            >
-              <div className="flex items-center gap-4">
-                {/* Status Dot */}
-                <div className={`flex items-center justify-center w-2.5 h-2.5 rounded-full ${fpsColor.bg}`}>
-                  <div className={`w-2 h-2 rounded-full ${fpsColor.bgPulse} animate-pulse`} />
-                </div>
-                
-                {/* FPS Big Number */}
-                <div className="flex items-baseline gap-2">
-                  <span className={`text-2xl font-bold ${fpsColor.text} tracking-tighter leading-none`}>
-                    {stats.fps}
-                  </span>
-                  <div className="flex flex-col text-[8px] font-bold uppercase tracking-widest leading-none gap-0.5 opacity-60">
-                     <span>FPS</span>
-                  </div>
-                </div>
+    <LazyMotion features={domMax}>
+      <m.div
+        ref={containerRef}
+        drag
+        dragMomentum={false}
+        onDragStart={() => { isDraggingRef.current = true; }}
+        onDragEnd={() => { setTimeout(() => { isDraggingRef.current = false; }, 100); }}
+        style={{ y }}
+        initial={{ scale: 0.95, opacity: 0.9 }}
+        animate={{ scale: expanded ? 1 : 0.95, opacity: expanded ? 1 : 0.9 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
+        className={`absolute bottom-4 left-4 z-[9999] pointer-events-auto ${expandDirection === 'down' ? 'origin-top-left' : 'origin-bottom-left'}`}
+      >
+        <div className="
+          bg-zinc-950/90 backdrop-blur-xl 
+          border border-white/10 
+          rounded-xl overflow-hidden shadow-2xl 
+          text-xs font-mono text-zinc-400
+          min-w-[300px] flex flex-col
+        ">
+          
+          {/* --- Header --- */}
+          <div 
+            className="flex items-center justify-between p-3.5 bg-white/5 cursor-pointer hover:bg-white/10 transition-colors border-b border-white/5"
+            onClick={toggleExpanded}
+          >
+            <div className="flex items-center gap-4">
+              {/* Status Dot */}
+              <div className={`flex items-center justify-center w-2.5 h-2.5 rounded-full ${fpsColor.bg}`}>
+                <div className={`w-2 h-2 rounded-full ${fpsColor.bgPulse} animate-pulse`} />
               </div>
               
-              <div className="flex items-center gap-3 text-zinc-500">
-                 <span className="text-xs font-medium">{stats.frameTime}ms</span>
-                {expanded ? <Icons.ChevronDown className="opacity-70" /> : <Icons.ChevronUp className="opacity-70" />}
+              {/* FPS Big Number */}
+              <div className="flex items-baseline gap-2">
+                <span className={`text-2xl font-bold ${fpsColor.text} tracking-tighter leading-none`}>
+                  {stats.fps}
+                </span>
+                <div className="flex flex-col text-[8px] font-bold uppercase tracking-widest leading-none gap-0.5 opacity-60">
+                   <span>FPS</span>
+                </div>
               </div>
             </div>
-
-            {/* --- Expanded View --- */}
-            {expanded && (
-              <div className="animate-in slide-in-from-top-2 fade-in duration-200">
-                <Tabs 
-                  variant="minimal"
-                  fullWidth
-                  value={activeTab}
-                  onChange={(id) => setActiveTab(id as 'perf' | 'sys')}
-                  tabs={tabs}
-                  contentClassName="p-5"
-                />
-              </div>
-            )}
+            
+            <div className="flex items-center gap-3 text-zinc-500">
+               <span className="text-xs font-medium">{stats.frameTime}ms</span>
+              {expanded ? <Icons.ChevronDown className="opacity-70" /> : <Icons.ChevronUp className="opacity-70" />}
+            </div>
           </div>
-        </m.div>
-      </LazyMotion>
-    </Html>
+
+          {/* --- Expanded View --- */}
+          {expanded && (
+            <div className="animate-in slide-in-from-top-2 fade-in duration-200">
+              <Tabs 
+                variant="minimal"
+                fullWidth
+                value={activeTab}
+                onChange={(id) => setActiveTab(id as 'perf' | 'sys')}
+                tabs={tabs}
+                contentClassName="p-5"
+              />
+            </div>
+          )}
+        </div>
+      </m.div>
+    </LazyMotion>
   );
 }
 

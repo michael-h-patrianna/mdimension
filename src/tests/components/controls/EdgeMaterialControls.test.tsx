@@ -3,145 +3,133 @@
  */
 
 import { EdgeMaterialControls } from '@/components/sidebar/Edges/EdgeMaterialControls'
-import { DEFAULT_EDGE_METALLIC, DEFAULT_EDGE_ROUGHNESS, useVisualStore } from '@/stores/visualStore'
-import { render, screen, act } from '@testing-library/react'
+import { useAppearanceStore } from '@/stores/appearanceStore';
+import { useLightingStore } from '@/stores/lightingStore';
+import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 describe('EdgeMaterialControls', () => {
   beforeEach(() => {
-    // Reset stores before each test
-    useVisualStore.getState().reset()
-  })
+    useAppearanceStore.getState().setEdgeThickness(1);
+    useAppearanceStore.getState().setEdgeMetallic(0.0);
+    useAppearanceStore.getState().setEdgeRoughness(0.5);
+    useLightingStore.getState().setLightEnabled(true);
+  });
 
   describe('Visibility', () => {
     it('should not render when edgeThickness is 1', () => {
-      useVisualStore.getState().setEdgeThickness(1)
-      useVisualStore.getState().setLightEnabled(true)
-
-      const { container } = render(<EdgeMaterialControls />)
-
-      // Should return null (empty container)
-      expect(container.firstChild).toBeNull()
-    })
+      useAppearanceStore.getState().setEdgeThickness(1);
+      const { container } = render(<EdgeMaterialControls />);
+      expect(container).toBeEmptyDOMElement();
+    });
 
     it('should not render when light is disabled', () => {
-      useVisualStore.getState().setEdgeThickness(2)
-      useVisualStore.getState().setLightEnabled(false)
-
-      const { container } = render(<EdgeMaterialControls />)
-
-      expect(container.firstChild).toBeNull()
-    })
+      useAppearanceStore.getState().setEdgeThickness(2);
+      useLightingStore.getState().setLightEnabled(false);
+      const { container } = render(<EdgeMaterialControls />);
+      expect(container).toBeEmptyDOMElement();
+    });
 
     it('should render when edgeThickness > 1 and light is enabled', () => {
-      useVisualStore.getState().setEdgeThickness(2)
-      useVisualStore.getState().setLightEnabled(true)
+      useAppearanceStore.getState().setEdgeThickness(2);
+      useLightingStore.getState().setLightEnabled(true);
+      render(<EdgeMaterialControls />);
 
-      render(<EdgeMaterialControls />)
-
-      expect(screen.getByText('Edge Material')).toBeInTheDocument()
-      expect(screen.getByText('Metallic')).toBeInTheDocument()
-      expect(screen.getByText('Roughness')).toBeInTheDocument()
-    })
+      expect(screen.getByText('Edge Material')).toBeInTheDocument();
+      expect(screen.getByText('Metallic')).toBeInTheDocument();
+      expect(screen.getByText('Roughness')).toBeInTheDocument();
+    });
   })
 
   describe('Metallic Slider', () => {
     beforeEach(() => {
-      useVisualStore.getState().setEdgeThickness(2)
-      useVisualStore.getState().setLightEnabled(true)
+      useAppearanceStore.getState().setEdgeThickness(2)
+      useLightingStore.getState().setLightEnabled(true)
     })
 
     it('should display metallic slider', () => {
-      render(<EdgeMaterialControls />)
+      useAppearanceStore.getState().setEdgeThickness(2);
+      render(<EdgeMaterialControls />);
 
-      expect(screen.getByText('Metallic')).toBeInTheDocument()
-    })
+      expect(screen.getByText('Metallic')).toBeInTheDocument();
+    });
 
     it('should show default metallic value', () => {
-      render(<EdgeMaterialControls />)
+      useAppearanceStore.getState().setEdgeThickness(2);
+      render(<EdgeMaterialControls />);
 
-      // Default metallic is 0
-      expect(useVisualStore.getState().edgeMetallic).toBe(DEFAULT_EDGE_METALLIC)
-    })
+      // Default metallic is 0.0
+      expect(screen.getByDisplayValue('0')).toBeInTheDocument();
+    });
 
     it('should update metallic value via store', () => {
-      render(<EdgeMaterialControls />)
+      useAppearanceStore.getState().setEdgeThickness(2);
+      useAppearanceStore.getState().setEdgeMetallic(0.8);
+      render(<EdgeMaterialControls />);
 
-      // Update via store
-      act(() => {
-        useVisualStore.getState().setEdgeMetallic(0.8)
-      })
-
-      expect(useVisualStore.getState().edgeMetallic).toBe(0.8)
-    })
+      expect(screen.getByDisplayValue('0.8')).toBeInTheDocument();
+    });
   })
 
   describe('Roughness Slider', () => {
     beforeEach(() => {
-      useVisualStore.getState().setEdgeThickness(2)
-      useVisualStore.getState().setLightEnabled(true)
+      useAppearanceStore.getState().setEdgeThickness(2)
+      useLightingStore.getState().setLightEnabled(true)
     })
 
     it('should display roughness slider', () => {
-      render(<EdgeMaterialControls />)
+      useAppearanceStore.getState().setEdgeThickness(2);
+      render(<EdgeMaterialControls />);
 
-      expect(screen.getByText('Roughness')).toBeInTheDocument()
-    })
+      expect(screen.getByText('Roughness')).toBeInTheDocument();
+    });
 
     it('should show default roughness value', () => {
-      render(<EdgeMaterialControls />)
+      useAppearanceStore.getState().setEdgeThickness(2);
+      render(<EdgeMaterialControls />);
 
       // Default roughness is 0.5
-      expect(useVisualStore.getState().edgeRoughness).toBe(DEFAULT_EDGE_ROUGHNESS)
-    })
+      expect(screen.getByDisplayValue('0.5')).toBeInTheDocument();
+    });
 
     it('should update roughness value via store', () => {
-      render(<EdgeMaterialControls />)
+      useAppearanceStore.getState().setEdgeThickness(2);
+      useAppearanceStore.getState().setEdgeRoughness(0.2);
+      render(<EdgeMaterialControls />);
 
-      // Update via store
-      act(() => {
-        useVisualStore.getState().setEdgeRoughness(0.3)
-      })
-
-      expect(useVisualStore.getState().edgeRoughness).toBe(0.3)
-    })
+      expect(screen.getByDisplayValue('0.2')).toBeInTheDocument();
+    });
   })
 
   describe('Edge Thickness Threshold', () => {
-    beforeEach(() => {
-      useVisualStore.getState().setLightEnabled(true)
-    })
-
     it('should render for thickness 2', () => {
-      useVisualStore.getState().setEdgeThickness(2)
-      render(<EdgeMaterialControls />)
-
-      expect(screen.getByText('Edge Material')).toBeInTheDocument()
-    })
+      useAppearanceStore.getState().setEdgeThickness(2);
+      const { container } = render(<EdgeMaterialControls />);
+      expect(container).not.toBeEmptyDOMElement();
+    });
 
     it('should render for thickness 3', () => {
-      useVisualStore.getState().setEdgeThickness(3)
-      render(<EdgeMaterialControls />)
-
-      expect(screen.getByText('Edge Material')).toBeInTheDocument()
-    })
+      useAppearanceStore.getState().setEdgeThickness(3);
+      const { container } = render(<EdgeMaterialControls />);
+      expect(container).not.toBeEmptyDOMElement();
+    });
 
     it('should render for thickness 5 (max)', () => {
-      useVisualStore.getState().setEdgeThickness(5)
-      render(<EdgeMaterialControls />)
-
-      expect(screen.getByText('Edge Material')).toBeInTheDocument()
-    })
-  })
+      useAppearanceStore.getState().setEdgeThickness(5);
+      const { container } = render(<EdgeMaterialControls />);
+      expect(container).not.toBeEmptyDOMElement();
+    });
+  });
 
   describe('className prop', () => {
     beforeEach(() => {
-      useVisualStore.getState().setEdgeThickness(2)
-      useVisualStore.getState().setLightEnabled(true)
+      useAppearanceStore.getState().setEdgeThickness(2)
+      useLightingStore.getState().setLightEnabled(true)
     })
 
     it('should apply custom className', () => {
-      const { container } = render(<EdgeMaterialControls className="custom-class" />)
+      useAppearanceStore.getState().setEdgeThickness(2);
+      const { container } = render(<EdgeMaterialControls className="custom-class" />);
 
       const wrapper = container.firstChild as HTMLElement
       expect(wrapper).toHaveClass('custom-class')
@@ -150,32 +138,28 @@ describe('EdgeMaterialControls', () => {
 
   describe('State Persistence', () => {
     beforeEach(() => {
-      useVisualStore.getState().setEdgeThickness(2)
-      useVisualStore.getState().setLightEnabled(true)
+      useAppearanceStore.getState().setEdgeThickness(2)
+      useLightingStore.getState().setLightEnabled(true)
     })
 
     it('should persist metallic value across rerenders', () => {
-      useVisualStore.getState().setEdgeMetallic(0.7)
+      useAppearanceStore.getState().setEdgeThickness(2);
+      const { rerender } = render(<EdgeMaterialControls />);
 
-      const { rerender } = render(<EdgeMaterialControls />)
+      useAppearanceStore.getState().setEdgeMetallic(0.9);
+      rerender(<EdgeMaterialControls />);
 
-      expect(useVisualStore.getState().edgeMetallic).toBe(0.7)
-
-      rerender(<EdgeMaterialControls />)
-
-      expect(useVisualStore.getState().edgeMetallic).toBe(0.7)
-    })
+      expect(screen.getByDisplayValue('0.9')).toBeInTheDocument();
+    });
 
     it('should persist roughness value across rerenders', () => {
-      useVisualStore.getState().setEdgeRoughness(0.2)
+      useAppearanceStore.getState().setEdgeThickness(2);
+      const { rerender } = render(<EdgeMaterialControls />);
 
-      const { rerender } = render(<EdgeMaterialControls />)
+      useAppearanceStore.getState().setEdgeRoughness(0.3);
+      rerender(<EdgeMaterialControls />);
 
-      expect(useVisualStore.getState().edgeRoughness).toBe(0.2)
-
-      rerender(<EdgeMaterialControls />)
-
-      expect(useVisualStore.getState().edgeRoughness).toBe(0.2)
-    })
-  })
-})
+      expect(screen.getByDisplayValue('0.3')).toBeInTheDocument();
+    });
+  });
+});

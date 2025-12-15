@@ -9,7 +9,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useAnimationStore } from '@/stores/animationStore';
 import { useRotationStore } from '@/stores/rotationStore';
-import { useVisualStore } from '@/stores/visualStore';
+import { useUIStore } from '@/stores/uiStore';
+import { UI_INITIAL_STATE } from '@/stores/slices/uiSlice';
 
 describe('useAnimationLoop', () => {
   beforeEach(() => {
@@ -17,7 +18,8 @@ describe('useAnimationLoop', () => {
     useAnimationStore.getState().reset();
     useRotationStore.getState().resetAllRotations();
     useRotationStore.getState().setDimension(4);
-    useVisualStore.getState().setAnimationBias(0);
+    useUIStore.getState().setMaxFps(60);
+    useUIStore.getState().setAnimationBias(0);
   });
 
   describe('module structure', () => {
@@ -44,7 +46,7 @@ describe('useAnimationLoop', () => {
     });
 
     it('should read from visual store for animation bias', () => {
-      const bias = useVisualStore.getState().animationBias;
+      const bias = useUIStore.getState().animationBias;
       expect(typeof bias).toBe('number');
       expect(bias).toBeGreaterThanOrEqual(0);
       expect(bias).toBeLessThanOrEqual(1);
@@ -143,49 +145,48 @@ describe('useAnimationLoop', () => {
 
   describe('animation bias', () => {
     it('should default to 0 (uniform animation)', () => {
-      expect(useVisualStore.getState().animationBias).toBe(0);
+      expect(useUIStore.getState().animationBias).toBe(0);
     });
 
     it('should allow setting animation bias', () => {
-      useVisualStore.getState().setAnimationBias(0.5);
-      expect(useVisualStore.getState().animationBias).toBe(0.5);
+      useUIStore.getState().setAnimationBias(0.5);
+      expect(useUIStore.getState().animationBias).toBe(0.5);
     });
 
     it('should clamp bias to valid range', () => {
-      useVisualStore.getState().setAnimationBias(1.5);
-      expect(useVisualStore.getState().animationBias).toBeLessThanOrEqual(1);
+      useUIStore.getState().setAnimationBias(1.5);
+      expect(useUIStore.getState().animationBias).toBeLessThanOrEqual(1);
 
-      useVisualStore.getState().setAnimationBias(-0.5);
-      expect(useVisualStore.getState().animationBias).toBeGreaterThanOrEqual(0);
+      useUIStore.getState().setAnimationBias(-0.5);
+      expect(useUIStore.getState().animationBias).toBeGreaterThanOrEqual(0);
     });
   });
 
   describe('FPS limiting', () => {
     it('should read maxFps from visual store', () => {
-      const maxFps = useVisualStore.getState().maxFps;
+      const maxFps = useUIStore.getState().maxFps;
       expect(typeof maxFps).toBe('number');
       expect(maxFps).toBeGreaterThanOrEqual(15);
       expect(maxFps).toBeLessThanOrEqual(120);
     });
 
     it('should default to 60 FPS', () => {
-      // Reset to ensure default
-      useVisualStore.getState().reset();
-      expect(useVisualStore.getState().maxFps).toBe(60);
+      useUIStore.setState(UI_INITIAL_STATE);
+      expect(useUIStore.getState().maxFps).toBe(60);
     });
 
     it('should allow changing maxFps', () => {
-      useVisualStore.getState().setMaxFps(30);
-      expect(useVisualStore.getState().maxFps).toBe(30);
+      useUIStore.getState().setMaxFps(30);
+      expect(useUIStore.getState().maxFps).toBe(30);
 
-      useVisualStore.getState().setMaxFps(90);
-      expect(useVisualStore.getState().maxFps).toBe(90);
+      useUIStore.getState().setMaxFps(90);
+      expect(useUIStore.getState().maxFps).toBe(90);
     });
 
     it('should calculate frame interval from maxFps', () => {
       // Reset to ensure default of 60 FPS
-      useVisualStore.getState().reset();
-      const maxFps = useVisualStore.getState().maxFps;
+      useUIStore.setState(UI_INITIAL_STATE);
+      const maxFps = useUIStore.getState().maxFps;
       const frameInterval = 1000 / maxFps;
 
       // At 60 FPS, frame interval should be ~16.67ms
@@ -194,16 +195,16 @@ describe('useAnimationLoop', () => {
 
     it('should have correct frame interval at different FPS values', () => {
       // 30 FPS = 33.33ms per frame
-      useVisualStore.getState().setMaxFps(30);
-      expect(1000 / useVisualStore.getState().maxFps).toBeCloseTo(33.33, 1);
+      useUIStore.getState().setMaxFps(30);
+      expect(1000 / useUIStore.getState().maxFps).toBeCloseTo(33.33, 1);
 
       // 120 FPS = 8.33ms per frame
-      useVisualStore.getState().setMaxFps(120);
-      expect(1000 / useVisualStore.getState().maxFps).toBeCloseTo(8.33, 1);
+      useUIStore.getState().setMaxFps(120);
+      expect(1000 / useUIStore.getState().maxFps).toBeCloseTo(8.33, 1);
 
       // 15 FPS = 66.67ms per frame
-      useVisualStore.getState().setMaxFps(15);
-      expect(1000 / useVisualStore.getState().maxFps).toBeCloseTo(66.67, 1);
+      useUIStore.getState().setMaxFps(15);
+      expect(1000 / useUIStore.getState().maxFps).toBeCloseTo(66.67, 1);
     });
   });
 });

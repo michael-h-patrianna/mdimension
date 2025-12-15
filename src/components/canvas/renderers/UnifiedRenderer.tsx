@@ -16,7 +16,7 @@
 
 import type { Face } from '@/lib/geometry/faces';
 import type { NdGeometry, ObjectType } from '@/lib/geometry/types';
-import { useVisualStore } from '@/stores/visualStore';
+import { useAppearanceStore } from '@/stores/appearanceStore';
 import React, { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import HyperbulbMesh from './Hyperbulb/HyperbulbMesh';
@@ -106,7 +106,7 @@ export const UnifiedRenderer = React.memo(function UnifiedRenderer({
   opacity = 1.0,
 }: UnifiedRendererProps) {
   // Get facesVisible from store to determine raymarch mode
-  const facesVisible = useVisualStore(
+  const facesVisible = useAppearanceStore(
     useShallow((state) => state.facesVisible)
   );
 

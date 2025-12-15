@@ -40,9 +40,25 @@ vi.mock('@/stores/projectionStore', () => ({
   },
 }))
 
-// Mock visual store
-vi.mock('@/stores/visualStore', () => ({
-  useVisualStore: {
+// Mock appearance store
+vi.mock('@/stores/appearanceStore', () => ({
+  useAppearanceStore: {
+    getState: () => ({
+      fresnelEnabled: true,
+      fresnelIntensity: 0.1,
+      edgeColor: '#19e697',
+      shaderSettings: {
+        surface: {
+          fresnelEnabled: true,
+        },
+      },
+    }),
+  },
+}))
+
+// Mock lighting store
+vi.mock('@/stores/lightingStore', () => ({
+  useLightingStore: {
     getState: () => ({
       ambientIntensity: 0.01,
       ambientColor: '#FFFFFF',
@@ -50,9 +66,6 @@ vi.mock('@/stores/visualStore', () => ({
       shininess: 30,
       specularColor: '#FFFFFF',
       diffuseIntensity: 1.0,
-      fresnelEnabled: true,
-      fresnelIntensity: 0.1,
-      edgeColor: '#19e697',
       toneMappingEnabled: true,
       toneMappingAlgorithm: 'aces',
       exposure: 0.7,

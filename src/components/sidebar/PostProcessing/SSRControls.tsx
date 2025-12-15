@@ -12,7 +12,7 @@
  * - Fade Start/End sliders: Edge fade parameters (0-1)
  *
  * @see {@link PostProcessing} for the SSR effect implementation
- * @see {@link useVisualStore} for state management
+ * @see {@link usePostProcessingStore} for state management
  */
 
 import React from 'react';
@@ -21,14 +21,14 @@ import { Slider } from '@/components/ui/Slider';
 import { Switch } from '@/components/ui/Switch';
 import { Select } from '@/components/ui/Select';
 import {
-  useVisualStore,
   DEFAULT_SSR_INTENSITY,
   DEFAULT_SSR_MAX_DISTANCE,
   DEFAULT_SSR_THICKNESS,
   DEFAULT_SSR_FADE_START,
   DEFAULT_SSR_FADE_END,
   type SSRQuality,
-} from '@/stores/visualStore';
+} from '@/stores/defaults/visualDefaults';
+import { usePostProcessingStore } from '@/stores/postProcessingStore';
 
 export interface SSRControlsProps {
   className?: string;
@@ -61,7 +61,7 @@ export const SSRControls: React.FC<SSRControlsProps> = React.memo(({
     setSSRFadeStart,
     setSSRFadeEnd,
     setSSRQuality,
-  } = useVisualStore(
+  } = usePostProcessingStore(
     useShallow((state) => ({
       // State
       ssrEnabled: state.ssrEnabled,

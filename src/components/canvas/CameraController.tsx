@@ -2,7 +2,7 @@ import { useRef, useEffect } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { useCameraMovement } from '@/hooks/useCameraMovement'
-import { useVisualStore } from '@/stores/visualStore'
+import { useLightingStore } from '@/stores/lightingStore';
 
 /**
  * Props for the CameraController component.
@@ -103,7 +103,7 @@ export function CameraController({
   const controlsRef = useRef<OrbitControlsImpl | null>(null)
 
   // Check if a light is being dragged (disable controls during drag)
-  const isDraggingLight = useVisualStore((state) => state.isDraggingLight)
+  const isDraggingLight = useLightingStore((state) => state.isDraggingLight)
 
   // Enable WASD camera movement with OrbitControls target sync
   useCameraMovement({ enabled: true, controlsRef })

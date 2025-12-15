@@ -2,8 +2,9 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BokehControls } from '@/components/sidebar/PostProcessing/BokehControls';
+import { usePostProcessingStore } from '@/stores/postProcessingStore';
+import { POST_PROCESSING_INITIAL_STATE } from '@/stores/slices/postProcessingSlice';
 import {
-  useVisualStore,
   DEFAULT_BOKEH_FOCUS_MODE,
   DEFAULT_BOKEH_BLUR_METHOD,
   DEFAULT_BOKEH_WORLD_FOCUS_DISTANCE,
@@ -11,12 +12,12 @@ import {
   DEFAULT_BOKEH_SCALE,
   DEFAULT_BOKEH_SMOOTH_TIME,
   DEFAULT_BOKEH_SHOW_DEBUG,
-} from '@/stores/visualStore';
+} from '@/stores/defaults/visualDefaults';
 
 describe('BokehControls', () => {
   beforeEach(() => {
     // Reset visual store before each test
-    useVisualStore.getState().reset();
+    usePostProcessingStore.setState(POST_PROCESSING_INITIAL_STATE);
   });
 
   it('should render enable bokeh toggle', () => {
@@ -31,19 +32,19 @@ describe('BokehControls', () => {
     const toggleButton = screen.getByText('Depth of Field');
 
     // Initially disabled (default state)
-    expect(useVisualStore.getState().bokehEnabled).toBe(false);
+    expect(usePostProcessingStore.getState().bokehEnabled).toBe(false);
 
     // Click to enable
     await user.click(toggleButton);
-    expect(useVisualStore.getState().bokehEnabled).toBe(true);
+    expect(usePostProcessingStore.getState().bokehEnabled).toBe(true);
 
     // Click to disable
     await user.click(toggleButton);
-    expect(useVisualStore.getState().bokehEnabled).toBe(false);
+    expect(usePostProcessingStore.getState().bokehEnabled).toBe(false);
   });
 
   it('should not show controls when bokeh is disabled', () => {
-    useVisualStore.getState().setBokehEnabled(false);
+    usePostProcessingStore.getState().setBokehEnabled(false);
     render(<BokehControls />);
 
     expect(screen.queryByText('Focus Mode')).not.toBeInTheDocument();
@@ -52,7 +53,7 @@ describe('BokehControls', () => {
   });
 
   it('should show controls when bokeh is enabled', () => {
-    useVisualStore.getState().setBokehEnabled(true);
+    usePostProcessingStore.getState().setBokehEnabled(true);
     render(<BokehControls />);
 
     expect(screen.getByText('Focus Mode')).toBeInTheDocument();
@@ -62,8 +63,8 @@ describe('BokehControls', () => {
   });
 
   it('should show Focus Speed slider in auto-center mode', () => {
-    useVisualStore.getState().setBokehEnabled(true);
-    useVisualStore.getState().setBokehFocusMode('auto-center');
+    usePostProcessingStore.getState().setBokehEnabled(true);
+    usePostProcessingStore.getState().setBokehFocusMode('auto-center');
     render(<BokehControls />);
 
     expect(screen.getByText('Focus Speed')).toBeInTheDocument();
@@ -71,8 +72,8 @@ describe('BokehControls', () => {
   });
 
   it('should show Focus Speed slider in auto-mouse mode', () => {
-    useVisualStore.getState().setBokehEnabled(true);
-    useVisualStore.getState().setBokehFocusMode('auto-mouse');
+    usePostProcessingStore.getState().setBokehEnabled(true);
+    usePostProcessingStore.getState().setBokehFocusMode('auto-mouse');
     render(<BokehControls />);
 
     expect(screen.getByText('Focus Speed')).toBeInTheDocument();
@@ -80,8 +81,8 @@ describe('BokehControls', () => {
   });
 
   it('should show Focus Distance slider in manual mode', () => {
-    useVisualStore.getState().setBokehEnabled(true);
-    useVisualStore.getState().setBokehFocusMode('manual');
+    usePostProcessingStore.getState().setBokehEnabled(true);
+    usePostProcessingStore.getState().setBokehFocusMode('manual');
     render(<BokehControls />);
 
     expect(screen.getByText('Focus Distance')).toBeInTheDocument();
@@ -89,7 +90,7 @@ describe('BokehControls', () => {
   });
 
   it('should render focus mode selector with correct label', () => {
-    useVisualStore.getState().setBokehEnabled(true);
+    usePostProcessingStore.getState().setBokehEnabled(true);
     render(<BokehControls />);
 
     const focusModeLabel = screen.getByText('Focus Mode');
@@ -97,7 +98,7 @@ describe('BokehControls', () => {
   });
 
   it('should render focus range slider with correct label', () => {
-    useVisualStore.getState().setBokehEnabled(true);
+    usePostProcessingStore.getState().setBokehEnabled(true);
     render(<BokehControls />);
 
     const focusRangeLabel = screen.getByText('Focus Range');
@@ -105,7 +106,7 @@ describe('BokehControls', () => {
   });
 
   it('should render blur intensity slider with correct label', () => {
-    useVisualStore.getState().setBokehEnabled(true);
+    usePostProcessingStore.getState().setBokehEnabled(true);
     render(<BokehControls />);
 
     const blurIntensityLabel = screen.getByText('Blur Intensity');
@@ -113,110 +114,110 @@ describe('BokehControls', () => {
   });
 
   it('should update focus mode value in store', () => {
-    useVisualStore.getState().setBokehEnabled(true);
-    useVisualStore.getState().setBokehFocusMode('manual');
+    usePostProcessingStore.getState().setBokehEnabled(true);
+    usePostProcessingStore.getState().setBokehFocusMode('manual');
 
-    expect(useVisualStore.getState().bokehFocusMode).toBe('manual');
+    expect(usePostProcessingStore.getState().bokehFocusMode).toBe('manual');
   });
 
   it('should update world focus distance value in store', () => {
-    useVisualStore.getState().setBokehEnabled(true);
-    useVisualStore.getState().setBokehWorldFocusDistance(25);
+    usePostProcessingStore.getState().setBokehEnabled(true);
+    usePostProcessingStore.getState().setBokehWorldFocusDistance(25);
 
-    expect(useVisualStore.getState().bokehWorldFocusDistance).toBe(25);
+    expect(usePostProcessingStore.getState().bokehWorldFocusDistance).toBe(25);
   });
 
   it('should update world focus range value in store', () => {
-    useVisualStore.getState().setBokehEnabled(true);
-    useVisualStore.getState().setBokehWorldFocusRange(15);
+    usePostProcessingStore.getState().setBokehEnabled(true);
+    usePostProcessingStore.getState().setBokehWorldFocusRange(15);
 
-    expect(useVisualStore.getState().bokehWorldFocusRange).toBe(15);
+    expect(usePostProcessingStore.getState().bokehWorldFocusRange).toBe(15);
   });
 
   it('should update bokeh scale value in store', () => {
-    useVisualStore.getState().setBokehEnabled(true);
-    useVisualStore.getState().setBokehScale(2.5);
+    usePostProcessingStore.getState().setBokehEnabled(true);
+    usePostProcessingStore.getState().setBokehScale(2.5);
 
-    expect(useVisualStore.getState().bokehScale).toBe(2.5);
+    expect(usePostProcessingStore.getState().bokehScale).toBe(2.5);
   });
 
   it('should update smooth time value in store', () => {
-    useVisualStore.getState().setBokehEnabled(true);
-    useVisualStore.getState().setBokehSmoothTime(1.0);
+    usePostProcessingStore.getState().setBokehEnabled(true);
+    usePostProcessingStore.getState().setBokehSmoothTime(1.0);
 
-    expect(useVisualStore.getState().bokehSmoothTime).toBe(1.0);
+    expect(usePostProcessingStore.getState().bokehSmoothTime).toBe(1.0);
   });
 
   it('should update show debug value in store', () => {
-    useVisualStore.getState().setBokehEnabled(true);
-    useVisualStore.getState().setBokehShowDebug(true);
+    usePostProcessingStore.getState().setBokehEnabled(true);
+    usePostProcessingStore.getState().setBokehShowDebug(true);
 
-    expect(useVisualStore.getState().bokehShowDebug).toBe(true);
+    expect(usePostProcessingStore.getState().bokehShowDebug).toBe(true);
   });
 
   it('should clamp world focus distance to valid range', () => {
     // Test below minimum
-    useVisualStore.getState().setBokehWorldFocusDistance(0);
-    expect(useVisualStore.getState().bokehWorldFocusDistance).toBe(1);
+    usePostProcessingStore.getState().setBokehWorldFocusDistance(0);
+    expect(usePostProcessingStore.getState().bokehWorldFocusDistance).toBe(1);
 
     // Test above maximum (max is 50)
-    useVisualStore.getState().setBokehWorldFocusDistance(100);
-    expect(useVisualStore.getState().bokehWorldFocusDistance).toBe(50);
+    usePostProcessingStore.getState().setBokehWorldFocusDistance(100);
+    expect(usePostProcessingStore.getState().bokehWorldFocusDistance).toBe(50);
   });
 
   it('should clamp world focus range to valid range', () => {
     // Test below minimum (min is 1)
-    useVisualStore.getState().setBokehWorldFocusRange(0);
-    expect(useVisualStore.getState().bokehWorldFocusRange).toBe(1);
+    usePostProcessingStore.getState().setBokehWorldFocusRange(0);
+    expect(usePostProcessingStore.getState().bokehWorldFocusRange).toBe(1);
 
     // Test above maximum (max is 100)
-    useVisualStore.getState().setBokehWorldFocusRange(150);
-    expect(useVisualStore.getState().bokehWorldFocusRange).toBe(100);
+    usePostProcessingStore.getState().setBokehWorldFocusRange(150);
+    expect(usePostProcessingStore.getState().bokehWorldFocusRange).toBe(100);
   });
 
   it('should clamp bokeh scale to valid range', () => {
     // Test below minimum
-    useVisualStore.getState().setBokehScale(-1);
-    expect(useVisualStore.getState().bokehScale).toBe(0);
+    usePostProcessingStore.getState().setBokehScale(-1);
+    expect(usePostProcessingStore.getState().bokehScale).toBe(0);
 
     // Test above maximum (max is 3)
-    useVisualStore.getState().setBokehScale(5);
-    expect(useVisualStore.getState().bokehScale).toBe(3);
+    usePostProcessingStore.getState().setBokehScale(5);
+    expect(usePostProcessingStore.getState().bokehScale).toBe(3);
   });
 
   it('should clamp smooth time to valid range', () => {
     // Test below minimum
-    useVisualStore.getState().setBokehSmoothTime(-1);
-    expect(useVisualStore.getState().bokehSmoothTime).toBe(0);
+    usePostProcessingStore.getState().setBokehSmoothTime(-1);
+    expect(usePostProcessingStore.getState().bokehSmoothTime).toBe(0);
 
     // Test above maximum
-    useVisualStore.getState().setBokehSmoothTime(5);
-    expect(useVisualStore.getState().bokehSmoothTime).toBe(2);
+    usePostProcessingStore.getState().setBokehSmoothTime(5);
+    expect(usePostProcessingStore.getState().bokehSmoothTime).toBe(2);
   });
 
   it('should reset to default values', () => {
     // Set custom values
-    useVisualStore.getState().setBokehEnabled(true);
-    useVisualStore.getState().setBokehFocusMode('manual');
-    useVisualStore.getState().setBokehBlurMethod('disc');
-    useVisualStore.getState().setBokehWorldFocusDistance(40);
-    useVisualStore.getState().setBokehWorldFocusRange(20);
-    useVisualStore.getState().setBokehScale(2.5);
-    useVisualStore.getState().setBokehSmoothTime(1.5);
-    useVisualStore.getState().setBokehShowDebug(true);
+    usePostProcessingStore.getState().setBokehEnabled(true);
+    usePostProcessingStore.getState().setBokehFocusMode('manual');
+    usePostProcessingStore.getState().setBokehBlurMethod('disc');
+    usePostProcessingStore.getState().setBokehWorldFocusDistance(40);
+    usePostProcessingStore.getState().setBokehWorldFocusRange(20);
+    usePostProcessingStore.getState().setBokehScale(2.5);
+    usePostProcessingStore.getState().setBokehSmoothTime(1.5);
+    usePostProcessingStore.getState().setBokehShowDebug(true);
 
     // Reset
-    useVisualStore.getState().reset();
+    usePostProcessingStore.setState(POST_PROCESSING_INITIAL_STATE);
 
     // Verify defaults
-    expect(useVisualStore.getState().bokehEnabled).toBe(false);
-    expect(useVisualStore.getState().bokehFocusMode).toBe(DEFAULT_BOKEH_FOCUS_MODE);
-    expect(useVisualStore.getState().bokehBlurMethod).toBe(DEFAULT_BOKEH_BLUR_METHOD);
-    expect(useVisualStore.getState().bokehWorldFocusDistance).toBe(DEFAULT_BOKEH_WORLD_FOCUS_DISTANCE);
-    expect(useVisualStore.getState().bokehWorldFocusRange).toBe(DEFAULT_BOKEH_WORLD_FOCUS_RANGE);
-    expect(useVisualStore.getState().bokehScale).toBe(DEFAULT_BOKEH_SCALE);
-    expect(useVisualStore.getState().bokehSmoothTime).toBe(DEFAULT_BOKEH_SMOOTH_TIME);
-    expect(useVisualStore.getState().bokehShowDebug).toBe(DEFAULT_BOKEH_SHOW_DEBUG);
+    expect(usePostProcessingStore.getState().bokehEnabled).toBe(false);
+    expect(usePostProcessingStore.getState().bokehFocusMode).toBe(DEFAULT_BOKEH_FOCUS_MODE);
+    expect(usePostProcessingStore.getState().bokehBlurMethod).toBe(DEFAULT_BOKEH_BLUR_METHOD);
+    expect(usePostProcessingStore.getState().bokehWorldFocusDistance).toBe(DEFAULT_BOKEH_WORLD_FOCUS_DISTANCE);
+    expect(usePostProcessingStore.getState().bokehWorldFocusRange).toBe(DEFAULT_BOKEH_WORLD_FOCUS_RANGE);
+    expect(usePostProcessingStore.getState().bokehScale).toBe(DEFAULT_BOKEH_SCALE);
+    expect(usePostProcessingStore.getState().bokehSmoothTime).toBe(DEFAULT_BOKEH_SMOOTH_TIME);
+    expect(usePostProcessingStore.getState().bokehShowDebug).toBe(DEFAULT_BOKEH_SHOW_DEBUG);
   });
 
   it('should apply custom className', () => {
@@ -226,7 +227,7 @@ describe('BokehControls', () => {
 
   it('should change focus mode via select dropdown', async () => {
     const user = userEvent.setup();
-    useVisualStore.getState().setBokehEnabled(true);
+    usePostProcessingStore.getState().setBokehEnabled(true);
     render(<BokehControls />);
 
     // Get the select element
@@ -235,15 +236,15 @@ describe('BokehControls', () => {
 
     // Change to manual mode
     await user.selectOptions(select, 'manual');
-    expect(useVisualStore.getState().bokehFocusMode).toBe('manual');
+    expect(usePostProcessingStore.getState().bokehFocusMode).toBe('manual');
 
     // Change to auto-mouse mode
     await user.selectOptions(select, 'auto-mouse');
-    expect(useVisualStore.getState().bokehFocusMode).toBe('auto-mouse');
+    expect(usePostProcessingStore.getState().bokehFocusMode).toBe('auto-mouse');
   });
 
   it('should render blur method selector when bokeh is enabled', () => {
-    useVisualStore.getState().setBokehEnabled(true);
+    usePostProcessingStore.getState().setBokehEnabled(true);
     render(<BokehControls />);
 
     expect(screen.getByText('Blur Method')).toBeInTheDocument();
@@ -252,7 +253,7 @@ describe('BokehControls', () => {
 
   it('should change blur method via select dropdown', async () => {
     const user = userEvent.setup();
-    useVisualStore.getState().setBokehEnabled(true);
+    usePostProcessingStore.getState().setBokehEnabled(true);
     render(<BokehControls />);
 
     const select = screen.getByTestId('bokeh-blur-method');
@@ -260,44 +261,44 @@ describe('BokehControls', () => {
 
     // Change to disc
     await user.selectOptions(select, 'disc');
-    expect(useVisualStore.getState().bokehBlurMethod).toBe('disc');
+    expect(usePostProcessingStore.getState().bokehBlurMethod).toBe('disc');
 
     // Change to jittered
     await user.selectOptions(select, 'jittered');
-    expect(useVisualStore.getState().bokehBlurMethod).toBe('jittered');
+    expect(usePostProcessingStore.getState().bokehBlurMethod).toBe('jittered');
 
     // Change to separable
     await user.selectOptions(select, 'separable');
-    expect(useVisualStore.getState().bokehBlurMethod).toBe('separable');
+    expect(usePostProcessingStore.getState().bokehBlurMethod).toBe('separable');
 
     // Change to hexagonal
     await user.selectOptions(select, 'hexagonal');
-    expect(useVisualStore.getState().bokehBlurMethod).toBe('hexagonal');
+    expect(usePostProcessingStore.getState().bokehBlurMethod).toBe('hexagonal');
   });
 
   it('should update blur method value in store', () => {
-    useVisualStore.getState().setBokehEnabled(true);
-    useVisualStore.getState().setBokehBlurMethod('jittered');
+    usePostProcessingStore.getState().setBokehEnabled(true);
+    usePostProcessingStore.getState().setBokehBlurMethod('jittered');
 
-    expect(useVisualStore.getState().bokehBlurMethod).toBe('jittered');
+    expect(usePostProcessingStore.getState().bokehBlurMethod).toBe('jittered');
   });
 
   it('should toggle show debug via switch', async () => {
     const user = userEvent.setup();
-    useVisualStore.getState().setBokehEnabled(true);
+    usePostProcessingStore.getState().setBokehEnabled(true);
     render(<BokehControls />);
 
     const showFocusPointSwitch = screen.getByText('Show Focus Point');
 
     // Initially false
-    expect(useVisualStore.getState().bokehShowDebug).toBe(false);
+    expect(usePostProcessingStore.getState().bokehShowDebug).toBe(false);
 
     // Click to enable
     await user.click(showFocusPointSwitch);
-    expect(useVisualStore.getState().bokehShowDebug).toBe(true);
+    expect(usePostProcessingStore.getState().bokehShowDebug).toBe(true);
 
     // Click to disable
     await user.click(showFocusPointSwitch);
-    expect(useVisualStore.getState().bokehShowDebug).toBe(false);
+    expect(usePostProcessingStore.getState().bokehShowDebug).toBe(false);
   });
 });

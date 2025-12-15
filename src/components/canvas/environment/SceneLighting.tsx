@@ -20,13 +20,13 @@
  * </Canvas>
  * ```
  *
- * @see {@link useVisualStore} for lighting configuration state
+ * @see {@link useLightingStore} for lighting configuration state
  */
 
 import type { LightSource } from '@/lib/lights/types';
 import { rotationToDirection } from '@/lib/lights/types';
 import type { ShadowQuality } from '@/lib/shadows/types';
-import { useVisualStore } from '@/stores/visualStore';
+import { useLightingStore } from '@/stores/lightingStore';
 import { memo, useEffect, useMemo, useRef } from 'react';
 import { MeshBasicMaterial, SphereGeometry, Vector3 } from 'three';
 
@@ -201,28 +201,28 @@ const LightRenderer = memo(function LightRenderer({
  */
 export const SceneLighting = memo(function SceneLighting() {
   // Multi-light system state
-  const lights = useVisualStore((state) => state.lights);
-  const showLightGizmos = useVisualStore((state) => state.showLightGizmos);
+  const lights = useLightingStore((state) => state.lights);
+  const showLightGizmos = useLightingStore((state) => state.showLightGizmos);
 
   // Shadow system state
-  const shadowEnabled = useVisualStore((state) => state.shadowEnabled);
-  const shadowQuality = useVisualStore((state) => state.shadowQuality);
-  const shadowSoftness = useVisualStore((state) => state.shadowSoftness);
+  const shadowEnabled = useLightingStore((state) => state.shadowEnabled);
+  const shadowQuality = useLightingStore((state) => state.shadowQuality);
+  const shadowSoftness = useLightingStore((state) => state.shadowSoftness);
 
   // Compute shadow map size and radius from settings
   const shadowMapSize = SHADOW_MAP_SIZES[shadowQuality];
   const shadowRadiusValue = getShadowRadius(shadowSoftness);
 
   // Legacy single-light state (for backward compatibility)
-  const lightEnabled = useVisualStore((state) => state.lightEnabled);
-  const lightColor = useVisualStore((state) => state.lightColor);
-  const lightHorizontalAngle = useVisualStore((state) => state.lightHorizontalAngle);
-  const lightVerticalAngle = useVisualStore((state) => state.lightVerticalAngle);
-  const ambientIntensity = useVisualStore((state) => state.ambientIntensity);
-  const ambientColor = useVisualStore((state) => state.ambientColor);
-  const diffuseIntensity = useVisualStore((state) => state.diffuseIntensity);
-  const lightStrength = useVisualStore((state) => state.lightStrength);
-  const showLightIndicator = useVisualStore((state) => state.showLightIndicator);
+  const lightEnabled = useLightingStore((state) => state.lightEnabled);
+  const lightColor = useLightingStore((state) => state.lightColor);
+  const lightHorizontalAngle = useLightingStore((state) => state.lightHorizontalAngle);
+  const lightVerticalAngle = useLightingStore((state) => state.lightVerticalAngle);
+  const ambientIntensity = useLightingStore((state) => state.ambientIntensity);
+  const ambientColor = useLightingStore((state) => state.ambientColor);
+  const diffuseIntensity = useLightingStore((state) => state.diffuseIntensity);
+  const lightStrength = useLightingStore((state) => state.lightStrength);
+  const showLightIndicator = useLightingStore((state) => state.showLightIndicator);
 
   /**
    * Legacy light position from spherical coordinates (backward compatibility)

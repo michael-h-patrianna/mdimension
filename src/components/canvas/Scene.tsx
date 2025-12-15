@@ -21,7 +21,8 @@ import { SceneLighting } from './environment/SceneLighting'
 import { PostProcessing } from './environment/PostProcessing'
 import { GroundPlane } from './environment/GroundPlane'
 import { LightGizmoManager } from './gizmos/LightGizmoManager'
-import { useVisualStore } from '@/stores/visualStore'
+import { useEnvironmentStore } from '@/stores/environmentStore'
+import { useUIStore } from '@/stores/uiStore'
 
 /**
  * Props for the Scene component.
@@ -85,8 +86,7 @@ export const Scene = React.memo(function Scene({
     groundMaterialRoughness,
     groundMaterialMetalness,
     groundMaterialEnvMapIntensity,
-    showAxisHelper,
-  } = useVisualStore(
+  } = useEnvironmentStore(
     useShallow((state) => ({
       activeWalls: state.activeWalls,
       groundPlaneOffset: state.groundPlaneOffset,
@@ -101,9 +101,10 @@ export const Scene = React.memo(function Scene({
       groundMaterialRoughness: state.groundMaterialRoughness,
       groundMaterialMetalness: state.groundMaterialMetalness,
       groundMaterialEnvMapIntensity: state.groundMaterialEnvMapIntensity,
-      showAxisHelper: state.showAxisHelper,
     }))
   )
+
+  const showAxisHelper = useUIStore((state) => state.showAxisHelper)
 
   return (
     <>

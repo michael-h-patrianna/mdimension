@@ -9,7 +9,7 @@
 
 import React, { memo, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { useVisualStore } from '@/stores/visualStore';
+import { useLightingStore } from '@/stores/lightingStore';
 import { MAX_LIGHTS } from '@/lib/lights/types';
 import type { LightType } from '@/lib/lights/types';
 import { LightListItem } from './LightListItem';
@@ -37,7 +37,7 @@ export const LightList: React.FC<LightListProps> = memo(function LightList({
     removeLight,
     updateLight,
     selectLight,
-  } = useVisualStore(
+  } = useLightingStore(
     useShallow((state) => ({
       lights: state.lights,
       selectedLightId: state.selectedLightId,

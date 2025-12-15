@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useAnimationStore, MIN_SPEED, MAX_SPEED } from '@/stores/animationStore';
-import { useVisualStore, MIN_ANIMATION_BIAS, MAX_ANIMATION_BIAS } from '@/stores/visualStore';
+import { useUIStore } from '@/stores/uiStore';
+import { MIN_ANIMATION_BIAS, MAX_ANIMATION_BIAS } from '@/stores/defaults/visualDefaults'; // Constants can stay for now or move to defaults
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { getRotationPlanes } from '@/lib/math';
@@ -39,8 +40,8 @@ export const TimelineControls: React.FC = () => {
         }))
     );
 
-    const animationBias = useVisualStore((state) => state.animationBias);
-    const setAnimationBias = useVisualStore((state) => state.setAnimationBias);
+    const animationBias = useUIStore((state) => state.animationBias);
+    const setAnimationBias = useUIStore((state) => state.setAnimationBias);
     
     // Mandelbox Settings
     const {

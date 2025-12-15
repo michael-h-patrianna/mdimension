@@ -11,8 +11,9 @@ import {
   DEFAULT_SHININESS,
   DEFAULT_SPECULAR_COLOR,
   DEFAULT_SPECULAR_INTENSITY,
-  useVisualStore,
-} from '@/stores/visualStore';
+} from '@/stores/defaults/visualDefaults';
+import { useAppearanceStore } from '@/stores/appearanceStore';
+import { useLightingStore } from '@/stores/lightingStore';
 import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -29,8 +30,9 @@ const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
 export const MaterialControls: React.FC<MaterialControlsProps> = React.memo(({
   className = '',
 }) => {
+  const shaderType = useAppearanceStore((state) => state.shaderType);
+
   const {
-    shaderType,
     lightEnabled,
     specularIntensity,
     shininess,
@@ -40,9 +42,8 @@ export const MaterialControls: React.FC<MaterialControlsProps> = React.memo(({
     setShininess,
     setSpecularColor,
     setDiffuseIntensity,
-  } = useVisualStore(
+  } = useLightingStore(
     useShallow((state) => ({
-      shaderType: state.shaderType,
       lightEnabled: state.lightEnabled,
       specularIntensity: state.specularIntensity,
       shininess: state.shininess,

@@ -6,13 +6,14 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RenderModeToggles } from '@/components/controls/RenderModeToggles';
-import { useVisualStore } from '@/stores/visualStore';
+import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 
 describe('RenderModeToggles', () => {
   beforeEach(() => {
     // Reset stores before each test
-    useVisualStore.getState().reset();
+    useAppearanceStore.setState({ edgesVisible: true, facesVisible: true });
+    useAppearanceStore.getState().setShaderType('surface');
     useGeometryStore.getState().reset();
   });
 
@@ -42,20 +43,19 @@ describe('RenderModeToggles', () => {
   describe('Edges Toggle', () => {
     it('should toggle edges visibility when clicked', async () => {
       const user = userEvent.setup();
+      // Ensure faces are visible so we can toggle edges off
+      useAppearanceStore.getState().setFacesVisible(true);
       render(<RenderModeToggles />);
 
       const edgesToggle = screen.getByTestId('toggle-edges');
 
-      // Initially visible (default)
-      expect(useVisualStore.getState().edgesVisible).toBe(true);
-
       // Click to hide
       await user.click(edgesToggle);
-      expect(useVisualStore.getState().edgesVisible).toBe(false);
+      expect(useAppearanceStore.getState().edgesVisible).toBe(false);
 
       // Click to show again
       await user.click(edgesToggle);
-      expect(useVisualStore.getState().edgesVisible).toBe(true);
+      expect(useAppearanceStore.getState().edgesVisible).toBe(true);
     });
 
     it('should have correct aria-label', () => {
@@ -69,42 +69,42 @@ describe('RenderModeToggles', () => {
   describe('Faces Toggle', () => {
     it('should toggle faces visibility when clicked', async () => {
       const user = userEvent.setup();
-      useVisualStore.getState().setFacesVisible(false);
+      useAppearanceStore.getState().setFacesVisible(false);
       render(<RenderModeToggles />);
 
       const facesToggle = screen.getByTestId('toggle-faces');
 
       // Click to toggle on
       await user.click(facesToggle);
-      expect(useVisualStore.getState().facesVisible).toBe(true);
+      expect(useAppearanceStore.getState().facesVisible).toBe(true);
 
       // Click to toggle off again
       await user.click(facesToggle);
-      expect(useVisualStore.getState().facesVisible).toBe(false);
+      expect(useAppearanceStore.getState().facesVisible).toBe(false);
     });
 
     it('should auto-set shaderType to surface when faces enabled', async () => {
       const user = userEvent.setup();
-      useVisualStore.getState().setFacesVisible(false);
+      useAppearanceStore.getState().setFacesVisible(false);
       render(<RenderModeToggles />);
 
       const facesToggle = screen.getByTestId('toggle-faces');
 
       // Enable faces
       await user.click(facesToggle);
-      expect(useVisualStore.getState().shaderType).toBe('surface');
+      expect(useAppearanceStore.getState().shaderType).toBe('surface');
     });
 
     it('should auto-set shaderType to wireframe when faces disabled', async () => {
       const user = userEvent.setup();
-      useVisualStore.getState().setFacesVisible(true);
+      useAppearanceStore.getState().setFacesVisible(true);
       render(<RenderModeToggles />);
 
       const facesToggle = screen.getByTestId('toggle-faces');
 
       // Disable faces
       await user.click(facesToggle);
-      expect(useVisualStore.getState().shaderType).toBe('wireframe');
+      expect(useAppearanceStore.getState().shaderType).toBe('wireframe');
     });
 
     it('should have correct aria-label', () => {
@@ -187,57 +187,56 @@ describe('RenderModeToggles', () => {
 
       // Manually disable all modes via store
       act(() => {
-        useVisualStore.getState().setEdgesVisible(false);
-        useVisualStore.getState().setFacesVisible(false);
+        useAppearanceStore.getState().setEdgesVisible(false);
+        useAppearanceStore.getState().setFacesVisible(false);
       });
       rerender(<RenderModeToggles />);
 
       // At least one mode must be active - edges should auto-enable
-      expect(useVisualStore.getState().edgesVisible).toBe(true);
+      expect(useAppearanceStore.getState().edgesVisible).toBe(true);
     });
 
     it('should not auto-enable edges if at least one mode is already active', async () => {
       useGeometryStore.getState().setObjectType('hypercube');
-      useVisualStore.getState().setEdgesVisible(false);
-      useVisualStore.getState().setFacesVisible(true);
+      useAppearanceStore.getState().setEdgesVisible(false);
+      useAppearanceStore.getState().setFacesVisible(true);
 
       render(<RenderModeToggles />);
 
       // Faces is ON, so edges should not auto-enable
-      expect(useVisualStore.getState().edgesVisible).toBe(false);
-      expect(useVisualStore.getState().facesVisible).toBe(true);
+      expect(useAppearanceStore.getState().edgesVisible).toBe(false);
+      expect(useAppearanceStore.getState().facesVisible).toBe(true);
     });
   });
 
   describe('Toggle State Persistence', () => {
     it('should persist edges toggle state across rerenders', async () => {
       const user = userEvent.setup();
-      useVisualStore.getState().setEdgesVisible(true);
       const { rerender } = render(<RenderModeToggles />);
 
       const edgesToggle = screen.getByTestId('toggle-edges');
       await user.click(edgesToggle);
 
-      expect(useVisualStore.getState().edgesVisible).toBe(false);
+      expect(useAppearanceStore.getState().edgesVisible).toBe(false);
 
       rerender(<RenderModeToggles />);
 
-      expect(useVisualStore.getState().edgesVisible).toBe(false);
+      expect(useAppearanceStore.getState().edgesVisible).toBe(false);
     });
 
     it('should persist faces toggle state across rerenders', async () => {
       const user = userEvent.setup();
-      useVisualStore.getState().setFacesVisible(false);
+      useAppearanceStore.getState().setFacesVisible(false);
       const { rerender } = render(<RenderModeToggles />);
 
       const facesToggle = screen.getByTestId('toggle-faces');
       await user.click(facesToggle);
 
-      expect(useVisualStore.getState().facesVisible).toBe(true);
+      expect(useAppearanceStore.getState().facesVisible).toBe(true);
 
       rerender(<RenderModeToggles />);
 
-      expect(useVisualStore.getState().facesVisible).toBe(true);
+      expect(useAppearanceStore.getState().facesVisible).toBe(true);
     });
   });
 });

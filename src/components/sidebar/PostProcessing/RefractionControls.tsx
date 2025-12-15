@@ -10,7 +10,7 @@
  * - Chromatic Aberration slider: Color separation amount (0-1)
  *
  * @see {@link PostProcessing} for the refraction effect implementation
- * @see {@link useVisualStore} for state management
+ * @see {@link usePostProcessingStore} for state management
  */
 
 import React from 'react';
@@ -18,11 +18,11 @@ import { useShallow } from 'zustand/react/shallow';
 import { Slider } from '@/components/ui/Slider';
 import { Switch } from '@/components/ui/Switch';
 import {
-  useVisualStore,
   DEFAULT_REFRACTION_IOR,
   DEFAULT_REFRACTION_STRENGTH,
   DEFAULT_REFRACTION_CHROMATIC_ABERRATION,
-} from '@/stores/visualStore';
+} from '@/stores/defaults/visualDefaults';
+import { usePostProcessingStore } from '@/stores/postProcessingStore';
 
 export interface RefractionControlsProps {
   className?: string;
@@ -43,7 +43,7 @@ export const RefractionControls: React.FC<RefractionControlsProps> = React.memo(
     setRefractionIOR,
     setRefractionStrength,
     setRefractionChromaticAberration,
-  } = useVisualStore(
+  } = usePostProcessingStore(
     useShallow((state) => ({
       // State
       refractionEnabled: state.refractionEnabled,

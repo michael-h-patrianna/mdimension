@@ -19,7 +19,7 @@
  * @returns UI controls for bokeh post-processing
  *
  * @see {@link PostProcessing} for the bokeh effect implementation
- * @see {@link useVisualStore} for state management
+ * @see {@link usePostProcessingStore} for state management
  * @see docs/prd/bokeh-postprocessing-refactor.md
  */
 
@@ -33,8 +33,8 @@ import {
   DEFAULT_BOKEH_SMOOTH_TIME,
   DEFAULT_BOKEH_WORLD_FOCUS_DISTANCE,
   DEFAULT_BOKEH_WORLD_FOCUS_RANGE,
-  useVisualStore,
-} from '@/stores/visualStore';
+} from '@/stores/defaults/visualDefaults';
+import { usePostProcessingStore } from '@/stores/postProcessingStore';
 import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -82,7 +82,7 @@ export const BokehControls: React.FC<BokehControlsProps> = React.memo(({
     setBokehScale,
     setBokehSmoothTime,
     setBokehShowDebug,
-  } = useVisualStore(
+  } = usePostProcessingStore(
     useShallow((state) => ({
       // State
       bokehEnabled: state.bokehEnabled,

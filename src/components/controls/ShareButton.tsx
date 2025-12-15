@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/Button';
 import { generateShareUrl } from '@/lib/url';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useTransformStore } from '@/stores/transformStore';
-import { useVisualStore } from '@/stores/visualStore';
+import { useAppearanceStore } from '@/stores/appearanceStore';
+import { usePostProcessingStore } from '@/stores/postProcessingStore';
 
 export interface ShareButtonProps {
   className?: string;
@@ -23,12 +24,12 @@ export const ShareButton: React.FC<ShareButtonProps> = ({ className = '' }) => {
   const uniformScale = useTransformStore((state) => state.uniformScale);
 
   // Visual settings (PRD Story 1 AC6, Story 7 AC7)
-  const shaderType = useVisualStore((state) => state.shaderType);
-  const shaderSettings = useVisualStore((state) => state.shaderSettings);
-  const edgeColor = useVisualStore((state) => state.edgeColor);
-  const backgroundColor = useVisualStore((state) => state.backgroundColor);
-  const bloomEnabled = useVisualStore((state) => state.bloomEnabled);
-  const bloomIntensity = useVisualStore((state) => state.bloomIntensity);
+  const shaderType = useAppearanceStore((state) => state.shaderType);
+  const shaderSettings = useAppearanceStore((state) => state.shaderSettings);
+  const edgeColor = useAppearanceStore((state) => state.edgeColor);
+  const backgroundColor = useAppearanceStore((state) => state.backgroundColor);
+  const bloomEnabled = usePostProcessingStore((state) => state.bloomEnabled);
+  const bloomIntensity = usePostProcessingStore((state) => state.bloomIntensity);
 
   // Cleanup timeout on unmount
   useEffect(() => {

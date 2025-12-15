@@ -27,9 +27,12 @@ import { useMandelbrotColors } from '@/hooks/useMandelbrotColors';
 import { useSyncedDimension } from '@/hooks/useSyncedDimension';
 import type { VectorND, Vector3D } from '@/lib/math/types';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
-import { useVisualStore } from '@/stores/visualStore';
+import { useAppearanceStore } from '@/stores/appearanceStore';
+import { useLightingStore } from '@/stores/lightingStore';
+import { useUIStore } from '@/stores/uiStore';
 import { Canvas } from '@react-three/fiber';
 import { PerformanceMonitor } from '@/components/canvas/PerformanceMonitor';
+import { PerformanceStatsCollector } from '@/components/canvas/PerformanceStatsCollector';
 import { ToastProvider } from '@/contexts/ToastContext';
 import { LazyMotion, domMax } from 'motion/react';
 
@@ -72,9 +75,9 @@ function Visualizer() {
 
   // 7. Compute Mandelbrot colors (derived from user's edge color)
   const mandelbrotConfig = useExtendedObjectStore((state) => state.mandelbrot);
-  const edgeColorForMandelbrot = useVisualStore((state) => state.edgeColor);
+  const edgeColorForMandelbrot = useAppearanceStore((state) => state.edgeColor);
   const pointColors = useMandelbrotColors(geometry, mandelbrotConfig, edgeColorForMandelbrot);
-  const facesVisible = useVisualStore((state) => state.facesVisible);
+  const facesVisible = useAppearanceStore((state) => state.facesVisible);
 
   // Calculate minimum bounding radius for ground plane positioning
   // When raymarched objects are visible, ensure ground plane accounts for them
@@ -116,13 +119,13 @@ function App() {
   useKeyboardShortcuts();
 
   // Get background color from visual store (PRD Story 6 AC7)
-  const backgroundColor = useVisualStore((state) => state.backgroundColor);
+  const backgroundColor = useAppearanceStore((state) => state.backgroundColor);
 
   // Get selectLight action for click-to-deselect
-  const selectLight = useVisualStore((state) => state.selectLight);
+  const selectLight = useLightingStore((state) => state.selectLight);
 
   // Get performance monitor state
-  const showPerfMonitor = useVisualStore((state) => state.showPerfMonitor);
+  const showPerfMonitor = useUIStore((state) => state.showPerfMonitor);
 
   // Handle clicks on empty space to deselect lights
   const handlePointerMissed = () => {
@@ -151,8 +154,9 @@ function App() {
             >
               <FpsController />
               <Visualizer />
-              {showPerfMonitor && <PerformanceMonitor />}
+              <PerformanceStatsCollector />
             </Canvas>
+            {showPerfMonitor && <PerformanceMonitor />}
           </div>
         </EditorLayout>
       </ToastProvider>

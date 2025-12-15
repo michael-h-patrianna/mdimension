@@ -29,7 +29,7 @@ import { useMemo } from 'react';
 import { FrontSide, DoubleSide, Color } from 'three';
 import { Grid } from '@react-three/drei';
 import type { Vector3D } from '@/lib/math/types';
-import type { GroundPlaneType, WallPosition } from '@/stores/visualStore';
+import type { GroundPlaneType, WallPosition } from '@/stores/defaults/visualDefaults'; // TODO: Move types to separate file
 
 /**
  * Props for the GroundPlane component

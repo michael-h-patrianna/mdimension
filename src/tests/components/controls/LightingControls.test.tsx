@@ -4,25 +4,28 @@ import { LightList } from '@/components/sidebar/Lights/LightList';
 import { LightListItem } from '@/components/sidebar/Lights/LightListItem';
 import { Vector3Input } from '@/components/sidebar/Lights/Vector3Input';
 import type { LightSource } from '@/lib/lights/types';
-import { useVisualStore } from '@/stores/visualStore';
+import { useAppearanceStore } from '@/stores/appearanceStore';
+import { useLightingStore } from '@/stores/lightingStore';
+import { APPEARANCE_INITIAL_STATE } from '@/stores/slices/appearanceSlice';
+import { LIGHTING_INITIAL_STATE } from '@/stores/slices/lightingSlice';
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 describe('LightingControls', () => {
   beforeEach(() => {
-    useVisualStore.getState().reset();
+    useAppearanceStore.setState(APPEARANCE_INITIAL_STATE);
+    useLightingStore.setState(LIGHTING_INITIAL_STATE);
   });
 
   describe('rendering based on shader type', () => {
     it('should render when surface shader is selected', () => {
-      useVisualStore.getState().setShaderType('surface');
       render(<LightingControls />);
       expect(screen.getByText('Show Gizmos')).toBeInTheDocument();
     });
 
     it('should not render for wireframe shader', () => {
-      useVisualStore.getState().setShaderType('wireframe');
+      useAppearanceStore.getState().setShaderType('wireframe');
       const { container } = render(<LightingControls />);
       expect(container).toBeEmptyDOMElement();
     });
@@ -30,7 +33,6 @@ describe('LightingControls', () => {
 
   describe('show gizmos toggle', () => {
     beforeEach(() => {
-      useVisualStore.getState().setShaderType('surface');
     });
 
     it('should render show gizmos toggle', () => {
@@ -43,16 +45,16 @@ describe('LightingControls', () => {
       render(<LightingControls />);
 
       const switchInput = screen.getByRole('switch');
-      const initialState = useVisualStore.getState().showLightGizmos;
+      const initialState = useLightingStore.getState().showLightGizmos;
 
       await user.click(switchInput);
-      expect(useVisualStore.getState().showLightGizmos).toBe(!initialState);
+      expect(useLightingStore.getState().showLightGizmos).toBe(!initialState);
     });
   });
 
   describe('ambient light section', () => {
     beforeEach(() => {
-      useVisualStore.getState().setShaderType('surface');
+      useAppearanceStore.getState().setShaderType('surface');
     });
 
     it('should render ambient light section', () => {
@@ -66,7 +68,7 @@ describe('LightingControls', () => {
       const slider = screen.getByLabelText('Intensity') as HTMLInputElement;
 
       fireEvent.change(slider, { target: { value: '0.5' } });
-      expect(useVisualStore.getState().ambientIntensity).toBe(0.5);
+      expect(useLightingStore.getState().ambientIntensity).toBe(0.5);
     });
 
     it('should render ambient color picker', () => {
@@ -81,13 +83,12 @@ describe('LightingControls', () => {
       const colorInput = document.querySelector('input[type="color"]') as HTMLInputElement;
 
       fireEvent.change(colorInput, { target: { value: '#ff0000' } });
-      expect(useVisualStore.getState().ambientColor).toBe('#ff0000');
+      expect(useLightingStore.getState().ambientColor).toBe('#ff0000');
     });
   });
 
   describe('className prop', () => {
     beforeEach(() => {
-      useVisualStore.getState().setShaderType('surface');
     });
 
     it('should accept and apply custom className', () => {
@@ -106,8 +107,9 @@ describe('LightingControls', () => {
 
 describe('LightList', () => {
   beforeEach(() => {
-    useVisualStore.getState().reset();
-    useVisualStore.getState().setShaderType('surface');
+    useLightingStore.setState(LIGHTING_INITIAL_STATE);
+    useAppearanceStore.setState(APPEARANCE_INITIAL_STATE);
+    useAppearanceStore.getState().setShaderType('surface');
   });
 
   describe('default state', () => {
@@ -127,10 +129,10 @@ describe('LightList', () => {
   describe('empty state', () => {
     beforeEach(() => {
       // Remove all lights to test empty state (use while loop to avoid iteration issues)
-      while (useVisualStore.getState().lights.length > 0) {
-        const firstLight = useVisualStore.getState().lights[0];
+      while (useLightingStore.getState().lights.length > 0) {
+        const firstLight = useLightingStore.getState().lights[0];
         if (firstLight) {
-          useVisualStore.getState().removeLight(firstLight.id);
+          useLightingStore.getState().removeLight(firstLight.id);
         }
       }
     });
@@ -165,51 +167,51 @@ describe('LightList', () => {
 
     it('should add point light when selected', async () => {
       const user = userEvent.setup();
-      const initialCount = useVisualStore.getState().lights.length;
+      const initialCount = useLightingStore.getState().lights.length;
       render(<LightList />);
 
       await user.click(screen.getByText('Add Light'));
       await user.click(screen.getByText('Point Light'));
 
-      expect(useVisualStore.getState().lights.length).toBe(initialCount + 1);
+      expect(useLightingStore.getState().lights.length).toBe(initialCount + 1);
       // Newest light is the last one
-      const lights = useVisualStore.getState().lights;
+      const lights = useLightingStore.getState().lights;
       const newestLight = lights[lights.length - 1];
       expect(newestLight?.type).toBe('point');
     });
 
     it('should add directional light when selected', async () => {
       const user = userEvent.setup();
-      const initialCount = useVisualStore.getState().lights.length;
+      const initialCount = useLightingStore.getState().lights.length;
       render(<LightList />);
 
       await user.click(screen.getByText('Add Light'));
       await user.click(screen.getByText('Directional Light'));
 
-      expect(useVisualStore.getState().lights.length).toBe(initialCount + 1);
-      const lights = useVisualStore.getState().lights;
+      expect(useLightingStore.getState().lights.length).toBe(initialCount + 1);
+      const lights = useLightingStore.getState().lights;
       const newestLight = lights[lights.length - 1];
       expect(newestLight?.type).toBe('directional');
     });
 
     it('should add spot light when selected', async () => {
       const user = userEvent.setup();
-      const initialCount = useVisualStore.getState().lights.length;
+      const initialCount = useLightingStore.getState().lights.length;
       render(<LightList />);
 
       await user.click(screen.getByText('Add Light'));
       await user.click(screen.getByText('Spot Light'));
 
-      expect(useVisualStore.getState().lights.length).toBe(initialCount + 1);
-      const lights = useVisualStore.getState().lights;
+      expect(useLightingStore.getState().lights.length).toBe(initialCount + 1);
+      const lights = useLightingStore.getState().lights;
       const newestLight = lights[lights.length - 1];
       expect(newestLight?.type).toBe('spot');
     });
 
     it('should disable add button when 4 lights exist', () => {
       // Add lights until we have 4 (accounting for default)
-      while (useVisualStore.getState().lights.length < 4) {
-        useVisualStore.getState().addLight('point');
+      while (useLightingStore.getState().lights.length < 4) {
+        useLightingStore.getState().addLight('point');
       }
 
       render(<LightList />);
@@ -223,9 +225,9 @@ describe('LightList', () => {
   describe('light count', () => {
     it('should update count when lights added', () => {
       // Start with default light count
-      const initialCount = useVisualStore.getState().lights.length;
-      useVisualStore.getState().addLight('point');
-      useVisualStore.getState().addLight('directional');
+      const initialCount = useLightingStore.getState().lights.length;
+      useLightingStore.getState().addLight('point');
+      useLightingStore.getState().addLight('directional');
 
       render(<LightList />);
       expect(screen.getByText(`${initialCount + 2} / 4 lights`)).toBeInTheDocument();
@@ -345,13 +347,12 @@ describe('LightListItem', () => {
   });
 });
 
-describe('LightEditor', () => {
-  beforeEach(() => {
-    useVisualStore.getState().reset();
-    useVisualStore.getState().setShaderType('surface');
-  });
-
-  describe('empty state', () => {
+  describe('LightEditor', () => {
+    beforeEach(() => {
+      useLightingStore.setState(LIGHTING_INITIAL_STATE);
+      useAppearanceStore.setState(APPEARANCE_INITIAL_STATE);
+      useAppearanceStore.getState().setShaderType('surface');
+    });  describe('empty state', () => {
     it('should show placeholder when no light selected', () => {
       render(<LightEditor />);
       expect(screen.getByText('Select a light to edit')).toBeInTheDocument();
@@ -360,9 +361,9 @@ describe('LightEditor', () => {
 
   describe('with selected light', () => {
     beforeEach(() => {
-      const lightId = useVisualStore.getState().addLight('point');
+      const lightId = useLightingStore.getState().addLight('point');
       if (lightId) {
-        useVisualStore.getState().selectLight(lightId);
+        useLightingStore.getState().selectLight(lightId);
       }
     });
 
@@ -411,8 +412,8 @@ describe('LightEditor', () => {
       await user.clear(nameInput);
       await user.type(nameInput, 'New Name');
 
-      const selectedId = useVisualStore.getState().selectedLightId;
-      const light = useVisualStore.getState().lights.find(l => l.id === selectedId);
+      const selectedId = useLightingStore.getState().selectedLightId;
+      const light = useLightingStore.getState().lights.find(l => l.id === selectedId);
       expect(light?.name).toBe('New Name');
     });
 
@@ -421,12 +422,12 @@ describe('LightEditor', () => {
       render(<LightEditor />);
 
       const toggleButton = screen.getByRole('button', { name: /enable light|disable light/i });
-      const selectedId = useVisualStore.getState().selectedLightId;
-      const initialEnabled = useVisualStore.getState().lights.find(l => l.id === selectedId)?.enabled;
+      const selectedId = useLightingStore.getState().selectedLightId;
+      const initialEnabled = useLightingStore.getState().lights.find(l => l.id === selectedId)?.enabled;
 
       await user.click(toggleButton);
 
-      const updatedEnabled = useVisualStore.getState().lights.find(l => l.id === selectedId)?.enabled;
+      const updatedEnabled = useLightingStore.getState().lights.find(l => l.id === selectedId)?.enabled;
       expect(updatedEnabled).toBe(!initialEnabled);
     });
 
@@ -436,8 +437,8 @@ describe('LightEditor', () => {
 
       fireEvent.change(slider, { target: { value: '2.0' } });
 
-      const selectedId = useVisualStore.getState().selectedLightId;
-      const light = useVisualStore.getState().lights.find(l => l.id === selectedId);
+      const selectedId = useLightingStore.getState().selectedLightId;
+      const light = useLightingStore.getState().lights.find(l => l.id === selectedId);
       expect(light?.intensity).toBe(2.0);
     });
 
@@ -446,24 +447,24 @@ describe('LightEditor', () => {
       render(<LightEditor />);
 
       await user.click(screen.getByText('Rotate (E)'));
-      expect(useVisualStore.getState().transformMode).toBe('rotate');
+      expect(useLightingStore.getState().transformMode).toBe('rotate');
     });
 
     it('should switch transform mode to translate', async () => {
       const user = userEvent.setup();
-      useVisualStore.getState().setTransformMode('rotate');
+      useLightingStore.getState().setTransformMode('rotate');
       render(<LightEditor />);
 
       await user.click(screen.getByText('Move (W)'));
-      expect(useVisualStore.getState().transformMode).toBe('translate');
+      expect(useLightingStore.getState().transformMode).toBe('translate');
     });
   });
 
   describe('spot light specific controls', () => {
     beforeEach(() => {
-      const lightId = useVisualStore.getState().addLight('spot');
+      const lightId = useLightingStore.getState().addLight('spot');
       if (lightId) {
-        useVisualStore.getState().selectLight(lightId);
+        useLightingStore.getState().selectLight(lightId);
       }
     });
 
@@ -485,9 +486,9 @@ describe('LightEditor', () => {
 
   describe('directional light specific controls', () => {
     beforeEach(() => {
-      const lightId = useVisualStore.getState().addLight('directional');
+      const lightId = useLightingStore.getState().addLight('directional');
       if (lightId) {
-        useVisualStore.getState().selectLight(lightId);
+        useLightingStore.getState().selectLight(lightId);
       }
     });
 
@@ -504,9 +505,9 @@ describe('LightEditor', () => {
 
   describe('point light specific controls', () => {
     beforeEach(() => {
-      const lightId = useVisualStore.getState().addLight('point');
+      const lightId = useLightingStore.getState().addLight('point');
       if (lightId) {
-        useVisualStore.getState().selectLight(lightId);
+        useLightingStore.getState().selectLight(lightId);
       }
     });
 

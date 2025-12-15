@@ -6,8 +6,8 @@
 import { Slider } from '@/components/ui/Slider';
 import {
   DEFAULT_EDGE_THICKNESS,
-  useVisualStore
-} from '@/stores/visualStore';
+} from '@/stores/defaults/visualDefaults';
+import { useAppearanceStore } from '@/stores/appearanceStore';
 import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { EdgeMaterialControls } from './EdgeMaterialControls';
@@ -25,7 +25,7 @@ export const EdgeControls: React.FC<EdgesControlsProps> = React.memo(({
     edgeThickness,
     setEdgeColor,
     setEdgeThickness,
-  } = useVisualStore(
+  } = useAppearanceStore(
     useShallow((state) => ({
       edgeColor: state.edgeColor,
       edgeThickness: state.edgeThickness,

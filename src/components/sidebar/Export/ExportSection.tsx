@@ -5,8 +5,8 @@
 
 import { Section } from '@/components/ui/Section';
 import React from 'react';
-import { ExportButton } from './ExportButton';
-import { ShareButton } from './ShareButton';
+import { ExportButton } from '@/components/controls/ExportButton';
+import { ShareButton } from '@/components/controls/ShareButton';
 
 export interface ExportSectionProps {
   defaultOpen?: boolean;

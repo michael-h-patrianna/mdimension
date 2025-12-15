@@ -35,7 +35,8 @@ import { RENDER_LAYERS } from '@/lib/rendering/layers';
 import { useProjectionStore } from '@/stores/projectionStore';
 import { useRotationStore } from '@/stores/rotationStore';
 import { useTransformStore } from '@/stores/transformStore';
-import { useVisualStore } from '@/stores/visualStore';
+import { useAppearanceStore } from '@/stores/appearanceStore';
+import { useLightingStore } from '@/stores/lightingStore';
 import { TubeWireframe } from '../TubeWireframe';
 import {
   buildEdgeFragmentShader,
@@ -368,8 +369,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     edgeRoughness,
     faceColor,
     shaderSettings,
-    shadowEnabled,
-  } = useVisualStore(
+  } = useAppearanceStore(
     useShallow((state) => ({
       edgesVisible: state.edgesVisible,
       facesVisible: state.facesVisible,
@@ -379,9 +379,10 @@ export const PolytopeScene = React.memo(function PolytopeScene({
       edgeRoughness: state.edgeRoughness,
       faceColor: state.faceColor,
       shaderSettings: state.shaderSettings,
-      shadowEnabled: state.shadowEnabled,
     }))
   );
+
+  const shadowEnabled = useLightingStore((state) => state.shadowEnabled);
 
   const surfaceSettings = shaderSettings.surface;
   // Use TubeWireframe for thick lines (>1), native lineSegments for thin lines (1)
@@ -524,29 +525,31 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     const projectionType = useProjectionStore.getState().type;
 
     // Read lighting and color settings from store
-    const visualState = useVisualStore.getState();
-    const lightEnabled = visualState.lightEnabled;
-    const lightColor = visualState.lightColor;
-    const lightHorizontalAngle = visualState.lightHorizontalAngle;
-    const lightVerticalAngle = visualState.lightVerticalAngle;
-    const lightStrength = visualState.lightStrength ?? 1.0;
-    const ambientIntensity = visualState.ambientIntensity;
-    const ambientColor = visualState.ambientColor;
-    const diffuseIntensity = visualState.diffuseIntensity;
-    const specularIntensity = visualState.specularIntensity;
-    const shininess = visualState.shininess;
-    const specularColor = visualState.specularColor;
-    const fresnelEnabled = visualState.shaderSettings.surface.fresnelEnabled;
-    const fresnelIntensity = visualState.fresnelIntensity;
-    const rimColor = visualState.edgeColor;
+    const appearanceState = useAppearanceStore.getState();
+    const lightingState = useLightingStore.getState();
+    
+    const lightEnabled = lightingState.lightEnabled;
+    const lightColor = lightingState.lightColor;
+    const lightHorizontalAngle = lightingState.lightHorizontalAngle;
+    const lightVerticalAngle = lightingState.lightVerticalAngle;
+    const lightStrength = lightingState.lightStrength ?? 1.0;
+    const ambientIntensity = lightingState.ambientIntensity;
+    const ambientColor = lightingState.ambientColor;
+    const diffuseIntensity = lightingState.diffuseIntensity;
+    const specularIntensity = lightingState.specularIntensity;
+    const shininess = lightingState.shininess;
+    const specularColor = lightingState.specularColor;
+    const fresnelEnabled = appearanceState.shaderSettings.surface.fresnelEnabled;
+    const fresnelIntensity = appearanceState.fresnelIntensity;
+    const rimColor = appearanceState.edgeColor;
 
     // Read advanced color system state
-    const colorAlgorithm = visualState.colorAlgorithm;
-    const cosineCoefficients = visualState.cosineCoefficients;
-    const distribution = visualState.distribution;
-    const lchLightness = visualState.lchLightness;
-    const lchChroma = visualState.lchChroma;
-    const multiSourceWeights = visualState.multiSourceWeights;
+    const colorAlgorithm = appearanceState.colorAlgorithm;
+    const cosineCoefficients = appearanceState.cosineCoefficients;
+    const distribution = appearanceState.distribution;
+    const lchLightness = appearanceState.lchLightness;
+    const lchChroma = appearanceState.lchChroma;
+    const multiSourceWeights = appearanceState.multiSourceWeights;
 
     // Calculate light direction from angles
     const lightDirection = anglesToDirection(lightHorizontalAngle, lightVerticalAngle);
@@ -568,8 +571,8 @@ export const PolytopeScene = React.memo(function PolytopeScene({
 
     // Update all materials through mesh refs
     const meshUpdates = [
-      { ref: faceMeshRef, color: visualState.faceColor, cache: cache.faceColor },
-      { ref: edgeMeshRef, color: visualState.edgeColor, cache: cache.edgeColor },
+      { ref: faceMeshRef, color: appearanceState.faceColor, cache: cache.faceColor },
+      { ref: edgeMeshRef, color: appearanceState.edgeColor, cache: cache.edgeColor },
     ];
 
     for (const { ref, color, cache: colorCache } of meshUpdates) {
@@ -618,7 +621,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
             u.uLightDirections && u.uLightColors && u.uLightIntensities &&
             u.uSpotAngles && u.uSpotPenumbras && u.uSpotCosInner && u.uSpotCosOuter &&
             u.uLightRanges && u.uLightDecays) {
-          const lights = visualState.lights;
+          const lights = lightingState.lights;
           const numLights = Math.min(lights.length, MAX_LIGHTS);
           u.uNumLights.value = numLights;
 

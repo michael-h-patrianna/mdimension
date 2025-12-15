@@ -5,7 +5,8 @@ import { exportSceneToPNG, generateTimestampFilename } from '@/lib/export';
 import { generateShareUrl } from '@/lib/url';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useTransformStore } from '@/stores/transformStore';
-import { useVisualStore } from '@/stores/visualStore';
+import { useAppearanceStore } from '@/stores/appearanceStore';
+import { usePostProcessingStore } from '@/stores/postProcessingStore';
 import { PRESETS } from '@/lib/presets';
 import { useToast } from '@/contexts/ToastContext';
 import { useLayoutStore } from '@/stores/layoutStore';
@@ -36,12 +37,12 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
   const dimension = useGeometryStore((state) => state.dimension);
   const objectType = useGeometryStore((state) => state.objectType);
   const uniformScale = useTransformStore((state) => state.uniformScale);
-  const shaderType = useVisualStore((state) => state.shaderType);
-  const shaderSettings = useVisualStore((state) => state.shaderSettings);
-  const edgeColor = useVisualStore((state) => state.edgeColor);
-  const backgroundColor = useVisualStore((state) => state.backgroundColor);
-  const bloomEnabled = useVisualStore((state) => state.bloomEnabled);
-  const bloomIntensity = useVisualStore((state) => state.bloomIntensity);
+  const shaderType = useAppearanceStore((state) => state.shaderType);
+  const shaderSettings = useAppearanceStore((state) => state.shaderSettings);
+  const edgeColor = useAppearanceStore((state) => state.edgeColor);
+  const backgroundColor = useAppearanceStore((state) => state.backgroundColor);
+  const bloomEnabled = usePostProcessingStore((state) => state.bloomEnabled);
+  const bloomIntensity = usePostProcessingStore((state) => state.bloomIntensity);
 
   const handleExport = async () => {
     // Small delay to ensure UI updates if needed

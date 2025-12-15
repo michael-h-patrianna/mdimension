@@ -15,10 +15,11 @@ import { useShallow } from 'zustand/react/shallow';
 import { Slider } from '@/components/ui/Slider';
 import { Switch } from '@/components/ui/Switch';
 import {
-  useVisualStore,
   DEFAULT_AMBIENT_INTENSITY,
   DEFAULT_AMBIENT_COLOR,
-} from '@/stores/visualStore';
+} from '@/stores/defaults/visualDefaults';
+import { useAppearanceStore } from '@/stores/appearanceStore';
+import { useLightingStore } from '@/stores/lightingStore';
 import { LightList } from './LightList';
 import { LightEditor } from './LightEditor';
 
@@ -29,8 +30,9 @@ export interface LightingControlsProps {
 export const LightingControls: React.FC<LightingControlsProps> = React.memo(({
   className = '',
 }) => {
+  const shaderType = useAppearanceStore((state) => state.shaderType);
+
   const {
-    shaderType,
     selectedLightId,
     showLightGizmos,
     ambientIntensity,
@@ -38,9 +40,8 @@ export const LightingControls: React.FC<LightingControlsProps> = React.memo(({
     setShowLightGizmos,
     setAmbientIntensity,
     setAmbientColor,
-  } = useVisualStore(
+  } = useLightingStore(
     useShallow((state) => ({
-      shaderType: state.shaderType,
       selectedLightId: state.selectedLightId,
       showLightGizmos: state.showLightGizmos,
       ambientIntensity: state.ambientIntensity,

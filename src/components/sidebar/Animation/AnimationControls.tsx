@@ -21,8 +21,8 @@ import {
   DEFAULT_ANIMATION_BIAS,
   MAX_ANIMATION_BIAS,
   MIN_ANIMATION_BIAS,
-  useVisualStore,
-} from '@/stores/visualStore';
+} from '@/stores/defaults/visualDefaults';
+import { useUIStore } from '@/stores/uiStore';
 import React, { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -85,8 +85,8 @@ export const AnimationControls: React.FC<AnimationControlsProps> = React.memo(({
   );
 
   // Get animation bias from visual store
-  const animationBias = useVisualStore((state) => state.animationBias);
-  const setAnimationBias = useVisualStore((state) => state.setAnimationBias);
+  const animationBias = useUIStore((state) => state.animationBias);
+  const setAnimationBias = useUIStore((state) => state.setAnimationBias);
 
   // Get all rotation planes for current dimension
   const planes = useMemo(() => getRotationPlanes(dimension), [dimension]);

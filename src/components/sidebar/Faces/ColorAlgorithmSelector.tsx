@@ -9,7 +9,7 @@ import {
   COLOR_ALGORITHM_OPTIONS,
   type ColorAlgorithm,
 } from '@/lib/shaders/palette';
-import { useVisualStore } from '@/stores/visualStore';
+import { useAppearanceStore } from '@/stores/appearanceStore';
 import React from 'react';
 
 export interface ColorAlgorithmSelectorProps {
@@ -19,8 +19,8 @@ export interface ColorAlgorithmSelectorProps {
 export const ColorAlgorithmSelector: React.FC<ColorAlgorithmSelectorProps> = ({
   className = '',
 }) => {
-  const colorAlgorithm = useVisualStore((state) => state.colorAlgorithm);
-  const setColorAlgorithm = useVisualStore((state) => state.setColorAlgorithm);
+  const colorAlgorithm = useAppearanceStore((state) => state.colorAlgorithm);
+  const setColorAlgorithm = useAppearanceStore((state) => state.setColorAlgorithm);
 
   return (
     <div className={className}>

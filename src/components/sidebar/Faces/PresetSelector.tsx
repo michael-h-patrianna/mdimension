@@ -6,7 +6,7 @@
 
 import { Select } from '@/components/ui/Select';
 import { COSINE_PRESET_OPTIONS } from '@/lib/shaders/palette';
-import { useVisualStore } from '@/stores/visualStore';
+import { useAppearanceStore } from '@/stores/appearanceStore';
 import React, { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -17,7 +17,7 @@ export interface PresetSelectorProps {
 export const PresetSelector: React.FC<PresetSelectorProps> = ({
   className = '',
 }) => {
-  const { cosineCoefficients, setCosineCoefficients } = useVisualStore(
+  const { cosineCoefficients, setCosineCoefficients } = useAppearanceStore(
     useShallow((state) => ({
       cosineCoefficients: state.cosineCoefficients,
       setCosineCoefficients: state.setCosineCoefficients,

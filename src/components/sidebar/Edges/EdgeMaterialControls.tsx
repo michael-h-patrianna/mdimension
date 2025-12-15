@@ -9,8 +9,9 @@ import { Slider } from '@/components/ui/Slider'
 import {
   DEFAULT_EDGE_METALLIC,
   DEFAULT_EDGE_ROUGHNESS,
-  useVisualStore,
-} from '@/stores/visualStore'
+} from '@/stores/defaults/visualDefaults';
+import { useAppearanceStore } from '@/stores/appearanceStore';
+import { useLightingStore } from '@/stores/lightingStore';
 import React from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
@@ -30,19 +31,19 @@ export const EdgeMaterialControls: React.FC<EdgeMaterialControlsProps> = React.m
       edgeThickness,
       edgeMetallic,
       edgeRoughness,
-      lightEnabled,
       setEdgeMetallic,
       setEdgeRoughness,
-    } = useVisualStore(
+    } = useAppearanceStore(
       useShallow((state) => ({
         edgeThickness: state.edgeThickness,
         edgeMetallic: state.edgeMetallic,
         edgeRoughness: state.edgeRoughness,
-        lightEnabled: state.lightEnabled,
         setEdgeMetallic: state.setEdgeMetallic,
         setEdgeRoughness: state.setEdgeRoughness,
       }))
-    )
+    );
+
+    const lightEnabled = useLightingStore((state) => state.lightEnabled);
 
     // Only show when tube rendering is active (thickness > 1) and light is enabled
     if (edgeThickness <= 1 || !lightEnabled) {

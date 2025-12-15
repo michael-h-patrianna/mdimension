@@ -1,16 +1,17 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import { LightingControls } from '@/components/sidebar/Lights/LightingControls';
-import { useVisualStore } from '@/stores/visualStore';
+import { useAppearanceStore } from '@/stores/appearanceStore';
+import { APPEARANCE_INITIAL_STATE } from '@/stores/slices/appearanceSlice';
 
 describe('LightingControls Regression Tests', () => {
   beforeEach(() => {
-    useVisualStore.getState().reset();
+    useAppearanceStore.setState(APPEARANCE_INITIAL_STATE);
   });
 
   it('should not crash when switching from "surface" to "wireframe" (reducing hooks called if not fixed)', () => {
     // Start with surface (hooks are called)
-    useVisualStore.getState().setShaderType('surface');
+    useAppearanceStore.getState().setShaderType('surface');
 
     const { rerender } = render(<LightingControls />);
     // New UI uses "Show Gizmos" instead of "Light On"
@@ -18,7 +19,7 @@ describe('LightingControls Regression Tests', () => {
 
     // Switch to wireframe (hooks should still be called, but return null)
     act(() => {
-        useVisualStore.getState().setShaderType('wireframe');
+        useAppearanceStore.getState().setShaderType('wireframe');
     });
 
     // Force re-render if store update doesn't trigger it automatically (it should, but strictly speaking)
@@ -30,14 +31,14 @@ describe('LightingControls Regression Tests', () => {
 
   it('should not crash when switching from "wireframe" to "surface" (increasing hooks called if not fixed)', () => {
     // Start with wireframe
-    useVisualStore.getState().setShaderType('wireframe');
+    useAppearanceStore.getState().setShaderType('wireframe');
 
     const { rerender } = render(<LightingControls />);
     expect(screen.queryByText('Show Gizmos')).not.toBeInTheDocument();
 
     // Switch to surface
     act(() => {
-        useVisualStore.getState().setShaderType('surface');
+        useAppearanceStore.getState().setShaderType('surface');
     });
 
     rerender(<LightingControls />);

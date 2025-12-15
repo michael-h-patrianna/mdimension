@@ -20,14 +20,14 @@ import { generatePointColors } from '@/lib/geometry/extended/mandelbrot/colors';
  *
  * @param geometry - The geometry object (may or may not be Mandelbrot)
  * @param config - Mandelbrot configuration with color settings
- * @param baseColor - User's vertex color from visualStore
+ * @param baseColor - User's vertex color from appearanceStore
  * @returns Array of hex color strings, or undefined if not a Mandelbrot geometry
  *
  * @example
  * ```tsx
  * const { geometry } = useGeometryGenerator();
  * const mandelbrotConfig = useExtendedObjectStore((state) => state.mandelbrot);
- * const vertexColor = useVisualStore((state) => state.vertexColor);
+ * const vertexColor = useAppearanceStore((state) => state.faceColor); // Using faceColor as base for Mandelbrot
  * const pointColors = useMandelbrotColors(geometry, mandelbrotConfig, vertexColor);
  *
  * <Scene

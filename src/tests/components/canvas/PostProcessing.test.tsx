@@ -2,17 +2,18 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
 import { Canvas } from '@react-three/fiber';
 import { PostProcessing } from '@/components/canvas/environment/PostProcessing';
-import { useVisualStore } from '@/stores/visualStore';
+import { usePostProcessingStore } from '@/stores/postProcessingStore';
+import { POST_PROCESSING_INITIAL_STATE } from '@/stores/slices/postProcessingSlice';
 
 describe('PostProcessing', () => {
   beforeEach(() => {
     // Reset visual store before each test
-    useVisualStore.getState().reset();
+    usePostProcessingStore.setState(POST_PROCESSING_INITIAL_STATE);
   });
 
   it('should return null when bloom is disabled', () => {
     // Ensure bloom is disabled
-    useVisualStore.getState().setBloomEnabled(false);
+    usePostProcessingStore.getState().setBloomEnabled(false);
 
     const { container } = render(
       <Canvas>
@@ -26,7 +27,7 @@ describe('PostProcessing', () => {
 
   it('should render EffectComposer when bloom is enabled', () => {
     // Enable bloom
-    useVisualStore.getState().setBloomEnabled(true);
+    usePostProcessingStore.getState().setBloomEnabled(true);
 
     const { container } = render(
       <Canvas>
@@ -39,7 +40,7 @@ describe('PostProcessing', () => {
   });
 
   it('should render with default bloom settings', () => {
-    useVisualStore.getState().setBloomEnabled(true);
+    usePostProcessingStore.getState().setBloomEnabled(true);
 
     const { container } = render(
       <Canvas>
@@ -51,8 +52,8 @@ describe('PostProcessing', () => {
   });
 
   it('should render with custom bloom intensity', () => {
-    useVisualStore.getState().setBloomEnabled(true);
-    useVisualStore.getState().setBloomIntensity(1.5);
+    usePostProcessingStore.getState().setBloomEnabled(true);
+    usePostProcessingStore.getState().setBloomIntensity(1.5);
 
     const { container } = render(
       <Canvas>
@@ -61,12 +62,12 @@ describe('PostProcessing', () => {
     );
 
     expect(container).toBeTruthy();
-    expect(useVisualStore.getState().bloomIntensity).toBe(1.5);
+    expect(usePostProcessingStore.getState().bloomIntensity).toBe(1.5);
   });
 
   it('should render with custom bloom threshold', () => {
-    useVisualStore.getState().setBloomEnabled(true);
-    useVisualStore.getState().setBloomThreshold(0.5);
+    usePostProcessingStore.getState().setBloomEnabled(true);
+    usePostProcessingStore.getState().setBloomThreshold(0.5);
 
     const { container } = render(
       <Canvas>
@@ -75,12 +76,12 @@ describe('PostProcessing', () => {
     );
 
     expect(container).toBeTruthy();
-    expect(useVisualStore.getState().bloomThreshold).toBe(0.5);
+    expect(usePostProcessingStore.getState().bloomThreshold).toBe(0.5);
   });
 
   it('should render with custom bloom radius', () => {
-    useVisualStore.getState().setBloomEnabled(true);
-    useVisualStore.getState().setBloomRadius(0.7);
+    usePostProcessingStore.getState().setBloomEnabled(true);
+    usePostProcessingStore.getState().setBloomRadius(0.7);
 
     const { container } = render(
       <Canvas>
@@ -89,14 +90,14 @@ describe('PostProcessing', () => {
     );
 
     expect(container).toBeTruthy();
-    expect(useVisualStore.getState().bloomRadius).toBe(0.7);
+    expect(usePostProcessingStore.getState().bloomRadius).toBe(0.7);
   });
 
   it('should render with all bloom parameters customized', () => {
-    useVisualStore.getState().setBloomEnabled(true);
-    useVisualStore.getState().setBloomIntensity(1.8);
-    useVisualStore.getState().setBloomThreshold(0.6);
-    useVisualStore.getState().setBloomRadius(0.3);
+    usePostProcessingStore.getState().setBloomEnabled(true);
+    usePostProcessingStore.getState().setBloomIntensity(1.8);
+    usePostProcessingStore.getState().setBloomThreshold(0.6);
+    usePostProcessingStore.getState().setBloomRadius(0.3);
 
     const { container } = render(
       <Canvas>
@@ -105,7 +106,7 @@ describe('PostProcessing', () => {
     );
 
     expect(container).toBeTruthy();
-    const state = useVisualStore.getState();
+    const state = usePostProcessingStore.getState();
     expect(state.bloomIntensity).toBe(1.8);
     expect(state.bloomThreshold).toBe(0.6);
     expect(state.bloomRadius).toBe(0.3);
@@ -113,7 +114,7 @@ describe('PostProcessing', () => {
 
   it('should respect bloom enabled state changes', () => {
     // Start with bloom enabled
-    useVisualStore.getState().setBloomEnabled(true);
+    usePostProcessingStore.getState().setBloomEnabled(true);
 
     const { container, rerender } = render(
       <Canvas>
@@ -124,7 +125,7 @@ describe('PostProcessing', () => {
     expect(container).toBeTruthy();
 
     // Disable bloom
-    useVisualStore.getState().setBloomEnabled(false);
+    usePostProcessingStore.getState().setBloomEnabled(false);
 
     rerender(
       <Canvas>
@@ -137,32 +138,32 @@ describe('PostProcessing', () => {
   });
 
   it('should clamp bloom intensity to valid range', () => {
-    useVisualStore.getState().setBloomEnabled(true);
+    usePostProcessingStore.getState().setBloomEnabled(true);
 
     // Try to set out of range value
-    useVisualStore.getState().setBloomIntensity(3.5);
+    usePostProcessingStore.getState().setBloomIntensity(3.5);
 
     // Should be clamped to max value (2)
-    expect(useVisualStore.getState().bloomIntensity).toBe(2);
+    expect(usePostProcessingStore.getState().bloomIntensity).toBe(2);
   });
 
   it('should clamp bloom threshold to valid range', () => {
-    useVisualStore.getState().setBloomEnabled(true);
+    usePostProcessingStore.getState().setBloomEnabled(true);
 
     // Try to set out of range value
-    useVisualStore.getState().setBloomThreshold(1.5);
+    usePostProcessingStore.getState().setBloomThreshold(1.5);
 
     // Should be clamped to max value (1)
-    expect(useVisualStore.getState().bloomThreshold).toBe(1);
+    expect(usePostProcessingStore.getState().bloomThreshold).toBe(1);
   });
 
   it('should clamp bloom radius to valid range', () => {
-    useVisualStore.getState().setBloomEnabled(true);
+    usePostProcessingStore.getState().setBloomEnabled(true);
 
     // Try to set out of range value
-    useVisualStore.getState().setBloomRadius(-0.5);
+    usePostProcessingStore.getState().setBloomRadius(-0.5);
 
     // Should be clamped to min value (0)
-    expect(useVisualStore.getState().bloomRadius).toBe(0);
+    expect(usePostProcessingStore.getState().bloomRadius).toBe(0);
   });
 });

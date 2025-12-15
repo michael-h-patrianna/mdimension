@@ -4,14 +4,15 @@ import { Canvas } from '@react-three/fiber';
 import HyperbulbMesh from '@/components/canvas/renderers/Hyperbulb/HyperbulbMesh';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
-import { useVisualStore } from '@/stores/visualStore';
+import { useLightingStore } from '@/stores/lightingStore';
+import { LIGHTING_INITIAL_STATE } from '@/stores/slices/lightingSlice';
 
 describe('HyperbulbMesh', () => {
   beforeEach(() => {
     // Reset stores to default state
     useGeometryStore.setState({ dimension: 4 });
     useExtendedObjectStore.getState().reset();
-    useVisualStore.getState().reset();
+    useLightingStore.setState(LIGHTING_INITIAL_STATE);
 
     // Initialize Mandelbrot config for 4D
     useExtendedObjectStore.getState().initializeMandelbrotForDimension(4);
