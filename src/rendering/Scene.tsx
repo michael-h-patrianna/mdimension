@@ -24,6 +24,7 @@ import { LightGizmoManager } from '@/components/canvas/gizmos/LightGizmoManager'
 import { useEnvironmentStore } from '@/stores/environmentStore'
 import { useUIStore } from '@/stores/uiStore'
 import { useViewportOffset } from '@/hooks/useViewportOffset'
+import { useSmoothResizing } from '@/hooks/useSmoothResizing'
 
 /**
  * Props for the Scene component.
@@ -109,6 +110,9 @@ export const Scene = React.memo(function Scene({
 
   // Handle camera viewport offset for smooth sidebar animations
   useViewportOffset()
+
+  // Handle smooth resizing for browser chrome changes (fullscreen)
+  useSmoothResizing()
 
   return (
     <>

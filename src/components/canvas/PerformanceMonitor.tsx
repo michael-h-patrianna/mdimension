@@ -1,9 +1,10 @@
 import { Tabs } from '@/components/ui/Tabs';
+import { usePanelCollision } from '@/hooks/usePanelCollision';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { usePerformanceMetricsStore } from '@/stores/performanceMetricsStore';
 import { LazyMotion, domMax, m, useMotionValue } from 'motion/react';
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 
 /**
  * Custom Performance Monitor UI
@@ -12,6 +13,7 @@ import { useLayoutEffect, useRef, useState } from 'react';
  * - Reads from usePerformanceMetricsStore (populated by PerformanceStatsCollector)
  * - Pure UI component (no R3F hooks)
  * - Draggable, Expandable
+ * - Smart collision with sidebars/panels (pushes away when UI opens)
  */
 
 // --- Icons (Inline SVGs) ---
@@ -76,49 +78,39 @@ export function PerformanceMonitor() {
   // -- State --
   const [expanded, setExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState<'perf' | 'sys'>('perf');
-  const [expandDirection, setExpandDirection] = useState<'up' | 'down'>('up');
-  const isDraggingRef = useRef(false);
+  const [isDragging, setIsDragging] = useState(false);
+  
+  // -- Dimensions & Positioning --
   const containerRef = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(300); // Default min-width
+  const [height, setHeight] = useState(60); // Default min-height
 
-  const previousHeightRef = useRef(0);
-
-  // Motion value for Y position to allow manual adjustment
+  // Motion values for Position
+  const x = useMotionValue(0);
   const y = useMotionValue(0);
 
-  const toggleExpanded = () => {
-    if (!isDraggingRef.current) {
-      if (!expanded && containerRef.current) {
-        // Before expanding, decide direction based on current position
-        const rect = containerRef.current.getBoundingClientRect();
-        // If the top is in the upper 40% of the screen, force expand down
-        const isNearTop = rect.top < window.innerHeight * 0.4;
-        setExpandDirection(isNearTop ? 'down' : 'up');
-        // Use offsetHeight to capture unscaled layout height
-        previousHeightRef.current = containerRef.current.offsetHeight;
-      } else if (expanded && containerRef.current) {
-        // Before collapsing, capture height
-        previousHeightRef.current = containerRef.current.offsetHeight;
+  // Track size for collision
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setWidth(entry.contentRect.width);
+        setHeight(entry.contentRect.height);
       }
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  // -- Collision Hook --
+  // Pushes the monitor away when UI panels open
+  usePanelCollision(x, y, width, height, isDragging);
+
+  const toggleExpanded = () => {
+    if (!isDragging) {
       setExpanded(!expanded);
     }
   };
-
-  // Adjust Y position after expansion to simulate "expanding downwards" if needed
-  useLayoutEffect(() => {
-    if (containerRef.current) {
-      // Use offsetHeight to capture unscaled layout height
-      const newHeight = containerRef.current.offsetHeight;
-
-      // If we are in "Top Mode" (expanding downwards)
-      // We need to shift Y to compensate for the height change because CSS is anchored at bottom
-      if (expandDirection === 'down') {
-        const delta = newHeight - previousHeightRef.current;
-        y.set(y.get() + delta);
-      }
-
-      previousHeightRef.current = newHeight;
-    }
-  }, [expanded, activeTab, y, expandDirection]); // activeTab also changes height
 
   const fpsColor = getHealthColor(stats.fps, 55, 30);
 
@@ -234,11 +226,7 @@ export function PerformanceMonitor() {
                  <div className="text-xs text-zinc-200 font-mono leading-tight break-words">{stats.gpuName}</div>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                 {/*
-                   Note: maxTextureSize and anisotropy are hard to get without context.
-                   We could add them to the collector if needed, but for now we'll skip or rely on store if added later.
-                   For now, omitting detailed capabilities to keep store simple, or we can assume defaults.
-                 */}
+                 {/* Capabilities can be added here */}
               </div>
            </div>
 
@@ -292,13 +280,14 @@ export function PerformanceMonitor() {
         ref={containerRef}
         drag
         dragMomentum={false}
-        onDragStart={() => { isDraggingRef.current = true; }}
-        onDragEnd={() => { setTimeout(() => { isDraggingRef.current = false; }, 100); }}
-        style={{ y }}
+        // Sync drag with motion values
+        style={{ x, y }} 
+        onDragStart={() => setIsDragging(true)}
+        onDragEnd={() => setTimeout(() => setIsDragging(false), 100)}
         initial={{ scale: 0.95, opacity: 0.9 }}
         animate={{ scale: expanded ? 1 : 0.95, opacity: expanded ? 1 : 0.9 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
-        className={`absolute bottom-4 left-4 z-[9999] pointer-events-auto ${expandDirection === 'down' ? 'origin-top-left' : 'origin-bottom-left'}`}
+        className="absolute bottom-4 left-4 z-[9999] pointer-events-auto origin-bottom-left"
       >
         <div className="
           bg-zinc-950/90 backdrop-blur-xl
