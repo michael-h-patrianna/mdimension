@@ -20,8 +20,9 @@ import { SSRShader, type SSRUniforms } from '@/lib/shaders/postprocessing/SSRSha
 import { TONE_MAPPING_TO_THREE } from '@/lib/shaders/types';
 import { getEffectiveSSRQuality, usePerformanceStore } from '@/stores';
 import { SSR_QUALITY_STEPS, type SSRQuality } from '@/stores/defaults/visualDefaults';
-import { usePostProcessingStore } from '@/stores/postProcessingStore';
 import { useLightingStore } from '@/stores/lightingStore';
+import { usePerformanceMetricsStore } from '@/stores/performanceMetricsStore';
+import { usePostProcessingStore } from '@/stores/postProcessingStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useFrame, useThree } from '@react-three/fiber';
 import { memo, useEffect, useMemo, useRef } from 'react';
@@ -436,7 +437,7 @@ export const PostProcessing = memo(function PostProcessing() {
 
     // Create composer - we'll manually render scene to target, then use TexturePass
     const effectComposer = new EffectComposer(gl);
-    
+
     // Ensure composer's internal render targets use LinearFilter for proper AA sampling
     effectComposer.renderTarget1.texture.minFilter = THREE.LinearFilter;
     effectComposer.renderTarget1.texture.magFilter = THREE.LinearFilter;
@@ -626,7 +627,7 @@ export const PostProcessing = memo(function PostProcessing() {
     // Read current enabled states from store to avoid stale closures
     const ppState = usePostProcessingStore.getState();
     const uiState = useUIStore.getState();
-    
+
     const currentBloomEnabled = ppState.bloomEnabled;
     const currentBokehEnabled = ppState.bokehEnabled;
     const currentShowDepthBuffer = uiState.showDepthBuffer;
@@ -734,6 +735,10 @@ export const PostProcessing = memo(function PostProcessing() {
       }
     });
 
+    // Reset stats JUST before main scene render to get accurate counts
+    // This excludes the object-only depth pre-pass from the metrics
+    gl.info.reset();
+
     try {
       gl.render(scene, camera);
     } finally {
@@ -746,6 +751,20 @@ export const PostProcessing = memo(function PostProcessing() {
       gl.autoClear = currentAutoClear;
       gl.setClearColor(currentClearColor, currentClearAlpha);
     }
+
+    // Capture scene-only GPU stats IMMEDIATELY after main scene render
+    // BEFORE post-processing which adds full-screen quad passes
+    // This gives accurate geometry counts (faces, edges, vertices) without
+    // inflation from bloom/SSR/bokeh passes which each add full-screen quads
+    const sceneRenderStats = gl.info.render;
+    usePerformanceMetricsStore.getState().updateMetrics({
+      sceneGpu: {
+        calls: sceneRenderStats.calls,
+        triangles: sceneRenderStats.triangles,
+        points: sceneRenderStats.points,
+        lines: sceneRenderStats.lines,
+      },
+    });
 
     // Use object-only depth for all effects (excludes walls, gizmos)
     // Only available when renderObjectDepth is true (effects are enabled)

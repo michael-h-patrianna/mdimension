@@ -1,13 +1,13 @@
-import { useRef, useState, useLayoutEffect } from 'react';
-import { m, LazyMotion, domMax, useMotionValue } from 'motion/react';
+import { Tabs } from '@/components/ui/Tabs';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
-import { Tabs } from '@/components/ui/Tabs';
 import { usePerformanceMetricsStore } from '@/stores/performanceMetricsStore';
+import { LazyMotion, domMax, m, useMotionValue } from 'motion/react';
+import { useLayoutEffect, useRef, useState } from 'react';
 
 /**
  * Custom Performance Monitor UI
- * 
+ *
  * Features:
  * - Reads from usePerformanceMetricsStore (populated by PerformanceStatsCollector)
  * - Pure UI component (no R3F hooks)
@@ -66,19 +66,19 @@ export function PerformanceMonitor() {
   const objectType = useGeometryStore(state => state.objectType);
   const mandelbulbConfig = useExtendedObjectStore(state => state.mandelbrot);
   const mandelboxConfig = useExtendedObjectStore(state => state.mandelbox);
-  
+
   // -- Perf Stats --
   const stats = usePerformanceMetricsStore();
-  
+
   // -- State --
   const [expanded, setExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState<'perf' | 'sys'>('perf');
   const [expandDirection, setExpandDirection] = useState<'up' | 'down'>('up');
   const isDraggingRef = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  
+
   const previousHeightRef = useRef(0);
-  
+
   // Motion value for Y position to allow manual adjustment
   const y = useMotionValue(0);
 
@@ -105,24 +105,27 @@ export function PerformanceMonitor() {
     if (containerRef.current) {
       // Use offsetHeight to capture unscaled layout height
       const newHeight = containerRef.current.offsetHeight;
-      
+
       // If we are in "Top Mode" (expanding downwards)
       // We need to shift Y to compensate for the height change because CSS is anchored at bottom
       if (expandDirection === 'down') {
         const delta = newHeight - previousHeightRef.current;
         y.set(y.get() + delta);
       }
-      
+
       previousHeightRef.current = newHeight;
     }
   }, [expanded, activeTab, y, expandDirection]); // activeTab also changes height
 
   const fpsColor = getHealthColor(stats.fps, 55, 30);
-  const vertexCount = stats.gpu.triangles * 3 + stats.gpu.lines * 2 + stats.gpu.points;
+
+  // Use scene-only stats for accurate geometry counts (excludes post-processing passes)
+  const sceneStats = stats.sceneGpu;
+  const vertexCount = sceneStats.triangles * 3 + sceneStats.lines * 2 + sceneStats.points;
 
   // -- Raymarching Info --
   const isRaymarching = ['mandelbrot', 'mandelbox', 'menger', 'hypercube'].includes(objectType);
-  const raySteps = objectType === 'mandelbrot' ? mandelbulbConfig.maxIterations : 
+  const raySteps = objectType === 'mandelbrot' ? mandelbulbConfig.maxIterations :
                    objectType === 'mandelbox' ? mandelboxConfig.maxIterations : 0;
 
   // -- Tab Content --
@@ -131,9 +134,9 @@ export function PerformanceMonitor() {
       id: 'perf',
       label: 'Performance',
       content: (
-        <m.div 
-          initial={{ opacity: 0, x: -10 }} 
-          animate={{ opacity: 1, x: 0 }} 
+        <m.div
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.2 }}
           className="space-y-5"
         >
@@ -145,10 +148,10 @@ export function PerformanceMonitor() {
             </div>
             <div className="h-12 w-full flex items-end gap-0.5 opacity-80">
               {stats.history.fps.map((v, i) => (
-                <div 
-                  key={i} 
+                <div
+                  key={i}
                   className="w-full bg-current rounded-t-[1px] transition-all duration-300"
-                  style={{ 
+                  style={{
                     height: `${Math.min((v / 70) * 100, 100)}%`,
                     color: v < 30 ? '#ef4444' : v < 55 ? '#f59e0b' : '#10b981'
                   }}
@@ -158,14 +161,14 @@ export function PerformanceMonitor() {
           </div>
 
           <div className="grid grid-cols-2 gap-x-6 gap-y-5">
-            {/* GPU Section */}
+            {/* GPU Section - Shows scene geometry only (excludes post-processing) */}
             <div className="space-y-3">
-              <SectionHeader icon={<Icons.Zap />} label="GPU Pipeline" />
+              <SectionHeader icon={<Icons.Zap />} label="Scene Geometry" />
               <div className="space-y-2.5">
-                <StatItem label="Draw Calls" value={stats.gpu.calls} />
-                <StatItem label="Triangles" value={formatMetric(stats.gpu.triangles)} />
+                <StatItem label="Draw Calls" value={sceneStats.calls} />
+                <StatItem label="Triangles" value={formatMetric(sceneStats.triangles)} />
                 <StatItem label="Vertices" value={formatMetric(vertexCount)} />
-                {stats.gpu.lines > 0 && <StatItem label="Lines" value={formatMetric(stats.gpu.lines)} />}
+                {sceneStats.lines > 0 && <StatItem label="Lines" value={formatMetric(sceneStats.lines)} />}
               </div>
             </div>
 
@@ -211,9 +214,9 @@ export function PerformanceMonitor() {
       id: 'sys',
       label: 'System',
       content: (
-        <m.div 
-          initial={{ opacity: 0, x: 10 }} 
-          animate={{ opacity: 1, x: 0 }} 
+        <m.div
+          initial={{ opacity: 0, x: 10 }}
+          animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.2 }}
           className="space-y-5"
         >
@@ -224,7 +227,7 @@ export function PerformanceMonitor() {
                  <div className="text-xs text-zinc-200 font-mono leading-tight break-words">{stats.gpuName}</div>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                 {/* 
+                 {/*
                    Note: maxTextureSize and anisotropy are hard to get without context.
                    We could add them to the collector if needed, but for now we'll skip or rely on store if added later.
                    For now, omitting detailed capabilities to keep store simple, or we can assume defaults.
@@ -291,15 +294,15 @@ export function PerformanceMonitor() {
         className={`absolute bottom-4 left-4 z-[9999] pointer-events-auto ${expandDirection === 'down' ? 'origin-top-left' : 'origin-bottom-left'}`}
       >
         <div className="
-          bg-zinc-950/90 backdrop-blur-xl 
-          border border-white/10 
-          rounded-xl overflow-hidden shadow-2xl 
+          bg-zinc-950/90 backdrop-blur-xl
+          border border-white/10
+          rounded-xl overflow-hidden shadow-2xl
           text-xs font-mono text-zinc-400
           min-w-[300px] flex flex-col
         ">
-          
+
           {/* --- Header --- */}
-          <div 
+          <div
             className="flex items-center justify-between p-3.5 bg-white/5 cursor-pointer hover:bg-white/10 transition-colors border-b border-white/5"
             onClick={toggleExpanded}
           >
@@ -308,7 +311,7 @@ export function PerformanceMonitor() {
               <div className={`flex items-center justify-center w-2.5 h-2.5 rounded-full ${fpsColor.bg}`}>
                 <div className={`w-2 h-2 rounded-full ${fpsColor.bgPulse} animate-pulse`} />
               </div>
-              
+
               {/* FPS Big Number */}
               <div className="flex items-baseline gap-2">
                 <span className={`text-2xl font-bold ${fpsColor.text} tracking-tighter leading-none`}>
@@ -319,7 +322,7 @@ export function PerformanceMonitor() {
                 </div>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-3 text-zinc-500">
                <span className="text-xs font-medium">{stats.frameTime}ms</span>
               {expanded ? <Icons.ChevronDown className="opacity-70" /> : <Icons.ChevronUp className="opacity-70" />}
@@ -329,7 +332,7 @@ export function PerformanceMonitor() {
           {/* --- Expanded View --- */}
           {expanded && (
             <div className="animate-in slide-in-from-top-2 fade-in duration-200">
-              <Tabs 
+              <Tabs
                 variant="minimal"
                 fullWidth
                 value={activeTab}

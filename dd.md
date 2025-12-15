@@ -145,3 +145,21 @@ it is not displayed at all after:
 - user switches full screen mode off
 
 note: the feature itself is working and in the sidebar performance optimization section you can see the sidebar control updating. it is just that the RefinementIndicator is not displayed in all cases when it should be displayed.
+
+
+3d
+vertices: 41
+triangles: 171
+lines: 24
+
+4d
+vertices: 113
+triangles: 467
+lines: 64
+
+5d
+vertices: 337
+triangles: 1.3k
+lines: 160
+
+not in view

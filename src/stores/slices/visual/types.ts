@@ -1,0 +1,107 @@
+import type {
+  ColorAlgorithm,
+  CosineCoefficients,
+  DistributionSettings,
+  MultiSourceWeights,
+} from '@/lib/shaders/palette'
+import type { AllShaderSettings, ShaderType, SurfaceSettings, WireframeSettings } from '@/lib/shaders/types'
+import { VisualPreset } from '@/stores/defaults/visualDefaults'
+
+// ============================================================================
+// Color Slice
+// ============================================================================
+
+export interface ColorSliceState {
+  // Basic
+  edgeColor: string
+  faceColor: string
+  backgroundColor: string
+  perDimensionColorEnabled: boolean
+
+  // Advanced
+  colorAlgorithm: ColorAlgorithm
+  cosineCoefficients: CosineCoefficients
+  distribution: DistributionSettings
+  multiSourceWeights: MultiSourceWeights
+  lchLightness: number
+  lchChroma: number
+}
+
+export interface ColorSliceActions {
+  setEdgeColor: (color: string) => void
+  setFaceColor: (color: string) => void
+  setBackgroundColor: (color: string) => void
+  setPerDimensionColorEnabled: (enabled: boolean) => void
+
+  setColorAlgorithm: (algorithm: ColorAlgorithm) => void
+  setCosineCoefficients: (coefficients: CosineCoefficients) => void
+  setCosineCoefficient: (key: 'a' | 'b' | 'c' | 'd', index: number, value: number) => void
+  setDistribution: (settings: Partial<DistributionSettings>) => void
+  setMultiSourceWeights: (weights: Partial<MultiSourceWeights>) => void
+  setLchLightness: (lightness: number) => void
+  setLchChroma: (chroma: number) => void
+  
+  applyPreset: (preset: VisualPreset) => void
+}
+
+export type ColorSlice = ColorSliceState & ColorSliceActions
+
+// ============================================================================
+// Material Slice
+// ============================================================================
+
+export interface MaterialSliceState {
+  edgeThickness: number
+  edgeMetallic: number
+  edgeRoughness: number
+  faceOpacity: number
+}
+
+export interface MaterialSliceActions {
+  setEdgeThickness: (thickness: number) => void
+  setEdgeMetallic: (metallic: number) => void
+  setEdgeRoughness: (roughness: number) => void
+  setFaceOpacity: (opacity: number) => void
+}
+
+export type MaterialSlice = MaterialSliceState & MaterialSliceActions
+
+// ============================================================================
+// Render Slice
+// ============================================================================
+
+export interface RenderSliceState {
+  // Mode Toggles
+  edgesVisible: boolean
+  facesVisible: boolean
+
+  // Shader System
+  shaderType: ShaderType
+  shaderSettings: AllShaderSettings
+
+  // Depth Effects
+  depthAttenuationEnabled: boolean
+  depthAttenuationStrength: number
+  fresnelEnabled: boolean
+  fresnelIntensity: number
+}
+
+export interface RenderSliceActions {
+  setEdgesVisible: (visible: boolean) => void
+  setFacesVisible: (visible: boolean) => void
+  setShaderType: (shaderType: ShaderType) => void
+  setWireframeSettings: (settings: Partial<WireframeSettings>) => void
+  setSurfaceSettings: (settings: Partial<SurfaceSettings>) => void
+  setDepthAttenuationEnabled: (enabled: boolean) => void
+  setDepthAttenuationStrength: (strength: number) => void
+  setFresnelEnabled: (enabled: boolean) => void
+  setFresnelIntensity: (intensity: number) => void
+}
+
+export type RenderSlice = RenderSliceState & RenderSliceActions
+
+// ============================================================================
+// Combined Appearance Slice
+// ============================================================================
+
+export type AppearanceSlice = ColorSlice & MaterialSlice & RenderSlice
