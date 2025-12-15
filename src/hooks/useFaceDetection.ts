@@ -11,9 +11,12 @@ import { useMemo } from 'react'
  */
 export function useFaceDetection(geometry: NdGeometry, objectType: ObjectType) {
   return useMemo(() => {
-    // Polytopes, root-system, and clifford-torus support face detection
+    // Polytopes, root-system, clifford-torus, and nested-torus support face detection
     const supportsFaces =
-      isPolytopeType(objectType) || objectType === 'root-system' || objectType === 'clifford-torus'
+      isPolytopeType(objectType) ||
+      objectType === 'root-system' ||
+      objectType === 'clifford-torus' ||
+      objectType === 'nested-torus'
     if (!supportsFaces) {
       return []
     }
@@ -23,8 +26,11 @@ export function useFaceDetection(geometry: NdGeometry, objectType: ObjectType) {
       return []
     }
 
-    // Clifford-torus needs metadata for resolution info
-    if (objectType === 'clifford-torus' && !geometry.metadata?.properties) {
+    // Clifford-torus and nested-torus need metadata for resolution info
+    if (
+      (objectType === 'clifford-torus' || objectType === 'nested-torus') &&
+      !geometry.metadata?.properties
+    ) {
       return []
     }
 

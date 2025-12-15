@@ -15,7 +15,7 @@
 
 import type { VectorND } from '@/lib/math/types'
 import type { NdGeometry } from '../../types'
-import type { CliffordTorusConfig } from '../types'
+import type { NestedTorusConfig } from '../types'
 
 // ============================================================================
 // 4D Hopf Fibration (S³ → S²)
@@ -41,7 +41,7 @@ import type { CliffordTorusConfig } from '../types'
  * @returns Array of 4D points on the Hopf torus
  */
 export function generateHopfTorus4DPoints(
-  config: CliffordTorusConfig,
+  config: NestedTorusConfig,
   etaOverride?: number
 ): VectorND[] {
   const { radius, resolutionXi1, resolutionXi2 } = config
@@ -166,7 +166,7 @@ export function buildHopfTorus8DFaces(resolutionXi1: number, resolutionXi2: numb
  * @param config - Clifford torus configuration
  * @returns NdGeometry representing the 4D Hopf torus
  */
-export function generateNestedHopfTorus4D(config: CliffordTorusConfig): NdGeometry {
+export function generateNestedHopfTorus4D(config: NestedTorusConfig): NdGeometry {
   const { radius, resolutionXi1, resolutionXi2, showNestedTori, numberOfTori, edgeMode, eta } =
     config
 
@@ -244,7 +244,7 @@ export function generateNestedHopfTorus4D(config: CliffordTorusConfig): NdGeomet
  * @param config - Clifford torus configuration
  * @returns Array of 5D points on the twisted 2-torus
  */
-export function generateTorus5DPoints(config: CliffordTorusConfig): VectorND[] {
+export function generateTorus5DPoints(config: NestedTorusConfig): VectorND[] {
   const { radius, resolutionXi1, resolutionXi2, eta } = config
 
   const points: VectorND[] = []
@@ -308,7 +308,7 @@ export function buildTorus5DFaces(resolutionXi1: number, resolutionXi2: number):
  * @param config - Clifford torus configuration
  * @returns NdGeometry representing the 5D twisted 2-torus
  */
-export function generateNestedTorus5D(config: CliffordTorusConfig): NdGeometry {
+export function generateNestedTorus5D(config: NestedTorusConfig): NdGeometry {
   const { radius, resolutionXi1, resolutionXi2, edgeMode, eta } = config
 
   const vertices = generateTorus5DPoints(config)
@@ -374,7 +374,7 @@ export function generateNestedTorus5D(config: CliffordTorusConfig): NdGeometry {
  * @param config - Clifford torus configuration
  * @returns Array of 6D points on the 3-torus
  */
-export function generateTorus6DPoints(config: CliffordTorusConfig): VectorND[] {
+export function generateTorus6DPoints(config: NestedTorusConfig): VectorND[] {
   const { radius, resolutionXi1, resolutionXi2, eta } = config
 
   const points: VectorND[] = []
@@ -456,7 +456,7 @@ export function buildTorus6DFaces(resolutionXi1: number, resolutionXi2: number):
  * @param config - Clifford torus configuration
  * @returns NdGeometry representing the 6D 3-torus
  */
-export function generateNestedTorus6D(config: CliffordTorusConfig): NdGeometry {
+export function generateNestedTorus6D(config: NestedTorusConfig): NdGeometry {
   const { radius, resolutionXi1, resolutionXi2, edgeMode, eta } = config
 
   const vertices = generateTorus6DPoints(config)
@@ -509,7 +509,7 @@ export function generateNestedTorus6D(config: CliffordTorusConfig): NdGeometry {
  * @param config - Clifford torus configuration
  * @returns Array of 7D points on the twisted 3-torus
  */
-export function generateTorus7DPoints(config: CliffordTorusConfig): VectorND[] {
+export function generateTorus7DPoints(config: NestedTorusConfig): VectorND[] {
   const { radius, resolutionXi1, resolutionXi2, eta } = config
 
   const points: VectorND[] = []
@@ -582,7 +582,7 @@ export function buildTorus7DFaces(resolutionXi1: number, resolutionXi2: number):
  * @param config - Clifford torus configuration
  * @returns NdGeometry representing the 7D twisted 3-torus
  */
-export function generateNestedTorus7D(config: CliffordTorusConfig): NdGeometry {
+export function generateNestedTorus7D(config: NestedTorusConfig): NdGeometry {
   const { radius, resolutionXi1, resolutionXi2, edgeMode, eta } = config
 
   const vertices = generateTorus7DPoints(config)
@@ -652,7 +652,7 @@ export function generateNestedTorus7D(config: CliffordTorusConfig): NdGeometry {
  * @param config - Clifford torus configuration
  * @returns Array of 8D points on the Hopf torus
  */
-export function generateHopfTorus8DPoints(config: CliffordTorusConfig): VectorND[] {
+export function generateHopfTorus8DPoints(config: NestedTorusConfig): VectorND[] {
   // Use the same resolution parameters as 4D
   const { radius, resolutionXi1, resolutionXi2, eta } = config
 
@@ -723,7 +723,7 @@ export function buildHopfTorus8DEdges(
  * @param config - Clifford torus configuration
  * @returns NdGeometry representing the 8D Hopf torus
  */
-export function generateNestedHopfTorus8D(config: CliffordTorusConfig): NdGeometry {
+export function generateNestedHopfTorus8D(config: NestedTorusConfig): NdGeometry {
   const { radius, resolutionXi1, resolutionXi2, edgeMode, eta } = config
 
   const vertices = generateHopfTorus8DPoints(config)
@@ -782,7 +782,7 @@ export function generateNestedHopfTorus8D(config: CliffordTorusConfig): NdGeomet
  * @param config - Clifford torus configuration
  * @returns Array of 9D points on the twisted 4-torus
  */
-export function generateTorus9DPoints(config: CliffordTorusConfig): VectorND[] {
+export function generateTorus9DPoints(config: NestedTorusConfig): VectorND[] {
   const { radius, resolutionXi1, resolutionXi2, eta } = config
 
   const points: VectorND[] = []
@@ -867,7 +867,7 @@ export function buildTorus9DFaces(resolutionXi1: number, resolutionXi2: number):
  * @param config - Clifford torus configuration
  * @returns NdGeometry representing the 9D twisted 4-torus
  */
-export function generateNestedTorus9D(config: CliffordTorusConfig): NdGeometry {
+export function generateNestedTorus9D(config: NestedTorusConfig): NdGeometry {
   const { radius, resolutionXi1, resolutionXi2, edgeMode, eta } = config
 
   const vertices = generateTorus9DPoints(config)
@@ -921,7 +921,7 @@ export function generateNestedTorus9D(config: CliffordTorusConfig): NdGeometry {
  * @param config - Clifford torus configuration
  * @returns Array of 10D points on the 5-torus
  */
-export function generateTorus10DPoints(config: CliffordTorusConfig): VectorND[] {
+export function generateTorus10DPoints(config: NestedTorusConfig): VectorND[] {
   const { radius, resolutionXi1, resolutionXi2, eta } = config
 
   const points: VectorND[] = []
@@ -1001,7 +1001,7 @@ export function buildTorus10DFaces(resolutionXi1: number, resolutionXi2: number)
  * @param config - Clifford torus configuration
  * @returns NdGeometry representing the 10D 5-torus
  */
-export function generateNestedTorus10D(config: CliffordTorusConfig): NdGeometry {
+export function generateNestedTorus10D(config: NestedTorusConfig): NdGeometry {
   const { radius, resolutionXi1, resolutionXi2, edgeMode, eta } = config
 
   const vertices = generateTorus10DPoints(config)
@@ -1052,7 +1052,7 @@ export function generateNestedTorus10D(config: CliffordTorusConfig): NdGeometry 
  * @param config - Clifford torus configuration
  * @returns Array of 11D points on the twisted 5-torus
  */
-export function generateTorus11DPoints(config: CliffordTorusConfig): VectorND[] {
+export function generateTorus11DPoints(config: NestedTorusConfig): VectorND[] {
   const { radius, resolutionXi1, resolutionXi2, eta } = config
 
   const points: VectorND[] = []
@@ -1134,7 +1134,7 @@ export function buildTorus11DFaces(resolutionXi1: number, resolutionXi2: number)
  * @param config - Clifford torus configuration
  * @returns NdGeometry representing the 11D twisted 5-torus
  */
-export function generateNestedTorus11D(config: CliffordTorusConfig): NdGeometry {
+export function generateNestedTorus11D(config: NestedTorusConfig): NdGeometry {
   const { radius, resolutionXi1, resolutionXi2, edgeMode, eta } = config
 
   const vertices = generateTorus11DPoints(config)

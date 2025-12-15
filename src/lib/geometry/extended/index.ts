@@ -84,6 +84,7 @@ import type { NdGeometry, ObjectType } from '../types'
 import { isPolytopeType } from '../types'
 import { generateCliffordTorus } from './clifford-torus'
 import { generateMandelbrot } from './mandelbrot'
+import { generateNestedTorus } from './nested-torus'
 import { generateRootSystem } from './root-system'
 import type { ExtendedObjectParams } from './types'
 import { DEFAULT_EXTENDED_OBJECT_PARAMS } from './types'
@@ -132,6 +133,9 @@ export function generateExtendedObject(
 
     case 'clifford-torus':
       return generateCliffordTorus(dimension, params.cliffordTorus)
+
+    case 'nested-torus':
+      return generateNestedTorus(dimension, params.nestedTorus)
 
     case 'mandelbrot':
       return generateMandelbrot(

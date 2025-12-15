@@ -241,6 +241,7 @@ function getTypeName(type: ObjectType): string {
     'cross-polytope': 'Cross-Polytope',
     'root-system': 'Root System',
     'clifford-torus': 'Clifford Torus',
+    'nested-torus': 'Nested Torus',
     mandelbrot: 'Mandelbulb',
     mandelbox: 'Mandelbox',
     menger: 'Menger Sponge',
@@ -295,8 +296,15 @@ export function getAvailableTypes(dimension?: number): Array<{
     {
       type: 'clifford-torus',
       name: 'Clifford Torus',
-      description: 'Torus variants (3D: torus surface, 4D+: Clifford torus)',
+      description: 'Flat torus with independent circles (3D: torus surface, 4D+: Clifford torus)',
       minDimension: 3,
+    },
+    {
+      type: 'nested-torus',
+      name: 'Nested Torus',
+      description: 'Coupled tori with Hopf-like structure (4D: Hopf fibration, 5D-11D: n-tori)',
+      minDimension: 4,
+      maxDimension: 11,
     },
     {
       type: 'mandelbrot',

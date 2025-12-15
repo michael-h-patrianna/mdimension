@@ -1,6 +1,6 @@
 /**
  * PostProcessing Section Component
- * Section wrapper for post-processing controls (bloom, bokeh, tone mapping, SSR, refraction)
+ * Section wrapper for post-processing controls (bloom, bokeh, tone mapping, SSR, refraction, misc)
  */
 
 import { Section } from '@/components/ui/Section';
@@ -11,6 +11,7 @@ import { BokehControls } from './BokehControls';
 import { ToneMappingControls } from './ToneMappingControls';
 import { SSRControls } from './SSRControls';
 import { RefractionControls } from './RefractionControls';
+import { MiscControls } from './MiscControls';
 
 export interface PostProcessingSectionProps {
   defaultOpen?: boolean;
@@ -53,6 +54,11 @@ export const PostProcessingSection: React.FC<PostProcessingSectionProps> = ({
             id: 'refraction',
             label: 'Refract',
             content: <RefractionControls />,
+          },
+          {
+            id: 'misc',
+            label: 'Misc',
+            content: <MiscControls />,
           },
         ]}
         data-testid="postprocessing-tabs"

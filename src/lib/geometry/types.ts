@@ -18,6 +18,7 @@ export type PolytopeType = 'hypercube' | 'simplex' | 'cross-polytope'
 export type ExtendedObjectType =
   | 'root-system'
   | 'clifford-torus'
+  | 'nested-torus'
   | 'mandelbrot'
   | 'mandelbox'
   | 'menger'
@@ -45,6 +46,7 @@ export function isExtendedObjectType(type: string): type is ExtendedObjectType {
   return (
     type === 'root-system' ||
     type === 'clifford-torus' ||
+    type === 'nested-torus' ||
     type === 'mandelbrot' ||
     type === 'mandelbox' ||
     type === 'menger'

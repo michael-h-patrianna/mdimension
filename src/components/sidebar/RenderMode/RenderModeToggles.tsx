@@ -18,11 +18,11 @@
  * @see docs/prd/render-mode-toggles.md
  */
 
+import { ToggleButton } from '@/components/ui/ToggleButton';
+import { useGeometryStore } from '@/stores/geometryStore';
+import { useVisualStore } from '@/stores/visualStore';
 import React, { useEffect, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { ToggleButton } from '@/components/ui/ToggleButton';
-import { useVisualStore } from '@/stores/visualStore';
-import { useGeometryStore } from '@/stores/geometryStore';
 
 /**
  * Props for RenderModeToggles component
@@ -34,7 +34,7 @@ export interface RenderModeTogglesProps {
 
 /**
  * Checks if an object type supports face rendering
- * Polytopes (hypercube, simplex, cross-polytope), root-system, clifford-torus,
+ * Polytopes (hypercube, simplex, cross-polytope), root-system, clifford-torus, nested-torus,
  * mandelbrot (via raymarching), mandelbox (via raymarching), and menger (via raymarching) support faces
  * @param objectType - The current object type
  * @returns true if faces can be rendered for this object type
@@ -47,7 +47,8 @@ function canRenderFaces(objectType: string): boolean {
     objectType === 'mandelbrot' ||
     objectType === 'mandelbox' ||
     objectType === 'menger' ||
-    objectType === 'clifford-torus'
+    objectType === 'clifford-torus' ||
+    objectType === 'nested-torus'
   );
 }
 

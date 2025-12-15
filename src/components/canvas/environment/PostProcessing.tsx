@@ -22,6 +22,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { TexturePass } from 'three/examples/jsm/postprocessing/TexturePass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
 import { useVisualStore, SSR_QUALITY_STEPS, type SSRQuality } from '@/stores/visualStore';
 import { usePerformanceStore, getEffectiveSSRQuality } from '@/stores';
 import { TONE_MAPPING_TO_THREE } from '@/lib/shaders/types';
@@ -313,6 +314,7 @@ export const PostProcessing = memo(function PostProcessing() {
     showDepthBuffer,
     ssrEnabled,
     refractionEnabled,
+    fxaaEnabled,
     toneMappingEnabled,
     toneMappingAlgorithm,
     exposure,
@@ -326,6 +328,7 @@ export const PostProcessing = memo(function PostProcessing() {
       showDepthBuffer: state.showDepthBuffer,
       ssrEnabled: state.ssrEnabled,
       refractionEnabled: state.refractionEnabled,
+      fxaaEnabled: state.fxaaEnabled,
       toneMappingEnabled: state.toneMappingEnabled,
       toneMappingAlgorithm: state.toneMappingAlgorithm,
       exposure: state.exposure,

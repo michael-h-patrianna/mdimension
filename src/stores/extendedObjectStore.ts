@@ -18,7 +18,6 @@ import type {
   CliffordTorusConfig,
   CliffordTorusEdgeMode,
   CliffordTorusMode,
-  CliffordTorusVisualizationMode,
   MandelboxConfig,
   MandelbrotColorMode,
   MandelbrotConfig,
@@ -26,6 +25,8 @@ import type {
   MandelbrotQualityPreset,
   MandelbrotRenderStyle,
   MengerConfig,
+  NestedTorusConfig,
+  NestedTorusEdgeMode,
   PolytopeConfig,
   RootSystemConfig,
   RootSystemType,
@@ -35,6 +36,7 @@ import {
   DEFAULT_MANDELBOX_CONFIG,
   DEFAULT_MANDELBROT_CONFIG,
   DEFAULT_MENGER_CONFIG,
+  DEFAULT_NESTED_TORUS_CONFIG,
   DEFAULT_POLYTOPE_CONFIG,
   DEFAULT_POLYTOPE_SCALES,
   DEFAULT_ROOT_SYSTEM_CONFIG,
@@ -56,6 +58,9 @@ interface ExtendedObjectState {
   // --- Clifford Torus State ---
   cliffordTorus: CliffordTorusConfig
 
+  // --- Nested Torus State ---
+  nestedTorus: NestedTorusConfig
+
   // --- Mandelbrot State ---
   mandelbrot: MandelbrotConfig
 
@@ -74,31 +79,25 @@ interface ExtendedObjectState {
   setRootSystemScale: (scale: number) => void
 
   // --- Clifford Torus Actions ---
-  // Visualization mode
-  setCliffordTorusVisualizationMode: (mode: CliffordTorusVisualizationMode) => void
-  initializeCliffordTorusForDimension: (dimension: number) => void
-
-  // Shared
   setCliffordTorusRadius: (radius: number) => void
   setCliffordTorusEdgeMode: (mode: CliffordTorusEdgeMode) => void
-
-  // Flat mode (existing)
   setCliffordTorusMode: (mode: CliffordTorusMode) => void
   setCliffordTorusResolutionU: (resolution: number) => void
   setCliffordTorusResolutionV: (resolution: number) => void
   setCliffordTorusStepsPerCircle: (steps: number) => void
+  initializeCliffordTorusForDimension: (dimension: number) => void
 
-  // Nested (Hopf) 4D mode
-  setCliffordTorusEta: (eta: number) => void
-  setCliffordTorusResolutionXi1: (resolution: number) => void
-  setCliffordTorusResolutionXi2: (resolution: number) => void
-  setCliffordTorusShowNestedTori: (show: boolean) => void
-  setCliffordTorusNumberOfTori: (count: number) => void
-
-  // Nested (Hopf) 8D mode
-  setCliffordTorusFiberResolution: (resolution: number) => void
-  setCliffordTorusBaseResolution: (resolution: number) => void
-  setCliffordTorusShowFiberStructure: (show: boolean) => void
+  // --- Nested Torus Actions ---
+  setNestedTorusRadius: (radius: number) => void
+  setNestedTorusEdgeMode: (mode: NestedTorusEdgeMode) => void
+  setNestedTorusEta: (eta: number) => void
+  setNestedTorusResolutionXi1: (resolution: number) => void
+  setNestedTorusResolutionXi2: (resolution: number) => void
+  setNestedTorusShowNestedTori: (show: boolean) => void
+  setNestedTorusNumberOfTori: (count: number) => void
+  setNestedTorusFiberResolution: (resolution: number) => void
+  setNestedTorusBaseResolution: (resolution: number) => void
+  setNestedTorusShowFiberStructure: (show: boolean) => void
 
   // --- Mandelbrot Actions ---
   setMandelbrotMaxIterations: (value: number) => void
@@ -183,6 +182,7 @@ export const useExtendedObjectStore = create<ExtendedObjectState>((set, get) => 
   polytope: { ...DEFAULT_POLYTOPE_CONFIG },
   rootSystem: { ...DEFAULT_ROOT_SYSTEM_CONFIG },
   cliffordTorus: { ...DEFAULT_CLIFFORD_TORUS_CONFIG },
+  nestedTorus: { ...DEFAULT_NESTED_TORUS_CONFIG },
   mandelbrot: { ...DEFAULT_MANDELBROT_CONFIG },
   mandelbox: { ...DEFAULT_MANDELBOX_CONFIG },
   menger: { ...DEFAULT_MENGER_CONFIG },
@@ -259,105 +259,93 @@ export const useExtendedObjectStore = create<ExtendedObjectState>((set, get) => 
     }))
   },
 
-  // --- Clifford Torus Visualization Mode Actions ---
-  setCliffordTorusVisualizationMode: (mode: CliffordTorusVisualizationMode) => {
-    set((state) => ({
-      cliffordTorus: { ...state.cliffordTorus, visualizationMode: mode },
-    }))
-  },
-
   initializeCliffordTorusForDimension: (dimension: number) => {
-    const current = get().cliffordTorus
-    const currentMode = current.visualizationMode
-
-    // Auto-switch logic: if current mode is not available for this dimension, switch to 'flat'
-    let newMode = currentMode
-
-    // Nested mode only available in 4D and 8D
-    if (currentMode === 'nested' && dimension !== 4 && dimension !== 8) {
-      newMode = 'flat'
-    }
-
     // Update flat mode internal settings based on dimension
     const flatMode = dimension === 4 ? 'classic' : 'generalized'
+    const current = get().cliffordTorus
 
-    // Check if any values actually changed to avoid unnecessary state updates
-    const modeChanged = newMode !== currentMode
-    const flatModeChanged = flatMode !== current.mode
-
-    // Only update if something actually changed
-    if (modeChanged || flatModeChanged) {
+    // Only update if mode changed
+    if (flatMode !== current.mode) {
       set((state) => ({
         cliffordTorus: {
           ...state.cliffordTorus,
-          visualizationMode: newMode,
           mode: flatMode,
         },
       }))
     }
-
-    // Return whether mode was auto-switched (for notification purposes)
-    return modeChanged
   },
 
-  // --- Nested (Hopf) 4D Mode Actions ---
-  setCliffordTorusEta: (eta: number) => {
+  // --- Nested Torus Actions ---
+  setNestedTorusRadius: (radius: number) => {
+    const clampedRadius = Math.max(0.5, Math.min(6.0, radius))
+    set((state) => ({
+      nestedTorus: { ...state.nestedTorus, radius: clampedRadius },
+    }))
+  },
+
+  setNestedTorusEdgeMode: (mode: NestedTorusEdgeMode) => {
+    set((state) => ({
+      nestedTorus: { ...state.nestedTorus, edgeMode: mode },
+    }))
+  },
+
+  setNestedTorusEta: (eta: number) => {
     // Range: π/64 to π/2 - π/64 (approximately 0.05 to 1.52)
     const minEta = Math.PI / 64
     const maxEta = Math.PI / 2 - Math.PI / 64
     const clampedEta = Math.max(minEta, Math.min(maxEta, eta))
     set((state) => ({
-      cliffordTorus: { ...state.cliffordTorus, eta: clampedEta },
+      nestedTorus: { ...state.nestedTorus, eta: clampedEta },
     }))
   },
 
-  setCliffordTorusResolutionXi1: (resolution: number) => {
+  setNestedTorusResolutionXi1: (resolution: number) => {
     const clampedResolution = Math.max(8, Math.min(128, Math.floor(resolution)))
     set((state) => ({
-      cliffordTorus: { ...state.cliffordTorus, resolutionXi1: clampedResolution },
+      nestedTorus: { ...state.nestedTorus, resolutionXi1: clampedResolution },
     }))
   },
 
-  setCliffordTorusResolutionXi2: (resolution: number) => {
+  setNestedTorusResolutionXi2: (resolution: number) => {
     const clampedResolution = Math.max(8, Math.min(128, Math.floor(resolution)))
     set((state) => ({
-      cliffordTorus: { ...state.cliffordTorus, resolutionXi2: clampedResolution },
+      nestedTorus: { ...state.nestedTorus, resolutionXi2: clampedResolution },
     }))
   },
 
-  setCliffordTorusShowNestedTori: (show: boolean) => {
+  setNestedTorusShowNestedTori: (show: boolean) => {
     set((state) => ({
-      cliffordTorus: { ...state.cliffordTorus, showNestedTori: show },
+      nestedTorus: { ...state.nestedTorus, showNestedTori: show },
     }))
   },
 
-  setCliffordTorusNumberOfTori: (count: number) => {
+  setNestedTorusNumberOfTori: (count: number) => {
     const clampedCount = Math.max(2, Math.min(5, Math.floor(count)))
     set((state) => ({
-      cliffordTorus: { ...state.cliffordTorus, numberOfTori: clampedCount },
+      nestedTorus: { ...state.nestedTorus, numberOfTori: clampedCount },
     }))
   },
 
-  // --- Nested (Hopf) 8D Mode Actions ---
+  // Nested (Hopf) 8D Mode Actions
   // NOTE: Face count = fiberRes³ × baseRes² - limits kept low to avoid memory issues
   // Max safe: 8³ × 12² = 512 × 144 = 73,728 faces
-  setCliffordTorusFiberResolution: (resolution: number) => {
+  setNestedTorusFiberResolution: (resolution: number) => {
     const clampedResolution = Math.max(4, Math.min(8, Math.floor(resolution)))
     set((state) => ({
-      cliffordTorus: { ...state.cliffordTorus, fiberResolution: clampedResolution },
+      nestedTorus: { ...state.nestedTorus, fiberResolution: clampedResolution },
     }))
   },
 
-  setCliffordTorusBaseResolution: (resolution: number) => {
+  setNestedTorusBaseResolution: (resolution: number) => {
     const clampedResolution = Math.max(4, Math.min(12, Math.floor(resolution)))
     set((state) => ({
-      cliffordTorus: { ...state.cliffordTorus, baseResolution: clampedResolution },
+      nestedTorus: { ...state.nestedTorus, baseResolution: clampedResolution },
     }))
   },
 
-  setCliffordTorusShowFiberStructure: (show: boolean) => {
+  setNestedTorusShowFiberStructure: (show: boolean) => {
     set((state) => ({
-      cliffordTorus: { ...state.cliffordTorus, showFiberStructure: show },
+      nestedTorus: { ...state.nestedTorus, showFiberStructure: show },
     }))
   },
 
@@ -946,6 +934,7 @@ export const useExtendedObjectStore = create<ExtendedObjectState>((set, get) => 
       polytope: { ...DEFAULT_POLYTOPE_CONFIG },
       rootSystem: { ...DEFAULT_ROOT_SYSTEM_CONFIG },
       cliffordTorus: { ...DEFAULT_CLIFFORD_TORUS_CONFIG },
+      nestedTorus: { ...DEFAULT_NESTED_TORUS_CONFIG },
       mandelbrot: { ...DEFAULT_MANDELBROT_CONFIG },
       mandelbox: { ...DEFAULT_MANDELBOX_CONFIG },
       menger: { ...DEFAULT_MENGER_CONFIG },

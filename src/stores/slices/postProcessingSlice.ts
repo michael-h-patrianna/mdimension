@@ -35,6 +35,7 @@ import {
   DEFAULT_REFRACTION_IOR,
   DEFAULT_REFRACTION_STRENGTH,
   DEFAULT_REFRACTION_CHROMATIC_ABERRATION,
+  DEFAULT_FXAA_ENABLED,
 } from '../defaults/visualDefaults'
 
 // ============================================================================
@@ -73,6 +74,9 @@ export interface PostProcessingSliceState {
   refractionIOR: number
   refractionStrength: number
   refractionChromaticAberration: number
+
+  // --- FXAA (Anti-aliasing) ---
+  fxaaEnabled: boolean
 }
 
 export interface PostProcessingSliceActions {
@@ -107,6 +111,9 @@ export interface PostProcessingSliceActions {
   setRefractionIOR: (ior: number) => void
   setRefractionStrength: (strength: number) => void
   setRefractionChromaticAberration: (ca: number) => void
+
+  // --- FXAA Actions ---
+  setFxaaEnabled: (enabled: boolean) => void
 }
 
 export type PostProcessingSlice = PostProcessingSliceState & PostProcessingSliceActions
@@ -147,6 +154,9 @@ export const POST_PROCESSING_INITIAL_STATE: PostProcessingSliceState = {
   refractionIOR: DEFAULT_REFRACTION_IOR,
   refractionStrength: DEFAULT_REFRACTION_STRENGTH,
   refractionChromaticAberration: DEFAULT_REFRACTION_CHROMATIC_ABERRATION,
+
+  // FXAA
+  fxaaEnabled: DEFAULT_FXAA_ENABLED,
 }
 
 // ============================================================================
@@ -259,5 +269,10 @@ export const createPostProcessingSlice: StateCreator<
 
   setRefractionChromaticAberration: (ca: number) => {
     set({ refractionChromaticAberration: Math.max(0, Math.min(1, ca)) })
+  },
+
+  // --- FXAA Actions ---
+  setFxaaEnabled: (enabled: boolean) => {
+    set({ fxaaEnabled: enabled })
   },
 })

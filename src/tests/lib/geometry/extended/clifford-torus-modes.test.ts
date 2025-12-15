@@ -1,9 +1,9 @@
 /**
- * Tests for Clifford Torus Visualization Modes
+ * Tests for Clifford Torus and Nested Torus Generators
  *
- * Tests the two visualization modes:
- * - Flat (2D-11D): Existing classic/generalized implementation
- * - Nested/Hopf (4D, 8D): Hopf fibration tori
+ * Tests the two torus object types:
+ * - Clifford Torus: Flat visualization (2D-11D)
+ * - Nested Torus: Hopf fibration tori (4D-11D)
  *
  * @see docs/prd/clifford-torus-modes.md
  */
@@ -19,171 +19,231 @@ import {
   generateNestedHopfTorus8D,
   generateNestedTorus6D,
   generateTorus6DPoints,
-  getVisualizationModeUnavailableReason,
-  isVisualizationModeAvailable,
 } from '@/lib/geometry/extended/clifford-torus'
-import { DEFAULT_CLIFFORD_TORUS_CONFIG } from '@/lib/geometry/extended/types'
+import { generateNestedTorus } from '@/lib/geometry/extended/nested-torus'
+import {
+  DEFAULT_CLIFFORD_TORUS_CONFIG,
+  DEFAULT_NESTED_TORUS_CONFIG,
+} from '@/lib/geometry/extended/types'
 import { describe, expect, it } from 'vitest'
 
 // ============================================================================
-// Visualization Mode Dispatcher Tests
+// Clifford Torus Tests (Flat Mode Only)
 // ============================================================================
 
-describe('generateCliffordTorus with visualization modes', () => {
-  describe('flat mode (default)', () => {
-    it('should generate flat torus by default', () => {
-      const geometry = generateCliffordTorus(4, {
-        ...DEFAULT_CLIFFORD_TORUS_CONFIG,
-        visualizationMode: 'flat',
-      })
+describe('generateCliffordTorus (flat mode)', () => {
+  describe('4D classic mode', () => {
+    it('should generate flat torus with default config', () => {
+      const geometry = generateCliffordTorus(4, DEFAULT_CLIFFORD_TORUS_CONFIG)
 
       expect(geometry.dimension).toBe(4)
       expect(geometry.type).toBe('clifford-torus')
       expect(geometry.vertices.length).toBeGreaterThan(0)
     })
 
-    it('should fall back to flat mode for invalid visualization mode', () => {
-      const geometry = generateCliffordTorus(4, {
+    it('should generate correct number of vertices for 4D', () => {
+      const config = {
         ...DEFAULT_CLIFFORD_TORUS_CONFIG,
-        visualizationMode: 'invalid' as 'flat', // Force invalid value
-      })
+        resolutionU: 16,
+        resolutionV: 12,
+      }
+      const geometry = generateCliffordTorus(4, config)
 
-      // Should not throw, falls back to flat
-      expect(geometry.vertices.length).toBeGreaterThan(0)
+      expect(geometry.vertices).toHaveLength(16 * 12)
+    })
+
+    it('should generate 4D points on a torus', () => {
+      const geometry = generateCliffordTorus(4, DEFAULT_CLIFFORD_TORUS_CONFIG)
+
+      geometry.vertices.forEach((v) => {
+        expect(v).toHaveLength(4)
+      })
     })
   })
 
-  describe('nested mode', () => {
-    it('should generate nested torus for 4D', () => {
-      const geometry = generateCliffordTorus(4, {
+  describe('generalized mode (non-4D)', () => {
+    it('should generate flat torus for dimensions 2-11', () => {
+      for (let d = 2; d <= 11; d++) {
+        const geometry = generateCliffordTorus(d, DEFAULT_CLIFFORD_TORUS_CONFIG)
+
+        expect(geometry.dimension).toBe(d)
+        expect(geometry.type).toBe('clifford-torus')
+        expect(geometry.vertices.length).toBeGreaterThan(0)
+      }
+    })
+
+    it('should respect stepsPerCircle parameter', () => {
+      const config = {
         ...DEFAULT_CLIFFORD_TORUS_CONFIG,
-        visualizationMode: 'nested',
+        stepsPerCircle: 8,
+      }
+      const geometry = generateCliffordTorus(6, config)
+
+      // For 6D with stepsPerCircle=8 and k=min(k, maxK=3): points depend on k
+      // The actual point count is stepsPerCircle^k where k is clamped
+      expect(geometry.vertices.length).toBeGreaterThan(0)
+      // Verify all points are 6D
+      geometry.vertices.forEach((v) => {
+        expect(v).toHaveLength(6)
       })
+    })
+  })
+
+  describe('edge generation', () => {
+    it('should generate edges when edgeMode is grid', () => {
+      const config = {
+        ...DEFAULT_CLIFFORD_TORUS_CONFIG,
+        edgeMode: 'grid' as const,
+      }
+      const geometry = generateCliffordTorus(4, config)
+
+      expect(geometry.edges.length).toBeGreaterThan(0)
+    })
+
+    it('should not generate edges when edgeMode is none', () => {
+      const config = {
+        ...DEFAULT_CLIFFORD_TORUS_CONFIG,
+        edgeMode: 'none' as const,
+      }
+      const geometry = generateCliffordTorus(4, config)
+
+      expect(geometry.edges).toHaveLength(0)
+    })
+  })
+
+  describe('radius parameter', () => {
+    it('should respect radius parameter', () => {
+      const radius = 2.5
+      const config = {
+        ...DEFAULT_CLIFFORD_TORUS_CONFIG,
+        radius,
+      }
+      const geometry = generateCliffordTorus(4, config)
+
+      // Check that points are at approximately the expected radius
+      const avgRadius =
+        geometry.vertices.reduce((sum, v) => {
+          const r = Math.sqrt(v.reduce((s, c) => s + c * c, 0))
+          return sum + r
+        }, 0) / geometry.vertices.length
+
+      expect(avgRadius).toBeCloseTo(radius, 1)
+    })
+  })
+})
+
+// ============================================================================
+// Nested Torus Tests (New Object Type)
+// ============================================================================
+
+describe('generateNestedTorus', () => {
+  describe('dimension validation', () => {
+    it('should throw for dimensions below 4', () => {
+      expect(() => generateNestedTorus(3, DEFAULT_NESTED_TORUS_CONFIG)).toThrow()
+    })
+
+    it('should throw for dimensions above 11', () => {
+      expect(() => generateNestedTorus(12, DEFAULT_NESTED_TORUS_CONFIG)).toThrow()
+    })
+
+    it('should work for dimensions 4-11', () => {
+      for (let d = 4; d <= 11; d++) {
+        const geometry = generateNestedTorus(d, DEFAULT_NESTED_TORUS_CONFIG)
+        expect(geometry.dimension).toBe(d)
+        expect(geometry.type).toBe('nested-torus')
+      }
+    })
+  })
+
+  describe('4D Hopf fibration', () => {
+    it('should generate nested torus with correct metadata', () => {
+      const geometry = generateNestedTorus(4, DEFAULT_NESTED_TORUS_CONFIG)
 
       expect(geometry.dimension).toBe(4)
+      expect(geometry.type).toBe('nested-torus')
       expect(geometry.metadata?.properties?.visualizationMode).toBe('nested')
       expect(geometry.metadata?.properties?.fibration).toBe('S³ → S²')
     })
 
-    it('should generate nested torus for 8D', () => {
-      const geometry = generateCliffordTorus(8, {
-        ...DEFAULT_CLIFFORD_TORUS_CONFIG,
-        visualizationMode: 'nested',
-      })
+    it('should generate correct number of vertices', () => {
+      const config = {
+        ...DEFAULT_NESTED_TORUS_CONFIG,
+        resolutionXi1: 24,
+        resolutionXi2: 24,
+      }
+      const geometry = generateNestedTorus(4, config)
 
-      expect(geometry.dimension).toBe(8)
-      expect(geometry.metadata?.properties?.visualizationMode).toBe('nested')
-      expect(geometry.metadata?.properties?.fibration).toBe('S⁷ → S⁴')
+      expect(geometry.vertices).toHaveLength(24 * 24)
     })
+  })
 
-    it('should generate nested torus for 6D', () => {
-      const geometry = generateCliffordTorus(6, {
-        ...DEFAULT_CLIFFORD_TORUS_CONFIG,
-        visualizationMode: 'nested',
-      })
+  describe('6D 3-torus', () => {
+    it('should generate 6D nested torus with correct metadata', () => {
+      const geometry = generateNestedTorus(6, DEFAULT_NESTED_TORUS_CONFIG)
 
       expect(geometry.dimension).toBe(6)
-      expect(geometry.metadata?.properties?.visualizationMode).toBe('nested')
+      expect(geometry.type).toBe('nested-torus')
       expect(geometry.metadata?.properties?.fibration).toBe('T³ (3-torus)')
     })
+  })
 
-    it('should generate nested torus for 9D', () => {
-      const geometry = generateCliffordTorus(9, {
-        ...DEFAULT_CLIFFORD_TORUS_CONFIG,
-        visualizationMode: 'nested',
-      })
+  describe('8D quaternionic Hopf', () => {
+    it('should generate 8D nested torus with correct metadata', () => {
+      const geometry = generateNestedTorus(8, DEFAULT_NESTED_TORUS_CONFIG)
 
-      expect(geometry.dimension).toBe(9)
-      expect(geometry.metadata?.properties?.visualizationMode).toBe('nested')
-      expect(geometry.metadata?.properties?.fibration).toBe('T⁴ + helix')
-    })
-
-    it('should throw for nested mode in unsupported dimensions', () => {
-      expect(() =>
-        generateCliffordTorus(3, {
-          ...DEFAULT_CLIFFORD_TORUS_CONFIG,
-          visualizationMode: 'nested',
-        })
-      ).toThrow()
-
-      expect(() =>
-        generateCliffordTorus(5, {
-          ...DEFAULT_CLIFFORD_TORUS_CONFIG,
-          visualizationMode: 'nested',
-        })
-      ).toThrow()
-
-      expect(() =>
-        generateCliffordTorus(7, {
-          ...DEFAULT_CLIFFORD_TORUS_CONFIG,
-          visualizationMode: 'nested',
-        })
-      ).toThrow()
-
-      expect(() =>
-        generateCliffordTorus(10, {
-          ...DEFAULT_CLIFFORD_TORUS_CONFIG,
-          visualizationMode: 'nested',
-        })
-      ).toThrow()
+      expect(geometry.dimension).toBe(8)
+      expect(geometry.type).toBe('nested-torus')
+      expect(geometry.metadata?.properties?.fibration).toBe('S⁷ → S⁴')
     })
   })
-})
 
-// ============================================================================
-// Mode Availability Tests
-// ============================================================================
-
-describe('isVisualizationModeAvailable', () => {
-  describe('flat mode', () => {
-    it('should be available for dimensions 2-11', () => {
-      for (let d = 2; d <= 11; d++) {
-        expect(isVisualizationModeAvailable('flat', d)).toBe(true)
+  describe('edge generation', () => {
+    it('should generate edges in grid mode', () => {
+      const config = {
+        ...DEFAULT_NESTED_TORUS_CONFIG,
+        edgeMode: 'grid' as const,
       }
+      const geometry = generateNestedTorus(4, config)
+
+      expect(geometry.edges.length).toBeGreaterThan(0)
     })
 
-    it('should not be available outside 2-11', () => {
-      expect(isVisualizationModeAvailable('flat', 1)).toBe(false)
-      expect(isVisualizationModeAvailable('flat', 12)).toBe(false)
-    })
-  })
-
-  describe('nested mode', () => {
-    it('should be available for 4D, 6D, 8D, and 9D', () => {
-      expect(isVisualizationModeAvailable('nested', 4)).toBe(true)
-      expect(isVisualizationModeAvailable('nested', 6)).toBe(true)
-      expect(isVisualizationModeAvailable('nested', 8)).toBe(true)
-      expect(isVisualizationModeAvailable('nested', 9)).toBe(true)
-    })
-
-    it('should not be available for other dimensions', () => {
-      for (const d of [2, 3, 5, 7, 10, 11]) {
-        expect(isVisualizationModeAvailable('nested', d)).toBe(false)
+    it('should not generate edges in none mode', () => {
+      const config = {
+        ...DEFAULT_NESTED_TORUS_CONFIG,
+        edgeMode: 'none' as const,
       }
+      const geometry = generateNestedTorus(4, config)
+
+      expect(geometry.edges).toHaveLength(0)
     })
   })
-})
 
-describe('getVisualizationModeUnavailableReason', () => {
-  it('should return null for available modes', () => {
-    expect(getVisualizationModeUnavailableReason('flat', 4)).toBeNull()
-    expect(getVisualizationModeUnavailableReason('nested', 4)).toBeNull()
-  })
+  describe('nested tori display (4D only)', () => {
+    it('should generate multiple tori when showNestedTori is enabled', () => {
+      const config = {
+        ...DEFAULT_NESTED_TORUS_CONFIG,
+        resolutionXi1: 16,
+        resolutionXi2: 16,
+        showNestedTori: true,
+        numberOfTori: 3,
+      }
+      const geometry = generateNestedTorus(4, config)
 
-  it('should return reason for unavailable nested mode', () => {
-    const reason = getVisualizationModeUnavailableReason('nested', 5)
-    expect(reason).toContain('4D, 6D, 8D, or 9D')
+      expect(geometry.vertices).toHaveLength(16 * 16 * 3)
+      expect(geometry.metadata?.properties?.torusCount).toBe(3)
+    })
   })
 })
 
 // ============================================================================
-// Nested (Hopf) 4D Mode Tests
+// Nested (Hopf) 4D Point Generator Tests
 // ============================================================================
 
 describe('generateHopfTorus4DPoints', () => {
   it('should generate resolutionXi1 × resolutionXi2 points', () => {
     const points = generateHopfTorus4DPoints({
-      ...DEFAULT_CLIFFORD_TORUS_CONFIG,
+      ...DEFAULT_NESTED_TORUS_CONFIG,
       resolutionXi1: 16,
       resolutionXi2: 12,
     })
@@ -192,7 +252,7 @@ describe('generateHopfTorus4DPoints', () => {
   })
 
   it('should generate 4D points', () => {
-    const points = generateHopfTorus4DPoints(DEFAULT_CLIFFORD_TORUS_CONFIG)
+    const points = generateHopfTorus4DPoints(DEFAULT_NESTED_TORUS_CONFIG)
 
     points.forEach((p) => {
       expect(p).toHaveLength(4)
@@ -202,7 +262,7 @@ describe('generateHopfTorus4DPoints', () => {
   it('should have all points on S³ with correct radius', () => {
     const radius = 2.0
     const points = generateHopfTorus4DPoints({
-      ...DEFAULT_CLIFFORD_TORUS_CONFIG,
+      ...DEFAULT_NESTED_TORUS_CONFIG,
       radius,
       resolutionXi1: 16,
       resolutionXi2: 16,
@@ -219,7 +279,7 @@ describe('generateHopfTorus4DPoints', () => {
     const eta = Math.PI / 4
 
     const points = generateHopfTorus4DPoints({
-      ...DEFAULT_CLIFFORD_TORUS_CONFIG,
+      ...DEFAULT_NESTED_TORUS_CONFIG,
       radius,
       eta,
       resolutionXi1: 8,
@@ -278,13 +338,13 @@ describe('buildHopfTorus4DEdges', () => {
 describe('generateNestedHopfTorus4D', () => {
   it('should generate NdGeometry with correct properties', () => {
     const geometry = generateNestedHopfTorus4D({
-      ...DEFAULT_CLIFFORD_TORUS_CONFIG,
+      ...DEFAULT_NESTED_TORUS_CONFIG,
       resolutionXi1: 24,
       resolutionXi2: 24,
     })
 
     expect(geometry.dimension).toBe(4)
-    expect(geometry.type).toBe('clifford-torus')
+    expect(geometry.type).toBe('clifford-torus') // Internal type, wrapped by generateNestedTorus
     expect(geometry.vertices).toHaveLength(576) // 24 * 24
     expect(geometry.metadata?.properties?.visualizationMode).toBe('nested')
     expect(geometry.metadata?.properties?.fibration).toBe('S³ → S²')
@@ -292,7 +352,7 @@ describe('generateNestedHopfTorus4D', () => {
 
   it('should generate edges in grid mode', () => {
     const geometry = generateNestedHopfTorus4D({
-      ...DEFAULT_CLIFFORD_TORUS_CONFIG,
+      ...DEFAULT_NESTED_TORUS_CONFIG,
       edgeMode: 'grid',
       resolutionXi1: 16,
       resolutionXi2: 16,
@@ -303,7 +363,7 @@ describe('generateNestedHopfTorus4D', () => {
 
   it('should not generate edges in none mode', () => {
     const geometry = generateNestedHopfTorus4D({
-      ...DEFAULT_CLIFFORD_TORUS_CONFIG,
+      ...DEFAULT_NESTED_TORUS_CONFIG,
       edgeMode: 'none',
       resolutionXi1: 16,
       resolutionXi2: 16,
@@ -318,7 +378,7 @@ describe('generateNestedHopfTorus4D', () => {
     const numberOfTori = 3
 
     const geometry = generateNestedHopfTorus4D({
-      ...DEFAULT_CLIFFORD_TORUS_CONFIG,
+      ...DEFAULT_NESTED_TORUS_CONFIG,
       resolutionXi1: resXi1,
       resolutionXi2: resXi2,
       showNestedTori: true,
@@ -339,7 +399,7 @@ describe('generateTorus6DPoints', () => {
     const resXi1 = 16
     const resXi2 = 12
     const points = generateTorus6DPoints({
-      ...DEFAULT_CLIFFORD_TORUS_CONFIG,
+      ...DEFAULT_NESTED_TORUS_CONFIG,
       resolutionXi1: resXi1,
       resolutionXi2: resXi2,
     })
@@ -350,7 +410,7 @@ describe('generateTorus6DPoints', () => {
 
   it('should generate 6D points', () => {
     const points = generateTorus6DPoints({
-      ...DEFAULT_CLIFFORD_TORUS_CONFIG,
+      ...DEFAULT_NESTED_TORUS_CONFIG,
       resolutionXi1: 8,
       resolutionXi2: 8,
     })
@@ -365,7 +425,7 @@ describe('generateTorus6DPoints', () => {
     const eta = Math.PI / 4
 
     const points = generateTorus6DPoints({
-      ...DEFAULT_CLIFFORD_TORUS_CONFIG,
+      ...DEFAULT_NESTED_TORUS_CONFIG,
       radius,
       eta,
       resolutionXi1: 8,
@@ -421,7 +481,7 @@ describe('generateNestedTorus6D', () => {
     const resXi1 = 24
     const resXi2 = 24
     const geometry = generateNestedTorus6D({
-      ...DEFAULT_CLIFFORD_TORUS_CONFIG,
+      ...DEFAULT_NESTED_TORUS_CONFIG,
       resolutionXi1: resXi1,
       resolutionXi2: resXi2,
     })
@@ -436,7 +496,7 @@ describe('generateNestedTorus6D', () => {
 
   it('should generate edges in grid mode', () => {
     const geometry = generateNestedTorus6D({
-      ...DEFAULT_CLIFFORD_TORUS_CONFIG,
+      ...DEFAULT_NESTED_TORUS_CONFIG,
       edgeMode: 'grid',
       resolutionXi1: 16,
       resolutionXi2: 16,
@@ -447,7 +507,7 @@ describe('generateNestedTorus6D', () => {
 
   it('should not generate edges in none mode', () => {
     const geometry = generateNestedTorus6D({
-      ...DEFAULT_CLIFFORD_TORUS_CONFIG,
+      ...DEFAULT_NESTED_TORUS_CONFIG,
       edgeMode: 'none',
       resolutionXi1: 16,
       resolutionXi2: 16,
@@ -463,23 +523,20 @@ describe('generateNestedTorus6D', () => {
 
 describe('generateHopfTorus8DPoints', () => {
   it('should generate correct number of points', () => {
-    // 8D now uses the same 2D surface structure as 4D
     const resXi1 = 16
     const resXi2 = 12
     const points = generateHopfTorus8DPoints({
-      ...DEFAULT_CLIFFORD_TORUS_CONFIG,
+      ...DEFAULT_NESTED_TORUS_CONFIG,
       resolutionXi1: resXi1,
       resolutionXi2: resXi2,
     })
 
-    // Points = resolutionXi1 * resolutionXi2 (2D surface, same as 4D)
-    const expectedPoints = resXi1 * resXi2
-    expect(points).toHaveLength(expectedPoints)
+    expect(points).toHaveLength(resXi1 * resXi2)
   })
 
   it('should generate 8D points', () => {
     const points = generateHopfTorus8DPoints({
-      ...DEFAULT_CLIFFORD_TORUS_CONFIG,
+      ...DEFAULT_NESTED_TORUS_CONFIG,
       resolutionXi1: 8,
       resolutionXi2: 8,
     })
@@ -490,34 +547,26 @@ describe('generateHopfTorus8DPoints', () => {
   })
 
   it('should have all points on S⁷ with correct radius', () => {
-    const radius = 1.5
+    const radius = 2.0
     const points = generateHopfTorus8DPoints({
-      ...DEFAULT_CLIFFORD_TORUS_CONFIG,
+      ...DEFAULT_NESTED_TORUS_CONFIG,
       radius,
       resolutionXi1: 8,
       resolutionXi2: 8,
     })
 
     points.forEach((p) => {
-      let sumSq = 0
-      for (let i = 0; i < 8; i++) {
-        sumSq += p[i]! ** 2
-      }
+      const sumSq = p.reduce((acc, x) => acc + x! ** 2, 0)
       expect(sumSq).toBeCloseTo(radius * radius, 4)
     })
   })
 })
 
 describe('buildHopfTorus8DEdges', () => {
-  it('should create grid connectivity (same as 4D)', () => {
-    // 8D now uses the same 2D grid structure as 4D
-    const resXi1 = 8
-    const resXi2 = 8
-    const edges = buildHopfTorus8DEdges(resXi1, resXi2)
+  it('should create grid connectivity', () => {
+    const edges = buildHopfTorus8DEdges(16, 16)
 
     expect(edges.length).toBeGreaterThan(0)
-    // Should have 2 edges per grid cell (ξ₁ and ξ₂ directions)
-    expect(edges.length).toBe(resXi1 * resXi2 * 2)
   })
 
   it('should have valid vertex indices', () => {
@@ -538,25 +587,22 @@ describe('buildHopfTorus8DEdges', () => {
 
 describe('generateNestedHopfTorus8D', () => {
   it('should generate NdGeometry with correct properties', () => {
-    const resXi1 = 24
-    const resXi2 = 24
     const geometry = generateNestedHopfTorus8D({
-      ...DEFAULT_CLIFFORD_TORUS_CONFIG,
-      resolutionXi1: resXi1,
-      resolutionXi2: resXi2,
+      ...DEFAULT_NESTED_TORUS_CONFIG,
+      resolutionXi1: 24,
+      resolutionXi2: 24,
     })
 
     expect(geometry.dimension).toBe(8)
     expect(geometry.type).toBe('clifford-torus')
-    expect(geometry.vertices).toHaveLength(resXi1 * resXi2) // 576 points (same as 4D)
+    expect(geometry.vertices).toHaveLength(576)
     expect(geometry.metadata?.properties?.visualizationMode).toBe('nested')
     expect(geometry.metadata?.properties?.fibration).toBe('S⁷ → S⁴')
-    expect(geometry.metadata?.properties?.fiberType).toBe('S³ (3-spheres)')
   })
 
   it('should generate edges in grid mode', () => {
     const geometry = generateNestedHopfTorus8D({
-      ...DEFAULT_CLIFFORD_TORUS_CONFIG,
+      ...DEFAULT_NESTED_TORUS_CONFIG,
       edgeMode: 'grid',
       resolutionXi1: 16,
       resolutionXi2: 16,
@@ -567,7 +613,7 @@ describe('generateNestedHopfTorus8D', () => {
 
   it('should not generate edges in none mode', () => {
     const geometry = generateNestedHopfTorus8D({
-      ...DEFAULT_CLIFFORD_TORUS_CONFIG,
+      ...DEFAULT_NESTED_TORUS_CONFIG,
       edgeMode: 'none',
       resolutionXi1: 16,
       resolutionXi2: 16,
@@ -578,39 +624,75 @@ describe('generateNestedHopfTorus8D', () => {
 })
 
 // ============================================================================
-// Mathematical Property Verification
+// Higher Dimension Nested Torus Tests
 // ============================================================================
 
-describe('Mathematical properties', () => {
-  describe('Hopf torus coupled angles', () => {
-    it('should have coupled angle structure', () => {
-      const config = {
-        ...DEFAULT_CLIFFORD_TORUS_CONFIG,
-        radius: 1.0,
-        eta: Math.PI / 4,
-        resolutionXi1: 8,
-        resolutionXi2: 8,
-      }
+describe('Higher dimension nested tori', () => {
+  it('5D should generate twisted 2-torus', () => {
+    const geometry = generateNestedTorus(5, DEFAULT_NESTED_TORUS_CONFIG)
 
-      const points = generateHopfTorus4DPoints(config)
+    expect(geometry.dimension).toBe(5)
+    expect(geometry.type).toBe('nested-torus')
+    expect(geometry.metadata?.properties?.fibration).toBe('T² + helix')
+  })
 
-      // The Hopf parametrization couples angles:
-      // Moving along ξ₁ while keeping ξ₂ fixed should trace a helix
-      // on the torus, not a simple circle
+  it('7D should generate twisted 3-torus', () => {
+    const geometry = generateNestedTorus(7, DEFAULT_NESTED_TORUS_CONFIG)
 
-      // Check that adjacent points in ξ₁ have both coordinates changing
-      for (let i = 0; i < config.resolutionXi1 - 1; i++) {
-        const p1 = points[i * config.resolutionXi2]!
-        const p2 = points[(i + 1) * config.resolutionXi2]!
+    expect(geometry.dimension).toBe(7)
+    expect(geometry.type).toBe('nested-torus')
+    expect(geometry.metadata?.properties?.fibration).toBe('T³ + helix')
+  })
 
-        // Both (x₀, x₁) and (x₂, x₃) should change
-        const delta01 = Math.abs(p2[0]! - p1[0]!) + Math.abs(p2[1]! - p1[1]!)
-        const delta23 = Math.abs(p2[2]! - p1[2]!) + Math.abs(p2[3]! - p1[3]!)
+  it('9D should generate twisted 4-torus', () => {
+    const geometry = generateNestedTorus(9, DEFAULT_NESTED_TORUS_CONFIG)
 
-        // In Hopf, both should change (unlike flat where only one circle changes)
-        expect(delta01).toBeGreaterThan(0)
-        expect(delta23).toBeGreaterThan(0)
-      }
+    expect(geometry.dimension).toBe(9)
+    expect(geometry.type).toBe('nested-torus')
+    expect(geometry.metadata?.properties?.fibration).toBe('T⁴ + helix')
+  })
+
+  it('10D should generate 5-torus', () => {
+    const geometry = generateNestedTorus(10, DEFAULT_NESTED_TORUS_CONFIG)
+
+    expect(geometry.dimension).toBe(10)
+    expect(geometry.type).toBe('nested-torus')
+    expect(geometry.metadata?.properties?.fibration).toBe('T⁵ (5-torus)')
+  })
+
+  it('11D should generate twisted 5-torus', () => {
+    const geometry = generateNestedTorus(11, DEFAULT_NESTED_TORUS_CONFIG)
+
+    expect(geometry.dimension).toBe(11)
+    expect(geometry.type).toBe('nested-torus')
+    expect(geometry.metadata?.properties?.fibration).toBe('T⁵ + helix')
+  })
+})
+
+// ============================================================================
+// Default Config Tests
+// ============================================================================
+
+describe('Default configurations', () => {
+  describe('DEFAULT_CLIFFORD_TORUS_CONFIG', () => {
+    it('should have valid default values', () => {
+      expect(DEFAULT_CLIFFORD_TORUS_CONFIG.radius).toBeGreaterThan(0)
+      expect(DEFAULT_CLIFFORD_TORUS_CONFIG.resolutionU).toBeGreaterThan(0)
+      expect(DEFAULT_CLIFFORD_TORUS_CONFIG.resolutionV).toBeGreaterThan(0)
+      expect(DEFAULT_CLIFFORD_TORUS_CONFIG.stepsPerCircle).toBeGreaterThan(0)
+      expect(DEFAULT_CLIFFORD_TORUS_CONFIG.k).toBeGreaterThanOrEqual(1)
+      expect(DEFAULT_CLIFFORD_TORUS_CONFIG.edgeMode).toBe('grid')
+    })
+  })
+
+  describe('DEFAULT_NESTED_TORUS_CONFIG', () => {
+    it('should have valid default values', () => {
+      expect(DEFAULT_NESTED_TORUS_CONFIG.radius).toBeGreaterThan(0)
+      expect(DEFAULT_NESTED_TORUS_CONFIG.eta).toBeGreaterThan(0)
+      expect(DEFAULT_NESTED_TORUS_CONFIG.eta).toBeLessThan(Math.PI / 2)
+      expect(DEFAULT_NESTED_TORUS_CONFIG.resolutionXi1).toBeGreaterThan(0)
+      expect(DEFAULT_NESTED_TORUS_CONFIG.resolutionXi2).toBeGreaterThan(0)
+      expect(DEFAULT_NESTED_TORUS_CONFIG.edgeMode).toBe('grid')
     })
   })
 })

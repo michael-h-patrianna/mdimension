@@ -111,56 +111,36 @@ export const DEFAULT_ROOT_SYSTEM_CONFIG: RootSystemConfig = {
 export type CliffordTorusEdgeMode = 'grid' | 'none'
 
 /**
- * Clifford torus internal mode (for Flat visualization mode implementation)
+ * Clifford torus internal mode
  * - classic: 2D torus T² in S³ ⊂ ℝ⁴ (only works for n >= 4)
  * - generalized: k-torus Tᵏ in S^(2k-1) ⊂ ℝ^(2k) (works for n >= 3, with k ≤ floor(n/2))
  */
 export type CliffordTorusMode = 'classic' | 'generalized'
 
 /**
- * User-facing visualization modes for Clifford torus
- * - flat: Grid-like structure with independent circles (current implementation, 2D-11D)
- * - nested: Hopf fibration with coupled angles, flowing/interlinked circles (4D and 8D only)
- */
-export type CliffordTorusVisualizationMode = 'flat' | 'nested'
-
-/**
- * Configuration for Clifford torus generation
+ * Configuration for Clifford torus generation (flat mode only)
  *
- * Supports two visualization modes with dimension-specific availability:
- * - Flat (2D-11D): Classic/generalized Clifford tori
- * - Nested (4D, 8D only): Hopf fibration tori
+ * Clifford torus creates flat, grid-like structures with independent circles.
+ * Available for dimensions 3-11.
  *
- * @see docs/prd/clifford-torus-modes.md
+ * For nested/Hopf tori with coupled angles, use the 'nested-torus' object type.
+ *
  * @see docs/research/clifford-tori-guide.md
  */
 export interface CliffordTorusConfig {
-  // ============== User-Facing Mode Selection ==============
-
-  /**
-   * Visualization mode: flat or nested.
-   * - flat: Available for all dimensions (2D-11D)
-   * - nested: Only available for 4D and 8D (Hopf fibrations)
-   */
-  visualizationMode: CliffordTorusVisualizationMode
-
-  // ============== Shared Properties ==============
-
   /** Radius of the containing sphere (0.5-6.0) */
   radius: number
   /** Edge display mode */
   edgeMode: CliffordTorusEdgeMode
 
-  // ============== Flat Mode Properties ==============
-
-  /** Internal mode for Flat visualization: classic (4D) or generalized (nD) */
+  /** Internal mode: classic (4D) or generalized (nD) */
   mode: CliffordTorusMode
-  /** Resolution in U direction for classic/flat mode (8-128) */
+  /** Resolution in U direction for classic mode (8-128) */
   resolutionU: number
-  /** Resolution in V direction for classic/flat mode (8-128) */
+  /** Resolution in V direction for classic mode (8-128) */
   resolutionV: number
   /**
-   * Torus dimension k for generalized/flat mode.
+   * Torus dimension k for generalized mode.
    * Creates a k-torus Tᵏ living on S^(2k-1) ⊂ ℝ^(2k).
    * Must satisfy: 1 ≤ k ≤ floor(n/2)
    * - k=1: circle (trivial)
@@ -169,10 +149,54 @@ export interface CliffordTorusConfig {
    */
   k: number
   /**
-   * Angular resolution per circle for generalized/flat mode.
+   * Angular resolution per circle for generalized mode.
    * Total points = stepsPerCircle^k (use carefully for k >= 3)
    */
   stepsPerCircle: number
+}
+
+/**
+ * Default Clifford torus configuration
+ */
+export const DEFAULT_CLIFFORD_TORUS_CONFIG: CliffordTorusConfig = {
+  radius: 3.0,
+  edgeMode: 'grid',
+  mode: 'classic',
+  resolutionU: 32,
+  resolutionV: 32,
+  k: 2,
+  stepsPerCircle: 16,
+}
+
+// ============================================================================
+// Nested Torus Configuration
+// ============================================================================
+
+/**
+ * Edge display modes for Nested torus
+ */
+export type NestedTorusEdgeMode = 'grid' | 'none'
+
+/**
+ * Configuration for Nested torus generation
+ *
+ * Nested tori use Hopf-like coupled structures:
+ * - 4D: Hopf fibration (S³ → S²)
+ * - 5D: Twisted 2-torus (T² + helix)
+ * - 6D: 3-torus (T³) with coupled angles
+ * - 7D: Twisted 3-torus (T³ + helix)
+ * - 8D: Quaternionic Hopf (S⁷ → S⁴)
+ * - 9D: Twisted 4-torus (T⁴ + helix)
+ * - 10D: 5-torus (T⁵) with coupled angles
+ * - 11D: Twisted 5-torus (T⁵ + helix)
+ *
+ * @see docs/research/clifford-tori-guide.md
+ */
+export interface NestedTorusConfig {
+  /** Radius of the containing sphere (0.5-6.0) */
+  radius: number
+  /** Edge display mode */
+  edgeMode: NestedTorusEdgeMode
 
   // ============== Nested (Hopf) Mode Properties - 4D ==============
 
@@ -204,22 +228,12 @@ export interface CliffordTorusConfig {
 }
 
 /**
- * Default Clifford torus configuration
+ * Default Nested torus configuration
  */
-export const DEFAULT_CLIFFORD_TORUS_CONFIG: CliffordTorusConfig = {
-  // User-facing mode (default to flat for backward compatibility)
-  visualizationMode: 'flat',
-
+export const DEFAULT_NESTED_TORUS_CONFIG: NestedTorusConfig = {
   // Shared
   radius: 3.0,
   edgeMode: 'grid',
-
-  // Flat mode (existing defaults)
-  mode: 'classic',
-  resolutionU: 32,
-  resolutionV: 32,
-  k: 2,
-  stepsPerCircle: 16,
 
   // Nested (Hopf) 4D mode
   eta: Math.PI / 4, // Main Clifford torus position
@@ -713,6 +727,8 @@ export interface ExtendedObjectParams {
   rootSystem: RootSystemConfig
   /** Configuration for Clifford torus generation */
   cliffordTorus: CliffordTorusConfig
+  /** Configuration for Nested torus generation */
+  nestedTorus: NestedTorusConfig
   /** Configuration for Mandelbrot set generation */
   mandelbrot: MandelbrotConfig
   /** Configuration for Mandelbox fractal generation */
@@ -728,6 +744,7 @@ export const DEFAULT_EXTENDED_OBJECT_PARAMS: ExtendedObjectParams = {
   polytope: DEFAULT_POLYTOPE_CONFIG,
   rootSystem: DEFAULT_ROOT_SYSTEM_CONFIG,
   cliffordTorus: DEFAULT_CLIFFORD_TORUS_CONFIG,
+  nestedTorus: DEFAULT_NESTED_TORUS_CONFIG,
   mandelbrot: DEFAULT_MANDELBROT_CONFIG,
   mandelbox: DEFAULT_MANDELBOX_CONFIG,
   menger: DEFAULT_MENGER_CONFIG,

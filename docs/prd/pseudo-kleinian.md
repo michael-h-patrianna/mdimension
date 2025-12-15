@@ -63,11 +63,11 @@ for (int i = 0; i < maxIterations; i++) {
     for (int j = 0; j < D; j++) {
         z[j] = clamp(z[j], -foldLimit, foldLimit) * 2.0 - z[j];
     }
-    
+
     // Sphere inversion
     float r2 = 0.0;
     for (int j = 0; j < D; j++) r2 += z[j] * z[j];
-    
+
     if (r2 < minR2) {
         float t = fixedR2 / minR2;
         for (int j = 0; j < D; j++) z[j] *= t;
@@ -77,13 +77,13 @@ for (int i = 0; i < maxIterations; i++) {
         for (int j = 0; j < D; j++) z[j] *= t;
         dr *= t;
     }
-    
+
     // Scale and translate by CSize (NOT by c)
     for (int j = 0; j < D; j++) {
         z[j] = z[j] * scale + CSize[j];
     }
     dr = dr * abs(scale) + 1.0;
-    
+
     // Bailout
     if (r2 > escapeRadius2) break;
 }
@@ -146,20 +146,20 @@ float pseudoKleinianSDF(vec3 pos, int D, int maxIter, out float trap) {
     for (int i = 0; i < D; i++) {
         z[i] = uOrigin[i] + pos.x * uBasisX[i] + pos.y * uBasisY[i] + pos.z * uBasisZ[i];
     }
-    
+
     float dr = 1.0;
     float minDist = 1000.0;  // Orbit trap
-    
+
     for (int iter = 0; iter < maxIter; iter++) {
         // Box fold (all dimensions)
         for (int j = 0; j < D; j++) {
             z[j] = clamp(z[j], -uFoldLimit, uFoldLimit) * 2.0 - z[j];
         }
-        
+
         // Sphere inversion
         float r2 = 0.0;
         for (int j = 0; j < D; j++) r2 += z[j] * z[j];
-        
+
         if (r2 < uMinRadius2) {
             float t = uFixedRadius2 / uMinRadius2;
             for (int j = 0; j < D; j++) z[j] *= t;
@@ -169,24 +169,24 @@ float pseudoKleinianSDF(vec3 pos, int D, int maxIter, out float trap) {
             for (int j = 0; j < D; j++) z[j] *= t;
             dr *= t;
         }
-        
+
         // Scale and translate by CSize
         for (int j = 0; j < D; j++) {
             z[j] = z[j] * uScale + uCSize[j];
         }
         dr = dr * abs(uScale) + 1.0;
-        
+
         // Orbit trap
         minDist = min(minDist, sqrt(r2));
-        
+
         // Bailout
         if (r2 > uEscapeRadius * uEscapeRadius) break;
     }
-    
+
     float r = 0.0;
     for (int j = 0; j < D; j++) r += z[j] * z[j];
     r = sqrt(r);
-    
+
     trap = minDist;
     return r / abs(dr);
 }
@@ -246,7 +246,7 @@ Beyond the standard N-D slice rotation, Pseudo-Kleinian offers unique animation 
 interface PseudoKleinianAnimation {
     // Standard N-D rotation (slice orientation)
     sliceRotation: Map<string, number>;  // Per rotation plane
-    
+
     // Pseudo-Kleinian-specific: animate CSize components
     csizeMorph: {
         enabled: boolean;
@@ -256,7 +256,7 @@ interface PseudoKleinianAnimation {
         // Which dimensions to animate
         animatedComponents: number[];
     };
-    
+
     // Parameter cycling
     parameterCycle: {
         enabled: boolean;
@@ -300,17 +300,17 @@ interface PseudoKleinianConfig {
     foldLimit: number;       // 0.5 to 2.0, default 1.0
     minRadius: number;       // 0.1 to 1.0, default 0.5
     fixedRadius: number;     // 0.5 to 2.0, default 1.0
-    
+
     // The key parameter: CSize vector (one component per dimension)
     csize: number[];         // D-dimensional vector, e.g., [0.5, 0.5, 0.5, 0.5]
-    
+
     // Iteration control
     maxIterations: number;   // 10 to 100, default 50
     escapeRadius: number;    // 4.0 to 100.0, default 10.0
-    
+
     // Slice position (for dimensions 4+)
     parameterValues: number[];
-    
+
     // CSize animation
     csizeAnimation: {
         enabled: boolean;
@@ -430,6 +430,8 @@ uniform float uOrigin[11];
 ### Phase 4: Advanced Features
 - [ ] Preset library
 - [ ] Color algorithms (reuse from Hyperbulb)
+- [ ] Shadow, Lighting system, Opacity support (reuse from Hyperbulb)
+- [ ] Depth buffer (reuse from Hyperbulb)
 - [ ] Performance optimization (adaptive quality)
 
 ## Comparison with Related Fractals
