@@ -223,7 +223,7 @@ export function PerformanceMonitor() {
               <SectionHeader icon={<Icons.Chip />} label="Hardware" />
               <div className="p-2 bg-white/5 rounded-lg border border-white/5">
                  <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1">Renderer</div>
-                 <div className="text-xs text-zinc-200 font-mono leading-tight break-words">{stats.gpuName}</div>
+                 <div className="text-xs text-zinc-200 font-mono leading-tight break-all">{stats.gpuName}</div>
               </div>
               <div className="grid grid-cols-2 gap-2">
                  {/* Capabilities can be added here */}
@@ -294,7 +294,7 @@ export function PerformanceMonitor() {
           border border-white/10
           rounded-xl overflow-hidden shadow-2xl
           text-xs font-mono text-zinc-400
-          min-w-[300px] flex flex-col
+          w-80 flex flex-col
         ">
 
           {/* --- Header --- */}

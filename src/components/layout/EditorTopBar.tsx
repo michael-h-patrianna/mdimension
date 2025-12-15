@@ -1,6 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { TopBarControls } from '@/components/layout/TopBarControls';
 import { DropdownMenu } from '@/components/ui/DropdownMenu';
+import { Modal } from '@/components/ui/Modal';
+import { StyleManager } from '@/components/presets/StyleManager';
+import { SceneManager } from '@/components/presets/SceneManager';
 import { exportSceneToPNG, generateTimestampFilename } from '@/lib/export';
 import { generateShareUrl } from '@/lib/url';
 import { useGeometryStore } from '@/stores/geometryStore';
@@ -10,7 +13,7 @@ import { usePostProcessingStore } from '@/stores/postProcessingStore';
 import { PRESETS } from '@/lib/presets';
 import { useToast } from '@/contexts/ToastContext';
 import { useLayoutStore } from '@/stores/layoutStore';
-import { usePresetStore } from '@/stores/presetStore';
+import { usePresetManagerStore } from '@/stores/presetManagerStore';
 import { useThemeStore } from '@/stores/themeStore';
 
 interface EditorTopBarProps {
@@ -24,8 +27,21 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
 }) => {
   const { addToast } = useToast();
   const { toggleShortcuts, showLeftPanel, toggleLeftPanel } = useLayoutStore();
-  const { savedPresets, saveCurrentAsPreset, loadPreset } = usePresetStore();
+  
+  // New Preset Manager Store
+  const { 
+    savedStyles, 
+    saveStyle, 
+    loadStyle, 
+    savedScenes, 
+    saveScene, 
+    loadScene 
+  } = usePresetManagerStore();
+
   const { theme, setTheme } = useThemeStore();
+
+  const [isStyleManagerOpen, setIsStyleManagerOpen] = useState(false);
+  const [isSceneManagerOpen, setIsSceneManagerOpen] = useState(false);
 
   const toggleTheme = () => {
       if (theme === 'cyan') setTheme('green');
@@ -76,7 +92,7 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
 
   const handleApplyPreset = (preset: typeof PRESETS[0]) => {
     preset.apply();
-    addToast(`Loaded preset: ${preset.label}`, 'info');
+    addToast(`Loaded example: ${preset.label}`, 'info');
   };
 
   // Cinematic toggle logic is now in TopBarControls, but kept here for menu item compatibility
@@ -95,96 +111,152 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
     { label: 'Keyboard Shortcuts', onClick: toggleShortcuts, shortcut: '?' },
   ];
 
-  const handleSavePreset = () => {
+  // --- Style Menu ---
+  const handleSaveStyle = () => {
       setTimeout(() => {
-          const name = window.prompt('Enter a name for this preset:');
+          const name = window.prompt('Enter a name for this style:');
           if (name) {
-              saveCurrentAsPreset(name);
-              addToast(`Preset "${name}" saved!`, 'success');
+              saveStyle(name);
+              addToast(`Style "${name}" saved!`, 'success');
           }
       }, 10);
   };
 
-  const presetItems = [
-    { label: '+ Save Current State...', onClick: handleSavePreset, 'data-testid': 'preset-save-new' },
-    ...savedPresets.map(p => ({
-        label: `📂 ${p.name}`,
+  const styleItems = [
+    { label: 'Actions' },
+    { label: '+ Save Current Style...', onClick: handleSaveStyle },
+    { label: 'Manage Styles...', onClick: () => setIsStyleManagerOpen(true) },
+    { label: '---' },
+    { label: 'Saved Styles' },
+    ...(savedStyles.length === 0 ? [{ label: '(None)', disabled: true }] : savedStyles.map(s => ({
+        label: s.name,
         onClick: () => {
-            loadPreset(p.id);
-            addToast(`Loaded preset: ${p.name}`, 'info');
-        },
-        'data-testid': `preset-saved-${p.id}`
-    })),
-    ...PRESETS.map(p => ({
-      label: p.label,
-      onClick: () => handleApplyPreset(p),
-      'data-testid': `preset-${p.id}`
-    }))
+            loadStyle(s.id);
+            addToast(`Applied style: ${s.name}`, 'info');
+        }
+    })))
+  ];
+
+  // --- Scene Menu ---
+  const handleSaveScene = () => {
+      setTimeout(() => {
+          const name = window.prompt('Enter a name for this scene:');
+          if (name) {
+              saveScene(name);
+              addToast(`Scene "${name}" saved!`, 'success');
+          }
+      }, 10);
+  };
+
+  const sceneItems = [
+      { label: 'Actions' },
+      { label: '+ Save Current Scene...', onClick: handleSaveScene },
+      { label: 'Manage Scenes...', onClick: () => setIsSceneManagerOpen(true) },
+      { label: '---' },
+      { label: 'Saved Scenes' },
+      ...(savedScenes.length === 0 ? [{ label: '(None)', disabled: true }] : savedScenes.map(s => ({
+          label: s.name,
+          onClick: () => {
+              loadScene(s.id);
+              addToast(`Loaded scene: ${s.name}`, 'info');
+          }
+      }))),
+      { label: '---' },
+      { label: 'Examples' },
+      ...PRESETS.map(p => ({
+          label: p.label,
+          onClick: () => handleApplyPreset(p)
+      }))
   ];
 
   return (
-    <div className="h-12 bg-panel-bg/80 backdrop-blur-md border-b border-panel-border flex items-center justify-between px-4 z-20 shrink-0 select-none relative" data-testid="top-bar">
-      {/* Left: Branding & Menu */}
-      <div className="flex items-center gap-4">
-        {/* Left Panel Toggle */}
-        <button
-            onClick={toggleLeftPanel}
-            className={`p-1.5 rounded-md transition-colors ${
-              showLeftPanel ? 'bg-accent/10 text-accent' : 'text-text-secondary hover:text-text-primary hover:bg-white/5'
-            }`}
-            title="Toggle Explorer"
-            data-testid="toggle-left-panel"
-        >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-              <line x1="9" y1="3" x2="9" y2="21" />
-            </svg>
-        </button>
+    <>
+      <div className="h-12 bg-panel-bg/80 backdrop-blur-md border-b border-panel-border flex items-center justify-between px-4 z-40 shrink-0 select-none relative" data-testid="top-bar">
+        {/* Left: Branding & Menu */}
+        <div className="flex items-center gap-4">
+          {/* Left Panel Toggle */}
+          <button
+              onClick={toggleLeftPanel}
+              className={`p-1.5 rounded-md transition-colors ${
+                showLeftPanel ? 'bg-accent/10 text-accent' : 'text-text-secondary hover:text-text-primary hover:bg-white/5'
+              }`}
+              title="Toggle Explorer"
+              data-testid="toggle-left-panel"
+          >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <line x1="9" y1="3" x2="9" y2="21" />
+              </svg>
+          </button>
 
-        <div className="text-lg font-bold text-accent tracking-tighter hidden sm:block">
-          MDIMENSION
+          <div className="text-lg font-bold text-accent tracking-tighter hidden sm:block">
+            MDIMENSION
+          </div>
+          <div className="h-4 w-px bg-panel-border hidden sm:block" />
+          <div className="flex items-center gap-2 text-xs text-text-secondary">
+            <DropdownMenu 
+              trigger={<button className="hover:text-text-primary px-2 py-1 rounded hover:bg-white/5 transition-colors" data-testid="menu-file">File</button>}
+              items={fileItems}
+            />
+            <DropdownMenu 
+              trigger={<button className="hover:text-text-primary px-2 py-1 rounded hover:bg-white/5 transition-colors" data-testid="menu-view">View</button>}
+              items={viewItems}
+            />
+            
+            <div className="w-px h-3 bg-white/10 mx-1" />
+
+            <DropdownMenu 
+              trigger={<button className="hover:text-text-primary px-2 py-1 rounded hover:bg-white/5 transition-colors text-accent/80" data-testid="menu-styles">Styles</button>}
+              items={styleItems}
+            />
+             <DropdownMenu 
+              trigger={<button className="hover:text-text-primary px-2 py-1 rounded hover:bg-white/5 transition-colors text-accent/80" data-testid="menu-scenes">Scenes</button>}
+              items={sceneItems}
+            />
+          </div>
         </div>
-        <div className="h-4 w-px bg-panel-border hidden sm:block" />
-        <div className="flex items-center gap-2 text-xs text-text-secondary">
-          <DropdownMenu 
-            trigger={<button className="hover:text-text-primary px-2 py-1 rounded hover:bg-white/5 transition-colors" data-testid="menu-file">File</button>}
-            items={fileItems}
-          />
-          <DropdownMenu 
-            trigger={<button className="hover:text-text-primary px-2 py-1 rounded hover:bg-white/5 transition-colors" data-testid="menu-view">View</button>}
-            items={viewItems}
-          />
-           <DropdownMenu 
-            trigger={<button className="hover:text-text-primary px-2 py-1 rounded hover:bg-white/5 transition-colors text-accent/80" data-testid="menu-presets">Presets</button>}
-            items={presetItems}
-          />
+
+        {/* Center: Global Controls */}
+        <div className="flex-1 flex justify-center absolute left-1/2 -translate-x-1/2 pointer-events-none">
+          <div className="pointer-events-auto">
+               <TopBarControls />
+          </div>
+        </div>
+
+        {/* Right: Tools */}
+        <div className="flex items-center gap-2">
+           {/* Right Panel Toggle */}
+           <button
+              onClick={toggleRightPanel}
+              className={`p-1.5 rounded-md transition-colors ${
+                showRightPanel ? 'bg-accent/10 text-accent' : 'text-text-secondary hover:text-text-primary hover:bg-white/5'
+              }`}
+              title="Toggle Inspector"
+              data-testid="toggle-right-panel"
+          >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <line x1="15" y1="3" x2="15" y2="21" />
+              </svg>
+          </button>
         </div>
       </div>
 
-      {/* Center: Global Controls */}
-      <div className="flex-1 flex justify-center absolute left-1/2 -translate-x-1/2 pointer-events-none">
-        <div className="pointer-events-auto">
-             <TopBarControls />
-        </div>
-      </div>
+      <Modal 
+        isOpen={isStyleManagerOpen} 
+        onClose={() => setIsStyleManagerOpen(false)} 
+        title="Manage Styles"
+      >
+        <StyleManager onClose={() => setIsStyleManagerOpen(false)} />
+      </Modal>
 
-      {/* Right: Tools */}
-      <div className="flex items-center gap-2">
-         {/* Right Panel Toggle */}
-         <button
-            onClick={toggleRightPanel}
-            className={`p-1.5 rounded-md transition-colors ${
-              showRightPanel ? 'bg-accent/10 text-accent' : 'text-text-secondary hover:text-text-primary hover:bg-white/5'
-            }`}
-            title="Toggle Inspector"
-            data-testid="toggle-right-panel"
-        >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-              <line x1="15" y1="3" x2="15" y2="21" />
-            </svg>
-        </button>
-      </div>
-    </div>
+      <Modal 
+        isOpen={isSceneManagerOpen} 
+        onClose={() => setIsSceneManagerOpen(false)} 
+        title="Manage Scenes"
+      >
+        <SceneManager onClose={() => setIsSceneManagerOpen(false)} />
+      </Modal>
+    </>
   );
 };

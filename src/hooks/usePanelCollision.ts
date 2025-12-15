@@ -204,6 +204,9 @@ export function usePanelCollision(
     const handleResize = () => checkCollision();
     window.addEventListener('resize', handleResize);
 
+    // Initial check
+    checkCollision();
+
     return () => {
       unsubs.forEach(u => u());
       window.removeEventListener('resize', handleResize);

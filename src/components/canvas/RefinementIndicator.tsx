@@ -5,6 +5,7 @@
 
 import { usePerformanceStore } from '@/stores';
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 export interface RefinementIndicatorProps {
   /** Position in the viewport */
@@ -33,6 +34,7 @@ export const RefinementIndicator: React.FC<RefinementIndicatorProps> = ({
   useEffect(() => {
     if (!enabled) {
       setIsVisible(false);
+      setFadeOut(false);
       return undefined;
     }
 
@@ -76,9 +78,9 @@ export const RefinementIndicator: React.FC<RefinementIndicatorProps> = ({
     'bottom-right': 'bottom-20 right-4',
   };
 
-  return (
+  return createPortal(
     <div
-      className={`absolute ${positionClasses[position]} z-50 pointer-events-none transition-opacity duration-500 ${fadeOut ? 'opacity-0' : 'opacity-100'}`}
+      className={`fixed ${positionClasses[position]} z-[100] pointer-events-none transition-opacity duration-500 ${fadeOut ? 'opacity-0' : 'opacity-100'}`}
       data-testid="refinement-indicator"
     >
       <div className="bg-black/60 backdrop-blur-sm px-3 py-2 rounded-lg border border-white/10 min-w-[80px]">
@@ -100,6 +102,7 @@ export const RefinementIndicator: React.FC<RefinementIndicatorProps> = ({
           </span>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

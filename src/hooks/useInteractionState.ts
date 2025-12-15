@@ -140,7 +140,6 @@ export function useInteractionState(
 
     const handlePointerDown = () => {
       isPointerDownRef.current = true;
-      startInteraction();
     };
 
     const handlePointerUp = () => {

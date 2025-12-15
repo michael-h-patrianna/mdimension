@@ -3,6 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { useCameraMovement } from '@/hooks/useCameraMovement'
 import { useLightingStore } from '@/stores/lightingStore';
+import { useCameraStore } from '@/stores/cameraStore';
 
 /**
  * Props for the CameraController component.
@@ -101,6 +102,7 @@ export function CameraController({
 }: CameraControllerProps) {
   const { camera, gl } = useThree()
   const controlsRef = useRef<OrbitControlsImpl | null>(null)
+  const registerControls = useCameraStore((state) => state.registerControls)
 
   // Check if a light is being dragged (disable controls during drag)
   const isDraggingLight = useLightingStore((state) => state.isDraggingLight)
@@ -112,12 +114,14 @@ export function CameraController({
   useEffect(() => {
     const controls = new OrbitControlsImpl(camera, gl.domElement)
     controlsRef.current = controls
+    registerControls(controls)
 
     return () => {
       controls.dispose()
       controlsRef.current = null
+      registerControls(null as any)
     }
-  }, [camera, gl])
+  }, [camera, gl, registerControls])
 
   // Update control properties when props change (without recreating controls)
   useEffect(() => {

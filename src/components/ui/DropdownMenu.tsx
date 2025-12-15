@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 
 export interface DropdownMenuItem {
   label: string;
-  onClick: () => void;
+  onClick?: () => void;
   disabled?: boolean;
   shortcut?: string;
   'data-testid'?: string;
@@ -61,7 +61,20 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
                 ${align === 'right' ? 'right-0' : 'left-0'}
             `}
         >
-          {items.map((item, index) => (
+          {items.map((item, index) => {
+            if (item.label === '---') {
+                return <div key={index} className="h-px bg-panel-border my-1" />;
+            }
+            
+            if (!item.onClick) {
+                return (
+                    <div key={index} className="px-4 py-1 text-[10px] font-bold text-text-tertiary uppercase tracking-wider select-none">
+                        {item.label}
+                    </div>
+                );
+            }
+
+            return (
             <button
               key={index}
               onClick={(e) => {
@@ -86,7 +99,7 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
                 </span>
               )}
             </button>
-          ))}
+          )})}
         </div>
       )}
     </div>
