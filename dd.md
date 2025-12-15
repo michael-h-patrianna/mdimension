@@ -129,11 +129,13 @@ this is broken. the "Progressive Refinement" feature is supposed to trigger when
 - zooming or moving or rotating the camera
 - when the canvas gets resized
 
-it is now triggered when:
+
+
+the RefinementIndicator is only shown after:
 - user hides the right sidebar
 - user switches cinematic mode on
 
-missing are:
+it is not displayed at all after:
 - all the camera related actions that were working before
 - user toggles the right sidebar visible
 - users switches cinematic mode off
@@ -141,3 +143,5 @@ missing are:
 - user hides the left sidebar
 - user switches full screen mode on
 - user switches full screen mode off
+
+note: the feature itself is working and in the sidebar performance optimization section you can see the sidebar control updating. it is just that the RefinementIndicator is not displayed in all cases when it should be displayed.

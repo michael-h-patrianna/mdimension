@@ -55,6 +55,10 @@ export interface TabsProps {
   tabListClassName?: string;
   /** Optional class name for the content panel */
   contentClassName?: string;
+  /** Visual variant of the tabs */
+  variant?: 'default' | 'minimal';
+  /** Whether tabs should expand to fill the container width */
+  fullWidth?: boolean;
   /** Test ID for testing */
   'data-testid'?: string;
 }
@@ -100,6 +104,8 @@ const ChevronRight = () => (
  * @param props.className
  * @param props.tabListClassName
  * @param props.contentClassName
+ * @param props.variant - 'default' (glass panel, underline) or 'minimal' (border-b, bg tint)
+ * @param props.fullWidth - If true, tabs expand to fill available width
  * @param props.'data-testid'
  */
 export const Tabs: React.FC<TabsProps> = ({
@@ -109,6 +115,8 @@ export const Tabs: React.FC<TabsProps> = ({
   className = '',
   tabListClassName = '',
   contentClassName = '',
+  variant = 'default',
+  fullWidth = false,
   'data-testid': testId,
 }) => {
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -179,12 +187,19 @@ export const Tabs: React.FC<TabsProps> = ({
     [tabs, onChange]
   );
 
+  // Styling based on variant
+  const containerStyles = variant === 'default' 
+    ? 'bg-black/30 rounded-t-md' 
+    : 'border-b border-white/5';
+    
+  const widthStyles = fullWidth ? 'w-full' : 'min-w-full w-max';
+
   return (
     <div className={className} data-testid={testId}>
       {/* Tab List Container with scroll indicators */}
       <div className="relative">
         {/* Left scroll indicator */}
-        {canScrollLeft && (
+        {canScrollLeft && !fullWidth && (
           <button
             type="button"
             onClick={() => scroll('left')}
@@ -200,15 +215,20 @@ export const Tabs: React.FC<TabsProps> = ({
         <div
           ref={scrollContainerRef}
           onScroll={checkScroll}
-          className="overflow-x-auto [&::-webkit-scrollbar]:hidden"
+          className={`overflow-x-auto [&::-webkit-scrollbar]:hidden ${fullWidth ? 'w-full' : ''}`}
         >
           <div
-            className={`flex bg-black/30 rounded-t-md min-w-full w-max ${tabListClassName}`}
+            className={`flex ${containerStyles} ${widthStyles} ${tabListClassName}`}
             role="tablist"
             aria-label="Tabs"
           >
             {tabs.map((tab, index) => {
               const isActive = tab.id === value;
+              
+              // Dynamic styling for active/inactive states
+              const activeTextClass = variant === 'minimal' ? 'text-accent bg-accent/5' : 'text-accent';
+              const inactiveTextClass = variant === 'minimal' ? 'text-zinc-500 hover:text-zinc-300' : 'text-text-secondary hover:text-text-primary hover:bg-white/5';
+              
               return (
                 <button
                   key={tab.id}
@@ -227,15 +247,11 @@ export const Tabs: React.FC<TabsProps> = ({
                     relative flex-1 px-3 py-2 text-xs font-medium uppercase tracking-wider whitespace-nowrap
                     transition-colors duration-200
                     focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-inset
-                    ${
-                      isActive
-                        ? 'text-accent'
-                        : 'text-text-secondary hover:text-text-primary hover:bg-white/5'
-                    }
+                    ${isActive ? activeTextClass : inactiveTextClass}
                   `}
                   data-testid={testId ? `${testId}-tab-${tab.id}` : undefined}
                 >
-                  {isActive && (
+                  {isActive && variant === 'default' && (
                     <m.div
                       layoutId="activeTab"
                       className="absolute bottom-0 left-0 right-0 h-[2px] bg-accent z-20"
@@ -250,7 +266,7 @@ export const Tabs: React.FC<TabsProps> = ({
         </div>
 
         {/* Right scroll indicator */}
-        {canScrollRight && (
+        {canScrollRight && !fullWidth && (
           <button
             type="button"
             onClick={() => scroll('right')}

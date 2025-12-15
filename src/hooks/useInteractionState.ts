@@ -11,8 +11,8 @@ import { INTERACTION_RESTORE_DELAY, usePerformanceStore } from '@/stores';
 import { useLayoutStore } from '@/stores/layoutStore';
 
 /** Threshold for detecting camera movement */
-const POSITION_THRESHOLD = 0.0001;
-const ROTATION_THRESHOLD = 0.0001;
+const POSITION_THRESHOLD = 0.005;
+const ROTATION_THRESHOLD = 0.002;
 
 /** Threshold for detecting camera teleport (large sudden movement) */
 const TELEPORT_POSITION_THRESHOLD = 2.0;
@@ -20,6 +20,9 @@ const TELEPORT_ROTATION_THRESHOLD = 0.5;
 
 /** Minimum size change to trigger interaction (pixels) */
 const SIZE_CHANGE_THRESHOLD = 1;
+
+/** Duration to keep interaction active during layout transitions (ms) */
+const TRANSITION_DURATION = 600;
 
 export interface UseInteractionStateOptions {
   /** Enable interaction detection (default: true) */
@@ -252,8 +255,22 @@ export function useInteractionState(
     prevSizeRef.current = { width: size.width, height: size.height };
   }, [enabled, size.width, size.height, startInteraction, stopInteraction]);
 
+  // Helper to keep interaction active during animations
+  // Pings startInteraction() to prevent the debounce timer from closing it early
+  const triggerTransitionInteraction = useCallback(() => {
+    startInteraction();
+    
+    // Ping repeatedly to cover the spring animation duration
+    const intervals = [100, 200, 300, 400, 500];
+    intervals.forEach(delay => {
+      setTimeout(() => startInteraction(), delay);
+    });
+
+    // Schedule final stop
+    setTimeout(() => stopInteraction(), TRANSITION_DURATION);
+  }, [startInteraction, stopInteraction]);
+
   // Listen to layout changes (sidebar toggle, cinematic mode)
-  // This ensures progressive refinement is triggered even if resize detection is missed
   const { isCollapsed, showLeftPanel, isCinematicMode } = useLayoutStore(
     useShallow((state) => ({
       isCollapsed: state.isCollapsed,
@@ -264,22 +281,20 @@ export function useInteractionState(
 
   useEffect(() => {
     if (!enabled) return;
-    startInteraction();
-    stopInteraction();
-  }, [enabled, isCollapsed, showLeftPanel, isCinematicMode, startInteraction, stopInteraction]);
+    triggerTransitionInteraction();
+  }, [enabled, isCollapsed, showLeftPanel, isCinematicMode, triggerTransitionInteraction]);
 
   // Listen to fullscreen changes
   useEffect(() => {
     if (!enabled) return;
     
     const handleFullscreenChange = () => {
-      startInteraction();
-      stopInteraction();
+      triggerTransitionInteraction();
     };
     
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  }, [enabled, startInteraction, stopInteraction]);
+  }, [enabled, triggerTransitionInteraction]);
 
   return {
     isInteracting: isInteractingRef.current,

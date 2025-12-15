@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { m, AnimatePresence } from 'motion/react';
 import { useThemeStore } from '@/stores/themeStore';
 import { useLayoutStore } from '@/stores/layoutStore';
+import { useShallow } from 'zustand/react/shallow';
 import { EditorTopBar } from './EditorTopBar';
 import { EditorLeftPanel } from './EditorLeftPanel';
 import { EditorRightPanel } from './EditorRightPanel';
@@ -20,10 +21,22 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
     toggleCollapsed, 
     isCinematicMode, 
     toggleCinematicMode, 
+    setCinematicMode,
     setCollapsed,
     showLeftPanel,
     setLeftPanel 
-  } = useLayoutStore();
+  } = useLayoutStore(
+    useShallow((state) => ({
+      isCollapsed: state.isCollapsed,
+      toggleCollapsed: state.toggleCollapsed,
+      isCinematicMode: state.isCinematicMode,
+      toggleCinematicMode: state.toggleCinematicMode,
+      setCinematicMode: state.setCinematicMode,
+      setCollapsed: state.setCollapsed,
+      showLeftPanel: state.showLeftPanel,
+      setLeftPanel: state.setLeftPanel,
+    }))
+  );
   
   const isDesktop = useIsDesktop();
 
@@ -31,6 +44,18 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
+
+  // Sync fullscreen state with cinematic mode
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+        // If exiting fullscreen, ensure cinematic mode is off
+        if (!document.fullscreenElement) {
+          setCinematicMode(false);
+        }
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, [setCinematicMode]);
 
   // Handle overlay mode interactions
   const handleOverlayClick = () => {
@@ -129,7 +154,7 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
         
         {/* Center Canvas Area */}
         <div className="flex-1 flex flex-col min-w-0 relative z-0">
-            <div className="flex-1 relative w-full h-full">
+            <div className="flex-1 relative w-full min-h-0">
                 {children || (
                      <div className="w-full h-full flex flex-col items-center justify-center text-text-tertiary">
                         <div className="w-16 h-16 border-2 border-dashed border-text-tertiary/20 rounded-full flex items-center justify-center mb-4 animate-spin-slow">

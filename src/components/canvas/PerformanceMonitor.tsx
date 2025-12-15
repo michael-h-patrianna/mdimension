@@ -1,10 +1,11 @@
 import { Html } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useRef, useState } from 'react';
-import { m, LazyMotion, domMax, AnimatePresence } from 'motion/react';
+import { m, LazyMotion, domMax } from 'motion/react';
 import * as THREE from 'three';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
+import { Tabs } from '@/components/ui/Tabs';
 
 /**
  * Custom Performance Monitor
@@ -266,6 +267,160 @@ export function PerformanceMonitor() {
   const raySteps = objectType === 'mandelbrot' ? mandelbulbConfig.maxIterations : 
                    objectType === 'mandelbox' ? mandelboxConfig.maxIterations : 0;
 
+  // -- Tab Content --
+  const tabs = [
+    {
+      id: 'perf',
+      label: 'Performance',
+      content: (
+        <m.div 
+          initial={{ opacity: 0, x: -10 }} 
+          animate={{ opacity: 1, x: 0 }} 
+          transition={{ duration: 0.2 }}
+          className="space-y-5"
+        >
+           {/* FPS Graph */}
+          <div className="space-y-1">
+            <div className="flex justify-between text-[10px] opacity-60 uppercase font-bold tracking-wider">
+              <span>FPS History</span>
+              <span>{stats.minFps} - {stats.maxFps}</span>
+            </div>
+            <div className="h-12 w-full flex items-end gap-0.5 opacity-80">
+              {history.fps.map((v, i) => (
+                <div 
+                  key={i} 
+                  className="w-full bg-current rounded-t-[1px] transition-all duration-300"
+                  style={{ 
+                    height: `${Math.min((v / 70) * 100, 100)}%`,
+                    color: v < 30 ? '#ef4444' : v < 55 ? '#f59e0b' : '#10b981'
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-x-6 gap-y-5">
+            {/* GPU Section */}
+            <div className="space-y-3">
+              <SectionHeader icon={<Icons.Zap />} label="GPU Pipeline" />
+              <div className="space-y-2.5">
+                <StatItem label="Draw Calls" value={stats.gpu.calls} />
+                <StatItem label="Triangles" value={formatMetric(stats.gpu.triangles)} />
+                <StatItem label="Vertices" value={formatMetric(vertexCount)} />
+                {stats.gpu.lines > 0 && <StatItem label="Lines" value={formatMetric(stats.gpu.lines)} />}
+              </div>
+            </div>
+
+            {/* Memory Section */}
+            <div className="space-y-3">
+              <SectionHeader icon={<Icons.Database />} label="Memory" />
+              <div className="space-y-2.5">
+                <StatItem label="Textures" value={stats.memory.textures} />
+                <StatItem label="Geometries" value={stats.memory.geometries} />
+                <StatItem label="Programs" value={stats.memory.programs} />
+                <StatItem label="JS Heap" value={`${stats.memory.heap} MB`} />
+              </div>
+            </div>
+          </div>
+
+           {/* Raymarching Specifics */}
+           {isRaymarching && (
+             <div className="pt-3 border-t border-white/10">
+                <SectionHeader icon={<Icons.Layers />} label="Raymarching" />
+                <div className="grid grid-cols-2 gap-4 mt-2">
+                  <StatItem label="Steps" value={raySteps} highlight />
+                  <StatItem label="Precision" value="High" />
+                </div>
+             </div>
+           )}
+
+           {/* CPU Latency Bar */}
+          <div className="pt-3 border-t border-white/10 space-y-1.5">
+             <div className="flex justify-between items-center text-[10px]">
+                <span className="flex items-center gap-1.5 opacity-70 font-semibold uppercase tracking-wider">
+                  <Icons.Clock className="w-3 h-3" /> CPU Latency
+                </span>
+                <span className="font-mono text-zinc-300">{stats.cpuTime}ms</span>
+             </div>
+             <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
+                <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${Math.min((stats.cpuTime/16.6)*100, 100)}%` }} />
+             </div>
+          </div>
+        </m.div>
+      )
+    },
+    {
+      id: 'sys',
+      label: 'System',
+      content: (
+        <m.div 
+          initial={{ opacity: 0, x: 10 }} 
+          animate={{ opacity: 1, x: 0 }} 
+          transition={{ duration: 0.2 }}
+          className="space-y-5"
+        >
+           <div className="space-y-3">
+              <SectionHeader icon={<Icons.Chip />} label="Hardware" />
+              <div className="p-2 bg-white/5 rounded-lg border border-white/5">
+                 <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1">Renderer</div>
+                 <div className="text-xs text-zinc-200 font-mono leading-tight break-words">{gpuName}</div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                 <div className="p-2 bg-white/5 rounded-lg border border-white/5">
+                    <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1">Max Tex</div>
+                    <div className="text-xs text-zinc-200 font-mono">{gl.capabilities.maxTextureSize}px</div>
+                 </div>
+                 <div className="p-2 bg-white/5 rounded-lg border border-white/5">
+                    <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1">Anisotropy</div>
+                    <div className="text-xs text-zinc-200 font-mono">{gl.capabilities.getMaxAnisotropy()}x</div>
+                 </div>
+              </div>
+           </div>
+
+           <div className="space-y-3">
+              <SectionHeader icon={<Icons.Monitor />} label="Viewport" />
+              <div className="space-y-2.5">
+                 <StatItem label="Resolution" value={`${size.width} × ${size.height}`} />
+                 <StatItem label="DPR" value={`${viewport.dpr.toFixed(1)}x`} />
+                 <StatItem label="Aspect" value={(size.width / size.height).toFixed(2)} />
+              </div>
+           </div>
+
+           <div className="space-y-3">
+              <SectionHeader icon={<Icons.Database />} label="VRAM Estimate" />
+              <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-lg space-y-3">
+                 <div className="flex justify-between items-end">
+                    <span className="text-xs text-indigo-200 font-bold">Total Est.</span>
+                    <span className="text-lg font-bold text-indigo-400 font-mono">{formatBytes(stats.vram.total)}</span>
+                 </div>
+                 <div className="space-y-1">
+                    <div className="flex justify-between text-[10px] text-indigo-300/70">
+                      <span>Geometry</span>
+                      <span>{formatBytes(stats.vram.geometries)}</span>
+                    </div>
+                    <div className="w-full h-1 bg-indigo-500/20 rounded-full overflow-hidden">
+                       <div className="h-full bg-indigo-400" style={{ width: `${stats.vram.total > 0 ? (stats.vram.geometries / stats.vram.total) * 100 : 0}%` }} />
+                    </div>
+                 </div>
+                 <div className="space-y-1">
+                    <div className="flex justify-between text-[10px] text-indigo-300/70">
+                      <span>Textures</span>
+                      <span>{formatBytes(stats.vram.textures)}</span>
+                    </div>
+                    <div className="w-full h-1 bg-indigo-500/20 rounded-full overflow-hidden">
+                       <div className="h-full bg-pink-400" style={{ width: `${stats.vram.total > 0 ? (stats.vram.textures / stats.vram.total) * 100 : 0}%` }} />
+                    </div>
+                 </div>
+              </div>
+              <p className="text-[9px] text-zinc-500 italic text-center">
+                 * Estimation based on active geometry & texture buffers. Actual usage may vary by driver overhead.
+              </p>
+           </div>
+        </m.div>
+      )
+    }
+  ];
+
   return (
     <Html fullscreen className="pointer-events-none" style={{ zIndex: 999 }}>
       <LazyMotion features={domMax}>
@@ -305,18 +460,12 @@ export function PerformanceMonitor() {
                   </span>
                   <div className="flex flex-col text-[8px] font-bold uppercase tracking-widest leading-none gap-0.5 opacity-60">
                      <span>FPS</span>
-                     <span>{stats.frameTime}ms</span>
                   </div>
                 </div>
               </div>
               
               <div className="flex items-center gap-3 text-zinc-500">
-                 {/* Mini CPU Graph */}
-                 <div className="w-12 h-4 flex items-end gap-px">
-                    {history.cpu.slice(-10).map((v, i) => (
-                      <div key={i} className="w-full bg-emerald-500/50" style={{ height: `${Math.min(v * 5, 100)}%` }} />
-                    ))}
-                 </div>
+                 <span className="text-xs font-medium">{stats.frameTime}ms</span>
                 {expanded ? <Icons.ChevronDown className="opacity-70" /> : <Icons.ChevronUp className="opacity-70" />}
               </div>
             </div>
@@ -324,175 +473,14 @@ export function PerformanceMonitor() {
             {/* --- Expanded View --- */}
             {expanded && (
               <div className="animate-in slide-in-from-top-2 fade-in duration-200">
-                
-                {/* Tabs */}
-                <div className="flex border-b border-white/5">
-                  <button 
-                     onClick={() => setActiveTab('perf')}
-                     className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${activeTab === 'perf' ? 'text-accent bg-accent/5' : 'text-zinc-500 hover:text-zinc-300'}`}
-                  >
-                    Performance
-                  </button>
-                  <button 
-                     onClick={() => setActiveTab('sys')}
-                     className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${activeTab === 'sys' ? 'text-accent bg-accent/5' : 'text-zinc-500 hover:text-zinc-300'}`}
-                  >
-                    System
-                  </button>
-                </div>
-
-                <div className="p-5 space-y-5">
-                  <AnimatePresence mode="wait">
-                    
-                    {/* --- PERF TAB --- */}
-                    {activeTab === 'perf' && (
-                      <m.div 
-                        key="perf"
-                        initial={{ opacity: 0, x: -10 }} 
-                        animate={{ opacity: 1, x: 0 }} 
-                        exit={{ opacity: 0, x: 10 }}
-                        className="space-y-5"
-                      >
-                         {/* FPS Graph */}
-                        <div className="space-y-1">
-                          <div className="flex justify-between text-[10px] opacity-60 uppercase font-bold tracking-wider">
-                            <span>FPS History</span>
-                            <span>{stats.minFps} - {stats.maxFps}</span>
-                          </div>
-                          <div className="h-12 w-full flex items-end gap-0.5 opacity-80">
-                            {history.fps.map((v, i) => (
-                              <div 
-                                key={i} 
-                                className="w-full bg-current rounded-t-[1px] transition-all duration-300"
-                                style={{ 
-                                  height: `${Math.min((v / 70) * 100, 100)}%`,
-                                  color: v < 30 ? '#ef4444' : v < 55 ? '#f59e0b' : '#10b981'
-                                }}
-                              />
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-x-6 gap-y-5">
-                          {/* GPU Section */}
-                          <div className="space-y-3">
-                            <SectionHeader icon={<Icons.Zap />} label="GPU Pipeline" />
-                            <div className="space-y-2.5">
-                              <StatItem label="Draw Calls" value={stats.gpu.calls} />
-                              <StatItem label="Triangles" value={formatMetric(stats.gpu.triangles)} />
-                              <StatItem label="Vertices" value={formatMetric(vertexCount)} />
-                              {stats.gpu.lines > 0 && <StatItem label="Lines" value={formatMetric(stats.gpu.lines)} />}
-                            </div>
-                          </div>
-
-                          {/* Memory Section */}
-                          <div className="space-y-3">
-                            <SectionHeader icon={<Icons.Database />} label="Memory" />
-                            <div className="space-y-2.5">
-                              <StatItem label="Textures" value={stats.memory.textures} />
-                              <StatItem label="Geometries" value={stats.memory.geometries} />
-                              <StatItem label="Programs" value={stats.memory.programs} />
-                              <StatItem label="JS Heap" value={`${stats.memory.heap} MB`} />
-                            </div>
-                          </div>
-                        </div>
-
-                         {/* Raymarching Specifics */}
-                         {isRaymarching && (
-                           <div className="pt-3 border-t border-white/10">
-                              <SectionHeader icon={<Icons.Layers />} label="Raymarching" />
-                              <div className="grid grid-cols-2 gap-4 mt-2">
-                                <StatItem label="Steps" value={raySteps} highlight />
-                                <StatItem label="Precision" value="High" />
-                              </div>
-                           </div>
-                         )}
-
-                         {/* CPU Latency Bar */}
-                        <div className="pt-3 border-t border-white/10 space-y-1.5">
-                           <div className="flex justify-between items-center text-[10px]">
-                              <span className="flex items-center gap-1.5 opacity-70 font-semibold uppercase tracking-wider">
-                                <Icons.Clock className="w-3 h-3" /> CPU Latency
-                              </span>
-                              <span className="font-mono text-zinc-300">{stats.cpuTime}ms</span>
-                           </div>
-                           <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
-                              <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${Math.min((stats.cpuTime/16.6)*100, 100)}%` }} />
-                           </div>
-                        </div>
-                      </m.div>
-                    )}
-
-                    {/* --- SYSTEM TAB --- */}
-                    {activeTab === 'sys' && (
-                       <m.div 
-                        key="sys"
-                        initial={{ opacity: 0, x: 10 }} 
-                        animate={{ opacity: 1, x: 0 }} 
-                        exit={{ opacity: 0, x: -10 }}
-                        className="space-y-5"
-                      >
-                         <div className="space-y-3">
-                            <SectionHeader icon={<Icons.Chip />} label="Hardware" />
-                            <div className="p-2 bg-white/5 rounded-lg border border-white/5">
-                               <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1">Renderer</div>
-                               <div className="text-xs text-zinc-200 font-mono leading-tight break-words">{gpuName}</div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                               <div className="p-2 bg-white/5 rounded-lg border border-white/5">
-                                  <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1">Max Tex</div>
-                                  <div className="text-xs text-zinc-200 font-mono">{gl.capabilities.maxTextureSize}px</div>
-                               </div>
-                               <div className="p-2 bg-white/5 rounded-lg border border-white/5">
-                                  <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1">Anisotropy</div>
-                                  <div className="text-xs text-zinc-200 font-mono">{gl.capabilities.getMaxAnisotropy()}x</div>
-                               </div>
-                            </div>
-                         </div>
-
-                         <div className="space-y-3">
-                            <SectionHeader icon={<Icons.Monitor />} label="Viewport" />
-                            <div className="space-y-2.5">
-                               <StatItem label="Resolution" value={`${size.width} × ${size.height}`} />
-                               <StatItem label="DPR" value={`${viewport.dpr.toFixed(1)}x`} />
-                               <StatItem label="Aspect" value={(size.width / size.height).toFixed(2)} />
-                            </div>
-                         </div>
-
-                         <div className="space-y-3">
-                            <SectionHeader icon={<Icons.Database />} label="VRAM Estimate" />
-                            <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-lg space-y-3">
-                               <div className="flex justify-between items-end">
-                                  <span className="text-xs text-indigo-200 font-bold">Total Est.</span>
-                                  <span className="text-lg font-bold text-indigo-400 font-mono">{formatBytes(stats.vram.total)}</span>
-                               </div>
-                               <div className="space-y-1">
-                                  <div className="flex justify-between text-[10px] text-indigo-300/70">
-                                    <span>Geometry</span>
-                                    <span>{formatBytes(stats.vram.geometries)}</span>
-                                  </div>
-                                  <div className="w-full h-1 bg-indigo-500/20 rounded-full overflow-hidden">
-                                     <div className="h-full bg-indigo-400" style={{ width: `${stats.vram.total > 0 ? (stats.vram.geometries / stats.vram.total) * 100 : 0}%` }} />
-                                  </div>
-                               </div>
-                               <div className="space-y-1">
-                                  <div className="flex justify-between text-[10px] text-indigo-300/70">
-                                    <span>Textures</span>
-                                    <span>{formatBytes(stats.vram.textures)}</span>
-                                  </div>
-                                  <div className="w-full h-1 bg-indigo-500/20 rounded-full overflow-hidden">
-                                     <div className="h-full bg-pink-400" style={{ width: `${stats.vram.total > 0 ? (stats.vram.textures / stats.vram.total) * 100 : 0}%` }} />
-                                  </div>
-                               </div>
-                            </div>
-                            <p className="text-[9px] text-zinc-500 italic text-center">
-                               * Estimation based on active geometry & texture buffers. Actual usage may vary by driver overhead.
-                            </p>
-                         </div>
-                      </m.div>
-                    )}
-                  </AnimatePresence>
-                </div>
+                <Tabs 
+                  variant="minimal"
+                  fullWidth
+                  value={activeTab}
+                  onChange={(id) => setActiveTab(id as 'perf' | 'sys')}
+                  tabs={tabs}
+                  contentClassName="p-5"
+                />
               </div>
             )}
           </div>

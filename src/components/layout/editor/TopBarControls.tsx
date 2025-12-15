@@ -85,6 +85,14 @@ export const TopBarControls: React.FC = () => {
     }))
   );
 
+  // Logic for Cinematic Mode
+  const { isCinematicMode, toggleCinematicMode } = useLayoutStore(
+    useShallow((state) => ({
+      isCinematicMode: state.isCinematicMode,
+      toggleCinematicMode: state.toggleCinematicMode,
+    }))
+  );
+
   // Local State
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -154,9 +162,6 @@ export const TopBarControls: React.FC = () => {
     }
   }, [edgesVisible, facesVisible, setEdgesVisible]);
 
-  // Logic for Cinematic Mode
-  const { isCinematicMode, toggleCinematicMode } = useLayoutStore();
-  
   const toggleCinematic = () => {
     if (isCinematicMode) {
         toggleCinematicMode();

@@ -13,13 +13,13 @@ import React from 'react';
 function getStageLabel(stage: string): string {
   switch (stage) {
     case 'low':
-      return 'Low';
+      return '25';
     case 'medium':
-      return 'Medium';
+      return '50';
     case 'high':
-      return 'High';
+      return '75';
     case 'final':
-      return 'Final';
+      return '100';
     default:
       return stage;
   }
@@ -61,7 +61,7 @@ export const ProgressiveRefinementControls: React.FC = () => {
             <span className="text-xs text-text-tertiary">
               Quality: {getStageLabel(stage)}
             </span>
-            <span className="text-xs text-text-tertiary">{progress}%</span>
+            <span className="text-xs text-text-tertiary">{Math.round(progress)}%</span>
           </div>
 
           {/* Stage dots */}
@@ -82,7 +82,7 @@ export const ProgressiveRefinementControls: React.FC = () => {
                     className={`w-2 h-2 rounded-full ${isCurrent ? 'bg-accent shadow-[0_0_6px_var(--color-accent)]' : isActive ? 'bg-text-secondary' : 'bg-panel-bg'}`}
                   />
                   <span className="text-[10px] mt-1">
-                    {getStageLabel(s).charAt(0)}
+                    {getStageLabel(s)}
                   </span>
                 </div>
               );

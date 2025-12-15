@@ -78,7 +78,7 @@ export const RefinementIndicator: React.FC<RefinementIndicatorProps> = ({
 
   return (
     <div
-      className={`fixed ${positionClasses[position]} z-50 pointer-events-none transition-opacity duration-500 ${fadeOut ? 'opacity-0' : 'opacity-100'}`}
+      className={`absolute ${positionClasses[position]} z-50 pointer-events-none transition-opacity duration-500 ${fadeOut ? 'opacity-0' : 'opacity-100'}`}
       data-testid="refinement-indicator"
     >
       <div className="bg-black/60 backdrop-blur-sm px-3 py-2 rounded-lg border border-white/10 min-w-[80px]">
@@ -91,8 +91,10 @@ export const RefinementIndicator: React.FC<RefinementIndicatorProps> = ({
         </div>
 
         {/* Stage label */}
-        <div className="flex justify-between items-center">
-          <span className="text-xs text-white/60 capitalize">{stage}</span>
+        <div className="flex justify-between items-center gap-3">
+          <span className="text-xs text-white/60">
+            {stage === 'final' ? 'Complete' : 'Refining'}
+          </span>
           <span className="text-xs font-mono text-white/80">
             {Math.round(progress)}%
           </span>
