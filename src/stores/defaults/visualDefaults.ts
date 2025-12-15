@@ -100,6 +100,9 @@ export type AntiAliasingMethod = 'none' | 'fxaa' | 'smaa'
 
 export const DEFAULT_ANTI_ALIASING_METHOD: AntiAliasingMethod = 'none'
 
+/** SMAA edge detection threshold (lower = more aggressive, 0.05-0.15 typical range) */
+export const DEFAULT_SMAA_THRESHOLD = 0.05
+
 // ============================================================================
 // Lighting Defaults
 // ============================================================================

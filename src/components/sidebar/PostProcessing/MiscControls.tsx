@@ -5,6 +5,7 @@
  *
  * Controls:
  * - Anti-aliasing method selector: None, FXAA, SMAA
+ * - SMAA threshold slider (when SMAA is selected)
  *
  * @see {@link PostProcessing} for the effect implementation
  * @see {@link useVisualStore} for state management
@@ -12,7 +13,8 @@
  */
 
 import { Select, type SelectOption } from '@/components/ui/Select';
-import { type AntiAliasingMethod } from '@/stores/defaults/visualDefaults';
+import { Slider } from '@/components/ui/Slider';
+import { type AntiAliasingMethod, DEFAULT_SMAA_THRESHOLD } from '@/stores/defaults/visualDefaults';
 import { useVisualStore } from '@/stores/visualStore';
 import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
@@ -37,10 +39,14 @@ export const MiscControls: React.FC<MiscControlsProps> = React.memo(({
   const {
     antiAliasingMethod,
     setAntiAliasingMethod,
+    smaaThreshold,
+    setSmaaThreshold,
   } = useVisualStore(
     useShallow((state) => ({
       antiAliasingMethod: state.antiAliasingMethod,
       setAntiAliasingMethod: state.setAntiAliasingMethod,
+      smaaThreshold: state.smaaThreshold,
+      setSmaaThreshold: state.setSmaaThreshold,
     }))
   );
 
@@ -54,6 +60,23 @@ export const MiscControls: React.FC<MiscControlsProps> = React.memo(({
         onChange={setAntiAliasingMethod}
         data-testid="anti-aliasing-select"
       />
+
+      {/* SMAA Threshold - only visible when SMAA is selected */}
+      {antiAliasingMethod === 'smaa' && (
+        <Slider
+          label="SMAA Threshold"
+          value={smaaThreshold}
+          min={0.01}
+          max={0.2}
+          step={0.01}
+          onChange={setSmaaThreshold}
+          onReset={() => setSmaaThreshold(DEFAULT_SMAA_THRESHOLD)}
+          tooltip="Edge detection sensitivity. Lower = more aggressive anti-aliasing."
+          minLabel="Strong"
+          maxLabel="Subtle"
+          data-testid="smaa-threshold-slider"
+        />
+      )}
     </div>
   );
 });

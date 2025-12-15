@@ -27,6 +27,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js';
+// SMAAShader imports not needed - we modify SMAAPass internals directly
 import { TexturePass } from 'three/examples/jsm/postprocessing/TexturePass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
@@ -332,6 +333,7 @@ export const PostProcessing = memo(function PostProcessing() {
     ssrEnabled,
     refractionEnabled,
     antiAliasingMethod,
+    smaaThreshold,
     toneMappingEnabled,
     toneMappingAlgorithm,
     exposure,
@@ -346,6 +348,7 @@ export const PostProcessing = memo(function PostProcessing() {
       ssrEnabled: state.ssrEnabled,
       refractionEnabled: state.refractionEnabled,
       antiAliasingMethod: state.antiAliasingMethod,
+      smaaThreshold: state.smaaThreshold,
       toneMappingEnabled: state.toneMappingEnabled,
       toneMappingAlgorithm: state.toneMappingAlgorithm,
       exposure: state.exposure,
@@ -428,7 +431,32 @@ export const PostProcessing = memo(function PostProcessing() {
     const texPass = new TexturePass(renderTarget.texture);
     effectComposer.addPass(texPass);
 
-    // Bloom - always created, enabled/disabled dynamically
+    // === ANTI-ALIASING PASSES (must come EARLY, before blur effects) ===
+    // AA must run on clean rendered edges before bloom/bokeh blur them away.
+    // See: https://discourse.threejs.org/t/how-to-solve-the-anlias-after-n8ao-pass-i-used-smaa-but-not-work-well/60104
+
+    // FXAA - fast approximate anti-aliasing
+    const fxaa = new ShaderPass(FXAAShader);
+    fxaa.enabled = false;
+    effectComposer.addPass(fxaa);
+
+    // SMAA - subpixel morphological anti-aliasing (higher quality than FXAA)
+    // Set initial threshold here, dynamic updates handled via useEffect
+    const smaa = new SMAAPass();
+    smaa.enabled = false;
+
+    // Set initial threshold (lower = more aggressive edge detection)
+    const smaaInternal = smaa as unknown as { _materialEdges: THREE.ShaderMaterial };
+    if (smaaInternal._materialEdges?.defines) {
+      smaaInternal._materialEdges.defines['SMAA_THRESHOLD'] = '0.05';
+      smaaInternal._materialEdges.needsUpdate = true;
+    }
+
+    effectComposer.addPass(smaa);
+
+    // === BLUR/DISTORTION EFFECTS (after AA) ===
+
+    // Bloom - glow effect
     const bloom = new UnrealBloomPass(
       new THREE.Vector2(initialWidth, initialHeight),
       bloomIntensity,
@@ -437,34 +465,22 @@ export const PostProcessing = memo(function PostProcessing() {
     );
     effectComposer.addPass(bloom);
 
-    // Bokeh - always created, enabled/disabled dynamically
+    // Bokeh - depth of field blur
     const bokeh = new ShaderPass(CustomBokehShader);
     bokeh.enabled = false;
     effectComposer.addPass(bokeh);
 
-    // SSR - always created, enabled/disabled dynamically
+    // SSR - screen space reflections
     const ssr = new ShaderPass(SSRShader);
     ssr.enabled = false;
     effectComposer.addPass(ssr);
 
-    // Refraction - always created, enabled/disabled dynamically
+    // Refraction - glass/liquid distortion
     const refraction = new ShaderPass(RefractionShader);
     refraction.enabled = false;
     effectComposer.addPass(refraction);
 
-    // FXAA - always created, enabled/disabled dynamically
-    const fxaa = new ShaderPass(FXAAShader);
-    fxaa.enabled = false;
-    effectComposer.addPass(fxaa);
-
-    // SMAA - always created, enabled/disabled dynamically
-    // SMAAPass operates in linear-sRGB so must be before OutputPass
-    // Note: setSize is called automatically by EffectComposer.addPass()
-    const smaa = new SMAAPass();
-    smaa.enabled = false;
-    effectComposer.addPass(smaa);
-
-    // Output
+    // Output - tone mapping and final output
     const outputPass = new OutputPass();
     effectComposer.addPass(outputPass);
 
@@ -521,8 +537,24 @@ export const PostProcessing = memo(function PostProcessing() {
         uniforms['resolution'].value.set(1 / size.width, 1 / size.height);
       }
     }
-    // Note: SMAA setSize is handled by composer.setSize() in resize effect
+    // Note: SMAA setSize is handled automatically by composer.setSize() in resize effect
   }, [fxaaPass, smaaPass, antiAliasingMethod, size.width, size.height]);
+
+  // Update SMAA threshold when it changes
+  // Note: Changing defines at runtime requires shader recompilation.
+  // We force this by also updating the version to invalidate the shader program.
+  useEffect(() => {
+    const smaaInternal = smaaPass as unknown as { _materialEdges: THREE.ShaderMaterial };
+    const edgesMaterial = smaaInternal._materialEdges;
+    if (!edgesMaterial || !edgesMaterial.defines) return;
+
+    // Update the threshold define
+    edgesMaterial.defines['SMAA_THRESHOLD'] = smaaThreshold.toFixed(3);
+
+    // Force shader recompilation by incrementing version and marking for update
+    edgesMaterial.version++;
+    edgesMaterial.needsUpdate = true;
+  }, [smaaPass, smaaThreshold]);
 
   // Resize - handles both window resize and resolution scaling changes
   useEffect(() => {
