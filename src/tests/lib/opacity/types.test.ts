@@ -13,7 +13,7 @@ import {
   type OpacityMode,
   type SampleQuality,
   type VolumetricAnimationQuality,
-} from '@/lib/opacity/types';
+} from '@/rendering/opacity/types';
 
 describe('Opacity Types', () => {
   describe('OpacityMode type', () => {

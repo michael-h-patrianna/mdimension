@@ -2,7 +2,7 @@
  * Tests for EdgeMaterialControls component
  */
 
-import { EdgeMaterialControls } from '@/components/sidebar/Edges/EdgeMaterialControls'
+import { EdgeMaterialControls } from '@/components/sections/Edges/EdgeMaterialControls'
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useLightingStore } from '@/stores/lightingStore';
 import { render, screen } from '@testing-library/react'

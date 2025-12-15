@@ -58,7 +58,8 @@
 - **State**: Zustand stores in `src/stores/`. Manages "what is being displayed".
 - **View**: React components in `src/components/`. Two types:
     - **UI Components**: HTML overlays (`src/components/ui/`).
-    - **Canvas Components**: 3D scene elements (`src/components/canvas/`).
+    - **Canvas Components**: Interactive 3D helpers/controls (`src/components/canvas/`).
+    - **Rendering**: Core 3D scene and pipeline (`src/rendering/`).
 - **Integration**: Custom hooks in `src/hooks/`. Connects Stores/Math to Components.
 
 ---
@@ -68,14 +69,22 @@
 ```
 src/
 ├── components/
-│   ├── canvas/       # 3D Objects (Meshes, Lights, Scene)
-│   ├── ui/           # HTML Overlays (Buttons, Sliders)
-│   └── controls/     # Camera/Interaction Controls
+│   ├── canvas/       # 3D Objects that are NOT the main scene (Gizmos, Controls)
+│   ├── layout/       # Layout structure (Editors, Panels, Overlays)
+│   ├── sections/     # Sidebar/Editor sections (Geometry, Appearance, etc.)
+│   └── ui/           # Reusable Core UI Components (Button, Slider, etc.)
 ├── hooks/            # React Hooks (Business Logic)
-├── lib/              # Pure Logic (Math, Geometry, Shaders)
+├── lib/              # Pure Logic (Math, Geometry)
 │   ├── geometry/     # ND Generation Logic
-│   ├── math/         # Matrix/Vector Math
-│   └── shaders/      # GLSL Shaders
+│   └── math/         # Matrix/Vector Math
+├── rendering/        # Rendering Pipeline (Three.js/R3F integration)
+│   ├── Scene.tsx     # Main Scene Entry Point
+│   ├── core/         # Core Rendering Logic (Loops, Layers)
+│   ├── renderers/    # Specific Object Renderers (Polytope, Hyperbulb)
+│   ├── environment/  # Environment Setup (Lights, PostProcessing)
+│   ├── shaders/      # GLSL Shaders
+│   ├── lights/       # Lighting Logic
+│   └── materials/    # Three.js Materials
 ├── stores/           # Global State (Zustand)
 └── theme/            # Styling Constants
 ```
@@ -84,15 +93,18 @@ src/
 1. **Is it a pure mathematical formula?** → `src/lib/math/` or `src/lib/geometry/`
 2. **Is it global state (e.g., current dimension)?** → `src/stores/`
 3. **Is it a React Hook?** → `src/hooks/`
-4. **Is it a 3D object in the scene?** → `src/components/canvas/`
-5. **Is it a UI button/overlay?** → `src/components/ui/`
-6. **Is it a shader?** → `src/lib/shaders/`
+4. **Is it a core rendering component (Scene, Renderer)?** → `src/rendering/`
+5. **Is it a specific object renderer?** → `src/rendering/renderers/`
+6. **Is it a shader?** → `src/rendering/shaders/`
+7. **Is it a reusable UI element (Button)?** → `src/components/ui/`
+8. **Is it a functional section of the editor?** → `src/components/sections/`
+9. **Is it a layout component?** → `src/components/layout/`
 
 ---
 
 ## Component Patterns
 
-### 1. Canvas Components (`src/components/canvas/`)
+### 1. Canvas Components (`src/components/canvas/` & `src/rendering/`)
 **Rule**: Must be rendered inside a `<Canvas>` (R3F).
 **Pattern**:
 ```tsx
@@ -273,16 +285,16 @@ export const use{Name}Store = create<{Name}State>((set) => ({
 
 ## How to Add a Sidebar Section
 
-**Location**: `src/components/sidebar/`
+**Location**: `src/components/sections/`
 **Steps**:
-1. Create folder: `src/components/sidebar/{Name}/`
+1. Create folder: `src/components/sections/{Name}/`
 2. Create component: `{Name}Section.tsx`
 3. Create index: `index.ts` exporting the section
-4. Add to `Sidebar.tsx`:
+4. Add to `EditorRightPanel.tsx` (or relevant container):
 ```tsx
-import { {Name}Section } from './{Name}';
+import { {Name}Section } from '@/components/sections/{Name}';
 // In render:
-<{Name}Section defaultOpen={false} />
+<{Name}Section />
 ```
 
 ---
@@ -308,6 +320,7 @@ Always use path aliases instead of relative imports:
 import { Button } from '@/components/ui/Button';
 import { useGeometryStore } from '@/stores';
 import { createVector } from '@/lib/math';
+import { Scene } from '@/rendering/Scene';
 
 // BAD
 import { Button } from '../../../components/ui/Button';
@@ -319,5 +332,6 @@ Available aliases (from vite.config.ts):
 - `@/lib` → `src/lib`
 - `@/hooks` → `src/hooks`
 - `@/stores` → `src/stores`
+- `@/rendering` → `src/rendering`
 - `@/types` → `src/types`
 - `@/utils` → `src/utils`

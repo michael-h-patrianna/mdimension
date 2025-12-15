@@ -17,8 +17,8 @@ import { memo, useMemo, useRef, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Billboard } from '@react-three/drei';
 import * as THREE from 'three';
-import { rotationToDirection } from '@/lib/lights/types';
-import type { LightSource } from '@/lib/lights/types';
+import { rotationToDirection } from '@/rendering/lights/types';
+import type { LightSource } from '@/rendering/lights/types';
 
 /**
  * Props for LightGizmo component

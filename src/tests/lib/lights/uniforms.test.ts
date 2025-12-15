@@ -2,7 +2,7 @@
  * Tests for multi-light shader uniform helpers
  */
 
-import { MAX_LIGHTS, type LightSource } from '@/lib/lights/types'
+import { MAX_LIGHTS, type LightSource } from '@/rendering/lights/types'
 import {
   createLightUniforms,
   getLightHelperFunctions,
@@ -10,7 +10,7 @@ import {
   getMultiLightFunction,
   mergeLightUniforms,
   updateLightUniforms,
-} from '@/lib/lights/uniforms'
+} from '@/rendering/lights/uniforms'
 import { Color, Vector3 } from 'three'
 import { describe, expect, it } from 'vitest'
 

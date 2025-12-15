@@ -20,7 +20,7 @@ import {
   normalizeRotationTuple,
   rotationToDirection,
   type LightSource,
-} from '@/lib/lights/types'
+} from '@/rendering/lights/types'
 import { describe, expect, it } from 'vitest'
 
 describe('Light Types', () => {

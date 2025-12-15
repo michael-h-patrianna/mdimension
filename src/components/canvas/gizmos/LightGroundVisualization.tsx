@@ -16,8 +16,8 @@
 import { memo, useMemo, useCallback, useRef, useEffect } from 'react';
 import { Line, DragControls } from '@react-three/drei';
 import * as THREE from 'three';
-import { rotationToDirection, directionToRotation } from '@/lib/lights/types';
-import type { LightSource } from '@/lib/lights/types';
+import { rotationToDirection, directionToRotation } from '@/rendering/lights/types';
+import type { LightSource } from '@/rendering/lights/types';
 
 /** Ground plane Y position */
 const GROUND_Y = 0;

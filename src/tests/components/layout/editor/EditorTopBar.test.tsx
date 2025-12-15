@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { EditorTopBar } from '@/components/layout/editor/EditorTopBar';
+import { EditorTopBar } from '@/components/layout/EditorTopBar';
 import { useLayoutStore } from '@/stores/layoutStore'; // Import the actual store
 
 // Mock dependencies

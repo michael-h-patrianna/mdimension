@@ -17,7 +17,7 @@ import type * as THREE from 'three';
 import { useLightingStore } from '@/stores/lightingStore';
 import { LightGizmo } from './LightGizmo';
 import { LightGroundVisualization } from './LightGroundVisualization';
-import type { LightSource, TransformMode } from '@/lib/lights/types';
+import type { LightSource, TransformMode } from '@/rendering/lights/types';
 
 /**
  * Transform target component - handles ref setup for TransformControls

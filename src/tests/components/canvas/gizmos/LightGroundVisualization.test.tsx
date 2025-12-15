@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
 import { Canvas } from '@react-three/fiber';
 import { LightGroundVisualization } from '@/components/canvas/gizmos/LightGroundVisualization';
-import type { LightSource } from '@/lib/lights/types';
+import type { LightSource } from '@/rendering/lights/types';
 
 // Helper to create a test light
 function createTestLight(overrides: Partial<LightSource> = {}): LightSource {

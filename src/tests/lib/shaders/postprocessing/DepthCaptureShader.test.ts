@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { DepthCaptureShader, DepthCaptureUniforms } from '@/lib/shaders/postprocessing/DepthCaptureShader';
+import { DepthCaptureShader, DepthCaptureUniforms } from '@/rendering/shaders/postprocessing/DepthCaptureShader';
 
 describe('DepthCaptureShader', () => {
   describe('structure', () => {

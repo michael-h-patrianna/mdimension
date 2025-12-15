@@ -4,17 +4,17 @@
  * Centralized constants used across visual store slices.
  */
 
-import type { TransformMode } from '@/lib/lights/types'
-import { createDefaultLight } from '@/lib/lights/types'
-import { DEFAULT_OPACITY_SETTINGS } from '@/lib/opacity/constants'
-import type { HyperbulbOpacitySettings } from '@/lib/opacity/types'
+import type { TransformMode } from '@/rendering/lights/types'
+import { createDefaultLight } from '@/rendering/lights/types'
+import { DEFAULT_OPACITY_SETTINGS } from '@/rendering/opacity/constants'
+import type { HyperbulbOpacitySettings } from '@/rendering/opacity/types'
 import {
   DEFAULT_COLOR_ALGORITHM,
   DEFAULT_COSINE_COEFFICIENTS,
   DEFAULT_DISTRIBUTION,
   DEFAULT_MULTI_SOURCE_WEIGHTS,
-} from '@/lib/shaders/palette'
-import type { ShaderType, ToneMappingAlgorithm } from '@/lib/shaders/types'
+} from '@/rendering/shaders/palette'
+import type { ShaderType, ToneMappingAlgorithm } from '@/rendering/shaders/types'
 
 // ============================================================================
 // Basic Visual Defaults
@@ -138,8 +138,8 @@ export {
   DEFAULT_SHADOW_QUALITY,
   DEFAULT_SHADOW_SOFTNESS,
   SHADOW_SOFTNESS_RANGE,
-} from '@/lib/shadows/constants'
-export type { ShadowAnimationMode, ShadowQuality } from '@/lib/shadows/types'
+} from '@/rendering/shadows/constants'
+export type { ShadowAnimationMode, ShadowQuality } from '@/rendering/shadows/types'
 
 // ============================================================================
 // Depth Effect Defaults

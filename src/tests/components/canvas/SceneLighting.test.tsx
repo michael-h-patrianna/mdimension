@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
 import { Canvas } from '@react-three/fiber';
-import { SceneLighting } from '@/components/canvas/environment/SceneLighting';
+import { SceneLighting } from '@/rendering/environment/SceneLighting';
 import { useLightingStore } from '@/stores/lightingStore';
 import { LIGHTING_INITIAL_STATE } from '@/stores/slices/lightingSlice';
 

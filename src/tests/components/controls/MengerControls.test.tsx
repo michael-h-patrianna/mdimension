@@ -4,7 +4,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
-import { MengerControls } from '@/components/sidebar/Geometry/MengerControls';
+import { MengerControls } from '@/components/sections/Geometry/MengerControls';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { DEFAULT_MENGER_CONFIG } from '@/lib/geometry/extended/types';

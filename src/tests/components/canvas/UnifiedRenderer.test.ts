@@ -2,7 +2,7 @@
  * Tests for UnifiedRenderer and determineRenderMode function
  */
 
-import { determineRenderMode, type RenderMode } from '@/components/canvas/renderers/UnifiedRenderer'
+import { determineRenderMode, type RenderMode } from '@/rendering/renderers/UnifiedRenderer'
 import type { NdGeometry } from '@/lib/geometry/types'
 import { describe, expect, it } from 'vitest'
 

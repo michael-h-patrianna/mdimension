@@ -4,7 +4,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render } from '@testing-library/react'
-import { TubeWireframe } from '@/components/canvas/renderers/TubeWireframe'
+import { TubeWireframe } from '@/rendering/renderers/TubeWireframe'
 
 // Mock Three.js and R3F context
 vi.mock('@react-three/fiber', () => ({
@@ -98,7 +98,7 @@ vi.mock('@/lib/math/projection', () => ({
   DEFAULT_PROJECTION_DISTANCE: 4,
 }))
 
-vi.mock('@/lib/shaders/transforms/ndTransform', () => ({
+vi.mock('@/rendering/shaders/transforms/ndTransform', () => ({
   matrixToGPUUniforms: () => ({
     rotationMatrix4D: {
       elements: new Float32Array(16),
@@ -110,7 +110,7 @@ vi.mock('@/lib/shaders/transforms/ndTransform', () => ({
 }))
 
 // Mock light uniforms
-vi.mock('@/lib/lights/uniforms', () => ({
+vi.mock('@/rendering/lights/uniforms', () => ({
   createLightUniforms: () => ({
     uNumLights: { value: 1 },
     uLightsEnabled: { value: [true, false, false, false] },

@@ -13,7 +13,7 @@ import {
   URL_KEY_SHADOW_QUALITY,
   URL_KEY_SHADOW_SOFTNESS,
   URL_KEY_SHADOW_ANIMATION_MODE,
-} from '@/lib/shadows/constants';
+} from '@/rendering/shadows/constants';
 import { deserializeState, serializeState, type ShareableState } from '@/lib/url/state-serializer';
 
 describe('Shadow URL Serialization', () => {

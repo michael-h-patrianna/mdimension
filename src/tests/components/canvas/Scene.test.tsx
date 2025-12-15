@@ -1,4 +1,4 @@
-import { Scene } from '@/components/canvas/Scene'
+import { Scene } from '@/rendering/Scene'
 import type { NdGeometry } from '@/lib/geometry/types'
 import type { Vector3D } from '@/lib/math/types'
 import { Canvas } from '@react-three/fiber'

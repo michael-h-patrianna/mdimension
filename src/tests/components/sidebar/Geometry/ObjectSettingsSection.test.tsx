@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { ObjectSettingsSection } from '@/components/sidebar/Geometry/ObjectSettingsSection';
+import { ObjectSettingsSection } from '@/components/sections/Geometry/ObjectSettingsSection';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { act } from 'react';

@@ -7,7 +7,7 @@ import {
   updateUnifiedMaterialPalette,
   updateUnifiedMaterialLighting,
   updateUnifiedMaterialFresnel,
-} from '@/lib/shaders/materials/UnifiedMaterial';
+} from '@/rendering/shaders/materials/UnifiedMaterial';
 import { createIdentityMatrix, createRotationMatrix } from '@/lib/math';
 
 describe('UnifiedMaterial', () => {

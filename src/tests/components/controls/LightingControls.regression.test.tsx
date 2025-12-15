@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
-import { LightingControls } from '@/components/sidebar/Lights/LightingControls';
+import { LightingControls } from '@/components/sections/Lights/LightingControls';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import { APPEARANCE_INITIAL_STATE } from '@/stores/slices/appearanceSlice';
 

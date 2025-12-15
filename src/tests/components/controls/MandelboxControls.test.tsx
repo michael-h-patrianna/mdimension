@@ -4,7 +4,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
-import { MandelboxControls } from '@/components/sidebar/Geometry/MandelboxControls';
+import { MandelboxControls } from '@/components/sections/Geometry/MandelboxControls';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { DEFAULT_MANDELBOX_CONFIG } from '@/lib/geometry/extended/types';

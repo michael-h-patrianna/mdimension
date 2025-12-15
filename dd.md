@@ -148,15 +148,8 @@ note: the feature itself is working and in the sidebar performance optimization 
 
 
 reorganize the codebase file folder structure:
-1.
+1. src/components/sidebar should be src/components/sections
+2. add a folder src/components/sections/ObjectTypes and move src/components/layout/editor/ObjectTypeExplorer.tsx into it
+3. move the remaining components in src/components/layout/editor to src/components/layout
+4. src/components/canvas should only contain actual visible ui components. for everything related to the rendering pipeline like shaders, materials, post processing effects, ... use a folder structure under src/rendering/
 
-edges deactivate, only faces and nothing else in the scene
-
-3d: 12 tris, 36 verts
-4d: 48 tris, 144 verts
-5d: 160 tris, 480 verts
-
-edges only, no faces:
-3d: 24 verts
-4d: 64 verts
-5d: 160 verts

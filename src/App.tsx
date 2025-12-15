@@ -15,9 +15,9 @@
 
 import { useMemo } from 'react';
 import { FpsController } from '@/components/canvas/FpsController';
-import { Scene } from '@/components/canvas/Scene';
-import { EditorLayout } from '@/components/layout/editor/EditorLayout';
-import { RefinementIndicator } from '@/components/ui/RefinementIndicator';
+import { Scene } from '@/rendering/Scene';
+import { EditorLayout } from '@/components/layout/EditorLayout';
+import { RefinementIndicator } from '@/components/canvas/RefinementIndicator';
 import { useAnimationLoop } from '@/hooks/useAnimationLoop';
 import { useFaceDepths } from '@/hooks/useFaceDepths';
 import { useFaceDetection } from '@/hooks/useFaceDetection';

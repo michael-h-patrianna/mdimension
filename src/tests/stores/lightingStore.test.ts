@@ -2,7 +2,7 @@
  * Tests for visualStore multi-light actions
  */
 
-import { MAX_LIGHTS, MIN_LIGHTS } from '@/lib/lights/types'
+import { MAX_LIGHTS, MIN_LIGHTS } from '@/rendering/lights/types'
 import { useLightingStore } from '@/stores/lightingStore';
 import {
   DEFAULT_LIGHTS,

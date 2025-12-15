@@ -1,9 +1,9 @@
-import { LightEditor } from '@/components/sidebar/Lights/LightEditor';
-import { LightingControls } from '@/components/sidebar/Lights/LightingControls';
-import { LightList } from '@/components/sidebar/Lights/LightList';
-import { LightListItem } from '@/components/sidebar/Lights/LightListItem';
-import { Vector3Input } from '@/components/sidebar/Lights/Vector3Input';
-import type { LightSource } from '@/lib/lights/types';
+import { LightEditor } from '@/components/sections/Lights/LightEditor';
+import { LightingControls } from '@/components/sections/Lights/LightingControls';
+import { LightList } from '@/components/sections/Lights/LightList';
+import { LightListItem } from '@/components/sections/Lights/LightListItem';
+import { Vector3Input } from '@/components/sections/Lights/Vector3Input';
+import type { LightSource } from '@/rendering/lights/types';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useLightingStore } from '@/stores/lightingStore';
 import { APPEARANCE_INITIAL_STATE } from '@/stores/slices/appearanceSlice';

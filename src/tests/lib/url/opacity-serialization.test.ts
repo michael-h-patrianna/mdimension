@@ -11,7 +11,7 @@ import {
   URL_KEY_SIMPLE_ALPHA,
   URL_KEY_VOLUMETRIC_ANIM_QUALITY,
   URL_KEY_VOLUMETRIC_DENSITY,
-} from '@/lib/opacity/constants';
+} from '@/rendering/opacity/constants';
 import { deserializeState, serializeState, type ShareableState } from '@/lib/url/state-serializer';
 
 describe('Opacity URL Serialization', () => {

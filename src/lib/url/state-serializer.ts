@@ -6,7 +6,7 @@
  */
 
 import type { ObjectType } from '@/lib/geometry/types';
-import type { OpacityMode, SampleQuality, VolumetricAnimationQuality } from '@/lib/opacity/types';
+import type { OpacityMode, SampleQuality, VolumetricAnimationQuality } from '@/rendering/opacity/types';
 import {
   DEFAULT_OPACITY_MODE,
   DEFAULT_LAYER_COUNT,
@@ -22,8 +22,8 @@ import {
   URL_KEY_SIMPLE_ALPHA,
   URL_KEY_VOLUMETRIC_ANIM_QUALITY,
   URL_KEY_VOLUMETRIC_DENSITY,
-} from '@/lib/opacity/constants';
-import type { ShadowAnimationMode, ShadowQuality } from '@/lib/shadows/types';
+} from '@/rendering/opacity/constants';
+import type { ShadowAnimationMode, ShadowQuality } from '@/rendering/shadows/types';
 import {
   DEFAULT_SHADOW_QUALITY,
   DEFAULT_SHADOW_SOFTNESS,
@@ -35,8 +35,8 @@ import {
   URL_KEY_SHADOW_QUALITY,
   URL_KEY_SHADOW_SOFTNESS,
   URL_KEY_SHADOW_ANIMATION_MODE,
-} from '@/lib/shadows/constants';
-import type { ShaderType, AllShaderSettings, ToneMappingAlgorithm } from '@/lib/shaders/types';
+} from '@/rendering/shadows/constants';
+import type { ShaderType, AllShaderSettings, ToneMappingAlgorithm } from '@/rendering/shaders/types';
 import { MAX_DIMENSION, MIN_DIMENSION } from '@/stores/geometryStore';
 import { DEFAULT_SHADER_TYPE, DEFAULT_SHADER_SETTINGS, DEFAULT_TONE_MAPPING_ALGORITHM, DEFAULT_EXPOSURE, DEFAULT_SPECULAR_COLOR, DEFAULT_DIFFUSE_INTENSITY } from '@/stores/defaults/visualDefaults';
 

@@ -5,7 +5,7 @@ export interface GPUStats {
   triangles: number
   points: number
   lines: number
-  uniqueVertices?: number  // Actual vertex buffer count (for indexed geometry)
+  uniqueVertices?: number // Actual vertex buffer count (for indexed geometry)
 }
 
 export interface MemoryStats {

@@ -7,7 +7,7 @@ import {
   calculateCosineColor,
   applyDistributionTS,
   getCosinePaletteColorTS,
-} from '@/lib/shaders/palette/cosine.glsl';
+} from '@/rendering/shaders/palette/cosine.glsl';
 
 describe('calculateCosineColor', () => {
   it('should return base color (a) when t=0 and c=0', () => {

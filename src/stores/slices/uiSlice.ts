@@ -13,13 +13,13 @@ import {
   LAYER_OPACITY_RANGE,
   SIMPLE_ALPHA_RANGE,
   VOLUMETRIC_DENSITY_RANGE,
-} from '@/lib/opacity/constants'
+} from '@/rendering/opacity/constants'
 import type {
   HyperbulbOpacitySettings,
   OpacityMode,
   SampleQuality,
   VolumetricAnimationQuality,
-} from '@/lib/opacity/types'
+} from '@/rendering/opacity/types'
 import {
   DEFAULT_ANIMATION_BIAS,
   DEFAULT_MAX_FPS,

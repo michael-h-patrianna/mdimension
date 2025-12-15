@@ -25,7 +25,7 @@ import {
   URL_KEY_VOLUMETRIC_ANIM_QUALITY,
   URL_KEY_VOLUMETRIC_DENSITY,
   VOLUMETRIC_DENSITY_RANGE,
-} from '@/lib/opacity/constants';
+} from '@/rendering/opacity/constants';
 
 describe('Opacity Constants', () => {
   describe('Default Values', () => {

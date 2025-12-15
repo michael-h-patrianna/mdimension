@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { BokehControls } from '@/components/sidebar/PostProcessing/BokehControls';
+import { BokehControls } from '@/components/sections/PostProcessing/BokehControls';
 import { usePostProcessingStore } from '@/stores/postProcessingStore';
 import { POST_PROCESSING_INITIAL_STATE } from '@/stores/slices/postProcessingSlice';
 import {

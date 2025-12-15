@@ -18,7 +18,7 @@ vi.mock('@/stores', () => ({
 }));
 
 // Mock the DepthCaptureShader
-vi.mock('@/lib/shaders/postprocessing/DepthCaptureShader', () => ({
+vi.mock('@/rendering/shaders/postprocessing/DepthCaptureShader', () => ({
   DepthCaptureShader: {
     name: 'DepthCaptureShader',
     vertexShader: 'void main() { gl_Position = vec4(position, 1.0); }',
@@ -32,7 +32,7 @@ vi.mock('@/lib/shaders/postprocessing/DepthCaptureShader', () => ({
 }));
 
 // Import after mocks are set up
-import { TemporalDepthManager } from '@/lib/rendering/TemporalDepthManager';
+import { TemporalDepthManager } from '@/rendering/core/TemporalDepthManager';
 import { usePerformanceStore } from '@/stores';
 
 describe('TemporalDepthManager', () => {

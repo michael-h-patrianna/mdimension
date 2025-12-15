@@ -11,7 +11,7 @@ import {
   getEdgeColor,
   getPredefinedDimensionColor,
   DIMENSION_COLORS,
-} from '@/lib/shaders/dimensionColors';
+} from '@/rendering/shaders/dimensionColors';
 
 describe('dimensionColors', () => {
   describe('getDimensionColor', () => {

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Section } from '../../../components/ui/Section';
+import { Section } from '@/components/sections/Section';
 
 describe('Section', () => {
   beforeEach(() => {

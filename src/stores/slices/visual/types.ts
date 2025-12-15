@@ -3,8 +3,8 @@ import type {
   CosineCoefficients,
   DistributionSettings,
   MultiSourceWeights,
-} from '@/lib/shaders/palette'
-import type { AllShaderSettings, ShaderType, SurfaceSettings, WireframeSettings } from '@/lib/shaders/types'
+} from '@/rendering/shaders/palette'
+import type { AllShaderSettings, ShaderType, SurfaceSettings, WireframeSettings } from '@/rendering/shaders/types'
 import { VisualPreset } from '@/stores/defaults/visualDefaults'
 
 // ============================================================================

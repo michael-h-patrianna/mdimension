@@ -8,7 +8,7 @@
  */
 
 import type { StateCreator } from 'zustand'
-import type { LightSource, LightType, TransformMode } from '@/lib/lights/types'
+import type { LightSource, LightType, TransformMode } from '@/rendering/lights/types'
 import {
   MAX_LIGHTS,
   MIN_LIGHTS,
@@ -18,10 +18,10 @@ import {
   cloneLight,
   createNewLight,
   normalizeRotationTuple,
-} from '@/lib/lights/types'
-import type { ToneMappingAlgorithm } from '@/lib/shaders/types'
-import type { ShadowAnimationMode, ShadowQuality } from '@/lib/shadows/types'
-import { SHADOW_SOFTNESS_RANGE } from '@/lib/shadows/constants'
+} from '@/rendering/lights/types'
+import type { ToneMappingAlgorithm } from '@/rendering/shaders/types'
+import type { ShadowAnimationMode, ShadowQuality } from '@/rendering/shadows/types'
+import { SHADOW_SOFTNESS_RANGE } from '@/rendering/shadows/constants'
 import {
   DEFAULT_AMBIENT_COLOR,
   DEFAULT_AMBIENT_INTENSITY,

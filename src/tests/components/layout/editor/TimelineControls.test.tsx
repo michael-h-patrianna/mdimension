@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { TimelineControls } from '@/components/layout/editor/TimelineControls';
+import { TimelineControls } from '@/components/layout/TimelineControls';
 
 vi.mock('@/stores/geometryStore', () => ({
   useGeometryStore: vi.fn((selector) => {

@@ -61,6 +61,9 @@ function formatBytes(bytes: number, decimals = 1): string {
   return `${(bytes / Math.pow(k, i)).toFixed(decimals)} ${sizes[i]}`;
 }
 
+/**
+ *
+ */
 export function PerformanceMonitor() {
   // -- Store Connectors --
   const objectType = useGeometryStore(state => state.objectType);

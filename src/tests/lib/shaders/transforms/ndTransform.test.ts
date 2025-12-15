@@ -8,7 +8,7 @@ import {
   generateNDTransformFragmentShader,
   createNDTransformUniforms,
   updateNDTransformUniforms,
-} from '@/lib/shaders/transforms/ndTransform';
+} from '@/rendering/shaders/transforms/ndTransform';
 import { createIdentityMatrix, createRotationMatrix } from '@/lib/math';
 
 describe('ndTransform', () => {

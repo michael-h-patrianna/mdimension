@@ -10,7 +10,7 @@ import {
   getPresetById,
   getDefaultPresetForAlgorithm,
   type PresetKey,
-} from '@/lib/shaders/palette/presets';
+} from '@/rendering/shaders/palette/presets';
 
 describe('COSINE_PRESETS', () => {
   it('should have all preset keys defined', () => {
