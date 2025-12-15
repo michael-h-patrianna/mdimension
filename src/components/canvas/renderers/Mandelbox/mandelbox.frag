@@ -102,6 +102,8 @@ uniform mat4 uPrevViewProjectionMatrix;
 uniform mat4 uPrevInverseViewProjectionMatrix;
 uniform bool uTemporalEnabled;
 uniform vec2 uDepthBufferResolution;
+uniform float uCameraNear;
+uniform float uCameraFar;
 
 // Opacity Mode System uniforms
 // Mode: 0=solid, 1=simpleAlpha, 2=layeredSurfaces, 3=volumetricDensity
@@ -1061,16 +1063,58 @@ float GetDistWithTrap(vec3 pos, out float trap) {
 /**
  * Reproject current pixel to previous frame and sample depth.
  * Returns the reprojected depth distance, or -1.0 if invalid.
+ *
+ * @param ro Ray origin in model space
+ * @param rd Ray direction in model space (normalized)
+ * @param worldRayDir Ray direction in world space (for reprojection)
+ * @return Reprojected depth distance in model space, or -1.0 if invalid
  */
-float getTemporalDepth(vec3 ro, vec3 rd) {
+float getTemporalDepth(vec3 ro, vec3 rd, vec3 worldRayDir) {
     if (!uTemporalEnabled) return -1.0;
 
-    vec2 screenUV = vUv;
-    float prevDepth = texture(uPrevDepthTexture, screenUV).r;
+    // Estimate a world-space point along the ray at an average expected distance
+    float estimatedWorldDist = BOUND_R * 1.5;
+    vec3 estimatedWorldHit = uCameraPosition + worldRayDir * estimatedWorldDist;
 
-    if (prevDepth <= 0.0 || prevDepth > 100.0) return -1.0;
+    // Transform estimated hit point to previous frame's clip space
+    vec4 prevClipPos = uPrevViewProjectionMatrix * vec4(estimatedWorldHit, 1.0);
+    vec2 prevNDC = prevClipPos.xy / prevClipPos.w;
+    vec2 prevUV = prevNDC * 0.5 + 0.5;
 
-    return max(0.0, prevDepth - 0.01);
+    // Check if point is visible in previous frame
+    if (prevUV.x < 0.0 || prevUV.x > 1.0 || prevUV.y < 0.0 || prevUV.y > 1.0) {
+        return -1.0;
+    }
+
+    // Sample previous depth (stored as normalized linear depth)
+    float normalizedDepth = texture(uPrevDepthTexture, prevUV).r;
+
+    // Validate depth
+    if (normalizedDepth <= 0.001 || normalizedDepth >= 0.999) {
+        return -1.0;
+    }
+
+    // Disocclusion detection: check for depth discontinuities
+    vec2 texelSize = 1.0 / uDepthBufferResolution;
+    float depthLeft = texture(uPrevDepthTexture, prevUV - vec2(texelSize.x, 0.0)).r;
+    float depthRight = texture(uPrevDepthTexture, prevUV + vec2(texelSize.x, 0.0)).r;
+    float depthUp = texture(uPrevDepthTexture, prevUV + vec2(0.0, texelSize.y)).r;
+    float depthDown = texture(uPrevDepthTexture, prevUV - vec2(0.0, texelSize.y)).r;
+
+    float maxNeighborDiff = max(
+        max(abs(normalizedDepth - depthLeft), abs(normalizedDepth - depthRight)),
+        max(abs(normalizedDepth - depthUp), abs(normalizedDepth - depthDown))
+    );
+
+    if (maxNeighborDiff > 0.05) {
+        return -1.0;  // Depth discontinuity - temporal data unreliable
+    }
+
+    // Convert from normalized depth to world-space distance
+    float worldDepth = normalizedDepth * uCameraFar;
+
+    // Apply safety margin
+    return max(0.0, worldDepth * 0.95);
 }
 
 // ============================================
@@ -1086,7 +1130,7 @@ vec2 intersectSphere(vec3 ro, vec3 rd, float radius) {
     return vec2(-b - h, -b + h);
 }
 
-float RayMarch(vec3 ro, vec3 rd, out float trap) {
+float RayMarch(vec3 ro, vec3 rd, vec3 worldRayDir, out float trap) {
     trap = 0.0;
     float camDist = length(ro);
     float maxDist = camDist + BOUND_R * 2.0 + 1.0;
@@ -1098,7 +1142,7 @@ float RayMarch(vec3 ro, vec3 rd, out float trap) {
     float maxT = min(tSphere.y, maxDist);
 
     // Temporal Reprojection: Use previous frame's depth as starting point
-    float temporalDepth = getTemporalDepth(ro, rd);
+    float temporalDepth = getTemporalDepth(ro, rd, worldRayDir);
     if (temporalDepth > 0.0 && temporalDepth < maxT) {
         float temporalStart = max(dO, temporalDepth * 0.95);
         dO = temporalStart;
@@ -1377,7 +1421,7 @@ void main() {
     float sphereEntry = max(0.0, tSphere.x);
 
     float trap;
-    float d = RayMarch(ro, rd, trap);
+    float d = RayMarch(ro, rd, worldRayDir, trap);
 
     if (d > maxDist) discard;
 

@@ -187,6 +187,10 @@ export interface TemporalDepthUniforms {
   uTemporalEnabled: { value: boolean };
   /** Depth buffer resolution for UV calculation */
   uDepthBufferResolution: { value: THREE.Vector2 };
+  /** Camera near clip plane */
+  uCameraNear: { value: number };
+  /** Camera far clip plane */
+  uCameraFar: { value: number };
 }
 
 /**
@@ -199,6 +203,8 @@ export function createTemporalDepthUniforms(): TemporalDepthUniforms {
     uPrevInverseViewProjectionMatrix: { value: new THREE.Matrix4() },
     uTemporalEnabled: { value: false },
     uDepthBufferResolution: { value: new THREE.Vector2(1, 1) },
+    uCameraNear: { value: 0.1 },
+    uCameraFar: { value: 1000.0 },
   };
 }
 

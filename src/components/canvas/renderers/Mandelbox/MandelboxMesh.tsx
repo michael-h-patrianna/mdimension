@@ -7,6 +7,7 @@ import { OPACITY_MODE_TO_INT, SAMPLE_QUALITY_TO_INT } from '@/lib/opacity/types'
 import { COLOR_ALGORITHM_TO_INT } from '@/lib/shaders/palette';
 import { SHADOW_QUALITY_TO_INT, SHADOW_ANIMATION_MODE_TO_INT } from '@/lib/shadows/types';
 import { RENDER_LAYERS } from '@/lib/rendering/layers';
+import { TemporalDepthManager } from '@/lib/rendering/TemporalDepthManager';
 import { createTemporalDepthUniforms } from '@/hooks';
 import { useAnimationStore } from '@/stores/animationStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
@@ -494,6 +495,30 @@ const MandelboxMesh = () => {
       // Update camera matrices
       if (material.uniforms.uProjectionMatrix) material.uniforms.uProjectionMatrix.value.copy(camera.projectionMatrix);
       if (material.uniforms.uViewMatrix) material.uniforms.uViewMatrix.value.copy(camera.matrixWorldInverse);
+
+      // Update temporal reprojection uniforms from manager
+      const temporalUniforms = TemporalDepthManager.getUniforms();
+      if (material.uniforms.uPrevDepthTexture) {
+        material.uniforms.uPrevDepthTexture.value = temporalUniforms.uPrevDepthTexture;
+      }
+      if (material.uniforms.uPrevViewProjectionMatrix) {
+        material.uniforms.uPrevViewProjectionMatrix.value.copy(temporalUniforms.uPrevViewProjectionMatrix);
+      }
+      if (material.uniforms.uPrevInverseViewProjectionMatrix) {
+        material.uniforms.uPrevInverseViewProjectionMatrix.value.copy(temporalUniforms.uPrevInverseViewProjectionMatrix);
+      }
+      if (material.uniforms.uTemporalEnabled) {
+        material.uniforms.uTemporalEnabled.value = temporalUniforms.uTemporalEnabled;
+      }
+      if (material.uniforms.uDepthBufferResolution) {
+        material.uniforms.uDepthBufferResolution.value.copy(temporalUniforms.uDepthBufferResolution);
+      }
+      if (material.uniforms.uCameraNear) {
+        material.uniforms.uCameraNear.value = temporalUniforms.uNearClip;
+      }
+      if (material.uniforms.uCameraFar) {
+        material.uniforms.uCameraFar.value = temporalUniforms.uFarClip;
+      }
 
       // Update multi-light system uniforms (with cached linear color conversion)
       updateLightUniforms(material.uniforms as unknown as LightUniforms, lights, lightColorCacheRef.current);

@@ -13,22 +13,24 @@
  * which correctly captures gl_FragDepth from all custom shaders.
  */
 
+import { RENDER_LAYERS, needsObjectOnlyDepth } from '@/lib/rendering/layers';
+import { TemporalDepthManager } from '@/lib/rendering/TemporalDepthManager';
+import { RefractionShader, type RefractionUniforms } from '@/lib/shaders/postprocessing/RefractionShader';
+import { SSRShader, type SSRUniforms } from '@/lib/shaders/postprocessing/SSRShader';
+import { TONE_MAPPING_TO_THREE } from '@/lib/shaders/types';
+import { getEffectiveSSRQuality, usePerformanceStore } from '@/stores';
+import { SSR_QUALITY_STEPS, useVisualStore, type SSRQuality } from '@/stores/visualStore';
+import { useFrame, useThree } from '@react-three/fiber';
 import { memo, useEffect, useMemo, useRef } from 'react';
-import { useThree, useFrame } from '@react-three/fiber';
-import { useShallow } from 'zustand/react/shallow';
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
-import { TexturePass } from 'three/examples/jsm/postprocessing/TexturePass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js';
+import { TexturePass } from 'three/examples/jsm/postprocessing/TexturePass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
-import { useVisualStore, SSR_QUALITY_STEPS, type SSRQuality } from '@/stores/visualStore';
-import { usePerformanceStore, getEffectiveSSRQuality } from '@/stores';
-import { TONE_MAPPING_TO_THREE } from '@/lib/shaders/types';
-import { SSRShader, type SSRUniforms } from '@/lib/shaders/postprocessing/SSRShader';
-import { RefractionShader, type RefractionUniforms } from '@/lib/shaders/postprocessing/RefractionShader';
-import { RENDER_LAYERS, needsObjectOnlyDepth } from '@/lib/rendering/layers';
+import { useShallow } from 'zustand/react/shallow';
 
 /**
  * Type for bokeh shader uniforms
@@ -36,6 +38,7 @@ import { RENDER_LAYERS, needsObjectOnlyDepth } from '@/lib/rendering/layers';
 interface BokehUniforms {
   tDiffuse: { value: THREE.Texture | null };
   tDepth: { value: THREE.DepthTexture | null };
+  tTemporalDepth: { value: THREE.Texture | null };
   focus: { value: number };
   focusRange: { value: number };
   aperture: { value: number };
@@ -44,6 +47,7 @@ interface BokehUniforms {
   farClip: { value: number };
   aspect: { value: number };
   debugMode: { value: number };
+  showTemporalDepth: { value: boolean };
   blurMethod: { value: number };
   time: { value: number };
 }
@@ -57,6 +61,7 @@ const CustomBokehShader = {
   uniforms: {
     tDiffuse: { value: null as THREE.Texture | null },
     tDepth: { value: null as THREE.DepthTexture | null },
+    tTemporalDepth: { value: null as THREE.Texture | null },
     focus: { value: 10.0 },
     focusRange: { value: 5.0 },
     aperture: { value: 0.01 },
@@ -65,6 +70,7 @@ const CustomBokehShader = {
     farClip: { value: 1000.0 },
     aspect: { value: 1.0 },
     debugMode: { value: 0.0 },
+    showTemporalDepth: { value: false },
     blurMethod: { value: 3.0 }, // 0=disc, 1=jittered, 2=separable, 3=hexagonal
     time: { value: 0.0 },
   },
@@ -82,6 +88,7 @@ const CustomBokehShader = {
 
     uniform sampler2D tDiffuse;
     uniform sampler2D tDepth;
+    uniform sampler2D tTemporalDepth;
     uniform float focus;
     uniform float focusRange;
     uniform float aperture;
@@ -90,6 +97,7 @@ const CustomBokehShader = {
     uniform float farClip;
     uniform float aspect;
     uniform float debugMode;
+    uniform bool showTemporalDepth;
     uniform float blurMethod;
     uniform float time;
 
@@ -229,6 +237,14 @@ const CustomBokehShader = {
     }
 
     void main() {
+      // Show temporal depth buffer if enabled
+      if (showTemporalDepth) {
+        float temporalDepth = texture2D(tTemporalDepth, vUv).r;
+        // Invert: near=white, far=black (more intuitive)
+        gl_FragColor = vec4(vec3(1.0 - temporalDepth), 1.0);
+        return;
+      }
+
       float depth = getDepth(vUv);
       float viewZ = -getViewZ(depth);
 
@@ -255,7 +271,7 @@ const CustomBokehShader = {
       }
 
       // Debug mode 3: show focus zones (green=in focus, red/blue=out of focus)
-      if (debugMode > 2.5) {
+      if (debugMode > 2.5 && debugMode < 3.5) {
         // Green channel: in-focus zone (within focusRange)
         float inFocus = 1.0 - clamp(absDiff / focusRange, 0.0, 1.0);
         // Red: behind focus (positive diff), Blue: in front (negative diff)
@@ -264,6 +280,7 @@ const CustomBokehShader = {
         gl_FragColor = vec4(behind, inFocus, infront, 1.0);
         return;
       }
+
 
       // Apply blur based on selected method
       vec2 dofblur = vec2(blurFactor);
@@ -314,7 +331,7 @@ export const PostProcessing = memo(function PostProcessing() {
     showDepthBuffer,
     ssrEnabled,
     refractionEnabled,
-    fxaaEnabled,
+    antiAliasingMethod,
     toneMappingEnabled,
     toneMappingAlgorithm,
     exposure,
@@ -328,7 +345,7 @@ export const PostProcessing = memo(function PostProcessing() {
       showDepthBuffer: state.showDepthBuffer,
       ssrEnabled: state.ssrEnabled,
       refractionEnabled: state.refractionEnabled,
-      fxaaEnabled: state.fxaaEnabled,
+      antiAliasingMethod: state.antiAliasingMethod,
       toneMappingEnabled: state.toneMappingEnabled,
       toneMappingAlgorithm: state.toneMappingAlgorithm,
       exposure: state.exposure,
@@ -361,7 +378,7 @@ export const PostProcessing = memo(function PostProcessing() {
   //
   // IMPORTANT: We create these once and resize them separately to avoid
   // recreating the entire pipeline on every resolution change (which causes black flashes)
-  const { composer, bloomPass, bokehPass, ssrPass, refractionPass, sceneTarget, objectDepthTarget, texturePass } = useMemo(() => {
+  const { composer, bloomPass, bokehPass, ssrPass, refractionPass, fxaaPass, smaaPass, sceneTarget, objectDepthTarget, texturePass } = useMemo(() => {
     // Use a reasonable initial size - will be resized immediately in useEffect
     const initialWidth = Math.max(1, size.width);
     const initialHeight = Math.max(1, size.height);
@@ -400,6 +417,12 @@ export const PostProcessing = memo(function PostProcessing() {
 
     // Create composer - we'll manually render scene to target, then use TexturePass
     const effectComposer = new EffectComposer(gl);
+    
+    // Ensure composer's internal render targets use LinearFilter for proper AA sampling
+    effectComposer.renderTarget1.texture.minFilter = THREE.LinearFilter;
+    effectComposer.renderTarget1.texture.magFilter = THREE.LinearFilter;
+    effectComposer.renderTarget2.texture.minFilter = THREE.LinearFilter;
+    effectComposer.renderTarget2.texture.magFilter = THREE.LinearFilter;
 
     // TexturePass to copy from our pre-rendered scene
     const texPass = new TexturePass(renderTarget.texture);
@@ -429,6 +452,18 @@ export const PostProcessing = memo(function PostProcessing() {
     refraction.enabled = false;
     effectComposer.addPass(refraction);
 
+    // FXAA - always created, enabled/disabled dynamically
+    const fxaa = new ShaderPass(FXAAShader);
+    fxaa.enabled = false;
+    effectComposer.addPass(fxaa);
+
+    // SMAA - always created, enabled/disabled dynamically
+    // SMAAPass operates in linear-sRGB so must be before OutputPass
+    // Note: setSize is called automatically by EffectComposer.addPass()
+    const smaa = new SMAAPass();
+    smaa.enabled = false;
+    effectComposer.addPass(smaa);
+
     // Output
     const outputPass = new OutputPass();
     effectComposer.addPass(outputPass);
@@ -439,6 +474,8 @@ export const PostProcessing = memo(function PostProcessing() {
       bokehPass: bokeh,
       ssrPass: ssr,
       refractionPass: refraction,
+      fxaaPass: fxaa,
+      smaaPass: smaa,
       sceneTarget: renderTarget,
       objectDepthTarget: objectDepth,
       texturePass: texPass,
@@ -471,11 +508,28 @@ export const PostProcessing = memo(function PostProcessing() {
     refractionPass.enabled = refractionEnabled;
   }, [refractionPass, refractionEnabled]);
 
+  // Update anti-aliasing enabled state and resolution
+  useEffect(() => {
+    // Disable both passes first, then enable the selected one
+    fxaaPass.enabled = antiAliasingMethod === 'fxaa';
+    smaaPass.enabled = antiAliasingMethod === 'smaa';
+
+    // Update FXAA resolution when active
+    if (antiAliasingMethod === 'fxaa') {
+      const uniforms = fxaaPass.material.uniforms;
+      if (uniforms['resolution']?.value) {
+        uniforms['resolution'].value.set(1 / size.width, 1 / size.height);
+      }
+    }
+    // Note: SMAA setSize is handled by composer.setSize() in resize effect
+  }, [fxaaPass, smaaPass, antiAliasingMethod, size.width, size.height]);
+
   // Resize - handles both window resize and resolution scaling changes
   useEffect(() => {
     const width = Math.max(1, size.width);
     const height = Math.max(1, size.height);
 
+    // composer.setSize calls setSize on all passes (including SMAA)
     composer.setSize(width, height);
     bloomPass.resolution.set(width, height);
     sceneTarget.setSize(width, height);
@@ -504,12 +558,18 @@ export const PostProcessing = memo(function PostProcessing() {
     refractionUniforms.resolution.value.set(width, height);
   }, [composer, bloomPass, bokehPass, ssrPass, refractionPass, sceneTarget, objectDepthTarget, texturePass, size.width, size.height]);
 
+  // Initialize temporal depth manager on mount and resize
+  useEffect(() => {
+    TemporalDepthManager.initialize(size.width, size.height, gl);
+  }, [gl, size.width, size.height]);
+
   // Cleanup on unmount only
   useEffect(() => {
     return () => {
       composer.dispose();
       sceneTarget.dispose();
       objectDepthTarget.dispose();
+      TemporalDepthManager.dispose();
     };
   }, [composer, sceneTarget, objectDepthTarget]);
 
@@ -522,30 +582,38 @@ export const PostProcessing = memo(function PostProcessing() {
     const currentShowDepthBuffer = state.showDepthBuffer;
     const currentSSREnabled = state.ssrEnabled;
     const currentRefractionEnabled = state.refractionEnabled;
+    const currentAntiAliasingMethod = state.antiAliasingMethod;
 
-    // Bokeh pass also runs when showing depth buffer (uses same shader)
-    const bokehOrDepthEnabled = currentBokehEnabled || currentShowDepthBuffer;
+    // Bokeh pass also runs when showing depth buffer or temporal depth (uses same shader)
+    const bokehOrDepthEnabled = currentBokehEnabled || currentShowDepthBuffer || state.showTemporalDepthBuffer;
 
     // Update pass enabled states every frame to ensure sync
     bloomPass.enabled = currentBloomEnabled;
     bokehPass.enabled = bokehOrDepthEnabled;
     ssrPass.enabled = currentSSREnabled;
     refractionPass.enabled = currentRefractionEnabled;
+    fxaaPass.enabled = currentAntiAliasingMethod === 'fxaa';
+    smaaPass.enabled = currentAntiAliasingMethod === 'smaa';
 
     // Set bloom strength (0 when disabled for smooth transition)
     bloomPass.strength = currentBloomEnabled ? state.bloomIntensity : 0;
+
+    // Update temporal depth manager camera matrices (before any rendering)
+    TemporalDepthManager.updateCameraMatrices(camera);
 
     // Save renderer state
     const currentAutoClear = gl.autoClear;
     const currentClearColor = gl.getClearColor(tempClearColor);
     const currentClearAlpha = gl.getClearAlpha();
 
-    // Check if we need object-only depth for SSR/refraction/bokeh/depth visualization
+    // Check if we need object-only depth for SSR/refraction/bokeh/temporal reprojection
+    const temporalReprojectionEnabled = usePerformanceStore.getState().temporalReprojectionEnabled;
     const renderObjectDepth = needsObjectOnlyDepth({
       ssrEnabled: currentSSREnabled,
       refractionEnabled: currentRefractionEnabled,
       bokehEnabled: bokehOrDepthEnabled,
       bokehFocusMode: state.bokehFocusMode,
+      temporalReprojectionEnabled,
     });
 
     // Render object-only depth pass (excludes walls, gizmos, axes)
@@ -585,6 +653,12 @@ export const PostProcessing = memo(function PostProcessing() {
         });
         // Restore camera layers
         camera.layers.mask = savedCameraLayers;
+      }
+
+      // Capture depth to temporal buffer for next frame's reprojection
+      // Uses object-only depth (excludes environment) for more accurate hints
+      if (objectDepthTarget.depthTexture) {
+        TemporalDepthManager.captureDepth(gl, objectDepthTarget.depthTexture);
       }
     }
 
@@ -671,9 +745,7 @@ export const PostProcessing = memo(function PostProcessing() {
       uniforms.nearClip.value = camera.near;
       uniforms.farClip.value = camera.far;
 
-      // Debug mode: 0=normal, 1=raw depth, 2=linear depth, 3=focus zones
-      // showDepthBuffer (from Settings) shows linear depth visualization
-      // bokehShowDebug (from Bokeh controls) shows focus zones
+      // Debug modes: 0=normal, 1=raw depth, 2=linear depth, 3=focus zones
       let debugMode = 0;
       if (state.showDepthBuffer) {
         debugMode = 2; // Linear depth
@@ -681,6 +753,11 @@ export const PostProcessing = memo(function PostProcessing() {
         debugMode = 3; // Focus zones
       }
       uniforms.debugMode.value = debugMode;
+
+      // Temporal depth visualization (separate from debug modes)
+      uniforms.showTemporalDepth.value = state.showTemporalDepthBuffer;
+      const temporalUniforms = TemporalDepthManager.getUniforms();
+      uniforms.tTemporalDepth.value = temporalUniforms.uPrevDepthTexture;
 
       // Blur method: 0=disc, 1=jittered, 2=separable, 3=hexagonal
       const blurMethodMap: Record<string, number> = {
@@ -735,6 +812,9 @@ export const PostProcessing = memo(function PostProcessing() {
     }
 
     composer.render();
+
+    // Swap temporal depth buffers at end of frame
+    TemporalDepthManager.swap();
   }, 1);
 
   return null;

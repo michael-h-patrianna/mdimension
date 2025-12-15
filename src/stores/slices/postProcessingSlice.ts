@@ -8,9 +8,11 @@
 
 import type { StateCreator } from 'zustand'
 import {
+  type AntiAliasingMethod,
   type BokehBlurMethod,
   type BokehFocusMode,
   type SSRQuality,
+  DEFAULT_ANTI_ALIASING_METHOD,
   DEFAULT_BLOOM_ENABLED,
   DEFAULT_BLOOM_INTENSITY,
   DEFAULT_BLOOM_RADIUS,
@@ -24,18 +26,17 @@ import {
   DEFAULT_BOKEH_SMOOTH_TIME,
   DEFAULT_BOKEH_WORLD_FOCUS_DISTANCE,
   DEFAULT_BOKEH_WORLD_FOCUS_RANGE,
-  DEFAULT_SSR_ENABLED,
-  DEFAULT_SSR_INTENSITY,
-  DEFAULT_SSR_MAX_DISTANCE,
-  DEFAULT_SSR_THICKNESS,
-  DEFAULT_SSR_FADE_START,
-  DEFAULT_SSR_FADE_END,
-  DEFAULT_SSR_QUALITY,
+  DEFAULT_REFRACTION_CHROMATIC_ABERRATION,
   DEFAULT_REFRACTION_ENABLED,
   DEFAULT_REFRACTION_IOR,
   DEFAULT_REFRACTION_STRENGTH,
-  DEFAULT_REFRACTION_CHROMATIC_ABERRATION,
-  DEFAULT_FXAA_ENABLED,
+  DEFAULT_SSR_ENABLED,
+  DEFAULT_SSR_FADE_END,
+  DEFAULT_SSR_FADE_START,
+  DEFAULT_SSR_INTENSITY,
+  DEFAULT_SSR_MAX_DISTANCE,
+  DEFAULT_SSR_QUALITY,
+  DEFAULT_SSR_THICKNESS,
 } from '../defaults/visualDefaults'
 
 // ============================================================================
@@ -75,8 +76,8 @@ export interface PostProcessingSliceState {
   refractionStrength: number
   refractionChromaticAberration: number
 
-  // --- FXAA (Anti-aliasing) ---
-  fxaaEnabled: boolean
+  // --- Anti-aliasing ---
+  antiAliasingMethod: AntiAliasingMethod
 }
 
 export interface PostProcessingSliceActions {
@@ -112,8 +113,8 @@ export interface PostProcessingSliceActions {
   setRefractionStrength: (strength: number) => void
   setRefractionChromaticAberration: (ca: number) => void
 
-  // --- FXAA Actions ---
-  setFxaaEnabled: (enabled: boolean) => void
+  // --- Anti-aliasing Actions ---
+  setAntiAliasingMethod: (method: AntiAliasingMethod) => void
 }
 
 export type PostProcessingSlice = PostProcessingSliceState & PostProcessingSliceActions
@@ -155,8 +156,8 @@ export const POST_PROCESSING_INITIAL_STATE: PostProcessingSliceState = {
   refractionStrength: DEFAULT_REFRACTION_STRENGTH,
   refractionChromaticAberration: DEFAULT_REFRACTION_CHROMATIC_ABERRATION,
 
-  // FXAA
-  fxaaEnabled: DEFAULT_FXAA_ENABLED,
+  // Anti-aliasing
+  antiAliasingMethod: DEFAULT_ANTI_ALIASING_METHOD,
 }
 
 // ============================================================================
@@ -271,8 +272,8 @@ export const createPostProcessingSlice: StateCreator<
     set({ refractionChromaticAberration: Math.max(0, Math.min(1, ca)) })
   },
 
-  // --- FXAA Actions ---
-  setFxaaEnabled: (enabled: boolean) => {
-    set({ fxaaEnabled: enabled })
+  // --- Anti-aliasing Actions ---
+  setAntiAliasingMethod: (method: AntiAliasingMethod) => {
+    set({ antiAliasingMethod: method })
   },
 })

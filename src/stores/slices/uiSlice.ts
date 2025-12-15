@@ -27,6 +27,7 @@ import {
   DEFAULT_SHOW_AXIS_HELPER,
   DEFAULT_SHOW_DEPTH_BUFFER,
   DEFAULT_SHOW_PERF_MONITOR,
+  DEFAULT_SHOW_TEMPORAL_DEPTH_BUFFER,
   MAX_MAX_FPS,
   MIN_MAX_FPS,
 } from '../defaults/visualDefaults'
@@ -40,6 +41,7 @@ export interface UISliceState {
   showAxisHelper: boolean
   showPerfMonitor: boolean
   showDepthBuffer: boolean
+  showTemporalDepthBuffer: boolean
 
   // --- Animation ---
   animationBias: number
@@ -57,6 +59,7 @@ export interface UISliceActions {
   setShowAxisHelper: (show: boolean) => void
   setShowPerfMonitor: (show: boolean) => void
   setShowDepthBuffer: (show: boolean) => void
+  setShowTemporalDepthBuffer: (show: boolean) => void
 
   // --- Animation Actions ---
   setAnimationBias: (bias: number) => void
@@ -87,6 +90,7 @@ export const UI_INITIAL_STATE: UISliceState = {
   showAxisHelper: DEFAULT_SHOW_AXIS_HELPER,
   showPerfMonitor: DEFAULT_SHOW_PERF_MONITOR,
   showDepthBuffer: DEFAULT_SHOW_DEPTH_BUFFER,
+  showTemporalDepthBuffer: DEFAULT_SHOW_TEMPORAL_DEPTH_BUFFER,
 
   // Animation
   animationBias: DEFAULT_ANIMATION_BIAS,
@@ -117,6 +121,10 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set) => ({
 
   setShowDepthBuffer: (show: boolean) => {
     set({ showDepthBuffer: show })
+  },
+
+  setShowTemporalDepthBuffer: (show: boolean) => {
+    set({ showTemporalDepthBuffer: show })
   },
 
   // --- Animation Actions ---

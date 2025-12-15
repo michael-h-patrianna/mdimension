@@ -9,6 +9,7 @@ import { Slider } from '@/components/ui/Slider';
 import { Switch } from '@/components/ui/Switch';
 import { DEFAULT_MAX_FPS } from '@/stores/defaults/visualDefaults';
 import { useVisualStore } from '@/stores/visualStore';
+import { usePerformanceStore } from '@/stores';
 import React from 'react';
 import { ThemeSelector } from './ThemeSelector';
 
@@ -32,6 +33,8 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
   const setShowAxisHelper = useVisualStore((state) => state.setShowAxisHelper);
   const showDepthBuffer = useVisualStore((state) => state.showDepthBuffer);
   const setShowDepthBuffer = useVisualStore((state) => state.setShowDepthBuffer);
+  const showTemporalDepthBuffer = useVisualStore((state) => state.showTemporalDepthBuffer);
+  const setShowTemporalDepthBuffer = useVisualStore((state) => state.setShowTemporalDepthBuffer);
   const maxFps = useVisualStore((state) => state.maxFps);
   const setMaxFps = useVisualStore((state) => state.setMaxFps);
 
@@ -47,6 +50,11 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
     bokehEnabled,
     bokehFocusMode,
   });
+
+  // Check if temporal reprojection is enabled
+  const temporalReprojectionEnabled = usePerformanceStore(
+    (state) => state.temporalReprojectionEnabled
+  );
 
   return (
     <Section title="Settings" defaultOpen={defaultOpen}>
@@ -72,6 +80,14 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
           onCheckedChange={setShowDepthBuffer}
           disabled={!depthBufferAvailable}
           label="Show Depth Buffer"
+        />
+      </div>
+      <div className="mt-3 pt-3 border-t border-panel-border">
+        <Switch
+          checked={showTemporalDepthBuffer && temporalReprojectionEnabled}
+          onCheckedChange={setShowTemporalDepthBuffer}
+          disabled={!temporalReprojectionEnabled}
+          label="Show Temporal Depth"
         />
       </div>
       <div className="mt-3 pt-3 border-t border-panel-border">

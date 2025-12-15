@@ -92,10 +92,13 @@ export const DEFAULT_REFRACTION_STRENGTH = 0.1
 export const DEFAULT_REFRACTION_CHROMATIC_ABERRATION = 0.0
 
 // ============================================================================
-// FXAA Defaults
+// Anti-aliasing Defaults
 // ============================================================================
 
-export const DEFAULT_FXAA_ENABLED = false
+/** Anti-aliasing method type */
+export type AntiAliasingMethod = 'none' | 'fxaa' | 'smaa'
+
+export const DEFAULT_ANTI_ALIASING_METHOD: AntiAliasingMethod = 'none'
 
 // ============================================================================
 // Lighting Defaults
@@ -127,13 +130,13 @@ export const DEFAULT_SHOW_LIGHT_GIZMOS = false
 
 // Shadow system - re-export from lib for convenience
 export {
+  DEFAULT_SHADOW_ANIMATION_MODE,
   DEFAULT_SHADOW_ENABLED,
   DEFAULT_SHADOW_QUALITY,
   DEFAULT_SHADOW_SOFTNESS,
-  DEFAULT_SHADOW_ANIMATION_MODE,
   SHADOW_SOFTNESS_RANGE,
 } from '@/lib/shadows/constants'
-export type { ShadowQuality, ShadowAnimationMode } from '@/lib/shadows/types'
+export type { ShadowAnimationMode, ShadowQuality } from '@/lib/shadows/types'
 
 // ============================================================================
 // Depth Effect Defaults
@@ -210,6 +213,7 @@ export const DEFAULT_SHADER_SETTINGS = {
 export const DEFAULT_SHOW_AXIS_HELPER = false
 export const DEFAULT_SHOW_PERF_MONITOR = true
 export const DEFAULT_SHOW_DEPTH_BUFFER = false
+export const DEFAULT_SHOW_TEMPORAL_DEPTH_BUFFER = false
 export const DEFAULT_ANIMATION_BIAS = 0
 export const MIN_ANIMATION_BIAS = 0
 export const MAX_ANIMATION_BIAS = 1

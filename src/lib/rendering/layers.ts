@@ -32,6 +32,7 @@ export function needsObjectOnlyDepth(state: {
   refractionEnabled: boolean;
   bokehEnabled: boolean;
   bokehFocusMode: string;
+  temporalReprojectionEnabled?: boolean;
 }): boolean {
   // SSR and refraction always need object-only depth
   if (state.ssrEnabled || state.refractionEnabled) {
@@ -40,6 +41,11 @@ export function needsObjectOnlyDepth(state: {
 
   // Bokeh always needs object-only depth so blur is based on main object, not walls
   if (state.bokehEnabled) {
+    return true;
+  }
+
+  // Temporal reprojection needs depth for raymarching acceleration
+  if (state.temporalReprojectionEnabled) {
     return true;
   }
 
