@@ -17,7 +17,7 @@ export const GeometrySection: React.FC<GeometrySectionProps> = ({
   defaultOpen = true,
 }) => {
   return (
-    <Section title="Geometry" defaultOpen={defaultOpen}>
+    <Section title="Geometry" defaultOpen={defaultOpen} data-testid="geometry-section">
       <div className="space-y-4">
         <DimensionSelector />
         <ObjectTypeSelector />

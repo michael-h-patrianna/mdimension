@@ -567,12 +567,12 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     const cache = colorCacheRef.current;
 
     // Update all materials through mesh refs
-    const meshRefs = [
-      faceMeshRef,
-      edgeMeshRef,
+    const meshUpdates = [
+      { ref: faceMeshRef, color: visualState.faceColor, cache: cache.faceColor },
+      { ref: edgeMeshRef, color: visualState.edgeColor, cache: cache.edgeColor },
     ];
 
-    for (const ref of meshRefs) {
+    for (const { ref, color, cache: colorCache } of meshUpdates) {
       if (ref.current) {
         const material = ref.current.material as ShaderMaterial;
 
@@ -583,8 +583,8 @@ export const PolytopeScene = React.memo(function PolytopeScene({
         // Colors use cached linear conversion for performance
         const u = material.uniforms;
 
-        // Update face surface color (critical for color algorithm changes)
-        if (u.uColor) updateLinearColorUniform(cache.faceColor, u.uColor.value as Color, visualState.faceColor);
+        // Update surface color
+        if (u.uColor) updateLinearColorUniform(colorCache, u.uColor.value as Color, color);
 
         if (u.uLightEnabled) u.uLightEnabled.value = lightEnabled;
         if (u.uLightColor) updateLinearColorUniform(cache.lightColor, u.uLightColor.value as Color, lightColor);

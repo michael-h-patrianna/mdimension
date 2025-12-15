@@ -48,6 +48,8 @@ export interface LayoutState {
   sidebarWidth: number
   /** Whether sidebar is collapsed */
   isCollapsed: boolean
+  /** Whether keyboard shortcuts overlay is visible */
+  showShortcuts: boolean
 }
 
 export interface LayoutActions {
@@ -64,6 +66,12 @@ export interface LayoutActions {
 
   /** Set collapsed state explicitly */
   setCollapsed: (collapsed: boolean) => void
+
+  /** Toggle shortcuts overlay */
+  toggleShortcuts: () => void
+
+  /** Set shortcuts overlay explicitly */
+  setShowShortcuts: (show: boolean) => void
 
   /** Reset to default values */
   reset: () => void
@@ -126,6 +134,7 @@ export function getDefaultSidebarWidth(viewportWidth: number): number {
 const INITIAL_STATE: LayoutState = {
   sidebarWidth: DEFAULT_SIDEBAR_WIDTH_LARGE, // Default to large screen width (420px)
   isCollapsed: false,
+  showShortcuts: false,
 }
 
 // ============================================================================
@@ -148,6 +157,14 @@ export const useLayoutStore = create<LayoutStore>()(
 
       setCollapsed: (collapsed: boolean) => {
         set({ isCollapsed: collapsed })
+      },
+
+      toggleShortcuts: () => {
+        set((state) => ({ showShortcuts: !state.showShortcuts }))
+      },
+
+      setShowShortcuts: (show: boolean) => {
+        set({ showShortcuts: show })
       },
 
       reset: () => {

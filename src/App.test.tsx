@@ -1,37 +1,47 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import App from './App';
 
 describe('App', () => {
   it('renders the application title in header', () => {
     render(<App />);
-    expect(screen.getByRole('heading', { name: /N\s?-DIMENSIONAL VISUALIZER/i })).toBeInTheDocument();
+    expect(screen.getByText('MDIMENSION')).toBeInTheDocument();
   });
 
-  it('renders the control panel', () => {
+  it('renders the Explorer panel with dimension selector', () => {
     render(<App />);
-    expect(screen.getByText('SYSTEM CONTROLS')).toBeInTheDocument();
-  });
-
-  it('renders the Object section with dimension selector', () => {
-    render(<App />);
-    // Object appears multiple times, so use getAllByText with regex
-    const objectElements = screen.getAllByText(/Object/i);
-    expect(objectElements.length).toBeGreaterThan(0);
+    // "Space & Object" header in Left Panel
+    expect(screen.getByText(/Space & Object/i)).toBeInTheDocument();
     // Dimension selector shows dimension buttons (4D is default)
     expect(screen.getByRole('radio', { name: '4D' })).toBeInTheDocument();
   });
 
-  it('renders the Rotation section', () => {
+  it('renders the Timeline controls', () => {
     render(<App />);
-    // Rotation appears in both section header and education panel
-    const rotationElements = screen.getAllByText(/Rotation/i);
-    expect(rotationElements.length).toBeGreaterThan(0);
+    // Check for "SPD" label from TimelineControls
+    expect(screen.getByText('SPD')).toBeInTheDocument();
+    // Check for Play/Pause button. Since default state might be playing or paused, check for either.
+    // The queryByTitle returns null if not found, getByTitle throws.
+    const playBtn = screen.queryByTitle('Play');
+    const pauseBtn = screen.queryByTitle('Pause');
+    expect(playBtn || pauseBtn).toBeInTheDocument();
   });
 
-  it('renders the Projection section', () => {
+  it('renders the Style section by default', () => {
     render(<App />);
-    // Projection appears in both section header and education panel
+    // Style tab (Faces, Edges, Lights) is default now
+    // Check for Faces section content
+    expect(screen.getAllByText(/Faces/i).length).toBeGreaterThan(0);
+  });
+
+  it('renders the Projection section when Scene tab is selected', () => {
+    render(<App />);
+    
+    // Find Scene tab
+    const sceneTab = screen.getByRole('tab', { name: /Scene/i });
+    fireEvent.click(sceneTab);
+
+    // Projection appears in Scene tab
     const projectionElements = screen.getAllByText(/Projection/i);
     expect(projectionElements.length).toBeGreaterThan(0);
   });

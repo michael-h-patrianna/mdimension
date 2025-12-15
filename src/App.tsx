@@ -16,7 +16,7 @@
 import { useMemo } from 'react';
 import { FpsController } from '@/components/canvas/FpsController';
 import { Scene } from '@/components/canvas/Scene';
-import { Layout } from '@/components/layout/Layout';
+import { EditorLayout } from '@/components/layout/editor/EditorLayout';
 import { RefinementIndicator } from '@/components/ui/RefinementIndicator';
 import { useAnimationLoop } from '@/hooks/useAnimationLoop';
 import { useFaceDepths } from '@/hooks/useFaceDepths';
@@ -30,6 +30,7 @@ import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useVisualStore } from '@/stores/visualStore';
 import { Canvas } from '@react-three/fiber';
 import { Perf } from 'r3f-perf';
+import { ToastProvider } from '@/contexts/ToastContext';
 
 /**
  * Extract 3D positions from N-D vertices for ground plane bounds calculation.
@@ -128,29 +129,31 @@ function App() {
   };
 
   return (
-    <Layout appTitle="N-Dimensional Visualizer" showHeader>
-      <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-        {/* Performance indicators */}
-        <RefinementIndicator position="bottom-right" />
+    <ToastProvider>
+      <EditorLayout>
+        <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+          {/* Performance indicators */}
+          <RefinementIndicator position="bottom-right" />
 
-        <Canvas
-          frameloop="never"
-          camera={{
-            position: [2, 2, 2.5],
-            fov: 60,
-          }}
-          shadows="soft"
-          flat
-          gl={{ alpha: false, antialias: false }}
-          style={{ background: backgroundColor }}
-          onPointerMissed={handlePointerMissed}
-        >
-          <FpsController />
-          <Visualizer />
-          {showPerfMonitor && <Perf position="bottom-left" />}
-        </Canvas>
-      </div>
-    </Layout>
+          <Canvas
+            frameloop="never"
+            camera={{
+              position: [2, 2, 2.5],
+              fov: 60,
+            }}
+            shadows="soft"
+            flat
+            gl={{ alpha: false, antialias: false }}
+            style={{ background: backgroundColor }}
+            onPointerMissed={handlePointerMissed}
+          >
+            <FpsController />
+            <Visualizer />
+            {showPerfMonitor && <Perf position="bottom-left" />}
+          </Canvas>
+        </div>
+      </EditorLayout>
+    </ToastProvider>
   );
 }
 

@@ -1,3 +1,2 @@
 // Main sidebar component
-export { Sidebar } from './Sidebar'
-export type { SidebarProps } from './Sidebar'
+// Deprecated: Use StudioInspector instead

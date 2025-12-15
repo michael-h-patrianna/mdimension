@@ -105,7 +105,7 @@ export const MengerControls: React.FC<MengerControlsProps> = React.memo(({
   const dimension = useGeometryStore((state) => state.dimension);
 
   return (
-    <div className={`space-y-4 ${className}`}>
+    <div className={`space-y-4 ${className}`} data-testid="menger-controls">
       {/* Iterations (Detail Level) */}
       <div className="space-y-2">
         <label className="text-xs text-text-secondary">
@@ -119,6 +119,7 @@ export const MengerControls: React.FC<MengerControlsProps> = React.memo(({
           value={String(config.iterations)}
           onChange={(v) => setIterations(parseInt(v, 10))}
           ariaLabel="Detail preset"
+          data-testid="menger-detail-preset"
         />
         <Slider
           label="Custom Detail"
@@ -129,6 +130,7 @@ export const MengerControls: React.FC<MengerControlsProps> = React.memo(({
           onChange={setIterations}
           onReset={() => setIterations(DEFAULT_MENGER_CONFIG.iterations)}
           showValue
+          data-testid="menger-detail-slider"
         />
         <p className="text-xs text-text-tertiary">
           Higher = finer holes, more computation
@@ -145,6 +147,7 @@ export const MengerControls: React.FC<MengerControlsProps> = React.memo(({
         onChange={setScale}
         onReset={() => setScale(DEFAULT_MENGER_CONFIG.scale)}
         showValue
+        data-testid="menger-scale"
       />
 
       {/* Slice Parameters - shown for 4D+ */}
@@ -157,6 +160,7 @@ export const MengerControls: React.FC<MengerControlsProps> = React.memo(({
             <button
               onClick={() => resetParameters()}
               className="text-xs text-accent hover:underline"
+              data-testid="menger-reset-params"
             >
               Reset
             </button>
@@ -172,6 +176,7 @@ export const MengerControls: React.FC<MengerControlsProps> = React.memo(({
               onChange={(v) => setParameterValue(i, v)}
               onReset={() => setParameterValue(i, 0)}
               showValue
+              data-testid={`menger-slice-dim-${i + 3}`}
             />
           ))}
           <p className="text-xs text-text-tertiary">
@@ -206,6 +211,7 @@ export const MengerControls: React.FC<MengerControlsProps> = React.memo(({
                 onReset={() => setFoldTwistAngle(DEFAULT_MENGER_CONFIG.foldTwistAngle)}
                 showValue
                 formatValue={(v) => `${v}°`}
+                data-testid="fold-twist-angle"
               />
               <Slider
                 label="Speed"
@@ -216,6 +222,7 @@ export const MengerControls: React.FC<MengerControlsProps> = React.memo(({
                 onChange={setFoldTwistSpeed}
                 onReset={() => setFoldTwistSpeed(DEFAULT_MENGER_CONFIG.foldTwistSpeed)}
                 showValue
+                data-testid="fold-twist-speed"
               />
             </>
           )}
@@ -240,6 +247,7 @@ export const MengerControls: React.FC<MengerControlsProps> = React.memo(({
                 onChange={setScalePulseAmplitude}
                 onReset={() => setScalePulseAmplitude(DEFAULT_MENGER_CONFIG.scalePulseAmplitude)}
                 showValue
+                data-testid="scale-pulse-amplitude"
               />
               <Slider
                 label="Speed"
@@ -250,6 +258,7 @@ export const MengerControls: React.FC<MengerControlsProps> = React.memo(({
                 onChange={setScalePulseSpeed}
                 onReset={() => setScalePulseSpeed(DEFAULT_MENGER_CONFIG.scalePulseSpeed)}
                 showValue
+                data-testid="scale-pulse-speed"
               />
             </>
           )}
@@ -275,6 +284,7 @@ export const MengerControls: React.FC<MengerControlsProps> = React.memo(({
                   onChange={setSliceSweepAmplitude}
                   onReset={() => setSliceSweepAmplitude(DEFAULT_MENGER_CONFIG.sliceSweepAmplitude)}
                   showValue
+                  data-testid="slice-sweep-amplitude"
                 />
                 <Slider
                   label="Speed"
@@ -285,6 +295,7 @@ export const MengerControls: React.FC<MengerControlsProps> = React.memo(({
                   onChange={setSliceSweepSpeed}
                   onReset={() => setSliceSweepSpeed(DEFAULT_MENGER_CONFIG.sliceSweepSpeed)}
                   showValue
+                  data-testid="slice-sweep-speed"
                 />
               </>
             )}

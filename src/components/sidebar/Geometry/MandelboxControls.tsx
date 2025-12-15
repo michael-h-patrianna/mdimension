@@ -94,7 +94,7 @@ export const MandelboxControls: React.FC<MandelboxControlsProps> = React.memo(({
   const dimension = useGeometryStore((state) => state.dimension);
 
   return (
-    <div className={`space-y-4 ${className}`}>
+    <div className={`space-y-4 ${className}`} data-testid="mandelbox-controls">
       {/* Scale Control */}
       <div className="space-y-2">
         <label className="text-xs text-text-secondary">
@@ -108,6 +108,7 @@ export const MandelboxControls: React.FC<MandelboxControlsProps> = React.memo(({
           value={String(config.scale)}
           onChange={(v) => setScale(parseFloat(v))}
           ariaLabel="Scale preset"
+          data-testid="mandelbox-scale-preset"
         />
         <Slider
           label="Custom Scale"
@@ -118,6 +119,7 @@ export const MandelboxControls: React.FC<MandelboxControlsProps> = React.memo(({
           onChange={setScale}
           onReset={() => setScale(DEFAULT_MANDELBOX_CONFIG.scale)}
           showValue
+          data-testid="mandelbox-scale-slider"
         />
         <p className="text-xs text-text-tertiary">
           Negative values create intricate box-like fractals
@@ -134,6 +136,7 @@ export const MandelboxControls: React.FC<MandelboxControlsProps> = React.memo(({
         onChange={setFoldingLimit}
         onReset={() => setFoldingLimit(DEFAULT_MANDELBOX_CONFIG.foldingLimit)}
         showValue
+        data-testid="mandelbox-folding-limit"
       />
 
       {/* Sphere Fold Parameters */}
@@ -148,6 +151,7 @@ export const MandelboxControls: React.FC<MandelboxControlsProps> = React.memo(({
           onChange={setMinRadius}
           onReset={() => setMinRadius(DEFAULT_MANDELBOX_CONFIG.minRadius)}
           showValue
+          data-testid="mandelbox-min-radius"
         />
         <Slider
           label="Fixed Radius"
@@ -158,6 +162,7 @@ export const MandelboxControls: React.FC<MandelboxControlsProps> = React.memo(({
           onChange={setFixedRadius}
           onReset={() => setFixedRadius(DEFAULT_MANDELBOX_CONFIG.fixedRadius)}
           showValue
+          data-testid="mandelbox-fixed-radius"
         />
         <p className="text-xs text-text-tertiary">
           Controls sphere inversion behavior
@@ -174,6 +179,7 @@ export const MandelboxControls: React.FC<MandelboxControlsProps> = React.memo(({
         onChange={setMaxIterations}
         onReset={() => setMaxIterations(DEFAULT_MANDELBOX_CONFIG.maxIterations)}
         showValue
+        data-testid="mandelbox-iterations"
       />
 
       {/* Escape Radius */}
@@ -186,6 +192,7 @@ export const MandelboxControls: React.FC<MandelboxControlsProps> = React.memo(({
         onChange={setEscapeRadius}
         onReset={() => setEscapeRadius(DEFAULT_MANDELBOX_CONFIG.escapeRadius)}
         showValue
+        data-testid="mandelbox-escape-radius"
       />
 
       {/* Iteration Rotation - key for N-D structure in 4D+ */}
@@ -200,6 +207,7 @@ export const MandelboxControls: React.FC<MandelboxControlsProps> = React.memo(({
             onChange={setIterationRotation}
             onReset={() => setIterationRotation(DEFAULT_MANDELBOX_CONFIG.iterationRotation)}
             showValue
+            data-testid="mandelbox-iteration-rotation"
           />
           <p className="text-xs text-text-tertiary">
             Creates genuine {dimension}D structure by mixing dimensions during iteration.
@@ -218,6 +226,7 @@ export const MandelboxControls: React.FC<MandelboxControlsProps> = React.memo(({
             <button
               onClick={() => resetParameters()}
               className="text-xs text-accent hover:underline"
+              data-testid="mandelbox-reset-params"
             >
               Reset
             </button>
@@ -233,6 +242,7 @@ export const MandelboxControls: React.FC<MandelboxControlsProps> = React.memo(({
               onChange={(v) => setParameterValue(i, v)}
               onReset={() => setParameterValue(i, 0)}
               showValue
+              data-testid={`mandelbox-slice-dim-${i + 3}`}
             />
           ))}
           <p className="text-xs text-text-tertiary">

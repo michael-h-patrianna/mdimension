@@ -152,10 +152,7 @@ export const MandelbrotControls: React.FC<MandelbrotControlsProps> = React.memo(
     : 0;
 
   return (
-    <div className={`space-y-4 ${className}`}>
-
-
-
+    <div className={`space-y-4 ${className}`} data-testid="mandelbrot-controls">
 
       {/* Shared Controls: Quality & Iterations */}
       {!isRayMarching && (
@@ -164,6 +161,7 @@ export const MandelbrotControls: React.FC<MandelbrotControlsProps> = React.memo(
           options={qualityOptions}
           value={config.qualityPreset}
           onChange={(v) => setQualityPreset(v as MandelbrotQualityPreset)}
+          data-testid="mandelbrot-quality"
         />
       )}
 
@@ -176,6 +174,7 @@ export const MandelbrotControls: React.FC<MandelbrotControlsProps> = React.memo(
         onChange={setMaxIterations}
         onReset={() => setMaxIterations(DEFAULT_MANDELBROT_CONFIG.maxIterations)}
         showValue
+        data-testid="mandelbrot-iterations"
       />
 
       <Slider
@@ -187,6 +186,7 @@ export const MandelbrotControls: React.FC<MandelbrotControlsProps> = React.memo(
         onChange={setEscapeRadius}
         onReset={() => setEscapeRadius(dimension >= 4 ? 8.0 : DEFAULT_MANDELBROT_CONFIG.escapeRadius)}
         showValue
+        data-testid="mandelbrot-escape-radius"
       />
 
       {/* Point Cloud Only Controls */}
@@ -198,6 +198,7 @@ export const MandelbrotControls: React.FC<MandelbrotControlsProps> = React.memo(
             options={colorModeOptions}
             value={config.colorMode}
             onChange={(v) => setColorMode(v as MandelbrotColorMode)}
+            data-testid="mandelbrot-color-mode"
           />
 
           {/* Boundary Threshold (shown only for boundaryOnly mode) */}
@@ -215,6 +216,7 @@ export const MandelbrotControls: React.FC<MandelbrotControlsProps> = React.memo(
                   value={config.boundaryThreshold[0]}
                   onChange={(v) => setBoundaryThreshold([v, config.boundaryThreshold[1]])}
                   showValue={false}
+                  data-testid="mandelbrot-boundary-min"
                 />
                 <Slider
                   label="Max"
@@ -224,6 +226,7 @@ export const MandelbrotControls: React.FC<MandelbrotControlsProps> = React.memo(
                   value={config.boundaryThreshold[1]}
                   onChange={(v) => setBoundaryThreshold([config.boundaryThreshold[0], v])}
                   showValue={false}
+                  data-testid="mandelbrot-boundary-max"
                 />
               </div>
               <p className="text-xs text-text-tertiary">
@@ -248,6 +251,7 @@ export const MandelbrotControls: React.FC<MandelbrotControlsProps> = React.memo(
             value={String(config.mandelbulbPower)}
             onChange={(v) => setMandelbulbPower(parseInt(v, 10))}
             ariaLabel={`${dimension === 3 ? 'Mandelbulb' : 'Hyperbulb'} power preset`}
+            data-testid="mandelbrot-power-preset"
           />
           <Slider
             label="Custom Power"
@@ -258,6 +262,7 @@ export const MandelbrotControls: React.FC<MandelbrotControlsProps> = React.memo(
             onChange={setMandelbulbPower}
             onReset={() => setMandelbulbPower(DEFAULT_MANDELBROT_CONFIG.mandelbulbPower)}
             showValue
+            data-testid="mandelbrot-power-slider"
           />
           <p className="text-xs text-text-tertiary">
             {dimension === 3
@@ -277,6 +282,7 @@ export const MandelbrotControls: React.FC<MandelbrotControlsProps> = React.memo(
             <button
               onClick={() => resetMandelbrotParameters()}
               className="text-xs text-accent hover:underline"
+              data-testid="mandelbrot-reset-params"
             >
               Reset
             </button>
@@ -292,6 +298,7 @@ export const MandelbrotControls: React.FC<MandelbrotControlsProps> = React.memo(
               onChange={(v) => setMandelbrotParameterValue(i, v)}
               onReset={() => setMandelbrotParameterValue(i, 0)}
               showValue
+              data-testid={`mandelbrot-slice-dim-${i + 3}`}
             />
           ))}
           <p className="text-xs text-text-tertiary">
@@ -314,6 +321,7 @@ export const MandelbrotControls: React.FC<MandelbrotControlsProps> = React.memo(
             value={String(config.resolution)}
             onChange={(v) => setResolution(parseInt(v, 10))}
             ariaLabel="Grid resolution"
+            data-testid="mandelbrot-resolution"
           />
         </div>
       )}

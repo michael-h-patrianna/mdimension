@@ -96,7 +96,7 @@ export const AnimationControls: React.FC<AnimationControlsProps> = React.memo(({
   const hasAnimatingPlanes = animatingPlanes.size > 0;
 
   return (
-    <div className={`space-y-4 ${className}`}>
+    <div className={`space-y-4 ${className}`} data-testid="animation-controls">
       {/* Play/Pause Button */}
       <div className="flex gap-2">
         <Button
@@ -106,12 +106,18 @@ export const AnimationControls: React.FC<AnimationControlsProps> = React.memo(({
           className="flex-1"
           disabled={!hasAnimatingPlanes}
           data-testid="animation-play-button"
+          glow={isPlaying}
         >
           {isPlaying ? 'Pause' : 'Play'}
         </Button>
 
         <Tooltip content={direction === 1 ? 'Clockwise' : 'Counter-clockwise'}>
-          <Button variant="secondary" size="md" onClick={toggleDirection}>
+          <Button 
+            variant="secondary" 
+            size="md" 
+            onClick={toggleDirection}
+            data-testid="animation-direction-toggle"
+          >
             {direction === 1 ? '↻' : '↺'}
           </Button>
         </Tooltip>
@@ -128,6 +134,7 @@ export const AnimationControls: React.FC<AnimationControlsProps> = React.memo(({
         onReset={() => setSpeed(DEFAULT_SPEED)}
         unit="x"
         showValue
+        data-testid="animation-speed"
       />
 
       {/* Bias Control - varies rotation speeds per plane */}
@@ -142,6 +149,7 @@ export const AnimationControls: React.FC<AnimationControlsProps> = React.memo(({
         minLabel="Uniform"
         maxLabel="Varied"
         showValue
+        data-testid="animation-bias"
       />
 
       {/* Plane Selection */}
@@ -149,7 +157,7 @@ export const AnimationControls: React.FC<AnimationControlsProps> = React.memo(({
         <label className="block text-sm font-medium text-text-secondary">
           Animate Planes
         </label>
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap gap-1" data-testid="animation-planes">
           {planes.map((plane) => {
             const isActive = animatingPlanes.has(plane.name);
             return (
@@ -159,6 +167,7 @@ export const AnimationControls: React.FC<AnimationControlsProps> = React.memo(({
                 onToggle={() => togglePlane(plane.name)}
                 className="text-xs font-mono "
                 ariaLabel={`Toggle animation for plane ${plane.name}`}
+                data-testid={`plane-toggle-${plane.name}`}
               >
                 {plane.name}
               </ToggleButton>
@@ -174,6 +183,7 @@ export const AnimationControls: React.FC<AnimationControlsProps> = React.memo(({
           size="sm"
           onClick={() => animateAll(dimension)}
           className="flex-1"
+          data-testid="animation-all"
         >
           Animate All
         </Button>
@@ -183,6 +193,7 @@ export const AnimationControls: React.FC<AnimationControlsProps> = React.memo(({
           onClick={stopAll}
           disabled={!hasAnimatingPlanes && !isPlaying}
           className="flex-1"
+          data-testid="animation-stop"
         >
           Stop All
         </Button>
@@ -201,6 +212,7 @@ export const AnimationControls: React.FC<AnimationControlsProps> = React.memo(({
               onToggle={() => setScaleAnimationEnabled(!mandelboxConfig.scaleAnimationEnabled)}
               ariaLabel="Toggle scale animation"
               className="w-full"
+              data-testid="mandelbox-scale-anim-toggle"
             >
               {mandelboxConfig.scaleAnimationEnabled ? 'Enabled' : 'Disabled'}
             </ToggleButton>
@@ -215,6 +227,7 @@ export const AnimationControls: React.FC<AnimationControlsProps> = React.memo(({
                   onChange={setScaleCenter}
                   onReset={() => setScaleCenter(DEFAULT_MANDELBOX_CONFIG.scaleCenter)}
                   showValue
+                  data-testid="mandelbox-scale-center"
                 />
                 <Slider
                   label="Amplitude"
@@ -225,6 +238,7 @@ export const AnimationControls: React.FC<AnimationControlsProps> = React.memo(({
                   onChange={setScaleAmplitude}
                   onReset={() => setScaleAmplitude(DEFAULT_MANDELBOX_CONFIG.scaleAmplitude)}
                   showValue
+                  data-testid="mandelbox-scale-amplitude"
                 />
                 <Slider
                   label="Speed"
@@ -236,6 +250,7 @@ export const AnimationControls: React.FC<AnimationControlsProps> = React.memo(({
                   onReset={() => setScaleSpeed(DEFAULT_MANDELBOX_CONFIG.scaleSpeed)}
                   unit="x"
                   showValue
+                  data-testid="mandelbox-scale-speed"
                 />
                 <p className="text-xs text-text-tertiary">
                   Animates scale from {(mandelboxConfig.scaleCenter - mandelboxConfig.scaleAmplitude).toFixed(1)} to {(mandelboxConfig.scaleCenter + mandelboxConfig.scaleAmplitude).toFixed(1)}
@@ -254,6 +269,7 @@ export const AnimationControls: React.FC<AnimationControlsProps> = React.memo(({
               onToggle={() => setJuliaMode(!mandelboxConfig.juliaMode)}
               ariaLabel="Toggle Julia mode"
               className="w-full"
+              data-testid="mandelbox-julia-mode-toggle"
             >
               {mandelboxConfig.juliaMode ? 'Enabled' : 'Disabled'}
             </ToggleButton>
@@ -269,6 +285,7 @@ export const AnimationControls: React.FC<AnimationControlsProps> = React.memo(({
                   onReset={() => setJuliaSpeed(DEFAULT_MANDELBOX_CONFIG.juliaSpeed)}
                   unit="x"
                   showValue
+                  data-testid="mandelbox-julia-speed"
                 />
                 <Slider
                   label="Radius"
@@ -279,6 +296,7 @@ export const AnimationControls: React.FC<AnimationControlsProps> = React.memo(({
                   onChange={setJuliaRadius}
                   onReset={() => setJuliaRadius(DEFAULT_MANDELBOX_CONFIG.juliaRadius)}
                   showValue
+                  data-testid="mandelbox-julia-radius"
                 />
                 <p className="text-xs text-text-tertiary">
                   Uses a global animated constant instead of per-pixel values, creating smooth morphing transitions.

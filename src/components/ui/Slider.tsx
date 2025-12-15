@@ -1,4 +1,4 @@
-import React, { useId } from 'react';
+import React, { useId, useState, useEffect } from 'react';
 
 export interface SliderProps {
   label: string;
@@ -45,40 +45,89 @@ export const Slider: React.FC<SliderProps> = ({
 
   // Determine decimal places based on step
   const decimals = step < 1 ? 2 : 0;
+  
+  // Local state for input to allow typing without jitter
+  const [inputValue, setInputValue] = useState(value.toString());
 
-  // Format the displayed value
-  const displayValue = formatValue ? formatValue(value) : `${value.toFixed(decimals)}${unit}`;
+  useEffect(() => {
+    setInputValue(value.toFixed(decimals));
+  }, [value, decimals]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputValue(e.target.value);
+    const newValue = parseFloat(e.target.value);
+    if (!isNaN(newValue)) {
+      // Clamp value only on blur or Enter to allow typing intermediate states
+       onChange(newValue);
+    }
+  };
+
+  const handleInputBlur = () => {
+    let newValue = parseFloat(inputValue);
+    if (isNaN(newValue)) {
+      newValue = value;
+    } else {
+      newValue = Math.min(Math.max(newValue, min), max);
+    }
+    onChange(newValue);
+    setInputValue(newValue.toFixed(decimals));
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleInputBlur();
+      (e.target as HTMLInputElement).blur();
+    }
+  };
 
   return (
     <div className={`group ${className}`} data-testid={dataTestId}>
       <div className="flex items-center justify-between mb-2">
         <label
           htmlFor={id}
-          className="text-xs font-medium text-text-secondary group-hover:text-text-primary transition-colors cursor-pointer"
+          className="text-xs font-medium text-text-secondary group-hover:text-text-primary transition-colors cursor-pointer select-none"
           title={tooltip}
         >
           {label}
         </label>
         {showValue && (
-          <button
-            type="button"
-            onDoubleClick={onReset}
-            disabled={disabled || !onReset}
-            className="text-[10px] font-mono text-accent bg-accent/10 px-1.5 py-0.5 rounded border border-accent/20 hover:bg-accent/20 transition-colors disabled:opacity-50 disabled:cursor-default"
-            title={onReset ? 'Double-click to reset' : undefined}
-          >
-            {displayValue}
-          </button>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              value={inputValue}
+              onChange={handleInputChange}
+              onBlur={handleInputBlur}
+              onKeyDown={handleKeyDown}
+              step={step}
+              min={min}
+              max={max}
+              disabled={disabled}
+              className="w-16 bg-white/5 border border-white/10 rounded px-1.5 py-0.5 text-[10px] font-mono text-right text-accent focus:outline-none focus:border-accent/50 focus:bg-white/10 transition-all appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              data-testid={dataTestId ? `${dataTestId}-input` : undefined}
+            />
+            {onReset && (
+              <button
+                type="button"
+                onClick={onReset}
+                disabled={disabled}
+                className="text-[10px] text-text-tertiary hover:text-accent transition-colors"
+                title="Reset to default"
+                data-testid={dataTestId ? `${dataTestId}-reset` : undefined}
+              >
+                ↺
+              </button>
+            )}
+          </div>
         )}
       </div>
 
       {/* Increased hit area for better touch/click interaction */}
-      <div className="relative h-8 flex items-center select-none">
+      <div className="relative h-8 flex items-center select-none touch-none">
         {/* Track Background */}
-        <div className="absolute w-full h-1 bg-white/10 rounded-full overflow-hidden">
+        <div className="absolute w-full h-1 bg-white/10 rounded-full overflow-hidden backdrop-blur-sm">
            {/* Fill Track */}
            <div
-             className="h-full bg-accent shadow-[0_0_10px_var(--color-accent)]"
+             className="h-full bg-accent shadow-[0_0_10px_var(--color-accent)] transition-all duration-75 ease-out"
              style={{ width: `${percentage}%` }}
            />
         </div>
@@ -95,17 +144,18 @@ export const Slider: React.FC<SliderProps> = ({
           onDragStart={(e) => e.preventDefault()}
           onMouseDown={(e) => e.stopPropagation()}
           disabled={disabled}
-          className="absolute w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed touch-none"
+          className="absolute w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed z-10"
           style={{ WebkitAppearance: 'none' }}
           aria-label={label}
           aria-valuemin={min}
           aria-valuemax={max}
           aria-valuenow={value}
+          data-testid={dataTestId ? `${dataTestId}-slider` : undefined}
         />
 
         {/* Custom Thumb Indicator - Larger visual target */}
         <div
-          className="absolute h-4 w-4 bg-white rounded-full shadow-[0_0_10px_var(--color-accent)] pointer-events-none transition-transform duration-100 ease-out group-hover:scale-125"
+          className="absolute h-4 w-4 bg-white rounded-full shadow-[0_0_15px_var(--color-accent)] pointer-events-none transition-transform duration-100 ease-out group-hover:scale-125 z-0"
           style={{ left: `calc(${percentage}% - 8px)` }}
         />
       </div>

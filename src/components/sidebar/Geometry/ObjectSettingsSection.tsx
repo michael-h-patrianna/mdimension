@@ -62,7 +62,7 @@ function PolytopeSettings() {
   const maxScale = objectType === 'simplex' ? 8.0 : 5.0;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-testid="polytope-settings">
       {/* Scale slider with type-specific range */}
       <Slider
         label={`${typeName} Scale`}
@@ -73,6 +73,7 @@ function PolytopeSettings() {
         onChange={setScale}
         onReset={() => setScale(defaultScale)}
         showValue
+        data-testid="polytope-scale"
       />
       <p className="text-xs text-text-secondary">
         Vertices in [-scale, scale] per axis.
@@ -116,13 +117,14 @@ function RootSystemSettings() {
   }, [dimension]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-testid="root-system-settings">
       {/* Root type selection */}
       <Select<'A' | 'D' | 'E8'>
         label="Root System Type"
         options={rootTypeOptions}
         value={config.rootType}
         onChange={setRootType}
+        data-testid="root-system-type"
       />
 
       {/* Scale slider */}
@@ -135,6 +137,7 @@ function RootSystemSettings() {
         onChange={setScale}
         onReset={() => setScale(DEFAULT_ROOT_SYSTEM_CONFIG.scale)}
         showValue
+        data-testid="root-system-scale"
       />
     </div>
   );
@@ -180,7 +183,7 @@ function CliffordTorusSettings() {
   const pointCount = getPointCount();
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-testid="clifford-torus-settings">
       {/* Mode description */}
       <div className="text-xs text-text-secondary">
         <span>Independent circles in perpendicular planes</span>
@@ -195,6 +198,7 @@ function CliffordTorusSettings() {
         onChange={setRadius}
         onReset={() => setRadius(DEFAULT_CLIFFORD_TORUS_CONFIG.radius)}
         showValue
+        data-testid="clifford-radius"
       />
 
       {/* 4D Classic mode */}
@@ -209,6 +213,7 @@ function CliffordTorusSettings() {
             onChange={setResolutionU}
             onReset={() => setResolutionU(DEFAULT_CLIFFORD_TORUS_CONFIG.resolutionU)}
             showValue
+            data-testid="clifford-res-u"
           />
           <Slider
             label="Resolution V"
@@ -219,6 +224,7 @@ function CliffordTorusSettings() {
             onChange={setResolutionV}
             onReset={() => setResolutionV(DEFAULT_CLIFFORD_TORUS_CONFIG.resolutionV)}
             showValue
+            data-testid="clifford-res-v"
           />
         </>
       )}
@@ -234,6 +240,7 @@ function CliffordTorusSettings() {
           onChange={setStepsPerCircle}
           onReset={() => setStepsPerCircle(DEFAULT_CLIFFORD_TORUS_CONFIG.stepsPerCircle)}
           showValue
+          data-testid="clifford-steps"
         />
       )}
 
@@ -304,7 +311,7 @@ function NestedTorusSettings() {
     : `Circle Balance (η = ${(config.eta / Math.PI).toFixed(2)}π)`;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-testid="nested-torus-settings">
       {/* Mode description */}
       <div className="text-xs text-text-secondary">
         <span>{getDescription()}</span>
@@ -319,6 +326,7 @@ function NestedTorusSettings() {
         onChange={setRadius}
         onReset={() => setRadius(DEFAULT_NESTED_TORUS_CONFIG.radius)}
         showValue
+        data-testid="nested-radius"
       />
       <Slider
         label={etaLabel}
@@ -329,6 +337,7 @@ function NestedTorusSettings() {
         onChange={setEta}
         onReset={() => setEta(DEFAULT_NESTED_TORUS_CONFIG.eta)}
         showValue={false}
+        data-testid="nested-eta"
       />
       <Slider
         label="Resolution ξ₁"
@@ -339,6 +348,7 @@ function NestedTorusSettings() {
         onChange={setResolutionXi1}
         onReset={() => setResolutionXi1(DEFAULT_NESTED_TORUS_CONFIG.resolutionXi1)}
         showValue
+        data-testid="nested-res-xi1"
       />
       <Slider
         label="Resolution ξ₂"
@@ -349,6 +359,7 @@ function NestedTorusSettings() {
         onChange={setResolutionXi2}
         onReset={() => setResolutionXi2(DEFAULT_NESTED_TORUS_CONFIG.resolutionXi2)}
         showValue
+        data-testid="nested-res-xi2"
       />
 
       {/* Show nested tori option (4D only) */}
@@ -362,6 +373,7 @@ function NestedTorusSettings() {
               checked={config.showNestedTori}
               onChange={(e) => setShowNestedTori(e.target.checked)}
               className="h-4 w-4"
+              data-testid="nested-show-multiple"
             />
           </div>
           {config.showNestedTori && (
@@ -370,6 +382,7 @@ function NestedTorusSettings() {
               options={numberOfToriOptions}
               value={String(config.numberOfTori)}
               onChange={(v) => setNumberOfTori(parseInt(v, 10))}
+              data-testid="nested-count"
             />
           )}
         </>
