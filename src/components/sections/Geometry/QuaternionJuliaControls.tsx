@@ -2,6 +2,7 @@
  * QuaternionJuliaControls Component
  *
  * Controls for configuring n-dimensional Quaternion Julia fractal visualization.
+ * Animation controls are located in the TimelineControls drawer (JuliaAnimationDrawer).
  *
  * Features:
  * - Julia constant controls with presets (4D quaternion components)
@@ -10,12 +11,12 @@
  * - Bailout radius slider
  * - Scale parameter for auto-positioning
  * - Slice parameters for 4D+ dimensions
- * - Animation controls (Julia constant animation, power morphing, origin drift)
  *
  * The Quaternion Julia fractal uses the iteration z = z^n + c where c is a
  * fixed constant (unlike Mandelbrot where c varies with sample position).
  *
  * @see docs/prd/quaternion-julia-fractal.md
+ * @see JuliaAnimationDrawer for animation controls
  */
 
 import React from 'react';
@@ -23,7 +24,6 @@ import { useShallow } from 'zustand/react/shallow';
 import { Select } from '@/components/ui/Select';
 import { Slider } from '@/components/ui/Slider';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
-import { Switch } from '@/components/ui/Switch';
 import {
   DEFAULT_QUATERNION_JULIA_CONFIG,
   JULIA_CONSTANT_PRESETS,
@@ -91,19 +91,6 @@ export const QuaternionJuliaControls: React.FC<QuaternionJuliaControlsProps> = R
     setQualityPreset,
     setParameterValue,
     resetParameters,
-    setConstantAnimationEnabled,
-    setConstantAnimationAmplitude,
-    setConstantAnimationFrequency,
-    setPowerAnimationEnabled,
-    setPowerAnimationMinPower,
-    setPowerAnimationMaxPower,
-    setPowerAnimationSpeed,
-    setOriginDriftEnabled,
-    setOriginDriftAmplitude,
-    setOriginDriftBaseFrequency,
-    setDimensionMixEnabled,
-    setMixIntensity,
-    setMixFrequency,
   } = useExtendedObjectStore(
     useShallow((state) => ({
       config: state.quaternionJulia,
@@ -115,19 +102,6 @@ export const QuaternionJuliaControls: React.FC<QuaternionJuliaControlsProps> = R
       setQualityPreset: state.setQuaternionJuliaQualityPreset,
       setParameterValue: state.setQuaternionJuliaParameterValue,
       resetParameters: state.resetQuaternionJuliaParameters,
-      setConstantAnimationEnabled: state.setQuaternionJuliaConstantAnimationEnabled,
-      setConstantAnimationAmplitude: state.setQuaternionJuliaConstantAnimationAmplitude,
-      setConstantAnimationFrequency: state.setQuaternionJuliaConstantAnimationFrequency,
-      setPowerAnimationEnabled: state.setQuaternionJuliaPowerAnimationEnabled,
-      setPowerAnimationMinPower: state.setQuaternionJuliaPowerAnimationMinPower,
-      setPowerAnimationMaxPower: state.setQuaternionJuliaPowerAnimationMaxPower,
-      setPowerAnimationSpeed: state.setQuaternionJuliaPowerAnimationSpeed,
-      setOriginDriftEnabled: state.setQuaternionJuliaOriginDriftEnabled,
-      setOriginDriftAmplitude: state.setQuaternionJuliaOriginDriftAmplitude,
-      setOriginDriftBaseFrequency: state.setQuaternionJuliaOriginDriftBaseFrequency,
-      setDimensionMixEnabled: state.setQuaternionJuliaDimensionMixEnabled,
-      setMixIntensity: state.setQuaternionJuliaMixIntensity,
-      setMixFrequency: state.setQuaternionJuliaMixFrequency,
     }))
   );
 
@@ -336,166 +310,11 @@ export const QuaternionJuliaControls: React.FC<QuaternionJuliaControlsProps> = R
         </div>
       )}
 
-      {/* Animation Section */}
-      <div className="space-y-3 border-t border-white/10 pt-3">
-        <label className="text-xs text-text-secondary font-medium">Animation</label>
-
-        {/* Julia Constant Animation */}
-        <div className="space-y-2">
-          <Switch
-            checked={config.juliaConstantAnimation.enabled}
-            onCheckedChange={setConstantAnimationEnabled}
-            label="Julia Constant Animation"
-            data-testid="julia-constant-animation-toggle"
-          />
-          {config.juliaConstantAnimation.enabled && (
-            <div className="pl-4 space-y-2">
-              <Slider
-                label="Amplitude"
-                min={0.01}
-                max={0.5}
-                step={0.01}
-                value={config.juliaConstantAnimation.amplitude[0]}
-                onChange={(v) => setConstantAnimationAmplitude([v, v, v, v])}
-                showValue
-                data-testid="julia-constant-amplitude"
-              />
-              <Slider
-                label="Frequency"
-                min={0.01}
-                max={0.2}
-                step={0.01}
-                value={config.juliaConstantAnimation.frequency[0]}
-                onChange={(v) => setConstantAnimationFrequency([v, v * 0.8, v * 1.2, v * 0.6])}
-                showValue
-                data-testid="julia-constant-frequency"
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Power Animation */}
-        <div className="space-y-2">
-          <Switch
-            checked={config.powerAnimation.enabled}
-            onCheckedChange={setPowerAnimationEnabled}
-            label="Power Morphing"
-            data-testid="julia-power-animation-toggle"
-          />
-          {config.powerAnimation.enabled && (
-            <div className="pl-4 space-y-2">
-              <Slider
-                label="Min Power"
-                min={2}
-                max={6}
-                step={0.5}
-                value={config.powerAnimation.minPower}
-                onChange={setPowerAnimationMinPower}
-                showValue
-                data-testid="julia-power-min"
-              />
-              <Slider
-                label="Max Power"
-                min={4}
-                max={8}
-                step={0.5}
-                value={config.powerAnimation.maxPower}
-                onChange={setPowerAnimationMaxPower}
-                showValue
-                data-testid="julia-power-max"
-              />
-              <Slider
-                label="Speed"
-                min={0.01}
-                max={0.1}
-                step={0.005}
-                value={config.powerAnimation.speed}
-                onChange={setPowerAnimationSpeed}
-                showValue
-                data-testid="julia-power-speed"
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Origin Drift (4D+) */}
-        {dimension >= 4 && (
-          <div className="space-y-2">
-            <Switch
-              checked={config.originDriftEnabled}
-              onCheckedChange={setOriginDriftEnabled}
-              label="Origin Drift"
-              data-testid="julia-origin-drift-toggle"
-            />
-            {config.originDriftEnabled && (
-              <div className="pl-4 space-y-2">
-                <Slider
-                  label="Amplitude"
-                  min={0.01}
-                  max={0.5}
-                  step={0.01}
-                  value={config.originDriftAmplitude}
-                  onChange={setOriginDriftAmplitude}
-                  showValue
-                  data-testid="julia-drift-amplitude"
-                />
-                <Slider
-                  label="Base Frequency"
-                  min={0.01}
-                  max={0.5}
-                  step={0.01}
-                  value={config.originDriftBaseFrequency}
-                  onChange={setOriginDriftBaseFrequency}
-                  showValue
-                  data-testid="julia-drift-frequency"
-                />
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Dimension Mixing (4D+) */}
-        {dimension >= 4 && (
-          <div className="space-y-2">
-            <Switch
-              checked={config.dimensionMixEnabled}
-              onCheckedChange={setDimensionMixEnabled}
-              label="Dimension Mixing"
-              data-testid="julia-dimension-mix-toggle"
-            />
-            {config.dimensionMixEnabled && (
-              <div className="pl-4 space-y-2">
-                <Slider
-                  label="Intensity"
-                  min={0.0}
-                  max={0.3}
-                  step={0.01}
-                  value={config.mixIntensity}
-                  onChange={setMixIntensity}
-                  showValue
-                  data-testid="julia-mix-intensity"
-                />
-                <Slider
-                  label="Frequency"
-                  min={0.1}
-                  max={2.0}
-                  step={0.1}
-                  value={config.mixFrequency}
-                  onChange={setMixFrequency}
-                  showValue
-                  data-testid="julia-mix-frequency"
-                />
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
       {/* Info */}
       <div className="text-xs text-text-secondary space-y-1 border-t border-white/10 pt-2">
         <p>Rendering: GPU Ray Marching</p>
         <p className="text-text-tertiary">
-          {dimension}D Quaternion Julia fractal (z = z^{config.power} + c)
+          {`${dimension}D Quaternion Julia fractal (z = z^${config.power} + c)`}
         </p>
       </div>
     </div>

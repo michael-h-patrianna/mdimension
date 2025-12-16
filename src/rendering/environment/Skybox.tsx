@@ -1,14 +1,14 @@
 import { createSkyboxShaderDefaults, skyboxFragmentShader, skyboxVertexShader } from '@/rendering/shaders/materials/SkyboxShader';
+import { applyDistributionTS, getCosinePaletteColorTS } from '@/rendering/shaders/palette/cosine.glsl';
+import type { ColorAlgorithm, CosineCoefficients, DistributionSettings } from '@/rendering/shaders/palette/types';
 import { useAnimationStore } from '@/stores/animationStore';
-import { useEnvironmentStore } from '@/stores/environmentStore';
 import { useAppearanceStore } from '@/stores/appearanceStore';
+import { useEnvironmentStore } from '@/stores/environmentStore';
 import { Environment, shaderMaterial } from '@react-three/drei';
 import { extend, useFrame, useThree } from '@react-three/fiber';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
-import { COSINE_PRESETS } from '@/rendering/shaders/palette/presets';
-import { calculateCosineColor } from '@/rendering/shaders/palette/cosine.glsl';
 
 // ============================================================================
 // PMREM Cache - Module-level cache to avoid regenerating PMREM for same textures
@@ -279,51 +279,202 @@ const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
     skyboxAnimationSpeed,
     proceduralSettings
   } = useEnvironmentStore();
-  
-  const { cosineCoefficients } = useAppearanceStore();
+
+  // Get all appearance settings needed for color sync
+  const { colorAlgorithm, cosineCoefficients, distribution, lchLightness, lchChroma, faceColor } = useAppearanceStore();
   const isPlaying = useAnimationStore((state) => state.isPlaying);
 
   const baseRotY = skyboxRotation * (Math.PI / 180);
 
-  // Helper to get vector from hex or coeffs
+  /**
+   * Compute a color at position t (0-1) for any color algorithm.
+   * Mirrors the logic in ColorPreview.tsx for consistent sync.
+   */
+  const computeColorAtT = (t: number, algorithm: ColorAlgorithm, coeffs: CosineCoefficients, dist: DistributionSettings, baseColor: string, lchL: number, lchC: number): THREE.Color => {
+    // Helper: Convert hex color to HSL
+    const hexToHsl = (hex: string): [number, number, number] => {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      if (!result) return [0, 0, 0.5];
+      const r = parseInt(result[1]!, 16) / 255;
+      const g = parseInt(result[2]!, 16) / 255;
+      const b = parseInt(result[3]!, 16) / 255;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      const l = (max + min) / 2;
+      if (max === min) return [0, 0, l];
+      const d = max - min;
+      const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      let h = 0;
+      if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+      else if (max === g) h = ((b - r) / d + 2) / 6;
+      else h = ((r - g) / d + 4) / 6;
+      return [h, s, l];
+    };
+
+    // Helper: Convert HSL to RGB
+    const hslToRgb = (h: number, s: number, l: number): [number, number, number] => {
+      const c = (1 - Math.abs(2 * l - 1)) * s;
+      const x = c * (1 - Math.abs((h * 6) % 2 - 1));
+      const m = l - c / 2;
+      let r = 0, g = 0, b = 0;
+      if (h < 1/6) { r = c; g = x; }
+      else if (h < 2/6) { r = x; g = c; }
+      else if (h < 3/6) { g = c; b = x; }
+      else if (h < 4/6) { g = x; b = c; }
+      else if (h < 5/6) { r = x; b = c; }
+      else { r = c; b = x; }
+      return [r + m, g + m, b + m];
+    };
+
+    // Helper: Oklab to linear sRGB
+    const oklabToLinearSrgb = (L: number, a: number, b_: number): [number, number, number] => {
+      const l_ = L + 0.3963377774 * a + 0.2158037573 * b_;
+      const m_ = L - 0.1055613458 * a - 0.0638541728 * b_;
+      const s_ = L - 0.0894841775 * a - 1.2914855480 * b_;
+      const l = l_ * l_ * l_;
+      const m = m_ * m_ * m_;
+      const s = s_ * s_ * s_;
+      return [
+        +4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+        -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+        -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s,
+      ];
+    };
+
+    let r: number, g: number, b: number;
+
+    if (algorithm === 'monochromatic') {
+      const [hue, sat] = hexToHsl(baseColor);
+      const distributedT = applyDistributionTS(t, dist.power, dist.cycles, dist.offset);
+      const litVar = 0.3 + distributedT * 0.4;
+      [r, g, b] = hslToRgb(hue, sat, litVar);
+    } else if (algorithm === 'analogous') {
+      const [baseHue, sat, lit] = hexToHsl(baseColor);
+      const distributedT = applyDistributionTS(t, dist.power, dist.cycles, dist.offset);
+      const hueOffset = (distributedT - 0.5) * 0.167;
+      const hue = (baseHue + hueOffset + 1) % 1;
+      [r, g, b] = hslToRgb(hue, sat, lit);
+    } else if (algorithm === 'lch') {
+      const distributedT = applyDistributionTS(t, dist.power, dist.cycles, dist.offset);
+      const hue = distributedT * 6.28318;
+      const a_oklab = lchC * Math.cos(hue);
+      const b_oklab = lchC * Math.sin(hue);
+      [r, g, b] = oklabToLinearSrgb(lchL, a_oklab, b_oklab);
+    } else {
+      // cosine, normal, distance, multiSource, radial - all use cosine palette
+      const color = getCosinePaletteColorTS(t, coeffs.a, coeffs.b, coeffs.c, coeffs.d, dist.power, dist.cycles, dist.offset);
+      r = color.r;
+      g = color.g;
+      b = color.b;
+    }
+
+    // Clamp values
+    r = Math.max(0, Math.min(1, r));
+    g = Math.max(0, Math.min(1, g));
+    b = Math.max(0, Math.min(1, b));
+
+    return new THREE.Color(r, g, b);
+  };
+
+  // Compute colors - sample from respective palettes
+  // For syncing: sample from object's current color algorithm
+  // For non-syncing: sample from skybox's own cosine palette
   const color1Vec = useMemo(() => {
-      if (proceduralSettings.syncWithObject) {
-          // Derive background color from palette (t=0) for cohesion
-          const c = calculateCosineColor(0.0, 
-              cosineCoefficients.a, 
-              cosineCoefficients.b, 
-              cosineCoefficients.c, 
-              cosineCoefficients.d
-          );
-          return new THREE.Color(c.r, c.g, c.b);
-      }
-      return new THREE.Color(proceduralSettings.color1);
-  }, [proceduralSettings.color1, proceduralSettings.syncWithObject, cosineCoefficients]);
-  
-  const color2Vec = useMemo(() => new THREE.Color(proceduralSettings.color2), [proceduralSettings.color2]);
-  
-  // Palette vectors (Dynamic or Static)
+    if (proceduralSettings.syncWithObject) {
+      // Sample at t=0 for primary color using object's palette
+      return computeColorAtT(
+        0.0,
+        colorAlgorithm,
+        cosineCoefficients,
+        distribution,
+        faceColor,
+        lchLightness,
+        lchChroma
+      );
+    }
+    // Use skybox's own cosine palette
+    const skyboxCoeffs = proceduralSettings.cosineCoefficients;
+    const skyboxDist = proceduralSettings.distribution;
+    return computeColorAtT(
+      0.0,
+      'cosine',
+      skyboxCoeffs,
+      skyboxDist,
+      '#ffffff',
+      0.5,
+      0.15
+    );
+  }, [
+    proceduralSettings.syncWithObject,
+    proceduralSettings.cosineCoefficients,
+    proceduralSettings.distribution,
+    colorAlgorithm,
+    cosineCoefficients,
+    distribution,
+    faceColor,
+    lchLightness,
+    lchChroma,
+  ]);
+
+  const color2Vec = useMemo(() => {
+    if (proceduralSettings.syncWithObject) {
+      // Sample at t=1 for secondary color using object's palette
+      return computeColorAtT(
+        1.0,
+        colorAlgorithm,
+        cosineCoefficients,
+        distribution,
+        faceColor,
+        lchLightness,
+        lchChroma
+      );
+    }
+    // Use skybox's own cosine palette
+    const skyboxCoeffs = proceduralSettings.cosineCoefficients;
+    const skyboxDist = proceduralSettings.distribution;
+    return computeColorAtT(
+      1.0,
+      'cosine',
+      skyboxCoeffs,
+      skyboxDist,
+      '#ffffff',
+      0.5,
+      0.15
+    );
+  }, [
+    proceduralSettings.syncWithObject,
+    proceduralSettings.cosineCoefficients,
+    proceduralSettings.distribution,
+    colorAlgorithm,
+    cosineCoefficients,
+    distribution,
+    faceColor,
+    lchLightness,
+    lchChroma,
+  ]);
+
+  // Palette vectors for shader - determines the color evolution
+  // Sync mode: use object's coefficients for color harmony
+  // Non-sync mode: use skybox's own coefficients
   const paletteVecs = useMemo(() => {
-     if (proceduralSettings.syncWithObject) {
-         // Use the object's palette
-         return {
-             a: new THREE.Vector3(...cosineCoefficients.a),
-             b: new THREE.Vector3(...cosineCoefficients.b),
-             c: new THREE.Vector3(...cosineCoefficients.c),
-             d: new THREE.Vector3(...cosineCoefficients.d),
-         };
-     } else {
-         // Use the skybox's selected palette preset
-         const preset = COSINE_PRESETS[proceduralSettings.paletteId as keyof typeof COSINE_PRESETS] 
-             || COSINE_PRESETS.nebula;
-         return {
-             a: new THREE.Vector3(...preset.a),
-             b: new THREE.Vector3(...preset.b),
-             c: new THREE.Vector3(...preset.c),
-             d: new THREE.Vector3(...preset.d),
-         };
-     }
-  }, [proceduralSettings.syncWithObject, proceduralSettings.paletteId, cosineCoefficients]);
+    if (proceduralSettings.syncWithObject) {
+      // Use the object's palette coefficients
+      return {
+        a: new THREE.Vector3(...cosineCoefficients.a),
+        b: new THREE.Vector3(...cosineCoefficients.b),
+        c: new THREE.Vector3(...cosineCoefficients.c),
+        d: new THREE.Vector3(...cosineCoefficients.d),
+      };
+    } else {
+      // Use the skybox's own coefficients
+      const skyboxCoeffs = proceduralSettings.cosineCoefficients;
+      return {
+        a: new THREE.Vector3(...skyboxCoeffs.a),
+        b: new THREE.Vector3(...skyboxCoeffs.b),
+        c: new THREE.Vector3(...skyboxCoeffs.c),
+        d: new THREE.Vector3(...skyboxCoeffs.d),
+      };
+    }
+  }, [proceduralSettings.syncWithObject, proceduralSettings.cosineCoefficients, cosineCoefficients]);
 
 
   useFrame((_, delta) => {
@@ -334,10 +485,10 @@ const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
     // ... logic remains ...
     if (isPlaying) {
         // Use animation speed for classic modes, or procedural time scale for procedural modes
-        const speed = (skyboxMode === 'classic' && skyboxAnimationMode !== 'none') 
-            ? skyboxAnimationSpeed 
-            : 1.0; 
-            
+        const speed = (skyboxMode === 'classic' && skyboxAnimationMode !== 'none')
+            ? skyboxAnimationSpeed
+            : 1.0;
+
         const TIME_SCALE = 0.01;
         timeRef.current += delta * speed * TIME_SCALE;
     }
@@ -386,7 +537,7 @@ const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
 
     const euler = new THREE.Euler(finalRotX, finalRotY, finalRotZ);
     const rotationMatrix = new THREE.Matrix3().setFromMatrix4(new THREE.Matrix4().makeRotationFromEuler(euler));
-    
+
     // Determine numeric mode
     let modeInt = 0;
     if (skyboxMode === 'procedural_aurora') modeInt = 1;
@@ -395,37 +546,36 @@ const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
 
     // Direct uniform updates for performance
     const uniforms = materialRef.current.uniforms as Record<string, { value: any }>;
-    
+
     if (uniforms.uTex) uniforms.uTex.value = texture;
     if (uniforms.uRotation) uniforms.uRotation.value = rotationMatrix;
     if (uniforms.uMode) uniforms.uMode.value = modeInt;
     if (uniforms.uTime) uniforms.uTime.value = t;
-    
+
     if (uniforms.uBlur) uniforms.uBlur.value = finalBlur;
     if (uniforms.uIntensity) uniforms.uIntensity.value = finalIntensity;
     if (uniforms.uHue) uniforms.uHue.value = finalHue;
     if (uniforms.uSaturation) uniforms.uSaturation.value = finalSaturation;
-    
+
     // Procedural Uniforms
     if (uniforms.uScale) uniforms.uScale.value = proceduralSettings.scale;
     if (uniforms.uComplexity) uniforms.uComplexity.value = proceduralSettings.complexity;
     if (uniforms.uTimeScale) uniforms.uTimeScale.value = proceduralSettings.timeScale;
     if (uniforms.uEvolution) uniforms.uEvolution.value = proceduralSettings.evolution;
-    
+
     // Use assignment for object types to avoid mismatch (e.g. Color vs Vector3 .set signature)
     if (uniforms.uColor1) uniforms.uColor1.value = color1Vec;
     if (uniforms.uColor2) uniforms.uColor2.value = color2Vec;
-    
+
     if (uniforms.uPalA) uniforms.uPalA.value = paletteVecs.a;
     if (uniforms.uPalB) uniforms.uPalB.value = paletteVecs.b;
     if (uniforms.uPalC) uniforms.uPalC.value = paletteVecs.c;
     if (uniforms.uPalD) uniforms.uPalD.value = paletteVecs.d;
-    
-    // If sync is on, use the palette (1.0). If off, use manual colors (0.0).
-    // This allows the color pickers to function in "Manual" mode.
-    // Future expansion: If we add a Palette Selector UI, we would enable palette (1.0) for that too.
-    if (uniforms.uUsePalette) uniforms.uUsePalette.value = proceduralSettings.syncWithObject ? 1.0 : 0.0;
-    
+
+    // Use palette mode for interesting color evolution
+    // Both sync and non-sync use the same shader path with their respective coefficients
+    if (uniforms.uUsePalette) uniforms.uUsePalette.value = 1.0;
+
     // Delight Uniforms
     if (uniforms.uDistortion) uniforms.uDistortion.value = finalDistortion || proceduralSettings.turbulence; // Override or Combine
     if (uniforms.uAberration) uniforms.uAberration.value = finalAberration || proceduralSettings.chromaticAberration;
@@ -620,7 +770,7 @@ export const Skybox: React.FC = () => {
   const { skyboxEnabled, skyboxMode } = useEnvironmentStore();
 
   if (!skyboxEnabled) return null;
-  
+
   // If procedural, skip the KTX2 loader and render mesh directly
   if (skyboxMode !== 'classic') {
       return <SkyboxMesh texture={null} />;

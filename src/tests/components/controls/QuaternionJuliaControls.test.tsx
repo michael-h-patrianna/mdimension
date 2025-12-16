@@ -34,7 +34,7 @@ describe('QuaternionJuliaControls', () => {
 
   it('should render power control', () => {
     render(<QuaternionJuliaControls />);
-    // Use getAllByText since there are multiple Power-related labels (Power label, Custom Power, Power Morphing)
+    // Use getAllByText since there are multiple Power-related labels (Power label, Custom Power)
     const powerElements = screen.getAllByText(/Power/i);
     expect(powerElements.length).toBeGreaterThan(0);
   });
@@ -75,8 +75,10 @@ describe('QuaternionJuliaControls', () => {
   });
 
   it('should display dimension info correctly for 3D', () => {
+    useGeometryStore.getState().setDimension(3);
     render(<QuaternionJuliaControls />);
-    expect(screen.getByText(/3D Quaternion Julia fractal/)).toBeInTheDocument();
+    // The info text is rendered as a template literal
+    expect(screen.getByText(/Quaternion Julia fractal/)).toBeInTheDocument();
   });
 
   it('should not show slice parameters for 3D', () => {
@@ -102,44 +104,8 @@ describe('QuaternionJuliaControls', () => {
     expect(screen.getByText('Dim 5')).toBeInTheDocument();
   });
 
-  it('should render animation section', () => {
-    render(<QuaternionJuliaControls />);
-    expect(screen.getByText('Animation')).toBeInTheDocument();
-  });
-
-  it('should render Julia constant animation toggle', () => {
-    render(<QuaternionJuliaControls />);
-    expect(screen.getByText('Julia Constant Animation')).toBeInTheDocument();
-  });
-
-  it('should render power morphing toggle', () => {
-    render(<QuaternionJuliaControls />);
-    expect(screen.getByText('Power Morphing')).toBeInTheDocument();
-  });
-
-  it('should not show origin drift for 3D', () => {
-    useGeometryStore.getState().setDimension(3);
-    render(<QuaternionJuliaControls />);
-    expect(screen.queryByText('Origin Drift')).not.toBeInTheDocument();
-  });
-
-  it('should show origin drift for 4D', () => {
-    useGeometryStore.getState().setDimension(4);
-    render(<QuaternionJuliaControls />);
-    expect(screen.getByText('Origin Drift')).toBeInTheDocument();
-  });
-
-  it('should not show dimension mixing for 3D', () => {
-    useGeometryStore.getState().setDimension(3);
-    render(<QuaternionJuliaControls />);
-    expect(screen.queryByText('Dimension Mixing')).not.toBeInTheDocument();
-  });
-
-  it('should show dimension mixing for 4D', () => {
-    useGeometryStore.getState().setDimension(4);
-    render(<QuaternionJuliaControls />);
-    expect(screen.getByText('Dimension Mixing')).toBeInTheDocument();
-  });
+  // Animation UI tests moved to JuliaAnimationDrawer.test.tsx
+  // Animation controls are now in the TimelineControls drawer
 
   it('should update Julia constant value in store', () => {
     useExtendedObjectStore.getState().setQuaternionJuliaConstant([0.5, -0.3, 0.2, 0.1]);

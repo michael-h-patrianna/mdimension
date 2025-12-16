@@ -6,8 +6,9 @@ import { useGeometryStore } from '@/stores/geometryStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { getRotationPlanes } from '@/lib/math';
 import { useShallow } from 'zustand/react/shallow';
-import { ToggleButton } from '@/components/ui/ToggleButton';
 import { AnimatePresence, m } from 'motion/react';
+import { JuliaAnimationDrawer } from './TimelineControls/JuliaAnimationDrawer';
+import { HyperbulbAnimationDrawer } from './TimelineControls/HyperbulbAnimationDrawer';
 
 export const TimelineControls: FC = () => {
     const dimension = useGeometryStore((state) => state.dimension);
@@ -43,59 +44,11 @@ export const TimelineControls: FC = () => {
     const animationBias = useUIStore((state) => state.animationBias);
     const setAnimationBias = useUIStore((state) => state.setAnimationBias);
 
-    // Quaternion Julia Settings
-    const {
-        quaternionJuliaConfig,
-        setQuaternionJuliaOriginDriftEnabled,
-        setQuaternionJuliaOriginDriftAmplitude,
-        setQuaternionJuliaOriginDriftBaseFrequency,
-    } = useExtendedObjectStore(
-        useShallow((state) => ({
-          quaternionJuliaConfig: state.quaternionJulia,
-          setQuaternionJuliaOriginDriftEnabled: state.setQuaternionJuliaOriginDriftEnabled,
-          setQuaternionJuliaOriginDriftAmplitude: state.setQuaternionJuliaOriginDriftAmplitude,
-          setQuaternionJuliaOriginDriftBaseFrequency: state.setQuaternionJuliaOriginDriftBaseFrequency,
-        }))
-    );
-
-    // Hyperbulb Settings (power animation, slice animation, Julia morphing, phase shifts)
-    const {
-        mandelbrotConfig,
-        setMandelbrotPowerAnimationEnabled,
-        setMandelbrotPowerMin,
-        setMandelbrotPowerMax,
-        setMandelbrotPowerSpeed,
-        // Slice Animation (4D+ only)
-        setMandelbrotSliceAnimationEnabled,
-        setMandelbrotSliceSpeed,
-        setMandelbrotSliceAmplitude,
-        // Julia Morphing
-        setMandelbrotJuliaModeEnabled,
-        setMandelbrotJuliaOrbitSpeed,
-        setMandelbrotJuliaOrbitRadius,
-        // Phase Shifts
-        setMandelbrotPhaseShiftEnabled,
-        setMandelbrotPhaseSpeed,
-        setMandelbrotPhaseAmplitude,
-    } = useExtendedObjectStore(
+    // Extended object configs for animation state checking
+    const { mandelbrotConfig, quaternionJuliaConfig } = useExtendedObjectStore(
         useShallow((state) => ({
           mandelbrotConfig: state.mandelbrot,
-          setMandelbrotPowerAnimationEnabled: state.setMandelbrotPowerAnimationEnabled,
-          setMandelbrotPowerMin: state.setMandelbrotPowerMin,
-          setMandelbrotPowerMax: state.setMandelbrotPowerMax,
-          setMandelbrotPowerSpeed: state.setMandelbrotPowerSpeed,
-          // Slice Animation
-          setMandelbrotSliceAnimationEnabled: state.setMandelbrotSliceAnimationEnabled,
-          setMandelbrotSliceSpeed: state.setMandelbrotSliceSpeed,
-          setMandelbrotSliceAmplitude: state.setMandelbrotSliceAmplitude,
-          // Julia Morphing
-          setMandelbrotJuliaModeEnabled: state.setMandelbrotJuliaModeEnabled,
-          setMandelbrotJuliaOrbitSpeed: state.setMandelbrotJuliaOrbitSpeed,
-          setMandelbrotJuliaOrbitRadius: state.setMandelbrotJuliaOrbitRadius,
-          // Phase Shifts
-          setMandelbrotPhaseShiftEnabled: state.setMandelbrotPhaseShiftEnabled,
-          setMandelbrotPhaseSpeed: state.setMandelbrotPhaseSpeed,
-          setMandelbrotPhaseAmplitude: state.setMandelbrotPhaseAmplitude,
+          quaternionJuliaConfig: state.quaternionJulia,
         }))
     );
 
@@ -197,165 +150,13 @@ export const TimelineControls: FC = () => {
 
       {/* Quaternion Julia Animation Drawer */}
       {showFractalAnim && objectType === 'quaternion-julia' && (
-        <div className="bg-zinc-900/90 border-t border-white/10 p-3 animate-in slide-in-from-bottom-2 duration-200">
-          <div className="flex items-center gap-4">
-            <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest min-w-[80px]">Origin Drift</div>
-            
-            <ToggleButton
-              pressed={quaternionJuliaConfig.originDriftEnabled}
-              onToggle={() => setQuaternionJuliaOriginDriftEnabled(!quaternionJuliaConfig.originDriftEnabled)}
-              className="h-6 text-[10px] px-2 py-0"
-            >
-              {quaternionJuliaConfig.originDriftEnabled ? 'ON' : 'OFF'}
-            </ToggleButton>
-
-            <div className={`space-y-3 ${!quaternionJuliaConfig.originDriftEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
-              <div className="flex items-center gap-2 w-64">
-                <span className="text-[10px] text-zinc-400 w-16">Amplitude</span>
-                <input type="range" min={0.01} max={0.5} step={0.01} value={quaternionJuliaConfig.originDriftAmplitude} onChange={(e) => setQuaternionJuliaOriginDriftAmplitude(parseFloat(e.target.value))} className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer" />
-                <span className="text-xs font-mono w-8 text-right">{quaternionJuliaConfig.originDriftAmplitude.toFixed(2)}</span>
-              </div>
-              <div className="flex items-center gap-2 w-64">
-                <span className="text-[10px] text-zinc-400 w-16">Frequency</span>
-                <input type="range" min={0.05} max={0.5} step={0.01} value={quaternionJuliaConfig.originDriftBaseFrequency} onChange={(e) => setQuaternionJuliaOriginDriftBaseFrequency(parseFloat(e.target.value))} className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer" />
-                <span className="text-xs font-mono w-8 text-right">{quaternionJuliaConfig.originDriftBaseFrequency.toFixed(2)}</span>
-              </div>
-            </div>
-          </div>
-        </div>
+        <JuliaAnimationDrawer />
       )}
 
       {/* Mandelbrot/Hyperbulb Fractal Animation Drawer */}
       {showFractalAnim && objectType === 'mandelbrot' && (
-                    <m.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 20 }}
-                        transition={{ duration: 0.2 }}
-                        className="absolute bottom-full left-0 right-0 bg-panel-bg/95 backdrop-blur-xl border-t border-b border-panel-border z-20 shadow-2xl max-h-[400px] overflow-y-auto"
-                    >
-                        <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {/* Power Animation */}
-                            <div className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">Power Animation</label>
-                                    <ToggleButton
-                                        pressed={mandelbrotConfig.powerAnimationEnabled}
-                                        onToggle={() => setMandelbrotPowerAnimationEnabled(!mandelbrotConfig.powerAnimationEnabled)}
-                                        className="text-xs px-2 py-1 h-auto"
-                                        ariaLabel="Toggle power animation"
-                                    >
-                                        {mandelbrotConfig.powerAnimationEnabled ? 'ON' : 'OFF'}
-                                    </ToggleButton>
-                                </div>
-
-                                <div className={`space-y-3 ${!mandelbrotConfig.powerAnimationEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-xs text-text-secondary w-16">Min</span>
-                                        <input type="range" min={2} max={16} step={0.5} value={mandelbrotConfig.powerMin} onChange={(e) => setMandelbrotPowerMin(parseFloat(e.target.value))} className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer" />
-                                        <span className="text-xs font-mono w-8 text-right">{mandelbrotConfig.powerMin.toFixed(1)}</span>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-xs text-text-secondary w-16">Max</span>
-                                        <input type="range" min={3} max={24} step={0.5} value={mandelbrotConfig.powerMax} onChange={(e) => setMandelbrotPowerMax(parseFloat(e.target.value))} className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer" />
-                                        <span className="text-xs font-mono w-8 text-right">{mandelbrotConfig.powerMax.toFixed(1)}</span>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-xs text-text-secondary w-16">Speed</span>
-                                        <input type="range" min={0.01} max={0.2} step={0.01} value={mandelbrotConfig.powerSpeed} onChange={(e) => setMandelbrotPowerSpeed(parseFloat(e.target.value))} className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer" />
-                                        <span className="text-xs font-mono w-10 text-right">{mandelbrotConfig.powerSpeed.toFixed(2)}</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Phase Shifts */}
-                            <div className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">Phase Shifts</label>
-                                    <ToggleButton
-                                        pressed={mandelbrotConfig.phaseShiftEnabled}
-                                        onToggle={() => setMandelbrotPhaseShiftEnabled(!mandelbrotConfig.phaseShiftEnabled)}
-                                        className="text-xs px-2 py-1 h-auto"
-                                        ariaLabel="Toggle phase shifts"
-                                    >
-                                        {mandelbrotConfig.phaseShiftEnabled ? 'ON' : 'OFF'}
-                                    </ToggleButton>
-                                </div>
-
-                                <div className={`space-y-3 ${!mandelbrotConfig.phaseShiftEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-xs text-text-secondary w-16">Amplitude</span>
-                                        <input type="range" min={0} max={0.785} step={0.01} value={mandelbrotConfig.phaseAmplitude} onChange={(e) => setMandelbrotPhaseAmplitude(parseFloat(e.target.value))} className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer" />
-                                        <span className="text-xs font-mono w-10 text-right">{mandelbrotConfig.phaseAmplitude.toFixed(2)}</span>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-xs text-text-secondary w-16">Speed</span>
-                                        <input type="range" min={0.01} max={0.2} step={0.01} value={mandelbrotConfig.phaseSpeed} onChange={(e) => setMandelbrotPhaseSpeed(parseFloat(e.target.value))} className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer" />
-                                        <span className="text-xs font-mono w-10 text-right">{mandelbrotConfig.phaseSpeed.toFixed(2)}</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Julia Morphing */}
-                            <div className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">Julia Morphing</label>
-                                    <ToggleButton
-                                        pressed={mandelbrotConfig.juliaModeEnabled}
-                                        onToggle={() => setMandelbrotJuliaModeEnabled(!mandelbrotConfig.juliaModeEnabled)}
-                                        className="text-xs px-2 py-1 h-auto"
-                                        ariaLabel="Toggle Julia morphing"
-                                    >
-                                        {mandelbrotConfig.juliaModeEnabled ? 'ON' : 'OFF'}
-                                    </ToggleButton>
-                                </div>
-
-                                <div className={`space-y-3 ${!mandelbrotConfig.juliaModeEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-xs text-text-secondary w-16">Radius</span>
-                                        <input type="range" min={0.1} max={1.5} step={0.05} value={mandelbrotConfig.juliaOrbitRadius} onChange={(e) => setMandelbrotJuliaOrbitRadius(parseFloat(e.target.value))} className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer" />
-                                        <span className="text-xs font-mono w-10 text-right">{mandelbrotConfig.juliaOrbitRadius.toFixed(2)}</span>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-xs text-text-secondary w-16">Speed</span>
-                                        <input type="range" min={0.01} max={0.1} step={0.01} value={mandelbrotConfig.juliaOrbitSpeed} onChange={(e) => setMandelbrotJuliaOrbitSpeed(parseFloat(e.target.value))} className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer" />
-                                        <span className="text-xs font-mono w-10 text-right">{mandelbrotConfig.juliaOrbitSpeed.toFixed(2)}</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Slice Animation (4D+ only) */}
-                            {dimension >= 4 && (
-                                <div className="space-y-3">
-                                    <div className="flex items-center justify-between">
-                                        <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">Slice Animation</label>
-                                        <ToggleButton
-                                            pressed={mandelbrotConfig.sliceAnimationEnabled}
-                                            onToggle={() => setMandelbrotSliceAnimationEnabled(!mandelbrotConfig.sliceAnimationEnabled)}
-                                            className="text-xs px-2 py-1 h-auto"
-                                            ariaLabel="Toggle slice animation"
-                                        >
-                                            {mandelbrotConfig.sliceAnimationEnabled ? 'ON' : 'OFF'}
-                                        </ToggleButton>
-                                    </div>
-
-                                    <div className={`space-y-3 ${!mandelbrotConfig.sliceAnimationEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
-                                        <div className="flex items-center gap-3">
-                                            <span className="text-xs text-text-secondary w-16">Amplitude</span>
-                                            <input type="range" min={0.1} max={1.0} step={0.05} value={mandelbrotConfig.sliceAmplitude} onChange={(e) => setMandelbrotSliceAmplitude(parseFloat(e.target.value))} className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer" />
-                                            <span className="text-xs font-mono w-10 text-right">{mandelbrotConfig.sliceAmplitude.toFixed(2)}</span>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <span className="text-xs text-text-secondary w-16">Speed</span>
-                                            <input type="range" min={0.01} max={0.1} step={0.01} value={mandelbrotConfig.sliceSpeed} onChange={(e) => setMandelbrotSliceSpeed(parseFloat(e.target.value))} className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer" />
-                                            <span className="text-xs font-mono w-10 text-right">{mandelbrotConfig.sliceSpeed.toFixed(2)}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </m.div>
-                )}
+        <HyperbulbAnimationDrawer />
+      )}
             </AnimatePresence>
 
             {/* Main Timeline Bar */}
@@ -438,7 +239,7 @@ export const TimelineControls: FC = () => {
                                 ${showFractalAnim ? 'bg-accent/20 text-accent' : 'hover:bg-white/5 text-text-secondary'}
                             `}
                          >
-                            Fractal Parameters
+                            Animations
                          </button>
                     )}
                     

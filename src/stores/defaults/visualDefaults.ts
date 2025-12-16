@@ -13,6 +13,8 @@ import {
   DEFAULT_COSINE_COEFFICIENTS,
   DEFAULT_DISTRIBUTION,
   DEFAULT_MULTI_SOURCE_WEIGHTS,
+  type CosineCoefficients,
+  type DistributionSettings,
 } from '@/rendering/shaders/palette'
 import type { ShaderType, ToneMappingAlgorithm } from '@/rendering/shaders/types'
 
@@ -231,13 +233,12 @@ export interface SkyboxProceduralSettings {
   scale: number
   complexity: number // 0-1 (Quality)
   timeScale: number
-  
+
   // Appearance
-  paletteId: string // Link to Cosine Palette Presets
   syncWithObject: boolean // "Harmonic Link"
-  color1: string // Custom Primary
-  color2: string // Custom Secondary
-  
+  cosineCoefficients: CosineCoefficients // Independent skybox palette
+  distribution: DistributionSettings // Distribution curve settings
+
   // Delight Features (The 10 "Wow" Factors)
   chromaticAberration: number // 0-1 (Radial/Lens style)
   horizon: number // 0-1 (0 = none, 1 = strong plane)
@@ -255,10 +256,9 @@ export const DEFAULT_SKYBOX_PROCEDURAL_SETTINGS: SkyboxProceduralSettings = {
   scale: 1.0,
   complexity: 0.5,
   timeScale: 0.2,
-  paletteId: 'rainbow',
   syncWithObject: true,
-  color1: '#0000ff',
-  color2: '#ff00ff',
+  cosineCoefficients: { ...DEFAULT_COSINE_COEFFICIENTS },
+  distribution: { ...DEFAULT_DISTRIBUTION },
   chromaticAberration: 0.1,
   horizon: 0.0,
   turbulence: 0.3,
@@ -266,7 +266,7 @@ export const DEFAULT_SKYBOX_PROCEDURAL_SETTINGS: SkyboxProceduralSettings = {
   sunIntensity: 0.0,
   sunPosition: [10, 10, 10],
   noiseGrain: 0.1,
-  evolution: 0.0
+  evolution: 0.0,
 }
 
 // ============================================================================

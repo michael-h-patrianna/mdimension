@@ -5,6 +5,7 @@ import { SkyboxAnimationMode, SkyboxSelection } from '@/stores/defaults/visualDe
 import { useEnvironmentStore } from '@/stores/environmentStore';
 import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
+import { SkyboxPaletteEditor } from './SkyboxPaletteEditor';
 
 // Import thumbnails and icons
 import spaceBlueThumb from '@/assets/skyboxes/space_blue/thumbnail.png';
@@ -210,30 +211,7 @@ export const SkyboxControls: React.FC = () => {
                 />
 
                 {!proceduralSettings.syncWithObject && (
-                  <div className="flex gap-4 animate-in fade-in zoom-in-95 duration-200">
-                    <div className="space-y-1 flex-1">
-                      <label className="text-[10px] font-medium text-text-secondary uppercase tracking-wider">Primary</label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="color"
-                          value={proceduralSettings.color1}
-                          onChange={(e) => setProceduralSettings({ color1: e.target.value })}
-                          className="w-full h-8 rounded cursor-pointer border border-panel-border bg-transparent"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-1 flex-1">
-                      <label className="text-[10px] font-medium text-text-secondary uppercase tracking-wider">Secondary</label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="color"
-                          value={proceduralSettings.color2}
-                          onChange={(e) => setProceduralSettings({ color2: e.target.value })}
-                          className="w-full h-8 rounded cursor-pointer border border-panel-border bg-transparent"
-                        />
-                      </div>
-                    </div>
-                  </div>
+                  <SkyboxPaletteEditor />
                 )}
 
                 <Slider
