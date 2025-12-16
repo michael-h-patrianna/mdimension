@@ -159,6 +159,22 @@ export function generateExtendedObject(
         },
       }
 
+    case 'kali':
+      // Kali uses GPU raymarching exclusively - no CPU geometry needed
+      // Return minimal geometry that signals to UnifiedRenderer to use KaliMesh
+      return {
+        dimension,
+        type: 'kali',
+        vertices: [],
+        edges: [],
+        metadata: {
+          name: 'Kali',
+          properties: {
+            renderMode: 'raymarching',
+          },
+        },
+      }
+
     default:
       throw new Error(`Unknown extended object type: ${type}`)
   }

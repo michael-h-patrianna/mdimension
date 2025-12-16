@@ -6,9 +6,19 @@ export {
   createAppearanceSlice,
   APPEARANCE_INITIAL_STATE,
   type AppearanceSlice,
-  type AppearanceSliceState,
-  type AppearanceSliceActions,
 } from './appearanceSlice'
+// Re-export sub-slice types from visual/types
+export type {
+  ColorSlice,
+  ColorSliceState,
+  ColorSliceActions,
+  MaterialSlice,
+  MaterialSliceState,
+  MaterialSliceActions,
+  RenderSlice,
+  RenderSliceState,
+  RenderSliceActions,
+} from './visual/types'
 
 export {
   createGroundSlice,
@@ -41,3 +51,20 @@ export {
   type UISliceState,
   type UISliceActions,
 } from './uiSlice'
+
+export {
+  createFogSlice,
+  DEFAULT_FOG_STATE,
+  type FogSlice,
+  type FogSliceState,
+  type FogSliceActions,
+  type FogType,
+} from './fogSlice'
+
+export {
+  createSkyboxSlice,
+  SKYBOX_INITIAL_STATE,
+  type SkyboxSlice,
+  type SkyboxSliceState,
+  type SkyboxSliceActions,
+} from './skyboxSlice'

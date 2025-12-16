@@ -83,8 +83,8 @@ describe('Light Types', () => {
 
     it('should have default range and decay values', () => {
       const light = createDefaultLight()
-      expect(light.range).toBe(15) // Main light has finite range for better visuals
-      expect(light.decay).toBe(2) // 2 = physically correct inverse square
+      expect(light.range).toBe(100) // Main light has finite range for better visuals
+      expect(light.decay).toBe(0.9) // Gentle falloff for better visual appearance
     })
   })
 
@@ -150,13 +150,13 @@ describe('Light Types', () => {
       const spotLight = createNewLight('spot', 0)
       const directionalLight = createNewLight('directional', 0)
 
-      // All light types should have range and decay
-      expect(pointLight.range).toBe(0)
-      expect(pointLight.decay).toBe(2)
-      expect(spotLight.range).toBe(0)
-      expect(spotLight.decay).toBe(2)
-      expect(directionalLight.range).toBe(0)
-      expect(directionalLight.decay).toBe(2)
+      // All light types should have range and decay from DEFAULT_LIGHT_VALUES
+      expect(pointLight.range).toBe(100)
+      expect(pointLight.decay).toBe(0.9)
+      expect(spotLight.range).toBe(100)
+      expect(spotLight.decay).toBe(0.9)
+      expect(directionalLight.range).toBe(100)
+      expect(directionalLight.decay).toBe(0.9)
     })
 
     it('should set point light rotation to zero', () => {

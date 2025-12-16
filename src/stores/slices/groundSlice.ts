@@ -27,6 +27,10 @@ import {
   DEFAULT_SHOW_GROUND_GRID,
 } from '../defaults/visualDefaults'
 
+/** Validates hex color string format (accepts #RGB, #RRGGBB, #RRGGBBAA) */
+const isValidHexColor = (color: string): boolean =>
+  /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/.test(color);
+
 // ============================================================================
 // State Interface
 // ============================================================================
@@ -137,7 +141,9 @@ export const createGroundSlice: StateCreator<GroundSlice, [], [], GroundSlice> =
   },
 
   setGroundPlaneColor: (color: string) => {
-    set({ groundPlaneColor: color })
+    if (isValidHexColor(color)) {
+      set({ groundPlaneColor: color })
+    }
   },
 
   setGroundPlaneType: (type: GroundPlaneType) => {
@@ -154,7 +160,9 @@ export const createGroundSlice: StateCreator<GroundSlice, [], [], GroundSlice> =
   },
 
   setGroundGridColor: (color: string) => {
-    set({ groundGridColor: color })
+    if (isValidHexColor(color)) {
+      set({ groundGridColor: color })
+    }
   },
 
   setGroundGridSpacing: (spacing: number) => {

@@ -16,6 +16,7 @@
 
 import {
   DEFAULT_CLIFFORD_TORUS_CONFIG,
+  DEFAULT_KALI_CONFIG,
   DEFAULT_MANDELBROT_CONFIG,
   DEFAULT_NESTED_TORUS_CONFIG,
   DEFAULT_POLYTOPE_CONFIG,
@@ -24,6 +25,7 @@ import {
 } from '@/lib/geometry/extended/types'
 import { create } from 'zustand'
 import { createCliffordTorusSlice } from './slices/geometry/cliffordTorusSlice'
+import { createKaliSlice } from './slices/geometry/kaliSlice'
 import { createMandelbrotSlice } from './slices/geometry/mandelbrotSlice'
 import { createNestedTorusSlice } from './slices/geometry/nestedTorusSlice'
 import { createPolytopeSlice } from './slices/geometry/polytopeSlice'
@@ -48,6 +50,7 @@ export const useExtendedObjectStore = create<ExtendedObjectSlice>()((...a) => {
     ...createNestedTorusSlice(...a),
     ...createMandelbrotSlice(...a),
     ...createQuaternionJuliaSlice(...a),
+    ...createKaliSlice(...a),
 
     // --- Reset Action ---
     reset: () => {
@@ -59,6 +62,7 @@ export const useExtendedObjectStore = create<ExtendedObjectSlice>()((...a) => {
         nestedTorus: { ...DEFAULT_NESTED_TORUS_CONFIG },
         mandelbrot: { ...DEFAULT_MANDELBROT_CONFIG },
         quaternionJulia: { ...DEFAULT_QUATERNION_JULIA_CONFIG },
+        kali: { ...DEFAULT_KALI_CONFIG },
       })
     },
   }

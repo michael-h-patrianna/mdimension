@@ -510,6 +510,19 @@ export const LightGroundVisualization = memo(function LightGroundVisualization({
   onDragEnd,
   onSelect,
 }: LightGroundVisualizationProps) {
+  // IMPORTANT: All hooks must be called unconditionally at the top level
+  // to follow React's Rules of Hooks
+
+  // Calculate direction from rotation (used for spot/directional lights)
+  const direction = useMemo(() => {
+    return rotationToDirection(light.rotation);
+  }, [light.rotation]);
+
+  // Calculate ground intersection (used for spot/directional lights)
+  const rayIntersection = useMemo(() => {
+    return calculateGroundIntersection(light.position, direction);
+  }, [light.position, direction]);
+
   // Handle POINT LIGHTS - sphere intersection with ground
   if (light.type === 'point') {
     const sphereIntersection = calculateSphereGroundIntersection(
@@ -537,39 +550,29 @@ export const LightGroundVisualization = memo(function LightGroundVisualization({
 
   // Handle SPOT and DIRECTIONAL LIGHTS - ray/cone intersection with ground
 
-  // Calculate direction from rotation
-  const direction = useMemo(() => {
-    return rotationToDirection(light.rotation);
-  }, [light.rotation]);
-
-  // Calculate ground intersection
-  const intersection = useMemo(() => {
-    return calculateGroundIntersection(light.position, direction);
-  }, [light.position, direction]);
-
   // Don't render if no valid intersection (light below ground or pointing up)
-  if (!intersection) {
+  if (!rayIntersection) {
     return null;
   }
 
   return (
     <group>
       {/* Feature 1: Ray from light to ground */}
-      <LightGroundRay light={light} intersection={intersection} />
+      <LightGroundRay light={light} intersection={rayIntersection} />
 
       {/* Feature 2: Spotlight cone ellipse (only for spot lights) */}
       {light.type === 'spot' && (
         <SpotlightGroundCircle
           light={light}
           direction={direction}
-          intersection={intersection}
+          intersection={rayIntersection}
         />
       )}
 
       {/* Feature 3: Draggable ground target */}
       <DraggableGroundTarget
         light={light}
-        intersection={intersection}
+        intersection={rayIntersection}
         isSelected={isSelected}
         onRotationChange={onRotationChange}
         onDragStart={onDragStart}

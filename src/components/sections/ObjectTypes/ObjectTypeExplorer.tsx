@@ -18,6 +18,9 @@ export const ObjectTypeExplorer: React.FC = () => {
   const initializeQuaternionJuliaForDimension = useExtendedObjectStore(
     (state) => state.initializeQuaternionJuliaForDimension
   );
+  const initializeKaliForDimension = useExtendedObjectStore(
+    (state) => state.initializeKaliForDimension
+  );
   const initializePolytopeForType = useExtendedObjectStore(
     (state) => state.initializePolytopeForType
   );
@@ -35,6 +38,13 @@ export const ObjectTypeExplorer: React.FC = () => {
       initializeQuaternionJuliaForDimension(dimension);
     }
   }, [objectType, dimension, initializeQuaternionJuliaForDimension]);
+
+  // Initialize Kali settings when objectType is 'kali' and dimension changes
+  useEffect(() => {
+    if (objectType === 'kali') {
+      initializeKaliForDimension(dimension);
+    }
+  }, [objectType, dimension, initializeKaliForDimension]);
 
   // Initialize polytope scale when switching to a polytope type
   useEffect(() => {

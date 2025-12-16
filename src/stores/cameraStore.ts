@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 import { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
-import { Vector3 } from 'three'
 
 interface CameraState {
   position: [number, number, number]

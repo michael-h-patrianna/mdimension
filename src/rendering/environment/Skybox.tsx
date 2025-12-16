@@ -270,6 +270,11 @@ const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
   const timeRef = useRef(0);
   // Pointer removed as it was only for uMousePos
 
+  // Reusable objects to avoid per-frame allocations
+  const eulerRef = useRef(new THREE.Euler());
+  const matrix3Ref = useRef(new THREE.Matrix3());
+  const matrix4Ref = useRef(new THREE.Matrix4());
+
   const {
     skyboxMode,
     skyboxIntensity,
@@ -500,8 +505,8 @@ const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
     let finalRotZ = 0;
     let finalIntensity = skyboxIntensity;
     let finalBlur = skyboxBlur;
-    let finalHue = 0;
-    let finalSaturation = 1;
+    let finalHue = proceduralSettings.hue ?? 0;
+    let finalSaturation = proceduralSettings.saturation ?? 1;
     let finalDistortion = 0;
     let finalAberration = 0;
 
@@ -535,14 +540,26 @@ const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
         }
     }
 
-    const euler = new THREE.Euler(finalRotX, finalRotY, finalRotZ);
-    const rotationMatrix = new THREE.Matrix3().setFromMatrix4(new THREE.Matrix4().makeRotationFromEuler(euler));
+    // Reuse objects to avoid per-frame allocations
+    eulerRef.current.set(finalRotX, finalRotY, finalRotZ);
+    const rotationMatrix = matrix3Ref.current.setFromMatrix4(
+      matrix4Ref.current.makeRotationFromEuler(eulerRef.current)
+    );
 
-    // Determine numeric mode
+    // Determine numeric mode (must match shader constants)
+    // 0=Classic, 1=Aurora, 2=Nebula, 3=Void, 4=Crystalline, 5=Horizon, 6=Ocean, 7=Twilight, 8=Starfield
     let modeInt = 0;
-    if (skyboxMode === 'procedural_aurora') modeInt = 1;
-    if (skyboxMode === 'procedural_nebula') modeInt = 2;
-    if (skyboxMode === 'procedural_void') modeInt = 3;
+    switch (skyboxMode) {
+      case 'procedural_aurora': modeInt = 1; break;
+      case 'procedural_nebula': modeInt = 2; break;
+      case 'procedural_void': modeInt = 3; break;
+      case 'procedural_crystalline': modeInt = 4; break;
+      case 'procedural_horizon': modeInt = 5; break;
+      case 'procedural_ocean': modeInt = 6; break;
+      case 'procedural_twilight': modeInt = 7; break;
+      case 'procedural_starfield': modeInt = 8; break;
+      default: modeInt = 0; // classic
+    }
 
     // Direct uniform updates for performance
     const uniforms = materialRef.current.uniforms as Record<string, { value: any }>;
@@ -586,6 +603,18 @@ const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
     if (uniforms.uDualTone) uniforms.uDualTone.value = proceduralSettings.dualToneContrast;
     if (uniforms.uSunIntensity) uniforms.uSunIntensity.value = proceduralSettings.sunIntensity;
     if (uniforms.uSunPosition) uniforms.uSunPosition.value.set(...proceduralSettings.sunPosition);
+
+    // Starfield Uniforms
+    if (uniforms.uStarDensity) uniforms.uStarDensity.value = proceduralSettings.starfield.density;
+    if (uniforms.uStarBrightness) uniforms.uStarBrightness.value = proceduralSettings.starfield.brightness;
+    if (uniforms.uStarSize) uniforms.uStarSize.value = proceduralSettings.starfield.size;
+    if (uniforms.uStarTwinkle) uniforms.uStarTwinkle.value = proceduralSettings.starfield.twinkle;
+    if (uniforms.uStarGlow) uniforms.uStarGlow.value = proceduralSettings.starfield.glow;
+    if (uniforms.uStarColorVariation) uniforms.uStarColorVariation.value = proceduralSettings.starfield.colorVariation;
+
+    // Parallax Uniforms
+    if (uniforms.uParallaxEnabled) uniforms.uParallaxEnabled.value = proceduralSettings.parallaxEnabled ? 1.0 : 0.0;
+    if (uniforms.uParallaxStrength) uniforms.uParallaxStrength.value = proceduralSettings.parallaxStrength ?? 0.5;
   });
 
   // Calculate Initial State for Props (Critical for Environment capture before first frame)

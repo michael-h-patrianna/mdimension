@@ -55,6 +55,11 @@ const componentLoaders: Record<string, () => Promise<{ default: ComponentType<un
     import('@/components/sections/Geometry/QuaternionJuliaControls').then((m) => ({
       default: m.QuaternionJuliaControls as ComponentType<unknown>,
     })),
+
+  KaliControls: () =>
+    import('@/components/sections/Geometry/KaliControls').then((m) => ({
+      default: m.KaliControls as ComponentType<unknown>,
+    })),
 }
 
 /**

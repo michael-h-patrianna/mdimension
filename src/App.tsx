@@ -79,11 +79,8 @@ function Visualizer() {
   const pointColors = useMandelbrotColors(geometry, mandelbrotConfig, edgeColorForMandelbrot);
   const facesVisible = useAppearanceStore((state) => state.facesVisible);
 
-  // Calculate minimum bounding radius for ground plane positioning
-  // When raymarched objects are visible, ensure ground plane accounts for them
-  const isMandelbulbVisible = objectType === 'mandelbrot' && facesVisible && dimension === 3;
-  const isHyperbulbVisible = objectType === 'mandelbrot' && facesVisible && dimension >= 4;
-  // Mandelbulb/Hyperbulb need smaller (1.5)
+  // Minimum bounding radius for ground plane positioning
+  // Currently all objects use the same radius for consistent ground placement
   const minBoundingRadius = 1.5;
 
   return (

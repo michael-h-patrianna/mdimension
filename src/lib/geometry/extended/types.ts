@@ -866,6 +866,229 @@ export const DEFAULT_QUATERNION_JULIA_CONFIG: QuaternionJuliaConfig = {
 }
 
 // ============================================================================
+// Kali Fractal Configuration
+// ============================================================================
+
+/**
+ * Kali constant animation parameters
+ */
+export interface KaliConstantAnimation {
+  enabled: boolean
+  /** Animation amplitude (0.0-0.3, Kali is sensitive) */
+  amplitude: number
+  /** Base frequency in Hz (0.01-0.2) */
+  frequency: number
+  /** Phase offset for multi-frequency motion */
+  phaseOffset: number
+}
+
+/**
+ * Reciprocal gain animation parameters
+ */
+export interface KaliGainAnimation {
+  enabled: boolean
+  /** Minimum gain (0.5-1.5) */
+  minGain: number
+  /** Maximum gain (0.8-2.0) */
+  maxGain: number
+  /** Oscillation speed in Hz (0.01-0.1) */
+  speed: number
+}
+
+/**
+ * Axis weights animation parameters
+ */
+export interface KaliWeightsAnimation {
+  enabled: boolean
+  /** Weight variation amplitude (0.0-0.5) */
+  amplitude: number
+}
+
+/**
+ * Configuration for Kali/Reciprocal-Abs fractal generation
+ *
+ * Mathematical basis: z = abs(z) / dot(z,z) + c
+ * The reciprocal step creates intense nonlinear folding that produces
+ * fluid, cellular, and "alive" structures.
+ *
+ * Supports 3D to 11D via hyperspherical generalization.
+ *
+ * @see docs/prd/kali-reciprocal-fractal.md
+ */
+export interface KaliConfig {
+  // === Core Parameters ===
+
+  /**
+   * Kali constant c (n-dimensional).
+   * Length matches current dimension.
+   * Default: [0.5, 0.5, 0.5, 0.5] ("Coral Cells")
+   * Range: -1.0 to 1.0 per component
+   */
+  kaliConstant: number[]
+
+  /**
+   * Reciprocal gain (0.5-2.0, default 1.0).
+   * Lower = softer structures, Higher = sharper crystalline.
+   * Formula: z = abs(z) / (dot(z,z) * gain + eps) + c
+   */
+  reciprocalGain: number
+
+  /**
+   * Axis weights for symmetry breaking.
+   * Length matches current dimension, default all 1.0.
+   * Range: 0.5-2.0 per axis.
+   */
+  axisWeights: number[]
+
+  // === Iteration Parameters ===
+
+  /**
+   * Maximum iterations (8-64, default 20).
+   * Lower than Julia due to fast divergence.
+   */
+  maxIterations: number
+
+  /**
+   * Bailout radius (2.0-8.0, default 4.0).
+   */
+  bailoutRadius: number
+
+  /**
+   * Epsilon for singularity protection (0.0001-0.01, default 0.001).
+   * Prevents division by zero at origin.
+   */
+  epsilon: number
+
+  // === Quality Parameters ===
+
+  /** Scale/extent for auto-positioning (0.5-5.0, default 2.0) */
+  scale: number
+  /** Surface distance threshold (0.0005-0.004) */
+  surfaceThreshold: number
+  /** Maximum raymarch steps (64-512) */
+  maxRaymarchSteps: number
+  /** Quality multiplier (0.25-1.0) */
+  qualityMultiplier: number
+
+  // === D-dimensional Parameters ===
+
+  /** Slice position in extra dimensions (length = dimension - 3) */
+  parameterValues: number[]
+
+  // === Animation Configuration ===
+  // NOTE: Controls are in Timeline bottom bar, NOT geometry editor
+
+  /** Constant path animation */
+  constantAnimation: KaliConstantAnimation
+  /** Reciprocal gain animation */
+  gainAnimation: KaliGainAnimation
+  /** Axis weights animation */
+  weightsAnimation: KaliWeightsAnimation
+
+  /** Enable origin drift in extra dimensions (4D+) */
+  originDriftEnabled: boolean
+  /** Origin drift amplitude (0.01-0.5) */
+  originDriftAmplitude: number
+  /** Origin drift base frequency Hz (0.01-0.5) */
+  originDriftBaseFrequency: number
+  /** Origin drift frequency spread (0.0-1.0) */
+  originDriftFrequencySpread: number
+
+  /** Enable dimension mixing inside iteration */
+  dimensionMixEnabled: boolean
+  /** Mixing intensity (0.0-0.3) */
+  mixIntensity: number
+  /** Mixing frequency multiplier (0.1-2.0) */
+  mixFrequency: number
+}
+
+/**
+ * Kali constant presets
+ */
+export interface KaliConstantPreset {
+  name: string
+  value: number[]
+}
+
+/**
+ * Kali constant presets
+ */
+export const KALI_CONSTANT_PRESETS: KaliConstantPreset[] = [
+  { name: 'Coral Cells', value: [0.5, 0.5, 0.5, 0.5] },
+  { name: 'Sponge', value: [0.3, 0.3, 0.3, 0.3] },
+  { name: 'Tubes', value: [0.7, 0.2, 0.7, 0.2] },
+  { name: 'Membrane', value: [0.1, 0.1, 0.1, 0.1] },
+  { name: 'Chaos', value: [0.8, -0.3, 0.5, -0.7] },
+]
+
+/**
+ * Quality presets for Kali
+ */
+export const KALI_QUALITY_PRESETS = {
+  draft: { maxIterations: 12, surfaceThreshold: 0.004, maxRaymarchSteps: 64 },
+  standard: { maxIterations: 20, surfaceThreshold: 0.002, maxRaymarchSteps: 128 },
+  high: { maxIterations: 40, surfaceThreshold: 0.001, maxRaymarchSteps: 256 },
+  ultra: { maxIterations: 64, surfaceThreshold: 0.0005, maxRaymarchSteps: 512 },
+}
+
+/**
+ * Default Kali configuration
+ */
+export const DEFAULT_KALI_CONFIG: KaliConfig = {
+  // Core parameters
+  kaliConstant: [0.5, 0.5, 0.5, 0.5],
+  reciprocalGain: 1.0,
+  axisWeights: [1.0, 1.0, 1.0, 1.0],
+
+  // Iteration
+  maxIterations: 20,
+  bailoutRadius: 4.0,
+  epsilon: 0.001,
+
+  // Quality
+  scale: 2.0,
+  surfaceThreshold: 0.002,
+  maxRaymarchSteps: 128,
+  qualityMultiplier: 1.0,
+
+  // D-dimensional
+  parameterValues: [],
+
+  // Constant animation
+  constantAnimation: {
+    enabled: false,
+    amplitude: 0.1,
+    frequency: 0.02,
+    phaseOffset: 0,
+  },
+
+  // Gain animation
+  gainAnimation: {
+    enabled: false,
+    minGain: 0.7,
+    maxGain: 1.3,
+    speed: 0.02,
+  },
+
+  // Weights animation
+  weightsAnimation: {
+    enabled: false,
+    amplitude: 0.2,
+  },
+
+  // Origin drift
+  originDriftEnabled: false,
+  originDriftAmplitude: 0.1,
+  originDriftBaseFrequency: 0.1,
+  originDriftFrequencySpread: 0.3,
+
+  // Dimension mixing
+  dimensionMixEnabled: false,
+  mixIntensity: 0.1,
+  mixFrequency: 0.5,
+}
+
+// ============================================================================
 // Combined Object Parameters
 // ============================================================================
 
@@ -895,6 +1118,8 @@ export interface ExtendedObjectParams {
   mandelbrot: MandelbrotConfig
   /** Configuration for Quaternion Julia fractal generation */
   quaternionJulia: QuaternionJuliaConfig
+  /** Configuration for Kali fractal generation */
+  kali: KaliConfig
 }
 
 /**
@@ -907,4 +1132,5 @@ export const DEFAULT_EXTENDED_OBJECT_PARAMS: ExtendedObjectParams = {
   nestedTorus: DEFAULT_NESTED_TORUS_CONFIG,
   mandelbrot: DEFAULT_MANDELBROT_CONFIG,
   quaternionJulia: DEFAULT_QUATERNION_JULIA_CONFIG,
+  kali: DEFAULT_KALI_CONFIG,
 }

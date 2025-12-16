@@ -23,6 +23,7 @@ export function useGeometryGenerator() {
   const nestedTorusConfig = useExtendedObjectStore((state) => state.nestedTorus)
   const mandelbrotConfig = useExtendedObjectStore((state) => state.mandelbrot)
   const quaternionJuliaConfig = useExtendedObjectStore((state) => state.quaternionJulia)
+  const kaliConfig = useExtendedObjectStore((state) => state.kali)
 
   const extendedParams: ExtendedObjectParams = useMemo(
     () => ({
@@ -30,19 +31,20 @@ export function useGeometryGenerator() {
       rootSystem: rootSystemConfig,
       cliffordTorus: cliffordTorusConfig,
       nestedTorus: nestedTorusConfig,
-        // Mandelbrot config
-        mandelbrot: mandelbrotConfig,
-        // Quaternion Julia config
-        quaternionJulia: quaternionJuliaConfig,
+      mandelbrot: mandelbrotConfig,
+      quaternionJulia: quaternionJuliaConfig,
+      kali: kaliConfig,
     }),
     [
       polytopeConfig,
       rootSystemConfig,
       cliffordTorusConfig,
       nestedTorusConfig,
-    mandelbrotConfig,
-    quaternionJuliaConfig,
-  ])
+      mandelbrotConfig,
+      quaternionJuliaConfig,
+      kaliConfig,
+    ]
+  )
 
   const geometry = useMemo(() => {
     return generateGeometry(objectType, dimension, extendedParams)

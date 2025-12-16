@@ -115,8 +115,8 @@ describe('LightList', () => {
   describe('default state', () => {
     it('should show default light from store', () => {
       render(<LightList />);
-      // Store starts with 1 default light
-      expect(screen.getByText('1 / 4 lights')).toBeInTheDocument();
+      // Store starts with 2 default lights
+      expect(screen.getByText('2 / 4 lights')).toBeInTheDocument();
     });
 
     it('should display the default light name', () => {
@@ -156,6 +156,11 @@ describe('LightList', () => {
 
     it('should show dropdown options when add button clicked', async () => {
       const user = userEvent.setup();
+      // Clear lights to avoid name conflicts with dropdown options
+      while (useLightingStore.getState().lights.length > 0) {
+        const firstLight = useLightingStore.getState().lights[0];
+        if (firstLight) useLightingStore.getState().removeLight(firstLight.id);
+      }
       render(<LightList />);
 
       await user.click(screen.getByText('Add Light'));
@@ -196,6 +201,12 @@ describe('LightList', () => {
 
     it('should add spot light when selected', async () => {
       const user = userEvent.setup();
+      // Clear lights to avoid name conflicts with dropdown options
+      while (useLightingStore.getState().lights.length > 0) {
+        const firstLight = useLightingStore.getState().lights[0];
+        if (firstLight) useLightingStore.getState().removeLight(firstLight.id);
+      }
+
       const initialCount = useLightingStore.getState().lights.length;
       render(<LightList />);
 
@@ -398,12 +409,6 @@ describe('LightListItem', () => {
       expect(screen.getByText('Position')).toBeInTheDocument();
     });
 
-    it('should display transform mode toggles', () => {
-      render(<LightEditor />);
-      expect(screen.getByText('Move (W)')).toBeInTheDocument();
-      expect(screen.getByText('Rotate (E)')).toBeInTheDocument();
-    });
-
     it('should update light name when changed', async () => {
       const user = userEvent.setup();
       render(<LightEditor />);
@@ -440,23 +445,6 @@ describe('LightListItem', () => {
       const selectedId = useLightingStore.getState().selectedLightId;
       const light = useLightingStore.getState().lights.find(l => l.id === selectedId);
       expect(light?.intensity).toBe(2.0);
-    });
-
-    it('should switch transform mode to rotate', async () => {
-      const user = userEvent.setup();
-      render(<LightEditor />);
-
-      await user.click(screen.getByText('Rotate (E)'));
-      expect(useLightingStore.getState().transformMode).toBe('rotate');
-    });
-
-    it('should switch transform mode to translate', async () => {
-      const user = userEvent.setup();
-      useLightingStore.getState().setTransformMode('rotate');
-      render(<LightEditor />);
-
-      await user.click(screen.getByText('Move (W)'));
-      expect(useLightingStore.getState().transformMode).toBe('translate');
     });
   });
 

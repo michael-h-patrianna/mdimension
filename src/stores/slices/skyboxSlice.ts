@@ -73,6 +73,18 @@ export const SKYBOX_INITIAL_STATE: SkyboxSliceState = {
   proceduralSettings: DEFAULT_SKYBOX_PROCEDURAL_SETTINGS,
 }
 
+/** All procedural mode prefixes */
+const PROCEDURAL_MODES = [
+  'procedural_aurora',
+  'procedural_nebula',
+  'procedural_void',
+  'procedural_crystalline',
+  'procedural_horizon',
+  'procedural_ocean',
+  'procedural_twilight',
+  'procedural_starfield',
+] as const
+
 /** Helper to derive state from a skybox selection */
 function deriveStateFromSelection(selection: SkyboxSelection): {
   skyboxEnabled: boolean
@@ -87,7 +99,8 @@ function deriveStateFromSelection(selection: SkyboxSelection): {
     }
   }
 
-  if (selection.startsWith('procedural_')) {
+  // Check if it's any procedural mode
+  if (PROCEDURAL_MODES.includes(selection as typeof PROCEDURAL_MODES[number])) {
     return {
       skyboxEnabled: true,
       skyboxMode: selection as SkyboxMode,
@@ -117,7 +130,11 @@ export const createSkyboxSlice: StateCreator<SkyboxSlice, [], [], SkyboxSlice> =
   setSkyboxBlur: (blur: number) => set({ skyboxBlur: Math.max(0, Math.min(1, blur)) }),
   setSkyboxIntensity: (intensity: number) =>
     set({ skyboxIntensity: Math.max(0, Math.min(10, intensity)) }),
-  setSkyboxRotation: (rotation: number) => set({ skyboxRotation: rotation }),
+  setSkyboxRotation: (rotation: number) => {
+    // Normalize rotation to [0, 2π) range to prevent precision issues
+    const normalized = ((rotation % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+    set({ skyboxRotation: normalized });
+  },
   setSkyboxAnimationMode: (mode: SkyboxAnimationMode) => set({ skyboxAnimationMode: mode }),
   setSkyboxAnimationSpeed: (speed: number) =>
     set({ skyboxAnimationSpeed: Math.max(0, Math.min(5, speed)) }),

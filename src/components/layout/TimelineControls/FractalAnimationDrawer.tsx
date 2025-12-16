@@ -146,6 +146,23 @@ export const FractalAnimationDrawer: React.FC = React.memo(() => {
             // Flat key
             setterName = `setQuaternionJulia${key.charAt(0).toUpperCase()}${key.slice(1)}`;
           }
+        } else if (objectType === 'kali') {
+          // Kali has both flat and nested keys (same pattern as quaternion-julia)
+          // Nested: 'constantAnimation.enabled' → 'setKaliConstantAnimationEnabled'
+          // Nested: 'gainAnimation.minGain' → 'setKaliGainAnimationMinGain'
+          // Flat: 'originDriftEnabled' → 'setKaliOriginDriftEnabled'
+
+          if (key.includes('.')) {
+            // Nested path - convert 'constantAnimation.amplitude' to 'ConstantAnimationAmplitude'
+            const parts = key.split('.');
+            const camelParts = parts.map(
+              (part) => part.charAt(0).toUpperCase() + part.slice(1)
+            );
+            setterName = `setKali${camelParts.join('')}`;
+          } else {
+            // Flat key
+            setterName = `setKali${key.charAt(0).toUpperCase()}${key.slice(1)}`;
+          }
         } else {
           // Default fallback (shouldn't happen for fractals)
           continue;

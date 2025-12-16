@@ -19,9 +19,9 @@ describe('lightingStore', () => {
   });
 
   describe('Initial State', () => {
-    it('should have default lights array with one light', () => {
+    it('should have default lights array with two lights', () => {
       const { lights } = useLightingStore.getState()
-      expect(lights).toHaveLength(1)
+      expect(lights).toHaveLength(2)
       expect(lights).toEqual(DEFAULT_LIGHTS)
     })
 
@@ -59,9 +59,9 @@ describe('lightingStore', () => {
       const { lights } = useLightingStore.getState()
 
       expect(id).not.toBeNull()
-      expect(lights).toHaveLength(2)
-      expect(lights[1]!.type).toBe('point')
-      expect(lights[1]!.name).toBe('Point Light 2')
+      expect(lights).toHaveLength(3) // Started with 2 default lights
+      expect(lights[2]!.type).toBe('point')
+      expect(lights[2]!.name).toBe('Point Light 3')
     })
 
     it('should add a directional light', () => {
@@ -69,8 +69,8 @@ describe('lightingStore', () => {
       const { lights } = useLightingStore.getState()
 
       expect(id).not.toBeNull()
-      expect(lights[1]!.type).toBe('directional')
-      expect(lights[1]!.name).toBe('Directional Light 2')
+      expect(lights[2]!.type).toBe('directional')
+      expect(lights[2]!.name).toBe('Directional Light 3')
     })
 
     it('should add a spot light', () => {
@@ -78,14 +78,14 @@ describe('lightingStore', () => {
       const { lights } = useLightingStore.getState()
 
       expect(id).not.toBeNull()
-      expect(lights[1]!.type).toBe('spot')
-      expect(lights[1]!.name).toBe('Spot Light 2')
-      expect(lights[1]!.penumbra).toBe(0.2) // Spot-specific default
+      expect(lights[2]!.type).toBe('spot')
+      expect(lights[2]!.name).toBe('Spot Light 3')
+      expect(lights[2]!.penumbra).toBe(0.2) // Spot-specific default
     })
 
     it('should return null when at MAX_LIGHTS', () => {
-      // Add lights until max
-      for (let i = 1; i < MAX_LIGHTS; i++) {
+      // Add lights until max (starting from 2 default lights)
+      for (let i = 2; i < MAX_LIGHTS; i++) {
         useLightingStore.getState().addLight('point')
       }
 
@@ -113,19 +113,20 @@ describe('lightingStore', () => {
   describe('removeLight', () => {
     it('should remove a light by ID', () => {
       const id = useLightingStore.getState().addLight('point')
-      expect(useLightingStore.getState().lights).toHaveLength(2)
+      expect(useLightingStore.getState().lights).toHaveLength(3) // 2 default + 1 added
 
       useLightingStore.getState().removeLight(id!)
-      expect(useLightingStore.getState().lights).toHaveLength(1)
+      expect(useLightingStore.getState().lights).toHaveLength(2)
     })
 
     it('should allow removing all lights (MIN_LIGHTS is 0)', () => {
-      // Start with the default light
+      // Start with the default lights
       const { lights } = useLightingStore.getState()
-      expect(lights).toHaveLength(1)
+      expect(lights).toHaveLength(2)
 
-      // Should be able to remove it since MIN_LIGHTS is 0
+      // Should be able to remove all since MIN_LIGHTS is 0
       useLightingStore.getState().removeLight(lights[0]!.id)
+      useLightingStore.getState().removeLight(lights[1]!.id)
       expect(useLightingStore.getState().lights).toHaveLength(MIN_LIGHTS)
       expect(MIN_LIGHTS).toBe(0)
     })
@@ -282,7 +283,7 @@ describe('lightingStore', () => {
 
       const newId = useLightingStore.getState().duplicateLight(originalId)
       expect(newId).not.toBeNull()
-      expect(useLightingStore.getState().lights).toHaveLength(2)
+      expect(useLightingStore.getState().lights).toHaveLength(3) // 2 default + 1 duplicate
     })
 
     it('should create copy with (Copy) suffix', () => {
@@ -332,8 +333,8 @@ describe('lightingStore', () => {
     })
 
     it('should return null when at MAX_LIGHTS', () => {
-      // Add lights until max
-      for (let i = 1; i < MAX_LIGHTS; i++) {
+      // Add lights until max (starting from 2 default lights)
+      for (let i = 2; i < MAX_LIGHTS; i++) {
         useLightingStore.getState().addLight('point')
       }
 
@@ -403,10 +404,10 @@ describe('lightingStore', () => {
   describe('reset', () => {
     it('should reset lights to default', () => {
       useLightingStore.getState().addLight('point')
-      useLightingStore.getState().addLight('spot')
       useLightingStore.setState(LIGHTING_INITIAL_STATE)
-      expect(useLightingStore.getState().lights).toHaveLength(1)
+      expect(useLightingStore.getState().lights).toHaveLength(2) // 2 default lights
       expect(useLightingStore.getState().lights[0]!.id).toBe('light-default')
+      expect(useLightingStore.getState().lights[1]!.id).toBe('light-default-spot')
     })
 
     it('should reset selectedLightId to null', () => {

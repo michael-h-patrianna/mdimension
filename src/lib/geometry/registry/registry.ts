@@ -659,6 +659,187 @@ export const OBJECT_TYPE_REGISTRY: ObjectTypeRegistry = new Map<ObjectType, Obje
       configStoreKey: 'quaternionJulia',
     },
   ],
+
+  [
+    'kali',
+    {
+      type: 'kali',
+      name: 'Kali',
+      description: 'Kali reciprocal fractal using z = abs(z) / dot(z,z) + c',
+      category: 'fractal',
+
+      dimensions: {
+        min: 3,
+        max: 11,
+        recommended: 4,
+        recommendedReason: '4D provides rich structure with good performance',
+      },
+
+      rendering: {
+        supportsFaces: true,
+        supportsEdges: true,
+        supportsPoints: false,
+        renderMethod: 'raymarch',
+        faceDetection: 'none',
+        requiresRaymarching: true,
+        edgesAreFresnelRim: true,
+      },
+
+      animation: {
+        hasTypeSpecificAnimations: true,
+        systems: {
+          // Constant Animation uses nested store structure
+          constantAnimation: {
+            name: 'Constant Animation',
+            description: 'Per-component oscillation of the Kali constant c',
+            enabledByDefault: false,
+            enabledKey: 'constantAnimation.enabled',
+            params: {
+              'constantAnimation.amplitude': {
+                min: 0.0,
+                max: 1.0,
+                default: 0.2,
+                step: 0.01,
+                label: 'Amplitude',
+              },
+              'constantAnimation.frequency': {
+                min: 0.01,
+                max: 1.0,
+                default: 0.1,
+                step: 0.01,
+                label: 'Frequency',
+              },
+              'constantAnimation.phaseOffset': {
+                min: 0.0,
+                max: 6.283,
+                default: 0.0,
+                step: 0.1,
+                label: 'Phase Offset',
+              },
+            },
+          },
+
+          // Gain Animation uses nested store structure
+          gainAnimation: {
+            name: 'Gain Animation',
+            description: 'Morphs the reciprocal gain parameter',
+            enabledByDefault: false,
+            enabledKey: 'gainAnimation.enabled',
+            params: {
+              'gainAnimation.minGain': {
+                min: 0.1,
+                max: 2.0,
+                default: 0.5,
+                step: 0.05,
+                label: 'Min Gain',
+              },
+              'gainAnimation.maxGain': {
+                min: 0.5,
+                max: 3.0,
+                default: 1.5,
+                step: 0.05,
+                label: 'Max Gain',
+              },
+              'gainAnimation.speed': {
+                min: 0.01,
+                max: 0.2,
+                default: 0.03,
+                step: 0.01,
+                label: 'Speed',
+              },
+            },
+          },
+
+          // Weights Animation uses nested store structure
+          weightsAnimation: {
+            name: 'Weights Animation',
+            description: 'Animates axis weight ratios for morphing',
+            enabledByDefault: false,
+            enabledKey: 'weightsAnimation.enabled',
+            params: {
+              'weightsAnimation.amplitude': {
+                min: 0.0,
+                max: 0.5,
+                default: 0.1,
+                step: 0.01,
+                label: 'Amplitude',
+              },
+            },
+          },
+
+          // Origin Drift uses flat store keys
+          originDrift: {
+            name: 'Origin Drift',
+            description: 'Extra dimension wandering for feature evolution',
+            enabledByDefault: false,
+            minDimension: 4,
+            enabledKey: 'originDriftEnabled',
+            params: {
+              originDriftAmplitude: {
+                min: 0.01,
+                max: 0.5,
+                default: 0.03,
+                step: 0.01,
+                label: 'Amplitude',
+              },
+              originDriftBaseFrequency: {
+                min: 0.01,
+                max: 0.5,
+                default: 0.04,
+                step: 0.01,
+                label: 'Base Freq',
+              },
+              originDriftFrequencySpread: {
+                min: 0.0,
+                max: 1.0,
+                default: 0.2,
+                step: 0.05,
+                label: 'Spread',
+              },
+            },
+          },
+
+          // Dimension Mixing uses flat store keys
+          dimensionMix: {
+            name: 'Dimension Mixing',
+            description: 'Cross-dimensional coupling via time-varying shear',
+            enabledByDefault: false,
+            minDimension: 4,
+            enabledKey: 'dimensionMixEnabled',
+            params: {
+              mixIntensity: {
+                min: 0.0,
+                max: 0.3,
+                default: 0.1,
+                step: 0.01,
+                label: 'Intensity',
+              },
+              mixFrequency: {
+                min: 0.1,
+                max: 2.0,
+                default: 0.5,
+                step: 0.1,
+                label: 'Frequency',
+              },
+            },
+          },
+        },
+      },
+
+      urlSerialization: {
+        typeKey: 'kali',
+        serializableParams: ['kaliConstant', 'reciprocalGain', 'axisWeights', 'maxIterations', 'bailoutRadius'],
+      },
+
+      ui: {
+        controlsComponentKey: 'KaliControls',
+        hasTimelineControls: true,
+        qualityPresets: ['draft', 'standard', 'high', 'ultra'],
+      },
+
+      configStoreKey: 'kali',
+    },
+  ],
 ])
 
 /**

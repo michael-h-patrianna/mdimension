@@ -1,10 +1,11 @@
 /**
- * QuaternionJuliaMesh - Renders 3D-11D Quaternion Julia fractals using GPU raymarching
+ * KaliMesh - Renders 3D-11D Kali fractals using GPU raymarching
  *
- * Mathematical basis: z = z^n + c where c is a fixed Julia constant
- * Unlike Mandelbrot where c varies per sample point, Julia uses a fixed c.
+ * Mathematical basis: z = abs(z) / dot(z,z) + c
+ * The reciprocal step creates intense nonlinear folding that produces
+ * fluid, cellular, and "alive" structures.
  *
- * @see docs/prd/quaternion-julia-fractal.md
+ * @see docs/prd/kali-reciprocal-fractal.md
  */
 
 import {
@@ -48,8 +49,8 @@ import { useUIStore } from '@/stores/uiStore'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import fragmentShader from './quaternion-julia.frag?raw'
-import vertexShader from './quaternion-julia.vert?raw'
+import fragmentShader from './kali.frag?raw'
+import vertexShader from './kali.vert?raw'
 
 /** Debounce time in ms before restoring high quality after rotation stops */
 const QUALITY_RESTORE_DELAY_MS = 150
@@ -101,9 +102,9 @@ function createWorkingArrays(): WorkingArrays {
 }
 
 /**
- * QuaternionJuliaMesh - Renders Quaternion Julia fractals
+ * KaliMesh - Renders Kali fractals
  */
-const QuaternionJuliaMesh = () => {
+const KaliMesh = () => {
   const meshRef = useRef<THREE.Mesh>(null)
   const { camera } = useThree()
 
@@ -128,10 +129,9 @@ const QuaternionJuliaMesh = () => {
   const colorCacheRef = useRef(createColorCache())
   const lightColorCacheRef = useRef(createLightColorCache())
 
-  // Animation time
+  // Animation time - CRITICAL: respects play/pause
   const animationTimeRef = useRef(0)
   const lastFrameTimeRef = useRef(0)
-  const lastPowerRef = useRef(2.0)
 
   // Cleanup on unmount
   useEffect(() => {
@@ -150,17 +150,13 @@ const QuaternionJuliaMesh = () => {
     }
   }, [])
 
-  // Get dimension from geometry store (used for useEffect dependency)
+  // Get dimension from geometry store
   const dimension = useGeometryStore((state) => state.dimension)
 
-  // Get parameterValues for useEffect dependency (triggers basis vector recomputation)
+  // Get parameterValues for useEffect dependency
   const parameterValues = useExtendedObjectStore(
-    (state) => state.quaternionJulia.parameterValues
+    (state) => state.kali.parameterValues
   )
-
-  // NOTE: All other store values are read via getState() inside useFrame
-  // to avoid React re-renders during animation. This is the high-performance
-  // pattern used by Hyperbulb and other raymarched renderers.
 
   const uniforms = useMemo(
     () => ({
@@ -169,16 +165,14 @@ const QuaternionJuliaMesh = () => {
       uCameraPosition: { value: new THREE.Vector3() },
 
       uDimension: { value: 4 },
-      uPower: { value: 2.0 },
-      uIterations: { value: 64.0 },
+      uIterations: { value: 20.0 },
       uEscapeRadius: { value: 4.0 },
 
-      // Julia constant (unique to this fractal type)
-      uJuliaConstant: { value: new THREE.Vector4(0.3, 0.5, 0.4, 0.2) },
-
-      // Power Animation
-      uPowerAnimationEnabled: { value: false },
-      uAnimatedPower: { value: 2.0 },
+      // Kali-specific uniforms
+      uKaliConstant: { value: new Float32Array(11) },
+      uReciprocalGain: { value: 1.0 },
+      uAxisWeights: { value: new Float32Array(11).fill(1.0) },
+      uEpsilon: { value: 0.001 },
 
       // Dimension Mixing
       uDimensionMixEnabled: { value: false },
@@ -258,19 +252,12 @@ const QuaternionJuliaMesh = () => {
   }, [dimension, parameterValues])
 
   /**
-   * Check if rotations have changed by comparing current vs previous state.
-   * Returns true if any rotation angle has changed, or if this is the first comparison.
-   * NOTE: rotations is a Map<string, number>, not a plain object!
+   * Check if rotations have changed
    */
   const hasRotationsChanged = useCallback(
     (current: RotationState['rotations'], previous: RotationState['rotations'] | null): boolean => {
-      // First frame or no previous state - consider it a change to ensure initial computation
       if (!previous) return true
-
-      // Check if sizes differ
       if (current.size !== previous.size) return true
-
-      // Compare all rotation planes using Map methods
       for (const [key, value] of current.entries()) {
         if (previous.get(key) !== value) {
           return true
@@ -289,8 +276,9 @@ const QuaternionJuliaMesh = () => {
     const material = mesh.material as THREE.ShaderMaterial
     if (!material?.uniforms) return
 
-    const u = material.uniforms as any;
-    if (!u) return;
+    // Use 'any' for uniforms to avoid verbose type assertions (same as QuaternionJuliaMesh)
+    const u = material.uniforms as any
+    if (!u) return
 
     // Get current state directly from stores
     const animStore = useAnimationStore.getState()
@@ -303,13 +291,13 @@ const QuaternionJuliaMesh = () => {
     const perfStore = usePerformanceStore.getState()
 
     const currentDimension = geoStore.dimension
-    const config = extStore.quaternionJulia
+    const config = extStore.kali
     const currentRotations = rotStore.rotations
 
     // Update time
     u.uTime.value = state.clock.elapsedTime
 
-    // Update animation time
+    // Update animation time - CRITICAL: respects play/pause
     const currentTime = state.clock.elapsedTime
     const delta = currentTime - lastFrameTimeRef.current
     lastFrameTimeRef.current = currentTime
@@ -322,8 +310,6 @@ const QuaternionJuliaMesh = () => {
     // Quality mode based on rotation changes
     const didRotate = hasRotationsChanged(currentRotations, prevRotationsRef.current)
 
-    // Store current rotations for next frame comparison only when changed
-    // (avoids creating garbage every frame)
     if (didRotate || !prevRotationsRef.current) {
       prevRotationsRef.current = new Map(currentRotations)
     }
@@ -349,42 +335,54 @@ const QuaternionJuliaMesh = () => {
     u.uDimension.value = currentDimension
 
     // Update fractal parameters
-    u.uPower.value = config.power
     u.uIterations.value = config.maxIterations
     u.uEscapeRadius.value = config.bailoutRadius
+    u.uEpsilon.value = config.epsilon
 
-    // Julia constant (with animation if enabled)
-    // Uses controlled animation time so it respects play/pause
-    if (config.juliaConstantAnimation.enabled) {
-      const { amplitude, frequency, phase } = config.juliaConstantAnimation
-      const base = config.juliaConstant
-      const t = animTime  // Use controlled animation time
-      u.uJuliaConstant.value.set(
-        base[0] + amplitude[0] * Math.sin(frequency[0] * t * 2 * Math.PI + phase[0]),
-        base[1] + amplitude[1] * Math.cos(frequency[1] * t * 2 * Math.PI + phase[1]),
-        base[2] + amplitude[2] * Math.sin(frequency[2] * t * 2 * Math.PI + phase[2]),
-        base[3] + amplitude[3] * Math.cos(frequency[3] * t * 2 * Math.PI + phase[3])
-      )
+    // Kali constant (with animation if enabled)
+    const kaliConstantArray = u.uKaliConstant.value as Float32Array
+    if (config.constantAnimation.enabled) {
+      const { amplitude, frequency, phaseOffset } = config.constantAnimation
+      const t = animTime * frequency * 2 * Math.PI
+      for (let i = 0; i < config.kaliConstant.length && i < 11; i++) {
+        // Multi-frequency organic motion using golden ratio phases
+        const PHI = 1.618033988749895
+        const phase = phaseOffset + i * PHI
+        kaliConstantArray[i] = (config.kaliConstant[i] ?? 0) + amplitude * Math.sin(t + phase)
+      }
     } else {
-      u.uJuliaConstant.value.set(...config.juliaConstant)
+      for (let i = 0; i < config.kaliConstant.length && i < 11; i++) {
+        kaliConstantArray[i] = config.kaliConstant[i] ?? 0
+      }
     }
 
-    // Power animation - directly modify uPower like Hyperbulb does
-    // This gives smoother animation and matches the Hyperbulb pattern
-    if (config.powerAnimation.enabled) {
-      const { minPower, maxPower, speed } = config.powerAnimation
-      // Use controlled animation time (respects play/pause and speed)
+    // Reciprocal gain (with animation if enabled)
+    if (config.gainAnimation.enabled) {
+      const { minGain, maxGain, speed } = config.gainAnimation
       const t = animTime * speed * 2 * Math.PI
-      const normalized = (Math.sin(t) + 1) / 2 // Maps [-1, 1] to [0, 1]
-      const animatedPower = minPower + normalized * (maxPower - minPower)
-      u.uPower.value = animatedPower  // Directly set uPower like Hyperbulb
-      lastPowerRef.current = animatedPower
+      const normalized = (Math.sin(t) + 1) / 2
+      u.uReciprocalGain.value = minGain + normalized * (maxGain - minGain)
+    } else {
+      u.uReciprocalGain.value = config.reciprocalGain
     }
-    // Disable the separate animation uniform system (Hyperbulb pattern)
-    u.uPowerAnimationEnabled.value = false
-    u.uAnimatedPower.value = config.power
 
-    // Dimension mixing - uses controlled animation time (matches Hyperbulb)
+    // Axis weights (with animation if enabled)
+    const axisWeightsArray = u.uAxisWeights.value as Float32Array
+    if (config.weightsAnimation.enabled) {
+      const { amplitude } = config.weightsAnimation
+      const PHI = 1.618033988749895
+      for (let i = 0; i < config.axisWeights.length && i < 11; i++) {
+        const phase = i * PHI
+        const t = animTime * 0.5 * 2 * Math.PI
+        axisWeightsArray[i] = (config.axisWeights[i] ?? 1.0) + amplitude * Math.sin(t + phase)
+      }
+    } else {
+      for (let i = 0; i < config.axisWeights.length && i < 11; i++) {
+        axisWeightsArray[i] = config.axisWeights[i] ?? 1.0
+      }
+    }
+
+    // Dimension mixing
     u.uDimensionMixEnabled.value = config.dimensionMixEnabled
     u.uMixIntensity.value = config.mixIntensity
     u.uMixTime.value = animTime * config.mixFrequency * 2 * Math.PI
@@ -431,17 +429,14 @@ const QuaternionJuliaMesh = () => {
       }
 
       // Copy basis vectors to uniforms
-      u.uBasisX.value.set(wa.rotatedX)
-      u.uBasisY.value.set(wa.rotatedY)
-      u.uBasisZ.value.set(wa.rotatedZ)
+      ;(u.uBasisX.value as Float32Array).set(wa.rotatedX)
+      ;(u.uBasisY.value as Float32Array).set(wa.rotatedY)
+      ;(u.uBasisZ.value as Float32Array).set(wa.rotatedZ)
 
       basisVectorsDirtyRef.current = false
     }
 
-    // ============================================
     // Origin Update (separate from basis vectors)
-    // Must update every frame when origin drift is enabled
-    // ============================================
     const needsOriginUpdate = needsRecompute || config.originDriftEnabled
 
     if (needsOriginUpdate && cachedRotationMatrixRef.current) {
@@ -457,7 +452,7 @@ const QuaternionJuliaMesh = () => {
         wa.origin[3 + i] = config.parameterValues[i] ?? 0
       }
 
-      // Apply origin drift if enabled (Technique C - animate slice origin in extra dims)
+      // Apply origin drift if enabled
       if (config.originDriftEnabled && currentDimension >= 4) {
         const driftConfig: OriginDriftConfig = {
           enabled: true,
@@ -465,16 +460,14 @@ const QuaternionJuliaMesh = () => {
           baseFrequency: config.originDriftBaseFrequency,
           frequencySpread: config.originDriftFrequencySpread,
         }
-        // Get animation speed from store for consistent drift timing
         const animationSpeed = animStore.speed
         const driftedOrigin = computeDriftedOrigin(
-          config.parameterValues,  // baseValues - extra dimension values only
-          animTime,                // time - controlled animation time (respects play/pause)
-          driftConfig,             // config
-          animationSpeed,          // animationSpeed
-          uiStore.animationBias    // animationBias
+          config.parameterValues,
+          animTime,
+          driftConfig,
+          animationSpeed,
+          uiStore.animationBias
         )
-        // Set drifted values for extra dimensions (indices 3+)
         for (let i = 0; i < driftedOrigin.length && i + 3 < MAX_DIMENSION; i++) {
           wa.origin[3 + i] = driftedOrigin[i] ?? 0
         }
@@ -490,7 +483,7 @@ const QuaternionJuliaMesh = () => {
       }
 
       // Copy origin to uniform
-      u.uOrigin.value.set(wa.rotatedOrigin)
+      ;(u.uOrigin.value as Float32Array).set(wa.rotatedOrigin)
     }
 
     // Update color
@@ -501,11 +494,11 @@ const QuaternionJuliaMesh = () => {
     )
 
     // Update matrices
-    u.uModelMatrix.value.copy(mesh.matrixWorld)
-    u.uInverseModelMatrix.value.copy(mesh.matrixWorld).invert()
-    u.uProjectionMatrix.value.copy(camera.projectionMatrix)
-    u.uViewMatrix.value.copy(camera.matrixWorldInverse)
-    u.uCameraPosition.value.copy(camera.position)
+    ;(u.uModelMatrix.value as THREE.Matrix4).copy(mesh.matrixWorld)
+    ;(u.uInverseModelMatrix.value as THREE.Matrix4).copy(mesh.matrixWorld).invert()
+    ;(u.uProjectionMatrix.value as THREE.Matrix4).copy(camera.projectionMatrix)
+    ;(u.uViewMatrix.value as THREE.Matrix4).copy(camera.matrixWorldInverse)
+    ;(u.uCameraPosition.value as THREE.Vector3).copy(camera.position)
 
     // Update multi-light system
     updateLightUniforms(u, lightStore.lights, lightColorCacheRef.current)
@@ -562,16 +555,16 @@ const QuaternionJuliaMesh = () => {
 
     // Update advanced color system
     u.uColorAlgorithm.value = COLOR_ALGORITHM_TO_INT[appStore.colorAlgorithm] ?? 2
-    u.uCosineA.value.set(...appStore.cosineCoefficients.a)
-    u.uCosineB.value.set(...appStore.cosineCoefficients.b)
-    u.uCosineC.value.set(...appStore.cosineCoefficients.c)
-    u.uCosineD.value.set(...appStore.cosineCoefficients.d)
+    ;(u.uCosineA.value as THREE.Vector3).set(...appStore.cosineCoefficients.a)
+    ;(u.uCosineB.value as THREE.Vector3).set(...appStore.cosineCoefficients.b)
+    ;(u.uCosineC.value as THREE.Vector3).set(...appStore.cosineCoefficients.c)
+    ;(u.uCosineD.value as THREE.Vector3).set(...appStore.cosineCoefficients.d)
     u.uDistPower.value = appStore.distribution.power
     u.uDistCycles.value = appStore.distribution.cycles
     u.uDistOffset.value = appStore.distribution.offset
     u.uLchLightness.value = appStore.lchLightness
     u.uLchChroma.value = appStore.lchChroma
-    u.uMultiSourceWeights.value.set(
+    ;(u.uMultiSourceWeights.value as THREE.Vector3).set(
       appStore.multiSourceWeights.depth,
       appStore.multiSourceWeights.orbitTrap,
       appStore.multiSourceWeights.normal
@@ -594,4 +587,4 @@ const QuaternionJuliaMesh = () => {
   )
 }
 
-export default QuaternionJuliaMesh
+export default KaliMesh

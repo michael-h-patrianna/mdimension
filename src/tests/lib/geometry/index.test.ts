@@ -80,8 +80,8 @@ describe('geometry library API', () => {
   describe('getAvailableTypes', () => {
         it('should return all object types (polytopes and extended)', () => {
           const types = getAvailableTypes();
-          expect(types).toHaveLength(8);
-          
+          expect(types).toHaveLength(9);
+
           const typeNames = types.map(t => t.type);      // Polytopes
       expect(typeNames).toContain('hypercube');
       expect(typeNames).toContain('simplex');
@@ -92,6 +92,7 @@ describe('geometry library API', () => {
       expect(typeNames).toContain('nested-torus');
     expect(typeNames).toContain('mandelbrot');
     expect(typeNames).toContain('quaternion-julia');
+    expect(typeNames).toContain('kali');
     });
 
     it('should include name, description, and availability for each type', () => {

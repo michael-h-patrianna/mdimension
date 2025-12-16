@@ -20,6 +20,7 @@ import type { NdGeometry, ObjectType } from '@/lib/geometry/types'
 import type { Vector3D } from '@/lib/math/types'
 import { GroundPlane } from '@/rendering/environment/GroundPlane'
 import { PostProcessing } from '@/rendering/environment/PostProcessing'
+import { SceneFog } from '@/rendering/environment/SceneFog'
 import { SceneLighting } from '@/rendering/environment/SceneLighting'
 import { Skybox } from '@/rendering/environment/Skybox'
 import { UnifiedRenderer } from '@/rendering/renderers/UnifiedRenderer'
@@ -123,6 +124,9 @@ export const Scene = React.memo(function Scene({
     <>
       {/* Performance optimization manager */}
       <PerformanceManager />
+
+      {/* Scene Fog */}
+      <SceneFog />
 
       {/* Skybox Environment */}
       <Skybox />

@@ -7,14 +7,12 @@
  */
 
 import { Select } from '@/components/ui/Select';
-import { Slider } from '@/components/ui/Slider';
 import {
   COSINE_PRESET_OPTIONS,
   DEFAULT_COSINE_COEFFICIENTS,
-  DEFAULT_DISTRIBUTION,
   getCosinePaletteColorTS,
 } from '@/rendering/shaders/palette';
-import type { CosineCoefficients, DistributionSettings } from '@/rendering/shaders/palette/types';
+import type { CosineCoefficients } from '@/rendering/shaders/palette/types';
 import { useEnvironmentStore } from '@/stores/environmentStore';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
@@ -25,14 +23,12 @@ import { useShallow } from 'zustand/react/shallow';
 
 interface SkyboxColorPreviewProps {
   coefficients: CosineCoefficients;
-  distribution: DistributionSettings;
   width?: number;
   height?: number;
 }
 
 const SkyboxColorPreview: React.FC<SkyboxColorPreviewProps> = ({
   coefficients,
-  distribution,
   width = 200,
   height = 24,
 }) => {
@@ -47,7 +43,7 @@ const SkyboxColorPreview: React.FC<SkyboxColorPreviewProps> = ({
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Draw gradient preview using cosine palette
+    // Draw gradient preview using cosine palette (no distribution applied)
     for (let x = 0; x < canvas.width; x++) {
       const t = x / canvas.width;
       const color = getCosinePaletteColorTS(
@@ -56,9 +52,9 @@ const SkyboxColorPreview: React.FC<SkyboxColorPreviewProps> = ({
         coefficients.b,
         coefficients.c,
         coefficients.d,
-        distribution.power,
-        distribution.cycles,
-        distribution.offset
+        1.0, // power
+        1.0, // cycles
+        0.0  // offset
       );
 
       const r8 = Math.round(Math.max(0, Math.min(1, color.r)) * 255);
@@ -68,7 +64,7 @@ const SkyboxColorPreview: React.FC<SkyboxColorPreviewProps> = ({
       ctx.fillStyle = `rgb(${r8}, ${g8}, ${b8})`;
       ctx.fillRect(x, 0, 1, canvas.height);
     }
-  }, [coefficients, distribution]);
+  }, [coefficients]);
 
   return (
     <div>
@@ -251,90 +247,6 @@ const SkyboxCoefficientEditor: React.FC<SkyboxCoefficientEditorProps> = ({
 };
 
 // ============================================================================
-// Distribution Controls
-// ============================================================================
-
-interface SkyboxDistributionControlsProps {
-  distribution: DistributionSettings;
-  onChange: (settings: Partial<DistributionSettings>) => void;
-  onReset: () => void;
-}
-
-const SkyboxDistributionControls: React.FC<SkyboxDistributionControlsProps> = ({
-  distribution,
-  onChange,
-  onReset,
-}) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  return (
-    <div>
-      {/* Toggle Button */}
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-text-secondary bg-panel-bg rounded border border-panel-border hover:border-accent/50 transition-colors"
-      >
-        <span>Distribution</span>
-        <svg
-          className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M19 9l-7 7-7-7"
-          />
-        </svg>
-      </button>
-
-      {/* Expanded Content */}
-      {isExpanded && (
-        <div className="mt-4 space-y-4">
-          {/* Reset Button */}
-          <button
-            onClick={onReset}
-            className="text-xs text-accent hover:text-accent/80 transition-colors"
-          >
-            Reset to Default
-          </button>
-
-          <Slider
-            label="Power"
-            min={0.25}
-            max={4}
-            step={0.01}
-            value={distribution.power}
-            onChange={(v) => onChange({ power: v })}
-            showValue
-          />
-          <Slider
-            label="Cycles"
-            min={0.5}
-            max={5}
-            step={0.1}
-            value={distribution.cycles}
-            onChange={(v) => onChange({ cycles: v })}
-            showValue
-          />
-          <Slider
-            label="Offset"
-            min={0}
-            max={1}
-            step={0.01}
-            value={distribution.offset}
-            onChange={(v) => onChange({ offset: v })}
-            showValue
-          />
-        </div>
-      )}
-    </div>
-  );
-};
-
-// ============================================================================
 // Main Component
 // ============================================================================
 
@@ -346,10 +258,14 @@ export const SkyboxPaletteEditor: React.FC = () => {
     }))
   );
 
-  const { cosineCoefficients, distribution } = proceduralSettings;
+  const { cosineCoefficients } = proceduralSettings;
 
   // Update a single coefficient value
-  const handleCoefficientChange = (key: 'a' | 'b' | 'c' | 'd', index: number, value: number) => {
+  const handleCoefficientChange = (
+    key: 'a' | 'b' | 'c' | 'd',
+    index: number,
+    value: number
+  ) => {
     const newCoefficients = { ...cosineCoefficients };
     const arr = [...newCoefficients[key]] as [number, number, number];
     arr[index] = Math.max(0, Math.min(2, value));
@@ -364,33 +280,15 @@ export const SkyboxPaletteEditor: React.FC = () => {
 
   // Reset coefficients to default
   const handleResetCoefficients = () => {
-    setProceduralSettings({ cosineCoefficients: { ...DEFAULT_COSINE_COEFFICIENTS } });
-  };
-
-  // Update distribution
-  const handleDistributionChange = (settings: Partial<DistributionSettings>) => {
     setProceduralSettings({
-      distribution: {
-        ...distribution,
-        power: settings.power !== undefined ? Math.max(0.25, Math.min(4, settings.power)) : distribution.power,
-        cycles: settings.cycles !== undefined ? Math.max(0.5, Math.min(5, settings.cycles)) : distribution.cycles,
-        offset: settings.offset !== undefined ? Math.max(0, Math.min(1, settings.offset)) : distribution.offset,
-      },
+      cosineCoefficients: { ...DEFAULT_COSINE_COEFFICIENTS },
     });
-  };
-
-  // Reset distribution to default
-  const handleResetDistribution = () => {
-    setProceduralSettings({ distribution: { ...DEFAULT_DISTRIBUTION } });
   };
 
   return (
     <div className="space-y-4 animate-in fade-in zoom-in-95 duration-200">
       {/* Preview */}
-      <SkyboxColorPreview
-        coefficients={cosineCoefficients}
-        distribution={distribution}
-      />
+      <SkyboxColorPreview coefficients={cosineCoefficients} />
 
       {/* Preset Selector */}
       <SkyboxPresetSelector
@@ -403,13 +301,6 @@ export const SkyboxPaletteEditor: React.FC = () => {
         coefficients={cosineCoefficients}
         onChange={handleCoefficientChange}
         onReset={handleResetCoefficients}
-      />
-
-      {/* Distribution Controls */}
-      <SkyboxDistributionControls
-        distribution={distribution}
-        onChange={handleDistributionChange}
-        onReset={handleResetDistribution}
       />
     </div>
   );

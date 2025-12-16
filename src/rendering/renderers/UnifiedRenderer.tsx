@@ -19,13 +19,14 @@ import { useAppearanceStore } from '@/stores/appearanceStore';
 import React, { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import HyperbulbMesh from './Hyperbulb/HyperbulbMesh';
+import KaliMesh from './Kali/KaliMesh';
 import QuaternionJuliaMesh from './QuaternionJulia/QuaternionJuliaMesh';
 import { PolytopeScene } from './Polytope';
 
 /**
  * Render mode types
  */
-export type RenderMode = 'polytope' | 'raymarch-mandelbrot' | 'raymarch-quaternion-julia' | 'none';
+export type RenderMode = 'polytope' | 'raymarch-mandelbrot' | 'raymarch-quaternion-julia' | 'raymarch-kali' | 'none';
 
 /**
  * Props for UnifiedRenderer
@@ -126,6 +127,9 @@ export const UnifiedRenderer = React.memo(function UnifiedRenderer({
 
       {/* Raymarched 3D-11D Quaternion Julia */}
       {renderMode === 'raymarch-quaternion-julia' && <QuaternionJuliaMesh />}
+
+      {/* Raymarched 3D-11D Kali reciprocal fractal */}
+      {renderMode === 'raymarch-kali' && <KaliMesh />}
     </>
   );
 });

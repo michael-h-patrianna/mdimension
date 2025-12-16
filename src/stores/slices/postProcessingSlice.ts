@@ -173,7 +173,7 @@ export const createPostProcessingSlice: StateCreator<
   [],
   [],
   PostProcessingSlice
-> = (set) => ({
+> = (set, get) => ({
   ...POST_PROCESSING_INITIAL_STATE,
 
   // --- Bloom Actions ---
@@ -248,11 +248,17 @@ export const createPostProcessingSlice: StateCreator<
   },
 
   setSSRFadeStart: (start: number) => {
-    set({ ssrFadeStart: Math.max(0, Math.min(1, start)) })
+    const clamped = Math.max(0, Math.min(1, start));
+    const { ssrFadeEnd } = get();
+    // Ensure fadeStart is always less than fadeEnd
+    set({ ssrFadeStart: Math.min(clamped, ssrFadeEnd - 0.01) });
   },
 
   setSSRFadeEnd: (end: number) => {
-    set({ ssrFadeEnd: Math.max(0, Math.min(1, end)) })
+    const clamped = Math.max(0, Math.min(1, end));
+    const { ssrFadeStart } = get();
+    // Ensure fadeEnd is always greater than fadeStart
+    set({ ssrFadeEnd: Math.max(clamped, ssrFadeStart + 0.01) });
   },
 
   setSSRQuality: (quality: SSRQuality) => {

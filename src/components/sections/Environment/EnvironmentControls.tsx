@@ -13,6 +13,7 @@ import { type GroundPlaneType, type WallPosition } from '@/stores/defaults/visua
 import { useEnvironmentStore } from '@/stores/environmentStore';
 import React, { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
+import { FogControls } from './FogControls';
 import { SkyboxControls } from './SkyboxControls';
 
 /** Options for wall position toggle group */
@@ -235,6 +236,7 @@ export const EnvironmentControls: React.FC<EnvironmentControlsProps> = React.mem
         tabs={[
           { id: 'walls', label: 'Walls', content: wallsContent },
           { id: 'skybox', label: 'Skybox', content: <SkyboxControls /> },
+          { id: 'fog', label: 'Fog', content: <FogControls /> },
         ]}
       />
     </div>

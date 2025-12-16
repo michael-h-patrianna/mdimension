@@ -22,13 +22,22 @@ interface SkyboxOption {
 }
 
 const ALL_SKYBOX_OPTIONS: SkyboxOption[] = [
+  // No skybox
   { id: 'none', name: 'None', thumbnail: null, gradientClass: 'bg-black', description: 'No skybox', type: 'none' },
+  // Classic textures
   { id: 'space_blue', name: 'Deep Space', thumbnail: spaceBlueThumb, gradientClass: null, description: 'Cold, deep space environment', type: 'classic' },
   { id: 'space_lightblue', name: 'Nebula', thumbnail: spaceLightBlueThumb, gradientClass: null, description: 'Bright nebula with stars', type: 'classic' },
   { id: 'space_red', name: 'Red Giant', thumbnail: spaceRedThumb, gradientClass: null, description: 'Warm, intense red space', type: 'classic' },
+  // Original procedural
   { id: 'procedural_aurora', name: 'Aurora', thumbnail: null, gradientClass: 'bg-gradient-to-b from-cyan-400 via-emerald-600 to-slate-900', description: 'Northern lights effect', type: 'procedural' },
   { id: 'procedural_nebula', name: 'Cosmic Nebula', thumbnail: null, gradientClass: 'bg-gradient-to-br from-purple-500 via-fuchsia-600 to-slate-900', description: 'Volumetric clouds', type: 'procedural' },
   { id: 'procedural_void', name: 'The Void', thumbnail: null, gradientClass: 'bg-[radial-gradient(circle_at_30%_30%,_#475569_0%,_#0f172a_50%,_#000_100%)]', description: 'Dark gradient with glow', type: 'procedural' },
+  // NEW: Premium procedural skyboxes
+  { id: 'procedural_crystalline', name: 'Crystalline', thumbnail: null, gradientClass: 'bg-[conic-gradient(from_45deg,_#0ea5e9_0%,_#8b5cf6_25%,_#ec4899_50%,_#0ea5e9_75%,_#8b5cf6_100%)]', description: 'Geometric Voronoi patterns with iridescence', type: 'procedural' },
+  { id: 'procedural_horizon', name: 'Horizon', thumbnail: null, gradientClass: 'bg-gradient-to-b from-slate-900 via-slate-700 to-slate-400', description: 'Cinematic studio gradient', type: 'procedural' },
+  { id: 'procedural_ocean', name: 'Deep Ocean', thumbnail: null, gradientClass: 'bg-gradient-to-b from-cyan-300 via-blue-600 to-slate-900', description: 'Underwater atmosphere with caustics', type: 'procedural' },
+  { id: 'procedural_twilight', name: 'Twilight', thumbnail: null, gradientClass: 'bg-gradient-to-b from-amber-400 via-rose-500 to-indigo-900', description: 'Sunset gradient with atmosphere', type: 'procedural' },
+  { id: 'procedural_starfield', name: 'Starfield', thumbnail: null, gradientClass: 'bg-[radial-gradient(circle,_#1e293b_0%,_#020617_70%,_#000_100%)]', description: 'Minimal elegant stars', type: 'procedural' },
 ];
 
 const ANIMATION_MODES: { value: SkyboxAnimationMode; label: string }[] = [
@@ -78,6 +87,7 @@ export const SkyboxControls: React.FC = () => {
   const selectedOption = ALL_SKYBOX_OPTIONS.find(opt => opt.id === skyboxSelection);
   const isClassicMode = selectedOption?.type === 'classic';
   const isProceduralMode = selectedOption?.type === 'procedural';
+  const isStarfieldMode = skyboxSelection === 'procedural_starfield';
   const hasControls = skyboxSelection !== 'none';
 
   return (
@@ -147,6 +157,24 @@ export const SkyboxControls: React.FC = () => {
                 onChange={setSkyboxBlur}
               />
 
+              <Switch
+                data-testid="skybox-parallax-toggle"
+                checked={proceduralSettings.parallaxEnabled}
+                onCheckedChange={(v) => setProceduralSettings({ parallaxEnabled: v })}
+                label="Parallax Depth"
+              />
+
+              {proceduralSettings.parallaxEnabled && (
+                <Slider
+                  label="Depth Strength"
+                  value={proceduralSettings.parallaxStrength}
+                  min={0.1}
+                  max={1}
+                  step={0.05}
+                  onChange={(v) => setProceduralSettings({ parallaxStrength: v })}
+                />
+              )}
+
               <Select
                 label="Animation"
                 options={ANIMATION_MODES}
@@ -164,6 +192,70 @@ export const SkyboxControls: React.FC = () => {
                   onChange={setSkyboxAnimationSpeed}
                 />
               )}
+
+              {/* Color Adjustments for Classic Textures */}
+              <div className="space-y-4 border-l-2 border-text-secondary/20 pl-4 mt-4">
+                <span className="text-xs font-bold text-text-secondary uppercase tracking-wider block mb-2">Color</span>
+                <Slider
+                  label="Brightness"
+                  value={skyboxIntensity}
+                  min={0}
+                  max={2}
+                  step={0.05}
+                  onChange={setSkyboxIntensity}
+                />
+                <Slider
+                  label="Hue Shift"
+                  value={proceduralSettings.hue ?? 0}
+                  min={-0.5}
+                  max={0.5}
+                  step={0.01}
+                  onChange={(v) => setProceduralSettings({ hue: v })}
+                />
+                <Slider
+                  label="Saturation"
+                  value={proceduralSettings.saturation ?? 1}
+                  min={0}
+                  max={2}
+                  step={0.05}
+                  onChange={(v) => setProceduralSettings({ saturation: v })}
+                />
+              </div>
+
+              {/* Atmosphere Controls for Classic Textures */}
+              <div className="space-y-4 border-l-2 border-text-secondary/20 pl-4 mt-4">
+                <span className="text-xs font-bold text-text-secondary uppercase tracking-wider block mb-2">Atmosphere</span>
+                <Slider
+                  label="Strength"
+                  value={proceduralSettings.horizon}
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  onChange={(v) => setProceduralSettings({ horizon: v })}
+                />
+                <SkyboxPaletteEditor />
+              </div>
+
+              {/* Effects for Classic Textures */}
+              <div className="space-y-4 border-l-2 border-text-secondary/20 pl-4 mt-4">
+                <span className="text-xs font-bold text-text-secondary uppercase tracking-wider block mb-2">Effects</span>
+                <Slider
+                  label="Chromatic Aberration"
+                  value={proceduralSettings.chromaticAberration}
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  onChange={(v) => setProceduralSettings({ chromaticAberration: v })}
+                />
+                <Slider
+                  label="Film Grain"
+                  value={proceduralSettings.noiseGrain}
+                  min={0}
+                  max={0.1}
+                  step={0.005}
+                  onChange={(v) => setProceduralSettings({ noiseGrain: v })}
+                />
+              </div>
             </>
           )}
 
@@ -266,8 +358,8 @@ export const SkyboxControls: React.FC = () => {
                     label="Grain"
                     value={proceduralSettings.noiseGrain}
                     min={0}
-                    max={0.2}
-                    step={0.01}
+                    max={0.1}
+                    step={0.005}
                     onChange={(v) => setProceduralSettings({ noiseGrain: v })}
                   />
                 </div>
@@ -281,6 +373,79 @@ export const SkyboxControls: React.FC = () => {
                   onChange={(v) => setProceduralSettings({ sunIntensity: v })}
                 />
               </div>
+
+              {/* Starfield-specific controls */}
+              {isStarfieldMode && (
+                <div className="space-y-4 border-l-2 border-yellow-500/30 pl-4">
+                  <span className="text-xs font-bold text-yellow-400 uppercase tracking-wider block mb-2">Star Field</span>
+
+                  <Slider
+                    label="Density"
+                    value={proceduralSettings.starfield.density}
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    onChange={(v) => setProceduralSettings({
+                      starfield: { ...proceduralSettings.starfield, density: v }
+                    })}
+                  />
+
+                  <Slider
+                    label="Brightness"
+                    value={proceduralSettings.starfield.brightness}
+                    min={0.1}
+                    max={2}
+                    step={0.05}
+                    onChange={(v) => setProceduralSettings({
+                      starfield: { ...proceduralSettings.starfield, brightness: v }
+                    })}
+                  />
+
+                  <Slider
+                    label="Star Size"
+                    value={proceduralSettings.starfield.size}
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    onChange={(v) => setProceduralSettings({
+                      starfield: { ...proceduralSettings.starfield, size: v }
+                    })}
+                  />
+
+                  <Slider
+                    label="Twinkle"
+                    value={proceduralSettings.starfield.twinkle}
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    onChange={(v) => setProceduralSettings({
+                      starfield: { ...proceduralSettings.starfield, twinkle: v }
+                    })}
+                  />
+
+                  <Slider
+                    label="Glow"
+                    value={proceduralSettings.starfield.glow}
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    onChange={(v) => setProceduralSettings({
+                      starfield: { ...proceduralSettings.starfield, glow: v }
+                    })}
+                  />
+
+                  <Slider
+                    label="Color Variation"
+                    value={proceduralSettings.starfield.colorVariation}
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    onChange={(v) => setProceduralSettings({
+                      starfield: { ...proceduralSettings.starfield, colorVariation: v }
+                    })}
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>

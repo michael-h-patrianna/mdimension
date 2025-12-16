@@ -2,6 +2,7 @@ import {
   CliffordTorusConfig,
   CliffordTorusEdgeMode,
   CliffordTorusMode,
+  KaliConfig,
   MandelbrotColorMode,
   MandelbrotConfig,
   MandelbrotPalette,
@@ -230,6 +231,64 @@ export interface QuaternionJuliaSliceActions {
 export type QuaternionJuliaSlice = QuaternionJuliaSliceState & QuaternionJuliaSliceActions
 
 // ============================================================================
+// Kali Slice
+// ============================================================================
+export interface KaliSliceState {
+  kali: KaliConfig
+}
+
+export interface KaliSliceActions {
+  // Core parameters
+  setKaliConstant: (value: number[]) => void
+  setKaliConstantComponent: (index: number, value: number) => void
+  setKaliReciprocalGain: (value: number) => void
+  setKaliAxisWeights: (value: number[]) => void
+  setKaliAxisWeight: (index: number, value: number) => void
+  // Iteration parameters
+  setKaliMaxIterations: (value: number) => void
+  setKaliBailoutRadius: (value: number) => void
+  setKaliEpsilon: (value: number) => void
+  // Quality parameters
+  setKaliScale: (value: number) => void
+  setKaliSurfaceThreshold: (value: number) => void
+  setKaliMaxRaymarchSteps: (value: number) => void
+  setKaliQualityMultiplier: (value: number) => void
+  setKaliQualityPreset: (preset: 'draft' | 'standard' | 'high' | 'ultra') => void
+  // D-dimensional parameters
+  setKaliParameterValue: (index: number, value: number) => void
+  setKaliParameterValues: (values: number[]) => void
+  resetKaliParameters: () => void
+  initializeKaliForDimension: (dimension: number) => void
+  // Constant animation
+  setKaliConstantAnimationEnabled: (value: boolean) => void
+  setKaliConstantAnimationAmplitude: (value: number) => void
+  setKaliConstantAnimationFrequency: (value: number) => void
+  setKaliConstantAnimationPhaseOffset: (value: number) => void
+  // Gain animation
+  setKaliGainAnimationEnabled: (value: boolean) => void
+  setKaliGainAnimationMinGain: (value: number) => void
+  setKaliGainAnimationMaxGain: (value: number) => void
+  setKaliGainAnimationSpeed: (value: number) => void
+  // Weights animation
+  setKaliWeightsAnimationEnabled: (value: boolean) => void
+  setKaliWeightsAnimationAmplitude: (value: number) => void
+  // Origin drift
+  setKaliOriginDriftEnabled: (value: boolean) => void
+  setKaliOriginDriftAmplitude: (value: number) => void
+  setKaliOriginDriftBaseFrequency: (value: number) => void
+  setKaliOriginDriftFrequencySpread: (value: number) => void
+  // Dimension mixing
+  setKaliDimensionMixEnabled: (value: boolean) => void
+  setKaliMixIntensity: (value: number) => void
+  setKaliMixFrequency: (value: number) => void
+  // Utility
+  getKaliConfig: () => KaliConfig
+  randomizeKaliConstant: () => void
+}
+
+export type KaliSlice = KaliSliceState & KaliSliceActions
+
+// ============================================================================
 // Combined Extended Object Slice
 // ============================================================================
 export type ExtendedObjectSlice = PolytopeSlice &
@@ -237,6 +296,7 @@ export type ExtendedObjectSlice = PolytopeSlice &
   CliffordTorusSlice &
   NestedTorusSlice &
   MandelbrotSlice &
-  QuaternionJuliaSlice & {
+  QuaternionJuliaSlice &
+  KaliSlice & {
     reset: () => void
   }

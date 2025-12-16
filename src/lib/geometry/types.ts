@@ -21,6 +21,7 @@ export type ExtendedObjectType =
   | 'nested-torus'
   | 'mandelbrot'
   | 'quaternion-julia'
+  | 'kali'
 
 /**
  * All supported object types
@@ -53,7 +54,8 @@ export function isExtendedObjectType(type: string): type is ExtendedObjectType {
     type === 'clifford-torus' ||
     type === 'nested-torus' ||
     type === 'mandelbrot' ||
-    type === 'quaternion-julia'
+    type === 'quaternion-julia' ||
+    type === 'kali'
   )
 }
 

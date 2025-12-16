@@ -334,9 +334,10 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   edges,
   faces = [],
   dimension,
-  faceDepths = [],
+  faceDepths: _faceDepths = [],
   opacity = 1.0,
 }: PolytopeSceneProps) {
+  void _faceDepths; // Reserved for future per-face depth-based coloring
   const numVertices = baseVertices.length;
   const numEdges = edges.length;
   const numFaces = faces.length;

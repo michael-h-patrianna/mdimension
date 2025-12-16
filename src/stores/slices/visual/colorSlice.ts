@@ -1,5 +1,7 @@
-import { StateCreator } from 'zustand'
-import { AppearanceSlice, ColorSlice, ColorSliceState } from './types'
+import type { StateCreator } from 'zustand'
+import type { AppearanceSlice, ColorSlice, ColorSliceState } from './types'
+import type { ColorAlgorithm, CosineCoefficients, DistributionSettings, MultiSourceWeights } from '@/rendering/shaders/palette'
+import type { VisualPreset } from '@/stores/defaults/visualDefaults'
 import {
   DEFAULT_BACKGROUND_COLOR,
   DEFAULT_COLOR_ALGORITHM,
@@ -32,16 +34,16 @@ export const createColorSlice: StateCreator<AppearanceSlice, [], [], ColorSlice>
   ...COLOR_INITIAL_STATE,
 
   // Actions
-  setEdgeColor: (color) => set({ edgeColor: color }),
-  setFaceColor: (color) => set({ faceColor: color }),
-  setBackgroundColor: (color) => set({ backgroundColor: color }),
-  setPerDimensionColorEnabled: (enabled) => set({ perDimensionColorEnabled: enabled }),
+  setEdgeColor: (color: string) => set({ edgeColor: color }),
+  setFaceColor: (color: string) => set({ faceColor: color }),
+  setBackgroundColor: (color: string) => set({ backgroundColor: color }),
+  setPerDimensionColorEnabled: (enabled: boolean) => set({ perDimensionColorEnabled: enabled }),
 
-  setColorAlgorithm: (algorithm) => set({ colorAlgorithm: algorithm }),
-  
-  setCosineCoefficients: (coefficients) => set({ cosineCoefficients: { ...coefficients } }),
-  
-  setCosineCoefficient: (key, index, value) => set((state) => {
+  setColorAlgorithm: (algorithm: ColorAlgorithm) => set({ colorAlgorithm: algorithm }),
+
+  setCosineCoefficients: (coefficients: CosineCoefficients) => set({ cosineCoefficients: { ...coefficients } }),
+
+  setCosineCoefficient: (key: 'a' | 'b' | 'c' | 'd', index: number, value: number) => set((state) => {
     const newCoefficients = { ...state.cosineCoefficients }
     const arr = [...newCoefficients[key]] as [number, number, number]
     arr[index] = Math.max(0, Math.min(2, value))
@@ -49,7 +51,7 @@ export const createColorSlice: StateCreator<AppearanceSlice, [], [], ColorSlice>
     return { cosineCoefficients: newCoefficients }
   }),
 
-  setDistribution: (settings) => set((state) => ({
+  setDistribution: (settings: Partial<DistributionSettings>) => set((state) => ({
     distribution: {
       ...state.distribution,
       power: settings.power !== undefined ? Math.max(0.25, Math.min(4, settings.power)) : state.distribution.power,
@@ -58,7 +60,7 @@ export const createColorSlice: StateCreator<AppearanceSlice, [], [], ColorSlice>
     },
   })),
 
-  setMultiSourceWeights: (weights) => set((state) => ({
+  setMultiSourceWeights: (weights: Partial<MultiSourceWeights>) => set((state) => ({
     multiSourceWeights: {
       ...state.multiSourceWeights,
       depth: weights.depth !== undefined ? Math.max(0, Math.min(1, weights.depth)) : state.multiSourceWeights.depth,
@@ -67,10 +69,10 @@ export const createColorSlice: StateCreator<AppearanceSlice, [], [], ColorSlice>
     },
   })),
 
-  setLchLightness: (lightness) => set({ lchLightness: Math.max(0.1, Math.min(1, lightness)) }),
-  setLchChroma: (chroma) => set({ lchChroma: Math.max(0, Math.min(0.4, chroma)) }),
+  setLchLightness: (lightness: number) => set({ lchLightness: Math.max(0.1, Math.min(1, lightness)) }),
+  setLchChroma: (chroma: number) => set({ lchChroma: Math.max(0, Math.min(0.4, chroma)) }),
 
-  applyPreset: (preset) => {
+  applyPreset: (preset: VisualPreset) => {
     const settings = VISUAL_PRESETS[preset]
     if (!settings) return
 

@@ -185,7 +185,6 @@ const HyperbulbMesh = () => {
   // Animation time tracking - only advances when isPlaying is true
   const animationTimeRef = useRef(0);
   const lastFrameTimeRef = useRef(0);
-  const lastPowerRef = useRef(8.0); // Track last power to avoid micro-updates
 
   // Get color state from visual store
   const faceColor = useAppearanceStore((state) => state.faceColor);

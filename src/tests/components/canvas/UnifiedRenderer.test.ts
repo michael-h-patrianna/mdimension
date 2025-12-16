@@ -100,6 +100,25 @@ describe('determineRenderMode', () => {
   })
 
   describe('dimension requirements', () => {
+    it('should handle 2D geometry', () => {
+      const geometry = createTestGeometry({
+        vertices: [[1, 0], [0, 1], [-1, 0]],
+        edges: [[0, 1], [1, 2], [2, 0]],
+        dimension: 2,
+      })
+      const result = determineRenderMode(geometry, 'hypercube', 2, false)
+      expect(result).toBe('polytope')
+    })
+
+    it('should handle 5D+ geometry', () => {
+      const geometry = createTestGeometry({
+        vertices: [[1, 0, 0, 0, 0], [-1, 0, 0, 0, 0]],
+        edges: [[0, 1]],
+        dimension: 5,
+      })
+      const result = determineRenderMode(geometry, 'hypercube', 5, false)
+      expect(result).toBe('polytope')
+    })
   })
 })
 
