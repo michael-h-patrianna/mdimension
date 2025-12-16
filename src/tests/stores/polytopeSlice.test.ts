@@ -3,10 +3,9 @@
  *
  * Tests for the polytope animation state management in extendedObjectStore.
  *
- * Organic Animation System:
- * - Pulse: Gentle breathing effect (uses facetOffset* properties)
- * - Flow: Organic vertex drift (uses dualMorph* properties)
- * - Ripple: Smooth radial waves (uses explode* properties)
+ * Simple Vertex Modulation:
+ * - Uses facetOffset* properties for amplitude, frequency, and bias
+ * - Sine/cosine displacement with dimension-aware phase offsets
  *
  * @see src/stores/slices/geometry/polytopeSlice.ts
  */
@@ -36,17 +35,17 @@ describe('polytopeSlice', () => {
       expect(polytope.truncationMin).toBe(0.0);
       expect(polytope.truncationMax).toBe(0.5);
       expect(polytope.truncationSpeed).toBe(0.1);
-      // Pulse animation defaults
-      expect(polytope.facetOffsetEnabled).toBe(false);
-      expect(polytope.facetOffsetAmplitude).toBe(0.3);
-      expect(polytope.facetOffsetFrequency).toBe(0.3);
-      expect(polytope.facetOffsetPhaseSpread).toBe(0.2);
-      // Flow animation defaults
+      // Vertex modulation defaults (enabled by default)
+      expect(polytope.facetOffsetEnabled).toBe(true);
+      expect(polytope.facetOffsetAmplitude).toBe(0.2);
+      expect(polytope.facetOffsetFrequency).toBe(0.01);
+      expect(polytope.facetOffsetPhaseSpread).toBe(0.12);
+      expect(polytope.facetOffsetBias).toBe(1.0);
+      // Legacy animation properties (still in store)
       expect(polytope.dualMorphEnabled).toBe(false);
       expect(polytope.dualMorphT).toBe(0.3);
       expect(polytope.dualNormalize).toBe('unitSphere');
       expect(polytope.dualMorphSpeed).toBe(0.05);
-      // Ripple animation defaults
       expect(polytope.explodeEnabled).toBe(false);
       expect(polytope.explodeFactor).toBe(0.0);
       expect(polytope.explodeSpeed).toBe(0.1);
@@ -131,8 +130,8 @@ describe('polytopeSlice', () => {
     });
   });
 
-  describe('Pulse Animation Actions (organic breathing)', () => {
-    it('setPolytopeFacetOffsetEnabled toggles pulse', () => {
+  describe('Vertex Modulation Actions', () => {
+    it('setPolytopeFacetOffsetEnabled toggles modulation', () => {
       const store = useExtendedObjectStore.getState();
 
       store.setPolytopeFacetOffsetEnabled(true);
@@ -155,17 +154,17 @@ describe('polytopeSlice', () => {
       expect(useExtendedObjectStore.getState().polytope.facetOffsetAmplitude).toBe(1.0);
     });
 
-    it('setPolytopeFacetOffsetFrequency clamps value to [0.1, 2.0]', () => {
+    it('setPolytopeFacetOffsetFrequency clamps value to [0.01, 0.20]', () => {
       const store = useExtendedObjectStore.getState();
 
+      store.setPolytopeFacetOffsetFrequency(0.10);
+      expect(useExtendedObjectStore.getState().polytope.facetOffsetFrequency).toBe(0.10);
+
+      store.setPolytopeFacetOffsetFrequency(0.001);
+      expect(useExtendedObjectStore.getState().polytope.facetOffsetFrequency).toBe(0.01);
+
       store.setPolytopeFacetOffsetFrequency(1.0);
-      expect(useExtendedObjectStore.getState().polytope.facetOffsetFrequency).toBe(1.0);
-
-      store.setPolytopeFacetOffsetFrequency(0.01);
-      expect(useExtendedObjectStore.getState().polytope.facetOffsetFrequency).toBe(0.1);
-
-      store.setPolytopeFacetOffsetFrequency(5.0);
-      expect(useExtendedObjectStore.getState().polytope.facetOffsetFrequency).toBe(2.0);
+      expect(useExtendedObjectStore.getState().polytope.facetOffsetFrequency).toBe(0.20);
     });
 
     it('setPolytopeFacetOffsetPhaseSpread clamps value to [0, 1]', () => {
@@ -180,10 +179,23 @@ describe('polytopeSlice', () => {
       store.setPolytopeFacetOffsetPhaseSpread(1.5);
       expect(useExtendedObjectStore.getState().polytope.facetOffsetPhaseSpread).toBe(1.0);
     });
+
+    it('setPolytopeFacetOffsetBias clamps value to [0, 1]', () => {
+      const store = useExtendedObjectStore.getState();
+
+      store.setPolytopeFacetOffsetBias(0.5);
+      expect(useExtendedObjectStore.getState().polytope.facetOffsetBias).toBe(0.5);
+
+      store.setPolytopeFacetOffsetBias(-0.2);
+      expect(useExtendedObjectStore.getState().polytope.facetOffsetBias).toBe(0.0);
+
+      store.setPolytopeFacetOffsetBias(1.5);
+      expect(useExtendedObjectStore.getState().polytope.facetOffsetBias).toBe(1.0);
+    });
   });
 
-  describe('Flow Animation Actions (organic vertex drift)', () => {
-    it('setPolytopeDualMorphEnabled toggles flow', () => {
+  describe('Legacy Dual Morph Actions', () => {
+    it('setPolytopeDualMorphEnabled toggles dual morph', () => {
       const store = useExtendedObjectStore.getState();
 
       store.setPolytopeDualMorphEnabled(true);
@@ -233,8 +245,8 @@ describe('polytopeSlice', () => {
     });
   });
 
-  describe('Ripple Animation Actions (smooth radial waves)', () => {
-    it('setPolytopeExplodeEnabled toggles ripple', () => {
+  describe('Legacy Explode Actions', () => {
+    it('setPolytopeExplodeEnabled toggles explode', () => {
       const store = useExtendedObjectStore.getState();
 
       store.setPolytopeExplodeEnabled(true);
@@ -306,7 +318,7 @@ describe('polytopeSlice', () => {
       const { polytope } = useExtendedObjectStore.getState();
       expect(polytope.truncationEnabled).toBe(false);
       expect(polytope.truncationMode).toBe('vertexTruncate');
-      expect(polytope.facetOffsetEnabled).toBe(false);
+      expect(polytope.facetOffsetEnabled).toBe(true); // Enabled by default
       expect(polytope.dualMorphEnabled).toBe(false);
       expect(polytope.explodeEnabled).toBe(false);
     });

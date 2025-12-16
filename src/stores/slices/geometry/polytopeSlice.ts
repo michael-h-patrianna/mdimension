@@ -84,7 +84,7 @@ export const createPolytopeSlice: StateCreator<ExtendedObjectSlice, [], [], Poly
   },
 
   setPolytopeFacetOffsetFrequency: (frequency: number) => {
-    const clampedFrequency = Math.max(0.1, Math.min(2.0, frequency))
+    const clampedFrequency = Math.max(0.01, Math.min(0.20, frequency))
     set((state) => ({
       polytope: { ...state.polytope, facetOffsetFrequency: clampedFrequency },
     }))
@@ -94,6 +94,13 @@ export const createPolytopeSlice: StateCreator<ExtendedObjectSlice, [], [], Poly
     const clampedSpread = Math.max(0.0, Math.min(1.0, spread))
     set((state) => ({
       polytope: { ...state.polytope, facetOffsetPhaseSpread: clampedSpread },
+    }))
+  },
+
+  setPolytopeFacetOffsetBias: (bias: number) => {
+    const clampedBias = Math.max(0.0, Math.min(1.0, bias))
+    set((state) => ({
+      polytope: { ...state.polytope, facetOffsetBias: clampedBias },
     }))
   },
 

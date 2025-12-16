@@ -4,15 +4,14 @@
  * Animation controls for polytope objects (hypercube, simplex, cross-polytope),
  * displayed in the TimelineControls bottom drawer.
  *
- * Organic Animation Systems (applied post-projection to 3D):
- * - Pulse: Gentle breathing effect using layered sine waves
- * - Flow: Organic vertex drift creating flowing deformation
- * - Ripple: Smooth radial waves emanating from center
+ * Radial breathing modulation - vertices scale toward/away from origin.
+ * Creates smooth, organic breathing motion.
  *
- * All animations use irrational frequency ratios (golden ratio, sqrt(2))
- * for smooth, never-repeating motion.
- *
- * @see docs/prd/polytopes-animations.md
+ * Parameters:
+ * - Amplitude: Scale intensity (0-1)
+ * - Frequency: Oscillation speed (0.01-0.20)
+ * - Wave: Phase offset based on distance from center (0-1)
+ * - Bias: Per-vertex/dimension phase variation (0-1)
  */
 
 import React from 'react';
@@ -24,8 +23,8 @@ import { AnimationDrawerContainer } from './AnimationDrawerContainer';
 /**
  * PolytopeAnimationDrawer component
  *
- * Renders organic animation controls for polytope objects within the timeline drawer.
- * Uses consistent styling with other animation system panels.
+ * Renders radial breathing modulation controls for polytope objects.
+ * Wave creates distance-based phase offset, Bias creates per-vertex variation.
  *
  * @returns React component
  */
@@ -33,135 +32,110 @@ export const PolytopeAnimationDrawer: React.FC = React.memo(() => {
   // Get config and setters from store
   const {
     config,
-    // Pulse Animation (uses facetOffset* properties for intensity)
-    setFacetOffsetEnabled,
-    setFacetOffsetAmplitude,
-    // Flow Animation (uses dualMorph* properties for intensity)
-    setDualMorphEnabled,
-    setDualMorphT,
-    // Ripple Animation (uses explode* properties for intensity)
-    setExplodeEnabled,
-    setExplodeMax,
+    setModulationEnabled,
+    setModulationAmplitude,
+    setModulationFrequency,
+    setModulationWave,
+    setModulationBias,
   } = useExtendedObjectStore(
     useShallow((state) => ({
       config: state.polytope,
-      // Pulse Animation
-      setFacetOffsetEnabled: state.setPolytopeFacetOffsetEnabled,
-      setFacetOffsetAmplitude: state.setPolytopeFacetOffsetAmplitude,
-      // Flow Animation
-      setDualMorphEnabled: state.setPolytopeDualMorphEnabled,
-      setDualMorphT: state.setPolytopeDualMorphT,
-      // Ripple Animation
-      setExplodeEnabled: state.setPolytopeExplodeEnabled,
-      setExplodeMax: state.setPolytopeExplodeMax,
+      setModulationEnabled: state.setPolytopeFacetOffsetEnabled,
+      setModulationAmplitude: state.setPolytopeFacetOffsetAmplitude,
+      setModulationFrequency: state.setPolytopeFacetOffsetFrequency,
+      setModulationWave: state.setPolytopeFacetOffsetPhaseSpread,
+      setModulationBias: state.setPolytopeFacetOffsetBias,
     }))
   );
 
   return (
     <AnimationDrawerContainer data-testid="polytope-animation-drawer">
-      {/* Pulse Animation - gentle organic breathing */}
-      <div className="space-y-3" data-testid="animation-panel-facetOffset">
+      {/* Vertex Modulation - smooth radial breathing */}
+      <div className="space-y-3" data-testid="animation-panel-modulation">
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">
-            Pulse
+            Modulation
           </label>
           <ToggleButton
             pressed={config.facetOffsetEnabled}
-            onToggle={() => setFacetOffsetEnabled(!config.facetOffsetEnabled)}
+            onToggle={() => setModulationEnabled(!config.facetOffsetEnabled)}
             className="text-xs px-2 py-1 h-auto"
-            ariaLabel="Toggle pulse animation"
+            ariaLabel="Toggle vertex modulation"
           >
             {config.facetOffsetEnabled ? 'ON' : 'OFF'}
           </ToggleButton>
         </div>
 
         <div className={`space-y-3 ${!config.facetOffsetEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
+          {/* Amplitude control */}
           <div className="flex items-center gap-3">
-            <span className="text-xs text-text-secondary w-16">Intensity</span>
+            <span className="text-xs text-text-secondary w-16">Amplitude</span>
             <input
               type="range"
               min={0}
               max={1.0}
               step={0.01}
               value={config.facetOffsetAmplitude}
-              onChange={(e) => setFacetOffsetAmplitude(parseFloat(e.target.value))}
+              onChange={(e) => setModulationAmplitude(parseFloat(e.target.value))}
               className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
-              aria-label="Pulse intensity"
+              aria-label="Modulation amplitude"
             />
             <span className="text-xs font-mono w-10 text-right">
               {config.facetOffsetAmplitude.toFixed(2)}
             </span>
           </div>
-        </div>
-      </div>
 
-      {/* Flow Animation - organic vertex drift */}
-      <div className="space-y-3" data-testid="animation-panel-dualMorph">
-        <div className="flex items-center justify-between">
-          <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">
-            Flow
-          </label>
-          <ToggleButton
-            pressed={config.dualMorphEnabled}
-            onToggle={() => setDualMorphEnabled(!config.dualMorphEnabled)}
-            className="text-xs px-2 py-1 h-auto"
-            ariaLabel="Toggle flow animation"
-          >
-            {config.dualMorphEnabled ? 'ON' : 'OFF'}
-          </ToggleButton>
-        </div>
-
-        <div className={`space-y-3 ${!config.dualMorphEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
+          {/* Frequency control */}
           <div className="flex items-center gap-3">
-            <span className="text-xs text-text-secondary w-16">Intensity</span>
+            <span className="text-xs text-text-secondary w-16">Frequency</span>
             <input
               type="range"
-              min={0}
-              max={1.0}
-              step={0.01}
-              value={config.dualMorphT}
-              onChange={(e) => setDualMorphT(parseFloat(e.target.value))}
+              min={0.01}
+              max={0.20}
+              step={0.005}
+              value={config.facetOffsetFrequency}
+              onChange={(e) => setModulationFrequency(parseFloat(e.target.value))}
               className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
-              aria-label="Flow intensity"
+              aria-label="Modulation frequency"
             />
             <span className="text-xs font-mono w-10 text-right">
-              {config.dualMorphT.toFixed(2)}
+              {config.facetOffsetFrequency.toFixed(2)}
             </span>
           </div>
-        </div>
-      </div>
 
-      {/* Ripple Animation - smooth radial waves */}
-      <div className="space-y-3" data-testid="animation-panel-explode">
-        <div className="flex items-center justify-between">
-          <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">
-            Ripple
-          </label>
-          <ToggleButton
-            pressed={config.explodeEnabled}
-            onToggle={() => setExplodeEnabled(!config.explodeEnabled)}
-            className="text-xs px-2 py-1 h-auto"
-            ariaLabel="Toggle ripple animation"
-          >
-            {config.explodeEnabled ? 'ON' : 'OFF'}
-          </ToggleButton>
-        </div>
-
-        <div className={`space-y-3 ${!config.explodeEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
+          {/* Wave control - phase offset based on distance */}
           <div className="flex items-center gap-3">
-            <span className="text-xs text-text-secondary w-16">Intensity</span>
+            <span className="text-xs text-text-secondary w-16">Wave</span>
             <input
               type="range"
               min={0}
               max={1.0}
               step={0.01}
-              value={config.explodeMax}
-              onChange={(e) => setExplodeMax(parseFloat(e.target.value))}
+              value={config.facetOffsetPhaseSpread}
+              onChange={(e) => setModulationWave(parseFloat(e.target.value))}
               className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
-              aria-label="Ripple intensity"
+              aria-label="Modulation wave"
             />
             <span className="text-xs font-mono w-10 text-right">
-              {config.explodeMax.toFixed(2)}
+              {config.facetOffsetPhaseSpread.toFixed(2)}
+            </span>
+          </div>
+
+          {/* Bias control - per-vertex/dimension variation */}
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-text-secondary w-16">Bias</span>
+            <input
+              type="range"
+              min={0}
+              max={1.0}
+              step={0.01}
+              value={config.facetOffsetBias}
+              onChange={(e) => setModulationBias(parseFloat(e.target.value))}
+              className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
+              aria-label="Modulation bias"
+            />
+            <span className="text-xs font-mono w-10 text-right">
+              {config.facetOffsetBias.toFixed(2)}
             </span>
           </div>
         </div>
@@ -173,4 +147,3 @@ export const PolytopeAnimationDrawer: React.FC = React.memo(() => {
 PolytopeAnimationDrawer.displayName = 'PolytopeAnimationDrawer';
 
 export default PolytopeAnimationDrawer;
-

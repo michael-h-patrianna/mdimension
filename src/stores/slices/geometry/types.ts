@@ -44,6 +44,7 @@ export interface PolytopeSliceActions {
   setPolytopeFacetOffsetAmplitude: (amplitude: number) => void
   setPolytopeFacetOffsetFrequency: (frequency: number) => void
   setPolytopeFacetOffsetPhaseSpread: (spread: number) => void
+  setPolytopeFacetOffsetBias: (bias: number) => void
 
   // Dual Morph Animation
   setPolytopeDualMorphEnabled: (enabled: boolean) => void

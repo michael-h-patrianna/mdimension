@@ -1,4 +1,4 @@
-import { createSkyboxShaderDefaults, skyboxFragmentShader, skyboxGlslVersion, skyboxVertexShader } from '@/rendering/shaders/materials/SkyboxShader';
+import { createSkyboxShaderDefaults, skyboxFragmentShader, skyboxGlslVersion, skyboxVertexShader } from '@/rendering/materials/skybox/SkyboxShader';
 import { applyDistributionTS, getCosinePaletteColorTS } from '@/rendering/shaders/palette/cosine.glsl';
 import type { ColorAlgorithm, CosineCoefficients, DistributionSettings } from '@/rendering/shaders/palette/types';
 import { useAnimationStore } from '@/stores/animationStore';

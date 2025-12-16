@@ -2,12 +2,7 @@
  * PolytopeAnimationDrawer Component Tests
  *
  * Tests for the polytope animation controls drawer in TimelineControls.
- * Tests cover the three organic animation systems: Pulse, Flow, and Ripple.
- *
- * Organic Animation System:
- * - Pulse: Gentle breathing effect using layered sine waves
- * - Flow: Organic vertex drift creating flowing deformation
- * - Ripple: Smooth radial waves emanating from center
+ * Tests cover the radial breathing modulation with amplitude, frequency, wave, and bias controls.
  *
  * @see src/components/layout/TimelineControls/PolytopeAnimationDrawer.tsx
  */
@@ -30,13 +25,11 @@ describe('PolytopeAnimationDrawer', () => {
     cleanup();
   });
 
-  it('renders all animation panels', () => {
+  it('renders modulation panel', () => {
     render(<PolytopeAnimationDrawer />);
 
-    // Check for all animation panels (Pulse, Flow, Ripple)
-    expect(screen.getByTestId('animation-panel-facetOffset')).toBeDefined();
-    expect(screen.getByTestId('animation-panel-dualMorph')).toBeDefined();
-    expect(screen.getByTestId('animation-panel-explode')).toBeDefined();
+    // Check for modulation panel
+    expect(screen.getByTestId('animation-panel-modulation')).toBeDefined();
   });
 
   it('renders drawer container with correct test id', () => {
@@ -44,111 +37,95 @@ describe('PolytopeAnimationDrawer', () => {
     expect(screen.getByTestId('polytope-animation-drawer')).toBeDefined();
   });
 
-  describe('Pulse Animation (organic breathing)', () => {
-    it('toggles pulse animation on/off', () => {
+  describe('Vertex Modulation', () => {
+    it('toggles modulation on/off', () => {
       render(<PolytopeAnimationDrawer />);
 
-      const toggleButton = screen.getByRole('button', { name: /toggle pulse animation/i });
-      expect(toggleButton.textContent).toBe('OFF');
-
-      fireEvent.click(toggleButton);
-      expect(useExtendedObjectStore.getState().polytope.facetOffsetEnabled).toBe(true);
+      const toggleButton = screen.getByRole('button', { name: /toggle vertex modulation/i });
+      expect(toggleButton.textContent).toBe('ON'); // Enabled by default
 
       fireEvent.click(toggleButton);
       expect(useExtendedObjectStore.getState().polytope.facetOffsetEnabled).toBe(false);
+
+      fireEvent.click(toggleButton);
+      expect(useExtendedObjectStore.getState().polytope.facetOffsetEnabled).toBe(true);
     });
 
-    it('updates pulse intensity', () => {
+    it('updates amplitude', () => {
       useExtendedObjectStore.setState({
         polytope: { ...DEFAULT_POLYTOPE_CONFIG, facetOffsetEnabled: true },
       });
 
       render(<PolytopeAnimationDrawer />);
 
-      const intensitySlider = screen.getByLabelText('Pulse intensity');
-      fireEvent.change(intensitySlider, { target: { value: '0.5' } });
+      const amplitudeSlider = screen.getByLabelText('Modulation amplitude');
+      fireEvent.change(amplitudeSlider, { target: { value: '0.5' } });
 
       expect(useExtendedObjectStore.getState().polytope.facetOffsetAmplitude).toBe(0.5);
     });
-  });
 
-  describe('Flow Animation (organic vertex drift)', () => {
-    it('toggles flow animation on/off', () => {
-      render(<PolytopeAnimationDrawer />);
-
-      const toggleButton = screen.getByRole('button', { name: /toggle flow animation/i });
-      expect(toggleButton.textContent).toBe('OFF');
-
-      fireEvent.click(toggleButton);
-      expect(useExtendedObjectStore.getState().polytope.dualMorphEnabled).toBe(true);
-
-      fireEvent.click(toggleButton);
-      expect(useExtendedObjectStore.getState().polytope.dualMorphEnabled).toBe(false);
-    });
-
-    it('updates flow intensity', () => {
+    it('updates frequency', () => {
       useExtendedObjectStore.setState({
-        polytope: { ...DEFAULT_POLYTOPE_CONFIG, dualMorphEnabled: true },
+        polytope: { ...DEFAULT_POLYTOPE_CONFIG, facetOffsetEnabled: true },
       });
 
       render(<PolytopeAnimationDrawer />);
 
-      const intensitySlider = screen.getByLabelText('Flow intensity');
-      fireEvent.change(intensitySlider, { target: { value: '0.5' } });
+      const frequencySlider = screen.getByLabelText('Modulation frequency');
+      fireEvent.change(frequencySlider, { target: { value: '0.10' } });
 
-      expect(useExtendedObjectStore.getState().polytope.dualMorphT).toBe(0.5);
-    });
-  });
-
-  describe('Ripple Animation (smooth radial waves)', () => {
-    it('toggles ripple animation on/off', () => {
-      render(<PolytopeAnimationDrawer />);
-
-      const toggleButton = screen.getByRole('button', { name: /toggle ripple animation/i });
-      expect(toggleButton.textContent).toBe('OFF');
-
-      fireEvent.click(toggleButton);
-      expect(useExtendedObjectStore.getState().polytope.explodeEnabled).toBe(true);
-
-      fireEvent.click(toggleButton);
-      expect(useExtendedObjectStore.getState().polytope.explodeEnabled).toBe(false);
+      expect(useExtendedObjectStore.getState().polytope.facetOffsetFrequency).toBe(0.10);
     });
 
-    it('updates ripple intensity', () => {
+    it('updates wave', () => {
       useExtendedObjectStore.setState({
-        polytope: { ...DEFAULT_POLYTOPE_CONFIG, explodeEnabled: true },
+        polytope: { ...DEFAULT_POLYTOPE_CONFIG, facetOffsetEnabled: true },
       });
 
       render(<PolytopeAnimationDrawer />);
 
-      const intensitySlider = screen.getByLabelText('Ripple intensity');
-      fireEvent.change(intensitySlider, { target: { value: '0.7' } });
+      const waveSlider = screen.getByLabelText('Modulation wave');
+      fireEvent.change(waveSlider, { target: { value: '0.5' } });
 
-      expect(useExtendedObjectStore.getState().polytope.explodeMax).toBe(0.7);
+      expect(useExtendedObjectStore.getState().polytope.facetOffsetPhaseSpread).toBe(0.5);
+    });
+
+    it('updates bias', () => {
+      useExtendedObjectStore.setState({
+        polytope: { ...DEFAULT_POLYTOPE_CONFIG, facetOffsetEnabled: true },
+      });
+
+      render(<PolytopeAnimationDrawer />);
+
+      const biasSlider = screen.getByLabelText('Modulation bias');
+      fireEvent.change(biasSlider, { target: { value: '0.7' } });
+
+      expect(useExtendedObjectStore.getState().polytope.facetOffsetBias).toBe(0.7);
     });
   });
 
   describe('Control disabling', () => {
-    it('disables pulse controls when animation is off', () => {
+    it('disables controls when modulation is off', () => {
+      useExtendedObjectStore.setState({
+        polytope: { ...DEFAULT_POLYTOPE_CONFIG, facetOffsetEnabled: false },
+      });
+
       render(<PolytopeAnimationDrawer />);
 
-      // When pulse is disabled, the controls should have opacity-50 and pointer-events-none
-      const pulsePanel = screen.getByTestId('animation-panel-facetOffset');
-      const controlsContainer = pulsePanel.querySelector('.space-y-3:last-child');
+      // When modulation is disabled, the controls should have opacity-50 and pointer-events-none
+      const modulationPanel = screen.getByTestId('animation-panel-modulation');
+      const controlsContainer = modulationPanel.querySelector('.space-y-3:last-child');
 
       expect(controlsContainer?.className).toContain('opacity-50');
       expect(controlsContainer?.className).toContain('pointer-events-none');
     });
 
-    it('enables pulse controls when animation is on', () => {
-      useExtendedObjectStore.setState({
-        polytope: { ...DEFAULT_POLYTOPE_CONFIG, facetOffsetEnabled: true },
-      });
-
+    it('enables controls when modulation is on', () => {
       render(<PolytopeAnimationDrawer />);
 
-      const pulsePanel = screen.getByTestId('animation-panel-facetOffset');
-      const controlsContainer = pulsePanel.querySelector('.space-y-3:last-child');
+      // Enabled by default
+      const modulationPanel = screen.getByTestId('animation-panel-modulation');
+      const controlsContainer = modulationPanel.querySelector('.space-y-3:last-child');
 
       expect(controlsContainer?.className).not.toContain('opacity-50');
     });

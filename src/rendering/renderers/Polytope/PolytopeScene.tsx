@@ -79,12 +79,12 @@ function createNDUniforms(): Record<string, { value: unknown }> {
     uDepthRowSums: { value: new Float32Array(11) },
     uProjectionDistance: { value: DEFAULT_PROJECTION_DISTANCE },
     uProjectionType: { value: 1 },
-    // Organic Animation uniforms (applied post-projection in shader)
-    // Uses layered sine waves with irrational frequency ratios for smooth, non-repeating motion
-    uAnimTime: { value: 0.0 },       // Raw time in seconds (not multiplied)
-    uPulseAmount: { value: 0.0 },    // Organic pulse intensity (0-1)
-    uFlowAmount: { value: 0.0 },     // Flow/drift intensity (0-1)
-    uRippleAmount: { value: 0.0 },   // Ripple wave intensity (0-1)
+    // Vertex modulation uniforms - radial breathing with bias
+    uAnimTime: { value: 0.0 },       // Time in seconds
+    uModAmplitude: { value: 0.0 },   // Displacement amplitude (0-1)
+    uModFrequency: { value: 0.05 },  // Oscillation frequency (0.01-0.20)
+    uModWave: { value: 0.0 },        // Distance-based phase offset (wave effect)
+    uModBias: { value: 0.0 },        // Per-vertex/dimension phase variation
   };
 }
 
@@ -555,29 +555,14 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     }
     const animTime = animTimeRef.current;
 
-    // Calculate organic animation values based on polytope config
-    // All animations use layered sine waves in the shader for smooth, non-repeating motion
-    let pulseAmount = 0.0;
-    let flowAmount = 0.0;
-    let rippleAmount = 0.0;
-
-    // Organic Pulse: gentle breathing effect
-    // facetOffsetEnabled controls pulse, facetOffsetAmplitude sets intensity
-    if (polytopeConfig.facetOffsetEnabled) {
-      pulseAmount = polytopeConfig.facetOffsetAmplitude;
-    }
-
-    // Flow: organic vertex drift for flowing deformation
-    // dualMorphEnabled controls flow, dualMorphT sets intensity
-    if (polytopeConfig.dualMorphEnabled) {
-      flowAmount = polytopeConfig.dualMorphT;
-    }
-
-    // Ripple: smooth radial waves emanating from center
-    // explodeEnabled controls ripple, explodeMax sets intensity
-    if (polytopeConfig.explodeEnabled) {
-      rippleAmount = polytopeConfig.explodeMax;
-    }
+    // Radial breathing modulation - uses facetOffset properties
+    // facetOffsetEnabled: on/off, facetOffsetAmplitude: amplitude
+    // facetOffsetFrequency: frequency, facetOffsetPhaseSpread: wave, facetOffsetBias: bias
+    const modEnabled = polytopeConfig.facetOffsetEnabled;
+    const modAmplitude = modEnabled ? polytopeConfig.facetOffsetAmplitude : 0.0;
+    const modFrequency = polytopeConfig.facetOffsetFrequency;
+    const modWave = polytopeConfig.facetOffsetPhaseSpread;
+    const modBias = polytopeConfig.facetOffsetBias;
 
     // Read current state
     const rotations = useRotationStore.getState().rotations;
@@ -642,13 +627,13 @@ export const PolytopeScene = React.memo(function PolytopeScene({
         // Update N-D transformation uniforms
         updateNDUniforms(material, gpuData, dimension, scales, projectionDistance, projectionType);
 
-        // Update organic animation uniforms
+        // Update vertex modulation uniforms
         const u = material.uniforms;
-        // Pass raw time - shader handles organic frequency layering internally
         if (u.uAnimTime) u.uAnimTime.value = animTime;
-        if (u.uPulseAmount) u.uPulseAmount.value = pulseAmount;
-        if (u.uFlowAmount) u.uFlowAmount.value = flowAmount;
-        if (u.uRippleAmount) u.uRippleAmount.value = rippleAmount;
+        if (u.uModAmplitude) u.uModAmplitude.value = modAmplitude;
+        if (u.uModFrequency) u.uModFrequency.value = modFrequency;
+        if (u.uModWave) u.uModWave.value = modWave;
+        if (u.uModBias) u.uModBias.value = modBias;
 
         // Update lighting uniforms (only for materials that have them)
         // Colors use cached linear conversion for performance

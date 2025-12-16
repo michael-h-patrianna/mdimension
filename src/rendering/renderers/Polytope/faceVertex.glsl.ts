@@ -4,11 +4,8 @@
  * Performs N-dimensional transformation on vertices and passes
  * world position and view direction to fragment shader for lighting.
  *
- * Polytope animations are applied AFTER N-D transformation and projection
- * to 3D space, ensuring mathematically correct behavior.
- *
- * Animation System: Uses organic modulation with layered sine waves at
- * irrational frequency ratios for smooth, non-repeating motion.
+ * Animation: Radial breathing modulation - vertices scale toward/away from
+ * origin with optional phase offset based on distance for wave-like effect.
  *
  * @module
  */
@@ -22,7 +19,7 @@ import { MAX_EXTRA_DIMS } from './constants'
  * 1. Per-axis scaling
  * 2. N-D rotation matrix multiplication
  * 3. Perspective or orthographic projection to 3D
- * 4. Organic animations (applied to projected 3D result)
+ * 4. Simple sine/cosine vertex modulation
  *
  * @returns GLSL vertex shader string
  */
@@ -41,11 +38,12 @@ export function buildFaceVertexShader(): string {
     uniform float uExtraRotationCols[${MAX_EXTRA_DIMS * 4}];
     uniform float uDepthRowSums[11];
 
-    // Organic Animation uniforms (applied post-projection)
-    uniform float uAnimTime;         // Raw time in seconds (slow, not multiplied)
-    uniform float uPulseAmount;      // Organic pulse amplitude (0-1)
-    uniform float uFlowAmount;       // Flow/drift intensity (0-1)
-    uniform float uRippleAmount;     // Ripple wave amplitude (0-1)
+    // Vertex modulation uniforms
+    uniform float uAnimTime;       // Time in seconds
+    uniform float uModAmplitude;   // Displacement amplitude (0-1)
+    uniform float uModFrequency;   // Oscillation frequency
+    uniform float uModWave;        // Phase offset based on distance (wave effect)
+    uniform float uModBias;        // Per-vertex/dimension phase variation
 
     // Extra dimension attributes
     in float aExtraDim0;
@@ -61,37 +59,6 @@ export function buildFaceVertexShader(): string {
     out vec3 vViewDir;
     // Face depth for color algorithms - flat interpolation means first vertex wins
     flat out float vFaceDepth;
-
-    // Golden ratio and other irrational constants for non-repeating patterns
-    const float PHI = 1.618033988749895;
-    const float SQRT2 = 1.4142135623730951;
-    const float SQRT3 = 1.7320508075688772;
-
-    // Organic noise using layered sine waves with irrational frequency ratios
-    // Creates smooth, never-repeating patterns
-    float organicWave(float t, float baseFreq) {
-      // Layer multiple sines with irrational frequency ratios
-      float wave1 = sin(t * baseFreq);
-      float wave2 = sin(t * baseFreq * PHI) * 0.5;
-      float wave3 = sin(t * baseFreq * SQRT2) * 0.25;
-      float wave4 = sin(t * baseFreq * SQRT3 * 0.5) * 0.125;
-      // Normalize to roughly -1 to 1 range
-      return (wave1 + wave2 + wave3 + wave4) / 1.875;
-    }
-
-    // Smooth organic value (0 to 1 range, biased toward 0.5)
-    float organicValue(float t, float baseFreq) {
-      return organicWave(t, baseFreq) * 0.5 + 0.5;
-    }
-
-    // 3D organic displacement field
-    vec3 organicDisplacement(vec3 pos, float t) {
-      // Each axis gets unique displacement from layered waves
-      float dx = organicWave(t + pos.y * 0.3 + pos.z * 0.2, 0.1);
-      float dy = organicWave(t * PHI + pos.x * 0.25 + pos.z * 0.15, 0.08);
-      float dz = organicWave(t * SQRT2 + pos.x * 0.2 + pos.y * 0.25, 0.09);
-      return vec3(dx, dy, dz);
-    }
 
     vec3 transformND() {
       float scaledInputs[11];
@@ -139,53 +106,43 @@ export function buildFaceVertexShader(): string {
       return projected;
     }
 
-    // Apply organic post-projection animations to the 3D result
-    vec3 applyAnimations(vec3 pos) {
-      vec3 result = pos;
-      float t = uAnimTime;
+    // Radial breathing modulation - smooth coherent motion
+    vec3 modulateVertex(vec3 pos, float extraDimSum) {
+      if (uModAmplitude < 0.001) return pos;
 
-      // 1. Organic Pulse: gentle breathing with layered frequencies
-      // Creates smooth, never-repeating scale oscillation
-      if (uPulseAmount > 0.001) {
-        float pulseValue = organicWave(t, 0.15);
-        // Gentle scale variation (e.g., 0.05 amplitude = 95% to 105% scale)
-        float scale = 1.0 + pulseValue * uPulseAmount * 0.15;
-        result *= scale;
-      }
+      // Very slow base oscillation
+      float t = uAnimTime * uModFrequency * 0.1;
 
-      // 2. Flow: organic vertex drift creating flowing deformation
-      // Each vertex drifts independently based on position
-      if (uFlowAmount > 0.001) {
-        vec3 displacement = organicDisplacement(pos, t);
-        // Scale displacement by distance from origin for natural feel
-        float distFactor = length(pos) * 0.3 + 0.5;
-        result += displacement * uFlowAmount * distFactor * 0.08;
-      }
+      // Wave: phase offset based on distance from origin (radial wave effect)
+      float dist = length(pos);
+      float wavePhase = dist * uModWave * 2.0;
 
-      // 3. Ripple: smooth radial wave emanating from center
-      // Creates gentle pulsing waves across the surface
-      if (uRippleAmount > 0.001) {
-        float dist = length(pos);
-        // Organic wave with position-based phase
-        float wavePhase = dist * 2.0 - t * 0.5;
-        float ripple = organicWave(wavePhase, 0.3);
-        // Displace along radial direction
-        if (dist > 0.001) {
-          vec3 radialDir = pos / dist;
-          // Amplitude decreases slightly with distance for natural falloff
-          float amplitude = uRippleAmount * 0.06 / (1.0 + dist * 0.2);
-          result += radialDir * ripple * amplitude;
-        }
-      }
+      // Bias: per-vertex variation based on position coordinates
+      // Creates unique phase for each vertex based on its spatial location
+      float vertexBias = (pos.x * 1.0 + pos.y * 1.618 + pos.z * 2.236) * uModBias;
 
-      return result;
+      // Bias: per-dimension variation using extra dimension coordinates
+      // Vertices in higher dimensions get additional phase offset
+      float dimensionBias = extraDimSum * uModBias * 0.5;
+
+      // Combined phase
+      float totalPhase = t + wavePhase + vertexBias + dimensionBias;
+
+      // Single sine wave controls radial scale
+      float scale = 1.0 + sin(totalPhase) * uModAmplitude * 0.05;
+
+      return pos * scale;
     }
 
     void main() {
       vec3 projected = transformND();
-      vec3 animated = applyAnimations(projected);
 
-      vec4 worldPos = modelMatrix * vec4(animated, 1.0);
+      // Sum of extra dimensions for dimension-aware bias
+      float extraSum = aExtraDim0 + aExtraDim1 + aExtraDim2 + aExtraDim3 + aExtraDim4 + aExtraDim5 + aExtraDim6;
+
+      vec3 modulated = modulateVertex(projected, extraSum);
+
+      vec4 worldPos = modelMatrix * vec4(modulated, 1.0);
       gl_Position = projectionMatrix * viewMatrix * worldPos;
 
       // Pass world position for normal calculation in fragment shader
@@ -193,9 +150,7 @@ export function buildFaceVertexShader(): string {
       vViewDir = normalize(cameraPosition - worldPos.xyz);
 
       // Compute face depth from higher dimension coordinates
-      // Sum of extra dimensions gives depth variation across faces
       // With flat interpolation, first vertex of each triangle sets the value
-      float extraSum = aExtraDim0 + aExtraDim1 + aExtraDim2 + aExtraDim3 + aExtraDim4 + aExtraDim5 + aExtraDim6;
       // Map to roughly 0-1 range (coordinates typically in -1 to 1)
       vFaceDepth = clamp(extraSum * 0.15 + 0.5, 0.0, 1.0);
     }

@@ -122,10 +122,16 @@ export interface PolytopeConfig {
   facetOffsetFrequency: number
 
   /**
-   * Per-axis phase variation (0.0-1.0, default 0.2).
-   * Creates asymmetric breathing patterns.
+   * Distance-based phase offset for wave effect (0.0-1.0, default 0.2).
+   * Creates radial waves emanating from center.
    */
   facetOffsetPhaseSpread: number
+
+  /**
+   * Per-vertex/dimension phase bias (0.0-1.0, default 0.0).
+   * Creates variation so vertices move at different times.
+   */
+  facetOffsetBias: number
 
   // === Flow Animation (organic vertex drift) ===
 
@@ -205,12 +211,13 @@ export const DEFAULT_POLYTOPE_CONFIG: PolytopeConfig = {
   truncationMax: 0.5,
   truncationSpeed: 0.1,
 
-  // Pulse Animation defaults (organic breathing)
-  // Subtle default values for gentle, evolving modulation
-  facetOffsetEnabled: false,
-  facetOffsetAmplitude: 0.3, // Moderate intensity for visible but subtle effect
-  facetOffsetFrequency: 0.3,
-  facetOffsetPhaseSpread: 0.2,
+  // Vertex Modulation defaults (radial breathing)
+  // Enabled by default with smooth, organic motion
+  facetOffsetEnabled: true,
+  facetOffsetAmplitude: 0.2,
+  facetOffsetFrequency: 0.01,
+  facetOffsetPhaseSpread: 0.12, // Wave effect
+  facetOffsetBias: 1.0, // Full per-vertex/dimension variation
 
   // Flow Animation defaults (organic vertex drift)
   // Creates smooth flowing deformation
