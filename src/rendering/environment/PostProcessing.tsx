@@ -22,7 +22,7 @@ import { TONE_MAPPING_TO_THREE } from '@/rendering/shaders/types';
 import { getEffectiveSSRQuality, usePerformanceStore } from '@/stores';
 import { SSR_QUALITY_STEPS, type SSRQuality } from '@/stores/defaults/visualDefaults';
 import { useLightingStore } from '@/stores/lightingStore';
-import { usePerformanceMetricsStore } from '@/stores/performanceMetricsStore';
+import { usePerformanceMetricsStore, type BufferStats } from '@/stores/performanceMetricsStore';
 import { usePostProcessingStore } from '@/stores/postProcessingStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useFrame, useThree } from '@react-three/fiber';
@@ -457,6 +457,24 @@ export const PostProcessing = memo(function PostProcessing() {
   useEffect(() => {
     TemporalDepthManager.initialize(size.width, size.height, gl);
   }, [gl, size.width, size.height]);
+
+  // Update buffer stats for debugging (on demand, not every frame)
+  useEffect(() => {
+    const temporalDims = TemporalDepthManager.getDimensions();
+    const bufferStats: BufferStats = {
+      screen: { width: size.width, height: size.height },
+      depth: {
+        width: objectDepthTarget.width,
+        height: objectDepthTarget.height
+      },
+      normal: {
+        width: normalTarget.width,
+        height: normalTarget.height
+      },
+      temporal: temporalDims,
+    };
+    usePerformanceMetricsStore.getState().updateBufferStats(bufferStats);
+  }, [size.width, size.height, objectDepthTarget, normalTarget]);
 
   // Cleanup on unmount only
   useEffect(() => {

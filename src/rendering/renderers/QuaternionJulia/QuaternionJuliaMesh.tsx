@@ -7,7 +7,6 @@
  * @see docs/prd/quaternion-julia-fractal.md
  */
 
-import { createTemporalDepthUniforms } from '@/hooks'
 import { composeRotations } from '@/lib/math/rotation'
 import type { MatrixND } from '@/lib/math/types'
 import {
@@ -269,7 +268,11 @@ const QuaternionJuliaMesh = () => {
       uMultiSourceWeights: { value: new THREE.Vector3(0.5, 0.3, 0.2) },
 
       // Temporal Reprojection uniforms
-      ...createTemporalDepthUniforms(),
+      uPrevDepthTexture: { value: null },
+      uPrevViewProjectionMatrix: { value: new THREE.Matrix4() },
+      uPrevInverseViewProjectionMatrix: { value: new THREE.Matrix4() },
+      uTemporalEnabled: { value: false },
+      uDepthBufferResolution: { value: new THREE.Vector2(1, 1) },
 
       // Orthographic projection uniforms
       uOrthographic: { value: false },

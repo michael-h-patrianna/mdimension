@@ -32,12 +32,7 @@ import { mainBlock } from './main.glsl';
 import { ShaderConfig } from '../shared/types';
 
 export function composeMandelbulbShader(config: ShaderConfig) {
-  const { dimension, shadows: _shadows, temporal: _temporal, ambientOcclusion: _ao, opacityMode, overrides = [] } = config;
-
-  // Apply overrides
-  const shadows = _shadows && !overrides.includes('Shadows');
-  const temporal = _temporal && !overrides.includes('Temporal Reprojection');
-  const ambientOcclusion = _ao && !overrides.includes('Ambient Occlusion');
+  const { dimension, shadows: enableShadows, temporal: enableTemporal, ambientOcclusion: enableAO, opacityMode, overrides = [] } = config;
 
   const defines = [];
   const features = [];
@@ -46,15 +41,19 @@ export function composeMandelbulbShader(config: ShaderConfig) {
   features.push('Fresnel');
   features.push(`Opacity: ${opacityMode}`);
 
-  if (shadows) {
+  const useShadows = enableShadows && !overrides.includes('Shadows');
+  const useTemporal = enableTemporal && !overrides.includes('Temporal Reprojection');
+  const useAO = enableAO && !overrides.includes('Ambient Occlusion');
+
+  if (useShadows) {
       defines.push('#define USE_SHADOWS');
       features.push('Shadows');
   }
-  if (temporal) {
+  if (useTemporal) {
       defines.push('#define USE_TEMPORAL');
       features.push('Temporal Reprojection');
   }
-  if (ambientOcclusion) {
+  if (useAO) {
       defines.push('#define USE_AO');
       features.push('Ambient Occlusion');
   }
@@ -88,21 +87,31 @@ export function composeMandelbulbShader(config: ShaderConfig) {
     { name: 'Lighting (Fresnel)', content: fresnelBlock },
     { name: sdfName, content: sdfBlock },
     { name: 'Dispatch', content: generateDispatch(dimension) },
-    { name: 'Temporal Features', content: temporalBlock, condition: temporal },
+    { name: 'Temporal Features', content: temporalBlock, condition: enableTemporal },
     { name: 'Sphere Intersection', content: sphereIntersectBlock },
     { name: 'Raymarching Core', content: raymarchCoreBlock },
     { name: 'Normal Calculation', content: normalBlock },
-    { name: 'Ambient Occlusion', content: aoBlock, condition: ambientOcclusion },
-    { name: 'Shadows', content: shadowsBlock, condition: shadows },
+    { name: 'Ambient Occlusion', content: aoBlock, condition: enableAO },
+    { name: 'Shadows', content: shadowsBlock, condition: enableShadows },
     { name: 'Multi-Light System', content: multiLightBlock },
     { name: 'Opacity System', content: opacityBlock },
     { name: 'Main', content: mainBlock }
   ];
 
-  const activeBlocks = blocks.filter(b => b.condition !== false);
-  
-  const glsl = activeBlocks.map(b => b.content).join('\n');
-  const modules = activeBlocks.map(b => b.name);
+  const modules: string[] = [];
+  const glslParts: string[] = [];
 
-  return { glsl, modules, features };
+  blocks.forEach(b => {
+      if (b.condition === false) return; // Disabled in config
+
+      modules.push(b.name);
+
+      if (overrides.includes(b.name)) {
+          // Overridden: Don't add content
+      } else {
+          glslParts.push(b.content);
+      }
+  });
+
+  return { glsl: glslParts.join('\n'), modules, features };
 }

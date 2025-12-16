@@ -27,6 +27,18 @@ export interface GraphData {
   mem: number[]
 }
 
+export interface BufferDimensions {
+  width: number
+  height: number
+}
+
+export interface BufferStats {
+  depth: BufferDimensions
+  normal: BufferDimensions
+  temporal: BufferDimensions
+  screen: BufferDimensions
+}
+
 export interface PerformanceMetricsState {
   fps: number
   minFps: number
@@ -38,15 +50,19 @@ export interface PerformanceMetricsState {
   memory: MemoryStats
   vram: VRAMStats
   viewport: { width: number; height: number; dpr: number }
+  buffers: BufferStats
   history: GraphData
   gpuName: string
 
   // Actions
   updateMetrics: (metrics: Partial<PerformanceMetricsState>) => void
   setGpuName: (name: string) => void
+  updateBufferStats: (buffers: BufferStats) => void
 }
 
 export const GRAPH_POINTS = 40
+
+const DEFAULT_BUFFER_DIMENSIONS: BufferDimensions = { width: 0, height: 0 }
 
 export const usePerformanceMetricsStore = create<PerformanceMetricsState>((set) => ({
   fps: 60,
@@ -59,6 +75,12 @@ export const usePerformanceMetricsStore = create<PerformanceMetricsState>((set) 
   memory: { geometries: 0, textures: 0, programs: 0, heap: 0 },
   vram: { geometries: 0, textures: 0, total: 0 },
   viewport: { width: 0, height: 0, dpr: 1 },
+  buffers: {
+    depth: { ...DEFAULT_BUFFER_DIMENSIONS },
+    normal: { ...DEFAULT_BUFFER_DIMENSIONS },
+    temporal: { ...DEFAULT_BUFFER_DIMENSIONS },
+    screen: { ...DEFAULT_BUFFER_DIMENSIONS },
+  },
   history: {
     fps: new Array(GRAPH_POINTS).fill(60),
     cpu: new Array(GRAPH_POINTS).fill(0),
@@ -68,4 +90,5 @@ export const usePerformanceMetricsStore = create<PerformanceMetricsState>((set) 
 
   updateMetrics: (metrics) => set((state) => ({ ...state, ...metrics })),
   setGpuName: (name) => set({ gpuName: name }),
+  updateBufferStats: (buffers) => set({ buffers }),
 }))

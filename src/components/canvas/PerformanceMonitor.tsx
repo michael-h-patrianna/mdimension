@@ -1,12 +1,13 @@
 import { Tabs } from '@/components/ui/Tabs';
 import { usePanelCollision } from '@/hooks/usePanelCollision';
+import { getConfigStoreKey, isRaymarchingType } from '@/lib/geometry/registry';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
-import { usePerformanceMetricsStore } from '@/stores/performanceMetricsStore';
+import { usePerformanceMetricsStore, type BufferStats } from '@/stores/performanceMetricsStore';
 import { usePerformanceStore } from '@/stores/performanceStore';
-import { isRaymarchingType, getConfigStoreKey } from '@/lib/geometry/registry';
+import { useUIStore } from '@/stores/uiStore';
 import { LazyMotion, domMax, m, useMotionValue } from 'motion/react';
-import { useRef, useState, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 /**
  * Custom Performance Monitor UI
@@ -47,6 +48,12 @@ const Icons = {
   ChevronUp: (props: any) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M18 15l-6-6-6 6"/></svg>
   ),
+  RefreshCw: (props: any) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+  ),
+  Square: (props: any) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>
+  ),
 };
 
 // --- Helper Functions ---
@@ -80,14 +87,36 @@ export function PerformanceMonitor() {
   const shaderOverrides = usePerformanceStore((state) => state.shaderOverrides);
   const toggleShaderModule = usePerformanceStore((state) => state.toggleShaderModule);
 
+  // -- UI Store for buffer toggles --
+  const showDepthBuffer = useUIStore((state) => state.showDepthBuffer);
+  const setShowDepthBuffer = useUIStore((state) => state.setShowDepthBuffer);
+  const showNormalBuffer = useUIStore((state) => state.showNormalBuffer);
+  const setShowNormalBuffer = useUIStore((state) => state.setShowNormalBuffer);
+  const showTemporalDepthBuffer = useUIStore((state) => state.showTemporalDepthBuffer);
+  const setShowTemporalDepthBuffer = useUIStore((state) => state.setShowTemporalDepthBuffer);
+
   // Safe modules that can be toggled without breaking the shader compilation
   const SAFE_MODULES = ['Shadows', 'Ambient Occlusion', 'Temporal Features'];
 
   // -- State --
   const [expanded, setExpanded] = useState(false);
-  const [activeTab, setActiveTab] = useState<'perf' | 'sys' | 'shader'>('perf');
+  const [activeTab, setActiveTab] = useState<'perf' | 'sys' | 'shader' | 'buffers'>('perf');
+  const [bufferStats, setBufferStats] = useState<BufferStats | null>(null);
+
+  // Refresh buffer stats from store
+  const refreshBufferStats = useCallback(() => {
+    const currentStats = usePerformanceMetricsStore.getState().buffers;
+    setBufferStats({ ...currentStats });
+  }, []);
+
+  // Auto-refresh when switching to buffers tab
+  useEffect(() => {
+    if (activeTab === 'buffers') {
+      refreshBufferStats();
+    }
+  }, [activeTab, refreshBufferStats]);
   const [isDragging, setIsDragging] = useState(false);
-  
+
   // -- Dimensions & Positioning --
   const containerRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(300); // Default min-width
@@ -327,16 +356,16 @@ export function PerformanceMonitor() {
                         {shaderInfo.activeModules.map((mod, i) => {
                           const isSafe = SAFE_MODULES.includes(mod);
                           const isEnabled = !shaderOverrides.includes(mod);
-                          
+
                           return (
                             <tr key={i} className="hover:bg-white/5 transition-colors">
                               <td className="p-2 text-[10px] font-mono text-zinc-400 border-r border-white/5 w-8 text-center opacity-50">{i+1}</td>
                               <td className="p-2 text-[10px] text-zinc-300 flex items-center justify-between">
                                 <span className={!isEnabled ? 'opacity-50 line-through' : ''}>{mod}</span>
                                 {isSafe && (
-                                  <input 
-                                    type="checkbox" 
-                                    checked={isEnabled} 
+                                  <input
+                                    type="checkbox"
+                                    checked={isEnabled}
                                     onChange={() => toggleShaderModule(mod)}
                                     className="w-3 h-3 rounded bg-white/10 border-white/20 checked:bg-accent focus:ring-accent/50 cursor-pointer"
                                     title="Toggle Module"
@@ -346,27 +375,138 @@ export function PerformanceMonitor() {
                             </tr>
                           );
                         })}
-                        {shaderOverrides.map((mod, i) => (
-                          <tr key={`override-${i}`} className="hover:bg-white/5 transition-colors bg-white/5">
-                            <td className="p-2 text-[10px] font-mono text-rose-400 border-r border-white/5 w-8 text-center opacity-50">!</td>
-                            <td className="p-2 text-[10px] text-zinc-400 flex items-center justify-between">
-                              <span className="line-through opacity-70">{mod}</span>
-                              <input 
-                                type="checkbox" 
-                                checked={false} 
-                                onChange={() => toggleShaderModule(mod)}
-                                className="w-3 h-3 rounded bg-white/10 border-white/20 checked:bg-accent focus:ring-accent/50 cursor-pointer"
-                                title="Enable Module"
-                              />
-                            </td>
-                          </tr>
-                        ))}
                       </tbody>
                     </table>
                   </div>
                </div>
              </>
            )}
+        </m.div>
+      )
+    },
+    {
+      id: 'buffers',
+      label: 'Buffers',
+      content: (
+        <m.div
+          initial={{ opacity: 0, x: 10 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.2 }}
+          className="space-y-5"
+        >
+          {/* Header with refresh button */}
+          <div className="flex items-center justify-between">
+            <SectionHeader icon={<Icons.Square />} label="Render Buffers" />
+            <button
+              onClick={refreshBufferStats}
+              className="p-1.5 rounded-md hover:bg-white/10 transition-colors text-zinc-400 hover:text-zinc-200"
+              title="Refresh buffer dimensions"
+            >
+              <Icons.RefreshCw className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {!bufferStats ? (
+            <div className="text-zinc-500 italic text-center p-4">Loading buffer info...</div>
+          ) : (
+            <>
+              {/* Buffer Dimensions Table */}
+              <div className="border border-white/10 rounded-lg overflow-hidden bg-black/20">
+                <table className="w-full text-left border-collapse">
+                  <thead className="bg-white/5">
+                    <tr>
+                      <th className="p-2 text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Buffer</th>
+                      <th className="p-2 text-[10px] font-bold text-zinc-400 uppercase tracking-wider text-right">Dimensions</th>
+                      <th className="p-2 text-[10px] font-bold text-zinc-400 uppercase tracking-wider text-right">Scale</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    <tr className="hover:bg-white/5 transition-colors">
+                      <td className="p-2 text-[11px] text-zinc-300">Screen</td>
+                      <td className="p-2 text-[11px] text-zinc-200 font-mono text-right">{bufferStats.screen.width} × {bufferStats.screen.height}</td>
+                      <td className="p-2 text-[11px] text-zinc-400 font-mono text-right">1.0x</td>
+                    </tr>
+                    <tr className="hover:bg-white/5 transition-colors">
+                      <td className="p-2 text-[11px] text-zinc-300">Depth</td>
+                      <td className="p-2 text-[11px] text-zinc-200 font-mono text-right">{bufferStats.depth.width} × {bufferStats.depth.height}</td>
+                      <td className="p-2 text-[11px] text-zinc-400 font-mono text-right">
+                        {bufferStats.screen.width > 0 ? (bufferStats.depth.width / bufferStats.screen.width).toFixed(2) : '-'}x
+                      </td>
+                    </tr>
+                    <tr className="hover:bg-white/5 transition-colors">
+                      <td className="p-2 text-[11px] text-zinc-300">Normal</td>
+                      <td className="p-2 text-[11px] text-zinc-200 font-mono text-right">{bufferStats.normal.width} × {bufferStats.normal.height}</td>
+                      <td className="p-2 text-[11px] text-zinc-400 font-mono text-right">
+                        {bufferStats.screen.width > 0 ? (bufferStats.normal.width / bufferStats.screen.width).toFixed(2) : '-'}x
+                      </td>
+                    </tr>
+                    <tr className={`hover:bg-white/5 transition-colors ${
+                      bufferStats.screen.width > 0 && bufferStats.temporal.width !== bufferStats.screen.width * 0.5
+                        ? 'bg-amber-500/10'
+                        : ''
+                    }`}>
+                      <td className="p-2 text-[11px] text-zinc-300">Temporal</td>
+                      <td className="p-2 text-[11px] text-zinc-200 font-mono text-right">{bufferStats.temporal.width} × {bufferStats.temporal.height}</td>
+                      <td className="p-2 text-[11px] text-zinc-400 font-mono text-right">
+                        {bufferStats.screen.width > 0 ? (bufferStats.temporal.width / bufferStats.screen.width).toFixed(2) : '-'}x
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* DPR Info */}
+              <div className="p-2 bg-white/5 rounded-lg border border-white/5">
+                <div className="flex justify-between items-center text-[11px]">
+                  <span className="text-zinc-500">Device Pixel Ratio</span>
+                  <span className="text-zinc-200 font-mono">{stats.viewport.dpr.toFixed(1)}x</span>
+                </div>
+                <div className="flex justify-between items-center text-[11px] mt-1">
+                  <span className="text-zinc-500">Expected Temporal</span>
+                  <span className="text-zinc-200 font-mono">
+                    {Math.floor(bufferStats.screen.width * 0.5)} × {Math.floor(bufferStats.screen.height * 0.5)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Debug Buffer Visualization */}
+              <div className="space-y-2">
+                <div className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold">Debug Visualization</div>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => setShowDepthBuffer(!showDepthBuffer)}
+                    className={`flex-1 px-2 py-1.5 text-[10px] font-medium rounded-md transition-all duration-200 border ${
+                      showDepthBuffer
+                        ? 'bg-accent/20 text-accent border-accent/50'
+                        : 'bg-white/5 text-zinc-400 border-white/10 hover:text-zinc-200 hover:bg-white/10'
+                    }`}
+                  >
+                    Depth
+                  </button>
+                  <button
+                    onClick={() => setShowNormalBuffer(!showNormalBuffer)}
+                    className={`flex-1 px-2 py-1.5 text-[10px] font-medium rounded-md transition-all duration-200 border ${
+                      showNormalBuffer
+                        ? 'bg-accent/20 text-accent border-accent/50'
+                        : 'bg-white/5 text-zinc-400 border-white/10 hover:text-zinc-200 hover:bg-white/10'
+                    }`}
+                  >
+                    Normal
+                  </button>
+                  <button
+                    onClick={() => setShowTemporalDepthBuffer(!showTemporalDepthBuffer)}
+                    className={`flex-1 px-2 py-1.5 text-[10px] font-medium rounded-md transition-all duration-200 border ${
+                      showTemporalDepthBuffer
+                        ? 'bg-accent/20 text-accent border-accent/50'
+                        : 'bg-white/5 text-zinc-400 border-white/10 hover:text-zinc-200 hover:bg-white/10'
+                    }`}
+                  >
+                    Temporal
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
         </m.div>
       )
     }
@@ -379,7 +519,7 @@ export function PerformanceMonitor() {
         drag
         dragMomentum={false}
         // Sync drag with motion values
-        style={{ x, y }} 
+        style={{ x, y }}
         onDragStart={() => setIsDragging(true)}
         onDragEnd={() => setTimeout(() => setIsDragging(false), 100)}
         initial={{ scale: 0.95, opacity: 0.9 }}
@@ -392,7 +532,7 @@ export function PerformanceMonitor() {
           border border-white/10
           rounded-xl overflow-hidden shadow-2xl
           text-xs font-mono text-zinc-400
-          w-80 flex flex-col
+          w-100 flex flex-col
         ">
 
           {/* --- Header --- */}
@@ -430,9 +570,9 @@ export function PerformanceMonitor() {
                 variant="minimal"
                 fullWidth
                 value={activeTab}
-                onChange={(id) => setActiveTab(id as 'perf' | 'sys' | 'shader')}
+                onChange={(id) => setActiveTab(id as 'perf' | 'sys' | 'shader' | 'buffers')}
                 tabs={tabs}
-                contentClassName="p-5 max-h-[350px] overflow-y-auto custom-scrollbar"
+                contentClassName="p-5 max-h-[370px] overflow-y-auto custom-scrollbar"
               />
             </div>
           )}

@@ -316,6 +316,13 @@ class TemporalDepthManagerImpl {
     this.captureCamera = null;
     this.isValid = false;
   }
+
+  /**
+   * Get the current buffer dimensions for debugging.
+   */
+  getDimensions(): { width: number; height: number } {
+    return { width: this.width, height: this.height };
+  }
 }
 
 // Singleton instance

@@ -1,4 +1,3 @@
-import { createTemporalDepthUniforms } from '@/hooks';
 import { computeDriftedOrigin, type OriginDriftConfig } from '@/lib/animation/originDrift';
 import { composeRotations } from '@/lib/math/rotation';
 import type { MatrixND } from '@/lib/math/types';
@@ -322,7 +321,11 @@ const MandelbulbMesh = () => {
       uMultiSourceWeights: { value: new THREE.Vector3(0.5, 0.3, 0.2) },
 
       // Temporal Reprojection uniforms
-      ...createTemporalDepthUniforms(),
+      uPrevDepthTexture: { value: null },
+      uPrevViewProjectionMatrix: { value: new THREE.Matrix4() },
+      uPrevInverseViewProjectionMatrix: { value: new THREE.Matrix4() },
+      uTemporalEnabled: { value: false },
+      uDepthBufferResolution: { value: new THREE.Vector2(1, 1) },
 
       // Orthographic projection uniforms
       uOrthographic: { value: false },

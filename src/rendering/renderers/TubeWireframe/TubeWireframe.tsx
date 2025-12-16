@@ -33,9 +33,8 @@ import { useLightingStore } from '@/stores/lightingStore'
 import { useProjectionStore } from '@/stores/projectionStore'
 import { useRotationStore } from '@/stores/rotationStore'
 import { useTransformStore } from '@/stores/transformStore'
-
-import fragmentShader from './tubeWireframe.frag?raw'
-import vertexShader from './tubeWireframe.vert?raw'
+import { usePerformanceStore } from '@/stores/performanceStore'
+import { composeTubeWireframeFragmentShader, composeTubeWireframeVertexShader } from '@/rendering/shaders/tubewireframe/compose'
 
 // Maximum extra dimensions (beyond XYZ + W)
 const MAX_EXTRA_DIMS = 7
@@ -96,16 +95,20 @@ export function TubeWireframe({
     return new CylinderGeometry(1, 1, 1, CYLINDER_SEGMENTS, 1, false)
   }, [])
 
+  const setShaderDebugInfo = usePerformanceStore((state) => state.setShaderDebugInfo)
+
   // Create shader material with all uniforms
   const material = useMemo(() => {
     // Convert colors from sRGB to linear for physically correct lighting
     const colorValue = new Color(color).convertSRGBToLinear()
     const lightUniforms = createLightUniforms()
+    const { glsl: fragmentShaderString } = composeTubeWireframeFragmentShader()
+    const vertexShaderString = composeTubeWireframeVertexShader()
 
     const mat = new ShaderMaterial({
       glslVersion: GLSL3,
-      vertexShader,
-      fragmentShader,
+      vertexShader: vertexShaderString,
+      fragmentShader: fragmentShaderString,
       uniforms: {
         // Material (colors converted to linear space)
         uColor: { value: colorValue },
@@ -148,6 +151,19 @@ export function TubeWireframe({
 
     return mat
   }, [color, opacity, metallic, roughness, radius, dimension])
+
+  // Dispatch shader debug info
+  useEffect(() => {
+    const { modules, features } = composeTubeWireframeFragmentShader()
+    setShaderDebugInfo({
+      name: 'TubeWireframe PBR',
+      vertexShaderLength: material.vertexShader.length,
+      fragmentShaderLength: material.fragmentShader.length,
+      activeModules: modules,
+      features: features,
+    })
+    return () => setShaderDebugInfo(null)
+  }, [material, setShaderDebugInfo])
 
   // Cleanup geometry and material on unmount or when they change
   const prevGeometryRef = useRef<CylinderGeometry | null>(null)

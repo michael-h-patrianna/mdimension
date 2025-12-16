@@ -1,12 +1,15 @@
 import { RENDER_LAYERS } from '@/rendering/core/layers';
-import { createSkyboxShaderDefaults, skyboxFragmentShader, skyboxGlslVersion, skyboxVertexShader } from '@/rendering/materials/skybox/SkyboxShader';
+import { createSkyboxShaderDefaults } from '@/rendering/materials/skybox/SkyboxShader';
+import { composeSkyboxFragmentShader, composeSkyboxVertexShader } from '@/rendering/shaders/skybox/compose';
+import type { SkyboxMode, SkyboxShaderConfig } from '@/rendering/shaders/skybox/types';
 import { applyDistributionTS, getCosinePaletteColorTS } from '@/rendering/shaders/palette/cosine.glsl';
 import type { ColorAlgorithm, CosineCoefficients, DistributionSettings } from '@/rendering/shaders/palette/types';
 import { useAnimationStore } from '@/stores/animationStore';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useEnvironmentStore } from '@/stores/environmentStore';
-import { Environment, shaderMaterial } from '@react-three/drei';
-import { extend, useFrame, useThree } from '@react-three/fiber';
+import { usePerformanceStore } from '@/stores/performanceStore';
+import { Environment } from '@react-three/drei';
+import { useFrame, useThree } from '@react-three/fiber';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
@@ -215,52 +218,6 @@ function usePMREMTexture(texture: THREE.CubeTexture | undefined): PMREMResult {
 // Import all skybox ktx2 files as URLs
 const skyboxAssets = import.meta.glob('/src/assets/skyboxes/**/*.ktx2', { eager: true, import: 'default', query: '?url' }) as Record<string, string>;
 
-// --- Shader Definition ---
-
-const SkyboxMaterial = shaderMaterial(
-  createSkyboxShaderDefaults(),
-  skyboxVertexShader,
-  skyboxFragmentShader
-);
-
-extend({ SkyboxMaterial });
-
-// Add type definition for JSX
-declare module '@react-three/fiber' {
-  interface ThreeElements {
-    skyboxMaterial: React.JSX.IntrinsicElements['shaderMaterial'] & {
-      uTex?: THREE.CubeTexture | null;
-      uRotation?: THREE.Matrix3;
-      uMode?: number;
-      uTime?: number;
-      uBlur?: number;
-      uIntensity?: number;
-      uHue?: number;
-      uSaturation?: number;
-      uScale?: number;
-      uComplexity?: number;
-      uTimeScale?: number;
-      uEvolution?: number;
-      uDistortion?: number;
-      uAberration?: number;
-      uVignette?: number;
-      uGrain?: number;
-      uAtmosphere?: number;
-      uTurbulence?: number;
-      uDualTone?: number;
-      uSunIntensity?: number;
-      uSunPosition?: THREE.Vector3;
-      uColor1?: THREE.Vector3;
-      uColor2?: THREE.Vector3;
-      uPalA?: THREE.Vector3;
-      uPalB?: THREE.Vector3;
-      uPalC?: THREE.Vector3;
-      uPalD?: THREE.Vector3;
-      uUsePalette?: number;
-    }
-  }
-}
-
 // --- Main Component ---
 
 interface SkyboxMeshProps {
@@ -269,11 +226,9 @@ interface SkyboxMeshProps {
 
 export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
   const meshRef = useRef<THREE.Mesh>(null);
-  const materialRef = useRef<THREE.ShaderMaterial>(null);
   const timeRef = useRef(0);
-  // Pointer removed as it was only for uMousePos
-
-  // Reusable objects to avoid per-frame allocations
+  
+  // Reusable objects
   const eulerRef = useRef(new THREE.Euler());
   const matrix3Ref = useRef(new THREE.Matrix3());
   const matrix4Ref = useRef(new THREE.Matrix4());
@@ -295,9 +250,9 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
     proceduralSettings
   } = useEnvironmentStore();
 
-  // Get all appearance settings needed for color sync
   const { colorAlgorithm, cosineCoefficients, distribution, lchLightness, lchChroma, faceColor } = useAppearanceStore();
   const isPlaying = useAnimationStore((state) => state.isPlaying);
+  const setShaderDebugInfo = usePerformanceStore((state) => state.setShaderDebugInfo);
 
   const baseRotY = skyboxRotation * (Math.PI / 180);
 
@@ -390,16 +345,9 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
     return new THREE.Color(r, g, b);
   };
 
-  // Compute colors - sample from respective palettes
-  // Classic/KTX2 mode: always use skybox's own palette (no sync support)
-  // Procedural with sync ON: sample from object's current color algorithm
-  // Procedural with sync OFF: sample from skybox's own cosine palette
   const color1Vec = useMemo(() => {
-    // Classic mode never syncs - always use skybox's own palette
     const shouldSyncWithObject = skyboxMode !== 'classic' && proceduralSettings.syncWithObject;
-
     if (shouldSyncWithObject) {
-      // Sample at t=0 for primary color using object's palette
       return computeColorAtT(
         0.0,
         colorAlgorithm,
@@ -410,7 +358,6 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
         lchChroma
       );
     }
-    // Use skybox's own cosine palette
     const skyboxCoeffs = proceduralSettings.cosineCoefficients;
     const skyboxDist = proceduralSettings.distribution;
     return computeColorAtT(
@@ -436,11 +383,8 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
   ]);
 
   const color2Vec = useMemo(() => {
-    // Classic mode never syncs - always use skybox's own palette
     const shouldSyncWithObject = skyboxMode !== 'classic' && proceduralSettings.syncWithObject;
-
     if (shouldSyncWithObject) {
-      // Sample at t=1 for secondary color using object's palette
       return computeColorAtT(
         1.0,
         colorAlgorithm,
@@ -451,7 +395,6 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
         lchChroma
       );
     }
-    // Use skybox's own cosine palette
     const skyboxCoeffs = proceduralSettings.cosineCoefficients;
     const skyboxDist = proceduralSettings.distribution;
     return computeColorAtT(
@@ -476,16 +419,9 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
     lchChroma,
   ]);
 
-  // Palette vectors for shader - determines the color evolution
-  // Classic/KTX2 mode: always use skybox's own coefficients (no sync support)
-  // Procedural with sync ON: use object's coefficients for color harmony
-  // Procedural with sync OFF: use skybox's own coefficients
   const paletteVecs = useMemo(() => {
-    // Classic mode never syncs - always use skybox's own palette
     const shouldSyncWithObject = skyboxMode !== 'classic' && proceduralSettings.syncWithObject;
-
     if (shouldSyncWithObject) {
-      // Use the object's palette coefficients
       return {
         a: new THREE.Vector3(...cosineCoefficients.a),
         b: new THREE.Vector3(...cosineCoefficients.b),
@@ -493,7 +429,6 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
         d: new THREE.Vector3(...cosineCoefficients.d),
       };
     } else {
-      // Use the skybox's own coefficients
       const skyboxCoeffs = proceduralSettings.cosineCoefficients;
       return {
         a: new THREE.Vector3(...skyboxCoeffs.a),
@@ -504,13 +439,73 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
     }
   }, [skyboxMode, proceduralSettings.syncWithObject, proceduralSettings.cosineCoefficients, cosineCoefficients]);
 
+  // Derive config for shader composition
+  const config = useMemo<SkyboxShaderConfig>(() => {
+      const modeStr = skyboxMode.startsWith('procedural_') 
+          ? skyboxMode.replace('procedural_', '') as SkyboxMode 
+          : 'classic';
+      
+      return {
+          mode: modeStr,
+          effects: {
+              atmosphere: proceduralSettings.horizon > 0,
+              sun: proceduralSettings.sunIntensity > 0,
+              vignette: true,
+              grain: proceduralSettings.noiseGrain > 0,
+              aberration: proceduralSettings.chromaticAberration > 0
+          },
+          parallax: proceduralSettings.parallaxEnabled
+      };
+  }, [skyboxMode, proceduralSettings]);
 
-  useFrame((_, delta) => {
-    if (!materialRef.current) return;
+  // Create Material
+  const material = useMemo(() => {
+      const { glsl } = composeSkyboxFragmentShader(config);
+      const mat = new THREE.ShaderMaterial({
+          glslVersion: THREE.GLSL3,
+          vertexShader: composeSkyboxVertexShader(),
+          fragmentShader: glsl,
+          uniforms: createSkyboxShaderDefaults(),
+          side: THREE.BackSide,
+          transparent: true,
+          depthWrite: false,
+      });
+      return mat;
+  }, [config]);
+
+  // Update Debug Info
+  useEffect(() => {
+      const { modules, features } = composeSkyboxFragmentShader(config);
+      setShaderDebugInfo({
+          name: 'Skybox Shader',
+          vertexShaderLength: material.vertexShader.length,
+          fragmentShaderLength: material.fragmentShader.length,
+          activeModules: modules,
+          features,
+      });
+      return () => setShaderDebugInfo(null);
+  }, [config, material, setShaderDebugInfo]);
+
+  // Fade-in animation state
+  const [opacity, setOpacity] = useState(0);
+  const fadeStartTime = useRef<number | null>(null);
+  const FADE_DURATION = 0.5; // seconds
+
+  useFrame((state, delta) => {
+    // Handle fade-in animation
+    if (fadeStartTime.current === null) {
+      fadeStartTime.current = state.clock.elapsedTime;
+    }
+    const elapsed = state.clock.elapsedTime - fadeStartTime.current;
+    const newOpacity = Math.min(1, elapsed / FADE_DURATION);
+    if (newOpacity !== opacity) {
+      setOpacity(newOpacity);
+    }
+
+    if (!material) return;
 
     // --- Animation Logic (Hybrid JS/Shader) ---
 
-    // ... logic remains ...
     if (isPlaying) {
         // Use animation speed for classic modes, or procedural time scale for procedural modes
         const speed = (skyboxMode === 'classic' && skyboxAnimationMode !== 'none')
@@ -585,7 +580,7 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
     }
 
     // Direct uniform updates for performance
-    const uniforms = materialRef.current.uniforms as Record<string, { value: any }>;
+    const uniforms = material.uniforms as Record<string, { value: any }>;
 
     if (uniforms.uTex) uniforms.uTex.value = texture;
     if (uniforms.uRotation) uniforms.uRotation.value = rotationMatrix;
@@ -593,17 +588,15 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
     if (uniforms.uTime) uniforms.uTime.value = t;
 
     if (uniforms.uBlur) uniforms.uBlur.value = finalBlur;
-    if (uniforms.uIntensity) uniforms.uIntensity.value = finalIntensity;
+    if (uniforms.uIntensity) uniforms.uIntensity.value = finalIntensity * opacity;
     if (uniforms.uHue) uniforms.uHue.value = finalHue;
     if (uniforms.uSaturation) uniforms.uSaturation.value = finalSaturation;
 
-    // Procedural Uniforms
     if (uniforms.uScale) uniforms.uScale.value = proceduralSettings.scale;
     if (uniforms.uComplexity) uniforms.uComplexity.value = proceduralSettings.complexity;
     if (uniforms.uTimeScale) uniforms.uTimeScale.value = proceduralSettings.timeScale;
     if (uniforms.uEvolution) uniforms.uEvolution.value = proceduralSettings.evolution;
 
-    // Use assignment for object types to avoid mismatch (e.g. Color vs Vector3 .set signature)
     if (uniforms.uColor1) uniforms.uColor1.value = color1Vec;
     if (uniforms.uColor2) uniforms.uColor2.value = color2Vec;
 
@@ -612,18 +605,13 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
     if (uniforms.uPalC) uniforms.uPalC.value = paletteVecs.c;
     if (uniforms.uPalD) uniforms.uPalD.value = paletteVecs.d;
 
-    // Use palette mode for interesting color evolution
-    // When syncing with monochromatic/analogous algorithms, use simple color interpolation
-    // (uColor1/uColor2 are already correctly computed for these modes)
-    // For cosine-based algorithms, use the full cosine palette shader path
     if (uniforms.uUsePalette) {
       const useSimpleInterpolation = proceduralSettings.syncWithObject &&
         (colorAlgorithm === 'monochromatic' || colorAlgorithm === 'analogous');
       uniforms.uUsePalette.value = useSimpleInterpolation ? 0.0 : 1.0;
     }
 
-    // Delight Uniforms
-    if (uniforms.uDistortion) uniforms.uDistortion.value = finalDistortion || proceduralSettings.turbulence; // Override or Combine
+    if (uniforms.uDistortion) uniforms.uDistortion.value = finalDistortion || proceduralSettings.turbulence;
     if (uniforms.uAberration) uniforms.uAberration.value = finalAberration || proceduralSettings.chromaticAberration;
     if (uniforms.uVignette) uniforms.uVignette.value = 0.15;
     if (uniforms.uGrain) uniforms.uGrain.value = proceduralSettings.noiseGrain;
@@ -633,7 +621,6 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
     if (uniforms.uSunIntensity) uniforms.uSunIntensity.value = proceduralSettings.sunIntensity;
     if (uniforms.uSunPosition) uniforms.uSunPosition.value.set(...proceduralSettings.sunPosition);
 
-    // Starfield Uniforms
     if (uniforms.uStarDensity) uniforms.uStarDensity.value = proceduralSettings.starfield.density;
     if (uniforms.uStarBrightness) uniforms.uStarBrightness.value = proceduralSettings.starfield.brightness;
     if (uniforms.uStarSize) uniforms.uStarSize.value = proceduralSettings.starfield.size;
@@ -641,49 +628,21 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
     if (uniforms.uStarGlow) uniforms.uStarGlow.value = proceduralSettings.starfield.glow;
     if (uniforms.uStarColorVariation) uniforms.uStarColorVariation.value = proceduralSettings.starfield.colorVariation;
 
-    // Aurora Uniforms
     if (uniforms.uAuroraCurtainHeight) uniforms.uAuroraCurtainHeight.value = proceduralSettings.aurora?.curtainHeight ?? 0.5;
     if (uniforms.uAuroraWaveFrequency) uniforms.uAuroraWaveFrequency.value = proceduralSettings.aurora?.waveFrequency ?? 1.0;
 
-    // Horizon Uniforms
     if (uniforms.uHorizonGradientContrast) uniforms.uHorizonGradientContrast.value = proceduralSettings.horizonGradient?.gradientContrast ?? 0.5;
     if (uniforms.uHorizonSpotlightFocus) uniforms.uHorizonSpotlightFocus.value = proceduralSettings.horizonGradient?.spotlightFocus ?? 0.5;
 
-    // Ocean Uniforms
     if (uniforms.uOceanCausticIntensity) uniforms.uOceanCausticIntensity.value = proceduralSettings.ocean?.causticIntensity ?? 0.5;
     if (uniforms.uOceanDepthGradient) uniforms.uOceanDepthGradient.value = proceduralSettings.ocean?.depthGradient ?? 0.5;
     if (uniforms.uOceanBubbleDensity) uniforms.uOceanBubbleDensity.value = proceduralSettings.ocean?.bubbleDensity ?? 0.3;
     if (uniforms.uOceanSurfaceShimmer) uniforms.uOceanSurfaceShimmer.value = proceduralSettings.ocean?.surfaceShimmer ?? 0.4;
 
-    // Parallax Uniforms
     if (uniforms.uParallaxEnabled) uniforms.uParallaxEnabled.value = proceduralSettings.parallaxEnabled ? 1.0 : 0.0;
     if (uniforms.uParallaxStrength) uniforms.uParallaxStrength.value = proceduralSettings.parallaxStrength ?? 0.5;
   });
 
-  // Calculate Initial State for Props (Critical for Environment capture before first frame)
-  const initialRotation = useMemo(() => {
-      const euler = new THREE.Euler(0, baseRotY, 0);
-      return new THREE.Matrix3().setFromMatrix4(new THREE.Matrix4().makeRotationFromEuler(euler));
-  }, [baseRotY]);
-
-  // Fade-in animation state
-  const [opacity, setOpacity] = useState(0);
-  const fadeStartTime = useRef<number | null>(null);
-  const FADE_DURATION = 0.5; // seconds
-
-  useFrame((state) => {
-    // Handle fade-in animation
-    if (fadeStartTime.current === null) {
-      fadeStartTime.current = state.clock.elapsedTime;
-    }
-    const elapsed = state.clock.elapsedTime - fadeStartTime.current;
-    const newOpacity = Math.min(1, elapsed / FADE_DURATION);
-    if (newOpacity !== opacity) {
-      setOpacity(newOpacity);
-    }
-  });
-
-  // Don't render until we start fading in
   if (opacity === 0 && fadeStartTime.current === null) {
     return null;
   }
@@ -692,32 +651,7 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
     <mesh ref={meshRef} data-testid="skybox-mesh">
         {/* Use sphere geometry instead of box - no visible seams at corners */}
         <sphereGeometry args={[500, 64, 32]} />
-        <skyboxMaterial
-            ref={materialRef}
-            glslVersion={skyboxGlslVersion}
-            side={THREE.BackSide}
-            transparent={opacity < 1}
-            opacity={opacity}
-            depthWrite={false}
-            // Declarative props for initialization
-            uTex={texture}
-            uRotation={initialRotation}
-            uMode={0}
-            uTime={0}
-            uBlur={skyboxBlur}
-            uIntensity={skyboxIntensity * opacity}
-            uHue={0}
-            uSaturation={1}
-            uScale={proceduralSettings.scale}
-            uComplexity={proceduralSettings.complexity}
-            uTimeScale={proceduralSettings.timeScale}
-            uEvolution={proceduralSettings.evolution}
-            uDistortion={0}
-            uAberration={0}
-            uVignette={0.15}
-            uGrain={proceduralSettings.noiseGrain}
-            uAtmosphere={proceduralSettings.horizon}
-        />
+        <primitive object={material} attach="material" />
     </mesh>
   );
 };
