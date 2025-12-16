@@ -150,99 +150,17 @@ const QuaternionJuliaMesh = () => {
     }
   }, [])
 
-  // Get dimension
+  // Get dimension from geometry store (used for useEffect dependency)
   const dimension = useGeometryStore((state) => state.dimension)
 
-  // Get Quaternion Julia config from store
-  const juliaConstant = useExtendedObjectStore(
-    (state) => state.quaternionJulia.juliaConstant
-  )
-  const power = useExtendedObjectStore((state) => state.quaternionJulia.power)
-  const maxIterations = useExtendedObjectStore(
-    (state) => state.quaternionJulia.maxIterations
-  )
-  const bailoutRadius = useExtendedObjectStore(
-    (state) => state.quaternionJulia.bailoutRadius
-  )
+  // Get parameterValues for useEffect dependency (triggers basis vector recomputation)
   const parameterValues = useExtendedObjectStore(
     (state) => state.quaternionJulia.parameterValues
   )
 
-  // Animation parameters
-  const juliaConstantAnimation = useExtendedObjectStore(
-    (state) => state.quaternionJulia.juliaConstantAnimation
-  )
-  const powerAnimation = useExtendedObjectStore(
-    (state) => state.quaternionJulia.powerAnimation
-  )
-  const originDriftEnabled = useExtendedObjectStore(
-    (state) => state.quaternionJulia.originDriftEnabled
-  )
-  const originDriftAmplitude = useExtendedObjectStore(
-    (state) => state.quaternionJulia.originDriftAmplitude
-  )
-  const originDriftBaseFrequency = useExtendedObjectStore(
-    (state) => state.quaternionJulia.originDriftBaseFrequency
-  )
-  const originDriftFrequencySpread = useExtendedObjectStore(
-    (state) => state.quaternionJulia.originDriftFrequencySpread
-  )
-
-  // Dimension mixing
-  const dimensionMixEnabled = useExtendedObjectStore(
-    (state) => state.quaternionJulia.dimensionMixEnabled
-  )
-  const mixIntensity = useExtendedObjectStore(
-    (state) => state.quaternionJulia.mixIntensity
-  )
-  const mixFrequency = useExtendedObjectStore(
-    (state) => state.quaternionJulia.mixFrequency
-  )
-
-  // Animation bias
-  const animationBias = useUIStore((state) => state.animationBias)
-
-  // Color state
-  const faceColor = useAppearanceStore((state) => state.faceColor)
-  const colorAlgorithm = useAppearanceStore((state) => state.colorAlgorithm)
-  const cosineCoefficients = useAppearanceStore(
-    (state) => state.cosineCoefficients
-  )
-  const distribution = useAppearanceStore((state) => state.distribution)
-  const lchLightness = useAppearanceStore((state) => state.lchLightness)
-  const lchChroma = useAppearanceStore((state) => state.lchChroma)
-  const multiSourceWeights = useAppearanceStore(
-    (state) => state.multiSourceWeights
-  )
-
-  // Lighting
-  const lights = useLightingStore((state) => state.lights)
-  const ambientIntensity = useLightingStore((state) => state.ambientIntensity)
-  const ambientColor = useLightingStore((state) => state.ambientColor)
-  const specularIntensity = useLightingStore(
-    (state) => state.specularIntensity
-  )
-  const shininess = useLightingStore((state) => state.shininess)
-  const specularColor = useLightingStore((state) => state.specularColor)
-  const diffuseIntensity = useLightingStore((state) => state.diffuseIntensity)
-
-  // Fresnel
-  const edgesVisible = useAppearanceStore((state) => state.edgesVisible)
-  const fresnelIntensity = useAppearanceStore(
-    (state) => state.fresnelIntensity
-  )
-  const edgeColor = useAppearanceStore((state) => state.edgeColor)
-
-  // Opacity
-  const opacitySettings = useUIStore((state) => state.opacitySettings)
-
-  // Shadows
-  const shadowEnabled = useLightingStore((state) => state.shadowEnabled)
-  const shadowQuality = useLightingStore((state) => state.shadowQuality)
-  const shadowSoftness = useLightingStore((state) => state.shadowSoftness)
-  const shadowAnimationMode = useLightingStore(
-    (state) => state.shadowAnimationMode
-  )
+  // NOTE: All other store values are read via getState() inside useFrame
+  // to avoid React re-renders during animation. This is the high-performance
+  // pattern used by Hyperbulb and other raymarched renderers.
 
   const uniforms = useMemo(
     () => ({
@@ -339,13 +257,24 @@ const QuaternionJuliaMesh = () => {
     basisVectorsDirtyRef.current = true
   }, [dimension, parameterValues])
 
-  // Check if rotations changed
-  const rotationsChanged = useCallback(
+  /**
+   * Check if rotations have changed by comparing current vs previous state.
+   * Returns true if any rotation angle has changed, or if this is the first comparison.
+   * NOTE: rotations is a Map<string, number>, not a plain object!
+   */
+  const hasRotationsChanged = useCallback(
     (current: RotationState['rotations'], previous: RotationState['rotations'] | null): boolean => {
+      // First frame or no previous state - consider it a change to ensure initial computation
       if (!previous) return true
-      const keys = Object.keys(current)
-      for (const key of keys) {
-        if (current[key] !== previous[key]) return true
+
+      // Check if sizes differ
+      if (current.size !== previous.size) return true
+
+      // Compare all rotation planes using Map methods
+      for (const [key, value] of current.entries()) {
+        if (previous.get(key) !== value) {
+          return true
+        }
       }
       return false
     },
@@ -390,8 +319,13 @@ const QuaternionJuliaMesh = () => {
     const animTime = animationTimeRef.current
 
     // Quality mode based on rotation changes
-    const didRotate = rotationsChanged(currentRotations, prevRotationsRef.current)
-    prevRotationsRef.current = { ...currentRotations }
+    const didRotate = hasRotationsChanged(currentRotations, prevRotationsRef.current)
+
+    // Store current rotations for next frame comparison only when changed
+    // (avoids creating garbage every frame)
+    if (didRotate || !prevRotationsRef.current) {
+      prevRotationsRef.current = new Map(currentRotations)
+    }
 
     if (didRotate) {
       fastModeRef.current = true
@@ -419,12 +353,11 @@ const QuaternionJuliaMesh = () => {
     u.uEscapeRadius.value = config.bailoutRadius
 
     // Julia constant (with animation if enabled)
-    // Use raw clock time like Hyperbulb - animation runs when feature is enabled
+    // Uses controlled animation time so it respects play/pause
     if (config.juliaConstantAnimation.enabled) {
       const { amplitude, frequency, phase } = config.juliaConstantAnimation
       const base = config.juliaConstant
-      // Use raw elapsed time for consistent animation regardless of play state
-      const t = state.clock.elapsedTime
+      const t = animTime  // Use controlled animation time
       u.uJuliaConstant.value.set(
         base[0] + amplitude[0] * Math.sin(frequency[0] * t * 2 * Math.PI + phase[0]),
         base[1] + amplitude[1] * Math.cos(frequency[1] * t * 2 * Math.PI + phase[1]),
@@ -435,25 +368,25 @@ const QuaternionJuliaMesh = () => {
       u.uJuliaConstant.value.set(...config.juliaConstant)
     }
 
-    // Power animation - use raw clock time like Hyperbulb
-    u.uPowerAnimationEnabled.value = config.powerAnimation.enabled
+    // Power animation - directly modify uPower like Hyperbulb does
+    // This gives smoother animation and matches the Hyperbulb pattern
     if (config.powerAnimation.enabled) {
       const { minPower, maxPower, speed } = config.powerAnimation
-      // Use raw clock time (matching Hyperbulb pattern)
-      const timeInSeconds = state.clock.elapsedTime / 1000
-      const t = timeInSeconds * speed * 2 * Math.PI
+      // Use controlled animation time (respects play/pause and speed)
+      const t = animTime * speed * 2 * Math.PI
       const normalized = (Math.sin(t) + 1) / 2 // Maps [-1, 1] to [0, 1]
       const animatedPower = minPower + normalized * (maxPower - minPower)
-      u.uAnimatedPower.value = animatedPower
+      u.uPower.value = animatedPower  // Directly set uPower like Hyperbulb
       lastPowerRef.current = animatedPower
-    } else {
-      u.uAnimatedPower.value = config.power
     }
+    // Disable the separate animation uniform system (Hyperbulb pattern)
+    u.uPowerAnimationEnabled.value = false
+    u.uAnimatedPower.value = config.power
 
-    // Dimension mixing - use raw clock time
+    // Dimension mixing - uses controlled animation time (matches Hyperbulb)
     u.uDimensionMixEnabled.value = config.dimensionMixEnabled
     u.uMixIntensity.value = config.mixIntensity
-    u.uMixTime.value = state.clock.elapsedTime * config.mixFrequency * 2 * Math.PI
+    u.uMixTime.value = animTime * config.mixFrequency * 2 * Math.PI
 
     // Check if basis vectors need recomputation
     const dimChanged = currentDimension !== prevDimensionRef.current
@@ -523,7 +456,7 @@ const QuaternionJuliaMesh = () => {
         wa.origin[3 + i] = config.parameterValues[i]
       }
 
-      // Apply origin drift if enabled (use raw clock time like Hyperbulb)
+      // Apply origin drift if enabled (Technique C - animate slice origin in extra dims)
       if (config.originDriftEnabled && currentDimension >= 4) {
         const driftConfig: OriginDriftConfig = {
           enabled: true,
@@ -531,14 +464,18 @@ const QuaternionJuliaMesh = () => {
           baseFrequency: config.originDriftBaseFrequency,
           frequencySpread: config.originDriftFrequencySpread,
         }
+        // Get animation speed from store for consistent drift timing
+        const animationSpeed = animStore.speed
         const driftedOrigin = computeDriftedOrigin(
-          wa.origin,
-          currentDimension,
-          state.clock.elapsedTime, // Use raw clock time
-          driftConfig
+          config.parameterValues,  // baseValues - extra dimension values only
+          animTime,                // time - controlled animation time (respects play/pause)
+          driftConfig,             // config
+          animationSpeed,          // animationSpeed
+          uiStore.animationBias    // animationBias
         )
-        for (let i = 0; i < driftedOrigin.length; i++) {
-          wa.origin[i] = driftedOrigin[i]
+        // Set drifted values for extra dimensions (indices 3+)
+        for (let i = 0; i < driftedOrigin.length && i + 3 < MAX_DIMENSION; i++) {
+          wa.origin[3 + i] = driftedOrigin[i] ?? 0
         }
       }
 

@@ -1,11 +1,14 @@
 import { createSkyboxShaderDefaults, skyboxFragmentShader, skyboxVertexShader } from '@/rendering/shaders/materials/SkyboxShader';
 import { useAnimationStore } from '@/stores/animationStore';
 import { useEnvironmentStore } from '@/stores/environmentStore';
+import { useAppearanceStore } from '@/stores/appearanceStore';
 import { Environment, shaderMaterial } from '@react-three/drei';
 import { extend, useFrame, useThree } from '@react-three/fiber';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader';
+import { COSINE_PRESETS } from '@/rendering/shaders/palette/presets';
+import { calculateCosineColor } from '@/rendering/shaders/palette/cosine.glsl';
 
 // ============================================================================
 // PMREM Cache - Module-level cache to avoid regenerating PMREM for same textures
@@ -223,26 +226,109 @@ extend({ SkyboxMaterial });
 // Add type definition for JSX
 declare module '@react-three/fiber' {
   interface ThreeElements {
-    skyboxMaterial: React.JSX.IntrinsicElements['shaderMaterial']
+    skyboxMaterial: React.JSX.IntrinsicElements['shaderMaterial'] & {
+      uTex?: THREE.CubeTexture | null;
+      uRotation?: THREE.Matrix3;
+      uMode?: number;
+      uTime?: number;
+      uBlur?: number;
+      uIntensity?: number;
+      uHue?: number;
+      uSaturation?: number;
+      uScale?: number;
+      uComplexity?: number;
+      uTimeScale?: number;
+      uEvolution?: number;
+      uDistortion?: number;
+      uAberration?: number;
+      uVignette?: number;
+      uGrain?: number;
+      uAtmosphere?: number;
+      uStardust?: number;
+      uGrid?: number;
+      uMouseParallax?: number;
+      uTurbulence?: number;
+      uDualTone?: number;
+      uSunIntensity?: number;
+      uSunPosition?: THREE.Vector3;
+      uMousePos?: THREE.Vector2;
+      uColor1?: THREE.Vector3;
+      uColor2?: THREE.Vector3;
+      uPalA?: THREE.Vector3;
+      uPalB?: THREE.Vector3;
+      uPalC?: THREE.Vector3;
+      uPalD?: THREE.Vector3;
+      uUsePalette?: number;
+    }
   }
 }
 
 // --- Main Component ---
 
-const SkyboxMesh: React.FC<{ texture: THREE.CubeTexture }> = ({ texture }) => {
+interface SkyboxMeshProps {
+    texture: THREE.CubeTexture | null;
+}
+
+const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   const timeRef = useRef(0);
+  const { pointer } = useThree();
 
   const {
+    skyboxMode,
     skyboxIntensity,
     skyboxBlur,
     skyboxRotation,
     skyboxAnimationMode,
-    skyboxAnimationSpeed
+    skyboxAnimationSpeed,
+    proceduralSettings
   } = useEnvironmentStore();
+  
+  const { cosineCoefficients } = useAppearanceStore();
   const isPlaying = useAnimationStore((state) => state.isPlaying);
 
   const baseRotY = skyboxRotation * (Math.PI / 180);
+
+  // Helper to get vector from hex or coeffs
+  const color1Vec = useMemo(() => {
+      if (proceduralSettings.syncWithObject) {
+          // Derive background color from palette (t=0) for cohesion
+          const c = calculateCosineColor(0.0, 
+              cosineCoefficients.a, 
+              cosineCoefficients.b, 
+              cosineCoefficients.c, 
+              cosineCoefficients.d
+          );
+          return new THREE.Color(c.r, c.g, c.b);
+      }
+      return new THREE.Color(proceduralSettings.color1);
+  }, [proceduralSettings.color1, proceduralSettings.syncWithObject, cosineCoefficients]);
+  
+  const color2Vec = useMemo(() => new THREE.Color(proceduralSettings.color2), [proceduralSettings.color2]);
+  
+  // Palette vectors (Dynamic or Static)
+  const paletteVecs = useMemo(() => {
+     if (proceduralSettings.syncWithObject) {
+         // Use the object's palette
+         return {
+             a: new THREE.Vector3(...cosineCoefficients.a),
+             b: new THREE.Vector3(...cosineCoefficients.b),
+             c: new THREE.Vector3(...cosineCoefficients.c),
+             d: new THREE.Vector3(...cosineCoefficients.d),
+         };
+     } else {
+         // Use the skybox's selected palette preset
+         const preset = COSINE_PRESETS[proceduralSettings.paletteId as keyof typeof COSINE_PRESETS] 
+             || COSINE_PRESETS.nebula;
+         return {
+             a: new THREE.Vector3(...preset.a),
+             b: new THREE.Vector3(...preset.b),
+             c: new THREE.Vector3(...preset.c),
+             d: new THREE.Vector3(...preset.d),
+         };
+     }
+  }, [proceduralSettings.syncWithObject, proceduralSettings.paletteId, cosineCoefficients]);
+
 
   useFrame((state, delta) => {
     if (!materialRef.current) return;
@@ -250,9 +336,14 @@ const SkyboxMesh: React.FC<{ texture: THREE.CubeTexture }> = ({ texture }) => {
     // --- Animation Logic (Hybrid JS/Shader) ---
 
     // ... logic remains ...
-    if (isPlaying && skyboxAnimationMode !== 'none') {
+    if (isPlaying) {
+        // Use animation speed for classic modes, or procedural time scale for procedural modes
+        const speed = (skyboxMode === 'classic' && skyboxAnimationMode !== 'none') 
+            ? skyboxAnimationSpeed 
+            : 1.0; 
+            
         const TIME_SCALE = 0.01;
-        timeRef.current += delta * skyboxAnimationSpeed * TIME_SCALE;
+        timeRef.current += delta * speed * TIME_SCALE;
     }
     const t = timeRef.current; // Use accumulated time
 
@@ -267,7 +358,8 @@ const SkyboxMesh: React.FC<{ texture: THREE.CubeTexture }> = ({ texture }) => {
     let finalDistortion = 0;
     let finalAberration = 0;
 
-    if (isPlaying && skyboxAnimationMode !== 'none') {
+    // Classic Animations
+    if (skyboxMode === 'classic' && isPlaying && skyboxAnimationMode !== 'none') {
         switch (skyboxAnimationMode) {
             case 'cinematic':
                 finalRotY += t * 0.1;
@@ -298,17 +390,60 @@ const SkyboxMesh: React.FC<{ texture: THREE.CubeTexture }> = ({ texture }) => {
 
     const euler = new THREE.Euler(finalRotX, finalRotY, finalRotZ);
     const rotationMatrix = new THREE.Matrix3().setFromMatrix4(new THREE.Matrix4().makeRotationFromEuler(euler));
+    
+    // Determine numeric mode
+    let modeInt = 0;
+    if (skyboxMode === 'procedural_aurora') modeInt = 1;
+    if (skyboxMode === 'procedural_nebula') modeInt = 2;
+    if (skyboxMode === 'procedural_void') modeInt = 3;
 
     // Direct uniform updates for performance
-    materialRef.current.uniforms.uTex.value = texture;
-    materialRef.current.uniforms.uRotation.value = rotationMatrix;
-    materialRef.current.uniforms.uBlur.value = finalBlur;
-    materialRef.current.uniforms.uIntensity.value = finalIntensity;
-    materialRef.current.uniforms.uHue.value = finalHue;
-    materialRef.current.uniforms.uSaturation.value = finalSaturation;
-    materialRef.current.uniforms.uDistortion.value = finalDistortion;
-    materialRef.current.uniforms.uAberration.value = finalAberration;
-    materialRef.current.uniforms.uTime.value = t;
+    const uniforms = materialRef.current.uniforms as Record<string, { value: any }>;
+    
+    if (uniforms.uTex) uniforms.uTex.value = texture;
+    if (uniforms.uRotation) uniforms.uRotation.value = rotationMatrix;
+    if (uniforms.uMode) uniforms.uMode.value = modeInt;
+    if (uniforms.uTime) uniforms.uTime.value = t;
+    
+    if (uniforms.uBlur) uniforms.uBlur.value = finalBlur;
+    if (uniforms.uIntensity) uniforms.uIntensity.value = finalIntensity;
+    if (uniforms.uHue) uniforms.uHue.value = finalHue;
+    if (uniforms.uSaturation) uniforms.uSaturation.value = finalSaturation;
+    
+    // Procedural Uniforms
+    if (uniforms.uScale) uniforms.uScale.value = proceduralSettings.scale;
+    if (uniforms.uComplexity) uniforms.uComplexity.value = proceduralSettings.complexity;
+    if (uniforms.uTimeScale) uniforms.uTimeScale.value = proceduralSettings.timeScale;
+    if (uniforms.uEvolution) uniforms.uEvolution.value = proceduralSettings.evolution;
+    
+    // Use assignment for object types to avoid mismatch (e.g. Color vs Vector3 .set signature)
+    if (uniforms.uColor1) uniforms.uColor1.value = color1Vec;
+    if (uniforms.uColor2) uniforms.uColor2.value = color2Vec;
+    
+    if (uniforms.uPalA) uniforms.uPalA.value = paletteVecs.a;
+    if (uniforms.uPalB) uniforms.uPalB.value = paletteVecs.b;
+    if (uniforms.uPalC) uniforms.uPalC.value = paletteVecs.c;
+    if (uniforms.uPalD) uniforms.uPalD.value = paletteVecs.d;
+    
+    // If sync is on, use the palette (1.0). If off, use manual colors (0.0).
+    // This allows the color pickers to function in "Manual" mode.
+    // Future expansion: If we add a Palette Selector UI, we would enable palette (1.0) for that too.
+    if (uniforms.uUsePalette) uniforms.uUsePalette.value = proceduralSettings.syncWithObject ? 1.0 : 0.0;
+    
+    // Delight Uniforms
+    if (uniforms.uDistortion) uniforms.uDistortion.value = finalDistortion || proceduralSettings.turbulence; // Override or Combine
+    if (uniforms.uAberration) uniforms.uAberration.value = finalAberration || proceduralSettings.chromaticAberration;
+    if (uniforms.uVignette) uniforms.uVignette.value = 0.15;
+    if (uniforms.uGrain) uniforms.uGrain.value = proceduralSettings.noiseGrain;
+    if (uniforms.uAtmosphere) uniforms.uAtmosphere.value = proceduralSettings.horizon;
+    if (uniforms.uStardust) uniforms.uStardust.value = proceduralSettings.stardustDensity;
+    if (uniforms.uGrid) uniforms.uGrid.value = proceduralSettings.gridIntensity;
+    if (uniforms.uMouseParallax) uniforms.uMouseParallax.value = proceduralSettings.mouseParallaxStrength;
+    if (uniforms.uTurbulence) uniforms.uTurbulence.value = proceduralSettings.turbulence;
+    if (uniforms.uDualTone) uniforms.uDualTone.value = proceduralSettings.dualToneContrast;
+    if (uniforms.uSunIntensity) uniforms.uSunIntensity.value = proceduralSettings.sunIntensity;
+    if (uniforms.uSunPosition) uniforms.uSunPosition.value.set(...proceduralSettings.sunPosition);
+    if (uniforms.uMousePos) uniforms.uMousePos.value.set(pointer.x, pointer.y);
   });
 
   // Calculate Initial State for Props (Critical for Environment capture before first frame)
@@ -340,7 +475,7 @@ const SkyboxMesh: React.FC<{ texture: THREE.CubeTexture }> = ({ texture }) => {
   }
 
   return (
-    <mesh>
+    <mesh data-testid="skybox-mesh">
         {/* Use sphere geometry instead of box - no visible seams at corners */}
         <sphereGeometry args={[500, 64, 32]} />
         <skyboxMaterial
@@ -352,17 +487,21 @@ const SkyboxMesh: React.FC<{ texture: THREE.CubeTexture }> = ({ texture }) => {
             // Declarative props for initialization
             uTex={texture}
             uRotation={initialRotation}
+            uMode={0}
+            uTime={0}
             uBlur={skyboxBlur}
             uIntensity={skyboxIntensity * opacity}
             uHue={0}
             uSaturation={1}
+            uScale={proceduralSettings.scale}
+            uComplexity={proceduralSettings.complexity}
+            uTimeScale={proceduralSettings.timeScale}
+            uEvolution={proceduralSettings.evolution}
             uDistortion={0}
             uAberration={0}
-            uTime={0}
-            // Quality enhancement uniforms
             uVignette={0.15}
-            uGrain={0.015}
-            uAtmosphere={0.0}
+            uGrain={proceduralSettings.noiseGrain}
+            uAtmosphere={proceduralSettings.horizon}
         />
     </mesh>
   );
@@ -465,13 +604,6 @@ const SkyboxLoader: React.FC = () => {
 
   return (
     <>
-        {/* Environment for Lighting/Reflections (IBL) */}
-        {/*
-         * Use PMREM-processed texture for scene.environment so that
-         * meshStandardMaterial works correctly with roughness/metalness.
-         * Raw CubeTextures don't have the prefiltered mipmaps needed for PBR.
-         * Fall back to studio preset while PMREM is generating.
-         */}
         {shouldRenderSkybox && pmremTexture && !isPMREMGenerating ? (
             <Environment
                 key={pmremTexture.uuid}
@@ -480,8 +612,6 @@ const SkyboxLoader: React.FC = () => {
             />
         ) : null}
 
-        {/* Visible Skybox Mesh with Custom Shader (animations, effects, etc.) */}
-        {/* Uses the original texture for custom shader effects */}
         {shouldRenderSkybox && texture && (
             <SkyboxMesh texture={texture} />
         )}
@@ -495,16 +625,16 @@ const SkyboxLoader: React.FC = () => {
  * Falls back to studio environment lighting while skybox is loading.
  */
 export const Skybox: React.FC = () => {
-  const { skyboxEnabled, skyboxTexture } = useEnvironmentStore();
+  const { skyboxEnabled, skyboxMode } = useEnvironmentStore();
 
-  // Check if skybox should be loaded
-  const shouldLoadSkybox = skyboxEnabled && skyboxTexture && skyboxTexture !== 'none';
+  if (!skyboxEnabled) return null;
+  
+  // If procedural, skip the KTX2 loader and render mesh directly
+  if (skyboxMode !== 'classic') {
+      return <SkyboxMesh texture={null} />;
+  }
 
   return (
-    <>
-      {/* Async skybox loader - renders immediately, loads texture in background */}
-      {/* No fallback environment needed - scene has its own lighting system */}
-      {shouldLoadSkybox && <SkyboxLoader />}
-    </>
+    <SkyboxLoader />
   );
 };

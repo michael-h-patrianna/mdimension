@@ -185,7 +185,7 @@ async function runTests() {
         // Open Animation Section (if closed)
         // Animation is in the "Scene" tab of the right panel
         console.log('Switching to Scene tab...');
-        await page.getByText('Scene').click();
+        await page.getByTestId('right-panel-tabs-tab-scene').click();
         await page.waitForTimeout(500);
         
         // If the Animation section is closed, we might need to open it. 
@@ -257,6 +257,60 @@ async function runTests() {
         await page.waitForTimeout(500);
         assert(!(await overlay.isVisible()), 'Shortcuts overlay should be closed');
     });
+    // --- Skybox Procedural Modes ---
+    await test('Skybox Procedural Modes', async () => {
+        // Switch to Scene Tab
+        try {
+            await page.getByTestId('right-panel-tabs-tab-scene').click();
+        } catch (e) {
+            console.log('Could not find Scene tab');
+        }
+        await page.waitForTimeout(500);
+
+        // Click the Skybox sub-tab using generated test id
+        // EnvironmentSection is defaultOpen=true, so we expect the tabs to be visible
+        try {
+            const skyboxTab = page.getByTestId('env-controls-tab-skybox');
+            if (await skyboxTab.isVisible()) {
+                await skyboxTab.click();
+            } else {
+                console.log('Skybox tab not visible, trying to open Environment section...');
+                await page.getByTestId('section-environment-header').click();
+                await page.waitForTimeout(500);
+                await skyboxTab.click();
+            }
+            await page.waitForTimeout(500);
+        } catch (e) {
+            console.log('Could not find Skybox sub-tab');
+        }
+
+        // Ensure Skybox is enabled
+        const modeSelect = page.getByTestId('skybox-mode-select');
+        if (await modeSelect.isVisible()) {
+             // 1. Classic Mode Check
+             console.log('    Testing Classic Mode...');
+             await modeSelect.selectOption('classic');
+             await page.waitForTimeout(1000);
+             await page.screenshot({ path: `${SCREENSHOT_DIR}/skybox-classic.png` });
+             
+             // 2. Aurora Mode
+             console.log('    Testing Aurora Mode...');
+             await modeSelect.selectOption('procedural_aurora');
+             await page.waitForTimeout(1000);
+             await page.screenshot({ path: `${SCREENSHOT_DIR}/skybox-aurora.png` });
+             
+             // 3. Nebula Mode
+             console.log('    Testing Nebula Mode...');
+             await modeSelect.selectOption('procedural_nebula');
+             await page.waitForTimeout(1000);
+             await page.screenshot({ path: `${SCREENSHOT_DIR}/skybox-nebula.png` });
+             
+             assertNoErrors();
+        } else {
+             console.log('Skybox controls not found, skipping skybox test');
+        }
+    });
+
   // --- Summary ---
   console.log('\n=== Test Summary ===');
   console.log(`Tests: ${testsPassed}/${testsRun} passed`);

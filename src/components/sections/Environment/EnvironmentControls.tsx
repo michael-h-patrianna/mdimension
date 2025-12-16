@@ -231,6 +231,7 @@ export const EnvironmentControls: React.FC<EnvironmentControlsProps> = React.mem
       <Tabs
         value={activeTab}
         onChange={setActiveTab}
+        data-testid="env-controls"
         tabs={[
           { id: 'walls', label: 'Walls', content: wallsContent },
           { id: 'skybox', label: 'Skybox', content: <SkyboxControls /> },

@@ -211,6 +211,59 @@ export type SkyboxAnimationMode =
 export const DEFAULT_SKYBOX_ANIMATION_MODE: SkyboxAnimationMode = 'heatwave'
 export const DEFAULT_SKYBOX_ANIMATION_SPEED = 0.01
 
+// --- Procedural Skybox Defaults ---
+
+export type SkyboxMode = 'classic' | 'procedural_aurora' | 'procedural_nebula' | 'procedural_void'
+
+export interface SkyboxProceduralSettings {
+  // Core
+  scale: number
+  complexity: number // 0-1 (Quality)
+  timeScale: number
+  
+  // Appearance
+  paletteId: string // Link to Cosine Palette Presets
+  syncWithObject: boolean // "Harmonic Link"
+  color1: string // Custom Primary
+  color2: string // Custom Secondary
+  
+  // Delight Features (The 10 "Wow" Factors)
+  stardustDensity: number // 0-1
+  chromaticAberration: number // 0-1 (Radial/Lens style)
+  horizon: number // 0-1 (0 = none, 1 = strong plane)
+  gridIntensity: number // 0-1
+  mouseParallaxStrength: number // 0-1
+  turbulence: number // 0-1
+  dualToneContrast: number // 0-1 (Shadow intensity)
+  sunIntensity: number // 0-1
+  sunPosition: [number, number, number]
+  noiseGrain: number // 0-1
+  evolution: number // 0-1 (The "Seed" / W-coordinate)
+}
+
+export const DEFAULT_SKYBOX_MODE: SkyboxMode = 'classic'
+
+export const DEFAULT_SKYBOX_PROCEDURAL_SETTINGS: SkyboxProceduralSettings = {
+  scale: 1.0,
+  complexity: 0.5,
+  timeScale: 0.2,
+  paletteId: 'rainbow',
+  syncWithObject: true,
+  color1: '#0000ff',
+  color2: '#ff00ff',
+  stardustDensity: 0.3,
+  chromaticAberration: 0.1,
+  horizon: 0.0,
+  gridIntensity: 0.0,
+  mouseParallaxStrength: 0.2,
+  turbulence: 0.3,
+  dualToneContrast: 0.5,
+  sunIntensity: 0.0,
+  sunPosition: [10, 10, 10],
+  noiseGrain: 0.1,
+  evolution: 0.0
+}
+
 // ============================================================================
 // Shader Defaults
 // ============================================================================

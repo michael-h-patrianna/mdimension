@@ -15,7 +15,7 @@ export const EnvironmentSection: React.FC<EnvironmentSectionProps> = ({
   defaultOpen = false,
 }) => {
   return (
-    <Section title="Environment" defaultOpen={defaultOpen}>
+    <Section title="Environment" defaultOpen={defaultOpen} data-testid="section-environment">
       <EnvironmentControls />
     </Section>
   );

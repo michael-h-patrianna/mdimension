@@ -61,6 +61,7 @@ export const EditorRightPanel: React.FC = () => {
     <div className="h-full flex flex-col bg-panel-bg border-l border-panel-border w-80 shrink-0">
       <div className="flex-1 overflow-hidden flex flex-col">
         <Tabs
+          data-testid="right-panel-tabs"
           tabs={tabs}
           value={activeTab}
           onChange={setActiveTab}
