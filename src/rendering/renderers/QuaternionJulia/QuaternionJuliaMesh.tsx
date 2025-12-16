@@ -289,7 +289,8 @@ const QuaternionJuliaMesh = () => {
     const material = mesh.material as THREE.ShaderMaterial
     if (!material?.uniforms) return
 
-    const u = material.uniforms
+    const u = material.uniforms as any;
+    if (!u) return;
 
     // Get current state directly from stores
     const animStore = useAnimationStore.getState()

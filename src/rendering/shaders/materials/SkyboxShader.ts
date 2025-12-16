@@ -51,14 +51,10 @@ export interface SkyboxShaderUniforms {
   uVignette: number;
   uGrain: number;
   uAtmosphere: number; // Horizon
-  uStardust: number;
-  uGrid: number;
-  uMouseParallax: number;
   uTurbulence: number;
   uDualTone: number;
   uSunIntensity: number;
   uSunPosition: THREE.Vector3;
-  uMousePos: THREE.Vector2; // Normalized -1 to 1
 
   [key: string]: THREE.CubeTexture | THREE.Matrix3 | THREE.Vector3 | THREE.Vector2 | number | null;
 }
@@ -83,8 +79,8 @@ export function createSkyboxShaderDefaults(): SkyboxShaderUniforms {
     uTimeScale: 0.2,
     uEvolution: 0.0,
     
-    uColor1: new THREE.Color(0x0000ff),
-    uColor2: new THREE.Color(0xff00ff),
+    uColor1: new THREE.Color(0x0000ff) as any,
+    uColor2: new THREE.Color(0xff00ff) as any,
     uPalA: new THREE.Vector3(0.5, 0.5, 0.5),
     uPalB: new THREE.Vector3(0.5, 0.5, 0.5),
     uPalC: new THREE.Vector3(1.0, 1.0, 1.0),
@@ -96,14 +92,10 @@ export function createSkyboxShaderDefaults(): SkyboxShaderUniforms {
     uVignette: 0.15,
     uGrain: 0.02,
     uAtmosphere: 0.0,
-    uStardust: 0.3,
-    uGrid: 0.0,
-    uMouseParallax: 0.0,
     uTurbulence: 0.0,
     uDualTone: 0.5,
     uSunIntensity: 0.0,
     uSunPosition: new THREE.Vector3(10, 10, 10),
-    uMousePos: new THREE.Vector2(0, 0)
   };
 }
 
@@ -177,14 +169,10 @@ export const skyboxFragmentShader = /* glsl */ `
   uniform float uVignette;
   uniform float uGrain;
   uniform float uAtmosphere; // Horizon
-  uniform float uStardust;
-  uniform float uGrid;
-  uniform float uMouseParallax;
   uniform float uTurbulence;
   uniform float uDualTone;
   uniform float uSunIntensity;
   uniform vec3 uSunPosition;
-  uniform vec2 uMousePos;
 
   // --- Varyings ---
   varying vec3 vWorldDirection;
@@ -315,11 +303,6 @@ export const skyboxFragmentShader = /* glsl */ `
   vec3 getNebula(vec3 dir, float time) {
       vec3 p = dir * uScale * 1.5;
       
-      // Mouse Parallax (fake depth)
-      if (uMouseParallax > 0.0) {
-          p += vec3(uMousePos * uMouseParallax, 0.0);
-      }
-      
       // Movement
       p.x -= time * 0.1;
       
@@ -364,58 +347,15 @@ export const skyboxFragmentShader = /* glsl */ `
       float sunDot = dot(dir, sunDir);
       float sunGlow = smoothstep(0.5, 1.0, sunDot);
       
-      // Interactive Highlight (Mouse)
-      if (uMouseParallax > 0.0) {
-          vec3 mouseDir = normalize(vec3(uMousePos.x, uMousePos.y, -1.0));
-          float mouseDot = dot(dir, mouseDir);
-          sunGlow += smoothstep(0.9, 1.0, mouseDot) * uMouseParallax;
-      }
-      
       vec3 glowColor = (uUsePalette > 0.5) ? cosinePalette(1.0, uPalA, uPalB, uPalC, uPalD) : uColor2;
       
-      // Grid effect for Void mode (Tron style)
-      float grid = 0.0;
-      if (uGrid > 0.0) {
-          // Spherical grid
-          float theta = atan(dir.z, dir.x);
-          float phi = acos(dir.y);
-          
-          float size = 20.0 * uScale;
-          float g1 = sin(theta * size + time * 0.1);
-          float g2 = sin(phi * size);
-          
-          grid = smoothstep(0.95, 1.0, max(g1, g2));
-          
-          // Warp grid with turbulence
-          if (uTurbulence > 0.0) {
-             grid *= noise(dir * 10.0 + time);
-          }
-      }
-
       vec3 col = mix(bg, glowColor, sunGlow * 0.5 * uIntensity);
-      col += glowColor * grid * uGrid;
       
       return col;
   }
 
   // --- Delight Features ---
 
-  vec3 applyStardust(vec3 col, vec3 dir, float time) {
-      if (uStardust <= 0.0) return col;
-      
-      // High frequency noise for stars
-      vec3 starDir = dir * 100.0;
-      float n = hash(starDir); // cheap static noise
-      
-      // Twinkle
-      float twinkle = sin(time * 2.0 + n * 100.0) * 0.5 + 0.5;
-      
-      // Threshold
-      float star = smoothstep(1.0 - (uStardust * 0.02), 1.0, n);
-      
-      return col + vec3(star * twinkle);
-  }
-  
   vec3 applyHorizon(vec3 col, vec3 dir) {
       if (uAtmosphere <= 0.0) return col;
       
@@ -446,18 +386,21 @@ export const skyboxFragmentShader = /* glsl */ `
       // 2. Mode Select
       if (uMode < 0.5) {
           // --- Classic Mode (Texture) ---
-          
+
+          // Calculate mip level for blur effect (0 = sharp, higher = blurrier)
+          float lod = uBlur * 6.0;
+
           // Chromatic Aberration (Classic only, procedural handles it differently)
           if (uAberration > 0.0) {
               float spread = uAberration * 0.02;
               vec3 dirR = dir; dirR.x += spread;
               vec3 dirB = dir; dirB.x -= spread;
-              float r = textureCube(uTex, dirR).r;
-              float g = textureCube(uTex, dir).g;
-              float b = textureCube(uTex, dirB).b;
+              float r = textureLod(uTex, dirR, lod).r;
+              float g = textureLod(uTex, dir, lod).g;
+              float b = textureLod(uTex, dirB, lod).b;
               color = vec3(r, g, b);
           } else {
-              color = textureCube(uTex, dir).rgb;
+              color = textureLod(uTex, dir, lod).rgb;
           }
           
           // Classic tinting
@@ -484,11 +427,6 @@ export const skyboxFragmentShader = /* glsl */ `
       }
       
       // 3. Post-Process Delight Features
-      
-      // Stardust (Sparkles)
-      if (uMode > 0.5) { // Only on procedural modes
-          color = applyStardust(color, dir, time);
-      }
       
       // Horizon / Atmosphere
       color = applyHorizon(color, dir);

@@ -9,7 +9,6 @@
 
 import { create } from 'zustand';
 import type { ObjectType } from '@/lib/geometry/types';
-import { isPolytopeType, isExtendedObjectType } from '@/lib/geometry/types';
 import {
   isAvailableForDimension,
   getUnavailabilityReason,

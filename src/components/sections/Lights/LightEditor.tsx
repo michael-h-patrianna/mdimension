@@ -11,13 +11,12 @@
  * - Rotation X/Y/Z inputs (for directional/spot)
  * - Cone Angle slider (spot only)
  * - Penumbra slider (spot only)
- * - Transform mode toggle (Move/Rotate)
  */
 
 import { Select } from '@/components/ui/Select';
 import { Slider } from '@/components/ui/Slider';
 import { ToggleButton } from '@/components/ui/ToggleButton';
-import type { LightType, TransformMode } from '@/rendering/lights/types';
+import type { LightType } from '@/rendering/lights/types';
 import { useLightingStore } from '@/stores/lightingStore';
 import React, { memo, useCallback } from 'react';
 import { useShallow } from 'zustand/react/shallow';
@@ -43,18 +42,14 @@ export const LightEditor: React.FC<LightEditorProps> = memo(function LightEditor
   const {
     lights,
     selectedLightId,
-    transformMode,
     updateLight,
-    setTransformMode,
     duplicateLight,
     selectLight,
   } = useLightingStore(
     useShallow((state) => ({
       lights: state.lights,
       selectedLightId: state.selectedLightId,
-      transformMode: state.transformMode,
       updateLight: state.updateLight,
-      setTransformMode: state.setTransformMode,
       duplicateLight: state.duplicateLight,
       selectLight: state.selectLight,
     }))
@@ -168,13 +163,6 @@ export const LightEditor: React.FC<LightEditorProps> = memo(function LightEditor
       }
     }
   }, [selectedLightId, duplicateLight, selectLight]);
-
-  const handleTransformModeChange = useCallback(
-    (mode: TransformMode) => {
-      setTransformMode(mode);
-    },
-    [setTransformMode]
-  );
 
   // Show placeholder if no light selected
   if (!selectedLight) {
@@ -332,33 +320,6 @@ export const LightEditor: React.FC<LightEditorProps> = memo(function LightEditor
         </>
       )}
 
-      {/* Transform mode toggle */}
-      <div className="space-y-1 pt-2 border-t border-panel-border">
-        <label className="block text-xs font-medium text-text-secondary">
-          Transform Mode
-        </label>
-        <div className="flex gap-2">
-          <ToggleButton
-            pressed={transformMode === 'translate'}
-            onToggle={() => handleTransformModeChange('translate')}
-            ariaLabel="Move mode"
-            className="flex-1"
-          >
-            Move (W)
-          </ToggleButton>
-          <ToggleButton
-            pressed={transformMode === 'rotate'}
-            onToggle={() => handleTransformModeChange('rotate')}
-            ariaLabel="Rotate mode"
-            className="flex-1"
-          >
-            Rotate (E)
-          </ToggleButton>
-        </div>
-        <p className="text-xs text-text-tertiary mt-1">
-          Press Escape to deselect
-        </p>
-      </div>
     </div>
   );
 });

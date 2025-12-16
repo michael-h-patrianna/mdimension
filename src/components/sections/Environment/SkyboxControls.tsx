@@ -10,8 +10,6 @@ import { SkyboxTexture, SkyboxAnimationMode, SkyboxMode } from '@/stores/default
 import spaceBlueThumb from '@/assets/skyboxes/space_blue/thumbnail.png';
 import spaceLightBlueThumb from '@/assets/skyboxes/space_lightblue/thumbnail.png';
 import spaceRedThumb from '@/assets/skyboxes/space_red/thumbnail.png';
-import checkmarkIcon from '@/assets/icons/checkmark.svg';
-import blockedIcon from '@/assets/icons/blocked.svg';
 import undoIcon from '@/assets/icons/undo.svg';
 
 interface SkyboxOption {
@@ -50,7 +48,6 @@ export const SkyboxControls: React.FC = () => {
     skyboxTexture,
     skyboxBlur,
     skyboxIntensity,
-    skyboxRotation,
     skyboxAnimationMode,
     skyboxAnimationSpeed,
     skyboxHighQuality,
@@ -60,12 +57,11 @@ export const SkyboxControls: React.FC = () => {
     setSkyboxTexture,
     setSkyboxBlur,
     setSkyboxIntensity,
-    setSkyboxRotation,
     setSkyboxAnimationMode,
     setSkyboxAnimationSpeed,
     setSkyboxHighQuality,
     setProceduralSettings,
-    resetSkyboxSettings
+    resetSkyboxSettings,
   } = useEnvironmentStore(
     useShallow((state) => ({
       skyboxEnabled: state.skyboxEnabled,
@@ -292,14 +288,6 @@ export const SkyboxControls: React.FC = () => {
                     
                     <div className="grid grid-cols-2 gap-4">
                         <Slider
-                            label="Stardust"
-                            value={proceduralSettings.stardustDensity}
-                            min={0}
-                            max={1}
-                            step={0.01}
-                            onChange={(v) => setProceduralSettings({ stardustDensity: v })}
-                        />
-                        <Slider
                             label="Atmosphere"
                             value={proceduralSettings.horizon}
                             min={0}
@@ -324,14 +312,6 @@ export const SkyboxControls: React.FC = () => {
                             onChange={(v) => setProceduralSettings({ chromaticAberration: v })}
                         />
                          <Slider
-                            label="Grid"
-                            value={proceduralSettings.gridIntensity}
-                            min={0}
-                            max={1}
-                            step={0.01}
-                            onChange={(v) => setProceduralSettings({ gridIntensity: v })}
-                        />
-                         <Slider
                             label="Grain"
                             value={proceduralSettings.noiseGrain}
                             min={0}
@@ -340,16 +320,6 @@ export const SkyboxControls: React.FC = () => {
                             onChange={(v) => setProceduralSettings({ noiseGrain: v })}
                         />
                     </div>
-                    
-                    <Slider
-                        label="Mouse Parallax"
-                        value={proceduralSettings.mouseParallaxStrength}
-                        min={0}
-                        max={1}
-                        step={0.01}
-                        onChange={(v) => setProceduralSettings({ mouseParallaxStrength: v })}
-                        tooltip="Reacts to mouse movement"
-                    />
                     
                     <Slider
                         label="Sun Intensity"

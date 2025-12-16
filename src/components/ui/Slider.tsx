@@ -1,4 +1,4 @@
-import React, { useId, useState, useEffect } from 'react';
+import React, { useEffect, useId, useState } from 'react';
 
 export interface SliderProps {
   label: string;
@@ -44,7 +44,7 @@ export const Slider: React.FC<SliderProps> = ({
 
   // Determine decimal places based on step
   const decimals = step < 1 ? 2 : 0;
-  
+
   // Local state for input to allow typing without jitter
   const [inputValue, setInputValue] = useState(value.toString());
 
@@ -53,12 +53,8 @@ export const Slider: React.FC<SliderProps> = ({
   }, [value, decimals]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Only update local display state - propagate on blur or Enter
     setInputValue(e.target.value);
-    const newValue = parseFloat(e.target.value);
-    if (!isNaN(newValue)) {
-      // Clamp value only on blur or Enter to allow typing intermediate states
-       onChange(newValue);
-    }
   };
 
   const handleInputBlur = () => {

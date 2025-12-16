@@ -228,11 +228,8 @@ export interface SkyboxProceduralSettings {
   color2: string // Custom Secondary
   
   // Delight Features (The 10 "Wow" Factors)
-  stardustDensity: number // 0-1
   chromaticAberration: number // 0-1 (Radial/Lens style)
   horizon: number // 0-1 (0 = none, 1 = strong plane)
-  gridIntensity: number // 0-1
-  mouseParallaxStrength: number // 0-1
   turbulence: number // 0-1
   dualToneContrast: number // 0-1 (Shadow intensity)
   sunIntensity: number // 0-1
@@ -251,11 +248,8 @@ export const DEFAULT_SKYBOX_PROCEDURAL_SETTINGS: SkyboxProceduralSettings = {
   syncWithObject: true,
   color1: '#0000ff',
   color2: '#ff00ff',
-  stardustDensity: 0.3,
   chromaticAberration: 0.1,
   horizon: 0.0,
-  gridIntensity: 0.0,
-  mouseParallaxStrength: 0.2,
   turbulence: 0.3,
   dualToneContrast: 0.5,
   sunIntensity: 0.0,

@@ -6,7 +6,7 @@ import { Environment, shaderMaterial } from '@react-three/drei';
 import { extend, useFrame, useThree } from '@react-three/fiber';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader';
+import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import { COSINE_PRESETS } from '@/rendering/shaders/palette/presets';
 import { calculateCosineColor } from '@/rendering/shaders/palette/cosine.glsl';
 
@@ -244,14 +244,10 @@ declare module '@react-three/fiber' {
       uVignette?: number;
       uGrain?: number;
       uAtmosphere?: number;
-      uStardust?: number;
-      uGrid?: number;
-      uMouseParallax?: number;
       uTurbulence?: number;
       uDualTone?: number;
       uSunIntensity?: number;
       uSunPosition?: THREE.Vector3;
-      uMousePos?: THREE.Vector2;
       uColor1?: THREE.Vector3;
       uColor2?: THREE.Vector3;
       uPalA?: THREE.Vector3;
@@ -272,7 +268,7 @@ interface SkyboxMeshProps {
 const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   const timeRef = useRef(0);
-  const { pointer } = useThree();
+  // Pointer removed as it was only for uMousePos
 
   const {
     skyboxMode,
@@ -330,7 +326,7 @@ const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
   }, [proceduralSettings.syncWithObject, proceduralSettings.paletteId, cosineCoefficients]);
 
 
-  useFrame((state, delta) => {
+  useFrame((_, delta) => {
     if (!materialRef.current) return;
 
     // --- Animation Logic (Hybrid JS/Shader) ---
@@ -436,14 +432,10 @@ const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
     if (uniforms.uVignette) uniforms.uVignette.value = 0.15;
     if (uniforms.uGrain) uniforms.uGrain.value = proceduralSettings.noiseGrain;
     if (uniforms.uAtmosphere) uniforms.uAtmosphere.value = proceduralSettings.horizon;
-    if (uniforms.uStardust) uniforms.uStardust.value = proceduralSettings.stardustDensity;
-    if (uniforms.uGrid) uniforms.uGrid.value = proceduralSettings.gridIntensity;
-    if (uniforms.uMouseParallax) uniforms.uMouseParallax.value = proceduralSettings.mouseParallaxStrength;
     if (uniforms.uTurbulence) uniforms.uTurbulence.value = proceduralSettings.turbulence;
     if (uniforms.uDualTone) uniforms.uDualTone.value = proceduralSettings.dualToneContrast;
     if (uniforms.uSunIntensity) uniforms.uSunIntensity.value = proceduralSettings.sunIntensity;
     if (uniforms.uSunPosition) uniforms.uSunPosition.value.set(...proceduralSettings.sunPosition);
-    if (uniforms.uMousePos) uniforms.uMousePos.value.set(pointer.x, pointer.y);
   });
 
   // Calculate Initial State for Props (Critical for Environment capture before first frame)
@@ -560,7 +552,7 @@ const SkyboxLoader: React.FC = () => {
       ktx2Path,
       (loadedTexture) => {
         if (!cancelled) {
-          const cubeTexture = loadedTexture as THREE.CubeTexture;
+          const cubeTexture = loadedTexture as unknown as THREE.CubeTexture;
           // Configure texture for best quality
           cubeTexture.minFilter = THREE.LinearMipmapLinearFilter;
           cubeTexture.magFilter = THREE.LinearFilter;
