@@ -31,6 +31,9 @@ export type ObjectType = PolytopeType | ExtendedObjectType
  * Type guard for polytope types
  * Accepts string to allow validation of unknown inputs
  * @param type - String or ObjectType to check
+ *
+ * @see src/lib/geometry/registry for category-based helpers:
+ *      isPolytopeCategory, isExtendedCategory, isFractalCategory
  */
 export function isPolytopeType(type: string): type is PolytopeType {
   return type === 'hypercube' || type === 'simplex' || type === 'cross-polytope'
@@ -40,6 +43,9 @@ export function isPolytopeType(type: string): type is PolytopeType {
  * Type guard for extended object types
  * Accepts string to allow validation of unknown inputs
  * @param type - String or ObjectType to check
+ *
+ * @see src/lib/geometry/registry for category-based helpers:
+ *      isPolytopeCategory, isExtendedCategory, isFractalCategory
  */
 export function isExtendedObjectType(type: string): type is ExtendedObjectType {
   return (

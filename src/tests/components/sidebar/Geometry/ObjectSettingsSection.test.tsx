@@ -1,14 +1,12 @@
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ObjectSettingsSection } from '@/components/sections/Geometry/ObjectSettingsSection';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { act } from 'react';
 
-// Mock the components that are already separated to verify they are rendered
-vi.mock('./MandelbrotControls', () => ({
-  MandelbrotControls: () => <div data-testid="mandelbrot-controls">Mandelbrot Controls</div>
-}));
+// Note: Components are now loaded dynamically via React.lazy in ObjectSettingsSection.
+// Tests need to use waitFor/findBy to handle async loading.
 
 describe('ObjectSettingsSection', () => {
   beforeEach(() => {
@@ -42,48 +40,55 @@ describe('ObjectSettingsSection', () => {
   });
 
   describe('PolytopeSettings', () => {
-    it('renders for hypercube', () => {
+    it('renders for hypercube', async () => {
       act(() => {
         useGeometryStore.setState({ objectType: 'hypercube' });
       });
       render(<ObjectSettingsSection />);
-      expect(screen.getByTestId('polytope-settings')).toBeInTheDocument();
-      expect(screen.getByText('Hypercube Scale')).toBeInTheDocument();
+
+      // Wait for lazy-loaded component
+      expect(await screen.findByTestId('polytope-settings')).toBeInTheDocument();
+      expect(await screen.findByText('Hypercube Scale')).toBeInTheDocument();
     });
 
-    it('renders for simplex', () => {
+    it('renders for simplex', async () => {
       act(() => {
         useGeometryStore.setState({ objectType: 'simplex' });
       });
       render(<ObjectSettingsSection />);
-      expect(screen.getByTestId('polytope-settings')).toBeInTheDocument();
-      expect(screen.getByText('Simplex Scale')).toBeInTheDocument();
+
+      // Wait for lazy-loaded component
+      expect(await screen.findByTestId('polytope-settings')).toBeInTheDocument();
+      expect(await screen.findByText('Simplex Scale')).toBeInTheDocument();
     });
 
-    it('updates scale', () => {
+    it('updates scale', async () => {
       act(() => {
         useGeometryStore.setState({ objectType: 'hypercube' });
       });
       render(<ObjectSettingsSection />);
-      
-      const slider = screen.getByTestId('polytope-scale');
+
+      // Wait for lazy-loaded component
+      const slider = await screen.findByTestId('polytope-scale');
       // Find the input within the slider component (radix-ui slider usually has hidden input or we target the thumb)
       // For this codebase's Slider component, let's look at how it's implemented or just try to fire change on the slider role
       // Assuming generic slider behavior for now
-      const input = slider.querySelector('input') || slider; 
-      
-      // We'll update the store directly to verify the component reflects it, 
-      // and test the interaction if possible. 
+      const input = slider.querySelector('input') || slider;
+
+      // We'll update the store directly to verify the component reflects it,
+      // and test the interaction if possible.
       // Testing slider drag interaction in jsdom can be tricky.
       // Let's verify value reflection first.
-      
+
       act(() => {
         useExtendedObjectStore.getState().setPolytopeScale(2.5);
       });
-      
+
       // Re-render happens automatically with zustand hooks
       // The slider component formats values to 2 decimal places
-      expect(screen.getByDisplayValue('2.50')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('2.50')).toBeInTheDocument();
+      });
     });
   });
 
@@ -94,26 +99,31 @@ describe('ObjectSettingsSection', () => {
       });
     });
 
-    it('renders root system settings', () => {
+    it('renders root system settings', async () => {
       render(<ObjectSettingsSection />);
-      expect(screen.getByTestId('root-system-settings')).toBeInTheDocument();
+      // Wait for lazy-loaded component
+      expect(await screen.findByTestId('root-system-settings')).toBeInTheDocument();
     });
 
-    it('shows E8 option only when dimension is 8', () => {
+    it('shows E8 option only when dimension is 8', async () => {
       render(<ObjectSettingsSection />);
       // We expect E8 to be in the options
       // Note: testing library 'select' interaction depends on the UI component implementation.
       // We'll check if the select renders.
-      expect(screen.getByTestId('root-system-type')).toBeInTheDocument();
+      // Wait for lazy-loaded component
+      expect(await screen.findByTestId('root-system-type')).toBeInTheDocument();
     });
 
-    it('updates root type', () => {
-        render(<ObjectSettingsSection />);
-        act(() => {
-            useExtendedObjectStore.getState().setRootSystemType('E8');
-        });
-        // Check if store update is reflected if possible, or just trust the store
-        expect(useExtendedObjectStore.getState().rootSystem.rootType).toBe('E8');
+    it('updates root type', async () => {
+      render(<ObjectSettingsSection />);
+      // Wait for lazy-loaded component
+      await screen.findByTestId('root-system-settings');
+
+      act(() => {
+        useExtendedObjectStore.getState().setRootSystemType('E8');
+      });
+      // Check if store update is reflected if possible, or just trust the store
+      expect(useExtendedObjectStore.getState().rootSystem.rootType).toBe('E8');
     });
   });
 
@@ -124,20 +134,26 @@ describe('ObjectSettingsSection', () => {
       });
     });
 
-    it('renders classic controls in 4D', () => {
+    it('renders classic controls in 4D', async () => {
       render(<ObjectSettingsSection />);
-      expect(screen.getByTestId('clifford-res-u')).toBeInTheDocument();
-      expect(screen.getByTestId('clifford-res-v')).toBeInTheDocument();
-      expect(screen.queryByTestId('clifford-steps')).not.toBeInTheDocument();
+      // Wait for lazy-loaded component
+      expect(await screen.findByTestId('clifford-res-u')).toBeInTheDocument();
+      expect(await screen.findByTestId('clifford-res-v')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.queryByTestId('clifford-steps')).not.toBeInTheDocument();
+      });
     });
 
-    it('renders generalized controls in non-4D', () => {
+    it('renders generalized controls in non-4D', async () => {
       act(() => {
         useGeometryStore.setState({ dimension: 5 });
       });
       render(<ObjectSettingsSection />);
-      expect(screen.queryByTestId('clifford-res-u')).not.toBeInTheDocument();
-      expect(screen.getByTestId('clifford-steps')).toBeInTheDocument();
+      // Wait for lazy-loaded component
+      expect(await screen.findByTestId('clifford-steps')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.queryByTestId('clifford-res-u')).not.toBeInTheDocument();
+      });
     });
   });
 
@@ -148,18 +164,23 @@ describe('ObjectSettingsSection', () => {
       });
     });
 
-    it('renders nested torus settings', () => {
+    it('renders nested torus settings', async () => {
       render(<ObjectSettingsSection />);
-      expect(screen.getByTestId('nested-torus-settings')).toBeInTheDocument();
-      expect(screen.getByTestId('nested-show-multiple')).toBeInTheDocument();
+      // Wait for lazy-loaded component
+      expect(await screen.findByTestId('nested-torus-settings')).toBeInTheDocument();
+      expect(await screen.findByTestId('nested-show-multiple')).toBeInTheDocument();
     });
 
-    it('hides nested tori toggle in non-4D', () => {
+    it('hides nested tori toggle in non-4D', async () => {
       act(() => {
         useGeometryStore.setState({ dimension: 5 });
       });
       render(<ObjectSettingsSection />);
-      expect(screen.queryByTestId('nested-show-multiple')).not.toBeInTheDocument();
+      // Wait for lazy-loaded component
+      await screen.findByTestId('nested-torus-settings');
+      await waitFor(() => {
+        expect(screen.queryByTestId('nested-show-multiple')).not.toBeInTheDocument();
+      });
     });
   });
 });

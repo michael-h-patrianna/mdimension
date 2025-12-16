@@ -6,6 +6,7 @@
  */
 
 import type { ObjectType } from '@/lib/geometry/types';
+import { isValidObjectType } from '@/lib/geometry/registry';
 import type { OpacityMode, SampleQuality, VolumetricAnimationQuality } from '@/rendering/opacity/types';
 import {
   DEFAULT_OPACITY_MODE,
@@ -48,16 +49,6 @@ const VALID_SHADER_TYPES: ShaderType[] = [
 
 /** Legacy shader type for backward compatibility */
 const LEGACY_SHADER_TYPE_DUAL_OUTLINE = 'dualOutline';
-
-/** Valid object types for URL validation */
-const VALID_OBJECT_TYPES: ObjectType[] = [
-  'hypercube',
-  'simplex',
-  'cross-polytope',
-  'root-system',
-  'clifford-torus',
-  'mandelbrot',
-];
 
 export interface ShareableState {
   dimension: number;
@@ -287,8 +278,8 @@ export function deserializeState(searchParams: string): Partial<ShareableState> 
   }
 
   const objectType = params.get('t');
-  if (objectType && VALID_OBJECT_TYPES.includes(objectType as ObjectType)) {
-    state.objectType = objectType as ObjectType;
+  if (objectType && isValidObjectType(objectType)) {
+    state.objectType = objectType;
   }
 
   // Note: 'pd' (projectionDistance) is no longer used but we ignore it for backward compatibility

@@ -14,6 +14,7 @@
 
 import type { Face } from '@/lib/geometry/faces';
 import type { NdGeometry, ObjectType } from '@/lib/geometry/types';
+import { determineRenderMode as determineRenderModeFromRegistry } from '@/lib/geometry/registry';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import React, { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
@@ -48,10 +49,14 @@ export interface UnifiedRendererProps {
 
 /**
  * Determines the appropriate render mode based on object type and settings
- * @param geometry
- * @param objectType
- * @param dimension
- * @param facesVisible
+ *
+ * Uses the registry to determine rendering capabilities for each object type.
+ *
+ * @param geometry - The geometry being rendered
+ * @param objectType - Type of object being rendered
+ * @param dimension - Current dimension
+ * @param facesVisible - Whether faces are visible
+ * @returns The appropriate render mode
  */
 export function determineRenderMode(
   geometry: NdGeometry,
@@ -59,22 +64,15 @@ export function determineRenderMode(
   dimension: number,
   facesVisible: boolean
 ): RenderMode {
-  // Quaternion Julia uses raymarching when faces are visible (3D-11D)
-  if (objectType === 'quaternion-julia' && dimension >= 3) {
-    return facesVisible ? 'raymarch-quaternion-julia' : 'none';
+  // Use registry-based determination
+  const mode = determineRenderModeFromRegistry(objectType, dimension, facesVisible);
+
+  // If registry returns 'polytope', verify we have vertices
+  if (mode === 'polytope' && geometry.vertices.length === 0) {
+    return 'none';
   }
 
-  // Mandelbrot/Hyperbulb with faces visible uses raymarching (3D-11D unified)
-  if (objectType === 'mandelbrot' && facesVisible && dimension >= 3) {
-    return 'raymarch-mandelbrot';
-  }
-
-  // Traditional polytopes use PolytopeScene
-  if (geometry.vertices.length > 0) {
-    return 'polytope';
-  }
-
-  return 'none';
+  return mode;
 }
 
 /**

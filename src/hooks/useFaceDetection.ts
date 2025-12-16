@@ -1,9 +1,11 @@
 import type { NdGeometry, ObjectType } from '@/lib/geometry'
-import { detectFaces, isPolytopeType } from '@/lib/geometry'
+import { detectFaces, canRenderFaces, getFaceDetectionMethod } from '@/lib/geometry'
 import { useMemo } from 'react'
 
 /**
  * Hook to detect faces for a given geometry and object type.
+ *
+ * Uses the registry to determine if the object type supports face detection.
  *
  * @param geometry - The geometry object containing vertices and edges.
  * @param objectType - The type of object being rendered.
@@ -11,13 +13,11 @@ import { useMemo } from 'react'
  */
 export function useFaceDetection(geometry: NdGeometry, objectType: ObjectType) {
   return useMemo(() => {
-    // Polytopes, root-system, clifford-torus, and nested-torus support face detection
-    const supportsFaces =
-      isPolytopeType(objectType) ||
-      objectType === 'root-system' ||
-      objectType === 'clifford-torus' ||
-      objectType === 'nested-torus'
-    if (!supportsFaces) {
+    // Use registry to check if object type supports face rendering
+    // Note: Raymarched types (mandelbrot, quaternion-julia) support faces via raymarching,
+    // but don't use detectFaces - they render directly in the shader
+    const faceDetectionMethod = getFaceDetectionMethod(objectType)
+    if (faceDetectionMethod === 'none') {
       return []
     }
 

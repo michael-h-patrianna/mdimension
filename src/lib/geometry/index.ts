@@ -29,6 +29,48 @@ export type {
   PolytopeType,
 } from './types'
 
+// Registry exports (single source of truth for object type capabilities)
+export {
+  // Registry data
+  OBJECT_TYPE_REGISTRY,
+  getAllObjectTypes,
+  // Core lookups
+  getObjectTypeEntry,
+  // Rendering capabilities
+  canRenderFaces,
+  canRenderEdges,
+  isRaymarchingType,
+  getRenderingCapabilities,
+  getFaceDetectionMethod,
+  determineRenderMode,
+  // Dimension constraints
+  getDimensionConstraints,
+  isAvailableForDimension,
+  getAvailableTypesForDimension,
+  // Animation
+  getAnimationCapabilities,
+  hasTypeSpecificAnimations,
+  getAvailableAnimationSystems,
+  // UI
+  getControlsComponentKey,
+  hasTimelineControls,
+  getControlsComponent,
+  // Validation
+  getValidObjectTypes,
+  isValidObjectType,
+  getTypeName,
+  getTypeDescription,
+  getConfigStoreKey,
+} from './registry'
+export type {
+  AnimationCapabilities,
+  AnimationSystemDef,
+  AvailableTypeInfo,
+  DimensionConstraints,
+  ObjectTypeEntry,
+  RenderingCapabilities,
+} from './registry'
+
 // Extended object type exports (includes PolytopeConfig for unified API)
 export type {
   CliffordTorusConfig,
@@ -182,7 +224,7 @@ export function generateGeometry(
       vertices: polytope.vertices,
       edges: polytope.edges,
       metadata: {
-        name: getTypeName(type),
+        name: getTypeNameLocal(type),
         properties: {
           scale,
         },
@@ -227,31 +269,29 @@ export function getPolytopeProperties(geometry: PolytopeGeometry): PolytopePrope
   }
 }
 
+// Import getTypeName from registry for local use
+import { getTypeName as getTypeNameFromRegistry } from './registry'
+
 /**
  * Gets the display name for an object type
  *
  * @param type - Object type
  * @returns Human-readable name
+ * @deprecated Use getTypeName from '@/lib/geometry/registry' instead
  */
-function getTypeName(type: ObjectType): string {
-  const typeNames: Record<ObjectType, string> = {
-    hypercube: 'Hypercube',
-    simplex: 'Simplex',
-    'cross-polytope': 'Cross-Polytope',
-    'root-system': 'Root System',
-    'clifford-torus': 'Clifford Torus',
-    'nested-torus': 'Nested Torus',
-    mandelbrot: 'Mandelbulb',
-    'quaternion-julia': 'Quaternion Julia',
-  }
-  return typeNames[type] ?? type
+function getTypeNameLocal(type: ObjectType): string {
+  return getTypeNameFromRegistry(type)
 }
+
+// Import getAvailableTypesForDimension from registry
+import { getAvailableTypesForDimension } from './registry'
 
 /**
  * Returns metadata about all available object types
  *
  * @param dimension - Current dimension (for filtering dimension-constrained types)
  * @returns Array of object type information with availability status
+ * @deprecated Use getAvailableTypesForDimension from '@/lib/geometry/registry' instead
  */
 export function getAvailableTypes(dimension?: number): Array<{
   type: ObjectType
@@ -260,86 +300,7 @@ export function getAvailableTypes(dimension?: number): Array<{
   available: boolean
   disabledReason?: string
 }> {
-  const types: Array<{
-    type: ObjectType
-    name: string
-    description: string
-    minDimension?: number
-    maxDimension?: number
-  }> = [
-    {
-      type: 'hypercube',
-      name: 'Hypercube',
-      description: 'Generalization of a cube to n dimensions (n-cube)',
-      minDimension: 3,
-    },
-    {
-      type: 'simplex',
-      name: 'Simplex',
-      description: 'Generalization of a tetrahedron to n dimensions (n-simplex)',
-      minDimension: 3,
-    },
-    {
-      type: 'cross-polytope',
-      name: 'Cross-Polytope',
-      description: 'Generalization of an octahedron to n dimensions (n-orthoplex)',
-      minDimension: 3,
-    },
-    {
-      type: 'root-system',
-      name: 'Root System',
-      description: 'Root polytopes from Lie algebra (A, D, or E₈)',
-      minDimension: 3,
-    },
-    {
-      type: 'clifford-torus',
-      name: 'Clifford Torus',
-      description: 'Flat torus with independent circles (3D: torus surface, 4D+: Clifford torus)',
-      minDimension: 3,
-    },
-    {
-      type: 'nested-torus',
-      name: 'Nested Torus',
-      description: 'Coupled tori with Hopf-like structure (4D: Hopf fibration, 5D-11D: n-tori)',
-      minDimension: 4,
-      maxDimension: 11,
-    },
-    {
-      type: 'mandelbrot',
-      name: 'Mandelbulb',
-      description: 'Fractal via escape-time iteration (3D: Mandelbulb, 4D+: n-dimensional)',
-      minDimension: 3,
-      maxDimension: 11,
-    },
-    {
-      type: 'quaternion-julia',
-      name: 'Quaternion Julia',
-      description: 'Julia set fractal using quaternion algebra (z = z^n + c, 3D-11D raymarched)',
-      minDimension: 3,
-      maxDimension: 11,
-    },
-  ]
-
-  return types.map((t) => {
-    let available = true
-    let disabledReason: string | undefined
-
-    if (dimension !== undefined) {
-      if (t.minDimension && dimension < t.minDimension) {
-        available = false
-        disabledReason = `Requires dimension >= ${t.minDimension}`
-      } else if (t.maxDimension && dimension > t.maxDimension) {
-        available = false
-        disabledReason = `Requires dimension <= ${t.maxDimension}`
-      }
-    }
-
-    return {
-      type: t.type,
-      name: t.name,
-      description: t.description,
-      available,
-      disabledReason,
-    }
-  })
+  // Delegate to registry-based implementation
+  // If no dimension provided, default to 4 (all types available at 4D)
+  return getAvailableTypesForDimension(dimension ?? 4)
 }

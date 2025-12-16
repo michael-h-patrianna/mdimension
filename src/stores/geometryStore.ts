@@ -10,6 +10,12 @@
 import { create } from 'zustand';
 import type { ObjectType } from '@/lib/geometry/types';
 import { isPolytopeType, isExtendedObjectType } from '@/lib/geometry/types';
+import {
+  isAvailableForDimension,
+  getUnavailabilityReason,
+  getRecommendedDimension,
+  isValidObjectType as isValidObjectTypeRegistry,
+} from '@/lib/geometry/registry';
 
 /** Minimum supported dimension */
 export const MIN_DIMENSION = 3;
@@ -25,22 +31,26 @@ export const DEFAULT_OBJECT_TYPE: ObjectType = 'hypercube';
 
 /**
  * Dimension constraints for certain object types
- * Note: Clifford Torus supports 3D (torus surface) and 4D+ (Clifford torus)
+ * @deprecated Use getDimensionConstraints from '@/lib/geometry/registry' instead
  */
 export const DIMENSION_CONSTRAINTS: Record<string, { min?: number; exact?: number }> = {
-  'root-system': { min: 3 }, // Root systems require at least 3D
-  'quaternion-julia': { min: 3 }, // Raymarching requires 3D+
+  'root-system': { min: 3 },
+  'quaternion-julia': { min: 3 },
+  'nested-torus': { min: 4 },
+  'mandelbrot': { min: 3 },
 }
 
 /**
  * Recommended dimensions for certain object types to get optimal visualization.
- * When switching to these object types, the dimension will auto-switch if needed.
+ * @deprecated Use getRecommendedDimension from '@/lib/geometry/registry' instead
  */
 export const RECOMMENDED_DIMENSIONS: Record<string, { dimension?: number; reason: string }> = {
   'mandelbrot': {
+    dimension: 4,
     reason: 'Fractal structures reveal complex n-dimensional behavior',
   },
   'quaternion-julia': {
+    dimension: 4,
     reason: 'Quaternion algebra reveals 4D rotation symmetry',
   },
 };
@@ -70,11 +80,14 @@ function clampDimension(dim: number): number {
  * @param type
  */
 function isValidObjectType(type: string): type is ObjectType {
-  return isPolytopeType(type) || isExtendedObjectType(type);
+  // Use registry for validation
+  return isValidObjectTypeRegistry(type);
 }
 
 /**
  * Checks if an object type is valid for a given dimension
+ *
+ * Uses the registry to determine dimension constraints.
  *
  * @param type - Object type to check
  * @param dimension - Current dimension
@@ -84,21 +97,15 @@ export function validateObjectTypeForDimension(
   type: ObjectType,
   dimension: number
 ): { valid: boolean; fallbackType?: ObjectType; message?: string } {
-  // Root system requires dimension >= 3
-  if (type === 'root-system' && dimension < 3) {
+  // Use registry to check if type is available for dimension
+  if (!isAvailableForDimension(type, dimension)) {
+    const reason = getUnavailabilityReason(type, dimension);
     return {
       valid: false,
       fallbackType: 'hypercube',
-      message: 'Root System requires dimension >= 3',
+      message: reason ?? `${type} is not available for dimension ${dimension}`,
     };
   }
-
-    if (type === 'quaternion-julia' && dimension < 3) {
-      return {
-        isValid: false,
-        message: 'Quaternion Julia requires dimension >= 3',
-      }
-    }
 
   return { valid: true };
 }
@@ -144,13 +151,13 @@ export const useGeometryStore = create<GeometryState>((set, get) => ({
       return;
     }
 
-    // Check if this object type has a recommended dimension
-    const recommended = RECOMMENDED_DIMENSIONS[type];
-    if (recommended && recommended.dimension !== undefined && currentDimension !== recommended.dimension) {
+    // Check if this object type has a recommended dimension (from registry)
+    const recommendedDimension = getRecommendedDimension(type);
+    if (recommendedDimension !== undefined && currentDimension !== recommendedDimension) {
       // Auto-switch to recommended dimension for optimal visualization
       set({
         objectType: type,
-        dimension: recommended.dimension,
+        dimension: recommendedDimension,
       });
     } else {
       set({ objectType: type });

@@ -19,6 +19,12 @@
  */
 
 import { ToggleButton } from '@/components/ui/ToggleButton';
+import {
+  canRenderFaces as canRenderFacesFromRegistry,
+  canRenderEdges as canRenderEdgesFromRegistry,
+  isRaymarchingFractal,
+} from '@/lib/geometry/registry';
+import type { ObjectType } from '@/lib/geometry/types';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import React, { useEffect, useRef } from 'react';
@@ -34,46 +40,33 @@ export interface RenderModeTogglesProps {
 
 /**
  * Checks if an object type supports face rendering
- * Polytopes (hypercube, simplex, cross-polytope), root-system, clifford-torus, nested-torus,
- * mandelbrot (via raymarching), and quaternion-julia (via raymarching) support faces
+ * Uses the registry to determine capabilities.
  * @param objectType - The current object type
  * @returns true if faces can be rendered for this object type
  */
-function canRenderFaces(objectType: string): boolean {
-  const polytopeTypes = ['hypercube', 'simplex', 'cross-polytope'];
-  return (
-    polytopeTypes.includes(objectType) ||
-    objectType === 'root-system' ||
-    objectType === 'mandelbrot' ||
-    objectType === 'quaternion-julia' ||
-    objectType === 'clifford-torus' ||
-    objectType === 'nested-torus'
-  );
+function canRenderFaces(objectType: ObjectType): boolean {
+  return canRenderFacesFromRegistry(objectType);
 }
 
 /**
  * Checks if an object type supports edge rendering
- * For Mandelbrot/Quaternion Julia, "Edges" controls fresnel rim lighting on the raymarched surface
- * @param _objectType - The current object type (unused - all types support edges)
+ * Uses the registry to determine capabilities.
+ * @param objectType - The current object type
  * @returns true if edges can be rendered for this object type
  */
-function canRenderEdges(_objectType: string): boolean {
-  // All object types support edges (Mandelbrot/Quaternion Julia use fresnel rim lighting as "edges")
-  return true;
+function canRenderEdges(objectType: ObjectType): boolean {
+  return canRenderEdgesFromRegistry(objectType);
 }
 
 /**
  * Checks if an object type is a raymarched fractal (mandelbrot 3D+ or quaternion-julia)
- * These types have special mutual exclusivity rules for render modes
+ * Uses the registry to determine capabilities.
  * @param objectType - The current object type
  * @param dimension - Current dimension
  * @returns true if this is a raymarched fractal type
  */
-function isRaymarchedFractal(objectType: string, dimension: number): boolean {
-  return (
-    (objectType === 'mandelbrot' && dimension >= 3) ||
-    (objectType === 'quaternion-julia' && dimension >= 3)
-  );
+function isRaymarchedFractal(objectType: ObjectType, dimension: number): boolean {
+  return isRaymarchingFractal(objectType, dimension);
 }
 
 /**

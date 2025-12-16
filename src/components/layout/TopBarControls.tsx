@@ -1,5 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ToggleButton } from '@/components/ui/ToggleButton';
+import {
+  canRenderFaces,
+  canRenderEdges,
+  isRaymarchingFractal as isRaymarchedFractal,
+} from '@/lib/geometry/registry';
+import type { ObjectType } from '@/lib/geometry/types';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useUIStore } from '@/stores/uiStore';
@@ -29,30 +35,6 @@ const Icons = {
     </svg>
   ),
 };
-
-// Helper functions (copied from RenderModeToggles.tsx)
-function canRenderFaces(objectType: string): boolean {
-  const polytopeTypes = ['hypercube', 'simplex', 'cross-polytope'];
-  return (
-    polytopeTypes.includes(objectType) ||
-    objectType === 'root-system' ||
-    objectType === 'mandelbrot' ||
-    objectType === 'quaternion-julia' ||
-    objectType === 'clifford-torus' ||
-    objectType === 'nested-torus'
-  );
-}
-
-function canRenderEdges(_objectType: string): boolean {
-  return true;
-}
-
-function isRaymarchedFractal(objectType: string, dimension: number): boolean {
-  return (
-    (objectType === 'mandelbrot' && dimension >= 3) ||
-    (objectType === 'quaternion-julia' && dimension >= 3)
-  );
-}
 
 export const TopBarControls: React.FC = () => {
   const { addToast } = useToast();
