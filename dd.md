@@ -12,6 +12,7 @@ Problem: This is very low quality and basic. It's more a $9.99 application. You 
 4. Add 10 features that will delight the user and create a "wow" effect.
 5. Add 10 features that give polish to the visual experience
 6. Add 10 features that give polish to the ui and interaction and user flow
+7. Add 5 more subtle, visually pleasing procedural skyboxes
 
 Important:
 - Do not add particle effects
@@ -31,11 +32,4 @@ Notes:
 - for icons you have the whole icomoon icon library at your disposal here: src/assets/icons
 - The center piece of this project is creating stunning visualizations of a n-dimensional object or fractal. The environment is supposed to enhance the presentation and support the "wow" factor of the generated object. It should work for the object not against it.
 
-right editor > environment > skybox:
-- remove the "Enable Skybox" switch.
-- remove the "Skybox Mode" dropdown
-- instead have all skyboxes presented as thumbnails in a grid same way as the "classic" cubemap skyboxes are presented now.
-- have first an option "None" which disables skyboxes, thumbnail black
-- for the procedural skyboxes come up with a good solution to generate the thumbnail
 
-review this bug report: in the slider control, when entering a value in the input field, it is possible to enter invalid number outside the allowed number range and these are propagated to whatever feature is using the control. instead the value should only be propagated when the user presses enter or the input field loses focus.

@@ -193,8 +193,21 @@ export const DEFAULT_GROUND_MATERIAL_ENVMAP_INTENSITY = 1.6
 
 export type SkyboxTexture = 'space_blue' | 'space_lightblue' | 'space_red' | 'none'
 
+export type SkyboxMode = 'classic' | 'procedural_aurora' | 'procedural_nebula' | 'procedural_void'
+
+/** Unified skybox selection - combines disabled, classic textures, and procedural modes */
+export type SkyboxSelection =
+  | 'none'
+  | 'space_blue'
+  | 'space_lightblue'
+  | 'space_red'
+  | 'procedural_aurora'
+  | 'procedural_nebula'
+  | 'procedural_void'
+
 export const DEFAULT_SKYBOX_ENABLED = true
 export const DEFAULT_SKYBOX_TEXTURE: SkyboxTexture = 'space_blue'
+export const DEFAULT_SKYBOX_SELECTION: SkyboxSelection = 'space_blue'
 export const DEFAULT_SKYBOX_BLUR = 0
 export const DEFAULT_SKYBOX_INTENSITY = 1
 export const DEFAULT_SKYBOX_ROTATION = 0
@@ -212,8 +225,6 @@ export const DEFAULT_SKYBOX_ANIMATION_MODE: SkyboxAnimationMode = 'heatwave'
 export const DEFAULT_SKYBOX_ANIMATION_SPEED = 0.01
 
 // --- Procedural Skybox Defaults ---
-
-export type SkyboxMode = 'classic' | 'procedural_aurora' | 'procedural_nebula' | 'procedural_void'
 
 export interface SkyboxProceduralSettings {
   // Core

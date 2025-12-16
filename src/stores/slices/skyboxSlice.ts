@@ -3,6 +3,7 @@ import {
   type SkyboxAnimationMode,
   type SkyboxMode,
   type SkyboxProceduralSettings,
+  type SkyboxSelection,
   type SkyboxTexture,
   DEFAULT_SKYBOX_ANIMATION_MODE,
   DEFAULT_SKYBOX_ANIMATION_SPEED,
@@ -13,12 +14,18 @@ import {
   DEFAULT_SKYBOX_MODE,
   DEFAULT_SKYBOX_PROCEDURAL_SETTINGS,
   DEFAULT_SKYBOX_ROTATION,
+  DEFAULT_SKYBOX_SELECTION,
   DEFAULT_SKYBOX_TEXTURE,
 } from '../defaults/visualDefaults'
 
 export interface SkyboxSliceState {
+  /** Unified skybox selection - the single source of truth for what's displayed */
+  skyboxSelection: SkyboxSelection
+  /** Derived: whether skybox is enabled (selection !== 'none') */
   skyboxEnabled: boolean
+  /** Derived: current mode based on selection */
   skyboxMode: SkyboxMode
+  /** Derived: current texture for classic mode */
   skyboxTexture: SkyboxTexture
   skyboxBlur: number
   skyboxIntensity: number
@@ -33,6 +40,8 @@ export interface SkyboxSliceState {
 }
 
 export interface SkyboxSliceActions {
+  /** Set unified skybox selection - updates enabled, mode, and texture automatically */
+  setSkyboxSelection: (selection: SkyboxSelection) => void
   setSkyboxEnabled: (enabled: boolean) => void
   setSkyboxMode: (mode: SkyboxMode) => void
   setSkyboxTexture: (texture: SkyboxTexture) => void
@@ -50,6 +59,7 @@ export interface SkyboxSliceActions {
 export type SkyboxSlice = SkyboxSliceState & SkyboxSliceActions
 
 export const SKYBOX_INITIAL_STATE: SkyboxSliceState = {
+  skyboxSelection: DEFAULT_SKYBOX_SELECTION,
   skyboxEnabled: DEFAULT_SKYBOX_ENABLED,
   skyboxMode: DEFAULT_SKYBOX_MODE,
   skyboxTexture: DEFAULT_SKYBOX_TEXTURE,
@@ -63,9 +73,44 @@ export const SKYBOX_INITIAL_STATE: SkyboxSliceState = {
   proceduralSettings: DEFAULT_SKYBOX_PROCEDURAL_SETTINGS,
 }
 
+/** Helper to derive state from a skybox selection */
+function deriveStateFromSelection(selection: SkyboxSelection): {
+  skyboxEnabled: boolean
+  skyboxMode: SkyboxMode
+  skyboxTexture: SkyboxTexture
+} {
+  if (selection === 'none') {
+    return {
+      skyboxEnabled: false,
+      skyboxMode: 'classic',
+      skyboxTexture: 'none',
+    }
+  }
+
+  if (selection.startsWith('procedural_')) {
+    return {
+      skyboxEnabled: true,
+      skyboxMode: selection as SkyboxMode,
+      skyboxTexture: 'space_blue', // Keep a valid texture for potential mode switch
+    }
+  }
+
+  // Classic texture selection
+  return {
+    skyboxEnabled: true,
+    skyboxMode: 'classic',
+    skyboxTexture: selection as SkyboxTexture,
+  }
+}
+
 export const createSkyboxSlice: StateCreator<SkyboxSlice, [], [], SkyboxSlice> = (set) => ({
   ...SKYBOX_INITIAL_STATE,
 
+  setSkyboxSelection: (selection: SkyboxSelection) =>
+    set({
+      skyboxSelection: selection,
+      ...deriveStateFromSelection(selection),
+    }),
   setSkyboxEnabled: (enabled: boolean) => set({ skyboxEnabled: enabled }),
   setSkyboxMode: (mode: SkyboxMode) => set({ skyboxMode: mode }),
   setSkyboxTexture: (texture: SkyboxTexture) => set({ skyboxTexture: texture }),
@@ -84,7 +129,8 @@ export const createSkyboxSlice: StateCreator<SkyboxSlice, [], [], SkyboxSlice> =
     })),
   resetSkyboxSettings: () =>
     set({
-      skyboxMode: DEFAULT_SKYBOX_MODE,
+      skyboxSelection: DEFAULT_SKYBOX_SELECTION,
+      ...deriveStateFromSelection(DEFAULT_SKYBOX_SELECTION),
       skyboxBlur: DEFAULT_SKYBOX_BLUR,
       skyboxIntensity: DEFAULT_SKYBOX_INTENSITY,
       skyboxRotation: DEFAULT_SKYBOX_ROTATION,
