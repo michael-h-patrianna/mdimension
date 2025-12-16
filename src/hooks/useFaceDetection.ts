@@ -1,5 +1,5 @@
 import type { NdGeometry, ObjectType } from '@/lib/geometry'
-import { detectFaces, getFaceDetectionMethod } from '@/lib/geometry'
+import { detectFaces, getFaceDetectionMethod, getConfigStoreKey } from '@/lib/geometry'
 import { useMemo } from 'react'
 
 /**
@@ -21,14 +21,17 @@ export function useFaceDetection(geometry: NdGeometry, objectType: ObjectType) {
       return []
     }
 
-    // Root-system needs edges to detect faces
-    if (objectType === 'root-system' && geometry.edges.length === 0) {
+    // Get config store key for data-driven checks
+    const configKey = getConfigStoreKey(objectType)
+
+    // Root-system needs edges to detect faces (convex-hull method)
+    if (configKey === 'rootSystem' && geometry.edges.length === 0) {
       return []
     }
 
-    // Clifford-torus and nested-torus need metadata for resolution info
+    // Torus types need metadata for resolution info (grid method)
     if (
-      (objectType === 'clifford-torus' || objectType === 'nested-torus') &&
+      (configKey === 'cliffordTorus' || configKey === 'nestedTorus') &&
       !geometry.metadata?.properties
     ) {
       return []

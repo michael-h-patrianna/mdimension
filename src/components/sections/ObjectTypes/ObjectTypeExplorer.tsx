@@ -6,6 +6,7 @@ import { useRotationStore } from '@/stores/rotationStore';
 import { getAvailableTypes } from '@/lib/geometry';
 import type { ObjectType } from '@/lib/geometry/types';
 import { isPolytopeType } from '@/lib/geometry/types';
+import { isRaymarchingType, getConfigStoreKey } from '@/lib/geometry/registry';
 
 export const ObjectTypeExplorer: React.FC = () => {
   const objectType = useGeometryStore((state) => state.objectType);
@@ -16,6 +17,9 @@ export const ObjectTypeExplorer: React.FC = () => {
   const initializeMandelbulbForDimension = useExtendedObjectStore(
     (state) => state.initializeMandelbulbForDimension
   );
+  const initializeSchroedingerForDimension = useExtendedObjectStore(
+    (state) => state.initializeSchroedingerForDimension
+  );
   const initializeQuaternionJuliaForDimension = useExtendedObjectStore(
     (state) => state.initializeQuaternionJuliaForDimension
   );
@@ -23,9 +27,16 @@ export const ObjectTypeExplorer: React.FC = () => {
     (state) => state.initializePolytopeForType
   );
 
+  // Map config store keys to their initializer functions (for fractal types)
+  const fractalInitializers = useMemo(() => ({
+    mandelbulb: initializeMandelbulbForDimension,
+    schroedinger: initializeSchroedingerForDimension,
+    quaternionJulia: initializeQuaternionJuliaForDimension,
+  }), [initializeMandelbulbForDimension, initializeSchroedingerForDimension, initializeQuaternionJuliaForDimension]);
+
   // Ensure faces are visible for raymarched fractals so render mode isn't 'none'
   useEffect(() => {
-    if (objectType === 'quaternion-julia' || objectType === 'mandelbulb') {
+    if (isRaymarchingType(objectType)) {
       const store = useAppearanceStore.getState();
       if (!store.facesVisible) {
         store.setFacesVisible(true);
@@ -33,33 +44,14 @@ export const ObjectTypeExplorer: React.FC = () => {
     }
   }, [objectType]);
 
-  // Initialize Mandelbulb settings when objectType is 'mandelbulb' and dimension changes
+  // Initialize fractal settings when objectType changes (data-driven via registry)
   useEffect(() => {
-    if (objectType === 'mandelbulb') {
-      initializeMandelbulbForDimension(dimension);
+    const configKey = getConfigStoreKey(objectType);
+    if (configKey && configKey in fractalInitializers) {
+      const initializer = fractalInitializers[configKey as keyof typeof fractalInitializers];
+      initializer(dimension);
     }
-  }, [objectType, dimension, initializeMandelbulbForDimension]);
-
-  // Initialize Quaternion Julia settings when objectType is 'quaternion-julia' and dimension changes
-  useEffect(() => {
-    if (objectType === 'quaternion-julia') {
-      initializeQuaternionJuliaForDimension(dimension);
-    }
-  }, [objectType, dimension, initializeQuaternionJuliaForDimension]);
-
-  // Ensure facesVisible is true for raymarched fractals (they require it to render)
-  useEffect(() => {
-    const isRaymarchedFractal =
-      objectType === 'quaternion-julia' ||
-      objectType === 'mandelbulb';
-
-    if (isRaymarchedFractal) {
-      const currentFacesVisible = useAppearanceStore.getState().facesVisible;
-      if (!currentFacesVisible) {
-        useAppearanceStore.getState().setFacesVisible(true);
-      }
-    }
-  }, [objectType]);
+  }, [objectType, dimension, fractalInitializers]);
 
   // Initialize polytope scale when switching to a polytope type
   useEffect(() => {

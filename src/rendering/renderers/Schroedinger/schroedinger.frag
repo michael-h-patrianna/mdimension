@@ -1739,7 +1739,9 @@ void main() {
 
     // Output to MRT (Multiple Render Targets)
     // gColor: Color buffer (RGBA)
-    // gNormal: Normal buffer (RGB = normal * 0.5 + 0.5, A = reflectivity/metallic)
+    // gNormal: Normal buffer (RGB = view-space normal * 0.5 + 0.5, A = reflectivity/metallic)
+    // Transform world-space normal to view-space for SSR compatibility
+    vec3 viewNormal = normalize((uViewMatrix * vec4(n, 0.0)).xyz);
     gColor = vec4(col, alpha);
-    gNormal = vec4(n * 0.5 + 0.5, uMetallic);
+    gNormal = vec4(viewNormal * 0.5 + 0.5, uMetallic);
 }

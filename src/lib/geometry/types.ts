@@ -3,9 +3,16 @@
  *
  * Supports both traditional polytopes (hypercube, simplex, cross-polytope)
  * and extended objects (root systems, Clifford torus, Mandelbulb)
+ *
+ * Note: Type guards below delegate to registry helpers for the actual logic,
+ * ensuring a single source of truth. The TypeScript type narrowing is maintained
+ * through explicit type predicates.
  */
 
 import type { VectorND } from '@/lib/math'
+// Import registry helpers for runtime checks
+// Using dynamic import pattern to avoid circular dependency
+import { isPolytopeCategory, isExtendedCategory, isFractalCategory } from './registry/helpers'
 
 /**
  * Supported polytope types (traditional finite vertex/edge objects)
@@ -30,33 +37,31 @@ export type ObjectType = PolytopeType | ExtendedObjectType
 
 /**
  * Type guard for polytope types
- * Accepts string to allow validation of unknown inputs
- * @param type - String or ObjectType to check
+ * Delegates to registry's isPolytopeCategory for the actual check.
+ * Accepts string to allow validation of unknown inputs.
  *
- * @see src/lib/geometry/registry for category-based helpers:
- *      isPolytopeCategory, isExtendedCategory, isFractalCategory
+ * @param type - String or ObjectType to check
+ * @returns True if type is a polytope (category === 'polytope' in registry)
+ *
+ * @see src/lib/geometry/registry for category-based helpers
  */
 export function isPolytopeType(type: string): type is PolytopeType {
-  return type === 'hypercube' || type === 'simplex' || type === 'cross-polytope' || type === 'wythoff-polytope'
+  return isPolytopeCategory(type)
 }
 
 /**
- * Type guard for extended object types
- * Accepts string to allow validation of unknown inputs
- * @param type - String or ObjectType to check
+ * Type guard for extended object types (non-polytope, non-fractal)
+ * Delegates to registry's isExtendedCategory for the actual check.
+ * Accepts string to allow validation of unknown inputs.
  *
- * @see src/lib/geometry/registry for category-based helpers:
- *      isPolytopeCategory, isExtendedCategory, isFractalCategory
+ * @param type - String or ObjectType to check
+ * @returns True if type is an extended object (category === 'extended' in registry)
+ *
+ * @see src/lib/geometry/registry for category-based helpers
  */
 export function isExtendedObjectType(type: string): type is ExtendedObjectType {
-  return (
-    type === 'root-system' ||
-    type === 'clifford-torus' ||
-    type === 'nested-torus' ||
-    type === 'mandelbulb' ||
-    type === 'quaternion-julia' ||
-    type === 'schroedinger'
-  )
+  // Extended category includes tori and root-system, but fractals are a separate category
+  return isExtendedCategory(type) || isFractalCategory(type)
 }
 
 /**

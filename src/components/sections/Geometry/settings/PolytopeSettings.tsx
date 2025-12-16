@@ -3,6 +3,7 @@ import {
   DEFAULT_POLYTOPE_CONFIG,
   DEFAULT_POLYTOPE_SCALES,
 } from '@/lib/geometry/extended/types';
+import { getTypeName, getConfigStoreKey } from '@/lib/geometry/registry';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 
@@ -18,19 +19,15 @@ export function PolytopeSettings() {
   const config = useExtendedObjectStore((state) => state.polytope);
   const setScale = useExtendedObjectStore((state) => state.setPolytopeScale);
 
-  // Get display name for the polytope type
-  const typeNames: Record<string, string> = {
-    'hypercube': 'Hypercube',
-    'simplex': 'Simplex',
-    'cross-polytope': 'Cross-Polytope',
-  };
-  const typeName = typeNames[objectType] ?? 'Polytope';
+  // Get display name from registry (data-driven)
+  const typeName = getTypeName(objectType);
 
   // Get type-specific default scale
   const defaultScale = DEFAULT_POLYTOPE_SCALES[objectType] ?? DEFAULT_POLYTOPE_CONFIG.scale;
 
   // Simplex needs a larger range due to its default of 4.0
-  const maxScale = objectType === 'simplex' ? 8.0 : 5.0;
+  // This is a specific UI constraint, not a category-level property
+  const maxScale = getConfigStoreKey(objectType) === 'polytope' && objectType === 'simplex' ? 8.0 : 5.0;
 
   return (
     <div className="space-y-4" data-testid="polytope-settings">

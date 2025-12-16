@@ -16,6 +16,7 @@ import { useRotationStore } from '@/stores/rotationStore';
 import { getAvailableTypes } from '@/lib/geometry';
 import type { ObjectType } from '@/lib/geometry/types';
 import { isPolytopeType } from '@/lib/geometry/types';
+import { getConfigStoreKey } from '@/lib/geometry/registry';
 
 export interface ObjectTypeSelectorProps {
   className?: string;
@@ -33,6 +34,9 @@ export const ObjectTypeSelector: React.FC<ObjectTypeSelectorProps> = ({
   const initializeMandelbulbForDimension = useExtendedObjectStore(
     (state) => state.initializeMandelbulbForDimension
   );
+  const initializeSchroedingerForDimension = useExtendedObjectStore(
+    (state) => state.initializeSchroedingerForDimension
+  );
   const initializeQuaternionJuliaForDimension = useExtendedObjectStore(
     (state) => state.initializeQuaternionJuliaForDimension
   );
@@ -40,19 +44,21 @@ export const ObjectTypeSelector: React.FC<ObjectTypeSelectorProps> = ({
     (state) => state.initializePolytopeForType
   );
 
-  // Initialize Mandelbulb settings when objectType is 'mandelbulb' and dimension changes
-  useEffect(() => {
-    if (objectType === 'mandelbulb') {
-      initializeMandelbulbForDimension(dimension);
-    }
-  }, [objectType, dimension, initializeMandelbulbForDimension]);
+  // Map config store keys to their initializer functions (for fractal types)
+  const fractalInitializers = useMemo(() => ({
+    mandelbulb: initializeMandelbulbForDimension,
+    schroedinger: initializeSchroedingerForDimension,
+    quaternionJulia: initializeQuaternionJuliaForDimension,
+  }), [initializeMandelbulbForDimension, initializeSchroedingerForDimension, initializeQuaternionJuliaForDimension]);
 
-  // Initialize Quaternion Julia settings when objectType is 'quaternion-julia' and dimension changes
+  // Initialize fractal settings when objectType changes (data-driven via registry)
   useEffect(() => {
-    if (objectType === 'quaternion-julia') {
-      initializeQuaternionJuliaForDimension(dimension);
+    const configKey = getConfigStoreKey(objectType);
+    if (configKey && configKey in fractalInitializers) {
+      const initializer = fractalInitializers[configKey as keyof typeof fractalInitializers];
+      initializer(dimension);
     }
-  }, [objectType, dimension, initializeQuaternionJuliaForDimension]);
+  }, [objectType, dimension, fractalInitializers]);
 
   // Initialize polytope scale when switching to a polytope type
   useEffect(() => {

@@ -3,6 +3,7 @@ import { usePanelCollision } from '@/hooks/usePanelCollision';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { usePerformanceMetricsStore } from '@/stores/performanceMetricsStore';
+import { isRaymarchingType, getConfigStoreKey } from '@/lib/geometry/registry';
 import { LazyMotion, domMax, m, useMotionValue } from 'motion/react';
 import { useRef, useState, useEffect } from 'react';
 
@@ -121,10 +122,11 @@ export function PerformanceMonitor() {
   // Unique vertices = actual vertex buffer count (shows indexed geometry savings)
   const uniqueVertices = sceneStats.uniqueVertices ?? processedVertices;
 
-  // -- Raymarching Info --
-  const isRaymarching = ['mandelbulb', 'quaternion-julia'].includes(objectType);
-  const raySteps = objectType === 'mandelbulb' ? mandelbulbConfig.maxIterations :
-                   objectType === 'quaternion-julia' ? quaternionJuliaConfig.maxIterations : 0;
+  // -- Raymarching Info (data-driven via registry) --
+  const isRaymarching = isRaymarchingType(objectType);
+  const configKey = getConfigStoreKey(objectType);
+  const raySteps = configKey === 'mandelbulb' ? mandelbulbConfig.maxIterations :
+                   configKey === 'quaternionJulia' ? quaternionJuliaConfig.maxIterations : 0;
 
   // -- Tab Content --
   const tabs = [

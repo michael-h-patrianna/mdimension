@@ -6,6 +6,7 @@
  *
  * Layer 0: Environment (walls, grid, gizmos, axes) - always visible
  * Layer 1: Main Object (polytope, mandelbulb, etc.) - used for depth-based effects
+ * Layer 2: Skybox - excluded from normal buffer (skybox normals shouldn't affect SSR)
  */
 
 /**
@@ -16,6 +17,8 @@ export const RENDER_LAYERS = {
   ENVIRONMENT: 0,
   /** Main n-dimensional object: polytope, mandelbulb, point cloud */
   MAIN_OBJECT: 1,
+  /** Skybox - excluded from normal pass to avoid polluting normal buffer */
+  SKYBOX: 2,
 } as const;
 
 export type RenderLayer = (typeof RENDER_LAYERS)[keyof typeof RENDER_LAYERS];

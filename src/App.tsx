@@ -23,10 +23,8 @@ import { useFaceDepths } from '@/hooks/useFaceDepths';
 import { useFaceDetection } from '@/hooks/useFaceDetection';
 import { useGeometryGenerator } from '@/hooks/useGeometryGenerator';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
-import { useMandelbulbColors } from '@/hooks/useMandelbulbColors';
 import { useSyncedDimension } from '@/hooks/useSyncedDimension';
 import type { VectorND, Vector3D } from '@/lib/math/types';
-import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useLightingStore } from '@/stores/lightingStore';
 import { useUIStore } from '@/stores/uiStore';
@@ -73,11 +71,6 @@ function Visualizer() {
   // 6. Compute per-face depth values for palette color variation (polytopes only)
   const faceDepths = useFaceDepths(geometry.vertices, faces, dimension);
 
-  // 7. Compute Mandelbulb colors (derived from user's edge color)
-  const mandelbulbConfig = useExtendedObjectStore((state) => state.mandelbulb);
-  const edgeColorForMandelbulb = useAppearanceStore((state) => state.edgeColor);
-  const pointColors = useMandelbulbColors(geometry, mandelbulbConfig, edgeColorForMandelbulb);
-
   // Minimum bounding radius for ground plane positioning
   // Currently all objects use the same radius for consistent ground placement
   const minBoundingRadius = 1.5;
@@ -89,7 +82,6 @@ function Visualizer() {
       objectType={objectType}
       faces={faces}
       faceDepths={faceDepths}
-      pointColors={pointColors}
       projectedVertices={basePositions}
       minBoundingRadius={minBoundingRadius}
     />

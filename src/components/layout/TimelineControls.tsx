@@ -10,7 +10,7 @@ import { AnimatePresence, m } from 'motion/react';
 import { JuliaAnimationDrawer } from './TimelineControls/JuliaAnimationDrawer';
 import { MandelbulbAnimationDrawer } from './TimelineControls/MandelbulbAnimationDrawer';
 import { PolytopeAnimationDrawer } from './TimelineControls/PolytopeAnimationDrawer';
-import { isPolytopeType } from '@/lib/geometry/types';
+import { hasTimelineControls, isPolytopeCategory, getConfigStoreKey } from '@/lib/geometry/registry';
 
 export const TimelineControls: FC = () => {
     const dimension = useGeometryStore((state) => state.dimension);
@@ -151,17 +151,17 @@ export const TimelineControls: FC = () => {
 
 
       {/* Quaternion Julia Animation Drawer */}
-      {showFractalAnim && objectType === 'quaternion-julia' && (
+      {showFractalAnim && getConfigStoreKey(objectType) === 'quaternionJulia' && (
         <JuliaAnimationDrawer />
       )}
 
       {/* Mandelbulb/Mandelbulb Fractal Animation Drawer */}
-      {showFractalAnim && objectType === 'mandelbulb' && (
+      {showFractalAnim && getConfigStoreKey(objectType) === 'mandelbulb' && (
         <MandelbulbAnimationDrawer />
       )}
 
       {/* Polytope Animation Drawer */}
-      {showFractalAnim && isPolytopeType(objectType) && (
+      {showFractalAnim && isPolytopeCategory(objectType) && (
         <PolytopeAnimationDrawer />
       )}
             </AnimatePresence>
@@ -238,7 +238,7 @@ export const TimelineControls: FC = () => {
 
                  {/* Advanced Toggles */}
                  <div className="flex items-center gap-2 shrink-0">
-                    {(objectType === 'mandelbulb' || objectType === 'quaternion-julia' || isPolytopeType(objectType)) && (
+                    {hasTimelineControls(objectType) && (
                          <button
                             onClick={() => { setShowFractalAnim(!showFractalAnim); setShowRotation(false); }}
                             className={`

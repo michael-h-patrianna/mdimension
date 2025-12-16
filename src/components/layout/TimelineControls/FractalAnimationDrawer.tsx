@@ -126,13 +126,14 @@ export const FractalAnimationDrawer: React.FC = React.memo(() => {
       const state = useExtendedObjectStore.getState();
 
       for (const [key, value] of Object.entries(updates)) {
-        // Determine setter name based on object type and parameter key format
+        // Determine setter name based on configKey from registry
         let setterName: string;
+        const currentConfigKey = configKey;
 
-        if (objectType === 'mandelbulb') {
+        if (currentConfigKey === 'mandelbulb') {
           // Mandelbulb uses flat keys: 'powerMin' → 'setMandelbulbPowerMin'
           setterName = `setMandelbulb${key.charAt(0).toUpperCase()}${key.slice(1)}`;
-        } else if (objectType === 'quaternion-julia') {
+        } else if (currentConfigKey === 'quaternionJulia') {
           // Quaternion Julia has both flat and nested keys
           // Nested: 'juliaConstantAnimation.enabled' → 'setQuaternionJuliaConstantAnimationEnabled'
           // Nested: 'powerAnimation.minPower' → 'setQuaternionJuliaPowerAnimationMinPower'
@@ -149,6 +150,9 @@ export const FractalAnimationDrawer: React.FC = React.memo(() => {
             // Flat key
             setterName = `setQuaternionJulia${key.charAt(0).toUpperCase()}${key.slice(1)}`;
           }
+        } else if (currentConfigKey === 'schroedinger') {
+          // Schroedinger uses flat keys like mandelbulb
+          setterName = `setSchroedinger${key.charAt(0).toUpperCase()}${key.slice(1)}`;
         } else {
           // Default fallback (shouldn't happen for fractals)
           continue;
@@ -160,7 +164,7 @@ export const FractalAnimationDrawer: React.FC = React.memo(() => {
         }
       }
     },
-    [objectType]
+    [configKey]
   );
 
   // If no animation systems available, don't render anything

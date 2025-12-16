@@ -33,6 +33,7 @@ export function buildFaceFragmentShader(): string {
 
     // Material properties for G-buffer
     uniform float uMetallic;  // Reflectivity for SSR
+    uniform mat4 uViewMatrix; // View matrix for normal transformation
 
     // Advanced Color System uniforms
     // 0=monochromatic, 1=analogous, 2=cosine, 3=normal, 4=distance, 5=lch, 6=multiSource
@@ -379,9 +380,11 @@ export function buildFaceFragmentShader(): string {
 
       // Output to MRT (Multiple Render Targets)
       // gColor: Color buffer (RGBA)
-      // gNormal: Normal buffer (RGB = normal * 0.5 + 0.5, A = reflectivity)
+      // gNormal: Normal buffer (RGB = view-space normal * 0.5 + 0.5, A = reflectivity)
+      // Transform world-space normal to view-space for SSR compatibility
+      vec3 viewNormal = normalize((uViewMatrix * vec4(normal, 0.0)).xyz);
       gColor = vec4(col, uOpacity);
-      gNormal = vec4(normal * 0.5 + 0.5, uMetallic);
+      gNormal = vec4(viewNormal * 0.5 + 0.5, uMetallic);
     }
   `
 }

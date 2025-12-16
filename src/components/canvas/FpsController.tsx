@@ -43,6 +43,7 @@ export function FpsController(): null {
     /**
      * Animation tick using requestAnimationFrame.
      * Only advances the frame when enough time has elapsed based on maxFps.
+     * @param now
      */
     const tick = (now: number): void => {
       rafRef.current = requestAnimationFrame(tick)
@@ -50,11 +51,6 @@ export function FpsController(): null {
       const maxFps = useUIStore.getState().maxFps
       const interval = 1000 / maxFps
       const elapsed = now - thenRef.current
-
-      // Debug: log maxFps every 60 frames
-      if (Math.random() < 0.02) {
-        console.log('FpsController: maxFps =', maxFps, 'interval =', interval)
-      }
 
       if (elapsed >= interval) {
         // Advance the frame - this triggers useFrame callbacks and renders

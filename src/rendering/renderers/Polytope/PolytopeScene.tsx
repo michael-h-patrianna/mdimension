@@ -177,6 +177,8 @@ function createFaceShaderMaterial(
       uOpacity: { value: opacity },
       // Material properties for G-buffer
       uMetallic: { value: 0.0 },
+      // View matrix for normal transformation (updated every frame)
+      uViewMatrix: { value: new Matrix4() },
       // Advanced Color System uniforms
       uColorAlgorithm: { value: 2 }, // Default to cosine
       uCosineA: { value: new Vector3(0.5, 0.5, 0.5) },
@@ -542,7 +544,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   }, [faceMaterial, edgeMaterial, faceGeometry, edgeGeometry]);
 
   // ============ USEFRAME: UPDATE UNIFORMS ONLY ============
-  useFrame((_, delta) => {
+  useFrame(({ camera }, delta) => {
     if (numVertices === 0) return;
 
     // Read animation and polytope state
@@ -629,6 +631,9 @@ export const PolytopeScene = React.memo(function PolytopeScene({
 
         // Update vertex modulation uniforms
         const u = material.uniforms;
+
+        // Update view matrix for normal transformation (needed for SSR)
+        if (u.uViewMatrix) (u.uViewMatrix.value as Matrix4).copy(camera.matrixWorldInverse);
         if (u.uAnimTime) u.uAnimTime.value = animTime;
         if (u.uModAmplitude) u.uModAmplitude.value = modAmplitude;
         if (u.uModFrequency) u.uModFrequency.value = modFrequency;

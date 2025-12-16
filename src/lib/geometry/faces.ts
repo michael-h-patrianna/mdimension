@@ -527,6 +527,7 @@ function detectConvexHullFaces(vertices: number[][]): Face[] {
 /**
  * Detects faces using UV grid structure from metadata.
  * Used for clifford-torus and nested-torus where faces follow a parametric grid.
+ * Uses registry's configStoreKey to determine which grid type to use.
  */
 function detectGridFaces(objectType: ObjectType, metadata?: GeometryMetadata): Face[] {
   if (!metadata?.properties) {
@@ -536,9 +537,13 @@ function detectGridFaces(objectType: ObjectType, metadata?: GeometryMetadata): F
   const props = metadata.properties
   let faceIndices: number[][] = []
 
-  if (objectType === 'clifford-torus') {
+  // Use registry to determine grid type based on configStoreKey
+  const registryEntry = OBJECT_TYPE_REGISTRY.get(objectType)
+  const configKey = registryEntry?.configStoreKey
+
+  if (configKey === 'cliffordTorus') {
     faceIndices = detectCliffordTorusFaces(props)
-  } else if (objectType === 'nested-torus') {
+  } else if (configKey === 'nestedTorus') {
     faceIndices = detectNestedTorusFaces(props)
   }
 

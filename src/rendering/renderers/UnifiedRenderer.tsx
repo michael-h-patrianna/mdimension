@@ -42,8 +42,6 @@ export interface UnifiedRendererProps {
   faces?: Face[];
   /** Per-face depth values for palette coloring (polytopes only) */
   faceDepths?: number[];
-  /** Per-point colors for Mandelbulb visualization */
-  pointColors?: string[];
   /** Overall opacity (default: 1.0) */
   opacity?: number;
 }

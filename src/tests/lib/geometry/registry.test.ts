@@ -38,9 +38,9 @@ import {
 
 describe('Object Type Registry', () => {
   describe('Registry Structure', () => {
-    it('contains all 9 object types', () => {
+    it('contains all 10 object types', () => {
       const types = getAllObjectTypes();
-      expect(types).toHaveLength(9);
+      expect(types).toHaveLength(10);
       expect(types).toContain('hypercube');
       expect(types).toContain('simplex');
       expect(types).toContain('cross-polytope');
@@ -49,6 +49,7 @@ describe('Object Type Registry', () => {
       expect(types).toContain('nested-torus');
       expect(types).toContain('mandelbulb');
       expect(types).toContain('quaternion-julia');
+      expect(types).toContain('schroedinger');
     });
 
     it('returns valid entry for each object type', () => {
@@ -180,7 +181,7 @@ describe('Object Type Registry', () => {
   describe('Validation', () => {
     it('getValidObjectTypes returns all types', () => {
       const validTypes = getValidObjectTypes();
-      expect(validTypes).toHaveLength(9);
+      expect(validTypes).toHaveLength(10);
     });
 
     it('isValidObjectType validates correctly', () => {

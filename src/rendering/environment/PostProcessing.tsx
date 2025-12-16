@@ -135,7 +135,7 @@ export const PostProcessing = memo(function PostProcessing() {
   //
   // IMPORTANT: We create these once and resize them separately to avoid
   // recreating the entire pipeline on every resolution change (which causes black flashes)
-  const { composer, bloomPass, bokehPass, ssrPass, refractionPass, fxaaPass, smaaPass, sceneTarget, objectDepthTarget, normalTarget, texturePass } = useMemo(() => {
+  const { composer, bloomPass, bokehPass, ssrPass, refractionPass, fxaaPass, smaaPass, sceneTarget, objectDepthTarget, normalTarget, mainObjectMRT, normalCopyMaterial, normalCopyScene, normalCopyCamera, texturePass } = useMemo(() => {
     // Use a reasonable initial size - will be resized immediately in useEffect
     const initialWidth = Math.max(1, size.width);
     const initialHeight = Math.max(1, size.height);
@@ -163,16 +163,78 @@ export const PostProcessing = memo(function PostProcessing() {
     renderTarget.depthTexture = sceneDepthTex;
 
     // Create normal render target for G-buffer (SSR needs view-space normals)
-    // MeshNormalMaterial outputs view-space normals encoded as RGB (normal * 0.5 + 0.5)
+    // This target receives environment normals (via MeshNormalMaterial) and
+    // main object normals (via layer-based MRT compositing)
     const normalTarget = new THREE.WebGLRenderTarget(initialWidth, initialHeight, {
       minFilter: THREE.LinearFilter,
       magFilter: THREE.LinearFilter,
       format: THREE.RGBAFormat,
       type: THREE.HalfFloatType, // Match Three.js SSRPass precision needs
-      depthBuffer: false, // Normals only, no depth needed
+      depthBuffer: true, // Need depth for compositing main object normals
       stencilBuffer: false,
     });
     normalTarget.texture.name = 'NormalBuffer';
+    // Add depth texture for proper depth-based normal compositing
+    const normalDepthTex = new THREE.DepthTexture(initialWidth, initialHeight);
+    normalDepthTex.format = THREE.DepthFormat;
+    normalDepthTex.type = THREE.UnsignedShortType;
+    normalTarget.depthTexture = normalDepthTex;
+
+    // Create MRT for main object normal capture
+    // Main objects output gColor to texture[0] and gNormal to texture[1]
+    // We only need texture[1] (normals), texture[0] is discarded
+    // Using WebGLRenderTarget with count option (WebGLMultipleRenderTargets was deprecated)
+    const mainObjectMRT = new THREE.WebGLRenderTarget(initialWidth, initialHeight, {
+      minFilter: THREE.LinearFilter,
+      magFilter: THREE.LinearFilter,
+      format: THREE.RGBAFormat,
+      type: THREE.HalfFloatType,
+      depthBuffer: true,
+      stencilBuffer: false,
+      count: 2, // Two color attachments for MRT
+    });
+    mainObjectMRT.textures[0].name = 'MainObjectColor_Discarded';
+    mainObjectMRT.textures[1].name = 'MainObjectNormal';
+    // Add depth texture for proper occlusion testing
+    const mainObjectDepthTex = new THREE.DepthTexture(initialWidth, initialHeight);
+    mainObjectDepthTex.format = THREE.DepthFormat;
+    mainObjectDepthTex.type = THREE.UnsignedShortType;
+    mainObjectMRT.depthTexture = mainObjectDepthTex;
+
+    // Create copy material for transferring MRT normal texture to normalTarget
+    // This replaces blitFramebuffer which has unreliable behavior across browsers
+    const normalCopyMaterial = new THREE.ShaderMaterial({
+      glslVersion: THREE.GLSL3,
+      uniforms: {
+        tNormal: { value: null },
+        tDepth: { value: null },
+      },
+      vertexShader: /* glsl */ `
+        out vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = vec4(position.xy, 0.0, 1.0);
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        precision highp float;
+        uniform sampler2D tNormal;
+        uniform sampler2D tDepth;
+        in vec2 vUv;
+        out vec4 fragColor;
+        void main() {
+          fragColor = texture(tNormal, vUv);
+          // Also copy depth to gl_FragDepth for proper compositing
+          gl_FragDepth = texture(tDepth, vUv).r;
+        }
+      `,
+      depthTest: false,
+      depthWrite: true, // Write depth for environment pass compositing
+    });
+    const normalCopyQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), normalCopyMaterial);
+    const normalCopyScene = new THREE.Scene();
+    normalCopyScene.add(normalCopyQuad);
+    const normalCopyCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 
     // Create object-only depth target for refraction/bokeh
     // SSR uses full-scene depth to allow reflections on walls
@@ -268,6 +330,10 @@ export const PostProcessing = memo(function PostProcessing() {
       sceneTarget: renderTarget,
       objectDepthTarget: objectDepth,
       normalTarget: normalTarget,
+      mainObjectMRT: mainObjectMRT,
+      normalCopyMaterial: normalCopyMaterial,
+      normalCopyScene: normalCopyScene,
+      normalCopyCamera: normalCopyCamera,
       texturePass: texPass,
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -358,6 +424,19 @@ export const PostProcessing = memo(function PostProcessing() {
 
     // Resize normal render target (for SSR G-buffer)
     normalTarget.setSize(width, height);
+    if (normalTarget.depthTexture) {
+      normalTarget.depthTexture.image.width = width;
+      normalTarget.depthTexture.image.height = height;
+      normalTarget.depthTexture.needsUpdate = true;
+    }
+
+    // Resize main object MRT (for capturing main object normals)
+    mainObjectMRT.setSize(width, height);
+    if (mainObjectMRT.depthTexture) {
+      mainObjectMRT.depthTexture.image.width = width;
+      mainObjectMRT.depthTexture.image.height = height;
+      mainObjectMRT.depthTexture.needsUpdate = true;
+    }
 
     // Update texture pass with new texture reference after resize (color buffer)
     texturePass.map = sceneTarget.texture;
@@ -372,7 +451,7 @@ export const PostProcessing = memo(function PostProcessing() {
     // Update refraction uniforms
     const refractionUniforms = refractionPass.uniforms as unknown as RefractionUniforms;
     refractionUniforms.resolution.value.set(width, height);
-  }, [composer, bloomPass, bokehPass, ssrPass, refractionPass, sceneTarget, objectDepthTarget, normalTarget, texturePass, size.width, size.height]);
+  }, [composer, bloomPass, bokehPass, ssrPass, refractionPass, sceneTarget, objectDepthTarget, normalTarget, mainObjectMRT, texturePass, size.width, size.height]);
 
   // Initialize temporal depth manager on mount and resize
   useEffect(() => {
@@ -386,9 +465,11 @@ export const PostProcessing = memo(function PostProcessing() {
       sceneTarget.dispose();
       objectDepthTarget.dispose();
       normalTarget.dispose();
+      mainObjectMRT.dispose();
+      normalCopyMaterial.dispose();
       TemporalDepthManager.dispose();
     };
-  }, [composer, sceneTarget, objectDepthTarget, normalTarget]);
+  }, [composer, sceneTarget, objectDepthTarget, normalTarget, mainObjectMRT, normalCopyMaterial]);
 
   // Render
   useFrame((_, delta) => {
@@ -483,10 +564,11 @@ export const PostProcessing = memo(function PostProcessing() {
     }
 
     // Render full scene to capture color and depth
-    // Ensure camera sees both environment (layer 0) and main object (layer 1)
+    // Ensure camera sees environment (layer 0), main object (layer 1), and skybox (layer 2)
     if (camera instanceof THREE.PerspectiveCamera) {
       camera.layers.enable(RENDER_LAYERS.ENVIRONMENT);
       camera.layers.enable(RENDER_LAYERS.MAIN_OBJECT);
+      camera.layers.enable(RENDER_LAYERS.SKYBOX);
     }
 
     gl.autoClear = false;
@@ -553,22 +635,31 @@ export const PostProcessing = memo(function PostProcessing() {
     });
 
     // Render normal pass for G-buffer (when SSR, refraction, or normal visualization needs normals)
-    // Uses scene.overrideMaterial to capture view-space normals from all geometry
-    // MeshNormalMaterial outputs view-space normals encoded as RGB
+    // DEBUG: Simplified approach - render main objects directly to normalTarget
+    // to verify they render at all (bypassing MRT complexity)
     const needsNormalPass = currentSSREnabled || currentRefractionEnabled || currentShowNormalBuffer;
     if (needsNormalPass) {
+      const savedCameraLayers = camera.layers.mask;
+
+      // Clear normalTarget
       gl.setRenderTarget(normalTarget);
       gl.setClearColor(0x000000, 0);
-      gl.clear(true, false, false); // Clear color only (no depth buffer in this target)
+      gl.clear(true, true, false);
 
-      // Override all materials with MeshNormalMaterial
+      // DEBUG: Render main objects directly to normalTarget (no MRT)
+      // This tests if main objects render at all with their shaders
+      camera.layers.set(RENDER_LAYERS.MAIN_OBJECT);
+      gl.render(scene, camera);
+
+      // Then render environment with MeshNormalMaterial WITH DEPTH TEST
+      camera.layers.set(RENDER_LAYERS.ENVIRONMENT);
       scene.overrideMaterial = normalMaterial;
-      try {
-        gl.render(scene, camera);
-      } finally {
-        scene.overrideMaterial = null;
-        gl.setRenderTarget(null);
-      }
+      gl.render(scene, camera);
+      scene.overrideMaterial = null;
+
+      // Restore camera layers
+      camera.layers.mask = savedCameraLayers;
+      gl.setRenderTarget(null);
     }
 
     // Use object-only depth or full scene depth based on setting

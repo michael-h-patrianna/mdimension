@@ -69,28 +69,11 @@ export {
   verifyCliffordTorusOnSphere,
 } from './clifford-torus'
 
-// Mandelbulb
-export {
-  filterSamples,
-  generateMandelbulb,
-  generateSampleGrid,
-  getMandelbulbStats,
-  mandelbulbEscapeTime,
-  mandelbulbSmoothEscapeTime,
-  mandelbulbStep,
-  normSquared,
-} from './mandelbulb'
-export type { MandelbulbSample } from './mandelbulb'
+// Mandelbulb (GPU raymarching only - no CPU sampling)
+export { generateMandelbulb } from './mandelbulb'
 
-// Schroedinger
-export {
-  generateSchroedinger,
-  getSchroedingerStats,
-  schroedingerEscapeTime,
-  schroedingerSmoothEscapeTime,
-  schroedingerStep,
-} from './schroedinger'
-export type { SchroedingerSample } from './schroedinger'
+// Schroedinger (GPU raymarching only - no CPU sampling)
+export { generateSchroedinger } from './schroedinger'
 
 // Utility exports
 export {
@@ -183,20 +166,10 @@ export function generateExtendedObject(
       }
 
     case 'schroedinger':
-      // Schroedinger uses GPU raymarching exclusively - no CPU geometry needed
-      // Return minimal geometry that signals to UnifiedRenderer to use SchroedingerMesh
-      return {
+      return generateSchroedinger(
         dimension,
-        type: 'schroedinger',
-        vertices: [],
-        edges: [],
-        metadata: {
-          name: 'Schroedinger',
-          properties: {
-            renderMode: 'raymarching',
-          },
-        },
-      }
+        params.schroedinger ?? DEFAULT_EXTENDED_OBJECT_PARAMS.schroedinger
+      )
 
     default:
       throw new Error(`Unknown extended object type: ${type}`)

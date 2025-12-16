@@ -43,8 +43,6 @@ export interface SceneProps {
   faces?: Face[]
   /** Per-face depth values for palette coloring */
   faceDepths?: number[]
-  /** Per-point colors for point cloud rendering */
-  pointColors?: string[]
   /** 3D projected vertices for ground plane positioning */
   projectedVertices?: Vector3D[]
   /** Enable auto-rotation (default: false) */
@@ -70,7 +68,6 @@ export const Scene = React.memo(function Scene({
   objectType,
   faces,
   faceDepths,
-  pointColors,
   projectedVertices,
   autoRotate = false,
   opacity = 1.0,
@@ -172,7 +169,6 @@ export const Scene = React.memo(function Scene({
         objectType={objectType}
         faces={faces}
         faceDepths={faceDepths}
-        pointColors={pointColors}
         opacity={opacity}
       />
     </>

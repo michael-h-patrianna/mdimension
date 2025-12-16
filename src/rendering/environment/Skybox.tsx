@@ -1,3 +1,4 @@
+import { RENDER_LAYERS } from '@/rendering/core/layers';
 import { createSkyboxShaderDefaults, skyboxFragmentShader, skyboxGlslVersion, skyboxVertexShader } from '@/rendering/materials/skybox/SkyboxShader';
 import { applyDistributionTS, getCosinePaletteColorTS } from '@/rendering/shaders/palette/cosine.glsl';
 import type { ColorAlgorithm, CosineCoefficients, DistributionSettings } from '@/rendering/shaders/palette/types';
@@ -267,6 +268,7 @@ interface SkyboxMeshProps {
 }
 
 export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
+  const meshRef = useRef<THREE.Mesh>(null);
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   const timeRef = useRef(0);
   // Pointer removed as it was only for uMousePos
@@ -275,6 +277,13 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
   const eulerRef = useRef(new THREE.Euler());
   const matrix3Ref = useRef(new THREE.Matrix3());
   const matrix4Ref = useRef(new THREE.Matrix4());
+
+  // Set skybox to its own layer so it's excluded from normal pass
+  useEffect(() => {
+    if (meshRef.current) {
+      meshRef.current.layers.set(RENDER_LAYERS.SKYBOX);
+    }
+  }, []);
 
   const {
     skyboxMode,
@@ -680,7 +689,7 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
   }
 
   return (
-    <mesh data-testid="skybox-mesh">
+    <mesh ref={meshRef} data-testid="skybox-mesh">
         {/* Use sphere geometry instead of box - no visible seams at corners */}
         <sphereGeometry args={[500, 64, 32]} />
         <skyboxMaterial
