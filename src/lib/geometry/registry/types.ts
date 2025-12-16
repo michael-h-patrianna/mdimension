@@ -33,6 +33,7 @@ export type RenderMethod = 'polytope' | 'raymarch' | 'point-cloud'
  * - triangles: Simplex/Cross-polytope - 3-cycles in adjacency graph
  * - convex-hull: Root system - 3D convex hull projection
  * - grid: Clifford/Nested torus - UV grid structure from metadata
+ * - metadata: Pre-computed faces stored in geometry metadata (Wythoff polytopes)
  * - none: Point clouds, raymarched fractals (faces rendered by shader)
  */
 export type FaceDetectionMethod =
@@ -40,6 +41,7 @@ export type FaceDetectionMethod =
   | 'triangles'
   | 'convex-hull'
   | 'grid'
+  | 'metadata'
   | 'none'
 
 // ============================================================================

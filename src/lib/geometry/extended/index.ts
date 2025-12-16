@@ -25,6 +25,9 @@ export type {
   PolytopeConfig,
   RootSystemConfig,
   RootSystemType,
+  WythoffPolytopeConfig,
+  WythoffPreset,
+  WythoffSymmetryGroup,
 } from './types'
 
 // Default configs
@@ -34,6 +37,8 @@ export {
   DEFAULT_MANDELBROT_CONFIG,
   DEFAULT_POLYTOPE_CONFIG,
   DEFAULT_ROOT_SYSTEM_CONFIG,
+  DEFAULT_WYTHOFF_POLYTOPE_CONFIG,
+  DEFAULT_WYTHOFF_SCALES,
   MANDELBROT_QUALITY_PRESETS,
 } from './types'
 

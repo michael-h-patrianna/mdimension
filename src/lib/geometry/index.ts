@@ -85,6 +85,9 @@ export type {
   PolytopeConfig,
   RootSystemConfig,
   RootSystemType,
+  WythoffPolytopeConfig,
+  WythoffPreset,
+  WythoffSymmetryGroup,
 } from './extended'
 
 // Default configs for all object types
@@ -94,6 +97,8 @@ export {
   DEFAULT_MANDELBROT_CONFIG,
   DEFAULT_POLYTOPE_CONFIG,
   DEFAULT_ROOT_SYSTEM_CONFIG,
+  DEFAULT_WYTHOFF_POLYTOPE_CONFIG,
+  DEFAULT_WYTHOFF_SCALES,
   MANDELBROT_QUALITY_PRESETS,
 } from './extended'
 
@@ -101,6 +106,12 @@ export {
 export { generateCrossPolytope } from './cross-polytope'
 export { generateHypercube } from './hypercube'
 export { generateSimplex } from './simplex'
+export {
+  generateWythoffPolytope,
+  getWythoffPolytopeInfo,
+  getWythoffPresetName,
+} from './wythoff-polytope'
+export type { WythoffSymbol } from './wythoff-polytope'
 
 // Extended object generator exports
 export {
@@ -144,6 +155,7 @@ import type { ExtendedObjectParams } from './extended'
 import { DEFAULT_EXTENDED_OBJECT_PARAMS, generateExtendedObject } from './extended'
 import { generateHypercube } from './hypercube'
 import { generateSimplex } from './simplex'
+import { generateWythoffPolytope } from './wythoff-polytope'
 import type {
   NdGeometry,
   ObjectType,
@@ -165,7 +177,8 @@ import { isPolytopeType } from './types'
 export function generatePolytope(
   type: PolytopeType,
   dimension: number,
-  scale = 1.0
+  scale = 1.0,
+  wythoffConfig?: ExtendedObjectParams['wythoffPolytope']
 ): PolytopeGeometry {
   switch (type) {
     case 'hypercube':
@@ -174,6 +187,11 @@ export function generatePolytope(
       return generateSimplex(dimension, scale)
     case 'cross-polytope':
       return generateCrossPolytope(dimension, scale)
+    case 'wythoff-polytope':
+      return generateWythoffPolytope(dimension, {
+        ...wythoffConfig,
+        scale,
+      })
     default:
       throw new Error(`Unknown polytope type: ${type}`)
   }
@@ -216,17 +234,35 @@ export function generateGeometry(
 
   if (isPolytopeType(type)) {
     // Convert PolytopeGeometry to NdGeometry, using polytope config for scale
-    const scale = effectiveParams.polytope?.scale ?? 1.0
-    const polytope = generatePolytope(type, dimension, scale)
+    let scale: number
+    let polytope: PolytopeGeometry
+
+    if (type === 'wythoff-polytope') {
+      // Use wythoff-polytope specific config
+      const wythoffConfig = effectiveParams.wythoffPolytope
+      scale = wythoffConfig?.scale ?? 2.0
+      polytope = generatePolytope(type, dimension, scale, wythoffConfig)
+    } else {
+      scale = effectiveParams.polytope?.scale ?? 1.0
+      polytope = generatePolytope(type, dimension, scale)
+    }
+
+    // Preserve metadata from polytope generation (e.g., analyticalFaces for Wythoff)
+    // while adding/overriding standard fields
     return {
       dimension: polytope.dimension,
       type: polytope.type,
       vertices: polytope.vertices,
       edges: polytope.edges,
       metadata: {
-        name: getTypeNameLocal(type),
+        name: polytope.metadata?.name ?? getTypeNameLocal(type),
         properties: {
+          ...polytope.metadata?.properties, // Preserve analyticalFaces and other computed properties
           scale,
+          ...(type === 'wythoff-polytope' && {
+            symmetryGroup: effectiveParams.wythoffPolytope?.symmetryGroup,
+            preset: effectiveParams.wythoffPolytope?.preset,
+          }),
         },
       },
     }
@@ -258,6 +294,11 @@ export function getPolytopeProperties(geometry: PolytopeGeometry): PolytopePrope
     case 'cross-polytope':
       vertexFormula = '2n'
       edgeFormula = '2n(n-1)'
+      break
+    case 'wythoff-polytope':
+      // Wythoff polytopes have variable vertex/edge counts based on configuration
+      vertexFormula = 'variable'
+      edgeFormula = 'variable'
       break
   }
 

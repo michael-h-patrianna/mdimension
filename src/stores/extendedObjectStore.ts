@@ -21,6 +21,7 @@ import {
   DEFAULT_POLYTOPE_CONFIG,
   DEFAULT_QUATERNION_JULIA_CONFIG,
   DEFAULT_ROOT_SYSTEM_CONFIG,
+  DEFAULT_WYTHOFF_POLYTOPE_CONFIG,
 } from '@/lib/geometry/extended/types'
 import { create } from 'zustand'
 import { createCliffordTorusSlice } from './slices/geometry/cliffordTorusSlice'
@@ -29,6 +30,7 @@ import { createNestedTorusSlice } from './slices/geometry/nestedTorusSlice'
 import { createPolytopeSlice } from './slices/geometry/polytopeSlice'
 import { createQuaternionJuliaSlice } from './slices/geometry/quaternionJuliaSlice'
 import { createRootSystemSlice } from './slices/geometry/rootSystemSlice'
+import { createWythoffPolytopeSlice } from './slices/geometry/wythoffPolytopeSlice'
 import { ExtendedObjectSlice } from './slices/geometry/types'
 
 // Re-export type for consumers
@@ -43,6 +45,7 @@ export const useExtendedObjectStore = create<ExtendedObjectSlice>()((...a) => {
 
   return {
     ...createPolytopeSlice(...a),
+    ...createWythoffPolytopeSlice(...a),
     ...createRootSystemSlice(...a),
     ...createCliffordTorusSlice(...a),
     ...createNestedTorusSlice(...a),
@@ -54,6 +57,7 @@ export const useExtendedObjectStore = create<ExtendedObjectSlice>()((...a) => {
       set({
         // Initialize with default values
         polytope: { ...DEFAULT_POLYTOPE_CONFIG },
+        wythoffPolytope: { ...DEFAULT_WYTHOFF_POLYTOPE_CONFIG },
         rootSystem: { ...DEFAULT_ROOT_SYSTEM_CONFIG },
         cliffordTorus: { ...DEFAULT_CLIFFORD_TORUS_CONFIG },
         nestedTorus: { ...DEFAULT_NESTED_TORUS_CONFIG },

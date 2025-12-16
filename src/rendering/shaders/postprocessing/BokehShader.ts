@@ -41,6 +41,9 @@ export interface BokehUniforms {
 export const BokehShader = {
   name: 'BokehShader',
 
+  // Use GLSL3 for WebGL2 - Three.js will handle the #version directive
+  glslVersion: THREE.GLSL3,
+
   uniforms: {
     tDiffuse: { value: null as THREE.Texture | null },
     tDepth: { value: null as THREE.DepthTexture | null },
@@ -59,7 +62,8 @@ export const BokehShader = {
   },
 
   vertexShader: /* glsl */ `
-    varying vec2 vUv;
+    out vec2 vUv;
+
     void main() {
       vUv = uv;
       gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
@@ -67,6 +71,8 @@ export const BokehShader = {
   `,
 
   fragmentShader: /* glsl */ `
+    precision highp float;
+
     #include <packing>
 
     uniform sampler2D tDiffuse;
@@ -84,7 +90,8 @@ export const BokehShader = {
     uniform float blurMethod;
     uniform float time;
 
-    varying vec2 vUv;
+    in vec2 vUv;
+    layout(location = 0) out vec4 fragColor;
 
     // Pseudo-random function for jittered sampling
     float rand(vec2 co) {
@@ -92,7 +99,7 @@ export const BokehShader = {
     }
 
     float getDepth(vec2 coord) {
-      return texture2D(tDepth, coord).x;
+      return texture(tDepth, coord).x;
     }
 
     float getViewZ(float depth) {
@@ -102,23 +109,23 @@ export const BokehShader = {
     // Method 0: Basic disc blur (17 samples in circular pattern)
     vec4 discBlur(vec2 uv, vec2 blur) {
       vec4 col = vec4(0.0);
-      col += texture2D(tDiffuse, uv);
-      col += texture2D(tDiffuse, uv + blur * vec2(0.0, 0.4));
-      col += texture2D(tDiffuse, uv + blur * vec2(0.15, 0.37));
-      col += texture2D(tDiffuse, uv + blur * vec2(0.29, 0.29));
-      col += texture2D(tDiffuse, uv + blur * vec2(-0.37, 0.15));
-      col += texture2D(tDiffuse, uv + blur * vec2(0.4, 0.0));
-      col += texture2D(tDiffuse, uv + blur * vec2(0.37, -0.15));
-      col += texture2D(tDiffuse, uv + blur * vec2(0.29, -0.29));
-      col += texture2D(tDiffuse, uv + blur * vec2(-0.15, -0.37));
-      col += texture2D(tDiffuse, uv + blur * vec2(0.0, -0.4));
-      col += texture2D(tDiffuse, uv + blur * vec2(-0.15, 0.37));
-      col += texture2D(tDiffuse, uv + blur * vec2(-0.29, 0.29));
-      col += texture2D(tDiffuse, uv + blur * vec2(0.37, 0.15));
-      col += texture2D(tDiffuse, uv + blur * vec2(-0.4, 0.0));
-      col += texture2D(tDiffuse, uv + blur * vec2(-0.37, -0.15));
-      col += texture2D(tDiffuse, uv + blur * vec2(-0.29, -0.29));
-      col += texture2D(tDiffuse, uv + blur * vec2(0.15, -0.37));
+      col += texture(tDiffuse, uv);
+      col += texture(tDiffuse, uv + blur * vec2(0.0, 0.4));
+      col += texture(tDiffuse, uv + blur * vec2(0.15, 0.37));
+      col += texture(tDiffuse, uv + blur * vec2(0.29, 0.29));
+      col += texture(tDiffuse, uv + blur * vec2(-0.37, 0.15));
+      col += texture(tDiffuse, uv + blur * vec2(0.4, 0.0));
+      col += texture(tDiffuse, uv + blur * vec2(0.37, -0.15));
+      col += texture(tDiffuse, uv + blur * vec2(0.29, -0.29));
+      col += texture(tDiffuse, uv + blur * vec2(-0.15, -0.37));
+      col += texture(tDiffuse, uv + blur * vec2(0.0, -0.4));
+      col += texture(tDiffuse, uv + blur * vec2(-0.15, 0.37));
+      col += texture(tDiffuse, uv + blur * vec2(-0.29, 0.29));
+      col += texture(tDiffuse, uv + blur * vec2(0.37, 0.15));
+      col += texture(tDiffuse, uv + blur * vec2(-0.4, 0.0));
+      col += texture(tDiffuse, uv + blur * vec2(-0.37, -0.15));
+      col += texture(tDiffuse, uv + blur * vec2(-0.29, -0.29));
+      col += texture(tDiffuse, uv + blur * vec2(0.15, -0.37));
       return col / 17.0;
     }
 
@@ -142,7 +149,7 @@ export const BokehShader = {
           float weight = 1.0 - length(offset) * 0.3;
           weight = max(weight, 0.0);
 
-          col += texture2D(tDiffuse, uv + blur * offset) * weight;
+          col += texture(tDiffuse, uv + blur * offset) * weight;
           total += weight;
         }
       }
@@ -165,14 +172,14 @@ export const BokehShader = {
       // Horizontal samples
       for (int i = -4; i <= 4; i++) {
         float w = weights[int(abs(float(i)))];
-        col += texture2D(tDiffuse, uv + vec2(blur.x * float(i) * 0.25, 0.0)) * w;
+        col += texture(tDiffuse, uv + vec2(blur.x * float(i) * 0.25, 0.0)) * w;
         total += w;
       }
 
       // Vertical samples
       for (int i = -4; i <= 4; i++) {
         float w = weights[int(abs(float(i)))];
-        col += texture2D(tDiffuse, uv + vec2(0.0, blur.y * float(i) * 0.25)) * w;
+        col += texture(tDiffuse, uv + vec2(0.0, blur.y * float(i) * 0.25)) * w;
         total += w;
       }
 
@@ -186,7 +193,7 @@ export const BokehShader = {
 
       // Hexagonal pattern with 3 rings + center
       // Ring 0: center
-      col += texture2D(tDiffuse, uv) * 1.0;
+      col += texture(tDiffuse, uv) * 1.0;
       total += 1.0;
 
       // Ring 1: 6 samples at distance 0.33
@@ -194,7 +201,7 @@ export const BokehShader = {
       for (int i = 0; i < 6; i++) {
         float angle = float(i) * 1.0472; // 60 degrees = PI/3
         vec2 offset = vec2(cos(angle), sin(angle)) * r1;
-        col += texture2D(tDiffuse, uv + blur * offset) * 0.9;
+        col += texture(tDiffuse, uv + blur * offset) * 0.9;
         total += 0.9;
       }
 
@@ -203,7 +210,7 @@ export const BokehShader = {
       for (int i = 0; i < 12; i++) {
         float angle = float(i) * 0.5236; // 30 degrees = PI/6
         vec2 offset = vec2(cos(angle), sin(angle)) * r2;
-        col += texture2D(tDiffuse, uv + blur * offset) * 0.7;
+        col += texture(tDiffuse, uv + blur * offset) * 0.7;
         total += 0.7;
       }
 
@@ -212,7 +219,7 @@ export const BokehShader = {
       for (int i = 0; i < 18; i++) {
         float angle = float(i) * 0.349; // 20 degrees
         vec2 offset = vec2(cos(angle), sin(angle)) * r3;
-        col += texture2D(tDiffuse, uv + blur * offset) * 0.5;
+        col += texture(tDiffuse, uv + blur * offset) * 0.5;
         total += 0.5;
       }
 
@@ -222,9 +229,9 @@ export const BokehShader = {
     void main() {
       // Show temporal depth buffer if enabled
       if (showTemporalDepth) {
-        float temporalDepth = texture2D(tTemporalDepth, vUv).r;
+        float temporalDepth = texture(tTemporalDepth, vUv).r;
         // Invert: near=white, far=black (more intuitive)
-        gl_FragColor = vec4(vec3(1.0 - temporalDepth), 1.0);
+        fragColor = vec4(vec3(1.0 - temporalDepth), 1.0);
         return;
       }
 
@@ -242,14 +249,14 @@ export const BokehShader = {
 
       // Debug mode 1: show raw depth buffer (inverted so near=white, far=black)
       if (debugMode > 0.5 && debugMode < 1.5) {
-        gl_FragColor = vec4(vec3(1.0 - depth), 1.0);
+        fragColor = vec4(vec3(1.0 - depth), 1.0);
         return;
       }
 
       // Debug mode 2: show linear depth normalized to camera range (near=black, far=white)
       if (debugMode > 1.5 && debugMode < 2.5) {
         float normalized = (viewZ - nearClip) / (farClip - nearClip);
-        gl_FragColor = vec4(vec3(clamp(normalized, 0.0, 1.0)), 1.0);
+        fragColor = vec4(vec3(clamp(normalized, 0.0, 1.0)), 1.0);
         return;
       }
 
@@ -260,7 +267,7 @@ export const BokehShader = {
         // Red: behind focus (positive diff), Blue: in front (negative diff)
         float behind = clamp(diff / (focusRange * 3.0), 0.0, 1.0);
         float infront = clamp(-diff / (focusRange * 3.0), 0.0, 1.0);
-        gl_FragColor = vec4(behind, inFocus, infront, 1.0);
+        fragColor = vec4(behind, inFocus, infront, 1.0);
         return;
       }
 
@@ -285,8 +292,8 @@ export const BokehShader = {
         col = hexagonalBlur(vUv, dofblur);
       }
 
-      gl_FragColor = col;
-      gl_FragColor.a = 1.0;
+      fragColor = col;
+      fragColor.a = 1.0;
     }
   `,
 };

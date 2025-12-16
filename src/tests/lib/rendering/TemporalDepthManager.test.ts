@@ -44,11 +44,20 @@ describe('TemporalDepthManager', () => {
     TemporalDepthManager.dispose();
 
     // Create mock renderer with minimal necessary methods
+    // Includes viewport/scissor methods for robust state management
     mockRenderer = {
       getRenderTarget: vi.fn(() => null),
       setRenderTarget: vi.fn(),
       render: vi.fn(),
+      clear: vi.fn(),
       autoClear: true,
+      // Viewport/scissor state management
+      getViewport: vi.fn((target: THREE.Vector4) => target.set(0, 0, 800, 600)),
+      setViewport: vi.fn(),
+      getScissor: vi.fn((target: THREE.Vector4) => target.set(0, 0, 800, 600)),
+      setScissor: vi.fn(),
+      getScissorTest: vi.fn(() => false),
+      setScissorTest: vi.fn(),
     } as unknown as THREE.WebGLRenderer;
 
     // Create mock camera
@@ -112,9 +121,11 @@ describe('TemporalDepthManager', () => {
       TemporalDepthManager.initialize(800, 600, mockRenderer);
       TemporalDepthManager.updateCameraMatrices(mockCamera);
 
+      // Camera matrices should be stored for temporal reprojection
+      // Note: uNearClip and uFarClip are no longer exposed since the temporal buffer
+      // now stores unnormalized ray distances directly
       const uniforms = TemporalDepthManager.getUniforms();
-      expect(uniforms.uNearClip).toBe(0.1);
-      expect(uniforms.uFarClip).toBe(1000);
+      expect(uniforms.uPrevViewProjectionMatrix).toBeInstanceOf(THREE.Matrix4);
     });
 
     it('should store view-projection matrix', () => {
@@ -203,13 +214,14 @@ describe('TemporalDepthManager', () => {
 
       const uniforms = TemporalDepthManager.getUniforms();
 
+      // Core uniforms for temporal reprojection
       expect(uniforms).toHaveProperty('uPrevDepthTexture');
       expect(uniforms).toHaveProperty('uPrevViewProjectionMatrix');
       expect(uniforms).toHaveProperty('uPrevInverseViewProjectionMatrix');
       expect(uniforms).toHaveProperty('uTemporalEnabled');
       expect(uniforms).toHaveProperty('uDepthBufferResolution');
-      expect(uniforms).toHaveProperty('uNearClip');
-      expect(uniforms).toHaveProperty('uFarClip');
+      // Note: uNearClip and uFarClip are no longer needed since temporal buffer
+      // now stores unnormalized ray distances directly (world-space units)
     });
 
     it('should return proper types for uniforms', () => {
@@ -221,8 +233,6 @@ describe('TemporalDepthManager', () => {
       expect(uniforms.uPrevInverseViewProjectionMatrix).toBeInstanceOf(THREE.Matrix4);
       expect(uniforms.uDepthBufferResolution).toBeInstanceOf(THREE.Vector2);
       expect(typeof uniforms.uTemporalEnabled).toBe('boolean');
-      expect(typeof uniforms.uNearClip).toBe('number');
-      expect(typeof uniforms.uFarClip).toBe('number');
     });
   });
 
@@ -272,6 +282,54 @@ describe('TemporalDepthManager', () => {
         .calls;
       const lastCall = setRenderTargetCalls[setRenderTargetCalls.length - 1];
       expect(lastCall?.[0]).toBe(originalTarget);
+    });
+
+    it('should save and restore viewport state', () => {
+      vi.mocked(usePerformanceStore.getState).mockReturnValue({
+        temporalReprojectionEnabled: true,
+      } as ReturnType<typeof usePerformanceStore.getState>);
+
+      const mockDepthTexture = {} as THREE.DepthTexture;
+
+      TemporalDepthManager.initialize(800, 600, mockRenderer);
+      TemporalDepthManager.captureDepth(mockRenderer, mockDepthTexture);
+
+      // Should get the current viewport to save it
+      expect(mockRenderer.getViewport).toHaveBeenCalled();
+      // Should set viewport to target dimensions, then restore
+      expect(mockRenderer.setViewport).toHaveBeenCalledTimes(2);
+    });
+
+    it('should save and restore scissor state', () => {
+      vi.mocked(usePerformanceStore.getState).mockReturnValue({
+        temporalReprojectionEnabled: true,
+      } as ReturnType<typeof usePerformanceStore.getState>);
+
+      const mockDepthTexture = {} as THREE.DepthTexture;
+
+      TemporalDepthManager.initialize(800, 600, mockRenderer);
+      TemporalDepthManager.captureDepth(mockRenderer, mockDepthTexture);
+
+      // Should get and restore scissor state
+      expect(mockRenderer.getScissor).toHaveBeenCalled();
+      expect(mockRenderer.getScissorTest).toHaveBeenCalled();
+      // Should disable scissor test, then restore original state
+      expect(mockRenderer.setScissorTest).toHaveBeenCalledTimes(2);
+      expect(mockRenderer.setScissor).toHaveBeenCalled();
+    });
+
+    it('should explicitly clear the render target', () => {
+      vi.mocked(usePerformanceStore.getState).mockReturnValue({
+        temporalReprojectionEnabled: true,
+      } as ReturnType<typeof usePerformanceStore.getState>);
+
+      const mockDepthTexture = {} as THREE.DepthTexture;
+
+      TemporalDepthManager.initialize(800, 600, mockRenderer);
+      TemporalDepthManager.captureDepth(mockRenderer, mockDepthTexture);
+
+      // Should explicitly clear the color buffer (not depth or stencil)
+      expect(mockRenderer.clear).toHaveBeenCalledWith(true, false, false);
     });
   });
 

@@ -1,41 +1,89 @@
-1) Slicing / scanning (instant “wow” mode)
-N-D hyperplane slice (cross-section animation)
+## 1: Truncation family (smoothly “shave” vertices/edges)
 
-Render only parts where an N-D dot product is near an offset (a moving slice through the polytope).
+A single parameter 𝑡 controls how far you cut supporting planes inwards. As 𝑡 increases, new faces appear and grow.
 
-Params: sliceNormalND[] (unit), sliceOffset, sliceThickness, offsetSpeed, feather, multiSlices(count, spacing)
+Config
 
-Implementation note: you’ll likely want to pass more than just vFaceDepth (currently derived from extra dims
+mode: vertexTruncate | edgeTruncate | cantellate | chamfer t (0…tMax), tSpeed (monotone; loop by switching to another operation, not oscillating)
 
-) so the fragment shader can evaluate the slice precisely.
+preserve: volume | circumradius | inradius | none
 
-Why: turns “rotate the whole thing” into “discover structure inside it”.
+featureWeights: e.g. bias cuts to high-valence vertices / long edges
 
-2) Shader-driven motion (cheap, high payoff)
-Traveling edge/face waves (color + opacity)
+Notes
 
-Drive a phase based on “depth” (sum of extra dims) and time.
+This does change combinatorics, but it’s still smooth if you rebuild continuously (or do keyframed meshes and cross-fade topology).
 
-Params: waveSpeed, wavelength, direction(choose dims), contrast, edgeGlowStrength, opacityPulse
+Dual morph (P ↔ P*)
 
-Where it plugs in: uDistOffset / uDistCycles already exist and are updated per frame
+Dualization is very “polytope-y”: vertices ↔ facets. You can animate from a polytope to its polar dual through a normalization.
 
-PolytopeScene
+Config
 
-—add a distOffsetSpeed and animate it.
+dualNormalize: unitSphere | inradius1 | circumradius1
 
-Palette drift / palette beat
+t (0..1), speed
 
-Slowly drift cosine palette parameters or just rotate the palette phase.
+blendSpace: supportFunction | halfspaceOffsets (prefer these over naïve vertex lerp)
 
-Params: palettePhaseSpeed, paletteDriftAmount, beatRate, beatStrength, lockHues (keep harmony)
+## 2: Facet-offset morph (H-representation “breathing”, but not puls-y)
 
-Why: even if geometry motion is subtle, color motion keeps attention.
+Represent the polytope as 𝐴𝑥≤𝑏. Keep facet normals 𝐴 fixed; animate the offsets 𝑏(𝑡) along a smooth path. This produces very organic evolving but still “rigidly polytope” motion.
 
-Procedural micro-jitter (controlled noise)
+Config
 
-Tiny vertex offset in projected 3D (or normal perturb in fragment) using a stable per-vertex hash.
+facetGroup: which constraints to move
 
-Params: jitterAmp, noiseScale, noiseSpeed, axisMask, freeze (for stills)
+offsetPath: linear | bezier | spline (in parameter space)
 
-Why: adds “energy” without ruining the form—if kept small.
+deltaBPerFacet[] (signed)
+
+keepCentered: recenter after each solve
+
+minMargin: avoid degeneracy (facet collapses)
+
+Why it avoids nausea
+No oscillation needed: you can run along a one-way spline through shape-space.
+
+
+3) Minkowski morph between two polytopes (continuous, always convex)
+
+Define P(t)=(1−t)P0+tP1 (Minkowski sum with scaling). This is an extremely “clean” evolution.
+
+Config
+
+polytopeA, polytopeB
+t (0..1), speed
+
+alignment: centroid | principalAxes | userMatrix
+
+normalize: volume | radius | none
+
+Implementation reality
+Easiest if you have both in H-rep with shared normals (then it’s just interpolating offsets). Otherwise you’ll need hull/halfspace conversion each frame.
+
+
+## 4: Dual morph (P ↔ P*)
+
+Dualization is very “polytope-y”: vertices ↔ facets. You can animate from a polytope to its polar dual through a normalization.
+
+Config
+
+dualNormalize: unitSphere | inradius1 | circumradius1
+
+t (0..1), speed
+
+blendSpace: supportFunction | halfspaceOffsets (prefer these over naïve vertex lerp)
+
+## How to plug this into your renderer (minimal changes)
+
+Right now you build geometry once from baseVertices into position + aExtraDim0..6 PolytopeScene and the shader transforms them faceVertex.glsl.
+
+New: Morph targets in the vertex shader (smooth + fast)
+
+Add a second set of attributes: position2, aExtraDim0_2..aExtraDim6_2, plus uniform uMorphT.
+
+Then in transformND(), blend inputs before rotation/projection:
+inputs = mix(inputsA, inputsB, uMorphT);
+
+(Your N-D transform is already isolated in transformND(): edgeVertex.glsl

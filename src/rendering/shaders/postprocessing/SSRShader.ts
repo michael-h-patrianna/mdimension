@@ -34,6 +34,9 @@ export interface SSRUniforms {
 export const SSRShader = {
   name: 'SSRShader',
 
+  // Use GLSL3 for WebGL2 - Three.js will handle the #version directive
+  glslVersion: THREE.GLSL3,
+
   uniforms: {
     tDiffuse: { value: null as THREE.Texture | null },
     tNormal: { value: null as THREE.Texture | null },
@@ -53,7 +56,8 @@ export const SSRShader = {
   } as SSRUniforms,
 
   vertexShader: /* glsl */ `
-    varying vec2 vUv;
+    out vec2 vUv;
+
     void main() {
       vUv = uv;
       gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
@@ -61,6 +65,8 @@ export const SSRShader = {
   `,
 
   fragmentShader: /* glsl */ `
+    precision highp float;
+
     #include <packing>
 
     uniform sampler2D tDiffuse;
@@ -79,11 +85,12 @@ export const SSRShader = {
     uniform float nearClip;
     uniform float farClip;
 
-    varying vec2 vUv;
+    in vec2 vUv;
+    layout(location = 0) out vec4 fragColor;
 
     // Get linear depth from depth buffer
     float getLinearDepth(vec2 coord) {
-      float depth = texture2D(tDepth, coord).x;
+      float depth = texture(tDepth, coord).x;
       return perspectiveDepthToViewZ(depth, nearClip, farClip);
     }
 
@@ -101,11 +108,11 @@ export const SSRShader = {
       vec2 texel = 1.0 / resolution;
 
       // Sample depth at center and neighboring pixels
-      float depthC = texture2D(tDepth, coord).x;
-      float depthL = texture2D(tDepth, coord - vec2(texel.x, 0.0)).x;
-      float depthR = texture2D(tDepth, coord + vec2(texel.x, 0.0)).x;
-      float depthU = texture2D(tDepth, coord - vec2(0.0, texel.y)).x;
-      float depthD = texture2D(tDepth, coord + vec2(0.0, texel.y)).x;
+      float depthC = texture(tDepth, coord).x;
+      float depthL = texture(tDepth, coord - vec2(texel.x, 0.0)).x;
+      float depthR = texture(tDepth, coord + vec2(texel.x, 0.0)).x;
+      float depthU = texture(tDepth, coord - vec2(0.0, texel.y)).x;
+      float depthD = texture(tDepth, coord + vec2(0.0, texel.y)).x;
 
       // Reconstruct view-space positions
       vec3 posC = getViewPosition(coord, depthC);
@@ -129,7 +136,7 @@ export const SSRShader = {
     // Get normal from G-buffer (encoded as RGB = normal * 0.5 + 0.5)
     // Falls back to depth reconstruction if normal buffer not available
     vec3 getNormal(vec2 coord) {
-      vec4 normalData = texture2D(tNormal, coord);
+      vec4 normalData = texture(tNormal, coord);
 
       // Check if we have valid normal data (non-zero alpha or valid RGB)
       if (length(normalData.rgb) > 0.01) {
@@ -143,7 +150,7 @@ export const SSRShader = {
     // Get reflectivity from G-buffer alpha channel
     // Falls back to full reflectivity when no G-buffer (let intensity control strength)
     float getReflectivity(vec2 coord) {
-      vec4 normalData = texture2D(tNormal, coord);
+      vec4 normalData = texture(tNormal, coord);
       // If alpha is 0 (no G-buffer), use full reflectivity - user controls via intensity
       return normalData.a > 0.0 ? normalData.a : 1.0;
     }
@@ -161,20 +168,20 @@ export const SSRShader = {
     }
 
     void main() {
-      vec4 sceneColor = texture2D(tDiffuse, vUv);
+      vec4 sceneColor = texture(tDiffuse, vUv);
 
       // Early exit if SSR is disabled or intensity is zero
       if (intensity <= 0.0) {
-        gl_FragColor = sceneColor;
+        fragColor = sceneColor;
         return;
       }
 
       // Sample G-buffer
-      float depth = texture2D(tDepth, vUv).x;
+      float depth = texture(tDepth, vUv).x;
 
       // Skip background (depth = 1.0 means nothing there)
       if (depth >= 0.9999) {
-        gl_FragColor = sceneColor;
+        fragColor = sceneColor;
         return;
       }
 
@@ -183,7 +190,7 @@ export const SSRShader = {
 
       // Skip non-reflective surfaces
       if (reflectivity <= 0.0) {
-        gl_FragColor = sceneColor;
+        fragColor = sceneColor;
         return;
       }
 
@@ -226,7 +233,7 @@ export const SSRShader = {
         }
 
         // Sample depth at this position
-        float sampleDepth = texture2D(tDepth, sampleUV).x;
+        float sampleDepth = texture(tDepth, sampleUV).x;
         vec3 sampleViewPos = getViewPosition(sampleUV, sampleDepth);
 
         // Check for intersection (ray is behind surface)
@@ -242,7 +249,7 @@ export const SSRShader = {
 
       // Apply reflection if hit was found
       if (hitUV.x >= 0.0) {
-        vec4 reflectionColor = texture2D(tDiffuse, hitUV);
+        vec4 reflectionColor = texture(tDiffuse, hitUV);
 
         // Distance fade
         float distFade = 1.0 - smoothstep(fadeStart * maxDistance, fadeEnd * maxDistance, hitDist);
@@ -256,9 +263,9 @@ export const SSRShader = {
         float reflectionStrength = intensity * reflectivity * fresnelFactor * distFade * edgeFade;
 
         // Blend reflection with scene color
-        gl_FragColor = mix(sceneColor, reflectionColor, reflectionStrength);
+        fragColor = mix(sceneColor, reflectionColor, reflectionStrength);
       } else {
-        gl_FragColor = sceneColor;
+        fragColor = sceneColor;
       }
     }
   `,

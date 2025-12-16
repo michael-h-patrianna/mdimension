@@ -147,6 +147,46 @@ export const OBJECT_TYPE_REGISTRY: ObjectTypeRegistry = new Map<ObjectType, Obje
     },
   ],
 
+  [
+    'wythoff-polytope',
+    {
+      type: 'wythoff-polytope',
+      name: 'Wythoff Polytope',
+      description: 'Uniform polytopes via Wythoff kaleidoscopic construction',
+      category: 'polytope',
+
+      dimensions: {
+        min: 3,
+        max: 11,
+      },
+
+      rendering: {
+        supportsFaces: true,
+        supportsEdges: true,
+        supportsPoints: true,
+        renderMethod: 'polytope',
+        faceDetection: 'metadata', // Uses pre-computed faces stored in geometry metadata
+      },
+
+      animation: {
+        hasTypeSpecificAnimations: false,
+        systems: {},
+      },
+
+      urlSerialization: {
+        typeKey: 'wythoff-polytope',
+        serializableParams: ['symmetryGroup', 'preset', 'scale', 'snub'],
+      },
+
+      ui: {
+        controlsComponentKey: 'WythoffPolytopeSettings',
+        hasTimelineControls: false,
+      },
+
+      configStoreKey: 'wythoffPolytope',
+    },
+  ],
+
   // ============================================================================
   // EXTENDED OBJECTS
   // ============================================================================

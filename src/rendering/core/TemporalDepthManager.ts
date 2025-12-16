@@ -2,11 +2,16 @@
  * Temporal Depth Manager
  *
  * Singleton class that manages temporal depth buffers for raymarching acceleration.
- * Uses a ping-pong buffer system to store the previous frame's depth information.
+ * Uses a ping-pong buffer system to store the previous frame's ray distance information.
+ *
+ * Key design decisions:
+ * - Stores RAY DISTANCE, not view-space Z (viewZ ≠ rayDistance for off-center pixels)
+ * - Stores UNNORMALIZED values (FloatType allows real distances, better precision)
+ * - Zero distance indicates invalid/no temporal data
  *
  * Flow:
- * 1. Before fractal render: getUniforms() returns previous frame's depth
- * 2. After fractal render: captureDepth() copies current depth to write buffer
+ * 1. Before fractal render: getUniforms() returns previous frame's ray distances
+ * 2. After fractal render: captureDepth() converts depth to ray distance and stores it
  * 3. End of frame: swap() switches read/write buffers
  *
  * This manager is updated by PostProcessing and read by mesh components.
@@ -24,7 +29,7 @@ const DEPTH_TYPE = THREE.FloatType;
 const RESOLUTION_SCALE = 0.5;
 
 export interface TemporalDepthUniforms {
-  /** Previous frame's depth texture (linear depth, normalized to [0,1]) */
+  /** Previous frame's ray distance texture (unnormalized world-space ray distances) */
   uPrevDepthTexture: THREE.Texture | null;
   /** Previous frame's view-projection matrix */
   uPrevViewProjectionMatrix: THREE.Matrix4;
@@ -34,10 +39,6 @@ export interface TemporalDepthUniforms {
   uTemporalEnabled: boolean;
   /** Depth buffer resolution for UV calculation */
   uDepthBufferResolution: THREE.Vector2;
-  /** Camera near clip */
-  uNearClip: number;
-  /** Camera far clip */
-  uFarClip: number;
 }
 
 /**
@@ -60,6 +61,7 @@ class TemporalDepthManagerImpl {
 
   // Current frame camera matrices (will become prev after swap)
   private currentViewProjectionMatrix = new THREE.Matrix4();
+  private currentInverseProjectionMatrix = new THREE.Matrix4();
 
   // Camera clip planes
   private nearClip = 0.1;
@@ -69,6 +71,10 @@ class TemporalDepthManagerImpl {
   private captureMaterial: THREE.ShaderMaterial | null = null;
   private captureScene: THREE.Scene | null = null;
   private captureCamera: THREE.OrthographicCamera | null = null;
+
+  // Reusable vectors for state save/restore (avoid allocations per frame)
+  private savedViewport = new THREE.Vector4();
+  private savedScissor = new THREE.Vector4();
 
   /**
    * Initialize or resize the temporal depth buffers.
@@ -125,6 +131,7 @@ class TemporalDepthManagerImpl {
         nearClip: { value: 0.1 },
         farClip: { value: 1000.0 },
         sourceResolution: { value: new THREE.Vector2(1, 1) },
+        inverseProjectionMatrix: { value: new THREE.Matrix4() },
       },
       vertexShader: DepthCaptureShader.vertexShader,
       fragmentShader: DepthCaptureShader.fragmentShader,
@@ -152,6 +159,9 @@ class TemporalDepthManagerImpl {
       .copy(camera.projectionMatrix)
       .multiply(camera.matrixWorldInverse);
 
+    // Store inverse projection matrix for viewZ → ray distance conversion
+    this.currentInverseProjectionMatrix.copy(camera.projectionMatrix).invert();
+
     if (camera instanceof THREE.PerspectiveCamera) {
       this.nearClip = camera.near;
       this.farClip = camera.far;
@@ -161,6 +171,10 @@ class TemporalDepthManagerImpl {
   /**
    * Capture the current frame's depth to the temporal buffer.
    * Call this AFTER rendering the scene but BEFORE swap().
+   *
+   * This method is robust against viewport/scissor state mismatches that can occur
+   * in complex post-processing pipelines. It explicitly saves/restores all relevant
+   * state and clears the target to ensure no stale data persists.
    */
   captureDepth(gl: THREE.WebGLRenderer, depthTexture: THREE.DepthTexture): void {
     if (!this.isEnabled()) return;
@@ -176,6 +190,7 @@ class TemporalDepthManagerImpl {
       nearClip: { value: number };
       farClip: { value: number };
       sourceResolution: { value: THREE.Vector2 };
+      inverseProjectionMatrix: { value: THREE.Matrix4 };
     };
     uniforms.tDepth.value = depthTexture;
     uniforms.nearClip.value = this.nearClip;
@@ -185,18 +200,40 @@ class TemporalDepthManagerImpl {
       depthTexture.image?.width ?? this.width * 2,
       depthTexture.image?.height ?? this.height * 2
     );
+    // Pass inverse projection matrix for viewZ → ray distance conversion
+    uniforms.inverseProjectionMatrix.value.copy(this.currentInverseProjectionMatrix);
 
-    // Render depth capture pass
-    const currentRenderTarget = gl.getRenderTarget();
-    const currentAutoClear = gl.autoClear;
+    // Save all relevant renderer state
+    // This is critical for robustness in complex post-processing pipelines
+    const savedRenderTarget = gl.getRenderTarget();
+    const savedAutoClear = gl.autoClear;
+    gl.getViewport(this.savedViewport);
+    gl.getScissor(this.savedScissor);
+    const savedScissorTest = gl.getScissorTest();
 
+    // Set up render target with full coverage
+    // Explicitly setting viewport/scissor prevents partial updates when
+    // other passes use non-default viewport or scissor settings
     gl.setRenderTarget(writeTarget);
-    gl.autoClear = true;
+    gl.setViewport(0, 0, this.width, this.height);
+    gl.setScissorTest(false);
+
+    // Explicit clear to 0 (rather than relying on autoClear which uses
+    // renderer's current clear settings and respects scissor)
+    // Zero depth = "no temporal info" which the shader treats as invalid,
+    // preventing stale data from persisting
+    gl.clear(true, false, false);
+
+    // Render the depth capture pass (autoClear disabled since we cleared manually)
+    gl.autoClear = false;
     gl.render(this.captureScene, this.captureCamera);
 
-    // Restore state
-    gl.setRenderTarget(currentRenderTarget);
-    gl.autoClear = currentAutoClear;
+    // Restore all state
+    gl.setRenderTarget(savedRenderTarget);
+    gl.setViewport(this.savedViewport);
+    gl.setScissor(this.savedScissor);
+    gl.setScissorTest(savedScissorTest);
+    gl.autoClear = savedAutoClear;
   }
 
   /**
@@ -250,6 +287,9 @@ class TemporalDepthManagerImpl {
   /**
    * Get the uniforms to pass to fractal shaders.
    * Call this when setting up material uniforms.
+   *
+   * The depth texture now contains unnormalized ray distances (world-space units).
+   * Fractal shaders can use these directly as start distances for ray marching.
    */
   getUniforms(): TemporalDepthUniforms {
     const readTarget = this.getReadTarget();
@@ -261,8 +301,6 @@ class TemporalDepthManagerImpl {
       uPrevInverseViewProjectionMatrix: this.prevInverseViewProjectionMatrix,
       uTemporalEnabled: enabled,
       uDepthBufferResolution: new THREE.Vector2(this.width, this.height),
-      uNearClip: this.nearClip,
-      uFarClip: this.farClip,
     };
   }
 

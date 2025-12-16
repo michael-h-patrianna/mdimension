@@ -17,8 +17,8 @@ export function buildEdgeFragmentShader(): string {
   return `
     precision highp float;
 
-    // Single output for thin line edges (no MRT needed)
-    out vec4 fragColor;
+    // Single output for thin line edges
+    layout(location = 0) out vec4 fragColor;
 
     uniform vec3 uColor;
     uniform float uOpacity;

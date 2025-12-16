@@ -10,7 +10,7 @@ import type { VectorND } from '@/lib/math'
 /**
  * Supported polytope types (traditional finite vertex/edge objects)
  */
-export type PolytopeType = 'hypercube' | 'simplex' | 'cross-polytope'
+export type PolytopeType = 'hypercube' | 'simplex' | 'cross-polytope' | 'wythoff-polytope'
 
 /**
  * Extended object types (point clouds and special mathematical objects)
@@ -36,7 +36,7 @@ export type ObjectType = PolytopeType | ExtendedObjectType
  *      isPolytopeCategory, isExtendedCategory, isFractalCategory
  */
 export function isPolytopeType(type: string): type is PolytopeType {
-  return type === 'hypercube' || type === 'simplex' || type === 'cross-polytope'
+  return type === 'hypercube' || type === 'simplex' || type === 'cross-polytope' || type === 'wythoff-polytope'
 }
 
 /**
@@ -69,6 +69,8 @@ export interface PolytopeGeometry {
   dimension: number
   /** Type of polytope */
   type: PolytopeType
+  /** Optional metadata for extended polytope information */
+  metadata?: GeometryMetadata
 }
 
 /**

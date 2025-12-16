@@ -2,12 +2,12 @@
  * Tests for DepthCaptureShader
  *
  * Tests the shader definition used to capture depth from scene
- * into a linear depth buffer for temporal reprojection.
+ * into a ray distance buffer for temporal reprojection.
  *
- * The shader uses conservative MIN sampling when downsampling:
- * - Samples a 2x2 grid in the source footprint
- * - Takes the MINIMUM depth (closest surface)
- * - This prevents ray marching from overshooting thin structures
+ * Key design decisions:
+ * - Stores RAY DISTANCE, not view-space Z (viewZ ≠ rayDistance for off-center pixels)
+ * - Stores UNNORMALIZED values (FloatType allows real distances, better precision)
+ * - Uses CONSERVATIVE MIN sampling when downsampling to prevent overshooting
  */
 
 import { describe, it, expect } from 'vitest';
@@ -62,13 +62,18 @@ describe('DepthCaptureShader', () => {
       expect(uniforms.sourceResolution).toBeDefined();
       expect(uniforms.sourceResolution.value).toBeDefined();
     });
+
+    it('should have inverseProjectionMatrix uniform for viewZ to rayDistance conversion', () => {
+      const uniforms = DepthCaptureShader.uniforms as DepthCaptureUniforms;
+      expect(uniforms.inverseProjectionMatrix).toBeDefined();
+      expect(uniforms.inverseProjectionMatrix.value).toBeDefined();
+    });
   });
 
   describe('vertex shader', () => {
-    it('should use WebGL2/GLSL3 syntax', () => {
-      expect(DepthCaptureShader.vertexShader).toContain('#version 300 es');
-      expect(DepthCaptureShader.vertexShader).toContain('in vec3 position');
-      expect(DepthCaptureShader.vertexShader).toContain('in vec2 uv');
+    it('should use WebGL2/GLSL3 via glslVersion property', () => {
+      // With Three.js integration, #version directive is handled by glslVersion property
+      expect(DepthCaptureShader.glslVersion).toBeDefined();
       expect(DepthCaptureShader.vertexShader).toContain('out vec2 vUv');
     });
 
@@ -85,7 +90,8 @@ describe('DepthCaptureShader', () => {
 
   describe('fragment shader', () => {
     it('should use WebGL2/GLSL3 syntax', () => {
-      expect(DepthCaptureShader.fragmentShader).toContain('#version 300 es');
+      // #version directive is handled by glslVersion property, not embedded in shader
+      expect(DepthCaptureShader.glslVersion).toBeDefined();
       expect(DepthCaptureShader.fragmentShader).toContain('precision highp float');
       expect(DepthCaptureShader.fragmentShader).toContain('in vec2 vUv');
       expect(DepthCaptureShader.fragmentShader).toContain('layout(location = 0) out vec4 fragColor');
@@ -110,17 +116,34 @@ describe('DepthCaptureShader', () => {
       expect(DepthCaptureShader.fragmentShader).toContain('uniform float nearClip');
       expect(DepthCaptureShader.fragmentShader).toContain('uniform float farClip');
       expect(DepthCaptureShader.fragmentShader).toContain('uniform vec2 sourceResolution');
+      expect(DepthCaptureShader.fragmentShader).toContain('uniform mat4 inverseProjectionMatrix');
     });
 
-    it('should normalize depth output to [0,1] range', () => {
-      expect(DepthCaptureShader.fragmentShader).toContain('clamp');
-      expect(DepthCaptureShader.fragmentShader).toContain('normalizedDepth');
-    });
-
-    it('should output to single channel using layout output', () => {
+    it('should output unnormalized ray distance using layout output', () => {
       // Should use fragColor not gl_FragColor for WebGL2
-      expect(DepthCaptureShader.fragmentShader).toContain('fragColor = vec4(normalizedDepth');
+      // Should output rayDistance (unnormalized), not normalizedDepth
+      expect(DepthCaptureShader.fragmentShader).toContain('fragColor = vec4(rayDistance');
       expect(DepthCaptureShader.fragmentShader).not.toContain('gl_FragColor');
+    });
+  });
+
+  describe('viewZ to rayDistance conversion', () => {
+    it('should calculate ray direction cosine from inverse projection matrix', () => {
+      const frag = DepthCaptureShader.fragmentShader;
+      expect(frag).toContain('getRayCosAngle');
+      expect(frag).toContain('inverseProjectionMatrix');
+    });
+
+    it('should convert view-space Z to ray distance', () => {
+      const frag = DepthCaptureShader.fragmentShader;
+      // rayDistance = viewZ / cos(angle)
+      expect(frag).toContain('viewZ / max(cosAngle');
+    });
+
+    it('should handle division by near-zero cosine safely', () => {
+      const frag = DepthCaptureShader.fragmentShader;
+      // Should clamp cosAngle to avoid division by zero
+      expect(frag).toContain('max(cosAngle, 0.001)');
     });
   });
 

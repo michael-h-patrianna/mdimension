@@ -10,6 +10,7 @@ precision highp float;
 layout(location = 0) out vec4 gColor;
 layout(location = 1) out vec4 gNormal;
 
+uniform vec2 uResolution;
 uniform vec3 uCameraPosition;
 uniform float uPower;
 uniform float uIterations;
@@ -95,8 +96,12 @@ uniform mat4 uPrevViewProjectionMatrix;
 uniform mat4 uPrevInverseViewProjectionMatrix;
 uniform bool uTemporalEnabled;
 uniform vec2 uDepthBufferResolution;
-uniform float uCameraNear;
-uniform float uCameraFar;
+
+// Orthographic projection uniforms
+// When enabled, rays are parallel instead of diverging from camera
+uniform bool uOrthographic;
+uniform vec3 uOrthoRayDir;  // Camera forward direction in world space
+uniform mat4 uInverseViewProjectionMatrix;  // For unprojecting screen coords to world space
 
 // Opacity Mode System uniforms
 // Mode: 0=solid, 1=simpleAlpha, 2=layeredSurfaces, 3=volumetricDensity
@@ -1106,19 +1111,17 @@ float GetDistWithTrap(vec3 pos, out float trap) {
 // ============================================
 
 /**
- * Reproject current pixel to previous frame and sample depth.
- * Returns the reprojected depth distance, or -1.0 if invalid.
+ * Reproject current pixel to previous frame and sample ray distance.
+ * Returns the reprojected ray distance, or -1.0 if invalid.
  *
- * The temporal depth buffer stores linear depth normalized to [0, 1]:
- *   stored = linearDepth / farClip
- *
- * To recover world-space distance:
- *   worldDepth = stored * farClip
+ * The temporal depth buffer stores unnormalized ray distances (world-space units).
+ * This is the actual distance along the ray, not view-space Z, which is important
+ * for off-center pixels where viewZ ≠ rayDistance.
  *
  * @param ro Ray origin in model space
  * @param rd Ray direction in model space (normalized)
  * @param worldRayDir Ray direction in world space (for reprojection)
- * @return Reprojected depth distance in model space, or -1.0 if invalid
+ * @return Reprojected ray distance in model space, or -1.0 if invalid
  */
 float getTemporalDepth(vec3 ro, vec3 rd, vec3 worldRayDir) {
     if (!uTemporalEnabled) return -1.0;
@@ -1142,11 +1145,12 @@ float getTemporalDepth(vec3 ro, vec3 rd, vec3 worldRayDir) {
         return -1.0;  // Off-screen in previous frame
     }
 
-    // Sample previous depth (stored as normalized linear depth)
-    float normalizedDepth = texture(uPrevDepthTexture, prevUV).r;
+    // Sample previous ray distance (stored as unnormalized world-space distance)
+    float rayDistance = texture(uPrevDepthTexture, prevUV).r;
 
-    // Validate depth (0 means no hit or sky)
-    if (normalizedDepth <= 0.001 || normalizedDepth >= 0.999) {
+    // Validate ray distance (0 or very small means no hit, cleared, or sky)
+    // Very large values indicate potential issues
+    if (rayDistance <= 0.01 || rayDistance > 1000.0) {
         return -1.0;
     }
 
@@ -1159,22 +1163,20 @@ float getTemporalDepth(vec3 ro, vec3 rd, vec3 worldRayDir) {
     float depthDown = texture(uPrevDepthTexture, prevUV - vec2(0.0, texelSize.y)).r;
 
     float maxNeighborDiff = max(
-        max(abs(normalizedDepth - depthLeft), abs(normalizedDepth - depthRight)),
-        max(abs(normalizedDepth - depthUp), abs(normalizedDepth - depthDown))
+        max(abs(rayDistance - depthLeft), abs(rayDistance - depthRight)),
+        max(abs(rayDistance - depthUp), abs(rayDistance - depthDown))
     );
 
-    // Threshold for disocclusion detection (tuned for normalized depth)
-    // 0.05 corresponds to ~5% of far clip depth difference
-    if (maxNeighborDiff > 0.05) {
+    // Threshold for disocclusion detection (absolute distance threshold)
+    // 0.2 world units is roughly 10% of bounding sphere radius (BOUND_R = 2.0)
+    // This catches edges where depth jumps significantly between neighbors
+    if (maxNeighborDiff > 0.2) {
         return -1.0;  // Depth discontinuity - temporal data unreliable
     }
 
-    // Convert from normalized depth to world-space distance
-    float worldDepth = normalizedDepth * uCameraFar;
-
-    // Convert world-space depth to model-space ray distance
-    // This is an approximation assuming uniform scale
-    float modelDepth = worldDepth;
+    // Ray distance is already in world-space units
+    // Convert to model-space (approximation assuming uniform scale)
+    float modelDepth = rayDistance;
 
     // Apply safety margin - step back 5% to handle surface movement
     return max(0.0, modelDepth * 0.95);
@@ -1564,9 +1566,37 @@ float calculateOpacityAlpha(float hitDist, float sphereEntry, float maxDepth) {
 }
 
 void main() {
-    vec3 ro = (uInverseModelMatrix * vec4(uCameraPosition, 1.0)).xyz;
-    vec3 worldRayDir = normalize(vPosition - uCameraPosition);
-    vec3 rd = normalize((uInverseModelMatrix * vec4(worldRayDir, 0.0)).xyz);
+    vec3 ro, rd;
+    vec3 worldRayDir;
+
+    if (uOrthographic) {
+        // Orthographic projection: rays are parallel, origins vary across screen
+        // All rays have the same direction (camera's forward direction)
+        worldRayDir = normalize(uOrthoRayDir);
+        rd = normalize((uInverseModelMatrix * vec4(worldRayDir, 0.0)).xyz);
+
+        // Use screen coordinates to compute ray origin (not vPosition which doesn't
+        // correctly map to orthographic ray origins due to BackSide box rendering)
+        vec2 screenUV = gl_FragCoord.xy / uResolution;
+        vec2 ndc = screenUV * 2.0 - 1.0;
+
+        // Unproject from NDC to world space using inverse view-projection matrix
+        // Use near plane (z=-1 in NDC) to get a point on the view frustum front
+        vec4 nearPointClip = vec4(ndc, -1.0, 1.0);
+        vec4 nearPointWorld = uInverseViewProjectionMatrix * nearPointClip;
+        nearPointWorld /= nearPointWorld.w;
+
+        // Transform to model space and offset backwards along ray to ensure
+        // we start well in front of the bounding sphere
+        vec3 rayOriginWorld = nearPointWorld.xyz;
+        ro = (uInverseModelMatrix * vec4(rayOriginWorld, 1.0)).xyz;
+        ro = ro - rd * (BOUND_R + 1.0);
+    } else {
+        // Perspective projection: rays diverge from camera position
+        ro = (uInverseModelMatrix * vec4(uCameraPosition, 1.0)).xyz;
+        worldRayDir = normalize(vPosition - uCameraPosition);
+        rd = normalize((uInverseModelMatrix * vec4(worldRayDir, 0.0)).xyz);
+    }
 
     float camDist = length(ro);
     float maxDist = camDist + BOUND_R * 2.0 + 1.0;

@@ -1,26 +1,27 @@
-import { createColorCache, createLightColorCache, updateLinearColorUniform } from '@/rendering/colors/linearCache';
+import { createTemporalDepthUniforms } from '@/hooks';
 import { computeDriftedOrigin, type OriginDriftConfig } from '@/lib/animation/originDrift';
-import { createLightUniforms, updateLightUniforms, type LightUniforms } from '@/rendering/lights/uniforms';
 import { composeRotations } from '@/lib/math/rotation';
 import type { MatrixND } from '@/lib/math/types';
-import { OPACITY_MODE_TO_INT, SAMPLE_QUALITY_TO_INT } from '@/rendering/opacity/types';
-import { COLOR_ALGORITHM_TO_INT } from '@/rendering/shaders/palette';
-import { SHADOW_QUALITY_TO_INT, SHADOW_ANIMATION_MODE_TO_INT } from '@/rendering/shadows/types';
+import { createColorCache, createLightColorCache, updateLinearColorUniform } from '@/rendering/colors/linearCache';
 import { RENDER_LAYERS } from '@/rendering/core/layers';
 import { TemporalDepthManager } from '@/rendering/core/TemporalDepthManager';
-import { createTemporalDepthUniforms } from '@/hooks';
+import { createLightUniforms, updateLightUniforms, type LightUniforms } from '@/rendering/lights/uniforms';
+import { OPACITY_MODE_TO_INT, SAMPLE_QUALITY_TO_INT } from '@/rendering/opacity/types';
+import { COLOR_ALGORITHM_TO_INT } from '@/rendering/shaders/palette';
+import { SHADOW_ANIMATION_MODE_TO_INT, SHADOW_QUALITY_TO_INT } from '@/rendering/shadows/types';
 import { useAnimationStore } from '@/stores/animationStore';
+import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
+import { useLightingStore } from '@/stores/lightingStore';
 import {
-  getEffectiveSampleQuality,
-  getEffectiveShadowQuality,
-  usePerformanceStore,
+    getEffectiveSampleQuality,
+    getEffectiveShadowQuality,
+    usePerformanceStore,
 } from '@/stores/performanceStore';
+import { useProjectionStore } from '@/stores/projectionStore';
 import type { RotationState } from '@/stores/rotationStore';
 import { useRotationStore } from '@/stores/rotationStore';
-import { useAppearanceStore } from '@/stores/appearanceStore';
-import { useLightingStore } from '@/stores/lightingStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
@@ -322,6 +323,11 @@ const MandelbulbMesh = () => {
 
       // Temporal Reprojection uniforms
       ...createTemporalDepthUniforms(),
+
+      // Orthographic projection uniforms
+      uOrthographic: { value: false },
+      uOrthoRayDir: { value: new THREE.Vector3(0, 0, -1) },
+      uInverseViewProjectionMatrix: { value: new THREE.Matrix4() },
     }),
     []
   );
@@ -478,6 +484,24 @@ const MandelbulbMesh = () => {
       if (material.uniforms.uProjectionMatrix) material.uniforms.uProjectionMatrix.value.copy(camera.projectionMatrix);
       if (material.uniforms.uViewMatrix) material.uniforms.uViewMatrix.value.copy(camera.matrixWorldInverse);
 
+      // Update orthographic projection uniforms
+      const projectionType = useProjectionStore.getState().type;
+      if (material.uniforms.uOrthographic) {
+        material.uniforms.uOrthographic.value = projectionType === 'orthographic';
+      }
+      if (material.uniforms.uOrthoRayDir) {
+        // Get camera's forward direction (negative Z in camera space, transformed to world space)
+        const orthoDir = material.uniforms.uOrthoRayDir.value as THREE.Vector3;
+        camera.getWorldDirection(orthoDir);
+      }
+      if (material.uniforms.uInverseViewProjectionMatrix) {
+        // Compute inverse view-projection matrix for unprojecting screen coords to world space
+        // inverseVP = inverse(projection * view) = inverse(view) * inverse(projection)
+        // inverse(view) = camera.matrixWorld, inverse(projection) = camera.projectionMatrixInverse
+        const invVP = material.uniforms.uInverseViewProjectionMatrix.value as THREE.Matrix4;
+        invVP.copy(camera.projectionMatrixInverse).premultiply(camera.matrixWorld);
+      }
+
       // Update temporal reprojection uniforms from manager
       const temporalUniforms = TemporalDepthManager.getUniforms();
       if (material.uniforms.uPrevDepthTexture) {
@@ -495,12 +519,8 @@ const MandelbulbMesh = () => {
       if (material.uniforms.uDepthBufferResolution) {
         material.uniforms.uDepthBufferResolution.value.copy(temporalUniforms.uDepthBufferResolution);
       }
-      if (material.uniforms.uCameraNear) {
-        material.uniforms.uCameraNear.value = temporalUniforms.uNearClip;
-      }
-      if (material.uniforms.uCameraFar) {
-        material.uniforms.uCameraFar.value = temporalUniforms.uFarClip;
-      }
+      // Note: uCameraNear and uCameraFar are no longer needed - temporal buffer now stores
+      // unnormalized ray distances directly (world-space units)
 
       // Update multi-light uniforms (with cached color conversion)
       updateLightUniforms(material.uniforms as unknown as LightUniforms, lights, lightColorCacheRef.current);

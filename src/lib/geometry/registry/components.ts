@@ -29,6 +29,12 @@ const componentLoaders: Record<string, () => Promise<{ default: ComponentType<un
       default: m.PolytopeSettings as ComponentType<unknown>,
     })),
 
+  // Wythoff Polytope (has its own controls)
+  WythoffPolytopeSettings: () =>
+    import('@/components/sections/Geometry/settings/WythoffPolytopeSettings').then((m) => ({
+      default: m.WythoffPolytopeSettings as ComponentType<unknown>,
+    })),
+
   // Extended objects
   RootSystemSettings: () =>
     import('@/components/sections/Geometry/settings/RootSystemSettings').then((m) => ({

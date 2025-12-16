@@ -12,78 +12,86 @@
  * - Smooth crossfade transitions
  */
 
-import * as THREE from 'three';
-import { GLSL_COSINE_PALETTE } from '@/rendering/shaders/palette/cosine.glsl';
+import { GLSL_COSINE_PALETTE } from '@/rendering/shaders/palette/cosine.glsl'
+import * as THREE from 'three'
 
 /**
  * Skybox mode constants matching shader uniforms
  * 0=Classic, 1=Aurora, 2=Nebula, 3=Void, 4=Crystalline, 5=Horizon, 6=Ocean, 7=Twilight, 8=Starfield
  */
-export const SKYBOX_MODE_CLASSIC = 0;
-export const SKYBOX_MODE_AURORA = 1;
-export const SKYBOX_MODE_NEBULA = 2;
-export const SKYBOX_MODE_VOID = 3;
-export const SKYBOX_MODE_CRYSTALLINE = 4;
-export const SKYBOX_MODE_HORIZON = 5;
-export const SKYBOX_MODE_OCEAN = 6;
-export const SKYBOX_MODE_TWILIGHT = 7;
-export const SKYBOX_MODE_STARFIELD = 8;
+export const SKYBOX_MODE_CLASSIC = 0
+export const SKYBOX_MODE_AURORA = 1
+export const SKYBOX_MODE_NEBULA = 2
+export const SKYBOX_MODE_VOID = 3
+export const SKYBOX_MODE_CRYSTALLINE = 4
+export const SKYBOX_MODE_HORIZON = 5
+export const SKYBOX_MODE_OCEAN = 6
+export const SKYBOX_MODE_TWILIGHT = 7
+export const SKYBOX_MODE_STARFIELD = 8
 
 /**
  * Uniforms for the skybox shader material
  */
 export interface SkyboxShaderUniforms {
   // Core
-  uTex: THREE.CubeTexture | null;
-  uRotation: THREE.Matrix3;
-  uMode: number; // 0=Classic, 1-8=Procedural modes
-  uTime: number;
-  
+  uTex: THREE.CubeTexture | null
+  uRotation: THREE.Matrix3
+  uMode: number // 0=Classic, 1-8=Procedural modes
+  uTime: number
+
   // Basic Appearance
-  uBlur: number;
-  uIntensity: number;
-  uHue: number;
-  uSaturation: number;
-  
+  uBlur: number
+  uIntensity: number
+  uHue: number
+  uSaturation: number
+
   // Procedural Settings
-  uScale: number;
-  uComplexity: number;
-  uTimeScale: number;
-  uEvolution: number;
-  
+  uScale: number
+  uComplexity: number
+  uTimeScale: number
+  uEvolution: number
+
   // Palette (Cosine Gradient)
-  uColor1: THREE.Vector3;
-  uColor2: THREE.Vector3;
-  uPalA: THREE.Vector3;
-  uPalB: THREE.Vector3;
-  uPalC: THREE.Vector3;
-  uPalD: THREE.Vector3;
-  uUsePalette: number; // 0 or 1
-  
+  uColor1: THREE.Vector3
+  uColor2: THREE.Vector3
+  uPalA: THREE.Vector3
+  uPalB: THREE.Vector3
+  uPalC: THREE.Vector3
+  uPalD: THREE.Vector3
+  uUsePalette: number // 0 or 1
+
   // Delight Features
-  uDistortion: number;
-  uAberration: number;
-  uVignette: number;
-  uGrain: number;
-  uAtmosphere: number; // Horizon
-  uTurbulence: number;
-  uDualTone: number;
-  uSunIntensity: number;
-  uSunPosition: THREE.Vector3;
+  uDistortion: number
+  uAberration: number
+  uVignette: number
+  uGrain: number
+  uAtmosphere: number // Horizon
+  uTurbulence: number
+  uDualTone: number
+  uSunIntensity: number
+  uSunPosition: THREE.Vector3
 
   // Starfield Settings
-  uStarDensity: number; // 0-1, controls star count
-  uStarBrightness: number; // 0-2, overall brightness
-  uStarSize: number; // 0-1, base star size
-  uStarTwinkle: number; // 0-1, scintillation amount
-  uStarGlow: number; // 0-1, halo intensity
-  uStarColorVariation: number; // 0-1, spectral color range
+  uStarDensity: number // 0-1, controls star count
+  uStarBrightness: number // 0-2, overall brightness
+  uStarSize: number // 0-1, base star size
+  uStarTwinkle: number // 0-1, scintillation amount
+  uStarGlow: number // 0-1, halo intensity
+  uStarColorVariation: number // 0-1, spectral color range
 
   // Parallax Depth
-  uParallaxEnabled: number; // 0 or 1
-  uParallaxStrength: number; // 0-1, layer separation
+  uParallaxEnabled: number // 0 or 1
+  uParallaxStrength: number // 0-1, layer separation
 
-  [key: string]: THREE.CubeTexture | THREE.Matrix3 | THREE.Vector3 | THREE.Vector2 | number | null;
+  // Aurora-specific Settings
+  uAuroraCurtainHeight: number // 0-1, vertical coverage
+  uAuroraWaveFrequency: number // 0.5-3, wave density
+
+  // Horizon-specific Settings
+  uHorizonGradientContrast: number // 0-1, gradient band sharpness
+  uHorizonSpotlightFocus: number // 0-1, central spotlight intensity
+
+  [key: string]: THREE.CubeTexture | THREE.Matrix3 | THREE.Vector3 | THREE.Vector2 | number | null
 }
 
 /**
@@ -95,17 +103,17 @@ export function createSkyboxShaderDefaults(): SkyboxShaderUniforms {
     uRotation: new THREE.Matrix3(),
     uMode: 0,
     uTime: 0,
-    
+
     uBlur: 0,
     uIntensity: 1,
     uHue: 0,
     uSaturation: 1,
-    
+
     uScale: 1.0,
     uComplexity: 0.5,
     uTimeScale: 0.2,
     uEvolution: 0.0,
-    
+
     uColor1: new THREE.Color(0x0000ff) as any,
     uColor2: new THREE.Color(0xff00ff) as any,
     uPalA: new THREE.Vector3(0.5, 0.5, 0.5),
@@ -113,7 +121,7 @@ export function createSkyboxShaderDefaults(): SkyboxShaderUniforms {
     uPalC: new THREE.Vector3(1.0, 1.0, 1.0),
     uPalD: new THREE.Vector3(0.0, 0.33, 0.67),
     uUsePalette: 0,
-    
+
     uDistortion: 0,
     uAberration: 0,
     uVignette: 0.15,
@@ -135,64 +143,81 @@ export function createSkyboxShaderDefaults(): SkyboxShaderUniforms {
     // Parallax defaults
     uParallaxEnabled: 0,
     uParallaxStrength: 0.5,
-  };
+
+    // Aurora defaults
+    uAuroraCurtainHeight: 0.5,
+    uAuroraWaveFrequency: 1.0,
+
+    // Horizon defaults
+    uHorizonGradientContrast: 0.5,
+    uHorizonSpotlightFocus: 0.5,
+  }
 }
+
+/**
+ * GLSL version for WebGL2 - Three.js will handle the #version directive
+ */
+export const skyboxGlslVersion = THREE.GLSL3
 
 /**
  * Vertex shader for skybox rendering
  */
 export const skyboxVertexShader = /* glsl */ `
-  varying vec3 vWorldDirection;
-  varying vec2 vScreenUV;
-  varying vec3 vWorldPosition;
-  
+  precision highp float;
+
   uniform mat3 uRotation;
+
+  out vec3 vWorldDirection;
+  out vec2 vScreenUV;
+  out vec3 vWorldPosition;
 
   void main() {
     // Standard Skybox Rotation
     vec4 worldPos4 = modelMatrix * vec4(position, 1.0);
     vec3 worldPos = worldPos4.xyz;
     vWorldPosition = worldPos;
-    
+
     vWorldDirection = uRotation * normalize(worldPos);
 
     vec4 clipPos = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
     gl_Position = clipPos;
-    
+
     // Force to background (z = w)
     gl_Position.z = gl_Position.w;
 
     // Screen UV for post effects
     vScreenUV = clipPos.xy / clipPos.w * 0.5 + 0.5;
   }
-`;
+`
 
 /**
  * Fragment shader for skybox rendering
- * Includes: 
+ * Includes:
  * - Classic Mode
  * - Procedural Modes (Aurora, Nebula, Void)
  * - Cosine Palette Integration
  * - 10 Delight Features
  */
 export const skyboxFragmentShader = /* glsl */ `
+  precision highp float;
+
   // --- Uniforms ---
   uniform samplerCube uTex;
   uniform float uMode; // 0=Classic, 1=Aurora, 2=Nebula, 3=Void
   uniform float uTime;
-  
+
   // Basic
   uniform float uBlur;
   uniform float uIntensity;
   uniform float uHue;
   uniform float uSaturation;
-  
+
   // Procedural
   uniform float uScale;
   uniform float uComplexity;
   uniform float uTimeScale;
   uniform float uEvolution;
-  
+
   // Colors
   uniform vec3 uColor1;
   uniform vec3 uColor2;
@@ -201,7 +226,7 @@ export const skyboxFragmentShader = /* glsl */ `
   uniform vec3 uPalC;
   uniform vec3 uPalD;
   uniform float uUsePalette;
-  
+
   // Delight
   uniform float uDistortion;
   uniform float uAberration;
@@ -225,10 +250,21 @@ export const skyboxFragmentShader = /* glsl */ `
   uniform float uParallaxEnabled;
   uniform float uParallaxStrength;
 
+  // Aurora-specific
+  uniform float uAuroraCurtainHeight;
+  uniform float uAuroraWaveFrequency;
+
+  // Horizon-specific
+  uniform float uHorizonGradientContrast;
+  uniform float uHorizonSpotlightFocus;
+
   // --- Varyings ---
-  varying vec3 vWorldDirection;
-  varying vec2 vScreenUV;
-  varying vec3 vWorldPosition;
+  in vec3 vWorldDirection;
+  in vec2 vScreenUV;
+  in vec3 vWorldPosition;
+
+  // --- Output ---
+  layout(location = 0) out vec4 fragColor;
 
   // --- Constants ---
   #define PI 3.14159265359
@@ -274,13 +310,13 @@ export const skyboxFragmentShader = /* glsl */ `
     vec3 i = floor(x);
     vec3 f = fract(x);
     f = f*f*(3.0-2.0*f);
-    return mix(mix(mix( hash(i+vec3(0,0,0)), 
+    return mix(mix(mix( hash(i+vec3(0,0,0)),
                         hash(i+vec3(1,0,0)),f.x),
-                   mix( hash(i+vec3(0,1,0)), 
+                   mix( hash(i+vec3(0,1,0)),
                         hash(i+vec3(1,1,0)),f.x),f.y),
-               mix(mix( hash(i+vec3(0,0,1)), 
+               mix(mix( hash(i+vec3(0,0,1)),
                         hash(i+vec3(1,0,1)),f.x),
-                   mix( hash(i+vec3(0,1,1)), 
+                   mix( hash(i+vec3(0,1,1)),
                         hash(i+vec3(1,1,1)),f.x),f.y),f.z);
   }
 
@@ -297,7 +333,7 @@ export const skyboxFragmentShader = /* glsl */ `
       }
       return v;
   }
-  
+
   // 3D Rotation Matrix
   mat3 rotateY(float theta) {
       float c = cos(theta);
@@ -318,8 +354,14 @@ export const skyboxFragmentShader = /* glsl */ `
       float theta = atan(dir.x, dir.z); // Horizontal angle
       float phi = asin(clamp(dir.y, -1.0, 1.0)); // Vertical angle
 
-      // Aurora appears in upper hemisphere, fading toward horizon
-      float auroraHeight = smoothstep(-0.1, 0.4, dir.y);
+      // Aurora vertical coverage controlled by uAuroraCurtainHeight
+      // 0 = low aurora near horizon, 1 = aurora reaches zenith
+      float heightLow = mix(-0.2, 0.1, uAuroraCurtainHeight);
+      float heightHigh = mix(0.3, 0.8, uAuroraCurtainHeight);
+      float auroraHeight = smoothstep(heightLow, heightHigh, dir.y);
+
+      // Wave frequency multiplier for curtain density
+      float waveFreq = uAuroraWaveFrequency;
 
       // Multiple curtain layers with different speeds and frequencies
       float curtain1 = 0.0;
@@ -327,32 +369,46 @@ export const skyboxFragmentShader = /* glsl */ `
       float curtain3 = 0.0;
 
       // Layer 1: Primary slow-moving curtains
+      // Use only integer multipliers of theta for seamless wrapping
       float h1 = theta * 3.0 + uEvolution * TAU;
-      float wave1 = sin(h1 + time * 0.3) * cos(h1 * 0.7 + time * 0.2);
-      float fold1 = sin(phi * 8.0 + wave1 * 2.0 * uTurbulence + time * 0.5);
+      float wave1 = sin(h1 + time * 0.3) * cos(theta * 2.0 + time * 0.2);
+      float fold1 = sin(phi * 8.0 * waveFreq + wave1 * 2.0 * uTurbulence + time * 0.5);
       curtain1 = smoothstep(0.0, 0.8, fold1) * smoothstep(1.0, 0.3, fold1);
 
       // Layer 2: Secondary faster ribbons
       float h2 = theta * 5.0 + 1.5 + uEvolution * TAU;
-      float wave2 = sin(h2 + time * 0.5) * cos(h2 * 0.5 - time * 0.3);
-      float fold2 = sin(phi * 12.0 + wave2 * 3.0 * uTurbulence + time * 0.7);
+      float wave2 = sin(h2 + time * 0.5) * cos(theta * 2.0 - time * 0.3);
+      float fold2 = sin(phi * 12.0 * waveFreq + wave2 * 3.0 * uTurbulence + time * 0.7);
       curtain2 = smoothstep(0.1, 0.7, fold2) * smoothstep(0.9, 0.4, fold2);
 
       // Layer 3: Fine detail shimmer
       float h3 = theta * 8.0 + 3.0;
-      float fold3 = sin(phi * 20.0 + sin(h3 + time) * uTurbulence + time * 1.2);
+      float fold3 = sin(phi * 20.0 * waveFreq + sin(h3 + time) * uTurbulence + time * 1.2);
       curtain3 = smoothstep(0.3, 0.6, fold3) * smoothstep(0.8, 0.5, fold3) * 0.5;
+
+      // Layer 4: Slow pulsing glow (subtle brightness variation)
+      float pulse1 = sin(time * 0.15 + theta * 2.0) * 0.5 + 0.5;
+      float pulse2 = sin(time * 0.23 + theta * 3.0 + 1.0) * 0.5 + 0.5;
+      float pulseGlow = mix(0.85, 1.15, pulse1 * pulse2);
+
+      // Layer 5: Horizontal drift waves (aurora bands moving laterally)
+      float drift = sin(phi * 6.0 * waveFreq + time * 0.4) * sin(theta * 4.0 + time * 0.2);
+      float driftLayer = smoothstep(0.2, 0.5, drift) * smoothstep(0.7, 0.4, drift) * 0.3;
 
       // Combine curtain layers with vertical fade
       float verticalFade = pow(clamp(dir.y + 0.2, 0.0, 1.0), 0.5);
       float bottomFade = smoothstep(-0.3, 0.2, dir.y);
-      float intensity = (curtain1 * 0.5 + curtain2 * 0.35 + curtain3 * 0.15) * verticalFade * bottomFade;
+      float intensity = (curtain1 * 0.45 + curtain2 * 0.30 + curtain3 * 0.12 + driftLayer * 0.13) * verticalFade * bottomFade;
+
+      // Apply pulsing glow
+      intensity *= pulseGlow;
 
       // Scale by user settings
       intensity *= uScale;
 
       // Add subtle shimmer at edges
-      float shimmer = noise(vec3(theta * 10.0, phi * 10.0, time * 2.0)) * 0.2;
+      // Use direction vector directly for seamless noise (no theta discontinuity)
+      float shimmer = noise(dir * 10.0 + vec3(0.0, 0.0, time * 2.0)) * 0.2;
       intensity += shimmer * curtain1 * uComplexity;
 
       // Normalize for color mapping
@@ -361,29 +417,29 @@ export const skyboxFragmentShader = /* glsl */ `
       // Dark sky background
       vec3 nightSky = vec3(0.02, 0.02, 0.05);
 
-      // Color Mapping
+      // Color Mapping with animated color drift
       vec3 auroraColor;
+
+      // Slow color drift over time (Layer 6: color shifting)
+      float colorDrift = sin(time * 0.08) * 0.15;
+
       if (uUsePalette > 0.5) {
-          // Use Cosine Palette for aurora glow
-          auroraColor = cosinePalette(v * 0.7 + 0.15, uPalA, uPalB, uPalC, uPalD);
+          // Use Cosine Palette for aurora glow with color drift
+          float paletteT = v * 0.7 + 0.15 + colorDrift;
+          auroraColor = cosinePalette(paletteT, uPalA, uPalB, uPalC, uPalD);
 
           // Add vertical color variation (greens at bottom, purples/reds at top)
           float heightColor = smoothstep(0.0, 0.6, dir.y);
-          vec3 topColor = cosinePalette(0.8, uPalA, uPalB, uPalC, uPalD);
+          vec3 topColor = cosinePalette(0.8 + colorDrift * 0.5, uPalA, uPalB, uPalC, uPalD);
           auroraColor = mix(auroraColor, topColor, heightColor * 0.4);
       } else {
-          // Gradient from color1 (base) to color2 (tips)
-          auroraColor = mix(uColor1, uColor2, smoothstep(0.0, 0.5, dir.y));
+          // Gradient from color1 (base) to color2 (tips) with drift
+          float gradientT = smoothstep(0.0, 0.5, dir.y) + colorDrift;
+          auroraColor = mix(uColor1, uColor2, clamp(gradientT, 0.0, 1.0));
       }
 
       // Final composite: dark sky + aurora glow
       vec3 col = mix(nightSky, auroraColor, intensity * auroraHeight * 1.5);
-
-      // Add subtle star field in dark areas
-      float starField = hash(dir * 500.0);
-      if (starField > 0.997) {
-          col += vec3(0.5) * (1.0 - intensity);
-      }
 
       return col;
   }
@@ -459,13 +515,6 @@ export const skyboxFragmentShader = /* glsl */ `
           col += knotColor * knots;
 
           col *= smoothstep(0.0, 0.4, totalDensity) * 0.7 + 0.3;
-      }
-
-      // Embedded stars in low-density regions
-      float starField = hash(dir * 300.0);
-      if (starField > 0.995 && totalDensity < 0.4) {
-          float starBrightness = (1.0 - totalDensity) * 0.8;
-          col += vec3(starBrightness);
       }
 
       return col;
@@ -613,15 +662,18 @@ export const skyboxFragmentShader = /* glsl */ `
       // Vertical position: -1 (bottom) to 1 (top)
       float y = dir.y;
 
+      // Gradient contrast affects zone sharpness
+      float contrastMod = 0.5 + uHorizonGradientContrast * 1.0; // 0.5-1.5
+
       // Create distinct gradient zones for studio look
       // Zone 1: Floor reflection zone (bottom third)
       // Zone 2: Horizon band (middle - the "infinity curve")
       // Zone 3: Upper backdrop (top half)
 
-      float floorZone = smoothstep(-1.0, -0.2, y);
-      float horizonZone = 1.0 - abs(y) * 1.5; // Peaks at y=0
-      horizonZone = pow(max(0.0, horizonZone), 2.0);
-      float upperZone = smoothstep(-0.1, 0.8, y);
+      float floorZone = smoothstep(-1.0, -0.2 * contrastMod, y);
+      float horizonZone = 1.0 - abs(y) * (1.0 + contrastMod * 0.5);
+      horizonZone = pow(max(0.0, horizonZone), 1.5 + contrastMod);
+      float upperZone = smoothstep(-0.1 * contrastMod, 0.8 * contrastMod, y);
 
       // Subtle seamless gradient curve (no harsh transitions)
       float gradientPos = y * 0.5 + 0.5;
@@ -631,17 +683,29 @@ export const skyboxFragmentShader = /* glsl */ `
       float sweep = sin(dir.x * PI * 0.5) * 0.05;
       gradientPos += sweep * (1.0 - abs(y));
 
-      // Subtle slow breathing animation
+      // Animation Layer 1: Subtle slow breathing animation
       float breathe = sin(time * 0.2) * 0.02;
       gradientPos += breathe * horizonZone;
+
+      // Animation Layer 2: Color temperature pulse (warm/cool shift)
+      float tempPulse = sin(time * 0.12) * 0.08 + sin(time * 0.07) * 0.04;
+
+      // Animation Layer 3: Light sweep across horizon
+      float sweepAngle = mod(time * 0.15, TAU);
+      float lightSweep = sin(atan(dir.x, dir.z) - sweepAngle);
+      lightSweep = pow(max(0.0, lightSweep), 8.0) * 0.15 * horizonZone;
+
+      // Animation Layer 4: Ambient brightness variation
+      float ambientPulse = sin(time * 0.1 + dir.x * 0.5) * 0.03 + 1.0;
 
       vec3 col;
       if (uUsePalette > 0.5) {
           // 4-point gradient for smooth studio look
-          vec3 floorColor = cosinePalette(0.1, uPalA, uPalB, uPalC, uPalD) * 0.6;
-          vec3 horizonColor = cosinePalette(0.4, uPalA, uPalB, uPalC, uPalD);
+          // Apply temperature pulse to palette sampling
+          vec3 floorColor = cosinePalette(0.1 + tempPulse * 0.1, uPalA, uPalB, uPalC, uPalD) * 0.6;
+          vec3 horizonColor = cosinePalette(0.4 + tempPulse * 0.05, uPalA, uPalB, uPalC, uPalD);
           vec3 midColor = cosinePalette(0.6, uPalA, uPalB, uPalC, uPalD);
-          vec3 topColor = cosinePalette(0.85, uPalA, uPalB, uPalC, uPalD);
+          vec3 topColor = cosinePalette(0.85 - tempPulse * 0.05, uPalA, uPalB, uPalC, uPalD);
 
           // Smooth 4-zone blend
           col = mix(floorColor, horizonColor, floorZone);
@@ -650,24 +714,39 @@ export const skyboxFragmentShader = /* glsl */ `
 
           // Add subtle horizon glow (the "infinity" effect)
           col += horizonColor * horizonZone * 0.2 * uScale;
+
+          // Add light sweep highlight
+          vec3 sweepColor = cosinePalette(0.95, uPalA, uPalB, uPalC, uPalD);
+          col += sweepColor * lightSweep;
       } else {
           // Two-color mode: color1 = floor/dark, color2 = top/light
-          vec3 floorColor = uColor1 * 0.5;
-          vec3 horizonColor = mix(uColor1, uColor2, 0.5);
-          vec3 topColor = uColor2;
+          // Apply temperature modulation via interpolation shift
+          float tempShift = tempPulse * 0.1;
+          vec3 floorColor = uColor1 * (0.5 + tempShift);
+          vec3 horizonColor = mix(uColor1, uColor2, 0.5 + tempShift);
+          vec3 topColor = uColor2 * (1.0 - tempShift * 0.5);
 
           col = mix(floorColor, horizonColor, floorZone);
           col = mix(col, topColor, upperZone);
           col += horizonColor * horizonZone * 0.15 * uScale;
+
+          // Add light sweep highlight
+          col += mix(uColor1, uColor2, 0.8) * lightSweep;
       }
+
+      // Apply ambient pulse
+      col *= ambientPulse;
 
       // Premium film-like micro-texture (very subtle)
       float microTexture = noise(dir * 50.0) * 0.015 * uComplexity;
       col += microTexture;
 
       // Soft radial falloff from center (spotlight feel)
-      float spotlight = 1.0 - length(vec2(dir.x, dir.z)) * 0.15;
-      col *= max(0.85, spotlight);
+      // Controlled by uHorizonSpotlightFocus
+      float spotlightStrength = 0.05 + uHorizonSpotlightFocus * 0.25; // 0.05-0.30
+      float spotlight = 1.0 - length(vec2(dir.x, dir.z)) * spotlightStrength;
+      float spotlightMin = 0.7 + (1.0 - uHorizonSpotlightFocus) * 0.25; // 0.7-0.95
+      col *= max(spotlightMin, spotlight);
 
       return col;
   }
@@ -978,15 +1057,15 @@ export const skyboxFragmentShader = /* glsl */ `
 
   vec3 applyHorizon(vec3 col, vec3 dir) {
       if (uAtmosphere <= 0.0) return col;
-      
+
       float horizon = 1.0 - abs(dir.y);
       horizon = pow(horizon, 3.0); // Sharpen
-      
+
       vec3 horizonColor = (uUsePalette > 0.5) ? cosinePalette(0.5, uPalA, uPalB, uPalC, uPalD) : uColor2;
-      
+
       return mix(col, horizonColor, horizon * uAtmosphere * 0.5);
   }
-  
+
   // --- Main ---
 
   void main() {
@@ -1014,24 +1093,24 @@ export const skyboxFragmentShader = /* glsl */ `
           if (uParallaxEnabled > 0.5) {
               // Strength controls visual intensity, NOT layer positions
               float intensity = uParallaxStrength;
-              
+
               // === PRE-SAMPLE to determine per-pixel movement amount ===
               vec3 baseColor = textureLod(uTex, dir, lod).rgb;
               float baseMax = max(baseColor.r, max(baseColor.g, baseColor.b));
               float baseMin = min(baseColor.r, min(baseColor.g, baseColor.b));
               float baseSat = (baseMax > 0.01) ? (baseMax - baseMin) / baseMax : 0.0;
               float baseLum = dot(baseColor, vec3(0.299, 0.587, 0.114));
-              
+
               // Color purity - how dominant is the strongest channel
               float bluePurity = max(0.0, baseColor.b - max(baseColor.r, baseColor.g) * 0.6);
               float redPurity = max(0.0, baseColor.r - max(baseColor.g, baseColor.b) * 0.6);
               float greenPurity = max(0.0, baseColor.g - max(baseColor.r, baseColor.b) * 0.6);
               float colorPurity = (bluePurity + redPurity + greenPurity) * 2.0 + baseSat;
               colorPurity = clamp(colorPurity, 0.0, 1.0);
-              
+
               // Movement multiplier: pure colors move more, grays barely move
               float moveAmount = colorPurity * smoothstep(0.1, 0.4, baseLum) * (1.0 - smoothstep(0.9, 1.0, baseLum));
-              
+
               // === LAYER 1: Deep Background (furthest) ===
               // Very slow uniform sway - background is mostly dark anyway
               vec3 deepDir = dir;
@@ -1039,7 +1118,7 @@ export const skyboxFragmentShader = /* glsl */ `
               deepDir.x += deepSway;
               deepDir = normalize(deepDir);
               vec3 deepColor = textureLod(uTex, deepDir, lod + 1.0).rgb;
-              
+
               // === LAYER 2: Mid layer (base) ===
               // Movement scaled by color purity - pure colors orbit their center
               vec3 midDir = dir;
@@ -1051,7 +1130,7 @@ export const skyboxFragmentShader = /* glsl */ `
               midDir = normalize(midDir);
               vec3 midColor = textureLod(uTex, midDir, lod).rgb;
               float midLum = dot(midColor, vec3(0.299, 0.587, 0.114));
-              
+
               // === LAYER 3: Foreground (closest) - colorful elements move most ===
               vec3 nearDir = dir;
               // Faster, larger orbit for foreground - scaled heavily by purity
@@ -1065,40 +1144,40 @@ export const skyboxFragmentShader = /* glsl */ `
               nearDir.y += nearSwayY;
               nearDir = normalize(nearDir);
               vec3 nearColor = textureLod(uTex, nearDir, lod).rgb;
-              
+
               // Recalculate saturation for near layer
               float nearMax = max(nearColor.r, max(nearColor.g, nearColor.b));
               float nearMin = min(nearColor.r, min(nearColor.g, nearColor.b));
               float nearSat = (nearMax > 0.01) ? (nearMax - nearMin) / nearMax : 0.0;
               float nearLum = dot(nearColor, vec3(0.299, 0.587, 0.114));
-              
+
               // Colorfulness score for compositing
               float colorfulness = nearSat * smoothstep(0.15, 0.5, nearLum) * (1.0 - smoothstep(0.85, 1.0, nearLum));
               float nearBlueDom = max(0.0, nearColor.b - max(nearColor.r, nearColor.g) * 0.7);
               float nearRedDom = max(0.0, nearColor.r - max(nearColor.g, nearColor.b) * 0.7);
               float nearGreenDom = max(0.0, nearColor.g - max(nearColor.r, nearColor.b) * 0.7);
               float colorDominance = nearBlueDom + nearRedDom + nearGreenDom;
-              
+
               // Combined mask: colorful elements come forward
               float nearMask = (colorfulness + colorDominance * 0.5) * mix(1.0, 2.0, intensity);
               nearMask = clamp(nearMask, 0.0, 1.0);
-              
+
               // === COMPOSITING - preserve overall brightness ===
               color = midColor;
-              
+
               // Darken only the darkest areas slightly
               float darkMask = 1.0 - smoothstep(0.0, 0.3, midLum);
               float depthDarken = mix(1.0, 0.85, intensity * darkMask);
               color *= depthDarken;
-              
+
               // Blend in the deep layer for dark regions
               float deepBlend = darkMask * mix(0.1, 0.25, intensity);
               color = mix(color, deepColor * 0.9, deepBlend);
-              
+
               // Pop colorful elements forward with saturation boost
               vec3 saturatedNear = nearColor * (1.0 + nearSat * 0.15);
               color = mix(color, saturatedNear, nearMask * mix(0.15, 0.4, intensity));
-              
+
               // Glow on most colorful foreground elements
               float glowMask = smoothstep(0.3, 0.7, colorfulness + colorDominance);
               float glowIntensity = mix(0.03, 0.12, intensity);
@@ -1117,17 +1196,17 @@ export const skyboxFragmentShader = /* glsl */ `
                   color = textureLod(uTex, dir, lod).rgb;
               }
           }
-          
+
           // Classic tinting
           color *= uIntensity;
-          
+
           if (uHue != 0.0 || uSaturation != 1.0) {
               vec3 hsv = rgb2hsv(color);
               hsv.x += uHue;
               hsv.y *= uSaturation;
               color = hsv2rgb(hsv);
           }
-          
+
       } else if (uMode < 1.5) {
           // --- Aurora ---
           color = getAurora(dir, time);
@@ -1160,12 +1239,12 @@ export const skyboxFragmentShader = /* glsl */ `
           color = getStarfield(dir, time);
           color *= uIntensity;
       }
-      
+
       // 3. Post-Process Delight Features
-      
+
       // Horizon / Atmosphere
       color = applyHorizon(color, dir);
-      
+
       // Sun Glow (Directional Light)
       if (uSunIntensity > 0.0) {
           vec3 sunDir = normalize(uSunPosition);
@@ -1173,7 +1252,7 @@ export const skyboxFragmentShader = /* glsl */ `
           float sunGlow = pow(sunDot, 8.0); // sharp glow
           color += vec3(1.0, 0.9, 0.7) * sunGlow * uSunIntensity;
       }
-      
+
       // Vignette
       if (uVignette > 0.0) {
           float dist = distance(vScreenUV, vec2(0.5));
@@ -1186,7 +1265,7 @@ export const skyboxFragmentShader = /* glsl */ `
           float g = hash(vec3(vScreenUV * 100.0, uTime));
           color += (g - 0.5) * uGrain;
       }
-      
+
       // Radial Chromatic Aberration (Lens style)
       if (uAberration > 0.0 && uMode > 0.5) {
           // For procedural, we shift the hue slightly at edges instead of re-sampling
@@ -1198,7 +1277,6 @@ export const skyboxFragmentShader = /* glsl */ `
           }
       }
 
-      gl_FragColor = vec4(color, 1.0);
+      fragColor = vec4(color, 1.0);
   }
-`;
-
+`

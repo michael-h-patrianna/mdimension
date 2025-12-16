@@ -7,45 +7,46 @@
  * @see docs/prd/quaternion-julia-fractal.md
  */
 
-import {
-  createColorCache,
-  createLightColorCache,
-  updateLinearColorUniform,
-} from '@/rendering/colors/linearCache'
-import {
-  computeDriftedOrigin,
-  type OriginDriftConfig,
-} from '@/lib/animation/originDrift'
-import {
-  createLightUniforms,
-  updateLightUniforms,
-} from '@/rendering/lights/uniforms'
-import { TemporalDepthManager } from '@/rendering/core/TemporalDepthManager'
 import { createTemporalDepthUniforms } from '@/hooks'
+import {
+    computeDriftedOrigin,
+    type OriginDriftConfig,
+} from '@/lib/animation/originDrift'
 import { composeRotations } from '@/lib/math/rotation'
 import type { MatrixND } from '@/lib/math/types'
 import {
-  OPACITY_MODE_TO_INT,
-  SAMPLE_QUALITY_TO_INT,
+    createColorCache,
+    createLightColorCache,
+    updateLinearColorUniform,
+} from '@/rendering/colors/linearCache'
+import { RENDER_LAYERS } from '@/rendering/core/layers'
+import { TemporalDepthManager } from '@/rendering/core/TemporalDepthManager'
+import {
+    createLightUniforms,
+    updateLightUniforms,
+} from '@/rendering/lights/uniforms'
+import {
+    OPACITY_MODE_TO_INT,
+    SAMPLE_QUALITY_TO_INT,
 } from '@/rendering/opacity/types'
 import { COLOR_ALGORITHM_TO_INT } from '@/rendering/shaders/palette'
 import {
-  SHADOW_QUALITY_TO_INT,
-  SHADOW_ANIMATION_MODE_TO_INT,
+    SHADOW_ANIMATION_MODE_TO_INT,
+    SHADOW_QUALITY_TO_INT,
 } from '@/rendering/shadows/types'
-import { RENDER_LAYERS } from '@/rendering/core/layers'
 import { useAnimationStore } from '@/stores/animationStore'
+import { useAppearanceStore } from '@/stores/appearanceStore'
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore'
 import { useGeometryStore } from '@/stores/geometryStore'
+import { useLightingStore } from '@/stores/lightingStore'
 import {
-  getEffectiveSampleQuality,
-  getEffectiveShadowQuality,
-  usePerformanceStore,
+    getEffectiveSampleQuality,
+    getEffectiveShadowQuality,
+    usePerformanceStore,
 } from '@/stores/performanceStore'
+import { useProjectionStore } from '@/stores/projectionStore'
 import type { RotationState } from '@/stores/rotationStore'
 import { useRotationStore } from '@/stores/rotationStore'
-import { useAppearanceStore } from '@/stores/appearanceStore'
-import { useLightingStore } from '@/stores/lightingStore'
 import { useUIStore } from '@/stores/uiStore'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
@@ -107,7 +108,7 @@ function createWorkingArrays(): WorkingArrays {
  */
 const QuaternionJuliaMesh = () => {
   const meshRef = useRef<THREE.Mesh>(null)
-  const { camera } = useThree()
+  const { camera, size } = useThree()
 
   // Performance optimization refs
   const prevRotationsRef = useRef<RotationState['rotations'] | null>(null)
@@ -253,6 +254,11 @@ const QuaternionJuliaMesh = () => {
 
       // Temporal Reprojection uniforms
       ...createTemporalDepthUniforms(),
+
+      // Orthographic projection uniforms
+      uOrthographic: { value: false },
+      uOrthoRayDir: { value: new THREE.Vector3(0, 0, -1) },
+      uInverseViewProjectionMatrix: { value: new THREE.Matrix4() },
     }),
     []
   )
@@ -512,6 +518,24 @@ const QuaternionJuliaMesh = () => {
     u.uViewMatrix.value.copy(camera.matrixWorldInverse)
     u.uCameraPosition.value.copy(camera.position)
 
+    // Update resolution (needed for orthographic projection)
+    if (u.uResolution) {
+      u.uResolution.value.set(size.width, size.height)
+    }
+
+    // Update orthographic projection uniforms
+    const projectionType = useProjectionStore.getState().type
+    u.uOrthographic.value = projectionType === 'orthographic'
+    // Get camera's forward direction (negative Z in camera space, transformed to world space)
+    camera.getWorldDirection(u.uOrthoRayDir.value as THREE.Vector3)
+    // Compute inverse view-projection matrix for unprojecting screen coords to world space
+    // inverseVP = inverse(projection * view) = inverse(view) * inverse(projection)
+    // inverse(view) = camera.matrixWorld, inverse(projection) = camera.projectionMatrixInverse
+    if (u.uInverseViewProjectionMatrix) {
+      const invVP = u.uInverseViewProjectionMatrix.value as THREE.Matrix4
+      invVP.copy(camera.projectionMatrixInverse).premultiply(camera.matrixWorld)
+    }
+
     // Update temporal reprojection uniforms from manager
     const temporalUniforms = TemporalDepthManager.getUniforms()
     if (u.uPrevDepthTexture) {
@@ -529,12 +553,8 @@ const QuaternionJuliaMesh = () => {
     if (u.uDepthBufferResolution) {
       u.uDepthBufferResolution.value.copy(temporalUniforms.uDepthBufferResolution)
     }
-    if (u.uCameraNear) {
-      u.uCameraNear.value = temporalUniforms.uNearClip
-    }
-    if (u.uCameraFar) {
-      u.uCameraFar.value = temporalUniforms.uFarClip
-    }
+    // Note: uCameraNear and uCameraFar are no longer needed - temporal buffer now stores
+    // unnormalized ray distances directly (world-space units)
 
     // Update multi-light system
     updateLightUniforms(u, lightStore.lights, lightColorCacheRef.current)

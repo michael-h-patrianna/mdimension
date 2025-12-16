@@ -18,6 +18,7 @@ export function useGeometryGenerator() {
   const objectType = useGeometryStore((state) => state.objectType)
 
   const polytopeConfig = useExtendedObjectStore((state) => state.polytope)
+  const wythoffPolytopeConfig = useExtendedObjectStore((state) => state.wythoffPolytope)
   const rootSystemConfig = useExtendedObjectStore((state) => state.rootSystem)
   const cliffordTorusConfig = useExtendedObjectStore((state) => state.cliffordTorus)
   const nestedTorusConfig = useExtendedObjectStore((state) => state.nestedTorus)
@@ -27,6 +28,7 @@ export function useGeometryGenerator() {
   const extendedParams: ExtendedObjectParams = useMemo(
     () => ({
       polytope: polytopeConfig,
+      wythoffPolytope: wythoffPolytopeConfig,
       rootSystem: rootSystemConfig,
       cliffordTorus: cliffordTorusConfig,
       nestedTorus: nestedTorusConfig,
@@ -35,6 +37,7 @@ export function useGeometryGenerator() {
     }),
     [
       polytopeConfig,
+      wythoffPolytopeConfig,
       rootSystemConfig,
       cliffordTorusConfig,
       nestedTorusConfig,

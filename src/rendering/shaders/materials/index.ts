@@ -21,6 +21,7 @@ export type { UnifiedColorMode, UnifiedMaterialOptions, UnifiedRenderMode } from
 export {
   skyboxVertexShader,
   skyboxFragmentShader,
+  skyboxGlslVersion,
   createSkyboxShaderDefaults,
 } from './SkyboxShader'
 export type { SkyboxShaderUniforms } from './SkyboxShader'

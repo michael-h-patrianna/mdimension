@@ -88,6 +88,8 @@ export const SkyboxControls: React.FC = () => {
   const isClassicMode = selectedOption?.type === 'classic';
   const isProceduralMode = selectedOption?.type === 'procedural';
   const isStarfieldMode = skyboxSelection === 'procedural_starfield';
+  const isAuroraMode = skyboxSelection === 'procedural_aurora';
+  const isHorizonMode = skyboxSelection === 'procedural_horizon';
   const hasControls = skyboxSelection !== 'none';
 
   return (
@@ -442,6 +444,64 @@ export const SkyboxControls: React.FC = () => {
                     step={0.01}
                     onChange={(v) => setProceduralSettings({
                       starfield: { ...proceduralSettings.starfield, colorVariation: v }
+                    })}
+                  />
+                </div>
+              )}
+
+              {/* Aurora-specific controls */}
+              {isAuroraMode && (
+                <div className="space-y-4 border-l-2 border-emerald-500/30 pl-4">
+                  <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider block mb-2">Aurora</span>
+
+                  <Slider
+                    label="Curtain Height"
+                    value={proceduralSettings.aurora?.curtainHeight ?? 0.5}
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    onChange={(v) => setProceduralSettings({
+                      aurora: { ...proceduralSettings.aurora, curtainHeight: v }
+                    })}
+                  />
+
+                  <Slider
+                    label="Wave Frequency"
+                    value={proceduralSettings.aurora?.waveFrequency ?? 1.0}
+                    min={0.3}
+                    max={3}
+                    step={0.05}
+                    onChange={(v) => setProceduralSettings({
+                      aurora: { ...proceduralSettings.aurora, waveFrequency: v }
+                    })}
+                  />
+                </div>
+              )}
+
+              {/* Horizon-specific controls */}
+              {isHorizonMode && (
+                <div className="space-y-4 border-l-2 border-slate-400/30 pl-4">
+                  <span className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-2">Horizon</span>
+
+                  <Slider
+                    label="Gradient Contrast"
+                    value={proceduralSettings.horizonGradient?.gradientContrast ?? 0.5}
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    onChange={(v) => setProceduralSettings({
+                      horizonGradient: { ...proceduralSettings.horizonGradient, gradientContrast: v }
+                    })}
+                  />
+
+                  <Slider
+                    label="Spotlight Focus"
+                    value={proceduralSettings.horizonGradient?.spotlightFocus ?? 0.5}
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    onChange={(v) => setProceduralSettings({
+                      horizonGradient: { ...proceduralSettings.horizonGradient, spotlightFocus: v }
                     })}
                   />
                 </div>

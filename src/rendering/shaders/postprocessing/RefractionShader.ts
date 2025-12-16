@@ -28,6 +28,9 @@ export interface RefractionUniforms {
 export const RefractionShader = {
   name: 'RefractionShader',
 
+  // Use GLSL3 for WebGL2 - Three.js will handle the #version directive
+  glslVersion: THREE.GLSL3,
+
   uniforms: {
     tDiffuse: { value: null as THREE.Texture | null },
     tNormal: { value: null as THREE.Texture | null },
@@ -42,7 +45,8 @@ export const RefractionShader = {
   } as RefractionUniforms,
 
   vertexShader: /* glsl */ `
-    varying vec2 vUv;
+    out vec2 vUv;
+
     void main() {
       vUv = uv;
       gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
@@ -50,6 +54,8 @@ export const RefractionShader = {
   `,
 
   fragmentShader: /* glsl */ `
+    precision highp float;
+
     #include <packing>
 
     uniform sampler2D tDiffuse;
@@ -63,11 +69,12 @@ export const RefractionShader = {
     uniform float nearClip;
     uniform float farClip;
 
-    varying vec2 vUv;
+    in vec2 vUv;
+    layout(location = 0) out vec4 fragColor;
 
     // Get linear depth from depth buffer
     float getLinearDepth(vec2 coord) {
-      float depth = texture2D(tDepth, coord).x;
+      float depth = texture(tDepth, coord).x;
       return perspectiveDepthToViewZ(depth, nearClip, farClip);
     }
 
@@ -85,11 +92,11 @@ export const RefractionShader = {
       vec2 texel = 1.0 / resolution;
 
       // Sample depth at center and neighboring pixels
-      float depthC = texture2D(tDepth, coord).x;
-      float depthL = texture2D(tDepth, coord - vec2(texel.x, 0.0)).x;
-      float depthR = texture2D(tDepth, coord + vec2(texel.x, 0.0)).x;
-      float depthU = texture2D(tDepth, coord - vec2(0.0, texel.y)).x;
-      float depthD = texture2D(tDepth, coord + vec2(0.0, texel.y)).x;
+      float depthC = texture(tDepth, coord).x;
+      float depthL = texture(tDepth, coord - vec2(texel.x, 0.0)).x;
+      float depthR = texture(tDepth, coord + vec2(texel.x, 0.0)).x;
+      float depthU = texture(tDepth, coord - vec2(0.0, texel.y)).x;
+      float depthD = texture(tDepth, coord + vec2(0.0, texel.y)).x;
 
       // Reconstruct view-space positions
       vec3 posC = getViewPosition(coord, depthC);
@@ -113,7 +120,7 @@ export const RefractionShader = {
     // Get normal from G-buffer (encoded as RGB = normal * 0.5 + 0.5)
     // Falls back to depth reconstruction if normal buffer not available
     vec3 getNormal(vec2 coord) {
-      vec4 normalData = texture2D(tNormal, coord);
+      vec4 normalData = texture(tNormal, coord);
 
       // Check if we have valid normal data (non-zero alpha or valid RGB)
       if (length(normalData.rgb) > 0.01) {
@@ -126,14 +133,14 @@ export const RefractionShader = {
 
     // Check if this pixel has valid G-buffer data (not background)
     bool hasGBufferData(vec2 coord) {
-      float depth = texture2D(tDepth, coord).x;
+      float depth = texture(tDepth, coord).x;
       return depth < 0.9999;
     }
 
     void main() {
       // Early exit if no G-buffer data at this pixel
       if (!hasGBufferData(vUv)) {
-        gl_FragColor = texture2D(tDiffuse, vUv);
+        fragColor = texture(tDiffuse, vUv);
         return;
       }
 
@@ -168,15 +175,15 @@ export const RefractionShader = {
         vec2 uvG = clamp(vUv + offsetG, 0.0, 1.0);
         vec2 uvB = clamp(vUv + offsetB, 0.0, 1.0);
 
-        float r = texture2D(tDiffuse, uvR).r;
-        float g = texture2D(tDiffuse, uvG).g;
-        float b = texture2D(tDiffuse, uvB).b;
+        float r = texture(tDiffuse, uvR).r;
+        float g = texture(tDiffuse, uvG).g;
+        float b = texture(tDiffuse, uvB).b;
 
-        gl_FragColor = vec4(r, g, b, 1.0);
+        fragColor = vec4(r, g, b, 1.0);
       } else {
         // No chromatic aberration - simple offset
         vec2 refractedUV = clamp(vUv + offset, 0.0, 1.0);
-        gl_FragColor = texture2D(tDiffuse, refractedUV);
+        fragColor = texture(tDiffuse, refractedUV);
       }
     }
   `,

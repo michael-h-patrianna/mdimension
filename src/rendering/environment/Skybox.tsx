@@ -1,4 +1,4 @@
-import { createSkyboxShaderDefaults, skyboxFragmentShader, skyboxVertexShader } from '@/rendering/shaders/materials/SkyboxShader';
+import { createSkyboxShaderDefaults, skyboxFragmentShader, skyboxGlslVersion, skyboxVertexShader } from '@/rendering/shaders/materials/SkyboxShader';
 import { applyDistributionTS, getCosinePaletteColorTS } from '@/rendering/shaders/palette/cosine.glsl';
 import type { ColorAlgorithm, CosineCoefficients, DistributionSettings } from '@/rendering/shaders/palette/types';
 import { useAnimationStore } from '@/stores/animationStore';
@@ -612,6 +612,14 @@ const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
     if (uniforms.uStarGlow) uniforms.uStarGlow.value = proceduralSettings.starfield.glow;
     if (uniforms.uStarColorVariation) uniforms.uStarColorVariation.value = proceduralSettings.starfield.colorVariation;
 
+    // Aurora Uniforms
+    if (uniforms.uAuroraCurtainHeight) uniforms.uAuroraCurtainHeight.value = proceduralSettings.aurora?.curtainHeight ?? 0.5;
+    if (uniforms.uAuroraWaveFrequency) uniforms.uAuroraWaveFrequency.value = proceduralSettings.aurora?.waveFrequency ?? 1.0;
+
+    // Horizon Uniforms
+    if (uniforms.uHorizonGradientContrast) uniforms.uHorizonGradientContrast.value = proceduralSettings.horizonGradient?.gradientContrast ?? 0.5;
+    if (uniforms.uHorizonSpotlightFocus) uniforms.uHorizonSpotlightFocus.value = proceduralSettings.horizonGradient?.spotlightFocus ?? 0.5;
+
     // Parallax Uniforms
     if (uniforms.uParallaxEnabled) uniforms.uParallaxEnabled.value = proceduralSettings.parallaxEnabled ? 1.0 : 0.0;
     if (uniforms.uParallaxStrength) uniforms.uParallaxStrength.value = proceduralSettings.parallaxStrength ?? 0.5;
@@ -651,6 +659,7 @@ const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
         <sphereGeometry args={[500, 64, 32]} />
         <skyboxMaterial
             ref={materialRef}
+            glslVersion={skyboxGlslVersion}
             side={THREE.BackSide}
             transparent={opacity < 1}
             opacity={opacity}

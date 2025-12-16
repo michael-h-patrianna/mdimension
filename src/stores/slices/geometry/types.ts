@@ -13,6 +13,9 @@ import {
   QuaternionJuliaConfig,
   RootSystemConfig,
   RootSystemType,
+  WythoffPolytopeConfig,
+  WythoffPreset,
+  WythoffSymmetryGroup,
 } from '@/lib/geometry/extended/types'
 
 // ============================================================================
@@ -28,6 +31,25 @@ export interface PolytopeSliceActions {
 }
 
 export type PolytopeSlice = PolytopeSliceState & PolytopeSliceActions
+
+// ============================================================================
+// Wythoff Polytope Slice
+// ============================================================================
+export interface WythoffPolytopeSliceState {
+  wythoffPolytope: WythoffPolytopeConfig
+}
+
+export interface WythoffPolytopeSliceActions {
+  setWythoffSymmetryGroup: (symmetryGroup: WythoffSymmetryGroup) => void
+  setWythoffPreset: (preset: WythoffPreset) => void
+  setWythoffCustomSymbol: (customSymbol: boolean[]) => void
+  setWythoffScale: (scale: number) => void
+  setWythoffSnub: (snub: boolean) => void
+  setWythoffConfig: (config: Partial<WythoffPolytopeConfig>) => void
+  initializeWythoffForDimension: (dimension: number) => void
+}
+
+export type WythoffPolytopeSlice = WythoffPolytopeSliceState & WythoffPolytopeSliceActions
 
 // ============================================================================
 // Root System Slice
@@ -229,6 +251,7 @@ export type QuaternionJuliaSlice = QuaternionJuliaSliceState & QuaternionJuliaSl
 // Combined Extended Object Slice
 // ============================================================================
 export type ExtendedObjectSlice = PolytopeSlice &
+  WythoffPolytopeSlice &
   RootSystemSlice &
   CliffordTorusSlice &
   NestedTorusSlice &

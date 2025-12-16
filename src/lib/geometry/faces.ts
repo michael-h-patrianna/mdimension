@@ -3,6 +3,9 @@
  *
  * Detects 2D faces (polygons) from edge lists by building adjacency graphs
  * and finding cycles of length 3-4 that form closed polygons.
+ *
+ * Uses the Object Type Registry to determine the appropriate face detection
+ * algorithm for each object type, avoiding hardcoded type checks.
  */
 
 import { crossProduct3D, dotProduct, subtractVectors } from '@/lib/math'
@@ -22,6 +25,8 @@ import {
 } from './extended/clifford-torus'
 import { computeConvexHullFaces } from './extended/utils/convex-hull-faces'
 import { generateHypercubeFaces } from './hypercube'
+import { OBJECT_TYPE_REGISTRY } from './registry/registry'
+import type { FaceDetectionMethod } from './registry/types'
 import type { GeometryMetadata, ObjectType } from './types'
 
 /**
@@ -380,16 +385,18 @@ function isCoplanarND(v0: number[], v1: number[], v2: number[], v3: number[]): b
 /**
  * Detects 2D faces (polygons) from an edge list of a polytope
  *
- * Analyzes the connectivity graph of a polytope and identifies all 2D faces.
- * The algorithm:
- * 1. Builds an adjacency graph from edges
- * 2. For simplices and cross-polytopes: finds all triangles (3-cycles)
- * 3. For hypercubes: finds all quads (4-cycles)
- * 4. Returns face definitions as vertex index arrays
+ * Uses the Object Type Registry to determine the appropriate face detection
+ * algorithm for each object type. Supported methods:
+ * - analytical-quad: Generates quad faces analytically (hypercube)
+ * - triangles: Finds 3-cycles in adjacency graph (simplex, cross-polytope)
+ * - convex-hull: Uses 3D convex hull projection (root-system, wythoff-polytope)
+ * - grid: Uses UV grid structure from metadata (clifford-torus, nested-torus)
+ * - none: Returns empty array (fractals, point clouds)
  *
  * @param vertices - Array of vertex positions in n-dimensional space
  * @param edges - Array of edge pairs (vertex indices)
- * @param objectType - Type of object (determines face finding strategy)
+ * @param objectType - Type of object (looked up in registry for face detection method)
+ * @param metadata - Optional geometry metadata (required for grid-based detection)
  * @returns Array of detected faces with vertex indices
  *
  * @throws {Error} If vertices or edges array is empty
@@ -402,28 +409,10 @@ function isCoplanarND(v0: number[], v1: number[], v2: number[], v3: number[]): b
  * const faces = detectFaces(cube.vertices, cube.edges, 'hypercube');
  * console.log(faces.length); // 6 faces
  *
- * // Detect faces of a tetrahedron
- * const tetrahedron = generateSimplex(3);
- * const faces = detectFaces(tetrahedron.vertices, tetrahedron.edges, 'simplex');
- * console.log(faces.length); // 4 triangular faces
- *
- * // Detect faces of a root system
- * const rootSystem = generateRootSystem(4, config);
- * const faces = detectFaces(rootSystem.vertices, rootSystem.edges, 'root-system');
+ * // Detect faces of a Wythoff polytope (uses convex-hull from registry)
+ * const polytope = generateWythoffPolytope(4);
+ * const faces = detectFaces(polytope.vertices, polytope.edges, 'wythoff-polytope');
  * ```
- *
- * @remarks
- * - Hypercube: All faces are quads (4 vertices)
- * - Simplex: All faces are triangles (3 vertices)
- * - Cross-polytope: All faces are triangles (3 vertices)
- * - Root-system: Triangular faces from short-edge connections
- * - Clifford-torus: Quad faces from u/v grid (requires metadata for resolution)
- * - Other extended objects: No faces (point clouds)
- *
- * The algorithm uses cycle detection in the connectivity graph.
- * For hypercubes, it specifically looks for 4-cycles without diagonals.
- * For simplices, cross-polytopes, and root-systems, it finds all 3-cycles (triangles).
- * For clifford-torus, analytical face generation from the u/v grid structure.
  */
 export function detectFaces(
   vertices: number[][],
@@ -447,142 +436,186 @@ export function detectFaces(
     }
   }
 
-  // Build adjacency list
-  const adjacency = buildAdjacencyList(edges)
+  // Get face detection method from registry
+  const registryEntry = OBJECT_TYPE_REGISTRY.get(objectType)
+  const faceDetection: FaceDetectionMethod = registryEntry?.rendering.faceDetection ?? 'none'
 
-  // Detect faces based on object type
-  if (objectType === 'hypercube') {
-    // Hypercubes have quadrilateral faces - use optimized analytical generation
-    const faceIndices = generateHypercubeFaces(Math.log2(vertices.length))
-    return faceIndices.map((indices) => ({ vertices: indices }))
-  } else if (objectType === 'simplex' || objectType === 'cross-polytope') {
-    // Simplices and cross-polytopes have triangular faces
-    return findTriangles(adjacency, vertices.length)
-  } else if (objectType === 'root-system') {
-    // Root systems use convex hull for proper face detection
-    // This handles the complex face structure of root polytopes (A_n, D_n, E_8)
-    const hullFaces = computeConvexHullFaces(vertices)
-    return hullFaces.map(([v0, v1, v2]) => ({ vertices: [v0, v1, v2] }))
-  } else if (objectType === 'clifford-torus') {
-    // Clifford torus faces require metadata for resolution info
-    if (!metadata?.properties) {
+  // Dispatch to appropriate face detection algorithm
+  return detectFacesByMethod(faceDetection, vertices, edges, objectType, metadata)
+}
+
+/**
+ * Internal dispatcher that routes to the appropriate face detection algorithm
+ * based on the method specified in the registry.
+ *
+ * @param method - Face detection method from registry
+ * @param vertices - Vertex array
+ * @param edges - Edge array
+ * @param objectType - Object type (used for grid-based detection)
+ * @param metadata - Geometry metadata (used for grid-based and metadata detection)
+ * @returns Detected faces
+ */
+function detectFacesByMethod(
+  method: FaceDetectionMethod,
+  vertices: number[][],
+  edges: [number, number][],
+  objectType: ObjectType,
+  metadata?: GeometryMetadata
+): Face[] {
+  switch (method) {
+    case 'analytical-quad':
+      return detectAnalyticalQuadFaces(vertices)
+
+    case 'triangles':
+      return detectTriangleFaces(vertices, edges)
+
+    case 'convex-hull':
+      return detectConvexHullFaces(vertices)
+
+    case 'grid':
+      return detectGridFaces(objectType, metadata)
+
+    case 'metadata':
+      return detectMetadataFaces(metadata)
+
+    case 'none':
+    default:
       return []
-    }
+  }
+}
 
-    const props = metadata.properties
-    const visualizationMode = props.visualizationMode as string | undefined
-    const mode = props.mode as string
-
-    let faceIndices: number[][] = []
-
-    // First check for new visualization modes
-    if (visualizationMode === 'nested') {
-      // Nested mode - all dimensions use same 2D grid structure
-      const dimension = props.intrinsicDimension as number
-      const resXi1 = props.resolutionXi1 as number
-      const resXi2 = props.resolutionXi2 as number
-
-      switch (dimension) {
-        case 4: {
-          const torusCount = (props.torusCount as number) ?? 1
-          // Generate faces for each nested torus
-          for (let t = 0; t < torusCount; t++) {
-            const offset = t * resXi1 * resXi2
-            const torusFaces = buildHopfTorus4DFaces(resXi1, resXi2, offset)
-            faceIndices = faceIndices.concat(torusFaces)
-          }
-          break
-        }
-        case 5:
-          faceIndices = buildTorus5DFaces(resXi1, resXi2)
-          break
-        case 6:
-          faceIndices = buildTorus6DFaces(resXi1, resXi2)
-          break
-        case 7:
-          faceIndices = buildTorus7DFaces(resXi1, resXi2)
-          break
-        case 8:
-          faceIndices = buildHopfTorus8DFaces(resXi1, resXi2)
-          break
-        case 9:
-          faceIndices = buildTorus9DFaces(resXi1, resXi2)
-          break
-        case 10:
-          faceIndices = buildTorus10DFaces(resXi1, resXi2)
-          break
-        case 11:
-          faceIndices = buildTorus11DFaces(resXi1, resXi2)
-          break
-      }
-    } else {
-      // Flat mode or legacy mode - check internal mode
-      if (mode === '3d-torus') {
-        const resU = props.resolutionU as number
-        const resV = props.resolutionV as number
-        faceIndices = buildTorus3DGridFaces(resU, resV)
-      } else if (mode === 'classic') {
-        const resU = props.resolutionU as number
-        const resV = props.resolutionV as number
-        faceIndices = buildCliffordTorusGridFaces(resU, resV)
-      } else if (mode === 'generalized') {
-        const k = props.k as number
-        const stepsPerCircle = props.stepsPerCircle as number
-        faceIndices = buildGeneralizedCliffordTorusFaces(k, stepsPerCircle)
-      }
-    }
-
-    return faceIndices.map((indices) => ({ vertices: indices }))
-  } else if (objectType === 'nested-torus') {
-    // Nested torus faces - uses same 2D grid structure as clifford torus nested mode
-    if (!metadata?.properties) {
-      return []
-    }
-
-    const props = metadata.properties
-    const dimension = props.intrinsicDimension as number
-    const resXi1 = props.resolutionXi1 as number
-    const resXi2 = props.resolutionXi2 as number
-
-    let faceIndices: number[][] = []
-
-    switch (dimension) {
-      case 4: {
-        const torusCount = (props.torusCount as number) ?? 1
-        // Generate faces for each nested torus
-        for (let t = 0; t < torusCount; t++) {
-          const offset = t * resXi1 * resXi2
-          const torusFaces = buildHopfTorus4DFaces(resXi1, resXi2, offset)
-          faceIndices = faceIndices.concat(torusFaces)
-        }
-        break
-      }
-      case 5:
-        faceIndices = buildTorus5DFaces(resXi1, resXi2)
-        break
-      case 6:
-        faceIndices = buildTorus6DFaces(resXi1, resXi2)
-        break
-      case 7:
-        faceIndices = buildTorus7DFaces(resXi1, resXi2)
-        break
-      case 8:
-        faceIndices = buildHopfTorus8DFaces(resXi1, resXi2)
-        break
-      case 9:
-        faceIndices = buildTorus9DFaces(resXi1, resXi2)
-        break
-      case 10:
-        faceIndices = buildTorus10DFaces(resXi1, resXi2)
-        break
-      case 11:
-        faceIndices = buildTorus11DFaces(resXi1, resXi2)
-        break
-    }
-
-    return faceIndices.map((indices) => ({ vertices: indices }))
-  } else {
-    // Extended objects don't have faces (point clouds)
+/**
+ * Retrieves pre-computed faces from geometry metadata.
+ * Used for Wythoff polytopes where faces are computed analytically during generation.
+ */
+function detectMetadataFaces(metadata?: GeometryMetadata): Face[] {
+  if (!metadata?.properties?.analyticalFaces) {
     return []
+  }
+
+  const analyticalFaces = metadata.properties.analyticalFaces as number[][]
+  return analyticalFaces.map((indices) => ({ vertices: indices }))
+}
+
+/**
+ * Detects quad faces analytically (used for hypercubes).
+ * Uses dimension formula to generate all quad faces without graph traversal.
+ */
+function detectAnalyticalQuadFaces(vertices: number[][]): Face[] {
+  const faceIndices = generateHypercubeFaces(Math.log2(vertices.length))
+  return faceIndices.map((indices) => ({ vertices: indices }))
+}
+
+/**
+ * Detects triangular faces by finding 3-cycles in the adjacency graph.
+ * Used for simplices and cross-polytopes.
+ */
+function detectTriangleFaces(vertices: number[][], edges: [number, number][]): Face[] {
+  const adjacency = buildAdjacencyList(edges)
+  return findTriangles(adjacency, vertices.length)
+}
+
+/**
+ * Detects faces using 3D convex hull projection.
+ * Used for root systems and Wythoff polytopes where faces are complex.
+ */
+function detectConvexHullFaces(vertices: number[][]): Face[] {
+  const hullFaces = computeConvexHullFaces(vertices)
+  return hullFaces.map(([v0, v1, v2]) => ({ vertices: [v0, v1, v2] }))
+}
+
+/**
+ * Detects faces using UV grid structure from metadata.
+ * Used for clifford-torus and nested-torus where faces follow a parametric grid.
+ */
+function detectGridFaces(objectType: ObjectType, metadata?: GeometryMetadata): Face[] {
+  if (!metadata?.properties) {
+    return []
+  }
+
+  const props = metadata.properties
+  let faceIndices: number[][] = []
+
+  if (objectType === 'clifford-torus') {
+    faceIndices = detectCliffordTorusFaces(props)
+  } else if (objectType === 'nested-torus') {
+    faceIndices = detectNestedTorusFaces(props)
+  }
+
+  return faceIndices.map((indices) => ({ vertices: indices }))
+}
+
+/**
+ * Detects faces for clifford-torus based on its mode and resolution.
+ */
+function detectCliffordTorusFaces(props: Record<string, unknown>): number[][] {
+  const visualizationMode = props.visualizationMode as string | undefined
+  const mode = props.mode as string
+
+  // Check for new visualization modes first
+  if (visualizationMode === 'nested') {
+    return detectNestedVisualizationFaces(props)
+  }
+
+  // Flat mode or legacy mode - check internal mode
+  if (mode === '3d-torus') {
+    const resU = props.resolutionU as number
+    const resV = props.resolutionV as number
+    return buildTorus3DGridFaces(resU, resV)
+  } else if (mode === 'classic') {
+    const resU = props.resolutionU as number
+    const resV = props.resolutionV as number
+    return buildCliffordTorusGridFaces(resU, resV)
+  } else if (mode === 'generalized') {
+    const k = props.k as number
+    const stepsPerCircle = props.stepsPerCircle as number
+    return buildGeneralizedCliffordTorusFaces(k, stepsPerCircle)
+  }
+
+  return []
+}
+
+/**
+ * Detects faces for nested-torus based on dimension and resolution.
+ */
+function detectNestedTorusFaces(props: Record<string, unknown>): number[][] {
+  return detectNestedVisualizationFaces(props)
+}
+
+/**
+ * Shared logic for nested visualization mode (used by both clifford-torus and nested-torus).
+ */
+function detectNestedVisualizationFaces(props: Record<string, unknown>): number[][] {
+  const dimension = props.intrinsicDimension as number
+  const resXi1 = props.resolutionXi1 as number
+  const resXi2 = props.resolutionXi2 as number
+
+  switch (dimension) {
+    case 4: {
+      const torusCount = (props.torusCount as number) ?? 1
+      let faceIndices: number[][] = []
+      for (let t = 0; t < torusCount; t++) {
+        const offset = t * resXi1 * resXi2
+        const torusFaces = buildHopfTorus4DFaces(resXi1, resXi2, offset)
+        faceIndices = faceIndices.concat(torusFaces)
+      }
+      return faceIndices
+    }
+    case 5:
+      return buildTorus5DFaces(resXi1, resXi2)
+    case 6:
+      return buildTorus6DFaces(resXi1, resXi2)
+    case 7:
+      return buildTorus7DFaces(resXi1, resXi2)
+    case 8:
+      return buildHopfTorus8DFaces(resXi1, resXi2)
+    case 9:
+      return buildTorus9DFaces(resXi1, resXi2)
+    case 10:
+      return buildTorus10DFaces(resXi1, resXi2)
+    case 11:
+      return buildTorus11DFaces(resXi1, resXi2)
+    default:
+      return []
   }
 }

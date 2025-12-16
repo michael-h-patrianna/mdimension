@@ -261,6 +261,28 @@ export const DEFAULT_STARFIELD_SETTINGS: StarfieldSettings = {
   colorVariation: 0.5,
 }
 
+/** Aurora-specific settings for the procedural aurora mode */
+export interface AuroraSettings {
+  curtainHeight: number // 0-1, how high the aurora extends (default 0.5)
+  waveFrequency: number // 0.5-3, density of curtain waves (default 1.0)
+}
+
+export const DEFAULT_AURORA_SETTINGS: AuroraSettings = {
+  curtainHeight: 0.5,
+  waveFrequency: 1.0,
+}
+
+/** Horizon-specific settings for the procedural horizon mode */
+export interface HorizonSettings {
+  gradientContrast: number // 0-1, sharpness of gradient bands (default 0.5)
+  spotlightFocus: number // 0-1, central spotlight intensity (default 0.5)
+}
+
+export const DEFAULT_HORIZON_SETTINGS: HorizonSettings = {
+  gradientContrast: 0.5,
+  spotlightFocus: 0.5,
+}
+
 export interface SkyboxProceduralSettings {
   // Core
   scale: number
@@ -286,6 +308,8 @@ export interface SkyboxProceduralSettings {
 
   // Mode-specific settings
   starfield: StarfieldSettings
+  aurora: AuroraSettings
+  horizonGradient: HorizonSettings
 
   // Parallax depth (for classic textures)
   parallaxEnabled: boolean
@@ -312,6 +336,8 @@ export const DEFAULT_SKYBOX_PROCEDURAL_SETTINGS: SkyboxProceduralSettings = {
   noiseGrain: 0,
   evolution: 0.0,
   starfield: { ...DEFAULT_STARFIELD_SETTINGS },
+  aurora: { ...DEFAULT_AURORA_SETTINGS },
+  horizonGradient: { ...DEFAULT_HORIZON_SETTINGS },
   parallaxEnabled: false,
   parallaxStrength: 0.5,
 }
