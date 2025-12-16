@@ -55,14 +55,22 @@ vi.mock('@/stores/extendedObjectStore', () => ({
         mandelbulb: {
             powerAnimationEnabled: false,
             sliceAnimationEnabled: false,
-            juliaModeEnabled: false,
             phaseShiftEnabled: false,
+            alternatePowerEnabled: false,
+            dimensionMixEnabled: false,
+            originDriftEnabled: false,
         },
         quaternionJulia: {
             juliaConstantAnimation: { enabled: false },
             powerAnimation: { enabled: false },
             originDriftEnabled: false,
             dimensionMixEnabled: false,
+        },
+        polytope: {
+            truncationEnabled: false,
+            facetOffsetEnabled: false,
+            dualMorphEnabled: false,
+            explodeEnabled: false,
         },
         setMandelbulbPowerAnimationEnabled: vi.fn(),
         setMandelbulbPowerMin: vi.fn(),

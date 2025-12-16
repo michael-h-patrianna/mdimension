@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { ObjectSettingsSection } from '@/components/sections/Geometry/ObjectSettingsSection';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
+import { DEFAULT_POLYTOPE_CONFIG } from '@/lib/geometry/extended/types';
 import { act } from 'react';
 
 // Note: Components are now loaded dynamically via React.lazy in ObjectSettingsSection.
@@ -17,7 +18,7 @@ describe('ObjectSettingsSection', () => {
         dimension: 4
       });
       useExtendedObjectStore.setState({
-        polytope: { scale: 1.0 },
+        polytope: { ...DEFAULT_POLYTOPE_CONFIG, scale: 1.0 },
         rootSystem: { rootType: 'A', scale: 1.0 },
         cliffordTorus: {
           radius: 1.0,

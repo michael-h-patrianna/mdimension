@@ -9,6 +9,7 @@ import { extend, useFrame, useThree } from '@react-three/fiber';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
+import { ProceduralSkyboxWithEnvironment } from './ProceduralSkyboxWithEnvironment';
 
 // ============================================================================
 // PMREM Cache - Module-level cache to avoid regenerating PMREM for same textures
@@ -265,7 +266,7 @@ interface SkyboxMeshProps {
     texture: THREE.CubeTexture | null;
 }
 
-const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
+export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   const timeRef = useRef(0);
   // Pointer removed as it was only for uMousePos
@@ -381,10 +382,14 @@ const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
   };
 
   // Compute colors - sample from respective palettes
-  // For syncing: sample from object's current color algorithm
-  // For non-syncing: sample from skybox's own cosine palette
+  // Classic/KTX2 mode: always use skybox's own palette (no sync support)
+  // Procedural with sync ON: sample from object's current color algorithm
+  // Procedural with sync OFF: sample from skybox's own cosine palette
   const color1Vec = useMemo(() => {
-    if (proceduralSettings.syncWithObject) {
+    // Classic mode never syncs - always use skybox's own palette
+    const shouldSyncWithObject = skyboxMode !== 'classic' && proceduralSettings.syncWithObject;
+
+    if (shouldSyncWithObject) {
       // Sample at t=0 for primary color using object's palette
       return computeColorAtT(
         0.0,
@@ -409,6 +414,7 @@ const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
       0.15
     );
   }, [
+    skyboxMode,
     proceduralSettings.syncWithObject,
     proceduralSettings.cosineCoefficients,
     proceduralSettings.distribution,
@@ -421,7 +427,10 @@ const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
   ]);
 
   const color2Vec = useMemo(() => {
-    if (proceduralSettings.syncWithObject) {
+    // Classic mode never syncs - always use skybox's own palette
+    const shouldSyncWithObject = skyboxMode !== 'classic' && proceduralSettings.syncWithObject;
+
+    if (shouldSyncWithObject) {
       // Sample at t=1 for secondary color using object's palette
       return computeColorAtT(
         1.0,
@@ -446,6 +455,7 @@ const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
       0.15
     );
   }, [
+    skyboxMode,
     proceduralSettings.syncWithObject,
     proceduralSettings.cosineCoefficients,
     proceduralSettings.distribution,
@@ -458,10 +468,14 @@ const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
   ]);
 
   // Palette vectors for shader - determines the color evolution
-  // Sync mode: use object's coefficients for color harmony
-  // Non-sync mode: use skybox's own coefficients
+  // Classic/KTX2 mode: always use skybox's own coefficients (no sync support)
+  // Procedural with sync ON: use object's coefficients for color harmony
+  // Procedural with sync OFF: use skybox's own coefficients
   const paletteVecs = useMemo(() => {
-    if (proceduralSettings.syncWithObject) {
+    // Classic mode never syncs - always use skybox's own palette
+    const shouldSyncWithObject = skyboxMode !== 'classic' && proceduralSettings.syncWithObject;
+
+    if (shouldSyncWithObject) {
       // Use the object's palette coefficients
       return {
         a: new THREE.Vector3(...cosineCoefficients.a),
@@ -479,7 +493,7 @@ const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
         d: new THREE.Vector3(...skyboxCoeffs.d),
       };
     }
-  }, [proceduralSettings.syncWithObject, proceduralSettings.cosineCoefficients, cosineCoefficients]);
+  }, [skyboxMode, proceduralSettings.syncWithObject, proceduralSettings.cosineCoefficients, cosineCoefficients]);
 
 
   useFrame((_, delta) => {
@@ -590,8 +604,14 @@ const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
     if (uniforms.uPalD) uniforms.uPalD.value = paletteVecs.d;
 
     // Use palette mode for interesting color evolution
-    // Both sync and non-sync use the same shader path with their respective coefficients
-    if (uniforms.uUsePalette) uniforms.uUsePalette.value = 1.0;
+    // When syncing with monochromatic/analogous algorithms, use simple color interpolation
+    // (uColor1/uColor2 are already correctly computed for these modes)
+    // For cosine-based algorithms, use the full cosine palette shader path
+    if (uniforms.uUsePalette) {
+      const useSimpleInterpolation = proceduralSettings.syncWithObject &&
+        (colorAlgorithm === 'monochromatic' || colorAlgorithm === 'analogous');
+      uniforms.uUsePalette.value = useSimpleInterpolation ? 0.0 : 1.0;
+    }
 
     // Delight Uniforms
     if (uniforms.uDistortion) uniforms.uDistortion.value = finalDistortion || proceduralSettings.turbulence; // Override or Combine
@@ -619,6 +639,12 @@ const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
     // Horizon Uniforms
     if (uniforms.uHorizonGradientContrast) uniforms.uHorizonGradientContrast.value = proceduralSettings.horizonGradient?.gradientContrast ?? 0.5;
     if (uniforms.uHorizonSpotlightFocus) uniforms.uHorizonSpotlightFocus.value = proceduralSettings.horizonGradient?.spotlightFocus ?? 0.5;
+
+    // Ocean Uniforms
+    if (uniforms.uOceanCausticIntensity) uniforms.uOceanCausticIntensity.value = proceduralSettings.ocean?.causticIntensity ?? 0.5;
+    if (uniforms.uOceanDepthGradient) uniforms.uOceanDepthGradient.value = proceduralSettings.ocean?.depthGradient ?? 0.5;
+    if (uniforms.uOceanBubbleDensity) uniforms.uOceanBubbleDensity.value = proceduralSettings.ocean?.bubbleDensity ?? 0.3;
+    if (uniforms.uOceanSurfaceShimmer) uniforms.uOceanSurfaceShimmer.value = proceduralSettings.ocean?.surfaceShimmer ?? 0.4;
 
     // Parallax Uniforms
     if (uniforms.uParallaxEnabled) uniforms.uParallaxEnabled.value = proceduralSettings.parallaxEnabled ? 1.0 : 0.0;
@@ -812,12 +838,10 @@ export const Skybox: React.FC = () => {
 
   if (!skyboxEnabled) return null;
 
-  // If procedural, skip the KTX2 loader and render mesh directly
+  // If procedural, use the component that handles environment map generation for wall reflections
   if (skyboxMode !== 'classic') {
-      return <SkyboxMesh texture={null} />;
+    return <ProceduralSkyboxWithEnvironment />;
   }
 
-  return (
-    <SkyboxLoader />
-  );
+  return <SkyboxLoader />;
 };

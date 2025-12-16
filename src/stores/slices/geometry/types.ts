@@ -2,6 +2,7 @@ import {
   CliffordTorusConfig,
   CliffordTorusEdgeMode,
   CliffordTorusMode,
+  DualNormalizeMode,
   MandelbulbColorMode,
   MandelbulbConfig,
   MandelbulbPalette,
@@ -13,6 +14,7 @@ import {
   QuaternionJuliaConfig,
   RootSystemConfig,
   RootSystemType,
+  TruncationMode,
   WythoffPolytopeConfig,
   WythoffPreset,
   WythoffSymmetryGroup,
@@ -28,6 +30,32 @@ export interface PolytopeSliceState {
 export interface PolytopeSliceActions {
   setPolytopeScale: (scale: number) => void
   initializePolytopeForType: (polytopeType: string) => void
+
+  // Truncation Animation
+  setPolytopeTruncationEnabled: (enabled: boolean) => void
+  setPolytopeTruncationMode: (mode: TruncationMode) => void
+  setPolytopeTruncationT: (t: number) => void
+  setPolytopeTruncationMin: (min: number) => void
+  setPolytopeTruncationMax: (max: number) => void
+  setPolytopeTruncationSpeed: (speed: number) => void
+
+  // Facet Offset / Breathing Animation
+  setPolytopeFacetOffsetEnabled: (enabled: boolean) => void
+  setPolytopeFacetOffsetAmplitude: (amplitude: number) => void
+  setPolytopeFacetOffsetFrequency: (frequency: number) => void
+  setPolytopeFacetOffsetPhaseSpread: (spread: number) => void
+
+  // Dual Morph Animation
+  setPolytopeDualMorphEnabled: (enabled: boolean) => void
+  setPolytopeDualMorphT: (t: number) => void
+  setPolytopeDualNormalize: (mode: DualNormalizeMode) => void
+  setPolytopeDualMorphSpeed: (speed: number) => void
+
+  // Explode Animation
+  setPolytopeExplodeEnabled: (enabled: boolean) => void
+  setPolytopeExplodeFactor: (factor: number) => void
+  setPolytopeExplodeSpeed: (speed: number) => void
+  setPolytopeExplodeMax: (max: number) => void
 }
 
 export type PolytopeSlice = PolytopeSliceState & PolytopeSliceActions

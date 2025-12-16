@@ -33,10 +33,12 @@ import { LIGHT_TYPE_TO_INT, MAX_LIGHTS, rotationToDirection } from '@/rendering/
 import { COLOR_ALGORITHM_TO_INT } from '@/rendering/shaders/palette';
 import { matrixToGPUUniforms } from '@/rendering/shaders/transforms/ndTransform';
 import { useAppearanceStore } from '@/stores/appearanceStore';
+import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useLightingStore } from '@/stores/lightingStore';
 import { useProjectionStore } from '@/stores/projectionStore';
 import { useRotationStore } from '@/stores/rotationStore';
 import { useTransformStore } from '@/stores/transformStore';
+import { useAnimationStore } from '@/stores/animationStore';
 import { TubeWireframe } from '../TubeWireframe';
 import {
     buildEdgeFragmentShader,
@@ -77,6 +79,12 @@ function createNDUniforms(): Record<string, { value: unknown }> {
     uDepthRowSums: { value: new Float32Array(11) },
     uProjectionDistance: { value: DEFAULT_PROJECTION_DISTANCE },
     uProjectionType: { value: 1 },
+    // Organic Animation uniforms (applied post-projection in shader)
+    // Uses layered sine waves with irrational frequency ratios for smooth, non-repeating motion
+    uAnimTime: { value: 0.0 },       // Raw time in seconds (not multiplied)
+    uPulseAmount: { value: 0.0 },    // Organic pulse intensity (0-1)
+    uFlowAmount: { value: 0.0 },     // Flow/drift intensity (0-1)
+    uRippleAmount: { value: 0.0 },   // Ripple wave intensity (0-1)
   };
 }
 
@@ -346,6 +354,9 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   const faceMeshRef = useRef<THREE.Mesh>(null);
   const edgeMeshRef = useRef<THREE.LineSegments>(null);
 
+  // Animation time accumulator for polytope animations
+  const animTimeRef = useRef(0.0);
+
   // Cached linear colors - avoid per-frame sRGB->linear conversion
   const colorCacheRef = useRef(createColorCache());
   const lightColorCacheRef = useRef(createLightColorCache());
@@ -531,8 +542,42 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   }, [faceMaterial, edgeMaterial, faceGeometry, edgeGeometry]);
 
   // ============ USEFRAME: UPDATE UNIFORMS ONLY ============
-  useFrame(() => {
+  useFrame((_, delta) => {
     if (numVertices === 0) return;
+
+    // Read animation and polytope state
+    const isPlaying = useAnimationStore.getState().isPlaying;
+    const polytopeConfig = useExtendedObjectStore.getState().polytope;
+
+    // Update animation time only when playing
+    if (isPlaying) {
+      animTimeRef.current += delta;
+    }
+    const animTime = animTimeRef.current;
+
+    // Calculate organic animation values based on polytope config
+    // All animations use layered sine waves in the shader for smooth, non-repeating motion
+    let pulseAmount = 0.0;
+    let flowAmount = 0.0;
+    let rippleAmount = 0.0;
+
+    // Organic Pulse: gentle breathing effect
+    // facetOffsetEnabled controls pulse, facetOffsetAmplitude sets intensity
+    if (polytopeConfig.facetOffsetEnabled) {
+      pulseAmount = polytopeConfig.facetOffsetAmplitude;
+    }
+
+    // Flow: organic vertex drift for flowing deformation
+    // dualMorphEnabled controls flow, dualMorphT sets intensity
+    if (polytopeConfig.dualMorphEnabled) {
+      flowAmount = polytopeConfig.dualMorphT;
+    }
+
+    // Ripple: smooth radial waves emanating from center
+    // explodeEnabled controls ripple, explodeMax sets intensity
+    if (polytopeConfig.explodeEnabled) {
+      rippleAmount = polytopeConfig.explodeMax;
+    }
 
     // Read current state
     const rotations = useRotationStore.getState().rotations;
@@ -597,9 +642,16 @@ export const PolytopeScene = React.memo(function PolytopeScene({
         // Update N-D transformation uniforms
         updateNDUniforms(material, gpuData, dimension, scales, projectionDistance, projectionType);
 
+        // Update organic animation uniforms
+        const u = material.uniforms;
+        // Pass raw time - shader handles organic frequency layering internally
+        if (u.uAnimTime) u.uAnimTime.value = animTime;
+        if (u.uPulseAmount) u.uPulseAmount.value = pulseAmount;
+        if (u.uFlowAmount) u.uFlowAmount.value = flowAmount;
+        if (u.uRippleAmount) u.uRippleAmount.value = rippleAmount;
+
         // Update lighting uniforms (only for materials that have them)
         // Colors use cached linear conversion for performance
-        const u = material.uniforms;
 
         // Update surface color
         if (u.uColor) updateLinearColorUniform(colorCache, u.uColor.value as Color, color);

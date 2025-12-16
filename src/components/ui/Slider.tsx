@@ -86,7 +86,7 @@ export const Slider: React.FC<SliderProps> = ({
           {label}
         </label>
         {showValue && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 shrink-0">
             <input
               type="number"
               value={inputValue}
@@ -97,7 +97,7 @@ export const Slider: React.FC<SliderProps> = ({
               min={min}
               max={max}
               disabled={disabled}
-              className="w-16 bg-white/5 border border-white/10 rounded px-1.5 py-0.5 text-[10px] font-mono text-right text-accent focus:outline-none focus:border-accent/50 focus:bg-white/10 transition-all appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className="min-w-[3ch] bg-white/5 border border-white/10 rounded px-1.5 py-0.5 text-[10px] font-mono text-right text-accent focus:outline-none focus:border-accent/50 focus:bg-white/10 transition-all appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               data-testid={dataTestId ? `${dataTestId}-input` : undefined}
             />
             {onReset && (

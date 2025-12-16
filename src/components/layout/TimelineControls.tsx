@@ -9,6 +9,8 @@ import { useShallow } from 'zustand/react/shallow';
 import { AnimatePresence, m } from 'motion/react';
 import { JuliaAnimationDrawer } from './TimelineControls/JuliaAnimationDrawer';
 import { MandelbulbAnimationDrawer } from './TimelineControls/MandelbulbAnimationDrawer';
+import { PolytopeAnimationDrawer } from './TimelineControls/PolytopeAnimationDrawer';
+import { isPolytopeType } from '@/lib/geometry/types';
 
 export const TimelineControls: FC = () => {
     const dimension = useGeometryStore((state) => state.dimension);
@@ -45,10 +47,11 @@ export const TimelineControls: FC = () => {
     const setAnimationBias = useUIStore((state) => state.setAnimationBias);
 
     // Extended object configs for animation state checking
-    const { mandelbulbConfig, quaternionJuliaConfig } = useExtendedObjectStore(
+    const { mandelbulbConfig, quaternionJuliaConfig, polytopeConfig } = useExtendedObjectStore(
         useShallow((state) => ({
           mandelbulbConfig: state.mandelbulb,
           quaternionJuliaConfig: state.quaternionJulia,
+          polytopeConfig: state.polytope,
         }))
     );
 
@@ -63,7 +66,6 @@ export const TimelineControls: FC = () => {
                                mandelbulbConfig.dimensionMixEnabled ||
                                mandelbulbConfig.originDriftEnabled ||
                                mandelbulbConfig.sliceAnimationEnabled ||
-                               mandelbulbConfig.juliaModeEnabled ||
                                mandelbulbConfig.phaseShiftEnabled;
     
     // Quaternion Julia: any of its animations
@@ -72,19 +74,26 @@ export const TimelineControls: FC = () => {
                         quaternionJuliaConfig.originDriftEnabled ||
                         quaternionJuliaConfig.dimensionMixEnabled;
 
-    return mandelbulbAnimating || qjAnimating;
+    // Polytope: any of its animations (breathing, twist, explode)
+    const polytopeAnimating = polytopeConfig.facetOffsetEnabled ||
+                              polytopeConfig.dualMorphEnabled ||
+                              polytopeConfig.explodeEnabled;
+
+    return mandelbulbAnimating || qjAnimating || polytopeAnimating;
   }, [
     mandelbulbConfig.powerAnimationEnabled,
     mandelbulbConfig.alternatePowerEnabled,
     mandelbulbConfig.dimensionMixEnabled,
     mandelbulbConfig.originDriftEnabled,
     mandelbulbConfig.sliceAnimationEnabled,
-    mandelbulbConfig.juliaModeEnabled,
     mandelbulbConfig.phaseShiftEnabled,
     quaternionJuliaConfig.juliaConstantAnimation.enabled,
     quaternionJuliaConfig.powerAnimation.enabled,
     quaternionJuliaConfig.originDriftEnabled,
-    quaternionJuliaConfig.dimensionMixEnabled
+    quaternionJuliaConfig.dimensionMixEnabled,
+    polytopeConfig.facetOffsetEnabled,
+    polytopeConfig.dualMorphEnabled,
+    polytopeConfig.explodeEnabled,
   ]);
 
     // Animation should only be paused when NOTHING is animating
@@ -156,6 +165,11 @@ export const TimelineControls: FC = () => {
       {/* Mandelbulb/Mandelbulb Fractal Animation Drawer */}
       {showFractalAnim && objectType === 'mandelbulb' && (
         <MandelbulbAnimationDrawer />
+      )}
+
+      {/* Polytope Animation Drawer */}
+      {showFractalAnim && isPolytopeType(objectType) && (
+        <PolytopeAnimationDrawer />
       )}
             </AnimatePresence>
 
@@ -231,7 +245,7 @@ export const TimelineControls: FC = () => {
 
                  {/* Advanced Toggles */}
                  <div className="flex items-center gap-2 shrink-0">
-                    {(objectType === 'mandelbulb' || objectType === 'quaternion-julia') && (
+                    {(objectType === 'mandelbulb' || objectType === 'quaternion-julia' || isPolytopeType(objectType)) && (
                          <button
                             onClick={() => { setShowFractalAnim(!showFractalAnim); setShowRotation(false); }}
                             className={`

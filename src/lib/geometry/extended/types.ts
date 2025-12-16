@@ -31,6 +31,23 @@
 // ============================================================================
 
 /**
+ * Truncation mode for polytope animation
+ * - vertexTruncate: Cut corners (bevels vertices)
+ * - edgeTruncate: Bevels edges
+ * - cantellate: Combined vertex and edge truncation
+ * - none: No truncation
+ */
+export type TruncationMode = 'vertexTruncate' | 'edgeTruncate' | 'cantellate' | 'none'
+
+/**
+ * Dual morph normalization mode
+ * - unitSphere: Normalize to unit sphere
+ * - inradius1: Normalize inradius to 1
+ * - circumradius1: Normalize circumradius to 1
+ */
+export type DualNormalizeMode = 'unitSphere' | 'inradius1' | 'circumradius1'
+
+/**
  * Configuration for standard polytope generation.
  *
  * This brings polytopes into alignment with extended objects by providing
@@ -44,6 +61,123 @@ export interface PolytopeConfig {
    * Default varies by type: hypercube 1.8, simplex 4.0, cross-polytope 1.8
    */
   scale: number
+
+  // === Truncation Animation ===
+
+  /**
+   * Enable truncation animation.
+   * Smoothly "shaves" vertices or edges based on truncation mode.
+   */
+  truncationEnabled: boolean
+
+  /**
+   * Truncation mode determines which features are cut.
+   * - vertexTruncate: Bevels vertices
+   * - edgeTruncate: Bevels edges
+   * - cantellate: Combined vertex and edge truncation
+   */
+  truncationMode: TruncationMode
+
+  /**
+   * Current truncation parameter (0.0-1.0).
+   * 0 = original polytope, 1 = fully truncated.
+   * When animated, this value oscillates between truncationMin and truncationMax.
+   */
+  truncationT: number
+
+  /**
+   * Minimum truncation value during animation (0.0-0.5, default 0.0).
+   */
+  truncationMin: number
+
+  /**
+   * Maximum truncation value during animation (0.5-1.0, default 0.5).
+   */
+  truncationMax: number
+
+  /**
+   * Speed of truncation animation (0.01-0.5, default 0.1).
+   */
+  truncationSpeed: number
+
+  // === Pulse Animation (organic breathing) ===
+
+  /**
+   * Enable pulse animation.
+   * Creates gentle breathing effect using layered sine waves
+   * with irrational frequency ratios for smooth, non-repeating motion.
+   */
+  facetOffsetEnabled: boolean
+
+  /**
+   * Intensity of pulse animation (0.0-1.0, default 0.3).
+   * Controls the amplitude of organic breathing modulation.
+   */
+  facetOffsetAmplitude: number
+
+  /**
+   * Base frequency modifier for pulse animation (0.1-2.0, default 0.3).
+   * Note: Actual frequencies are determined by layered sine waves in shader.
+   */
+  facetOffsetFrequency: number
+
+  /**
+   * Per-axis phase variation (0.0-1.0, default 0.2).
+   * Creates asymmetric breathing patterns.
+   */
+  facetOffsetPhaseSpread: number
+
+  // === Flow Animation (organic vertex drift) ===
+
+  /**
+   * Enable flow animation.
+   * Creates organic vertex drift where each vertex moves
+   * independently in smooth, flowing patterns.
+   */
+  dualMorphEnabled: boolean
+
+  /**
+   * Intensity of flow animation (0.0-1.0, default 0.3).
+   * Controls how much vertices drift from their base positions.
+   */
+  dualMorphT: number
+
+  /**
+   * Flow normalization mode (legacy, not used in organic system).
+   */
+  dualNormalize: DualNormalizeMode
+
+  /**
+   * Flow animation speed modifier (0.01-0.3, default 0.05).
+   * Note: Actual speeds are determined by layered frequencies in shader.
+   */
+  dualMorphSpeed: number
+
+  // === Ripple Animation (smooth radial waves) ===
+
+  /**
+   * Enable ripple animation.
+   * Creates smooth radial waves emanating from center,
+   * giving a gentle pulsing wave effect across the surface.
+   */
+  explodeEnabled: boolean
+
+  /**
+   * Current ripple factor (0.0-1.0, legacy).
+   */
+  explodeFactor: number
+
+  /**
+   * Ripple animation speed modifier (0.01-0.3, default 0.1).
+   * Note: Actual wave speed is determined by shader.
+   */
+  explodeSpeed: number
+
+  /**
+   * Intensity of ripple animation (0.0-1.0, default 0.3).
+   * Controls the amplitude of radial wave displacement.
+   */
+  explodeMax: number
 }
 
 /**
@@ -62,6 +196,35 @@ export const DEFAULT_POLYTOPE_SCALES: Record<string, number> = {
  */
 export const DEFAULT_POLYTOPE_CONFIG: PolytopeConfig = {
   scale: 1.8,
+
+  // Truncation Animation defaults
+  truncationEnabled: false,
+  truncationMode: 'vertexTruncate',
+  truncationT: 0.0,
+  truncationMin: 0.0,
+  truncationMax: 0.5,
+  truncationSpeed: 0.1,
+
+  // Pulse Animation defaults (organic breathing)
+  // Subtle default values for gentle, evolving modulation
+  facetOffsetEnabled: false,
+  facetOffsetAmplitude: 0.3, // Moderate intensity for visible but subtle effect
+  facetOffsetFrequency: 0.3,
+  facetOffsetPhaseSpread: 0.2,
+
+  // Flow Animation defaults (organic vertex drift)
+  // Creates smooth flowing deformation
+  dualMorphEnabled: false,
+  dualMorphT: 0.3, // Moderate intensity
+  dualNormalize: 'unitSphere',
+  dualMorphSpeed: 0.05,
+
+  // Ripple Animation defaults (smooth radial waves)
+  // Gentle pulsing waves across the surface
+  explodeEnabled: false,
+  explodeFactor: 0.0,
+  explodeSpeed: 0.1,
+  explodeMax: 0.3, // Moderate intensity for visible but subtle effect
 }
 
 // ============================================================================
