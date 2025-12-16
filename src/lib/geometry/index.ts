@@ -12,7 +12,6 @@
  * - Root Systems: A, D, and E8 root polytopes
  * - Clifford Torus: flat torus on S³
  * - Mandelbrot: N-dimensional fractal (Mandelbulb/Hyperbulb)
- * - Mandelbox: Box-like fractal with sphere/box folding
  */
 
 // Type exports from types.ts
@@ -243,8 +242,7 @@ function getTypeName(type: ObjectType): string {
     'clifford-torus': 'Clifford Torus',
     'nested-torus': 'Nested Torus',
     mandelbrot: 'Mandelbulb',
-    mandelbox: 'Mandelbox',
-    menger: 'Menger Sponge',
+    'quaternion-julia': 'Quaternion Julia',
   }
   return typeNames[type] ?? type
 }
@@ -314,16 +312,9 @@ export function getAvailableTypes(dimension?: number): Array<{
       maxDimension: 11,
     },
     {
-      type: 'mandelbox',
-      name: 'Mandelbox',
-      description: 'Fractal with box/sphere folding (3D-11D raymarched)',
-      minDimension: 3,
-      maxDimension: 11,
-    },
-    {
-      type: 'menger',
-      name: 'Menger Sponge',
-      description: 'Geometric IFS fractal with recursive cube subdivision (3D-11D raymarched)',
+      type: 'quaternion-julia',
+      name: 'Quaternion Julia',
+      description: 'Julia set fractal using quaternion algebra (z = z^n + c, 3D-11D raymarched)',
       minDimension: 3,
       maxDimension: 11,
     },

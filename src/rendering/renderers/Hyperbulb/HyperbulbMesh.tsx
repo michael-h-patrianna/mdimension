@@ -164,6 +164,21 @@ const HyperbulbMesh = () => {
   const mixIntensity = useExtendedObjectStore((state) => state.mandelbrot.mixIntensity);
   const mixFrequency = useExtendedObjectStore((state) => state.mandelbrot.mixFrequency);
 
+  // Slice Animation parameters (4D+ only - fly through higher-dimensional cross-sections)
+  const sliceAnimationEnabled = useExtendedObjectStore((state) => state.mandelbrot.sliceAnimationEnabled);
+  const sliceSpeed = useExtendedObjectStore((state) => state.mandelbrot.sliceSpeed);
+  const sliceAmplitude = useExtendedObjectStore((state) => state.mandelbrot.sliceAmplitude);
+
+  // Julia Morphing parameters (animate Julia constant)
+  const juliaModeEnabled = useExtendedObjectStore((state) => state.mandelbrot.juliaModeEnabled);
+  const juliaOrbitSpeed = useExtendedObjectStore((state) => state.mandelbrot.juliaOrbitSpeed);
+  const juliaOrbitRadius = useExtendedObjectStore((state) => state.mandelbrot.juliaOrbitRadius);
+
+  // Phase Shift parameters (angular twisting)
+  const phaseShiftEnabled = useExtendedObjectStore((state) => state.mandelbrot.phaseShiftEnabled);
+  const phaseSpeed = useExtendedObjectStore((state) => state.mandelbrot.phaseSpeed);
+  const phaseAmplitude = useExtendedObjectStore((state) => state.mandelbrot.phaseAmplitude);
+
   // Animation bias for per-dimension variation
   const animationBias = useUIStore((state) => state.animationBias);
 
@@ -236,6 +251,15 @@ const HyperbulbMesh = () => {
       uDimensionMixEnabled: { value: false },
       uMixIntensity: { value: 0.1 },
       uMixTime: { value: 0 },  // Animated mix time = animTime * mixFrequency
+
+      // Julia Morphing uniforms
+      uJuliaEnabled: { value: false },
+      uJuliaC: { value: new Float32Array(11) },  // Animated Julia constant
+
+      // Phase Shift uniforms (angular twisting)
+      uPhaseEnabled: { value: false },
+      uPhaseTheta: { value: 0.0 },  // Phase offset for theta angle
+      uPhasePhi: { value: 0.0 },    // Phase offset for phi angle
 
       // D-dimensional rotated coordinate system
       // c = uOrigin + pos.x * uBasisX + pos.y * uBasisY + pos.z * uBasisZ
@@ -641,9 +665,9 @@ const HyperbulbMesh = () => {
 
       // ============================================
       // Origin Update (separate from basis vectors)
-      // Must update every frame when origin drift is enabled
+      // Must update every frame when origin drift or slice animation is enabled
       // ============================================
-      const needsOriginUpdate = needsRecompute || originDriftEnabled;
+      const needsOriginUpdate = needsRecompute || originDriftEnabled || sliceAnimationEnabled;
 
       if (needsOriginUpdate && cachedRotationMatrixRef.current) {
         // Clear and set up origin = [0, 0, 0, slice[0], slice[1], ...]
@@ -670,8 +694,25 @@ const HyperbulbMesh = () => {
           for (let i = 3; i < D; i++) {
             work.origin[i] = driftedOrigin[i - 3] ?? 0;
           }
+        } else if (sliceAnimationEnabled && D > 3) {
+          // Slice Animation: animate through higher-dimensional cross-sections
+          // Use sine waves with golden ratio phase offsets for organic motion
+          const PHI = 1.618033988749895; // Golden ratio
+          const timeInSeconds = state.clock.elapsedTime / 1000;
+
+          for (let i = 3; i < D; i++) {
+            const extraDimIndex = i - 3;
+            // Each dimension gets a unique phase offset based on golden ratio
+            const phase = extraDimIndex * PHI;
+            // Multi-frequency sine for more interesting motion
+            const t1 = timeInSeconds * sliceSpeed * 2 * Math.PI + phase;
+            const t2 = timeInSeconds * sliceSpeed * 1.3 * 2 * Math.PI + phase * 1.5;
+            // Blend two frequencies for non-repetitive motion
+            const offset = sliceAmplitude * (0.7 * Math.sin(t1) + 0.3 * Math.sin(t2));
+            work.origin[i] = (parameterValues[extraDimIndex] ?? 0) + offset;
+          }
         } else {
-          // No drift - use static parameter values
+          // No drift or slice animation - use static parameter values
           for (let i = 3; i < D; i++) {
             work.origin[i] = parameterValues[i - 3] ?? 0;
           }
@@ -684,6 +725,60 @@ const HyperbulbMesh = () => {
         if (material.uniforms.uOrigin) {
           const arr = material.uniforms.uOrigin.value as Float32Array;
           arr.set(work.rotatedOrigin);
+        }
+      }
+
+      // ============================================
+      // Phase Shift Animation
+      // Add time-varying phase offsets to spherical angles
+      // ============================================
+      if (material.uniforms.uPhaseEnabled) {
+        material.uniforms.uPhaseEnabled.value = phaseShiftEnabled;
+      }
+      if (phaseShiftEnabled) {
+        const timeInSeconds = state.clock.elapsedTime / 1000;
+        const t = timeInSeconds * phaseSpeed * 2 * Math.PI;
+        // Theta and phi use different frequencies for more organic twisting
+        if (material.uniforms.uPhaseTheta) {
+          material.uniforms.uPhaseTheta.value = phaseAmplitude * Math.sin(t);
+        }
+        if (material.uniforms.uPhasePhi) {
+          material.uniforms.uPhasePhi.value = phaseAmplitude * Math.sin(t * 1.618); // Golden ratio frequency offset
+        }
+      } else {
+        if (material.uniforms.uPhaseTheta) material.uniforms.uPhaseTheta.value = 0;
+        if (material.uniforms.uPhasePhi) material.uniforms.uPhasePhi.value = 0;
+      }
+
+      // ============================================
+      // Julia Morphing Animation
+      // Animate the Julia constant in a circular orbit
+      // ============================================
+      if (material.uniforms.uJuliaEnabled) {
+        material.uniforms.uJuliaEnabled.value = juliaModeEnabled;
+      }
+      if (juliaModeEnabled && material.uniforms.uJuliaC) {
+        const timeInSeconds = state.clock.elapsedTime / 1000;
+        const t = timeInSeconds * juliaOrbitSpeed * 2 * Math.PI;
+        const juliaC = material.uniforms.uJuliaC.value as Float32Array;
+
+        // Julia constant orbits in a hypersphere
+        // First 4 components form primary orbit, rest use golden ratio phases
+        const PHI = 1.618033988749895;
+        juliaC[0] = juliaOrbitRadius * Math.cos(t);           // x
+        juliaC[1] = juliaOrbitRadius * Math.sin(t);           // y
+        juliaC[2] = juliaOrbitRadius * 0.5 * Math.sin(t * PHI); // z - secondary frequency
+        juliaC[3] = juliaOrbitRadius * 0.3 * Math.cos(t * PHI * 0.7); // w - tertiary
+
+        // Higher dimensions use smaller amplitudes with golden ratio phase offsets
+        for (let i = 4; i < D; i++) {
+          const phase = i * PHI;
+          const amplitude = juliaOrbitRadius * (0.2 / (i - 2)); // Decreasing amplitude
+          juliaC[i] = amplitude * Math.sin(t * (1 + 0.1 * i) + phase);
+        }
+        // Zero out unused dimensions
+        for (let i = D; i < MAX_DIMENSION; i++) {
+          juliaC[i] = 0;
         }
       }
 

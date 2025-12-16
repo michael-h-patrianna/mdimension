@@ -7,8 +7,6 @@
  * Render modes:
  * - polytope: Traditional polytopes (hypercube, simplex, cross-polytope) with faces/edges/vertices
  * - raymarch-mandelbrot: Raymarched 3D-11D surfaces (unified Hyperbulb for all dimensions)
- * - raymarch-mandelbox: Raymarched 3D-11D Mandelbox fractals
- * - raymarch-menger: Raymarched 3D-11D Menger sponge fractals
  *
  * All renderers use useFrame for transformations, reading from stores via getState()
  * to bypass React's render cycle completely during animation.
@@ -20,14 +18,13 @@ import { useAppearanceStore } from '@/stores/appearanceStore';
 import React, { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import HyperbulbMesh from './Hyperbulb/HyperbulbMesh';
-import MandelboxMesh from './Mandelbox/MandelboxMesh';
-import MengerMesh from './Menger/MengerMesh';
+import QuaternionJuliaMesh from './QuaternionJulia/QuaternionJuliaMesh';
 import { PolytopeScene } from './Polytope';
 
 /**
  * Render mode types
  */
-export type RenderMode = 'polytope' | 'raymarch-mandelbrot' | 'raymarch-mandelbox' | 'raymarch-menger' | 'none';
+export type RenderMode = 'polytope' | 'raymarch-mandelbrot' | 'raymarch-quaternion-julia' | 'none';
 
 /**
  * Props for UnifiedRenderer
@@ -62,17 +59,9 @@ export function determineRenderMode(
   dimension: number,
   facesVisible: boolean
 ): RenderMode {
-  // Mandelbox uses raymarching when faces are visible (no point cloud fallback)
-  // Edges toggle controls fresnel rim lighting within MandelboxMesh
-  // Vertices are disabled for mandelbox
-  if (objectType === 'mandelbox' && dimension >= 3) {
-    return facesVisible ? 'raymarch-mandelbox' : 'none';
-  }
-
-  // Menger uses raymarching when faces are visible (no point cloud fallback)
-  // Similar to Mandelbox - edges toggle controls fresnel rim lighting
-  if (objectType === 'menger' && dimension >= 3) {
-    return facesVisible ? 'raymarch-menger' : 'none';
+  // Quaternion Julia uses raymarching when faces are visible (3D-11D)
+  if (objectType === 'quaternion-julia' && dimension >= 3) {
+    return facesVisible ? 'raymarch-quaternion-julia' : 'none';
   }
 
   // Mandelbrot/Hyperbulb with faces visible uses raymarching (3D-11D unified)
@@ -137,11 +126,8 @@ export const UnifiedRenderer = React.memo(function UnifiedRenderer({
       {/* Raymarched 3D-11D Mandelbulb/Hyperbulb surface (unified renderer) */}
       {renderMode === 'raymarch-mandelbrot' && <HyperbulbMesh />}
 
-      {/* Raymarched 3D-11D Mandelbox surface */}
-      {renderMode === 'raymarch-mandelbox' && <MandelboxMesh />}
-
-      {/* Raymarched 3D-11D Menger Sponge */}
-      {renderMode === 'raymarch-menger' && <MengerMesh />}
+      {/* Raymarched 3D-11D Quaternion Julia */}
+      {renderMode === 'raymarch-quaternion-julia' && <QuaternionJuliaMesh />}
     </>
   );
 });

@@ -14,7 +14,7 @@
 export const RENDER_LAYERS = {
   /** Environment elements: walls, grid, light gizmos, axes helper */
   ENVIRONMENT: 0,
-  /** Main n-dimensional object: polytope, hyperbulb, mandelbox, menger, point cloud */
+  /** Main n-dimensional object: polytope, hyperbulb, point cloud */
   MAIN_OBJECT: 1,
 } as const;
 

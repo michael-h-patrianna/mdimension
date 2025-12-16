@@ -26,6 +26,7 @@ vi.mock('@/stores/animationStore', () => ({
       stopAll: vi.fn(),
       animateAll: vi.fn(),
       resetToFirstPlane: vi.fn(),
+      clearAllPlanes: vi.fn(),
     };
     return selector ? selector(state) : state;
   }),
@@ -51,22 +52,36 @@ vi.mock('@/stores/defaults/visualDefaults', () => ({
 vi.mock('@/stores/extendedObjectStore', () => ({
   useExtendedObjectStore: vi.fn((selector) => {
     const state = {
-        mandelbox: {
-            scaleAnimationEnabled: false,
-            juliaMode: false,
-            scaleCenter: 0,
-            scaleAmplitude: 0,
-            scaleSpeed: 0,
-            juliaSpeed: 0,
-            juliaRadius: 0
+        mandelbrot: {
+            powerAnimationEnabled: false,
+            sliceAnimationEnabled: false,
+            juliaModeEnabled: false,
+            phaseShiftEnabled: false,
         },
-        setMandelboxScaleAnimationEnabled: vi.fn(),
-        setMandelboxScaleCenter: vi.fn(),
-        setMandelboxScaleAmplitude: vi.fn(),
-        setMandelboxScaleSpeed: vi.fn(),
-        setMandelboxJuliaMode: vi.fn(),
-        setMandelboxJuliaSpeed: vi.fn(),
-        setMandelboxJuliaRadius: vi.fn(),
+        quaternionJulia: {
+            juliaConstantAnimation: { enabled: false },
+            powerAnimation: { enabled: false },
+            originDriftEnabled: false,
+            dimensionMixEnabled: false,
+        },
+        setMandelbrotPowerAnimationEnabled: vi.fn(),
+        setMandelbrotPowerMin: vi.fn(),
+        setMandelbrotPowerMax: vi.fn(),
+        setMandelbrotPowerSpeed: vi.fn(),
+        setMandelbrotSliceAnimationEnabled: vi.fn(),
+        setMandelbrotSliceSpeed: vi.fn(),
+        setMandelbrotSliceAmplitude: vi.fn(),
+        setMandelbrotJuliaModeEnabled: vi.fn(),
+        setMandelbrotJuliaOrbitSpeed: vi.fn(),
+        setMandelbrotJuliaOrbitRadius: vi.fn(),
+        setMandelbrotPhaseShiftEnabled: vi.fn(),
+        setMandelbrotPhaseSpeed: vi.fn(),
+        setMandelbrotPhaseAmplitude: vi.fn(),
+        // Quaternion Julia setters
+        setQuaternionJuliaConstantAnimationEnabled: vi.fn(),
+        setQuaternionJuliaPowerAnimationEnabled: vi.fn(),
+        setQuaternionJuliaOriginDriftEnabled: vi.fn(),
+        setQuaternionJuliaDimensionMixEnabled: vi.fn(),
     };
     return selector ? selector(state) : state;
   }),

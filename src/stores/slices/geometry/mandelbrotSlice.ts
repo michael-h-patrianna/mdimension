@@ -370,4 +370,73 @@ export const createMandelbrotSlice: StateCreator<ExtendedObjectSlice, [], [], Ma
       mandelbrot: { ...state.mandelbrot, driftFrequencySpread: clampedSpread },
     }))
   },
+
+  // --- Slice Animation Actions (4D+ only) ---
+  setMandelbrotSliceAnimationEnabled: (enabled) => {
+    set((state) => ({
+      mandelbrot: { ...state.mandelbrot, sliceAnimationEnabled: enabled },
+    }))
+  },
+
+  setMandelbrotSliceSpeed: (speed) => {
+    // Range 0.01 to 0.1
+    const clampedSpeed = Math.max(0.01, Math.min(0.1, speed))
+    set((state) => ({
+      mandelbrot: { ...state.mandelbrot, sliceSpeed: clampedSpeed },
+    }))
+  },
+
+  setMandelbrotSliceAmplitude: (amplitude) => {
+    // Range 0.1 to 1.0
+    const clampedAmplitude = Math.max(0.1, Math.min(1.0, amplitude))
+    set((state) => ({
+      mandelbrot: { ...state.mandelbrot, sliceAmplitude: clampedAmplitude },
+    }))
+  },
+
+  // --- Julia Morphing Actions ---
+  setMandelbrotJuliaModeEnabled: (enabled) => {
+    set((state) => ({
+      mandelbrot: { ...state.mandelbrot, juliaModeEnabled: enabled },
+    }))
+  },
+
+  setMandelbrotJuliaOrbitSpeed: (speed) => {
+    // Range 0.01 to 0.1
+    const clampedSpeed = Math.max(0.01, Math.min(0.1, speed))
+    set((state) => ({
+      mandelbrot: { ...state.mandelbrot, juliaOrbitSpeed: clampedSpeed },
+    }))
+  },
+
+  setMandelbrotJuliaOrbitRadius: (radius) => {
+    // Range 0.1 to 1.5
+    const clampedRadius = Math.max(0.1, Math.min(1.5, radius))
+    set((state) => ({
+      mandelbrot: { ...state.mandelbrot, juliaOrbitRadius: clampedRadius },
+    }))
+  },
+
+  // --- Angular Phase Shifts Actions ---
+  setMandelbrotPhaseShiftEnabled: (enabled) => {
+    set((state) => ({
+      mandelbrot: { ...state.mandelbrot, phaseShiftEnabled: enabled },
+    }))
+  },
+
+  setMandelbrotPhaseSpeed: (speed) => {
+    // Range 0.01 to 0.2
+    const clampedSpeed = Math.max(0.01, Math.min(0.2, speed))
+    set((state) => ({
+      mandelbrot: { ...state.mandelbrot, phaseSpeed: clampedSpeed },
+    }))
+  },
+
+  setMandelbrotPhaseAmplitude: (amplitude) => {
+    // Range 0.0 to PI/4 (~0.785)
+    const clampedAmplitude = Math.max(0.0, Math.min(Math.PI / 4, amplitude))
+    set((state) => ({
+      mandelbrot: { ...state.mandelbrot, phaseAmplitude: clampedAmplitude },
+    }))
+  },
 })

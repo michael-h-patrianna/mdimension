@@ -5,7 +5,6 @@
  * - Root Systems (A, D, E8 polytopes)
  * - Clifford Torus (flat torus on S^3)
  * - Mandelbrot Set (n-dimensional fractal)
- * - Mandelbox (box-like fractal)
  *
  * ## Scale Consistency
  *
@@ -472,6 +471,69 @@ export interface MandelbrotConfig {
    * Higher values create more beating patterns between dimensions.
    */
   driftFrequencySpread: number
+
+  // === Slice Animation (4D+ only) ===
+
+  /**
+   * Enable/disable animated slice position through higher dimensions.
+   * For 4D+ Hyperbulbs, animates which 3D cross-section is visible,
+   * creating a "flying through" effect.
+   */
+  sliceAnimationEnabled: boolean
+
+  /**
+   * Speed of slice animation (0.01 to 0.1, default 0.02).
+   * Lower values create slower, more dramatic morphing.
+   */
+  sliceSpeed: number
+
+  /**
+   * Amplitude of slice position oscillation (0.1 to 1.0, default 0.3).
+   * Controls how far the slice moves in each extra dimension.
+   */
+  sliceAmplitude: number
+
+  // === Julia Morphing ===
+
+  /**
+   * Enable/disable Julia mode with animated constant.
+   * Instead of z = z^n + samplePoint, uses z = z^n + juliaC
+   * where juliaC orbits through space.
+   */
+  juliaModeEnabled: boolean
+
+  /**
+   * Speed of Julia constant orbit (0.01 to 0.1, default 0.02).
+   * Controls how fast the Julia constant moves through space.
+   */
+  juliaOrbitSpeed: number
+
+  /**
+   * Radius of Julia constant orbit (0.1 to 1.5, default 0.5).
+   * Controls the magnitude of the Julia constant during animation.
+   */
+  juliaOrbitRadius: number
+
+  // === Angular Phase Shifts ===
+
+  /**
+   * Enable/disable angular phase shift animation.
+   * Adds animated phase offsets to theta/phi angles before power operation,
+   * creating twisting/spiraling morphs.
+   */
+  phaseShiftEnabled: boolean
+
+  /**
+   * Speed of phase shift animation (0.01 to 0.2, default 0.03).
+   * Controls how fast the phase angles change.
+   */
+  phaseSpeed: number
+
+  /**
+   * Maximum phase shift amplitude in radians (0.0 to PI/4, default 0.3).
+   * Controls the intensity of the twisting effect.
+   */
+  phaseAmplitude: number
 }
 
 /**
@@ -530,464 +592,277 @@ export const DEFAULT_MANDELBROT_CONFIG: MandelbrotConfig = {
   driftAmplitude: 0.03, // Very subtle displacement to avoid jitter
   driftBaseFrequency: 0.04, // Slow oscillation (~25 second cycle)
   driftFrequencySpread: 0.2, // Moderate phase spread
+  // Slice Animation defaults (4D+ only)
+  sliceAnimationEnabled: false,
+  sliceSpeed: 0.02, // Slow movement through slices
+  sliceAmplitude: 0.3, // Moderate displacement in extra dimensions
+  // Julia Morphing defaults
+  juliaModeEnabled: false,
+  juliaOrbitSpeed: 0.02, // Slow orbit for smooth morphing
+  juliaOrbitRadius: 0.5, // Moderate orbit radius
+  // Angular Phase Shifts defaults
+  phaseShiftEnabled: false,
+  phaseSpeed: 0.03, // Slow phase evolution
+  phaseAmplitude: 0.3, // ~17 degrees max phase shift
 }
 
 // ============================================================================
-// Mandelbox Configuration
+// Quaternion Julia Configuration
 // ============================================================================
 
 /**
- * Configuration for n-dimensional Mandelbox fractal generation
- *
- * The Mandelbox is a box-like fractal discovered by Tom Lowe in 2010.
- * Unlike the Mandelbulb (which uses hyperspherical coordinate transformations),
- * the Mandelbox uses simple geometric operations—conditional reflections and
- * sphere inversions—that generalize naturally to any dimension.
- *
- * Supports 3D to 11D with the same algorithm (no dimension-specific code needed).
- *
- * NOTE: To create genuine N-dimensional structure (vs just a 3D fractal embedded
- * in higher dimensions), enable intra-iteration rotations. This breaks the SO(N)
- * symmetry of the standard Mandelbox operations and creates interdimensional mixing.
- *
- * @see docs/prd/mandelbox.md
+ * Julia constant preset for Quaternion Julia sets
  */
-export interface MandelboxConfig {
+export interface JuliaConstantPreset {
+  name: string
+  value: [number, number, number, number]
+}
+
+/**
+ * Julia constant animation parameters
+ */
+export interface JuliaConstantAnimation {
+  enabled: boolean
+  /** Per-component amplitude (0-1) */
+  amplitude: [number, number, number, number]
+  /** Per-component frequency Hz (0.01-0.5) */
+  frequency: [number, number, number, number]
+  /** Per-component phase offset (0-2pi) */
+  phase: [number, number, number, number]
+}
+
+/**
+ * Power animation parameters for Quaternion Julia
+ */
+export interface JuliaPowerAnimation {
+  enabled: boolean
+  /** Minimum power (2.0-10.0) */
+  minPower: number
+  /** Maximum power (2.0-16.0) */
+  maxPower: number
+  /** Speed in Hz (0.01-0.2) */
+  speed: number
+}
+
+/**
+ * Configuration for Quaternion Julia fractal generation
+ *
+ * Mathematical basis: z = z^n + c where z and c are quaternions
+ * The Julia constant c is fixed (unlike Mandelbrot where c = initial position)
+ *
+ * Supports 3D to 11D via hyperspherical quaternion generalization.
+ *
+ * @see docs/prd/quaternion-julia-fractal.md
+ */
+export interface QuaternionJuliaConfig {
   /**
-   * Iteration scale factor (-3.0 to 3.0, default -1.5).
-   * Controls the character of the fractal:
-   * - -1.5: Classic folded/organic look
-   * - -2.0: Sponge-like patterns
-   * - -1.0: Soft, flower-like shapes
-   * - 1.0: Abstract geometric
-   * - 2.0: Boxy, structured
+   * Julia constant c (4D quaternion components).
+   * Default: [0.3, 0.5, 0.4, 0.2] ("Classic Bubble")
+   * Range: -2.0 to 2.0 per component
    */
-  scale: number
+  juliaConstant: [number, number, number, number]
 
   /**
-   * Box fold boundary (0.5 to 2.0, default 1.0).
-   * Controls the folding limit for box fold operation.
+   * Iteration power (2-8, default 2 for quadratic).
+   * Higher powers create more complex folding patterns.
    */
-  foldingLimit: number
+  power: number
 
   /**
-   * Inner sphere radius for sphere fold (0.1 to 1.0, default 0.5).
-   * Points closer than this are scaled up.
-   */
-  minRadius: number
-
-  /**
-   * Outer sphere radius for sphere fold (0.5 to 2.0, default 1.0).
-   * Points between minRadius and fixedRadius are inverted.
-   */
-  fixedRadius: number
-
-  /**
-   * Maximum iterations before considering point bounded (10 to 100, default 50).
+   * Maximum iterations before escape (32-256, default 64).
    */
   maxIterations: number
 
   /**
-   * Escape radius threshold (4.0 to 100.0, default 10.0).
-   * Higher dimensions may need larger values for stability.
+   * Bailout/escape radius (2.0-16.0, default 4.0).
    */
-  escapeRadius: number
+  bailoutRadius: number
 
   /**
-   * Fixed values for dimensions beyond the 3D slice (for 4D+).
-   * Array length = dimension - 3.
-   */
-  parameterValues: number[]
-
-  /**
-   * Rotation angle (in radians) applied per iteration in higher-dimensional planes.
-   * Range: 0.0 to 0.5 (0 to ~28.6 degrees), default 0.1.
-   *
-   * This is the key parameter for creating genuine N-dimensional Mandelbox structure.
-   * Without iteration rotation, the Mandelbox is SO(N) symmetric and looks identical
-   * from all rotation angles. With iteration rotation, dimensions mix during iteration,
-   * creating unique cross-sections when rotating in XW, YW, etc. planes.
-   *
-   * Higher values create more dramatic interdimensional mixing but may produce
-   * chaotic-looking results. Start with 0.05-0.15 for best visual results.
-   *
-   * Only affects 4D+ dimensions (3D Mandelbox is inherently 3D).
-   */
-  iterationRotation: number
-
-  // === Scale Animation ===
-
-  /**
-   * Enable/disable scale oscillation animation.
-   * When enabled, scale oscillates around scaleCenter with the specified amplitude.
-   */
-  scaleAnimationEnabled: boolean
-
-  /**
-   * Center value for scale oscillation (-3.0 to 3.0, default -1.5).
-   * The scale oscillates around this value.
-   */
-  scaleCenter: number
-
-  /**
-   * Amplitude of scale oscillation (0.0 to 1.5, default 0.5).
-   * Scale ranges from (scaleCenter - amplitude) to (scaleCenter + amplitude).
-   */
-  scaleAmplitude: number
-
-  /**
-   * Speed multiplier for scale oscillation (0.1 to 2.0, default 1.0).
-   * Higher values create faster oscillation.
-   */
-  scaleSpeed: number
-
-  // === Julia Mode ===
-
-  /**
-   * Enable Julia mode for Mandelbox iteration.
-   * When enabled, uses a global animated 'c' constant instead of per-pixel c.
-   * Creates smooth morphing through different Julia-like fractal shapes.
-   */
-  juliaMode: boolean
-
-  /**
-   * Speed of Julia c orbit animation (0.1 to 2.0, default 1.0).
-   * Controls how fast the c constant orbits through N-dimensional space.
-   */
-  juliaSpeed: number
-
-  /**
-   * Radius/amplitude of Julia c orbit (0.5 to 2.0, default 1.0).
-   * Controls the magnitude of c values during animation.
-   * Higher values explore more extreme regions of parameter space.
-   */
-  juliaRadius: number
-
-  // === Dimension Mixing Animation (Technique A) ===
-
-  /**
-   * Enable/disable dimension mixing inside iteration.
-   * Applies a time-varying shear matrix to create morphing during rotation.
-   */
-  dimensionMixEnabled: boolean
-
-  /**
-   * Strength of off-diagonal mixing (0.0 to 0.3, default 0.1).
-   * Higher values create more dramatic cross-dimensional coupling.
-   */
-  mixIntensity: number
-
-  /**
-   * How fast the mixing matrix evolves (0.1 to 2.0, default 0.5).
-   * Multiplied by global animation speed.
-   */
-  mixFrequency: number
-
-  // === Transform Alternation Animation (Technique B) ===
-
-  /**
-   * Enable/disable transform alternation per iteration.
-   * Alternates between standard and alternate transforms for organic morphing.
-   */
-  alternateTransformEnabled: boolean
-
-  /**
-   * Period of alternation (2 or 3).
-   * 2 = even/odd iterations, 3 = cycle through 3 variants.
-   */
-  alternatePeriod: 2 | 3
-
-  /**
-   * Type of alternate transform to apply.
-   * - twist: Rotation around an axis
-   * - power: Bulb-like power mapping
-   * - shift: Offset fold center
-   */
-  alternateType: 'twist' | 'power' | 'shift'
-
-  /**
-   * Blend factor for alternate transform (0.0 to 1.0, default 0.5).
-   * 0 = fully standard, 1 = fully alternate.
-   */
-  alternateIntensity: number
-
-  /**
-   * Rotation angle for twist type (0.0 to PI/4, default PI/8).
-   */
-  alternateTwistAngle: number
-
-  /**
-   * Power exponent for power type (1.5 to 4.0, default 2.0).
-   */
-  alternatePowerExponent: number
-
-  /**
-   * Enable animation of alternate intensity.
-   * When enabled, intensity oscillates over time.
-   */
-  alternateAnimationEnabled: boolean
-
-  /**
-   * Speed of intensity oscillation (0.1 to 2.0, default 0.5).
-   */
-  alternateAnimationSpeed: number
-
-  /**
-   * Amplitude of intensity oscillation (0.0 to 0.5, default 0.2).
-   */
-  alternateAnimationAmplitude: number
-
-  // === Origin Drift Animation (Technique C) ===
-
-  /**
-   * Enable/disable origin drift in extra dimensions.
-   * Creates slow multi-frequency wandering for feature birth/death effects.
-   */
-  originDriftEnabled: boolean
-
-  /**
-   * Maximum displacement in extra dimensions (0.01 to 0.5, default 0.1).
-   */
-  driftAmplitude: number
-
-  /**
-   * Base oscillation frequency in Hz (0.05 to 0.5, default 0.1).
-   * Multiplied by global animation speed.
-   */
-  driftBaseFrequency: number
-
-  /**
-   * Per-dimension frequency variation (0.0 to 1.0, default 0.3).
-   * Higher values create more beating patterns between dimensions.
-   */
-  driftFrequencySpread: number
-}
-
-/**
- * Default Mandelbox configuration
- */
-export const DEFAULT_MANDELBOX_CONFIG: MandelboxConfig = {
-  scale: -1.5, // Classic folded/organic look
-  foldingLimit: 1.0, // Standard box fold boundary
-  minRadius: 0.5, // Standard inner sphere
-  fixedRadius: 1.0, // Standard outer sphere
-  maxIterations: 50, // Balanced quality/performance
-  escapeRadius: 10.0, // Safe bailout for most dimensions
-  parameterValues: [], // No extra dimensions by default
-  iterationRotation: 0.1, // Moderate interdimensional mixing for 4D+
-  // Scale Animation defaults
-  scaleAnimationEnabled: false,
-  scaleCenter: -1.5,
-  scaleAmplitude: 0.5,
-  scaleSpeed: 1.0,
-  // Julia Mode defaults
-  juliaMode: false,
-  juliaSpeed: 1.0,
-  juliaRadius: 1.0,
-  // Dimension Mixing defaults (Technique A)
-  dimensionMixEnabled: false,
-  mixIntensity: 0.1,
-  mixFrequency: 0.5,
-  // Transform Alternation defaults (Technique B)
-  alternateTransformEnabled: false,
-  alternatePeriod: 2,
-  alternateType: 'twist',
-  alternateIntensity: 0.5,
-  alternateTwistAngle: Math.PI / 8,
-  alternatePowerExponent: 2.0,
-  alternateAnimationEnabled: false,
-  alternateAnimationSpeed: 0.5,
-  alternateAnimationAmplitude: 0.2,
-  // Origin Drift defaults (Technique C)
-  // NOTE: Conservative defaults for smooth, slow morphing
-  originDriftEnabled: false,
-  driftAmplitude: 0.03, // Very subtle displacement to avoid jitter
-  driftBaseFrequency: 0.04, // Slow oscillation (~25 second cycle)
-  driftFrequencySpread: 0.2, // Moderate phase spread
-}
-
-// ============================================================================
-// Menger Sponge Configuration
-// ============================================================================
-
-/**
- * Configuration for n-dimensional Menger Sponge (Sierpinski N-cube) generation
- *
- * The Menger sponge is a geometric IFS fractal defined by recursive removal:
- * - Divide cube into 3^N subcubes
- * - Remove subcubes where 2+ coordinates are in the "middle third"
- * - Repeat recursively
- *
- * Unlike escape-time fractals (Mandelbrot, Mandelbox), the Menger sponge has a
- * TRUE SDF via KIFS (Kaleidoscopic IFS) fold operations, making it computationally
- * efficient and visually consistent across all dimensions.
- *
- * Supports 3D to 11D with identical algorithm (coordinate sorting + cross subtraction).
- *
- * @see docs/prd/menger-sponge.md
- */
-export interface MengerConfig {
-  /**
-   * Recursion depth / detail level (3 to 8, default 5).
-   * Higher values create finer holes but cost more computation.
-   * - 3: Coarse, clearly visible cube structure
-   * - 5: Good balance of detail and performance
-   * - 7-8: Very fine detail, may impact performance
-   */
-  iterations: number
-
-  /**
-   * Bounding cube scale (0.5 to 2.0, default 1.0).
-   * Controls the overall size of the Menger sponge.
+   * Scale/extent parameter for auto-positioning (0.5-5.0, default 2.0).
+   * Controls the sampling volume - larger values show more of the fractal.
    */
   scale: number
 
   /**
-   * Fixed values for dimensions beyond the 3D slice (for 4D+).
+   * Surface distance threshold for raymarching (0.0005-0.004).
+   */
+  surfaceThreshold: number
+
+  /**
+   * Maximum raymarch steps (64-512).
+   */
+  maxRaymarchSteps: number
+
+  /**
+   * Quality multiplier for fine-tuning (0.25-1.0, default 1.0).
+   */
+  qualityMultiplier: number
+
+  /**
+   * D-dimensional rotation parameter values (for dimensions 4-11).
    * Array length = dimension - 3.
-   * Controls which cross-section of the N-dimensional Menger hypersponge is visible.
    */
   parameterValues: number[]
 
-  // === Fold Twist Animation ===
+  // === Color Configuration ===
 
-  /**
-   * Enable/disable fold twist animation.
-   * When enabled, rotates geometry within each KIFS iteration,
-   * creating spiraling kaleidoscopic effects.
-   */
-  foldTwistEnabled: boolean
+  /** Color algorithm (0-7): Mono, Analogous, Cosine, Normal, Distance, LCH, Multi, Radial */
+  colorMode: number
+  /** Base hex color for monochromatic/analogous modes */
+  baseColor: string
+  /** Cosine palette coefficients (Inigo Quilez formula) */
+  cosineCoefficients: {
+    a: [number, number, number]
+    b: [number, number, number]
+    c: [number, number, number]
+    d: [number, number, number]
+  }
+  /** Color distribution power (0.25-4.0) */
+  colorPower: number
+  /** Number of color cycles (0.5-5.0) */
+  colorCycles: number
+  /** Color phase offset (0.0-1.0) */
+  colorOffset: number
+  /** LCH lightness (0.1-1.0) */
+  lchLightness: number
+  /** LCH chroma (0.0-0.4) */
+  lchChroma: number
 
-  /**
-   * Static fold twist angle in radians (-π to π, default 0).
-   * When animation is enabled, this is the base angle before time is added.
-   */
-  foldTwistAngle: number
+  // === Opacity Configuration ===
 
-  /**
-   * Speed multiplier for fold twist animation (0.0 to 2.0, default 0.5).
-   * Higher values create faster spinning.
-   */
-  foldTwistSpeed: number
+  /** Opacity mode: 0=Solid, 1=SimpleAlpha, 2=Layered, 3=Volumetric */
+  opacityMode: number
+  /** Global opacity for SimpleAlpha mode (0.0-1.0) */
+  opacity: number
+  /** Number of layers for Layered mode (2-4) */
+  layerCount: number
+  /** Per-layer opacity for Layered mode (0.1-0.9) */
+  layerOpacity: number
+  /** Density for Volumetric mode (0.1-2.0) */
+  volumetricDensity: number
 
-  // === Scale Pulse Animation ===
+  // === Shadow Configuration ===
 
-  /**
-   * Enable/disable scale pulse (breathing) animation.
-   * When enabled, the iteration scale factor oscillates,
-   * creating an organic breathing effect.
-   */
-  scalePulseEnabled: boolean
+  /** Enable shadow calculation */
+  shadowEnabled: boolean
+  /** Shadow quality: 0=Low(16), 1=Medium(32), 2=High(64), 3=Ultra(128) */
+  shadowQuality: number
+  /** Shadow softness (0.0-2.0) */
+  shadowSoftness: number
+  /** Shadow animation mode: 0=Pause, 1=Low, 2=Full */
+  shadowAnimationMode: number
 
-  /**
-   * Amplitude of scale pulse (0.0 to 0.5, default 0.2).
-   * Scale oscillates as: scale ± amplitude
-   */
-  scalePulseAmplitude: number
+  // === Animation Configuration ===
 
-  /**
-   * Speed multiplier for scale pulse animation (0.0 to 2.0, default 1.0).
-   * Higher values create faster breathing.
-   */
-  scalePulseSpeed: number
-
-  // === Slice Sweep Animation (4D+ only) ===
-
-  /**
-   * Enable/disable slice sweep animation.
-   * When enabled (and dimension >= 4), automatically animates the
-   * parameterValues with phase-offset sine waves, creating smooth
-   * cross-section sweeps through higher-dimensional space.
-   */
-  sliceSweepEnabled: boolean
-
-  /**
-   * Amplitude of slice sweep (0.0 to 2.0, default 1.0).
-   * Controls how far the cross-section sweeps in each extra dimension.
-   */
-  sliceSweepAmplitude: number
-
-  /**
-   * Speed multiplier for slice sweep animation (0.0 to 2.0, default 0.5).
-   * Higher values create faster sweeping.
-   */
-  sliceSweepSpeed: number
+  /** Julia constant path animation settings */
+  juliaConstantAnimation: JuliaConstantAnimation
+  /** Power morphing animation settings */
+  powerAnimation: JuliaPowerAnimation
+  /** Enable origin drift in extra dimensions */
+  originDriftEnabled: boolean
+  /** Origin drift amplitude (0.01-0.5) */
+  originDriftAmplitude: number
+  /** Origin drift base frequency Hz (0.01-0.5) */
+  originDriftBaseFrequency: number
+  /** Origin drift frequency spread (0.0-1.0) */
+  originDriftFrequencySpread: number
 
   // === Dimension Mixing Animation (Technique A) ===
 
-  /**
-   * Enable/disable dimension mixing inside iteration.
-   * Applies a time-varying shear matrix to create morphing during rotation.
-   */
+  /** Enable dimension mixing inside iteration */
   dimensionMixEnabled: boolean
-
-  /**
-   * Strength of off-diagonal mixing (0.0 to 0.3, default 0.1).
-   * Higher values create more dramatic cross-dimensional coupling.
-   */
+  /** Mixing intensity (0.0-0.3) */
   mixIntensity: number
-
-  /**
-   * How fast the mixing matrix evolves (0.1 to 2.0, default 0.5).
-   * Multiplied by global animation speed.
-   */
+  /** Mixing frequency multiplier (0.1-2.0) */
   mixFrequency: number
-
-  // === Origin Drift Animation (Technique C) ===
-
-  /**
-   * Enable/disable origin drift in extra dimensions.
-   * Creates slow multi-frequency wandering for feature birth/death effects.
-   */
-  originDriftEnabled: boolean
-
-  /**
-   * Maximum displacement in extra dimensions (0.01 to 0.5, default 0.1).
-   */
-  driftAmplitude: number
-
-  /**
-   * Base oscillation frequency in Hz (0.05 to 0.5, default 0.1).
-   * Multiplied by global animation speed.
-   */
-  driftBaseFrequency: number
-
-  /**
-   * Per-dimension frequency variation (0.0 to 1.0, default 0.3).
-   * Higher values create more beating patterns between dimensions.
-   */
-  driftFrequencySpread: number
 }
 
 /**
- * Default Menger sponge configuration
+ * Julia constant presets
  */
-export const DEFAULT_MENGER_CONFIG: MengerConfig = {
-  iterations: 5, // Good balance of detail and performance
-  scale: 1.0, // Unit cube bounding box
-  parameterValues: [], // No extra dimensions by default
-  // Fold Twist Animation defaults
-  foldTwistEnabled: false,
-  foldTwistAngle: 0.0,
-  foldTwistSpeed: 0.5,
-  // Scale Pulse Animation defaults
-  scalePulseEnabled: false,
-  scalePulseAmplitude: 0.2,
-  scalePulseSpeed: 1.0,
-  // Slice Sweep Animation defaults
-  sliceSweepEnabled: false,
-  sliceSweepAmplitude: 1.0,
-  sliceSweepSpeed: 0.5,
-  // Dimension Mixing defaults (Technique A)
+export const JULIA_CONSTANT_PRESETS: JuliaConstantPreset[] = [
+  { name: 'Tentacles', value: [-0.2, 0.8, 0.0, 0.0] },
+  { name: 'Bubble', value: [0.285, 0.01, 0.0, 0.0] },
+  { name: 'Coral', value: [-0.1, 0.65, 0.45, -0.2] },
+  { name: 'Sponge', value: [-0.4, -0.4, 0.4, 0.4] },
+  { name: 'Twisted', value: [-0.08, 0.0, -0.83, 0.025] },
+]
+
+/**
+ * Quality presets for Quaternion Julia
+ */
+export const QUATERNION_JULIA_QUALITY_PRESETS = {
+  draft: { maxIterations: 32, surfaceThreshold: 0.004, maxRaymarchSteps: 64 },
+  standard: { maxIterations: 64, surfaceThreshold: 0.002, maxRaymarchSteps: 128 },
+  high: { maxIterations: 128, surfaceThreshold: 0.001, maxRaymarchSteps: 256 },
+  ultra: { maxIterations: 256, surfaceThreshold: 0.0005, maxRaymarchSteps: 512 },
+}
+
+/**
+ * Default configuration for Quaternion Julia
+ */
+export const DEFAULT_QUATERNION_JULIA_CONFIG: QuaternionJuliaConfig = {
+  juliaConstant: [-0.2, 0.8, 0.0, 0.0],
+  power: 2,
+  maxIterations: 64,
+  bailoutRadius: 4.0,
+  scale: 1.0,
+  surfaceThreshold: 0.002,
+  maxRaymarchSteps: 128,
+  qualityMultiplier: 1.0,
+  parameterValues: [],
+
+  // Color defaults
+  colorMode: 2, // Cosine gradient
+  baseColor: '#4488ff',
+  cosineCoefficients: {
+    a: [0.5, 0.5, 0.5],
+    b: [0.5, 0.5, 0.5],
+    c: [1.0, 1.0, 1.0],
+    d: [0.0, 0.33, 0.67],
+  },
+  colorPower: 1.0,
+  colorCycles: 1.0,
+  colorOffset: 0.0,
+  lchLightness: 0.7,
+  lchChroma: 0.15,
+
+  // Opacity defaults
+  opacityMode: 0, // Solid
+  opacity: 1.0,
+  layerCount: 2,
+  layerOpacity: 0.5,
+  volumetricDensity: 1.0,
+
+  // Shadow defaults
+  shadowEnabled: false,
+  shadowQuality: 1, // Medium
+  shadowSoftness: 1.0,
+  shadowAnimationMode: 1, // Low
+
+  // Animation defaults
+  juliaConstantAnimation: {
+    enabled: false,
+    amplitude: [0.3, 0.3, 0.3, 0.3],
+    frequency: [0.05, 0.04, 0.06, 0.03],
+    phase: [0, Math.PI / 4, Math.PI / 2, (Math.PI * 3) / 4],
+  },
+  powerAnimation: {
+    enabled: false,
+    minPower: 2.0,
+    maxPower: 8.0,
+    speed: 0.03,
+  },
+  originDriftEnabled: false,
+  originDriftAmplitude: 0.03,
+  originDriftBaseFrequency: 0.04,
+  originDriftFrequencySpread: 0.2,
+
+  // Dimension Mixing defaults
   dimensionMixEnabled: false,
   mixIntensity: 0.1,
   mixFrequency: 0.5,
-  // Origin Drift defaults (Technique C)
-  // NOTE: Conservative defaults for smooth, slow morphing
-  originDriftEnabled: false,
-  driftAmplitude: 0.03, // Very subtle displacement to avoid jitter
-  driftBaseFrequency: 0.04, // Slow oscillation (~25 second cycle)
-  driftFrequencySpread: 0.2, // Moderate phase spread
 }
 
 // ============================================================================
@@ -1018,10 +893,8 @@ export interface ExtendedObjectParams {
   nestedTorus: NestedTorusConfig
   /** Configuration for Mandelbrot set generation */
   mandelbrot: MandelbrotConfig
-  /** Configuration for Mandelbox fractal generation */
-  mandelbox: MandelboxConfig
-  /** Configuration for Menger sponge fractal generation */
-  menger: MengerConfig
+  /** Configuration for Quaternion Julia fractal generation */
+  quaternionJulia: QuaternionJuliaConfig
 }
 
 /**
@@ -1033,6 +906,5 @@ export const DEFAULT_EXTENDED_OBJECT_PARAMS: ExtendedObjectParams = {
   cliffordTorus: DEFAULT_CLIFFORD_TORUS_CONFIG,
   nestedTorus: DEFAULT_NESTED_TORUS_CONFIG,
   mandelbrot: DEFAULT_MANDELBROT_CONFIG,
-  mandelbox: DEFAULT_MANDELBOX_CONFIG,
-  menger: DEFAULT_MENGER_CONFIG,
+  quaternionJulia: DEFAULT_QUATERNION_JULIA_CONFIG,
 }

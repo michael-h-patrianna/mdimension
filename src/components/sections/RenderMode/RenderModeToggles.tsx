@@ -35,7 +35,7 @@ export interface RenderModeTogglesProps {
 /**
  * Checks if an object type supports face rendering
  * Polytopes (hypercube, simplex, cross-polytope), root-system, clifford-torus, nested-torus,
- * mandelbrot (via raymarching), mandelbox (via raymarching), and menger (via raymarching) support faces
+ * mandelbrot (via raymarching), and quaternion-julia (via raymarching) support faces
  * @param objectType - The current object type
  * @returns true if faces can be rendered for this object type
  */
@@ -45,8 +45,7 @@ function canRenderFaces(objectType: string): boolean {
     polytopeTypes.includes(objectType) ||
     objectType === 'root-system' ||
     objectType === 'mandelbrot' ||
-    objectType === 'mandelbox' ||
-    objectType === 'menger' ||
+    objectType === 'quaternion-julia' ||
     objectType === 'clifford-torus' ||
     objectType === 'nested-torus'
   );
@@ -54,17 +53,17 @@ function canRenderFaces(objectType: string): boolean {
 
 /**
  * Checks if an object type supports edge rendering
- * For Mandelbrot/Mandelbox, "Edges" controls fresnel rim lighting on the raymarched surface
+ * For Mandelbrot/Quaternion Julia, "Edges" controls fresnel rim lighting on the raymarched surface
  * @param _objectType - The current object type (unused - all types support edges)
  * @returns true if edges can be rendered for this object type
  */
 function canRenderEdges(_objectType: string): boolean {
-  // All object types support edges (Mandelbrot/Mandelbox use fresnel rim lighting as "edges")
+  // All object types support edges (Mandelbrot/Quaternion Julia use fresnel rim lighting as "edges")
   return true;
 }
 
 /**
- * Checks if an object type is a raymarched fractal (mandelbrot 3D+, mandelbox, or menger)
+ * Checks if an object type is a raymarched fractal (mandelbrot 3D+ or quaternion-julia)
  * These types have special mutual exclusivity rules for render modes
  * @param objectType - The current object type
  * @param dimension - Current dimension
@@ -73,8 +72,7 @@ function canRenderEdges(_objectType: string): boolean {
 function isRaymarchedFractal(objectType: string, dimension: number): boolean {
   return (
     (objectType === 'mandelbrot' && dimension >= 3) ||
-    (objectType === 'mandelbox' && dimension >= 3) ||
-    (objectType === 'menger' && dimension >= 3)
+    (objectType === 'quaternion-julia' && dimension >= 3)
   );
 }
 
@@ -173,7 +171,7 @@ export const RenderModeToggles: React.FC<RenderModeTogglesProps> = React.memo(({
     }
   }, [edgesSupported, edgesVisible, setEdgesVisible]);
 
-  // Enforce mutual exclusivity for raymarched fractals (Mandelbrot 3D+, Mandelbox) on object type switch
+  // Enforce mutual exclusivity for raymarched fractals (Mandelbrot 3D+, Quaternion Julia) on object type switch
   // Rule: Edges ON → Faces must be ON
   useEffect(() => {
     if (isRaymarched && edgesVisible && !facesVisible) {

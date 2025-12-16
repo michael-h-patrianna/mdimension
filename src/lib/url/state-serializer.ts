@@ -57,8 +57,6 @@ const VALID_OBJECT_TYPES: ObjectType[] = [
   'root-system',
   'clifford-torus',
   'mandelbrot',
-  'mandelbox',
-  'menger',
 ];
 
 export interface ShareableState {

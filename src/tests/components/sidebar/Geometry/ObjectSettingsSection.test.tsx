@@ -6,14 +6,8 @@ import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { act } from 'react';
 
 // Mock the components that are already separated to verify they are rendered
-vi.mock('./MandelboxControls', () => ({
-  MandelboxControls: () => <div data-testid="mandelbox-controls">Mandelbox Controls</div>
-}));
 vi.mock('./MandelbrotControls', () => ({
   MandelbrotControls: () => <div data-testid="mandelbrot-controls">Mandelbrot Controls</div>
-}));
-vi.mock('./MengerControls', () => ({
-  MengerControls: () => <div data-testid="menger-controls">Menger Controls</div>
 }));
 
 describe('ObjectSettingsSection', () => {

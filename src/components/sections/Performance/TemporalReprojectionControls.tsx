@@ -9,7 +9,7 @@ import React from 'react';
 
 /**
  * Temporal reprojection controls for the Performance section.
- * Only affects fractal objects (Hyperbulb, Mandelbox, Menger).
+ * Only affects fractal objects (Hyperbulb).
  */
 export const TemporalReprojectionControls: React.FC = () => {
   const enabled = usePerformanceStore((s) => s.temporalReprojectionEnabled);

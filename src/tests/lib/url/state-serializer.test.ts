@@ -30,8 +30,6 @@ describe('state-serializer', () => {
         'root-system',
         'clifford-torus',
         'mandelbrot',
-        'mandelbox',
-        'menger',
       ] as const;
 
       for (const type of objectTypes) {
@@ -168,12 +166,9 @@ describe('state-serializer', () => {
         'simplex',
         'cross-polytope',
         'root-system',
-        'clifford-torus',
-        'mandelbrot',
-        'mandelbox',
-        'menger',
-      ];
-
+              'clifford-torus',
+              'mandelbrot',
+            ];
       for (const type of objectTypes) {
         const result = deserializeState(`t=${type}`);
         expect(result.objectType).toBe(type);

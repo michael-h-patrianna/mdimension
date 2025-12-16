@@ -129,6 +129,15 @@ uniform bool uDimensionMixEnabled;
 uniform float uMixIntensity;          // 0.0-0.3 strength of mixing
 uniform float uMixTime;               // Animated time for mixing matrix
 
+// Julia Morphing uniforms
+uniform bool uJuliaEnabled;
+uniform float uJuliaC[11];            // Animated Julia constant (fixed c for iteration)
+
+// Phase Shift uniforms (angular twisting)
+uniform bool uPhaseEnabled;
+uniform float uPhaseTheta;            // Phase offset for theta angle
+uniform float uPhasePhi;              // Phase offset for phi angle
+
 in vec3 vPosition;
 in vec2 vUv;
 
@@ -393,12 +402,23 @@ float sdf3D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
     // For 3D, we use standard spherical coordinates
     // c = uOrigin + pos.x * uBasisX + pos.y * uBasisY + pos.z * uBasisZ
     // But in 3D, this simplifies to just pos (with possible slice offset)
-    float cx = uOrigin[0] + pos.x*uBasisX[0] + pos.y*uBasisY[0] + pos.z*uBasisZ[0];
-    float cy = uOrigin[1] + pos.x*uBasisX[1] + pos.y*uBasisY[1] + pos.z*uBasisZ[1];
-    float cz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
+    float cx, cy, cz;
+    float zx, zy, zz;
 
-    // z = iteration variable, starts at c (like Mandelbulb)
-    float zx = cx, zy = cy, zz = cz;
+    if (uJuliaEnabled) {
+        // Julia mode: z starts at sample point, c is fixed animated constant
+        zx = uOrigin[0] + pos.x*uBasisX[0] + pos.y*uBasisY[0] + pos.z*uBasisZ[0];
+        zy = uOrigin[1] + pos.x*uBasisX[1] + pos.y*uBasisY[1] + pos.z*uBasisZ[1];
+        zz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
+        cx = uJuliaC[0]; cy = uJuliaC[1]; cz = uJuliaC[2];
+    } else {
+        // Mandelbrot mode: z starts at c (sample point)
+        cx = uOrigin[0] + pos.x*uBasisX[0] + pos.y*uBasisY[0] + pos.z*uBasisZ[0];
+        cy = uOrigin[1] + pos.x*uBasisX[1] + pos.y*uBasisY[1] + pos.z*uBasisZ[1];
+        cz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
+        zx = cx; zy = cy; zz = cz;
+    }
+
     float dr = 1.0;
     float r = 0.0;
 
@@ -428,9 +448,9 @@ float sdf3D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
         float theta = acos(clamp(zz / r, -1.0, 1.0));  // From z-axis
         float phi = atan(zy, zx);  // In xy plane
 
-        // Power map: angles * n
-        float thetaN = theta * pwr;
-        float phiN = phi * pwr;
+        // Power map: angles * n (with optional phase shift)
+        float thetaN = (theta + (uPhaseEnabled ? uPhaseTheta : 0.0)) * pwr;
+        float phiN = (phi + (uPhaseEnabled ? uPhasePhi : 0.0)) * pwr;
 
         // From spherical: z-axis primary reconstruction
         float cTheta = cos(thetaN), sTheta = sin(thetaN);
@@ -448,11 +468,20 @@ float sdf3D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
 }
 
 float sdf3D_simple(vec3 pos, float pwr, float bail, int maxIt) {
-    float cx = uOrigin[0] + pos.x*uBasisX[0] + pos.y*uBasisY[0] + pos.z*uBasisZ[0];
-    float cy = uOrigin[1] + pos.x*uBasisX[1] + pos.y*uBasisY[1] + pos.z*uBasisZ[1];
-    float cz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
-    // Start at c (like Mandelbulb)
-    float zx = cx, zy = cy, zz = cz;
+    float cx, cy, cz;
+    float zx, zy, zz;
+
+    if (uJuliaEnabled) {
+        zx = uOrigin[0] + pos.x*uBasisX[0] + pos.y*uBasisY[0] + pos.z*uBasisZ[0];
+        zy = uOrigin[1] + pos.x*uBasisX[1] + pos.y*uBasisY[1] + pos.z*uBasisZ[1];
+        zz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
+        cx = uJuliaC[0]; cy = uJuliaC[1]; cz = uJuliaC[2];
+    } else {
+        cx = uOrigin[0] + pos.x*uBasisX[0] + pos.y*uBasisY[0] + pos.z*uBasisZ[0];
+        cy = uOrigin[1] + pos.x*uBasisX[1] + pos.y*uBasisY[1] + pos.z*uBasisZ[1];
+        cz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
+        zx = cx; zy = cy; zz = cz;
+    }
     float dr = 1.0, r = 0.0;
 
     for (int i = 0; i < MAX_ITER_HQ; i++) {
@@ -469,8 +498,10 @@ float sdf3D_simple(vec3 pos, float pwr, float bail, int maxIt) {
         float theta = acos(clamp(zz / r, -1.0, 1.0));
         float phi = atan(zy, zx);
 
-        float cTheta = cos(theta * pwr), sTheta = sin(theta * pwr);
-        float cPhi = cos(phi * pwr), sPhi = sin(phi * pwr);
+        float thetaN = (theta + (uPhaseEnabled ? uPhaseTheta : 0.0)) * pwr;
+        float phiN = (phi + (uPhaseEnabled ? uPhasePhi : 0.0)) * pwr;
+        float cTheta = cos(thetaN), sTheta = sin(thetaN);
+        float cPhi = cos(phiN), sPhi = sin(phiN);
 
         zz = rp * cTheta + cz;
         zx = rp * sTheta * cPhi + cx;
@@ -485,13 +516,25 @@ float sdf3D_simple(vec3 pos, float pwr, float bail, int maxIt) {
 
 float sdf4D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
     // c = uOrigin + pos.x * uBasisX + pos.y * uBasisY + pos.z * uBasisZ
-    float cx = uOrigin[0] + pos.x*uBasisX[0] + pos.y*uBasisY[0] + pos.z*uBasisZ[0];
-    float cy = uOrigin[1] + pos.x*uBasisX[1] + pos.y*uBasisY[1] + pos.z*uBasisZ[1];
-    float cz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
-    float cw = uOrigin[3] + pos.x*uBasisX[3] + pos.y*uBasisY[3] + pos.z*uBasisZ[3];
+    float cx, cy, cz, cw;
+    float zx, zy, zz, zw;
 
-    // z = iteration variable, starts at c (like Mandelbulb)
-    float zx = cx, zy = cy, zz = cz, zw = cw;
+    if (uJuliaEnabled) {
+        // Julia mode: z starts at sample point, c is fixed animated constant
+        zx = uOrigin[0] + pos.x*uBasisX[0] + pos.y*uBasisY[0] + pos.z*uBasisZ[0];
+        zy = uOrigin[1] + pos.x*uBasisX[1] + pos.y*uBasisY[1] + pos.z*uBasisZ[1];
+        zz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
+        zw = uOrigin[3] + pos.x*uBasisX[3] + pos.y*uBasisY[3] + pos.z*uBasisZ[3];
+        cx = uJuliaC[0]; cy = uJuliaC[1]; cz = uJuliaC[2]; cw = uJuliaC[3];
+    } else {
+        // Mandelbrot mode: z starts at c (sample point)
+        cx = uOrigin[0] + pos.x*uBasisX[0] + pos.y*uBasisY[0] + pos.z*uBasisZ[0];
+        cy = uOrigin[1] + pos.x*uBasisX[1] + pos.y*uBasisY[1] + pos.z*uBasisZ[1];
+        cz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
+        cw = uOrigin[3] + pos.x*uBasisX[3] + pos.y*uBasisY[3] + pos.z*uBasisZ[3];
+        zx = cx; zy = cy; zz = cz; zw = cw;
+    }
+
     float dr = 1.0;
     float r = 0.0;
 
@@ -523,9 +566,9 @@ float sdf4D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
         float phi = rxyw > EPS ? acos(clamp(zx / rxyw, -1.0, 1.0)) : 0.0;  // From x in xyw
         float psi = atan(zw, zy);  // In yw plane
 
-        // Power map: angles * n
-        float thetaN = theta * pwr;
-        float phiN = phi * pwr;
+        // Power map: angles * n (with optional phase shift)
+        float thetaN = (theta + (uPhaseEnabled ? uPhaseTheta : 0.0)) * pwr;
+        float phiN = (phi + (uPhaseEnabled ? uPhasePhi : 0.0)) * pwr;
         float psiN = psi * pwr;
 
         // From hyperspherical: z-axis primary reconstruction
@@ -548,12 +591,22 @@ float sdf4D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
 }
 
 float sdf4D_simple(vec3 pos, float pwr, float bail, int maxIt) {
-    float cx = uOrigin[0] + pos.x*uBasisX[0] + pos.y*uBasisY[0] + pos.z*uBasisZ[0];
-    float cy = uOrigin[1] + pos.x*uBasisX[1] + pos.y*uBasisY[1] + pos.z*uBasisZ[1];
-    float cz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
-    float cw = uOrigin[3] + pos.x*uBasisX[3] + pos.y*uBasisY[3] + pos.z*uBasisZ[3];
-    // Start at c (like Mandelbulb)
-    float zx = cx, zy = cy, zz = cz, zw = cw;
+    float cx, cy, cz, cw;
+    float zx, zy, zz, zw;
+
+    if (uJuliaEnabled) {
+        zx = uOrigin[0] + pos.x*uBasisX[0] + pos.y*uBasisY[0] + pos.z*uBasisZ[0];
+        zy = uOrigin[1] + pos.x*uBasisX[1] + pos.y*uBasisY[1] + pos.z*uBasisZ[1];
+        zz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
+        zw = uOrigin[3] + pos.x*uBasisX[3] + pos.y*uBasisY[3] + pos.z*uBasisZ[3];
+        cx = uJuliaC[0]; cy = uJuliaC[1]; cz = uJuliaC[2]; cw = uJuliaC[3];
+    } else {
+        cx = uOrigin[0] + pos.x*uBasisX[0] + pos.y*uBasisY[0] + pos.z*uBasisZ[0];
+        cy = uOrigin[1] + pos.x*uBasisX[1] + pos.y*uBasisY[1] + pos.z*uBasisZ[1];
+        cz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
+        cw = uOrigin[3] + pos.x*uBasisX[3] + pos.y*uBasisY[3] + pos.z*uBasisZ[3];
+        zx = cx; zy = cy; zz = cz; zw = cw;
+    }
     float dr = 1.0, r = 0.0;
 
     for (int i = 0; i < MAX_ITER_HQ; i++) {
@@ -572,8 +625,10 @@ float sdf4D_simple(vec3 pos, float pwr, float bail, int maxIt) {
         float phi = rxyw > EPS ? acos(clamp(zx / rxyw, -1.0, 1.0)) : 0.0;
         float psi = atan(zw, zy);
 
-        float cTheta = cos(theta * pwr), sTheta = sin(theta * pwr);
-        float cPhi = cos(phi * pwr), sPhi = sin(phi * pwr);
+        float thetaN = (theta + (uPhaseEnabled ? uPhaseTheta : 0.0)) * pwr;
+        float phiN = (phi + (uPhaseEnabled ? uPhasePhi : 0.0)) * pwr;
+        float cTheta = cos(thetaN), sTheta = sin(thetaN);
+        float cPhi = cos(phiN), sPhi = sin(phiN);
         float cPsi = cos(psi * pwr), sPsi = sin(psi * pwr);
 
         float rSinThetaSinPhi = rp * sTheta * sPhi;
@@ -590,45 +645,59 @@ float sdf4D_simple(vec3 pos, float pwr, float bail, int maxIt) {
 // ============================================
 
 float sdf5D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
-    float cx = uOrigin[0] + pos.x*uBasisX[0] + pos.y*uBasisY[0] + pos.z*uBasisZ[0];
-    float cy = uOrigin[1] + pos.x*uBasisX[1] + pos.y*uBasisY[1] + pos.z*uBasisZ[1];
-    float cz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
-    float c3 = uOrigin[3] + pos.x*uBasisX[3] + pos.y*uBasisY[3] + pos.z*uBasisZ[3];
-    float c4 = uOrigin[4] + pos.x*uBasisX[4] + pos.y*uBasisY[4] + pos.z*uBasisZ[4];
-    // Start at c (like Mandelbulb)
-    float zx = cx, zy = cy, zz = cz, z3 = c3, z4 = c4;
+    float cx, cy, cz, c3, c4;
+    float zx, zy, zz, z3, z4;
+
+    if (uJuliaEnabled) {
+        zx = uOrigin[0] + pos.x*uBasisX[0] + pos.y*uBasisY[0] + pos.z*uBasisZ[0];
+        zy = uOrigin[1] + pos.x*uBasisX[1] + pos.y*uBasisY[1] + pos.z*uBasisZ[1];
+        zz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
+        z3 = uOrigin[3] + pos.x*uBasisX[3] + pos.y*uBasisY[3] + pos.z*uBasisZ[3];
+        z4 = uOrigin[4] + pos.x*uBasisX[4] + pos.y*uBasisY[4] + pos.z*uBasisZ[4];
+        cx = uJuliaC[0]; cy = uJuliaC[1]; cz = uJuliaC[2]; c3 = uJuliaC[3]; c4 = uJuliaC[4];
+    } else {
+        cx = uOrigin[0] + pos.x*uBasisX[0] + pos.y*uBasisY[0] + pos.z*uBasisZ[0];
+        cy = uOrigin[1] + pos.x*uBasisX[1] + pos.y*uBasisY[1] + pos.z*uBasisZ[1];
+        cz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
+        c3 = uOrigin[3] + pos.x*uBasisX[3] + pos.y*uBasisY[3] + pos.z*uBasisZ[3];
+        c4 = uOrigin[4] + pos.x*uBasisX[4] + pos.y*uBasisY[4] + pos.z*uBasisZ[4];
+        zx = cx; zy = cy; zz = cz; z3 = c3; z4 = c4;
+    }
     float dr = 1.0, r = 0.0;
     float minP = 1000.0, minA = 1000.0, minS = 1000.0;
     int escIt = 0;
+
+    // Pre-compute phase offsets
+    float phaseT = uPhaseEnabled ? uPhaseTheta : 0.0;
+    float phaseP = uPhaseEnabled ? uPhasePhi : 0.0;
 
     for (int i = 0; i < MAX_ITER_HQ; i++) {
         if (i >= maxIt) break;
         r = sqrt(zx*zx + zy*zy + zz*zz + z3*z3 + z4*z4);
         if (r > bail) { escIt = i; break; }
         minP = min(minP, abs(zy));
-        minA = min(minA, sqrt(zx*zx + zy*zy));  // Distance from z-axis
+        minA = min(minA, sqrt(zx*zx + zy*zy));
         minS = min(minS, abs(r - 0.8));
         dr = pow(r, pwr - 1.0) * pwr * dr + 1.0;
 
         // 5D: 4 angles, z-axis primary (like Mandelbulb)
-        // Order: (z, x, y, w, v) -> hyperspherical
-        float t0 = acos(clamp(zz / r, -1.0, 1.0));           // From z-axis
+        float t0 = acos(clamp(zz / r, -1.0, 1.0));
         float r1 = sqrt(zx*zx + zy*zy + z3*z3 + z4*z4);
-        float t1 = r1 > EPS ? acos(clamp(zx / r1, -1.0, 1.0)) : 0.0;  // From x in xyw subspace
+        float t1 = r1 > EPS ? acos(clamp(zx / r1, -1.0, 1.0)) : 0.0;
         float r2 = sqrt(zy*zy + z3*z3 + z4*z4);
         float t2 = r2 > EPS ? acos(clamp(zy / r2, -1.0, 1.0)) : 0.0;
         float t3 = atan(z4, z3);
 
         float rp = pow(r, pwr);
-        float s0 = sin(t0*pwr), c0 = cos(t0*pwr);
-        float s1 = sin(t1*pwr), c1 = cos(t1*pwr);
+        float s0 = sin((t0+phaseT)*pwr), c0 = cos((t0+phaseT)*pwr);
+        float s1 = sin((t1+phaseP)*pwr), c1 = cos((t1+phaseP)*pwr);
         float s2 = sin(t2*pwr), c2 = cos(t2*pwr);
         float s3 = sin(t3*pwr), c3_ = cos(t3*pwr);
 
         float sp = rp * s0 * s1 * s2;
-        zz = rp * c0 + cz;                    // z = r * cos(t0)
-        zx = rp * s0 * c1 + cx;               // x = r * sin(t0) * cos(t1)
-        zy = rp * s0 * s1 * c2 + cy;          // y = r * sin(t0) * sin(t1) * cos(t2)
+        zz = rp * c0 + cz;
+        zx = rp * s0 * c1 + cx;
+        zy = rp * s0 * s1 * c2 + cy;
         z3 = sp * c3_ + c3;
         z4 = sp * s3 + c4;
         escIt = i;
@@ -639,14 +708,27 @@ float sdf5D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
 }
 
 float sdf5D_simple(vec3 pos, float pwr, float bail, int maxIt) {
-    float cx = uOrigin[0] + pos.x*uBasisX[0] + pos.y*uBasisY[0] + pos.z*uBasisZ[0];
-    float cy = uOrigin[1] + pos.x*uBasisX[1] + pos.y*uBasisY[1] + pos.z*uBasisZ[1];
-    float cz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
-    float c3 = uOrigin[3] + pos.x*uBasisX[3] + pos.y*uBasisY[3] + pos.z*uBasisZ[3];
-    float c4 = uOrigin[4] + pos.x*uBasisX[4] + pos.y*uBasisY[4] + pos.z*uBasisZ[4];
-    // Start at c (like Mandelbulb)
-    float zx = cx, zy = cy, zz = cz, z3 = c3, z4 = c4;
+    float cx, cy, cz, c3, c4;
+    float zx, zy, zz, z3, z4;
+
+    if (uJuliaEnabled) {
+        zx = uOrigin[0] + pos.x*uBasisX[0] + pos.y*uBasisY[0] + pos.z*uBasisZ[0];
+        zy = uOrigin[1] + pos.x*uBasisX[1] + pos.y*uBasisY[1] + pos.z*uBasisZ[1];
+        zz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
+        z3 = uOrigin[3] + pos.x*uBasisX[3] + pos.y*uBasisY[3] + pos.z*uBasisZ[3];
+        z4 = uOrigin[4] + pos.x*uBasisX[4] + pos.y*uBasisY[4] + pos.z*uBasisZ[4];
+        cx = uJuliaC[0]; cy = uJuliaC[1]; cz = uJuliaC[2]; c3 = uJuliaC[3]; c4 = uJuliaC[4];
+    } else {
+        cx = uOrigin[0] + pos.x*uBasisX[0] + pos.y*uBasisY[0] + pos.z*uBasisZ[0];
+        cy = uOrigin[1] + pos.x*uBasisX[1] + pos.y*uBasisY[1] + pos.z*uBasisZ[1];
+        cz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
+        c3 = uOrigin[3] + pos.x*uBasisX[3] + pos.y*uBasisY[3] + pos.z*uBasisZ[3];
+        c4 = uOrigin[4] + pos.x*uBasisX[4] + pos.y*uBasisY[4] + pos.z*uBasisZ[4];
+        zx = cx; zy = cy; zz = cz; z3 = c3; z4 = c4;
+    }
     float dr = 1.0, r = 0.0;
+    float phaseT = uPhaseEnabled ? uPhaseTheta : 0.0;
+    float phaseP = uPhaseEnabled ? uPhasePhi : 0.0;
 
     for (int i = 0; i < MAX_ITER_HQ; i++) {
         if (i >= maxIt) break;
@@ -654,7 +736,6 @@ float sdf5D_simple(vec3 pos, float pwr, float bail, int maxIt) {
         if (r > bail) break;
         dr = pow(r, pwr - 1.0) * pwr * dr + 1.0;
 
-        // z-axis primary (like Mandelbulb)
         float t0 = acos(clamp(zz / r, -1.0, 1.0));
         float r1 = sqrt(zx*zx + zy*zy + z3*z3 + z4*z4);
         float t1 = r1 > EPS ? acos(clamp(zx / r1, -1.0, 1.0)) : 0.0;
@@ -663,8 +744,8 @@ float sdf5D_simple(vec3 pos, float pwr, float bail, int maxIt) {
         float t3 = atan(z4, z3);
 
         float rp = pow(r, pwr);
-        float s0 = sin(t0*pwr), c0 = cos(t0*pwr);
-        float s1 = sin(t1*pwr), c1 = cos(t1*pwr);
+        float s0 = sin((t0+phaseT)*pwr), c0 = cos((t0+phaseT)*pwr);
+        float s1 = sin((t1+phaseP)*pwr), c1 = cos((t1+phaseP)*pwr);
         float s2 = sin(t2*pwr), c2 = cos(t2*pwr);
         float s3 = sin(t3*pwr), c3_ = cos(t3*pwr);
         float sp = rp * s0 * s1 * s2;
@@ -679,17 +760,31 @@ float sdf5D_simple(vec3 pos, float pwr, float bail, int maxIt) {
 // ============================================
 
 float sdf6D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
-    float cx = uOrigin[0] + pos.x*uBasisX[0] + pos.y*uBasisY[0] + pos.z*uBasisZ[0];
-    float cy = uOrigin[1] + pos.x*uBasisX[1] + pos.y*uBasisY[1] + pos.z*uBasisZ[1];
-    float cz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
-    float c3 = uOrigin[3] + pos.x*uBasisX[3] + pos.y*uBasisY[3] + pos.z*uBasisZ[3];
-    float c4 = uOrigin[4] + pos.x*uBasisX[4] + pos.y*uBasisY[4] + pos.z*uBasisZ[4];
-    float c5 = uOrigin[5] + pos.x*uBasisX[5] + pos.y*uBasisY[5] + pos.z*uBasisZ[5];
-    // Start at c (like Mandelbulb)
-    float zx = cx, zy = cy, zz = cz, z3 = c3, z4 = c4, z5 = c5;
+    float cx, cy, cz, c3, c4, c5;
+    float zx, zy, zz, z3, z4, z5;
+
+    if (uJuliaEnabled) {
+        zx = uOrigin[0] + pos.x*uBasisX[0] + pos.y*uBasisY[0] + pos.z*uBasisZ[0];
+        zy = uOrigin[1] + pos.x*uBasisX[1] + pos.y*uBasisY[1] + pos.z*uBasisZ[1];
+        zz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
+        z3 = uOrigin[3] + pos.x*uBasisX[3] + pos.y*uBasisY[3] + pos.z*uBasisZ[3];
+        z4 = uOrigin[4] + pos.x*uBasisX[4] + pos.y*uBasisY[4] + pos.z*uBasisZ[4];
+        z5 = uOrigin[5] + pos.x*uBasisX[5] + pos.y*uBasisY[5] + pos.z*uBasisZ[5];
+        cx = uJuliaC[0]; cy = uJuliaC[1]; cz = uJuliaC[2]; c3 = uJuliaC[3]; c4 = uJuliaC[4]; c5 = uJuliaC[5];
+    } else {
+        cx = uOrigin[0] + pos.x*uBasisX[0] + pos.y*uBasisY[0] + pos.z*uBasisZ[0];
+        cy = uOrigin[1] + pos.x*uBasisX[1] + pos.y*uBasisY[1] + pos.z*uBasisZ[1];
+        cz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
+        c3 = uOrigin[3] + pos.x*uBasisX[3] + pos.y*uBasisY[3] + pos.z*uBasisZ[3];
+        c4 = uOrigin[4] + pos.x*uBasisX[4] + pos.y*uBasisY[4] + pos.z*uBasisZ[4];
+        c5 = uOrigin[5] + pos.x*uBasisX[5] + pos.y*uBasisY[5] + pos.z*uBasisZ[5];
+        zx = cx; zy = cy; zz = cz; z3 = c3; z4 = c4; z5 = c5;
+    }
     float dr = 1.0, r = 0.0;
     float minP = 1000.0, minA = 1000.0, minS = 1000.0;
     int escIt = 0;
+    float phaseT = uPhaseEnabled ? uPhaseTheta : 0.0;
+    float phaseP = uPhaseEnabled ? uPhasePhi : 0.0;
 
     for (int i = 0; i < MAX_ITER_HQ; i++) {
         if (i >= maxIt) break;
@@ -709,8 +804,8 @@ float sdf6D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
         float t4 = atan(z5, z4);
 
         float rp = pow(r, pwr);
-        float s0 = sin(t0*pwr), c0 = cos(t0*pwr);
-        float s1 = sin(t1*pwr), c1 = cos(t1*pwr);
+        float s0 = sin((t0+phaseT)*pwr), c0 = cos((t0+phaseT)*pwr);
+        float s1 = sin((t1+phaseP)*pwr), c1 = cos((t1+phaseP)*pwr);
         float s2 = sin(t2*pwr), c2 = cos(t2*pwr);
         float s3 = sin(t3*pwr), c3_ = cos(t3*pwr);
         float s4 = sin(t4*pwr), c4_ = cos(t4*pwr);
@@ -730,28 +825,42 @@ float sdf6D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
 }
 
 float sdf6D_simple(vec3 pos, float pwr, float bail, int maxIt) {
-    float cx = uOrigin[0] + pos.x*uBasisX[0] + pos.y*uBasisY[0] + pos.z*uBasisZ[0];
-    float cy = uOrigin[1] + pos.x*uBasisX[1] + pos.y*uBasisY[1] + pos.z*uBasisZ[1];
-    float cz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
-    float c3 = uOrigin[3] + pos.x*uBasisX[3] + pos.y*uBasisY[3] + pos.z*uBasisZ[3];
-    float c4 = uOrigin[4] + pos.x*uBasisX[4] + pos.y*uBasisY[4] + pos.z*uBasisZ[4];
-    float c5 = uOrigin[5] + pos.x*uBasisX[5] + pos.y*uBasisY[5] + pos.z*uBasisZ[5];
-    // Start at c (like Mandelbulb)
-    float zx = cx, zy = cy, zz = cz, z3 = c3, z4 = c4, z5 = c5;
+    float cx, cy, cz, c3, c4, c5;
+    float zx, zy, zz, z3, z4, z5;
+
+    if (uJuliaEnabled) {
+        zx = uOrigin[0] + pos.x*uBasisX[0] + pos.y*uBasisY[0] + pos.z*uBasisZ[0];
+        zy = uOrigin[1] + pos.x*uBasisX[1] + pos.y*uBasisY[1] + pos.z*uBasisZ[1];
+        zz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
+        z3 = uOrigin[3] + pos.x*uBasisX[3] + pos.y*uBasisY[3] + pos.z*uBasisZ[3];
+        z4 = uOrigin[4] + pos.x*uBasisX[4] + pos.y*uBasisY[4] + pos.z*uBasisZ[4];
+        z5 = uOrigin[5] + pos.x*uBasisX[5] + pos.y*uBasisY[5] + pos.z*uBasisZ[5];
+        cx = uJuliaC[0]; cy = uJuliaC[1]; cz = uJuliaC[2]; c3 = uJuliaC[3]; c4 = uJuliaC[4]; c5 = uJuliaC[5];
+    } else {
+        cx = uOrigin[0] + pos.x*uBasisX[0] + pos.y*uBasisY[0] + pos.z*uBasisZ[0];
+        cy = uOrigin[1] + pos.x*uBasisX[1] + pos.y*uBasisY[1] + pos.z*uBasisZ[1];
+        cz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
+        c3 = uOrigin[3] + pos.x*uBasisX[3] + pos.y*uBasisY[3] + pos.z*uBasisZ[3];
+        c4 = uOrigin[4] + pos.x*uBasisX[4] + pos.y*uBasisY[4] + pos.z*uBasisZ[4];
+        c5 = uOrigin[5] + pos.x*uBasisX[5] + pos.y*uBasisY[5] + pos.z*uBasisZ[5];
+        zx = cx; zy = cy; zz = cz; z3 = c3; z4 = c4; z5 = c5;
+    }
     float dr = 1.0, r = 0.0;
+    float phaseT = uPhaseEnabled ? uPhaseTheta : 0.0;
+    float phaseP = uPhaseEnabled ? uPhasePhi : 0.0;
+
     for (int i = 0; i < MAX_ITER_HQ; i++) {
         if (i >= maxIt) break;
         r = sqrt(zx*zx + zy*zy + zz*zz + z3*z3 + z4*z4 + z5*z5);
         if (r > bail) break;
         dr = pow(r, pwr - 1.0) * pwr * dr + 1.0;
-        // z-axis primary (like Mandelbulb)
         float t0 = acos(clamp(zz/r, -1.0, 1.0));
         float r1 = sqrt(zx*zx+zy*zy+z3*z3+z4*z4+z5*z5); float t1 = r1>EPS ? acos(clamp(zx/r1,-1.0,1.0)) : 0.0;
         float r2 = sqrt(zy*zy+z3*z3+z4*z4+z5*z5); float t2 = r2>EPS ? acos(clamp(zy/r2,-1.0,1.0)) : 0.0;
         float r3 = sqrt(z3*z3+z4*z4+z5*z5); float t3 = r3>EPS ? acos(clamp(z3/r3,-1.0,1.0)) : 0.0;
         float t4 = atan(z5, z4);
         float rp = pow(r, pwr);
-        float s0=sin(t0*pwr),c0=cos(t0*pwr),s1=sin(t1*pwr),c1=cos(t1*pwr);
+        float s0=sin((t0+phaseT)*pwr),c0=cos((t0+phaseT)*pwr),s1=sin((t1+phaseP)*pwr),c1=cos((t1+phaseP)*pwr);
         float s2=sin(t2*pwr),c2=cos(t2*pwr),s3=sin(t3*pwr),c3_=cos(t3*pwr);
         float s4=sin(t4*pwr),c4_=cos(t4*pwr);
         float sp = rp*s0*s1*s2*s3;
@@ -766,18 +875,33 @@ float sdf6D_simple(vec3 pos, float pwr, float bail, int maxIt) {
 // ============================================
 
 float sdf7D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
-    float cx = uOrigin[0] + pos.x*uBasisX[0] + pos.y*uBasisY[0] + pos.z*uBasisZ[0];
-    float cy = uOrigin[1] + pos.x*uBasisX[1] + pos.y*uBasisY[1] + pos.z*uBasisZ[1];
-    float cz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
-    float c3 = uOrigin[3] + pos.x*uBasisX[3] + pos.y*uBasisY[3] + pos.z*uBasisZ[3];
-    float c4 = uOrigin[4] + pos.x*uBasisX[4] + pos.y*uBasisY[4] + pos.z*uBasisZ[4];
-    float c5 = uOrigin[5] + pos.x*uBasisX[5] + pos.y*uBasisY[5] + pos.z*uBasisZ[5];
-    float c6 = uOrigin[6] + pos.x*uBasisX[6] + pos.y*uBasisY[6] + pos.z*uBasisZ[6];
-    // Start at c (like Mandelbulb)
-    float zx=cx,zy=cy,zz=cz,z3=c3,z4=c4,z5=c5,z6=c6;
+    float cx, cy, cz, c3, c4, c5, c6;
+    float zx, zy, zz, z3, z4, z5, z6;
+
+    if (uJuliaEnabled) {
+        zx = uOrigin[0] + pos.x*uBasisX[0] + pos.y*uBasisY[0] + pos.z*uBasisZ[0];
+        zy = uOrigin[1] + pos.x*uBasisX[1] + pos.y*uBasisY[1] + pos.z*uBasisZ[1];
+        zz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
+        z3 = uOrigin[3] + pos.x*uBasisX[3] + pos.y*uBasisY[3] + pos.z*uBasisZ[3];
+        z4 = uOrigin[4] + pos.x*uBasisX[4] + pos.y*uBasisY[4] + pos.z*uBasisZ[4];
+        z5 = uOrigin[5] + pos.x*uBasisX[5] + pos.y*uBasisY[5] + pos.z*uBasisZ[5];
+        z6 = uOrigin[6] + pos.x*uBasisX[6] + pos.y*uBasisY[6] + pos.z*uBasisZ[6];
+        cx = uJuliaC[0]; cy = uJuliaC[1]; cz = uJuliaC[2]; c3 = uJuliaC[3]; c4 = uJuliaC[4]; c5 = uJuliaC[5]; c6 = uJuliaC[6];
+    } else {
+        cx = uOrigin[0] + pos.x*uBasisX[0] + pos.y*uBasisY[0] + pos.z*uBasisZ[0];
+        cy = uOrigin[1] + pos.x*uBasisX[1] + pos.y*uBasisY[1] + pos.z*uBasisZ[1];
+        cz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
+        c3 = uOrigin[3] + pos.x*uBasisX[3] + pos.y*uBasisY[3] + pos.z*uBasisZ[3];
+        c4 = uOrigin[4] + pos.x*uBasisX[4] + pos.y*uBasisY[4] + pos.z*uBasisZ[4];
+        c5 = uOrigin[5] + pos.x*uBasisX[5] + pos.y*uBasisY[5] + pos.z*uBasisZ[5];
+        c6 = uOrigin[6] + pos.x*uBasisX[6] + pos.y*uBasisY[6] + pos.z*uBasisZ[6];
+        zx=cx;zy=cy;zz=cz;z3=c3;z4=c4;z5=c5;z6=c6;
+    }
     float dr=1.0, r=0.0;
     float minP=1000.0, minA=1000.0, minS=1000.0;
     int escIt=0;
+    float phaseT = uPhaseEnabled ? uPhaseTheta : 0.0;
+    float phaseP = uPhaseEnabled ? uPhasePhi : 0.0;
 
     for (int i = 0; i < MAX_ITER_HQ; i++) {
         if (i >= maxIt) break;
@@ -795,8 +919,8 @@ float sdf7D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
         float t5=atan(z6,z5);
 
         float rp=pow(r,pwr);
-        float s0=sin(t0*pwr),c0=cos(t0*pwr);
-        float s1=sin(t1*pwr),c1=cos(t1*pwr);
+        float s0=sin((t0+phaseT)*pwr),c0=cos((t0+phaseT)*pwr);
+        float s1=sin((t1+phaseP)*pwr),c1=cos((t1+phaseP)*pwr);
         float s2=sin(t2*pwr),c2=cos(t2*pwr);
         float s3=sin(t3*pwr),c3_=cos(t3*pwr);
         float s4=sin(t4*pwr),c4_=cos(t4*pwr);
@@ -812,22 +936,37 @@ float sdf7D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
 }
 
 float sdf7D_simple(vec3 pos, float pwr, float bail, int maxIt) {
-    float cx = uOrigin[0] + pos.x*uBasisX[0] + pos.y*uBasisY[0] + pos.z*uBasisZ[0];
-    float cy = uOrigin[1] + pos.x*uBasisX[1] + pos.y*uBasisY[1] + pos.z*uBasisZ[1];
-    float cz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
-    float c3 = uOrigin[3] + pos.x*uBasisX[3] + pos.y*uBasisY[3] + pos.z*uBasisZ[3];
-    float c4 = uOrigin[4] + pos.x*uBasisX[4] + pos.y*uBasisY[4] + pos.z*uBasisZ[4];
-    float c5 = uOrigin[5] + pos.x*uBasisX[5] + pos.y*uBasisY[5] + pos.z*uBasisZ[5];
-    float c6 = uOrigin[6] + pos.x*uBasisX[6] + pos.y*uBasisY[6] + pos.z*uBasisZ[6];
-    // Start at c (like Mandelbulb)
-    float zx=cx,zy=cy,zz=cz,z3=c3,z4=c4,z5=c5,z6=c6;
+    float cx, cy, cz, c3, c4, c5, c6;
+    float zx, zy, zz, z3, z4, z5, z6;
+
+    if (uJuliaEnabled) {
+        zx = uOrigin[0] + pos.x*uBasisX[0] + pos.y*uBasisY[0] + pos.z*uBasisZ[0];
+        zy = uOrigin[1] + pos.x*uBasisX[1] + pos.y*uBasisY[1] + pos.z*uBasisZ[1];
+        zz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
+        z3 = uOrigin[3] + pos.x*uBasisX[3] + pos.y*uBasisY[3] + pos.z*uBasisZ[3];
+        z4 = uOrigin[4] + pos.x*uBasisX[4] + pos.y*uBasisY[4] + pos.z*uBasisZ[4];
+        z5 = uOrigin[5] + pos.x*uBasisX[5] + pos.y*uBasisY[5] + pos.z*uBasisZ[5];
+        z6 = uOrigin[6] + pos.x*uBasisX[6] + pos.y*uBasisY[6] + pos.z*uBasisZ[6];
+        cx = uJuliaC[0]; cy = uJuliaC[1]; cz = uJuliaC[2]; c3 = uJuliaC[3]; c4 = uJuliaC[4]; c5 = uJuliaC[5]; c6 = uJuliaC[6];
+    } else {
+        cx = uOrigin[0] + pos.x*uBasisX[0] + pos.y*uBasisY[0] + pos.z*uBasisZ[0];
+        cy = uOrigin[1] + pos.x*uBasisX[1] + pos.y*uBasisY[1] + pos.z*uBasisZ[1];
+        cz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
+        c3 = uOrigin[3] + pos.x*uBasisX[3] + pos.y*uBasisY[3] + pos.z*uBasisZ[3];
+        c4 = uOrigin[4] + pos.x*uBasisX[4] + pos.y*uBasisY[4] + pos.z*uBasisZ[4];
+        c5 = uOrigin[5] + pos.x*uBasisX[5] + pos.y*uBasisY[5] + pos.z*uBasisZ[5];
+        c6 = uOrigin[6] + pos.x*uBasisX[6] + pos.y*uBasisY[6] + pos.z*uBasisZ[6];
+        zx=cx;zy=cy;zz=cz;z3=c3;z4=c4;z5=c5;z6=c6;
+    }
     float dr=1.0,r=0.0;
+    float phaseT = uPhaseEnabled ? uPhaseTheta : 0.0;
+    float phaseP = uPhaseEnabled ? uPhasePhi : 0.0;
+
     for(int i=0;i<MAX_ITER_HQ;i++){
         if(i>=maxIt)break;
         r=sqrt(zx*zx+zy*zy+zz*zz+z3*z3+z4*z4+z5*z5+z6*z6);
         if(r>bail)break;
         dr=pow(r,pwr-1.0)*pwr*dr+1.0;
-        // z-axis primary (like Mandelbulb)
         float t0=acos(clamp(zz/r,-1.0,1.0));
         float r1=sqrt(zx*zx+zy*zy+z3*z3+z4*z4+z5*z5+z6*z6);float t1=r1>EPS?acos(clamp(zx/r1,-1.0,1.0)):0.0;
         float r2=sqrt(zy*zy+z3*z3+z4*z4+z5*z5+z6*z6);float t2=r2>EPS?acos(clamp(zy/r2,-1.0,1.0)):0.0;
@@ -835,7 +974,7 @@ float sdf7D_simple(vec3 pos, float pwr, float bail, int maxIt) {
         float r4=sqrt(z4*z4+z5*z5+z6*z6);float t4=r4>EPS?acos(clamp(z4/r4,-1.0,1.0)):0.0;
         float t5=atan(z6,z5);
         float rp=pow(r,pwr);
-        float s0=sin(t0*pwr),c0=cos(t0*pwr),s1=sin(t1*pwr),c1=cos(t1*pwr);
+        float s0=sin((t0+phaseT)*pwr),c0=cos((t0+phaseT)*pwr),s1=sin((t1+phaseP)*pwr),c1=cos((t1+phaseP)*pwr);
         float s2=sin(t2*pwr),c2=cos(t2*pwr),s3=sin(t3*pwr),c3_=cos(t3*pwr);
         float s4=sin(t4*pwr),c4_=cos(t4*pwr),s5=sin(t5*pwr),c5_=cos(t5*pwr);
         float p0=rp,p1=p0*s0,p2=p1*s1,p3=p2*s2,p4=p3*s3,p5=p4*s4;
@@ -849,10 +988,24 @@ float sdf7D_simple(vec3 pos, float pwr, float bail, int maxIt) {
 // ============================================
 
 float sdf8D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
-    float c[8];
-    for(int j=0;j<8;j++) c[j]=uOrigin[j]+pos.x*uBasisX[j]+pos.y*uBasisY[j]+pos.z*uBasisZ[j];
-    // Start at c (like Mandelbulb)
-    float z[8]; for(int j=0;j<8;j++)z[j]=c[j];
+    float c[8], z[8];
+    // Julia mode: z starts at sample point, c is the Julia constant
+    // Mandelbrot mode: both z and c start at sample point
+    if (uJuliaEnabled) {
+        for(int j=0;j<8;j++) {
+            z[j]=uOrigin[j]+pos.x*uBasisX[j]+pos.y*uBasisY[j]+pos.z*uBasisZ[j];
+            c[j]=uJuliaC[j];
+        }
+    } else {
+        for(int j=0;j<8;j++) {
+            c[j]=uOrigin[j]+pos.x*uBasisX[j]+pos.y*uBasisY[j]+pos.z*uBasisZ[j];
+            z[j]=c[j];
+        }
+    }
+    // Phase shifts for angular twisting
+    float phaseT = uPhaseEnabled ? uPhaseTheta : 0.0;
+    float phaseP = uPhaseEnabled ? uPhasePhi : 0.0;
+
     float dr=1.0,r=0.0,minP=1000.0,minA=1000.0,minS=1000.0;
     int escIt=0;
 
@@ -873,13 +1026,17 @@ float sdf8D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
         t[6]=atan(z[7],z[6]);
 
         float rp=pow(r,pwr);
-        float sp=rp;
-        z[0]=rp*cos(t[0]*pwr)+c[0];
-        for(int k=1;k<7;k++){
-            sp*=sin(t[k-1]*pwr);
+        // Apply phase shifts to first two angles (theta, phi)
+        float s0 = sin((t[0]+phaseT)*pwr), c0 = cos((t[0]+phaseT)*pwr);
+        float s1 = sin((t[1]+phaseP)*pwr), c1 = cos((t[1]+phaseP)*pwr);
+        z[0]=rp*c0+c[0];
+        float sp=rp*s0;
+        z[1]=sp*c1+c[1];
+        sp*=s1;
+        for(int k=2;k<6;k++){
             z[k]=sp*cos(t[k]*pwr)+c[k];
+            sp*=sin(t[k]*pwr);
         }
-        sp*=sin(t[5]*pwr);
         z[6]=sp*cos(t[6]*pwr)+c[6];
         z[7]=sp*sin(t[6]*pwr)+c[7];
         escIt=i;
@@ -889,10 +1046,24 @@ float sdf8D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
 }
 
 float sdf8D_simple(vec3 pos, float pwr, float bail, int maxIt) {
-    float c[8];
-    for(int j=0;j<8;j++) c[j]=uOrigin[j]+pos.x*uBasisX[j]+pos.y*uBasisY[j]+pos.z*uBasisZ[j];
-    // Start at c (like Mandelbulb)
-    float z[8];for(int j=0;j<8;j++)z[j]=c[j];
+    float c[8], z[8];
+    // Julia mode: z starts at sample point, c is the Julia constant
+    // Mandelbrot mode: both z and c start at sample point
+    if (uJuliaEnabled) {
+        for(int j=0;j<8;j++) {
+            z[j]=uOrigin[j]+pos.x*uBasisX[j]+pos.y*uBasisY[j]+pos.z*uBasisZ[j];
+            c[j]=uJuliaC[j];
+        }
+    } else {
+        for(int j=0;j<8;j++) {
+            c[j]=uOrigin[j]+pos.x*uBasisX[j]+pos.y*uBasisY[j]+pos.z*uBasisZ[j];
+            z[j]=c[j];
+        }
+    }
+    // Phase shifts for angular twisting
+    float phaseT = uPhaseEnabled ? uPhaseTheta : 0.0;
+    float phaseP = uPhaseEnabled ? uPhasePhi : 0.0;
+
     float dr=1.0,r=0.0;
     for(int i=0;i<MAX_ITER_HQ;i++){
         if(i>=maxIt)break;
@@ -902,10 +1073,16 @@ float sdf8D_simple(vec3 pos, float pwr, float bail, int maxIt) {
         float t[7];float tail=r;
         for(int k=0;k<6;k++){t[k]=acos(clamp(z[k]/tail,-1.0,1.0));tail=sqrt(max(tail*tail-z[k]*z[k],EPS));}
         t[6]=atan(z[7],z[6]);
-        float rp=pow(r,pwr),sp=rp;
-        z[0]=rp*cos(t[0]*pwr)+c[0];
-        for(int k=1;k<6;k++){sp*=sin(t[k-1]*pwr);z[k]=sp*cos(t[k]*pwr)+c[k];}
-        sp*=sin(t[5]*pwr);z[6]=sp*cos(t[6]*pwr)+c[6];z[7]=sp*sin(t[6]*pwr)+c[7];
+        float rp=pow(r,pwr);
+        // Apply phase shifts to first two angles (theta, phi)
+        float s0=sin((t[0]+phaseT)*pwr),c0=cos((t[0]+phaseT)*pwr);
+        float s1=sin((t[1]+phaseP)*pwr),c1=cos((t[1]+phaseP)*pwr);
+        z[0]=rp*c0+c[0];
+        float sp=rp*s0;
+        z[1]=sp*c1+c[1];
+        sp*=s1;
+        for(int k=2;k<6;k++){z[k]=sp*cos(t[k]*pwr)+c[k];sp*=sin(t[k]*pwr);}
+        z[6]=sp*cos(t[6]*pwr)+c[6];z[7]=sp*sin(t[6]*pwr)+c[7];
     }
     return max(0.5*log(max(r,EPS))*r/max(dr,EPS),EPS);
 }
@@ -913,9 +1090,22 @@ float sdf8D_simple(vec3 pos, float pwr, float bail, int maxIt) {
 // 9D-11D use array-based approach with rotated basis
 float sdfHighD(vec3 pos, int D, float pwr, float bail, int maxIt, out float trap) {
     float c[11],z[11];
-    for(int j=0;j<11;j++) c[j]=uOrigin[j]+pos.x*uBasisX[j]+pos.y*uBasisY[j]+pos.z*uBasisZ[j];
-    // Start at c (like Mandelbulb)
-    for(int j=0;j<11;j++)z[j]=c[j];
+    // Julia mode: z starts at sample point, c is the Julia constant
+    // Mandelbrot mode: both z and c start at sample point
+    if (uJuliaEnabled) {
+        for(int j=0;j<11;j++) {
+            z[j]=uOrigin[j]+pos.x*uBasisX[j]+pos.y*uBasisY[j]+pos.z*uBasisZ[j];
+            c[j]=uJuliaC[j];
+        }
+    } else {
+        for(int j=0;j<11;j++) {
+            c[j]=uOrigin[j]+pos.x*uBasisX[j]+pos.y*uBasisY[j]+pos.z*uBasisZ[j];
+            z[j]=c[j];
+        }
+    }
+    // Phase shifts for angular twisting
+    float phaseT = uPhaseEnabled ? uPhaseTheta : 0.0;
+    float phaseP = uPhaseEnabled ? uPhasePhi : 0.0;
 
     float dr=1.0,r=0.0,minP=1000.0,minA=1000.0,minS=1000.0;
     int escIt=0;
@@ -942,11 +1132,15 @@ float sdfHighD(vec3 pos, int D, float pwr, float bail, int maxIt, out float trap
         }
         t[D-2]=atan(z[D-1],z[D-2]);
 
-        // Power map and reconstruct
+        // Power map and reconstruct with phase shifts on first two angles
         float rp=pow(r,pwr);
-        float sp=rp;
-        z[0]=rp*cos(t[0]*pwr)+c[0];
-        for(int k=1;k<D-2;k++){
+        float s0=sin((t[0]+phaseT)*pwr),c0=cos((t[0]+phaseT)*pwr);
+        float s1=sin((t[1]+phaseP)*pwr),c1=cos((t[1]+phaseP)*pwr);
+        z[0]=rp*c0+c[0];
+        float sp=rp*s0;
+        z[1]=sp*c1+c[1];
+        sp*=s1;
+        for(int k=2;k<D-2;k++){
             sp*=sin(t[k-1]*pwr);
             z[k]=sp*cos(t[k]*pwr)+c[k];
         }
@@ -963,9 +1157,23 @@ float sdfHighD(vec3 pos, int D, float pwr, float bail, int maxIt, out float trap
 
 float sdfHighD_simple(vec3 pos, int D, float pwr, float bail, int maxIt) {
     float c[11],z[11];
-    for(int j=0;j<11;j++) c[j]=uOrigin[j]+pos.x*uBasisX[j]+pos.y*uBasisY[j]+pos.z*uBasisZ[j];
-    // Start at c (like Mandelbulb)
-    for(int j=0;j<11;j++)z[j]=c[j];
+    // Julia mode: z starts at sample point, c is the Julia constant
+    // Mandelbrot mode: both z and c start at sample point
+    if (uJuliaEnabled) {
+        for(int j=0;j<11;j++) {
+            z[j]=uOrigin[j]+pos.x*uBasisX[j]+pos.y*uBasisY[j]+pos.z*uBasisZ[j];
+            c[j]=uJuliaC[j];
+        }
+    } else {
+        for(int j=0;j<11;j++) {
+            c[j]=uOrigin[j]+pos.x*uBasisX[j]+pos.y*uBasisY[j]+pos.z*uBasisZ[j];
+            z[j]=c[j];
+        }
+    }
+    // Phase shifts for angular twisting
+    float phaseT = uPhaseEnabled ? uPhaseTheta : 0.0;
+    float phaseP = uPhaseEnabled ? uPhasePhi : 0.0;
+
     float dr=1.0,r=0.0;
 
     for(int i=0;i<MAX_ITER_HQ;i++){
@@ -980,9 +1188,15 @@ float sdfHighD_simple(vec3 pos, int D, float pwr, float bail, int maxIt) {
         for(int k=0;k<D-2;k++){float tail=sqrt(max(tail2,EPS));t[k]=acos(clamp(z[k]/tail,-1.0,1.0));tail2-=z[k]*z[k];}
         t[D-2]=atan(z[D-1],z[D-2]);
 
-        float rp=pow(r,pwr),sp=rp;
-        z[0]=rp*cos(t[0]*pwr)+c[0];
-        for(int k=1;k<D-2;k++){sp*=sin(t[k-1]*pwr);z[k]=sp*cos(t[k]*pwr)+c[k];}
+        float rp=pow(r,pwr);
+        // Apply phase shifts to first two angles (theta, phi)
+        float s0=sin((t[0]+phaseT)*pwr),c0=cos((t[0]+phaseT)*pwr);
+        float s1=sin((t[1]+phaseP)*pwr),c1=cos((t[1]+phaseP)*pwr);
+        z[0]=rp*c0+c[0];
+        float sp=rp*s0;
+        z[1]=sp*c1+c[1];
+        sp*=s1;
+        for(int k=2;k<D-2;k++){sp*=sin(t[k-1]*pwr);z[k]=sp*cos(t[k]*pwr)+c[k];}
         sp*=sin(t[D-3]*pwr);
         z[D-2]=sp*cos(t[D-2]*pwr)+c[D-2];
         z[D-1]=sp*sin(t[D-2]*pwr)+c[D-1];

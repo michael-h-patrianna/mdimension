@@ -11,8 +11,7 @@ import type { ObjectType } from './types';
  */
 export const RAYMARCHING_FRACTAL_TYPES: readonly ObjectType[] = [
   'mandelbrot',
-  'mandelbox',
-  'menger',
+  'quaternion-julia',
 ] as const;
 
 /**
@@ -25,7 +24,6 @@ export const RAYMARCHING_FRACTAL_TYPES: readonly ObjectType[] = [
 export function isRaymarchingFractal(objectType: string): boolean {
   return (
     objectType === 'mandelbrot' ||
-    objectType === 'mandelbox' ||
-    objectType === 'menger'
+    objectType === 'quaternion-julia'
   );
 }

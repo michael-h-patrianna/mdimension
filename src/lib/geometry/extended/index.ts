@@ -5,8 +5,7 @@
  * - Root Systems: A, D, and E8 root polytopes
  * - Clifford Torus: Flat torus on S³
  * - Mandelbrot: N-dimensional fractal (Mandelbulb/Hyperbulb)
- * - Mandelbox: Box-like fractal with sphere/box folding
- * - Menger: Kaleidoscopic IFS fractal (Menger Sponge)
+ * - Quaternion Julia: Julia set fractal using quaternion algebra
  *
  * @see docs/prd/extended-objects.md
  * @see docs/research/nd-extended-objects-guide.md
@@ -144,32 +143,16 @@ export function generateExtendedObject(
         params.mandelbrot ?? DEFAULT_EXTENDED_OBJECT_PARAMS.mandelbrot
       )
 
-    case 'mandelbox':
-      // Mandelbox uses GPU raymarching exclusively - no CPU geometry needed
-      // Return minimal geometry that signals to UnifiedRenderer to use MandelboxMesh
+    case 'quaternion-julia':
+      // Quaternion Julia uses GPU raymarching exclusively - no CPU geometry needed
+      // Return minimal geometry that signals to UnifiedRenderer to use QuaternionJuliaMesh
       return {
         dimension,
-        type: 'mandelbox',
+        type: 'quaternion-julia',
         vertices: [],
         edges: [],
         metadata: {
-          name: 'Mandelbox',
-          properties: {
-            renderMode: 'raymarching',
-          },
-        },
-      }
-
-    case 'menger':
-      // Menger Sponge uses GPU raymarching (KIFS) exclusively - no CPU geometry needed
-      // Return minimal geometry that signals to UnifiedRenderer to use MengerMesh
-      return {
-        dimension,
-        type: 'menger',
-        vertices: [],
-        edges: [],
-        metadata: {
-          name: 'Menger Sponge',
+          name: 'Quaternion Julia',
           properties: {
             renderMode: 'raymarching',
           },

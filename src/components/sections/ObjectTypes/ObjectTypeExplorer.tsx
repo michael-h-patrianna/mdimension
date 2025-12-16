@@ -15,11 +15,8 @@ export const ObjectTypeExplorer: React.FC = () => {
   const initializeMandelbrotForDimension = useExtendedObjectStore(
     (state) => state.initializeMandelbrotForDimension
   );
-  const initializeMandelboxForDimension = useExtendedObjectStore(
-    (state) => state.initializeMandelboxForDimension
-  );
-  const initializeMengerForDimension = useExtendedObjectStore(
-    (state) => state.initializeMengerForDimension
+  const initializeQuaternionJuliaForDimension = useExtendedObjectStore(
+    (state) => state.initializeQuaternionJuliaForDimension
   );
   const initializePolytopeForType = useExtendedObjectStore(
     (state) => state.initializePolytopeForType
@@ -32,19 +29,12 @@ export const ObjectTypeExplorer: React.FC = () => {
     }
   }, [objectType, dimension, initializeMandelbrotForDimension]);
 
-  // Initialize Mandelbox settings when objectType is 'mandelbox' and dimension changes
+  // Initialize Quaternion Julia settings when objectType is 'quaternion-julia' and dimension changes
   useEffect(() => {
-    if (objectType === 'mandelbox') {
-      initializeMandelboxForDimension(dimension);
+    if (objectType === 'quaternion-julia') {
+      initializeQuaternionJuliaForDimension(dimension);
     }
-  }, [objectType, dimension, initializeMandelboxForDimension]);
-
-  // Initialize Menger settings when objectType is 'menger' and dimension changes
-  useEffect(() => {
-    if (objectType === 'menger') {
-      initializeMengerForDimension(dimension);
-    }
-  }, [objectType, dimension, initializeMengerForDimension]);
+  }, [objectType, dimension, initializeQuaternionJuliaForDimension]);
 
   // Initialize polytope scale when switching to a polytope type
   useEffect(() => {

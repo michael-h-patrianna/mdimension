@@ -132,9 +132,7 @@ async function runTests() {
 
                 'cross-polytope', 
 
-                'clifford-torus',
-
-                'mandelbox'
+                'clifford-torus'
 
             ];
 

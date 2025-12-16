@@ -1,17 +1,16 @@
-import type {
+import {
   CliffordTorusConfig,
   CliffordTorusEdgeMode,
   CliffordTorusMode,
-  MandelboxConfig,
   MandelbrotColorMode,
   MandelbrotConfig,
   MandelbrotPalette,
   MandelbrotQualityPreset,
   MandelbrotRenderStyle,
-  MengerConfig,
   NestedTorusConfig,
   NestedTorusEdgeMode,
   PolytopeConfig,
+  QuaternionJuliaConfig,
   RootSystemConfig,
   RootSystemType,
 } from '@/lib/geometry/extended/types'
@@ -136,99 +135,99 @@ export interface MandelbrotSliceActions {
   setMandelbrotDriftAmplitude: (amplitude: number) => void
   setMandelbrotDriftBaseFrequency: (frequency: number) => void
   setMandelbrotDriftFrequencySpread: (spread: number) => void
+  // Slice Animation (4D+ only)
+  setMandelbrotSliceAnimationEnabled: (enabled: boolean) => void
+  setMandelbrotSliceSpeed: (speed: number) => void
+  setMandelbrotSliceAmplitude: (amplitude: number) => void
+  // Julia Morphing
+  setMandelbrotJuliaModeEnabled: (enabled: boolean) => void
+  setMandelbrotJuliaOrbitSpeed: (speed: number) => void
+  setMandelbrotJuliaOrbitRadius: (radius: number) => void
+  // Angular Phase Shifts
+  setMandelbrotPhaseShiftEnabled: (enabled: boolean) => void
+  setMandelbrotPhaseSpeed: (speed: number) => void
+  setMandelbrotPhaseAmplitude: (amplitude: number) => void
 }
 
 export type MandelbrotSlice = MandelbrotSliceState & MandelbrotSliceActions
 
 // ============================================================================
-// Mandelbox Slice
+// Quaternion Julia Slice
 // ============================================================================
-export interface MandelboxSliceState {
-  mandelbox: MandelboxConfig
+export interface QuaternionJuliaSliceState {
+  quaternionJulia: QuaternionJuliaConfig
 }
 
-export interface MandelboxSliceActions {
-  setMandelboxScale: (scale: number) => void
-  setMandelboxFoldingLimit: (limit: number) => void
-  setMandelboxMinRadius: (radius: number) => void
-  setMandelboxFixedRadius: (radius: number) => void
-  setMandelboxMaxIterations: (iterations: number) => void
-  setMandelboxEscapeRadius: (radius: number) => void
-  setMandelboxIterationRotation: (rotation: number) => void
-  setMandelboxParameterValue: (dimIndex: number, value: number) => void
-  setMandelboxParameterValues: (values: number[]) => void
-  resetMandelboxParameters: () => void
-  initializeMandelboxForDimension: (dimension: number) => void
-  getMandelboxConfig: () => MandelboxConfig
-  // Scale Animation
-  setMandelboxScaleAnimationEnabled: (enabled: boolean) => void
-  setMandelboxScaleCenter: (center: number) => void
-  setMandelboxScaleAmplitude: (amplitude: number) => void
-  setMandelboxScaleSpeed: (speed: number) => void
-  // Julia Mode
-  setMandelboxJuliaMode: (enabled: boolean) => void
-  setMandelboxJuliaSpeed: (speed: number) => void
-  setMandelboxJuliaRadius: (radius: number) => void
-  // Dimension Mixing (Technique A)
-  setMandelboxDimensionMixEnabled: (enabled: boolean) => void
-  setMandelboxMixIntensity: (intensity: number) => void
-  setMandelboxMixFrequency: (frequency: number) => void
-  // Transform Alternation (Technique B)
-  setMandelboxAlternateTransformEnabled: (enabled: boolean) => void
-  setMandelboxAlternatePeriod: (period: 2 | 3) => void
-  setMandelboxAlternateType: (type: 'twist' | 'power' | 'shift') => void
-  setMandelboxAlternateIntensity: (intensity: number) => void
-  setMandelboxAlternateTwistAngle: (angle: number) => void
-  setMandelboxAlternatePowerExponent: (exponent: number) => void
-  setMandelboxAlternateAnimationEnabled: (enabled: boolean) => void
-  setMandelboxAlternateAnimationSpeed: (speed: number) => void
-  setMandelboxAlternateAnimationAmplitude: (amplitude: number) => void
-  // Origin Drift (Technique C)
-  setMandelboxOriginDriftEnabled: (enabled: boolean) => void
-  setMandelboxDriftAmplitude: (amplitude: number) => void
-  setMandelboxDriftBaseFrequency: (frequency: number) => void
-  setMandelboxDriftFrequencySpread: (spread: number) => void
+export interface QuaternionJuliaSliceActions {
+  // Core parameters
+  setQuaternionJuliaConstant: (value: [number, number, number, number]) => void
+  setQuaternionJuliaPower: (value: number) => void
+  setQuaternionJuliaMaxIterations: (value: number) => void
+  setQuaternionJuliaBailoutRadius: (value: number) => void
+  setQuaternionJuliaScale: (value: number) => void
+  // Quality parameters
+  setQuaternionJuliaSurfaceThreshold: (value: number) => void
+  setQuaternionJuliaMaxRaymarchSteps: (value: number) => void
+  setQuaternionJuliaQualityMultiplier: (value: number) => void
+  setQuaternionJuliaQualityPreset: (preset: 'draft' | 'standard' | 'high' | 'ultra') => void
+  // D-dimensional parameters
+  setQuaternionJuliaParameterValue: (index: number, value: number) => void
+  setQuaternionJuliaParameterValues: (values: number[]) => void
+  resetQuaternionJuliaParameters: () => void
+  initializeQuaternionJuliaForDimension: (dimension: number) => void
+  // Color parameters
+  setQuaternionJuliaColorMode: (value: number) => void
+  setQuaternionJuliaBaseColor: (value: string) => void
+  setQuaternionJuliaCosineCoefficients: (
+    coefficients: QuaternionJuliaConfig['cosineCoefficients']
+  ) => void
+  setQuaternionJuliaColorPower: (value: number) => void
+  setQuaternionJuliaColorCycles: (value: number) => void
+  setQuaternionJuliaColorOffset: (value: number) => void
+  setQuaternionJuliaLchLightness: (value: number) => void
+  setQuaternionJuliaLchChroma: (value: number) => void
+  // Opacity parameters
+  setQuaternionJuliaOpacityMode: (value: number) => void
+  setQuaternionJuliaOpacity: (value: number) => void
+  setQuaternionJuliaLayerCount: (value: number) => void
+  setQuaternionJuliaLayerOpacity: (value: number) => void
+  setQuaternionJuliaVolumetricDensity: (value: number) => void
+  // Shadow parameters
+  setQuaternionJuliaShadowEnabled: (value: boolean) => void
+  setQuaternionJuliaShadowQuality: (value: number) => void
+  setQuaternionJuliaShadowSoftness: (value: number) => void
+  setQuaternionJuliaShadowAnimationMode: (value: number) => void
+  // Julia constant animation
+  setQuaternionJuliaConstantAnimationEnabled: (value: boolean) => void
+  setQuaternionJuliaConstantAnimationAmplitude: (
+    value: [number, number, number, number]
+  ) => void
+  setQuaternionJuliaConstantAnimationFrequency: (
+    value: [number, number, number, number]
+  ) => void
+  setQuaternionJuliaConstantAnimationPhase: (
+    value: [number, number, number, number]
+  ) => void
+  // Power animation
+  setQuaternionJuliaPowerAnimationEnabled: (value: boolean) => void
+  setQuaternionJuliaPowerAnimationMinPower: (value: number) => void
+  setQuaternionJuliaPowerAnimationMaxPower: (value: number) => void
+  setQuaternionJuliaPowerAnimationSpeed: (value: number) => void
+  // Origin drift
+  setQuaternionJuliaOriginDriftEnabled: (value: boolean) => void
+  setQuaternionJuliaOriginDriftAmplitude: (value: number) => void
+  setQuaternionJuliaOriginDriftBaseFrequency: (value: number) => void
+  setQuaternionJuliaOriginDriftFrequencySpread: (value: number) => void
+  // Dimension mixing
+  setQuaternionJuliaDimensionMixEnabled: (value: boolean) => void
+  setQuaternionJuliaMixIntensity: (value: number) => void
+  setQuaternionJuliaMixFrequency: (value: number) => void
+  // Utility
+  getQuaternionJuliaConfig: () => QuaternionJuliaConfig
+  randomizeJuliaConstant: () => void
 }
 
-export type MandelboxSlice = MandelboxSliceState & MandelboxSliceActions
-
-// ============================================================================
-// Menger Slice
-// ============================================================================
-export interface MengerSliceState {
-  menger: MengerConfig
-}
-
-export interface MengerSliceActions {
-  setMengerIterations: (iterations: number) => void
-  setMengerScale: (scale: number) => void
-  setMengerParameterValue: (dimIndex: number, value: number) => void
-  setMengerParameterValues: (values: number[]) => void
-  resetMengerParameters: () => void
-  initializeMengerForDimension: (dimension: number) => void
-  getMengerConfig: () => MengerConfig
-  // Existing Animations
-  setMengerFoldTwistEnabled: (enabled: boolean) => void
-  setMengerFoldTwistAngle: (angle: number) => void
-  setMengerFoldTwistSpeed: (speed: number) => void
-  setMengerScalePulseEnabled: (enabled: boolean) => void
-  setMengerScalePulseAmplitude: (amplitude: number) => void
-  setMengerScalePulseSpeed: (speed: number) => void
-  setMengerSliceSweepEnabled: (enabled: boolean) => void
-  setMengerSliceSweepAmplitude: (amplitude: number) => void
-  setMengerSliceSweepSpeed: (speed: number) => void
-  // Dimension Mixing (Technique A)
-  setMengerDimensionMixEnabled: (enabled: boolean) => void
-  setMengerMixIntensity: (intensity: number) => void
-  setMengerMixFrequency: (frequency: number) => void
-  // Origin Drift (Technique C)
-  setMengerOriginDriftEnabled: (enabled: boolean) => void
-  setMengerDriftAmplitude: (amplitude: number) => void
-  setMengerDriftBaseFrequency: (frequency: number) => void
-  setMengerDriftFrequencySpread: (spread: number) => void
-}
-
-export type MengerSlice = MengerSliceState & MengerSliceActions
+export type QuaternionJuliaSlice = QuaternionJuliaSliceState & QuaternionJuliaSliceActions
 
 // ============================================================================
 // Combined Extended Object Slice
@@ -238,7 +237,6 @@ export type ExtendedObjectSlice = PolytopeSlice &
   CliffordTorusSlice &
   NestedTorusSlice &
   MandelbrotSlice &
-  MandelboxSlice &
-  MengerSlice & {
+  QuaternionJuliaSlice & {
     reset: () => void
   }

@@ -22,8 +22,7 @@ export function useGeometryGenerator() {
   const cliffordTorusConfig = useExtendedObjectStore((state) => state.cliffordTorus)
   const nestedTorusConfig = useExtendedObjectStore((state) => state.nestedTorus)
   const mandelbrotConfig = useExtendedObjectStore((state) => state.mandelbrot)
-  const mandelboxConfig = useExtendedObjectStore((state) => state.mandelbox)
-  const mengerConfig = useExtendedObjectStore((state) => state.menger)
+  const quaternionJuliaConfig = useExtendedObjectStore((state) => state.quaternionJulia)
 
   const extendedParams: ExtendedObjectParams = useMemo(
     () => ({
@@ -31,26 +30,19 @@ export function useGeometryGenerator() {
       rootSystem: rootSystemConfig,
       cliffordTorus: cliffordTorusConfig,
       nestedTorus: nestedTorusConfig,
-      // Disable edges for Mandelbrot as they are computationally expensive and visually chaotic
-      mandelbrot: {
-        ...mandelbrotConfig,
-        edgeMode: 'none',
-      },
-      // Mandelbox config (used by MandelboxMesh directly, but needed for type completeness)
-      mandelbox: mandelboxConfig,
-      // Menger sponge config
-      menger: mengerConfig,
+        // Mandelbrot config
+        mandelbrot: mandelbrotConfig,
+        // Quaternion Julia config
+        quaternionJulia: quaternionJuliaConfig,
     }),
     [
       polytopeConfig,
       rootSystemConfig,
       cliffordTorusConfig,
       nestedTorusConfig,
-      mandelbrotConfig,
-      mandelboxConfig,
-      mengerConfig,
-    ]
-  )
+    mandelbrotConfig,
+    quaternionJuliaConfig,
+  ])
 
   const geometry = useMemo(() => {
     return generateGeometry(objectType, dimension, extendedParams)

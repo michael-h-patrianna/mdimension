@@ -4,7 +4,7 @@
  *
  * Supports both traditional polytopes and extended objects:
  * - Polytopes: Hypercube, Simplex, Cross-Polytope
- * - Extended: Root System, Clifford Torus, Mandelbrot, Mandelbox, Menger
+ * - Extended: Root System, Clifford Torus, Mandelbrot, Quaternion Julia
  */
 
 import React, { useMemo, useEffect } from 'react';
@@ -33,14 +33,8 @@ export const ObjectTypeSelector: React.FC<ObjectTypeSelectorProps> = ({
   const initializeMandelbrotForDimension = useExtendedObjectStore(
     (state) => state.initializeMandelbrotForDimension
   );
-  const initializeMandelboxForDimension = useExtendedObjectStore(
-    (state) => state.initializeMandelboxForDimension
-  );
-  const initializeMengerForDimension = useExtendedObjectStore(
-    (state) => state.initializeMengerForDimension
-  );
-  const initializePolytopeForType = useExtendedObjectStore(
-    (state) => state.initializePolytopeForType
+  const initializeQuaternionJuliaForDimension = useExtendedObjectStore(
+    (state) => state.initializeQuaternionJuliaForDimension
   );
 
   // Initialize Mandelbrot settings when objectType is 'mandelbrot' and dimension changes
@@ -50,19 +44,12 @@ export const ObjectTypeSelector: React.FC<ObjectTypeSelectorProps> = ({
     }
   }, [objectType, dimension, initializeMandelbrotForDimension]);
 
-  // Initialize Mandelbox settings when objectType is 'mandelbox' and dimension changes
+  // Initialize Quaternion Julia settings when objectType is 'quaternion-julia' and dimension changes
   useEffect(() => {
-    if (objectType === 'mandelbox') {
-      initializeMandelboxForDimension(dimension);
+    if (objectType === 'quaternion-julia') {
+      initializeQuaternionJuliaForDimension(dimension);
     }
-  }, [objectType, dimension, initializeMandelboxForDimension]);
-
-  // Initialize Menger settings when objectType is 'menger' and dimension changes
-  useEffect(() => {
-    if (objectType === 'menger') {
-      initializeMengerForDimension(dimension);
-    }
-  }, [objectType, dimension, initializeMengerForDimension]);
+  }, [objectType, dimension, initializeQuaternionJuliaForDimension]);
 
   // Initialize polytope scale when switching to a polytope type
   useEffect(() => {

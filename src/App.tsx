@@ -3,14 +3,14 @@
  * N-Dimensional Object Visualizer
  *
  * Supports both traditional polytopes and extended objects:
- * - Polytopes: Hypercube, Simplex, Cross-Polytope
- * - Extended: Root System, Clifford Torus, Mandelbrot, Mandelbox
+ * - Standard: Hypercube, Simplex, Cross-polytope
+ * - Extended: Root System, Clifford Torus, Mandelbrot
  *
  * Unified Architecture:
  * All rendering uses useFrame-based high-performance pipelines that bypass React
  * re-renders during animation. UnifiedRenderer routes to the appropriate renderer:
- * - PolytopeScene: For polytopes with faces/edges/vertices (GPU shaders)
- * - MandelbulbMesh/HyperbulbMesh/MandelboxMesh: For raymarched 3D/4D surfaces
+ * - HyperbulbMesh: For raymarched 3D/4D surfaces (Mandelbrot/Hyperbulb)
+ * - PolytopeScene: For 3D+ projected wireframes and faces
  */
 
 import { useMemo } from 'react';
@@ -83,19 +83,8 @@ function Visualizer() {
   // When raymarched objects are visible, ensure ground plane accounts for them
   const isMandelbulbVisible = objectType === 'mandelbrot' && facesVisible && dimension === 3;
   const isHyperbulbVisible = objectType === 'mandelbrot' && facesVisible && dimension >= 4;
-  // Mandelbox has a larger bounding radius (BOUND_R = 4.0 in shader)
-  const isMandelboxVisible = objectType === 'mandelbox' && facesVisible && dimension >= 3;
-  // Menger sponge is bounded within unit cube (BOUND_R = 2.0 in shader)
-  const isMengerVisible = objectType === 'menger' && facesVisible && dimension >= 3;
-
-  // Mandelbox needs larger radius (4.0), Menger/Mandelbulb/Hyperbulb need smaller (2.0/1.5)
-  const minBoundingRadius = isMandelboxVisible
-    ? 4.0
-    : isMengerVisible
-      ? 2.0
-      : (isMandelbulbVisible || isHyperbulbVisible)
-        ? 1.5
-        : undefined;
+  // Mandelbulb/Hyperbulb need smaller (1.5)
+  const minBoundingRadius = 1.5;
 
   return (
     <Scene

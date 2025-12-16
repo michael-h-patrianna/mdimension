@@ -69,8 +69,8 @@ function formatBytes(bytes: number, decimals = 1): string {
 export function PerformanceMonitor() {
   // -- Store Connectors --
   const objectType = useGeometryStore(state => state.objectType);
-  const mandelbulbConfig = useExtendedObjectStore(state => state.mandelbrot);
-  const mandelboxConfig = useExtendedObjectStore(state => state.mandelbox);
+  const mandelbrotConfig = useExtendedObjectStore(state => state.mandelbrot);
+  const quaternionJuliaConfig = useExtendedObjectStore(state => state.quaternionJulia);
 
   // -- Perf Stats --
   const stats = usePerformanceMetricsStore();
@@ -122,9 +122,9 @@ export function PerformanceMonitor() {
   const uniqueVertices = sceneStats.uniqueVertices ?? processedVertices;
 
   // -- Raymarching Info --
-  const isRaymarching = ['mandelbrot', 'mandelbox', 'menger'].includes(objectType);
-  const raySteps = objectType === 'mandelbrot' ? mandelbulbConfig.maxIterations :
-                   objectType === 'mandelbox' ? mandelboxConfig.maxIterations : 0;
+  const isRaymarching = ['mandelbrot', 'quaternion-julia'].includes(objectType);
+  const raySteps = objectType === 'mandelbrot' ? mandelbrotConfig.maxIterations :
+                   objectType === 'quaternion-julia' ? quaternionJuliaConfig.maxIterations : 0;
 
   // -- Tab Content --
   const tabs = [

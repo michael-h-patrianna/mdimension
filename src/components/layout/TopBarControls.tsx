@@ -37,8 +37,7 @@ function canRenderFaces(objectType: string): boolean {
     polytopeTypes.includes(objectType) ||
     objectType === 'root-system' ||
     objectType === 'mandelbrot' ||
-    objectType === 'mandelbox' ||
-    objectType === 'menger' ||
+    objectType === 'quaternion-julia' ||
     objectType === 'clifford-torus' ||
     objectType === 'nested-torus'
   );
@@ -51,8 +50,7 @@ function canRenderEdges(_objectType: string): boolean {
 function isRaymarchedFractal(objectType: string, dimension: number): boolean {
   return (
     (objectType === 'mandelbrot' && dimension >= 3) ||
-    (objectType === 'mandelbox' && dimension >= 3) ||
-    (objectType === 'menger' && dimension >= 3)
+    (objectType === 'quaternion-julia' && dimension >= 3)
   );
 }
 

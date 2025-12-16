@@ -10,17 +10,17 @@
  * Extended Objects:
  * - Root System: type (A/D/E8), scale (0.5-2.0), always has edges
  * - Clifford Torus: radius, resolution, edge mode
- * - Mandelbrot Set: quality preset, iterations, escape radius, resolution
- * - Mandelbox: scale, folding limit, radii, iterations, escape radius
- * - Menger: scale, iterations, escape radius
+ * - Mandelbrot: max iterations, escape radius, etc.
+ * - Quaternion Julia: constant, power, iterations, etc.
  */
 
 import { isPolytopeType } from '@/lib/geometry/types';
 import { useGeometryStore } from '@/stores/geometryStore';
 import React from 'react';
-import { MandelboxControls } from './MandelboxControls';
+import { CliffordTorusControls } from './CliffordTorusControls';
 import { MandelbrotControls } from './MandelbrotControls';
-import { MengerControls } from './MengerControls';
+import { NestedTorusControls } from './NestedTorusControls';
+import { QuaternionJuliaControls } from './QuaternionJuliaControls';
 import { CliffordTorusSettings } from './settings/CliffordTorusSettings';
 import { NestedTorusSettings } from './settings/NestedTorusSettings';
 import { PolytopeSettings } from './settings/PolytopeSettings';
@@ -55,8 +55,7 @@ export const ObjectSettingsSection: React.FC<ObjectSettingsSectionProps> = ({
       {objectType === 'clifford-torus' && <CliffordTorusSettings />}
       {objectType === 'nested-torus' && <NestedTorusSettings />}
       {objectType === 'mandelbrot' && <MandelbrotControls />}
-      {objectType === 'mandelbox' && <MandelboxControls />}
-      {objectType === 'menger' && <MengerControls />}
+      {objectType === 'quaternion-julia' && <QuaternionJuliaControls />}
     </div>
   );
 };
