@@ -139,10 +139,6 @@ export interface MandelbulbSliceActions {
   setMandelbulbSliceAnimationEnabled: (enabled: boolean) => void
   setMandelbulbSliceSpeed: (speed: number) => void
   setMandelbulbSliceAmplitude: (amplitude: number) => void
-  // Julia Morphing
-  setMandelbulbJuliaModeEnabled: (enabled: boolean) => void
-  setMandelbulbJuliaOrbitSpeed: (speed: number) => void
-  setMandelbulbJuliaOrbitRadius: (radius: number) => void
   // Angular Phase Shifts
   setMandelbulbPhaseShiftEnabled: (enabled: boolean) => void
   setMandelbulbPhaseSpeed: (speed: number) => void

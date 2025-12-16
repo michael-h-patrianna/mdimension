@@ -1,28 +1,14 @@
-Important: This prompt is a test of your autonomous capabilities, and also your ability to create advanced visuals in a web ui as well as in rendering 3D scenes.
+Important: This prompt is a test of your autonomous capabilities, and also your ability to create advanced ui/ux.
 
 You cannot break anything. The project in this local folder is backed up and can be restored. You can create, modify, and delete files as necessary to complete the tasks assigned to you. You have full autonomy to make decisions and take actions to achieve the desired outcomes.
 
-Your task: This project has some rudimentary options for users to change the environment in which the objects are rendered and presented: they can add walls, and they can add skyboxes. They can modify a few basic parameters and they can choose from a set of classic texture and procedural generated skyboxes and apply some simple animations to them.
+Problem for you to solve: This project has a very solid modern web ui. The ui and ux is competent, but not exceptional. It is the UI of a $39.99 product, not the ui of a $599.99 product.
 
-Problem: This is very low quality and basic. It's more a $9.99 application. You should bring it to the level of a $599.00 application.
+Your task:
+- Add 20 subtle purely visual changes that turn the UI from competent to exceptional, from $39.99 to $599.99
+- Add 20 subtle interaction tweaks that turn the user interaction with the UI from competent to exceptional, from $39.99 to $599.99
 
-1. Review the codebase and the environment features.
-2. Fix all bugs.
-3. Research and design features to enrich the environment that you would find in professional studio software - and which are doable without creating additional assets on top of the few skyboxes we have (unless you create the assets yourself).
-4. Add 10 features that will delight the user and create a "wow" effect.
-5. Add 10 features that give polish to the visual experience
-6. Add 10 features that give polish to the ui and interaction and user flow
-7. Add 5 more subtle, visually pleasing procedural skyboxes
-
-Important:
-- Do not add particle effects
-- Do not add any pulsating animation, only continuously evolving animations
-- Resource heavy features must have a
-- Do not add or modify bloom - we have good bloom and user controls it
-- Be subtle, this is background and atmosphere
-- Do not add another preset system
-- Do not add volumetric lights or god rays
-- Do not add planar reflections anywhere - our raymarched fractals are computational heavy and we cannot afford to render them twice which planar reflections would require
+Do not add large obvious features like presets. This is about detail, adding the "love and eye for detail" polish that turns a competent ui into an exceptional ui.
 
 Important Reminder: This is a test of your autonomous capabilities and your ability to create stunning visual experiences. You are expected to take initiative and make decisions independently. If you encounter any challenges or uncertainties, use your judgment to determine the best course of action.
 
@@ -30,6 +16,4 @@ The quality and completeness of the project in this folder will be the only crit
 
 Notes:
 - for icons you have the whole icomoon icon library at your disposal here: src/assets/icons
-- The center piece of this project is creating stunning visualizations of a n-dimensional object or fractal. The environment is supposed to enhance the presentation and support the "wow" factor of the generated object. It should work for the object not against it.
-
 

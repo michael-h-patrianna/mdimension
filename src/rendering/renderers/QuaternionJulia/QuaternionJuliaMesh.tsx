@@ -20,6 +20,8 @@ import {
   createLightUniforms,
   updateLightUniforms,
 } from '@/rendering/lights/uniforms'
+import { TemporalDepthManager } from '@/rendering/core/TemporalDepthManager'
+import { createTemporalDepthUniforms } from '@/hooks'
 import { composeRotations } from '@/lib/math/rotation'
 import type { MatrixND } from '@/lib/math/types'
 import {
@@ -248,6 +250,9 @@ const QuaternionJuliaMesh = () => {
       uLchLightness: { value: 0.7 },
       uLchChroma: { value: 0.15 },
       uMultiSourceWeights: { value: new THREE.Vector3(0.5, 0.3, 0.2) },
+
+      // Temporal Reprojection uniforms
+      ...createTemporalDepthUniforms(),
     }),
     []
   )
@@ -507,6 +512,30 @@ const QuaternionJuliaMesh = () => {
     u.uViewMatrix.value.copy(camera.matrixWorldInverse)
     u.uCameraPosition.value.copy(camera.position)
 
+    // Update temporal reprojection uniforms from manager
+    const temporalUniforms = TemporalDepthManager.getUniforms()
+    if (u.uPrevDepthTexture) {
+      u.uPrevDepthTexture.value = temporalUniforms.uPrevDepthTexture
+    }
+    if (u.uPrevViewProjectionMatrix) {
+      u.uPrevViewProjectionMatrix.value.copy(temporalUniforms.uPrevViewProjectionMatrix)
+    }
+    if (u.uPrevInverseViewProjectionMatrix) {
+      u.uPrevInverseViewProjectionMatrix.value.copy(temporalUniforms.uPrevInverseViewProjectionMatrix)
+    }
+    if (u.uTemporalEnabled) {
+      u.uTemporalEnabled.value = temporalUniforms.uTemporalEnabled
+    }
+    if (u.uDepthBufferResolution) {
+      u.uDepthBufferResolution.value.copy(temporalUniforms.uDepthBufferResolution)
+    }
+    if (u.uCameraNear) {
+      u.uCameraNear.value = temporalUniforms.uNearClip
+    }
+    if (u.uCameraFar) {
+      u.uCameraFar.value = temporalUniforms.uFarClip
+    }
+
     // Update multi-light system
     updateLightUniforms(u, lightStore.lights, lightColorCacheRef.current)
 
@@ -549,6 +578,14 @@ const QuaternionJuliaMesh = () => {
     u.uSampleQuality.value = SAMPLE_QUALITY_TO_INT[effectiveSampleQuality]
     u.uVolumetricReduceOnAnim.value = opacity.volumetricAnimationQuality === 'reduce' ? 1 : 0
 
+    // Configure material transparency based on opacity mode
+    const isTransparent = opacity.mode !== 'solid'
+    if (material.transparent !== isTransparent) {
+      material.transparent = isTransparent
+      material.depthWrite = !isTransparent
+      material.needsUpdate = true
+    }
+
     // Update shadow settings
     u.uShadowEnabled.value = lightStore.shadowEnabled
     const effectiveShadowQuality = getEffectiveShadowQuality(
@@ -583,12 +620,10 @@ const QuaternionJuliaMesh = () => {
       <boxGeometry args={[4, 4, 4]} />
       <shaderMaterial
         glslVersion={THREE.GLSL3}
-        uniforms={uniforms}
         vertexShader={vertexShader}
         fragmentShader={fragmentShader}
-        transparent={true}
-        depthWrite={true}
-        side={THREE.FrontSide}
+        uniforms={uniforms}
+        side={THREE.BackSide}
       />
     </mesh>
   )

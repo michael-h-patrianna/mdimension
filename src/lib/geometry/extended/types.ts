@@ -493,27 +493,6 @@ export interface MandelbulbConfig {
    */
   sliceAmplitude: number
 
-  // === Julia Morphing ===
-
-  /**
-   * Enable/disable Julia mode with animated constant.
-   * Instead of z = z^n + samplePoint, uses z = z^n + juliaC
-   * where juliaC orbits through space.
-   */
-  juliaModeEnabled: boolean
-
-  /**
-   * Speed of Julia constant orbit (0.01 to 0.1, default 0.02).
-   * Controls how fast the Julia constant moves through space.
-   */
-  juliaOrbitSpeed: number
-
-  /**
-   * Radius of Julia constant orbit (0.1 to 1.5, default 0.5).
-   * Controls the magnitude of the Julia constant during animation.
-   */
-  juliaOrbitRadius: number
-
   // === Angular Phase Shifts ===
 
   /**
@@ -596,10 +575,6 @@ export const DEFAULT_MANDELBROT_CONFIG: MandelbulbConfig = {
   sliceAnimationEnabled: false,
   sliceSpeed: 0.02, // Slow movement through slices
   sliceAmplitude: 0.3, // Moderate displacement in extra dimensions
-  // Julia Morphing defaults
-  juliaModeEnabled: false,
-  juliaOrbitSpeed: 0.02, // Slow orbit for smooth morphing
-  juliaOrbitRadius: 0.5, // Moderate orbit radius
   // Angular Phase Shifts defaults
   phaseShiftEnabled: false,
   phaseSpeed: 0.03, // Slow phase evolution

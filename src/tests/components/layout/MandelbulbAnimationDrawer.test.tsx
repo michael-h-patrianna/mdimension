@@ -27,17 +27,11 @@ describe('MandelbulbAnimationDrawer', () => {
     expect(screen.getByText('Phase Shifts')).toBeInTheDocument();
   });
 
-  it('should render Julia Morphing controls', () => {
-    render(<MandelbulbAnimationDrawer />);
-    expect(screen.getByText('Julia Morphing')).toBeInTheDocument();
-  });
-
   it('should have correct test ids', () => {
     render(<MandelbulbAnimationDrawer />);
     expect(screen.getByTestId('mandelbulb-animation-drawer')).toBeInTheDocument();
     expect(screen.getByTestId('animation-panel-powerAnimation')).toBeInTheDocument();
     expect(screen.getByTestId('animation-panel-phaseShifts')).toBeInTheDocument();
-    expect(screen.getByTestId('animation-panel-juliaMorphing')).toBeInTheDocument();
   });
 
   it('should not show Slice Animation for 3D', () => {
@@ -58,7 +52,7 @@ describe('MandelbulbAnimationDrawer', () => {
 
     // Each system has a toggle button with "OFF" initially
     const offButtons = screen.getAllByText('OFF');
-    expect(offButtons.length).toBeGreaterThanOrEqual(3); // power, phase, julia
+    expect(offButtons.length).toBeGreaterThanOrEqual(2); // power, phase
   });
 
   it('should toggle Power Animation', () => {
@@ -81,14 +75,6 @@ describe('MandelbulbAnimationDrawer', () => {
     const toggleBtn = screen.getByRole('button', { name: /toggle phase shifts/i });
     fireEvent.click(toggleBtn);
     expect(useExtendedObjectStore.getState().mandelbulb.phaseShiftEnabled).toBe(true);
-  });
-
-  it('should toggle Julia Morphing', () => {
-    render(<MandelbulbAnimationDrawer />);
-
-    const toggleBtn = screen.getByRole('button', { name: /toggle julia morphing/i });
-    fireEvent.click(toggleBtn);
-    expect(useExtendedObjectStore.getState().mandelbulb.juliaModeEnabled).toBe(true);
   });
 
   it('should toggle Slice Animation for 4D', () => {
@@ -120,18 +106,12 @@ describe('MandelbulbAnimationDrawer', () => {
     expect(amplitudeLabels.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('should render radius slider for Julia Morphing', () => {
-    render(<MandelbulbAnimationDrawer />);
-    expect(screen.getByText('Radius')).toBeInTheDocument();
-  });
-
-  it('should render all 4 systems for 4D+ dimension', () => {
+  it('should render all 3 systems for 4D+ dimension', () => {
     useGeometryStore.getState().setDimension(4);
     render(<MandelbulbAnimationDrawer />);
 
     expect(screen.getByText('Power Animation')).toBeInTheDocument();
     expect(screen.getByText('Phase Shifts')).toBeInTheDocument();
-    expect(screen.getByText('Julia Morphing')).toBeInTheDocument();
     expect(screen.getByText('Slice Animation')).toBeInTheDocument();
   });
 

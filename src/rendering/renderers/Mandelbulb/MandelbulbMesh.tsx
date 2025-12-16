@@ -169,11 +169,6 @@ const MandelbulbMesh = () => {
   const sliceSpeed = useExtendedObjectStore((state) => state.mandelbulb.sliceSpeed);
   const sliceAmplitude = useExtendedObjectStore((state) => state.mandelbulb.sliceAmplitude);
 
-  // Julia Morphing parameters (animate Julia constant)
-  const juliaModeEnabled = useExtendedObjectStore((state) => state.mandelbulb.juliaModeEnabled);
-  const juliaOrbitSpeed = useExtendedObjectStore((state) => state.mandelbulb.juliaOrbitSpeed);
-  const juliaOrbitRadius = useExtendedObjectStore((state) => state.mandelbulb.juliaOrbitRadius);
-
   // Phase Shift parameters (angular twisting)
   const phaseShiftEnabled = useExtendedObjectStore((state) => state.mandelbulb.phaseShiftEnabled);
   const phaseSpeed = useExtendedObjectStore((state) => state.mandelbulb.phaseSpeed);
@@ -250,10 +245,6 @@ const MandelbulbMesh = () => {
       uDimensionMixEnabled: { value: false },
       uMixIntensity: { value: 0.1 },
       uMixTime: { value: 0 },  // Animated mix time = animTime * mixFrequency
-
-      // Julia Morphing uniforms
-      uJuliaEnabled: { value: false },
-      uJuliaC: { value: new Float32Array(11) },  // Animated Julia constant
 
       // Phase Shift uniforms (angular twisting)
       uPhaseEnabled: { value: false },
@@ -747,38 +738,6 @@ const MandelbulbMesh = () => {
       } else {
         if (material.uniforms.uPhaseTheta) material.uniforms.uPhaseTheta.value = 0;
         if (material.uniforms.uPhasePhi) material.uniforms.uPhasePhi.value = 0;
-      }
-
-      // ============================================
-      // Julia Morphing Animation
-      // Animate the Julia constant in a circular orbit
-      // ============================================
-      if (material.uniforms.uJuliaEnabled) {
-        material.uniforms.uJuliaEnabled.value = juliaModeEnabled;
-      }
-      if (juliaModeEnabled && material.uniforms.uJuliaC) {
-        const timeInSeconds = state.clock.elapsedTime / 1000;
-        const t = timeInSeconds * juliaOrbitSpeed * 2 * Math.PI;
-        const juliaC = material.uniforms.uJuliaC.value as Float32Array;
-
-        // Julia constant orbits in a hypersphere
-        // First 4 components form primary orbit, rest use golden ratio phases
-        const PHI = 1.618033988749895;
-        juliaC[0] = juliaOrbitRadius * Math.cos(t);           // x
-        juliaC[1] = juliaOrbitRadius * Math.sin(t);           // y
-        juliaC[2] = juliaOrbitRadius * 0.5 * Math.sin(t * PHI); // z - secondary frequency
-        juliaC[3] = juliaOrbitRadius * 0.3 * Math.cos(t * PHI * 0.7); // w - tertiary
-
-        // Higher dimensions use smaller amplitudes with golden ratio phase offsets
-        for (let i = 4; i < D; i++) {
-          const phase = i * PHI;
-          const amplitude = juliaOrbitRadius * (0.2 / (i - 2)); // Decreasing amplitude
-          juliaC[i] = amplitude * Math.sin(t * (1 + 0.1 * i) + phase);
-        }
-        // Zero out unused dimensions
-        for (let i = D; i < MAX_DIMENSION; i++) {
-          juliaC[i] = 0;
-        }
       }
 
       // Model matrices are always identity for Mandelbulb - no need to set every frame

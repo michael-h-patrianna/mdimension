@@ -445,31 +445,6 @@ export const OBJECT_TYPE_REGISTRY: ObjectTypeRegistry = new Map<ObjectType, Obje
             },
           },
 
-          juliaMorphing: {
-            name: 'Julia Morphing',
-            description: 'Morphs between Mandelbulb and Julia modes',
-            enabledByDefault: false,
-            enabledKey: 'juliaModeEnabled',
-            params: {
-              juliaOrbitSpeed: {
-                min: 0.01,
-                max: 0.1,
-                default: 0.02,
-                step: 0.01,
-                label: 'Orbit Speed',
-                description: 'How fast the Julia constant moves',
-              },
-              juliaOrbitRadius: {
-                min: 0.1,
-                max: 1.5,
-                default: 0.5,
-                step: 0.05,
-                label: 'Orbit Radius',
-                description: 'Magnitude of the Julia constant during animation',
-              },
-            },
-          },
-
           phaseShifts: {
             name: 'Phase Shifts',
             description: 'Angular phase animation creating twisting/spiraling morphs',

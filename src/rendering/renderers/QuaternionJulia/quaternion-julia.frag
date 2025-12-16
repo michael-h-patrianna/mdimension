@@ -98,6 +98,15 @@ uniform int uShadowQuality;
 uniform float uShadowSoftness;
 uniform int uShadowAnimationMode;
 
+// Temporal Reprojection uniforms
+uniform sampler2D uPrevDepthTexture;
+uniform mat4 uPrevViewProjectionMatrix;
+uniform mat4 uPrevInverseViewProjectionMatrix;
+uniform bool uTemporalEnabled;
+uniform vec2 uDepthBufferResolution;
+uniform float uCameraNear;
+uniform float uCameraFar;
+
 // Power Animation uniforms
 uniform bool uPowerAnimationEnabled;
 uniform float uAnimatedPower;
@@ -523,6 +532,66 @@ vec2 intersectSphere(vec3 ro, vec3 rd, float r) {
 }
 
 // ============================================
+// Temporal Reprojection
+// ============================================
+
+/**
+ * Reproject current pixel to previous frame and sample depth.
+ * Returns the reprojected depth distance, or -1.0 if invalid.
+ *
+ * The temporal depth buffer stores linear depth normalized to [0, 1]:
+ *   stored = linearDepth / farClip
+ *
+ * To recover world-space distance:
+ *   worldDepth = stored * farClip
+ */
+float getTemporalDepth(vec3 ro, vec3 rd, vec3 worldRayDir) {
+    if (!uTemporalEnabled) return -1.0;
+
+    // Estimate world-space hit point using bounding sphere
+    float estimatedWorldDist = BOUND_R * 1.5;
+    vec3 estimatedWorldHit = uCameraPosition + worldRayDir * estimatedWorldDist;
+
+    // Transform to previous frame's clip space
+    vec4 prevClipPos = uPrevViewProjectionMatrix * vec4(estimatedWorldHit, 1.0);
+    vec2 prevNDC = prevClipPos.xy / prevClipPos.w;
+    vec2 prevUV = prevNDC * 0.5 + 0.5;
+
+    // Check bounds
+    if (prevUV.x < 0.0 || prevUV.x > 1.0 || prevUV.y < 0.0 || prevUV.y > 1.0) {
+        return -1.0;
+    }
+
+    // Sample previous depth
+    float normalizedDepth = texture(uPrevDepthTexture, prevUV).r;
+    if (normalizedDepth <= 0.001 || normalizedDepth >= 0.999) {
+        return -1.0;
+    }
+
+    // Disocclusion detection: check for depth discontinuities
+    vec2 texelSize = 1.0 / uDepthBufferResolution;
+    float depthLeft = texture(uPrevDepthTexture, prevUV - vec2(texelSize.x, 0.0)).r;
+    float depthRight = texture(uPrevDepthTexture, prevUV + vec2(texelSize.x, 0.0)).r;
+    float depthUp = texture(uPrevDepthTexture, prevUV + vec2(0.0, texelSize.y)).r;
+    float depthDown = texture(uPrevDepthTexture, prevUV - vec2(0.0, texelSize.y)).r;
+
+    float maxNeighborDiff = max(
+        max(abs(normalizedDepth - depthLeft), abs(normalizedDepth - depthRight)),
+        max(abs(normalizedDepth - depthUp), abs(normalizedDepth - depthDown))
+    );
+
+    // Threshold for disocclusion detection (tuned for normalized depth)
+    // 0.05 corresponds to ~5% of far clip depth difference
+    if (maxNeighborDiff > 0.05) {
+        return -1.0;
+    }
+
+    // Convert to world-space depth with safety margin
+    float worldDepth = normalizedDepth * uCameraFar;
+    return max(0.0, worldDepth * 0.95);
+}
+
+// ============================================
 // Raymarching
 // ============================================
 
@@ -536,6 +605,45 @@ float RayMarch(vec3 ro, vec3 rd, vec3 worldRd, out float trap, out bool usedTemp
     int maxSteps = uFastMode ? MAX_MARCH_STEPS_LQ : MAX_MARCH_STEPS_HQ;
 
     // Intersect bounding sphere first
+    vec2 tSphere = intersectSphere(ro, rd, BOUND_R);
+    if (tSphere.y < 0.0) return 1e10;
+
+    float t = max(0.0, tSphere.x);
+    float tMax = tSphere.y;
+
+    // Temporal Reprojection: skip empty space using previous frame
+    float temporalDepth = getTemporalDepth(ro, rd, worldRd);
+    if (temporalDepth > 0.0 && temporalDepth < tMax) {
+        float temporalStart = max(t, temporalDepth * 0.95);
+        t = temporalStart;
+        usedTemporal = true;
+    }
+
+    for (int i = 0; i < MAX_MARCH_STEPS_HQ; i++) {
+        if (i >= maxSteps) break;
+        if (t > tMax) break;
+
+        vec3 p = ro + rd * t;
+        float d = sdf(p, pwr, uEscapeRadius, maxIt, trap);
+
+        if (d < surfDist) return t;
+        t += d;
+    }
+
+    return 1e10;
+}
+
+/**
+ * RayMarch without temporal reprojection - used as fallback when temporal skip misses.
+ */
+float RayMarchNoTemporal(vec3 ro, vec3 rd, out float trap) {
+    trap = 0.0;
+
+    float pwr = getEffectivePower();
+    int maxIt = uFastMode ? MAX_ITER_LQ : int(uIterations);
+    float surfDist = (uFastMode ? SURF_DIST_LQ : SURF_DIST_HQ) * uQualityMultiplier;
+    int maxSteps = uFastMode ? MAX_MARCH_STEPS_LQ : MAX_MARCH_STEPS_HQ;
+
     vec2 tSphere = intersectSphere(ro, rd, BOUND_R);
     if (tSphere.y < 0.0) return 1e10;
 
@@ -681,6 +789,12 @@ void main() {
     float trap;
     bool usedTemporal;
     float d = RayMarch(ro, rd, worldRayDir, trap, usedTemporal);
+
+    // If temporal skip caused a miss, retry without temporal (prevents feedback loop)
+    if (d > maxDist && usedTemporal) {
+        usedTemporal = false;
+        d = RayMarchNoTemporal(ro, rd, trap);
+    }
 
     if (d > maxDist) discard;
 

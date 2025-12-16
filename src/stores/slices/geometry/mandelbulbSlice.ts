@@ -394,29 +394,6 @@ export const createMandelbulbSlice: StateCreator<ExtendedObjectSlice, [], [], Ma
     }))
   },
 
-  // --- Julia Morphing Actions ---
-  setMandelbulbJuliaModeEnabled: (enabled) => {
-    set((state) => ({
-      mandelbulb: { ...state.mandelbulb, juliaModeEnabled: enabled },
-    }))
-  },
-
-  setMandelbulbJuliaOrbitSpeed: (speed) => {
-    // Range 0.01 to 0.1
-    const clampedSpeed = Math.max(0.01, Math.min(0.1, speed))
-    set((state) => ({
-      mandelbulb: { ...state.mandelbulb, juliaOrbitSpeed: clampedSpeed },
-    }))
-  },
-
-  setMandelbulbJuliaOrbitRadius: (radius) => {
-    // Range 0.1 to 1.5
-    const clampedRadius = Math.max(0.1, Math.min(1.5, radius))
-    set((state) => ({
-      mandelbulb: { ...state.mandelbulb, juliaOrbitRadius: clampedRadius },
-    }))
-  },
-
   // --- Angular Phase Shifts Actions ---
   setMandelbulbPhaseShiftEnabled: (enabled) => {
     set((state) => ({

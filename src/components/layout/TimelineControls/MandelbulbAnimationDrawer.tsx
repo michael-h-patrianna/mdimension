@@ -7,7 +7,6 @@
  * Animation Systems:
  * - Power Animation: Smoothly oscillates the power value
  * - Phase Shifts: Adds phase offsets to create flowing distortions
- * - Julia Morphing: Blends between Mandelbulb and Julia set behavior
  * - Slice Animation: 4D+ only, animates the 4D slice position
  *
  * @see docs/prd/ndimensional-visualizer.md
@@ -44,10 +43,6 @@ export const MandelbulbAnimationDrawer: React.FC = React.memo(() => {
     setPhaseShiftEnabled,
     setPhaseSpeed,
     setPhaseAmplitude,
-    // Julia Morphing
-    setJuliaModeEnabled,
-    setJuliaOrbitSpeed,
-    setJuliaOrbitRadius,
     // Slice Animation
     setSliceAnimationEnabled,
     setSliceSpeed,
@@ -64,10 +59,6 @@ export const MandelbulbAnimationDrawer: React.FC = React.memo(() => {
       setPhaseShiftEnabled: state.setMandelbulbPhaseShiftEnabled,
       setPhaseSpeed: state.setMandelbulbPhaseSpeed,
       setPhaseAmplitude: state.setMandelbulbPhaseAmplitude,
-      // Julia Morphing
-      setJuliaModeEnabled: state.setMandelbulbJuliaModeEnabled,
-      setJuliaOrbitSpeed: state.setMandelbulbJuliaOrbitSpeed,
-      setJuliaOrbitRadius: state.setMandelbulbJuliaOrbitRadius,
       // Slice Animation
       setSliceAnimationEnabled: state.setMandelbulbSliceAnimationEnabled,
       setSliceSpeed: state.setMandelbulbSliceSpeed,
@@ -192,58 +183,6 @@ export const MandelbulbAnimationDrawer: React.FC = React.memo(() => {
             />
             <span className="text-xs font-mono w-10 text-right">
               {config.phaseSpeed.toFixed(2)}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Julia Morphing */}
-      <div className="space-y-3" data-testid="animation-panel-juliaMorphing">
-        <div className="flex items-center justify-between">
-          <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">
-            Julia Morphing
-          </label>
-          <ToggleButton
-            pressed={config.juliaModeEnabled}
-            onToggle={() => setJuliaModeEnabled(!config.juliaModeEnabled)}
-            className="text-xs px-2 py-1 h-auto"
-            ariaLabel="Toggle Julia morphing"
-          >
-            {config.juliaModeEnabled ? 'ON' : 'OFF'}
-          </ToggleButton>
-        </div>
-
-        <div className={`space-y-3 ${!config.juliaModeEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-text-secondary w-16">Radius</span>
-            <input
-              type="range"
-              min={0.1}
-              max={1.5}
-              step={0.05}
-              value={config.juliaOrbitRadius}
-              onChange={(e) => setJuliaOrbitRadius(parseFloat(e.target.value))}
-              className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
-              aria-label="Julia morphing radius"
-            />
-            <span className="text-xs font-mono w-10 text-right">
-              {config.juliaOrbitRadius.toFixed(2)}
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-text-secondary w-16">Speed</span>
-            <input
-              type="range"
-              min={0.01}
-              max={0.1}
-              step={0.01}
-              value={config.juliaOrbitSpeed}
-              onChange={(e) => setJuliaOrbitSpeed(parseFloat(e.target.value))}
-              className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
-              aria-label="Julia morphing speed"
-            />
-            <span className="text-xs font-mono w-10 text-right">
-              {config.juliaOrbitSpeed.toFixed(2)}
             </span>
           </div>
         </div>

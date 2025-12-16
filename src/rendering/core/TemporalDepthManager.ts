@@ -119,10 +119,12 @@ class TemporalDepthManagerImpl {
    */
   private initializeCaptureInfrastructure(): void {
     this.captureMaterial = new THREE.ShaderMaterial({
+      glslVersion: THREE.GLSL3,
       uniforms: {
         tDepth: { value: null },
         nearClip: { value: 0.1 },
         farClip: { value: 1000.0 },
+        sourceResolution: { value: new THREE.Vector2(1, 1) },
       },
       vertexShader: DepthCaptureShader.vertexShader,
       fragmentShader: DepthCaptureShader.fragmentShader,
@@ -173,10 +175,16 @@ class TemporalDepthManagerImpl {
       tDepth: { value: THREE.DepthTexture | null };
       nearClip: { value: number };
       farClip: { value: number };
+      sourceResolution: { value: THREE.Vector2 };
     };
     uniforms.tDepth.value = depthTexture;
     uniforms.nearClip.value = this.nearClip;
     uniforms.farClip.value = this.farClip;
+    // Pass full-resolution source texture size for conservative MIN sampling
+    uniforms.sourceResolution.value.set(
+      depthTexture.image?.width ?? this.width * 2,
+      depthTexture.image?.height ?? this.height * 2
+    );
 
     // Render depth capture pass
     const currentRenderTarget = gl.getRenderTarget();
