@@ -81,7 +81,6 @@ export type {
   MandelbulbPalette,
   MandelbulbQualityPreset,
   MandelbulbRenderStyle,
-  MandelbulbSample,
   PolytopeConfig,
   RootSystemConfig,
   RootSystemType,

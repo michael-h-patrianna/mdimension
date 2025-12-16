@@ -87,7 +87,7 @@ npm run build         # Build succeeds
 
 ## Vite Configuration
 
-Dev server runs on port 5173 by default. Key features:
+Dev server runs on port 3000 by default. Key features:
 - Hot Module Replacement (HMR)
 - Path aliases (`@/` → `src/`)
 - TypeScript support
@@ -197,7 +197,7 @@ npm install pkg@latest # Update specific package
 ## Troubleshooting
 
 **Problem**: Dev server not starting
-**Solution**: Check port 5173 is free, try `npm run dev -- --port 3000`
+**Solution**: Check port 3000 is free, try `npm run dev -- --port 3000`
 
 **Problem**: Type errors after install
 **Solution**: `npx tsc --noEmit` to see all errors, may need `npm install`

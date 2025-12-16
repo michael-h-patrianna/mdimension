@@ -39,6 +39,7 @@ import { useProjectionStore } from '@/stores/projectionStore';
 import { useRotationStore } from '@/stores/rotationStore';
 import { useTransformStore } from '@/stores/transformStore';
 import { useAnimationStore } from '@/stores/animationStore';
+import { usePerformanceStore } from '@/stores/performanceStore';
 import { TubeWireframe } from '../TubeWireframe';
 import {
     buildEdgeFragmentShader,
@@ -411,6 +412,36 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   const edgeMaterial = useMemo(() => {
     return createEdgeMaterial(edgeColor, opacity);
   }, [edgeColor, opacity]);
+
+  const setShaderDebugInfo = usePerformanceStore((state) => state.setShaderDebugInfo);
+
+  useEffect(() => {
+    // Report shader stats for debugging
+    const activeMaterial = facesVisible ? faceMaterial : edgeMaterial;
+    const name = facesVisible ? 'Polytope Face Shader' : 'Polytope Edge Shader';
+    const modules = ['ND Transform', 'Color', 'Modulation'];
+    
+    const features: string[] = [];
+    if (facesVisible) {
+        modules.push('Lighting', 'Opacity', 'Advanced Color');
+        features.push('Standard Lighting');
+        if (shadowEnabled) features.push('Shadows (Receive)');
+        if (surfaceSettings.fresnelEnabled) features.push('Fresnel');
+        features.push(`Opacity: ${surfaceSettings.faceOpacity < 1 ? 'Transparent' : 'Solid'}`);
+    } else {
+        features.push('Edges');
+    }
+
+    setShaderDebugInfo({
+      name,
+      vertexShaderLength: activeMaterial.vertexShader.length,
+      fragmentShaderLength: activeMaterial.fragmentShader.length,
+      activeModules: modules,
+      features,
+    });
+
+    return () => setShaderDebugInfo(null);
+  }, [faceMaterial, edgeMaterial, facesVisible, shadowEnabled, surfaceSettings.fresnelEnabled, surfaceSettings.faceOpacity, setShaderDebugInfo]);
 
   // ============ FACE GEOMETRY (INDEXED) ============
   // Uses indexed geometry for efficiency - vertices are shared, indices define triangles

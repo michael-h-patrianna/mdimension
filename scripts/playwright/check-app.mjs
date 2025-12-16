@@ -1,84 +1,47 @@
-/**
- * Quick diagnostic script to check if the app loads properly
- */
 import { chromium } from 'playwright';
 
 async function checkApp() {
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
 
-  const errors = [];
   const logs = [];
-
-  // Capture console messages
-  page.on('console', msg => {
-    const text = msg.text();
-    logs.push(`[${msg.type()}] ${text}`);
-    if (msg.type() === 'error') {
-      errors.push(text);
-    }
-  });
-
-  // Capture page errors
-  page.on('pageerror', err => {
-    errors.push(`PAGE ERROR: ${err.message}`);
-  });
-
-  console.log('Navigating to http://localhost:3000...');
+  page.on('console', msg => logs.push(`[${msg.type()}] ${msg.text()}`));
+  page.on('pageerror', err => logs.push(`[PAGE ERROR] ${err.message}`));
 
   try {
-    await page.goto('http://localhost:3000', { waitUntil: 'networkidle', timeout: 30000 });
+    console.log('Navigating to http://localhost:3000...');
+    await page.goto('http://localhost:3000', { waitUntil: 'domcontentloaded', timeout: 30000 });
 
-    // Wait a bit for React to render
-    await page.waitForTimeout(2000);
+    console.log('Waiting for object explorer...');
+    const mandelbulbButton = page.locator('[data-testid="object-type-mandelbulb"]');
+    await mandelbulbButton.waitFor({ state: 'visible', timeout: 10000 });
 
-    // Take a screenshot
-    await page.screenshot({ path: 'screenshots/app-check.png', fullPage: true });
-    console.log('Screenshot saved to screenshots/app-check.png');
+    console.log('Selecting "mandelbulb"...');
+    await mandelbulbButton.click();
 
-    // Check what's rendered
-    const title = await page.title();
-    console.log(`\nPage title: ${title}`);
+    console.log('Waiting for shader compilation (5s)...');
+    await page.waitForTimeout(5000);
 
-    // Check for key elements
-    const hasCanvas = await page.locator('canvas').count();
-    console.log(`Canvas elements: ${hasCanvas}`);
+    console.log('\n=== CONSOLE LOGS ===');
+    logs.forEach(l => console.log(l));
 
-    const hasControls = await page.locator('[data-testid]').count();
-    console.log(`Elements with data-testid: ${hasControls}`);
-
-    // Get visible text on page
-    const bodyText = await page.locator('body').innerText();
-    console.log(`\nVisible text on page:\n${bodyText.slice(0, 500)}`);
-
-    // Check for specific elements
-    const dimensionSelector = await page.locator('[data-testid="dimension-selector"]').count();
-    console.log(`\nDimension selector: ${dimensionSelector > 0 ? 'FOUND' : 'NOT FOUND'}`);
-
-    const objectTypeSelector = await page.locator('[data-testid="object-type-selector"]').count();
-    console.log(`Object type selector: ${objectTypeSelector > 0 ? 'FOUND' : 'NOT FOUND'}`);
-
-    const playButton = await page.locator('[data-testid="animation-play-button"]').count();
-    console.log(`Play button: ${playButton > 0 ? 'FOUND' : 'NOT FOUND'}`);
-
-    // Log any errors
+    const errors = logs.filter(l => l.toLowerCase().includes('error'));
     if (errors.length > 0) {
-      console.log('\n=== ERRORS ===');
-      errors.forEach(e => console.log(e));
+        console.log('\n!!! ERRORS DETECTED !!!');
+        errors.forEach(e => console.log(e));
+        process.exit(1);
     } else {
-      console.log('\n=== NO ERRORS DETECTED ===');
-    }
-
-    if (logs.length > 0) {
-      console.log('\n=== CONSOLE LOGS ===');
-      logs.forEach(l => console.log(l));
+        console.log('\nNo errors detected.');
     }
 
   } catch (err) {
-    console.error('Failed to load page:', err.message);
+    console.error('Test failed:', err);
+    console.log('\n=== CONSOLE LOGS (Partial) ===');
+    logs.forEach(l => console.log(l));
+    process.exit(1);
+  } finally {
+    await browser.close();
   }
-
-  await browser.close();
 }
 
-checkApp().catch(console.error);
+checkApp();

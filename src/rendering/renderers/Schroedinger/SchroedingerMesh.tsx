@@ -26,7 +26,7 @@ import { useUIStore } from '@/stores/uiStore';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import fragmentShader from './schroedinger.frag?raw';
+import { composeSchroedingerShader } from '@/rendering/shaders/schroedinger/compose';
 import vertexShader from './schroedinger.vert?raw';
 
 /** Debounce time in ms before restoring high quality after rotation stops */
@@ -354,6 +354,41 @@ const SchroedingerMesh = () => {
     }
     return false;
   }, []);
+
+  // Get temporal settings
+  const temporalEnabled = usePerformanceStore((state) => state.temporalReprojectionEnabled);
+  const setShaderDebugInfo = usePerformanceStore((state) => state.setShaderDebugInfo);
+  const shaderOverrides = usePerformanceStore((state) => state.shaderOverrides);
+  const resetShaderOverrides = usePerformanceStore((state) => state.resetShaderOverrides);
+
+  // Reset overrides when base configuration changes
+  useEffect(() => {
+    resetShaderOverrides();
+  }, [dimension, shadowEnabled, temporalEnabled, opacitySettings.mode, resetShaderOverrides]);
+
+  // Compile shader only when configuration changes
+  const { glsl: shaderString, modules, features } = useMemo(() => {
+    return composeSchroedingerShader({
+      dimension,
+      shadows: shadowEnabled,
+      temporal: temporalEnabled,
+      ambientOcclusion: true,
+      opacityMode: opacitySettings.mode,
+      overrides: shaderOverrides,
+    });
+  }, [dimension, shadowEnabled, temporalEnabled, opacitySettings.mode, shaderOverrides]);
+
+  // Update debug info store
+  useEffect(() => {
+    setShaderDebugInfo({
+      name: 'Schroedinger Raymarcher',
+      vertexShaderLength: vertexShader.length,
+      fragmentShaderLength: shaderString.length,
+      activeModules: modules,
+      features: features,
+    });
+    return () => setShaderDebugInfo(null);
+  }, [shaderString, modules, features, setShaderDebugInfo]);
 
   useFrame((state) => {
     // Update animation time - only advances when isPlaying is true
@@ -773,7 +808,7 @@ const SchroedingerMesh = () => {
       <shaderMaterial
         glslVersion={THREE.GLSL3}
         vertexShader={vertexShader}
-        fragmentShader={fragmentShader}
+        fragmentShader={shaderString}
         uniforms={uniforms}
         side={THREE.BackSide}
       />

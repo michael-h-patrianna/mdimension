@@ -8,6 +8,7 @@
  */
 
 import { create } from 'zustand'
+import type { ShaderDebugInfo } from '@/types/shaderDebug'
 
 // ============================================================================
 // Constants
@@ -87,6 +88,10 @@ interface PerformanceState {
   /** Whether to use lower quality during fractal animation for smoother interaction */
   fractalAnimationLowQuality: boolean
 
+  // Shader Debugging
+  currentShaderDebugInfo: ShaderDebugInfo | null
+  shaderOverrides: string[]
+
   // -------------------------------------------------------------------------
   // Actions
   // -------------------------------------------------------------------------
@@ -107,6 +112,11 @@ interface PerformanceState {
 
   // Fractal Animation Quality
   setFractalAnimationLowQuality: (enabled: boolean) => void
+
+  // Shader Debugging
+  setShaderDebugInfo: (info: ShaderDebugInfo | null) => void
+  toggleShaderModule: (moduleName: string) => void
+  resetShaderOverrides: () => void
 
   // General
   reset: () => void
@@ -143,6 +153,10 @@ export const usePerformanceStore = create<PerformanceState>((set, get) => ({
 
   // Fractal Animation Quality
   fractalAnimationLowQuality: true,
+
+  // Shader Debugging
+  currentShaderDebugInfo: null,
+  shaderOverrides: [],
 
   // -------------------------------------------------------------------------
   // Actions
@@ -207,6 +221,27 @@ export const usePerformanceStore = create<PerformanceState>((set, get) => ({
     set({ fractalAnimationLowQuality: enabled })
   },
 
+  // Shader Debugging
+  setShaderDebugInfo: (info: ShaderDebugInfo | null) => {
+    set({ currentShaderDebugInfo: info })
+  },
+
+  toggleShaderModule: (moduleName: string) => {
+    set((state) => {
+      const overrides = new Set(state.shaderOverrides)
+      if (overrides.has(moduleName)) {
+        overrides.delete(moduleName)
+      } else {
+        overrides.add(moduleName)
+      }
+      return { shaderOverrides: Array.from(overrides) }
+    })
+  },
+
+  resetShaderOverrides: () => {
+    set({ shaderOverrides: [] })
+  },
+
   // General
   reset: () => {
     set({
@@ -219,6 +254,8 @@ export const usePerformanceStore = create<PerformanceState>((set, get) => ({
       temporalReprojectionEnabled: true,
       cameraTeleported: false,
       fractalAnimationLowQuality: true,
+      currentShaderDebugInfo: null,
+      shaderOverrides: [],
     })
   },
 }))

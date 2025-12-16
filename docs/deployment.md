@@ -16,7 +16,7 @@
 
 ### 1. Start Development Server
 **Command**: `npm run dev`
-**Description**: Starts Vite dev server. Accessible at `http://localhost:5173`.
+**Description**: Starts Vite dev server. Accessible at `http://localhost:3000`.
 **Hot Reload**: Enabled. Edits to files will auto-update the browser.
 
 ### 2. Run Tests

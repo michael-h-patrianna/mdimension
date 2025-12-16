@@ -3,6 +3,7 @@ import { usePanelCollision } from '@/hooks/usePanelCollision';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { usePerformanceMetricsStore } from '@/stores/performanceMetricsStore';
+import { usePerformanceStore } from '@/stores/performanceStore';
 import { isRaymarchingType, getConfigStoreKey } from '@/lib/geometry/registry';
 import { LazyMotion, domMax, m, useMotionValue } from 'motion/react';
 import { useRef, useState, useEffect } from 'react';
@@ -75,10 +76,16 @@ export function PerformanceMonitor() {
 
   // -- Perf Stats --
   const stats = usePerformanceMetricsStore();
+  const shaderInfo = usePerformanceStore((state) => state.currentShaderDebugInfo);
+  const shaderOverrides = usePerformanceStore((state) => state.shaderOverrides);
+  const toggleShaderModule = usePerformanceStore((state) => state.toggleShaderModule);
+
+  // Safe modules that can be toggled without breaking the shader compilation
+  const SAFE_MODULES = ['Shadows', 'Ambient Occlusion', 'Temporal Features'];
 
   // -- State --
   const [expanded, setExpanded] = useState(false);
-  const [activeTab, setActiveTab] = useState<'perf' | 'sys'>('perf');
+  const [activeTab, setActiveTab] = useState<'perf' | 'sys' | 'shader'>('perf');
   const [isDragging, setIsDragging] = useState(false);
   
   // -- Dimensions & Positioning --
@@ -273,6 +280,95 @@ export function PerformanceMonitor() {
            </div>
         </m.div>
       )
+    },
+    {
+      id: 'shader',
+      label: 'Shader',
+      content: (
+        <m.div
+          initial={{ opacity: 0, x: 10 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.2 }}
+          className="space-y-5"
+        >
+           {!shaderInfo ? (
+             <div className="text-zinc-500 italic text-center p-4">No shader info available</div>
+           ) : (
+             <>
+               <div className="space-y-3">
+                  <SectionHeader icon={<Icons.Layers />} label="Program Info" />
+                  <div className="p-2 bg-white/5 rounded-lg border border-white/5">
+                     <div className="text-xs text-zinc-200 font-bold mb-1">{shaderInfo.name}</div>
+                     <div className="grid grid-cols-2 gap-2 mt-2">
+                       <StatItem label="Vertex Size" value={formatBytes(shaderInfo.vertexShaderLength)} />
+                       <StatItem label="Fragment Size" value={formatBytes(shaderInfo.fragmentShaderLength)} />
+                     </div>
+                  </div>
+               </div>
+
+               {shaderInfo.features.length > 0 && (
+                 <div className="space-y-3">
+                    <SectionHeader icon={<Icons.Zap />} label="Active Features" />
+                    <div className="flex flex-wrap gap-1.5">
+                      {shaderInfo.features.map(f => (
+                        <span key={f} className="px-1.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded text-[9px] font-mono uppercase tracking-wide">
+                          {f}
+                        </span>
+                      ))}
+                    </div>
+                 </div>
+               )}
+
+               <div className="space-y-3">
+                  <SectionHeader icon={<Icons.Database />} label="Compiled Modules" />
+                  <div className="border border-white/10 rounded-lg overflow-hidden bg-black/20">
+                    <table className="w-full text-left border-collapse">
+                      <tbody className="divide-y divide-white/5">
+                        {shaderInfo.activeModules.map((mod, i) => {
+                          const isSafe = SAFE_MODULES.includes(mod);
+                          const isEnabled = !shaderOverrides.includes(mod);
+                          
+                          return (
+                            <tr key={i} className="hover:bg-white/5 transition-colors">
+                              <td className="p-2 text-[10px] font-mono text-zinc-400 border-r border-white/5 w-8 text-center opacity-50">{i+1}</td>
+                              <td className="p-2 text-[10px] text-zinc-300 flex items-center justify-between">
+                                <span className={!isEnabled ? 'opacity-50 line-through' : ''}>{mod}</span>
+                                {isSafe && (
+                                  <input 
+                                    type="checkbox" 
+                                    checked={isEnabled} 
+                                    onChange={() => toggleShaderModule(mod)}
+                                    className="w-3 h-3 rounded bg-white/10 border-white/20 checked:bg-accent focus:ring-accent/50 cursor-pointer"
+                                    title="Toggle Module"
+                                  />
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        {shaderOverrides.map((mod, i) => (
+                          <tr key={`override-${i}`} className="hover:bg-white/5 transition-colors bg-white/5">
+                            <td className="p-2 text-[10px] font-mono text-rose-400 border-r border-white/5 w-8 text-center opacity-50">!</td>
+                            <td className="p-2 text-[10px] text-zinc-400 flex items-center justify-between">
+                              <span className="line-through opacity-70">{mod}</span>
+                              <input 
+                                type="checkbox" 
+                                checked={false} 
+                                onChange={() => toggleShaderModule(mod)}
+                                className="w-3 h-3 rounded bg-white/10 border-white/20 checked:bg-accent focus:ring-accent/50 cursor-pointer"
+                                title="Enable Module"
+                              />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+               </div>
+             </>
+           )}
+        </m.div>
+      )
     }
   ];
 
@@ -334,9 +430,9 @@ export function PerformanceMonitor() {
                 variant="minimal"
                 fullWidth
                 value={activeTab}
-                onChange={(id) => setActiveTab(id as 'perf' | 'sys')}
+                onChange={(id) => setActiveTab(id as 'perf' | 'sys' | 'shader')}
                 tabs={tabs}
-                contentClassName="p-5"
+                contentClassName="p-5 max-h-[350px] overflow-y-auto custom-scrollbar"
               />
             </div>
           )}

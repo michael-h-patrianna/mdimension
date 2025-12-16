@@ -8,9 +8,10 @@
  */
 
 export { MAX_EXTRA_DIMS } from './constants'
-export { buildEdgeFragmentShader } from './edgeFragment.glsl'
-export { buildEdgeVertexShader } from './edgeVertex.glsl'
-export { buildFaceFragmentShader } from './faceFragment.glsl'
-export { buildFaceVertexShader } from './faceVertex.glsl'
+// Re-export composers as builders for backward compatibility with PolytopeScene
+export { composeEdgeFragmentShader as buildEdgeFragmentShader } from '../../shaders/polytope/compose'
+export { composeEdgeVertexShader as buildEdgeVertexShader } from '../../shaders/polytope/compose'
+export { composeFaceFragmentShader as buildFaceFragmentShader } from '../../shaders/polytope/compose'
+export { composeFaceVertexShader as buildFaceVertexShader } from '../../shaders/polytope/compose'
 export { PolytopeScene } from './PolytopeScene'
 export type { PolytopeSceneProps } from './PolytopeScene'

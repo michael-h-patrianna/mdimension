@@ -47,7 +47,7 @@ export const TimelineControls: FC = () => {
     const setAnimationBias = useUIStore((state) => state.setAnimationBias);
 
     // Extended object configs for animation state checking
-    const { mandelbulbConfig, quaternionJuliaConfig, polytopeConfig } = useExtendedObjectStore(
+    const { mandelbulbConfig, polytopeConfig } = useExtendedObjectStore(
         useShallow((state) => ({
           mandelbulbConfig: state.mandelbulb,
           quaternionJuliaConfig: state.quaternionJulia,

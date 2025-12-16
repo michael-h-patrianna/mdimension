@@ -46,7 +46,7 @@ import { useUIStore } from '@/stores/uiStore'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import fragmentShader from './quaternion-julia.frag?raw'
+import { composeJuliaShader } from '@/rendering/shaders/julia/compose'
 import vertexShader from './quaternion-julia.vert?raw'
 
 /** Debounce time in ms before restoring high quality after rotation stops */
@@ -150,6 +150,41 @@ const QuaternionJuliaMesh = () => {
   const parameterValues = useExtendedObjectStore(
     (state) => state.quaternionJulia.parameterValues
   )
+
+  // Get config for shader compilation (re-compiles when these change)
+  const shadowEnabled = useLightingStore((state) => state.shadowEnabled)
+  const temporalEnabled = usePerformanceStore((state) => state.temporalReprojectionEnabled)
+  const opacityMode = useUIStore((state) => state.opacitySettings.mode)
+  const setShaderDebugInfo = usePerformanceStore((state) => state.setShaderDebugInfo)
+  const shaderOverrides = usePerformanceStore((state) => state.shaderOverrides)
+  const resetShaderOverrides = usePerformanceStore((state) => state.resetShaderOverrides)
+
+  // Reset overrides when base configuration changes
+  useEffect(() => {
+    resetShaderOverrides()
+  }, [dimension, shadowEnabled, temporalEnabled, opacityMode, resetShaderOverrides])
+
+  const { glsl: shaderString, modules, features } = useMemo(() => {
+    return composeJuliaShader({
+      dimension,
+      shadows: shadowEnabled,
+      temporal: temporalEnabled,
+      ambientOcclusion: true,
+      opacityMode,
+      overrides: shaderOverrides,
+    })
+  }, [dimension, shadowEnabled, temporalEnabled, opacityMode, shaderOverrides])
+
+  useEffect(() => {
+    setShaderDebugInfo({
+      name: 'Quaternion Julia Raymarcher',
+      vertexShaderLength: vertexShader.length,
+      fragmentShaderLength: shaderString.length,
+      activeModules: modules,
+      features: features,
+    })
+    return () => setShaderDebugInfo(null)
+  }, [shaderString, modules, features, setShaderDebugInfo])
 
   // NOTE: All other store values are read via getState() inside useFrame
   // to avoid React re-renders during animation. This is the high-performance
@@ -554,7 +589,7 @@ const QuaternionJuliaMesh = () => {
       <shaderMaterial
         glslVersion={THREE.GLSL3}
         vertexShader={vertexShader}
-        fragmentShader={fragmentShader}
+        fragmentShader={shaderString}
         uniforms={uniforms}
         side={THREE.BackSide}
       />

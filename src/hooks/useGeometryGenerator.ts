@@ -24,6 +24,7 @@ export function useGeometryGenerator() {
   const nestedTorusConfig = useExtendedObjectStore((state) => state.nestedTorus)
   const mandelbulbConfig = useExtendedObjectStore((state) => state.mandelbulb)
   const quaternionJuliaConfig = useExtendedObjectStore((state) => state.quaternionJulia)
+  const schroedingerConfig = useExtendedObjectStore((state) => state.schroedinger)
 
   const extendedParams: ExtendedObjectParams = useMemo(
     () => ({
@@ -34,6 +35,7 @@ export function useGeometryGenerator() {
       nestedTorus: nestedTorusConfig,
       mandelbulb: mandelbulbConfig,
       quaternionJulia: quaternionJuliaConfig,
+      schroedinger: schroedingerConfig,
     }),
     [
       polytopeConfig,
@@ -43,6 +45,7 @@ export function useGeometryGenerator() {
       nestedTorusConfig,
       mandelbulbConfig,
       quaternionJuliaConfig,
+      schroedingerConfig,
     ]
   )
 
