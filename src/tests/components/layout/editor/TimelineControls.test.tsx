@@ -52,7 +52,7 @@ vi.mock('@/stores/defaults/visualDefaults', () => ({
 vi.mock('@/stores/extendedObjectStore', () => ({
   useExtendedObjectStore: vi.fn((selector) => {
     const state = {
-        mandelbrot: {
+        mandelbulb: {
             powerAnimationEnabled: false,
             sliceAnimationEnabled: false,
             juliaModeEnabled: false,
@@ -64,19 +64,19 @@ vi.mock('@/stores/extendedObjectStore', () => ({
             originDriftEnabled: false,
             dimensionMixEnabled: false,
         },
-        setMandelbrotPowerAnimationEnabled: vi.fn(),
-        setMandelbrotPowerMin: vi.fn(),
-        setMandelbrotPowerMax: vi.fn(),
-        setMandelbrotPowerSpeed: vi.fn(),
-        setMandelbrotSliceAnimationEnabled: vi.fn(),
-        setMandelbrotSliceSpeed: vi.fn(),
-        setMandelbrotSliceAmplitude: vi.fn(),
-        setMandelbrotJuliaModeEnabled: vi.fn(),
-        setMandelbrotJuliaOrbitSpeed: vi.fn(),
-        setMandelbrotJuliaOrbitRadius: vi.fn(),
-        setMandelbrotPhaseShiftEnabled: vi.fn(),
-        setMandelbrotPhaseSpeed: vi.fn(),
-        setMandelbrotPhaseAmplitude: vi.fn(),
+        setMandelbulbPowerAnimationEnabled: vi.fn(),
+        setMandelbulbPowerMin: vi.fn(),
+        setMandelbulbPowerMax: vi.fn(),
+        setMandelbulbPowerSpeed: vi.fn(),
+        setMandelbulbSliceAnimationEnabled: vi.fn(),
+        setMandelbulbSliceSpeed: vi.fn(),
+        setMandelbulbSliceAmplitude: vi.fn(),
+        setMandelbulbJuliaModeEnabled: vi.fn(),
+        setMandelbulbJuliaOrbitSpeed: vi.fn(),
+        setMandelbulbJuliaOrbitRadius: vi.fn(),
+        setMandelbulbPhaseShiftEnabled: vi.fn(),
+        setMandelbulbPhaseSpeed: vi.fn(),
+        setMandelbulbPhaseAmplitude: vi.fn(),
         // Quaternion Julia setters
         setQuaternionJuliaConstantAnimationEnabled: vi.fn(),
         setQuaternionJuliaPowerAnimationEnabled: vi.fn(),

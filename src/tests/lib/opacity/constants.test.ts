@@ -1,5 +1,5 @@
 /**
- * Tests for Hyperbulb Opacity Constants
+ * Tests for Mandelbulb Opacity Constants
  */
 
 import { describe, expect, it } from 'vitest';

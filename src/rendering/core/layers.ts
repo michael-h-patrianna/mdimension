@@ -5,7 +5,7 @@
  * Used by PostProcessing to render object-only depth for SSR, refraction, and bokeh.
  *
  * Layer 0: Environment (walls, grid, gizmos, axes) - always visible
- * Layer 1: Main Object (polytope, hyperbulb, etc.) - used for depth-based effects
+ * Layer 1: Main Object (polytope, mandelbulb, etc.) - used for depth-based effects
  */
 
 /**
@@ -14,7 +14,7 @@
 export const RENDER_LAYERS = {
   /** Environment elements: walls, grid, light gizmos, axes helper */
   ENVIRONMENT: 0,
-  /** Main n-dimensional object: polytope, hyperbulb, point cloud */
+  /** Main n-dimensional object: polytope, mandelbulb, point cloud */
   MAIN_OBJECT: 1,
 } as const;
 

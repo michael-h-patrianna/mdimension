@@ -276,7 +276,7 @@ Scenario 3: Per-iteration variation
 **User story:** As a user, I want to rotate the N-dimensional slice so that I can explore how hybrid formulas interact across different cross-sections.
 
 **Acceptance criteria**
-1. Rotation controls for all planes based on dimension (same as Hyperbulb)
+1. Rotation controls for all planes based on dimension (same as Mandelbulb)
 2. Each rotation slider: 0° to 360°
 3. Rotation dramatically affects how different formula components manifest
 4. "Reset Rotations" button
@@ -301,7 +301,7 @@ Scenario 2: High-dimensional hybrid rotation
 **User story:** As a user, I want lighting controls so that the complex hybrid surfaces are well-illuminated.
 
 **Acceptance criteria**
-1. All standard lighting parameters (same as Hyperbulb)
+1. All standard lighting parameters (same as Mandelbulb)
 2. Multi-light system (up to 4 lights)
 3. Hybrid-specific: Enhanced ambient recommended (default: 0.3) due to complex geometry
 4. Tone mapping and Fresnel rim lighting
@@ -326,7 +326,7 @@ Scenario 2: Rim lighting for edge definition
 **User story:** As a user, I want shadows so that depth in the complex hybrid structure is clear.
 
 **Acceptance criteria**
-1. Shadow controls (same as Hyperbulb)
+1. Shadow controls (same as Mandelbulb)
 2. Hybrid-specific: Shadow quality "Medium" or higher recommended due to complex geometry
 3. Soft shadows help blend crystalline and organic regions visually
 
@@ -376,7 +376,7 @@ Scenario 2: Fold count coloring
 **User story:** As a user, I want transparency so that I can see internal hybrid structure.
 
 **Acceptance criteria**
-1. All 4 opacity modes (same as Hyperbulb)
+1. All 4 opacity modes (same as Mandelbulb)
 2. Layered surfaces particularly effective for revealing how formulas layer
 3. Volumetric rendering shows formula interaction zones
 

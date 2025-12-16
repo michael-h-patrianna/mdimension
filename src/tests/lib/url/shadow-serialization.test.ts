@@ -21,7 +21,7 @@ describe('Shadow URL Serialization', () => {
     it('should not serialize default shadow values', () => {
       const state: ShareableState = {
         dimension: 4,
-        objectType: 'mandelbrot',
+        objectType: 'mandelbulb',
         shadowEnabled: DEFAULT_SHADOW_ENABLED,
         shadowQuality: DEFAULT_SHADOW_QUALITY,
         shadowSoftness: DEFAULT_SHADOW_SOFTNESS,
@@ -38,7 +38,7 @@ describe('Shadow URL Serialization', () => {
     it('should serialize shadowEnabled when true', () => {
       const state: ShareableState = {
         dimension: 4,
-        objectType: 'mandelbrot',
+        objectType: 'mandelbulb',
         shadowEnabled: true,
       };
 
@@ -49,7 +49,7 @@ describe('Shadow URL Serialization', () => {
     it('should serialize non-default shadow quality as string', () => {
       const state: ShareableState = {
         dimension: 4,
-        objectType: 'mandelbrot',
+        objectType: 'mandelbulb',
         shadowQuality: 'high',
       };
 
@@ -63,7 +63,7 @@ describe('Shadow URL Serialization', () => {
       for (const quality of qualities) {
         const state: ShareableState = {
           dimension: 4,
-          objectType: 'mandelbrot',
+          objectType: 'mandelbulb',
           shadowQuality: quality,
         };
 
@@ -75,7 +75,7 @@ describe('Shadow URL Serialization', () => {
     it('should serialize non-default shadow softness with 1 decimal precision', () => {
       const state: ShareableState = {
         dimension: 4,
-        objectType: 'mandelbrot',
+        objectType: 'mandelbulb',
         shadowSoftness: 1.5,
       };
 
@@ -89,7 +89,7 @@ describe('Shadow URL Serialization', () => {
       for (const mode of modes) {
         const state: ShareableState = {
           dimension: 4,
-          objectType: 'mandelbrot',
+          objectType: 'mandelbulb',
           shadowAnimationMode: mode,
         };
 
@@ -101,7 +101,7 @@ describe('Shadow URL Serialization', () => {
     it('should serialize complete shadow configuration', () => {
       const state: ShareableState = {
         dimension: 4,
-        objectType: 'mandelbrot',
+        objectType: 'mandelbulb',
         shadowEnabled: true,
         shadowQuality: 'ultra',
         shadowSoftness: 1.8,
@@ -118,14 +118,14 @@ describe('Shadow URL Serialization', () => {
 
   describe('deserializeState', () => {
     it('should deserialize shadowEnabled', () => {
-      const params = `d=4&t=mandelbrot&${URL_KEY_SHADOW_ENABLED}=1`;
+      const params = `d=4&t=mandelbulb&${URL_KEY_SHADOW_ENABLED}=1`;
       const result = deserializeState(params);
 
       expect(result.shadowEnabled).toBe(true);
     });
 
     it('should deserialize shadowEnabled as false when 0', () => {
-      const params = `d=4&t=mandelbrot&${URL_KEY_SHADOW_ENABLED}=0`;
+      const params = `d=4&t=mandelbulb&${URL_KEY_SHADOW_ENABLED}=0`;
       const result = deserializeState(params);
 
       expect(result.shadowEnabled).toBe(false);
@@ -135,14 +135,14 @@ describe('Shadow URL Serialization', () => {
       const qualities: Array<ShareableState['shadowQuality']> = ['low', 'medium', 'high', 'ultra'];
 
       for (const quality of qualities) {
-        const params = `d=4&t=mandelbrot&${URL_KEY_SHADOW_QUALITY}=${quality}`;
+        const params = `d=4&t=mandelbulb&${URL_KEY_SHADOW_QUALITY}=${quality}`;
         const result = deserializeState(params);
         expect(result.shadowQuality).toBe(quality);
       }
     });
 
     it('should deserialize shadow softness', () => {
-      const params = `d=4&t=mandelbrot&${URL_KEY_SHADOW_SOFTNESS}=1.5`;
+      const params = `d=4&t=mandelbulb&${URL_KEY_SHADOW_SOFTNESS}=1.5`;
       const result = deserializeState(params);
 
       expect(result.shadowSoftness).toBe(1.5);
@@ -152,42 +152,42 @@ describe('Shadow URL Serialization', () => {
       const modes: Array<ShareableState['shadowAnimationMode']> = ['pause', 'low', 'full'];
 
       for (const mode of modes) {
-        const params = `d=4&t=mandelbrot&${URL_KEY_SHADOW_ANIMATION_MODE}=${mode}`;
+        const params = `d=4&t=mandelbulb&${URL_KEY_SHADOW_ANIMATION_MODE}=${mode}`;
         const result = deserializeState(params);
         expect(result.shadowAnimationMode).toBe(mode);
       }
     });
 
     it('should handle invalid shadow quality gracefully', () => {
-      const params = `d=4&t=mandelbrot&${URL_KEY_SHADOW_QUALITY}=invalid`;
+      const params = `d=4&t=mandelbulb&${URL_KEY_SHADOW_QUALITY}=invalid`;
       const result = deserializeState(params);
 
       expect(result.shadowQuality).toBeUndefined();
     });
 
     it('should handle invalid shadow animation mode gracefully', () => {
-      const params = `d=4&t=mandelbrot&${URL_KEY_SHADOW_ANIMATION_MODE}=invalid`;
+      const params = `d=4&t=mandelbulb&${URL_KEY_SHADOW_ANIMATION_MODE}=invalid`;
       const result = deserializeState(params);
 
       expect(result.shadowAnimationMode).toBeUndefined();
     });
 
     it('should validate shadow softness minimum', () => {
-      const params = `d=4&t=mandelbrot&${URL_KEY_SHADOW_SOFTNESS}=-0.5`;
+      const params = `d=4&t=mandelbulb&${URL_KEY_SHADOW_SOFTNESS}=-0.5`;
       const result = deserializeState(params);
 
       expect(result.shadowSoftness).toBeUndefined();
     });
 
     it('should validate shadow softness maximum', () => {
-      const params = `d=4&t=mandelbrot&${URL_KEY_SHADOW_SOFTNESS}=${SHADOW_SOFTNESS_RANGE.max + 1}`;
+      const params = `d=4&t=mandelbulb&${URL_KEY_SHADOW_SOFTNESS}=${SHADOW_SOFTNESS_RANGE.max + 1}`;
       const result = deserializeState(params);
 
       expect(result.shadowSoftness).toBeUndefined();
     });
 
     it('should deserialize complete shadow configuration', () => {
-      const params = `d=4&t=mandelbrot&${URL_KEY_SHADOW_ENABLED}=1&${URL_KEY_SHADOW_QUALITY}=ultra&${URL_KEY_SHADOW_SOFTNESS}=1.8&${URL_KEY_SHADOW_ANIMATION_MODE}=full`;
+      const params = `d=4&t=mandelbulb&${URL_KEY_SHADOW_ENABLED}=1&${URL_KEY_SHADOW_QUALITY}=ultra&${URL_KEY_SHADOW_SOFTNESS}=1.8&${URL_KEY_SHADOW_ANIMATION_MODE}=full`;
       const result = deserializeState(params);
 
       expect(result.shadowEnabled).toBe(true);
@@ -201,7 +201,7 @@ describe('Shadow URL Serialization', () => {
     it('should preserve shadowEnabled through round-trip', () => {
       const original: ShareableState = {
         dimension: 4,
-        objectType: 'mandelbrot',
+        objectType: 'mandelbulb',
         shadowEnabled: true,
       };
 
@@ -217,7 +217,7 @@ describe('Shadow URL Serialization', () => {
       for (const quality of qualities) {
         const original: ShareableState = {
           dimension: 4,
-          objectType: 'mandelbrot',
+          objectType: 'mandelbulb',
           shadowQuality: quality,
         };
 
@@ -237,7 +237,7 @@ describe('Shadow URL Serialization', () => {
       // Use value that rounds to 1 decimal cleanly
       const original: ShareableState = {
         dimension: 4,
-        objectType: 'mandelbrot',
+        objectType: 'mandelbulb',
         shadowSoftness: 1.4,
       };
 
@@ -253,7 +253,7 @@ describe('Shadow URL Serialization', () => {
       for (const mode of modes) {
         const original: ShareableState = {
           dimension: 4,
-          objectType: 'mandelbrot',
+          objectType: 'mandelbulb',
           shadowAnimationMode: mode,
         };
 
@@ -273,7 +273,7 @@ describe('Shadow URL Serialization', () => {
       // Use values that serialize cleanly with 1 decimal precision
       const original: ShareableState = {
         dimension: 4,
-        objectType: 'mandelbrot',
+        objectType: 'mandelbulb',
         shadowEnabled: true,
         shadowQuality: 'high',
         shadowSoftness: 0.8,

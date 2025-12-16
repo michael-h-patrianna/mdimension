@@ -1,16 +1,16 @@
 /**
- * Hyperbulb Opacity Mode Types
+ * Mandelbulb Opacity Mode Types
  *
- * Defines the four opacity rendering modes for hyperbulb fractals:
+ * Defines the four opacity rendering modes for mandelbulb fractals:
  * - solid: Fully opaque surface (default)
  * - simpleAlpha: Uniform transparency with slider
  * - layeredSurfaces: Multiple transparent nested surfaces
  * - volumetricDensity: Cloud-like volumetric rendering
  *
- * @see docs/prd/hyperbulb_opacity.md
+ * @see docs/prd/mandelbulb_opacity.md
  */
 
-/** Opacity rendering modes for hyperbulb fractals */
+/** Opacity rendering modes for mandelbulb fractals */
 export type OpacityMode = 'solid' | 'simpleAlpha' | 'layeredSurfaces' | 'volumetricDensity';
 
 /** Sample quality levels for volumetric rendering */
@@ -20,11 +20,11 @@ export type SampleQuality = 'low' | 'medium' | 'high';
 export type VolumetricAnimationQuality = 'reduce' | 'full';
 
 /**
- * Complete opacity settings for hyperbulb rendering.
+ * Complete opacity settings for mandelbulb rendering.
  * All mode-specific values are stored even when not active,
  * so switching modes preserves previous settings.
  */
-export interface HyperbulbOpacitySettings {
+export interface MandelbulbOpacitySettings {
   /** Current opacity mode */
   mode: OpacityMode;
 

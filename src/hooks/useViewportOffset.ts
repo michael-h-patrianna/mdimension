@@ -14,7 +14,7 @@ const SPRING_CONFIG = { damping: 25, stiffness: 200 };
  * but the viewport shifts to center the content in the available space.
  */
 export function useViewportOffset() {
-  const { camera, gl, size } = useThree();
+  const { camera, size } = useThree();
 
   // Get layout state
   const { showLeftPanel, isCollapsed, isCinematicMode } = useLayoutStore(

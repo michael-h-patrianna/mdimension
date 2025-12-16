@@ -29,7 +29,7 @@ describe('state-serializer', () => {
         'cross-polytope',
         'root-system',
         'clifford-torus',
-        'mandelbrot',
+        'mandelbulb',
       ] as const;
 
       for (const type of objectTypes) {
@@ -167,7 +167,7 @@ describe('state-serializer', () => {
         'cross-polytope',
         'root-system',
               'clifford-torus',
-              'mandelbrot',
+              'mandelbulb',
             ];
       for (const type of objectTypes) {
         const result = deserializeState(`t=${type}`);

@@ -48,7 +48,7 @@ Temporal reprojection is a raymarching acceleration technique that uses the prev
 **Goal**: Output raymarched depth to G-buffer for capture
 
 **Files**:
-- `src/components/canvas/renderers/Hyperbulb/hyperbulb.frag`
+- `src/components/canvas/renderers/Mandelbulb/mandelbulb.frag`
 - `src/components/canvas/renderers/Mandelbox/mandelbox.frag`
 - `src/components/canvas/renderers/Menger/menger.frag`
 
@@ -61,7 +61,7 @@ gNormal = vec4(normal, normalizedDepth);
 ```
 
 **Tasks**:
-- [ ] Add depth output to hyperbulb.frag main()
+- [ ] Add depth output to mandelbulb.frag main()
 - [ ] Add depth output to mandelbox.frag main()
 - [ ] Add depth output to menger.frag main()
 - [ ] Ensure depth is normalized consistently across all shaders
@@ -123,7 +123,7 @@ export function DepthCapturePass({
 **Goal**: Wire up the temporal depth hook to mesh components
 
 **Files**:
-- `src/components/canvas/renderers/Hyperbulb/HyperbulbMesh.tsx`
+- `src/components/canvas/renderers/Mandelbulb/MandelbulbMesh.tsx`
 - `src/components/canvas/renderers/Mandelbox/MandelboxMesh.tsx`
 - `src/components/canvas/renderers/Menger/MengerMesh.tsx`
 
@@ -132,7 +132,7 @@ export function DepthCapturePass({
 // In each mesh component:
 import { useTemporalDepth, updateTemporalDepthUniforms } from '@/hooks';
 
-export function HyperbulbMesh(props: HyperbulbMeshProps) {
+export function MandelbulbMesh(props: MandelbulbMeshProps) {
   const temporalDepth = useTemporalDepth({ enabled: true });
 
   // ... existing code ...
@@ -166,7 +166,7 @@ export function HyperbulbMesh(props: HyperbulbMeshProps) {
 ```
 
 **Tasks**:
-- [ ] Add useTemporalDepth() call to HyperbulbMesh
+- [ ] Add useTemporalDepth() call to MandelbulbMesh
 - [ ] Add useTemporalDepth() call to MandelboxMesh
 - [ ] Add useTemporalDepth() call to MengerMesh
 - [ ] Update useFrame to call updateTemporalDepthUniforms()
@@ -180,7 +180,7 @@ export function HyperbulbMesh(props: HyperbulbMeshProps) {
 **Goal**: Correct the temporal depth lookup for camera movement
 
 **Files**:
-- `src/components/canvas/renderers/Hyperbulb/hyperbulb.frag`
+- `src/components/canvas/renderers/Mandelbulb/mandelbulb.frag`
 - `src/components/canvas/renderers/Mandelbox/mandelbox.frag`
 - `src/components/canvas/renderers/Menger/menger.frag`
 
@@ -224,7 +224,7 @@ float getTemporalDepth(vec3 ro, vec3 rd, mat4 currentViewProj) {
 ```
 
 **Tasks**:
-- [ ] Implement correct reprojection in hyperbulb.frag
+- [ ] Implement correct reprojection in mandelbulb.frag
 - [ ] Implement correct reprojection in mandelbox.frag
 - [ ] Implement correct reprojection in menger.frag
 - [ ] Add uPrevViewProjectionMatrix uniform to shaders

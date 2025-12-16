@@ -15,7 +15,7 @@ import {
   VOLUMETRIC_DENSITY_RANGE,
 } from '@/rendering/opacity/constants'
 import type {
-  HyperbulbOpacitySettings,
+  MandelbulbOpacitySettings,
   OpacityMode,
   SampleQuality,
   VolumetricAnimationQuality,
@@ -50,7 +50,7 @@ export interface UISliceState {
   maxFps: number
 
   // --- Opacity (raymarching fractals) ---
-  opacitySettings: HyperbulbOpacitySettings
+  opacitySettings: MandelbulbOpacitySettings
   hasSeenVolumetricWarning: boolean
 }
 
@@ -76,7 +76,7 @@ export interface UISliceActions {
   setSampleQuality: (quality: SampleQuality) => void
   setVolumetricAnimationQuality: (quality: VolumetricAnimationQuality) => void
   setHasSeenVolumetricWarning: (seen: boolean) => void
-  setOpacitySettings: (settings: Partial<HyperbulbOpacitySettings>) => void
+  setOpacitySettings: (settings: Partial<MandelbulbOpacitySettings>) => void
 }
 
 export type UISlice = UISliceState & UISliceActions
@@ -214,7 +214,7 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set) => ({
     set({ hasSeenVolumetricWarning: seen })
   },
 
-  setOpacitySettings: (settings: Partial<HyperbulbOpacitySettings>) => {
+  setOpacitySettings: (settings: Partial<MandelbulbOpacitySettings>) => {
     set((state) => ({
       opacitySettings: {
         ...state.opacitySettings,

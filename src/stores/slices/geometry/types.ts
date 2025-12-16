@@ -2,12 +2,11 @@ import {
   CliffordTorusConfig,
   CliffordTorusEdgeMode,
   CliffordTorusMode,
-  KaliConfig,
-  MandelbrotColorMode,
-  MandelbrotConfig,
-  MandelbrotPalette,
-  MandelbrotQualityPreset,
-  MandelbrotRenderStyle,
+  MandelbulbColorMode,
+  MandelbulbConfig,
+  MandelbulbPalette,
+  MandelbulbQualityPreset,
+  MandelbulbRenderStyle,
   NestedTorusConfig,
   NestedTorusEdgeMode,
   PolytopeConfig,
@@ -86,71 +85,71 @@ export interface NestedTorusSliceActions {
 export type NestedTorusSlice = NestedTorusSliceState & NestedTorusSliceActions
 
 // ============================================================================
-// Mandelbrot Slice
+// Mandelbulb Slice
 // ============================================================================
-export interface MandelbrotSliceState {
-  mandelbrot: MandelbrotConfig
+export interface MandelbulbSliceState {
+  mandelbulb: MandelbulbConfig
 }
 
-export interface MandelbrotSliceActions {
-  setMandelbrotMaxIterations: (value: number) => void
-  setMandelbrotEscapeRadius: (value: number) => void
-  setMandelbrotQualityPreset: (preset: MandelbrotQualityPreset) => void
-  setMandelbrotResolution: (value: number) => void
-  setMandelbrotVisualizationAxes: (axes: [number, number, number]) => void
-  setMandelbrotVisualizationAxis: (index: 0 | 1 | 2, dimIndex: number) => void
-  setMandelbrotParameterValue: (dimIndex: number, value: number) => void
-  setMandelbrotParameterValues: (values: number[]) => void
-  resetMandelbrotParameters: () => void
-  setMandelbrotCenter: (center: number[]) => void
-  setMandelbrotExtent: (extent: number) => void
-  fitMandelbrotToView: () => void
-  setMandelbrotColorMode: (mode: MandelbrotColorMode) => void
-  setMandelbrotPalette: (palette: MandelbrotPalette) => void
-  setMandelbrotCustomPalette: (palette: { start: string; mid: string; end: string }) => void
-  setMandelbrotInvertColors: (invert: boolean) => void
-  setMandelbrotInteriorColor: (color: string) => void
-  setMandelbrotPaletteCycles: (cycles: number) => void
-  setMandelbrotRenderStyle: (style: MandelbrotRenderStyle) => void
-  setMandelbrotPointSize: (size: number) => void
-  setMandelbrotBoundaryThreshold: (threshold: [number, number]) => void
-  setMandelbrotMandelbulbPower: (power: number) => void
-  setMandelbrotConfig: (config: Partial<MandelbrotConfig>) => void
-  initializeMandelbrotForDimension: (dimension: number) => void
-  getMandelbrotConfig: () => MandelbrotConfig
-  // Power Animation (Hyperbulb-specific)
-  setMandelbrotPowerAnimationEnabled: (enabled: boolean) => void
-  setMandelbrotPowerMin: (min: number) => void
-  setMandelbrotPowerMax: (max: number) => void
-  setMandelbrotPowerSpeed: (speed: number) => void
+export interface MandelbulbSliceActions {
+  setMandelbulbMaxIterations: (value: number) => void
+  setMandelbulbEscapeRadius: (value: number) => void
+  setMandelbulbQualityPreset: (preset: MandelbulbQualityPreset) => void
+  setMandelbulbResolution: (value: number) => void
+  setMandelbulbVisualizationAxes: (axes: [number, number, number]) => void
+  setMandelbulbVisualizationAxis: (index: 0 | 1 | 2, dimIndex: number) => void
+  setMandelbulbParameterValue: (dimIndex: number, value: number) => void
+  setMandelbulbParameterValues: (values: number[]) => void
+  resetMandelbulbParameters: () => void
+  setMandelbulbCenter: (center: number[]) => void
+  setMandelbulbExtent: (extent: number) => void
+  fitMandelbulbToView: () => void
+  setMandelbulbColorMode: (mode: MandelbulbColorMode) => void
+  setMandelbulbPalette: (palette: MandelbulbPalette) => void
+  setMandelbulbCustomPalette: (palette: { start: string; mid: string; end: string }) => void
+  setMandelbulbInvertColors: (invert: boolean) => void
+  setMandelbulbInteriorColor: (color: string) => void
+  setMandelbulbPaletteCycles: (cycles: number) => void
+  setMandelbulbRenderStyle: (style: MandelbulbRenderStyle) => void
+  setMandelbulbPointSize: (size: number) => void
+  setMandelbulbBoundaryThreshold: (threshold: [number, number]) => void
+  setMandelbulbMandelbulbPower: (power: number) => void
+  setMandelbulbConfig: (config: Partial<MandelbulbConfig>) => void
+  initializeMandelbulbForDimension: (dimension: number) => void
+  getMandelbulbConfig: () => MandelbulbConfig
+  // Power Animation (Mandelbulb-specific)
+  setMandelbulbPowerAnimationEnabled: (enabled: boolean) => void
+  setMandelbulbPowerMin: (min: number) => void
+  setMandelbulbPowerMax: (max: number) => void
+  setMandelbulbPowerSpeed: (speed: number) => void
   // Alternate Power (Technique B variant)
-  setMandelbrotAlternatePowerEnabled: (enabled: boolean) => void
-  setMandelbrotAlternatePowerValue: (power: number) => void
-  setMandelbrotAlternatePowerBlend: (blend: number) => void
+  setMandelbulbAlternatePowerEnabled: (enabled: boolean) => void
+  setMandelbulbAlternatePowerValue: (power: number) => void
+  setMandelbulbAlternatePowerBlend: (blend: number) => void
   // Dimension Mixing (Technique A)
-  setMandelbrotDimensionMixEnabled: (enabled: boolean) => void
-  setMandelbrotMixIntensity: (intensity: number) => void
-  setMandelbrotMixFrequency: (frequency: number) => void
+  setMandelbulbDimensionMixEnabled: (enabled: boolean) => void
+  setMandelbulbMixIntensity: (intensity: number) => void
+  setMandelbulbMixFrequency: (frequency: number) => void
   // Origin Drift (Technique C)
-  setMandelbrotOriginDriftEnabled: (enabled: boolean) => void
-  setMandelbrotDriftAmplitude: (amplitude: number) => void
-  setMandelbrotDriftBaseFrequency: (frequency: number) => void
-  setMandelbrotDriftFrequencySpread: (spread: number) => void
+  setMandelbulbOriginDriftEnabled: (enabled: boolean) => void
+  setMandelbulbDriftAmplitude: (amplitude: number) => void
+  setMandelbulbDriftBaseFrequency: (frequency: number) => void
+  setMandelbulbDriftFrequencySpread: (spread: number) => void
   // Slice Animation (4D+ only)
-  setMandelbrotSliceAnimationEnabled: (enabled: boolean) => void
-  setMandelbrotSliceSpeed: (speed: number) => void
-  setMandelbrotSliceAmplitude: (amplitude: number) => void
+  setMandelbulbSliceAnimationEnabled: (enabled: boolean) => void
+  setMandelbulbSliceSpeed: (speed: number) => void
+  setMandelbulbSliceAmplitude: (amplitude: number) => void
   // Julia Morphing
-  setMandelbrotJuliaModeEnabled: (enabled: boolean) => void
-  setMandelbrotJuliaOrbitSpeed: (speed: number) => void
-  setMandelbrotJuliaOrbitRadius: (radius: number) => void
+  setMandelbulbJuliaModeEnabled: (enabled: boolean) => void
+  setMandelbulbJuliaOrbitSpeed: (speed: number) => void
+  setMandelbulbJuliaOrbitRadius: (radius: number) => void
   // Angular Phase Shifts
-  setMandelbrotPhaseShiftEnabled: (enabled: boolean) => void
-  setMandelbrotPhaseSpeed: (speed: number) => void
-  setMandelbrotPhaseAmplitude: (amplitude: number) => void
+  setMandelbulbPhaseShiftEnabled: (enabled: boolean) => void
+  setMandelbulbPhaseSpeed: (speed: number) => void
+  setMandelbulbPhaseAmplitude: (amplitude: number) => void
 }
 
-export type MandelbrotSlice = MandelbrotSliceState & MandelbrotSliceActions
+export type MandelbulbSlice = MandelbulbSliceState & MandelbulbSliceActions
 
 // ============================================================================
 // Quaternion Julia Slice
@@ -231,72 +230,13 @@ export interface QuaternionJuliaSliceActions {
 export type QuaternionJuliaSlice = QuaternionJuliaSliceState & QuaternionJuliaSliceActions
 
 // ============================================================================
-// Kali Slice
-// ============================================================================
-export interface KaliSliceState {
-  kali: KaliConfig
-}
-
-export interface KaliSliceActions {
-  // Core parameters
-  setKaliConstant: (value: number[]) => void
-  setKaliConstantComponent: (index: number, value: number) => void
-  setKaliReciprocalGain: (value: number) => void
-  setKaliAxisWeights: (value: number[]) => void
-  setKaliAxisWeight: (index: number, value: number) => void
-  // Iteration parameters
-  setKaliMaxIterations: (value: number) => void
-  setKaliBailoutRadius: (value: number) => void
-  setKaliEpsilon: (value: number) => void
-  // Quality parameters
-  setKaliScale: (value: number) => void
-  setKaliSurfaceThreshold: (value: number) => void
-  setKaliMaxRaymarchSteps: (value: number) => void
-  setKaliQualityMultiplier: (value: number) => void
-  setKaliQualityPreset: (preset: 'draft' | 'standard' | 'high' | 'ultra') => void
-  // D-dimensional parameters
-  setKaliParameterValue: (index: number, value: number) => void
-  setKaliParameterValues: (values: number[]) => void
-  resetKaliParameters: () => void
-  initializeKaliForDimension: (dimension: number) => void
-  // Constant animation
-  setKaliConstantAnimationEnabled: (value: boolean) => void
-  setKaliConstantAnimationAmplitude: (value: number) => void
-  setKaliConstantAnimationFrequency: (value: number) => void
-  setKaliConstantAnimationPhaseOffset: (value: number) => void
-  // Gain animation
-  setKaliGainAnimationEnabled: (value: boolean) => void
-  setKaliGainAnimationMinGain: (value: number) => void
-  setKaliGainAnimationMaxGain: (value: number) => void
-  setKaliGainAnimationSpeed: (value: number) => void
-  // Weights animation
-  setKaliWeightsAnimationEnabled: (value: boolean) => void
-  setKaliWeightsAnimationAmplitude: (value: number) => void
-  // Origin drift
-  setKaliOriginDriftEnabled: (value: boolean) => void
-  setKaliOriginDriftAmplitude: (value: number) => void
-  setKaliOriginDriftBaseFrequency: (value: number) => void
-  setKaliOriginDriftFrequencySpread: (value: number) => void
-  // Dimension mixing
-  setKaliDimensionMixEnabled: (value: boolean) => void
-  setKaliMixIntensity: (value: number) => void
-  setKaliMixFrequency: (value: number) => void
-  // Utility
-  getKaliConfig: () => KaliConfig
-  randomizeKaliConstant: () => void
-}
-
-export type KaliSlice = KaliSliceState & KaliSliceActions
-
-// ============================================================================
 // Combined Extended Object Slice
 // ============================================================================
 export type ExtendedObjectSlice = PolytopeSlice &
   RootSystemSlice &
   CliffordTorusSlice &
   NestedTorusSlice &
-  MandelbrotSlice &
-  QuaternionJuliaSlice &
-  KaliSlice & {
+  MandelbulbSlice &
+  QuaternionJuliaSlice & {
     reset: () => void
   }

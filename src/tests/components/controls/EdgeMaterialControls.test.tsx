@@ -5,7 +5,7 @@
 import { EdgeMaterialControls } from '@/components/sections/Edges/EdgeMaterialControls'
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useLightingStore } from '@/stores/lightingStore';
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 describe('EdgeMaterialControls', () => {
@@ -146,7 +146,9 @@ describe('EdgeMaterialControls', () => {
       useAppearanceStore.getState().setEdgeThickness(2);
       const { rerender } = render(<EdgeMaterialControls />);
 
-      useAppearanceStore.getState().setEdgeMetallic(0.9);
+      act(() => {
+        useAppearanceStore.getState().setEdgeMetallic(0.9);
+      });
       rerender(<EdgeMaterialControls />);
 
       expect(screen.getByDisplayValue('0.9')).toBeInTheDocument();
@@ -156,7 +158,9 @@ describe('EdgeMaterialControls', () => {
       useAppearanceStore.getState().setEdgeThickness(2);
       const { rerender } = render(<EdgeMaterialControls />);
 
-      useAppearanceStore.getState().setEdgeRoughness(0.3);
+      act(() => {
+        useAppearanceStore.getState().setEdgeRoughness(0.3);
+      });
       rerender(<EdgeMaterialControls />);
 
       expect(screen.getByDisplayValue('0.3')).toBeInTheDocument();

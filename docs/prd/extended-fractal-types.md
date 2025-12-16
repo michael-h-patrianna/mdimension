@@ -274,7 +274,7 @@ Trap examples:
 
 # 6) Triplex / Multicomplex Julia Variants (6D+ “Complex‑Like”)
 ### What it is
-Generalizations of complex numbers to higher dimensions (bicomplex/tricomplex, etc.). You get complex-style dynamics (Julia/Mandelbrot behavior) but in 4D/6D/8D spaces, which can slice into extremely intricate, organic structures.
+Generalizations of complex numbers to higher dimensions (bicomplex/tricomplex, etc.). You get complex-style dynamics (Julia/Mandelbulb behavior) but in 4D/6D/8D spaces, which can slice into extremely intricate, organic structures.
 
 ### Core math idea
 A practical developer approach:

@@ -1,6 +1,6 @@
 import { renderHook } from '@testing-library/react';
 import { useSmoothResizing } from '../../hooks/useSmoothResizing';
-import { useThree, useFrame } from '@react-three/fiber';
+import { useThree } from '@react-three/fiber';
 import { PerspectiveCamera } from 'three';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 

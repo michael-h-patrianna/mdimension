@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useMotionValue, useSpring, MotionValue } from 'motion/react';
+import { useSpring, MotionValue } from 'motion/react';
 import { useLayoutStore } from '@/stores/layoutStore';
 import { useIsDesktop } from '@/hooks/useMediaQuery';
 import { useShallow } from 'zustand/react/shallow';
@@ -34,12 +34,11 @@ export function usePanelCollision(
   const isDesktop = useIsDesktop();
 
   // 1. Get Layout States
-  const { 
-    showLeftPanel, 
-    isRightPanelOpen, 
-    showTopBar, 
+  const {
+    showLeftPanel,
+    isRightPanelOpen,
+    showTopBar,
     showBottomPanel,
-    isCinematicMode
   } = useLayoutStore(
     useShallow((state) => ({
       showLeftPanel: state.showLeftPanel && !state.isCinematicMode,
@@ -48,7 +47,6 @@ export function usePanelCollision(
       // Top/Bottom bars are visible if NOT cinematic
       showTopBar: !state.isCinematicMode,
       showBottomPanel: !state.isCinematicMode && isDesktop, // Bottom panel only on desktop
-      isCinematicMode: state.isCinematicMode,
     }))
   );
 

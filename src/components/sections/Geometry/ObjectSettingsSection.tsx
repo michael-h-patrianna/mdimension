@@ -15,7 +15,7 @@
  * Extended Objects:
  * - Root System: type (A/D/E8), scale (0.5-2.0), always has edges
  * - Clifford Torus: radius, resolution, edge mode
- * - Mandelbrot: max iterations, escape radius, etc.
+ * - Mandelbulb: max iterations, escape radius, etc.
  * - Quaternion Julia: constant, power, iterations, etc.
  */
 

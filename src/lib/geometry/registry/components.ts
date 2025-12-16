@@ -46,19 +46,14 @@ const componentLoaders: Record<string, () => Promise<{ default: ComponentType<un
     })),
 
   // Fractals
-  MandelbrotControls: () =>
-    import('@/components/sections/Geometry/MandelbrotControls').then((m) => ({
-      default: m.MandelbrotControls as ComponentType<unknown>,
+  MandelbulbControls: () =>
+    import('@/components/sections/Geometry/MandelbulbControls').then((m) => ({
+      default: m.MandelbulbControls as ComponentType<unknown>,
     })),
 
   QuaternionJuliaControls: () =>
     import('@/components/sections/Geometry/QuaternionJuliaControls').then((m) => ({
       default: m.QuaternionJuliaControls as ComponentType<unknown>,
-    })),
-
-  KaliControls: () =>
-    import('@/components/sections/Geometry/KaliControls').then((m) => ({
-      default: m.KaliControls as ComponentType<unknown>,
     })),
 }
 
@@ -66,7 +61,7 @@ const componentLoaders: Record<string, () => Promise<{ default: ComponentType<un
  * Gets a lazily-loaded controls component by key.
  * Returns a React.lazy component that can be rendered with Suspense.
  *
- * @param componentKey - The component key from registry (e.g., "MandelbrotControls")
+ * @param componentKey - The component key from registry (e.g., "MandelbulbControls")
  * @returns The lazy component, or null if not found
  *
  * @example

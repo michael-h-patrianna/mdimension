@@ -1,5 +1,5 @@
 /**
- * Hyperbulb Opacity Module
+ * Mandelbulb Opacity Module
  *
  * Re-exports all opacity-related types and constants.
  */

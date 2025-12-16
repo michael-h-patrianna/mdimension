@@ -612,7 +612,7 @@ Based on research guide `docs/research/nd-extended-objects-guide.md`:
 ### Integration Points
 - Object type selector: Add 4 new options
 - Geometry store: Extend to support new object types
-- Point cloud renderer: Required for Hypersphere, Torus Product (reuse from Mandelbrot if implemented)
+- Point cloud renderer: Required for Hypersphere, Torus Product (reuse from Mandelbulb if implemented)
 - Mesh renderer: Root systems and Clifford Torus can use existing edge rendering
 - Visual settings: Apply to all new objects
 - URL serialization: Add parameters for each object type

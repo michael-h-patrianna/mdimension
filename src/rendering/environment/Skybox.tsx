@@ -733,9 +733,12 @@ const SkyboxLoader: React.FC = () => {
         if (!cancelled) {
           const cubeTexture = loadedTexture as unknown as THREE.CubeTexture;
           // Configure texture for best quality
+          // Note: KTX2 compressed textures cannot generate mipmaps at runtime -
+          // they must be pre-baked into the .ktx2 file. Setting generateMipmaps=true
+          // causes GL_INVALID_OPERATION on compressed formats.
           cubeTexture.minFilter = THREE.LinearMipmapLinearFilter;
           cubeTexture.magFilter = THREE.LinearFilter;
-          cubeTexture.generateMipmaps = true;
+          cubeTexture.generateMipmaps = false;
           cubeTexture.needsUpdate = true;
           setTexture(cubeTexture);
           // Signal loading complete - resume animation and quality refinement

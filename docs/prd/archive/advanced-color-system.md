@@ -26,7 +26,7 @@ Replace discrete color modes with:
 ### Scope
 
 **Two Rendering Systems Affected:**
-1. **Raymarched Fractals** (Mandelbulb 3D, Hyperbulb 4D-11D) - Uses orbit trap values (0-1)
+1. **Raymarched Fractals** (Mandelbulb 3D, Mandelbulb 4D-11D) - Uses orbit trap values (0-1)
 2. **Face-Rendered Polytopes** (Tesseract, 600-cell, etc.) - Uses per-face depth values (0-1)
 
 Both systems share the same palette generation code but differ in how they compute the variation parameter `t` that drives color selection.
@@ -414,8 +414,8 @@ Scenario 4: Base hue shift rotates palette
 
 1. A "Distance-Field" option appears in the Color Algorithm dropdown in the Faces section
 2. When selected, colors are derived from the distance between surface point and camera
-3. The algorithm is only available for raymarched objects (Mandelbulb, Hyperbulb)
-4. For face-rendered polytopes, selecting this algorithm shows message: "Distance-Field coloring is only available for raymarched objects (Mandelbulb, Hyperbulb)"
+3. The algorithm is only available for raymarched objects (Mandelbulb, Mandelbulb)
+4. For face-rendered polytopes, selecting this algorithm shows message: "Distance-Field coloring is only available for raymarched objects (Mandelbulb, Mandelbulb)"
 5. Distance is normalized to 0-1 range based on the current view frustum
 6. Hue cycles based on distance: `hue = fract(normalizedDistance * uTrapCycles)`
 7. The effect creates smooth color bands radiating outward from the camera
@@ -950,7 +950,7 @@ uniform int uColorSpace;          // 0=sRGB, 1=LCH, 2=Oklab
 | `src/components/sidebar/Visual/ShaderSettings.tsx` | Remove face color controls (moved to Faces section) |
 | `src/components/sidebar/Visual/VisualSection.tsx` | Remove face-related controls |
 | `src/components/canvas/renderers/Mandelbulb/mandelbulb.frag` | Add new uniforms, use new algorithms |
-| `src/components/canvas/renderers/Hyperbulb/hyperbulb.frag` | Add new uniforms, use new algorithms |
+| `src/components/canvas/renderers/Mandelbulb/mandelbulb.frag` | Add new uniforms, use new algorithms |
 | `src/lib/shaders/materials/SurfaceMaterial.ts` | Update shader injection for new uniforms |
 
 ### Sidebar Section Order
@@ -993,6 +993,6 @@ After implementation, the sidebar sections will be ordered as:
 ## References
 
 - [Inigo Quilez: Procedural Palettes](https://iquilezles.org/articles/palettes/)
-- [Wikipedia: Plotting algorithms for the Mandelbrot set](https://en.wikipedia.org/wiki/Plotting_algorithms_for_the_Mandelbrot_set)
+- [Wikipedia: Plotting algorithms for the Mandelbulb set](https://en.wikipedia.org/wiki/Plotting_algorithms_for_the_Mandelbulb_set)
 - [Inigo Quilez: Orbit Traps](https://iquilezles.org/articles/orbittraps3d/)
 - Research document: `docs/prd/new_color_modes.md`

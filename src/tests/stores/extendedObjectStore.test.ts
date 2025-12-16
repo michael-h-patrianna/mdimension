@@ -26,9 +26,9 @@ describe('extendedObjectStore', () => {
       expect(state.cliffordTorus).toEqual(DEFAULT_CLIFFORD_TORUS_CONFIG)
     })
 
-    it('should have default mandelbrot config', () => {
+    it('should have default mandelbulb config', () => {
       const state = useExtendedObjectStore.getState()
-      expect(state.mandelbrot).toEqual(DEFAULT_MANDELBROT_CONFIG)
+      expect(state.mandelbulb).toEqual(DEFAULT_MANDELBROT_CONFIG)
     })
   })
 
@@ -151,256 +151,256 @@ describe('extendedObjectStore', () => {
     })
   })
 
-  describe('mandelbrot actions', () => {
+  describe('mandelbulb actions', () => {
     it('should set max iterations with clamping', () => {
-      const { setMandelbrotMaxIterations } = useExtendedObjectStore.getState()
+      const { setMandelbulbMaxIterations } = useExtendedObjectStore.getState()
 
-      setMandelbrotMaxIterations(100)
-      expect(useExtendedObjectStore.getState().mandelbrot.maxIterations).toBe(100)
+      setMandelbulbMaxIterations(100)
+      expect(useExtendedObjectStore.getState().mandelbulb.maxIterations).toBe(100)
 
       // Test clamping - too low
-      setMandelbrotMaxIterations(5)
-      expect(useExtendedObjectStore.getState().mandelbrot.maxIterations).toBe(10)
+      setMandelbulbMaxIterations(5)
+      expect(useExtendedObjectStore.getState().mandelbulb.maxIterations).toBe(10)
 
       // Test clamping - too high
-      setMandelbrotMaxIterations(1000)
-      expect(useExtendedObjectStore.getState().mandelbrot.maxIterations).toBe(500)
+      setMandelbulbMaxIterations(1000)
+      expect(useExtendedObjectStore.getState().mandelbulb.maxIterations).toBe(500)
     })
 
     it('should floor max iterations to integer', () => {
-      const { setMandelbrotMaxIterations } = useExtendedObjectStore.getState()
+      const { setMandelbulbMaxIterations } = useExtendedObjectStore.getState()
 
-      setMandelbrotMaxIterations(75.8)
-      expect(useExtendedObjectStore.getState().mandelbrot.maxIterations).toBe(75)
+      setMandelbulbMaxIterations(75.8)
+      expect(useExtendedObjectStore.getState().mandelbulb.maxIterations).toBe(75)
     })
 
     it('should set escape radius with clamping', () => {
-      const { setMandelbrotEscapeRadius } = useExtendedObjectStore.getState()
+      const { setMandelbulbEscapeRadius } = useExtendedObjectStore.getState()
 
-      setMandelbrotEscapeRadius(4.0)
-      expect(useExtendedObjectStore.getState().mandelbrot.escapeRadius).toBe(4.0)
+      setMandelbulbEscapeRadius(4.0)
+      expect(useExtendedObjectStore.getState().mandelbulb.escapeRadius).toBe(4.0)
 
       // Test clamping - too low
-      setMandelbrotEscapeRadius(1.0)
-      expect(useExtendedObjectStore.getState().mandelbrot.escapeRadius).toBe(2.0)
+      setMandelbulbEscapeRadius(1.0)
+      expect(useExtendedObjectStore.getState().mandelbulb.escapeRadius).toBe(2.0)
 
-      // Test clamping - too high (extended to 16 for Hyperbulb support)
-      setMandelbrotEscapeRadius(20)
-      expect(useExtendedObjectStore.getState().mandelbrot.escapeRadius).toBe(16.0)
+      // Test clamping - too high (extended to 16 for Mandelbulb support)
+      setMandelbulbEscapeRadius(20)
+      expect(useExtendedObjectStore.getState().mandelbulb.escapeRadius).toBe(16.0)
     })
 
     it('should set quality preset and update related settings', () => {
-      const { setMandelbrotQualityPreset } = useExtendedObjectStore.getState()
+      const { setMandelbulbQualityPreset } = useExtendedObjectStore.getState()
 
-      setMandelbrotQualityPreset('draft')
-      const state = useExtendedObjectStore.getState().mandelbrot
+      setMandelbulbQualityPreset('draft')
+      const state = useExtendedObjectStore.getState().mandelbulb
       expect(state.qualityPreset).toBe('draft')
       expect(state.maxIterations).toBe(30)
       expect(state.resolution).toBe(24)
 
-      setMandelbrotQualityPreset('ultra')
-      const ultraState = useExtendedObjectStore.getState().mandelbrot
+      setMandelbulbQualityPreset('ultra')
+      const ultraState = useExtendedObjectStore.getState().mandelbulb
       expect(ultraState.qualityPreset).toBe('ultra')
       expect(ultraState.maxIterations).toBe(500)
       expect(ultraState.resolution).toBe(96)
     })
 
     it('should set resolution to closest valid value', () => {
-      const { setMandelbrotResolution } = useExtendedObjectStore.getState()
+      const { setMandelbulbResolution } = useExtendedObjectStore.getState()
 
-      setMandelbrotResolution(32)
-      expect(useExtendedObjectStore.getState().mandelbrot.resolution).toBe(32)
+      setMandelbulbResolution(32)
+      expect(useExtendedObjectStore.getState().mandelbulb.resolution).toBe(32)
 
       // Should snap to closest valid resolution (16, 24, 32, 48, 64, 96, 128)
       // Use 42 which is clearly closer to 48 (distance 6) than 32 (distance 10)
-      setMandelbrotResolution(42)
-      expect(useExtendedObjectStore.getState().mandelbrot.resolution).toBe(48)
+      setMandelbulbResolution(42)
+      expect(useExtendedObjectStore.getState().mandelbulb.resolution).toBe(48)
 
       // Use 60 which is clearly closer to 64 (distance 4) than 48 (distance 12)
-      setMandelbrotResolution(60)
-      expect(useExtendedObjectStore.getState().mandelbrot.resolution).toBe(64)
+      setMandelbulbResolution(60)
+      expect(useExtendedObjectStore.getState().mandelbulb.resolution).toBe(64)
     })
 
     it('should set visualization axes', () => {
-      const { setMandelbrotVisualizationAxes } = useExtendedObjectStore.getState()
+      const { setMandelbulbVisualizationAxes } = useExtendedObjectStore.getState()
 
-      setMandelbrotVisualizationAxes([1, 2, 3])
-      expect(useExtendedObjectStore.getState().mandelbrot.visualizationAxes).toEqual([1, 2, 3])
+      setMandelbulbVisualizationAxes([1, 2, 3])
+      expect(useExtendedObjectStore.getState().mandelbulb.visualizationAxes).toEqual([1, 2, 3])
     })
 
     it('should set individual visualization axis', () => {
-      const { setMandelbrotVisualizationAxis } = useExtendedObjectStore.getState()
+      const { setMandelbulbVisualizationAxis } = useExtendedObjectStore.getState()
 
       // Start with default [0, 1, 2]
-      setMandelbrotVisualizationAxis(0, 3)
-      expect(useExtendedObjectStore.getState().mandelbrot.visualizationAxes).toEqual([3, 1, 2])
+      setMandelbulbVisualizationAxis(0, 3)
+      expect(useExtendedObjectStore.getState().mandelbulb.visualizationAxes).toEqual([3, 1, 2])
 
-      setMandelbrotVisualizationAxis(2, 4)
-      expect(useExtendedObjectStore.getState().mandelbrot.visualizationAxes).toEqual([3, 1, 4])
+      setMandelbulbVisualizationAxis(2, 4)
+      expect(useExtendedObjectStore.getState().mandelbulb.visualizationAxes).toEqual([3, 1, 4])
     })
 
     it('should set parameter value with clamping', () => {
-      const { setMandelbrotParameterValues, setMandelbrotParameterValue } =
+      const { setMandelbulbParameterValues, setMandelbulbParameterValue } =
         useExtendedObjectStore.getState()
 
       // First set up some parameter values
-      setMandelbrotParameterValues([0, 0, 0])
+      setMandelbulbParameterValues([0, 0, 0])
 
-      setMandelbrotParameterValue(1, 0.5)
-      expect(useExtendedObjectStore.getState().mandelbrot.parameterValues[1]).toBe(0.5)
+      setMandelbulbParameterValue(1, 0.5)
+      expect(useExtendedObjectStore.getState().mandelbulb.parameterValues[1]).toBe(0.5)
 
       // Test clamping
-      setMandelbrotParameterValue(0, 5.0)
-      expect(useExtendedObjectStore.getState().mandelbrot.parameterValues[0]).toBe(2.0)
+      setMandelbulbParameterValue(0, 5.0)
+      expect(useExtendedObjectStore.getState().mandelbulb.parameterValues[0]).toBe(2.0)
 
-      setMandelbrotParameterValue(2, -5.0)
-      expect(useExtendedObjectStore.getState().mandelbrot.parameterValues[2]).toBe(-2.0)
+      setMandelbulbParameterValue(2, -5.0)
+      expect(useExtendedObjectStore.getState().mandelbulb.parameterValues[2]).toBe(-2.0)
     })
 
     it('should set parameter values with clamping', () => {
-      const { setMandelbrotParameterValues } = useExtendedObjectStore.getState()
+      const { setMandelbulbParameterValues } = useExtendedObjectStore.getState()
 
-      setMandelbrotParameterValues([0.1, -0.2, 0.3])
-      expect(useExtendedObjectStore.getState().mandelbrot.parameterValues).toEqual([0.1, -0.2, 0.3])
+      setMandelbulbParameterValues([0.1, -0.2, 0.3])
+      expect(useExtendedObjectStore.getState().mandelbulb.parameterValues).toEqual([0.1, -0.2, 0.3])
 
       // Test clamping
-      setMandelbrotParameterValues([5, -5, 1])
-      expect(useExtendedObjectStore.getState().mandelbrot.parameterValues).toEqual([2.0, -2.0, 1])
+      setMandelbulbParameterValues([5, -5, 1])
+      expect(useExtendedObjectStore.getState().mandelbulb.parameterValues).toEqual([2.0, -2.0, 1])
     })
 
     it('should reset parameters to zeros', () => {
-      const { setMandelbrotParameterValues, resetMandelbrotParameters } =
+      const { setMandelbulbParameterValues, resetMandelbulbParameters } =
         useExtendedObjectStore.getState()
 
-      setMandelbrotParameterValues([0.5, -0.3, 0.2])
-      resetMandelbrotParameters()
-      expect(useExtendedObjectStore.getState().mandelbrot.parameterValues).toEqual([0, 0, 0])
+      setMandelbulbParameterValues([0.5, -0.3, 0.2])
+      resetMandelbulbParameters()
+      expect(useExtendedObjectStore.getState().mandelbulb.parameterValues).toEqual([0, 0, 0])
     })
 
     it('should set center coordinates', () => {
-      const { setMandelbrotCenter } = useExtendedObjectStore.getState()
+      const { setMandelbulbCenter } = useExtendedObjectStore.getState()
 
-      setMandelbrotCenter([0.1, -0.2, 0.3, 0.4])
-      expect(useExtendedObjectStore.getState().mandelbrot.center).toEqual([0.1, -0.2, 0.3, 0.4])
+      setMandelbulbCenter([0.1, -0.2, 0.3, 0.4])
+      expect(useExtendedObjectStore.getState().mandelbulb.center).toEqual([0.1, -0.2, 0.3, 0.4])
     })
 
     it('should set extent (zoom) with clamping', () => {
-      const { setMandelbrotExtent } = useExtendedObjectStore.getState()
+      const { setMandelbulbExtent } = useExtendedObjectStore.getState()
 
-      setMandelbrotExtent(1.5)
-      expect(useExtendedObjectStore.getState().mandelbrot.extent).toBe(1.5)
+      setMandelbulbExtent(1.5)
+      expect(useExtendedObjectStore.getState().mandelbulb.extent).toBe(1.5)
 
       // Test clamping - too low
-      setMandelbrotExtent(0.0001)
-      expect(useExtendedObjectStore.getState().mandelbrot.extent).toBe(0.001)
+      setMandelbulbExtent(0.0001)
+      expect(useExtendedObjectStore.getState().mandelbulb.extent).toBe(0.001)
 
       // Test clamping - too high
-      setMandelbrotExtent(20)
-      expect(useExtendedObjectStore.getState().mandelbrot.extent).toBe(10.0)
+      setMandelbulbExtent(20)
+      expect(useExtendedObjectStore.getState().mandelbulb.extent).toBe(10.0)
     })
 
     it('should fit to view (reset center and extent)', () => {
-      const { setMandelbrotCenter, setMandelbrotExtent, fitMandelbrotToView } =
+      const { setMandelbulbCenter, setMandelbulbExtent, fitMandelbulbToView } =
         useExtendedObjectStore.getState()
 
-      setMandelbrotCenter([0.5, -0.3, 0.2])
-      setMandelbrotExtent(0.5)
+      setMandelbulbCenter([0.5, -0.3, 0.2])
+      setMandelbulbExtent(0.5)
 
-      fitMandelbrotToView()
+      fitMandelbulbToView()
 
-      const state = useExtendedObjectStore.getState().mandelbrot
+      const state = useExtendedObjectStore.getState().mandelbulb
       expect(state.center).toEqual([0, 0, 0])
       expect(state.extent).toBe(2.5)
     })
 
     it('should set color mode', () => {
-      const { setMandelbrotColorMode } = useExtendedObjectStore.getState()
+      const { setMandelbulbColorMode } = useExtendedObjectStore.getState()
 
-      setMandelbrotColorMode('smoothColoring')
-      expect(useExtendedObjectStore.getState().mandelbrot.colorMode).toBe('smoothColoring')
+      setMandelbulbColorMode('smoothColoring')
+      expect(useExtendedObjectStore.getState().mandelbulb.colorMode).toBe('smoothColoring')
 
-      setMandelbrotColorMode('interiorOnly')
-      expect(useExtendedObjectStore.getState().mandelbrot.colorMode).toBe('interiorOnly')
+      setMandelbulbColorMode('interiorOnly')
+      expect(useExtendedObjectStore.getState().mandelbulb.colorMode).toBe('interiorOnly')
     })
 
     it('should set palette', () => {
-      const { setMandelbrotPalette } = useExtendedObjectStore.getState()
+      const { setMandelbulbPalette } = useExtendedObjectStore.getState()
 
-      setMandelbrotPalette('triadic')
-      expect(useExtendedObjectStore.getState().mandelbrot.palette).toBe('triadic')
+      setMandelbulbPalette('triadic')
+      expect(useExtendedObjectStore.getState().mandelbulb.palette).toBe('triadic')
 
-      setMandelbrotPalette('analogous')
-      expect(useExtendedObjectStore.getState().mandelbrot.palette).toBe('analogous')
+      setMandelbulbPalette('analogous')
+      expect(useExtendedObjectStore.getState().mandelbulb.palette).toBe('analogous')
     })
 
     it('should set custom palette', () => {
-      const { setMandelbrotCustomPalette } = useExtendedObjectStore.getState()
+      const { setMandelbulbCustomPalette } = useExtendedObjectStore.getState()
 
       const customPalette = { start: '#ff0000', mid: '#00ff00', end: '#0000ff' }
-      setMandelbrotCustomPalette(customPalette)
-      expect(useExtendedObjectStore.getState().mandelbrot.customPalette).toEqual(customPalette)
+      setMandelbulbCustomPalette(customPalette)
+      expect(useExtendedObjectStore.getState().mandelbulb.customPalette).toEqual(customPalette)
     })
 
     it('should set invert colors', () => {
-      const { setMandelbrotInvertColors } = useExtendedObjectStore.getState()
+      const { setMandelbulbInvertColors } = useExtendedObjectStore.getState()
 
-      setMandelbrotInvertColors(true)
-      expect(useExtendedObjectStore.getState().mandelbrot.invertColors).toBe(true)
+      setMandelbulbInvertColors(true)
+      expect(useExtendedObjectStore.getState().mandelbulb.invertColors).toBe(true)
 
-      setMandelbrotInvertColors(false)
-      expect(useExtendedObjectStore.getState().mandelbrot.invertColors).toBe(false)
+      setMandelbulbInvertColors(false)
+      expect(useExtendedObjectStore.getState().mandelbulb.invertColors).toBe(false)
     })
 
     it('should set interior color', () => {
-      const { setMandelbrotInteriorColor } = useExtendedObjectStore.getState()
+      const { setMandelbulbInteriorColor } = useExtendedObjectStore.getState()
 
-      setMandelbrotInteriorColor('#ff0000')
-      expect(useExtendedObjectStore.getState().mandelbrot.interiorColor).toBe('#ff0000')
+      setMandelbulbInteriorColor('#ff0000')
+      expect(useExtendedObjectStore.getState().mandelbulb.interiorColor).toBe('#ff0000')
     })
 
     it('should set palette cycles with clamping', () => {
-      const { setMandelbrotPaletteCycles } = useExtendedObjectStore.getState()
+      const { setMandelbulbPaletteCycles } = useExtendedObjectStore.getState()
 
-      setMandelbrotPaletteCycles(5)
-      expect(useExtendedObjectStore.getState().mandelbrot.paletteCycles).toBe(5)
+      setMandelbulbPaletteCycles(5)
+      expect(useExtendedObjectStore.getState().mandelbulb.paletteCycles).toBe(5)
 
       // Test clamping - too low
-      setMandelbrotPaletteCycles(0)
-      expect(useExtendedObjectStore.getState().mandelbrot.paletteCycles).toBe(1)
+      setMandelbulbPaletteCycles(0)
+      expect(useExtendedObjectStore.getState().mandelbulb.paletteCycles).toBe(1)
 
       // Test clamping - too high
-      setMandelbrotPaletteCycles(30)
-      expect(useExtendedObjectStore.getState().mandelbrot.paletteCycles).toBe(20)
+      setMandelbulbPaletteCycles(30)
+      expect(useExtendedObjectStore.getState().mandelbulb.paletteCycles).toBe(20)
     })
 
     it('should set render style', () => {
-      const { setMandelbrotRenderStyle } = useExtendedObjectStore.getState()
+      const { setMandelbulbRenderStyle } = useExtendedObjectStore.getState()
 
-      setMandelbrotRenderStyle('rayMarching')
-      expect(useExtendedObjectStore.getState().mandelbrot.renderStyle).toBe('rayMarching')
+      setMandelbulbRenderStyle('rayMarching')
+      expect(useExtendedObjectStore.getState().mandelbulb.renderStyle).toBe('rayMarching')
     })
 
     it('should set point size with clamping', () => {
-      const { setMandelbrotPointSize } = useExtendedObjectStore.getState()
+      const { setMandelbulbPointSize } = useExtendedObjectStore.getState()
 
-      setMandelbrotPointSize(5)
-      expect(useExtendedObjectStore.getState().mandelbrot.pointSize).toBe(5)
+      setMandelbulbPointSize(5)
+      expect(useExtendedObjectStore.getState().mandelbulb.pointSize).toBe(5)
 
       // Test clamping - too low
-      setMandelbrotPointSize(0)
-      expect(useExtendedObjectStore.getState().mandelbrot.pointSize).toBe(1)
+      setMandelbulbPointSize(0)
+      expect(useExtendedObjectStore.getState().mandelbulb.pointSize).toBe(1)
 
       // Test clamping - too high
-      setMandelbrotPointSize(30)
-      expect(useExtendedObjectStore.getState().mandelbrot.pointSize).toBe(20)
+      setMandelbulbPointSize(30)
+      expect(useExtendedObjectStore.getState().mandelbulb.pointSize).toBe(20)
     })
 
     it('should initialize for dimension', () => {
-      const { initializeMandelbrotForDimension } = useExtendedObjectStore.getState()
+      const { initializeMandelbulbForDimension } = useExtendedObjectStore.getState()
 
-      initializeMandelbrotForDimension(5)
+      initializeMandelbulbForDimension(5)
 
-      const state = useExtendedObjectStore.getState().mandelbrot
+      const state = useExtendedObjectStore.getState().mandelbulb
       expect(state.parameterValues).toHaveLength(2) // 5 - 3 = 2
       expect(state.parameterValues).toEqual([0, 0])
       expect(state.center).toHaveLength(5)
@@ -409,61 +409,61 @@ describe('extendedObjectStore', () => {
     })
 
     it('should set boundary threshold with clamping and ordering', () => {
-      const { setMandelbrotBoundaryThreshold } = useExtendedObjectStore.getState()
+      const { setMandelbulbBoundaryThreshold } = useExtendedObjectStore.getState()
 
       // Normal setting
-      setMandelbrotBoundaryThreshold([0.2, 0.8])
-      expect(useExtendedObjectStore.getState().mandelbrot.boundaryThreshold).toEqual([0.2, 0.8])
+      setMandelbulbBoundaryThreshold([0.2, 0.8])
+      expect(useExtendedObjectStore.getState().mandelbulb.boundaryThreshold).toEqual([0.2, 0.8])
 
       // Clamp too low
-      setMandelbrotBoundaryThreshold([-0.5, 0.5])
-      expect(useExtendedObjectStore.getState().mandelbrot.boundaryThreshold).toEqual([0, 0.5])
+      setMandelbulbBoundaryThreshold([-0.5, 0.5])
+      expect(useExtendedObjectStore.getState().mandelbulb.boundaryThreshold).toEqual([0, 0.5])
 
       // Clamp too high
-      setMandelbrotBoundaryThreshold([0.3, 1.5])
-      expect(useExtendedObjectStore.getState().mandelbrot.boundaryThreshold).toEqual([0.3, 1])
+      setMandelbulbBoundaryThreshold([0.3, 1.5])
+      expect(useExtendedObjectStore.getState().mandelbulb.boundaryThreshold).toEqual([0.3, 1])
 
       // Ensure min <= max (min is clamped, then max is clamped to be >= min)
-      setMandelbrotBoundaryThreshold([0.8, 0.3])
-      const threshold = useExtendedObjectStore.getState().mandelbrot.boundaryThreshold
+      setMandelbulbBoundaryThreshold([0.8, 0.3])
+      const threshold = useExtendedObjectStore.getState().mandelbulb.boundaryThreshold
       expect(threshold[0]).toBeLessThanOrEqual(threshold[1])
     })
 
     it('should set mandelbulb power with clamping and integer', () => {
-      const { setMandelbrotMandelbulbPower } = useExtendedObjectStore.getState()
+      const { setMandelbulbMandelbulbPower } = useExtendedObjectStore.getState()
 
       // Normal setting
-      setMandelbrotMandelbulbPower(8)
-      expect(useExtendedObjectStore.getState().mandelbrot.mandelbulbPower).toBe(8)
+      setMandelbulbMandelbulbPower(8)
+      expect(useExtendedObjectStore.getState().mandelbulb.mandelbulbPower).toBe(8)
 
       // Different value
-      setMandelbrotMandelbulbPower(3)
-      expect(useExtendedObjectStore.getState().mandelbrot.mandelbulbPower).toBe(3)
+      setMandelbulbMandelbulbPower(3)
+      expect(useExtendedObjectStore.getState().mandelbulb.mandelbulbPower).toBe(3)
 
       // Clamp too low (min 2)
-      setMandelbrotMandelbulbPower(1)
-      expect(useExtendedObjectStore.getState().mandelbrot.mandelbulbPower).toBe(2)
+      setMandelbulbMandelbulbPower(1)
+      expect(useExtendedObjectStore.getState().mandelbulb.mandelbulbPower).toBe(2)
 
       // Clamp too high (max 16)
-      setMandelbrotMandelbulbPower(20)
-      expect(useExtendedObjectStore.getState().mandelbrot.mandelbulbPower).toBe(16)
+      setMandelbulbMandelbulbPower(20)
+      expect(useExtendedObjectStore.getState().mandelbulb.mandelbulbPower).toBe(16)
 
       // Should floor decimal values
-      setMandelbrotMandelbulbPower(5.7)
-      expect(useExtendedObjectStore.getState().mandelbrot.mandelbulbPower).toBe(5)
+      setMandelbulbMandelbulbPower(5.7)
+      expect(useExtendedObjectStore.getState().mandelbulb.mandelbulbPower).toBe(5)
     })
 
     it('should get config as copy', () => {
-      const { getMandelbrotConfig, setMandelbrotMaxIterations } = useExtendedObjectStore.getState()
+      const { getMandelbulbConfig, setMandelbulbMaxIterations } = useExtendedObjectStore.getState()
 
-      setMandelbrotMaxIterations(150)
-      const config = getMandelbrotConfig()
+      setMandelbulbMaxIterations(150)
+      const config = getMandelbulbConfig()
 
       expect(config.maxIterations).toBe(150)
 
       // Should be a copy, not a reference
       config.maxIterations = 999
-      expect(useExtendedObjectStore.getState().mandelbrot.maxIterations).toBe(150)
+      expect(useExtendedObjectStore.getState().mandelbulb.maxIterations).toBe(150)
     })
   })
 
@@ -474,8 +474,8 @@ describe('extendedObjectStore', () => {
       // Modify all configs
       state.setRootSystemType('E8')
       state.setCliffordTorusRadius(2.5)
-      state.setMandelbrotMaxIterations(200)
-      state.setMandelbrotPalette('triadic')
+      state.setMandelbulbMaxIterations(200)
+      state.setMandelbulbPalette('triadic')
 
       // Reset
       state.reset()
@@ -484,7 +484,7 @@ describe('extendedObjectStore', () => {
       const newState = useExtendedObjectStore.getState()
       expect(newState.rootSystem).toEqual(DEFAULT_ROOT_SYSTEM_CONFIG)
       expect(newState.cliffordTorus).toEqual(DEFAULT_CLIFFORD_TORUS_CONFIG)
-      expect(newState.mandelbrot).toEqual(DEFAULT_MANDELBROT_CONFIG)
+      expect(newState.mandelbulb).toEqual(DEFAULT_MANDELBROT_CONFIG)
     })
   })
 })

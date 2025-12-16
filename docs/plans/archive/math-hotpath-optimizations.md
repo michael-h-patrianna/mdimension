@@ -45,7 +45,7 @@ Called when rotation angles change (60fps during animation):
 
 | Function | File | Current Issues | Callers |
 |----------|------|----------------|---------|
-| `composeRotations` | rotation.ts | ❌ Creates maps, arrays | useRotatedVertices, HyperbulbMesh |
+| `composeRotations` | rotation.ts | ❌ Creates maps, arrays | useRotatedVertices, MandelbulbMesh |
 | `createRotationMatrix` | rotation.ts | Calls `createIdentityMatrix` | composeRotations |
 | `multiplyMatrices` | matrix.ts | Calls `createZeroMatrix` | composeRotations |
 

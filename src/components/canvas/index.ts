@@ -37,4 +37,4 @@ export { CameraController } from './CameraController'
 export type { CameraControllerProps } from './CameraController'
 
 // Raymarched renderers
-export { default as HyperbulbMesh } from '@/rendering/renderers/Hyperbulb/HyperbulbMesh'
+export { default as MandelbulbMesh } from '@/rendering/renderers/Mandelbulb/MandelbulbMesh'

@@ -6,7 +6,7 @@
  *
  * Render modes:
  * - polytope: Traditional polytopes (hypercube, simplex, cross-polytope) with faces/edges/vertices
- * - raymarch-mandelbrot: Raymarched 3D-11D surfaces (unified Hyperbulb for all dimensions)
+ * - raymarch-mandelbulb: Raymarched 3D-11D surfaces (unified Mandelbulb for all dimensions)
  *
  * All renderers use useFrame for transformations, reading from stores via getState()
  * to bypass React's render cycle completely during animation.
@@ -18,15 +18,14 @@ import { determineRenderMode as determineRenderModeFromRegistry } from '@/lib/ge
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import React, { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import HyperbulbMesh from './Hyperbulb/HyperbulbMesh';
-import KaliMesh from './Kali/KaliMesh';
+import MandelbulbMesh from './Mandelbulb/MandelbulbMesh';
 import QuaternionJuliaMesh from './QuaternionJulia/QuaternionJuliaMesh';
 import { PolytopeScene } from './Polytope';
 
 /**
  * Render mode types
  */
-export type RenderMode = 'polytope' | 'raymarch-mandelbrot' | 'raymarch-quaternion-julia' | 'raymarch-kali' | 'none';
+export type RenderMode = 'polytope' | 'raymarch-mandelbulb' | 'raymarch-quaternion-julia' | 'none';
 
 /**
  * Props for UnifiedRenderer
@@ -42,7 +41,7 @@ export interface UnifiedRendererProps {
   faces?: Face[];
   /** Per-face depth values for palette coloring (polytopes only) */
   faceDepths?: number[];
-  /** Per-point colors for Mandelbrot visualization */
+  /** Per-point colors for Mandelbulb visualization */
   pointColors?: string[];
   /** Overall opacity (default: 1.0) */
   opacity?: number;
@@ -122,14 +121,11 @@ export const UnifiedRenderer = React.memo(function UnifiedRenderer({
         />
       )}
 
-      {/* Raymarched 3D-11D Mandelbulb/Hyperbulb surface (unified renderer) */}
-      {renderMode === 'raymarch-mandelbrot' && <HyperbulbMesh />}
+      {/* Raymarched 3D-11D Mandelbulb/Mandelbulb surface (unified renderer) */}
+      {renderMode === 'raymarch-mandelbulb' && <MandelbulbMesh />}
 
       {/* Raymarched 3D-11D Quaternion Julia */}
       {renderMode === 'raymarch-quaternion-julia' && <QuaternionJuliaMesh />}
-
-      {/* Raymarched 3D-11D Kali reciprocal fractal */}
-      {renderMode === 'raymarch-kali' && <KaliMesh />}
     </>
   );
 });

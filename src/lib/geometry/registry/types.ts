@@ -22,7 +22,7 @@ export type ObjectCategory = 'polytope' | 'extended' | 'fractal'
 /**
  * Render method determines which renderer handles the object
  * - polytope: Traditional vertex/edge/face rendering via PolytopeScene
- * - raymarch: GPU raymarching for fractals (Mandelbrot, Quaternion Julia)
+ * - raymarch: GPU raymarching for fractals (Mandelbulb, Quaternion Julia)
  * - point-cloud: Point-based rendering (future use)
  */
 export type RenderMethod = 'polytope' | 'raymarch' | 'point-cloud'
@@ -131,7 +131,7 @@ export interface AnimationSystemDef {
   minDimension?: number
   /**
    * Store key for the enabled flag.
-   * e.g., "powerAnimationEnabled" for mandelbrot powerAnimation system
+   * e.g., "powerAnimationEnabled" for mandelbulb powerAnimation system
    */
   enabledKey: string
   /**
@@ -183,7 +183,7 @@ export interface UiComponentMapping {
   /**
    * Key for the controls component.
    * Used by the dynamic component loader to import the right component.
-   * e.g., "PolytopeSettings", "MandelbrotControls"
+   * e.g., "PolytopeSettings", "MandelbulbControls"
    */
   controlsComponentKey: string
   /**
@@ -242,7 +242,7 @@ export interface ObjectTypeEntry {
 
   /**
    * Key for the config object in extendedObjectStore.
-   * e.g., "mandelbrot" → store.mandelbrot
+   * e.g., "mandelbulb" → store.mandelbulb
    * e.g., "polytope" → store.polytope
    */
   configStoreKey: string

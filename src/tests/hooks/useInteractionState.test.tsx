@@ -1,8 +1,8 @@
 import { renderHook, act } from '@testing-library/react';
 import { useInteractionState } from '@/hooks/useInteractionState';
 import { usePerformanceStore } from '@/stores';
-import { useThree, useFrame } from '@react-three/fiber';
-import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { useThree } from '@react-three/fiber';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { Vector3, Euler } from 'three';
 
 // Mock R3F
@@ -27,8 +27,6 @@ const initialStoreState = {
 };
 
 describe('useInteractionState', () => {
-  let addEventListenerSpy: any;
-  let removeEventListenerSpy: any;
   let canvasMock: any;
   let cameraMock: any;
 
@@ -83,7 +81,7 @@ describe('useInteractionState', () => {
 
   it('should start interaction on pointer move when pointer is down', () => {
     vi.useFakeTimers();
-    const { result } = renderHook(() => useInteractionState());
+    renderHook(() => useInteractionState());
 
     const pointerDownHandler = canvasMock.addEventListener.mock.calls.find(
       (call: any) => call[0] === 'pointerdown'

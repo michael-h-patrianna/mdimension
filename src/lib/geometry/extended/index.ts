@@ -4,7 +4,7 @@
  * Provides generators for extended n-dimensional geometric objects:
  * - Root Systems: A, D, and E8 root polytopes
  * - Clifford Torus: Flat torus on S³
- * - Mandelbrot: N-dimensional fractal (Mandelbulb/Hyperbulb)
+ * - Mandelbulb: N-dimensional fractal (Mandelbulb/Mandelbulb)
  * - Quaternion Julia: Julia set fractal using quaternion algebra
  *
  * @see docs/prd/extended-objects.md
@@ -17,11 +17,11 @@ export type {
   CliffordTorusEdgeMode,
   CliffordTorusMode,
   ExtendedObjectParams,
-  MandelbrotColorMode,
-  MandelbrotConfig,
-  MandelbrotPalette,
-  MandelbrotQualityPreset,
-  MandelbrotRenderStyle,
+  MandelbulbColorMode,
+  MandelbulbConfig,
+  MandelbulbPalette,
+  MandelbulbQualityPreset,
+  MandelbulbRenderStyle,
   PolytopeConfig,
   RootSystemConfig,
   RootSystemType,
@@ -57,18 +57,18 @@ export {
   verifyCliffordTorusOnSphere,
 } from './clifford-torus'
 
-// Mandelbrot
+// Mandelbulb
 export {
   filterSamples,
-  generateMandelbrot,
+  generateMandelbulb,
   generateSampleGrid,
-  getMandelbrotStats,
-  mandelbrotEscapeTime,
-  mandelbrotSmoothEscapeTime,
-  mandelbrotStep,
+  getMandelbulbStats,
+  mandelbulbEscapeTime,
+  mandelbulbSmoothEscapeTime,
+  mandelbulbStep,
   normSquared,
-} from './mandelbrot'
-export type { MandelbrotSample } from './mandelbrot'
+} from './mandelbulb'
+export type { MandelbulbSample } from './mandelbulb'
 
 // Utility exports
 export {
@@ -83,7 +83,7 @@ export { buildShortEdges } from './utils/short-edges'
 import type { NdGeometry, ObjectType } from '../types'
 import { isPolytopeType } from '../types'
 import { generateCliffordTorus } from './clifford-torus'
-import { generateMandelbrot } from './mandelbrot'
+import { generateMandelbulb } from './mandelbulb'
 import { generateNestedTorus } from './nested-torus'
 import { generateRootSystem } from './root-system'
 import type { ExtendedObjectParams } from './types'
@@ -102,10 +102,10 @@ import { DEFAULT_EXTENDED_OBJECT_PARAMS } from './types'
  *
  * @example
  * ```typescript
- * // Generate a Mandelbrot set
- * const mandelbrot = generateExtendedObject('mandelbrot', 4, {
+ * // Generate a Mandelbulb set
+ * const mandelbulb = generateExtendedObject('mandelbulb', 4, {
  *   ...DEFAULT_EXTENDED_OBJECT_PARAMS,
- *   mandelbrot: { maxIterations: 100, resolution: 48, ... },
+ *   mandelbulb: { maxIterations: 100, resolution: 48, ... },
  * });
  *
  * // Generate a root system
@@ -137,10 +137,10 @@ export function generateExtendedObject(
     case 'nested-torus':
       return generateNestedTorus(dimension, params.nestedTorus)
 
-    case 'mandelbrot':
-      return generateMandelbrot(
+    case 'mandelbulb':
+      return generateMandelbulb(
         dimension,
-        params.mandelbrot ?? DEFAULT_EXTENDED_OBJECT_PARAMS.mandelbrot
+        params.mandelbulb ?? DEFAULT_EXTENDED_OBJECT_PARAMS.mandelbulb
       )
 
     case 'quaternion-julia':
@@ -153,22 +153,6 @@ export function generateExtendedObject(
         edges: [],
         metadata: {
           name: 'Quaternion Julia',
-          properties: {
-            renderMode: 'raymarching',
-          },
-        },
-      }
-
-    case 'kali':
-      // Kali uses GPU raymarching exclusively - no CPU geometry needed
-      // Return minimal geometry that signals to UnifiedRenderer to use KaliMesh
-      return {
-        dimension,
-        type: 'kali',
-        vertices: [],
-        edges: [],
-        metadata: {
-          name: 'Kali',
           properties: {
             renderMode: 'raymarching',
           },

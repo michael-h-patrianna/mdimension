@@ -89,7 +89,7 @@ export function isExtendedCategory(type: string): boolean {
 }
 
 /**
- * Checks if an object type is a fractal (mandelbrot, quaternion-julia).
+ * Checks if an object type is a fractal (mandelbulb, quaternion-julia).
  *
  * @param type - The object type to check
  * @returns true if the type is a fractal
@@ -212,7 +212,7 @@ export function determineRenderMode(
   type: ObjectType,
   dimension: number,
   facesVisible: boolean
-): 'polytope' | 'raymarch-mandelbrot' | 'raymarch-quaternion-julia' | 'raymarch-kali' | 'none' {
+): 'polytope' | 'raymarch-mandelbulb' | 'raymarch-quaternion-julia' | 'none' {
   const entry = getObjectTypeEntry(type)
   if (!entry) return 'none'
 
@@ -220,8 +220,7 @@ export function determineRenderMode(
     if (!facesVisible || dimension < 3) return 'none'
     // Specific raymarch modes based on type
     if (type === 'quaternion-julia') return 'raymarch-quaternion-julia'
-    if (type === 'mandelbrot') return 'raymarch-mandelbrot'
-    if (type === 'kali') return 'raymarch-kali'
+    if (type === 'mandelbulb') return 'raymarch-mandelbulb'
   }
 
   return 'polytope'
@@ -480,7 +479,7 @@ export function getTypeDescription(type: ObjectType): string {
  * Gets the config store key for an object type.
  *
  * @param type - The object type
- * @returns The key used in extendedObjectStore (e.g., 'mandelbrot', 'polytope')
+ * @returns The key used in extendedObjectStore (e.g., 'mandelbulb', 'polytope')
  */
 export function getConfigStoreKey(type: ObjectType): string | undefined {
   return getObjectTypeEntry(type)?.configStoreKey

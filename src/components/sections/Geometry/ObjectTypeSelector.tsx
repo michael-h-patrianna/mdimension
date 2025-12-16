@@ -4,7 +4,7 @@
  *
  * Supports both traditional polytopes and extended objects:
  * - Polytopes: Hypercube, Simplex, Cross-Polytope
- * - Extended: Root System, Clifford Torus, Mandelbrot, Quaternion Julia
+ * - Extended: Root System, Clifford Torus, Mandelbulb, Quaternion Julia
  */
 
 import React, { useMemo, useEffect } from 'react';
@@ -30,25 +30,22 @@ export const ObjectTypeSelector: React.FC<ObjectTypeSelectorProps> = ({
   const setObjectType = useGeometryStore((state) => state.setObjectType);
   const dimension = useGeometryStore((state) => state.dimension);
   const resetAllRotations = useRotationStore((state) => state.resetAllRotations);
-  const initializeMandelbrotForDimension = useExtendedObjectStore(
-    (state) => state.initializeMandelbrotForDimension
+  const initializeMandelbulbForDimension = useExtendedObjectStore(
+    (state) => state.initializeMandelbulbForDimension
   );
   const initializeQuaternionJuliaForDimension = useExtendedObjectStore(
     (state) => state.initializeQuaternionJuliaForDimension
-  );
-  const initializeKaliForDimension = useExtendedObjectStore(
-    (state) => state.initializeKaliForDimension
   );
   const initializePolytopeForType = useExtendedObjectStore(
     (state) => state.initializePolytopeForType
   );
 
-  // Initialize Mandelbrot settings when objectType is 'mandelbrot' and dimension changes
+  // Initialize Mandelbulb settings when objectType is 'mandelbulb' and dimension changes
   useEffect(() => {
-    if (objectType === 'mandelbrot') {
-      initializeMandelbrotForDimension(dimension);
+    if (objectType === 'mandelbulb') {
+      initializeMandelbulbForDimension(dimension);
     }
-  }, [objectType, dimension, initializeMandelbrotForDimension]);
+  }, [objectType, dimension, initializeMandelbulbForDimension]);
 
   // Initialize Quaternion Julia settings when objectType is 'quaternion-julia' and dimension changes
   useEffect(() => {
@@ -56,13 +53,6 @@ export const ObjectTypeSelector: React.FC<ObjectTypeSelectorProps> = ({
       initializeQuaternionJuliaForDimension(dimension);
     }
   }, [objectType, dimension, initializeQuaternionJuliaForDimension]);
-
-  // Initialize Kali settings when objectType is 'kali' and dimension changes
-  useEffect(() => {
-    if (objectType === 'kali') {
-      initializeKaliForDimension(dimension);
-    }
-  }, [objectType, dimension, initializeKaliForDimension]);
 
   // Initialize polytope scale when switching to a polytope type
   useEffect(() => {

@@ -19,7 +19,7 @@ describe('Opacity URL Serialization', () => {
     it('should not serialize solid mode (default)', () => {
       const state: ShareableState = {
         dimension: 4,
-        objectType: 'mandelbrot',
+        objectType: 'mandelbulb',
         opacityMode: 'solid',
       };
 
@@ -30,7 +30,7 @@ describe('Opacity URL Serialization', () => {
     it('should serialize simpleAlpha mode with custom opacity', () => {
       const state: ShareableState = {
         dimension: 4,
-        objectType: 'mandelbrot',
+        objectType: 'mandelbulb',
         opacityMode: 'simpleAlpha',
         simpleAlphaOpacity: 0.5,
       };
@@ -43,7 +43,7 @@ describe('Opacity URL Serialization', () => {
     it('should serialize layeredSurfaces mode with layer settings', () => {
       const state: ShareableState = {
         dimension: 4,
-        objectType: 'mandelbrot',
+        objectType: 'mandelbulb',
         opacityMode: 'layeredSurfaces',
         layerCount: 4,
         layerOpacity: 0.7,
@@ -58,7 +58,7 @@ describe('Opacity URL Serialization', () => {
     it('should serialize volumetricDensity mode with all settings', () => {
       const state: ShareableState = {
         dimension: 4,
-        objectType: 'mandelbrot',
+        objectType: 'mandelbulb',
         opacityMode: 'volumetricDensity',
         volumetricDensity: 1.5,
         sampleQuality: 'high',
@@ -75,7 +75,7 @@ describe('Opacity URL Serialization', () => {
     it('should not serialize default mode-specific values', () => {
       const state: ShareableState = {
         dimension: 4,
-        objectType: 'mandelbrot',
+        objectType: 'mandelbulb',
         opacityMode: 'simpleAlpha',
         simpleAlphaOpacity: 0.7, // default value
       };
@@ -88,7 +88,7 @@ describe('Opacity URL Serialization', () => {
 
   describe('deserializeState', () => {
     it('should deserialize simpleAlpha mode', () => {
-      const params = `d=4&t=mandelbrot&${URL_KEY_OPACITY_MODE}=1&${URL_KEY_SIMPLE_ALPHA}=0.50`;
+      const params = `d=4&t=mandelbulb&${URL_KEY_OPACITY_MODE}=1&${URL_KEY_SIMPLE_ALPHA}=0.50`;
       const result = deserializeState(params);
 
       expect(result.opacityMode).toBe('simpleAlpha');
@@ -96,7 +96,7 @@ describe('Opacity URL Serialization', () => {
     });
 
     it('should deserialize layeredSurfaces mode', () => {
-      const params = `d=4&t=mandelbrot&${URL_KEY_OPACITY_MODE}=2&${URL_KEY_LAYER_COUNT}=3&${URL_KEY_LAYER_OPACITY}=0.60`;
+      const params = `d=4&t=mandelbulb&${URL_KEY_OPACITY_MODE}=2&${URL_KEY_LAYER_COUNT}=3&${URL_KEY_LAYER_OPACITY}=0.60`;
       const result = deserializeState(params);
 
       expect(result.opacityMode).toBe('layeredSurfaces');
@@ -105,7 +105,7 @@ describe('Opacity URL Serialization', () => {
     });
 
     it('should deserialize volumetricDensity mode', () => {
-      const params = `d=4&t=mandelbrot&${URL_KEY_OPACITY_MODE}=3&${URL_KEY_VOLUMETRIC_DENSITY}=1.50&${URL_KEY_SAMPLE_QUALITY}=2&${URL_KEY_VOLUMETRIC_ANIM_QUALITY}=1`;
+      const params = `d=4&t=mandelbulb&${URL_KEY_OPACITY_MODE}=3&${URL_KEY_VOLUMETRIC_DENSITY}=1.50&${URL_KEY_SAMPLE_QUALITY}=2&${URL_KEY_VOLUMETRIC_ANIM_QUALITY}=1`;
       const result = deserializeState(params);
 
       expect(result.opacityMode).toBe('volumetricDensity');
@@ -115,7 +115,7 @@ describe('Opacity URL Serialization', () => {
     });
 
     it('should handle invalid opacity mode gracefully', () => {
-      const params = `d=4&t=mandelbrot&${URL_KEY_OPACITY_MODE}=99`;
+      const params = `d=4&t=mandelbulb&${URL_KEY_OPACITY_MODE}=99`;
       const result = deserializeState(params);
 
       // Invalid mode should not be set
@@ -123,7 +123,7 @@ describe('Opacity URL Serialization', () => {
     });
 
     it('should validate simpleAlphaOpacity range', () => {
-      const params = `d=4&t=mandelbrot&${URL_KEY_OPACITY_MODE}=1&${URL_KEY_SIMPLE_ALPHA}=1.50`;
+      const params = `d=4&t=mandelbulb&${URL_KEY_OPACITY_MODE}=1&${URL_KEY_SIMPLE_ALPHA}=1.50`;
       const result = deserializeState(params);
 
       // Out of range value should not be set
@@ -131,7 +131,7 @@ describe('Opacity URL Serialization', () => {
     });
 
     it('should validate layerCount values', () => {
-      const params = `d=4&t=mandelbrot&${URL_KEY_OPACITY_MODE}=2&${URL_KEY_LAYER_COUNT}=5`;
+      const params = `d=4&t=mandelbulb&${URL_KEY_OPACITY_MODE}=2&${URL_KEY_LAYER_COUNT}=5`;
       const result = deserializeState(params);
 
       // Invalid layer count should not be set
@@ -139,7 +139,7 @@ describe('Opacity URL Serialization', () => {
     });
 
     it('should validate layerOpacity range', () => {
-      const params = `d=4&t=mandelbrot&${URL_KEY_OPACITY_MODE}=2&${URL_KEY_LAYER_OPACITY}=0.95`;
+      const params = `d=4&t=mandelbulb&${URL_KEY_OPACITY_MODE}=2&${URL_KEY_LAYER_OPACITY}=0.95`;
       const result = deserializeState(params);
 
       // Out of range value should not be set
@@ -147,7 +147,7 @@ describe('Opacity URL Serialization', () => {
     });
 
     it('should validate volumetricDensity range', () => {
-      const params = `d=4&t=mandelbrot&${URL_KEY_OPACITY_MODE}=3&${URL_KEY_VOLUMETRIC_DENSITY}=2.50`;
+      const params = `d=4&t=mandelbulb&${URL_KEY_OPACITY_MODE}=3&${URL_KEY_VOLUMETRIC_DENSITY}=2.50`;
       const result = deserializeState(params);
 
       // Out of range value should not be set
@@ -156,7 +156,7 @@ describe('Opacity URL Serialization', () => {
 
     it('should handle missing mode-specific values', () => {
       // Mode set but no specific values
-      const params = `d=4&t=mandelbrot&${URL_KEY_OPACITY_MODE}=1`;
+      const params = `d=4&t=mandelbulb&${URL_KEY_OPACITY_MODE}=1`;
       const result = deserializeState(params);
 
       expect(result.opacityMode).toBe('simpleAlpha');
@@ -168,7 +168,7 @@ describe('Opacity URL Serialization', () => {
     it('should preserve simpleAlpha settings through round-trip', () => {
       const original: ShareableState = {
         dimension: 4,
-        objectType: 'mandelbrot',
+        objectType: 'mandelbulb',
         opacityMode: 'simpleAlpha',
         simpleAlphaOpacity: 0.65,
       };
@@ -183,7 +183,7 @@ describe('Opacity URL Serialization', () => {
     it('should preserve layeredSurfaces settings through round-trip', () => {
       const original: ShareableState = {
         dimension: 4,
-        objectType: 'mandelbrot',
+        objectType: 'mandelbulb',
         opacityMode: 'layeredSurfaces',
         layerCount: 3,
         layerOpacity: 0.45,
@@ -200,7 +200,7 @@ describe('Opacity URL Serialization', () => {
     it('should preserve volumetricDensity settings through round-trip', () => {
       const original: ShareableState = {
         dimension: 4,
-        objectType: 'mandelbrot',
+        objectType: 'mandelbulb',
         opacityMode: 'volumetricDensity',
         volumetricDensity: 1.3,
         sampleQuality: 'low',

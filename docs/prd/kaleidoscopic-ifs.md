@@ -393,7 +393,7 @@ uniform bool uIterRotationEnabled;
 uniform float uIterRotationAngle;
 uniform int uIterRotationPlane[2];
 
-// N-dimensional slice (same as Hyperbulb)
+// N-dimensional slice (same as Mandelbulb)
 uniform int uDimension;
 uniform float uBasisX[11];
 uniform float uBasisY[11];
@@ -430,7 +430,7 @@ uniform float uOrigin[11];
 
 ### Phase 2: N-Dimensional Extension
 - [ ] Generalized fold normals for D dimensions
-- [ ] Basis vector rotation system (reuse from Hyperbulb)
+- [ ] Basis vector rotation system (reuse from Mandelbulb)
 - [ ] Dimension-aware fold normal generation
 
 ### Phase 3: Animation Integration
@@ -442,7 +442,7 @@ uniform float uOrigin[11];
 ### Phase 4: Advanced Features
 - [ ] Custom fold normal editor
 - [ ] Multiple primitive types
-- [ ] Orbit trap coloring (reuse from Hyperbulb)
+- [ ] Orbit trap coloring (reuse from Mandelbulb)
 
 ## Example: 4D KIFS with Simplex Folds
 

@@ -8,7 +8,7 @@ import { getRotationPlanes } from '@/lib/math';
 import { useShallow } from 'zustand/react/shallow';
 import { AnimatePresence, m } from 'motion/react';
 import { JuliaAnimationDrawer } from './TimelineControls/JuliaAnimationDrawer';
-import { HyperbulbAnimationDrawer } from './TimelineControls/HyperbulbAnimationDrawer';
+import { MandelbulbAnimationDrawer } from './TimelineControls/MandelbulbAnimationDrawer';
 
 export const TimelineControls: FC = () => {
     const dimension = useGeometryStore((state) => state.dimension);
@@ -45,9 +45,9 @@ export const TimelineControls: FC = () => {
     const setAnimationBias = useUIStore((state) => state.setAnimationBias);
 
     // Extended object configs for animation state checking
-    const { mandelbrotConfig, quaternionJuliaConfig } = useExtendedObjectStore(
+    const { mandelbulbConfig, quaternionJuliaConfig } = useExtendedObjectStore(
         useShallow((state) => ({
-          mandelbrotConfig: state.mandelbrot,
+          mandelbulbConfig: state.mandelbulb,
           quaternionJuliaConfig: state.quaternionJulia,
         }))
     );
@@ -57,14 +57,14 @@ export const TimelineControls: FC = () => {
 
   // Check if any animation is active
   const isAnimating = useMemo(() => {
-    // Hyperbulb: any of its animations
-    const hyperbulbAnimating = mandelbrotConfig.powerAnimationEnabled ||
-                               mandelbrotConfig.alternatePowerEnabled ||
-                               mandelbrotConfig.dimensionMixEnabled ||
-                               mandelbrotConfig.originDriftEnabled ||
-                               mandelbrotConfig.sliceAnimationEnabled ||
-                               mandelbrotConfig.juliaModeEnabled ||
-                               mandelbrotConfig.phaseShiftEnabled;
+    // Mandelbulb: any of its animations
+    const mandelbulbAnimating = mandelbulbConfig.powerAnimationEnabled ||
+                               mandelbulbConfig.alternatePowerEnabled ||
+                               mandelbulbConfig.dimensionMixEnabled ||
+                               mandelbulbConfig.originDriftEnabled ||
+                               mandelbulbConfig.sliceAnimationEnabled ||
+                               mandelbulbConfig.juliaModeEnabled ||
+                               mandelbulbConfig.phaseShiftEnabled;
     
     // Quaternion Julia: any of its animations
     const qjAnimating = quaternionJuliaConfig.juliaConstantAnimation.enabled ||
@@ -72,15 +72,15 @@ export const TimelineControls: FC = () => {
                         quaternionJuliaConfig.originDriftEnabled ||
                         quaternionJuliaConfig.dimensionMixEnabled;
 
-    return hyperbulbAnimating || qjAnimating;
+    return mandelbulbAnimating || qjAnimating;
   }, [
-    mandelbrotConfig.powerAnimationEnabled,
-    mandelbrotConfig.alternatePowerEnabled,
-    mandelbrotConfig.dimensionMixEnabled,
-    mandelbrotConfig.originDriftEnabled,
-    mandelbrotConfig.sliceAnimationEnabled,
-    mandelbrotConfig.juliaModeEnabled,
-    mandelbrotConfig.phaseShiftEnabled,
+    mandelbulbConfig.powerAnimationEnabled,
+    mandelbulbConfig.alternatePowerEnabled,
+    mandelbulbConfig.dimensionMixEnabled,
+    mandelbulbConfig.originDriftEnabled,
+    mandelbulbConfig.sliceAnimationEnabled,
+    mandelbulbConfig.juliaModeEnabled,
+    mandelbulbConfig.phaseShiftEnabled,
     quaternionJuliaConfig.juliaConstantAnimation.enabled,
     quaternionJuliaConfig.powerAnimation.enabled,
     quaternionJuliaConfig.originDriftEnabled,
@@ -153,9 +153,9 @@ export const TimelineControls: FC = () => {
         <JuliaAnimationDrawer />
       )}
 
-      {/* Mandelbrot/Hyperbulb Fractal Animation Drawer */}
-      {showFractalAnim && objectType === 'mandelbrot' && (
-        <HyperbulbAnimationDrawer />
+      {/* Mandelbulb/Mandelbulb Fractal Animation Drawer */}
+      {showFractalAnim && objectType === 'mandelbulb' && (
+        <MandelbulbAnimationDrawer />
       )}
             </AnimatePresence>
 
@@ -231,7 +231,7 @@ export const TimelineControls: FC = () => {
 
                  {/* Advanced Toggles */}
                  <div className="flex items-center gap-2 shrink-0">
-                    {(objectType === 'mandelbrot' || objectType === 'quaternion-julia') && (
+                    {(objectType === 'mandelbulb' || objectType === 'quaternion-julia') && (
                          <button
                             onClick={() => { setShowFractalAnim(!showFractalAnim); setShowRotation(false); }}
                             className={`

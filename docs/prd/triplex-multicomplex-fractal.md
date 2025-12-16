@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Feature**: Triplex/Multicomplex Julia Variants - Generalizations of complex numbers to higher dimensions (bicomplex, tricomplex, etc.) that provide complex-style Julia/Mandelbrot dynamics in 4D/6D/8D spaces. 3D slices reveal extremely intricate, organic structures.
+**Feature**: Triplex/Multicomplex Julia Variants - Generalizations of complex numbers to higher dimensions (bicomplex, tricomplex, etc.) that provide complex-style Julia/Mandelbulb dynamics in 4D/6D/8D spaces. 3D slices reveal extremely intricate, organic structures.
 
 **Core concept**: Represent numbers as pairs (or triplets) of complex numbers with defined multiplication algebra. Iterate `z = z*z + c` in that algebra. The resulting structures combine the richness of complex dynamics with higher-dimensional freedom.
 
@@ -243,7 +243,7 @@ Scenario 2: Tricomplex high-D rotation
 **User story:** As a user, I want lighting controls so that the intricate multicomplex structures are well-defined.
 
 **Acceptance criteria**
-1. All standard lighting parameters (same as Hyperbulb)
+1. All standard lighting parameters (same as Mandelbulb)
 2. Multi-light system (up to 4 lights)
 3. Multicomplex-specific: Medium ambient (0.25) recommended for intricate detail
 4. Tone mapping and Fresnel rim lighting
@@ -268,7 +268,7 @@ Scenario 2: Specular for Julia "shine"
 **User story:** As a user, I want shadows so that the 3D structure of multicomplex Julia is clear.
 
 **Acceptance criteria**
-1. Shadow controls (same as Hyperbulb)
+1. Shadow controls (same as Mandelbulb)
 2. Shadows help define depth in complex fractal geometry
 3. Soft shadows recommended for organic appearance
 
@@ -320,7 +320,7 @@ Scenario 3: Smooth potential coloring
 **User story:** As a user, I want transparency so that I can see internal multicomplex Julia structure.
 
 **Acceptance criteria**
-1. All 4 opacity modes (same as Hyperbulb)
+1. All 4 opacity modes (same as Mandelbulb)
 2. Layered surfaces reveal nested Julia set structure
 3. Volumetric rendering shows density of near-boundary regions
 
@@ -468,7 +468,7 @@ Scenario 2: Quality preset adjustment
 ## Open Questions
 - Should octonion (8D) algebra be supported despite non-associativity challenges?
 - Should there be a "custom algebra" mode with user-defined multiplication rules?
-- Should "Mandelbrot mode" (c = initial point) be offered alongside Julia mode?
+- Should "Mandelbulb mode" (c = initial point) be offered alongside Julia mode?
 
 ## Dependencies Between Stories
 - Stories 2-6, 7, 9, 10 can be developed in parallel after Story 1

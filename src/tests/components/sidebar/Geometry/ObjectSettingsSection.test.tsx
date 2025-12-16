@@ -1,5 +1,5 @@
-import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { ObjectSettingsSection } from '@/components/sections/Geometry/ObjectSettingsSection';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
@@ -19,21 +19,26 @@ describe('ObjectSettingsSection', () => {
       useExtendedObjectStore.setState({
         polytope: { scale: 1.0 },
         rootSystem: { rootType: 'A', scale: 1.0 },
-        cliffordTorus: { 
-          radius: 1.0, 
-          resolutionU: 32, 
-          resolutionV: 32, 
+        cliffordTorus: {
+          radius: 1.0,
+          edgeMode: 'grid',
+          resolutionU: 32,
+          resolutionV: 32,
           mode: 'classic',
           stepsPerCircle: 10,
           k: 2
         },
         nestedTorus: {
           radius: 1.0,
+          edgeMode: 'grid',
           eta: Math.PI / 4,
           resolutionXi1: 32,
           resolutionXi2: 32,
           showNestedTori: false,
-          numberOfTori: 2
+          numberOfTori: 2,
+          fiberResolution: 32,
+          baseResolution: 32,
+          showFiberStructure: false
         }
       });
     });
@@ -69,16 +74,11 @@ describe('ObjectSettingsSection', () => {
       render(<ObjectSettingsSection />);
 
       // Wait for lazy-loaded component
-      const slider = await screen.findByTestId('polytope-scale');
-      // Find the input within the slider component (radix-ui slider usually has hidden input or we target the thumb)
-      // For this codebase's Slider component, let's look at how it's implemented or just try to fire change on the slider role
-      // Assuming generic slider behavior for now
-      const input = slider.querySelector('input') || slider;
+      await screen.findByTestId('polytope-scale');
 
-      // We'll update the store directly to verify the component reflects it,
-      // and test the interaction if possible.
+      // We'll update the store directly to verify the component reflects it.
       // Testing slider drag interaction in jsdom can be tricky.
-      // Let's verify value reflection first.
+      // Verify value reflection via store update.
 
       act(() => {
         useExtendedObjectStore.getState().setPolytopeScale(2.5);

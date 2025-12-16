@@ -13,7 +13,7 @@
  * - Slice parameters for 4D+ dimensions
  *
  * The Quaternion Julia fractal uses the iteration z = z^n + c where c is a
- * fixed constant (unlike Mandelbrot where c varies with sample position).
+ * fixed constant (unlike Mandelbulb where c varies with sample position).
  *
  * @see docs/prd/quaternion-julia-fractal.md
  * @see JuliaAnimationDrawer for animation controls
@@ -138,8 +138,9 @@ export const QuaternionJuliaControls: React.FC<QuaternionJuliaControlsProps> = R
           value={currentPresetIndex >= 0 ? String(currentPresetIndex) : '-1'}
           onChange={(v) => {
             const idx = parseInt(v, 10);
-            if (idx >= 0 && idx < JULIA_CONSTANT_PRESETS.length) {
-              setJuliaConstant(JULIA_CONSTANT_PRESETS[idx].value);
+            const preset = JULIA_CONSTANT_PRESETS[idx];
+            if (idx >= 0 && preset) {
+              setJuliaConstant(preset.value);
             }
           }}
           data-testid="julia-constant-preset"

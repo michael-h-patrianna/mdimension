@@ -11,6 +11,6 @@ export { AnimationDrawerContainer } from './AnimationDrawerContainer';
 export type { AnimationDrawerContainerProps } from './AnimationDrawerContainer';
 
 export { JuliaAnimationDrawer } from './JuliaAnimationDrawer';
-export { HyperbulbAnimationDrawer } from './HyperbulbAnimationDrawer';
+export { MandelbulbAnimationDrawer } from './MandelbulbAnimationDrawer';
 
 export { FractalAnimationDrawer } from './FractalAnimationDrawer';

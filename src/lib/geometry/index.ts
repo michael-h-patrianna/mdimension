@@ -11,13 +11,12 @@
  * Extended Objects:
  * - Root Systems: A, D, and E8 root polytopes
  * - Clifford Torus: flat torus on S³
- * - Mandelbrot: N-dimensional fractal (Mandelbulb/Hyperbulb)
+ * - Mandelbulb: N-dimensional fractal (Mandelbulb/Mandelbulb)
  */
 
 // Type exports from types.ts
 export type { CrossSectionResult } from './cross-section'
 export type { Face } from './faces'
-export { isRaymarchingFractal, RAYMARCHING_FRACTAL_TYPES } from './helpers'
 export { isExtendedObjectType, isPolytopeType } from './types'
 export type {
   ExtendedObjectType,
@@ -40,6 +39,7 @@ export {
   canRenderFaces,
   canRenderEdges,
   isRaymarchingType,
+  isRaymarchingFractal,
   getRenderingCapabilities,
   getFaceDetectionMethod,
   determineRenderMode,
@@ -76,12 +76,12 @@ export type {
   CliffordTorusConfig,
   CliffordTorusEdgeMode,
   ExtendedObjectParams,
-  MandelbrotColorMode,
-  MandelbrotConfig,
-  MandelbrotPalette,
-  MandelbrotQualityPreset,
-  MandelbrotRenderStyle,
-  MandelbrotSample,
+  MandelbulbColorMode,
+  MandelbulbConfig,
+  MandelbulbPalette,
+  MandelbulbQualityPreset,
+  MandelbulbRenderStyle,
+  MandelbulbSample,
   PolytopeConfig,
   RootSystemConfig,
   RootSystemType,
@@ -116,17 +116,17 @@ export {
   generateDRoots,
   generateE8Roots,
   generateExtendedObject,
-  // Mandelbrot exports
-  generateMandelbrot,
+  // Mandelbulb exports
+  generateMandelbulb,
   generateRootSystem,
   generateSampleGrid,
   getConvexHullStats,
-  getMandelbrotStats,
+  getMandelbulbStats,
   getRootCount,
   hasValidConvexHull,
-  mandelbrotEscapeTime,
-  mandelbrotSmoothEscapeTime,
-  mandelbrotStep,
+  mandelbulbEscapeTime,
+  mandelbulbSmoothEscapeTime,
+  mandelbulbStep,
   normSquared,
   validateRootSystemType,
   verifyCliffordTorusOnSphere,

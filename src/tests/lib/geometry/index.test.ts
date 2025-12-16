@@ -90,9 +90,8 @@ describe('geometry library API', () => {
       expect(typeNames).toContain('root-system');
       expect(typeNames).toContain('clifford-torus');
       expect(typeNames).toContain('nested-torus');
-    expect(typeNames).toContain('mandelbrot');
+    expect(typeNames).toContain('mandelbulb');
     expect(typeNames).toContain('quaternion-julia');
-    expect(typeNames).toContain('kali');
     });
 
     it('should include name, description, and availability for each type', () => {
@@ -125,21 +124,21 @@ describe('geometry library API', () => {
       });
     });
 
-    it('should mark mandelbrot as available for dimensions 3-11', () => {
+    it('should mark mandelbulb as available for dimensions 3-11', () => {
       // Available for 3-11
       for (const dim of [3, 4, 5, 6, 7, 8, 9, 10, 11]) {
         const types = getAvailableTypes(dim);
-        const mandelbrot = types.find(t => t.type === 'mandelbrot');
-        expect(mandelbrot?.available).toBe(true);
+        const mandelbulb = types.find(t => t.type === 'mandelbulb');
+        expect(mandelbulb?.available).toBe(true);
       }
     });
 
-    it('should mark mandelbrot as unavailable for dimension > 11', () => {
+    it('should mark mandelbulb as unavailable for dimension > 11', () => {
       // Currently app only supports up to dimension 6, but test the constraint
       const types = getAvailableTypes(12);
-      const mandelbrot = types.find(t => t.type === 'mandelbrot');
-      expect(mandelbrot?.available).toBe(false);
-      expect(mandelbrot?.disabledReason).toContain('11');
+      const mandelbulb = types.find(t => t.type === 'mandelbulb');
+      expect(mandelbulb?.available).toBe(false);
+      expect(mandelbulb?.disabledReason).toContain('11');
     });
   });
 

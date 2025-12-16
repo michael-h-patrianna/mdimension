@@ -27,7 +27,7 @@ describe('AnimationDrawerContainer', () => {
   });
 
   it('should have correct container styling classes', () => {
-    const { container } = render(
+    render(
       <AnimationDrawerContainer data-testid="styled-drawer">
         <div>Content</div>
       </AnimationDrawerContainer>

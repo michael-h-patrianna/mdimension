@@ -330,7 +330,7 @@ float sdfJulia3D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
     float pz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
     float pw = uDimension >= 4 ? uOrigin[3] + pos.x*uBasisX[3] + pos.y*uBasisY[3] + pos.z*uBasisZ[3] : 0.0;
 
-    // z starts at sample position (unlike Mandelbrot where c = sample position)
+    // z starts at sample position (unlike Mandelbulb where c = sample position)
     vec4 z = vec4(px, py, pz, pw);
 
     // c is the fixed Julia constant
@@ -355,7 +355,7 @@ float sdfJulia3D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
         minSphere = min(minSphere, abs(r - 0.8));
 
         // Derivative update for Julia: dr = n * r^(n-1) * dr
-        // (No +1 term since c is constant, unlike Mandelbrot where c=z0)
+        // (No +1 term since c is constant, unlike Mandelbulb where c=z0)
         dr = pwr * pow(max(r, EPS), pwr - 1.0) * dr;
 
         // Julia iteration: z = z^n + c

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This PRD specifies improvements to the lighting system to address user-reported issues with "rough" lighting and faces glowing white when facing the light source. The changes affect all three shader systems (SurfaceMaterial for polytopes, Mandelbulb, and Hyperbulb) and introduce new user-controllable settings.
+This PRD specifies improvements to the lighting system to address user-reported issues with "rough" lighting and faces glowing white when facing the light source. The changes affect all three shader systems (SurfaceMaterial for polytopes, Mandelbulb, and Mandelbulb) and introduce new user-controllable settings.
 
 **Problem Statement:** Current lighting implementation uses additive accumulation without energy conservation, lacks Fresnel attenuation on specular highlights, uses pure white specular color, and has no output tone mapping—causing harsh white blow-out on surfaces facing the light.
 
@@ -17,7 +17,7 @@ This PRD specifies improvements to the lighting system to address user-reported 
 2. When ambient intensity is set to 0.3, diffuse contributes a maximum of 0.7 (they sum to 1.0)
 3. Surfaces facing the light appear properly lit, not washed out or blown out
 4. Surfaces facing away from the light show only ambient illumination
-5. The lighting model is consistent across all three shader systems (SurfaceMaterial, Mandelbulb, Hyperbulb)
+5. The lighting model is consistent across all three shader systems (SurfaceMaterial, Mandelbulb, Mandelbulb)
 6. Existing scenes automatically benefit from improved lighting without user intervention
 
 **Test scenarios**
@@ -43,7 +43,7 @@ Scenario 4: Ambient at zero
 - Then those surfaces appear completely dark (pure black)
 
 Scenario 5: Consistency across shader systems
-- Given identical lighting settings applied to a polytope, Mandelbulb, and Hyperbulb
+- Given identical lighting settings applied to a polytope, Mandelbulb, and Mandelbulb
 - When viewing all three objects under the same conditions
 - Then all three exhibit the same lighting behavior and intensity response
 
@@ -362,7 +362,7 @@ Scenario 5: Round-trip preservation
 
 ## User Story 9: Shader System Consistency
 
-**User story:** As a user, I want consistent lighting behavior whether I'm viewing polytopes, Mandelbulb fractals, or Hyperbulb fractals.
+**User story:** As a user, I want consistent lighting behavior whether I'm viewing polytopes, Mandelbulb fractals, or Mandelbulb fractals.
 
 **Acceptance criteria**
 1. All lighting calculations use identical formulas across all three shader systems
@@ -375,7 +375,7 @@ Scenario 5: Round-trip preservation
 **Test scenarios**
 
 Scenario 1: Side-by-side comparison
-- Given a polytope, Mandelbulb, and Hyperbulb are visible simultaneously
+- Given a polytope, Mandelbulb, and Mandelbulb are visible simultaneously
 - When identical lighting settings are applied
 - Then all three objects show the same lighting behavior (same brightness levels, same specular appearance)
 

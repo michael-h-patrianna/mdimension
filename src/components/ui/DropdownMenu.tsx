@@ -41,7 +41,7 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
   }, [isOpen]);
 
   const handleItemClick = (item: DropdownMenuItem) => {
-    if (!item.disabled) {
+    if (!item.disabled && item.onClick) {
       item.onClick();
       setIsOpen(false);
     }

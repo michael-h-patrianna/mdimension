@@ -1,7 +1,6 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { usePresetManagerStore } from '@/stores/presetManagerStore';
 import { useAppearanceStore } from '@/stores/appearanceStore';
-import { useLightingStore } from '@/stores/lightingStore';
 import { useAnimationStore } from '@/stores/animationStore';
 
 describe('presetManagerStore', () => {
@@ -21,14 +20,16 @@ describe('presetManagerStore', () => {
     // Check it's saved
     const savedStyles = usePresetManagerStore.getState().savedStyles;
     expect(savedStyles).toHaveLength(1);
-    expect(savedStyles[0].name).toBe('Red Edge');
-    expect(savedStyles[0].data.appearance.edgeColor).toBe('#ff0000');
-    
+    const firstStyle = savedStyles[0];
+    expect(firstStyle).toBeDefined();
+    expect(firstStyle?.name).toBe('Red Edge');
+    expect(firstStyle?.data.appearance.edgeColor).toBe('#ff0000');
+
     // Change state
     useAppearanceStore.setState({ edgeColor: '#00ff00' });
-    
+
     // Load style
-    usePresetManagerStore.getState().loadStyle(savedStyles[0].id);
+    usePresetManagerStore.getState().loadStyle(firstStyle!.id);
     
     // Check it's restored
     expect(useAppearanceStore.getState().edgeColor).toBe('#ff0000');
@@ -45,16 +46,18 @@ describe('presetManagerStore', () => {
      // Check saved
      const savedScenes = usePresetManagerStore.getState().savedScenes;
      expect(savedScenes).toHaveLength(1);
-     expect(savedScenes[0].data.animation.speed).toBe(2.0);
-     
+     const firstScene = savedScenes[0];
+     expect(firstScene).toBeDefined();
+     expect(firstScene?.data.animation.speed).toBe(2.0);
+
      // Check Set -> Array conversion
-     expect(Array.isArray(savedScenes[0].data.animation.animatingPlanes)).toBe(true);
+     expect(Array.isArray(firstScene?.data.animation.animatingPlanes)).toBe(true);
 
      // Change state
      animStore.setSpeed(0.5);
-     
+
      // Load scene
-     usePresetManagerStore.getState().loadScene(savedScenes[0].id);
+     usePresetManagerStore.getState().loadScene(firstScene!.id);
      
      // Check restored
      expect(useAnimationStore.getState().speed).toBe(2.0);
@@ -76,7 +79,7 @@ describe('presetManagerStore', () => {
     
     const savedStyles = usePresetManagerStore.getState().savedStyles;
     expect(savedStyles).toHaveLength(1);
-    expect(savedStyles[0].name).toBe('Imported Style');
+    expect(savedStyles[0]?.name).toBe('Imported Style');
     
     const exported = usePresetManagerStore.getState().exportStyles();
     expect(JSON.parse(exported)).toHaveLength(1);

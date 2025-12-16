@@ -1,12 +1,12 @@
 /**
- * Hyperbulb Opacity Mode Constants
+ * Mandelbulb Opacity Mode Constants
  *
  * Default values and ranges for opacity mode controls.
  *
- * @see docs/prd/hyperbulb_opacity.md
+ * @see docs/prd/mandelbulb_opacity.md
  */
 
-import type { HyperbulbOpacitySettings, OpacityMode, SampleQuality, VolumetricAnimationQuality } from './types';
+import type { MandelbulbOpacitySettings, OpacityMode, SampleQuality, VolumetricAnimationQuality } from './types';
 
 // Re-export labels and tooltips from types for convenient access
 export {
@@ -41,7 +41,7 @@ export const DEFAULT_SAMPLE_QUALITY: SampleQuality = 'medium';
 export const DEFAULT_VOLUMETRIC_ANIMATION_QUALITY: VolumetricAnimationQuality = 'reduce';
 
 /** Complete default opacity settings */
-export const DEFAULT_OPACITY_SETTINGS: HyperbulbOpacitySettings = {
+export const DEFAULT_OPACITY_SETTINGS: MandelbulbOpacitySettings = {
   mode: DEFAULT_OPACITY_MODE,
   simpleAlphaOpacity: DEFAULT_SIMPLE_ALPHA_OPACITY,
   layerCount: DEFAULT_LAYER_COUNT,

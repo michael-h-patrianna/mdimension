@@ -4,7 +4,7 @@
  * Configuration interfaces for:
  * - Root Systems (A, D, E8 polytopes)
  * - Clifford Torus (flat torus on S^3)
- * - Mandelbrot Set (n-dimensional fractal)
+ * - Mandelbulb Set (n-dimensional fractal)
  *
  * ## Scale Consistency
  *
@@ -20,7 +20,7 @@
  * - **Root Systems** (scale=1.0):
  *   Roots are normalized to have maximum coordinate extent ≈ 1.0.
  *
- * - **Mandelbrot** (extent=2.5):
+ * - **Mandelbulb** (extent=2.5):
  *   Default viewing region centered at origin, encompassing the main cardioid.
  *
  * @see src/lib/shaders/constants.ts for shared visual constants
@@ -251,18 +251,18 @@ export const DEFAULT_NESTED_TORUS_CONFIG: NestedTorusConfig = {
 }
 
 // ============================================================================
-// Mandelbrot Set Configuration
+// Mandelbulb Set Configuration
 // ============================================================================
 
 /**
- * Color modes for Mandelbrot visualization
+ * Color modes for Mandelbulb visualization
  * - escapeTime: Basic discrete coloring based on iteration count
  * - smoothColoring: Continuous coloring without banding
  * - distanceEstimation: Color based on distance to set boundary
  * - interiorOnly: Show only points inside the set
  * - boundaryOnly: Show only points near the boundary (useful for 3D+)
  */
-export type MandelbrotColorMode =
+export type MandelbulbColorMode =
   | 'escapeTime'
   | 'smoothColoring'
   | 'distanceEstimation'
@@ -270,7 +270,7 @@ export type MandelbrotColorMode =
   | 'boundaryOnly'
 
 /**
- * Color palette presets for Mandelbrot visualization.
+ * Color palette presets for Mandelbulb visualization.
  *
  * All palettes (except 'custom') are derived from the user's vertexColor
  * setting, ensuring visual consistency with the overall theme.
@@ -281,30 +281,30 @@ export type MandelbrotColorMode =
  * - analogous: vertexColor with ±60° hue variations
  * - shifted: vertexColor → 90° hue-shifted version
  */
-export type MandelbrotPalette = 'monochrome' | 'complement' | 'triadic' | 'analogous' | 'shifted'
+export type MandelbulbPalette = 'monochrome' | 'complement' | 'triadic' | 'analogous' | 'shifted'
 
 /**
- * Quality presets for Mandelbrot computation
+ * Quality presets for Mandelbulb computation
  */
-export type MandelbrotQualityPreset = 'draft' | 'standard' | 'high' | 'ultra'
+export type MandelbulbQualityPreset = 'draft' | 'standard' | 'high' | 'ultra'
 
 /**
- * Rendering styles for Mandelbrot visualization
+ * Rendering styles for Mandelbulb visualization
  * - rayMarching: Volumetric ray marching in shader (3D+ only)
  */
-export type MandelbrotRenderStyle = 'rayMarching'
+export type MandelbulbRenderStyle = 'rayMarching'
 
 /**
- * Configuration for n-dimensional Mandelbrot set generation
+ * Configuration for n-dimensional Mandelbulb set generation
  *
  * Supports:
  * - 3D: Mandelbulb (spherical coordinates)
- * - 4D-11D: Hyperbulb (hyperspherical coordinates)
+ * - 4D-11D: Mandelbulb (hyperspherical coordinates)
  *
- * @see docs/prd/ndimensional-mandelbrot.md
- * @see docs/research/hyperbulb-guide.md
+ * @see docs/prd/ndimensional-mandelbulb.md
+ * @see docs/research/mandelbulb-guide.md
  */
-export interface MandelbrotConfig {
+export interface MandelbulbConfig {
   // Iteration parameters
   /** Maximum iterations before considering point bounded (10-500) */
   maxIterations: number
@@ -315,7 +315,7 @@ export interface MandelbrotConfig {
    */
   escapeRadius: number
   /** Quality preset (affects iterations and resolution) */
-  qualityPreset: MandelbrotQualityPreset
+  qualityPreset: MandelbulbQualityPreset
 
   // Sampling resolution
   /** Samples per axis in the 3D grid (16-128) */
@@ -337,9 +337,9 @@ export interface MandelbrotConfig {
 
   // Color mapping
   /** Color algorithm to use */
-  colorMode: MandelbrotColorMode
+  colorMode: MandelbulbColorMode
   /** Color palette preset */
-  palette: MandelbrotPalette
+  palette: MandelbulbPalette
   /** Custom palette colors (used when palette='custom') */
   customPalette: { start: string; mid: string; end: string }
   /** Whether to invert color mapping */
@@ -351,7 +351,7 @@ export interface MandelbrotConfig {
 
   // Rendering style
   /** How to render the point cloud */
-  renderStyle: MandelbrotRenderStyle
+  renderStyle: MandelbulbRenderStyle
   /** Point size for point cloud mode */
   pointSize: number
 
@@ -363,9 +363,9 @@ export interface MandelbrotConfig {
    */
   boundaryThreshold: [number, number]
 
-  // Mandelbulb/Hyperbulb settings (for 3D+)
+  // Mandelbulb/Mandelbulb settings (for 3D+)
   /**
-   * Power for Mandelbulb/Hyperbulb formula (3D and higher).
+   * Power for Mandelbulb/Mandelbulb formula (3D and higher).
    * Default: 8 produces the classic bulb shape.
    * Range: 2-16
    */
@@ -379,7 +379,7 @@ export interface MandelbrotConfig {
    */
   epsilon: number
 
-  // === Power Animation (Hyperbulb-specific) ===
+  // === Power Animation (Mandelbulb-specific) ===
 
   /**
    * Enable/disable power animation.
@@ -407,7 +407,7 @@ export interface MandelbrotConfig {
    */
   powerSpeed: number
 
-  // === Alternate Power (Hyperbulb variant of Technique B) ===
+  // === Alternate Power (Mandelbulb variant of Technique B) ===
 
   /**
    * Enable/disable power alternation per iteration.
@@ -476,7 +476,7 @@ export interface MandelbrotConfig {
 
   /**
    * Enable/disable animated slice position through higher dimensions.
-   * For 4D+ Hyperbulbs, animates which 3D cross-section is visible,
+   * For 4D+ Mandelbulbs, animates which 3D cross-section is visible,
    * creating a "flying through" effect.
    */
   sliceAnimationEnabled: boolean
@@ -540,7 +540,7 @@ export interface MandelbrotConfig {
  * Quality preset configurations
  */
 export const MANDELBROT_QUALITY_PRESETS: Record<
-  MandelbrotQualityPreset,
+  MandelbulbQualityPreset,
   { maxIterations: number; resolution: number }
 > = {
   draft: { maxIterations: 30, resolution: 24 },
@@ -550,9 +550,9 @@ export const MANDELBROT_QUALITY_PRESETS: Record<
 }
 
 /**
- * Default Mandelbrot configuration
+ * Default Mandelbulb configuration
  */
-export const DEFAULT_MANDELBROT_CONFIG: MandelbrotConfig = {
+export const DEFAULT_MANDELBROT_CONFIG: MandelbulbConfig = {
   maxIterations: 80,
   escapeRadius: 4.0,
   qualityPreset: 'standard',
@@ -560,7 +560,7 @@ export const DEFAULT_MANDELBROT_CONFIG: MandelbrotConfig = {
   visualizationAxes: [0, 1, 2],
   parameterValues: [],
   center: [],
-  extent: 2.0, // Default extent for 3D+ Mandelbulb/Hyperbulb
+  extent: 2.0, // Default extent for 3D+ Mandelbulb/Mandelbulb
   colorMode: 'escapeTime',
   palette: 'complement',
   customPalette: { start: '#0000ff', mid: '#ffffff', end: '#ff8000' },
@@ -570,9 +570,9 @@ export const DEFAULT_MANDELBROT_CONFIG: MandelbrotConfig = {
   renderStyle: 'rayMarching',
   pointSize: 3,
   boundaryThreshold: [0.1, 0.9], // Show points with escape time 10%-90% of maxIter
-  mandelbulbPower: 8, // Classic Mandelbulb/Hyperbulb power
+  mandelbulbPower: 8, // Classic Mandelbulb/Mandelbulb power
   epsilon: 1e-12, // Numerical stability for hyperspherical calculations
-  // Power Animation defaults (Hyperbulb-specific)
+  // Power Animation defaults (Mandelbulb-specific)
   // Uses multi-frequency organic motion for smooth, non-repeating animation
   powerAnimationEnabled: false,
   powerMin: 5.0, // Creates blobby shapes at low end
@@ -648,7 +648,7 @@ export interface JuliaPowerAnimation {
  * Configuration for Quaternion Julia fractal generation
  *
  * Mathematical basis: z = z^n + c where z and c are quaternions
- * The Julia constant c is fixed (unlike Mandelbrot where c = initial position)
+ * The Julia constant c is fixed (unlike Mandelbulb where c = initial position)
  *
  * Supports 3D to 11D via hyperspherical quaternion generalization.
  *
@@ -865,228 +865,6 @@ export const DEFAULT_QUATERNION_JULIA_CONFIG: QuaternionJuliaConfig = {
   mixFrequency: 0.5,
 }
 
-// ============================================================================
-// Kali Fractal Configuration
-// ============================================================================
-
-/**
- * Kali constant animation parameters
- */
-export interface KaliConstantAnimation {
-  enabled: boolean
-  /** Animation amplitude (0.0-0.3, Kali is sensitive) */
-  amplitude: number
-  /** Base frequency in Hz (0.01-0.2) */
-  frequency: number
-  /** Phase offset for multi-frequency motion */
-  phaseOffset: number
-}
-
-/**
- * Reciprocal gain animation parameters
- */
-export interface KaliGainAnimation {
-  enabled: boolean
-  /** Minimum gain (0.5-1.5) */
-  minGain: number
-  /** Maximum gain (0.8-2.0) */
-  maxGain: number
-  /** Oscillation speed in Hz (0.01-0.1) */
-  speed: number
-}
-
-/**
- * Axis weights animation parameters
- */
-export interface KaliWeightsAnimation {
-  enabled: boolean
-  /** Weight variation amplitude (0.0-0.5) */
-  amplitude: number
-}
-
-/**
- * Configuration for Kali/Reciprocal-Abs fractal generation
- *
- * Mathematical basis: z = abs(z) / dot(z,z) + c
- * The reciprocal step creates intense nonlinear folding that produces
- * fluid, cellular, and "alive" structures.
- *
- * Supports 3D to 11D via hyperspherical generalization.
- *
- * @see docs/prd/kali-reciprocal-fractal.md
- */
-export interface KaliConfig {
-  // === Core Parameters ===
-
-  /**
-   * Kali constant c (n-dimensional).
-   * Length matches current dimension.
-   * Default: [0.5, 0.5, 0.5, 0.5] ("Coral Cells")
-   * Range: -1.0 to 1.0 per component
-   */
-  kaliConstant: number[]
-
-  /**
-   * Reciprocal gain (0.5-2.0, default 1.0).
-   * Lower = softer structures, Higher = sharper crystalline.
-   * Formula: z = abs(z) / (dot(z,z) * gain + eps) + c
-   */
-  reciprocalGain: number
-
-  /**
-   * Axis weights for symmetry breaking.
-   * Length matches current dimension, default all 1.0.
-   * Range: 0.5-2.0 per axis.
-   */
-  axisWeights: number[]
-
-  // === Iteration Parameters ===
-
-  /**
-   * Maximum iterations (8-64, default 20).
-   * Lower than Julia due to fast divergence.
-   */
-  maxIterations: number
-
-  /**
-   * Bailout radius (2.0-8.0, default 4.0).
-   */
-  bailoutRadius: number
-
-  /**
-   * Epsilon for singularity protection (0.0001-0.01, default 0.001).
-   * Prevents division by zero at origin.
-   */
-  epsilon: number
-
-  // === Quality Parameters ===
-
-  /** Scale/extent for auto-positioning (0.5-5.0, default 2.0) */
-  scale: number
-  /** Surface distance threshold (0.0005-0.004) */
-  surfaceThreshold: number
-  /** Maximum raymarch steps (64-512) */
-  maxRaymarchSteps: number
-  /** Quality multiplier (0.25-1.0) */
-  qualityMultiplier: number
-
-  // === D-dimensional Parameters ===
-
-  /** Slice position in extra dimensions (length = dimension - 3) */
-  parameterValues: number[]
-
-  // === Animation Configuration ===
-  // NOTE: Controls are in Timeline bottom bar, NOT geometry editor
-
-  /** Constant path animation */
-  constantAnimation: KaliConstantAnimation
-  /** Reciprocal gain animation */
-  gainAnimation: KaliGainAnimation
-  /** Axis weights animation */
-  weightsAnimation: KaliWeightsAnimation
-
-  /** Enable origin drift in extra dimensions (4D+) */
-  originDriftEnabled: boolean
-  /** Origin drift amplitude (0.01-0.5) */
-  originDriftAmplitude: number
-  /** Origin drift base frequency Hz (0.01-0.5) */
-  originDriftBaseFrequency: number
-  /** Origin drift frequency spread (0.0-1.0) */
-  originDriftFrequencySpread: number
-
-  /** Enable dimension mixing inside iteration */
-  dimensionMixEnabled: boolean
-  /** Mixing intensity (0.0-0.3) */
-  mixIntensity: number
-  /** Mixing frequency multiplier (0.1-2.0) */
-  mixFrequency: number
-}
-
-/**
- * Kali constant presets
- */
-export interface KaliConstantPreset {
-  name: string
-  value: number[]
-}
-
-/**
- * Kali constant presets
- */
-export const KALI_CONSTANT_PRESETS: KaliConstantPreset[] = [
-  { name: 'Coral Cells', value: [0.5, 0.5, 0.5, 0.5] },
-  { name: 'Sponge', value: [0.3, 0.3, 0.3, 0.3] },
-  { name: 'Tubes', value: [0.7, 0.2, 0.7, 0.2] },
-  { name: 'Membrane', value: [0.1, 0.1, 0.1, 0.1] },
-  { name: 'Chaos', value: [0.8, -0.3, 0.5, -0.7] },
-]
-
-/**
- * Quality presets for Kali
- */
-export const KALI_QUALITY_PRESETS = {
-  draft: { maxIterations: 12, surfaceThreshold: 0.004, maxRaymarchSteps: 64 },
-  standard: { maxIterations: 20, surfaceThreshold: 0.002, maxRaymarchSteps: 128 },
-  high: { maxIterations: 40, surfaceThreshold: 0.001, maxRaymarchSteps: 256 },
-  ultra: { maxIterations: 64, surfaceThreshold: 0.0005, maxRaymarchSteps: 512 },
-}
-
-/**
- * Default Kali configuration
- */
-export const DEFAULT_KALI_CONFIG: KaliConfig = {
-  // Core parameters
-  kaliConstant: [0.5, 0.5, 0.5, 0.5],
-  reciprocalGain: 1.0,
-  axisWeights: [1.0, 1.0, 1.0, 1.0],
-
-  // Iteration
-  maxIterations: 20,
-  bailoutRadius: 4.0,
-  epsilon: 0.001,
-
-  // Quality
-  scale: 2.0,
-  surfaceThreshold: 0.002,
-  maxRaymarchSteps: 128,
-  qualityMultiplier: 1.0,
-
-  // D-dimensional
-  parameterValues: [],
-
-  // Constant animation
-  constantAnimation: {
-    enabled: false,
-    amplitude: 0.1,
-    frequency: 0.02,
-    phaseOffset: 0,
-  },
-
-  // Gain animation
-  gainAnimation: {
-    enabled: false,
-    minGain: 0.7,
-    maxGain: 1.3,
-    speed: 0.02,
-  },
-
-  // Weights animation
-  weightsAnimation: {
-    enabled: false,
-    amplitude: 0.2,
-  },
-
-  // Origin drift
-  originDriftEnabled: false,
-  originDriftAmplitude: 0.1,
-  originDriftBaseFrequency: 0.1,
-  originDriftFrequencySpread: 0.3,
-
-  // Dimension mixing
-  dimensionMixEnabled: false,
-  mixIntensity: 0.1,
-  mixFrequency: 0.5,
-}
 
 // ============================================================================
 // Combined Object Parameters
@@ -1114,12 +892,10 @@ export interface ExtendedObjectParams {
   cliffordTorus: CliffordTorusConfig
   /** Configuration for Nested torus generation */
   nestedTorus: NestedTorusConfig
-  /** Configuration for Mandelbrot set generation */
-  mandelbrot: MandelbrotConfig
+  /** Configuration for Mandelbulb set generation */
+  mandelbulb: MandelbulbConfig
   /** Configuration for Quaternion Julia fractal generation */
   quaternionJulia: QuaternionJuliaConfig
-  /** Configuration for Kali fractal generation */
-  kali: KaliConfig
 }
 
 /**
@@ -1130,7 +906,6 @@ export const DEFAULT_EXTENDED_OBJECT_PARAMS: ExtendedObjectParams = {
   rootSystem: DEFAULT_ROOT_SYSTEM_CONFIG,
   cliffordTorus: DEFAULT_CLIFFORD_TORUS_CONFIG,
   nestedTorus: DEFAULT_NESTED_TORUS_CONFIG,
-  mandelbrot: DEFAULT_MANDELBROT_CONFIG,
+  mandelbulb: DEFAULT_MANDELBROT_CONFIG,
   quaternionJulia: DEFAULT_QUATERNION_JULIA_CONFIG,
-  kali: DEFAULT_KALI_CONFIG,
 }

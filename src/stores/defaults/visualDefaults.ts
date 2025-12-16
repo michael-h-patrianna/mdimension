@@ -7,7 +7,7 @@
 import type { TransformMode } from '@/rendering/lights/types'
 import { createDefaultLight, createDefaultSpotLight } from '@/rendering/lights/types'
 import { DEFAULT_OPACITY_SETTINGS } from '@/rendering/opacity/constants'
-import type { HyperbulbOpacitySettings } from '@/rendering/opacity/types'
+import type { MandelbulbOpacitySettings } from '@/rendering/opacity/types'
 import {
   DEFAULT_COLOR_ALGORITHM,
   DEFAULT_COSINE_COEFFICIENTS,
@@ -409,4 +409,4 @@ export {
 }
 
 export { DEFAULT_OPACITY_SETTINGS }
-export type { HyperbulbOpacitySettings }
+export type { MandelbulbOpacitySettings }

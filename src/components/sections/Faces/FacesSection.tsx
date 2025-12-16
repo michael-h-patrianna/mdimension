@@ -36,7 +36,7 @@ import {
   SHADOW_SOFTNESS_RANGE,
 } from '@/rendering/shadows/constants';
 import type { ShadowAnimationMode, ShadowQuality } from '@/rendering/shadows/types';
-import { isRaymarchingFractal } from '@/lib/geometry';
+import { isRaymarchingFractal } from '@/lib/geometry/registry';
 import { useGeometryStore } from '@/stores/geometryStore';
 import {
   DEFAULT_DIFFUSE_INTENSITY,
@@ -71,9 +71,10 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<FacesTabId>('colors');
 
-  // Get object type to check if we're viewing a raymarching fractal
+  // Get object type and dimension to check if we're viewing a raymarching fractal
   const objectType = useGeometryStore((state) => state.objectType);
-  const isRaymarchingFractalType = isRaymarchingFractal(objectType);
+  const dimension = useGeometryStore((state) => state.dimension);
+  const isRaymarchingFractalType = isRaymarchingFractal(objectType, dimension);
 
   // Appearance settings
   const {
@@ -637,7 +638,7 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
         </>
       )}
 
-      {/* Face Opacity - Only shown for non-hyperbulb objects */}
+      {/* Face Opacity - Only shown for non-mandelbulb objects */}
       {!isRaymarchingFractalType && (
         <Slider
           label="Face Opacity"

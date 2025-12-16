@@ -80,7 +80,7 @@ src/
 ├── rendering/        # Rendering Pipeline (Three.js/R3F integration)
 │   ├── Scene.tsx     # Main Scene Entry Point
 │   ├── core/         # Core Rendering Logic (Loops, Layers)
-│   ├── renderers/    # Specific Object Renderers (Polytope, Hyperbulb)
+│   ├── renderers/    # Specific Object Renderers (Polytope, Mandelbulb)
 │   ├── environment/  # Environment Setup (Lights, PostProcessing)
 │   ├── shaders/      # GLSL Shaders
 │   ├── lights/       # Lighting Logic

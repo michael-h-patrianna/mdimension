@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { usePresetManagerStore, SavedStyle } from '@/stores/presetManagerStore';
+import { usePresetManagerStore } from '@/stores/presetManagerStore';
 import { useToast } from '@/contexts/ToastContext';
 
 interface StyleManagerProps {

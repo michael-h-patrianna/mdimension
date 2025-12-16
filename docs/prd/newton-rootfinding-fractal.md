@@ -258,7 +258,7 @@ Scenario 3: Temporal stability during rotation
 **User story:** As a user, I want lighting controls so that basin boundaries and surface details are well-defined.
 
 **Acceptance criteria**
-1. All standard lighting parameters (same as Hyperbulb):
+1. All standard lighting parameters (same as Mandelbulb):
    - Light enabled, color, direction angles
    - Ambient intensity/color (default: 0.25)
    - Diffuse/specular intensity
@@ -287,7 +287,7 @@ Scenario 2: Rim lighting for basin edges
 **User story:** As a user, I want shadows so that the three-dimensional structure of basin boundaries is clearer.
 
 **Acceptance criteria**
-1. Shadow controls (same as Hyperbulb):
+1. Shadow controls (same as Mandelbulb):
    - Shadow enabled toggle
    - Quality: Low, Medium, High, Ultra
    - Softness slider
@@ -346,7 +346,7 @@ Scenario 3: Smooth iteration coloring
 **User story:** As a user, I want transparency so that I can see through basin surfaces to internal structures.
 
 **Acceptance criteria**
-1. All 4 opacity modes (same as Hyperbulb):
+1. All 4 opacity modes (same as Mandelbulb):
    - Solid, Simple Alpha, Layered Surfaces, Volumetric Density
 2. Layered surfaces reveal nested basin boundary structure
 3. Volumetric density creates misty basin visualization

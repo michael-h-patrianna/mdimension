@@ -5,7 +5,7 @@
  * - Polytopes (hypercube, simplex, cross-polytope) - scale configuration
  * - Root Systems (A, D, E8 polytopes)
  * - Clifford Torus
- * - Mandelbrot
+ * - Mandelbulb
  * - Quaternion Julia
  *
  * The unified configuration ensures visual consistency across all object types.
@@ -16,7 +16,6 @@
 
 import {
   DEFAULT_CLIFFORD_TORUS_CONFIG,
-  DEFAULT_KALI_CONFIG,
   DEFAULT_MANDELBROT_CONFIG,
   DEFAULT_NESTED_TORUS_CONFIG,
   DEFAULT_POLYTOPE_CONFIG,
@@ -25,8 +24,7 @@ import {
 } from '@/lib/geometry/extended/types'
 import { create } from 'zustand'
 import { createCliffordTorusSlice } from './slices/geometry/cliffordTorusSlice'
-import { createKaliSlice } from './slices/geometry/kaliSlice'
-import { createMandelbrotSlice } from './slices/geometry/mandelbrotSlice'
+import { createMandelbulbSlice } from './slices/geometry/mandelbulbSlice'
 import { createNestedTorusSlice } from './slices/geometry/nestedTorusSlice'
 import { createPolytopeSlice } from './slices/geometry/polytopeSlice'
 import { createQuaternionJuliaSlice } from './slices/geometry/quaternionJuliaSlice'
@@ -48,9 +46,8 @@ export const useExtendedObjectStore = create<ExtendedObjectSlice>()((...a) => {
     ...createRootSystemSlice(...a),
     ...createCliffordTorusSlice(...a),
     ...createNestedTorusSlice(...a),
-    ...createMandelbrotSlice(...a),
+    ...createMandelbulbSlice(...a),
     ...createQuaternionJuliaSlice(...a),
-    ...createKaliSlice(...a),
 
     // --- Reset Action ---
     reset: () => {
@@ -60,9 +57,8 @@ export const useExtendedObjectStore = create<ExtendedObjectSlice>()((...a) => {
         rootSystem: { ...DEFAULT_ROOT_SYSTEM_CONFIG },
         cliffordTorus: { ...DEFAULT_CLIFFORD_TORUS_CONFIG },
         nestedTorus: { ...DEFAULT_NESTED_TORUS_CONFIG },
-        mandelbrot: { ...DEFAULT_MANDELBROT_CONFIG },
+        mandelbulb: { ...DEFAULT_MANDELBROT_CONFIG },
         quaternionJulia: { ...DEFAULT_QUATERNION_JULIA_CONFIG },
-        kali: { ...DEFAULT_KALI_CONFIG },
       })
     },
   }

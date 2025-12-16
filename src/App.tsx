@@ -4,12 +4,12 @@
  *
  * Supports both traditional polytopes and extended objects:
  * - Standard: Hypercube, Simplex, Cross-polytope
- * - Extended: Root System, Clifford Torus, Mandelbrot
+ * - Extended: Root System, Clifford Torus, Mandelbulb
  *
  * Unified Architecture:
  * All rendering uses useFrame-based high-performance pipelines that bypass React
  * re-renders during animation. UnifiedRenderer routes to the appropriate renderer:
- * - HyperbulbMesh: For raymarched 3D/4D surfaces (Mandelbrot/Hyperbulb)
+ * - MandelbulbMesh: For raymarched 3D/4D surfaces (Mandelbulb/Mandelbulb)
  * - PolytopeScene: For 3D+ projected wireframes and faces
  */
 
@@ -23,7 +23,7 @@ import { useFaceDepths } from '@/hooks/useFaceDepths';
 import { useFaceDetection } from '@/hooks/useFaceDetection';
 import { useGeometryGenerator } from '@/hooks/useGeometryGenerator';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
-import { useMandelbrotColors } from '@/hooks/useMandelbrotColors';
+import { useMandelbulbColors } from '@/hooks/useMandelbulbColors';
 import { useSyncedDimension } from '@/hooks/useSyncedDimension';
 import type { VectorND, Vector3D } from '@/lib/math/types';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
@@ -73,11 +73,10 @@ function Visualizer() {
   // 6. Compute per-face depth values for palette color variation (polytopes only)
   const faceDepths = useFaceDepths(geometry.vertices, faces, dimension);
 
-  // 7. Compute Mandelbrot colors (derived from user's edge color)
-  const mandelbrotConfig = useExtendedObjectStore((state) => state.mandelbrot);
-  const edgeColorForMandelbrot = useAppearanceStore((state) => state.edgeColor);
-  const pointColors = useMandelbrotColors(geometry, mandelbrotConfig, edgeColorForMandelbrot);
-  const facesVisible = useAppearanceStore((state) => state.facesVisible);
+  // 7. Compute Mandelbulb colors (derived from user's edge color)
+  const mandelbulbConfig = useExtendedObjectStore((state) => state.mandelbulb);
+  const edgeColorForMandelbulb = useAppearanceStore((state) => state.edgeColor);
+  const pointColors = useMandelbulbColors(geometry, mandelbulbConfig, edgeColorForMandelbulb);
 
   // Minimum bounding radius for ground plane positioning
   // Currently all objects use the same radius for consistent ground placement

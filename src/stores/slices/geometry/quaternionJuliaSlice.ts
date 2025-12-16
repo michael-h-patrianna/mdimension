@@ -2,10 +2,10 @@
  * Quaternion Julia Store Slice
  *
  * State management for Quaternion Julia fractal parameters.
- * Follows the pattern established by mandelbrotSlice.
+ * Follows the pattern established by mandelbulbSlice.
  *
  * Mathematical basis: z = z^n + c where z and c are quaternions
- * The Julia constant c is fixed (unlike Mandelbrot where c = initial position)
+ * The Julia constant c is fixed (unlike Mandelbulb where c = initial position)
  *
  * @see docs/prd/quaternion-julia-fractal.md
  */

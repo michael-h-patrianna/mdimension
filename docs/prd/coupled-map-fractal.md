@@ -335,7 +335,7 @@ Scenario 2: Rim lighting for edges
 **User story:** As a user, I want shadows so that the layered organic structures show depth.
 
 **Acceptance criteria**
-1. Shadow controls (same as Hyperbulb)
+1. Shadow controls (same as Mandelbulb)
 2. Soft shadows particularly suited to organic coupled-map structures
 3. Shadows help define depth in flowing structures
 

@@ -1,5 +1,5 @@
 /**
- * Tests for Hyperbulb Opacity Types
+ * Tests for Mandelbulb Opacity Types
  */
 
 import { describe, expect, it } from 'vitest';
@@ -9,7 +9,7 @@ import {
   OPACITY_MODE_TOOLTIPS,
   SAMPLE_QUALITY_LABELS,
   SAMPLE_QUALITY_TO_INT,
-  type HyperbulbOpacitySettings,
+  type MandelbulbOpacitySettings,
   type OpacityMode,
   type SampleQuality,
   type VolumetricAnimationQuality,
@@ -50,9 +50,9 @@ describe('Opacity Types', () => {
     });
   });
 
-  describe('HyperbulbOpacitySettings interface', () => {
+  describe('MandelbulbOpacitySettings interface', () => {
     it('should have all required properties', () => {
-      const settings: HyperbulbOpacitySettings = {
+      const settings: MandelbulbOpacitySettings = {
         mode: 'solid',
         simpleAlphaOpacity: 0.7,
         layerCount: 2,
@@ -74,7 +74,7 @@ describe('Opacity Types', () => {
     it('should accept valid layer counts (2, 3, 4)', () => {
       const counts: (2 | 3 | 4)[] = [2, 3, 4];
       counts.forEach((count) => {
-        const settings: HyperbulbOpacitySettings = {
+        const settings: MandelbulbOpacitySettings = {
           mode: 'layeredSurfaces',
           simpleAlphaOpacity: 0.7,
           layerCount: count,

@@ -1,7 +1,7 @@
 /**
  * Shadow System Module
  *
- * Exports types and constants for the hyperbulb soft shadow system.
+ * Exports types and constants for the mandelbulb soft shadow system.
  */
 
 export * from './types';

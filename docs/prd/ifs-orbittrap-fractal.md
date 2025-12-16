@@ -376,7 +376,7 @@ Scenario 2: Rim lighting for bubble edges
 **User story:** As a user, I want shadows so that the layered membrane structures show depth.
 
 **Acceptance criteria**
-1. Shadow controls (same as Hyperbulb)
+1. Shadow controls (same as Mandelbulb)
 2. Orbit-trap specific: Soft shadows recommended for organic appearance
 3. Shadows may be complex due to multiple thin surfaces
 

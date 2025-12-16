@@ -5,7 +5,6 @@ import {
   canRenderEdges,
   isRaymarchingFractal as isRaymarchedFractal,
 } from '@/lib/geometry/registry';
-import type { ObjectType } from '@/lib/geometry/types';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useUIStore } from '@/stores/uiStore';

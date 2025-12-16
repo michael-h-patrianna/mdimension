@@ -7,7 +7,6 @@
 import { describe, it, expect } from 'vitest';
 import {
   // Registry data
-  OBJECT_TYPE_REGISTRY,
   getAllObjectTypes,
   // Core lookups
   getObjectTypeEntry,
@@ -16,7 +15,6 @@ import {
   canRenderEdges,
   isRaymarchingType,
   isRaymarchingFractal,
-  getRenderingCapabilities,
   getFaceDetectionMethod,
   determineRenderMode,
   // Dimension constraints
@@ -49,9 +47,8 @@ describe('Object Type Registry', () => {
       expect(types).toContain('root-system');
       expect(types).toContain('clifford-torus');
       expect(types).toContain('nested-torus');
-      expect(types).toContain('mandelbrot');
+      expect(types).toContain('mandelbulb');
       expect(types).toContain('quaternion-julia');
-      expect(types).toContain('kali');
     });
 
     it('returns valid entry for each object type', () => {
@@ -80,20 +77,20 @@ describe('Object Type Registry', () => {
     });
 
     it('raymarched fractals support faces via raymarching', () => {
-      expect(canRenderFaces('mandelbrot')).toBe(true);
+      expect(canRenderFaces('mandelbulb')).toBe(true);
       expect(canRenderFaces('quaternion-julia')).toBe(true);
     });
 
     it('isRaymarchingType identifies raymarched types', () => {
-      expect(isRaymarchingType('mandelbrot')).toBe(true);
+      expect(isRaymarchingType('mandelbulb')).toBe(true);
       expect(isRaymarchingType('quaternion-julia')).toBe(true);
       expect(isRaymarchingType('hypercube')).toBe(false);
       expect(isRaymarchingType('root-system')).toBe(false);
     });
 
     it('isRaymarchingFractal checks dimension', () => {
-      expect(isRaymarchingFractal('mandelbrot', 3)).toBe(true);
-      expect(isRaymarchingFractal('mandelbrot', 4)).toBe(true);
+      expect(isRaymarchingFractal('mandelbulb', 3)).toBe(true);
+      expect(isRaymarchingFractal('mandelbulb', 4)).toBe(true);
       expect(isRaymarchingFractal('hypercube', 4)).toBe(false);
     });
 
@@ -102,12 +99,12 @@ describe('Object Type Registry', () => {
       expect(getFaceDetectionMethod('simplex')).toBe('triangles');
       expect(getFaceDetectionMethod('root-system')).toBe('convex-hull');
       expect(getFaceDetectionMethod('clifford-torus')).toBe('grid');
-      expect(getFaceDetectionMethod('mandelbrot')).toBe('none');
+      expect(getFaceDetectionMethod('mandelbulb')).toBe('none');
     });
 
     it('determineRenderMode returns correct mode', () => {
       expect(determineRenderMode('hypercube', 4, true)).toBe('polytope');
-      expect(determineRenderMode('mandelbrot', 4, true)).toBe('raymarch-mandelbrot');
+      expect(determineRenderMode('mandelbulb', 4, true)).toBe('raymarch-mandelbulb');
       expect(determineRenderMode('quaternion-julia', 4, true)).toBe('raymarch-quaternion-julia');
       expect(determineRenderMode('quaternion-julia', 4, false)).toBe('none');
     });
@@ -139,29 +136,29 @@ describe('Object Type Registry', () => {
 
     it('getRecommendedDimension returns value for fractal types', () => {
       expect(getRecommendedDimension('quaternion-julia')).toBe(4);
-      expect(getRecommendedDimension('mandelbrot')).toBe(4);
+      expect(getRecommendedDimension('mandelbulb')).toBe(4);
       expect(getRecommendedDimension('hypercube')).toBeUndefined();
     });
   });
 
   describe('Animation Capabilities', () => {
     it('hasTypeSpecificAnimations returns true for fractals', () => {
-      expect(hasTypeSpecificAnimations('mandelbrot')).toBe(true);
+      expect(hasTypeSpecificAnimations('mandelbulb')).toBe(true);
       expect(hasTypeSpecificAnimations('quaternion-julia')).toBe(true);
       expect(hasTypeSpecificAnimations('hypercube')).toBe(false);
     });
 
     it('getAnimationCapabilities returns animation config', () => {
-      const mandelbrotAnim = getAnimationCapabilities('mandelbrot');
-      expect(mandelbrotAnim?.hasTypeSpecificAnimations).toBe(true);
-      expect(Object.keys(mandelbrotAnim?.systems ?? {})).toContain('powerAnimation');
+      const mandelbulbAnim = getAnimationCapabilities('mandelbulb');
+      expect(mandelbulbAnim?.hasTypeSpecificAnimations).toBe(true);
+      expect(Object.keys(mandelbulbAnim?.systems ?? {})).toContain('powerAnimation');
     });
 
     it('getAvailableAnimationSystems filters by dimension', () => {
-      const systems4D = getAvailableAnimationSystems('mandelbrot', 4);
+      const systems4D = getAvailableAnimationSystems('mandelbulb', 4);
       expect(Object.keys(systems4D)).toContain('sliceAnimation');
 
-      const systems3D = getAvailableAnimationSystems('mandelbrot', 3);
+      const systems3D = getAvailableAnimationSystems('mandelbulb', 3);
       expect(Object.keys(systems3D)).not.toContain('sliceAnimation');
     });
   });
@@ -169,12 +166,12 @@ describe('Object Type Registry', () => {
   describe('UI Components', () => {
     it('returns controls component key for each type', () => {
       expect(getControlsComponentKey('hypercube')).toBe('PolytopeSettings');
-      expect(getControlsComponentKey('mandelbrot')).toBe('MandelbrotControls');
+      expect(getControlsComponentKey('mandelbulb')).toBe('MandelbulbControls');
       expect(getControlsComponentKey('quaternion-julia')).toBe('QuaternionJuliaControls');
     });
 
     it('hasTimelineControls returns true for fractals', () => {
-      expect(hasTimelineControls('mandelbrot')).toBe(true);
+      expect(hasTimelineControls('mandelbulb')).toBe(true);
       expect(hasTimelineControls('quaternion-julia')).toBe(true);
       expect(hasTimelineControls('hypercube')).toBe(false);
     });
@@ -188,7 +185,7 @@ describe('Object Type Registry', () => {
 
     it('isValidObjectType validates correctly', () => {
       expect(isValidObjectType('hypercube')).toBe(true);
-      expect(isValidObjectType('mandelbrot')).toBe(true);
+      expect(isValidObjectType('mandelbulb')).toBe(true);
       expect(isValidObjectType('invalid')).toBe(false);
       expect(isValidObjectType('')).toBe(false);
     });

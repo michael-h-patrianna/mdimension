@@ -135,7 +135,7 @@ describe('Scene', () => {
         <Scene
           geometry={sampleGeometry}
           dimension={3}
-          objectType="mandelbrot"
+          objectType="mandelbulb"
           minBoundingRadius={1.5}
           projectedVertices={projectedVertices}
         />

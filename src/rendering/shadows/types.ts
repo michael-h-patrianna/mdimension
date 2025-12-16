@@ -1,7 +1,7 @@
 /**
  * Shadow System Types
  *
- * Type definitions for the hyperbulb soft shadow rendering system.
+ * Type definitions for the mandelbulb soft shadow rendering system.
  * Supports quality presets and animation mode control.
  */
 

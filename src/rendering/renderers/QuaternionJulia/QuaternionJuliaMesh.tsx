@@ -2,7 +2,7 @@
  * QuaternionJuliaMesh - Renders 3D-11D Quaternion Julia fractals using GPU raymarching
  *
  * Mathematical basis: z = z^n + c where c is a fixed Julia constant
- * Unlike Mandelbrot where c varies per sample point, Julia uses a fixed c.
+ * Unlike Mandelbulb where c varies per sample point, Julia uses a fixed c.
  *
  * @see docs/prd/quaternion-julia-fractal.md
  */
@@ -160,7 +160,7 @@ const QuaternionJuliaMesh = () => {
 
   // NOTE: All other store values are read via getState() inside useFrame
   // to avoid React re-renders during animation. This is the high-performance
-  // pattern used by Hyperbulb and other raymarched renderers.
+  // pattern used by Mandelbulb and other raymarched renderers.
 
   const uniforms = useMemo(
     () => ({
@@ -369,22 +369,22 @@ const QuaternionJuliaMesh = () => {
       u.uJuliaConstant.value.set(...config.juliaConstant)
     }
 
-    // Power animation - directly modify uPower like Hyperbulb does
-    // This gives smoother animation and matches the Hyperbulb pattern
+    // Power animation - directly modify uPower like Mandelbulb does
+    // This gives smoother animation and matches the Mandelbulb pattern
     if (config.powerAnimation.enabled) {
       const { minPower, maxPower, speed } = config.powerAnimation
       // Use controlled animation time (respects play/pause and speed)
       const t = animTime * speed * 2 * Math.PI
       const normalized = (Math.sin(t) + 1) / 2 // Maps [-1, 1] to [0, 1]
       const animatedPower = minPower + normalized * (maxPower - minPower)
-      u.uPower.value = animatedPower  // Directly set uPower like Hyperbulb
+      u.uPower.value = animatedPower  // Directly set uPower like Mandelbulb
       lastPowerRef.current = animatedPower
     }
-    // Disable the separate animation uniform system (Hyperbulb pattern)
+    // Disable the separate animation uniform system (Mandelbulb pattern)
     u.uPowerAnimationEnabled.value = false
     u.uAnimatedPower.value = config.power
 
-    // Dimension mixing - uses controlled animation time (matches Hyperbulb)
+    // Dimension mixing - uses controlled animation time (matches Mandelbulb)
     u.uDimensionMixEnabled.value = config.dimensionMixEnabled
     u.uMixIntensity.value = config.mixIntensity
     u.uMixTime.value = animTime * config.mixFrequency * 2 * Math.PI

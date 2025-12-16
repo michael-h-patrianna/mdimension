@@ -24,7 +24,7 @@ function createTestGeometry(options: {
     | 'cross-polytope'
     | 'root-system'
     | 'clifford-torus'
-    | 'mandelbrot'
+    | 'mandelbulb'
 }): NdGeometry {
   return {
     vertices: options.vertices ?? [[0, 0, 0]],
@@ -35,17 +35,17 @@ function createTestGeometry(options: {
 }
 
 describe('determineRenderMode', () => {
-  describe('mandelbrot/hyperbulb rendering', () => {
-    it('should return raymarch-mandelbrot when faces visible in 3D', () => {
+  describe('mandelbulb/mandelbulb rendering', () => {
+    it('should return raymarch-mandelbulb when faces visible in 3D', () => {
       const geometry = createTestGeometry({ vertices: [[0, 0, 0]] })
-      const result = determineRenderMode(geometry, 'mandelbrot', 3, true)
-      expect(result).toBe('raymarch-mandelbrot')
+      const result = determineRenderMode(geometry, 'mandelbulb', 3, true)
+      expect(result).toBe('raymarch-mandelbulb')
     })
 
-    it('should return raymarch-mandelbrot when faces visible in 4D+', () => {
+    it('should return raymarch-mandelbulb when faces visible in 4D+', () => {
       const geometry = createTestGeometry({ vertices: [[0, 0, 0, 0]] })
-      const result = determineRenderMode(geometry, 'mandelbrot', 4, true)
-      expect(result).toBe('raymarch-mandelbrot')
+      const result = determineRenderMode(geometry, 'mandelbulb', 4, true)
+      expect(result).toBe('raymarch-mandelbulb')
     })
   })
 
@@ -126,12 +126,12 @@ describe('RenderMode type', () => {
   it('should have all expected render modes', () => {
     const modes: RenderMode[] = [
       'polytope',
-      'raymarch-mandelbrot',
+      'raymarch-mandelbulb',
       'raymarch-quaternion-julia',
       'none',
     ]
     expect(modes).toContain('polytope')
-    expect(modes).toContain('raymarch-mandelbrot')
+    expect(modes).toContain('raymarch-mandelbulb')
     expect(modes).toContain('raymarch-quaternion-julia')
     expect(modes).toContain('none')
   })

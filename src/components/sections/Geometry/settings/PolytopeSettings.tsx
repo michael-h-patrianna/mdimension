@@ -5,7 +5,6 @@ import {
 } from '@/lib/geometry/extended/types';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
-import React from 'react';
 
 /**
  * Polytope settings controls.

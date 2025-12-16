@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import { RefinementIndicator } from '@/components/canvas/RefinementIndicator';
 import { usePerformanceStore } from '@/stores';
@@ -20,10 +20,10 @@ describe('RefinementIndicator', () => {
     render(<RefinementIndicator />);
     
     act(() => {
-      usePerformanceStore.setState({ 
+      usePerformanceStore.setState({
         refinementProgress: 50,
-        refinementStage: 'base',
-        isInteracting: false 
+        refinementStage: 'low',
+        isInteracting: false
       });
     });
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This PRD defines the implementation of three animation techniques to eliminate the "flat" appearance during rotation for **Mandelbox**, **Menger**, and **Hyperbulb** fractal types. The goal is to transform static sculptures into breathing, morphing organisms.
+This PRD defines the implementation of three animation techniques to eliminate the "flat" appearance during rotation for **Mandelbox**, **Menger**, and **Mandelbulb** fractal types. The goal is to transform static sculptures into breathing, morphing organisms.
 
 ## Problem Statement
 
@@ -35,7 +35,7 @@ where phi_ij = (i + j * goldenRatio) * 2π
 **Variants by Fractal**:
 - **Mandelbox**: Even=boxfold+spherefold, Odd=twist OR power OR shift
 - **Menger**: Even=standard KIFS, Odd=rotated fold variant
-- **Hyperbulb**: Even=basePower, Odd=alternatePower (creates hybrid bulbs)
+- **Mandelbulb**: Even=basePower, Odd=alternatePower (creates hybrid bulbs)
 
 ### Technique C: Animated Slice Origin (Multi-Frequency Drift)
 
@@ -86,7 +86,7 @@ For dimension d >= 3:
 | alternateAnimationSpeed | number | 0.1 - 2.0 | 0.5 | Intensity oscillation speed |
 | alternateAnimationAmplitude | number | 0.0 - 0.5 | 0.2 | Intensity oscillation range |
 
-### Hyperbulb-Specific Parameters
+### Mandelbulb-Specific Parameters
 
 #### Power Animation (Unique)
 | Parameter | Type | Range | Default | Description |
@@ -170,13 +170,13 @@ FRACTAL CONTROLS (drawer)
 │   ├── [toggle] Animate Intensity
 │   └── [slider] Animation Speed (0.1 - 2.0)
 │
-├── POWER ANIMATION (hyperbulb only)
+├── POWER ANIMATION (mandelbulb only)
 │   ├── [toggle] Enable
 │   ├── [slider] Power Center (2.0 - 14.0)
 │   ├── [slider] Power Amplitude (0.5 - 6.0)
 │   └── [slider] Power Speed (0.1 - 1.0)
 │
-├── ALTERNATE POWER (hyperbulb only)
+├── ALTERNATE POWER (mandelbulb only)
 │   ├── [toggle] Enable
 │   ├── [slider] Alternate Power (2.0 - 16.0)
 │   └── [slider] Blend Factor (0.0 - 1.0)
@@ -197,7 +197,7 @@ FRACTAL CONTROLS (drawer)
 
 ### Phase 2: Origin Drift (All Fractals)
 1. Add origin drift params to config interfaces
-2. Add store actions to mandelboxSlice, mengerSlice, mandelbrotSlice
+2. Add store actions to mandelboxSlice, mengerSlice, mandelbulbSlice
 3. Implement CPU-side drift calculation in mesh components
 4. Add UI controls to TimelineControls
 5. Test across all dimensions
@@ -211,7 +211,7 @@ FRACTAL CONTROLS (drawer)
 
 ### Phase 4: Fractal-Specific Features
 1. **Mandelbox**: Transform alternation (shader + UI)
-2. **Hyperbulb**: Power animation + alternate power (shader + UI)
+2. **Mandelbulb**: Power animation + alternate power (shader + UI)
 3. **Menger**: Verify compatibility with existing animations
 
 ### Phase 5: Testing & Polish
@@ -231,7 +231,7 @@ FRACTAL CONTROLS (drawer)
 | `src/lib/geometry/extended/types.ts` | Add animation config interfaces |
 | `src/stores/slices/geometry/mandelboxSlice.ts` | Add dimension mix, origin drift, alternate transform actions |
 | `src/stores/slices/geometry/mengerSlice.ts` | Add dimension mix, origin drift actions |
-| `src/stores/slices/geometry/mandelbrotSlice.ts` | Add dimension mix, origin drift, power animation, alternate power actions |
+| `src/stores/slices/geometry/mandelbulbSlice.ts` | Add dimension mix, origin drift, power animation, alternate power actions |
 
 ### Animation Utilities (New)
 | File | Purpose |
@@ -244,14 +244,14 @@ FRACTAL CONTROLS (drawer)
 |------|---------|
 | `src/rendering/renderers/Mandelbox/MandelboxMesh.tsx` | Add uniforms, drift calc, animation time |
 | `src/rendering/renderers/Menger/MengerMesh.tsx` | Add uniforms, drift calc |
-| `src/rendering/renderers/Hyperbulb/HyperbulbMesh.tsx` | Add uniforms, drift calc, power animation |
+| `src/rendering/renderers/Mandelbulb/MandelbulbMesh.tsx` | Add uniforms, drift calc, power animation |
 
 ### Shaders
 | File | Changes |
 |------|---------|
 | `src/rendering/renderers/Mandelbox/mandelbox.frag` | Mixing function, alternate transform |
 | `src/rendering/renderers/Menger/menger.frag` | Mixing function |
-| `src/rendering/renderers/Hyperbulb/hyperbulb.frag` | Mixing function, alternate power |
+| `src/rendering/renderers/Mandelbulb/mandelbulb.frag` | Mixing function, alternate power |
 
 ### UI
 | File | Changes |
@@ -283,7 +283,7 @@ FRACTAL CONTROLS (drawer)
 
 1. All three fractals support dimension mixing and origin drift
 2. Mandelbox supports transform alternation
-3. Hyperbulb supports power animation and alternate power
+3. Mandelbulb supports power animation and alternate power
 4. Animations interact correctly with speed and bias controls
 5. No performance regression during normal use
 6. All existing tests pass

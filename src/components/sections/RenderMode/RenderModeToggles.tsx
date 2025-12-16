@@ -59,7 +59,7 @@ function canRenderEdges(objectType: ObjectType): boolean {
 }
 
 /**
- * Checks if an object type is a raymarched fractal (mandelbrot 3D+ or quaternion-julia)
+ * Checks if an object type is a raymarched fractal (mandelbulb 3D+ or quaternion-julia)
  * Uses the registry to determine capabilities.
  * @param objectType - The current object type
  * @param dimension - Current dimension
@@ -164,7 +164,7 @@ export const RenderModeToggles: React.FC<RenderModeTogglesProps> = React.memo(({
     }
   }, [edgesSupported, edgesVisible, setEdgesVisible]);
 
-  // Enforce mutual exclusivity for raymarched fractals (Mandelbrot 3D+, Quaternion Julia) on object type switch
+  // Enforce mutual exclusivity for raymarched fractals (Mandelbulb 3D+, Quaternion Julia) on object type switch
   // Rule: Edges ON → Faces must be ON
   useEffect(() => {
     if (isRaymarched && edgesVisible && !facesVisible) {

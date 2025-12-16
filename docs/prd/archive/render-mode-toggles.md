@@ -215,7 +215,7 @@ Scenario 5: Faces toggle persists across object changes
 
 1. The "Faces" toggle button is disabled (greyed out, non-clickable) when the current object does not support face rendering
 2. Objects that support face rendering: Hypercube, Simplex, Cross-Polytope, Root System
-3. Objects that do NOT support face rendering: Hypersphere, Clifford Torus, Mandelbrot Set
+3. Objects that do NOT support face rendering: Hypersphere, Clifford Torus, Mandelbulb Set
 4. When switching to an incompatible object while "Faces" is ON, the "Faces" toggle automatically turns OFF
 5. When switching back to a compatible object, the "Faces" toggle remains in its last manual state for compatible objects
 6. A tooltip or visual indicator explains why the "Faces" button is disabled (e.g., "Faces not available for this object type")
@@ -238,7 +238,7 @@ Scenario 3: Faces toggle enabled for compatible objects
 - Then the "Faces" toggle button becomes enabled and clickable
 
 Scenario 4: Tooltip on disabled faces button
-- Given the user is viewing a mandelbrot set
+- Given the user is viewing a mandelbulb set
 - When the user hovers over the disabled "Faces" button
 - Then a tooltip displays "Faces not available for this object type"
 
@@ -300,7 +300,7 @@ Scenario 4: URL state handling for legacy shader values
 | Root System | Yes | Yes | Yes | Root polytopes have faces |
 | Hypersphere | Yes | No natural edges | No | Point cloud sampling |
 | Clifford Torus | Yes | Yes | No | Parametric surface as wireframe |
-| Mandelbrot Set | Yes | No | No | Fractal point cloud |
+| Mandelbulb Set | Yes | No | No | Fractal point cloud |
 
 ### State Changes Summary
 

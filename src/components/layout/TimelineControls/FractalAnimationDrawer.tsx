@@ -21,7 +21,6 @@ import {
   getConfigStoreKey,
 } from '@/lib/geometry/registry';
 import type { AnimationSystemDef } from '@/lib/geometry/registry';
-import type { ObjectType } from '@/lib/geometry/types';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useShallow } from 'zustand/react/shallow';
@@ -111,7 +110,11 @@ export const FractalAnimationDrawer: React.FC = React.memo(() => {
   const config = useExtendedObjectStore(
     useShallow((state) => {
       if (configKey && configKey in state) {
-        return state[configKey as keyof typeof state] as Record<string, unknown>;
+        const value = state[configKey as keyof typeof state];
+        // Only return config objects, not functions (store actions)
+        if (typeof value === 'object' && value !== null) {
+          return value as unknown as Record<string, unknown>;
+        }
       }
       return {};
     })
@@ -126,9 +129,9 @@ export const FractalAnimationDrawer: React.FC = React.memo(() => {
         // Determine setter name based on object type and parameter key format
         let setterName: string;
 
-        if (objectType === 'mandelbrot') {
-          // Mandelbrot uses flat keys: 'powerMin' → 'setMandelbrotPowerMin'
-          setterName = `setMandelbrot${key.charAt(0).toUpperCase()}${key.slice(1)}`;
+        if (objectType === 'mandelbulb') {
+          // Mandelbulb uses flat keys: 'powerMin' → 'setMandelbulbPowerMin'
+          setterName = `setMandelbulb${key.charAt(0).toUpperCase()}${key.slice(1)}`;
         } else if (objectType === 'quaternion-julia') {
           // Quaternion Julia has both flat and nested keys
           // Nested: 'juliaConstantAnimation.enabled' → 'setQuaternionJuliaConstantAnimationEnabled'
@@ -145,23 +148,6 @@ export const FractalAnimationDrawer: React.FC = React.memo(() => {
           } else {
             // Flat key
             setterName = `setQuaternionJulia${key.charAt(0).toUpperCase()}${key.slice(1)}`;
-          }
-        } else if (objectType === 'kali') {
-          // Kali has both flat and nested keys (same pattern as quaternion-julia)
-          // Nested: 'constantAnimation.enabled' → 'setKaliConstantAnimationEnabled'
-          // Nested: 'gainAnimation.minGain' → 'setKaliGainAnimationMinGain'
-          // Flat: 'originDriftEnabled' → 'setKaliOriginDriftEnabled'
-
-          if (key.includes('.')) {
-            // Nested path - convert 'constantAnimation.amplitude' to 'ConstantAnimationAmplitude'
-            const parts = key.split('.');
-            const camelParts = parts.map(
-              (part) => part.charAt(0).toUpperCase() + part.slice(1)
-            );
-            setterName = `setKali${camelParts.join('')}`;
-          } else {
-            // Flat key
-            setterName = `setKali${key.charAt(0).toUpperCase()}${key.slice(1)}`;
           }
         } else {
           // Default fallback (shouldn't happen for fractals)

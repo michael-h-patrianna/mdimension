@@ -121,7 +121,7 @@ Component structure:
 Test cases:
 - Initial state: Vertices ON, Edges ON, Faces OFF
 - Toggle each visibility
-- Faces toggle disabled for hypersphere, clifford-torus, mandelbrot
+- Faces toggle disabled for hypersphere, clifford-torus, mandelbulb
 - Faces toggle enabled for hypercube, simplex, cross-polytope, root-system
 - Faces toggle auto-changes shaderType
 
@@ -169,6 +169,6 @@ After implementation:
 2. Toggle Vertices ON/OFF - vertices appear/disappear
 3. Toggle Edges ON/OFF - edges appear/disappear
 4. Toggle Faces ON/OFF - faces appear/disappear, shader changes
-5. Faces toggle disabled for hypersphere, clifford-torus, mandelbrot
+5. Faces toggle disabled for hypersphere, clifford-torus, mandelbulb
 6. URL sharing preserves toggle states
 7. Old URLs with `sh=dualOutline` load without errors (maps to wireframe)

@@ -12,7 +12,7 @@ This document analyzes fractal types that meet our strict constraints:
 
 | Fractal | PRD | Key Characteristic |
 |---------|-----|-------------------|
-| Hyperbulb | Implemented | Hyperspherical power map |
+| Mandelbulb | Implemented | Hyperspherical power map |
 | Mandelbox | `mandelbox.md` | Box fold + sphere fold |
 | Menger Sponge | `menger-sponge.md` | Kaleidoscopic IFS |
 
@@ -242,7 +242,7 @@ float crossPolytopeFractal(float z[11], int D, int maxIter) {
 
 | Fractal | N-D Ready | Parameters | Animation Variety | Performance | Visual Richness |
 |---------|-----------|------------|-------------------|-------------|-----------------|
-| **Hyperbulb** | ✅ | Power, iterations | ⭐⭐⭐ | Medium | ⭐⭐⭐⭐ |
+| **Mandelbulb** | ✅ | Power, iterations | ⭐⭐⭐ | Medium | ⭐⭐⭐⭐ |
 | **Mandelbox** | ✅ | Scale, radii, fold | ⭐⭐⭐⭐⭐ | Medium | ⭐⭐⭐⭐⭐ |
 | **Menger Sponge** | ✅ | Iterations only | ⭐⭐ | Fast | ⭐⭐⭐ |
 | **KIFS Platonic** | ✅ | Fold angles, rotation | ⭐⭐⭐⭐⭐ | Fast | ⭐⭐⭐⭐⭐ |
@@ -291,7 +291,7 @@ Any fractal built from these operations will generalize perfectly to N dimension
 
 ## Implementation Note
 
-All new fractals would use the **same infrastructure** as Hyperbulb:
+All new fractals would use the **same infrastructure** as Mandelbulb:
 - Same rotation store and animation system
 - Same basis vector transformation: `c = origin + x·basisX + y·basisY + z·basisZ`
 - Same shader uniform structure

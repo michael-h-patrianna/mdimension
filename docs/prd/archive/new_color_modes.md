@@ -4,9 +4,9 @@
 
 This PRD covers color palette improvements for **two distinct rendering systems**:
 
-1. **Raymarched Fractals** (Mandelbulb 3D, Hyperbulb 4D-11D)
+1. **Raymarched Fractals** (Mandelbulb 3D, Mandelbulb 4D-11D)
    - Uses custom fragment shaders with orbit trap coloring
-   - Files: `mandelbulb.frag`, `hyperbulb.frag`
+   - Files: `mandelbulb.frag`, `mandelbulb.frag`
    - Color variation driven by: orbit trap values (0-1)
 
 2. **Face-Rendered Polytopes** (Tesseract, 600-cell, etc.)
@@ -70,19 +70,19 @@ Fractal visualization uses specialized techniques, **not** web design color syst
 - **Distance estimation** methods
 - **Orbit trap coloring** with smooth remapping
 
-**Key Source**: [Wikipedia - Plotting algorithms for the Mandelbrot set](https://en.wikipedia.org/wiki/Plotting_algorithms_for_the_Mandelbrot_set)
+**Key Source**: [Wikipedia - Plotting algorithms for the Mandelbulb set](https://en.wikipedia.org/wiki/Plotting_algorithms_for_the_Mandelbulb_set)
 
 ---
 
 ## Current Implementation: Two Rendering Systems
 
-### System 1: Raymarched Fractals (Mandelbulb, Hyperbulb)
+### System 1: Raymarched Fractals (Mandelbulb, Mandelbulb)
 
 **Purpose**: Render 3D-11D fractals using ray marching distance estimation
 
 **Files**:
 - `src/components/canvas/renderers/Mandelbulb/mandelbulb.frag`
-- `src/components/canvas/renderers/Hyperbulb/hyperbulb.frag`
+- `src/components/canvas/renderers/Mandelbulb/mandelbulb.frag`
 - `src/lib/shaders/palette/palette.glsl.ts` (shared)
 
 **Color Variation Parameter**:
@@ -225,14 +225,14 @@ vec3 getPaletteColor(vec3 baseHSL, float t, int mode) {
 
 | Aspect | Raymarching | Face Rendering |
 |--------|-------------|----------------|
-| **Objects** | Mandelbulb, Hyperbulb | Tesseract, 600-cell, etc. |
+| **Objects** | Mandelbulb, Mandelbulb | Tesseract, 600-cell, etc. |
 | **Shader Type** | Full custom fragment shader | MeshPhongMaterial + injection |
 | **Color Driver** | Orbit trap values | Per-face depth values |
 | **Value Source** | Runtime ray march computation | Pre-computed on CPU |
 | **Distribution** | ❌ Poor (clustered near 0/1) | ✅ Good (spatial variation) |
 | **Primary Problem** | Poor distribution + discrete jumps | Discrete jumps only |
 | **Visual Symptom** | Only 1-2 colors visible | Visible color bands/layers |
-| **Files** | `mandelbulb.frag`, `hyperbulb.frag` | `FaceRenderer.tsx`, `SurfaceMaterial.ts` |
+| **Files** | `mandelbulb.frag`, `mandelbulb.frag` | `FaceRenderer.tsx`, `SurfaceMaterial.ts` |
 | **Shared Code** | `palette.glsl.ts` | `palette.glsl.ts` |
 
 **Implication**: Solutions must address BOTH value distribution (raymarching) AND discrete transitions (both systems).
@@ -440,9 +440,9 @@ col = mix(col, color3, blend2);
 
 ### Solution 5: Exponentially Mapped Cyclic Iterations
 
-**Applicability**: ⚠️ Primarily point clouds (2D Mandelbrot). Limited benefit for raymarching/face rendering.
+**Applicability**: ⚠️ Primarily point clouds (2D Mandelbulb). Limited benefit for raymarching/face rendering.
 
-**Description**: Transform iteration count non-linearly to spread colors across zoom levels (from Mandelbrot literature).
+**Description**: Transform iteration count non-linearly to spread colors across zoom levels (from Mandelbulb literature).
 
 **Algorithm**:
 ```glsl
@@ -467,14 +467,14 @@ where:
 ```
 
 **Pros**:
-- Proven technique from Mandelbrot visualization literature
+- Proven technique from Mandelbulb visualization literature
 - Creates color banding that scales proportionally with zoom
 - Palette cycles become more frequent at deeper zooms
 - Brings out detail at different magnifications
 
 **Cons**:
 - Best suited for escape-time algorithms (point clouds), not orbit traps
-- May not help Mandelbulb/Hyperbulb raymarching specifically
+- May not help Mandelbulb/Mandelbulb raymarching specifically
 - Still requires good base palette (doesn't fix palette itself)
 - Limited applicability to our use case
 
@@ -482,7 +482,7 @@ where:
 
 **Visual Impact**: ⭐⭐⭐ (Medium for point clouds), ⭐ (Low for raymarching)
 
-**Best For**: 2D Mandelbrot point cloud rendering, not 3D/4D raymarching
+**Best For**: 2D Mandelbulb point cloud rendering, not 3D/4D raymarching
 
 ---
 
@@ -826,7 +826,7 @@ Advanced:
 **Week 3-4**: Implement Solution 1 (Cosine Gradients)
 
 **Files to modify**:
-- Raymarching: `mandelbulb.frag`, `hyperbulb.frag`
+- Raymarching: `mandelbulb.frag`, `mandelbulb.frag`
 - Face rendering: `SurfaceMaterial.ts` (shader injection code)
 - Shared: `palette.glsl.ts` (add cosinePalette function)
 
@@ -907,7 +907,7 @@ Advanced:
 
 **Files**:
 - `src/components/canvas/renderers/Mandelbulb/mandelbulb.frag`
-- `src/components/canvas/renderers/Hyperbulb/hyperbulb.frag`
+- `src/components/canvas/renderers/Mandelbulb/mandelbulb.frag`
 
 **Required Additions**:
 ```glsl
@@ -1581,7 +1581,7 @@ Controlled by Settings → Interface → Color Controls Complexity: [Beginner|In
 ## References
 
 ### Research Sources
-- [Wikipedia: Plotting algorithms for the Mandelbrot set](https://en.wikipedia.org/wiki/Plotting_algorithms_for_the_Mandelbrot_set)
+- [Wikipedia: Plotting algorithms for the Mandelbulb set](https://en.wikipedia.org/wiki/Plotting_algorithms_for_the_Mandelbulb_set)
 - [Inigo Quilez: Procedural Palettes](https://iquilezles.org/articles/palettes/)
 - [Inigo Quilez: Orbit Traps](https://iquilezles.org/articles/orbittraps3d/)
 - Fractal Forums: Color theory discussions
@@ -1596,9 +1596,9 @@ Controlled by Settings → Interface → Color Controls Complexity: [Beginner|In
 
 **Raymarching (Fractals)**:
 - `src/components/canvas/renderers/Mandelbulb/mandelbulb.frag` - 3D fractal shader
-- `src/components/canvas/renderers/Hyperbulb/hyperbulb.frag` - 4D-11D fractal shader
+- `src/components/canvas/renderers/Mandelbulb/mandelbulb.frag` - 4D-11D fractal shader
 - `src/components/canvas/renderers/Mandelbulb/MandelbulbMesh.tsx` - React component
-- `src/components/canvas/renderers/Hyperbulb/HyperbulbMesh.tsx` - React component
+- `src/components/canvas/renderers/Mandelbulb/MandelbulbMesh.tsx` - React component
 
 **Face Rendering (Polytopes)**:
 - `src/components/canvas/renderers/FaceRenderer.tsx` - Face rendering component
@@ -1608,7 +1608,7 @@ Controlled by Settings → Interface → Color Controls Complexity: [Beginner|In
 **Shared**:
 - `src/lib/shaders/palette/palette.glsl.ts` - GLSL palette functions
 - `src/lib/shaders/palette/types.ts` - Type definitions
-- `src/lib/geometry/extended/mandelbrot/colors.ts` - CPU-side palette generation
+- `src/lib/geometry/extended/mandelbulb/colors.ts` - CPU-side palette generation
 
 ---
 

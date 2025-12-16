@@ -1,5 +1,5 @@
 import type { NdGeometry, ObjectType } from '@/lib/geometry'
-import { detectFaces, canRenderFaces, getFaceDetectionMethod } from '@/lib/geometry'
+import { detectFaces, getFaceDetectionMethod } from '@/lib/geometry'
 import { useMemo } from 'react'
 
 /**
@@ -14,7 +14,7 @@ import { useMemo } from 'react'
 export function useFaceDetection(geometry: NdGeometry, objectType: ObjectType) {
   return useMemo(() => {
     // Use registry to check if object type supports face rendering
-    // Note: Raymarched types (mandelbrot, quaternion-julia) support faces via raymarching,
+    // Note: Raymarched types (mandelbulb, quaternion-julia) support faces via raymarching,
     // but don't use detectFaces - they render directly in the shader
     const faceDetectionMethod = getFaceDetectionMethod(objectType)
     if (faceDetectionMethod === 'none') {

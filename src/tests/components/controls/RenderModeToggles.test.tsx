@@ -158,9 +158,9 @@ describe('RenderModeToggles', () => {
       expect(facesToggle).not.toBeDisabled();
     });
 
-    it('should enable faces toggle for mandelbrot (raymarching mode)', () => {
+    it('should enable faces toggle for mandelbulb (raymarching mode)', () => {
       useGeometryStore.getState().setDimension(3);
-      useGeometryStore.getState().setObjectType('mandelbrot');
+      useGeometryStore.getState().setObjectType('mandelbulb');
       render(<RenderModeToggles />);
 
       const facesToggle = screen.getByTestId('toggle-faces');

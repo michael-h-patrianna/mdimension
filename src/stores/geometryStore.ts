@@ -36,7 +36,7 @@ export const DIMENSION_CONSTRAINTS: Record<string, { min?: number; exact?: numbe
   'root-system': { min: 3 },
   'quaternion-julia': { min: 3 },
   'nested-torus': { min: 4 },
-  'mandelbrot': { min: 3 },
+  'mandelbulb': { min: 3 },
 }
 
 /**
@@ -44,7 +44,7 @@ export const DIMENSION_CONSTRAINTS: Record<string, { min?: number; exact?: numbe
  * @deprecated Use getRecommendedDimension from '@/lib/geometry/registry' instead
  */
 export const RECOMMENDED_DIMENSIONS: Record<string, { dimension?: number; reason: string }> = {
-  'mandelbrot': {
+  'mandelbulb': {
     dimension: 4,
     reason: 'Fractal structures reveal complex n-dimensional behavior',
   },
