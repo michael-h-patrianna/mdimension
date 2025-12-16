@@ -22,6 +22,7 @@ export interface BokehUniforms {
   tDiffuse: { value: THREE.Texture | null };
   tDepth: { value: THREE.DepthTexture | null };
   tTemporalDepth: { value: THREE.Texture | null };
+  tNormal: { value: THREE.Texture | null };
   focus: { value: number };
   focusRange: { value: number };
   aperture: { value: number };
@@ -31,6 +32,7 @@ export interface BokehUniforms {
   aspect: { value: number };
   debugMode: { value: number };
   showTemporalDepth: { value: boolean };
+  showNormalBuffer: { value: boolean };
   blurMethod: { value: number };
   time: { value: number };
 }
@@ -48,6 +50,7 @@ export const BokehShader = {
     tDiffuse: { value: null as THREE.Texture | null },
     tDepth: { value: null as THREE.DepthTexture | null },
     tTemporalDepth: { value: null as THREE.Texture | null },
+    tNormal: { value: null as THREE.Texture | null },
     focus: { value: 10.0 },
     focusRange: { value: 5.0 },
     aperture: { value: 0.01 },
@@ -57,6 +60,7 @@ export const BokehShader = {
     aspect: { value: 1.0 },
     debugMode: { value: 0.0 },
     showTemporalDepth: { value: false },
+    showNormalBuffer: { value: false },
     blurMethod: { value: 3.0 }, // 0=disc, 1=jittered, 2=separable, 3=hexagonal
     time: { value: 0.0 },
   },
@@ -78,6 +82,7 @@ export const BokehShader = {
     uniform sampler2D tDiffuse;
     uniform sampler2D tDepth;
     uniform sampler2D tTemporalDepth;
+    uniform sampler2D tNormal;
     uniform float focus;
     uniform float focusRange;
     uniform float aperture;
@@ -87,11 +92,11 @@ export const BokehShader = {
     uniform float aspect;
     uniform float debugMode;
     uniform bool showTemporalDepth;
+    uniform bool showNormalBuffer;
     uniform float blurMethod;
     uniform float time;
 
     in vec2 vUv;
-    layout(location = 0) out vec4 fragColor;
 
     // Pseudo-random function for jittered sampling
     float rand(vec2 co) {
@@ -231,7 +236,30 @@ export const BokehShader = {
       if (showTemporalDepth) {
         float temporalDepth = texture(tTemporalDepth, vUv).r;
         // Invert: near=white, far=black (more intuitive)
-        fragColor = vec4(vec3(1.0 - temporalDepth), 1.0);
+        pc_fragColor = vec4(vec3(1.0 - temporalDepth), 1.0);
+        return;
+      }
+
+      // Show normal buffer if enabled
+      // MeshNormalMaterial outputs view-space normals encoded as RGB
+      // Normals are mapped from [-1,1] to [0,1] range: (normal * 0.5 + 0.5)
+      // So camera-facing surfaces (0,0,1) appear as (0.5, 0.5, 1.0) = violet/blue
+      if (showNormalBuffer) {
+        vec4 normalSample = texture(tNormal, vUv);
+        vec3 normal = normalSample.rgb;
+        
+        // Check if there's valid normal data (alpha or non-zero normal)
+        // Areas with no geometry will be clear/black
+        float hasNormal = step(0.01, length(normal));
+        
+        // Display the encoded normals directly - they're already in 0-1 range
+        // This gives the characteristic violet/blue look for surfaces facing camera
+        pc_fragColor = vec4(normal, 1.0);
+        
+        // If no geometry, show dark background
+        if (hasNormal < 0.5) {
+          pc_fragColor = vec4(0.05, 0.05, 0.1, 1.0);
+        }
         return;
       }
 
@@ -249,14 +277,14 @@ export const BokehShader = {
 
       // Debug mode 1: show raw depth buffer (inverted so near=white, far=black)
       if (debugMode > 0.5 && debugMode < 1.5) {
-        fragColor = vec4(vec3(1.0 - depth), 1.0);
+        pc_fragColor = vec4(vec3(1.0 - depth), 1.0);
         return;
       }
 
       // Debug mode 2: show linear depth normalized to camera range (near=black, far=white)
       if (debugMode > 1.5 && debugMode < 2.5) {
         float normalized = (viewZ - nearClip) / (farClip - nearClip);
-        fragColor = vec4(vec3(clamp(normalized, 0.0, 1.0)), 1.0);
+        pc_fragColor = vec4(vec3(clamp(normalized, 0.0, 1.0)), 1.0);
         return;
       }
 
@@ -267,7 +295,7 @@ export const BokehShader = {
         // Red: behind focus (positive diff), Blue: in front (negative diff)
         float behind = clamp(diff / (focusRange * 3.0), 0.0, 1.0);
         float infront = clamp(-diff / (focusRange * 3.0), 0.0, 1.0);
-        fragColor = vec4(behind, inFocus, infront, 1.0);
+        pc_fragColor = vec4(behind, inFocus, infront, 1.0);
         return;
       }
 
@@ -292,8 +320,8 @@ export const BokehShader = {
         col = hexagonalBlur(vUv, dofblur);
       }
 
-      fragColor = col;
-      fragColor.a = 1.0;
+      pc_fragColor = col;
+      pc_fragColor.a = 1.0;
     }
   `,
 };

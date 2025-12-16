@@ -38,6 +38,16 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
 import { useShallow } from 'zustand/react/shallow';
 
+/**
+ * Normal material for G-buffer rendering.
+ * MeshNormalMaterial outputs view-space normals encoded as RGB.
+ * Used by SSR for accurate reflection direction calculation.
+ * Created once and reused across frames for performance.
+ */
+const normalMaterial = new THREE.MeshNormalMaterial({
+  blending: THREE.NoBlending,
+});
+
 /** Raycaster for auto-focus depth detection - only targets main object layer */
 const autoFocusRaycaster = new THREE.Raycaster();
 autoFocusRaycaster.layers.set(RENDER_LAYERS.MAIN_OBJECT);
@@ -90,9 +100,11 @@ export const PostProcessing = memo(function PostProcessing() {
 
   const {
     showDepthBuffer,
+    showNormalBuffer,
   } = useUIStore(
     useShallow((state) => ({
       showDepthBuffer: state.showDepthBuffer,
+      showNormalBuffer: state.showNormalBuffer,
       showTemporalDepthBuffer: state.showTemporalDepthBuffer,
     }))
   );
@@ -123,7 +135,7 @@ export const PostProcessing = memo(function PostProcessing() {
   //
   // IMPORTANT: We create these once and resize them separately to avoid
   // recreating the entire pipeline on every resolution change (which causes black flashes)
-  const { composer, bloomPass, bokehPass, ssrPass, refractionPass, fxaaPass, smaaPass, sceneTarget, objectDepthTarget, texturePass } = useMemo(() => {
+  const { composer, bloomPass, bokehPass, ssrPass, refractionPass, fxaaPass, smaaPass, sceneTarget, objectDepthTarget, normalTarget, texturePass } = useMemo(() => {
     // Use a reasonable initial size - will be resized immediately in useEffect
     const initialWidth = Math.max(1, size.width);
     const initialHeight = Math.max(1, size.height);
@@ -141,10 +153,29 @@ export const PostProcessing = memo(function PostProcessing() {
     // Mark texture as containing linear color data (our shaders output linear values)
     // OutputPass will handle the linear-to-sRGB conversion for display
     renderTarget.texture.colorSpace = THREE.LinearSRGBColorSpace;
-    // Note: depthBuffer is enabled by default for z-testing, but we don't need
-    // a DepthTexture here since all effects use object-only depth
+    // Add depth texture for full-scene depth (includes walls, gizmos, axes)
+    // Used by SSR to allow object reflections on walls
+    const sceneDepthTex = new THREE.DepthTexture(initialWidth, initialHeight);
+    sceneDepthTex.format = THREE.DepthFormat;
+    sceneDepthTex.type = THREE.UnsignedShortType;
+    sceneDepthTex.minFilter = THREE.NearestFilter;
+    sceneDepthTex.magFilter = THREE.NearestFilter;
+    renderTarget.depthTexture = sceneDepthTex;
 
-    // Create object-only depth target for SSR/refraction/bokeh
+    // Create normal render target for G-buffer (SSR needs view-space normals)
+    // MeshNormalMaterial outputs view-space normals encoded as RGB (normal * 0.5 + 0.5)
+    const normalTarget = new THREE.WebGLRenderTarget(initialWidth, initialHeight, {
+      minFilter: THREE.LinearFilter,
+      magFilter: THREE.LinearFilter,
+      format: THREE.RGBAFormat,
+      type: THREE.HalfFloatType, // Match Three.js SSRPass precision needs
+      depthBuffer: false, // Normals only, no depth needed
+      stencilBuffer: false,
+    });
+    normalTarget.texture.name = 'NormalBuffer';
+
+    // Create object-only depth target for refraction/bokeh
+    // SSR uses full-scene depth to allow reflections on walls
     // This excludes environment objects (walls, gizmos) from depth-based effects
     const objectDepth = new THREE.WebGLRenderTarget(initialWidth, initialHeight, {
       minFilter: THREE.NearestFilter,
@@ -236,6 +267,7 @@ export const PostProcessing = memo(function PostProcessing() {
       smaaPass: smaa,
       sceneTarget: renderTarget,
       objectDepthTarget: objectDepth,
+      normalTarget: normalTarget,
       texturePass: texPass,
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -251,10 +283,10 @@ export const PostProcessing = memo(function PostProcessing() {
     }
   }, [bloomPass, bloomEnabled, bloomIntensity, bloomThreshold, bloomRadius]);
 
-  // Update bokeh enabled state (also enabled when showing depth buffer)
+  // Update bokeh enabled state (also enabled when showing depth/normal buffer)
   useEffect(() => {
-    bokehPass.enabled = bokehEnabled || showDepthBuffer;
-  }, [bokehPass, bokehEnabled, showDepthBuffer]);
+    bokehPass.enabled = bokehEnabled || showDepthBuffer || showNormalBuffer;
+  }, [bokehPass, bokehEnabled, showDepthBuffer, showNormalBuffer]);
 
   // Update SSR enabled state
   useEffect(() => {
@@ -308,6 +340,13 @@ export const PostProcessing = memo(function PostProcessing() {
     bloomPass.resolution.set(width, height);
     sceneTarget.setSize(width, height);
 
+    // Resize scene depth texture (for SSR with walls)
+    if (sceneTarget.depthTexture) {
+      sceneTarget.depthTexture.image.width = width;
+      sceneTarget.depthTexture.image.height = height;
+      sceneTarget.depthTexture.needsUpdate = true;
+    }
+
     // Resize object depth target and its depth texture
     objectDepthTarget.setSize(width, height);
     // DepthTexture needs manual resize via image property
@@ -316,6 +355,9 @@ export const PostProcessing = memo(function PostProcessing() {
       objectDepthTarget.depthTexture.image.height = height;
       objectDepthTarget.depthTexture.needsUpdate = true;
     }
+
+    // Resize normal render target (for SSR G-buffer)
+    normalTarget.setSize(width, height);
 
     // Update texture pass with new texture reference after resize (color buffer)
     texturePass.map = sceneTarget.texture;
@@ -330,7 +372,7 @@ export const PostProcessing = memo(function PostProcessing() {
     // Update refraction uniforms
     const refractionUniforms = refractionPass.uniforms as unknown as RefractionUniforms;
     refractionUniforms.resolution.value.set(width, height);
-  }, [composer, bloomPass, bokehPass, ssrPass, refractionPass, sceneTarget, objectDepthTarget, texturePass, size.width, size.height]);
+  }, [composer, bloomPass, bokehPass, ssrPass, refractionPass, sceneTarget, objectDepthTarget, normalTarget, texturePass, size.width, size.height]);
 
   // Initialize temporal depth manager on mount and resize
   useEffect(() => {
@@ -343,9 +385,10 @@ export const PostProcessing = memo(function PostProcessing() {
       composer.dispose();
       sceneTarget.dispose();
       objectDepthTarget.dispose();
+      normalTarget.dispose();
       TemporalDepthManager.dispose();
     };
-  }, [composer, sceneTarget, objectDepthTarget]);
+  }, [composer, sceneTarget, objectDepthTarget, normalTarget]);
 
   // Render
   useFrame((_, delta) => {
@@ -360,8 +403,9 @@ export const PostProcessing = memo(function PostProcessing() {
     const currentRefractionEnabled = ppState.refractionEnabled;
     const currentAntiAliasingMethod = ppState.antiAliasingMethod;
 
-    // Bokeh pass also runs when showing depth buffer or temporal depth (uses same shader)
-    const bokehOrDepthEnabled = currentBokehEnabled || currentShowDepthBuffer || uiState.showTemporalDepthBuffer;
+    // Bokeh pass also runs when showing depth/normal buffer or temporal depth (uses same shader)
+    const currentShowNormalBuffer = uiState.showNormalBuffer;
+    const bokehOrDepthEnabled = currentBokehEnabled || currentShowDepthBuffer || currentShowNormalBuffer || uiState.showTemporalDepthBuffer;
 
     // Update pass enabled states every frame to ensure sync
     bloomPass.enabled = currentBloomEnabled;
@@ -508,9 +552,30 @@ export const PostProcessing = memo(function PostProcessing() {
       },
     });
 
-    // Use object-only depth for all effects (excludes walls, gizmos)
-    // Only available when renderObjectDepth is true (effects are enabled)
-    const effectDepthTexture = objectDepthTarget.depthTexture;
+    // Render normal pass for G-buffer (when SSR, refraction, or normal visualization needs normals)
+    // Uses scene.overrideMaterial to capture view-space normals from all geometry
+    // MeshNormalMaterial outputs view-space normals encoded as RGB
+    const needsNormalPass = currentSSREnabled || currentRefractionEnabled || currentShowNormalBuffer;
+    if (needsNormalPass) {
+      gl.setRenderTarget(normalTarget);
+      gl.setClearColor(0x000000, 0);
+      gl.clear(true, false, false); // Clear color only (no depth buffer in this target)
+
+      // Override all materials with MeshNormalMaterial
+      scene.overrideMaterial = normalMaterial;
+      try {
+        gl.render(scene, camera);
+      } finally {
+        scene.overrideMaterial = null;
+        gl.setRenderTarget(null);
+      }
+    }
+
+    // Use object-only depth or full scene depth based on setting
+    // Object-only excludes walls/gizmos; full scene includes them for wall reflections
+    const effectDepthTexture = ppState.objectOnlyDepth
+      ? objectDepthTarget.depthTexture
+      : sceneTarget.depthTexture;
 
     // Update texture pass (color buffer from MRT)
     texturePass.map = sceneTarget.texture;
@@ -536,7 +601,7 @@ export const PostProcessing = memo(function PostProcessing() {
       currentFocusRef.current += (targetFocus - currentFocusRef.current) * smoothFactor;
 
       const uniforms = bokehPass.uniforms as unknown as BokehUniforms;
-      // Use object-only depth for bokeh to focus on main object, not walls
+      // Use effectDepthTexture which respects objectOnlyDepth setting
       uniforms.tDepth.value = effectDepthTexture;
       uniforms.focus.value = currentFocusRef.current;
 
@@ -570,6 +635,10 @@ export const PostProcessing = memo(function PostProcessing() {
       const temporalUniforms = TemporalDepthManager.getUniforms();
       uniforms.tTemporalDepth.value = temporalUniforms.uPrevDepthTexture;
 
+      // Normal buffer visualization
+      uniforms.showNormalBuffer.value = currentShowNormalBuffer;
+      uniforms.tNormal.value = normalTarget.texture;
+
       // Blur method: 0=disc, 1=jittered, 2=separable, 3=hexagonal
       const blurMethodMap: Record<string, number> = {
         disc: 0,
@@ -586,8 +655,9 @@ export const PostProcessing = memo(function PostProcessing() {
     // Update SSR uniforms
     if (currentSSREnabled && camera instanceof THREE.PerspectiveCamera) {
       const ssrUniforms = ssrPass.uniforms as unknown as SSRUniforms;
-      ssrUniforms.tNormal.value = null; // No normal buffer - SSR will use depth-based reconstruction
-      // Use object-only depth for SSR to only reflect main object, not walls
+      // Use G-buffer normals from normal render pass (much more accurate than depth reconstruction)
+      ssrUniforms.tNormal.value = normalTarget.texture;
+      // Use effectDepthTexture which respects objectOnlyDepth setting
       ssrUniforms.tDepth.value = effectDepthTexture;
       ssrUniforms.projMatrix.value.copy(camera.projectionMatrix);
       ssrUniforms.invProjMatrix.value.copy(camera.projectionMatrixInverse);
@@ -611,8 +681,9 @@ export const PostProcessing = memo(function PostProcessing() {
     // Update refraction uniforms
     if (currentRefractionEnabled && camera instanceof THREE.PerspectiveCamera) {
       const refractionUniforms = refractionPass.uniforms as unknown as RefractionUniforms;
-      refractionUniforms.tNormal.value = null; // No normal buffer - refraction will use depth-based reconstruction
-      // Use object-only depth for refraction to only distort main object, not walls
+      // Use G-buffer normals from normal render pass (much more accurate than depth reconstruction)
+      refractionUniforms.tNormal.value = normalTarget.texture;
+      // Use effectDepthTexture which respects objectOnlyDepth setting
       refractionUniforms.tDepth.value = effectDepthTexture;
       refractionUniforms.invProjMatrix.value.copy(camera.projectionMatrixInverse);
       refractionUniforms.ior.value = ppState.refractionIOR;

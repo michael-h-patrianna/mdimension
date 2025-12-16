@@ -150,30 +150,4 @@ describe('QuaternionJuliaMesh', () => {
     expect(config.bailoutRadius).toBe(DEFAULT_QUATERNION_JULIA_CONFIG.bailoutRadius);
     expect(config.bailoutRadius).toBe(4.0);
   });
-
-  it('should enable Julia constant animation', () => {
-    useExtendedObjectStore.getState().setQuaternionJuliaConstantAnimationEnabled(true);
-    const config = useExtendedObjectStore.getState().quaternionJulia;
-    expect(config.juliaConstantAnimation.enabled).toBe(true);
-  });
-
-  it('should enable power animation', () => {
-    useExtendedObjectStore.getState().setQuaternionJuliaPowerAnimationEnabled(true);
-    const config = useExtendedObjectStore.getState().quaternionJulia;
-    expect(config.powerAnimation.enabled).toBe(true);
-  });
-
-  it('should enable origin drift for 4D+', () => {
-    useGeometryStore.setState({ dimension: 4 });
-    useExtendedObjectStore.getState().setQuaternionJuliaOriginDriftEnabled(true);
-    const config = useExtendedObjectStore.getState().quaternionJulia;
-    expect(config.originDriftEnabled).toBe(true);
-  });
-
-  it('should enable dimension mixing for 4D+', () => {
-    useGeometryStore.setState({ dimension: 4 });
-    useExtendedObjectStore.getState().setQuaternionJuliaDimensionMixEnabled(true);
-    const config = useExtendedObjectStore.getState().quaternionJulia;
-    expect(config.dimensionMixEnabled).toBe(true);
-  });
 });

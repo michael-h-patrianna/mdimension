@@ -10,19 +10,19 @@
  * 4. Sample color at offset UV
  */
 
-import * as THREE from 'three';
+import * as THREE from 'three'
 
 export interface RefractionUniforms {
-  tDiffuse: { value: THREE.Texture | null };
-  tNormal: { value: THREE.Texture | null };
-  tDepth: { value: THREE.DepthTexture | null };
-  invProjMatrix: { value: THREE.Matrix4 };
-  ior: { value: number };
-  strength: { value: number };
-  chromaticAberration: { value: number };
-  resolution: { value: THREE.Vector2 };
-  nearClip: { value: number };
-  farClip: { value: number };
+  tDiffuse: { value: THREE.Texture | null }
+  tNormal: { value: THREE.Texture | null }
+  tDepth: { value: THREE.DepthTexture | null }
+  invProjMatrix: { value: THREE.Matrix4 }
+  ior: { value: number }
+  strength: { value: number }
+  chromaticAberration: { value: number }
+  resolution: { value: THREE.Vector2 }
+  nearClip: { value: number }
+  farClip: { value: number }
 }
 
 export const RefractionShader = {
@@ -70,7 +70,6 @@ export const RefractionShader = {
     uniform float farClip;
 
     in vec2 vUv;
-    layout(location = 0) out vec4 fragColor;
 
     // Get linear depth from depth buffer
     float getLinearDepth(vec2 coord) {
@@ -92,26 +91,31 @@ export const RefractionShader = {
       vec2 texel = 1.0 / resolution;
 
       // Sample depth at center and neighboring pixels
+      // In WebGL/Three.js: V=0 is bottom, V=1 is top
       float depthC = texture(tDepth, coord).x;
-      float depthL = texture(tDepth, coord - vec2(texel.x, 0.0)).x;
-      float depthR = texture(tDepth, coord + vec2(texel.x, 0.0)).x;
-      float depthU = texture(tDepth, coord - vec2(0.0, texel.y)).x;
-      float depthD = texture(tDepth, coord + vec2(0.0, texel.y)).x;
+      float depthL = texture(tDepth, coord - vec2(texel.x, 0.0)).x;  // Left
+      float depthR = texture(tDepth, coord + vec2(texel.x, 0.0)).x;  // Right
+      float depthB = texture(tDepth, coord - vec2(0.0, texel.y)).x;  // Below (lower V)
+      float depthT = texture(tDepth, coord + vec2(0.0, texel.y)).x;  // Above (higher V)
 
       // Reconstruct view-space positions
       vec3 posC = getViewPosition(coord, depthC);
       vec3 posL = getViewPosition(coord - vec2(texel.x, 0.0), depthL);
       vec3 posR = getViewPosition(coord + vec2(texel.x, 0.0), depthR);
-      vec3 posU = getViewPosition(coord - vec2(0.0, texel.y), depthU);
-      vec3 posD = getViewPosition(coord + vec2(0.0, texel.y), depthD);
+      vec3 posB = getViewPosition(coord - vec2(0.0, texel.y), depthB);
+      vec3 posT = getViewPosition(coord + vec2(0.0, texel.y), depthT);
 
       // Calculate tangent vectors using central differences for better accuracy
       // Use the smaller difference to avoid artifacts at depth discontinuities
+      // ddx points right (+X in view space)
+      // ddy points up (+Y in view space, since posT is above posC)
       vec3 ddx = (abs(posR.z - posC.z) < abs(posC.z - posL.z)) ? (posR - posC) : (posC - posL);
-      vec3 ddy = (abs(posD.z - posC.z) < abs(posC.z - posU.z)) ? (posD - posC) : (posC - posU);
+      vec3 ddy = (abs(posT.z - posC.z) < abs(posC.z - posB.z)) ? (posT - posC) : (posC - posB);
 
       // Cross product gives the surface normal in view space
-      // Note: In view space, camera looks down -Z, so we use ddy × ddx for correct orientation
+      // ddx ~ +X (right), ddy ~ +Y (up)
+      // cross(+X, +Y) = -Z (into screen, away from camera) - wrong for facing surfaces
+      // cross(+Y, +X) = +Z (toward camera) - correct for surfaces facing camera
       vec3 normal = normalize(cross(ddy, ddx));
 
       return normal;
@@ -140,7 +144,7 @@ export const RefractionShader = {
     void main() {
       // Early exit if no G-buffer data at this pixel
       if (!hasGBufferData(vUv)) {
-        fragColor = texture(tDiffuse, vUv);
+        pc_fragColor = texture(tDiffuse, vUv);
         return;
       }
 
@@ -179,12 +183,12 @@ export const RefractionShader = {
         float g = texture(tDiffuse, uvG).g;
         float b = texture(tDiffuse, uvB).b;
 
-        fragColor = vec4(r, g, b, 1.0);
+        pc_fragColor = vec4(r, g, b, 1.0);
       } else {
         // No chromatic aberration - simple offset
         vec2 refractedUV = clamp(vUv + offset, 0.0, 1.0);
-        fragColor = texture(tDiffuse, refractedUV);
+        pc_fragColor = texture(tDiffuse, refractedUV);
       }
     }
   `,
-};
+}

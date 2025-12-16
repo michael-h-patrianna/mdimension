@@ -26,6 +26,7 @@ import {
   DEFAULT_OPACITY_SETTINGS,
   DEFAULT_SHOW_AXIS_HELPER,
   DEFAULT_SHOW_DEPTH_BUFFER,
+  DEFAULT_SHOW_NORMAL_BUFFER,
   DEFAULT_SHOW_PERF_MONITOR,
   DEFAULT_SHOW_TEMPORAL_DEPTH_BUFFER,
   MAX_MAX_FPS,
@@ -41,6 +42,7 @@ export interface UISliceState {
   showAxisHelper: boolean
   showPerfMonitor: boolean
   showDepthBuffer: boolean
+  showNormalBuffer: boolean
   showTemporalDepthBuffer: boolean
 
   // --- Animation ---
@@ -59,6 +61,7 @@ export interface UISliceActions {
   setShowAxisHelper: (show: boolean) => void
   setShowPerfMonitor: (show: boolean) => void
   setShowDepthBuffer: (show: boolean) => void
+  setShowNormalBuffer: (show: boolean) => void
   setShowTemporalDepthBuffer: (show: boolean) => void
 
   // --- Animation Actions ---
@@ -90,6 +93,7 @@ export const UI_INITIAL_STATE: UISliceState = {
   showAxisHelper: DEFAULT_SHOW_AXIS_HELPER,
   showPerfMonitor: DEFAULT_SHOW_PERF_MONITOR,
   showDepthBuffer: DEFAULT_SHOW_DEPTH_BUFFER,
+  showNormalBuffer: DEFAULT_SHOW_NORMAL_BUFFER,
   showTemporalDepthBuffer: DEFAULT_SHOW_TEMPORAL_DEPTH_BUFFER,
 
   // Animation
@@ -119,12 +123,26 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set) => ({
     set({ showPerfMonitor: show })
   },
 
+  // Buffer visualizations are mutually exclusive - enabling one disables the others
   setShowDepthBuffer: (show: boolean) => {
-    set({ showDepthBuffer: show })
+    set({
+      showDepthBuffer: show,
+      ...(show && { showNormalBuffer: false, showTemporalDepthBuffer: false }),
+    })
+  },
+
+  setShowNormalBuffer: (show: boolean) => {
+    set({
+      showNormalBuffer: show,
+      ...(show && { showDepthBuffer: false, showTemporalDepthBuffer: false }),
+    })
   },
 
   setShowTemporalDepthBuffer: (show: boolean) => {
-    set({ showTemporalDepthBuffer: show })
+    set({
+      showTemporalDepthBuffer: show,
+      ...(show && { showDepthBuffer: false, showNormalBuffer: false }),
+    })
   },
 
   // --- Animation Actions ---

@@ -26,6 +26,7 @@ import {
   DEFAULT_BOKEH_SMOOTH_TIME,
   DEFAULT_BOKEH_WORLD_FOCUS_DISTANCE,
   DEFAULT_BOKEH_WORLD_FOCUS_RANGE,
+  DEFAULT_OBJECT_ONLY_DEPTH,
   DEFAULT_REFRACTION_CHROMATIC_ABERRATION,
   DEFAULT_REFRACTION_ENABLED,
   DEFAULT_REFRACTION_IOR,
@@ -80,6 +81,10 @@ export interface PostProcessingSliceState {
   // --- Anti-aliasing ---
   antiAliasingMethod: AntiAliasingMethod
   smaaThreshold: number
+
+  // --- Depth Buffer ---
+  /** When true, depth-based effects exclude walls/environment. When false, walls are included. */
+  objectOnlyDepth: boolean
 }
 
 export interface PostProcessingSliceActions {
@@ -118,6 +123,9 @@ export interface PostProcessingSliceActions {
   // --- Anti-aliasing Actions ---
   setAntiAliasingMethod: (method: AntiAliasingMethod) => void
   setSmaaThreshold: (threshold: number) => void
+
+  // --- Depth Buffer Actions ---
+  setObjectOnlyDepth: (objectOnly: boolean) => void
 }
 
 export type PostProcessingSlice = PostProcessingSliceState & PostProcessingSliceActions
@@ -162,6 +170,9 @@ export const POST_PROCESSING_INITIAL_STATE: PostProcessingSliceState = {
   // Anti-aliasing
   antiAliasingMethod: DEFAULT_ANTI_ALIASING_METHOD,
   smaaThreshold: DEFAULT_SMAA_THRESHOLD,
+
+  // Depth Buffer
+  objectOnlyDepth: DEFAULT_OBJECT_ONLY_DEPTH,
 }
 
 // ============================================================================
@@ -248,17 +259,17 @@ export const createPostProcessingSlice: StateCreator<
   },
 
   setSSRFadeStart: (start: number) => {
-    const clamped = Math.max(0, Math.min(1, start));
-    const { ssrFadeEnd } = get();
+    const clamped = Math.max(0, Math.min(1, start))
+    const { ssrFadeEnd } = get()
     // Ensure fadeStart is always less than fadeEnd
-    set({ ssrFadeStart: Math.min(clamped, ssrFadeEnd - 0.01) });
+    set({ ssrFadeStart: Math.min(clamped, ssrFadeEnd - 0.01) })
   },
 
   setSSRFadeEnd: (end: number) => {
-    const clamped = Math.max(0, Math.min(1, end));
-    const { ssrFadeStart } = get();
+    const clamped = Math.max(0, Math.min(1, end))
+    const { ssrFadeStart } = get()
     // Ensure fadeEnd is always greater than fadeStart
-    set({ ssrFadeEnd: Math.max(clamped, ssrFadeStart + 0.01) });
+    set({ ssrFadeEnd: Math.max(clamped, ssrFadeStart + 0.01) })
   },
 
   setSSRQuality: (quality: SSRQuality) => {
@@ -290,5 +301,10 @@ export const createPostProcessingSlice: StateCreator<
   setSmaaThreshold: (threshold: number) => {
     // Clamp to valid range: 0.01 (very aggressive) to 0.2 (subtle)
     set({ smaaThreshold: Math.max(0.01, Math.min(0.2, threshold)) })
+  },
+
+  // --- Depth Buffer Actions ---
+  setObjectOnlyDepth: (objectOnly: boolean) => {
+    set({ objectOnlyDepth: objectOnly })
   },
 })

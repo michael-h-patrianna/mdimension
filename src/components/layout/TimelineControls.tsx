@@ -68,11 +68,8 @@ export const TimelineControls: FC = () => {
                                mandelbulbConfig.sliceAnimationEnabled ||
                                mandelbulbConfig.phaseShiftEnabled;
     
-    // Quaternion Julia: any of its animations
-    const qjAnimating = quaternionJuliaConfig.juliaConstantAnimation.enabled ||
-                        quaternionJuliaConfig.powerAnimation.enabled ||
-                        quaternionJuliaConfig.originDriftEnabled ||
-                        quaternionJuliaConfig.dimensionMixEnabled;
+    // Quaternion Julia: currently no animations (removed)
+    const qjAnimating = false;
 
     // Polytope: any of its animations (breathing, twist, explode)
     const polytopeAnimating = polytopeConfig.facetOffsetEnabled ||
@@ -87,10 +84,6 @@ export const TimelineControls: FC = () => {
     mandelbulbConfig.originDriftEnabled,
     mandelbulbConfig.sliceAnimationEnabled,
     mandelbulbConfig.phaseShiftEnabled,
-    quaternionJuliaConfig.juliaConstantAnimation.enabled,
-    quaternionJuliaConfig.powerAnimation.enabled,
-    quaternionJuliaConfig.originDriftEnabled,
-    quaternionJuliaConfig.dimensionMixEnabled,
     polytopeConfig.facetOffsetEnabled,
     polytopeConfig.dualMorphEnabled,
     polytopeConfig.explodeEnabled,

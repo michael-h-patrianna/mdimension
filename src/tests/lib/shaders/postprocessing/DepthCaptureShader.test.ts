@@ -91,10 +91,10 @@ describe('DepthCaptureShader', () => {
   describe('fragment shader', () => {
     it('should use WebGL2/GLSL3 syntax', () => {
       // #version directive is handled by glslVersion property, not embedded in shader
+      // Three.js auto-injects pc_fragColor output for GLSL3 shaders
       expect(DepthCaptureShader.glslVersion).toBeDefined();
       expect(DepthCaptureShader.fragmentShader).toContain('precision highp float');
       expect(DepthCaptureShader.fragmentShader).toContain('in vec2 vUv');
-      expect(DepthCaptureShader.fragmentShader).toContain('layout(location = 0) out vec4 fragColor');
     });
 
     it('should include packing for depth conversion', () => {
@@ -120,9 +120,9 @@ describe('DepthCaptureShader', () => {
     });
 
     it('should output unnormalized ray distance using layout output', () => {
-      // Should use fragColor not gl_FragColor for WebGL2
+      // Should use pc_fragColor (Three.js auto-injected output for GLSL3) not gl_FragColor
       // Should output rayDistance (unnormalized), not normalizedDepth
-      expect(DepthCaptureShader.fragmentShader).toContain('fragColor = vec4(rayDistance');
+      expect(DepthCaptureShader.fragmentShader).toContain('pc_fragColor = vec4(rayDistance');
       expect(DepthCaptureShader.fragmentShader).not.toContain('gl_FragColor');
     });
   });

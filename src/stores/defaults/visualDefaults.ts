@@ -105,6 +105,9 @@ export const DEFAULT_ANTI_ALIASING_METHOD: AntiAliasingMethod = 'none'
 /** SMAA edge detection threshold (lower = more aggressive, 0.05-0.15 typical range) */
 export const DEFAULT_SMAA_THRESHOLD = 0.05
 
+/** Whether depth-based effects use object-only depth (excludes walls) or full scene depth */
+export const DEFAULT_OBJECT_ONLY_DEPTH = true
+
 // ============================================================================
 // Lighting Defaults
 // ============================================================================
@@ -388,6 +391,7 @@ export const DEFAULT_SHADER_SETTINGS = {
 export const DEFAULT_SHOW_AXIS_HELPER = false
 export const DEFAULT_SHOW_PERF_MONITOR = true
 export const DEFAULT_SHOW_DEPTH_BUFFER = false
+export const DEFAULT_SHOW_NORMAL_BUFFER = false
 export const DEFAULT_SHOW_TEMPORAL_DEPTH_BUFFER = false
 export const DEFAULT_ANIMATION_BIAS = 0
 export const MIN_ANIMATION_BIAS = 0

@@ -241,6 +241,7 @@ export const MandelbulbAnimationDrawer: React.FC = React.memo(() => {
           </div>
         </div>
       )}
+
     </AnimationDrawerContainer>
   );
 });

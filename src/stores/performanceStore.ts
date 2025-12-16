@@ -81,6 +81,13 @@ interface PerformanceState {
   cameraTeleported: boolean
 
   // -------------------------------------------------------------------------
+  // Fractal Animation Quality (Fractals only)
+  // -------------------------------------------------------------------------
+
+  /** Whether to use lower quality during fractal animation for smoother interaction */
+  fractalAnimationLowQuality: boolean
+
+  // -------------------------------------------------------------------------
   // Actions
   // -------------------------------------------------------------------------
 
@@ -97,6 +104,9 @@ interface PerformanceState {
   // Temporal Reprojection
   setTemporalReprojectionEnabled: (enabled: boolean) => void
   setCameraTeleported: (teleported: boolean) => void
+
+  // Fractal Animation Quality
+  setFractalAnimationLowQuality: (enabled: boolean) => void
 
   // General
   reset: () => void
@@ -130,6 +140,9 @@ export const usePerformanceStore = create<PerformanceState>((set, get) => ({
   // Temporal Reprojection
   temporalReprojectionEnabled: true,
   cameraTeleported: false,
+
+  // Fractal Animation Quality
+  fractalAnimationLowQuality: true,
 
   // -------------------------------------------------------------------------
   // Actions
@@ -189,6 +202,11 @@ export const usePerformanceStore = create<PerformanceState>((set, get) => ({
     set({ cameraTeleported: teleported })
   },
 
+  // Fractal Animation Quality
+  setFractalAnimationLowQuality: (enabled: boolean) => {
+    set({ fractalAnimationLowQuality: enabled })
+  },
+
   // General
   reset: () => {
     set({
@@ -200,6 +218,7 @@ export const usePerformanceStore = create<PerformanceState>((set, get) => ({
       qualityMultiplier: 1.0,
       temporalReprojectionEnabled: true,
       cameraTeleported: false,
+      fractalAnimationLowQuality: true,
     })
   },
 }))

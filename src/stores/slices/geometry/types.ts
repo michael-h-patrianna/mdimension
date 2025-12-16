@@ -14,6 +14,11 @@ import {
   QuaternionJuliaConfig,
   RootSystemConfig,
   RootSystemType,
+  SchroedingerColorMode,
+  SchroedingerConfig,
+  SchroedingerPalette,
+  SchroedingerQualityPreset,
+  SchroedingerRenderStyle,
   TruncationMode,
   WythoffPolytopeConfig,
   WythoffPreset,
@@ -244,37 +249,75 @@ export interface QuaternionJuliaSliceActions {
   setQuaternionJuliaShadowQuality: (value: number) => void
   setQuaternionJuliaShadowSoftness: (value: number) => void
   setQuaternionJuliaShadowAnimationMode: (value: number) => void
-  // Julia constant animation
-  setQuaternionJuliaConstantAnimationEnabled: (value: boolean) => void
-  setQuaternionJuliaConstantAnimationAmplitude: (
-    value: [number, number, number, number]
-  ) => void
-  setQuaternionJuliaConstantAnimationFrequency: (
-    value: [number, number, number, number]
-  ) => void
-  setQuaternionJuliaConstantAnimationPhase: (
-    value: [number, number, number, number]
-  ) => void
-  // Power animation
-  setQuaternionJuliaPowerAnimationEnabled: (value: boolean) => void
-  setQuaternionJuliaPowerAnimationMinPower: (value: number) => void
-  setQuaternionJuliaPowerAnimationMaxPower: (value: number) => void
-  setQuaternionJuliaPowerAnimationSpeed: (value: number) => void
-  // Origin drift
-  setQuaternionJuliaOriginDriftEnabled: (value: boolean) => void
-  setQuaternionJuliaOriginDriftAmplitude: (value: number) => void
-  setQuaternionJuliaOriginDriftBaseFrequency: (value: number) => void
-  setQuaternionJuliaOriginDriftFrequencySpread: (value: number) => void
-  // Dimension mixing
-  setQuaternionJuliaDimensionMixEnabled: (value: boolean) => void
-  setQuaternionJuliaMixIntensity: (value: number) => void
-  setQuaternionJuliaMixFrequency: (value: number) => void
   // Utility
   getQuaternionJuliaConfig: () => QuaternionJuliaConfig
   randomizeJuliaConstant: () => void
 }
 
 export type QuaternionJuliaSlice = QuaternionJuliaSliceState & QuaternionJuliaSliceActions
+
+// ============================================================================
+// Schroedinger Slice
+// ============================================================================
+export interface SchroedingerSliceState {
+  schroedinger: SchroedingerConfig
+}
+
+export interface SchroedingerSliceActions {
+  setSchroedingerMaxIterations: (value: number) => void
+  setSchroedingerEscapeRadius: (value: number) => void
+  setSchroedingerQualityPreset: (preset: SchroedingerQualityPreset) => void
+  setSchroedingerResolution: (value: number) => void
+  setSchroedingerVisualizationAxes: (axes: [number, number, number]) => void
+  setSchroedingerVisualizationAxis: (index: 0 | 1 | 2, dimIndex: number) => void
+  setSchroedingerParameterValue: (dimIndex: number, value: number) => void
+  setSchroedingerParameterValues: (values: number[]) => void
+  resetSchroedingerParameters: () => void
+  setSchroedingerCenter: (center: number[]) => void
+  setSchroedingerExtent: (extent: number) => void
+  fitSchroedingerToView: () => void
+  setSchroedingerColorMode: (mode: SchroedingerColorMode) => void
+  setSchroedingerPalette: (palette: SchroedingerPalette) => void
+  setSchroedingerCustomPalette: (palette: { start: string; mid: string; end: string }) => void
+  setSchroedingerInvertColors: (invert: boolean) => void
+  setSchroedingerInteriorColor: (color: string) => void
+  setSchroedingerPaletteCycles: (cycles: number) => void
+  setSchroedingerRenderStyle: (style: SchroedingerRenderStyle) => void
+  setSchroedingerPointSize: (size: number) => void
+  setSchroedingerBoundaryThreshold: (threshold: [number, number]) => void
+  setSchroedingerSchroedingerPower: (power: number) => void
+  setSchroedingerConfig: (config: Partial<SchroedingerConfig>) => void
+  initializeSchroedingerForDimension: (dimension: number) => void
+  getSchroedingerConfig: () => SchroedingerConfig
+  // Power Animation
+  setSchroedingerPowerAnimationEnabled: (enabled: boolean) => void
+  setSchroedingerPowerMin: (min: number) => void
+  setSchroedingerPowerMax: (max: number) => void
+  setSchroedingerPowerSpeed: (speed: number) => void
+  // Alternate Power
+  setSchroedingerAlternatePowerEnabled: (enabled: boolean) => void
+  setSchroedingerAlternatePowerValue: (power: number) => void
+  setSchroedingerAlternatePowerBlend: (blend: number) => void
+  // Dimension Mixing
+  setSchroedingerDimensionMixEnabled: (enabled: boolean) => void
+  setSchroedingerMixIntensity: (intensity: number) => void
+  setSchroedingerMixFrequency: (frequency: number) => void
+  // Origin Drift
+  setSchroedingerOriginDriftEnabled: (enabled: boolean) => void
+  setSchroedingerDriftAmplitude: (amplitude: number) => void
+  setSchroedingerDriftBaseFrequency: (frequency: number) => void
+  setSchroedingerDriftFrequencySpread: (spread: number) => void
+  // Slice Animation
+  setSchroedingerSliceAnimationEnabled: (enabled: boolean) => void
+  setSchroedingerSliceSpeed: (speed: number) => void
+  setSchroedingerSliceAmplitude: (amplitude: number) => void
+  // Angular Phase Shifts
+  setSchroedingerPhaseShiftEnabled: (enabled: boolean) => void
+  setSchroedingerPhaseSpeed: (speed: number) => void
+  setSchroedingerPhaseAmplitude: (amplitude: number) => void
+}
+
+export type SchroedingerSlice = SchroedingerSliceState & SchroedingerSliceActions
 
 // ============================================================================
 // Combined Extended Object Slice
@@ -285,6 +328,7 @@ export type ExtendedObjectSlice = PolytopeSlice &
   CliffordTorusSlice &
   NestedTorusSlice &
   MandelbulbSlice &
-  QuaternionJuliaSlice & {
+  QuaternionJuliaSlice &
+  SchroedingerSlice & {
     reset: () => void
   }

@@ -14,6 +14,7 @@
 
 import { Select, type SelectOption } from '@/components/ui/Select';
 import { Slider } from '@/components/ui/Slider';
+import { Switch } from '@/components/ui/Switch';
 import { type AntiAliasingMethod, DEFAULT_SMAA_THRESHOLD } from '@/stores/defaults/visualDefaults';
 import { usePostProcessingStore } from '@/stores/postProcessingStore';
 import React from 'react';
@@ -41,12 +42,16 @@ export const MiscControls: React.FC<MiscControlsProps> = React.memo(({
     setAntiAliasingMethod,
     smaaThreshold,
     setSmaaThreshold,
+    objectOnlyDepth,
+    setObjectOnlyDepth,
   } = usePostProcessingStore(
     useShallow((state) => ({
       antiAliasingMethod: state.antiAliasingMethod,
       setAntiAliasingMethod: state.setAntiAliasingMethod,
       smaaThreshold: state.smaaThreshold,
       setSmaaThreshold: state.setSmaaThreshold,
+      objectOnlyDepth: state.objectOnlyDepth,
+      setObjectOnlyDepth: state.setObjectOnlyDepth,
     }))
   );
 
@@ -77,6 +82,13 @@ export const MiscControls: React.FC<MiscControlsProps> = React.memo(({
           data-testid="smaa-threshold-slider"
         />
       )}
+
+      {/* Object Only Depth */}
+      <Switch
+        checked={objectOnlyDepth}
+        onCheckedChange={setObjectOnlyDepth}
+        label="Object Only Depth"
+      />
     </div>
   );
 });

@@ -196,3 +196,5 @@ export const skyboxFragmentShader = skyboxFragmentShaderRaw.replace(
   GLSL_COSINE_PALETTE
 )
 
+
+

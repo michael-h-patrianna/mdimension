@@ -8,10 +8,6 @@
  */
 
 import { createTemporalDepthUniforms } from '@/hooks'
-import {
-    computeDriftedOrigin,
-    type OriginDriftConfig,
-} from '@/lib/animation/originDrift'
 import { composeRotations } from '@/lib/math/rotation'
 import type { MatrixND } from '@/lib/math/types'
 import {
@@ -34,7 +30,6 @@ import {
     SHADOW_ANIMATION_MODE_TO_INT,
     SHADOW_QUALITY_TO_INT,
 } from '@/rendering/shadows/types'
-import { useAnimationStore } from '@/stores/animationStore'
 import { useAppearanceStore } from '@/stores/appearanceStore'
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore'
 import { useGeometryStore } from '@/stores/geometryStore'
@@ -131,11 +126,6 @@ const QuaternionJuliaMesh = () => {
   const colorCacheRef = useRef(createColorCache())
   const lightColorCacheRef = useRef(createLightColorCache())
 
-  // Animation time
-  const animationTimeRef = useRef(0)
-  const lastFrameTimeRef = useRef(0)
-  const lastPowerRef = useRef(2.0)
-
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -178,15 +168,6 @@ const QuaternionJuliaMesh = () => {
 
       // Julia constant (unique to this fractal type)
       uJuliaConstant: { value: new THREE.Vector4(0.3, 0.5, 0.4, 0.2) },
-
-      // Power Animation
-      uPowerAnimationEnabled: { value: false },
-      uAnimatedPower: { value: 2.0 },
-
-      // Dimension Mixing
-      uDimensionMixEnabled: { value: false },
-      uMixIntensity: { value: 0.1 },
-      uMixTime: { value: 0 },
 
       // D-dimensional basis
       uBasisX: { value: new Float32Array(11) },
@@ -304,7 +285,6 @@ const QuaternionJuliaMesh = () => {
     if (!u) return;
 
     // Get current state directly from stores
-    const animStore = useAnimationStore.getState()
     const rotStore = useRotationStore.getState()
     const geoStore = useGeometryStore.getState()
     const extStore = useExtendedObjectStore.getState()
@@ -319,16 +299,6 @@ const QuaternionJuliaMesh = () => {
 
     // Update time
     u.uTime.value = state.clock.elapsedTime
-
-    // Update animation time
-    const currentTime = state.clock.elapsedTime
-    const delta = currentTime - lastFrameTimeRef.current
-    lastFrameTimeRef.current = currentTime
-
-    if (animStore.isPlaying) {
-      animationTimeRef.current += delta * animStore.speed
-    }
-    const animTime = animationTimeRef.current
 
     // Quality mode based on rotation changes
     const didRotate = hasRotationsChanged(currentRotations, prevRotationsRef.current)
@@ -350,7 +320,9 @@ const QuaternionJuliaMesh = () => {
       }, QUALITY_RESTORE_DELAY_MS)
     }
 
-    u.uFastMode.value = fastModeRef.current
+    // Only enable fast mode if fractalAnimationLowQuality is enabled in performance settings
+    const fractalAnimLowQuality = perfStore.fractalAnimationLowQuality;
+    u.uFastMode.value = fractalAnimLowQuality && fastModeRef.current
 
     // Progressive refinement
     const qualityMultiplier = perfStore.qualityMultiplier ?? 1.0
@@ -364,41 +336,8 @@ const QuaternionJuliaMesh = () => {
     u.uIterations.value = config.maxIterations
     u.uEscapeRadius.value = config.bailoutRadius
 
-    // Julia constant (with animation if enabled)
-    // Uses controlled animation time so it respects play/pause
-    if (config.juliaConstantAnimation.enabled) {
-      const { amplitude, frequency, phase } = config.juliaConstantAnimation
-      const base = config.juliaConstant
-      const t = animTime  // Use controlled animation time
-      u.uJuliaConstant.value.set(
-        base[0] + amplitude[0] * Math.sin(frequency[0] * t * 2 * Math.PI + phase[0]),
-        base[1] + amplitude[1] * Math.cos(frequency[1] * t * 2 * Math.PI + phase[1]),
-        base[2] + amplitude[2] * Math.sin(frequency[2] * t * 2 * Math.PI + phase[2]),
-        base[3] + amplitude[3] * Math.cos(frequency[3] * t * 2 * Math.PI + phase[3])
-      )
-    } else {
-      u.uJuliaConstant.value.set(...config.juliaConstant)
-    }
-
-    // Power animation - directly modify uPower like Mandelbulb does
-    // This gives smoother animation and matches the Mandelbulb pattern
-    if (config.powerAnimation.enabled) {
-      const { minPower, maxPower, speed } = config.powerAnimation
-      // Use controlled animation time (respects play/pause and speed)
-      const t = animTime * speed * 2 * Math.PI
-      const normalized = (Math.sin(t) + 1) / 2 // Maps [-1, 1] to [0, 1]
-      const animatedPower = minPower + normalized * (maxPower - minPower)
-      u.uPower.value = animatedPower  // Directly set uPower like Mandelbulb
-      lastPowerRef.current = animatedPower
-    }
-    // Disable the separate animation uniform system (Mandelbulb pattern)
-    u.uPowerAnimationEnabled.value = false
-    u.uAnimatedPower.value = config.power
-
-    // Dimension mixing - uses controlled animation time (matches Mandelbulb)
-    u.uDimensionMixEnabled.value = config.dimensionMixEnabled
-    u.uMixIntensity.value = config.mixIntensity
-    u.uMixTime.value = animTime * config.mixFrequency * 2 * Math.PI
+    // Julia constant (static)
+    u.uJuliaConstant.value.set(...config.juliaConstant)
 
     // Check if basis vectors need recomputation
     const dimChanged = currentDimension !== prevDimensionRef.current
@@ -451,11 +390,8 @@ const QuaternionJuliaMesh = () => {
 
     // ============================================
     // Origin Update (separate from basis vectors)
-    // Must update every frame when origin drift is enabled
     // ============================================
-    const needsOriginUpdate = needsRecompute || config.originDriftEnabled
-
-    if (needsOriginUpdate && cachedRotationMatrixRef.current) {
+    if (needsRecompute && cachedRotationMatrixRef.current) {
       const wa = workingArraysRef.current
 
       // Clear and set up origin
@@ -466,29 +402,6 @@ const QuaternionJuliaMesh = () => {
       // Set extra dimension values from parameters
       for (let i = 0; i < config.parameterValues.length; i++) {
         wa.origin[3 + i] = config.parameterValues[i] ?? 0
-      }
-
-      // Apply origin drift if enabled (Technique C - animate slice origin in extra dims)
-      if (config.originDriftEnabled && currentDimension >= 4) {
-        const driftConfig: OriginDriftConfig = {
-          enabled: true,
-          amplitude: config.originDriftAmplitude,
-          baseFrequency: config.originDriftBaseFrequency,
-          frequencySpread: config.originDriftFrequencySpread,
-        }
-        // Get animation speed from store for consistent drift timing
-        const animationSpeed = animStore.speed
-        const driftedOrigin = computeDriftedOrigin(
-          config.parameterValues,  // baseValues - extra dimension values only
-          animTime,                // time - controlled animation time (respects play/pause)
-          driftConfig,             // config
-          animationSpeed,          // animationSpeed
-          uiStore.animationBias    // animationBias
-        )
-        // Set drifted values for extra dimensions (indices 3+)
-        for (let i = 0; i < driftedOrigin.length && i + 3 < MAX_DIMENSION; i++) {
-          wa.origin[3 + i] = driftedOrigin[i] ?? 0
-        }
       }
 
       // Apply rotation to origin

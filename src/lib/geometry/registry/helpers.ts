@@ -212,7 +212,7 @@ export function determineRenderMode(
   type: ObjectType,
   dimension: number,
   facesVisible: boolean
-): 'polytope' | 'raymarch-mandelbulb' | 'raymarch-quaternion-julia' | 'none' {
+): 'polytope' | 'raymarch-mandelbulb' | 'raymarch-quaternion-julia' | 'raymarch-schroedinger' | 'none' {
   const entry = getObjectTypeEntry(type)
   if (!entry) return 'none'
 
@@ -221,6 +221,7 @@ export function determineRenderMode(
     // Specific raymarch modes based on type
     if (type === 'quaternion-julia') return 'raymarch-quaternion-julia'
     if (type === 'mandelbulb') return 'raymarch-mandelbulb'
+    if (type === 'schroedinger') return 'raymarch-schroedinger'
   }
 
   return 'polytope'

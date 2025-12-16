@@ -104,9 +104,6 @@ describe('QuaternionJuliaControls', () => {
     expect(screen.getByText('Dim 5')).toBeInTheDocument();
   });
 
-  // Animation UI tests moved to JuliaAnimationDrawer.test.tsx
-  // Animation controls are now in the TimelineControls drawer
-
   it('should update Julia constant value in store', () => {
     useExtendedObjectStore.getState().setQuaternionJuliaConstant([0.5, -0.3, 0.2, 0.1]);
     expect(useExtendedObjectStore.getState().quaternionJulia.juliaConstant).toEqual([0.5, -0.3, 0.2, 0.1]);
@@ -213,68 +210,5 @@ describe('QuaternionJuliaControls', () => {
     expect(config.maxIterations).toBe(128);
     expect(config.surfaceThreshold).toBe(0.001);
     expect(config.maxRaymarchSteps).toBe(256);
-  });
-
-  it('should toggle Julia constant animation', () => {
-    expect(useExtendedObjectStore.getState().quaternionJulia.juliaConstantAnimation.enabled).toBe(false);
-    useExtendedObjectStore.getState().setQuaternionJuliaConstantAnimationEnabled(true);
-    expect(useExtendedObjectStore.getState().quaternionJulia.juliaConstantAnimation.enabled).toBe(true);
-  });
-
-  it('should toggle power animation', () => {
-    expect(useExtendedObjectStore.getState().quaternionJulia.powerAnimation.enabled).toBe(false);
-    useExtendedObjectStore.getState().setQuaternionJuliaPowerAnimationEnabled(true);
-    expect(useExtendedObjectStore.getState().quaternionJulia.powerAnimation.enabled).toBe(true);
-  });
-
-  it('should toggle origin drift', () => {
-    expect(useExtendedObjectStore.getState().quaternionJulia.originDriftEnabled).toBe(false);
-    useExtendedObjectStore.getState().setQuaternionJuliaOriginDriftEnabled(true);
-    expect(useExtendedObjectStore.getState().quaternionJulia.originDriftEnabled).toBe(true);
-  });
-
-  it('should toggle dimension mixing', () => {
-    expect(useExtendedObjectStore.getState().quaternionJulia.dimensionMixEnabled).toBe(false);
-    useExtendedObjectStore.getState().setQuaternionJuliaDimensionMixEnabled(true);
-    expect(useExtendedObjectStore.getState().quaternionJulia.dimensionMixEnabled).toBe(true);
-  });
-
-  it('should set animation amplitude', () => {
-    useExtendedObjectStore.getState().setQuaternionJuliaConstantAnimationAmplitude([0.2, 0.2, 0.2, 0.2]);
-    expect(useExtendedObjectStore.getState().quaternionJulia.juliaConstantAnimation.amplitude).toEqual([0.2, 0.2, 0.2, 0.2]);
-  });
-
-  it('should set animation frequency', () => {
-    useExtendedObjectStore.getState().setQuaternionJuliaConstantAnimationFrequency([0.1, 0.1, 0.1, 0.1]);
-    expect(useExtendedObjectStore.getState().quaternionJulia.juliaConstantAnimation.frequency).toEqual([0.1, 0.1, 0.1, 0.1]);
-  });
-
-  it('should set power animation parameters', () => {
-    useExtendedObjectStore.getState().setQuaternionJuliaPowerAnimationMinPower(3.0);
-    useExtendedObjectStore.getState().setQuaternionJuliaPowerAnimationMaxPower(6.0);
-    useExtendedObjectStore.getState().setQuaternionJuliaPowerAnimationSpeed(0.05);
-
-    const config = useExtendedObjectStore.getState().quaternionJulia;
-    expect(config.powerAnimation.minPower).toBe(3.0);
-    expect(config.powerAnimation.maxPower).toBe(6.0);
-    expect(config.powerAnimation.speed).toBe(0.05);
-  });
-
-  it('should set origin drift parameters', () => {
-    useExtendedObjectStore.getState().setQuaternionJuliaOriginDriftAmplitude(0.1);
-    useExtendedObjectStore.getState().setQuaternionJuliaOriginDriftBaseFrequency(0.1);
-
-    const config = useExtendedObjectStore.getState().quaternionJulia;
-    expect(config.originDriftAmplitude).toBe(0.1);
-    expect(config.originDriftBaseFrequency).toBe(0.1);
-  });
-
-  it('should set dimension mixing parameters', () => {
-    useExtendedObjectStore.getState().setQuaternionJuliaMixIntensity(0.2);
-    useExtendedObjectStore.getState().setQuaternionJuliaMixFrequency(1.0);
-
-    const config = useExtendedObjectStore.getState().quaternionJulia;
-    expect(config.mixIntensity).toBe(0.2);
-    expect(config.mixFrequency).toBe(1.0);
   });
 });

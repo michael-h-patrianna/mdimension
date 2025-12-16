@@ -21,6 +21,7 @@ import {
   DEFAULT_POLYTOPE_CONFIG,
   DEFAULT_QUATERNION_JULIA_CONFIG,
   DEFAULT_ROOT_SYSTEM_CONFIG,
+  DEFAULT_SCHROEDINGER_CONFIG,
   DEFAULT_WYTHOFF_POLYTOPE_CONFIG,
 } from '@/lib/geometry/extended/types'
 import { create } from 'zustand'
@@ -30,6 +31,7 @@ import { createNestedTorusSlice } from './slices/geometry/nestedTorusSlice'
 import { createPolytopeSlice } from './slices/geometry/polytopeSlice'
 import { createQuaternionJuliaSlice } from './slices/geometry/quaternionJuliaSlice'
 import { createRootSystemSlice } from './slices/geometry/rootSystemSlice'
+import { createSchroedingerSlice } from './slices/geometry/schroedingerSlice'
 import { createWythoffPolytopeSlice } from './slices/geometry/wythoffPolytopeSlice'
 import { ExtendedObjectSlice } from './slices/geometry/types'
 
@@ -51,6 +53,7 @@ export const useExtendedObjectStore = create<ExtendedObjectSlice>()((...a) => {
     ...createNestedTorusSlice(...a),
     ...createMandelbulbSlice(...a),
     ...createQuaternionJuliaSlice(...a),
+    ...createSchroedingerSlice(...a),
 
     // --- Reset Action ---
     reset: () => {
@@ -63,6 +66,7 @@ export const useExtendedObjectStore = create<ExtendedObjectSlice>()((...a) => {
         nestedTorus: { ...DEFAULT_NESTED_TORUS_CONFIG },
         mandelbulb: { ...DEFAULT_MANDELBROT_CONFIG },
         quaternionJulia: { ...DEFAULT_QUATERNION_JULIA_CONFIG },
+        schroedinger: { ...DEFAULT_SCHROEDINGER_CONFIG },
       })
     },
   }

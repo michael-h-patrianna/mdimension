@@ -20,12 +20,13 @@ import React, { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import MandelbulbMesh from './Mandelbulb/MandelbulbMesh';
 import QuaternionJuliaMesh from './QuaternionJulia/QuaternionJuliaMesh';
+import SchroedingerMesh from './Schroedinger/SchroedingerMesh';
 import { PolytopeScene } from './Polytope';
 
 /**
  * Render mode types
  */
-export type RenderMode = 'polytope' | 'raymarch-mandelbulb' | 'raymarch-quaternion-julia' | 'none';
+export type RenderMode = 'polytope' | 'raymarch-mandelbulb' | 'raymarch-quaternion-julia' | 'raymarch-schroedinger' | 'none';
 
 /**
  * Props for UnifiedRenderer
@@ -126,6 +127,9 @@ export const UnifiedRenderer = React.memo(function UnifiedRenderer({
 
       {/* Raymarched 3D-11D Quaternion Julia */}
       {renderMode === 'raymarch-quaternion-julia' && <QuaternionJuliaMesh />}
+
+      {/* Raymarched 3D-11D Schroedinger */}
+      {renderMode === 'raymarch-schroedinger' && <SchroedingerMesh />}
     </>
   );
 });

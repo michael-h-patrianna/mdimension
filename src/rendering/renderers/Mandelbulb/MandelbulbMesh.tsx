@@ -402,8 +402,10 @@ const MandelbulbMesh = () => {
       }
 
       // Update fast mode uniform
+      // Only enable fast mode if fractalAnimationLowQuality is enabled in performance settings
       if (material.uniforms.uFastMode) {
-        material.uniforms.uFastMode.value = fastModeRef.current;
+        const fractalAnimLowQuality = usePerformanceStore.getState().fractalAnimationLowQuality;
+        material.uniforms.uFastMode.value = fractalAnimLowQuality && fastModeRef.current;
       }
 
       // Get progressive refinement quality multiplier from performance store

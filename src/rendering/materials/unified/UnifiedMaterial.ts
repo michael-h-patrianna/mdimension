@@ -222,3 +222,5 @@ export function updateUnifiedMaterialFresnel(
   material.uniforms.uFresnelIntensity!.value = intensity
 }
 
+
+

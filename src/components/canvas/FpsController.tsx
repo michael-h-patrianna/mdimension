@@ -14,9 +14,9 @@
  * - Subscribes to maxFps changes and adjusts timing accordingly
  */
 
-import { useLayoutEffect, useRef } from 'react'
-import { useThree } from '@react-three/fiber'
 import { useUIStore } from '@/stores/uiStore'
+import { useThree } from '@react-three/fiber'
+import { useLayoutEffect, useRef } from 'react'
 
 /**
  * FPS Controller that triggers renders at a controlled rate.
@@ -50,6 +50,11 @@ export function FpsController(): null {
       const maxFps = useUIStore.getState().maxFps
       const interval = 1000 / maxFps
       const elapsed = now - thenRef.current
+
+      // Debug: log maxFps every 60 frames
+      if (Math.random() < 0.02) {
+        console.log('FpsController: maxFps =', maxFps, 'interval =', interval)
+      }
 
       if (elapsed >= interval) {
         // Advance the frame - this triggers useFrame callbacks and renders

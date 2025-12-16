@@ -61,6 +61,11 @@ const componentLoaders: Record<string, () => Promise<{ default: ComponentType<un
     import('@/components/sections/Geometry/QuaternionJuliaControls').then((m) => ({
       default: m.QuaternionJuliaControls as ComponentType<unknown>,
     })),
+
+  SchroedingerControls: () =>
+    import('@/components/sections/Geometry/SchroedingerControls').then((m) => ({
+      default: m.SchroedingerControls as ComponentType<unknown>,
+    })),
 }
 
 /**

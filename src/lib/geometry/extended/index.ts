@@ -25,6 +25,11 @@ export type {
   PolytopeConfig,
   RootSystemConfig,
   RootSystemType,
+  SchroedingerColorMode,
+  SchroedingerConfig,
+  SchroedingerPalette,
+  SchroedingerQualityPreset,
+  SchroedingerRenderStyle,
   WythoffPolytopeConfig,
   WythoffPreset,
   WythoffSymmetryGroup,
@@ -37,9 +42,11 @@ export {
   DEFAULT_MANDELBROT_CONFIG,
   DEFAULT_POLYTOPE_CONFIG,
   DEFAULT_ROOT_SYSTEM_CONFIG,
+  DEFAULT_SCHROEDINGER_CONFIG,
   DEFAULT_WYTHOFF_POLYTOPE_CONFIG,
   DEFAULT_WYTHOFF_SCALES,
   MANDELBROT_QUALITY_PRESETS,
+  SCHROEDINGER_QUALITY_PRESETS,
 } from './types'
 
 // Root system exports
@@ -75,6 +82,16 @@ export {
 } from './mandelbulb'
 export type { MandelbulbSample } from './mandelbulb'
 
+// Schroedinger
+export {
+  generateSchroedinger,
+  getSchroedingerStats,
+  schroedingerEscapeTime,
+  schroedingerSmoothEscapeTime,
+  schroedingerStep,
+} from './schroedinger'
+export type { SchroedingerSample } from './schroedinger'
+
 // Utility exports
 export {
   computeConvexHullFaces,
@@ -91,6 +108,7 @@ import { generateCliffordTorus } from './clifford-torus'
 import { generateMandelbulb } from './mandelbulb'
 import { generateNestedTorus } from './nested-torus'
 import { generateRootSystem } from './root-system'
+import { generateSchroedinger } from './schroedinger'
 import type { ExtendedObjectParams } from './types'
 import { DEFAULT_EXTENDED_OBJECT_PARAMS } from './types'
 
@@ -158,6 +176,22 @@ export function generateExtendedObject(
         edges: [],
         metadata: {
           name: 'Quaternion Julia',
+          properties: {
+            renderMode: 'raymarching',
+          },
+        },
+      }
+
+    case 'schroedinger':
+      // Schroedinger uses GPU raymarching exclusively - no CPU geometry needed
+      // Return minimal geometry that signals to UnifiedRenderer to use SchroedingerMesh
+      return {
+        dimension,
+        type: 'schroedinger',
+        vertices: [],
+        edges: [],
+        metadata: {
+          name: 'Schroedinger',
           properties: {
             renderMode: 'raymarching',
           },

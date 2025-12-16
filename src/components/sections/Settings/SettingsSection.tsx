@@ -3,14 +3,11 @@
  * Section wrapper for app settings controls
  */
 
-import { needsObjectOnlyDepth } from '@/rendering/core/layers';
 import { Section } from '@/components/sections/Section';
 import { Slider } from '@/components/ui/Slider';
 import { Switch } from '@/components/ui/Switch';
 import { DEFAULT_MAX_FPS } from '@/stores/defaults/visualDefaults';
 import { useUIStore } from '@/stores/uiStore';
-import { usePostProcessingStore } from '@/stores/postProcessingStore';
-import { usePerformanceStore } from '@/stores';
 import React from 'react';
 import { ThemeSelector } from './ThemeSelector';
 
@@ -23,51 +20,36 @@ export interface SettingsSectionProps {
  *
  * @param props - Component props
  * @param props.defaultOpen - Whether the section is initially expanded
- * @returns Settings section with theme and performance monitor controls
+ * @returns Settings section
  */
 export const SettingsSection: React.FC<SettingsSectionProps> = ({
   defaultOpen = true,
 }) => {
-  const showPerfMonitor = useUIStore((state) => state.showPerfMonitor);
-  const setShowPerfMonitor = useUIStore((state) => state.setShowPerfMonitor);
+
   const showAxisHelper = useUIStore((state) => state.showAxisHelper);
   const setShowAxisHelper = useUIStore((state) => state.setShowAxisHelper);
   const showDepthBuffer = useUIStore((state) => state.showDepthBuffer);
   const setShowDepthBuffer = useUIStore((state) => state.setShowDepthBuffer);
+  const showNormalBuffer = useUIStore((state) => state.showNormalBuffer);
+  const setShowNormalBuffer = useUIStore((state) => state.setShowNormalBuffer);
   const showTemporalDepthBuffer = useUIStore((state) => state.showTemporalDepthBuffer);
   const setShowTemporalDepthBuffer = useUIStore((state) => state.setShowTemporalDepthBuffer);
   const maxFps = useUIStore((state) => state.maxFps);
   const setMaxFps = useUIStore((state) => state.setMaxFps);
 
-  // Check if depth buffer is available (any depth-based effect is enabled)
-  const bokehEnabled = usePostProcessingStore((state) => state.bokehEnabled);
-  const ssrEnabled = usePostProcessingStore((state) => state.ssrEnabled);
-  const refractionEnabled = usePostProcessingStore((state) => state.refractionEnabled);
-  const bokehFocusMode = usePostProcessingStore((state) => state.bokehFocusMode);
-
-  const depthBufferAvailable = needsObjectOnlyDepth({
-    ssrEnabled,
-    refractionEnabled,
-    bokehEnabled,
-    bokehFocusMode,
-  });
-
-  // Check if temporal reprojection is enabled
-  const temporalReprojectionEnabled = usePerformanceStore(
-    (state) => state.temporalReprojectionEnabled
-  );
+  // Buffer visualization button styles
+  const getBufferButtonClass = (isActive: boolean) => `
+    flex-1 px-2 py-1.5 text-xs font-medium rounded-md transition-all duration-200 border
+    ${isActive
+      ? 'bg-accent/20 text-accent border-accent/50 shadow-[0_0_8px_color-mix(in_oklch,var(--color-accent)_20%,transparent)]'
+      : 'bg-panel-bg text-text-secondary border-panel-border hover:text-text-primary hover:bg-panel-border/50'
+    }
+  `;
 
   return (
     <Section title="Settings" defaultOpen={defaultOpen}>
       <ThemeSelector />
-      <div className="mt-3 pt-3 border-t border-panel-border">
-        <Switch
-          checked={showPerfMonitor}
-          onCheckedChange={setShowPerfMonitor}
-          label="Performance Monitor"
-          data-testid="perf-monitor-toggle"
-        />
-      </div>
+
       <div className="mt-3 pt-3 border-t border-panel-border">
         <Switch
           checked={showAxisHelper}
@@ -76,20 +58,30 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
         />
       </div>
       <div className="mt-3 pt-3 border-t border-panel-border">
-        <Switch
-          checked={showDepthBuffer && depthBufferAvailable}
-          onCheckedChange={setShowDepthBuffer}
-          disabled={!depthBufferAvailable}
-          label="Show Depth Buffer"
-        />
-      </div>
-      <div className="mt-3 pt-3 border-t border-panel-border">
-        <Switch
-          checked={showTemporalDepthBuffer && temporalReprojectionEnabled}
-          onCheckedChange={setShowTemporalDepthBuffer}
-          disabled={!temporalReprojectionEnabled}
-          label="Show Temporal Depth"
-        />
+        <div className="text-xs text-text-secondary mb-2">Debug Buffers</div>
+        <div className="flex gap-1">
+          <button
+            onClick={() => setShowDepthBuffer(!showDepthBuffer)}
+            className={getBufferButtonClass(showDepthBuffer)}
+            data-testid="show-depth-buffer-btn"
+          >
+            Depth
+          </button>
+          <button
+            onClick={() => setShowNormalBuffer(!showNormalBuffer)}
+            className={getBufferButtonClass(showNormalBuffer)}
+            data-testid="show-normal-buffer-btn"
+          >
+            Normal
+          </button>
+          <button
+            onClick={() => setShowTemporalDepthBuffer(!showTemporalDepthBuffer)}
+            className={getBufferButtonClass(showTemporalDepthBuffer)}
+            data-testid="show-temporal-depth-btn"
+          >
+            Temporal
+          </button>
+        </div>
       </div>
       <div className="mt-3 pt-3 border-t border-panel-border">
         <Slider

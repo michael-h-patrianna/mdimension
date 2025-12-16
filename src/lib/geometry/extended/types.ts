@@ -753,6 +753,214 @@ export const DEFAULT_MANDELBROT_CONFIG: MandelbulbConfig = {
 }
 
 // ============================================================================
+// Schroedinger Configuration (Copy of Mandelbulb for future modification)
+// ============================================================================
+
+/**
+ * Color modes for Schroedinger visualization
+ * - escapeTime: Basic discrete coloring based on iteration count
+ * - smoothColoring: Continuous coloring without banding
+ * - distanceEstimation: Color based on distance to set boundary
+ * - interiorOnly: Show only points inside the set
+ * - boundaryOnly: Show only points near the boundary (useful for 3D+)
+ */
+export type SchroedingerColorMode =
+  | 'escapeTime'
+  | 'smoothColoring'
+  | 'distanceEstimation'
+  | 'interiorOnly'
+  | 'boundaryOnly'
+
+/**
+ * Color palette presets for Schroedinger visualization.
+ */
+export type SchroedingerPalette = 'monochrome' | 'complement' | 'triadic' | 'analogous' | 'shifted'
+
+/**
+ * Quality presets for Schroedinger computation
+ */
+export type SchroedingerQualityPreset = 'draft' | 'standard' | 'high' | 'ultra'
+
+/**
+ * Rendering styles for Schroedinger visualization
+ * - rayMarching: Volumetric ray marching in shader (3D+ only)
+ */
+export type SchroedingerRenderStyle = 'rayMarching'
+
+/**
+ * Configuration for n-dimensional Schroedinger set generation
+ *
+ * Supports:
+ * - 3D: Schroedinger (spherical coordinates)
+ * - 4D-11D: Schroedinger (hyperspherical coordinates)
+ */
+export interface SchroedingerConfig {
+  // Iteration parameters
+  /** Maximum iterations before considering point bounded (10-500) */
+  maxIterations: number
+  /**
+   * Escape radius threshold (2.0-16.0).
+   * Higher dimensions may need larger values (8-16) for stability.
+   */
+  escapeRadius: number
+  /** Quality preset (affects iterations and resolution) */
+  qualityPreset: SchroedingerQualityPreset
+
+  // Sampling resolution
+  /** Samples per axis in the 3D grid (16-128) */
+  resolution: number
+
+  // Visualization axes (which 3 of N dimensions to render)
+  /** Indices of dimensions to map to X, Y, Z */
+  visualizationAxes: [number, number, number]
+
+  // Parameter values for non-visualized dimensions
+  /** Fixed values for dimensions not being visualized */
+  parameterValues: number[]
+
+  // Navigation (zoom/pan)
+  /** Center coordinates in N-dimensional space */
+  center: number[]
+  /** Extent (zoom level) - half-width of viewing region */
+  extent: number
+
+  // Color mapping
+  /** Color algorithm to use */
+  colorMode: SchroedingerColorMode
+  /** Color palette preset */
+  palette: SchroedingerPalette
+  /** Custom palette colors (used when palette='custom') */
+  customPalette: { start: string; mid: string; end: string }
+  /** Whether to invert color mapping */
+  invertColors: boolean
+  /** Color for points inside the set */
+  interiorColor: string
+  /** Number of palette cycles (1-20) */
+  paletteCycles: number
+
+  // Rendering style
+  /** How to render the point cloud */
+  renderStyle: SchroedingerRenderStyle
+  /** Point size for point cloud mode */
+  pointSize: number
+
+  // Boundary filtering (for 3D+ visualization)
+  /**
+   * Boundary threshold range for 'boundaryOnly' color mode.
+   */
+  boundaryThreshold: [number, number]
+
+  // Schroedinger settings (for 3D+)
+  /**
+   * Power for Schroedinger formula (3D and higher).
+   * Default: 8 produces the classic bulb shape.
+   * Range: 2-16
+   */
+  schroedingerPower: number
+
+  /**
+   * Epsilon for numerical stability near origin.
+   */
+  epsilon: number
+
+  // === Power Animation ===
+  powerAnimationEnabled: boolean
+  powerMin: number
+  powerMax: number
+  powerSpeed: number
+
+  // === Alternate Power ===
+  alternatePowerEnabled: boolean
+  alternatePowerValue: number
+  alternatePowerBlend: number
+
+  // === Dimension Mixing Animation ===
+  dimensionMixEnabled: boolean
+  mixIntensity: number
+  mixFrequency: number
+
+  // === Origin Drift Animation ===
+  originDriftEnabled: boolean
+  driftAmplitude: number
+  driftBaseFrequency: number
+  driftFrequencySpread: number
+
+  // === Slice Animation (4D+ only) ===
+  sliceAnimationEnabled: boolean
+  sliceSpeed: number
+  sliceAmplitude: number
+
+  // === Angular Phase Shifts ===
+  phaseShiftEnabled: boolean
+  phaseSpeed: number
+  phaseAmplitude: number
+}
+
+/**
+ * Quality preset configurations for Schroedinger
+ */
+export const SCHROEDINGER_QUALITY_PRESETS: Record<
+  SchroedingerQualityPreset,
+  { maxIterations: number; resolution: number }
+> = {
+  draft: { maxIterations: 30, resolution: 24 },
+  standard: { maxIterations: 80, resolution: 32 },
+  high: { maxIterations: 200, resolution: 64 },
+  ultra: { maxIterations: 500, resolution: 96 },
+}
+
+/**
+ * Default Schroedinger configuration
+ */
+export const DEFAULT_SCHROEDINGER_CONFIG: SchroedingerConfig = {
+  maxIterations: 80,
+  escapeRadius: 4.0,
+  qualityPreset: 'standard',
+  resolution: 32,
+  visualizationAxes: [0, 1, 2],
+  parameterValues: [],
+  center: [],
+  extent: 2.0,
+  colorMode: 'escapeTime',
+  palette: 'complement',
+  customPalette: { start: '#0000ff', mid: '#ffffff', end: '#ff8000' },
+  invertColors: false,
+  interiorColor: '#000000',
+  paletteCycles: 1,
+  renderStyle: 'rayMarching',
+  pointSize: 3,
+  boundaryThreshold: [0.1, 0.9],
+  schroedingerPower: 8,
+  epsilon: 1e-12,
+  // Power Animation defaults
+  powerAnimationEnabled: false,
+  powerMin: 5.0,
+  powerMax: 12.0,
+  powerSpeed: 0.03,
+  // Alternate Power defaults
+  alternatePowerEnabled: false,
+  alternatePowerValue: 4.0,
+  alternatePowerBlend: 0.5,
+  // Dimension Mixing defaults
+  dimensionMixEnabled: false,
+  mixIntensity: 0.1,
+  mixFrequency: 0.5,
+  // Origin Drift defaults
+  originDriftEnabled: false,
+  driftAmplitude: 0.03,
+  driftBaseFrequency: 0.04,
+  driftFrequencySpread: 0.2,
+  // Slice Animation defaults
+  sliceAnimationEnabled: false,
+  sliceSpeed: 0.02,
+  sliceAmplitude: 0.3,
+  // Angular Phase Shifts defaults
+  phaseShiftEnabled: false,
+  phaseSpeed: 0.03,
+  phaseAmplitude: 0.3,
+}
+
+// ============================================================================
 // Quaternion Julia Configuration
 // ============================================================================
 
@@ -762,32 +970,6 @@ export const DEFAULT_MANDELBROT_CONFIG: MandelbulbConfig = {
 export interface JuliaConstantPreset {
   name: string
   value: [number, number, number, number]
-}
-
-/**
- * Julia constant animation parameters
- */
-export interface JuliaConstantAnimation {
-  enabled: boolean
-  /** Per-component amplitude (0-1) */
-  amplitude: [number, number, number, number]
-  /** Per-component frequency Hz (0.01-0.5) */
-  frequency: [number, number, number, number]
-  /** Per-component phase offset (0-2pi) */
-  phase: [number, number, number, number]
-}
-
-/**
- * Power animation parameters for Quaternion Julia
- */
-export interface JuliaPowerAnimation {
-  enabled: boolean
-  /** Minimum power (2.0-10.0) */
-  minPower: number
-  /** Maximum power (2.0-16.0) */
-  maxPower: number
-  /** Speed in Hz (0.01-0.2) */
-  speed: number
 }
 
 /**
@@ -898,30 +1080,6 @@ export interface QuaternionJuliaConfig {
   shadowSoftness: number
   /** Shadow animation mode: 0=Pause, 1=Low, 2=Full */
   shadowAnimationMode: number
-
-  // === Animation Configuration ===
-
-  /** Julia constant path animation settings */
-  juliaConstantAnimation: JuliaConstantAnimation
-  /** Power morphing animation settings */
-  powerAnimation: JuliaPowerAnimation
-  /** Enable origin drift in extra dimensions */
-  originDriftEnabled: boolean
-  /** Origin drift amplitude (0.01-0.5) */
-  originDriftAmplitude: number
-  /** Origin drift base frequency Hz (0.01-0.5) */
-  originDriftBaseFrequency: number
-  /** Origin drift frequency spread (0.0-1.0) */
-  originDriftFrequencySpread: number
-
-  // === Dimension Mixing Animation (Technique A) ===
-
-  /** Enable dimension mixing inside iteration */
-  dimensionMixEnabled: boolean
-  /** Mixing intensity (0.0-0.3) */
-  mixIntensity: number
-  /** Mixing frequency multiplier (0.1-2.0) */
-  mixFrequency: number
 }
 
 /**
@@ -986,29 +1144,6 @@ export const DEFAULT_QUATERNION_JULIA_CONFIG: QuaternionJuliaConfig = {
   shadowQuality: 1, // Medium
   shadowSoftness: 1.0,
   shadowAnimationMode: 1, // Low
-
-  // Animation defaults
-  juliaConstantAnimation: {
-    enabled: false,
-    amplitude: [0.3, 0.3, 0.3, 0.3],
-    frequency: [0.05, 0.04, 0.06, 0.03],
-    phase: [0, Math.PI / 4, Math.PI / 2, (Math.PI * 3) / 4],
-  },
-  powerAnimation: {
-    enabled: false,
-    minPower: 2.0,
-    maxPower: 8.0,
-    speed: 0.03,
-  },
-  originDriftEnabled: false,
-  originDriftAmplitude: 0.03,
-  originDriftBaseFrequency: 0.04,
-  originDriftFrequencySpread: 0.2,
-
-  // Dimension Mixing defaults
-  dimensionMixEnabled: false,
-  mixIntensity: 0.1,
-  mixFrequency: 0.5,
 }
 
 
@@ -1145,6 +1280,8 @@ export interface ExtendedObjectParams {
   mandelbulb: MandelbulbConfig
   /** Configuration for Quaternion Julia fractal generation */
   quaternionJulia: QuaternionJuliaConfig
+  /** Configuration for Schroedinger fractal generation */
+  schroedinger: SchroedingerConfig
 }
 
 /**
@@ -1158,4 +1295,5 @@ export const DEFAULT_EXTENDED_OBJECT_PARAMS: ExtendedObjectParams = {
   nestedTorus: DEFAULT_NESTED_TORUS_CONFIG,
   mandelbulb: DEFAULT_MANDELBROT_CONFIG,
   quaternionJulia: DEFAULT_QUATERNION_JULIA_CONFIG,
+  schroedinger: DEFAULT_SCHROEDINGER_CONFIG,
 }
