@@ -33,6 +33,7 @@ import { PerformanceMonitor } from '@/components/canvas/PerformanceMonitor';
 import { PerformanceStatsCollector } from '@/components/canvas/PerformanceStatsCollector';
 import { ToastProvider } from '@/contexts/ToastContext';
 import { LazyMotion, domMax } from 'motion/react';
+import { useDynamicFavicon } from '@/hooks/useDynamicFavicon';
 
 /**
  * Extract 3D positions from N-D vertices for ground plane bounds calculation.
@@ -94,6 +95,9 @@ function Visualizer() {
 function App() {
   // Enable keyboard shortcuts
   useKeyboardShortcuts();
+  
+  // Dynamic Favicon
+  useDynamicFavicon();
 
   // Get background color from visual store (PRD Story 6 AC7)
   const backgroundColor = useAppearanceStore((state) => state.backgroundColor);

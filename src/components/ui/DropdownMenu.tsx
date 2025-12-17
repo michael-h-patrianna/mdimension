@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { m, AnimatePresence } from 'motion/react';
+import { soundManager } from '@/lib/audio/SoundManager';
 
 export interface DropdownMenuItem {
   label: string;
@@ -41,56 +42,94 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
     };
   }, [isOpen]);
 
+  const handleToggle = () => {
+    if (!isOpen) {
+        soundManager.playClick();
+    }
+    setIsOpen(!isOpen);
+  };
+
   const handleItemClick = (item: DropdownMenuItem) => {
     if (!item.disabled && item.onClick) {
+      soundManager.playClick();
       item.onClick();
       setIsOpen(false);
     }
   };
 
+  const menuVariants = {
+    closed: { 
+        opacity: 0, 
+        y: -5, 
+        scale: 0.95,
+        transition: {
+            duration: 0.1
+        }
+    },
+    open: { 
+        opacity: 1, 
+        y: 0, 
+        scale: 1,
+        transition: {
+            type: "spring" as const,
+            damping: 20,
+            stiffness: 300,
+            staggerChildren: 0.03,
+            delayChildren: 0.02
+        }
+    }
+  };
+
+  const itemVariants = {
+    closed: { opacity: 0, x: -10 },
+    open: { opacity: 1, x: 0 }
+  };
+
   return (
     <div className={`relative ${className}`} ref={menuRef}>
-      <div onClick={() => setIsOpen(!isOpen)} role="button" className="cursor-pointer">
+      <div onClick={handleToggle} role="button" className="cursor-pointer">
         {trigger}
       </div>
 
       <AnimatePresence>
         {isOpen && (
             <m.div 
-                initial={{ opacity: 0, y: -5, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -5, scale: 0.95 }}
-                transition={{ duration: 0.15, ease: "easeOut" }}
+                initial="closed"
+                animate="open"
+                exit="closed"
+                variants={menuVariants}
                 className={`
                     glass-panel absolute top-full mt-1 min-w-[180px]
-                    rounded-lg py-1.5 z-50
+                    rounded-lg py-1.5 z-50 overflow-hidden
                     ${align === 'right' ? 'right-0' : 'left-0'}
                 `}
                 style={{ backdropFilter: 'blur(16px)' }}
             >
               {items.map((item, index) => {
                 if (item.label === '---') {
-                    return <div key={index} className="h-px bg-white/10 my-1 mx-2" />;
+                    return <m.div key={index} variants={itemVariants} className="h-px bg-white/10 my-1 mx-2" />;
                 }
                 
                 if (!item.onClick) {
                     return (
-                        <div key={index} className="px-3 py-1.5 text-[10px] font-bold text-text-tertiary uppercase tracking-wider select-none">
+                        <m.div key={index} variants={itemVariants} className="px-3 py-1.5 text-[10px] font-bold text-text-tertiary uppercase tracking-wider select-none">
                             {item.label}
-                        </div>
+                        </m.div>
                     );
                 }
 
                 return (
-                <button
+                <m.button
                   key={index}
+                  variants={itemVariants}
                   onClick={(e) => {
                     e.stopPropagation();
                     handleItemClick(item);
                   }}
+                  onMouseEnter={() => soundManager.playHover()}
                   disabled={item.disabled}
                   className={`
-                    w-full text-left px-3 py-2 text-xs flex justify-between items-center
+                    w-full text-left px-3 py-2 text-xs flex justify-between items-center group
                     ${item.disabled 
                       ? 'text-text-tertiary cursor-not-allowed opacity-50' 
                       : 'text-text-secondary hover:text-white hover:bg-white/10 hover:text-glow'
@@ -99,13 +138,17 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
                   `}
                   data-testid={item['data-testid']}
                 >
-                  <span>{item.label}</span>
+                  <span className="relative z-10">{item.label}</span>
+                  {/* Subtle shine on hover */}
+                  {!item.disabled && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 pointer-events-none" />
+                  )}
                   {item.shortcut && (
-                    <span className="text-[10px] text-text-tertiary ml-4 font-mono opacity-70">
+                    <span className="text-[10px] text-text-tertiary ml-4 font-mono opacity-70 border border-white/10 px-1 rounded bg-black/20">
                       {item.shortcut}
                     </span>
                   )}
-                </button>
+                </m.button>
               )})}
             </m.div>
         )}

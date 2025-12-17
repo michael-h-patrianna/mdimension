@@ -1,6 +1,7 @@
-import React from 'react';
-import { m, HTMLMotionProps } from 'motion/react';
+import React, { useRef, useState } from 'react';
+import { m, HTMLMotionProps, useMotionValue, useSpring } from 'motion/react';
 import { LoadingSpinner } from './LoadingSpinner';
+import { soundManager } from '@/lib/audio/SoundManager';
 
 export interface ButtonProps extends Omit<HTMLMotionProps<"button">, "ref"> {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
@@ -13,6 +14,7 @@ export interface ButtonProps extends Omit<HTMLMotionProps<"button">, "ref"> {
   ariaLabel?: string;
   'data-testid'?: string;
   glow?: boolean;
+  magnetic?: boolean;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -27,8 +29,61 @@ export const Button: React.FC<ButtonProps> = ({
   ariaLabel,
   'data-testid': testId,
   glow = false,
+  magnetic = true, // Enable magnetic by default for that premium feel
   ...props
 }) => {
+  const ref = useRef<HTMLButtonElement>(null);
+  
+  // Magnetic Motion Values
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+
+  // Smooth spring physics for the magnetic effect
+  const mouseX = useSpring(x, { stiffness: 150, damping: 15, mass: 0.1 });
+  const mouseY = useSpring(y, { stiffness: 150, damping: 15, mass: 0.1 });
+
+  // Ripple State
+  const [ripples, setRipples] = useState<{ x: number; y: number; id: number }[]>([]);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (!magnetic || disabled || loading) return;
+    const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
+    const centerX = left + width / 2;
+    const centerY = top + height / 2;
+    
+    // Calculate distance from center
+    const distanceX = e.clientX - centerX;
+    const distanceY = e.clientY - centerY;
+    
+    // Apply magnetic pull (20% of distance)
+    x.set(distanceX * 0.2);
+    y.set(distanceY * 0.2);
+  };
+
+  const handleMouseLeave = () => {
+    x.set(0);
+    y.set(0);
+  };
+
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (disabled || loading) return;
+    
+    // Sound
+    soundManager.playClick();
+
+    // Ripple
+    const rect = e.currentTarget.getBoundingClientRect();
+    const rippleX = e.clientX - rect.left;
+    const rippleY = e.clientY - rect.top;
+    const newRipple = { x: rippleX, y: rippleY, id: Date.now() };
+    
+    setRipples((prev) => [...prev, newRipple]);
+    setTimeout(() => {
+        setRipples((prev) => prev.filter((r) => r.id !== newRipple.id));
+    }, 600);
+
+    onClick?.(e);
+  };
 
   const baseStyles = 'relative overflow-hidden font-medium rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors gap-2';
 
@@ -51,26 +106,45 @@ export const Button: React.FC<ButtonProps> = ({
 
   return (
     <m.button
+      ref={ref}
       type={type}
-      onClick={!loading ? onClick : undefined}
+      onClick={handleClick}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
       disabled={disabled || loading}
       className={`${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${glowStyle} ${className}`}
       aria-label={ariaLabel}
       data-testid={testId}
-      whileHover={!disabled && !loading ? { scale: 1.02, y: -1, filter: 'brightness(1.1)' } : undefined}
-      whileTap={!disabled && !loading ? { scale: 0.96, y: 0 } : undefined}
-      transition={{ type: "spring", stiffness: 400, damping: 17 }}
+      style={{ x: mouseX, y: mouseY }}
+      whileHover={!disabled && !loading ? { scale: 1.02, filter: 'brightness(1.1)' } : undefined}
+      whileTap={!disabled && !loading ? { scale: 0.96 } : undefined}
       {...props}
     >
       {/* Loading State Overlay */}
       {loading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-inherit backdrop-blur-[1px]">
+        <div className="absolute inset-0 flex items-center justify-center bg-inherit backdrop-blur-[1px] z-20">
           <LoadingSpinner size={size === 'sm' ? 12 : 16} />
         </div>
       )}
       
+      {/* Ripples */}
+      {ripples.map((ripple) => (
+        <span
+          key={ripple.id}
+          className="absolute rounded-full bg-white/20 animate-ping pointer-events-none"
+          style={{
+            left: ripple.x,
+            top: ripple.y,
+            width: '20px',
+            height: '20px',
+            transform: 'translate(-50%, -50%)',
+            animationDuration: '0.6s'
+          }}
+        />
+      ))}
+      
       {/* Content - faded when loading */}
-      <div className={`flex items-center justify-center gap-2 ${loading ? 'opacity-0' : 'opacity-100'} transition-opacity`}>
+      <div className={`flex items-center justify-center gap-2 ${loading ? 'opacity-0' : 'opacity-100'} transition-opacity relative z-10`}>
         {children}
       </div>
 

@@ -7,6 +7,8 @@ import { getAvailableTypes } from '@/lib/geometry';
 import type { ObjectType } from '@/lib/geometry/types';
 import { isPolytopeType } from '@/lib/geometry/types';
 import { isRaymarchingType, getConfigStoreKey } from '@/lib/geometry/registry';
+import { m } from 'motion/react';
+import { soundManager } from '@/lib/audio/SoundManager';
 
 export const ObjectTypeExplorer: React.FC = () => {
   const objectType = useGeometryStore((state) => state.objectType);
@@ -64,37 +66,62 @@ export const ObjectTypeExplorer: React.FC = () => {
   const availableTypes = useMemo(() => getAvailableTypes(dimension), [dimension]);
 
   const handleSelect = (value: ObjectType) => {
+     soundManager.playClick();
      // Reset rotation angles to prevent accumulated rotations from previous
      // object type causing visual artifacts (e.g., spikes/distortion)
      resetAllRotations();
      setObjectType(value);
   };
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.05
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, x: -10 },
+    show: { opacity: 1, x: 0 }
+  };
+
   return (
-    <div className="grid grid-cols-1 gap-2">
+    <m.div 
+        className="grid grid-cols-1 gap-2"
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+    >
       {availableTypes.map((type) => {
         const isSelected = objectType === type.type;
         const isDisabled = !type.available;
 
         return (
-          <button
+          <m.button
             key={type.type}
+            variants={itemVariants}
             onClick={() => !isDisabled && handleSelect(type.type)}
+            onMouseEnter={() => !isDisabled && soundManager.playHover()}
             disabled={isDisabled}
             className={`
               relative group flex flex-col p-3 rounded-lg border text-left transition-all duration-200
               ${isSelected 
-                ? 'bg-accent/10 border-accent text-accent' 
-                : 'bg-panel-bg border-panel-border hover:border-text-secondary/50 text-text-secondary hover:text-text-primary'
+                ? 'bg-accent/10 border-accent text-accent shadow-[0_0_15px_color-mix(in_oklch,var(--color-accent)_10%,transparent)]' 
+                : 'bg-panel-bg border-panel-border hover:border-text-secondary/50 text-text-secondary hover:text-text-primary hover:bg-panel-bg/80'
               }
               ${isDisabled ? 'opacity-50 cursor-not-allowed hover:border-panel-border' : ''}
             `}
+            whileHover={!isDisabled ? { scale: 1.01, x: 2 } : undefined}
+            whileTap={!isDisabled ? { scale: 0.98 } : undefined}
             data-testid={`object-type-${type.type}`}
           >
             <div className="flex items-center justify-between w-full mb-1">
                 <span className="font-medium text-sm">{type.name}</span>
                 {isSelected && (
-                    <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                    <div className="w-2 h-2 rounded-full bg-accent animate-pulse shadow-[0_0_8px_var(--color-accent)]" />
                 )}
             </div>
             <span className="text-xs text-text-secondary/80 line-clamp-2 leading-relaxed">
@@ -108,9 +135,9 @@ export const ObjectTypeExplorer: React.FC = () => {
                      </span>
                 </div>
             )}
-          </button>
+          </m.button>
         );
       })}
-    </div>
+    </m.div>
   );
 };

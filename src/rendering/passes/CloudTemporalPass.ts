@@ -174,7 +174,7 @@ export class CloudTemporalPass extends Pass {
     // ========================================
     const reconUniforms = this.reconstructionMaterial.uniforms as unknown as ReconstructionUniforms;
     reconUniforms.uCloudRender.value = cloudTarget.texture;
-    
+
     // Bind MRT textures from reprojection buffer
     // texture[0] is reprojected color, texture[1] is validity mask
     if (reprojectionBuffer.textures && reprojectionBuffer.textures.length >= 2) {

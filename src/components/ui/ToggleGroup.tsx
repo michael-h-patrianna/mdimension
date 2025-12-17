@@ -1,3 +1,7 @@
+import React from 'react';
+import { m, LayoutGroup } from 'motion/react';
+import { soundManager } from '@/lib/audio/SoundManager';
+
 export interface ToggleOption<T extends string = string> {
   value: T;
   label: string;
@@ -22,36 +26,53 @@ export const ToggleGroup = <T extends string = string>({
   ariaLabel,
   'data-testid': testId,
 }: ToggleGroupProps<T>) => {
+  const layoutId = React.useId();
+
   return (
-    <div
-      className={`flex p-1 gap-1 bg-black/20 rounded-lg ${className}`}
-      role="radiogroup"
-      aria-label={ariaLabel}
-      data-testid={testId}
-    >
-      {options.map((option) => {
-        const isSelected = option.value === value;
-        return (
-          <button
-            key={option.value}
-            onClick={() => !disabled && onChange(option.value)}
-            disabled={disabled}
-            className={`
-              flex-1 relative px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-300 border
-              disabled:opacity-50 disabled:cursor-not-allowed
-              ${isSelected
-                ? 'bg-accent/20 text-accent border-accent/50 shadow-[0_0_10px_color-mix(in_oklch,var(--color-accent)_20%,transparent)]'
-                : 'bg-panel-border text-text-secondary border-panel-border hover:text-text-primary hover:bg-panel-border/80'
-              }
-            `}
-            role="radio"
-            aria-checked={isSelected}
-            data-testid={testId ? `${testId}-${option.value}` : undefined}
-          >
-            <span className="relative z-10">{option.label}</span>
-          </button>
-        );
-      })}
-    </div>
+    <LayoutGroup id={layoutId}>
+      <div
+        className={`flex p-1 gap-1 bg-black/20 rounded-lg border border-white/5 ${className}`}
+        role="radiogroup"
+        aria-label={ariaLabel}
+        data-testid={testId}
+      >
+        {options.map((option) => {
+          const isSelected = option.value === value;
+          return (
+            <button
+              key={option.value}
+              onClick={() => {
+                if (!disabled && !isSelected) {
+                    onChange(option.value);
+                    soundManager.playClick();
+                }
+              }}
+              onMouseEnter={() => !isSelected && soundManager.playHover()}
+              disabled={disabled}
+              className={`
+                flex-1 relative px-3 py-1.5 text-xs font-medium rounded-md transition-colors duration-200 z-10
+                disabled:opacity-50 disabled:cursor-not-allowed
+                ${isSelected
+                  ? 'text-accent'
+                  : 'text-text-secondary hover:text-text-primary'
+                }
+              `}
+              role="radio"
+              aria-checked={isSelected}
+              data-testid={testId ? `${testId}-${option.value}` : undefined}
+            >
+              {isSelected && (
+                <m.div 
+                    layoutId={`active-bg-${layoutId}`}
+                    className="absolute inset-0 bg-accent/15 border border-accent/40 rounded-md shadow-[0_0_15px_color-mix(in_oklch,var(--color-accent)_15%,transparent)] z-[-1]"
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                />
+              )}
+              <span className="relative z-10">{option.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </LayoutGroup>
   );
 };

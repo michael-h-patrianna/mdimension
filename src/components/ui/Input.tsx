@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { m, AnimatePresence } from 'motion/react';
 import { LoadingSpinner } from './LoadingSpinner';
+import { soundManager } from '@/lib/audio/SoundManager';
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   leftIcon?: React.ReactNode;
@@ -42,8 +43,16 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(({
     }
   }, [ref]);
 
+  // Sound on error
+  useEffect(() => {
+    if (error) {
+        soundManager.playSnap(); // Use snap sound as a "reject" sound
+    }
+  }, [error]);
+
   const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation();
+    soundManager.playClick();
     if (inputRef.current) {
       inputRef.current.value = '';
       const event = new Event('input', { bubbles: true });
@@ -90,6 +99,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(({
           disabled={disabled || loading}
           onFocus={(e) => {
             setIsFocused(true);
+            soundManager.playHover();
             props.onFocus?.(e);
           }}
           onBlur={(e) => {

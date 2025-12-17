@@ -680,17 +680,6 @@ export const PostProcessing = memo(function PostProcessing() {
       objectType,
     });
 
-    // DEBUG: Log temporal cloud state every 60 frames
-    const debugFrame = Math.floor(performance.now() / 1000) % 5 === 0;
-    if (debugFrame && useTemporalCloud) {
-      const dims = TemporalCloudManager.getDimensions();
-      console.log('[TEMPORAL DEBUG] useTemporalCloud:', useTemporalCloud,
-        'frameIndex:', TemporalCloudManager.getFrameIndex(),
-        'hasValidHistory:', TemporalCloudManager.hasValidHistory(),
-        'isEnabled:', TemporalCloudManager.isEnabled(),
-        'dims:', dims);
-    }
-
     if (useTemporalCloud) {
       // Begin temporal cloud frame
       TemporalCloudManager.beginFrame(camera);
@@ -710,18 +699,6 @@ export const PostProcessing = memo(function PostProcessing() {
         gl.setRenderTarget(cloudTarget);
         gl.setClearColor(0x000000, 0);
         gl.clear(true, true, false);
-
-        // DEBUG: Count objects in VOLUMETRIC layer before render
-        let volumetricObjectCount = 0;
-        scene.traverse((obj) => {
-          if ((obj as THREE.Mesh).isMesh && obj.layers.test(camera.layers)) {
-            volumetricObjectCount++;
-          }
-        });
-        if (debugFrame) {
-          console.log('[TEMPORAL DEBUG] Volumetric objects in layer:', volumetricObjectCount,
-            'cloudTarget size:', cloudTarget.width, 'x', cloudTarget.height);
-        }
 
         // Render volumetric at quarter res with Bayer jitter
         // The shader applies USE_TEMPORAL_ACCUMULATION jitter based on uBayerOffset
@@ -829,22 +806,12 @@ export const PostProcessing = memo(function PostProcessing() {
     // ========================================
     // When temporal cloud accumulation is active, blend the reconstructed
     // volumetric over the main scene before post-processing
-    if (debugFrame && useTemporalCloud) {
-      console.log('[TEMPORAL DEBUG] Composite check - hasValidHistory:', TemporalCloudManager.hasValidHistory(),
-        'writeTarget exists:', !!TemporalCloudManager.getWriteTarget());
-    }
     if (useTemporalCloud && TemporalCloudManager.hasValidHistory()) {
       const accumulationBuffer = TemporalCloudManager.getWriteTarget();
 
       if (accumulationBuffer && cloudCompositeMaterial.uniforms.tCloud) {
         // Set the accumulation texture in the compositing material
         cloudCompositeMaterial.uniforms.tCloud.value = accumulationBuffer.texture;
-
-        // DEBUG: Log compositing
-        if (debugFrame) {
-          console.log('[TEMPORAL DEBUG] Compositing accumulationBuffer to sceneTarget',
-            'buffer size:', accumulationBuffer.width, 'x', accumulationBuffer.height);
-        }
 
         // Render compositing quad to sceneTarget with blending
         gl.setRenderTarget(sceneTarget);

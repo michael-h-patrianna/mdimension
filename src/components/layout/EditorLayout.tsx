@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { m, AnimatePresence } from 'motion/react';
 import { useThemeStore } from '@/stores/themeStore';
 import { useLayoutStore } from '@/stores/layoutStore';
@@ -12,6 +12,7 @@ import { CommandPalette } from '@/components/layout/CommandPalette';
 import { CanvasContextMenu } from '@/components/layout/CanvasContextMenu';
 import { useIsDesktop } from '@/hooks/useMediaQuery';
 import { useKonamiCode } from '@/hooks/useKonamiCode';
+import { soundManager } from '@/lib/audio/SoundManager';
 
 interface EditorLayoutProps {
   children?: React.ReactNode;
@@ -20,10 +21,11 @@ interface EditorLayoutProps {
 export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
   const theme = useThemeStore((state) => state.theme);
   const setTheme = useThemeStore((state) => state.setTheme);
+  const spotlightRef = useRef<HTMLDivElement>(null);
   
   useKonamiCode(() => {
     setTheme('rainbow');
-    // Maybe play a sound?
+    soundManager.playSuccess();
   });
 
   const { 
@@ -55,10 +57,21 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
+  // Spotlight Effect
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+        if (spotlightRef.current) {
+            spotlightRef.current.style.setProperty('--mouse-x', `${e.clientX}px`);
+            spotlightRef.current.style.setProperty('--mouse-y', `${e.clientY}px`);
+        }
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
+
   // Sync fullscreen state with cinematic mode
   useEffect(() => {
     const handleFullscreenChange = () => {
-        // If exiting fullscreen, ensure cinematic mode is off
         if (!document.fullscreenElement) {
           setCinematicMode(false);
         }
@@ -67,11 +80,11 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, [setCinematicMode]);
 
-  // Handle overlay mode interactions
   const handleOverlayClick = () => {
     if (!isDesktop) {
         setLeftPanel(false);
         setCollapsed(true);
+        soundManager.playClick();
     }
   };
 
@@ -87,31 +100,41 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
   }, [isDesktop, setCollapsed, setLeftPanel]);
 
   const panelVariants = {
-    hiddenLeft: { x: -340, opacity: 0, scale: 0.98 },
+    hiddenLeft: { x: -340, opacity: 0, scale: 0.95 },
     visible: { 
         x: 0, 
         opacity: 1, 
         scale: 1,
         transition: {
             type: "spring" as const,
-            damping: 30,
-            stiffness: 350,
-            mass: 0.8,
-            staggerChildren: 0.05
+            damping: 25,
+            stiffness: 300,
+            mass: 0.8
         }
     },
-    hiddenRight: { x: 340, opacity: 0, scale: 0.98 },
+    hiddenRight: { x: 340, opacity: 0, scale: 0.95 },
   };
 
   return (
-    <div className="relative h-screen w-screen bg-background overflow-hidden selection:bg-accent selection:text-white font-sans text-text-primary">
+    <div 
+        ref={spotlightRef}
+        className="relative h-screen w-screen bg-background overflow-hidden selection:bg-accent selection:text-white font-sans text-text-primary group/app"
+    >
+      {/* 0. Spotlight & Vignette Layer */}
+      <div 
+        className="absolute inset-0 z-0 pointer-events-none opacity-40 mix-blend-overlay"
+        style={{
+            background: `radial-gradient(800px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255,255,255,0.06), transparent 40%)`
+        }}
+      />
+      
       {/* 1. Full-screen Canvas Layer (The Curtain) */}
       <div className="absolute inset-0 z-0">
          {children}
       </div>
 
-      {/* Cinematic Background Gradient (Overlay on canvas if needed, or background) */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-accent/5 via-background/10 to-background/50 pointer-events-none z-0 mix-blend-overlay" />
+      {/* Cinematic Background Gradient (Overlay on canvas if needed) */}
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/10 to-background/60 pointer-events-none z-0" />
       
       {/* 2. UI Overlay Layer */}
       <m.div 
@@ -138,14 +161,17 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
                         initial={{ scale: 0, opacity: 0, rotate: -90 }}
                         animate={{ scale: 1, opacity: 1, rotate: 0 }}
                         exit={{ scale: 0, opacity: 0, rotate: 90 }}
-                        onClick={toggleCinematicMode}
-                        className="p-3 rounded-full glass-panel text-text-secondary hover:text-white hover:border-accent/50 transition-all group"
+                        onClick={() => {
+                            toggleCinematicMode();
+                            soundManager.playClick();
+                        }}
+                        className="p-3 rounded-full glass-panel text-text-secondary hover:text-white hover:border-accent/50 transition-all group shadow-2xl shadow-accent/20"
                         title="Exit Cinematic Mode (C)"
                         data-testid="exit-cinematic"
-                        whileHover={{ scale: 1.1 }}
+                        whileHover={{ scale: 1.1, rotate: 90 }}
                         whileTap={{ scale: 0.9 }}
                     >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M18 6L6 18M6 6l12 12" />
                         </svg>
                     </m.button>
@@ -153,7 +179,7 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
             )}
         </AnimatePresence>
 
-        <div className="flex flex-1 min-h-0 overflow-hidden relative">
+        <div className="flex flex-1 min-h-0 overflow-hidden relative p-2 gap-2">
             
             {/* Mobile Overlay Backdrop */}
             <AnimatePresence>
@@ -177,9 +203,9 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
                         exit="hiddenLeft"
                         variants={panelVariants}
                         className={`
-                            glass-panel
+                            glass-panel rounded-xl
                             h-full overflow-hidden w-80 pointer-events-auto flex flex-col
-                            ${!isDesktop ? 'absolute left-0 top-0 z-30 shadow-2xl' : 'relative z-20 ml-2 mb-2 rounded-xl'}
+                            ${!isDesktop ? 'absolute left-2 top-0 bottom-2 z-30 shadow-2xl' : 'relative z-20'}
                         `}
                     >
                         <div className="w-full h-full overflow-y-auto custom-scrollbar p-1">
@@ -195,18 +221,18 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
                      {/* Loader */}
                      {!children && (
                         <div className="w-full h-full flex flex-col items-center justify-center text-text-tertiary">
-                           <div className="relative w-24 h-24 mb-8">
-                              <div className="absolute inset-0 border border-accent/20 rounded-full animate-[spin_4s_linear_infinite]"></div>
-                              <div className="absolute inset-2 border-t border-accent rounded-full animate-[spin_2s_linear_infinite]"></div>
-                              <div className="absolute inset-8 border border-accent/50 rounded-full animate-pulse"></div>
-                              <div className="absolute inset-[40%] bg-accent/20 blur-md rounded-full animate-pulse"></div>
+                           <div className="relative w-32 h-32 mb-8">
+                              <div className="absolute inset-0 border border-accent/20 rounded-full animate-[spin_8s_linear_infinite]"></div>
+                              <div className="absolute inset-2 border-t border-accent rounded-full animate-[spin_3s_linear_infinite]"></div>
+                              <div className="absolute inset-12 border border-accent/50 rounded-full animate-pulse"></div>
+                              <div className="absolute inset-[40%] bg-accent/20 blur-xl rounded-full animate-pulse"></div>
                            </div>
-                           <p className="text-[10px] font-mono tracking-[0.4em] text-accent/80 animate-pulse">INITIALIZING SYSTEM</p>
+                           <p className="text-xs font-mono tracking-[0.5em] text-accent/80 animate-pulse uppercase">Initializing Core</p>
                        </div>
                      )}
                 </div>
                 {!isCinematicMode && isDesktop && (
-                    <div className="pointer-events-auto shrink-0 mb-2 mx-2">
+                    <div className="pointer-events-auto shrink-0 mt-2">
                         <EditorBottomPanel />
                     </div>
                 )}
@@ -221,9 +247,9 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
                         exit="hiddenRight"
                         variants={panelVariants}
                         className={`
-                            glass-panel
+                            glass-panel rounded-xl
                             h-full overflow-hidden w-80 pointer-events-auto flex flex-col
-                            ${!isDesktop ? 'absolute right-0 top-0 z-30 shadow-2xl' : 'relative z-20 mr-2 mb-2 rounded-xl'}
+                            ${!isDesktop ? 'absolute right-2 top-0 bottom-2 z-30 shadow-2xl' : 'relative z-20'}
                         `}
                     >
                         <div className="w-full h-full overflow-y-auto custom-scrollbar p-1">

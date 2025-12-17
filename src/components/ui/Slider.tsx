@@ -1,5 +1,6 @@
 import React, { useEffect, useId, useState } from 'react';
 import { m, AnimatePresence } from 'motion/react';
+import { soundManager } from '@/lib/audio/SoundManager';
 
 export interface SliderProps {
   label: string;
@@ -53,6 +54,7 @@ export const Slider: React.FC<SliderProps> = ({
   const handleLabelMouseDown = (e: React.MouseEvent) => {
     if (disabled) return;
     setIsLabelDragging(true);
+    soundManager.playClick();
     e.preventDefault();
     document.body.style.cursor = 'ew-resize';
     
@@ -110,13 +112,20 @@ export const Slider: React.FC<SliderProps> = ({
       (e.target as HTMLInputElement).blur();
     }
   };
+  
+  const handleReset = () => {
+    if (onReset) {
+        onReset();
+        soundManager.playSnap();
+    }
+  };
 
   const displayValue = formatValue ? formatValue(value) : value.toFixed(decimals);
 
   return (
     <div 
       className={`group/slider relative select-none ${className} ${disabled ? 'opacity-50 pointer-events-none' : ''}`}
-      onMouseEnter={() => setIsHovered(true)}
+      onMouseEnter={() => { setIsHovered(true); soundManager.playHover(); }}
       onMouseLeave={() => setIsHovered(false)}
       data-testid={dataTestId}
     >
@@ -130,7 +139,7 @@ export const Slider: React.FC<SliderProps> = ({
           `}
           title={tooltip || "Drag label to adjust value, Double-click to reset"}
           onMouseDown={handleLabelMouseDown}
-          onDoubleClick={() => onReset && onReset()}
+          onDoubleClick={handleReset}
         >
           {label}
         </label>
@@ -140,7 +149,7 @@ export const Slider: React.FC<SliderProps> = ({
              {onReset && value !== min && (
               <button
                 type="button"
-                onClick={onReset}
+                onClick={handleReset}
                 disabled={disabled}
                 className={`
                   text-[10px] text-accent transition-all duration-200 
@@ -192,9 +201,9 @@ export const Slider: React.FC<SliderProps> = ({
           step={step}
           value={value}
           onChange={(e) => onChange(Number(e.target.value))}
-          onMouseDown={() => setIsDragging(true)}
+          onMouseDown={() => { setIsDragging(true); soundManager.playClick(); }}
           onMouseUp={() => setIsDragging(false)}
-          onTouchStart={() => setIsDragging(true)}
+          onTouchStart={() => { setIsDragging(true); soundManager.playClick(); }}
           onTouchEnd={() => setIsDragging(false)}
           disabled={disabled}
           className="absolute w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed z-20"

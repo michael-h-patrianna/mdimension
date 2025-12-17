@@ -217,8 +217,19 @@ class TemporalCloudManagerImpl {
       generateMipmaps: false,
       depthBuffer: false,
       stencilBuffer: false,
-      count: 2, 
+      count: 2,
     });
+
+    // Explicitly clear reprojection buffer to prevent garbage data
+    // This is critical because the reconstruction shader samples from this buffer
+    // even before the first reprojection pass runs
+    if (gl) {
+      const currentTarget = gl.getRenderTarget();
+      gl.setRenderTarget(this.reprojectionBuffer);
+      gl.setClearColor(0x000000, 0);
+      gl.clear(true, false, false);
+      gl.setRenderTarget(currentTarget);
+    }
 
     // Reset state
     this.isValid = false;
