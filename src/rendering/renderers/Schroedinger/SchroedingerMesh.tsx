@@ -49,6 +49,9 @@ const COLOR_MODE_TO_INT: Record<string, number> = {
 
 /**
  * Apply D-dimensional rotation matrix to a vector, writing result into pre-allocated output.
+ * @param matrix
+ * @param vec
+ * @param out
  */
 function applyRotationInPlace(matrix: MatrixND, vec: number[], out: Float32Array): void {
   const D = matrix.length;

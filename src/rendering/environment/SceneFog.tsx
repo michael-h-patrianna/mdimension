@@ -11,6 +11,7 @@ import { useThree } from '@react-three/fiber';
 import { useEffect } from 'react';
 import * as THREE from 'three';
 import { useEnvironmentStore } from '@/stores/environmentStore';
+import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
 export const SceneFog: React.FC = () => {

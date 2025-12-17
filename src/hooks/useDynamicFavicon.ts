@@ -39,13 +39,18 @@ export const useDynamicFavicon = () => {
       ctx.shadowColor = color;
       ctx.stroke();
 
-      const link = document.querySelector("link[rel*='icon']") as HTMLLinkElement || document.createElement('link');
-      link.type = 'image/x-icon';
-      link.rel = 'shortcut icon';
-      link.href = canvas.toDataURL();
-      const head = document.getElementsByTagName('head')[0];
-      if (head) {
-        head.appendChild(link);
+      // Update existing favicon link or create new one (avoid DOM pollution)
+      const existingLink = document.querySelector("link[rel*='icon']") as HTMLLinkElement;
+      if (existingLink) {
+        // Update existing link
+        existingLink.href = canvas.toDataURL();
+      } else {
+        // Create new link only if none exists
+        const newLink = document.createElement('link');
+        newLink.type = 'image/x-icon';
+        newLink.rel = 'shortcut icon';
+        newLink.href = canvas.toDataURL();
+        document.head.appendChild(newLink);
       }
     }
   }, [theme]);

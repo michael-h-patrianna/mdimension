@@ -129,6 +129,8 @@ describe('Skybox Color Sync Logic', () => {
   /**
    * Helper function that mirrors the logic in Skybox.tsx for determining
    * whether to use simple color interpolation (uUsePalette=0) vs cosine palette (uUsePalette=1)
+   * @param syncWithObject
+   * @param colorAlgorithm
    */
   const computeUsePaletteValue = (syncWithObject: boolean, colorAlgorithm: ColorAlgorithm): number => {
     const useSimpleInterpolation = syncWithObject &&
@@ -197,6 +199,7 @@ describe('ProceduralSkyboxWithEnvironment Logic', () => {
   /**
    * Helper function that mirrors the logic in ProceduralSkyboxWithEnvironment.tsx
    * for determining whether to generate environment maps for wall reflections.
+   * @param activeWalls
    */
   const needsEnvironmentMap = (activeWalls: string[]): boolean => {
     return activeWalls.length > 0;
@@ -205,6 +208,9 @@ describe('ProceduralSkyboxWithEnvironment Logic', () => {
   /**
    * Helper function that generates the settings key for Environment component
    * re-rendering, mirroring the logic in ProceduralSkyboxWithEnvironment.tsx
+   * @param skyboxMode
+   * @param proceduralSettings
+   * @param cosineCoefficients
    */
   const generateSettingsKey = (
     skyboxMode: string,

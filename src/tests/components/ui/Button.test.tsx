@@ -22,13 +22,13 @@ describe('Button', () => {
     render(<Button>Primary</Button>);
     const button = screen.getByRole('button');
     // Primary uses a gradient starting with from-accent
-    expect(button).toHaveClass('from-accent');
+    expect(button).toHaveClass('glass-button-primary');
   });
 
   it('applies secondary variant styles', () => {
     render(<Button variant="secondary">Secondary</Button>);
     const button = screen.getByRole('button');
-    expect(button).toHaveClass('bg-panel-bg');
+    expect(button).toHaveClass('glass-button');
   });
 
   it('applies ghost variant styles', () => {

@@ -5,6 +5,9 @@ import { usePerformanceMetricsStore } from '@/stores/performanceMetricsStore';
 
 const VRAM_UPDATE_INTERVAL = 2000; // ms
 
+/**
+ *
+ */
 export function PerformanceStatsCollector() {
   const { gl, scene, size, viewport } = useThree((state) => ({ 
     gl: state.gl, 
@@ -74,8 +77,12 @@ export function PerformanceStatsCollector() {
            // Estimate attributes
            const geom = object.geometry;
            if (geom.attributes) {
-             Object.values(geom.attributes).forEach((attr: any) => {
-               if (attr.array) geomMem += attr.array.byteLength;
+             Object.values(geom.attributes).forEach((attr) => {
+                const bufferAttr = attr as THREE.BufferAttribute;
+                if (bufferAttr.array) {
+                  // Approximate memory: bytes per element * count
+                  geomMem += bufferAttr.array.byteLength;
+                }
              });
            }
            if (geom.index && geom.index.array) {
@@ -122,8 +129,8 @@ export function PerformanceStatsCollector() {
       minFpsRef.current = Math.min(minFpsRef.current, fps);
       if (time > 3000) maxFpsRef.current = Math.max(maxFpsRef.current, fps);
 
-      const heap = (performance as any).memory 
-        ? Math.round((performance as any).memory.usedJSHeapSize / 1048576) 
+      const heap = (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory 
+        ? Math.round((performance as unknown as { memory: { usedJSHeapSize: number } }).memory.usedJSHeapSize / 1048576) 
         : 0;
       
       // Update VRAM periodically

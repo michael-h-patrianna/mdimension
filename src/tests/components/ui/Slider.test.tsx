@@ -31,7 +31,8 @@ describe('Slider', () => {
 
     // With step=0.1, decimals should be 1 (from Math.ceil(-Math.log10(0.1)))
     // so value is formatted as '1.5' not '1.50'
-    expect(screen.getByDisplayValue('1.5')).toBeInTheDocument();
+    // getAllByDisplayValue because there is a text input and a range input
+    expect(screen.getAllByDisplayValue('1.5')[0]).toBeInTheDocument();
   });
 
   // Unit is only displayed in min/max labels, not next to the value
@@ -45,6 +46,8 @@ describe('Slider', () => {
         min={1}
         max={10}
         unit="x"
+        minLabel="1x"
+        maxLabel="10x"
         onChange={vi.fn()}
       />
     );
@@ -66,6 +69,7 @@ describe('Slider', () => {
       />
     );
 
+    // Select the range input
     const slider = screen.getByRole('slider') as HTMLInputElement;
 
     // Simulate changing the value
@@ -118,8 +122,9 @@ describe('Slider', () => {
 
     const slider = screen.getByRole('slider');
     expect(slider).toHaveAttribute('aria-label', 'Rotation');
-    expect(slider).toHaveAttribute('aria-valuemin', '0');
-    expect(slider).toHaveAttribute('aria-valuemax', '360');
-    expect(slider).toHaveAttribute('aria-valuenow', '180');
+    expect(slider).toHaveAttribute('min', '0');
+    expect(slider).toHaveAttribute('max', '360');
+    // valuenow is not an attribute on input[type=range], it's a property 'value'
+    expect(slider).toHaveValue('180');
   });
 });

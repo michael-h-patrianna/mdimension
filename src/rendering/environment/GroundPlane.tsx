@@ -280,6 +280,19 @@ interface WallProps extends SurfaceMaterialProps {
 
 /**
  * Renders a single wall surface with optional grid overlay.
+ * @param root0
+ * @param root0.wall
+ * @param root0.distance
+ * @param root0.size
+ * @param root0.color
+ * @param root0.roughness
+ * @param root0.metalness
+ * @param root0.envMapIntensity
+ * @param root0.surfaceType
+ * @param root0.showGrid
+ * @param root0.gridColor
+ * @param root0.gridSpacing
+ * @param root0.sectionColor
  */
 function Wall({
   wall,
@@ -353,6 +366,21 @@ function Wall({
  * and two surface types.
  *
  * @param props - Component props
+ * @param props.vertices
+ * @param props.offset
+ * @param props.opacity
+ * @param props.reflectivity
+ * @param props.activeWalls
+ * @param props.minBoundingRadius
+ * @param props.color
+ * @param props.surfaceType
+ * @param props.showGrid
+ * @param props.gridColor
+ * @param props.gridSpacing
+ * @param props.roughness
+ * @param props.metalness
+ * @param props.envMapIntensity
+ * @param props.sizeScale
  * @returns Environment walls with optional grid overlay
  */
 export function GroundPlane({

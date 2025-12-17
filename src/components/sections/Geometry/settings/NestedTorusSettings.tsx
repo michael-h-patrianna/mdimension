@@ -1,6 +1,5 @@
 import { Select } from '@/components/ui/Select';
 import { Slider } from '@/components/ui/Slider';
-import { DEFAULT_NESTED_TORUS_CONFIG } from '@/lib/geometry/extended/types';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 

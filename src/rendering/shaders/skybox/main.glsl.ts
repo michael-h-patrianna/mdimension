@@ -1,5 +1,10 @@
 import { SkyboxMode, SkyboxEffects } from './types';
 
+/**
+ *
+ * @param mode
+ * @param effects
+ */
 export function generateMain(mode: SkyboxMode, effects: SkyboxEffects): string {
   let modeCall = '';
   switch (mode) {

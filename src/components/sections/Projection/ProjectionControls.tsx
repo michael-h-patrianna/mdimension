@@ -1,9 +1,13 @@
 import { useProjectionStore } from '@/stores/projectionStore';
 import React from 'react';
 import { ProjectionTypeToggle } from './ProjectionTypeToggle';
+import { useShallow } from 'zustand/react/shallow';
 
 export const ProjectionControls: React.FC = () => {
-  const { type, setType } = useProjectionStore();
+  const { type, setType } = useProjectionStore(useShallow((state) => ({
+    type: state.type,
+    setType: state.setType
+  })));
 
   return (
     <div>

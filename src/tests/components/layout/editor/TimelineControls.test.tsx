@@ -96,7 +96,7 @@ vi.mock('@/stores/extendedObjectStore', () => ({
 }));
 
 vi.mock('zustand/react/shallow', () => ({
-  useShallow: (selector: any) => selector,
+  useShallow: <T,>(selector: T) => selector,
 }));
 
 describe('TimelineControls', () => {

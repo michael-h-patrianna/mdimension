@@ -35,6 +35,9 @@ export type RenderLayer = (typeof RENDER_LAYERS)[keyof typeof RENDER_LAYERS];
  * 2. Reprojects previous frame's accumulation to current view
  * 3. Reconstructs full resolution by blending new pixels with history
  * 4. Composites over the main scene
+ * @param state
+ * @param state.temporalCloudAccumulation
+ * @param state.objectType
  */
 export function needsVolumetricSeparation(state: {
   temporalCloudAccumulation?: boolean;
@@ -48,6 +51,11 @@ export function needsVolumetricSeparation(state: {
  * Returns true if any effect requires depth that should exclude environment objects.
  *
  * @param state - Current post-processing state
+ * @param state.ssrEnabled
+ * @param state.refractionEnabled
+ * @param state.bokehEnabled
+ * @param state.bokehFocusMode
+ * @param state.temporalReprojectionEnabled
  * @returns True if object-only depth pass should be rendered
  */
 export function needsObjectOnlyDepth(state: {

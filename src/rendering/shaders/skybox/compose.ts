@@ -28,6 +28,10 @@ import { aberrationBlock } from './effects/aberration.glsl';
 import { generateMain } from './main.glsl';
 import { SkyboxShaderConfig } from './types';
 
+/**
+ *
+ * @param config
+ */
 export function composeSkyboxFragmentShader(config: SkyboxShaderConfig) {
   const { mode, effects, overrides = [] } = config;
 
@@ -110,6 +114,9 @@ export function composeSkyboxFragmentShader(config: SkyboxShaderConfig) {
   return { glsl: glslParts.join('\n'), modules, features };
 }
 
+/**
+ *
+ */
 export function composeSkyboxVertexShader() {
   return `
 /**

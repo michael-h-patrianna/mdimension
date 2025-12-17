@@ -16,6 +16,7 @@ const validPlanesCache = new Map<number, Set<string>>();
 /**
  * Get cached Set of valid plane names for a dimension.
  * Creates and caches if not yet present.
+ * @param dimension
  */
 function getValidPlanesSet(dimension: number): Set<string> {
   let cached = validPlanesCache.get(dimension);

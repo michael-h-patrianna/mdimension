@@ -1,7 +1,6 @@
-Important: This prompt is a test of your autonomous capabilities.
+Important: This prompt is a test of your autonomous capabilities and abilities to create and optimize a high performance WebGL2 rendering pipeline.
 
 You cannot break anything. The project in this local folder is backed up and can be restored. You can create, modify, and delete files as necessary to complete the tasks assigned to you. You have full autonomy to make decisions and take actions to achieve the desired outcomes.
-
 
 Your task:
 - Design a best of class video export feature that allows the user record a video of a rendered scene or part of the scene and export

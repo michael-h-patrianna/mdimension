@@ -1,13 +1,20 @@
 import React, { useRef } from 'react';
 import { usePresetManagerStore } from '@/stores/presetManagerStore';
 import { useToast } from '@/contexts/ToastContext';
+import { useShallow } from 'zustand/react/shallow';
 
 interface SceneManagerProps {
   onClose: () => void;
 }
 
 export const SceneManager: React.FC<SceneManagerProps> = ({ onClose }) => {
-  const { savedScenes, loadScene, deleteScene, importScenes, exportScenes } = usePresetManagerStore();
+  const { savedScenes, loadScene, deleteScene, importScenes, exportScenes } = usePresetManagerStore(useShallow((state) => ({
+    savedScenes: state.savedScenes,
+    loadScene: state.loadScene,
+    deleteScene: state.deleteScene,
+    importScenes: state.importScenes,
+    exportScenes: state.exportScenes
+  })));
   const { addToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 

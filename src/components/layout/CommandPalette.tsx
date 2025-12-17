@@ -3,6 +3,7 @@ import { m, AnimatePresence } from 'motion/react';
 import { useLayoutStore } from '@/stores/layoutStore';
 import { useThemeStore } from '@/stores/themeStore';
 import { useCameraStore } from '@/stores/cameraStore';
+import { useShallow } from 'zustand/react/shallow';
 
 interface Command {
   id: string;
@@ -20,8 +21,13 @@ export const CommandPalette: React.FC = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  const { toggleCinematicMode, toggleCollapsed, toggleLeftPanel, toggleShortcuts } = useLayoutStore();
-  const { setTheme } = useThemeStore();
+  const { toggleCinematicMode, toggleCollapsed, toggleLeftPanel, toggleShortcuts } = useLayoutStore(useShallow((state) => ({
+    toggleCinematicMode: state.toggleCinematicMode,
+    toggleCollapsed: state.toggleCollapsed,
+    toggleLeftPanel: state.toggleLeftPanel,
+    toggleShortcuts: state.toggleShortcuts
+  })));
+  const { setTheme } = useThemeStore(useShallow((state) => ({ setTheme: state.setTheme })));
   const resetCamera = useCameraStore(state => state.reset);
 
   const commands: Command[] = [

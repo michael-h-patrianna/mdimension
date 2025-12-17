@@ -21,7 +21,17 @@ export const Section: React.FC<SectionProps> = ({
   // Persistence logic
   const storageKey = `section-state-${title.replace(/\s+/g, '-').toLowerCase()}`;
   const sectionRef = useRef<HTMLDivElement>(null);
-  
+  const scrollTimerRef = useRef<number | null>(null);
+
+  // Cleanup scroll timer on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollTimerRef.current !== null) {
+        window.clearTimeout(scrollTimerRef.current);
+      }
+    };
+  }, []);
+
   const [isOpen, setIsOpen] = useState(() => {
     try {
       const stored = localStorage.getItem(storageKey);
@@ -51,9 +61,14 @@ export const Section: React.FC<SectionProps> = ({
             const willOpen = !isOpen;
             setIsOpen(willOpen);
             if (willOpen && sectionRef.current) {
+                // Clear any pending scroll timer
+                if (scrollTimerRef.current !== null) {
+                  window.clearTimeout(scrollTimerRef.current);
+                }
                 // Instant scroll start, but smooth behavior
-                setTimeout(() => {
+                scrollTimerRef.current = window.setTimeout(() => {
                     sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    scrollTimerRef.current = null;
                 }, 100);
             }
           }}

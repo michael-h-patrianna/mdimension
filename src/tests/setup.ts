@@ -108,6 +108,35 @@ HTMLCanvasElement.prototype.getContext = vi.fn((contextType: string) => {
   return webglContextMock
 }) as unknown as typeof HTMLCanvasElement.prototype.getContext
 
+// Mock AudioContext
+const mockAudioParam = {
+  value: 0,
+  setValueAtTime: vi.fn(),
+  linearRampToValueAtTime: vi.fn(),
+  exponentialRampToValueAtTime: vi.fn(),
+  cancelScheduledValues: vi.fn(),
+}
+
+class MockAudioContext {
+  createGain = vi.fn().mockReturnValue({ 
+    gain: { ...mockAudioParam, value: 1 }, 
+    connect: vi.fn() 
+  })
+  createOscillator = vi.fn().mockReturnValue({
+    connect: vi.fn(),
+    start: vi.fn(),
+    stop: vi.fn(),
+    frequency: { ...mockAudioParam },
+    type: 'sine',
+  })
+  destination = {}
+  currentTime = 0
+}
+
+globalThis.AudioContext = MockAudioContext as any
+;(window as any).AudioContext = MockAudioContext
+;(window as any).webkitAudioContext = MockAudioContext
+
 // Cleanup after each test case
 afterEach(() => {
   cleanup()

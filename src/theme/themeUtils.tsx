@@ -74,6 +74,10 @@ export function createFlexLayout(
 /**
  * Creates an absolute overlay style.
  * @param offset - Top/Left/Right/Bottom offsets
+ * @param offset.top
+ * @param offset.left
+ * @param offset.right
+ * @param offset.bottom
  * @param zIndex - z-index value
  * @returns CSSProperties
  */
@@ -91,6 +95,10 @@ export function createAbsoluteOverlay(
 /**
  * Creates a transform style.
  * @param transforms - Object with transform properties
+ * @param transforms.translateX
+ * @param transforms.translateY
+ * @param transforms.scale
+ * @param transforms.rotate
  * @returns CSSProperties
  */
 export function createTransform(transforms: {
@@ -111,6 +119,10 @@ export function createTransform(transforms: {
  * Creates a responsive font size style.
  * @param containerWidth - Current width of container
  * @param options - Min/Max font size and width configuration
+ * @param options.min
+ * @param options.max
+ * @param options.minWidth
+ * @param options.maxWidth
  * @returns number (font size in px)
  */
 export function createResponsiveFontSize(

@@ -15,8 +15,6 @@ import { Slider } from '@/components/ui/Slider'
 import { Switch } from '@/components/ui/Switch'
 import { Section } from '@/components/sections/Section'
 import {
-  DEFAULT_WYTHOFF_POLYTOPE_CONFIG,
-  DEFAULT_WYTHOFF_SCALES,
   WythoffPreset,
   WythoffSymmetryGroup,
 } from '@/lib/geometry/extended/types'
@@ -82,7 +80,6 @@ export function WythoffPolytopeSettings() {
   }, [config.preset, config.symmetryGroup, dimension])
 
   // Get default scale for current preset
-  const defaultScale = DEFAULT_WYTHOFF_SCALES[config.preset] ?? DEFAULT_WYTHOFF_POLYTOPE_CONFIG.scale
 
   // Handle symmetry group change - reset to B if D is selected and dimension < 4
   const handleSymmetryGroupChange = React.useCallback(

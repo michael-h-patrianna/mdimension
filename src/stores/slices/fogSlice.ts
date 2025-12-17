@@ -61,7 +61,10 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-/** Validates hex color string format (accepts #RGB, #RRGGBB, #RRGGBBAA) */
+/**
+ * Validates hex color string format (accepts #RGB, #RRGGBB, #RRGGBBAA)
+ * @param color
+ */
 const isValidHexColor = (color: string): boolean =>
   /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/.test(color);
 

@@ -111,6 +111,7 @@ interface PolytopeData {
 /**
  * Generate all vertices of a hypercube {4,3,...,3} in n dimensions.
  * Vertices are at all combinations of ±1 in each coordinate.
+ * @param dimension
  */
 function generateHypercubeVertices(dimension: number): VectorND[] {
   const vertices: VectorND[] = []
@@ -129,6 +130,7 @@ function generateHypercubeVertices(dimension: number): VectorND[] {
 
 /**
  * Generate complete hypercube data including analytically correct faces.
+ * @param dimension
  */
 function generateHypercubeData(dimension: number): PolytopeData {
   const vertices = generateHypercubeVertices(dimension)
@@ -187,6 +189,7 @@ function generateHypercubeData(dimension: number): PolytopeData {
 /**
  * Generate all vertices of a cross-polytope {3,3,...,4} in n dimensions.
  * Vertices are at ±1 along each axis.
+ * @param dimension
  */
 function generateCrossPolytopeVertices(dimension: number): VectorND[] {
   const vertices: VectorND[] = []
@@ -206,6 +209,7 @@ function generateCrossPolytopeVertices(dimension: number): VectorND[] {
 /**
  * Generate all vertices of a regular simplex in n dimensions.
  * Uses standard construction with n+1 vertices.
+ * @param dimension
  */
 function generateSimplexVertices(dimension: number): VectorND[] {
   const vertices: VectorND[] = []
@@ -239,6 +243,7 @@ function generateSimplexVertices(dimension: number): VectorND[] {
 /**
  * Generate complete simplex data including analytically correct faces.
  * A simplex has (n+1 choose 3) triangular faces.
+ * @param dimension
  */
 function generateSimplexData(dimension: number): PolytopeData {
   const vertices = generateSimplexVertices(dimension)
@@ -268,6 +273,7 @@ function generateSimplexData(dimension: number): PolytopeData {
 /**
  * Generate rectified hypercube (n-dimensional cuboctahedron analog).
  * Vertices at midpoints of edges of the hypercube.
+ * @param dimension
  */
 function generateRectifiedHypercubeVertices(dimension: number): VectorND[] {
   const vertices: VectorND[] = []
@@ -302,6 +308,8 @@ function generateRectifiedHypercubeVertices(dimension: number): VectorND[] {
 
 /**
  * Generate triangular faces from edges by finding 3-cycles in the adjacency graph.
+ * @param vertices
+ * @param edges
  */
 function generateTriangleFacesFromEdges(vertices: VectorND[], edges: [number, number][]): number[][] {
   const adjacency = new Map<number, Set<number>>()
@@ -347,6 +355,8 @@ function generateTriangleFacesFromEdges(vertices: VectorND[], edges: [number, nu
 
 /**
  * Generate quad faces from edges by finding 4-cycles without diagonals.
+ * @param vertices
+ * @param edges
  */
 function generateQuadFacesFromEdges(vertices: VectorND[], edges: [number, number][]): number[][] {
   const adjacency = new Map<number, Set<number>>()
@@ -407,6 +417,7 @@ function generateQuadFacesFromEdges(vertices: VectorND[], edges: [number, number
 /**
  * Generate truncated hypercube vertices.
  * Vertices are at positions like (±1, ±1, ..., ±(sqrt(2)-1)).
+ * @param dimension
  */
 function generateTruncatedHypercubeVertices(dimension: number): VectorND[] {
   const vertices: VectorND[] = []
@@ -439,6 +450,7 @@ function generateTruncatedHypercubeVertices(dimension: number): VectorND[] {
 
 /**
  * Generate cantellated hypercube vertices (rhombicuboctahedron analog).
+ * @param dimension
  */
 function generateCantellatedHypercubeVertices(dimension: number): VectorND[] {
   const vertices: VectorND[] = []
@@ -471,6 +483,7 @@ function generateCantellatedHypercubeVertices(dimension: number): VectorND[] {
 
 /**
  * Generate omnitruncated hypercube vertices (truncated cuboctahedron analog).
+ * @param dimension
  */
 function generateOmnitruncatedHypercubeVertices(dimension: number): VectorND[] {
   const vertices: VectorND[] = []
@@ -535,6 +548,7 @@ function generateOmnitruncatedHypercubeVertices(dimension: number): VectorND[] {
 
 /**
  * Generate runcinated hypercube vertices (first and last node ringed).
+ * @param dimension
  */
 function generateRuncinatedHypercubeVertices(dimension: number): VectorND[] {
   // Combine hypercube vertices with scaled versions
@@ -569,6 +583,7 @@ function generateRuncinatedHypercubeVertices(dimension: number): VectorND[] {
 /**
  * Generate half-hypercube (demihypercube) vertices.
  * Takes alternating vertices of the hypercube.
+ * @param dimension
  */
 function generateDemihypercubeVertices(dimension: number): VectorND[] {
   const vertices: VectorND[] = []
@@ -721,6 +736,8 @@ const polytopeCache = new Map<string, PolytopeGeometry>();
 
 /**
  * Generate a cache key for Wythoff polytope configuration
+ * @param dimension
+ * @param config
  */
 function getCacheKey(dimension: number, config: WythoffPolytopeConfig): string {
   return JSON.stringify({
@@ -888,6 +905,8 @@ export function generateWythoffPolytope(
 /**
  * Generate generic polytope data using edge-based face detection.
  * Used for complex Wythoff presets where analytical generation is difficult.
+ * @param vertices
+ * @param faceType
  */
 function generateGenericPolytopeData(
   vertices: VectorND[],
@@ -903,12 +922,13 @@ function generateGenericPolytopeData(
     case 'quads':
       faces = generateQuadFacesFromEdges(vertices, edges)
       break
-    case 'mixed':
+    case 'mixed': {
       // Try to find both triangles and quads
       const triangles = generateTriangleFacesFromEdges(vertices, edges)
       const quads = generateQuadFacesFromEdges(vertices, edges)
       faces = [...triangles, ...quads]
       break
+    }
     default:
       faces = generateTriangleFacesFromEdges(vertices, edges)
   }

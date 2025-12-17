@@ -272,7 +272,10 @@ export const usePerformanceStore = create<PerformanceState>((set, get) => ({
 // Selectors (for performance optimization with useShallow)
 // ============================================================================
 
-/** Select progressive refinement settings */
+/**
+ * Select progressive refinement settings
+ * @param state
+ */
 export const selectProgressiveRefinement = (state: PerformanceState) => ({
   enabled: state.progressiveRefinementEnabled,
   stage: state.refinementStage,
@@ -280,7 +283,10 @@ export const selectProgressiveRefinement = (state: PerformanceState) => ({
   qualityMultiplier: state.qualityMultiplier,
 })
 
-/** Select temporal reprojection settings */
+/**
+ * Select temporal reprojection settings
+ * @param state
+ */
 export const selectTemporalReprojection = (state: PerformanceState) => ({
   enabled: state.temporalReprojectionEnabled,
   cameraTeleported: state.cameraTeleported,

@@ -127,6 +127,7 @@ export class ZoomAutopilot {
 
   /**
    * Update the autopilot configuration.
+   * @param config
    */
   updateConfig(config: Partial<AutopilotConfig>): void {
     this.config = { ...this.config, ...config }
@@ -196,6 +197,9 @@ export class ZoomAutopilot {
    * Strategy A: Center-Ray Lock
    * Simple and fast - nudge D-dimensional origin when missing.
    * The zoom happens around uOrigin, so nudging it tracks interesting regions.
+   * @param probe
+   * @param _currentOrigin
+   * @param dimension
    */
   private applyCenterRayLock(
     probe: ProbeResult,
@@ -247,6 +251,9 @@ export class ZoomAutopilot {
    * Strategy B: Interest Score
    * Hill-climb to maximize visual interest (variance, edges, etc.)
    * Nudges D-dimensional origin to find more interesting regions.
+   * @param probe
+   * @param _currentOrigin
+   * @param dimension
    */
   private applyInterestScore(
     probe: ProbeResult,
@@ -307,6 +314,9 @@ export class ZoomAutopilot {
    * Strategy C: Boundary Target
    * Aim for pixels near the escape boundary (classic Mandelbrot style).
    * Nudges D-dimensional origin to stay near interesting boundary regions.
+   * @param probe
+   * @param _currentOrigin
+   * @param dimension
    */
   private applyBoundaryTarget(
     probe: ProbeResult,
@@ -358,6 +368,8 @@ export class ZoomAutopilot {
    * Compute a quasi-random nudge vector in D-space.
    * Uses golden ratio phases for good space coverage.
    * Nudges ALL dimensions including 0,1,2 to steer the zoom center.
+   * @param dimension
+   * @param strength
    */
   private computeNudgeVector(dimension: number, strength: number): number[] {
     const PHI = 1.618033988749895
@@ -377,6 +389,9 @@ export class ZoomAutopilot {
   /**
    * Generate candidate nudge vectors for interest score strategy.
    * Generates nudges in ALL dimensions to explore fractal space.
+   * @param dimension
+   * @param count
+   * @param radius
    */
   private generateCandidates(
     dimension: number,
@@ -403,6 +418,8 @@ export class ZoomAutopilot {
 
   /**
    * Compute interest score from probe result based on selected metric.
+   * @param probe
+   * @param metric
    */
   private computeInterestScore(probe: ProbeResult, metric: InterestMetric): number {
     switch (metric) {

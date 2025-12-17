@@ -36,9 +36,6 @@ import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { Slider } from '@/components/ui/Slider';
 import {
-  DEFAULT_BLOOM_INTENSITY,
-  DEFAULT_BLOOM_THRESHOLD,
-  DEFAULT_BLOOM_RADIUS,
 } from '@/stores/defaults/visualDefaults';
 import { usePostProcessingStore } from '@/stores/postProcessingStore';
 

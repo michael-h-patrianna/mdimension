@@ -60,6 +60,8 @@ export interface LightGroundVisualizationProps {
 /**
  * Calculate ray-ground intersection point
  * Returns null if light is below ground or pointing upward
+ * @param position
+ * @param direction
  */
 function calculateGroundIntersection(
   position: [number, number, number],
@@ -95,6 +97,10 @@ function calculateGroundIntersection(
 
 /**
  * Calculate ellipse points for spotlight cone intersection with ground
+ * @param position
+ * @param direction
+ * @param coneAngle
+ * @param intersection
  */
 function calculateEllipsePoints(
   position: [number, number, number],

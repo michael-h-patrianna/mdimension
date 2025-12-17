@@ -61,9 +61,9 @@ describe('appearanceStore', () => {
       expect(useAppearanceStore.getState().edgeThickness).toBe(4);
     });
 
-    it('should clamp thickness to [1, 5]', () => {
-      useAppearanceStore.getState().setEdgeThickness(0);
-      expect(useAppearanceStore.getState().edgeThickness).toBe(1);
+    it('should clamp thickness to [0, 5]', () => {
+      useAppearanceStore.getState().setEdgeThickness(-1);
+      expect(useAppearanceStore.getState().edgeThickness).toBe(0);
 
       useAppearanceStore.getState().setEdgeThickness(10);
       expect(useAppearanceStore.getState().edgeThickness).toBe(5);

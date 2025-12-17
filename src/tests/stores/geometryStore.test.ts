@@ -18,10 +18,10 @@ describe('geometryStore', () => {
       expect(state.dimension).toBe(4);
     });
 
-    it('should have default object type of hypercube', () => {
+    it('should have default object type of schroedinger', () => {
       const state = useGeometryStore.getState();
       expect(state.objectType).toBe(DEFAULT_OBJECT_TYPE);
-      expect(state.objectType).toBe('hypercube');
+      expect(state.objectType).toBe('schroedinger');
     });
   });
 
@@ -199,8 +199,8 @@ describe('geometryStore', () => {
       expect(DEFAULT_DIMENSION).toBe(4);
     });
 
-    it('should have DEFAULT_OBJECT_TYPE of hypercube', () => {
-      expect(DEFAULT_OBJECT_TYPE).toBe('hypercube');
+    it('should have DEFAULT_OBJECT_TYPE of schroedinger', () => {
+      expect(DEFAULT_OBJECT_TYPE).toBe('schroedinger');
     });
   });
 });

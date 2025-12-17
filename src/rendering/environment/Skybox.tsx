@@ -8,6 +8,7 @@ import { useAnimationStore } from '@/stores/animationStore';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useEnvironmentStore } from '@/stores/environmentStore';
 import { usePerformanceStore } from '@/stores/performanceStore';
+import { useShallow } from 'zustand/react/shallow';
 import { Environment } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -70,6 +71,7 @@ let sharedPMREMGenerator: THREE.PMREMGenerator | null = null;
 /**
  * Get or create the shared PMREMGenerator.
  * Lazily initialized and compiled on first use.
+ * @param gl
  */
 function getSharedPMREMGenerator(gl: THREE.WebGLRenderer): THREE.PMREMGenerator {
   if (!sharedPMREMGenerator) {
@@ -248,9 +250,24 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
     skyboxAnimationMode,
     skyboxAnimationSpeed,
     proceduralSettings
-  } = useEnvironmentStore();
+  } = useEnvironmentStore(useShallow((state) => ({
+    skyboxMode: state.skyboxMode,
+    skyboxIntensity: state.skyboxIntensity,
+    skyboxBlur: state.skyboxBlur,
+    skyboxRotation: state.skyboxRotation,
+    skyboxAnimationMode: state.skyboxAnimationMode,
+    skyboxAnimationSpeed: state.skyboxAnimationSpeed,
+    proceduralSettings: state.proceduralSettings
+  })));
 
-  const { colorAlgorithm, cosineCoefficients, distribution, lchLightness, lchChroma, faceColor } = useAppearanceStore();
+  const { colorAlgorithm, cosineCoefficients, distribution, lchLightness, lchChroma, faceColor } = useAppearanceStore(useShallow((state) => ({
+    colorAlgorithm: state.colorAlgorithm,
+    cosineCoefficients: state.cosineCoefficients,
+    distribution: state.distribution,
+    lchLightness: state.lchLightness,
+    lchChroma: state.lchChroma,
+    faceColor: state.faceColor
+  })));
   const isPlaying = useAnimationStore((state) => state.isPlaying);
   const setShaderDebugInfo = usePerformanceStore((state) => state.setShaderDebugInfo);
 
@@ -259,6 +276,13 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
   /**
    * Compute a color at position t (0-1) for any color algorithm.
    * Mirrors the logic in ColorPreview.tsx for consistent sync.
+   * @param t
+   * @param algorithm
+   * @param coeffs
+   * @param dist
+   * @param baseColor
+   * @param lchL
+   * @param lchC
    */
   const computeColorAtT = (t: number, algorithm: ColorAlgorithm, coeffs: CosineCoefficients, dist: DistributionSettings, baseColor: string, lchL: number, lchC: number): THREE.Color => {
     // Helper: Convert hex color to HSL
@@ -580,7 +604,9 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
     }
 
     // Direct uniform updates for performance
-    const uniforms = material.uniforms as Record<string, { value: any }>;
+    const uniforms = material.uniforms;
+
+    if (uniforms.uTex) uniforms.uTex.value = texture;
 
     if (uniforms.uTex) uniforms.uTex.value = texture;
     if (uniforms.uRotation) uniforms.uRotation.value = rotationMatrix;
@@ -619,7 +645,9 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
     if (uniforms.uTurbulence) uniforms.uTurbulence.value = proceduralSettings.turbulence;
     if (uniforms.uDualTone) uniforms.uDualTone.value = proceduralSettings.dualToneContrast;
     if (uniforms.uSunIntensity) uniforms.uSunIntensity.value = proceduralSettings.sunIntensity;
-    if (uniforms.uSunPosition) uniforms.uSunPosition.value.set(...proceduralSettings.sunPosition);
+    if (uniforms.uSunPosition?.value && typeof (uniforms.uSunPosition.value as THREE.Vector3).set === 'function') {
+      (uniforms.uSunPosition.value as THREE.Vector3).set(...proceduralSettings.sunPosition);
+    }
 
     if (uniforms.uStarDensity) uniforms.uStarDensity.value = proceduralSettings.starfield.density;
     if (uniforms.uStarBrightness) uniforms.uStarBrightness.value = proceduralSettings.starfield.brightness;
@@ -667,7 +695,12 @@ const SkyboxLoader: React.FC = () => {
     skyboxTexture,
     skyboxHighQuality,
     setSkyboxLoading
-  } = useEnvironmentStore();
+  } = useEnvironmentStore(useShallow((state) => ({
+    skyboxEnabled: state.skyboxEnabled,
+    skyboxTexture: state.skyboxTexture,
+    skyboxHighQuality: state.skyboxHighQuality,
+    setSkyboxLoading: state.setSkyboxLoading
+  })));
 
   const gl = useThree((state) => state.gl);
 
@@ -777,7 +810,10 @@ const SkyboxLoader: React.FC = () => {
  * Falls back to studio environment lighting while skybox is loading.
  */
 export const Skybox: React.FC = () => {
-  const { skyboxEnabled, skyboxMode } = useEnvironmentStore();
+  const { skyboxEnabled, skyboxMode } = useEnvironmentStore(useShallow((state) => ({
+    skyboxEnabled: state.skyboxEnabled,
+    skyboxMode: state.skyboxMode
+  })));
 
   if (!skyboxEnabled) return null;
 

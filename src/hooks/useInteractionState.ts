@@ -80,6 +80,9 @@ export function useInteractionState(options: UseInteractionStateOptions = {}): I
   // Transition animation timeouts (for cleanup on unmount)
   const transitionTimersRef = useRef<number[]>([])
 
+  // RAF ID for teleport flag reset (for cleanup on unmount)
+  const teleportRafRef = useRef<number | null>(null)
+
   // Mouse/touch state
   const isPointerDownRef = useRef(false)
 
@@ -203,9 +206,14 @@ export function useInteractionState(options: UseInteractionStateOptions = {}): I
 
     if (isTeleport) {
       usePerformanceStore.getState().setCameraTeleported(true)
+      // Cancel any pending RAF
+      if (teleportRafRef.current !== null) {
+        cancelAnimationFrame(teleportRafRef.current)
+      }
       // Reset teleport flag after one frame
-      requestAnimationFrame(() => {
+      teleportRafRef.current = requestAnimationFrame(() => {
         usePerformanceStore.getState().setCameraTeleported(false)
+        teleportRafRef.current = null
       })
     }
 
@@ -296,11 +304,15 @@ export function useInteractionState(options: UseInteractionStateOptions = {}): I
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
   }, [enabled, triggerTransitionInteraction])
 
-  // Cleanup all transition timers on unmount
+  // Cleanup all transition timers and RAF on unmount
   useEffect(() => {
     return () => {
       transitionTimersRef.current.forEach((timer) => window.clearTimeout(timer))
       transitionTimersRef.current = []
+      if (teleportRafRef.current !== null) {
+        cancelAnimationFrame(teleportRafRef.current)
+        teleportRafRef.current = null
+      }
     }
   }, [])
 

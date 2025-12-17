@@ -65,6 +65,16 @@ export interface TubeWireframeProps {
 
 /**
  * GPU-accelerated tube wireframe renderer with N-D transformation and PBR lighting.
+ * @param root0
+ * @param root0.vertices
+ * @param root0.edges
+ * @param root0.dimension
+ * @param root0.color
+ * @param root0.opacity
+ * @param root0.radius
+ * @param root0.metallic
+ * @param root0.roughness
+ * @param root0.shadowEnabled
  */
 export function TubeWireframe({
   vertices,

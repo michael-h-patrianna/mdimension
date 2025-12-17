@@ -56,6 +56,9 @@ const MAX_DIMENSION = 11
 
 /**
  * Apply D-dimensional rotation matrix to a vector
+ * @param matrix
+ * @param vec
+ * @param out
  */
 function applyRotationInPlace(
   matrix: MatrixND,

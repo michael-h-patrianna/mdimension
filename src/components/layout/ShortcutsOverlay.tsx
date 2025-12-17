@@ -2,9 +2,13 @@ import React, { useEffect } from 'react';
 import { m, AnimatePresence } from 'motion/react';
 import { SHORTCUTS, getShortcutLabel } from '@/hooks/useKeyboardShortcuts';
 import { useLayoutStore } from '@/stores/layoutStore';
+import { useShallow } from 'zustand/react/shallow';
 
 export const ShortcutsOverlay: React.FC = () => {
-  const { showShortcuts, setShowShortcuts } = useLayoutStore();
+  const { showShortcuts, setShowShortcuts } = useLayoutStore(useShallow((state) => ({
+    showShortcuts: state.showShortcuts,
+    setShowShortcuts: state.setShowShortcuts
+  })));
 
   // Close on Escape
   useEffect(() => {

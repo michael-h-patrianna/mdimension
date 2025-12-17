@@ -8,6 +8,9 @@ import { pbrBlock } from './pbr.glsl';
 import { mainBlock } from './main.glsl';
 import { vertexBlock } from './vertex.glsl';
 
+/**
+ *
+ */
 export function composeTubeWireframeFragmentShader() {
   const modules = [
     'Precision',
@@ -46,6 +49,9 @@ export function composeTubeWireframeFragmentShader() {
   return { glsl, modules, features };
 }
 
+/**
+ *
+ */
 export function composeTubeWireframeVertexShader() {
   return vertexBlock;
 }

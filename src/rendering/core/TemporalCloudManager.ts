@@ -128,6 +128,9 @@ class TemporalCloudManagerImpl {
   /**
    * Initialize or resize all render targets.
    * Should be called when screen size changes.
+   * @param screenWidth
+   * @param screenHeight
+   * @param gl
    */
   initialize(screenWidth: number, screenHeight: number, gl?: THREE.WebGLRenderer): void {
     // Set up store subscription once (avoid getState() in isEnabled())
@@ -276,6 +279,7 @@ class TemporalCloudManagerImpl {
   /**
    * Begin a new frame. Call at start of frame before rendering.
    * Updates camera matrices for reprojection.
+   * @param camera
    */
   beginFrame(camera: THREE.Camera): void {
     if (!this.isEnabled()) return;
@@ -484,6 +488,12 @@ class TemporalCloudManagerImpl {
     this.reprojectionBuffer?.dispose();
     this.reprojectionBuffer = null;
     this.isValid = false;
+
+    // Clean up store subscription if needed
+    if (this.unsubscribeStore) {
+      this.unsubscribeStore();
+      this.unsubscribeStore = null;
+    }
   }
 }
 

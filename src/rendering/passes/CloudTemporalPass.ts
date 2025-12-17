@@ -136,6 +136,8 @@ export class CloudTemporalPass extends Pass {
 
   /**
    * Initialize or resize the validity buffer.
+   * @param _width
+   * @param _height
    */
   setSize(_width: number, _height: number): void {
     // Validity buffer is now managed by TemporalCloudManager's reprojectionBuffer MRT
@@ -143,6 +145,11 @@ export class CloudTemporalPass extends Pass {
 
   /**
    * Render the temporal accumulation passes.
+   * @param renderer
+   * @param _writeBuffer
+   * @param _readBuffer
+   * @param _deltaTime
+   * @param _maskActive
    */
   render(
     renderer: THREE.WebGLRenderer,
@@ -240,15 +247,21 @@ export class CloudTemporalPass extends Pass {
 
     const invViewProj = viewProj.clone().invert();
 
-    const uniforms = this.reprojectionMaterial.uniforms as any;
-    uniforms.uViewProjectionMatrix.value.copy(viewProj);
-    uniforms.uInverseViewProjectionMatrix.value.copy(invViewProj);
+    const uniforms = this.reprojectionMaterial.uniforms;
+    if (uniforms.uViewProjectionMatrix?.value) {
+      (uniforms.uViewProjectionMatrix.value as THREE.Matrix4).copy(viewProj);
+    }
+    if (uniforms.uInverseViewProjectionMatrix?.value) {
+      (uniforms.uInverseViewProjectionMatrix.value as THREE.Matrix4).copy(invViewProj);
+    }
 
     // Get current camera world position and orientation
     const worldPos = new THREE.Vector3();
     if (camera instanceof THREE.PerspectiveCamera || camera instanceof THREE.OrthographicCamera) {
       camera.getWorldPosition(worldPos);
-      uniforms.uCameraPosition.value.copy(worldPos);
+      if (uniforms.uCameraPosition?.value) {
+        (uniforms.uCameraPosition.value as THREE.Vector3).copy(worldPos);
+      }
     }
 
     // Camera motion detection - reduce history weight during fast rotation/zoom
@@ -292,7 +305,10 @@ export class CloudTemporalPass extends Pass {
   setHistoryWeight(weight: number): void {
     this.baseHistoryWeight = Math.max(0, Math.min(1, weight));
     this.historyWeight = this.baseHistoryWeight;
-    (this.reconstructionMaterial.uniforms as any).uHistoryWeight.value = this.historyWeight;
+    const uniforms = this.reconstructionMaterial.uniforms;
+    if (uniforms.uHistoryWeight) {
+      uniforms.uHistoryWeight.value = this.historyWeight;
+    }
   }
 
   /**
@@ -303,7 +319,10 @@ export class CloudTemporalPass extends Pass {
    */
   setDisocclusionThreshold(threshold: number): void {
     this.disocclusionThreshold = Math.max(0, threshold);
-    (this.reprojectionMaterial.uniforms as any).uDisocclusionThreshold.value = this.disocclusionThreshold;
+    const uniforms = this.reprojectionMaterial.uniforms;
+    if (uniforms.uDisocclusionThreshold) {
+      uniforms.uDisocclusionThreshold.value = this.disocclusionThreshold;
+    }
   }
 
   /**

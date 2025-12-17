@@ -11,6 +11,9 @@ import { multiLightBlock } from '../shared/lighting/multi-light.glsl';
 import { transformNDBlock } from './transform-nd.glsl';
 import { modulationBlock } from './modulation.glsl';
 
+/**
+ *
+ */
 export function composeFaceVertexShader(): string {
   return [
     `precision highp float;
@@ -48,6 +51,9 @@ export function composeFaceVertexShader(): string {
   ].join('\n');
 }
 
+/**
+ *
+ */
 export function composeEdgeVertexShader(): string {
   return [
     transformNDBlock,
@@ -66,6 +72,9 @@ export function composeEdgeVertexShader(): string {
   ].join('\n');
 }
 
+/**
+ *
+ */
 export function composeFaceFragmentShader(): string {
   return [
     precisionBlock,
@@ -198,6 +207,9 @@ export function composeFaceFragmentShader(): string {
   ].join('\n');
 }
 
+/**
+ *
+ */
 export function composeEdgeFragmentShader(): string {
   return `
     precision highp float;

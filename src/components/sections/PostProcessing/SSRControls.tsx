@@ -18,14 +18,8 @@
 import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { Slider } from '@/components/ui/Slider';
-import { Switch } from '@/components/ui/Switch';
 import { Select } from '@/components/ui/Select';
 import {
-  DEFAULT_SSR_INTENSITY,
-  DEFAULT_SSR_MAX_DISTANCE,
-  DEFAULT_SSR_THICKNESS,
-  DEFAULT_SSR_FADE_START,
-  DEFAULT_SSR_FADE_END,
   type SSRQuality,
 } from '@/stores/defaults/visualDefaults';
 import { usePostProcessingStore } from '@/stores/postProcessingStore';

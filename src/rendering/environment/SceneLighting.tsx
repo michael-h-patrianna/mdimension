@@ -44,6 +44,7 @@ const SHADOW_MAP_SIZES: Record<ShadowQuality, number> = {
 /**
  * Convert shadow softness (0-2) to shadow radius for PCFSoftShadowMap.
  * Higher radius = softer shadow edges.
+ * @param softness
  */
 function getShadowRadius(softness: number): number {
   // Scale softness (0-2) to radius (0-8)

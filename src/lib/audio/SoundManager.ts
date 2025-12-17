@@ -13,7 +13,8 @@ class SoundManager {
     private ctx: AudioContext | null = null;
     private enabled: boolean = true;
     private masterGain: GainNode | null = null;
-  
+    private initialized: boolean = false;
+
     constructor() {
       // Lazy init on first interaction
       if (typeof window !== 'undefined') {
@@ -21,10 +22,16 @@ class SoundManager {
         window.addEventListener('keydown', this.init, { once: true });
       }
     }
-  
+
     private init = () => {
-      if (this.ctx) return;
-      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      if (this.initialized) return;
+      this.initialized = true;
+
+      // Remove the other listener since we only need to init once
+      window.removeEventListener('click', this.init);
+      window.removeEventListener('keydown', this.init);
+
+      const AudioContext = window.AudioContext || (window as unknown as { webkitAudioContext: typeof window.AudioContext }).webkitAudioContext;
       this.ctx = new AudioContext();
       this.masterGain = this.ctx.createGain();
       this.masterGain.gain.value = 0.15; // Low volume by default

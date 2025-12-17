@@ -6,7 +6,6 @@
 import { Section } from '@/components/sections/Section';
 import { Slider } from '@/components/ui/Slider';
 import { Switch } from '@/components/ui/Switch';
-import { DEFAULT_MAX_FPS } from '@/stores/defaults/visualDefaults';
 import { useUIStore } from '@/stores/uiStore';
 import React from 'react';
 import { ThemeSelector } from './ThemeSelector';

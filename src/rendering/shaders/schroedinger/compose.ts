@@ -41,6 +41,10 @@ export interface SchroedingerShaderConfig extends ShaderConfig {
   temporalAccumulation?: boolean;
 }
 
+/**
+ *
+ * @param config
+ */
 export function composeSchroedingerShader(config: SchroedingerShaderConfig) {
   const {
     shadows: enableShadows,

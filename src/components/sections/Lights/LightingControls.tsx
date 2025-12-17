@@ -16,7 +16,6 @@ import { Slider } from '@/components/ui/Slider';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import { Switch } from '@/components/ui/Switch';
 import {
-  DEFAULT_AMBIENT_INTENSITY,
   DEFAULT_AMBIENT_COLOR,
 } from '@/stores/defaults/visualDefaults';
 import { useAppearanceStore } from '@/stores/appearanceStore';

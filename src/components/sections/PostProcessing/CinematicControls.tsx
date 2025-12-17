@@ -6,11 +6,9 @@
 
 import { Select } from '@/components/ui/Select'
 import { Slider } from '@/components/ui/Slider'
-import { Switch } from '@/components/ui/Switch'
 import { usePostProcessingStore } from '@/stores/postProcessingStore'
 import { useLightingStore } from '@/stores/lightingStore'
 import { TONE_MAPPING_OPTIONS, type ToneMappingAlgorithm } from '@/rendering/shaders/types'
-import { DEFAULT_EXPOSURE } from '@/stores/defaults/visualDefaults'
 import React from 'react'
 import { useShallow } from 'zustand/react/shallow'
 

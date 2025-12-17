@@ -6,7 +6,10 @@ export type Theme = 'cyan' | 'green' | 'magenta' | 'orange' | 'blue' | 'rainbow'
 /** Valid theme values for runtime validation */
 const VALID_THEMES: readonly Theme[] = ['cyan', 'green', 'magenta', 'orange', 'blue', 'rainbow'] as const;
 
-/** Type guard to validate theme values at runtime */
+/**
+ * Type guard to validate theme values at runtime
+ * @param value
+ */
 function isValidTheme(value: unknown): value is Theme {
   return typeof value === 'string' && VALID_THEMES.includes(value as Theme);
 }

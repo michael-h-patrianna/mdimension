@@ -26,7 +26,6 @@ import { Slider } from '@/components/ui/Slider';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { Section } from '@/components/sections/Section';
 import {
-  DEFAULT_QUATERNION_JULIA_CONFIG,
   JULIA_CONSTANT_PRESETS,
 } from '@/lib/geometry/extended/types';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';

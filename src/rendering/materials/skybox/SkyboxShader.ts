@@ -28,12 +28,11 @@ export const SKYBOX_MODE_OCEAN = 6
 export const SKYBOX_MODE_TWILIGHT = 7
 export const SKYBOX_MODE_STARFIELD = 8
 
-
-
 /**
  * Default uniform values for the skybox shader.
  * Wrapped in { value: ... } for Three.js ShaderMaterial.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function createSkyboxShaderDefaults(): Record<string, { value: any }> {
   return {
     uTex: { value: null },
@@ -102,6 +101,3 @@ export function createSkyboxShaderDefaults(): Record<string, { value: any }> {
  * GLSL version for WebGL2 - Three.js will handle the #version directive
  */
 export const skyboxGlslVersion = THREE.GLSL3
-
-
-

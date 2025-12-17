@@ -2,13 +2,18 @@ import React, { useState, useEffect, useRef } from 'react';
 import { m, AnimatePresence } from 'motion/react';
 import { useLayoutStore } from '@/stores/layoutStore';
 import { useCameraStore } from '@/stores/cameraStore';
+import { useShallow } from 'zustand/react/shallow';
 
 export const CanvasContextMenu: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const menuRef = useRef<HTMLDivElement>(null);
   
-  const { toggleCinematicMode, toggleCollapsed, toggleLeftPanel } = useLayoutStore();
+  const { toggleCinematicMode, toggleCollapsed, toggleLeftPanel } = useLayoutStore(useShallow((state) => ({
+    toggleCinematicMode: state.toggleCinematicMode,
+    toggleCollapsed: state.toggleCollapsed,
+    toggleLeftPanel: state.toggleLeftPanel
+  })));
   const resetCamera = useCameraStore(state => state.reset);
 
   useEffect(() => {
@@ -77,7 +82,7 @@ export const CanvasContextMenu: React.FC = () => {
               <button
                 key={index}
                 onClick={() => {
-                    item.action && item.action();
+                    if (item.action) item.action();
                     setIsVisible(false);
                 }}
                 className="w-full text-left px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary hover:bg-white/10 flex justify-between items-center transition-colors group"

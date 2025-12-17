@@ -27,7 +27,6 @@ import {
 } from '@/rendering/opacity/constants';
 import type { OpacityMode, SampleQuality, VolumetricAnimationQuality } from '@/rendering/opacity/types';
 import {
-  DEFAULT_SHADOW_SOFTNESS,
   SHADOW_ANIMATION_MODE_LABELS,
   SHADOW_ANIMATION_MODE_OPTIONS,
   SHADOW_ANIMATION_MODE_TOOLTIPS,
@@ -40,14 +39,7 @@ import type { ShadowAnimationMode, ShadowQuality } from '@/rendering/shadows/typ
 import { isRaymarchingFractal } from '@/lib/geometry/registry';
 import { useGeometryStore } from '@/stores/geometryStore';
 import {
-  DEFAULT_DIFFUSE_INTENSITY,
-  DEFAULT_FRESNEL_INTENSITY,
-  DEFAULT_LCH_CHROMA,
-  DEFAULT_LCH_LIGHTNESS,
-  DEFAULT_SHININESS,
   DEFAULT_SPECULAR_COLOR,
-  DEFAULT_SPECULAR_INTENSITY,
-  DEFAULT_SURFACE_SETTINGS,
 } from '@/stores/defaults/visualDefaults';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useLightingStore } from '@/stores/lightingStore';

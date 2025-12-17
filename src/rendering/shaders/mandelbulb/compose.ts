@@ -32,6 +32,10 @@ import { generateDispatch } from './dispatch.glsl';
 import { mainBlock } from './main.glsl';
 import { ShaderConfig } from '../shared/types';
 
+/**
+ *
+ * @param config
+ */
 export function composeMandelbulbShader(config: ShaderConfig) {
   const { dimension, shadows: enableShadows, temporal: enableTemporal, ambientOcclusion: enableAO, opacityMode, overrides = [] } = config;
 

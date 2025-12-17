@@ -8,8 +8,15 @@ export interface ToggleButtonProps extends Omit<React.ComponentPropsWithoutRef<'
   children: React.ReactNode;
 }
 
-export const ToggleButton = React.forwardRef<HTMLButtonElement, ToggleButtonProps>(
-  ({ pressed, onToggle, ariaLabel, className = '', children, ...props }, ref) => {
+export const ToggleButton = ({ 
+  pressed, 
+  onToggle, 
+  ariaLabel, 
+  className = '', 
+  children, 
+  ref,
+  ...props 
+}: ToggleButtonProps & { ref?: React.Ref<HTMLButtonElement> }) => {
     return (
       <button
         ref={ref}
@@ -30,7 +37,4 @@ export const ToggleButton = React.forwardRef<HTMLButtonElement, ToggleButtonProp
         {children}
       </button>
     );
-  }
-);
-
-ToggleButton.displayName = 'ToggleButton';
+};

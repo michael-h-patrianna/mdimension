@@ -15,8 +15,8 @@
 import { Select, type SelectOption } from '@/components/ui/Select';
 import { Slider } from '@/components/ui/Slider';
 import { Switch } from '@/components/ui/Switch';
-import { type AntiAliasingMethod, DEFAULT_SMAA_THRESHOLD } from '@/stores/defaults/visualDefaults';
 import { usePostProcessingStore } from '@/stores/postProcessingStore';
+import { type AntiAliasingMethod } from '@/stores/defaults/visualDefaults';
 import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
 

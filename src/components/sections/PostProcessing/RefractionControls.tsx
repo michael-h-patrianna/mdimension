@@ -16,11 +16,7 @@
 import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { Slider } from '@/components/ui/Slider';
-import { Switch } from '@/components/ui/Switch';
 import {
-  DEFAULT_REFRACTION_IOR,
-  DEFAULT_REFRACTION_STRENGTH,
-  DEFAULT_REFRACTION_CHROMATIC_ABERRATION,
 } from '@/stores/defaults/visualDefaults';
 import { usePostProcessingStore } from '@/stores/postProcessingStore';
 

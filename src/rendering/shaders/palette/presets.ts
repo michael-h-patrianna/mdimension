@@ -837,6 +837,7 @@ export const BUILT_IN_PRESETS: ColorPreset[] = [
 
 /**
  * Get a preset by ID.
+ * @param id
  */
 export function getPresetById(id: string): ColorPreset | undefined {
   return BUILT_IN_PRESETS.find((preset) => preset.id === id);
@@ -844,6 +845,7 @@ export function getPresetById(id: string): ColorPreset | undefined {
 
 /**
  * Get default preset for a given algorithm.
+ * @param algorithm
  */
 export function getDefaultPresetForAlgorithm(
   algorithm: ColorAlgorithm

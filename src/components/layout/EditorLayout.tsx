@@ -60,14 +60,23 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
 
   // Spotlight Effect
   useEffect(() => {
+    let rafId: number;
     const handleMouseMove = (e: MouseEvent) => {
         if (spotlightRef.current) {
-            spotlightRef.current.style.setProperty('--mouse-x', `${e.clientX}px`);
-            spotlightRef.current.style.setProperty('--mouse-y', `${e.clientY}px`);
+            cancelAnimationFrame(rafId);
+            rafId = requestAnimationFrame(() => {
+                if (spotlightRef.current) {
+                    spotlightRef.current.style.setProperty('--mouse-x', `${e.clientX}px`);
+                    spotlightRef.current.style.setProperty('--mouse-y', `${e.clientY}px`);
+                }
+            });
         }
     };
     window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
+    return () => {
+        window.removeEventListener('mousemove', handleMouseMove);
+        cancelAnimationFrame(rafId);
+    };
   }, []);
 
   // Sync fullscreen state with cinematic mode

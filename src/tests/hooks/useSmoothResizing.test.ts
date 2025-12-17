@@ -31,10 +31,10 @@ describe('useSmoothResizing', () => {
     mockCamera.updateProjectionMatrix = vi.fn();
     mockSize = { width: 1000, height: 1000 };
 
-    (useThree as any).mockReturnValue({
+    vi.mocked(useThree).mockReturnValue({
       camera: mockCamera,
       size: mockSize,
-    });
+    } as unknown as ReturnType<typeof useThree>);
 
     mockSpringSet.mockClear();
     mockSpringGet.mockReturnValue(1);
@@ -56,7 +56,7 @@ describe('useSmoothResizing', () => {
 
     // Simulate height doubling (1000 -> 2000)
     mockSize.height = 2000;
-    (useThree as any).mockReturnValue({ camera: mockCamera, size: mockSize });
+    vi.mocked(useThree).mockReturnValue({ camera: mockCamera, size: mockSize } as unknown as ReturnType<typeof useThree>);
 
     rerender();
 
@@ -76,7 +76,7 @@ describe('useSmoothResizing', () => {
 
     // Simulate height halving (1000 -> 500)
     mockSize.height = 500;
-    (useThree as any).mockReturnValue({ camera: mockCamera, size: mockSize });
+    vi.mocked(useThree).mockReturnValue({ camera: mockCamera, size: mockSize } as unknown as ReturnType<typeof useThree>);
 
     rerender();
 
@@ -99,7 +99,7 @@ describe('useSmoothResizing', () => {
 
     // Change width only
     mockSize.width = 2000;
-    (useThree as any).mockReturnValue({ camera: mockCamera, size: mockSize });
+    vi.mocked(useThree).mockReturnValue({ camera: mockCamera, size: mockSize } as unknown as ReturnType<typeof useThree>);
 
     rerender();
 

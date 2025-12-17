@@ -487,6 +487,7 @@ function detectFacesByMethod(
 /**
  * Retrieves pre-computed faces from geometry metadata.
  * Used for Wythoff polytopes where faces are computed analytically during generation.
+ * @param metadata
  */
 function detectMetadataFaces(metadata?: GeometryMetadata): Face[] {
   if (!metadata?.properties?.analyticalFaces) {
@@ -500,6 +501,7 @@ function detectMetadataFaces(metadata?: GeometryMetadata): Face[] {
 /**
  * Detects quad faces analytically (used for hypercubes).
  * Uses dimension formula to generate all quad faces without graph traversal.
+ * @param vertices
  */
 function detectAnalyticalQuadFaces(vertices: number[][]): Face[] {
   const faceIndices = generateHypercubeFaces(Math.log2(vertices.length))
@@ -509,6 +511,8 @@ function detectAnalyticalQuadFaces(vertices: number[][]): Face[] {
 /**
  * Detects triangular faces by finding 3-cycles in the adjacency graph.
  * Used for simplices and cross-polytopes.
+ * @param vertices
+ * @param edges
  */
 function detectTriangleFaces(vertices: number[][], edges: [number, number][]): Face[] {
   const adjacency = buildAdjacencyList(edges)
@@ -518,6 +522,7 @@ function detectTriangleFaces(vertices: number[][], edges: [number, number][]): F
 /**
  * Detects faces using 3D convex hull projection.
  * Used for root systems and Wythoff polytopes where faces are complex.
+ * @param vertices
  */
 function detectConvexHullFaces(vertices: number[][]): Face[] {
   const hullFaces = computeConvexHullFaces(vertices)
@@ -528,6 +533,8 @@ function detectConvexHullFaces(vertices: number[][]): Face[] {
  * Detects faces using UV grid structure from metadata.
  * Used for clifford-torus and nested-torus where faces follow a parametric grid.
  * Uses registry's configStoreKey to determine which grid type to use.
+ * @param objectType
+ * @param metadata
  */
 function detectGridFaces(objectType: ObjectType, metadata?: GeometryMetadata): Face[] {
   if (!metadata?.properties) {
@@ -552,6 +559,7 @@ function detectGridFaces(objectType: ObjectType, metadata?: GeometryMetadata): F
 
 /**
  * Detects faces for clifford-torus based on its mode and resolution.
+ * @param props
  */
 function detectCliffordTorusFaces(props: Record<string, unknown>): number[][] {
   const visualizationMode = props.visualizationMode as string | undefined
@@ -582,6 +590,7 @@ function detectCliffordTorusFaces(props: Record<string, unknown>): number[][] {
 
 /**
  * Detects faces for nested-torus based on dimension and resolution.
+ * @param props
  */
 function detectNestedTorusFaces(props: Record<string, unknown>): number[][] {
   return detectNestedVisualizationFaces(props)
@@ -589,6 +598,7 @@ function detectNestedTorusFaces(props: Record<string, unknown>): number[][] {
 
 /**
  * Shared logic for nested visualization mode (used by both clifford-torus and nested-torus).
+ * @param props
  */
 function detectNestedVisualizationFaces(props: Record<string, unknown>): number[][] {
   const dimension = props.intrinsicDimension as number

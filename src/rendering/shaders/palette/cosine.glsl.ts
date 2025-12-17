@@ -217,6 +217,11 @@ vec3 multiSourceColor(
 /**
  * TypeScript utility function to calculate cosine palette color.
  * Used for color preview in UI.
+ * @param t
+ * @param a
+ * @param b
+ * @param c
+ * @param d
  */
 export function calculateCosineColor(
   t: number,
@@ -235,6 +240,10 @@ export function calculateCosineColor(
 
 /**
  * Apply distribution curve to t value (TypeScript version).
+ * @param t
+ * @param power
+ * @param cycles
+ * @param offset
  */
 export function applyDistributionTS(
   t: number,
@@ -251,6 +260,14 @@ export function applyDistributionTS(
 /**
  * Get cosine palette color with distribution (TypeScript version).
  * Used for UI preview rendering.
+ * @param t
+ * @param a
+ * @param b
+ * @param c
+ * @param d
+ * @param power
+ * @param cycles
+ * @param offset
  */
 export function getCosinePaletteColorTS(
   t: number,

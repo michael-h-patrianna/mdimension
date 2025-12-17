@@ -8,7 +8,7 @@ import { usePerformanceMetricsStore, type BufferStats } from '@/stores/performan
 import { usePerformanceStore } from '@/stores/performanceStore';
 import { useUIStore } from '@/stores/uiStore';
 import { AnimatePresence, LazyMotion, domMax, m, useMotionValue } from 'motion/react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 // --- Icons ---
 const Icons = {
@@ -177,18 +177,20 @@ export function PerformanceMonitor() {
   const x = useMotionValue(0);
   const y = useMotionValue(0);
 
-  // Resize Observer
+  // Resize Observer - only created once, handles both collapsed/expanded states
   useEffect(() => {
-    if (!containerRef.current) return;
+    const container = containerRef.current;
+    if (!container) return;
+
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
         setWidth(entry.contentRect.width);
         setHeight(entry.contentRect.height);
       }
     });
-    observer.observe(containerRef.current);
+    observer.observe(container);
     return () => observer.disconnect();
-  }, [expanded]);
+  }, []);
 
   // Buffer Stats Refresh
   const refreshBufferStats = useCallback(() => {
@@ -552,7 +554,7 @@ export function PerformanceMonitor() {
 
 // --- Subcomponents ---
 
-const SectionHeader = ({ icon, label }: { icon: any, label: string }) => (
+const SectionHeader = ({ icon, label }: { icon: React.ReactNode, label: string }) => (
   <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
     <span className="opacity-70">{icon}</span>
     <span>{label}</span>

@@ -9,6 +9,7 @@ import React from 'react';
 
 /**
  * Get stage label for display.
+ * @param stage
  */
 function getStageLabel(stage: string): string {
   switch (stage) {

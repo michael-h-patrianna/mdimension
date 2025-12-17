@@ -85,7 +85,10 @@ const PROCEDURAL_MODES = [
   'procedural_starfield',
 ] as const
 
-/** Helper to derive state from a skybox selection */
+/**
+ * Helper to derive state from a skybox selection
+ * @param selection
+ */
 function deriveStateFromSelection(selection: SkyboxSelection): {
   skyboxEnabled: boolean
   skyboxMode: SkyboxMode

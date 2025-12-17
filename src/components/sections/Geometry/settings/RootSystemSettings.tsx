@@ -1,6 +1,5 @@
 import { Select } from '@/components/ui/Select';
 import { Slider } from '@/components/ui/Slider';
-import { DEFAULT_ROOT_SYSTEM_CONFIG } from '@/lib/geometry/extended/types';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import React from 'react';

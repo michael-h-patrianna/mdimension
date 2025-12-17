@@ -1,13 +1,20 @@
 import React, { useRef } from 'react';
 import { usePresetManagerStore } from '@/stores/presetManagerStore';
 import { useToast } from '@/contexts/ToastContext';
+import { useShallow } from 'zustand/react/shallow';
 
 interface StyleManagerProps {
   onClose: () => void;
 }
 
 export const StyleManager: React.FC<StyleManagerProps> = ({ onClose }) => {
-  const { savedStyles, loadStyle, deleteStyle, importStyles, exportStyles } = usePresetManagerStore();
+  const { savedStyles, loadStyle, deleteStyle, importStyles, exportStyles } = usePresetManagerStore(useShallow((state) => ({
+    savedStyles: state.savedStyles,
+    loadStyle: state.loadStyle,
+    deleteStyle: state.deleteStyle,
+    importStyles: state.importStyles,
+    exportStyles: state.exportStyles
+  })));
   const { addToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 

@@ -19,10 +19,10 @@ export interface SavedStyle {
   name: string
   timestamp: number
   data: {
-    appearance: any
-    lighting: any
-    postProcessing: any
-    environment: any
+    appearance: Record<string, unknown>
+    lighting: Record<string, unknown>
+    postProcessing: Record<string, unknown>
+    environment: Record<string, unknown>
   }
 }
 
@@ -32,18 +32,18 @@ export interface SavedScene {
   timestamp: number
   data: {
     // Style components
-    appearance: any
-    lighting: any
-    postProcessing: any
-    environment: any
+    appearance: Record<string, unknown>
+    lighting: Record<string, unknown>
+    postProcessing: Record<string, unknown>
+    environment: Record<string, unknown>
 
     // Scene specific components
-    geometry: any
-    extended: any
-    transform: any
-    animation: any // Requires Set -> Array conversion
-    camera: any
-    ui: any
+    geometry: Record<string, unknown>
+    extended: Record<string, unknown>
+    transform: Record<string, unknown>
+    animation: Record<string, unknown> // Requires Set -> Array conversion
+    camera: Record<string, unknown>
+    ui: Record<string, unknown>
   }
 }
 
@@ -68,8 +68,8 @@ interface PresetManagerState {
 
 // -- Helpers --
 
-const cleanState = (state: any) => {
-  const clean: any = {}
+const cleanState = <T extends object>(state: T): Record<string, unknown> => {
+  const clean: Record<string, unknown> = {}
   for (const key in state) {
     if (typeof state[key] !== 'function') {
       clean[key] = state[key]
@@ -79,7 +79,7 @@ const cleanState = (state: any) => {
 }
 
 // Specialized helper for Animation store (Set -> Array)
-const cleanAnimationState = (state: any) => {
+const cleanAnimationState = <T extends object>(state: T) => {
   const clean = cleanState(state)
   if (clean.animatingPlanes instanceof Set) {
     clean.animatingPlanes = Array.from(clean.animatingPlanes)
@@ -178,7 +178,8 @@ export const usePresetManagerStore = create<PresetManagerState>()(
 
         // Special handling
         const animation = cleanAnimationState(useAnimationStore.getState())
-        const camera = useCameraStore.getState().captureState()
+        const cameraState = useCameraStore.getState().captureState()
+        const camera = cameraState ? cleanState(cameraState) : {}
 
         const newScene: SavedScene = {
           id: crypto.randomUUID(),
@@ -236,8 +237,14 @@ export const usePresetManagerStore = create<PresetManagerState>()(
         }
 
         // Special handling for Camera
-        if (scene.data.camera) {
-          useCameraStore.getState().applyState(scene.data.camera)
+        if (scene.data.camera && Object.keys(scene.data.camera).length > 0) {
+          const cameraData = scene.data.camera as { position?: [number, number, number]; target?: [number, number, number] }
+          if (cameraData.position && cameraData.target) {
+            useCameraStore.getState().applyState({
+              position: cameraData.position,
+              target: cameraData.target,
+            })
+          }
         }
 
         // Signal scene transition complete after a brief delay for React to settle

@@ -22,6 +22,10 @@ import { dispatchBlock } from './dispatch.glsl';
 import { mainBlock } from './main.glsl';
 import { ShaderConfig } from '../shared/types';
 
+/**
+ *
+ * @param config
+ */
 export function composeJuliaShader(config: ShaderConfig) {
   const { shadows: enableShadows, temporal: enableTemporal, ambientOcclusion: enableAO, opacityMode, overrides = [] } = config;
 

@@ -79,6 +79,9 @@ class TemporalDepthManagerImpl {
   /**
    * Initialize or resize the temporal depth buffers.
    * Should be called when screen size changes.
+   * @param screenWidth
+   * @param screenHeight
+   * @param _gl
    */
   initialize(screenWidth: number, screenHeight: number, _gl: THREE.WebGLRenderer): void {
     const newWidth = Math.max(1, Math.floor(screenWidth * RESOLUTION_SCALE));
@@ -152,6 +155,7 @@ class TemporalDepthManagerImpl {
   /**
    * Update camera matrices for the current frame.
    * Call this at the START of each frame before rendering.
+   * @param camera
    */
   updateCameraMatrices(camera: THREE.Camera): void {
     // Store current as will become previous after swap
@@ -176,6 +180,8 @@ class TemporalDepthManagerImpl {
    * in complex post-processing pipelines. It explicitly saves/restores all relevant
    * state and clears the target to ensure no stale data persists.
    *
+   * @param gl
+   * @param depthTexture
    * @param force - Force capture even if temporal reprojection is disabled (for preview)
    */
   captureDepth(gl: THREE.WebGLRenderer, depthTexture: THREE.DepthTexture, force = false): void {

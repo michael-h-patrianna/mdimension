@@ -33,6 +33,7 @@ const ORIGIN_THRESHOLD = 0.001;
 
 /**
  * Check if the event target is an input field
+ * @param target
  */
 function isInputField(target: EventTarget | null): boolean {
   return (
@@ -72,12 +73,13 @@ export function useCameraMovement(options: UseCameraMovementOptions = {}): void 
   const keysPressed = useRef<Set<string>>(new Set());
   const shiftPressed = useRef(false);
 
-  // Reusable vectors to avoid allocation in the render loop
+  // Reusable vectors to avoid allocation in the render loop and event handlers
   const forward = useRef(new Vector3());
   const right = useRef(new Vector3());
   const movement = useRef(new Vector3());
   const offset = useRef(new Vector3());
   const spherical = useRef(new Spherical());
+  const lookDirection = useRef(new Vector3());
 
   // Set up keyboard event listeners
   useEffect(() => {
@@ -122,9 +124,8 @@ export function useCameraMovement(options: UseCameraMovementOptions = {}): void 
           camera.lookAt(ORIGIN);
         } else {
           // 0: Move camera to origin, preserving look direction
-          // Get current look direction before moving
-          const lookDirection = new Vector3();
-          camera.getWorldDirection(lookDirection);
+          // Get current look direction before moving (use pre-allocated vector)
+          camera.getWorldDirection(lookDirection.current);
 
           // Move camera to origin
           camera.position.copy(ORIGIN);
@@ -132,7 +133,7 @@ export function useCameraMovement(options: UseCameraMovementOptions = {}): void 
           // Set target along the preserved look direction
           // Use distance of 3 to satisfy OrbitControls minDistance (default 2)
           if (controls) {
-            controls.target.copy(lookDirection.multiplyScalar(3));
+            controls.target.copy(lookDirection.current.multiplyScalar(3));
           }
         }
         return;

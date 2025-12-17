@@ -38,6 +38,7 @@ import { useDynamicFavicon } from '@/hooks/useDynamicFavicon';
 /**
  * Extract 3D positions from N-D vertices for ground plane bounds calculation.
  * This is much cheaper than full transform + projection pipeline.
+ * @param vertices
  */
 function extractBasePositions(vertices: VectorND[]): Vector3D[] {
   return vertices.map((v) => [v[0] ?? 0, v[1] ?? 0, v[2] ?? 0] as Vector3D);

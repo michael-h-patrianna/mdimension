@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { m, AnimatePresence } from 'motion/react';
 import { soundManager } from '@/lib/audio/SoundManager';
 
@@ -26,13 +26,14 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
+  // Memoized click outside handler to avoid stale closure
+  const handleClickOutside = useCallback((event: MouseEvent) => {
+    if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+      setIsOpen(false);
+    }
+  }, []);
 
+  useEffect(() => {
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
@@ -40,7 +41,7 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isOpen]);
+  }, [isOpen, handleClickOutside]);
 
   const handleToggle = () => {
     if (!isOpen) {

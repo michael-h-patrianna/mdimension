@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { m, AnimatePresence } from 'motion/react';
 
@@ -38,12 +38,12 @@ export const Popover: React.FC<PopoverProps> = ({
     onOpenChange?.(newOpen);
   };
 
-  // Update position
-  const updatePosition = () => {
+  // Update position - memoized to avoid stale closure in event listeners
+  const updatePosition = useCallback(() => {
     if (triggerRef.current && isOpen) {
       const triggerRect = triggerRef.current.getBoundingClientRect();
       const contentRect = contentRef.current?.getBoundingClientRect() || { width: 0, height: 0 };
-      
+
       let top = 0;
       let left = 0;
 
@@ -77,7 +77,7 @@ export const Popover: React.FC<PopoverProps> = ({
 
       setCoords({ top, left });
     }
-  };
+  }, [isOpen, side, align, offset]);
 
   useLayoutEffect(() => {
     if (isOpen) {
@@ -89,7 +89,7 @@ export const Popover: React.FC<PopoverProps> = ({
       window.removeEventListener('resize', updatePosition);
       window.removeEventListener('scroll', updatePosition, true);
     };
-  }, [isOpen, side, align, offset]);
+  }, [isOpen, updatePosition]);
 
   // Click Outside
   useEffect(() => {

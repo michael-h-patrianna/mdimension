@@ -117,9 +117,9 @@ export function CameraController({
     registerControls(controls)
 
     return () => {
-      controls.dispose()
+      controls.dispose() // Properly dispose controls
+      registerControls(null as unknown as OrbitControlsImpl)
       controlsRef.current = null
-      registerControls(null as any)
     }
   }, [camera, gl, registerControls])
 

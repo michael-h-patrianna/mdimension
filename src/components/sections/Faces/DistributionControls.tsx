@@ -6,7 +6,6 @@
  */
 
 import { Slider } from '@/components/ui/Slider';
-import { DEFAULT_DISTRIBUTION } from '@/rendering/shaders/palette';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import React from 'react';
 import { useShallow } from 'zustand/react/shallow';

@@ -1,6 +1,13 @@
-import React, { useEffect, useId, useState } from 'react';
+import React, { useEffect, useId, useState, useRef } from 'react';
 import { m, AnimatePresence } from 'motion/react';
 import { soundManager } from '@/lib/audio/SoundManager';
+
+/** Drag sensitivity when Shift key is not pressed */
+const DRAG_SENSITIVITY_NORMAL = 0.2;
+/** Drag sensitivity when Shift key is pressed (precision mode) */
+const DRAG_SENSITIVITY_PRECISE = 0.05;
+/** Pixels of mouse movement to traverse full range */
+const DRAG_PIXELS_TO_FULL_RANGE = 200;
 
 export interface SliderProps {
   label: string;
@@ -31,22 +38,48 @@ export const Slider: React.FC<SliderProps> = ({
   showValue = true,
   className = '',
   disabled = false,
-  tooltip,
+  minLabel,
+  maxLabel,
   formatValue,
   'data-testid': dataTestId,
 }) => {
   const id = useId();
   const percentage = max > min ? Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100)) : 0;
   const decimals = step >= 1 ? 0 : Math.max(0, Math.ceil(-Math.log10(step)));
-  
+
   const [inputValue, setInputValue] = useState(value.toString());
   const [isHovered, setIsHovered] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isLabelDragging, setIsLabelDragging] = useState(false);
+  const [isInputFocused, setIsInputFocused] = useState(false);
 
+  // Refs for cleanup of label drag event listeners on unmount
+  const labelDragListenersRef = useRef<{
+    move: ((e: MouseEvent) => void) | null;
+    up: (() => void) | null;
+  }>({ move: null, up: null });
+
+  // Sync input value with external value, but only when input is not focused
   useEffect(() => {
-    setInputValue(value.toFixed(decimals));
-  }, [value, decimals]);
+    if (!isInputFocused) {
+      setInputValue(value.toFixed(decimals));
+    }
+  }, [value, decimals, isInputFocused]);
+
+  // Cleanup event listeners on unmount
+  useEffect(() => {
+    return () => {
+      const listeners = labelDragListenersRef.current;
+      if (listeners.move) {
+        window.removeEventListener('mousemove', listeners.move);
+      }
+      if (listeners.up) {
+        window.removeEventListener('mouseup', listeners.up);
+      }
+      // Also restore cursor if unmounted while dragging
+      document.body.style.cursor = '';
+    };
+  }, []);
 
   // Label Drag Logic
   const handleLabelMouseDown = (e: React.MouseEvent) => {
@@ -55,23 +88,23 @@ export const Slider: React.FC<SliderProps> = ({
     soundManager.playClick();
     e.preventDefault();
     document.body.style.cursor = 'ew-resize';
-    
+
     const startX = e.clientX;
     const startValue = value;
     const range = max - min;
-    const sensitivity = e.shiftKey ? 0.05 : 0.2; // Shift for precision
+    const sensitivity = e.shiftKey ? DRAG_SENSITIVITY_PRECISE : DRAG_SENSITIVITY_NORMAL;
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const delta = moveEvent.clientX - startX;
       // Map pixels to value
-      const change = delta * (range / 200) * sensitivity; 
+      const change = delta * (range / DRAG_PIXELS_TO_FULL_RANGE) * sensitivity;
       let newValue = startValue + change;
-      
+
       // Step snapping
       if (step) {
         newValue = Math.round(newValue / step) * step;
       }
-      
+
       newValue = Math.min(Math.max(newValue, min), max);
       onChange(newValue);
     };
@@ -81,7 +114,14 @@ export const Slider: React.FC<SliderProps> = ({
       document.body.style.cursor = '';
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
+      // Clear refs
+      labelDragListenersRef.current.move = null;
+      labelDragListenersRef.current.up = null;
     };
+
+    // Store refs for cleanup on unmount
+    labelDragListenersRef.current.move = handleMouseMove;
+    labelDragListenersRef.current.up = handleMouseUp;
 
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
@@ -126,7 +166,7 @@ export const Slider: React.FC<SliderProps> = ({
             text-[11px] font-medium transition-colors tracking-wide flex items-center gap-1 border-b border-transparent hover:border-dashed hover:border-accent/50
             ${isLabelDragging ? 'text-accent cursor-ew-resize border-dashed border-accent' : 'text-text-secondary group-hover/slider:text-text-primary cursor-ew-resize'}
           `}
-          title={tooltip || "Drag label to adjust value"}
+          title="Drag label to adjust value"
           onMouseDown={handleLabelMouseDown}
         >
           {label}
@@ -139,7 +179,11 @@ export const Slider: React.FC<SliderProps> = ({
                   type="text"
                   value={inputValue}
                   onChange={handleInputChange}
-                  onBlur={handleInputBlur}
+                  onFocus={() => setIsInputFocused(true)}
+                  onBlur={() => {
+                    setIsInputFocused(false);
+                    handleInputBlur();
+                  }}
                   onKeyDown={handleKeyDown}
                   disabled={disabled}
                   className="
@@ -154,6 +198,14 @@ export const Slider: React.FC<SliderProps> = ({
           </div>
         )}
       </div>
+
+      {/* Track Labels */}
+      {(minLabel || maxLabel) && (
+        <div className="flex justify-between text-[9px] text-text-tertiary mb-1 px-0.5">
+          <span>{minLabel}</span>
+          <span>{maxLabel}</span>
+        </div>
+      )}
 
       {/* Slider Track Area */}
       <div className="relative h-5 flex items-center touch-none">

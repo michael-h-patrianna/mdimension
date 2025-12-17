@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { m, AnimatePresence } from 'motion/react';
 import { LoadingSpinner } from './LoadingSpinner';
 import { soundManager } from '@/lib/audio/SoundManager';
@@ -14,7 +14,7 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
   label?: string;
 }
 
-export const Input = React.forwardRef<HTMLInputElement, InputProps>(({
+export const Input = ({
   leftIcon,
   rightIcon,
   error,
@@ -28,20 +28,27 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(({
   value,
   onChange,
   type = 'text',
+  ref,
   ...props
-}, ref) => {
+}: InputProps & { ref?: React.Ref<HTMLInputElement> }) => {
   const [isFocused, setIsFocused] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-  
-  // Combine refs
-  useEffect(() => {
-    if (typeof ref === 'function') {
-      ref(inputRef.current);
-    } else if (ref) {
-      // @ts-ignore
-      ref.current = inputRef.current;
-    }
-  }, [ref]);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  // Proper ref merging using callback ref pattern
+  const setRefs = useCallback(
+    (element: HTMLInputElement | null) => {
+      // Update internal ref
+      inputRef.current = element;
+
+      // Forward to external ref
+      if (typeof ref === 'function') {
+        ref(element);
+      } else if (ref) {
+        (ref as React.MutableRefObject<HTMLInputElement | null>).current = element;
+      }
+    },
+    [ref]
+  );
 
   // Sound on error
   useEffect(() => {
@@ -92,7 +99,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(({
         )}
 
         <input
-          ref={inputRef}
+          ref={setRefs}
           type={type}
           value={value}
           onChange={onChange}
@@ -168,6 +175,4 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(({
       </AnimatePresence>
     </div>
   );
-});
-
-Input.displayName = 'Input';
+};

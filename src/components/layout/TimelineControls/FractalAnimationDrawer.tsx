@@ -31,6 +31,8 @@ import { AnimationSystemPanel } from './AnimationSystemPanel';
 /**
  * Gets a value from a nested path in an object
  * Supports paths like 'powerAnimation.minPower' and 'originDriftEnabled'
+ * @param obj
+ * @param path
  */
 function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
   const parts = path.split('.');
@@ -54,6 +56,8 @@ function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
  * - Nested paths like 'powerAnimation.minPower'
  *
  * This function extracts current values from the config store.
+ * @param config
+ * @param system
  */
 function extractParamValues(
   config: Record<string, unknown>,
@@ -76,6 +80,8 @@ function extractParamValues(
  * Gets the enabled state for an animation system from config
  * Supports both flat keys (e.g., 'originDriftEnabled')
  * and nested paths (e.g., 'juliaConstantAnimation.enabled')
+ * @param config
+ * @param system
  */
 function getSystemEnabled(
   config: Record<string, unknown>,

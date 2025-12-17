@@ -83,9 +83,12 @@ export function useAnimationLoop(): void {
         const biasedDelta = rotationDelta * multiplier
         let newAngle = currentAngle + biasedDelta
 
-        // Normalize to [0, 2π)
-        while (newAngle < 0) newAngle += 2 * Math.PI
-        while (newAngle >= 2 * Math.PI) newAngle -= 2 * Math.PI
+        // Normalize to [0, 2π) - using modulo for safety against NaN/Infinity
+        if (!isFinite(newAngle)) {
+          newAngle = 0
+        } else {
+          newAngle = ((newAngle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)
+        }
 
         updates.set(plane, newAngle)
         planeIndex++

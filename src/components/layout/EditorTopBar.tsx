@@ -17,6 +17,7 @@ import { usePresetManagerStore } from '@/stores/presetManagerStore';
 import { useThemeStore } from '@/stores/themeStore';
 import { soundManager } from '@/lib/audio/SoundManager';
 import { m } from 'motion/react';
+import { useShallow } from 'zustand/react/shallow';
 
 interface EditorTopBarProps {
   showRightPanel: boolean;
@@ -28,7 +29,11 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
   toggleRightPanel,
 }) => {
   const { addToast } = useToast();
-  const { toggleShortcuts, showLeftPanel, toggleLeftPanel } = useLayoutStore();
+  const { toggleShortcuts, showLeftPanel, toggleLeftPanel } = useLayoutStore(useShallow((state) => ({
+    toggleShortcuts: state.toggleShortcuts,
+    showLeftPanel: state.showLeftPanel,
+    toggleLeftPanel: state.toggleLeftPanel,
+  })));
   
   // New Preset Manager Store
   const { 
@@ -38,9 +43,19 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
     savedScenes, 
     saveScene, 
     loadScene 
-  } = usePresetManagerStore();
+  } = usePresetManagerStore(useShallow((state) => ({
+    savedStyles: state.savedStyles,
+    saveStyle: state.saveStyle,
+    loadStyle: state.loadStyle,
+    savedScenes: state.savedScenes,
+    saveScene: state.saveScene,
+    loadScene: state.loadScene,
+  })));
 
-  const { theme, setTheme } = useThemeStore();
+  const { theme, setTheme } = useThemeStore(useShallow((state) => ({
+    theme: state.theme,
+    setTheme: state.setTheme,
+  })));
 
   const [isStyleManagerOpen, setIsStyleManagerOpen] = useState(false);
   const [isSceneManagerOpen, setIsSceneManagerOpen] = useState(false);

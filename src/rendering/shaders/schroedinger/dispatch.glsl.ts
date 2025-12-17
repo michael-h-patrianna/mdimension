@@ -1,3 +1,7 @@
+/**
+ *
+ * @param dimension
+ */
 export function generateDispatch(dimension: number): string {
   // Map dimension to function name
   // 3-11 are supported with unrolled versions

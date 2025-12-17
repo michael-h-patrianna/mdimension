@@ -165,6 +165,7 @@ import { isPolytopeType } from './types'
  * @param type - Type of polytope to generate
  * @param dimension - Dimensionality (must be >= 3)
  * @param scale - Scale factor for the polytope (default: 1.0)
+ * @param wythoffConfig
  * @returns PolytopeGeometry representing the polytope
  * @throws {Error} If dimension is less than 3 or type is invalid
  */

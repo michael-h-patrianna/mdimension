@@ -41,6 +41,7 @@ export interface NamedPresetConfig {
 /**
  * Mulberry32 seeded PRNG
  * Fast, deterministic random number generator
+ * @param seed
  */
 function mulberry32(seed: number): () => number {
   return function () {
@@ -94,7 +95,7 @@ export function generateQuantumPreset(
     // Quantum numbers: distribution biased toward low values
     // This creates smoother, more organic shapes
     const n: number[] = [];
-    let totalN = 0;
+    let _totalN = 0;
 
     for (let j = 0; j < dim; j++) {
       const r = rng();
@@ -121,7 +122,7 @@ export function generateQuantumPreset(
       }
 
       n.push(quantumN);
-      totalN += quantumN;
+      _totalN += quantumN;
     }
 
     quantumNumbers.push(n);
@@ -223,6 +224,8 @@ export const SCHROEDINGER_NAMED_PRESETS: Record<string, NamedPresetConfig> = {
 
 /**
  * Get a preset by name
+ * @param name
+ * @param dimension
  */
 export function getNamedPreset(name: string, dimension: number): QuantumPreset | null {
   const config = SCHROEDINGER_NAMED_PRESETS[name];
@@ -239,6 +242,8 @@ export function getNamedPreset(name: string, dimension: number): QuantumPreset |
 
 /**
  * Generate a random preset with the given seed
+ * @param seed
+ * @param dimension
  */
 export function generateRandomPreset(seed: number, dimension: number): QuantumPreset {
   const rng = mulberry32(seed);
@@ -253,6 +258,7 @@ export function generateRandomPreset(seed: number, dimension: number): QuantumPr
 
 /**
  * Flatten quantum preset data for GPU uniforms
+ * @param preset
  */
 export function flattenPresetForUniforms(preset: QuantumPreset): {
   omega: Float32Array;

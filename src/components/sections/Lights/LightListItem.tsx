@@ -42,7 +42,10 @@ const SpotIcon = () => (
   </svg>
 );
 
-/** Get icon component for light type */
+/**
+ * Get icon component for light type
+ * @param type
+ */
 const getLightIcon = (type: LightSource['type']) => {
   switch (type) {
     case 'point':

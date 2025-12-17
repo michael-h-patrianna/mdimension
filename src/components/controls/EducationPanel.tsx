@@ -11,6 +11,7 @@ import {
   PROJECTION_INFO,
   ROTATION_INFO,
 } from '@/lib/education';
+import { useShallow } from 'zustand/react/shallow';
 
 export interface EducationPanelProps {
   className?: string;
@@ -19,8 +20,10 @@ export interface EducationPanelProps {
 export const EducationPanel: React.FC<EducationPanelProps> = ({
   className = '',
 }) => {
-  const dimension = useGeometryStore((state) => state.dimension);
-  const objectType = useGeometryStore((state) => state.objectType);
+  const { dimension, objectType } = useGeometryStore(useShallow((state) => ({
+    dimension: state.dimension,
+    objectType: state.objectType
+  })));
 
   const dimensionInfo = useMemo(
     () => getDimensionInfo(dimension),

@@ -27,7 +27,10 @@ import {
   DEFAULT_SHOW_GROUND_GRID,
 } from '../defaults/visualDefaults'
 
-/** Validates hex color string format (accepts #RGB, #RRGGBB, #RRGGBBAA) */
+/**
+ * Validates hex color string format (accepts #RGB, #RRGGBB, #RRGGBBAA)
+ * @param color
+ */
 const isValidHexColor = (color: string): boolean =>
   /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/.test(color);
 

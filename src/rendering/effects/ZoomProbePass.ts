@@ -85,6 +85,7 @@ export class ZoomProbePass {
    * @param scene The scene to render
    * @param camera The camera to use
    * @param material The mandelbulb shader material (to temporarily modify)
+   * @param _material
    */
   probe(
     renderer: THREE.WebGLRenderer,

@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { m, HTMLMotionProps, useMotionValue, useSpring } from 'motion/react';
 import { LoadingSpinner } from './LoadingSpinner';
 import { soundManager } from '@/lib/audio/SoundManager';
@@ -44,6 +44,15 @@ export const Button: React.FC<ButtonProps> = ({
 
   // Ripple State
   const [ripples, setRipples] = useState<{ x: number; y: number; id: number }[]>([]);
+  const rippleTimersRef = useRef<Set<number>>(new Set());
+
+  // Cleanup ripple timers on unmount
+  useEffect(() => {
+    return () => {
+      rippleTimersRef.current.forEach((timer) => clearTimeout(timer));
+      rippleTimersRef.current.clear();
+    };
+  }, []);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLButtonElement>) => {
     if (!magnetic || disabled || loading) return;
@@ -78,9 +87,11 @@ export const Button: React.FC<ButtonProps> = ({
     const newRipple = { x: rippleX, y: rippleY, id: Date.now() };
     
     setRipples((prev) => [...prev, newRipple]);
-    setTimeout(() => {
+    const timer = window.setTimeout(() => {
         setRipples((prev) => prev.filter((r) => r.id !== newRipple.id));
+        rippleTimersRef.current.delete(timer);
     }, 600);
+    rippleTimersRef.current.add(timer);
 
     onClick?.(e);
   };

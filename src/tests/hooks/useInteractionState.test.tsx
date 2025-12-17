@@ -27,8 +27,15 @@ const initialStoreState = {
 };
 
 describe('useInteractionState', () => {
-  let canvasMock: any;
-  let cameraMock: any;
+  let canvasMock: {
+    addEventListener: ReturnType<typeof vi.fn>;
+    removeEventListener: ReturnType<typeof vi.fn>;
+    style: Record<string, string>;
+  };
+  let cameraMock: {
+    position: Vector3;
+    rotation: Euler;
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -50,19 +57,19 @@ describe('useInteractionState', () => {
     };
 
     // Mock useThree
-    (useThree as any).mockReturnValue({
+    vi.mocked(useThree).mockReturnValue({
       camera: cameraMock,
       gl: { domElement: canvasMock },
       size: { width: 100, height: 100 },
-    });
+    } as unknown as ReturnType<typeof useThree>);
   });
 
   it('should NOT start interaction on simple pointer down', () => {
     const { result } = renderHook(() => useInteractionState());
 
     const pointerDownHandler = canvasMock.addEventListener.mock.calls.find(
-      (call: any) => call[0] === 'pointerdown'
-    )[1];
+      (call: unknown[]) => call[0] === 'pointerdown'
+    )?.[1] as (() => void) | undefined;
 
     expect(pointerDownHandler).toBeDefined();
 
@@ -71,7 +78,7 @@ describe('useInteractionState', () => {
 
     // Trigger pointer down
     act(() => {
-        pointerDownHandler();
+        if (pointerDownHandler) pointerDownHandler();
     });
 
     // Check if store was updated
@@ -84,12 +91,12 @@ describe('useInteractionState', () => {
     renderHook(() => useInteractionState());
 
     const pointerDownHandler = canvasMock.addEventListener.mock.calls.find(
-      (call: any) => call[0] === 'pointerdown'
-    )[1];
+      (call: unknown[]) => call[0] === 'pointerdown'
+    )?.[1] as (() => void) | undefined;
     const pointerMoveHandler = canvasMock.addEventListener.mock.calls.find(
-      (call: any) => call[0] === 'pointermove'
-    )[1];
-    
+      (call: unknown[]) => call[0] === 'pointermove'
+    )?.[1] as ((e?: { buttons?: number }) => void) | undefined;
+
     // Fast forward past initial transition interaction (600ms + debounce)
     act(() => {
         vi.advanceTimersByTime(1000);
@@ -99,12 +106,12 @@ describe('useInteractionState', () => {
 
     // Pointer Down
     act(() => {
-        pointerDownHandler();
+        if (pointerDownHandler) pointerDownHandler();
     });
 
     // Pointer Move
     act(() => {
-        pointerMoveHandler({ buttons: 1 });
+        if (pointerMoveHandler) pointerMoveHandler({ buttons: 1 });
     });
 
     expect(setIsInteractingMock).toHaveBeenCalledWith(true);

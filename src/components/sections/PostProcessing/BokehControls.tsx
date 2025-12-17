@@ -29,10 +29,6 @@ import { Switch } from '@/components/ui/Switch';
 import {
   type BokehBlurMethod,
   type BokehFocusMode,
-  DEFAULT_BOKEH_SCALE,
-  DEFAULT_BOKEH_SMOOTH_TIME,
-  DEFAULT_BOKEH_WORLD_FOCUS_DISTANCE,
-  DEFAULT_BOKEH_WORLD_FOCUS_RANGE,
 } from '@/stores/defaults/visualDefaults';
 import { usePostProcessingStore } from '@/stores/postProcessingStore';
 import React from 'react';
