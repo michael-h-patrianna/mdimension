@@ -45,13 +45,6 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
   const [isStyleManagerOpen, setIsStyleManagerOpen] = useState(false);
   const [isSceneManagerOpen, setIsSceneManagerOpen] = useState(false);
 
-  const toggleTheme = () => {
-      soundManager.playClick();
-      if (theme === 'cyan') setTheme('green');
-      else if (theme === 'green') setTheme('magenta');
-      else setTheme('cyan');
-  };
-
   // Store access for Share URL generation
   const dimension = useGeometryStore((state) => state.dimension);
   const objectType = useGeometryStore((state) => state.objectType);
@@ -112,9 +105,16 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
   const viewItems = [
     { label: showLeftPanel ? 'Hide Explorer' : 'Show Explorer', onClick: () => { toggleLeftPanel(); soundManager.playClick(); } },
     { label: showRightPanel ? 'Hide Inspector' : 'Show Inspector', onClick: () => { toggleRightPanel(); soundManager.playClick(); } },
-    { label: `Theme: ${theme.charAt(0).toUpperCase() + theme.slice(1)}`, onClick: toggleTheme },
     { label: 'Cinematic Mode', onClick: toggleCinematic, shortcut: 'C' },
     { label: 'Keyboard Shortcuts', onClick: toggleShortcuts, shortcut: '?' },
+    { label: '---' },
+    { label: 'Theme' },
+    { label: (theme === 'blue' ? '✓ ' : '  ') + 'Blue', onClick: () => setTheme('blue'), 'data-testid': 'theme-blue' },
+    { label: (theme === 'cyan' ? '✓ ' : '  ') + 'Cyan', onClick: () => setTheme('cyan'), 'data-testid': 'theme-cyan' },
+    { label: (theme === 'green' ? '✓ ' : '  ') + 'Green', onClick: () => setTheme('green'), 'data-testid': 'theme-green' },
+    { label: (theme === 'magenta' ? '✓ ' : '  ') + 'Magenta', onClick: () => setTheme('magenta'), 'data-testid': 'theme-magenta' },
+    { label: (theme === 'orange' ? '✓ ' : '  ') + 'Orange', onClick: () => setTheme('orange'), 'data-testid': 'theme-orange' },
+    { label: (theme === 'rainbow' ? '✓ ' : '  ') + 'Rainbow', onClick: () => setTheme('rainbow'), 'data-testid': 'theme-rainbow' },
   ];
 
   // --- Style Menu ---
@@ -221,16 +221,13 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
               trigger={<button className="hover:text-text-primary px-2 py-1 rounded hover:bg-white/5 transition-colors font-medium tracking-wide" onMouseEnter={() => soundManager.playHover()} data-testid="menu-view">VIEW</button>}
               items={viewItems}
             />
-            
-            <div className="w-px h-3 bg-white/10 mx-1" />
-
             <DropdownMenu 
-              trigger={<button className="hover:text-text-primary px-2 py-1 rounded hover:bg-white/5 transition-colors text-accent/90 hover:text-accent tracking-wide" onMouseEnter={() => soundManager.playHover()} data-testid="menu-styles">STYLES</button>}
-              items={styleItems}
-            />
-             <DropdownMenu 
-              trigger={<button className="hover:text-text-primary px-2 py-1 rounded hover:bg-white/5 transition-colors text-accent/90 hover:text-accent tracking-wide" onMouseEnter={() => soundManager.playHover()} data-testid="menu-scenes">SCENES</button>}
+              trigger={<button className="hover:text-text-primary px-2 py-1 rounded hover:bg-white/5 transition-colors font-medium tracking-wide" onMouseEnter={() => soundManager.playHover()} data-testid="menu-scenes">SCENES</button>}
               items={sceneItems}
+            />
+            <DropdownMenu 
+              trigger={<button className="hover:text-text-primary px-2 py-1 rounded hover:bg-white/5 transition-colors font-medium tracking-wide" onMouseEnter={() => soundManager.playHover()} data-testid="menu-styles">STYLES</button>}
+              items={styleItems}
             />
           </div>
         </div>

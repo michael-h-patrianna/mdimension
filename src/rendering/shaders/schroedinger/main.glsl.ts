@@ -28,11 +28,20 @@ void main() {
     vec2 screenCoord = gl_FragCoord.xy;
 
     #ifdef USE_TEMPORAL_ACCUMULATION
-    // In temporal accumulation mode, we render at 1/4 resolution.
-    // Each pixel in the quarter-res buffer represents a 2x2 block in full res.
-    // The Bayer offset determines which sub-pixel within the block we sample.
-    // Convert quarter-res coord to full-res coord with jitter
-    screenCoord = floor(gl_FragCoord.xy) * 2.0 + uBayerOffset + 0.5;
+    // Detect if we're rendering at quarter-res or full-res.
+    // When temporal accumulation is enabled, the shader may be rendered in two contexts:
+    // 1. Quarter-res volumetric pass (cloudRenderTarget) - needs coordinate transformation
+    // 2. Full-res object depth pass (objectDepthTarget) - use direct coordinates
+    // We detect this by comparing actual resolution (uResolution) to full resolution.
+    bool isQuarterRes = uResolution.x < uFullResolution.x * 0.75;
+
+    if (isQuarterRes) {
+        // Quarter-res mode: Each pixel represents a 2x2 block in full res.
+        // The Bayer offset determines which sub-pixel within the block we sample.
+        // Convert quarter-res coord to full-res coord with jitter
+        screenCoord = floor(gl_FragCoord.xy) * 2.0 + uBayerOffset + 0.5;
+    }
+    // else: Full-res mode - use gl_FragCoord.xy directly (already set above)
     #endif
 
     // Setup ray origin and direction
@@ -55,7 +64,7 @@ void main() {
         ro = (uInverseModelMatrix * vec4(uCameraPosition, 1.0)).xyz;
 
         #ifdef USE_TEMPORAL_ACCUMULATION
-        // For temporal accumulation, compute ray direction from jittered screen coord
+        // For temporal accumulation, compute ray direction from screen coord
         // instead of using interpolated vertex position
         vec2 screenUV = screenCoord / uFullResolution;
         vec2 ndc = screenUV * 2.0 - 1.0;

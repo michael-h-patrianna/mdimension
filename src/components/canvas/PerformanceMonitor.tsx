@@ -1,4 +1,5 @@
 import { Tabs } from '@/components/ui/Tabs';
+import { Switch } from '@/components/ui/Switch';
 import { usePanelCollision } from '@/hooks/usePanelCollision';
 import { getConfigStoreKey, isRaymarchingType } from '@/lib/geometry/registry';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
@@ -159,8 +160,6 @@ export function PerformanceMonitor() {
   const setShowNormalBuffer = useUIStore((state) => state.setShowNormalBuffer);
   const showTemporalDepthBuffer = useUIStore((state) => state.showTemporalDepthBuffer);
   const setShowTemporalDepthBuffer = useUIStore((state) => state.setShowTemporalDepthBuffer);
-
-  const SAFE_MODULES = ['Shadows', 'Ambient Occlusion', 'Temporal Features'];
 
   // -- State --
   const [expanded, setExpanded] = useState(false);
@@ -351,21 +350,15 @@ export function PerformanceMonitor() {
                      <SectionHeader icon={<Icons.Database />} label="Modules" />
                      <div className="border border-white/5 rounded-lg overflow-hidden">
                        {activeShaderInfo.activeModules.map((mod, i) => {
-                          // Check if module is in SAFE_MODULES (case insensitive)
-                          const isSafe = SAFE_MODULES.some(safe => safe.toLowerCase() === mod.toLowerCase());
                           const isEnabled = !shaderOverrides.includes(mod);
                           return (
                             <div key={i} className="flex items-center justify-between p-2 hover:bg-white/5 border-b border-white/5 last:border-0 transition-colors">
                               <span className={`text-[10px] font-mono ${isEnabled ? 'text-zinc-300' : 'text-zinc-600 line-through'}`}>{mod}</span>
-                              {isSafe && (
-                                <input 
-                                  type="checkbox" 
-                                  checked={isEnabled} 
-                                  onChange={() => toggleShaderModule(mod)} 
-                                  className="w-3.5 h-3.5 rounded border-white/20 bg-white/5 checked:bg-accent focus:ring-accent/50 cursor-pointer"
-                                  title={`Toggle ${mod}`}
-                                />
-                              )}
+                              <Switch
+                                checked={isEnabled} 
+                                onCheckedChange={() => toggleShaderModule(mod)} 
+                                className="scale-75 origin-right"
+                              />
                             </div>
                           )
                        })}

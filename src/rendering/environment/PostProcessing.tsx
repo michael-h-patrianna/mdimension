@@ -113,6 +113,26 @@ function logTemporalDebug(
 }
 
 /**
+ * Update uResolution uniform on all meshes in the VOLUMETRIC layer.
+ * This is critical for Schroedinger with temporal accumulation, which needs to know
+ * whether it's rendering at quarter-res (cloudTarget) or full-res (objectDepthTarget).
+ */
+const volumetricLayerMask = new THREE.Layers();
+volumetricLayerMask.set(RENDER_LAYERS.VOLUMETRIC);
+
+function updateVolumetricResolution(scene: THREE.Scene, width: number, height: number): void {
+  scene.traverse((obj) => {
+    if ((obj as THREE.Mesh).isMesh && obj.layers.test(volumetricLayerMask)) {
+      const mesh = obj as THREE.Mesh;
+      const material = mesh.material as THREE.ShaderMaterial;
+      if (material.uniforms?.uResolution) {
+        material.uniforms.uResolution.value.set(width, height);
+      }
+    }
+  });
+}
+
+/**
  * Normal material for G-buffer rendering.
  * MeshNormalMaterial outputs view-space normals encoded as RGB.
  * Used by SSR for accurate reflection direction calculation.
@@ -722,6 +742,11 @@ export const PostProcessing = memo(function PostProcessing() {
         }
       });
 
+      // Update uResolution on VOLUMETRIC layer meshes to full resolution
+      // This is critical for Schroedinger with temporal accumulation which checks resolution
+      // to determine if it's rendering at quarter-res or full-res
+      updateVolumetricResolution(scene, objectDepthTarget.width, objectDepthTarget.height);
+
       // Depth-only pass - disable color writes for performance
       const glContext = gl.getContext();
       glContext.colorMask(false, false, false, false);
@@ -779,6 +804,10 @@ export const PostProcessing = memo(function PostProcessing() {
         gl.setRenderTarget(cloudTarget);
         gl.setClearColor(0x000000, 0);
         gl.clear(true, true, false);
+
+        // Update uResolution on VOLUMETRIC layer meshes to quarter resolution
+        // This tells the Schroedinger shader to apply the Bayer coordinate transformation
+        updateVolumetricResolution(scene, cloudTarget.width, cloudTarget.height);
 
         // [TR-DEBUG] Count objects on VOLUMETRIC layer before render
         if (DEBUG_TEMPORAL && debugFrameCounter % DEBUG_LOG_INTERVAL === 0) {

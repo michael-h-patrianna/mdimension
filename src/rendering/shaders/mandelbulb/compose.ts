@@ -91,7 +91,7 @@ export function composeMandelbulbShader(config: ShaderConfig) {
     { name: 'Lighting (Fresnel)', content: fresnelBlock },
     { name: sdfName, content: sdfBlock },
     { name: 'Dispatch', content: generateDispatch(dimension) },
-    { name: 'Temporal Features', content: temporalBlock, condition: enableTemporal },
+    { name: 'Temporal Reprojection', content: temporalBlock, condition: enableTemporal },
     { name: 'Sphere Intersection', content: sphereIntersectBlock },
     { name: 'Raymarching Core', content: raymarchCoreBlock },
     { name: 'Normal Calculation', content: normalBlock },

@@ -107,18 +107,17 @@ test.describe('UI Comprehensive E2E', () => {
     await expect(page.getByTestId('shortcuts-overlay')).not.toBeVisible();
   });
 
-  test('should cycle themes', async ({ page }) => {
-    const themeButton = page.getByTestId('view-control-theme:-default'); 
-    // Note: Button label changes, so testid might be tricky if it depends on label.
-    // My ViewControls.tsx: data-testid={`view-control-${label.toLowerCase().replace(/\s+/g, '-')}`}
-    // Label is `Theme: ${theme}`.
-    // Initial theme is 'default'. ID: 'view-control-theme:-default'
+  test('should change themes', async ({ page }) => {
+    // Open View Menu
+    await page.getByTestId('menu-view').click();
     
+    // Click a theme (e.g., Green)
+    const themeButton = page.getByTestId('theme-green');
     await expect(themeButton).toBeVisible();
     await themeButton.click();
     
-    // Theme should change. Attribute on html element?
-    // EditorLayout: document.documentElement.setAttribute('data-theme', theme);
-    await expect(page.locator('html')).not.toHaveAttribute('data-theme', 'default');
+    // Reopen menu to verify checkmark
+    await page.getByTestId('menu-view').click();
+    await expect(page.getByTestId('theme-green')).toContainText('✓ Green');
   });
 });
