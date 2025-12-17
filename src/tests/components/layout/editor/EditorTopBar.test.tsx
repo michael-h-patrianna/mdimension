@@ -83,9 +83,9 @@ describe('EditorTopBar', () => {
 
   it('renders correctly', () => {
     render(<EditorTopBar {...defaultProps} />);
-    expect(screen.getByText('MDIMENSION')).toBeInTheDocument();
-    expect(screen.getByText('File')).toBeInTheDocument();
-    expect(screen.getByText('View')).toBeInTheDocument();
+    expect(screen.getAllByText('MDIMENSION')[0]).toBeInTheDocument();
+    expect(screen.getByText('FILE')).toBeInTheDocument();
+    expect(screen.getByText('VIEW')).toBeInTheDocument();
   });
 
   it('toggles left panel when button is clicked', () => {
@@ -106,7 +106,7 @@ describe('EditorTopBar', () => {
     render(<EditorTopBar {...defaultProps} />);
     
     // Open File menu
-    fireEvent.click(screen.getByText('File'));
+    fireEvent.click(screen.getByText('FILE'));
     expect(screen.getByText('Export Image (PNG)')).toBeInTheDocument();
 
     // Click Export

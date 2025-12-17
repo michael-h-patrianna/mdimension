@@ -191,10 +191,10 @@ describe('TemporalCloudManager', () => {
       expect(target).not.toBeNull();
     });
 
-    it('should return position buffer after initialization', () => {
+    it('should return cloud position texture after initialization', () => {
       TemporalCloudManager.initialize(1920, 1080);
-      const target = TemporalCloudManager.getPositionBuffer();
-      expect(target).not.toBeNull();
+      const texture = TemporalCloudManager.getCloudPositionTexture();
+      expect(texture).not.toBeNull();
     });
 
     it('should return reprojection buffer after initialization', () => {
@@ -219,7 +219,7 @@ describe('TemporalCloudManager', () => {
       // Note: Singleton state may persist, so we explicitly dispose first
       TemporalCloudManager.dispose();
       expect(TemporalCloudManager.getCloudRenderTarget()).toBeNull();
-      expect(TemporalCloudManager.getPositionBuffer()).toBeNull();
+      expect(TemporalCloudManager.getCloudPositionTexture()).toBeNull();
       expect(TemporalCloudManager.getReprojectionBuffer()).toBeNull();
     });
   });

@@ -47,7 +47,9 @@ interface ReprojectionUniforms {
 /** Reconstruction shader uniforms */
 interface ReconstructionUniforms {
   uCloudRender: UniformValue<THREE.Texture | null>;
+  uCloudPosition: UniformValue<THREE.Texture | null>;
   uReprojectedHistory: UniformValue<THREE.Texture | null>;
+  uReprojectedPositionHistory: UniformValue<THREE.Texture | null>;
   uValidityMask: UniformValue<THREE.Texture | null>;
   uBayerOffset: UniformValue<THREE.Vector2>;
   uFrameIndex: UniformValue<number>;
@@ -99,11 +101,14 @@ export class CloudTemporalPass extends Pass {
     });
 
     // Create reconstruction material
+    // Outputs MRT: [0] = accumulated color, [1] = accumulated world positions
     this.reconstructionMaterial = new THREE.ShaderMaterial({
       glslVersion: THREE.GLSL3,
       uniforms: {
         uCloudRender: { value: null },
+        uCloudPosition: { value: null },
         uReprojectedHistory: { value: null },
+        uReprojectedPositionHistory: { value: null },
         uValidityMask: { value: null },
         uBayerOffset: { value: new THREE.Vector2() },
         uFrameIndex: { value: 0 },
@@ -173,8 +178,16 @@ export class CloudTemporalPass extends Pass {
     // Pass 2: Reconstruction
     // ========================================
     const reconUniforms = this.reconstructionMaterial.uniforms as unknown as ReconstructionUniforms;
-    // cloudTarget is single-attachment for temporal accumulation
-    reconUniforms.uCloudRender.value = cloudTarget.texture;
+
+    // cloudTarget is MRT: [0] = color, [1] = position
+    if (cloudTarget.textures && cloudTarget.textures.length >= 2) {
+      reconUniforms.uCloudRender.value = cloudTarget.textures[0] ?? null;
+      reconUniforms.uCloudPosition.value = cloudTarget.textures[1] ?? null;
+    } else {
+      // Fallback for non-MRT (should not happen)
+      reconUniforms.uCloudRender.value = cloudTarget.texture;
+      reconUniforms.uCloudPosition.value = null;
+    }
 
     // Bind MRT textures from reprojection buffer
     // texture[0] is reprojected color, texture[1] is validity mask
@@ -187,6 +200,9 @@ export class CloudTemporalPass extends Pass {
       reconUniforms.uValidityMask.value = null;
     }
 
+    // Bind position history from read accumulation buffer (MRT attachment 1)
+    reconUniforms.uReprojectedPositionHistory.value = uniforms.uPrevPositionBuffer;
+
     reconUniforms.uBayerOffset.value.copy(uniforms.uBayerOffset);
     reconUniforms.uFrameIndex.value = uniforms.uFrameIndex;
     reconUniforms.uCloudResolution.value.copy(uniforms.uCloudResolution);
@@ -194,7 +210,7 @@ export class CloudTemporalPass extends Pass {
     reconUniforms.uHistoryWeight.value = this.historyWeight;
     reconUniforms.uHasValidHistory.value = TemporalCloudManager.hasValidHistory();
 
-    // Render reconstruction to accumulation buffer
+    // Render reconstruction to accumulation buffer (MRT: color + position)
     renderer.setRenderTarget(this.renderToScreen ? null : outputTarget);
     this.reconstructionQuad.render(renderer);
 

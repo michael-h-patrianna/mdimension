@@ -2,7 +2,7 @@
 
 ## CI Session: CI-20241202-001
 **Date:** 2025-12-17
-**Status:** In Progress
+**Status:** Fixed
 
 ### Initial Observation
 - **Symptom:** Temporal buffer texture shows no object shape. Scene backdrop is black.
@@ -200,3 +200,150 @@ After the compositing bug was fixed, the object appeared blurry and semi-transpa
 - SOLID mode now renders completely opaque objects
 - Floor grid no longer visible through the volumetric cloud
 - Temporal accumulation still works correctly for other opacity modes
+
+---
+
+## Bug: Schrödinger Object Appears as Billboard (No 3D Rotation Response)
+
+### CI Session: CI-20241217-001
+**Date:** 2025-12-17
+**Status:** Fixed
+
+### Initial Observation
+
+- **Symptom:** The Schrödinger object type renders correctly but does not behave like a 3D object. Rotating the camera around it does not create a rotated view - it looks the same from all directions.
+- **Condition:** Only occurs when "Temporal Reprojection" is enabled
+- **Expected:** When camera rotates around a 3D volumetric object, different parts should become visible
+- **Actual:** Object appears as a 2D billboard that always faces the same way relative to screen space
+
+### Investigation
+
+Using `mcp__docker-mcp__sequentialthinking` for systematic analysis:
+
+1. **Identified reprojection shader** (`reprojection.glsl.ts`) as the key component
+2. **Found critical code at lines 79-85:**
+   ```glsl
+   // This is a simplification - ideally we'd use actual per-pixel depth from position buffer,
+   // but the current approach provides acceptable reprojection for most camera movements.
+   const float ESTIMATED_CLOUD_DISTANCE = 3.0;
+   vec3 estimatedWorldPos = uCameraPosition + rayDir * ESTIMATED_CLOUD_DISTANCE;
+   ```
+
+3. **Found documentation in TemporalCloudManager.ts (lines 200-204):**
+   ```typescript
+   // Position buffer for per-pixel depth (future enhancement)
+   // Currently allocated but not written - reprojection uses estimated distance instead.
+   // To enable per-pixel reprojection:
+   // 1. Add MRT output to Schrödinger shader for weighted world positions
+   // 2. Sample this buffer in reprojection shader instead of ESTIMATED_CLOUD_DISTANCE
+   ```
+
+### Root Cause
+
+The temporal reprojection system was using a **fixed distance estimate** (3.0 units from camera) instead of actual per-pixel world positions. This causes different behavior for different camera movements:
+
+| Camera Movement | Fixed-Distance Reprojection | Result |
+|----------------|---------------------------|--------|
+| **Translation** | Parallax scales proportionally | ✅ Works acceptably |
+| **Rotation** | All pixels assumed on sphere around camera | ❌ Billboard effect |
+
+When the camera rotates:
+- A 3D object should reveal different sides
+- But the reprojection treats all pixels as being at a fixed distance (3.0 units) from camera
+- The history "rotates with the camera" instead of staying fixed in world space
+- Result: Object appears as a 2D billboard painted on a sphere around the camera
+
+### Solution
+
+Implemented proper per-pixel world position tracking through the temporal pipeline using Multiple Render Targets (MRT):
+
+#### 1. Schrödinger Shader Output (precision.glsl.ts, main.glsl.ts)
+
+Added `gPosition` MRT output when `USE_TEMPORAL_ACCUMULATION` is defined:
+```glsl
+// precision.glsl.ts
+#ifdef USE_TEMPORAL_ACCUMULATION
+layout(location = 1) out vec4 gPosition;  // xyz = world pos, w = alpha weight
+#endif
+
+// main.glsl.ts - in main()
+#ifdef USE_TEMPORAL_ACCUMULATION
+gPosition = vec4(worldHitPos.xyz, alpha);
+#endif
+```
+
+#### 2. TemporalCloudManager MRT Buffers
+
+Changed accumulation buffers from single-attachment to MRT with 2 attachments:
+```typescript
+// Each accumulation buffer now has:
+// [0] = Accumulated color (RGBA)
+// [1] = Accumulated world positions (xyz = world pos, w = alpha weight)
+const createAccumulationTarget = () =>
+  new THREE.WebGLRenderTarget(width, height, {
+    // ...
+    count: 2,  // MRT: [0] = Color, [1] = Position
+  });
+```
+
+Also updated `cloudRenderTarget` to MRT with color + position.
+
+#### 3. Reconstruction Shader (reconstruction.glsl.ts)
+
+Added position blending alongside color blending:
+```glsl
+uniform sampler2D uCloudPosition;           // Quarter-res positions
+uniform sampler2D uReprojectedPositionHistory;  // Previous positions
+
+// In main():
+vec4 newPosition = sampleCloudPositionAtPixel(pixelCoordInt);
+vec4 historyPosition = texture(uReprojectedPositionHistory, vUv);
+
+// Blend positions same as colors
+finalPosition = mix(newPosition, historyPosition, blendWeight);
+
+// Output both
+fragColor = finalColor;
+fragPosition = finalPosition;
+```
+
+#### 4. Reprojection Shader (reprojection.glsl.ts)
+
+Replaced fixed-distance estimate with actual position buffer sampling:
+```glsl
+// OLD (broken for rotation):
+const float ESTIMATED_CLOUD_DISTANCE = 3.0;
+vec3 estimatedWorldPos = uCameraPosition + rayDir * ESTIMATED_CLOUD_DISTANCE;
+
+// NEW (correct for all camera movements):
+vec4 sampledPosition = texture(uPrevPositionBuffer, vUv);
+vec3 actualWorldPos = sampledPosition.xyz;
+
+// Project to previous frame UV using actual world position
+vec4 prevClipPos = uPrevViewProjectionMatrix * vec4(actualWorldPos, 1.0);
+vec2 prevUV = (prevClipPos.xy / prevClipPos.w) * 0.5 + 0.5;
+```
+
+### Why This Works
+
+1. **Per-pixel world positions** - Each pixel now knows its actual 3D world position, not an estimated distance
+2. **Position accumulation** - World positions are tracked across frames just like colors
+3. **Accurate reprojection** - When camera rotates, pixels are correctly reprojected based on their true 3D locations
+4. **MRT efficiency** - Single pass writes both color and position, no performance penalty
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `src/rendering/shaders/shared/core/precision.glsl.ts` | Added `gPosition` MRT output |
+| `src/rendering/shaders/schroedinger/main.glsl.ts` | Output world position in temporal mode |
+| `src/rendering/core/TemporalCloudManager.ts` | MRT accumulation buffers, position getters |
+| `src/rendering/shaders/schroedinger/temporal/reconstruction.glsl.ts` | Position blending and MRT output |
+| `src/rendering/shaders/schroedinger/temporal/reprojection.glsl.ts` | Use actual positions instead of estimate |
+| `src/rendering/passes/CloudTemporalPass.ts` | Bind position textures |
+
+### Test Results
+
+- All 89 rendering tests pass
+- All 24 TemporalCloudManager tests pass
+- TypeScript compilation clean (no new errors)

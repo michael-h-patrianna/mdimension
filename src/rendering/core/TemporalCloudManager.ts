@@ -54,8 +54,10 @@ const BAYER_OFFSETS: [number, number][] = [
 export interface TemporalCloudUniforms {
   /** Previous frame's accumulated cloud color */
   uPrevAccumulation: THREE.Texture | null;
-  /** Previous frame's weighted world positions (for motion vectors) */
+  /** Previous frame's accumulated world positions (for accurate reprojection during camera rotation) */
   uPrevPositionBuffer: THREE.Texture | null;
+  /** Current frame's cloud position texture (quarter-res MRT attachment) */
+  uCloudPositionTexture: THREE.Texture | null;
   /** Previous frame's view-projection matrix */
   uPrevViewProjectionMatrix: THREE.Matrix4;
   /** Current Bayer offset for this frame */
@@ -76,15 +78,20 @@ export interface TemporalCloudUniforms {
  */
 class TemporalCloudManagerImpl {
   // Ping-pong accumulation buffers (full resolution)
+  // Each buffer is MRT with 2 attachments:
+  //   [0] = Accumulated color (RGBA)
+  //   [1] = Accumulated world positions (xyz = world pos, w = alpha weight)
+  // This allows reconstruction to output both color and position in a single pass,
+  // and enables accurate temporal reprojection when camera rotates (not just translates)
   private accumulationBuffers: [THREE.WebGLRenderTarget | null, THREE.WebGLRenderTarget | null] = [
     null,
     null,
   ];
 
-  // Quarter-resolution cloud render target
+  // Quarter-resolution cloud render target (MRT: color + position)
   private cloudRenderTarget: THREE.WebGLRenderTarget | null = null;
 
-  // Weighted position buffer for motion vectors (quarter resolution)
+  // Legacy position buffer - now integrated into cloudRenderTarget MRT
   private positionBuffer: THREE.WebGLRenderTarget | null = null;
 
   // Reprojection intermediate buffer (full resolution)
@@ -141,9 +148,15 @@ class TemporalCloudManagerImpl {
     // Dispose old targets
     this.dispose();
 
-    // Create accumulation buffers (full resolution, RGBA16F for HDR)
-    // IMPORTANT: Changed from HalfFloatType to FloatType to allow CPU readback via readPixels
-    // which is required for debugging and quality gates.
+    // Create accumulation buffers (full resolution) with MRT
+    // Attachment [0]: Accumulated color (RGBA, FloatType for HDR)
+    // Attachment [1]: Accumulated world positions (xyz = world pos, w = alpha weight)
+    //
+    // Having positions in the accumulation buffer enables accurate temporal reprojection
+    // when camera rotates (not just translates). Without positions, reprojection assumes
+    // a fixed distance from camera, causing billboard-like artifacts.
+    //
+    // IMPORTANT: Uses FloatType for CPU readback via readPixels (debugging/quality gates)
     const createAccumulationTarget = () =>
       new THREE.WebGLRenderTarget(newFullWidth, newFullHeight, {
         format: THREE.RGBAFormat,
@@ -155,9 +168,14 @@ class TemporalCloudManagerImpl {
         generateMipmaps: false,
         depthBuffer: false,
         stencilBuffer: false,
+        count: 2, // MRT: [0] = Color, [1] = Position
       });
 
     this.accumulationBuffers = [createAccumulationTarget(), createAccumulationTarget()];
+    this.accumulationBuffers[0]!.textures[0]!.name = 'AccumColor0';
+    this.accumulationBuffers[0]!.textures[1]!.name = 'AccumPosition0';
+    this.accumulationBuffers[1]!.textures[0]!.name = 'AccumColor1';
+    this.accumulationBuffers[1]!.textures[1]!.name = 'AccumPosition1';
 
     // Explicitly clear accumulation buffers if renderer is provided
     // Only clear color buffer - depth/stencil are disabled on these targets
@@ -176,9 +194,13 @@ class TemporalCloudManagerImpl {
       gl.setRenderTarget(currentTarget);
     }
 
-    // Create cloud render target (quarter resolution)
-    // Single attachment for temporal accumulation - the shader only outputs gColor
-    // when USE_TEMPORAL_ACCUMULATION is defined (gNormal output is conditional)
+    // Create cloud render target (quarter resolution) with MRT
+    // Attachment 0: Color (RGBA)
+    // Attachment 1: World Position (XYZ = world pos, W = alpha weight)
+    //
+    // The position buffer enables accurate temporal reprojection when camera rotates.
+    // Without per-pixel positions, reprojection assumes fixed distance which causes
+    // billboard-like artifacts where the object looks the same from all angles.
     //
     // IMPORTANT: Uses FloatType instead of HalfFloatType for two reasons:
     // 1. WebGL readRenderTargetPixels with Float32Array cannot properly read HalfFloatType
@@ -194,25 +216,16 @@ class TemporalCloudManagerImpl {
       generateMipmaps: false,
       depthBuffer: true, // Need depth for proper rendering
       stencilBuffer: false,
+      count: 2, // MRT: [0] = Color, [1] = World Position
     });
+    this.cloudRenderTarget.textures[0]!.name = 'CloudColor';
+    this.cloudRenderTarget.textures[1]!.name = 'CloudPosition';
 
-    // Create position buffer for motion vectors (quarter resolution, RGB32F)
-    // Position buffer for per-pixel depth (future enhancement)
-    // Currently allocated but not written - reprojection uses estimated distance instead.
-    // To enable per-pixel reprojection:
-    // 1. Add MRT output to Schrödinger shader for weighted world positions
-    // 2. Sample this buffer in reprojection shader instead of ESTIMATED_CLOUD_DISTANCE
-    this.positionBuffer = new THREE.WebGLRenderTarget(newCloudWidth, newCloudHeight, {
-      format: THREE.RGBAFormat,
-      type: THREE.FloatType,
-      minFilter: THREE.NearestFilter,
-      magFilter: THREE.NearestFilter,
-      wrapS: THREE.ClampToEdgeWrapping,
-      wrapT: THREE.ClampToEdgeWrapping,
-      generateMipmaps: false,
-      depthBuffer: false,
-      stencilBuffer: false,
-    });
+    // NOTE: Position buffer is now integrated into cloudRenderTarget as MRT attachment [1]
+    // The Schrödinger shader outputs world position to gPosition (layout location 1)
+    // when USE_TEMPORAL_ACCUMULATION is defined. This eliminates the need for a
+    // separate position buffer and enables accurate reprojection during camera rotation.
+    this.positionBuffer = null;
 
     // Create reprojection buffer (full resolution)
     // MRT: [0] = Reprojected Color, [1] = Validity Mask
@@ -291,10 +304,11 @@ class TemporalCloudManagerImpl {
   }
 
   /**
-   * Get the position buffer render target.
+   * Get the cloud render target's position texture (MRT attachment 1).
+   * This contains per-pixel world positions from the current frame's quarter-res render.
    */
-  getPositionBuffer(): THREE.WebGLRenderTarget | null {
-    return this.positionBuffer;
+  getCloudPositionTexture(): THREE.Texture | null {
+    return this.cloudRenderTarget?.textures[1] ?? null;
   }
 
   /**
@@ -305,17 +319,34 @@ class TemporalCloudManagerImpl {
   }
 
   /**
-   * Get the write target for reconstruction output.
+   * Get the write target for reconstruction output (MRT: color + position).
    */
   getWriteTarget(): THREE.WebGLRenderTarget | null {
     return this.accumulationBuffers[this.bufferIndex] ?? null;
   }
 
   /**
-   * Get the read target (previous frame's accumulation).
+   * Get the read target (previous frame's accumulation - MRT: color + position).
    */
   getReadTarget(): THREE.WebGLRenderTarget | null {
     return this.accumulationBuffers[1 - this.bufferIndex] ?? null;
+  }
+
+  /**
+   * Get the read target's color texture (MRT attachment 0).
+   */
+  getReadColorTexture(): THREE.Texture | null {
+    const target = this.getReadTarget();
+    return target?.textures[0] ?? null;
+  }
+
+  /**
+   * Get the read target's position texture (MRT attachment 1).
+   * Used by reprojection shader to determine where each pixel was in 3D space.
+   */
+  getReadPositionTexture(): THREE.Texture | null {
+    const target = this.getReadTarget();
+    return target?.textures[1] ?? null;
   }
 
   /**
@@ -383,13 +414,15 @@ class TemporalCloudManagerImpl {
     this.cloudResolution.set(this.cloudWidth, this.cloudHeight);
     this.accumulationResolution.set(this.fullWidth, this.fullHeight);
 
-    const readTarget = this.getReadTarget();
-    // Only enable if we have valid history AND a valid texture to sample
-    const hasHistory = this.hasValidHistory() && readTarget !== null;
+    const colorTexture = this.getReadColorTexture();
+    const positionTexture = this.getReadPositionTexture();
+    // Only enable if we have valid history AND valid textures to sample
+    const hasHistory = this.hasValidHistory() && colorTexture !== null && positionTexture !== null;
 
     return {
-      uPrevAccumulation: hasHistory ? readTarget.texture : null,
-      uPrevPositionBuffer: this.positionBuffer?.texture ?? null,
+      uPrevAccumulation: hasHistory ? colorTexture : null,
+      uPrevPositionBuffer: hasHistory ? positionTexture : null,
+      uCloudPositionTexture: this.getCloudPositionTexture(),
       uPrevViewProjectionMatrix: this.prevViewProjectionMatrix,
       uBayerOffset: this.bayerOffset,
       uFrameIndex: this.frameIndex,

@@ -167,8 +167,14 @@ void main() {
 
     // Output
     gColor = vec4(volumeResult.color, alpha);
-    
-    #ifndef USE_TEMPORAL_ACCUMULATION
+
+    #ifdef USE_TEMPORAL_ACCUMULATION
+    // Output world position for temporal reprojection
+    // This enables accurate reprojection when camera rotates (not just translates)
+    // Using the volume centroid (weighted by accumulated density) for best results
+    // w component stores alpha as weight for position averaging during reconstruction
+    gPosition = vec4(worldHitPos.xyz, alpha);
+    #else
     vec3 viewNormal = normalize((uViewMatrix * vec4(rd, 0.0)).xyz);
     gNormal = vec4(viewNormal * 0.5 + 0.5, uMetallic);
     #endif

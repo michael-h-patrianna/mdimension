@@ -23,7 +23,8 @@ in vec2 vUv;
 // Previous frame's accumulated cloud color
 uniform sampler2D uPrevAccumulation;
 
-// Previous frame's weighted world positions
+// Previous frame's accumulated world positions (xyz = world pos, w = alpha weight)
+// This enables accurate reprojection when camera rotates, not just translates
 uniform sampler2D uPrevPositionBuffer;
 
 // Matrices for reprojection
@@ -45,26 +46,54 @@ layout(location = 0) out vec4 fragColor;
 layout(location = 1) out vec4 fragValidity;
 
 /**
- * Convert UV and depth to world position
+ * Project world position to current frame UV using current view-projection matrix
  */
-vec3 uvDepthToWorld(vec2 uv, float depth) {
-    vec4 clipPos = vec4(uv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
-    vec4 worldPos = uInverseViewProjectionMatrix * clipPos;
-    return worldPos.xyz / worldPos.w;
-}
-
-/**
- * Reproject world position to previous frame UV
- */
-vec2 worldToPrevUV(vec3 worldPos) {
-    vec4 prevClipPos = uPrevViewProjectionMatrix * vec4(worldPos, 1.0);
-    vec2 prevNDC = prevClipPos.xy / prevClipPos.w;
-    return prevNDC * 0.5 + 0.5;
+vec2 worldToCurrentUV(vec3 worldPos) {
+    vec4 clipPos = uViewProjectionMatrix * vec4(worldPos, 1.0);
+    // Perspective divide
+    vec2 ndc = clipPos.xy / clipPos.w;
+    return ndc * 0.5 + 0.5;
 }
 
 void main() {
-    // Estimate world position for this pixel
-    // Use a point along the view ray at a reasonable distance
+    // Sample previous frame's world position for this pixel
+    // The position buffer stores actual 3D world positions, enabling accurate
+    // reprojection when camera rotates (not just translates)
+    vec4 prevPositionData = texture(uPrevPositionBuffer, vUv);
+    vec3 worldPos = prevPositionData.xyz;
+    float positionAlpha = prevPositionData.w;
+
+    // Sample previous frame's accumulated color
+    vec4 prevColor = texture(uPrevAccumulation, vUv);
+
+    // If previous frame had no cloud data here, mark invalid
+    if (prevColor.a < 0.001 || positionAlpha < 0.001) {
+        fragColor = vec4(0.0);
+        fragValidity = vec4(0.0);
+        return;
+    }
+
+    // Reproject: find where this world position appears in the CURRENT frame
+    vec2 currentUV = worldToCurrentUV(worldPos);
+
+    // Check if on-screen in current frame
+    if (currentUV.x < 0.0 || currentUV.x > 1.0 || currentUV.y < 0.0 || currentUV.y > 1.0) {
+        fragColor = vec4(0.0);
+        fragValidity = vec4(0.0);
+        return;
+    }
+
+    // The key insight: we're sampling from prevUV (vUv) but writing to where it
+    // should appear in the current frame. However, since this is a fullscreen pass,
+    // we can't change where we write. Instead, we need to REVERSE the logic:
+    //
+    // For each pixel in the OUTPUT (current frame), find where it came from in
+    // the previous frame's buffer. This requires inverting the reprojection.
+    //
+    // NEW APPROACH: For current pixel at vUv, compute where it was in world space,
+    // then find where that world position was in the previous frame's UV space.
+
+    // Compute world position for current pixel using inverse view-projection
     vec2 ndc = vUv * 2.0 - 1.0;
     vec4 nearClip = vec4(ndc, -1.0, 1.0);
     vec4 farClip = vec4(ndc, 1.0, 1.0);
@@ -76,57 +105,72 @@ void main() {
 
     vec3 rayDir = normalize(farWorld.xyz - nearWorld.xyz);
 
-    // Estimate cloud position for reprojection.
-    // The Schrödinger volumetric typically occupies a bounding sphere of radius ~1-2 units
-    // centered at origin, so 3.0 units is a reasonable estimate for typical viewing distances.
-    // This is a simplification - ideally we'd use actual per-pixel depth from position buffer,
-    // but the current approach provides acceptable reprojection for most camera movements.
-    const float ESTIMATED_CLOUD_DISTANCE = 3.0;
-    vec3 estimatedWorldPos = uCameraPosition + rayDir * ESTIMATED_CLOUD_DISTANCE;
+    // Sample the previous position buffer to get the depth/distance
+    // Since we're looking for where the current pixel came from, we sample
+    // at vUv and use the stored world position to find the previous UV
+    vec4 sampledPosition = texture(uPrevPositionBuffer, vUv);
 
-    // Reproject to previous frame
-    vec2 prevUV = worldToPrevUV(estimatedWorldPos);
+    if (sampledPosition.w < 0.001) {
+        // No valid position data - fall back to center of scene
+        fragColor = vec4(0.0);
+        fragValidity = vec4(0.0);
+        return;
+    }
 
-    // Check if on-screen in previous frame
+    // Use the actual world position from the position buffer
+    vec3 actualWorldPos = sampledPosition.xyz;
+
+    // Project this world position using the PREVIOUS view-projection matrix
+    // to find where it was in the previous frame
+    vec4 prevClipPos = uPrevViewProjectionMatrix * vec4(actualWorldPos, 1.0);
+    vec2 prevUV = (prevClipPos.xy / prevClipPos.w) * 0.5 + 0.5;
+
+    // Check if the reprojected position is on-screen in previous frame
     if (prevUV.x < 0.0 || prevUV.x > 1.0 || prevUV.y < 0.0 || prevUV.y > 1.0) {
         fragColor = vec4(0.0);
         fragValidity = vec4(0.0);
         return;
     }
 
-    // Sample previous frame's accumulated color
-    vec4 prevColor = texture(uPrevAccumulation, prevUV);
+    // Sample previous frame's color at the reprojected location
+    vec4 reprojectedColor = texture(uPrevAccumulation, prevUV);
 
-    // If previous frame had no cloud data here, mark invalid
-    if (prevColor.a < 0.001) {
+    if (reprojectedColor.a < 0.001) {
         fragColor = vec4(0.0);
         fragValidity = vec4(0.0);
         return;
     }
 
-    // Disocclusion detection: check neighbor depth variance
+    // Disocclusion detection: check neighbor depth variance using position buffer
     vec2 texelSize = 1.0 / uAccumulationResolution;
 
+    vec4 posL = texture(uPrevPositionBuffer, prevUV - vec2(texelSize.x, 0.0));
+    vec4 posR = texture(uPrevPositionBuffer, prevUV + vec2(texelSize.x, 0.0));
+    vec4 posU = texture(uPrevPositionBuffer, prevUV + vec2(0.0, texelSize.y));
+    vec4 posD = texture(uPrevPositionBuffer, prevUV - vec2(0.0, texelSize.y));
+
+    // Check for large position discontinuities (indicates edge/disocclusion)
+    vec3 centerPos = actualWorldPos;
+    float maxPosDiff = max(
+        max(length(centerPos - posL.xyz), length(centerPos - posR.xyz)),
+        max(length(centerPos - posU.xyz), length(centerPos - posD.xyz))
+    );
+
+    // Also check alpha discontinuities
     vec4 colorL = texture(uPrevAccumulation, prevUV - vec2(texelSize.x, 0.0));
     vec4 colorR = texture(uPrevAccumulation, prevUV + vec2(texelSize.x, 0.0));
     vec4 colorU = texture(uPrevAccumulation, prevUV + vec2(0.0, texelSize.y));
     vec4 colorD = texture(uPrevAccumulation, prevUV - vec2(0.0, texelSize.y));
 
-    // Check for large alpha discontinuities (indicates edge/disocclusion)
     float maxAlphaDiff = max(
-        max(abs(prevColor.a - colorL.a), abs(prevColor.a - colorR.a)),
-        max(abs(prevColor.a - colorU.a), abs(prevColor.a - colorD.a))
-    );
-
-    // Also check color discontinuities
-    float maxColorDiff = max(
-        max(length(prevColor.rgb - colorL.rgb), length(prevColor.rgb - colorR.rgb)),
-        max(length(prevColor.rgb - colorU.rgb), length(prevColor.rgb - colorD.rgb))
+        max(abs(reprojectedColor.a - colorL.a), abs(reprojectedColor.a - colorR.a)),
+        max(abs(reprojectedColor.a - colorU.a), abs(reprojectedColor.a - colorD.a))
     );
 
     // Reject if large discontinuity detected
+    // Position discontinuity threshold is in world units (0.5 = half a unit)
     float validity = 1.0;
-    if (maxAlphaDiff > uDisocclusionThreshold || maxColorDiff > uDisocclusionThreshold * 2.0) {
+    if (maxPosDiff > 0.5 || maxAlphaDiff > uDisocclusionThreshold) {
         validity = 0.0;
     }
 
@@ -136,7 +180,7 @@ void main() {
         validity *= edgeDist / 0.02;
     }
 
-    fragColor = prevColor;
+    fragColor = reprojectedColor;
     // Store validity in r channel (g, b unused). Alpha=1.0 for MRT compatibility.
     fragValidity = vec4(validity, 0.0, 0.0, 1.0);
 }

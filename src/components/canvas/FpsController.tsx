@@ -52,10 +52,11 @@ export function FpsController(): null {
       const interval = 1000 / maxFps
       const elapsed = now - thenRef.current
 
-      // Use 1ms tolerance to handle floating point precision issues.
+      // Use 0.5ms tolerance to handle floating point precision issues.
       // Without tolerance, RAF timing (~16.665999ms) can be slightly less than
       // interval (16.666666ms), causing every other frame to be skipped (30 FPS lock).
-      if (elapsed >= interval - 1) {
+      // 0.5ms is small enough to maintain accurate FPS limiting while handling precision.
+      if (elapsed >= interval - 0.5) {
         // Advance the frame - this triggers useFrame callbacks and renders
         // Pass timestamp for proper delta calculation in useFrame
         advance(now)
