@@ -15,24 +15,23 @@ import { DocumentationSection } from '@/components/sections/Documentation/Docume
 import { PerformanceSection } from '@/components/sections/Performance/PerformanceSection';
 
 export const EditorRightPanel: React.FC = () => {
-  // Default to 'visuals' tab as per user feedback (primary creative focus)
-  const [activeTab, setActiveTab] = useState('visuals');
+  // Default to 'object' tab as per user feedback (primary creative focus)
+  const [activeTab, setActiveTab] = useState('object');
 
   const tabs: Tab[] = [
     {
-      id: 'visuals',
+      id: 'object',
       label: (
         <div className="flex items-center gap-2">
-            <Icon name="eye" size={14} />
-            <span>Visuals</span>
+            <Icon name="sphere" size={14} />
+            <span>Object</span>
         </div>
       ),
       content: (
         <div className="space-y-1 px-1">
-          {/* The "Art" - Materials, Lines, FX */}
+          {/* The "Subject" - Materials, Lines */}
           <FacesSection defaultOpen={true} />
           <EdgesSection defaultOpen={false} />
-          <PostProcessingSection defaultOpen={false} />
         </div>
       ),
     },
@@ -46,10 +45,11 @@ export const EditorRightPanel: React.FC = () => {
       ),
       content: (
         <div className="space-y-1 px-1">
-          {/* The "Stage" - Lighting, Background, Lens */}
+          {/* The "Stage" - Background, Lighting, Lens, FX */}
           <EnvironmentSection defaultOpen={true} />
           <LightsSection defaultOpen={false} />
           <ProjectionSection defaultOpen={false} />
+          <PostProcessingSection defaultOpen={false} />
         </div>
       ),
     },

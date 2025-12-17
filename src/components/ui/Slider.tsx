@@ -66,9 +66,7 @@ export const Slider: React.FC<SliderProps> = ({
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const delta = moveEvent.clientX - startX;
       // Map pixels to value
-      // Assume 200px = full range? No, use sensitivity.
-      // 1px = 1% of range? 
-      const change = delta * (range / 200) * sensitivity; // Arbitrary but usable scale
+      const change = delta * (range / 200) * sensitivity; 
       let newValue = startValue + change;
       
       // Step snapping
@@ -134,8 +132,8 @@ export const Slider: React.FC<SliderProps> = ({
         <label
           htmlFor={id}
           className={`
-            text-[11px] font-medium transition-colors tracking-wide flex items-center gap-1
-            ${isLabelDragging ? 'text-accent cursor-ew-resize' : 'text-text-secondary group-hover/slider:text-text-primary cursor-ew-resize'}
+            text-[11px] font-medium transition-colors tracking-wide flex items-center gap-1 border-b border-transparent hover:border-dashed hover:border-accent/50
+            ${isLabelDragging ? 'text-accent cursor-ew-resize border-dashed border-accent' : 'text-text-secondary group-hover/slider:text-text-primary cursor-ew-resize'}
           `}
           title={tooltip || "Drag label to adjust value, Double-click to reset"}
           onMouseDown={handleLabelMouseDown}
@@ -153,7 +151,7 @@ export const Slider: React.FC<SliderProps> = ({
                 disabled={disabled}
                 className={`
                   text-[10px] text-accent transition-all duration-200 
-                  ${isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2'}
+                  ${isHovered || value !== min ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2'}
                 `}
                 title="Reset"
                 aria-label="Reset value"
@@ -161,21 +159,23 @@ export const Slider: React.FC<SliderProps> = ({
                 ↺
               </button>
             )}
-            <input
-              type="text"
-              value={inputValue}
-              onChange={handleInputChange}
-              onBlur={handleInputBlur}
-              onKeyDown={handleKeyDown}
-              disabled={disabled}
-              className="
-                glass-input
-                w-[6ch] px-1 py-0.5 text-right font-mono text-[10px] h-auto
-                focus:w-[8ch] transition-all duration-200
-              "
-              data-testid={dataTestId ? `${dataTestId}-input` : undefined}
-            />
-            {unit && <span className="text-[10px] text-text-tertiary font-medium">{unit}</span>}
+            <div className="relative group/input">
+                <input
+                  type="text"
+                  value={inputValue}
+                  onChange={handleInputChange}
+                  onBlur={handleInputBlur}
+                  onKeyDown={handleKeyDown}
+                  disabled={disabled}
+                  className="
+                    glass-input
+                    w-[8ch] px-1.5 py-0.5 text-right font-mono text-[10px] h-auto
+                    focus:w-[10ch] focus:absolute focus:right-0 focus:z-10 transition-all duration-200
+                  "
+                  data-testid={dataTestId ? `${dataTestId}-input` : undefined}
+                />
+                {unit && <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] text-text-tertiary font-medium pointer-events-none">{unit}</span>}
+            </div>
           </div>
         )}
       </div>
@@ -220,7 +220,7 @@ export const Slider: React.FC<SliderProps> = ({
             pointer-events-none z-10 
             transition-transform duration-100 ease-out
             flex items-center justify-center
-            ${isDragging || isLabelDragging ? 'scale-125 bg-accent' : 'scale-100'}
+            ${isDragging || isLabelDragging ? 'scale-125 bg-accent' : 'scale-100 group-hover/slider:scale-110'}
           `}
           style={{ left: `calc(${percentage}% - 7px)` }}
         >
@@ -234,7 +234,7 @@ export const Slider: React.FC<SliderProps> = ({
                initial={{ opacity: 0, y: 10, scale: 0.8 }}
                animate={{ opacity: 1, y: -20, scale: 1 }}
                exit={{ opacity: 0, y: 10, scale: 0.8 }}
-               className="absolute top-0 -translate-x-1/2 px-2 py-1 bg-black/90 backdrop-blur-xl border border-white/10 rounded text-[10px] font-mono text-accent pointer-events-none shadow-xl z-30"
+               className="absolute top-0 -translate-x-1/2 px-2 py-1 bg-black/90 backdrop-blur-xl border border-white/10 rounded text-[10px] font-mono text-accent pointer-events-none shadow-xl z-30 whitespace-nowrap"
                style={{ left: `${percentage}%` }}
              >
                {displayValue}{unit}

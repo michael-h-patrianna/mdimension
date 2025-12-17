@@ -13,6 +13,7 @@ import { CanvasContextMenu } from '@/components/layout/CanvasContextMenu';
 import { useIsDesktop } from '@/hooks/useMediaQuery';
 import { useKonamiCode } from '@/hooks/useKonamiCode';
 import { soundManager } from '@/lib/audio/SoundManager';
+import { GlobalProgress } from '@/components/ui/GlobalProgress';
 
 interface EditorLayoutProps {
   children?: React.ReactNode;
@@ -143,6 +144,7 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
         transition={{ duration: 1 }}
         className="relative z-10 flex flex-col h-full w-full pointer-events-none"
       >
+        <GlobalProgress />
         
         {!isCinematicMode && (
             <div className="pointer-events-auto shrink-0 z-50">

@@ -88,7 +88,6 @@ export const Tabs: React.FC<TabsProps> = ({
   const [canScrollRight, setCanScrollRight] = useState(false);
 
   // Track direction for slide animation
-  const [direction, setDirection] = useState(0);
   const prevValue = useRef(value);
 
   const activeTab = tabs.find((tab) => tab.id === value);
@@ -97,7 +96,6 @@ export const Tabs: React.FC<TabsProps> = ({
 
   useEffect(() => {
     if (activeIndex !== prevIndex) {
-        setDirection(activeIndex > prevIndex ? 1 : -1);
         prevValue.current = value;
     }
   }, [value, activeIndex, prevIndex]);

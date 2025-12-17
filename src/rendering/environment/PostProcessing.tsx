@@ -56,10 +56,8 @@ const DEBUG_NORMAL_BUFFER = false;
 let normalDebugFrameCounter = 0;
 const NORMAL_DEBUG_LOG_INTERVAL = 30; // Log every N frames (twice per second at 60fps)
 
-// Dummy depth texture for volumetric normal compositing (avoids depth check)
-let dummyDepthTexture: THREE.DataTexture | null = null;
-let debugFrameCounter = 0;
 const DEBUG_LOG_INTERVAL = 10; // Log every N frames
+let debugFrameCounter = 0;
 
 /**
  * Read a single pixel from a render target.
@@ -1108,8 +1106,8 @@ export const PostProcessing = memo(function PostProcessing() {
           const quad = cloudCompositeScene.children[0] as THREE.Mesh;
           const mat = quad?.material as THREE.ShaderMaterial;
           // Check if shader program has errors
-          const programInfo = gl.info.programs?.find((p: any) => p.name === 'ShaderMaterial');
-          console.log(`[TR-DEBUG] 3.4-preCompositeState: colorMask=[${colorMask}] scissor=${scissorTest}@[${scissorBox}] viewport=[${viewport}] depthTest=${depthTest} stencilTest=${stencilTest} cullFace=${cullFace} quadVisible=${quad?.visible} matTransparent=${mat?.transparent} matDepthTest=${mat?.depthTest} matDepthWrite=${mat?.depthWrite} matSide=${mat?.side}`);
+          const programInfo = gl.info.programs?.length;
+          console.log(`[TR-DEBUG] 3.4-preCompositeState: colorMask=[${colorMask}] scissor=${scissorTest}@[${scissorBox}] viewport=[${viewport}] depthTest=${depthTest} stencilTest=${stencilTest} cullFace=${cullFace} quadVisible=${quad?.visible} matTransparent=${mat?.transparent} matDepthTest=${mat?.depthTest} matDepthWrite=${mat?.depthWrite} matSide=${mat?.side} programs=${programInfo}`);
         }
 
         gl.render(cloudCompositeScene, cloudCompositeCamera);
@@ -1334,7 +1332,6 @@ export const PostProcessing = memo(function PostProcessing() {
       // temporal reconstruction, so we use that instead of the quarter-res cloudRenderTarget.
       if (useTemporalCloud) {
         const cloudTarget = TemporalCloudManager.getCloudRenderTarget();
-        const writeTarget = TemporalCloudManager.getWriteTarget();
         const cloudNormalTexture = TemporalCloudManager.getCloudNormalTexture();
         // After reconstruction, the accumulated normals are in writeTarget.textures[1]
         // but we haven't done reconstruction yet in the normal pass...
@@ -1415,7 +1412,7 @@ export const PostProcessing = memo(function PostProcessing() {
 
             // Check if gNormal output is even being written to the MRT
             // The issue might be that the MRT drawBuffers aren't set up correctly
-            const glContext = gl.getContext() as WebGL2RenderingContext;
+            // const glContext = gl.getContext() as WebGL2RenderingContext;
             if (cloudTarget) {
               // Check the MRT setup - WebGL should have DRAW_BUFFER0, DRAW_BUFFER1, DRAW_BUFFER2
               // for the 3 attachments

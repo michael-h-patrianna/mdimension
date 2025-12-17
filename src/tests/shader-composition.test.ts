@@ -9,7 +9,7 @@ describe('Shader Composition - Toggle Functionality', () => {
     shadows: true,
     temporal: true,
     ambientOcclusion: true,
-    opacityMode: 'linear',
+    opacityMode: 'simpleAlpha',
     overrides: []
   };
 
