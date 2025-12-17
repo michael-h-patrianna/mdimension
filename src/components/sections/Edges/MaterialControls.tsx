@@ -6,6 +6,7 @@
  */
 
 import { Slider } from '@/components/ui/Slider';
+import { ColorPicker } from '@/components/ui/ColorPicker';
 import {
   DEFAULT_DIFFUSE_INTENSITY,
   DEFAULT_SHININESS,
@@ -80,19 +81,14 @@ export const MaterialControls: React.FC<MaterialControlsProps> = React.memo(({
       <SectionHeader title="Specular" />
 
       {/* Specular Color */}
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-text-secondary">
-          Specular Color
-        </label>
-        <div className="flex items-center gap-2">
-          <input
-            type="color"
-            value={specularColor}
-            onChange={(e) => setSpecularColor(e.target.value)}
-            className="w-10 h-10 rounded cursor-pointer border border-panel-border"
-          />
-          <span className="text-xs font-mono text-text-secondary">{specularColor}</span>
-          {specularColor !== DEFAULT_SPECULAR_COLOR && (
+      <div className="flex items-center justify-between">
+        <ColorPicker
+          label="Specular Color"
+          value={specularColor}
+          onChange={setSpecularColor}
+          disableAlpha={true}
+        />
+        {specularColor !== DEFAULT_SPECULAR_COLOR && (
             <button
               onClick={() => setSpecularColor(DEFAULT_SPECULAR_COLOR)}
               className="text-xs text-accent hover:text-accent/80 transition-colors"
@@ -100,9 +96,9 @@ export const MaterialControls: React.FC<MaterialControlsProps> = React.memo(({
             >
               Reset
             </button>
-          )}
-        </div>
+        )}
       </div>
+
 
       {/* Specular Intensity */}
       <Slider

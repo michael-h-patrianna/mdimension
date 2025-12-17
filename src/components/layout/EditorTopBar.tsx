@@ -171,7 +171,7 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
 
   return (
     <>
-      <div className="h-12 bg-panel-bg/80 backdrop-blur-md border-b border-panel-border flex items-center justify-between px-4 z-40 shrink-0 select-none relative" data-testid="top-bar">
+      <div className="glass-panel h-12 flex items-center justify-between px-4 z-40 shrink-0 select-none relative mb-2 rounded-xl mx-2 mt-2" data-testid="top-bar">
         {/* Left: Branding & Menu */}
         <div className="flex items-center gap-4">
           {/* Left Panel Toggle */}
@@ -189,28 +189,28 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
               </svg>
           </button>
 
-          <div className="text-lg font-bold text-accent tracking-tighter hidden sm:block">
+          <div className="text-lg font-bold text-accent tracking-[0.2em] hidden sm:block text-glow">
             MDIMENSION
           </div>
-          <div className="h-4 w-px bg-panel-border hidden sm:block" />
+          <div className="h-4 w-px bg-white/10 hidden sm:block" />
           <div className="flex items-center gap-2 text-xs text-text-secondary">
             <DropdownMenu 
-              trigger={<button className="hover:text-text-primary px-2 py-1 rounded hover:bg-white/5 transition-colors" data-testid="menu-file">File</button>}
+              trigger={<button className="hover:text-text-primary px-2 py-1 rounded hover:bg-white/5 transition-colors font-medium tracking-wide" data-testid="menu-file">FILE</button>}
               items={fileItems}
             />
             <DropdownMenu 
-              trigger={<button className="hover:text-text-primary px-2 py-1 rounded hover:bg-white/5 transition-colors" data-testid="menu-view">View</button>}
+              trigger={<button className="hover:text-text-primary px-2 py-1 rounded hover:bg-white/5 transition-colors font-medium tracking-wide" data-testid="menu-view">VIEW</button>}
               items={viewItems}
             />
             
             <div className="w-px h-3 bg-white/10 mx-1" />
 
             <DropdownMenu 
-              trigger={<button className="hover:text-text-primary px-2 py-1 rounded hover:bg-white/5 transition-colors text-accent/80" data-testid="menu-styles">Styles</button>}
+              trigger={<button className="hover:text-text-primary px-2 py-1 rounded hover:bg-white/5 transition-colors text-accent/90 hover:text-accent tracking-wide" data-testid="menu-styles">STYLES</button>}
               items={styleItems}
             />
              <DropdownMenu 
-              trigger={<button className="hover:text-text-primary px-2 py-1 rounded hover:bg-white/5 transition-colors text-accent/80" data-testid="menu-scenes">Scenes</button>}
+              trigger={<button className="hover:text-text-primary px-2 py-1 rounded hover:bg-white/5 transition-colors text-accent/90 hover:text-accent tracking-wide" data-testid="menu-scenes">SCENES</button>}
               items={sceneItems}
             />
           </div>

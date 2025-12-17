@@ -5,6 +5,7 @@
  */
 
 import { MultiToggleGroup } from '@/components/ui/MultiToggleGroup';
+import { ColorPicker } from '@/components/ui/ColorPicker';
 import { Select } from '@/components/ui/Select';
 import { Slider } from '@/components/ui/Slider';
 import { Switch } from '@/components/ui/Switch';
@@ -117,21 +118,13 @@ export const EnvironmentControls: React.FC<EnvironmentControlsProps> = React.mem
       />
 
       {/* Surface Color */}
-      <div className="space-y-2">
-        <label className="block text-xs font-medium text-text-secondary">
-          Surface Color
-        </label>
-        <div className="flex items-center gap-2">
-          <input
-            type="color"
-            value={groundPlaneColor}
-            onChange={(e) => setGroundPlaneColor(e.target.value)}
-            className="w-8 h-8 rounded cursor-pointer border border-panel-border"
-            aria-label="Surface Color"
-          />
-          <span className="text-xs font-mono text-text-secondary">{groundPlaneColor}</span>
-        </div>
-      </div>
+      <ColorPicker
+        label="Surface Color"
+        value={groundPlaneColor}
+        onChange={setGroundPlaneColor}
+        disableAlpha={true}
+      />
+
 
       {/* Surface Type */}
       <Select
@@ -160,21 +153,13 @@ export const EnvironmentControls: React.FC<EnvironmentControlsProps> = React.mem
       />
 
       {/* Grid Color */}
-      <div className="space-y-2">
-        <label className="block text-xs font-medium text-text-secondary">
-          Grid Color
-        </label>
-        <div className="flex items-center gap-2">
-          <input
-            type="color"
-            value={groundGridColor}
-            onChange={(e) => setGroundGridColor(e.target.value)}
-            className="w-8 h-8 rounded cursor-pointer border border-panel-border"
-            aria-label="Grid Color"
-          />
-          <span className="text-xs font-mono text-text-secondary">{groundGridColor}</span>
-        </div>
-      </div>
+      <ColorPicker
+        label="Grid Color"
+        value={groundGridColor}
+        onChange={setGroundGridColor}
+        disableAlpha={true}
+      />
+
 
       {/* Grid Spacing */}
       <Slider

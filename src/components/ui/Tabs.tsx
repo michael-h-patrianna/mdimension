@@ -189,7 +189,7 @@ export const Tabs: React.FC<TabsProps> = ({
 
   // Styling based on variant
   const containerStyles = variant === 'default' 
-    ? 'bg-black/30 rounded-t-md' 
+    ? 'bg-black/20 rounded-t-lg border-b border-white/5' 
     : 'border-b border-white/5';
     
   const widthStyles = fullWidth ? 'w-full' : 'min-w-full w-max';
@@ -226,11 +226,11 @@ export const Tabs: React.FC<TabsProps> = ({
               const isActive = tab.id === value;
               
               // Dynamic styling for active/inactive states
-              const activeTextClass = variant === 'minimal' ? 'text-accent bg-accent/5' : 'text-accent';
+              const activeTextClass = variant === 'minimal' ? 'text-accent bg-accent/5' : 'text-accent text-glow font-bold';
               const inactiveTextClass = variant === 'minimal' ? 'text-zinc-500 hover:text-zinc-300' : 'text-text-secondary hover:text-text-primary hover:bg-white/5';
               
               return (
-                <button
+                <m.button
                   key={tab.id}
                   ref={(el) => {
                     tabRefs.current[index] = el;
@@ -244,22 +244,24 @@ export const Tabs: React.FC<TabsProps> = ({
                   onClick={() => onChange(tab.id)}
                   onKeyDown={(e) => handleKeyDown(e, index)}
                   className={`
-                    relative flex-1 px-3 py-2 text-xs font-medium uppercase tracking-wider whitespace-nowrap
+                    relative flex-1 px-3 py-2.5 text-xs tracking-wider whitespace-nowrap
                     transition-colors duration-200
                     focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-inset
                     ${isActive ? activeTextClass : inactiveTextClass}
                   `}
                   data-testid={testId ? `${testId}-tab-${tab.id}` : undefined}
+                  whileHover={{ y: -1 }}
+                  whileTap={{ y: 0 }}
                 >
                   {isActive && variant === 'default' && (
                     <m.div
                       layoutId="activeTab"
-                      className="absolute bottom-0 left-0 right-0 h-[2px] bg-accent z-20"
+                      className="absolute bottom-0 left-0 right-0 h-[2px] bg-accent z-20 shadow-[0_0_10px_var(--color-accent)]"
                       transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                     />
                   )}
                   <span className="relative z-10">{tab.label}</span>
-                </button>
+                </m.button>
               );
             })}
           </div>
@@ -281,16 +283,21 @@ export const Tabs: React.FC<TabsProps> = ({
 
       {/* Tab Panel */}
       {activeTab && (
-        <div
+        <m.div
           id={`panel-${activeTab.id}`}
           role="tabpanel"
+          key={activeTab.id}
+          initial={{ opacity: 0, y: 5 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 5 }}
+          transition={{ duration: 0.2 }}
           aria-labelledby={`tab-${activeTab.id}`}
           tabIndex={0}
           className={`pt-4 pb-4 ${contentClassName}`}
           data-testid={testId ? `${testId}-panel-${activeTab.id}` : undefined}
         >
           {activeTab.content}
-        </div>
+        </m.div>
       )}
     </div>
   );

@@ -1,4 +1,5 @@
 import React from 'react';
+import { m } from 'motion/react';
 
 export interface SwitchProps {
   checked: boolean;
@@ -39,18 +40,24 @@ export const Switch: React.FC<SwitchProps> = ({
         {/* Track */}
         <div
           className={`
-            w-10 h-6 rounded-full transition-colors duration-200 ease-in-out border
-            ${checked 
-              ? 'bg-accent border-accent' 
-              : 'bg-panel-border border-panel-border group-hover:bg-panel-border/80'
-            }
+            w-10 h-6 rounded-full border shadow-inner transition-colors duration-200
+            ${checked ? 'bg-accent border-accent shadow-[0_0_15px_var(--color-accent)]' : 'bg-white/10 border-white/10'}
           `}
         />
         {/* Thumb */}
-        <div
+        <m.div
+          layout
+          transition={{
+            type: "spring",
+            stiffness: 500,
+            damping: 30
+          }}
+          animate={{
+            x: checked ? 20 : 4,
+          }}
           className={`
-            absolute top-1 left-1 w-4 h-4 rounded-full shadow transition-transform duration-200 ease-in-out
-            ${checked ? 'translate-x-4 bg-white' : 'translate-x-0 bg-text-secondary'}
+            absolute top-1 left-0 w-4 h-4 rounded-full shadow-md z-10 transition-colors duration-200
+            ${checked ? 'bg-white' : 'bg-text-secondary'}
           `}
         />
       </div>

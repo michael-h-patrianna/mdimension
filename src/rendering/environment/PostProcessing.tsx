@@ -193,8 +193,8 @@ export const PostProcessing = memo(function PostProcessing() {
       stencilBuffer: false,
       count: 2, // Two color attachments for MRT
     });
-    mainObjectMRT.textures[0].name = 'MainObjectColor_Discarded';
-    mainObjectMRT.textures[1].name = 'MainObjectNormal';
+    mainObjectMRT.textures[0]!.name = 'MainObjectColor_Discarded';
+    mainObjectMRT.textures[1]!.name = 'MainObjectNormal';
     // Add depth texture for proper occlusion testing
     const mainObjectDepthTex = new THREE.DepthTexture(initialWidth, initialHeight);
     mainObjectDepthTex.format = THREE.DepthFormat;
@@ -653,8 +653,8 @@ export const PostProcessing = memo(function PostProcessing() {
     });
 
     // Render normal pass for G-buffer (when SSR, refraction, or normal visualization needs normals)
-    // DEBUG: Simplified approach - render main objects directly to normalTarget
-    // to verify they render at all (bypassing MRT complexity)
+    // DEBUG: Using MeshNormalMaterial override to verify visualization works
+    // TODO: Switch back to MRT approach once verified
     const needsNormalPass = currentSSREnabled || currentRefractionEnabled || currentShowNormalBuffer;
     if (needsNormalPass) {
       const savedCameraLayers = camera.layers.mask;
@@ -664,15 +664,17 @@ export const PostProcessing = memo(function PostProcessing() {
       gl.setClearColor(0x000000, 0);
       gl.clear(true, true, false);
 
-      // DEBUG: Render main objects directly to normalTarget (no MRT)
-      // This tests if main objects render at all with their shaders
+      // Use MeshNormalMaterial for all objects
+      scene.overrideMaterial = normalMaterial;
+
+      // Render main objects first
       camera.layers.set(RENDER_LAYERS.MAIN_OBJECT);
       gl.render(scene, camera);
 
-      // Then render environment with MeshNormalMaterial WITH DEPTH TEST
+      // Then render environment (walls render behind due to depth test)
       camera.layers.set(RENDER_LAYERS.ENVIRONMENT);
-      scene.overrideMaterial = normalMaterial;
       gl.render(scene, camera);
+
       scene.overrideMaterial = null;
 
       // Restore camera layers

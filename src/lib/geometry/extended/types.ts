@@ -757,19 +757,26 @@ export const DEFAULT_MANDELBROT_CONFIG: MandelbulbConfig = {
 // ============================================================================
 
 /**
- * Color modes for Schroedinger visualization
- * - escapeTime: Basic discrete coloring based on iteration count
- * - smoothColoring: Continuous coloring without banding
- * - distanceEstimation: Color based on distance to set boundary
- * - interiorOnly: Show only points inside the set
- * - boundaryOnly: Show only points near the boundary (useful for 3D+)
+ * Color modes for Schroedinger quantum visualization
+ * - density: Color based on probability density |ψ|²
+ * - phase: Color based on wavefunction phase arg(ψ)
+ * - mixed: Phase for hue, density for brightness
  */
-export type SchroedingerColorMode =
-  | 'escapeTime'
-  | 'smoothColoring'
-  | 'distanceEstimation'
-  | 'interiorOnly'
-  | 'boundaryOnly'
+export type SchroedingerColorMode = 'density' | 'phase' | 'mixed'
+
+/**
+ * Named preset identifiers for quantum state configurations
+ */
+export type SchroedingerPresetName =
+  | 'organicBlob'
+  | 'quantumFoam'
+  | 'breathing'
+  | 'kaleidoscope'
+  | 'alien'
+  | 'nebula'
+  | 'crystal'
+  | 'chaos'
+  | 'custom'
 
 /**
  * Color palette presets for Schroedinger visualization.
@@ -795,37 +802,26 @@ export type SchroedingerRenderStyle = 'rayMarching'
  * - 4D-11D: Schroedinger (hyperspherical coordinates)
  */
 export interface SchroedingerConfig {
-  // Iteration parameters
-  /** Maximum iterations before considering point bounded (10-500) */
-  maxIterations: number
-  /**
-   * Escape radius threshold (2.0-16.0).
-   * Higher dimensions may need larger values (8-16) for stability.
-   */
-  escapeRadius: number
-  /** Quality preset (affects iterations and resolution) */
+  // === Quality Settings ===
+  /** Quality preset (affects sample count and resolution) */
   qualityPreset: SchroedingerQualityPreset
-
-  // Sampling resolution
   /** Samples per axis in the 3D grid (16-128) */
   resolution: number
 
-  // Visualization axes (which 3 of N dimensions to render)
+  // === Visualization Axes ===
   /** Indices of dimensions to map to X, Y, Z */
   visualizationAxes: [number, number, number]
-
-  // Parameter values for non-visualized dimensions
-  /** Fixed values for dimensions not being visualized */
+  /** Fixed values for dimensions not being visualized (slice position) */
   parameterValues: number[]
 
-  // Navigation (zoom/pan)
+  // === Navigation ===
   /** Center coordinates in N-dimensional space */
   center: number[]
   /** Extent (zoom level) - half-width of viewing region */
   extent: number
 
-  // Color mapping
-  /** Color algorithm to use */
+  // === Color Settings ===
+  /** Color mode for visualization */
   colorMode: SchroedingerColorMode
   /** Color palette preset */
   palette: SchroedingerPalette
@@ -833,67 +829,56 @@ export interface SchroedingerConfig {
   customPalette: { start: string; mid: string; end: string }
   /** Whether to invert color mapping */
   invertColors: boolean
-  /** Color for points inside the set */
-  interiorColor: string
-  /** Number of palette cycles (1-20) */
-  paletteCycles: number
 
-  // Rendering style
-  /** How to render the point cloud */
+  // === Rendering Style ===
+  /** How to render the volume */
   renderStyle: SchroedingerRenderStyle
-  /** Point size for point cloud mode */
-  pointSize: number
 
-  // Boundary filtering (for 3D+ visualization)
-  /**
-   * Boundary threshold range for 'boundaryOnly' color mode.
-   */
-  boundaryThreshold: [number, number]
+  // === Quantum State Configuration ===
+  /** Named preset or 'custom' */
+  presetName: SchroedingerPresetName
+  /** Random seed for preset generation */
+  seed: number
+  /** Number of superposition terms (1-8) */
+  termCount: number
+  /** Maximum quantum number per dimension (2-6) */
+  maxQuantumNumber: number
+  /** Variation in per-dimension frequencies (0-0.5) */
+  frequencySpread: number
 
-  // Schroedinger settings (for 3D+)
-  /**
-   * Power for Schroedinger formula (3D and higher).
-   * Default: 8 produces the classic bulb shape.
-   * Range: 2-16
-   */
-  schroedingerPower: number
+  // === Volume Rendering Parameters ===
+  /** Time evolution speed multiplier (0.1-2.0) */
+  timeScale: number
+  /** Coordinate scale into HO basis (0.5-2.0) */
+  fieldScale: number
+  /** Absorption coefficient for Beer-Lambert (0.1-5.0) */
+  densityGain: number
+  /** Samples per ray (32-128) */
+  sampleCount: number
 
-  /**
-   * Epsilon for numerical stability near origin.
-   */
-  epsilon: number
-
-  // === Power Animation ===
-  powerAnimationEnabled: boolean
-  powerMin: number
-  powerMax: number
-  powerSpeed: number
-
-  // === Alternate Power ===
-  alternatePowerEnabled: boolean
-  alternatePowerValue: number
-  alternatePowerBlend: number
-
-  // === Dimension Mixing Animation ===
-  dimensionMixEnabled: boolean
-  mixIntensity: number
-  mixFrequency: number
+  // === Isosurface Mode (Optional) ===
+  /** Enable isosurface rendering instead of volumetric */
+  isoEnabled: boolean
+  /** Log-density threshold for isosurface (-6 to 0) */
+  isoThreshold: number
 
   // === Origin Drift Animation ===
+  /** Enable multi-frequency wandering in extra dimensions */
   originDriftEnabled: boolean
+  /** Drift amplitude (0.01-0.5) */
   driftAmplitude: number
+  /** Base frequency for drift (0.05-0.5) */
   driftBaseFrequency: number
+  /** Frequency spread between dimensions (0-1) */
   driftFrequencySpread: number
 
   // === Slice Animation (4D+ only) ===
+  /** Enable slice animation through extra dimensions */
   sliceAnimationEnabled: boolean
+  /** Slice animation speed (0.01-0.1) */
   sliceSpeed: number
+  /** Slice animation amplitude (0.1-1.0) */
   sliceAmplitude: number
-
-  // === Angular Phase Shifts ===
-  phaseShiftEnabled: boolean
-  phaseSpeed: number
-  phaseAmplitude: number
 }
 
 /**
@@ -910,54 +895,55 @@ export const SCHROEDINGER_QUALITY_PRESETS: Record<
 }
 
 /**
- * Default Schroedinger configuration
+ * Default Schroedinger quantum visualization configuration
  */
 export const DEFAULT_SCHROEDINGER_CONFIG: SchroedingerConfig = {
-  maxIterations: 80,
-  escapeRadius: 4.0,
+  // Quality
   qualityPreset: 'standard',
   resolution: 32,
+
+  // Visualization
   visualizationAxes: [0, 1, 2],
   parameterValues: [],
   center: [],
   extent: 2.0,
-  colorMode: 'escapeTime',
+
+  // Color
+  colorMode: 'mixed',
   palette: 'complement',
   customPalette: { start: '#0000ff', mid: '#ffffff', end: '#ff8000' },
   invertColors: false,
-  interiorColor: '#000000',
-  paletteCycles: 1,
+
+  // Rendering
   renderStyle: 'rayMarching',
-  pointSize: 3,
-  boundaryThreshold: [0.1, 0.9],
-  schroedingerPower: 8,
-  epsilon: 1e-12,
-  // Power Animation defaults
-  powerAnimationEnabled: false,
-  powerMin: 5.0,
-  powerMax: 12.0,
-  powerSpeed: 0.03,
-  // Alternate Power defaults
-  alternatePowerEnabled: false,
-  alternatePowerValue: 4.0,
-  alternatePowerBlend: 0.5,
-  // Dimension Mixing defaults
-  dimensionMixEnabled: false,
-  mixIntensity: 0.1,
-  mixFrequency: 0.5,
-  // Origin Drift defaults
+
+  // Quantum state
+  presetName: 'custom',
+  seed: 42,
+  termCount: 1,
+  maxQuantumNumber: 6,
+  frequencySpread: 0.01,
+
+  // Volume rendering
+  timeScale: 0.8,
+  fieldScale: 1.0,
+  densityGain: 2.0,
+  sampleCount: 64,
+
+  // Isosurface (disabled by default)
+  isoEnabled: false,
+  isoThreshold: -0.76,
+
+  // Origin Drift
   originDriftEnabled: false,
   driftAmplitude: 0.03,
   driftBaseFrequency: 0.04,
   driftFrequencySpread: 0.2,
-  // Slice Animation defaults
+
+  // Slice Animation
   sliceAnimationEnabled: false,
   sliceSpeed: 0.02,
   sliceAmplitude: 0.3,
-  // Angular Phase Shifts defaults
-  phaseShiftEnabled: false,
-  phaseSpeed: 0.03,
-  phaseAmplitude: 0.3,
 }
 
 // ============================================================================

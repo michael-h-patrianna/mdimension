@@ -73,24 +73,64 @@ describe('SchroedingerMesh', () => {
     expect(config.parameterValues[0]).toBe(0.5);
   });
 
-  it('should have correct dimension-aware defaults for 4D', () => {
+  it('should initialize correct slice parameter count for 4D', () => {
     useGeometryStore.setState({ dimension: 4 });
     useExtendedObjectStore.getState().initializeSchroedingerForDimension(4);
 
     const config = useExtendedObjectStore.getState().schroedinger;
-    expect(config.escapeRadius).toBe(8.0);
-    expect(config.maxIterations).toBe(50);
-    expect(config.schroedingerPower).toBe(8);
     expect(config.parameterValues.length).toBe(1); // 4D - 3 = 1 slice param
   });
 
-  it('should have correct dimension-aware defaults for 9D', () => {
+  it('should initialize correct slice parameter count for 9D', () => {
     useGeometryStore.setState({ dimension: 9 });
     useExtendedObjectStore.getState().initializeSchroedingerForDimension(9);
 
     const config = useExtendedObjectStore.getState().schroedinger;
-    expect(config.escapeRadius).toBe(12.0);
-    expect(config.maxIterations).toBe(35);
     expect(config.parameterValues.length).toBe(6); // 9D - 3 = 6 slice params
+    // densityGain should be boosted for higher dimensions
+    expect(config.densityGain).toBeGreaterThan(2.0);
+  });
+
+  it('should update quantum preset name', () => {
+    useGeometryStore.setState({ dimension: 4 });
+    useExtendedObjectStore.getState().initializeSchroedingerForDimension(4);
+
+    useExtendedObjectStore.getState().setSchroedingerPresetName('quantumFoam');
+
+    const config = useExtendedObjectStore.getState().schroedinger;
+    expect(config.presetName).toBe('quantumFoam');
+  });
+
+  it('should update term count within valid range', () => {
+    useGeometryStore.setState({ dimension: 4 });
+    useExtendedObjectStore.getState().initializeSchroedingerForDimension(4);
+
+    useExtendedObjectStore.getState().setSchroedingerTermCount(5);
+
+    const config = useExtendedObjectStore.getState().schroedinger;
+    expect(config.termCount).toBe(5);
+    expect(config.presetName).toBe('custom'); // Should switch to custom
+  });
+
+  it('should randomize seed', () => {
+    useGeometryStore.setState({ dimension: 4 });
+    useExtendedObjectStore.getState().initializeSchroedingerForDimension(4);
+
+    const initialSeed = useExtendedObjectStore.getState().schroedinger.seed;
+    useExtendedObjectStore.getState().randomizeSchroedingerSeed();
+
+    const config = useExtendedObjectStore.getState().schroedinger;
+    expect(config.seed).not.toBe(initialSeed);
+    expect(config.presetName).toBe('custom'); // Should switch to custom
+  });
+
+  it('should toggle isosurface mode', () => {
+    useGeometryStore.setState({ dimension: 4 });
+    useExtendedObjectStore.getState().initializeSchroedingerForDimension(4);
+
+    useExtendedObjectStore.getState().setSchroedingerIsoEnabled(true);
+
+    const config = useExtendedObjectStore.getState().schroedinger;
+    expect(config.isoEnabled).toBe(true);
   });
 });

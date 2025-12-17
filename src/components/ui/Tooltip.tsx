@@ -13,7 +13,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
   content,
   children,
   position = 'top',
-  delay = 300,
+  delay = 200,
   className = '',
 }) => {
   const [isVisible, setIsVisible] = useState(false);
@@ -75,10 +75,10 @@ export const Tooltip: React.FC<TooltipProps> = ({
   }, []);
 
   const arrowStyles = {
-    top: 'bottom-[-4px] left-1/2 -translate-x-1/2 border-l-transparent border-r-transparent border-b-transparent border-t-panel-border',
-    bottom: 'top-[-4px] left-1/2 -translate-x-1/2 border-l-transparent border-r-transparent border-t-transparent border-b-panel-border',
-    left: 'right-[-4px] top-1/2 -translate-y-1/2 border-t-transparent border-b-transparent border-r-transparent border-l-panel-border',
-    right: 'left-[-4px] top-1/2 -translate-y-1/2 border-t-transparent border-b-transparent border-l-transparent border-r-panel-border',
+    top: 'bottom-[-4px] left-1/2 -translate-x-1/2 border-l-transparent border-r-transparent border-b-transparent border-t-white/10',
+    bottom: 'top-[-4px] left-1/2 -translate-x-1/2 border-l-transparent border-r-transparent border-t-transparent border-b-white/10',
+    left: 'right-[-4px] top-1/2 -translate-y-1/2 border-t-transparent border-b-transparent border-r-transparent border-l-white/10',
+    right: 'left-[-4px] top-1/2 -translate-y-1/2 border-t-transparent border-b-transparent border-l-transparent border-r-white/10',
   };
 
   return (
@@ -96,19 +96,20 @@ export const Tooltip: React.FC<TooltipProps> = ({
         {isVisible && (
           <m.div
             ref={tooltipRef}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            transition={{ duration: 0.15 }}
-            className="fixed z-50 px-3 py-2 text-xs font-medium text-text-primary bg-panel-bg/90 backdrop-blur-md border border-panel-border rounded-lg shadow-xl pointer-events-none max-w-xs break-words"
+            initial={{ opacity: 0, scale: 0.95, y: position === 'top' ? 4 : -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ type: "spring", stiffness: 500, damping: 30 }}
+            className="fixed z-50 px-3 py-1.5 text-xs font-medium text-text-primary bg-black/80 backdrop-blur-xl border border-white/10 rounded-lg shadow-2xl pointer-events-none max-w-xs break-words tracking-wide"
             style={{
               left: `${coords.x}px`,
               top: `${coords.y}px`,
+              textShadow: '0 0 10px rgba(0,0,0,0.5)'
             }}
             role="tooltip"
           >
             {content}
-            {/* Arrow (Visual only, color matched to border for 'glass' look) */}
+            {/* Arrow */}
             <div
               className={`absolute w-0 h-0 border-4 ${arrowStyles[position]}`}
             />

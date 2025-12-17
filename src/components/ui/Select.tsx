@@ -35,24 +35,24 @@ export const Select = <T extends string = string>({
           {label}
         </label>
       )}
-      <div className="relative">
+      <div className="relative group">
         <select
           value={value}
           onChange={handleChange}
           disabled={disabled}
-          className="w-full px-4 py-1 bg-panel-bg text-text-primary border border-panel-border rounded-lg appearance-none cursor-pointer transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent disabled:opacity-50 disabled:cursor-not-allowed hover:bg-panel-border/50"
+          className="glass-input w-full pl-3 pr-8 py-1.5 text-xs text-text-primary rounded-lg appearance-none cursor-pointer focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/5 transition-colors"
           aria-label={label}
           data-testid={testId}
         >
           {options.map((option) => (
-            <option key={option.value} value={option.value}>
+            <option key={option.value} value={option.value} className="bg-background text-text-primary">
               {option.label}
             </option>
           ))}
         </select>
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+        <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none transition-transform duration-200 group-hover:translate-y-[-40%]">
           <svg
-            className="w-4 h-4 text-text-secondary"
+            className="w-3.5 h-3.5 text-text-tertiary group-hover:text-text-primary transition-colors"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"

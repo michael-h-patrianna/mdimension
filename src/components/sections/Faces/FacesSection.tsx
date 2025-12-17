@@ -11,6 +11,7 @@
 
 import { Section } from '@/components/sections/Section';
 import { Slider } from '@/components/ui/Slider';
+import { ColorPicker } from '@/components/ui/ColorPicker';
 import { Switch } from '@/components/ui/Switch';
 import { Tabs } from '@/components/ui/Tabs';
 import {
@@ -319,23 +320,16 @@ const ColorsTabContent: React.FC<ColorsTabContentProps> = ({
       {/* Monochromatic and Analogous use base color */}
       {(colorAlgorithm === 'monochromatic' ||
         colorAlgorithm === 'analogous') && (
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-text-secondary">
-            Base Color
-          </label>
-          <div className="flex items-center gap-2">
-            <input
-              type="color"
-              value={faceColor}
-              onChange={(e) => setFaceColor(e.target.value)}
-              className="w-10 h-10 rounded cursor-pointer border border-panel-border"
-            />
-            <span className="text-xs font-mono text-text-secondary">
-              {faceColor}
-            </span>
-          </div>
-        </div>
+        <ColorPicker
+          label="Base Color"
+          value={faceColor}
+          onChange={setFaceColor}
+          // Opacity is handled by Material tab for now, but we could wire it here if we had access to opacity state
+          // For now, disable alpha here to prevent Hex8 crash, as this sets faceColor only
+          disableAlpha={true}
+        />
       )}
+
 
       {colorAlgorithm === 'cosine' && (
         <div className="space-y-4">
@@ -673,20 +667,13 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
           <SectionHeader title="Specular" />
 
           {/* Specular Color */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-text-secondary">
-              Specular Color
-            </label>
-            <div className="flex items-center gap-2">
-              <input
-                type="color"
+          <div className="flex items-center justify-between">
+              <ColorPicker
+                label="Specular Color"
                 value={specularColor}
-                onChange={(e) => setSpecularColor(e.target.value)}
-                className="w-10 h-10 rounded cursor-pointer border border-panel-border"
+                onChange={setSpecularColor}
+                disableAlpha={true}
               />
-              <span className="text-xs font-mono text-text-secondary">
-                {specularColor}
-              </span>
               {specularColor !== DEFAULT_SPECULAR_COLOR && (
                 <button
                   onClick={() => setSpecularColor(DEFAULT_SPECULAR_COLOR)}
@@ -696,8 +683,8 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
                   Reset
                 </button>
               )}
-            </div>
           </div>
+
 
           {/* Specular Intensity */}
           <Slider

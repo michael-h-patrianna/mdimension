@@ -1,5 +1,9 @@
 /**
  * Tests for SchroedingerAnimationDrawer component
+ *
+ * Tests quantum wavefunction animation controls:
+ * - Origin Drift animation
+ * - Slice Animation (4D+ only)
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -17,21 +21,15 @@ describe('SchroedingerAnimationDrawer', () => {
     useGeometryStore.getState().setObjectType('schroedinger');
   });
 
-  it('should render Power Animation controls', () => {
+  it('should render Origin Drift controls', () => {
     render(<SchroedingerAnimationDrawer />);
-    expect(screen.getByText('Power Animation')).toBeInTheDocument();
-  });
-
-  it('should render Phase Shifts controls', () => {
-    render(<SchroedingerAnimationDrawer />);
-    expect(screen.getByText('Phase Shifts')).toBeInTheDocument();
+    expect(screen.getByText('Origin Drift')).toBeInTheDocument();
   });
 
   it('should have correct test ids', () => {
     render(<SchroedingerAnimationDrawer />);
     expect(screen.getByTestId('schroedinger-animation-drawer')).toBeInTheDocument();
-    expect(screen.getByTestId('animation-panel-powerAnimation')).toBeInTheDocument();
-    expect(screen.getByTestId('animation-panel-phaseShifts')).toBeInTheDocument();
+    expect(screen.getByTestId('animation-panel-originDrift')).toBeInTheDocument();
   });
 
   it('should not show Slice Animation for 3D', () => {
@@ -52,29 +50,21 @@ describe('SchroedingerAnimationDrawer', () => {
 
     // Each system has a toggle button with "OFF" initially
     const offButtons = screen.getAllByText('OFF');
-    expect(offButtons.length).toBeGreaterThanOrEqual(2); // power, phase
+    expect(offButtons.length).toBeGreaterThanOrEqual(1); // origin drift
   });
 
-  it('should toggle Power Animation', () => {
+  it('should toggle Origin Drift', () => {
     render(<SchroedingerAnimationDrawer />);
 
-    const toggleBtn = screen.getByRole('button', { name: /toggle power animation/i });
+    const toggleBtn = screen.getByRole('button', { name: /toggle origin drift/i });
     expect(toggleBtn).toBeInTheDocument();
 
     // Initially off
-    expect(useExtendedObjectStore.getState().schroedinger.powerAnimationEnabled).toBe(false);
+    expect(useExtendedObjectStore.getState().schroedinger.originDriftEnabled).toBe(false);
 
     // Click to enable
     fireEvent.click(toggleBtn);
-    expect(useExtendedObjectStore.getState().schroedinger.powerAnimationEnabled).toBe(true);
-  });
-
-  it('should toggle Phase Shifts', () => {
-    render(<SchroedingerAnimationDrawer />);
-
-    const toggleBtn = screen.getByRole('button', { name: /toggle phase shifts/i });
-    fireEvent.click(toggleBtn);
-    expect(useExtendedObjectStore.getState().schroedinger.phaseShiftEnabled).toBe(true);
+    expect(useExtendedObjectStore.getState().schroedinger.originDriftEnabled).toBe(true);
   });
 
   it('should toggle Slice Animation for 4D', () => {
@@ -86,41 +76,44 @@ describe('SchroedingerAnimationDrawer', () => {
     expect(useExtendedObjectStore.getState().schroedinger.sliceAnimationEnabled).toBe(true);
   });
 
-  it('should render min/max/speed sliders for Power Animation', () => {
+  it('should render amplitude/frequency/spread sliders for Origin Drift', () => {
+    useGeometryStore.getState().setDimension(3); // Ensure 3D for single amplitude
     render(<SchroedingerAnimationDrawer />);
 
-    // Power Animation has Min, Max, Speed
-    expect(screen.getByText('Min')).toBeInTheDocument();
-    expect(screen.getByText('Max')).toBeInTheDocument();
-
-    // Multiple Speed labels (power and phase have speed)
-    const speedLabels = screen.getAllByText('Speed');
-    expect(speedLabels.length).toBeGreaterThanOrEqual(2);
-  });
-
-  it('should render amplitude sliders', () => {
-    render(<SchroedingerAnimationDrawer />);
-
-    // Phase Shifts and potentially others have Amplitude
+    // Origin Drift has Amplitude, Frequency, Spread (in 3D mode, only one Amplitude)
     const amplitudeLabels = screen.getAllByText('Amplitude');
     expect(amplitudeLabels.length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('Frequency')).toBeInTheDocument();
+    expect(screen.getByText('Spread')).toBeInTheDocument();
   });
 
-  it('should render all 3 systems for 4D+ dimension', () => {
+  it('should render amplitude and speed sliders for Slice Animation in 4D', () => {
     useGeometryStore.getState().setDimension(4);
     render(<SchroedingerAnimationDrawer />);
 
-    expect(screen.getByText('Power Animation')).toBeInTheDocument();
-    expect(screen.getByText('Phase Shifts')).toBeInTheDocument();
+    // Slice Animation has Amplitude and Speed (multiple Amplitude labels)
+    const amplitudeLabels = screen.getAllByText('Amplitude');
+    expect(amplitudeLabels.length).toBeGreaterThanOrEqual(2); // origin drift + slice
+
+    const speedLabels = screen.getAllByText('Speed');
+    expect(speedLabels.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('should render both systems for 4D+ dimension', () => {
+    useGeometryStore.getState().setDimension(4);
+    render(<SchroedingerAnimationDrawer />);
+
+    expect(screen.getByText('Origin Drift')).toBeInTheDocument();
     expect(screen.getByText('Slice Animation')).toBeInTheDocument();
   });
 
   it('should have disabled state styling when animation is off', () => {
     render(<SchroedingerAnimationDrawer />);
 
-    // Power animation is off, its parameter container should have opacity-50
-    const powerPanel = screen.getByTestId('animation-panel-powerAnimation');
-    const paramContainer = powerPanel.querySelector('.opacity-50');
+    // Origin drift is off, its parameter container should have opacity-50
+    const originPanel = screen.getByTestId('animation-panel-originDrift');
+    const paramContainer = originPanel.querySelector('.opacity-50');
     expect(paramContainer).toBeInTheDocument();
   });
+
 });

@@ -6,6 +6,7 @@
  */
 
 import { Slider } from '@/components/ui/Slider';
+import { ColorPicker } from '@/components/ui/ColorPicker';
 import { Switch } from '@/components/ui/Switch';
 import { DEFAULT_FOG_STATE, type FogType } from '@/stores/slices/fogSlice';
 import { useEnvironmentStore } from '@/stores/environmentStore';
@@ -94,22 +95,13 @@ export const FogControls: React.FC = () => {
         </div>
 
         {/* Fog Color */}
-        <div className="space-y-2">
-          <label className="block text-xs font-medium text-text-secondary">
-            Fog Color
-          </label>
-          <div className="flex items-center gap-2">
-            <input
-              type="color"
-              value={fogColor}
-              onChange={(e) => setFogColor(e.target.value)}
-              className="w-8 h-8 rounded cursor-pointer border border-panel-border"
-              aria-label="Fog Color"
-              data-testid="fog-color"
-            />
-            <span className="text-xs font-mono text-text-secondary">{fogColor}</span>
-          </div>
-        </div>
+        <ColorPicker
+          label="Fog Color"
+          value={fogColor}
+          onChange={setFogColor}
+          disableAlpha={true}
+        />
+
 
         {/* Volumetric-specific controls */}
         {fogType === 'volumetric' && (

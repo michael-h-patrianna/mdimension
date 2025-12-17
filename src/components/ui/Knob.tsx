@@ -87,6 +87,24 @@ export const Knob: React.FC<KnobProps> = ({
     onChange(min);
   }, [min, onChange]);
 
+  // Generate tick marks
+  const ticks = Array.from({ length: 11 }).map((_, i) => {
+    const tickAngle = minRotation + (i / 10) * (maxRotation - minRotation);
+    const rad = (tickAngle - 90) * (Math.PI / 180);
+    const inner = getCoords(rad, 15);
+    const outer = getCoords(rad, 17);
+    return (
+      <line
+        key={i}
+        x1={inner.x} y1={inner.y}
+        x2={outer.x} y2={outer.y}
+        stroke="var(--color-text-tertiary)"
+        strokeWidth="1"
+        strokeOpacity={0.3}
+      />
+    );
+  });
+
   return (
     <div className={`flex flex-col items-center gap-2 ${className}`}>
       <m.div
@@ -124,15 +142,15 @@ export const Knob: React.FC<KnobProps> = ({
 
             {/* Base Body Gradient (Linear Vertical) */}
             <linearGradient id={`body-grad-${id}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--color-text-secondary)" stopOpacity="0.3"/>
-              <stop offset="100%" stopColor="var(--color-background)" stopOpacity="1"/>
+              <stop offset="0%" stopColor="var(--color-text-secondary)" stopOpacity="0.2"/>
+              <stop offset="100%" stopColor="var(--color-background)" stopOpacity="0.8"/>
             </linearGradient>
 
             {/* Highlight Gradient (Linear Vertical for reflection) */}
              <linearGradient id={`highlight-grad-${id}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="white" stopOpacity="0.3"/>
+              <stop offset="0%" stopColor="white" stopOpacity="0.2"/>
               <stop offset="40%" stopColor="white" stopOpacity="0"/>
-              <stop offset="100%" stopColor="white" stopOpacity="0.1"/>
+              <stop offset="100%" stopColor="white" stopOpacity="0.05"/>
             </linearGradient>
           </defs>
 
@@ -144,6 +162,9 @@ export const Knob: React.FC<KnobProps> = ({
             strokeWidth="2"
             strokeOpacity="0.1"
           />
+          
+          {/* Tick Marks */}
+          <g>{ticks}</g>
 
           {/* Active Value Arc */}
           <path
@@ -156,37 +177,36 @@ export const Knob: React.FC<KnobProps> = ({
             className="transition-all duration-75"
           />
 
-          {/* Dial Group (Scales via Motion whileTap, so we don't need group-hover:scale CSS here, or we can keep it for hover) */}
+          {/* Dial Group */}
           <m.g
             className="origin-center"
-            // We use whileTap on parent, but we can also animate this group if needed.
-            // The CSS hover scale is still nice.
             whileHover={{ scale: 0.9 }}
             transition={{ duration: 0.2 }}
           >
              {/* Soft Shadow */}
              <circle cx="20" cy="20" r="16" fill={`url(#shadow-grad-${id})`} />
 
-             {/* Depression Ellipse */}
-             <ellipse cx="20" cy="22" rx="14" ry="14.5" fill="black" fillOpacity="0.2" />
+             {/* Depression Ellipse (Simulates 3D bevel) */}
+             <circle cx="20" cy="21" r="14" fill="black" fillOpacity="0.3" />
 
              {/* Main Body */}
-             <circle cx="20" cy="20" r="14" fill={`url(#body-grad-${id})`} stroke="var(--color-border)" strokeOpacity="0.2" strokeWidth="1.5" />
+             <circle cx="20" cy="20" r="14" fill={`url(#body-grad-${id})`} stroke="var(--color-border)" strokeOpacity="0.2" strokeWidth="1" />
 
              {/* Inner Highlight Ring */}
-             <circle cx="20" cy="20" r="13" fill="none" stroke={`url(#highlight-grad-${id})`} strokeWidth="1.5" />
+             <circle cx="20" cy="20" r="13" fill="none" stroke={`url(#highlight-grad-${id})`} strokeWidth="1" />
 
-             {/* Hover Highlight Overlay - managed by CSS for opacity */}
+             {/* Hover Highlight Overlay */}
              <circle cx="20" cy="20" r="14" fill="white" className="opacity-0 group-hover:opacity-5 transition-opacity duration-200" />
           </m.g>
 
           {/* Indicator Dot (Rotates) */}
           <m.g
             animate={{ rotate: rotation }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }} // Smooth spring animation for rotation
-            style={{ originX: "20px", originY: "20px" }} // SVG origin is tricky in Motion, usually handled by transformOrigin style
+            transition={{ type: "spring", stiffness: 300, damping: 30 }} 
+            style={{ originX: "20px", originY: "20px" }}
           >
-             <circle cx="20" cy="8" r="1.5" fill="var(--color-accent)" filter={`url(#glow-${id})`} />
+             {/* Pointer line instead of dot for precision */}
+             <rect x="19.5" y="8" width="1" height="4" rx="0.5" fill="var(--color-accent)" filter={`url(#glow-${id})`} />
           </m.g>
         </svg>
 
@@ -195,7 +215,7 @@ export const Knob: React.FC<KnobProps> = ({
       </m.div>
 
       {label && (
-        <span className="text-xs font-medium text-text-secondary select-none tracking-wide uppercase">
+        <span className="text-[10px] font-medium text-text-secondary select-none tracking-wider uppercase opacity-80">
           {label}
         </span>
       )}

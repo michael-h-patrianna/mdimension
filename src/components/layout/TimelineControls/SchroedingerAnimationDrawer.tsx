@@ -5,8 +5,7 @@
  * TimelineControls bottom drawer.
  *
  * Animation Systems:
- * - Power Animation: Smoothly oscillates the power value
- * - Phase Shifts: Adds phase offsets to create flowing distortions
+ * - Origin Drift: Animates the origin in extra dimensions
  * - Slice Animation: 4D+ only, animates the 4D slice position
  *
  * @see docs/prd/ndimensional-visualizer.md
@@ -34,15 +33,11 @@ export const SchroedingerAnimationDrawer: React.FC = React.memo(() => {
   // Get config and setters from store
   const {
     config,
-    // Power Animation
-    setPowerAnimationEnabled,
-    setPowerMin,
-    setPowerMax,
-    setPowerSpeed,
-    // Phase Shifts
-    setPhaseShiftEnabled,
-    setPhaseSpeed,
-    setPhaseAmplitude,
+    // Origin Drift Animation
+    setOriginDriftEnabled,
+    setDriftAmplitude,
+    setDriftBaseFrequency,
+    setDriftFrequencySpread,
     // Slice Animation
     setSliceAnimationEnabled,
     setSliceSpeed,
@@ -50,15 +45,11 @@ export const SchroedingerAnimationDrawer: React.FC = React.memo(() => {
   } = useExtendedObjectStore(
     useShallow((state) => ({
       config: state.schroedinger,
-      // Power Animation
-      setPowerAnimationEnabled: state.setSchroedingerPowerAnimationEnabled,
-      setPowerMin: state.setSchroedingerPowerMin,
-      setPowerMax: state.setSchroedingerPowerMax,
-      setPowerSpeed: state.setSchroedingerPowerSpeed,
-      // Phase Shifts
-      setPhaseShiftEnabled: state.setSchroedingerPhaseShiftEnabled,
-      setPhaseSpeed: state.setSchroedingerPhaseSpeed,
-      setPhaseAmplitude: state.setSchroedingerPhaseAmplitude,
+      // Origin Drift Animation
+      setOriginDriftEnabled: state.setSchroedingerOriginDriftEnabled,
+      setDriftAmplitude: state.setSchroedingerDriftAmplitude,
+      setDriftBaseFrequency: state.setSchroedingerDriftBaseFrequency,
+      setDriftFrequencySpread: state.setSchroedingerDriftFrequencySpread,
       // Slice Animation
       setSliceAnimationEnabled: state.setSchroedingerSliceAnimationEnabled,
       setSliceSpeed: state.setSchroedingerSliceSpeed,
@@ -68,121 +59,69 @@ export const SchroedingerAnimationDrawer: React.FC = React.memo(() => {
 
   return (
     <AnimationDrawerContainer data-testid="schroedinger-animation-drawer">
-      {/* Power Animation */}
-      <div className="space-y-3" data-testid="animation-panel-powerAnimation">
+      {/* Origin Drift Animation */}
+      <div className="space-y-3" data-testid="animation-panel-originDrift">
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">
-            Power Animation
+            Origin Drift
           </label>
           <ToggleButton
-            pressed={config.powerAnimationEnabled}
-            onToggle={() => setPowerAnimationEnabled(!config.powerAnimationEnabled)}
+            pressed={config.originDriftEnabled}
+            onToggle={() => setOriginDriftEnabled(!config.originDriftEnabled)}
             className="text-xs px-2 py-1 h-auto"
-            ariaLabel="Toggle power animation"
+            ariaLabel="Toggle origin drift"
           >
-            {config.powerAnimationEnabled ? 'ON' : 'OFF'}
+            {config.originDriftEnabled ? 'ON' : 'OFF'}
           </ToggleButton>
         </div>
 
-        <div className={`space-y-3 ${!config.powerAnimationEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-text-secondary w-16">Min</span>
-            <input
-              type="range"
-              min={2}
-              max={16}
-              step={0.5}
-              value={config.powerMin}
-              onChange={(e) => setPowerMin(parseFloat(e.target.value))}
-              className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
-              aria-label="Power animation min"
-            />
-            <span className="text-xs font-mono w-10 text-right">
-              {config.powerMin.toFixed(1)}
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-text-secondary w-16">Max</span>
-            <input
-              type="range"
-              min={3}
-              max={24}
-              step={0.5}
-              value={config.powerMax}
-              onChange={(e) => setPowerMax(parseFloat(e.target.value))}
-              className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
-              aria-label="Power animation max"
-            />
-            <span className="text-xs font-mono w-10 text-right">
-              {config.powerMax.toFixed(1)}
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-text-secondary w-16">Speed</span>
-            <input
-              type="range"
-              min={0.01}
-              max={0.2}
-              step={0.01}
-              value={config.powerSpeed}
-              onChange={(e) => setPowerSpeed(parseFloat(e.target.value))}
-              className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
-              aria-label="Power animation speed"
-            />
-            <span className="text-xs font-mono w-10 text-right">
-              {config.powerSpeed.toFixed(2)}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Phase Shifts */}
-      <div className="space-y-3" data-testid="animation-panel-phaseShifts">
-        <div className="flex items-center justify-between">
-          <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">
-            Phase Shifts
-          </label>
-          <ToggleButton
-            pressed={config.phaseShiftEnabled}
-            onToggle={() => setPhaseShiftEnabled(!config.phaseShiftEnabled)}
-            className="text-xs px-2 py-1 h-auto"
-            ariaLabel="Toggle phase shifts"
-          >
-            {config.phaseShiftEnabled ? 'ON' : 'OFF'}
-          </ToggleButton>
-        </div>
-
-        <div className={`space-y-3 ${!config.phaseShiftEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
+        <div className={`space-y-3 ${!config.originDriftEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
           <div className="flex items-center gap-3">
             <span className="text-xs text-text-secondary w-16">Amplitude</span>
             <input
               type="range"
-              min={0}
-              max={0.785}
+              min={0.01}
+              max={0.5}
               step={0.01}
-              value={config.phaseAmplitude}
-              onChange={(e) => setPhaseAmplitude(parseFloat(e.target.value))}
+              value={config.driftAmplitude}
+              onChange={(e) => setDriftAmplitude(parseFloat(e.target.value))}
               className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
-              aria-label="Phase shifts amplitude"
+              aria-label="Drift amplitude"
             />
             <span className="text-xs font-mono w-10 text-right">
-              {config.phaseAmplitude.toFixed(2)}
+              {config.driftAmplitude.toFixed(2)}
             </span>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-text-secondary w-16">Speed</span>
+            <span className="text-xs text-text-secondary w-16">Frequency</span>
             <input
               type="range"
               min={0.01}
-              max={0.2}
+              max={0.5}
               step={0.01}
-              value={config.phaseSpeed}
-              onChange={(e) => setPhaseSpeed(parseFloat(e.target.value))}
+              value={config.driftBaseFrequency}
+              onChange={(e) => setDriftBaseFrequency(parseFloat(e.target.value))}
               className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
-              aria-label="Phase shifts speed"
+              aria-label="Drift frequency"
             />
             <span className="text-xs font-mono w-10 text-right">
-              {config.phaseSpeed.toFixed(2)}
+              {config.driftBaseFrequency.toFixed(2)}
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-text-secondary w-16">Spread</span>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={config.driftFrequencySpread}
+              onChange={(e) => setDriftFrequencySpread(parseFloat(e.target.value))}
+              className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
+              aria-label="Drift spread"
+            />
+            <span className="text-xs font-mono w-10 text-right">
+              {config.driftFrequencySpread.toFixed(2)}
             </span>
           </div>
         </div>

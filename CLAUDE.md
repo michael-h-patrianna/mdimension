@@ -20,6 +20,31 @@ WHY: Tracks progress, maintains focus
 Coding agents must follow `docs/meta/styleguide.md` - No exceptions!
 All shaders MUST use WebGL2/GLSL ES 3.00 syntax (`in`/`out`, `layout`, no `attribute`/`varying`/`gl_FragColor`).
 
+## THREE.JS DPR/VIEWPORT GOTCHA
+
+**CRITICAL**: When rendering to WebGLRenderTarget at non-standard resolutions, NEVER use `gl.setViewport()`. It internally multiplies by device pixel ratio (DPR), causing incorrect rendering on high-DPI displays.
+
+```typescript
+// ✗ WRONG - DPR multiplication breaks non-standard resolution targets
+gl.setRenderTarget(target);
+gl.setViewport(0, 0, target.width, target.height);
+
+// ✓ CORRECT - exact pixel values, no DPR multiplication
+target.viewport.set(0, 0, target.width, target.height);
+gl.setRenderTarget(target);
+```
+
+For fullscreen quad shaders rendered manually (not via ShaderPass), use direct NDC coordinates:
+```glsl
+// ✗ WRONG - camera matrices affected by DPR
+gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+
+// ✓ CORRECT - direct NDC for PlaneGeometry(2, 2)
+gl_Position = vec4(position.xy, 0.0, 1.0);
+```
+
+See: https://github.com/mrdoob/three.js/issues/27655
+
 ## MANDATORY EXECUTION PROTOCOL
 1. Always complete all tasks fully. Do not simplify approaches, do not skip tasks.
 2. Always keep tests up to date and maintain 100% test coverage.

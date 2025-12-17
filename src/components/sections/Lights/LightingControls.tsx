@@ -13,6 +13,7 @@
 import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { Slider } from '@/components/ui/Slider';
+import { ColorPicker } from '@/components/ui/ColorPicker';
 import { Switch } from '@/components/ui/Switch';
 import {
   DEFAULT_AMBIENT_INTENSITY,
@@ -90,16 +91,13 @@ export const LightingControls: React.FC<LightingControlsProps> = React.memo(({
         </h4>
 
         {/* Ambient Color */}
-        <div className="space-y-1">
-          <label className="block text-xs font-medium text-text-secondary">Color</label>
-          <div className="flex items-center gap-2">
-            <input
-              type="color"
-              value={ambientColor}
-              onChange={(e) => setAmbientColor(e.target.value)}
-              className="w-10 h-8 rounded cursor-pointer border border-panel-border"
+        <div className="flex items-center justify-between">
+            <ColorPicker
+                label="Color"
+                value={ambientColor}
+                onChange={setAmbientColor}
+                disableAlpha={true}
             />
-            <span className="text-xs font-mono text-text-secondary">{ambientColor}</span>
             {ambientColor !== DEFAULT_AMBIENT_COLOR && (
               <button
                 onClick={() => setAmbientColor(DEFAULT_AMBIENT_COLOR)}
@@ -109,8 +107,8 @@ export const LightingControls: React.FC<LightingControlsProps> = React.memo(({
                 Reset
               </button>
             )}
-          </div>
         </div>
+
 
         {/* Ambient Intensity */}
         <Slider

@@ -211,11 +211,17 @@ class TemporalDepthManagerImpl {
     gl.getScissor(this.savedScissor);
     const savedScissorTest = gl.getScissorTest();
 
-    // Set up render target with full coverage
-    // Explicitly setting viewport/scissor prevents partial updates when
-    // other passes use non-default viewport or scissor settings
+    // CRITICAL: Use render target's viewport property instead of gl.setViewport()
+    // gl.setViewport() internally multiplies by pixel ratio (DPR), which causes
+    // incorrect rendering when DPR != 1. The render target's viewport property
+    // specifies exact pixel values without DPR multiplication.
+    // See: https://github.com/mrdoob/three.js/issues/27655
+    writeTarget.viewport.set(0, 0, this.width, this.height);
+    writeTarget.scissor.set(0, 0, this.width, this.height);
+    writeTarget.scissorTest = false;
+
+    // Set up render target
     gl.setRenderTarget(writeTarget);
-    gl.setViewport(0, 0, this.width, this.height);
     gl.setScissorTest(false);
 
     // Explicit clear to 0 (rather than relying on autoClear which uses

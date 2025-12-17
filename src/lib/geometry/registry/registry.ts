@@ -679,15 +679,15 @@ export const OBJECT_TYPE_REGISTRY: ObjectTypeRegistry = new Map<ObjectType, Obje
     'schroedinger',
     {
       type: 'schroedinger',
-      name: 'Schroedinger',
-      description: 'Fractal via escape-time iteration (3D: Schroedinger, 4D+: Schroedinger)',
+      name: 'Schrödinger Slices',
+      description: 'Organic volumes from an N-dimensional wavefunction.',
       category: 'fractal',
 
       dimensions: {
         min: 3,
         max: 11,
         recommended: 4,
-        recommendedReason: '4D Schroedinger provides best balance of detail and performance',
+        recommendedReason: '4D provides rich quantum interference patterns with good performance',
       },
 
       rendering: {
@@ -703,92 +703,9 @@ export const OBJECT_TYPE_REGISTRY: ObjectTypeRegistry = new Map<ObjectType, Obje
       animation: {
         hasTypeSpecificAnimations: true,
         systems: {
-          powerAnimation: {
-            name: 'Power Animation',
-            description: 'Animates the schroedingerPower parameter for dramatic morphing',
-            enabledByDefault: false,
-            enabledKey: 'powerAnimationEnabled',
-            params: {
-              powerMin: {
-                min: 2.0,
-                max: 10.0,
-                default: 5.0,
-                step: 0.5,
-                label: 'Min Power',
-                description: 'Lower values create more "blobby" shapes',
-              },
-              powerMax: {
-                min: 4.0,
-                max: 24.0,
-                default: 12.0,
-                step: 0.5,
-                label: 'Max Power',
-                description: 'Higher values create more detailed, spiky shapes',
-              },
-              powerSpeed: {
-                min: 0.01,
-                max: 0.2,
-                default: 0.03,
-                step: 0.01,
-                label: 'Speed',
-                description: 'Animation speed (lower = slower, more dramatic)',
-              },
-            },
-          },
-
-          alternatePower: {
-            name: 'Alternate Power',
-            description: 'Uses different power values for even/odd iterations',
-            enabledByDefault: false,
-            enabledKey: 'alternatePowerEnabled',
-            params: {
-              alternatePowerValue: {
-                min: 2.0,
-                max: 16.0,
-                default: 4.0,
-                step: 0.5,
-                label: 'Alt Power',
-                description: 'Power value for odd iterations',
-              },
-              alternatePowerBlend: {
-                min: 0.0,
-                max: 1.0,
-                default: 0.5,
-                step: 0.05,
-                label: 'Blend',
-                description: '0 = base power only, 1 = fully alternate on odd',
-              },
-            },
-          },
-
-          dimensionMix: {
-            name: 'Dimension Mixing',
-            description: 'Applies time-varying shear matrix for morphing during rotation',
-            enabledByDefault: false,
-            enabledKey: 'dimensionMixEnabled',
-            params: {
-              mixIntensity: {
-                min: 0.0,
-                max: 0.3,
-                default: 0.1,
-                step: 0.01,
-                label: 'Intensity',
-                description: 'Strength of cross-dimensional coupling',
-              },
-              mixFrequency: {
-                min: 0.1,
-                max: 2.0,
-                default: 0.5,
-                step: 0.1,
-                label: 'Frequency',
-                description: 'How fast the mixing matrix evolves',
-              },
-            },
-          },
-
           originDrift: {
             name: 'Origin Drift',
-            description: 'Slow multi-frequency wandering in extra dimensions',
+            description: 'Wander through higher dimensions for evolving quantum patterns',
             enabledByDefault: false,
             enabledKey: 'originDriftEnabled',
             params: {
@@ -805,8 +722,8 @@ export const OBJECT_TYPE_REGISTRY: ObjectTypeRegistry = new Map<ObjectType, Obje
                 max: 0.5,
                 default: 0.04,
                 step: 0.01,
-                label: 'Base Freq',
-                description: 'Base oscillation frequency in Hz',
+                label: 'Frequency',
+                description: 'Base oscillation frequency',
               },
               driftFrequencySpread: {
                 min: 0.0,
@@ -814,14 +731,14 @@ export const OBJECT_TYPE_REGISTRY: ObjectTypeRegistry = new Map<ObjectType, Obje
                 default: 0.2,
                 step: 0.05,
                 label: 'Spread',
-                description: 'Per-dimension frequency variation (creates beating)',
+                description: 'Per-dimension frequency variation',
               },
             },
           },
 
           sliceAnimation: {
             name: 'Slice Animation',
-            description: 'Animates which 3D cross-section is visible (4D+ only)',
+            description: 'Animate through higher-dimensional slices (4D+ only)',
             enabledByDefault: false,
             minDimension: 4,
             enabledKey: 'sliceAnimationEnabled',
@@ -844,37 +761,12 @@ export const OBJECT_TYPE_REGISTRY: ObjectTypeRegistry = new Map<ObjectType, Obje
               },
             },
           },
-
-          phaseShifts: {
-            name: 'Phase Shifts',
-            description: 'Angular phase animation creating twisting/spiraling morphs',
-            enabledByDefault: false,
-            enabledKey: 'phaseShiftEnabled',
-            params: {
-              phaseSpeed: {
-                min: 0.01,
-                max: 0.2,
-                default: 0.03,
-                step: 0.01,
-                label: 'Speed',
-                description: 'How fast the phase angles change',
-              },
-              phaseAmplitude: {
-                min: 0.0,
-                max: 0.785, // PI/4
-                default: 0.3,
-                step: 0.01,
-                label: 'Amplitude',
-                description: 'Maximum phase shift in radians',
-              },
-            },
-          },
         },
       },
 
       urlSerialization: {
         typeKey: 'schroedinger',
-        serializableParams: ['maxIterations', 'escapeRadius', 'resolution', 'schroedingerPower'],
+        serializableParams: ['presetName', 'seed', 'termCount', 'timeScale', 'sampleCount'],
       },
 
       ui: {

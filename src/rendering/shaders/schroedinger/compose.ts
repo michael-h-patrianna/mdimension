@@ -1,3 +1,14 @@
+/**
+ * Shader composition for Schrödinger N-dimensional quantum volume visualizer
+ *
+ * Assembles shader blocks in dependency order:
+ * 1. Core: precision, constants, uniforms
+ * 2. Quantum math: complex, hermite, ho1d, psi, density
+ * 3. Volume rendering: absorption, emission, integration
+ * 4. Color and effects
+ * 5. Main shader
+ */
+
 import { precisionBlock } from '../shared/core/precision.glsl';
 import { constantsBlock } from '../shared/core/constants.glsl';
 import { uniformsBlock } from '../shared/core/uniforms.glsl';
@@ -7,70 +18,70 @@ import { oklabBlock } from '../shared/color/oklab.glsl';
 import { selectorBlock } from '../shared/color/selector.glsl';
 import { fresnelBlock } from '../shared/lighting/fresnel.glsl';
 import { multiLightBlock } from '../shared/lighting/multi-light.glsl';
-import { shadowsBlock } from '../shared/features/shadows.glsl';
-import { aoBlock } from '../shared/features/ao.glsl';
-import { temporalBlock } from '../shared/features/temporal.glsl';
 import { opacityBlock } from '../shared/features/opacity.glsl';
-import { normalBlock } from '../shared/raymarch/normal.glsl';
 import { sphereIntersectBlock } from '../shared/raymarch/sphere-intersect.glsl';
-import { raymarchCoreBlock } from '../shared/raymarch/core.glsl';
 
 import { schroedingerUniformsBlock } from './uniforms.glsl';
-import { powerBlock } from './power.glsl';
-import { sdf3dBlock } from './sdf/sdf3d.glsl';
-import { sdf4dBlock } from './sdf/sdf4d.glsl';
-import { sdf5dBlock } from './sdf/sdf5d.glsl';
-import { sdf6dBlock } from './sdf/sdf6d.glsl';
-import { sdf7dBlock } from './sdf/sdf7d.glsl';
-import { sdf8dBlock } from './sdf/sdf8d.glsl';
-import { sdf9dBlock } from './sdf/sdf9d.glsl';
-import { sdf10dBlock } from './sdf/sdf10d.glsl';
-import { sdf11dBlock } from './sdf/sdf11d.glsl';
-import { sdfHighDBlock } from './sdf/sdf-high-d.glsl';
-import { generateDispatch } from './dispatch.glsl';
-import { mainBlock } from './main.glsl';
+import { complexMathBlock } from './quantum/complex.glsl';
+import { hermiteBlock } from './quantum/hermite.glsl';
+import { ho1dBlock } from './quantum/ho1d.glsl';
+import { psiBlock } from './quantum/psi.glsl';
+import { densityBlock } from './quantum/density.glsl';
+import { absorptionBlock } from './volume/absorption.glsl';
+import { emissionBlock } from './volume/emission.glsl';
+import { volumeIntegrationBlock } from './volume/integration.glsl';
+import { mainBlock, mainBlockIsosurface } from './main.glsl';
 import { ShaderConfig } from '../shared/types';
 
-export function composeSchroedingerShader(config: ShaderConfig) {
-  const { dimension, shadows: enableShadows, temporal: enableTemporal, ambientOcclusion: enableAO, opacityMode, overrides = [] } = config;
+export interface SchroedingerShaderConfig extends ShaderConfig {
+  /** Use isosurface mode instead of volumetric */
+  isosurface?: boolean;
+}
 
-  const defines = [];
-  const features = [];
+export function composeSchroedingerShader(config: SchroedingerShaderConfig) {
+  const {
+    shadows: enableShadows,
+    temporal: enableTemporal,
+    ambientOcclusion: enableAO,
+    opacityMode,
+    overrides = [],
+    isosurface = false,
+  } = config;
 
-  features.push('Multi-Light');
-  features.push('Fresnel');
+  const defines: string[] = [];
+  const features: string[] = [];
+
+  features.push('Quantum Volume');
+  features.push('Beer-Lambert');
   features.push(`Opacity: ${opacityMode}`);
 
-  const useShadows = enableShadows && !overrides.includes('Shadows');
+  // Note: Shadows and AO are less relevant for pure volumetric mode
+  // but kept for isosurface mode compatibility
+  const useShadows = enableShadows && isosurface && !overrides.includes('Shadows');
   const useTemporal = enableTemporal && !overrides.includes('Temporal Reprojection');
-  const useAO = enableAO && !overrides.includes('Ambient Occlusion');
+  const useAO = enableAO && isosurface && !overrides.includes('Ambient Occlusion');
 
   if (useShadows) {
-      defines.push('#define USE_SHADOWS');
-      features.push('Shadows');
+    defines.push('#define USE_SHADOWS');
+    features.push('Shadows');
   }
   if (useTemporal) {
-      defines.push('#define USE_TEMPORAL');
-      features.push('Temporal Reprojection');
+    defines.push('#define USE_TEMPORAL');
+    features.push('Temporal Reprojection');
   }
   if (useAO) {
-      defines.push('#define USE_AO');
-      features.push('Ambient Occlusion');
+    defines.push('#define USE_AO');
+    features.push('Ambient Occlusion');
   }
 
-  // Select SDF block based on dimension
-  let sdfBlock = sdfHighDBlock;
-  let sdfName = 'SDF High-D (Array)';
-  
-  if (dimension === 3) { sdfBlock = sdf3dBlock; sdfName = 'SDF 3D'; }
-  else if (dimension === 4) { sdfBlock = sdf4dBlock; sdfName = 'SDF 4D'; }
-  else if (dimension === 5) { sdfBlock = sdf5dBlock; sdfName = 'SDF 5D'; }
-  else if (dimension === 6) { sdfBlock = sdf6dBlock; sdfName = 'SDF 6D'; }
-  else if (dimension === 7) { sdfBlock = sdf7dBlock; sdfName = 'SDF 7D'; }
-  else if (dimension === 8) { sdfBlock = sdf8dBlock; sdfName = 'SDF 8D'; }
-  else if (dimension === 9) { sdfBlock = sdf9dBlock; sdfName = 'SDF 9D (Unrolled)'; }
-  else if (dimension === 10) { sdfBlock = sdf10dBlock; sdfName = 'SDF 10D (Unrolled)'; }
-  else if (dimension === 11) { sdfBlock = sdf11dBlock; sdfName = 'SDF 11D (Unrolled)'; }
+  if (isosurface) {
+    features.push('Isosurface Mode');
+  } else {
+    features.push('Volumetric Mode');
+  }
+
+  // Select main block based on mode
+  const selectedMainBlock = isosurface ? mainBlockIsosurface : mainBlock;
 
   const blocks = [
     { name: 'Precision', content: precisionBlock },
@@ -78,39 +89,49 @@ export function composeSchroedingerShader(config: ShaderConfig) {
     { name: 'Defines', content: defines.join('\n') },
     { name: 'Constants', content: constantsBlock },
     { name: 'Shared Uniforms', content: uniformsBlock },
-    { name: 'Schroedinger Uniforms', content: schroedingerUniformsBlock },
-    { name: 'Power Functions', content: powerBlock },
+    { name: 'Schrödinger Uniforms', content: schroedingerUniformsBlock },
+
+    // Quantum math modules (order matters!)
+    { name: 'Complex Math', content: complexMathBlock },
+    { name: 'Hermite Polynomials', content: hermiteBlock },
+    { name: 'HO 1D Eigenfunction', content: ho1dBlock },
+    { name: 'Wavefunction (Psi)', content: psiBlock },
+    { name: 'Density Field', content: densityBlock },
+
+    // Color system
     { name: 'Color (HSL)', content: hslBlock },
     { name: 'Color (Cosine)', content: cosinePaletteBlock },
     { name: 'Color (Oklab)', content: oklabBlock },
     { name: 'Color Selector', content: selectorBlock },
+
+    // Lighting (must come before emission which uses light functions)
     { name: 'Lighting (Fresnel)', content: fresnelBlock },
-    { name: sdfName, content: sdfBlock },
-    { name: 'Dispatch', content: generateDispatch(dimension) },
-    { name: 'Temporal Features', content: temporalBlock, condition: enableTemporal },
-    { name: 'Sphere Intersection', content: sphereIntersectBlock },
-    { name: 'Raymarching Core', content: raymarchCoreBlock },
-    { name: 'Normal Calculation', content: normalBlock },
-    { name: 'Ambient Occlusion', content: aoBlock, condition: enableAO },
-    { name: 'Shadows', content: shadowsBlock, condition: enableShadows },
     { name: 'Multi-Light System', content: multiLightBlock },
+
+    // Volumetric rendering
+    { name: 'Beer-Lambert Absorption', content: absorptionBlock },
+    { name: 'Volume Emission', content: emissionBlock },
+    { name: 'Volume Integration', content: volumeIntegrationBlock },
+
+    // Geometry
+    { name: 'Sphere Intersection', content: sphereIntersectBlock },
+
+    // Opacity and main
     { name: 'Opacity System', content: opacityBlock },
-    { name: 'Main', content: mainBlock }
+    { name: 'Main', content: selectedMainBlock },
   ];
 
   const modules: string[] = [];
   const glslParts: string[] = [];
 
   blocks.forEach(b => {
-      if (b.condition === false) return; // Disabled in config
+    modules.push(b.name);
 
-      modules.push(b.name);
-
-      if (overrides.includes(b.name)) {
-          // Overridden: Don't add content
-      } else {
-          glslParts.push(b.content);
-      }
+    if (overrides.includes(b.name)) {
+      // Overridden: Don't add content
+    } else {
+      glslParts.push(b.content);
+    }
   });
 
   return { glsl: glslParts.join('\n'), modules, features };

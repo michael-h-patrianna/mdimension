@@ -4,6 +4,7 @@
  */
 
 import { Slider } from '@/components/ui/Slider';
+import { ColorPicker } from '@/components/ui/ColorPicker';
 import {
   DEFAULT_EDGE_THICKNESS,
 } from '@/stores/defaults/visualDefaults';
@@ -38,21 +39,13 @@ export const EdgeControls: React.FC<EdgesControlsProps> = React.memo(({
     <div className={`space-y-4 ${className}`}>
 
       {/* Edge Color */}
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-text-secondary">
-          Edge Color
-        </label>
-        <div className="flex items-center gap-2">
-          <input
-            type="color"
-            value={edgeColor}
-            onChange={(e) => setEdgeColor(e.target.value)}
-            className="w-10 h-10 rounded cursor-pointer border border-panel-border"
-            aria-label="Edge Color"
-          />
-          <span className="text-xs font-mono text-text-secondary">{edgeColor}</span>
-        </div>
-      </div>
+      <ColorPicker
+        label="Edge Color"
+        value={edgeColor}
+        onChange={setEdgeColor}
+        disableAlpha={true}
+      />
+
 
       {/* Edge Thickness */}
       <Slider

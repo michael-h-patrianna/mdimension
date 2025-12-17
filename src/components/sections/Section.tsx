@@ -36,51 +36,50 @@ export const Section: React.FC<SectionProps> = ({
 
   return (
     <div 
-      className={`group rounded-xl transition-all duration-300 ${isOpen ? 'bg-white/5 shadow-lg shadow-black/20' : 'hover:bg-white/5'} ${className}`}
+      className={`group rounded-xl transition-all duration-300 relative ${isOpen ? 'bg-panel-bg/30 border border-white/5 shadow-lg' : 'hover:bg-white/5 border border-transparent'} ${className}`}
       data-testid={dataTestId}
     >
       <div className="flex items-center justify-between pr-2">
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className={`flex-1 flex items-center justify-between py-3 px-3 text-left focus:outline-none rounded-t-xl
-            ${isOpen ? 'border-b border-white/5' : ''}
-          `}
+          className={`flex-1 flex items-center justify-between py-3 px-3 text-left focus:outline-none rounded-t-xl z-10`}
           aria-expanded={isOpen}
           data-testid={dataTestId ? `${dataTestId}-header` : undefined}
         >
-          <div className="flex items-center gap-2">
-            {/* Decorative indicator */}
-            <div className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${isOpen ? 'bg-accent shadow-[0_0_8px_var(--color-accent)] scale-125' : 'bg-text-tertiary group-hover:bg-text-secondary'}`} />
-            <span className={`text-xs font-bold tracking-wider transition-colors duration-300 ${isOpen ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'}`}>
-              {title.toUpperCase()}
-            </span>
-          </div>
-
-          <m.svg
-            width="10"
-            height="6"
-            viewBox="0 0 10 6"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="text-text-tertiary"
-            animate={{ rotate: isOpen ? 180 : 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <path d="M1 1L5 5L9 1" />
-          </m.svg>
-        </button>
+                  <div className="flex items-center gap-2">
+                    {/* Indicator */}
+                    <div 
+                      className={`w-1 h-1 rounded-full transition-all duration-300 ${isOpen ? 'bg-accent shadow-[0_0_8px_var(--color-accent)]' : 'bg-white/20'}`}
+                    />
+                    <h3 className={`text-xs font-bold tracking-wider uppercase transition-colors duration-200 ${isOpen ? 'text-text-primary' : 'text-text-secondary'}`}>
+                      {title}
+                    </h3>
+                  </div>
+                  
+                  {/* Chevron */}
+                  <m.div
+                    animate={{ 
+                      rotate: isOpen ? 180 : 0,
+                    }}
+                    transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                    className={`transition-colors duration-200 ${isOpen ? 'text-accent' : 'text-text-tertiary'}`}
+                  >
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M6 9l6 6 6-6" />
+                    </svg>
+                  </m.div>        </button>
 
         {isOpen && onReset && (
-          <button
+          <m.button
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
             onClick={(e) => {
               e.stopPropagation();
               onReset();
             }}
-            className="p-1.5 text-text-tertiary hover:text-accent transition-colors rounded hover:bg-white/10 opacity-0 group-hover:opacity-100 focus:opacity-100"
+            className="p-1.5 text-text-tertiary hover:text-accent transition-colors rounded hover:bg-white/10 relative z-20"
             title={`Reset ${title} settings`}
             data-testid={dataTestId ? `${dataTestId}-reset` : undefined}
           >
@@ -88,9 +87,21 @@ export const Section: React.FC<SectionProps> = ({
               <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
               <path d="M3 3v5h5" />
             </svg>
-          </button>
+          </m.button>
         )}
       </div>
+      
+      {/* Separator Line when open */}
+      <AnimatePresence>
+          {isOpen && (
+            <m.div 
+                initial={{ opacity: 0, scaleX: 0 }}
+                animate={{ opacity: 1, scaleX: 1 }}
+                exit={{ opacity: 0, scaleX: 0 }}
+                className="absolute left-3 right-3 top-[44px] h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent"
+            />
+          )}
+      </AnimatePresence>
 
       <AnimatePresence initial={false}>
         {isOpen && (
@@ -99,10 +110,10 @@ export const Section: React.FC<SectionProps> = ({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: 'easeInOut' }}
+            transition={{ type: "spring", stiffness: 400, damping: 30, mass: 0.8 }}
             className="overflow-hidden"
           >
-            <div className="px-3 pb-4 pt-2 border-l border-white/5 ml-[19px] space-y-4">
+            <div className="px-3 pb-4 pt-4 ml-[19px] space-y-5 border-l border-dashed border-white/5">
               {children}
             </div>
           </m.div>

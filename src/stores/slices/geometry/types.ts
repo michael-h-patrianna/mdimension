@@ -17,6 +17,7 @@ import {
   SchroedingerColorMode,
   SchroedingerConfig,
   SchroedingerPalette,
+  SchroedingerPresetName,
   SchroedingerQualityPreset,
   SchroedingerRenderStyle,
   TruncationMode,
@@ -264,57 +265,66 @@ export interface SchroedingerSliceState {
 }
 
 export interface SchroedingerSliceActions {
-  setSchroedingerMaxIterations: (value: number) => void
-  setSchroedingerEscapeRadius: (value: number) => void
+  // Quality Settings
   setSchroedingerQualityPreset: (preset: SchroedingerQualityPreset) => void
   setSchroedingerResolution: (value: number) => void
+
+  // Visualization Axes
   setSchroedingerVisualizationAxes: (axes: [number, number, number]) => void
   setSchroedingerVisualizationAxis: (index: 0 | 1 | 2, dimIndex: number) => void
+
+  // Slice Parameters
   setSchroedingerParameterValue: (dimIndex: number, value: number) => void
   setSchroedingerParameterValues: (values: number[]) => void
   resetSchroedingerParameters: () => void
+
+  // Navigation
   setSchroedingerCenter: (center: number[]) => void
   setSchroedingerExtent: (extent: number) => void
   fitSchroedingerToView: () => void
+
+  // Color Settings
   setSchroedingerColorMode: (mode: SchroedingerColorMode) => void
   setSchroedingerPalette: (palette: SchroedingerPalette) => void
   setSchroedingerCustomPalette: (palette: { start: string; mid: string; end: string }) => void
   setSchroedingerInvertColors: (invert: boolean) => void
-  setSchroedingerInteriorColor: (color: string) => void
-  setSchroedingerPaletteCycles: (cycles: number) => void
+
+  // Rendering Style
   setSchroedingerRenderStyle: (style: SchroedingerRenderStyle) => void
-  setSchroedingerPointSize: (size: number) => void
-  setSchroedingerBoundaryThreshold: (threshold: [number, number]) => void
-  setSchroedingerSchroedingerPower: (power: number) => void
-  setSchroedingerConfig: (config: Partial<SchroedingerConfig>) => void
-  initializeSchroedingerForDimension: (dimension: number) => void
-  getSchroedingerConfig: () => SchroedingerConfig
-  // Power Animation
-  setSchroedingerPowerAnimationEnabled: (enabled: boolean) => void
-  setSchroedingerPowerMin: (min: number) => void
-  setSchroedingerPowerMax: (max: number) => void
-  setSchroedingerPowerSpeed: (speed: number) => void
-  // Alternate Power
-  setSchroedingerAlternatePowerEnabled: (enabled: boolean) => void
-  setSchroedingerAlternatePowerValue: (power: number) => void
-  setSchroedingerAlternatePowerBlend: (blend: number) => void
-  // Dimension Mixing
-  setSchroedingerDimensionMixEnabled: (enabled: boolean) => void
-  setSchroedingerMixIntensity: (intensity: number) => void
-  setSchroedingerMixFrequency: (frequency: number) => void
-  // Origin Drift
+
+  // Quantum State Configuration
+  setSchroedingerPresetName: (name: SchroedingerPresetName) => void
+  setSchroedingerSeed: (seed: number) => void
+  randomizeSchroedingerSeed: () => void
+  setSchroedingerTermCount: (count: number) => void
+  setSchroedingerMaxQuantumNumber: (maxN: number) => void
+  setSchroedingerFrequencySpread: (spread: number) => void
+
+  // Volume Rendering Parameters
+  setSchroedingerTimeScale: (scale: number) => void
+  setSchroedingerFieldScale: (scale: number) => void
+  setSchroedingerDensityGain: (gain: number) => void
+  setSchroedingerSampleCount: (count: number) => void
+
+  // Isosurface Mode
+  setSchroedingerIsoEnabled: (enabled: boolean) => void
+  setSchroedingerIsoThreshold: (threshold: number) => void
+
+  // Origin Drift Animation
   setSchroedingerOriginDriftEnabled: (enabled: boolean) => void
   setSchroedingerDriftAmplitude: (amplitude: number) => void
   setSchroedingerDriftBaseFrequency: (frequency: number) => void
   setSchroedingerDriftFrequencySpread: (spread: number) => void
-  // Slice Animation
+
+  // Slice Animation (4D+ only)
   setSchroedingerSliceAnimationEnabled: (enabled: boolean) => void
   setSchroedingerSliceSpeed: (speed: number) => void
   setSchroedingerSliceAmplitude: (amplitude: number) => void
-  // Angular Phase Shifts
-  setSchroedingerPhaseShiftEnabled: (enabled: boolean) => void
-  setSchroedingerPhaseSpeed: (speed: number) => void
-  setSchroedingerPhaseAmplitude: (amplitude: number) => void
+
+  // Config Operations
+  setSchroedingerConfig: (config: Partial<SchroedingerConfig>) => void
+  initializeSchroedingerForDimension: (dimension: number) => void
+  getSchroedingerConfig: () => SchroedingerConfig
 }
 
 export type SchroedingerSlice = SchroedingerSliceState & SchroedingerSliceActions

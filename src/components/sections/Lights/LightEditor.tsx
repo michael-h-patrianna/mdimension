@@ -14,6 +14,7 @@
  */
 
 import { Select } from '@/components/ui/Select';
+import { ColorPicker } from '@/components/ui/ColorPicker';
 import { Slider } from '@/components/ui/Slider';
 import { ToggleButton } from '@/components/ui/ToggleButton';
 import type { LightType } from '@/rendering/lights/types';
@@ -82,15 +83,6 @@ export const LightEditor: React.FC<LightEditorProps> = memo(function LightEditor
       updateLight(selectedLightId, { enabled: !selectedLight.enabled });
     }
   }, [selectedLightId, selectedLight, updateLight]);
-
-  const handleColorChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (selectedLightId) {
-        updateLight(selectedLightId, { color: e.target.value });
-      }
-    },
-    [selectedLightId, updateLight]
-  );
 
   const handleIntensityChange = useCallback(
     (intensity: number) => {
@@ -220,18 +212,17 @@ export const LightEditor: React.FC<LightEditorProps> = memo(function LightEditor
       </div>
 
       {/* Color picker */}
-      <div className="space-y-1">
-        <label className="block text-xs font-medium text-text-secondary">Color</label>
-        <div className="flex items-center gap-2">
-          <input
-            type="color"
-            value={selectedLight.color}
-            onChange={handleColorChange}
-            className="w-10 h-8 rounded cursor-pointer border border-panel-border"
-          />
-          <span className="text-xs font-mono text-text-secondary">{selectedLight.color}</span>
-        </div>
-      </div>
+      <ColorPicker
+        label="Color"
+        value={selectedLight.color}
+        onChange={(val) => {
+            if (selectedLightId) {
+                updateLight(selectedLightId, { color: val });
+            }
+        }}
+        disableAlpha={true}
+      />
+
 
       {/* Intensity slider */}
       <Slider

@@ -49,7 +49,10 @@ export const DepthCaptureShader = {
 
     void main() {
       vUv = uv;
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      // Use direct NDC coordinates instead of projectionMatrix * modelViewMatrix
+      // This bypasses any DPR-related issues with Three.js camera matrices
+      // PlaneGeometry(2, 2) has positions from -1 to +1, which maps directly to NDC
+      gl_Position = vec4(position.xy, 0.0, 1.0);
     }
   `,
 
