@@ -177,6 +177,30 @@ void main() {
     // Output
     gColor = vec4(volumeResult.color, alpha);
 
+    // Always output normals for G-buffer (SSR, SSAO)
+    // For volumetric objects, compute density gradient at weighted center as surface normal
+    // This gives actual surface structure rather than just view-dependent gradient
+    float animTime = uTime * uTimeScale;
+    vec3 modelNormal = computeDensityGradient(volumeResult.weightedCenter, animTime, 0.02);
+
+    // If gradient is too weak (flat region), fall back to ray direction
+    float gradientLength = length(modelNormal);
+    if (gradientLength < 0.001) {
+        modelNormal = -rd;  // Fallback: surface faces camera
+    } else {
+        modelNormal = normalize(modelNormal);
+    }
+
+    // Transform normal from model space to world space, then to view space
+    vec3 worldNormal = normalize((uModelMatrix * vec4(modelNormal, 0.0)).xyz);
+    vec4 viewNormalVec = uViewMatrix * vec4(worldNormal, 0.0);
+    vec3 viewNormal = normalize(viewNormalVec.xyz);
+
+    // Encode to [0,1] range: [-1,1] -> [0,1]
+    vec3 encodedNormal = viewNormal * 0.5 + 0.5;
+    // IMPORTANT: Use alpha = 1.0 to prevent premultiplied alpha issues
+    gNormal = vec4(encodedNormal, 1.0);
+
     #ifdef USE_TEMPORAL_ACCUMULATION
     // Output world position for temporal reprojection
     // CRITICAL: Use WEIGHTED CENTER instead of entry point!
@@ -188,9 +212,6 @@ void main() {
     // This is key to preventing smearing artifacts during camera rotation.
     vec4 worldCenterPos = uModelMatrix * vec4(volumeResult.weightedCenter, 1.0);
     gPosition = vec4(worldCenterPos.xyz, alpha);
-    #else
-    vec3 viewNormal = normalize((uViewMatrix * vec4(rd, 0.0)).xyz);
-    gNormal = vec4(viewNormal * 0.5 + 0.5, uMetallic);
     #endif
 }
 `;

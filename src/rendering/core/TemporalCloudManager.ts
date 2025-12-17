@@ -195,8 +195,9 @@ class TemporalCloudManagerImpl {
     }
 
     // Create cloud render target (quarter resolution) with MRT
-    // Attachment 0: Color (RGBA)
-    // Attachment 1: World Position (XYZ = world pos, W = alpha weight)
+    // Attachment 0: Color (RGBA) - shader location 0 (gColor)
+    // Attachment 1: Normal (RGBA) - shader location 1 (gNormal) - always output for SSR/SSAO
+    // Attachment 2: World Position (XYZ = world pos, W = alpha) - shader location 2 (gPosition)
     //
     // The position buffer enables accurate temporal reprojection when camera rotates.
     // Without per-pixel positions, reprojection assumes fixed distance which causes
@@ -216,13 +217,15 @@ class TemporalCloudManagerImpl {
       generateMipmaps: false,
       depthBuffer: true, // Need depth for proper rendering
       stencilBuffer: false,
-      count: 2, // MRT: [0] = Color, [1] = World Position
+      count: 3, // MRT: [0] = Color, [1] = Normal, [2] = World Position
     });
     this.cloudRenderTarget.textures[0]!.name = 'CloudColor';
-    this.cloudRenderTarget.textures[1]!.name = 'CloudPosition';
+    this.cloudRenderTarget.textures[1]!.name = 'CloudNormal';
+    this.cloudRenderTarget.textures[2]!.name = 'CloudPosition';
 
-    // NOTE: Position buffer is now integrated into cloudRenderTarget as MRT attachment [1]
-    // The Schrödinger shader outputs world position to gPosition (layout location 1)
+    // NOTE: Position buffer is now integrated into cloudRenderTarget as MRT attachment [2]
+    // (was [1] before adding normal output)
+    // The Schrödinger shader outputs world position to gPosition (layout location 2)
     // when USE_TEMPORAL_ACCUMULATION is defined. This eliminates the need for a
     // separate position buffer and enables accurate reprojection during camera rotation.
     this.positionBuffer = null;
@@ -304,10 +307,18 @@ class TemporalCloudManagerImpl {
   }
 
   /**
-   * Get the cloud render target's position texture (MRT attachment 1).
+   * Get the cloud render target's position texture (MRT attachment 2).
    * This contains per-pixel world positions from the current frame's quarter-res render.
    */
   getCloudPositionTexture(): THREE.Texture | null {
+    return this.cloudRenderTarget?.textures[2] ?? null;
+  }
+
+  /**
+   * Get the cloud render target's normal texture (MRT attachment 1).
+   * This contains per-pixel view-space normals for SSR/SSAO.
+   */
+  getCloudNormalTexture(): THREE.Texture | null {
     return this.cloudRenderTarget?.textures[1] ?? null;
   }
 

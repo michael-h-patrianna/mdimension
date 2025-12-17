@@ -1,14 +1,22 @@
 export const precisionBlock = `
 precision highp float;
 
-// Output declarations for WebGL2
-// For temporal accumulation: MRT with color (loc 0) and world position (loc 1)
-// For normal rendering: MRT with color (loc 0) and normal (loc 1)
+// Output declarations for WebGL2 MRT (Multiple Render Targets)
+//
+// IMPORTANT: When using Three.js ShaderMaterial with glslVersion: GLSL3 and
+// WebGLRenderTarget with count > 1, you MUST use explicit layout(location = N)
+// qualifiers for EACH output. Three.js will NOT add these automatically.
+//
+// Layout:
+//   location 0 = Color (RGB + alpha)
+//   location 1 = Normal (view-space normal * 0.5 + 0.5, metallic in alpha)
+//   location 2 = Position (world position for temporal reprojection, when enabled)
+//
+// Reference: https://github.com/mrdoob/three.js/issues/22920
+
 layout(location = 0) out vec4 gColor;
-#ifdef USE_TEMPORAL_ACCUMULATION
-// World position for temporal reprojection (xyz = world pos, w = depth weight)
-layout(location = 1) out vec4 gPosition;
-#else
 layout(location = 1) out vec4 gNormal;
+#ifdef USE_TEMPORAL_ACCUMULATION
+layout(location = 2) out vec4 gPosition;
 #endif
 `;

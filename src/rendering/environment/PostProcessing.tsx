@@ -47,6 +47,17 @@ import { useShallow } from 'zustand/react/shallow';
 // Set DEBUG_TEMPORAL=true to enable logging, false for production
 // ========================================
 const DEBUG_TEMPORAL = false; // Disabled after bug fix verified
+
+// ========================================
+// DEBUG: Normal buffer debugging for Schrödinger normals bug
+// Set DEBUG_NORMAL_BUFFER=true to enable normal buffer debugging (verbose logging)
+// ========================================
+const DEBUG_NORMAL_BUFFER = false;
+let normalDebugFrameCounter = 0;
+const NORMAL_DEBUG_LOG_INTERVAL = 30; // Log every N frames (twice per second at 60fps)
+
+// Dummy depth texture for volumetric normal compositing (avoids depth check)
+let dummyDepthTexture: THREE.DataTexture | null = null;
 let debugFrameCounter = 0;
 const DEBUG_LOG_INTERVAL = 10; // Log every N frames
 
@@ -229,7 +240,7 @@ export const PostProcessing = memo(function PostProcessing() {
   //
   // IMPORTANT: We create these once and resize them separately to avoid
   // recreating the entire pipeline on every resolution change (which causes black flashes)
-  const { composer, bloomPass, bokehPass, ssrPass, refractionPass, bufferPreviewPass, fxaaPass, smaaPass, sceneTarget, objectDepthTarget, normalTarget, mainObjectMRT, normalCopyScene, normalCopyCamera, normalCopyMaterial, cloudCompositeScene, cloudCompositeCamera, cloudCompositeMaterial, texturePass, cloudTemporalPass } = useMemo(() => {
+  const { composer, bloomPass, bokehPass, ssrPass, refractionPass, bufferPreviewPass, fxaaPass, smaaPass, sceneTarget, objectDepthTarget, normalTarget, mainObjectMRT, normalCopyScene, normalCopyCamera, normalCopyMaterial, volumetricNormalCopyScene, volumetricNormalCopyMaterial, cloudCompositeScene, cloudCompositeCamera, cloudCompositeMaterial, texturePass, cloudTemporalPass } = useMemo(() => {
     // Use a reasonable initial size - will be resized immediately in useEffect
     const initialWidth = Math.max(1, size.width);
     const initialHeight = Math.max(1, size.height);
@@ -263,7 +274,7 @@ export const PostProcessing = memo(function PostProcessing() {
       minFilter: THREE.LinearFilter,
       magFilter: THREE.LinearFilter,
       format: THREE.RGBAFormat,
-      type: THREE.HalfFloatType, // Match Three.js SSRPass precision needs
+      type: THREE.HalfFloatType,
       depthBuffer: true, // Need depth for compositing main object normals
       stencilBuffer: false,
     });
@@ -296,7 +307,7 @@ export const PostProcessing = memo(function PostProcessing() {
     mainObjectMRT.depthTexture = mainObjectDepthTex;
 
     // Create copy material for transferring MRT normal texture to normalTarget
-    // This replaces blitFramebuffer which has unreliable behavior across browsers
+    // Uses depth testing for reliable compositing (alpha blending was unreliable)
     const normalCopyMaterial = new THREE.ShaderMaterial({
       glslVersion: THREE.GLSL3,
       uniforms: {
@@ -318,26 +329,67 @@ export const PostProcessing = memo(function PostProcessing() {
         out vec4 fragColor;
         void main() {
           float depth = texture(tDepth, vUv).r;
-          
-          // Discard background pixels (assuming 1.0 is far plane/clear value)
-          // This allows the environment (walls) already in normalTarget to show through
+
+          // Discard background pixels (depth at far plane)
+          // This preserves environment normals via depth test
           if (depth >= 0.9999) {
             discard;
           }
 
           fragColor = texture(tNormal, vUv);
-          // Also copy depth to gl_FragDepth for proper compositing
+          // Write object depth so depth test works correctly
           gl_FragDepth = depth;
         }
       `,
-      depthTest: false, // Disable depth test - we manually write depth and rely on discard
-      depthWrite: true, // Write depth for consistency
+      depthTest: true,  // Enable depth test - only write where object is in front
+      depthWrite: true, // Write depth for proper compositing
+      transparent: false,
     });
     
     const normalCopyQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), normalCopyMaterial);
     const normalCopyScene = new THREE.Scene();
     normalCopyScene.add(normalCopyQuad);
     const normalCopyCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+    // Create a separate material for volumetric normal copying (no depth check)
+    // Volumetric normals are rendered at quarter resolution and need to be upsampled
+    // Uses discard for pixels without volumetric data
+    const volumetricNormalCopyMaterial = new THREE.ShaderMaterial({
+      glslVersion: THREE.GLSL3,
+      uniforms: {
+        tNormal: { value: null },
+      },
+      vertexShader: /* glsl */ `
+        out vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = vec4(position.xy, 0.0, 1.0);
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        precision highp float;
+        uniform sampler2D tNormal;
+        in vec2 vUv;
+        out vec4 fragColor;
+        void main() {
+          vec4 normal = texture(tNormal, vUv);
+          // Check if this pixel has volumetric data
+          // Valid encoded normals should be around 0.5 ([-1,1] mapped to [0,1])
+          // Clear value is [0,0,0,0], so check for near-zero
+          float normalMagnitude = length(normal.rgb);
+          if (normalMagnitude < 0.01) {
+            discard; // No volumetric data - preserve existing content
+          }
+          fragColor = normal;
+        }
+      `,
+      depthTest: false,  // No depth test - volumetric has no depth buffer at this res
+      depthWrite: false,
+      transparent: false,
+    });
+    const volumetricNormalCopyQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), volumetricNormalCopyMaterial);
+    const volumetricNormalCopyScene = new THREE.Scene();
+    volumetricNormalCopyScene.add(volumetricNormalCopyQuad);
 
     // Create material for compositing volumetric clouds
     const cloudCompositeMaterial = new THREE.ShaderMaterial({
@@ -494,6 +546,8 @@ export const PostProcessing = memo(function PostProcessing() {
       normalCopyScene,
       normalCopyCamera,
       normalCopyMaterial,
+      volumetricNormalCopyScene,
+      volumetricNormalCopyMaterial,
       cloudCompositeScene,
       cloudCompositeMaterial,
       cloudCompositeCamera,
@@ -658,6 +712,7 @@ export const PostProcessing = memo(function PostProcessing() {
       normalTarget.dispose();
       mainObjectMRT.dispose();
       normalCopyMaterial.dispose();
+      volumetricNormalCopyMaterial.dispose();
       cloudCompositeMaterial.dispose();
       TemporalDepthManager.dispose();
       TemporalCloudManager.dispose();
@@ -831,6 +886,34 @@ export const PostProcessing = memo(function PostProcessing() {
 
         // [TR-DEBUG] Reset stats before volumetric render
         gl.info.reset();
+
+        // DEBUG: Check draw buffers and framebuffer status before volumetric render
+        if (DEBUG_NORMAL_BUFFER && normalDebugFrameCounter % NORMAL_DEBUG_LOG_INTERVAL === 0) {
+          const glContext = gl.getContext() as WebGL2RenderingContext;
+          // Check how many draw buffers are configured
+          const maxDrawBuffers = glContext.getParameter(glContext.MAX_DRAW_BUFFERS);
+          console.log(`[NORMAL-DEBUG] Max draw buffers: ${maxDrawBuffers}`);
+          // Check current draw buffer configuration
+          for (let i = 0; i < Math.min(3, maxDrawBuffers); i++) {
+            const drawBuffer = glContext.getParameter(glContext.DRAW_BUFFER0 + i);
+            console.log(`[NORMAL-DEBUG] DRAW_BUFFER${i}: ${drawBuffer} (expected: ${glContext.COLOR_ATTACHMENT0 + i})`);
+          }
+          console.log(`[NORMAL-DEBUG] cloudTarget.textures.length: ${cloudTarget.textures.length}`);
+
+          // Check framebuffer status
+          const fbStatus = glContext.checkFramebufferStatus(glContext.FRAMEBUFFER);
+          console.log(`[NORMAL-DEBUG] Framebuffer status: ${fbStatus} (COMPLETE=${glContext.FRAMEBUFFER_COMPLETE})`);
+
+          // Check if attachments are valid
+          for (let i = 0; i < 3; i++) {
+            const attachType = glContext.getFramebufferAttachmentParameter(
+              glContext.FRAMEBUFFER,
+              glContext.COLOR_ATTACHMENT0 + i,
+              glContext.FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE
+            );
+            console.log(`[NORMAL-DEBUG] COLOR_ATTACHMENT${i} type: ${attachType} (TEXTURE=${glContext.TEXTURE})`);
+          }
+        }
 
         // Render volumetric at quarter res with Bayer jitter
         // The shader applies USE_TEMPORAL_ACCUMULATION jitter based on uBayerOffset
@@ -1046,7 +1129,9 @@ export const PostProcessing = memo(function PostProcessing() {
 
         // [TR-DEBUG] Log composite render stats
         if (DEBUG_TEMPORAL && debugFrameCounter % DEBUG_LOG_INTERVAL === 0) {
-          console.log(`[TR-DEBUG] 3.5-compositeRenderStats: calls=${gl.info.render.calls} triangles=${gl.info.render.triangles} textureWidth=${accumulationBuffer.texture.image?.width || 'unknown'} textureHeight=${accumulationBuffer.texture.image?.height || 'unknown'}`);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const texImg = (accumulationBuffer.texture as any).image;
+          console.log(`[TR-DEBUG] 3.5-compositeRenderStats: calls=${gl.info.render.calls} triangles=${gl.info.render.triangles} textureWidth=${texImg?.width || 'unknown'} textureHeight=${texImg?.height || 'unknown'}`);
         }
 
         gl.setRenderTarget(null);
@@ -1060,7 +1145,8 @@ export const PostProcessing = memo(function PostProcessing() {
 
     // Render normal pass for G-buffer (when SSR, refraction, or normal visualization needs normals)
     // Uses MRT to capture correct fractal normals, then composites environment normals
-    const needsNormalPass = currentSSREnabled || currentRefractionEnabled || currentShowNormalBuffer;
+    // DEBUG: Force normal pass for debugging when DEBUG_NORMAL_BUFFER is enabled
+    const needsNormalPass = currentSSREnabled || currentRefractionEnabled || currentShowNormalBuffer || DEBUG_NORMAL_BUFFER;
     if (needsNormalPass) {
       const savedCameraLayers = camera.layers.mask;
 
@@ -1069,64 +1155,366 @@ export const PostProcessing = memo(function PostProcessing() {
       gl.setRenderTarget(normalTarget);
       gl.setClearColor(0x000000, 0);
       gl.clear(true, true, false); // Clear Color & Depth
-      
+
       scene.overrideMaterial = normalMaterial;
       camera.layers.set(RENDER_LAYERS.ENVIRONMENT);
       // Also render skybox if needed, though usually it's far away
-      camera.layers.enable(RENDER_LAYERS.SKYBOX); 
+      camera.layers.enable(RENDER_LAYERS.SKYBOX);
+
+      // DEBUG: Log environment objects being rendered
+      if (DEBUG_NORMAL_BUFFER && normalDebugFrameCounter % NORMAL_DEBUG_LOG_INTERVAL === 0) {
+        let envCount = 0;
+        let envNames: string[] = [];
+        scene.traverse((obj) => {
+          if (obj.layers.test(camera.layers)) {
+            envCount++;
+            envNames.push(`${obj.type}(${obj.name || 'unnamed'})`);
+          }
+        });
+        console.log(`[NORMAL-DEBUG] Environment layer objects for normal pass: ${envCount}`);
+        console.log(`[NORMAL-DEBUG] Environment objects: [${envNames.join(', ')}]`);
+      }
+
       gl.render(scene, camera);
       scene.overrideMaterial = null;
+
+      // DEBUG: Sample normalTarget after environment render
+      if (DEBUG_NORMAL_BUFFER && normalDebugFrameCounter % NORMAL_DEBUG_LOG_INTERVAL === 0) {
+        const pixelBuffer = new Float32Array(4);
+        const w = normalTarget.width;
+        const h = normalTarget.height;
+        // Sample corner (should have wall normal)
+        gl.readRenderTargetPixels(normalTarget, 10, 10, 1, 1, pixelBuffer);
+        console.log(`[NORMAL-DEBUG] After env render - corner(10,10): [${pixelBuffer[0]?.toFixed(4)}, ${pixelBuffer[1]?.toFixed(4)}, ${pixelBuffer[2]?.toFixed(4)}, ${pixelBuffer[3]?.toFixed(4)}]`);
+        // Sample center (should be clear/background)
+        gl.readRenderTargetPixels(normalTarget, Math.floor(w / 2), Math.floor(h / 2), 1, 1, pixelBuffer);
+        console.log(`[NORMAL-DEBUG] After env render - center: [${pixelBuffer[0]?.toFixed(4)}, ${pixelBuffer[1]?.toFixed(4)}, ${pixelBuffer[2]?.toFixed(4)}, ${pixelBuffer[3]?.toFixed(4)}]`);
+      }
 
       // 2. Render Main Object (Fractal) to mainObjectMRT
       // This captures Color (Loc 0) and View-Space Normal (Loc 1)
       // The fractal shader writes to gl_FragData[1]
-      gl.setRenderTarget(mainObjectMRT);
-      gl.setClearColor(0x000000, 0);
-      gl.clear(true, true, false);
-      
-      // Force materials to be opaque and write depth for the MRT pass
-      // This is CRITICAL: If the material is transparent, blending will multiply 
-      // the normal (alpha 0) by 0, resulting in black output.
-      const savedPropsForMRTPass: Map<THREE.Material, { transparent: boolean; depthWrite: boolean; blending: THREE.Blending }> = new Map();
+      // SKIP this pass if there are no MAIN_OBJECT layer objects (e.g., when viewing volumetric-only objects)
+
+      // Count objects in MAIN_OBJECT layer
+      const mainObjectLayerMask = new THREE.Layers();
+      mainObjectLayerMask.set(RENDER_LAYERS.MAIN_OBJECT);
+      let mainObjectCount = 0;
       scene.traverse((obj) => {
-        if ((obj as THREE.Mesh).isMesh) {
-          const mat = (obj as THREE.Mesh).material as THREE.Material;
-          savedPropsForMRTPass.set(mat, { 
-            transparent: mat.transparent, 
-            depthWrite: mat.depthWrite,
-            blending: mat.blending 
-          });
-          mat.transparent = false;
-          mat.depthWrite = true;
-          mat.blending = THREE.NoBlending;
+        if ((obj as THREE.Mesh).isMesh && obj.layers.test(mainObjectLayerMask)) {
+          mainObjectCount++;
         }
       });
 
-      camera.layers.set(RENDER_LAYERS.MAIN_OBJECT);
-      try {
-        gl.render(scene, camera);
-      } finally {
-        // Restore original material properties
-        savedPropsForMRTPass.forEach((props, mat) => {
-          mat.transparent = props.transparent;
-          mat.depthWrite = props.depthWrite;
-          mat.blending = props.blending;
+      // DEBUG: Log object counts
+      if (DEBUG_NORMAL_BUFFER && normalDebugFrameCounter % NORMAL_DEBUG_LOG_INTERVAL === 0) {
+        console.log(`[NORMAL-DEBUG] MAIN_OBJECT layer has ${mainObjectCount} objects`);
+
+        // Also check VOLUMETRIC layer
+        const volumetricMask = new THREE.Layers();
+        volumetricMask.set(RENDER_LAYERS.VOLUMETRIC);
+        let volumetricCount = 0;
+        scene.traverse((obj) => {
+          if (obj.layers.test(volumetricMask)) {
+            volumetricCount++;
+          }
         });
+        console.log(`[NORMAL-DEBUG] VOLUMETRIC layer has ${volumetricCount} objects`);
       }
 
-      // 3. Composite Fractal Normals into normalTarget
-      // Draws a full-screen quad that samples the fractal normal texture
-      // and writes it to normalTarget, respecting depth
-      gl.setRenderTarget(normalTarget);
-      // Do NOT clear - we want to draw on top of environment
-      
-      if (mainObjectMRT.textures[1] && mainObjectMRT.depthTexture) {
-        const uniforms = normalCopyMaterial.uniforms as any;
-        uniforms.tNormal.value = mainObjectMRT.textures[1];
-        uniforms.tDepth.value = mainObjectMRT.depthTexture;
-        
-        gl.render(normalCopyScene, normalCopyCamera);
+      // Only render and copy if there are MAIN_OBJECT layer objects
+      if (mainObjectCount > 0) {
+        gl.setRenderTarget(mainObjectMRT);
+        gl.setClearColor(0x000000, 0);
+        gl.clear(true, true, false);
+
+        // Force materials to be opaque and write depth for the MRT pass
+        // This is CRITICAL: If the material is transparent, blending will multiply
+        // the normal (alpha 0) by 0, resulting in black output.
+        const savedPropsForMRTPass: Map<THREE.Material, { transparent: boolean; depthWrite: boolean; blending: THREE.Blending }> = new Map();
+        scene.traverse((obj) => {
+          if ((obj as THREE.Mesh).isMesh) {
+            const mat = (obj as THREE.Mesh).material as THREE.Material;
+            savedPropsForMRTPass.set(mat, {
+              transparent: mat.transparent,
+              depthWrite: mat.depthWrite,
+              blending: mat.blending
+            });
+            mat.transparent = false;
+            mat.depthWrite = true;
+            mat.blending = THREE.NoBlending;
+          }
+        });
+
+        camera.layers.set(RENDER_LAYERS.MAIN_OBJECT);
+
+        try {
+          gl.render(scene, camera);
+        } finally {
+          // Restore original material properties
+          savedPropsForMRTPass.forEach((props, mat) => {
+            mat.transparent = props.transparent;
+            mat.depthWrite = props.depthWrite;
+            mat.blending = props.blending;
+          });
+        }
+
+        // DEBUG: Sample mainObjectMRT textures[1] (gNormal output)
+        if (DEBUG_NORMAL_BUFFER && normalDebugFrameCounter % NORMAL_DEBUG_LOG_INTERVAL === 0) {
+          if (mainObjectMRT.textures[1]) {
+            gl.setRenderTarget(mainObjectMRT);
+            const w = mainObjectMRT.width;
+            const h = mainObjectMRT.height;
+            const centerX = Math.floor(w / 2);
+            const centerY = Math.floor(h / 2);
+            const pixelBuffer = new Float32Array(4);
+
+            const glContext = gl.getContext() as WebGL2RenderingContext;
+            const drawBuffers = glContext.getParameter(glContext.DRAW_BUFFER0 + 1);
+            console.log(`[NORMAL-DEBUG] mainObjectMRT textures[1] draw buffer: ${drawBuffers}`);
+
+            gl.readRenderTargetPixels(mainObjectMRT, centerX, centerY, 1, 1, pixelBuffer);
+            console.log(`[NORMAL-DEBUG] mainObjectMRT center (tex 0): [${pixelBuffer[0]?.toFixed(4)}, ${pixelBuffer[1]?.toFixed(4)}, ${pixelBuffer[2]?.toFixed(4)}, ${pixelBuffer[3]?.toFixed(4)}]`);
+
+            gl.setRenderTarget(null);
+          }
+        }
+
+        // 3. Composite Fractal Normals into normalTarget
+        // Draws a full-screen quad that samples the fractal normal texture
+        // and writes it to normalTarget, respecting depth
+        gl.setRenderTarget(normalTarget);
+        // Do NOT clear - we want to draw on top of environment
+
+        if (mainObjectMRT.textures[1] && mainObjectMRT.depthTexture) {
+          const uniforms = normalCopyMaterial.uniforms as any;
+          uniforms.tNormal.value = mainObjectMRT.textures[1];
+          uniforms.tDepth.value = mainObjectMRT.depthTexture;
+
+          // CRITICAL: Ensure autoClear is FALSE to preserve wall normals
+          const savedAutoClear = gl.autoClear;
+          gl.autoClear = false;
+
+          gl.render(normalCopyScene, normalCopyCamera);
+
+          gl.autoClear = savedAutoClear;
+        }
+
+        // DEBUG: Sample normalTarget after fractal copy
+        if (DEBUG_NORMAL_BUFFER && normalDebugFrameCounter % NORMAL_DEBUG_LOG_INTERVAL === 0) {
+          const pixelBuffer = new Float32Array(4);
+          gl.setRenderTarget(normalTarget);
+          gl.readRenderTargetPixels(normalTarget, 10, 10, 1, 1, pixelBuffer);
+          console.log(`[NORMAL-DEBUG] After fractal copy - corner(10,10): [${pixelBuffer[0]?.toFixed(4)}, ${pixelBuffer[1]?.toFixed(4)}, ${pixelBuffer[2]?.toFixed(4)}, ${pixelBuffer[3]?.toFixed(4)}]`);
+        }
+      } else {
+        // DEBUG: Log skip
+        if (DEBUG_NORMAL_BUFFER && normalDebugFrameCounter % NORMAL_DEBUG_LOG_INTERVAL === 0) {
+          console.log(`[NORMAL-DEBUG] Skipping MAIN_OBJECT normal pass (no objects)`);
+        }
       }
+
+      // DEBUG: Sample normalTarget final state (moved outside conditional)
+      if (DEBUG_NORMAL_BUFFER && normalDebugFrameCounter % NORMAL_DEBUG_LOG_INTERVAL === 0) {
+        const pixelBuffer = new Float32Array(4);
+        gl.setRenderTarget(normalTarget);
+        gl.readRenderTargetPixels(normalTarget, 10, 10, 1, 1, pixelBuffer);
+        console.log(`[NORMAL-DEBUG] normalTarget corner after MAIN_OBJECT pass: [${pixelBuffer[0]?.toFixed(4)}, ${pixelBuffer[1]?.toFixed(4)}, ${pixelBuffer[2]?.toFixed(4)}, ${pixelBuffer[3]?.toFixed(4)}]`);
+
+        // Check mainObjectMRT at same location (for reference)
+        gl.setRenderTarget(mainObjectMRT);
+        gl.readRenderTargetPixels(mainObjectMRT, 10, 10, 1, 1, pixelBuffer);
+        console.log(`[NORMAL-DEBUG] mainObjectMRT corner color: [${pixelBuffer[0]?.toFixed(4)}, ${pixelBuffer[1]?.toFixed(4)}, ${pixelBuffer[2]?.toFixed(4)}, ${pixelBuffer[3]?.toFixed(4)}]`);
+      }
+
+      // 4. Composite Volumetric Normals into normalTarget (when temporal cloud is active)
+      // Volumetric objects render to cloudRenderTarget.textures[1] (CloudNormal)
+      // We need to upsample and composite these normals into the full-res normalTarget
+      // NOTE: The cloud accumulation buffer (full-res) has the composited normals after
+      // temporal reconstruction, so we use that instead of the quarter-res cloudRenderTarget.
+      if (useTemporalCloud) {
+        const cloudTarget = TemporalCloudManager.getCloudRenderTarget();
+        const writeTarget = TemporalCloudManager.getWriteTarget();
+        const cloudNormalTexture = TemporalCloudManager.getCloudNormalTexture();
+        // After reconstruction, the accumulated normals are in writeTarget.textures[1]
+        // but we haven't done reconstruction yet in the normal pass...
+        // So we need to use the quarter-res normals from cloudTarget
+
+        // DEBUG: Sample the cloudRenderTarget directly to see if normals are there
+        if (DEBUG_NORMAL_BUFFER && normalDebugFrameCounter % NORMAL_DEBUG_LOG_INTERVAL === 0 && cloudTarget) {
+          const pixelBuffer = new Float32Array(4);
+          const cw = cloudTarget.width;
+          const ch = cloudTarget.height;
+          const centerX = Math.floor(cw / 2);
+          const centerY = Math.floor(ch / 2);
+
+          gl.setRenderTarget(cloudTarget);
+          gl.readRenderTargetPixels(cloudTarget, centerX, centerY, 1, 1, pixelBuffer);
+          console.log(`[NORMAL-DEBUG] cloudTarget (quarter-res ${cw}x${ch}) center [tex 0 color]: [${pixelBuffer[0]?.toFixed(4)}, ${pixelBuffer[1]?.toFixed(4)}, ${pixelBuffer[2]?.toFixed(4)}, ${pixelBuffer[3]?.toFixed(4)}]`);
+          console.log(`[NORMAL-DEBUG] cloudTarget has ${cloudTarget.textures.length} textures`);
+          console.log(`[NORMAL-DEBUG] cloudNormalTexture exists: ${!!cloudNormalTexture}`);
+          gl.setRenderTarget(null);
+        }
+
+        if (cloudNormalTexture) {
+          // DEBUG: Log volumetric normal texture info and sample cloudNormalTexture at corner
+          if (DEBUG_NORMAL_BUFFER && normalDebugFrameCounter % NORMAL_DEBUG_LOG_INTERVAL === 0) {
+            console.log(`[NORMAL-DEBUG] Compositing volumetric normals from cloudRenderTarget.textures[1]`);
+            console.log(`[NORMAL-DEBUG] cloudNormalTexture.name: ${cloudNormalTexture.name}`);
+
+            // Sample cloudNormalTexture at corner (quarter-res coordinates)
+            // Full-res (10,10) maps to quarter-res (~2.5, ~2.5) -> (2,2)
+            if (cloudTarget) {
+              gl.setRenderTarget(cloudTarget);
+              const cornerPixel = new Float32Array(4);
+              // Sample corner at quarter-res (note: this reads tex[0], not tex[1])
+              gl.readRenderTargetPixels(cloudTarget, 2, 2, 1, 1, cornerPixel);
+              console.log(`[NORMAL-DEBUG] cloudTarget corner(2,2) tex[0]: [${cornerPixel[0]?.toFixed(4)}, ${cornerPixel[1]?.toFixed(4)}, ${cornerPixel[2]?.toFixed(4)}, ${cornerPixel[3]?.toFixed(4)}]`);
+            }
+
+            // Check autoClear state
+            console.log(`[NORMAL-DEBUG] gl.autoClear: ${gl.autoClear}`);
+          }
+
+          // CRITICAL: Set render target to normalTarget before rendering volumetric normals
+          // The debug sampling above may have changed the render target to cloudTarget or null
+          gl.setRenderTarget(normalTarget);
+
+          // CRITICAL: Ensure autoClear is FALSE to preserve existing content
+          const savedAutoClear = gl.autoClear;
+          gl.autoClear = false;
+
+          // Use the dedicated volumetric normal copy material (no depth check)
+          const volNormalUniforms = volumetricNormalCopyMaterial.uniforms as any;
+          volNormalUniforms.tNormal.value = cloudNormalTexture;
+
+          gl.render(volumetricNormalCopyScene, normalCopyCamera);
+
+          // Restore autoClear
+          gl.autoClear = savedAutoClear;
+
+          // DEBUG: Sample normalTarget IMMEDIATELY after volumetric copy
+          if (DEBUG_NORMAL_BUFFER && normalDebugFrameCounter % NORMAL_DEBUG_LOG_INTERVAL === 0) {
+            const pixelBuffer = new Float32Array(4);
+            gl.setRenderTarget(normalTarget);
+            gl.readRenderTargetPixels(normalTarget, 10, 10, 1, 1, pixelBuffer);
+            console.log(`[NORMAL-DEBUG] After vol copy - corner(10,10): [${pixelBuffer[0]?.toFixed(4)}, ${pixelBuffer[1]?.toFixed(4)}, ${pixelBuffer[2]?.toFixed(4)}, ${pixelBuffer[3]?.toFixed(4)}]`);
+            gl.readRenderTargetPixels(normalTarget, Math.floor(normalTarget.width / 2), Math.floor(normalTarget.height / 2), 1, 1, pixelBuffer);
+            console.log(`[NORMAL-DEBUG] After vol copy - center: [${pixelBuffer[0]?.toFixed(4)}, ${pixelBuffer[1]?.toFixed(4)}, ${pixelBuffer[2]?.toFixed(4)}, ${pixelBuffer[3]?.toFixed(4)}]`);
+          }
+
+          // DEBUG: Sample normalTarget after volumetric copy
+          // Note: readRenderTargetPixels returns zeros for HalfFloatType targets when using Float32Array
+          // This is a known WebGL limitation. The actual texture may have data even if we read zeros.
+          if (DEBUG_NORMAL_BUFFER && normalDebugFrameCounter % NORMAL_DEBUG_LOG_INTERVAL === 0) {
+            // Try to read using Uint16Array for HalfFloatType (though Three.js doesn't support this directly)
+            // Instead, let's check if cloudTarget position texture (tex 2) has data
+            // since that's also written in the same shader pass
+            const cloudPositionTex = TemporalCloudManager.getCloudPositionTexture();
+            console.log(`[NORMAL-DEBUG] cloudPositionTexture exists: ${!!cloudPositionTex}`);
+
+            // Check if gNormal output is even being written to the MRT
+            // The issue might be that the MRT drawBuffers aren't set up correctly
+            const glContext = gl.getContext() as WebGL2RenderingContext;
+            if (cloudTarget) {
+              // Check the MRT setup - WebGL should have DRAW_BUFFER0, DRAW_BUFFER1, DRAW_BUFFER2
+              // for the 3 attachments
+              console.log(`[NORMAL-DEBUG] cloudTarget draw buffers: MRT count = ${cloudTarget.textures.length}`);
+            }
+          }
+        }
+      }
+
+      // ========================================
+      // DEBUG: Normal buffer sampling for bug investigation
+      // ========================================
+      if (DEBUG_NORMAL_BUFFER && normalDebugFrameCounter % NORMAL_DEBUG_LOG_INTERVAL === 0) {
+        // Sample multiple points from normalTarget
+        const w = normalTarget.width;
+        const h = normalTarget.height;
+
+        // Sample points: center, wall regions (inside the rendered walls), and distributed
+        // Note: Walls don't extend to the very edge (1,1), so sample at (50,50) etc.
+        const samplePoints = [
+          { name: 'center', x: Math.floor(w / 2), y: Math.floor(h / 2) },
+          { name: 'wall_corner_00', x: 50, y: 50 },
+          { name: 'wall_corner_WH', x: w - 50, y: h - 50 },
+          { name: 'wall_corner_W0', x: w - 50, y: 50 },
+          { name: 'wall_corner_0H', x: 50, y: h - 50 },
+          { name: 'mid_left', x: Math.floor(w / 4), y: Math.floor(h / 2) },
+          { name: 'mid_right', x: Math.floor(3 * w / 4), y: Math.floor(h / 2) },
+          { name: 'mid_top', x: Math.floor(w / 2), y: Math.floor(3 * h / 4) },
+          { name: 'mid_bottom', x: Math.floor(w / 2), y: Math.floor(h / 4) },
+        ];
+
+        const samples: Array<{ name: string; x: number; y: number; rgba: number[] }> = [];
+        let uniqueValues = new Set<string>();
+        let hasNonZero = false;
+        let allInRange = true;
+
+        gl.setRenderTarget(normalTarget);
+        for (const pt of samplePoints) {
+          const pixelBuffer = new Float32Array(4);
+          gl.readRenderTargetPixels(normalTarget, pt.x, pt.y, 1, 1, pixelBuffer);
+          const rgba = [pixelBuffer[0]!, pixelBuffer[1]!, pixelBuffer[2]!, pixelBuffer[3]!];
+          samples.push({ name: pt.name, x: pt.x, y: pt.y, rgba });
+
+          // Track unique values (rounded to 4 decimals for comparison)
+          const key = rgba.map(v => v.toFixed(4)).join(',');
+          uniqueValues.add(key);
+
+          // Check for non-zero
+          if (rgba[0] !== 0 || rgba[1] !== 0 || rgba[2] !== 0) {
+            hasNonZero = true;
+          }
+
+          // Check range (normals should be encoded in 0-1)
+          for (let i = 0; i < 3; i++) {
+            if (rgba[i]! < 0 || rgba[i]! > 1) {
+              allInRange = false;
+            }
+          }
+        }
+        gl.setRenderTarget(null);
+
+        // Gate 1: Non-uniform data (variance detected)
+        const gate1Pass = uniqueValues.size > 1;
+
+        // Gate 2: Plausible normals (in range, non-zero)
+        const gate2Pass = hasNonZero && allInRange;
+
+        // Log results
+        console.log(`[NORMAL-DEBUG] === Normal Buffer Sample (frame ${normalDebugFrameCounter}) ===`);
+        console.log(`[NORMAL-DEBUG] Buffer dimensions: ${w}x${h}`);
+
+        for (const sample of samples) {
+          const rgbaStr = sample.rgba.map(v => v.toFixed(4)).join(', ');
+          console.log(`[NORMAL-DEBUG] ${sample.name} (${sample.x},${sample.y}): [${rgbaStr}]`);
+        }
+
+        console.log(`[NORMAL-DEBUG] Unique values: ${uniqueValues.size}`);
+        console.log(`[NORMAL-DEBUG] Has non-zero: ${hasNonZero}`);
+        console.log(`[NORMAL-DEBUG] All in range [0,1]: ${allInRange}`);
+        console.log(`[GATE-1] Variance detected: ${gate1Pass ? 'PASS' : 'FAIL'}`);
+        console.log(`[GATE-2] Plausible normals: ${gate2Pass ? 'PASS' : 'FAIL'}`);
+
+        // Gate 3: Check if both object and wall normals are present
+        // Center should be object, wall_corner should be environment (wall)
+        const centerSample = samples.find(s => s.name === 'center');
+        const wallSample = samples.find(s => s.name === 'wall_corner_00');
+        if (centerSample && wallSample) {
+          const centerHasData = centerSample.rgba.slice(0, 3).some(v => v !== 0);
+          const wallHasData = wallSample.rgba.slice(0, 3).some(v => v !== 0);
+          const gate3Pass = centerHasData && wallHasData;
+
+          console.log(`[NORMAL-DEBUG] Center has normal data (object): ${centerHasData}`);
+          console.log(`[NORMAL-DEBUG] Wall corner has normal data (environment): ${wallHasData}`);
+          console.log(`[GATE-3] Object + Wall normals: ${gate3Pass ? 'PASS' : 'FAIL'}`);
+        }
+
+        console.log(`[NORMAL-DEBUG] === End Sample ===`);
+      }
+      normalDebugFrameCounter++;
 
       // Restore camera layers
       camera.layers.mask = savedCameraLayers;
