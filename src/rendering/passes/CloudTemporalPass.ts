@@ -70,7 +70,13 @@ export class CloudTemporalPass extends Pass {
 
   // Options
   private historyWeight: number;
+  private baseHistoryWeight: number; // Original weight before motion scaling
   private disocclusionThreshold: number;
+
+  // Camera motion detection for adaptive history weight
+  private prevCameraMatrix = new THREE.Matrix4();
+  private prevCameraPosition = new THREE.Vector3();
+  private hasPrevCamera = false;
 
   // Validity buffer (output from reprojection)
   private validityBuffer: THREE.WebGLRenderTarget | null = null;
@@ -79,6 +85,7 @@ export class CloudTemporalPass extends Pass {
     super();
 
     this.historyWeight = options.historyWeight ?? 0.85;
+    this.baseHistoryWeight = this.historyWeight;
     this.disocclusionThreshold = options.disocclusionThreshold ?? 0.15;
 
     // Create reprojection material
@@ -222,6 +229,9 @@ export class CloudTemporalPass extends Pass {
    * Update camera uniforms for reprojection calculation.
    * Call this each frame before render() to ensure correct motion vectors.
    *
+   * Also detects camera motion and reduces history weight during fast rotation/zoom
+   * to prevent smearing artifacts.
+   *
    * @param camera - The scene camera (perspective or orthographic)
    */
   updateCamera(camera: THREE.Camera): void {
@@ -234,11 +244,43 @@ export class CloudTemporalPass extends Pass {
     uniforms.uViewProjectionMatrix.value.copy(viewProj);
     uniforms.uInverseViewProjectionMatrix.value.copy(invViewProj);
 
+    // Get current camera world position and orientation
+    const worldPos = new THREE.Vector3();
     if (camera instanceof THREE.PerspectiveCamera || camera instanceof THREE.OrthographicCamera) {
-      const worldPos = new THREE.Vector3();
       camera.getWorldPosition(worldPos);
       uniforms.uCameraPosition.value.copy(worldPos);
     }
+
+    // Camera motion detection - reduce history weight during fast rotation/zoom
+    if (this.hasPrevCamera) {
+      // Compute rotation delta by comparing forward vectors
+      const prevForward = new THREE.Vector3(0, 0, -1).applyMatrix4(this.prevCameraMatrix).normalize();
+      const currForward = new THREE.Vector3(0, 0, -1).applyMatrix4(camera.matrixWorld).normalize();
+      const rotationDelta = 1 - prevForward.dot(currForward); // 0 = no rotation, 2 = 180 degrees
+
+      // Compute position delta (for zoom/dolly detection)
+      const positionDelta = worldPos.distanceTo(this.prevCameraPosition);
+
+      // Scale history weight based on motion
+      // rotationDelta of 0.01 is roughly 8 degrees, 0.1 is roughly 26 degrees
+      // positionDelta threshold depends on scene scale
+      const rotationFactor = Math.max(0, 1 - rotationDelta * 10); // Fast falloff for rotation
+      const positionFactor = Math.max(0, 1 - positionDelta * 0.5); // Gentler falloff for position
+
+      // Combine factors - take minimum to be conservative (more rejection)
+      const motionFactor = Math.min(rotationFactor, positionFactor);
+
+      // Apply to history weight - during fast motion, use less history
+      this.historyWeight = this.baseHistoryWeight * motionFactor;
+
+      // Clamp to reasonable range
+      this.historyWeight = Math.max(0, Math.min(this.baseHistoryWeight, this.historyWeight));
+    }
+
+    // Store current camera state for next frame
+    this.prevCameraMatrix.copy(camera.matrixWorld);
+    this.prevCameraPosition.copy(worldPos);
+    this.hasPrevCamera = true;
   }
 
   /**
@@ -248,7 +290,8 @@ export class CloudTemporalPass extends Pass {
    * @param weight - Blend weight between 0.0 (favor new) and 1.0 (favor history). Default: 0.85
    */
   setHistoryWeight(weight: number): void {
-    this.historyWeight = Math.max(0, Math.min(1, weight));
+    this.baseHistoryWeight = Math.max(0, Math.min(1, weight));
+    this.historyWeight = this.baseHistoryWeight;
     (this.reconstructionMaterial.uniforms as any).uHistoryWeight.value = this.historyWeight;
   }
 

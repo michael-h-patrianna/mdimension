@@ -24,7 +24,6 @@ in vec2 vUv;
 uniform sampler2D uPrevAccumulation;
 
 // Previous frame's accumulated world positions (xyz = world pos, w = alpha weight)
-// This enables accurate reprojection when camera rotates, not just translates
 uniform sampler2D uPrevPositionBuffer;
 
 // Matrices for reprojection
@@ -32,7 +31,7 @@ uniform mat4 uPrevViewProjectionMatrix;
 uniform mat4 uViewProjectionMatrix;
 uniform mat4 uInverseViewProjectionMatrix;
 
-// Current camera position for fallback
+// Current camera position
 uniform vec3 uCameraPosition;
 
 // Resolution
@@ -45,143 +44,123 @@ uniform float uDisocclusionThreshold;
 layout(location = 0) out vec4 fragColor;
 layout(location = 1) out vec4 fragValidity;
 
-/**
- * Project world position to current frame UV using current view-projection matrix
- */
-vec2 worldToCurrentUV(vec3 worldPos) {
-    vec4 clipPos = uViewProjectionMatrix * vec4(worldPos, 1.0);
-    // Perspective divide
-    vec2 ndc = clipPos.xy / clipPos.w;
-    return ndc * 0.5 + 0.5;
-}
-
 void main() {
-    // Sample previous frame's world position for this pixel
-    // The position buffer stores actual 3D world positions, enabling accurate
-    // reprojection when camera rotates (not just translates)
-    vec4 prevPositionData = texture(uPrevPositionBuffer, vUv);
-    vec3 worldPos = prevPositionData.xyz;
-    float positionAlpha = prevPositionData.w;
+    /**
+     * CORRECT REPROJECTION FOR VOLUMETRIC TEMPORAL ACCUMULATION
+     *
+     * The goal: For each OUTPUT pixel at vUv, find where to sample HISTORY from.
+     *
+     * The key insight is that the previous frame stored a world position at each
+     * screen location. When the camera moves, that world position now appears at
+     * a DIFFERENT screen location. We need to:
+     *
+     * 1. Get the world position that was stored at vUv in the PREVIOUS accumulation
+     * 2. Project it using the CURRENT VP matrix to find where it appears NOW
+     * 3. If currentUV != vUv, the content has "moved" on screen
+     *
+     * But we're doing a GATHER operation (reading from history, writing to current).
+     * So we need to INVERT this: for current pixel at vUv, find where to read FROM.
+     *
+     * The trick: Sample a grid of nearby history positions, project each to current
+     * frame, and find which one lands closest to vUv. That's where our history comes from.
+     *
+     * SIMPLIFIED APPROACH for volumetrics:
+     * Since volumetric boundaries are soft and the object fills much of the screen,
+     * we use a simpler heuristic: check if the world position at vUv in the previous
+     * frame projects to a significantly different location in the current frame.
+     * If so, reduce validity (the content has moved away from this pixel).
+     */
 
-    // Sample previous frame's accumulated color
+    // Sample previous frame's data at this screen location
     vec4 prevColor = texture(uPrevAccumulation, vUv);
+    vec4 prevPosition = texture(uPrevPositionBuffer, vUv);
 
-    // If previous frame had no cloud data here, mark invalid
-    if (prevColor.a < 0.001 || positionAlpha < 0.001) {
+    // Early out if no valid history at this location
+    if (prevColor.a < 0.001 || prevPosition.w < 0.001) {
         fragColor = vec4(0.0);
         fragValidity = vec4(0.0);
         return;
     }
 
-    // Reproject: find where this world position appears in the CURRENT frame
-    vec2 currentUV = worldToCurrentUV(worldPos);
+    vec3 worldPos = prevPosition.xyz;
 
-    // Check if on-screen in current frame
-    if (currentUV.x < 0.0 || currentUV.x > 1.0 || currentUV.y < 0.0 || currentUV.y > 1.0) {
-        fragColor = vec4(0.0);
-        fragValidity = vec4(0.0);
-        return;
-    }
+    // Project this world position to CURRENT frame to see where it went
+    vec4 currentClip = uViewProjectionMatrix * vec4(worldPos, 1.0);
+    vec2 currentUV = (currentClip.xy / currentClip.w) * 0.5 + 0.5;
 
-    // The key insight: we're sampling from prevUV (vUv) but writing to where it
-    // should appear in the current frame. However, since this is a fullscreen pass,
-    // we can't change where we write. Instead, we need to REVERSE the logic:
-    //
-    // For each pixel in the OUTPUT (current frame), find where it came from in
-    // the previous frame's buffer. This requires inverting the reprojection.
-    //
-    // NEW APPROACH: For current pixel at vUv, compute where it was in world space,
-    // then find where that world position was in the previous frame's UV space.
+    // Compute how far the content has "moved" on screen
+    vec2 screenMotion = currentUV - vUv;
+    float motionMagnitude = length(screenMotion * uAccumulationResolution); // In pixels
 
-    // Compute world position for current pixel using inverse view-projection
-    vec2 ndc = vUv * 2.0 - 1.0;
-    vec4 nearClip = vec4(ndc, -1.0, 1.0);
-    vec4 farClip = vec4(ndc, 1.0, 1.0);
-
-    vec4 nearWorld = uInverseViewProjectionMatrix * nearClip;
-    vec4 farWorld = uInverseViewProjectionMatrix * farClip;
-    nearWorld /= nearWorld.w;
-    farWorld /= farWorld.w;
-
-    vec3 rayDir = normalize(farWorld.xyz - nearWorld.xyz);
-
-    // Sample the previous position buffer to get the depth/distance
-    // Since we're looking for where the current pixel came from, we sample
-    // at vUv and use the stored world position to find the previous UV
-    vec4 sampledPosition = texture(uPrevPositionBuffer, vUv);
-
-    if (sampledPosition.w < 0.001) {
-        // No valid position data - fall back to center of scene
-        fragColor = vec4(0.0);
-        fragValidity = vec4(0.0);
-        return;
-    }
-
-    // Use the actual world position from the position buffer
-    vec3 actualWorldPos = sampledPosition.xyz;
-
-    // Project this world position using the PREVIOUS view-projection matrix
-    // to find where it was in the previous frame
-    vec4 prevClipPos = uPrevViewProjectionMatrix * vec4(actualWorldPos, 1.0);
-    vec2 prevUV = (prevClipPos.xy / prevClipPos.w) * 0.5 + 0.5;
-
-    // Check if the reprojected position is on-screen in previous frame
-    if (prevUV.x < 0.0 || prevUV.x > 1.0 || prevUV.y < 0.0 || prevUV.y > 1.0) {
-        fragColor = vec4(0.0);
-        fragValidity = vec4(0.0);
-        return;
-    }
-
-    // Sample previous frame's color at the reprojected location
-    vec4 reprojectedColor = texture(uPrevAccumulation, prevUV);
-
-    if (reprojectedColor.a < 0.001) {
-        fragColor = vec4(0.0);
-        fragValidity = vec4(0.0);
-        return;
-    }
-
-    // Disocclusion detection: check neighbor depth variance using position buffer
-    vec2 texelSize = 1.0 / uAccumulationResolution;
-
-    vec4 posL = texture(uPrevPositionBuffer, prevUV - vec2(texelSize.x, 0.0));
-    vec4 posR = texture(uPrevPositionBuffer, prevUV + vec2(texelSize.x, 0.0));
-    vec4 posU = texture(uPrevPositionBuffer, prevUV + vec2(0.0, texelSize.y));
-    vec4 posD = texture(uPrevPositionBuffer, prevUV - vec2(0.0, texelSize.y));
-
-    // Check for large position discontinuities (indicates edge/disocclusion)
-    vec3 centerPos = actualWorldPos;
-    float maxPosDiff = max(
-        max(length(centerPos - posL.xyz), length(centerPos - posR.xyz)),
-        max(length(centerPos - posU.xyz), length(centerPos - posD.xyz))
-    );
-
-    // Also check alpha discontinuities
-    vec4 colorL = texture(uPrevAccumulation, prevUV - vec2(texelSize.x, 0.0));
-    vec4 colorR = texture(uPrevAccumulation, prevUV + vec2(texelSize.x, 0.0));
-    vec4 colorU = texture(uPrevAccumulation, prevUV + vec2(0.0, texelSize.y));
-    vec4 colorD = texture(uPrevAccumulation, prevUV - vec2(0.0, texelSize.y));
-
-    float maxAlphaDiff = max(
-        max(abs(reprojectedColor.a - colorL.a), abs(reprojectedColor.a - colorR.a)),
-        max(abs(reprojectedColor.a - colorU.a), abs(reprojectedColor.a - colorD.a))
-    );
-
-    // Reject if large discontinuity detected
-    // Position discontinuity threshold is in world units (0.5 = half a unit)
+    // Start with full validity
     float validity = 1.0;
-    if (maxPosDiff > 0.5 || maxAlphaDiff > uDisocclusionThreshold) {
+
+    // MOTION-BASED REJECTION:
+    // If the world position that WAS at vUv has moved significantly on screen,
+    // the history at vUv is no longer valid for the current frame's vUv.
+    // This is the key fix for smearing during camera rotation!
+    //
+    // Threshold: 2 pixels of motion starts reducing validity, 8+ pixels = invalid
+    const float MOTION_THRESHOLD_MIN = 2.0;  // Start reducing validity
+    const float MOTION_THRESHOLD_MAX = 8.0;  // Fully invalid
+
+    if (motionMagnitude > MOTION_THRESHOLD_MIN) {
+        float motionFactor = 1.0 - smoothstep(MOTION_THRESHOLD_MIN, MOTION_THRESHOLD_MAX, motionMagnitude);
+        validity *= motionFactor;
+    }
+
+    // OFF-SCREEN REJECTION:
+    // If the content moved completely off-screen, it's definitely invalid
+    if (currentUV.x < -0.1 || currentUV.x > 1.1 || currentUV.y < -0.1 || currentUV.y > 1.1) {
         validity = 0.0;
     }
 
-    // Edge rejection - reduce validity near screen edges
-    float edgeDist = min(min(prevUV.x, 1.0 - prevUV.x), min(prevUV.y, 1.0 - prevUV.y));
-    if (edgeDist < 0.02) {
-        validity *= edgeDist / 0.02;
+    // EDGE DETECTION:
+    // Check for depth/position discontinuities in the neighborhood
+    vec2 texelSize = 1.0 / uAccumulationResolution;
+
+    vec4 posL = texture(uPrevPositionBuffer, vUv - vec2(texelSize.x, 0.0));
+    vec4 posR = texture(uPrevPositionBuffer, vUv + vec2(texelSize.x, 0.0));
+    vec4 posU = texture(uPrevPositionBuffer, vUv + vec2(0.0, texelSize.y));
+    vec4 posD = texture(uPrevPositionBuffer, vUv - vec2(0.0, texelSize.y));
+
+    // Large position differences indicate object edges - reduce validity there
+    float maxPosDiff = max(
+        max(length(worldPos - posL.xyz), length(worldPos - posR.xyz)),
+        max(length(worldPos - posU.xyz), length(worldPos - posD.xyz))
+    );
+
+    // Position discontinuity threshold (in world units)
+    // Tighter threshold = more aggressive edge rejection
+    const float POS_DISCONTINUITY_THRESHOLD = 0.3;
+    if (maxPosDiff > POS_DISCONTINUITY_THRESHOLD) {
+        validity *= 0.5; // Reduce but don't eliminate - let neighborhood clamping handle it
     }
 
-    fragColor = reprojectedColor;
-    // Store validity in r channel (g, b unused). Alpha=1.0 for MRT compatibility.
+    // ALPHA DISCONTINUITY:
+    // Check for sudden alpha changes (object boundary)
+    vec4 colorL = texture(uPrevAccumulation, vUv - vec2(texelSize.x, 0.0));
+    vec4 colorR = texture(uPrevAccumulation, vUv + vec2(texelSize.x, 0.0));
+    vec4 colorU = texture(uPrevAccumulation, vUv + vec2(0.0, texelSize.y));
+    vec4 colorD = texture(uPrevAccumulation, vUv - vec2(0.0, texelSize.y));
+
+    float maxAlphaDiff = max(
+        max(abs(prevColor.a - colorL.a), abs(prevColor.a - colorR.a)),
+        max(abs(prevColor.a - colorU.a), abs(prevColor.a - colorD.a))
+    );
+
+    if (maxAlphaDiff > uDisocclusionThreshold) {
+        validity *= 0.5;
+    }
+
+    // SCREEN EDGE REJECTION:
+    // Reduce validity near screen edges where content may be entering/leaving
+    float edgeDist = min(min(vUv.x, 1.0 - vUv.x), min(vUv.y, 1.0 - vUv.y));
+    if (edgeDist < 0.03) {
+        validity *= edgeDist / 0.03;
+    }
+
+    fragColor = prevColor;
     fragValidity = vec4(validity, 0.0, 0.0, 1.0);
 }
 `;

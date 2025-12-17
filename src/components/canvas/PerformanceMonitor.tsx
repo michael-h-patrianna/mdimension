@@ -216,10 +216,6 @@ export function PerformanceMonitor() {
   // Collision
   usePanelCollision(x, y, width, height, isDragging);
 
-  const toggleExpanded = () => {
-    if (!isDragging) setExpanded(!expanded);
-  };
-
   const fpsColor = getHealthColor(stats.fps, 55, 30);
   const sceneStats = stats.sceneGpu;
   const processedVertices = sceneStats.triangles * 3 + sceneStats.lines * 2 + sceneStats.points;
@@ -411,6 +407,9 @@ export function PerformanceMonitor() {
         style={{ x, y }}
         onDragStart={() => setIsDragging(true)}
         onDragEnd={() => setTimeout(() => setIsDragging(false), 100)}
+        onTap={() => {
+          if (!expanded) setExpanded(true);
+        }}
         transition={{ type: "spring", stiffness: 400, damping: 30 }}
         className="absolute top-20 left-4 z-[50] pointer-events-auto select-none"
       >
@@ -434,7 +433,6 @@ export function PerformanceMonitor() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                onClick={toggleExpanded}
                 className="flex items-center gap-4 px-4 py-2 h-12"
               >
                 {/* Status Indicator */}
@@ -483,7 +481,7 @@ export function PerformanceMonitor() {
                       <span className="text-xs font-bold uppercase tracking-widest text-zinc-300">System Monitor</span>
                    </div>
                    <button 
-                      onClick={toggleExpanded}
+                      onClick={() => setExpanded(false)}
                       className="p-1.5 -mr-1.5 rounded-full hover:bg-white/10 text-zinc-500 hover:text-white transition-colors"
                    >
                       <Icons.Minimize className="w-4 h-4" />

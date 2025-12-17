@@ -27,11 +27,13 @@ export const volumeIntegrationBlock = `
 #define ENTRY_ALPHA_THRESHOLD 0.01
 
 // Result structure for volume raymarching
-// Includes entry distance for temporal reprojection
+// Includes weighted center for temporal reprojection (more stable than entry point)
 struct VolumeResult {
     vec3 color;
     float alpha;
-    float entryT;  // Distance to first meaningful contribution (-1 if none)
+    float entryT;         // Distance to first meaningful contribution (-1 if none)
+    vec3 weightedCenter;  // Density-weighted center position (for stable reprojection)
+    float centerWeight;   // Weight sum for center (0 if no valid center)
 };
 
 // Compute time value for animation
@@ -73,11 +75,16 @@ vec3 computeDensityGradientFast(vec3 pos, float t, float delta, float sCenter) {
 
 // Main volume raymarching function (Fast Mode)
 // Now supports lighting (matched to Mandelbulb behavior) but with reduced sample count
-// Returns: VolumeResult with color, alpha, and entry distance
+// Returns: VolumeResult with color, alpha, entry distance, and density-weighted centroid
 VolumeResult volumeRaymarch(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar) {
     vec3 accColor = vec3(0.0);
     float transmittance = 1.0;
     float entryT = -1.0;  // Track first meaningful contribution
+
+    // Centroid accumulation for stable temporal reprojection
+    // Uses alpha * transmittance weighting - gives more weight to visible contributions
+    vec3 centroidSum = vec3(0.0);
+    float centroidWeight = 0.0;
 
     // Calculate step count based on quality settings
     int sampleCount = uFastMode ? (uSampleQuality / 2) : uSampleQuality;
@@ -118,10 +125,19 @@ VolumeResult volumeRaymarch(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar
 
         // Skip negligible contributions
         if (alpha > 0.001) {
-            // Track entry point for temporal reprojection
+            // Track entry point (still useful for some purposes)
             if (entryT < 0.0 && alpha > ENTRY_ALPHA_THRESHOLD) {
                 entryT = t;
             }
+
+            // CENTROID ACCUMULATION:
+            // Weight each position by its contribution to the final pixel color.
+            // alpha * transmittance represents how much this sample contributes.
+            // This gives a stable "center of mass" position that doesn't jump
+            // when viewing angle changes (unlike entry point which is view-dependent).
+            float weight = alpha * transmittance;
+            centroidSum += pos * weight;
+            centroidWeight += weight;
 
             // Compute gradient for lighting (Fast version - 3 taps)
             vec3 gradient = computeDensityGradientFast(pos, animTime, 0.05, sCenter);
@@ -145,7 +161,12 @@ VolumeResult volumeRaymarch(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar
         entryT = (tNear + tFar) * 0.5;
     }
 
-    return VolumeResult(accColor, finalAlpha, entryT);
+    // Compute final weighted center (or fallback to entry point position)
+    vec3 wCenter = centroidWeight > 0.001
+        ? centroidSum / centroidWeight
+        : rayOrigin + rayDir * entryT;
+
+    return VolumeResult(accColor, finalAlpha, entryT, wCenter, centroidWeight);
 }
 
 // High-quality volume integration with lighting
@@ -154,6 +175,10 @@ VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tF
     vec3 accColor = vec3(0.0);
     float transmittance = 1.0;
     float entryT = -1.0;  // Track first meaningful contribution
+
+    // Centroid accumulation for stable temporal reprojection
+    vec3 centroidSum = vec3(0.0);
+    float centroidWeight = 0.0;
 
     int sampleCount = uSampleQuality;
     sampleCount = clamp(sampleCount, 32, MAX_VOLUME_SAMPLES);
@@ -178,13 +203,17 @@ VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tF
         float alpha = computeAlpha(rho, stepLen, uDensityGain);
 
         if (alpha > 0.001) {
-            // Track entry point for temporal reprojection
+            // Track entry point
             if (entryT < 0.0 && alpha > ENTRY_ALPHA_THRESHOLD) {
                 entryT = t;
             }
 
+            // CENTROID ACCUMULATION for stable temporal reprojection
+            float weight = alpha * transmittance;
+            centroidSum += pos * weight;
+            centroidWeight += weight;
+
             // OPTIMIZED: Use forward differences with pre-computed center value
-            // Reduces gradient computation from 6 to 3 additional samples
             vec3 gradient = computeDensityGradientFast(pos, animTime, 0.05, sCenter);
             vec3 emission = computeEmissionLit(rho, phase, pos, gradient, viewDir);
 
@@ -200,6 +229,11 @@ VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tF
         entryT = (tNear + tFar) * 0.5;
     }
 
-    return VolumeResult(accColor, 1.0 - transmittance, entryT);
+    // Compute final weighted center
+    vec3 wCenter = centroidWeight > 0.001
+        ? centroidSum / centroidWeight
+        : rayOrigin + rayDir * entryT;
+
+    return VolumeResult(accColor, 1.0 - transmittance, entryT, wCenter, centroidWeight);
 }
 `;

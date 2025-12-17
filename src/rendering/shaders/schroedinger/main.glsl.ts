@@ -153,7 +153,7 @@ void main() {
         alpha = volumeResult.alpha * uVolumetricDensity;
     }
 
-    // Depth for temporal reprojection:
+    // Depth for gl_FragDepth:
     // When temporal was used, keep using the temporal depth (prevents drift)
     // When not used, record the actual entry point we found
     float depthT;
@@ -170,8 +170,8 @@ void main() {
     #endif
 
     vec3 entryPoint = ro + rd * depthT;
-    vec4 worldHitPos = uModelMatrix * vec4(entryPoint, 1.0);
-    vec4 clipPos = uProjectionMatrix * uViewMatrix * worldHitPos;
+    vec4 worldEntryPos = uModelMatrix * vec4(entryPoint, 1.0);
+    vec4 clipPos = uProjectionMatrix * uViewMatrix * worldEntryPos;
     gl_FragDepth = clamp((clipPos.z / clipPos.w) * 0.5 + 0.5, 0.0, 1.0);
 
     // Output
@@ -179,10 +179,15 @@ void main() {
 
     #ifdef USE_TEMPORAL_ACCUMULATION
     // Output world position for temporal reprojection
-    // This enables accurate reprojection when camera rotates (not just translates)
-    // Using the volume centroid (weighted by accumulated density) for best results
-    // w component stores alpha as weight for position averaging during reconstruction
-    gPosition = vec4(worldHitPos.xyz, alpha);
+    // CRITICAL: Use WEIGHTED CENTER instead of entry point!
+    // The weighted center is the density-weighted average position along the ray.
+    // It's much more stable than the entry point because:
+    // - Entry point varies dramatically with viewing angle (first visible density)
+    // - Weighted center represents the "center of mass" of the volumetric contribution
+    // - Weighted center doesn't jump when viewing angle changes slightly
+    // This is key to preventing smearing artifacts during camera rotation.
+    vec4 worldCenterPos = uModelMatrix * vec4(volumeResult.weightedCenter, 1.0);
+    gPosition = vec4(worldCenterPos.xyz, alpha);
     #else
     vec3 viewNormal = normalize((uViewMatrix * vec4(rd, 0.0)).xyz);
     gNormal = vec4(viewNormal * 0.5 + 0.5, uMetallic);

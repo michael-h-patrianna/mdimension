@@ -148,6 +148,55 @@ vec4 spatialInterpolationPositionFromHistory(vec2 uv) {
     return count > 0.0 ? sum / count : vec4(0.0);
 }
 
+/**
+ * NEIGHBORHOOD CLAMPING - Critical for preventing ghosting and smearing artifacts.
+ *
+ * This technique clamps reprojected history to the bounds of the current frame's
+ * neighborhood, providing a per-frame upper bound on reprojection error.
+ * (Reference: INSIDE GDC 2016, Brian Karis TAA)
+ *
+ * Samples a 3x3 neighborhood from the quarter-res cloud buffer and computes
+ * min/max bounds. History colors outside these bounds are clamped, preventing
+ * stale data from bleeding into the current frame.
+ */
+void computeNeighborhoodBounds(ivec2 centerPixel, out vec4 minBound, out vec4 maxBound) {
+    minBound = vec4(1e10);
+    maxBound = vec4(-1e10);
+
+    // Sample 3x3 neighborhood at 2-pixel stride (since we're at quarter-res, this covers the local area)
+    for (int dy = -1; dy <= 1; dy++) {
+        for (int dx = -1; dx <= 1; dx++) {
+            // Sample neighboring 2x2 blocks in full-res space
+            ivec2 samplePixel = centerPixel + ivec2(dx, dy) * 2;
+
+            // Clamp to valid range
+            samplePixel = clamp(samplePixel, ivec2(0), ivec2(uAccumulationResolution) - 1);
+
+            vec4 neighborColor = sampleCloudColorAtPixel(samplePixel);
+
+            // Only include valid samples in bounds
+            if (neighborColor.a > 0.001) {
+                minBound = min(minBound, neighborColor);
+                maxBound = max(maxBound, neighborColor);
+            }
+        }
+    }
+
+    // If no valid samples found, use defaults that won't clamp
+    if (minBound.a > 1e9) {
+        minBound = vec4(0.0);
+        maxBound = vec4(1.0);
+    }
+}
+
+/**
+ * Clamp a color to neighborhood bounds with optional softening.
+ * Uses AABB clamping which is simple but effective.
+ */
+vec4 clampToNeighborhood(vec4 color, vec4 minBound, vec4 maxBound) {
+    return clamp(color, minBound, maxBound);
+}
+
 void main() {
     // Use integer math to avoid floating-point precision issues with mod()
     // This is critical for correct Bayer pattern detection
@@ -191,13 +240,22 @@ void main() {
     // 0.5 means we trust new data roughly 2x more than reprojected data.
     const float FRESH_PIXEL_HISTORY_REDUCTION = 0.5;
 
+    // NEIGHBORHOOD CLAMPING: Compute bounds from current frame's quarter-res data
+    // This is the key technique for preventing ghosting/smearing artifacts
+    vec4 neighborMin, neighborMax;
+    computeNeighborhoodBounds(pixelCoordInt, neighborMin, neighborMax);
+
+    // Clamp history to neighborhood bounds BEFORE any blending
+    // This ensures stale history data cannot deviate more than current frame's local variation
+    vec4 clampedHistoryColor = clampToNeighborhood(historyColor, neighborMin, neighborMax);
+
     if (renderedThisFrame) {
         // This pixel was freshly rendered
         if (uHasValidHistory && validity > 0.5 && historyColor.a > 0.001) {
-            // Blend with history for temporal stability
+            // Blend with CLAMPED history for temporal stability without ghosting
             // Give more weight to new data since it's fresh
             float blendWeight = uHistoryWeight * validity * FRESH_PIXEL_HISTORY_REDUCTION;
-            finalColor = mix(newColor, historyColor, blendWeight);
+            finalColor = mix(newColor, clampedHistoryColor, blendWeight);
             // Blend positions weighted by alpha for proper averaging
             finalPosition = mix(newPosition, historyPosition, blendWeight);
 
@@ -215,8 +273,9 @@ void main() {
     } else {
         // This pixel was NOT rendered this frame
         if (uHasValidHistory && validity > 0.5 && historyColor.a > 0.001) {
-            // Use reprojected history
-            finalColor = historyColor;
+            // Use CLAMPED reprojected history
+            // The clamping prevents smearing by limiting history to current frame's neighborhood
+            finalColor = clampedHistoryColor;
             finalPosition = historyPosition;
 
             // CRITICAL: Preserve alpha=1.0 for SOLID objects from history
@@ -228,7 +287,9 @@ void main() {
             // History exists but validity is low - blend with spatial interpolation from history
             vec4 spatialColor = spatialInterpolationColorFromHistory(vUv);
             vec4 spatialPosition = spatialInterpolationPositionFromHistory(vUv);
-            finalColor = mix(spatialColor, historyColor, validity);
+            // Clamp both history and spatial to neighborhood bounds
+            vec4 clampedSpatial = clampToNeighborhood(spatialColor, neighborMin, neighborMax);
+            finalColor = mix(clampedSpatial, clampedHistoryColor, validity);
             finalPosition = mix(spatialPosition, historyPosition, validity);
 
             // Preserve alpha for SOLID objects

@@ -1,7 +1,3 @@
----
-description: Fix temporal depth buffer bug.
----
-
 === IMMUTABLE QUALITY GATES (MUST PASS BEFORE CLAIMING SUCCESS) ===
 
 **GATE 1**: Normal buffer contains non-uniform data (not all same value)
@@ -212,4 +208,3 @@ Valid normal buffer values should look like:
 - **Spherical object**: Gradient of values representing radial normals
 
 If all values are `[0.5, 0.5, 0.5, 0.0]` or `[0.0, 0.0, 0.0, 0.0]`, the normal data is NOT being written correctly.
-
