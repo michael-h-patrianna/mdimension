@@ -171,10 +171,20 @@ describe('Object Type Registry', () => {
       expect(getControlsComponentKey('quaternion-julia')).toBe('QuaternionJuliaControls');
     });
 
-    it('hasTimelineControls returns true for fractals', () => {
+    it('hasTimelineControls returns true for types with animations', () => {
+      // Fractals have timeline controls
       expect(hasTimelineControls('mandelbulb')).toBe(true);
       expect(hasTimelineControls('quaternion-julia')).toBe(true);
-      expect(hasTimelineControls('hypercube')).toBe(false);
+      expect(hasTimelineControls('schroedinger')).toBe(true);
+      // Polytopes have timeline controls (modulation animation)
+      expect(hasTimelineControls('hypercube')).toBe(true);
+      expect(hasTimelineControls('simplex')).toBe(true);
+      expect(hasTimelineControls('cross-polytope')).toBe(true);
+      expect(hasTimelineControls('wythoff-polytope')).toBe(true);
+      // Extended objects without animations
+      expect(hasTimelineControls('clifford-torus')).toBe(false);
+      expect(hasTimelineControls('nested-torus')).toBe(false);
+      expect(hasTimelineControls('root-system')).toBe(false);
     });
   });
 

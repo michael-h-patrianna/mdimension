@@ -142,10 +142,12 @@ class TemporalCloudManagerImpl {
     this.dispose();
 
     // Create accumulation buffers (full resolution, RGBA16F for HDR)
+    // IMPORTANT: Changed from HalfFloatType to FloatType to allow CPU readback via readPixels
+    // which is required for debugging and quality gates.
     const createAccumulationTarget = () =>
       new THREE.WebGLRenderTarget(newFullWidth, newFullHeight, {
         format: THREE.RGBAFormat,
-        type: THREE.HalfFloatType,
+        type: THREE.FloatType,
         minFilter: THREE.LinearFilter,
         magFilter: THREE.LinearFilter,
         wrapS: THREE.ClampToEdgeWrapping,

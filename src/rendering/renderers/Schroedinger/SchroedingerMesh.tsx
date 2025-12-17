@@ -613,7 +613,8 @@ const SchroedingerMesh = () => {
       if (material.uniforms.uOpacityMode) {
         // Force VOLUMETRIC mode when using temporal accumulation to ensure correct alpha blending
         // Otherwise 'Solid' mode would render opaque quads obscuring the scene
-        const effectiveMode = useTemporalAccumulation ? 'volumetric' : opacitySettings.mode;
+        // CRITICAL FIX: Use correct key 'volumetricDensity' (3), not 'volumetric' (undefined)
+        const effectiveMode = useTemporalAccumulation ? 'volumetricDensity' : opacitySettings.mode;
         material.uniforms.uOpacityMode.value = OPACITY_MODE_TO_INT[effectiveMode as keyof typeof OPACITY_MODE_TO_INT];
       }
       if (material.uniforms.uSimpleAlpha) {

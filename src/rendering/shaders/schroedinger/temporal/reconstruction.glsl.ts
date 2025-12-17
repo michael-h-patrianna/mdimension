@@ -155,6 +155,13 @@ void main() {
             // Give more weight to new data since it's fresh
             float blendWeight = uHistoryWeight * validity * FRESH_PIXEL_HISTORY_REDUCTION;
             finalColor = mix(newColor, historyColor, blendWeight);
+
+            // CRITICAL: Preserve alpha=1.0 for SOLID objects
+            // When new pixel has full opacity (SOLID mode), don't let history dilute it
+            // This prevents semi-transparency when opacity mode is set to SOLID
+            if (newColor.a >= 0.99) {
+                finalColor.a = 1.0;
+            }
         } else {
             // No valid history - use new data directly
             finalColor = newColor;
@@ -164,10 +171,21 @@ void main() {
         if (uHasValidHistory && validity > 0.5 && historyColor.a > 0.001) {
             // Use reprojected history
             finalColor = historyColor;
+
+            // CRITICAL: Preserve alpha=1.0 for SOLID objects from history
+            // If history had full opacity, keep it full
+            if (historyColor.a >= 0.99) {
+                finalColor.a = 1.0;
+            }
         } else if (uHasValidHistory && historyColor.a > 0.001) {
             // History exists but validity is low - blend with spatial interpolation from history
             vec4 spatial = spatialInterpolationFromHistory(vUv);
             finalColor = mix(spatial, historyColor, validity);
+
+            // Preserve alpha for SOLID objects
+            if (historyColor.a >= 0.99 || spatial.a >= 0.99) {
+                finalColor.a = 1.0;
+            }
         } else {
             // No valid history at all - use spatial interpolation from quarter-res cloud buffer
             // This is critical for first few frames before history is built up

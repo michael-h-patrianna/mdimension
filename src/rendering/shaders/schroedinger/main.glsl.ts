@@ -167,6 +167,7 @@ void main() {
 
     // Output
     gColor = vec4(volumeResult.color, alpha);
+    
     #ifndef USE_TEMPORAL_ACCUMULATION
     vec3 viewNormal = normalize((uViewMatrix * vec4(rd, 0.0)).xyz);
     gNormal = vec4(viewNormal * 0.5 + 0.5, uMetallic);

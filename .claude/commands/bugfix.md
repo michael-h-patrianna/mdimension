@@ -1,3 +1,7 @@
+---
+description: Fix temporal depth buffer bug.
+---
+
 === IMMUTABLE QUALITY GATES (MUST PASS BEFORE CLAIMING SUCCESS) ===
 
 **GATE 1**: Object rendering OFF → center pixel color is NOT black

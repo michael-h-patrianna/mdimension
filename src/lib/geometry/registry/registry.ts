@@ -60,7 +60,7 @@ export const OBJECT_TYPE_REGISTRY: ObjectTypeRegistry = new Map<ObjectType, Obje
 
       ui: {
         controlsComponentKey: 'PolytopeSettings',
-        hasTimelineControls: false,
+        hasTimelineControls: true,
       },
 
       configStoreKey: 'polytope',
@@ -100,7 +100,7 @@ export const OBJECT_TYPE_REGISTRY: ObjectTypeRegistry = new Map<ObjectType, Obje
 
       ui: {
         controlsComponentKey: 'PolytopeSettings',
-        hasTimelineControls: false,
+        hasTimelineControls: true,
       },
 
       configStoreKey: 'polytope',
@@ -140,7 +140,7 @@ export const OBJECT_TYPE_REGISTRY: ObjectTypeRegistry = new Map<ObjectType, Obje
 
       ui: {
         controlsComponentKey: 'PolytopeSettings',
-        hasTimelineControls: false,
+        hasTimelineControls: true,
       },
 
       configStoreKey: 'polytope',
@@ -180,7 +180,7 @@ export const OBJECT_TYPE_REGISTRY: ObjectTypeRegistry = new Map<ObjectType, Obje
 
       ui: {
         controlsComponentKey: 'WythoffPolytopeSettings',
-        hasTimelineControls: false,
+        hasTimelineControls: true,
       },
 
       configStoreKey: 'wythoffPolytope',

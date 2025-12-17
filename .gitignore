@@ -37,6 +37,6 @@ build
 *.tsbuildinfo
 
 # Screenshots and test artifacts
-screenshots/
+#screenshots/
 scripts/playwright/videos/
 scripts/playwright/screenshots/

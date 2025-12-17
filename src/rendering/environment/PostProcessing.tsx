@@ -46,7 +46,7 @@ import { useShallow } from 'zustand/react/shallow';
 // DEBUG: Pixel reading utilities for temporal reprojection debugging
 // Set DEBUG_TEMPORAL=true to enable logging, false for production
 // ========================================
-const DEBUG_TEMPORAL = false;
+const DEBUG_TEMPORAL = false; // Disabled after bug fix verified
 let debugFrameCounter = 0;
 const DEBUG_LOG_INTERVAL = 10; // Log every N frames
 
@@ -356,9 +356,11 @@ export const PostProcessing = memo(function PostProcessing() {
     });
 
     const cloudCompositeQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), cloudCompositeMaterial);
+    cloudCompositeQuad.frustumCulled = false;
     const cloudCompositeScene = new THREE.Scene();
     cloudCompositeScene.add(cloudCompositeQuad);
     const cloudCompositeCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    cloudCompositeCamera.position.z = 0.5; // Ensure it's not clipped by near plane
 
     // Create object-only depth target for refraction/bokeh
     // SSR uses full-scene depth to allow reflections on walls
@@ -884,6 +886,13 @@ export const PostProcessing = memo(function PostProcessing() {
     try {
       gl.render(scene, camera);
 
+      // [TR-DEBUG] Log sceneTarget immediately after main scene render (before finally block)
+      if (DEBUG_TEMPORAL && debugFrameCounter % DEBUG_LOG_INTERVAL === 0) {
+        logTemporalDebug('2.5-sceneTarget-afterMainRender', sceneTarget, gl, {
+          cameraLayerMask: camera.layers.mask,
+        });
+      }
+
       // NOTE: Volumetric cloud compositing happens AFTER this try block
       // (see "Composite reconstructed volumetric over scene" section below)
       // to ensure we only composite when history is valid and avoid double-compositing
@@ -959,9 +968,58 @@ export const PostProcessing = memo(function PostProcessing() {
         // Set the accumulation texture in the compositing material
         cloudCompositeMaterial.uniforms.tCloud.value = accumulationBuffer.texture;
 
+        // [TR-DEBUG] Log before composite render
+        if (DEBUG_TEMPORAL && debugFrameCounter % DEBUG_LOG_INTERVAL === 0) {
+          gl.info.reset();
+        }
+
+        // CRITICAL: Disable autoClear before composite to prevent clearing the scene!
+        // The autoClear state was restored to its original value in the finally block above,
+        // which may be true. If we don't disable it, gl.render() will clear sceneTarget.
+        const savedAutoClear = gl.autoClear;
+        gl.autoClear = false;
+
         // Render compositing quad to sceneTarget with blending
         gl.setRenderTarget(sceneTarget);
+
+        // [TR-DEBUG] Log render target state before composite
+        if (DEBUG_TEMPORAL && debugFrameCounter % DEBUG_LOG_INTERVAL === 0) {
+          const glContext = gl.getContext();
+          const colorMask = glContext.getParameter(glContext.COLOR_WRITEMASK);
+          const scissorTest = glContext.getParameter(glContext.SCISSOR_TEST);
+          const scissorBox = glContext.getParameter(glContext.SCISSOR_BOX);
+          const viewport = glContext.getParameter(glContext.VIEWPORT);
+          const depthTest = glContext.getParameter(glContext.DEPTH_TEST);
+          const stencilTest = glContext.getParameter(glContext.STENCIL_TEST);
+          const cullFace = glContext.getParameter(glContext.CULL_FACE);
+          // Check cloudCompositeQuad setup
+          const quad = cloudCompositeScene.children[0] as THREE.Mesh;
+          const mat = quad?.material as THREE.ShaderMaterial;
+          // Check if shader program has errors
+          const programInfo = gl.info.programs?.find((p: any) => p.name === 'ShaderMaterial');
+          console.log(`[TR-DEBUG] 3.4-preCompositeState: colorMask=[${colorMask}] scissor=${scissorTest}@[${scissorBox}] viewport=[${viewport}] depthTest=${depthTest} stencilTest=${stencilTest} cullFace=${cullFace} quadVisible=${quad?.visible} matTransparent=${mat?.transparent} matDepthTest=${mat?.depthTest} matDepthWrite=${mat?.depthWrite} matSide=${mat?.side}`);
+        }
+
         gl.render(cloudCompositeScene, cloudCompositeCamera);
+
+        // [TR-DEBUG] Read IMMEDIATELY after render, before any state change
+        if (DEBUG_TEMPORAL && debugFrameCounter % DEBUG_LOG_INTERVAL === 0) {
+          // Read directly with render target still bound
+          const pixelBuffer = new Float32Array(4);
+          const centerX = Math.floor(sceneTarget.width / 2);
+          const centerY = Math.floor(sceneTarget.height / 2);
+          gl.readRenderTargetPixels(sceneTarget, centerX, centerY, 1, 1, pixelBuffer);
+          console.log(`[TR-DEBUG] 3.6-immediateRead: center=[${pixelBuffer[0]?.toFixed(4)},${pixelBuffer[1]?.toFixed(4)},${pixelBuffer[2]?.toFixed(4)},${pixelBuffer[3]?.toFixed(4)}]`);
+        }
+
+        // Restore autoClear state
+        gl.autoClear = savedAutoClear;
+
+        // [TR-DEBUG] Log composite render stats
+        if (DEBUG_TEMPORAL && debugFrameCounter % DEBUG_LOG_INTERVAL === 0) {
+          console.log(`[TR-DEBUG] 3.5-compositeRenderStats: calls=${gl.info.render.calls} triangles=${gl.info.render.triangles} textureWidth=${accumulationBuffer.texture.image?.width || 'unknown'} textureHeight=${accumulationBuffer.texture.image?.height || 'unknown'}`);
+        }
+
         gl.setRenderTarget(null);
 
         // [TR-DEBUG] Log sceneTarget after compositing
