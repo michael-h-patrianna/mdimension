@@ -4,6 +4,7 @@ import type { MatrixND } from '@/lib/math/types';
 import { createColorCache, createLightColorCache, updateLinearColorUniform } from '@/rendering/colors/linearCache';
 import { RENDER_LAYERS } from '@/rendering/core/layers';
 import { TemporalDepthManager } from '@/rendering/core/TemporalDepthManager';
+import { ZoomAutopilot, type AutopilotConfig } from '@/rendering/effects/ZoomAutopilot';
 import { createLightUniforms, updateLightUniforms, type LightUniforms } from '@/rendering/lights/uniforms';
 import { OPACITY_MODE_TO_INT, SAMPLE_QUALITY_TO_INT } from '@/rendering/opacity/types';
 import { COLOR_ALGORITHM_TO_INT } from '@/rendering/shaders/palette';
@@ -133,6 +134,16 @@ const MandelbulbMesh = () => {
     }
   }, []);
 
+  // Cleanup zoom autopilot on unmount
+  useEffect(() => {
+    return () => {
+      if (zoomAutopilotRef.current) {
+        zoomAutopilotRef.current.dispose();
+        zoomAutopilotRef.current = null;
+      }
+    };
+  }, []);
+
   // Get dimension from geometry store
   const dimension = useGeometryStore((state) => state.dimension);
 
@@ -174,12 +185,41 @@ const MandelbulbMesh = () => {
   const phaseSpeed = useExtendedObjectStore((state) => state.mandelbulb.phaseSpeed);
   const phaseAmplitude = useExtendedObjectStore((state) => state.mandelbulb.phaseAmplitude);
 
+  // Zoom parameters
+  const zoomEnabled = useExtendedObjectStore((state) => state.mandelbulb.zoomEnabled);
+  const zoom = useExtendedObjectStore((state) => state.mandelbulb.zoom);
+  const zoomSpeed = useExtendedObjectStore((state) => state.mandelbulb.zoomSpeed);
+  const zoomAnimationEnabled = useExtendedObjectStore((state) => state.mandelbulb.zoomAnimationEnabled);
+  const zoomAnimationMode = useExtendedObjectStore((state) => state.mandelbulb.zoomAnimationMode);
+  const zoomTargetLevel = useExtendedObjectStore((state) => state.mandelbulb.zoomTargetLevel);
+
+  // Autopilot parameters
+  const autopilotEnabled = useExtendedObjectStore((state) => state.mandelbulb.autopilotEnabled);
+  const autopilotStrategy = useExtendedObjectStore((state) => state.mandelbulb.autopilotStrategy);
+  const centerRayProbeSize = useExtendedObjectStore((state) => state.mandelbulb.centerRayProbeSize);
+  const centerRayProbeFrequency = useExtendedObjectStore((state) => state.mandelbulb.centerRayProbeFrequency);
+  const centerRayMissThreshold = useExtendedObjectStore((state) => state.mandelbulb.centerRayMissThreshold);
+  const centerRayNudgeStrength = useExtendedObjectStore((state) => state.mandelbulb.centerRayNudgeStrength);
+  const interestScoreResolution = useExtendedObjectStore((state) => state.mandelbulb.interestScoreResolution);
+  const interestScoreInterval = useExtendedObjectStore((state) => state.mandelbulb.interestScoreInterval);
+  const interestScoreCandidates = useExtendedObjectStore((state) => state.mandelbulb.interestScoreCandidates);
+  const interestScoreNudgeRadius = useExtendedObjectStore((state) => state.mandelbulb.interestScoreNudgeRadius);
+  const interestScoreMetric = useExtendedObjectStore((state) => state.mandelbulb.interestScoreMetric);
+  const boundaryTargetEscapeRatio = useExtendedObjectStore((state) => state.mandelbulb.boundaryTargetEscapeRatio);
+  const boundaryTargetBand = useExtendedObjectStore((state) => state.mandelbulb.boundaryTargetBand);
+  const boundaryTargetCorrectionStrength = useExtendedObjectStore((state) => state.mandelbulb.boundaryTargetCorrectionStrength);
+
   // Animation bias for per-dimension variation
   const animationBias = useUIStore((state) => state.animationBias);
 
   // Animation time tracking - only advances when isPlaying is true
   const animationTimeRef = useRef(0);
   const lastFrameTimeRef = useRef(0);
+
+  // Zoom state refs
+  const logZoomRef = useRef(0);  // Log-space zoom for smooth animation
+  const zoomAutopilotRef = useRef<ZoomAutopilot | null>(null);
+  const zoomSpeedMultiplierRef = useRef(1.0);  // Autopilot speed adjustment
 
   // Get color state from visual store
   const faceColor = useAppearanceStore((state) => state.faceColor);
@@ -250,6 +290,10 @@ const MandelbulbMesh = () => {
       uPhaseEnabled: { value: false },
       uPhaseTheta: { value: 0.0 },  // Phase offset for theta angle
       uPhasePhi: { value: 0.0 },    // Phase offset for phi angle
+
+      // Zoom uniforms
+      uZoomEnabled: { value: false },
+      uZoom: { value: 1.0 },
 
       // D-dimensional rotated coordinate system
       // c = uOrigin + pos.x * uBasisX + pos.y * uBasisY + pos.z * uBasisZ
@@ -798,6 +842,123 @@ const MandelbulbMesh = () => {
       } else {
         if (material.uniforms.uPhaseTheta) material.uniforms.uPhaseTheta.value = 0;
         if (material.uniforms.uPhasePhi) material.uniforms.uPhasePhi.value = 0;
+      }
+
+      // ============================================
+      // Zoom Animation & Autopilot
+      // ============================================
+      if (material.uniforms.uZoomEnabled) {
+        material.uniforms.uZoomEnabled.value = zoomEnabled;
+      }
+
+      if (zoomEnabled) {
+        // Initialize logZoom from current zoom level if needed
+        if (Math.abs(Math.log(zoom) - logZoomRef.current) > 0.001) {
+          logZoomRef.current = Math.log(zoom);
+        }
+
+        // Animate zoom if enabled and playing
+        if (zoomAnimationEnabled && isPlaying) {
+          if (zoomAnimationMode === 'continuous') {
+            // Continuous zoom: increase zoom indefinitely
+            logZoomRef.current += zoomSpeed * deltaTime * zoomSpeedMultiplierRef.current;
+          } else if (zoomAnimationMode === 'target') {
+            // Target mode: ease toward target level
+            const targetLog = Math.log(zoomTargetLevel);
+            const diff = targetLog - logZoomRef.current;
+            if (Math.abs(diff) > 0.001) {
+              logZoomRef.current += diff * zoomSpeed * deltaTime * zoomSpeedMultiplierRef.current;
+            }
+          }
+
+          // Update store with new zoom value (will be clamped by setter)
+          const newZoom = Math.exp(logZoomRef.current);
+          useExtendedObjectStore.getState().setMandelbulbZoom(newZoom);
+        }
+
+        // Update zoom uniform
+        if (material.uniforms.uZoom) {
+          material.uniforms.uZoom.value = zoom;
+        }
+
+        // Autopilot: create/update/run if enabled
+        if (autopilotEnabled && zoomAnimationEnabled) {
+          // Create autopilot if needed or update config
+          if (!zoomAutopilotRef.current) {
+            const config: AutopilotConfig = {
+              strategy: autopilotStrategy,
+              centerRayLock: {
+                probeSize: centerRayProbeSize,
+                probeFrequency: centerRayProbeFrequency,
+                missThreshold: centerRayMissThreshold,
+                nudgeStrength: centerRayNudgeStrength,
+              },
+              interestScore: {
+                resolution: interestScoreResolution,
+                interval: interestScoreInterval,
+                candidates: interestScoreCandidates,
+                nudgeRadius: interestScoreNudgeRadius,
+                metric: interestScoreMetric,
+              },
+              boundaryTarget: {
+                escapeRatio: boundaryTargetEscapeRatio,
+                band: boundaryTargetBand,
+                correctionStrength: boundaryTargetCorrectionStrength,
+              },
+            };
+            zoomAutopilotRef.current = new ZoomAutopilot(config);
+          }
+
+          // Run autopilot update
+          const gl = state.gl;
+          const scene = state.scene;
+          const result = zoomAutopilotRef.current.update(
+            gl,
+            scene,
+            camera,
+            work.rotatedOrigin,
+            dimension
+          );
+
+          // Apply autopilot results
+          zoomSpeedMultiplierRef.current = result.zoomSpeedMultiplier;
+
+          // Apply D-dimensional origin nudge to track interesting fractal regions
+          // CRITICAL: Must nudge ALL dimensions (0,1,2 control zoom target in 3D fractal space)
+          if (result.originNudge.length > 0) {
+            for (let i = 0; i < dimension; i++) {
+              const nudge = result.originNudge[i] ?? 0;
+              if (nudge !== 0) {
+                const currentValue = work.origin[i] ?? 0;
+                work.origin[i] = currentValue + nudge;
+              }
+            }
+            // Re-apply rotation to updated origin
+            if (cachedRotationMatrixRef.current) {
+              applyRotationInPlace(cachedRotationMatrixRef.current, work.origin, work.rotatedOrigin);
+              if (material.uniforms.uOrigin) {
+                const arr = material.uniforms.uOrigin.value as Float32Array;
+                arr.set(work.rotatedOrigin);
+              }
+            }
+          }
+        } else {
+          // Reset speed multiplier when autopilot disabled
+          zoomSpeedMultiplierRef.current = 1.0;
+        }
+      } else {
+        // Zoom disabled - reset uniforms
+        if (material.uniforms.uZoom) {
+          material.uniforms.uZoom.value = 1.0;
+        }
+        // Reset zoom state
+        logZoomRef.current = 0;
+        zoomSpeedMultiplierRef.current = 1.0;
+        // Dispose autopilot when zoom disabled
+        if (zoomAutopilotRef.current) {
+          zoomAutopilotRef.current.dispose();
+          zoomAutopilotRef.current = null;
+        }
       }
 
       // Model matrices are always identity for Mandelbulb - no need to set every frame

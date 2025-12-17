@@ -10,6 +10,7 @@ import { AnimatePresence, m } from 'motion/react';
 import { JuliaAnimationDrawer } from './TimelineControls/JuliaAnimationDrawer';
 import { MandelbulbAnimationDrawer } from './TimelineControls/MandelbulbAnimationDrawer';
 import { PolytopeAnimationDrawer } from './TimelineControls/PolytopeAnimationDrawer';
+import { ZoomDrawer } from './TimelineControls/ZoomDrawer';
 import { hasTimelineControls, isPolytopeCategory, getConfigStoreKey } from '@/lib/geometry/registry';
 
 export const TimelineControls: FC = () => {
@@ -60,14 +61,15 @@ export const TimelineControls: FC = () => {
 
   // Check if any animation is active
   const isAnimating = useMemo(() => {
-    // Mandelbulb: any of its animations
+    // Mandelbulb: any of its animations (including zoom)
     const mandelbulbAnimating = mandelbulbConfig.powerAnimationEnabled ||
                                mandelbulbConfig.alternatePowerEnabled ||
                                mandelbulbConfig.dimensionMixEnabled ||
                                mandelbulbConfig.originDriftEnabled ||
                                mandelbulbConfig.sliceAnimationEnabled ||
-                               mandelbulbConfig.phaseShiftEnabled;
-    
+                               mandelbulbConfig.phaseShiftEnabled ||
+                               (mandelbulbConfig.zoomEnabled && mandelbulbConfig.zoomAnimationEnabled);
+
     // Quaternion Julia: currently no animations (removed)
     const qjAnimating = false;
 
@@ -84,6 +86,8 @@ export const TimelineControls: FC = () => {
     mandelbulbConfig.originDriftEnabled,
     mandelbulbConfig.sliceAnimationEnabled,
     mandelbulbConfig.phaseShiftEnabled,
+    mandelbulbConfig.zoomEnabled,
+    mandelbulbConfig.zoomAnimationEnabled,
     polytopeConfig.facetOffsetEnabled,
     polytopeConfig.dualMorphEnabled,
     polytopeConfig.explodeEnabled,
@@ -94,6 +98,7 @@ export const TimelineControls: FC = () => {
 
     const [showRotation, setShowRotation] = useState(false);
     const [showFractalAnim, setShowFractalAnim] = useState(false);
+    const [showZoom, setShowZoom] = useState(false);
 
     return (
         <div className="flex flex-col w-full h-full bg-panel-bg relative">
@@ -163,6 +168,11 @@ export const TimelineControls: FC = () => {
       {/* Polytope Animation Drawer */}
       {showFractalAnim && isPolytopeCategory(objectType) && (
         <PolytopeAnimationDrawer />
+      )}
+
+      {/* Zoom Drawer (Mandelbulb only) */}
+      {showZoom && getConfigStoreKey(objectType) === 'mandelbulb' && (
+        <ZoomDrawer />
       )}
             </AnimatePresence>
 
@@ -240,7 +250,7 @@ export const TimelineControls: FC = () => {
                  <div className="flex items-center gap-2 shrink-0">
                     {hasTimelineControls(objectType) && (
                          <button
-                            onClick={() => { setShowFractalAnim(!showFractalAnim); setShowRotation(false); }}
+                            onClick={() => { setShowFractalAnim(!showFractalAnim); setShowRotation(false); setShowZoom(false); }}
                             className={`
                                 text-xs font-medium uppercase tracking-wider px-3 py-1.5 rounded transition-colors
                                 ${showFractalAnim ? 'bg-accent/20 text-accent' : 'hover:bg-white/5 text-text-secondary'}
@@ -249,9 +259,22 @@ export const TimelineControls: FC = () => {
                             Animations
                          </button>
                     )}
-                    
-                     <button 
-                        onClick={() => { setShowRotation(!showRotation); setShowFractalAnim(false); }}
+
+                    {/* Zoom button (Mandelbulb only) */}
+                    {getConfigStoreKey(objectType) === 'mandelbulb' && (
+                         <button
+                            onClick={() => { setShowZoom(!showZoom); setShowFractalAnim(false); setShowRotation(false); }}
+                            className={`
+                                text-xs font-medium uppercase tracking-wider px-3 py-1.5 rounded transition-colors
+                                ${showZoom ? 'bg-accent/20 text-accent' : 'hover:bg-white/5 text-text-secondary'}
+                            `}
+                         >
+                            Zoom
+                         </button>
+                    )}
+
+                     <button
+                        onClick={() => { setShowRotation(!showRotation); setShowFractalAnim(false); setShowZoom(false); }}
                         className={`
                             text-xs font-medium uppercase tracking-wider px-3 py-1.5 rounded transition-colors
                             ${showRotation ? 'bg-accent/20 text-accent' : 'hover:bg-white/5 text-text-secondary'}

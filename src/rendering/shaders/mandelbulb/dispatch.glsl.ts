@@ -14,12 +14,14 @@ export function generateDispatch(dimension: number): string {
   }
 
   return `
-// ============================================ 
+// ============================================
 // Optimized Dispatch (No branching)
 // Dimension: ${dimension}
-// ============================================ 
+// With integrated zoom support
+// ============================================
 
-float GetDist(vec3 pos) {
+// Internal SDF function without zoom (used by zoom wrapper)
+float _GetDistInternal(vec3 pos) {
     float pwr = getEffectivePower();
     float bail = max(uEscapeRadius, 2.0);
     // Use reduced iterations in fast mode for better performance
@@ -29,7 +31,8 @@ float GetDist(vec3 pos) {
     return ${simpleSdfName}(${args});
 }
 
-float GetDistWithTrap(vec3 pos, out float trap) {
+// Internal SDF function with trap, without zoom
+float _GetDistWithTrapInternal(vec3 pos, out float trap) {
     float pwr = getEffectivePower();
     float bail = max(uEscapeRadius, 2.0);
     // Calculate iteration limit based on performance mode and quality multiplier
@@ -47,6 +50,40 @@ float GetDistWithTrap(vec3 pos, out float trap) {
     int maxIt = int(min(uIterations, float(maxIterLimit)));
 
     return ${sdfName}(${argsTrap});
+}
+
+// ============================================
+// Public API - Automatically applies zoom when enabled
+// ============================================
+
+/**
+ * Get distance to Mandelbulb surface.
+ * Automatically applies zoom scaling when uZoomEnabled is true.
+ */
+float GetDist(vec3 pos) {
+    // Apply zoom to position (zoom in = divide by larger number)
+    vec3 zoomedPos = applyZoomToPosition(pos);
+
+    // Get distance in fractal space
+    float d = _GetDistInternal(zoomedPos);
+
+    // Scale back to object space for correct raymarching steps
+    return scaleDistanceForZoom(d);
+}
+
+/**
+ * Get distance to Mandelbulb surface with trap value output.
+ * Automatically applies zoom scaling when uZoomEnabled is true.
+ */
+float GetDistWithTrap(vec3 pos, out float trap) {
+    // Apply zoom to position (zoom in = divide by larger number)
+    vec3 zoomedPos = applyZoomToPosition(pos);
+
+    // Get distance in fractal space (with trap output)
+    float d = _GetDistWithTrapInternal(zoomedPos, trap);
+
+    // Scale back to object space for correct raymarching steps
+    return scaleDistanceForZoom(d);
 }
 `;
 }

@@ -3,21 +3,47 @@
  *
  * Performs volumetric raymarching through the quantum density field,
  * using Beer-Lambert absorption and front-to-back compositing.
+ *
+ * Supports two temporal modes:
+ * - USE_TEMPORAL: Depth-skip optimization (conservative, may have artifacts)
+ * - USE_TEMPORAL_ACCUMULATION: Horizon-style 1/4 res with reconstruction (recommended)
  */
 export const mainBlock = `
 // ============================================
 // Main Fragment Shader - Volumetric Mode
 // ============================================
 
+// Temporal accumulation uniforms (when USE_TEMPORAL_ACCUMULATION is defined)
+#ifdef USE_TEMPORAL_ACCUMULATION
+uniform vec2 uBayerOffset;           // Sub-pixel offset (0,0), (1,1), (1,0), or (0,1)
+uniform vec2 uFullResolution;        // Full screen resolution (for jitter calculation)
+#endif
+
 void main() {
     vec3 ro, rd;
     vec3 worldRayDir;
+
+    // Calculate screen coordinates
+    // For temporal accumulation, apply Bayer jitter to sample sub-pixels
+    vec2 screenCoord = gl_FragCoord.xy;
+
+    #ifdef USE_TEMPORAL_ACCUMULATION
+    // In temporal accumulation mode, we render at 1/4 resolution.
+    // Each pixel in the quarter-res buffer represents a 2x2 block in full res.
+    // The Bayer offset determines which sub-pixel within the block we sample.
+    // Convert quarter-res coord to full-res coord with jitter
+    screenCoord = floor(gl_FragCoord.xy) * 2.0 + uBayerOffset + 0.5;
+    #endif
 
     // Setup ray origin and direction
     if (uOrthographic) {
         worldRayDir = normalize(uOrthoRayDir);
         rd = normalize((uInverseModelMatrix * vec4(worldRayDir, 0.0)).xyz);
-        vec2 screenUV = gl_FragCoord.xy / uResolution;
+        #ifdef USE_TEMPORAL_ACCUMULATION
+        vec2 screenUV = screenCoord / uFullResolution;
+        #else
+        vec2 screenUV = screenCoord / uResolution;
+        #endif
         vec2 ndc = screenUV * 2.0 - 1.0;
         vec4 nearPointClip = vec4(ndc, -1.0, 1.0);
         vec4 nearPointWorld = uInverseViewProjectionMatrix * nearPointClip;
@@ -27,7 +53,20 @@ void main() {
         ro = ro - rd * (BOUND_R + 1.0);
     } else {
         ro = (uInverseModelMatrix * vec4(uCameraPosition, 1.0)).xyz;
+
+        #ifdef USE_TEMPORAL_ACCUMULATION
+        // For temporal accumulation, compute ray direction from jittered screen coord
+        // instead of using interpolated vertex position
+        vec2 screenUV = screenCoord / uFullResolution;
+        vec2 ndc = screenUV * 2.0 - 1.0;
+        vec4 farPointClip = vec4(ndc, 1.0, 1.0);
+        vec4 farPointWorld = uInverseViewProjectionMatrix * farPointClip;
+        farPointWorld /= farPointWorld.w;
+        worldRayDir = normalize(farPointWorld.xyz - uCameraPosition);
+        #else
         worldRayDir = normalize(vPosition - uCameraPosition);
+        #endif
+
         rd = normalize((uInverseModelMatrix * vec4(worldRayDir, 0.0)).xyz);
     }
 
@@ -39,11 +78,50 @@ void main() {
         discard;
     }
 
-    float tNear = max(0.0, tSphere.x);
+    float tNearOriginal = max(0.0, tSphere.x);  // Keep original for depth writing
+    float tNear = tNearOriginal;
     float tFar = tSphere.y;
+    bool usedTemporal = false;
+
+    // Temporal reprojection for volumetric rendering
+    // CONSERVATIVE approach - volumetric has soft boundaries, so we must be careful:
+    // 1. Large margin (50%) because visible density extends before recorded entry
+    // 2. Never skip more than 40% of total ray length
+    // 3. Only use if skip provides meaningful benefit (> 10% of ray)
+    #ifdef USE_TEMPORAL
+    float temporalDepth = getTemporalDepth(ro, rd, worldRayDir);
+    float rayLength = tFar - tNearOriginal;
+
+    if (temporalDepth > 0.0 && temporalDepth < tFar && rayLength > 0.0) {
+        // Apply 50% margin - step back halfway from temporal hint to sphere entry
+        // This accounts for soft volumetric boundaries where density extends
+        // significantly before our recorded "entry point"
+        float temporalStart = mix(tNearOriginal, temporalDepth, 0.5);
+
+        // Calculate how much we'd skip as fraction of total ray
+        float skipDistance = temporalStart - tNearOriginal;
+        float skipFraction = skipDistance / rayLength;
+
+        // Safety limits:
+        // - Never skip more than 40% of ray (too aggressive for soft volumes)
+        // - Only skip if benefit is meaningful (> 10% of ray)
+        float maxSkipFraction = 0.4;
+        float minSkipFraction = 0.1;
+
+        if (skipFraction > minSkipFraction && skipFraction <= maxSkipFraction) {
+            tNear = temporalStart;
+            usedTemporal = true;
+        } else if (skipFraction > maxSkipFraction) {
+            // Temporal suggests skipping too much - clamp to safe maximum
+            tNear = tNearOriginal + rayLength * maxSkipFraction;
+            usedTemporal = true;
+        }
+        // If skipFraction <= minSkipFraction, don't bother - not worth the risk
+    }
+    #endif
 
     // Volumetric raymarching
-    vec4 volumeResult;
+    VolumeResult volumeResult;
     if (uFastMode) {
         volumeResult = volumeRaymarch(ro, rd, tNear, tFar);
     } else {
@@ -51,31 +129,45 @@ void main() {
     }
 
     // Discard fully transparent pixels
-    if (volumeResult.a < 0.01) {
+    if (volumeResult.alpha < 0.01) {
         discard;
     }
 
     // Apply opacity mode adjustments
-    float alpha = volumeResult.a;
+    float alpha = volumeResult.alpha;
 
     if (uOpacityMode == OPACITY_SOLID) {
         alpha = 1.0;
     } else if (uOpacityMode == OPACITY_SIMPLE_ALPHA) {
-        alpha = min(volumeResult.a * uSimpleAlpha * 2.0, 1.0);
+        alpha = min(volumeResult.alpha * uSimpleAlpha * 2.0, 1.0);
     } else if (uOpacityMode == OPACITY_VOLUMETRIC) {
-        alpha = volumeResult.a * uVolumetricDensity;
+        alpha = volumeResult.alpha * uVolumetricDensity;
     }
 
-    // Estimate depth (midpoint of traversal)
-    float tMid = (tNear + tFar) * 0.5;
-    vec3 midPoint = ro + rd * tMid;
-    vec4 worldHitPos = uModelMatrix * vec4(midPoint, 1.0);
+    // Depth for temporal reprojection:
+    // When temporal was used, keep using the temporal depth (prevents drift)
+    // When not used, record the actual entry point we found
+    float depthT;
+    #ifdef USE_TEMPORAL
+    if (usedTemporal) {
+        // Use the temporal depth we received (before our margin adjustment)
+        // This prevents feedback loop where we progressively drift inward
+        depthT = temporalDepth;
+    } else {
+        depthT = volumeResult.entryT;
+    }
+    #else
+    depthT = volumeResult.entryT;
+    #endif
+
+    vec3 entryPoint = ro + rd * depthT;
+    vec4 worldHitPos = uModelMatrix * vec4(entryPoint, 1.0);
     vec4 clipPos = uProjectionMatrix * uViewMatrix * worldHitPos;
     gl_FragDepth = clamp((clipPos.z / clipPos.w) * 0.5 + 0.5, 0.0, 1.0);
 
     // Output
     vec3 viewNormal = normalize((uViewMatrix * vec4(rd, 0.0)).xyz);
-    gColor = vec4(volumeResult.rgb, alpha);
+    gColor = vec4(volumeResult.color, alpha);
     gNormal = vec4(viewNormal * 0.5 + 0.5, uMetallic);
 }
 `;

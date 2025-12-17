@@ -23,12 +23,24 @@ export const volumeIntegrationBlock = `
 // Minimum density to consider for accumulation
 #define MIN_DENSITY 1e-8
 
+// Threshold for considering a sample as "entry" into the volume
+#define ENTRY_ALPHA_THRESHOLD 0.01
+
+// Result structure for volume raymarching
+// Includes entry distance for temporal reprojection
+struct VolumeResult {
+    vec3 color;
+    float alpha;
+    float entryT;  // Distance to first meaningful contribution (-1 if none)
+};
+
 // Compute time value for animation
 float getVolumeTime() {
     return uTime * uTimeScale;
 }
 
-// Compute gradient of log-density for pseudo-normals
+// Compute gradient of log-density for pseudo-normals (central differences - higher accuracy)
+// Used by isosurface mode where precision matters
 vec3 computeDensityGradient(vec3 pos, float t, float delta) {
     vec3 grad;
 
@@ -47,11 +59,25 @@ vec3 computeDensityGradient(vec3 pos, float t, float delta) {
     return grad / (2.0 * delta);
 }
 
-// Main volume raymarching function
-// Returns: vec4(rgb, alpha)
-vec4 volumeRaymarch(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar) {
+// OPTIMIZED: Compute gradient using forward differences with pre-computed center value
+// Reduces samples from 6 to 3 by reusing the already-computed center density
+// Used by volumetric mode where speed matters more than precision
+vec3 computeDensityGradientFast(vec3 pos, float t, float delta, float sCenter) {
+    // Forward differences: f'(x) ≈ (f(x+h) - f(x)) / h
+    float sxp = sFromRho(sampleDensity(pos + vec3(delta, 0.0, 0.0), t));
+    float syp = sFromRho(sampleDensity(pos + vec3(0.0, delta, 0.0), t));
+    float szp = sFromRho(sampleDensity(pos + vec3(0.0, 0.0, delta), t));
+
+    return vec3(sxp - sCenter, syp - sCenter, szp - sCenter) / delta;
+}
+
+// Main volume raymarching function (Fast Mode)
+// Now supports lighting (matched to Mandelbulb behavior) but with reduced sample count
+// Returns: VolumeResult with color, alpha, and entry distance
+VolumeResult volumeRaymarch(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar) {
     vec3 accColor = vec3(0.0);
     float transmittance = 1.0;
+    float entryT = -1.0;  // Track first meaningful contribution
 
     // Calculate step count based on quality settings
     int sampleCount = uFastMode ? (uSampleQuality / 2) : uSampleQuality;
@@ -62,6 +88,7 @@ vec4 volumeRaymarch(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar) {
 
     // Time for animation
     float animTime = getVolumeTime();
+    vec3 viewDir = -rayDir;
 
     // Consecutive low-density samples (for early exit)
     int lowDensityCount = 0;
@@ -75,6 +102,7 @@ vec4 volumeRaymarch(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar) {
         // Sample density with phase info
         vec3 densityInfo = sampleDensityWithPhase(pos, animTime);
         float rho = densityInfo.x;
+        float sCenter = densityInfo.y; // Pre-computed log-density
         float phase = densityInfo.z;
 
         // Early exit if density is consistently low
@@ -90,8 +118,16 @@ vec4 volumeRaymarch(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar) {
 
         // Skip negligible contributions
         if (alpha > 0.001) {
-            // Compute emission color
-            vec3 emission = computeEmission(rho, phase, pos);
+            // Track entry point for temporal reprojection
+            if (entryT < 0.0 && alpha > ENTRY_ALPHA_THRESHOLD) {
+                entryT = t;
+            }
+
+            // Compute gradient for lighting (Fast version - 3 taps)
+            vec3 gradient = computeDensityGradientFast(pos, animTime, 0.05, sCenter);
+
+            // Compute emission with lighting
+            vec3 emission = computeEmissionLit(rho, phase, pos, gradient, viewDir);
 
             // Front-to-back compositing
             accColor += transmittance * alpha * emission;
@@ -104,13 +140,20 @@ vec4 volumeRaymarch(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar) {
     // Final alpha is 1 - remaining transmittance
     float finalAlpha = 1.0 - transmittance;
 
-    return vec4(accColor, finalAlpha);
+    // Fallback: if no entry found, use midpoint for depth
+    if (entryT < 0.0) {
+        entryT = (tNear + tFar) * 0.5;
+    }
+
+    return VolumeResult(accColor, finalAlpha, entryT);
 }
 
 // High-quality volume integration with lighting
-vec4 volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar) {
+// OPTIMIZED: Uses forward differences gradient (3 samples) instead of central (6 samples)
+VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar) {
     vec3 accColor = vec3(0.0);
     float transmittance = 1.0;
+    float entryT = -1.0;  // Track first meaningful contribution
 
     int sampleCount = uSampleQuality;
     sampleCount = clamp(sampleCount, 32, MAX_VOLUME_SAMPLES);
@@ -129,13 +172,20 @@ vec4 volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar) {
 
         vec3 densityInfo = sampleDensityWithPhase(pos, animTime);
         float rho = densityInfo.x;
+        float sCenter = densityInfo.y; // Pre-computed log-density
         float phase = densityInfo.z;
 
         float alpha = computeAlpha(rho, stepLen, uDensityGain);
 
         if (alpha > 0.001) {
-            // Compute gradient for lighting (larger delta for smoother volumetric data)
-            vec3 gradient = computeDensityGradient(pos, animTime, 0.05);
+            // Track entry point for temporal reprojection
+            if (entryT < 0.0 && alpha > ENTRY_ALPHA_THRESHOLD) {
+                entryT = t;
+            }
+
+            // OPTIMIZED: Use forward differences with pre-computed center value
+            // Reduces gradient computation from 6 to 3 additional samples
+            vec3 gradient = computeDensityGradientFast(pos, animTime, 0.05, sCenter);
             vec3 emission = computeEmissionLit(rho, phase, pos, gradient, viewDir);
 
             accColor += transmittance * alpha * emission;
@@ -145,6 +195,11 @@ vec4 volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar) {
         t += stepLen;
     }
 
-    return vec4(accColor, 1.0 - transmittance);
+    // Fallback: if no entry found, use midpoint for depth
+    if (entryT < 0.0) {
+        entryT = (tNear + tFar) * 0.5;
+    }
+
+    return VolumeResult(accColor, 1.0 - transmittance, entryT);
 }
 `;

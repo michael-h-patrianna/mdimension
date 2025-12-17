@@ -28,7 +28,7 @@ export const MAX_DIMENSION = 11
 export const DEFAULT_DIMENSION = 4
 
 /** Default object type */
-export const DEFAULT_OBJECT_TYPE: ObjectType = 'hypercube'
+export const DEFAULT_OBJECT_TYPE: ObjectType = 'schroedinger'
 
 /**
  * Dimension constraints for certain object types

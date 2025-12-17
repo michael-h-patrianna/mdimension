@@ -19,6 +19,7 @@ import { selectorBlock } from '../shared/color/selector.glsl';
 import { fresnelBlock } from '../shared/lighting/fresnel.glsl';
 import { multiLightBlock } from '../shared/lighting/multi-light.glsl';
 import { opacityBlock } from '../shared/features/opacity.glsl';
+import { temporalBlock } from '../shared/features/temporal.glsl';
 import { sphereIntersectBlock } from '../shared/raymarch/sphere-intersect.glsl';
 
 import { schroedingerUniformsBlock } from './uniforms.glsl';
@@ -36,6 +37,8 @@ import { ShaderConfig } from '../shared/types';
 export interface SchroedingerShaderConfig extends ShaderConfig {
   /** Use isosurface mode instead of volumetric */
   isosurface?: boolean;
+  /** Use temporal accumulation (Horizon-style 1/4 res reconstruction) */
+  temporalAccumulation?: boolean;
 }
 
 export function composeSchroedingerShader(config: SchroedingerShaderConfig) {
@@ -46,6 +49,7 @@ export function composeSchroedingerShader(config: SchroedingerShaderConfig) {
     opacityMode,
     overrides = [],
     isosurface = false,
+    temporalAccumulation = false,
   } = config;
 
   const defines: string[] = [];
@@ -58,14 +62,26 @@ export function composeSchroedingerShader(config: SchroedingerShaderConfig) {
   // Note: Shadows and AO are less relevant for pure volumetric mode
   // but kept for isosurface mode compatibility
   const useShadows = enableShadows && isosurface && !overrides.includes('Shadows');
-  const useTemporal = enableTemporal && !overrides.includes('Temporal Reprojection');
   const useAO = enableAO && isosurface && !overrides.includes('Ambient Occlusion');
+
+  // Temporal modes are mutually exclusive:
+  // - temporalAccumulation: Horizon-style 1/4 res with reconstruction (recommended for volumetric)
+  // - temporal: Conservative depth-skip optimization (legacy, may have artifacts)
+  const useTemporalAccumulation =
+    temporalAccumulation && !isosurface && !overrides.includes('Temporal Accumulation');
+  const useTemporal =
+    enableTemporal &&
+    !useTemporalAccumulation &&
+    !overrides.includes('Temporal Reprojection');
 
   if (useShadows) {
     defines.push('#define USE_SHADOWS');
     features.push('Shadows');
   }
-  if (useTemporal) {
+  if (useTemporalAccumulation) {
+    defines.push('#define USE_TEMPORAL_ACCUMULATION');
+    features.push('Temporal Accumulation (1/4 res)');
+  } else if (useTemporal) {
     defines.push('#define USE_TEMPORAL');
     features.push('Temporal Reprojection');
   }
@@ -116,6 +132,9 @@ export function composeSchroedingerShader(config: SchroedingerShaderConfig) {
     // Geometry
     { name: 'Sphere Intersection', content: sphereIntersectBlock },
 
+    // Features
+    { name: 'Temporal Features', content: temporalBlock, condition: useTemporal },
+
     // Opacity and main
     { name: 'Opacity System', content: opacityBlock },
     { name: 'Main', content: selectedMainBlock },
@@ -125,6 +144,8 @@ export function composeSchroedingerShader(config: SchroedingerShaderConfig) {
   const glslParts: string[] = [];
 
   blocks.forEach(b => {
+    if (b.condition === false) return; // Disabled in config
+
     modules.push(b.name);
 
     if (overrides.includes(b.name)) {

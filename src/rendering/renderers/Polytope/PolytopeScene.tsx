@@ -9,7 +9,7 @@
  */
 
 import { useFrame } from '@react-three/fiber';
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import {
     BufferGeometry,
@@ -364,13 +364,20 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   const colorCacheRef = useRef(createColorCache());
   const lightColorCacheRef = useRef(createLightColorCache());
 
-  // Assign main object layer for depth-based effects (SSR, refraction, bokeh)
-  useEffect(() => {
-    if (faceMeshRef.current?.layers) {
-      faceMeshRef.current.layers.set(RENDER_LAYERS.MAIN_OBJECT);
+  // Ref callbacks to assign main object layer for depth-based effects (SSR, refraction, bokeh)
+  // Using callbacks instead of useEffect ensures layer is set when mesh is created,
+  // even if mesh is conditionally rendered after initial mount
+  const setFaceMeshRef = useCallback((mesh: THREE.Mesh | null) => {
+    faceMeshRef.current = mesh;
+    if (mesh?.layers) {
+      mesh.layers.set(RENDER_LAYERS.MAIN_OBJECT);
     }
-    if (edgeMeshRef.current?.layers) {
-      edgeMeshRef.current.layers.set(RENDER_LAYERS.MAIN_OBJECT);
+  }, []);
+
+  const setEdgeMeshRef = useCallback((lineSegments: THREE.LineSegments | null) => {
+    edgeMeshRef.current = lineSegments;
+    if (lineSegments?.layers) {
+      lineSegments.layers.set(RENDER_LAYERS.MAIN_OBJECT);
     }
   }, []);
 
@@ -753,7 +760,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
       {/* Polytope faces */}
       {facesVisible && faceGeometry && (
         <mesh
-          ref={faceMeshRef}
+          ref={setFaceMeshRef}
           geometry={faceGeometry}
           material={faceMaterial}
           castShadow={shadowEnabled}
@@ -776,7 +783,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
         />
       )}
       {edgesVisible && !useFatWireframe && edgeGeometry && (
-        <lineSegments ref={edgeMeshRef} geometry={edgeGeometry} material={edgeMaterial} />
+        <lineSegments ref={setEdgeMeshRef} geometry={edgeGeometry} material={edgeMaterial} />
       )}
     </group>
   );

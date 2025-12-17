@@ -19,9 +19,26 @@ export const RENDER_LAYERS = {
   MAIN_OBJECT: 1,
   /** Skybox - excluded from normal pass to avoid polluting normal buffer */
   SKYBOX: 2,
+  /** Volumetric objects (Schroedinger) when temporal accumulation is enabled */
+  VOLUMETRIC: 3,
 } as const;
 
 export type RenderLayer = (typeof RENDER_LAYERS)[keyof typeof RENDER_LAYERS];
+
+/**
+ * Check if temporal cloud accumulation needs separate volumetric pass.
+ * When enabled, volumetric objects (Schroedinger) render to 1/4 res target.
+ *
+ * TODO: Currently disabled - the temporal accumulation pipeline needs debugging.
+ * The infrastructure is in place but the separate render pass causes rendering issues.
+ * For now, Schroedinger uses standard rendering on MAIN_OBJECT layer.
+ */
+export function needsVolumetricSeparation(state: {
+  temporalCloudAccumulation?: boolean;
+  objectType?: string;
+}): boolean {
+  return Boolean(state.temporalCloudAccumulation && state.objectType === 'schroedinger');
+}
 
 /**
  * Check if object-only depth pass is needed based on current effect settings.

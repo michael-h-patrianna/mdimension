@@ -3,6 +3,7 @@ import {
   CliffordTorusEdgeMode,
   CliffordTorusMode,
   DualNormalizeMode,
+  MandelbulbAutopilotStrategy,
   MandelbulbColorMode,
   MandelbulbConfig,
   MandelbulbPalette,
@@ -200,6 +201,35 @@ export interface MandelbulbSliceActions {
   setMandelbulbPhaseShiftEnabled: (enabled: boolean) => void
   setMandelbulbPhaseSpeed: (speed: number) => void
   setMandelbulbPhaseAmplitude: (amplitude: number) => void
+  // Zoom Settings
+  setMandelbulbZoomEnabled: (enabled: boolean) => void
+  setMandelbulbZoom: (zoom: number) => void
+  setMandelbulbLogZoom: (logZoom: number) => void
+  setMandelbulbZoomSpeed: (speed: number) => void
+  // Zoom Animation
+  setMandelbulbZoomAnimationEnabled: (enabled: boolean) => void
+  setMandelbulbZoomAnimationMode: (mode: 'continuous' | 'target') => void
+  setMandelbulbZoomTargetLevel: (level: number) => void
+  // Autopilot
+  setMandelbulbAutopilotEnabled: (enabled: boolean) => void
+  setMandelbulbAutopilotStrategy: (strategy: MandelbulbAutopilotStrategy) => void
+  // Strategy A: Center-Ray Lock
+  setMandelbulbCenterRayProbeSize: (size: number) => void
+  setMandelbulbCenterRayProbeFrequency: (frequency: number) => void
+  setMandelbulbCenterRayMissThreshold: (threshold: number) => void
+  setMandelbulbCenterRayNudgeStrength: (strength: number) => void
+  // Strategy B: Interest Score
+  setMandelbulbInterestScoreResolution: (resolution: number) => void
+  setMandelbulbInterestScoreInterval: (interval: number) => void
+  setMandelbulbInterestScoreCandidates: (candidates: number) => void
+  setMandelbulbInterestScoreNudgeRadius: (radius: number) => void
+  setMandelbulbInterestScoreMetric: (metric: 'hitRatio' | 'variance' | 'edgeStrength') => void
+  // Strategy C: Boundary Target
+  setMandelbulbBoundaryTargetEscapeRatio: (ratio: number) => void
+  setMandelbulbBoundaryTargetBand: (band: number) => void
+  setMandelbulbBoundaryTargetCorrectionStrength: (strength: number) => void
+  // Zoom Reset
+  resetMandelbulbZoom: () => void
 }
 
 export type MandelbulbSlice = MandelbulbSliceState & MandelbulbSliceActions

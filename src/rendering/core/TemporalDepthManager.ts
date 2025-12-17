@@ -175,9 +175,11 @@ class TemporalDepthManagerImpl {
    * This method is robust against viewport/scissor state mismatches that can occur
    * in complex post-processing pipelines. It explicitly saves/restores all relevant
    * state and clears the target to ensure no stale data persists.
+   *
+   * @param force - Force capture even if temporal reprojection is disabled (for preview)
    */
-  captureDepth(gl: THREE.WebGLRenderer, depthTexture: THREE.DepthTexture): void {
-    if (!this.isEnabled()) return;
+  captureDepth(gl: THREE.WebGLRenderer, depthTexture: THREE.DepthTexture, force = false): void {
+    if (!force && !this.isEnabled()) return;
 
     const writeTarget = this.getWriteTarget();
     if (!writeTarget || !this.captureMaterial || !this.captureScene || !this.captureCamera) {
@@ -245,9 +247,11 @@ class TemporalDepthManagerImpl {
   /**
    * Swap the ping-pong buffers.
    * Call this at the END of each frame after depth capture.
+   *
+   * @param force - Force swap even if temporal reprojection is disabled (for preview)
    */
-  swap(): void {
-    if (!this.isEnabled()) return;
+  swap(force = false): void {
+    if (!force && !this.isEnabled()) return;
 
     // Current matrices become previous
     this.prevViewProjectionMatrix.copy(this.currentViewProjectionMatrix);
@@ -296,13 +300,17 @@ class TemporalDepthManagerImpl {
    *
    * The depth texture now contains unnormalized ray distances (world-space units).
    * Fractal shaders can use these directly as start distances for ray marching.
+   *
+   * @param forceTexture - Return texture even if temporal reprojection is disabled (for preview)
    */
-  getUniforms(): TemporalDepthUniforms {
+  getUniforms(forceTexture = false): TemporalDepthUniforms {
     const readTarget = this.getReadTarget();
     const enabled = this.isEnabled() && this.isValid && readTarget !== null;
+    // For preview mode, return texture if we have a valid buffer (even if feature disabled)
+    const hasTexture = (enabled || forceTexture) && readTarget !== null;
 
     return {
-      uPrevDepthTexture: enabled && readTarget ? readTarget.texture : null,
+      uPrevDepthTexture: hasTexture && readTarget ? readTarget.texture : null,
       uPrevViewProjectionMatrix: this.prevViewProjectionMatrix,
       uPrevInverseViewProjectionMatrix: this.prevInverseViewProjectionMatrix,
       uTemporalEnabled: enabled,

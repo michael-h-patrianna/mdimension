@@ -2,7 +2,8 @@ import { computeDriftedOrigin, type OriginDriftConfig } from '@/lib/animation/or
 import { composeRotations } from '@/lib/math/rotation';
 import type { MatrixND } from '@/lib/math/types';
 import { createColorCache, createLightColorCache, updateLinearColorUniform } from '@/rendering/colors/linearCache';
-import { RENDER_LAYERS } from '@/rendering/core/layers';
+import { RENDER_LAYERS, needsVolumetricSeparation } from '@/rendering/core/layers';
+import { TemporalCloudManager } from '@/rendering/core/TemporalCloudManager';
 import { TemporalDepthManager } from '@/rendering/core/TemporalDepthManager';
 import { createLightUniforms, updateLightUniforms, type LightUniforms } from '@/rendering/lights/uniforms';
 import { OPACITY_MODE_TO_INT, SAMPLE_QUALITY_TO_INT } from '@/rendering/opacity/types';
@@ -158,79 +159,19 @@ const SchroedingerMesh = () => {
     };
   }, []);
 
-  // Assign main object layer
-  useEffect(() => {
-    if (meshRef.current?.layers) {
-      meshRef.current.layers.set(RENDER_LAYERS.MAIN_OBJECT);
-    }
-  }, []);
+  // ============================================
+  // PERFORMANCE OPTIMIZATION: Only subscribe to values that affect shader compilation
+  // All other values are read via getState() in useFrame to avoid unnecessary re-renders
+  // ============================================
 
-  // Get dimension from geometry store
+  // Values that affect shader compilation (require re-subscription)
   const dimension = useGeometryStore((state) => state.dimension);
-
-  // Get Schroedinger quantum config from store
-  const presetName = useExtendedObjectStore((state) => state.schroedinger.presetName);
-  const seed = useExtendedObjectStore((state) => state.schroedinger.seed);
-  const termCount = useExtendedObjectStore((state) => state.schroedinger.termCount);
-  const maxQuantumNumber = useExtendedObjectStore((state) => state.schroedinger.maxQuantumNumber);
-  const frequencySpread = useExtendedObjectStore((state) => state.schroedinger.frequencySpread);
-
-  // Volume rendering parameters
-  const timeScale = useExtendedObjectStore((state) => state.schroedinger.timeScale);
-  const fieldScale = useExtendedObjectStore((state) => state.schroedinger.fieldScale);
-  const densityGain = useExtendedObjectStore((state) => state.schroedinger.densityGain);
-  const colorMode = useExtendedObjectStore((state) => state.schroedinger.colorMode);
-
-  // Isosurface mode
   const isoEnabled = useExtendedObjectStore((state) => state.schroedinger.isoEnabled);
-  const isoThreshold = useExtendedObjectStore((state) => state.schroedinger.isoThreshold);
-
-  // Slice parameters
-  const parameterValues = useExtendedObjectStore((state) => state.schroedinger.parameterValues);
-
-  // Origin drift parameters
-  const originDriftEnabled = useExtendedObjectStore((state) => state.schroedinger.originDriftEnabled);
-  const driftAmplitude = useExtendedObjectStore((state) => state.schroedinger.driftAmplitude);
-  const driftBaseFrequency = useExtendedObjectStore((state) => state.schroedinger.driftBaseFrequency);
-  const driftFrequencySpread = useExtendedObjectStore((state) => state.schroedinger.driftFrequencySpread);
-
-  // Slice Animation parameters
-  const sliceAnimationEnabled = useExtendedObjectStore((state) => state.schroedinger.sliceAnimationEnabled);
-  const sliceSpeed = useExtendedObjectStore((state) => state.schroedinger.sliceSpeed);
-  const sliceAmplitude = useExtendedObjectStore((state) => state.schroedinger.sliceAmplitude);
-
-  // Animation bias
-  const animationBias = useUIStore((state) => state.animationBias);
+  const opacityMode = useUIStore((state) => state.opacitySettings.mode);
 
   // Animation time tracking
   const animationTimeRef = useRef(0);
   const lastFrameTimeRef = useRef(0);
-
-  // Color state
-  const faceColor = useAppearanceStore((state) => state.faceColor);
-  const colorAlgorithm = useAppearanceStore((state) => state.colorAlgorithm);
-  const cosineCoefficients = useAppearanceStore((state) => state.cosineCoefficients);
-  const distribution = useAppearanceStore((state) => state.distribution);
-  const lchLightness = useAppearanceStore((state) => state.lchLightness);
-  const lchChroma = useAppearanceStore((state) => state.lchChroma);
-  const multiSourceWeights = useAppearanceStore((state) => state.multiSourceWeights);
-
-  // Lighting
-  const lights = useLightingStore((state) => state.lights);
-  const ambientIntensity = useLightingStore((state) => state.ambientIntensity);
-  const ambientColor = useLightingStore((state) => state.ambientColor);
-  const specularIntensity = useLightingStore((state) => state.specularIntensity);
-  const shininess = useLightingStore((state) => state.shininess);
-  const specularColor = useLightingStore((state) => state.specularColor);
-  const diffuseIntensity = useLightingStore((state) => state.diffuseIntensity);
-
-  // Fresnel
-  const edgesVisible = useAppearanceStore((state) => state.edgesVisible);
-  const fresnelIntensity = useAppearanceStore((state) => state.fresnelIntensity);
-  const edgeColor = useAppearanceStore((state) => state.edgeColor);
-
-  // Opacity settings
-  const opacitySettings = useUIStore((state) => state.opacitySettings);
 
   const uniforms = useMemo(
     () => ({
@@ -317,12 +258,16 @@ const SchroedingerMesh = () => {
       uLchChroma: { value: 0.15 },
       uMultiSourceWeights: { value: new THREE.Vector3(0.5, 0.3, 0.2) },
 
-      // Temporal Reprojection uniforms
+      // Temporal Reprojection uniforms (depth-skip for isosurface)
       uPrevDepthTexture: { value: null },
       uPrevViewProjectionMatrix: { value: new THREE.Matrix4() },
       uPrevInverseViewProjectionMatrix: { value: new THREE.Matrix4() },
       uTemporalEnabled: { value: false },
       uDepthBufferResolution: { value: new THREE.Vector2(1, 1) },
+
+      // Temporal Accumulation uniforms (Horizon-style for volumetric)
+      uBayerOffset: { value: new THREE.Vector2(0, 0) },
+      uFullResolution: { value: new THREE.Vector2(1, 1) },
 
       // Orthographic projection uniforms
       uOrthographic: { value: false },
@@ -347,32 +292,37 @@ const SchroedingerMesh = () => {
     []
   );
 
-  // Get temporal settings
+  // Get temporal settings (subscribed because it affects shader compilation)
   const temporalEnabled = usePerformanceStore((state) => state.temporalReprojectionEnabled);
-  const setShaderDebugInfo = usePerformanceStore((state) => state.setShaderDebugInfo);
   const shaderOverrides = usePerformanceStore((state) => state.shaderOverrides);
   const resetShaderOverrides = usePerformanceStore((state) => state.resetShaderOverrides);
 
   // Reset overrides when configuration changes
   useEffect(() => {
     resetShaderOverrides();
-  }, [dimension, temporalEnabled, opacitySettings.mode, isoEnabled, resetShaderOverrides]);
+  }, [dimension, temporalEnabled, opacityMode, isoEnabled, resetShaderOverrides]);
 
   // Compile shader
+  // For volumetric mode with temporal enabled, use temporal ACCUMULATION (Horizon-style)
+  // For isosurface mode with temporal enabled, use temporal REPROJECTION (depth-skip)
+  const useTemporalAccumulation = temporalEnabled && !isoEnabled;
+
   const { glsl: shaderString, modules, features } = useMemo(() => {
     return composeSchroedingerShader({
       dimension,
       shadows: false, // Volumetric mode doesn't use traditional shadows
-      temporal: temporalEnabled,
+      temporal: temporalEnabled && isoEnabled, // Depth-skip only for isosurface
+      temporalAccumulation: useTemporalAccumulation,
       ambientOcclusion: false,
-      opacityMode: opacitySettings.mode,
+      opacityMode: opacityMode,
       overrides: shaderOverrides,
       isosurface: isoEnabled,
     });
-  }, [dimension, temporalEnabled, opacitySettings.mode, shaderOverrides, isoEnabled]);
+  }, [dimension, temporalEnabled, opacityMode, shaderOverrides, isoEnabled, useTemporalAccumulation]);
 
   // Update debug info
   useEffect(() => {
+    const { setShaderDebugInfo } = usePerformanceStore.getState();
     setShaderDebugInfo({
       name: 'Schrödinger Quantum Volume',
       vertexShaderLength: vertexShader.length,
@@ -380,8 +330,30 @@ const SchroedingerMesh = () => {
       activeModules: modules,
       features: features,
     });
-    return () => setShaderDebugInfo(null);
-  }, [shaderString, modules, features, setShaderDebugInfo]);
+    return () => {
+      const { setShaderDebugInfo: clearDebugInfo } = usePerformanceStore.getState();
+      clearDebugInfo(null);
+    };
+  }, [shaderString, modules, features]);
+
+  // Assign layer based on temporal accumulation mode
+  // When temporal cloud accumulation is active, use VOLUMETRIC layer for separate rendering
+  useEffect(() => {
+    if (meshRef.current?.layers) {
+      const useVolumetricLayer = needsVolumetricSeparation({
+        temporalCloudAccumulation: useTemporalAccumulation,
+        objectType: 'schroedinger',
+      });
+
+      if (useVolumetricLayer) {
+        // Use VOLUMETRIC layer for temporal accumulation (rendered separately at 1/4 res)
+        meshRef.current.layers.set(RENDER_LAYERS.VOLUMETRIC);
+      } else {
+        // Standard main object layer (rendered as part of main scene)
+        meshRef.current.layers.set(RENDER_LAYERS.MAIN_OBJECT);
+      }
+    }
+  }, [useTemporalAccumulation]);
 
   useFrame((state) => {
     // Update animation time
@@ -396,15 +368,22 @@ const SchroedingerMesh = () => {
     if (meshRef.current) {
       const material = meshRef.current.material as THREE.ShaderMaterial;
 
-      // Get rotations
+      // ============================================
+      // PERFORMANCE: Read all state via getState() to avoid re-render subscriptions
+      // ============================================
+      const schroedinger = useExtendedObjectStore.getState().schroedinger;
+      const appearance = useAppearanceStore.getState();
+      const lighting = useLightingStore.getState();
+      const uiState = useUIStore.getState();
       const rotations = useRotationStore.getState().rotations;
 
       // ============================================
       // Adaptive Quality
       // ============================================
       const rotationsChanged = hasRotationsChanged(rotations, prevRotationsRef.current);
+      const fractalAnimLowQuality = usePerformanceStore.getState().fractalAnimationLowQuality;
 
-      if (rotationsChanged) {
+      if (rotationsChanged && fractalAnimLowQuality) {
         fastModeRef.current = true;
         if (restoreQualityTimeoutRef.current) {
           clearTimeout(restoreQualityTimeoutRef.current);
@@ -424,11 +403,10 @@ const SchroedingerMesh = () => {
       }
 
       // Update fast mode uniform
-      // Note: For volumetric rendering, we always use HQ mode (volumeRaymarchHQ)
-      // because the fast mode only supports ambient lighting, which looks incorrect
-      // for volumetric data that needs proper multi-light support
+      // Note: For volumetric rendering, we typically want HQ mode, but allow fast mode
+      // during rotation if explicitly enabled in performance settings.
       if (material.uniforms.uFastMode) {
-        material.uniforms.uFastMode.value = false;
+        material.uniforms.uFastMode.value = fastModeRef.current;
       }
 
       // Quality multiplier
@@ -460,6 +438,7 @@ const SchroedingerMesh = () => {
       // Quantum Preset Generation
       // Check if we need to regenerate the preset
       // ============================================
+      const { presetName, seed, termCount, maxQuantumNumber, frequencySpread } = schroedinger;
       const currentConfig = {
         presetName,
         seed,
@@ -515,6 +494,7 @@ const SchroedingerMesh = () => {
       }
 
       // Volume rendering parameters
+      const { timeScale, fieldScale, densityGain, colorMode, isoThreshold } = schroedinger;
       if (material.uniforms.uTimeScale) material.uniforms.uTimeScale.value = timeScale;
       if (material.uniforms.uFieldScale) material.uniforms.uFieldScale.value = fieldScale;
       if (material.uniforms.uDensityGain) material.uniforms.uDensityGain.value = densityGain;
@@ -526,6 +506,7 @@ const SchroedingerMesh = () => {
 
       // Color (cached linear conversion)
       const cache = colorCacheRef.current;
+      const { faceColor } = appearance;
       if (material.uniforms.uColor) {
         updateLinearColorUniform(cache.faceColor, material.uniforms.uColor.value as THREE.Color, faceColor);
       }
@@ -547,7 +528,7 @@ const SchroedingerMesh = () => {
         invVP.copy(camera.projectionMatrixInverse).premultiply(camera.matrixWorld);
       }
 
-      // Temporal reprojection
+      // Temporal reprojection (depth-skip for isosurface mode)
       const temporalUniforms = TemporalDepthManager.getUniforms();
       if (material.uniforms.uPrevDepthTexture) {
         material.uniforms.uPrevDepthTexture.value = temporalUniforms.uPrevDepthTexture;
@@ -565,7 +546,18 @@ const SchroedingerMesh = () => {
         material.uniforms.uDepthBufferResolution.value.copy(temporalUniforms.uDepthBufferResolution);
       }
 
+      // Temporal accumulation (Horizon-style for volumetric mode)
+      // These uniforms are only used when USE_TEMPORAL_ACCUMULATION is defined
+      const cloudUniforms = TemporalCloudManager.getUniforms();
+      if (material.uniforms.uBayerOffset) {
+        material.uniforms.uBayerOffset.value.copy(cloudUniforms.uBayerOffset);
+      }
+      if (material.uniforms.uFullResolution) {
+        material.uniforms.uFullResolution.value.copy(cloudUniforms.uAccumulationResolution);
+      }
+
       // Lighting
+      const { lights, ambientIntensity, ambientColor, specularIntensity, shininess, specularColor, diffuseIntensity } = lighting;
       updateLightUniforms(material.uniforms as unknown as LightUniforms, lights, lightColorCacheRef.current);
       if (material.uniforms.uAmbientIntensity) material.uniforms.uAmbientIntensity.value = ambientIntensity;
       if (material.uniforms.uAmbientColor) {
@@ -579,6 +571,7 @@ const SchroedingerMesh = () => {
       if (material.uniforms.uDiffuseIntensity) material.uniforms.uDiffuseIntensity.value = diffuseIntensity;
 
       // Fresnel
+      const { edgesVisible, fresnelIntensity, edgeColor } = appearance;
       if (material.uniforms.uFresnelEnabled) material.uniforms.uFresnelEnabled.value = edgesVisible;
       if (material.uniforms.uFresnelIntensity) material.uniforms.uFresnelIntensity.value = fresnelIntensity;
       if (material.uniforms.uRimColor) {
@@ -586,6 +579,7 @@ const SchroedingerMesh = () => {
       }
 
       // Advanced Color System
+      const { colorAlgorithm, cosineCoefficients, distribution, lchLightness, lchChroma, multiSourceWeights } = appearance;
       if (material.uniforms.uColorAlgorithm) material.uniforms.uColorAlgorithm.value = COLOR_ALGORITHM_TO_INT[colorAlgorithm];
       if (material.uniforms.uCosineA) material.uniforms.uCosineA.value.set(cosineCoefficients.a[0], cosineCoefficients.a[1], cosineCoefficients.a[2]);
       if (material.uniforms.uCosineB) material.uniforms.uCosineB.value.set(cosineCoefficients.b[0], cosineCoefficients.b[1], cosineCoefficients.b[2]);
@@ -599,8 +593,12 @@ const SchroedingerMesh = () => {
       if (material.uniforms.uMultiSourceWeights) material.uniforms.uMultiSourceWeights.value.set(multiSourceWeights.depth, multiSourceWeights.orbitTrap, multiSourceWeights.normal);
 
       // Opacity Mode System
+      const { opacitySettings, animationBias } = uiState;
       if (material.uniforms.uOpacityMode) {
-        material.uniforms.uOpacityMode.value = OPACITY_MODE_TO_INT[opacitySettings.mode];
+        // Force VOLUMETRIC mode when using temporal accumulation to ensure correct alpha blending
+        // Otherwise 'Solid' mode would render opaque quads obscuring the scene
+        const effectiveMode = useTemporalAccumulation ? 'volumetric' : opacitySettings.mode;
+        material.uniforms.uOpacityMode.value = OPACITY_MODE_TO_INT[effectiveMode as keyof typeof OPACITY_MODE_TO_INT];
       }
       if (material.uniforms.uSimpleAlpha) {
         material.uniforms.uSimpleAlpha.value = opacitySettings.simpleAlphaOpacity;
@@ -623,7 +621,9 @@ const SchroedingerMesh = () => {
       }
 
       // Configure transparency
-      const isTransparent = opacitySettings.mode !== 'solid';
+      // When temporal accumulation is active, we MUST treat the material as transparent
+      // to ensure correct alpha behavior and rendering order, even if mode is 'solid'
+      const isTransparent = opacitySettings.mode !== 'solid' || useTemporalAccumulation;
       if (material.transparent !== isTransparent) {
         material.transparent = isTransparent;
         material.depthWrite = !isTransparent;
@@ -635,6 +635,9 @@ const SchroedingerMesh = () => {
       // ============================================
       const D = dimension;
       const work = workingArraysRef.current;
+
+      const { parameterValues, originDriftEnabled, driftAmplitude, driftBaseFrequency, driftFrequencySpread,
+              sliceAnimationEnabled, sliceSpeed, sliceAmplitude } = schroedinger;
 
       const paramsChanged = !prevParamValuesRef.current ||
         prevParamValuesRef.current.length !== parameterValues.length ||

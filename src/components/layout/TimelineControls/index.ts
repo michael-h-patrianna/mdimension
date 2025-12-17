@@ -14,5 +14,6 @@ export { JuliaAnimationDrawer } from './JuliaAnimationDrawer';
 export { MandelbulbAnimationDrawer } from './MandelbulbAnimationDrawer';
 export { PolytopeAnimationDrawer } from './PolytopeAnimationDrawer';
 export { SchroedingerAnimationDrawer } from './SchroedingerAnimationDrawer';
+export { ZoomDrawer } from './ZoomDrawer';
 
 export { FractalAnimationDrawer } from './FractalAnimationDrawer';

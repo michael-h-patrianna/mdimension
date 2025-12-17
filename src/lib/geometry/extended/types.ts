@@ -466,6 +466,14 @@ export type MandelbulbQualityPreset = 'draft' | 'standard' | 'high' | 'ultra'
 export type MandelbulbRenderStyle = 'rayMarching'
 
 /**
+ * Autopilot strategies for zoom void avoidance
+ * - centerRayLock: Simple probe-based steering (fastest, least overhead)
+ * - interestScore: Hill-climb optimization for visual interest
+ * - boundaryTarget: Classic Mandelbrot boundary tracking
+ */
+export type MandelbulbAutopilotStrategy = 'centerRayLock' | 'interestScore' | 'boundaryTarget'
+
+/**
  * Configuration for n-dimensional Mandelbulb set generation
  *
  * Supports:
@@ -684,6 +692,147 @@ export interface MandelbulbConfig {
    * Controls the intensity of the twisting effect.
    */
   phaseAmplitude: number
+
+  // === Zoom Settings ===
+
+  /**
+   * Enable/disable zoom functionality.
+   * When enabled, zoom level affects the slice basis scaling.
+   */
+  zoomEnabled: boolean
+
+  /**
+   * Current zoom level (0.001 to 1000000, default 1.0).
+   * Higher values zoom in, showing smaller regions of fractal space.
+   */
+  zoom: number
+
+  /**
+   * Internal: logarithm of zoom for smooth animation.
+   * Animation uses log-space for perceptually uniform zoom speed.
+   */
+  logZoom: number
+
+  /**
+   * Zoom animation speed (0.1 to 2.0, default 0.5).
+   * Controls how fast the zoom level changes during animation.
+   */
+  zoomSpeed: number
+
+  // === Zoom Animation ===
+
+  /**
+   * Enable/disable animated zoom.
+   * When enabled, zoom continuously changes during playback.
+   */
+  zoomAnimationEnabled: boolean
+
+  /**
+   * Zoom animation mode.
+   * - continuous: Zoom in forever at constant rate
+   * - target: Zoom toward a specific target level, then stop
+   */
+  zoomAnimationMode: 'continuous' | 'target'
+
+  /**
+   * Target zoom level for 'target' animation mode (1 to 1000000, default 10.0).
+   */
+  zoomTargetLevel: number
+
+  // === Autopilot (Void Avoidance) ===
+
+  /**
+   * Enable/disable autopilot for avoiding void regions.
+   * When enabled, automatically adjusts origin to keep interesting features in view.
+   */
+  autopilotEnabled: boolean
+
+  /**
+   * Autopilot strategy for void avoidance.
+   * - centerRayLock: Simple probe-based steering (fastest, default)
+   * - interestScore: Hill-climb optimization for visual interest
+   * - boundaryTarget: Classic Mandelbrot boundary tracking
+   */
+  autopilotStrategy: MandelbulbAutopilotStrategy
+
+  // === Strategy A: Center-Ray Lock Settings ===
+
+  /**
+   * Probe size for center-ray lock strategy.
+   * 1 = single pixel, 4 = 2x2, 16 = 4x4
+   * Smaller = faster, larger = more stable
+   */
+  centerRayProbeSize: 1 | 4 | 16
+
+  /**
+   * Probe frequency in Hz (10-30, default 15).
+   * How often to sample the center ray for steering decisions.
+   */
+  centerRayProbeFrequency: number
+
+  /**
+   * Miss threshold for zoom speed reduction (0-1, default 0.5).
+   * If hit ratio drops below this, zoom slows down.
+   */
+  centerRayMissThreshold: number
+
+  /**
+   * Origin nudge strength (0-0.1, default 0.02).
+   * How aggressively to adjust origin when avoiding void.
+   */
+  centerRayNudgeStrength: number
+
+  // === Strategy B: Interest Score Settings ===
+
+  /**
+   * Resolution for interest score probe (32, 64, or 128, default 64).
+   * Higher resolution = better quality but slower.
+   */
+  interestScoreResolution: 32 | 64 | 128
+
+  /**
+   * Frames between interest score probes (default 30).
+   * Lower = more responsive but higher GPU cost.
+   */
+  interestScoreInterval: number
+
+  /**
+   * Number of candidate nudge directions to evaluate (2-8, default 4).
+   */
+  interestScoreCandidates: number
+
+  /**
+   * Nudge search radius in D-space (0.01-0.2, default 0.05).
+   */
+  interestScoreNudgeRadius: number
+
+  /**
+   * Metric for computing interest score.
+   * - hitRatio: Optimize for surfaces in view
+   * - variance: Optimize for visual complexity
+   * - edgeStrength: Optimize for sharp features
+   */
+  interestScoreMetric: 'hitRatio' | 'variance' | 'edgeStrength'
+
+  // === Strategy C: Boundary Target Settings ===
+
+  /**
+   * Target escape ratio for boundary targeting (0-1, default 0.7).
+   * Aims to keep pixels near this escape threshold.
+   */
+  boundaryTargetEscapeRatio: number
+
+  /**
+   * Target band width (0.1-0.3, default 0.2).
+   * Width of the "interesting" escape ratio band.
+   */
+  boundaryTargetBand: number
+
+  /**
+   * Correction strength for boundary targeting (0.01-0.1, default 0.03).
+   * How aggressively to correct toward the boundary.
+   */
+  boundaryTargetCorrectionStrength: number
 }
 
 /**
@@ -750,6 +899,33 @@ export const DEFAULT_MANDELBROT_CONFIG: MandelbulbConfig = {
   phaseShiftEnabled: false,
   phaseSpeed: 0.03, // Slow phase evolution
   phaseAmplitude: 0.3, // ~17 degrees max phase shift
+  // Zoom Settings defaults
+  zoomEnabled: false,
+  zoom: 1.0,
+  logZoom: 0,
+  zoomSpeed: 0.5,
+  // Zoom Animation defaults
+  zoomAnimationEnabled: false,
+  zoomAnimationMode: 'continuous',
+  zoomTargetLevel: 10.0,
+  // Autopilot defaults (centerRayLock = least performance impact)
+  autopilotEnabled: false,
+  autopilotStrategy: 'centerRayLock',
+  // Strategy A: Center-Ray Lock defaults
+  centerRayProbeSize: 1,
+  centerRayProbeFrequency: 15,
+  centerRayMissThreshold: 0.5,
+  centerRayNudgeStrength: 0.02,
+  // Strategy B: Interest Score defaults
+  interestScoreResolution: 64,
+  interestScoreInterval: 30,
+  interestScoreCandidates: 4,
+  interestScoreNudgeRadius: 0.05,
+  interestScoreMetric: 'variance',
+  // Strategy C: Boundary Target defaults
+  boundaryTargetEscapeRatio: 0.7,
+  boundaryTargetBand: 0.2,
+  boundaryTargetCorrectionStrength: 0.03,
 }
 
 // ============================================================================

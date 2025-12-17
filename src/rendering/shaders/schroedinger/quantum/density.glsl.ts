@@ -67,6 +67,7 @@ float sampleDensity(vec3 pos, float t) {
 // Sample density with phase information for coloring
 // Returns: vec3(rho, logRho, spatialPhase)
 // Note: Uses spatial-only phase for stable coloring (no time flicker)
+// OPTIMIZED: Uses single-pass evalPsiWithSpatialPhase to avoid redundant hoND calls
 vec3 sampleDensityWithPhase(vec3 pos, float t) {
     // Map 3D position to ND coordinates
     float xND[MAX_DIM];
@@ -87,14 +88,15 @@ vec3 sampleDensityWithPhase(vec3 pos, float t) {
         xND[j] *= uFieldScale;
     }
 
-    // Evaluate time-dependent wavefunction for density (morphing)
-    vec2 psi = evalPsi(xND, t);
+    // OPTIMIZED: Single-pass evaluation for both time-dependent density and spatial phase
+    // This avoids calling hoND() twice per sample point
+    vec4 psiResult = evalPsiWithSpatialPhase(xND, t);
+    vec2 psi = psiResult.xy;
+    float spatialPhase = psiResult.z;
+
     float rho = rhoFromPsi(psi);
     float s = sFromRho(rho);
 
-    // Use spatial-only phase for coloring (no time flicker)
-    float phase = evalSpatialPhase(xND);
-
-    return vec3(rho, s, phase);
+    return vec3(rho, s, spatialPhase);
 }
 `;

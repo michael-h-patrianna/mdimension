@@ -16,6 +16,7 @@ import { sphereIntersectBlock } from '../shared/raymarch/sphere-intersect.glsl';
 import { raymarchCoreBlock } from '../shared/raymarch/core.glsl';
 
 import { mandelbulbUniformsBlock } from './uniforms.glsl';
+import { zoomUniformsBlock, zoomMappingBlock, zoomDeScalingBlock } from './zoom';
 import { powerBlock } from './power.glsl';
 import { sdf3dBlock } from './sdf/sdf3d.glsl';
 import { sdf4dBlock } from './sdf/sdf4d.glsl';
@@ -79,7 +80,10 @@ export function composeMandelbulbShader(config: ShaderConfig) {
     { name: 'Constants', content: constantsBlock },
     { name: 'Shared Uniforms', content: uniformsBlock },
     { name: 'Mandelbulb Uniforms', content: mandelbulbUniformsBlock },
+    { name: 'Zoom Uniforms', content: zoomUniformsBlock },
     { name: 'Power Functions', content: powerBlock },
+    { name: 'Zoom Mapping', content: zoomMappingBlock },
+    { name: 'Zoom DE Scaling', content: zoomDeScalingBlock },
     { name: 'Color (HSL)', content: hslBlock },
     { name: 'Color (Cosine)', content: cosinePaletteBlock },
     { name: 'Color (Oklab)', content: oklabBlock },

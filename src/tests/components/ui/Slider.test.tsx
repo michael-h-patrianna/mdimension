@@ -29,7 +29,9 @@ describe('Slider', () => {
       />
     );
 
-    expect(screen.getByDisplayValue('1.50')).toBeInTheDocument();
+    // With step=0.1, decimals should be 1 (from Math.ceil(-Math.log10(0.1)))
+    // so value is formatted as '1.5' not '1.50'
+    expect(screen.getByDisplayValue('1.5')).toBeInTheDocument();
   });
 
   // Unit is only displayed in min/max labels, not next to the value

@@ -21,7 +21,8 @@ describe('Button', () => {
   it('applies primary variant styles by default', () => {
     render(<Button>Primary</Button>);
     const button = screen.getByRole('button');
-    expect(button).toHaveClass('bg-accent');
+    // Primary uses a gradient starting with from-accent
+    expect(button).toHaveClass('from-accent');
   });
 
   it('applies secondary variant styles', () => {

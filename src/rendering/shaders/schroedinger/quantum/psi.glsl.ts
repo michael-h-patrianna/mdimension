@@ -61,6 +61,7 @@ vec3 evalPsiWithPhase(float xND[MAX_DIM], float t) {
 
 // Evaluate spatial-only phase (t=0) for stable coloring
 // This gives position-dependent color without time-flickering
+// NOTE: Prefer evalPsiWithSpatialPhase() to avoid redundant hoND calculations
 float evalSpatialPhase(float xND[MAX_DIM]) {
     vec2 psi = vec2(0.0);
 
@@ -74,5 +75,36 @@ float evalSpatialPhase(float xND[MAX_DIM]) {
     }
 
     return atan(psi.y, psi.x);
+}
+
+// OPTIMIZED: Evaluate time-dependent ψ AND spatial-only phase in ONE pass
+// This computes both the density (from time-dependent |ψ|²) and the
+// stable spatial phase (for coloring) without redundant hoND() calls.
+// Returns: vec4(psi_time.re, psi_time.im, spatialPhase, unused)
+vec4 evalPsiWithSpatialPhase(float xND[MAX_DIM], float t) {
+    vec2 psiTime = vec2(0.0);    // Time-dependent for density
+    vec2 psiSpatial = vec2(0.0); // Spatial-only for stable phase
+
+    for (int k = 0; k < MAX_TERMS; k++) {
+        if (k >= uTermCount) break;
+
+        // Spatial eigenfunction - computed ONCE per term
+        float spatial = hoND(xND, uDimension, k);
+
+        // Complex coefficient c_k
+        vec2 coeff = uCoeff[k];
+
+        // Spatial-only accumulation (no time factor)
+        psiSpatial += cscale(spatial, coeff);
+
+        // Time-dependent accumulation
+        float phase = -uEnergy[k] * t;
+        vec2 timeFactor = cexp_i(phase);
+        vec2 term = cmul(coeff, timeFactor);
+        psiTime += cscale(spatial, term);
+    }
+
+    float spatialPhase = atan(psiSpatial.y, psiSpatial.x);
+    return vec4(psiTime, spatialPhase, 0.0);
 }
 `;
