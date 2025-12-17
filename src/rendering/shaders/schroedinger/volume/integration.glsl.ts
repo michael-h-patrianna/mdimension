@@ -173,7 +173,7 @@ VolumeResult volumeRaymarch(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar
 // OPTIMIZED: Uses forward differences gradient (3 samples) instead of central (6 samples)
 VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar) {
     vec3 accColor = vec3(0.0);
-    float transmittance = 1.0;
+    vec3 transmittance = vec3(1.0); // Now vec3 for chromatic dispersion support
     float entryT = -1.0;  // Track first meaningful contribution
 
     // Centroid accumulation for stable temporal reprojection
@@ -189,36 +189,132 @@ VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tF
     float animTime = getVolumeTime();
     vec3 viewDir = -rayDir;
 
+    // Dispersion offsets
+    vec3 dispOffsetR = vec3(0.0);
+    vec3 dispOffsetB = vec3(0.0);
+    
+    if (uDispersionEnabled && uDispersionStrength > 0.0) {
+        float dispAmount = uDispersionStrength * 0.05; // Scaling factor
+        
+        if (uDispersionDirection == 0) { // Radial (from center)
+             // We can't know "center" easily here without sampling position first.
+             // Updated inside loop.
+        } else { // View-aligned (tangent to view? or along view?)
+             // "View-aligned" usually means screen space offset.
+             // Here we are in world space.
+             // Simple: offset along camera Up/Right? 
+             // Or just simple constant world vector?
+             // Let's use camera up/right proxy or just arbitrary orthogonal vectors.
+             // Cross(rayDir, Up).
+             vec3 right = normalize(cross(rayDir, vec3(0.0, 1.0, 0.0)));
+             dispOffsetR = right * dispAmount;
+             dispOffsetB = -right * dispAmount;
+        }
+    }
+
     for (int i = 0; i < MAX_VOLUME_SAMPLES; i++) {
         if (i >= sampleCount) break;
-        if (transmittance < MIN_TRANSMITTANCE) break;
+        // Exit if ALL channels are blocked
+        if (transmittance.r < MIN_TRANSMITTANCE && transmittance.g < MIN_TRANSMITTANCE && transmittance.b < MIN_TRANSMITTANCE) break;
 
         vec3 pos = rayOrigin + rayDir * t;
+
+        // Radial dispersion update per sample
+        if (uDispersionEnabled && uDispersionDirection == 0) {
+             vec3 normalProxy = normalize(pos); // From center
+             float dispAmount = uDispersionStrength * 0.05;
+             dispOffsetR = normalProxy * dispAmount;
+             dispOffsetB = -normalProxy * dispAmount;
+        }
 
         vec3 densityInfo = sampleDensityWithPhase(pos, animTime);
         float rho = densityInfo.x;
         float sCenter = densityInfo.y; // Pre-computed log-density
         float phase = densityInfo.z;
+        
+        // Chromatic Dispersion Logic
+        vec3 rhoRGB = vec3(rho); // Default: all channels same
+        
+        if (uDispersionEnabled && uDispersionStrength > 0.0) {
+             if (uDispersionQuality == 1) { // High Quality: Full Sampling
+                 vec3 dInfoR = sampleDensityWithPhase(pos + dispOffsetR, animTime);
+                 vec3 dInfoB = sampleDensityWithPhase(pos + dispOffsetB, animTime);
+                 rhoRGB.r = dInfoR.x;
+                 rhoRGB.b = dInfoB.x;
+             } else { 
+                 // Fast Mode: Gradient Hack
+                 // Needs gradient. Calculate it first.
+                 // We compute gradient anyway for lighting below.
+                 // Move gradient calc up?
+                 // Gradient calc uses sCenter.
+                 
+                 vec3 gradient = computeDensityGradientFast(pos, animTime, 0.05, sCenter);
+                 
+                 // Extrapolate log-density (s) then convert to rho
+                 // s_new = s + dot(grad, offset)
+                 float s_r = sCenter + dot(gradient, dispOffsetR);
+                 float s_b = sCenter + dot(gradient, dispOffsetB);
+                 
+                 // rho = exp(s)
+                 rhoRGB.r = exp(s_r);
+                 rhoRGB.b = exp(s_b);
+                 
+                 // Reuse gradient for lighting later
+             }
+        }
 
-        float alpha = computeAlpha(rho, stepLen, uDensityGain);
+        // Alpha per channel
+        vec3 alpha;
+        alpha.r = computeAlpha(rhoRGB.r, stepLen, uDensityGain);
+        alpha.g = computeAlpha(rhoRGB.g, stepLen, uDensityGain);
+        alpha.b = computeAlpha(rhoRGB.b, stepLen, uDensityGain);
 
-        if (alpha > 0.001) {
-            // Track entry point
-            if (entryT < 0.0 && alpha > ENTRY_ALPHA_THRESHOLD) {
+        if (alpha.g > 0.001 || alpha.r > 0.001 || alpha.b > 0.001) {
+            // Track entry point (use Green/Center channel)
+            if (entryT < 0.0 && alpha.g > ENTRY_ALPHA_THRESHOLD) {
                 entryT = t;
             }
 
-            // CENTROID ACCUMULATION for stable temporal reprojection
-            float weight = alpha * transmittance;
+            // CENTROID ACCUMULATION
+            // Use average alpha/transmittance for weighting
+            float avgAlpha = (alpha.r + alpha.g + alpha.b) / 3.0;
+            float avgTrans = (transmittance.r + transmittance.g + transmittance.b) / 3.0;
+            float weight = avgAlpha * avgTrans;
             centroidSum += pos * weight;
             centroidWeight += weight;
 
             // OPTIMIZED: Use forward differences with pre-computed center value
+            // Note: If Fast Dispersion used gradient, we calculated it already?
+            // For code clarity, let's just call it again or assume compiler optimization.
+            // Shader compiler will likely deduplicate if identical calls.
             vec3 gradient = computeDensityGradientFast(pos, animTime, 0.05, sCenter);
-            vec3 emission = computeEmissionLit(rho, phase, pos, gradient, viewDir);
+            
+            // Emission needs to be per-channel if density varies?
+            // computeEmissionLit takes rho.
+            // Ideally we compute emission for R, G, B separately using their rho.
+            // But computeEmissionLit is expensive (lighting loop).
+            // Approximation: Compute for center rho, then modulate by density ratio?
+            // Or: if dispersion is enabled, we assume color is white-ish anyway?
+            // Let's compute lighting for center (Green) channel and apply to all, 
+            // but modulate intensity by rhoRGB?
+            // Better: Compute lighting once using center rho/gradient.
+            // Apply to R, G, B scaled by their density?
+            
+            vec3 emissionCenter = computeEmissionLit(rhoRGB.g, phase, pos, gradient, viewDir);
+            
+            // If rho is different, emission intensity should be different.
+            // Estimate emission ratio.
+            // Emission ~ rho (roughly, plus lighting).
+            vec3 emission;
+            emission.g = emissionCenter.g;
+            emission.r = emissionCenter.r * (rhoRGB.r / max(rhoRGB.g, 0.0001));
+            emission.b = emissionCenter.b * (rhoRGB.b / max(rhoRGB.g, 0.0001));
+            
+            // This assumes light color is white. If light is colored, this might shift colors weirdly.
+            // But acceptable for dispersion effect.
 
             accColor += transmittance * alpha * emission;
-            transmittance *= (1.0 - alpha);
+            transmittance *= (vec3(1.0) - alpha);
         }
 
         t += stepLen;
@@ -233,7 +329,11 @@ VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tF
     vec3 wCenter = centroidWeight > 0.001
         ? centroidSum / centroidWeight
         : rayOrigin + rayDir * entryT;
+        
+    // Final alpha (average or max?)
+    // For depth writing and composition, average remaining transmittance?
+    float finalAlpha = 1.0 - (transmittance.r + transmittance.g + transmittance.b) / 3.0;
 
-    return VolumeResult(accColor, 1.0 - transmittance, entryT, wCenter, centroidWeight);
+    return VolumeResult(accColor, finalAlpha, entryT, wCenter, centroidWeight);
 }
 `;

@@ -32,6 +32,51 @@ uniform float uEnergy[MAX_TERMS];            // Precomputed energies E_k
 uniform float uTimeScale;      // Time evolution speed (0.1-2.0)
 uniform float uFieldScale;     // Coordinate scale into HO basis (0.5-2.0)
 uniform float uDensityGain;    // Absorption coefficient (0.1-5.0)
+uniform float uPowderScale;    // Multiple scattering "powder" effect (0.0-2.0)
+uniform float uEmissionIntensity; // HDR emission intensity (0.0-5.0)
+uniform float uEmissionThreshold; // Density threshold for emission (0.0-1.0)
+uniform float uEmissionColorShift;// Emission color temperature shift (-1.0 to 1.0)
+uniform bool uEmissionPulsing;    // Enable phase-based emission pulsing
+uniform float uRimExponent;       // Fresnel rim falloff (1.0-10.0)
+uniform float uScatteringAnisotropy; // Henyey-Greenstein phase function g factor (-0.9 to 0.9)
+uniform float uRoughness;         // GGX roughness (0.0-1.0)
+uniform bool uSssEnabled;         // Enable subsurface scattering
+uniform float uSssIntensity;      // SSS intensity (0.0-2.0)
+uniform vec3 uSssColor;           // SSS tint color
+uniform float uSssThickness;      // SSS thickness factor (0.1-5.0)
+uniform float uSssJitter;         // SSS jitter amount (0.0-1.0)
+uniform float uErosionStrength;   // Edge erosion strength (0.0-1.0)
+uniform float uErosionScale;      // Edge erosion scale (0.25-4.0)
+uniform float uErosionTurbulence; // Edge erosion turbulence (0.0-1.0)
+uniform int uErosionNoiseType;    // Edge erosion noise type (0=Worley, 1=Perlin, 2=Hybrid)
+uniform bool uCurlEnabled;        // Enable curl noise flow
+uniform float uCurlStrength;      // Flow strength (0.0-1.0)
+uniform float uCurlScale;         // Flow scale (0.25-4.0)
+uniform float uCurlSpeed;         // Flow speed (0.1-5.0)
+uniform int uCurlBias;            // Flow bias (0=None, 1=Up, 2=Out, 3=In)
+uniform bool uDispersionEnabled;  // Enable chromatic dispersion
+uniform float uDispersionStrength;// Dispersion strength (0.0-1.0)
+uniform int uDispersionDirection; // Dispersion direction (0=Radial, 1=View)
+uniform int uDispersionQuality;   // Dispersion quality (0=Fast, 1=High)
+uniform bool uShadowsEnabled;     // Enable volumetric self-shadowing
+uniform float uShadowStrength;    // Shadow strength (0.0-2.0)
+uniform int uShadowSteps;         // Shadow march steps (1-8)
+uniform bool uAoEnabled;          // Enable volumetric ambient occlusion
+uniform float uAoStrength;        // AO strength (0.0-2.0)
+uniform int uAoSteps;             // AO cones/steps (3-8)
+uniform float uAoRadius;          // AO radius (0.1-2.0)
+uniform vec3 uAoColor;            // AO tint color
+uniform bool uNodalEnabled;       // Enable nodal surface highlighting
+uniform vec3 uNodalColor;         // Nodal surface color
+uniform float uNodalStrength;     // Nodal highlight strength
+uniform bool uEnergyColorEnabled; // Enable energy level coloring
+uniform bool uShimmerEnabled;     // Enable uncertainty shimmer
+uniform float uShimmerStrength;   // Shimmer strength
+uniform bool uFogEnabled;         // Enable scene fog integration
+uniform float uFogContribution;   // Scene fog contribution (0.0-2.0)
+uniform float uInternalFogDensity;// Internal fog density (0.0-1.0)
+uniform vec3 uSceneFogColor;      // Scene fog color
+uniform float uSceneFogDensity;   // Scene fog density (exponential)
 uniform int uColorMode;        // 0=density, 1=phase, 2=mixed
 
 // Animation time (from global uTime, but scaled by uTimeScale)

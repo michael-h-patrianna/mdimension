@@ -4,6 +4,7 @@ import {
   SchroedingerColorMode,
   SchroedingerPresetName,
 } from '@/lib/geometry/extended/types'
+import { SCHROEDINGER_PALETTE_DEFINITIONS } from '@/lib/geometry/extended/schroedinger/palettes'
 import { StateCreator } from 'zustand'
 import { ExtendedObjectSlice, SchroedingerSlice } from './types'
 
@@ -113,8 +114,13 @@ export const createSchroedingerSlice: StateCreator<ExtendedObjectSlice, [], [], 
   },
 
   setSchroedingerPalette: (palette) => {
+    const definitions = SCHROEDINGER_PALETTE_DEFINITIONS[palette]
     set((state) => ({
-      schroedinger: { ...state.schroedinger, palette },
+      schroedinger: {
+        ...state.schroedinger,
+        palette,
+        cosineParams: definitions ? definitions : state.schroedinger.cosineParams
+      },
     }))
   },
 
@@ -200,14 +206,331 @@ export const createSchroedingerSlice: StateCreator<ExtendedObjectSlice, [], [], 
     }))
   },
 
+  setSchroedingerPowderScale: (scale) => {
+    const clampedScale = Math.max(0.0, Math.min(2.0, scale))
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, powderScale: clampedScale },
+    }))
+  },
+
   setSchroedingerSampleCount: (count) => {
-    const clampedCount = Math.max(32, Math.min(128, Math.floor(count)))
+    const clampedCount = Math.max(32, Math.min(128, count))
     set((state) => ({
       schroedinger: { ...state.schroedinger, sampleCount: clampedCount },
     }))
   },
 
-  // === Isosurface Mode ===
+  setSchroedingerEmissionIntensity: (intensity) => {
+    const clamped = Math.max(0.0, Math.min(5.0, intensity))
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, emissionIntensity: clamped },
+    }))
+  },
+
+  setSchroedingerEmissionThreshold: (threshold) => {
+    const clamped = Math.max(0.0, Math.min(1.0, threshold))
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, emissionThreshold: clamped },
+    }))
+  },
+
+  setSchroedingerEmissionColorShift: (shift) => {
+    const clamped = Math.max(-1.0, Math.min(1.0, shift))
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, emissionColorShift: clamped },
+    }))
+  },
+
+  setSchroedingerEmissionPulsing: (pulsing) => {
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, emissionPulsing: pulsing },
+    }))
+  },
+
+  setSchroedingerRimExponent: (exponent) => {
+    const clamped = Math.max(1.0, Math.min(10.0, exponent))
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, rimExponent: clamped },
+    }))
+  },
+
+  setSchroedingerScatteringAnisotropy: (anisotropy) => {
+    const clamped = Math.max(-0.9, Math.min(0.9, anisotropy))
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, scatteringAnisotropy: clamped },
+    }))
+  },
+
+  setSchroedingerRoughness: (roughness) => {
+    const clamped = Math.max(0.0, Math.min(1.0, roughness))
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, roughness: clamped },
+    }))
+  },
+
+  setSchroedingerFogIntegrationEnabled: (enabled) => {
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, fogIntegrationEnabled: enabled },
+    }))
+  },
+
+  setSchroedingerFogContribution: (contribution) => {
+    const clamped = Math.max(0.0, Math.min(2.0, contribution))
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, fogContribution: clamped },
+    }))
+  },
+
+  setSchroedingerInternalFogDensity: (density) => {
+    const clamped = Math.max(0.0, Math.min(1.0, density))
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, internalFogDensity: clamped },
+    }))
+  },
+
+  setSchroedingerLodEnabled: (enabled) => {
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, lodEnabled: enabled },
+    }))
+  },
+
+  setSchroedingerLodNearDistance: (distance) => {
+    const clamped = Math.max(0.1, distance)
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, lodNearDistance: clamped },
+    }))
+  },
+
+  setSchroedingerLodFarDistance: (distance) => {
+    const clamped = Math.max(0.1, distance)
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, lodFarDistance: clamped },
+    }))
+  },
+
+  setSchroedingerLodMinSamples: (samples) => {
+    const clamped = Math.max(16, Math.min(256, samples))
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, lodMinSamples: clamped },
+    }))
+  },
+
+  setSchroedingerLodMaxSamples: (samples) => {
+    const clamped = Math.max(16, Math.min(256, samples))
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, lodMaxSamples: clamped },
+    }))
+  },
+
+  setSchroedingerSssEnabled: (enabled) => {
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, sssEnabled: enabled },
+    }))
+  },
+
+  setSchroedingerSssIntensity: (intensity) => {
+    const clamped = Math.max(0.0, Math.min(2.0, intensity))
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, sssIntensity: clamped },
+    }))
+  },
+
+  setSchroedingerSssColor: (color) => {
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, sssColor: color },
+    }))
+  },
+
+  setSchroedingerSssThickness: (thickness) => {
+    const clamped = Math.max(0.1, Math.min(5.0, thickness))
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, sssThickness: clamped },
+    }))
+  },
+
+  setSchroedingerSssJitter: (jitter) => {
+    const clamped = Math.max(0.0, Math.min(1.0, jitter))
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, sssJitter: clamped },
+    }))
+  },
+
+  setSchroedingerErosionStrength: (strength) => {
+    const clamped = Math.max(0.0, Math.min(1.0, strength))
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, erosionStrength: clamped },
+    }))
+  },
+
+  setSchroedingerErosionScale: (scale) => {
+    const clamped = Math.max(0.25, Math.min(4.0, scale))
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, erosionScale: clamped },
+    }))
+  },
+
+  setSchroedingerErosionTurbulence: (turbulence) => {
+    const clamped = Math.max(0.0, Math.min(1.0, turbulence))
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, erosionTurbulence: clamped },
+    }))
+  },
+
+  setSchroedingerErosionNoiseType: (type) => {
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, erosionNoiseType: type },
+    }))
+  },
+
+  setSchroedingerCurlEnabled: (enabled) => {
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, curlEnabled: enabled },
+    }))
+  },
+
+  setSchroedingerCurlStrength: (strength) => {
+    const clamped = Math.max(0.0, Math.min(1.0, strength))
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, curlStrength: clamped },
+    }))
+  },
+
+  setSchroedingerCurlScale: (scale) => {
+    const clamped = Math.max(0.25, Math.min(4.0, scale))
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, curlScale: clamped },
+    }))
+  },
+
+  setSchroedingerCurlSpeed: (speed) => {
+    const clamped = Math.max(0.1, Math.min(5.0, speed))
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, curlSpeed: clamped },
+    }))
+  },
+
+  setSchroedingerCurlBias: (bias) => {
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, curlBias: bias },
+    }))
+  },
+
+  setSchroedingerDispersionEnabled: (enabled) => {
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, dispersionEnabled: enabled },
+    }))
+  },
+
+  setSchroedingerDispersionStrength: (strength) => {
+    const clamped = Math.max(0.0, Math.min(1.0, strength))
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, dispersionStrength: clamped },
+    }))
+  },
+
+  setSchroedingerDispersionDirection: (direction) => {
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, dispersionDirection: direction },
+    }))
+  },
+
+  setSchroedingerDispersionQuality: (quality) => {
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, dispersionQuality: quality },
+    }))
+  },
+
+  setSchroedingerShadowsEnabled: (enabled) => {
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, shadowsEnabled: enabled },
+    }))
+  },
+
+  setSchroedingerShadowStrength: (strength) => {
+    const clamped = Math.max(0.0, Math.min(2.0, strength))
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, shadowStrength: clamped },
+    }))
+  },
+
+  setSchroedingerShadowSteps: (steps) => {
+    const clamped = Math.max(1, Math.min(8, steps))
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, shadowSteps: clamped },
+    }))
+  },
+
+  setSchroedingerAoEnabled: (enabled) => {
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, aoEnabled: enabled },
+    }))
+  },
+
+  setSchroedingerAoStrength: (strength) => {
+    const clamped = Math.max(0.0, Math.min(2.0, strength))
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, aoStrength: clamped },
+    }))
+  },
+
+  setSchroedingerAoQuality: (quality) => {
+    const clamped = Math.max(3, Math.min(8, quality))
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, aoQuality: clamped },
+    }))
+  },
+
+  setSchroedingerAoRadius: (radius) => {
+    const clamped = Math.max(0.1, Math.min(2.0, radius))
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, aoRadius: clamped },
+    }))
+  },
+
+  setSchroedingerAoColor: (color) => {
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, aoColor: color },
+    }))
+  },
+
+  setSchroedingerNodalEnabled: (enabled) => {
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, nodalEnabled: enabled },
+    }))
+  },
+
+  setSchroedingerNodalColor: (color) => {
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, nodalColor: color },
+    }))
+  },
+
+  setSchroedingerNodalStrength: (strength) => {
+    const clamped = Math.max(0.0, Math.min(2.0, strength))
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, nodalStrength: clamped },
+    }))
+  },
+
+  setSchroedingerEnergyColorEnabled: (enabled) => {
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, energyColorEnabled: enabled },
+    }))
+  },
+
+  setSchroedingerShimmerEnabled: (enabled) => {
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, shimmerEnabled: enabled },
+    }))
+  },
+
+  setSchroedingerShimmerStrength: (strength) => {
+    const clamped = Math.max(0.0, Math.min(1.0, strength))
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, shimmerStrength: clamped },
+    }))
+  },
+
   setSchroedingerIsoEnabled: (enabled) => {
     set((state) => ({
       schroedinger: { ...state.schroedinger, isoEnabled: enabled },

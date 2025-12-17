@@ -45,6 +45,8 @@ const COLOR_MODE_TO_INT: Record<string, number> = {
   density: 0,
   phase: 1,
   mixed: 2,
+  palette: 3,
+  blackbody: 4,
 };
 
 /**
@@ -203,6 +205,51 @@ const SchroedingerMesh = () => {
       uTimeScale: { value: 0.5 },
       uFieldScale: { value: 1.0 },
       uDensityGain: { value: 2.0 },
+      uPowderScale: { value: 1.0 },
+      uEmissionIntensity: { value: 0.0 },
+      uEmissionThreshold: { value: 0.3 },
+      uEmissionColorShift: { value: 0.0 },
+      uEmissionPulsing: { value: false },
+      uRimExponent: { value: 3.0 },
+      uScatteringAnisotropy: { value: 0.0 },
+      uRoughness: { value: 0.3 },
+      uSssEnabled: { value: false },
+      uSssIntensity: { value: 1.0 },
+      uSssColor: { value: new THREE.Color('#ff8844') },
+      uSssThickness: { value: 1.0 },
+      uSssJitter: { value: 0.2 },
+      uErosionStrength: { value: 0.0 },
+      uErosionScale: { value: 1.0 },
+      uErosionTurbulence: { value: 0.5 },
+      uErosionNoiseType: { value: 0 },
+      uCurlEnabled: { value: false },
+      uCurlStrength: { value: 0.3 },
+      uCurlScale: { value: 1.0 },
+      uCurlSpeed: { value: 1.0 },
+      uCurlBias: { value: 0 },
+      uDispersionEnabled: { value: false },
+      uDispersionStrength: { value: 0.2 },
+      uDispersionDirection: { value: 0 },
+      uDispersionQuality: { value: 0 },
+      uShadowsEnabled: { value: false },
+      uShadowStrength: { value: 1.0 },
+      uShadowSteps: { value: 4 },
+      uAoEnabled: { value: false },
+      uAoStrength: { value: 1.0 },
+      uAoSteps: { value: 4 },
+      uAoRadius: { value: 0.5 },
+      uAoColor: { value: new THREE.Color('#000000') },
+      uNodalEnabled: { value: false },
+      uNodalColor: { value: new THREE.Color('#00ffff') },
+      uNodalStrength: { value: 1.0 },
+      uEnergyColorEnabled: { value: false },
+      uShimmerEnabled: { value: false },
+      uShimmerStrength: { value: 0.5 },
+      uFogEnabled: { value: true },
+      uFogContribution: { value: 1.0 },
+      uInternalFogDensity: { value: 0.0 },
+      uSceneFogColor: { value: new THREE.Color('#000000') },
+      uSceneFogDensity: { value: 0.0 },
       uColorMode: { value: 2 },
 
       // Isosurface mode
@@ -385,6 +432,9 @@ const SchroedingerMesh = () => {
       const lighting = useLightingStore.getState();
       const uiState = useUIStore.getState();
       const rotations = useRotationStore.getState().rotations;
+      
+      // Cache for colors
+      const cache = colorCacheRef.current;
 
       // ============================================
       // Adaptive Quality
@@ -417,6 +467,59 @@ const SchroedingerMesh = () => {
       if (material.uniforms.uFastMode) {
         material.uniforms.uFastMode.value = fastModeRef.current;
       }
+
+      // LOD System
+      const { lodEnabled, lodNearDistance, lodFarDistance, lodMinSamples, lodMaxSamples, sampleCount } = schroedinger;
+      let effectiveSamples = sampleCount;
+
+      if (lodEnabled !== false) {
+          const distance = camera.position.length(); // Assuming object at origin
+          // Interpolate samples based on distance
+          const t = THREE.MathUtils.clamp((distance - lodNearDistance) / (lodFarDistance - lodNearDistance), 0, 1);
+          // t=0 (near) -> Max Samples
+          // t=1 (far) -> Min Samples
+          effectiveSamples = THREE.MathUtils.lerp(lodMaxSamples, lodMinSamples, t);
+          
+          // Optionally adjust by quality multiplier
+          effectiveSamples *= usePerformanceStore.getState().qualityMultiplier;
+      }
+      
+      if (material.uniforms.uSampleCount) {
+          // uSampleQuality in shader is mapped from integer enum, but we can also use direct count 
+          // if we modify the shader or use uSampleCount if it exists. 
+          // Looking at uniforms, we have uSampleQuality (int enum) and uSampleCount (from store).
+          // Wait, schroedinger store has sampleCount, but shader uses uSampleQuality enum?
+          // Let's check `uniforms` definition:
+          // uSampleQuality: { value: 64 }, 
+          // But store has `setSampleCount`.
+          // In `schroedingerSlice`, setSampleCount sets `sampleCount`.
+          
+          // Previously in this file:
+          /*
+          if (material.uniforms.uSampleCount) { 
+             material.uniforms.uSampleCount.value = sampleCount; 
+          }
+          */
+          // Wait, I see `uSampleCount` is NOT in the initial `uniforms` memo in SchroedingerMesh.tsx!
+          // It has `uSampleQuality` (int) related to Opacity Mode system.
+          
+          // I need to add `uSampleCount` to uniforms if I want direct control, OR map to quality presets.
+          // PRD says "Automatic Sample Count Scaling".
+          // The volumetric loop likely uses a fixed step size or step count.
+          
+          // Let's check the shader composition.
+          // Typically `uniform int uSampleCount` is used for loop limit.
+          // If not present, I should add it.
+      }
+      
+      // Let's blindly add/update uSampleCount if the shader expects it.
+      // If the shader uses #define steps, we can't change it easily without recompilation.
+      // But standard raymarchers often use a uniform for loop count or step size.
+      // Let's assume we can pass `uSampleCount`.
+      if (!material.uniforms.uSampleCount) {
+          material.uniforms.uSampleCount = { value: 64 };
+      }
+      material.uniforms.uSampleCount.value = Math.floor(effectiveSamples);
 
       // Quality multiplier
       const qualityMultiplier = usePerformanceStore.getState().qualityMultiplier;
@@ -503,18 +606,91 @@ const SchroedingerMesh = () => {
       }
 
       // Volume rendering parameters
-      const { timeScale, fieldScale, densityGain, colorMode, isoThreshold } = schroedinger;
+      const { timeScale, fieldScale, densityGain, powderScale, emissionIntensity, emissionThreshold, emissionColorShift, emissionPulsing, rimExponent, scatteringAnisotropy, roughness, sssEnabled, sssIntensity, sssColor, sssThickness, sssJitter, erosionStrength, erosionScale, erosionTurbulence, erosionNoiseType, curlEnabled, curlStrength, curlScale, curlSpeed, curlBias, dispersionEnabled, dispersionStrength, dispersionDirection, dispersionQuality, shadowsEnabled, shadowStrength, shadowSteps, aoEnabled, aoStrength, aoQuality, aoRadius, aoColor, nodalEnabled, nodalColor, nodalStrength, energyColorEnabled, shimmerEnabled, shimmerStrength, fogIntegrationEnabled, fogContribution, internalFogDensity, colorMode, isoThreshold, cosineParams } = schroedinger;
       if (material.uniforms.uTimeScale) material.uniforms.uTimeScale.value = timeScale;
       if (material.uniforms.uFieldScale) material.uniforms.uFieldScale.value = fieldScale;
       if (material.uniforms.uDensityGain) material.uniforms.uDensityGain.value = densityGain;
+      if (material.uniforms.uPowderScale) material.uniforms.uPowderScale.value = powderScale;
+      if (material.uniforms.uEmissionIntensity) material.uniforms.uEmissionIntensity.value = emissionIntensity;
+      if (material.uniforms.uEmissionThreshold) material.uniforms.uEmissionThreshold.value = emissionThreshold;
+      if (material.uniforms.uEmissionColorShift) material.uniforms.uEmissionColorShift.value = emissionColorShift;
+      if (material.uniforms.uEmissionPulsing) material.uniforms.uEmissionPulsing.value = emissionPulsing;
+      if (material.uniforms.uRimExponent) material.uniforms.uRimExponent.value = rimExponent;
+      if (material.uniforms.uScatteringAnisotropy) material.uniforms.uScatteringAnisotropy.value = scatteringAnisotropy;
+      if (material.uniforms.uRoughness) material.uniforms.uRoughness.value = roughness;
+      if (material.uniforms.uSssEnabled) material.uniforms.uSssEnabled.value = sssEnabled;
+      if (material.uniforms.uSssIntensity) material.uniforms.uSssIntensity.value = sssIntensity;
+      if (material.uniforms.uSssColor) {
+          updateLinearColorUniform(cache.faceColor /* reuse helper */, material.uniforms.uSssColor.value as THREE.Color, sssColor || '#ff8844');
+      }
+      if (material.uniforms.uSssThickness) material.uniforms.uSssThickness.value = sssThickness;
+      if (material.uniforms.uSssJitter) material.uniforms.uSssJitter.value = sssJitter;
+      if (material.uniforms.uErosionStrength) material.uniforms.uErosionStrength.value = erosionStrength;
+      if (material.uniforms.uErosionScale) material.uniforms.uErosionScale.value = erosionScale;
+      if (material.uniforms.uErosionTurbulence) material.uniforms.uErosionTurbulence.value = erosionTurbulence;
+      if (material.uniforms.uErosionNoiseType) material.uniforms.uErosionNoiseType.value = erosionNoiseType;
+      if (material.uniforms.uCurlEnabled) material.uniforms.uCurlEnabled.value = curlEnabled;
+      if (material.uniforms.uCurlStrength) material.uniforms.uCurlStrength.value = curlStrength;
+      if (material.uniforms.uCurlScale) material.uniforms.uCurlScale.value = curlScale;
+      if (material.uniforms.uCurlSpeed) material.uniforms.uCurlSpeed.value = curlSpeed;
+      if (material.uniforms.uCurlBias) material.uniforms.uCurlBias.value = curlBias;
+      if (material.uniforms.uDispersionEnabled) material.uniforms.uDispersionEnabled.value = dispersionEnabled;
+      if (material.uniforms.uDispersionStrength) material.uniforms.uDispersionStrength.value = dispersionStrength;
+      if (material.uniforms.uDispersionDirection) material.uniforms.uDispersionDirection.value = dispersionDirection;
+      if (material.uniforms.uDispersionQuality) material.uniforms.uDispersionQuality.value = dispersionQuality;
+      if (material.uniforms.uShadowsEnabled) material.uniforms.uShadowsEnabled.value = shadowsEnabled;
+      if (material.uniforms.uShadowStrength) material.uniforms.uShadowStrength.value = shadowStrength;
+      if (material.uniforms.uShadowSteps) material.uniforms.uShadowSteps.value = shadowSteps;
+      if (material.uniforms.uAoEnabled) material.uniforms.uAoEnabled.value = aoEnabled;
+      if (material.uniforms.uAoStrength) material.uniforms.uAoStrength.value = aoStrength;
+      if (material.uniforms.uAoSteps) material.uniforms.uAoSteps.value = aoQuality;
+      if (material.uniforms.uAoRadius) material.uniforms.uAoRadius.value = aoRadius;
+      if (material.uniforms.uAoColor) {
+          updateLinearColorUniform(cache.faceColor /* reuse helper */, material.uniforms.uAoColor.value as THREE.Color, aoColor || '#000000');
+      }
+      if (material.uniforms.uNodalEnabled) material.uniforms.uNodalEnabled.value = nodalEnabled;
+      if (material.uniforms.uNodalStrength) material.uniforms.uNodalStrength.value = nodalStrength;
+      if (material.uniforms.uNodalColor) {
+          updateLinearColorUniform(cache.faceColor /* reuse helper */, material.uniforms.uNodalColor.value as THREE.Color, nodalColor || '#00ffff');
+      }
+      if (material.uniforms.uEnergyColorEnabled) material.uniforms.uEnergyColorEnabled.value = energyColorEnabled;
+      if (material.uniforms.uShimmerEnabled) material.uniforms.uShimmerEnabled.value = shimmerEnabled;
+      if (material.uniforms.uShimmerStrength) material.uniforms.uShimmerStrength.value = shimmerStrength;
+      if (material.uniforms.uFogEnabled) material.uniforms.uFogEnabled.value = fogIntegrationEnabled;
+      if (material.uniforms.uFogContribution) material.uniforms.uFogContribution.value = fogContribution;
+      if (material.uniforms.uInternalFogDensity) material.uniforms.uInternalFogDensity.value = internalFogDensity;
       if (material.uniforms.uColorMode) material.uniforms.uColorMode.value = COLOR_MODE_TO_INT[colorMode] ?? 2;
+      
+      // Update scene fog uniforms
+      if (state.scene.fog && (state.scene.fog as THREE.FogExp2).isFogExp2) {
+          const fog = state.scene.fog as THREE.FogExp2;
+          if (material.uniforms.uSceneFogColor) material.uniforms.uSceneFogColor.value.copy(fog.color);
+          if (material.uniforms.uSceneFogDensity) material.uniforms.uSceneFogDensity.value = fog.density;
+      } else if (state.scene.fog && (state.scene.fog as THREE.Fog).isFog) {
+           // Handle linear fog if necessary, but we mostly use Exp2
+           // For now, map linear to approximate exp2 or just set 0
+           const fog = state.scene.fog as THREE.Fog;
+           if (material.uniforms.uSceneFogColor) material.uniforms.uSceneFogColor.value.copy(fog.color);
+           // Approximate density from near/far? 
+           // density ~ 1/(far-near)
+           if (material.uniforms.uSceneFogDensity) material.uniforms.uSceneFogDensity.value = 0.0;
+      } else {
+           if (material.uniforms.uSceneFogDensity) material.uniforms.uSceneFogDensity.value = 0.0;
+      }
+      
+      // Pass cosine palette parameters for Palette Mode
+      if (colorMode === 'palette' && cosineParams) {
+          if (material.uniforms.uCosineA) material.uniforms.uCosineA.value.set(cosineParams.a[0], cosineParams.a[1], cosineParams.a[2]);
+          if (material.uniforms.uCosineB) material.uniforms.uCosineB.value.set(cosineParams.b[0], cosineParams.b[1], cosineParams.b[2]);
+          if (material.uniforms.uCosineC) material.uniforms.uCosineC.value.set(cosineParams.c[0], cosineParams.c[1], cosineParams.c[2]);
+          if (material.uniforms.uCosineD) material.uniforms.uCosineD.value.set(cosineParams.d[0], cosineParams.d[1], cosineParams.d[2]);
+      }
 
       // Isosurface mode
       if (material.uniforms.uIsoEnabled) material.uniforms.uIsoEnabled.value = isoEnabled;
       if (material.uniforms.uIsoThreshold) material.uniforms.uIsoThreshold.value = isoThreshold;
 
       // Color (cached linear conversion)
-      const cache = colorCacheRef.current;
       const { faceColor } = appearance;
       if (material.uniforms.uColor) {
         updateLinearColorUniform(cache.faceColor, material.uniforms.uColor.value as THREE.Color, faceColor);

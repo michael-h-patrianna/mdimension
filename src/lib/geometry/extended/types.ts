@@ -937,8 +937,10 @@ export const DEFAULT_MANDELBROT_CONFIG: MandelbulbConfig = {
  * - density: Color based on probability density |ψ|²
  * - phase: Color based on wavefunction phase arg(ψ)
  * - mixed: Phase for hue, density for brightness
+ * - palette: Cosine gradient palette based on density/phase
+ * - blackbody: Physical temperature color based on density
  */
-export type SchroedingerColorMode = 'density' | 'phase' | 'mixed'
+export type SchroedingerColorMode = 'density' | 'phase' | 'mixed' | 'palette' | 'blackbody'
 
 /**
  * Named preset identifiers for quantum state configurations
@@ -957,7 +959,11 @@ export type SchroedingerPresetName =
 /**
  * Color palette presets for Schroedinger visualization.
  */
-export type SchroedingerPalette = 'monochrome' | 'complement' | 'triadic' | 'analogous' | 'shifted'
+export type SchroedingerPalette =
+  | 'monochrome'
+  | 'complement'
+  | 'triadic' | 'analogous' | 'shifted'
+  | 'nebula' | 'sunset' | 'aurora' | 'ocean' | 'fire' | 'ice' | 'forest' | 'plasma'
 
 /**
  * Quality presets for Schroedinger computation
@@ -1003,6 +1009,13 @@ export interface SchroedingerConfig {
   palette: SchroedingerPalette
   /** Custom palette colors (used when palette='custom') */
   customPalette: { start: string; mid: string; end: string }
+  /** Cosine gradient coefficients (a, b, c, d) for palette mode */
+  cosineParams: {
+    a: [number, number, number]
+    b: [number, number, number]
+    c: [number, number, number]
+    d: [number, number, number]
+  }
   /** Whether to invert color mapping */
   invertColors: boolean
 
@@ -1029,8 +1042,124 @@ export interface SchroedingerConfig {
   fieldScale: number
   /** Absorption coefficient for Beer-Lambert (0.1-5.0) */
   densityGain: number
+  /** Multiple scattering "powder" effect strength (0.0-2.0) */
+  powderScale: number
   /** Samples per ray (32-128) */
   sampleCount: number
+
+  // === Emission Settings ===
+  /** HDR emission intensity (0.0-5.0) */
+  emissionIntensity: number
+  /** Density threshold for emission (0.0-1.0) */
+  emissionThreshold: number
+  /** Emission color temperature shift (-1.0 to 1.0) */
+  emissionColorShift: number
+  /** Enable phase-based emission pulsing */
+  emissionPulsing: boolean
+  /** Fresnel rim falloff exponent (1.0-10.0) */
+  rimExponent: number
+  /** Scattering anisotropy (-0.9 to 0.9) */
+  scatteringAnisotropy: number
+  /** Surface roughness for specular highlights (0.0-1.0) */
+  roughness: number
+
+  // === Fog / Atmosphere ===
+  /** Enable scene fog integration */
+  fogIntegrationEnabled: boolean
+  /** Fog contribution strength (0.0-2.0) */
+  fogContribution: number
+  /** Internal object-space fog density (0.0-1.0) */
+  internalFogDensity: number
+
+  // === LOD Settings ===
+  /** Enable distance-adaptive level of detail */
+  lodEnabled: boolean
+  /** Distance for maximum quality (default 2.0) */
+  lodNearDistance: number
+  /** Distance for minimum quality (default 10.0) */
+  lodFarDistance: number
+  /** Minimum sample count at far distance (default 32) */
+  lodMinSamples: number
+  /** Maximum sample count at near distance (default 128) */
+  lodMaxSamples: number
+
+  // === Subsurface Scattering (SSS) ===
+  /** Enable subsurface scattering approximation */
+  sssEnabled: boolean
+  /** SSS intensity (0.0-2.0) */
+  sssIntensity: number
+  /** SSS tint color (hex string) */
+  sssColor: string
+  /** Thickness factor for SSS attenuation (0.1-5.0) */
+  sssThickness: number
+  /** Jitter/Noise amount for SSS (0.0-1.0) */
+  sssJitter: number
+
+  // === Edge Detail Erosion ===
+  /** Strength of edge noise erosion (0.0-1.0) */
+  erosionStrength: number
+  /** Scale of erosion noise (0.25-4.0) */
+  erosionScale: number
+  /** Turbulence/swirl amount for erosion (0.0-1.0) */
+  erosionTurbulence: number
+  /** Noise type for erosion (0=Worley, 1=Perlin, 2=Hybrid) */
+  erosionNoiseType: number
+
+  // === Curl Noise Turbulence ===
+  /** Enable curl noise flow animation */
+  curlEnabled: boolean
+  /** Strength of flow distortion (0.0-1.0) */
+  curlStrength: number
+  /** Scale of flow patterns (0.25-4.0) */
+  curlScale: number
+  /** Speed of flow animation (0.1-5.0) */
+  curlSpeed: number
+  /** Flow direction bias (0=None, 1=Up, 2=Out, 3=In) */
+  curlBias: number
+
+  // === Chromatic Dispersion ===
+  /** Enable chromatic dispersion */
+  dispersionEnabled: boolean
+  /** Dispersion strength (0.0-1.0) */
+  dispersionStrength: number
+  /** Dispersion direction (0=Radial, 1=View-Aligned, 2=Custom) */
+  dispersionDirection: number
+  /** Dispersion quality/accuracy (0=Gradient Hack, 1=Full Sampling) */
+  dispersionQuality: number
+
+  // === Volumetric Self-Shadowing ===
+  /** Enable volumetric self-shadowing */
+  shadowsEnabled: boolean
+  /** Shadow strength/darkness (0.0-2.0) */
+  shadowStrength: number
+  /** Shadow quality steps (1-8) */
+  shadowSteps: number
+
+  // === Volumetric Ambient Occlusion (AO) ===
+  /** Enable volumetric ambient occlusion */
+  aoEnabled: boolean
+  /** AO strength/darkness (0.0-2.0) */
+  aoStrength: number
+  /** AO quality steps/cones (3-8) */
+  aoQuality: number
+  /** AO radius (0.1-2.0) */
+  aoRadius: number
+  /** AO tint color (hex string) */
+  aoColor: string
+
+  // === Quantum Effects ===
+  /** Enable nodal surface highlighting */
+  nodalEnabled: boolean
+  /** Nodal surface color (hex string) */
+  nodalColor: string
+  /** Nodal surface strength (0.0-2.0) */
+  nodalStrength: number
+  /** Enable energy level coloring */
+  energyColorEnabled: boolean
+  /** Enable uncertainty shimmer */
+  shimmerEnabled: boolean
+  /** Shimmer strength (0.0-1.0) */
+  shimmerStrength: number
 
   // === Isosurface Mode (Optional) ===
   /** Enable isosurface rendering instead of volumetric */
@@ -1088,6 +1217,12 @@ export const DEFAULT_SCHROEDINGER_CONFIG: SchroedingerConfig = {
   colorMode: 'mixed',
   palette: 'complement',
   customPalette: { start: '#0000ff', mid: '#ffffff', end: '#ff8000' },
+  cosineParams: {
+    a: [0.5, 0.5, 0.5],
+    b: [0.5, 0.5, 0.5],
+    c: [1.0, 1.0, 1.0],
+    d: [0.0, 0.33, 0.67],
+  },
   invertColors: false,
 
   // Rendering
@@ -1104,7 +1239,75 @@ export const DEFAULT_SCHROEDINGER_CONFIG: SchroedingerConfig = {
   timeScale: 0.8,
   fieldScale: 1.0,
   densityGain: 2.0,
+  powderScale: 1.0,
   sampleCount: 64,
+
+  // Emission
+  emissionIntensity: 0.0,
+  emissionThreshold: 0.3,
+  emissionColorShift: 0.0,
+  emissionPulsing: false,
+  rimExponent: 3.0,
+  scatteringAnisotropy: 0.0,
+  roughness: 0.3,
+
+  // Fog
+  fogIntegrationEnabled: true,
+  fogContribution: 1.0,
+  internalFogDensity: 0.0,
+
+  // LOD
+  lodEnabled: true,
+  lodNearDistance: 2.0,
+  lodFarDistance: 10.0,
+  lodMinSamples: 32,
+  lodMaxSamples: 128,
+
+  // SSS
+  sssEnabled: false,
+  sssIntensity: 1.0,
+  sssColor: '#ff8844', // Warm orange default
+  sssThickness: 1.0,
+  sssJitter: 0.2,
+
+  // Erosion
+  erosionStrength: 0.0,
+  erosionScale: 1.0,
+  erosionTurbulence: 0.5,
+  erosionNoiseType: 0,
+
+  // Curl Noise
+  curlEnabled: false,
+  curlStrength: 0.3,
+  curlScale: 1.0,
+  curlSpeed: 1.0,
+  curlBias: 0,
+
+  // Dispersion
+  dispersionEnabled: false,
+  dispersionStrength: 0.2,
+  dispersionDirection: 0,
+  dispersionQuality: 0,
+
+  // Shadows
+  shadowsEnabled: false,
+  shadowStrength: 1.0,
+  shadowSteps: 4,
+
+  // AO
+  aoEnabled: false,
+  aoStrength: 1.0,
+  aoQuality: 4,
+  aoRadius: 0.5,
+  aoColor: '#000000',
+
+  // Quantum Effects
+  nodalEnabled: false,
+  nodalColor: '#00ffff', // Cyan
+  nodalStrength: 1.0,
+  energyColorEnabled: false,
+  shimmerEnabled: false,
+  shimmerStrength: 0.5,
 
   // Isosurface (disabled by default)
   isoEnabled: false,

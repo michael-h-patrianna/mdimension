@@ -334,7 +334,75 @@ export interface SchroedingerSliceActions {
   setSchroedingerTimeScale: (scale: number) => void
   setSchroedingerFieldScale: (scale: number) => void
   setSchroedingerDensityGain: (gain: number) => void
+  setSchroedingerPowderScale: (scale: number) => void
   setSchroedingerSampleCount: (count: number) => void
+
+  // Emission Settings
+  setSchroedingerEmissionIntensity: (intensity: number) => void
+  setSchroedingerEmissionThreshold: (threshold: number) => void
+  setSchroedingerEmissionColorShift: (shift: number) => void
+  setSchroedingerEmissionPulsing: (pulsing: boolean) => void
+  setSchroedingerRimExponent: (exponent: number) => void
+  setSchroedingerScatteringAnisotropy: (anisotropy: number) => void
+  setSchroedingerRoughness: (roughness: number) => void
+
+  // Fog Settings
+  setSchroedingerFogIntegrationEnabled: (enabled: boolean) => void
+  setSchroedingerFogContribution: (contribution: number) => void
+  setSchroedingerInternalFogDensity: (density: number) => void
+
+  // LOD Settings
+  setSchroedingerLodEnabled: (enabled: boolean) => void
+  setSchroedingerLodNearDistance: (distance: number) => void
+  setSchroedingerLodFarDistance: (distance: number) => void
+  setSchroedingerLodMinSamples: (samples: number) => void
+  setSchroedingerLodMaxSamples: (samples: number) => void
+
+  // SSS Settings
+  setSchroedingerSssEnabled: (enabled: boolean) => void
+  setSchroedingerSssIntensity: (intensity: number) => void
+  setSchroedingerSssColor: (color: string) => void
+  setSchroedingerSssThickness: (thickness: number) => void
+  setSchroedingerSssJitter: (jitter: number) => void
+
+  // Erosion Settings
+  setSchroedingerErosionStrength: (strength: number) => void
+  setSchroedingerErosionScale: (scale: number) => void
+  setSchroedingerErosionTurbulence: (turbulence: number) => void
+  setSchroedingerErosionNoiseType: (type: number) => void
+
+  // Curl Noise Settings
+  setSchroedingerCurlEnabled: (enabled: boolean) => void
+  setSchroedingerCurlStrength: (strength: number) => void
+  setSchroedingerCurlScale: (scale: number) => void
+  setSchroedingerCurlSpeed: (speed: number) => void
+  setSchroedingerCurlBias: (bias: number) => void
+
+  // Dispersion Settings
+  setSchroedingerDispersionEnabled: (enabled: boolean) => void
+  setSchroedingerDispersionStrength: (strength: number) => void
+  setSchroedingerDispersionDirection: (direction: number) => void
+  setSchroedingerDispersionQuality: (quality: number) => void
+
+  // Shadow Settings
+  setSchroedingerShadowsEnabled: (enabled: boolean) => void
+  setSchroedingerShadowStrength: (strength: number) => void
+  setSchroedingerShadowSteps: (steps: number) => void
+
+  // AO Settings
+  setSchroedingerAoEnabled: (enabled: boolean) => void
+  setSchroedingerAoStrength: (strength: number) => void
+  setSchroedingerAoQuality: (quality: number) => void
+  setSchroedingerAoRadius: (radius: number) => void
+  setSchroedingerAoColor: (color: string) => void
+
+  // Quantum Effects
+  setSchroedingerNodalEnabled: (enabled: boolean) => void
+  setSchroedingerNodalColor: (color: string) => void
+  setSchroedingerNodalStrength: (strength: number) => void
+  setSchroedingerEnergyColorEnabled: (enabled: boolean) => void
+  setSchroedingerShimmerEnabled: (enabled: boolean) => void
+  setSchroedingerShimmerStrength: (strength: number) => void
 
   // Isosurface Mode
   setSchroedingerIsoEnabled: (enabled: boolean) => void
