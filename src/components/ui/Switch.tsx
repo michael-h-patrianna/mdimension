@@ -21,7 +21,7 @@ export const Switch: React.FC<SwitchProps> = ({
   return (
     <label
       className={`
-        flex items-center gap-3 cursor-pointer select-none group
+        flex items-center gap-3 cursor-pointer select-none group/switch relative
         ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
         ${className}
       `}
@@ -37,32 +37,39 @@ export const Switch: React.FC<SwitchProps> = ({
           role="switch"
           aria-checked={checked}
         />
+        
         {/* Track */}
         <div
           className={`
-            w-10 h-6 rounded-full border shadow-inner transition-colors duration-200
-            ${checked ? 'bg-accent border-accent shadow-[0_0_15px_var(--color-accent)]' : 'bg-white/10 border-white/10'}
+            w-9 h-5 rounded-full border transition-all duration-300 ease-out
+            ${checked 
+              ? 'bg-accent border-accent/50 shadow-[0_0_12px_var(--color-accent-glow)]' 
+              : 'bg-white/5 border-white/10 group-hover/switch:bg-white/10'
+            }
           `}
         />
+
         {/* Thumb */}
         <m.div
           layout
           transition={{
             type: "spring",
-            stiffness: 500,
+            stiffness: 700,
             damping: 30
           }}
           animate={{
-            x: checked ? 20 : 4,
+            x: checked ? 18 : 3,
           }}
           className={`
-            absolute top-1 left-0 w-4 h-4 rounded-full shadow-md z-10 transition-colors duration-200
-            ${checked ? 'bg-white' : 'bg-text-secondary'}
+            absolute top-1 left-0 w-3 h-3 rounded-full shadow-sm z-10 
+            transition-colors duration-200 pointer-events-none
+            ${checked ? 'bg-white' : 'bg-text-secondary group-hover/switch:bg-text-primary'}
           `}
         />
       </div>
+      
       {label && (
-        <span className="text-sm font-medium text-text-secondary group-hover:text-text-primary transition-colors">
+        <span className="text-xs font-medium text-text-secondary group-hover/switch:text-text-primary transition-colors tracking-wide">
           {label}
         </span>
       )}

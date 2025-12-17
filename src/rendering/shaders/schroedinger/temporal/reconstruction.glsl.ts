@@ -16,6 +16,8 @@ void main() {
 `;
 
 export const reconstructionFragmentShader = `
+precision highp float;
+
 in vec2 vUv;
 
 // New quarter-res cloud render
@@ -110,12 +112,17 @@ void main() {
     // Combine new and history based on what's available
     vec4 finalColor;
 
+    // For freshly rendered pixels, reduce history influence by this factor.
+    // This prioritizes new high-quality data over reprojected history.
+    // 0.5 means we trust new data roughly 2x more than reprojected data.
+    const float FRESH_PIXEL_HISTORY_REDUCTION = 0.5;
+
     if (renderedThisFrame) {
         // This pixel was freshly rendered
         if (uHasValidHistory && validity > 0.5 && historyColor.a > 0.001) {
             // Blend with history for temporal stability
             // Give more weight to new data since it's fresh
-            float blendWeight = uHistoryWeight * validity * 0.5; // Reduce history influence for rendered pixels
+            float blendWeight = uHistoryWeight * validity * FRESH_PIXEL_HISTORY_REDUCTION;
             finalColor = mix(newColor, historyColor, blendWeight);
         } else {
             // No valid history - use new data directly

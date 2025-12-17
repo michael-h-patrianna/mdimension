@@ -27,11 +27,14 @@ export type RenderLayer = (typeof RENDER_LAYERS)[keyof typeof RENDER_LAYERS];
 
 /**
  * Check if temporal cloud accumulation needs separate volumetric pass.
- * When enabled, volumetric objects (Schroedinger) render to 1/4 res target.
+ * When enabled, volumetric objects (Schroedinger) render to 1/4 res target
+ * using Horizon Zero Dawn-style temporal accumulation with Bayer pattern cycling.
  *
- * TODO: Currently disabled - the temporal accumulation pipeline needs debugging.
- * The infrastructure is in place but the separate render pass causes rendering issues.
- * For now, Schroedinger uses standard rendering on MAIN_OBJECT layer.
+ * The temporal accumulation pipeline:
+ * 1. Renders volumetric at quarter resolution with Bayer offset
+ * 2. Reprojects previous frame's accumulation to current view
+ * 3. Reconstructs full resolution by blending new pixels with history
+ * 4. Composites over the main scene
  */
 export function needsVolumetricSeparation(state: {
   temporalCloudAccumulation?: boolean;

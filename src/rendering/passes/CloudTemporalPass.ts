@@ -27,6 +27,36 @@ export interface CloudTemporalPassOptions {
   disocclusionThreshold?: number;
 }
 
+/** Uniform type helper for shader materials */
+interface UniformValue<T> {
+  value: T;
+}
+
+/** Reprojection shader uniforms */
+interface ReprojectionUniforms {
+  uPrevAccumulation: UniformValue<THREE.Texture | null>;
+  uPrevPositionBuffer: UniformValue<THREE.Texture | null>;
+  uPrevViewProjectionMatrix: UniformValue<THREE.Matrix4>;
+  uViewProjectionMatrix: UniformValue<THREE.Matrix4>;
+  uInverseViewProjectionMatrix: UniformValue<THREE.Matrix4>;
+  uCameraPosition: UniformValue<THREE.Vector3>;
+  uAccumulationResolution: UniformValue<THREE.Vector2>;
+  uDisocclusionThreshold: UniformValue<number>;
+}
+
+/** Reconstruction shader uniforms */
+interface ReconstructionUniforms {
+  uCloudRender: UniformValue<THREE.Texture | null>;
+  uReprojectedHistory: UniformValue<THREE.Texture | null>;
+  uValidityMask: UniformValue<THREE.Texture | null>;
+  uBayerOffset: UniformValue<THREE.Vector2>;
+  uFrameIndex: UniformValue<number>;
+  uCloudResolution: UniformValue<THREE.Vector2>;
+  uAccumulationResolution: UniformValue<THREE.Vector2>;
+  uHistoryWeight: UniformValue<number>;
+  uHasValidHistory: UniformValue<boolean>;
+}
+
 /**
  * Post-processing pass for temporal cloud accumulation.
  */
@@ -104,7 +134,7 @@ export class CloudTemporalPass extends Pass {
    */
   render(
     renderer: THREE.WebGLRenderer,
-    writeBuffer: THREE.WebGLRenderTarget,
+    _writeBuffer: THREE.WebGLRenderTarget,
     _readBuffer: THREE.WebGLRenderTarget,
     _deltaTime?: number,
     _maskActive?: boolean
@@ -127,7 +157,7 @@ export class CloudTemporalPass extends Pass {
     // Pass 1: Reprojection
     // ========================================
     if (historyTarget && uniforms.uTemporalCloudEnabled) {
-      const reprojUniforms = this.reprojectionMaterial.uniforms as any;
+      const reprojUniforms = this.reprojectionMaterial.uniforms as unknown as ReprojectionUniforms;
       reprojUniforms.uPrevAccumulation.value = historyTarget.texture;
       reprojUniforms.uPrevPositionBuffer.value = uniforms.uPrevPositionBuffer;
       reprojUniforms.uPrevViewProjectionMatrix.value.copy(uniforms.uPrevViewProjectionMatrix);
@@ -142,14 +172,14 @@ export class CloudTemporalPass extends Pass {
     // ========================================
     // Pass 2: Reconstruction
     // ========================================
-    const reconUniforms = this.reconstructionMaterial.uniforms as any;
+    const reconUniforms = this.reconstructionMaterial.uniforms as unknown as ReconstructionUniforms;
     reconUniforms.uCloudRender.value = cloudTarget.texture;
     
     // Bind MRT textures from reprojection buffer
     // texture[0] is reprojected color, texture[1] is validity mask
     if (reprojectionBuffer.textures && reprojectionBuffer.textures.length >= 2) {
-      reconUniforms.uReprojectedHistory.value = reprojectionBuffer.textures[0];
-      reconUniforms.uValidityMask.value = reprojectionBuffer.textures[1];
+      reconUniforms.uReprojectedHistory.value = reprojectionBuffer.textures[0] ?? null;
+      reconUniforms.uValidityMask.value = reprojectionBuffer.textures[1] ?? null;
     } else {
       // Fallback for non-MRT (should not happen with updated Manager)
       reconUniforms.uReprojectedHistory.value = reprojectionBuffer.texture;
@@ -167,12 +197,15 @@ export class CloudTemporalPass extends Pass {
     renderer.setRenderTarget(this.renderToScreen ? null : outputTarget);
     this.reconstructionQuad.render(renderer);
 
-    // Reset render target
-    renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer);
+    // Reset render target to null (caller manages target state)
+    renderer.setRenderTarget(null);
   }
 
   /**
-   * Update camera uniforms. Call this each frame before render.
+   * Update camera uniforms for reprojection calculation.
+   * Call this each frame before render() to ensure correct motion vectors.
+   *
+   * @param camera - The scene camera (perspective or orthographic)
    */
   updateCamera(camera: THREE.Camera): void {
     const viewProj = new THREE.Matrix4();
@@ -192,7 +225,10 @@ export class CloudTemporalPass extends Pass {
   }
 
   /**
-   * Set history blend weight.
+   * Set history blend weight for temporal accumulation.
+   * Higher values favor reprojected history over new data.
+   *
+   * @param weight - Blend weight between 0.0 (favor new) and 1.0 (favor history). Default: 0.85
    */
   setHistoryWeight(weight: number): void {
     this.historyWeight = Math.max(0, Math.min(1, weight));
@@ -200,7 +236,10 @@ export class CloudTemporalPass extends Pass {
   }
 
   /**
-   * Set disocclusion threshold.
+   * Set disocclusion detection threshold.
+   * Lower values are stricter about rejecting potentially invalid history.
+   *
+   * @param threshold - Depth variance threshold. Default: 0.15
    */
   setDisocclusionThreshold(threshold: number): void {
     this.disocclusionThreshold = Math.max(0, threshold);
@@ -208,7 +247,8 @@ export class CloudTemporalPass extends Pass {
   }
 
   /**
-   * Dispose resources.
+   * Dispose all GPU resources held by this pass.
+   * Call when removing the pass from the effect composer.
    */
   dispose(): void {
     this.reprojectionMaterial.dispose();

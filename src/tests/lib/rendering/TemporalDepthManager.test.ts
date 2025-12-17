@@ -296,8 +296,10 @@ describe('TemporalDepthManager', () => {
 
       // Should get the current viewport to save it
       expect(mockRenderer.getViewport).toHaveBeenCalled();
-      // Should set viewport to target dimensions, then restore
-      expect(mockRenderer.setViewport).toHaveBeenCalledTimes(2);
+      // After rendering, should restore the original viewport once
+      // Note: The target viewport is now set via renderTarget.viewport.set() instead of
+      // gl.setViewport() to avoid DPR multiplication issues (see CLAUDE.md)
+      expect(mockRenderer.setViewport).toHaveBeenCalledTimes(1);
     });
 
     it('should save and restore scissor state', () => {

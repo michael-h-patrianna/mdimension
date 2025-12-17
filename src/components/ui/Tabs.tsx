@@ -2,32 +2,7 @@
  * Tabs Component
  *
  * A reusable tab component for organizing content into switchable panels.
- * Follows the project's glass panel aesthetic with accent color highlights.
- *
- * Features:
- * - Controlled state via value/onChange props
- * - Full keyboard navigation (Arrow keys, Home, End)
- * - ARIA-compliant accessibility
- * - Smooth transition animations
- * - Scrollable tab list with overflow indicators
- * - Compact styling suitable for sidebars
- *
- * @example
- * ```tsx
- * const [activeTab, setActiveTab] = useState('bloom');
- *
- * <Tabs
- *   value={activeTab}
- *   onChange={setActiveTab}
- *   tabs={[
- *     { id: 'bloom', label: 'Bloom', content: <BloomControls /> },
- *     { id: 'tone', label: 'Tone Mapping', content: <ToneMappingControls /> },
- *   ]}
- * />
- * ```
- *
- * @see {@link Section} for collapsible container
- * @see {@link ToggleGroup} for similar toggle-style controls
+ * Follows the project's premium aesthetic with subtle motion and glass effects.
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -56,7 +31,7 @@ export interface TabsProps {
   /** Optional class name for the content panel */
   contentClassName?: string;
   /** Visual variant of the tabs */
-  variant?: 'default' | 'minimal';
+  variant?: 'default' | 'minimal' | 'pills';
   /** Whether tabs should expand to fill the container width */
   fullWidth?: boolean;
   /** Test ID for testing */
@@ -66,8 +41,8 @@ export interface TabsProps {
 const ChevronLeft = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    width="14"
-    height="14"
+    width="12"
+    height="12"
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
@@ -82,8 +57,8 @@ const ChevronLeft = () => (
 const ChevronRight = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    width="14"
-    height="14"
+    width="12"
+    height="12"
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
@@ -95,19 +70,6 @@ const ChevronRight = () => (
   </svg>
 );
 
-/**
- * Tabs component for switching between content panels.
- * @param props - Component props
- * @param props.tabs
- * @param props.value
- * @param props.onChange
- * @param props.className
- * @param props.tabListClassName
- * @param props.contentClassName
- * @param props.variant - 'default' (glass panel, underline) or 'minimal' (border-b, bg tint)
- * @param props.fullWidth - If true, tabs expand to fill available width
- * @param props.'data-testid'
- */
 export const Tabs: React.FC<TabsProps> = ({
   tabs,
   value,
@@ -130,7 +92,6 @@ export const Tabs: React.FC<TabsProps> = ({
     if (scrollContainerRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
       setCanScrollLeft(scrollLeft > 0);
-      // Use a small tolerance for float/rounding issues
       setCanScrollRight(Math.ceil(scrollLeft + clientWidth) < scrollWidth);
     }
   }, []);
@@ -141,7 +102,6 @@ export const Tabs: React.FC<TabsProps> = ({
     return () => window.removeEventListener('resize', checkScroll);
   }, [checkScroll]);
 
-  // Re-check scroll when tabs change
   useEffect(() => {
     checkScroll();
   }, [tabs, value, checkScroll]);
@@ -159,7 +119,6 @@ export const Tabs: React.FC<TabsProps> = ({
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent, index: number) => {
       let newIndex = index;
-
       switch (event.key) {
         case 'ArrowLeft':
           newIndex = index === 0 ? tabs.length - 1 : index - 1;
@@ -176,7 +135,6 @@ export const Tabs: React.FC<TabsProps> = ({
         default:
           return;
       }
-
       event.preventDefault();
       const targetTab = tabs[newIndex];
       if (targetTab) {
@@ -187,54 +145,46 @@ export const Tabs: React.FC<TabsProps> = ({
     [tabs, onChange]
   );
 
-  // Styling based on variant
-  const containerStyles = variant === 'default' 
-    ? 'bg-black/20 rounded-t-lg border-b border-white/5' 
-    : 'border-b border-white/5';
+  // Styling logic
+  const listContainerStyles = variant === 'pills' 
+    ? 'bg-black/20 rounded-lg p-1 gap-1' 
+    : 'border-b border-white/5 pb-[1px]'; // Slight padding for border visibility
     
   const widthStyles = fullWidth ? 'w-full' : 'min-w-full w-max';
 
   return (
-    <div className={className} data-testid={testId}>
-      {/* Tab List Container with scroll indicators */}
-      <div className="relative">
-        {/* Left scroll indicator */}
+    <div className={`flex flex-col ${className}`} data-testid={testId}>
+      {/* Header Area */}
+      <div className="relative shrink-0 z-10">
+        
+        {/* Scroll Indicators */}
         {canScrollLeft && !fullWidth && (
           <button
             type="button"
             onClick={() => scroll('left')}
-            className="absolute left-0 top-0 bottom-0 z-10 px-1 bg-gradient-to-r from-black/50 via-black/40 to-transparent flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors rounded-tl-md"
-            aria-label="Scroll tabs left"
-            data-testid={testId ? `${testId}-scroll-left` : undefined}
+            className="absolute left-0 top-0 bottom-0 z-20 px-1 bg-gradient-to-r from-panel-bg to-transparent flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
           >
             <ChevronLeft />
           </button>
         )}
 
-        {/* Scrollable Tab List */}
+        {/* Tab List */}
         <div
           ref={scrollContainerRef}
           onScroll={checkScroll}
-          className={`overflow-x-auto [&::-webkit-scrollbar]:hidden ${fullWidth ? 'w-full' : ''}`}
+          className={`overflow-x-auto scrollbar-none ${fullWidth ? 'w-full' : ''}`}
         >
           <div
-            className={`flex ${containerStyles} ${widthStyles} ${tabListClassName}`}
+            className={`flex items-center ${listContainerStyles} ${widthStyles} ${tabListClassName}`}
             role="tablist"
-            aria-label="Tabs"
           >
             {tabs.map((tab, index) => {
               const isActive = tab.id === value;
               
-              // Dynamic styling for active/inactive states
-              const activeTextClass = variant === 'minimal' ? 'text-accent bg-accent/5' : 'text-accent text-glow font-bold';
-              const inactiveTextClass = variant === 'minimal' ? 'text-zinc-500 hover:text-zinc-300' : 'text-text-secondary hover:text-text-primary hover:bg-white/5';
-              
               return (
-                <m.button
+                <button
                   key={tab.id}
-                  ref={(el) => {
-                    tabRefs.current[index] = el;
-                  }}
+                  ref={(el) => { tabRefs.current[index] = el; }}
                   type="button"
                   role="tab"
                   id={`tab-${tab.id}`}
@@ -244,61 +194,68 @@ export const Tabs: React.FC<TabsProps> = ({
                   onClick={() => onChange(tab.id)}
                   onKeyDown={(e) => handleKeyDown(e, index)}
                   className={`
-                    relative flex-1 px-3 py-2.5 text-xs tracking-wider whitespace-nowrap
-                    transition-colors duration-200
-                    focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-inset
-                    ${isActive ? activeTextClass : inactiveTextClass}
+                    relative px-4 py-2 text-[10px] uppercase tracking-widest font-bold whitespace-nowrap outline-none select-none transition-colors duration-200
+                    ${fullWidth ? 'flex-1' : ''}
+                    ${isActive ? 'text-accent text-glow-subtle' : 'text-text-secondary hover:text-text-primary'}
+                    ${variant === 'pills' && isActive ? 'bg-white/5 rounded shadow-sm' : ''}
+                    ${variant === 'pills' && !isActive ? 'hover:bg-white/5 rounded' : ''}
                   `}
                   data-testid={testId ? `${testId}-tab-${tab.id}` : undefined}
-                  whileHover={{ y: -1 }}
-                  whileTap={{ y: 0 }}
                 >
-                  {isActive && variant === 'default' && (
+                  {/* Active Indicator for Default/Minimal Variants */}
+                  {isActive && variant !== 'pills' && (
                     <m.div
-                      layoutId="activeTab"
-                      className="absolute bottom-0 left-0 right-0 h-[2px] bg-accent z-20 shadow-[0_0_10px_var(--color-accent)]"
-                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                      layoutId={`activeTab-${testId || 'default'}`} // Scoped layoutId to prevent conflicts if multiple Tabs instances
+                      className="absolute bottom-[-1px] left-0 right-0 h-[2px] bg-accent shadow-[0_0_8px_var(--color-accent)]"
+                      transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
                     />
                   )}
+                  
+                  {/* Background Highlight for Active State (Subtle) */}
+                  {isActive && variant !== 'pills' && (
+                     <m.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="absolute inset-0 bg-gradient-to-t from-accent/5 to-transparent pointer-events-none"
+                     />
+                  )}
+
                   <span className="relative z-10">{tab.label}</span>
-                </m.button>
+                </button>
               );
             })}
           </div>
         </div>
 
-        {/* Right scroll indicator */}
+        {/* Right Scroll Indicator */}
         {canScrollRight && !fullWidth && (
           <button
             type="button"
             onClick={() => scroll('right')}
-            className="absolute right-0 top-0 bottom-0 z-10 px-1 bg-gradient-to-l from-black/50 via-black/40 to-transparent flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors rounded-tr-md"
-            aria-label="Scroll tabs right"
-            data-testid={testId ? `${testId}-scroll-right` : undefined}
+            className="absolute right-0 top-0 bottom-0 z-20 px-1 bg-gradient-to-l from-panel-bg to-transparent flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
           >
             <ChevronRight />
           </button>
         )}
       </div>
 
-      {/* Tab Panel */}
-      {activeTab && (
-        <m.div
-          id={`panel-${activeTab.id}`}
-          role="tabpanel"
-          key={activeTab.id}
-          initial={{ opacity: 0, y: 5 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 5 }}
-          transition={{ duration: 0.2 }}
-          aria-labelledby={`tab-${activeTab.id}`}
-          tabIndex={0}
-          className={`pt-4 pb-4 ${contentClassName}`}
-          data-testid={testId ? `${testId}-panel-${activeTab.id}` : undefined}
-        >
-          {activeTab.content}
-        </m.div>
-      )}
+      {/* Content Panel */}
+      <div className={`flex-1 min-h-0 ${contentClassName}`}>
+        {activeTab && (
+          <m.div
+            key={activeTab.id}
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="h-full"
+            role="tabpanel"
+            aria-labelledby={`tab-${activeTab.id}`}
+            data-testid={testId ? `${testId}-panel-${activeTab.id}` : undefined}
+          >
+            {activeTab.content}
+          </m.div>
+        )}
+      </div>
     </div>
   );
 };

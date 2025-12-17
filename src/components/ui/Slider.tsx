@@ -41,19 +41,18 @@ export const Slider: React.FC<SliderProps> = ({
 }) => {
   const id = useId();
   const percentage = max > min ? ((value - min) / (max - min)) * 100 : 0;
-
-  // Determine decimal places based on step
   const decimals = step >= 1 ? 0 : Math.max(0, Math.ceil(-Math.log10(step)));
-
-  // Local state for input to allow typing without jitter
+  
+  // Local state for input interaction
   const [inputValue, setInputValue] = useState(value.toString());
+  const [isHovered, setIsHovered] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
     setInputValue(value.toFixed(decimals));
   }, [value, decimals]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Only update local display state - propagate on blur or Enter
     setInputValue(e.target.value);
   };
 
@@ -76,17 +75,40 @@ export const Slider: React.FC<SliderProps> = ({
   };
 
   return (
-    <div className={`group ${className}`} data-testid={dataTestId}>
-      <div className="flex items-center justify-between mb-2">
+    <div 
+      className={`group/slider relative ${className} ${disabled ? 'opacity-50 pointer-events-none' : ''}`}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      data-testid={dataTestId}
+    >
+      {/* Header: Label and Value */}
+      <div className="flex items-center justify-between mb-1.5 min-h-[1.25rem]">
         <label
           htmlFor={id}
-          className="text-xs font-medium text-text-secondary group-hover:text-text-primary transition-colors cursor-pointer select-none"
+          className="text-[11px] font-medium text-text-secondary group-hover/slider:text-text-primary transition-colors cursor-pointer select-none tracking-wide"
           title={tooltip}
         >
           {label}
         </label>
+        
         {showValue && (
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0">
+             {onReset && value !== min && ( // Only show reset if changed from min/default - simplification for UI cleanliness
+              <button
+                type="button"
+                onClick={onReset}
+                disabled={disabled}
+                className={`
+                  text-[10px] text-accent transition-all duration-200 
+                  ${isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2'}
+                `}
+                title="Reset to default"
+                aria-label="Reset value"
+                data-testid={dataTestId ? `${dataTestId}-reset` : undefined}
+              >
+                reset
+              </button>
+            )}
             <input
               type="number"
               value={inputValue}
@@ -97,37 +119,32 @@ export const Slider: React.FC<SliderProps> = ({
               min={min}
               max={max}
               disabled={disabled}
-              className="glass-input min-w-[3.5ch] px-1.5 py-0.5 text-[10px] font-mono text-right text-accent rounded transition-all appearance-none [&::-webkit-inner-spin-button]:appearance-none focus:w-[5ch]"
+              className="
+                bg-transparent border-none p-0 text-[11px] font-mono font-medium text-right text-accent 
+                w-[6ch] focus:ring-0 focus:outline-none focus:text-text-primary
+                selection:bg-accent/30 selection:text-white
+                [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none
+              "
               data-testid={dataTestId ? `${dataTestId}-input` : undefined}
             />
-            {onReset && (
-              <button
-                type="button"
-                onClick={onReset}
-                disabled={disabled}
-                className="text-[10px] text-text-tertiary hover:text-accent transition-colors opacity-0 group-hover:opacity-100"
-                title="Reset to default"
-                data-testid={dataTestId ? `${dataTestId}-reset` : undefined}
-              >
-                ↺
-              </button>
-            )}
+            {unit && <span className="text-[10px] text-text-tertiary font-medium select-none">{unit}</span>}
           </div>
         )}
       </div>
 
-      {/* Increased hit area for better touch/click interaction */}
-      <div className="relative h-6 flex items-center select-none touch-none">
-        {/* Track Background */}
-        <div className="absolute w-full h-1.5 bg-black/40 rounded-full overflow-hidden shadow-[inset_0_1px_2px_rgba(0,0,0,0.5)] border-b border-white/5">
-           {/* Fill Track */}
+      {/* Slider Track Area */}
+      <div className="relative h-5 flex items-center select-none touch-none">
+        
+        {/* Track Background - Glassy & Thin */}
+        <div className="absolute w-full h-[2px] bg-white/10 rounded-full overflow-hidden transition-colors duration-300 group-hover/slider:bg-white/15">
+           {/* Active Fill Track */}
            <div
-             className="h-full bg-accent opacity-90 transition-all duration-75 ease-out shadow-[0_0_10px_var(--color-accent)]"
+             className="h-full bg-accent shadow-[0_0_8px_var(--color-accent)] opacity-80 group-hover/slider:opacity-100 transition-all duration-100 ease-out"
              style={{ width: `${percentage}%` }}
            />
         </div>
 
-        {/* Thumb (Invisible native input on top) - Full height for easier clicking */}
+        {/* Native Input - Invisible but clickable */}
         <input
           id={id}
           type="range"
@@ -136,10 +153,12 @@ export const Slider: React.FC<SliderProps> = ({
           step={step}
           value={value}
           onChange={(e) => onChange(Number(e.target.value))}
-          onDragStart={(e) => e.preventDefault()}
-          onMouseDown={(e) => e.stopPropagation()}
+          onMouseDown={() => setIsDragging(true)}
+          onMouseUp={() => setIsDragging(false)}
+          onTouchStart={() => setIsDragging(true)}
+          onTouchEnd={() => setIsDragging(false)}
           disabled={disabled}
-          className="absolute w-full h-full opacity-0 cursor-ew-resize disabled:cursor-not-allowed z-10"
+          className="absolute w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed z-20"
           style={{ WebkitAppearance: 'none' }}
           aria-label={label}
           aria-valuemin={min}
@@ -148,20 +167,31 @@ export const Slider: React.FC<SliderProps> = ({
           data-testid={dataTestId ? `${dataTestId}-slider` : undefined}
         />
 
-        {/* Custom Thumb Indicator - Larger visual target */}
+        {/* Custom Thumb - The "Jewel" */}
         <div
-          className="absolute h-3.5 w-3.5 bg-white rounded-full shadow-[0_0_10px_var(--color-accent),0_2px_4px_rgba(0,0,0,0.5)] pointer-events-none transition-transform duration-100 ease-out group-hover:scale-125 z-0 flex items-center justify-center ring-2 ring-accent/30"
-          style={{ left: `calc(${percentage}% - 7px)` }}
+          className={`
+            absolute h-3 w-3 rounded-full 
+            bg-background border border-accent 
+            shadow-[0_0_10px_var(--color-accent-glow)] 
+            pointer-events-none z-10 
+            transition-transform duration-100 ease-out
+            flex items-center justify-center
+            ${isDragging || isHovered ? 'scale-125 bg-accent' : 'scale-100'}
+          `}
+          style={{ left: `calc(${percentage}% - 6px)` }}
         >
-          <div className="w-1 h-1 bg-accent rounded-full opacity-50" />
+          {/* Inner Dot (visible when not filled) */}
+           <div className={`w-1 h-1 rounded-full bg-white transition-opacity duration-200 ${isDragging || isHovered ? 'opacity-100' : 'opacity-0'}`} />
         </div>
       </div>
 
-      {/* Min/Max Labels */}
-      <div className="flex justify-between mt-0.5 px-1 opacity-50 group-hover:opacity-100 transition-opacity">
-        <span className="text-[9px] text-text-tertiary select-none font-mono tracking-tight">{minLabel ?? `${min}${unit}`}</span>
-        <span className="text-[9px] text-text-tertiary select-none font-mono tracking-tight">{maxLabel ?? `${max}${unit}`}</span>
-      </div>
+      {/* Min/Max Labels (Optional - often clutter but good for scale context) */}
+      {(minLabel || maxLabel) && (
+        <div className="flex justify-between -mt-1 px-0.5 opacity-0 group-hover/slider:opacity-40 transition-opacity duration-300">
+          <span className="text-[9px] text-text-tertiary font-mono">{minLabel}</span>
+          <span className="text-[9px] text-text-tertiary font-mono">{maxLabel}</span>
+        </div>
+      )}
     </div>
   );
 };

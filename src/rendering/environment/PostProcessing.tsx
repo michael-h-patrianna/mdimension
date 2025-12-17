@@ -682,7 +682,6 @@ export const PostProcessing = memo(function PostProcessing() {
 
     if (useTemporalCloud) {
       // Begin temporal cloud frame
-      // Begin temporal cloud frame
       TemporalCloudManager.beginFrame(camera);
 
       // Get the cloud render target (quarter resolution)
@@ -708,14 +707,15 @@ export const PostProcessing = memo(function PostProcessing() {
         // Restore camera layers
         camera.layers.mask = savedCameraLayers;
         gl.setRenderTarget(null);
+
+        // Run CloudTemporalPass for reconstruction
+        // This reprojects history and blends with new quarter-res data
+        cloudTemporalPass.updateCamera(camera);
+        cloudTemporalPass.render(gl, sceneTarget, sceneTarget, delta);
       }
 
-      // Run CloudTemporalPass for reconstruction
-      // This reprojects history and blends with new quarter-res data
-      cloudTemporalPass.updateCamera(camera);
-      cloudTemporalPass.render(gl, sceneTarget, sceneTarget, delta);
-
       // End temporal cloud frame (swap buffers, advance frame counter)
+      // Called unconditionally to keep frame counter in sync even if rendering skipped
       TemporalCloudManager.endFrame();
     }
 
@@ -755,19 +755,10 @@ export const PostProcessing = memo(function PostProcessing() {
 
     try {
       gl.render(scene, camera);
-      
-      // Composite accumulated volumetric clouds (if enabled)
-      if (useTemporalCloud) {
-        const accumulationTarget = TemporalCloudManager.getWriteTarget();
-        if (accumulationTarget && cloudCompositeMaterial) {
-          const uniforms = cloudCompositeMaterial.uniforms as any;
-          uniforms.tCloud.value = accumulationTarget.texture;
-          
-          // Draw cloud quad on top of scene (using blending)
-          // No clearing, depth test disabled in material
-          gl.render(cloudCompositeScene, cloudCompositeCamera);
-        }
-      }
+
+      // NOTE: Volumetric cloud compositing happens AFTER this try block
+      // (see "Composite reconstructed volumetric over scene" section below)
+      // to ensure we only composite when history is valid and avoid double-compositing
     } finally {
       // Restore original depthWrite settings even if render throws
       savedDepthWrite.forEach((value, mat) => {

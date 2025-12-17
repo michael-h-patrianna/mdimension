@@ -16,6 +16,8 @@ void main() {
 `;
 
 export const reprojectionFragmentShader = `
+precision highp float;
+
 in vec2 vUv;
 
 // Previous frame's accumulated cloud color
@@ -38,9 +40,9 @@ uniform vec2 uAccumulationResolution;
 // Disocclusion threshold
 uniform float uDisocclusionThreshold;
 
-// Outputs
+// Outputs - MRT requires both to be vec4 for consistent format
 layout(location = 0) out vec4 fragColor;
-layout(location = 1) out float fragValidity;
+layout(location = 1) out vec4 fragValidity;
 
 /**
  * Convert UV and depth to world position
@@ -74,9 +76,13 @@ void main() {
 
     vec3 rayDir = normalize(farWorld.xyz - nearWorld.xyz);
 
-    // Estimate cloud position at a typical distance (e.g., 3 units from camera)
-    float estimatedDist = 3.0;
-    vec3 estimatedWorldPos = uCameraPosition + rayDir * estimatedDist;
+    // Estimate cloud position for reprojection.
+    // The Schrödinger volumetric typically occupies a bounding sphere of radius ~1-2 units
+    // centered at origin, so 3.0 units is a reasonable estimate for typical viewing distances.
+    // This is a simplification - ideally we'd use actual per-pixel depth from position buffer,
+    // but the current approach provides acceptable reprojection for most camera movements.
+    const float ESTIMATED_CLOUD_DISTANCE = 3.0;
+    vec3 estimatedWorldPos = uCameraPosition + rayDir * ESTIMATED_CLOUD_DISTANCE;
 
     // Reproject to previous frame
     vec2 prevUV = worldToPrevUV(estimatedWorldPos);
@@ -84,7 +90,7 @@ void main() {
     // Check if on-screen in previous frame
     if (prevUV.x < 0.0 || prevUV.x > 1.0 || prevUV.y < 0.0 || prevUV.y > 1.0) {
         fragColor = vec4(0.0);
-        fragValidity = 0.0;
+        fragValidity = vec4(0.0);
         return;
     }
 
@@ -94,7 +100,7 @@ void main() {
     // If previous frame had no cloud data here, mark invalid
     if (prevColor.a < 0.001) {
         fragColor = vec4(0.0);
-        fragValidity = 0.0;
+        fragValidity = vec4(0.0);
         return;
     }
 
@@ -131,6 +137,7 @@ void main() {
     }
 
     fragColor = prevColor;
-    fragValidity = validity;
+    // Store validity in r channel (g, b unused). Alpha=1.0 for MRT compatibility.
+    fragValidity = vec4(validity, 0.0, 0.0, 1.0);
 }
 `;

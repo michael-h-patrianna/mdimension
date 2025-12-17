@@ -146,25 +146,21 @@ class TemporalCloudManagerImpl {
 
     this.accumulationBuffers = [createAccumulationTarget(), createAccumulationTarget()];
 
-    // Explicitly clear buffers if renderer is provided
+    // Explicitly clear accumulation buffers if renderer is provided
+    // Only clear color buffer - depth/stencil are disabled on these targets
     if (gl) {
       const currentTarget = gl.getRenderTarget();
-      const currentClearColor = new THREE.Color();
-      gl.getClearColor(currentClearColor);
-      const currentClearAlpha = gl.getClearAlpha();
 
-      gl.setClearColor(0x000000, 0);
-      
       this.accumulationBuffers.forEach(target => {
         if (target) {
           gl.setRenderTarget(target);
-          gl.clear(true, true, true);
+          gl.setClearColor(0x000000, 0);
+          gl.clear(true, false, false);
         }
       });
 
       // Restore state
       gl.setRenderTarget(currentTarget);
-      gl.setClearColor(currentClearColor, currentClearAlpha);
     }
 
     // Create cloud render target (quarter resolution)
@@ -181,6 +177,11 @@ class TemporalCloudManagerImpl {
     });
 
     // Create position buffer for motion vectors (quarter resolution, RGB32F)
+    // Position buffer for per-pixel depth (future enhancement)
+    // Currently allocated but not written - reprojection uses estimated distance instead.
+    // To enable per-pixel reprojection:
+    // 1. Add MRT output to Schrödinger shader for weighted world positions
+    // 2. Sample this buffer in reprojection shader instead of ESTIMATED_CLOUD_DISTANCE
     this.positionBuffer = new THREE.WebGLRenderTarget(newCloudWidth, newCloudHeight, {
       format: THREE.RGBAFormat,
       type: THREE.FloatType,
@@ -333,15 +334,16 @@ class TemporalCloudManagerImpl {
     this.accumulationResolution.set(this.fullWidth, this.fullHeight);
 
     const readTarget = this.getReadTarget();
-    const enabled = this.isEnabled() && readTarget !== null;
+    // Only enable if we have valid history AND a valid texture to sample
+    const hasHistory = this.hasValidHistory() && readTarget !== null;
 
     return {
-      uPrevAccumulation: enabled && readTarget ? readTarget.texture : null,
+      uPrevAccumulation: hasHistory ? readTarget.texture : null,
       uPrevPositionBuffer: this.positionBuffer?.texture ?? null,
       uPrevViewProjectionMatrix: this.prevViewProjectionMatrix,
       uBayerOffset: this.bayerOffset,
       uFrameIndex: this.frameIndex,
-      uTemporalCloudEnabled: enabled,
+      uTemporalCloudEnabled: hasHistory,
       uCloudResolution: this.cloudResolution,
       uAccumulationResolution: this.accumulationResolution,
     };
