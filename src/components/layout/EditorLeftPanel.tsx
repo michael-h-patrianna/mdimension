@@ -35,7 +35,7 @@ export const EditorLeftPanel: React.FC = () => {
   return (
     <div className="h-full flex flex-col bg-transparent shrink-0 overflow-hidden">
         {/* Fixed Header Section with Dimension Selector */}
-        <div className="p-3 border-b border-panel-border bg-panel-bg/30 backdrop-blur-sm z-10 space-y-3">
+        <div className="p-4 border-b border-panel-border bg-panel-bg/50 backdrop-blur-sm z-10 space-y-4">
             <div className="flex items-center gap-2 px-1">
                 <Icon name="menu" className="text-accent" />
                 <h2 className="text-xs font-bold text-text-secondary uppercase tracking-widest">Space & Object</h2>
@@ -61,7 +61,7 @@ export const EditorLeftPanel: React.FC = () => {
               onChange={setActiveTab}
               className="flex-1 flex flex-col min-h-0"
               tabListClassName="px-3 pt-3 pb-0 bg-transparent"
-              contentClassName="flex-1 overflow-y-auto p-4 custom-scrollbar"
+              contentClassName="flex-1 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-panel-border hover:scrollbar-thumb-text-secondary/50"
               variant="default"
               fullWidth
               data-testid="left-panel-tabs"

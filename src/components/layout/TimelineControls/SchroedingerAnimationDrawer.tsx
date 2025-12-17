@@ -60,7 +60,7 @@ export const SchroedingerAnimationDrawer: React.FC = React.memo(() => {
   return (
     <AnimationDrawerContainer data-testid="schroedinger-animation-drawer">
       {/* Origin Drift Animation */}
-      <div className="space-y-3" data-testid="animation-panel-originDrift">
+      <div className="space-y-4" data-testid="animation-panel-originDrift">
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">
             Origin Drift
@@ -129,7 +129,7 @@ export const SchroedingerAnimationDrawer: React.FC = React.memo(() => {
 
       {/* Slice Animation - 4D+ only */}
       {dimension >= 4 && (
-        <div className="space-y-3" data-testid="animation-panel-sliceAnimation">
+        <div className="space-y-4" data-testid="animation-panel-sliceAnimation">
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">
               Slice Animation

@@ -427,14 +427,14 @@ const MandelbulbMesh = () => {
 
   // Update debug info store
   useEffect(() => {
-    setShaderDebugInfo({
+    setShaderDebugInfo('object', {
       name: 'Mandelbulb Raymarcher',
       vertexShaderLength: vertexShader.length,
       fragmentShaderLength: shaderString.length,
       activeModules: modules,
       features: features,
     });
-    return () => setShaderDebugInfo(null);
+    return () => setShaderDebugInfo('object', null);
   }, [shaderString, modules, features, setShaderDebugInfo]);
 
   useFrame((state) => {

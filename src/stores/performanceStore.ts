@@ -89,7 +89,7 @@ interface PerformanceState {
   fractalAnimationLowQuality: boolean
 
   // Shader Debugging
-  currentShaderDebugInfo: ShaderDebugInfo | null
+  shaderDebugInfos: Record<string, ShaderDebugInfo>
   shaderOverrides: string[]
 
   // -------------------------------------------------------------------------
@@ -114,7 +114,7 @@ interface PerformanceState {
   setFractalAnimationLowQuality: (enabled: boolean) => void
 
   // Shader Debugging
-  setShaderDebugInfo: (info: ShaderDebugInfo | null) => void
+  setShaderDebugInfo: (key: string, info: ShaderDebugInfo | null) => void
   toggleShaderModule: (moduleName: string) => void
   resetShaderOverrides: () => void
 
@@ -155,7 +155,7 @@ export const usePerformanceStore = create<PerformanceState>((set, get) => ({
   fractalAnimationLowQuality: true,
 
   // Shader Debugging
-  currentShaderDebugInfo: null,
+  shaderDebugInfos: {},
   shaderOverrides: [],
 
   // -------------------------------------------------------------------------
@@ -222,8 +222,16 @@ export const usePerformanceStore = create<PerformanceState>((set, get) => ({
   },
 
   // Shader Debugging
-  setShaderDebugInfo: (info: ShaderDebugInfo | null) => {
-    set({ currentShaderDebugInfo: info })
+  setShaderDebugInfo: (key: string, info: ShaderDebugInfo | null) => {
+    set((state) => {
+      const newInfos = { ...state.shaderDebugInfos }
+      if (info === null) {
+        delete newInfos[key]
+      } else {
+        newInfos[key] = info
+      }
+      return { shaderDebugInfos: newInfos }
+    })
   },
 
   toggleShaderModule: (moduleName: string) => {
@@ -254,7 +262,7 @@ export const usePerformanceStore = create<PerformanceState>((set, get) => ({
       temporalReprojectionEnabled: true,
       cameraTeleported: false,
       fractalAnimationLowQuality: true,
-      currentShaderDebugInfo: null,
+      shaderDebugInfos: {},
       shaderOverrides: [],
     })
   },

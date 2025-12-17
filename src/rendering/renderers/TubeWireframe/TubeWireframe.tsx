@@ -155,14 +155,14 @@ export function TubeWireframe({
   // Dispatch shader debug info
   useEffect(() => {
     const { modules, features } = composeTubeWireframeFragmentShader()
-    setShaderDebugInfo({
+    setShaderDebugInfo('object', {
       name: 'TubeWireframe PBR',
       vertexShaderLength: material.vertexShader.length,
       fragmentShaderLength: material.fragmentShader.length,
       activeModules: modules,
       features: features,
     })
-    return () => setShaderDebugInfo(null)
+    return () => setShaderDebugInfo('object', null)
   }, [material, setShaderDebugInfo])
 
   // Cleanup geometry and material on unmount or when they change

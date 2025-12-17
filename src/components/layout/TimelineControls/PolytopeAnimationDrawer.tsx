@@ -51,7 +51,7 @@ export const PolytopeAnimationDrawer: React.FC = React.memo(() => {
   return (
     <AnimationDrawerContainer data-testid="polytope-animation-drawer">
       {/* Vertex Modulation - smooth radial breathing */}
-      <div className="space-y-3" data-testid="animation-panel-modulation">
+      <div className="space-y-4" data-testid="animation-panel-modulation">
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">
             Modulation

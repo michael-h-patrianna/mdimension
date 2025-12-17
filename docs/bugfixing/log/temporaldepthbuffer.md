@@ -149,3 +149,54 @@ gl.autoClear = savedAutoClear;
    - Reconstruction pass: ✓
    - Buffer swap: ✓
    - Compositing: ✓ (after fix)
+
+---
+
+## Follow-up Fix: Semi-Transparent Rendering with SOLID Mode
+
+### Issue
+After the compositing bug was fixed, the object appeared blurry and semi-transparent even when opacity was set to "SOLID".
+
+### Root Cause Analysis
+
+**TWO issues were found:**
+
+1. **Forced VOLUMETRIC mode in SchroedingerMesh.tsx (line 614-618):**
+   ```javascript
+   // OLD CODE - forced volumetric mode as workaround for compositing bug
+   const effectiveMode = useTemporalAccumulation ? 'volumetricDensity' : opacitySettings.mode;
+   ```
+   This was a workaround for the compositing bug that had been fixed. It ignored the user's SOLID mode selection.
+
+2. **Alpha dilution in reconstruction shader:**
+   When blending new pixels with history:
+   ```glsl
+   finalColor = mix(newColor, historyColor, blendWeight);
+   ```
+   If `newColor.alpha = 1.0` (SOLID) but `historyColor.alpha < 1.0`, the blend dilutes the alpha.
+
+### Fixes Applied
+
+1. **SchroedingerMesh.tsx:** Removed the forced VOLUMETRIC mode workaround:
+   ```javascript
+   // NEW CODE - respect user's opacity mode selection
+   material.uniforms.uOpacityMode.value = OPACITY_MODE_TO_INT[opacitySettings.mode];
+   ```
+
+2. **reconstruction.glsl.ts:** Added alpha preservation for SOLID objects:
+   ```glsl
+   // For freshly rendered pixels with alpha >= 0.99 (SOLID mode)
+   if (newColor.a >= 0.99) {
+       finalColor.a = 1.0;
+   }
+
+   // For history pixels with alpha >= 0.99
+   if (historyColor.a >= 0.99) {
+       finalColor.a = 1.0;
+   }
+   ```
+
+### Result
+- SOLID mode now renders completely opaque objects
+- Floor grid no longer visible through the volumetric cloud
+- Temporal accumulation still works correctly for other opacity modes

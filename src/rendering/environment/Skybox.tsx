@@ -476,14 +476,14 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
   // Update Debug Info
   useEffect(() => {
       const { modules, features } = composeSkyboxFragmentShader(config);
-      setShaderDebugInfo({
+      setShaderDebugInfo('skybox', {
           name: 'Skybox Shader',
           vertexShaderLength: material.vertexShader.length,
           fragmentShaderLength: material.fragmentShader.length,
           activeModules: modules,
           features,
       });
-      return () => setShaderDebugInfo(null);
+      return () => setShaderDebugInfo('skybox', null);
   }, [config, material, setShaderDebugInfo]);
 
   // Fade-in animation state

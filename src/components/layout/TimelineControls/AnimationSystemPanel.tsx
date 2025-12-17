@@ -80,7 +80,7 @@ export const AnimationSystemPanel: React.FC<AnimationSystemPanelProps> = React.m
   onParamChange,
 }) => {
   return (
-    <div className="space-y-3" data-testid={`animation-panel-${systemKey}`}>
+    <div className="space-y-4" data-testid={`animation-panel-${systemKey}`}>
       {/* Header with toggle */}
       <div className="flex items-center justify-between">
         <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">

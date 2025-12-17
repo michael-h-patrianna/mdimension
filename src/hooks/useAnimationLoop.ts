@@ -52,7 +52,10 @@ export function useAnimationLoop(): void {
       const maxFps = useUIStore.getState().maxFps
       const frameInterval = 1000 / maxFps
 
-      if (deltaTime < frameInterval) {
+      // Use 1ms tolerance to handle floating point precision issues.
+      // Without tolerance, RAF timing (~16.665999ms) can be slightly less than
+      // frameInterval (16.666666ms), causing every other frame to be skipped.
+      if (deltaTime < frameInterval - 1) {
         frameRef.current = requestAnimationFrame(animate)
         return
       }

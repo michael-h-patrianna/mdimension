@@ -334,7 +334,7 @@ const SchroedingerMesh = () => {
   // Update debug info
   useEffect(() => {
     const { setShaderDebugInfo } = usePerformanceStore.getState();
-    setShaderDebugInfo({
+    setShaderDebugInfo('object', {
       name: 'Schrödinger Quantum Volume',
       vertexShaderLength: vertexShader.length,
       fragmentShaderLength: shaderString.length,
@@ -343,7 +343,7 @@ const SchroedingerMesh = () => {
     });
     return () => {
       const { setShaderDebugInfo: clearDebugInfo } = usePerformanceStore.getState();
-      clearDebugInfo(null);
+      clearDebugInfo('object', null);
     };
   }, [shaderString, modules, features]);
 
@@ -611,11 +611,11 @@ const SchroedingerMesh = () => {
       // Opacity Mode System
       const { opacitySettings, animationBias } = uiState;
       if (material.uniforms.uOpacityMode) {
-        // Force VOLUMETRIC mode when using temporal accumulation to ensure correct alpha blending
-        // Otherwise 'Solid' mode would render opaque quads obscuring the scene
-        // CRITICAL FIX: Use correct key 'volumetricDensity' (3), not 'volumetric' (undefined)
-        const effectiveMode = useTemporalAccumulation ? 'volumetricDensity' : opacitySettings.mode;
-        material.uniforms.uOpacityMode.value = OPACITY_MODE_TO_INT[effectiveMode as keyof typeof OPACITY_MODE_TO_INT];
+        // Respect user's opacity mode selection, including SOLID mode
+        // The temporal accumulation compositing pass now correctly handles all modes
+        // Note: Previous workaround forced 'volumetricDensity' mode to avoid compositing bugs
+        // which have since been fixed (autoClear and alpha preservation in reconstruction)
+        material.uniforms.uOpacityMode.value = OPACITY_MODE_TO_INT[opacitySettings.mode as keyof typeof OPACITY_MODE_TO_INT];
       }
       if (material.uniforms.uSimpleAlpha) {
         material.uniforms.uSimpleAlpha.value = opacitySettings.simpleAlphaOpacity;

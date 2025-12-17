@@ -28,7 +28,7 @@ export const PostProcessingSection: React.FC<PostProcessingSectionProps> = ({
         value={activeTab}
         onChange={setActiveTab}
         className="-mx-3"
-        contentClassName="px-0"
+        contentClassName="px-3 py-4"
         tabs={[
           {
             id: 'bloom',

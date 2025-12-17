@@ -175,14 +175,14 @@ const QuaternionJuliaMesh = () => {
   }, [dimension, shadowEnabled, temporalEnabled, opacityMode, shaderOverrides])
 
   useEffect(() => {
-    setShaderDebugInfo({
+    setShaderDebugInfo('object', {
       name: 'Quaternion Julia Raymarcher',
       vertexShaderLength: vertexShader.length,
       fragmentShaderLength: shaderString.length,
       activeModules: modules,
       features: features,
     })
-    return () => setShaderDebugInfo(null)
+    return () => setShaderDebugInfo('object', null)
   }, [shaderString, modules, features, setShaderDebugInfo])
 
   // NOTE: All other store values are read via getState() inside useFrame

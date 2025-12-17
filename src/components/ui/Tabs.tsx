@@ -179,7 +179,7 @@ export const Tabs: React.FC<TabsProps> = ({
       <div className="relative shrink-0 z-10">
         
         {/* Scroll Indicators */}
-        {canScrollLeft && !fullWidth && (
+        {canScrollLeft && (
           <button
             type="button"
             onClick={() => scroll('left')}
@@ -250,7 +250,7 @@ export const Tabs: React.FC<TabsProps> = ({
         </div>
 
         {/* Right Scroll Indicator */}
-        {canScrollRight && !fullWidth && (
+        {canScrollRight && (
           <button
             type="button"
             onClick={() => scroll('right')}
@@ -262,7 +262,7 @@ export const Tabs: React.FC<TabsProps> = ({
       </div>
 
       {/* Content Panel */}
-      <div className={`flex-1 min-h-0 relative ${contentClassName}`}>
+      <div className={`flex-1 min-h-0 relative overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent ${contentClassName}`}>
         {activeTab && (
             <div
               key={activeTab.id}

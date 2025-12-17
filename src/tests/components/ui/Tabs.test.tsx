@@ -3,6 +3,14 @@ import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Tabs } from '@/components/ui/Tabs';
 
+// Mock sound manager to prevent AudioContext errors
+vi.mock('@/lib/audio/SoundManager', () => ({
+  soundManager: {
+    playClick: vi.fn(),
+    playHover: vi.fn(),
+  },
+}));
+
 describe('Tabs', () => {
   const tabs = [
     { id: 'tab1', label: 'First Tab', content: <div>First content</div> },
@@ -195,7 +203,7 @@ describe('Tabs', () => {
     );
 
     const tabpanel = screen.getByRole('tabpanel');
-    expect(tabpanel).toHaveClass('custom-content');
+    expect(tabpanel.parentElement).toHaveClass('custom-content');
   });
 
   it('supports data-testid prop', () => {
@@ -274,7 +282,7 @@ describe('Tabs', () => {
       );
 
       const scrollContainer = container.querySelector('.overflow-x-auto');
-      expect(scrollContainer).toHaveClass('[&::-webkit-scrollbar]:hidden');
+      expect(scrollContainer).toHaveClass('scrollbar-none');
     });
 
     it('tab buttons have whitespace-nowrap to prevent wrapping', () => {

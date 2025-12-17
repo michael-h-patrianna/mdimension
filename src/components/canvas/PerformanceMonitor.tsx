@@ -83,7 +83,7 @@ export function PerformanceMonitor() {
 
   // -- Perf Stats --
   const stats = usePerformanceMetricsStore();
-  const shaderInfo = usePerformanceStore((state) => state.currentShaderDebugInfo);
+  const shaderDebugInfos = usePerformanceStore((state) => state.shaderDebugInfos);
   const shaderOverrides = usePerformanceStore((state) => state.shaderOverrides);
   const toggleShaderModule = usePerformanceStore((state) => state.toggleShaderModule);
 
@@ -102,6 +102,7 @@ export function PerformanceMonitor() {
   const [expanded, setExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState<'perf' | 'sys' | 'shader' | 'buffers'>('perf');
   const [bufferStats, setBufferStats] = useState<BufferStats | null>(null);
+  const [selectedShaderKey, setSelectedShaderKey] = useState<string | null>(null);
 
   // Refresh buffer stats from store
   const refreshBufferStats = useCallback(() => {
@@ -115,6 +116,21 @@ export function PerformanceMonitor() {
       refreshBufferStats();
     }
   }, [activeTab, refreshBufferStats]);
+
+  // Auto-select first shader if none selected or invalid
+  useEffect(() => {
+    const keys = Object.keys(shaderDebugInfos);
+    if (keys.length > 0) {
+      if (!selectedShaderKey || !shaderDebugInfos[selectedShaderKey]) {
+        // Prioritize 'object' if available, otherwise first
+        if (keys.includes('object')) setSelectedShaderKey('object');
+        else setSelectedShaderKey(keys[0]!);
+      }
+    } else {
+        setSelectedShaderKey(null);
+    }
+  }, [shaderDebugInfos, selectedShaderKey]);
+
   const [isDragging, setIsDragging] = useState(false);
 
   // -- Dimensions & Positioning --
@@ -163,6 +179,9 @@ export function PerformanceMonitor() {
   const configKey = getConfigStoreKey(objectType);
   const raySteps = configKey === 'mandelbulb' ? mandelbulbConfig.maxIterations :
                    configKey === 'quaternionJulia' ? quaternionJuliaConfig.maxIterations : 0;
+  
+  // Get currently selected shader info
+  const activeShaderInfo = selectedShaderKey ? shaderDebugInfos[selectedShaderKey] : null;
 
   // -- Tab Content --
   const tabs = [
@@ -320,65 +339,89 @@ export function PerformanceMonitor() {
           transition={{ duration: 0.2 }}
           className="space-y-5 p-5"
         >
-           {!shaderInfo ? (
+           {Object.keys(shaderDebugInfos).length === 0 ? (
              <div className="text-zinc-500 italic text-center p-4">No shader info available</div>
            ) : (
              <>
-               <div className="space-y-3">
-                  <SectionHeader icon={<Icons.Layers />} label="Program Info" />
-                  <div className="p-2 bg-white/5 rounded-lg border border-white/5">
-                     <div className="text-xs text-zinc-200 font-bold mb-1">{shaderInfo.name}</div>
-                     <div className="grid grid-cols-2 gap-2 mt-2">
-                       <StatItem label="Vertex Size" value={formatBytes(shaderInfo.vertexShaderLength)} />
-                       <StatItem label="Fragment Size" value={formatBytes(shaderInfo.fragmentShaderLength)} />
-                     </div>
-                  </div>
+               {/* Netflix-style Shader Selection */}
+               <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                  {Object.keys(shaderDebugInfos).map(key => (
+                    <button
+                      key={key}
+                      onClick={() => setSelectedShaderKey(key)}
+                      className={`
+                        flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all
+                        ${selectedShaderKey === key
+                          ? 'bg-accent text-black shadow-lg shadow-accent/20'
+                          : 'bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-zinc-200'
+                        }
+                      `}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-current opacity-50" />
+                      {key}
+                    </button>
+                  ))}
                </div>
 
-               {shaderInfo.features.length > 0 && (
-                 <div className="space-y-3">
-                    <SectionHeader icon={<Icons.Zap />} label="Active Features" />
-                    <div className="flex flex-wrap gap-1.5">
-                      {shaderInfo.features.map(f => (
-                        <span key={f} className="px-1.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded text-[9px] font-mono uppercase tracking-wide">
-                          {f}
-                        </span>
-                      ))}
-                    </div>
+               {activeShaderInfo && (
+                 <div key={selectedShaderKey} className="animate-in fade-in slide-in-from-right-4 duration-200 space-y-5">
+                   <div className="space-y-3">
+                      <SectionHeader icon={<Icons.Layers />} label="Program Info" />
+                      <div className="p-2 bg-white/5 rounded-lg border border-white/5">
+                         <div className="text-xs text-zinc-200 font-bold mb-1">{activeShaderInfo.name}</div>
+                         <div className="grid grid-cols-2 gap-2 mt-2">
+                           <StatItem label="Vertex Size" value={formatBytes(activeShaderInfo.vertexShaderLength)} />
+                           <StatItem label="Fragment Size" value={formatBytes(activeShaderInfo.fragmentShaderLength)} />
+                         </div>
+                      </div>
+                   </div>
+
+                   {activeShaderInfo.features.length > 0 && (
+                     <div className="space-y-3">
+                        <SectionHeader icon={<Icons.Zap />} label="Active Features" />
+                        <div className="flex flex-wrap gap-1.5">
+                          {activeShaderInfo.features.map(f => (
+                            <span key={f} className="px-1.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded text-[9px] font-mono uppercase tracking-wide">
+                              {f}
+                            </span>
+                          ))}
+                        </div>
+                     </div>
+                   )}
+
+                   <div className="space-y-3">
+                      <SectionHeader icon={<Icons.Database />} label="Compiled Modules" />
+                      <div className="border border-white/10 rounded-lg overflow-hidden bg-black/20">
+                        <table className="w-full text-left border-collapse">
+                          <tbody className="divide-y divide-white/5">
+                            {activeShaderInfo.activeModules.map((mod, i) => {
+                              const isSafe = SAFE_MODULES.includes(mod);
+                              const isEnabled = !shaderOverrides.includes(mod);
+
+                              return (
+                                <tr key={i} className="hover:bg-white/5 transition-colors">
+                                  <td className="p-2 text-[10px] font-mono text-zinc-400 border-r border-white/5 w-8 text-center opacity-50">{i+1}</td>
+                                  <td className="p-2 text-[10px] text-zinc-300 flex items-center justify-between">
+                                    <span className={!isEnabled ? 'opacity-50 line-through' : ''}>{mod}</span>
+                                    {isSafe && (
+                                      <input
+                                        type="checkbox"
+                                        checked={isEnabled}
+                                        onChange={() => toggleShaderModule(mod)}
+                                        className="w-3 h-3 rounded bg-white/10 border-white/20 checked:bg-accent focus:ring-accent/50 cursor-pointer"
+                                        title="Toggle Module"
+                                      />
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                   </div>
                  </div>
                )}
-
-               <div className="space-y-3">
-                  <SectionHeader icon={<Icons.Database />} label="Compiled Modules" />
-                  <div className="border border-white/10 rounded-lg overflow-hidden bg-black/20">
-                    <table className="w-full text-left border-collapse">
-                      <tbody className="divide-y divide-white/5">
-                        {shaderInfo.activeModules.map((mod, i) => {
-                          const isSafe = SAFE_MODULES.includes(mod);
-                          const isEnabled = !shaderOverrides.includes(mod);
-
-                          return (
-                            <tr key={i} className="hover:bg-white/5 transition-colors">
-                              <td className="p-2 text-[10px] font-mono text-zinc-400 border-r border-white/5 w-8 text-center opacity-50">{i+1}</td>
-                              <td className="p-2 text-[10px] text-zinc-300 flex items-center justify-between">
-                                <span className={!isEnabled ? 'opacity-50 line-through' : ''}>{mod}</span>
-                                {isSafe && (
-                                  <input
-                                    type="checkbox"
-                                    checked={isEnabled}
-                                    onChange={() => toggleShaderModule(mod)}
-                                    className="w-3 h-3 rounded bg-white/10 border-white/20 checked:bg-accent focus:ring-accent/50 cursor-pointer"
-                                    title="Toggle Module"
-                                  />
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-               </div>
              </>
            )}
         </m.div>

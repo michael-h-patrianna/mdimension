@@ -69,7 +69,7 @@ export const MandelbulbAnimationDrawer: React.FC = React.memo(() => {
   return (
     <AnimationDrawerContainer data-testid="mandelbulb-animation-drawer">
       {/* Power Animation */}
-      <div className="space-y-3" data-testid="animation-panel-powerAnimation">
+      <div className="space-y-4" data-testid="animation-panel-powerAnimation">
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">
             Power Animation
@@ -137,7 +137,7 @@ export const MandelbulbAnimationDrawer: React.FC = React.memo(() => {
       </div>
 
       {/* Phase Shifts */}
-      <div className="space-y-3" data-testid="animation-panel-phaseShifts">
+      <div className="space-y-4" data-testid="animation-panel-phaseShifts">
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">
             Phase Shifts
@@ -190,7 +190,7 @@ export const MandelbulbAnimationDrawer: React.FC = React.memo(() => {
 
       {/* Slice Animation - 4D+ only */}
       {dimension >= 4 && (
-        <div className="space-y-3" data-testid="animation-panel-sliceAnimation">
+        <div className="space-y-4" data-testid="animation-panel-sliceAnimation">
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">
               Slice Animation

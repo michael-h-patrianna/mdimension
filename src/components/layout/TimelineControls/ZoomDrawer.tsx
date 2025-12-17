@@ -117,7 +117,7 @@ export const ZoomDrawer: React.FC = React.memo(() => {
   return (
     <AnimationDrawerContainer data-testid="zoom-drawer">
       {/* Core Zoom Controls */}
-      <div className="space-y-3" data-testid="zoom-panel-core">
+      <div className="space-y-4" data-testid="zoom-panel-core">
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">
             Zoom
@@ -182,7 +182,7 @@ export const ZoomDrawer: React.FC = React.memo(() => {
 
       {/* Animation Controls */}
       {config.zoomEnabled && (
-        <div className="space-y-3" data-testid="zoom-panel-animation">
+        <div className="space-y-4" data-testid="zoom-panel-animation">
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">
               Animation
@@ -252,7 +252,7 @@ export const ZoomDrawer: React.FC = React.memo(() => {
 
       {/* Autopilot Controls */}
       {config.zoomEnabled && (
-        <div className="space-y-3" data-testid="zoom-panel-autopilot">
+        <div className="space-y-4" data-testid="zoom-panel-autopilot">
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">
               Autopilot

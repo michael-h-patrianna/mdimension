@@ -439,7 +439,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
         features.push('Edges');
     }
 
-    setShaderDebugInfo({
+    setShaderDebugInfo('object', {
       name,
       vertexShaderLength: activeMaterial.vertexShader.length,
       fragmentShaderLength: activeMaterial.fragmentShader.length,
@@ -447,7 +447,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
       features,
     });
 
-    return () => setShaderDebugInfo(null);
+    return () => setShaderDebugInfo('object', null);
   }, [faceMaterial, edgeMaterial, facesVisible, shadowEnabled, surfaceSettings.fresnelEnabled, surfaceSettings.faceOpacity, setShaderDebugInfo]);
 
   // ============ FACE GEOMETRY (INDEXED) ============
