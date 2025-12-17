@@ -343,4 +343,73 @@ export const createQuaternionJuliaSlice: StateCreator<
       quaternionJulia: { ...state.quaternionJulia, juliaConstant: newConstant },
     }))
   },
+
+  // --- Advanced Rendering Actions ---
+  setQuaternionJuliaRoughness: (value) => {
+    const clamped = Math.max(0.0, Math.min(1.0, value))
+    set((state) => ({
+      quaternionJulia: { ...state.quaternionJulia, roughness: clamped },
+    }))
+  },
+
+  setQuaternionJuliaSssEnabled: (value) => {
+    set((state) => ({
+      quaternionJulia: { ...state.quaternionJulia, sssEnabled: value },
+    }))
+  },
+
+  setQuaternionJuliaSssIntensity: (value) => {
+    const clamped = Math.max(0.0, Math.min(2.0, value))
+    set((state) => ({
+      quaternionJulia: { ...state.quaternionJulia, sssIntensity: clamped },
+    }))
+  },
+
+  setQuaternionJuliaSssColor: (value) => {
+    set((state) => ({
+      quaternionJulia: { ...state.quaternionJulia, sssColor: value },
+    }))
+  },
+
+  setQuaternionJuliaSssThickness: (value) => {
+    const clamped = Math.max(0.1, Math.min(5.0, value))
+    set((state) => ({
+      quaternionJulia: { ...state.quaternionJulia, sssThickness: clamped },
+    }))
+  },
+
+  // --- Atmosphere Actions ---
+  setQuaternionJuliaFogEnabled: (value) => {
+    set((state) => ({
+      quaternionJulia: { ...state.quaternionJulia, fogEnabled: value },
+    }))
+  },
+
+  setQuaternionJuliaFogContribution: (value) => {
+    const clamped = Math.max(0.0, Math.min(2.0, value))
+    set((state) => ({
+      quaternionJulia: { ...state.quaternionJulia, fogContribution: clamped },
+    }))
+  },
+
+  setQuaternionJuliaInternalFogDensity: (value) => {
+    const clamped = Math.max(0.0, Math.min(1.0, value))
+    set((state) => ({
+      quaternionJulia: { ...state.quaternionJulia, internalFogDensity: clamped },
+    }))
+  },
+
+  // --- LOD Actions ---
+  setQuaternionJuliaLodEnabled: (value) => {
+    set((state) => ({
+      quaternionJulia: { ...state.quaternionJulia, lodEnabled: value },
+    }))
+  },
+
+  setQuaternionJuliaLodDetail: (value) => {
+    const clamped = Math.max(0.1, Math.min(2.0, value))
+    set((state) => ({
+      quaternionJulia: { ...state.quaternionJulia, lodDetail: clamped },
+    }))
+  },
 })

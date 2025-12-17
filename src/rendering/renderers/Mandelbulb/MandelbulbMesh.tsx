@@ -325,6 +325,18 @@ const MandelbulbMesh = () => {
       // Material property for G-buffer (reflectivity for SSR)
       uMetallic: { value: 0.0 },
 
+      // Advanced Rendering
+      uRoughness: { value: 0.3 },
+      uSssEnabled: { value: false },
+      uSssIntensity: { value: 1.0 },
+      uSssColor: { value: new THREE.Color('#ff8844') },
+      uSssThickness: { value: 1.0 },
+      
+      // Atmosphere
+      uFogEnabled: { value: true },
+      uFogContribution: { value: 1.0 },
+      uInternalFogDensity: { value: 0.0 },
+
       // Fresnel rim lighting uniforms (color converted to linear)
       uFresnelEnabled: { value: true },
       uFresnelIntensity: { value: 0.5 },
@@ -621,6 +633,38 @@ const MandelbulbMesh = () => {
         updateLinearColorUniform(cache.specularColor, material.uniforms.uSpecularColor.value as THREE.Color, specularColor);
       }
       if (material.uniforms.uDiffuseIntensity) material.uniforms.uDiffuseIntensity.value = diffuseIntensity;
+      
+      // Advanced Rendering
+      const config = useExtendedObjectStore.getState().mandelbulb;
+      if (material.uniforms.uRoughness) material.uniforms.uRoughness.value = config.roughness;
+      if (material.uniforms.uSssEnabled) material.uniforms.uSssEnabled.value = config.sssEnabled;
+      if (material.uniforms.uSssIntensity) material.uniforms.uSssIntensity.value = config.sssIntensity;
+      if (material.uniforms.uSssColor) {
+          updateLinearColorUniform(cache.faceColor /* reuse helper */, material.uniforms.uSssColor.value as THREE.Color, config.sssColor || '#ff8844');
+      }
+      if (material.uniforms.uSssThickness) material.uniforms.uSssThickness.value = config.sssThickness;
+      
+      // Atmosphere
+      if (material.uniforms.uFogEnabled) material.uniforms.uFogEnabled.value = config.fogEnabled;
+      if (material.uniforms.uFogContribution) material.uniforms.uFogContribution.value = config.fogContribution;
+      if (material.uniforms.uInternalFogDensity) material.uniforms.uInternalFogDensity.value = config.internalFogDensity;
+      
+      // LOD
+      if (config.lodEnabled && material.uniforms.uQualityMultiplier) {
+          // Distance-based LOD
+          // Reduce quality (increase epsilon) when far away
+          const distance = camera.position.length();
+          // Heuristic: scale quality multiplier down as distance increases
+          // Base multiplier from performance store
+          const perfQuality = usePerformanceStore.getState().qualityMultiplier;
+          
+          // LOD factor: 1.0 near, 0.25 far
+          // distance 2 -> 1.0
+          // distance 10 -> 0.25
+          const lodFactor = THREE.MathUtils.clamp(1.0 - (distance - 2.0) / 8.0 * 0.75, 0.25, 1.0);
+          
+          material.uniforms.uQualityMultiplier.value = perfQuality * lodFactor * (config.lodDetail ?? 1.0);
+      }
 
       // Fresnel rim lighting (controlled by Edges render mode, cached linear conversion)
       if (material.uniforms.uFresnelEnabled) material.uniforms.uFresnelEnabled.value = edgesVisible;

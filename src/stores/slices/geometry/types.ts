@@ -230,6 +230,22 @@ export interface MandelbulbSliceActions {
   setMandelbulbBoundaryTargetCorrectionStrength: (strength: number) => void
   // Zoom Reset
   resetMandelbulbZoom: () => void
+
+  // Advanced Rendering
+  setMandelbulbRoughness: (value: number) => void
+  setMandelbulbSssEnabled: (value: boolean) => void
+  setMandelbulbSssIntensity: (value: number) => void
+  setMandelbulbSssColor: (value: string) => void
+  setMandelbulbSssThickness: (value: number) => void
+  
+  // Atmosphere
+  setMandelbulbFogEnabled: (value: boolean) => void
+  setMandelbulbFogContribution: (value: number) => void
+  setMandelbulbInternalFogDensity: (value: number) => void
+  
+  // LOD
+  setMandelbulbLodEnabled: (value: boolean) => void
+  setMandelbulbLodDetail: (value: number) => void
 }
 
 export type MandelbulbSlice = MandelbulbSliceState & MandelbulbSliceActions
@@ -283,6 +299,22 @@ export interface QuaternionJuliaSliceActions {
   // Utility
   getQuaternionJuliaConfig: () => QuaternionJuliaConfig
   randomizeJuliaConstant: () => void
+
+  // Advanced Rendering
+  setQuaternionJuliaRoughness: (value: number) => void
+  setQuaternionJuliaSssEnabled: (value: boolean) => void
+  setQuaternionJuliaSssIntensity: (value: number) => void
+  setQuaternionJuliaSssColor: (value: string) => void
+  setQuaternionJuliaSssThickness: (value: number) => void
+  
+  // Atmosphere
+  setQuaternionJuliaFogEnabled: (value: boolean) => void
+  setQuaternionJuliaFogContribution: (value: number) => void
+  setQuaternionJuliaInternalFogDensity: (value: number) => void
+  
+  // LOD
+  setQuaternionJuliaLodEnabled: (value: boolean) => void
+  setQuaternionJuliaLodDetail: (value: number) => void
 }
 
 export type QuaternionJuliaSlice = QuaternionJuliaSliceState & QuaternionJuliaSliceActions

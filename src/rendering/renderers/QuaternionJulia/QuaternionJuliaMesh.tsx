@@ -233,6 +233,18 @@ const QuaternionJuliaMesh = () => {
       uDiffuseIntensity: { value: 1.0 },
       uMetallic: { value: 0.0 },
 
+      // Advanced Rendering
+      uRoughness: { value: 0.3 },
+      uSssEnabled: { value: false },
+      uSssIntensity: { value: 1.0 },
+      uSssColor: { value: new THREE.Color('#ff8844') },
+      uSssThickness: { value: 1.0 },
+      
+      // Atmosphere
+      uFogEnabled: { value: true },
+      uFogContribution: { value: 1.0 },
+      uInternalFogDensity: { value: 0.0 },
+
       // Fresnel
       uFresnelEnabled: { value: true },
       uFresnelIntensity: { value: 0.5 },
@@ -528,6 +540,28 @@ const QuaternionJuliaMesh = () => {
       lightStore.specularColor
     )
     u.uDiffuseIntensity.value = lightStore.diffuseIntensity
+    
+    // Advanced Rendering
+    if (u.uRoughness) u.uRoughness.value = config.roughness
+    if (u.uSssEnabled) u.uSssEnabled.value = config.sssEnabled
+    if (u.uSssIntensity) u.uSssIntensity.value = config.sssIntensity
+    if (u.uSssColor) {
+        updateLinearColorUniform(colorCacheRef.current.faceColor /* reuse helper */, u.uSssColor.value as THREE.Color, config.sssColor || '#ff8844')
+    }
+    if (u.uSssThickness) u.uSssThickness.value = config.sssThickness
+    
+    // Atmosphere
+    if (u.uFogEnabled) u.uFogEnabled.value = config.fogEnabled
+    if (u.uFogContribution) u.uFogContribution.value = config.fogContribution
+    if (u.uInternalFogDensity) u.uInternalFogDensity.value = config.internalFogDensity
+    
+    // LOD
+    if (config.lodEnabled && u.uQualityMultiplier) {
+        const distance = camera.position.length()
+        const perfQuality = perfStore.qualityMultiplier ?? 1.0
+        const lodFactor = THREE.MathUtils.clamp(1.0 - (distance - 2.0) / 8.0 * 0.75, 0.25, 1.0)
+        u.uQualityMultiplier.value = perfQuality * lodFactor * (config.lodDetail ?? 1.0)
+    }
 
     // Update fresnel
     u.uFresnelEnabled.value = appStore.edgesVisible

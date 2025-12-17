@@ -15,6 +15,25 @@ uniform float uMixTime;               // Animated time for mixing matrix
 
 // Phase Shift uniforms (angular twisting)
 uniform bool uPhaseEnabled;
-uniform float uPhaseTheta;            // Phase offset for theta angle
-uniform float uPhasePhi;              // Phase offset for phi angle
+uniform float uPhaseTheta;
+uniform float uPhasePhi;
+
+// Advanced Rendering
+uniform float uRoughness;         // GGX roughness (0.0-1.0)
+uniform bool uSssEnabled;         // Enable subsurface scattering
+uniform float uSssIntensity;      // SSS intensity
+uniform vec3 uSssColor;           // SSS tint color
+uniform float uSssThickness;      // SSS thickness factor
+
+// Atmosphere
+uniform bool uFogEnabled;         // Enable scene fog
+uniform float uFogContribution;   // Fog contribution
+uniform float uInternalFogDensity;// Internal fog density (0.0-1.0)
+
+// LOD
+uniform bool uLodEnabled;         // Enable distance-adaptive LOD
+uniform float uLodDetail;         // Detail multiplier (epsilon scalar)
+
+// Animation bias
+uniform float uBias[11];
 `;

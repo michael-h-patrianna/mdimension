@@ -18,10 +18,13 @@ Your task is to optimize the rendering performance to ensure high frame rates an
 2. Understand the existing rendering pipeline and shaders used for rendering n-dimensional objects.
 3. Understand the math behind the n-dimensional to 3D projection and the underlying algorithms.
 4. Identify performance bottlenecks in the rendering pipeline and mathematical computations.
-5. Identifty 25 opportunities to optimize CPU, GPU or memory usage.
-6. Identify 10 opportunities to reduce power consumption during rendering.
-7. Plan and implement the optimizations in a systematic manner.
-8. Do a full code review and fix any bugss, inefficiencies or redundant code that may impact performance.
+5. Identify any bug of any type and severity, no matter if it impacts performance or not. All bugs must be fixed.
+6. Identify any unused code, redundant calculations or inefficient algorithms that can be optimized. All such issues must be fixed.
+7. Identify any unsecure coding practices that may lead to performance issues or crashes or instability. All such issues must be fixed. Decide whether to refactor or to remove such code. Unfinished features that are clearly meant to be working features must be completed.
+8. Identifty 25 opportunities to optimize CPU, GPU or memory usage.
+9. Identify 10 opportunities to reduce power consumption during rendering.
+10. Plan and implement the optimizations in a systematic manner.
+11. Do a full code review and fix any bugss, inefficiencies or redundant code that may impact performance.
 
 ## Constraints
 - Maintain visual fidelity while optimizing performance.

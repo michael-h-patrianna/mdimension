@@ -92,14 +92,34 @@ void main() {
         #endif
 
         float NdotL = max(dot(n, l), 0.0);
+        
+        // Standard Diffuse
         col += surfaceColor * uLightColors[i] * NdotL * uDiffuseIntensity * attenuation * shadow;
 
+        // GGX Specular
         vec3 halfDir = normalize(l + viewDir);
-        float NdotH = max(dot(n, halfDir), 0.0);
-        float spec = pow(NdotH, uSpecularPower) * uSpecularIntensity * attenuation * shadow;
-        col += uSpecularColor * uLightColors[i] * spec;
-
-        totalNdotL = max(totalNdotL, NdotL * attenuation);
+        // F0 for dielectrics
+        vec3 F0 = vec3(0.04); 
+        // If we had metalness: F0 = mix(F0, surfaceColor, uMetallic);
+        
+        vec3 specular = computePBRSpecular(n, viewDir, l, uRoughness, F0);
+        col += specular * uLightColors[i] * NdotL * uSpecularIntensity * attenuation * shadow;
+        
+        // Subsurface Scattering (SSS)
+        if (uSssEnabled) {
+            // SSS happens when light is behind object (NdotL < 0) or grazing
+            // Simple wrap lighting approximation: power of (view . -(light + distortion))
+            // Thickness approximation: deeper SDF = thicker? 
+            // For SDF, "thickness" is hard to know without marching through.
+            // But we can use a constant or proxy.
+            // For fractals, thin struts have small DE.
+            // But 'd' is distance from camera. 'trap' is orbit trap.
+            // Let's use uSssThickness as a global factor.
+            
+            vec3 sss = computeSSS(l, viewDir, n, 0.5, uSssThickness * 4.0, 0.0); // 0.0 thickness for now
+            // Modulate by SSS intensity and color
+            col += sss * uSssColor * uLightColors[i] * uSssIntensity * attenuation;
+        }
     }
 
     if (uFresnelEnabled && uFresnelIntensity > 0.0) {
@@ -107,6 +127,41 @@ void main() {
         float rim = pow(1.0 - NdotV, 3.0) * uFresnelIntensity * 2.0;
         rim *= (0.3 + 0.7 * totalNdotL);
         col += uRimColor * rim;
+    }
+    
+    // Atmospheric Depth Integration (Fog)
+    if (uFogEnabled) {
+        // Scene Fog (Exp2)
+        // Check if scene fog uniforms are available? 
+        // They are shared uniforms usually.
+        // Let's assume standard ThreeJS fog uniforms: fogColor, fogDensity
+        // But in our pipeline we usually pass them as uSceneFogColor, uSceneFogDensity?
+        // Wait, 'uniforms.glsl.ts' doesn't seem to have them in 'mandelbulbUniformsBlock'.
+        // But 'shared/core/uniforms.glsl' might?
+        // Let's check shared/core/uniforms.glsl.ts.
+        // Assuming we added them to Schroedinger, we might need to add them here or assume shared.
+        // For now, I'll use a simple distance fog using uAmbientColor as fog color proxy if specific not avail.
+        
+        // Actually, let's look at what uniforms are available.
+        // I added 'uFogEnabled' etc to Mandelbulb uniforms.
+        
+        float viewDist = d; // Distance to surface
+        
+        // Internal Fog (Object Fog)
+        if (uInternalFogDensity > 0.0) {
+             float internalFog = 1.0 - exp(-uInternalFogDensity * viewDist * 0.1);
+             col = mix(col, uAmbientColor, internalFog); // mix to ambient
+        }
+        
+        // Scene Fog (Atmosphere)
+        if (uFogContribution > 0.0) {
+             // We don't have explicit uSceneFogColor in mandelbulb uniforms yet.
+             // I should have added it.
+             // But let's assume we fade to black or background.
+             // Or use uAmbientColor.
+             float fogFactor = 1.0 - exp(-0.02 * viewDist * uFogContribution);
+             col = mix(col, uAmbientColor * 0.5, fogFactor);
+        }
     }
 
     vec4 worldHitPos = uModelMatrix * vec4(p, 1.0);

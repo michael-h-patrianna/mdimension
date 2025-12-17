@@ -833,6 +833,32 @@ export interface MandelbulbConfig {
    * How aggressively to correct toward the boundary.
    */
   boundaryTargetCorrectionStrength: number
+
+  // === Advanced Rendering ===
+  /** Surface roughness for GGX specular (0.0-1.0) */
+  roughness: number
+  /** Enable subsurface scattering */
+  sssEnabled: boolean
+  /** SSS intensity (0.0-2.0) */
+  sssIntensity: number
+  /** SSS tint color (hex) */
+  sssColor: string
+  /** SSS thickness (0.1-5.0) */
+  sssThickness: number
+  
+  // === Atmosphere ===
+  /** Enable scene fog integration */
+  fogEnabled: boolean
+  /** Fog contribution (0.0-2.0) */
+  fogContribution: number
+  /** Internal fog density (0.0-1.0) */
+  internalFogDensity: number
+  
+  // === LOD ===
+  /** Enable distance-adaptive LOD */
+  lodEnabled: boolean
+  /** Detail multiplier for LOD (0.1-2.0) */
+  lodDetail: number
 }
 
 /**
@@ -926,6 +952,22 @@ export const DEFAULT_MANDELBROT_CONFIG: MandelbulbConfig = {
   boundaryTargetEscapeRatio: 0.7,
   boundaryTargetBand: 0.2,
   boundaryTargetCorrectionStrength: 0.03,
+
+  // Advanced Rendering
+  roughness: 0.3,
+  sssEnabled: false,
+  sssIntensity: 1.0,
+  sssColor: '#ff8844',
+  sssThickness: 1.0,
+  
+  // Atmosphere
+  fogEnabled: true,
+  fogContribution: 1.0,
+  internalFogDensity: 0.0,
+  
+  // LOD
+  lodEnabled: true,
+  lodDetail: 1.0,
 }
 
 // ============================================================================
@@ -1445,6 +1487,32 @@ export interface QuaternionJuliaConfig {
   shadowSoftness: number
   /** Shadow animation mode: 0=Pause, 1=Low, 2=Full */
   shadowAnimationMode: number
+
+  // === Advanced Rendering ===
+  /** Surface roughness for GGX specular (0.0-1.0) */
+  roughness: number
+  /** Enable subsurface scattering */
+  sssEnabled: boolean
+  /** SSS intensity (0.0-2.0) */
+  sssIntensity: number
+  /** SSS tint color (hex) */
+  sssColor: string
+  /** SSS thickness (0.1-5.0) */
+  sssThickness: number
+  
+  // === Atmosphere ===
+  /** Enable scene fog integration */
+  fogEnabled: boolean
+  /** Fog contribution (0.0-2.0) */
+  fogContribution: number
+  /** Internal fog density (0.0-1.0) */
+  internalFogDensity: number
+  
+  // === LOD ===
+  /** Enable distance-adaptive LOD */
+  lodEnabled: boolean
+  /** Detail multiplier for LOD (0.1-2.0) */
+  lodDetail: number
 }
 
 /**
@@ -1509,6 +1577,22 @@ export const DEFAULT_QUATERNION_JULIA_CONFIG: QuaternionJuliaConfig = {
   shadowQuality: 1, // Medium
   shadowSoftness: 1.0,
   shadowAnimationMode: 1, // Low
+
+  // Advanced Rendering
+  roughness: 0.3,
+  sssEnabled: false,
+  sssIntensity: 1.0,
+  sssColor: '#ff8844',
+  sssThickness: 1.0,
+  
+  // Atmosphere
+  fogEnabled: true,
+  fogContribution: 1.0,
+  internalFogDensity: 0.0,
+  
+  // LOD
+  lodEnabled: true,
+  lodDetail: 1.0,
 }
 
 

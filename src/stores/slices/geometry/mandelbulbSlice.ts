@@ -605,4 +605,73 @@ export const createMandelbulbSlice: StateCreator<ExtendedObjectSlice, [], [], Ma
       },
     }))
   },
+
+  // --- Advanced Rendering Actions ---
+  setMandelbulbRoughness: (value) => {
+    const clamped = Math.max(0.0, Math.min(1.0, value))
+    set((state) => ({
+      mandelbulb: { ...state.mandelbulb, roughness: clamped },
+    }))
+  },
+
+  setMandelbulbSssEnabled: (value) => {
+    set((state) => ({
+      mandelbulb: { ...state.mandelbulb, sssEnabled: value },
+    }))
+  },
+
+  setMandelbulbSssIntensity: (value) => {
+    const clamped = Math.max(0.0, Math.min(2.0, value))
+    set((state) => ({
+      mandelbulb: { ...state.mandelbulb, sssIntensity: clamped },
+    }))
+  },
+
+  setMandelbulbSssColor: (value) => {
+    set((state) => ({
+      mandelbulb: { ...state.mandelbulb, sssColor: value },
+    }))
+  },
+
+  setMandelbulbSssThickness: (value) => {
+    const clamped = Math.max(0.1, Math.min(5.0, value))
+    set((state) => ({
+      mandelbulb: { ...state.mandelbulb, sssThickness: clamped },
+    }))
+  },
+
+  // --- Atmosphere Actions ---
+  setMandelbulbFogEnabled: (value) => {
+    set((state) => ({
+      mandelbulb: { ...state.mandelbulb, fogEnabled: value },
+    }))
+  },
+
+  setMandelbulbFogContribution: (value) => {
+    const clamped = Math.max(0.0, Math.min(2.0, value))
+    set((state) => ({
+      mandelbulb: { ...state.mandelbulb, fogContribution: clamped },
+    }))
+  },
+
+  setMandelbulbInternalFogDensity: (value) => {
+    const clamped = Math.max(0.0, Math.min(1.0, value))
+    set((state) => ({
+      mandelbulb: { ...state.mandelbulb, internalFogDensity: clamped },
+    }))
+  },
+
+  // --- LOD Actions ---
+  setMandelbulbLodEnabled: (value) => {
+    set((state) => ({
+      mandelbulb: { ...state.mandelbulb, lodEnabled: value },
+    }))
+  },
+
+  setMandelbulbLodDetail: (value) => {
+    const clamped = Math.max(0.1, Math.min(2.0, value))
+    set((state) => ({
+      mandelbulb: { ...state.mandelbulb, lodDetail: clamped },
+    }))
+  },
 })

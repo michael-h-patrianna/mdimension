@@ -6,6 +6,8 @@ import { cosinePaletteBlock } from '../shared/color/cosine-palette.glsl';
 import { oklabBlock } from '../shared/color/oklab.glsl';
 import { selectorBlock } from '../shared/color/selector.glsl';
 import { fresnelBlock } from '../shared/lighting/fresnel.glsl';
+import { ggxBlock } from '../shared/lighting/ggx.glsl';
+import { sssBlock } from '../shared/lighting/sss.glsl';
 import { multiLightBlock } from '../shared/lighting/multi-light.glsl';
 import { shadowsBlock } from '../shared/features/shadows.glsl';
 import { aoBlock } from '../shared/features/ao.glsl';
@@ -66,6 +68,8 @@ export function composeJuliaShader(config: ShaderConfig) {
     { name: 'Color (Oklab)', content: oklabBlock },
     { name: 'Color Selector', content: selectorBlock },
     { name: 'Lighting (Fresnel)', content: fresnelBlock },
+    { name: 'Lighting (GGX)', content: ggxBlock },
+    { name: 'Lighting (SSS)', content: sssBlock },
     { name: 'SDF Julia 3D', content: sdf3dBlock },
     { name: 'Dispatch', content: dispatchBlock },
     { name: 'Temporal Features', content: temporalBlock, condition: enableTemporal },

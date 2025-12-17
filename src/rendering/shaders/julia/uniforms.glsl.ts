@@ -10,4 +10,20 @@ uniform float uAnimatedPower;
 uniform bool uDimensionMixEnabled;
 uniform float uMixIntensity;
 uniform float uMixTime;
+
+// Advanced Rendering
+uniform float uRoughness;         // GGX roughness (0.0-1.0)
+uniform bool uSssEnabled;         // Enable subsurface scattering
+uniform float uSssIntensity;      // SSS intensity
+uniform vec3 uSssColor;           // SSS tint color
+uniform float uSssThickness;      // SSS thickness factor
+
+// Atmosphere
+uniform bool uFogEnabled;         // Enable scene fog
+uniform float uFogContribution;   // Fog contribution
+uniform float uInternalFogDensity;// Internal fog density (0.0-1.0)
+
+// LOD
+uniform bool uLodEnabled;         // Enable distance-adaptive LOD
+uniform float uLodDetail;         // Detail multiplier (epsilon scalar)
 `;
