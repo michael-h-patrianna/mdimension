@@ -50,3 +50,20 @@ MANDATORY QUALITY GATE
 both these tests must pass for success:
 1. deactivate the object rendering for debugging. if you then take the color of the pixel in the center of the scene, it will not be black if everything is working.
 2. with the object rendering active, check the debug texture of the temporal debug buffer. check the color value of the pixel in the center and the value of the pixel in position 1,1. both pixels will have different colors if everything works.
+
+Plan and implement this optimization:
+When any of these post-processing effects is set to a setting where they have no visible impact, they get completely disabled and do not use any CPU or GPU computation resources (the slider that should disable the effect fully when set to 0 in brackets):
+- Grain (Grain)
+- Vignette (Vignette)
+- Tone Mapping (Exposure)
+- Bloom (Intensity)
+- Bokeh (Blur intensity)
+- SSR (Intensity)
+- Refraction (Strength)
+
+after this refactor, remove the now obsolete on/off toggle switches for
+- Bloom
+- SSR
+- Refraction
+- Tone Mapping
+- Bokeh

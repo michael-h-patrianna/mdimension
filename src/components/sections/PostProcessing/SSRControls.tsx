@@ -47,14 +47,12 @@ export const SSRControls: React.FC<SSRControlsProps> = React.memo(({
   className = '',
 }) => {
   const {
-    ssrEnabled,
     ssrIntensity,
     ssrMaxDistance,
     ssrThickness,
     ssrFadeStart,
     ssrFadeEnd,
     ssrQuality,
-    setSSREnabled,
     setSSRIntensity,
     setSSRMaxDistance,
     setSSRThickness,
@@ -64,7 +62,6 @@ export const SSRControls: React.FC<SSRControlsProps> = React.memo(({
   } = usePostProcessingStore(
     useShallow((state) => ({
       // State
-      ssrEnabled: state.ssrEnabled,
       ssrIntensity: state.ssrIntensity,
       ssrMaxDistance: state.ssrMaxDistance,
       ssrThickness: state.ssrThickness,
@@ -72,7 +69,6 @@ export const SSRControls: React.FC<SSRControlsProps> = React.memo(({
       ssrFadeEnd: state.ssrFadeEnd,
       ssrQuality: state.ssrQuality,
       // Actions
-      setSSREnabled: state.setSSREnabled,
       setSSRIntensity: state.setSSRIntensity,
       setSSRMaxDistance: state.setSSRMaxDistance,
       setSSRThickness: state.setSSRThickness,
@@ -84,16 +80,6 @@ export const SSRControls: React.FC<SSRControlsProps> = React.memo(({
 
   return (
     <div className={`space-y-4 ${className}`}>
-      {/* Enable/Disable SSR */}
-      <Switch
-        checked={ssrEnabled}
-        onCheckedChange={setSSREnabled}
-        label="Screen-Space Reflections"
-      />
-
-      {/* SSR controls - only visible when enabled */}
-      {ssrEnabled && (
-        <>
           {/* Quality */}
           <Select
             label="Quality"
@@ -111,7 +97,6 @@ export const SSRControls: React.FC<SSRControlsProps> = React.memo(({
             step={0.05}
             value={ssrIntensity}
             onChange={setSSRIntensity}
-            onReset={() => setSSRIntensity(DEFAULT_SSR_INTENSITY)}
             showValue
           />
 
@@ -123,7 +108,6 @@ export const SSRControls: React.FC<SSRControlsProps> = React.memo(({
             step={1}
             value={ssrMaxDistance}
             onChange={setSSRMaxDistance}
-            onReset={() => setSSRMaxDistance(DEFAULT_SSR_MAX_DISTANCE)}
             showValue
           />
 
@@ -135,7 +119,6 @@ export const SSRControls: React.FC<SSRControlsProps> = React.memo(({
             step={0.05}
             value={ssrThickness}
             onChange={setSSRThickness}
-            onReset={() => setSSRThickness(DEFAULT_SSR_THICKNESS)}
             showValue
           />
 
@@ -147,7 +130,6 @@ export const SSRControls: React.FC<SSRControlsProps> = React.memo(({
             step={0.05}
             value={ssrFadeStart}
             onChange={setSSRFadeStart}
-            onReset={() => setSSRFadeStart(DEFAULT_SSR_FADE_START)}
             showValue
           />
 
@@ -159,11 +141,8 @@ export const SSRControls: React.FC<SSRControlsProps> = React.memo(({
             step={0.05}
             value={ssrFadeEnd}
             onChange={setSSRFadeEnd}
-            onReset={() => setSSRFadeEnd(DEFAULT_SSR_FADE_END)}
             showValue
           />
-        </>
-      )}
     </div>
   );
 });

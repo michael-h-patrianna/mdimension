@@ -39,16 +39,12 @@ export const Section: React.FC<SectionProps> = ({
     <div 
       ref={sectionRef}
       className={`
-        group rounded-lg transition-all duration-300 relative overflow-hidden mb-2
-        ${isOpen 
-          ? 'bg-white/[0.02] border border-white/10 shadow-sm' 
-          : 'bg-transparent border border-transparent hover:bg-white/5'
-        } 
+        group relative overflow-hidden border-b border-white/5 last:border-b-0
         ${className}
       `}
       data-testid={dataTestId}
     >
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between bg-white/5 border-b border-white/5 hover:bg-white/10 transition-colors duration-200">
         <button
           type="button"
           onClick={() => {
@@ -61,7 +57,7 @@ export const Section: React.FC<SectionProps> = ({
                 }, 100);
             }
           }}
-          className="flex-1 flex items-center justify-between py-2.5 px-3 text-left focus:outline-none rounded-lg z-10"
+          className="flex-1 flex items-center justify-between py-3 px-4 text-left focus:outline-none z-10"
           aria-expanded={isOpen}
           data-testid={dataTestId ? `${dataTestId}-header` : undefined}
         >
@@ -113,7 +109,7 @@ export const Section: React.FC<SectionProps> = ({
               e.stopPropagation();
               onReset();
             }}
-            className="mr-2 p-1 text-text-tertiary hover:text-accent transition-colors rounded hover:bg-white/10 relative z-20"
+            className="mr-3 p-1 text-text-tertiary hover:text-accent transition-colors rounded hover:bg-white/10 relative z-20"
             title={`Reset ${title} settings`}
             data-testid={dataTestId ? `${dataTestId}-reset` : undefined}
           >
@@ -125,9 +121,6 @@ export const Section: React.FC<SectionProps> = ({
         )}
       </div>
       
-      {/* Separator - Visible only when open */}
-      {isOpen && <div className="mx-3 h-[1px] bg-white/5" />}
-
       <AnimatePresence initial={false}>
         {isOpen && (
           <m.div
@@ -136,9 +129,9 @@ export const Section: React.FC<SectionProps> = ({
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ type: "spring", stiffness: 400, damping: 30, mass: 0.8 }}
-            className="overflow-hidden"
+            className="overflow-hidden bg-black/10"
           >
-            <div className="px-3 pb-4 pt-4 space-y-5">
+            <div className="px-4 pb-4 pt-2 space-y-5">
               {children}
             </div>
           </m.div>

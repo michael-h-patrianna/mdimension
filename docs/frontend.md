@@ -202,7 +202,6 @@ export function {Name}Renderer({
   step={1}
   value={value}
   onChange={setValue}
-  onReset={() => setValue(defaultValue)}
   showValue
   disabled={false}
 />

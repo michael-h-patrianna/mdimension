@@ -367,7 +367,6 @@ const ColorsTabContent: React.FC<ColorsTabContentProps> = ({
             step={0.01}
             value={lchLightness}
             onChange={setLchLightness}
-            onReset={() => setLchLightness(DEFAULT_LCH_LIGHTNESS)}
             showValue
           />
           <Slider
@@ -377,7 +376,6 @@ const ColorsTabContent: React.FC<ColorsTabContentProps> = ({
             step={0.01}
             value={lchChroma}
             onChange={setLchChroma}
-            onReset={() => setLchChroma(DEFAULT_LCH_CHROMA)}
             showValue
           />
           <DistributionControls />
@@ -543,7 +541,6 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
               step={SIMPLE_ALPHA_RANGE.step}
               value={simpleAlphaOpacity}
               onChange={onSimpleAlphaChange}
-              onReset={() => onSimpleAlphaChange(SIMPLE_ALPHA_RANGE.default)}
               showValue
             />
           )}
@@ -574,7 +571,6 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
                 step={LAYER_OPACITY_RANGE.step}
                 value={layerOpacity}
                 onChange={onLayerOpacityChange}
-                onReset={() => onLayerOpacityChange(LAYER_OPACITY_RANGE.default)}
                 showValue
               />
             </>
@@ -590,7 +586,6 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
                 step={VOLUMETRIC_DENSITY_RANGE.step}
                 value={volumetricDensity}
                 onChange={onVolumetricDensityChange}
-                onReset={() => onVolumetricDensityChange(VOLUMETRIC_DENSITY_RANGE.default)}
                 showValue
               />
               <div className="space-y-2">
@@ -643,7 +638,6 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
           step={0.1}
           value={faceOpacity}
           onChange={setFaceOpacity}
-          onReset={() => setFaceOpacity(DEFAULT_SURFACE_SETTINGS.faceOpacity)}
           showValue
           data-testid="slider-face-opacity"
         />
@@ -661,7 +655,6 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
             step={0.01}
             value={diffuseIntensity}
             onChange={setDiffuseIntensity}
-            onReset={() => setDiffuseIntensity(DEFAULT_DIFFUSE_INTENSITY)}
             showValue
           />
 
@@ -696,7 +689,6 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
             step={0.1}
             value={specularIntensity}
             onChange={setSpecularIntensity}
-            onReset={() => setSpecularIntensity(DEFAULT_SPECULAR_INTENSITY)}
             showValue
           />
 
@@ -708,7 +700,6 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
             step={1}
             value={shininess}
             onChange={setShininess}
-            onReset={() => setShininess(DEFAULT_SHININESS)}
             showValue
           />
         </>
@@ -778,7 +769,6 @@ const FxTabContent: React.FC<FxTabContentProps> = ({
           step={0.1}
           value={fresnelIntensity}
           onChange={setFresnelIntensity}
-          onReset={() => setFresnelIntensity(DEFAULT_FRESNEL_INTENSITY)}
           showValue
         />
       )}
@@ -830,7 +820,6 @@ const FxTabContent: React.FC<FxTabContentProps> = ({
                 step={SHADOW_SOFTNESS_RANGE.step}
                 value={shadowSoftness}
                 onChange={onShadowSoftnessChange}
-                onReset={() => onShadowSoftnessChange(DEFAULT_SHADOW_SOFTNESS)}
                 showValue
                 data-testid="shadow-softness-slider"
               />
@@ -893,7 +882,6 @@ const MultiSourceWeightsEditor: React.FC = () => {
         step={0.1}
         value={multiSourceWeights.depth}
         onChange={(value) => setMultiSourceWeights({ depth: value })}
-        onReset={() => setMultiSourceWeights({ depth: 0.5 })}
         showValue
         tooltip="Weight for depth/iteration-based coloring"
       />
@@ -905,7 +893,6 @@ const MultiSourceWeightsEditor: React.FC = () => {
         step={0.1}
         value={multiSourceWeights.orbitTrap}
         onChange={(value) => setMultiSourceWeights({ orbitTrap: value })}
-        onReset={() => setMultiSourceWeights({ orbitTrap: 0.3 })}
         showValue
         tooltip="Weight for orbit trap coloring (fractals)"
       />
@@ -917,7 +904,6 @@ const MultiSourceWeightsEditor: React.FC = () => {
         step={0.1}
         value={multiSourceWeights.normal}
         onChange={(value) => setMultiSourceWeights({ normal: value })}
-        onReset={() => setMultiSourceWeights({ normal: 0.2 })}
         showValue
         tooltip="Weight for normal direction-based coloring"
       />

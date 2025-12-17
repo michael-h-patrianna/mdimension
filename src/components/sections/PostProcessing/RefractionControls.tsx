@@ -35,23 +35,19 @@ export const RefractionControls: React.FC<RefractionControlsProps> = React.memo(
   className = '',
 }) => {
   const {
-    refractionEnabled,
     refractionIOR,
     refractionStrength,
     refractionChromaticAberration,
-    setRefractionEnabled,
     setRefractionIOR,
     setRefractionStrength,
     setRefractionChromaticAberration,
   } = usePostProcessingStore(
     useShallow((state) => ({
       // State
-      refractionEnabled: state.refractionEnabled,
       refractionIOR: state.refractionIOR,
       refractionStrength: state.refractionStrength,
       refractionChromaticAberration: state.refractionChromaticAberration,
       // Actions
-      setRefractionEnabled: state.setRefractionEnabled,
       setRefractionIOR: state.setRefractionIOR,
       setRefractionStrength: state.setRefractionStrength,
       setRefractionChromaticAberration: state.setRefractionChromaticAberration,
@@ -60,16 +56,6 @@ export const RefractionControls: React.FC<RefractionControlsProps> = React.memo(
 
   return (
     <div className={`space-y-4 ${className}`}>
-      {/* Enable/Disable Refraction */}
-      <Switch
-        checked={refractionEnabled}
-        onCheckedChange={setRefractionEnabled}
-        label="Screen-Space Refraction"
-      />
-
-      {/* Refraction controls - only visible when enabled */}
-      {refractionEnabled && (
-        <>
           {/* Index of Refraction */}
           <Slider
             label="IOR (Index of Refraction)"
@@ -78,7 +64,6 @@ export const RefractionControls: React.FC<RefractionControlsProps> = React.memo(
             step={0.05}
             value={refractionIOR}
             onChange={setRefractionIOR}
-            onReset={() => setRefractionIOR(DEFAULT_REFRACTION_IOR)}
             showValue
           />
 
@@ -90,7 +75,6 @@ export const RefractionControls: React.FC<RefractionControlsProps> = React.memo(
             step={0.05}
             value={refractionStrength}
             onChange={setRefractionStrength}
-            onReset={() => setRefractionStrength(DEFAULT_REFRACTION_STRENGTH)}
             showValue
           />
 
@@ -102,11 +86,8 @@ export const RefractionControls: React.FC<RefractionControlsProps> = React.memo(
             step={0.01}
             value={refractionChromaticAberration}
             onChange={setRefractionChromaticAberration}
-            onReset={() => setRefractionChromaticAberration(DEFAULT_REFRACTION_CHROMATIC_ABERRATION)}
             showValue
           />
-        </>
-      )}
     </div>
   );
 });

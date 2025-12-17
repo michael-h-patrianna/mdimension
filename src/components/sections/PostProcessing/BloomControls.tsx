@@ -35,7 +35,6 @@
 import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { Slider } from '@/components/ui/Slider';
-import { Switch } from '@/components/ui/Switch';
 import {
   DEFAULT_BLOOM_INTENSITY,
   DEFAULT_BLOOM_THRESHOLD,
@@ -57,23 +56,19 @@ export const BloomControls: React.FC<BloomControlsProps> = React.memo(({
 }) => {
   // Consolidate all visual store subscriptions with useShallow to reduce re-renders
   const {
-    bloomEnabled,
     bloomIntensity,
     bloomThreshold,
     bloomRadius,
-    setBloomEnabled,
     setBloomIntensity,
     setBloomThreshold,
     setBloomRadius,
   } = usePostProcessingStore(
     useShallow((state) => ({
       // State
-      bloomEnabled: state.bloomEnabled,
       bloomIntensity: state.bloomIntensity,
       bloomThreshold: state.bloomThreshold,
       bloomRadius: state.bloomRadius,
       // Actions
-      setBloomEnabled: state.setBloomEnabled,
       setBloomIntensity: state.setBloomIntensity,
       setBloomThreshold: state.setBloomThreshold,
       setBloomRadius: state.setBloomRadius,
@@ -82,16 +77,6 @@ export const BloomControls: React.FC<BloomControlsProps> = React.memo(({
 
   return (
     <div className={`space-y-4 ${className}`}>
-      {/* Enable/Disable Bloom */}
-      <Switch
-        checked={bloomEnabled}
-        onCheckedChange={setBloomEnabled}
-        label="Bloom"
-      />
-
-      {/* Bloom controls - only visible when enabled */}
-      {bloomEnabled && (
-        <>
           {/* Intensity */}
           <Slider
             label="Intensity"
@@ -100,7 +85,6 @@ export const BloomControls: React.FC<BloomControlsProps> = React.memo(({
             step={0.1}
             value={bloomIntensity}
             onChange={setBloomIntensity}
-            onReset={() => setBloomIntensity(DEFAULT_BLOOM_INTENSITY)}
             showValue
           />
 
@@ -112,7 +96,6 @@ export const BloomControls: React.FC<BloomControlsProps> = React.memo(({
             step={0.05}
             value={bloomThreshold}
             onChange={setBloomThreshold}
-            onReset={() => setBloomThreshold(DEFAULT_BLOOM_THRESHOLD)}
             showValue
           />
 
@@ -124,11 +107,8 @@ export const BloomControls: React.FC<BloomControlsProps> = React.memo(({
             step={0.05}
             value={bloomRadius}
             onChange={setBloomRadius}
-            onReset={() => setBloomRadius(DEFAULT_BLOOM_RADIUS)}
             showValue
           />
-        </>
-      )}
     </div>
   );
 });

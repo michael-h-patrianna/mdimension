@@ -57,7 +57,6 @@ export function CliffordTorusSettings() {
         step={0.1}
         value={config.radius}
         onChange={setRadius}
-        onReset={() => setRadius(DEFAULT_CLIFFORD_TORUS_CONFIG.radius)}
         showValue
         data-testid="clifford-radius"
       />
@@ -72,7 +71,6 @@ export function CliffordTorusSettings() {
             step={4}
             value={config.resolutionU}
             onChange={setResolutionU}
-            onReset={() => setResolutionU(DEFAULT_CLIFFORD_TORUS_CONFIG.resolutionU)}
             showValue
             data-testid="clifford-res-u"
           />
@@ -83,7 +81,6 @@ export function CliffordTorusSettings() {
             step={4}
             value={config.resolutionV}
             onChange={setResolutionV}
-            onReset={() => setResolutionV(DEFAULT_CLIFFORD_TORUS_CONFIG.resolutionV)}
             showValue
             data-testid="clifford-res-v"
           />
@@ -99,7 +96,6 @@ export function CliffordTorusSettings() {
           step={2}
           value={config.stepsPerCircle}
           onChange={setStepsPerCircle}
-          onReset={() => setStepsPerCircle(DEFAULT_CLIFFORD_TORUS_CONFIG.stepsPerCircle)}
           showValue
           data-testid="clifford-steps"
         />

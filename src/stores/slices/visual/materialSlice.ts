@@ -17,7 +17,13 @@ export const MATERIAL_INITIAL_STATE: MaterialSliceState = {
 export const createMaterialSlice: StateCreator<AppearanceSlice, [], [], MaterialSlice> = (set) => ({
   ...MATERIAL_INITIAL_STATE,
 
-  setEdgeThickness: (thickness) => set({ edgeThickness: Math.max(1, Math.min(5, thickness)) }),
+  setEdgeThickness: (thickness) => {
+    const clamped = Math.max(0, Math.min(5, thickness))
+    set({ 
+      edgeThickness: clamped,
+      edgesVisible: clamped > 0 
+    })
+  },
   setEdgeMetallic: (metallic) => set({ edgeMetallic: Math.max(0, Math.min(1, metallic)) }),
   setEdgeRoughness: (roughness) => set({ edgeRoughness: Math.max(0, Math.min(1, roughness)) }),
   setFaceOpacity: (opacity) => set({ faceOpacity: Math.max(0, Math.min(1, opacity)) }),

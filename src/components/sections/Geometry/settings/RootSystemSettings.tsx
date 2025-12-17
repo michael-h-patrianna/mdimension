@@ -58,7 +58,6 @@ export function RootSystemSettings() {
         step={0.1}
         value={config.scale}
         onChange={setScale}
-        onReset={() => setScale(DEFAULT_ROOT_SYSTEM_CONFIG.scale)}
         showValue
         data-testid="root-system-scale"
       />

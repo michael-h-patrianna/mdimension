@@ -8,10 +8,10 @@ import { Tabs } from '@/components/ui/Tabs';
 import React, { useState } from 'react';
 import { BloomControls } from './BloomControls';
 import { BokehControls } from './BokehControls';
+import { CinematicControls } from './CinematicControls';
 import { MiscControls } from './MiscControls';
 import { RefractionControls } from './RefractionControls';
 import { SSRControls } from './SSRControls';
-import { ToneMappingControls } from './ToneMappingControls';
 
 export interface PostProcessingSectionProps {
   defaultOpen?: boolean;
@@ -36,9 +36,9 @@ export const PostProcessingSection: React.FC<PostProcessingSectionProps> = ({
             content: <BloomControls />,
           },
           {
-            id: 'tonemapping',
-            label: 'Tone Map',
-            content: <ToneMappingControls />,
+            id: 'cinematic',
+            label: 'Cinematic',
+            content: <CinematicControls />,
           },
           {
             id: 'bokeh',

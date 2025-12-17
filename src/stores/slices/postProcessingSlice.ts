@@ -82,6 +82,12 @@ export interface PostProcessingSliceState {
   antiAliasingMethod: AntiAliasingMethod
   smaaThreshold: number
 
+  // --- Cinematic ---
+  cinematicEnabled: boolean
+  cinematicAberration: number
+  cinematicVignette: number
+  cinematicGrain: number
+
   // --- Depth Buffer ---
   /** When true, depth-based effects exclude walls/environment. When false, walls are included. */
   objectOnlyDepth: boolean
@@ -123,6 +129,12 @@ export interface PostProcessingSliceActions {
   // --- Anti-aliasing Actions ---
   setAntiAliasingMethod: (method: AntiAliasingMethod) => void
   setSmaaThreshold: (threshold: number) => void
+
+  // --- Cinematic Actions ---
+  setCinematicEnabled: (enabled: boolean) => void
+  setCinematicAberration: (intensity: number) => void
+  setCinematicVignette: (intensity: number) => void
+  setCinematicGrain: (intensity: number) => void
 
   // --- Depth Buffer Actions ---
   setObjectOnlyDepth: (objectOnly: boolean) => void
@@ -170,6 +182,12 @@ export const POST_PROCESSING_INITIAL_STATE: PostProcessingSliceState = {
   // Anti-aliasing
   antiAliasingMethod: DEFAULT_ANTI_ALIASING_METHOD,
   smaaThreshold: DEFAULT_SMAA_THRESHOLD,
+
+  // Cinematic
+  cinematicEnabled: false,
+  cinematicAberration: 0.005,
+  cinematicVignette: 1.2,
+  cinematicGrain: 0.0,
 
   // Depth Buffer
   objectOnlyDepth: DEFAULT_OBJECT_ONLY_DEPTH,
@@ -301,6 +319,23 @@ export const createPostProcessingSlice: StateCreator<
   setSmaaThreshold: (threshold: number) => {
     // Clamp to valid range: 0.01 (very aggressive) to 0.2 (subtle)
     set({ smaaThreshold: Math.max(0.01, Math.min(0.2, threshold)) })
+  },
+
+  // --- Cinematic Actions ---
+  setCinematicEnabled: (enabled: boolean) => {
+    set({ cinematicEnabled: enabled })
+  },
+
+  setCinematicAberration: (intensity: number) => {
+    set({ cinematicAberration: Math.max(0, Math.min(0.1, intensity)) })
+  },
+
+  setCinematicVignette: (intensity: number) => {
+    set({ cinematicVignette: Math.max(0, Math.min(3.0, intensity)) })
+  },
+
+  setCinematicGrain: (intensity: number) => {
+    set({ cinematicGrain: Math.max(0, Math.min(0.2, intensity)) })
   },
 
   // --- Depth Buffer Actions ---

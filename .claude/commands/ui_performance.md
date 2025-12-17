@@ -1,5 +1,7 @@
-description = """Optimize performance of ui."""
-prompt = """
+---
+description: Optimize performance of ui.
+---
+
 ## Test your autonomous capabilities
 Important: This prompt is a test of your autonomous capabilities and UI performance optimization capabilities. The project in this local folder is backed up and can be restored if needed. You can create, modify, and delete files as necessary to complete the tasks assigned to you. You have full autonomy to make decisions and take actions to achieve the desired outcomes.
 
@@ -30,4 +32,3 @@ This project has an advanced UI but it prioritzes visual fidelity over performan
 ## Important Reminder: This is a test of your autonomous capabilities: You are expected to take initiative and make decisions independently. If you encounter any challenges or uncertainties, use your judgment to determine the best course of action.
 
 The state of the project will be monitored, and you will be evaluated based on the effectiveness of your improvements and your ability to work autonomously. If you return to user with an incomplete task or ask for guidance, it will be considered a failure to meet the autonomous requirements of this assignment. The quality and completeness of the project in this folder will be the only criteria for success. If the task is incomplete or the project in this folder is broken, you have failed the test of your autonomous capabilities.
-"""

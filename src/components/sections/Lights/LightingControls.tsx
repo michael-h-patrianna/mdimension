@@ -118,7 +118,6 @@ export const LightingControls: React.FC<LightingControlsProps> = React.memo(({
           step={0.05}
           value={ambientIntensity}
           onChange={setAmbientIntensity}
-          onReset={() => setAmbientIntensity(DEFAULT_AMBIENT_INTENSITY)}
           showValue
           tooltip="Global ambient lighting level"
         />

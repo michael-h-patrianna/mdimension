@@ -51,7 +51,6 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
           max={120}
           step={1}
           onChange={setMaxFps}
-          onReset={() => setMaxFps(DEFAULT_MAX_FPS)}
           unit=" fps"
           tooltip="Limit frame rate to reduce power consumption"
           data-testid="max-fps-slider"

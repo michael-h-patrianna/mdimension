@@ -14,7 +14,7 @@
 import { useShallow } from 'zustand/react/shallow';
 import { Slider } from '@/components/ui/Slider';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
-import { DEFAULT_MANDELBROT_CONFIG } from '@/lib/geometry/extended/types';
+import { Section } from '@/components/sections/Section';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import React from 'react';
@@ -79,84 +79,74 @@ export const MandelbulbControls: React.FC<MandelbulbControlsProps> = React.memo(
   const dimension = useGeometryStore((state) => state.dimension);
 
   return (
-    <div className={`space-y-4 ${className}`} data-testid="mandelbulb-controls">
+    <div className={className} data-testid="mandelbulb-controls">
+      <Section title="Parameters" defaultOpen={true}>
+        {/* Max Iterations */}
+        <Slider
+          label="Max Iterations"
+          min={10}
+          max={500}
+          step={10}
+          value={config.maxIterations}
+          onChange={setMaxIterations}
+          showValue
+          data-testid="mandelbulb-iterations"
+        />
 
-      {/* Max Iterations */}
-      <Slider
-        label="Max Iterations"
-        min={10}
-        max={500}
-        step={10}
-        value={config.maxIterations}
-        onChange={setMaxIterations}
-        onReset={() => setMaxIterations(DEFAULT_MANDELBROT_CONFIG.maxIterations)}
-        showValue
-        data-testid="mandelbulb-iterations"
-      />
+        {/* Escape Radius */}
+        <Slider
+          label={dimension >= 4 ? 'Escape Radius (8+ recommended for 4D+)' : 'Escape Radius'}
+          min={2.0}
+          max={16.0}
+          step={0.5}
+          value={config.escapeRadius}
+          onChange={setEscapeRadius}
+          showValue
+          data-testid="mandelbulb-escape-radius"
+        />
 
-      {/* Escape Radius */}
-      <Slider
-        label={dimension >= 4 ? 'Escape Radius (8+ recommended for 4D+)' : 'Escape Radius'}
-        min={2.0}
-        max={16.0}
-        step={0.5}
-        value={config.escapeRadius}
-        onChange={setEscapeRadius}
-        onReset={() => setEscapeRadius(dimension >= 4 ? 8.0 : DEFAULT_MANDELBROT_CONFIG.escapeRadius)}
-        showValue
-        data-testid="mandelbulb-escape-radius"
-      />
-
-      {/* Power Control (shown for 3D+ Mandelbulb) */}
-      {dimension >= 3 && (
-        <div className="space-y-2">
-          <label className="text-xs text-text-secondary">
-            Mandelbulb Power (n={config.mandelbulbPower})
-          </label>
-          <ToggleGroup
-            options={powerPresets.map((p) => ({
-              value: String(p.value),
-              label: p.label,
-            }))}
-            value={String(config.mandelbulbPower)}
-            onChange={(v) => setMandelbulbPower(parseInt(v, 10))}
-            ariaLabel="Mandelbulb power preset"
-            data-testid="mandelbulb-power-preset"
-          />
-          <Slider
-            label="Custom Power"
-            min={2}
-            max={16}
-            step={1}
-            value={config.mandelbulbPower}
-            onChange={setMandelbulbPower}
-            onReset={() => setMandelbulbPower(DEFAULT_MANDELBROT_CONFIG.mandelbulbPower)}
-            showValue
-            data-testid="mandelbulb-power-slider"
-          />
-          <p className="text-xs text-text-tertiary">
-            {dimension === 3
-              ? 'Controls the shape of the 3D Mandelbulb fractal'
-              : `Controls the shape of the ${dimension}D Mandelbulb fractal`}
-          </p>
-        </div>
-      )}
+        {/* Power Control (shown for 3D+ Mandelbulb) */}
+        {dimension >= 3 && (
+          <div className="space-y-2">
+            <label className="text-xs text-text-secondary">
+              Mandelbulb Power (n={config.mandelbulbPower})
+            </label>
+            <ToggleGroup
+              options={powerPresets.map((p) => ({
+                value: String(p.value),
+                label: p.label,
+              }))}
+              value={String(config.mandelbulbPower)}
+              onChange={(v) => setMandelbulbPower(parseInt(v, 10))}
+              ariaLabel="Mandelbulb power preset"
+              data-testid="mandelbulb-power-preset"
+            />
+            <Slider
+              label="Custom Power"
+              min={2}
+              max={16}
+              step={1}
+              value={config.mandelbulbPower}
+              onChange={setMandelbulbPower}
+              showValue
+              data-testid="mandelbulb-power-slider"
+            />
+            <p className="text-xs text-text-tertiary">
+              {dimension === 3
+                ? 'Controls the shape of the 3D Mandelbulb fractal'
+                : `Controls the shape of the ${dimension}D Mandelbulb fractal`}
+            </p>
+          </div>
+        )}
+      </Section>
 
       {/* Slice Parameters - shown for 4D+ */}
       {dimension >= 4 && (
-        <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <label className="text-xs text-text-secondary">
-              Slice Parameters ({dimension - 3} dim{dimension > 4 ? 's' : ''})
-            </label>
-            <button
-              onClick={() => resetMandelbulbParameters()}
-              className="text-xs text-accent hover:underline"
-              data-testid="mandelbulb-reset-params"
-            >
-              Reset
-            </button>
-          </div>
+        <Section 
+          title={`Cross Section (${dimension - 3} dim${dimension > 4 ? 's' : ''})`}
+          defaultOpen={true}
+          onReset={() => resetMandelbulbParameters()}
+        >
           {Array.from({ length: dimension - 3 }, (_, i) => (
             <Slider
               key={`slice-dim-${i + 3}`}
@@ -166,7 +156,6 @@ export const MandelbulbControls: React.FC<MandelbulbControlsProps> = React.memo(
               step={0.1}
               value={config.parameterValues[i] ?? 0}
               onChange={(v) => setMandelbulbParameterValue(i, v)}
-              onReset={() => setMandelbulbParameterValue(i, 0)}
               showValue
               data-testid={`mandelbulb-slice-dim-${i + 3}`}
             />
@@ -174,11 +163,11 @@ export const MandelbulbControls: React.FC<MandelbulbControlsProps> = React.memo(
           <p className="text-xs text-text-tertiary">
             Explore different {dimension}D cross-sections
           </p>
-        </div>
+        </Section>
       )}
 
       {/* Render Mode Info */}
-      <div className="text-xs text-text-secondary border-t border-white/10 pt-2">
+      <div className="px-4 py-2 text-xs text-text-secondary border-t border-white/5">
         <p>Rendering: GPU Ray Marching</p>
       </div>
     </div>

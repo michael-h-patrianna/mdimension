@@ -1,4 +1,5 @@
 import { Slider } from '@/components/ui/Slider';
+import { Section } from '@/components/sections/Section';
 import {
   DEFAULT_POLYTOPE_CONFIG,
   DEFAULT_POLYTOPE_SCALES,
@@ -30,22 +31,23 @@ export function PolytopeSettings() {
   const maxScale = getConfigStoreKey(objectType) === 'polytope' && objectType === 'simplex' ? 8.0 : 5.0;
 
   return (
-    <div className="space-y-4" data-testid="polytope-settings">
-      {/* Scale slider with type-specific range */}
-      <Slider
-        label={`${typeName} Scale`}
-        min={0.5}
-        max={maxScale}
-        step={0.1}
-        value={config.scale}
-        onChange={setScale}
-        onReset={() => setScale(defaultScale)}
-        showValue
-        data-testid="polytope-scale"
-      />
-      <p className="text-xs text-text-secondary">
-        Vertices in [-scale, scale] per axis.
-      </p>
+    <div data-testid="polytope-settings">
+      <Section title="Settings" defaultOpen={true}>
+        {/* Scale slider with type-specific range */}
+        <Slider
+          label={`${typeName} Scale`}
+          min={0.5}
+          max={maxScale}
+          step={0.1}
+          value={config.scale}
+          onChange={setScale}
+          showValue
+          data-testid="polytope-scale"
+        />
+        <p className="text-xs text-text-secondary">
+          Vertices in [-scale, scale] per axis.
+        </p>
+      </Section>
     </div>
   );
 }

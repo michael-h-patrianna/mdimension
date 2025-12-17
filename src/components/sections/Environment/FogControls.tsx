@@ -8,7 +8,7 @@
 import { Slider } from '@/components/ui/Slider';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import { Switch } from '@/components/ui/Switch';
-import { DEFAULT_FOG_STATE, type FogType } from '@/stores/slices/fogSlice';
+import { type FogType } from '@/stores/slices/fogSlice';
 import { useEnvironmentStore } from '@/stores/environmentStore';
 import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
@@ -116,7 +116,6 @@ export const FogControls: React.FC = () => {
               max={0.1}
               step={0.001}
               onChange={setFogDensity}
-              onReset={() => setFogDensity(DEFAULT_FOG_STATE.fogDensity)}
               tooltip="Fog density - higher values create thicker atmospheric fog"
               data-testid="fog-density"
             />
@@ -136,7 +135,6 @@ export const FogControls: React.FC = () => {
               max={50}
               step={1}
               onChange={setFogNear}
-              onReset={() => setFogNear(DEFAULT_FOG_STATE.fogNear)}
               tooltip="Distance where fog starts to appear"
               data-testid="fog-near"
             />
@@ -147,7 +145,6 @@ export const FogControls: React.FC = () => {
               max={150}
               step={1}
               onChange={setFogFar}
-              onReset={() => setFogFar(DEFAULT_FOG_STATE.fogFar)}
               tooltip="Distance where fog becomes fully opaque"
               data-testid="fog-far"
             />

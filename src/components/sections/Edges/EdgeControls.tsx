@@ -5,9 +5,6 @@
 
 import { Slider } from '@/components/ui/Slider';
 import { ColorPicker } from '@/components/ui/ColorPicker';
-import {
-  DEFAULT_EDGE_THICKNESS,
-} from '@/stores/defaults/visualDefaults';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
@@ -50,12 +47,11 @@ export const EdgeControls: React.FC<EdgesControlsProps> = React.memo(({
       {/* Edge Thickness */}
       <Slider
         label="Edge Thickness"
-        min={1}
+        min={0}
         max={5}
         step={0.1}
         value={edgeThickness}
         onChange={setEdgeThickness}
-        onReset={() => setEdgeThickness(DEFAULT_EDGE_THICKNESS)}
         showValue
       />
 

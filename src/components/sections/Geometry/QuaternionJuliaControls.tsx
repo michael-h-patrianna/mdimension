@@ -24,6 +24,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { Select } from '@/components/ui/Select';
 import { Slider } from '@/components/ui/Slider';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
+import { Section } from '@/components/sections/Section';
 import {
   DEFAULT_QUATERNION_JULIA_CONFIG,
   JULIA_CONSTANT_PRESETS,
@@ -123,174 +124,154 @@ export const QuaternionJuliaControls: React.FC<QuaternionJuliaControlsProps> = R
   const currentPresetIndex = getCurrentPresetIndex();
 
   return (
-    <div className={`space-y-4 ${className}`} data-testid="quaternion-julia-controls">
-      {/* Julia Constant Presets */}
-      <div className="space-y-2">
-        <label className="text-xs text-text-secondary">
-          Julia Constant (c)
-        </label>
-        <Select
-          label=""
-          options={JULIA_CONSTANT_PRESETS.map((p, i) => ({
-            value: String(i),
-            label: p.name,
-          }))}
-          value={currentPresetIndex >= 0 ? String(currentPresetIndex) : '-1'}
-          onChange={(v) => {
-            const idx = parseInt(v, 10);
-            const preset = JULIA_CONSTANT_PRESETS[idx];
-            if (idx >= 0 && preset) {
-              setJuliaConstant(preset.value);
-            }
-          }}
-          data-testid="julia-constant-preset"
-        />
-        <div className="grid grid-cols-2 gap-2">
-          <Slider
-            label="X"
-            min={-2.0}
-            max={2.0}
-            step={0.01}
-            value={config.juliaConstant[0]}
-            onChange={(v) => setJuliaConstant([v, config.juliaConstant[1], config.juliaConstant[2], config.juliaConstant[3]])}
-            onReset={() => setJuliaConstant([DEFAULT_QUATERNION_JULIA_CONFIG.juliaConstant[0], config.juliaConstant[1], config.juliaConstant[2], config.juliaConstant[3]])}
-            showValue
-            data-testid="julia-constant-x"
-          />
-          <Slider
-            label="Y"
-            min={-2.0}
-            max={2.0}
-            step={0.01}
-            value={config.juliaConstant[1]}
-            onChange={(v) => setJuliaConstant([config.juliaConstant[0], v, config.juliaConstant[2], config.juliaConstant[3]])}
-            onReset={() => setJuliaConstant([config.juliaConstant[0], DEFAULT_QUATERNION_JULIA_CONFIG.juliaConstant[1], config.juliaConstant[2], config.juliaConstant[3]])}
-            showValue
-            data-testid="julia-constant-y"
-          />
-          <Slider
-            label="Z"
-            min={-2.0}
-            max={2.0}
-            step={0.01}
-            value={config.juliaConstant[2]}
-            onChange={(v) => setJuliaConstant([config.juliaConstant[0], config.juliaConstant[1], v, config.juliaConstant[3]])}
-            onReset={() => setJuliaConstant([config.juliaConstant[0], config.juliaConstant[1], DEFAULT_QUATERNION_JULIA_CONFIG.juliaConstant[2], config.juliaConstant[3]])}
-            showValue
-            data-testid="julia-constant-z"
-          />
-          <Slider
-            label="W"
-            min={-2.0}
-            max={2.0}
-            step={0.01}
-            value={config.juliaConstant[3]}
-            onChange={(v) => setJuliaConstant([config.juliaConstant[0], config.juliaConstant[1], config.juliaConstant[2], v])}
-            onReset={() => setJuliaConstant([config.juliaConstant[0], config.juliaConstant[1], config.juliaConstant[2], DEFAULT_QUATERNION_JULIA_CONFIG.juliaConstant[3]])}
-            showValue
-            data-testid="julia-constant-w"
-          />
+    <div className={className} data-testid="quaternion-julia-controls">
+      <Section title="Julia Constant" defaultOpen={true}>
+        <div className="space-y-2">
+            <Select
+            label="Preset"
+            options={JULIA_CONSTANT_PRESETS.map((p, i) => ({
+                value: String(i),
+                label: p.name,
+            }))}
+            value={currentPresetIndex >= 0 ? String(currentPresetIndex) : '-1'}
+            onChange={(v) => {
+                const idx = parseInt(v, 10);
+                const preset = JULIA_CONSTANT_PRESETS[idx];
+                if (idx >= 0 && preset) {
+                setJuliaConstant(preset.value);
+                }
+            }}
+            data-testid="julia-constant-preset"
+            />
+            <div className="grid grid-cols-2 gap-2">
+            <Slider
+                label="X"
+                min={-2.0}
+                max={2.0}
+                step={0.01}
+                value={config.juliaConstant[0]}
+                onChange={(v) => setJuliaConstant([v, config.juliaConstant[1], config.juliaConstant[2], config.juliaConstant[3]])}
+                showValue
+                data-testid="julia-constant-x"
+            />
+            <Slider
+                label="Y"
+                min={-2.0}
+                max={2.0}
+                step={0.01}
+                value={config.juliaConstant[1]}
+                onChange={(v) => setJuliaConstant([config.juliaConstant[0], v, config.juliaConstant[2], config.juliaConstant[3]])}
+                showValue
+                data-testid="julia-constant-y"
+            />
+            <Slider
+                label="Z"
+                min={-2.0}
+                max={2.0}
+                step={0.01}
+                value={config.juliaConstant[2]}
+                onChange={(v) => setJuliaConstant([config.juliaConstant[0], config.juliaConstant[1], v, config.juliaConstant[3]])}
+                showValue
+                data-testid="julia-constant-z"
+            />
+            <Slider
+                label="W"
+                min={-2.0}
+                max={2.0}
+                step={0.01}
+                value={config.juliaConstant[3]}
+                onChange={(v) => setJuliaConstant([config.juliaConstant[0], config.juliaConstant[1], config.juliaConstant[2], v])}
+                showValue
+                data-testid="julia-constant-w"
+            />
+            </div>
+            <p className="text-xs text-text-tertiary">
+            The fixed constant c in z = z^n + c
+            </p>
         </div>
-        <p className="text-xs text-text-tertiary">
-          The fixed constant c in z = z^n + c
-        </p>
-      </div>
+      </Section>
 
-      {/* Power Control */}
-      <div className="space-y-2">
-        <label className="text-xs text-text-secondary">
-          Power (n={config.power})
-        </label>
-        <ToggleGroup
-          options={powerPresets.map((p) => ({
-            value: String(p.value),
-            label: p.label,
-          }))}
-          value={String(config.power)}
-          onChange={(v) => setPower(parseInt(v, 10))}
-          ariaLabel="Power preset"
-          data-testid="julia-power-preset"
+      <Section title="Parameters" defaultOpen={true}>
+        {/* Power Control */}
+        <div className="space-y-2">
+            <label className="text-xs text-text-secondary">
+            Power (n={config.power})
+            </label>
+            <ToggleGroup
+            options={powerPresets.map((p) => ({
+                value: String(p.value),
+                label: p.label,
+            }))}
+            value={String(config.power)}
+            onChange={(v) => setPower(parseInt(v, 10))}
+            ariaLabel="Power preset"
+            data-testid="julia-power-preset"
+            />
+            <Slider
+            label="Custom Power"
+            min={2}
+            max={8}
+            step={1}
+            value={config.power}
+            onChange={setPower}
+            showValue
+            data-testid="julia-power-slider"
+            />
+        </div>
+
+        {/* Quality Preset */}
+        <Select
+            label="Quality Preset"
+            options={qualityOptions}
+            value={
+            config.maxIterations <= 32 ? 'draft' :
+            config.maxIterations <= 64 ? 'standard' :
+            config.maxIterations <= 128 ? 'high' : 'ultra'
+            }
+            onChange={(v) => setQualityPreset(v as 'draft' | 'standard' | 'high' | 'ultra')}
+            data-testid="julia-quality"
         />
+
+        {/* Max Iterations */}
         <Slider
-          label="Custom Power"
-          min={2}
-          max={8}
-          step={1}
-          value={config.power}
-          onChange={setPower}
-          onReset={() => setPower(DEFAULT_QUATERNION_JULIA_CONFIG.power)}
-          showValue
-          data-testid="julia-power-slider"
+            label="Max Iterations"
+            min={32}
+            max={256}
+            step={16}
+            value={config.maxIterations}
+            onChange={setMaxIterations}
+            showValue
+            data-testid="julia-iterations"
         />
-      </div>
 
-      {/* Quality Preset */}
-      <Select
-        label="Quality Preset"
-        options={qualityOptions}
-        value={
-          config.maxIterations <= 32 ? 'draft' :
-          config.maxIterations <= 64 ? 'standard' :
-          config.maxIterations <= 128 ? 'high' : 'ultra'
-        }
-        onChange={(v) => setQualityPreset(v as 'draft' | 'standard' | 'high' | 'ultra')}
-        data-testid="julia-quality"
-      />
+        {/* Bailout Radius */}
+        <Slider
+            label="Bailout Radius"
+            min={2.0}
+            max={16.0}
+            step={0.5}
+            value={config.bailoutRadius}
+            onChange={setBailoutRadius}
+            showValue
+            data-testid="julia-bailout"
+        />
 
-      {/* Max Iterations */}
-      <Slider
-        label="Max Iterations"
-        min={32}
-        max={256}
-        step={16}
-        value={config.maxIterations}
-        onChange={setMaxIterations}
-        onReset={() => setMaxIterations(DEFAULT_QUATERNION_JULIA_CONFIG.maxIterations)}
-        showValue
-        data-testid="julia-iterations"
-      />
-
-      {/* Bailout Radius */}
-      <Slider
-        label="Bailout Radius"
-        min={2.0}
-        max={16.0}
-        step={0.5}
-        value={config.bailoutRadius}
-        onChange={setBailoutRadius}
-        onReset={() => setBailoutRadius(DEFAULT_QUATERNION_JULIA_CONFIG.bailoutRadius)}
-        showValue
-        data-testid="julia-bailout"
-      />
-
-      {/* Scale */}
-      <Slider
-        label="Scale"
-        min={0.5}
-        max={5.0}
-        step={0.1}
-        value={config.scale}
-        onChange={setScale}
-        onReset={() => setScale(DEFAULT_QUATERNION_JULIA_CONFIG.scale)}
-        showValue
-        data-testid="julia-scale"
-      />
+        {/* Scale */}
+        <Slider
+            label="Scale"
+            min={0.5}
+            max={5.0}
+            step={0.1}
+            value={config.scale}
+            onChange={setScale}
+            showValue
+            data-testid="julia-scale"
+        />
+      </Section>
 
       {/* Slice Parameters - shown for 4D+ */}
       {dimension >= 4 && (
-        <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <label className="text-xs text-text-secondary">
-              Slice Parameters ({dimension - 3} dim{dimension > 4 ? 's' : ''})
-            </label>
-            <button
-              onClick={() => resetParameters()}
-              className="text-xs text-accent hover:underline"
-              data-testid="julia-reset-params"
-            >
-              Reset
-            </button>
-          </div>
+        <Section title={`Cross Section (${dimension - 3} dim${dimension > 4 ? 's' : ''})`} defaultOpen={true} onReset={() => resetParameters()}>
           {Array.from({ length: dimension - 3 }, (_, i) => (
             <Slider
               key={`slice-dim-${i + 3}`}
@@ -300,7 +281,6 @@ export const QuaternionJuliaControls: React.FC<QuaternionJuliaControlsProps> = R
               step={0.1}
               value={config.parameterValues[i] ?? 0}
               onChange={(v) => setParameterValue(i, v)}
-              onReset={() => setParameterValue(i, 0)}
               showValue
               data-testid={`julia-slice-dim-${i + 3}`}
             />
@@ -308,11 +288,11 @@ export const QuaternionJuliaControls: React.FC<QuaternionJuliaControlsProps> = R
           <p className="text-xs text-text-tertiary">
             Explore different {dimension}D cross-sections
           </p>
-        </div>
+        </Section>
       )}
 
       {/* Info */}
-      <div className="text-xs text-text-secondary space-y-1 border-t border-white/10 pt-2">
+      <div className="px-4 py-2 text-xs text-text-secondary border-t border-white/5">
         <p>Rendering: GPU Ray Marching</p>
         <p className="text-text-tertiary">
           {`${dimension}D Quaternion Julia fractal (z = z^${config.power} + c)`}

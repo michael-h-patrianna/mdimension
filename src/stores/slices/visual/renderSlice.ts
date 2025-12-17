@@ -25,7 +25,18 @@ export const RENDER_INITIAL_STATE: RenderSliceState = {
 export const createRenderSlice: StateCreator<AppearanceSlice, [], [], RenderSlice> = (set) => ({
   ...RENDER_INITIAL_STATE,
 
-  setEdgesVisible: (visible) => set({ edgesVisible: visible }),
+  setEdgesVisible: (visible) => set((state) => {
+    let newThickness = state.edgeThickness
+    if (visible) {
+      if (state.edgeThickness < 1) newThickness = 1
+    } else {
+      newThickness = 0
+    }
+    return { 
+      edgesVisible: visible,
+      edgeThickness: newThickness
+    }
+  }),
 
   setFacesVisible: (visible) => set({
     facesVisible: visible,

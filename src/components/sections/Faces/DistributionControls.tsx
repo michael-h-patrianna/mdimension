@@ -38,7 +38,6 @@ export const DistributionControls: React.FC<DistributionControlsProps> = ({
         step={0.05}
         value={distribution.power}
         onChange={(value) => setDistribution({ power: value })}
-        onReset={() => setDistribution({ power: DEFAULT_DISTRIBUTION.power })}
         showValue
         tooltip="Power curve: < 1 expands dark tones, > 1 expands light tones"
       />
@@ -50,7 +49,6 @@ export const DistributionControls: React.FC<DistributionControlsProps> = ({
         step={0.1}
         value={distribution.cycles}
         onChange={(value) => setDistribution({ cycles: value })}
-        onReset={() => setDistribution({ cycles: DEFAULT_DISTRIBUTION.cycles })}
         showValue
         tooltip="Number of times the palette repeats across the surface"
       />
@@ -62,7 +60,6 @@ export const DistributionControls: React.FC<DistributionControlsProps> = ({
         step={0.01}
         value={distribution.offset}
         onChange={(value) => setDistribution({ offset: value })}
-        onReset={() => setDistribution({ offset: DEFAULT_DISTRIBUTION.offset })}
         showValue
         tooltip="Shifts the starting point of the color gradient"
       />

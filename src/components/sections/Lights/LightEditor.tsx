@@ -232,7 +232,6 @@ export const LightEditor: React.FC<LightEditorProps> = memo(function LightEditor
         step={0.1}
         value={selectedLight.intensity}
         onChange={handleIntensityChange}
-        onReset={() => handleIntensityChange(1.0)}
         showValue
       />
 
@@ -246,7 +245,6 @@ export const LightEditor: React.FC<LightEditorProps> = memo(function LightEditor
             step={1}
             value={selectedLight.range}
             onChange={handleRangeChange}
-            onReset={() => handleRangeChange(0)}
             showValue
           />
 
@@ -257,7 +255,6 @@ export const LightEditor: React.FC<LightEditorProps> = memo(function LightEditor
             step={0.1}
             value={selectedLight.decay}
             onChange={handleDecayChange}
-            onReset={() => handleDecayChange(2)}
             showValue
           />
         </>
@@ -293,7 +290,6 @@ export const LightEditor: React.FC<LightEditorProps> = memo(function LightEditor
             step={1}
             value={selectedLight.coneAngle}
             onChange={handleConeAngleChange}
-            onReset={() => handleConeAngleChange(30)}
             unit="deg"
             showValue
           />
@@ -305,7 +301,6 @@ export const LightEditor: React.FC<LightEditorProps> = memo(function LightEditor
             step={0.05}
             value={selectedLight.penumbra}
             onChange={handlePenumbraChange}
-            onReset={() => handlePenumbraChange(0.5)}
             showValue
           />
         </>

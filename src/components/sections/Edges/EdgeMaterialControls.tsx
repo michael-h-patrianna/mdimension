@@ -6,10 +6,6 @@
  */
 
 import { Slider } from '@/components/ui/Slider'
-import {
-  DEFAULT_EDGE_METALLIC,
-  DEFAULT_EDGE_ROUGHNESS,
-} from '@/stores/defaults/visualDefaults';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useLightingStore } from '@/stores/lightingStore';
 import React from 'react'
@@ -44,39 +40,38 @@ export const EdgeMaterialControls: React.FC<EdgeMaterialControlsProps> = React.m
     );
 
     const lightEnabled = useLightingStore((state) => state.lightEnabled);
-
-    // Only show when tube rendering is active (thickness > 1) and light is enabled
-    if (edgeThickness <= 1 || !lightEnabled) {
-      return null
-    }
+    const showMaterialControls = edgeThickness > 1 && lightEnabled;
 
     return (
       <div className={`space-y-3 ${className}`}>
-        <SectionHeader title="Edge Material" />
+        {/* Edge Material - Only show when tube rendering is active (thickness > 1) and light is enabled */}
+        {showMaterialControls && (
+          <>
+            <SectionHeader title="Edge Material" />
 
-        {/* Metallic */}
-        <Slider
-          label="Metallic"
-          min={0}
-          max={1}
-          step={0.01}
-          value={edgeMetallic}
-          onChange={setEdgeMetallic}
-          onReset={() => setEdgeMetallic(DEFAULT_EDGE_METALLIC)}
-          showValue
-        />
+            {/* Metallic */}
+            <Slider
+              label="Metallic"
+              min={0}
+              max={1}
+              step={0.01}
+              value={edgeMetallic}
+              onChange={setEdgeMetallic}
+              showValue
+            />
 
-        {/* Roughness */}
-        <Slider
-          label="Roughness"
-          min={0}
-          max={1}
-          step={0.01}
-          value={edgeRoughness}
-          onChange={setEdgeRoughness}
-          onReset={() => setEdgeRoughness(DEFAULT_EDGE_ROUGHNESS)}
-          showValue
-        />
+            {/* Roughness */}
+            <Slider
+              label="Roughness"
+              min={0}
+              max={1}
+              step={0.01}
+              value={edgeRoughness}
+              onChange={setEdgeRoughness}
+              showValue
+            />
+          </>
+        )}
       </div>
     )
   }

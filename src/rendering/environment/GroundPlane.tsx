@@ -176,7 +176,7 @@ interface WallConfig {
  * Offset to prevent z-fighting between grid and surface.
  * Must be greater than TWO_SIDED_HEIGHT / 2 (0.005) to ensure grid is outside the box.
  */
-const Z_OFFSET = 0.01;
+const Z_OFFSET = 0.02;
 
 /**
  * Get wall configuration for a given wall position and distance.
@@ -265,7 +265,7 @@ interface SurfaceMaterialProps {
 }
 
 /** Height of the two-sided box surface */
-const TWO_SIDED_HEIGHT = 0.01;
+const TWO_SIDED_HEIGHT = 0.02;
 
 /** Props for a single wall */
 interface WallProps extends SurfaceMaterialProps {
@@ -334,7 +334,7 @@ function Wall({
           sectionSize={gridSpacing * 5}
           sectionThickness={1}
           sectionColor={sectionColor}
-          fadeDistance={size * 3}
+          fadeDistance={size * 0.5}
           fadeStrength={2}
           followCamera={false}
           side={surfaceType === 'two-sided' ? DoubleSide : FrontSide}

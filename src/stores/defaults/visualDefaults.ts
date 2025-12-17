@@ -57,7 +57,7 @@ export const DEFAULT_BOKEH_FOCUS_MODE: BokehFocusMode = 'auto-center'
 export const DEFAULT_BOKEH_BLUR_METHOD: BokehBlurMethod = 'hexagonal'
 export const DEFAULT_BOKEH_WORLD_FOCUS_DISTANCE = 15
 export const DEFAULT_BOKEH_WORLD_FOCUS_RANGE = 10
-export const DEFAULT_BOKEH_SCALE = 1.0
+export const DEFAULT_BOKEH_SCALE = 0.0
 export const DEFAULT_BOKEH_FOCAL_LENGTH = 0.1
 export const DEFAULT_BOKEH_SMOOTH_TIME = 0.25
 export const DEFAULT_BOKEH_SHOW_DEBUG = false
@@ -70,7 +70,7 @@ export const DEFAULT_BOKEH_SHOW_DEBUG = false
 export type SSRQuality = 'low' | 'medium' | 'high'
 
 export const DEFAULT_SSR_ENABLED = false
-export const DEFAULT_SSR_INTENSITY = 0.8
+export const DEFAULT_SSR_INTENSITY = 0.0
 export const DEFAULT_SSR_MAX_DISTANCE = 30
 export const DEFAULT_SSR_THICKNESS = 0.5
 export const DEFAULT_SSR_FADE_START = 0.7
@@ -90,7 +90,7 @@ export const SSR_QUALITY_STEPS: Record<SSRQuality, number> = {
 
 export const DEFAULT_REFRACTION_ENABLED = false
 export const DEFAULT_REFRACTION_IOR = 1.5
-export const DEFAULT_REFRACTION_STRENGTH = 0.1
+export const DEFAULT_REFRACTION_STRENGTH = 0.0
 export const DEFAULT_REFRACTION_CHROMATIC_ABERRATION = 0.0
 
 // ============================================================================

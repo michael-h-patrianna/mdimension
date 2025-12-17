@@ -66,7 +66,6 @@ export const BokehControls: React.FC<BokehControlsProps> = React.memo(({
   className = '',
 }) => {
   const {
-    bokehEnabled,
     bokehFocusMode,
     bokehBlurMethod,
     bokehWorldFocusDistance,
@@ -74,7 +73,6 @@ export const BokehControls: React.FC<BokehControlsProps> = React.memo(({
     bokehScale,
     bokehSmoothTime,
     bokehShowDebug,
-    setBokehEnabled,
     setBokehFocusMode,
     setBokehBlurMethod,
     setBokehWorldFocusDistance,
@@ -85,7 +83,6 @@ export const BokehControls: React.FC<BokehControlsProps> = React.memo(({
   } = usePostProcessingStore(
     useShallow((state) => ({
       // State
-      bokehEnabled: state.bokehEnabled,
       bokehFocusMode: state.bokehFocusMode,
       bokehBlurMethod: state.bokehBlurMethod,
       bokehWorldFocusDistance: state.bokehWorldFocusDistance,
@@ -94,7 +91,6 @@ export const BokehControls: React.FC<BokehControlsProps> = React.memo(({
       bokehSmoothTime: state.bokehSmoothTime,
       bokehShowDebug: state.bokehShowDebug,
       // Actions
-      setBokehEnabled: state.setBokehEnabled,
       setBokehFocusMode: state.setBokehFocusMode,
       setBokehBlurMethod: state.setBokehBlurMethod,
       setBokehWorldFocusDistance: state.setBokehWorldFocusDistance,
@@ -110,16 +106,6 @@ export const BokehControls: React.FC<BokehControlsProps> = React.memo(({
 
   return (
     <div className={`space-y-4 ${className}`}>
-      {/* Enable/Disable Bokeh */}
-      <Switch
-        checked={bokehEnabled}
-        onCheckedChange={setBokehEnabled}
-        label="Depth of Field"
-      />
-
-      {/* Bokeh controls - only visible when enabled */}
-      {bokehEnabled && (
-        <>
           {/* Focus Mode Selector */}
           <Select<BokehFocusMode>
             label="Focus Mode"
@@ -147,7 +133,6 @@ export const BokehControls: React.FC<BokehControlsProps> = React.memo(({
               step={0.5}
               value={bokehWorldFocusDistance}
               onChange={setBokehWorldFocusDistance}
-              onReset={() => setBokehWorldFocusDistance(DEFAULT_BOKEH_WORLD_FOCUS_DISTANCE)}
               showValue
             />
           )}
@@ -160,7 +145,6 @@ export const BokehControls: React.FC<BokehControlsProps> = React.memo(({
             step={1}
             value={bokehWorldFocusRange}
             onChange={setBokehWorldFocusRange}
-            onReset={() => setBokehWorldFocusRange(DEFAULT_BOKEH_WORLD_FOCUS_RANGE)}
             showValue
           />
 
@@ -172,7 +156,6 @@ export const BokehControls: React.FC<BokehControlsProps> = React.memo(({
             step={0.1}
             value={bokehScale}
             onChange={setBokehScale}
-            onReset={() => setBokehScale(DEFAULT_BOKEH_SCALE)}
             showValue
           />
 
@@ -185,7 +168,6 @@ export const BokehControls: React.FC<BokehControlsProps> = React.memo(({
               step={0.05}
               value={bokehSmoothTime}
               onChange={setBokehSmoothTime}
-              onReset={() => setBokehSmoothTime(DEFAULT_BOKEH_SMOOTH_TIME)}
               showValue
             />
           )}
@@ -196,8 +178,6 @@ export const BokehControls: React.FC<BokehControlsProps> = React.memo(({
             onCheckedChange={setBokehShowDebug}
             label="Show Focus Point"
           />
-        </>
-      )}
     </div>
   );
 });

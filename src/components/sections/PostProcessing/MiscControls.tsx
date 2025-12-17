@@ -75,7 +75,6 @@ export const MiscControls: React.FC<MiscControlsProps> = React.memo(({
           max={0.2}
           step={0.01}
           onChange={setSmaaThreshold}
-          onReset={() => setSmaaThreshold(DEFAULT_SMAA_THRESHOLD)}
           tooltip="Edge detection sensitivity. Lower = more aggressive anti-aliasing."
           minLabel="Strong"
           maxLabel="Subtle"

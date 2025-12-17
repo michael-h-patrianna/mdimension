@@ -71,7 +71,6 @@ export function NestedTorusSettings() {
         step={0.1}
         value={config.radius}
         onChange={setRadius}
-        onReset={() => setRadius(DEFAULT_NESTED_TORUS_CONFIG.radius)}
         showValue
         data-testid="nested-radius"
       />
@@ -82,7 +81,6 @@ export function NestedTorusSettings() {
         step={0.01}
         value={config.eta}
         onChange={setEta}
-        onReset={() => setEta(DEFAULT_NESTED_TORUS_CONFIG.eta)}
         showValue={false}
         data-testid="nested-eta"
       />
@@ -93,7 +91,6 @@ export function NestedTorusSettings() {
         step={4}
         value={config.resolutionXi1}
         onChange={setResolutionXi1}
-        onReset={() => setResolutionXi1(DEFAULT_NESTED_TORUS_CONFIG.resolutionXi1)}
         showValue
         data-testid="nested-res-xi1"
       />
@@ -104,7 +101,6 @@ export function NestedTorusSettings() {
         step={4}
         value={config.resolutionXi2}
         onChange={setResolutionXi2}
-        onReset={() => setResolutionXi2(DEFAULT_NESTED_TORUS_CONFIG.resolutionXi2)}
         showValue
         data-testid="nested-res-xi2"
       />

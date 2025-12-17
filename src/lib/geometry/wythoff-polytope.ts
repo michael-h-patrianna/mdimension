@@ -710,6 +710,30 @@ function getMaxVertices(dimension: number, _symmetryGroup: WythoffSymmetryGroup)
 }
 
 /**
+ * Maximum number of polytopes to keep in cache
+ */
+const MAX_CACHE_SIZE = 20;
+
+/**
+ * Cache for generated polytopes to avoid expensive regeneration
+ */
+const polytopeCache = new Map<string, PolytopeGeometry>();
+
+/**
+ * Generate a cache key for Wythoff polytope configuration
+ */
+function getCacheKey(dimension: number, config: WythoffPolytopeConfig): string {
+  return JSON.stringify({
+    d: dimension,
+    s: config.symmetryGroup,
+    p: config.preset,
+    c: config.customSymbol,
+    sc: config.scale,
+    sn: config.snub
+  });
+}
+
+/**
  * Generates a Wythoff polytope in n-dimensional space.
  *
  * The Wythoff construction creates uniform polytopes using the symmetry groups:
@@ -743,6 +767,12 @@ export function generateWythoffPolytope(
   const fullConfig: WythoffPolytopeConfig = {
     ...DEFAULT_WYTHOFF_POLYTOPE_CONFIG,
     ...config,
+  }
+
+  // Check cache
+  const cacheKey = getCacheKey(dimension, fullConfig);
+  if (polytopeCache.has(cacheKey)) {
+    return polytopeCache.get(cacheKey)!;
   }
 
   const { symmetryGroup, preset, scale, snub } = fullConfig
@@ -830,7 +860,7 @@ export function generateWythoffPolytope(
   // Center and scale
   vertices = centerAndScale(vertices, scale)
 
-  return {
+  const result: PolytopeGeometry = {
     vertices,
     edges,
     dimension,
@@ -843,6 +873,16 @@ export function generateWythoffPolytope(
       },
     },
   }
+
+  // Update cache
+  if (polytopeCache.size >= MAX_CACHE_SIZE) {
+    // Simple eviction: remove the first key (oldest inserted in Map)
+    const firstKey = polytopeCache.keys().next().value;
+    if (firstKey) polytopeCache.delete(firstKey);
+  }
+  polytopeCache.set(cacheKey, result);
+
+  return result;
 }
 
 /**

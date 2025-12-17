@@ -9,7 +9,6 @@ export interface SliderProps {
   max: number;
   step?: number;
   onChange: (value: number) => void;
-  onReset?: () => void;
   unit?: string;
   showValue?: boolean;
   className?: string;
@@ -28,7 +27,6 @@ export const Slider: React.FC<SliderProps> = ({
   max,
   step = 1,
   onChange,
-  onReset,
   unit = '',
   showValue = true,
   className = '',
@@ -111,13 +109,6 @@ export const Slider: React.FC<SliderProps> = ({
     }
   };
   
-  const handleReset = () => {
-    if (onReset) {
-        onReset();
-        soundManager.playSnap();
-    }
-  };
-
   const displayValue = formatValue ? formatValue(value) : value.toFixed(decimals);
 
   return (
@@ -135,30 +126,14 @@ export const Slider: React.FC<SliderProps> = ({
             text-[11px] font-medium transition-colors tracking-wide flex items-center gap-1 border-b border-transparent hover:border-dashed hover:border-accent/50
             ${isLabelDragging ? 'text-accent cursor-ew-resize border-dashed border-accent' : 'text-text-secondary group-hover/slider:text-text-primary cursor-ew-resize'}
           `}
-          title={tooltip || "Drag label to adjust value, Double-click to reset"}
+          title={tooltip || "Drag label to adjust value"}
           onMouseDown={handleLabelMouseDown}
-          onDoubleClick={handleReset}
         >
           {label}
         </label>
         
         {showValue && (
           <div className="flex items-center gap-1.5 shrink-0 relative">
-             {onReset && value !== min && (
-              <button
-                type="button"
-                onClick={handleReset}
-                disabled={disabled}
-                className={`
-                  text-[10px] text-accent transition-all duration-200 
-                  ${isHovered || value !== min ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2'}
-                `}
-                title="Reset"
-                aria-label="Reset value"
-              >
-                ↺
-              </button>
-            )}
             <div className="relative group/input">
                 <input
                   type="text"

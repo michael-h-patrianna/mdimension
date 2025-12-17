@@ -106,6 +106,10 @@ class TemporalCloudManagerImpl {
   // Whether we have valid history data
   private isValid = false;
 
+  // Cached temporal enabled state (avoid getState() per call)
+  private temporalEnabled = usePerformanceStore.getState().temporalReprojectionEnabled;
+  private unsubscribeStore: (() => void) | null = null;
+
   // Dimensions
   private fullWidth = 1;
   private fullHeight = 1;
@@ -126,6 +130,13 @@ class TemporalCloudManagerImpl {
    * Should be called when screen size changes.
    */
   initialize(screenWidth: number, screenHeight: number, gl?: THREE.WebGLRenderer): void {
+    // Set up store subscription once (avoid getState() in isEnabled())
+    if (!this.unsubscribeStore) {
+      this.unsubscribeStore = usePerformanceStore.subscribe((s) => {
+        this.temporalEnabled = s.temporalReprojectionEnabled;
+      });
+    }
+
     const newFullWidth = Math.max(1, Math.floor(screenWidth));
     const newFullHeight = Math.max(1, Math.floor(screenHeight));
     const newCloudWidth = Math.max(1, Math.floor(screenWidth * CLOUD_RESOLUTION_SCALE));
@@ -378,8 +389,8 @@ class TemporalCloudManagerImpl {
    * Check if temporal cloud accumulation is enabled in settings.
    */
   isEnabled(): boolean {
-    // Use the existing temporal reprojection setting, or add a new one
-    return usePerformanceStore.getState().temporalReprojectionEnabled;
+    // Use cached value (updated via subscription in initialize())
+    return this.temporalEnabled;
   }
 
   /**

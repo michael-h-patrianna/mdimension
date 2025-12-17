@@ -364,6 +364,43 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   const colorCacheRef = useRef(createColorCache());
   const lightColorCacheRef = useRef(createLightColorCache());
 
+  // Performance optimization: Cache store state in refs to avoid getState() calls every frame
+  const animationStateRef = useRef(useAnimationStore.getState());
+  const extendedObjectStateRef = useRef(useExtendedObjectStore.getState());
+  const rotationStateRef = useRef(useRotationStore.getState());
+  const transformStateRef = useRef(useTransformStore.getState());
+  const projectionStateRef = useRef(useProjectionStore.getState());
+  const appearanceStateRef = useRef(useAppearanceStore.getState());
+  const lightingStateRef = useRef(useLightingStore.getState());
+
+  // Subscribe to store changes to update refs
+  useEffect(() => {
+    const unsubAnim = useAnimationStore.subscribe((s) => { animationStateRef.current = s; });
+    const unsubExt = useExtendedObjectStore.subscribe((s) => { extendedObjectStateRef.current = s; });
+    const unsubRot = useRotationStore.subscribe((s) => { rotationStateRef.current = s; });
+    const unsubTrans = useTransformStore.subscribe((s) => { transformStateRef.current = s; });
+    const unsubProj = useProjectionStore.subscribe((s) => { projectionStateRef.current = s; });
+    const unsubApp = useAppearanceStore.subscribe((s) => { appearanceStateRef.current = s; });
+    const unsubLight = useLightingStore.subscribe((s) => { lightingStateRef.current = s; });
+    return () => {
+      unsubAnim();
+      unsubExt();
+      unsubRot();
+      unsubTrans();
+      unsubProj();
+      unsubApp();
+      unsubLight();
+    };
+  }, []);
+
+  // P3 Optimization: Cache matrix computations to avoid per-frame recomputation
+  // Only recompute when rotations or dimension actually change
+  const cachedRotationsRef = useRef<Map<string, number>>(new Map());
+  const cachedGpuDataRef = useRef<ReturnType<typeof matrixToGPUUniforms> | null>(null);
+  const cachedDimensionRef = useRef<number>(0);
+  // Cache projection distance (only changes when baseVertices change, i.e., geometry change)
+  const cachedProjectionDistanceRef = useRef<{ count: number; distance: number }>({ count: 0, distance: 10 });
+
   // Ref callbacks to assign main object layer for depth-based effects (SSR, refraction, bokeh)
   // Using callbacks instead of useEffect ensures layer is set when mesh is created,
   // even if mesh is conditionally rendered after initial mount
@@ -543,6 +580,8 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     return buildNDGeometry(edgeVertices);
   }, [numEdges, edges, baseVertices]);
 
+  // ============ CLEANUP ============ 
+
   // ============ CLEANUP ============
   // Track previous resources for proper disposal when dependencies change
   const prevFaceMaterialRef = useRef<THREE.ShaderMaterial | null>(null);
@@ -585,9 +624,17 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   useFrame(({ camera }, delta) => {
     if (numVertices === 0) return;
 
-    // Read animation and polytope state
-    const isPlaying = useAnimationStore.getState().isPlaying;
-    const polytopeConfig = useExtendedObjectStore.getState().polytope;
+    // Read state from cached refs (updated via subscriptions, not getState() per frame)
+    const animationState = animationStateRef.current;
+    const extendedObjectState = extendedObjectStateRef.current;
+    const rotationState = rotationStateRef.current;
+    const transformState = transformStateRef.current;
+    const projectionState = projectionStateRef.current;
+    const appearanceState = appearanceStateRef.current;
+    const lightingState = lightingStateRef.current;
+
+    const isPlaying = animationState.isPlaying;
+    const polytopeConfig = extendedObjectState.polytope;
 
     // Update animation time only when playing
     if (isPlaying) {
@@ -604,14 +651,10 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     const modWave = polytopeConfig.facetOffsetPhaseSpread;
     const modBias = polytopeConfig.facetOffsetBias;
 
-    // Read current state
-    const rotations = useRotationStore.getState().rotations;
-    const { uniformScale, perAxisScale } = useTransformStore.getState();
-    const projectionType = useProjectionStore.getState().type;
-
-    // Read lighting and color settings from store
-    const appearanceState = useAppearanceStore.getState();
-    const lightingState = useLightingStore.getState();
+    // Read current state from cached refs
+    const rotations = rotationState.rotations;
+    const { uniformScale, perAxisScale } = transformState;
+    const projectionType = projectionState.type;
 
     const lightEnabled = lightingState.lightEnabled;
     const lightColor = lightingState.lightColor;
@@ -645,11 +688,44 @@ export const PolytopeScene = React.memo(function PolytopeScene({
       scales.push(perAxisScale[i] ?? uniformScale);
     }
 
-    const rotationMatrix = composeRotations(dimension, rotations);
-    const gpuData = matrixToGPUUniforms(rotationMatrix, dimension);
+    // P3 Optimization: Cache matrix computations - only recompute when rotations change
+    const cachedRotations = cachedRotationsRef.current;
+    let rotationsChanged = dimension !== cachedDimensionRef.current;
+    if (!rotationsChanged) {
+      // Check if any rotation values changed
+      if (rotations.size !== cachedRotations.size) {
+        rotationsChanged = true;
+      } else {
+        for (const [plane, angle] of rotations) {
+          if (cachedRotations.get(plane) !== angle) {
+            rotationsChanged = true;
+            break;
+          }
+        }
+      }
+    }
 
+    let gpuData: ReturnType<typeof matrixToGPUUniforms>;
+    if (rotationsChanged || !cachedGpuDataRef.current) {
+      const rotationMatrix = composeRotations(dimension, rotations);
+      gpuData = matrixToGPUUniforms(rotationMatrix, dimension);
+      // Update cache
+      cachedGpuDataRef.current = gpuData;
+      cachedDimensionRef.current = dimension;
+      cachedRotationsRef.current = new Map(rotations);
+    } else {
+      gpuData = cachedGpuDataRef.current;
+    }
+
+    // P3 Optimization: Cache projection distance - only recalculate when vertex count changes
     const normalizationFactor = dimension > 3 ? Math.sqrt(dimension - 3) : 1;
-    const projectionDistance = calculateSafeProjectionDistance(baseVertices, normalizationFactor);
+    let projectionDistance: number;
+    if (numVertices !== cachedProjectionDistanceRef.current.count) {
+      projectionDistance = calculateSafeProjectionDistance(baseVertices, normalizationFactor);
+      cachedProjectionDistanceRef.current = { count: numVertices, distance: projectionDistance };
+    } else {
+      projectionDistance = cachedProjectionDistanceRef.current.distance;
+    }
 
     // Cached linear colors - avoid per-frame sRGB->linear conversion
     const cache = colorCacheRef.current;

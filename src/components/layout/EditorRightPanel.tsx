@@ -28,7 +28,7 @@ export const EditorRightPanel: React.FC = () => {
         </div>
       ),
       content: (
-        <div className="space-y-1 px-1">
+        <div>
           {/* The "Subject" - Materials, Lines */}
           <FacesSection defaultOpen={true} />
           <EdgesSection defaultOpen={false} />
@@ -44,7 +44,7 @@ export const EditorRightPanel: React.FC = () => {
         </div>
       ),
       content: (
-        <div className="space-y-1 px-1">
+        <div>
           {/* The "Stage" - Background, Lighting, Lens, FX */}
           <EnvironmentSection defaultOpen={true} />
           <LightsSection defaultOpen={false} />
@@ -62,7 +62,7 @@ export const EditorRightPanel: React.FC = () => {
         </div>
       ),
       content: (
-        <div className="space-y-1 px-1">
+        <div>
           {/* The "App" - Settings, Meta, Output */}
           <SettingsSection defaultOpen={true} />
           <PerformanceSection defaultOpen={false} />
@@ -90,7 +90,7 @@ export const EditorRightPanel: React.FC = () => {
           onChange={setActiveTab}
           className="flex-1 flex flex-col min-h-0"
           tabListClassName="px-3 pt-3 pb-0 bg-transparent"
-          contentClassName="flex-1 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-panel-border hover:scrollbar-thumb-text-secondary/50"
+          contentClassName="flex-1 overflow-y-auto p-0 scrollbar-thin scrollbar-thumb-panel-border hover:scrollbar-thumb-text-secondary/50"
           variant="default" 
           fullWidth
         />

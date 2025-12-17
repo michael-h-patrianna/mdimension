@@ -8,10 +8,7 @@
 import { Slider } from '@/components/ui/Slider';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import {
-  DEFAULT_DIFFUSE_INTENSITY,
-  DEFAULT_SHININESS,
   DEFAULT_SPECULAR_COLOR,
-  DEFAULT_SPECULAR_INTENSITY,
 } from '@/stores/defaults/visualDefaults';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useLightingStore } from '@/stores/lightingStore';
@@ -73,7 +70,6 @@ export const MaterialControls: React.FC<MaterialControlsProps> = React.memo(({
         step={0.01}
         value={diffuseIntensity}
         onChange={setDiffuseIntensity}
-        onReset={() => setDiffuseIntensity(DEFAULT_DIFFUSE_INTENSITY)}
         showValue
       />
 
@@ -108,7 +104,6 @@ export const MaterialControls: React.FC<MaterialControlsProps> = React.memo(({
         step={0.1}
         value={specularIntensity}
         onChange={setSpecularIntensity}
-        onReset={() => setSpecularIntensity(DEFAULT_SPECULAR_INTENSITY)}
         showValue
       />
 
@@ -120,7 +115,6 @@ export const MaterialControls: React.FC<MaterialControlsProps> = React.memo(({
         step={1}
         value={shininess}
         onChange={setShininess}
-        onReset={() => setShininess(DEFAULT_SHININESS)}
         showValue
       />
     </div>
