@@ -8,8 +8,12 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [tailwindcss(), react()],
+  esbuild: {
+    // Keep component names in dev for better profiler output
+    keepNames: mode === 'development',
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -48,4 +52,4 @@ export default defineConfig({
       },
     },
   },
-})
+}))

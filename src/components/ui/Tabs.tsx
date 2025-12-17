@@ -3,9 +3,11 @@
  *
  * A reusable tab component for organizing content into switchable panels.
  * Follows the project's premium aesthetic with subtle motion and glass effects.
+ * 
+ * Optimized to avoid forced reflows and support "keep-alive" with "mount-on-demand" for tab content.
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import { m } from 'motion/react';
 import { soundManager } from '@/lib/audio/SoundManager';
 
@@ -86,11 +88,11 @@ export const Tabs: React.FC<TabsProps> = ({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const [mountedTabs, setMountedTabs] = useState<Set<string>>(new Set([value]));
 
   // Track direction for slide animation
   const prevValue = useRef(value);
-
-  const activeTab = tabs.find((tab) => tab.id === value);
   const activeIndex = tabs.findIndex((tab) => tab.id === value);
   const prevIndex = tabs.findIndex((tab) => tab.id === prevValue.current);
 
@@ -98,25 +100,39 @@ export const Tabs: React.FC<TabsProps> = ({
     if (activeIndex !== prevIndex) {
         prevValue.current = value;
     }
+    // Mark tab as mounted when it becomes active
+    setMountedTabs(prev => {
+        if (prev.has(value)) return prev;
+        const next = new Set(prev);
+        next.add(value);
+        return next;
+    });
   }, [value, activeIndex, prevIndex]);
 
-  const checkScroll = useCallback(() => {
-    if (scrollContainerRef.current) {
-      const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
-      setCanScrollLeft(scrollLeft > 0);
-      setCanScrollRight(Math.ceil(scrollLeft + clientWidth) < scrollWidth);
-    }
+  // Optimized Scroll Checking using ResizeObserver
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const checkScroll = () => {
+      const { scrollLeft, scrollWidth, clientWidth } = container;
+      setCanScrollLeft(scrollLeft > 1); 
+      setCanScrollRight(Math.ceil(scrollLeft + clientWidth) < scrollWidth - 1);
+    };
+
+    const resizeObserver = new ResizeObserver(() => {
+        requestAnimationFrame(checkScroll);
+    });
+    resizeObserver.observe(container);
+
+    checkScroll();
+    container.addEventListener('scroll', checkScroll, { passive: true });
+
+    return () => {
+        resizeObserver.disconnect();
+        container.removeEventListener('scroll', checkScroll);
+    };
   }, []);
-
-  useEffect(() => {
-    checkScroll();
-    window.addEventListener('resize', checkScroll);
-    return () => window.removeEventListener('resize', checkScroll);
-  }, [checkScroll]);
-
-  useEffect(() => {
-    checkScroll();
-  }, [tabs, value, checkScroll]);
 
   const scroll = (direction: 'left' | 'right') => {
     if (scrollContainerRef.current) {
@@ -128,12 +144,14 @@ export const Tabs: React.FC<TabsProps> = ({
     }
   };
 
-  const handleTabChange = (id: string) => {
+  const handleTabChange = useCallback((id: string) => {
     if (id !== value) {
         soundManager.playClick();
-        onChange(id);
+        startTransition(() => {
+            onChange(id);
+        });
     }
-  };
+  }, [value, onChange]); // Added dependencies
 
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent, index: number) => {
@@ -167,7 +185,7 @@ export const Tabs: React.FC<TabsProps> = ({
   // Styling logic
   const listContainerStyles = variant === 'pills' 
     ? 'bg-black/20 rounded-lg p-1 gap-1' 
-    : 'border-b border-white/5 pb-[1px]'; // Slight padding for border visibility
+    : 'border-b border-white/5 pb-[1px]'; 
     
   const widthStyles = fullWidth ? 'w-full' : 'min-w-full w-max';
 
@@ -175,7 +193,6 @@ export const Tabs: React.FC<TabsProps> = ({
     <div className={`flex flex-col ${className}`} data-testid={testId}>
       {/* Header Area */}
       <div className="relative shrink-0 z-10">
-        
         {/* Scroll Indicators */}
         {canScrollLeft && (
           <button
@@ -190,7 +207,6 @@ export const Tabs: React.FC<TabsProps> = ({
         {/* Tab List */}
         <div
           ref={scrollContainerRef}
-          onScroll={checkScroll}
           className={`overflow-x-auto scrollbar-none ${fullWidth ? 'w-full' : ''}`}
         >
           <div
@@ -219,19 +235,17 @@ export const Tabs: React.FC<TabsProps> = ({
                     ${isActive ? 'text-accent text-glow-subtle' : 'text-text-secondary hover:text-text-primary'}
                     ${variant === 'pills' && isActive ? 'bg-white/5 rounded shadow-sm' : ''}
                     ${variant === 'pills' && !isActive ? 'hover:bg-white/5 rounded' : ''}
+                    ${isPending && !isActive ? 'opacity-50' : ''}
                   `}
                   data-testid={testId ? `${testId}-tab-${tab.id}` : undefined}
                 >
-                  {/* Active Indicator for Default/Minimal Variants */}
                   {isActive && variant !== 'pills' && (
                     <m.div
-                      layoutId={`activeTab-${testId || 'default'}`} // Scoped layoutId to prevent conflicts if multiple Tabs instances
+                      layoutId={`activeTab-${testId || 'default'}`}
                       className="absolute bottom-[-1px] left-0 right-0 h-[2px] bg-accent shadow-[0_0_8px_var(--color-accent)]"
                       transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
                     />
                   )}
-                  
-                  {/* Background Highlight for Active State (Subtle) */}
                   {isActive && variant !== 'pills' && (
                      <m.div 
                         initial={{ opacity: 0 }}
@@ -239,7 +253,6 @@ export const Tabs: React.FC<TabsProps> = ({
                         className="absolute inset-0 bg-gradient-to-t from-accent/5 to-transparent pointer-events-none"
                      />
                   )}
-
                   <span className="relative z-10">{tab.label}</span>
                 </button>
               );
@@ -259,21 +272,25 @@ export const Tabs: React.FC<TabsProps> = ({
         )}
       </div>
 
-      {/* Content Panel */}
+      {/* Content Panel - Keep Alive with Mount on Demand */}
       <div className={`flex-1 min-h-0 relative overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent ${contentClassName}`}>
-        {activeTab && (
-            <div
-              key={activeTab.id}
-              className="w-full animate-fade-in"
-              role="tabpanel"
-              aria-labelledby={`tab-${activeTab.id}`}
-              data-testid={testId ? `${testId}-panel-${activeTab.id}` : undefined}
-            >
-              {activeTab.content}
-            </div>
-        )}
+        {tabs.map((tab) => {
+            // Only render if it has been mounted at least once
+            if (!mountedTabs.has(tab.id)) return null;
+
+            return (
+                <div
+                  key={tab.id}
+                  className={`w-full h-full ${tab.id === value ? 'block animate-fade-in' : 'hidden'}`}
+                  role="tabpanel"
+                  aria-labelledby={`tab-${tab.id}`}
+                  data-testid={testId ? `${testId}-panel-${tab.id}` : undefined}
+                >
+                  {tab.content}
+                </div>
+            );
+        })}
       </div>
     </div>
   );
 };
-

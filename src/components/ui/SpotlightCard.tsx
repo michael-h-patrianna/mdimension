@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 
 interface SpotlightCardProps {
   children: React.ReactNode;
@@ -12,15 +12,32 @@ export const SpotlightCard: React.FC<SpotlightCardProps> = ({
   spotlightColor = 'rgba(255, 255, 255, 0.1)'
 }) => {
   const divRef = useRef<HTMLDivElement>(null);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
   const [opacity, setOpacity] = useState(0);
+  
+  useEffect(() => {
+    const div = divRef.current;
+    if (!div) return;
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!divRef.current) return;
+    const handleMouseMove = (e: MouseEvent) => {
+      // Use offset properties directly from event when possible for best performance
+      // This avoids getBoundingClientRect() calls
+      let x, y;
+      
+      if (e.target === div || div.contains(e.target as Node)) {
+          // If event target is inside, use bounding client rect only if necessary
+          // For maximum perf, we can assume e.clientX relative to viewport
+          const rect = div.getBoundingClientRect();
+          x = e.clientX - rect.left;
+          y = e.clientY - rect.top;
+          
+          div.style.setProperty('--spotlight-x', `${x}px`);
+          div.style.setProperty('--spotlight-y', `${y}px`);
+      }
+    };
 
-    const rect = divRef.current.getBoundingClientRect();
-    setPosition({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-  };
+    div.addEventListener('mousemove', handleMouseMove);
+    return () => div.removeEventListener('mousemove', handleMouseMove);
+  }, []);
 
   const handleMouseEnter = () => {
     setOpacity(1);
@@ -33,16 +50,18 @@ export const SpotlightCard: React.FC<SpotlightCardProps> = ({
   return (
     <div
       ref={divRef}
-      onMouseMove={handleMouseMove}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       className={`relative overflow-hidden rounded-xl border border-white/10 bg-white/5 ${className}`}
+      style={{
+          '--spotlight-color': spotlightColor,
+      } as React.CSSProperties}
     >
       <div
-        className="pointer-events-none absolute -inset-px opacity-0 transition duration-300"
+        className="pointer-events-none absolute -inset-px transition duration-300"
         style={{
           opacity,
-          background: `radial-gradient(600px circle at ${position.x}px ${position.y}px, ${spotlightColor}, transparent 40%)`,
+          background: `radial-gradient(600px circle at var(--spotlight-x, 0px) var(--spotlight-y, 0px), var(--spotlight-color), transparent 40%)`,
         }}
       />
       <div className="relative h-full">
