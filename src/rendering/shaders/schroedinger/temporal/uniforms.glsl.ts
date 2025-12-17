@@ -1,5 +1,13 @@
 /**
- * Uniforms for temporal cloud accumulation shaders
+ * Uniform declarations for temporal cloud accumulation shaders
+ *
+ * NOTE: This file serves as documentation and a reference for the uniforms
+ * used across the temporal accumulation system. The actual uniform declarations
+ * are embedded directly in each shader (reprojection.glsl.ts, reconstruction.glsl.ts)
+ * to allow per-shader customization.
+ *
+ * This block is NOT imported by other shaders - it's exported for potential
+ * future use (e.g., generating TypeScript interfaces for uniform validation).
  */
 
 export const temporalCloudUniformsBlock = `

@@ -1,0 +1,163 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { m, AnimatePresence } from 'motion/react';
+import { LoadingSpinner } from './LoadingSpinner';
+
+export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  leftIcon?: React.ReactNode;
+  rightIcon?: React.ReactNode;
+  error?: string | boolean;
+  loading?: boolean;
+  clearable?: boolean;
+  onClear?: () => void;
+  containerClassName?: string;
+  label?: string;
+}
+
+export const Input = React.forwardRef<HTMLInputElement, InputProps>(({
+  leftIcon,
+  rightIcon,
+  error,
+  loading,
+  clearable,
+  onClear,
+  className = '',
+  containerClassName = '',
+  label,
+  disabled,
+  value,
+  onChange,
+  type = 'text',
+  ...props
+}, ref) => {
+  const [isFocused, setIsFocused] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  
+  // Combine refs
+  useEffect(() => {
+    if (typeof ref === 'function') {
+      ref(inputRef.current);
+    } else if (ref) {
+      // @ts-ignore
+      ref.current = inputRef.current;
+    }
+  }, [ref]);
+
+  const handleClear = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (inputRef.current) {
+      inputRef.current.value = '';
+      const event = new Event('input', { bubbles: true });
+      inputRef.current.dispatchEvent(event);
+      inputRef.current.focus();
+    }
+    if (onChange) {
+      // Create a synthetic event
+      // This is a bit hacky, but React events are complex to mock perfectly
+      // Better to rely on the parent checking the value or passing an explicit onClear
+    }
+    if (onClear) onClear();
+  };
+
+  const hasValue = value !== undefined ? String(value).length > 0 : (inputRef.current?.value.length ?? 0) > 0;
+
+  return (
+    <div className={`flex flex-col gap-1.5 ${containerClassName}`}>
+      {label && (
+        <label className="text-xs font-medium text-text-secondary ml-1">
+          {label}
+        </label>
+      )}
+      
+      <m.div 
+        className={`relative flex items-center group transition-all duration-200
+          ${error ? 'animate-shake' : ''}
+        `}
+        animate={error ? { x: [-2, 2, -2, 2, 0] } : {}}
+        transition={{ duration: 0.4 }}
+      >
+        {/* Left Icon */}
+        {leftIcon && (
+          <div className={`absolute left-3 transition-colors ${isFocused ? 'text-accent' : 'text-text-tertiary'}`}>
+            {leftIcon}
+          </div>
+        )}
+
+        <input
+          ref={inputRef}
+          type={type}
+          value={value}
+          onChange={onChange}
+          disabled={disabled || loading}
+          onFocus={(e) => {
+            setIsFocused(true);
+            props.onFocus?.(e);
+          }}
+          onBlur={(e) => {
+            setIsFocused(false);
+            props.onBlur?.(e);
+          }}
+          className={`
+            w-full bg-glass border rounded-lg px-3 py-2 text-sm transition-all duration-200
+            ${leftIcon ? 'pl-9' : ''}
+            ${rightIcon || clearable || loading ? 'pr-9' : ''}
+            ${error 
+              ? 'border-red-500/50 focus:border-red-500 focus:ring-1 focus:ring-red-500/50 placeholder:text-red-500/30' 
+              : 'border-white/10 focus:border-accent focus:ring-1 focus:ring-accent/50 placeholder:text-white/20'
+            }
+            ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-white/20 hover:bg-white/5'}
+            focus:outline-none focus:bg-black/40
+            ${className}
+          `}
+          {...props}
+        />
+
+        {/* Right Actions */}
+        <div className="absolute right-3 flex items-center gap-2">
+          {loading ? (
+            <LoadingSpinner size={14} className="text-text-tertiary" />
+          ) : (
+            <AnimatePresence>
+              {clearable && hasValue && !disabled && (
+                <m.button
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  type="button"
+                  onClick={handleClear}
+                  className="text-text-tertiary hover:text-text-primary rounded-full p-0.5 hover:bg-white/10 transition-colors"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </m.button>
+              )}
+            </AnimatePresence>
+          )}
+          
+          {rightIcon && !loading && (
+            <div className="text-text-tertiary">
+              {rightIcon}
+            </div>
+          )}
+        </div>
+      </m.div>
+      
+      {/* Error Message */}
+      <AnimatePresence>
+        {error && typeof error === 'string' && (
+          <m.span
+            initial={{ opacity: 0, y: -5, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: 'auto' }}
+            exit={{ opacity: 0, y: -5, height: 0 }}
+            className="text-xs text-red-400 ml-1"
+          >
+            {error}
+          </m.span>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+});
+
+Input.displayName = 'Input';

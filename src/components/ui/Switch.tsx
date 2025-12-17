@@ -7,6 +7,8 @@ export interface SwitchProps {
   label?: string;
   disabled?: boolean;
   className?: string;
+  iconOn?: React.ReactNode;
+  iconOff?: React.ReactNode;
   'data-testid'?: string;
 }
 
@@ -16,6 +18,8 @@ export const Switch: React.FC<SwitchProps> = ({
   label,
   disabled = false,
   className = '',
+  iconOn,
+  iconOff,
   'data-testid': dataTestId,
 }) => {
   return (
@@ -27,7 +31,7 @@ export const Switch: React.FC<SwitchProps> = ({
       `}
       data-testid={dataTestId}
     >
-      <div className="relative isolate">
+      <div className="relative isolate w-11 h-6">
         <input
           type="checkbox"
           className="sr-only"
@@ -41,10 +45,10 @@ export const Switch: React.FC<SwitchProps> = ({
         {/* Track */}
         <div
           className={`
-            w-9 h-5 rounded-full border transition-all duration-300 ease-out
+            absolute inset-0 rounded-full border transition-all duration-300 ease-out
             ${checked 
-              ? 'bg-accent border-accent/50 shadow-[0_0_12px_var(--color-accent-glow)]' 
-              : 'bg-white/5 border-white/10 group-hover/switch:bg-white/10'
+              ? 'bg-accent/80 border-accent/50 shadow-[0_0_15px_var(--color-accent-glow)]' 
+              : 'glass-input border-white/10 group-hover/switch:bg-white/10'
             }
           `}
         />
@@ -58,14 +62,37 @@ export const Switch: React.FC<SwitchProps> = ({
             damping: 30
           }}
           animate={{
-            x: checked ? 18 : 3,
+            x: checked ? 22 : 2,
           }}
           className={`
-            absolute top-1 left-0 w-3 h-3 rounded-full shadow-sm z-10 
+            absolute top-0.5 left-0 w-5 h-5 rounded-full shadow-md z-10 
+            flex items-center justify-center overflow-hidden
             transition-colors duration-200 pointer-events-none
             ${checked ? 'bg-white' : 'bg-text-secondary group-hover/switch:bg-text-primary'}
           `}
-        />
+        >
+          {/* Icon Animations */}
+          <div className="relative w-full h-full flex items-center justify-center">
+            {iconOn && (
+              <m.div
+                initial={false}
+                animate={{ opacity: checked ? 1 : 0, scale: checked ? 1 : 0.5 }}
+                className="absolute text-accent text-[10px]"
+              >
+                {iconOn}
+              </m.div>
+            )}
+            {iconOff && (
+               <m.div
+                initial={false}
+                animate={{ opacity: checked ? 0 : 1, scale: checked ? 0.5 : 1 }}
+                className="absolute text-background text-[10px]"
+              >
+                {iconOff}
+              </m.div>
+            )}
+          </div>
+        </m.div>
       </div>
       
       {label && (

@@ -7,6 +7,7 @@ Problem for you to solve: This project has a very solid modern web ui. The ui an
 Your task:
 - Add 20 subtle purely visual changes that turn the UI from competent to exceptional, from $39.99 to $599.99
 - Add 20 subtle interaction tweaks that turn the user interaction with the UI from competent to exceptional, from $39.99 to $599.99
+- Add 20 wow features that just say "genius"
 
 Do not add large obvious features like presets. This is about detail, adding the "love and eye for detail" polish that turns a competent ui into an exceptional ui.
 

@@ -13,6 +13,7 @@ interface CameraStore {
   registerControls: (controls: OrbitControlsImpl) => void
   captureState: () => CameraState | null
   applyState: (state: CameraState) => void
+  reset: () => void
 }
 
 export const useCameraStore = create<CameraStore>((set, get) => ({
@@ -47,5 +48,12 @@ export const useCameraStore = create<CameraStore>((set, get) => ({
     controls.object.position.set(...state.position)
     controls.target.set(...state.target)
     controls.update()
+  },
+
+  reset: () => {
+    const { controls } = get()
+    if (controls) {
+      controls.reset()
+    }
   }
 }))

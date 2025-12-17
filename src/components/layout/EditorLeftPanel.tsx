@@ -3,6 +3,7 @@ import { DimensionSelector } from '@/components/sections/Geometry/DimensionSelec
 import { ObjectSettingsSection } from '@/components/sections/Geometry/ObjectSettingsSection';
 import { ObjectTypeExplorer } from '@/components/sections/ObjectTypes/ObjectTypeExplorer';
 import { Tabs, Tab } from '@/components/ui/Tabs';
+import { SpotlightCard } from '@/components/ui/SpotlightCard';
 
 export const EditorLeftPanel: React.FC = () => {
   const [activeTab, setActiveTab] = useState('type');
@@ -21,18 +22,18 @@ export const EditorLeftPanel: React.FC = () => {
   ];
 
   return (
-    <div className="h-full flex flex-col bg-panel-bg shrink-0 overflow-hidden">
+    <div className="h-full flex flex-col bg-transparent shrink-0 overflow-hidden">
         {/* Fixed Header Section with Dimension Selector */}
-        <div className="p-4 border-b border-panel-border bg-panel-bg/50 backdrop-blur-sm z-10">
+        <div className="p-4 border-b border-panel-border bg-panel-bg/30 backdrop-blur-sm z-10">
             <h2 className="text-xs font-bold text-text-secondary uppercase tracking-widest mb-4">Space & Object</h2>
             
-            {/* Dimension Selector Area - Clean Integration */}
-            <div className="glass-panel rounded-lg p-3">
+            {/* Dimension Selector Area - Spotlight Effect */}
+            <SpotlightCard className="p-3 bg-black/20" spotlightColor="rgba(var(--color-accent), 0.15)">
                  <div className="flex justify-between items-baseline mb-2">
                     <label className="text-[10px] text-accent font-bold uppercase tracking-wider text-glow-subtle">Dimensions</label>
                 </div>
                 <DimensionSelector />
-            </div>
+            </SpotlightCard>
         </div>
         
         {/* Tabs Section */}
@@ -43,7 +44,7 @@ export const EditorLeftPanel: React.FC = () => {
               onChange={setActiveTab}
               className="flex-1 flex flex-col min-h-0"
               tabListClassName="px-3 pt-3 pb-0 bg-transparent"
-              contentClassName="flex-1 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-panel-border hover:scrollbar-thumb-text-secondary/50"
+              contentClassName="flex-1 overflow-y-auto p-4 custom-scrollbar"
               variant="default"
               fullWidth
               data-testid="left-panel-tabs"

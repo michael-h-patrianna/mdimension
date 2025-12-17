@@ -25,6 +25,17 @@ const CLOUD_RESOLUTION_SCALE = 0.5;
 const CYCLE_LENGTH = 4;
 
 /**
+ * MRT attachment indices for the reprojection buffer.
+ * These must match the shader outputs in reprojection.glsl.ts.
+ */
+export const MRT_ATTACHMENTS = {
+  /** Reprojected color from previous frame (RGBA16F) */
+  REPROJECTED_COLOR: 0,
+  /** Reprojection validity mask (R channel = validity 0-1) */
+  VALIDITY_MASK: 1,
+} as const;
+
+/**
  * Bayer pattern offsets for 4-frame cycle.
  * Each offset determines which pixel in a 2x2 block to render.
  *
@@ -317,7 +328,26 @@ class TemporalCloudManagerImpl {
   }
 
   /**
-   * Invalidate history (e.g., after camera teleport).
+   * Invalidate history and force a fresh accumulation cycle.
+   *
+   * Call this when the view changes discontinuously and reprojection would
+   * produce incorrect results. Common scenarios include:
+   *
+   * - **Camera teleport**: Instant position change (e.g., preset views, reset)
+   * - **Scene reset**: When geometry changes significantly
+   * - **FOV change**: Projection matrix discontinuity
+   * - **Render target resize**: Already handled internally by initialize()
+   *
+   * After invalidation, the system renders 4 frames to rebuild full coverage
+   * before temporal blending resumes. During this period, spatial interpolation
+   * fills gaps between rendered pixels.
+   *
+   * @example
+   * ```ts
+   * // On camera preset button click
+   * camera.position.set(0, 5, 10);
+   * TemporalCloudManager.invalidate();
+   * ```
    */
   invalidate(): void {
     this.isValid = false;

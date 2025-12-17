@@ -29,27 +29,58 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   return (
     <ToastContext.Provider value={{ addToast }}>
       {children}
-      <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none">
-        <AnimatePresence>
+      <div className="fixed bottom-6 right-6 z-[100] flex flex-col gap-2 pointer-events-none items-end">
+        <AnimatePresence mode="popLayout">
           {toasts.map((toast) => (
             <m.div
               key={toast.id}
-              initial={{ opacity: 0, y: 20, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+              layout
+              initial={{ opacity: 0, x: 50, scale: 0.95 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 20, scale: 0.95, transition: { duration: 0.2 } }}
+              drag="x"
+              dragConstraints={{ left: 0, right: 300 }}
+              dragElastic={0.1}
+              onDragEnd={(_, info) => {
+                if (info.offset.x > 100) {
+                   setToasts((prev) => prev.filter((t) => t.id !== toast.id));
+                }
+              }}
               className={`
-                pointer-events-auto px-4 py-3 rounded-lg shadow-lg border backdrop-blur-md flex items-center gap-3 min-w-[300px]
-                ${toast.type === 'success' ? 'bg-green-500/10 border-green-500/20 text-green-200' : ''}
-                ${toast.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-200' : ''}
-                ${toast.type === 'info' ? 'bg-panel-bg/80 border-panel-border text-text-primary' : ''}
+                pointer-events-auto relative overflow-hidden rounded-xl border backdrop-blur-xl shadow-2xl w-[320px]
+                ${toast.type === 'success' ? 'bg-green-950/40 border-green-500/20' : ''}
+                ${toast.type === 'error' ? 'bg-red-950/40 border-red-500/20' : ''}
+                ${toast.type === 'info' ? 'bg-panel-bg/90 border-white/10' : ''}
               `}
             >
-               <div className={`w-2 h-2 rounded-full ${
-                 toast.type === 'success' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' :
-                 toast.type === 'error' ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]' :
-                 'bg-accent shadow-[0_0_8px_var(--color-accent)]'
-               }`} />
-              <span className="text-sm font-medium">{toast.message}</span>
+               <div className="p-4 flex items-start gap-3">
+                   <div className={`mt-1 shrink-0 w-2 h-2 rounded-full ${
+                     toast.type === 'success' ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]' :
+                     toast.type === 'error' ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]' :
+                     'bg-accent shadow-[0_0_10px_var(--color-accent)]'
+                   }`} />
+                   <div className="flex-1">
+                      <p className={`text-sm font-medium ${
+                         toast.type === 'success' ? 'text-green-100' :
+                         toast.type === 'error' ? 'text-red-100' :
+                         'text-text-primary'
+                      }`}>
+                        {toast.message}
+                      </p>
+                   </div>
+               </div>
+               
+               {/* Progress Bar */}
+               <m.div 
+                 initial={{ width: "100%" }}
+                 animate={{ width: "0%" }}
+                 transition={{ duration: 3, ease: "linear" }}
+                 className={`h-[2px] absolute bottom-0 left-0 ${
+                    toast.type === 'success' ? 'bg-green-500/50' :
+                    toast.type === 'error' ? 'bg-red-500/50' :
+                    'bg-accent/50'
+                 }`}
+               />
             </m.div>
           ))}
         </AnimatePresence>

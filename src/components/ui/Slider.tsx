@@ -1,4 +1,5 @@
 import React, { useEffect, useId, useState } from 'react';
+import { m, AnimatePresence } from 'motion/react';
 
 export interface SliderProps {
   label: string;
@@ -14,11 +15,8 @@ export interface SliderProps {
   disabled?: boolean;
   minLabel?: string;
   maxLabel?: string;
-  /** Tooltip text shown on hover (currently display via title attribute) */
   tooltip?: string;
-  /** Custom value formatter function (overrides default formatting) */
   formatValue?: (value: number) => string;
-  /** Test ID for E2E testing */
   'data-testid'?: string;
 }
 
@@ -34,23 +32,62 @@ export const Slider: React.FC<SliderProps> = ({
   showValue = true,
   className = '',
   disabled = false,
-  minLabel,
-  maxLabel,
   tooltip,
+  formatValue,
   'data-testid': dataTestId,
 }) => {
   const id = useId();
-  const percentage = max > min ? ((value - min) / (max - min)) * 100 : 0;
+  const percentage = max > min ? Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100)) : 0;
   const decimals = step >= 1 ? 0 : Math.max(0, Math.ceil(-Math.log10(step)));
   
-  // Local state for input interaction
   const [inputValue, setInputValue] = useState(value.toString());
   const [isHovered, setIsHovered] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [isLabelDragging, setIsLabelDragging] = useState(false);
 
   useEffect(() => {
     setInputValue(value.toFixed(decimals));
   }, [value, decimals]);
+
+  // Label Drag Logic
+  const handleLabelMouseDown = (e: React.MouseEvent) => {
+    if (disabled) return;
+    setIsLabelDragging(true);
+    e.preventDefault();
+    document.body.style.cursor = 'ew-resize';
+    
+    const startX = e.clientX;
+    const startValue = value;
+    const range = max - min;
+    const sensitivity = e.shiftKey ? 0.05 : 0.2; // Shift for precision
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const delta = moveEvent.clientX - startX;
+      // Map pixels to value
+      // Assume 200px = full range? No, use sensitivity.
+      // 1px = 1% of range? 
+      const change = delta * (range / 200) * sensitivity; // Arbitrary but usable scale
+      let newValue = startValue + change;
+      
+      // Step snapping
+      if (step) {
+        newValue = Math.round(newValue / step) * step;
+      }
+      
+      newValue = Math.min(Math.max(newValue, min), max);
+      onChange(newValue);
+    };
+
+    const handleMouseUp = () => {
+      setIsLabelDragging(false);
+      document.body.style.cursor = '';
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
@@ -74,26 +111,33 @@ export const Slider: React.FC<SliderProps> = ({
     }
   };
 
+  const displayValue = formatValue ? formatValue(value) : value.toFixed(decimals);
+
   return (
     <div 
-      className={`group/slider relative ${className} ${disabled ? 'opacity-50 pointer-events-none' : ''}`}
+      className={`group/slider relative select-none ${className} ${disabled ? 'opacity-50 pointer-events-none' : ''}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       data-testid={dataTestId}
     >
       {/* Header: Label and Value */}
-      <div className="flex items-center justify-between mb-1.5 min-h-[1.25rem]">
+      <div className="flex items-center justify-between mb-2 min-h-[1.25rem]">
         <label
           htmlFor={id}
-          className="text-[11px] font-medium text-text-secondary group-hover/slider:text-text-primary transition-colors cursor-pointer select-none tracking-wide"
-          title={tooltip}
+          className={`
+            text-[11px] font-medium transition-colors tracking-wide flex items-center gap-1
+            ${isLabelDragging ? 'text-accent cursor-ew-resize' : 'text-text-secondary group-hover/slider:text-text-primary cursor-ew-resize'}
+          `}
+          title={tooltip || "Drag label to adjust value, Double-click to reset"}
+          onMouseDown={handleLabelMouseDown}
+          onDoubleClick={() => onReset && onReset()}
         >
           {label}
         </label>
         
         {showValue && (
-          <div className="flex items-center gap-1.5 shrink-0">
-             {onReset && value !== min && ( // Only show reset if changed from min/default - simplification for UI cleanliness
+          <div className="flex items-center gap-1.5 shrink-0 relative">
+             {onReset && value !== min && (
               <button
                 type="button"
                 onClick={onReset}
@@ -102,44 +146,39 @@ export const Slider: React.FC<SliderProps> = ({
                   text-[10px] text-accent transition-all duration-200 
                   ${isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2'}
                 `}
-                title="Reset to default"
+                title="Reset"
                 aria-label="Reset value"
-                data-testid={dataTestId ? `${dataTestId}-reset` : undefined}
               >
-                reset
+                ↺
               </button>
             )}
             <input
-              type="number"
+              type="text"
               value={inputValue}
               onChange={handleInputChange}
               onBlur={handleInputBlur}
               onKeyDown={handleKeyDown}
-              step={step}
-              min={min}
-              max={max}
               disabled={disabled}
               className="
-                bg-transparent border-none p-0 text-[11px] font-mono font-medium text-right text-accent 
-                w-[6ch] focus:ring-0 focus:outline-none focus:text-text-primary
-                selection:bg-accent/30 selection:text-white
-                [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none
+                glass-input
+                w-[6ch] px-1 py-0.5 text-right font-mono text-[10px] h-auto
+                focus:w-[8ch] transition-all duration-200
               "
               data-testid={dataTestId ? `${dataTestId}-input` : undefined}
             />
-            {unit && <span className="text-[10px] text-text-tertiary font-medium select-none">{unit}</span>}
+            {unit && <span className="text-[10px] text-text-tertiary font-medium">{unit}</span>}
           </div>
         )}
       </div>
 
       {/* Slider Track Area */}
-      <div className="relative h-5 flex items-center select-none touch-none">
+      <div className="relative h-5 flex items-center touch-none">
         
-        {/* Track Background - Glassy & Thin */}
-        <div className="absolute w-full h-[2px] bg-white/10 rounded-full overflow-hidden transition-colors duration-300 group-hover/slider:bg-white/15">
-           {/* Active Fill Track */}
+        {/* Track Background */}
+        <div className="absolute w-full h-[3px] bg-white/5 rounded-full overflow-hidden transition-colors duration-300 group-hover/slider:bg-white/10 backdrop-blur-sm shadow-inner">
+           {/* Active Fill Track - Gradient */}
            <div
-             className="h-full bg-accent shadow-[0_0_8px_var(--color-accent)] opacity-80 group-hover/slider:opacity-100 transition-all duration-100 ease-out"
+             className="h-full bg-gradient-to-r from-accent/50 to-accent shadow-[0_0_10px_var(--color-accent-glow)] opacity-80 group-hover/slider:opacity-100 transition-all duration-100 ease-out"
              style={{ width: `${percentage}%` }}
            />
         </div>
@@ -161,37 +200,39 @@ export const Slider: React.FC<SliderProps> = ({
           className="absolute w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed z-20"
           style={{ WebkitAppearance: 'none' }}
           aria-label={label}
-          aria-valuemin={min}
-          aria-valuemax={max}
-          aria-valuenow={value}
-          data-testid={dataTestId ? `${dataTestId}-slider` : undefined}
         />
 
-        {/* Custom Thumb - The "Jewel" */}
+        {/* Custom Thumb */}
         <div
           className={`
-            absolute h-3 w-3 rounded-full 
+            absolute h-3.5 w-3.5 rounded-full 
             bg-background border border-accent 
-            shadow-[0_0_10px_var(--color-accent-glow)] 
+            shadow-[0_0_12px_var(--color-accent-glow)] 
             pointer-events-none z-10 
             transition-transform duration-100 ease-out
             flex items-center justify-center
-            ${isDragging || isHovered ? 'scale-125 bg-accent' : 'scale-100'}
+            ${isDragging || isLabelDragging ? 'scale-125 bg-accent' : 'scale-100'}
           `}
-          style={{ left: `calc(${percentage}% - 6px)` }}
+          style={{ left: `calc(${percentage}% - 7px)` }}
         >
-          {/* Inner Dot (visible when not filled) */}
-           <div className={`w-1 h-1 rounded-full bg-white transition-opacity duration-200 ${isDragging || isHovered ? 'opacity-100' : 'opacity-0'}`} />
+           <div className={`w-1 h-1 rounded-full bg-white transition-opacity duration-200 ${isDragging || isHovered ? 'opacity-100' : 'opacity-50'}`} />
         </div>
-      </div>
 
-      {/* Min/Max Labels (Optional - often clutter but good for scale context) */}
-      {(minLabel || maxLabel) && (
-        <div className="flex justify-between -mt-1 px-0.5 opacity-0 group-hover/slider:opacity-40 transition-opacity duration-300">
-          <span className="text-[9px] text-text-tertiary font-mono">{minLabel}</span>
-          <span className="text-[9px] text-text-tertiary font-mono">{maxLabel}</span>
-        </div>
-      )}
+        {/* Tooltip while dragging */}
+        <AnimatePresence>
+          {(isDragging || isLabelDragging) && (
+             <m.div
+               initial={{ opacity: 0, y: 10, scale: 0.8 }}
+               animate={{ opacity: 1, y: -20, scale: 1 }}
+               exit={{ opacity: 0, y: 10, scale: 0.8 }}
+               className="absolute top-0 -translate-x-1/2 px-2 py-1 bg-black/90 backdrop-blur-xl border border-white/10 rounded text-[10px] font-mono text-accent pointer-events-none shadow-xl z-30"
+               style={{ left: `${percentage}%` }}
+             >
+               {displayValue}{unit}
+             </m.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 };

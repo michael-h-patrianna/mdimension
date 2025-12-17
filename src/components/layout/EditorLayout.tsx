@@ -8,7 +8,10 @@ import { EditorLeftPanel } from './EditorLeftPanel';
 import { EditorRightPanel } from './EditorRightPanel';
 import { EditorBottomPanel } from './EditorBottomPanel';
 import { ShortcutsOverlay } from '@/components/layout/ShortcutsOverlay';
+import { CommandPalette } from '@/components/layout/CommandPalette';
+import { CanvasContextMenu } from '@/components/layout/CanvasContextMenu';
 import { useIsDesktop } from '@/hooks/useMediaQuery';
+import { useKonamiCode } from '@/hooks/useKonamiCode';
 
 interface EditorLayoutProps {
   children?: React.ReactNode;
@@ -16,6 +19,13 @@ interface EditorLayoutProps {
 
 export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
   const theme = useThemeStore((state) => state.theme);
+  const setTheme = useThemeStore((state) => state.setTheme);
+  
+  useKonamiCode(() => {
+    setTheme('rainbow');
+    // Maybe play a sound?
+  });
+
   const { 
     isCollapsed, 
     toggleCollapsed, 
@@ -77,23 +87,24 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
   }, [isDesktop, setCollapsed, setLeftPanel]);
 
   const panelVariants = {
-    hiddenLeft: { x: -340, opacity: 0 },
+    hiddenLeft: { x: -340, opacity: 0, scale: 0.98 },
     visible: { 
         x: 0, 
-        opacity: 1,
+        opacity: 1, 
+        scale: 1,
         transition: {
-            type: 'spring' as const,
-            damping: 28,
-            stiffness: 300,
+            type: "spring" as const,
+            damping: 30,
+            stiffness: 350,
             mass: 0.8,
             staggerChildren: 0.05
         }
     },
-    hiddenRight: { x: 340, opacity: 0 },
+    hiddenRight: { x: 340, opacity: 0, scale: 0.98 },
   };
 
   return (
-    <div className="relative h-screen w-screen bg-background overflow-hidden selection:bg-accent selection:text-black font-sans text-text-primary">
+    <div className="relative h-screen w-screen bg-background overflow-hidden selection:bg-accent selection:text-white font-sans text-text-primary">
       {/* 1. Full-screen Canvas Layer (The Curtain) */}
       <div className="absolute inset-0 z-0">
          {children}
@@ -103,7 +114,12 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-accent/5 via-background/10 to-background/50 pointer-events-none z-0 mix-blend-overlay" />
       
       {/* 2. UI Overlay Layer */}
-      <div className="relative z-10 flex flex-col h-full w-full pointer-events-none">
+      <m.div 
+        initial={{ opacity: 0 }} 
+        animate={{ opacity: 1 }} 
+        transition={{ duration: 1 }}
+        className="relative z-10 flex flex-col h-full w-full pointer-events-none"
+      >
         
         {!isCinematicMode && (
             <div className="pointer-events-auto shrink-0 z-50">
@@ -161,7 +177,7 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
                         exit="hiddenLeft"
                         variants={panelVariants}
                         className={`
-                            glass-panel border-r border-white/10
+                            glass-panel
                             h-full overflow-hidden w-80 pointer-events-auto flex flex-col
                             ${!isDesktop ? 'absolute left-0 top-0 z-30 shadow-2xl' : 'relative z-20 ml-2 mb-2 rounded-xl'}
                         `}
@@ -179,12 +195,13 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
                      {/* Loader */}
                      {!children && (
                         <div className="w-full h-full flex flex-col items-center justify-center text-text-tertiary">
-                           <div className="relative w-16 h-16 mb-6">
-                              <div className="absolute inset-0 border-t-2 border-accent rounded-full animate-spin"></div>
-                              <div className="absolute inset-2 border-r-2 border-accent/50 rounded-full animate-spin-slow reverse"></div>
-                              <div className="absolute inset-4 border-b-2 border-accent/20 rounded-full animate-pulse"></div>
+                           <div className="relative w-24 h-24 mb-8">
+                              <div className="absolute inset-0 border border-accent/20 rounded-full animate-[spin_4s_linear_infinite]"></div>
+                              <div className="absolute inset-2 border-t border-accent rounded-full animate-[spin_2s_linear_infinite]"></div>
+                              <div className="absolute inset-8 border border-accent/50 rounded-full animate-pulse"></div>
+                              <div className="absolute inset-[40%] bg-accent/20 blur-md rounded-full animate-pulse"></div>
                            </div>
-                           <p className="text-xs font-mono tracking-[0.3em] opacity-70 animate-pulse text-accent">INITIALIZING SYSTEM</p>
+                           <p className="text-[10px] font-mono tracking-[0.4em] text-accent/80 animate-pulse">INITIALIZING SYSTEM</p>
                        </div>
                      )}
                 </div>
@@ -204,7 +221,7 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
                         exit="hiddenRight"
                         variants={panelVariants}
                         className={`
-                            glass-panel border-l border-white/10
+                            glass-panel
                             h-full overflow-hidden w-80 pointer-events-auto flex flex-col
                             ${!isDesktop ? 'absolute right-0 top-0 z-30 shadow-2xl' : 'relative z-20 mr-2 mb-2 rounded-xl'}
                         `}
@@ -216,8 +233,10 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
                 )}
             </AnimatePresence>
         </div>
-      </div>
+      </m.div>
       
+      <CommandPalette />
+      <CanvasContextMenu />
       {!isCinematicMode && <ShortcutsOverlay />}
     </div>
   );
