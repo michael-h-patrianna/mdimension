@@ -68,6 +68,19 @@ function getHealthColor(fps: number, high: number, low: number) {
   return { text: 'text-rose-500', bg: 'bg-rose-500', bgPulse: 'bg-rose-400', stroke: '#f43f5e' };
 }
 
+function formatShaderName(key: string, objectType: string): string {
+  if (key.toLowerCase() === 'object') {
+    // Convert camelCase or hyphens to Title Case
+    return objectType
+      .replace(/([A-Z])/g, ' $1') // Add space before capital letters
+      .replace(/^./, (str) => str.toUpperCase()) // Capitalize first letter
+      .replace(/-/g, ' ') // Replace hyphens with spaces
+      .trim();
+  }
+  // Title case for other keys
+  return key.replace(/^./, (str) => str.toUpperCase());
+}
+
 // --- Sparkline Component ---
 const Sparkline = ({ 
   data, 
@@ -308,7 +321,7 @@ export function PerformanceMonitor() {
                     }
                   `}
                 >
-                  {key}
+                  {formatShaderName(key, objectType)}
                 </button>
               ))}
             </div>
@@ -338,7 +351,8 @@ export function PerformanceMonitor() {
                      <SectionHeader icon={<Icons.Database />} label="Modules" />
                      <div className="border border-white/5 rounded-lg overflow-hidden">
                        {activeShaderInfo.activeModules.map((mod, i) => {
-                          const isSafe = SAFE_MODULES.includes(mod);
+                          // Check if module is in SAFE_MODULES (case insensitive)
+                          const isSafe = SAFE_MODULES.some(safe => safe.toLowerCase() === mod.toLowerCase());
                           const isEnabled = !shaderOverrides.includes(mod);
                           return (
                             <div key={i} className="flex items-center justify-between p-2 hover:bg-white/5 border-b border-white/5 last:border-0 transition-colors">
@@ -349,6 +363,7 @@ export function PerformanceMonitor() {
                                   checked={isEnabled} 
                                   onChange={() => toggleShaderModule(mod)} 
                                   className="w-3.5 h-3.5 rounded border-white/20 bg-white/5 checked:bg-accent focus:ring-accent/50 cursor-pointer"
+                                  title={`Toggle ${mod}`}
                                 />
                               )}
                             </div>
