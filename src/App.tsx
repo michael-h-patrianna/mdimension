@@ -129,7 +129,7 @@ function App() {
               }}
               shadows="soft"
               flat
-              gl={{ alpha: false, antialias: false }}
+              gl={{ alpha: false, antialias: false, preserveDrawingBuffer: true }}
               style={{ background: backgroundColor }}
               onPointerMissed={handlePointerMissed}
             >

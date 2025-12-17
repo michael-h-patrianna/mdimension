@@ -174,7 +174,7 @@ export function PerformanceMonitor() {
           initial={{ opacity: 0, x: -10 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.2 }}
-          className="space-y-5"
+          className="space-y-5 p-5"
         >
            {/* FPS Graph */}
           <div className="space-y-1">
@@ -255,7 +255,7 @@ export function PerformanceMonitor() {
           initial={{ opacity: 0, x: 10 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.2 }}
-          className="space-y-5"
+          className="space-y-5 p-5"
         >
            <div className="space-y-3">
               <SectionHeader icon={<Icons.Chip />} label="Hardware" />
@@ -318,7 +318,7 @@ export function PerformanceMonitor() {
           initial={{ opacity: 0, x: 10 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.2 }}
-          className="space-y-5"
+          className="space-y-5 p-5"
         >
            {!shaderInfo ? (
              <div className="text-zinc-500 italic text-center p-4">No shader info available</div>
@@ -392,7 +392,7 @@ export function PerformanceMonitor() {
           initial={{ opacity: 0, x: 10 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.2 }}
-          className="space-y-5"
+          className="space-y-5 p-5"
         >
           {/* Header with refresh button */}
           <div className="flex items-center justify-between">
@@ -515,6 +515,7 @@ export function PerformanceMonitor() {
   return (
     <LazyMotion features={domMax}>
       <m.div
+        layout
         ref={containerRef}
         drag
         dragMomentum={false}
@@ -522,18 +523,20 @@ export function PerformanceMonitor() {
         style={{ x, y }}
         onDragStart={() => setIsDragging(true)}
         onDragEnd={() => setTimeout(() => setIsDragging(false), 100)}
-        initial={{ scale: 0.95, opacity: 0.9 }}
-        animate={{ scale: expanded ? 1 : 0.95, opacity: expanded ? 1 : 0.9 }}
-        transition={{ duration: 0.3, ease: "easeOut" }}
-        className="absolute bottom-4 left-4 z-[9999] pointer-events-auto origin-bottom-left"
+        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+        className="absolute top-20 left-4 z-[50] pointer-events-auto"
       >
-        <div className="
-          bg-zinc-950/90 backdrop-blur-xl
-          border border-white/10
-          rounded-xl overflow-hidden shadow-2xl
-          text-xs font-mono text-zinc-400
-          w-100 flex flex-col
-        ">
+        <m.div 
+          layout="position"
+          className={`
+            bg-zinc-950/80 backdrop-blur-xl
+            border border-white/10
+            rounded-xl overflow-hidden shadow-2xl
+            text-xs font-mono text-zinc-400
+            flex flex-col
+            ${expanded ? 'w-96' : 'w-64'}
+          `}
+        >
 
           {/* --- Header --- */}
           <div
@@ -572,11 +575,11 @@ export function PerformanceMonitor() {
                 value={activeTab}
                 onChange={(id) => setActiveTab(id as 'perf' | 'sys' | 'shader' | 'buffers')}
                 tabs={tabs}
-                contentClassName="p-5 max-h-[370px] overflow-y-auto custom-scrollbar"
+                className="h-[400px]"
               />
             </div>
           )}
-        </div>
+        </m.div>
       </m.div>
     </LazyMotion>
   );

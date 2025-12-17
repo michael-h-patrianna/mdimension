@@ -175,6 +175,8 @@ class TemporalCloudManagerImpl {
     }
 
     // Create cloud render target (quarter resolution)
+    // Single attachment for temporal accumulation - the shader only outputs gColor
+    // when USE_TEMPORAL_ACCUMULATION is defined (gNormal output is conditional)
     this.cloudRenderTarget = new THREE.WebGLRenderTarget(newCloudWidth, newCloudHeight, {
       format: THREE.RGBAFormat,
       type: THREE.HalfFloatType,

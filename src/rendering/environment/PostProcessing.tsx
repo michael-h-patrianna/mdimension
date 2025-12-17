@@ -30,7 +30,7 @@ import { usePerformanceMetricsStore, type BufferStats } from '@/stores/performan
 import { usePostProcessingStore } from '@/stores/postProcessingStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useFrame, useThree } from '@react-three/fiber';
-import { memo, useEffect, useMemo, useRef } from 'react';
+import { memo, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
@@ -526,12 +526,15 @@ export const PostProcessing = memo(function PostProcessing() {
   }, [composer, bloomPass, bokehPass, ssrPass, refractionPass, bufferPreviewPass, sceneTarget, objectDepthTarget, normalTarget, mainObjectMRT, normalCopyScene, normalCopyCamera, texturePass, size.width, size.height]);
 
   // Initialize temporal depth manager on mount and resize
-  useEffect(() => {
+  // CRITICAL: Use useLayoutEffect to ensure initialization happens BEFORE first render
+  // This ensures uniforms have valid dimensions before SchroedingerMesh renders
+  useLayoutEffect(() => {
     TemporalDepthManager.initialize(size.width, size.height, gl);
   }, [gl, size.width, size.height]);
 
   // Initialize temporal cloud manager and pass on mount and resize
-  useEffect(() => {
+  // CRITICAL: Use useLayoutEffect to ensure initialization happens BEFORE first render
+  useLayoutEffect(() => {
     TemporalCloudManager.initialize(size.width, size.height, gl);
     cloudTemporalPass.setSize(size.width, size.height);
   }, [cloudTemporalPass, size.width, size.height, gl]);
@@ -806,8 +809,19 @@ export const PostProcessing = memo(function PostProcessing() {
     // ========================================
     // When temporal cloud accumulation is active, blend the reconstructed
     // volumetric over the main scene before post-processing
-    if (useTemporalCloud && TemporalCloudManager.hasValidHistory()) {
-      const accumulationBuffer = TemporalCloudManager.getWriteTarget();
+
+    // CRITICAL FIX: Always composite when temporal cloud is active, not just when history is valid
+    // The reconstruction pass outputs valid data even without history (using spatial interpolation)
+    // Previously, this check was: if (useTemporalCloud && TemporalCloudManager.hasValidHistory())
+    // This caused the volumetric to be invisible for the first 4 frames since:
+    // 1. The VOLUMETRIC layer is excluded from main scene render when temporal cloud is active
+    // 2. But the composite only ran after hasValidHistory() became true (after 4 frames)
+    if (useTemporalCloud) {
+      // CRITICAL FIX: Use getReadTarget() instead of getWriteTarget()!
+      // After endFrame() is called (line ~719), buffers are swapped.
+      // getWriteTarget() now returns the NEXT frame's buffer (empty/old data).
+      // getReadTarget() returns the buffer that was just written to this frame.
+      const accumulationBuffer = TemporalCloudManager.getReadTarget();
 
       if (accumulationBuffer && cloudCompositeMaterial.uniforms.tCloud) {
         // Set the accumulation texture in the compositing material
@@ -1030,6 +1044,9 @@ export const PostProcessing = memo(function PostProcessing() {
 
     composer.render();
 
+    // ========================================
+    // DEBUG: Quality Gate Verification
+    // ========================================
     // Swap temporal depth buffers at end of frame
     // Force swap when previewing temporal depth buffer
     TemporalDepthManager.swap(currentShowTemporalDepthBuffer);

@@ -7,7 +7,6 @@ import { useShallow } from 'zustand/react/shallow';
 const SIDEBAR_WIDTH = 320;
 const TOP_BAR_HEIGHT = 48;
 const BOTTOM_BAR_HEIGHT = 48;
-const PADDING = 16; // 16px (matches left-4/bottom-4)
 const GAP = 16;     // Minimum gap between UI and monitor
 const SPRING_CONFIG = { damping: 25, stiffness: 200 };
 
@@ -72,121 +71,68 @@ export function usePanelCollision(
       const windowWidth = window.innerWidth;
       const windowHeight = window.innerHeight;
 
-      // --- X Axis Constraints ---
-      const leftEdge = leftSpring.get() * SIDEBAR_WIDTH;
-      const minAbsoluteX = leftEdge + GAP;
-      const minX = minAbsoluteX - PADDING; // Convert back to relative x (CSS left: 16px)
+      // --- New Coordinate System: Top-Left Anchor ---
+      // CSS: top-20 (80px), left-4 (16px)
+      // Origin (0,0) corresponds to { top: 80, left: 16 }
+      const ANCHOR_TOP = 80;
+      const ANCHOR_LEFT = 16;
 
-      const rightEdge = windowWidth - (rightSpring.get() * SIDEBAR_WIDTH);
-      const maxAbsoluteRight = rightEdge - GAP;
-      const maxX = maxAbsoluteRight - width - PADDING;
+      // --- X Axis Constraints ---
+      // Left Constraint: Must be to the right of the Left Panel (if visible)
+      // Visual Left = ANCHOR_LEFT + x
+      // Limit = (SIDEBAR_WIDTH * spring) + GAP
+      // ANCHOR_LEFT + x >= Limit  ->  x >= Limit - ANCHOR_LEFT
+      const leftPanelWidth = leftSpring.get() * SIDEBAR_WIDTH;
+      const minX = (leftPanelWidth + GAP) - ANCHOR_LEFT;
+
+      // Right Constraint: Must be to the left of the Right Panel (if visible)
+      // Visual Right = ANCHOR_LEFT + x + width
+      // Limit = WindowWidth - (SIDEBAR_WIDTH * spring) - GAP
+      // ANCHOR_LEFT + x + width <= Limit  ->  x <= Limit - ANCHOR_LEFT - width
+      const rightPanelWidth = rightSpring.get() * SIDEBAR_WIDTH;
+      const rightLimit = windowWidth - rightPanelWidth - GAP;
+      const maxX = rightLimit - ANCHOR_LEFT - width;
 
       // --- Y Axis Constraints ---
-      // Note: The monitor is anchored at `bottom: 16px`.
-      // So `y=0` means `absoluteBottom = 16`.
-      // Positive `y` moves UP (away from bottom).
-      // Negative `y` moves DOWN (towards bottom). This is Motion default for 'y' usually...
-      // Wait, let's check PerformanceMonitor CSS:
-      // It uses `bottom-4 left-4`.
-      // So `y` transform usually moves element DOWN (positive) or UP (negative) relative to origin.
-      // IF transform-origin is bottom-left? No, translate Y moves element relative to its static position.
-      // Standard CSS translate Y: positive = down, negative = up.
-      
-      // Let's verify coordinate system:
-      // Element is at `bottom: 16px`.
-      // `y=0`: Visual bottom is 16px from viewport bottom.
-      // `y=-100`: Visual bottom is 116px from viewport bottom (moved UP).
-      // `y=100`: Visual bottom is -84px from viewport bottom (moved DOWN).
-      
-      // Top Bar Collision:
-      // Top Bar extends down by `TOP_BAR_HEIGHT * progress`.
-      // Visual Top Edge = `TOP_BAR_HEIGHT * progress`.
-      // Monitor Top Edge in Viewport Y:
-      // ViewportHeight - (16 + height - y)  <-- Wait, this logic is confusing.
-      
-      // Let's think in "Distance from Bottom":
-      // Monitor Bottom = 16 - y (Since y negative moves up, -y is positive distance?)
-      // NO. usually `y` in framer motion adds to the `top` or `transform`.
-      // Since it's `bottom: 4` (16px), 
-      // y = -10 moves it UP 10px.
-      // So:
-      // Monitor Visual Bottom = 16 - y (pixels from bottom)
-      // Monitor Visual Top = 16 - y + height
-      
-      // Top Bar:
-      // Top Limit from bottom = WindowHeight - (TopSpring * Height) - GAP.
-      // We need Monitor Visual Top <= Top Limit.
-      // 16 - y + height <= WindowHeight - (TopSpring * Height) - GAP
-      // -y <= WindowHeight - TopBar - GAP - 16 - height
-      // y >= -(WindowHeight - TopBar - GAP - 16 - height)
-      
-      const topBarVisibleHeight = topSpring.get() * TOP_BAR_HEIGHT;
-      // The highest the monitor top can be:
-      const maxVisualTop = windowHeight - topBarVisibleHeight - GAP;
-      // This corresponds to a minimum `y` (since y is negative to go up):
-      // (16 - y + height) <= maxVisualTop
-      // -y <= maxVisualTop - 16 - height
-      // y >= 16 + height - maxVisualTop  (Wait, multiplying by -1 flips inequality)
-      // Let's re-solve:
-      // 16 - y + height = absoluteTopDistance (from bottom)
-      // We want absoluteTopDistance <= maxVisualTop
-      // 16 - y + height <= maxVisualTop
-      // -y <= maxVisualTop - 16 - height
-      // y >= -(maxVisualTop - 16 - height) 
-      
-      // Simplification:
-      // allowedUpwardsMovement = maxVisualTop - 16 - height
-      // Since up is negative y, min Y = -allowedUpwardsMovement.
-      const allowedUpwardsSpace = maxVisualTop - 16 - height;
-      const minY = -allowedUpwardsSpace; // e.g. -500 (can go up 500px)
+      // Top Constraint: Must be below the Top Bar (if visible)
+      // Visual Top = ANCHOR_TOP + y
+      // Limit = (TOP_BAR_HEIGHT * spring) + GAP
+      // ANCHOR_TOP + y >= Limit  ->  y >= Limit - ANCHOR_TOP
+      const topBarHeight = topSpring.get() * TOP_BAR_HEIGHT;
+      const minY = (topBarHeight + GAP) - ANCHOR_TOP;
 
-      // Bottom Bar Collision:
-      // Bottom Bar extends up by `BOTTOM_BAR_HEIGHT * progress`.
-      // Monitor Bottom = 16 - y.
-      // We need Monitor Bottom >= Bottom Bar Height + GAP.
-      // 16 - y >= (BottomSpring * Height) + GAP
-      // -y >= (BottomSpring * Height) + GAP - 16
-      // y <= 16 - GAP - (BottomSpring * Height)
-      
-      const bottomBarVisibleHeight = bottomSpring.get() * BOTTOM_BAR_HEIGHT;
-      // We need to be above this:
-      const minVisualBottom = bottomBarVisibleHeight + GAP;
-      // 16 - y >= minVisualBottom
-      // -y >= minVisualBottom - 16
-      // y <= 16 - minVisualBottom
-      
-      const maxY = 16 - minVisualBottom; // e.g. 0 (if no bar), or -48 (if bar exists)
+      // Bottom Constraint: Must be above the Bottom Bar (if visible)
+      // Visual Bottom = ANCHOR_TOP + y + height
+      // Limit = WindowHeight - (BOTTOM_BAR_HEIGHT * spring) - GAP
+      // ANCHOR_TOP + y + height <= Limit  ->  y <= Limit - ANCHOR_TOP - height
+      const bottomBarHeight = bottomSpring.get() * BOTTOM_BAR_HEIGHT;
+      const bottomLimit = windowHeight - bottomBarHeight - GAP;
+      const maxY = bottomLimit - ANCHOR_TOP - height;
 
       // Apply Constraints
       let newX = currentX;
       let newY = currentY;
 
       // X Clamping
-      if (currentX < minX) newX = minX;
-      else if (currentX > maxX) {
-        if (maxX >= minX) newX = maxX;
-        else newX = minX; // Prioritize left visibility
+      // If screen is too narrow (minX > maxX), prioritize Left visibility (stay at minX)
+      if (minX > maxX) {
+          newX = minX;
+      } else {
+          if (currentX < minX) newX = minX;
+          else if (currentX > maxX) newX = maxX;
       }
 
-      // Y Clamping (remember Y is inverted/negative for Up)
-      // We want y to be BETWEEN minY (highest position, most negative) and maxY (lowest position, least negative)
-      // e.g. Range [-500, 0]
-      // If y = -600 (too high), set to -500.
-      // If y = 10 (too low), set to 0.
-      
-      if (currentY < minY) newY = minY; // Too high (collisions with top bar)
-      else if (currentY > maxY) newY = maxY; // Too low (collisions with bottom bar)
-      
-      // Edge case: If window is too small vertically, prioritize Top visibility?
-      // If minY > maxY (available space is negative), we must choose.
-      // Usually showing the header of the monitor is better -> prioritize Top constraint?
-      // Or prioritize Bottom constraint (controls)?
-      // Let's prioritize preventing Bottom overlap (maxY), so controls aren't covered.
+      // Y Clamping
+      // If screen is too short (minY > maxY), prioritize Top visibility (stay at minY)
+      // This ensures the header is always accessible to drag/collapse
       if (minY > maxY) {
-          newY = maxY;
+          newY = minY;
+      } else {
+          if (currentY < minY) newY = minY;
+          else if (currentY > maxY) newY = maxY;
       }
 
-      // Update if changed
+      // Update if changed (with small threshold to avoid float jitter)
       if (Math.abs(newX - currentX) > 0.5) x.set(newX);
       if (Math.abs(newY - currentY) > 0.5) y.set(newY);
     };

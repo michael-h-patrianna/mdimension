@@ -166,9 +166,11 @@ void main() {
     gl_FragDepth = clamp((clipPos.z / clipPos.w) * 0.5 + 0.5, 0.0, 1.0);
 
     // Output
-    vec3 viewNormal = normalize((uViewMatrix * vec4(rd, 0.0)).xyz);
     gColor = vec4(volumeResult.color, alpha);
+    #ifndef USE_TEMPORAL_ACCUMULATION
+    vec3 viewNormal = normalize((uViewMatrix * vec4(rd, 0.0)).xyz);
     gNormal = vec4(viewNormal * 0.5 + 0.5, uMetallic);
+    #endif
 }
 `;
 

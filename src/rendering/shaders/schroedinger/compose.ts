@@ -100,9 +100,11 @@ export function composeSchroedingerShader(config: SchroedingerShaderConfig) {
   const selectedMainBlock = isosurface ? mainBlockIsosurface : mainBlock;
 
   const blocks = [
+    // IMPORTANT: Defines must come FIRST so USE_TEMPORAL_ACCUMULATION is available
+    // when precision block conditionally declares MRT outputs
+    { name: 'Defines', content: defines.join('\n') },
     { name: 'Precision', content: precisionBlock },
     { name: 'Vertex Inputs', content: `\n// Inputs from vertex shader\nin vec3 vPosition;\nin vec2 vUv;\n` },
-    { name: 'Defines', content: defines.join('\n') },
     { name: 'Constants', content: constantsBlock },
     { name: 'Shared Uniforms', content: uniformsBlock },
     { name: 'Schrödinger Uniforms', content: schroedingerUniformsBlock },

@@ -12,6 +12,7 @@ import { useAnimationStore } from '@/stores/animationStore';
 import { useLayoutStore } from '@/stores/layoutStore';
 import { useShallow } from 'zustand/react/shallow';
 import { useToast } from '@/contexts/ToastContext';
+import { soundManager } from '@/lib/audio/SoundManager';
 
 // Icons
 const Icons = {
@@ -100,6 +101,7 @@ export const TopBarControls: React.FC = () => {
   const isRaymarched = isRaymarchedFractal(objectType, dimension);
 
   const handleEdgeToggle = (visible: boolean) => {
+    soundManager.playClick();
     if (visible && isRaymarched) {
       setEdgesVisible(true);
       setFacesVisible(true);
@@ -109,6 +111,7 @@ export const TopBarControls: React.FC = () => {
   };
 
   const handleFaceToggle = (visible: boolean) => {
+    soundManager.playClick();
     if (!visible && isRaymarched && edgesVisible) {
       return;
     }
@@ -149,6 +152,7 @@ export const TopBarControls: React.FC = () => {
   }, [edgesVisible, facesVisible, setEdgesVisible]);
 
   const toggleCinematic = () => {
+    soundManager.playClick();
     if (isCinematicMode) {
         toggleCinematicMode();
     } else {
@@ -159,6 +163,7 @@ export const TopBarControls: React.FC = () => {
   };
 
   const toggleFullscreen = () => {
+    soundManager.playClick();
     if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen();
     } else {
@@ -182,9 +187,10 @@ export const TopBarControls: React.FC = () => {
   }) => (
     <button
       onClick={onClick}
+      onMouseEnter={() => soundManager.playHover()}
       title={label}
       className={`
-        p-1.5 rounded-md transition-all duration-300 border
+        p-1.5 rounded-md transition-all duration-300 border cursor-pointer
         ${active
           ? 'bg-accent/20 text-accent border-accent/50 shadow-[0_0_10px_color-mix(in_oklch,var(--color-accent)_20%,transparent)]'
           : 'bg-transparent text-text-secondary border-transparent hover:text-text-primary hover:bg-white/5'
@@ -207,7 +213,7 @@ export const TopBarControls: React.FC = () => {
                 onToggle={handleEdgeToggle}
                 ariaLabel="Toggle edges"
                 disabled={!edgesSupported}
-                className="!text-xs !py-1 !px-2"
+                className="!text-xs !py-1 !px-2 cursor-pointer"
             >
                 Edges
             </ToggleButton>
@@ -218,7 +224,7 @@ export const TopBarControls: React.FC = () => {
                 onToggle={handleFaceToggle}
                 ariaLabel="Toggle faces"
                 disabled={!facesSupported}
-                className="!text-xs !py-1 !px-2"
+                className="!text-xs !py-1 !px-2 cursor-pointer"
             >
                 Faces
             </ToggleButton>
@@ -231,7 +237,7 @@ export const TopBarControls: React.FC = () => {
       <IconButton 
         icon={Icons.Perf} 
         active={showPerfMonitor} 
-        onClick={() => setShowPerfMonitor(!showPerfMonitor)} 
+        onClick={() => { setShowPerfMonitor(!showPerfMonitor); soundManager.playClick(); }} 
         label="Performance Monitor" 
       />
       <IconButton 

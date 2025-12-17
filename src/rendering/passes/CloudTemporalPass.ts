@@ -173,6 +173,7 @@ export class CloudTemporalPass extends Pass {
     // Pass 2: Reconstruction
     // ========================================
     const reconUniforms = this.reconstructionMaterial.uniforms as unknown as ReconstructionUniforms;
+    // cloudTarget is single-attachment for temporal accumulation
     reconUniforms.uCloudRender.value = cloudTarget.texture;
 
     // Bind MRT textures from reprojection buffer

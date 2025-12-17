@@ -185,11 +185,6 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
   // Check if any light is enabled for shadow controls
   const hasEnabledLights = lights.some((light) => light.enabled);
 
-  // Only show when faces are visible
-  if (!facesVisible) {
-    return null;
-  }
-
   // Check if lighting controls should be shown
   const showLightingControls = shaderType === 'surface' && lightEnabled;
 
@@ -274,13 +269,20 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
 
   return (
     <Section title="Faces" defaultOpen={defaultOpen} data-testid="section-faces">
-      <Tabs
-        tabs={tabs}
-        value={activeTab}
-        onChange={(id) => setActiveTab(id as FacesTabId)}
-        tabListClassName="mb-4"
-        data-testid="faces-tabs"
-      />
+      <div className={`transition-opacity duration-300 ${!facesVisible ? 'opacity-40 pointer-events-none grayscale' : ''}`}>
+        <Tabs
+          tabs={tabs}
+          value={activeTab}
+          onChange={(id) => setActiveTab(id as FacesTabId)}
+          tabListClassName="mb-4"
+          data-testid="faces-tabs"
+        />
+        {!facesVisible && (
+            <div className="text-center p-4 mt-2 border border-dashed border-white/10 rounded-lg bg-black/20">
+                <p className="text-xs text-text-secondary">Enable Faces to edit settings</p>
+            </div>
+        )}
+      </div>
     </Section>
   );
 };

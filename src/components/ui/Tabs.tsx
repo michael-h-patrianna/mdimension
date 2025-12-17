@@ -6,7 +6,8 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { m } from 'motion/react';
+import { m, AnimatePresence } from 'motion/react';
+import { soundManager } from '@/lib/audio/SoundManager';
 
 export interface Tab {
   /** Unique identifier for the tab */
@@ -86,7 +87,20 @@ export const Tabs: React.FC<TabsProps> = ({
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
+  // Track direction for slide animation
+  const [direction, setDirection] = useState(0);
+  const prevValue = useRef(value);
+
   const activeTab = tabs.find((tab) => tab.id === value);
+  const activeIndex = tabs.findIndex((tab) => tab.id === value);
+  const prevIndex = tabs.findIndex((tab) => tab.id === prevValue.current);
+
+  useEffect(() => {
+    if (activeIndex !== prevIndex) {
+        setDirection(activeIndex > prevIndex ? 1 : -1);
+        prevValue.current = value;
+    }
+  }, [value, activeIndex, prevIndex]);
 
   const checkScroll = useCallback(() => {
     if (scrollContainerRef.current) {
@@ -116,6 +130,13 @@ export const Tabs: React.FC<TabsProps> = ({
     }
   };
 
+  const handleTabChange = (id: string) => {
+    if (id !== value) {
+        soundManager.playClick();
+        onChange(id);
+    }
+  };
+
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent, index: number) => {
       let newIndex = index;
@@ -138,11 +159,11 @@ export const Tabs: React.FC<TabsProps> = ({
       event.preventDefault();
       const targetTab = tabs[newIndex];
       if (targetTab) {
-        onChange(targetTab.id);
+        handleTabChange(targetTab.id);
         tabRefs.current[newIndex]?.focus();
       }
     },
-    [tabs, onChange]
+    [tabs, handleTabChange]
   );
 
   // Styling logic
@@ -151,6 +172,21 @@ export const Tabs: React.FC<TabsProps> = ({
     : 'border-b border-white/5 pb-[1px]'; // Slight padding for border visibility
     
   const widthStyles = fullWidth ? 'w-full' : 'min-w-full w-max';
+
+  const contentVariants = {
+    enter: (direction: number) => ({
+      x: direction > 0 ? 20 : -20,
+      opacity: 0,
+    }),
+    center: {
+      x: 0,
+      opacity: 1,
+    },
+    exit: (direction: number) => ({
+      x: direction > 0 ? -20 : 20,
+      opacity: 0,
+    }),
+  };
 
   return (
     <div className={`flex flex-col ${className}`} data-testid={testId}>
@@ -191,7 +227,8 @@ export const Tabs: React.FC<TabsProps> = ({
                   aria-selected={isActive}
                   aria-controls={`panel-${tab.id}`}
                   tabIndex={isActive ? 0 : -1}
-                  onClick={() => onChange(tab.id)}
+                  onClick={() => handleTabChange(tab.id)}
+                  onMouseEnter={() => !isActive && soundManager.playHover()}
                   onKeyDown={(e) => handleKeyDown(e, index)}
                   className={`
                     relative px-4 py-2 text-[10px] uppercase tracking-widest font-bold whitespace-nowrap outline-none select-none transition-colors duration-200
@@ -240,22 +277,31 @@ export const Tabs: React.FC<TabsProps> = ({
       </div>
 
       {/* Content Panel */}
-      <div className={`flex-1 min-h-0 ${contentClassName}`}>
-        {activeTab && (
-          <m.div
-            key={activeTab.id}
-            initial={{ opacity: 0, x: 10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-            className="h-full"
-            role="tabpanel"
-            aria-labelledby={`tab-${activeTab.id}`}
-            data-testid={testId ? `${testId}-panel-${activeTab.id}` : undefined}
-          >
-            {activeTab.content}
-          </m.div>
-        )}
+      <div className={`flex-1 min-h-0 relative ${contentClassName}`}>
+        <AnimatePresence mode="popLayout" custom={direction} initial={false}>
+          {activeTab && (
+            <m.div
+              key={activeTab.id}
+              custom={direction}
+              variants={contentVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ 
+                  x: { type: "spring", stiffness: 300, damping: 30 },
+                  opacity: { duration: 0.2 }
+              }}
+              className="h-full w-full absolute inset-0 overflow-y-auto custom-scrollbar"
+              role="tabpanel"
+              aria-labelledby={`tab-${activeTab.id}`}
+              data-testid={testId ? `${testId}-panel-${activeTab.id}` : undefined}
+            >
+              {activeTab.content}
+            </m.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
 };
+

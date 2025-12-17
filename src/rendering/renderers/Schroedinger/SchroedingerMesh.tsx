@@ -24,7 +24,7 @@ import type { RotationState } from '@/stores/rotationStore';
 import { useRotationStore } from '@/stores/rotationStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useFrame, useThree } from '@react-three/fiber';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import {
   flattenPresetForUniforms,
@@ -308,7 +308,7 @@ const SchroedingerMesh = () => {
   const useTemporalAccumulation = temporalEnabled && !isoEnabled;
 
   const { glsl: shaderString, modules, features } = useMemo(() => {
-    return composeSchroedingerShader({
+    const result = composeSchroedingerShader({
       dimension,
       shadows: false, // Volumetric mode doesn't use traditional shadows
       temporal: temporalEnabled && isoEnabled, // Depth-skip only for isosurface
@@ -318,6 +318,7 @@ const SchroedingerMesh = () => {
       overrides: shaderOverrides,
       isosurface: isoEnabled,
     });
+    return result;
   }, [dimension, temporalEnabled, opacityMode, shaderOverrides, isoEnabled, useTemporalAccumulation]);
 
   // Update debug info
@@ -338,7 +339,9 @@ const SchroedingerMesh = () => {
 
   // Assign layer based on temporal accumulation mode
   // When temporal cloud accumulation is active, use VOLUMETRIC layer for separate rendering
-  useEffect(() => {
+  // CRITICAL: Use useLayoutEffect to ensure layer is set BEFORE first render
+  // useEffect runs after render, causing the mesh to be on wrong layer for first frames
+  useLayoutEffect(() => {
     if (meshRef.current?.layers) {
       const useVolumetricLayer = needsVolumetricSeparation({
         temporalCloudAccumulation: useTemporalAccumulation,
@@ -355,6 +358,9 @@ const SchroedingerMesh = () => {
     }
   }, [useTemporalAccumulation]);
 
+  // CRITICAL: Use negative priority (-10) to ensure uniforms are updated BEFORE
+  // PostProcessing's useFrame runs the volumetric render pass.
+  // Without this, the volumetric render uses stale uniforms and appears black.
   useFrame((state) => {
     // Update animation time
     const currentTime = state.clock.elapsedTime;
@@ -731,7 +737,7 @@ const SchroedingerMesh = () => {
         }
       }
     }
-  });
+  }, -10); // Priority -10: Run BEFORE PostProcessing (priority 10)
 
   return (
     <mesh ref={meshRef}>
