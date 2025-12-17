@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Tabs, Tab } from '@/components/ui/Tabs';
+import { Icon } from '@/components/ui/Icon';
 
 // Import existing sidebar sections
 import { ProjectionSection } from '@/components/sections/Projection/ProjectionSection';
@@ -20,7 +21,12 @@ export const EditorRightPanel: React.FC = () => {
   const tabs: Tab[] = [
     {
       id: 'visuals',
-      label: 'Visuals',
+      label: (
+        <div className="flex items-center gap-2">
+            <Icon name="eye" size={14} />
+            <span>Visuals</span>
+        </div>
+      ),
       content: (
         <div className="space-y-1 px-1">
           {/* The "Art" - Materials, Lines, FX */}
@@ -32,7 +38,12 @@ export const EditorRightPanel: React.FC = () => {
     },
     {
       id: 'scene',
-      label: 'Scene',
+      label: (
+        <div className="flex items-center gap-2">
+            <Icon name="home" size={14} />
+            <span>Scene</span>
+        </div>
+      ),
       content: (
         <div className="space-y-1 px-1">
           {/* The "Stage" - Lighting, Background, Lens */}
@@ -44,7 +55,12 @@ export const EditorRightPanel: React.FC = () => {
     },
     {
       id: 'system',
-      label: 'System',
+      label: (
+        <div className="flex items-center gap-2">
+            <Icon name="cog" size={14} />
+            <span>System</span>
+        </div>
+      ),
       content: (
         <div className="space-y-1 px-1">
           {/* The "App" - Settings, Meta, Output */}
@@ -60,7 +76,8 @@ export const EditorRightPanel: React.FC = () => {
   return (
     <div className="h-full flex flex-col bg-panel-bg border-l border-panel-border w-80 shrink-0 overflow-hidden">
       {/* Header Section */}
-      <div className="p-4 border-b border-panel-border bg-panel-bg/50 backdrop-blur-sm z-10 shrink-0">
+      <div className="p-4 border-b border-panel-border bg-panel-bg/50 backdrop-blur-sm z-10 shrink-0 flex items-center gap-2">
+        <Icon name="menu" className="text-text-secondary" />
         <h2 className="text-xs font-bold text-text-secondary uppercase tracking-widest">Scene & Render</h2>
       </div>
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import { m } from 'motion/react';
+import { soundManager } from '@/lib/audio/SoundManager';
 
 export interface SwitchProps {
   checked: boolean;
@@ -36,7 +37,12 @@ export const Switch: React.FC<SwitchProps> = ({
           type="checkbox"
           className="sr-only"
           checked={checked}
-          onChange={(e) => !disabled && onCheckedChange(e.target.checked)}
+          onChange={(e) => {
+             if (!disabled) {
+                onCheckedChange(e.target.checked);
+                soundManager.playClick();
+             }
+          }}
           disabled={disabled}
           role="switch"
           aria-checked={checked}

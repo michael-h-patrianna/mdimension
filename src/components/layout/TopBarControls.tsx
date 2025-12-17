@@ -34,6 +34,19 @@ const Icons = {
       <path d="M0 2v12h16v-12h-16zM3 13h-2v-2h2v2zM3 9h-2v-2h2v2zM3 5h-2v-2h2v2zM12 13h-8v-10h8v10zM15 13h-2v-2h2v2zM15 9h-2v-2h2v2zM15 5h-2v-2h2v2zM6 5v6l4-3z"></path>
     </svg>
   ),
+  SoundOn: () => (
+    <svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+      <path d="M9 13c0 1.105-0.895 2-2 2s-2-0.895-2-2 0.895-2 2-2 2 0.895 2 2zM7 1c-1.105 0-2 0.895-2 2s0.895 2 2 2 2-0.895 2-2-0.895-2-2-2zM12 4h-2c0 1.105-0.895 2-2 2v2c2.209 0 4-1.791 4-4zM12 4c0-2.209-1.791-4-4-4v2c1.105 0 2 0.895 2 2h2zM7 7c-1.105 0-2 0.895-2 2s0.895 2 2 2 2-0.895 2-2-0.895-2-2-2zM4 12c0-2.209-1.791-4-4-4v2c1.105 0 2 0.895 2 2h2zM4 12h-2c0 1.105-0.895 2-2 2v2c2.209 0 4-1.791 4-4z"></path>
+      <path d="M12.5 8c0-2.485-2.015-4.5-4.5-4.5v9c2.485 0 4.5-2.015 4.5-4.5zM14.5 8c0 3.59-2.91 6.5-6.5 6.5v2c4.694 0 8.5-3.806 8.5-8.5s-3.806-8.5-8.5-8.5v2c3.59 0 6.5 2.91 6.5 6.5z"></path>
+    </svg>
+  ),
+  SoundOff: () => (
+    <svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+       <path d="M10.812 9.406l4.594 4.594-1.406 1.406-4.594-4.594 1.406-1.406z"></path>
+       <path d="M6 5v6l4-3z"></path>
+       <path d="M1.406 2.812l1.406-1.406 11.188 11.188-1.406 1.406z"></path>
+    </svg>
+  ),
 };
 
 export const TopBarControls: React.FC = () => {
@@ -82,6 +95,7 @@ export const TopBarControls: React.FC = () => {
 
   // Local State
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isSoundEnabled, setIsSoundEnabled] = useState(soundManager.isEnabled);
 
   // Effects
   useEffect(() => {
@@ -91,6 +105,23 @@ export const TopBarControls: React.FC = () => {
       document.addEventListener('fullscreenchange', handleFullscreenChange);
       return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
+
+  // Sync sound state on mount/updates
+  useEffect(() => {
+     setIsSoundEnabled(soundManager.isEnabled);
+  }, []);
+
+  const toggleSound = () => {
+      const newState = !isSoundEnabled;
+      soundManager.toggle(newState);
+      setIsSoundEnabled(newState);
+      if (newState) {
+          soundManager.playClick();
+          addToast('Sound Enabled', 'info');
+      } else {
+          addToast('Sound Muted', 'info');
+      }
+  };
 
   // Logic for Render Modes (Edges/Faces)
   const previousFacesState = useRef(false);
@@ -234,6 +265,12 @@ export const TopBarControls: React.FC = () => {
       <div className="w-px h-4 bg-white/10 mx-1" />
 
       {/* App Controls */}
+      <IconButton 
+        icon={isSoundEnabled ? Icons.SoundOn : Icons.SoundOff} 
+        active={isSoundEnabled} 
+        onClick={toggleSound} 
+        label={isSoundEnabled ? "Mute Sound" : "Enable Sound"} 
+      />
       <IconButton 
         icon={Icons.Perf} 
         active={showPerfMonitor} 

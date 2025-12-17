@@ -318,6 +318,16 @@ const SchroedingerMesh = () => {
       overrides: shaderOverrides,
       isosurface: isoEnabled,
     });
+    // [TR-DEBUG] Log shader compilation features - stringify for proper Playwright capture
+    const debugInfo = {
+      temporalEnabled,
+      isoEnabled,
+      useTemporalAccumulation,
+      hasTemporalAccumDefine: result.glsl.includes('#define USE_TEMPORAL_ACCUMULATION'),
+      hasDebugOutput: result.glsl.includes('gColor = vec4(0.0, 1.0, 1.0, 1.0)'),
+      shaderLength: result.glsl.length,
+    };
+    console.log(`[TR-DEBUG] Shader compiled: ${JSON.stringify(debugInfo)}`);
     return result;
   }, [dimension, temporalEnabled, opacityMode, shaderOverrides, isoEnabled, useTemporalAccumulation]);
 
@@ -739,10 +749,16 @@ const SchroedingerMesh = () => {
     }
   }, -10); // Priority -10: Run BEFORE PostProcessing (priority 10)
 
+  // [TR-DEBUG] Generate unique key to force material recreation when shader changes
+  const materialKey = useMemo(() => {
+    return `schroedinger-material-${shaderString.length}-${useTemporalAccumulation}`;
+  }, [shaderString, useTemporalAccumulation]);
+
   return (
     <mesh ref={meshRef}>
       <boxGeometry args={[4, 4, 4]} />
       <shaderMaterial
+        key={materialKey}
         glslVersion={THREE.GLSL3}
         vertexShader={vertexShader}
         fragmentShader={shaderString}

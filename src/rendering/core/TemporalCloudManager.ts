@@ -177,9 +177,14 @@ class TemporalCloudManagerImpl {
     // Create cloud render target (quarter resolution)
     // Single attachment for temporal accumulation - the shader only outputs gColor
     // when USE_TEMPORAL_ACCUMULATION is defined (gNormal output is conditional)
+    //
+    // IMPORTANT: Uses FloatType instead of HalfFloatType for two reasons:
+    // 1. WebGL readRenderTargetPixels with Float32Array cannot properly read HalfFloatType
+    //    (returns zeros), which broke debug/validation workflows
+    // 2. FloatType has negligible performance impact at quarter resolution (640x360)
     this.cloudRenderTarget = new THREE.WebGLRenderTarget(newCloudWidth, newCloudHeight, {
       format: THREE.RGBAFormat,
-      type: THREE.HalfFloatType,
+      type: THREE.FloatType,
       minFilter: THREE.NearestFilter, // No filtering - we handle upsampling manually
       magFilter: THREE.NearestFilter,
       wrapS: THREE.ClampToEdgeWrapping,

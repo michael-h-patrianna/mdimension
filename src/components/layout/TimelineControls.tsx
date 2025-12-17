@@ -13,6 +13,7 @@ import { MandelbulbAnimationDrawer } from './TimelineControls/MandelbulbAnimatio
 import { PolytopeAnimationDrawer } from './TimelineControls/PolytopeAnimationDrawer';
 import { ZoomDrawer } from './TimelineControls/ZoomDrawer';
 import { hasTimelineControls, isPolytopeCategory, getConfigStoreKey } from '@/lib/geometry/registry';
+import { Icon } from '@/components/ui/Icon';
 
 export const TimelineControls: FC = () => {
     const dimension = useGeometryStore((state) => state.dimension);
@@ -185,7 +186,7 @@ export const TimelineControls: FC = () => {
                         onClick={toggle}
                         disabled={!hasAnythingToAnimate}
                         className={`
-                            group flex items-center justify-center w-10 h-10 rounded-full transition-all shrink-0 border border-white/10
+                            group flex items-center justify-center w-10 h-10 rounded-full transition-all shrink-0 border border-white/10 cursor-pointer
                             ${isPlaying
                                 ? 'bg-accent text-black hover:bg-accent/90 shadow-[0_0_15px_var(--color-accent)]'
                                 : 'bg-white/5 hover:bg-white/10 text-text-primary'
@@ -195,9 +196,9 @@ export const TimelineControls: FC = () => {
                         title={isPlaying ? "Pause" : "Play"}
                     >
                         {isPlaying ? (
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
+                            <Icon name="pause" size={12} />
                         ) : (
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="ml-0.5"><path d="M5 3l14 9-14 9V3z" /></svg>
+                            <Icon name="play" size={12} className="ml-0.5" />
                         )}
                     </button>
                 </div>
@@ -221,10 +222,20 @@ export const TimelineControls: FC = () => {
 
                     <button
                         onClick={toggleDirection}
-                        className="glass-button px-3 py-1 rounded text-[10px] font-mono font-bold tracking-wider text-text-secondary hover:text-text-primary transition-colors"
+                        className="glass-button px-3 py-1 rounded text-[10px] font-mono font-bold tracking-wider text-text-secondary hover:text-text-primary transition-colors flex items-center gap-1.5 cursor-pointer"
                         title={direction === 1 ? 'Forward' : 'Reverse'}
                     >
-                        {direction === 1 ? 'FWD' : 'REV'}
+                        {direction === 1 ? (
+                            <>
+                                <span>FWD</span>
+                                <Icon name="arrow-right" size={10} />
+                            </>
+                        ) : (
+                            <>
+                                <Icon name="arrow-left" size={10} />
+                                <span>REV</span>
+                            </>
+                        )}
                     </button>
                 </div>
 
@@ -251,7 +262,7 @@ export const TimelineControls: FC = () => {
                          <button
                             onClick={() => { setShowFractalAnim(!showFractalAnim); setShowRotation(false); setShowZoom(false); }}
                             className={`
-                                text-[10px] font-bold uppercase tracking-widest px-4 py-2 rounded-full transition-all border
+                                text-[10px] font-bold uppercase tracking-widest px-4 py-2 rounded-full transition-all border cursor-pointer
                                 ${showFractalAnim 
                                     ? 'bg-accent/10 border-accent text-accent shadow-[0_0_10px_color-mix(in_oklch,var(--color-accent)_10%,transparent)]' 
                                     : 'bg-transparent border-transparent hover:bg-white/5 text-text-secondary hover:text-text-primary'}
@@ -266,7 +277,7 @@ export const TimelineControls: FC = () => {
                          <button
                             onClick={() => { setShowZoom(!showZoom); setShowFractalAnim(false); setShowRotation(false); }}
                             className={`
-                                text-[10px] font-bold uppercase tracking-widest px-4 py-2 rounded-full transition-all border
+                                text-[10px] font-bold uppercase tracking-widest px-4 py-2 rounded-full transition-all border cursor-pointer
                                 ${showZoom 
                                     ? 'bg-accent/10 border-accent text-accent shadow-[0_0_10px_color-mix(in_oklch,var(--color-accent)_10%,transparent)]' 
                                     : 'bg-transparent border-transparent hover:bg-white/5 text-text-secondary hover:text-text-primary'}
@@ -279,7 +290,7 @@ export const TimelineControls: FC = () => {
                      <button
                         onClick={() => { setShowRotation(!showRotation); setShowFractalAnim(false); setShowZoom(false); }}
                         className={`
-                            text-[10px] font-bold uppercase tracking-widest px-4 py-2 rounded-full transition-all border
+                            text-[10px] font-bold uppercase tracking-widest px-4 py-2 rounded-full transition-all border cursor-pointer
                             ${showRotation 
                                 ? 'bg-accent/10 border-accent text-accent shadow-[0_0_10px_color-mix(in_oklch,var(--color-accent)_10%,transparent)]' 
                                 : 'bg-transparent border-transparent hover:bg-white/5 text-text-secondary hover:text-text-primary'}

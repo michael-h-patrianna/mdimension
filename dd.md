@@ -22,6 +22,10 @@ The quality and completeness of the project in this folder will be the only crit
 Notes:
 - for icons you have the whole icomoon icon library at your disposal here: src/assets/icons
 
+
+
+
+
 Your task is to fix the temporal reprojection for the schroedinger object type.
 
 symptoms: looking at the temporal buffer texture image it does not show the object shape. on top of that, the scene itself shows a glitchy backgdrop to the object - showing that there is something applied that turns the backdrop black and glitchy.

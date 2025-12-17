@@ -6,14 +6,14 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { m, AnimatePresence } from 'motion/react';
+import { m } from 'motion/react';
 import { soundManager } from '@/lib/audio/SoundManager';
 
 export interface Tab {
   /** Unique identifier for the tab */
   id: string;
   /** Label displayed on the tab button */
-  label: string;
+  label: React.ReactNode;
   /** Content rendered when tab is active */
   content: React.ReactNode;
 }
@@ -173,21 +173,6 @@ export const Tabs: React.FC<TabsProps> = ({
     
   const widthStyles = fullWidth ? 'w-full' : 'min-w-full w-max';
 
-  const contentVariants = {
-    enter: (direction: number) => ({
-      x: direction > 0 ? 20 : -20,
-      opacity: 0,
-    }),
-    center: {
-      x: 0,
-      opacity: 1,
-    },
-    exit: (direction: number) => ({
-      x: direction > 0 ? -20 : 20,
-      opacity: 0,
-    }),
-  };
-
   return (
     <div className={`flex flex-col ${className}`} data-testid={testId}>
       {/* Header Area */}
@@ -231,7 +216,7 @@ export const Tabs: React.FC<TabsProps> = ({
                   onMouseEnter={() => !isActive && soundManager.playHover()}
                   onKeyDown={(e) => handleKeyDown(e, index)}
                   className={`
-                    relative px-4 py-2 text-[10px] uppercase tracking-widest font-bold whitespace-nowrap outline-none select-none transition-colors duration-200
+                    relative px-4 py-2 text-[10px] uppercase tracking-widest font-bold whitespace-nowrap outline-none select-none transition-colors duration-200 cursor-pointer
                     ${fullWidth ? 'flex-1' : ''}
                     ${isActive ? 'text-accent text-glow-subtle' : 'text-text-secondary hover:text-text-primary'}
                     ${variant === 'pills' && isActive ? 'bg-white/5 rounded shadow-sm' : ''}
@@ -278,28 +263,17 @@ export const Tabs: React.FC<TabsProps> = ({
 
       {/* Content Panel */}
       <div className={`flex-1 min-h-0 relative ${contentClassName}`}>
-        <AnimatePresence mode="popLayout" custom={direction} initial={false}>
-          {activeTab && (
-            <m.div
+        {activeTab && (
+            <div
               key={activeTab.id}
-              custom={direction}
-              variants={contentVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{ 
-                  x: { type: "spring", stiffness: 300, damping: 30 },
-                  opacity: { duration: 0.2 }
-              }}
-              className="h-full w-full absolute inset-0 overflow-y-auto custom-scrollbar"
+              className="w-full animate-fade-in"
               role="tabpanel"
               aria-labelledby={`tab-${activeTab.id}`}
               data-testid={testId ? `${testId}-panel-${activeTab.id}` : undefined}
             >
               {activeTab.content}
-            </m.div>
-          )}
-        </AnimatePresence>
+            </div>
+        )}
       </div>
     </div>
   );

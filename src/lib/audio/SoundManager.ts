@@ -125,6 +125,10 @@ class SoundManager {
     public toggle(enabled: boolean) {
         this.enabled = enabled;
     }
+
+    public get isEnabled() {
+        return this.enabled;
+    }
 }
   
 export const soundManager = new SoundManager();

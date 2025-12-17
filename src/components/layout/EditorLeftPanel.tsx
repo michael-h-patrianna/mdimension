@@ -4,6 +4,7 @@ import { ObjectSettingsSection } from '@/components/sections/Geometry/ObjectSett
 import { ObjectTypeExplorer } from '@/components/sections/ObjectTypes/ObjectTypeExplorer';
 import { Tabs, Tab } from '@/components/ui/Tabs';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
+import { Icon } from '@/components/ui/Icon';
 
 export const EditorLeftPanel: React.FC = () => {
   const [activeTab, setActiveTab] = useState('type');
@@ -11,12 +12,22 @@ export const EditorLeftPanel: React.FC = () => {
   const tabs: Tab[] = [
     {
       id: 'type',
-      label: 'Type',
+      label: (
+        <div className="flex items-center gap-2">
+            <Icon name="sphere" size={14} />
+            <span>Type</span>
+        </div>
+      ),
       content: <ObjectTypeExplorer />,
     },
     {
       id: 'geometry',
-      label: 'Geometry',
+      label: (
+        <div className="flex items-center gap-2">
+            <Icon name="cog" size={14} />
+            <span>Geometry</span>
+        </div>
+      ),
       content: <ObjectSettingsSection />,
     },
   ];
@@ -24,13 +35,19 @@ export const EditorLeftPanel: React.FC = () => {
   return (
     <div className="h-full flex flex-col bg-transparent shrink-0 overflow-hidden">
         {/* Fixed Header Section with Dimension Selector */}
-        <div className="p-4 border-b border-panel-border bg-panel-bg/30 backdrop-blur-sm z-10">
-            <h2 className="text-xs font-bold text-text-secondary uppercase tracking-widest mb-4">Space & Object</h2>
+        <div className="p-3 border-b border-panel-border bg-panel-bg/30 backdrop-blur-sm z-10 space-y-3">
+            <div className="flex items-center gap-2 px-1">
+                <Icon name="menu" className="text-accent" />
+                <h2 className="text-xs font-bold text-text-secondary uppercase tracking-widest">Space & Object</h2>
+            </div>
             
             {/* Dimension Selector Area - Spotlight Effect */}
             <SpotlightCard className="p-3 bg-black/20" spotlightColor="rgba(var(--color-accent), 0.15)">
                  <div className="flex justify-between items-baseline mb-2">
-                    <label className="text-[10px] text-accent font-bold uppercase tracking-wider text-glow-subtle">Dimensions</label>
+                    <label className="text-[10px] text-accent font-bold uppercase tracking-wider text-glow-subtle flex items-center gap-2">
+                        <Icon name="info" size={12} />
+                        Dimensions
+                    </label>
                 </div>
                 <DimensionSelector />
             </SpotlightCard>

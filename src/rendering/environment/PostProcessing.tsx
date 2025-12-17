@@ -42,6 +42,76 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
 import { useShallow } from 'zustand/react/shallow';
 
+// ========================================
+// DEBUG: Pixel reading utilities for temporal reprojection debugging
+// Set DEBUG_TEMPORAL=true to enable logging, false for production
+// ========================================
+const DEBUG_TEMPORAL = false;
+let debugFrameCounter = 0;
+const DEBUG_LOG_INTERVAL = 10; // Log every N frames
+
+/**
+ * Read a single pixel from a render target.
+ * Returns [R, G, B, A] as floats.
+ */
+function readPixel(
+  gl: THREE.WebGLRenderer,
+  target: THREE.WebGLRenderTarget,
+  x: number,
+  y: number
+): [number, number, number, number] {
+  const pixelBuffer = new Float32Array(4);
+  const prevTarget = gl.getRenderTarget();
+  gl.setRenderTarget(target);
+  gl.readRenderTargetPixels(target, x, y, 1, 1, pixelBuffer);
+  gl.setRenderTarget(prevTarget);
+  return [pixelBuffer[0]!, pixelBuffer[1]!, pixelBuffer[2]!, pixelBuffer[3]!];
+}
+
+/**
+ * Log temporal reprojection debug info
+ */
+function logTemporalDebug(
+  stage: string,
+  target: THREE.WebGLRenderTarget | null,
+  gl: THREE.WebGLRenderer,
+  extra?: Record<string, unknown>
+): void {
+  if (!target) {
+    console.log(`[TR-DEBUG] ${stage}: target is null`);
+    return;
+  }
+
+  const centerX = Math.floor(target.width / 2);
+  const centerY = Math.floor(target.height / 2);
+  const centerPixel = readPixel(gl, target, centerX, centerY);
+  const cornerPixel = readPixel(gl, target, 1, 1);
+
+  // [TR-DEBUG] Sample a grid of pixels to find any non-zero values
+  let nonZeroCount = 0;
+  let firstNonZero: [number, number, number[]] | null = null;
+  const prevTarget = gl.getRenderTarget();
+  gl.setRenderTarget(target);
+  for (let y = 0; y < target.height; y += Math.max(1, Math.floor(target.height / 10))) {
+    for (let x = 0; x < target.width; x += Math.max(1, Math.floor(target.width / 10))) {
+      const pixel = new Float32Array(4);
+      gl.readRenderTargetPixels(target, x, y, 1, 1, pixel);
+      if (pixel[0] !== 0 || pixel[1] !== 0 || pixel[2] !== 0 || pixel[3] !== 0) {
+        nonZeroCount++;
+        if (!firstNonZero) {
+          firstNonZero = [x, y, Array.from(pixel)];
+        }
+      }
+    }
+  }
+  gl.setRenderTarget(prevTarget);
+
+  // Stringify everything for proper logging through Playwright
+  const extraStr = extra ? JSON.stringify(extra) : '';
+  const nonZeroStr = firstNonZero ? ` firstNonZero@(${firstNonZero[0]},${firstNonZero[1]})=[${firstNonZero[2].map(v => v.toFixed(4)).join(',')}]` : '';
+  console.log(`[TR-DEBUG] ${stage}: dims=${target.width}x${target.height} center=[${centerPixel.map(v => v.toFixed(4)).join(',')}] corner=[${cornerPixel.map(v => v.toFixed(4)).join(',')}] nonZeroSamples=${nonZeroCount}${nonZeroStr} ${extraStr}`);
+}
+
 /**
  * Normal material for G-buffer rendering.
  * MeshNormalMaterial outputs view-space normals encoded as RGB.
@@ -683,6 +753,11 @@ export const PostProcessing = memo(function PostProcessing() {
       objectType,
     });
 
+    // [TR-DEBUG] Log temporal cloud state
+    if (DEBUG_TEMPORAL && debugFrameCounter % DEBUG_LOG_INTERVAL === 0) {
+      console.log(`[TR-DEBUG] 0-temporalState: objectType=${objectType} temporalReprojectionEnabled=${temporalReprojectionEnabled} useTemporalCloud=${useTemporalCloud} cloudManagerEnabled=${TemporalCloudManager.isEnabled()}`);
+    }
+
     if (useTemporalCloud) {
       // Begin temporal cloud frame
       TemporalCloudManager.beginFrame(camera);
@@ -703,9 +778,51 @@ export const PostProcessing = memo(function PostProcessing() {
         gl.setClearColor(0x000000, 0);
         gl.clear(true, true, false);
 
+        // [TR-DEBUG] Count objects on VOLUMETRIC layer before render
+        if (DEBUG_TEMPORAL && debugFrameCounter % DEBUG_LOG_INTERVAL === 0) {
+          let volumetricObjects = 0;
+          let volumetricVisible = 0;
+          const objectNames: string[] = [];
+          scene.traverse((obj) => {
+            if (obj.layers.test(camera.layers)) {
+              volumetricObjects++;
+              if ((obj as THREE.Mesh).visible) volumetricVisible++;
+              // Get more info about the object
+              const mesh = obj as THREE.Mesh;
+              const geomType = mesh.geometry?.type || 'unknown';
+              const matType = (mesh.material as THREE.Material)?.type || 'unknown';
+              const hasShader = !!(mesh.material as THREE.ShaderMaterial)?.fragmentShader;
+              objectNames.push(`${obj.type}(${geomType},${matType},shader=${hasShader},layer=${obj.layers.mask})`);
+            }
+          });
+          console.log(`[TR-DEBUG] 0.5-volumetricLayerCheck: objects=${volumetricObjects} visible=${volumetricVisible} cameraLayerMask=${camera.layers.mask} names=[${objectNames.join(', ')}]`);
+        }
+
+        // [TR-DEBUG] Reset stats before volumetric render
+        gl.info.reset();
+
         // Render volumetric at quarter res with Bayer jitter
         // The shader applies USE_TEMPORAL_ACCUMULATION jitter based on uBayerOffset
         gl.render(scene, camera);
+
+        // [TR-DEBUG] Log render stats after volumetric render
+        if (DEBUG_TEMPORAL && debugFrameCounter % DEBUG_LOG_INTERVAL === 0) {
+          console.log(`[TR-DEBUG] 0.6-volumetricRenderStats: calls=${gl.info.render.calls} triangles=${gl.info.render.triangles} points=${gl.info.render.points}`);
+          // Check for WebGL errors
+          const glContext = gl.getContext();
+          const error = glContext.getError();
+          if (error !== glContext.NO_ERROR) {
+            console.log(`[TR-DEBUG] WebGL error: ${error}`);
+          }
+        }
+
+        // [TR-DEBUG] Log cloudTarget after volumetric render
+        if (DEBUG_TEMPORAL && debugFrameCounter % DEBUG_LOG_INTERVAL === 0) {
+          logTemporalDebug('1-cloudTarget-afterRender', cloudTarget, gl, {
+            bayerOffset: TemporalCloudManager.getBayerOffset(),
+            frameIndex: TemporalCloudManager.getFrameIndex(),
+          });
+        }
 
         // Restore camera layers
         camera.layers.mask = savedCameraLayers;
@@ -715,6 +832,14 @@ export const PostProcessing = memo(function PostProcessing() {
         // This reprojects history and blends with new quarter-res data
         cloudTemporalPass.updateCamera(camera);
         cloudTemporalPass.render(gl, sceneTarget, sceneTarget, delta);
+
+        // [TR-DEBUG] Log writeTarget after reconstruction (BEFORE endFrame swaps)
+        if (DEBUG_TEMPORAL && debugFrameCounter % DEBUG_LOG_INTERVAL === 0) {
+          const writeTarget = TemporalCloudManager.getWriteTarget();
+          logTemporalDebug('2-writeTarget-afterReconstruction', writeTarget, gl, {
+            hasValidHistory: TemporalCloudManager.hasValidHistory(),
+          });
+        }
       }
 
       // End temporal cloud frame (swap buffers, advance frame counter)
@@ -823,6 +948,13 @@ export const PostProcessing = memo(function PostProcessing() {
       // getReadTarget() returns the buffer that was just written to this frame.
       const accumulationBuffer = TemporalCloudManager.getReadTarget();
 
+      // [TR-DEBUG] Log readTarget before compositing
+      if (DEBUG_TEMPORAL && debugFrameCounter % DEBUG_LOG_INTERVAL === 0) {
+        logTemporalDebug('3-readTarget-beforeComposite', accumulationBuffer, gl, {
+          bufferExists: !!accumulationBuffer,
+        });
+      }
+
       if (accumulationBuffer && cloudCompositeMaterial.uniforms.tCloud) {
         // Set the accumulation texture in the compositing material
         cloudCompositeMaterial.uniforms.tCloud.value = accumulationBuffer.texture;
@@ -831,6 +963,11 @@ export const PostProcessing = memo(function PostProcessing() {
         gl.setRenderTarget(sceneTarget);
         gl.render(cloudCompositeScene, cloudCompositeCamera);
         gl.setRenderTarget(null);
+
+        // [TR-DEBUG] Log sceneTarget after compositing
+        if (DEBUG_TEMPORAL && debugFrameCounter % DEBUG_LOG_INTERVAL === 0) {
+          logTemporalDebug('4-sceneTarget-afterComposite', sceneTarget, gl);
+        }
       }
     }
 
@@ -1047,6 +1184,11 @@ export const PostProcessing = memo(function PostProcessing() {
     // ========================================
     // DEBUG: Quality Gate Verification
     // ========================================
+    // [TR-DEBUG] Increment frame counter
+    if (DEBUG_TEMPORAL) {
+      debugFrameCounter++;
+    }
+
     // Swap temporal depth buffers at end of frame
     // Force swap when previewing temporal depth buffer
     TemporalDepthManager.swap(currentShowTemporalDepthBuffer);

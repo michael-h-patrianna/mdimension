@@ -162,6 +162,20 @@
   select {
     @apply glass-input rounded-md px-3 py-2 text-sm w-full;
   }
+
+  /* Global Interactive Cursor Rules */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  input[type="button"]:not(:disabled),
+  input[type="submit"]:not(:disabled),
+  input[type="reset"]:not(:disabled),
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled),
+  select:not(:disabled),
+  summary:not([aria-disabled="true"]),
+  a:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
   
   /* Remove default number arrows for cleaner look */
   input[type="number"]::-webkit-inner-spin-button,

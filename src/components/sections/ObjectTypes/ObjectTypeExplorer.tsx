@@ -100,43 +100,42 @@ export const ObjectTypeExplorer: React.FC = () => {
         const isDisabled = !type.available;
 
         return (
-          <m.button
-            key={type.type}
-            variants={itemVariants}
-            onClick={() => !isDisabled && handleSelect(type.type)}
-            onMouseEnter={() => !isDisabled && soundManager.playHover()}
-            disabled={isDisabled}
-            className={`
-              relative group flex flex-col p-3 rounded-lg border text-left transition-all duration-200
-              ${isSelected 
-                ? 'bg-accent/10 border-accent text-accent shadow-[0_0_15px_color-mix(in_oklch,var(--color-accent)_10%,transparent)]' 
-                : 'bg-panel-bg border-panel-border hover:border-text-secondary/50 text-text-secondary hover:text-text-primary hover:bg-panel-bg/80'
-              }
-              ${isDisabled ? 'opacity-50 cursor-not-allowed hover:border-panel-border' : ''}
-            `}
-            whileHover={!isDisabled ? { scale: 1.01, x: 2 } : undefined}
-            whileTap={!isDisabled ? { scale: 0.98 } : undefined}
-            data-testid={`object-type-${type.type}`}
-          >
-            <div className="flex items-center justify-between w-full mb-1">
-                <span className="font-medium text-sm">{type.name}</span>
-                {isSelected && (
-                    <div className="w-2 h-2 rounded-full bg-accent animate-pulse shadow-[0_0_8px_var(--color-accent)]" />
-                )}
-            </div>
-            <span className="text-xs text-text-secondary/80 line-clamp-2 leading-relaxed">
-                {type.description}
-            </span>
-            
-            {isDisabled && (
-                <div className="absolute inset-0 bg-background/50 flex items-center justify-center rounded-lg opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-[1px]">
-                     <span className="text-xs font-bold bg-background px-2 py-1 rounded shadow-sm border border-panel-border">
-                        {type.disabledReason}
-                     </span>
-                </div>
-            )}
-          </m.button>
-        );
+                    <m.button
+                      key={type.type}
+                      variants={itemVariants}
+                      onClick={() => !isDisabled && handleSelect(type.type)}
+                      onMouseEnter={() => !isDisabled && soundManager.playHover()}
+                      disabled={isDisabled}
+                      className={`
+                        relative group flex flex-col p-3 rounded-lg border text-left transition-all duration-200
+                        ${isSelected 
+                          ? 'bg-accent/10 border-accent text-accent shadow-[0_0_15px_color-mix(in_oklch,var(--color-accent)_10%,transparent)]' 
+                          : 'bg-panel-bg border-panel-border hover:border-text-secondary/50 text-text-secondary hover:text-text-primary hover:bg-panel-bg/80'
+                        }
+                        ${isDisabled ? 'opacity-50 cursor-not-allowed hover:border-panel-border' : 'cursor-pointer'}
+                      `}
+                      whileHover={!isDisabled ? { scale: 1.01, x: 2 } : undefined}
+                      whileTap={!isDisabled ? { scale: 0.98 } : undefined}
+                      data-testid={`object-type-${type.type}`}
+                    >
+                      <div className="flex items-center justify-between w-full mb-1">
+                          <span className="font-medium text-sm">{type.name}</span>
+                          {isSelected && (
+                              <div className="w-2 h-2 rounded-full bg-accent animate-pulse shadow-[0_0_8px_var(--color-accent)]" />
+                          )}
+                      </div>
+                      <span className="text-xs text-text-secondary/80 line-clamp-2 leading-relaxed">
+                          {type.description}
+                      </span>
+          
+                      {isDisabled && (
+                          <div className="absolute inset-0 bg-background/50 flex items-center justify-center rounded-lg opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-[1px]">
+                               <span className="text-xs font-bold bg-background px-2 py-1 rounded shadow-sm border border-panel-border">
+                                  {type.disabledReason}
+                               </span>
+                          </div>
+                      )}
+                    </m.button>        );
       })}
     </m.div>
   );

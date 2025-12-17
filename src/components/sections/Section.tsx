@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { m, AnimatePresence } from 'motion/react';
 
 export interface SectionProps {
@@ -20,6 +20,7 @@ export const Section: React.FC<SectionProps> = ({
 }) => {
   // Persistence logic
   const storageKey = `section-state-${title.replace(/\s+/g, '-').toLowerCase()}`;
+  const sectionRef = useRef<HTMLDivElement>(null);
   
   const [isOpen, setIsOpen] = useState(() => {
     try {
@@ -36,6 +37,7 @@ export const Section: React.FC<SectionProps> = ({
 
   return (
     <div 
+      ref={sectionRef}
       className={`
         group rounded-lg transition-all duration-300 relative overflow-hidden mb-2
         ${isOpen 
@@ -49,7 +51,16 @@ export const Section: React.FC<SectionProps> = ({
       <div className="flex items-center justify-between">
         <button
           type="button"
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={() => {
+            const willOpen = !isOpen;
+            setIsOpen(willOpen);
+            if (willOpen && sectionRef.current) {
+                // Instant scroll start, but smooth behavior
+                setTimeout(() => {
+                    sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }, 100);
+            }
+          }}
           className="flex-1 flex items-center justify-between py-2.5 px-3 text-left focus:outline-none rounded-lg z-10"
           aria-expanded={isOpen}
           data-testid={dataTestId ? `${dataTestId}-header` : undefined}

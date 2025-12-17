@@ -60,10 +60,11 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
   const menuVariants = {
     closed: { 
         opacity: 0, 
-        y: -5, 
-        scale: 0.95,
+        y: -10, 
+        scale: 0.98,
         transition: {
-            duration: 0.1
+            duration: 0.1,
+            ease: "easeOut"
         }
     },
     open: { 
@@ -72,17 +73,11 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
         scale: 1,
         transition: {
             type: "spring" as const,
-            damping: 20,
-            stiffness: 300,
-            staggerChildren: 0.03,
-            delayChildren: 0.02
+            damping: 25,
+            stiffness: 400,
+            mass: 0.6
         }
     }
-  };
-
-  const itemVariants = {
-    closed: { opacity: 0, x: -10 },
-    open: { opacity: 1, x: 0 }
   };
 
   return (
@@ -107,21 +102,20 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
             >
               {items.map((item, index) => {
                 if (item.label === '---') {
-                    return <m.div key={index} variants={itemVariants} className="h-px bg-white/10 my-1 mx-2" />;
+                    return <div key={index} className="h-px bg-white/10 my-1 mx-2" />;
                 }
                 
                 if (!item.onClick) {
                     return (
-                        <m.div key={index} variants={itemVariants} className="px-3 py-1.5 text-[10px] font-bold text-text-tertiary uppercase tracking-wider select-none">
+                        <div key={index} className="px-3 py-1.5 text-[10px] font-bold text-text-tertiary uppercase tracking-wider select-none">
                             {item.label}
-                        </m.div>
+                        </div>
                     );
                 }
 
                 return (
-                <m.button
+                <button
                   key={index}
-                  variants={itemVariants}
                   onClick={(e) => {
                     e.stopPropagation();
                     handleItemClick(item);
@@ -148,7 +142,7 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
                       {item.shortcut}
                     </span>
                   )}
-                </m.button>
+                </button>
               )})}
             </m.div>
         )}
