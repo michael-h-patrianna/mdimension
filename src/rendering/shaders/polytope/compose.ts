@@ -208,21 +208,27 @@ export function composeFaceFragmentShader(): string {
 }
 
 /**
- *
+ * Edge fragment shader with MRT outputs.
+ * Must output to both gColor (location 0) and gNormal (location 1)
+ * to be compatible with MRT render targets.
  */
 export function composeEdgeFragmentShader(): string {
   return `
     precision highp float;
 
-    // Single output for thin line edges
-    layout(location = 0) out vec4 fragColor;
+    // MRT outputs - must match face shader outputs
+    layout(location = 0) out vec4 gColor;
+    layout(location = 1) out vec4 gNormal;
 
     uniform vec3 uColor;
     uniform float uOpacity;
 
     void main() {
-      // Simple color output for thin line edges (1D primitives)
-      fragColor = vec4(uColor, uOpacity);
+      // Color output for thin line edges
+      gColor = vec4(uColor, uOpacity);
+      // Neutral view-space normal (facing camera) encoded to 0-1, no metallic
+      // This ensures edges work with post-processing that reads the normal buffer
+      gNormal = vec4(0.5, 0.5, 1.0, 0.0);
     }
   `;
 }

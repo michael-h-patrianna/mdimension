@@ -1,0 +1,204 @@
+/**
+ * ContextLostOverlay - User feedback overlay for WebGL context issues.
+ *
+ * Displays different states based on WebGL context status:
+ * - Lost: Shows "GPU Connection Lost" with spinner
+ * - Restoring: Shows "Reconnecting..." with attempt counter
+ * - Failed: Shows "Unable to Recover" with reload button
+ *
+ * @module components/ui/ContextLostOverlay
+ */
+
+import React from 'react'
+import { m, AnimatePresence } from 'motion/react'
+import { useWebGLContextStore } from '@/stores/webglContextStore'
+import { LoadingSpinner } from './LoadingSpinner'
+import { Button } from './Button'
+
+/**
+ * Lost state - shown immediately when context is lost.
+ */
+const LostState: React.FC = () => {
+  return (
+    <div className="flex flex-col items-center gap-6 text-center">
+      {/* Warning icon */}
+      <div className="w-16 h-16 rounded-full bg-amber-500/20 flex items-center justify-center">
+        <svg
+          className="w-8 h-8 text-amber-400"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+          />
+        </svg>
+      </div>
+
+      <div>
+        <h2 className="text-xl font-semibold text-text-primary mb-2">
+          GPU Connection Lost
+        </h2>
+        <p className="text-sm text-text-secondary max-w-xs">
+          Your graphics connection was interrupted. Attempting to reconnect...
+        </p>
+      </div>
+
+      <LoadingSpinner size={24} color="var(--color-accent)" />
+    </div>
+  )
+}
+
+/**
+ * Restoring state - shown during recovery attempts.
+ */
+const RestoringState: React.FC = () => {
+  const recoveryAttempts = useWebGLContextStore((s) => s.recoveryAttempts)
+  const maxAttempts = useWebGLContextStore((s) => s.recoveryConfig.maxAttempts)
+
+  return (
+    <div className="flex flex-col items-center gap-6 text-center">
+      {/* Sync icon */}
+      <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center">
+        <svg
+          className="w-8 h-8 text-accent animate-spin"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+          />
+        </svg>
+      </div>
+
+      <div>
+        <h2 className="text-xl font-semibold text-text-primary mb-2">
+          Reconnecting...
+        </h2>
+        <p className="text-sm text-text-secondary max-w-xs">
+          Restoring graphics connection. This may take a moment.
+        </p>
+      </div>
+
+      {/* Progress indicator */}
+      <div className="flex flex-col items-center gap-2">
+        <div className="w-48 h-1 bg-surface-elevated rounded-full overflow-hidden">
+          <m.div
+            className="h-full bg-accent"
+            initial={{ width: 0 }}
+            animate={{
+              width: `${(recoveryAttempts / maxAttempts) * 100}%`,
+            }}
+            transition={{ duration: 0.3 }}
+          />
+        </div>
+        <span className="text-xs text-text-secondary">
+          Attempt {recoveryAttempts} of {maxAttempts}
+        </span>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Failed state - shown when recovery fails after max attempts.
+ */
+const FailedState: React.FC = () => {
+  const lastError = useWebGLContextStore((s) => s.lastError)
+
+  const handleReload = (): void => {
+    window.location.reload()
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-6 text-center">
+      {/* Error icon */}
+      <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center">
+        <svg
+          className="w-8 h-8 text-red-400"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M6 18L18 6M6 6l12 12"
+          />
+        </svg>
+      </div>
+
+      <div>
+        <h2 className="text-xl font-semibold text-text-primary mb-2">
+          Unable to Recover
+        </h2>
+        <p className="text-sm text-text-secondary max-w-xs mb-2">
+          The GPU connection could not be restored. Your settings have been saved
+          and will be restored after reloading.
+        </p>
+        {lastError && (
+          <p className="text-xs text-text-secondary/60 font-mono">
+            {lastError}
+          </p>
+        )}
+      </div>
+
+      <Button
+        variant="primary"
+        onClick={handleReload}
+        className="min-w-[140px]"
+      >
+        Reload Page
+      </Button>
+    </div>
+  )
+}
+
+/**
+ * Main overlay component that shows appropriate state.
+ */
+export const ContextLostOverlay: React.FC = () => {
+  const status = useWebGLContextStore((s) => s.status)
+
+  // Don't render anything when context is active
+  if (status === 'active') {
+    return null
+  }
+
+  return (
+    <AnimatePresence>
+      <m.div
+        key="context-lost-overlay"
+        className="fixed inset-0 z-[200] flex items-center justify-center"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
+      >
+        {/* Backdrop */}
+        <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+
+        {/* Content card */}
+        <m.div
+          className="relative z-10 p-8 rounded-xl glass-panel max-w-sm mx-4"
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.95, opacity: 0 }}
+          transition={{ duration: 0.2, delay: 0.1 }}
+        >
+          {status === 'lost' && <LostState />}
+          {status === 'restoring' && <RestoringState />}
+          {status === 'failed' && <FailedState />}
+        </m.div>
+      </m.div>
+    </AnimatePresence>
+  )
+}

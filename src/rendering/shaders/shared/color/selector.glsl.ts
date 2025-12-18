@@ -50,6 +50,35 @@ vec3 getColorByAlgorithm(float t, vec3 normal, vec3 baseHSL, vec3 position) {
     float radialT = clamp(length(position) / BOUND_R, 0.0, 1.0);
     return getCosinePaletteColor(radialT, uCosineA, uCosineB, uCosineC, uCosineD,
                                   uDistPower, uDistCycles, uDistOffset);
+  } else if (uColorAlgorithm == 8) {
+    // Algorithm 8: Phase (Angular)
+    // Use azimuth angle in XZ plane normalized to 0-1
+    float angle = atan(position.z, position.x);
+    float phaseT = angle * 0.15915 + 0.5; // 1/(2*PI)
+    return getCosinePaletteColor(phaseT, uCosineA, uCosineB, uCosineC, uCosineD,
+                                  uDistPower, uDistCycles, uDistOffset);
+  } else if (uColorAlgorithm == 9) {
+    // Algorithm 9: Mixed (Phase + Distance)
+    float angle = atan(position.z, position.x);
+    float phaseT = angle * 0.15915 + 0.5;
+    float distT = applyDistribution(t, uDistPower, uDistCycles, uDistOffset);
+    // Map phase to Hue, Distance to Lightness (conceptually) via Palette
+    float mixedT = mix(phaseT, distT, 0.5);
+    return getCosinePaletteColor(mixedT, uCosineA, uCosineB, uCosineC, uCosineD,
+                                  uDistPower, uDistCycles, uDistOffset);
+  } else if (uColorAlgorithm == 10) {
+    // Algorithm 10: Blackbody (Heat)
+    float distT = applyDistribution(t, uDistPower, uDistCycles, uDistOffset);
+    // Simple Kelvin-like gradient: Black->Red->Orange->White
+    // t 0.0 -> 0,0,0
+    // t 0.33 -> 1,0,0
+    // t 0.66 -> 1,1,0
+    // t 1.0 -> 1,1,1
+    vec3 col = vec3(0.0);
+    col.r = smoothstep(0.0, 0.33, distT);
+    col.g = smoothstep(0.33, 0.66, distT);
+    col.b = smoothstep(0.66, 1.0, distT);
+    return col;
   } else {
     // Fallback: cosine palette
     return getCosinePaletteColor(t, uCosineA, uCosineB, uCosineC, uCosineD,

@@ -33,6 +33,9 @@ export type ColorAlgorithm =
   | 'lch'
   | 'multiSource'
   | 'radial'
+  | 'phase'
+  | 'mixed'
+  | 'blackbody'
 
 /**
  * Options for the Color Algorithm dropdown in the UI.
@@ -46,6 +49,9 @@ export const COLOR_ALGORITHM_OPTIONS = [
   { value: 'lch' as const, label: 'LCH Perceptual' },
   { value: 'multiSource' as const, label: 'Multi-Source' },
   { value: 'radial' as const, label: 'Radial (from center)' },
+  { value: 'phase' as const, label: 'Phase (Quantum)' },
+  { value: 'mixed' as const, label: 'Mixed (Phase/Density)' },
+  { value: 'blackbody' as const, label: 'Blackbody (Heat)' },
 ] as const
 
 /**
@@ -60,6 +66,23 @@ export const COLOR_ALGORITHM_TO_INT: Record<ColorAlgorithm, number> = {
   lch: 5,
   multiSource: 6,
   radial: 7,
+  phase: 8,
+  mixed: 9,
+  blackbody: 10,
+}
+
+/**
+ * Color algorithms that are only meaningful for Schroedinger (quantum wavefunction).
+ * These use the actual quantum phase from the wavefunction, not geometric position.
+ * For non-quantum objects, these should be hidden from the UI.
+ */
+export const QUANTUM_ONLY_ALGORITHMS: readonly ColorAlgorithm[] = ['phase', 'mixed', 'blackbody'] as const
+
+/**
+ * Check if a color algorithm is quantum-specific (Schroedinger only).
+ */
+export function isQuantumOnlyAlgorithm(algorithm: ColorAlgorithm): boolean {
+  return QUANTUM_ONLY_ALGORITHMS.includes(algorithm)
 }
 
 /**

@@ -16,6 +16,7 @@ import React, { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { FogControls } from './FogControls';
 import { SkyboxControls } from './SkyboxControls';
+import { PostProcessingControls } from '@/components/sections/PostProcessing/PostProcessingControls';
 
 /** Options for wall position toggle group */
 const WALL_OPTIONS: { value: WallPosition; label: string }[] = [
@@ -222,6 +223,7 @@ export const EnvironmentControls: React.FC<EnvironmentControlsProps> = React.mem
           { id: 'walls', label: 'Walls', content: wallsContent },
           { id: 'skybox', label: 'Skybox', content: <SkyboxControls /> },
           { id: 'fog', label: 'Fog', content: <FogControls /> },
+          { id: 'postfx', label: 'PostFX', content: <PostProcessingControls /> },
         ]}
       />
     </div>

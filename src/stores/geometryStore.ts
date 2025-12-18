@@ -11,11 +11,14 @@ import {
   getRecommendedDimension,
   getUnavailabilityReason,
   isAvailableForDimension,
+  isRaymarchingFractal,
   isValidObjectType as isValidObjectTypeRegistry,
 } from '@/lib/geometry/registry'
 import type { ObjectType } from '@/lib/geometry/types'
+import { isQuantumOnlyAlgorithm } from '@/rendering/shaders/palette'
 import { TemporalDepthManager } from '@/rendering/core/TemporalDepthManager'
 import { create } from 'zustand'
+import { useAppearanceStore } from './appearanceStore'
 import { usePerformanceStore } from './performanceStore'
 
 /** Minimum supported dimension */
@@ -177,6 +180,23 @@ export const useGeometryStore = create<GeometryState>((set, get) => ({
     // Skip if same type (no change needed)
     if (type === currentType) {
       return
+    }
+
+    // When switching away from Schroedinger, fallback from quantum-only algorithms to radial
+    if (currentType === 'schroedinger' && type !== 'schroedinger') {
+      const appearanceStore = useAppearanceStore.getState()
+      if (isQuantumOnlyAlgorithm(appearanceStore.colorAlgorithm)) {
+        appearanceStore.setColorAlgorithm('radial')
+      }
+    }
+
+    // Raymarched fractals require facesVisible=true to render (determineRenderMode returns 'none' otherwise)
+    // Ensure it's set when switching to a raymarching type
+    if (isRaymarchingFractal(type, currentDimension)) {
+      const appearanceStore = useAppearanceStore.getState()
+      if (!appearanceStore.facesVisible) {
+        appearanceStore.setFacesVisible(true)
+      }
     }
 
     // Trigger progressive refinement: start at low quality during content type switch

@@ -338,15 +338,26 @@ void main() {
     float phaseNorm = (phase + PI) / TAU;
     float hueShift = (phaseNorm - 0.5) * 0.4; // ±20% hue shift
 
-    if (uColorMode == COLOR_MODE_PHASE) {
+    if (uColorAlgorithm == COLOR_ALG_PHASE) {
+        // Quantum phase coloring - uses actual wavefunction phase
         float hue = fract(baseHSL.x + hueShift);
         surfaceColor = hsl2rgb(vec3(hue, 0.75, 0.35));
-    } else if (uColorMode == COLOR_MODE_MIXED) {
+    } else if (uColorAlgorithm == COLOR_ALG_MIXED) {
+        // Mixed: quantum phase + density
         float hue = fract(baseHSL.x + hueShift);
         float lightness = 0.15 + 0.35 * normS;
         float saturation = 0.7 + 0.25 * normS;
         surfaceColor = hsl2rgb(vec3(hue, saturation, lightness));
+    } else if (uColorAlgorithm == COLOR_ALG_BLACKBODY) {
+        // Blackbody: density mapped to temperature
+        float temp = normS * 12000.0;
+        if (temp < 500.0) {
+            surfaceColor = vec3(0.0);
+        } else {
+            surfaceColor = blackbody(temp);
+        }
     } else {
+        // All other algorithms: delegate to shared system
         surfaceColor = getColorByAlgorithm(normS, n, baseHSL, p);
     }
 

@@ -12,11 +12,13 @@
  * - Must be placed inside a Canvas component with frameloop="never"
  * - Uses requestAnimationFrame instead of setInterval for accurate timing
  * - Subscribes to maxFps changes and adjusts timing accordingly
+ * - Pauses rendering when WebGL context is lost or page is not visible
  */
 
 import { useUIStore } from '@/stores/uiStore'
 import { useAnimationStore } from '@/stores/animationStore'
 import { usePerformanceStore } from '@/stores/performanceStore'
+import { useWebGLContextStore } from '@/stores/webglContextStore'
 import { useThree } from '@react-three/fiber'
 import { useLayoutEffect, useRef } from 'react'
 
@@ -33,7 +35,7 @@ import { useLayoutEffect, useRef } from 'react'
  * @returns null - This component renders nothing, only manages frame timing
  */
 export function FpsController(): null {
-  const { advance } = useThree()
+  const { advance, gl } = useThree()
   const rafRef = useRef<number | null>(null)
   const thenRef = useRef<number>(0)
 
@@ -41,16 +43,39 @@ export function FpsController(): null {
     /**
      * Animation tick using requestAnimationFrame.
      * Only advances the frame when enough time has elapsed based on maxFps.
+     * Skips rendering when context is lost or page is hidden.
      * @param now
      */
     const tick = (now: number): void => {
       rafRef.current = requestAnimationFrame(tick)
 
+      // Check WebGL context state - skip rendering if not active
+      const contextStore = useWebGLContextStore.getState()
+      if (contextStore.status !== 'active') {
+        return
+      }
+
+      // Skip if page is not visible (power saving)
+      if (!contextStore.isPageVisible) {
+        return
+      }
+
+      // Double-check context isn't actually lost (defensive check)
+      // This catches cases where the event hasn't fired yet
+      const context = gl.getContext()
+      if (context && context.isContextLost()) {
+        // Trigger context lost handling if not already in progress
+        if (contextStore.status === 'active') {
+          contextStore.onContextLost()
+        }
+        return
+      }
+
       // Determine target FPS based on state
       const maxFps = useUIStore.getState().maxFps
       const isPlaying = useAnimationStore.getState().isPlaying
       const isInteracting = usePerformanceStore.getState().isInteracting
-      
+
       // If idle (not playing and not interacting), cap at 10 FPS to save power
       // while still allowing UI updates to reflect reasonably fast.
       const targetFps = (isPlaying || isInteracting) ? maxFps : 10
@@ -76,7 +101,7 @@ export function FpsController(): null {
         rafRef.current = null
       }
     }
-  }, [advance])
+  }, [advance, gl])
 
   return null
 }

@@ -17,6 +17,7 @@
 
 import * as THREE from 'three';
 import { usePerformanceStore } from '@/stores';
+import { resourceRecovery, RECOVERY_PRIORITY } from './ResourceRecovery';
 
 /** Resolution scale for cloud render target (1/2 = quarter pixels) */
 const CLOUD_RESOLUTION_SCALE = 0.5;
@@ -414,10 +415,14 @@ class TemporalCloudManagerImpl {
    * - **Scene reset**: When geometry changes significantly
    * - **FOV change**: Projection matrix discontinuity
    * - **Render target resize**: Already handled internally by initialize()
+   * - **Context loss recovery**: GPU resources invalidated
    *
    * After invalidation, the system renders 4 frames to rebuild full coverage
    * before temporal blending resumes. During this period, spatial interpolation
    * fills gaps between rendered pixels.
+   *
+   * For context loss recovery, this also disposes render targets to clear
+   * stale GPU references.
    *
    * @example
    * ```ts
@@ -427,8 +432,31 @@ class TemporalCloudManagerImpl {
    * ```
    */
   invalidate(): void {
+    // Dispose all render targets to clear stale GPU references
+    this.accumulationBuffers.forEach((target) => target?.dispose());
+    this.accumulationBuffers = [null, null];
+    this.cloudRenderTarget?.dispose();
+    this.cloudRenderTarget = null;
+    this.positionBuffer?.dispose();
+    this.positionBuffer = null;
+    this.reprojectionBuffer?.dispose();
+    this.reprojectionBuffer = null;
+
+    // Reset state
     this.isValid = false;
     this.frameIndex = 0;
+    this.bufferIndex = 0;
+  }
+
+  /**
+   * Reinitialize after context restoration.
+   * @param gl - The WebGL renderer with restored context
+   */
+  reinitialize(gl: THREE.WebGLRenderer): Promise<void> {
+    // Re-run initialize with stored dimensions
+    // This recreates render targets with fresh GPU resources
+    this.initialize(this.fullWidth, this.fullHeight, gl);
+    return Promise.resolve();
   }
 
   /**
@@ -499,3 +527,11 @@ class TemporalCloudManagerImpl {
 
 // Singleton instance
 export const TemporalCloudManager = new TemporalCloudManagerImpl();
+
+// Register with resource recovery coordinator
+resourceRecovery.register({
+  name: 'TemporalCloudManager',
+  priority: RECOVERY_PRIORITY.TEMPORAL_CLOUD,
+  invalidate: () => TemporalCloudManager.invalidate(),
+  reinitialize: (gl) => TemporalCloudManager.reinitialize(gl),
+});

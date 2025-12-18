@@ -13,7 +13,7 @@
  * - PolytopeScene: For 3D+ projected wireframes and faces
  */
 
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { FpsController } from '@/components/canvas/FpsController';
 import { Scene } from '@/rendering/Scene';
 import { EditorLayout } from '@/components/layout/EditorLayout';
@@ -28,10 +28,15 @@ import type { VectorND, Vector3D } from '@/lib/math/types';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useLightingStore } from '@/stores/lightingStore';
 import { useUIStore } from '@/stores/uiStore';
+import { useGeometryStore } from '@/stores/geometryStore';
+import { RECOVERY_STATE_KEY, RECOVERY_STATE_MAX_AGE } from '@/stores/webglContextStore';
 import { Canvas } from '@react-three/fiber';
 import { PerformanceMonitor } from '@/components/canvas/PerformanceMonitor';
 import { PerformanceStatsCollector } from '@/components/canvas/PerformanceStatsCollector';
-import { ToastProvider } from '@/contexts/ToastContext';
+import { ContextEventHandler } from '@/rendering/core/ContextEventHandler';
+import { VisibilityHandler } from '@/rendering/core/VisibilityHandler';
+import { ContextLostOverlay } from '@/components/ui/ContextLostOverlay';
+import { ToastProvider, useToast } from '@/contexts/ToastContext';
 import { LazyMotion, domMax } from 'motion/react';
 import { useDynamicFavicon } from '@/hooks/useDynamicFavicon';
 
@@ -91,14 +96,53 @@ function Visualizer() {
 }
 
 /**
- * Main App Container
+ * Hook to restore state after a failed WebGL context recovery.
+ * Checks localStorage for saved state and restores it if found.
  */
-function App() {
+function useStateRecovery() {
+  const { addToast } = useToast();
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(RECOVERY_STATE_KEY);
+      if (saved) {
+        const state = JSON.parse(saved) as {
+          dimension?: number;
+          savedAt?: number;
+        };
+
+        // Only restore if saved within the max age window
+        if (state.savedAt && Date.now() - state.savedAt < RECOVERY_STATE_MAX_AGE) {
+          // Restore state to stores
+          if (state.dimension) {
+            useGeometryStore.getState().setDimension(state.dimension);
+          }
+
+          addToast('Session restored from recovery', 'success');
+        }
+
+        // Clean up regardless of whether we restored
+        localStorage.removeItem(RECOVERY_STATE_KEY);
+      }
+    } catch {
+      // Silent fail - recovery is best-effort
+      localStorage.removeItem(RECOVERY_STATE_KEY);
+    }
+  }, [addToast]);
+}
+
+/**
+ * Inner app content that requires ToastProvider context.
+ */
+function AppContent() {
   // Enable keyboard shortcuts
   useKeyboardShortcuts();
-  
+
   // Dynamic Favicon
   useDynamicFavicon();
+
+  // Restore state after WebGL context recovery failure
+  useStateRecovery();
 
   // Get background color from visual store (PRD Story 6 AC7)
   const backgroundColor = useAppearanceStore((state) => state.backgroundColor);
@@ -115,32 +159,49 @@ function App() {
   };
 
   return (
+    <EditorLayout>
+      <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+        {/* Performance indicators */}
+        <RefinementIndicator position="bottom-right" />
+
+        <Canvas
+          frameloop="never"
+          camera={{
+            position: [2, 2, 2.5],
+            fov: 60,
+          }}
+          shadows="soft"
+          flat
+          gl={{ alpha: false, antialias: false, preserveDrawingBuffer: true }}
+          style={{ background: backgroundColor }}
+          onPointerMissed={handlePointerMissed}
+        >
+          {/* WebGL Context Management */}
+          <ContextEventHandler />
+          <VisibilityHandler />
+
+          <FpsController />
+          <Visualizer />
+          <PerformanceStatsCollector />
+        </Canvas>
+
+        {/* Context Lost Overlay - shown when WebGL context is lost */}
+        <ContextLostOverlay />
+
+        {showPerfMonitor && <PerformanceMonitor />}
+      </div>
+    </EditorLayout>
+  );
+}
+
+/**
+ * Main App Container
+ */
+function App() {
+  return (
     <LazyMotion features={domMax} strict>
       <ToastProvider>
-        <EditorLayout>
-          <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-            {/* Performance indicators */}
-            <RefinementIndicator position="bottom-right" />
-
-            <Canvas
-              frameloop="never"
-              camera={{
-                position: [2, 2, 2.5],
-                fov: 60,
-              }}
-              shadows="soft"
-              flat
-              gl={{ alpha: false, antialias: false, preserveDrawingBuffer: true }}
-              style={{ background: backgroundColor }}
-              onPointerMissed={handlePointerMissed}
-            >
-              <FpsController />
-              <Visualizer />
-              <PerformanceStatsCollector />
-            </Canvas>
-            {showPerfMonitor && <PerformanceMonitor />}
-          </div>
-        </EditorLayout>
+        <AppContent />
       </ToastProvider>
     </LazyMotion>
   );

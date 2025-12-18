@@ -52,6 +52,8 @@ export {
   COLOR_ALGORITHM_OPTIONS,
   COLOR_ALGORITHM_TO_INT,
   DEFAULT_COLOR_ALGORITHM,
+  QUANTUM_ONLY_ALGORITHMS,
+  isQuantumOnlyAlgorithm,
   // Cosine palette types
   type CosineCoefficients,
   DEFAULT_COSINE_COEFFICIENTS,

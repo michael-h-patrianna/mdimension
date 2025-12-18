@@ -6,22 +6,24 @@
  * - Density (brightness/saturation)
  * - Wavefunction phase (subtle hue modulation)
  *
- * Three color modes:
- * 0 = Density only (user color with density-based brightness)
- * 1 = Phase tint (user color with phase-based hue shift)
- * 2 = Mixed (user color + phase shift + density brightness)
+ * Uses unified uColorAlgorithm system:
+ * - Algorithms 0-7: Delegated to shared getColorByAlgorithm()
+ * - Algorithm 8 (Phase): Quantum phase coloring using actual wavefunction phase
+ * - Algorithm 9 (Mixed): Quantum phase + density blending
+ * - Algorithm 10 (Blackbody): Density mapped to temperature gradient
+ *
+ * The quantum-specific algorithms (8-10) use the actual wavefunction phase,
+ * which is physically meaningful for visualizing quantum phenomena.
  */
 export const emissionBlock = `
 // ============================================
 // Volume Emission Color
 // ============================================
 
-// Color mode constants
-#define COLOR_MODE_DENSITY 0
-#define COLOR_MODE_PHASE 1
-#define COLOR_MODE_MIXED 2
-#define COLOR_MODE_PALETTE 3
-#define COLOR_MODE_BLACKBODY 4
+// Unified color algorithm constants (must match COLOR_ALGORITHM_TO_INT in types.ts)
+#define COLOR_ALG_PHASE 8
+#define COLOR_ALG_MIXED 9
+#define COLOR_ALG_BLACKBODY 10
 
 // Phase influence on hue (0.0 = no phase color, 1.0 = full rainbow)
 #define PHASE_HUE_INFLUENCE 0.4
@@ -119,24 +121,23 @@ vec3 computeBaseColor(float rho, float phase, vec3 pos) {
         baseHSL = vec3(hue, 1.0, 0.5);
     }
 
-    if (uColorMode == COLOR_MODE_DENSITY) {
-        return getColorByAlgorithm(normalized, vec3(0.0, 1.0, 0.0), baseHSL, pos);
-    }
-    // ... other modes ...
-    
-    // Nodal Surface Highlighting (applied to all modes)
+    // Quantum-specific color algorithms use actual wavefunction phase
+    // All other algorithms delegate to the shared getColorByAlgorithm()
     vec3 col = vec3(0.0);
-    
-    if (uColorMode == COLOR_MODE_DENSITY) {
-        col = getColorByAlgorithm(normalized, vec3(0.0, 1.0, 0.0), baseHSL, pos);
-    }
-    else if (uColorMode == COLOR_MODE_PHASE) {
+
+    if (uColorAlgorithm == COLOR_ALG_PHASE) {
+        // Algorithm 8: Quantum Phase coloring
+        // Uses actual wavefunction phase φ from Ψ = |Ψ|e^(iφ)
+        // This reveals interference patterns and time evolution
         float phaseNorm = (phase + PI) / TAU;
         float hueShift = (phaseNorm - 0.5) * PHASE_HUE_INFLUENCE;
         float hue = fract(baseHSL.x + hueShift);
         col = hsl2rgb(vec3(hue, 0.75, 0.35));
     }
-    else if (uColorMode == COLOR_MODE_MIXED) {
+    else if (uColorAlgorithm == COLOR_ALG_MIXED) {
+        // Algorithm 9: Mixed (Quantum Phase + Density)
+        // Combines phase-based hue with density-based lightness/saturation
+        // Shows both probability density and phase structure
         float phaseNorm = (phase + PI) / TAU;
         float hueShift = (phaseNorm - 0.5) * PHASE_HUE_INFLUENCE;
         float hue = fract(baseHSL.x + hueShift);
@@ -144,27 +145,17 @@ vec3 computeBaseColor(float rho, float phase, vec3 pos) {
         float saturation = 0.7 + 0.25 * normalized;
         col = hsl2rgb(vec3(hue, saturation, lightness));
     }
-    else if (uColorMode == COLOR_MODE_PALETTE) {
-        // Use Inigo Quilez cosine palette
-        // color(t) = a + b * cos(2pi(c*t + d))
-        // Map normalized density to 't'
-        float t = normalized;
-        
-        // Add phase influence to palette position if desired
-        // t += (phase / TAU) * 0.2; 
-        
-        col = uCosineA + uCosineB * cos(TAU * (uCosineC * t + uCosineD));
-        col = clamp(col, 0.0, 1.0);
-    }
-    else if (uColorMode == COLOR_MODE_BLACKBODY) {
-        // Map density to temperature (0 to 12000K)
-        // rho is raw density, can be very large.
-        // normalized is 0-1.
+    else if (uColorAlgorithm == COLOR_ALG_BLACKBODY) {
+        // Algorithm 10: Blackbody (Heat)
+        // Maps probability density to temperature gradient
+        // Higher density = hotter = whiter
         float temp = normalized * 12000.0;
         if (temp < 500.0) return vec3(0.0); // Cold is black
         col = blackbody(temp);
-    } else {
-        col = vec3(1.0);
+    }
+    else {
+        // Algorithms 0-7: Delegate to shared color system
+        col = getColorByAlgorithm(normalized, vec3(0.0, 1.0, 0.0), baseHSL, pos);
     }
     
     // Nodal Surface Highlight

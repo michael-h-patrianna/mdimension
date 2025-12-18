@@ -7,6 +7,7 @@ import { useGeometryStore } from '@/stores/geometryStore';
 import { usePerformanceMetricsStore, type BufferStats } from '@/stores/performanceMetricsStore';
 import { usePerformanceStore } from '@/stores/performanceStore';
 import { useUIStore } from '@/stores/uiStore';
+import { useWebGLContextStore } from '@/stores/webglContextStore';
 import { AnimatePresence, LazyMotion, domMax, m, useMotionValue } from 'motion/react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -44,6 +45,9 @@ const Icons = {
   ),
   Square: (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>
+  ),
+  AlertTriangle: (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
   ),
 };
 
@@ -369,6 +373,11 @@ export function PerformanceMonitor() {
     </div>
   );
 
+  // Get debug trigger function
+  const triggerContextLoss = useWebGLContextStore((state) => state.debugTriggerContextLoss);
+  const contextStatus = useWebGLContextStore((state) => state.status);
+  const isDevelopment = import.meta.env.MODE !== 'production';
+
   const BuffersContent = (
     <div className="space-y-5 p-5">
        <div className="flex items-center justify-between">
@@ -395,6 +404,37 @@ export function PerformanceMonitor() {
              <DebugToggle label="Temporal" active={showTemporalDepthBuffer} onClick={() => setShowTemporalDepthBuffer(!showTemporalDepthBuffer)} />
           </div>
        </div>
+
+       {/* Debug Tools - Development Only */}
+       {isDevelopment && (
+         <div className="space-y-3 pt-3 border-t border-white/5">
+            <SectionHeader icon={<Icons.AlertTriangle />} label="Debug Tools" />
+            <div className="space-y-2">
+               <button
+                  onClick={triggerContextLoss}
+                  disabled={contextStatus !== 'active'}
+                  className={`
+                    w-full px-3 py-2 text-[10px] font-bold uppercase tracking-wider rounded-md border transition-all
+                    flex items-center justify-center gap-2
+                    ${contextStatus !== 'active'
+                      ? 'bg-zinc-800/50 text-zinc-600 border-zinc-700/50 cursor-not-allowed'
+                      : 'bg-rose-500/10 text-rose-400 border-rose-500/30 hover:bg-rose-500/20 hover:border-rose-500/50'
+                    }
+                  `}
+               >
+                  <Icons.AlertTriangle className="w-3 h-3" />
+                  Simulate Context Loss
+               </button>
+               <div className="text-[9px] text-zinc-600 text-center">
+                  Status: <span className={
+                    contextStatus === 'active' ? 'text-emerald-400' :
+                    contextStatus === 'restoring' ? 'text-amber-400' :
+                    contextStatus === 'failed' ? 'text-rose-400' : 'text-zinc-400'
+                  }>{contextStatus}</span>
+               </div>
+            </div>
+         </div>
+       )}
     </div>
   );
 

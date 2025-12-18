@@ -20,6 +20,7 @@
 import * as THREE from 'three';
 import { usePerformanceStore } from '@/stores';
 import { DepthCaptureShader } from '@/rendering/shaders/postprocessing/DepthCaptureShader';
+import { resourceRecovery, RECOVERY_PRIORITY } from './ResourceRecovery';
 
 /** Depth buffer format - single channel float for depth storage */
 const DEPTH_FORMAT = THREE.RedFormat;
@@ -273,10 +274,33 @@ class TemporalDepthManagerImpl {
   }
 
   /**
-   * Invalidate temporal data (e.g., after camera teleport).
+   * Invalidate temporal data (e.g., after camera teleport or context loss).
+   * For context loss recovery, this also nulls texture references in uniforms.
    */
   invalidate(): void {
+    // Null texture references in uniforms to avoid stale GPU references
+    if (this.captureMaterial?.uniforms?.tDepth) {
+      this.captureMaterial.uniforms.tDepth.value = null;
+    }
+
+    // Dispose and null render targets
+    this.renderTargets.forEach((target) => target?.dispose());
+    this.renderTargets = [null, null];
+
+    // Reset state
     this.isValid = false;
+    this.bufferIndex = 0;
+  }
+
+  /**
+   * Reinitialize after context restoration.
+   * @param gl - The WebGL renderer with restored context
+   */
+  reinitialize(gl: THREE.WebGLRenderer): Promise<void> {
+    // Re-run initialize with stored dimensions
+    // This recreates render targets with fresh GPU resources
+    this.initialize(this.width * (1 / RESOLUTION_SCALE), this.height * (1 / RESOLUTION_SCALE), gl);
+    return Promise.resolve();
   }
 
   /**
@@ -349,3 +373,11 @@ class TemporalDepthManagerImpl {
 
 // Singleton instance
 export const TemporalDepthManager = new TemporalDepthManagerImpl();
+
+// Register with resource recovery coordinator
+resourceRecovery.register({
+  name: 'TemporalDepthManager',
+  priority: RECOVERY_PRIORITY.TEMPORAL_DEPTH,
+  invalidate: () => TemporalDepthManager.invalidate(),
+  reinitialize: (gl) => TemporalDepthManager.reinitialize(gl),
+});

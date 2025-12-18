@@ -77,7 +77,6 @@ uniform float uFogContribution;   // Scene fog contribution (0.0-2.0)
 uniform float uInternalFogDensity;// Internal fog density (0.0-1.0)
 uniform vec3 uSceneFogColor;      // Scene fog color
 uniform float uSceneFogDensity;   // Scene fog density (exponential)
-uniform int uColorMode;        // 0=density, 1=phase, 2=mixed
 
 // Animation time (from global uTime, but scaled by uTimeScale)
 uniform float uTime;

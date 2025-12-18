@@ -541,26 +541,27 @@ const QuaternionJuliaMesh = () => {
     )
     u.uDiffuseIntensity.value = lightStore.diffuseIntensity
     
-    // Advanced Rendering
-    if (u.uRoughness) u.uRoughness.value = config.roughness
-    if (u.uSssEnabled) u.uSssEnabled.value = config.sssEnabled
-    if (u.uSssIntensity) u.uSssIntensity.value = config.sssIntensity
+    // Advanced Rendering (Global Visuals)
+    const visuals = appStore; // appStore is already available
+    if (u.uRoughness) u.uRoughness.value = visuals.roughness
+    if (u.uSssEnabled) u.uSssEnabled.value = visuals.sssEnabled
+    if (u.uSssIntensity) u.uSssIntensity.value = visuals.sssIntensity
     if (u.uSssColor) {
-        updateLinearColorUniform(colorCacheRef.current.faceColor /* reuse helper */, u.uSssColor.value as THREE.Color, config.sssColor || '#ff8844')
+        updateLinearColorUniform(colorCacheRef.current.faceColor /* reuse helper */, u.uSssColor.value as THREE.Color, visuals.sssColor || '#ff8844')
     }
-    if (u.uSssThickness) u.uSssThickness.value = config.sssThickness
+    if (u.uSssThickness) u.uSssThickness.value = visuals.sssThickness
     
-    // Atmosphere
-    if (u.uFogEnabled) u.uFogEnabled.value = config.fogEnabled
-    if (u.uFogContribution) u.uFogContribution.value = config.fogContribution
-    if (u.uInternalFogDensity) u.uInternalFogDensity.value = config.internalFogDensity
+    // Atmosphere (Global Visuals)
+    if (u.uFogEnabled) u.uFogEnabled.value = visuals.fogIntegrationEnabled
+    if (u.uFogContribution) u.uFogContribution.value = visuals.fogContribution
+    if (u.uInternalFogDensity) u.uInternalFogDensity.value = visuals.internalFogDensity
     
-    // LOD
-    if (config.lodEnabled && u.uQualityMultiplier) {
+    // LOD (Global Visuals)
+    if (visuals.lodEnabled && u.uQualityMultiplier) {
         const distance = camera.position.length()
         const perfQuality = perfStore.qualityMultiplier ?? 1.0
         const lodFactor = THREE.MathUtils.clamp(1.0 - (distance - 2.0) / 8.0 * 0.75, 0.25, 1.0)
-        u.uQualityMultiplier.value = perfQuality * lodFactor * (config.lodDetail ?? 1.0)
+        u.uQualityMultiplier.value = perfQuality * lodFactor * (visuals.lodDetail ?? 1.0)
     }
 
     // Update fresnel

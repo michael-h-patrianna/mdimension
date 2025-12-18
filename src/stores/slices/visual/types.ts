@@ -101,7 +101,48 @@ export interface RenderSliceActions {
 export type RenderSlice = RenderSliceState & RenderSliceActions
 
 // ============================================================================
+// Advanced Rendering Slice
+// ============================================================================
+
+export interface AdvancedRenderingState {
+  // Roughness (Global override for fractals)
+  roughness: number
+
+  // Subsurface Scattering
+  sssEnabled: boolean
+  sssIntensity: number
+  sssColor: string
+  sssThickness: number
+  sssJitter: number
+
+  // Atmosphere / Fog Integration
+  fogIntegrationEnabled: boolean
+  fogContribution: number
+  internalFogDensity: number
+
+  // Level of Detail
+  lodEnabled: boolean
+  lodDetail: number
+}
+
+export interface AdvancedRenderingActions {
+  setRoughness: (roughness: number) => void
+  setSssEnabled: (enabled: boolean) => void
+  setSssIntensity: (intensity: number) => void
+  setSssColor: (color: string) => void
+  setSssThickness: (thickness: number) => void
+  setSssJitter: (jitter: number) => void
+  setFogIntegrationEnabled: (enabled: boolean) => void
+  setFogContribution: (contribution: number) => void
+  setInternalFogDensity: (density: number) => void
+  setLodEnabled: (enabled: boolean) => void
+  setLodDetail: (detail: number) => void
+}
+
+export type AdvancedRenderingSlice = AdvancedRenderingState & AdvancedRenderingActions
+
+// ============================================================================
 // Combined Appearance Slice
 // ============================================================================
 
-export type AppearanceSlice = ColorSlice & MaterialSlice & RenderSlice
+export type AppearanceSlice = ColorSlice & MaterialSlice & RenderSlice & AdvancedRenderingSlice

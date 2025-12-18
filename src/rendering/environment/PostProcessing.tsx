@@ -31,6 +31,7 @@ import { usePerformanceMetricsStore, type BufferStats } from '@/stores/performan
 import { usePostProcessingStore } from '@/stores/postProcessingStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useRotationStore } from '@/stores/rotationStore';
+import { useWebGLContextStore } from '@/stores/webglContextStore';
 import { useFrame, useThree } from '@react-three/fiber';
 import { memo, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
@@ -107,6 +108,10 @@ export const PostProcessing = memo(function PostProcessing() {
   const originalExposure = useRef<number>(gl.toneMappingExposure);
   const currentFocusRef = useRef<number>(15);
   const autoFocusDistanceRef = useRef<number>(15);
+
+  // Context restore counter - forces useMemo recreation when context is restored
+  // This ensures all render targets and passes are recreated with fresh GPU resources
+  const restoreCount = useWebGLContextStore((s) => s.restoreCount);
 
   const {
     bloomEnabled,
@@ -511,7 +516,7 @@ export const PostProcessing = memo(function PostProcessing() {
       cloudTemporalPass: cloudTemporal,
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gl]); // Only recreate when gl changes, NOT on size changes
+  }, [gl, restoreCount]); // Recreate when gl changes or context is restored
 
   // Update bloom pass enabled state and parameters
   useEffect(() => {

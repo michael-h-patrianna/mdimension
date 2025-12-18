@@ -1,11 +1,5 @@
-/**
- * PostProcessing Section Component
- * Section wrapper for post-processing controls (bloom, bokeh, tone mapping, SSR, refraction, misc)
- */
-
-import { Section } from '@/components/sections/Section';
-import { Tabs } from '@/components/ui/Tabs';
 import React, { useState } from 'react';
+import { Tabs } from '@/components/ui/Tabs';
 import { BloomControls } from './BloomControls';
 import { BokehControls } from './BokehControls';
 import { CinematicControls } from './CinematicControls';
@@ -13,18 +7,11 @@ import { MiscControls } from './MiscControls';
 import { RefractionControls } from './RefractionControls';
 import { SSRControls } from './SSRControls';
 
-export interface PostProcessingSectionProps {
-  defaultOpen?: boolean;
-}
-
-export const PostProcessingSection: React.FC<PostProcessingSectionProps> = ({
-  defaultOpen = false,
-}) => {
+export const PostProcessingControls: React.FC = () => {
   const [activeTab, setActiveTab] = useState('bloom');
 
   return (
-    <Section title="Post-Processing" defaultOpen={defaultOpen}>
-      <Tabs
+    <Tabs
         value={activeTab}
         onChange={setActiveTab}
         className="-mx-3"
@@ -63,6 +50,5 @@ export const PostProcessingSection: React.FC<PostProcessingSectionProps> = ({
         ]}
         data-testid="postprocessing-tabs"
       />
-    </Section>
   );
 };

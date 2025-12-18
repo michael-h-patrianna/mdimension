@@ -39,15 +39,6 @@ const QUALITY_RESTORE_DELAY_MS = 150;
 /** Maximum supported dimension */
 const MAX_DIMENSION = 11;
 
-/** Color mode to integer mapping */
-const COLOR_MODE_TO_INT: Record<string, number> = {
-  density: 0,
-  phase: 1,
-  mixed: 2,
-  palette: 3,
-  blackbody: 4,
-};
-
 /**
  * Apply D-dimensional rotation matrix to a vector, writing result into pre-allocated output.
  * @param matrix
@@ -255,7 +246,6 @@ const SchroedingerMesh = () => {
       uInternalFogDensity: { value: 0.0 },
       uSceneFogColor: { value: new THREE.Color('#000000') },
       uSceneFogDensity: { value: 0.0 },
-      uColorMode: { value: 2 },
 
       // Isosurface mode
       uIsoEnabled: { value: false },
@@ -561,7 +551,18 @@ const SchroedingerMesh = () => {
       }
 
       // Volume rendering parameters
-      const { timeScale, fieldScale, densityGain, powderScale, emissionIntensity, emissionThreshold, emissionColorShift, emissionPulsing, rimExponent, scatteringAnisotropy, roughness, sssEnabled, sssIntensity, sssColor, sssThickness, sssJitter, erosionStrength, erosionScale, erosionTurbulence, erosionNoiseType, curlEnabled, curlStrength, curlScale, curlSpeed, curlBias, dispersionEnabled, dispersionStrength, dispersionDirection, dispersionQuality, shadowsEnabled, shadowStrength, shadowSteps, aoEnabled, aoStrength, aoQuality, aoRadius, aoColor, nodalEnabled, nodalColor, nodalStrength, energyColorEnabled, shimmerEnabled, shimmerStrength, fogIntegrationEnabled, fogContribution, internalFogDensity, colorMode, isoThreshold, cosineParams } = schroedinger;
+      const { timeScale, fieldScale, densityGain, powderScale, emissionIntensity, emissionThreshold, emissionColorShift, emissionPulsing, erosionStrength, erosionScale, erosionTurbulence, erosionNoiseType, curlEnabled, curlStrength, curlScale, curlSpeed, curlBias, dispersionEnabled, dispersionStrength, dispersionDirection, dispersionQuality, shadowsEnabled, shadowStrength, shadowSteps, aoEnabled, aoStrength, aoQuality, aoRadius, aoColor, nodalEnabled, nodalColor, nodalStrength, energyColorEnabled, shimmerEnabled, shimmerStrength, isoThreshold } = schroedinger;
+      
+      // Global visuals from appearance store
+      const { roughness, sssEnabled, sssIntensity, sssColor, sssThickness, sssJitter, fogIntegrationEnabled, fogContribution, internalFogDensity } = appearance;
+      // Note: Schroedinger config also has rimExponent and scatteringAnisotropy. We should prefer global if unified, or keep specific if they are truly specific. The user request implied "purely visual ... global". 
+      // Rim and Anisotropy are material properties. I will use the ones from `appearance` store if I added them to `AdvancedRenderingSlice`.
+      // Checking `AdvancedRenderingSlice`... I did NOT add rimExponent and scatteringAnisotropy. I only added Roughness, SSS, Fog, LOD.
+      // So I will use `schroedinger.rimExponent` etc. for now, or add them to global.
+      // The user mentioned "SSS settings...". Rim/Anisotropy might be considered "visual".
+      // But for now, let's stick to what I moved: Roughness, SSS, Fog, LOD.
+      const { rimExponent, scatteringAnisotropy } = schroedinger;
+
       if (material.uniforms.uTimeScale) material.uniforms.uTimeScale.value = timeScale;
       if (material.uniforms.uFieldScale) material.uniforms.uFieldScale.value = fieldScale;
       if (material.uniforms.uDensityGain) material.uniforms.uDensityGain.value = densityGain;
@@ -572,6 +573,8 @@ const SchroedingerMesh = () => {
       if (material.uniforms.uEmissionPulsing) material.uniforms.uEmissionPulsing.value = emissionPulsing;
       if (material.uniforms.uRimExponent) material.uniforms.uRimExponent.value = rimExponent;
       if (material.uniforms.uScatteringAnisotropy) material.uniforms.uScatteringAnisotropy.value = scatteringAnisotropy;
+      
+      // Unified Visuals
       if (material.uniforms.uRoughness) material.uniforms.uRoughness.value = roughness;
       if (material.uniforms.uSssEnabled) material.uniforms.uSssEnabled.value = sssEnabled;
       if (material.uniforms.uSssIntensity) material.uniforms.uSssIntensity.value = sssIntensity;
@@ -580,6 +583,7 @@ const SchroedingerMesh = () => {
       }
       if (material.uniforms.uSssThickness) material.uniforms.uSssThickness.value = sssThickness;
       if (material.uniforms.uSssJitter) material.uniforms.uSssJitter.value = sssJitter;
+      
       if (material.uniforms.uErosionStrength) material.uniforms.uErosionStrength.value = erosionStrength;
       if (material.uniforms.uErosionScale) material.uniforms.uErosionScale.value = erosionScale;
       if (material.uniforms.uErosionTurbulence) material.uniforms.uErosionTurbulence.value = erosionTurbulence;
@@ -611,11 +615,12 @@ const SchroedingerMesh = () => {
       if (material.uniforms.uEnergyColorEnabled) material.uniforms.uEnergyColorEnabled.value = energyColorEnabled;
       if (material.uniforms.uShimmerEnabled) material.uniforms.uShimmerEnabled.value = shimmerEnabled;
       if (material.uniforms.uShimmerStrength) material.uniforms.uShimmerStrength.value = shimmerStrength;
+      
+      // Unified Fog
       if (material.uniforms.uFogEnabled) material.uniforms.uFogEnabled.value = fogIntegrationEnabled;
       if (material.uniforms.uFogContribution) material.uniforms.uFogContribution.value = fogContribution;
       if (material.uniforms.uInternalFogDensity) material.uniforms.uInternalFogDensity.value = internalFogDensity;
-      if (material.uniforms.uColorMode) material.uniforms.uColorMode.value = COLOR_MODE_TO_INT[colorMode] ?? 2;
-      
+
       // Update scene fog uniforms
       if (state.scene.fog && (state.scene.fog as THREE.FogExp2).isFogExp2) {
           const fog = state.scene.fog as THREE.FogExp2;
@@ -633,14 +638,6 @@ const SchroedingerMesh = () => {
            if (material.uniforms.uSceneFogDensity) material.uniforms.uSceneFogDensity.value = 0.0;
       }
       
-      // Pass cosine palette parameters for Palette Mode
-      if (colorMode === 'palette' && cosineParams) {
-          if (material.uniforms.uCosineA) material.uniforms.uCosineA.value.set(cosineParams.a[0], cosineParams.a[1], cosineParams.a[2]);
-          if (material.uniforms.uCosineB) material.uniforms.uCosineB.value.set(cosineParams.b[0], cosineParams.b[1], cosineParams.b[2]);
-          if (material.uniforms.uCosineC) material.uniforms.uCosineC.value.set(cosineParams.c[0], cosineParams.c[1], cosineParams.c[2]);
-          if (material.uniforms.uCosineD) material.uniforms.uCosineD.value.set(cosineParams.d[0], cosineParams.d[1], cosineParams.d[2]);
-      }
-
       // Isosurface mode
       if (material.uniforms.uIsoEnabled) material.uniforms.uIsoEnabled.value = isoEnabled;
       if (material.uniforms.uIsoThreshold) material.uniforms.uIsoThreshold.value = isoThreshold;

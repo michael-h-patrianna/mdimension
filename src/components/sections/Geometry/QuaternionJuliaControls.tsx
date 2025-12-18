@@ -24,7 +24,6 @@ import { useShallow } from 'zustand/react/shallow';
 import { Select } from '@/components/ui/Select';
 import { Slider } from '@/components/ui/Slider';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
-import { ToggleButton } from '@/components/ui/ToggleButton';
 import { Section } from '@/components/sections/Section';
 import {
   JULIA_CONSTANT_PRESETS,
@@ -92,16 +91,6 @@ export const QuaternionJuliaControls: React.FC<QuaternionJuliaControlsProps> = R
     setQualityPreset,
     setParameterValue,
     resetParameters,
-    setRoughness,
-    setSssEnabled,
-    setSssIntensity,
-    setSssColor,
-    setSssThickness,
-    setFogEnabled,
-    setFogContribution,
-    setInternalFogDensity,
-    setLodEnabled,
-    setLodDetail,
   } = useExtendedObjectStore(
     useShallow((state) => ({
       config: state.quaternionJulia,
@@ -113,19 +102,6 @@ export const QuaternionJuliaControls: React.FC<QuaternionJuliaControlsProps> = R
       setQualityPreset: state.setQuaternionJuliaQualityPreset,
       setParameterValue: state.setQuaternionJuliaParameterValue,
       resetParameters: state.resetQuaternionJuliaParameters,
-      // Advanced Rendering
-      setRoughness: state.setQuaternionJuliaRoughness,
-      setSssEnabled: state.setQuaternionJuliaSssEnabled,
-      setSssIntensity: state.setQuaternionJuliaSssIntensity,
-      setSssColor: state.setQuaternionJuliaSssColor,
-      setSssThickness: state.setQuaternionJuliaSssThickness,
-      // Atmosphere
-      setFogEnabled: state.setQuaternionJuliaFogEnabled,
-      setFogContribution: state.setQuaternionJuliaFogContribution,
-      setInternalFogDensity: state.setQuaternionJuliaInternalFogDensity,
-      // LOD
-      setLodEnabled: state.setQuaternionJuliaLodEnabled,
-      setLodDetail: state.setQuaternionJuliaLodDetail,
     }))
   );
 
@@ -313,136 +289,6 @@ export const QuaternionJuliaControls: React.FC<QuaternionJuliaControlsProps> = R
           </p>
         </Section>
       )}
-
-      <Section title="Advanced Rendering" defaultOpen={false}>
-        <Slider
-          label="Roughness"
-          min={0.0}
-          max={1.0}
-          step={0.05}
-          value={config.roughness ?? 0.3}
-          onChange={setRoughness}
-          showValue
-          data-testid="julia-roughness"
-        />
-        
-        <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
-            <div className="flex items-center justify-between">
-                <label className="text-xs text-text-secondary font-semibold">Subsurface Scattering</label>
-                <ToggleButton
-                    pressed={config.sssEnabled ?? false}
-                    onToggle={() => setSssEnabled(!(config.sssEnabled ?? false))}
-                    className="text-xs px-2 py-1 h-auto"
-                    ariaLabel="Toggle SSS"
-                    data-testid="julia-sss-toggle"
-                >
-                    {config.sssEnabled ? 'ON' : 'OFF'}
-                </ToggleButton>
-            </div>
-            {config.sssEnabled && (
-                <>
-                    <Slider
-                        label="Intensity"
-                        min={0.0}
-                        max={2.0}
-                        step={0.1}
-                        value={config.sssIntensity ?? 1.0}
-                        onChange={setSssIntensity}
-                        showValue
-                        data-testid="julia-sss-intensity"
-                    />
-                    <div className="flex items-center justify-between">
-                        <label className="text-xs text-text-secondary">SSS Tint</label>
-                        <input
-                            type="color"
-                            value={config.sssColor ?? '#ff8844'}
-                            onChange={(e) => setSssColor(e.target.value)}
-                            className="bg-transparent border-none w-6 h-6 cursor-pointer"
-                            data-testid="julia-sss-color"
-                        />
-                    </div>
-                    <Slider
-                        label="Thickness"
-                        min={0.1}
-                        max={5.0}
-                        step={0.1}
-                        value={config.sssThickness ?? 1.0}
-                        onChange={setSssThickness}
-                        showValue
-                        data-testid="julia-sss-thickness"
-                    />
-                </>
-            )}
-        </div>
-      </Section>
-
-      <Section title="Atmosphere" defaultOpen={false}>
-        <div className="space-y-2">
-            <div className="flex items-center justify-between">
-                <label className="text-xs text-text-secondary font-semibold">Fog Integration</label>
-                <ToggleButton
-                    pressed={config.fogEnabled ?? true}
-                    onToggle={() => setFogEnabled(!(config.fogEnabled ?? true))}
-                    className="text-xs px-2 py-1 h-auto"
-                    ariaLabel="Toggle Fog"
-                    data-testid="julia-fog-toggle"
-                >
-                    {config.fogEnabled !== false ? 'ON' : 'OFF'}
-                </ToggleButton>
-            </div>
-            {config.fogEnabled !== false && (
-                <Slider
-                    label="Contribution"
-                    min={0.0}
-                    max={2.0}
-                    step={0.1}
-                    value={config.fogContribution ?? 1.0}
-                    onChange={setFogContribution}
-                    showValue
-                    data-testid="julia-fog-contribution"
-                />
-            )}
-            <Slider
-                label="Internal Density"
-                min={0.0}
-                max={1.0}
-                step={0.05}
-                value={config.internalFogDensity ?? 0.0}
-                onChange={setInternalFogDensity}
-                showValue
-                data-testid="julia-internal-fog"
-            />
-        </div>
-      </Section>
-
-      <Section title="Performance" defaultOpen={false}>
-        <div className="space-y-2">
-            <div className="flex items-center justify-between">
-                <label className="text-xs text-text-secondary font-semibold">Distance-Adaptive LOD</label>
-                <ToggleButton
-                    pressed={config.lodEnabled ?? true}
-                    onToggle={() => setLodEnabled(!(config.lodEnabled ?? true))}
-                    className="text-xs px-2 py-1 h-auto"
-                    ariaLabel="Toggle LOD"
-                    data-testid="julia-lod-toggle"
-                >
-                    {config.lodEnabled !== false ? 'ON' : 'OFF'}
-                </ToggleButton>
-            </div>
-            {config.lodEnabled !== false && (
-                <Slider
-                    label="Detail Factor"
-                    min={0.1}
-                    max={2.0}
-                    step={0.1}
-                    value={config.lodDetail ?? 1.0}
-                    onChange={setLodDetail}
-                    showValue
-                    data-testid="julia-lod-detail"
-                />
-            )}
-        </div>
-      </Section>
 
       {/* Info */}
       <div className="px-4 py-2 text-xs text-text-secondary border-t border-white/5">

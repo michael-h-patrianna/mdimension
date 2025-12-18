@@ -1,4 +1,5 @@
 import { RENDER_LAYERS } from '@/rendering/core/layers';
+import { resourceRecovery, RECOVERY_PRIORITY } from '@/rendering/core/ResourceRecovery';
 import { createSkyboxShaderDefaults } from '@/rendering/materials/skybox/SkyboxShader';
 import { composeSkyboxFragmentShader, composeSkyboxVertexShader } from '@/rendering/shaders/skybox/compose';
 import type { SkyboxMode, SkyboxShaderConfig } from '@/rendering/shaders/skybox/types';
@@ -81,6 +82,32 @@ function getSharedPMREMGenerator(gl: THREE.WebGLRenderer): THREE.PMREMGenerator 
   }
   return sharedPMREMGenerator;
 }
+
+/**
+ * Clear all PMREM cache entries and dispose resources.
+ * Called during WebGL context recovery to invalidate stale GPU textures.
+ */
+function clearPMREMCache(): void {
+  // Dispose all cached PMREM textures
+  for (const entry of pmremCache.values()) {
+    entry.pmremTexture.dispose();
+  }
+  pmremCache.clear();
+
+  // Dispose shared PMREM generator
+  if (sharedPMREMGenerator) {
+    sharedPMREMGenerator.dispose();
+    sharedPMREMGenerator = null;
+  }
+}
+
+// Register PMREM cache with resource recovery coordinator
+resourceRecovery.register({
+  name: 'SkyboxPMREMCache',
+  priority: RECOVERY_PRIORITY.SKYBOX_PMREM,
+  invalidate: () => clearPMREMCache(),
+  reinitialize: () => Promise.resolve(), // Textures will be regenerated on demand
+});
 
 // ============================================================================
 // usePMREMTexture Hook

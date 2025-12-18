@@ -8,11 +8,11 @@ import { FacesSection } from '@/components/sections/Faces/FacesSection';
 import { EdgesSection } from '@/components/sections/Edges/EdgesSection';
 import { LightsSection } from '@/components/sections/Lights/LightsSection';
 import { EnvironmentSection } from '@/components/sections/Environment/EnvironmentSection';
-import { PostProcessingSection } from '@/components/sections/PostProcessing/PostProcessingSection';
 import { SettingsSection } from '@/components/sections/Settings/SettingsSection';
 import { ExportSection } from '@/components/sections/Export/ExportSection';
 import { DocumentationSection } from '@/components/sections/Documentation/DocumentationSection';
 import { PerformanceSection } from '@/components/sections/Performance/PerformanceSection';
+import { AdvancedObjectControls } from '@/components/sections/Advanced/AdvancedObjectControls';
 
 export const EditorRightPanel: React.FC = () => {
   // Default to 'object' tab as per user feedback (primary creative focus)
@@ -32,6 +32,7 @@ export const EditorRightPanel: React.FC = () => {
           {/* The "Subject" - Materials, Lines */}
           <FacesSection defaultOpen={true} />
           <EdgesSection defaultOpen={false} />
+          <AdvancedObjectControls />
         </div>
       ),
     },
@@ -49,7 +50,6 @@ export const EditorRightPanel: React.FC = () => {
           <EnvironmentSection defaultOpen={true} />
           <LightsSection defaultOpen={false} />
           <ProjectionSection defaultOpen={false} />
-          <PostProcessingSection defaultOpen={false} />
         </div>
       ),
     },
