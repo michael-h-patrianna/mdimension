@@ -14,6 +14,7 @@
 import { useShallow } from 'zustand/react/shallow';
 import { Slider } from '@/components/ui/Slider';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
+import { ToggleButton } from '@/components/ui/ToggleButton';
 import { Section } from '@/components/sections/Section';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
@@ -64,19 +65,16 @@ export const MandelbulbControls: React.FC<MandelbulbControlsProps> = React.memo(
     setMandelbulbPower,
     setMandelbulbParameterValue,
     resetMandelbulbParameters,
-    // Advanced Rendering
-    setRoughness: state.setMandelbulbRoughness,
-    setSssEnabled: state.setMandelbulbSssEnabled,
-    setSssIntensity: state.setMandelbulbSssIntensity,
-    setSssColor: state.setMandelbulbSssColor,
-    setSssThickness: state.setMandelbulbSssThickness,
-    // Atmosphere
-    setFogEnabled: state.setMandelbulbFogEnabled,
-    setFogContribution: state.setMandelbulbFogContribution,
-    setInternalFogDensity: state.setMandelbulbInternalFogDensity,
-    // LOD
-    setLodEnabled: state.setMandelbulbLodEnabled,
-    setLodDetail: state.setMandelbulbLodDetail,
+    setRoughness,
+    setSssEnabled,
+    setSssIntensity,
+    setSssColor,
+    setSssThickness,
+    setFogEnabled,
+    setFogContribution,
+    setInternalFogDensity,
+    setLodEnabled,
+    setLodDetail,
   } = useExtendedObjectStore(
     useShallow((state) => ({
       config: state.mandelbulb,

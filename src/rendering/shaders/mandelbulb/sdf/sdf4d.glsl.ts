@@ -23,7 +23,8 @@ float sdf4D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
         if (i >= maxIt) break;
 
         // r = |z|
-        r = sqrt(zx*zx + zy*zy + zz*zz + zw*zw);
+        float r2 = zx*zx + zy*zy + zz*zz + zw*zw;
+        r = sqrt(r2);
         if (r > bail) { escIt = i; break; }
 
         // Orbit traps (using z-axis primary convention)
@@ -39,7 +40,10 @@ float sdf4D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
         // To hyperspherical: z-axis primary (like Mandelbulb)
         // 4D: (z, x, y, w) -> (x1, x2, x3, x4) hyperspherical
         float theta = acos(clamp(zz / max(r, EPS), -1.0, 1.0));  // From z-axis (like Mandelbulb)
-        float rxyw = sqrt(zx*zx + zy*zy + zw*zw);
+        
+        // Optimization: derive rxyw from r2 to avoid 3 muls and 2 adds
+        float rxyw = sqrt(max(0.0, r2 - zz*zz));
+        
         float phi = rxyw > EPS ? acos(clamp(zx / max(rxyw, EPS), -1.0, 1.0)) : 0.0;  // From x in xyw
         float psi = atan(zw, zy);  // In yw plane
 
@@ -78,7 +82,8 @@ float sdf4D_simple(vec3 pos, float pwr, float bail, int maxIt) {
 
     for (int i = 0; i < MAX_ITER_HQ; i++) {
         if (i >= maxIt) break;
-        r = sqrt(zx*zx + zy*zy + zz*zz + zw*zw);
+        float r2 = zx*zx + zy*zy + zz*zz + zw*zw;
+        r = sqrt(r2);
         if (r > bail) break;
 
         // Optimized power calculation
@@ -88,7 +93,7 @@ float sdf4D_simple(vec3 pos, float pwr, float bail, int maxIt) {
 
         // z-axis primary (like Mandelbulb)
         float theta = acos(clamp(zz / max(r, EPS), -1.0, 1.0));
-        float rxyw = sqrt(zx*zx + zy*zy + zw*zw);
+        float rxyw = sqrt(max(0.0, r2 - zz*zz));
         float phi = rxyw > EPS ? acos(clamp(zx / max(rxyw, EPS), -1.0, 1.0)) : 0.0;
         float psi = atan(zw, zy);
 

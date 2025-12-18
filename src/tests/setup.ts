@@ -133,8 +133,11 @@ class MockAudioContext {
   currentTime = 0
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 globalThis.AudioContext = MockAudioContext as any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 ;(window as any).AudioContext = MockAudioContext
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 ;(window as any).webkitAudioContext = MockAudioContext
 
 // Cleanup after each test case

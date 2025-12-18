@@ -74,6 +74,7 @@ export interface LightingSliceState {
 
   // --- Multi-Light System ---
   lights: LightSource[]
+  version: number // Incremented on any light update to optimize uniform updates
   selectedLightId: string | null
   transformMode: TransformMode
   showLightGizmos: boolean
@@ -151,6 +152,7 @@ export const LIGHTING_INITIAL_STATE: LightingSliceState = {
 
   // Multi-light system
   lights: DEFAULT_LIGHTS,
+  version: 0,
   selectedLightId: DEFAULT_SELECTED_LIGHT_ID,
   transformMode: DEFAULT_TRANSFORM_MODE,
   showLightGizmos: DEFAULT_SHOW_LIGHT_GIZMOS,
@@ -243,7 +245,7 @@ export const createLightingSlice: StateCreator<LightingSlice, [], [], LightingSl
       return null
     }
     const newLight = createNewLight(type, state.lights.length)
-    set({ lights: [...state.lights, newLight], selectedLightId: newLight.id })
+    set({ lights: [...state.lights, newLight], selectedLightId: newLight.id, version: state.version + 1 })
     return newLight.id
   },
 
@@ -254,11 +256,12 @@ export const createLightingSlice: StateCreator<LightingSlice, [], [], LightingSl
     }
     const newLights = state.lights.filter((light) => light.id !== id)
     const newSelectedId = state.selectedLightId === id ? null : state.selectedLightId
-    set({ lights: newLights, selectedLightId: newSelectedId })
+    set({ lights: newLights, selectedLightId: newSelectedId, version: state.version + 1 })
   },
 
   updateLight: (id: string, updates: Partial<Omit<LightSource, 'id'>>) => {
     set((state) => ({
+      version: state.version + 1,
       lights: state.lights.map((light) => {
         if (light.id !== id) return light
         return {
@@ -289,7 +292,7 @@ export const createLightingSlice: StateCreator<LightingSlice, [], [], LightingSl
       return null
     }
     const newLight = cloneLight(sourceLight)
-    set({ lights: [...state.lights, newLight], selectedLightId: newLight.id })
+    set({ lights: [...state.lights, newLight], selectedLightId: newLight.id, version: state.version + 1 })
     return newLight.id
   },
 

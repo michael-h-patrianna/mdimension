@@ -20,11 +20,10 @@ import {
   usePerformanceStore,
 } from '@/stores/performanceStore';
 import { useProjectionStore } from '@/stores/projectionStore';
-import type { RotationState } from '@/stores/rotationStore';
 import { useRotationStore } from '@/stores/rotationStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useFrame, useThree } from '@react-three/fiber';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import {
   flattenPresetForUniforms,
@@ -54,14 +53,17 @@ const COLOR_MODE_TO_INT: Record<string, number> = {
  * @param matrix
  * @param vec
  * @param out
+ * @param dimension
  */
-function applyRotationInPlace(matrix: MatrixND, vec: number[], out: Float32Array): void {
-  const D = matrix.length;
-  for (let i = 0; i < MAX_DIMENSION; i++) out[i] = 0;
-  for (let i = 0; i < D; i++) {
+function applyRotationInPlace(matrix: MatrixND, vec: number[], out: Float32Array, dimension: number): void {
+  out.fill(0);
+  for (let i = 0; i < dimension; i++) {
     let sum = 0;
-    for (let j = 0; j < D; j++) {
-      sum += (matrix[i]?.[j] ?? 0) * (vec[j] ?? 0);
+    const row = matrix[i];
+    if (row) {
+        for (let j = 0; j < dimension; j++) {
+            sum += (row[j] ?? 0) * (vec[j] ?? 0);
+        }
     }
     out[i] = sum;
   }
@@ -125,7 +127,7 @@ const SchroedingerMesh = () => {
   const { size, camera } = useThree();
 
   // Performance optimization: track rotation changes for adaptive quality
-  const prevRotationsRef = useRef<RotationState['rotations'] | null>(null);
+  const prevVersionRef = useRef<number>(-1);
   const fastModeRef = useRef(false);
   const restoreQualityTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -138,6 +140,9 @@ const SchroedingerMesh = () => {
   const prevDimensionRef = useRef<number | null>(null);
   const prevParamValuesRef = useRef<number[] | null>(null);
   const basisVectorsDirtyRef = useRef(true);
+
+  // Cached state versions for optimization
+  const prevLightingVersionRef = useRef<number>(-1);
 
   // Track quantum config changes to regenerate preset
   const prevQuantumConfigRef = useRef<{
@@ -293,6 +298,7 @@ const SchroedingerMesh = () => {
       uLayerOpacity: { value: 0.5 },
       uVolumetricDensity: { value: 1.0 },
       uSampleQuality: { value: 64 },
+      uSampleCount: { value: 64 },
       uVolumetricReduceOnAnim: { value: true },
 
       // Advanced Color System uniforms
@@ -324,21 +330,6 @@ const SchroedingerMesh = () => {
       uOrthoRayDir: { value: new THREE.Vector3(0, 0, -1) },
       uInverseViewProjectionMatrix: { value: new THREE.Matrix4() },
     }),
-    []
-  );
-
-  /**
-   * Check if rotations have changed
-   */
-  const hasRotationsChanged = useCallback(
-    (current: RotationState['rotations'], previous: RotationState['rotations'] | null): boolean => {
-      if (!previous) return true;
-      if (current.size !== previous.size) return true;
-      for (const [key, value] of current.entries()) {
-        if (previous.get(key) !== value) return true;
-      }
-      return false;
-    },
     []
   );
 
@@ -431,7 +422,7 @@ const SchroedingerMesh = () => {
       const appearance = useAppearanceStore.getState();
       const lighting = useLightingStore.getState();
       const uiState = useUIStore.getState();
-      const rotations = useRotationStore.getState().rotations;
+      const { rotations, version: rotationVersion } = useRotationStore.getState();
       
       // Cache for colors
       const cache = colorCacheRef.current;
@@ -439,11 +430,12 @@ const SchroedingerMesh = () => {
       // ============================================
       // Adaptive Quality
       // ============================================
-      const rotationsChanged = hasRotationsChanged(rotations, prevRotationsRef.current);
+      const rotationsChanged = rotationVersion !== prevVersionRef.current;
       const fractalAnimLowQuality = usePerformanceStore.getState().fractalAnimationLowQuality;
 
       if (rotationsChanged && fractalAnimLowQuality) {
         fastModeRef.current = true;
+        prevVersionRef.current = rotationVersion;
         if (restoreQualityTimeoutRef.current) {
           clearTimeout(restoreQualityTimeoutRef.current);
           restoreQualityTimeoutRef.current = null;
@@ -455,10 +447,6 @@ const SchroedingerMesh = () => {
             restoreQualityTimeoutRef.current = null;
           }, QUALITY_RESTORE_DELAY_MS);
         }
-      }
-
-      if (rotationsChanged || !prevRotationsRef.current) {
-        prevRotationsRef.current = new Map(rotations);
       }
 
       // Update fast mode uniform
@@ -485,41 +473,8 @@ const SchroedingerMesh = () => {
       }
       
       if (material.uniforms.uSampleCount) {
-          // uSampleQuality in shader is mapped from integer enum, but we can also use direct count 
-          // if we modify the shader or use uSampleCount if it exists. 
-          // Looking at uniforms, we have uSampleQuality (int enum) and uSampleCount (from store).
-          // Wait, schroedinger store has sampleCount, but shader uses uSampleQuality enum?
-          // Let's check `uniforms` definition:
-          // uSampleQuality: { value: 64 }, 
-          // But store has `setSampleCount`.
-          // In `schroedingerSlice`, setSampleCount sets `sampleCount`.
-          
-          // Previously in this file:
-          /*
-          if (material.uniforms.uSampleCount) { 
-             material.uniforms.uSampleCount.value = sampleCount; 
-          }
-          */
-          // Wait, I see `uSampleCount` is NOT in the initial `uniforms` memo in SchroedingerMesh.tsx!
-          // It has `uSampleQuality` (int) related to Opacity Mode system.
-          
-          // I need to add `uSampleCount` to uniforms if I want direct control, OR map to quality presets.
-          // PRD says "Automatic Sample Count Scaling".
-          // The volumetric loop likely uses a fixed step size or step count.
-          
-          // Let's check the shader composition.
-          // Typically `uniform int uSampleCount` is used for loop limit.
-          // If not present, I should add it.
+          material.uniforms.uSampleCount.value = Math.floor(effectiveSamples);
       }
-      
-      // Let's blindly add/update uSampleCount if the shader expects it.
-      // If the shader uses #define steps, we can't change it easily without recompilation.
-      // But standard raymarchers often use a uniform for loop count or step size.
-      // Let's assume we can pass `uSampleCount`.
-      if (!material.uniforms.uSampleCount) {
-          material.uniforms.uSampleCount = { value: 64 };
-      }
-      material.uniforms.uSampleCount.value = Math.floor(effectiveSamples);
 
       // Quality multiplier
       const qualityMultiplier = usePerformanceStore.getState().qualityMultiplier;
@@ -742,8 +697,13 @@ const SchroedingerMesh = () => {
       }
 
       // Lighting
-      const { lights, ambientIntensity, ambientColor, specularIntensity, shininess, specularColor, diffuseIntensity } = lighting;
-      updateLightUniforms(material.uniforms as unknown as LightUniforms, lights, lightColorCacheRef.current);
+      const { lights, ambientIntensity, ambientColor, specularIntensity, shininess, specularColor, diffuseIntensity, version: lightingVersion } = lighting;
+      
+      if (prevLightingVersionRef.current !== lightingVersion) {
+        updateLightUniforms(material.uniforms as unknown as LightUniforms, lights, lightColorCacheRef.current);
+        prevLightingVersionRef.current = lightingVersion;
+      }
+
       if (material.uniforms.uAmbientIntensity) material.uniforms.uAmbientIntensity.value = ambientIntensity;
       if (material.uniforms.uAmbientColor) {
         updateLinearColorUniform(cache.ambientColor, material.uniforms.uAmbientColor.value as THREE.Color, ambientColor);
@@ -765,7 +725,19 @@ const SchroedingerMesh = () => {
 
       // Advanced Color System
       const { colorAlgorithm, cosineCoefficients, distribution, lchLightness, lchChroma, multiSourceWeights } = appearance;
+      
+      // Update color algorithm uniforms only if algorithm changed or always? 
+      // Coefficients might change even if algorithm doesn't.
+      // But we can check if colorAlgorithm is 'cosine' etc.
+      // For now, let's just optimize the integer mapping part if possible, or leave as is since .set() is cheap.
+      // Actually, we can skip updating cosine coefficients if colorAlgorithm is not 'palette' (3).
+      // But uColorAlgorithm is always needed.
       if (material.uniforms.uColorAlgorithm) material.uniforms.uColorAlgorithm.value = COLOR_ALGORITHM_TO_INT[colorAlgorithm];
+      
+      // Only update extensive cosine arrays if we are in a mode that might use them (or just update them, they are fast)
+      // Optimization: Only update if changed? We don't have versioning for appearance store yet.
+      // We'll stick to unconditional updates for now as Float32Array.set is fast enough.
+      
       if (material.uniforms.uCosineA) material.uniforms.uCosineA.value.set(cosineCoefficients.a[0], cosineCoefficients.a[1], cosineCoefficients.a[2]);
       if (material.uniforms.uCosineB) material.uniforms.uCosineB.value.set(cosineCoefficients.b[0], cosineCoefficients.b[1], cosineCoefficients.b[2]);
       if (material.uniforms.uCosineC) material.uniforms.uCosineC.value.set(cosineCoefficients.c[0], cosineCoefficients.c[1], cosineCoefficients.c[2]);
@@ -846,9 +818,9 @@ const SchroedingerMesh = () => {
         for (let i = 0; i < MAX_DIMENSION; i++) work.unitZ[i] = 0;
         work.unitZ[2] = 1;
 
-        applyRotationInPlace(cachedRotationMatrixRef.current, work.unitX, work.rotatedX);
-        applyRotationInPlace(cachedRotationMatrixRef.current, work.unitY, work.rotatedY);
-        applyRotationInPlace(cachedRotationMatrixRef.current, work.unitZ, work.rotatedZ);
+        applyRotationInPlace(cachedRotationMatrixRef.current, work.unitX, work.rotatedX, dimension);
+        applyRotationInPlace(cachedRotationMatrixRef.current, work.unitY, work.rotatedY, dimension);
+        applyRotationInPlace(cachedRotationMatrixRef.current, work.unitZ, work.rotatedZ, dimension);
 
         if (material.uniforms.uBasisX) {
           (material.uniforms.uBasisX.value as Float32Array).set(work.rotatedX);
@@ -910,7 +882,7 @@ const SchroedingerMesh = () => {
           }
         }
 
-        applyRotationInPlace(cachedRotationMatrixRef.current, work.origin, work.rotatedOrigin);
+        applyRotationInPlace(cachedRotationMatrixRef.current, work.origin, work.rotatedOrigin, dimension);
 
         if (material.uniforms.uOrigin) {
           (material.uniforms.uOrigin.value as Float32Array).set(work.rotatedOrigin);

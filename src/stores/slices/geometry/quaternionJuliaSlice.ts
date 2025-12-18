@@ -13,70 +13,9 @@
 import {
   DEFAULT_QUATERNION_JULIA_CONFIG,
   QUATERNION_JULIA_QUALITY_PRESETS,
-  type QuaternionJuliaConfig,
 } from '@/lib/geometry/extended/types'
 import type { StateCreator } from 'zustand'
-import type { ExtendedObjectSlice } from './types'
-
-// ============================================================================
-// Slice State & Actions Types
-// ============================================================================
-
-export interface QuaternionJuliaSliceState {
-  quaternionJulia: QuaternionJuliaConfig
-}
-
-export interface QuaternionJuliaSliceActions {
-  // Core parameters
-  setQuaternionJuliaConstant: (value: [number, number, number, number]) => void
-  setQuaternionJuliaPower: (value: number) => void
-  setQuaternionJuliaMaxIterations: (value: number) => void
-  setQuaternionJuliaBailoutRadius: (value: number) => void
-  setQuaternionJuliaScale: (value: number) => void
-
-  // Quality parameters
-  setQuaternionJuliaSurfaceThreshold: (value: number) => void
-  setQuaternionJuliaMaxRaymarchSteps: (value: number) => void
-  setQuaternionJuliaQualityMultiplier: (value: number) => void
-  setQuaternionJuliaQualityPreset: (preset: 'draft' | 'standard' | 'high' | 'ultra') => void
-
-  // D-dimensional parameters
-  setQuaternionJuliaParameterValue: (index: number, value: number) => void
-  setQuaternionJuliaParameterValues: (values: number[]) => void
-  resetQuaternionJuliaParameters: () => void
-  initializeQuaternionJuliaForDimension: (dimension: number) => void
-
-  // Color parameters
-  setQuaternionJuliaColorMode: (value: number) => void
-  setQuaternionJuliaBaseColor: (value: string) => void
-  setQuaternionJuliaCosineCoefficients: (
-    coefficients: QuaternionJuliaConfig['cosineCoefficients']
-  ) => void
-  setQuaternionJuliaColorPower: (value: number) => void
-  setQuaternionJuliaColorCycles: (value: number) => void
-  setQuaternionJuliaColorOffset: (value: number) => void
-  setQuaternionJuliaLchLightness: (value: number) => void
-  setQuaternionJuliaLchChroma: (value: number) => void
-
-  // Opacity parameters
-  setQuaternionJuliaOpacityMode: (value: number) => void
-  setQuaternionJuliaOpacity: (value: number) => void
-  setQuaternionJuliaLayerCount: (value: number) => void
-  setQuaternionJuliaLayerOpacity: (value: number) => void
-  setQuaternionJuliaVolumetricDensity: (value: number) => void
-
-  // Shadow parameters
-  setQuaternionJuliaShadowEnabled: (value: boolean) => void
-  setQuaternionJuliaShadowQuality: (value: number) => void
-  setQuaternionJuliaShadowSoftness: (value: number) => void
-  setQuaternionJuliaShadowAnimationMode: (value: number) => void
-
-  // Utility
-  getQuaternionJuliaConfig: () => QuaternionJuliaConfig
-  randomizeJuliaConstant: () => void
-}
-
-export type QuaternionJuliaSlice = QuaternionJuliaSliceState & QuaternionJuliaSliceActions
+import type { ExtendedObjectSlice, QuaternionJuliaSlice } from './types'
 
 // ============================================================================
 // Slice Implementation
@@ -345,33 +284,33 @@ export const createQuaternionJuliaSlice: StateCreator<
   },
 
   // --- Advanced Rendering Actions ---
-  setQuaternionJuliaRoughness: (value) => {
+  setQuaternionJuliaRoughness: (value: number) => {
     const clamped = Math.max(0.0, Math.min(1.0, value))
     set((state) => ({
       quaternionJulia: { ...state.quaternionJulia, roughness: clamped },
     }))
   },
 
-  setQuaternionJuliaSssEnabled: (value) => {
+  setQuaternionJuliaSssEnabled: (value: boolean) => {
     set((state) => ({
       quaternionJulia: { ...state.quaternionJulia, sssEnabled: value },
     }))
   },
 
-  setQuaternionJuliaSssIntensity: (value) => {
+  setQuaternionJuliaSssIntensity: (value: number) => {
     const clamped = Math.max(0.0, Math.min(2.0, value))
     set((state) => ({
       quaternionJulia: { ...state.quaternionJulia, sssIntensity: clamped },
     }))
   },
 
-  setQuaternionJuliaSssColor: (value) => {
+  setQuaternionJuliaSssColor: (value: string) => {
     set((state) => ({
       quaternionJulia: { ...state.quaternionJulia, sssColor: value },
     }))
   },
 
-  setQuaternionJuliaSssThickness: (value) => {
+  setQuaternionJuliaSssThickness: (value: number) => {
     const clamped = Math.max(0.1, Math.min(5.0, value))
     set((state) => ({
       quaternionJulia: { ...state.quaternionJulia, sssThickness: clamped },
@@ -379,20 +318,20 @@ export const createQuaternionJuliaSlice: StateCreator<
   },
 
   // --- Atmosphere Actions ---
-  setQuaternionJuliaFogEnabled: (value) => {
+  setQuaternionJuliaFogEnabled: (value: boolean) => {
     set((state) => ({
       quaternionJulia: { ...state.quaternionJulia, fogEnabled: value },
     }))
   },
 
-  setQuaternionJuliaFogContribution: (value) => {
+  setQuaternionJuliaFogContribution: (value: number) => {
     const clamped = Math.max(0.0, Math.min(2.0, value))
     set((state) => ({
       quaternionJulia: { ...state.quaternionJulia, fogContribution: clamped },
     }))
   },
 
-  setQuaternionJuliaInternalFogDensity: (value) => {
+  setQuaternionJuliaInternalFogDensity: (value: number) => {
     const clamped = Math.max(0.0, Math.min(1.0, value))
     set((state) => ({
       quaternionJulia: { ...state.quaternionJulia, internalFogDensity: clamped },
@@ -400,13 +339,13 @@ export const createQuaternionJuliaSlice: StateCreator<
   },
 
   // --- LOD Actions ---
-  setQuaternionJuliaLodEnabled: (value) => {
+  setQuaternionJuliaLodEnabled: (value: boolean) => {
     set((state) => ({
       quaternionJulia: { ...state.quaternionJulia, lodEnabled: value },
     }))
   },
 
-  setQuaternionJuliaLodDetail: (value) => {
+  setQuaternionJuliaLodDetail: (value: number) => {
     const clamped = Math.max(0.1, Math.min(2.0, value))
     set((state) => ({
       quaternionJulia: { ...state.quaternionJulia, lodDetail: clamped },

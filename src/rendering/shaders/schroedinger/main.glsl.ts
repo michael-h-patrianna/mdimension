@@ -353,6 +353,7 @@ void main() {
     // Lighting
     vec3 col = surfaceColor * uAmbientColor * uAmbientIntensity;
     vec3 viewDir = -rd;
+    float totalNdotL = 0.0;
 
     for (int i = 0; i < MAX_LIGHTS; i++) {
         if (i >= uNumLights) break;
@@ -375,6 +376,7 @@ void main() {
         if (attenuation < 0.001) continue;
 
         float NdotL = max(dot(n, l), 0.0);
+        totalNdotL = max(totalNdotL, NdotL * attenuation);
         col += surfaceColor * uLightColors[i] * NdotL * uDiffuseIntensity * attenuation;
 
         vec3 halfDir = normalize(l + viewDir);
@@ -387,6 +389,7 @@ void main() {
     if (uFresnelEnabled && uFresnelIntensity > 0.0) {
         float NdotV = max(dot(n, viewDir), 0.0);
         float rim = pow(1.0 - NdotV, 3.0) * uFresnelIntensity * 2.0;
+        rim *= (0.3 + 0.7 * totalNdotL);
         col += uRimColor * rim;
     }
 

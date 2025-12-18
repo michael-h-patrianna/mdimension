@@ -582,6 +582,7 @@ export const PostProcessing = memo(function PostProcessing() {
     edgesMaterial.defines['SMAA_THRESHOLD'] = smaaThreshold.toFixed(3);
 
     // Force shader recompilation by incrementing version and marking for update
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (edgesMaterial as any).version++;
     edgesMaterial.needsUpdate = true;
   }, [smaaPass, smaaThreshold]);
@@ -745,6 +746,12 @@ export const PostProcessing = memo(function PostProcessing() {
   // Main object count cache
   const mainObjectCountCacheRef = useRef({ count: 0, valid: false });
 
+  // P3 Optimization: Reusable Maps to avoid per-frame allocations
+  // These Maps store material state during render passes and are cleared/reused each frame
+  const savedDepthWriteForObjectPassRef = useRef<Map<THREE.Material, boolean>>(new Map());
+  const savedDepthWriteRef = useRef<Map<THREE.Material, boolean>>(new Map());
+  const savedPropsForMRTPassRef = useRef<Map<THREE.Material, { transparent: boolean; depthWrite: boolean; blending: THREE.Blending }>>(new Map());
+
   // Render
   useFrame((_, delta) => {
     // Use cached state refs instead of getState() for performance
@@ -873,7 +880,9 @@ export const PostProcessing = memo(function PostProcessing() {
 
       // Force all materials to write depth during object-only pass
       // This ensures transparent faces (like polytope faces with opacity < 1) write to depth
-      const savedDepthWriteForObjectPass: Map<THREE.Material, boolean> = new Map();
+      // P3 Optimization: Reuse Map from ref to avoid per-frame allocation
+      const savedDepthWriteForObjectPass = savedDepthWriteForObjectPassRef.current;
+      savedDepthWriteForObjectPass.clear();
       scene.traverse((obj) => {
         if ((obj as THREE.Mesh).isMesh) {
           const mat = (obj as THREE.Mesh).material as THREE.Material;
@@ -998,7 +1007,9 @@ export const PostProcessing = memo(function PostProcessing() {
     gl.clear(true, true, true); // Clear color, depth, stencil
 
     // Force all materials to write depth during this pass
-    const savedDepthWrite: Map<THREE.Material, boolean> = new Map();
+    // P3 Optimization: Reuse Map from ref to avoid per-frame allocation
+    const savedDepthWrite = savedDepthWriteRef.current;
+    savedDepthWrite.clear();
     scene.traverse((obj) => {
       if ((obj as THREE.Mesh).isMesh) {
         const mat = (obj as THREE.Mesh).material as THREE.Material;
@@ -1158,7 +1169,9 @@ export const PostProcessing = memo(function PostProcessing() {
         // Force materials to be opaque and write depth for the MRT pass
         // This is CRITICAL: If the material is transparent, blending will multiply
         // the normal (alpha 0) by 0, resulting in black output.
-        const savedPropsForMRTPass: Map<THREE.Material, { transparent: boolean; depthWrite: boolean; blending: THREE.Blending }> = new Map();
+        // P3 Optimization: Reuse Map from ref to avoid per-frame allocation
+        const savedPropsForMRTPass = savedPropsForMRTPassRef.current;
+        savedPropsForMRTPass.clear();
         scene.traverse((obj) => {
           if ((obj as THREE.Mesh).isMesh) {
             const mat = (obj as THREE.Mesh).material as THREE.Material;
@@ -1193,6 +1206,7 @@ export const PostProcessing = memo(function PostProcessing() {
         // Do NOT clear - we want to draw on top of environment
 
         if (mainObjectMRT.textures[1] && mainObjectMRT.depthTexture) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const uniforms = normalCopyMaterial.uniforms as any;
           uniforms.tNormal.value = mainObjectMRT.textures[1];
           uniforms.tDepth.value = mainObjectMRT.depthTexture;
@@ -1224,6 +1238,7 @@ export const PostProcessing = memo(function PostProcessing() {
           gl.autoClear = false;
 
           // Use the dedicated volumetric normal copy material (no depth check)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const volNormalUniforms = volumetricNormalCopyMaterial.uniforms as any;
           volNormalUniforms.tNormal.value = cloudNormalTexture;
 
@@ -1304,6 +1319,7 @@ export const PostProcessing = memo(function PostProcessing() {
 
     // Configure Buffer Preview Pass
     if (isBufferPreviewEnabled && camera instanceof THREE.PerspectiveCamera) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const uniforms = bufferPreviewPass.uniforms as any;
       uniforms.nearClip.value = camera.near;
       uniforms.farClip.value = camera.far;

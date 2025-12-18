@@ -39,11 +39,10 @@ import {
     usePerformanceStore,
 } from '@/stores/performanceStore'
 import { useProjectionStore } from '@/stores/projectionStore'
-import type { RotationState } from '@/stores/rotationStore'
 import { useRotationStore } from '@/stores/rotationStore'
 import { useUIStore } from '@/stores/uiStore'
 import { useFrame, useThree } from '@react-three/fiber'
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { composeJuliaShader } from '@/rendering/shaders/julia/compose'
 import vertexShader from './quaternion-julia.vert?raw'
@@ -59,20 +58,24 @@ const MAX_DIMENSION = 11
  * @param matrix
  * @param vec
  * @param out
+ * @param dimension
  */
 function applyRotationInPlace(
   matrix: MatrixND,
-  vec: number[],
-  out: Float32Array
+  vec: number[] | Float32Array,
+  out: Float32Array,
+  dimension: number
 ): void {
-  const D = matrix.length
-  for (let i = 0; i < MAX_DIMENSION; i++) out[i] = 0
-  for (let i = 0; i < D; i++) {
-    let sum = 0
-    for (let j = 0; j < D; j++) {
-      sum += (matrix[i]?.[j] ?? 0) * (vec[j] ?? 0)
+  out.fill(0);
+  for (let i = 0; i < dimension; i++) {
+    let sum = 0;
+    const row = matrix[i];
+    if (row) {
+      for (let j = 0; j < dimension; j++) {
+        sum += (row[j] ?? 0) * (vec[j] ?? 0);
+      }
     }
-    out[i] = sum
+    out[i] = sum;
   }
 }
 
@@ -108,7 +111,7 @@ const QuaternionJuliaMesh = () => {
   const { camera, size } = useThree()
 
   // Performance optimization refs
-  const prevRotationsRef = useRef<RotationState['rotations'] | null>(null)
+  const prevVersionRef = useRef<number>(-1)
   const fastModeRef = useRef(false)
   const restoreQualityTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
@@ -123,6 +126,12 @@ const QuaternionJuliaMesh = () => {
   const prevParamValuesRef = useRef<number[] | null>(null)
   const prevScaleRef = useRef<number | null>(null)
   const basisVectorsDirtyRef = useRef(true)
+
+  // Cached uniform values
+  const prevPowerRef = useRef<number | null>(null)
+  const prevIterationsRef = useRef<number | null>(null)
+  const prevEscapeRadiusRef = useRef<number | null>(null)
+  const prevLightingVersionRef = useRef<number>(-1)
 
   // Cached colors
   const colorCacheRef = useRef(createColorCache())
@@ -302,30 +311,6 @@ const QuaternionJuliaMesh = () => {
     basisVectorsDirtyRef.current = true
   }, [dimension, parameterValues])
 
-  /**
-   * Check if rotations have changed by comparing current vs previous state.
-   * Returns true if any rotation angle has changed, or if this is the first comparison.
-   * NOTE: rotations is a Map<string, number>, not a plain object!
-   */
-  const hasRotationsChanged = useCallback(
-    (current: RotationState['rotations'], previous: RotationState['rotations'] | null): boolean => {
-      // First frame or no previous state - consider it a change to ensure initial computation
-      if (!previous) return true
-
-      // Check if sizes differ
-      if (current.size !== previous.size) return true
-
-      // Compare all rotation planes using Map methods
-      for (const [key, value] of current.entries()) {
-        if (previous.get(key) !== value) {
-          return true
-        }
-      }
-      return false
-    },
-    []
-  )
-
   // Per-frame updates
   useFrame((state) => {
     if (!meshRef.current) return
@@ -334,6 +319,10 @@ const QuaternionJuliaMesh = () => {
     const material = mesh.material as THREE.ShaderMaterial
     if (!material?.uniforms) return
 
+    // Cast to any for now to allow property access, but we know the structure from useMemo above
+    // A full type definition would be very large and duplicate the useMemo structure
+    // We suppress the lint error as this is a deliberate trade-off for performance/complexity
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const u = material.uniforms as any;
     if (!u) return;
 
@@ -348,29 +337,27 @@ const QuaternionJuliaMesh = () => {
 
     const currentDimension = geoStore.dimension
     const config = extStore.quaternionJulia
-    const currentRotations = rotStore.rotations
+    const { rotations: currentRotations, version: rotationVersion } = rotStore
 
     // Update time
     u.uTime.value = state.clock.elapsedTime
 
     // Quality mode based on rotation changes
-    const didRotate = hasRotationsChanged(currentRotations, prevRotationsRef.current)
-
-    // Store current rotations for next frame comparison only when changed
-    // (avoids creating garbage every frame)
-    if (didRotate || !prevRotationsRef.current) {
-      prevRotationsRef.current = new Map(currentRotations)
-    }
+    const didRotate = rotationVersion !== prevVersionRef.current
 
     if (didRotate) {
       fastModeRef.current = true
+      prevVersionRef.current = rotationVersion
       if (restoreQualityTimeoutRef.current) {
         clearTimeout(restoreQualityTimeoutRef.current)
       }
-      restoreQualityTimeoutRef.current = setTimeout(() => {
-        fastModeRef.current = false
-        restoreQualityTimeoutRef.current = null
-      }, QUALITY_RESTORE_DELAY_MS)
+    } else if (fastModeRef.current) {
+        if (!restoreQualityTimeoutRef.current) {
+            restoreQualityTimeoutRef.current = setTimeout(() => {
+                fastModeRef.current = false
+                restoreQualityTimeoutRef.current = null
+            }, QUALITY_RESTORE_DELAY_MS)
+        }
     }
 
     // Only enable fast mode if fractalAnimationLowQuality is enabled in performance settings
@@ -384,10 +371,19 @@ const QuaternionJuliaMesh = () => {
     // Update dimension
     u.uDimension.value = currentDimension
 
-    // Update fractal parameters
-    u.uPower.value = config.power
-    u.uIterations.value = config.maxIterations
-    u.uEscapeRadius.value = config.bailoutRadius
+    // Update fractal parameters (conditionally)
+    if (prevPowerRef.current !== config.power) {
+      u.uPower.value = config.power
+      prevPowerRef.current = config.power
+    }
+    if (prevIterationsRef.current !== config.maxIterations) {
+      u.uIterations.value = config.maxIterations
+      prevIterationsRef.current = config.maxIterations
+    }
+    if (prevEscapeRadiusRef.current !== config.bailoutRadius) {
+      u.uEscapeRadius.value = config.bailoutRadius
+      prevEscapeRadiusRef.current = config.bailoutRadius
+    }
 
     // Julia constant (static)
     u.uJuliaConstant.value.set(...config.juliaConstant)
@@ -421,9 +417,9 @@ const QuaternionJuliaMesh = () => {
       }
 
       // Apply rotations to basis vectors
-      applyRotationInPlace(rotMatrix, wa.unitX, wa.rotatedX)
-      applyRotationInPlace(rotMatrix, wa.unitY, wa.rotatedY)
-      applyRotationInPlace(rotMatrix, wa.unitZ, wa.rotatedZ)
+      applyRotationInPlace(rotMatrix, wa.unitX, wa.rotatedX, currentDimension)
+      applyRotationInPlace(rotMatrix, wa.unitY, wa.rotatedY, currentDimension)
+      applyRotationInPlace(rotMatrix, wa.unitZ, wa.rotatedZ, currentDimension)
 
       // Scale basis vectors
       const boundingSize = config.scale
@@ -458,7 +454,7 @@ const QuaternionJuliaMesh = () => {
       }
 
       // Apply rotation to origin
-      applyRotationInPlace(cachedRotationMatrixRef.current, wa.origin, wa.rotatedOrigin)
+      applyRotationInPlace(cachedRotationMatrixRef.current, wa.origin, wa.rotatedOrigin, currentDimension)
 
       // Scale origin
       const boundingSize = config.scale
@@ -522,8 +518,12 @@ const QuaternionJuliaMesh = () => {
     // Note: uCameraNear and uCameraFar are no longer needed - temporal buffer now stores
     // unnormalized ray distances directly (world-space units)
 
-    // Update multi-light system
-    updateLightUniforms(u, lightStore.lights, lightColorCacheRef.current)
+    // Update multi-light system (conditionally)
+    const currentLightingVersion = lightStore.version
+    if (prevLightingVersionRef.current !== currentLightingVersion) {
+      updateLightUniforms(u, lightStore.lights, lightColorCacheRef.current)
+      prevLightingVersionRef.current = currentLightingVersion
+    }
 
     // Update global lighting
     u.uAmbientIntensity.value = lightStore.ambientIntensity

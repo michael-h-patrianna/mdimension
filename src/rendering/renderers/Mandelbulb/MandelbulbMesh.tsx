@@ -20,11 +20,10 @@ import {
     usePerformanceStore,
 } from '@/stores/performanceStore';
 import { useProjectionStore } from '@/stores/projectionStore';
-import type { RotationState } from '@/stores/rotationStore';
 import { useRotationStore } from '@/stores/rotationStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useFrame, useThree } from '@react-three/fiber';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { composeMandelbulbShader } from '@/rendering/shaders/mandelbulb/compose';
 import vertexShader from './mandelbulb.vert?raw';
@@ -41,15 +40,20 @@ const MAX_DIMENSION = 11;
  * @param matrix - D×D rotation matrix
  * @param vec - Input vector (length D)
  * @param out - Pre-allocated output Float32Array (length MAX_DIMENSION)
+ * @param dimension - Current dimension (optimization: only loop up to this)
  */
-function applyRotationInPlace(matrix: MatrixND, vec: number[], out: Float32Array): void {
-  const D = matrix.length;
-  // Clear output first (for dimensions beyond D)
-  for (let i = 0; i < MAX_DIMENSION; i++) out[i] = 0;
-  for (let i = 0; i < D; i++) {
+function applyRotationInPlace(matrix: MatrixND, vec: number[] | Float32Array, out: Float32Array, dimension: number): void {
+  // Clear output first (only needed if we assume clean buffer beyond D)
+  // For consistency with previous behavior and safety we fill with 0
+  out.fill(0);
+  
+  for (let i = 0; i < dimension; i++) {
     let sum = 0;
-    for (let j = 0; j < D; j++) {
-      sum += (matrix[i]?.[j] ?? 0) * (vec[j] ?? 0);
+    const row = matrix[i];
+    if (row) {
+        for (let j = 0; j < dimension; j++) {
+            sum += (row[j] ?? 0) * (vec[j] ?? 0);
+        }
     }
     out[i] = sum;
   }
@@ -100,7 +104,7 @@ const MandelbulbMesh = () => {
   const { size, camera } = useThree();
 
   // Performance optimization: track rotation changes for adaptive quality
-  const prevRotationsRef = useRef<RotationState['rotations'] | null>(null);
+  const prevVersionRef = useRef<number>(-1);
   const fastModeRef = useRef(false);
   const restoreQualityTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -112,6 +116,13 @@ const MandelbulbMesh = () => {
   const prevDimensionRef = useRef<number | null>(null);
   const prevParamValuesRef = useRef<number[] | null>(null);
   const basisVectorsDirtyRef = useRef(true);
+
+  // Cached uniform values to avoid redundant updates
+  const prevPowerRef = useRef<number | null>(null);
+  const prevIterationsRef = useRef<number | null>(null);
+  const prevEscapeRadiusRef = useRef<number | null>(null);
+  const prevZoomRef = useRef<number | null>(null);
+  const prevLightingVersionRef = useRef<number>(-1);
 
   // Cached linear colors - avoid per-frame sRGB->linear conversion
   const colorCacheRef = useRef(createColorCache());
@@ -391,29 +402,6 @@ const MandelbulbMesh = () => {
     []
   );
 
-  /**
-   * Check if rotations have changed by comparing current vs previous state.
-   * Returns true if any rotation angle has changed, or if this is the first comparison.
-   */
-  const hasRotationsChanged = useCallback((
-    current: RotationState['rotations'],
-    previous: RotationState['rotations'] | null
-  ): boolean => {
-    // First frame or no previous state - consider it a change to ensure initial computation
-    if (!previous) return true;
-
-    // Check if sizes differ
-    if (current.size !== previous.size) return true;
-
-    // Compare all rotation planes using Map methods
-    for (const [key, value] of current.entries()) {
-      if (previous.get(key) !== value) {
-        return true;
-      }
-    }
-    return false;
-  }, []);
-
   // Get temporal settings
   const temporalEnabled = usePerformanceStore((state) => state.temporalReprojectionEnabled);
   const setShaderDebugInfo = usePerformanceStore((state) => state.setShaderDebugInfo);
@@ -462,17 +450,19 @@ const MandelbulbMesh = () => {
     if (meshRef.current) {
       const material = meshRef.current.material as THREE.ShaderMaterial;
 
-      // Get rotations from store first (needed for rotation change detection)
-      const rotations = useRotationStore.getState().rotations;
+      // Get rotations from store
+      // Use version to detect changes cheaply
+      const { rotations, version: rotationVersion } = useRotationStore.getState();
 
       // ============================================
       // Adaptive Quality: Detect rotation animation
       // ============================================
-      const rotationsChanged = hasRotationsChanged(rotations, prevRotationsRef.current);
+      const rotationsChanged = rotationVersion !== prevVersionRef.current;
 
       if (rotationsChanged) {
         // Rotation is happening - switch to fast mode
         fastModeRef.current = true;
+        prevVersionRef.current = rotationVersion;
 
         // Clear any pending quality restore timeout
         if (restoreQualityTimeoutRef.current) {
@@ -487,12 +477,6 @@ const MandelbulbMesh = () => {
             restoreQualityTimeoutRef.current = null;
           }, QUALITY_RESTORE_DELAY_MS);
         }
-      }
-
-      // Store current rotations for next frame comparison only when changed
-      // (avoids creating garbage every frame)
-      if (rotationsChanged || !prevRotationsRef.current) {
-        prevRotationsRef.current = new Map(rotations);
       }
 
       // Update fast mode uniform
@@ -517,9 +501,15 @@ const MandelbulbMesh = () => {
       // Update dimension
       if (material.uniforms.uDimension) material.uniforms.uDimension.value = dimension;
 
-      // Update Mandelbulb parameters
-      if (material.uniforms.uIterations) material.uniforms.uIterations.value = maxIterations;
-      if (material.uniforms.uEscapeRadius) material.uniforms.uEscapeRadius.value = escapeRadius;
+      // Update Mandelbulb parameters (conditionally)
+      if (material.uniforms.uIterations && prevIterationsRef.current !== maxIterations) {
+        material.uniforms.uIterations.value = maxIterations;
+        prevIterationsRef.current = maxIterations;
+      }
+      if (material.uniforms.uEscapeRadius && prevEscapeRadiusRef.current !== escapeRadius) {
+        material.uniforms.uEscapeRadius.value = escapeRadius;
+        prevEscapeRadiusRef.current = escapeRadius;
+      }
 
       // Power: either animated or static
       // When animated, directly set uPower (same as manually moving the slider)
@@ -536,8 +526,12 @@ const MandelbulbMesh = () => {
 
           const targetPower = powerMin + normalized * (powerMax - powerMin);
           material.uniforms.uPower.value = targetPower;
+          prevPowerRef.current = targetPower;
         } else {
-          material.uniforms.uPower.value = mandelbulbPower;
+          if (prevPowerRef.current !== mandelbulbPower) {
+            material.uniforms.uPower.value = mandelbulbPower;
+            prevPowerRef.current = mandelbulbPower;
+          }
         }
       }
 
@@ -618,8 +612,12 @@ const MandelbulbMesh = () => {
       // Note: uCameraNear and uCameraFar are no longer needed - temporal buffer now stores
       // unnormalized ray distances directly (world-space units)
 
-      // Update multi-light uniforms (with cached color conversion)
-      updateLightUniforms(material.uniforms as unknown as LightUniforms, lights, lightColorCacheRef.current);
+      // Update multi-light uniforms (with cached color conversion and version check)
+      const currentLightingVersion = useLightingStore.getState().version;
+      if (prevLightingVersionRef.current !== currentLightingVersion) {
+        updateLightUniforms(material.uniforms as unknown as LightUniforms, lights, lightColorCacheRef.current);
+        prevLightingVersionRef.current = currentLightingVersion;
+      }
 
       // Update global lighting uniforms (cached linear conversion)
       if (material.uniforms.uAmbientIntensity) material.uniforms.uAmbientIntensity.value = ambientIntensity;
@@ -777,9 +775,9 @@ const MandelbulbMesh = () => {
         work.unitZ[2] = 1;
 
         // Apply rotation to basis vectors using pre-allocated output arrays
-        applyRotationInPlace(cachedRotationMatrixRef.current, work.unitX, work.rotatedX);
-        applyRotationInPlace(cachedRotationMatrixRef.current, work.unitY, work.rotatedY);
-        applyRotationInPlace(cachedRotationMatrixRef.current, work.unitZ, work.rotatedZ);
+        applyRotationInPlace(cachedRotationMatrixRef.current, work.unitX, work.rotatedX, dimension);
+        applyRotationInPlace(cachedRotationMatrixRef.current, work.unitY, work.rotatedY, dimension);
+        applyRotationInPlace(cachedRotationMatrixRef.current, work.unitZ, work.rotatedZ, dimension);
 
         // Update basis vector uniforms
         if (material.uniforms.uBasisX) {
@@ -857,7 +855,7 @@ const MandelbulbMesh = () => {
         }
 
         // Apply rotation to origin
-        applyRotationInPlace(cachedRotationMatrixRef.current, work.origin, work.rotatedOrigin);
+        applyRotationInPlace(cachedRotationMatrixRef.current, work.origin, work.rotatedOrigin, dimension);
 
         // Update origin uniform
         if (material.uniforms.uOrigin) {
@@ -921,8 +919,9 @@ const MandelbulbMesh = () => {
         }
 
         // Update zoom uniform
-        if (material.uniforms.uZoom) {
+        if (material.uniforms.uZoom && prevZoomRef.current !== zoom) {
           material.uniforms.uZoom.value = zoom;
+          prevZoomRef.current = zoom;
         }
 
         // Autopilot: create/update/run if enabled
@@ -979,7 +978,7 @@ const MandelbulbMesh = () => {
             }
             // Re-apply rotation to updated origin
             if (cachedRotationMatrixRef.current) {
-              applyRotationInPlace(cachedRotationMatrixRef.current, work.origin, work.rotatedOrigin);
+              applyRotationInPlace(cachedRotationMatrixRef.current, work.origin, work.rotatedOrigin, dimension);
               if (material.uniforms.uOrigin) {
                 const arr = material.uniforms.uOrigin.value as Float32Array;
                 arr.set(work.rotatedOrigin);
@@ -992,8 +991,9 @@ const MandelbulbMesh = () => {
         }
       } else {
         // Zoom disabled - reset uniforms
-        if (material.uniforms.uZoom) {
+        if (material.uniforms.uZoom && prevZoomRef.current !== 1.0) {
           material.uniforms.uZoom.value = 1.0;
+          prevZoomRef.current = 1.0;
         }
         // Reset zoom state
         logZoomRef.current = 0;

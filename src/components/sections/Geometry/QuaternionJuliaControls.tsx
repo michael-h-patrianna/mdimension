@@ -24,6 +24,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { Select } from '@/components/ui/Select';
 import { Slider } from '@/components/ui/Slider';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
+import { ToggleButton } from '@/components/ui/ToggleButton';
 import { Section } from '@/components/sections/Section';
 import {
   JULIA_CONSTANT_PRESETS,
@@ -90,20 +91,17 @@ export const QuaternionJuliaControls: React.FC<QuaternionJuliaControlsProps> = R
     setScale,
     setQualityPreset,
     setParameterValue,
-    resetParameters: state.resetQuaternionJuliaParameters,
-    // Advanced Rendering
-    setRoughness: state.setQuaternionJuliaRoughness,
-    setSssEnabled: state.setQuaternionJuliaSssEnabled,
-    setSssIntensity: state.setQuaternionJuliaSssIntensity,
-    setSssColor: state.setQuaternionJuliaSssColor,
-    setSssThickness: state.setQuaternionJuliaSssThickness,
-    // Atmosphere
-    setFogEnabled: state.setQuaternionJuliaFogEnabled,
-    setFogContribution: state.setQuaternionJuliaFogContribution,
-    setInternalFogDensity: state.setQuaternionJuliaInternalFogDensity,
-    // LOD
-    setLodEnabled: state.setQuaternionJuliaLodEnabled,
-    setLodDetail: state.setQuaternionJuliaLodDetail,
+    resetParameters,
+    setRoughness,
+    setSssEnabled,
+    setSssIntensity,
+    setSssColor,
+    setSssThickness,
+    setFogEnabled,
+    setFogContribution,
+    setInternalFogDensity,
+    setLodEnabled,
+    setLodDetail,
   } = useExtendedObjectStore(
     useShallow((state) => ({
       config: state.quaternionJulia,

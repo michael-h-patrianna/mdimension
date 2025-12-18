@@ -93,6 +93,48 @@ export function TubeWireframe({
   const colorCacheRef = useRef(createColorCache())
   const lightColorCacheRef = useRef(createLightColorCache())
 
+  // Performance optimization: Cache objects to avoid per-frame allocation/calculation
+  const cachedScalesRef = useRef<number[]>([])
+  const cachedGpuDataRef = useRef<ReturnType<typeof matrixToGPUUniforms> | null>(null)
+  const prevRotationVersionRef = useRef<number>(-1)
+  const cachedDimensionRef = useRef<number>(0)
+  const cachedProjectionDistanceRef = useRef<{ count: number; distance: number }>({ count: 0, distance: DEFAULT_PROJECTION_DISTANCE })
+
+  // P4 Optimization: Pre-allocated instance attribute arrays to avoid per-change allocations
+  // These are resized only when edge count increases, otherwise reused
+  const instanceArraysRef = useRef<{
+    capacity: number;
+    start: Float32Array;
+    end: Float32Array;
+    startExtraA: Float32Array;
+    startExtraB: Float32Array;
+    endExtraA: Float32Array;
+    endExtraB: Float32Array;
+  } | null>(null)
+
+  // Performance optimization: Cache store state in refs to avoid getState() calls every frame
+  const rotationStateRef = useRef(useRotationStore.getState())
+  const transformStateRef = useRef(useTransformStore.getState())
+  const projectionStateRef = useRef(useProjectionStore.getState())
+  const appearanceStateRef = useRef(useAppearanceStore.getState())
+  const lightingStateRef = useRef(useLightingStore.getState())
+
+  // Subscribe to store changes to update refs
+  useEffect(() => {
+    const unsubRot = useRotationStore.subscribe((s) => { rotationStateRef.current = s })
+    const unsubTrans = useTransformStore.subscribe((s) => { transformStateRef.current = s })
+    const unsubProj = useProjectionStore.subscribe((s) => { projectionStateRef.current = s })
+    const unsubApp = useAppearanceStore.subscribe((s) => { appearanceStateRef.current = s })
+    const unsubLight = useLightingStore.subscribe((s) => { lightingStateRef.current = s })
+    return () => {
+      unsubRot()
+      unsubTrans()
+      unsubProj()
+      unsubApp()
+      unsubLight()
+    }
+  }, [])
+
   // Assign main object layer for depth-based effects (SSR, refraction, bokeh)
   useEffect(() => {
     if (meshRef.current?.layers) {
@@ -200,19 +242,33 @@ export function TubeWireframe({
   }, [geometry, material])
 
   // Update instance attributes when vertices/edges change
+  // P4 Optimization: Reuse pre-allocated arrays when possible to reduce GC pressure
   useLayoutEffect(() => {
     const mesh = meshRef.current
     if (!mesh || !vertices || vertices.length === 0 || !edges || edges.length === 0) return
 
     const instanceCount = edges.length
 
-    // Prepare instance attribute arrays
-    const instanceStart = new Float32Array(instanceCount * 3)
-    const instanceEnd = new Float32Array(instanceCount * 3)
-    const instanceStartExtraA = new Float32Array(instanceCount * 4)
-    const instanceStartExtraB = new Float32Array(instanceCount * 4)
-    const instanceEndExtraA = new Float32Array(instanceCount * 4)
-    const instanceEndExtraB = new Float32Array(instanceCount * 4)
+    // P4 Optimization: Get or create pre-allocated arrays
+    // Only allocate new arrays when capacity is insufficient
+    let arrays = instanceArraysRef.current
+    if (!arrays || arrays.capacity < instanceCount) {
+      // Allocate with 20% extra capacity to reduce future reallocations
+      const newCapacity = Math.ceil(instanceCount * 1.2)
+      arrays = {
+        capacity: newCapacity,
+        start: new Float32Array(newCapacity * 3),
+        end: new Float32Array(newCapacity * 3),
+        startExtraA: new Float32Array(newCapacity * 4),
+        startExtraB: new Float32Array(newCapacity * 4),
+        endExtraA: new Float32Array(newCapacity * 4),
+        endExtraB: new Float32Array(newCapacity * 4),
+      }
+      instanceArraysRef.current = arrays
+    }
+
+    // Use the pre-allocated arrays
+    const { start: instanceStart, end: instanceEnd, startExtraA: instanceStartExtraA, startExtraB: instanceStartExtraB, endExtraA: instanceEndExtraA, endExtraB: instanceEndExtraB } = arrays
 
     // Fill instance arrays
     for (let i = 0; i < edges.length; i++) {
@@ -268,19 +324,32 @@ export function TubeWireframe({
       }
     }
 
-    // Set instance attributes on the geometry
-    geometry.setAttribute('instanceStart', new InstancedBufferAttribute(instanceStart, 3))
-    geometry.setAttribute('instanceEnd', new InstancedBufferAttribute(instanceEnd, 3))
-    geometry.setAttribute(
-      'instanceStartExtraA',
-      new InstancedBufferAttribute(instanceStartExtraA, 4)
-    )
-    geometry.setAttribute(
-      'instanceStartExtraB',
-      new InstancedBufferAttribute(instanceStartExtraB, 4)
-    )
-    geometry.setAttribute('instanceEndExtraA', new InstancedBufferAttribute(instanceEndExtraA, 4))
-    geometry.setAttribute('instanceEndExtraB', new InstancedBufferAttribute(instanceEndExtraB, 4))
+    // P4 Optimization: Check if attributes already exist and can be updated in-place
+    // This avoids creating new InstancedBufferAttribute objects every time
+    const existingStart = geometry.getAttribute('instanceStart') as InstancedBufferAttribute | undefined
+    if (existingStart && existingStart.array.length >= instanceCount * 3) {
+      // Reuse existing attribute - just update the data
+      existingStart.array.set(instanceStart.subarray(0, instanceCount * 3))
+      existingStart.needsUpdate = true
+      ;(geometry.getAttribute('instanceEnd') as InstancedBufferAttribute).array.set(instanceEnd.subarray(0, instanceCount * 3))
+      ;(geometry.getAttribute('instanceEnd') as InstancedBufferAttribute).needsUpdate = true
+      ;(geometry.getAttribute('instanceStartExtraA') as InstancedBufferAttribute).array.set(instanceStartExtraA.subarray(0, instanceCount * 4))
+      ;(geometry.getAttribute('instanceStartExtraA') as InstancedBufferAttribute).needsUpdate = true
+      ;(geometry.getAttribute('instanceStartExtraB') as InstancedBufferAttribute).array.set(instanceStartExtraB.subarray(0, instanceCount * 4))
+      ;(geometry.getAttribute('instanceStartExtraB') as InstancedBufferAttribute).needsUpdate = true
+      ;(geometry.getAttribute('instanceEndExtraA') as InstancedBufferAttribute).array.set(instanceEndExtraA.subarray(0, instanceCount * 4))
+      ;(geometry.getAttribute('instanceEndExtraA') as InstancedBufferAttribute).needsUpdate = true
+      ;(geometry.getAttribute('instanceEndExtraB') as InstancedBufferAttribute).array.set(instanceEndExtraB.subarray(0, instanceCount * 4))
+      ;(geometry.getAttribute('instanceEndExtraB') as InstancedBufferAttribute).needsUpdate = true
+    } else {
+      // Create new attributes (first time or capacity increased)
+      geometry.setAttribute('instanceStart', new InstancedBufferAttribute(instanceStart.subarray(0, instanceCount * 3), 3))
+      geometry.setAttribute('instanceEnd', new InstancedBufferAttribute(instanceEnd.subarray(0, instanceCount * 3), 3))
+      geometry.setAttribute('instanceStartExtraA', new InstancedBufferAttribute(instanceStartExtraA.subarray(0, instanceCount * 4), 4))
+      geometry.setAttribute('instanceStartExtraB', new InstancedBufferAttribute(instanceStartExtraB.subarray(0, instanceCount * 4), 4))
+      geometry.setAttribute('instanceEndExtraA', new InstancedBufferAttribute(instanceEndExtraA.subarray(0, instanceCount * 4), 4))
+      geometry.setAttribute('instanceEndExtraB', new InstancedBufferAttribute(instanceEndExtraB.subarray(0, instanceCount * 4), 4))
+    }
 
     // Update instance count
     mesh.count = instanceCount
@@ -290,37 +359,61 @@ export function TubeWireframe({
   useFrame(() => {
     if (!material.uniforms.uRotationMatrix4D) return
 
-    // Get stores state
-    const rotations = useRotationStore.getState().rotations
-    const { uniformScale, perAxisScale } = useTransformStore.getState()
-    const projectionType = useProjectionStore.getState().type
-    const appearanceState = useAppearanceStore.getState()
-    const lightingState = useLightingStore.getState()
+    // Read state from cached refs (updated via subscriptions, not getState() per frame)
+    const rotationState = rotationStateRef.current
+    const transformState = transformStateRef.current
+    const { uniformScale, perAxisScale } = transformState
+    const projectionType = projectionStateRef.current.type
+    const appearanceState = appearanceStateRef.current
+    const lightingState = lightingStateRef.current
 
-    // Build scales array
-    const scales: number[] = []
+    // Build scales array (reuse cached array)
+    const scales = cachedScalesRef.current
+    if (scales.length !== dimension) {
+      scales.length = dimension
+    }
     for (let i = 0; i < dimension; i++) {
-      scales.push(perAxisScale[i] ?? uniformScale)
+      scales[i] = perAxisScale[i] ?? uniformScale
     }
 
-    // Compute rotation matrix and GPU data
-    const rotationMatrix = composeRotations(dimension, rotations)
-    const gpuData = matrixToGPUUniforms(rotationMatrix, dimension)
+    // Compute rotation matrix and GPU data (only when changed)
+    const rotationVersion = rotationState.version
+    const rotationsChanged = dimension !== cachedDimensionRef.current || rotationVersion !== prevRotationVersionRef.current
+    
+    let gpuData: ReturnType<typeof matrixToGPUUniforms>
+    if (rotationsChanged || !cachedGpuDataRef.current) {
+      const rotationMatrix = composeRotations(dimension, rotationState.rotations)
+      gpuData = matrixToGPUUniforms(rotationMatrix, dimension)
+      // Update cache
+      cachedGpuDataRef.current = gpuData
+      cachedDimensionRef.current = dimension
+      prevRotationVersionRef.current = rotationVersion
+    } else {
+      gpuData = cachedGpuDataRef.current
+    }
 
-    // Calculate safe projection distance
-    const normalizationFactor = dimension > 3 ? Math.sqrt(dimension - 3) : 1
-    let maxEffectiveDepth = 0
-    if (vertices.length > 0 && vertices[0]!.length > 3) {
-      for (const vertex of vertices) {
-        let sum = 0
-        for (let d = 3; d < vertex.length; d++) {
-          sum += vertex[d]!
+    // Calculate safe projection distance (only when vertex count changes)
+    // Avoids O(N) loop every frame
+    let projectionDistance: number
+    const numVertices = vertices.length
+    if (numVertices !== cachedProjectionDistanceRef.current.count) {
+      const normalizationFactor = dimension > 3 ? Math.sqrt(dimension - 3) : 1
+      let maxEffectiveDepth = 0
+      if (numVertices > 0 && vertices[0]!.length > 3) {
+        for (const vertex of vertices) {
+          let sum = 0
+          for (let d = 3; d < vertex.length; d++) {
+            sum += vertex[d]!
+          }
+          const effectiveDepth = sum / normalizationFactor
+          maxEffectiveDepth = Math.max(maxEffectiveDepth, effectiveDepth)
         }
-        const effectiveDepth = sum / normalizationFactor
-        maxEffectiveDepth = Math.max(maxEffectiveDepth, effectiveDepth)
       }
+      projectionDistance = Math.max(DEFAULT_PROJECTION_DISTANCE, maxEffectiveDepth + 2.0)
+      cachedProjectionDistanceRef.current = { count: numVertices, distance: projectionDistance }
+    } else {
+      projectionDistance = cachedProjectionDistanceRef.current.distance
     }
-    const projectionDistance = Math.max(DEFAULT_PROJECTION_DISTANCE, maxEffectiveDepth + 2.0)
 
     // Update N-D transformation uniforms
     const u = material.uniforms

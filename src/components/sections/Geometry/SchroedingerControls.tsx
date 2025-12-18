@@ -94,6 +94,8 @@ export const SchroedingerControls: React.FC<SchroedingerControlsProps> = React.m
     setPowderScale,
     setSampleCount,
     setEmissionIntensity,
+    setEmissionThreshold,
+    setEmissionColorShift,
     setEmissionPulsing,
     setRimExponent,
     setScatteringAnisotropy,
@@ -138,6 +140,7 @@ export const SchroedingerControls: React.FC<SchroedingerControlsProps> = React.m
     setEnergyColorEnabled,
     setShimmerEnabled,
     setShimmerStrength,
+    setIsoEnabled,
     setIsoThreshold,
     setSchroedingerParameterValue,
     resetSchroedingerParameters,
@@ -635,6 +638,16 @@ export const SchroedingerControls: React.FC<SchroedingerControlsProps> = React.m
                         onChange={setSssThickness}
                         showValue
                         data-testid="schroedinger-sss-thickness"
+                    />
+                    <Slider
+                        label="Sample Jitter"
+                        min={0.0}
+                        max={1.0}
+                        step={0.05}
+                        value={config.sssJitter ?? 0.2}
+                        onChange={setSssJitter}
+                        showValue
+                        data-testid="schroedinger-sss-jitter"
                     />
                 </>
             )}

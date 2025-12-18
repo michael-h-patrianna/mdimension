@@ -54,6 +54,7 @@ class TemporalDepthManagerImpl {
   private isValid = false;
   private width = 1;
   private height = 1;
+  private _resolution = new THREE.Vector2(1, 1);
 
   // Camera matrices from previous frame
   private prevViewProjectionMatrix = new THREE.Matrix4();
@@ -94,6 +95,7 @@ class TemporalDepthManagerImpl {
 
     this.width = newWidth;
     this.height = newHeight;
+    this._resolution.set(newWidth, newHeight);
 
     // Dispose old targets
     this.renderTargets.forEach((target) => target?.dispose());
@@ -320,7 +322,7 @@ class TemporalDepthManagerImpl {
       uPrevViewProjectionMatrix: this.prevViewProjectionMatrix,
       uPrevInverseViewProjectionMatrix: this.prevInverseViewProjectionMatrix,
       uTemporalEnabled: enabled,
-      uDepthBufferResolution: new THREE.Vector2(this.width, this.height),
+      uDepthBufferResolution: this._resolution,
     };
   }
 

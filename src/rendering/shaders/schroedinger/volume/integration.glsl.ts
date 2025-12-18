@@ -86,8 +86,9 @@ VolumeResult volumeRaymarch(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar
     vec3 centroidSum = vec3(0.0);
     float centroidWeight = 0.0;
 
-    // Calculate step count based on quality settings
-    int sampleCount = uFastMode ? (uSampleQuality / 2) : uSampleQuality;
+    // Calculate step count based on uniform (from LOD system)
+    int sampleCount = uSampleCount > 0 ? uSampleCount : uSampleQuality;
+    if (uFastMode) sampleCount /= 2;
     sampleCount = clamp(sampleCount, 16, MAX_VOLUME_SAMPLES);
 
     float stepLen = (tFar - tNear) / float(sampleCount);
@@ -180,7 +181,7 @@ VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tF
     vec3 centroidSum = vec3(0.0);
     float centroidWeight = 0.0;
 
-    int sampleCount = uSampleQuality;
+    int sampleCount = uSampleCount > 0 ? uSampleCount : uSampleQuality;
     sampleCount = clamp(sampleCount, 32, MAX_VOLUME_SAMPLES);
 
     float stepLen = (tFar - tNear) / float(sampleCount);

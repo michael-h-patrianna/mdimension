@@ -85,4 +85,7 @@ uniform float uTime;
 // Optional: Isosurface mode
 uniform bool uIsoEnabled;      // Enable isosurface mode
 uniform float uIsoThreshold;   // Log-density threshold for isosurface
+
+// Sample count for loop control (LOD)
+uniform int uSampleCount;
 `;

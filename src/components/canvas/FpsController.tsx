@@ -15,6 +15,8 @@
  */
 
 import { useUIStore } from '@/stores/uiStore'
+import { useAnimationStore } from '@/stores/animationStore'
+import { usePerformanceStore } from '@/stores/performanceStore'
 import { useThree } from '@react-three/fiber'
 import { useLayoutEffect, useRef } from 'react'
 
@@ -24,15 +26,11 @@ import { useLayoutEffect, useRef } from 'react'
  * Uses the R3F maintainer-recommended pattern with requestAnimationFrame
  * and advance() for proper frame limiting that syncs with display refresh.
  *
- * @returns null - This component renders nothing, only manages frame timing
+ * Implements "Dynamic FPS":
+ * - Full FPS (up to maxFps) when playing animation or user is interacting.
+ * - Low FPS (10fps) when idle to save power.
  *
- * @example
- * ```tsx
- * <Canvas frameloop="never">
- *   <FpsController />
- *   <Scene />
- * </Canvas>
- * ```
+ * @returns null - This component renders nothing, only manages frame timing
  */
 export function FpsController(): null {
   const { advance } = useThree()
@@ -48,14 +46,18 @@ export function FpsController(): null {
     const tick = (now: number): void => {
       rafRef.current = requestAnimationFrame(tick)
 
+      // Determine target FPS based on state
       const maxFps = useUIStore.getState().maxFps
-      const interval = 1000 / maxFps
+      const isPlaying = useAnimationStore.getState().isPlaying
+      const isInteracting = usePerformanceStore.getState().isInteracting
+      
+      // If idle (not playing and not interacting), cap at 10 FPS to save power
+      // while still allowing UI updates to reflect reasonably fast.
+      const targetFps = (isPlaying || isInteracting) ? maxFps : 10
+      const interval = 1000 / targetFps
       const elapsed = now - thenRef.current
 
       // Use 1ms tolerance to handle floating point precision issues.
-      // Without tolerance, RAF timing (~16.665999ms) can be slightly less than
-      // interval (16.666666ms), causing every other frame to be skipped (30 FPS lock).
-      // 1ms provides reliable tolerance across different systems while maintaining FPS accuracy.
       if (elapsed >= interval - 1) {
         // Advance the frame - this triggers useFrame callbacks and renders
         // Pass timestamp for proper delta calculation in useFrame

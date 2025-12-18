@@ -26,32 +26,82 @@ export function useGeometryGenerator() {
   const quaternionJuliaConfig = useExtendedObjectStore((state) => state.quaternionJulia)
   const schroedingerConfig = useExtendedObjectStore((state) => state.schroedinger)
 
-  const extendedParams: ExtendedObjectParams = useMemo(
-    () => ({
-      polytope: polytopeConfig,
-      wythoffPolytope: wythoffPolytopeConfig,
-      rootSystem: rootSystemConfig,
-      cliffordTorus: cliffordTorusConfig,
-      nestedTorus: nestedTorusConfig,
-      mandelbulb: mandelbulbConfig,
-      quaternionJulia: quaternionJuliaConfig,
-      schroedinger: schroedingerConfig,
-    }),
-    [
-      polytopeConfig,
-      wythoffPolytopeConfig,
-      rootSystemConfig,
-      cliffordTorusConfig,
-      nestedTorusConfig,
-      mandelbulbConfig,
-      quaternionJuliaConfig,
-      schroedingerConfig,
-    ]
-  )
+  // Optimization: Only subscribe to the config relevant to the current object type
+  // This prevents geometry regeneration when changing settings for inactive objects
+  const relevantConfig = useMemo(() => {
+    switch (objectType) {
+      case 'hypercube':
+      case 'simplex':
+      case 'cross-polytope':
+        return polytopeConfig
+      case 'wythoff-polytope':
+        return wythoffPolytopeConfig
+      case 'root-system':
+        return rootSystemConfig
+      case 'clifford-torus':
+        return cliffordTorusConfig
+      case 'nested-torus':
+        return nestedTorusConfig
+      case 'mandelbulb':
+        return mandelbulbConfig
+      case 'quaternion-julia':
+        return quaternionJuliaConfig
+      case 'schroedinger':
+        return schroedingerConfig
+      default:
+        return polytopeConfig
+    }
+  }, [
+    objectType,
+    polytopeConfig,
+    wythoffPolytopeConfig,
+    rootSystemConfig,
+    cliffordTorusConfig,
+    nestedTorusConfig,
+    mandelbulbConfig,
+    quaternionJuliaConfig,
+    schroedingerConfig,
+  ])
 
   const geometry = useMemo(() => {
-    return generateGeometry(objectType, dimension, extendedParams)
-  }, [objectType, dimension, extendedParams])
+    // Reconstruct just the necessary part of ExtendedObjectParams
+    // generateGeometry uses specific keys based on objectType
+    const params: Partial<ExtendedObjectParams> = {}
+
+    // Map the relevant config to the correct key expected by generateGeometry
+    switch (objectType) {
+      case 'hypercube':
+      case 'simplex':
+      case 'cross-polytope':
+        params.polytope = relevantConfig as typeof polytopeConfig
+        break
+      case 'wythoff-polytope':
+        params.wythoffPolytope = relevantConfig as typeof wythoffPolytopeConfig
+        break
+      case 'root-system':
+        params.rootSystem = relevantConfig as typeof rootSystemConfig
+        break
+      case 'clifford-torus':
+        params.cliffordTorus = relevantConfig as typeof cliffordTorusConfig
+        break
+      case 'nested-torus':
+        params.nestedTorus = relevantConfig as typeof nestedTorusConfig
+        break
+      case 'mandelbulb':
+        params.mandelbulb = relevantConfig as typeof mandelbulbConfig
+        break
+      case 'quaternion-julia':
+        params.quaternionJulia = relevantConfig as typeof quaternionJuliaConfig
+        break
+      case 'schroedinger':
+        params.schroedinger = relevantConfig as typeof schroedingerConfig
+        break
+      default:
+        params.polytope = relevantConfig as typeof polytopeConfig
+    }
+
+    return generateGeometry(objectType, dimension, params as ExtendedObjectParams)
+  }, [objectType, dimension, relevantConfig])
 
   return { geometry, dimension, objectType }
 }

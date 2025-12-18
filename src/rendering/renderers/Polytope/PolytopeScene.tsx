@@ -19,6 +19,7 @@ import {
     Matrix4,
     ShaderMaterial,
     Vector3,
+    Vector4,
 } from 'three';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -74,7 +75,7 @@ function createNDUniforms(): Record<string, { value: unknown }> {
   return {
     uRotationMatrix4D: { value: new Matrix4() },
     uDimension: { value: 4 },
-    uScale4D: { value: [1, 1, 1, 1] },
+    uScale4D: { value: new Vector4(1, 1, 1, 1) },
     uExtraScales: { value: new Float32Array(MAX_EXTRA_DIMS).fill(1) },
     uExtraRotationCols: { value: new Float32Array(MAX_EXTRA_DIMS * 4) },
     uDepthRowSums: { value: new Float32Array(11) },
@@ -123,7 +124,17 @@ function updateNDUniforms(
 
   if (u.uRotationMatrix4D) (u.uRotationMatrix4D.value as Matrix4).copy(gpuData.rotationMatrix4D);
   if (u.uDimension) u.uDimension.value = dimension;
-  if (u.uScale4D) u.uScale4D.value = [scales[0] ?? 1, scales[1] ?? 1, scales[2] ?? 1, scales[3] ?? 1];
+  if (u.uScale4D) {
+    const s0 = scales[0] ?? 1;
+    const s1 = scales[1] ?? 1;
+    const s2 = scales[2] ?? 1;
+    const s3 = scales[3] ?? 1;
+    if (u.uScale4D.value instanceof Vector4) {
+      u.uScale4D.value.set(s0, s1, s2, s3);
+    } else {
+      u.uScale4D.value = [s0, s1, s2, s3];
+    }
+  }
   if (u.uExtraScales) {
     const extraScales = u.uExtraScales.value as Float32Array;
     for (let i = 0; i < MAX_EXTRA_DIMS; i++) {
@@ -146,12 +157,14 @@ function updateNDUniforms(
  * This is the direction FROM origin TO light (same as light position normalized).
  * @param horizontalDeg
  * @param verticalDeg
+ * @param target - Optional target vector to write to
  */
-function anglesToDirection(horizontalDeg: number, verticalDeg: number): THREE.Vector3 {
+function anglesToDirection(horizontalDeg: number, verticalDeg: number, target?: THREE.Vector3): THREE.Vector3 {
   const hRad = (horizontalDeg * Math.PI) / 180;
   const vRad = (verticalDeg * Math.PI) / 180;
+  const t = target || new THREE.Vector3();
   // Match SceneLighting: x = cos(v)*cos(h), y = sin(v), z = cos(v)*sin(h)
-  return new THREE.Vector3(
+  return t.set(
     Math.cos(vRad) * Math.cos(hRad),
     Math.sin(vRad),
     Math.cos(vRad) * Math.sin(hRad)
@@ -395,11 +408,17 @@ export const PolytopeScene = React.memo(function PolytopeScene({
 
   // P3 Optimization: Cache matrix computations to avoid per-frame recomputation
   // Only recompute when rotations or dimension actually change
-  const cachedRotationsRef = useRef<Map<string, number>>(new Map());
+  // const cachedRotationsRef = useRef<Map<string, number>>(new Map()); // REMOVED
+  const prevRotationVersionRef = useRef<number>(-1);
   const cachedGpuDataRef = useRef<ReturnType<typeof matrixToGPUUniforms> | null>(null);
   const cachedDimensionRef = useRef<number>(0);
   // Cache projection distance (only changes when baseVertices change, i.e., geometry change)
   const cachedProjectionDistanceRef = useRef<{ count: number; distance: number }>({ count: 0, distance: 10 });
+  
+  // Cache scales array to avoid per-frame allocation
+  const cachedScalesRef = useRef<number[]>([]);
+  // Cache light direction to avoid per-frame allocation
+  const cachedLightDirectionRef = useRef(new Vector3());
 
   // Ref callbacks to assign main object layer for depth-based effects (SSR, refraction, bokeh)
   // Using callbacks instead of useEffect ensures layer is set when mesh is created,
@@ -679,31 +698,23 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     const lchChroma = appearanceState.lchChroma;
     const multiSourceWeights = appearanceState.multiSourceWeights;
 
-    // Calculate light direction from angles
-    const lightDirection = anglesToDirection(lightHorizontalAngle, lightVerticalAngle);
+    // Calculate light direction from angles (use cached vector)
+    const lightDirection = anglesToDirection(lightHorizontalAngle, lightVerticalAngle, cachedLightDirectionRef.current);
 
     // Build transformation data
-    const scales: number[] = [];
+    const scales = cachedScalesRef.current;
+    // Resize array if needed (rare)
+    if (scales.length !== dimension) {
+      scales.length = dimension;
+    }
+    // Update values in place
     for (let i = 0; i < dimension; i++) {
-      scales.push(perAxisScale[i] ?? uniformScale);
+      scales[i] = perAxisScale[i] ?? uniformScale;
     }
 
     // P3 Optimization: Cache matrix computations - only recompute when rotations change
-    const cachedRotations = cachedRotationsRef.current;
-    let rotationsChanged = dimension !== cachedDimensionRef.current;
-    if (!rotationsChanged) {
-      // Check if any rotation values changed
-      if (rotations.size !== cachedRotations.size) {
-        rotationsChanged = true;
-      } else {
-        for (const [plane, angle] of rotations) {
-          if (cachedRotations.get(plane) !== angle) {
-            rotationsChanged = true;
-            break;
-          }
-        }
-      }
-    }
+    const rotationVersion = rotationState.version;
+    const rotationsChanged = dimension !== cachedDimensionRef.current || rotationVersion !== prevRotationVersionRef.current;
 
     let gpuData: ReturnType<typeof matrixToGPUUniforms>;
     if (rotationsChanged || !cachedGpuDataRef.current) {
@@ -712,7 +723,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
       // Update cache
       cachedGpuDataRef.current = gpuData;
       cachedDimensionRef.current = dimension;
-      cachedRotationsRef.current = new Map(rotations);
+      prevRotationVersionRef.current = rotationVersion;
     } else {
       gpuData = cachedGpuDataRef.current;
     }

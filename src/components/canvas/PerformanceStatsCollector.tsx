@@ -111,10 +111,20 @@ export function PerformanceStatsCollector() {
   // Frame Loop
   useFrame(() => {
     // 1. Snapshot accumulated stats from previous frame
-    lastFrameStatsRef.current = { ...activeFrameStatsRef.current };
+    // Reuse existing object to avoid GC
+    const last = lastFrameStatsRef.current;
+    const active = activeFrameStatsRef.current;
+    
+    last.calls = active.calls;
+    last.triangles = active.triangles;
+    last.points = active.points;
+    last.lines = active.lines;
     
     // 2. Reset accumulator for the current frame
-    activeFrameStatsRef.current = { calls: 0, triangles: 0, points: 0, lines: 0 };
+    active.calls = 0;
+    active.triangles = 0;
+    active.points = 0;
+    active.lines = 0;
 
     framesRef.current++;
     const time = performance.now();

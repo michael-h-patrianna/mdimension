@@ -40,6 +40,9 @@ export interface RotationState {
   /** Current dimension */
   dimension: number;
 
+  /** Version counter to track updates without deep comparison */
+  version: number;
+
   /** Set rotation for a specific plane */
   setRotation: (plane: string, angle: number) => void;
   
@@ -68,6 +71,7 @@ function normalizeAngle(angle: number): number {
 export const useRotationStore = create<RotationState>((set) => ({
   rotations: new Map(),
   dimension: 4,
+  version: 0,
 
   setRotation: (plane: string, angle: number) => {
     set((state) => {
@@ -79,7 +83,7 @@ export const useRotationStore = create<RotationState>((set) => ({
       }
       const newRotations = new Map(state.rotations);
       newRotations.set(plane, normalizeAngle(angle));
-      return { rotations: newRotations };
+      return { rotations: newRotations, version: state.version + 1 };
     });
   },
 
@@ -94,12 +98,12 @@ export const useRotationStore = create<RotationState>((set) => ({
           newRotations.set(plane, normalizeAngle(angle));
         }
       }
-      return { rotations: newRotations };
+      return { rotations: newRotations, version: state.version + 1 };
     });
   },
 
   resetAllRotations: () => {
-    set({ rotations: new Map() });
+    set((state) => ({ rotations: new Map(), version: state.version + 1 }));
   },
 
   setDimension: (dimension: number) => {
@@ -114,6 +118,7 @@ export const useRotationStore = create<RotationState>((set) => ({
         return {
           dimension,
           rotations: new Map(),
+          version: state.version + 1
         };
       }
       return state;

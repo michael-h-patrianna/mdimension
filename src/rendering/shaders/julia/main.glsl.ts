@@ -90,6 +90,7 @@ void main() {
         #endif
 
         float NdotL = max(dot(n, l), 0.0);
+        totalNdotL = max(totalNdotL, NdotL * attenuation * shadow);
         
         // Standard Diffuse
         col += surfaceColor * uLightColors[i] * NdotL * uDiffuseIntensity * attenuation * shadow;

@@ -17,7 +17,9 @@ vi.mock('@/stores/rotationStore', () => ({
   useRotationStore: {
     getState: () => ({
       rotations: [],
+      version: 0,
     }),
+    subscribe: () => () => {}, // Returns unsubscribe function
   },
 }))
 
@@ -28,6 +30,7 @@ vi.mock('@/stores/transformStore', () => ({
       uniformScale: 1,
       perAxisScale: [1, 1, 1],
     }),
+    subscribe: () => () => {},
   },
 }))
 
@@ -37,6 +40,7 @@ vi.mock('@/stores/projectionStore', () => ({
     getState: () => ({
       type: 'perspective',
     }),
+    subscribe: () => () => {},
   },
 }))
 
@@ -53,6 +57,7 @@ vi.mock('@/stores/appearanceStore', () => ({
         },
       },
     }),
+    subscribe: () => () => {},
   },
 }))
 
@@ -84,6 +89,7 @@ vi.mock('@/stores/lightingStore', () => ({
         },
       ],
     }),
+    subscribe: () => () => {},
   },
 }))
 
