@@ -282,6 +282,7 @@ float sampleDensity(vec3 pos, float t) {
     // Hydrogen wavefunctions have much smaller local density values than
     // harmonic oscillator superpositions due to different normalization.
     // Boost the density to make hydrogen orbitals visible with same gain settings.
+#ifdef HYDROGEN_MODE_ENABLED
     if (uQuantumMode == QUANTUM_MODE_HYDROGEN) {
         // Boost factor depends on orbital size and shape
         // Higher n orbitals are more spread out (volume ~ n³)
@@ -299,9 +300,11 @@ float sampleDensity(vec3 pos, float t) {
         float hydrogenBoost = 50.0 * fn * fn * lBoost;
         rho *= hydrogenBoost;
     }
+#endif
 
     // Hydrogen ND density boost
     // ND hydrogen has additional decay from extra dimensions, requiring more aggressive boost
+#ifdef HYDROGEN_ND_MODE_ENABLED
     if (uQuantumMode == QUANTUM_MODE_HYDROGEN_ND) {
         float fn = float(uPrincipalN);
         float fl = float(uAzimuthalL);
@@ -311,6 +314,7 @@ float sampleDensity(vec3 pos, float t) {
         float hydrogenNDBoost = 50.0 * fn * fn * lBoost * dimFactor;
         rho *= hydrogenNDBoost;
     }
+#endif
 
     // Apply Edge Erosion
     rho = erodeDensity(rho, flowedPos);
@@ -354,6 +358,7 @@ vec3 sampleDensityWithPhase(vec3 pos, float t) {
     float rho = rhoFromPsi(psi);
 
     // Hydrogen orbital density boost (same as sampleDensity above)
+#ifdef HYDROGEN_MODE_ENABLED
     if (uQuantumMode == QUANTUM_MODE_HYDROGEN) {
         float fn = float(uPrincipalN);
         float fl = float(uAzimuthalL);
@@ -361,8 +366,10 @@ vec3 sampleDensityWithPhase(vec3 pos, float t) {
         float hydrogenBoost = 50.0 * fn * fn * lBoost;
         rho *= hydrogenBoost;
     }
+#endif
 
     // Hydrogen ND density boost (same as sampleDensity above)
+#ifdef HYDROGEN_ND_MODE_ENABLED
     if (uQuantumMode == QUANTUM_MODE_HYDROGEN_ND) {
         float fn = float(uPrincipalN);
         float fl = float(uAzimuthalL);
@@ -371,6 +378,7 @@ vec3 sampleDensityWithPhase(vec3 pos, float t) {
         float hydrogenNDBoost = 50.0 * fn * fn * lBoost * dimFactor;
         rho *= hydrogenNDBoost;
     }
+#endif
 
     // Apply Edge Erosion
     rho = erodeDensity(rho, flowedPos);

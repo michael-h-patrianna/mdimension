@@ -12,6 +12,9 @@ import { useFrame } from '@react-three/fiber';
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import {
+    BackSide,
+    BufferGeometry,
+    Color,
     DoubleSide,
     Float32BufferAttribute,
     FrontSide,

@@ -14,6 +14,16 @@ import { m, AnimatePresence } from 'motion/react'
 import { useWebGLContextStore } from '@/stores/webglContextStore'
 import { LoadingSpinner } from './LoadingSpinner'
 import { Button } from './Button'
+import { Z_INDEX } from '@/constants/zIndex'
+
+/** Animation duration for overlay transitions (seconds) */
+const OVERLAY_ANIMATION_DURATION = 0.2
+
+/** Animation duration for content card (seconds) */
+const CARD_ANIMATION_DURATION = 0.2
+
+/** Delay before card animation starts (seconds) */
+const CARD_ANIMATION_DELAY = 0.1
 
 /**
  * Lost state - shown immediately when context is lost.
@@ -21,8 +31,8 @@ import { Button } from './Button'
 const LostState: React.FC = () => {
   return (
     <div className="flex flex-col items-center gap-6 text-center">
-      {/* Warning icon */}
-      <div className="w-16 h-16 rounded-full bg-amber-500/20 flex items-center justify-center">
+      {/* Warning icon (decorative) */}
+      <div className="w-16 h-16 rounded-full bg-amber-500/20 flex items-center justify-center" aria-hidden="true">
         <svg
           className="w-8 h-8 text-amber-400"
           fill="none"
@@ -39,10 +49,10 @@ const LostState: React.FC = () => {
       </div>
 
       <div>
-        <h2 className="text-xl font-semibold text-text-primary mb-2">
+        <h2 id="context-lost-title" className="text-xl font-semibold text-text-primary mb-2">
           GPU Connection Lost
         </h2>
-        <p className="text-sm text-text-secondary max-w-xs">
+        <p id="context-lost-description" className="text-sm text-text-secondary max-w-xs">
           Your graphics connection was interrupted. Attempting to reconnect...
         </p>
       </div>
@@ -61,8 +71,8 @@ const RestoringState: React.FC = () => {
 
   return (
     <div className="flex flex-col items-center gap-6 text-center">
-      {/* Sync icon */}
-      <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center">
+      {/* Sync icon (decorative) */}
+      <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center" aria-hidden="true">
         <svg
           className="w-8 h-8 text-accent animate-spin"
           fill="none"
@@ -79,10 +89,10 @@ const RestoringState: React.FC = () => {
       </div>
 
       <div>
-        <h2 className="text-xl font-semibold text-text-primary mb-2">
+        <h2 id="context-lost-title" className="text-xl font-semibold text-text-primary mb-2">
           Reconnecting...
         </h2>
-        <p className="text-sm text-text-secondary max-w-xs">
+        <p id="context-lost-description" className="text-sm text-text-secondary max-w-xs">
           Restoring graphics connection. This may take a moment.
         </p>
       </div>
@@ -119,8 +129,8 @@ const FailedState: React.FC = () => {
 
   return (
     <div className="flex flex-col items-center gap-6 text-center">
-      {/* Error icon */}
-      <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center">
+      {/* Error icon (decorative) */}
+      <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center" aria-hidden="true">
         <svg
           className="w-8 h-8 text-red-400"
           fill="none"
@@ -137,10 +147,10 @@ const FailedState: React.FC = () => {
       </div>
 
       <div>
-        <h2 className="text-xl font-semibold text-text-primary mb-2">
+        <h2 id="context-lost-title" className="text-xl font-semibold text-text-primary mb-2">
           Unable to Recover
         </h2>
-        <p className="text-sm text-text-secondary max-w-xs mb-2">
+        <p id="context-lost-description" className="text-sm text-text-secondary max-w-xs mb-2">
           The GPU connection could not be restored. Your settings have been saved
           and will be restored after reloading.
         </p>
@@ -177,14 +187,19 @@ export const ContextLostOverlay: React.FC = () => {
     <AnimatePresence>
       <m.div
         key="context-lost-overlay"
-        className="fixed inset-0 z-[200] flex items-center justify-center"
+        className="fixed inset-0 flex items-center justify-center"
+        style={{ zIndex: Z_INDEX.CONTEXT_LOST_OVERLAY }}
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="context-lost-title"
+        aria-describedby="context-lost-description"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.2 }}
+        transition={{ duration: OVERLAY_ANIMATION_DURATION }}
       >
         {/* Backdrop */}
-        <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+        <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" aria-hidden="true" />
 
         {/* Content card */}
         <m.div
@@ -192,7 +207,7 @@ export const ContextLostOverlay: React.FC = () => {
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
-          transition={{ duration: 0.2, delay: 0.1 }}
+          transition={{ duration: CARD_ANIMATION_DURATION, delay: CARD_ANIMATION_DELAY }}
         >
           {status === 'lost' && <LostState />}
           {status === 'restoring' && <RestoringState />}

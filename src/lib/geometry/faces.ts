@@ -8,7 +8,7 @@
  * algorithm for each object type, avoiding hardcoded type checks.
  */
 
-import { crossProduct3D, dotProduct, subtractVectors } from '@/lib/math'
+import { crossProduct3D, dotProduct, subtractVectors, addVectors, scaleVector } from '@/lib/math'
 import type { Vector3D, VectorND } from '@/lib/math/types'
 import {
   buildCliffordTorusGridFaces,
@@ -85,16 +85,10 @@ function buildAdjacencyList(edges: [number, number][]): AdjacencyList {
  *
  * @param adjacency - Adjacency list representing the graph
  * @param vertexCount - Total number of vertices in the polytope
+ * @param vertices - Vertex positions for winding order correction
  * @returns Array of triangular faces
- *
- * @example
- * ```typescript
- * const adj = buildAdjacencyList([[0, 1], [1, 2], [2, 0]]);
- * const triangles = findTriangles(adj, 3);
- * // triangles = [{ vertices: [0, 1, 2] }]
- * ```
  */
-function findTriangles(adjacency: AdjacencyList, vertexCount: number): Face[] {
+function findTriangles(adjacency: AdjacencyList, vertexCount: number, vertices: number[][]): Face[] {
   const faces: Face[] = []
   const faceSet = new Set<string>()
 
@@ -118,9 +112,31 @@ function findTriangles(adjacency: AdjacencyList, vertexCount: number): Face[] {
 
           if (!faceSet.has(sortedKey)) {
             faceSet.add(sortedKey)
-            // Store vertices in winding order: v1 -> v2 -> v3 -> v1
-            // This preserves the cycle order for proper triangulation
-            faces.push({ vertices: [v1, v2, v3] })
+            
+            // Check winding order relative to origin (outward facing)
+            const p1 = vertices[v1]!;
+            const p2 = vertices[v2]!;
+            const p3 = vertices[v3]!;
+            
+            // Project to 3D for normal calculation
+            const u = subtractVectors(to3D(p2), to3D(p1));
+            const v = subtractVectors(to3D(p3), to3D(p1));
+            const normal = crossProduct3D(u, v);
+            
+            // Calculate centroid
+            let center = addVectors(p1, p2);
+            center = addVectors(center, p3);
+            center = scaleVector(center, 1.0 / 3.0);
+            
+            // Check orientation: dot(normal, center) > 0 means outward
+            // (assuming center of object is origin, which is true for our simplex/cross-polytope)
+            const isOutward = dotProduct(normal, to3D(center)) > 0;
+            
+            if (isOutward) {
+              faces.push({ vertices: [v1, v2, v3] });
+            } else {
+              faces.push({ vertices: [v1, v3, v2] });
+            }
           }
         }
       }
@@ -516,7 +532,7 @@ function detectAnalyticalQuadFaces(vertices: number[][]): Face[] {
  */
 function detectTriangleFaces(vertices: number[][], edges: [number, number][]): Face[] {
   const adjacency = buildAdjacencyList(edges)
-  return findTriangles(adjacency, vertices.length)
+  return findTriangles(adjacency, vertices.length, vertices)
 }
 
 /**

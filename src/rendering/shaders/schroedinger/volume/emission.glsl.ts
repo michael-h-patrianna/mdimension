@@ -29,11 +29,15 @@ export const emissionBlock = `
 #define PHASE_HUE_INFLUENCE 0.4
 
 // Analytic approximation of blackbody color (rgb)
+// Guards against Temp <= 0 which causes undefined behavior in pow()
 vec3 blackbody(float Temp) {
+    // Safety: pow(x, -1.5) is undefined for x <= 0
+    if (Temp <= 0.0) return vec3(0.0);
     vec3 col = vec3(255.);
-    col.x = 56100000. * pow(Temp,(-3. / 2.)) + 148.;
-    col.y = 100040000. * pow(Temp,(-3. / 2.)) + 66.;
-    col.z = 194180000. * pow(Temp,(-3. / 2.)) + 30.;
+    float invTemp = pow(Temp, -1.5);
+    col.x = 56100000. * invTemp + 148.;
+    col.y = 100040000. * invTemp + 66.;
+    col.z = 194180000. * invTemp + 30.;
     col = col / 255.;
     return clamp(col, 0., 1.);
 }

@@ -16,8 +16,8 @@ export const hydrogenNDCommonBlock = `
 // Hydrogen ND Common Functions
 // ============================================
 
-// Quantum mode constant for Hydrogen ND
-#define QUANTUM_MODE_HYDROGEN_ND 2
+// Note: QUANTUM_MODE_HYDROGEN_ND is defined in psi.glsl.ts
+// to avoid duplicate definitions
 
 /**
  * Compute 3D radius from first 3 dimensions
@@ -107,6 +107,8 @@ float evalHydrogenNDAngular(int l, int m, float theta, float phi, bool useReal) 
  * @return vec2(re, im) of time-evolved wavefunction
  */
 vec2 hydrogenNDTimeEvolution(float psiReal, int n, float t) {
+    // Guard: n must be >= 1 (principal quantum number)
+    if (n < 1) return vec2(psiReal, 0.0);
     float fn = float(n);
     float E = -0.5 / (fn * fn);
     float phase = -E * t;

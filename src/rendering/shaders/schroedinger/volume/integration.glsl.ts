@@ -99,7 +99,11 @@ VolumeResult volumeRaymarch(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar
     vec3 viewDir = -rayDir;
 
     // Consecutive low-density samples (for early exit)
+    // NOTE: Early exit is DISABLED for hydrogen modes because hydrogen orbitals
+    // have multiple lobes separated by nodal surfaces (zero density regions).
+    // Early exit would cause the ray to stop before reaching far lobes.
     int lowDensityCount = 0;
+    bool allowEarlyExit = (uQuantumMode == QUANTUM_MODE_HARMONIC);
 
     for (int i = 0; i < MAX_VOLUME_SAMPLES; i++) {
         if (i >= sampleCount) break;
@@ -113,8 +117,9 @@ VolumeResult volumeRaymarch(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar
         float sCenter = densityInfo.y; // Pre-computed log-density
         float phase = densityInfo.z;
 
-        // Early exit if density is consistently low
-        if (rho < MIN_DENSITY) {
+        // Early exit if density is consistently low (harmonic oscillator only)
+        // Hydrogen orbitals have nodal surfaces - must traverse full volume
+        if (allowEarlyExit && rho < MIN_DENSITY) {
             lowDensityCount++;
             if (lowDensityCount > 5) break;
         } else {

@@ -28,6 +28,7 @@ import { useWebGLContextStore } from '@/stores/webglContextStore';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
+import { TrackedShaderMaterial } from '@/rendering/materials/TrackedShaderMaterial';
 import {
   flattenPresetForUniforms,
   generateQuantumPreset,
@@ -171,6 +172,7 @@ const SchroedingerMesh = () => {
   // Values that affect shader compilation (require re-subscription)
   const dimension = useGeometryStore((state) => state.dimension);
   const isoEnabled = useExtendedObjectStore((state) => state.schroedinger.isoEnabled);
+  const quantumMode = useExtendedObjectStore((state) => state.schroedinger.quantumMode);
   const opacityMode = useUIStore((state) => state.opacitySettings.mode);
 
   // Context restore counter - forces material recreation when context is restored
@@ -368,9 +370,10 @@ const SchroedingerMesh = () => {
       opacityMode: opacityMode,
       overrides: shaderOverrides,
       isosurface: isoEnabled,
+      quantumMode: quantumMode, // Modular compilation: only include required quantum modules
     });
     return result;
-  }, [dimension, temporalEnabled, opacityMode, shaderOverrides, isoEnabled, useTemporalAccumulation]);
+  }, [dimension, temporalEnabled, opacityMode, shaderOverrides, isoEnabled, useTemporalAccumulation, quantumMode]);
 
   // Update debug info
   useEffect(() => {
@@ -516,10 +519,18 @@ const SchroedingerMesh = () => {
         material.uniforms.uQuantumMode.value = modeMap[quantumMode] ?? 0;
       }
 
-      // Update hydrogen orbital uniforms
-      if (material.uniforms.uPrincipalN) material.uniforms.uPrincipalN.value = principalQuantumNumber;
-      if (material.uniforms.uAzimuthalL) material.uniforms.uAzimuthalL.value = azimuthalQuantumNumber;
-      if (material.uniforms.uMagneticM) material.uniforms.uMagneticM.value = magneticQuantumNumber;
+      // Update hydrogen orbital uniforms with validation
+      // Quantum number constraints:
+      //   n >= 1 (principal quantum number)
+      //   0 <= l < n (azimuthal/angular momentum)
+      //   -l <= m <= l (magnetic quantum number)
+      const validN = Math.max(1, principalQuantumNumber);
+      const validL = Math.max(0, Math.min(azimuthalQuantumNumber, validN - 1));
+      const validM = Math.max(-validL, Math.min(magneticQuantumNumber, validL));
+
+      if (material.uniforms.uPrincipalN) material.uniforms.uPrincipalN.value = validN;
+      if (material.uniforms.uAzimuthalL) material.uniforms.uAzimuthalL.value = validL;
+      if (material.uniforms.uMagneticM) material.uniforms.uMagneticM.value = validM;
       if (material.uniforms.uBohrRadius) material.uniforms.uBohrRadius.value = bohrRadiusScale;
       if (material.uniforms.uUseRealOrbitals) material.uniforms.uUseRealOrbitals.value = useRealOrbitals;
 
@@ -955,8 +966,9 @@ const SchroedingerMesh = () => {
   return (
     <mesh ref={meshRef}>
       <boxGeometry args={[4, 4, 4]} />
-      <shaderMaterial
-        key={materialKey}
+      <TrackedShaderMaterial
+        shaderName="Schrödinger Quantum Volume"
+        materialKey={materialKey}
         glslVersion={THREE.GLSL3}
         vertexShader={vertexShader}
         fragmentShader={shaderString}

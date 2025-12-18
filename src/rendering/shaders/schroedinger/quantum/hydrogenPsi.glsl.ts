@@ -39,8 +39,12 @@ vec3 cartesianToSpherical(vec3 pos) {
         return vec3(0.0, 0.0, 0.0);
     }
 
-    // θ = arccos(z/r), polar angle from z-axis
-    float theta = acos(clamp(pos.z / r, -1.0, 1.0));
+    // θ = polar angle from z-axis [0, π]
+    // Using atan2(rho_xy, z) instead of acos(z/r) for numerical stability.
+    // acos() loses precision when its argument approaches ±1 (near poles),
+    // while atan() remains stable everywhere.
+    float rho_xy = sqrt(pos.x * pos.x + pos.y * pos.y);
+    float theta = atan(rho_xy, pos.z);
 
     // φ = atan2(y, x), azimuthal angle from x-axis
     float phi = atan(pos.y, pos.x);

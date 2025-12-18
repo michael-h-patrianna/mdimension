@@ -189,11 +189,11 @@ float fastRealSphericalHarmonic(int l, int m, float theta, float phi) {
             return norm * st * ct * sin(phi);
         } else if (m == 2) {
             // dxy: ∝ sin²(θ)sin(2φ)
-            float norm = 0.38627420; // sqrt(15/(16*PI))
+            float norm = 0.54627422; // sqrt(15/(16*PI))
             return norm * st2 * sin(2.0 * phi);
         } else { // m == -2
             // dx2-y2: ∝ sin²(θ)cos(2φ)
-            float norm = 0.38627420;
+            float norm = 0.54627422;
             return norm * st2 * cos(2.0 * phi);
         }
     }

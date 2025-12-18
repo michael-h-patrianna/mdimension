@@ -71,13 +71,16 @@ vec2 evalHarmonicOscillatorPsi(float xND[MAX_DIM], float t) {
 // Returns complex value as vec2(re, im)
 // Automatically selects between harmonic oscillator, hydrogen orbital, and hydrogen ND modes
 vec2 evalPsi(float xND[MAX_DIM], float t) {
+#ifdef HYDROGEN_MODE_ENABLED
     if (uQuantumMode == QUANTUM_MODE_HYDROGEN) {
         // Hydrogen orbital mode - use first 3 dimensions as Cartesian
         vec3 pos = vec3(xND[0], xND[1], xND[2]);
         return evalHydrogenPsiTime(pos, uPrincipalN, uAzimuthalL, uMagneticM,
                                     uBohrRadius, uUseRealOrbitals, t);
     }
+#endif
 
+#ifdef HYDROGEN_ND_MODE_ENABLED
     if (uQuantumMode == QUANTUM_MODE_HYDROGEN_ND) {
         // Hydrogen ND mode - dimension-specific dispatch for unrolled performance
         if (uDimension == 3) return evalHydrogenNDPsi3D(xND, t);
@@ -92,6 +95,7 @@ vec2 evalPsi(float xND[MAX_DIM], float t) {
         // Fallback for dimensions > 11 (use 11D calculation)
         return evalHydrogenNDPsi11D(xND, t);
     }
+#endif
 
     // Default: Harmonic oscillator mode
     return evalHarmonicOscillatorPsi(xND, t);
@@ -109,13 +113,16 @@ vec3 evalPsiWithPhase(float xND[MAX_DIM], float t) {
 // This gives position-dependent color without time-flickering
 // NOTE: Prefer evalPsiWithSpatialPhase() to avoid redundant calculations
 float evalSpatialPhase(float xND[MAX_DIM]) {
+#ifdef HYDROGEN_MODE_ENABLED
     if (uQuantumMode == QUANTUM_MODE_HYDROGEN) {
         vec3 pos = vec3(xND[0], xND[1], xND[2]);
         vec2 psi = evalHydrogenPsi(pos, uPrincipalN, uAzimuthalL, uMagneticM,
                                     uBohrRadius, uUseRealOrbitals);
         return atan(psi.y, psi.x);
     }
+#endif
 
+#ifdef HYDROGEN_ND_MODE_ENABLED
     if (uQuantumMode == QUANTUM_MODE_HYDROGEN_ND) {
         // Hydrogen ND mode - evaluate at t=0 for spatial phase
         vec2 psi;
@@ -130,6 +137,7 @@ float evalSpatialPhase(float xND[MAX_DIM]) {
         else psi = evalHydrogenNDPsi11D(xND, 0.0);
         return atan(psi.y, psi.x);
     }
+#endif
 
     // Harmonic oscillator mode
     vec2 psi = vec2(0.0);
@@ -151,13 +159,16 @@ float evalSpatialPhase(float xND[MAX_DIM]) {
 // stable spatial phase (for coloring) without redundant calculations.
 // Returns: vec4(psi_time.re, psi_time.im, spatialPhase, unused)
 vec4 evalPsiWithSpatialPhase(float xND[MAX_DIM], float t) {
+#ifdef HYDROGEN_MODE_ENABLED
     if (uQuantumMode == QUANTUM_MODE_HYDROGEN) {
         vec3 pos = vec3(xND[0], xND[1], xND[2]);
         vec4 result = evalHydrogenPsiWithPhase(pos, uPrincipalN, uAzimuthalL, uMagneticM,
                                                 uBohrRadius, uUseRealOrbitals, t);
         return vec4(result.xy, result.z, 0.0);
     }
+#endif
 
+#ifdef HYDROGEN_ND_MODE_ENABLED
     if (uQuantumMode == QUANTUM_MODE_HYDROGEN_ND) {
         // Hydrogen ND mode - dimension-specific dispatch
         // Note: The HydrogenND functions already include time evolution,
@@ -195,6 +206,7 @@ vec4 evalPsiWithSpatialPhase(float xND[MAX_DIM], float t) {
         float spatialPhase = atan(psiSpatial.y, psiSpatial.x);
         return vec4(psiTime, spatialPhase, 0.0);
     }
+#endif
 
     // Harmonic oscillator mode
     vec2 psiTime = vec2(0.0);    // Time-dependent for density

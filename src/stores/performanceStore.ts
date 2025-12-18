@@ -93,6 +93,19 @@ interface PerformanceState {
   shaderOverrides: string[]
 
   // -------------------------------------------------------------------------
+  // Shader Compilation State
+  // -------------------------------------------------------------------------
+
+  /** Set of shader names currently being compiled (supports multiple simultaneous compilations) */
+  compilingShaders: Set<string>
+
+  /** Whether any shader is currently being compiled (derived from compilingShaders.size > 0) */
+  isShaderCompiling: boolean
+
+  /** Message to display during shader compilation */
+  shaderCompilationMessage: string
+
+  // -------------------------------------------------------------------------
   // Actions
   // -------------------------------------------------------------------------
 
@@ -117,6 +130,9 @@ interface PerformanceState {
   setShaderDebugInfo: (key: string, info: ShaderDebugInfo | null) => void
   toggleShaderModule: (moduleName: string) => void
   resetShaderOverrides: () => void
+
+  // Shader Compilation
+  setShaderCompiling: (shaderName: string, compiling: boolean) => void
 
   // General
   reset: () => void
@@ -157,6 +173,11 @@ export const usePerformanceStore = create<PerformanceState>((set, get) => ({
   // Shader Debugging
   shaderDebugInfos: {},
   shaderOverrides: [],
+
+  // Shader Compilation State
+  compilingShaders: new Set<string>(),
+  isShaderCompiling: false,
+  shaderCompilationMessage: '',
 
   // -------------------------------------------------------------------------
   // Actions
@@ -250,6 +271,33 @@ export const usePerformanceStore = create<PerformanceState>((set, get) => ({
     set({ shaderOverrides: [] })
   },
 
+  // Shader Compilation
+  setShaderCompiling: (shaderName: string, compiling: boolean) => {
+    set((state) => {
+      const newSet = new Set(state.compilingShaders)
+      if (compiling) {
+        newSet.add(shaderName)
+      } else {
+        newSet.delete(shaderName)
+      }
+
+      const isCompiling = newSet.size > 0
+      let message = ''
+      if (isCompiling) {
+        const shaders = Array.from(newSet)
+        message = shaders.length === 1
+          ? `Building ${shaders[0]} shader...`
+          : `Building ${shaders.length} shaders...`
+      }
+
+      return {
+        compilingShaders: newSet,
+        isShaderCompiling: isCompiling,
+        shaderCompilationMessage: message,
+      }
+    })
+  },
+
   // General
   reset: () => {
     set({
@@ -264,6 +312,9 @@ export const usePerformanceStore = create<PerformanceState>((set, get) => ({
       fractalAnimationLowQuality: true,
       shaderDebugInfos: {},
       shaderOverrides: [],
+      compilingShaders: new Set<string>(),
+      isShaderCompiling: false,
+      shaderCompilationMessage: '',
     })
   },
 }))

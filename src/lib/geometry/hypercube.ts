@@ -111,7 +111,46 @@ export function generateHypercubeFaces(dimension: number): number[][] {
         const v3 = baseIndex | (1 << d1) | (1 << d2);
         const v4 = baseIndex | (1 << d2);
         
-        faces.push([v1, v2, v3, v4]);
+        // Calculate winding order adjustment
+        // 1. Permutation parity of (d1, d2, ...fixedDims)
+        const permIndices = [d1, d2];
+        for (let k = 0; k < dimension; k++) {
+          if (k !== d1 && k !== d2) permIndices.push(k);
+        }
+        
+        let inversions = 0;
+        for (let a = 0; a < permIndices.length; a++) {
+          for (let b = a + 1; b < permIndices.length; b++) {
+            if (permIndices[a]! > permIndices[b]!) inversions++;
+          }
+        }
+        const isEvenPerm = (inversions % 2 === 0);
+        
+        // 2. Count "negative" fixed coordinates (bits of i that are 0)
+        // i has (dimension - 2) bits
+        let setBitCount = 0;
+        let tempI = i;
+        while (tempI > 0) {
+          if (tempI & 1) setBitCount++;
+          tempI >>= 1;
+        }
+        const zeroCount = (dimension - 2) - setBitCount;
+        
+        // 3. Determine flip
+        // Even Permutation: Normal aligns with basis. Flip if odd number of negatives (reflections).
+        // Odd Permutation: Normal anti-aligns. Flip if even number of negatives.
+        let flip = false;
+        if (isEvenPerm) {
+          if (zeroCount % 2 !== 0) flip = true;
+        } else {
+          if (zeroCount % 2 === 0) flip = true;
+        }
+        
+        if (flip) {
+          faces.push([v1, v4, v3, v2]);
+        } else {
+          faces.push([v1, v2, v3, v4]);
+        }
       }
     }
   }

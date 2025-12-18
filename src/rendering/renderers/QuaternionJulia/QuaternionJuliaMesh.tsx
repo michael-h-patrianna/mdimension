@@ -48,6 +48,7 @@ import { useWebGLContextStore } from '@/stores/webglContextStore'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
+import { TrackedShaderMaterial } from '@/rendering/materials/TrackedShaderMaterial'
 import { composeJuliaShader } from '@/rendering/shaders/julia/compose'
 import vertexShader from './quaternion-julia.vert?raw'
 
@@ -644,8 +645,9 @@ const QuaternionJuliaMesh = () => {
   return (
     <mesh ref={meshRef}>
       <boxGeometry args={[4, 4, 4]} />
-      <shaderMaterial
-        key={materialKey}
+      <TrackedShaderMaterial
+        shaderName="Quaternion Julia Raymarcher"
+        materialKey={materialKey}
         glslVersion={THREE.GLSL3}
         vertexShader={vertexShader}
         fragmentShader={shaderString}

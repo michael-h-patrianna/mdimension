@@ -116,6 +116,10 @@ export function composeFaceFragmentShader(): string {
       vec3 dPdx = dFdx(vWorldPosition);
       vec3 dPdy = dFdy(vWorldPosition);
       vec3 normal = normalize(cross(dPdx, dPdy));
+      // Flip normal for back faces to ensure it points outward from the volume
+      if (!gl_FrontFacing) {
+        normal = -normal;
+      }
       vec3 viewDir = normalize(vViewDir);
 
       // Get base color from algorithm using face depth as t value

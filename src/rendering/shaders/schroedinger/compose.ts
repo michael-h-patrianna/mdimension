@@ -51,11 +51,22 @@ import { volumeIntegrationBlock } from './volume/integration.glsl';
 import { mainBlock, mainBlockIsosurface } from './main.glsl';
 import { ShaderConfig } from '../shared/types';
 
+/** Quantum physics mode for Schrödinger visualization */
+export type QuantumModeForShader = 'harmonicOscillator' | 'hydrogenOrbital' | 'hydrogenND';
+
 export interface SchroedingerShaderConfig extends ShaderConfig {
   /** Use isosurface mode instead of volumetric */
   isosurface?: boolean;
   /** Use temporal accumulation (Horizon-style 1/4 res reconstruction) */
   temporalAccumulation?: boolean;
+  /**
+   * Quantum mode - controls which modules are compiled into the shader.
+   * - 'harmonicOscillator': Only HO basis functions (default, fastest compilation)
+   * - 'hydrogenOrbital': Adds hydrogen orbital functions
+   * - 'hydrogenND': Adds all hydrogen ND functions (slowest compilation)
+   * If undefined, all modules are included for runtime switching.
+   */
+  quantumMode?: QuantumModeForShader;
 }
 
 /**
@@ -71,10 +82,24 @@ export function composeSchroedingerShader(config: SchroedingerShaderConfig) {
     overrides = [],
     isosurface = false,
     temporalAccumulation = false,
+    quantumMode,
   } = config;
+
+  // Determine which quantum modules to include
+  // If quantumMode is undefined, include all modules for runtime switching
+  const includeHydrogen = !quantumMode || quantumMode === 'hydrogenOrbital' || quantumMode === 'hydrogenND';
+  const includeHydrogenND = !quantumMode || quantumMode === 'hydrogenND';
 
   const defines: string[] = [];
   const features: string[] = [];
+
+  // Add quantum mode defines for conditional compilation in psi.glsl.ts
+  if (includeHydrogen) {
+    defines.push('#define HYDROGEN_MODE_ENABLED');
+  }
+  if (includeHydrogenND) {
+    defines.push('#define HYDROGEN_ND_MODE_ENABLED');
+  }
 
   features.push('Quantum Volume');
   features.push('Beer-Lambert');
@@ -136,24 +161,24 @@ export function composeSchroedingerShader(config: SchroedingerShaderConfig) {
     { name: 'Hermite Polynomials', content: hermiteBlock },
     { name: 'HO 1D Eigenfunction', content: ho1dBlock },
 
-    // Hydrogen orbital basis functions
-    { name: 'Laguerre Polynomials', content: laguerreBlock },
-    { name: 'Legendre Polynomials', content: legendreBlock },
-    { name: 'Spherical Harmonics', content: sphericalHarmonicsBlock },
-    { name: 'Hydrogen Radial', content: hydrogenRadialBlock },
-    { name: 'Hydrogen Psi', content: hydrogenPsiBlock },
+    // Hydrogen orbital basis functions (conditionally included)
+    { name: 'Laguerre Polynomials', content: laguerreBlock, condition: includeHydrogen },
+    { name: 'Legendre Polynomials', content: legendreBlock, condition: includeHydrogen },
+    { name: 'Spherical Harmonics', content: sphericalHarmonicsBlock, condition: includeHydrogen },
+    { name: 'Hydrogen Radial', content: hydrogenRadialBlock, condition: includeHydrogen },
+    { name: 'Hydrogen Psi', content: hydrogenPsiBlock, condition: includeHydrogen },
 
-    // Hydrogen ND modules (per-dimension unrolled for performance)
-    { name: 'Hydrogen ND Common', content: hydrogenNDCommonBlock },
-    { name: 'Hydrogen ND 3D', content: hydrogenND3dBlock },
-    { name: 'Hydrogen ND 4D', content: hydrogenND4dBlock },
-    { name: 'Hydrogen ND 5D', content: hydrogenND5dBlock },
-    { name: 'Hydrogen ND 6D', content: hydrogenND6dBlock },
-    { name: 'Hydrogen ND 7D', content: hydrogenND7dBlock },
-    { name: 'Hydrogen ND 8D', content: hydrogenND8dBlock },
-    { name: 'Hydrogen ND 9D', content: hydrogenND9dBlock },
-    { name: 'Hydrogen ND 10D', content: hydrogenND10dBlock },
-    { name: 'Hydrogen ND 11D', content: hydrogenND11dBlock },
+    // Hydrogen ND modules (conditionally included, per-dimension unrolled for performance)
+    { name: 'Hydrogen ND Common', content: hydrogenNDCommonBlock, condition: includeHydrogenND },
+    { name: 'Hydrogen ND 3D', content: hydrogenND3dBlock, condition: includeHydrogenND },
+    { name: 'Hydrogen ND 4D', content: hydrogenND4dBlock, condition: includeHydrogenND },
+    { name: 'Hydrogen ND 5D', content: hydrogenND5dBlock, condition: includeHydrogenND },
+    { name: 'Hydrogen ND 6D', content: hydrogenND6dBlock, condition: includeHydrogenND },
+    { name: 'Hydrogen ND 7D', content: hydrogenND7dBlock, condition: includeHydrogenND },
+    { name: 'Hydrogen ND 8D', content: hydrogenND8dBlock, condition: includeHydrogenND },
+    { name: 'Hydrogen ND 9D', content: hydrogenND9dBlock, condition: includeHydrogenND },
+    { name: 'Hydrogen ND 10D', content: hydrogenND10dBlock, condition: includeHydrogenND },
+    { name: 'Hydrogen ND 11D', content: hydrogenND11dBlock, condition: includeHydrogenND },
 
     // Unified wavefunction evaluation (mode-switching)
     { name: 'Wavefunction (Psi)', content: psiBlock },

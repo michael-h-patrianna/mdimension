@@ -29,6 +29,7 @@ import { useWebGLContextStore } from '@/stores/webglContextStore';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
+import { TrackedShaderMaterial } from '@/rendering/materials/TrackedShaderMaterial';
 import { composeMandelbulbShader } from '@/rendering/shaders/mandelbulb/compose';
 import vertexShader from './mandelbulb.vert?raw';
 
@@ -1026,8 +1027,9 @@ const MandelbulbMesh = () => {
   return (
     <mesh ref={meshRef}>
       <boxGeometry args={[4, 4, 4]} />
-      <shaderMaterial
-        key={materialKey}
+      <TrackedShaderMaterial
+        shaderName="Mandelbulb Raymarcher"
+        materialKey={materialKey}
         glslVersion={THREE.GLSL3}
         vertexShader={vertexShader}
         fragmentShader={shaderString}

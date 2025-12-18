@@ -36,6 +36,7 @@ import { PerformanceStatsCollector } from '@/components/canvas/PerformanceStatsC
 import { ContextEventHandler } from '@/rendering/core/ContextEventHandler';
 import { VisibilityHandler } from '@/rendering/core/VisibilityHandler';
 import { ContextLostOverlay } from '@/components/ui/ContextLostOverlay';
+import { ShaderCompilationOverlay } from '@/components/ui/ShaderCompilationOverlay';
 import { ToastProvider, useToast } from '@/contexts/ToastContext';
 import { LazyMotion, domMax } from 'motion/react';
 import { useDynamicFavicon } from '@/hooks/useDynamicFavicon';
@@ -187,6 +188,9 @@ function AppContent() {
 
         {/* Context Lost Overlay - shown when WebGL context is lost */}
         <ContextLostOverlay />
+
+        {/* Shader Compilation Overlay - shown during shader compilation */}
+        <ShaderCompilationOverlay />
 
         {showPerfMonitor && <PerformanceMonitor />}
       </div>
