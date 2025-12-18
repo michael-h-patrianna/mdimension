@@ -1015,7 +1015,7 @@ const MandelbulbMesh = () => {
   });
 
   // Generate unique key to force material recreation when shader changes or context is restored
-  const materialKey = `mandelbulb-material-${shaderString.length}-${restoreCount}`;
+  const materialKey = `mandelbulb-material-${shaderString.length}-${features.join(',')}-${restoreCount}`;
 
   return (
     <mesh ref={meshRef}>

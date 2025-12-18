@@ -894,8 +894,8 @@ const SchroedingerMesh = () => {
 
   // Generate unique key to force material recreation when shader changes or context is restored
   const materialKey = useMemo(() => {
-    return `schroedinger-material-${shaderString.length}-${useTemporalAccumulation}-${restoreCount}`;
-  }, [shaderString, useTemporalAccumulation, restoreCount]);
+    return `schroedinger-material-${shaderString.length}-${features.join(',')}-${useTemporalAccumulation}-${restoreCount}`;
+  }, [shaderString, features, useTemporalAccumulation, restoreCount]);
 
   return (
     <mesh ref={meshRef}>

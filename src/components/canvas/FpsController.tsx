@@ -82,12 +82,17 @@ export function FpsController(): null {
       const interval = 1000 / targetFps
       const elapsed = now - thenRef.current
 
-      // Use 1ms tolerance to handle floating point precision issues.
-      if (elapsed >= interval - 1) {
+      // Use strict inequality to handle high-refresh rate displays correctly.
+      // e.g. 120Hz (8ms) vs 30fps (33ms target).
+      // If we use >= interval - 1, we might trigger at 32ms, then again at 40ms.
+      // Strict > ensures we only trigger when we've actually passed the target duration.
+      if (elapsed > interval) {
         // Advance the frame - this triggers useFrame callbacks and renders
         // Pass timestamp for proper delta calculation in useFrame
         advance(now)
-        // Account for elapsed time to prevent drift
+        
+        // Account for elapsed time to prevent drift, but don't set it to future
+        // and ensure we don't 'lose' time if we skipped many frames.
         thenRef.current = now - (elapsed % interval)
       }
     }

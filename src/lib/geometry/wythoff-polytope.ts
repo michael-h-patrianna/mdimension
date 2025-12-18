@@ -18,6 +18,7 @@
 import type { VectorND } from '@/lib/math'
 import { createVector, dotProduct, subtractVectors, scaleVector } from '@/lib/math'
 import type { PolytopeGeometry } from './types'
+import { IndexedDBCache } from '@/lib/cache/IndexedDBCache'
 
 /**
  * Wythoff symbol specifies which vertices are "ringed" in the Coxeter-Dynkin diagram.
@@ -725,14 +726,43 @@ function getMaxVertices(dimension: number, _symmetryGroup: WythoffSymmetryGroup)
 }
 
 /**
- * Maximum number of polytopes to keep in cache
+ * Maximum number of polytopes to keep in memory cache
  */
 const MAX_CACHE_SIZE = 20;
 
 /**
- * Cache for generated polytopes to avoid expensive regeneration
+ * In-memory cache for generated polytopes (fastest access)
  */
 const polytopeCache = new Map<string, PolytopeGeometry>();
+
+/**
+ * IndexedDB cache instance for persistent storage (survives page refresh)
+ * Initialized lazily on first access
+ */
+let indexedDBCache: IndexedDBCache | null = null;
+let indexedDBInitPromise: Promise<boolean> | null = null;
+
+/**
+ * Get or initialize the IndexedDB cache
+ * @returns Promise resolving to true if available, false otherwise
+ */
+async function getIndexedDBCache(): Promise<IndexedDBCache | null> {
+  if (indexedDBCache !== null) {
+    return indexedDBCache;
+  }
+
+  if (indexedDBInitPromise === null) {
+    indexedDBCache = new IndexedDBCache();
+    indexedDBInitPromise = indexedDBCache.open();
+  }
+
+  const available = await indexedDBInitPromise;
+  if (!available) {
+    indexedDBCache = null;
+  }
+
+  return indexedDBCache;
+}
 
 /**
  * Generate a cache key for Wythoff polytope configuration
@@ -748,6 +778,64 @@ function getCacheKey(dimension: number, config: WythoffPolytopeConfig): string {
     sc: config.scale,
     sn: config.snub
   });
+}
+
+/**
+ * Cache a polytope to both memory and IndexedDB (fire-and-forget)
+ * @param key - Cache key
+ * @param geometry - Polytope geometry to cache
+ */
+function cachePolytope(key: string, geometry: PolytopeGeometry): void {
+  // Always cache in memory (sync)
+  if (polytopeCache.size >= MAX_CACHE_SIZE) {
+    const firstKey = polytopeCache.keys().next().value;
+    if (firstKey) polytopeCache.delete(firstKey);
+  }
+  polytopeCache.set(key, geometry);
+
+  // Persist to IndexedDB (async, fire-and-forget)
+  getIndexedDBCache().then(cache => {
+    if (cache) {
+      cache.set('polytope-geometry', key, geometry).catch(error => {
+        console.warn('[Wythoff] IndexedDB write failed:', error);
+      });
+    }
+  }).catch(() => {
+    // IndexedDB unavailable - memory cache still works
+  });
+}
+
+/**
+ * Try to get cached polytope from memory or IndexedDB
+ * @param key - Cache key
+ * @returns Promise resolving to cached geometry or null
+ */
+async function getCachedPolytope(key: string): Promise<PolytopeGeometry | null> {
+  // Check memory cache first (fastest)
+  if (polytopeCache.has(key)) {
+    return polytopeCache.get(key)!;
+  }
+
+  // Check IndexedDB (persisted across sessions)
+  const cache = await getIndexedDBCache();
+  if (cache) {
+    try {
+      const cached = await cache.get<PolytopeGeometry>('polytope-geometry', key);
+      if (cached) {
+        // Populate memory cache for future sync access
+        if (polytopeCache.size >= MAX_CACHE_SIZE) {
+          const firstKey = polytopeCache.keys().next().value;
+          if (firstKey) polytopeCache.delete(firstKey);
+        }
+        polytopeCache.set(key, cached);
+        return cached;
+      }
+    } catch (error) {
+      console.warn('[Wythoff] IndexedDB read failed:', error);
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -786,11 +874,14 @@ export function generateWythoffPolytope(
     ...config,
   }
 
-  // Check cache
+  // Check memory cache (sync, fastest path)
   const cacheKey = getCacheKey(dimension, fullConfig);
   if (polytopeCache.has(cacheKey)) {
     return polytopeCache.get(cacheKey)!;
   }
+
+  // Note: IndexedDB check is async and handled by generateWythoffPolytopeAsync
+  // This sync function will regenerate if not in memory cache
 
   const { symmetryGroup, preset, scale, snub } = fullConfig
 
@@ -891,15 +982,54 @@ export function generateWythoffPolytope(
     },
   }
 
-  // Update cache
-  if (polytopeCache.size >= MAX_CACHE_SIZE) {
-    // Simple eviction: remove the first key (oldest inserted in Map)
-    const firstKey = polytopeCache.keys().next().value;
-    if (firstKey) polytopeCache.delete(firstKey);
-  }
-  polytopeCache.set(cacheKey, result);
+  // Cache to memory and IndexedDB
+  cachePolytope(cacheKey, result);
 
   return result;
+}
+
+/**
+ * Async version of generateWythoffPolytope that checks IndexedDB cache first.
+ *
+ * Use this version when you can await the result, as it provides better cache
+ * utilization by checking IndexedDB for cached polytopes from previous sessions.
+ *
+ * @param dimension - Dimensionality of the space (3-11)
+ * @param config - Configuration options
+ * @returns Promise resolving to PolytopeGeometry
+ *
+ * @example
+ * ```typescript
+ * // Async usage (recommended)
+ * const polytope = await generateWythoffPolytopeAsync(4, {
+ *   symmetryGroup: 'B',
+ *   preset: 'truncated',
+ * });
+ * ```
+ */
+export async function generateWythoffPolytopeAsync(
+  dimension: number,
+  config: Partial<WythoffPolytopeConfig> = {}
+): Promise<PolytopeGeometry> {
+  if (dimension < 3 || dimension > 11) {
+    throw new Error(`Wythoff polytope dimension must be between 3 and 11 (got ${dimension})`)
+  }
+
+  const fullConfig: WythoffPolytopeConfig = {
+    ...DEFAULT_WYTHOFF_POLYTOPE_CONFIG,
+    ...config,
+  }
+
+  const cacheKey = getCacheKey(dimension, fullConfig);
+
+  // Check memory and IndexedDB caches
+  const cached = await getCachedPolytope(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  // Generate new polytope (expensive)
+  return generateWythoffPolytope(dimension, config);
 }
 
 /**

@@ -38,7 +38,26 @@ vec4 quatSqr(vec4 q) {
 
 // Quaternion power using hyperspherical coordinates
 // For generalized power n (including non-integer)
+// OPTIMIZATION: Uses fast path for n=2 (the most common case) to avoid
+// expensive transcendental functions (acos, cos, sin, pow)
 vec4 quatPow(vec4 q, float n) {
+    // Fast path for n=2 (most common Julia set)
+    // Avoids: 1 acos, 2 cos/sin, 1 pow = saves ~20 ALU operations
+    if (abs(n - 2.0) < 0.01) {
+        return quatSqr(q);
+    }
+
+    // Fast path for n=3 (cubic Julia)
+    if (abs(n - 3.0) < 0.01) {
+        return quatMul(quatSqr(q), q);
+    }
+
+    // Fast path for n=4 (quartic Julia)
+    if (abs(n - 4.0) < 0.01) {
+        vec4 q2 = quatSqr(q);
+        return quatSqr(q2);
+    }
+
     float r = length(q);
     if (r < EPS) return vec4(0.0);
 

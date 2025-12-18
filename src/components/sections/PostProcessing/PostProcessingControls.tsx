@@ -26,7 +26,7 @@ export const PostProcessingControls: React.FC = () => {
       bokehEnabled: state.bokehEnabled,
       setBokehEnabled: state.setBokehEnabled,
       ssrEnabled: state.ssrEnabled,
-      setSsrEnabled: state.setSsrEnabled,
+      setSsrEnabled: state.setSSREnabled,
       refractionEnabled: state.refractionEnabled,
       setRefractionEnabled: state.setRefractionEnabled,
     }))

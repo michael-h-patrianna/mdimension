@@ -629,7 +629,7 @@ const QuaternionJuliaMesh = () => {
   })
 
   // Generate unique key to force material recreation when shader changes or context is restored
-  const materialKey = `julia-material-${shaderString.length}-${restoreCount}`
+  const materialKey = `julia-material-${shaderString.length}-${features.join(',')}-${restoreCount}`
 
   return (
     <mesh ref={meshRef}>

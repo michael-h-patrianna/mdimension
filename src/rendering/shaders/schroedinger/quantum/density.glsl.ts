@@ -277,12 +277,10 @@ float sampleDensity(vec3 pos, float t) {
     // Evaluate wavefunction and density
     vec2 psi = evalPsi(xND, t);
     float rho = rhoFromPsi(psi);
-    
+
     // Apply Edge Erosion
-    // Note: Use flowedPos for erosion noise continuity? 
-    // Or original pos? Flowed seems better for moving detail.
     rho = erodeDensity(rho, flowedPos);
-    
+
     return rho;
 }
 
@@ -320,10 +318,10 @@ vec3 sampleDensityWithPhase(vec3 pos, float t) {
     float spatialPhase = psiResult.z;
 
     float rho = rhoFromPsi(psi);
-    
+
     // Apply Edge Erosion
     rho = erodeDensity(rho, flowedPos);
-    
+
     // Uncertainty Shimmer
     if (uShimmerEnabled && uShimmerStrength > 0.0) {
         // Only shimmer at low densities (edges)
@@ -331,20 +329,18 @@ vec3 sampleDensityWithPhase(vec3 pos, float t) {
             float time = uTime * uTimeScale;
             // High frequency noise for shimmer
             vec3 noisePos = flowedPos * 5.0 + vec3(0.0, 0.0, time * 2.0);
-            float shimmer = gradientNoise(noisePos); // -1 to 1? gradientNoise is ? range. My gradientNoise returns 0..1 in previous step? No, previous was mapped.
-            // Check gradientNoise implementation above: returns mixed hash/dot. Usually -1 to 1 range for Perlin-like.
-            // Let's assume -1 to 1 or similar.
-            
+            float shimmer = gradientNoise(noisePos);
+
             // Map to positive perturbation
-            shimmer = shimmer * 0.5 + 0.5; 
-            
+            shimmer = shimmer * 0.5 + 0.5;
+
             // Strength inversely proportional to density (more uncertainty where probability is low)
             float uncertainty = 1.0 - clamp(rho * 2.0, 0.0, 1.0);
-            
+
             rho *= (1.0 + (shimmer - 0.5) * uShimmerStrength * uncertainty);
         }
     }
-    
+
     float s = sFromRho(rho);
 
     return vec3(rho, s, spatialPhase);

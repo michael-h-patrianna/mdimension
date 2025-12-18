@@ -28,11 +28,9 @@ Your task is to optimize the rendering performance to ensure high frame rates an
 
 ## Constraints
 - Maintain visual fidelity while optimizing performance.
+- All changes must be actual optimizations of code, algorithms and/or architecture.
 - You must ensure that your optimizations work correctly for objects of varying dimensions.
-- Do not remove any existing features or functionalities of the project.
-- Do not add any new features or functionalities to the project or change the UI.
-- Do not change the visual appearance of the rendered objects or scenes.
-- Focus on code optimizations, algorithm improvements, and resource management techniques.
+- Do not suggest optimizations that are just different quality settings or are turning features off by default.
 
 ## Important Reminder: This is a test of your autonomous capabilities and graphics programming skills.You are expected to take initiative and make decisions independently. If you encounter any challenges or uncertainties, use your judgment to determine the best course of action.
 
