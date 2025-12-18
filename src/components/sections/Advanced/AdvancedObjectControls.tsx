@@ -259,11 +259,7 @@ const SchroedingerAdvanced: React.FC = () => {
         setDispersionDirection,
         setDispersionQuality,
         // Note: Shadow setters removed - now in ShadowsSection
-        setAoEnabled,
-        setAoStrength,
-        setAoQuality,
-        setAoRadius,
-        setAoColor,
+        // Note: AO setters removed - now in MiscControls (Post Processing)
         setNodalEnabled,
         setNodalColor,
         setNodalStrength,
@@ -283,11 +279,7 @@ const SchroedingerAdvanced: React.FC = () => {
             setDispersionDirection: state.setSchroedingerDispersionDirection,
             setDispersionQuality: state.setSchroedingerDispersionQuality,
             // Note: Shadow setters removed - now in ShadowsSection
-            setAoEnabled: state.setSchroedingerAoEnabled,
-            setAoStrength: state.setSchroedingerAoStrength,
-            setAoQuality: state.setSchroedingerAoQuality,
-            setAoRadius: state.setSchroedingerAoRadius,
-            setAoColor: state.setSchroedingerAoColor,
+            // Note: AO setters removed - now in MiscControls (Post Processing)
             setNodalEnabled: state.setSchroedingerNodalEnabled,
             setNodalColor: state.setSchroedingerNodalColor,
             setNodalStrength: state.setSchroedingerNodalStrength,
@@ -394,65 +386,7 @@ const SchroedingerAdvanced: React.FC = () => {
             </div>
 
             {/* Note: Shadow controls moved to ShadowsSection */}
-
-            {/* Volumetric Ambient Occlusion (Schrödinger-specific) */}
-            <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
-                <div className="flex items-center justify-between">
-                    <label className="text-xs text-text-secondary font-semibold">Ambient Occlusion (Very Expensive)</label>
-                    <ToggleButton
-                        pressed={config.aoEnabled ?? false}
-                        onToggle={() => setAoEnabled(!(config.aoEnabled ?? false))}
-                        className="text-xs px-2 py-1 h-auto"
-                        ariaLabel="Toggle AO"
-                        data-testid="schroedinger-ao-toggle"
-                    >
-                        {config.aoEnabled ? 'ON' : 'OFF'}
-                    </ToggleButton>
-                </div>
-                {config.aoEnabled && (
-                    <>
-                        <Slider
-                            label="Strength"
-                            min={0.0}
-                            max={2.0}
-                            step={0.1}
-                            value={config.aoStrength ?? 1.0}
-                            onChange={setAoStrength}
-                            showValue
-                            data-testid="schroedinger-ao-strength"
-                        />
-                        <Slider
-                            label="Quality (Cones)"
-                            min={3}
-                            max={8}
-                            step={1}
-                            value={config.aoQuality ?? 4}
-                            onChange={setAoQuality}
-                            showValue
-                            data-testid="schroedinger-ao-quality"
-                        />
-                        <Slider
-                            label="Radius"
-                            min={0.1}
-                            max={2.0}
-                            step={0.1}
-                            value={config.aoRadius ?? 0.5}
-                            onChange={setAoRadius}
-                            showValue
-                            data-testid="schroedinger-ao-radius"
-                        />
-                        <div className="flex items-center justify-between">
-                            <label className="text-xs text-text-secondary">Shadow Tint</label>
-                            <ColorPicker
-                                value={config.aoColor ?? '#000000'}
-                                onChange={(c) => setAoColor(c)}
-                                disableAlpha={true}
-                                className="w-24"
-                            />
-                        </div>
-                    </>
-                )}
-            </div>
+            {/* Note: AO controls moved to MiscControls (Post Processing → FX tab) */}
 
             {/* Quantum Effects */}
             <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
