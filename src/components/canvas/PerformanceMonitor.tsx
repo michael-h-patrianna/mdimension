@@ -171,6 +171,7 @@ export function PerformanceMonitor() {
   const [bufferStats, setBufferStats] = useState<BufferStats | null>(null);
   const [selectedShaderKey, setSelectedShaderKey] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [didDrag, setDidDrag] = useState(false);
 
   // -- Dimensions & Positioning --
   const containerRef = useRef<HTMLDivElement>(null);
@@ -447,10 +448,10 @@ export function PerformanceMonitor() {
         drag
         dragMomentum={false}
         style={{ x, y }}
-        onDragStart={() => setIsDragging(true)}
-        onDragEnd={() => setTimeout(() => setIsDragging(false), 100)}
+        onDragStart={() => { setIsDragging(true); setDidDrag(true); }}
+        onDragEnd={() => setTimeout(() => { setIsDragging(false); setDidDrag(false); }, 100)}
         onTap={() => {
-          if (!expanded) setExpanded(true);
+          if (!expanded && !didDrag) setExpanded(true);
         }}
         transition={{ type: "spring", stiffness: 400, damping: 30 }}
         className="absolute top-20 left-4 z-[50] pointer-events-auto select-none"
@@ -517,17 +518,17 @@ export function PerformanceMonitor() {
                 className="flex flex-col"
               >
                 {/* Header */}
-                <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 bg-white/[0.02]">
+                <div
+                   onClick={() => { if (!didDrag) setExpanded(false); }}
+                   className="flex items-center justify-between px-5 py-4 border-b border-white/5 bg-white/[0.02] cursor-pointer hover:bg-white/[0.04] transition-colors"
+                >
                    <div className="flex items-center gap-3">
                       <Icons.Activity className="w-4 h-4 text-zinc-400" />
                       <span className="text-xs font-bold uppercase tracking-widest text-zinc-300">System Monitor</span>
                    </div>
-                   <button 
-                      onClick={() => setExpanded(false)}
-                      className="p-1.5 -mr-1.5 rounded-full hover:bg-white/10 text-zinc-500 hover:text-white transition-colors"
-                   >
+                   <div className="p-1.5 -mr-1.5 rounded-full text-zinc-500">
                       <Icons.Minimize className="w-4 h-4" />
-                   </button>
+                   </div>
                 </div>
 
                 {/* Main Graph Area */}
