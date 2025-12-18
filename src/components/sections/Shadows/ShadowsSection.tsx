@@ -13,7 +13,6 @@ import { Select, type SelectOption } from '@/components/ui/Select';
 import { Slider } from '@/components/ui/Slider';
 import { Switch } from '@/components/ui/Switch';
 import { isPolytopeCategory } from '@/lib/geometry/registry/helpers';
-import type { ObjectType } from '@/lib/geometry/types';
 import {
   SHADOW_ANIMATION_MODE_LABELS,
   SHADOW_ANIMATION_MODE_OPTIONS,
@@ -27,19 +26,11 @@ import type { ShadowAnimationMode, ShadowQuality } from '@/rendering/shadows/typ
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useLightingStore } from '@/stores/lightingStore';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
 export interface ShadowsSectionProps {
   defaultOpen?: boolean;
-}
-
-/**
- * Helper to determine if object type uses raymarched shadows (SDF fractals)
- */
-function isRaymarchingFractal(objectType: ObjectType, dimension: number): boolean {
-  return objectType === 'mandelbulb' || objectType === 'quaternion-julia' ||
-    (objectType === 'schroedinger' && dimension >= 3);
 }
 
 /**
@@ -73,9 +64,8 @@ const SHADOW_STEPS_OPTIONS: SelectOption<string>[] = [
 export const ShadowsSection: React.FC<ShadowsSectionProps> = ({
   defaultOpen = false,
 }) => {
-  // Get current object type and dimension
+  // Get current object type
   const objectType = useGeometryStore((state) => state.objectType);
-  const dimension = useGeometryStore((state) => state.dimension);
 
   // Get global lighting state
   const {
@@ -129,10 +119,10 @@ export const ShadowsSection: React.FC<ShadowsSectionProps> = ({
     }))
   );
 
-  // Determine object category
+  // Determine object category - direct checks for clarity
   const isSchroedinger = objectType === 'schroedinger';
   const isPolytope = isPolytopeCategory(objectType);
-  const isSdfFractal = isRaymarchingFractal(objectType, dimension) && !isSchroedinger;
+  const isSdfFractal = objectType === 'mandelbulb' || objectType === 'quaternion-julia';
 
   // Check if there are any enabled lights (shadows require lights)
   const hasEnabledLights = lights.some((light) => light.enabled);
@@ -143,13 +133,13 @@ export const ShadowsSection: React.FC<ShadowsSectionProps> = ({
     ? (enabled: boolean) => setSchroedingerShadowsEnabled(enabled)
     : setShadowEnabled;
 
-  // Get object type label for description
-  const getObjectTypeLabel = () => {
+  // Get object type label for description (memoized)
+  const objectTypeLabel = useMemo(() => {
     if (isSchroedinger) return 'Volumetric (Schrödinger)';
     if (isSdfFractal) return 'SDF Raymarched';
     if (isPolytope) return 'Shadow Maps';
     return 'Standard';
-  };
+  }, [isSchroedinger, isSdfFractal, isPolytope]);
 
   return (
     <Section title="Shadows" defaultOpen={defaultOpen} data-testid="section-shadows">
@@ -167,12 +157,15 @@ export const ShadowsSection: React.FC<ShadowsSectionProps> = ({
             }
           >
             <p className="text-[10px] text-text-secondary">
-              Shadow type: {getObjectTypeLabel()}
+              Shadow type: {objectTypeLabel}
             </p>
           </ControlGroup>
 
           {/* Shadow Settings - conditionally rendered based on shadow enabled */}
-          <div className={`space-y-4 ${!effectiveShadowEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
+          <div
+            className={`space-y-4 ${!effectiveShadowEnabled ? 'opacity-50 pointer-events-none' : ''}`}
+            aria-disabled={!effectiveShadowEnabled}
+          >
 
             {/* Animation Mode - Shared across all types */}
             <div className="space-y-1">

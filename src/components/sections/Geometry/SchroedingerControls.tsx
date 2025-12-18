@@ -65,6 +65,7 @@ export const SchroedingerControls: React.FC<SchroedingerControlsProps> = React.m
     setTermCount,
     setMaxQuantumNumber,
     setFrequencySpread,
+    setFieldScale,
     setSchroedingerParameterValue,
     resetSchroedingerParameters,
   } = useExtendedObjectStore(
@@ -76,6 +77,7 @@ export const SchroedingerControls: React.FC<SchroedingerControlsProps> = React.m
       setTermCount: state.setSchroedingerTermCount,
       setMaxQuantumNumber: state.setSchroedingerMaxQuantumNumber,
       setFrequencySpread: state.setSchroedingerFrequencySpread,
+      setFieldScale: state.setSchroedingerFieldScale,
       setSchroedingerParameterValue: state.setSchroedingerParameterValue,
       resetSchroedingerParameters: state.resetSchroedingerParameters,
     }))
@@ -177,6 +179,20 @@ export const SchroedingerControls: React.FC<SchroedingerControlsProps> = React.m
                     onChange={setFrequencySpread}
                     showValue
                     data-testid="schroedinger-freq-spread"
+                />
+            </div>
+
+            {/* Geometric Parameters */}
+            <div className="space-y-2 pt-2 border-t border-white/5">
+                <Slider
+                    label="Field Scale"
+                    min={0.5}
+                    max={2.0}
+                    step={0.1}
+                    value={config.fieldScale}
+                    onChange={setFieldScale}
+                    showValue
+                    data-testid="schroedinger-field-scale"
                 />
             </div>
         </Section>

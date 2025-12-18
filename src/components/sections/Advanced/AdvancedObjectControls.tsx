@@ -251,7 +251,6 @@ const SharedAdvancedControls: React.FC = () => {
 const SchroedingerAdvanced: React.FC = () => {
     const {
         config,
-        setFieldScale,
         setDensityGain,
         setPowderScale,
         setScatteringAnisotropy,
@@ -276,7 +275,6 @@ const SchroedingerAdvanced: React.FC = () => {
     } = useExtendedObjectStore(
         useShallow((state) => ({
             config: state.schroedinger,
-            setFieldScale: state.setSchroedingerFieldScale,
             setDensityGain: state.setSchroedingerDensityGain,
             setPowderScale: state.setSchroedingerPowderScale,
             setScatteringAnisotropy: state.setSchroedingerScatteringAnisotropy,
@@ -303,17 +301,6 @@ const SchroedingerAdvanced: React.FC = () => {
 
     return (
         <div className="space-y-4">
-            <Slider
-                label="Field Scale"
-                min={0.5}
-                max={2.0}
-                step={0.1}
-                value={config.fieldScale}
-                onChange={setFieldScale}
-                showValue
-                data-testid="schroedinger-field-scale"
-            />
-
             <Slider
                 label="Density Gain"
                 min={0.1}

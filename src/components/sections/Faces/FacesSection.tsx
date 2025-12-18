@@ -507,11 +507,9 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
 
   // Auto-dismiss warning after 3 seconds
   useEffect(() => {
-    if (showVolumetricWarning) {
-      const timer = setTimeout(() => setShowVolumetricWarning(false), 3000);
-      return () => clearTimeout(timer);
-    }
-    return undefined;
+    if (!showVolumetricWarning) return;
+    const timer = setTimeout(() => setShowVolumetricWarning(false), 3000);
+    return () => clearTimeout(timer);
   }, [showVolumetricWarning]);
 
   return (
@@ -808,7 +806,10 @@ const FxTabContent: React.FC<FxTabContentProps> = ({
         <p className="text-[10px] text-text-secondary mb-2">
             Add a glowing rim effect to the edges of the object, simulating backlighting.
         </p>
-        <div className={!fresnelEnabled ? 'opacity-50 pointer-events-none' : ''}>
+        <div
+          className={!fresnelEnabled ? 'opacity-50 pointer-events-none' : ''}
+          aria-disabled={!fresnelEnabled}
+        >
             <Slider
             label=""
             min={0}

@@ -80,7 +80,10 @@ export const MiscControls: React.FC<MiscControlsProps> = React.memo(({
           Screen-space ambient occlusion adds soft shadows in crevices.
           Affects all object types globally.
         </p>
-        <div className={!ssaoEnabled ? 'opacity-50 pointer-events-none' : ''}>
+        <div
+          className={!ssaoEnabled ? 'opacity-50 pointer-events-none' : ''}
+          aria-disabled={!ssaoEnabled}
+        >
           <Slider
             label="Intensity"
             value={ssaoIntensity}
