@@ -171,7 +171,7 @@ export const SchroedingerControls: React.FC<SchroedingerControlsProps> = React.m
                 <Slider
                     label="Frequency Spread"
                     min={0}
-                    max={0.1}
+                    max={0.5}
                     step={0.0001}
                     value={config.frequencySpread}
                     onChange={setFrequencySpread}

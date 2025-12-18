@@ -1262,6 +1262,12 @@ export interface SchroedingerConfig {
   sliceSpeed: number
   /** Slice animation amplitude (0.1-1.0) */
   sliceAmplitude: number
+
+  // === Spread Animation ===
+  /** Enable frequency spread animation (animates frequencySpread parameter) */
+  spreadAnimationEnabled: boolean
+  /** Spread animation speed (0.1-2.0) */
+  spreadAnimationSpeed: number
 }
 
 /**
@@ -1397,6 +1403,10 @@ export const DEFAULT_SCHROEDINGER_CONFIG: SchroedingerConfig = {
   sliceAnimationEnabled: false,
   sliceSpeed: 0.02,
   sliceAmplitude: 0.3,
+
+  // Spread Animation
+  spreadAnimationEnabled: false,
+  spreadAnimationSpeed: 0.5,
 }
 
 // ============================================================================

@@ -10,6 +10,7 @@ describe('Schroedinger Store Presets', () => {
 
     // Verify we have a valid preset to test against
     expect(presetConfig).toBeDefined();
+    if (!presetConfig) throw new Error('presetConfig not found');
 
     // Apply the preset
     store.setSchroedingerPresetName(presetName);
@@ -46,5 +47,18 @@ describe('Schroedinger Store Presets', () => {
 
     // Verify parameters retained their previous values (didn't reset or clear)
     expect(config.seed).toBe(groundStateSeed);
+  });
+
+  it('should allow frequency spread up to 0.5', () => {
+    const store = useExtendedObjectStore.getState();
+    
+    // Set a high value
+    store.setSchroedingerFrequencySpread(0.45);
+    
+    expect(useExtendedObjectStore.getState().schroedinger.frequencySpread).toBe(0.45);
+    
+    // Try to set beyond max
+    store.setSchroedingerFrequencySpread(0.6);
+    expect(useExtendedObjectStore.getState().schroedinger.frequencySpread).toBe(0.5);
   });
 });

@@ -200,7 +200,7 @@ export const createSchroedingerSlice: StateCreator<ExtendedObjectSlice, [], [], 
   },
 
   setSchroedingerFrequencySpread: (spread) => {
-    const clampedSpread = Math.max(0, Math.min(0.1, spread))
+    const clampedSpread = Math.max(0, Math.min(0.5, spread))
     set((state) => ({
       schroedinger: { ...state.schroedinger, frequencySpread: clampedSpread, presetName: 'custom' },
     }))
