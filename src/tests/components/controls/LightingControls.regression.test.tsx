@@ -15,7 +15,7 @@ describe('LightingControls Regression Tests', () => {
 
     const { rerender } = render(<LightingControls />);
     // New UI uses "Show Gizmos" instead of "Light On"
-    expect(screen.getByText('Show Gizmos')).toBeInTheDocument();
+    expect(screen.getByText('Gizmos')).toBeInTheDocument();
 
     // Switch to wireframe (hooks should still be called, but return null)
     act(() => {
@@ -26,7 +26,7 @@ describe('LightingControls Regression Tests', () => {
     rerender(<LightingControls />);
 
     // Should be empty but NOT crash
-    expect(screen.queryByText('Show Gizmos')).not.toBeInTheDocument();
+    expect(screen.queryByText('Gizmos')).not.toBeInTheDocument();
   });
 
   it('should not crash when switching from "wireframe" to "surface" (increasing hooks called if not fixed)', () => {
@@ -34,7 +34,7 @@ describe('LightingControls Regression Tests', () => {
     useAppearanceStore.getState().setShaderType('wireframe');
 
     const { rerender } = render(<LightingControls />);
-    expect(screen.queryByText('Show Gizmos')).not.toBeInTheDocument();
+    expect(screen.queryByText('Gizmos')).not.toBeInTheDocument();
 
     // Switch to surface
     act(() => {
@@ -44,6 +44,6 @@ describe('LightingControls Regression Tests', () => {
     rerender(<LightingControls />);
 
     // Should now be visible
-    expect(screen.getByText('Show Gizmos')).toBeInTheDocument();
+    expect(screen.getByText('Gizmos')).toBeInTheDocument();
   });
 });

@@ -57,6 +57,15 @@ volumetricLayerMask.set(RENDER_LAYERS.VOLUMETRIC);
 /**
  * P2 Optimization: Cached version that stores volumetric mesh references.
  * Only traverses scene when cache is invalid, then updates uniforms directly.
+ *
+ * CRITICAL FIX: Only marks cache as valid if meshes were found.
+ * This fixes a race condition when switching object types:
+ * 1. Object type changes → cache invalidated
+ * 2. useFrame runs before React re-renders
+ * 3. Cache rebuild finds nothing (new mesh not mounted yet)
+ * 4. If we mark valid here, subsequent frames skip rebuild
+ * 5. New volumetric mesh never gets uResolution updated
+ * 6. Bug: "enlarged, top-right" rendering due to coordinate mismatch
  */
 function updateVolumetricResolutionCached(
   scene: THREE.Scene,
@@ -73,7 +82,9 @@ function updateVolumetricResolutionCached(
         cachedMeshes.add(obj as THREE.Mesh);
       }
     });
-    isValid.current = true;
+    // Only mark valid if we found meshes - if empty, keep invalid
+    // so we rebuild next frame (when new mesh might have mounted)
+    isValid.current = cachedMeshes.size > 0;
   }
 
   // Update uniforms on cached meshes
@@ -112,6 +123,10 @@ export const PostProcessing = memo(function PostProcessing() {
   // Context restore counter - forces useMemo recreation when context is restored
   // This ensures all render targets and passes are recreated with fresh GPU resources
   const restoreCount = useWebGLContextStore((s) => s.restoreCount);
+
+  // Track the restoreCount when resources were created
+  // Used to detect context recovery and skip disposal of dead context resources
+  const createdAtRestoreCountRef = useRef(restoreCount);
 
   const {
     bloomEnabled,
@@ -192,6 +207,9 @@ export const PostProcessing = memo(function PostProcessing() {
   // IMPORTANT: We create these once and resize them separately to avoid
   // recreating the entire pipeline on every resolution change (which causes black flashes)
   const { composer, bloomPass, bokehPass, ssrPass, refractionPass, bufferPreviewPass, cinematicPass, filmPass, fxaaPass, smaaPass, sceneTarget, objectDepthTarget, normalTarget, mainObjectMRT, normalCopyScene, normalCopyCamera, normalCopyMaterial, volumetricNormalCopyScene, volumetricNormalCopyMaterial, cloudCompositeScene, cloudCompositeCamera, cloudCompositeMaterial, texturePass, cloudTemporalPass } = useMemo(() => {
+    // Track when these resources were created for cleanup logic
+    createdAtRestoreCountRef.current = restoreCount;
+
     // Use a reasonable initial size - will be resized immediately in useEffect
     const initialWidth = Math.max(1, size.width);
     const initialHeight = Math.max(1, size.height);
@@ -682,17 +700,24 @@ export const PostProcessing = memo(function PostProcessing() {
   }, [size.width, size.height, objectDepthTarget, normalTarget]);
 
   // Cleanup on unmount only
-  // NOTE: Skip disposal if context was just restored - old resources belong to dead context
+  // NOTE: Skip disposal if context was restored - old resources belong to dead context
   // and disposing them causes "object does not belong to this context" errors
   useEffect(() => {
+    // Capture the restoreCount at the time these resources were created
+    const createdAt = createdAtRestoreCountRef.current;
+
     return () => {
-      // Check if we're in a context restore scenario - if so, skip disposal
-      // The old GPU resources are already invalid and will be garbage collected
-      const contextStatus = useWebGLContextStore.getState().status;
-      if (contextStatus === 'restoring' || contextStatus === 'lost') {
+      // Get current restoreCount to detect if context was restored
+      const currentRestoreCount = useWebGLContextStore.getState().restoreCount;
+
+      // If restoreCount increased, context was restored and these resources are from a dead context
+      // Skip disposal to avoid "object does not belong to this context" errors
+      // The old GPU resources are already invalid and will be garbage collected by the browser
+      if (currentRestoreCount > createdAt) {
         return;
       }
 
+      // Normal cleanup for unmount (when context is still valid)
       composer.dispose();
       sceneTarget.dispose();
       objectDepthTarget.dispose();
@@ -701,11 +726,14 @@ export const PostProcessing = memo(function PostProcessing() {
       normalCopyMaterial.dispose();
       volumetricNormalCopyMaterial.dispose();
       cloudCompositeMaterial.dispose();
-      TemporalDepthManager.dispose();
-      TemporalCloudManager.dispose();
       cloudTemporalPass.dispose();
+
+      // NOTE: Do NOT dispose TemporalDepthManager and TemporalCloudManager here!
+      // They are singletons managed by resourceRecovery. Disposing them here would
+      // null out their render targets that may have been just reinitialized.
+      // Their lifecycle is: resourceRecovery.invalidate() → resourceRecovery.reinitialize()
     };
-  }, [composer, sceneTarget, objectDepthTarget, normalTarget, mainObjectMRT, normalCopyMaterial, cloudCompositeMaterial, cloudTemporalPass]);
+  }, [composer, sceneTarget, objectDepthTarget, normalTarget, mainObjectMRT, normalCopyMaterial, cloudCompositeMaterial, cloudTemporalPass, volumetricNormalCopyMaterial]);
 
   const prevRotationsRef = useRef<Map<string, number>>(new Map());
   const rotationVelocityRef = useRef(0);

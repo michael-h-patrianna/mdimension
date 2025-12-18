@@ -106,7 +106,11 @@ export const Slider: React.FC<SliderProps> = ({
       }
 
       newValue = Math.min(Math.max(newValue, min), max);
-      onChange(newValue);
+      
+      // Use startTransition to prioritize UI responsiveness over store updates
+      React.startTransition(() => {
+        onChange(newValue);
+      });
     };
 
     const handleMouseUp = () => {
@@ -227,7 +231,12 @@ export const Slider: React.FC<SliderProps> = ({
           max={max}
           step={step}
           value={value}
-          onChange={(e) => onChange(Number(e.target.value))}
+          onChange={(e) => {
+            const val = Number(e.target.value);
+            React.startTransition(() => {
+              onChange(val);
+            });
+          }}
           onMouseDown={() => { setIsDragging(true); soundManager.playClick(); }}
           onMouseUp={() => setIsDragging(false)}
           onTouchStart={() => { setIsDragging(true); soundManager.playClick(); }}

@@ -52,6 +52,7 @@ import { CosineGradientEditor } from './CosineGradientEditor';
 import { DistributionControls } from './DistributionControls';
 import { LchPresetSelector } from './LchPresetSelector';
 import { PresetSelector } from './PresetSelector';
+import { ControlGroup } from '@/components/ui/ControlGroup';
 
 export interface FacesSectionProps {
   defaultOpen?: boolean;
@@ -305,91 +306,96 @@ const ColorsTabContent: React.FC<ColorsTabContentProps> = ({
   return (
     <div className="space-y-4">
       {/* Color Algorithm Selection */}
-      <ColorAlgorithmSelector />
+      <ControlGroup title="Algorithm">
+        <ColorAlgorithmSelector />
+      </ControlGroup>
 
       {/* Live Preview */}
-      <ColorPreview />
+      <ControlGroup title="Preview">
+        <ColorPreview />
+      </ControlGroup>
 
       {/* Algorithm-Specific Controls */}
-      {/* Monochromatic and Analogous use base color */}
-      {(colorAlgorithm === 'monochromatic' ||
-        colorAlgorithm === 'analogous') && (
-        <ColorPicker
-          label="Base Color"
-          value={faceColor}
-          onChange={setFaceColor}
-          // Opacity is handled by Material tab for now, but we could wire it here if we had access to opacity state
-          // For now, disable alpha here to prevent Hex8 crash, as this sets faceColor only
-          disableAlpha={true}
-        />
-      )}
-
-
-      {colorAlgorithm === 'cosine' && (
-        <div className="space-y-4">
-          <PresetSelector />
-          <CosineGradientEditor />
-          <DistributionControls />
-        </div>
-      )}
-
-      {colorAlgorithm === 'normal' && (
-        <div className="space-y-4">
-          <PresetSelector />
-          <CosineGradientEditor />
-          <DistributionControls />
-        </div>
-      )}
-
-      {colorAlgorithm === 'distance' && (
-        <div className="space-y-4">
-          <PresetSelector />
-          <CosineGradientEditor />
-          <DistributionControls />
-        </div>
-      )}
-
-      {colorAlgorithm === 'lch' && (
-        <div className="space-y-4">
-          <LchPresetSelector />
-          <Slider
-            label="Lightness"
-            min={0.1}
-            max={1}
-            step={0.01}
-            value={lchLightness}
-            onChange={setLchLightness}
-            showValue
+      <ControlGroup title="Settings" defaultOpen>
+        {/* Monochromatic and Analogous use base color */}
+        {(colorAlgorithm === 'monochromatic' ||
+          colorAlgorithm === 'analogous') && (
+          <ColorPicker
+            label="Base Color"
+            value={faceColor}
+            onChange={setFaceColor}
+            // Opacity is handled by Material tab for now
+            disableAlpha={true}
           />
-          <Slider
-            label="Chroma"
-            min={0}
-            max={0.4}
-            step={0.01}
-            value={lchChroma}
-            onChange={setLchChroma}
-            showValue
-          />
-          <DistributionControls />
-        </div>
-      )}
+        )}
 
-      {colorAlgorithm === 'multiSource' && (
-        <div className="space-y-4">
-          <PresetSelector />
-          <CosineGradientEditor />
-          <DistributionControls />
-          <MultiSourceWeightsEditor />
-        </div>
-      )}
 
-      {colorAlgorithm === 'radial' && (
-        <div className="space-y-4">
-          <PresetSelector />
-          <CosineGradientEditor />
-          <DistributionControls />
-        </div>
-      )}
+        {colorAlgorithm === 'cosine' && (
+          <div className="space-y-4">
+            <PresetSelector />
+            <CosineGradientEditor />
+            <DistributionControls />
+          </div>
+        )}
+
+        {colorAlgorithm === 'normal' && (
+          <div className="space-y-4">
+            <PresetSelector />
+            <CosineGradientEditor />
+            <DistributionControls />
+          </div>
+        )}
+
+        {colorAlgorithm === 'distance' && (
+          <div className="space-y-4">
+            <PresetSelector />
+            <CosineGradientEditor />
+            <DistributionControls />
+          </div>
+        )}
+
+        {colorAlgorithm === 'lch' && (
+          <div className="space-y-4">
+            <LchPresetSelector />
+            <Slider
+              label="Lightness"
+              min={0.1}
+              max={1}
+              step={0.01}
+              value={lchLightness}
+              onChange={setLchLightness}
+              showValue
+            />
+            <Slider
+              label="Chroma"
+              min={0}
+              max={0.4}
+              step={0.01}
+              value={lchChroma}
+              onChange={setLchChroma}
+              showValue
+            />
+            <DistributionControls />
+          </div>
+        )}
+
+        {colorAlgorithm === 'multiSource' && (
+          <div className="space-y-4">
+            <PresetSelector />
+            <CosineGradientEditor />
+            <DistributionControls />
+            <MultiSourceWeightsEditor />
+          </div>
+        )}
+
+        {colorAlgorithm === 'radial' && (
+          <div className="space-y-4">
+            <PresetSelector />
+            <CosineGradientEditor />
+            <DistributionControls />
+          </div>
+        )}
+      </ControlGroup>
     </div>
   );
 };
@@ -429,12 +435,6 @@ interface MaterialTabContentProps {
   onVolumetricAnimationQualityChange: (quality: VolumetricAnimationQuality) => void;
   onSeenVolumetricWarning: () => void;
 }
-
-const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
-  <div className="text-xs font-semibold text-text-secondary uppercase tracking-wider pt-2 pb-1 border-t border-panel-border mt-2 first:mt-0 first:border-t-0 first:pt-0">
-    {title}
-  </div>
-);
 
 const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
   faceOpacity,
@@ -492,12 +492,10 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
   }, [showVolumetricWarning]);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {/* Raymarching Fractals Opacity Mode Controls */}
       {isRaymarchingFractalType && (
-        <>
-          <SectionHeader title="Opacity Mode" />
-
+        <ControlGroup title="Opacity Mode" collapsible defaultOpen>
           {/* Opacity Mode Dropdown */}
           <div className="space-y-2">
             <select
@@ -618,28 +616,29 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
               </div>
             </>
           )}
-        </>
+        </ControlGroup>
       )}
 
       {/* Face Opacity - Only shown for non-mandelbulb objects */}
       {!isRaymarchingFractalType && (
-        <Slider
-          label="Face Opacity"
-          min={0}
-          max={1}
-          step={0.1}
-          value={faceOpacity}
-          onChange={setFaceOpacity}
-          showValue
-          data-testid="slider-face-opacity"
-        />
+        <ControlGroup title="Opacity">
+          <Slider
+            label=""
+            min={0}
+            max={1}
+            step={0.1}
+            value={faceOpacity}
+            onChange={setFaceOpacity}
+            showValue
+            data-testid="slider-face-opacity"
+          />
+        </ControlGroup>
       )}
 
       {/* Diffuse and Specular - Only when lighting is enabled */}
       {showLightingControls && (
-        <>
+        <ControlGroup title="Lighting Response" collapsible defaultOpen>
           {/* Diffuse */}
-          <SectionHeader title="Diffuse" />
           <Slider
             label="Diffuse Intensity"
             min={0}
@@ -650,8 +649,7 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
             showValue
           />
 
-          {/* Specular */}
-          <SectionHeader title="Specular" />
+          <div className="h-px bg-white/5 my-2" />
 
           {/* Specular Color */}
           <div className="flex items-center justify-between">
@@ -694,14 +692,15 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
             onChange={setShininess}
             showValue
           />
-        </>
+        </ControlGroup>
       )}
 
       {!showLightingControls && (
-        <p className="text-xs text-text-secondary italic">
-          Enable lighting in the Visual section to access diffuse and specular
-          settings.
-        </p>
+        <div className="p-4 rounded-lg bg-black/20 border border-white/5 border-dashed text-center">
+            <p className="text-xs text-text-secondary italic">
+            Enable lighting in the Visual section to access diffuse and specular settings.
+            </p>
+        </div>
       )}
     </div>
   );
@@ -747,44 +746,49 @@ const FxTabContent: React.FC<FxTabContentProps> = ({
   return (
     <div className="space-y-4">
       {/* Fresnel Rim Effect */}
-      <Switch
-        checked={fresnelEnabled}
-        onCheckedChange={setFresnelEnabled}
-        label="Fresnel Rim"
-      />
-
-      {fresnelEnabled && (
-        <Slider
-          label="Fresnel Intensity"
-          min={0}
-          max={1}
-          step={0.1}
-          value={fresnelIntensity}
-          onChange={setFresnelIntensity}
-          showValue
-        />
-      )}
+      <ControlGroup 
+        title="Fresnel Rim" 
+        rightElement={
+          <Switch
+            checked={fresnelEnabled}
+            onCheckedChange={setFresnelEnabled}
+          />
+        }
+      >
+        <p className="text-[10px] text-text-secondary mb-2">
+            Add a glowing rim effect to the edges of the object, simulating backlighting.
+        </p>
+        <div className={!fresnelEnabled ? 'opacity-50 pointer-events-none' : ''}>
+            <Slider
+            label=""
+            min={0}
+            max={1}
+            step={0.1}
+            value={fresnelIntensity}
+            onChange={setFresnelIntensity}
+            showValue
+            />
+        </div>
+      </ControlGroup>
 
       {/* Shadow Controls - Available for any object type with enabled lights */}
-      {hasEnabledLights && (
-        <>
-          <SectionHeader title="Shadows" />
-
-          {/* Shadow Toggle */}
-          <Switch
-            checked={shadowEnabled}
-            onCheckedChange={onShadowEnabledChange}
-            label="Shadows"
-            data-testid="shadow-enabled-toggle"
-          />
-
+      {hasEnabledLights ? (
+        <ControlGroup 
+            title="Shadows"
+            rightElement={
+                <Switch
+                    checked={shadowEnabled}
+                    onCheckedChange={onShadowEnabledChange}
+                    data-testid="shadow-enabled-toggle"
+                />
+            }
+        >
           {/* Shadow Quality & Softness - Only when shadows enabled */}
-          {shadowEnabled && (
-            <>
+          <div className={`space-y-3 ${!shadowEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
               {/* Shadow Quality */}
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-text-secondary">
-                  Shadow Quality
+                  Quality
                 </label>
                 <select
                   value={shadowQuality}
@@ -806,7 +810,7 @@ const FxTabContent: React.FC<FxTabContentProps> = ({
 
               {/* Shadow Softness */}
               <Slider
-                label="Shadow Softness"
+                label="Softness"
                 min={SHADOW_SOFTNESS_RANGE.min}
                 max={SHADOW_SOFTNESS_RANGE.max}
                 step={SHADOW_SOFTNESS_RANGE.step}
@@ -838,9 +842,14 @@ const FxTabContent: React.FC<FxTabContentProps> = ({
                   {SHADOW_ANIMATION_MODE_TOOLTIPS[shadowAnimationMode]}
                 </p>
               </div>
-            </>
-          )}
-        </>
+          </div>
+        </ControlGroup>
+      ) : (
+          <div className="p-4 rounded-lg bg-black/20 border border-white/5 border-dashed text-center">
+            <p className="text-xs text-text-secondary italic">
+              Add lights to enable shadows.
+            </p>
+        </div>
       )}
     </div>
   );

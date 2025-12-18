@@ -6,6 +6,7 @@
  */
 
 import { Slider } from '@/components/ui/Slider'
+import { ControlGroup } from '@/components/ui/ControlGroup'
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useLightingStore } from '@/stores/lightingStore';
 import React from 'react'
@@ -14,12 +15,6 @@ import { useShallow } from 'zustand/react/shallow'
 export interface EdgeMaterialControlsProps {
   className?: string
 }
-
-const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
-  <div className="text-xs font-semibold text-text-secondary uppercase tracking-wider pt-2 pb-1 border-t border-panel-border mt-2 first:mt-0 first:border-t-0 first:pt-0">
-    {title}
-  </div>
-)
 
 export const EdgeMaterialControls: React.FC<EdgeMaterialControlsProps> = React.memo(
   ({ className = '' }) => {
@@ -42,37 +37,32 @@ export const EdgeMaterialControls: React.FC<EdgeMaterialControlsProps> = React.m
     const lightEnabled = useLightingStore((state) => state.lightEnabled);
     const showMaterialControls = edgeThickness > 1 && lightEnabled;
 
+    if (!showMaterialControls) return null;
+
     return (
-      <div className={`space-y-3 ${className}`}>
-        {/* Edge Material - Only show when tube rendering is active (thickness > 1) and light is enabled */}
-        {showMaterialControls && (
-          <>
-            <SectionHeader title="Edge Material" />
+      <ControlGroup title="Edge Material" className={className} defaultOpen>
+        {/* Metallic */}
+        <Slider
+            label="Metallic"
+            min={0}
+            max={1}
+            step={0.01}
+            value={edgeMetallic}
+            onChange={setEdgeMetallic}
+            showValue
+        />
 
-            {/* Metallic */}
-            <Slider
-              label="Metallic"
-              min={0}
-              max={1}
-              step={0.01}
-              value={edgeMetallic}
-              onChange={setEdgeMetallic}
-              showValue
-            />
-
-            {/* Roughness */}
-            <Slider
-              label="Roughness"
-              min={0}
-              max={1}
-              step={0.01}
-              value={edgeRoughness}
-              onChange={setEdgeRoughness}
-              showValue
-            />
-          </>
-        )}
-      </div>
+        {/* Roughness */}
+        <Slider
+            label="Roughness"
+            min={0}
+            max={1}
+            step={0.01}
+            value={edgeRoughness}
+            onChange={setEdgeRoughness}
+            showValue
+        />
+      </ControlGroup>
     )
   }
 )

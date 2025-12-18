@@ -15,6 +15,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { Slider } from '@/components/ui/Slider';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import { Switch } from '@/components/ui/Switch';
+import { ControlGroup } from '@/components/ui/ControlGroup';
 import {
   DEFAULT_AMBIENT_COLOR,
 } from '@/stores/defaults/visualDefaults';
@@ -61,34 +62,31 @@ export const LightingControls: React.FC<LightingControlsProps> = React.memo(({
 
   return (
     <div className={`space-y-4 ${className}`}>
-      {/* Show Light Gizmos Switch */}
-      <Switch
-        label="Show Gizmos"
-        checked={showLightGizmos}
-        onCheckedChange={setShowLightGizmos}
-      />
-
-      {/* Light List */}
-      <div className="border-t border-panel-border pt-4">
+      {/* Light List Group */}
+      <ControlGroup 
+        title="Scene Lights"
+        rightElement={
+          <div className="flex items-center gap-2" title="Show light indicators in scene">
+             <span className="text-[10px] text-text-tertiary uppercase tracking-wider font-semibold">Gizmos</span>
+             <Switch
+                checked={showLightGizmos}
+                onCheckedChange={setShowLightGizmos}
+             />
+          </div>
+        }
+      >
         <LightList />
-      </div>
+      </ControlGroup>
 
       {/* Light Editor (when light selected) */}
       {hasSelectedLight && (
-        <div className="border-t border-panel-border pt-4">
-          <h4 className="text-xs font-medium text-text-secondary mb-3 uppercase tracking-wide">
-            Light Properties
-          </h4>
+        <ControlGroup title="Light Properties">
           <LightEditor />
-        </div>
+        </ControlGroup>
       )}
 
       {/* Ambient Light (always visible) */}
-      <div className="border-t border-panel-border pt-4 space-y-3">
-        <h4 className="text-xs font-medium text-text-secondary uppercase tracking-wide">
-          Ambient Light
-        </h4>
-
+      <ControlGroup title="Ambient Light">
         {/* Ambient Color */}
         <div className="flex items-center justify-between">
             <ColorPicker
@@ -120,7 +118,7 @@ export const LightingControls: React.FC<LightingControlsProps> = React.memo(({
           showValue
           tooltip="Global ambient lighting level"
         />
-      </div>
+      </ControlGroup>
     </div>
   );
 });

@@ -1,0 +1,87 @@
+import React, { useState } from 'react';
+import { m, AnimatePresence } from 'motion/react';
+import { soundManager } from '@/lib/audio/SoundManager';
+
+export interface ControlGroupProps {
+  title: string;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+  collapsible?: boolean;
+  className?: string;
+  rightElement?: React.ReactNode;
+  variant?: 'default' | 'card'; // Added variant
+}
+
+export const ControlGroup: React.FC<ControlGroupProps> = ({
+  title,
+  children,
+  defaultOpen = true,
+  collapsible = false,
+  className = '',
+  rightElement,
+  variant = 'default',
+}) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  const toggle = () => {
+    if (collapsible) {
+      setIsOpen(!isOpen);
+      soundManager.playClick();
+    }
+  };
+
+  const isCard = variant === 'card';
+
+  return (
+    <div className={`
+      ${isCard ? 'border border-white/5 rounded-lg bg-white/2 overflow-hidden' : 'border-b border-white/5 pb-2 last:border-0'}
+      ${className}
+    `}>
+      <div 
+        className={`
+          flex items-center justify-between py-1.5
+          ${isCard ? 'px-3 bg-white/3 border-b border-white/5' : ''}
+          ${collapsible ? 'cursor-pointer hover:text-text-primary transition-colors' : ''}
+        `}
+        onClick={toggle}
+      >
+        <div className="flex items-center gap-2">
+          {collapsible && (
+            <m.div 
+              animate={{ rotate: isOpen ? 90 : 0 }}
+              transition={{ duration: 0.2 }}
+              className="text-text-tertiary"
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+            </m.div>
+          )}
+          <span className={`text-xs font-semibold uppercase tracking-wider ${collapsible ? 'text-text-secondary group-hover:text-text-primary' : 'text-text-secondary'}`}>
+            {title}
+          </span>
+        </div>
+        
+        {rightElement && (
+          <div onClick={(e) => e.stopPropagation()}>
+            {rightElement}
+          </div>
+        )}
+      </div>
+
+      <AnimatePresence initial={false}>
+        {(isOpen || !collapsible) && (
+          <m.div
+            initial={collapsible ? { height: 0, opacity: 0 } : false}
+            animate={collapsible ? { height: 'auto', opacity: 1 } : false}
+            exit={collapsible ? { height: 0, opacity: 0 } : false}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <div className={`${isCard ? 'p-3' : 'pt-2'} space-y-3`}>
+              {children}
+            </div>
+          </m.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};

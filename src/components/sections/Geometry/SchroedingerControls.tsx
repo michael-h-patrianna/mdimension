@@ -15,7 +15,7 @@
 import { useShallow } from 'zustand/react/shallow';
 import { Slider } from '@/components/ui/Slider';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
-import { Section } from '@/components/sections/Section';
+import { ControlGroup } from '@/components/ui/ControlGroup';
 import { SCHROEDINGER_NAMED_PRESETS } from '@/lib/geometry/extended/schroedinger/presets';
 import { SchroedingerPresetName } from '@/lib/geometry/extended/types';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
@@ -86,8 +86,8 @@ export const SchroedingerControls: React.FC<SchroedingerControlsProps> = React.m
   const dimension = useGeometryStore((state) => state.dimension);
 
   return (
-    <div className={className} data-testid="schroedinger-controls">
-      <Section title="Quantum State" defaultOpen={true}>
+    <div className={`space-y-1 ${className}`} data-testid="schroedinger-controls">
+      <ControlGroup title="Quantum State" defaultOpen={true}>
         {/* Quantum Preset Selection */}
         <div className="space-y-2">
             <label className="text-xs text-text-secondary">
@@ -119,7 +119,7 @@ export const SchroedingerControls: React.FC<SchroedingerControlsProps> = React.m
         </div>
 
         {/* Seed Control */}
-        <div className="space-y-2">
+        <div className="space-y-2 pt-2 border-t border-white/5">
             <div className="flex items-center justify-between">
             <label className="text-xs text-text-secondary">
                 Seed: {config.seed}
@@ -145,43 +145,56 @@ export const SchroedingerControls: React.FC<SchroedingerControlsProps> = React.m
         </div>
 
         {/* Quantum Parameters */}
-        <Slider
-            label="Superposition Terms"
-            min={1}
-            max={8}
-            step={1}
-            value={config.termCount}
-            onChange={setTermCount}
-            showValue
-            data-testid="schroedinger-term-count"
-        />
+        <div className="space-y-2 pt-2 border-t border-white/5">
+            <Slider
+                label="Superposition Terms"
+                min={1}
+                max={8}
+                step={1}
+                value={config.termCount}
+                onChange={setTermCount}
+                showValue
+                data-testid="schroedinger-term-count"
+            />
 
-        <Slider
-            label="Max Quantum Number (n)"
-            min={2}
-            max={6}
-            step={1}
-            value={config.maxQuantumNumber}
-            onChange={setMaxQuantumNumber}
-            showValue
-            data-testid="schroedinger-max-quantum"
-        />
+            <Slider
+                label="Max Quantum Number (n)"
+                min={2}
+                max={6}
+                step={1}
+                value={config.maxQuantumNumber}
+                onChange={setMaxQuantumNumber}
+                showValue
+                data-testid="schroedinger-max-quantum"
+            />
 
-        <Slider
-            label="Frequency Spread"
-            min={0}
-            max={0.1}
-            step={0.001}
-            value={config.frequencySpread}
-            onChange={setFrequencySpread}
-            showValue
-            data-testid="schroedinger-freq-spread"
-        />
-      </Section>
+            <Slider
+                label="Frequency Spread"
+                min={0}
+                max={0.1}
+                step={0.001}
+                value={config.frequencySpread}
+                onChange={setFrequencySpread}
+                showValue
+                data-testid="schroedinger-freq-spread"
+            />
+        </div>
+      </ControlGroup>
 
       {/* Slice Parameters - shown for 4D+ */}
       {dimension >= 4 && (
-        <Section title={`Cross Section (${dimension - 3} dim${dimension > 4 ? 's' : ''})`} defaultOpen={true} onReset={() => resetSchroedingerParameters()}>
+        <ControlGroup 
+            title={`Cross Section (${dimension - 3} dim${dimension > 4 ? 's' : ''})`} 
+            defaultOpen={true} 
+            rightElement={
+                <button 
+                onClick={() => resetSchroedingerParameters()}
+                className="text-[10px] text-accent hover:underline"
+                >
+                Reset
+                </button>
+            }
+        >
           {Array.from({ length: dimension - 3 }, (_, i) => (
             <Slider
               key={`slice-dim-${i + 3}`}
@@ -198,7 +211,7 @@ export const SchroedingerControls: React.FC<SchroedingerControlsProps> = React.m
           <p className="text-xs text-text-tertiary">
             Explore different {dimension}D cross-sections
           </p>
-        </Section>
+        </ControlGroup>
       )}
 
       {/* Render Mode Info */}

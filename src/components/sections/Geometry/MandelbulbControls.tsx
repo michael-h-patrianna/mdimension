@@ -14,7 +14,7 @@
 import { useShallow } from 'zustand/react/shallow';
 import { Slider } from '@/components/ui/Slider';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
-import { Section } from '@/components/sections/Section';
+import { ControlGroup } from '@/components/ui/ControlGroup';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import React from 'react';
@@ -79,8 +79,8 @@ export const MandelbulbControls: React.FC<MandelbulbControlsProps> = React.memo(
   const dimension = useGeometryStore((state) => state.dimension);
 
   return (
-    <div className={className} data-testid="mandelbulb-controls">
-      <Section title="Parameters" defaultOpen={true}>
+    <div className={`space-y-1 ${className}`} data-testid="mandelbulb-controls">
+      <ControlGroup title="Parameters" defaultOpen={true}>
         {/* Max Iterations */}
         <Slider
           label="Max Iterations"
@@ -107,7 +107,7 @@ export const MandelbulbControls: React.FC<MandelbulbControlsProps> = React.memo(
 
         {/* Power Control (shown for 3D+ Mandelbulb) */}
         {dimension >= 3 && (
-          <div className="space-y-2">
+          <div className="space-y-2 pt-2 border-t border-white/5">
             <label className="text-xs text-text-secondary">
               Mandelbulb Power (n={config.mandelbulbPower})
             </label>
@@ -138,14 +138,21 @@ export const MandelbulbControls: React.FC<MandelbulbControlsProps> = React.memo(
             </p>
           </div>
         )}
-      </Section>
+      </ControlGroup>
 
       {/* Slice Parameters - shown for 4D+ */}
       {dimension >= 4 && (
-        <Section 
+        <ControlGroup 
           title={`Cross Section (${dimension - 3} dim${dimension > 4 ? 's' : ''})`}
           defaultOpen={true}
-          onReset={() => resetMandelbulbParameters()}
+          rightElement={
+             <button 
+                onClick={() => resetMandelbulbParameters()}
+                className="text-[10px] text-accent hover:underline"
+             >
+                Reset
+             </button>
+          }
         >
           {Array.from({ length: dimension - 3 }, (_, i) => (
             <Slider
@@ -163,7 +170,7 @@ export const MandelbulbControls: React.FC<MandelbulbControlsProps> = React.memo(
           <p className="text-xs text-text-tertiary">
             Explore different {dimension}D cross-sections
           </p>
-        </Section>
+        </ControlGroup>
       )}
 
       {/* Render Mode Info */}

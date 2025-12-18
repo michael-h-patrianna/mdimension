@@ -157,9 +157,6 @@ export const ColorPreview: React.FC<ColorPreviewProps> = ({
 
   return (
     <div className={`${className}`}>
-      <label className="block text-sm font-medium text-text-secondary mb-2">
-        Preview
-      </label>
       <canvas
         ref={canvasRef}
         width={width}

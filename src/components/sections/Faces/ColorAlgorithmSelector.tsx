@@ -37,7 +37,6 @@ export const ColorAlgorithmSelector: React.FC<ColorAlgorithmSelectorProps> = ({
   return (
     <div className={className}>
       <Select
-        label="Color Algorithm"
         options={availableOptions.map((opt) => ({
           value: opt.value,
           label: opt.label,

@@ -115,22 +115,28 @@ export const Tabs: React.FC<TabsProps> = ({
     if (!container) return;
 
     const checkScroll = () => {
+      if (!container) return;
       const { scrollLeft, scrollWidth, clientWidth } = container;
       setCanScrollLeft(scrollLeft > 1); 
       setCanScrollRight(Math.ceil(scrollLeft + clientWidth) < scrollWidth - 1);
     };
 
+    // Use ResizeObserver for size changes
     const resizeObserver = new ResizeObserver(() => {
         requestAnimationFrame(checkScroll);
     });
     resizeObserver.observe(container);
 
-    checkScroll();
-    container.addEventListener('scroll', checkScroll, { passive: true });
+    // Initial check in RAF to avoid synchronous reflow on mount
+    requestAnimationFrame(checkScroll);
+
+    // Check on scroll (throttled via RAF naturally)
+    const handleScroll = () => requestAnimationFrame(checkScroll);
+    container.addEventListener('scroll', handleScroll, { passive: true });
 
     return () => {
         resizeObserver.disconnect();
-        container.removeEventListener('scroll', checkScroll);
+        container.removeEventListener('scroll', handleScroll);
     };
   }, []);
 

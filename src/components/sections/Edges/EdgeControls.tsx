@@ -5,6 +5,7 @@
 
 import { Slider } from '@/components/ui/Slider';
 import { ColorPicker } from '@/components/ui/ColorPicker';
+import { ControlGroup } from '@/components/ui/ControlGroup';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
@@ -34,26 +35,26 @@ export const EdgeControls: React.FC<EdgesControlsProps> = React.memo(({
 
   return (
     <div className={`space-y-4 ${className}`}>
+      <ControlGroup title="Appearance" defaultOpen>
+        {/* Edge Color */}
+        <ColorPicker
+            label="Edge Color"
+            value={edgeColor}
+            onChange={setEdgeColor}
+            disableAlpha={true}
+        />
 
-      {/* Edge Color */}
-      <ColorPicker
-        label="Edge Color"
-        value={edgeColor}
-        onChange={setEdgeColor}
-        disableAlpha={true}
-      />
-
-
-      {/* Edge Thickness */}
-      <Slider
-        label="Edge Thickness"
-        min={0}
-        max={5}
-        step={0.1}
-        value={edgeThickness}
-        onChange={setEdgeThickness}
-        showValue
-      />
+        {/* Edge Thickness */}
+        <Slider
+            label="Edge Thickness"
+            min={0}
+            max={5}
+            step={0.1}
+            value={edgeThickness}
+            onChange={setEdgeThickness}
+            showValue
+        />
+      </ControlGroup>
 
       {/* Edge Material Controls (only visible when thickness > 1) */}
       <EdgeMaterialControls />
