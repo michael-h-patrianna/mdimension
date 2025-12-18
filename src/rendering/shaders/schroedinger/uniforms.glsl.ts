@@ -61,7 +61,7 @@ uniform int uDispersionQuality;   // Dispersion quality (0=Fast, 1=High)
 uniform bool uShadowsEnabled;     // Enable volumetric self-shadowing
 uniform float uShadowStrength;    // Shadow strength (0.0-2.0)
 uniform int uShadowSteps;         // Shadow march steps (1-8)
-uniform bool uAoEnabled;          // Enable volumetric ambient occlusion
+// uAoEnabled is defined in shared uniforms
 uniform float uAoStrength;        // AO strength (0.0-2.0)
 uniform int uAoSteps;             // AO cones/steps (3-8)
 uniform float uAoRadius;          // AO radius (0.1-2.0)

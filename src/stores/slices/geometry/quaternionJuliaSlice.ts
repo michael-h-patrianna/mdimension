@@ -338,17 +338,10 @@ export const createQuaternionJuliaSlice: StateCreator<
     }))
   },
 
-  // --- LOD Actions ---
-  setQuaternionJuliaLodEnabled: (value: boolean) => {
+  // --- Raymarching Quality ---
+  setQuaternionJuliaRaymarchQuality: (quality) => {
     set((state) => ({
-      quaternionJulia: { ...state.quaternionJulia, lodEnabled: value },
-    }))
-  },
-
-  setQuaternionJuliaLodDetail: (value: number) => {
-    const clamped = Math.max(0.1, Math.min(2.0, value))
-    set((state) => ({
-      quaternionJulia: { ...state.quaternionJulia, lodDetail: clamped },
+      quaternionJulia: { ...state.quaternionJulia, raymarchQuality: quality },
     }))
   },
 })

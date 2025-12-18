@@ -13,6 +13,7 @@ import {
   NestedTorusEdgeMode,
   PolytopeConfig,
   QuaternionJuliaConfig,
+  RaymarchQuality,
   RootSystemConfig,
   RootSystemType,
   SchroedingerColorMode,
@@ -243,9 +244,8 @@ export interface MandelbulbSliceActions {
   setMandelbulbFogContribution: (value: number) => void
   setMandelbulbInternalFogDensity: (value: number) => void
   
-  // LOD
-  setMandelbulbLodEnabled: (value: boolean) => void
-  setMandelbulbLodDetail: (value: number) => void
+  // Raymarching Quality
+  setMandelbulbRaymarchQuality: (quality: RaymarchQuality) => void
 }
 
 export type MandelbulbSlice = MandelbulbSliceState & MandelbulbSliceActions
@@ -312,9 +312,8 @@ export interface QuaternionJuliaSliceActions {
   setQuaternionJuliaFogContribution: (value: number) => void
   setQuaternionJuliaInternalFogDensity: (value: number) => void
   
-  // LOD
-  setQuaternionJuliaLodEnabled: (value: boolean) => void
-  setQuaternionJuliaLodDetail: (value: number) => void
+  // Raymarching Quality
+  setQuaternionJuliaRaymarchQuality: (quality: RaymarchQuality) => void
 }
 
 export type QuaternionJuliaSlice = QuaternionJuliaSliceState & QuaternionJuliaSliceActions
@@ -383,12 +382,8 @@ export interface SchroedingerSliceActions {
   setSchroedingerFogContribution: (contribution: number) => void
   setSchroedingerInternalFogDensity: (density: number) => void
 
-  // LOD Settings
-  setSchroedingerLodEnabled: (enabled: boolean) => void
-  setSchroedingerLodNearDistance: (distance: number) => void
-  setSchroedingerLodFarDistance: (distance: number) => void
-  setSchroedingerLodMinSamples: (samples: number) => void
-  setSchroedingerLodMaxSamples: (samples: number) => void
+  // Raymarching Quality
+  setSchroedingerRaymarchQuality: (quality: RaymarchQuality) => void
 
   // SSS Settings
   setSchroedingerSssEnabled: (enabled: boolean) => void
@@ -450,6 +445,10 @@ export interface SchroedingerSliceActions {
   setSchroedingerSliceAnimationEnabled: (enabled: boolean) => void
   setSchroedingerSliceSpeed: (speed: number) => void
   setSchroedingerSliceAmplitude: (amplitude: number) => void
+
+  // Spread Animation
+  setSchroedingerSpreadAnimationEnabled: (enabled: boolean) => void
+  setSchroedingerSpreadAnimationSpeed: (speed: number) => void
 
   // Config Operations
   setSchroedingerConfig: (config: Partial<SchroedingerConfig>) => void

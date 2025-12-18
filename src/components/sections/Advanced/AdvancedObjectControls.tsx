@@ -8,25 +8,11 @@ import { Section } from '@/components/sections/Section';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useGeometryStore } from '@/stores/geometryStore';
-import { SCHROEDINGER_PALETTE_DEFINITIONS } from '@/lib/geometry/extended/schroedinger/palettes';
-import { SchroedingerColorMode, SchroedingerPalette } from '@/lib/geometry/extended/types';
-
-const colorModeOptions: { value: SchroedingerColorMode; label: string }[] = [
-    { value: 'density', label: 'Density' },
-    { value: 'phase', label: 'Phase' },
-    { value: 'mixed', label: 'Mixed' },
-    { value: 'palette', label: 'Palette' },
-    { value: 'blackbody', label: 'Heat' },
-];
-
-const paletteOptions = Object.keys(SCHROEDINGER_PALETTE_DEFINITIONS).map(key => ({
-    value: key,
-    label: key.charAt(0).toUpperCase() + key.slice(1)
-}));
+import type { RaymarchQuality } from '@/lib/geometry/extended/types';
 
 export const AdvancedObjectControls: React.FC = () => {
     const objectType = useGeometryStore(state => state.objectType);
-    
+
     // We only show this section for fractals with advanced settings
     if (objectType !== 'mandelbulb' && objectType !== 'quaternion-julia' && objectType !== 'schroedinger') {
         return null;
@@ -34,12 +20,95 @@ export const AdvancedObjectControls: React.FC = () => {
 
     return (
         <Section title="Advanced Rendering" defaultOpen={true} data-testid="advanced-object-controls">
+            {/* Raymarching Quality - unified for all 3 object types */}
+            <RaymarchingQualityControl objectType={objectType} />
+
             {/* Global Settings (Shared) */}
             <SharedAdvancedControls />
-            
+
             {/* Object-Specific Settings */}
             {objectType === 'schroedinger' && <SchroedingerAdvanced />}
         </Section>
+    );
+};
+
+/** Quality descriptions with concrete numbers for each object type */
+const QUALITY_DESCRIPTIONS: Record<RaymarchQuality, { volumetric: string; sdf: string }> = {
+    fast: {
+        volumetric: '16 samples/ray - fastest, some banding',
+        sdf: '4x larger steps - fastest, lower detail',
+    },
+    balanced: {
+        volumetric: '32 samples/ray - good balance',
+        sdf: '2x larger steps - balanced quality',
+    },
+    quality: {
+        volumetric: '48 samples/ray - smooth gradients',
+        sdf: '1.33x larger steps - high detail',
+    },
+    ultra: {
+        volumetric: '64 samples/ray - maximum quality',
+        sdf: 'Full resolution - maximum detail',
+    },
+};
+
+/** Get quality description with concrete numbers based on object type */
+const getQualityDescription = (quality: RaymarchQuality, objectType: string): string => {
+    const isVolumetric = objectType === 'schroedinger';
+    return isVolumetric ? QUALITY_DESCRIPTIONS[quality].volumetric : QUALITY_DESCRIPTIONS[quality].sdf;
+};
+
+/** Unified Raymarching Quality Control for all 3 raymarching object types */
+const RaymarchingQualityControl: React.FC<{ objectType: string }> = ({ objectType }) => {
+    const {
+        mandelbulbQuality, setMandelbulbQuality,
+        juliaQuality, setJuliaQuality,
+        schroedingerQuality, setSchroedingerQuality,
+    } = useExtendedObjectStore(
+        useShallow((state) => ({
+            mandelbulbQuality: state.mandelbulb.raymarchQuality,
+            setMandelbulbQuality: state.setMandelbulbRaymarchQuality,
+            juliaQuality: state.quaternionJulia.raymarchQuality,
+            setJuliaQuality: state.setQuaternionJuliaRaymarchQuality,
+            schroedingerQuality: state.schroedinger.raymarchQuality,
+            setSchroedingerQuality: state.setSchroedingerRaymarchQuality,
+        }))
+    );
+
+    // Select the appropriate quality and setter based on object type
+    let quality: RaymarchQuality;
+    let setQuality: (q: RaymarchQuality) => void;
+
+    if (objectType === 'mandelbulb') {
+        quality = mandelbulbQuality;
+        setQuality = setMandelbulbQuality;
+    } else if (objectType === 'quaternion-julia') {
+        quality = juliaQuality;
+        setQuality = setJuliaQuality;
+    } else {
+        quality = schroedingerQuality;
+        setQuality = setSchroedingerQuality;
+    }
+
+    return (
+        <div className="space-y-2 mb-4 pb-4 border-b border-white/10">
+            <label className="text-xs text-text-secondary font-semibold">Raymarching Quality</label>
+            <ToggleGroup
+                options={[
+                    { value: 'fast', label: 'Fast' },
+                    { value: 'balanced', label: 'Balanced' },
+                    { value: 'quality', label: 'Quality' },
+                    { value: 'ultra', label: 'Ultra' },
+                ]}
+                value={quality}
+                onChange={(v) => setQuality(v as RaymarchQuality)}
+                ariaLabel="Raymarching quality selection"
+                data-testid="raymarching-quality"
+            />
+            <p className="text-xs text-text-tertiary">
+                {getQualityDescription(quality, objectType)}
+            </p>
+        </div>
     );
 };
 
@@ -54,8 +123,6 @@ const SharedAdvancedControls: React.FC = () => {
         fogIntegrationEnabled, setFogIntegrationEnabled,
         fogContribution, setFogContribution,
         internalFogDensity, setInternalFogDensity,
-        lodEnabled, setLodEnabled,
-        lodDetail, setLodDetail
     } = useAppearanceStore(
         useShallow((state) => ({
             roughness: state.roughness, setRoughness: state.setRoughness,
@@ -67,8 +134,6 @@ const SharedAdvancedControls: React.FC = () => {
             fogIntegrationEnabled: state.fogIntegrationEnabled, setFogIntegrationEnabled: state.setFogIntegrationEnabled,
             fogContribution: state.fogContribution, setFogContribution: state.setFogContribution,
             internalFogDensity: state.internalFogDensity, setInternalFogDensity: state.setInternalFogDensity,
-            lodEnabled: state.lodEnabled, setLodEnabled: state.setLodEnabled,
-            lodDetail: state.lodDetail, setLodDetail: state.setLodDetail,
         }))
     );
 
@@ -179,33 +244,6 @@ const SharedAdvancedControls: React.FC = () => {
                     data-testid="global-internal-fog"
                 />
             </div>
-
-            <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
-                <div className="flex items-center justify-between">
-                    <label className="text-xs text-text-secondary font-semibold">Distance-Adaptive LOD</label>
-                    <ToggleButton
-                        pressed={lodEnabled}
-                        onToggle={() => setLodEnabled(!lodEnabled)}
-                        className="text-xs px-2 py-1 h-auto"
-                        ariaLabel="Toggle LOD"
-                        data-testid="global-lod-toggle"
-                    >
-                        {lodEnabled ? 'ON' : 'OFF'}
-                    </ToggleButton>
-                </div>
-                {lodEnabled && (
-                    <Slider
-                        label="Detail Factor"
-                        min={0.1}
-                        max={2.0}
-                        step={0.1}
-                        value={lodDetail}
-                        onChange={setLodDetail}
-                        showValue
-                        data-testid="global-lod-detail"
-                    />
-                )}
-            </div>
         </div>
     );
 };
@@ -213,30 +251,10 @@ const SharedAdvancedControls: React.FC = () => {
 const SchroedingerAdvanced: React.FC = () => {
     const {
         config,
-        setTimeScale,
         setFieldScale,
         setDensityGain,
         setPowderScale,
-        setSampleCount,
-        setEmissionIntensity,
-        setEmissionThreshold,
-        setEmissionColorShift,
-        setEmissionPulsing,
-        setRimExponent,
         setScatteringAnisotropy,
-        setLodNearDistance,
-        setLodFarDistance,
-        setLodMinSamples,
-        setLodMaxSamples,
-        setErosionStrength,
-        setErosionScale,
-        setErosionTurbulence,
-        setErosionNoiseType,
-        setCurlEnabled,
-        setCurlStrength,
-        setCurlScale,
-        setCurlSpeed,
-        setCurlBias,
         setDispersionEnabled,
         setDispersionStrength,
         setDispersionDirection,
@@ -256,36 +274,14 @@ const SchroedingerAdvanced: React.FC = () => {
         setShimmerEnabled,
         setShimmerStrength,
         setIsoEnabled,
-        setIsoThreshold,
-        setColorMode,
-        setPalette
+        setIsoThreshold
     } = useExtendedObjectStore(
         useShallow((state) => ({
             config: state.schroedinger,
-            setTimeScale: state.setSchroedingerTimeScale,
             setFieldScale: state.setSchroedingerFieldScale,
             setDensityGain: state.setSchroedingerDensityGain,
             setPowderScale: state.setSchroedingerPowderScale,
-            setSampleCount: state.setSchroedingerSampleCount,
-            setEmissionIntensity: state.setSchroedingerEmissionIntensity,
-            setEmissionThreshold: state.setSchroedingerEmissionThreshold,
-            setEmissionColorShift: state.setSchroedingerEmissionColorShift,
-            setEmissionPulsing: state.setSchroedingerEmissionPulsing,
-            setRimExponent: state.setSchroedingerRimExponent,
             setScatteringAnisotropy: state.setSchroedingerScatteringAnisotropy,
-            setLodNearDistance: state.setSchroedingerLodNearDistance,
-            setLodFarDistance: state.setSchroedingerLodFarDistance,
-            setLodMinSamples: state.setSchroedingerLodMinSamples,
-            setLodMaxSamples: state.setSchroedingerLodMaxSamples,
-            setErosionStrength: state.setSchroedingerErosionStrength,
-            setErosionScale: state.setSchroedingerErosionScale,
-            setErosionTurbulence: state.setSchroedingerErosionTurbulence,
-            setErosionNoiseType: state.setSchroedingerErosionNoiseType,
-            setCurlEnabled: state.setSchroedingerCurlEnabled,
-            setCurlStrength: state.setSchroedingerCurlStrength,
-            setCurlScale: state.setSchroedingerCurlScale,
-            setCurlSpeed: state.setSchroedingerCurlSpeed,
-            setCurlBias: state.setSchroedingerCurlBias,
             setDispersionEnabled: state.setSchroedingerDispersionEnabled,
             setDispersionStrength: state.setSchroedingerDispersionStrength,
             setDispersionDirection: state.setSchroedingerDispersionDirection,
@@ -305,53 +301,12 @@ const SchroedingerAdvanced: React.FC = () => {
             setShimmerEnabled: state.setSchroedingerShimmerEnabled,
             setShimmerStrength: state.setSchroedingerShimmerStrength,
             setIsoEnabled: state.setSchroedingerIsoEnabled,
-            setIsoThreshold: state.setSchroedingerIsoThreshold,
-            setColorMode: state.setSchroedingerColorMode,
-            setPalette: state.setSchroedingerPalette
+            setIsoThreshold: state.setSchroedingerIsoThreshold
         }))
     );
 
     return (
         <div className="space-y-4">
-             {/* Color Mode Selection */}
-            <div className="space-y-2 mb-4">
-                <label className="text-xs text-text-secondary">Color Mode</label>
-                <ToggleGroup
-                    options={colorModeOptions}
-                    value={config.colorMode}
-                    onChange={(v) => setColorMode(v as SchroedingerColorMode)}
-                    ariaLabel="Color mode selection"
-                    data-testid="schroedinger-color-mode"
-                />
-                
-                {config.colorMode === 'palette' && (
-                    <div className="pt-2">
-                        <label className="text-xs text-text-secondary">Palette Preset</label>
-                        <select 
-                            className="w-full bg-surface-dark border border-white/10 rounded px-2 py-1 text-xs text-text-primary mt-1 focus:outline-none focus:border-accent"
-                            value={config.palette}
-                            onChange={(e) => setPalette(e.target.value as SchroedingerPalette)}
-                            data-testid="schroedinger-palette-select"
-                        >
-                            {paletteOptions.map(opt => (
-                                <option key={opt.value} value={opt.value}>{opt.label}</option>
-                            ))}
-                        </select>
-                    </div>
-                )}
-            </div>
-
-            <Slider
-                label="Time Scale"
-                min={0.1}
-                max={2.0}
-                step={0.1}
-                value={config.timeScale}
-                onChange={setTimeScale}
-                showValue
-                data-testid="schroedinger-time-scale"
-            />
-
             <Slider
                 label="Field Scale"
                 min={0.5}
@@ -385,80 +340,8 @@ const SchroedingerAdvanced: React.FC = () => {
                 data-testid="schroedinger-powder-scale"
             />
 
-            <Slider
-                label="Sample Count"
-                min={32}
-                max={128}
-                step={8}
-                value={config.sampleCount}
-                onChange={setSampleCount}
-                showValue
-                data-testid="schroedinger-sample-count"
-            />
-
-            {/* Emission Controls */}
+            {/* Anisotropy (Phase) */}
             <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
-                <div className="flex items-center justify-between">
-                    <label className="text-xs text-text-secondary font-semibold">HDR Emission</label>
-                </div>
-                <Slider
-                    label="Intensity"
-                    min={0.0}
-                    max={5.0}
-                    step={0.1}
-                    value={config.emissionIntensity}
-                    onChange={setEmissionIntensity}
-                    showValue
-                    data-testid="schroedinger-emission-intensity"
-                />
-                {config.emissionIntensity > 0 && (
-                    <>
-                        <Slider
-                            label="Threshold"
-                            min={0.0}
-                            max={1.0}
-                            step={0.05}
-                            value={config.emissionThreshold}
-                            onChange={setEmissionThreshold}
-                            showValue
-                            data-testid="schroedinger-emission-threshold"
-                        />
-                        <Slider
-                            label="Color Shift (Cool/Warm)"
-                            min={-1.0}
-                            max={1.0}
-                            step={0.1}
-                            value={config.emissionColorShift}
-                            onChange={setEmissionColorShift}
-                            showValue
-                            data-testid="schroedinger-emission-shift"
-                        />
-                        <div className="flex items-center justify-between">
-                            <label className="text-xs text-text-secondary">Pulsing</label>
-                            <ToggleButton
-                                pressed={config.emissionPulsing}
-                                onToggle={() => setEmissionPulsing(!config.emissionPulsing)}
-                                className="text-xs px-2 py-1 h-auto"
-                                ariaLabel="Toggle emission pulsing"
-                                data-testid="schroedinger-emission-pulse"
-                            >
-                                {config.emissionPulsing ? 'ON' : 'OFF'}
-                            </ToggleButton>
-                        </div>
-                    </>
-                )}
-                
-                <Slider
-                    label="Rim Falloff"
-                    min={1.0}
-                    max={10.0}
-                    step={0.5}
-                    value={config.rimExponent ?? 3.0}
-                    onChange={setRimExponent}
-                    showValue
-                    data-testid="schroedinger-rim-exponent"
-                />
-                
                 <Slider
                     label="Anisotropy (Phase)"
                     min={-0.9}
@@ -469,183 +352,6 @@ const SchroedingerAdvanced: React.FC = () => {
                     showValue
                     data-testid="schroedinger-anisotropy"
                 />
-            </div>
-
-            {/* Level of Detail (LOD) Configuration */}
-            <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
-                <div className="flex items-center justify-between">
-                    <label className="text-xs text-text-secondary font-semibold">LOD Configuration</label>
-                </div>
-                <div className="flex gap-2">
-                    <div className="flex-1">
-                        <Slider
-                            label="Min Samples (Far)"
-                            min={16}
-                            max={64}
-                            step={8}
-                            value={config.lodMinSamples ?? 32}
-                            onChange={setLodMinSamples}
-                            showValue
-                            data-testid="schroedinger-lod-min"
-                        />
-                    </div>
-                    <div className="flex-1">
-                        <Slider
-                            label="Max Samples (Near)"
-                            min={64}
-                            max={256}
-                            step={16}
-                            value={config.lodMaxSamples ?? 128}
-                            onChange={setLodMaxSamples}
-                            showValue
-                            data-testid="schroedinger-lod-max"
-                        />
-                    </div>
-                </div>
-                <div className="flex gap-2">
-                    <div className="flex-1">
-                        <Slider
-                            label="Near Dist"
-                            min={1}
-                            max={10}
-                            step={1}
-                            value={config.lodNearDistance ?? 2}
-                            onChange={setLodNearDistance}
-                            showValue
-                            data-testid="schroedinger-lod-near"
-                        />
-                    </div>
-                    <div className="flex-1">
-                        <Slider
-                            label="Far Dist"
-                            min={5}
-                            max={30}
-                            step={1}
-                            value={config.lodFarDistance ?? 10}
-                            onChange={setLodFarDistance}
-                            showValue
-                            data-testid="schroedinger-lod-far"
-                        />
-                    </div>
-                </div>
-            </div>
-
-            {/* Edge Detail Erosion */}
-            <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
-                <div className="flex items-center justify-between">
-                    <label className="text-xs text-text-secondary font-semibold">Edge Detail</label>
-                </div>
-                <Slider
-                    label="Strength"
-                    min={0.0}
-                    max={1.0}
-                    step={0.05}
-                    value={config.erosionStrength ?? 0.0}
-                    onChange={setErosionStrength}
-                    showValue
-                    data-testid="schroedinger-erosion-strength"
-                />
-                {config.erosionStrength > 0 && (
-                    <>
-                        <Slider
-                            label="Scale"
-                            min={0.25}
-                            max={4.0}
-                            step={0.25}
-                            value={config.erosionScale ?? 1.0}
-                            onChange={setErosionScale}
-                            showValue
-                            data-testid="schroedinger-erosion-scale"
-                        />
-                        <Slider
-                            label="Turbulence"
-                            min={0.0}
-                            max={1.0}
-                            step={0.1}
-                            value={config.erosionTurbulence ?? 0.5}
-                            onChange={setErosionTurbulence}
-                            showValue
-                            data-testid="schroedinger-erosion-turbulence"
-                        />
-                        <div className="pt-2">
-                            <label className="text-xs text-text-secondary">Noise Type</label>
-                            <select 
-                                className="w-full bg-surface-dark border border-white/10 rounded px-2 py-1 text-xs text-text-primary mt-1 focus:outline-none focus:border-accent"
-                                value={config.erosionNoiseType ?? 0}
-                                onChange={(e) => setErosionNoiseType(parseInt(e.target.value))}
-                                data-testid="schroedinger-erosion-type"
-                            >
-                                <option value={0}>Worley (Cloudy)</option>
-                                <option value={1}>Perlin (Smooth)</option>
-                                <option value={2}>Hybrid (Billowy)</option>
-                            </select>
-                        </div>
-                    </>
-                )}
-            </div>
-
-            {/* Curl Noise Turbulence */}
-            <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
-                <div className="flex items-center justify-between">
-                    <label className="text-xs text-text-secondary font-semibold">Animated Flow</label>
-                    <ToggleButton
-                        pressed={config.curlEnabled ?? false}
-                        onToggle={() => setCurlEnabled(!(config.curlEnabled ?? false))}
-                        className="text-xs px-2 py-1 h-auto"
-                        ariaLabel="Toggle flow animation"
-                        data-testid="schroedinger-curl-toggle"
-                    >
-                        {config.curlEnabled ? 'ON' : 'OFF'}
-                    </ToggleButton>
-                </div>
-                {config.curlEnabled && (
-                    <>
-                        <Slider
-                            label="Strength"
-                            min={0.0}
-                            max={1.0}
-                            step={0.05}
-                            value={config.curlStrength ?? 0.3}
-                            onChange={setCurlStrength}
-                            showValue
-                            data-testid="schroedinger-curl-strength"
-                        />
-                        <Slider
-                            label="Scale"
-                            min={0.25}
-                            max={4.0}
-                            step={0.25}
-                            value={config.curlScale ?? 1.0}
-                            onChange={setCurlScale}
-                            showValue
-                            data-testid="schroedinger-curl-scale"
-                        />
-                        <Slider
-                            label="Speed"
-                            min={0.1}
-                            max={5.0}
-                            step={0.1}
-                            value={config.curlSpeed ?? 1.0}
-                            onChange={setCurlSpeed}
-                            showValue
-                            data-testid="schroedinger-curl-speed"
-                        />
-                        <div className="pt-2">
-                            <label className="text-xs text-text-secondary">Flow Bias</label>
-                            <select 
-                                className="w-full bg-surface-dark border border-white/10 rounded px-2 py-1 text-xs text-text-primary mt-1 focus:outline-none focus:border-accent"
-                                value={config.curlBias ?? 0}
-                                onChange={(e) => setCurlBias(parseInt(e.target.value))}
-                                data-testid="schroedinger-curl-bias"
-                            >
-                                <option value={0}>None (Isotropic)</option>
-                                <option value={1}>Upward (Rising)</option>
-                                <option value={2}>Outward (Expansion)</option>
-                                <option value={3}>Inward (Implosion)</option>
-                            </select>
-                        </div>
-                    </>
-                )}
             </div>
 
             {/* Chromatic Dispersion */}

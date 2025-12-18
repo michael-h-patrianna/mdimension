@@ -109,6 +109,16 @@ export const DEFAULT_SMAA_THRESHOLD = 0.05
 export const DEFAULT_OBJECT_ONLY_DEPTH = true
 
 // ============================================================================
+// SSAO (Screen-Space Ambient Occlusion) Defaults
+// ============================================================================
+
+/** Global AO enabled by default (enhances depth perception) */
+export const DEFAULT_SSAO_ENABLED = false
+
+/** AO intensity/strength (0-2 range, 1.0 = normal) */
+export const DEFAULT_SSAO_INTENSITY = 1.0
+
+// ============================================================================
 // Lighting Defaults
 // ============================================================================
 

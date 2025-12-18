@@ -85,6 +85,12 @@ export interface LightingSliceState {
   shadowQuality: ShadowQuality
   shadowSoftness: number
   shadowAnimationMode: ShadowAnimationMode
+
+  // --- Shadow Map Settings (for mesh-based objects like polytopes) ---
+  /** Shadow map bias to prevent shadow acne (0-0.01 range) */
+  shadowMapBias: number
+  /** Shadow map blur radius for softer edges (0-10 range) */
+  shadowMapBlur: number
 }
 
 export interface LightingSliceActions {
@@ -122,6 +128,10 @@ export interface LightingSliceActions {
   setShadowQuality: (quality: ShadowQuality) => void
   setShadowSoftness: (softness: number) => void
   setShadowAnimationMode: (mode: ShadowAnimationMode) => void
+
+  // --- Shadow Map Actions (for mesh-based objects like polytopes) ---
+  setShadowMapBias: (bias: number) => void
+  setShadowMapBlur: (blur: number) => void
 }
 
 export type LightingSlice = LightingSliceState & LightingSliceActions
@@ -163,6 +173,10 @@ export const LIGHTING_INITIAL_STATE: LightingSliceState = {
   shadowQuality: DEFAULT_SHADOW_QUALITY,
   shadowSoftness: DEFAULT_SHADOW_SOFTNESS,
   shadowAnimationMode: DEFAULT_SHADOW_ANIMATION_MODE,
+
+  // Shadow map settings (for mesh-based objects)
+  shadowMapBias: 0.001,
+  shadowMapBlur: 2,
 }
 
 // ============================================================================
@@ -332,5 +346,14 @@ export const createLightingSlice: StateCreator<LightingSlice, [], [], LightingSl
 
   setShadowAnimationMode: (mode: ShadowAnimationMode) => {
     set({ shadowAnimationMode: mode })
+  },
+
+  // --- Shadow Map Actions (for mesh-based objects) ---
+  setShadowMapBias: (bias: number) => {
+    set({ shadowMapBias: Math.max(0, Math.min(0.01, bias)) })
+  },
+
+  setShadowMapBlur: (blur: number) => {
+    set({ shadowMapBlur: Math.max(0, Math.min(10, blur)) })
   },
 })

@@ -72,6 +72,12 @@ vi.mock('@/stores/extendedObjectStore', () => ({
             dualMorphEnabled: false,
             explodeEnabled: false,
         },
+        schroedinger: {
+            curlEnabled: false,
+            originDriftEnabled: false,
+            sliceAnimationEnabled: false,
+            spreadAnimationEnabled: false,
+        },
         setMandelbulbPowerAnimationEnabled: vi.fn(),
         setMandelbulbPowerMin: vi.fn(),
         setMandelbulbPowerMax: vi.fn(),

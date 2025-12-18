@@ -39,6 +39,8 @@ import {
   DEFAULT_SSR_MAX_DISTANCE,
   DEFAULT_SSR_QUALITY,
   DEFAULT_SSR_THICKNESS,
+  DEFAULT_SSAO_ENABLED,
+  DEFAULT_SSAO_INTENSITY,
 } from '../defaults/visualDefaults'
 
 // ============================================================================
@@ -91,6 +93,12 @@ export interface PostProcessingSliceState {
   // --- Depth Buffer ---
   /** When true, depth-based effects exclude walls/environment. When false, walls are included. */
   objectOnlyDepth: boolean
+
+  // --- SSAO (Screen-Space Ambient Occlusion) ---
+  /** Global AO toggle - affects all object types (SSAO for polytopes, SDF AO for fractals) */
+  ssaoEnabled: boolean
+  /** AO intensity/strength (0-2 range) */
+  ssaoIntensity: number
 }
 
 export interface PostProcessingSliceActions {
@@ -138,6 +146,10 @@ export interface PostProcessingSliceActions {
 
   // --- Depth Buffer Actions ---
   setObjectOnlyDepth: (objectOnly: boolean) => void
+
+  // --- SSAO Actions ---
+  setSSAOEnabled: (enabled: boolean) => void
+  setSSAOIntensity: (intensity: number) => void
 }
 
 export type PostProcessingSlice = PostProcessingSliceState & PostProcessingSliceActions
@@ -191,6 +203,10 @@ export const POST_PROCESSING_INITIAL_STATE: PostProcessingSliceState = {
 
   // Depth Buffer
   objectOnlyDepth: DEFAULT_OBJECT_ONLY_DEPTH,
+
+  // SSAO (Screen-Space Ambient Occlusion)
+  ssaoEnabled: DEFAULT_SSAO_ENABLED,
+  ssaoIntensity: DEFAULT_SSAO_INTENSITY,
 }
 
 // ============================================================================
@@ -341,5 +357,14 @@ export const createPostProcessingSlice: StateCreator<
   // --- Depth Buffer Actions ---
   setObjectOnlyDepth: (objectOnly: boolean) => {
     set({ objectOnlyDepth: objectOnly })
+  },
+
+  // --- SSAO Actions ---
+  setSSAOEnabled: (enabled: boolean) => {
+    set({ ssaoEnabled: enabled })
+  },
+
+  setSSAOIntensity: (intensity: number) => {
+    set({ ssaoIntensity: Math.max(0, Math.min(2, intensity)) })
   },
 })

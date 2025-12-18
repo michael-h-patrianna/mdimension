@@ -72,6 +72,7 @@ interface LightRendererProps {
   shadowEnabled: boolean;
   shadowMapSize: number;
   shadowRadius: number;
+  shadowBias: number;
 }
 
 const LightRenderer = memo(function LightRenderer({
@@ -80,6 +81,7 @@ const LightRenderer = memo(function LightRenderer({
   shadowEnabled,
   shadowMapSize,
   shadowRadius,
+  shadowBias,
 }: LightRendererProps) {
   const position = light.position as [number, number, number];
   const direction = useMemo(() => {
@@ -160,7 +162,7 @@ const LightRenderer = memo(function LightRenderer({
           shadow-camera-right={10}
           shadow-camera-top={10}
           shadow-camera-bottom={-10}
-          shadow-bias={-0.0001}
+          shadow-bias={-shadowBias}
           shadow-radius={shadowRadius}
         />
       )}
@@ -179,7 +181,7 @@ const LightRenderer = memo(function LightRenderer({
           shadow-mapSize-height={shadowMapSize}
           shadow-camera-near={0.5}
           shadow-camera-far={light.range || 50}
-          shadow-bias={-0.0001}
+          shadow-bias={-shadowBias}
           shadow-radius={shadowRadius}
         />
       )}
@@ -209,10 +211,14 @@ export const SceneLighting = memo(function SceneLighting() {
   const shadowEnabled = useLightingStore((state) => state.shadowEnabled);
   const shadowQuality = useLightingStore((state) => state.shadowQuality);
   const shadowSoftness = useLightingStore((state) => state.shadowSoftness);
+  const shadowMapBias = useLightingStore((state) => state.shadowMapBias);
+  const shadowMapBlur = useLightingStore((state) => state.shadowMapBlur);
 
   // Compute shadow map size and radius from settings
   const shadowMapSize = SHADOW_MAP_SIZES[shadowQuality];
-  const shadowRadiusValue = getShadowRadius(shadowSoftness);
+  // Use shadowMapBlur for polytopes (mesh-based objects) which supports PCF radius
+  // shadowSoftness is used for SDF raymarched shadows
+  const shadowRadiusValue = shadowMapBlur > 0 ? shadowMapBlur : getShadowRadius(shadowSoftness);
 
   // Legacy single-light state (for backward compatibility)
   const lightEnabled = useLightingStore((state) => state.lightEnabled);
@@ -277,6 +283,7 @@ export const SceneLighting = memo(function SceneLighting() {
               shadowEnabled={shadowEnabled}
               shadowMapSize={shadowMapSize}
               shadowRadius={shadowRadiusValue}
+              shadowBias={shadowMapBias}
             />
           ))}
         </>

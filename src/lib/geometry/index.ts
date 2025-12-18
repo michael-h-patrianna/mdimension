@@ -109,8 +109,8 @@ export {
   generateWythoffPolytope,
   getWythoffPolytopeInfo,
   getWythoffPresetName,
-} from './wythoff-polytope'
-export type { WythoffSymbol } from './wythoff-polytope'
+} from './wythoff'
+export type { WythoffSymbol } from './wythoff'
 
 // Extended object generator exports
 export {
@@ -149,7 +149,7 @@ import type { ExtendedObjectParams } from './extended'
 import { DEFAULT_EXTENDED_OBJECT_PARAMS, generateExtendedObject } from './extended'
 import { generateHypercube } from './hypercube'
 import { generateSimplex } from './simplex'
-import { generateWythoffPolytope } from './wythoff-polytope'
+import { generateWythoffPolytope } from './wythoff'
 import type {
   NdGeometry,
   ObjectType,

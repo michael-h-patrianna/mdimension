@@ -5,6 +5,9 @@
  * TimelineControls bottom drawer.
  *
  * Animation Systems:
+ * - Time Evolution: Controls the speed of quantum phase evolution
+ * - Animated Flow: Curl noise turbulence
+ * - Wavepacket Dispersion: Animates frequency spread (breathing)
  * - Origin Drift: Animates the origin in extra dimensions
  * - Slice Animation: 4D+ only, animates the 4D slice position
  *
@@ -16,6 +19,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { ToggleButton } from '@/components/ui/ToggleButton';
+import { Slider } from '@/components/ui/Slider';
 import { AnimationDrawerContainer } from './AnimationDrawerContainer';
 
 /**
@@ -33,6 +37,16 @@ export const SchroedingerAnimationDrawer: React.FC = React.memo(() => {
   // Get config and setters from store
   const {
     config,
+    // Time Evolution
+    setTimeScale,
+    // Animated Flow (Curl)
+    setCurlEnabled,
+    setCurlStrength,
+    setCurlScale,
+    setCurlSpeed,
+    // Spread Animation (Dispersion)
+    setSpreadAnimationEnabled,
+    setSpreadAnimationSpeed,
     // Origin Drift Animation
     setOriginDriftEnabled,
     setDriftAmplitude,
@@ -45,6 +59,16 @@ export const SchroedingerAnimationDrawer: React.FC = React.memo(() => {
   } = useExtendedObjectStore(
     useShallow((state) => ({
       config: state.schroedinger,
+      // Time Evolution
+      setTimeScale: state.setSchroedingerTimeScale,
+      // Animated Flow
+      setCurlEnabled: state.setSchroedingerCurlEnabled,
+      setCurlStrength: state.setSchroedingerCurlStrength,
+      setCurlScale: state.setSchroedingerCurlScale,
+      setCurlSpeed: state.setSchroedingerCurlSpeed,
+      // Spread Animation
+      setSpreadAnimationEnabled: state.setSchroedingerSpreadAnimationEnabled,
+      setSpreadAnimationSpeed: state.setSchroedingerSpreadAnimationSpeed,
       // Origin Drift Animation
       setOriginDriftEnabled: state.setSchroedingerOriginDriftEnabled,
       setDriftAmplitude: state.setSchroedingerDriftAmplitude,
@@ -59,6 +83,100 @@ export const SchroedingerAnimationDrawer: React.FC = React.memo(() => {
 
   return (
     <AnimationDrawerContainer data-testid="schroedinger-animation-drawer">
+      {/* Time Evolution (Always Active) */}
+      <div className="space-y-4" data-testid="animation-panel-timeEvolution">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">
+            Time Evolution
+          </label>
+        </div>
+        <div className="space-y-3">
+            <Slider
+              label="Time Scale"
+              min={0.1}
+              max={2.0}
+              step={0.1}
+              value={config.timeScale}
+              onChange={setTimeScale}
+              showValue
+            />
+        </div>
+      </div>
+
+      {/* Wavepacket Dispersion (Spread Animation) */}
+      <div className="space-y-4" data-testid="animation-panel-dispersion">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">
+            Wavepacket Dispersion
+          </label>
+          <ToggleButton
+            pressed={config.spreadAnimationEnabled}
+            onToggle={() => setSpreadAnimationEnabled(!config.spreadAnimationEnabled)}
+            className="text-xs px-2 py-1 h-auto"
+            ariaLabel="Toggle spread animation"
+          >
+            {config.spreadAnimationEnabled ? 'ON' : 'OFF'}
+          </ToggleButton>
+        </div>
+        <div className={`space-y-3 ${!config.spreadAnimationEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
+             <Slider
+                label="Breathing Speed"
+                min={0.1}
+                max={2.0}
+                step={0.1}
+                value={config.spreadAnimationSpeed ?? 0.5}
+                onChange={setSpreadAnimationSpeed}
+                showValue
+             />
+        </div>
+      </div>
+
+      {/* Animated Flow (Curl Noise) */}
+      <div className="space-y-4" data-testid="animation-panel-flow">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">
+            Animated Flow
+          </label>
+          <ToggleButton
+            pressed={config.curlEnabled}
+            onToggle={() => setCurlEnabled(!config.curlEnabled)}
+            className="text-xs px-2 py-1 h-auto"
+            ariaLabel="Toggle flow animation"
+          >
+            {config.curlEnabled ? 'ON' : 'OFF'}
+          </ToggleButton>
+        </div>
+        <div className={`space-y-3 ${!config.curlEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
+             <Slider
+                label="Strength"
+                min={0.0}
+                max={1.0}
+                step={0.05}
+                value={config.curlStrength}
+                onChange={setCurlStrength}
+                showValue
+             />
+             <Slider
+                label="Scale"
+                min={0.25}
+                max={4.0}
+                step={0.25}
+                value={config.curlScale}
+                onChange={setCurlScale}
+                showValue
+             />
+             <Slider
+                label="Speed"
+                min={0.1}
+                max={5.0}
+                step={0.1}
+                value={config.curlSpeed}
+                onChange={setCurlSpeed}
+                showValue
+             />
+        </div>
+      </div>
+
       {/* Origin Drift Animation */}
       <div className="space-y-4" data-testid="animation-panel-originDrift">
         <div className="flex items-center justify-between">
@@ -76,54 +194,33 @@ export const SchroedingerAnimationDrawer: React.FC = React.memo(() => {
         </div>
 
         <div className={`space-y-3 ${!config.originDriftEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-text-secondary w-16">Amplitude</span>
-            <input
-              type="range"
+            <Slider
+              label="Amplitude"
               min={0.01}
               max={0.5}
               step={0.01}
               value={config.driftAmplitude}
-              onChange={(e) => setDriftAmplitude(parseFloat(e.target.value))}
-              className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
-              aria-label="Drift amplitude"
+              onChange={setDriftAmplitude}
+              showValue
             />
-            <span className="text-xs font-mono w-10 text-right">
-              {config.driftAmplitude.toFixed(2)}
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-text-secondary w-16">Frequency</span>
-            <input
-              type="range"
+            <Slider
+              label="Frequency"
               min={0.01}
               max={0.5}
               step={0.01}
               value={config.driftBaseFrequency}
-              onChange={(e) => setDriftBaseFrequency(parseFloat(e.target.value))}
-              className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
-              aria-label="Drift frequency"
+              onChange={setDriftBaseFrequency}
+              showValue
             />
-            <span className="text-xs font-mono w-10 text-right">
-              {config.driftBaseFrequency.toFixed(2)}
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-text-secondary w-16">Spread</span>
-            <input
-              type="range"
+            <Slider
+              label="Spread"
               min={0}
               max={1}
               step={0.05}
               value={config.driftFrequencySpread}
-              onChange={(e) => setDriftFrequencySpread(parseFloat(e.target.value))}
-              className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
-              aria-label="Drift spread"
+              onChange={setDriftFrequencySpread}
+              showValue
             />
-            <span className="text-xs font-mono w-10 text-right">
-              {config.driftFrequencySpread.toFixed(2)}
-            </span>
-          </div>
         </div>
       </div>
 
@@ -132,7 +229,7 @@ export const SchroedingerAnimationDrawer: React.FC = React.memo(() => {
         <div className="space-y-4" data-testid="animation-panel-sliceAnimation">
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">
-              Slice Animation
+              Dimensional Sweeps
             </label>
             <ToggleButton
               pressed={config.sliceAnimationEnabled}
@@ -145,38 +242,24 @@ export const SchroedingerAnimationDrawer: React.FC = React.memo(() => {
           </div>
 
           <div className={`space-y-3 ${!config.sliceAnimationEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-text-secondary w-16">Amplitude</span>
-              <input
-                type="range"
+              <Slider
+                label="Amplitude"
                 min={0.1}
                 max={1.0}
                 step={0.05}
                 value={config.sliceAmplitude}
-                onChange={(e) => setSliceAmplitude(parseFloat(e.target.value))}
-                className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
-                aria-label="Slice animation amplitude"
+                onChange={setSliceAmplitude}
+                showValue
               />
-              <span className="text-xs font-mono w-10 text-right">
-                {config.sliceAmplitude.toFixed(2)}
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-text-secondary w-16">Speed</span>
-              <input
-                type="range"
+              <Slider
+                label="Speed"
                 min={0.01}
                 max={0.1}
                 step={0.01}
                 value={config.sliceSpeed}
-                onChange={(e) => setSliceSpeed(parseFloat(e.target.value))}
-                className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
-                aria-label="Slice animation speed"
+                onChange={setSliceSpeed}
+                showValue
               />
-              <span className="text-xs font-mono w-10 text-right">
-                {config.sliceSpeed.toFixed(2)}
-              </span>
-            </div>
           </div>
         </div>
       )}

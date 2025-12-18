@@ -93,14 +93,13 @@ describe('SchroedingerMesh', () => {
 
   it('should update quantum preset name', () => {
     useGeometryStore.setState({ dimension: 4 });
-    useExtendedObjectStore.getState().initializeSchroedingerForDimension(4);
-
-    useExtendedObjectStore.getState().setSchroedingerPresetName('quantumFoam');
-
-    const config = useExtendedObjectStore.getState().schroedinger;
-    expect(config.presetName).toBe('quantumFoam');
-  });
-
+        useExtendedObjectStore.getState().initializeSchroedingerForDimension(4);
+        
+        useExtendedObjectStore.getState().setSchroedingerPresetName('highEnergy');
+        
+        const config = useExtendedObjectStore.getState().schroedinger;
+        expect(config.presetName).toBe('highEnergy');
+      });
   it('should update term count within valid range', () => {
     useGeometryStore.setState({ dimension: 4 });
     useExtendedObjectStore.getState().initializeSchroedingerForDimension(4);

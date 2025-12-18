@@ -3,8 +3,14 @@ import { useGeometryGenerator } from '@/hooks/useGeometryGenerator';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { describe, it, expect, beforeEach } from 'vitest';
-import { act } from 'react';
+import { act, type ReactNode } from 'react';
 import { DEFAULT_ROOT_SYSTEM_CONFIG } from '@/lib/geometry/extended';
+import { ToastProvider } from '@/contexts/ToastContext';
+
+// Wrapper component that provides ToastProvider context
+const wrapper = ({ children }: { children: ReactNode }) => (
+  <ToastProvider>{children}</ToastProvider>
+);
 
 // We will use the real stores, but we need to reset them
 // Since they are persistent, we might need to manually set them to defaults
@@ -24,7 +30,7 @@ describe('useGeometryGenerator', () => {
   });
 
   it('should generate initial geometry (3D hypercube)', () => {
-    const { result } = renderHook(() => useGeometryGenerator());
+    const { result } = renderHook(() => useGeometryGenerator(), { wrapper });
 
     expect(result.current.dimension).toBe(3);
     expect(result.current.objectType).toBe('hypercube');
@@ -34,7 +40,7 @@ describe('useGeometryGenerator', () => {
   });
 
   it('should update geometry when dimension changes', () => {
-    const { result } = renderHook(() => useGeometryGenerator());
+    const { result } = renderHook(() => useGeometryGenerator(), { wrapper });
 
     act(() => {
       useGeometryStore.setState({ dimension: 4 });
@@ -45,7 +51,7 @@ describe('useGeometryGenerator', () => {
   });
 
   it('should update geometry when object type changes', () => {
-    const { result } = renderHook(() => useGeometryGenerator());
+    const { result } = renderHook(() => useGeometryGenerator(), { wrapper });
 
     act(() => {
       useGeometryStore.setState({ objectType: 'simplex', dimension: 3 });
@@ -58,7 +64,7 @@ describe('useGeometryGenerator', () => {
 
   it('should use extended object params', () => {
     // This tests that the hook correctly pulls from extendedObjectStore
-    const { result } = renderHook(() => useGeometryGenerator());
+    const { result } = renderHook(() => useGeometryGenerator(), { wrapper });
 
     act(() => {
       useGeometryStore.setState({ objectType: 'root-system', dimension: 3 });

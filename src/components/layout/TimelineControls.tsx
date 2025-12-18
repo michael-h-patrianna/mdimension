@@ -11,6 +11,7 @@ import { Slider } from '@/components/ui/Slider';
 import { JuliaAnimationDrawer } from './TimelineControls/JuliaAnimationDrawer';
 import { MandelbulbAnimationDrawer } from './TimelineControls/MandelbulbAnimationDrawer';
 import { PolytopeAnimationDrawer } from './TimelineControls/PolytopeAnimationDrawer';
+import { SchroedingerAnimationDrawer } from './TimelineControls/SchroedingerAnimationDrawer';
 import { ZoomDrawer } from './TimelineControls/ZoomDrawer';
 import { hasTimelineControls, isPolytopeCategory, getConfigStoreKey } from '@/lib/geometry/registry';
 import { Icon } from '@/components/ui/Icon';
@@ -50,11 +51,12 @@ export const TimelineControls: FC = () => {
     const setAnimationBias = useUIStore((state) => state.setAnimationBias);
 
     // Extended object configs for animation state checking
-    const { mandelbulbConfig, polytopeConfig } = useExtendedObjectStore(
+    const { mandelbulbConfig, polytopeConfig, schroedingerConfig } = useExtendedObjectStore(
         useShallow((state) => ({
           mandelbulbConfig: state.mandelbulb,
           quaternionJuliaConfig: state.quaternionJulia,
           polytopeConfig: state.polytope,
+          schroedingerConfig: state.schroedinger,
         }))
     );
 
@@ -80,7 +82,13 @@ export const TimelineControls: FC = () => {
                               polytopeConfig.dualMorphEnabled ||
                               polytopeConfig.explodeEnabled;
 
-    return mandelbulbAnimating || qjAnimating || polytopeAnimating;
+    // Schroedinger: flow, drift, slice, spread
+    const schroedingerAnimating = schroedingerConfig.curlEnabled ||
+                                  schroedingerConfig.originDriftEnabled ||
+                                  schroedingerConfig.sliceAnimationEnabled ||
+                                  schroedingerConfig.spreadAnimationEnabled;
+
+    return mandelbulbAnimating || qjAnimating || polytopeAnimating || schroedingerAnimating;
   }, [
     mandelbulbConfig.powerAnimationEnabled,
     mandelbulbConfig.alternatePowerEnabled,
@@ -93,6 +101,10 @@ export const TimelineControls: FC = () => {
     polytopeConfig.facetOffsetEnabled,
     polytopeConfig.dualMorphEnabled,
     polytopeConfig.explodeEnabled,
+    schroedingerConfig.curlEnabled,
+    schroedingerConfig.originDriftEnabled,
+    schroedingerConfig.sliceAnimationEnabled,
+    schroedingerConfig.spreadAnimationEnabled,
   ]);
 
     // Animation should only be paused when NOTHING is animating
@@ -170,6 +182,11 @@ export const TimelineControls: FC = () => {
       {/* Polytope Animation Drawer */}
       {showFractalAnim && isPolytopeCategory(objectType) && (
         <PolytopeAnimationDrawer />
+      )}
+
+      {/* Schroedinger Animation Drawer */}
+      {showFractalAnim && getConfigStoreKey(objectType) === 'schroedinger' && (
+        <SchroedingerAnimationDrawer />
       )}
 
       {/* Zoom Drawer (Mandelbulb only) */}

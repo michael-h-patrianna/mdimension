@@ -1,5 +1,4 @@
-import React from 'react';
-import { ControlGroup } from '@/components/ui/ControlGroup';
+import React, { useState } from 'react';
 import { BloomControls } from './BloomControls';
 import { BokehControls } from './BokehControls';
 import { CinematicControls } from './CinematicControls';
@@ -7,10 +6,13 @@ import { MiscControls } from './MiscControls';
 import { RefractionControls } from './RefractionControls';
 import { SSRControls } from './SSRControls';
 import { Switch } from '@/components/ui/Switch';
+import { Tabs } from '@/components/ui/Tabs';
 import { usePostProcessingStore } from '@/stores/postProcessingStore';
 import { useShallow } from 'zustand/react/shallow';
 
 export const PostProcessingControls: React.FC = () => {
+  const [activeTab, setActiveTab] = useState('bloom');
+
   const {
     bloomEnabled, setBloomEnabled,
     cinematicEnabled, setCinematicEnabled,
@@ -32,82 +34,104 @@ export const PostProcessingControls: React.FC = () => {
     }))
   );
 
-  return (
-    <div className="space-y-4">
-      {/* Bloom */}
-      <ControlGroup 
-        title="Bloom" 
-        collapsible 
-        defaultOpen={bloomEnabled}
-        rightElement={
-            <Switch checked={bloomEnabled} onCheckedChange={setBloomEnabled} />
-        }
-      >
-        <div className={!bloomEnabled ? 'opacity-50 pointer-events-none' : ''}>
+  const tabs = [
+    {
+      id: 'bloom',
+      label: 'Bloom',
+      content: (
+        <div className="space-y-4">
+          <Switch 
+            checked={bloomEnabled} 
+            onCheckedChange={setBloomEnabled}
+            label="Enable Bloom"
+          />
+          <div className={!bloomEnabled ? 'opacity-50 pointer-events-none' : ''}>
             <BloomControls />
+          </div>
         </div>
-      </ControlGroup>
-
-      {/* Cinematic */}
-      <ControlGroup 
-        title="Cinematic" 
-        collapsible 
-        defaultOpen={cinematicEnabled}
-        rightElement={
-            <Switch checked={cinematicEnabled} onCheckedChange={setCinematicEnabled} />
-        }
-      >
-        <div className={!cinematicEnabled ? 'opacity-50 pointer-events-none' : ''}>
+      ),
+    },
+    {
+      id: 'cinematic',
+      label: 'Cinematic',
+      content: (
+        <div className="space-y-4">
+          <Switch 
+            checked={cinematicEnabled} 
+            onCheckedChange={setCinematicEnabled}
+            label="Enable Cinematic"
+          />
+          <div className={!cinematicEnabled ? 'opacity-50 pointer-events-none' : ''}>
             <CinematicControls />
+          </div>
         </div>
-      </ControlGroup>
-
-      {/* Bokeh / DoF */}
-      <ControlGroup 
-        title="Depth of Field" 
-        collapsible 
-        defaultOpen={bokehEnabled}
-        rightElement={
-            <Switch checked={bokehEnabled} onCheckedChange={setBokehEnabled} />
-        }
-      >
-        <div className={!bokehEnabled ? 'opacity-50 pointer-events-none' : ''}>
+      ),
+    },
+    {
+      id: 'dof',
+      label: 'DoF',
+      content: (
+        <div className="space-y-4">
+          <Switch 
+            checked={bokehEnabled} 
+            onCheckedChange={setBokehEnabled}
+            label="Enable Depth of Field"
+          />
+          <div className={!bokehEnabled ? 'opacity-50 pointer-events-none' : ''}>
             <BokehControls />
+          </div>
         </div>
-      </ControlGroup>
-
-      {/* SSR */}
-      <ControlGroup 
-        title="Reflections (SSR)" 
-        collapsible 
-        defaultOpen={ssrEnabled}
-        rightElement={
-            <Switch checked={ssrEnabled} onCheckedChange={setSsrEnabled} />
-        }
-      >
-        <div className={!ssrEnabled ? 'opacity-50 pointer-events-none' : ''}>
+      ),
+    },
+    {
+      id: 'ssr',
+      label: 'Reflections',
+      content: (
+        <div className="space-y-4">
+          <Switch 
+            checked={ssrEnabled} 
+            onCheckedChange={setSsrEnabled}
+            label="Enable SSR"
+          />
+          <div className={!ssrEnabled ? 'opacity-50 pointer-events-none' : ''}>
             <SSRControls />
+          </div>
         </div>
-      </ControlGroup>
-
-      {/* Refraction */}
-      <ControlGroup 
-        title="Refraction" 
-        collapsible 
-        defaultOpen={refractionEnabled}
-        rightElement={
-            <Switch checked={refractionEnabled} onCheckedChange={setRefractionEnabled} />
-        }
-      >
-        <div className={!refractionEnabled ? 'opacity-50 pointer-events-none' : ''}>
+      ),
+    },
+    {
+      id: 'refraction',
+      label: 'Refraction',
+      content: (
+        <div className="space-y-4">
+          <Switch 
+            checked={refractionEnabled} 
+            onCheckedChange={setRefractionEnabled}
+            label="Enable Refraction"
+          />
+          <div className={!refractionEnabled ? 'opacity-50 pointer-events-none' : ''}>
             <RefractionControls />
+          </div>
         </div>
-      </ControlGroup>
+      ),
+    },
+    {
+      id: 'misc',
+      label: 'Misc',
+      content: (
+        <div className="space-y-4">
+          <MiscControls />
+        </div>
+      ),
+    },
+  ];
 
-      {/* Misc */}
-      <ControlGroup title="Misc" collapsible defaultOpen={false}>
-        <MiscControls />
-      </ControlGroup>
-    </div>
+  return (
+    <Tabs
+      value={activeTab}
+      onChange={setActiveTab}
+      tabs={tabs}
+      variant="default"
+    />
   );
 };

@@ -237,6 +237,33 @@ export function generate{Name}(dimension: number, scale = 1.0): PolytopeGeometry
 
 ---
 
+## Web Worker Patterns
+
+**Purpose**: Offload heavy computations (e.g., complex geometry generation) to background threads to prevent UI freezing.
+
+### Zero-Copy Transfer Pattern
+For large datasets, use `Transferable` objects (TypedArrays) to move memory ownership between threads instantly, avoiding expensive serialization/copying.
+
+1. **Flatten Data**: Convert objects to `Float64Array`/`Uint32Array`.
+2. **Transfer**: Pass buffers in the `transfer` list of `postMessage`.
+3. **Inflate**: Reconstruct objects on the receiving end.
+
+**Example**:
+```typescript
+// Worker: Flatten and Transfer
+const { transferable, buffers } = flattenGeometry(result);
+self.postMessage({ result: transferable }, buffers);
+
+// Main Thread: Inflate
+worker.onmessage = (e) => {
+  const geometry = inflateGeometry(e.data.result);
+};
+```
+
+**Utilities**: See `src/lib/geometry/transfer.ts`.
+
+---
+
 ## How to Create a New Zustand Store
 
 **Location**: `src/stores/`

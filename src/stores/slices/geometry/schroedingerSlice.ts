@@ -1,5 +1,7 @@
 import {
   DEFAULT_SCHROEDINGER_CONFIG,
+  RAYMARCH_QUALITY_TO_SAMPLES,
+  type RaymarchQuality,
   SCHROEDINGER_QUALITY_PRESETS,
   SchroedingerColorMode,
   SchroedingerPresetName,
@@ -214,7 +216,7 @@ export const createSchroedingerSlice: StateCreator<ExtendedObjectSlice, [], [], 
   },
 
   setSchroedingerSampleCount: (count) => {
-    const clampedCount = Math.max(32, Math.min(128, count))
+    const clampedCount = Math.max(16, Math.min(128, count))
     set((state) => ({
       schroedinger: { ...state.schroedinger, sampleCount: clampedCount },
     }))
@@ -288,37 +290,13 @@ export const createSchroedingerSlice: StateCreator<ExtendedObjectSlice, [], [], 
     }))
   },
 
-  setSchroedingerLodEnabled: (enabled) => {
+  setSchroedingerRaymarchQuality: (quality: RaymarchQuality) => {
+    // Update both raymarchQuality and sampleCount for consistency.
+    // Note: The mesh reads raymarchQuality directly via RAYMARCH_QUALITY_TO_SAMPLES mapping.
+    // sampleCount is kept in sync for backward compatibility with any code that reads it directly.
+    const sampleCount = RAYMARCH_QUALITY_TO_SAMPLES[quality]
     set((state) => ({
-      schroedinger: { ...state.schroedinger, lodEnabled: enabled },
-    }))
-  },
-
-  setSchroedingerLodNearDistance: (distance) => {
-    const clamped = Math.max(0.1, distance)
-    set((state) => ({
-      schroedinger: { ...state.schroedinger, lodNearDistance: clamped },
-    }))
-  },
-
-  setSchroedingerLodFarDistance: (distance) => {
-    const clamped = Math.max(0.1, distance)
-    set((state) => ({
-      schroedinger: { ...state.schroedinger, lodFarDistance: clamped },
-    }))
-  },
-
-  setSchroedingerLodMinSamples: (samples) => {
-    const clamped = Math.max(16, Math.min(256, samples))
-    set((state) => ({
-      schroedinger: { ...state.schroedinger, lodMinSamples: clamped },
-    }))
-  },
-
-  setSchroedingerLodMaxSamples: (samples) => {
-    const clamped = Math.max(16, Math.min(256, samples))
-    set((state) => ({
-      schroedinger: { ...state.schroedinger, lodMaxSamples: clamped },
+      schroedinger: { ...state.schroedinger, raymarchQuality: quality, sampleCount },
     }))
   },
 
@@ -590,6 +568,20 @@ export const createSchroedingerSlice: StateCreator<ExtendedObjectSlice, [], [], 
     const clampedAmplitude = Math.max(0.1, Math.min(1.0, amplitude))
     set((state) => ({
       schroedinger: { ...state.schroedinger, sliceAmplitude: clampedAmplitude },
+    }))
+  },
+
+  // === Spread Animation ===
+  setSchroedingerSpreadAnimationEnabled: (enabled) => {
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, spreadAnimationEnabled: enabled },
+    }))
+  },
+
+  setSchroedingerSpreadAnimationSpeed: (speed) => {
+    const clampedSpeed = Math.max(0.1, Math.min(2.0, speed))
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, spreadAnimationSpeed: clampedSpeed },
     }))
   },
 

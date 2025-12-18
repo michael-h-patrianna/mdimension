@@ -11,7 +11,7 @@ import {
   getWythoffPresetName,
   getWythoffPolytopeInfo,
   DEFAULT_WYTHOFF_POLYTOPE_CONFIG,
-} from '@/lib/geometry/wythoff-polytope'
+} from '@/lib/geometry/wythoff'
 
 describe('Wythoff Polytope Generation', () => {
   describe('generateWythoffPolytope', () => {
@@ -381,8 +381,98 @@ describe('Wythoff Polytope Generation', () => {
 
       expect(polytope.metadata?.properties?.symmetryGroup).toBe('B')
       expect(polytope.metadata?.properties?.preset).toBe('truncated')
-      expect(polytope.metadata?.properties?.scale).toBe(2.5)
+      // Scale-independent caching: geometry is cached at scale=1.0
+      // The appliedScale property contains the actual scale applied to the geometry
+      expect(polytope.metadata?.properties?.scale).toBe(1.0)
+      expect(polytope.metadata?.properties?.appliedScale).toBe(2.5)
     })
+  })
+})
+
+describe('High-dimensional omnitruncated memory safety', () => {
+  // This test verifies the fix for the memory exhaustion bug in high-dimensional
+  // omnitruncated polytopes. Without the fix, 11D omnitruncated would try to
+  // generate 11! × 2^11 ≈ 81 billion vertices and crash the browser.
+  //
+  // The fix has two parts:
+  // 1. Lazy permutation generation with early termination (prevents memory exhaustion)
+  // 2. Lower vertex limits for omnitruncated (prevents slow O(V²) edge generation)
+
+  it('generates 11D omnitruncated polytope without memory exhaustion', { timeout: 15000 }, () => {
+    // This previously crashed due to generating all 11! permutations upfront
+    const polytope = generateWythoffPolytope(11, {
+      symmetryGroup: 'B',
+      preset: 'omnitruncated',
+      scale: 3.0,
+    })
+
+    // Should have generated vertices (capped at 5,000 for omnitruncated to keep edge gen fast)
+    expect(polytope.dimension).toBe(11)
+    expect(polytope.vertices.length).toBeGreaterThan(0)
+    expect(polytope.vertices.length).toBeLessThanOrEqual(5000)
+    expect(polytope.edges.length).toBeGreaterThan(0)
+
+    // Vertices should have correct dimension
+    expect(polytope.vertices[0]?.length).toBe(11)
+  })
+
+  it('generates 10D omnitruncated polytope with early termination', { timeout: 15000 }, () => {
+    const polytope = generateWythoffPolytope(10, {
+      symmetryGroup: 'B',
+      preset: 'omnitruncated',
+      scale: 3.0,
+    })
+
+    expect(polytope.dimension).toBe(10)
+    expect(polytope.vertices.length).toBeGreaterThan(0)
+    expect(polytope.vertices.length).toBeLessThanOrEqual(5000) // Omnitruncated limit
+  })
+
+  it('generates 9D omnitruncated polytope efficiently', () => {
+    const polytope = generateWythoffPolytope(9, {
+      symmetryGroup: 'B',
+      preset: 'omnitruncated',
+      scale: 3.0,
+    })
+
+    expect(polytope.dimension).toBe(9)
+    expect(polytope.vertices.length).toBeGreaterThan(0)
+    expect(polytope.vertices.length).toBeLessThanOrEqual(5000) // Omnitruncated limit
+  })
+
+  it('respects stricter vertex limits for omnitruncated presets', () => {
+    // Omnitruncated uses O(V²) edge generation, so limits are much stricter
+    const omniLimits: Record<number, number> = {
+      7: 4000,
+      8: 4500,
+      9: 5000,
+      10: 5000,
+      11: 5000,
+    }
+
+    for (const [dim, limit] of Object.entries(omniLimits)) {
+      const dimension = parseInt(dim)
+      const polytope = generateWythoffPolytope(dimension, {
+        symmetryGroup: 'B',
+        preset: 'omnitruncated',
+        scale: 3.0,
+      })
+
+      expect(polytope.vertices.length).toBeLessThanOrEqual(limit)
+    }
+  })
+
+  it('regular presets still use higher limits', () => {
+    // Non-omnitruncated presets use analytical edge generation (fast)
+    // so they can have more vertices
+    const polytope = generateWythoffPolytope(11, {
+      symmetryGroup: 'B',
+      preset: 'regular',
+      scale: 2.0,
+    })
+
+    // Regular 11D hypercube has 2^11 = 2048 vertices
+    expect(polytope.vertices.length).toBe(2048)
   })
 })
 

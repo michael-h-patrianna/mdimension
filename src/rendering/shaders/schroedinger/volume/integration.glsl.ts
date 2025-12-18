@@ -181,8 +181,8 @@ VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tF
     vec3 centroidSum = vec3(0.0);
     float centroidWeight = 0.0;
 
-    int sampleCount = uSampleCount > 0 ? uSampleCount : uSampleQuality;
-    sampleCount = clamp(sampleCount, 32, MAX_VOLUME_SAMPLES);
+    int sampleCount = uSampleCount > 0 ? uSampleCount : 48; // Fallback to 48 if not set
+    sampleCount = clamp(sampleCount, 16, MAX_VOLUME_SAMPLES); // Allow down to 16 for performance
 
     float stepLen = (tFar - tNear) / float(sampleCount);
     float t = tNear;

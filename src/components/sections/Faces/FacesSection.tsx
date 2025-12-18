@@ -36,8 +36,10 @@ import {
   SHADOW_SOFTNESS_RANGE,
 } from '@/rendering/shadows/constants';
 import type { ShadowAnimationMode, ShadowQuality } from '@/rendering/shadows/types';
-import { isRaymarchingFractal } from '@/lib/geometry/registry';
+import { isRaymarchingFractal, isPolytopeCategory } from '@/lib/geometry/registry';
+import type { ObjectType } from '@/lib/geometry/types';
 import { useGeometryStore } from '@/stores/geometryStore';
+import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import {
   DEFAULT_SPECULAR_COLOR,
 } from '@/stores/defaults/visualDefaults';
@@ -85,6 +87,16 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
     lchChroma,
     setLchChroma,
     shaderType,
+    faceEmission,
+    faceEmissionThreshold,
+    faceEmissionColorShift,
+    faceEmissionPulsing,
+    faceRimFalloff,
+    setFaceEmission,
+    setFaceEmissionThreshold,
+    setFaceEmissionColorShift,
+    setFaceEmissionPulsing,
+    setFaceRimFalloff,
   } = useAppearanceStore(
     useShallow((state) => ({
       facesVisible: state.facesVisible,
@@ -100,6 +112,16 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
       lchChroma: state.lchChroma,
       setLchChroma: state.setLchChroma,
       shaderType: state.shaderType,
+      faceEmission: state.faceEmission,
+      faceEmissionThreshold: state.faceEmissionThreshold,
+      faceEmissionColorShift: state.faceEmissionColorShift,
+      faceEmissionPulsing: state.faceEmissionPulsing,
+      faceRimFalloff: state.faceRimFalloff,
+      setFaceEmission: state.setFaceEmission,
+      setFaceEmissionThreshold: state.setFaceEmissionThreshold,
+      setFaceEmissionColorShift: state.setFaceEmissionColorShift,
+      setFaceEmissionPulsing: state.setFaceEmissionPulsing,
+      setFaceRimFalloff: state.setFaceRimFalloff,
     }))
   );
 
@@ -119,10 +141,14 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
     shadowQuality,
     shadowSoftness,
     shadowAnimationMode,
+    shadowMapBias,
+    shadowMapBlur,
     setShadowEnabled,
     setShadowQuality,
     setShadowSoftness,
     setShadowAnimationMode,
+    setShadowMapBias,
+    setShadowMapBlur,
   } = useLightingStore(
     useShallow((state) => ({
       lightEnabled: state.lightEnabled,
@@ -139,10 +165,33 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
       shadowQuality: state.shadowQuality,
       shadowSoftness: state.shadowSoftness,
       shadowAnimationMode: state.shadowAnimationMode,
+      shadowMapBias: state.shadowMapBias,
+      shadowMapBlur: state.shadowMapBlur,
       setShadowEnabled: state.setShadowEnabled,
       setShadowQuality: state.setShadowQuality,
       setShadowSoftness: state.setShadowSoftness,
       setShadowAnimationMode: state.setShadowAnimationMode,
+      setShadowMapBias: state.setShadowMapBias,
+      setShadowMapBlur: state.setShadowMapBlur,
+    }))
+  );
+
+  // Schrödinger-specific shadow settings
+  const {
+    schroedingerShadowsEnabled,
+    schroedingerShadowStrength,
+    schroedingerShadowSteps,
+    setSchroedingerShadowsEnabled,
+    setSchroedingerShadowStrength,
+    setSchroedingerShadowSteps,
+  } = useExtendedObjectStore(
+    useShallow((state) => ({
+      schroedingerShadowsEnabled: state.schroedinger.shadowsEnabled,
+      schroedingerShadowStrength: state.schroedinger.shadowStrength,
+      schroedingerShadowSteps: state.schroedinger.shadowSteps,
+      setSchroedingerShadowsEnabled: state.setSchroedingerShadowsEnabled,
+      setSchroedingerShadowStrength: state.setSchroedingerShadowStrength,
+      setSchroedingerShadowSteps: state.setSchroedingerShadowSteps,
     }))
   );
 
@@ -213,6 +262,17 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
           setSpecularIntensity={setSpecularIntensity}
           shininess={shininess}
           setShininess={setShininess}
+          // New emission props
+          faceEmission={faceEmission}
+          faceEmissionThreshold={faceEmissionThreshold}
+          faceEmissionColorShift={faceEmissionColorShift}
+          faceEmissionPulsing={faceEmissionPulsing}
+          faceRimFalloff={faceRimFalloff}
+          setFaceEmission={setFaceEmission}
+          setFaceEmissionThreshold={setFaceEmissionThreshold}
+          setFaceEmissionColorShift={setFaceEmissionColorShift}
+          setFaceEmissionPulsing={setFaceEmissionPulsing}
+          setFaceRimFalloff={setFaceRimFalloff}
           // Opacity props (raymarching fractals)
           isRaymarchingFractalType={isRaymarchingFractalType}
           opacityMode={opacitySettings.mode}
@@ -245,16 +305,32 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
           }
           fresnelIntensity={fresnelIntensity}
           setFresnelIntensity={setFresnelIntensity}
-          // Shadow props
+          // Shadow props (shared)
           hasEnabledLights={hasEnabledLights}
           shadowEnabled={shadowEnabled}
-          shadowQuality={shadowQuality}
-          shadowSoftness={shadowSoftness}
           shadowAnimationMode={shadowAnimationMode}
           onShadowEnabledChange={setShadowEnabled}
+          onShadowAnimationModeChange={setShadowAnimationMode}
+          // Object type info for conditional rendering
+          objectType={objectType}
+          dimension={dimension}
+          // SDF shadow props (Mandelbulb, Julia)
+          shadowQuality={shadowQuality}
+          shadowSoftness={shadowSoftness}
           onShadowQualityChange={setShadowQuality}
           onShadowSoftnessChange={setShadowSoftness}
-          onShadowAnimationModeChange={setShadowAnimationMode}
+          // Schrödinger volumetric shadow props
+          schroedingerShadowsEnabled={schroedingerShadowsEnabled}
+          schroedingerShadowStrength={schroedingerShadowStrength}
+          schroedingerShadowSteps={schroedingerShadowSteps}
+          onSchroedingerShadowsEnabledChange={setSchroedingerShadowsEnabled}
+          onSchroedingerShadowStrengthChange={setSchroedingerShadowStrength}
+          onSchroedingerShadowStepsChange={setSchroedingerShadowSteps}
+          // Polytope shadow map props
+          shadowMapBias={shadowMapBias}
+          shadowMapBlur={shadowMapBlur}
+          onShadowMapBiasChange={setShadowMapBias}
+          onShadowMapBlurChange={setShadowMapBlur}
         />
       ),
     },
@@ -395,6 +471,16 @@ const ColorsTabContent: React.FC<ColorsTabContentProps> = ({
             <DistributionControls />
           </div>
         )}
+
+        {(colorAlgorithm === 'phase' || 
+          colorAlgorithm === 'mixed' || 
+          colorAlgorithm === 'blackbody') && (
+          <div className="space-y-4">
+            <PresetSelector />
+            <CosineGradientEditor />
+            <DistributionControls />
+          </div>
+        )}
       </ControlGroup>
     </div>
   );
@@ -416,6 +502,17 @@ interface MaterialTabContentProps {
   setSpecularIntensity: (value: number) => void;
   shininess: number;
   setShininess: (value: number) => void;
+  // New emission props
+  faceEmission: number;
+  faceEmissionThreshold: number;
+  faceEmissionColorShift: number;
+  faceEmissionPulsing: boolean;
+  faceRimFalloff: number;
+  setFaceEmission: (value: number) => void;
+  setFaceEmissionThreshold: (value: number) => void;
+  setFaceEmissionColorShift: (value: number) => void;
+  setFaceEmissionPulsing: (value: boolean) => void;
+  setFaceRimFalloff: (value: number) => void;
   // Raymarching fractals opacity props
   isRaymarchingFractalType: boolean;
   opacityMode: OpacityMode;
@@ -448,6 +545,16 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
   setSpecularIntensity,
   shininess,
   setShininess,
+  faceEmission,
+  faceEmissionThreshold,
+  faceEmissionColorShift,
+  faceEmissionPulsing,
+  faceRimFalloff,
+  setFaceEmission,
+  setFaceEmissionThreshold,
+  setFaceEmissionColorShift,
+  setFaceEmissionPulsing,
+  setFaceRimFalloff,
   // Raymarching fractals opacity props
   isRaymarchingFractalType,
   opacityMode,
@@ -493,6 +600,53 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
 
   return (
     <div className="space-y-4">
+      {/* Emission & Rim */}
+      <ControlGroup title="Emission & Rim" collapsible defaultOpen>
+        <Slider
+          label="Emission Strength"
+          min={0}
+          max={5}
+          step={0.1}
+          value={faceEmission}
+          onChange={setFaceEmission}
+          showValue
+        />
+        <Slider
+          label="Emission Threshold"
+          min={0}
+          max={1}
+          step={0.05}
+          value={faceEmissionThreshold}
+          onChange={setFaceEmissionThreshold}
+          showValue
+        />
+        <Slider
+          label="Color Shift"
+          min={-1}
+          max={1}
+          step={0.1}
+          value={faceEmissionColorShift}
+          onChange={setFaceEmissionColorShift}
+          showValue
+        />
+         <div className="flex items-center justify-between py-2">
+            <label className="text-xs text-text-secondary">Pulsing</label>
+            <Switch
+                checked={faceEmissionPulsing}
+                onCheckedChange={setFaceEmissionPulsing}
+            />
+        </div>
+        <Slider
+          label="Rim Falloff"
+          min={0}
+          max={10}
+          step={0.5}
+          value={faceRimFalloff}
+          onChange={setFaceRimFalloff}
+          showValue
+        />
+      </ControlGroup>
+
       {/* Raymarching Fractals Opacity Mode Controls */}
       {isRaymarchingFractalType && (
         <ControlGroup title="Opacity Mode" collapsible defaultOpen>
@@ -715,16 +869,32 @@ interface FxTabContentProps {
   setFresnelEnabled: (enabled: boolean) => void;
   fresnelIntensity: number;
   setFresnelIntensity: (value: number) => void;
-  // Shadow props
+  // Shadow props (shared)
   hasEnabledLights: boolean;
   shadowEnabled: boolean;
-  shadowQuality: ShadowQuality;
-  shadowSoftness: number;
   shadowAnimationMode: ShadowAnimationMode;
   onShadowEnabledChange: (enabled: boolean) => void;
+  onShadowAnimationModeChange: (mode: ShadowAnimationMode) => void;
+  // Object type for conditional rendering
+  objectType: ObjectType;
+  dimension: number;
+  // SDF shadow props (Mandelbulb, Julia)
+  shadowQuality: ShadowQuality;
+  shadowSoftness: number;
   onShadowQualityChange: (quality: ShadowQuality) => void;
   onShadowSoftnessChange: (softness: number) => void;
-  onShadowAnimationModeChange: (mode: ShadowAnimationMode) => void;
+  // Schrödinger volumetric shadow props
+  schroedingerShadowsEnabled: boolean;
+  schroedingerShadowStrength: number;
+  schroedingerShadowSteps: number;
+  onSchroedingerShadowsEnabledChange: (enabled: boolean) => void;
+  onSchroedingerShadowStrengthChange: (strength: number) => void;
+  onSchroedingerShadowStepsChange: (steps: number) => void;
+  // Polytope shadow map props
+  shadowMapBias: number;
+  shadowMapBlur: number;
+  onShadowMapBiasChange: (bias: number) => void;
+  onShadowMapBlurChange: (blur: number) => void;
 }
 
 const FxTabContent: React.FC<FxTabContentProps> = ({
@@ -732,22 +902,47 @@ const FxTabContent: React.FC<FxTabContentProps> = ({
   setFresnelEnabled,
   fresnelIntensity,
   setFresnelIntensity,
-  // Shadow props
+  // Shadow props (shared)
   hasEnabledLights,
   shadowEnabled,
-  shadowQuality,
-  shadowSoftness,
   shadowAnimationMode,
   onShadowEnabledChange,
+  onShadowAnimationModeChange,
+  // Object type
+  objectType,
+  dimension,
+  // SDF shadow props
+  shadowQuality,
+  shadowSoftness,
   onShadowQualityChange,
   onShadowSoftnessChange,
-  onShadowAnimationModeChange,
+  // Schrödinger props
+  schroedingerShadowsEnabled,
+  schroedingerShadowStrength,
+  schroedingerShadowSteps,
+  onSchroedingerShadowsEnabledChange,
+  onSchroedingerShadowStrengthChange,
+  onSchroedingerShadowStepsChange,
+  // Polytope props
+  shadowMapBias,
+  shadowMapBlur,
+  onShadowMapBiasChange,
+  onShadowMapBlurChange,
 }) => {
+  // Determine object category for conditional rendering
+  const isSchroedinger = objectType === 'schroedinger';
+  const isPolytope = isPolytopeCategory(objectType);
+  const isSdfFractal = isRaymarchingFractal(objectType, dimension) && !isSchroedinger;
+
+  // For Schrödinger, use its own shadow toggle; for others, use global shadowEnabled
+  const effectiveShadowEnabled = isSchroedinger ? schroedingerShadowsEnabled : shadowEnabled;
+  const handleShadowToggle = isSchroedinger ? onSchroedingerShadowsEnabledChange : onShadowEnabledChange;
+
   return (
     <div className="space-y-4">
       {/* Fresnel Rim Effect */}
-      <ControlGroup 
-        title="Fresnel Rim" 
+      <ControlGroup
+        title="Fresnel Rim"
         rightElement={
           <Switch
             checked={fresnelEnabled}
@@ -771,56 +966,20 @@ const FxTabContent: React.FC<FxTabContentProps> = ({
         </div>
       </ControlGroup>
 
-      {/* Shadow Controls - Available for any object type with enabled lights */}
+      {/* Shadow Controls - Object-type aware */}
       {hasEnabledLights ? (
-        <ControlGroup 
+        <ControlGroup
             title="Shadows"
             rightElement={
                 <Switch
-                    checked={shadowEnabled}
-                    onCheckedChange={onShadowEnabledChange}
+                    checked={effectiveShadowEnabled}
+                    onCheckedChange={handleShadowToggle}
                     data-testid="shadow-enabled-toggle"
                 />
             }
         >
-          {/* Shadow Quality & Softness - Only when shadows enabled */}
-          <div className={`space-y-3 ${!shadowEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
-              {/* Shadow Quality */}
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-text-secondary">
-                  Quality
-                </label>
-                <select
-                  value={shadowQuality}
-                  onChange={(e) => onShadowQualityChange(e.target.value as ShadowQuality)}
-                  className="w-full px-3 py-2 bg-control-bg border border-panel-border rounded text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
-                  title={SHADOW_QUALITY_TOOLTIPS[shadowQuality]}
-                  data-testid="shadow-quality-select"
-                >
-                  {SHADOW_QUALITY_OPTIONS.map((quality) => (
-                    <option key={quality} value={quality}>
-                      {SHADOW_QUALITY_LABELS[quality]}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-text-secondary">
-                  {SHADOW_QUALITY_TOOLTIPS[shadowQuality]}
-                </p>
-              </div>
-
-              {/* Shadow Softness */}
-              <Slider
-                label="Softness"
-                min={SHADOW_SOFTNESS_RANGE.min}
-                max={SHADOW_SOFTNESS_RANGE.max}
-                step={SHADOW_SOFTNESS_RANGE.step}
-                value={shadowSoftness}
-                onChange={onShadowSoftnessChange}
-                showValue
-                data-testid="shadow-softness-slider"
-              />
-
-              {/* Shadow Animation Mode */}
+          <div className={`space-y-3 ${!effectiveShadowEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
+              {/* Animation Mode - Shared across all types */}
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-text-secondary">
                   Animation Quality
@@ -838,10 +997,109 @@ const FxTabContent: React.FC<FxTabContentProps> = ({
                     </option>
                   ))}
                 </select>
-                <p className="text-xs text-text-secondary">
-                  {SHADOW_ANIMATION_MODE_TOOLTIPS[shadowAnimationMode]}
-                </p>
               </div>
+
+              {/* SDF Fractal Controls (Mandelbulb, Julia) */}
+              {isSdfFractal && (
+                <>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-text-secondary">
+                      Quality
+                    </label>
+                    <select
+                      value={shadowQuality}
+                      onChange={(e) => onShadowQualityChange(e.target.value as ShadowQuality)}
+                      className="w-full px-3 py-2 bg-control-bg border border-panel-border rounded text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                      title={SHADOW_QUALITY_TOOLTIPS[shadowQuality]}
+                      data-testid="shadow-quality-select"
+                    >
+                      {SHADOW_QUALITY_OPTIONS.map((quality) => (
+                        <option key={quality} value={quality}>
+                          {SHADOW_QUALITY_LABELS[quality]}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-text-secondary">
+                      {SHADOW_QUALITY_TOOLTIPS[shadowQuality]}
+                    </p>
+                  </div>
+                  <Slider
+                    label="Softness"
+                    min={SHADOW_SOFTNESS_RANGE.min}
+                    max={SHADOW_SOFTNESS_RANGE.max}
+                    step={SHADOW_SOFTNESS_RANGE.step}
+                    value={shadowSoftness}
+                    onChange={onShadowSoftnessChange}
+                    showValue
+                    data-testid="shadow-softness-slider"
+                  />
+                </>
+              )}
+
+              {/* Schrödinger Volumetric Shadow Controls */}
+              {isSchroedinger && (
+                <>
+                  <Slider
+                    label="Strength"
+                    min={0}
+                    max={2}
+                    step={0.1}
+                    value={schroedingerShadowStrength}
+                    onChange={onSchroedingerShadowStrengthChange}
+                    showValue
+                    data-testid="schroedinger-shadow-strength"
+                  />
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-text-secondary">
+                      Steps
+                    </label>
+                    <select
+                      value={schroedingerShadowSteps}
+                      onChange={(e) => onSchroedingerShadowStepsChange(parseInt(e.target.value))}
+                      className="w-full px-3 py-2 bg-control-bg border border-panel-border rounded text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                      data-testid="schroedinger-shadow-steps"
+                    >
+                      {[2, 4, 6, 8].map((steps) => (
+                        <option key={steps} value={steps}>
+                          {steps} steps
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-text-secondary">
+                      More steps = softer volumetric shadows, higher GPU cost
+                    </p>
+                  </div>
+                </>
+              )}
+
+              {/* Polytope Shadow Map Controls */}
+              {isPolytope && (
+                <>
+                  <Slider
+                    label="Bias"
+                    min={0}
+                    max={0.01}
+                    step={0.001}
+                    value={shadowMapBias}
+                    onChange={onShadowMapBiasChange}
+                    showValue
+                    data-testid="shadow-map-bias"
+                  />
+                  <Slider
+                    label="Blur"
+                    min={0}
+                    max={10}
+                    step={0.5}
+                    value={shadowMapBlur}
+                    onChange={onShadowMapBlurChange}
+                    showValue
+                    data-testid="shadow-map-blur"
+                  />
+                  <p className="text-xs text-text-secondary">
+                    Adjust bias to prevent shadow artifacts, blur for softer edges
+                  </p>
+                </>
+              )}
           </div>
         </ControlGroup>
       ) : (

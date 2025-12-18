@@ -55,6 +55,11 @@ export interface MaterialSliceState {
   edgeMetallic: number
   edgeRoughness: number
   faceOpacity: number
+  faceEmission: number
+  faceEmissionThreshold: number
+  faceEmissionColorShift: number
+  faceEmissionPulsing: boolean
+  faceRimFalloff: number
 }
 
 export interface MaterialSliceActions {
@@ -62,6 +67,11 @@ export interface MaterialSliceActions {
   setEdgeMetallic: (metallic: number) => void
   setEdgeRoughness: (roughness: number) => void
   setFaceOpacity: (opacity: number) => void
+  setFaceEmission: (emission: number) => void
+  setFaceEmissionThreshold: (threshold: number) => void
+  setFaceEmissionColorShift: (shift: number) => void
+  setFaceEmissionPulsing: (pulsing: boolean) => void
+  setFaceRimFalloff: (falloff: number) => void
 }
 
 export type MaterialSlice = MaterialSliceState & MaterialSliceActions

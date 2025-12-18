@@ -151,10 +151,9 @@ export class IndexedDBCache {
         };
       });
     } catch (error) {
-      // Connection may have been lost
+      // Connection may have been lost - close properly to cleanup event handlers
       if (this.isConnectionError(error)) {
-        this.db = null;
-        this.openPromise = null;
+        this.close();
       }
       throw error;
     }
@@ -189,8 +188,8 @@ export class IndexedDBCache {
         await this.evictLRU(store, 0.25); // Evict 25% oldest
         await this.doSet(store, key, entry); // Retry
       } else if (this.isConnectionError(error)) {
-        this.db = null;
-        this.openPromise = null;
+        // Close properly to cleanup event handlers
+        this.close();
         throw error;
       } else {
         throw error;

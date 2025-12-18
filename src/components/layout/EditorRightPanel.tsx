@@ -8,6 +8,7 @@ import { FacesSection } from '@/components/sections/Faces/FacesSection';
 import { EdgesSection } from '@/components/sections/Edges/EdgesSection';
 import { LightsSection } from '@/components/sections/Lights/LightsSection';
 import { EnvironmentSection } from '@/components/sections/Environment/EnvironmentSection';
+import { PostProcessingSection } from '@/components/sections/PostProcessing/PostProcessingSection';
 import { SettingsSection } from '@/components/sections/Settings/SettingsSection';
 import { ExportSection } from '@/components/sections/Export/ExportSection';
 import { DocumentationSection } from '@/components/sections/Documentation/DocumentationSection';
@@ -49,6 +50,7 @@ export const EditorRightPanel: React.FC = () => {
           {/* The "Stage" - Background, Lighting, Lens, FX */}
           <EnvironmentSection defaultOpen={true} />
           <LightsSection defaultOpen={false} />
+          <PostProcessingSection defaultOpen={false} />
           <ProjectionSection defaultOpen={false} />
         </div>
       ),

@@ -7,6 +7,8 @@
  * @see docs/prd/quaternion-julia-fractal.md
  */
 
+import { RAYMARCH_QUALITY_TO_MULTIPLIER } from '@/lib/geometry/extended/types'
+import { getEffectiveSdfQuality } from '@/rendering/utils/adaptiveQuality'
 import { composeRotations } from '@/lib/math/rotation'
 import type { MatrixND } from '@/lib/math/types'
 import {
@@ -38,6 +40,7 @@ import {
     getEffectiveShadowQuality,
     usePerformanceStore,
 } from '@/stores/performanceStore'
+import { usePostProcessingStore } from '@/stores/postProcessingStore'
 import { useProjectionStore } from '@/stores/projectionStore'
 import { useRotationStore } from '@/stores/rotationStore'
 import { useUIStore } from '@/stores/uiStore'
@@ -281,6 +284,9 @@ const QuaternionJuliaMesh = () => {
       uShadowQuality: { value: 1 },
       uShadowSoftness: { value: 1.0 },
       uShadowAnimationMode: { value: 0 },
+
+      // Ambient Occlusion
+      uAoEnabled: { value: true },
 
       // Advanced Color
       uColorAlgorithm: { value: 2 },
@@ -559,13 +565,14 @@ const QuaternionJuliaMesh = () => {
     if (u.uFogEnabled) u.uFogEnabled.value = visuals.fogIntegrationEnabled
     if (u.uFogContribution) u.uFogContribution.value = visuals.fogContribution
     if (u.uInternalFogDensity) u.uInternalFogDensity.value = visuals.internalFogDensity
-    
-    // LOD (Global Visuals)
-    if (visuals.lodEnabled && u.uQualityMultiplier) {
-        const distance = camera.position.length()
-        const perfQuality = perfStore.qualityMultiplier ?? 1.0
-        const lodFactor = THREE.MathUtils.clamp(1.0 - (distance - 2.0) / 8.0 * 0.75, 0.25, 1.0)
-        u.uQualityMultiplier.value = perfQuality * lodFactor * (visuals.lodDetail ?? 1.0)
+
+    // Raymarching Quality (per-object setting)
+    // Maps RaymarchQuality preset to quality multiplier with screen coverage adaptation
+    const baseQuality = RAYMARCH_QUALITY_TO_MULTIPLIER[config.raymarchQuality] ?? 0.5
+    const effectiveQuality = getEffectiveSdfQuality(baseQuality, camera as THREE.PerspectiveCamera, perfStore.qualityMultiplier ?? 1.0)
+
+    if (u.uQualityMultiplier) {
+        u.uQualityMultiplier.value = effectiveQuality
     }
 
     // Update fresnel
@@ -609,6 +616,9 @@ const QuaternionJuliaMesh = () => {
     u.uShadowSoftness.value = lightStore.shadowSoftness
     u.uShadowAnimationMode.value =
       SHADOW_ANIMATION_MODE_TO_INT[lightStore.shadowAnimationMode] ?? 0
+
+    // Update ambient occlusion (controlled by global SSAO toggle)
+    u.uAoEnabled.value = usePostProcessingStore.getState().ssaoEnabled
 
     // Update advanced color system
     u.uColorAlgorithm.value = COLOR_ALGORITHM_TO_INT[appStore.colorAlgorithm] ?? 2

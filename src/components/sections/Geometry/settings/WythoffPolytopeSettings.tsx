@@ -18,7 +18,7 @@ import {
   WythoffPreset,
   WythoffSymmetryGroup,
 } from '@/lib/geometry/extended/types'
-import { getWythoffPresetName } from '@/lib/geometry/wythoff-polytope'
+import { getWythoffPresetName } from '@/lib/geometry/wythoff'
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore'
 import { useGeometryStore } from '@/stores/geometryStore'
 import React from 'react'

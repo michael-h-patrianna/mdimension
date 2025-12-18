@@ -1,4 +1,6 @@
 import { computeDriftedOrigin, type OriginDriftConfig } from '@/lib/animation/originDrift';
+import { RAYMARCH_QUALITY_TO_SAMPLES } from '@/lib/geometry/extended/types';
+import { getEffectiveVolumeSamples } from '@/rendering/utils/adaptiveQuality';
 import { composeRotations } from '@/lib/math/rotation';
 import type { MatrixND } from '@/lib/math/types';
 import { createColorCache, createLightColorCache, updateLinearColorUniform } from '@/rendering/colors/linearCache';
@@ -19,6 +21,7 @@ import {
   getEffectiveSampleQuality,
   usePerformanceStore,
 } from '@/stores/performanceStore';
+import { usePostProcessingStore } from '@/stores/postProcessingStore';
 import { useProjectionStore } from '@/stores/projectionStore';
 import { useRotationStore } from '@/stores/rotationStore';
 import { useUIStore } from '@/stores/uiStore';
@@ -345,10 +348,10 @@ const SchroedingerMesh = () => {
   const { glsl: shaderString, modules, features } = useMemo(() => {
     const result = composeSchroedingerShader({
       dimension,
-      shadows: false, // Volumetric mode doesn't use traditional shadows
+      shadows: true, // Enable volumetric self-shadowing (runtime toggle via uShadowsEnabled)
       temporal: temporalEnabled && isoEnabled, // Depth-skip only for isosurface
       temporalAccumulation: useTemporalAccumulation,
-      ambientOcclusion: false,
+      ambientOcclusion: true, // Enable volumetric AO (runtime toggle via uAoEnabled)
       opacityMode: opacityMode,
       overrides: shaderOverrides,
       isosurface: isoEnabled,
@@ -450,28 +453,17 @@ const SchroedingerMesh = () => {
         material.uniforms.uFastMode.value = fastModeRef.current;
       }
 
-      // LOD System
-      const { lodEnabled, lodNearDistance, lodFarDistance, lodMinSamples, lodMaxSamples, sampleCount } = schroedinger;
-      let effectiveSamples = sampleCount;
-
-      if (lodEnabled !== false) {
-          const distance = camera.position.length(); // Assuming object at origin
-          // Interpolate samples based on distance
-          const t = THREE.MathUtils.clamp((distance - lodNearDistance) / (lodFarDistance - lodNearDistance), 0, 1);
-          // t=0 (near) -> Max Samples
-          // t=1 (far) -> Min Samples
-          effectiveSamples = THREE.MathUtils.lerp(lodMaxSamples, lodMinSamples, t);
-          
-          // Optionally adjust by quality multiplier
-          effectiveSamples *= usePerformanceStore.getState().qualityMultiplier;
-      }
-      
-      if (material.uniforms.uSampleCount) {
-          material.uniforms.uSampleCount.value = Math.floor(effectiveSamples);
-      }
-
-      // Quality multiplier
+      // Sample Count System
+      // Maps RaymarchQuality preset to sample count with screen coverage adaptation
+      const baseSamples = RAYMARCH_QUALITY_TO_SAMPLES[schroedinger.raymarchQuality] ?? 32;
       const qualityMultiplier = usePerformanceStore.getState().qualityMultiplier;
+      const effectiveSamples = getEffectiveVolumeSamples(baseSamples, camera as THREE.PerspectiveCamera, qualityMultiplier);
+
+      if (material.uniforms.uSampleCount) {
+          material.uniforms.uSampleCount.value = effectiveSamples;
+      }
+
+      // Quality multiplier uniform
       if (material.uniforms.uQualityMultiplier) {
         material.uniforms.uQualityMultiplier.value = qualityMultiplier;
       }
@@ -499,13 +491,24 @@ const SchroedingerMesh = () => {
       // Quantum Preset Generation
       // Check if we need to regenerate the preset
       // ============================================
-      const { presetName, seed, termCount, maxQuantumNumber, frequencySpread } = schroedinger;
+      const { presetName, seed, termCount, maxQuantumNumber, frequencySpread, spreadAnimationEnabled, spreadAnimationSpeed } = schroedinger;
+      
+      let effectiveSpread = frequencySpread;
+      if (spreadAnimationEnabled) {
+         // Wavepacket Dispersion Animation
+         // Oscillate spread to show "breathing" between localized (low spread) and delocalized (high spread)
+         // Range: 0.01 (tight) to 0.45 (messy fog)
+         const t = animationTimeRef.current * (spreadAnimationSpeed ?? 0.5);
+         const phase = (Math.sin(t) + 1.0) * 0.5; // 0 to 1
+         effectiveSpread = 0.01 + phase * 0.44;
+      }
+
       const currentConfig = {
         presetName,
         seed,
         termCount,
         maxQuantumNumber,
-        frequencySpread,
+        frequencySpread: effectiveSpread,
         dimension,
       };
 
@@ -515,7 +518,7 @@ const SchroedingerMesh = () => {
         prevQuantumConfigRef.current.seed !== currentConfig.seed ||
         prevQuantumConfigRef.current.termCount !== currentConfig.termCount ||
         prevQuantumConfigRef.current.maxQuantumNumber !== currentConfig.maxQuantumNumber ||
-        prevQuantumConfigRef.current.frequencySpread !== currentConfig.frequencySpread ||
+        Math.abs(prevQuantumConfigRef.current.frequencySpread - currentConfig.frequencySpread) > 0.001 || // Float compare
         prevQuantumConfigRef.current.dimension !== currentConfig.dimension;
 
       if (needsPresetRegen) {
@@ -555,27 +558,28 @@ const SchroedingerMesh = () => {
       }
 
       // Volume rendering parameters
-      const { timeScale, fieldScale, densityGain, powderScale, emissionIntensity, emissionThreshold, emissionColorShift, emissionPulsing, erosionStrength, erosionScale, erosionTurbulence, erosionNoiseType, curlEnabled, curlStrength, curlScale, curlSpeed, curlBias, dispersionEnabled, dispersionStrength, dispersionDirection, dispersionQuality, shadowsEnabled, shadowStrength, shadowSteps, aoEnabled, aoStrength, aoQuality, aoRadius, aoColor, nodalEnabled, nodalColor, nodalStrength, energyColorEnabled, shimmerEnabled, shimmerStrength, isoThreshold } = schroedinger;
+      const { timeScale, fieldScale, densityGain, powderScale, erosionStrength, erosionScale, erosionTurbulence, erosionNoiseType, curlEnabled, curlStrength, curlScale, curlSpeed, curlBias, dispersionEnabled, dispersionStrength, dispersionDirection, dispersionQuality, shadowsEnabled, shadowStrength, shadowSteps, aoEnabled, aoStrength, aoQuality, aoRadius, aoColor, nodalEnabled, nodalColor, nodalStrength, energyColorEnabled, shimmerEnabled, shimmerStrength, isoThreshold, scatteringAnisotropy } = schroedinger;
       
       // Global visuals from appearance store
-      const { roughness, sssEnabled, sssIntensity, sssColor, sssThickness, sssJitter, fogIntegrationEnabled, fogContribution, internalFogDensity } = appearance;
-      // Note: Schroedinger config also has rimExponent and scatteringAnisotropy. We should prefer global if unified, or keep specific if they are truly specific. The user request implied "purely visual ... global". 
-      // Rim and Anisotropy are material properties. I will use the ones from `appearance` store if I added them to `AdvancedRenderingSlice`.
-      // Checking `AdvancedRenderingSlice`... I did NOT add rimExponent and scatteringAnisotropy. I only added Roughness, SSS, Fog, LOD.
-      // So I will use `schroedinger.rimExponent` etc. for now, or add them to global.
-      // The user mentioned "SSS settings...". Rim/Anisotropy might be considered "visual".
-      // But for now, let's stick to what I moved: Roughness, SSS, Fog, LOD.
-      const { rimExponent, scatteringAnisotropy } = schroedinger;
-
+      const { roughness, sssEnabled, sssIntensity, sssColor, sssThickness, sssJitter, fogIntegrationEnabled, fogContribution, internalFogDensity, faceEmission, faceEmissionThreshold, faceEmissionColorShift, faceEmissionPulsing, faceRimFalloff } = appearance;
+      
+      // Note: We use faceRimFalloff from appearance store for uRimExponent if available (which it is now)
+      // We keep scatteringAnisotropy in schroedinger store for now.
+      
       if (material.uniforms.uTimeScale) material.uniforms.uTimeScale.value = timeScale;
       if (material.uniforms.uFieldScale) material.uniforms.uFieldScale.value = fieldScale;
       if (material.uniforms.uDensityGain) material.uniforms.uDensityGain.value = densityGain;
       if (material.uniforms.uPowderScale) material.uniforms.uPowderScale.value = powderScale;
-      if (material.uniforms.uEmissionIntensity) material.uniforms.uEmissionIntensity.value = emissionIntensity;
-      if (material.uniforms.uEmissionThreshold) material.uniforms.uEmissionThreshold.value = emissionThreshold;
-      if (material.uniforms.uEmissionColorShift) material.uniforms.uEmissionColorShift.value = emissionColorShift;
-      if (material.uniforms.uEmissionPulsing) material.uniforms.uEmissionPulsing.value = emissionPulsing;
-      if (material.uniforms.uRimExponent) material.uniforms.uRimExponent.value = rimExponent;
+      
+      // Emission & Rim (Unified)
+      if (material.uniforms.uEmissionIntensity) material.uniforms.uEmissionIntensity.value = faceEmission;
+      if (material.uniforms.uEmissionThreshold) material.uniforms.uEmissionThreshold.value = faceEmissionThreshold;
+      if (material.uniforms.uEmissionColorShift) material.uniforms.uEmissionColorShift.value = faceEmissionColorShift;
+      if (material.uniforms.uEmissionPulsing) material.uniforms.uEmissionPulsing.value = faceEmissionPulsing;
+      
+      // Use the global faceRimFalloff
+      if (material.uniforms.uRimExponent) material.uniforms.uRimExponent.value = faceRimFalloff;
+      
       if (material.uniforms.uScatteringAnisotropy) material.uniforms.uScatteringAnisotropy.value = scatteringAnisotropy;
       
       // Unified Visuals
@@ -604,7 +608,11 @@ const SchroedingerMesh = () => {
       if (material.uniforms.uShadowsEnabled) material.uniforms.uShadowsEnabled.value = shadowsEnabled;
       if (material.uniforms.uShadowStrength) material.uniforms.uShadowStrength.value = shadowStrength;
       if (material.uniforms.uShadowSteps) material.uniforms.uShadowSteps.value = shadowSteps;
-      if (material.uniforms.uAoEnabled) material.uniforms.uAoEnabled.value = aoEnabled;
+      // Global AO toggle acts as master switch (AND with local setting)
+      if (material.uniforms.uAoEnabled) {
+        const globalAoEnabled = usePostProcessingStore.getState().ssaoEnabled;
+        material.uniforms.uAoEnabled.value = globalAoEnabled && aoEnabled;
+      }
       if (material.uniforms.uAoStrength) material.uniforms.uAoStrength.value = aoStrength;
       if (material.uniforms.uAoSteps) material.uniforms.uAoSteps.value = aoQuality;
       if (material.uniforms.uAoRadius) material.uniforms.uAoRadius.value = aoRadius;

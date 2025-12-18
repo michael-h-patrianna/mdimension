@@ -43,8 +43,10 @@ import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js';
 import { TexturePass } from 'three/examples/jsm/postprocessing/TexturePass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { FilmPass } from 'three/examples/jsm/postprocessing/FilmPass.js';
+import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
 import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
 import { useShallow } from 'zustand/react/shallow';
+import { isPolytopeCategory } from '@/lib/geometry/registry/helpers';
 
 /**
  * Update uResolution uniform on all meshes in the VOLUMETRIC layer.
@@ -535,6 +537,50 @@ export const PostProcessing = memo(function PostProcessing() {
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gl, restoreCount]); // Recreate when gl changes or context is restored
+
+  // GTAO Pass - created separately because it needs scene/camera references
+  // Only used for mesh-based objects (polytopes) - SDF/volumetric objects have shader-based AO
+  const gtaoPassRef = useRef<GTAOPass | null>(null);
+  const gtaoComposerRef = useRef<EffectComposer | null>(null);
+
+  // Initialize/recreate GTAO pass when context changes
+  useEffect(() => {
+    // Dispose old resources
+    if (gtaoPassRef.current) {
+      gtaoPassRef.current.dispose();
+      gtaoPassRef.current = null;
+    }
+    if (gtaoComposerRef.current) {
+      gtaoComposerRef.current.dispose();
+      gtaoComposerRef.current = null;
+    }
+
+    // Create new GTAO pass and dedicated composer
+    const width = Math.max(1, size.width);
+    const height = Math.max(1, size.height);
+
+    const gtaoPass = new GTAOPass(scene, camera, width, height);
+    gtaoPass.output = GTAOPass.OUTPUT.Default; // Blend AO with scene
+    gtaoPass.enabled = true; // Enable by default - we control whether to run the composer
+
+    // Create a dedicated composer for GTAO
+    // This allows us to render GTAO independently of the main post-processing chain
+    const gtaoComposer = new EffectComposer(gl);
+    gtaoComposer.setSize(width, height);
+
+    // Add texture pass to read from sceneTarget
+    const texPass = new TexturePass(sceneTarget.texture);
+    gtaoComposer.addPass(texPass);
+    gtaoComposer.addPass(gtaoPass);
+
+    gtaoPassRef.current = gtaoPass;
+    gtaoComposerRef.current = gtaoComposer;
+
+    return () => {
+      gtaoPass.dispose();
+      gtaoComposer.dispose();
+    };
+  }, [gl, scene, camera, size.width, size.height, sceneTarget.texture, restoreCount]);
 
   // Update bloom pass enabled state and parameters
   useEffect(() => {
@@ -1428,6 +1474,35 @@ export const PostProcessing = memo(function PostProcessing() {
       refractionUniforms.chromaticAberration.value = ppState.refractionChromaticAberration;
       refractionUniforms.nearClip.value = camera.near;
       refractionUniforms.farClip.value = camera.far;
+    }
+
+    // ========================================
+    // SSAO (GTAO) Pass for Mesh Objects
+    // ========================================
+    // GTAO only applies to mesh-based objects (polytopes)
+    // SDF and volumetric objects use shader-based AO
+    const gtaoPass = gtaoPassRef.current;
+    const gtaoComposer = gtaoComposerRef.current;
+    const isPolytope = isPolytopeCategory(geomState.objectType);
+    const shouldRunGTAO = ppState.ssaoEnabled && isPolytope && gtaoPass && gtaoComposer;
+
+    if (shouldRunGTAO) {
+      // Update GTAO camera (in case it changed)
+      gtaoPass.camera = camera;
+
+      // Update GTAO intensity
+      gtaoPass.blendIntensity = ppState.ssaoIntensity;
+
+      // Render GTAO - it reads from sceneTarget and outputs AO-blended result
+      // We render to screen:false so we can get the result from gtaoComposer
+      gtaoComposer.renderToScreen = false;
+      gtaoComposer.render();
+
+      // Update main composer's texture pass to use GTAO output
+      texturePass.map = gtaoComposer.readBuffer.texture;
+    } else {
+      // Use original scene texture
+      texturePass.map = sceneTarget.texture;
     }
 
     composer.render();

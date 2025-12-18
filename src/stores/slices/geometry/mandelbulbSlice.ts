@@ -661,17 +661,10 @@ export const createMandelbulbSlice: StateCreator<ExtendedObjectSlice, [], [], Ma
     }))
   },
 
-  // --- LOD Actions ---
-  setMandelbulbLodEnabled: (value) => {
+  // --- Raymarching Quality ---
+  setMandelbulbRaymarchQuality: (quality) => {
     set((state) => ({
-      mandelbulb: { ...state.mandelbulb, lodEnabled: value },
-    }))
-  },
-
-  setMandelbulbLodDetail: (value) => {
-    const clamped = Math.max(0.1, Math.min(2.0, value))
-    set((state) => ({
-      mandelbulb: { ...state.mandelbulb, lodDetail: clamped },
+      mandelbulb: { ...state.mandelbulb, raymarchQuality: quality },
     }))
   },
 })

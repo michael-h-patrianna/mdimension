@@ -1,8 +1,10 @@
 import type { ExtendedObjectParams } from '@/lib/geometry'
 import { generateGeometry } from '@/lib/geometry'
+import { generateWythoffPolytopeWithWarnings } from '@/lib/geometry/wythoff'
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore'
 import { useGeometryStore } from '@/stores/geometryStore'
-import { useMemo } from 'react'
+import { useToast } from '@/contexts/ToastContext'
+import { useMemo, useRef, useEffect } from 'react'
 
 /**
  * Hook to generate geometry based on current store state.
@@ -16,6 +18,10 @@ import { useMemo } from 'react'
 export function useGeometryGenerator() {
   const dimension = useGeometryStore((state) => state.dimension)
   const objectType = useGeometryStore((state) => state.objectType)
+  const { addToast } = useToast()
+
+  // Track shown warnings to avoid duplicate toasts
+  const shownWarningsRef = useRef<Set<string>>(new Set())
 
   const polytopeConfig = useExtendedObjectStore((state) => state.polytope)
   const wythoffPolytopeConfig = useExtendedObjectStore((state) => state.wythoffPolytope)
@@ -63,10 +69,12 @@ export function useGeometryGenerator() {
     schroedingerConfig,
   ])
 
-  const geometry = useMemo(() => {
+  // Generate geometry and collect warnings for Wythoff polytopes
+  const { geometry, warnings } = useMemo(() => {
     // Reconstruct just the necessary part of ExtendedObjectParams
     // generateGeometry uses specific keys based on objectType
     const params: Partial<ExtendedObjectParams> = {}
+    let generationWarnings: string[] = []
 
     // Map the relevant config to the correct key expected by generateGeometry
     switch (objectType) {
@@ -100,8 +108,42 @@ export function useGeometryGenerator() {
         params.polytope = relevantConfig as typeof polytopeConfig
     }
 
-    return generateGeometry(objectType, dimension, params as ExtendedObjectParams)
+    // For Wythoff polytopes, use the warnings version to capture limit notifications
+    if (objectType === 'wythoff-polytope') {
+      const result = generateWythoffPolytopeWithWarnings(
+        dimension,
+        relevantConfig as typeof wythoffPolytopeConfig
+      )
+      generationWarnings = result.warnings
+      return {
+        geometry: {
+          ...result.geometry,
+          scale: (relevantConfig as typeof wythoffPolytopeConfig).scale,
+        },
+        warnings: generationWarnings,
+      }
+    }
+
+    return {
+      geometry: generateGeometry(objectType, dimension, params as ExtendedObjectParams),
+      warnings: generationWarnings,
+    }
   }, [objectType, dimension, relevantConfig])
+
+  // Show warnings via toast (only new warnings, not duplicates)
+  useEffect(() => {
+    for (const warning of warnings) {
+      if (!shownWarningsRef.current.has(warning)) {
+        shownWarningsRef.current.add(warning)
+        addToast(warning, 'info')
+      }
+    }
+  }, [warnings, addToast])
+
+  // Clear shown warnings when object type or dimension changes significantly
+  useEffect(() => {
+    shownWarningsRef.current.clear()
+  }, [objectType, dimension])
 
   return { geometry, dimension, objectType }
 }

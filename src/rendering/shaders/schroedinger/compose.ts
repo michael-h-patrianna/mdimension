@@ -63,10 +63,10 @@ export function composeSchroedingerShader(config: SchroedingerShaderConfig) {
   features.push('Beer-Lambert');
   features.push(`Opacity: ${opacityMode}`);
 
-  // Note: Shadows and AO are less relevant for pure volumetric mode
-  // but kept for isosurface mode compatibility
-  const useShadows = enableShadows && isosurface && !overrides.includes('Shadows');
-  const useAO = enableAO && isosurface && !overrides.includes('Ambient Occlusion');
+  // Shadows and AO are now enabled for both volumetric and isosurface modes
+  // Volumetric mode uses cone-traced self-shadowing and hemisphere-sampled AO
+  const useShadows = enableShadows && !overrides.includes('Shadows');
+  const useAO = enableAO && !overrides.includes('Ambient Occlusion');
 
   // Temporal modes are mutually exclusive:
   // - temporalAccumulation: Horizon-style 1/4 res with reconstruction (recommended for volumetric)

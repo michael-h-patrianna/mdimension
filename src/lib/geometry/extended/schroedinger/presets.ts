@@ -156,65 +156,65 @@ export function generateQuantumPreset(
  * Named preset configurations for the UI
  */
 export const SCHROEDINGER_NAMED_PRESETS: Record<string, NamedPresetConfig> = {
-  organicBlob: {
-    name: 'Organic Blob',
-    description: 'Smooth, slowly morphing organic volume',
+  groundState: {
+    name: 'Ground State Superposition',
+    description: 'Low-energy states forming a stable, smooth probability distribution',
     seed: 42,
     termCount: 4,
     maxN: 4,
     frequencySpread: 0.1,
   },
-  quantumFoam: {
-    name: 'Quantum Foam',
-    description: 'Complex interference patterns with fast evolution',
+  highEnergy: {
+    name: 'High Energy Interference',
+    description: 'Complex interference patterns from high-frequency quantum states',
     seed: 137,
     termCount: 8,
     maxN: 5,
     frequencySpread: 0.3,
   },
-  breathing: {
-    name: 'Breathing',
-    description: 'Gentle pulsing motion with few terms',
+  simpleCoherence: {
+    name: 'Coherent Beat',
+    description: 'Simple superposition showing clear quantum beating effects',
     seed: 314,
     termCount: 3,
     maxN: 2,
     frequencySpread: 0.05,
   },
-  kaleidoscope: {
-    name: 'Kaleidoscope',
-    description: 'Rich symmetry patterns from diverse quantum numbers',
+  symmetry: {
+    name: 'Symmetric Excited State',
+    description: 'Highly symmetric orbital patterns from degenerate states',
     seed: 2718,
     termCount: 6,
     maxN: 4,
     frequencySpread: 0.4,
   },
-  alien: {
-    name: 'Alien',
-    description: 'Strange, otherworldly forms with high-order terms',
+  complexOrbital: {
+    name: 'Complex Orbital Mix',
+    description: 'Superposition of high quantum number orbitals',
     seed: 1618,
     termCount: 5,
     maxN: 6,
     frequencySpread: 0.2,
   },
-  nebula: {
-    name: 'Nebula',
-    description: 'Soft, diffuse cloud-like structures',
+  diffuseCloud: {
+    name: 'Diffuse Probability Cloud',
+    description: 'Soft, delocalized wavefunction density',
     seed: 999,
     termCount: 4,
     maxN: 2,
     frequencySpread: 0.15,
   },
-  crystal: {
-    name: 'Crystal',
-    description: 'Sharp interference patterns with regular structure',
+  stationary: {
+    name: 'Stationary Lattice',
+    description: 'Standing wave interference with zero frequency spread',
     seed: 777,
     termCount: 6,
     maxN: 3,
     frequencySpread: 0.0,
   },
-  chaos: {
-    name: 'Chaos',
-    description: 'Highly dynamic patterns with maximum complexity',
+  denseState: {
+    name: 'Dense High-N State',
+    description: 'Densely packed high-frequency probability amplitude',
     seed: 666,
     termCount: 8,
     maxN: 6,

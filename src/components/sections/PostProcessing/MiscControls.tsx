@@ -44,6 +44,10 @@ export const MiscControls: React.FC<MiscControlsProps> = React.memo(({
     setSmaaThreshold,
     objectOnlyDepth,
     setObjectOnlyDepth,
+    ssaoEnabled,
+    setSSAOEnabled,
+    ssaoIntensity,
+    setSSAOIntensity,
   } = usePostProcessingStore(
     useShallow((state) => ({
       antiAliasingMethod: state.antiAliasingMethod,
@@ -52,6 +56,10 @@ export const MiscControls: React.FC<MiscControlsProps> = React.memo(({
       setSmaaThreshold: state.setSmaaThreshold,
       objectOnlyDepth: state.objectOnlyDepth,
       setObjectOnlyDepth: state.setObjectOnlyDepth,
+      ssaoEnabled: state.ssaoEnabled,
+      setSSAOEnabled: state.setSSAOEnabled,
+      ssaoIntensity: state.ssaoIntensity,
+      setSSAOIntensity: state.setSSAOIntensity,
     }))
   );
 
@@ -88,6 +96,31 @@ export const MiscControls: React.FC<MiscControlsProps> = React.memo(({
         onCheckedChange={setObjectOnlyDepth}
         label="Object Only Depth"
       />
+
+      {/* Ambient Occlusion */}
+      <div className="space-y-2">
+        <Switch
+          checked={ssaoEnabled}
+          onCheckedChange={setSSAOEnabled}
+          label="Ambient Occlusion"
+          data-testid="ssao-toggle"
+        />
+        <p className="text-[10px] text-text-secondary">
+          Adds soft shadows in crevices. Affects all object types.
+        </p>
+        <div className={!ssaoEnabled ? 'opacity-50 pointer-events-none' : ''}>
+          <Slider
+            label="Strength"
+            value={ssaoIntensity}
+            min={0}
+            max={2}
+            step={0.1}
+            onChange={setSSAOIntensity}
+            tooltip="AO intensity. Higher values create darker crevice shadows."
+            data-testid="ssao-intensity-slider"
+          />
+        </div>
+      </div>
     </div>
   );
 });

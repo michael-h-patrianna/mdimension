@@ -47,6 +47,53 @@ export type TruncationMode = 'vertexTruncate' | 'edgeTruncate' | 'cantellate' | 
  */
 export type DualNormalizeMode = 'unitSphere' | 'inradius1' | 'circumradius1'
 
+// ============================================================================
+// Raymarching Quality System
+// ============================================================================
+
+/**
+ * Unified raymarching quality presets for all raymarching object types.
+ *
+ * MIGRATION NOTES (December 2024):
+ * - Replaces per-object LOD controls with unified 4-tier quality system
+ * - Schrödinger: Previously had direct `sampleCount` (16-128) and LOD sliders
+ * - Mandelbulb/Julia: Previously had global `qualityMultiplier` (0.25-1.0) via LOD
+ * - New system provides consistent UX across all raymarching objects
+ * - Screen coverage detection still applies adaptive quality reduction
+ *
+ * For Schrödinger, `sampleCount` is kept in sync with `raymarchQuality` for
+ * backward compatibility. The mesh reads from `raymarchQuality` directly.
+ */
+export type RaymarchQuality = 'fast' | 'balanced' | 'quality' | 'ultra'
+
+/**
+ * Volumetric raymarch sample counts for Schrödinger.
+ * Controls the number of samples taken along each ray through the quantum volume.
+ * Higher values produce smoother gradients but reduce framerate.
+ *
+ * @see SchroedingerMesh for usage with screen coverage adaptation
+ */
+export const RAYMARCH_QUALITY_TO_SAMPLES: Record<RaymarchQuality, number> = {
+  fast: 16,      // Noticeable banding, fastest rendering
+  balanced: 32,  // Good balance for most hardware
+  quality: 48,   // Smooth gradients, moderate performance cost
+  ultra: 64,     // Maximum smoothness, may impact framerate
+}
+
+/**
+ * SDF raymarch quality multipliers for Mandelbulb/Julia.
+ * Controls the step size multiplier for sphere tracing (lower = smaller steps = more accurate).
+ * Screen coverage detection applies additional reduction when object fills viewport.
+ *
+ * @see MandelbulbMesh, QuaternionJuliaMesh for usage
+ */
+export const RAYMARCH_QUALITY_TO_MULTIPLIER: Record<RaymarchQuality, number> = {
+  fast: 0.25,    // 4x larger steps, fewer iterations
+  balanced: 0.5, // 2x larger steps, good balance
+  quality: 0.75, // 1.33x larger steps, high detail
+  ultra: 1.0,    // Full resolution, maximum detail
+}
+
 /**
  * Configuration for standard polytope generation.
  *
@@ -853,12 +900,10 @@ export interface MandelbulbConfig {
   fogContribution: number
   /** Internal fog density (0.0-1.0) */
   internalFogDensity: number
-  
-  // === LOD ===
-  /** Enable distance-adaptive LOD */
-  lodEnabled: boolean
-  /** Detail multiplier for LOD (0.1-2.0) */
-  lodDetail: number
+
+  // === Raymarching Quality ===
+  /** Unified raymarching quality preset (affects step count) */
+  raymarchQuality: RaymarchQuality
 }
 
 /**
@@ -964,10 +1009,9 @@ export const DEFAULT_MANDELBROT_CONFIG: MandelbulbConfig = {
   fogEnabled: true,
   fogContribution: 1.0,
   internalFogDensity: 0.0,
-  
-  // LOD
-  lodEnabled: true,
-  lodDetail: 1.0,
+
+  // Raymarching Quality
+  raymarchQuality: 'balanced',
 }
 
 // ============================================================================
@@ -988,14 +1032,14 @@ export type SchroedingerColorMode = 'density' | 'phase' | 'mixed' | 'palette' | 
  * Named preset identifiers for quantum state configurations
  */
 export type SchroedingerPresetName =
-  | 'organicBlob'
-  | 'quantumFoam'
-  | 'breathing'
-  | 'kaleidoscope'
-  | 'alien'
-  | 'nebula'
-  | 'crystal'
-  | 'chaos'
+  | 'groundState'
+  | 'highEnergy'
+  | 'simpleCoherence'
+  | 'symmetry'
+  | 'complexOrbital'
+  | 'diffuseCloud'
+  | 'stationary'
+  | 'denseState'
   | 'custom'
 
 /**
@@ -1113,17 +1157,9 @@ export interface SchroedingerConfig {
   /** Internal object-space fog density (0.0-1.0) */
   internalFogDensity: number
 
-  // === LOD Settings ===
-  /** Enable distance-adaptive level of detail */
-  lodEnabled: boolean
-  /** Distance for maximum quality (default 2.0) */
-  lodNearDistance: number
-  /** Distance for minimum quality (default 10.0) */
-  lodFarDistance: number
-  /** Minimum sample count at far distance (default 32) */
-  lodMinSamples: number
-  /** Maximum sample count at near distance (default 128) */
-  lodMaxSamples: number
+  // === Raymarching Quality ===
+  /** Unified raymarching quality preset (affects sample count) */
+  raymarchQuality: RaymarchQuality
 
   // === Subsurface Scattering (SSS) ===
   /** Enable subsurface scattering approximation */
@@ -1282,7 +1318,7 @@ export const DEFAULT_SCHROEDINGER_CONFIG: SchroedingerConfig = {
   fieldScale: 1.0,
   densityGain: 2.0,
   powderScale: 1.0,
-  sampleCount: 64,
+  sampleCount: 32, // Derived from raymarchQuality: 'balanced'
 
   // Emission
   emissionIntensity: 0.0,
@@ -1298,12 +1334,8 @@ export const DEFAULT_SCHROEDINGER_CONFIG: SchroedingerConfig = {
   fogContribution: 1.0,
   internalFogDensity: 0.0,
 
-  // LOD
-  lodEnabled: true,
-  lodNearDistance: 2.0,
-  lodFarDistance: 10.0,
-  lodMinSamples: 32,
-  lodMaxSamples: 128,
+  // Raymarching Quality
+  raymarchQuality: 'balanced',
 
   // SSS
   sssEnabled: false,
@@ -1508,11 +1540,9 @@ export interface QuaternionJuliaConfig {
   /** Internal fog density (0.0-1.0) */
   internalFogDensity: number
   
-  // === LOD ===
-  /** Enable distance-adaptive LOD */
-  lodEnabled: boolean
-  /** Detail multiplier for LOD (0.1-2.0) */
-  lodDetail: number
+  // === Raymarching Quality ===
+  /** Unified raymarching quality preset (affects step count) */
+  raymarchQuality: RaymarchQuality
 }
 
 /**
@@ -1589,10 +1619,9 @@ export const DEFAULT_QUATERNION_JULIA_CONFIG: QuaternionJuliaConfig = {
   fogEnabled: true,
   fogContribution: 1.0,
   internalFogDensity: 0.0,
-  
-  // LOD
-  lodEnabled: true,
-  lodDetail: 1.0,
+
+  // Raymarching Quality
+  raymarchQuality: 'balanced',
 }
 
 

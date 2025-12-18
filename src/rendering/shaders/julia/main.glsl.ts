@@ -42,7 +42,9 @@ void main() {
 
     float ao = 1.0;
     #ifdef USE_AO
-    ao = uFastMode ? 1.0 : calcAO(p, n);
+    if (uAoEnabled) {
+        ao = uFastMode ? 1.0 : calcAO(p, n);
+    }
     #endif
 
     vec3 baseHSL = rgb2hsl(uColor);

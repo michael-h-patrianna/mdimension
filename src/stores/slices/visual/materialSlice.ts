@@ -12,6 +12,11 @@ export const MATERIAL_INITIAL_STATE: MaterialSliceState = {
   edgeMetallic: DEFAULT_EDGE_METALLIC,
   edgeRoughness: DEFAULT_EDGE_ROUGHNESS,
   faceOpacity: DEFAULT_FACE_OPACITY,
+  faceEmission: 0.0,
+  faceEmissionThreshold: 0.0,
+  faceEmissionColorShift: 0.0,
+  faceEmissionPulsing: false,
+  faceRimFalloff: 0.0,
 }
 
 export const createMaterialSlice: StateCreator<AppearanceSlice, [], [], MaterialSlice> = (set) => ({
@@ -27,4 +32,9 @@ export const createMaterialSlice: StateCreator<AppearanceSlice, [], [], Material
   setEdgeMetallic: (metallic) => set({ edgeMetallic: Math.max(0, Math.min(1, metallic)) }),
   setEdgeRoughness: (roughness) => set({ edgeRoughness: Math.max(0, Math.min(1, roughness)) }),
   setFaceOpacity: (opacity) => set({ faceOpacity: Math.max(0, Math.min(1, opacity)) }),
+  setFaceEmission: (emission) => set({ faceEmission: Math.max(0, Math.min(5, emission)) }),
+  setFaceEmissionThreshold: (threshold) => set({ faceEmissionThreshold: Math.max(0, Math.min(1, threshold)) }),
+  setFaceEmissionColorShift: (shift) => set({ faceEmissionColorShift: Math.max(-1, Math.min(1, shift)) }),
+  setFaceEmissionPulsing: (pulsing) => set({ faceEmissionPulsing: pulsing }),
+  setFaceRimFalloff: (falloff) => set({ faceRimFalloff: Math.max(0, Math.min(10, falloff)) }),
 })

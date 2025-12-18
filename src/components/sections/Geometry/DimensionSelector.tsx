@@ -75,24 +75,57 @@ export const DimensionSelector: React.FC<DimensionSelectorProps> = React.memo(({
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
-  const checkScroll = () => {
-    if (scrollContainerRef.current) {
-      const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
+  // Optimized Scroll Checking using ResizeObserver to avoid forced reflows
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const checkScroll = () => {
+      if (!container) return;
+      const { scrollLeft, scrollWidth, clientWidth } = container;
       setCanScrollLeft(scrollLeft > 0);
-      // Use a small tolerance for float/rounding issues
       setCanScrollRight(Math.ceil(scrollLeft + clientWidth) < scrollWidth);
+    };
+
+    const resizeObserver = new ResizeObserver(() => {
+      requestAnimationFrame(checkScroll);
+    });
+
+    resizeObserver.observe(container);
+
+    // Initial check
+    requestAnimationFrame(checkScroll);
+
+    // Throttled scroll handler
+    let rafId: number | null = null;
+    const handleScroll = () => {
+      if (rafId) return;
+      rafId = requestAnimationFrame(() => {
+        checkScroll();
+        rafId = null;
+      });
+    };
+
+    container.addEventListener('scroll', handleScroll, { passive: true });
+
+    return () => {
+      resizeObserver.disconnect();
+      container.removeEventListener('scroll', handleScroll);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, []); // Run once on mount
+
+  // Re-check when dimension changes (content size might change if styling changes)
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      requestAnimationFrame(() => {
+        if (scrollContainerRef.current) {
+           const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
+           setCanScrollLeft(scrollLeft > 0);
+           setCanScrollRight(Math.ceil(scrollLeft + clientWidth) < scrollWidth);
+        }
+      });
     }
-  };
-
-  useEffect(() => {
-    checkScroll();
-    window.addEventListener('resize', checkScroll);
-    return () => window.removeEventListener('resize', checkScroll);
-  }, []);
-
-  // Re-check scroll availability when dimension changes (though options are static, good practice)
-  useEffect(() => {
-    checkScroll();
   }, [dimension]);
 
   const scroll = (direction: 'left' | 'right') => {
@@ -102,7 +135,6 @@ export const DimensionSelector: React.FC<DimensionSelectorProps> = React.memo(({
         left: direction === 'left' ? -scrollAmount : scrollAmount,
         behavior: 'smooth',
       });
-      // checkScroll will be called by onScroll event
     }
   };
 
@@ -129,7 +161,6 @@ export const DimensionSelector: React.FC<DimensionSelectorProps> = React.memo(({
 
         <div
           ref={scrollContainerRef}
-          onScroll={checkScroll}
           className="overflow-x-auto [&::-webkit-scrollbar]:hidden"
         >
           <ToggleGroup
