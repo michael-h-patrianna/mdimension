@@ -7,6 +7,7 @@ import {
   SchroedingerPresetName,
 } from '@/lib/geometry/extended/types'
 import { SCHROEDINGER_PALETTE_DEFINITIONS } from '@/lib/geometry/extended/schroedinger/palettes'
+import { SCHROEDINGER_NAMED_PRESETS } from '@/lib/geometry/extended/schroedinger/presets'
 import { StateCreator } from 'zustand'
 import { ExtendedObjectSlice, SchroedingerSlice } from './types'
 
@@ -147,8 +148,27 @@ export const createSchroedingerSlice: StateCreator<ExtendedObjectSlice, [], [], 
 
   // === Quantum State Configuration ===
   setSchroedingerPresetName: (name: SchroedingerPresetName) => {
+    // If selecting a named preset, apply its parameters to the state
+    // This keeps the UI sliders in sync with the visual preset
+    let updates = {};
+    if (name !== 'custom') {
+      const preset = SCHROEDINGER_NAMED_PRESETS[name];
+      if (preset) {
+        updates = {
+          seed: preset.seed,
+          termCount: preset.termCount,
+          maxQuantumNumber: preset.maxN,
+          frequencySpread: preset.frequencySpread
+        };
+      }
+    }
+
     set((state) => ({
-      schroedinger: { ...state.schroedinger, presetName: name },
+      schroedinger: { 
+        ...state.schroedinger, 
+        presetName: name,
+        ...updates
+      },
     }))
   },
 

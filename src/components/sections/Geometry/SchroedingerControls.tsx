@@ -114,7 +114,7 @@ export const SchroedingerControls: React.FC<SchroedingerControlsProps> = React.m
                   </div>
                 </div>
                 <p className="text-xs text-text-tertiary pt-1">
-                {SCHROEDINGER_NAMED_PRESETS[config.presetName]?.description ?? 'Custom quantum configuration'}
+                {SCHROEDINGER_NAMED_PRESETS[config.presetName]?.description}
                 </p>
             </div>
 

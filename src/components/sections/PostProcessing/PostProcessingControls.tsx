@@ -116,8 +116,8 @@ export const PostProcessingControls: React.FC = () => {
       ),
     },
     {
-      id: 'misc',
-      label: 'Misc',
+      id: 'fx',
+      label: 'FX',
       content: (
         <div className="space-y-4">
           <MiscControls />

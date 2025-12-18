@@ -32,16 +32,16 @@ describe('SchroedingerAnimationDrawer', () => {
     expect(screen.getByTestId('animation-panel-originDrift')).toBeInTheDocument();
   });
 
-  it('should not show Slice Animation for 3D', () => {
+  it('should not show Dimensional Sweeps for 3D', () => {
     useGeometryStore.getState().setDimension(3);
     render(<SchroedingerAnimationDrawer />);
-    expect(screen.queryByText('Slice Animation')).not.toBeInTheDocument();
+    expect(screen.queryByText('Dimensional Sweeps')).not.toBeInTheDocument();
   });
 
-  it('should show Slice Animation for 4D', () => {
+  it('should show Dimensional Sweeps for 4D', () => {
     useGeometryStore.getState().setDimension(4);
     render(<SchroedingerAnimationDrawer />);
-    expect(screen.getByText('Slice Animation')).toBeInTheDocument();
+    expect(screen.getByText('Dimensional Sweeps')).toBeInTheDocument();
     expect(screen.getByTestId('animation-panel-sliceAnimation')).toBeInTheDocument();
   });
 
@@ -104,7 +104,7 @@ describe('SchroedingerAnimationDrawer', () => {
     render(<SchroedingerAnimationDrawer />);
 
     expect(screen.getByText('Origin Drift')).toBeInTheDocument();
-    expect(screen.getByText('Slice Animation')).toBeInTheDocument();
+    expect(screen.getByText('Dimensional Sweeps')).toBeInTheDocument();
   });
 
   it('should have disabled state styling when animation is off', () => {

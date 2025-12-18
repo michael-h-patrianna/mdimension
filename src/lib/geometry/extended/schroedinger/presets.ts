@@ -66,7 +66,7 @@ export function generateQuantumPreset(
   dimension: number,
   termCount: number = 6,
   maxN: number = 5,
-  frequencySpread: number = 0.25
+  frequencySpread: number = 0.02
 ): QuantumPreset {
   const rng = mulberry32(seed);
 
@@ -160,17 +160,17 @@ export const SCHROEDINGER_NAMED_PRESETS: Record<string, NamedPresetConfig> = {
     name: 'Ground State Superposition',
     description: 'Low-energy states forming a stable, smooth probability distribution',
     seed: 42,
-    termCount: 4,
-    maxN: 4,
-    frequencySpread: 0.1,
+    termCount: 3,
+    maxN: 3,
+    frequencySpread: 0.01,
   },
   highEnergy: {
     name: 'High Energy Interference',
     description: 'Complex interference patterns from high-frequency quantum states',
     seed: 137,
-    termCount: 8,
+    termCount: 6,
     maxN: 5,
-    frequencySpread: 0.3,
+    frequencySpread: 0.05,
   },
   simpleCoherence: {
     name: 'Coherent Beat',
@@ -178,7 +178,7 @@ export const SCHROEDINGER_NAMED_PRESETS: Record<string, NamedPresetConfig> = {
     seed: 314,
     termCount: 3,
     maxN: 2,
-    frequencySpread: 0.05,
+    frequencySpread: 0.02,
   },
   symmetry: {
     name: 'Symmetric Excited State',
@@ -186,7 +186,7 @@ export const SCHROEDINGER_NAMED_PRESETS: Record<string, NamedPresetConfig> = {
     seed: 2718,
     termCount: 6,
     maxN: 4,
-    frequencySpread: 0.4,
+    frequencySpread: 0.03,
   },
   complexOrbital: {
     name: 'Complex Orbital Mix',
@@ -194,7 +194,7 @@ export const SCHROEDINGER_NAMED_PRESETS: Record<string, NamedPresetConfig> = {
     seed: 1618,
     termCount: 5,
     maxN: 6,
-    frequencySpread: 0.2,
+    frequencySpread: 0.04,
   },
   diffuseCloud: {
     name: 'Diffuse Probability Cloud',
@@ -202,7 +202,7 @@ export const SCHROEDINGER_NAMED_PRESETS: Record<string, NamedPresetConfig> = {
     seed: 999,
     termCount: 4,
     maxN: 2,
-    frequencySpread: 0.15,
+    frequencySpread: 0.015,
   },
   stationary: {
     name: 'Stationary Lattice',
@@ -218,7 +218,7 @@ export const SCHROEDINGER_NAMED_PRESETS: Record<string, NamedPresetConfig> = {
     seed: 666,
     termCount: 8,
     maxN: 6,
-    frequencySpread: 0.5,
+    frequencySpread: 0.08,
   },
 };
 
@@ -251,7 +251,7 @@ export function generateRandomPreset(seed: number, dimension: number): QuantumPr
   // Randomize parameters within reasonable ranges
   const termCount = Math.floor(rng() * 6) + 3; // 3-8
   const maxN = Math.floor(rng() * 4) + 2; // 2-5
-  const frequencySpread = rng() * 0.4 + 0.05; // 0.05-0.45
+  const frequencySpread = rng() * 0.045 + 0.005; // 0.005-0.05
 
   return generateQuantumPreset(seed, dimension, termCount, maxN, frequencySpread);
 }

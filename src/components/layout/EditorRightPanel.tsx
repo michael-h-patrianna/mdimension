@@ -14,6 +14,7 @@ import { ExportSection } from '@/components/sections/Export/ExportSection';
 import { DocumentationSection } from '@/components/sections/Documentation/DocumentationSection';
 import { PerformanceSection } from '@/components/sections/Performance/PerformanceSection';
 import { AdvancedObjectControls } from '@/components/sections/Advanced/AdvancedObjectControls';
+import { ShadowsSection } from '@/components/sections/Shadows/ShadowsSection';
 
 export const EditorRightPanel: React.FC = () => {
   // Default to 'object' tab as per user feedback (primary creative focus)
@@ -30,9 +31,10 @@ export const EditorRightPanel: React.FC = () => {
       ),
       content: (
         <div>
-          {/* The "Subject" - Materials, Lines */}
+          {/* The "Subject" - Materials, Lines, Shadows */}
           <FacesSection defaultOpen={true} />
           <EdgesSection defaultOpen={false} />
+          <ShadowsSection defaultOpen={false} />
           <AdvancedObjectControls />
         </div>
       ),

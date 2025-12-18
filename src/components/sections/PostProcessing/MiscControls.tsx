@@ -1,17 +1,16 @@
 /**
- * MiscControls Component
+ * FX Controls Component (formerly MiscControls)
  *
- * UI controls for miscellaneous post-processing effects.
- *
- * Controls:
+ * UI controls for post-processing FX effects:
+ * - Ambient Occlusion (SSAO) - Global screen-space AO
  * - Anti-aliasing method selector: None, FXAA, SMAA
- * - SMAA threshold slider (when SMAA is selected)
+ * - Object depth settings
  *
  * @see {@link PostProcessing} for the effect implementation
  * @see {@link usePostProcessingStore} for state management
- * @see https://threejs.org/docs/#examples/en/postprocessing/SMAAPass
  */
 
+import { ControlGroup } from '@/components/ui/ControlGroup';
 import { Select, type SelectOption } from '@/components/ui/Select';
 import { Slider } from '@/components/ui/Slider';
 import { Switch } from '@/components/ui/Switch';
@@ -32,7 +31,8 @@ const ANTI_ALIASING_OPTIONS: SelectOption<AntiAliasingMethod>[] = [
 ];
 
 /**
- * MiscControls component that provides UI for miscellaneous post-processing settings.
+ * FX Controls component for post-processing effects.
+ * AO is featured prominently as the primary effect in this tab.
  */
 export const MiscControls: React.FC<MiscControlsProps> = React.memo(({
   className = '',
@@ -65,62 +65,75 @@ export const MiscControls: React.FC<MiscControlsProps> = React.memo(({
 
   return (
     <div className={`space-y-4 ${className}`}>
-      {/* Anti-aliasing Method */}
-      <Select<AntiAliasingMethod>
-        label="Anti-aliasing"
-        options={ANTI_ALIASING_OPTIONS}
-        value={antiAliasingMethod}
-        onChange={setAntiAliasingMethod}
-        data-testid="anti-aliasing-select"
-      />
-
-      {/* SMAA Threshold - only visible when SMAA is selected */}
-      {antiAliasingMethod === 'smaa' && (
-        <Slider
-          label="SMAA Threshold"
-          value={smaaThreshold}
-          min={0.01}
-          max={0.2}
-          step={0.01}
-          onChange={setSmaaThreshold}
-          tooltip="Edge detection sensitivity. Lower = more aggressive anti-aliasing."
-          minLabel="Strong"
-          maxLabel="Subtle"
-          data-testid="smaa-threshold-slider"
-        />
-      )}
-
-      {/* Object Only Depth */}
-      <Switch
-        checked={objectOnlyDepth}
-        onCheckedChange={setObjectOnlyDepth}
-        label="Object Only Depth"
-      />
-
-      {/* Ambient Occlusion */}
-      <div className="space-y-2">
-        <Switch
-          checked={ssaoEnabled}
-          onCheckedChange={setSSAOEnabled}
-          label="Ambient Occlusion"
-          data-testid="ssao-toggle"
-        />
-        <p className="text-[10px] text-text-secondary">
-          Adds soft shadows in crevices. Affects all object types.
+      {/* Ambient Occlusion - Primary FX effect */}
+      <ControlGroup
+        title="Ambient Occlusion"
+        rightElement={
+          <Switch
+            checked={ssaoEnabled}
+            onCheckedChange={setSSAOEnabled}
+            data-testid="ssao-toggle"
+          />
+        }
+      >
+        <p className="text-[10px] text-text-secondary mb-2">
+          Screen-space ambient occlusion adds soft shadows in crevices.
+          Affects all object types globally.
         </p>
         <div className={!ssaoEnabled ? 'opacity-50 pointer-events-none' : ''}>
           <Slider
-            label="Strength"
+            label="Intensity"
             value={ssaoIntensity}
             min={0}
             max={2}
             step={0.1}
             onChange={setSSAOIntensity}
-            tooltip="AO intensity. Higher values create darker crevice shadows."
+            showValue
+            tooltip="Higher values create darker crevice shadows."
             data-testid="ssao-intensity-slider"
           />
         </div>
-      </div>
+      </ControlGroup>
+
+      {/* Anti-aliasing */}
+      <ControlGroup title="Anti-aliasing">
+        <Select<AntiAliasingMethod>
+          label=""
+          options={ANTI_ALIASING_OPTIONS}
+          value={antiAliasingMethod}
+          onChange={setAntiAliasingMethod}
+          data-testid="anti-aliasing-select"
+        />
+
+        {/* SMAA Threshold - only visible when SMAA is selected */}
+        {antiAliasingMethod === 'smaa' && (
+          <Slider
+            label="Threshold"
+            value={smaaThreshold}
+            min={0.01}
+            max={0.2}
+            step={0.01}
+            onChange={setSmaaThreshold}
+            showValue
+            tooltip="Edge detection sensitivity. Lower = more aggressive."
+            minLabel="Strong"
+            maxLabel="Subtle"
+            data-testid="smaa-threshold-slider"
+          />
+        )}
+      </ControlGroup>
+
+      {/* Depth Settings */}
+      <ControlGroup title="Depth">
+        <Switch
+          checked={objectOnlyDepth}
+          onCheckedChange={setObjectOnlyDepth}
+          label="Object Only Depth"
+        />
+        <p className="text-[10px] text-text-secondary mt-1">
+          Exclude background from depth-based effects.
+        </p>
+      </ControlGroup>
     </div>
   );
 });

@@ -4,7 +4,9 @@
  * Sidebar section for all face/surface settings organized in tabs:
  * - Colors: Color algorithm selection and configuration
  * - Material: Opacity, diffuse, and specular settings
- * - FX: Fresnel rim effects and shadow controls
+ * - FX: Fresnel rim effects
+ *
+ * Shadow controls moved to ShadowsSection.
  *
  * Only visible when facesVisible is true.
  */
@@ -26,18 +28,7 @@ import {
   VOLUMETRIC_DENSITY_RANGE,
 } from '@/rendering/opacity/constants';
 import type { OpacityMode, SampleQuality, VolumetricAnimationQuality } from '@/rendering/opacity/types';
-import {
-  SHADOW_ANIMATION_MODE_LABELS,
-  SHADOW_ANIMATION_MODE_OPTIONS,
-  SHADOW_ANIMATION_MODE_TOOLTIPS,
-  SHADOW_QUALITY_LABELS,
-  SHADOW_QUALITY_OPTIONS,
-  SHADOW_QUALITY_TOOLTIPS,
-  SHADOW_SOFTNESS_RANGE,
-} from '@/rendering/shadows/constants';
-import type { ShadowAnimationMode, ShadowQuality } from '@/rendering/shadows/types';
-import { isRaymarchingFractal, isPolytopeCategory } from '@/lib/geometry/registry';
-import type { ObjectType } from '@/lib/geometry/types';
+import { isRaymarchingFractal } from '@/lib/geometry/registry';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import {
@@ -136,19 +127,6 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
     setShininess,
     setSpecularColor,
     setDiffuseIntensity,
-    lights,
-    shadowEnabled,
-    shadowQuality,
-    shadowSoftness,
-    shadowAnimationMode,
-    shadowMapBias,
-    shadowMapBlur,
-    setShadowEnabled,
-    setShadowQuality,
-    setShadowSoftness,
-    setShadowAnimationMode,
-    setShadowMapBias,
-    setShadowMapBlur,
   } = useLightingStore(
     useShallow((state) => ({
       lightEnabled: state.lightEnabled,
@@ -160,38 +138,6 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
       setShininess: state.setShininess,
       setSpecularColor: state.setSpecularColor,
       setDiffuseIntensity: state.setDiffuseIntensity,
-      lights: state.lights,
-      shadowEnabled: state.shadowEnabled,
-      shadowQuality: state.shadowQuality,
-      shadowSoftness: state.shadowSoftness,
-      shadowAnimationMode: state.shadowAnimationMode,
-      shadowMapBias: state.shadowMapBias,
-      shadowMapBlur: state.shadowMapBlur,
-      setShadowEnabled: state.setShadowEnabled,
-      setShadowQuality: state.setShadowQuality,
-      setShadowSoftness: state.setShadowSoftness,
-      setShadowAnimationMode: state.setShadowAnimationMode,
-      setShadowMapBias: state.setShadowMapBias,
-      setShadowMapBlur: state.setShadowMapBlur,
-    }))
-  );
-
-  // Schrödinger-specific shadow settings
-  const {
-    schroedingerShadowsEnabled,
-    schroedingerShadowStrength,
-    schroedingerShadowSteps,
-    setSchroedingerShadowsEnabled,
-    setSchroedingerShadowStrength,
-    setSchroedingerShadowSteps,
-  } = useExtendedObjectStore(
-    useShallow((state) => ({
-      schroedingerShadowsEnabled: state.schroedinger.shadowsEnabled,
-      schroedingerShadowStrength: state.schroedinger.shadowStrength,
-      schroedingerShadowSteps: state.schroedinger.shadowSteps,
-      setSchroedingerShadowsEnabled: state.setSchroedingerShadowsEnabled,
-      setSchroedingerShadowStrength: state.setSchroedingerShadowStrength,
-      setSchroedingerShadowSteps: state.setSchroedingerShadowSteps,
     }))
   );
 
@@ -223,9 +169,6 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
   );
 
   const surfaceSettings = shaderSettings.surface;
-
-  // Check if any light is enabled for shadow controls
-  const hasEnabledLights = lights.some((light) => light.enabled);
 
   // Check if lighting controls should be shown
   const showLightingControls = shaderType === 'surface' && lightEnabled;
@@ -305,32 +248,6 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
           }
           fresnelIntensity={fresnelIntensity}
           setFresnelIntensity={setFresnelIntensity}
-          // Shadow props (shared)
-          hasEnabledLights={hasEnabledLights}
-          shadowEnabled={shadowEnabled}
-          shadowAnimationMode={shadowAnimationMode}
-          onShadowEnabledChange={setShadowEnabled}
-          onShadowAnimationModeChange={setShadowAnimationMode}
-          // Object type info for conditional rendering
-          objectType={objectType}
-          dimension={dimension}
-          // SDF shadow props (Mandelbulb, Julia)
-          shadowQuality={shadowQuality}
-          shadowSoftness={shadowSoftness}
-          onShadowQualityChange={setShadowQuality}
-          onShadowSoftnessChange={setShadowSoftness}
-          // Schrödinger volumetric shadow props
-          schroedingerShadowsEnabled={schroedingerShadowsEnabled}
-          schroedingerShadowStrength={schroedingerShadowStrength}
-          schroedingerShadowSteps={schroedingerShadowSteps}
-          onSchroedingerShadowsEnabledChange={setSchroedingerShadowsEnabled}
-          onSchroedingerShadowStrengthChange={setSchroedingerShadowStrength}
-          onSchroedingerShadowStepsChange={setSchroedingerShadowSteps}
-          // Polytope shadow map props
-          shadowMapBias={shadowMapBias}
-          shadowMapBlur={shadowMapBlur}
-          onShadowMapBiasChange={setShadowMapBias}
-          onShadowMapBlurChange={setShadowMapBlur}
         />
       ),
     },
@@ -861,7 +778,7 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
 };
 
 // =============================================================================
-// FX Tab Content
+// FX Tab Content (Fresnel Rim Effect only - Shadows moved to ShadowsSection)
 // =============================================================================
 
 interface FxTabContentProps {
@@ -869,32 +786,6 @@ interface FxTabContentProps {
   setFresnelEnabled: (enabled: boolean) => void;
   fresnelIntensity: number;
   setFresnelIntensity: (value: number) => void;
-  // Shadow props (shared)
-  hasEnabledLights: boolean;
-  shadowEnabled: boolean;
-  shadowAnimationMode: ShadowAnimationMode;
-  onShadowEnabledChange: (enabled: boolean) => void;
-  onShadowAnimationModeChange: (mode: ShadowAnimationMode) => void;
-  // Object type for conditional rendering
-  objectType: ObjectType;
-  dimension: number;
-  // SDF shadow props (Mandelbulb, Julia)
-  shadowQuality: ShadowQuality;
-  shadowSoftness: number;
-  onShadowQualityChange: (quality: ShadowQuality) => void;
-  onShadowSoftnessChange: (softness: number) => void;
-  // Schrödinger volumetric shadow props
-  schroedingerShadowsEnabled: boolean;
-  schroedingerShadowStrength: number;
-  schroedingerShadowSteps: number;
-  onSchroedingerShadowsEnabledChange: (enabled: boolean) => void;
-  onSchroedingerShadowStrengthChange: (strength: number) => void;
-  onSchroedingerShadowStepsChange: (steps: number) => void;
-  // Polytope shadow map props
-  shadowMapBias: number;
-  shadowMapBlur: number;
-  onShadowMapBiasChange: (bias: number) => void;
-  onShadowMapBlurChange: (blur: number) => void;
 }
 
 const FxTabContent: React.FC<FxTabContentProps> = ({
@@ -902,42 +793,7 @@ const FxTabContent: React.FC<FxTabContentProps> = ({
   setFresnelEnabled,
   fresnelIntensity,
   setFresnelIntensity,
-  // Shadow props (shared)
-  hasEnabledLights,
-  shadowEnabled,
-  shadowAnimationMode,
-  onShadowEnabledChange,
-  onShadowAnimationModeChange,
-  // Object type
-  objectType,
-  dimension,
-  // SDF shadow props
-  shadowQuality,
-  shadowSoftness,
-  onShadowQualityChange,
-  onShadowSoftnessChange,
-  // Schrödinger props
-  schroedingerShadowsEnabled,
-  schroedingerShadowStrength,
-  schroedingerShadowSteps,
-  onSchroedingerShadowsEnabledChange,
-  onSchroedingerShadowStrengthChange,
-  onSchroedingerShadowStepsChange,
-  // Polytope props
-  shadowMapBias,
-  shadowMapBlur,
-  onShadowMapBiasChange,
-  onShadowMapBlurChange,
 }) => {
-  // Determine object category for conditional rendering
-  const isSchroedinger = objectType === 'schroedinger';
-  const isPolytope = isPolytopeCategory(objectType);
-  const isSdfFractal = isRaymarchingFractal(objectType, dimension) && !isSchroedinger;
-
-  // For Schrödinger, use its own shadow toggle; for others, use global shadowEnabled
-  const effectiveShadowEnabled = isSchroedinger ? schroedingerShadowsEnabled : shadowEnabled;
-  const handleShadowToggle = isSchroedinger ? onSchroedingerShadowsEnabledChange : onShadowEnabledChange;
-
   return (
     <div className="space-y-4">
       {/* Fresnel Rim Effect */}
@@ -965,150 +821,6 @@ const FxTabContent: React.FC<FxTabContentProps> = ({
             />
         </div>
       </ControlGroup>
-
-      {/* Shadow Controls - Object-type aware */}
-      {hasEnabledLights ? (
-        <ControlGroup
-            title="Shadows"
-            rightElement={
-                <Switch
-                    checked={effectiveShadowEnabled}
-                    onCheckedChange={handleShadowToggle}
-                    data-testid="shadow-enabled-toggle"
-                />
-            }
-        >
-          <div className={`space-y-3 ${!effectiveShadowEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
-              {/* Animation Mode - Shared across all types */}
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-text-secondary">
-                  Animation Quality
-                </label>
-                <select
-                  value={shadowAnimationMode}
-                  onChange={(e) => onShadowAnimationModeChange(e.target.value as ShadowAnimationMode)}
-                  className="w-full px-3 py-2 bg-control-bg border border-panel-border rounded text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
-                  title={SHADOW_ANIMATION_MODE_TOOLTIPS[shadowAnimationMode]}
-                  data-testid="shadow-animation-mode-select"
-                >
-                  {SHADOW_ANIMATION_MODE_OPTIONS.map((mode) => (
-                    <option key={mode} value={mode}>
-                      {SHADOW_ANIMATION_MODE_LABELS[mode]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* SDF Fractal Controls (Mandelbulb, Julia) */}
-              {isSdfFractal && (
-                <>
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-text-secondary">
-                      Quality
-                    </label>
-                    <select
-                      value={shadowQuality}
-                      onChange={(e) => onShadowQualityChange(e.target.value as ShadowQuality)}
-                      className="w-full px-3 py-2 bg-control-bg border border-panel-border rounded text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
-                      title={SHADOW_QUALITY_TOOLTIPS[shadowQuality]}
-                      data-testid="shadow-quality-select"
-                    >
-                      {SHADOW_QUALITY_OPTIONS.map((quality) => (
-                        <option key={quality} value={quality}>
-                          {SHADOW_QUALITY_LABELS[quality]}
-                        </option>
-                      ))}
-                    </select>
-                    <p className="text-xs text-text-secondary">
-                      {SHADOW_QUALITY_TOOLTIPS[shadowQuality]}
-                    </p>
-                  </div>
-                  <Slider
-                    label="Softness"
-                    min={SHADOW_SOFTNESS_RANGE.min}
-                    max={SHADOW_SOFTNESS_RANGE.max}
-                    step={SHADOW_SOFTNESS_RANGE.step}
-                    value={shadowSoftness}
-                    onChange={onShadowSoftnessChange}
-                    showValue
-                    data-testid="shadow-softness-slider"
-                  />
-                </>
-              )}
-
-              {/* Schrödinger Volumetric Shadow Controls */}
-              {isSchroedinger && (
-                <>
-                  <Slider
-                    label="Strength"
-                    min={0}
-                    max={2}
-                    step={0.1}
-                    value={schroedingerShadowStrength}
-                    onChange={onSchroedingerShadowStrengthChange}
-                    showValue
-                    data-testid="schroedinger-shadow-strength"
-                  />
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-text-secondary">
-                      Steps
-                    </label>
-                    <select
-                      value={schroedingerShadowSteps}
-                      onChange={(e) => onSchroedingerShadowStepsChange(parseInt(e.target.value))}
-                      className="w-full px-3 py-2 bg-control-bg border border-panel-border rounded text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
-                      data-testid="schroedinger-shadow-steps"
-                    >
-                      {[2, 4, 6, 8].map((steps) => (
-                        <option key={steps} value={steps}>
-                          {steps} steps
-                        </option>
-                      ))}
-                    </select>
-                    <p className="text-xs text-text-secondary">
-                      More steps = softer volumetric shadows, higher GPU cost
-                    </p>
-                  </div>
-                </>
-              )}
-
-              {/* Polytope Shadow Map Controls */}
-              {isPolytope && (
-                <>
-                  <Slider
-                    label="Bias"
-                    min={0}
-                    max={0.01}
-                    step={0.001}
-                    value={shadowMapBias}
-                    onChange={onShadowMapBiasChange}
-                    showValue
-                    data-testid="shadow-map-bias"
-                  />
-                  <Slider
-                    label="Blur"
-                    min={0}
-                    max={10}
-                    step={0.5}
-                    value={shadowMapBlur}
-                    onChange={onShadowMapBlurChange}
-                    showValue
-                    data-testid="shadow-map-blur"
-                  />
-                  <p className="text-xs text-text-secondary">
-                    Adjust bias to prevent shadow artifacts, blur for softer edges
-                  </p>
-                </>
-              )}
-          </div>
-        </ControlGroup>
-      ) : (
-          <div className="p-4 rounded-lg bg-black/20 border border-white/5 border-dashed text-center">
-            <p className="text-xs text-text-secondary italic">
-              Add lights to enable shadows.
-            </p>
-        </div>
-      )}
     </div>
   );
 };

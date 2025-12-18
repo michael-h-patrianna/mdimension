@@ -410,47 +410,9 @@ const SchroedingerAdvanced: React.FC = () => {
                 )}
             </div>
 
-            {/* Volumetric Shadows */}
-            <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
-                <div className="flex items-center justify-between">
-                    <label className="text-xs text-text-secondary font-semibold">Self-Shadowing (Expensive)</label>
-                    <ToggleButton
-                        pressed={config.shadowsEnabled ?? false}
-                        onToggle={() => setShadowsEnabled(!(config.shadowsEnabled ?? false))}
-                        className="text-xs px-2 py-1 h-auto"
-                        ariaLabel="Toggle shadows"
-                        data-testid="schroedinger-shadow-toggle"
-                    >
-                        {config.shadowsEnabled ? 'ON' : 'OFF'}
-                    </ToggleButton>
-                </div>
-                {config.shadowsEnabled && (
-                    <>
-                        <Slider
-                            label="Strength"
-                            min={0.0}
-                            max={2.0}
-                            step={0.1}
-                            value={config.shadowStrength ?? 1.0}
-                            onChange={setShadowStrength}
-                            showValue
-                            data-testid="schroedinger-shadow-strength"
-                        />
-                        <Slider
-                            label="Quality (Steps)"
-                            min={1}
-                            max={8}
-                            step={1}
-                            value={config.shadowSteps ?? 4}
-                            onChange={setShadowSteps}
-                            showValue
-                            data-testid="schroedinger-shadow-steps"
-                        />
-                    </>
-                )}
-            </div>
+            {/* Note: Shadow controls moved to ShadowsSection */}
 
-            {/* Volumetric Ambient Occlusion */}
+            {/* Volumetric Ambient Occlusion (Schrödinger-specific) */}
             <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
                 <div className="flex items-center justify-between">
                     <label className="text-xs text-text-secondary font-semibold">Ambient Occlusion (Very Expensive)</label>
