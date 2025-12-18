@@ -64,7 +64,7 @@ function mulberry32(seed: number): () => number {
 export function generateQuantumPreset(
   seed: number,
   dimension: number,
-  termCount: number = 6,
+  termCount: number = 3,
   maxN: number = 5,
   frequencySpread: number = 0.02
 ): QuantumPreset {
@@ -160,7 +160,7 @@ export const SCHROEDINGER_NAMED_PRESETS: Record<string, NamedPresetConfig> = {
     name: 'Ground State Superposition',
     description: 'Low-energy states forming a stable, smooth probability distribution',
     seed: 42,
-    termCount: 3,
+    termCount: 1,
     maxN: 3,
     frequencySpread: 0.01,
   },
@@ -168,47 +168,47 @@ export const SCHROEDINGER_NAMED_PRESETS: Record<string, NamedPresetConfig> = {
     name: 'High Energy Interference',
     description: 'Complex interference patterns from high-frequency quantum states',
     seed: 137,
-    termCount: 6,
+    termCount: 4,
     maxN: 5,
-    frequencySpread: 0.05,
+    frequencySpread: 0.01,
   },
   simpleCoherence: {
     name: 'Coherent Beat',
     description: 'Simple superposition showing clear quantum beating effects',
     seed: 314,
-    termCount: 3,
+    termCount: 2,
     maxN: 2,
-    frequencySpread: 0.02,
+    frequencySpread: 0.005,
   },
   symmetry: {
     name: 'Symmetric Excited State',
     description: 'Highly symmetric orbital patterns from degenerate states',
     seed: 2718,
-    termCount: 6,
+    termCount: 3,
     maxN: 4,
-    frequencySpread: 0.03,
+    frequencySpread: 0.008,
   },
   complexOrbital: {
     name: 'Complex Orbital Mix',
     description: 'Superposition of high quantum number orbitals',
     seed: 1618,
-    termCount: 5,
+    termCount: 3,
     maxN: 6,
-    frequencySpread: 0.04,
+    frequencySpread: 0.01,
   },
   diffuseCloud: {
     name: 'Diffuse Probability Cloud',
     description: 'Soft, delocalized wavefunction density',
     seed: 999,
-    termCount: 4,
+    termCount: 2,
     maxN: 2,
-    frequencySpread: 0.015,
+    frequencySpread: 0.005,
   },
   stationary: {
     name: 'Stationary Lattice',
     description: 'Standing wave interference with zero frequency spread',
     seed: 777,
-    termCount: 6,
+    termCount: 3,
     maxN: 3,
     frequencySpread: 0.0,
   },
@@ -216,9 +216,9 @@ export const SCHROEDINGER_NAMED_PRESETS: Record<string, NamedPresetConfig> = {
     name: 'Dense High-N State',
     description: 'Densely packed high-frequency probability amplitude',
     seed: 666,
-    termCount: 8,
+    termCount: 5,
     maxN: 6,
-    frequencySpread: 0.08,
+    frequencySpread: 0.02,
   },
 };
 
@@ -249,7 +249,7 @@ export function generateRandomPreset(seed: number, dimension: number): QuantumPr
   const rng = mulberry32(seed);
 
   // Randomize parameters within reasonable ranges
-  const termCount = Math.floor(rng() * 6) + 3; // 3-8
+  const termCount = Math.floor(rng() * 4) + 2; // 2-5
   const maxN = Math.floor(rng() * 4) + 2; // 2-5
   const frequencySpread = rng() * 0.045 + 0.005; // 0.005-0.05
 

@@ -259,9 +259,7 @@ const SchroedingerAdvanced: React.FC = () => {
         setDispersionStrength,
         setDispersionDirection,
         setDispersionQuality,
-        setShadowsEnabled,
-        setShadowStrength,
-        setShadowSteps,
+        // Note: Shadow setters removed - now in ShadowsSection
         setAoEnabled,
         setAoStrength,
         setAoQuality,
@@ -286,9 +284,7 @@ const SchroedingerAdvanced: React.FC = () => {
             setDispersionStrength: state.setSchroedingerDispersionStrength,
             setDispersionDirection: state.setSchroedingerDispersionDirection,
             setDispersionQuality: state.setSchroedingerDispersionQuality,
-            setShadowsEnabled: state.setSchroedingerShadowsEnabled,
-            setShadowStrength: state.setSchroedingerShadowStrength,
-            setShadowSteps: state.setSchroedingerShadowSteps,
+            // Note: Shadow setters removed - now in ShadowsSection
             setAoEnabled: state.setSchroedingerAoEnabled,
             setAoStrength: state.setSchroedingerAoStrength,
             setAoQuality: state.setSchroedingerAoQuality,

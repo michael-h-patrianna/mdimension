@@ -30,7 +30,6 @@ import {
 import type { OpacityMode, SampleQuality, VolumetricAnimationQuality } from '@/rendering/opacity/types';
 import { isRaymarchingFractal } from '@/lib/geometry/registry';
 import { useGeometryStore } from '@/stores/geometryStore';
-import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import {
   DEFAULT_SPECULAR_COLOR,
 } from '@/stores/defaults/visualDefaults';

@@ -46,7 +46,7 @@ function isRaymarchingFractal(objectType: ObjectType, dimension: number): boolea
  * Shadow animation mode options for select dropdown
  */
 const SHADOW_ANIMATION_OPTIONS: SelectOption<ShadowAnimationMode>[] =
-  SHADOW_ANIMATION_MODE_OPTIONS.map((mode) => ({
+  SHADOW_ANIMATION_MODE_OPTIONS.map((mode: ShadowAnimationMode) => ({
     value: mode,
     label: SHADOW_ANIMATION_MODE_LABELS[mode],
   }));
@@ -55,10 +55,20 @@ const SHADOW_ANIMATION_OPTIONS: SelectOption<ShadowAnimationMode>[] =
  * Shadow quality options for select dropdown
  */
 const SHADOW_QUALITY_SELECT_OPTIONS: SelectOption<ShadowQuality>[] =
-  SHADOW_QUALITY_OPTIONS.map((quality) => ({
+  SHADOW_QUALITY_OPTIONS.map((quality: ShadowQuality) => ({
     value: quality,
     label: SHADOW_QUALITY_LABELS[quality],
   }));
+
+/**
+ * Shadow steps options for Schrödinger
+ */
+const SHADOW_STEPS_OPTIONS: SelectOption<string>[] = [
+  { value: '2', label: '2 steps (Fast)' },
+  { value: '4', label: '4 steps (Balanced)' },
+  { value: '6', label: '6 steps (Quality)' },
+  { value: '8', label: '8 steps (High)' },
+];
 
 export const ShadowsSection: React.FC<ShadowsSectionProps> = ({
   defaultOpen = false,
@@ -165,27 +175,35 @@ export const ShadowsSection: React.FC<ShadowsSectionProps> = ({
           <div className={`space-y-4 ${!effectiveShadowEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
 
             {/* Animation Mode - Shared across all types */}
-            <Select<ShadowAnimationMode>
-              label="Animation Quality"
-              options={SHADOW_ANIMATION_OPTIONS}
-              value={shadowAnimationMode}
-              onChange={setShadowAnimationMode}
-              tooltip={SHADOW_ANIMATION_MODE_TOOLTIPS[shadowAnimationMode]}
-              data-testid="shadow-animation-mode-select"
-            />
+            <div className="space-y-1">
+              <Select<ShadowAnimationMode>
+                label="Animation Quality"
+                options={SHADOW_ANIMATION_OPTIONS}
+                value={shadowAnimationMode}
+                onChange={setShadowAnimationMode}
+                data-testid="shadow-animation-mode-select"
+              />
+              <p className="text-[10px] text-text-secondary">
+                {SHADOW_ANIMATION_MODE_TOOLTIPS[shadowAnimationMode]}
+              </p>
+            </div>
 
             {/* SDF Fractal Controls (Mandelbulb, Julia) */}
             {isSdfFractal && (
               <ControlGroup title="Raymarched Shadows">
                 <div className="space-y-3">
-                  <Select<ShadowQuality>
-                    label="Quality"
-                    options={SHADOW_QUALITY_SELECT_OPTIONS}
-                    value={shadowQuality}
-                    onChange={setShadowQuality}
-                    tooltip={SHADOW_QUALITY_TOOLTIPS[shadowQuality]}
-                    data-testid="shadow-quality-select"
-                  />
+                  <div className="space-y-1">
+                    <Select<ShadowQuality>
+                      label="Quality"
+                      options={SHADOW_QUALITY_SELECT_OPTIONS}
+                      value={shadowQuality}
+                      onChange={setShadowQuality}
+                      data-testid="shadow-quality-select"
+                    />
+                    <p className="text-[10px] text-text-secondary">
+                      {SHADOW_QUALITY_TOOLTIPS[shadowQuality]}
+                    </p>
+                  </div>
                   <Slider
                     label="Softness"
                     min={SHADOW_SOFTNESS_RANGE.min}
@@ -219,19 +237,18 @@ export const ShadowsSection: React.FC<ShadowsSectionProps> = ({
                     tooltip="Shadow darkness intensity"
                     data-testid="schroedinger-shadow-strength"
                   />
-                  <Select<number>
-                    label="Steps"
-                    options={[
-                      { value: 2, label: '2 steps (Fast)' },
-                      { value: 4, label: '4 steps (Balanced)' },
-                      { value: 6, label: '6 steps (Quality)' },
-                      { value: 8, label: '8 steps (High)' },
-                    ]}
-                    value={schroedingerShadowSteps}
-                    onChange={setSchroedingerShadowSteps}
-                    tooltip="More steps = softer volumetric shadows, higher GPU cost"
-                    data-testid="schroedinger-shadow-steps"
-                  />
+                  <div className="space-y-1">
+                    <Select<string>
+                      label="Steps"
+                      options={SHADOW_STEPS_OPTIONS}
+                      value={String(schroedingerShadowSteps)}
+                      onChange={(val) => setSchroedingerShadowSteps(parseInt(val, 10))}
+                      data-testid="schroedinger-shadow-steps"
+                    />
+                    <p className="text-[10px] text-text-secondary">
+                      More steps = softer shadows, higher GPU cost
+                    </p>
+                  </div>
                 </div>
               </ControlGroup>
             )}
