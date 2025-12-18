@@ -13,6 +13,90 @@ import type { VectorND } from '@/lib/math/types';
 import { dotProduct, magnitude, scaleVector, subtractVectors } from '@/lib/math';
 
 /**
+ * Corrects the winding order of a triangle so that its normal points outward
+ * (away from the centroid of the polytope).
+ *
+ * This is CRITICAL for proper FrontSide/BackSide rendering of transparent faces.
+ * Without correct winding, some faces will render with the wrong pass.
+ *
+ * @param v0 - First vertex index
+ * @param v1 - Second vertex index
+ * @param v2 - Third vertex index
+ * @param vertices - Array of all vertex positions
+ * @param polytopeCentroid - Center of the polytope (for outward direction reference)
+ * @returns Triangle indices with corrected winding order [v0, v1, v2] or [v0, v2, v1]
+ */
+function correctWindingOrder(
+  v0: number,
+  v1: number,
+  v2: number,
+  vertices: number[][],
+  polytopeCentroid: number[]
+): [number, number, number] {
+  const p0 = vertices[v0]!;
+  const p1 = vertices[v1]!;
+  const p2 = vertices[v2]!;
+
+  // Compute edges
+  const edge1: number[] = [];
+  const edge2: number[] = [];
+  for (let i = 0; i < Math.min(p0.length, 3); i++) {
+    edge1.push((p1[i] ?? 0) - (p0[i] ?? 0));
+    edge2.push((p2[i] ?? 0) - (p0[i] ?? 0));
+  }
+  // Pad to 3D if needed
+  while (edge1.length < 3) edge1.push(0);
+  while (edge2.length < 3) edge2.push(0);
+
+  // Compute normal via cross product (3D)
+  const normal = [
+    edge1[1]! * edge2[2]! - edge1[2]! * edge2[1]!,
+    edge1[2]! * edge2[0]! - edge1[0]! * edge2[2]!,
+    edge1[0]! * edge2[1]! - edge1[1]! * edge2[0]!,
+  ];
+
+  // Compute triangle centroid
+  const triCentroid: number[] = [];
+  for (let i = 0; i < Math.min(p0.length, 3); i++) {
+    triCentroid.push(((p0[i] ?? 0) + (p1[i] ?? 0) + (p2[i] ?? 0)) / 3);
+  }
+  while (triCentroid.length < 3) triCentroid.push(0);
+
+  // Vector from polytope centroid to triangle centroid (outward direction)
+  const outward: number[] = [];
+  for (let i = 0; i < 3; i++) {
+    outward.push(triCentroid[i]! - (polytopeCentroid[i] ?? 0));
+  }
+
+  // If normal points in same direction as outward vector, winding is correct
+  // Otherwise, flip the winding by swapping v1 and v2
+  const dot = normal[0]! * outward[0]! + normal[1]! * outward[1]! + normal[2]! * outward[2]!;
+
+  return dot >= 0 ? [v0, v1, v2] : [v0, v2, v1];
+}
+
+/**
+ * Computes the centroid of a set of vertices
+ */
+function computeCentroid(vertices: number[][]): number[] {
+  if (vertices.length === 0) return [];
+  const dim = vertices[0]!.length;
+  const centroid = new Array(dim).fill(0);
+
+  for (const v of vertices) {
+    for (let i = 0; i < dim; i++) {
+      centroid[i] += v[i] ?? 0;
+    }
+  }
+
+  for (let i = 0; i < dim; i++) {
+    centroid[i] /= vertices.length;
+  }
+
+  return centroid;
+}
+
+/**
  * Projects points to their affine hull (removes degeneracy)
  *
  * Some point sets (like A_n roots) lie in a hyperplane. This function
@@ -142,11 +226,18 @@ export function computeConvexHullFaces(vertices: number[][]): [number, number, n
     return [];
   }
 
+  // Compute polytope centroid for winding correction
+  // Use ORIGINAL vertices (not projected) for correct 3D centroid
+  const centroid = computeCentroid(vertices);
+
   // For 3D (or 3D affine hull), hull contains triangles directly
   if (actualDimension === 3) {
     return hull
       .filter((face) => face.length === 3)
-      .map((face) => [face[0]!, face[1]!, face[2]!]);
+      .map((face) => {
+        // Apply winding correction to ensure normals point outward
+        return correctWindingOrder(face[0]!, face[1]!, face[2]!, vertices, centroid);
+      });
   }
 
   // For higher dimensions, extract triangular 2-faces from (d-1)-simplices
@@ -170,8 +261,8 @@ export function computeConvexHullFaces(vertices: number[][]): [number, number, n
 
           if (!faceSet.has(sortedKey)) {
             faceSet.add(sortedKey);
-            // Keep original winding order from simplex
-            triangles.push([v0, v1, v2]);
+            // Apply winding correction to ensure normals point outward
+            triangles.push(correctWindingOrder(v0, v1, v2, vertices, centroid));
           }
         }
       }

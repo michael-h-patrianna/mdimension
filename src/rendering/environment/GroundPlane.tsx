@@ -25,10 +25,11 @@
  * ```
  */
 
-import { useMemo } from 'react';
-import { FrontSide, DoubleSide, Color } from 'three';
+import { useCallback, useMemo } from 'react';
+import { FrontSide, DoubleSide, Color, Object3D } from 'three';
 import { Grid } from '@react-three/drei';
 import type { Vector3D } from '@/lib/math/types';
+import { RENDER_LAYERS } from '@/rendering/core/layers';
 import type { GroundPlaneType, WallPosition } from '@/stores/defaults/visualDefaults';
 
 /**
@@ -174,7 +175,6 @@ interface WallConfig {
 
 /**
  * Offset to prevent z-fighting between grid and surface.
- * Must be greater than TWO_SIDED_HEIGHT / 2 (0.005) to ensure grid is outside the box.
  */
 const Z_OFFSET = 0.02;
 
@@ -264,9 +264,6 @@ interface SurfaceMaterialProps {
   envMapIntensity: number;
 }
 
-/** Height of the two-sided box surface */
-const TWO_SIDED_HEIGHT = 0.02;
-
 /** Props for a single wall */
 interface WallProps extends SurfaceMaterialProps {
   wall: WallPosition;
@@ -310,14 +307,27 @@ function Wall({
 }: WallProps) {
   const config = getWallConfig(wall, distance);
 
+  // Callback ref to set SKYBOX layer on Grid and all its children
+  // This excludes the grid from the normal pass rendering
+  const setGridLayer = useCallback((obj: Object3D | null) => {
+    if (obj) {
+      obj.traverse((child) => {
+        child.layers.set(RENDER_LAYERS.SKYBOX);
+      });
+    }
+  }, []);
+
   return (
     <group position={config.position}>
       {/* Wall surface - PlaneGeometry is in XY plane by default */}
       {surfaceType === 'two-sided' ? (
-        <mesh receiveShadow rotation={config.surfaceRotation} position={[0, 0, -TWO_SIDED_HEIGHT / 2]}>
-          <boxGeometry args={[size, size, TWO_SIDED_HEIGHT]} />
+        // Use DoubleSide plane instead of boxGeometry to avoid phantom side faces
+        // in the normal buffer (boxGeometry's thin side faces were being rendered)
+        <mesh receiveShadow rotation={config.surfaceRotation}>
+          <planeGeometry args={[size, size]} />
           <meshStandardMaterial
             color={color}
+            side={DoubleSide}
             roughness={roughness}
             metalness={metalness}
             envMapIntensity={envMapIntensity}
@@ -336,23 +346,25 @@ function Wall({
         </mesh>
       )}
 
-      {/* Optional grid overlay */}
+      {/* Optional grid overlay - excluded from normal pass via SKYBOX layer */}
       {showGrid && (
-        <Grid
-          args={[size, size]}
-          rotation={config.gridRotation}
-          cellSize={gridSpacing}
-          cellThickness={0.5}
-          cellColor={gridColor}
-          sectionSize={gridSpacing * 5}
-          sectionThickness={1}
-          sectionColor={sectionColor}
-          fadeDistance={size * 0.5}
-          fadeStrength={2}
-          followCamera={false}
-          side={surfaceType === 'two-sided' ? DoubleSide : FrontSide}
-          position={config.gridOffset}
-        />
+        <group ref={setGridLayer}>
+          <Grid
+            args={[size, size]}
+            rotation={config.gridRotation}
+            cellSize={gridSpacing}
+            cellThickness={0.5}
+            cellColor={gridColor}
+            sectionSize={gridSpacing * 5}
+            sectionThickness={1}
+            sectionColor={sectionColor}
+            fadeDistance={size * 0.5}
+            fadeStrength={2}
+            followCamera={false}
+            side={surfaceType === 'two-sided' ? DoubleSide : FrontSide}
+            position={config.gridOffset}
+          />
+        </group>
       )}
     </group>
   );

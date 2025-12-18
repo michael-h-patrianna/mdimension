@@ -116,11 +116,10 @@ export function composeFaceFragmentShader(): string {
       vec3 dPdx = dFdx(vWorldPosition);
       vec3 dPdy = dFdy(vWorldPosition);
       vec3 normal = normalize(cross(dPdx, dPdy));
-      // Flip normal for back faces to ensure it points outward from the volume
-      if (!gl_FrontFacing) {
-        normal = -normal;
-      }
       vec3 viewDir = normalize(vViewDir);
+
+      // For two-sided surfaces, we keep the geometric normal as computed
+      // Two-sided lighting is achieved by using abs() in diffuse calculations below
 
       // Get base color from algorithm using face depth as t value
       // vFaceDepth is computed from higher dimension coords with flat interpolation
@@ -167,11 +166,13 @@ export function composeFaceFragmentShader(): string {
             // Shadows are disabled for polytopes in this refactor unless implemented (user says no features needed)
             float shadow = 1.0; 
 
-            float NdotL = max(dot(normal, l), 0.0);
+            // Two-sided lighting: use abs() so both sides of faces receive diffuse light
+            float NdotL = abs(dot(normal, l));
             col += baseColor * uLightColors[i] * NdotL * uDiffuseIntensity * attenuation * shadow;
 
             vec3 halfDir = normalize(l + viewDir);
-            float NdotH = max(dot(normal, halfDir), 0.0);
+            // Two-sided specular: use abs() so specular appears on both sides of faces
+            float NdotH = abs(dot(normal, halfDir));
             float spec = pow(NdotH, uSpecularPower) * uSpecularIntensity * attenuation * shadow;
             col += uSpecularColor * uLightColors[i] * spec;
 
@@ -184,9 +185,9 @@ export function composeFaceFragmentShader(): string {
             totalNdotL = max(totalNdotL, NdotL * attenuation);
         }
 
-        // Fresnel rim lighting
+        // Fresnel rim lighting (two-sided: use abs() for symmetric rim effect)
         if (uFresnelEnabled && uFresnelIntensity > 0.0) {
-          float NdotV = max(dot(normal, viewDir), 0.0);
+          float NdotV = abs(dot(normal, viewDir));
           float rim = pow(1.0 - NdotV, 3.0) * uFresnelIntensity * 2.0;
           rim *= (0.3 + 0.7 * totalNdotL);
           col += uRimColor * rim;
@@ -197,11 +198,13 @@ export function composeFaceFragmentShader(): string {
         col = baseColor * uAmbientColor * uAmbientIntensity;
         vec3 lightDir = normalize(uLightDirection);
 
-        float NdotL = max(dot(normal, lightDir), 0.0);
+        // Two-sided lighting: use abs() so both sides of faces receive diffuse light
+        float NdotL = abs(dot(normal, lightDir));
         col += baseColor * uLightColor * NdotL * uDiffuseIntensity * uLightStrength;
 
         vec3 halfDir = normalize(lightDir + viewDir);
-        float NdotH = max(dot(normal, halfDir), 0.0);
+        // Two-sided specular: use abs() so specular appears on both sides of faces
+        float NdotH = abs(dot(normal, halfDir));
         float spec = pow(NdotH, uSpecularPower) * uSpecularIntensity * uLightStrength;
         col += uSpecularColor * uLightColor * spec;
 
@@ -211,8 +214,9 @@ export function composeFaceFragmentShader(): string {
           col += sss * uSssColor * uLightColor * uSssIntensity * uLightStrength;
         }
 
+        // Fresnel rim lighting (two-sided: use abs() for symmetric rim effect)
         if (uFresnelEnabled && uFresnelIntensity > 0.0) {
-          float NdotV = max(dot(normal, viewDir), 0.0);
+          float NdotV = abs(dot(normal, viewDir));
           float rim = pow(1.0 - NdotV, 3.0) * uFresnelIntensity * 2.0;
           rim *= (0.3 + 0.7 * NdotL);
           col += uRimColor * rim;

@@ -1221,8 +1221,9 @@ export const PostProcessing = memo(function PostProcessing() {
 
       scene.overrideMaterial = normalMaterial;
       camera.layers.set(RENDER_LAYERS.ENVIRONMENT);
-      // Also render skybox if needed, though usually it's far away
-      camera.layers.enable(RENDER_LAYERS.SKYBOX);
+      // NOTE: SKYBOX layer is intentionally NOT enabled here.
+      // Skybox and grid overlays should not contribute to normal buffer
+      // as they would pollute SSR/refraction calculations.
 
       gl.render(scene, camera);
       scene.overrideMaterial = null;
@@ -1417,10 +1418,8 @@ export const PostProcessing = memo(function PostProcessing() {
       if (currentShowDepthBuffer) {
         uniforms.type.value = 1; // Depth
         uniforms.tInput.value = effectDepthTexture;
-        uniforms.debugMode.value = 2; // Default to Linear depth for now, or match old behavior
-        // If we want to support focus zones debug again, we'd need to bring back that UI or logic
-        // For now, simple linear depth is what was requested mostly.
-        // Old code: if (uiState.showDepthBuffer) debugMode = 2;
+        uniforms.debugMode.value = 1; // Linear depth (normalized grayscale)
+        // debugMode 0 = Raw depth, 1 = Linear depth, 2 = Focus Zones (colored)
         
       } else if (currentShowNormalBuffer) {
         uniforms.type.value = 2; // Normal
