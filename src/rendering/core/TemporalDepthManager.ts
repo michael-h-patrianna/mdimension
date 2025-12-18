@@ -19,6 +19,7 @@
 
 import * as THREE from 'three';
 import { usePerformanceStore } from '@/stores';
+import { useWebGLContextStore } from '@/stores/webglContextStore';
 import { DepthCaptureShader } from '@/rendering/shaders/postprocessing/DepthCaptureShader';
 import { resourceRecovery, RECOVERY_PRIORITY } from './ResourceRecovery';
 
@@ -274,22 +275,57 @@ class TemporalDepthManagerImpl {
   }
 
   /**
-   * Invalidate temporal data (e.g., after camera teleport or context loss).
-   * For context loss recovery, this also nulls texture references in uniforms.
+   * Invalidate temporal data and force fresh depth capture.
+   *
+   * Call this when the view changes discontinuously and reprojection would
+   * produce incorrect results. Common scenarios include:
+   *
+   * - **Camera teleport**: Instant position change (e.g., preset views, reset)
+   * - **Scene reset**: When geometry changes significantly
+   * - **Object type switch**: Different objects have different depth profiles
+   * - **FOV change**: Projection matrix discontinuity
+   *
+   * NOTE: This method only resets temporal state. Render targets are preserved.
+   * For full resource cleanup (context loss, unmount), use dispose() instead.
    */
   invalidate(): void {
-    // Null texture references in uniforms to avoid stale GPU references
-    if (this.captureMaterial?.uniforms?.tDepth) {
-      this.captureMaterial.uniforms.tDepth.value = null;
-    }
-
-    // Dispose and null render targets
-    this.renderTargets.forEach((target) => target?.dispose());
-    this.renderTargets = [null, null];
-
-    // Reset state
+    // Reset temporal state only - preserve render targets
+    // Render targets are managed by:
+    // - initialize() on resize
+    // - dispose() on unmount/context loss
     this.isValid = false;
     this.bufferIndex = 0;
+
+    // Reset matrices to identity to avoid stale reprojection
+    this.prevViewProjectionMatrix.identity();
+    this.prevInverseViewProjectionMatrix.identity();
+    this.currentViewProjectionMatrix.identity();
+    this.currentInverseProjectionMatrix.identity();
+  }
+
+  /**
+   * Invalidate GPU resources after WebGL context loss.
+   *
+   * IMPORTANT: This method nulls out render targets WITHOUT disposing them.
+   * After context loss, GPU resources are already gone - calling dispose()
+   * would cause "object does not belong to this context" errors.
+   */
+  invalidateForContextLoss(): void {
+    // Null out render targets WITHOUT disposing - they belong to the dead context
+    this.renderTargets = [null, null];
+
+    // Reset capture infrastructure - materials/scenes need recreation
+    this.captureMaterial = null;
+    this.captureScene = null;
+    this.captureCamera = null;
+
+    // Reset temporal state
+    this.isValid = false;
+    this.bufferIndex = 0;
+    this.prevViewProjectionMatrix.identity();
+    this.prevInverseViewProjectionMatrix.identity();
+    this.currentViewProjectionMatrix.identity();
+    this.currentInverseProjectionMatrix.identity();
   }
 
   /**
@@ -337,6 +373,17 @@ class TemporalDepthManagerImpl {
    */
   getUniforms(forceTexture = false): TemporalDepthUniforms {
     const readTarget = this.getReadTarget();
+
+    // Warn if temporal is enabled but render targets are missing - indicates a bug
+    // Skip warning during context recovery - targets are intentionally null
+    const contextStatus = useWebGLContextStore.getState().status;
+    if (this.isEnabled() && readTarget === null && contextStatus === 'active') {
+      console.warn(
+        '[TemporalDepthManager] Temporal reprojection enabled but render targets are null. ' +
+          'This indicates initialize() was not called or dispose() was called unexpectedly.'
+      );
+    }
+
     const enabled = this.isEnabled() && this.isValid && readTarget !== null;
     // For preview mode, return texture if we have a valid buffer (even if feature disabled)
     const hasTexture = (enabled || forceTexture) && readTarget !== null;
@@ -378,6 +425,6 @@ export const TemporalDepthManager = new TemporalDepthManagerImpl();
 resourceRecovery.register({
   name: 'TemporalDepthManager',
   priority: RECOVERY_PRIORITY.TEMPORAL_DEPTH,
-  invalidate: () => TemporalDepthManager.invalidate(),
+  invalidate: () => TemporalDepthManager.invalidateForContextLoss(),
   reinitialize: (gl) => TemporalDepthManager.reinitialize(gl),
 });

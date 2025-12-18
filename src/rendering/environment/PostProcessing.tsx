@@ -649,19 +649,19 @@ export const PostProcessing = memo(function PostProcessing() {
     refractionUniforms.resolution.value.set(width, height);
   }, [composer, bloomPass, bokehPass, ssrPass, refractionPass, bufferPreviewPass, sceneTarget, objectDepthTarget, normalTarget, mainObjectMRT, normalCopyScene, normalCopyCamera, texturePass, size.width, size.height]);
 
-  // Initialize temporal depth manager on mount and resize
+  // Initialize temporal depth manager on mount, resize, and context restore
   // CRITICAL: Use useLayoutEffect to ensure initialization happens BEFORE first render
   // This ensures uniforms have valid dimensions before SchroedingerMesh renders
   useLayoutEffect(() => {
     TemporalDepthManager.initialize(size.width, size.height, gl);
-  }, [gl, size.width, size.height]);
+  }, [gl, size.width, size.height, restoreCount]);
 
-  // Initialize temporal cloud manager and pass on mount and resize
+  // Initialize temporal cloud manager and pass on mount, resize, and context restore
   // CRITICAL: Use useLayoutEffect to ensure initialization happens BEFORE first render
   useLayoutEffect(() => {
     TemporalCloudManager.initialize(size.width, size.height, gl);
     cloudTemporalPass.setSize(size.width, size.height);
-  }, [cloudTemporalPass, size.width, size.height, gl]);
+  }, [cloudTemporalPass, size.width, size.height, gl, restoreCount]);
 
   // Update buffer stats for debugging (on demand, not every frame)
   useEffect(() => {
@@ -682,8 +682,17 @@ export const PostProcessing = memo(function PostProcessing() {
   }, [size.width, size.height, objectDepthTarget, normalTarget]);
 
   // Cleanup on unmount only
+  // NOTE: Skip disposal if context was just restored - old resources belong to dead context
+  // and disposing them causes "object does not belong to this context" errors
   useEffect(() => {
     return () => {
+      // Check if we're in a context restore scenario - if so, skip disposal
+      // The old GPU resources are already invalid and will be garbage collected
+      const contextStatus = useWebGLContextStore.getState().status;
+      if (contextStatus === 'restoring' || contextStatus === 'lost') {
+        return;
+      }
+
       composer.dispose();
       sceneTarget.dispose();
       objectDepthTarget.dispose();

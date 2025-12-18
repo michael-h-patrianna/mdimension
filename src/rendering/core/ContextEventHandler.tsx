@@ -44,6 +44,14 @@ export function ContextEventHandler(): null {
     if (loseContextExtRef.current) {
       console.warn('[ContextEventHandler] Forcing context loss for debugging')
       loseContextExtRef.current.loseContext()
+
+      // Simulated context loss requires manual restore - browser only auto-restores real GPU crashes
+      window.setTimeout(() => {
+        if (loseContextExtRef.current) {
+          console.warn('[ContextEventHandler] Restoring context after simulated loss')
+          loseContextExtRef.current.restoreContext()
+        }
+      }, 3000)
     } else {
       console.warn('[ContextEventHandler] WEBGL_lose_context extension not available')
     }

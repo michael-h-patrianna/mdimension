@@ -17,6 +17,7 @@
 
 import * as THREE from 'three';
 import { usePerformanceStore } from '@/stores';
+import { useWebGLContextStore } from '@/stores/webglContextStore';
 import { resourceRecovery, RECOVERY_PRIORITY } from './ResourceRecovery';
 
 /** Resolution scale for cloud render target (1/2 = quarter pixels) */
@@ -108,7 +109,8 @@ class TemporalCloudManagerImpl {
   private isValid = false;
 
   // Cached temporal enabled state (avoid getState() per call)
-  private temporalEnabled = usePerformanceStore.getState().temporalReprojectionEnabled;
+  // Updated via subscription in initialize() to avoid circular dependency issues during module load
+  private temporalEnabled = false;
   private unsubscribeStore: (() => void) | null = null;
 
   // Dimensions
@@ -136,6 +138,9 @@ class TemporalCloudManagerImpl {
   initialize(screenWidth: number, screenHeight: number, gl?: THREE.WebGLRenderer): void {
     // Set up store subscription once (avoid getState() in isEnabled())
     if (!this.unsubscribeStore) {
+      // Get initial state value
+      this.temporalEnabled = usePerformanceStore.getState().temporalReprojectionEnabled;
+      // Subscribe for future changes
       this.unsubscribeStore = usePerformanceStore.subscribe((s) => {
         this.temporalEnabled = s.temporalReprojectionEnabled;
       });
@@ -413,16 +418,15 @@ class TemporalCloudManagerImpl {
    *
    * - **Camera teleport**: Instant position change (e.g., preset views, reset)
    * - **Scene reset**: When geometry changes significantly
+   * - **Object type switch**: Different objects have different accumulation
    * - **FOV change**: Projection matrix discontinuity
-   * - **Render target resize**: Already handled internally by initialize()
-   * - **Context loss recovery**: GPU resources invalidated
    *
    * After invalidation, the system renders 4 frames to rebuild full coverage
    * before temporal blending resumes. During this period, spatial interpolation
    * fills gaps between rendered pixels.
    *
-   * For context loss recovery, this also disposes render targets to clear
-   * stale GPU references.
+   * NOTE: This method only resets temporal state. Render targets are preserved.
+   * For full resource cleanup (context loss, unmount), use dispose() instead.
    *
    * @example
    * ```ts
@@ -432,20 +436,39 @@ class TemporalCloudManagerImpl {
    * ```
    */
   invalidate(): void {
-    // Dispose all render targets to clear stale GPU references
-    this.accumulationBuffers.forEach((target) => target?.dispose());
-    this.accumulationBuffers = [null, null];
-    this.cloudRenderTarget?.dispose();
-    this.cloudRenderTarget = null;
-    this.positionBuffer?.dispose();
-    this.positionBuffer = null;
-    this.reprojectionBuffer?.dispose();
-    this.reprojectionBuffer = null;
-
-    // Reset state
+    // Reset temporal state only - preserve render targets
+    // Render targets are managed by:
+    // - initialize() on resize
+    // - dispose() on unmount/context loss
     this.isValid = false;
     this.frameIndex = 0;
     this.bufferIndex = 0;
+
+    // Reset matrices to identity to avoid stale reprojection
+    this.prevViewProjectionMatrix.identity();
+    this.currentViewProjectionMatrix.identity();
+  }
+
+  /**
+   * Invalidate GPU resources after WebGL context loss.
+   *
+   * IMPORTANT: This method nulls out render targets WITHOUT disposing them.
+   * After context loss, GPU resources are already gone - calling dispose()
+   * would cause "object does not belong to this context" errors.
+   */
+  invalidateForContextLoss(): void {
+    // Null out render targets WITHOUT disposing - they belong to the dead context
+    this.accumulationBuffers = [null, null];
+    this.cloudRenderTarget = null;
+    this.positionBuffer = null;
+    this.reprojectionBuffer = null;
+
+    // Reset temporal state
+    this.isValid = false;
+    this.frameIndex = 0;
+    this.bufferIndex = 0;
+    this.prevViewProjectionMatrix.identity();
+    this.currentViewProjectionMatrix.identity();
   }
 
   /**
@@ -463,6 +486,16 @@ class TemporalCloudManagerImpl {
    * Get all uniforms needed for temporal cloud rendering.
    */
   getUniforms(): TemporalCloudUniforms {
+    // Warn if temporal is enabled but render targets are missing - indicates a bug
+    // Skip warning during context recovery - targets are intentionally null
+    const contextStatus = useWebGLContextStore.getState().status;
+    if (this.isEnabled() && this.cloudRenderTarget === null && contextStatus === 'active') {
+      console.warn(
+        '[TemporalCloudManager] Temporal reprojection enabled but render targets are null. ' +
+          'This indicates initialize() was not called or dispose() was called unexpectedly.'
+      );
+    }
+
     const [offsetX, offsetY] = this.getBayerOffset();
     this.bayerOffset.set(offsetX, offsetY);
     this.cloudResolution.set(this.cloudWidth, this.cloudHeight);
@@ -532,6 +565,6 @@ export const TemporalCloudManager = new TemporalCloudManagerImpl();
 resourceRecovery.register({
   name: 'TemporalCloudManager',
   priority: RECOVERY_PRIORITY.TEMPORAL_CLOUD,
-  invalidate: () => TemporalCloudManager.invalidate(),
+  invalidate: () => TemporalCloudManager.invalidateForContextLoss(),
   reinitialize: (gl) => TemporalCloudManager.reinitialize(gl),
 });

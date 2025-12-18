@@ -22,6 +22,7 @@ import {
 import { useProjectionStore } from '@/stores/projectionStore';
 import { useRotationStore } from '@/stores/rotationStore';
 import { useUIStore } from '@/stores/uiStore';
+import { useWebGLContextStore } from '@/stores/webglContextStore';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
@@ -157,6 +158,9 @@ const MandelbulbMesh = () => {
 
   // Get dimension from geometry store
   const dimension = useGeometryStore((state) => state.dimension);
+
+  // Context restore counter - forces material recreation when context is restored
+  const restoreCount = useWebGLContextStore((state) => state.restoreCount);
 
   // Get Mandelbulb/Mandelbulb config from store
   const mandelbulbPower = useExtendedObjectStore((state) => state.mandelbulb.mandelbulbPower);
@@ -1010,10 +1014,14 @@ const MandelbulbMesh = () => {
     }
   });
 
+  // Generate unique key to force material recreation when shader changes or context is restored
+  const materialKey = `mandelbulb-material-${shaderString.length}-${restoreCount}`;
+
   return (
     <mesh ref={meshRef}>
       <boxGeometry args={[4, 4, 4]} />
       <shaderMaterial
+        key={materialKey}
         glslVersion={THREE.GLSL3}
         vertexShader={vertexShader}
         fragmentShader={shaderString}

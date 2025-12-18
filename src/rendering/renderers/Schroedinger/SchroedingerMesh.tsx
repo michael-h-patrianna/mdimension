@@ -22,6 +22,7 @@ import {
 import { useProjectionStore } from '@/stores/projectionStore';
 import { useRotationStore } from '@/stores/rotationStore';
 import { useUIStore } from '@/stores/uiStore';
+import { useWebGLContextStore } from '@/stores/webglContextStore';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
@@ -169,6 +170,9 @@ const SchroedingerMesh = () => {
   const dimension = useGeometryStore((state) => state.dimension);
   const isoEnabled = useExtendedObjectStore((state) => state.schroedinger.isoEnabled);
   const opacityMode = useUIStore((state) => state.opacitySettings.mode);
+
+  // Context restore counter - forces material recreation when context is restored
+  const restoreCount = useWebGLContextStore((state) => state.restoreCount);
 
   // Animation time tracking
   const animationTimeRef = useRef(0);
@@ -888,10 +892,10 @@ const SchroedingerMesh = () => {
     }
   }, -10); // Priority -10: Run BEFORE PostProcessing (priority 10)
 
-  // Generate unique key to force material recreation when shader changes
+  // Generate unique key to force material recreation when shader changes or context is restored
   const materialKey = useMemo(() => {
-    return `schroedinger-material-${shaderString.length}-${useTemporalAccumulation}`;
-  }, [shaderString, useTemporalAccumulation]);
+    return `schroedinger-material-${shaderString.length}-${useTemporalAccumulation}-${restoreCount}`;
+  }, [shaderString, useTemporalAccumulation, restoreCount]);
 
   return (
     <mesh ref={meshRef}>

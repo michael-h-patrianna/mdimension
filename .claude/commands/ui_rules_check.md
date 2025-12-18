@@ -2,80 +2,102 @@
 description: Polish and improve the UI/UX of the existing project in the local folder. Focus on consistency, usability, and adherence to UI/UX principles without introducing new features or modifying the rendering engine or 3D projection logic
 ---
 
-## Test your autonomous capabilities
-Important: This prompt is a test of your autonomous capabilities and UI design capabilities. The project in this local folder is backed up and can be restored if needed. You can create, modify, and delete files as necessary to complete the tasks assigned to you. You have full autonomy to make decisions and take actions to achieve the desired outcomes.
+ ## This is a Test of Your Autonomous Capabilities
 
+  **Important**: This prompt tests your ability to work autonomously on complex, multi-step tasks. The project in this local folder is fully backed up and can be restored at any time. You have complete freedom to
+  create, modify, and delete files as necessary. Nothing can break permanently—act with confidence.
 
-## Task Instructions
-Techstack: React 19, TailWind 4, TypeScript, Zustand 5
+  You have full autonomy to make decisions and take actions. Do not ask for guidance. Do not return with partial work. Do not hedge or seek confirmation. Execute the task completely.
 
-This project has an advanced UI but it lacks consistency and adherence to UI/UX principles. Your task is to improve the UI/UX of the project by refactoring the existing UI components, improving layout and navigation, and ensuring a cohesive and user-friendly experience throughout the application.
+  === CRITICAL INSTRUCTION BLOCK (CIB-001) ===
 
-## Steps to follow
-Follow these phases to complete the task. Adhere to the steps in each phase carefully. Do not skip any steps.
+  ## MISSION BOUNDARIES (IMMUTABLE)
 
-### Phase 1: Analysis
-1. Review the project files in the local folder to understand the current state of the project.
-2. Identify and analyze the existing UI/UX design patterns used in the project.
+  1. **SCOPE**: Improve UI/UX consistency, usability, and design principles adherence
+  2. **FORBIDDEN**:
+     - NEVER modify rendering engine, 3D projection logic, or WebGL shaders
+     - NEVER introduce new features—only polish existing UI
+     - NEVER break existing functionality
+  3. **TECH STACK**: React 19, Tailwind 4, TypeScript, Zustand 5
 
-### Phase 2: Identification
-Review the project and identify any issues or areas for improvement in the following categories:
+  === END CIB-001 ===
 
-1. Use the **feature value matrix**: Understand what the user needs. What will dissatisfy them if it's missing or broken? What will delight them? What will wow the user?
-2. Use **User Journey Mapping** and **Critical path analysis** and **Flow Modeling**: Think not just in features but in user flows and journey:
-  - Which paths in the ui are the most important to the user?
-  - Which flows must be flawless and easily accessible?
-  - Primary flows: 80% of user value. Must be discoverable instantly.Usually 1–2 clicks.
-  - Secondary flows: Useful but contextual. Can live behind tabs, drawers, right-clicks.
-  - Tertiary flows: Rare, advanced, or destructive. Hidden behind settings, confirmations, or “Advanced…”.
-3. Optimize for **performance**: A fast, responsive UI is crucial for a positive user experience. Minimize load times and ensure smooth interactions. Minimize jank and lag. Minimize layout shifts. Minimize reflows and repaints.
-4. The **Aesthetic-Usability Effect**: Users often perceive aesthetically pleasing design as more usable. Enhance visual appeal to improve perceived usability.
-5. Apply the **redundancy principle**: Presenting the same information twice in different forms can be harmful if both are equally clear.
-6. Everything you do should have a purpose. If it doesn't add value, remove it. Don't add "fluff" or "eye candy" that doesn't serve a purpose. From Cognitive Load Theory: Every visual element competes for attention
-7. The **Hick’s Law**: The time it takes to make a decision increases with the number and complexity of choices. Simplify choices for the user.
-8. The **Fitts’s Law**: The time to acquire a target is a function of the distance to and size of the target. Make important interaction elements larger and closer.
-9. The **Jakob’s Law**: Users spend most of their time on other sites. They prefer your site to work the same way as all the other sites they already know. Follow common conventions.
-10. The **Miller’s Law**: The average person can only keep 7 (plus or minus 2) items in their working memory. Chunk information to reduce cognitive load.
-11. The **Pareto Principle**: 80% of the effects come from 20% of the causes. Focus on the most impactful changes.
-12. The **Peak-End Rule**: People judge an experience largely based on how they felt at its peak and at its end. Make the most important interactions memorable and satisfying.
-13. The **Serial Position Effect**: Users have a propensity to best remember the first and last items in a series. Prioritize important information at the beginning and end of lists or sequences.
-14. The **Von Restorff Effect**: When multiple similar objects are present, the one that differs from the rest is most likely to be remembered. Use contrast to highlight important elements.
-15. **Be Consistent**: Ensure that similar elements look and behave in similar ways throughout the application.
-16. **Give Feedback**: Provide clear feedback for user actions to confirm that their inputs have been received and processed.
-17. Accessibility: Ensure that the application is usable by people with a wide range of abilities and disabilities. Follow WCAG guidelines for color contrast, keyboard navigation, and screen reader compatibility. Keep in mind users with color blindness, low vision, and other visual impairments.
+  ## User Journey Context (Drives All Decisions)
 
-### Phase 3: Implementation
-1. Implement the necessary changes to improve the UI/UX based on your analysis. This may include:
-   - Refactoring existing UI components for consistency and usability.
-   - Improving layout and navigation for better user flow.
-   - Enhancing visual design elements such as colors, typography, spacing, and iconography.
-   - Standardizing interaction patterns and behaviors.
-   - Enhancing accessibility features.
-   - Standardizing the usage of sound effects for user interactions.
-2. Identify Tailwind 3 or earlier classes and refactor them to Tailwind 4 equivalents.
-3. Identify React 18 or earlier code patterns and refactor them to React 19 equivalents.
+  1. **Object Selection** (one-time): Select object type, dimensions, geometry → rarely revisited
+  2. **Scene Setup** (occasional): Camera, environment → changed periodically
+  3. **Animation Config** (moderate): Animation settings → adjusted sometimes
+  4. **Visual Tuning** (PRIMARY): Face, edge, lighting, post-processing → adjusted constantly
 
-### Phase 4: Review
-1. Conduct a thorough review of the changes made to ensure they align with UI/UX principles and improve the overall user experience.
-2. Test the application to ensure that all UI components function correctly and that there are no regressions or new issues introduced.
+  **Implication**: Visual tuning UI = highest priority. Must be instantly discoverable, responsive, delightful.
 
-## Constraints
-1. Do not introduce any new features. Focus solely on improving the existing UI/UX. Polish and refine what is already there.
-2. Under no circumstances should you touch the rendering engine or 3D projection logic. Your changes should be limited to the UI/UX aspects of the project.
+  ## Execution Phases
 
-## Important Reminder: This is a test of your autonomous capabilities
-This is an autonomous task. You are expected to take initiative and make decisions independently. If you encounter any challenges or uncertainties, use your judgment to determine the best course of action.
+  ### PHASE 1: DISCOVERY
+  - Map all UI components and navigation flows
+  - Identify primary flow (visual tuning) vs. secondary flows
+  - Catalog Tailwind 3 / React 18 patterns needing migration
 
-The state of the project will be monitored, and you will be evaluated based on the effectiveness of your improvements and your ability to work autonomously. If you return to user with an incomplete task or ask for guidance, it will be considered a failure to meet the autonomous requirements of this assignment. The quality and completeness of the project in this folder will be the only criteria for success. If the task is incomplete or the project in this folder is broken, you have failed the test of your autonomous capabilities.
+  ### PHASE 2: ANALYSIS
 
-## Notes
-- for icons you have the whole icomoon icon library at your disposal here: src/assets/icons
-- Techstack: React 19, TailWind 4, TypeScript, Zustand 5
+  Evaluate against these consolidated UX principles:
 
-## This is the user intent and user journey:
-The primary goal of the user is to create visually appealing 3D projections and animations of n-dimensional objects with ease and efficiency. The user journey can be broken down into several key stages:
-1. The user will select an object type and the number of dimensions. Then they may adjust some properties of the object geometry. Then they close these settings. They rarely will return to change these settings again.
-2. The user will set up the scene environment, camera angle. The user will change these from time to time.
-3. The user will configure animation settings. The user will then from time to time adjust animation settings.
-4. The user will spend a lot of time on configuring the face, edge, lighting, post processing settings. These will be adjusted often. There is only one object in the scene at a time and the user is focused on making that object look as good as possible and try out different options in face/edge shaders, material, post processing, lighting.
----
+  | Category | Look For |
+  |----------|----------|
+  | **Cognitive Load** | >7 options visible, complex decisions, overwhelming controls |
+  | **Interaction Design** | Small targets, non-standard patterns, poor affordances |
+  | **Visual Hierarchy** | Missing emphasis on key actions, buried important controls |
+  | **Consistency** | Inconsistent spacing, colors, typography, behaviors |
+  | **Feedback** | Missing loading states, silent failures, unclear confirmations |
+  | **Accessibility** | Poor contrast, no keyboard nav, color blindness issues |
+  | **Performance** | Layout shifts, jank, laggy interactions |
+
+  Prioritize by user impact. Primary flow issues first.
+
+  ### PHASE 3: IMPLEMENTATION
+
+  **Execution order**:
+  1. Critical issues in primary flow (visual tuning)
+  2. Consistency issues across all components
+  3. Tailwind 3 → 4 migration
+  4. React 18 → 19 migration
+  5. Accessibility enhancements
+  6. Secondary flow polish
+
+  ### PHASE 4: VERIFICATION
+  - Run `npm test` — all tests must pass
+  - Visual verification of primary flow
+  - Confirm no rendering code modified
+
+  ## Drift Prevention
+
+  Every 10 file changes, verify: "Am I within CIB-001 boundaries? UI/UX only, no rendering code, no new features."
+
+  ## Recovery Protocol
+
+  - **If blocked**: Skip to next item, flag for final report, keep making progress
+  - **If tests fail**: Identify cause, revert that change, document as "attempted but reverted", continue
+
+  ## Resources
+
+  - Icons: `src/assets/icons` (full icomoon library available)
+  - Existing components should be refactored, not replaced
+
+  ## Test Evaluation Criteria
+
+  This autonomous test is evaluated on the final state of the project folder. Success requires:
+
+  - ✓ Application builds and runs
+  - ✓ All tests pass
+  - ✓ Meaningful UI/UX improvements visible
+  - ✓ No rendering/shader code modified
+  - ✓ No new features introduced
+
+  **The test and you are a FAILURE if**:
+  - You return to the user with incomplete work
+  - You ask for guidance or clarification
+  - You claim the task is too large or complex
+  - The project is broken when you finish
+  - You only make superficial changes
+
+Remember: The quality and completeness of the project in this folder when you return the prompt to user is the sole measure of success. Work autonomously until done.

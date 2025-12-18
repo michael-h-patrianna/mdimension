@@ -84,28 +84,25 @@ function getSharedPMREMGenerator(gl: THREE.WebGLRenderer): THREE.PMREMGenerator 
 }
 
 /**
- * Clear all PMREM cache entries and dispose resources.
- * Called during WebGL context recovery to invalidate stale GPU textures.
+ * Clear all PMREM cache entries after WebGL context loss.
+ *
+ * IMPORTANT: This function nulls out resources WITHOUT disposing them.
+ * After context loss, GPU resources are already gone - calling dispose()
+ * would cause "object does not belong to this context" errors.
  */
-function clearPMREMCache(): void {
-  // Dispose all cached PMREM textures
-  for (const entry of pmremCache.values()) {
-    entry.pmremTexture.dispose();
-  }
+function clearPMREMCacheForContextLoss(): void {
+  // Clear cache without disposing - textures belong to the dead context
   pmremCache.clear();
 
-  // Dispose shared PMREM generator
-  if (sharedPMREMGenerator) {
-    sharedPMREMGenerator.dispose();
-    sharedPMREMGenerator = null;
-  }
+  // Null out shared PMREM generator without disposing
+  sharedPMREMGenerator = null;
 }
 
 // Register PMREM cache with resource recovery coordinator
 resourceRecovery.register({
   name: 'SkyboxPMREMCache',
   priority: RECOVERY_PRIORITY.SKYBOX_PMREM,
-  invalidate: () => clearPMREMCache(),
+  invalidate: () => clearPMREMCacheForContextLoss(),
   reinitialize: () => Promise.resolve(), // Textures will be regenerated on demand
 });
 

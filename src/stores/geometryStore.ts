@@ -16,6 +16,7 @@ import {
 } from '@/lib/geometry/registry'
 import type { ObjectType } from '@/lib/geometry/types'
 import { isQuantumOnlyAlgorithm } from '@/rendering/shaders/palette'
+import { TemporalCloudManager } from '@/rendering/core/TemporalCloudManager'
 import { TemporalDepthManager } from '@/rendering/core/TemporalDepthManager'
 import { create } from 'zustand'
 import { useAppearanceStore } from './appearanceStore'
@@ -202,8 +203,9 @@ export const useGeometryStore = create<GeometryState>((set, get) => ({
     // Trigger progressive refinement: start at low quality during content type switch
     usePerformanceStore.getState().setSceneTransitioning(true)
 
-    // Invalidate temporal depth data - object types have completely different depth values
+    // Invalidate temporal data - object types have completely different depth/accumulation values
     TemporalDepthManager.invalidate()
+    TemporalCloudManager.invalidate()
     usePerformanceStore.getState().setCameraTeleported(true)
 
     // Check if this object type has a recommended dimension (from registry)

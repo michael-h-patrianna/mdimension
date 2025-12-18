@@ -8,7 +8,7 @@
  * - Page visibility handling
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { useWebGLContextStore, DEFAULT_RECOVERY_CONFIG, RECOVERY_STATE_KEY } from '@/stores/webglContextStore'
 
 describe('webglContextStore', () => {

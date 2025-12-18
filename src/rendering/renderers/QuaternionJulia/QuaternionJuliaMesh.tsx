@@ -41,6 +41,7 @@ import {
 import { useProjectionStore } from '@/stores/projectionStore'
 import { useRotationStore } from '@/stores/rotationStore'
 import { useUIStore } from '@/stores/uiStore'
+import { useWebGLContextStore } from '@/stores/webglContextStore'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
@@ -156,6 +157,9 @@ const QuaternionJuliaMesh = () => {
 
   // Get dimension from geometry store (used for useEffect dependency)
   const dimension = useGeometryStore((state) => state.dimension)
+
+  // Context restore counter - forces material recreation when context is restored
+  const restoreCount = useWebGLContextStore((state) => state.restoreCount)
 
   // Get parameterValues for useEffect dependency (triggers basis vector recomputation)
   const parameterValues = useExtendedObjectStore(
@@ -624,10 +628,14 @@ const QuaternionJuliaMesh = () => {
     )
   })
 
+  // Generate unique key to force material recreation when shader changes or context is restored
+  const materialKey = `julia-material-${shaderString.length}-${restoreCount}`
+
   return (
     <mesh ref={meshRef}>
       <boxGeometry args={[4, 4, 4]} />
       <shaderMaterial
+        key={materialKey}
         glslVersion={THREE.GLSL3}
         vertexShader={vertexShader}
         fragmentShader={shaderString}
