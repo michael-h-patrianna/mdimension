@@ -81,7 +81,9 @@ export const RefractionShader = {
     vec3 getViewPosition(vec2 uv, float depth) {
       vec4 clipPos = vec4(uv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
       vec4 viewPos = invProjMatrix * clipPos;
-      return viewPos.xyz / viewPos.w;
+      // Guard against w=0
+      float safeW = abs(viewPos.w) < 0.0001 ? 0.0001 : viewPos.w;
+      return viewPos.xyz / safeW;
     }
 
     // Reconstruct VIEW-SPACE normal from depth buffer
@@ -116,7 +118,10 @@ export const RefractionShader = {
       // ddx ~ +X (right), ddy ~ +Y (up)
       // cross(+X, +Y) = -Z (into screen, away from camera) - wrong for facing surfaces
       // cross(+Y, +X) = +Z (toward camera) - correct for surfaces facing camera
-      vec3 normal = normalize(cross(ddy, ddx));
+      vec3 crossProd = cross(ddy, ddx);
+      float crossLen = length(crossProd);
+      // Guard against zero-length cross product
+      vec3 normal = crossLen > 0.0001 ? crossProd / crossLen : vec3(0.0, 0.0, 1.0);
 
       return normal;
     }
@@ -128,7 +133,10 @@ export const RefractionShader = {
 
       // Check if we have valid normal data (non-zero alpha or valid RGB)
       if (length(normalData.rgb) > 0.01) {
-        return normalize(normalData.rgb * 2.0 - 1.0);
+        vec3 decoded = normalData.rgb * 2.0 - 1.0;
+        float decodedLen = length(decoded);
+        // Guard against zero-length normal
+        return decodedLen > 0.0001 ? decoded / decodedLen : vec3(0.0, 0.0, 1.0);
       }
 
       // Fallback: reconstruct from depth

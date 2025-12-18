@@ -84,16 +84,19 @@ export const BufferPreviewShader = {
         if (debugMode == 2) {
           float diff = viewZ - focus;
           float absDiff = abs(diff);
-          
+
+          // Guard against focusRange = 0
+          float safeFocusRange = max(focusRange, 0.0001);
+
           // Green: In Focus
-          float inFocus = 1.0 - clamp(absDiff / focusRange, 0.0, 1.0);
-          
+          float inFocus = 1.0 - clamp(absDiff / safeFocusRange, 0.0, 1.0);
+
           // Red: Behind focus
-          float behind = clamp(diff / (focusRange * 3.0), 0.0, 1.0);
-          
+          float behind = clamp(diff / (safeFocusRange * 3.0), 0.0, 1.0);
+
           // Blue: In front of focus
-          float infront = clamp(-diff / (focusRange * 3.0), 0.0, 1.0);
-          
+          float infront = clamp(-diff / (safeFocusRange * 3.0), 0.0, 1.0);
+
           pc_fragColor = vec4(behind, inFocus, infront, 1.0);
           return;
         }

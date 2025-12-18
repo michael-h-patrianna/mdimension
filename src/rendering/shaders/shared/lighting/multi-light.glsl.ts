@@ -10,15 +10,18 @@ export const multiLightBlock = `
 vec3 getLightDirection(int lightIndex, vec3 fragPos) {
     int lightType = uLightTypes[lightIndex];
 
-    if (lightType == LIGHT_TYPE_POINT) {
-        return normalize(uLightPositions[lightIndex] - fragPos);
+    if (lightType == LIGHT_TYPE_POINT || lightType == LIGHT_TYPE_SPOT) {
+        vec3 diff = uLightPositions[lightIndex] - fragPos;
+        float len = length(diff);
+        // Guard against zero-length vector (light at fragment position)
+        return len > 0.0001 ? diff / len : vec3(0.0, 1.0, 0.0);
     }
     else if (lightType == LIGHT_TYPE_DIRECTIONAL) {
         // Directional lights: use the stored direction (pointing toward surface)
-        return normalize(uLightDirections[lightIndex]);
-    }
-    else if (lightType == LIGHT_TYPE_SPOT) {
-        return normalize(uLightPositions[lightIndex] - fragPos);
+        vec3 dir = uLightDirections[lightIndex];
+        float len = length(dir);
+        // Guard against zero-length direction
+        return len > 0.0001 ? dir / len : vec3(0.0, 1.0, 0.0);
     }
 
     return vec3(0.0, 1.0, 0.0);
@@ -29,7 +32,11 @@ vec3 getLightDirection(int lightIndex, vec3 fragPos) {
  * Uses precomputed cosines (uSpotCosInner/uSpotCosOuter) to avoid per-fragment trig.
  */
 float getSpotAttenuation(int lightIndex, vec3 lightToFrag) {
-    float cosAngle = dot(lightToFrag, normalize(uLightDirections[lightIndex]));
+    vec3 dir = uLightDirections[lightIndex];
+    float dirLen = length(dir);
+    // Guard against zero-length direction
+    vec3 normDir = dirLen > 0.0001 ? dir / dirLen : vec3(0.0, -1.0, 0.0);
+    float cosAngle = dot(lightToFrag, normDir);
     return smoothstep(uSpotCosOuter[lightIndex], uSpotCosInner[lightIndex], cosAngle);
 }
 

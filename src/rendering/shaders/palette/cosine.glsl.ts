@@ -49,7 +49,10 @@ float applyDistribution(float t, float power, float cycles, float offset) {
   float clamped = clamp(t, 0.0, 1.0);
 
   // Apply power curve for contrast control
-  float curved = pow(clamped, power);
+  // Guard pow() - ensure base > 0 when power could be negative
+  float safePower = max(power, 0.001);
+  float safeBase = max(clamped, 0.0001);
+  float curved = pow(safeBase, safePower);
 
   // Apply cycles and offset, wrap to [0, 1]
   float cycled = fract(curved * cycles + offset);
@@ -107,9 +110,10 @@ vec3 linearSrgbToOklab(vec3 rgb) {
   float m = 0.2119034982 * rgb.r + 0.6806995451 * rgb.g + 0.1073969566 * rgb.b;
   float s = 0.0883024619 * rgb.r + 0.2817188376 * rgb.g + 0.6299787005 * rgb.b;
 
-  float l_ = pow(l, 1.0/3.0);
-  float m_ = pow(m, 1.0/3.0);
-  float s_ = pow(s, 1.0/3.0);
+  // Guard cube root: clamp to non-negative to avoid NaN from pow with negative base
+  float l_ = pow(max(l, 0.0), 1.0/3.0);
+  float m_ = pow(max(m, 0.0), 1.0/3.0);
+  float s_ = pow(max(s, 0.0), 1.0/3.0);
 
   return vec3(
     0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_,

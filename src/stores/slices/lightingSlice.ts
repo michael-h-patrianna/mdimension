@@ -17,7 +17,7 @@ import {
   clampPenumbra,
   cloneLight,
   createNewLight,
-  normalizeRotationTuple,
+  normalizeRotationTupleSigned,
 } from '@/rendering/lights/types'
 import type { ToneMappingAlgorithm } from '@/rendering/shaders/types'
 import type { ShadowAnimationMode, ShadowQuality } from '@/rendering/shadows/types'
@@ -289,7 +289,7 @@ export const createLightingSlice: StateCreator<LightingSlice, [], [], LightingSl
             updates.penumbra !== undefined ? clampPenumbra(updates.penumbra) : light.penumbra,
           rotation:
             updates.rotation !== undefined
-              ? normalizeRotationTuple(updates.rotation)
+              ? normalizeRotationTupleSigned(updates.rotation)
               : light.rotation,
         }
       }),

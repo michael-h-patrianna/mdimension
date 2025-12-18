@@ -56,7 +56,9 @@ void main() {
         vec2 ndc = screenUV * 2.0 - 1.0;
         vec4 nearPointClip = vec4(ndc, -1.0, 1.0);
         vec4 nearPointWorld = uInverseViewProjectionMatrix * nearPointClip;
-        nearPointWorld /= nearPointWorld.w;
+        // Guard against w=0
+        float nearW = abs(nearPointWorld.w) < 0.0001 ? 0.0001 : nearPointWorld.w;
+        nearPointWorld /= nearW;
         vec3 rayOriginWorld = nearPointWorld.xyz;
         ro = (uInverseModelMatrix * vec4(rayOriginWorld, 1.0)).xyz;
         ro = ro - rd * (BOUND_R + 1.0);
@@ -70,7 +72,9 @@ void main() {
         vec2 ndc = screenUV * 2.0 - 1.0;
         vec4 farPointClip = vec4(ndc, 1.0, 1.0);
         vec4 farPointWorld = uInverseViewProjectionMatrix * farPointClip;
-        farPointWorld /= farPointWorld.w;
+        // Guard against w=0
+        float farW = abs(farPointWorld.w) < 0.0001 ? 0.0001 : farPointWorld.w;
+        farPointWorld /= farW;
         worldRayDir = normalize(farPointWorld.xyz - uCameraPosition);
         #else
         worldRayDir = normalize(vPosition - uCameraPosition);
@@ -172,7 +176,9 @@ void main() {
     vec3 entryPoint = ro + rd * depthT;
     vec4 worldEntryPos = uModelMatrix * vec4(entryPoint, 1.0);
     vec4 clipPos = uProjectionMatrix * uViewMatrix * worldEntryPos;
-    gl_FragDepth = clamp((clipPos.z / clipPos.w) * 0.5 + 0.5, 0.0, 1.0);
+    // Guard against clipPos.w = 0
+    float clipW = abs(clipPos.w) < 0.0001 ? 0.0001 : clipPos.w;
+    gl_FragDepth = clamp((clipPos.z / clipW) * 0.5 + 0.5, 0.0, 1.0);
 
     // Output
     gColor = vec4(volumeResult.color, alpha);
@@ -264,7 +270,9 @@ void main() {
         vec2 ndc = screenUV * 2.0 - 1.0;
         vec4 nearPointClip = vec4(ndc, -1.0, 1.0);
         vec4 nearPointWorld = uInverseViewProjectionMatrix * nearPointClip;
-        nearPointWorld /= nearPointWorld.w;
+        // Guard against w=0
+        float nearW = abs(nearPointWorld.w) < 0.0001 ? 0.0001 : nearPointWorld.w;
+        nearPointWorld /= nearW;
         vec3 rayOriginWorld = nearPointWorld.xyz;
         ro = (uInverseModelMatrix * vec4(rayOriginWorld, 1.0)).xyz;
         ro = ro - rd * (BOUND_R + 1.0);
@@ -380,7 +388,10 @@ void main() {
         }
 
         if (lightType == LIGHT_TYPE_SPOT) {
-            vec3 lightToFrag = normalize(p - uLightPositions[i]);
+            vec3 ltfDiff = p - uLightPositions[i];
+            float ltfLen = length(ltfDiff);
+            // Guard against light at fragment position
+            vec3 lightToFrag = ltfLen > 0.0001 ? ltfDiff / ltfLen : vec3(0.0, -1.0, 0.0);
             attenuation *= getSpotAttenuation(i, lightToFrag);
         }
 
@@ -390,9 +401,14 @@ void main() {
         totalNdotL = max(totalNdotL, NdotL * attenuation);
         col += surfaceColor * uLightColors[i] * NdotL * uDiffuseIntensity * attenuation;
 
-        vec3 halfDir = normalize(l + viewDir);
+        // Guard against l and viewDir being opposite (zero-length half vector)
+        vec3 halfSum = l + viewDir;
+        float halfLen = length(halfSum);
+        vec3 halfDir = halfLen > 0.0001 ? halfSum / halfLen : n;
         float NdotH = max(dot(n, halfDir), 0.0);
-        float spec = pow(NdotH, uSpecularPower) * uSpecularIntensity * attenuation;
+        // Guard pow() against edge cases
+        float safeSpecPower = max(uSpecularPower, 1.0);
+        float spec = pow(max(NdotH, 0.0001), safeSpecPower) * uSpecularIntensity * attenuation;
         col += uSpecularColor * uLightColors[i] * spec;
     }
 
@@ -407,10 +423,15 @@ void main() {
     // Depth
     vec4 worldHitPos = uModelMatrix * vec4(p, 1.0);
     vec4 clipPos = uProjectionMatrix * uViewMatrix * worldHitPos;
-    gl_FragDepth = clamp((clipPos.z / clipPos.w) * 0.5 + 0.5, 0.0, 1.0);
+    // Guard against clipPos.w = 0
+    float clipW2 = abs(clipPos.w) < 0.0001 ? 0.0001 : clipPos.w;
+    gl_FragDepth = clamp((clipPos.z / clipW2) * 0.5 + 0.5, 0.0, 1.0);
 
     float alpha = calculateOpacityAlpha(hitT, tSphere.x, tFar + 1.0);
-    vec3 viewNormal = normalize((uViewMatrix * vec4(n, 0.0)).xyz);
+    // Guard against zero-length view normal
+    vec3 viewNormalRaw = (uViewMatrix * vec4(n, 0.0)).xyz;
+    float vnLen2 = length(viewNormalRaw);
+    vec3 viewNormal = vnLen2 > 0.0001 ? viewNormalRaw / vnLen2 : vec3(0.0, 0.0, 1.0);
     gColor = vec4(col, alpha);
     gNormal = vec4(viewNormal * 0.5 + 0.5, uMetallic);
 }

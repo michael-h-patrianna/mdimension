@@ -198,6 +198,24 @@ describe('lightingStore', () => {
       expect(useLightingStore.getState().lights[0]!.rotation).toEqual([0.5, 1.0, 1.5])
     })
 
+    it('should normalize rotation to signed range [-π, π)', () => {
+      const { lights } = useLightingStore.getState()
+      const lightId = lights[0]!.id
+      const TWO_PI = Math.PI * 2
+
+      // Test value > π gets normalized to negative range
+      useLightingStore.getState().updateLight(lightId, { rotation: [Math.PI + 0.5, 0, 0] })
+      expect(useLightingStore.getState().lights[0]!.rotation[0]).toBeCloseTo(-Math.PI + 0.5, 5)
+
+      // Test value >= 2π gets normalized to [0, π) or [-π, 0)
+      useLightingStore.getState().updateLight(lightId, { rotation: [0, TWO_PI + 0.5, 0] })
+      expect(useLightingStore.getState().lights[0]!.rotation[1]).toBeCloseTo(0.5, 5)
+
+      // Test negative value < -π gets normalized to positive range
+      useLightingStore.getState().updateLight(lightId, { rotation: [0, 0, -Math.PI - 0.5] })
+      expect(useLightingStore.getState().lights[0]!.rotation[2]).toBeCloseTo(Math.PI - 0.5, 5)
+    })
+
     it('should update light color', () => {
       const { lights } = useLightingStore.getState()
       const lightId = lights[0]!.id
@@ -324,7 +342,10 @@ describe('lightingStore', () => {
       expect(clone!.intensity).toBe(2.5)
       expect(clone!.coneAngle).toBe(60)
       expect(clone!.penumbra).toBe(0.8)
-      expect(clone!.rotation).toEqual([0.1, 0.2, 0.3])
+      // Use toBeCloseTo for floating point rotation values
+      expect(clone!.rotation[0]).toBeCloseTo(0.1, 10)
+      expect(clone!.rotation[1]).toBeCloseTo(0.2, 10)
+      expect(clone!.rotation[2]).toBeCloseTo(0.3, 10)
     })
 
     it('should auto-select the duplicated light', () => {

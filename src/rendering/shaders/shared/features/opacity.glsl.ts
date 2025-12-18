@@ -24,13 +24,15 @@ float calculateSimpleAlpha() {
  * @param maxDepth - Maximum ray distance (for normalization)
  */
 float calculateLayeredAlpha(float depth, float maxDepth) {
-    // Normalize depth to 0-1 range
-    float normalizedDepth = clamp(depth / maxDepth, 0.0, 1.0);
+    // Normalize depth to 0-1 range - guard against maxDepth=0
+    float safeMaxDepth = max(maxDepth, 0.0001);
+    float normalizedDepth = clamp(depth / safeMaxDepth, 0.0, 1.0);
 
-    // Calculate which layer this hit belongs to
-    float layerSize = 1.0 / float(uLayerCount);
+    // Calculate which layer this hit belongs to - guard against uLayerCount=0
+    int safeLayerCount = max(uLayerCount, 1);
+    float layerSize = 1.0 / float(safeLayerCount);
     int layerIndex = int(normalizedDepth / layerSize);
-    layerIndex = min(layerIndex, uLayerCount - 1);
+    layerIndex = min(layerIndex, safeLayerCount - 1);
 
     // Base alpha from layer opacity setting
     float alpha = uLayerOpacity;

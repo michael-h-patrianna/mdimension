@@ -41,7 +41,10 @@ export function composeFaceVertexShader(): string {
 
       // Pass world position for normal calculation in fragment shader
       vWorldPosition = worldPos.xyz;
-      vViewDir = normalize(cameraPosition - worldPos.xyz);
+      // Guard against camera at world position (zero-length view direction)
+      vec3 viewDiff = cameraPosition - worldPos.xyz;
+      float viewLen = length(viewDiff);
+      vViewDir = viewLen > 0.0001 ? viewDiff / viewLen : vec3(0.0, 0.0, 1.0);
 
       // Compute face depth from higher dimension coordinates
       // With flat interpolation, first vertex of each triangle sets the value
@@ -115,8 +118,14 @@ export function composeFaceFragmentShader(): string {
       // Compute face normal from screen-space derivatives of world position
       vec3 dPdx = dFdx(vWorldPosition);
       vec3 dPdy = dFdy(vWorldPosition);
-      vec3 normal = normalize(cross(dPdx, dPdy));
-      vec3 viewDir = normalize(vViewDir);
+      vec3 crossProd = cross(dPdx, dPdy);
+      float crossLen = length(crossProd);
+      // Guard against degenerate normals (edge-on faces where cross product is near-zero)
+      // Without this, normalize() produces NaN which makes the face render as transparent
+      vec3 normal = crossLen > 0.0001 ? crossProd / crossLen : vec3(0.0, 0.0, 1.0);
+      // Guard against zero-length view direction (already normalized in vertex shader, but double-check)
+      float vViewLen = length(vViewDir);
+      vec3 viewDir = vViewLen > 0.0001 ? vViewDir / vViewLen : vec3(0.0, 0.0, 1.0);
 
       // For two-sided surfaces, we keep the geometric normal as computed
       // Two-sided lighting is achieved by using abs() in diffuse calculations below
@@ -156,7 +165,10 @@ export function composeFaceFragmentShader(): string {
             }
 
             if (lightType == LIGHT_TYPE_SPOT) {
-                vec3 lightToFrag = normalize(vWorldPosition - uLightPositions[i]);
+                vec3 ltfDiff = vWorldPosition - uLightPositions[i];
+                float ltfLen = length(ltfDiff);
+                // Guard against light at fragment position
+                vec3 lightToFrag = ltfLen > 0.0001 ? ltfDiff / ltfLen : vec3(0.0, -1.0, 0.0);
                 attenuation *= getSpotAttenuation(i, lightToFrag);
             }
 
@@ -170,10 +182,15 @@ export function composeFaceFragmentShader(): string {
             float NdotL = abs(dot(normal, l));
             col += baseColor * uLightColors[i] * NdotL * uDiffuseIntensity * attenuation * shadow;
 
-            vec3 halfDir = normalize(l + viewDir);
+            // Guard against l and viewDir being opposite (zero-length half vector)
+            vec3 halfSum = l + viewDir;
+            float halfLen = length(halfSum);
+            vec3 halfDir = halfLen > 0.0001 ? halfSum / halfLen : normal;
             // Two-sided specular: use abs() so specular appears on both sides of faces
             float NdotH = abs(dot(normal, halfDir));
-            float spec = pow(NdotH, uSpecularPower) * uSpecularIntensity * attenuation * shadow;
+            // Guard pow() against edge cases
+            float safeSpecPower = max(uSpecularPower, 1.0);
+            float spec = pow(max(NdotH, 0.0001), safeSpecPower) * uSpecularIntensity * attenuation * shadow;
             col += uSpecularColor * uLightColors[i] * spec;
 
             // Rim SSS (backlight transmission)
@@ -196,16 +213,23 @@ export function composeFaceFragmentShader(): string {
       } else if (uLightEnabled) {
         // Legacy single-light fallback
         col = baseColor * uAmbientColor * uAmbientIntensity;
-        vec3 lightDir = normalize(uLightDirection);
+        // Guard against zero-length light direction
+        float ldLen = length(uLightDirection);
+        vec3 lightDir = ldLen > 0.0001 ? uLightDirection / ldLen : vec3(0.0, 1.0, 0.0);
 
         // Two-sided lighting: use abs() so both sides of faces receive diffuse light
         float NdotL = abs(dot(normal, lightDir));
         col += baseColor * uLightColor * NdotL * uDiffuseIntensity * uLightStrength;
 
-        vec3 halfDir = normalize(lightDir + viewDir);
+        // Guard against lightDir and viewDir being opposite (zero-length half vector)
+        vec3 halfSumLegacy = lightDir + viewDir;
+        float halfLenLegacy = length(halfSumLegacy);
+        vec3 halfDir = halfLenLegacy > 0.0001 ? halfSumLegacy / halfLenLegacy : normal;
         // Two-sided specular: use abs() so specular appears on both sides of faces
         float NdotH = abs(dot(normal, halfDir));
-        float spec = pow(NdotH, uSpecularPower) * uSpecularIntensity * uLightStrength;
+        // Guard pow() against edge cases
+        float safeSpecPowerLegacy = max(uSpecularPower, 1.0);
+        float spec = pow(max(NdotH, 0.0001), safeSpecPowerLegacy) * uSpecularIntensity * uLightStrength;
         col += uSpecularColor * uLightColor * spec;
 
         // Rim SSS (backlight transmission) - legacy single light
@@ -227,7 +251,10 @@ export function composeFaceFragmentShader(): string {
       }
 
       // Output to MRT
-      vec3 viewNormal = normalize((uViewMatrix * vec4(normal, 0.0)).xyz);
+      // Guard against zero-length view normal (unlikely but possible with degenerate matrices)
+      vec3 viewNormalRaw = (uViewMatrix * vec4(normal, 0.0)).xyz;
+      float vnLen = length(viewNormalRaw);
+      vec3 viewNormal = vnLen > 0.0001 ? viewNormalRaw / vnLen : vec3(0.0, 0.0, 1.0);
       gColor = vec4(col, uOpacity);
       gNormal = vec4(viewNormal * 0.5 + 0.5, uMetallic);
     }

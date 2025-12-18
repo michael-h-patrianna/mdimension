@@ -10,7 +10,11 @@ vec3 cosinePalette(float t, vec3 a, vec3 b, vec3 c, vec3 d) {
 
 float applyDistribution(float t, float power, float cycles, float offset) {
   float clamped = clamp(t, 0.0, 1.0);
-  float curved = pow(clamped, power);
+  // Guard pow() - ensure base > 0 when power could be negative
+  // and ensure power >= small value to avoid pow(x, 0) edge cases
+  float safePower = max(power, 0.001);
+  float safeBase = max(clamped, 0.0001);
+  float curved = pow(safeBase, safePower);
   float cycled = fract(curved * cycles + offset);
   return cycled;
 }

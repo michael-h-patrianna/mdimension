@@ -9,7 +9,10 @@ vec3 rgb2hsl(vec3 c) {
     float l = (maxC + minC) * 0.5;
     if (maxC == minC) return vec3(0.0, 0.0, l);
     float d = maxC - minC;
-    float s = l > 0.5 ? d / (2.0 - maxC - minC) : d / (maxC + minC);
+    // Guard against division by zero
+    float denom1 = 2.0 - maxC - minC;
+    float denom2 = maxC + minC;
+    float s = l > 0.5 ? d / max(denom1, 0.0001) : d / max(denom2, 0.0001);
     float h;
     if (maxC == c.r) h = (c.g - c.b) / d + (c.g < c.b ? 6.0 : 0.0);
     else if (maxC == c.g) h = (c.b - c.r) / d + 2.0;

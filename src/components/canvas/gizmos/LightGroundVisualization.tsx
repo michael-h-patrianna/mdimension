@@ -45,6 +45,8 @@ export interface LightGroundVisualizationProps {
   light: LightSource;
   /** Whether this light is selected */
   isSelected: boolean;
+  /** Whether any light is currently being dragged */
+  isDragging: boolean;
   /** Callback when rotation changes via drag (spot/directional lights) */
   onRotationChange: (rotation: [number, number, number]) => void;
   /** Callback when position changes via drag (point lights) */
@@ -266,6 +268,7 @@ const DraggableGroundTarget = memo(function DraggableGroundTarget({
   light,
   intersection,
   isSelected,
+  isDragging,
   onRotationChange,
   onDragStart,
   onDragEnd,
@@ -274,6 +277,7 @@ const DraggableGroundTarget = memo(function DraggableGroundTarget({
   light: LightSource;
   intersection: THREE.Vector3;
   isSelected: boolean;
+  isDragging: boolean;
   onRotationChange: (rotation: [number, number, number]) => void;
   onDragStart: () => void;
   onDragEnd: () => void;
@@ -283,13 +287,19 @@ const DraggableGroundTarget = memo(function DraggableGroundTarget({
   const lightPosRef = useRef(new THREE.Vector3());
   const tempPosition = useRef(new THREE.Vector3());
 
-  // Matrix for DragControls - must be updated when intersection changes
-  const matrix = useRef(new THREE.Matrix4());
-
-  // Update matrix when intersection changes (when not dragging)
-  useEffect(() => {
+  // Matrix for DragControls - initialized with correct position
+  const matrix = useRef<THREE.Matrix4>(null!);
+  if (matrix.current === null) {
+    matrix.current = new THREE.Matrix4();
     matrix.current.setPosition(intersection.x, GROUND_Y + 0.02, intersection.z);
-  }, [intersection.x, intersection.z]);
+  }
+
+  // Update matrix when intersection changes (only when not dragging)
+  useEffect(() => {
+    if (!isDragging) {
+      matrix.current.setPosition(intersection.x, GROUND_Y + 0.02, intersection.z);
+    }
+  }, [intersection.x, intersection.z, isDragging]);
 
   // Handle drag start - select light and disable camera controls
   const handleDragStart = useCallback(() => {
@@ -377,6 +387,7 @@ const PointLightGroundCircle = memo(function PointLightGroundCircle({
   light,
   intersection,
   isSelected,
+  isDragging,
   onPositionChange,
   onDragStart,
   onDragEnd,
@@ -385,6 +396,7 @@ const PointLightGroundCircle = memo(function PointLightGroundCircle({
   light: LightSource;
   intersection: { center: THREE.Vector3; radius: number };
   isSelected: boolean;
+  isDragging: boolean;
   onPositionChange: (position: [number, number, number]) => void;
   onDragStart: () => void;
   onDragEnd: () => void;
@@ -393,13 +405,19 @@ const PointLightGroundCircle = memo(function PointLightGroundCircle({
   const groupRef = useRef<THREE.Group>(null);
   const tempPosition = useRef(new THREE.Vector3());
 
-  // Matrix for DragControls - must be updated when intersection changes
-  const matrix = useRef(new THREE.Matrix4());
-
-  // Update matrix when intersection center changes (when not dragging)
-  useEffect(() => {
+  // Matrix for DragControls - initialized with correct position
+  const matrix = useRef<THREE.Matrix4>(null!);
+  if (matrix.current === null) {
+    matrix.current = new THREE.Matrix4();
     matrix.current.setPosition(intersection.center.x, GROUND_Y + 0.02, intersection.center.z);
-  }, [intersection.center.x, intersection.center.z]);
+  }
+
+  // Update matrix when intersection center changes (only when not dragging)
+  useEffect(() => {
+    if (!isDragging) {
+      matrix.current.setPosition(intersection.center.x, GROUND_Y + 0.02, intersection.center.z);
+    }
+  }, [intersection.center.x, intersection.center.z, isDragging]);
 
   // Generate circle points for the range outline
   const circlePoints = useMemo(() => {
@@ -510,6 +528,7 @@ const PointLightGroundCircle = memo(function PointLightGroundCircle({
 export const LightGroundVisualization = memo(function LightGroundVisualization({
   light,
   isSelected,
+  isDragging,
   onRotationChange,
   onPositionChange,
   onDragStart,
@@ -546,6 +565,7 @@ export const LightGroundVisualization = memo(function LightGroundVisualization({
         light={light}
         intersection={sphereIntersection}
         isSelected={isSelected}
+        isDragging={isDragging}
         onPositionChange={onPositionChange}
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
@@ -580,6 +600,7 @@ export const LightGroundVisualization = memo(function LightGroundVisualization({
         light={light}
         intersection={rayIntersection}
         isSelected={isSelected}
+        isDragging={isDragging}
         onRotationChange={onRotationChange}
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}

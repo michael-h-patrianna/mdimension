@@ -98,7 +98,9 @@ export const DepthCaptureShader = {
       // Unproject to view space using inverse projection matrix
       // We use z = -1.0 (near plane) and w = 1.0, then normalize
       vec4 viewPos = inverseProjectionMatrix * vec4(ndc, -1.0, 1.0);
-      vec3 rayDir = normalize(viewPos.xyz / viewPos.w);
+      // Guard against w=0
+      float safeW = abs(viewPos.w) < 0.0001 ? 0.0001 : viewPos.w;
+      vec3 rayDir = normalize(viewPos.xyz / safeW);
 
       // The z-component of the normalized ray direction is the cosine of the angle
       // with the camera forward direction (-Z axis). We take abs since viewZ is positive.

@@ -59,7 +59,11 @@ export const transformNDBlock = `
         }
         float normFactor = uDimension > 4 ? sqrt(float(uDimension - 3)) : 1.0;
         effectiveDepth /= normFactor;
-        float factor = 1.0 / (uProjectionDistance - effectiveDepth);
+        // Guard against division by zero when effectiveDepth approaches projectionDistance
+        float denom = uProjectionDistance - effectiveDepth;
+        // Clamp denominator away from zero (preserve sign for correct projection direction)
+        if (abs(denom) < 0.0001) denom = denom >= 0.0 ? 0.0001 : -0.0001;
+        float factor = 1.0 / denom;
         projected = rotated.xyz * factor;
       }
 

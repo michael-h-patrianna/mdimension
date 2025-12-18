@@ -143,7 +143,8 @@ export const BokehShader = {
           total += weight;
         }
       }
-      return col / total;
+      // Guard against zero total weight (edge case)
+      return col / max(total, 0.0001);
     }
 
     // Method 2: Separable blur (horizontal + vertical, more efficient)

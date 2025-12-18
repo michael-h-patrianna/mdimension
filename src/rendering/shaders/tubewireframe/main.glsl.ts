@@ -27,7 +27,10 @@ void main() {
 
     // Get light direction
     vec3 L = getLightDirection(i, vWorldPosition);
-    vec3 H = normalize(V + L);
+    // Guard against V and L being opposite (zero-length half vector)
+    vec3 halfSum = V + L;
+    float halfLen = length(halfSum);
+    vec3 H = halfLen > 0.0001 ? halfSum / halfLen : N;
 
     float attenuation = uLightIntensities[i];
 
@@ -40,7 +43,10 @@ void main() {
 
     // Apply spot light cone attenuation
     if (lightType == LIGHT_TYPE_SPOT) {
-      vec3 lightToFrag = normalize(vWorldPosition - uLightPositions[i]);
+      vec3 ltfDiff = vWorldPosition - uLightPositions[i];
+      float ltfLen = length(ltfDiff);
+      // Guard against fragment at light position
+      vec3 lightToFrag = ltfLen > 0.0001 ? ltfDiff / ltfLen : vec3(0.0, -1.0, 0.0);
       attenuation *= getSpotAttenuation(i, lightToFrag);
     }
 

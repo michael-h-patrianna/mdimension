@@ -7,7 +7,8 @@ float calcSoftShadowLegacy(vec3 ro, vec3 rd, float mint, float maxt, float k) {
         if (t > maxt) break;
         float h = GetDist(ro + rd * t);
         if (h < 0.001) return 0.0;
-        res = min(res, k * h / t);
+        // Guard division by t (t starts at mint which should be > 0, but be safe)
+        res = min(res, k * h / max(t, 0.0001));
         t += clamp(h, 0.01, 0.2);
     }
     return clamp(res, 0.0, 1.0);
@@ -37,8 +38,9 @@ float calcSoftShadowQuality(vec3 ro, vec3 rd, float mint, float maxt, float soft
 
         // Improved soft shadow technique (Inigo Quilez)
         float y = h * h / (2.0 * ph);
-        float d = sqrt(h * h - y * y);
-        res = min(res, k * d / max(0.0, t - y));
+        // Guard sqrt against negative values (numerical precision)
+        float d = sqrt(max(h * h - y * y, 0.0));
+        res = min(res, k * d / max(0.0001, t - y));
         ph = h;
 
         t += clamp(h, 0.02, 0.25);

@@ -44,7 +44,10 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0) {
 
 // Compute PBR Specular contribution
 vec3 computePBRSpecular(vec3 N, vec3 V, vec3 L, float roughness, vec3 F0) {
-    vec3 H = normalize(V + L);
+    // Guard against V and L being opposite (zero-length half vector)
+    vec3 halfSum = V + L;
+    float halfLen = length(halfSum);
+    vec3 H = halfLen > 0.0001 ? halfSum / halfLen : N;
     
     // Cook-Torrance BRDF
     float NDF = distributionGGX(N, H, roughness);   

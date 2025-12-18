@@ -10,7 +10,9 @@ void main() {
         vec2 ndc = screenUV * 2.0 - 1.0;
         vec4 nearPointClip = vec4(ndc, -1.0, 1.0);
         vec4 nearPointWorld = uInverseViewProjectionMatrix * nearPointClip;
-        nearPointWorld /= nearPointWorld.w;
+        // Guard against w=0
+        float nearW = abs(nearPointWorld.w) < 0.0001 ? 0.0001 : nearPointWorld.w;
+        nearPointWorld /= nearW;
         vec3 rayOriginWorld = nearPointWorld.xyz;
         ro = (uInverseModelMatrix * vec4(rayOriginWorld, 1.0)).xyz;
         ro = ro - rd * (BOUND_R + 1.0);
@@ -70,7 +72,10 @@ void main() {
         }
 
         if (lightType == LIGHT_TYPE_SPOT) {
-            vec3 lightToFrag = normalize(p - uLightPositions[i]);
+            vec3 ltfDiff = p - uLightPositions[i];
+            float ltfLen = length(ltfDiff);
+            // Guard against light at fragment position
+            vec3 lightToFrag = ltfLen > 0.0001 ? ltfDiff / ltfLen : vec3(0.0, -1.0, 0.0);
             attenuation *= getSpotAttenuation(i, lightToFrag);
         }
 
@@ -169,10 +174,15 @@ void main() {
 
     vec4 worldHitPos = uModelMatrix * vec4(p, 1.0);
     vec4 clipPos = uProjectionMatrix * uViewMatrix * worldHitPos;
-    gl_FragDepth = clamp((clipPos.z / clipPos.w) * 0.5 + 0.5, 0.0, 1.0);
+    // Guard against clipPos.w = 0
+    float clipW = abs(clipPos.w) < 0.0001 ? 0.0001 : clipPos.w;
+    gl_FragDepth = clamp((clipPos.z / clipW) * 0.5 + 0.5, 0.0, 1.0);
 
     float alpha = calculateOpacityAlpha(d, sphereEntry, maxDist);
-    vec3 viewNormal = normalize((uViewMatrix * vec4(n, 0.0)).xyz);
+    // Guard against zero-length view normal
+    vec3 viewNormalRaw = (uViewMatrix * vec4(n, 0.0)).xyz;
+    float vnLen = length(viewNormalRaw);
+    vec3 viewNormal = vnLen > 0.0001 ? viewNormalRaw / vnLen : vec3(0.0, 0.0, 1.0);
     gColor = vec4(col, alpha);
     gNormal = vec4(viewNormal * 0.5 + 0.5, uMetallic);
 }

@@ -372,3 +372,41 @@ export function normalizeRotationTuple(
     normalizeRotation(rotation[2]),
   ]
 }
+
+/**
+ * Normalize a rotation angle to the range [-π, π) radians.
+ * This range is more intuitive for rotation gizmos and transform controls.
+ *
+ * @param angle - Input angle in radians
+ * @returns Normalized angle in [-π, π) radians
+ */
+export function normalizeRotationSigned(angle: number): number {
+  const TWO_PI = Math.PI * 2
+
+  // First normalize to [0, 2π)
+  let normalized = ((angle % TWO_PI) + TWO_PI) % TWO_PI
+
+  // Then shift to [-π, π)
+  if (normalized >= Math.PI) {
+    normalized -= TWO_PI
+  }
+
+  return normalized
+}
+
+/**
+ * Normalize a rotation tuple to the range [-π, π) radians for each component.
+ * This range is more intuitive for rotation gizmos and transform controls.
+ *
+ * @param rotation - Euler angles in radians [x, y, z]
+ * @returns Normalized rotation tuple in [-π, π) range
+ */
+export function normalizeRotationTupleSigned(
+  rotation: [number, number, number]
+): [number, number, number] {
+  return [
+    normalizeRotationSigned(rotation[0]),
+    normalizeRotationSigned(rotation[1]),
+    normalizeRotationSigned(rotation[2]),
+  ]
+}

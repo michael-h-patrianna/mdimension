@@ -28,6 +28,7 @@ import { rotationToDirection } from '@/rendering/lights/types';
 import type { ShadowQuality } from '@/rendering/shadows/types';
 import { useLightingStore } from '@/stores/lightingStore';
 import { memo, useEffect, useMemo, useRef } from 'react';
+import * as THREE from 'three';
 import { MeshBasicMaterial, SphereGeometry, Vector3 } from 'three';
 
 /**
@@ -89,6 +90,11 @@ const LightRenderer = memo(function LightRenderer({
     return new Vector3(dir[0], dir[1], dir[2]);
   }, [light.rotation]);
 
+  // Refs for lights that need targets
+  const spotLightRef = useRef<THREE.SpotLight>(null);
+  const directionalLightRef = useRef<THREE.DirectionalLight>(null);
+  const targetRef = useRef<THREE.Object3D>(null);
+
   // For directional/spot lights, calculate target position from direction
   const targetPosition = useMemo((): [number, number, number] => {
     // Target is position + direction
@@ -98,6 +104,20 @@ const LightRenderer = memo(function LightRenderer({
       light.position[2] + direction.z * 10,
     ];
   }, [light.position, direction]);
+
+  // Update light target when direction changes
+  useEffect(() => {
+    if (spotLightRef.current && targetRef.current) {
+      targetRef.current.position.set(...targetPosition);
+      spotLightRef.current.target = targetRef.current;
+      spotLightRef.current.target.updateMatrixWorld();
+    }
+    if (directionalLightRef.current && targetRef.current) {
+      targetRef.current.position.set(...targetPosition);
+      directionalLightRef.current.target = targetRef.current;
+      directionalLightRef.current.target.updateMatrixWorld();
+    }
+  }, [targetPosition]);
 
   // Create light indicator material
   const indicatorMaterial = useMemo(() => {
@@ -136,8 +156,16 @@ const LightRenderer = memo(function LightRenderer({
     ) : null;
   }
 
+  // Determine if we need a target object (for spot and directional lights)
+  const needsTarget = light.type === 'spot' || light.type === 'directional';
+
   return (
     <>
+      {/* Target object for spot/directional lights - must be in scene graph */}
+      {needsTarget && (
+        <object3D ref={targetRef} position={targetPosition} />
+      )}
+
       {light.type === 'point' && (
         <pointLight
           position={position}
@@ -149,10 +177,10 @@ const LightRenderer = memo(function LightRenderer({
       )}
       {light.type === 'directional' && (
         <directionalLight
+          ref={directionalLightRef}
           position={position}
           color={light.color}
           intensity={light.intensity}
-          target-position={targetPosition}
           castShadow={shadowEnabled}
           shadow-mapSize-width={shadowMapSize}
           shadow-mapSize-height={shadowMapSize}
@@ -168,6 +196,7 @@ const LightRenderer = memo(function LightRenderer({
       )}
       {light.type === 'spot' && (
         <spotLight
+          ref={spotLightRef}
           position={position}
           color={light.color}
           intensity={light.intensity * 10}
@@ -175,7 +204,6 @@ const LightRenderer = memo(function LightRenderer({
           angle={(light.coneAngle * Math.PI) / 180}
           penumbra={light.penumbra}
           decay={light.decay}
-          target-position={targetPosition}
           castShadow={shadowEnabled}
           shadow-mapSize-width={shadowMapSize}
           shadow-mapSize-height={shadowMapSize}

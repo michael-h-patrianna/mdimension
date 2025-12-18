@@ -17,7 +17,9 @@ import {
   MAX_LIGHTS,
   MIN_LIGHTS,
   normalizeRotation,
+  normalizeRotationSigned,
   normalizeRotationTuple,
+  normalizeRotationTupleSigned,
   rotationToDirection,
   type LightSource,
 } from '@/rendering/lights/types'
@@ -548,6 +550,115 @@ describe('Light Types', () => {
         expect(result[0]).toBeCloseTo(TWO_PI - 1, 10)
         expect(result[1]).toBe(1)
         expect(result[2]).toBeCloseTo(1, 10)
+      })
+    })
+
+    describe('normalizeRotationSigned', () => {
+      const TWO_PI = Math.PI * 2
+
+      it('should keep values already in [-π, π) unchanged', () => {
+        expect(normalizeRotationSigned(0)).toBe(0)
+        expect(normalizeRotationSigned(0.1)).toBeCloseTo(0.1, 10)
+        expect(normalizeRotationSigned(-0.1)).toBeCloseTo(-0.1, 10)
+        expect(normalizeRotationSigned(Math.PI - 0.001)).toBeCloseTo(Math.PI - 0.001, 10)
+        expect(normalizeRotationSigned(-Math.PI + 0.001)).toBeCloseTo(-Math.PI + 0.001, 10)
+      })
+
+      it('should normalize values >= π to [-π, π)', () => {
+        expect(normalizeRotationSigned(Math.PI)).toBeCloseTo(-Math.PI, 10)
+        expect(normalizeRotationSigned(Math.PI + 0.1)).toBeCloseTo(-Math.PI + 0.1, 10)
+        expect(normalizeRotationSigned(TWO_PI - 0.1)).toBeCloseTo(-0.1, 10)
+      })
+
+      it('should normalize values < -π to [-π, π)', () => {
+        expect(normalizeRotationSigned(-Math.PI - 0.1)).toBeCloseTo(Math.PI - 0.1, 10)
+        expect(normalizeRotationSigned(-TWO_PI + 0.1)).toBeCloseTo(0.1, 10)
+      })
+
+      it('should normalize values >= 2π to [-π, π)', () => {
+        expect(normalizeRotationSigned(TWO_PI)).toBeCloseTo(0, 10)
+        expect(normalizeRotationSigned(TWO_PI + 0.1)).toBeCloseTo(0.1, 10)
+        expect(normalizeRotationSigned(TWO_PI + Math.PI)).toBeCloseTo(-Math.PI, 10)
+      })
+
+      it('should handle large positive angles', () => {
+        const result = normalizeRotationSigned(TWO_PI * 10 + 1)
+        expect(result).toBeGreaterThanOrEqual(-Math.PI)
+        expect(result).toBeLessThan(Math.PI)
+        expect(result).toBeCloseTo(1, 10)
+      })
+
+      it('should handle large negative angles', () => {
+        const result = normalizeRotationSigned(-TWO_PI * 10 - 1)
+        expect(result).toBeGreaterThanOrEqual(-Math.PI)
+        expect(result).toBeLessThan(Math.PI)
+        expect(result).toBeCloseTo(-1, 10)
+      })
+
+      it('should preserve direction math - rotationToDirection should give same result', () => {
+        // Test that the signed normalization preserves the direction
+        const testAngles = [-Math.PI / 4, Math.PI / 4, -Math.PI / 2, 3 * Math.PI / 4, -3 * Math.PI / 4]
+        for (const angle of testAngles) {
+          const rotation: [number, number, number] = [angle, 0, 0]
+          const normalizedRotation: [number, number, number] = [normalizeRotationSigned(angle), 0, 0]
+          const dir1 = rotationToDirection(rotation)
+          const dir2 = rotationToDirection(normalizedRotation)
+          expect(dir1[0]).toBeCloseTo(dir2[0], 5)
+          expect(dir1[1]).toBeCloseTo(dir2[1], 5)
+          expect(dir1[2]).toBeCloseTo(dir2[2], 5)
+        }
+      })
+    })
+
+    describe('normalizeRotationTupleSigned', () => {
+      const TWO_PI = Math.PI * 2
+
+      it('should normalize each component to [-π, π) independently', () => {
+        const result = normalizeRotationTupleSigned([0.1, -0.2, 0.3])
+        expect(result[0]).toBeCloseTo(0.1, 10)
+        expect(result[1]).toBeCloseTo(-0.2, 10)
+        expect(result[2]).toBeCloseTo(0.3, 10)
+      })
+
+      it('should handle values >= π in tuple', () => {
+        const result = normalizeRotationTupleSigned([Math.PI + 0.1, Math.PI, TWO_PI - 0.1])
+        expect(result[0]).toBeCloseTo(-Math.PI + 0.1, 10)
+        expect(result[1]).toBeCloseTo(-Math.PI, 10)
+        expect(result[2]).toBeCloseTo(-0.1, 10)
+      })
+
+      it('should handle values < -π in tuple', () => {
+        const result = normalizeRotationTupleSigned([-Math.PI - 0.1, -TWO_PI, -Math.PI])
+        expect(result[0]).toBeCloseTo(Math.PI - 0.1, 10)
+        expect(result[1]).toBeCloseTo(0, 10)
+        expect(result[2]).toBeCloseTo(-Math.PI, 10)
+      })
+
+      it('should handle mixed values', () => {
+        const result = normalizeRotationTupleSigned([-0.5, Math.PI + 0.5, TWO_PI + 0.5])
+        expect(result[0]).toBeCloseTo(-0.5, 10)
+        expect(result[1]).toBeCloseTo(-Math.PI + 0.5, 10)
+        expect(result[2]).toBeCloseTo(0.5, 10)
+      })
+
+      it('should preserve directionToRotation output range', () => {
+        // directionToRotation returns values in [-π/2, π/2] for pitch and [-π, π] for yaw
+        // Signed normalization should keep these in the same range
+        const testDirections: [number, number, number][] = [
+          [0, 0, -1],      // forward
+          [0, -1, 0],      // down
+          [1, 0, 0],       // right
+          [-1, 0, 0],      // left
+          [0.5, -0.5, -0.707], // diagonal
+        ]
+        for (const dir of testDirections) {
+          const rotation = directionToRotation(dir)
+          const normalizedRotation = normalizeRotationTupleSigned(rotation)
+          // Should be unchanged or equivalent
+          expect(normalizedRotation[0]).toBeCloseTo(rotation[0], 5)
+          expect(normalizedRotation[1]).toBeCloseTo(rotation[1], 5)
+          expect(normalizedRotation[2]).toBe(0)
+        }
       })
     })
   })

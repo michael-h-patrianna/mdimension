@@ -7,7 +7,9 @@ vec3 getVoid(vec3 dir, float time) {
     float theta = atan(dir.x, dir.z);
 
     // Create a soft radial gradient from a focus point
-    vec3 focusDir = normalize(uSunPosition);
+    // Guard against zero-length sun position
+    float sunLen = length(uSunPosition);
+    vec3 focusDir = sunLen > 0.0001 ? uSunPosition / sunLen : vec3(0.0, 1.0, 0.0);
     float focusDist = 1.0 - max(0.0, dot(dir, focusDir));
 
     // Multiple soft gradient layers for depth

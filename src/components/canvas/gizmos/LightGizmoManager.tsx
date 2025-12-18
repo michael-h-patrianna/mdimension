@@ -116,6 +116,7 @@ export const LightGizmoManager = memo(function LightGizmoManager() {
   const selectedLightId = useLightingStore((state) => state.selectedLightId);
   const transformMode = useLightingStore((state) => state.transformMode);
   const showLightGizmos = useLightingStore((state) => state.showLightGizmos);
+  const isDraggingLight = useLightingStore((state) => state.isDraggingLight);
   const selectLight = useLightingStore((state) => state.selectLight);
   const updateLight = useLightingStore((state) => state.updateLight);
   const setIsDraggingLight = useLightingStore((state) => state.setIsDraggingLight);
@@ -201,6 +202,7 @@ export const LightGizmoManager = memo(function LightGizmoManager() {
           key={`ground-vis-${light.id}`}
           light={light}
           isSelected={light.id === selectedLightId}
+          isDragging={isDraggingLight}
           onRotationChange={(rotation) => handleGroundRotationChange(light.id, rotation)}
           onPositionChange={(position) => handleGroundPositionChange(light.id, position)}
           onDragStart={handleDragStart}
