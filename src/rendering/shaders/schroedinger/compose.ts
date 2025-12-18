@@ -26,6 +26,23 @@ import { schroedingerUniformsBlock } from './uniforms.glsl';
 import { complexMathBlock } from './quantum/complex.glsl';
 import { hermiteBlock } from './quantum/hermite.glsl';
 import { ho1dBlock } from './quantum/ho1d.glsl';
+import { laguerreBlock } from './quantum/laguerre.glsl';
+import { legendreBlock } from './quantum/legendre.glsl';
+import { sphericalHarmonicsBlock } from './quantum/sphericalHarmonics.glsl';
+import { hydrogenRadialBlock } from './quantum/hydrogenRadial.glsl';
+import { hydrogenPsiBlock } from './quantum/hydrogenPsi.glsl';
+import {
+  hydrogenNDCommonBlock,
+  hydrogenND3dBlock,
+  hydrogenND4dBlock,
+  hydrogenND5dBlock,
+  hydrogenND6dBlock,
+  hydrogenND7dBlock,
+  hydrogenND8dBlock,
+  hydrogenND9dBlock,
+  hydrogenND10dBlock,
+  hydrogenND11dBlock,
+} from './quantum/hydrogenND';
 import { psiBlock } from './quantum/psi.glsl';
 import { densityBlock } from './quantum/density.glsl';
 import { absorptionBlock } from './volume/absorption.glsl';
@@ -114,9 +131,31 @@ export function composeSchroedingerShader(config: SchroedingerShaderConfig) {
     { name: 'Schrödinger Uniforms', content: schroedingerUniformsBlock },
 
     // Quantum math modules (order matters!)
+    // Harmonic oscillator basis functions
     { name: 'Complex Math', content: complexMathBlock },
     { name: 'Hermite Polynomials', content: hermiteBlock },
     { name: 'HO 1D Eigenfunction', content: ho1dBlock },
+
+    // Hydrogen orbital basis functions
+    { name: 'Laguerre Polynomials', content: laguerreBlock },
+    { name: 'Legendre Polynomials', content: legendreBlock },
+    { name: 'Spherical Harmonics', content: sphericalHarmonicsBlock },
+    { name: 'Hydrogen Radial', content: hydrogenRadialBlock },
+    { name: 'Hydrogen Psi', content: hydrogenPsiBlock },
+
+    // Hydrogen ND modules (per-dimension unrolled for performance)
+    { name: 'Hydrogen ND Common', content: hydrogenNDCommonBlock },
+    { name: 'Hydrogen ND 3D', content: hydrogenND3dBlock },
+    { name: 'Hydrogen ND 4D', content: hydrogenND4dBlock },
+    { name: 'Hydrogen ND 5D', content: hydrogenND5dBlock },
+    { name: 'Hydrogen ND 6D', content: hydrogenND6dBlock },
+    { name: 'Hydrogen ND 7D', content: hydrogenND7dBlock },
+    { name: 'Hydrogen ND 8D', content: hydrogenND8dBlock },
+    { name: 'Hydrogen ND 9D', content: hydrogenND9dBlock },
+    { name: 'Hydrogen ND 10D', content: hydrogenND10dBlock },
+    { name: 'Hydrogen ND 11D', content: hydrogenND11dBlock },
+
+    // Unified wavefunction evaluation (mode-switching)
     { name: 'Wavefunction (Psi)', content: psiBlock },
     { name: 'Density Field', content: densityBlock },
 

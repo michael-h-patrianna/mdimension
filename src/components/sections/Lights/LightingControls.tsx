@@ -6,21 +6,26 @@
  * - Light list (add, remove, select)
  * - Light editor (selected light properties)
  * - Ambient intensity slider
+ * - Ambient Occlusion controls (unified for all object types)
  *
  * Falls back to legacy single-light controls when no lights array exists.
  */
 
 import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { Slider } from '@/components/ui/Slider';
 import { ColorPicker } from '@/components/ui/ColorPicker';
-import { Switch } from '@/components/ui/Switch';
 import { ControlGroup } from '@/components/ui/ControlGroup';
+import { Select, type SelectOption } from '@/components/ui/Select';
+import { Slider } from '@/components/ui/Slider';
+import { Switch } from '@/components/ui/Switch';
 import {
   DEFAULT_AMBIENT_COLOR,
 } from '@/stores/defaults/visualDefaults';
 import { useAppearanceStore } from '@/stores/appearanceStore';
+import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
+import { useGeometryStore } from '@/stores/geometryStore';
 import { useLightingStore } from '@/stores/lightingStore';
+import { usePostProcessingStore } from '@/stores/postProcessingStore';
 import { LightList } from './LightList';
 import { LightEditor } from './LightEditor';
 
@@ -28,10 +33,22 @@ export interface LightingControlsProps {
   className?: string;
 }
 
+/** AO Quality options for Schrödinger volumetric AO */
+const AO_QUALITY_OPTIONS: SelectOption<string>[] = [
+  { value: '3', label: '3 cones (Fast)' },
+  { value: '4', label: '4 cones (Balanced)' },
+  { value: '6', label: '6 cones (Quality)' },
+  { value: '8', label: '8 cones (High)' },
+];
+
 export const LightingControls: React.FC<LightingControlsProps> = React.memo(({
   className = '',
 }) => {
   const shaderType = useAppearanceStore((state) => state.shaderType);
+
+  // Get current object type for AO type switching
+  const objectType = useGeometryStore((state) => state.objectType);
+  const isSchroedinger = objectType === 'schroedinger';
 
   const {
     selectedLightId,
@@ -53,6 +70,74 @@ export const LightingControls: React.FC<LightingControlsProps> = React.memo(({
     }))
   );
 
+  // Global SSAO settings (for non-Schrödinger objects)
+  const {
+    ssaoEnabled,
+    setSSAOEnabled,
+    ssaoIntensity,
+    setSSAOIntensity,
+  } = usePostProcessingStore(
+    useShallow((state) => ({
+      ssaoEnabled: state.ssaoEnabled,
+      setSSAOEnabled: state.setSSAOEnabled,
+      ssaoIntensity: state.ssaoIntensity,
+      setSSAOIntensity: state.setSSAOIntensity,
+    }))
+  );
+
+  // Schrödinger-specific AO settings
+  const {
+    schroedingerAoEnabled,
+    schroedingerAoStrength,
+    schroedingerAoQuality,
+    schroedingerAoRadius,
+    schroedingerAoColor,
+    setSchroedingerAoEnabled,
+    setSchroedingerAoStrength,
+    setSchroedingerAoQuality,
+    setSchroedingerAoRadius,
+    setSchroedingerAoColor,
+  } = useExtendedObjectStore(
+    useShallow((state) => ({
+      schroedingerAoEnabled: state.schroedinger.aoEnabled,
+      schroedingerAoStrength: state.schroedinger.aoStrength,
+      schroedingerAoQuality: state.schroedinger.aoQuality,
+      schroedingerAoRadius: state.schroedinger.aoRadius,
+      schroedingerAoColor: state.schroedinger.aoColor,
+      setSchroedingerAoEnabled: state.setSchroedingerAoEnabled,
+      setSchroedingerAoStrength: state.setSchroedingerAoStrength,
+      setSchroedingerAoQuality: state.setSchroedingerAoQuality,
+      setSchroedingerAoRadius: state.setSchroedingerAoRadius,
+      setSchroedingerAoColor: state.setSchroedingerAoColor,
+    }))
+  );
+
+  // Use appropriate values based on object type
+  const effectiveAoEnabled = isSchroedinger ? schroedingerAoEnabled : ssaoEnabled;
+  const effectiveAoIntensity = isSchroedinger ? schroedingerAoStrength : ssaoIntensity;
+
+  // Handlers that update the appropriate store
+  const handleAoToggle = (enabled: boolean) => {
+    if (isSchroedinger) {
+      setSchroedingerAoEnabled(enabled);
+    } else {
+      setSSAOEnabled(enabled);
+    }
+  };
+
+  const handleAoIntensityChange = (intensity: number) => {
+    if (isSchroedinger) {
+      setSchroedingerAoStrength(intensity);
+    } else {
+      setSSAOIntensity(intensity);
+    }
+  };
+
+  // Get AO type label
+  const aoTypeLabel = isSchroedinger
+    ? 'Volumetric (Schrödinger)'
+    : 'Screen-Space (SSAO)';
+
   // Only show for Surface shader
   if (shaderType !== 'surface') {
     return null;
@@ -63,7 +148,7 @@ export const LightingControls: React.FC<LightingControlsProps> = React.memo(({
   return (
     <div className={`space-y-4 ${className}`}>
       {/* Light List Group */}
-      <ControlGroup 
+      <ControlGroup
         title="Scene Lights"
         rightElement={
           <div className="flex items-center gap-2" title="Show light indicators in scene">
@@ -118,6 +203,77 @@ export const LightingControls: React.FC<LightingControlsProps> = React.memo(({
           showValue
           tooltip="Global ambient lighting level"
         />
+      </ControlGroup>
+
+      {/* Ambient Occlusion - Unified controls */}
+      <ControlGroup
+        title="Ambient Occlusion"
+        rightElement={
+          <Switch
+            checked={effectiveAoEnabled}
+            onCheckedChange={handleAoToggle}
+            data-testid="ao-toggle"
+          />
+        }
+      >
+        <p className="text-[10px] text-text-secondary mb-2">
+          {aoTypeLabel}
+        </p>
+        <div
+          className={`space-y-3 ${!effectiveAoEnabled ? 'opacity-50 pointer-events-none' : ''}`}
+          aria-disabled={!effectiveAoEnabled}
+        >
+          {/* Shared Intensity/Strength slider */}
+          <Slider
+            label="Intensity"
+            value={effectiveAoIntensity ?? 1.0}
+            min={0}
+            max={2}
+            step={0.1}
+            onChange={handleAoIntensityChange}
+            showValue
+            tooltip="Higher values create darker crevice shadows."
+            data-testid="ao-intensity-slider"
+          />
+
+          {/* Schrödinger-specific controls - shown but disabled when not Schrödinger */}
+          <div
+            className={`space-y-3 ${!isSchroedinger ? 'opacity-50 pointer-events-none' : ''}`}
+            aria-disabled={!isSchroedinger}
+          >
+            <p className="text-[10px] text-text-secondary border-t border-white/5 pt-2">
+              Volumetric AO Settings {!isSchroedinger && '(Schrödinger only)'}
+            </p>
+            <Select<string>
+              label="Quality"
+              options={AO_QUALITY_OPTIONS}
+              value={String(schroedingerAoQuality ?? 4)}
+              onChange={(val) => setSchroedingerAoQuality(parseInt(val, 10))}
+              data-testid="ao-quality-select"
+            />
+            <Slider
+              label="Radius"
+              min={0.1}
+              max={2.0}
+              step={0.1}
+              value={schroedingerAoRadius ?? 0.5}
+              onChange={setSchroedingerAoRadius}
+              showValue
+              tooltip="Sampling radius for cone-traced AO"
+              data-testid="ao-radius-slider"
+            />
+            <div className="flex items-center justify-between">
+              <label className="text-xs text-text-secondary">Shadow Tint</label>
+              <ColorPicker
+                value={schroedingerAoColor ?? '#000000'}
+                onChange={setSchroedingerAoColor}
+                disableAlpha={true}
+                className="w-24"
+                data-testid="ao-color-picker"
+              />
+            </div>
+          </div>
+        </div>
       </ControlGroup>
     </div>
   );

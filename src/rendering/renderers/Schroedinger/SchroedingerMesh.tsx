@@ -21,7 +21,6 @@ import {
   getEffectiveSampleQuality,
   usePerformanceStore,
 } from '@/stores/performanceStore';
-import { usePostProcessingStore } from '@/stores/postProcessingStore';
 import { useProjectionStore } from '@/stores/projectionStore';
 import { useRotationStore } from '@/stores/rotationStore';
 import { useUIStore } from '@/stores/uiStore';
@@ -197,12 +196,26 @@ const SchroedingerMesh = () => {
       uBasisZ: { value: new Float32Array(MAX_DIM) },
       uOrigin: { value: new Float32Array(MAX_DIM) },
 
-      // Quantum state configuration
+      // Quantum mode selection (0 = harmonic oscillator, 1 = hydrogen orbital)
+      uQuantumMode: { value: 0 },
+
+      // Harmonic oscillator state configuration
       uTermCount: { value: 6 },
       uOmega: { value: new Float32Array(MAX_DIM) },
       uQuantum: { value: new Int32Array(MAX_TERMS * MAX_DIM) },
       uCoeff: { value: new Float32Array(MAX_TERMS * 2) },
       uEnergy: { value: new Float32Array(MAX_TERMS) },
+
+      // Hydrogen orbital configuration
+      uPrincipalN: { value: 2 },
+      uAzimuthalL: { value: 1 },
+      uMagneticM: { value: 0 },
+      uBohrRadius: { value: 1.0 },
+      uUseRealOrbitals: { value: true },
+
+      // Hydrogen ND configuration (extra dimensions 4-11)
+      uExtraDimN: { value: new Int32Array(8) },
+      uExtraDimOmega: { value: new Float32Array(8) },
 
       // Volume rendering parameters
       uTimeScale: { value: 0.5 },
@@ -491,7 +504,42 @@ const SchroedingerMesh = () => {
       // Quantum Preset Generation
       // Check if we need to regenerate the preset
       // ============================================
-      const { presetName, seed, termCount, maxQuantumNumber, frequencySpread, spreadAnimationEnabled, spreadAnimationSpeed } = schroedinger;
+      const { presetName, seed, termCount, maxQuantumNumber, frequencySpread, spreadAnimationEnabled, spreadAnimationSpeed, quantumMode, principalQuantumNumber, azimuthalQuantumNumber, magneticQuantumNumber, bohrRadiusScale, useRealOrbitals } = schroedinger;
+
+      // Update quantum mode uniform (0 = harmonic oscillator, 1 = hydrogen orbital, 2 = hydrogen ND)
+      if (material.uniforms.uQuantumMode) {
+        const modeMap: Record<string, number> = {
+          'harmonicOscillator': 0,
+          'hydrogenOrbital': 1,
+          'hydrogenND': 2,
+        };
+        material.uniforms.uQuantumMode.value = modeMap[quantumMode] ?? 0;
+      }
+
+      // Update hydrogen orbital uniforms
+      if (material.uniforms.uPrincipalN) material.uniforms.uPrincipalN.value = principalQuantumNumber;
+      if (material.uniforms.uAzimuthalL) material.uniforms.uAzimuthalL.value = azimuthalQuantumNumber;
+      if (material.uniforms.uMagneticM) material.uniforms.uMagneticM.value = magneticQuantumNumber;
+      if (material.uniforms.uBohrRadius) material.uniforms.uBohrRadius.value = bohrRadiusScale;
+      if (material.uniforms.uUseRealOrbitals) material.uniforms.uUseRealOrbitals.value = useRealOrbitals;
+
+      // Update Hydrogen ND uniforms (extra dimensions 4-11)
+      const { extraDimQuantumNumbers, extraDimOmega, extraDimFrequencySpread } = schroedinger;
+      if (material.uniforms.uExtraDimN && extraDimQuantumNumbers) {
+        const arr = material.uniforms.uExtraDimN.value as Int32Array;
+        for (let i = 0; i < 8; i++) {
+          arr[i] = extraDimQuantumNumbers[i] ?? 0;
+        }
+      }
+      if (material.uniforms.uExtraDimOmega && extraDimOmega) {
+        const arr = material.uniforms.uExtraDimOmega.value as Float32Array;
+        // Apply frequency spread to omega values (like HO mode)
+        for (let i = 0; i < 8; i++) {
+          const baseOmega = extraDimOmega[i] ?? 1.0;
+          const spread = 1.0 + (i - 3.5) * (extraDimFrequencySpread ?? 0);
+          arr[i] = baseOmega * spread;
+        }
+      }
       
       let effectiveSpread = frequencySpread;
       if (spreadAnimationEnabled) {
@@ -608,10 +656,9 @@ const SchroedingerMesh = () => {
       if (material.uniforms.uShadowsEnabled) material.uniforms.uShadowsEnabled.value = shadowsEnabled;
       if (material.uniforms.uShadowStrength) material.uniforms.uShadowStrength.value = shadowStrength;
       if (material.uniforms.uShadowSteps) material.uniforms.uShadowSteps.value = shadowSteps;
-      // Global AO toggle acts as master switch (AND with local setting)
+      // Schrödinger uses its own AO toggle (unified UI sets aoEnabled directly)
       if (material.uniforms.uAoEnabled) {
-        const globalAoEnabled = usePostProcessingStore.getState().ssaoEnabled;
-        material.uniforms.uAoEnabled.value = globalAoEnabled && aoEnabled;
+        material.uniforms.uAoEnabled.value = aoEnabled;
       }
       if (material.uniforms.uAoStrength) material.uniforms.uAoStrength.value = aoStrength;
       if (material.uniforms.uAoSteps) material.uniforms.uAoSteps.value = aoQuality;

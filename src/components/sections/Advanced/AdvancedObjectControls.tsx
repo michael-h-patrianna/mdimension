@@ -10,20 +10,36 @@ import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import type { RaymarchQuality } from '@/lib/geometry/extended/types';
 
+// Object types that show the Advanced Rendering section
+const ADVANCED_RENDERING_OBJECT_TYPES = [
+    'mandelbulb',
+    'quaternion-julia',
+    'schroedinger',
+    'hypercube',
+    'simplex',
+    'cross-polytope',
+    'wythoff-polytope',
+];
+
+// Object types that have raymarching quality controls
+const RAYMARCHING_OBJECT_TYPES = ['mandelbulb', 'quaternion-julia', 'schroedinger'];
+
 export const AdvancedObjectControls: React.FC = () => {
     const objectType = useGeometryStore(state => state.objectType);
 
-    // We only show this section for fractals with advanced settings
-    if (objectType !== 'mandelbulb' && objectType !== 'quaternion-julia' && objectType !== 'schroedinger') {
+    // Show for all supported object types (fractals + polytopes)
+    if (!ADVANCED_RENDERING_OBJECT_TYPES.includes(objectType)) {
         return null;
     }
 
+    const showRaymarchingQuality = RAYMARCHING_OBJECT_TYPES.includes(objectType);
+
     return (
         <Section title="Advanced Rendering" defaultOpen={true} data-testid="advanced-object-controls">
-            {/* Raymarching Quality - unified for all 3 object types */}
-            <RaymarchingQualityControl objectType={objectType} />
+            {/* Raymarching Quality - only for raymarching objects */}
+            {showRaymarchingQuality && <RaymarchingQualityControl objectType={objectType} />}
 
-            {/* Global Settings (Shared) */}
+            {/* Global Settings (Shared) - for all objects */}
             <SharedAdvancedControls />
 
             {/* Object-Specific Settings */}
@@ -120,6 +136,8 @@ const SharedAdvancedControls: React.FC = () => {
         sssColor, setSssColor,
         sssThickness, setSssThickness,
         sssJitter, setSssJitter,
+        fresnelEnabled, setSurfaceSettings,
+        fresnelIntensity, setFresnelIntensity,
         fogIntegrationEnabled, setFogIntegrationEnabled,
         fogContribution, setFogContribution,
         internalFogDensity, setInternalFogDensity,
@@ -131,6 +149,9 @@ const SharedAdvancedControls: React.FC = () => {
             sssColor: state.sssColor, setSssColor: state.setSssColor,
             sssThickness: state.sssThickness, setSssThickness: state.setSssThickness,
             sssJitter: state.sssJitter, setSssJitter: state.setSssJitter,
+            fresnelEnabled: state.shaderSettings.surface.fresnelEnabled,
+            setSurfaceSettings: state.setSurfaceSettings,
+            fresnelIntensity: state.fresnelIntensity, setFresnelIntensity: state.setFresnelIntensity,
             fogIntegrationEnabled: state.fogIntegrationEnabled, setFogIntegrationEnabled: state.setFogIntegrationEnabled,
             fogContribution: state.fogContribution, setFogContribution: state.setFogContribution,
             internalFogDensity: state.internalFogDensity, setInternalFogDensity: state.setInternalFogDensity,
@@ -205,6 +226,34 @@ const SharedAdvancedControls: React.FC = () => {
                             data-testid="global-sss-jitter"
                         />
                     </>
+                )}
+            </div>
+
+            {/* Fresnel Rim */}
+            <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
+                <div className="flex items-center justify-between">
+                    <label className="text-xs text-text-secondary font-semibold">Fresnel Rim</label>
+                    <ToggleButton
+                        pressed={fresnelEnabled}
+                        onToggle={() => setSurfaceSettings({ fresnelEnabled: !fresnelEnabled })}
+                        className="text-xs px-2 py-1 h-auto"
+                        ariaLabel="Toggle Fresnel Rim"
+                        data-testid="global-fresnel-toggle"
+                    >
+                        {fresnelEnabled ? 'ON' : 'OFF'}
+                    </ToggleButton>
+                </div>
+                {fresnelEnabled && (
+                    <Slider
+                        label="Intensity"
+                        min={0.0}
+                        max={1.0}
+                        step={0.1}
+                        value={fresnelIntensity}
+                        onChange={setFresnelIntensity}
+                        showValue
+                        data-testid="global-fresnel-intensity"
+                    />
                 )}
             </div>
 

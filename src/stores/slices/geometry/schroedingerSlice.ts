@@ -5,9 +5,14 @@ import {
   SCHROEDINGER_QUALITY_PRESETS,
   SchroedingerColorMode,
   SchroedingerPresetName,
+  SchroedingerQuantumMode,
+  HydrogenOrbitalPresetName,
+  HydrogenNDPresetName,
 } from '@/lib/geometry/extended/types'
 import { SCHROEDINGER_PALETTE_DEFINITIONS } from '@/lib/geometry/extended/schroedinger/palettes'
 import { SCHROEDINGER_NAMED_PRESETS } from '@/lib/geometry/extended/schroedinger/presets'
+import { getHydrogenPreset } from '@/lib/geometry/extended/schroedinger/hydrogenPresets'
+import { getHydrogenNDPreset } from '@/lib/geometry/extended/schroedinger/hydrogenNDPresets'
 import { StateCreator } from 'zustand'
 import { ExtendedObjectSlice, SchroedingerSlice } from './types'
 
@@ -203,6 +208,189 @@ export const createSchroedingerSlice: StateCreator<ExtendedObjectSlice, [], [], 
     const clampedSpread = Math.max(0, Math.min(0.5, spread))
     set((state) => ({
       schroedinger: { ...state.schroedinger, frequencySpread: clampedSpread, presetName: 'custom' },
+    }))
+  },
+
+  // === Quantum Mode Selection ===
+  setSchroedingerQuantumMode: (mode: SchroedingerQuantumMode) => {
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, quantumMode: mode },
+    }))
+  },
+
+  // === Hydrogen Orbital Configuration ===
+  setSchroedingerHydrogenPreset: (presetName: HydrogenOrbitalPresetName) => {
+    // For 'custom', only update the preset name - preserve existing quantum numbers
+    if (presetName === 'custom') {
+      set((state) => ({
+        schroedinger: {
+          ...state.schroedinger,
+          hydrogenPreset: presetName,
+        },
+      }))
+      return
+    }
+
+    // For named presets, apply all preset values
+    const preset = getHydrogenPreset(presetName)
+    set((state) => ({
+      schroedinger: {
+        ...state.schroedinger,
+        hydrogenPreset: presetName,
+        principalQuantumNumber: preset.n,
+        azimuthalQuantumNumber: preset.l,
+        magneticQuantumNumber: preset.m,
+        useRealOrbitals: preset.useReal,
+        bohrRadiusScale: preset.bohrRadiusScale,
+      },
+    }))
+  },
+
+  setSchroedingerPrincipalQuantumNumber: (n: number) => {
+    const clamped = Math.max(1, Math.min(7, Math.floor(n)))
+    const currentL = get().schroedinger.azimuthalQuantumNumber
+    const currentM = get().schroedinger.magneticQuantumNumber
+
+    // Enforce l < n constraint
+    const newL = Math.min(currentL, clamped - 1)
+    // Enforce |m| <= l constraint
+    const newM = Math.max(-newL, Math.min(newL, currentM))
+
+    set((state) => ({
+      schroedinger: {
+        ...state.schroedinger,
+        principalQuantumNumber: clamped,
+        azimuthalQuantumNumber: newL,
+        magneticQuantumNumber: newM,
+        hydrogenPreset: 'custom',
+      },
+    }))
+  },
+
+  setSchroedingerAzimuthalQuantumNumber: (l: number) => {
+    const currentN = get().schroedinger.principalQuantumNumber
+    const currentM = get().schroedinger.magneticQuantumNumber
+
+    // Enforce l < n and l >= 0 constraints
+    const clamped = Math.max(0, Math.min(currentN - 1, Math.floor(l)))
+    // Enforce |m| <= l constraint
+    const newM = Math.max(-clamped, Math.min(clamped, currentM))
+
+    set((state) => ({
+      schroedinger: {
+        ...state.schroedinger,
+        azimuthalQuantumNumber: clamped,
+        magneticQuantumNumber: newM,
+        hydrogenPreset: 'custom',
+      },
+    }))
+  },
+
+  setSchroedingerMagneticQuantumNumber: (m: number) => {
+    const currentL = get().schroedinger.azimuthalQuantumNumber
+    // Enforce |m| <= l constraint
+    const clamped = Math.max(-currentL, Math.min(currentL, Math.floor(m)))
+
+    set((state) => ({
+      schroedinger: {
+        ...state.schroedinger,
+        magneticQuantumNumber: clamped,
+        hydrogenPreset: 'custom',
+      },
+    }))
+  },
+
+  setSchroedingerUseRealOrbitals: (useReal: boolean) => {
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, useRealOrbitals: useReal },
+    }))
+  },
+
+  setSchroedingerBohrRadiusScale: (scale: number) => {
+    const clamped = Math.max(0.5, Math.min(3.0, scale))
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, bohrRadiusScale: clamped },
+    }))
+  },
+
+  // === Hydrogen ND Configuration ===
+  setSchroedingerHydrogenNDPreset: (preset: HydrogenNDPresetName) => {
+    // For 'custom', only update the preset name - preserve existing values
+    if (preset === 'custom') {
+      set((state) => ({
+        schroedinger: {
+          ...state.schroedinger,
+          hydrogenNDPreset: preset,
+        },
+      }))
+      return
+    }
+
+    // For named presets, apply all preset values
+    const presetData = getHydrogenNDPreset(preset)
+    set((state) => ({
+      schroedinger: {
+        ...state.schroedinger,
+        hydrogenNDPreset: preset,
+        // Update 3D hydrogen quantum numbers
+        principalQuantumNumber: presetData.n,
+        azimuthalQuantumNumber: presetData.l,
+        magneticQuantumNumber: presetData.m,
+        useRealOrbitals: presetData.useReal,
+        bohrRadiusScale: presetData.bohrRadiusScale,
+        // Update extra dimension configuration
+        extraDimQuantumNumbers: [...presetData.extraDimN],
+        extraDimOmega: [...presetData.extraDimOmega],
+      },
+    }))
+  },
+
+  setSchroedingerExtraDimQuantumNumber: (dimIndex: number, n: number) => {
+    const numbers = [...get().schroedinger.extraDimQuantumNumbers]
+    if (dimIndex < 0 || dimIndex >= 8) return
+    numbers[dimIndex] = Math.max(0, Math.min(6, Math.floor(n)))
+    set((state) => ({
+      schroedinger: {
+        ...state.schroedinger,
+        extraDimQuantumNumbers: numbers,
+        hydrogenNDPreset: 'custom',
+      },
+    }))
+  },
+
+  setSchroedingerExtraDimQuantumNumbers: (numbers: number[]) => {
+    const clamped = numbers.slice(0, 8).map((n) => Math.max(0, Math.min(6, Math.floor(n))))
+    while (clamped.length < 8) clamped.push(0)
+    set((state) => ({
+      schroedinger: {
+        ...state.schroedinger,
+        extraDimQuantumNumbers: clamped,
+        hydrogenNDPreset: 'custom',
+      },
+    }))
+  },
+
+  setSchroedingerExtraDimOmega: (dimIndex: number, omega: number) => {
+    const omegas = [...get().schroedinger.extraDimOmega]
+    if (dimIndex < 0 || dimIndex >= 8) return
+    omegas[dimIndex] = Math.max(0.1, Math.min(2.0, omega))
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, extraDimOmega: omegas },
+    }))
+  },
+
+  setSchroedingerExtraDimOmegaAll: (omegas: number[]) => {
+    const clamped = omegas.slice(0, 8).map((o) => Math.max(0.1, Math.min(2.0, o)))
+    while (clamped.length < 8) clamped.push(1.0)
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, extraDimOmega: clamped },
+    }))
+  },
+
+  setSchroedingerExtraDimFrequencySpread: (spread: number) => {
+    const clamped = Math.max(0, Math.min(0.5, spread))
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, extraDimFrequencySpread: clamped },
     }))
   },
 

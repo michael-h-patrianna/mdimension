@@ -91,6 +91,7 @@ export function createColorCache() {
     ambientColor: createCachedLinearColor(),
     specularColor: createCachedLinearColor(),
     rimColor: createCachedLinearColor(),
+    sssColor: createCachedLinearColor(),
   }
 }
 

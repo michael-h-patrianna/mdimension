@@ -69,6 +69,12 @@ void main() {
     vec3 radiance = uLightColors[i] * attenuation;
     Lo += (kD * uColor / PI + specular * uSpecularIntensity) * radiance * NdotL * uDiffuseIntensity;
 
+    // Rim SSS (backlight transmission)
+    if (uSssEnabled && uSssIntensity > 0.0) {
+      vec3 sss = computeSSS(L, V, N, 0.5, uSssThickness * 4.0, 0.0);
+      Lo += sss * uSssColor * uLightColors[i] * uSssIntensity * attenuation;
+    }
+
     // Track total light for fresnel calculation
     totalNdotL = max(totalNdotL, NdotL * attenuation);
   }

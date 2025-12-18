@@ -3,6 +3,8 @@ import {
   CliffordTorusEdgeMode,
   CliffordTorusMode,
   DualNormalizeMode,
+  HydrogenNDPresetName,
+  HydrogenOrbitalPresetName,
   MandelbulbAutopilotStrategy,
   MandelbulbColorMode,
   MandelbulbConfig,
@@ -21,6 +23,7 @@ import {
   SchroedingerPalette,
   SchroedingerPresetName,
   SchroedingerQualityPreset,
+  SchroedingerQuantumMode,
   SchroedingerRenderStyle,
   TruncationMode,
   WythoffPolytopeConfig,
@@ -353,13 +356,32 @@ export interface SchroedingerSliceActions {
   // Rendering Style
   setSchroedingerRenderStyle: (style: SchroedingerRenderStyle) => void
 
-  // Quantum State Configuration
+  // Quantum Mode Selection
+  setSchroedingerQuantumMode: (mode: SchroedingerQuantumMode) => void
+
+  // Harmonic Oscillator Configuration
   setSchroedingerPresetName: (name: SchroedingerPresetName) => void
   setSchroedingerSeed: (seed: number) => void
   randomizeSchroedingerSeed: () => void
   setSchroedingerTermCount: (count: number) => void
   setSchroedingerMaxQuantumNumber: (maxN: number) => void
   setSchroedingerFrequencySpread: (spread: number) => void
+
+  // Hydrogen Orbital Configuration
+  setSchroedingerHydrogenPreset: (presetName: HydrogenOrbitalPresetName) => void
+  setSchroedingerPrincipalQuantumNumber: (n: number) => void
+  setSchroedingerAzimuthalQuantumNumber: (l: number) => void
+  setSchroedingerMagneticQuantumNumber: (m: number) => void
+  setSchroedingerUseRealOrbitals: (useReal: boolean) => void
+  setSchroedingerBohrRadiusScale: (scale: number) => void
+
+  // Hydrogen ND Configuration
+  setSchroedingerHydrogenNDPreset: (preset: HydrogenNDPresetName) => void
+  setSchroedingerExtraDimQuantumNumber: (dimIndex: number, n: number) => void
+  setSchroedingerExtraDimQuantumNumbers: (numbers: number[]) => void
+  setSchroedingerExtraDimOmega: (dimIndex: number, omega: number) => void
+  setSchroedingerExtraDimOmegaAll: (omegas: number[]) => void
+  setSchroedingerExtraDimFrequencySpread: (spread: number) => void
 
   // Volume Rendering Parameters
   setSchroedingerTimeScale: (scale: number) => void

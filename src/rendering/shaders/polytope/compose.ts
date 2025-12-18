@@ -7,6 +7,7 @@ import { oklabBlock } from '../shared/color/oklab.glsl';
 import { selectorBlock } from '../shared/color/selector.glsl';
 import { fresnelBlock } from '../shared/lighting/fresnel.glsl';
 import { multiLightBlock } from '../shared/lighting/multi-light.glsl';
+import { sssBlock } from '../shared/lighting/sss.glsl';
 
 import { transformNDBlock } from './transform-nd.glsl';
 import { modulationBlock } from './modulation.glsl';
@@ -87,7 +88,13 @@ export function composeFaceFragmentShader(): string {
     uniform vec3 uLightColor;
     uniform vec3 uLightDirection;
     uniform float uLightStrength;
-    
+
+    // Rim SSS uniforms
+    uniform bool uSssEnabled;
+    uniform float uSssIntensity;
+    uniform vec3 uSssColor;
+    uniform float uSssThickness;
+
     // Inputs from vertex shader
     in vec3 vWorldPosition;
     in vec3 vViewDir;
@@ -102,6 +109,7 @@ export function composeFaceFragmentShader(): string {
     selectorBlock,
     fresnelBlock,
     multiLightBlock,
+    sssBlock,
     `
     void main() {
       // Compute face normal from screen-space derivatives of world position
@@ -163,6 +171,12 @@ export function composeFaceFragmentShader(): string {
             float spec = pow(NdotH, uSpecularPower) * uSpecularIntensity * attenuation * shadow;
             col += uSpecularColor * uLightColors[i] * spec;
 
+            // Rim SSS (backlight transmission)
+            if (uSssEnabled && uSssIntensity > 0.0) {
+                vec3 sss = computeSSS(l, viewDir, normal, 0.5, uSssThickness * 4.0, 0.0);
+                col += sss * uSssColor * uLightColors[i] * uSssIntensity * attenuation;
+            }
+
             totalNdotL = max(totalNdotL, NdotL * attenuation);
         }
 
@@ -186,6 +200,12 @@ export function composeFaceFragmentShader(): string {
         float NdotH = max(dot(normal, halfDir), 0.0);
         float spec = pow(NdotH, uSpecularPower) * uSpecularIntensity * uLightStrength;
         col += uSpecularColor * uLightColor * spec;
+
+        // Rim SSS (backlight transmission) - legacy single light
+        if (uSssEnabled && uSssIntensity > 0.0) {
+          vec3 sss = computeSSS(lightDir, viewDir, normal, 0.5, uSssThickness * 4.0, 0.0);
+          col += sss * uSssColor * uLightColor * uSssIntensity * uLightStrength;
+        }
 
         if (uFresnelEnabled && uFresnelIntensity > 0.0) {
           float NdotV = max(dot(normal, viewDir), 0.0);

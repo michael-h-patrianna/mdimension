@@ -2,13 +2,15 @@
  * SchroedingerControls Component
  *
  * Controls for configuring n-dimensional quantum wavefunction visualization.
- * Schroedinger uses volumetric rendering of harmonic oscillator superpositions.
+ * Supports two physics modes:
+ * - Harmonic Oscillator: n-dimensional superposition states (default)
+ * - Hydrogen Orbital: s, p, d, f electron orbitals (Coulomb potential)
  *
  * Features:
- * - Preset selection (Organic Blob, Quantum Foam, etc.)
- * - Quantum parameter controls (seed, term count, max quantum number)
- * - Volume rendering settings (time scale, density gain, samples)
- * - Isosurface mode toggle
+ * - Mode selection (Harmonic Oscillator / Hydrogen Orbital)
+ * - Preset selection for each mode
+ * - Quantum parameter controls
+ * - Volume rendering settings
  * - Slice parameters for 4D+
  */
 
@@ -16,7 +18,20 @@ import { useShallow } from 'zustand/react/shallow';
 import { Slider } from '@/components/ui/Slider';
 import { Section } from '@/components/sections/Section';
 import { SCHROEDINGER_NAMED_PRESETS } from '@/lib/geometry/extended/schroedinger/presets';
-import { SchroedingerPresetName } from '@/lib/geometry/extended/types';
+import {
+  HYDROGEN_ORBITAL_PRESETS,
+  maxAzimuthalForPrincipal,
+  orbitalShapeLetter,
+} from '@/lib/geometry/extended/schroedinger/hydrogenPresets';
+import {
+  HYDROGEN_ND_PRESETS,
+  getHydrogenNDPresetsWithKeysByDimension,
+} from '@/lib/geometry/extended/schroedinger/hydrogenNDPresets';
+import {
+  SchroedingerPresetName,
+  HydrogenOrbitalPresetName,
+  HydrogenNDPresetName,
+} from '@/lib/geometry/extended/types';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import React from 'react';
@@ -59,6 +74,9 @@ export const SchroedingerControls: React.FC<SchroedingerControlsProps> = React.m
   // Consolidate extended object store selectors with useShallow
   const {
     config,
+    // Mode selection
+    setQuantumMode,
+    // Harmonic oscillator actions
     setPresetName,
     setSeed,
     randomizeSeed,
@@ -68,9 +86,23 @@ export const SchroedingerControls: React.FC<SchroedingerControlsProps> = React.m
     setFieldScale,
     setSchroedingerParameterValue,
     resetSchroedingerParameters,
+    // Hydrogen orbital actions
+    setHydrogenPreset,
+    setPrincipalQuantumNumber,
+    setAzimuthalQuantumNumber,
+    setMagneticQuantumNumber,
+    setUseRealOrbitals,
+    setBohrRadiusScale,
+    // Hydrogen ND actions
+    setHydrogenNDPreset,
+    setExtraDimQuantumNumber,
+    setExtraDimFrequencySpread,
   } = useExtendedObjectStore(
     useShallow((state) => ({
       config: state.schroedinger,
+      // Mode selection
+      setQuantumMode: state.setSchroedingerQuantumMode,
+      // Harmonic oscillator actions
       setPresetName: state.setSchroedingerPresetName,
       setSeed: state.setSchroedingerSeed,
       randomizeSeed: state.randomizeSchroedingerSeed,
@@ -80,153 +112,535 @@ export const SchroedingerControls: React.FC<SchroedingerControlsProps> = React.m
       setFieldScale: state.setSchroedingerFieldScale,
       setSchroedingerParameterValue: state.setSchroedingerParameterValue,
       resetSchroedingerParameters: state.resetSchroedingerParameters,
+      // Hydrogen orbital actions
+      setHydrogenPreset: state.setSchroedingerHydrogenPreset,
+      setPrincipalQuantumNumber: state.setSchroedingerPrincipalQuantumNumber,
+      setAzimuthalQuantumNumber: state.setSchroedingerAzimuthalQuantumNumber,
+      setMagneticQuantumNumber: state.setSchroedingerMagneticQuantumNumber,
+      setUseRealOrbitals: state.setSchroedingerUseRealOrbitals,
+      setBohrRadiusScale: state.setSchroedingerBohrRadiusScale,
+      // Hydrogen ND actions
+      setHydrogenNDPreset: state.setSchroedingerHydrogenNDPreset,
+      setExtraDimQuantumNumber: state.setSchroedingerExtraDimQuantumNumber,
+      setExtraDimFrequencySpread: state.setSchroedingerExtraDimFrequencySpread,
     }))
   );
 
   // Get current dimension to show/hide dimension-specific controls
   const dimension = useGeometryStore((state) => state.dimension);
 
+  // Compute derived state for quantum number constraints
+  const maxL = maxAzimuthalForPrincipal(config.principalQuantumNumber);
+  const maxM = config.azimuthalQuantumNumber;
+
+  // Check current mode
+  const isHarmonicMode = config.quantumMode === 'harmonicOscillator';
+  const isHydrogenMode = config.quantumMode === 'hydrogenOrbital';
+  const isHydrogenNDMode = config.quantumMode === 'hydrogenND';
+
+  // Group hydrogen presets by orbital type for dropdown
+  const hydrogenPresetGroups = {
+    s: Object.entries(HYDROGEN_ORBITAL_PRESETS).filter(([, p]) => p.l === 0 && p.name !== 'Custom'),
+    p: Object.entries(HYDROGEN_ORBITAL_PRESETS).filter(([, p]) => p.l === 1),
+    d: Object.entries(HYDROGEN_ORBITAL_PRESETS).filter(([, p]) => p.l === 2),
+    f: Object.entries(HYDROGEN_ORBITAL_PRESETS).filter(([, p]) => p.l === 3),
+  };
+
+  // Group hydrogen ND presets by dimension
+  const hydrogenNDPresetGroups = getHydrogenNDPresetsWithKeysByDimension();
+
   return (
     <div className={className} data-testid="schroedinger-controls">
-        <Section title="Quantum State" defaultOpen={true}>
-            {/* Quantum Preset Selection */}
-            <div className="space-y-2">
-                <label className="text-xs text-text-secondary">
-                Quantum Preset
-                </label>
-                <div className="relative">
-                  <select
-                    className="w-full bg-surface-tertiary border border-white/10 rounded px-2 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent appearance-none cursor-pointer"
-                    value={config.presetName}
-                    onChange={(e) => setPresetName(e.target.value as SchroedingerPresetName)}
-                    data-testid="schroedinger-preset-select"
-                  >
-                    {presetOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                    <option value="custom">Custom Configuration</option>
-                  </select>
-                  {/* Custom arrow indicator */}
-                  <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-text-tertiary">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
+        {/* Physics Mode Selection */}
+        <Section title="Physics Mode" defaultOpen={true}>
+            <div className="space-y-3">
+                <div className="flex gap-1 p-0.5 bg-surface-tertiary rounded">
+                    <button
+                        onClick={() => setQuantumMode('harmonicOscillator')}
+                        className={`flex-1 px-2 py-1.5 text-xs rounded transition-colors ${
+                            isHarmonicMode
+                                ? 'bg-accent text-white'
+                                : 'text-text-secondary hover:text-text-primary'
+                        }`}
+                        data-testid="mode-harmonic-oscillator"
+                    >
+                        Harmonic
+                    </button>
+                    <button
+                        onClick={() => setQuantumMode('hydrogenOrbital')}
+                        className={`flex-1 px-2 py-1.5 text-xs rounded transition-colors ${
+                            isHydrogenMode
+                                ? 'bg-accent text-white'
+                                : 'text-text-secondary hover:text-text-primary'
+                        }`}
+                        data-testid="mode-hydrogen-orbital"
+                    >
+                        Hydrogen 3D
+                    </button>
+                    <button
+                        onClick={() => setQuantumMode('hydrogenND')}
+                        className={`flex-1 px-2 py-1.5 text-xs rounded transition-colors ${
+                            isHydrogenNDMode
+                                ? 'bg-accent text-white'
+                                : 'text-text-secondary hover:text-text-primary'
+                        }`}
+                        data-testid="mode-hydrogen-nd"
+                    >
+                        Hydrogen ND
+                    </button>
                 </div>
-                <p className="text-xs text-text-tertiary pt-1">
-                {SCHROEDINGER_NAMED_PRESETS[config.presetName]?.description}
+                <p className="text-xs text-text-tertiary">
+                    {isHydrogenMode
+                        ? 'Electron orbitals from Coulomb potential (s, p, d, f shapes)'
+                        : isHydrogenNDMode
+                        ? 'N-dimensional hydrogen atom in 3D space'
+                        : 'N-dimensional quantum superposition states'
+                    }
                 </p>
-            </div>
-
-            {/* Seed Control */}
-            <div className="space-y-2 pt-2 border-t border-white/5">
-                <div className="flex items-center justify-between">
-                <label className="text-xs text-text-secondary">
-                    Seed: {config.seed}
-                </label>
-                <button
-                    onClick={() => randomizeSeed()}
-                    className="text-xs text-accent hover:underline"
-                    data-testid="schroedinger-randomize-seed"
-                >
-                    Randomize
-                </button>
-                </div>
-                <Slider
-                label="Seed"
-                min={0}
-                max={999999}
-                step={1}
-                value={config.seed}
-                onChange={setSeed}
-                showValue={false}
-                data-testid="schroedinger-seed-slider"
-                />
-            </div>
-
-            {/* Quantum Parameters */}
-            <div className="space-y-2 pt-2 border-t border-white/5">
-                <Slider
-                    label="Superposition Terms"
-                    min={1}
-                    max={8}
-                    step={1}
-                    value={config.termCount}
-                    onChange={setTermCount}
-                    showValue
-                    data-testid="schroedinger-term-count"
-                />
-
-                <Slider
-                    label="Max Quantum Number (n)"
-                    min={2}
-                    max={6}
-                    step={1}
-                    value={config.maxQuantumNumber}
-                    onChange={setMaxQuantumNumber}
-                    showValue
-                    data-testid="schroedinger-max-quantum"
-                />
-
-                <Slider
-                    label="Frequency Spread"
-                    min={0}
-                    max={0.5}
-                    step={0.0001}
-                    value={config.frequencySpread}
-                    onChange={setFrequencySpread}
-                    showValue
-                    data-testid="schroedinger-freq-spread"
-                />
-            </div>
-
-            {/* Geometric Parameters */}
-            <div className="space-y-2 pt-2 border-t border-white/5">
-                <Slider
-                    label="Field Scale"
-                    min={0.5}
-                    max={2.0}
-                    step={0.1}
-                    value={config.fieldScale}
-                    onChange={setFieldScale}
-                    showValue
-                    data-testid="schroedinger-field-scale"
-                />
             </div>
         </Section>
 
-        {/* Slice Parameters - shown for 4D+ */}
-        {dimension >= 4 && (
-            <Section 
-                title={`Cross Section (${dimension - 3} dim${dimension > 4 ? 's' : ''})`} 
-                defaultOpen={true} 
+        {/* Quantum State Section - content depends on mode */}
+        <Section title="Quantum State" defaultOpen={true}>
+            {isHydrogenMode ? (
+                <>
+                    {/* Hydrogen Orbital Preset Selection */}
+                    <div className="space-y-2">
+                        <label className="text-xs text-text-secondary">
+                            Orbital Preset
+                        </label>
+                        <div className="relative">
+                            <select
+                                className="w-full bg-surface-tertiary border border-white/10 rounded px-2 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent appearance-none cursor-pointer"
+                                value={config.hydrogenPreset}
+                                onChange={(e) => setHydrogenPreset(e.target.value as HydrogenOrbitalPresetName)}
+                                data-testid="hydrogen-preset-select"
+                            >
+                                <optgroup label="s Orbitals (Spherical)">
+                                    {hydrogenPresetGroups.s.map(([key, preset]) => (
+                                        <option key={key} value={key}>{preset.name}</option>
+                                    ))}
+                                </optgroup>
+                                <optgroup label="p Orbitals (Dumbbell)">
+                                    {hydrogenPresetGroups.p.map(([key, preset]) => (
+                                        <option key={key} value={key}>{preset.name}</option>
+                                    ))}
+                                </optgroup>
+                                <optgroup label="d Orbitals (Cloverleaf)">
+                                    {hydrogenPresetGroups.d.map(([key, preset]) => (
+                                        <option key={key} value={key}>{preset.name}</option>
+                                    ))}
+                                </optgroup>
+                                <optgroup label="f Orbitals (Complex)">
+                                    {hydrogenPresetGroups.f.map(([key, preset]) => (
+                                        <option key={key} value={key}>{preset.name}</option>
+                                    ))}
+                                </optgroup>
+                                <option value="custom">Custom (n, l, m)</option>
+                            </select>
+                            <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-text-tertiary">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </div>
+                        </div>
+                        <p className="text-xs text-text-tertiary pt-1">
+                            {HYDROGEN_ORBITAL_PRESETS[config.hydrogenPreset]?.description}
+                        </p>
+                    </div>
+
+                    {/* Quantum Numbers - shown when custom or for reference */}
+                    <div className="space-y-2 pt-2 border-t border-white/5">
+                        <div className="flex items-center justify-between mb-1">
+                            <label className="text-xs text-text-secondary">Quantum Numbers</label>
+                            <span className="text-xs text-text-tertiary">
+                                {config.principalQuantumNumber}{orbitalShapeLetter(config.azimuthalQuantumNumber)}
+                                {config.azimuthalQuantumNumber > 0 ? ` (m=${config.magneticQuantumNumber})` : ''}
+                            </span>
+                        </div>
+
+                        <Slider
+                            label="n (Principal)"
+                            min={1}
+                            max={7}
+                            step={1}
+                            value={config.principalQuantumNumber}
+                            onChange={setPrincipalQuantumNumber}
+                            showValue
+                            data-testid="hydrogen-n-slider"
+                        />
+
+                        <Slider
+                            label={`l (Shape: ${orbitalShapeLetter(config.azimuthalQuantumNumber)})`}
+                            min={0}
+                            max={maxL}
+                            step={1}
+                            value={config.azimuthalQuantumNumber}
+                            onChange={setAzimuthalQuantumNumber}
+                            showValue
+                            data-testid="hydrogen-l-slider"
+                        />
+
+                        {config.azimuthalQuantumNumber > 0 && (
+                            <Slider
+                                label="m (Orientation)"
+                                min={-maxM}
+                                max={maxM}
+                                step={1}
+                                value={config.magneticQuantumNumber}
+                                onChange={setMagneticQuantumNumber}
+                                showValue
+                                data-testid="hydrogen-m-slider"
+                            />
+                        )}
+                    </div>
+
+                    {/* Real vs Complex toggle */}
+                    <div className="space-y-2 pt-2 border-t border-white/5">
+                        <div className="flex items-center justify-between">
+                            <label className="text-xs text-text-secondary">
+                                Orbital Representation
+                            </label>
+                            <button
+                                onClick={() => setUseRealOrbitals(!config.useRealOrbitals)}
+                                className={`px-2 py-1 text-xs rounded transition-colors ${
+                                    config.useRealOrbitals
+                                        ? 'bg-accent/20 text-accent'
+                                        : 'bg-surface-tertiary text-text-secondary'
+                                }`}
+                                data-testid="hydrogen-real-toggle"
+                            >
+                                {config.useRealOrbitals ? 'Real (px, py, pz)' : 'Complex (m)'}
+                            </button>
+                        </div>
+                        <p className="text-xs text-text-tertiary">
+                            {config.useRealOrbitals
+                                ? 'Real spherical harmonics (chemistry convention)'
+                                : 'Complex spherical harmonics (physics convention)'
+                            }
+                        </p>
+                    </div>
+
+                    {/* Bohr Radius Scale */}
+                    <div className="space-y-2 pt-2 border-t border-white/5">
+                        <Slider
+                            label="Bohr Radius Scale"
+                            min={0.5}
+                            max={3.0}
+                            step={0.1}
+                            value={config.bohrRadiusScale}
+                            onChange={setBohrRadiusScale}
+                            showValue
+                            data-testid="hydrogen-bohr-scale"
+                        />
+                    </div>
+                </>
+            ) : isHydrogenNDMode ? (
+                <>
+                    {/* Hydrogen ND Preset Selection */}
+                    <div className="space-y-2">
+                        <label className="text-xs text-text-secondary">
+                            ND Orbital Preset
+                        </label>
+                        <div className="relative">
+                            <select
+                                className="w-full bg-surface-tertiary border border-white/10 rounded px-2 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent appearance-none cursor-pointer"
+                                value={config.hydrogenNDPreset}
+                                onChange={(e) => setHydrogenNDPreset(e.target.value as HydrogenNDPresetName)}
+                                data-testid="hydrogen-nd-preset-select"
+                            >
+                                {Object.entries(hydrogenNDPresetGroups).map(([dim, presets]) => (
+                                    <optgroup key={dim} label={`${dim}D Orbitals`}>
+                                        {presets.map(([key, preset]) => (
+                                            <option key={key} value={key}>{preset.name}</option>
+                                        ))}
+                                    </optgroup>
+                                ))}
+                                <option value="custom">Custom Configuration</option>
+                            </select>
+                            <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-text-tertiary">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </div>
+                        </div>
+                        <p className="text-xs text-text-tertiary pt-1">
+                            {HYDROGEN_ND_PRESETS[config.hydrogenNDPreset]?.description}
+                        </p>
+                    </div>
+
+                    {/* 3D Quantum Numbers (n, l, m) */}
+                    <div className="space-y-2 pt-2 border-t border-white/5">
+                        <div className="flex items-center justify-between mb-1">
+                            <label className="text-xs text-text-secondary">3D Quantum Numbers</label>
+                            <span className="text-xs text-text-tertiary">
+                                {config.principalQuantumNumber}{orbitalShapeLetter(config.azimuthalQuantumNumber)}
+                                {config.azimuthalQuantumNumber > 0 ? ` (m=${config.magneticQuantumNumber})` : ''}
+                            </span>
+                        </div>
+
+                        <Slider
+                            label="n (Principal)"
+                            min={1}
+                            max={7}
+                            step={1}
+                            value={config.principalQuantumNumber}
+                            onChange={setPrincipalQuantumNumber}
+                            showValue
+                            data-testid="hydrogen-nd-n-slider"
+                        />
+
+                        <Slider
+                            label={`l (Shape: ${orbitalShapeLetter(config.azimuthalQuantumNumber)})`}
+                            min={0}
+                            max={maxL}
+                            step={1}
+                            value={config.azimuthalQuantumNumber}
+                            onChange={setAzimuthalQuantumNumber}
+                            showValue
+                            data-testid="hydrogen-nd-l-slider"
+                        />
+
+                        {config.azimuthalQuantumNumber > 0 && (
+                            <Slider
+                                label="m (Orientation)"
+                                min={-maxM}
+                                max={maxM}
+                                step={1}
+                                value={config.magneticQuantumNumber}
+                                onChange={setMagneticQuantumNumber}
+                                showValue
+                                data-testid="hydrogen-nd-m-slider"
+                            />
+                        )}
+                    </div>
+
+                    {/* Extra Dimension Quantum Numbers */}
+                    {dimension >= 4 && (
+                        <div className="space-y-2 pt-2 border-t border-white/5">
+                            <label className="text-xs text-text-secondary">
+                                Extra Dimension Quantum Numbers
+                            </label>
+                            {Array.from({ length: Math.min(dimension - 3, 8) }, (_, i) => (
+                                <Slider
+                                    key={`extra-dim-n-${i}`}
+                                    label={`n${i + 4} (Dim ${i + 4})`}
+                                    min={0}
+                                    max={6}
+                                    step={1}
+                                    value={config.extraDimQuantumNumbers?.[i] ?? 0}
+                                    onChange={(v) => setExtraDimQuantumNumber(i, v)}
+                                    showValue
+                                    data-testid={`hydrogen-nd-extra-n-${i}`}
+                                />
+                            ))}
+                            <p className="text-xs text-text-tertiary">
+                                Harmonic oscillator quantum numbers for dimensions 4+
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Extra Dim Frequency Spread */}
+                    {dimension >= 4 && (
+                        <div className="space-y-2 pt-2 border-t border-white/5">
+                            <Slider
+                                label="Extra Dim Frequency Spread"
+                                min={0}
+                                max={0.5}
+                                step={0.01}
+                                value={config.extraDimFrequencySpread ?? 0}
+                                onChange={setExtraDimFrequencySpread}
+                                showValue
+                                data-testid="hydrogen-nd-freq-spread"
+                            />
+                        </div>
+                    )}
+
+                    {/* Real vs Complex toggle */}
+                    <div className="space-y-2 pt-2 border-t border-white/5">
+                        <div className="flex items-center justify-between">
+                            <label className="text-xs text-text-secondary">
+                                Orbital Representation
+                            </label>
+                            <button
+                                onClick={() => setUseRealOrbitals(!config.useRealOrbitals)}
+                                className={`px-2 py-1 text-xs rounded transition-colors ${
+                                    config.useRealOrbitals
+                                        ? 'bg-accent/20 text-accent'
+                                        : 'bg-surface-tertiary text-text-secondary'
+                                }`}
+                                data-testid="hydrogen-nd-real-toggle"
+                            >
+                                {config.useRealOrbitals ? 'Real (px, py, pz)' : 'Complex (m)'}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Bohr Radius Scale */}
+                    <div className="space-y-2 pt-2 border-t border-white/5">
+                        <Slider
+                            label="Bohr Radius Scale"
+                            min={0.5}
+                            max={3.0}
+                            step={0.1}
+                            value={config.bohrRadiusScale}
+                            onChange={setBohrRadiusScale}
+                            showValue
+                            data-testid="hydrogen-nd-bohr-scale"
+                        />
+                    </div>
+                </>
+            ) : (
+                <>
+                    {/* Harmonic Oscillator Preset Selection */}
+                    <div className="space-y-2">
+                        <label className="text-xs text-text-secondary">
+                            Quantum Preset
+                        </label>
+                        <div className="relative">
+                            <select
+                                className="w-full bg-surface-tertiary border border-white/10 rounded px-2 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent appearance-none cursor-pointer"
+                                value={config.presetName}
+                                onChange={(e) => setPresetName(e.target.value as SchroedingerPresetName)}
+                                data-testid="schroedinger-preset-select"
+                            >
+                                {presetOptions.map((option) => (
+                                    <option key={option.value} value={option.value}>
+                                        {option.label}
+                                    </option>
+                                ))}
+                                <option value="custom">Custom Configuration</option>
+                            </select>
+                            <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-text-tertiary">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </div>
+                        </div>
+                        <p className="text-xs text-text-tertiary pt-1">
+                            {SCHROEDINGER_NAMED_PRESETS[config.presetName]?.description}
+                        </p>
+                    </div>
+
+                    {/* Seed Control */}
+                    <div className="space-y-2 pt-2 border-t border-white/5">
+                        <div className="flex items-center justify-between">
+                            <label className="text-xs text-text-secondary">
+                                Seed: {config.seed}
+                            </label>
+                            <button
+                                onClick={() => randomizeSeed()}
+                                className="text-xs text-accent hover:underline"
+                                data-testid="schroedinger-randomize-seed"
+                            >
+                                Randomize
+                            </button>
+                        </div>
+                        <Slider
+                            label="Seed"
+                            min={0}
+                            max={999999}
+                            step={1}
+                            value={config.seed}
+                            onChange={setSeed}
+                            showValue={false}
+                            data-testid="schroedinger-seed-slider"
+                        />
+                    </div>
+
+                    {/* Quantum Parameters */}
+                    <div className="space-y-2 pt-2 border-t border-white/5">
+                        <Slider
+                            label="Superposition Terms"
+                            min={1}
+                            max={8}
+                            step={1}
+                            value={config.termCount}
+                            onChange={setTermCount}
+                            showValue
+                            data-testid="schroedinger-term-count"
+                        />
+
+                        <Slider
+                            label="Max Quantum Number (n)"
+                            min={2}
+                            max={6}
+                            step={1}
+                            value={config.maxQuantumNumber}
+                            onChange={setMaxQuantumNumber}
+                            showValue
+                            data-testid="schroedinger-max-quantum"
+                        />
+
+                        <Slider
+                            label="Frequency Spread"
+                            min={0}
+                            max={0.5}
+                            step={0.0001}
+                            value={config.frequencySpread}
+                            onChange={setFrequencySpread}
+                            showValue
+                            data-testid="schroedinger-freq-spread"
+                        />
+                    </div>
+
+                    {/* Geometric Parameters */}
+                    <div className="space-y-2 pt-2 border-t border-white/5">
+                        <Slider
+                            label="Field Scale"
+                            min={0.5}
+                            max={2.0}
+                            step={0.1}
+                            value={config.fieldScale}
+                            onChange={setFieldScale}
+                            showValue
+                            data-testid="schroedinger-field-scale"
+                        />
+                    </div>
+                </>
+            )}
+        </Section>
+
+        {/* Slice Parameters - shown for 4D+ in harmonic oscillator mode only */}
+        {isHarmonicMode && dimension >= 4 && (
+            <Section
+                title={`Cross Section (${dimension - 3} dim${dimension > 4 ? 's' : ''})`}
+                defaultOpen={true}
                 onReset={() => resetSchroedingerParameters()}
             >
-            {Array.from({ length: dimension - 3 }, (_, i) => (
-                <Slider
-                key={`slice-dim-${i + 3}`}
-                label={`Dim ${i + 3}`}
-                min={-2.0}
-                max={2.0}
-                step={0.1}
-                value={config.parameterValues[i] ?? 0}
-                onChange={(v) => setSchroedingerParameterValue(i, v)}
-                showValue
-                data-testid={`schroedinger-slice-dim-${i + 3}`}
-                />
-            ))}
-            <p className="text-xs text-text-tertiary">
-                Explore different {dimension}D cross-sections
-            </p>
+                {Array.from({ length: dimension - 3 }, (_, i) => (
+                    <Slider
+                        key={`slice-dim-${i + 3}`}
+                        label={`Dim ${i + 3}`}
+                        min={-2.0}
+                        max={2.0}
+                        step={0.1}
+                        value={config.parameterValues[i] ?? 0}
+                        onChange={(v) => setSchroedingerParameterValue(i, v)}
+                        showValue
+                        data-testid={`schroedinger-slice-dim-${i + 3}`}
+                    />
+                ))}
+                <p className="text-xs text-text-tertiary">
+                    Explore different {dimension}D cross-sections
+                </p>
             </Section>
         )}
 
-      {/* Render Mode Info */}
-      <div className="px-4 py-2 text-xs text-text-secondary border-t border-white/5">
-        <p>Rendering: Volumetric (Beer-Lambert)</p>
-      </div>
+        {/* Render Mode Info */}
+        <div className="px-4 py-2 text-xs text-text-secondary border-t border-white/5">
+            <p>Rendering: Volumetric (Beer-Lambert)</p>
+            {isHydrogenMode && (
+                <p className="text-text-tertiary mt-1">
+                    Hydrogen orbitals are always 3D
+                </p>
+            )}
+            {isHydrogenNDMode && (
+                <p className="text-text-tertiary mt-1">
+                    {dimension}D hydrogen atom viewed in 3D space
+                </p>
+            )}
+        </div>
     </div>
   );
 });

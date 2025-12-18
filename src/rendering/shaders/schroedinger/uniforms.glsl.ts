@@ -21,12 +21,27 @@ export const schroedingerUniformsBlock = `
 #define MAX_DIM 11
 #define MAX_TERMS 8
 
-// Quantum state configuration
+// Quantum mode selection
+uniform int uQuantumMode;                    // 0 = harmonic oscillator, 1 = hydrogen orbital
+
+// Harmonic oscillator state configuration
 uniform int uTermCount;                      // Number of superposition terms (1-8)
 uniform float uOmega[MAX_DIM];               // Per-dimension frequencies
 uniform int uQuantum[MAX_TERMS * MAX_DIM];   // Quantum numbers n[k][j] (flattened)
 uniform vec2 uCoeff[MAX_TERMS];              // Complex coefficients c_k = (re, im)
 uniform float uEnergy[MAX_TERMS];            // Precomputed energies E_k
+
+// Hydrogen orbital configuration
+uniform int uPrincipalN;                     // Principal quantum number n (1-7)
+uniform int uAzimuthalL;                     // Azimuthal quantum number l (0 to n-1)
+uniform int uMagneticM;                      // Magnetic quantum number m (-l to +l)
+uniform float uBohrRadius;                   // Bohr radius scale factor (0.5-3.0)
+uniform bool uUseRealOrbitals;               // Use real orbitals (px/py/pz) vs complex
+
+// Hydrogen ND configuration (extra dimensions 4-11)
+#define MAX_EXTRA_DIM 8
+uniform int uExtraDimN[MAX_EXTRA_DIM];       // Quantum numbers for dims 4-11 (0-6 each)
+uniform float uExtraDimOmega[MAX_EXTRA_DIM]; // Frequencies for dims 4-11 (0.1-2.0 each)
 
 // Volume rendering parameters
 uniform float uTimeScale;      // Time evolution speed (0.1-2.0)

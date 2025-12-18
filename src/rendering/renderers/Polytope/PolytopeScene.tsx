@@ -12,10 +12,9 @@ import { useFrame } from '@react-three/fiber';
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import {
-    BufferGeometry,
-    Color,
     DoubleSide,
     Float32BufferAttribute,
+    FrontSide,
     Matrix4,
     ShaderMaterial,
     Vector3,
@@ -179,7 +178,8 @@ function anglesToDirection(horizontalDeg: number, verticalDeg: number, target?: 
  */
 function createFaceShaderMaterial(
   faceColor: string,
-  opacity: number
+  opacity: number,
+  side: THREE.Side = DoubleSide
 ): ShaderMaterial {
   return new ShaderMaterial({
     glslVersion: THREE.GLSL3,
@@ -220,6 +220,11 @@ function createFaceShaderMaterial(
       uFresnelEnabled: { value: false },
       uFresnelIntensity: { value: 0.5 },
       uRimColor: { value: new Color('#ffffff').convertSRGBToLinear() },
+      // Rim SSS (subsurface scattering for backlight transmission)
+      uSssEnabled: { value: false },
+      uSssIntensity: { value: 1.0 },
+      uSssColor: { value: new Color('#ff8844').convertSRGBToLinear() },
+      uSssThickness: { value: 1.0 },
       // Multi-light system uniforms (colors converted to linear space)
       uNumLights: { value: 0 },
       uLightsEnabled: { value: [false, false, false, false] },
@@ -240,7 +245,7 @@ function createFaceShaderMaterial(
     vertexShader: buildFaceVertexShader(),
     fragmentShader: buildFaceFragmentShader(),
     transparent: opacity < 1,
-    side: DoubleSide,
+    side: side,
     depthWrite: opacity >= 1,
   });
 }
@@ -690,6 +695,12 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     const fresnelIntensity = appearanceState.fresnelIntensity;
     const rimColor = appearanceState.edgeColor;
 
+    // Read SSS state (shared with raymarched objects)
+    const sssEnabled = appearanceState.sssEnabled;
+    const sssIntensity = appearanceState.sssIntensity;
+    const sssColor = appearanceState.sssColor;
+    const sssThickness = appearanceState.sssThickness;
+
     // Read advanced color system state
     const colorAlgorithm = appearanceState.colorAlgorithm;
     const cosineCoefficients = appearanceState.cosineCoefficients;
@@ -784,6 +795,12 @@ export const PolytopeScene = React.memo(function PolytopeScene({
         if (u.uFresnelEnabled) u.uFresnelEnabled.value = fresnelEnabled;
         if (u.uFresnelIntensity) u.uFresnelIntensity.value = fresnelIntensity;
         if (u.uRimColor) updateLinearColorUniform(cache.rimColor, u.uRimColor.value as Color, rimColor);
+
+        // Update rim SSS uniforms (shared with raymarched objects)
+        if (u.uSssEnabled) u.uSssEnabled.value = sssEnabled;
+        if (u.uSssIntensity) u.uSssIntensity.value = sssIntensity;
+        if (u.uSssColor) updateLinearColorUniform(cache.sssColor, u.uSssColor.value as Color, sssColor);
+        if (u.uSssThickness) u.uSssThickness.value = sssThickness;
 
         // Update advanced color system uniforms (only for face materials)
         if (u.uColorAlgorithm) u.uColorAlgorithm.value = COLOR_ALGORITHM_TO_INT[colorAlgorithm];

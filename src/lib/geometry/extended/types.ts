@@ -1063,6 +1063,33 @@ export type SchroedingerQualityPreset = 'draft' | 'standard' | 'high' | 'ultra'
 export type SchroedingerRenderStyle = 'rayMarching'
 
 /**
+ * Quantum physics mode for Schroedinger visualization
+ * - harmonicOscillator: Cartesian-separable harmonic oscillator (default)
+ * - hydrogenOrbital: Spherical hydrogen atom orbitals (s, p, d, f)
+ * - hydrogenND: N-dimensional hydrogen orbital (hybrid: Y_lm for first 3D + HO for extra dims)
+ */
+export type SchroedingerQuantumMode = 'harmonicOscillator' | 'hydrogenOrbital' | 'hydrogenND'
+
+/**
+ * Named hydrogen orbital presets (1s, 2s, 2p, 3d, 4f, etc.)
+ */
+export type HydrogenOrbitalPresetName =
+  | '1s' | '2s' | '3s' | '4s'
+  | '2px' | '2py' | '2pz' | '3px' | '3py' | '3pz'
+  | '3dxy' | '3dxz' | '3dyz' | '3dz2' | '3dx2y2'
+  | '4fz3' | '4fxyz' | '4fy3x2y2' | '4fzx2y2'
+  | 'custom'
+
+/**
+ * Named presets for Hydrogen ND mode (n-dimensional hydrogen orbitals)
+ * Format: {orbital}_{dimension}d (e.g., '2pz_4d' = 2pz orbital in 4D)
+ */
+export type HydrogenNDPresetName =
+  | '2pz_4d' | '3dz2_4d' | '2pz_5d' | '3dz2_5d'
+  | '2pz_6d' | '3dz2_6d' | '4fz3_6d'
+  | 'custom'
+
+/**
  * Configuration for n-dimensional Schroedinger set generation
  *
  * Supports:
@@ -1109,7 +1136,11 @@ export interface SchroedingerConfig {
   /** How to render the volume */
   renderStyle: SchroedingerRenderStyle
 
-  // === Quantum State Configuration ===
+  // === Quantum Mode Selection ===
+  /** Physics mode: harmonic oscillator vs hydrogen orbital */
+  quantumMode: SchroedingerQuantumMode
+
+  // === Harmonic Oscillator Configuration (when quantumMode === 'harmonicOscillator') ===
   /** Named preset or 'custom' */
   presetName: SchroedingerPresetName
   /** Random seed for preset generation */
@@ -1120,6 +1151,30 @@ export interface SchroedingerConfig {
   maxQuantumNumber: number
   /** Variation in per-dimension frequencies (0-0.5) */
   frequencySpread: number
+
+  // === Hydrogen Orbital Configuration (when quantumMode === 'hydrogenOrbital') ===
+  /** Named hydrogen orbital preset (1s, 2px, 3dz2, etc.) */
+  hydrogenPreset: HydrogenOrbitalPresetName
+  /** Principal quantum number n (1-7) - determines shell and energy */
+  principalQuantumNumber: number
+  /** Azimuthal quantum number l (0 to n-1) - determines orbital shape (s,p,d,f) */
+  azimuthalQuantumNumber: number
+  /** Magnetic quantum number m (-l to +l) - determines orbital orientation */
+  magneticQuantumNumber: number
+  /** Use real spherical harmonics (px/py/pz) vs complex (m=-1,0,+1) */
+  useRealOrbitals: boolean
+  /** Bohr radius scale factor (affects orbital size, 0.5-3.0) */
+  bohrRadiusScale: number
+
+  // === Hydrogen ND Configuration (when quantumMode === 'hydrogenND') ===
+  /** Named hydrogen ND preset */
+  hydrogenNDPreset: HydrogenNDPresetName
+  /** Quantum numbers for extra dimensions (dims 4-11), array of length 8 */
+  extraDimQuantumNumbers: number[]
+  /** Frequencies for extra dimensions (dims 4-11), array of length 8 */
+  extraDimOmega: number[]
+  /** Energy spread factor for extra dimensions (0-0.5) */
+  extraDimFrequencySpread: number
 
   // === Volume Rendering Parameters ===
   /** Time evolution speed multiplier (0.1-2.0) */
@@ -1312,12 +1367,29 @@ export const DEFAULT_SCHROEDINGER_CONFIG: SchroedingerConfig = {
   // Rendering
   renderStyle: 'rayMarching',
 
-  // Quantum state
+  // Quantum mode
+  quantumMode: 'harmonicOscillator',
+
+  // Harmonic oscillator state
   presetName: 'custom',
   seed: 42,
   termCount: 1,
   maxQuantumNumber: 6,
   frequencySpread: 0.01,
+
+  // Hydrogen orbital state
+  hydrogenPreset: '2pz',
+  principalQuantumNumber: 2,
+  azimuthalQuantumNumber: 1,
+  magneticQuantumNumber: 0,
+  useRealOrbitals: true,
+  bohrRadiusScale: 1.0,
+
+  // Hydrogen ND state
+  hydrogenNDPreset: '2pz_4d',
+  extraDimQuantumNumbers: [0, 0, 0, 0, 0, 0, 0, 0], // 8 values for dims 4-11
+  extraDimOmega: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+  extraDimFrequencySpread: 0.0,
 
   // Volume rendering
   timeScale: 0.8,

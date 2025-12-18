@@ -192,6 +192,12 @@ export function TubeWireframe({
         uFresnelIntensity: { value: 0.1 },
         uRimColor: { value: new Color(color).convertSRGBToLinear() },
 
+        // Rim SSS (subsurface scattering for backlight transmission)
+        uSssEnabled: { value: false },
+        uSssIntensity: { value: 1.0 },
+        uSssColor: { value: new Color('#ff8844').convertSRGBToLinear() },
+        uSssThickness: { value: 1.0 },
+
         // Multi-light system
         ...lightUniforms,
       },
@@ -451,6 +457,12 @@ export function TubeWireframe({
     u.uFresnelEnabled!.value = appearanceState.shaderSettings.surface.fresnelEnabled
     u.uFresnelIntensity!.value = appearanceState.fresnelIntensity
     updateLinearColorUniform(cache.rimColor, u.uRimColor!.value as Color, appearanceState.edgeColor)
+
+    // Rim SSS (shared with raymarched objects)
+    u.uSssEnabled!.value = appearanceState.sssEnabled
+    u.uSssIntensity!.value = appearanceState.sssIntensity
+    updateLinearColorUniform(cache.sssColor, u.uSssColor!.value as Color, appearanceState.sssColor)
+    u.uSssThickness!.value = appearanceState.sssThickness
 
     // Update multi-light system (with cached linear color conversion)
     updateLightUniforms(u as unknown as LightUniforms, lightingState.lights, lightColorCacheRef.current)

@@ -50,7 +50,7 @@ export interface FacesSectionProps {
   defaultOpen?: boolean;
 }
 
-type FacesTabId = 'colors' | 'material' | 'fx';
+type FacesTabId = 'colors' | 'material';
 
 export const FacesSection: React.FC<FacesSectionProps> = ({
   defaultOpen = false,
@@ -70,8 +70,6 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
     setFaceColor,
     shaderSettings,
     setSurfaceSettings,
-    fresnelIntensity,
-    setFresnelIntensity,
     lchLightness,
     setLchLightness,
     lchChroma,
@@ -95,8 +93,6 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
       setFaceColor: state.setFaceColor,
       shaderSettings: state.shaderSettings,
       setSurfaceSettings: state.setSurfaceSettings,
-      fresnelIntensity: state.fresnelIntensity,
-      setFresnelIntensity: state.setFresnelIntensity,
       lchLightness: state.lchLightness,
       setLchLightness: state.setLchLightness,
       lchChroma: state.lchChroma,
@@ -233,20 +229,6 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
           onSampleQualityChange={setSampleQuality}
           onVolumetricAnimationQualityChange={setVolumetricAnimationQuality}
           onSeenVolumetricWarning={() => setHasSeenVolumetricWarning(true)}
-        />
-      ),
-    },
-    {
-      id: 'fx' as const,
-      label: 'FX',
-      content: (
-        <FxTabContent
-          fresnelEnabled={surfaceSettings.fresnelEnabled}
-          setFresnelEnabled={(enabled) =>
-            setSurfaceSettings({ fresnelEnabled: enabled })
-          }
-          fresnelIntensity={fresnelIntensity}
-          setFresnelIntensity={setFresnelIntensity}
         />
       ),
     },
@@ -770,57 +752,6 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
             </p>
         </div>
       )}
-    </div>
-  );
-};
-
-// =============================================================================
-// FX Tab Content (Fresnel Rim Effect only - Shadows moved to ShadowsSection)
-// =============================================================================
-
-interface FxTabContentProps {
-  fresnelEnabled: boolean;
-  setFresnelEnabled: (enabled: boolean) => void;
-  fresnelIntensity: number;
-  setFresnelIntensity: (value: number) => void;
-}
-
-const FxTabContent: React.FC<FxTabContentProps> = ({
-  fresnelEnabled,
-  setFresnelEnabled,
-  fresnelIntensity,
-  setFresnelIntensity,
-}) => {
-  return (
-    <div className="space-y-4">
-      {/* Fresnel Rim Effect */}
-      <ControlGroup
-        title="Fresnel Rim"
-        rightElement={
-          <Switch
-            checked={fresnelEnabled}
-            onCheckedChange={setFresnelEnabled}
-          />
-        }
-      >
-        <p className="text-[10px] text-text-secondary mb-2">
-            Add a glowing rim effect to the edges of the object, simulating backlighting.
-        </p>
-        <div
-          className={!fresnelEnabled ? 'opacity-50 pointer-events-none' : ''}
-          aria-disabled={!fresnelEnabled}
-        >
-            <Slider
-            label=""
-            min={0}
-            max={1}
-            step={0.1}
-            value={fresnelIntensity}
-            onChange={setFresnelIntensity}
-            showValue
-            />
-        </div>
-      </ControlGroup>
     </div>
   );
 };

@@ -1,15 +1,19 @@
 /**
  * SchroedingerAnimationDrawer Component
  *
- * Animation controls for Schroedinger/Schroedinger fractal, displayed in the
+ * Animation controls for Schroedinger quantum visualization, displayed in the
  * TimelineControls bottom drawer.
  *
+ * Supports both physics modes:
+ * - Harmonic Oscillator: Full animation suite including superposition-specific effects
+ * - Hydrogen Orbital: Time evolution and flow effects (orbitals are always 3D)
+ *
  * Animation Systems:
- * - Time Evolution: Controls the speed of quantum phase evolution
- * - Animated Flow: Curl noise turbulence
- * - Wavepacket Dispersion: Animates frequency spread (breathing)
- * - Origin Drift: Animates the origin in extra dimensions
- * - Slice Animation: 4D+ only, animates the 4D slice position
+ * - Time Evolution: Controls the speed of quantum phase evolution (both modes)
+ * - Animated Flow: Curl noise turbulence (both modes)
+ * - Wavepacket Dispersion: Animates frequency spread (HO mode only)
+ * - Origin Drift: Animates the origin in extra dimensions (HO mode only)
+ * - Slice Animation: 4D+ only, animates the 4D slice position (HO mode only)
  *
  * @see docs/prd/ndimensional-visualizer.md
  */
@@ -44,15 +48,15 @@ export const SchroedingerAnimationDrawer: React.FC = React.memo(() => {
     setCurlStrength,
     setCurlScale,
     setCurlSpeed,
-    // Spread Animation (Dispersion)
+    // Spread Animation (Dispersion) - HO mode only
     setSpreadAnimationEnabled,
     setSpreadAnimationSpeed,
-    // Origin Drift Animation
+    // Origin Drift Animation - HO mode only
     setOriginDriftEnabled,
     setDriftAmplitude,
     setDriftBaseFrequency,
     setDriftFrequencySpread,
-    // Slice Animation
+    // Slice Animation - HO mode only, 4D+
     setSliceAnimationEnabled,
     setSliceSpeed,
     setSliceAmplitude,
@@ -81,6 +85,9 @@ export const SchroedingerAnimationDrawer: React.FC = React.memo(() => {
     }))
   );
 
+  // Check if we're in hydrogen orbital mode
+  const isHydrogenMode = config.quantumMode === 'hydrogenOrbital';
+
   return (
     <AnimationDrawerContainer data-testid="schroedinger-animation-drawer">
       {/* Time Evolution (Always Active) */}
@@ -103,33 +110,35 @@ export const SchroedingerAnimationDrawer: React.FC = React.memo(() => {
         </div>
       </div>
 
-      {/* Wavepacket Dispersion (Spread Animation) */}
-      <div className="space-y-4" data-testid="animation-panel-dispersion">
-        <div className="flex items-center justify-between">
-          <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">
-            Wavepacket Dispersion
-          </label>
-          <ToggleButton
-            pressed={config.spreadAnimationEnabled}
-            onToggle={() => setSpreadAnimationEnabled(!config.spreadAnimationEnabled)}
-            className="text-xs px-2 py-1 h-auto"
-            ariaLabel="Toggle spread animation"
-          >
-            {config.spreadAnimationEnabled ? 'ON' : 'OFF'}
-          </ToggleButton>
+      {/* Wavepacket Dispersion (Spread Animation) - HO mode only */}
+      {!isHydrogenMode && (
+        <div className="space-y-4" data-testid="animation-panel-dispersion">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">
+              Wavepacket Dispersion
+            </label>
+            <ToggleButton
+              pressed={config.spreadAnimationEnabled}
+              onToggle={() => setSpreadAnimationEnabled(!config.spreadAnimationEnabled)}
+              className="text-xs px-2 py-1 h-auto"
+              ariaLabel="Toggle spread animation"
+            >
+              {config.spreadAnimationEnabled ? 'ON' : 'OFF'}
+            </ToggleButton>
+          </div>
+          <div className={`space-y-3 ${!config.spreadAnimationEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
+               <Slider
+                  label="Breathing Speed"
+                  min={0.1}
+                  max={2.0}
+                  step={0.1}
+                  value={config.spreadAnimationSpeed ?? 0.5}
+                  onChange={setSpreadAnimationSpeed}
+                  showValue
+               />
+          </div>
         </div>
-        <div className={`space-y-3 ${!config.spreadAnimationEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
-             <Slider
-                label="Breathing Speed"
-                min={0.1}
-                max={2.0}
-                step={0.1}
-                value={config.spreadAnimationSpeed ?? 0.5}
-                onChange={setSpreadAnimationSpeed}
-                showValue
-             />
-        </div>
-      </div>
+      )}
 
       {/* Animated Flow (Curl Noise) */}
       <div className="space-y-4" data-testid="animation-panel-flow">
@@ -177,55 +186,57 @@ export const SchroedingerAnimationDrawer: React.FC = React.memo(() => {
         </div>
       </div>
 
-      {/* Origin Drift Animation */}
-      <div className="space-y-4" data-testid="animation-panel-originDrift">
-        <div className="flex items-center justify-between">
-          <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">
-            Origin Drift
-          </label>
-          <ToggleButton
-            pressed={config.originDriftEnabled}
-            onToggle={() => setOriginDriftEnabled(!config.originDriftEnabled)}
-            className="text-xs px-2 py-1 h-auto"
-            ariaLabel="Toggle origin drift"
-          >
-            {config.originDriftEnabled ? 'ON' : 'OFF'}
-          </ToggleButton>
-        </div>
+      {/* Origin Drift Animation - HO mode only */}
+      {!isHydrogenMode && (
+        <div className="space-y-4" data-testid="animation-panel-originDrift">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">
+              Origin Drift
+            </label>
+            <ToggleButton
+              pressed={config.originDriftEnabled}
+              onToggle={() => setOriginDriftEnabled(!config.originDriftEnabled)}
+              className="text-xs px-2 py-1 h-auto"
+              ariaLabel="Toggle origin drift"
+            >
+              {config.originDriftEnabled ? 'ON' : 'OFF'}
+            </ToggleButton>
+          </div>
 
-        <div className={`space-y-3 ${!config.originDriftEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
-            <Slider
-              label="Amplitude"
-              min={0.01}
-              max={0.5}
-              step={0.01}
-              value={config.driftAmplitude}
-              onChange={setDriftAmplitude}
-              showValue
-            />
-            <Slider
-              label="Frequency"
-              min={0.01}
-              max={0.5}
-              step={0.01}
-              value={config.driftBaseFrequency}
-              onChange={setDriftBaseFrequency}
-              showValue
-            />
-            <Slider
-              label="Spread"
-              min={0}
-              max={1}
-              step={0.05}
-              value={config.driftFrequencySpread}
-              onChange={setDriftFrequencySpread}
-              showValue
-            />
+          <div className={`space-y-3 ${!config.originDriftEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
+              <Slider
+                label="Amplitude"
+                min={0.01}
+                max={0.5}
+                step={0.01}
+                value={config.driftAmplitude}
+                onChange={setDriftAmplitude}
+                showValue
+              />
+              <Slider
+                label="Frequency"
+                min={0.01}
+                max={0.5}
+                step={0.01}
+                value={config.driftBaseFrequency}
+                onChange={setDriftBaseFrequency}
+                showValue
+              />
+              <Slider
+                label="Spread"
+                min={0}
+                max={1}
+                step={0.05}
+                value={config.driftFrequencySpread}
+                onChange={setDriftFrequencySpread}
+                showValue
+              />
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Slice Animation - 4D+ only */}
-      {dimension >= 4 && (
+      {/* Slice Animation - 4D+ and HO mode only */}
+      {!isHydrogenMode && dimension >= 4 && (
         <div className="space-y-4" data-testid="animation-panel-sliceAnimation">
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">
@@ -261,6 +272,15 @@ export const SchroedingerAnimationDrawer: React.FC = React.memo(() => {
                 showValue
               />
           </div>
+        </div>
+      )}
+
+      {/* Mode info for hydrogen */}
+      {isHydrogenMode && (
+        <div className="space-y-2 px-1">
+          <p className="text-xs text-text-tertiary italic">
+            Hydrogen orbitals use time evolution for phase animation. Additional animation features are available in Harmonic Oscillator mode.
+          </p>
         </div>
       )}
 

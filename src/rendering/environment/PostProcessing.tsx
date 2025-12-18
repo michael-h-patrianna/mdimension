@@ -542,6 +542,7 @@ export const PostProcessing = memo(function PostProcessing() {
   // Only used for mesh-based objects (polytopes) - SDF/volumetric objects have shader-based AO
   const gtaoPassRef = useRef<GTAOPass | null>(null);
   const gtaoComposerRef = useRef<EffectComposer | null>(null);
+  const prevGtaoEnabledRef = useRef(false);
 
   // Initialize/recreate GTAO pass when context changes
   useEffect(() => {
@@ -1485,6 +1486,21 @@ export const PostProcessing = memo(function PostProcessing() {
     const gtaoComposer = gtaoComposerRef.current;
     const isPolytope = isPolytopeCategory(geomState.objectType);
     const shouldRunGTAO = ppState.ssaoEnabled && isPolytope && gtaoPass && gtaoComposer;
+
+    // Clear GTAO buffers when transitioning from disabled to enabled
+    // This prevents stale data artifacts when first enabling GTAO
+    if (shouldRunGTAO && !prevGtaoEnabledRef.current && gtaoComposer) {
+      const clearColor = gl.getClearColor(new THREE.Color());
+      const clearAlpha = gl.getClearAlpha();
+      gl.setClearColor(0x000000, 0);
+      gl.setRenderTarget(gtaoComposer.readBuffer);
+      gl.clear();
+      gl.setRenderTarget(gtaoComposer.writeBuffer);
+      gl.clear();
+      gl.setRenderTarget(null);
+      gl.setClearColor(clearColor, clearAlpha);
+    }
+    prevGtaoEnabledRef.current = !!shouldRunGTAO;
 
     if (shouldRunGTAO) {
       // Update GTAO camera (in case it changed)
