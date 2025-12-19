@@ -6,7 +6,7 @@ import type { VectorND, MatrixND } from '@/lib/math/types';
 describe('useTransformedVertices', () => {
   it('should return empty array for empty input', () => {
     const { result } = renderHook(() => 
-      useTransformedVertices([], [[1]], [0])
+      useTransformedVertices([], new Float32Array([1]), [0])
     );
     expect(result.current).toEqual([]);
   });
@@ -14,7 +14,7 @@ describe('useTransformedVertices', () => {
   it('should apply shear matrix', () => {
     // Identity shear
     const vertices: VectorND[] = [[1, 2]];
-    const shear: MatrixND = [[1, 0], [0, 1]];
+    const shear: MatrixND = new Float32Array([1, 0, 0, 1]);
     const translation: VectorND = [0, 0];
 
     const { result } = renderHook(() => 
@@ -26,7 +26,7 @@ describe('useTransformedVertices', () => {
     // Actual shear
     // x' = x + y
     // y' = y
-    const shear2: MatrixND = [[1, 1], [0, 1]];
+    const shear2: MatrixND = new Float32Array([1, 1, 0, 1]);
     const { result: result2 } = renderHook(() => 
       useTransformedVertices(vertices, shear2, translation)
     );
@@ -42,7 +42,7 @@ describe('useTransformedVertices', () => {
 
   it('should apply translation', () => {
     const vertices: VectorND[] = [[1, 2]];
-    const shear: MatrixND = [[1, 0], [0, 1]];
+    const shear: MatrixND = new Float32Array([1, 0, 0, 1]);
     const translation: VectorND = [10, 20];
 
     const { result } = renderHook(() => 
@@ -54,7 +54,7 @@ describe('useTransformedVertices', () => {
 
   it('should apply shear then translation', () => {
     const vertices: VectorND[] = [[1, 2]];
-    const shear: MatrixND = [[1, 1], [0, 1]]; // x' = x+y, y'=y -> [3, 2]
+    const shear: MatrixND = new Float32Array([1, 1, 0, 1]); // x' = x+y, y'=y -> [3, 2]
     const translation: VectorND = [10, 20];
 
     const { result } = renderHook(() => 
@@ -67,7 +67,7 @@ describe('useTransformedVertices', () => {
 
   it('should memoize results', () => {
     const vertices: VectorND[] = [[1, 2]];
-    const shear: MatrixND = [[1, 0], [0, 1]];
+    const shear: MatrixND = new Float32Array([1, 0, 0, 1]);
     const translation: VectorND = [0, 0];
 
     const { result, rerender } = renderHook(() => 
@@ -83,7 +83,7 @@ describe('useTransformedVertices', () => {
 
   it('should update values and return new reference when inputs change', () => {
     const vertices: VectorND[] = [[1, 2]];
-    const shear: MatrixND = [[1, 0], [0, 1]];
+    const shear: MatrixND = new Float32Array([1, 0, 0, 1]);
     const translation: VectorND = [0, 0];
 
     const { result, rerender } = renderHook((props) =>
@@ -108,7 +108,7 @@ describe('useTransformedVertices', () => {
   it('should return new array reference when vertex count changes', () => {
     const vertices1: VectorND[] = [[1, 2]];
     const vertices2: VectorND[] = [[1, 2], [3, 4]];
-    const shear: MatrixND = [[1, 0], [0, 1]];
+    const shear: MatrixND = new Float32Array([1, 0, 0, 1]);
     const translation: VectorND = [0, 0];
 
     const { result, rerender } = renderHook((props) =>

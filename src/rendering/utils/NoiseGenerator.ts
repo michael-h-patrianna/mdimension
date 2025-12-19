@@ -17,10 +17,12 @@ class FastNoise {
         for (let i = 255; i > 0; i--) {
             s = (s * 16807) % 2147483647;
             const j = s % (i + 1);
-            [p[i], p[j]] = [p[j], p[i]];
+            const temp = p[i]!;
+            p[i] = p[j]!;
+            p[j] = temp;
         }
         
-        for (let i = 0; i < 512; i++) this.perm[i] = p[i & 255];
+        for (let i = 0; i < 512; i++) this.perm[i] = p[i & 255]!;
     }
 
     private fade(t: number): number { return t * t * t * (t * (t * 6 - 15) + 10); }
@@ -45,17 +47,17 @@ class FastNoise {
         const v = this.fade(y);
         const w = this.fade(z);
 
-        const A = this.perm[X] + Y, AA = this.perm[A] + Z, AB = this.perm[A + 1] + Z;
-        const B = this.perm[X + 1] + Y, BA = this.perm[B] + Z, BB = this.perm[B + 1] + Z;
+        const A = this.perm[X]! + Y, AA = this.perm[A]! + Z, AB = this.perm[A + 1]! + Z;
+        const B = this.perm[X + 1]! + Y, BA = this.perm[B]! + Z, BB = this.perm[B + 1]! + Z;
 
-        return this.lerp(w, this.lerp(v, this.lerp(u, this.grad(this.perm[AA], x, y, z),
-            this.grad(this.perm[BA], x - 1, y, z)),
-            this.lerp(u, this.grad(this.perm[AB], x, y - 1, z),
-                this.grad(this.perm[BB], x - 1, y - 1, z))),
-            this.lerp(v, this.lerp(u, this.grad(this.perm[AA + 1], x, y, z - 1),
-                this.grad(this.perm[BA + 1], x - 1, y, z - 1)),
-                this.lerp(u, this.grad(this.perm[AB + 1], x, y - 1, z - 1),
-                    this.grad(this.perm[BB + 1], x - 1, y - 1, z - 1))));
+        return this.lerp(w, this.lerp(v, this.lerp(u, this.grad(this.perm[AA]!, x, y, z),
+            this.grad(this.perm[BA]!, x - 1, y, z)),
+            this.lerp(u, this.grad(this.perm[AB]!, x, y - 1, z),
+                this.grad(this.perm[BB]!, x - 1, y - 1, z))),
+            this.lerp(v, this.lerp(u, this.grad(this.perm[AA + 1]!, x, y, z - 1),
+                this.grad(this.perm[BA + 1]!, x - 1, y, z - 1)),
+                this.lerp(u, this.grad(this.perm[AB + 1]!, x, y - 1, z - 1),
+                    this.grad(this.perm[BB + 1]!, x - 1, y - 1, z - 1))));
     }
 }
 
