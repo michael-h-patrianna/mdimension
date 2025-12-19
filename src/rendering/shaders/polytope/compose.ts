@@ -1,23 +1,26 @@
-import { precisionBlock } from '../shared/core/precision.glsl';
-import { constantsBlock } from '../shared/core/constants.glsl';
-import { uniformsBlock } from '../shared/core/uniforms.glsl';
-import { hslBlock } from '../shared/color/hsl.glsl';
-import { cosinePaletteBlock } from '../shared/color/cosine-palette.glsl';
-import { oklabBlock } from '../shared/color/oklab.glsl';
-import { selectorBlock } from '../shared/color/selector.glsl';
-import { multiLightBlock } from '../shared/lighting/multi-light.glsl';
-import { sssBlock } from '../shared/lighting/sss.glsl';
-import { ggxBlock } from '../shared/lighting/ggx.glsl';
-import { shadowMapsUniformsBlock, shadowMapsFunctionsBlock } from '../shared/features/shadowMaps.glsl';
-import { fogUniformsBlock, fogFunctionsBlock } from '../shared/features/fog.glsl';
+import { cosinePaletteBlock } from '../shared/color/cosine-palette.glsl'
+import { hslBlock } from '../shared/color/hsl.glsl'
+import { oklabBlock } from '../shared/color/oklab.glsl'
+import { selectorBlock } from '../shared/color/selector.glsl'
+import { constantsBlock } from '../shared/core/constants.glsl'
+import { precisionBlock } from '../shared/core/precision.glsl'
+import { uniformsBlock } from '../shared/core/uniforms.glsl'
+import { fogFunctionsBlock, fogUniformsBlock } from '../shared/features/fog.glsl'
 import {
-  processMeshFeatureFlags,
+  shadowMapsFunctionsBlock,
+  shadowMapsUniformsBlock,
+} from '../shared/features/shadowMaps.glsl'
+import {
   assembleShaderBlocks,
+  processMeshFeatureFlags,
   type MeshShaderConfig,
-} from '../shared/fractal/compose-helpers';
+} from '../shared/fractal/compose-helpers'
+import { ggxBlock } from '../shared/lighting/ggx.glsl'
+import { multiLightBlock } from '../shared/lighting/multi-light.glsl'
+import { sssBlock } from '../shared/lighting/sss.glsl'
 
-import { transformNDBlock } from './transform-nd.glsl';
-import { modulationBlock } from './modulation.glsl';
+import { modulationBlock } from './modulation.glsl'
+import { transformNDBlock } from './transform-nd.glsl'
 
 /**
  * Configuration for Polytope shader compilation.
@@ -31,6 +34,10 @@ export interface PolytopeShaderConfig extends MeshShaderConfig {
 
 /**
  * Compose face vertex shader for Polytope rendering.
+ *
+ * Computes face normal from all 3 triangle vertices after nD transformation.
+ * This ensures correct normals even when nD projection flips face winding.
+ * Uses packed attributes to stay within WebGL 16 attribute limit.
  */
 export function composeFaceVertexShader(): string {
   return [
@@ -42,21 +49,43 @@ export function composeFaceVertexShader(): string {
     // Outputs to fragment shader
     out vec3 vWorldPosition;
     out vec3 vViewDir;
+    // Face normal computed from transformed triangle vertices (flat = first vertex wins)
+    flat out vec3 vFaceNormal;
     // Face depth for color algorithms - flat interpolation means first vertex wins
     flat out float vFaceDepth;
 
     void main() {
-      vec3 projected = transformND();
+      // Transform all 3 vertices of this triangle through the nD pipeline
+      vec3 v0_projected = transformND();           // This vertex
+      vec3 v1_projected = transformNeighbor1();    // Neighbor 1
+      vec3 v2_projected = transformNeighbor2();    // Neighbor 2
 
-      // Sum of extra dimensions for dimension-aware bias
-      float extraSum = aExtraDim0 + aExtraDim1 + aExtraDim2 + aExtraDim3 + aExtraDim4 + aExtraDim5 + aExtraDim6;
+      // Sum of extra dimensions for dimension-aware bias (packed attributes)
+      float extraSum = aExtraDims0_3.x + aExtraDims0_3.y + aExtraDims0_3.z + aExtraDims0_3.w
+                     + aExtraDims4_6.x + aExtraDims4_6.y + aExtraDims4_6.z;
 
-      vec3 modulated = modulateVertex(projected, extraSum);
+      // Apply modulation to this vertex
+      vec3 modulated = modulateVertex(v0_projected, extraSum);
+
+      // Also modulate neighbors for correct normal computation (using packed neighbor attributes)
+      float neighbor1ExtraSum = aNeighbor1Extra0_3.x + aNeighbor1Extra0_3.y + aNeighbor1Extra0_3.z + aNeighbor1Extra0_3.w
+                              + aNeighbor1Extra4_6.x + aNeighbor1Extra4_6.y + aNeighbor1Extra4_6.z;
+      float neighbor2ExtraSum = aNeighbor2Extra0_3.x + aNeighbor2Extra0_3.y + aNeighbor2Extra0_3.z + aNeighbor2Extra0_3.w
+                              + aNeighbor2Extra4_6.x + aNeighbor2Extra4_6.y + aNeighbor2Extra4_6.z;
+      vec3 v1_modulated = modulateVertex(v1_projected, neighbor1ExtraSum);
+      vec3 v2_modulated = modulateVertex(v2_projected, neighbor2ExtraSum);
+
+      // Compute face normal from the 3 transformed+modulated vertices
+      vec3 faceNormal = computeFaceNormal(modulated, v1_modulated, v2_modulated);
 
       vec4 worldPos = modelMatrix * vec4(modulated, 1.0);
       gl_Position = projectionMatrix * viewMatrix * worldPos;
 
-      // Pass world position for normal calculation in fragment shader
+      // Transform normal to world space (use normal matrix for correct scaling)
+      // For uniform scaling, modelMatrix rotation is sufficient
+      vFaceNormal = normalize(mat3(modelMatrix) * faceNormal);
+
+      // Pass world position for lighting calculations
       vWorldPosition = worldPos.xyz;
       // Guard against camera at world position (zero-length view direction)
       vec3 viewDiff = cameraPosition - worldPos.xyz;
@@ -68,12 +97,13 @@ export function composeFaceVertexShader(): string {
       // Map to roughly 0-1 range (coordinates typically in -1 to 1)
       vFaceDepth = clamp(extraSum * 0.15 + 0.5, 0.0, 1.0);
     }
-    `
-  ].join('\n');
+    `,
+  ].join('\n')
 }
 
 /**
  * Compose edge vertex shader for Polytope wireframe rendering.
+ * Uses packed aExtraDims0_3 (vec4) and aExtraDims4_6 (vec3) attributes.
  */
 export function composeEdgeVertexShader(): string {
   return [
@@ -83,14 +113,15 @@ export function composeEdgeVertexShader(): string {
     void main() {
       vec3 projected = transformND();
 
-      // Sum of extra dimensions for dimension-aware bias
-      float extraSum = aExtraDim0 + aExtraDim1 + aExtraDim2 + aExtraDim3 + aExtraDim4 + aExtraDim5 + aExtraDim6;
+      // Sum of extra dimensions for dimension-aware bias (using packed attributes)
+      float extraSum = aExtraDims0_3.x + aExtraDims0_3.y + aExtraDims0_3.z + aExtraDims0_3.w
+                     + aExtraDims4_6.x + aExtraDims4_6.y + aExtraDims4_6.z;
 
       vec3 modulated = modulateVertex(projected, extraSum);
       gl_Position = projectionMatrix * modelViewMatrix * vec4(modulated, 1.0);
     }
-    `
-  ].join('\n');
+    `,
+  ].join('\n')
 }
 
 /**
@@ -103,14 +134,14 @@ export function composeEdgeVertexShader(): string {
  * @returns Object with glsl string, module names, and feature names
  */
 export function composeFaceFragmentShader(config: PolytopeShaderConfig = {}): {
-  glsl: string;
-  modules: string[];
-  features: string[];
+  glsl: string
+  modules: string[]
+  features: string[]
 } {
-  const { shadows: enableShadows = true, overrides = [] } = config;
+  const { shadows: enableShadows = true, overrides = [] } = config
 
   // Process feature flags using shared helper
-  const flags = processMeshFeatureFlags(config);
+  const flags = processMeshFeatureFlags(config)
 
   // Build blocks array with conditional inclusion
   const blocks = [
@@ -135,6 +166,8 @@ export function composeFaceFragmentShader(config: PolytopeShaderConfig = {}): {
     // Inputs from vertex shader
     in vec3 vWorldPosition;
     in vec3 vViewDir;
+    // Face normal computed in vertex shader after nD transformation (flat = first vertex wins)
+    flat in vec3 vFaceNormal;
     // Face depth with flat interpolation - first vertex of each triangle wins
     flat in float vFaceDepth;
     `,
@@ -153,33 +186,32 @@ export function composeFaceFragmentShader(config: PolytopeShaderConfig = {}): {
     { name: 'Fog Uniforms', content: fogUniformsBlock, condition: flags.useFog },
     { name: 'Fog Functions', content: fogFunctionsBlock, condition: flags.useFog },
     { name: 'Main', content: polytopeMainBlock },
-  ];
+  ]
 
   // Assemble shader from blocks using shared helper
-  const { glsl, modules } = assembleShaderBlocks(blocks, overrides);
+  const { glsl, modules } = assembleShaderBlocks(blocks, overrides)
 
-  return { glsl, modules, features: flags.features };
+  return { glsl, modules, features: flags.features }
 }
 
 /**
  * Main block for Polytope fragment shader.
- * Uses #ifdef for conditional feature compilation.
+ * Uses pre-computed face normal from vertex shader (flat interpolation).
+ * This ensures correct normals even when nD projection flips face winding.
  */
 const polytopeMainBlock = `
 void main() {
-  // Compute face normal from screen-space derivatives of world position
-  vec3 dPdx = dFdx(vWorldPosition);
-  vec3 dPdy = dFdy(vWorldPosition);
-  vec3 crossProd = cross(dPdx, dPdy);
-  float crossLen = length(crossProd);
-  // Guard against degenerate normals (edge-on faces where cross product is near-zero)
-  vec3 normal = crossLen > 0.0001 ? crossProd / crossLen : vec3(0.0, 0.0, 1.0);
+  // Use pre-computed face normal from vertex shader (flat interpolation = first vertex wins)
+  // This normal was computed after nD transformation, so it's geometrically correct
+  vec3 normal = normalize(vFaceNormal);
+
   // Guard against zero-length view direction
   float vViewLen = length(vViewDir);
   vec3 viewDir = vViewLen > 0.0001 ? vViewDir / vViewLen : vec3(0.0, 0.0, 1.0);
 
-  // Two-sided lighting: flip normal to face viewer for correct specular
-  vec3 faceNormal = dot(normal, viewDir) < 0.0 ? -normal : normal;
+  // Two-sided lighting: flip normal to face viewer for back faces
+  // Use gl_FrontFacing for consistent orientation with face culling
+  vec3 faceNormal = gl_FrontFacing ? normal : -normal;
 
   // Clamp roughness to prevent division by zero in GGX (mirror-like minimum)
   float roughness = max(uRoughness, 0.04);
@@ -271,7 +303,7 @@ void main() {
   gColor = vec4(col, uOpacity);
   gNormal = vec4(viewNormal * 0.5 + 0.5, uMetallic);
 }
-`;
+`
 
 /**
  * Edge fragment shader with MRT outputs.
@@ -296,5 +328,5 @@ export function composeEdgeFragmentShader(): string {
       // This ensures edges work with post-processing that reads the normal buffer
       gNormal = vec4(0.5, 0.5, 1.0, 0.0);
     }
-  `;
+  `
 }

@@ -22,11 +22,12 @@ vec4 packDepthToRGBA(const in float depth) {
   r.yzw -= r.xyz * (1.0 / 255.0);
   return r;
 }
-`;
+`
 
 /**
  * Custom depth vertex shader for Polytope.
  * Applies the nD transformation to get correct shadow positions.
+ * Uses packed attributes to stay under WebGL 16 attribute limit.
  */
 export const polytopeDepthVertexShader = `
 precision highp float;
@@ -50,27 +51,22 @@ uniform float uModFrequency;
 uniform float uModWave;
 uniform float uModBias;
 
-// Extra dimension attributes
-in float aExtraDim0;
-in float aExtraDim1;
-in float aExtraDim2;
-in float aExtraDim3;
-in float aExtraDim4;
-in float aExtraDim5;
-in float aExtraDim6;
+// Packed extra dimension attributes (dims 4-7 in vec4, dims 8-10 in vec3)
+in vec4 aExtraDims0_3;  // extraDim0, extraDim1, extraDim2, extraDim3
+in vec3 aExtraDims4_6;  // extraDim4, extraDim5, extraDim6
 
 vec3 transformND() {
   float scaledInputs[11];
   scaledInputs[0] = position.x * uScale4D.x;
   scaledInputs[1] = position.y * uScale4D.y;
   scaledInputs[2] = position.z * uScale4D.z;
-  scaledInputs[3] = aExtraDim0 * uScale4D.w;
-  scaledInputs[4] = aExtraDim1 * uExtraScales[0];
-  scaledInputs[5] = aExtraDim2 * uExtraScales[1];
-  scaledInputs[6] = aExtraDim3 * uExtraScales[2];
-  scaledInputs[7] = aExtraDim4 * uExtraScales[3];
-  scaledInputs[8] = aExtraDim5 * uExtraScales[4];
-  scaledInputs[9] = aExtraDim6 * uExtraScales[5];
+  scaledInputs[3] = aExtraDims0_3.x * uScale4D.w;
+  scaledInputs[4] = aExtraDims0_3.y * uExtraScales[0];
+  scaledInputs[5] = aExtraDims0_3.z * uExtraScales[1];
+  scaledInputs[6] = aExtraDims0_3.w * uExtraScales[2];
+  scaledInputs[7] = aExtraDims4_6.x * uExtraScales[3];
+  scaledInputs[8] = aExtraDims4_6.y * uExtraScales[4];
+  scaledInputs[9] = aExtraDims4_6.z * uExtraScales[5];
   scaledInputs[10] = 0.0;
 
   vec4 scaledPos = vec4(scaledInputs[0], scaledInputs[1], scaledInputs[2], scaledInputs[3]);
@@ -116,12 +112,12 @@ vec3 modulateVertex(vec3 pos, float extraDimSum) {
 
 void main() {
   vec3 projected = transformND();
-  float extraSum = aExtraDim0 + aExtraDim1 + aExtraDim2 + aExtraDim3 + aExtraDim4 + aExtraDim5 + aExtraDim6;
+  float extraSum = aExtraDims0_3.x + aExtraDims0_3.y + aExtraDims0_3.z + aExtraDims0_3.w + aExtraDims4_6.x + aExtraDims4_6.y + aExtraDims4_6.z;
   vec3 modulated = modulateVertex(projected, extraSum);
   vec4 worldPos = modelMatrix * vec4(modulated, 1.0);
   gl_Position = projectionMatrix * viewMatrix * worldPos;
 }
-`;
+`
 
 /**
  * Custom depth fragment shader.
@@ -135,11 +131,12 @@ ${packDepthBlock}
 void main() {
   gl_FragColor = packDepthToRGBA(gl_FragCoord.z);
 }
-`;
+`
 
 /**
  * Custom distance vertex shader for Polytope (point light shadows).
  * Outputs world position for distance calculation.
+ * Uses packed attributes to stay under WebGL 16 attribute limit.
  */
 export const polytopeDistanceVertexShader = `
 precision highp float;
@@ -163,14 +160,9 @@ uniform float uModFrequency;
 uniform float uModWave;
 uniform float uModBias;
 
-// Extra dimension attributes
-in float aExtraDim0;
-in float aExtraDim1;
-in float aExtraDim2;
-in float aExtraDim3;
-in float aExtraDim4;
-in float aExtraDim5;
-in float aExtraDim6;
+// Packed extra dimension attributes (dims 4-7 in vec4, dims 8-10 in vec3)
+in vec4 aExtraDims0_3;  // extraDim0, extraDim1, extraDim2, extraDim3
+in vec3 aExtraDims4_6;  // extraDim4, extraDim5, extraDim6
 
 // Output to fragment shader
 out vec4 vWorldPosition;
@@ -180,13 +172,13 @@ vec3 transformND() {
   scaledInputs[0] = position.x * uScale4D.x;
   scaledInputs[1] = position.y * uScale4D.y;
   scaledInputs[2] = position.z * uScale4D.z;
-  scaledInputs[3] = aExtraDim0 * uScale4D.w;
-  scaledInputs[4] = aExtraDim1 * uExtraScales[0];
-  scaledInputs[5] = aExtraDim2 * uExtraScales[1];
-  scaledInputs[6] = aExtraDim3 * uExtraScales[2];
-  scaledInputs[7] = aExtraDim4 * uExtraScales[3];
-  scaledInputs[8] = aExtraDim5 * uExtraScales[4];
-  scaledInputs[9] = aExtraDim6 * uExtraScales[5];
+  scaledInputs[3] = aExtraDims0_3.x * uScale4D.w;
+  scaledInputs[4] = aExtraDims0_3.y * uExtraScales[0];
+  scaledInputs[5] = aExtraDims0_3.z * uExtraScales[1];
+  scaledInputs[6] = aExtraDims0_3.w * uExtraScales[2];
+  scaledInputs[7] = aExtraDims4_6.x * uExtraScales[3];
+  scaledInputs[8] = aExtraDims4_6.y * uExtraScales[4];
+  scaledInputs[9] = aExtraDims4_6.z * uExtraScales[5];
   scaledInputs[10] = 0.0;
 
   vec4 scaledPos = vec4(scaledInputs[0], scaledInputs[1], scaledInputs[2], scaledInputs[3]);
@@ -232,12 +224,12 @@ vec3 modulateVertex(vec3 pos, float extraDimSum) {
 
 void main() {
   vec3 projected = transformND();
-  float extraSum = aExtraDim0 + aExtraDim1 + aExtraDim2 + aExtraDim3 + aExtraDim4 + aExtraDim5 + aExtraDim6;
+  float extraSum = aExtraDims0_3.x + aExtraDims0_3.y + aExtraDims0_3.z + aExtraDims0_3.w + aExtraDims4_6.x + aExtraDims4_6.y + aExtraDims4_6.z;
   vec3 modulated = modulateVertex(projected, extraSum);
   vWorldPosition = modelMatrix * vec4(modulated, 1.0);
   gl_Position = projectionMatrix * viewMatrix * vWorldPosition;
 }
-`;
+`
 
 /**
  * Custom distance fragment shader for point light shadows.
@@ -260,7 +252,7 @@ void main() {
   dist = clamp(dist, 0.0, 1.0);
   gl_FragColor = packDepthToRGBA(dist);
 }
-`;
+`
 
 /**
  * TubeWireframe custom depth vertex shader.
@@ -366,7 +358,7 @@ void main() {
 
   gl_Position = projectionMatrix * modelViewMatrix * vec4(worldPos, 1.0);
 }
-`;
+`
 
 /**
  * TubeWireframe custom distance vertex shader (point light shadows).
@@ -475,4 +467,4 @@ void main() {
   vWorldPosition = modelMatrix * vec4(worldPos, 1.0);
   gl_Position = projectionMatrix * viewMatrix * vWorldPosition;
 }
-`;
+`

@@ -262,7 +262,8 @@ function calculateSafeProjectionDistance(
 }
 
 /**
- * Build BufferGeometry with N-D attributes from vertices
+ * Build BufferGeometry with N-D attributes from vertices.
+ * Uses packed attributes (vec4 + vec3) for extra dimensions to stay within WebGL 16 attribute limit.
  * @param vertices
  * @param setNormal
  */
@@ -275,27 +276,28 @@ function buildNDGeometry(
 
   const positions = new Float32Array(count * 3);
   const normals = setNormal ? new Float32Array(count * 3) : null;
-  const extraDim0 = new Float32Array(count);
-  const extraDim1 = new Float32Array(count);
-  const extraDim2 = new Float32Array(count);
-  const extraDim3 = new Float32Array(count);
-  const extraDim4 = new Float32Array(count);
-  const extraDim5 = new Float32Array(count);
-  const extraDim6 = new Float32Array(count);
+  // Packed extra dimensions: vec4 (dims 4-7) + vec3 (dims 8-10)
+  const extraDims0_3 = new Float32Array(count * 4);
+  const extraDims4_6 = new Float32Array(count * 3);
 
   for (let i = 0; i < count; i++) {
     const v = vertices[i]!;
     const i3 = i * 3;
+    const i4 = i * 4;
+
+    // Position (vec3)
     positions[i3] = v[0] ?? 0;
     positions[i3 + 1] = v[1] ?? 0;
     positions[i3 + 2] = v[2] ?? 0;
-    extraDim0[i] = v[3] ?? 0;
-    extraDim1[i] = v[4] ?? 0;
-    extraDim2[i] = v[5] ?? 0;
-    extraDim3[i] = v[6] ?? 0;
-    extraDim4[i] = v[7] ?? 0;
-    extraDim5[i] = v[8] ?? 0;
-    extraDim6[i] = v[9] ?? 0;
+
+    // Extra dims packed: vec4(dims 4-7) + vec3(dims 8-10)
+    extraDims0_3[i4] = v[3] ?? 0;
+    extraDims0_3[i4 + 1] = v[4] ?? 0;
+    extraDims0_3[i4 + 2] = v[5] ?? 0;
+    extraDims0_3[i4 + 3] = v[6] ?? 0;
+    extraDims4_6[i3] = v[7] ?? 0;
+    extraDims4_6[i3 + 1] = v[8] ?? 0;
+    extraDims4_6[i3 + 2] = v[9] ?? 0;
 
     if (normals && setNormal) {
       setNormal(i, normals);
@@ -306,13 +308,9 @@ function buildNDGeometry(
   if (normals) {
     geo.setAttribute('normal', new Float32BufferAttribute(normals, 3));
   }
-  geo.setAttribute('aExtraDim0', new Float32BufferAttribute(extraDim0, 1));
-  geo.setAttribute('aExtraDim1', new Float32BufferAttribute(extraDim1, 1));
-  geo.setAttribute('aExtraDim2', new Float32BufferAttribute(extraDim2, 1));
-  geo.setAttribute('aExtraDim3', new Float32BufferAttribute(extraDim3, 1));
-  geo.setAttribute('aExtraDim4', new Float32BufferAttribute(extraDim4, 1));
-  geo.setAttribute('aExtraDim5', new Float32BufferAttribute(extraDim5, 1));
-  geo.setAttribute('aExtraDim6', new Float32BufferAttribute(extraDim6, 1));
+  // Packed extra dimension attributes
+  geo.setAttribute('aExtraDims0_3', new Float32BufferAttribute(extraDims0_3, 4));
+  geo.setAttribute('aExtraDims4_6', new Float32BufferAttribute(extraDims4_6, 3));
 
   return geo;
 }
@@ -576,13 +574,17 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     return () => setShaderDebugInfo('object', null);
   }, [faceMaterial, edgeMaterial, facesVisible, faceShaderModules, faceShaderFeatures, surfaceSettings.faceOpacity, setShaderDebugInfo]);
 
-  // ============ FACE GEOMETRY (INDEXED) ============
-  // Uses indexed geometry for efficiency - vertices are shared, indices define triangles
-  // Face depths are passed via uniform array indexed by gl_PrimitiveID
+  // ============ FACE GEOMETRY (NON-INDEXED with neighbor data for GPU normal computation) ============
+  // Each triangle has 3 unique vertices, each with full nD coords + neighbor vertex coords.
+  // This enables computing face normals in the vertex shader after nD transformation.
+  // IMPORTANT: WebGL has a 16 attribute limit. We pack extra dims into vec4/vec3:
+  //   - position (vec3) + aExtraDims0_3 (vec4) + aExtraDims4_6 (vec3) = 3 slots for this vertex
+  //   - Same pattern for neighbor1 and neighbor2 = 6 more slots
+  //   Total: 9 attribute slots (under 16 limit)
   const faceGeometry = useMemo(() => {
     if (numFaces === 0 || baseVertices.length === 0) return null;
 
-    // Count triangles for index buffer sizing
+    // Count triangles for buffer sizing
     let triangleCount = 0;
     for (const face of faces) {
       if (face.vertices.length === 3) triangleCount += 1;
@@ -591,64 +593,121 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     if (triangleCount === 0) return null;
 
     const geo = new BufferGeometry();
-    const vertexCount = baseVertices.length;
+    const vertexCount = triangleCount * 3; // 3 vertices per triangle, non-indexed
 
-    // Build vertex attributes from baseVertices (no duplication)
+    // Allocate attribute arrays - PACKED into vec4/vec3 to stay under WebGL 16 attribute limit
+    // Primary vertex data
     const positions = new Float32Array(vertexCount * 3);
-    const extraDim0 = new Float32Array(vertexCount);
-    const extraDim1 = new Float32Array(vertexCount);
-    const extraDim2 = new Float32Array(vertexCount);
-    const extraDim3 = new Float32Array(vertexCount);
-    const extraDim4 = new Float32Array(vertexCount);
-    const extraDim5 = new Float32Array(vertexCount);
-    const extraDim6 = new Float32Array(vertexCount);
+    const extraDims0_3 = new Float32Array(vertexCount * 4);  // vec4: dims 4-7
+    const extraDims4_6 = new Float32Array(vertexCount * 3);  // vec3: dims 8-10
 
-    for (let i = 0; i < vertexCount; i++) {
-      const v = baseVertices[i]!;
-      const i3 = i * 3;
+    // Neighbor 1 data (packed)
+    const neighbor1Pos = new Float32Array(vertexCount * 3);
+    const neighbor1Extra0_3 = new Float32Array(vertexCount * 4);
+    const neighbor1Extra4_6 = new Float32Array(vertexCount * 3);
+
+    // Neighbor 2 data (packed)
+    const neighbor2Pos = new Float32Array(vertexCount * 3);
+    const neighbor2Extra0_3 = new Float32Array(vertexCount * 4);
+    const neighbor2Extra4_6 = new Float32Array(vertexCount * 3);
+
+    /**
+     * Helper to write vertex data at a given output index.
+     * Each vertex gets its own position + the positions of its 2 neighbors.
+     */
+    const writeTriangleVertex = (
+      outIdx: number,
+      thisIdx: number,
+      neighbor1Idx: number,
+      neighbor2Idx: number
+    ) => {
+      const v = baseVertices[thisIdx]!;
+      const n1 = baseVertices[neighbor1Idx]!;
+      const n2 = baseVertices[neighbor2Idx]!;
+
+      const i3 = outIdx * 3;
+      const i4 = outIdx * 4;
+
+      // This vertex position (vec3)
       positions[i3] = v[0] ?? 0;
       positions[i3 + 1] = v[1] ?? 0;
       positions[i3 + 2] = v[2] ?? 0;
-      extraDim0[i] = v[3] ?? 0;
-      extraDim1[i] = v[4] ?? 0;
-      extraDim2[i] = v[5] ?? 0;
-      extraDim3[i] = v[6] ?? 0;
-      extraDim4[i] = v[7] ?? 0;
-      extraDim5[i] = v[8] ?? 0;
-      extraDim6[i] = v[9] ?? 0;
-    }
+      // This vertex extra dims packed: vec4(dims 4-7) + vec3(dims 8-10)
+      extraDims0_3[i4] = v[3] ?? 0;
+      extraDims0_3[i4 + 1] = v[4] ?? 0;
+      extraDims0_3[i4 + 2] = v[5] ?? 0;
+      extraDims0_3[i4 + 3] = v[6] ?? 0;
+      extraDims4_6[i3] = v[7] ?? 0;
+      extraDims4_6[i3 + 1] = v[8] ?? 0;
+      extraDims4_6[i3 + 2] = v[9] ?? 0;
 
-    // Build index buffer (triangulate faces)
-    const indices = new Uint16Array(triangleCount * 3);
-    let indexIdx = 0;
+      // Neighbor 1 position (vec3)
+      neighbor1Pos[i3] = n1[0] ?? 0;
+      neighbor1Pos[i3 + 1] = n1[1] ?? 0;
+      neighbor1Pos[i3 + 2] = n1[2] ?? 0;
+      // Neighbor 1 extra dims packed
+      neighbor1Extra0_3[i4] = n1[3] ?? 0;
+      neighbor1Extra0_3[i4 + 1] = n1[4] ?? 0;
+      neighbor1Extra0_3[i4 + 2] = n1[5] ?? 0;
+      neighbor1Extra0_3[i4 + 3] = n1[6] ?? 0;
+      neighbor1Extra4_6[i3] = n1[7] ?? 0;
+      neighbor1Extra4_6[i3 + 1] = n1[8] ?? 0;
+      neighbor1Extra4_6[i3 + 2] = n1[9] ?? 0;
+
+      // Neighbor 2 position (vec3)
+      neighbor2Pos[i3] = n2[0] ?? 0;
+      neighbor2Pos[i3 + 1] = n2[1] ?? 0;
+      neighbor2Pos[i3 + 2] = n2[2] ?? 0;
+      // Neighbor 2 extra dims packed
+      neighbor2Extra0_3[i4] = n2[3] ?? 0;
+      neighbor2Extra0_3[i4 + 1] = n2[4] ?? 0;
+      neighbor2Extra0_3[i4 + 2] = n2[5] ?? 0;
+      neighbor2Extra0_3[i4 + 3] = n2[6] ?? 0;
+      neighbor2Extra4_6[i3] = n2[7] ?? 0;
+      neighbor2Extra4_6[i3 + 1] = n2[8] ?? 0;
+      neighbor2Extra4_6[i3 + 2] = n2[9] ?? 0;
+    };
+
+    // Build non-indexed geometry with neighbor data
+    let outIdx = 0;
 
     for (const face of faces) {
       const vis = face.vertices;
       if (vis.length === 3) {
-        // Triangle: 3 indices
-        indices[indexIdx++] = vis[0]!;
-        indices[indexIdx++] = vis[1]!;
-        indices[indexIdx++] = vis[2]!;
+        // Triangle: each vertex needs to know its 2 neighbors
+        // Vertex 0: neighbors are 1, 2
+        writeTriangleVertex(outIdx++, vis[0]!, vis[1]!, vis[2]!);
+        // Vertex 1: neighbors are 2, 0 (maintain winding order for normal)
+        writeTriangleVertex(outIdx++, vis[1]!, vis[2]!, vis[0]!);
+        // Vertex 2: neighbors are 0, 1
+        writeTriangleVertex(outIdx++, vis[2]!, vis[0]!, vis[1]!);
       } else if (vis.length === 4) {
         // Quad: split into 2 triangles (0,1,2) and (0,2,3)
-        indices[indexIdx++] = vis[0]!;
-        indices[indexIdx++] = vis[1]!;
-        indices[indexIdx++] = vis[2]!;
-        indices[indexIdx++] = vis[0]!;
-        indices[indexIdx++] = vis[2]!;
-        indices[indexIdx++] = vis[3]!;
+        // Triangle 1: (0, 1, 2)
+        writeTriangleVertex(outIdx++, vis[0]!, vis[1]!, vis[2]!);
+        writeTriangleVertex(outIdx++, vis[1]!, vis[2]!, vis[0]!);
+        writeTriangleVertex(outIdx++, vis[2]!, vis[0]!, vis[1]!);
+        // Triangle 2: (0, 2, 3)
+        writeTriangleVertex(outIdx++, vis[0]!, vis[2]!, vis[3]!);
+        writeTriangleVertex(outIdx++, vis[2]!, vis[3]!, vis[0]!);
+        writeTriangleVertex(outIdx++, vis[3]!, vis[0]!, vis[2]!);
       }
     }
 
-    geo.setIndex(new THREE.BufferAttribute(indices, 1));
+    // Set packed attributes (no index buffer - non-indexed geometry)
     geo.setAttribute('position', new Float32BufferAttribute(positions, 3));
-    geo.setAttribute('aExtraDim0', new Float32BufferAttribute(extraDim0, 1));
-    geo.setAttribute('aExtraDim1', new Float32BufferAttribute(extraDim1, 1));
-    geo.setAttribute('aExtraDim2', new Float32BufferAttribute(extraDim2, 1));
-    geo.setAttribute('aExtraDim3', new Float32BufferAttribute(extraDim3, 1));
-    geo.setAttribute('aExtraDim4', new Float32BufferAttribute(extraDim4, 1));
-    geo.setAttribute('aExtraDim5', new Float32BufferAttribute(extraDim5, 1));
-    geo.setAttribute('aExtraDim6', new Float32BufferAttribute(extraDim6, 1));
+    geo.setAttribute('aExtraDims0_3', new Float32BufferAttribute(extraDims0_3, 4));
+    geo.setAttribute('aExtraDims4_6', new Float32BufferAttribute(extraDims4_6, 3));
+
+    // Neighbor 1 attributes (packed)
+    geo.setAttribute('aNeighbor1Pos', new Float32BufferAttribute(neighbor1Pos, 3));
+    geo.setAttribute('aNeighbor1Extra0_3', new Float32BufferAttribute(neighbor1Extra0_3, 4));
+    geo.setAttribute('aNeighbor1Extra4_6', new Float32BufferAttribute(neighbor1Extra4_6, 3));
+
+    // Neighbor 2 attributes (packed)
+    geo.setAttribute('aNeighbor2Pos', new Float32BufferAttribute(neighbor2Pos, 3));
+    geo.setAttribute('aNeighbor2Extra0_3', new Float32BufferAttribute(neighbor2Extra0_3, 4));
+    geo.setAttribute('aNeighbor2Extra4_6', new Float32BufferAttribute(neighbor2Extra4_6, 3));
 
     return geo;
   }, [numFaces, faces, baseVertices]);

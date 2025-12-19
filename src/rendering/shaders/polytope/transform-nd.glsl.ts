@@ -1,5 +1,25 @@
-import { MAX_EXTRA_DIMS } from '../../renderers/Polytope/constants';
+import { MAX_EXTRA_DIMS } from '../../renderers/Polytope/constants'
 
+/**
+ * N-D Transformation Block for Polytope Rendering
+ *
+ * Provides transformND() function that transforms the current vertex,
+ * and transformNDFromInputs() that can transform any vertex given its coordinates.
+ * This enables computing face normals from all 3 triangle vertices in the vertex shader.
+ *
+ * IMPORTANT: WebGL has a 16 attribute slot limit. We pack extra dimensions into vec4/vec3
+ * to stay within limits:
+ *   - position (vec3) = 1 slot
+ *   - aExtraDims0_3 (vec4) = 1 slot (dims 4-7)
+ *   - aExtraDims4_6 (vec3) = 1 slot (dims 8-10)
+ *   - aNeighbor1Pos (vec3) = 1 slot
+ *   - aNeighbor1Extra0_3 (vec4) = 1 slot
+ *   - aNeighbor1Extra4_6 (vec3) = 1 slot
+ *   - aNeighbor2Pos (vec3) = 1 slot
+ *   - aNeighbor2Extra0_3 (vec4) = 1 slot
+ *   - aNeighbor2Extra4_6 (vec3) = 1 slot
+ *   Total: 9 slots (under 16 limit)
+ */
 export const transformNDBlock = `
     // N-D Transformation uniforms
     uniform mat4 uRotationMatrix4D;
@@ -10,27 +30,36 @@ export const transformNDBlock = `
     uniform float uExtraRotationCols[${MAX_EXTRA_DIMS * 4}];
     uniform float uDepthRowSums[11];
 
-    // Extra dimension attributes
-    in float aExtraDim0;
-    in float aExtraDim1;
-    in float aExtraDim2;
-    in float aExtraDim3;
-    in float aExtraDim4;
-    in float aExtraDim5;
-    in float aExtraDim6;
+    // Extra dimension attributes for THIS vertex (packed into vec4 + vec3)
+    in vec4 aExtraDims0_3;  // dims 4-7 (w component of 4D + first 3 extra)
+    in vec3 aExtraDims4_6;  // dims 8-10 (remaining 3 extra dims)
 
-    vec3 transformND() {
+    // Neighbor vertex 1 (for face normal computation) - packed
+    in vec3 aNeighbor1Pos;
+    in vec4 aNeighbor1Extra0_3;
+    in vec3 aNeighbor1Extra4_6;
+
+    // Neighbor vertex 2 (for face normal computation) - packed
+    in vec3 aNeighbor2Pos;
+    in vec4 aNeighbor2Extra0_3;
+    in vec3 aNeighbor2Extra4_6;
+
+    /**
+     * Transform an N-D vertex to 3D given explicit coordinates.
+     * Used for transforming neighbor vertices for normal computation.
+     */
+    vec3 transformNDFromInputs(vec3 pos3d, float e0, float e1, float e2, float e3, float e4, float e5, float e6) {
       float scaledInputs[11];
-      scaledInputs[0] = position.x * uScale4D.x;
-      scaledInputs[1] = position.y * uScale4D.y;
-      scaledInputs[2] = position.z * uScale4D.z;
-      scaledInputs[3] = aExtraDim0 * uScale4D.w;
-      scaledInputs[4] = aExtraDim1 * uExtraScales[0];
-      scaledInputs[5] = aExtraDim2 * uExtraScales[1];
-      scaledInputs[6] = aExtraDim3 * uExtraScales[2];
-      scaledInputs[7] = aExtraDim4 * uExtraScales[3];
-      scaledInputs[8] = aExtraDim5 * uExtraScales[4];
-      scaledInputs[9] = aExtraDim6 * uExtraScales[5];
+      scaledInputs[0] = pos3d.x * uScale4D.x;
+      scaledInputs[1] = pos3d.y * uScale4D.y;
+      scaledInputs[2] = pos3d.z * uScale4D.z;
+      scaledInputs[3] = e0 * uScale4D.w;
+      scaledInputs[4] = e1 * uExtraScales[0];
+      scaledInputs[5] = e2 * uExtraScales[1];
+      scaledInputs[6] = e3 * uExtraScales[2];
+      scaledInputs[7] = e4 * uExtraScales[3];
+      scaledInputs[8] = e5 * uExtraScales[4];
+      scaledInputs[9] = e6 * uExtraScales[5];
       scaledInputs[10] = 0.0;
 
       vec4 scaledPos = vec4(scaledInputs[0], scaledInputs[1], scaledInputs[2], scaledInputs[3]);
@@ -64,4 +93,50 @@ export const transformNDBlock = `
 
       return projected;
     }
-`;
+
+    /**
+     * Transform the current vertex (uses built-in position and packed aExtraDims attributes)
+     */
+    vec3 transformND() {
+      return transformNDFromInputs(
+        position,
+        aExtraDims0_3.x, aExtraDims0_3.y, aExtraDims0_3.z, aExtraDims0_3.w,
+        aExtraDims4_6.x, aExtraDims4_6.y, aExtraDims4_6.z
+      );
+    }
+
+    /**
+     * Transform neighbor vertex 1 (uses packed neighbor attributes)
+     */
+    vec3 transformNeighbor1() {
+      return transformNDFromInputs(
+        aNeighbor1Pos,
+        aNeighbor1Extra0_3.x, aNeighbor1Extra0_3.y, aNeighbor1Extra0_3.z, aNeighbor1Extra0_3.w,
+        aNeighbor1Extra4_6.x, aNeighbor1Extra4_6.y, aNeighbor1Extra4_6.z
+      );
+    }
+
+    /**
+     * Transform neighbor vertex 2 (uses packed neighbor attributes)
+     */
+    vec3 transformNeighbor2() {
+      return transformNDFromInputs(
+        aNeighbor2Pos,
+        aNeighbor2Extra0_3.x, aNeighbor2Extra0_3.y, aNeighbor2Extra0_3.z, aNeighbor2Extra0_3.w,
+        aNeighbor2Extra4_6.x, aNeighbor2Extra4_6.y, aNeighbor2Extra4_6.z
+      );
+    }
+
+    /**
+     * Compute face normal from the 3 triangle vertices after nD transformation.
+     * Returns normalized normal vector pointing based on vertex winding.
+     */
+    vec3 computeFaceNormal(vec3 v0, vec3 v1, vec3 v2) {
+      vec3 edge1 = v1 - v0;
+      vec3 edge2 = v2 - v0;
+      vec3 n = cross(edge1, edge2);
+      float len = length(n);
+      // Guard against degenerate triangles
+      return len > 0.0001 ? n / len : vec3(0.0, 0.0, 1.0);
+    }
+`

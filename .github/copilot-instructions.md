@@ -4,136 +4,110 @@
 
 Interactive React/Three.js visualizer for N-dimensional mathematical objects (2D-11D). Transforms abstract geometry into real-time 3D projections using `Math → State → Canvas → User` pipeline.
 
-## Architecture: Visualization Pipeline
+=== CRITICAL INSTRUCTION BLOCK (CIB-001)===
+
+## MANDATORY TOOLS
+
+### For Complex Tasks (research, analysis, debugging)
 
 ```
-src/lib/math/         → Pure math (rotations, projections, vectors)
-src/lib/geometry/     → Object generators (polytopes, hyperspheres, Mandelbrot)
-src/stores/           → Zustand state (geometry, animation, visual settings)
-src/hooks/            → Glue: connect stores to rendering
-src/components/canvas → Three.js renderers (inside <Canvas>)
-src/components/ui/    → HTML overlays (outside <Canvas>)
+USE: mcp__mcp_docker__sequentialthinking
+WHEN: Multi-step problems, research, complex reasoning
+WHY: Prevents cognitive overload, ensures systematic approach
 ```
 
-**Key Decision Tree:**
+### For Task Management
 
-- Pure math function → `src/lib/math/` or `src/lib/geometry/`
-- Global state → `src/stores/`
-- React hook → `src/hooks/`
-- 3D mesh/object → `src/components/canvas/`
-- HTML overlay → `src/components/ui/`
-- GLSL shader → `src/lib/shaders/`
-
-## Critical Patterns
-
-### 1. High-Performance Rendering (useFrame Pattern)
-
-All animation uses `useFrame` with `getState()` to bypass React re-renders:
-
-```tsx
-// ✅ Correct: Read from store without subscription
-useFrame(() => {
-  const { rotation } = useRotationStore.getState()
-  meshRef.current.rotation.set(...rotation)
-})
-
-// ❌ Wrong: Causes re-renders every frame
-const rotation = useRotationStore((s) => s.rotation)
+```
+USE: todo_write
+WHEN: Any task with 3+ steps
+WHY: Tracks progress, maintains focus
 ```
 
-See: `src/components/canvas/scenes/PolytopeScene.tsx`, `src/components/canvas/scenes/PointCloudScene.tsx`
+### For Research and Validation of Solutions
 
-### 2. Object Type System
-
-Two categories with different render paths:
-
-- **Polytopes** (`hypercube`, `simplex`, `cross-polytope`): Finite vertices/edges → PolytopeScene
-- **Extended** (`hypersphere`, `root-system`, `clifford-torus`, `mandelbrot`): Point clouds → PointCloudScene or raymarching
-
-Type guards in `src/lib/geometry/types.ts`: `isPolytopeType()`, `isExtendedObjectType()`
-
-### 3. Dimension-Agnostic Math
-
-All geometry uses `VectorND` (number arrays). Rotation planes scale with dimension: `n(n-1)/2` planes for nD space.
-
-```ts
-// 4D has 6 rotation planes: XY, XZ, YZ, XW, YW, ZW
-const planes = getRotationPlanes(4)
+```
+USE: WebSearch
+WHEN: Any non-trivial debugging, planning, solution design task
+WHY: Offers quick access to best practices and solutions
 ```
 
-### 4. Canvas vs DOM Separation
+## MANDATORY CODE STYLE AND ARCHITECTURE RULES
 
-Never mix:
+Coding agents must follow `docs/meta/styleguide.md` - No exceptions!
 
-```tsx
-// ❌ Wrong: DOM inside Canvas
-<Canvas><div>Text</div></Canvas>
+## MANDATORY EXECUTION PROTOCOL
 
-// ✅ Correct: Use drei's Html for 3D-attached text
-<Canvas><Html>Text</Html></Canvas>
-```
+1. Always complete all tasks fully. Do not simplify approaches, do not skip tasks.
+2. Always keep tests up to date and maintain 100% test coverage.
+3. Always test. 100% of tests must pass.
+4. Always fix bugs. Never changes tests only to make them pass if the cause is in the code it is testing.
+5. Never run Vitest in watch mode; automation must use `npm test`. Only set `ALLOW_VITEST_WATCH=1` when a human explicitly authorizes interactive debugging.
+6. **CRITICAL**: After implementing new functionality, ALWAYS create comprehensive tests:
+   - Unit tests for logic and components (Vitest)
+   - Integration tests for game flow
+   - Playwright tests for frontend functionality (must visually confirm UI works)
+   - All tests must be in `src/tests/` or `scripts/playwright/`
+   - Run ALL tests before considering task complete
+   - Maintain 100% test coverage - no exceptions
 
-## Commands
+## TEST MEMORY MANAGEMENT
+
+**CRITICAL**: The test suite previously caused memory exhaustion by spawning 13 workers consuming 9GB+ RAM. This has been fixed but requires vigilance.
+
+### Locators always use data-testid for E2E
+
+- Always use data-testid as locator for E2E tests
+
+### Configuration Safeguards (DO NOT MODIFY without review)
+
+- `maxWorkers: 4` in `vitest.config.ts` - Prevents excessive process spawning
+- `pool: 'threads'` - Uses memory-efficient threading instead of forks
+- `environment: 'happy-dom'` - Fast DOM implementation for all tests
+
+### Before Changing Test Configuration
+
+1. **VERIFY**: Worker count stays ≤ 4, total memory < 2GB
+2. **DOCUMENT**: Update guide if making configuration changes
+
+### Writing Memory-Safe Tests
+
+- **DON'T**: Generate 1000+ data points in a single test without batching
+- **DO**: Process in batches of 100 and clear arrays between batches
+- **DON'T**: Rely on DOM for pure logic tests if not needed
+- **DO**: Use component tests (`.test.tsx`) only for UI components
+- **DON'T**: Forget to cleanup timers/listeners in afterEach
+- **DO**: Call `cleanup()` from @testing-library/react in test teardown
+
+### Emergency Response
+
+If system becomes unresponsive during tests:
 
 ```bash
-npm run dev       # Start dev server (localhost:3000)
-npm test          # Run Vitest (NEVER use watch mode in CI)
-npm run build     # TypeScript check + Vite build
-npx playwright test scripts/playwright/  # E2E tests
+killall -9 node  # Force kill all Node processes
+node scripts/cleanup-vitest.mjs  # Clean up lingering workers
 ```
 
-## Testing Rules
+## FOLDER USAGE RULES
 
-- **Unit tests** (`src/tests/lib/`): Pure math/geometry functions
-- **Component tests** (`src/tests/components/`): React Testing Library
-- **E2E tests** (`scripts/playwright/`): Visual verification, animation flows
+| Activity                                                     | Required Directory    | Agent Enforcement                                                                                                                       |
+| ------------------------------------------------------------ | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Browser automation (Playwright/Puppeteer runners, recorders) | `scripts/playwright/` | Keep every `.js`/`.mjs` harness here. Subfolders allowed, but **never** place these scripts in the repo root.                           |
+| Physics, RNG, or analytics utilities                         | `scripts/tools/`      | Import from `../../src` or `../../dist` as needed. No tooling lives in the project root.                                                |
+| Visual artifacts (screenshots, videos, GIFs)                 | `screenshots/`        | Always persist captured assets here. Create nested folders like `screenshots/quality-test/` or `screenshots/videos/` to stay organized. |
+| Documentation, research notes                                | `docs/`               | Long-form analysis belongs in this directory instead of new markdown files at the root.                                                 |
+| Temporary experiments / sandboxes                            | `src/dev-tools/`      | Use this workspace for throwaway UI/physics spikes and clean it up after.                                                               |
+| 🚫 Forbidden                                                 | Project root          | Keep root pristine—no scripts, screenshots, or scratch docs.                                                                            |
 
-**Memory Guard**: Max 4 workers in `vitest.config.ts`. Never increase without measuring RAM.
+=== END CIB-001 ===
 
-**Test file placement**: `.test.ts` for logic, `.test.tsx` only when testing React components (JSDOM is heavy).
+## MANDATORY DOCUMENT READS
 
-## Folder Rules
-
-| Type               | Location                               |
-| ------------------ | -------------------------------------- |
-| Playwright scripts | `scripts/playwright/`                  |
-| Screenshots/videos | `screenshots/`                         |
-| Documentation      | `docs/`                                |
-| 🚫 Project root    | Keep clean—no scripts or scratch files |
-
-## Style Requirements
-
-Follow `docs/meta/styleguide.md`:
-
-- JSDoc on all exports with `@param`, `@returns`, side effects
-- TypeScript strict mode, no `any`
-- Memoize: `useMemo`, `useCallback`, `React.memo` for render-heavy components
-- Use theme utilities from `theme/themeUtils.tsx` for consistent styling
-
-## Store Architecture
-
-Zustand stores are domain-split:
-
-- `geometryStore`: dimension, objectType
-- `rotationStore`: rotation angles per plane
-- `visualStore`: colors, visibility toggles
-- `animationStore`: auto-rotation, timing
-- `extendedObjectStore`: per-object-type configs
-
-Access pattern for animation:
-
-```tsx
-// In useFrame - direct access, no subscription
-const state = useGeometryStore.getState()
-
-// In component render - selective subscription
-const dimension = useGeometryStore((s) => s.dimension)
-```
-
-## Common Mistakes
-
-- Using `useState` for animation values (causes re-renders)
-- Forgetting `useShallow` when selecting multiple store values
-- Placing complex math inside React components (extract to `src/lib/`)
-- Running Vitest in watch mode during automation
-- Creating files in project root instead of proper folders
+- Project architecture and folder structure: `docs/architecture.md`
+- Development environment: `docs/testing.md`
+- Testing setup: `docs/testing.md`
+- Frontend setup: `docs/frontend.md`
+- Coding agents must follow `docs/meta/styleguide.md` - No exceptions!
+- Understanding math used for object creation, transformation and projection: `docs/research/nd-dimensional-react-threejs-guide.md`
+- PRD: `docs/prd/ndimensional-visualizer.md`
+- Rendering pipeline PRD: `docs/prd/enhanced-visuals-rendering-pipeline.md`

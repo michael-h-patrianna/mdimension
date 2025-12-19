@@ -457,6 +457,9 @@ const MandelbulbMesh = () => {
     if (meshRef.current) {
       const material = meshRef.current.material as THREE.ShaderMaterial;
 
+      // Skip uniform updates if material has no uniforms (placeholder material during shader compilation)
+      if (!material.uniforms) return;
+
       // Get rotations from store
       // Use version to detect changes cheaply
       const { rotations, version: rotationVersion } = useRotationStore.getState();
