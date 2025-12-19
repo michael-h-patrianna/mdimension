@@ -29,26 +29,26 @@ import { DEFAULT_PROJECTION_DISTANCE } from '@/lib/math/projection'
 import { composeRotations } from '@/lib/math/rotation'
 import type { VectorND } from '@/lib/math/types'
 import { createLightUniforms, updateLightUniforms, type LightUniforms } from '@/rendering/lights/uniforms'
-import { matrixToGPUUniforms } from '@/rendering/shaders/transforms/ndTransform'
 import {
-  blurToPCFSamples,
-  collectShadowDataFromScene,
-  createShadowMapUniforms,
-  SHADOW_MAP_SIZES,
-  updateShadowMapUniforms,
+    depthFragmentShader,
+    distanceFragmentShader,
+    tubeWireframeDepthVertexShader,
+    tubeWireframeDistanceVertexShader,
+} from '@/rendering/shaders/shared/depth/customDepth.glsl'
+import { matrixToGPUUniforms } from '@/rendering/shaders/transforms/ndTransform'
+import { composeTubeWireframeFragmentShader, composeTubeWireframeVertexShader } from '@/rendering/shaders/tubewireframe/compose'
+import {
+    blurToPCFSamples,
+    collectShadowDataFromScene,
+    createShadowMapUniforms,
+    SHADOW_MAP_SIZES,
+    updateShadowMapUniforms,
 } from '@/rendering/shadows'
 import { useAppearanceStore } from '@/stores/appearanceStore'
 import { useLightingStore } from '@/stores/lightingStore'
+import { usePerformanceStore } from '@/stores/performanceStore'
 import { useRotationStore } from '@/stores/rotationStore'
 import { useTransformStore } from '@/stores/transformStore'
-import { usePerformanceStore } from '@/stores/performanceStore'
-import { composeTubeWireframeFragmentShader, composeTubeWireframeVertexShader } from '@/rendering/shaders/tubewireframe/compose'
-import {
-  tubeWireframeDepthVertexShader,
-  tubeWireframeDistanceVertexShader,
-  depthFragmentShader,
-  distanceFragmentShader,
-} from '@/rendering/shaders/shared/depth/customDepth.glsl'
 import { Vector3 } from 'three'
 
 // Maximum extra dimensions (beyond XYZ + W)
@@ -469,7 +469,7 @@ export function TubeWireframe({
     // Compute rotation matrix and GPU data (only when changed)
     const rotationVersion = rotationState.version
     const rotationsChanged = dimension !== cachedDimensionRef.current || rotationVersion !== prevRotationVersionRef.current
-    
+
     let gpuData: ReturnType<typeof matrixToGPUUniforms>
     if (rotationsChanged || !cachedGpuDataRef.current) {
       const rotationMatrix = composeRotations(dimension, rotationState.rotations)

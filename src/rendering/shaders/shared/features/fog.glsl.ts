@@ -12,7 +12,7 @@
  */
 export const fogUniformsBlock = `
 // Fog uniforms removed - physical fog is handled by post-process VolumetricFogPass
-`;
+`
 
 /**
  * Fog calculation functions block.
@@ -26,4 +26,4 @@ export const fogFunctionsBlock = `
 vec3 applyFog(vec3 col, float viewDist) {
     return col; // No-op - physical fog handled by VolumetricFogPass
 }
-`;
+`

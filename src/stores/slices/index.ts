@@ -3,67 +3,67 @@
  */
 
 export {
-  createAppearanceSlice,
   APPEARANCE_INITIAL_STATE,
+  createAppearanceSlice,
   type AppearanceSlice,
 } from './appearanceSlice'
 // Re-export sub-slice types from visual/types
 export type {
   ColorSlice,
-  ColorSliceState,
   ColorSliceActions,
+  ColorSliceState,
   MaterialSlice,
-  MaterialSliceState,
   MaterialSliceActions,
+  MaterialSliceState,
   RenderSlice,
-  RenderSliceState,
   RenderSliceActions,
+  RenderSliceState,
 } from './visual/types'
 
 export {
-  createGroundSlice,
   GROUND_INITIAL_STATE,
+  createGroundSlice,
   type GroundSlice,
-  type GroundSliceState,
   type GroundSliceActions,
+  type GroundSliceState,
 } from './groundSlice'
 
 export {
-  createLightingSlice,
   LIGHTING_INITIAL_STATE,
+  createLightingSlice,
   type LightingSlice,
-  type LightingSliceState,
   type LightingSliceActions,
+  type LightingSliceState,
 } from './lightingSlice'
 
 export {
-  createPostProcessingSlice,
   POST_PROCESSING_INITIAL_STATE,
+  createPostProcessingSlice,
   type PostProcessingSlice,
-  type PostProcessingSliceState,
   type PostProcessingSliceActions,
+  type PostProcessingSliceState,
 } from './postProcessingSlice'
 
 export {
-  createUISlice,
   UI_INITIAL_STATE,
+  createUISlice,
   type UISlice,
-  type UISliceState,
   type UISliceActions,
+  type UISliceState,
 } from './uiSlice'
 
 export {
-  createFogSlice,
   DEFAULT_FOG_STATE,
+  createFogSlice,
   type FogSlice,
-  type FogSliceState,
   type FogSliceActions,
+  type FogSliceState,
 } from './fogSlice'
 
 export {
-  createSkyboxSlice,
   SKYBOX_INITIAL_STATE,
+  createSkyboxSlice,
   type SkyboxSlice,
-  type SkyboxSliceState,
   type SkyboxSliceActions,
+  type SkyboxSliceState,
 } from './skyboxSlice'

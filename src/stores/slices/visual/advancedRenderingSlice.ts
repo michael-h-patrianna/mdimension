@@ -20,7 +20,7 @@ export const createAdvancedRenderingSlice: StateCreator<
   ...ADVANCED_RENDERING_INITIAL_STATE,
 
   setRoughness: (roughness) => set({ roughness }),
-  
+
   setSssEnabled: (sssEnabled) => set({ sssEnabled }),
   setSssIntensity: (sssIntensity) => set({ sssIntensity }),
   setSssColor: (sssColor) => set({ sssColor }),

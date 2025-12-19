@@ -8,6 +8,7 @@
  * 3. Only update uniform values in useFrame (no CPU transformation)
  */
 
+import { useTrackedShaderMaterial } from '@/rendering/materials/useTrackedShaderMaterial';
 import { useFrame } from '@react-three/fiber';
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
@@ -22,7 +23,6 @@ import {
     Vector3,
     Vector4,
 } from 'three';
-import { useTrackedShaderMaterial } from '@/rendering/materials/useTrackedShaderMaterial';
 import { useShallow } from 'zustand/react/shallow';
 
 import type { Face } from '@/lib/geometry/faces';
@@ -34,21 +34,27 @@ import { RENDER_LAYERS } from '@/rendering/core/layers';
 import type { LightSource } from '@/rendering/lights/types';
 import { LIGHT_TYPE_TO_INT, MAX_LIGHTS, rotationToDirection } from '@/rendering/lights/types';
 import { COLOR_ALGORITHM_TO_INT } from '@/rendering/shaders/palette';
+import {
+    depthFragmentShader,
+    distanceFragmentShader,
+    polytopeDepthVertexShader,
+    polytopeDistanceVertexShader,
+} from '@/rendering/shaders/shared/depth/customDepth.glsl';
 import { matrixToGPUUniforms } from '@/rendering/shaders/transforms/ndTransform';
 import {
-  blurToPCFSamples,
-  collectShadowDataFromScene,
-  createShadowMapUniforms,
-  SHADOW_MAP_SIZES,
-  updateShadowMapUniforms,
+    blurToPCFSamples,
+    collectShadowDataFromScene,
+    createShadowMapUniforms,
+    SHADOW_MAP_SIZES,
+    updateShadowMapUniforms,
 } from '@/rendering/shadows';
+import { useAnimationStore } from '@/stores/animationStore';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useLightingStore } from '@/stores/lightingStore';
+import { usePerformanceStore } from '@/stores/performanceStore';
 import { useRotationStore } from '@/stores/rotationStore';
 import { useTransformStore } from '@/stores/transformStore';
-import { useAnimationStore } from '@/stores/animationStore';
-import { usePerformanceStore } from '@/stores/performanceStore';
 import { TubeWireframe } from '../TubeWireframe';
 import {
     buildEdgeFragmentShader,
@@ -57,12 +63,6 @@ import {
     buildFaceVertexShader,
     MAX_EXTRA_DIMS,
 } from './index';
-import {
-    polytopeDepthVertexShader,
-    polytopeDistanceVertexShader,
-    depthFragmentShader,
-    distanceFragmentShader,
-} from '@/rendering/shaders/shared/depth/customDepth.glsl';
 
 /**
  * Props for PolytopeScene component
@@ -379,7 +379,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   const cachedDimensionRef = useRef<number>(0);
   // Cache projection distance (only changes when baseVertices change, i.e., geometry change)
   const cachedProjectionDistanceRef = useRef<{ count: number; distance: number }>({ count: 0, distance: 10 });
-  
+
   // Cache scales array to avoid per-frame allocation
   const cachedScalesRef = useRef<number[]>([]);
   // Cache light direction to avoid per-frame allocation

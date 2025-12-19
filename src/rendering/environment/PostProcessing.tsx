@@ -13,26 +13,26 @@
  * which correctly captures gl_FragDepth from all custom shaders.
  */
 
-import { CinematicShader } from '@/rendering/shaders/postprocessing/CinematicShader';
 import { RENDER_LAYERS, needsObjectOnlyDepth, needsVolumetricSeparation } from '@/rendering/core/layers';
 import { TemporalCloudManager } from '@/rendering/core/TemporalCloudManager';
 import { TemporalDepthManager } from '@/rendering/core/TemporalDepthManager';
 import { CloudTemporalPass } from '@/rendering/passes/CloudTemporalPass';
 import { BokehShader, type BokehUniforms } from '@/rendering/shaders/postprocessing/BokehShader';
 import { BufferPreviewShader } from '@/rendering/shaders/postprocessing/BufferPreviewShader';
+import { CinematicShader } from '@/rendering/shaders/postprocessing/CinematicShader';
 import { RefractionShader, type RefractionUniforms } from '@/rendering/shaders/postprocessing/RefractionShader';
 import { SSRShader, type SSRUniforms } from '@/rendering/shaders/postprocessing/SSRShader';
 import { TONE_MAPPING_TO_THREE } from '@/rendering/shaders/types';
 import { getEffectiveSSRQuality, usePerformanceStore } from '@/stores';
 import { SSR_QUALITY_STEPS, type SSRQuality } from '@/stores/defaults/visualDefaults';
+import { useEnvironmentStore } from '@/stores/environmentStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useLightingStore } from '@/stores/lightingStore';
 import { usePerformanceMetricsStore, type BufferStats } from '@/stores/performanceMetricsStore';
 import { usePostProcessingStore } from '@/stores/postProcessingStore';
-import { useUIStore } from '@/stores/uiStore';
 import { useRotationStore } from '@/stores/rotationStore';
+import { useUIStore } from '@/stores/uiStore';
 import { useWebGLContextStore } from '@/stores/webglContextStore';
-import { useEnvironmentStore } from '@/stores/environmentStore';
 import { useFrame, useThree } from '@react-three/fiber';
 import { memo, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
@@ -41,15 +41,15 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js';
 // SMAAShader imports not needed - we modify SMAAPass internals directly
-import { TexturePass } from 'three/examples/jsm/postprocessing/TexturePass.js';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { FilmPass } from 'three/examples/jsm/postprocessing/FilmPass.js';
-import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
-import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
-import { useShallow } from 'zustand/react/shallow';
 import { isPolytopeCategory } from '@/lib/geometry/registry/helpers';
 import { VolumetricFogPass } from '@/rendering/passes/VolumetricFogPass';
 import { generateNoiseTexture2D, generateNoiseTexture3D } from '@/rendering/utils/NoiseGenerator';
+import { FilmPass } from 'three/examples/jsm/postprocessing/FilmPass.js';
+import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
+import { TexturePass } from 'three/examples/jsm/postprocessing/TexturePass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
+import { useShallow } from 'zustand/react/shallow';
 
 /**
  * Update uResolution on all meshes in the VOLUMETRIC layer.
@@ -347,7 +347,7 @@ export const PostProcessing = memo(function PostProcessing() {
       depthWrite: true, // Write depth for proper compositing
       transparent: false,
     });
-    
+
     const normalCopyQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), normalCopyMaterial);
     const normalCopyScene = new THREE.Scene();
     normalCopyScene.add(normalCopyQuad);
@@ -906,7 +906,7 @@ export const PostProcessing = memo(function PostProcessing() {
 
     let totalDiff = 0;
     const prevRotations = prevRotationsRef.current;
-    
+
     for (const [plane, angle] of rotations) {
       const prev = prevRotations.get(plane) ?? angle;
       let diff = Math.abs(angle - prev);
@@ -920,13 +920,13 @@ export const PostProcessing = memo(function PostProcessing() {
     const currentVelocity = totalDiff / (Math.max(delta, 0.001));
     // Smooth it
     rotationVelocityRef.current += (currentVelocity - rotationVelocityRef.current) * 0.1;
-    
+
     // Map velocity to distortion
     // Base user setting + dynamic velocity + transition trauma
     // Clamp to reasonable max to avoid nausea
     const dynamicAberration = Math.min(rotationVelocityRef.current * 0.005, 0.03) + (transitionTraumaRef.current * 0.05);
     const totalAberration = ppState.cinematicAberration + dynamicAberration;
-    
+
     cinematicPass.enabled = ppState.cinematicEnabled;
     if (cinematicPass.material.uniforms['uTime']) {
         cinematicPass.material.uniforms['uTime'].value += delta;
@@ -937,7 +937,7 @@ export const PostProcessing = memo(function PostProcessing() {
     if (cinematicPass.material.uniforms['uVignetteDarkness']) {
         cinematicPass.material.uniforms['uVignetteDarkness'].value = ppState.cinematicVignette;
     }
-    
+
     // Update Film Pass (grain effect)
     filmPass.enabled = ppState.cinematicEnabled && ppState.cinematicGrain > 0;
     // FilmPass in Three.js r150+ uses intensity property directly
@@ -967,7 +967,7 @@ export const PostProcessing = memo(function PostProcessing() {
     // Disable bokeh if we are previewing a buffer (to save perf and avoid conflicts)
     bokehPass.enabled = currentBokehEnabled && !isBufferPreviewEnabled;
     bufferPreviewPass.enabled = isBufferPreviewEnabled;
-    
+
     ssrPass.enabled = currentSSREnabled;
     refractionPass.enabled = currentRefractionEnabled;
     fxaaPass.enabled = currentAntiAliasingMethod === 'fxaa';
@@ -977,7 +977,7 @@ export const PostProcessing = memo(function PostProcessing() {
     if (volumetricFogPass) {
         // Enable/Disable based on store
         volumetricFogPass.enabled = fogState.fogEnabled;
-        
+
         if (volumetricFogPass.enabled) {
             // Update uniforms
             if (camera instanceof THREE.PerspectiveCamera) {
@@ -1472,18 +1472,18 @@ export const PostProcessing = memo(function PostProcessing() {
       const uniforms = bufferPreviewPass.uniforms as any;
       uniforms.nearClip.value = camera.near;
       uniforms.farClip.value = camera.far;
-      
+
       // Determine what to show
       if (currentShowDepthBuffer) {
         uniforms.type.value = 1; // Depth
         uniforms.tInput.value = effectDepthTexture;
         uniforms.debugMode.value = 1; // Linear depth (normalized grayscale)
         // debugMode 0 = Raw depth, 1 = Linear depth, 2 = Focus Zones (colored)
-        
+
       } else if (currentShowNormalBuffer) {
         uniforms.type.value = 2; // Normal
         uniforms.tInput.value = normalTarget.texture;
-        
+
       } else if (currentShowTemporalDepthBuffer) {
         uniforms.type.value = 3; // Temporal Depth
         const temporalUniforms = TemporalDepthManager.getUniforms(true);

@@ -4,7 +4,12 @@ import type {
   DistributionSettings,
   MultiSourceWeights,
 } from '@/rendering/shaders/palette'
-import type { AllShaderSettings, ShaderType, SurfaceSettings, WireframeSettings } from '@/rendering/shaders/types'
+import type {
+  AllShaderSettings,
+  ShaderType,
+  SurfaceSettings,
+  WireframeSettings,
+} from '@/rendering/shaders/types'
 import { VisualPreset } from '@/stores/defaults/visualDefaults'
 
 // ============================================================================
@@ -40,7 +45,7 @@ export interface ColorSliceActions {
   setMultiSourceWeights: (weights: Partial<MultiSourceWeights>) => void
   setLchLightness: (lightness: number) => void
   setLchChroma: (chroma: number) => void
-  
+
   applyPreset: (preset: VisualPreset) => void
 }
 

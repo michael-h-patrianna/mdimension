@@ -5,11 +5,11 @@
  * Physical fog uses height-based density with 3D noise for realistic atmospheric effects.
  */
 
-import { Slider } from '@/components/ui/Slider';
+import { Vector3Input } from '@/components/sections/Lights/Vector3Input';
 import { ColorPicker } from '@/components/ui/ColorPicker';
+import { Slider } from '@/components/ui/Slider';
 import { Switch } from '@/components/ui/Switch';
 import { useEnvironmentStore } from '@/stores/environmentStore';
-import { Vector3Input } from '@/components/sections/Lights/Vector3Input';
 import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
 

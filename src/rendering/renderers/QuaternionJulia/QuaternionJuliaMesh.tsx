@@ -8,7 +8,6 @@
  */
 
 import { RAYMARCH_QUALITY_TO_MULTIPLIER } from '@/lib/geometry/extended/types'
-import { getEffectiveSdfQuality } from '@/rendering/utils/adaptiveQuality'
 import { composeRotations } from '@/lib/math/rotation'
 import type { MatrixND } from '@/lib/math/types'
 import {
@@ -22,15 +21,18 @@ import {
     createLightUniforms,
     updateLightUniforms,
 } from '@/rendering/lights/uniforms'
+import { TrackedShaderMaterial } from '@/rendering/materials/TrackedShaderMaterial'
 import {
     OPACITY_MODE_TO_INT,
     SAMPLE_QUALITY_TO_INT,
 } from '@/rendering/opacity/types'
+import { composeJuliaShader } from '@/rendering/shaders/julia/compose'
 import { COLOR_ALGORITHM_TO_INT } from '@/rendering/shaders/palette'
 import {
     SHADOW_ANIMATION_MODE_TO_INT,
     SHADOW_QUALITY_TO_INT,
 } from '@/rendering/shadows/types'
+import { getEffectiveSdfQuality } from '@/rendering/utils/adaptiveQuality'
 import { useAppearanceStore } from '@/stores/appearanceStore'
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore'
 import { useGeometryStore } from '@/stores/geometryStore'
@@ -47,8 +49,6 @@ import { useWebGLContextStore } from '@/stores/webglContextStore'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { TrackedShaderMaterial } from '@/rendering/materials/TrackedShaderMaterial'
-import { composeJuliaShader } from '@/rendering/shaders/julia/compose'
 import vertexShader from './quaternion-julia.vert?raw'
 
 /** Debounce time in ms before restoring high quality after rotation stops */
@@ -528,7 +528,7 @@ const QuaternionJuliaMesh = () => {
       lightStore.specularColor
     )
     u.uDiffuseIntensity.value = lightStore.diffuseIntensity
-    
+
     // Advanced Rendering (Global Visuals)
     const visuals = appStore; // appStore is already available
     if (u.uRoughness) u.uRoughness.value = visuals.roughness

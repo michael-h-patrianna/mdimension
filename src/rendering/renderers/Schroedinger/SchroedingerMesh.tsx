@@ -1,6 +1,11 @@
 import { computeDriftedOrigin, type OriginDriftConfig } from '@/lib/animation/originDrift';
+import {
+    flattenPresetForUniforms,
+    generateQuantumPreset,
+    getNamedPreset,
+    type QuantumPreset,
+} from '@/lib/geometry/extended/schroedinger/presets';
 import { RAYMARCH_QUALITY_TO_SAMPLES } from '@/lib/geometry/extended/types';
-import { getEffectiveVolumeSamples } from '@/rendering/utils/adaptiveQuality';
 import { composeRotations } from '@/lib/math/rotation';
 import type { MatrixND } from '@/lib/math/types';
 import { createColorCache, createLightColorCache, updateLinearColorUniform } from '@/rendering/colors/linearCache';
@@ -8,18 +13,20 @@ import { RENDER_LAYERS, needsVolumetricSeparation } from '@/rendering/core/layer
 import { TemporalCloudManager } from '@/rendering/core/TemporalCloudManager';
 import { TemporalDepthManager } from '@/rendering/core/TemporalDepthManager';
 import { createLightUniforms, updateLightUniforms, type LightUniforms } from '@/rendering/lights/uniforms';
+import { TrackedShaderMaterial } from '@/rendering/materials/TrackedShaderMaterial';
 import { OPACITY_MODE_TO_INT, SAMPLE_QUALITY_TO_INT } from '@/rendering/opacity/types';
 import { COLOR_ALGORITHM_TO_INT } from '@/rendering/shaders/palette';
 import { composeSchroedingerShader } from '@/rendering/shaders/schroedinger/compose';
 import { MAX_DIM, MAX_TERMS } from '@/rendering/shaders/schroedinger/uniforms.glsl';
+import { getEffectiveVolumeSamples } from '@/rendering/utils/adaptiveQuality';
 import { useAnimationStore } from '@/stores/animationStore';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useLightingStore } from '@/stores/lightingStore';
 import {
-  getEffectiveSampleQuality,
-  usePerformanceStore,
+    getEffectiveSampleQuality,
+    usePerformanceStore,
 } from '@/stores/performanceStore';
 import { useRotationStore } from '@/stores/rotationStore';
 import { useUIStore } from '@/stores/uiStore';
@@ -27,13 +34,6 @@ import { useWebGLContextStore } from '@/stores/webglContextStore';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { TrackedShaderMaterial } from '@/rendering/materials/TrackedShaderMaterial';
-import {
-  flattenPresetForUniforms,
-  generateQuantumPreset,
-  getNamedPreset,
-  type QuantumPreset,
-} from '@/lib/geometry/extended/schroedinger/presets';
 import vertexShader from './schroedinger.vert?raw';
 
 /** Debounce time in ms before restoring high quality after rotation stops */
@@ -459,7 +459,7 @@ const SchroedingerMesh = () => {
       meshRef.current.scale.set(scale, scale, scale);
       const uiState = useUIStore.getState();
       const { rotations, version: rotationVersion } = useRotationStore.getState();
-      
+
       // Cache for colors
       const cache = colorCacheRef.current;
 
@@ -574,7 +574,7 @@ const SchroedingerMesh = () => {
           arr[i] = baseOmega * spread;
         }
       }
-      
+
       let effectiveSpread = frequencySpread;
       if (spreadAnimationEnabled) {
          // Wavepacket Dispersion Animation
@@ -641,29 +641,29 @@ const SchroedingerMesh = () => {
 
       // Volume rendering parameters
       const { timeScale, fieldScale, densityGain, powderScale, erosionStrength, erosionScale, erosionTurbulence, erosionNoiseType, curlEnabled, curlStrength, curlScale, curlSpeed, curlBias, dispersionEnabled, dispersionStrength, dispersionDirection, dispersionQuality, shadowsEnabled, shadowStrength, shadowSteps, aoEnabled, aoStrength, aoQuality, aoRadius, aoColor, nodalEnabled, nodalColor, nodalStrength, energyColorEnabled, shimmerEnabled, shimmerStrength, isoThreshold, scatteringAnisotropy } = schroedinger;
-      
+
       // Global visuals from appearance store
       const { roughness, sssEnabled, sssIntensity, sssColor, sssThickness, sssJitter, faceEmission, faceEmissionThreshold, faceEmissionColorShift, faceEmissionPulsing, faceRimFalloff } = appearance;
-      
+
       // Note: We use faceRimFalloff from appearance store for uRimExponent if available (which it is now)
       // We keep scatteringAnisotropy in schroedinger store for now.
-      
+
       if (material.uniforms.uTimeScale) material.uniforms.uTimeScale.value = timeScale;
       if (material.uniforms.uFieldScale) material.uniforms.uFieldScale.value = fieldScale;
       if (material.uniforms.uDensityGain) material.uniforms.uDensityGain.value = densityGain;
       if (material.uniforms.uPowderScale) material.uniforms.uPowderScale.value = powderScale;
-      
+
       // Emission & Rim (Unified)
       if (material.uniforms.uEmissionIntensity) material.uniforms.uEmissionIntensity.value = faceEmission;
       if (material.uniforms.uEmissionThreshold) material.uniforms.uEmissionThreshold.value = faceEmissionThreshold;
       if (material.uniforms.uEmissionColorShift) material.uniforms.uEmissionColorShift.value = faceEmissionColorShift;
       if (material.uniforms.uEmissionPulsing) material.uniforms.uEmissionPulsing.value = faceEmissionPulsing;
-      
+
       // Use the global faceRimFalloff
       if (material.uniforms.uRimExponent) material.uniforms.uRimExponent.value = faceRimFalloff;
-      
+
       if (material.uniforms.uScatteringAnisotropy) material.uniforms.uScatteringAnisotropy.value = scatteringAnisotropy;
-      
+
       // Unified Visuals
       if (material.uniforms.uRoughness) material.uniforms.uRoughness.value = roughness;
       if (material.uniforms.uSssEnabled) material.uniforms.uSssEnabled.value = sssEnabled;
@@ -673,7 +673,7 @@ const SchroedingerMesh = () => {
       }
       if (material.uniforms.uSssThickness) material.uniforms.uSssThickness.value = sssThickness;
       if (material.uniforms.uSssJitter) material.uniforms.uSssJitter.value = sssJitter;
-      
+
       if (material.uniforms.uErosionStrength) material.uniforms.uErosionStrength.value = erosionStrength;
       if (material.uniforms.uErosionScale) material.uniforms.uErosionScale.value = erosionScale;
       if (material.uniforms.uErosionTurbulence) material.uniforms.uErosionTurbulence.value = erosionTurbulence;
@@ -708,7 +708,7 @@ const SchroedingerMesh = () => {
       if (material.uniforms.uEnergyColorEnabled) material.uniforms.uEnergyColorEnabled.value = energyColorEnabled;
       if (material.uniforms.uShimmerEnabled) material.uniforms.uShimmerEnabled.value = shimmerEnabled;
       if (material.uniforms.uShimmerStrength) material.uniforms.uShimmerStrength.value = shimmerStrength;
-      
+
       // Isosurface mode
       if (material.uniforms.uIsoEnabled) material.uniforms.uIsoEnabled.value = isoEnabled;
       if (material.uniforms.uIsoThreshold) material.uniforms.uIsoThreshold.value = isoThreshold;
@@ -759,7 +759,7 @@ const SchroedingerMesh = () => {
 
       // Lighting
       const { lights, ambientIntensity, ambientColor, specularIntensity, shininess, specularColor, diffuseIntensity, version: lightingVersion } = lighting;
-      
+
       if (prevLightingVersionRef.current !== lightingVersion) {
         updateLightUniforms(material.uniforms as unknown as LightUniforms, lights, lightColorCacheRef.current);
         prevLightingVersionRef.current = lightingVersion;
@@ -786,19 +786,19 @@ const SchroedingerMesh = () => {
 
       // Advanced Color System
       const { colorAlgorithm, cosineCoefficients, distribution, lchLightness, lchChroma, multiSourceWeights } = appearance;
-      
-      // Update color algorithm uniforms only if algorithm changed or always? 
+
+      // Update color algorithm uniforms only if algorithm changed or always?
       // Coefficients might change even if algorithm doesn't.
       // But we can check if colorAlgorithm is 'cosine' etc.
       // For now, let's just optimize the integer mapping part if possible, or leave as is since .set() is cheap.
       // Actually, we can skip updating cosine coefficients if colorAlgorithm is not 'palette' (3).
       // But uColorAlgorithm is always needed.
       if (material.uniforms.uColorAlgorithm) material.uniforms.uColorAlgorithm.value = COLOR_ALGORITHM_TO_INT[colorAlgorithm];
-      
+
       // Only update extensive cosine arrays if we are in a mode that might use them (or just update them, they are fast)
       // Optimization: Only update if changed? We don't have versioning for appearance store yet.
       // We'll stick to unconditional updates for now as Float32Array.set is fast enough.
-      
+
       if (material.uniforms.uCosineA) material.uniforms.uCosineA.value.set(cosineCoefficients.a[0], cosineCoefficients.a[1], cosineCoefficients.a[2]);
       if (material.uniforms.uCosineB) material.uniforms.uCosineB.value.set(cosineCoefficients.b[0], cosineCoefficients.b[1], cosineCoefficients.b[2]);
       if (material.uniforms.uCosineC) material.uniforms.uCosineC.value.set(cosineCoefficients.c[0], cosineCoefficients.c[1], cosineCoefficients.c[2]);

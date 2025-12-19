@@ -1,6 +1,5 @@
 import { computeDriftedOrigin, type OriginDriftConfig } from '@/lib/animation/originDrift';
 import { RAYMARCH_QUALITY_TO_MULTIPLIER } from '@/lib/geometry/extended/types';
-import { getEffectiveSdfQuality } from '@/rendering/utils/adaptiveQuality';
 import { composeRotations } from '@/lib/math/rotation';
 import type { MatrixND } from '@/lib/math/types';
 import { createColorCache, createLightColorCache, updateLinearColorUniform } from '@/rendering/colors/linearCache';
@@ -8,9 +7,12 @@ import { RENDER_LAYERS } from '@/rendering/core/layers';
 import { TemporalDepthManager } from '@/rendering/core/TemporalDepthManager';
 import { ZoomAutopilot, type AutopilotConfig } from '@/rendering/effects/ZoomAutopilot';
 import { createLightUniforms, updateLightUniforms, type LightUniforms } from '@/rendering/lights/uniforms';
+import { TrackedShaderMaterial } from '@/rendering/materials/TrackedShaderMaterial';
 import { OPACITY_MODE_TO_INT, SAMPLE_QUALITY_TO_INT } from '@/rendering/opacity/types';
+import { composeMandelbulbShader } from '@/rendering/shaders/mandelbulb/compose';
 import { COLOR_ALGORITHM_TO_INT } from '@/rendering/shaders/palette';
 import { SHADOW_ANIMATION_MODE_TO_INT, SHADOW_QUALITY_TO_INT } from '@/rendering/shadows/types';
+import { getEffectiveSdfQuality } from '@/rendering/utils/adaptiveQuality';
 import { useAnimationStore } from '@/stores/animationStore';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
@@ -28,8 +30,6 @@ import { useWebGLContextStore } from '@/stores/webglContextStore';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { TrackedShaderMaterial } from '@/rendering/materials/TrackedShaderMaterial';
-import { composeMandelbulbShader } from '@/rendering/shaders/mandelbulb/compose';
 import vertexShader from './mandelbulb.vert?raw';
 
 /** Debounce time in ms before restoring high quality after rotation stops */
@@ -50,7 +50,7 @@ function applyRotationInPlace(matrix: MatrixND, vec: number[] | Float32Array, ou
   // Clear output first (only needed if we assume clean buffer beyond D)
   // For consistency with previous behavior and safety we fill with 0
   out.fill(0);
-  
+
   for (let i = 0; i < dimension; i++) {
     let sum = 0;
     const row = matrix[i];
@@ -620,7 +620,7 @@ const MandelbulbMesh = () => {
         updateLinearColorUniform(cache.specularColor, material.uniforms.uSpecularColor.value as THREE.Color, specularColor);
       }
       if (material.uniforms.uDiffuseIntensity) material.uniforms.uDiffuseIntensity.value = diffuseIntensity;
-      
+
       // Advanced Rendering (Global Visuals)
       const visuals = useAppearanceStore.getState();
       if (material.uniforms.uRoughness) material.uniforms.uRoughness.value = visuals.roughness;
