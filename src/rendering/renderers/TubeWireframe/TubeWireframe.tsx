@@ -12,7 +12,7 @@ import { createColorCache, createLightColorCache, updateLinearColorUniform } fro
 import { RENDER_LAYERS } from '@/rendering/core/layers'
 import { useTrackedShaderMaterial } from '@/rendering/materials/useTrackedShaderMaterial'
 import { useFrame } from '@react-three/fiber'
-import React, { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import {
     Color,
     CylinderGeometry,
@@ -147,13 +147,6 @@ export function TubeWireframe({
     }
   }, [])
 
-  // Assign main object layer for depth-based effects (SSR, refraction, bokeh)
-  useEffect(() => {
-    if (meshRef.current?.layers) {
-      meshRef.current.layers.set(RENDER_LAYERS.MAIN_OBJECT)
-    }
-  }, [])
-
   // Base cylinder geometry (Y-axis aligned, height 1, centered at origin)
   const geometry = useMemo(() => {
     return new CylinderGeometry(1, 1, 1, CYLINDER_SEGMENTS, 1, false)
@@ -282,6 +275,24 @@ export function TubeWireframe({
     })
   }, [radius, dimension])
 
+  // Callback ref to assign main object layer for depth-based effects (SSR, refraction, bokeh)
+  // Also assigns custom depth materials for animated shadows - this MUST happen in the callback
+  // because if done in useEffect, the effect may run before the mesh exists
+  const setMeshRef = useCallback((mesh: InstancedMesh | null) => {
+    meshRef.current = mesh
+    if (mesh?.layers) {
+      mesh.layers.set(RENDER_LAYERS.MAIN_OBJECT)
+    }
+    // Assign custom depth materials for animated shadows
+    if (mesh && shadowEnabled) {
+      mesh.customDepthMaterial = customDepthMaterial
+      mesh.customDistanceMaterial = customDistanceMaterial
+    } else if (mesh) {
+      mesh.customDepthMaterial = undefined as unknown as ShaderMaterial
+      mesh.customDistanceMaterial = undefined as unknown as ShaderMaterial
+    }
+  }, [shadowEnabled, customDepthMaterial, customDistanceMaterial])
+
   // Dispatch shader debug info (only when material is ready)
   useEffect(() => {
     if (!material) return
@@ -313,18 +324,6 @@ export function TubeWireframe({
       geometry.dispose()
     }
   }, [geometry])
-
-  // Assign custom depth materials to mesh for animated shadows
-  useEffect(() => {
-    const mesh = meshRef.current
-    if (mesh && shadowEnabled) {
-      mesh.customDepthMaterial = customDepthMaterial
-      mesh.customDistanceMaterial = customDistanceMaterial
-    } else if (mesh) {
-      mesh.customDepthMaterial = undefined as unknown as ShaderMaterial
-      mesh.customDistanceMaterial = undefined as unknown as ShaderMaterial
-    }
-  }, [shadowEnabled, customDepthMaterial, customDistanceMaterial])
 
   // Cleanup custom depth materials on unmount
   useEffect(() => {
@@ -622,7 +621,7 @@ export function TubeWireframe({
   if (isCompiling || !material) {
     return (
       <instancedMesh
-        ref={meshRef}
+        ref={setMeshRef}
         args={[geometry, new MeshBasicMaterial({ visible: false }), edges.length]}
         frustumCulled={false}
       />
@@ -631,7 +630,7 @@ export function TubeWireframe({
 
   return (
     <instancedMesh
-      ref={meshRef}
+      ref={setMeshRef}
       args={[geometry, material, edges.length]}
       frustumCulled={false}
       castShadow={shadowEnabled}

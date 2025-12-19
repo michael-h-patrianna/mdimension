@@ -93,6 +93,7 @@ uniform float uFogNoiseScale;
 uniform vec3 uFogNoiseSpeed;
 uniform float uFogScattering; // Anisotropy g (-1 to 1)
 uniform bool uVolumetricShadows;
+uniform bool uFogFastMode; // Performance mode: fewer steps, samples, shadows
 
 // Light Data (Main Directional Light for scattering)
 uniform vec3 uLightDirection;
@@ -192,24 +193,26 @@ float getFogDensity(vec3 pos) {
     // Large scale: permanent dense/sparse regions (like fog banks on a moor)
     vec3 staticPos = pos * uFogNoiseScale;
 
-    // Optimized: 3 samples instead of 5 (banks + structure + wisps)
-    float banks = sampleNoise(staticPos * 0.1); // Single sample for bank regions
-    banks = smoothstep(0.25, 0.75, banks); // Distinct thick banks
-
-    // Medium structure: cloud-like forms within the banks
-    float structure = sampleNoise(staticPos * 0.5); // Single sample for structure
-
     // 3. Extremely slow creeping motion - almost imperceptible
     // Time scale: 0.002 means 500 seconds for one noise cycle
     float creepTime = uTime * 0.002;
     vec3 creepOffset = vec3(creepTime, 0.0, creepTime * 0.7);
 
-    // Subtle wisp animation - the only thing that visibly moves
-    float wisps = sampleNoise(staticPos * 1.5 + creepOffset);
-
-    // Combine: banks define where fog is thick, structure gives shape, wisps add life
-    // Banks dominate (0.5), structure secondary (0.35), wisps subtle (0.15)
-    float combinedNoise = banks * 0.5 + structure * 0.35 + wisps * 0.15;
+    float combinedNoise;
+    if (uFogFastMode) {
+        // Fast mode: 2 samples (banks + animated structure)
+        float banks = sampleNoise(staticPos * 0.1);
+        banks = smoothstep(0.25, 0.75, banks);
+        float structure = sampleNoise(staticPos * 0.5 + creepOffset * 0.5);
+        combinedNoise = banks * 0.6 + structure * 0.4;
+    } else {
+        // Normal mode: 3 samples (banks + structure + wisps)
+        float banks = sampleNoise(staticPos * 0.1);
+        banks = smoothstep(0.25, 0.75, banks);
+        float structure = sampleNoise(staticPos * 0.5);
+        float wisps = sampleNoise(staticPos * 1.5 + creepOffset);
+        combinedNoise = banks * 0.5 + structure * 0.35 + wisps * 0.15;
+    }
 
     // Range 0.15 to 1.0 - thin areas are veils, thick areas are impenetrable
     float noiseModulation = 0.15 + combinedNoise * 0.85;
@@ -297,9 +300,10 @@ void main() {
     // We use Interleaved Gradient Noise which is stable in screen space
     float dither = interleavedGradientNoise(gl_FragCoord.xy);
 
-    // Raymarch settings
-    const int STEPS = 32;
-    float stepSize = rayLength / float(STEPS);
+    // Raymarch settings - use MAX_STEPS with early exit based on quality
+    const int MAX_STEPS = 32;
+    int activeSteps = uFogFastMode ? 16 : 32;
+    float stepSize = rayLength / float(activeSteps);
     if (isInvalidFloat(stepSize) || stepSize <= 0.0) {
         fragColor = vec4(0.0, 0.0, 0.0, 0.0);
         return;
@@ -319,8 +323,12 @@ void main() {
     }
 
     // Raymarch: integrate scattering using Beer-Lambert extinction
-    float lastShadow = 1.0; // Cache shadow for every-2nd-step optimization
-    for (int i = 0; i < STEPS; i++) {
+    float lastShadow = 1.0; // Cache shadow for reduced sampling
+    int shadowFreq = uFogFastMode ? 4 : 2; // Sample shadows every Nth step
+    for (int i = 0; i < MAX_STEPS; i++) {
+        // Dynamic step count based on quality mode
+        if (i >= activeSteps) break;
+
         // Early termination when fog is nearly opaque (0.05 threshold)
         if (transmittance < 0.05) break;
 
@@ -330,9 +338,9 @@ void main() {
         }
 
         if (density > 0.001) {
-            // Shadow sampling every 2nd step for performance
+            // Shadow sampling at configurable frequency for performance
             float shadow;
-            if ((i & 1) == 0) {
+            if ((i % shadowFreq) == 0) {
                 shadow = getShadowVisibility(currentPos);
                 lastShadow = shadow;
             } else {
@@ -343,12 +351,12 @@ void main() {
             vec3 lightScatter = phase * uLightColor * uLightIntensity * shadow;
 
             // Fog's own color contribution (ambient self-illumination of the fog)
-            // This is what makes fog VISIBLE even without direct lighting
-            // Gothic fog is primarily seen by its own pale color, not by scattering
-            vec3 fogAmbient = uFogColor;
+            // Shadow also darkens ambient fog to create visible god rays
+            vec3 fogAmbient = uFogColor * mix(0.3, 1.0, shadow);
 
-            // Combined: fog color dominates (0.7), light scattering adds highlights (0.3)
-            vec3 scattering = vec3(density) * (fogAmbient * 0.7 + lightScatter * 0.3);
+            // Combined: fog ambient (60%) + light scattering (40%)
+            // Both are now affected by shadows for more pronounced volumetric effect
+            vec3 scattering = vec3(density) * (fogAmbient * 0.6 + lightScatter * 0.4);
             scattering = min(scattering, vec3(MAX_SCATTERING));
 
             // Beer-Lambert Integration

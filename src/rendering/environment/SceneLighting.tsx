@@ -309,10 +309,12 @@ export const SceneLighting = memo(function SceneLighting() {
 
       {useMultiLight ? (
         // Multi-light system
+        // Key includes shadowMapSize to force remount when quality changes
+        // Three.js doesn't recreate shadow map textures on prop changes
         <>
           {lights.map((light) => (
             <LightRenderer
-              key={light.id}
+              key={`${light.id}-${shadowMapSize}`}
               light={light}
               showIndicator={showLightGizmos}
               shadowEnabled={shadowEnabled}

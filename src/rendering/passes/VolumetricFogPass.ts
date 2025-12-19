@@ -1,6 +1,7 @@
 import { LIGHT_TYPE_TO_INT, MAX_LIGHTS, rotationToDirection } from '@/rendering/lights/types'
 import { useEnvironmentStore } from '@/stores/environmentStore'
 import { useLightingStore } from '@/stores/lightingStore'
+import { usePerformanceStore } from '@/stores/performanceStore'
 import * as THREE from 'three'
 import { FullScreenQuad, Pass } from 'three/examples/jsm/postprocessing/Pass.js'
 import { createVolumetricFogFragmentShader } from '../shaders/postprocessing/VolumetricFogShader'
@@ -118,6 +119,11 @@ export class VolumetricFogPass extends Pass {
   // Reusable matrix to avoid per-frame allocation
   private viewProjMatrix = new THREE.Matrix4()
 
+  // Track full resolution for dynamic scaling based on fast mode
+  private fullWidth = 1
+  private fullHeight = 1
+  private currentFastMode = false
+
   constructor(noiseTexture: THREE.Texture, use3DNoise: boolean) {
     super()
 
@@ -150,6 +156,7 @@ export class VolumetricFogPass extends Pass {
         uFogNoiseSpeed: { value: new THREE.Vector3(0.1, 0.0, 0.1) },
         uFogScattering: { value: 0.0 },
         uVolumetricShadows: { value: true },
+        uFogFastMode: { value: false },
 
         // Light
         uLightDirection: { value: new THREE.Vector3(0.5, 1.0, 0.5).normalize() },
@@ -208,9 +215,19 @@ export class VolumetricFogPass extends Pass {
   }
 
   public setSize(width: number, height: number) {
-    // Render fog at 33% resolution (optimized from 50%)
-    const w = Math.ceil(width * 0.33)
-    const h = Math.ceil(height * 0.33)
+    // Store full resolution for dynamic scaling
+    this.fullWidth = width
+    this.fullHeight = height
+
+    // Apply resolution based on current fast mode
+    this.applyResolution()
+  }
+
+  private applyResolution() {
+    // Fast mode: 25% resolution, Normal: 33% resolution
+    const scale = this.currentFastMode ? 0.25 : 0.33
+    const w = Math.ceil(this.fullWidth * scale)
+    const h = Math.ceil(this.fullHeight * scale)
     this.halfResTarget.setSize(w, h)
 
     // Update resolution uniform
@@ -225,6 +242,21 @@ export class VolumetricFogPass extends Pass {
   public update(scene: THREE.Scene, camera: THREE.Camera, deltaTime: number) {
     const fogState = useEnvironmentStore.getState()
     const lightState = useLightingStore.getState()
+    const perfState = usePerformanceStore.getState()
+
+    // Fast mode: enabled when user is interacting (for smoother camera movement)
+    const fastMode = perfState.isInteracting
+
+    // Update fast mode uniform
+    if (this.material.uniforms.uFogFastMode) {
+      this.material.uniforms.uFogFastMode.value = fastMode
+    }
+
+    // Update resolution if fast mode changed
+    if (fastMode !== this.currentFastMode) {
+      this.currentFastMode = fastMode
+      this.applyResolution()
+    }
 
     // Update Fog Uniforms
     if (this.material.uniforms.uFogHeight)

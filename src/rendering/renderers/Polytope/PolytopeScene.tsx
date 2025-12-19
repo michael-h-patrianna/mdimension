@@ -383,16 +383,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   // Cache light direction to avoid per-frame allocation
   const cachedLightDirectionRef = useRef(new Vector3());
 
-  // Ref callbacks to assign main object layer for depth-based effects (SSR, refraction, bokeh)
-  // Using callbacks instead of useEffect ensures layer is set when mesh is created,
-  // even if mesh is conditionally rendered after initial mount
-  const setFaceMeshRef = useCallback((mesh: THREE.Mesh | null) => {
-    faceMeshRef.current = mesh;
-    if (mesh?.layers) {
-      mesh.layers.set(RENDER_LAYERS.MAIN_OBJECT);
-    }
-  }, []);
-
+  // Simple callback ref for edge mesh - just assigns layer
   const setEdgeMeshRef = useCallback((lineSegments: THREE.LineSegments | null) => {
     edgeMeshRef.current = lineSegments;
     if (lineSegments?.layers) {
@@ -539,6 +530,24 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   // These ensure shadows animate correctly when the object animates
   const customDepthMaterial = useMemo(() => createCustomDepthMaterial(), []);
   const customDistanceMaterial = useMemo(() => createCustomDistanceMaterial(), []);
+
+  // Callback ref to assign main object layer for depth-based effects (SSR, refraction, bokeh)
+  // Also assigns custom depth materials for animated shadows - this MUST happen in the callback
+  // because if done in useEffect, the effect may run before the mesh exists
+  const setFaceMeshRef = useCallback((mesh: THREE.Mesh | null) => {
+    faceMeshRef.current = mesh;
+    if (mesh?.layers) {
+      mesh.layers.set(RENDER_LAYERS.MAIN_OBJECT);
+    }
+    // Assign custom depth materials for animated shadows
+    if (mesh && shadowEnabled) {
+      mesh.customDepthMaterial = customDepthMaterial;
+      mesh.customDistanceMaterial = customDistanceMaterial;
+    } else if (mesh) {
+      mesh.customDepthMaterial = undefined as unknown as THREE.Material;
+      mesh.customDistanceMaterial = undefined as unknown as THREE.Material;
+    }
+  }, [shadowEnabled, customDepthMaterial, customDistanceMaterial]);
 
   const setShaderDebugInfo = usePerformanceStore((state) => state.setShaderDebugInfo);
 
@@ -762,20 +771,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
       edgeGeometry?.dispose();
     };
   }, [edgeMaterial, faceGeometry, edgeGeometry]);
-
-  // Assign custom depth materials to face mesh for animated shadows
-  // These materials use the same nD transformation as the main shader
-  useEffect(() => {
-    const mesh = faceMeshRef.current;
-    if (mesh && shadowEnabled) {
-      mesh.customDepthMaterial = customDepthMaterial;
-      mesh.customDistanceMaterial = customDistanceMaterial;
-    } else if (mesh) {
-      // Remove custom materials when shadows are disabled
-      mesh.customDepthMaterial = undefined as unknown as THREE.Material;
-      mesh.customDistanceMaterial = undefined as unknown as THREE.Material;
-    }
-  }, [shadowEnabled, customDepthMaterial, customDistanceMaterial]);
 
   // Cleanup custom depth materials on unmount
   useEffect(() => {
