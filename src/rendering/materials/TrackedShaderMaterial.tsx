@@ -29,7 +29,7 @@
  */
 
 import { usePerformanceStore } from '@/stores/performanceStore';
-import { useLayoutEffect, useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Side } from 'three';
 import * as THREE from 'three';
 
@@ -113,22 +113,33 @@ export function TrackedShaderMaterial({
     }
   }, [fragmentShader, vertexShader, validShaderName, hasValidShaders, shadersChanged]);
 
-  // After one frame (overlay is visible), allow shader to render
+  // After overlay has painted, allow shader to render
   useEffect(() => {
     if (!hasValidShaders) {
       return;
     }
 
     if (!readyToRender && shadersChanged) {
-      // Use RAF to defer rendering until next frame
-      // This ensures the overlay has painted before we block the thread
+      // Use DOUBLE RAF to defer rendering until overlay has actually painted.
+      // Single RAF fires before the browser paint, so shader compilation would
+      // block before the overlay is visible. Double RAF ensures:
+      // 1st RAF: overlay render is queued for paint
+      // 2nd RAF: browser has painted the overlay, safe to block for compilation
+      let cancelled = false;
       const frameId = requestAnimationFrame(() => {
-        setReadyToRender(true);
-        // Update the ref to track what we're about to render
-        renderedShaderRef.current = { fragment: fragmentShader, vertex: vertexShader };
+        if (cancelled) return;
+        requestAnimationFrame(() => {
+          if (cancelled) return;
+          setReadyToRender(true);
+          // Update the ref to track what we're about to render
+          renderedShaderRef.current = { fragment: fragmentShader, vertex: vertexShader };
+        });
       });
 
-      return () => cancelAnimationFrame(frameId);
+      return () => {
+        cancelled = true;
+        cancelAnimationFrame(frameId);
+      };
     }
 
     return;

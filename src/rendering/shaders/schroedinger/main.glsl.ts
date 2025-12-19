@@ -116,7 +116,15 @@ void main() {
 
     // Volumetric raymarching
     VolumeResult volumeResult;
-    if (uFastMode) {
+    
+    // Determine if we can use fast mode
+    // Chromatic dispersion requires multi-channel sampling (HQ only)
+    bool useFast = uFastMode;
+    #ifdef USE_DISPERSION
+    if (uDispersionEnabled) useFast = false;
+    #endif
+
+    if (useFast) {
         volumeResult = volumeRaymarch(ro, rd, tNear, tFar);
     } else {
         volumeResult = volumeRaymarchHQ(ro, rd, tNear, tFar);

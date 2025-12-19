@@ -35,7 +35,7 @@ export function createScaleMatrix(dimension: number, scales: number[]): MatrixND
   const matrix = createIdentityMatrix(dimension)
 
   for (let i = 0; i < dimension; i++) {
-    matrix[i]![i] = scales[i]!
+    matrix[i * dimension + i] = scales[i]!
   }
 
   return matrix
@@ -56,7 +56,7 @@ export function createUniformScaleMatrix(dimension: number, scale: number): Matr
 
   const matrix = createIdentityMatrix(dimension)
   for (let i = 0; i < dimension; i++) {
-    matrix[i]![i] = scale
+    matrix[i * dimension + i] = scale
   }
   return matrix
 }
@@ -67,11 +67,6 @@ export function createUniformScaleMatrix(dimension: number, scale: number): Matr
  *
  * The shear operation modifies coordinates as:
  * v'[shearAxis] = v[shearAxis] + amount * v[referenceAxis]
- *
- * Example in 3D: Shear X based on Y with amount=0.5
- * - x' = x + 0.5*y
- * - y' = y
- * - z' = z
  *
  * @param dimension - The dimensionality of the space
  * @param shearAxis - The axis to be modified
@@ -103,7 +98,7 @@ export function createShearMatrix(
   }
 
   const matrix = createIdentityMatrix(dimension)
-  matrix[shearAxis]![referenceAxis] = amount
+  matrix[shearAxis * dimension + referenceAxis] = amount
 
   return matrix
 }
@@ -112,14 +107,7 @@ export function createShearMatrix(
  * Creates a translation matrix in homogeneous coordinates
  * For n-dimensional space, creates an (n+1)×(n+1) matrix
  *
- * The translation vector is placed in the last column:
- * [1 0 0 ... tx]
- * [0 1 0 ... ty]
- * [0 0 1 ... tz]
- * [... ... ...]
- * [0 0 0 ... 1 ]
- *
- * To use: Convert vector to homogeneous (append 1), multiply, extract first n components
+ * The translation vector is placed in the last column
  *
  * @param dimension - The dimensionality of the space
  * @param translation - Translation vector (length = dimension)
@@ -137,12 +125,12 @@ export function createTranslationMatrix(dimension: number, translation: VectorND
     )
   }
 
-  // Create (n+1)×(n+1) identity matrix for homogeneous coordinates
-  const matrix = createIdentityMatrix(dimension + 1)
+  const homogeneousDim = dimension + 1
+  const matrix = createIdentityMatrix(homogeneousDim)
 
   // Place translation values in the last column (except last row)
   for (let i = 0; i < dimension; i++) {
-    matrix[i]![dimension] = translation[i]!
+    matrix[i * homogeneousDim + dimension] = translation[i]!
   }
 
   return matrix
@@ -157,7 +145,6 @@ export function createTranslationMatrix(dimension: number, translation: VectorND
  * @param out - Optional output vector to avoid allocation
  * @returns Translated vector
  * @throws {Error} If vectors have different dimensions (DEV only)
- * @note Validation is DEV-only for performance in production hot paths
  */
 export function translateVector(vector: VectorND, translation: VectorND, out?: VectorND): VectorND {
   if (import.meta.env.DEV && vector.length !== translation.length) {
@@ -227,7 +214,6 @@ export function fromHomogeneous(vector: VectorND, out?: VectorND): VectorND {
  * @param matrices - Array of transformation matrices to compose
  * @returns The composed transformation matrix
  * @throws {Error} If matrices array is empty or matrices have incompatible dimensions (DEV only)
- * @note Validation is DEV-only for performance in production hot paths
  */
 export function composeTransformations(matrices: MatrixND[]): MatrixND {
   if (import.meta.env.DEV && matrices.length === 0) {
@@ -239,7 +225,7 @@ export function composeTransformations(matrices: MatrixND[]): MatrixND {
   }
 
   // Get matrix dimensions (all must be same size for square transformation matrices)
-  const dim = matrices[0]!.length
+  const dim = Math.sqrt(matrices[0]!.length)
 
   // Get or create scratch buffers for this dimension
   let scratch = compositionScratch.get(dim)
@@ -269,7 +255,6 @@ export function composeTransformations(matrices: MatrixND[]): MatrixND {
   }
 
   // Create a new result matrix and copy the final result
-  // (We return a new matrix to avoid aliasing issues with the scratch buffers)
   const result = createZeroMatrix(dim, dim)
   copyMatrix(current, result)
 
@@ -281,11 +266,6 @@ export function composeTransformations(matrices: MatrixND[]): MatrixND {
  * Applies transformations in the standard order: Scale → Rotation → Shear → Translation
  *
  * @param options - Transformation options
- * @param options.dimension
- * @param options.scale
- * @param options.rotation
- * @param options.shear
- * @param options.translation
  * @returns The composed transformation matrix
  */
 export function createTransformMatrix(options: {

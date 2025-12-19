@@ -1006,7 +1006,7 @@ export const DEFAULT_MANDELBROT_CONFIG: MandelbulbConfig = {
   sssThickness: 1.0,
   
   // Atmosphere
-  fogEnabled: true,
+  fogEnabled: false,
   fogContribution: 1.0,
   internalFogDensity: 0.0,
 
@@ -1705,7 +1705,7 @@ export const DEFAULT_QUATERNION_JULIA_CONFIG: QuaternionJuliaConfig = {
   sssThickness: 1.0,
   
   // Atmosphere
-  fogEnabled: true,
+  fogEnabled: false,
   fogContribution: 1.0,
   internalFogDensity: 0.0,
 

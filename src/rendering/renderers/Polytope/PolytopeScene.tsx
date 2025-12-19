@@ -40,7 +40,7 @@ import {
     polytopeDepthVertexShader,
     polytopeDistanceVertexShader,
 } from '@/rendering/shaders/shared/depth/customDepth.glsl';
-import { matrixToGPUUniforms } from '@/rendering/shaders/transforms/ndTransform';
+import { matrixToGPUUniforms, MAX_GPU_DIMENSION } from '@/rendering/shaders/transforms/ndTransform';
 import {
     blurToPCFSamples,
     collectShadowDataFromScene,
@@ -442,11 +442,12 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   // Compute shader composition separately to get modules/features for debug info
   const { glsl: faceFragmentShader, modules: faceShaderModules, features: faceShaderFeatures } = useMemo(() => {
     return buildFaceFragmentShader({
+      shadows: shadowEnabled,
       fog: false, // Physical fog handled by post-process
       sss: sssEnabled,
       fresnel: surfaceSettings.fresnelEnabled,
     });
-  }, [sssEnabled, surfaceSettings.fresnelEnabled]);
+  }, [shadowEnabled, sssEnabled, surfaceSettings.fresnelEnabled]);
 
   // Create face material with tracking - shows overlay during shader compilation
   const { material: faceMaterial, isCompiling: isFaceShaderCompiling } = useTrackedShaderMaterial(
@@ -520,12 +521,15 @@ export const PolytopeScene = React.memo(function PolytopeScene({
         },
         vertexShader: buildFaceVertexShader(),
         fragmentShader: faceFragmentShader,
-        transparent: surfaceSettings.faceOpacity < 1,
+        // Initial transparency state - updated dynamically in useFrame based on current opacity
+        transparent: true,
         side: DoubleSide,
-        depthWrite: surfaceSettings.faceOpacity >= 1,
+        depthWrite: false,
       });
     },
-    [faceColor, surfaceSettings.faceOpacity, surfaceSettings.fresnelEnabled, sssEnabled, faceFragmentShader]
+    // Note: faceOpacity removed from deps - it's updated via uniforms in useFrame.
+    // Changing opacity value should NOT trigger shader rebuild, only feature toggles should.
+    [faceColor, surfaceSettings.fresnelEnabled, sssEnabled, faceFragmentShader]
   );
 
 
@@ -771,6 +775,8 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     const fresnelIntensity = appearanceState.fresnelIntensity;
     const rimColor = appearanceState.edgeColor;
     const roughness = appearanceState.roughness;
+    // Face opacity - read dynamically to update uniform without shader rebuild
+    const faceOpacity = appearanceState.shaderSettings.surface.faceOpacity;
 
     // Read SSS state (shared with raymarched objects)
     const sssEnabled = appearanceState.sssEnabled;
@@ -805,17 +811,29 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     const rotationVersion = rotationState.version;
     const rotationsChanged = dimension !== cachedDimensionRef.current || rotationVersion !== prevRotationVersionRef.current;
 
-    let gpuData: ReturnType<typeof matrixToGPUUniforms>;
-    if (rotationsChanged || !cachedGpuDataRef.current) {
+    // Initialize cache if null (first run)
+    if (!cachedGpuDataRef.current) {
+      // Create initial structure
+      cachedGpuDataRef.current = {
+        rotationMatrix4D: new Matrix4(),
+        extraRotationData: new Float32Array(Math.max((MAX_GPU_DIMENSION - 4) * MAX_GPU_DIMENSION * 2, 1)),
+        extraRotationCols: new Float32Array(MAX_EXTRA_DIMS * 4),
+        depthRowSums: new Float32Array(MAX_GPU_DIMENSION),
+        dimension: dimension
+      };
+      // Force update
       const rotationMatrix = composeRotations(dimension, rotations);
-      gpuData = matrixToGPUUniforms(rotationMatrix, dimension);
-      // Update cache
-      cachedGpuDataRef.current = gpuData;
+      matrixToGPUUniforms(rotationMatrix, dimension, cachedGpuDataRef.current);
       cachedDimensionRef.current = dimension;
       prevRotationVersionRef.current = rotationVersion;
-    } else {
-      gpuData = cachedGpuDataRef.current;
+    } else if (rotationsChanged) {
+       const rotationMatrix = composeRotations(dimension, rotations);
+       matrixToGPUUniforms(rotationMatrix, dimension, cachedGpuDataRef.current);
+       cachedDimensionRef.current = dimension;
+       prevRotationVersionRef.current = rotationVersion;
     }
+
+    const gpuData = cachedGpuDataRef.current;
 
     // P3 Optimization: Cache projection distance - only recalculate when vertex count changes
     const normalizationFactor = dimension > 3 ? Math.sqrt(dimension - 3) : 1;
@@ -862,6 +880,19 @@ export const PolytopeScene = React.memo(function PolytopeScene({
 
         // Update surface color
         if (u.uColor) updateLinearColorUniform(colorCache, u.uColor.value as Color, color);
+
+        // Update opacity uniform (only for face material which has it)
+        // Also update material transparency state dynamically to avoid shader rebuild
+        if (u.uOpacity) {
+          u.uOpacity.value = faceOpacity;
+          // Update material transparency based on opacity (like Mandelbulb)
+          const isTransparent = faceOpacity < 1;
+          if (material.transparent !== isTransparent) {
+            material.transparent = isTransparent;
+            material.depthWrite = !isTransparent;
+            material.needsUpdate = true;
+          }
+        }
 
         if (u.uLightEnabled) u.uLightEnabled.value = lightEnabled;
         if (u.uLightColor) updateLinearColorUniform(cache.lightColor, u.uLightColor.value as Color, lightColor);

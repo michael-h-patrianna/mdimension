@@ -73,11 +73,9 @@ function applyRotationInPlace(
   out.fill(0);
   for (let i = 0; i < dimension; i++) {
     let sum = 0;
-    const row = matrix[i];
-    if (row) {
-      for (let j = 0; j < dimension; j++) {
-        sum += (row[j] ?? 0) * (vec[j] ?? 0);
-      }
+    const rowOffset = i * dimension;
+    for (let j = 0; j < dimension; j++) {
+      sum += (matrix[rowOffset + j] ?? 0) * (vec[j] ?? 0);
     }
     out[i] = sum;
   }

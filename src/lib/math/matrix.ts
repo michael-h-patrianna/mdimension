@@ -1,6 +1,7 @@
 /**
  * N-dimensional matrix operations
  * All operations are pure functions with no side effects
+ * Matrices are stored as flat Float32Arrays (row-major)
  */
 
 import type { MatrixND, VectorND } from './types'
@@ -18,13 +19,9 @@ export function createIdentityMatrix(dimension: number): MatrixND {
     throw new Error('Dimension must be a positive integer')
   }
 
-  const matrix: MatrixND = []
+  const matrix = new Float32Array(dimension * dimension)
   for (let i = 0; i < dimension; i++) {
-    const row: number[] = []
-    for (let j = 0; j < dimension; j++) {
-      row[j] = i === j ? 1 : 0
-    }
-    matrix[i] = row
+    matrix[i * dimension + i] = 1
   }
   return matrix
 }
@@ -41,48 +38,46 @@ export function createZeroMatrix(rows: number, cols: number): MatrixND {
     throw new Error('Matrix dimensions must be positive integers')
   }
 
-  const matrix: MatrixND = []
-  for (let i = 0; i < rows; i++) {
-    matrix[i] = new Array(cols).fill(0)
-  }
-  return matrix
+  return new Float32Array(rows * cols)
 }
 
 /**
- * Multiplies two matrices
+ * Multiplies two square matrices
  * Formula: C[i][j] = Σ(A[i][k] * B[k][j])
- * @param a - First matrix (m×n)
- * @param b - Second matrix (n×p)
- * @param out - Optional output matrix to avoid allocation (must be m×p)
- * @returns Product matrix (m×p)
+ * @param a - First matrix (n×n)
+ * @param b - Second matrix (n×n)
+ * @param out - Optional output matrix to avoid allocation (must be n×n)
+ * @returns Product matrix (n×n)
  * @throws {Error} If matrix dimensions are incompatible
  */
 export function multiplyMatrices(a: MatrixND, b: MatrixND, out?: MatrixND): MatrixND {
-  if (a.length === 0 || b.length === 0) {
+  const len = a.length
+  if (len === 0 || b.length === 0) {
     throw new Error('Cannot multiply empty matrices')
   }
 
-  const aRows = a.length
-  const aCols = a[0]!.length
-  const bRows = b.length
-  const bCols = b[0]!.length
-
-  if (aCols !== bRows) {
+  if (len !== b.length) {
     throw new Error(
-      `Matrix dimensions incompatible for multiplication: ${aRows}×${aCols} and ${bRows}×${bCols}`
+      `Matrix dimensions incompatible for multiplication: lengths ${len} and ${b.length}`
     )
   }
 
-  // Use provided output matrix or allocate new one
-  const result = out ?? createZeroMatrix(aRows, bCols)
+  const dim = Math.sqrt(len)
+  if (!Number.isInteger(dim)) {
+     throw new Error('Matrix must be square')
+  }
 
-  for (let i = 0; i < aRows; i++) {
-    for (let j = 0; j < bCols; j++) {
+  // Use provided output matrix or allocate new one
+  const result = out ?? new Float32Array(len)
+
+  for (let i = 0; i < dim; i++) {
+    const rowOffset = i * dim
+    for (let j = 0; j < dim; j++) {
       let sum = 0
-      for (let k = 0; k < aCols; k++) {
-        sum += a[i]![k]! * b[k]![j]!
+      for (let k = 0; k < dim; k++) {
+        sum += a[rowOffset + k]! * b[k * dim + j]!
       }
-      result[i]![j] = sum
+      result[rowOffset + j] = sum
     }
   }
 
@@ -91,22 +86,20 @@ export function multiplyMatrices(a: MatrixND, b: MatrixND, out?: MatrixND): Matr
 
 /**
  * Module-level scratch matrix for aliasing protection in multiplyMatricesInto.
- * Keyed by "rows,cols" to support different matrix sizes.
+ * Keyed by dimension "n"
  */
-const aliasScratchMatrices = new Map<string, MatrixND>()
+const aliasScratchMatrices = new Map<number, MatrixND>()
 
 /**
  * Gets or creates a scratch matrix for aliasing protection
- * @param rows - Number of rows
- * @param cols - Number of columns
+ * @param dim - Dimension size
  * @returns A scratch matrix of the specified size
  */
-function getAliasScratch(rows: number, cols: number): MatrixND {
-  const key = `${rows},${cols}`
-  let scratch = aliasScratchMatrices.get(key)
+function getAliasScratch(dim: number): MatrixND {
+  let scratch = aliasScratchMatrices.get(dim)
   if (!scratch) {
-    scratch = createZeroMatrix(rows, cols)
-    aliasScratchMatrices.set(key, scratch)
+    scratch = new Float32Array(dim * dim)
+    aliasScratchMatrices.set(dim, scratch)
   }
   return scratch
 }
@@ -114,97 +107,89 @@ function getAliasScratch(rows: number, cols: number): MatrixND {
 /**
  * Multiplies two matrices and writes the result directly into an output buffer.
  * This is the allocation-free variant for hot paths (animation loops).
+ * Assumes square matrices of same dimension.
  *
  * Formula: out[i][j] = Σ(A[i][k] * B[k][j])
  *
  * IMPORTANT: Handles aliasing safely - if out === a or out === b, uses internal
  * scratch buffer to compute result before copying to out.
  *
- * @param out - Pre-allocated output matrix (must be aRows × bCols). Modified in place.
- * @param a - First matrix (m×n)
- * @param b - Second matrix (n×p)
+ * @param out - Pre-allocated output matrix. Modified in place.
+ * @param a - First matrix
+ * @param b - Second matrix
  * @throws {Error} If matrix dimensions are incompatible (DEV only)
  * @note Validation is DEV-only for performance in production hot paths
  */
 export function multiplyMatricesInto(out: MatrixND, a: MatrixND, b: MatrixND): void {
-  const aRows = a.length
-  const aCols = a[0]!.length
-  const bRows = b.length
-  const bCols = b[0]!.length
-
+  const len = a.length
+  
   if (import.meta.env.DEV) {
-    if (aRows === 0 || bRows === 0) {
-      throw new Error('Cannot multiply empty matrices')
-    }
-    if (aCols !== bRows) {
-      throw new Error(
-        `Matrix dimensions incompatible for multiplication: ${aRows}×${aCols} and ${bRows}×${bCols}`
-      )
+    if (len === 0) throw new Error('Cannot multiply empty matrices')
+    if (len !== b.length || len !== out.length) {
+      throw new Error('Matrix dimensions incompatible')
     }
   }
 
+  const dim = Math.sqrt(len)
+
   // Handle aliasing: if out is the same reference as a or b, we need a temp buffer
   const isAliased = out === a || out === b
-  const target = isAliased ? getAliasScratch(aRows, bCols) : out
+  const target = isAliased ? getAliasScratch(dim) : out
 
   // Compute matrix multiplication into target
-  for (let i = 0; i < aRows; i++) {
-    for (let j = 0; j < bCols; j++) {
+  for (let i = 0; i < dim; i++) {
+    const rowOffset = i * dim
+    for (let j = 0; j < dim; j++) {
       let sum = 0
-      for (let k = 0; k < aCols; k++) {
-        sum += a[i]![k]! * b[k]![j]!
+      for (let k = 0; k < dim; k++) {
+        sum += a[rowOffset + k]! * b[k * dim + j]!
       }
-      target[i]![j] = sum
+      target[rowOffset + j] = sum
     }
   }
 
   // Copy from scratch to out if we used aliasing protection
   if (isAliased) {
-    for (let i = 0; i < aRows; i++) {
-      for (let j = 0; j < bCols; j++) {
-        out[i]![j] = target[i]![j]!
-      }
-    }
+    out.set(target)
   }
 }
 
 /**
  * Multiplies a matrix by a vector
  * Formula: b[i] = Σ(M[i][j] * v[j])
- * @param m - Matrix (n×m)
- * @param v - Vector (m)
+ * @param m - Matrix (n×n)
+ * @param v - Vector (n)
  * @param out
  * @returns Result vector (n)
  * @throws {Error} If dimensions are incompatible
  */
 export function multiplyMatrixVector(m: MatrixND, v: VectorND, out?: VectorND): VectorND {
-  if (m.length === 0) {
+  const len = m.length
+  if (len === 0) {
     throw new Error('Cannot multiply with empty matrix')
   }
 
-  const rows = m.length
-  const cols = m[0]!.length
-
-  if (cols !== v.length) {
-    throw new Error(`Matrix-vector dimensions incompatible: ${rows}×${cols} and ${v.length}`)
+  const dim = Math.sqrt(len)
+  if (dim !== v.length) {
+    throw new Error(`Matrix-vector dimensions incompatible: matrix dim ${dim} and vector len ${v.length}`)
   }
 
-  const result: VectorND = out ?? new Array(rows)
+  const result: VectorND = out ?? new Array(dim)
 
   // If reusing array, ensure it has correct length (caller should manage this for perf)
-  if (out && out.length < rows) {
-    // Output array is too small to hold all results
+  if (out && out.length < dim) {
     if (import.meta.env.DEV) {
       console.warn(
-        `multiplyMatrixVector: Output array length (${out.length}) is smaller than result rows (${rows}). Results may be truncated.`
+        `multiplyMatrixVector: Output array length (${out.length}) is smaller than result rows (${dim}). Results may be truncated.`
       )
     }
   }
 
-  for (let i = 0; i < rows; i++) {
+  for (let i = 0; i < dim; i++) {
     let sum = 0
-    for (let j = 0; j < cols; j++) {
-      sum += m[i]![j]! * v[j]!
+    const rowOffset = i * dim
+    for (let j = 0; j < dim; j++) {
+      sum += m[rowOffset + j]! * v[j]!
     }
     result[i] = sum
   }
@@ -215,21 +200,19 @@ export function multiplyMatrixVector(m: MatrixND, v: VectorND, out?: VectorND): 
 /**
  * Transposes a matrix (swap rows and columns)
  * Formula: B[j][i] = A[i][j]
- * @param m - Input matrix (m×n)
- * @returns Transposed matrix (n×m)
+ * @param m - Input matrix (n×n)
+ * @returns Transposed matrix (n×n)
  */
 export function transposeMatrix(m: MatrixND): MatrixND {
-  if (m.length === 0) {
-    return []
-  }
+  const len = m.length
+  if (len === 0) return new Float32Array(0)
 
-  const rows = m.length
-  const cols = m[0]!.length
-  const result = createZeroMatrix(cols, rows)
+  const dim = Math.sqrt(len)
+  const result = new Float32Array(len)
 
-  for (let i = 0; i < rows; i++) {
-    for (let j = 0; j < cols; j++) {
-      result[j]![i] = m[i]![j]!
+  for (let i = 0; i < dim; i++) {
+    for (let j = 0; j < dim; j++) {
+      result[j * dim + i] = m[i * dim + j]!
     }
   }
 
@@ -244,33 +227,30 @@ export function transposeMatrix(m: MatrixND): MatrixND {
  * @throws {Error} If matrix is not square
  */
 export function determinant(m: MatrixND): number {
-  if (m.length === 0) {
+  const len = m.length
+  if (len === 0) {
     throw new Error('Cannot compute determinant of empty matrix')
   }
 
-  const n = m.length
-
-  // Validate square matrix
-  for (let i = 0; i < n; i++) {
-    if (m[i]!.length !== n) {
-      throw new Error(`Matrix must be square: row ${i} has ${m[i]!.length} columns, expected ${n}`)
-    }
+  const dim = Math.sqrt(len)
+  if (!Number.isInteger(dim)) {
+      throw new Error('Matrix must be square')
   }
 
   // Base cases
-  if (n === 1) {
-    return m[0]![0]!
+  if (dim === 1) {
+    return m[0]!
   }
 
-  if (n === 2) {
-    return m[0]![0]! * m[1]![1]! - m[0]![1]! * m[1]![0]!
+  if (dim === 2) {
+    return m[0]! * m[3]! - m[1]! * m[2]!
   }
 
   // Recursive case: Laplace expansion along first row
   let det = 0
-  for (let j = 0; j < n; j++) {
+  for (let j = 0; j < dim; j++) {
     const minor = getMinor(m, 0, j)
-    const cofactor = (j % 2 === 0 ? 1 : -1) * m[0]![j]! * determinant(minor)
+    const cofactor = (j % 2 === 0 ? 1 : -1) * m[j]! * determinant(minor)
     det += cofactor
   }
 
@@ -285,18 +265,19 @@ export function determinant(m: MatrixND): number {
  * @returns Minor matrix
  */
 function getMinor(m: MatrixND, row: number, col: number): MatrixND {
-  const n = m.length
-  const minor: MatrixND = []
-
-  for (let i = 0; i < n; i++) {
+  const len = m.length
+  const dim = Math.sqrt(len)
+  const minorDim = dim - 1
+  const minor = new Float32Array(minorDim * minorDim)
+  
+  let minorIdx = 0
+  for (let i = 0; i < dim; i++) {
     if (i === row) continue
-
-    const newRow: number[] = []
-    for (let j = 0; j < n; j++) {
+    const rowOffset = i * dim
+    for (let j = 0; j < dim; j++) {
       if (j === col) continue
-      newRow.push(m[i]![j]!)
+      minor[minorIdx++] = m[rowOffset + j]!
     }
-    minor.push(newRow)
   }
 
   return minor
@@ -315,13 +296,8 @@ export function matricesEqual(a: MatrixND, b: MatrixND, epsilon = EPSILON): bool
   }
 
   for (let i = 0; i < a.length; i++) {
-    if (a[i]!.length !== b[i]!.length) {
+    if (Math.abs(a[i]! - b[i]!) >= epsilon) {
       return false
-    }
-    for (let j = 0; j < a[i]!.length; j++) {
-      if (Math.abs(a[i]![j]! - b[i]![j]!) >= epsilon) {
-        return false
-      }
     }
   }
 
@@ -335,29 +311,21 @@ export function matricesEqual(a: MatrixND, b: MatrixND, epsilon = EPSILON): bool
  * @returns Matrix with the same values
  */
 export function copyMatrix(m: MatrixND, out?: MatrixND): MatrixND {
-  const rows = m.length
-  if (rows === 0) return []
-  const cols = m[0]!.length
-  const result = out ?? new Array(rows)
-  for (let i = 0; i < rows; i++) {
-    if (!result[i]) {
-      result[i] = new Array(cols)
-    }
-    for (let j = 0; j < cols; j++) {
-      result[i]![j] = m[i]![j]!
-    }
-  }
+  const len = m.length
+  const result = out ?? new Float32Array(len)
+  result.set(m)
   return result
 }
 
 /**
  * Gets the dimensions of a matrix
  * @param m - Input matrix
- * @returns [rows, cols]
+ * @returns [rows, cols] (Assuming square)
  */
 export function getMatrixDimensions(m: MatrixND): [number, number] {
   if (m.length === 0) {
     return [0, 0]
   }
-  return [m.length, m[0]!.length]
+  const dim = Math.sqrt(m.length)
+  return [dim, dim]
 }

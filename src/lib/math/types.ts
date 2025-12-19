@@ -8,9 +8,10 @@
 export type VectorND = number[];
 
 /**
- * N-dimensional matrix represented as a 2D array
+ * N-dimensional matrix represented as a flat Float32Array (row-major)
+ * access: m[row * dimension + col]
  */
-export type MatrixND = number[][];
+export type MatrixND = Float32Array;
 
 /**
  * 3D vector with fixed dimensions [x, y, z]

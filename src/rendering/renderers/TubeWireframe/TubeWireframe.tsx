@@ -230,13 +230,16 @@ export function TubeWireframe({
           // Shadow map uniforms
           ...createShadowMapUniforms(),
         },
-        transparent: opacity < 1,
+        // Initial transparency state - updated dynamically in useFrame based on current opacity
+        transparent: true,
         depthTest: true,
-        depthWrite: opacity >= 1,
+        depthWrite: false,
         side: DoubleSide,
       })
     },
-    [color, opacity, metallic, roughness, radius, dimension, sssEnabled, fresnelEnabled, fragmentShaderString]
+    // Note: opacity removed from deps - it's updated via uniforms in useFrame.
+    // Changing opacity value should NOT trigger shader rebuild, only feature toggles should.
+    [color, metallic, roughness, radius, dimension, sssEnabled, fresnelEnabled, fragmentShaderString]
   )
 
   // Custom depth materials for shadow map rendering with nD transformation
@@ -527,6 +530,15 @@ export function TubeWireframe({
     u.uMetallic!.value = metallic
     u.uRoughness!.value = roughness
     u.uRadius!.value = radius
+
+    // Update material transparency based on opacity dynamically (like Mandelbulb)
+    // This avoids shader rebuild when opacity value changes
+    const isTransparent = opacity < 1
+    if (material.transparent !== isTransparent) {
+      material.transparent = isTransparent
+      material.depthWrite = !isTransparent
+      material.needsUpdate = true
+    }
 
     // Update lighting uniforms from visual store (cached linear conversion)
     u.uAmbientIntensity!.value = lightingState.ambientIntensity

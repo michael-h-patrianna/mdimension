@@ -40,8 +40,8 @@ const MAX_DIMENSION = 11;
 
 /**
  * Apply D-dimensional rotation matrix to a vector, writing result into pre-allocated output.
- * Matrix is row-major: result[i] = sum(matrix[i][j] * vec[j])
- * @param matrix - D×D rotation matrix
+ * Matrix is row-major: result[i] = sum(matrix[i * dimension + j] * vec[j])
+ * @param matrix - D×D rotation matrix (flat)
  * @param vec - Input vector (length D)
  * @param out - Pre-allocated output Float32Array (length MAX_DIMENSION)
  * @param dimension - Current dimension (optimization: only loop up to this)
@@ -53,11 +53,9 @@ function applyRotationInPlace(matrix: MatrixND, vec: number[] | Float32Array, ou
 
   for (let i = 0; i < dimension; i++) {
     let sum = 0;
-    const row = matrix[i];
-    if (row) {
-        for (let j = 0; j < dimension; j++) {
-            sum += (row[j] ?? 0) * (vec[j] ?? 0);
-        }
+    const rowOffset = i * dimension;
+    for (let j = 0; j < dimension; j++) {
+      sum += (matrix[rowOffset + j] ?? 0) * (vec[j] ?? 0);
     }
     out[i] = sum;
   }

@@ -49,17 +49,16 @@ function getScratchMatrices(dimension: number): {
  * @param dimension - Matrix dimension
  */
 function resetToIdentity(matrix: MatrixND, dimension: number): void {
+  matrix.fill(0)
   for (let i = 0; i < dimension; i++) {
-    for (let j = 0; j < dimension; j++) {
-      matrix[i]![j] = i === j ? 1 : 0
-    }
+    matrix[i * dimension + i] = 1
   }
 }
 
 /**
  * Creates a rotation matrix directly into an output buffer
  * Avoids allocation when called in hot paths
- * @param out - Output matrix buffer (must be dimension x dimension)
+ * @param out - Output matrix buffer (must be dimension * dimension)
  * @param dimension - Matrix dimension
  * @param planeIndex1 - First axis of the rotation plane
  * @param planeIndex2 - Second axis of the rotation plane
@@ -79,20 +78,16 @@ function createRotationMatrixInto(
   const sin = Math.sin(angleRadians)
 
   // Set rotation plane elements
-  out[planeIndex1]![planeIndex1] = cos
-  out[planeIndex2]![planeIndex2] = cos
-  out[planeIndex1]![planeIndex2] = -sin
-  out[planeIndex2]![planeIndex1] = sin
+  // out[i * dimension + j]
+  out[planeIndex1 * dimension + planeIndex1] = cos
+  out[planeIndex2 * dimension + planeIndex2] = cos
+  out[planeIndex1 * dimension + planeIndex2] = -sin
+  out[planeIndex2 * dimension + planeIndex1] = sin
 }
 
 /**
  * Calculates the number of independent rotation planes in n-dimensional space
  * Formula: n(n-1)/2
- * Examples:
- *   3D: 3(2)/2 = 3 planes (XY, XZ, YZ)
- *   4D: 4(3)/2 = 6 planes (XY, XZ, YZ, XW, YW, ZW)
- *   5D: 5(4)/2 = 10 planes
- *   6D: 6(5)/2 = 15 planes
  * @param dimension - The dimensionality of the space
  * @returns The number of rotation planes
  * @throws {Error} If dimension is less than 2
@@ -157,18 +152,6 @@ export function getAxisName(index: number): string {
 /**
  * Creates a rotation matrix for rotation in a specific plane
  *
- * For rotation in plane (i,j) by angle θ, the matrix is:
- * - R[i][i] = cos(θ)
- * - R[j][j] = cos(θ)
- * - R[i][j] = -sin(θ)
- * - R[j][i] = sin(θ)
- * - R[k][k] = 1 for all other k
- * - All other elements = 0
- *
- * This produces a proper rotation matrix with:
- * - R * R^T = I (orthogonal)
- * - det(R) = 1 (orientation-preserving)
- *
  * @param dimension - The dimensionality of the space
  * @param planeIndex1 - First axis of the rotation plane (must be < planeIndex2)
  * @param planeIndex2 - Second axis of the rotation plane (must be > planeIndex1)
@@ -205,10 +188,10 @@ export function createRotationMatrix(
   const sin = Math.sin(angleRadians)
 
   // Set rotation plane elements
-  matrix[planeIndex1]![planeIndex1] = cos
-  matrix[planeIndex2]![planeIndex2] = cos
-  matrix[planeIndex1]![planeIndex2] = -sin
-  matrix[planeIndex2]![planeIndex1] = sin
+  matrix[planeIndex1 * dimension + planeIndex1] = cos
+  matrix[planeIndex2 * dimension + planeIndex2] = cos
+  matrix[planeIndex1 * dimension + planeIndex2] = -sin
+  matrix[planeIndex2 * dimension + planeIndex1] = sin
 
   return matrix
 }
@@ -218,15 +201,13 @@ export function createRotationMatrix(
  * Rotations are applied in the order they appear when iterating the map
  *
  * Uses swap-based composition with pre-allocated scratch buffers to avoid
- * intermediate allocations during animation loops. This is critical for
- * 60fps performance in all renderers (PolytopeScene, etc.).
+ * intermediate allocations during animation loops.
  *
  * @param dimension - The dimensionality of the space
  * @param angles - Map from plane name (e.g., "XY", "XW") to angle in radians
- * @param out - Optional output matrix to avoid allocation (must be dimension x dimension)
+ * @param out - Optional output matrix to avoid allocation (must be dimension * dimension)
  * @returns The composed rotation matrix
  * @throws {Error} If invalid plane names are provided (DEV only)
- * @note Validation is DEV-only for performance in production hot paths
  */
 export function composeRotations(
   dimension: number,

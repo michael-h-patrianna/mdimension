@@ -126,8 +126,20 @@ VolumeResult volumeRaymarch(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar
             lowDensityCount = 0;
         }
 
+        // Nodal Surface Opacity Boost (Fast Mode)
+        float rhoAlpha = rho;
+#ifdef USE_NODAL
+        if (uNodalEnabled) {
+             // Robust nodal detection matching HQ mode
+             if (sCenter < -5.0 && sCenter > -12.0) {
+                 float intensity = 1.0 - smoothstep(-12.0, -5.0, sCenter);
+                 rhoAlpha += 5.0 * uNodalStrength * intensity;
+             }
+        }
+#endif
+
         // Compute local alpha
-        float alpha = computeAlpha(rho, stepLen, uDensityGain);
+        float alpha = computeAlpha(rhoAlpha, stepLen, uDensityGain);
 
         // Skip negligible contributions
         if (alpha > 0.001) {
@@ -201,18 +213,11 @@ VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tF
     vec3 dispOffsetB = vec3(0.0);
 
     if (uDispersionEnabled && uDispersionStrength > 0.0) {
-        float dispAmount = uDispersionStrength * 0.05; // Scaling factor
+        float dispAmount = uDispersionStrength * 0.15; // Increased scale for visibility
 
         if (uDispersionDirection == 0) { // Radial (from center)
-             // We can't know "center" easily here without sampling position first.
-             // Updated inside loop.
-        } else { // View-aligned (tangent to view? or along view?)
-             // "View-aligned" usually means screen space offset.
-             // Here we are in world space.
-             // Simple: offset along camera Up/Right?
-             // Or just simple constant world vector?
-             // Let's use camera up/right proxy or just arbitrary orthogonal vectors.
-             // Cross(rayDir, Up).
+             // Updated inside loop
+        } else { // View-aligned
              vec3 right = normalize(cross(rayDir, vec3(0.0, 1.0, 0.0)));
              dispOffsetR = right * dispAmount;
              dispOffsetB = -right * dispAmount;
@@ -231,7 +236,7 @@ VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tF
         // Radial dispersion update per sample
         if (uDispersionEnabled && uDispersionDirection == 0) {
              vec3 normalProxy = normalize(pos); // From center
-             float dispAmount = uDispersionStrength * 0.05;
+             float dispAmount = uDispersionStrength * 0.15;
              dispOffsetR = normalProxy * dispAmount;
              dispOffsetB = -normalProxy * dispAmount;
         }
@@ -254,32 +259,42 @@ VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tF
                  rhoRGB.b = dInfoB.x;
              } else {
                  // Fast Mode: Gradient Hack
-                 // Needs gradient. Calculate it first.
-                 // We compute gradient anyway for lighting below.
-                 // Move gradient calc up?
-                 // Gradient calc uses sCenter.
-
                  vec3 gradient = computeDensityGradientFast(pos, animTime, 0.05, sCenter);
 
-                 // Extrapolate log-density (s) then convert to rho
-                 // s_new = s + dot(grad, offset)
                  float s_r = sCenter + dot(gradient, dispOffsetR);
                  float s_b = sCenter + dot(gradient, dispOffsetB);
 
-                 // rho = exp(s)
                  rhoRGB.r = exp(s_r);
                  rhoRGB.b = exp(s_b);
-
-                 // Reuse gradient for lighting later
              }
         }
 #endif
 
-        // Alpha per channel
+        // Nodal Surface Opacity Boost
+        // We calculate a separate density for alpha/opacity to make nodes visible (opaque)
+        // while keeping the original density for emission color logic (so it knows it's a node)
+        vec3 rhoAlpha = rhoRGB;
+
+#ifdef USE_NODAL
+        if (uNodalEnabled) {
+            // Use raw log-density for robust detection of nodal shells
+            // Range: -12 (approx 6e-6) to -5 (approx 0.006)
+            // This captures the transition zone around nodes without hitting background noise
+            if (sCenter < -5.0 && sCenter > -12.0) {
+                // Boost factor: stronger when density is lower (closer to node core)
+                // 1.0 at s=-12, 0.0 at s=-5
+                float intensity = 1.0 - smoothstep(-12.0, -5.0, sCenter);
+                float boost = 5.0 * uNodalStrength * intensity;
+                rhoAlpha += vec3(boost);
+            }
+        }
+#endif
+
+        // Alpha per channel (using boosted density)
         vec3 alpha;
-        alpha.r = computeAlpha(rhoRGB.r, stepLen, uDensityGain);
-        alpha.g = computeAlpha(rhoRGB.g, stepLen, uDensityGain);
-        alpha.b = computeAlpha(rhoRGB.b, stepLen, uDensityGain);
+        alpha.r = computeAlpha(rhoAlpha.r, stepLen, uDensityGain);
+        alpha.g = computeAlpha(rhoAlpha.g, stepLen, uDensityGain);
+        alpha.b = computeAlpha(rhoAlpha.b, stepLen, uDensityGain);
 
         if (alpha.g > 0.001 || alpha.r > 0.001 || alpha.b > 0.001) {
             // Track entry point (use Green/Center channel)
@@ -296,35 +311,18 @@ VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tF
             centroidWeight += weight;
 
             // OPTIMIZED: Use forward differences with pre-computed center value
-            // Note: If Fast Dispersion used gradient, we calculated it already?
-            // For code clarity, let's just call it again or assume compiler optimization.
-            // Shader compiler will likely deduplicate if identical calls.
             vec3 gradient = computeDensityGradientFast(pos, animTime, 0.05, sCenter);
             
-            // Emission needs to be per-channel if density varies?
-            // computeEmissionLit takes rho.
-            // Ideally we compute emission for R, G, B separately using their rho.
-            // But computeEmissionLit is expensive (lighting loop).
-            // Approximation: Compute for center rho, then modulate by density ratio?
-            // Or: if dispersion is enabled, we assume color is white-ish anyway?
-            // Let's compute lighting for center (Green) channel and apply to all, 
-            // but modulate intensity by rhoRGB?
-            // Better: Compute lighting once using center rho/gradient.
-            // Apply to R, G, B scaled by their density?
-            
+            // Compute emission using ORIGINAL density (rhoRGB) so coloring logic works
+            // Use Green channel as representative for center
             vec3 emissionCenter = computeEmissionLit(rhoRGB.g, phase, pos, gradient, viewDir);
             
-            // If rho is different, emission intensity should be different.
-            // Estimate emission ratio.
-            // Emission ~ rho (roughly, plus lighting).
+            // Modulate emission for R/B channels based on their density relative to G
             vec3 emission;
             emission.g = emissionCenter.g;
             emission.r = emissionCenter.r * (rhoRGB.r / max(rhoRGB.g, 0.0001));
             emission.b = emissionCenter.b * (rhoRGB.b / max(rhoRGB.g, 0.0001));
             
-            // This assumes light color is white. If light is colored, this might shift colors weirdly.
-            // But acceptable for dispersion effect.
-
             accColor += transmittance * alpha * emission;
             transmittance *= (vec3(1.0) - alpha);
         }

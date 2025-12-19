@@ -12,7 +12,7 @@
  * @module rendering/materials/shaderCompilationTracking
  */
 
-import { usePerformanceStore } from '@/stores/performanceStore';
+import { usePerformanceStore } from '@/stores/performanceStore'
 
 /**
  * Mark a shader as compiling and return cleanup function.
@@ -21,23 +21,40 @@ import { usePerformanceStore } from '@/stores/performanceStore';
  * @returns Cleanup function to mark shader as no longer compiling
  */
 export function trackShaderCompilation(shaderName: string): () => void {
-  usePerformanceStore.getState().setShaderCompiling(shaderName, true);
+  usePerformanceStore.getState().setShaderCompiling(shaderName, true)
 
   return () => {
-    usePerformanceStore.getState().setShaderCompiling(shaderName, false);
-  };
+    usePerformanceStore.getState().setShaderCompiling(shaderName, false)
+  }
 }
 
 /**
- * Execute callback after one animation frame (deferred execution).
- * Allows React to paint the overlay before callback runs.
+ * Execute callback after overlay has painted (double RAF deferred execution).
  *
- * @param callback - Function to execute after delay
+ * Uses double requestAnimationFrame to ensure the compilation overlay is
+ * actually visible before the callback runs. Single RAF fires before paint,
+ * so shader compilation would block before the overlay appears.
+ *
+ * Timeline:
+ * 1. First RAF: overlay render is queued for browser paint
+ * 2. Second RAF: browser has painted, safe to run blocking work
+ *
+ * @param callback - Function to execute after overlay has painted
  * @returns Cleanup function to cancel scheduled execution
  */
 export function deferredExecute(callback: () => void): () => void {
-  const frameId = requestAnimationFrame(callback);
-  return () => cancelAnimationFrame(frameId);
+  let cancelled = false
+  const frameId = requestAnimationFrame(() => {
+    if (cancelled) return
+    requestAnimationFrame(() => {
+      if (cancelled) return
+      callback()
+    })
+  })
+  return () => {
+    cancelled = true
+    cancelAnimationFrame(frameId)
+  }
 }
 
 /**
@@ -51,17 +68,17 @@ export function deferredExecute(callback: () => void): () => void {
  * @returns Cleanup function to cancel scheduled execution
  */
 export function waitForGPUCompile(callback: () => void): () => void {
-  let cancelled = false;
+  let cancelled = false
 
   requestAnimationFrame(() => {
-    if (cancelled) return;
+    if (cancelled) return
     requestAnimationFrame(() => {
-      if (cancelled) return;
-      callback();
-    });
-  });
+      if (cancelled) return
+      callback()
+    })
+  })
 
   return () => {
-    cancelled = true;
-  };
+    cancelled = true
+  }
 }

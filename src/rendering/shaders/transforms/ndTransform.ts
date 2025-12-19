@@ -30,6 +30,17 @@ export const MAX_GPU_DIMENSION = 11;
 export const EXTRA_DIMS_SIZE = MAX_GPU_DIMENSION - 4;
 
 /**
+ * Interface for the GPU uniform data structure to support object reuse
+ */
+export interface NDTransformGPUData {
+  rotationMatrix4D: Matrix4;
+  extraRotationData: Float32Array;
+  extraRotationCols: Float32Array;
+  depthRowSums: Float32Array;
+  dimension: number;
+}
+
+/**
  * Converts an N-dimensional rotation matrix to GPU-compatible uniforms.
  *
  * For dimensions 1-4: Uses a single mat4
@@ -39,76 +50,69 @@ export const EXTRA_DIMS_SIZE = MAX_GPU_DIMENSION - 4;
  *
  * @param matrix - N-dimensional rotation matrix
  * @param dimension - Current dimension
+ * @param out - Optional output object to avoid allocation
  * @returns Object with mat4 and extra rotation data for full N-D rotation
  */
 export function matrixToGPUUniforms(
   matrix: MatrixND,
-  dimension: number
-): {
-  rotationMatrix4D: Matrix4;
-  extraRotationData: Float32Array;
-  extraRotationCols: Float32Array;
-  depthRowSums: Float32Array;
-  dimension: number;
-} {
+  dimension: number,
+  out?: NDTransformGPUData
+): NDTransformGPUData {
+  const result = out ?? {
+    rotationMatrix4D: new Matrix4(),
+    extraRotationData: new Float32Array(Math.max((MAX_GPU_DIMENSION - 4) * MAX_GPU_DIMENSION * 2, 1)),
+    extraRotationCols: new Float32Array(EXTRA_DIMS_SIZE * 4),
+    depthRowSums: new Float32Array(MAX_GPU_DIMENSION),
+    dimension: dimension
+  };
+  
+  result.dimension = dimension;
+
   // Create mat4 for first 4x4 block (row-major to column-major for Three.js)
-  const mat4Elements = new Array(16).fill(0);
+  const mat4Elements = result.rotationMatrix4D.elements;
 
   // Copy the first 4x4 block (or smaller if dimension < 4)
   const size = Math.min(dimension, 4);
+  
+  // Clear matrix first (identity)
+  result.rotationMatrix4D.identity();
+  
   for (let row = 0; row < size; row++) {
     for (let col = 0; col < size; col++) {
       // Three.js Matrix4 uses column-major order
-      mat4Elements[col * 4 + row] = matrix[row]?.[col] ?? (row === col ? 1 : 0);
+      // Access flat matrix: matrix[row * dimension + col]
+      mat4Elements[col * 4 + row] = matrix[row * dimension + col] ?? (row === col ? 1 : 0);
     }
   }
 
-  // Fill diagonal for unused dimensions
-  for (let i = size; i < 4; i++) {
-    mat4Elements[i * 4 + i] = 1;
-  }
-
-  const rotationMatrix4D = new Matrix4();
-  rotationMatrix4D.fromArray(mat4Elements);
-
-  // For dimensions > 4, store extra rotation data
-  // This includes the additional rows/columns of the rotation matrix
-  // Format: [row4, row5, row6, ...] where each row is the full dimension length
-  const extraSize = dimension > 4 ? (dimension - 4) * dimension * 2 : 0;
-  const extraRotationData = new Float32Array(Math.max(extraSize, 1));
-
-  // Extra rotation columns: how dimensions 5+ affect x,y,z,w outputs
-  // Format: for each extra dim (5,6,...), store [contribution to x, y, z, w]
-  // So extraRotationCols[i*4 + j] = matrix[j][i+4] (how dim i+4 affects output j)
-  const numExtraDims = Math.max(dimension - 4, 0);
-  const extraRotationCols = new Float32Array(EXTRA_DIMS_SIZE * 4);
-
-  // Depth row sums: for each INPUT dimension j, sum of matrix[i][j] for i >= 4
-  // This computes how each input dimension contributes to the rotated "depth" (dims 4+)
-  const depthRowSums = new Float32Array(MAX_GPU_DIMENSION);
+  // Clear extra arrays
+  result.extraRotationData.fill(0);
+  result.extraRotationCols.fill(0);
+  result.depthRowSums.fill(0);
 
   if (dimension > 4) {
     let idx = 0;
     // Store extra rows (rows 4+)
     for (let row = 4; row < dimension; row++) {
       for (let col = 0; col < dimension; col++) {
-        extraRotationData[idx++] = matrix[row]?.[col] ?? 0;
+        result.extraRotationData[idx++] = matrix[row * dimension + col] ?? 0;
       }
     }
     // Store extra columns for first 4 rows (cols 4+)
     for (let row = 0; row < 4; row++) {
       for (let col = 4; col < dimension; col++) {
-        extraRotationData[idx++] = matrix[row]?.[col] ?? 0;
+        result.extraRotationData[idx++] = matrix[row * dimension + col] ?? 0;
       }
     }
 
     // Build extraRotationCols in shader-friendly format
+    const numExtraDims = Math.max(dimension - 4, 0);
     // For each extra dimension i (0 = dim 5, 1 = dim 6, etc.)
     for (let extraIdx = 0; extraIdx < numExtraDims; extraIdx++) {
       const col = extraIdx + 4; // The actual column in the matrix
       // Store how this extra dimension affects outputs 0,1,2,3 (x,y,z,w)
       for (let row = 0; row < 4; row++) {
-        extraRotationCols[extraIdx * 4 + row] = matrix[row]?.[col] ?? 0;
+        result.extraRotationCols[extraIdx * 4 + row] = matrix[row * dimension + col] ?? 0;
       }
     }
 
@@ -116,19 +120,13 @@ export function matrixToGPUUniforms(
     for (let col = 0; col < dimension; col++) {
       let sum = 0;
       for (let row = 4; row < dimension; row++) {
-        sum += matrix[row]?.[col] ?? 0;
+        sum += matrix[row * dimension + col] ?? 0;
       }
-      depthRowSums[col] = sum;
+      result.depthRowSums[col] = sum;
     }
   }
 
-  return {
-    rotationMatrix4D,
-    extraRotationData,
-    extraRotationCols,
-    depthRowSums,
-    dimension,
-  };
+  return result;
 }
 
 /**
@@ -152,80 +150,91 @@ export function generateNDTransformVertexShader(maxDimension: number = MAX_GPU_D
 // Supports dimensions 3 to ${maxDimension}
 
 // Uniforms
-uniform mat4 rotationMatrix4D;
+uniform mat4 uRotationMatrix4D;
 uniform int uDimension;
 uniform vec4 uScale4D;
 uniform float uExtraScales[${extraDims}];
-uniform float uExtraRotationData[${(maxDimension - 4) * maxDimension * 2}];
+uniform float uExtraRotationCols[${extraDims * 4}];
+uniform float uDepthRowSums[11];
 
 // Projection uniforms
 uniform float uProjectionDistance;
 
 // Attributes for extra dimensions (beyond xyz)
-attribute float extraDim0; // W (4th dimension)
-${Array.from({ length: extraDims - 1 }, (_, i) => `attribute float extraDim${i + 1}; // ${i + 5}th dimension`).join('\n')}
+attribute float aExtraDim0; // W (4th dimension)
+${Array.from({ length: extraDims - 1 }, (_, i) => `attribute float aExtraDim${i + 1}; // ${i + 5}th dimension`).join('\n')}
 
 // Varying for fragment shader
 varying vec3 vNormal;
 varying float vDepth;
 
-// Apply N-dimensional rotation
 vec3 applyNDRotation(vec3 pos3, float w, float extraDims[${extraDims}]) {
-  // Build full N-dimensional position
+  // Build full N-dimensional position vector
   vec4 pos4 = vec4(pos3, w);
 
   // Apply 4x4 rotation to first 4 dimensions
-  vec4 rotated4 = rotationMatrix4D * pos4;
+  vec4 rotated4 = uRotationMatrix4D * pos4;
 
-  // For dimensions > 4, apply extra rotation
-  // This is a simplified version - full implementation would
-  // multiply with the extra rotation data
-
-  return rotated4.xyz;
-}
-
-// Apply perspective projection from N-D to 3D
-vec3 applyProjection(vec3 pos3, float w, float extraDims[${extraDims}]) {
-  // Compute effective depth from higher dimensions
-  float effectiveDepth = w;
-  float normFactor = uDimension > 4 ? sqrt(float(uDimension - 3)) : 1.0;
-
+  // Apply contribution from extra dimensions to the first 4 output dimensions
+  // extraRotationCols stores columns 4..10 of rows 0..3
   for (int i = 0; i < ${extraDims}; i++) {
     if (i + 5 <= uDimension) {
-      effectiveDepth += extraDims[i];
+       float val = extraDims[i];
+       rotated4.x += uExtraRotationCols[i * 4 + 0] * val;
+       rotated4.y += uExtraRotationCols[i * 4 + 1] * val;
+       rotated4.z += uExtraRotationCols[i * 4 + 2] * val;
+       rotated4.w += uExtraRotationCols[i * 4 + 3] * val;
     }
   }
-  effectiveDepth /= normFactor;
-
-  // Apply perspective scaling (matches CPU projection formula)
-  float factor = 1.0 / (uProjectionDistance - effectiveDepth);
-  return pos3 * factor;
+  
+  return rotated4.xyz;
 }
 
 void main() {
   // Collect extra dimensions into array
   float extraDims[${extraDims}];
-  ${Array.from({ length: extraDims }, (_, i) => `extraDims[${i}] = extraDim${i};`).join('\n  ')}
+  ${Array.from({ length: extraDims }, (_, i) => `extraDims[${i}] = aExtraDim${i};`).join('\n  ')}
 
   // Apply scale
   vec3 scaledPos = position * uScale4D.xyz;
-  float scaledW = extraDim0 * uScale4D.w;
+  float scaledW = aExtraDim0 * uScale4D.w;
   for (int i = 0; i < ${extraDims}; i++) {
     if (i + 5 <= uDimension) {
       extraDims[i] *= uExtraScales[i];
     }
   }
 
-  // Apply rotation
+  // Apply Rotation
   vec3 rotatedPos = applyNDRotation(scaledPos, scaledW, extraDims);
+  
+  // Calculate depth for projection
+  float inputs[11];
+  inputs[0] = scaledPos.x;
+  inputs[1] = scaledPos.y;
+  inputs[2] = scaledPos.z;
+  inputs[3] = scaledW;
+  for(int i=0; i<${extraDims}; i++) inputs[4+i] = extraDims[i];
+  
+  float rotatedDepth = 0.0;
+  for(int i=0; i<11; i++) {
+     if (i < uDimension) {
+        rotatedDepth += inputs[i] * uDepthRowSums[i];
+     }
+  }
+  
+  // Normalize and project
+  float normFactor = uDimension > 4 ? sqrt(float(uDimension - 3)) : 1.0;
+  float finalDepth = rotatedDepth / normFactor;
+  float factor = 1.0 / (uProjectionDistance - finalDepth);
+  
+  // Guard against division by zero
+  if (abs(uProjectionDistance - finalDepth) < 0.0001) factor = 1.0;
 
-  // Apply projection
-  vec3 projectedPos = applyProjection(rotatedPos, scaledW, extraDims);
-
-  // Standard MVP transform for final position
+  vec3 projectedPos = rotatedPos * factor;
+  
   gl_Position = projectionMatrix * modelViewMatrix * vec4(projectedPos, 1.0);
-
-  // Pass depth for fragment shader (for color variation)
+  
+  // Pass depth for simple shading
   vDepth = (scaledW + extraDims[0]) * 0.5 + 0.5;
 }
 `;
@@ -269,7 +278,8 @@ export function createNDTransformUniforms(dimension: number): Record<string, { v
     uDimension: { value: dimension },
     uScale4D: { value: [1, 1, 1, 1] },
     uExtraScales: { value: new Float32Array(extraDims).fill(1) },
-    uExtraRotationData: { value: new Float32Array((MAX_GPU_DIMENSION - 4) * MAX_GPU_DIMENSION * 2) },
+    uExtraRotationCols: { value: new Float32Array(extraDims * 4).fill(0) },
+    uDepthRowSums: { value: new Float32Array(MAX_GPU_DIMENSION).fill(0) },
     uProjectionDistance: { value: 5.0 },
     uColor: { value: [1, 1, 1] },
     uOpacity: { value: 1.0 },
@@ -292,11 +302,15 @@ export function updateNDTransformUniforms(
   scales: number[],
   projectionDistance: number
 ): void {
+  // Note: This still creates garbage if not passed a target.
+  // Ideally this function should be deprecated in favor of manual update 
+  // using matrixToGPUUniforms with a persistent target object.
   const gpuData = matrixToGPUUniforms(rotationMatrix, dimension);
 
   uniforms.rotationMatrix4D!.value = gpuData.rotationMatrix4D;
   uniforms.uDimension!.value = dimension;
-  uniforms.uExtraRotationData!.value = gpuData.extraRotationData;
+  uniforms.uExtraRotationCols!.value = gpuData.extraRotationCols;
+  uniforms.uDepthRowSums!.value = gpuData.depthRowSums;
   uniforms.uProjectionDistance!.value = projectionDistance;
 
   // Update scales
