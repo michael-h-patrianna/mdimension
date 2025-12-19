@@ -199,6 +199,9 @@ VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tF
     float centroidWeight = 0.0;
 
     int sampleCount = uSampleCount > 0 ? uSampleCount : 48; // Fallback to 48 if not set
+    // Fast mode: halve sample count for better performance during rotation
+    // This applies even with dispersion enabled (via gradient hack)
+    if (uFastMode) sampleCount /= 2;
     sampleCount = clamp(sampleCount, 16, MAX_VOLUME_SAMPLES); // Allow down to 16 for performance
 
     float stepLen = (tFar - tNear) / float(sampleCount);
@@ -252,13 +255,16 @@ VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tF
 
 #ifdef USE_DISPERSION
         if (uDispersionEnabled && uDispersionStrength > 0.0) {
-             if (uDispersionQuality == 1) { // High Quality: Full Sampling
+             // Force gradient hack when in fast mode (during rotation)
+             // Full sampling (3x density evaluations) is too expensive for interactive use
+             bool useFullSampling = (uDispersionQuality == 1) && !uFastMode;
+             if (useFullSampling) { // High Quality: Full Sampling
                  vec3 dInfoR = sampleDensityWithPhase(pos + dispOffsetR, animTime);
                  vec3 dInfoB = sampleDensityWithPhase(pos + dispOffsetB, animTime);
                  rhoRGB.r = dInfoR.x;
                  rhoRGB.b = dInfoB.x;
              } else {
-                 // Fast Mode: Gradient Hack
+                 // Gradient Hack: extrapolate R/B from density gradient (much faster)
                  vec3 gradient = computeDensityGradientFast(pos, animTime, 0.05, sCenter);
 
                  float s_r = sCenter + dot(gradient, dispOffsetR);

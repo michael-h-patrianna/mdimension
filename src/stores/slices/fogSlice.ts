@@ -52,7 +52,7 @@ export type FogSlice = FogSliceState & FogSliceActions
 // ============================================================================
 
 export const DEFAULT_FOG_STATE: FogSliceState = {
-  fogEnabled: true,
+  fogEnabled: false,
   fogDensity: 0.05,
   fogColor: '#e5e2e2',
   fogHeight: 15.0,

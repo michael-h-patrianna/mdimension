@@ -74,10 +74,10 @@ export type RaymarchQuality = 'fast' | 'balanced' | 'quality' | 'ultra'
  * @see SchroedingerMesh for usage with screen coverage adaptation
  */
 export const RAYMARCH_QUALITY_TO_SAMPLES: Record<RaymarchQuality, number> = {
-  fast: 16,      // Noticeable banding, fastest rendering
-  balanced: 32,  // Good balance for most hardware
-  quality: 48,   // Smooth gradients, moderate performance cost
-  ultra: 64,     // Maximum smoothness, may impact framerate
+  fast: 16, // Noticeable banding, fastest rendering
+  balanced: 32, // Good balance for most hardware
+  quality: 48, // Smooth gradients, moderate performance cost
+  ultra: 64, // Maximum smoothness, may impact framerate
 }
 
 /**
@@ -88,10 +88,10 @@ export const RAYMARCH_QUALITY_TO_SAMPLES: Record<RaymarchQuality, number> = {
  * @see MandelbulbMesh, QuaternionJuliaMesh for usage
  */
 export const RAYMARCH_QUALITY_TO_MULTIPLIER: Record<RaymarchQuality, number> = {
-  fast: 0.25,    // 4x larger steps, fewer iterations
+  fast: 0.25, // 4x larger steps, fewer iterations
   balanced: 0.5, // 2x larger steps, good balance
   quality: 0.75, // 1.33x larger steps, high detail
-  ultra: 1.0,    // Full resolution, maximum detail
+  ultra: 1.0, // Full resolution, maximum detail
 }
 
 /**
@@ -892,7 +892,7 @@ export interface MandelbulbConfig {
   sssColor: string
   /** SSS thickness (0.1-5.0) */
   sssThickness: number
-  
+
   // === Atmosphere ===
   /** Enable scene fog integration */
   fogEnabled: boolean
@@ -1004,7 +1004,7 @@ export const DEFAULT_MANDELBROT_CONFIG: MandelbulbConfig = {
   sssIntensity: 1.0,
   sssColor: '#ff8844',
   sssThickness: 1.0,
-  
+
   // Atmosphere
   fogEnabled: false,
   fogContribution: 1.0,
@@ -1048,8 +1048,17 @@ export type SchroedingerPresetName =
 export type SchroedingerPalette =
   | 'monochrome'
   | 'complement'
-  | 'triadic' | 'analogous' | 'shifted'
-  | 'nebula' | 'sunset' | 'aurora' | 'ocean' | 'fire' | 'ice' | 'forest' | 'plasma'
+  | 'triadic'
+  | 'analogous'
+  | 'shifted'
+  | 'nebula'
+  | 'sunset'
+  | 'aurora'
+  | 'ocean'
+  | 'fire'
+  | 'ice'
+  | 'forest'
+  | 'plasma'
 
 /**
  * Quality presets for Schroedinger computation
@@ -1074,10 +1083,25 @@ export type SchroedingerQuantumMode = 'harmonicOscillator' | 'hydrogenOrbital' |
  * Named hydrogen orbital presets (1s, 2s, 2p, 3d, 4f, etc.)
  */
 export type HydrogenOrbitalPresetName =
-  | '1s' | '2s' | '3s' | '4s'
-  | '2px' | '2py' | '2pz' | '3px' | '3py' | '3pz'
-  | '3dxy' | '3dxz' | '3dyz' | '3dz2' | '3dx2y2'
-  | '4fz3' | '4fxyz' | '4fy3x2y2' | '4fzx2y2'
+  | '1s'
+  | '2s'
+  | '3s'
+  | '4s'
+  | '2px'
+  | '2py'
+  | '2pz'
+  | '3px'
+  | '3py'
+  | '3pz'
+  | '3dxy'
+  | '3dxz'
+  | '3dyz'
+  | '3dz2'
+  | '3dx2y2'
+  | '4fz3'
+  | '4fxyz'
+  | '4fy3x2y2'
+  | '4fzx2y2'
   | 'custom'
 
 /**
@@ -1085,8 +1109,13 @@ export type HydrogenOrbitalPresetName =
  * Format: {orbital}_{dimension}d (e.g., '2pz_4d' = 2pz orbital in 4D)
  */
 export type HydrogenNDPresetName =
-  | '2pz_4d' | '3dz2_4d' | '2pz_5d' | '3dz2_5d'
-  | '2pz_6d' | '3dz2_6d' | '4fz3_6d'
+  | '2pz_4d'
+  | '3dz2_4d'
+  | '2pz_5d'
+  | '3dz2_5d'
+  | '2pz_6d'
+  | '3dz2_6d'
+  | '4fz3_6d'
   | 'custom'
 
 /**
@@ -1620,7 +1649,7 @@ export interface QuaternionJuliaConfig {
   sssColor: string
   /** SSS thickness (0.1-5.0) */
   sssThickness: number
-  
+
   // === Atmosphere ===
   /** Enable scene fog integration */
   fogEnabled: boolean
@@ -1628,7 +1657,7 @@ export interface QuaternionJuliaConfig {
   fogContribution: number
   /** Internal fog density (0.0-1.0) */
   internalFogDensity: number
-  
+
   // === Raymarching Quality ===
   /** Unified raymarching quality preset (affects step count) */
   raymarchQuality: RaymarchQuality
@@ -1703,7 +1732,7 @@ export const DEFAULT_QUATERNION_JULIA_CONFIG: QuaternionJuliaConfig = {
   sssIntensity: 1.0,
   sssColor: '#ff8844',
   sssThickness: 1.0,
-  
+
   // Atmosphere
   fogEnabled: false,
   fogContribution: 1.0,
@@ -1712,7 +1741,6 @@ export const DEFAULT_QUATERNION_JULIA_CONFIG: QuaternionJuliaConfig = {
   // Raymarching Quality
   raymarchQuality: 'balanced',
 }
-
 
 // ============================================================================
 // Wythoff Polytope Configuration
@@ -1730,13 +1758,13 @@ export type WythoffSymmetryGroup = 'A' | 'B' | 'D'
  * Preset Wythoff polytope types with descriptive names
  */
 export type WythoffPreset =
-  | 'regular'        // Regular polytope (first node ringed)
-  | 'rectified'      // Rectified (second node ringed)
-  | 'truncated'      // Truncated (first two nodes ringed)
-  | 'cantellated'    // Cantellated (first and third nodes ringed)
-  | 'runcinated'     // Runcinated (first and last nodes ringed)
-  | 'omnitruncated'  // All nodes ringed
-  | 'custom'         // Custom Wythoff symbol
+  | 'regular' // Regular polytope (first node ringed)
+  | 'rectified' // Rectified (second node ringed)
+  | 'truncated' // Truncated (first two nodes ringed)
+  | 'cantellated' // Cantellated (first and third nodes ringed)
+  | 'runcinated' // Runcinated (first and last nodes ringed)
+  | 'omnitruncated' // All nodes ringed
+  | 'custom' // Custom Wythoff symbol
 
 /**
  * Configuration for Wythoff polytope generation
@@ -1813,7 +1841,6 @@ export const DEFAULT_WYTHOFF_SCALES: Record<WythoffPreset, number> = {
   omnitruncated: 3.0,
   custom: 2.0,
 }
-
 
 // ============================================================================
 // Combined Object Parameters

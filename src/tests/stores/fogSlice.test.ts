@@ -15,8 +15,8 @@ describe('fogSlice', () => {
   })
 
   describe('initial state', () => {
-    it('should have fog enabled by default', () => {
-      expect(useEnvironmentStore.getState().fogEnabled).toBe(true)
+    it('should have fog disabled by default', () => {
+      expect(useEnvironmentStore.getState().fogEnabled).toBe(false)
     })
 
     it('should have default fog density', () => {
