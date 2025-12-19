@@ -68,7 +68,7 @@ export const DEFAULT_FOG_STATE: FogSliceState = {
   fogDensity: 0.05,
   fogNear: 10,
   fogFar: 50,
-  fogColor: '#1a1a1f',
+  fogColor: '#e5e2e2',
   fogHeight: 15.0,
   fogFalloff: 0.08,
   fogNoiseScale: 0.15,

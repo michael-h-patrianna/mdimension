@@ -174,34 +174,47 @@ float getShadowVisibility(vec3 worldPos) {
 
 // Fog Density Function
 //
-// Computes fog density at a world position using:
-// 1. Height-based exponential falloff
-// 2. Soft height cap (smooth cutoff above fogHeight)
-// 3. Noise modulation for turbulent, organic appearance
+// Gothic horror / Hound of Baskerville style fog:
+// - Heavy, still, oppressive atmosphere
+// - Barely perceptible creeping movement
+// - Dense banks with thin veils between them
 float getFogDensity(vec3 pos) {
     float heightLimit = max(uFogHeight, 0.001);
 
-    // 1. Height-based exponential falloff
+    // 1. Height-based exponential falloff - fog clings to the ground
     float heightDensity = exp(-max(0.0, pos.y) * uFogFalloff);
 
     // Soft height cap - smoothly fade out above fogHeight
-    float heightMask = 1.0 - smoothstep(heightLimit * 0.7, heightLimit, pos.y);
+    float heightMask = 1.0 - smoothstep(heightLimit * 0.5, heightLimit, pos.y);
     heightDensity *= heightMask;
 
-    // 2. Noise modulation for organic turbulence
-    // Use world-scale coordinates directly (uFogNoiseScale controls feature size)
-    // Animate slowly to avoid flickering
-    vec3 noisePos = pos * uFogNoiseScale + uFogNoiseSpeed * uTime * 0.1;
-
-    // Multi-octave noise for richer detail (FBM-like)
-    float noise = sampleNoise(noisePos);
-    noise += sampleNoise(noisePos * 2.0) * 0.5;
-    noise += sampleNoise(noisePos * 4.0) * 0.25;
-    noise /= 1.75; // Normalize
-
-    // Soft contrast - noise MODULATES density (0.3 to 1.0 range), never zeroes it
-    // This prevents holes in the fog and creates smooth wisps
-    float noiseModulation = 0.3 + noise * 0.7;
+    // 2. Static fog structure - the fog banks themselves barely move
+    // Large scale: permanent dense/sparse regions (like fog banks on a moor)
+    vec3 staticPos = pos * uFogNoiseScale;
+    float banks = sampleNoise(staticPos * 0.08);
+    banks += sampleNoise(staticPos * 0.15) * 0.5;
+    banks /= 1.5;
+    banks = smoothstep(0.25, 0.75, banks); // Distinct thick banks
+    
+    // Medium structure: cloud-like forms within the banks
+    float structure = sampleNoise(staticPos * 0.4);
+    structure += sampleNoise(staticPos * 0.8) * 0.4;
+    structure /= 1.4;
+    
+    // 3. Extremely slow creeping motion - almost imperceptible
+    // Time scale: 0.002 means 500 seconds for one noise cycle
+    float creepTime = uTime * 0.002;
+    vec3 creepOffset = vec3(creepTime, 0.0, creepTime * 0.7);
+    
+    // Subtle wisp animation - the only thing that visibly moves
+    float wisps = sampleNoise(staticPos * 1.5 + creepOffset);
+    
+    // Combine: banks define where fog is thick, structure gives shape, wisps add life
+    // Banks dominate (0.55), structure secondary (0.35), wisps subtle (0.1)
+    float combinedNoise = banks * 0.55 + structure * 0.35 + wisps * 0.1;
+    
+    // Range 0.15 to 1.0 - thin areas are veils, thick areas are impenetrable
+    float noiseModulation = 0.15 + combinedNoise * 0.85;
 
     return uFogDensity * heightDensity * noiseModulation;
 }
