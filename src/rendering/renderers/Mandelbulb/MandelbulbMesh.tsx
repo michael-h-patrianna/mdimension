@@ -352,13 +352,6 @@ const MandelbulbMesh = () => {
       uSssThickness: { value: 1.0 },
       uSssJitter: { value: 0.2 },
 
-      // Atmosphere (fog uniforms matching shared/features/fog.glsl.ts)
-      uFogEnabled: { value: true },
-      uFogContribution: { value: 1.0 },
-      uInternalFogDensity: { value: 0.0 },
-      uSceneFogColor: { value: new THREE.Color('#000000').convertSRGBToLinear() },
-      uSceneFogDensity: { value: 0.0 },
-
       // Fresnel rim lighting uniforms (color converted to linear)
       uFresnelEnabled: { value: true },
       uFresnelIntensity: { value: 0.5 },
@@ -419,13 +412,12 @@ const MandelbulbMesh = () => {
 
   // Conditionally compiled feature toggles (affect shader compilation)
   const sssEnabled = useAppearanceStore((state) => state.sssEnabled);
-  const fogEnabled = useAppearanceStore((state) => state.fogIntegrationEnabled);
   // Note: edgesVisible (line 268) controls fresnel and is already subscribed
 
   // Reset overrides when base configuration changes
   useEffect(() => {
     resetShaderOverrides();
-  }, [dimension, shadowEnabled, temporalEnabled, opacitySettings.mode, sssEnabled, edgesVisible, fogEnabled, resetShaderOverrides]);
+  }, [dimension, shadowEnabled, temporalEnabled, opacitySettings.mode, sssEnabled, edgesVisible, resetShaderOverrides]);
 
   // Compile shader only when configuration changes
   const { glsl: shaderString, modules, features } = useMemo(() => {
@@ -438,9 +430,9 @@ const MandelbulbMesh = () => {
       overrides: shaderOverrides,
       sss: sssEnabled,
       fresnel: edgesVisible,
-      fog: fogEnabled,
+      fog: false, // Physical fog handled by post-process
     });
-  }, [dimension, shadowEnabled, temporalEnabled, opacitySettings.mode, shaderOverrides, sssEnabled, edgesVisible, fogEnabled]);
+  }, [dimension, shadowEnabled, temporalEnabled, opacitySettings.mode, shaderOverrides, sssEnabled, edgesVisible]);
 
   // Update debug info store
   useEffect(() => {
@@ -639,37 +631,6 @@ const MandelbulbMesh = () => {
       }
       if (material.uniforms.uSssThickness) material.uniforms.uSssThickness.value = visuals.sssThickness;
       if (material.uniforms.uSssJitter) material.uniforms.uSssJitter.value = visuals.sssJitter;
-
-      // Atmosphere (Global Visuals)
-      if (material.uniforms.uFogEnabled) material.uniforms.uFogEnabled.value = visuals.fogIntegrationEnabled;
-      if (material.uniforms.uFogContribution) material.uniforms.uFogContribution.value = visuals.fogContribution;
-      if (material.uniforms.uInternalFogDensity) material.uniforms.uInternalFogDensity.value = visuals.internalFogDensity;
-
-      // Scene fog integration (from Three.js scene.fog)
-      const { scene } = state;
-      if (scene.fog && (scene.fog as THREE.FogExp2).isFogExp2) {
-        const fog = scene.fog as THREE.FogExp2;
-        if (material.uniforms.uSceneFogColor) {
-          (material.uniforms.uSceneFogColor.value as THREE.Color).copy(fog.color);
-        }
-        if (material.uniforms.uSceneFogDensity) {
-          material.uniforms.uSceneFogDensity.value = fog.density;
-        }
-      } else if (scene.fog && (scene.fog as THREE.Fog).isFog) {
-        // Linear fog - copy color but density not directly supported
-        const fog = scene.fog as THREE.Fog;
-        if (material.uniforms.uSceneFogColor) {
-          (material.uniforms.uSceneFogColor.value as THREE.Color).copy(fog.color);
-        }
-        if (material.uniforms.uSceneFogDensity) {
-          material.uniforms.uSceneFogDensity.value = 0.0;
-        }
-      } else {
-        // No scene fog
-        if (material.uniforms.uSceneFogDensity) {
-          material.uniforms.uSceneFogDensity.value = 0.0;
-        }
-      }
 
       // Raymarching Quality (per-object setting)
       // Maps RaymarchQuality preset to quality multiplier with screen coverage adaptation

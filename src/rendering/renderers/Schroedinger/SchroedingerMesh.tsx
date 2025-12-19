@@ -262,11 +262,6 @@ const SchroedingerMesh = () => {
       uEnergyColorEnabled: { value: false },
       uShimmerEnabled: { value: false },
       uShimmerStrength: { value: 0.5 },
-      uFogEnabled: { value: true },
-      uFogContribution: { value: 1.0 },
-      uInternalFogDensity: { value: 0.0 },
-      uSceneFogColor: { value: new THREE.Color('#000000') },
-      uSceneFogDensity: { value: 0.0 },
 
       // Isosurface mode
       uIsoEnabled: { value: false },
@@ -350,7 +345,6 @@ const SchroedingerMesh = () => {
   // Conditionally compiled feature toggles (affect shader compilation)
   const sssEnabled = useAppearanceStore((state) => state.sssEnabled);
   const edgesVisible = useAppearanceStore((state) => state.edgesVisible);
-  const fogEnabled = useAppearanceStore((state) => state.fogIntegrationEnabled);
 
   // Quantum volume effects (compile-time optimization)
   const curlEnabled = useExtendedObjectStore((state) => state.schroedinger.curlEnabled);
@@ -364,7 +358,7 @@ const SchroedingerMesh = () => {
   // Reset overrides when configuration changes
   useEffect(() => {
     resetShaderOverrides();
-  }, [dimension, temporalEnabled, opacityMode, isoEnabled, sssEnabled, edgesVisible, fogEnabled, curlEnabled, dispersionEnabled, nodalEnabled, energyColorEnabled, shimmerEnabled, erosionEnabled, resetShaderOverrides]);
+  }, [dimension, temporalEnabled, opacityMode, isoEnabled, sssEnabled, edgesVisible, curlEnabled, dispersionEnabled, nodalEnabled, energyColorEnabled, shimmerEnabled, erosionEnabled, resetShaderOverrides]);
 
   // Compile shader
   // For volumetric mode with temporal enabled, use temporal ACCUMULATION (Horizon-style)
@@ -384,7 +378,7 @@ const SchroedingerMesh = () => {
       quantumMode: quantumMode, // Modular compilation: only include required quantum modules
       sss: sssEnabled,
       fresnel: edgesVisible,
-      fog: fogEnabled,
+      fog: false, // Physical fog handled by post-process
       // Quantum volume effects (compile-time optimization)
       curl: curlEnabled,
       dispersion: dispersionEnabled,
@@ -394,7 +388,7 @@ const SchroedingerMesh = () => {
       erosion: erosionEnabled,
     });
     return result;
-  }, [dimension, temporalEnabled, opacityMode, shaderOverrides, isoEnabled, useTemporalAccumulation, quantumMode, sssEnabled, edgesVisible, fogEnabled, curlEnabled, dispersionEnabled, nodalEnabled, energyColorEnabled, shimmerEnabled, erosionEnabled]);
+  }, [dimension, temporalEnabled, opacityMode, shaderOverrides, isoEnabled, useTemporalAccumulation, quantumMode, sssEnabled, edgesVisible, curlEnabled, dispersionEnabled, nodalEnabled, energyColorEnabled, shimmerEnabled, erosionEnabled]);
 
   // Update debug info
   useEffect(() => {
@@ -649,7 +643,7 @@ const SchroedingerMesh = () => {
       const { timeScale, fieldScale, densityGain, powderScale, erosionStrength, erosionScale, erosionTurbulence, erosionNoiseType, curlEnabled, curlStrength, curlScale, curlSpeed, curlBias, dispersionEnabled, dispersionStrength, dispersionDirection, dispersionQuality, shadowsEnabled, shadowStrength, shadowSteps, aoEnabled, aoStrength, aoQuality, aoRadius, aoColor, nodalEnabled, nodalColor, nodalStrength, energyColorEnabled, shimmerEnabled, shimmerStrength, isoThreshold, scatteringAnisotropy } = schroedinger;
       
       // Global visuals from appearance store
-      const { roughness, sssEnabled, sssIntensity, sssColor, sssThickness, sssJitter, fogIntegrationEnabled, fogContribution, internalFogDensity, faceEmission, faceEmissionThreshold, faceEmissionColorShift, faceEmissionPulsing, faceRimFalloff } = appearance;
+      const { roughness, sssEnabled, sssIntensity, sssColor, sssThickness, sssJitter, faceEmission, faceEmissionThreshold, faceEmissionColorShift, faceEmissionPulsing, faceRimFalloff } = appearance;
       
       // Note: We use faceRimFalloff from appearance store for uRimExponent if available (which it is now)
       // We keep scatteringAnisotropy in schroedinger store for now.
@@ -714,28 +708,6 @@ const SchroedingerMesh = () => {
       if (material.uniforms.uEnergyColorEnabled) material.uniforms.uEnergyColorEnabled.value = energyColorEnabled;
       if (material.uniforms.uShimmerEnabled) material.uniforms.uShimmerEnabled.value = shimmerEnabled;
       if (material.uniforms.uShimmerStrength) material.uniforms.uShimmerStrength.value = shimmerStrength;
-      
-      // Unified Fog
-      if (material.uniforms.uFogEnabled) material.uniforms.uFogEnabled.value = fogIntegrationEnabled;
-      if (material.uniforms.uFogContribution) material.uniforms.uFogContribution.value = fogContribution;
-      if (material.uniforms.uInternalFogDensity) material.uniforms.uInternalFogDensity.value = internalFogDensity;
-
-      // Update scene fog uniforms
-      if (state.scene.fog && (state.scene.fog as THREE.FogExp2).isFogExp2) {
-          const fog = state.scene.fog as THREE.FogExp2;
-          if (material.uniforms.uSceneFogColor) material.uniforms.uSceneFogColor.value.copy(fog.color);
-          if (material.uniforms.uSceneFogDensity) material.uniforms.uSceneFogDensity.value = fog.density;
-      } else if (state.scene.fog && (state.scene.fog as THREE.Fog).isFog) {
-           // Handle linear fog if necessary, but we mostly use Exp2
-           // For now, map linear to approximate exp2 or just set 0
-           const fog = state.scene.fog as THREE.Fog;
-           if (material.uniforms.uSceneFogColor) material.uniforms.uSceneFogColor.value.copy(fog.color);
-           // Approximate density from near/far? 
-           // density ~ 1/(far-near)
-           if (material.uniforms.uSceneFogDensity) material.uniforms.uSceneFogDensity.value = 0.0;
-      } else {
-           if (material.uniforms.uSceneFogDensity) material.uniforms.uSceneFogDensity.value = 0.0;
-      }
       
       // Isosurface mode
       if (material.uniforms.uIsoEnabled) material.uniforms.uIsoEnabled.value = isoEnabled;

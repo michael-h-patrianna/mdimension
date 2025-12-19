@@ -120,11 +120,6 @@ export interface AdvancedRenderingState {
   sssColor: string
   sssThickness: number
   sssJitter: number
-
-  // Atmosphere / Fog Integration
-  fogIntegrationEnabled: boolean
-  fogContribution: number
-  internalFogDensity: number
 }
 
 export interface AdvancedRenderingActions {
@@ -134,9 +129,6 @@ export interface AdvancedRenderingActions {
   setSssColor: (color: string) => void
   setSssThickness: (thickness: number) => void
   setSssJitter: (jitter: number) => void
-  setFogIntegrationEnabled: (enabled: boolean) => void
-  setFogContribution: (contribution: number) => void
-  setInternalFogDensity: (density: number) => void
 }
 
 export type AdvancedRenderingSlice = AdvancedRenderingState & AdvancedRenderingActions

@@ -195,24 +195,24 @@ float getFogDensity(vec3 pos) {
     banks += sampleNoise(staticPos * 0.15) * 0.5;
     banks /= 1.5;
     banks = smoothstep(0.25, 0.75, banks); // Distinct thick banks
-    
+
     // Medium structure: cloud-like forms within the banks
     float structure = sampleNoise(staticPos * 0.4);
     structure += sampleNoise(staticPos * 0.8) * 0.4;
     structure /= 1.4;
-    
+
     // 3. Extremely slow creeping motion - almost imperceptible
     // Time scale: 0.002 means 500 seconds for one noise cycle
     float creepTime = uTime * 0.002;
     vec3 creepOffset = vec3(creepTime, 0.0, creepTime * 0.7);
-    
+
     // Subtle wisp animation - the only thing that visibly moves
     float wisps = sampleNoise(staticPos * 1.5 + creepOffset);
-    
+
     // Combine: banks define where fog is thick, structure gives shape, wisps add life
     // Banks dominate (0.55), structure secondary (0.35), wisps subtle (0.1)
     float combinedNoise = banks * 0.55 + structure * 0.35 + wisps * 0.1;
-    
+
     // Range 0.15 to 1.0 - thin areas are veils, thick areas are impenetrable
     float noiseModulation = 0.15 + combinedNoise * 0.85;
 
@@ -333,9 +333,16 @@ void main() {
         if (density > 0.001) {
             float shadow = getShadowVisibility(currentPos);
 
-            // Scattering = Density * Phase * Light * Shadow
-            // Clamp per-step scattering to prevent runaway accumulation
-            vec3 scattering = vec3(density) * phase * uLightColor * uLightIntensity * shadow;
+            // In-scattering from directional light
+            vec3 lightScatter = phase * uLightColor * uLightIntensity * shadow;
+            
+            // Fog's own color contribution (ambient self-illumination of the fog)
+            // This is what makes fog VISIBLE even without direct lighting
+            // Gothic fog is primarily seen by its own pale color, not by scattering
+            vec3 fogAmbient = uFogColor;
+            
+            // Combined: fog color dominates (0.7), light scattering adds highlights (0.3)
+            vec3 scattering = vec3(density) * (fogAmbient * 0.7 + lightScatter * 0.3);
             scattering = min(scattering, vec3(MAX_SCATTERING));
 
             // Beer-Lambert Integration
@@ -352,9 +359,8 @@ void main() {
         currentPos += rayDir * stepSize;
     }
 
-    // Ambient Fog (Base Color contribution)
-    // Increased ambient for better volume perceptibility
-    vec3 ambient = uFogColor * 0.2;
+    // Small ambient boost for visibility in completely unlit areas
+    vec3 ambient = uFogColor * 0.05;
 
     // Final fog color with ambient contribution
     vec3 finalFog = accumulatedColor + ambient * (1.0 - transmittance);

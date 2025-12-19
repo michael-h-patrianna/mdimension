@@ -9,10 +9,6 @@ export const ADVANCED_RENDERING_INITIAL_STATE = {
   sssColor: '#ff8844',
   sssThickness: 1.0,
   sssJitter: 0.2,
-
-  fogIntegrationEnabled: true,
-  fogContribution: 1.0,
-  internalFogDensity: 0.0,
 }
 
 export const createAdvancedRenderingSlice: StateCreator<
@@ -30,8 +26,4 @@ export const createAdvancedRenderingSlice: StateCreator<
   setSssColor: (sssColor) => set({ sssColor }),
   setSssThickness: (sssThickness) => set({ sssThickness }),
   setSssJitter: (sssJitter) => set({ sssJitter }),
-
-  setFogIntegrationEnabled: (fogIntegrationEnabled) => set({ fogIntegrationEnabled }),
-  setFogContribution: (fogContribution) => set({ fogContribution }),
-  setInternalFogDensity: (internalFogDensity) => set({ internalFogDensity }),
 })

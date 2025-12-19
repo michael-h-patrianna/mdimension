@@ -412,7 +412,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     edgeRoughness,
     faceColor,
     shaderSettings,
-    fogIntegrationEnabled,
     sssEnabled,
   } = useAppearanceStore(
     useShallow((state) => ({
@@ -424,7 +423,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
       edgeRoughness: state.edgeRoughness,
       faceColor: state.faceColor,
       shaderSettings: state.shaderSettings,
-      fogIntegrationEnabled: state.fogIntegrationEnabled,
       sssEnabled: state.sssEnabled,
     }))
   );
@@ -444,11 +442,11 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   // Compute shader composition separately to get modules/features for debug info
   const { glsl: faceFragmentShader, modules: faceShaderModules, features: faceShaderFeatures } = useMemo(() => {
     return buildFaceFragmentShader({
-      fog: fogIntegrationEnabled,
+      fog: false, // Physical fog handled by post-process
       sss: sssEnabled,
       fresnel: surfaceSettings.fresnelEnabled,
     });
-  }, [fogIntegrationEnabled, sssEnabled, surfaceSettings.fresnelEnabled]);
+  }, [sssEnabled, surfaceSettings.fresnelEnabled]);
 
   // Create face material with tracking - shows overlay during shader compilation
   const { material: faceMaterial, isCompiling: isFaceShaderCompiling } = useTrackedShaderMaterial(
@@ -519,12 +517,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
           // Range and decay for distance attenuation (0 = infinite range, 2 = inverse square decay)
           uLightRanges: { value: [0, 0, 0, 0] },
           uLightDecays: { value: [2, 2, 2, 2] },
-          // Fog/Atmosphere uniforms (always declared, shader code conditionally compiled)
-          uFogEnabled: { value: fogIntegrationEnabled },
-          uFogContribution: { value: 1.0 },
-          uInternalFogDensity: { value: 0.0 },
-          uSceneFogColor: { value: new Color('#000000').convertSRGBToLinear() },
-          uSceneFogDensity: { value: 0.0 },
         },
         vertexShader: buildFaceVertexShader(),
         fragmentShader: faceFragmentShader,
@@ -533,7 +525,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
         depthWrite: surfaceSettings.faceOpacity >= 1,
       });
     },
-    [faceColor, surfaceSettings.faceOpacity, surfaceSettings.fresnelEnabled, fogIntegrationEnabled, sssEnabled, faceFragmentShader]
+    [faceColor, surfaceSettings.faceOpacity, surfaceSettings.fresnelEnabled, sssEnabled, faceFragmentShader]
   );
 
 
@@ -787,11 +779,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     const sssThickness = appearanceState.sssThickness;
     const sssJitter = appearanceState.sssJitter;
 
-    // Read fog state (shared with raymarched objects)
-    const fogEnabled = appearanceState.fogIntegrationEnabled;
-    const fogContribution = appearanceState.fogContribution;
-    const internalFogDensity = appearanceState.internalFogDensity;
-
     // Read advanced color system state
     const colorAlgorithm = appearanceState.colorAlgorithm;
     const cosineCoefficients = appearanceState.cosineCoefficients;
@@ -898,24 +885,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
         if (u.uSssColor) updateLinearColorUniform(cache.sssColor, u.uSssColor.value as Color, sssColor);
         if (u.uSssThickness) u.uSssThickness.value = sssThickness;
         if (u.uSssJitter) u.uSssJitter.value = sssJitter;
-
-        // Update fog uniforms (shared with raymarched objects)
-        if (u.uFogEnabled) u.uFogEnabled.value = fogEnabled;
-        if (u.uFogContribution) u.uFogContribution.value = fogContribution;
-        if (u.uInternalFogDensity) u.uInternalFogDensity.value = internalFogDensity;
-
-        // Update scene fog uniforms from Three.js scene
-        if (scene.fog && (scene.fog as THREE.FogExp2).isFogExp2) {
-          const fog = scene.fog as THREE.FogExp2;
-          if (u.uSceneFogColor) (u.uSceneFogColor.value as Color).copy(fog.color);
-          if (u.uSceneFogDensity) u.uSceneFogDensity.value = fog.density;
-        } else if (scene.fog && (scene.fog as THREE.Fog).isFog) {
-          const fog = scene.fog as THREE.Fog;
-          if (u.uSceneFogColor) (u.uSceneFogColor.value as Color).copy(fog.color);
-          if (u.uSceneFogDensity) u.uSceneFogDensity.value = 0.0; // Linear fog not directly supported
-        } else {
-          if (u.uSceneFogDensity) u.uSceneFogDensity.value = 0.0;
-        }
 
         // Update advanced color system uniforms (only for face materials)
         if (u.uColorAlgorithm) u.uColorAlgorithm.value = COLOR_ALGORITHM_TO_INT[colorAlgorithm];

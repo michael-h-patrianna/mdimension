@@ -58,7 +58,6 @@ export {
   type FogSlice,
   type FogSliceState,
   type FogSliceActions,
-  type FogType,
 } from './fogSlice'
 
 export {

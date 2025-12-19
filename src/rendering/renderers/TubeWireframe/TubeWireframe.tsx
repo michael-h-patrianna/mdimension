@@ -17,8 +17,6 @@ import {
     Color,
     CylinderGeometry,
     DoubleSide,
-    Fog,
-    FogExp2,
     GLSL3,
     InstancedBufferAttribute,
     InstancedMesh,
@@ -166,16 +164,15 @@ export function TubeWireframe({
   // Feature flags for conditional shader compilation
   const sssEnabled = useAppearanceStore((state) => state.sssEnabled)
   const fresnelEnabled = useAppearanceStore((state) => state.shaderSettings.surface.fresnelEnabled)
-  const fogIntegrationEnabled = useAppearanceStore((state) => state.fogIntegrationEnabled)
 
   // Compute shader configuration for tracking (used outside the hook)
   const { glsl: fragmentShaderString, modules: shaderModules, features: shaderFeatures } = useMemo(() => {
     return composeTubeWireframeFragmentShader({
-      fog: fogIntegrationEnabled,
+      fog: false, // Physical fog handled by post-process
       sss: sssEnabled,
       fresnel: fresnelEnabled,
     })
-  }, [fogIntegrationEnabled, sssEnabled, fresnelEnabled])
+  }, [sssEnabled, fresnelEnabled])
 
   // Create shader material with tracking - shows overlay during compilation
   // Feature flags in deps trigger shader recompilation when features are toggled
@@ -232,12 +229,6 @@ export function TubeWireframe({
           ...lightUniforms,
           // Shadow map uniforms
           ...createShadowMapUniforms(),
-          // Fog/Atmosphere uniforms (always declared, shader code conditionally compiled)
-          uFogEnabled: { value: fogIntegrationEnabled },
-          uFogContribution: { value: 1.0 },
-          uInternalFogDensity: { value: 0.0 },
-          uSceneFogColor: { value: new Color('#000000').convertSRGBToLinear() },
-          uSceneFogDensity: { value: 0.0 },
         },
         transparent: opacity < 1,
         depthTest: true,
@@ -245,7 +236,7 @@ export function TubeWireframe({
         side: DoubleSide,
       })
     },
-    [color, opacity, metallic, roughness, radius, dimension, sssEnabled, fresnelEnabled, fogIntegrationEnabled, fragmentShaderString]
+    [color, opacity, metallic, roughness, radius, dimension, sssEnabled, fresnelEnabled, fragmentShaderString]
   )
 
   // Custom depth materials for shadow map rendering with nD transformation
@@ -556,24 +547,6 @@ export function TubeWireframe({
     updateLinearColorUniform(cache.sssColor, u.uSssColor!.value as Color, appearanceState.sssColor)
     u.uSssThickness!.value = appearanceState.sssThickness
     if (u.uSssJitter) u.uSssJitter.value = appearanceState.sssJitter
-
-    // Update fog uniforms (shared with raymarched objects)
-    if (u.uFogEnabled) u.uFogEnabled.value = appearanceState.fogIntegrationEnabled
-    if (u.uFogContribution) u.uFogContribution.value = appearanceState.fogContribution
-    if (u.uInternalFogDensity) u.uInternalFogDensity.value = appearanceState.internalFogDensity
-
-    // Update scene fog uniforms from Three.js scene
-    if (scene.fog && (scene.fog as FogExp2).isFogExp2) {
-      const fog = scene.fog as FogExp2
-      if (u.uSceneFogColor) (u.uSceneFogColor.value as Color).copy(fog.color)
-      if (u.uSceneFogDensity) u.uSceneFogDensity.value = fog.density
-    } else if (scene.fog && (scene.fog as Fog).isFog) {
-      const fog = scene.fog as Fog
-      if (u.uSceneFogColor) (u.uSceneFogColor.value as Color).copy(fog.color)
-      if (u.uSceneFogDensity) u.uSceneFogDensity.value = 0.0 // Linear fog not directly supported
-    } else {
-      if (u.uSceneFogDensity) u.uSceneFogDensity.value = 0.0
-    }
 
     // Update multi-light system (with cached linear color conversion)
     updateLightUniforms(u as unknown as LightUniforms, lightingState.lights, lightColorCacheRef.current)

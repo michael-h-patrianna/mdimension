@@ -976,7 +976,7 @@ export const PostProcessing = memo(function PostProcessing() {
     // Update Volumetric Fog
     if (volumetricFogPass) {
         // Enable/Disable based on store
-        volumetricFogPass.enabled = fogState.fogEnabled && fogState.fogType === 'physical';
+        volumetricFogPass.enabled = fogState.fogEnabled;
         
         if (volumetricFogPass.enabled) {
             // Update uniforms
