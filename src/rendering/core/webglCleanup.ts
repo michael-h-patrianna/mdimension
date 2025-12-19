@@ -45,7 +45,9 @@ export function cleanupWebGLState(
   if (resetPrograms && gl.info.programs) {
     // Programs are auto-managed by Three.js based on usage
     // We just note the count here; forcing disposal would cause recompilation
-    console.debug(`[WebGL] Active shader programs: ${gl.info.programs.length}`)
+    if (import.meta.env.DEV) {
+      console.debug(`[WebGL] Active shader programs: ${gl.info.programs.length}`)
+    }
   }
 }
 

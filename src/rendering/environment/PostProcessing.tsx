@@ -115,6 +115,23 @@ const screenCenter = new THREE.Vector2(0, 0);
 /** Reusable Color object for getClearColor (avoid per-frame allocation) */
 const tempClearColor = new THREE.Color();
 
+// ============================================================================
+// Shader Constants
+// ============================================================================
+/**
+ * Depth threshold for far plane detection.
+ * Values >= this are considered background/sky and should be discarded.
+ * Using 0.9999 instead of 1.0 to handle floating point precision.
+ */
+const FAR_PLANE_DEPTH_THRESHOLD = 0.9999;
+
+/**
+ * Minimum normal magnitude to consider a pixel valid.
+ * Encoded normals map [-1,1] to [0,1], so valid normals have magnitude ~0.5.
+ * Clear/empty pixels have [0,0,0,0], so anything below this threshold is discarded.
+ */
+const NORMAL_MAGNITUDE_EPSILON = 0.01;
+
 export const PostProcessing = memo(function PostProcessing() {
   const { gl, scene, camera, size } = useThree();
   const originalToneMapping = useRef<THREE.ToneMapping>(gl.toneMapping);
@@ -298,12 +315,15 @@ export const PostProcessing = memo(function PostProcessing() {
         uniform sampler2D tDepth;
         in vec2 vUv;
         out vec4 fragColor;
+
+        #define FAR_PLANE_DEPTH_THRESHOLD ${FAR_PLANE_DEPTH_THRESHOLD}
+
         void main() {
           float depth = texture(tDepth, vUv).r;
 
           // Discard background pixels (depth at far plane)
           // This preserves environment normals via depth test
-          if (depth >= 0.9999) {
+          if (depth >= FAR_PLANE_DEPTH_THRESHOLD) {
             discard;
           }
 
@@ -342,13 +362,16 @@ export const PostProcessing = memo(function PostProcessing() {
         uniform sampler2D tNormal;
         in vec2 vUv;
         out vec4 fragColor;
+
+        #define NORMAL_MAGNITUDE_EPSILON ${NORMAL_MAGNITUDE_EPSILON}
+
         void main() {
           vec4 normal = texture(tNormal, vUv);
           // Check if this pixel has volumetric data
           // Valid encoded normals should be around 0.5 ([-1,1] mapped to [0,1])
           // Clear value is [0,0,0,0], so check for near-zero
           float normalMagnitude = length(normal.rgb);
-          if (normalMagnitude < 0.01) {
+          if (normalMagnitude < NORMAL_MAGNITUDE_EPSILON) {
             discard; // No volumetric data - preserve existing content
           }
           fragColor = normal;

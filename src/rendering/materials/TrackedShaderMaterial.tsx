@@ -130,6 +130,8 @@ export function TrackedShaderMaterial({
 
       return () => cancelAnimationFrame(frameId);
     }
+
+    return;
   }, [fragmentShader, vertexShader, hasValidShaders, readyToRender, shadersChanged]);
 
   // Hide overlay after shader has compiled (render completes)
@@ -164,7 +166,7 @@ export function TrackedShaderMaterial({
 
   // Warn about missing shader sources in development
   if (!hasValidShaders) {
-    if (process.env.NODE_ENV !== 'production') {
+    if (import.meta.env.DEV) {
       console.error(
         `TrackedShaderMaterial [${validShaderName}]: Missing shader source. ` +
         `fragmentShader: ${fragmentShader ? 'provided' : 'MISSING'}, ` +

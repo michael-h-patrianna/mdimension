@@ -1,8 +1,6 @@
 import { StateCreator } from 'zustand'
 import { AppearanceSlice, RenderSlice, RenderSliceState } from './types'
 import {
-  DEFAULT_DEPTH_ATTENUATION_ENABLED,
-  DEFAULT_DEPTH_ATTENUATION_STRENGTH,
   DEFAULT_EDGES_VISIBLE,
   DEFAULT_FACES_VISIBLE,
   DEFAULT_FRESNEL_ENABLED,
@@ -16,8 +14,6 @@ export const RENDER_INITIAL_STATE: RenderSliceState = {
   facesVisible: DEFAULT_FACES_VISIBLE,
   shaderType: DEFAULT_SHADER_TYPE,
   shaderSettings: { ...DEFAULT_SHADER_SETTINGS },
-  depthAttenuationEnabled: DEFAULT_DEPTH_ATTENUATION_ENABLED,
-  depthAttenuationStrength: DEFAULT_DEPTH_ATTENUATION_STRENGTH,
   fresnelEnabled: DEFAULT_FRESNEL_ENABLED,
   fresnelIntensity: DEFAULT_FRESNEL_INTENSITY,
 }
@@ -77,8 +73,6 @@ export const createRenderSlice: StateCreator<AppearanceSlice, [], [], RenderSlic
     },
   })),
 
-  setDepthAttenuationEnabled: (enabled) => set({ depthAttenuationEnabled: enabled }),
-  setDepthAttenuationStrength: (strength) => set({ depthAttenuationStrength: Math.max(0, Math.min(0.5, strength)) }),
   setFresnelEnabled: (enabled) => set({ fresnelEnabled: enabled }),
   setFresnelIntensity: (intensity) => set({ fresnelIntensity: Math.max(0, Math.min(1, intensity)) }),
 })

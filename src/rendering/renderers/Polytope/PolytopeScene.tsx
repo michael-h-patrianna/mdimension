@@ -379,7 +379,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
 
   // ============ REFS ============
   const faceMeshRef = useRef<THREE.Mesh>(null);
-  const backFaceMeshRef = useRef<THREE.Mesh>(null);
   const edgeMeshRef = useRef<THREE.LineSegments>(null);
 
   // Animation time accumulator for polytope animations
@@ -439,13 +438,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     }
   }, []);
 
-  const setBackFaceMeshRef = useCallback((mesh: THREE.Mesh | null) => {
-    backFaceMeshRef.current = mesh;
-    if (mesh?.layers) {
-      mesh.layers.set(RENDER_LAYERS.MAIN_OBJECT);
-    }
-  }, []);
-
   const setEdgeMeshRef = useCallback((lineSegments: THREE.LineSegments | null) => {
     edgeMeshRef.current = lineSegments;
     if (lineSegments?.layers) {
@@ -484,21 +476,12 @@ export const PolytopeScene = React.memo(function PolytopeScene({
 
   // ============ MATERIALS ============
   // Uses custom ShaderMaterial with lighting (same approach as Mandelbulb)
-  // For transparent faces, use two-pass rendering: BackSide first, then FrontSide
-  // This ensures proper layer ordering for transparent materials
-  const isTransparent = surfaceSettings.faceOpacity < 1;
-
-  // Use DoubleSide for all cases - two-pass rendering with FrontSide/BackSide
-  // causes faces to disappear because nD transformations in the shader can flip
-  // the effective winding order, causing both passes to cull the same face.
+  // DoubleSide handles both front and back faces - two-pass rendering disabled
+  // because nD transformations can flip winding order, causing culling issues.
   const faceMaterial = useMemo(() => {
     return createFaceShaderMaterial(faceColor, surfaceSettings.faceOpacity, DoubleSide);
   }, [faceColor, surfaceSettings.faceOpacity]);
 
-  // Disable two-pass rendering - DoubleSide handles both sides in a single pass
-  const backFaceMaterial = useMemo(() => {
-    return null;
-  }, []);
 
   const edgeMaterial = useMemo(() => {
     return createEdgeMaterial(edgeColor, opacity);
@@ -630,7 +613,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   // ============ CLEANUP ============
   // Track previous resources for proper disposal when dependencies change
   const prevFaceMaterialRef = useRef<THREE.ShaderMaterial | null>(null);
-  const prevBackFaceMaterialRef = useRef<THREE.ShaderMaterial | null>(null);
   const prevEdgeMaterialRef = useRef<THREE.ShaderMaterial | null>(null);
   const prevFaceGeometryRef = useRef<THREE.BufferGeometry | null>(null);
   const prevEdgeGeometryRef = useRef<THREE.BufferGeometry | null>(null);
@@ -640,9 +622,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     // Dispose old resources if they exist and differ from current
     if (prevFaceMaterialRef.current && prevFaceMaterialRef.current !== faceMaterial) {
       prevFaceMaterialRef.current.dispose();
-    }
-    if (prevBackFaceMaterialRef.current && prevBackFaceMaterialRef.current !== backFaceMaterial) {
-      prevBackFaceMaterialRef.current.dispose();
     }
     if (prevEdgeMaterialRef.current && prevEdgeMaterialRef.current !== edgeMaterial) {
       prevEdgeMaterialRef.current.dispose();
@@ -656,7 +635,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
 
     // Update refs to current values
     prevFaceMaterialRef.current = faceMaterial;
-    prevBackFaceMaterialRef.current = backFaceMaterial;
     prevEdgeMaterialRef.current = edgeMaterial;
     prevFaceGeometryRef.current = faceGeometry;
     prevEdgeGeometryRef.current = edgeGeometry;
@@ -664,12 +642,11 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     // Cleanup on unmount - dispose current resources
     return () => {
       faceMaterial.dispose();
-      backFaceMaterial?.dispose();
       edgeMaterial.dispose();
       faceGeometry?.dispose();
       edgeGeometry?.dispose();
     };
-  }, [faceMaterial, backFaceMaterial, edgeMaterial, faceGeometry, edgeGeometry]);
+  }, [faceMaterial, edgeMaterial, faceGeometry, edgeGeometry]);
 
   // ============ USEFRAME: UPDATE UNIFORMS ONLY ============
   useFrame(({ camera, scene }, delta) => {
@@ -779,10 +756,8 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     const cache = colorCacheRef.current;
 
     // Update all materials through mesh refs
-    // Include back face mesh for two-pass transparent rendering
     const meshUpdates = [
       { ref: faceMeshRef, color: appearanceState.faceColor, cache: cache.faceColor },
-      { ref: backFaceMeshRef, color: appearanceState.faceColor, cache: cache.faceColor },
       { ref: edgeMeshRef, color: appearanceState.edgeColor, cache: cache.edgeColor },
     ];
 
@@ -905,19 +880,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   // ============ RENDER ============
   return (
     <group>
-      {/* Polytope faces - two-pass rendering for transparent materials */}
-      {/* Pass 1: Back faces (render first, lower renderOrder) */}
-      {facesVisible && faceGeometry && isTransparent && backFaceMaterial && (
-        <mesh
-          ref={setBackFaceMeshRef}
-          geometry={faceGeometry}
-          material={backFaceMaterial}
-          castShadow={shadowEnabled}
-          receiveShadow={shadowEnabled}
-          renderOrder={0}
-        />
-      )}
-      {/* Pass 2: Front faces (render second for transparent, or single pass for opaque) */}
+      {/* Polytope faces - DoubleSide handles both front and back faces */}
       {facesVisible && faceGeometry && (
         <mesh
           ref={setFaceMeshRef}
@@ -925,7 +888,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
           material={faceMaterial}
           castShadow={shadowEnabled}
           receiveShadow={shadowEnabled}
-          renderOrder={isTransparent ? 1 : 0}
         />
       )}
 

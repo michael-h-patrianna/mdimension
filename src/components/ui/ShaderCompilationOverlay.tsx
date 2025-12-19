@@ -64,7 +64,10 @@ export const ShaderCompilationOverlay: React.FC = () => {
       showStartTimeRef.current = Date.now();
       setIsVisible(true);
       setDisplayMessage(message);
-    } else if (isVisible) {
+      return;
+    }
+
+    if (isVisible) {
       // When compilation ends, ensure minimum display time
       const elapsed = Date.now() - showStartTimeRef.current;
       const remaining = Math.max(0, MIN_DISPLAY_TIME_MS - elapsed);
@@ -75,6 +78,8 @@ export const ShaderCompilationOverlay: React.FC = () => {
 
       return () => clearTimeout(timer);
     }
+
+    return;
   }, [isCompiling, isVisible, message]);
 
   // Update message while visible (in case shader name changes)

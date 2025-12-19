@@ -1,5 +1,5 @@
 /**
- * Tests for enhanced visualStore features
+ * Tests for enhanced appearanceStore features
  * Tests shader system, bloom, lighting, and depth effects
  */
 
@@ -14,7 +14,6 @@ import {
   DEFAULT_BLOOM_INTENSITY,
   DEFAULT_BLOOM_ENABLED,
   DEFAULT_COLOR_ALGORITHM,
-  DEFAULT_DEPTH_ATTENUATION_ENABLED,
   DEFAULT_FACE_COLOR,
   DEFAULT_LIGHT_COLOR,
   DEFAULT_LIGHT_ENABLED,
@@ -204,25 +203,7 @@ describe('Enhanced Features Stores', () => {
     });
   });
 
-  describe('Depth Effects', () => {
-    it('should toggle depth attenuation', () => {
-      useAppearanceStore.getState().setDepthAttenuationEnabled(false);
-      expect(useAppearanceStore.getState().depthAttenuationEnabled).toBe(false);
-    });
-
-    it('should set depth attenuation strength', () => {
-      useAppearanceStore.getState().setDepthAttenuationStrength(0.4);
-      expect(useAppearanceStore.getState().depthAttenuationStrength).toBe(0.4);
-    });
-
-    it('should clamp depth attenuation strength to [0, 0.5]', () => {
-      useAppearanceStore.getState().setDepthAttenuationStrength(1);
-      expect(useAppearanceStore.getState().depthAttenuationStrength).toBe(0.5);
-
-      useAppearanceStore.getState().setDepthAttenuationStrength(-0.5);
-      expect(useAppearanceStore.getState().depthAttenuationStrength).toBe(0);
-    });
-
+  describe('Surface Effects', () => {
     it('should toggle fresnel', () => {
       useAppearanceStore.getState().setFresnelEnabled(false);
       expect(useAppearanceStore.getState().fresnelEnabled).toBe(false);
@@ -271,7 +252,6 @@ describe('Enhanced Features Stores', () => {
       usePostProcessingStore.getState().setBloomIntensity(1.5);
       useLightingStore.getState().setLightEnabled(false);
       useLightingStore.getState().setLightColor('#FF0000');
-      useAppearanceStore.getState().setDepthAttenuationEnabled(false);
       useAppearanceStore.getState().setFaceColor('#00FF00');
 
       // Reset
@@ -285,7 +265,6 @@ describe('Enhanced Features Stores', () => {
       expect(usePostProcessingStore.getState().bloomIntensity).toBe(DEFAULT_BLOOM_INTENSITY);
       expect(useLightingStore.getState().lightEnabled).toBe(DEFAULT_LIGHT_ENABLED);
       expect(useLightingStore.getState().lightColor).toBe(DEFAULT_LIGHT_COLOR);
-      expect(useAppearanceStore.getState().depthAttenuationEnabled).toBe(DEFAULT_DEPTH_ATTENUATION_ENABLED);
       expect(useAppearanceStore.getState().faceColor).toBe(DEFAULT_FACE_COLOR);
     });
   });

@@ -2,7 +2,7 @@
  * Shader Type System for Enhanced Visuals
  *
  * Defines shader types and per-shader settings interfaces.
- * Default values are centralized in @/stores/visualStore.ts to avoid conflicts.
+ * Default values are centralized in @/stores/appearanceStore.ts to avoid conflicts.
  *
  * @see docs/prd/enhanced-visuals-rendering-pipeline.md
  */
@@ -42,9 +42,9 @@ export interface AllShaderSettings {
 }
 
 // ============================================================================
-// NOTE: Default values are defined in @/stores/visualStore.ts
+// NOTE: Default values are defined in @/stores/appearanceStore.ts
 // This file contains only type definitions to avoid duplicate/conflicting defaults.
-// Import DEFAULT_SHADER_SETTINGS, DEFAULT_SURFACE_SETTINGS, etc. from visualStore.
+// Import defaults from appearanceSlice for shader settings.
 // ============================================================================
 
 /** Shader display names for UI */

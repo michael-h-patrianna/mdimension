@@ -59,8 +59,6 @@ export interface ShadowLightData {
   lightType: number;
   /** Shadow map texture (2D for directional/spot, null for point) */
   shadowMap: Texture | null;
-  /** Cube shadow map texture (for point lights) */
-  shadowCubeMap: CubeTexture | null;
   /** Shadow matrix (world to light clip space) */
   shadowMatrix: Matrix4;
   /** Whether this light casts shadows */
@@ -241,7 +239,6 @@ export function collectShadowDataFromScene(
       shadowData[lightIdx] = {
         lightType: 1, // Directional
         shadowMap: obj.shadow.map?.texture ?? null,
-        shadowCubeMap: null,
         shadowMatrix: obj.shadow.matrix,
         castsShadow: obj.shadow.map !== null,
         cameraNear: obj.shadow.camera.near,
@@ -252,7 +249,6 @@ export function collectShadowDataFromScene(
       shadowData[lightIdx] = {
         lightType: 2, // Spot
         shadowMap: obj.shadow.map?.texture ?? null,
-        shadowCubeMap: null,
         shadowMatrix: obj.shadow.matrix,
         castsShadow: obj.shadow.map !== null,
         cameraNear: obj.shadow.camera.near,
@@ -260,21 +256,8 @@ export function collectShadowDataFromScene(
       };
       lightIdx++;
     } else if (obj instanceof THREE.PointLight && obj.castShadow) {
-      // Point lights use cube shadow maps
-      // Three.js PointLightShadow.map is a WebGLCubeRenderTarget with a CubeTexture
-      const shadowMap = obj.shadow.map;
-      const cubeMap = shadowMap && 'texture' in shadowMap
-        ? (shadowMap.texture as CubeTexture)
-        : null;
-      shadowData[lightIdx] = {
-        lightType: 0, // Point
-        shadowMap: null,
-        shadowCubeMap: cubeMap,
-        shadowMatrix: obj.shadow.matrix,
-        castsShadow: cubeMap !== null,
-        cameraNear: obj.shadow.camera.near,
-        cameraFar: obj.shadow.camera.far,
-      };
+      // Point light shadows disabled - cube shadow maps cause WebGL bindTexture errors
+      // Skip point lights entirely for shadow collection
       lightIdx++;
     }
   });
@@ -284,7 +267,6 @@ export function collectShadowDataFromScene(
     shadowData[lightIdx] = {
       lightType: 0,
       shadowMap: null,
-      shadowCubeMap: null,
       shadowMatrix: new THREE.Matrix4(),
       castsShadow: false,
       cameraNear: 0.5,

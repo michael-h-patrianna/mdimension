@@ -121,7 +121,12 @@ export const ObjectTypeExplorer: React.FC = () => {
                       <div className="flex items-center justify-between w-full mb-1">
                           <span className="font-medium text-sm">{type.name}</span>
                           {isSelected && (
-                              <div className="w-2 h-2 rounded-full bg-accent animate-pulse shadow-[0_0_8px_var(--color-accent)]" />
+                              <div className="relative w-2 h-2">
+                                {/* Glow layer - static blur, no animation = 0 style recalcs */}
+                                <div className="absolute inset-0 rounded-full bg-accent led-glow" />
+                                {/* Solid LED core */}
+                                <div className="absolute inset-0 rounded-full bg-accent" />
+                              </div>
                           )}
                       </div>
                       <span className="text-xs text-text-secondary/80 line-clamp-2 leading-relaxed">

@@ -1,5 +1,5 @@
 /**
- * Tests for visualStore
+ * Tests for appearanceStore
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';

@@ -75,89 +75,222 @@ function getHealthColor(fps: number, high: number, low: number) {
 
 function formatShaderName(key: string, objectType: string): string {
   if (key.toLowerCase() === 'object') {
-    // Convert camelCase or hyphens to Title Case
     return objectType
-      .replace(/([A-Z])/g, ' $1') // Add space before capital letters
-      .replace(/^./, (str) => str.toUpperCase()) // Capitalize first letter
-      .replace(/-/g, ' ') // Replace hyphens with spaces
+      .replace(/([A-Z])/g, ' $1')
+      .replace(/^./, (str) => str.toUpperCase())
+      .replace(/-/g, ' ')
       .trim();
   }
-  // Title case for other keys
   return key.replace(/^./, (str) => str.toUpperCase());
 }
 
-// --- Sparkline Component ---
-const Sparkline = ({ 
-  data, 
-  width = 100, 
-  height = 30, 
-  color = '#34d399', 
-  fill = false,
-  minY = 0,
-  maxY = 70
-}: { 
-  data: number[], 
-  width?: number, 
-  height?: number, 
-  color?: string,
-  fill?: boolean,
-  minY?: number,
-  maxY?: number
-}) => {
-  const points = useMemo(() => {
+// --- Color helper for collapsed view ---
+type FpsColorLevel = 'high' | 'medium' | 'low';
+const FPS_COLORS = {
+  high: { text: 'text-emerald-400', bg: 'bg-emerald-500', stroke: '#34d399' },
+  medium: { text: 'text-amber-400', bg: 'bg-amber-500', stroke: '#fbbf24' },
+  low: { text: 'text-rose-500', bg: 'bg-rose-500', stroke: '#f43f5e' },
+} as const;
+
+function getFpsColorLevel(fps: number): FpsColorLevel {
+  if (fps >= 55) return 'high';
+  if (fps >= 30) return 'medium';
+  return 'low';
+}
+
+// ============================================================================
+// COLLAPSED VIEW - Zero re-renders, updates via refs
+// ============================================================================
+const CollapsedView = React.memo(function CollapsedView() {
+  const fpsRef = useRef<HTMLSpanElement>(null);
+  const frameTimeRef = useRef<HTMLSpanElement>(null);
+  const sparklineRef = useRef<SVGPathElement>(null);
+  const indicatorRef = useRef<HTMLSpanElement>(null);
+  const fpsContainerRef = useRef<HTMLSpanElement>(null);
+
+  // Track previous values to avoid unnecessary DOM updates
+  const prevValuesRef = useRef({
+    fps: -1,
+    frameTime: -1,
+    colorLevel: '' as FpsColorLevel | '',
+  });
+
+  // Direct DOM updates via SELECTIVE subscription
+  // CRITICAL: Only fires when fps/frameTime/history changes, NOT on sceneGpu (60Hz) updates
+  useEffect(() => {
+    const unsubscribe = usePerformanceMetricsStore.subscribe(
+      (state, prevState) => {
+        // Early exit if none of the values we care about changed
+        if (
+          state.fps === prevState.fps &&
+          state.frameTime === prevState.frameTime &&
+          state.history.fps === prevState.history.fps
+        ) {
+          return;
+        }
+
+        const prev = prevValuesRef.current;
+
+        // Update FPS text only if changed
+        if (state.fps !== prev.fps && fpsRef.current) {
+          fpsRef.current.textContent = String(state.fps);
+          prev.fps = state.fps;
+        }
+
+        // Update frame time only if changed
+        const newFrameTime = Math.round(state.frameTime * 10);
+        const oldFrameTime = Math.round(prev.frameTime * 10);
+        if (newFrameTime !== oldFrameTime && frameTimeRef.current) {
+          frameTimeRef.current.textContent = state.frameTime.toFixed(1);
+          prev.frameTime = state.frameTime;
+        }
+
+        // Update sparkline path only if history changed
+        if (sparklineRef.current && state.history.fps !== prevState.history.fps) {
+          const data = state.history.fps;
+          if (data.length >= 2) {
+            const width = 64;
+            const height = 20;
+            const minY = 0;
+            const maxY = 70;
+            const range = maxY - minY;
+            const stepX = width / (data.length - 1);
+
+            const points = data.map((val, i) => {
+              const x = i * stepX;
+              const normalizedY = Math.max(0, Math.min(1, (val - minY) / range));
+              const y = height - (normalizedY * height);
+              return `${x},${y}`;
+            }).join(' ');
+
+            sparklineRef.current.setAttribute('d', `M ${points}`);
+          }
+        }
+
+        // Update colors ONLY if color level changed
+        const newColorLevel = getFpsColorLevel(state.fps);
+        if (newColorLevel !== prev.colorLevel) {
+          const color = FPS_COLORS[newColorLevel];
+
+          if (indicatorRef.current) {
+            indicatorRef.current.className = `relative inline-flex rounded-full h-2.5 w-2.5 ${color.bg}`;
+          }
+          if (fpsContainerRef.current) {
+            fpsContainerRef.current.className = `text-lg font-bold font-mono leading-none ${color.text}`;
+          }
+          if (sparklineRef.current) {
+            sparklineRef.current.setAttribute('stroke', color.stroke);
+          }
+
+          prev.colorLevel = newColorLevel;
+        }
+      }
+    );
+
+    return unsubscribe;
+  }, []);
+
+  // Initial render values
+  const initialState = usePerformanceMetricsStore.getState();
+  const initialColorLevel = getFpsColorLevel(initialState.fps);
+  const initialColor = FPS_COLORS[initialColorLevel];
+
+  // Set initial prev values
+  prevValuesRef.current = {
+    fps: initialState.fps,
+    frameTime: initialState.frameTime,
+    colorLevel: initialColorLevel,
+  };
+
+  // Compute initial sparkline path
+  const initialPath = useMemo(() => {
+    const data = initialState.history.fps;
     if (data.length < 2) return '';
-    
-    // Normalize data to fit height
+    const width = 64;
+    const height = 20;
+    const minY = 0;
+    const maxY = 70;
     const range = maxY - minY;
     const stepX = width / (data.length - 1);
-    
-    return data.map((val, i) => {
+    const points = data.map((val, i) => {
       const x = i * stepX;
-      // Flip Y because SVG coords start top-left
       const normalizedY = Math.max(0, Math.min(1, (val - minY) / range));
       const y = height - (normalizedY * height);
       return `${x},${y}`;
     }).join(' ');
-  }, [data, width, height, minY, maxY]);
-
-  const pathD = `M ${points}`;
-  const fillD = `${pathD} L ${width},${height} L 0,${height} Z`;
+    return `M ${points}`;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <svg width={width} height={height} className="overflow-visible">
-      {fill && (
-        <path d={fillD} fill={color} fillOpacity={0.1} stroke="none" />
-      )}
-      <path d={pathD} fill="none" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-    </svg>
-  );
-};
+    <div className="flex items-center gap-4 px-4 py-2 h-12">
+      <div className="flex items-center gap-3">
+        <div className="relative flex h-2.5 w-2.5">
+          <span ref={indicatorRef} className={`relative inline-flex rounded-full h-2.5 w-2.5 ${initialColor.bg}`} />
+        </div>
+        <div className="flex flex-col">
+          <span ref={fpsContainerRef} className={`text-lg font-bold font-mono leading-none ${initialColor.text}`}>
+            <span ref={fpsRef}>{initialState.fps}</span>
+          </span>
+          <span className="text-[9px] uppercase tracking-wider text-zinc-500 font-bold">FPS</span>
+        </div>
+      </div>
 
-/**
- * Performance Monitor UI Component
- * 
- * Displays real-time performance metrics including FPS, GPU stats, memory usage,
- * and shader debug information.
- * 
- * Features:
- * - Collapsible pill design with live sparkline
- * - Draggable floating window
- * - Detailed tabs for different metric categories
- * - Glassmorphism UI style
- */
-export function PerformanceMonitor() {
-  // -- Store Connectors --
+      <div className="w-px h-6 bg-white/10" />
+
+      <div className="w-16 h-6 flex items-center">
+        <svg width={64} height={20} className="overflow-visible">
+          <path
+            ref={sparklineRef}
+            d={initialPath}
+            fill="none"
+            stroke={initialColor.stroke}
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            vectorEffect="non-scaling-stroke"
+          />
+        </svg>
+      </div>
+
+      <div className="flex flex-col items-end min-w-[32px]">
+        <span className="text-[10px] font-mono text-zinc-300">
+          <span ref={frameTimeRef}>{initialState.frameTime.toFixed(1)}</span>
+        </span>
+        <span className="text-[8px] text-zinc-500">ms</span>
+      </div>
+    </div>
+  );
+});
+
+// ============================================================================
+// EXPANDED CONTENT - All store subscriptions isolated here
+// ============================================================================
+interface ExpandedContentProps {
+  onCollapse: () => void;
+  didDrag: boolean;
+}
+
+const ExpandedContent = React.memo(function ExpandedContent({ onCollapse, didDrag }: ExpandedContentProps) {
+  // -- ALL store subscriptions are here, not in parent --
   const objectType = useGeometryStore(state => state.objectType);
   const mandelbulbConfig = useExtendedObjectStore(state => state.mandelbulb);
   const quaternionJuliaConfig = useExtendedObjectStore(state => state.quaternionJulia);
 
-  // -- Perf Stats --
-  const stats = usePerformanceMetricsStore();
+  const fps = usePerformanceMetricsStore((s) => s.fps);
+  const frameTime = usePerformanceMetricsStore((s) => s.frameTime);
+  const minFps = usePerformanceMetricsStore((s) => s.minFps);
+  const maxFps = usePerformanceMetricsStore((s) => s.maxFps);
+  const fpsHistory = usePerformanceMetricsStore((s) => s.history.fps);
+  const sceneGpu = usePerformanceMetricsStore((s) => s.sceneGpu);
+  const memory = usePerformanceMetricsStore((s) => s.memory);
+  const gpuName = usePerformanceMetricsStore((s) => s.gpuName);
+  const viewport = usePerformanceMetricsStore((s) => s.viewport);
+  const vram = usePerformanceMetricsStore((s) => s.vram);
+
   const shaderDebugInfos = usePerformanceStore((state) => state.shaderDebugInfos);
   const shaderOverrides = usePerformanceStore((state) => state.shaderOverrides);
   const toggleShaderModule = usePerformanceStore((state) => state.toggleShaderModule);
 
-  // -- UI Store for buffer toggles --
   const showDepthBuffer = useUIStore((state) => state.showDepthBuffer);
   const setShowDepthBuffer = useUIStore((state) => state.setShowDepthBuffer);
   const showNormalBuffer = useUIStore((state) => state.showNormalBuffer);
@@ -165,37 +298,15 @@ export function PerformanceMonitor() {
   const showTemporalDepthBuffer = useUIStore((state) => state.showTemporalDepthBuffer);
   const setShowTemporalDepthBuffer = useUIStore((state) => state.setShowTemporalDepthBuffer);
 
-  // -- State --
-  const [expanded, setExpanded] = useState(false);
+  const triggerContextLoss = useWebGLContextStore((state) => state.debugTriggerContextLoss);
+  const contextStatus = useWebGLContextStore((state) => state.status);
+
+  // -- Local state --
   const [activeTab, setActiveTab] = useState<'perf' | 'sys' | 'shader' | 'buffers'>('perf');
   const [bufferStats, setBufferStats] = useState<BufferStats | null>(null);
   const [selectedShaderKey, setSelectedShaderKey] = useState<string | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [didDrag, setDidDrag] = useState(false);
 
-  // -- Dimensions & Positioning --
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(180); 
-  const [height, setHeight] = useState(40);
-
-  // Motion values
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-
-  // Resize Observer - only created once, handles both collapsed/expanded states
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        setWidth(entry.contentRect.width);
-        setHeight(entry.contentRect.height);
-      }
-    });
-    observer.observe(container);
-    return () => observer.disconnect();
-  }, []);
+  const isDevelopment = import.meta.env.MODE !== 'production';
 
   // Buffer Stats Refresh
   const refreshBufferStats = useCallback(() => {
@@ -216,17 +327,13 @@ export function PerformanceMonitor() {
         else setSelectedShaderKey(keys[0]!);
       }
     } else {
-        setSelectedShaderKey(null);
+      setSelectedShaderKey(null);
     }
   }, [shaderDebugInfos, selectedShaderKey]);
 
-  // Collision
-  usePanelCollision(x, y, width, height, isDragging);
-
-  const fpsColor = getHealthColor(stats.fps, 55, 30);
-  const sceneStats = stats.sceneGpu;
-  const processedVertices = sceneStats.triangles * 3 + sceneStats.lines * 2 + sceneStats.points;
-  // removed unused uniqueVertices
+  // Derived values
+  const fpsColor = getHealthColor(fps, 55, 30);
+  const processedVertices = sceneGpu.triangles * 3 + sceneGpu.lines * 2 + sceneGpu.points;
   const isRaymarching = isRaymarchingType(objectType);
   const configKey = getConfigStoreKey(objectType);
   const raySteps = configKey === 'mandelbulb' ? mandelbulbConfig.maxIterations :
@@ -234,39 +341,34 @@ export function PerformanceMonitor() {
   const activeShaderInfo = selectedShaderKey ? shaderDebugInfos[selectedShaderKey] : null;
 
   // --- Content Panels ---
-
   const PerfContent = (
     <div className="grid grid-cols-1 gap-5 p-5">
-      {/* Geometry */}
       <div className="space-y-3">
-         <SectionHeader icon={<Icons.Zap />} label="Geometry" />
-         <div className="grid grid-cols-2 gap-2">
-            <InfoCard label="Calls" value={sceneStats.calls} />
-            <InfoCard label="Triangles" value={formatMetric(sceneStats.triangles)} />
-            <InfoCard label="Vertices" value={formatMetric(processedVertices)} />
-            <InfoCard label="Points" value={formatMetric(sceneStats.points)} />
-         </div>
+        <SectionHeader icon={<Icons.Zap />} label="Geometry" />
+        <div className="grid grid-cols-2 gap-2">
+          <InfoCard label="Calls" value={sceneGpu.calls} />
+          <InfoCard label="Triangles" value={formatMetric(sceneGpu.triangles)} />
+          <InfoCard label="Vertices" value={formatMetric(processedVertices)} />
+          <InfoCard label="Points" value={formatMetric(sceneGpu.points)} />
+        </div>
       </div>
-
-      {/* Memory */}
       <div className="space-y-3">
-         <SectionHeader icon={<Icons.Database />} label="Memory" />
-         <div className="grid grid-cols-2 gap-2">
-            <InfoCard label="Textures" value={stats.memory.textures} />
-            <InfoCard label="Programs" value={stats.memory.programs} />
-            <InfoCard label="Geometries" value={stats.memory.geometries} />
-            <InfoCard label="Heap" value={`${stats.memory.heap} MB`} />
-         </div>
+        <SectionHeader icon={<Icons.Database />} label="Memory" />
+        <div className="grid grid-cols-2 gap-2">
+          <InfoCard label="Textures" value={memory.textures} />
+          <InfoCard label="Programs" value={memory.programs} />
+          <InfoCard label="Geometries" value={memory.geometries} />
+          <InfoCard label="Heap" value={`${memory.heap} MB`} />
+        </div>
       </div>
-      
       {isRaymarching && (
-         <div className="space-y-3">
-            <SectionHeader icon={<Icons.Layers />} label="Raymarching" />
-            <div className="grid grid-cols-2 gap-2">
-              <InfoCard label="Steps" value={raySteps} highlight />
-              <InfoCard label="Precision" value="High" />
-            </div>
-         </div>
+        <div className="space-y-3">
+          <SectionHeader icon={<Icons.Layers />} label="Raymarching" />
+          <div className="grid grid-cols-2 gap-2">
+            <InfoCard label="Steps" value={raySteps} highlight />
+            <InfoCard label="Precision" value="High" />
+          </div>
+        </div>
       )}
     </div>
   );
@@ -274,31 +376,29 @@ export function PerformanceMonitor() {
   const SysContent = (
     <div className="space-y-5 p-5">
       <div className="space-y-3">
-          <SectionHeader icon={<Icons.Chip />} label="GPU Info" />
-          <div className="p-3 bg-white/5 rounded-lg border border-white/5 text-xs text-zinc-300 font-mono leading-relaxed">
-            {stats.gpuName}
-          </div>
+        <SectionHeader icon={<Icons.Chip />} label="GPU Info" />
+        <div className="p-3 bg-white/5 rounded-lg border border-white/5 text-xs text-zinc-300 font-mono leading-relaxed">
+          {gpuName}
+        </div>
       </div>
-      
       <div className="space-y-3">
-          <SectionHeader icon={<Icons.Monitor />} label="Viewport" />
-          <div className="grid grid-cols-2 gap-2">
-            <InfoCard label="Resolution" value={`${stats.viewport.width} × ${stats.viewport.height}`} />
-            <InfoCard label="DPR" value={`${stats.viewport.dpr.toFixed(2)}x`} />
-          </div>
+        <SectionHeader icon={<Icons.Monitor />} label="Viewport" />
+        <div className="grid grid-cols-2 gap-2">
+          <InfoCard label="Resolution" value={`${viewport.width} × ${viewport.height}`} />
+          <InfoCard label="DPR" value={`${viewport.dpr.toFixed(2)}x`} />
+        </div>
       </div>
-
       <div className="space-y-3">
         <SectionHeader icon={<Icons.Database />} label="VRAM Estimation" />
         <div className="bg-white/5 rounded-lg p-3 space-y-3 border border-white/5">
-           <div className="flex justify-between items-baseline">
-              <span className="text-[10px] text-zinc-400 uppercase tracking-wider">Total</span>
-              <span className="text-sm font-bold font-mono text-zinc-200">{formatBytes(stats.vram.total)}</span>
-           </div>
-           <div className="space-y-2">
-              <ProgressBar label="Geometry" value={stats.vram.geometries} total={stats.vram.total} color="bg-indigo-500" />
-              <ProgressBar label="Textures" value={stats.vram.textures} total={stats.vram.total} color="bg-pink-500" />
-           </div>
+          <div className="flex justify-between items-baseline">
+            <span className="text-[10px] text-zinc-400 uppercase tracking-wider">Total</span>
+            <span className="text-sm font-bold font-mono text-zinc-200">{formatBytes(vram.total)}</span>
+          </div>
+          <div className="space-y-2">
+            <ProgressBar label="Geometry" value={vram.geometries} total={vram.total} color="bg-indigo-500" />
+            <ProgressBar label="Textures" value={vram.textures} total={vram.total} color="bg-pink-500" />
+          </div>
         </div>
       </div>
     </div>
@@ -307,143 +407,299 @@ export function PerformanceMonitor() {
   const ShaderContent = (
     <div className="space-y-5 p-5">
       {Object.keys(shaderDebugInfos).length === 0 ? (
-         <div className="text-center text-zinc-500 py-8 text-xs">No shader data available</div>
+        <div className="text-center text-zinc-500 py-8 text-xs">No shader data available</div>
       ) : (
-         <>
-            <div className="flex gap-2 overflow-x-auto pb-2 -mx-2 px-2 scrollbar-none">
-              {Object.keys(shaderDebugInfos).map(key => (
-                <button
-                  key={key}
-                  onClick={() => setSelectedShaderKey(key)}
-                  className={`
-                    flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all border
-                    ${selectedShaderKey === key
-                      ? 'bg-accent/20 text-accent border-accent/30'
-                      : 'bg-white/5 text-zinc-500 border-white/5 hover:bg-white/10 hover:text-zinc-300'
-                    }
-                  `}
-                >
-                  {formatShaderName(key, objectType)}
-                </button>
-              ))}
+        <>
+          <div className="flex gap-2 overflow-x-auto pb-2 -mx-2 px-2 scrollbar-none">
+            {Object.keys(shaderDebugInfos).map(key => (
+              <button
+                key={key}
+                onClick={() => setSelectedShaderKey(key)}
+                className={`
+                  flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all border
+                  ${selectedShaderKey === key
+                    ? 'bg-accent/20 text-accent border-accent/30'
+                    : 'bg-white/5 text-zinc-500 border-white/5 hover:bg-white/10 hover:text-zinc-300'
+                  }
+                `}
+              >
+                {formatShaderName(key, objectType)}
+              </button>
+            ))}
+          </div>
+          {activeShaderInfo && (
+            <div className="animate-in fade-in duration-300 space-y-5">
+              <div className="space-y-3">
+                <SectionHeader icon={<Icons.Layers />} label="Stats" />
+                <div className="grid grid-cols-2 gap-2">
+                  <InfoCard label="Vertex" value={formatBytes(activeShaderInfo.vertexShaderLength)} />
+                  <InfoCard label="Fragment" value={formatBytes(activeShaderInfo.fragmentShaderLength)} />
+                </div>
+              </div>
+              <div className="space-y-3">
+                <SectionHeader icon={<Icons.Zap />} label="Features" />
+                <div className="flex flex-wrap gap-2">
+                  {activeShaderInfo.features.map(f => (
+                    <span key={f} className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded text-[9px] font-mono uppercase tracking-wide">
+                      {f}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-3">
+                <SectionHeader icon={<Icons.Database />} label="Modules" />
+                <div className="border border-white/5 rounded-lg overflow-hidden">
+                  {activeShaderInfo.activeModules.map((mod, i) => {
+                    const isEnabled = !shaderOverrides.includes(mod);
+                    return (
+                      <div key={i} className="flex items-center justify-between p-2 hover:bg-white/5 border-b border-white/5 last:border-0 transition-colors">
+                        <span className={`text-[10px] font-mono ${isEnabled ? 'text-zinc-300' : 'text-zinc-600 line-through'}`}>{mod}</span>
+                        <Switch
+                          checked={isEnabled}
+                          onCheckedChange={() => toggleShaderModule(mod)}
+                          className="scale-75 origin-right"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
-
-            {activeShaderInfo && (
-               <div className="animate-in fade-in duration-300 space-y-5">
-                  <div className="space-y-3">
-                    <SectionHeader icon={<Icons.Layers />} label="Stats" />
-                    <div className="grid grid-cols-2 gap-2">
-                      <InfoCard label="Vertex" value={formatBytes(activeShaderInfo.vertexShaderLength)} />
-                      <InfoCard label="Fragment" value={formatBytes(activeShaderInfo.fragmentShaderLength)} />
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                     <SectionHeader icon={<Icons.Zap />} label="Features" />
-                     <div className="flex flex-wrap gap-2">
-                        {activeShaderInfo.features.map(f => (
-                          <span key={f} className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded text-[9px] font-mono uppercase tracking-wide">
-                            {f}
-                          </span>
-                        ))}
-                     </div>
-                  </div>
-                  
-                  <div className="space-y-3">
-                     <SectionHeader icon={<Icons.Database />} label="Modules" />
-                     <div className="border border-white/5 rounded-lg overflow-hidden">
-                       {activeShaderInfo.activeModules.map((mod, i) => {
-                          const isEnabled = !shaderOverrides.includes(mod);
-                          return (
-                            <div key={i} className="flex items-center justify-between p-2 hover:bg-white/5 border-b border-white/5 last:border-0 transition-colors">
-                              <span className={`text-[10px] font-mono ${isEnabled ? 'text-zinc-300' : 'text-zinc-600 line-through'}`}>{mod}</span>
-                              <Switch
-                                checked={isEnabled} 
-                                onCheckedChange={() => toggleShaderModule(mod)} 
-                                className="scale-75 origin-right"
-                              />
-                            </div>
-                          )
-                       })}
-                     </div>
-                  </div>
-               </div>
-            )}
-         </>
+          )}
+        </>
       )}
     </div>
   );
 
-  // Get debug trigger function
-  const triggerContextLoss = useWebGLContextStore((state) => state.debugTriggerContextLoss);
-  const contextStatus = useWebGLContextStore((state) => state.status);
-  const isDevelopment = import.meta.env.MODE !== 'production';
-
   const BuffersContent = (
     <div className="space-y-5 p-5">
-       <div className="flex items-center justify-between">
-          <SectionHeader icon={<Icons.Square />} label="Render Targets" />
-          <button onClick={refreshBufferStats} className="text-zinc-500 hover:text-white transition-colors">
-             <Icons.RefreshCw className="w-3 h-3" />
-          </button>
-       </div>
-
-       {!bufferStats ? <div className="text-center text-zinc-500 py-4 text-xs">Loading...</div> : (
-         <div className="space-y-2">
-            <BufferRow label="Screen" w={bufferStats.screen.width} h={bufferStats.screen.height} baseW={bufferStats.screen.width} />
-            <BufferRow label="Depth" w={bufferStats.depth.width} h={bufferStats.depth.height} baseW={bufferStats.screen.width} />
-            <BufferRow label="Normal" w={bufferStats.normal.width} h={bufferStats.normal.height} baseW={bufferStats.screen.width} />
-            <BufferRow label="Temporal" w={bufferStats.temporal.width} h={bufferStats.temporal.height} baseW={bufferStats.screen.width} highlight={bufferStats.temporal.width !== bufferStats.screen.width * 0.5} />
-         </div>
-       )}
-
-       <div className="space-y-3 pt-3 border-t border-white/5">
-          <SectionHeader icon={<Icons.Monitor />} label="Debug View" />
-          <div className="grid grid-cols-3 gap-2">
-             <DebugToggle label="Depth" active={showDepthBuffer} onClick={() => setShowDepthBuffer(!showDepthBuffer)} />
-             <DebugToggle label="Normal" active={showNormalBuffer} onClick={() => setShowNormalBuffer(!showNormalBuffer)} />
-             <DebugToggle label="Temporal" active={showTemporalDepthBuffer} onClick={() => setShowTemporalDepthBuffer(!showTemporalDepthBuffer)} />
-          </div>
-       </div>
-
-       {/* Debug Tools - Development Only */}
-       {isDevelopment && (
-         <div className="space-y-3 pt-3 border-t border-white/5">
-            <SectionHeader icon={<Icons.AlertTriangle />} label="Debug Tools" />
-            <div className="space-y-2">
-               <button
-                  onClick={triggerContextLoss}
-                  disabled={contextStatus !== 'active'}
-                  className={`
-                    w-full px-3 py-2 text-[10px] font-bold uppercase tracking-wider rounded-md border transition-all
-                    flex items-center justify-center gap-2
-                    ${contextStatus !== 'active'
-                      ? 'bg-zinc-800/50 text-zinc-600 border-zinc-700/50 cursor-not-allowed'
-                      : 'bg-rose-500/10 text-rose-400 border-rose-500/30 hover:bg-rose-500/20 hover:border-rose-500/50'
-                    }
-                  `}
-               >
-                  <Icons.AlertTriangle className="w-3 h-3" />
-                  Simulate Context Loss
-               </button>
-               <div className="text-[9px] text-zinc-600 text-center">
-                  Status: <span className={
-                    contextStatus === 'active' ? 'text-emerald-400' :
-                    contextStatus === 'restoring' ? 'text-amber-400' :
-                    contextStatus === 'failed' ? 'text-rose-400' : 'text-zinc-400'
-                  }>{contextStatus}</span>
-               </div>
+      <div className="flex items-center justify-between">
+        <SectionHeader icon={<Icons.Square />} label="Render Targets" />
+        <button onClick={refreshBufferStats} className="text-zinc-500 hover:text-white transition-colors">
+          <Icons.RefreshCw className="w-3 h-3" />
+        </button>
+      </div>
+      {!bufferStats ? (
+        <div className="text-center text-zinc-500 py-4 text-xs">Loading...</div>
+      ) : (
+        <div className="space-y-2">
+          <BufferRow label="Screen" w={bufferStats.screen.width} h={bufferStats.screen.height} baseW={bufferStats.screen.width} />
+          <BufferRow label="Depth" w={bufferStats.depth.width} h={bufferStats.depth.height} baseW={bufferStats.screen.width} />
+          <BufferRow label="Normal" w={bufferStats.normal.width} h={bufferStats.normal.height} baseW={bufferStats.screen.width} />
+          <BufferRow label="Temporal" w={bufferStats.temporal.width} h={bufferStats.temporal.height} baseW={bufferStats.screen.width} highlight={bufferStats.temporal.width !== bufferStats.screen.width * 0.5} />
+        </div>
+      )}
+      <div className="space-y-3 pt-3 border-t border-white/5">
+        <SectionHeader icon={<Icons.Monitor />} label="Debug View" />
+        <div className="grid grid-cols-3 gap-2">
+          <DebugToggle label="Depth" active={showDepthBuffer} onClick={() => setShowDepthBuffer(!showDepthBuffer)} />
+          <DebugToggle label="Normal" active={showNormalBuffer} onClick={() => setShowNormalBuffer(!showNormalBuffer)} />
+          <DebugToggle label="Temporal" active={showTemporalDepthBuffer} onClick={() => setShowTemporalDepthBuffer(!showTemporalDepthBuffer)} />
+        </div>
+      </div>
+      {isDevelopment && (
+        <div className="space-y-3 pt-3 border-t border-white/5">
+          <SectionHeader icon={<Icons.AlertTriangle />} label="Debug Tools" />
+          <div className="space-y-2">
+            <button
+              onClick={triggerContextLoss}
+              disabled={contextStatus !== 'active'}
+              className={`
+                w-full px-3 py-2 text-[10px] font-bold uppercase tracking-wider rounded-md border transition-all
+                flex items-center justify-center gap-2
+                ${contextStatus !== 'active'
+                  ? 'bg-zinc-800/50 text-zinc-600 border-zinc-700/50 cursor-not-allowed'
+                  : 'bg-rose-500/10 text-rose-400 border-rose-500/30 hover:bg-rose-500/20 hover:border-rose-500/50'
+                }
+              `}
+            >
+              <Icons.AlertTriangle className="w-3 h-3" />
+              Simulate Context Loss
+            </button>
+            <div className="text-[9px] text-zinc-600 text-center">
+              Status: <span className={
+                contextStatus === 'active' ? 'text-emerald-400' :
+                contextStatus === 'restoring' ? 'text-amber-400' :
+                contextStatus === 'failed' ? 'text-rose-400' : 'text-zinc-400'
+              }>{contextStatus}</span>
             </div>
-         </div>
-       )}
+          </div>
+        </div>
+      )}
     </div>
   );
 
-  // Render Content
+  return (
+    <>
+      {/* Header */}
+      <div
+        onClick={() => { if (!didDrag) onCollapse(); }}
+        className="flex items-center justify-between px-5 py-4 border-b border-white/5 bg-white/[0.02] cursor-pointer hover:bg-white/[0.04] transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <Icons.Activity className="w-4 h-4 text-zinc-400" />
+          <span className="text-xs font-bold uppercase tracking-widest text-zinc-300">System Monitor</span>
+        </div>
+        <div className="p-1.5 -mr-1.5 rounded-full text-zinc-500">
+          <Icons.Minimize className="w-4 h-4" />
+        </div>
+      </div>
+
+      {/* Main Graph Area */}
+      <div className="px-5 py-5 space-y-4 bg-gradient-to-b from-black/20 to-transparent">
+        <div className="flex justify-between items-end mb-2">
+          <div>
+            <div className={`text-4xl font-bold font-mono tracking-tighter ${fpsColor.text}`}>
+              {fps}
+              <span className="text-sm text-zinc-500 ml-2 font-sans tracking-normal font-medium">FPS</span>
+            </div>
+            <div className="text-[10px] text-zinc-500 uppercase tracking-wider mt-1 font-medium">
+              Min {minFps} • Max {maxFps}
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-lg font-mono text-zinc-300">{frameTime.toFixed(1)}<span className="text-xs text-zinc-600 ml-1">ms</span></div>
+            <div className="text-[10px] text-zinc-500 uppercase tracking-wider mt-1 font-medium">Frame Time</div>
+          </div>
+        </div>
+
+        <div className="h-16 w-full relative">
+          <Sparkline
+            data={fpsHistory}
+            width={320}
+            height={64}
+            color={fpsColor.stroke}
+            fill={true}
+            maxY={80}
+          />
+          <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-20">
+            <div className="w-full border-t border-dashed border-zinc-500/50"></div>
+            <div className="w-full border-t border-dashed border-zinc-500/50"></div>
+            <div className="w-full border-t border-dashed border-zinc-500/50"></div>
+          </div>
+        </div>
+      </div>
+
+      {/* Content Tabs */}
+      <div className="border-t border-white/5 h-[340px] flex flex-col">
+        <Tabs
+          variant="minimal"
+          fullWidth
+          value={activeTab}
+          onChange={(id) => setActiveTab(id as 'perf' | 'sys' | 'shader' | 'buffers')}
+          tabs={[
+            { id: 'perf', label: 'Stats', content: PerfContent },
+            { id: 'sys', label: 'System', content: SysContent },
+            { id: 'shader', label: 'Shader', content: ShaderContent },
+            { id: 'buffers', label: 'Buffers', content: BuffersContent }
+          ]}
+          className="h-full border-b border-white/5 text-[10px]"
+          contentClassName="h-full"
+        />
+      </div>
+    </>
+  );
+});
+
+// ============================================================================
+// SPARKLINE COMPONENT
+// ============================================================================
+const Sparkline = ({
+  data,
+  width = 100,
+  height = 30,
+  color = '#34d399',
+  fill = false,
+  minY = 0,
+  maxY = 70
+}: {
+  data: number[],
+  width?: number,
+  height?: number,
+  color?: string,
+  fill?: boolean,
+  minY?: number,
+  maxY?: number
+}) => {
+  const points = useMemo(() => {
+    if (data.length < 2) return '';
+    const range = maxY - minY;
+    const stepX = width / (data.length - 1);
+    return data.map((val, i) => {
+      const x = i * stepX;
+      const normalizedY = Math.max(0, Math.min(1, (val - minY) / range));
+      const y = height - (normalizedY * height);
+      return `${x},${y}`;
+    }).join(' ');
+  }, [data, width, height, minY, maxY]);
+
+  const pathD = `M ${points}`;
+  const fillD = `${pathD} L ${width},${height} L 0,${height} Z`;
+
+  return (
+    <svg width={width} height={height} className="overflow-visible">
+      {fill && (
+        <path d={fillD} fill={color} fillOpacity={0.1} stroke="none" />
+      )}
+      <path d={pathD} fill="none" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+};
+
+// ============================================================================
+// MAIN COMPONENT - NO store subscriptions, minimal re-renders
+// ============================================================================
+/**
+ * Performance Monitor UI Component
+ *
+ * PERFORMANCE OPTIMIZATION:
+ * - Parent has ZERO store subscriptions to avoid re-renders when collapsed
+ * - CollapsedView updates via refs (no React re-renders)
+ * - ExpandedContent has all subscriptions isolated
+ * - This prevents 60x/sec sceneGpu updates from causing layout recalcs
+ */
+export function PerformanceMonitor() {
+  // -- State (NO store subscriptions here) --
+  const [expanded, setExpanded] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [didDrag, setDidDrag] = useState(false);
+
+  // -- Dimensions & Positioning --
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(180);
+  const [height, setHeight] = useState(48);
+
+  // Motion values for drag
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+
+  // Resize Observer - only when expanded
+  useEffect(() => {
+    if (!expanded) {
+      setWidth(180);
+      setHeight(48);
+      return;
+    }
+
+    const container = containerRef.current;
+    if (!container) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setWidth(entry.contentRect.width);
+        setHeight(entry.contentRect.height);
+      }
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [expanded]);
+
+  // Panel collision - keeps monitor from being covered by sidebars/toolbars
+  usePanelCollision(x, y, width, height, isDragging);
+
   return (
     <LazyMotion features={domMax}>
       <m.div
-        layout
         ref={containerRef}
         drag
         dragMomentum={false}
@@ -453,147 +709,52 @@ export function PerformanceMonitor() {
         onTap={() => {
           if (!expanded && !didDrag) setExpanded(true);
         }}
-        transition={{ type: "spring", stiffness: 400, damping: 30 }}
         className="absolute top-20 left-4 z-[50] pointer-events-auto select-none"
       >
-        <m.div
-          layout
-          className={`
-            relative overflow-hidden
-            ${expanded ? 'rounded-2xl' : 'rounded-full'}
-            backdrop-blur-xl
-            border border-white/10
-            shadow-[0_8px_32px_-4px_rgba(0,0,0,0.5)]
-            transition-colors duration-300
-            ${expanded ? 'bg-zinc-950/90 w-[360px]' : 'bg-zinc-950/60 hover:bg-zinc-950/80 cursor-pointer w-auto'}
-          `}
-        >
-          {/* --- Collapsed View --- */}
-          <AnimatePresence mode="popLayout">
-            {!expanded && (
-              <m.div 
-                key="collapsed"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex items-center gap-4 px-4 py-2 h-12"
-              >
-                {/* Status Indicator */}
-                <div className="flex items-center gap-3">
-                  <div className="relative flex h-2.5 w-2.5">
-                    <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${fpsColor.bg}`}></span>
-                    <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${fpsColor.bg}`}></span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className={`text-lg font-bold font-mono leading-none ${fpsColor.text}`}>{stats.fps}</span>
-                    <span className="text-[9px] uppercase tracking-wider text-zinc-500 font-bold">FPS</span>
-                  </div>
-                </div>
+        {/* Collapsed View - static, no animations */}
+        {!expanded && (
+          <div
+            className="
+              relative overflow-hidden rounded-full
+              backdrop-blur-xl border border-white/10
+              shadow-[0_8px_32px_-4px_rgba(0,0,0,0.5)]
+              bg-zinc-950/60 hover:bg-zinc-950/80 cursor-pointer
+              transition-colors duration-300
+            "
+          >
+            <CollapsedView />
+          </div>
+        )}
 
-                {/* Divider */}
-                <div className="w-px h-6 bg-white/10" />
-
-                {/* Mini Graph */}
-                <div className="w-16 h-6 flex items-center">
-                   <Sparkline data={stats.history.fps} width={64} height={20} color={fpsColor.stroke} maxY={70} />
-                </div>
-
-                {/* Frame Time (Hidden on mobile maybe, but fine here) */}
-                <div className="flex flex-col items-end min-w-[32px]">
-                   <span className="text-[10px] font-mono text-zinc-300">{stats.frameTime.toFixed(1)}</span>
-                   <span className="text-[8px] text-zinc-500">ms</span>
-                </div>
-              </m.div>
-            )}
-          </AnimatePresence>
-
-          {/* --- Expanded View --- */}
-          <AnimatePresence mode="popLayout">
-            {expanded && (
-              <m.div
-                key="expanded"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex flex-col"
-              >
-                {/* Header */}
-                <div
-                   onClick={() => { if (!didDrag) setExpanded(false); }}
-                   className="flex items-center justify-between px-5 py-4 border-b border-white/5 bg-white/[0.02] cursor-pointer hover:bg-white/[0.04] transition-colors"
-                >
-                   <div className="flex items-center gap-3">
-                      <Icons.Activity className="w-4 h-4 text-zinc-400" />
-                      <span className="text-xs font-bold uppercase tracking-widest text-zinc-300">System Monitor</span>
-                   </div>
-                   <div className="p-1.5 -mr-1.5 rounded-full text-zinc-500">
-                      <Icons.Minimize className="w-4 h-4" />
-                   </div>
-                </div>
-
-                {/* Main Graph Area */}
-                <div className="px-5 py-5 space-y-4 bg-gradient-to-b from-black/20 to-transparent">
-                  <div className="flex justify-between items-end mb-2">
-                    <div>
-                      <div className={`text-4xl font-bold font-mono tracking-tighter ${fpsColor.text}`}>
-                        {stats.fps}
-                        <span className="text-sm text-zinc-500 ml-2 font-sans tracking-normal font-medium">FPS</span>
-                      </div>
-                      <div className="text-[10px] text-zinc-500 uppercase tracking-wider mt-1 font-medium">
-                        Min {stats.minFps} • Max {stats.maxFps}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                       <div className="text-lg font-mono text-zinc-300">{stats.frameTime.toFixed(1)}<span className="text-xs text-zinc-600 ml-1">ms</span></div>
-                       <div className="text-[10px] text-zinc-500 uppercase tracking-wider mt-1 font-medium">Frame Time</div>
-                    </div>
-                  </div>
-                  
-                  <div className="h-16 w-full relative">
-                    <Sparkline 
-                      data={stats.history.fps} 
-                      width={320} 
-                      height={64} 
-                      color={fpsColor.stroke} 
-                      fill={true} 
-                      maxY={80} // Slightly higher than 60 to give room
-                    />
-                    {/* Grid lines */}
-                    <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-20">
-                      <div className="w-full border-t border-dashed border-zinc-500/50"></div>
-                      <div className="w-full border-t border-dashed border-zinc-500/50"></div>
-                      <div className="w-full border-t border-dashed border-zinc-500/50"></div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Content Tabs */}
-                <div className="border-t border-white/5 h-[340px] flex flex-col">
-                   <Tabs
-                    variant="minimal"
-                    fullWidth
-                    value={activeTab}
-                    onChange={(id) => setActiveTab(id as 'perf' | 'sys' | 'shader' | 'buffers')}
-                    tabs={[
-                      { id: 'perf', label: 'Stats', content: PerfContent },
-                      { id: 'sys', label: 'System', content: SysContent },
-                      { id: 'shader', label: 'Shader', content: ShaderContent },
-                      { id: 'buffers', label: 'Buffers', content: BuffersContent }
-                    ]}
-                    className="h-full border-b border-white/5 text-[10px]"
-                    contentClassName="h-full"
-                   />
-                </div>
-              </m.div>
-            )}
-          </AnimatePresence>
-        </m.div>
+        {/* Expanded View */}
+        <AnimatePresence mode="wait">
+          {expanded && (
+            <m.div
+              key="expanded"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              className="
+                flex flex-col w-[360px]
+                relative overflow-hidden rounded-2xl
+                backdrop-blur-xl border border-white/10
+                shadow-[0_8px_32px_-4px_rgba(0,0,0,0.5)]
+                bg-zinc-950/90
+              "
+            >
+              <ExpandedContent onCollapse={() => setExpanded(false)} didDrag={didDrag} />
+            </m.div>
+          )}
+        </AnimatePresence>
       </m.div>
     </LazyMotion>
   );
 }
 
-// --- Subcomponents ---
+// ============================================================================
+// SUBCOMPONENTS
+// ============================================================================
 
 const SectionHeader = ({ icon, label }: { icon: React.ReactNode, label: string }) => (
   <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
@@ -604,8 +765,8 @@ const SectionHeader = ({ icon, label }: { icon: React.ReactNode, label: string }
 
 const InfoCard = ({ label, value, highlight = false }: { label: string, value: string | number, highlight?: boolean }) => (
   <div className="bg-white/5 rounded-md p-2 border border-white/5">
-     <div className="text-[9px] text-zinc-500 uppercase tracking-wider mb-0.5">{label}</div>
-     <div className={`font-mono text-xs ${highlight ? 'text-accent font-bold' : 'text-zinc-200'}`}>{value}</div>
+    <div className="text-[9px] text-zinc-500 uppercase tracking-wider mb-0.5">{label}</div>
+    <div className={`font-mono text-xs ${highlight ? 'text-accent font-bold' : 'text-zinc-200'}`}>{value}</div>
   </div>
 );
 
@@ -616,20 +777,20 @@ const ProgressBar = ({ label, value, total, color }: { label: string, value: num
       <span>{formatBytes(value)}</span>
     </div>
     <div className="h-1 bg-white/10 rounded-full overflow-hidden">
-       <div className={`h-full ${color}`} style={{ width: `${total > 0 ? (value / total) * 100 : 0}%` }} />
+      <div className={`h-full ${color}`} style={{ width: `${total > 0 ? (value / total) * 100 : 0}%` }} />
     </div>
   </div>
 );
 
 const BufferRow = ({ label, w, h, baseW, highlight }: { label: string, w: number, h: number, baseW: number, highlight?: boolean }) => (
   <div className={`flex items-center justify-between p-2 rounded-md border ${highlight ? 'bg-amber-500/10 border-amber-500/20' : 'bg-white/5 border-white/5'}`}>
-     <span className="text-[10px] text-zinc-300 font-medium">{label}</span>
-     <div className="flex items-center gap-3">
-        <span className="text-[10px] font-mono text-zinc-400">{w}×{h}</span>
-        <span className="text-[9px] font-mono text-zinc-600 w-8 text-right">
-           {baseW > 0 ? (w / baseW).toFixed(2) : '-'}x
-        </span>
-     </div>
+    <span className="text-[10px] text-zinc-300 font-medium">{label}</span>
+    <div className="flex items-center gap-3">
+      <span className="text-[10px] font-mono text-zinc-400">{w}×{h}</span>
+      <span className="text-[9px] font-mono text-zinc-600 w-8 text-right">
+        {baseW > 0 ? (w / baseW).toFixed(2) : '-'}x
+      </span>
+    </div>
   </div>
 );
 
@@ -637,8 +798,8 @@ const DebugToggle = ({ label, active, onClick }: { label: string, active: boolea
   <button
     onClick={onClick}
     className={`px-3 py-2 text-[10px] font-bold uppercase tracking-wider rounded-md border transition-all ${
-      active 
-        ? 'bg-accent/20 text-accent border-accent/50 shadow-[0_0_10px_-2px_rgba(var(--accent-rgb),0.3)]' 
+      active
+        ? 'bg-accent/20 text-accent border-accent/50 shadow-[0_0_10px_-2px_rgba(var(--accent-rgb),0.3)]'
         : 'bg-white/5 text-zinc-400 border-white/5 hover:bg-white/10 hover:text-zinc-200'
     }`}
   >

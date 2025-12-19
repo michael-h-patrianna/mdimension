@@ -157,11 +157,9 @@ export {
 export type { ShadowAnimationMode, ShadowQuality } from '@/rendering/shadows/types'
 
 // ============================================================================
-// Depth Effect Defaults
+// Surface Effect Defaults
 // ============================================================================
 
-export const DEFAULT_DEPTH_ATTENUATION_ENABLED = true
-export const DEFAULT_DEPTH_ATTENUATION_STRENGTH = 0.3
 export const DEFAULT_FRESNEL_ENABLED = true
 export const DEFAULT_FRESNEL_INTENSITY = 0.1
 export const DEFAULT_PER_DIMENSION_COLOR_ENABLED = false

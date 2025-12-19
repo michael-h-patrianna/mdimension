@@ -125,8 +125,11 @@ function useStateRecovery() {
         // Clean up regardless of whether we restored
         localStorage.removeItem(RECOVERY_STATE_KEY);
       }
-    } catch {
-      // Silent fail - recovery is best-effort
+    } catch (error) {
+      // Recovery is best-effort, but log for debugging
+      if (import.meta.env.DEV) {
+        console.error('[App] State recovery failed:', error);
+      }
       localStorage.removeItem(RECOVERY_STATE_KEY);
     }
   }, [addToast]);

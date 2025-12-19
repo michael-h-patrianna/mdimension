@@ -113,4 +113,6 @@ function sendError(id: string, error: string): void {
 }
 
 // Signal that the worker is ready
-console.log('[WythoffWorker] Worker initialized')
+if (import.meta.env.DEV) {
+  console.log('[WythoffWorker] Worker initialized')
+}

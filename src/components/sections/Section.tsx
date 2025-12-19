@@ -77,22 +77,11 @@ export const Section: React.FC<SectionProps> = ({
           data-testid={dataTestId ? `${dataTestId}-header` : undefined}
         >
           <div className="flex items-center gap-3">
-            {/* LED Indicator */}
+            {/* LED Indicator - static glow, no animation = 0 style recalcs */}
             <div className="relative flex items-center justify-center w-2 h-2">
-                <m.div 
+                {isOpen && <div className="absolute inset-0 rounded-full bg-accent led-glow" />}
+                <div
                     className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${isOpen ? 'bg-accent' : 'bg-white/20 group-hover:bg-white/40'}`}
-                    animate={isOpen ? {
-                        boxShadow: [
-                            "0 0 0px var(--color-accent)",
-                            "0 0 8px var(--color-accent)",
-                            "0 0 0px var(--color-accent)"
-                        ]
-                    } : {}}
-                    transition={{
-                        duration: 2,
-                        repeat: Infinity,
-                        ease: "easeInOut"
-                    }}
                 />
             </div>
 

@@ -3,7 +3,7 @@ import type { AdvancedRenderingSlice } from './types'
 
 export const ADVANCED_RENDERING_INITIAL_STATE = {
   roughness: 0.3,
-  
+
   sssEnabled: false,
   sssIntensity: 1.0,
   sssColor: '#ff8844',
@@ -13,9 +13,6 @@ export const ADVANCED_RENDERING_INITIAL_STATE = {
   fogIntegrationEnabled: true,
   fogContribution: 1.0,
   internalFogDensity: 0.0,
-
-  lodEnabled: true,
-  lodDetail: 1.0,
 }
 
 export const createAdvancedRenderingSlice: StateCreator<
@@ -37,7 +34,4 @@ export const createAdvancedRenderingSlice: StateCreator<
   setFogIntegrationEnabled: (fogIntegrationEnabled) => set({ fogIntegrationEnabled }),
   setFogContribution: (fogContribution) => set({ fogContribution }),
   setInternalFogDensity: (internalFogDensity) => set({ internalFogDensity }),
-
-  setLodEnabled: (lodEnabled) => set({ lodEnabled }),
-  setLodDetail: (lodDetail) => set({ lodDetail }),
 })

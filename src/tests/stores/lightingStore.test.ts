@@ -1,5 +1,5 @@
 /**
- * Tests for visualStore multi-light actions
+ * Tests for lightingStore multi-light actions
  */
 
 import { MAX_LIGHTS, MIN_LIGHTS } from '@/rendering/lights/types'

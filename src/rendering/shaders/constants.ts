@@ -146,6 +146,5 @@ export const RIM_NDOTL_FACTOR = 0.7
 // Face Rendering Constants
 // ============================================================================
 // NOTE: Face rendering defaults (color, opacity, specular settings) are
-// centralized in @/stores/visualStore.ts to avoid duplicate/conflicting values.
-// Import DEFAULT_FACE_COLOR, DEFAULT_FACE_OPACITY, DEFAULT_SPECULAR_INTENSITY,
-// DEFAULT_SPECULAR_POWER from visualStore instead.
+// centralized in @/stores/appearanceStore.ts to avoid duplicate/conflicting values.
+// Import defaults from appearanceSlice for face color, opacity, specular settings.

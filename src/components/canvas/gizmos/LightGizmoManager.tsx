@@ -7,7 +7,7 @@
  * Features:
  * - Renders LightGizmo for each light in the store
  * - Handles TransformControls for selected light (translate/rotate modes)
- * - Syncs transform changes back to visualStore
+ * - Syncs transform changes back to lightingStore
  * - Respects showLightGizmos toggle
  */
 

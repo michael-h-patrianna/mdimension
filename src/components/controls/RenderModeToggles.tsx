@@ -7,7 +7,7 @@
  * - Toggle visibility for edges and faces independently
  * - Faces toggle is disabled for objects that don't support face rendering
  * - Tooltip explains when faces are unavailable
- * - Integrates with visualStore and geometryStore
+ * - Integrates with appearanceStore and geometryStore
  *
  * @example
  * ```tsx

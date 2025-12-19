@@ -65,6 +65,10 @@ uniform vec3 uMultiSourceWeights;
 uniform bool uFastMode;
 uniform float uQualityMultiplier;
 
+// View Projection matrices for ray reconstruction
+uniform mat4 uViewProjectionMatrix;
+uniform mat4 uInverseViewProjectionMatrix;
+
 // Temporal Reprojection uniforms
 uniform sampler2D uPrevDepthTexture;
 uniform mat4 uPrevViewProjectionMatrix;

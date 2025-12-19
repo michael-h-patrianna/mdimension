@@ -31,10 +31,6 @@ uniform bool uFogEnabled;         // Enable scene fog
 uniform float uFogContribution;   // Fog contribution
 uniform float uInternalFogDensity;// Internal fog density (0.0-1.0)
 
-// LOD
-uniform bool uLodEnabled;         // Enable distance-adaptive LOD
-uniform float uLodDetail;         // Detail multiplier (epsilon scalar)
-
 // Animation bias
 uniform float uBias[11];
 `;

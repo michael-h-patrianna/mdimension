@@ -124,13 +124,13 @@ describe('Hydrogen ND Presets', () => {
       expect(groups[6]).toBeDefined();
 
       // Each group should have correct dimension presets
-      for (const preset of groups[4]) {
+      for (const preset of groups[4]!) {
         expect(preset.dimension).toBe(4);
       }
-      for (const preset of groups[5]) {
+      for (const preset of groups[5]!) {
         expect(preset.dimension).toBe(5);
       }
-      for (const preset of groups[6]) {
+      for (const preset of groups[6]!) {
         expect(preset.dimension).toBe(6);
       }
     });
@@ -156,7 +156,7 @@ describe('Hydrogen ND Presets', () => {
       expect(groups[6]).toBeDefined();
 
       // Each entry should be a tuple [key, preset]
-      for (const [key, preset] of groups[4]) {
+      for (const [key, preset] of groups[4]!) {
         expect(typeof key).toBe('string');
         expect(preset.dimension).toBe(4);
         expect(HYDROGEN_ND_PRESETS[key]).toBe(preset);

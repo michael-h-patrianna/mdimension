@@ -89,9 +89,7 @@ export interface RenderSliceState {
   shaderType: ShaderType
   shaderSettings: AllShaderSettings
 
-  // Depth Effects
-  depthAttenuationEnabled: boolean
-  depthAttenuationStrength: number
+  // Surface Effects
   fresnelEnabled: boolean
   fresnelIntensity: number
 }
@@ -102,8 +100,6 @@ export interface RenderSliceActions {
   setShaderType: (shaderType: ShaderType) => void
   setWireframeSettings: (settings: Partial<WireframeSettings>) => void
   setSurfaceSettings: (settings: Partial<SurfaceSettings>) => void
-  setDepthAttenuationEnabled: (enabled: boolean) => void
-  setDepthAttenuationStrength: (strength: number) => void
   setFresnelEnabled: (enabled: boolean) => void
   setFresnelIntensity: (intensity: number) => void
 }
@@ -129,10 +125,6 @@ export interface AdvancedRenderingState {
   fogIntegrationEnabled: boolean
   fogContribution: number
   internalFogDensity: number
-
-  // Level of Detail
-  lodEnabled: boolean
-  lodDetail: number
 }
 
 export interface AdvancedRenderingActions {
@@ -145,8 +137,6 @@ export interface AdvancedRenderingActions {
   setFogIntegrationEnabled: (enabled: boolean) => void
   setFogContribution: (contribution: number) => void
   setInternalFogDensity: (density: number) => void
-  setLodEnabled: (enabled: boolean) => void
-  setLodDetail: (detail: number) => void
 }
 
 export type AdvancedRenderingSlice = AdvancedRenderingState & AdvancedRenderingActions

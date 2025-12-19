@@ -31,6 +31,7 @@ function createTestLight(overrides: Partial<LightSource> = {}): LightSource {
 function TestWrapper({
   light,
   isSelected = false,
+  isDragging = false,
   onRotationChange = vi.fn(),
   onPositionChange = vi.fn(),
   onDragStart = vi.fn(),
@@ -39,6 +40,7 @@ function TestWrapper({
 }: {
   light: LightSource;
   isSelected?: boolean;
+  isDragging?: boolean;
   onRotationChange?: (rotation: [number, number, number]) => void;
   onPositionChange?: (position: [number, number, number]) => void;
   onDragStart?: () => void;
@@ -50,6 +52,7 @@ function TestWrapper({
       <LightGroundVisualization
         light={light}
         isSelected={isSelected}
+        isDragging={isDragging}
         onRotationChange={onRotationChange}
         onPositionChange={onPositionChange}
         onDragStart={onDragStart}

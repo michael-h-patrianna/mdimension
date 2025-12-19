@@ -433,6 +433,10 @@ const SchroedingerMesh = () => {
     if (meshRef.current) {
       const material = meshRef.current.material as THREE.ShaderMaterial;
 
+      // Guard: Skip uniform updates if material is a placeholder (during shader compilation)
+      // TrackedShaderMaterial returns meshBasicMaterial while compiling, which has no uniforms
+      if (!material.uniforms) return;
+
       // ============================================
       // PERFORMANCE: Read all state via getState() to avoid re-render subscriptions
       // ============================================
