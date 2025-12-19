@@ -32,6 +32,7 @@ import { usePostProcessingStore } from '@/stores/postProcessingStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useRotationStore } from '@/stores/rotationStore';
 import { useWebGLContextStore } from '@/stores/webglContextStore';
+import { useEnvironmentStore } from '@/stores/environmentStore';
 import { useFrame, useThree } from '@react-three/fiber';
 import { memo, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
@@ -47,9 +48,11 @@ import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
 import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
 import { useShallow } from 'zustand/react/shallow';
 import { isPolytopeCategory } from '@/lib/geometry/registry/helpers';
+import { VolumetricFogPass } from '@/rendering/passes/VolumetricFogPass';
+import { generateNoiseTexture2D, generateNoiseTexture3D } from '@/rendering/utils/NoiseGenerator';
 
 /**
- * Update uResolution uniform on all meshes in the VOLUMETRIC layer.
+ * Update uResolution on all meshes in the VOLUMETRIC layer.
  * This is critical for Schroedinger with temporal accumulation, which needs to know
  * whether it's rendering at quarter-res (cloudTarget) or full-res (objectDepthTarget).
  */
@@ -147,6 +150,14 @@ export const PostProcessing = memo(function PostProcessing() {
   // Used to detect context recovery and skip disposal of dead context resources
   const createdAtRestoreCountRef = useRef(restoreCount);
 
+  const supports3DNoise = gl.capabilities.isWebGL2;
+
+  // Create noise texture for volumetric fog (recreated on context restore)
+  const noiseTexture = useMemo(
+    () => (supports3DNoise ? generateNoiseTexture3D(64) : generateNoiseTexture2D(256)),
+    [supports3DNoise, restoreCount]
+  );
+
   const {
     bloomEnabled,
     bloomIntensity,
@@ -225,7 +236,7 @@ export const PostProcessing = memo(function PostProcessing() {
   //
   // IMPORTANT: We create these once and resize them separately to avoid
   // recreating the entire pipeline on every resolution change (which causes black flashes)
-  const { composer, bloomPass, bokehPass, ssrPass, refractionPass, bufferPreviewPass, cinematicPass, filmPass, fxaaPass, smaaPass, sceneTarget, objectDepthTarget, normalTarget, mainObjectMRT, normalCopyScene, normalCopyCamera, normalCopyMaterial, volumetricNormalCopyScene, volumetricNormalCopyMaterial, cloudCompositeScene, cloudCompositeCamera, cloudCompositeMaterial, texturePass, cloudTemporalPass } = useMemo(() => {
+  const { composer, bloomPass, bokehPass, ssrPass, refractionPass, bufferPreviewPass, cinematicPass, filmPass, fxaaPass, smaaPass, volumetricFogPass, sceneTarget, objectDepthTarget, normalTarget, mainObjectMRT, normalCopyScene, normalCopyCamera, normalCopyMaterial, volumetricNormalCopyScene, volumetricNormalCopyMaterial, cloudCompositeScene, cloudCompositeMaterial, cloudCompositeCamera, texturePass, cloudTemporalPass } = useMemo(() => {
     // Track when these resources were created for cleanup logic
     createdAtRestoreCountRef.current = restoreCount;
 
@@ -481,6 +492,12 @@ export const PostProcessing = memo(function PostProcessing() {
 
     effectComposer.addPass(smaa);
 
+    // Volumetric Fog Pass (after AA, before Blur/Bloom)
+    // Fog should be anti-aliased if possible (though it's volumetric so mostly soft)
+    // Important: It needs to be before Bloom so fog can glow
+    const volumetricFog = new VolumetricFogPass(noiseTexture, supports3DNoise);
+    effectComposer.addPass(volumetricFog);
+
     // === BLUR/DISTORTION EFFECTS (after AA) ===
 
     // Bloom - glow effect
@@ -543,6 +560,7 @@ export const PostProcessing = memo(function PostProcessing() {
       filmPass: film,
       fxaaPass: fxaa,
       smaaPass: smaa,
+      volumetricFogPass: volumetricFog,
       sceneTarget: renderTarget,
       objectDepthTarget: objectDepth,
       normalTarget: normalTarget,
@@ -797,13 +815,14 @@ export const PostProcessing = memo(function PostProcessing() {
       volumetricNormalCopyMaterial.dispose();
       cloudCompositeMaterial.dispose();
       cloudTemporalPass.dispose();
+      volumetricFogPass.dispose();
 
       // NOTE: Do NOT dispose TemporalDepthManager and TemporalCloudManager here!
       // They are singletons managed by resourceRecovery. Disposing them here would
       // null out their render targets that may have been just reinitialized.
       // Their lifecycle is: resourceRecovery.invalidate() → resourceRecovery.reinitialize()
     };
-  }, [composer, sceneTarget, objectDepthTarget, normalTarget, mainObjectMRT, normalCopyMaterial, cloudCompositeMaterial, cloudTemporalPass, volumetricNormalCopyMaterial]);
+  }, [composer, sceneTarget, objectDepthTarget, normalTarget, mainObjectMRT, normalCopyMaterial, cloudCompositeMaterial, cloudTemporalPass, volumetricNormalCopyMaterial, volumetricFogPass]);
 
   const prevRotationsRef = useRef<Map<string, number>>(new Map());
   const rotationVelocityRef = useRef(0);
@@ -869,6 +888,7 @@ export const PostProcessing = memo(function PostProcessing() {
     // Use cached state refs instead of getState() for performance
     const ppState = ppStateRef.current;
     const uiState = uiStateRef.current;
+    const fogState = useEnvironmentStore.getState();
 
     // Update Cinematic Shader (Dynamic Chromatic Aberration)
     const rotationState = rotationStateRef.current;
@@ -952,6 +972,22 @@ export const PostProcessing = memo(function PostProcessing() {
     refractionPass.enabled = currentRefractionEnabled;
     fxaaPass.enabled = currentAntiAliasingMethod === 'fxaa';
     smaaPass.enabled = currentAntiAliasingMethod === 'smaa';
+
+    // Update Volumetric Fog
+    if (volumetricFogPass) {
+        // Enable/Disable based on store
+        volumetricFogPass.enabled = fogState.fogEnabled && fogState.fogType === 'physical';
+        
+        if (volumetricFogPass.enabled) {
+            // Update uniforms
+            if (camera instanceof THREE.PerspectiveCamera) {
+                volumetricFogPass.update(scene, camera, delta);
+            }
+            // Bind depth texture (crucial!)
+            // We use sceneTarget.depthTexture which contains full scene depth
+            volumetricFogPass.setDepthTexture(sceneTarget.depthTexture);
+        }
+    }
 
     // Set bloom strength (0 when disabled for smooth transition)
     bloomPass.strength = currentBloomEnabled ? ppState.bloomIntensity : 0;

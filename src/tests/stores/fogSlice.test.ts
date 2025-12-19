@@ -14,12 +14,12 @@ describe('fogSlice', () => {
   });
 
   describe('initial state', () => {
-    it('should have fog disabled by default', () => {
-      expect(useEnvironmentStore.getState().fogEnabled).toBe(false);
+    it('should have fog enabled by default', () => {
+      expect(useEnvironmentStore.getState().fogEnabled).toBe(true);
     });
 
-    it('should have linear fog type by default', () => {
-      expect(useEnvironmentStore.getState().fogType).toBe('linear');
+    it('should have physical fog type by default', () => {
+      expect(useEnvironmentStore.getState().fogType).toBe('physical');
     });
 
     it('should have default fog density', () => {
@@ -33,6 +33,15 @@ describe('fogSlice', () => {
 
     it('should have default fog color', () => {
       expect(useEnvironmentStore.getState().fogColor).toBe(DEFAULT_FOG_STATE.fogColor);
+    });
+
+    it('should have default physical fog parameters', () => {
+      expect(useEnvironmentStore.getState().fogHeight).toBe(DEFAULT_FOG_STATE.fogHeight);
+      expect(useEnvironmentStore.getState().fogFalloff).toBe(DEFAULT_FOG_STATE.fogFalloff);
+      expect(useEnvironmentStore.getState().fogNoiseScale).toBe(DEFAULT_FOG_STATE.fogNoiseScale);
+      expect(useEnvironmentStore.getState().fogNoiseSpeed).toEqual(DEFAULT_FOG_STATE.fogNoiseSpeed);
+      expect(useEnvironmentStore.getState().fogScattering).toBe(DEFAULT_FOG_STATE.fogScattering);
+      expect(useEnvironmentStore.getState().volumetricShadows).toBe(DEFAULT_FOG_STATE.volumetricShadows);
     });
   });
 
@@ -50,6 +59,11 @@ describe('fogSlice', () => {
     it('should switch to volumetric fog', () => {
       useEnvironmentStore.getState().setFogType('volumetric');
       expect(useEnvironmentStore.getState().fogType).toBe('volumetric');
+    });
+
+    it('should switch to physical fog', () => {
+      useEnvironmentStore.getState().setFogType('physical');
+      expect(useEnvironmentStore.getState().fogType).toBe('physical');
     });
 
     it('should switch back to linear fog', () => {
@@ -145,6 +159,57 @@ describe('fogSlice', () => {
     });
   });
 
+  describe('physical fog parameters', () => {
+    it('should update fog height', () => {
+      useEnvironmentStore.getState().setFogHeight(20);
+      expect(useEnvironmentStore.getState().fogHeight).toBe(20);
+      
+      useEnvironmentStore.getState().setFogHeight(-5);
+      expect(useEnvironmentStore.getState().fogHeight).toBe(0);
+    });
+
+    it('should update fog falloff', () => {
+      useEnvironmentStore.getState().setFogFalloff(0.5);
+      expect(useEnvironmentStore.getState().fogFalloff).toBe(0.5);
+
+      useEnvironmentStore.getState().setFogFalloff(0);
+      expect(useEnvironmentStore.getState().fogFalloff).toBe(0.001); // Min value check
+    });
+
+    it('should update fog noise scale', () => {
+      useEnvironmentStore.getState().setFogNoiseScale(0.2);
+      expect(useEnvironmentStore.getState().fogNoiseScale).toBe(0.2);
+
+      useEnvironmentStore.getState().setFogNoiseScale(0);
+      expect(useEnvironmentStore.getState().fogNoiseScale).toBe(0.001); // Min value check
+    });
+
+    it('should update fog noise speed', () => {
+      const speed: [number, number, number] = [0.2, 0.1, 0.2];
+      useEnvironmentStore.getState().setFogNoiseSpeed(speed);
+      expect(useEnvironmentStore.getState().fogNoiseSpeed).toEqual(speed);
+    });
+
+    it('should update fog scattering', () => {
+      useEnvironmentStore.getState().setFogScattering(0.5);
+      expect(useEnvironmentStore.getState().fogScattering).toBe(0.5);
+
+      useEnvironmentStore.getState().setFogScattering(1.5);
+      expect(useEnvironmentStore.getState().fogScattering).toBe(0.99); // Clamp max
+
+      useEnvironmentStore.getState().setFogScattering(-1.5);
+      expect(useEnvironmentStore.getState().fogScattering).toBe(-0.99); // Clamp min
+    });
+
+    it('should toggle volumetric shadows', () => {
+      useEnvironmentStore.getState().setVolumetricShadows(false);
+      expect(useEnvironmentStore.getState().volumetricShadows).toBe(false);
+
+      useEnvironmentStore.getState().setVolumetricShadows(true);
+      expect(useEnvironmentStore.getState().volumetricShadows).toBe(true);
+    });
+  });
+
   describe('resetFog', () => {
     it('should reset all fog settings to defaults', () => {
       useEnvironmentStore.getState().setFogEnabled(true);
@@ -153,6 +218,13 @@ describe('fogSlice', () => {
       useEnvironmentStore.getState().setFogNear(0);
       useEnvironmentStore.getState().setFogFar(200);
       useEnvironmentStore.getState().setFogColor('#ffffff');
+      
+      // Physical params
+      useEnvironmentStore.getState().setFogHeight(100);
+      useEnvironmentStore.getState().setFogFalloff(1.0);
+      useEnvironmentStore.getState().setFogNoiseScale(1.0);
+      useEnvironmentStore.getState().setFogScattering(0.5);
+      useEnvironmentStore.getState().setVolumetricShadows(false);
 
       useEnvironmentStore.getState().resetFog();
 
@@ -162,6 +234,12 @@ describe('fogSlice', () => {
       expect(useEnvironmentStore.getState().fogNear).toBe(DEFAULT_FOG_STATE.fogNear);
       expect(useEnvironmentStore.getState().fogFar).toBe(DEFAULT_FOG_STATE.fogFar);
       expect(useEnvironmentStore.getState().fogColor).toBe(DEFAULT_FOG_STATE.fogColor);
+      
+      expect(useEnvironmentStore.getState().fogHeight).toBe(DEFAULT_FOG_STATE.fogHeight);
+      expect(useEnvironmentStore.getState().fogFalloff).toBe(DEFAULT_FOG_STATE.fogFalloff);
+      expect(useEnvironmentStore.getState().fogNoiseScale).toBe(DEFAULT_FOG_STATE.fogNoiseScale);
+      expect(useEnvironmentStore.getState().fogScattering).toBe(DEFAULT_FOG_STATE.fogScattering);
+      expect(useEnvironmentStore.getState().volumetricShadows).toBe(DEFAULT_FOG_STATE.volumetricShadows);
     });
   });
 });

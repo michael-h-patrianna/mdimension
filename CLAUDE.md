@@ -16,6 +16,13 @@ WHEN: Any task with 3+ steps
 WHY: Tracks progress, maintains focus
 ```
 
+### For Research and Validation of Solutions
+```
+USE: WebSearch
+WHEN: Any non-trivial debugging, planning, solution design task
+WHY: Offers quick access to best practices and solutions
+```
+
 ## MANDATORY CODE STYLE AND ARCHITECTURE RULES
 Coding agents must follow `docs/meta/styleguide.md` - No exceptions!
 All shaders MUST use WebGL2/GLSL ES 3.00 syntax (`in`/`out`, `layout`, no `attribute`/`varying`/`gl_FragColor`).

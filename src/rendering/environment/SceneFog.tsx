@@ -29,7 +29,7 @@ export const SceneFog: React.FC = () => {
   );
 
   useEffect(() => {
-    if (!fogEnabled) {
+    if (!fogEnabled || fogType === 'physical') {
       scene.fog = null;
       return;
     }

@@ -11,7 +11,7 @@ WHY: Prevents cognitive overload, ensures systematic approach
 
 ### For Task Management
 ```
-USE: write_todos
+USE: Todos
 WHEN: Any task with 3+ steps
 WHY: Tracks progress, maintains focus
 ```
@@ -23,8 +23,35 @@ WHEN: Any non-trivial debugging, planning, solution design task
 WHY: Offers quick access to best practices and solutions
 ```
 
+
 ## MANDATORY CODE STYLE AND ARCHITECTURE RULES
 Coding agents must follow `docs/meta/styleguide.md` - No exceptions!
+All shaders MUST use WebGL2/GLSL ES 3.00 syntax (`in`/`out`, `layout`, no `attribute`/`varying`/`gl_FragColor`).
+
+## THREE.JS DPR/VIEWPORT GOTCHA
+
+**CRITICAL**: When rendering to WebGLRenderTarget at non-standard resolutions, NEVER use `gl.setViewport()`. It internally multiplies by device pixel ratio (DPR), causing incorrect rendering on high-DPI displays.
+
+```typescript
+// ✗ WRONG - DPR multiplication breaks non-standard resolution targets
+gl.setRenderTarget(target);
+gl.setViewport(0, 0, target.width, target.height);
+
+// ✓ CORRECT - exact pixel values, no DPR multiplication
+target.viewport.set(0, 0, target.width, target.height);
+gl.setRenderTarget(target);
+```
+
+For fullscreen quad shaders rendered manually (not via ShaderPass), use direct NDC coordinates:
+```glsl
+// ✗ WRONG - camera matrices affected by DPR
+gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+
+// ✓ CORRECT - direct NDC for PlaneGeometry(2, 2)
+gl_Position = vec4(position.xy, 0.0, 1.0);
+```
+
+See: https://github.com/mrdoob/three.js/issues/27655
 
 ## MANDATORY EXECUTION PROTOCOL
 1. Always complete all tasks fully. Do not simplify approaches, do not skip tasks.
@@ -44,9 +71,6 @@ Coding agents must follow `docs/meta/styleguide.md` - No exceptions!
 
 **CRITICAL**: The test suite previously caused memory exhaustion by spawning 13 workers consuming 9GB+ RAM. This has been fixed but requires vigilance.
 
-### Locators always use data-testid for E2E
-- Always use data-testid as locator for E2E tests
-
 ### Configuration Safeguards (DO NOT MODIFY without review)
 - `maxWorkers: 4` in `vitest.config.ts` - Prevents excessive process spawning
 - `pool: 'threads'` - Uses memory-efficient threading instead of forks
@@ -59,7 +83,7 @@ Coding agents must follow `docs/meta/styleguide.md` - No exceptions!
 ### Writing Memory-Safe Tests
 - **DON'T**: Generate 1000+ data points in a single test without batching
 - **DO**: Process in batches of 100 and clear arrays between batches
-- **DON'T**: Rely on DOM for pure logic tests if not needed
+- **DON'T**: Rely on DOM for pure logic tests if not needed (keep them simple)
 - **DO**: Use component tests (`.test.tsx`) only for UI components
 - **DON'T**: Forget to cleanup timers/listeners in afterEach
 - **DO**: Call `cleanup()` from @testing-library/react in test teardown
@@ -84,6 +108,43 @@ node scripts/cleanup-vitest.mjs  # Clean up lingering workers
 
 === END CIB-001 ===
 
+## TECH STACK
+
+### Core Framework
+- **React** 19.2.3 - UI library
+- **TypeScript** 5.6.3 - Type-safe JavaScript
+- **Vite** 7.2.7 - Build tool and dev server
+
+### 3D Graphics & Rendering
+- **Three.js** 0.181.0 - WebGL 3D library
+- **@react-three/fiber** 9.4.2 - React renderer for Three.js
+- **@react-three/drei** 10.7.7 - Three.js utilities
+- **@react-three/postprocessing** 3.0.4 - Post-processing effects
+- **postprocessing** 6.38.0 - Post-processing library
+
+### UI & Styling
+- **Tailwind CSS** 4.1.18 - Utility-first CSS framework
+- **@tailwindcss/vite** 4.1.18 - Vite plugin for Tailwind
+- **Motion** 12.23.26 - Animation library
+
+### State Management & Utilities
+- **Zustand** 5.0.2 - State management
+- **convex-hull** 1.0.3 - Computational geometry
+
+### Testing
+- **vitest** 4.0.15 - Unit testing framework
+- **happy-dom** 15.11.7 - DOM implementation for testing
+- **playwright** 1.57.0 - E2E testing framework
+
+### Development Tools
+- **ESLint** 9.15.0 - Code linting
+- **@typescript-eslint/parser** 8.15.0 - TypeScript ESLint parser
+- **@typescript-eslint/eslint-plugin** 8.15.0 - TypeScript linting rules
+- **eslint-plugin-react-hooks** 5.0.0 - React Hooks linting
+- **eslint-plugin-react-refresh** 0.4.14 - React Refresh linting
+- **eslint-plugin-jsdoc** 61.5.0 - JSDoc linting
+- **Prettier** 3.4.1 - Code formatting
+- **@vitejs/plugin-react** 5.1.2 - Vite React plugin
 
 ## MANDATORY DOCUMENT READS
 - Project architecture and folder structure: `docs/architecture.md`

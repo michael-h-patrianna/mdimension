@@ -13,12 +13,14 @@ import { ToggleButton } from '@/components/ui/ToggleButton';
 import { type FogType } from '@/stores/slices/fogSlice';
 import { useEnvironmentStore } from '@/stores/environmentStore';
 import { useAppearanceStore } from '@/stores/appearanceStore';
+import { Vector3Input } from '@/components/sections/Lights/Vector3Input';
 import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
 const FOG_TYPE_OPTIONS: { value: FogType; label: string; description: string }[] = [
   { value: 'linear', label: 'Linear', description: 'Sharp boundaries' },
   { value: 'volumetric', label: 'Volumetric', description: 'Atmospheric density' },
+  { value: 'physical', label: 'Physical', description: 'Height-based volumetric fog' },
 ];
 
 export const FogControls: React.FC = () => {
@@ -30,12 +32,24 @@ export const FogControls: React.FC = () => {
     fogNear,
     fogFar,
     fogColor,
+    fogHeight,
+    fogFalloff,
+    fogNoiseScale,
+    fogNoiseSpeed,
+    fogScattering,
+    volumetricShadows,
     setFogEnabled,
     setFogType,
     setFogDensity,
     setFogNear,
     setFogFar,
     setFogColor,
+    setFogHeight,
+    setFogFalloff,
+    setFogNoiseScale,
+    setFogNoiseSpeed,
+    setFogScattering,
+    setVolumetricShadows,
     resetFog,
   } = useEnvironmentStore(
     useShallow((state) => ({
@@ -45,12 +59,24 @@ export const FogControls: React.FC = () => {
       fogNear: state.fogNear,
       fogFar: state.fogFar,
       fogColor: state.fogColor,
+      fogHeight: state.fogHeight,
+      fogFalloff: state.fogFalloff,
+      fogNoiseScale: state.fogNoiseScale,
+      fogNoiseSpeed: state.fogNoiseSpeed,
+      fogScattering: state.fogScattering,
+      volumetricShadows: state.volumetricShadows,
       setFogEnabled: state.setFogEnabled,
       setFogType: state.setFogType,
       setFogDensity: state.setFogDensity,
       setFogNear: state.setFogNear,
       setFogFar: state.setFogFar,
       setFogColor: state.setFogColor,
+      setFogHeight: state.setFogHeight,
+      setFogFalloff: state.setFogFalloff,
+      setFogNoiseScale: state.setFogNoiseScale,
+      setFogNoiseSpeed: state.setFogNoiseSpeed,
+      setFogScattering: state.setFogScattering,
+      setVolumetricShadows: state.setVolumetricShadows,
       resetFog: state.resetFog,
     }))
   );
@@ -95,7 +121,7 @@ export const FogControls: React.FC = () => {
           <label className="block text-xs font-medium text-text-secondary">
             Fog Type
           </label>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             {FOG_TYPE_OPTIONS.map((option) => (
               <button
                 key={option.value}
@@ -141,6 +167,72 @@ export const FogControls: React.FC = () => {
               onChange={setFogDensity}
               tooltip="Fog density - higher values create thicker atmospheric fog"
               data-testid="fog-density"
+            />
+          </div>
+        )}
+
+        {/* Physical-specific controls */}
+        {fogType === 'physical' && (
+          <div className="space-y-4 p-3 bg-white/5 rounded-lg">
+            <span className="text-[10px] font-medium text-text-tertiary uppercase tracking-wide">
+              Physical Settings
+            </span>
+            <Slider
+              label="Height"
+              value={fogHeight}
+              min={0}
+              max={50}
+              step={0.5}
+              onChange={setFogHeight}
+              tooltip="Maximum height of the fog layer (world Y)"
+              showValue
+              data-testid="fog-height"
+            />
+            <Slider
+              label="Falloff"
+              value={fogFalloff}
+              min={0.01}
+              max={1}
+              step={0.01}
+              onChange={setFogFalloff}
+              tooltip="Vertical density falloff (higher = fades out faster)"
+              showValue
+              data-testid="fog-falloff"
+            />
+            <Slider
+              label="Noise Scale"
+              value={fogNoiseScale}
+              min={0.01}
+              max={1}
+              step={0.01}
+              onChange={setFogNoiseScale}
+              tooltip="Scale of 3D turbulence (higher = smaller features)"
+              showValue
+              data-testid="fog-noise-scale"
+            />
+            <Vector3Input
+              label="Noise Speed"
+              value={fogNoiseSpeed}
+              onChange={setFogNoiseSpeed}
+              step={0.1}
+              className="pt-1"
+            />
+            <Slider
+              label="Scattering"
+              value={fogScattering}
+              min={-0.99}
+              max={0.99}
+              step={0.01}
+              onChange={setFogScattering}
+              tooltip="Anisotropy of light scattering (-1 back, 0 isotropic, 1 forward)"
+              showValue
+              data-testid="fog-scattering"
+            />
+            <Switch
+              checked={volumetricShadows}
+              onCheckedChange={setVolumetricShadows}
+              label="Volumetric Shadows"
+              data-testid="fog-volumetric-shadows"
             />
           </div>
         )}
