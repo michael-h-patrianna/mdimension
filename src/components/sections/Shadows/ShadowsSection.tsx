@@ -61,13 +61,11 @@ export const ShadowsSection: React.FC<ShadowsSectionProps> = ({
     shadowEnabled,
     shadowQuality,
     shadowSoftness,
-    shadowAnimationMode,
     shadowMapBias,
     shadowMapBlur,
     setShadowEnabled,
     setShadowQuality,
     setShadowSoftness,
-    setShadowAnimationMode,
     setShadowMapBias,
     setShadowMapBlur,
   } = useLightingStore(
@@ -76,13 +74,11 @@ export const ShadowsSection: React.FC<ShadowsSectionProps> = ({
       shadowEnabled: state.shadowEnabled,
       shadowQuality: state.shadowQuality,
       shadowSoftness: state.shadowSoftness,
-      shadowAnimationMode: state.shadowAnimationMode,
       shadowMapBias: state.shadowMapBias,
       shadowMapBlur: state.shadowMapBlur,
       setShadowEnabled: state.setShadowEnabled,
       setShadowQuality: state.setShadowQuality,
       setShadowSoftness: state.setShadowSoftness,
-      setShadowAnimationMode: state.setShadowAnimationMode,
       setShadowMapBias: state.setShadowMapBias,
       setShadowMapBlur: state.setShadowMapBlur,
     }))
@@ -208,18 +204,6 @@ export const ShadowsSection: React.FC<ShadowsSectionProps> = ({
                     tooltip="Higher values create softer shadow edges"
                     data-testid="shadow-softness-slider"
                   />
-                  <ControlGroup
-                    title="Reduce quality during animation"
-                    rightElement={
-                      <Switch
-                        checked={shadowAnimationMode === 'low'}
-                        onCheckedChange={(checked) => setShadowAnimationMode(checked ? 'low' : 'full')}
-                        data-testid="shadow-animation-reduce-toggle"
-                      />
-                    }
-                  >
-                    <span />
-                  </ControlGroup>
                 </div>
               </ControlGroup>
             )}

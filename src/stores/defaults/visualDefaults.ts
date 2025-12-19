@@ -38,8 +38,8 @@ export const DEFAULT_FACES_VISIBLE = true
 // ============================================================================
 
 export const DEFAULT_BLOOM_ENABLED = true
-export const DEFAULT_BLOOM_INTENSITY = 0.3
-export const DEFAULT_BLOOM_THRESHOLD = 0.35
+export const DEFAULT_BLOOM_INTENSITY = 0.2
+export const DEFAULT_BLOOM_THRESHOLD = 0.45
 export const DEFAULT_BLOOM_RADIUS = 0.15
 
 // ============================================================================
@@ -128,13 +128,13 @@ export const DEFAULT_LIGHT_HORIZONTAL_ANGLE = 145
 export const DEFAULT_LIGHT_VERTICAL_ANGLE = 30
 export const DEFAULT_AMBIENT_INTENSITY = 0.01
 export const DEFAULT_AMBIENT_COLOR = '#FFFFFF'
-export const DEFAULT_SPECULAR_INTENSITY = 0.5
-export const DEFAULT_SHININESS = 30
+export const DEFAULT_SPECULAR_INTENSITY = 0.8
+export const DEFAULT_SHININESS = 70
 export const DEFAULT_SHOW_LIGHT_INDICATOR = false
 
 // Enhanced lighting
 export const DEFAULT_SPECULAR_COLOR = '#FFFFFF'
-export const DEFAULT_DIFFUSE_INTENSITY = 1.0
+export const DEFAULT_DIFFUSE_INTENSITY = 0.5
 export const DEFAULT_LIGHT_STRENGTH = 1.0
 export const DEFAULT_TONE_MAPPING_ENABLED = true
 export const DEFAULT_TONE_MAPPING_ALGORITHM: ToneMappingAlgorithm = 'aces'

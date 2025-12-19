@@ -29,7 +29,6 @@ import {
 import { composeJuliaShader } from '@/rendering/shaders/julia/compose'
 import { COLOR_ALGORITHM_TO_INT } from '@/rendering/shaders/palette'
 import {
-    SHADOW_ANIMATION_MODE_TO_INT,
     SHADOW_QUALITY_TO_INT,
 } from '@/rendering/shadows/types'
 import { getEffectiveSdfQuality } from '@/rendering/utils/adaptiveQuality'
@@ -284,7 +283,6 @@ const QuaternionJuliaMesh = () => {
       uShadowEnabled: { value: false },
       uShadowQuality: { value: 1 },
       uShadowSoftness: { value: 1.0 },
-      uShadowAnimationMode: { value: 0 },
 
       // Ambient Occlusion
       uAoEnabled: { value: true },
@@ -586,8 +584,6 @@ const QuaternionJuliaMesh = () => {
     )
     u.uShadowQuality.value = SHADOW_QUALITY_TO_INT[effectiveShadowQuality]
     u.uShadowSoftness.value = lightStore.shadowSoftness
-    u.uShadowAnimationMode.value =
-      SHADOW_ANIMATION_MODE_TO_INT[lightStore.shadowAnimationMode] ?? 0
 
     // Update ambient occlusion (controlled by global SSAO toggle)
     u.uAoEnabled.value = usePostProcessingStore.getState().ssaoEnabled

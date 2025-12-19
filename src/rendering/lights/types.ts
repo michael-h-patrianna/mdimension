@@ -122,7 +122,7 @@ export function createDefaultLight(): LightSource {
   // h=45deg, v=130deg, d=8 => x~-3.64, y~6.13, z~-3.64
   const h = (45 * Math.PI) / 180
   const v = (130 * Math.PI) / 180
-  const d = 14
+  const d = 7
 
   return {
     id: 'light-default',

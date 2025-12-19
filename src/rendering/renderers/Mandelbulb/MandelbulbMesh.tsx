@@ -11,7 +11,7 @@ import { TrackedShaderMaterial } from '@/rendering/materials/TrackedShaderMateri
 import { OPACITY_MODE_TO_INT, SAMPLE_QUALITY_TO_INT } from '@/rendering/opacity/types';
 import { composeMandelbulbShader } from '@/rendering/shaders/mandelbulb/compose';
 import { COLOR_ALGORITHM_TO_INT } from '@/rendering/shaders/palette';
-import { SHADOW_ANIMATION_MODE_TO_INT, SHADOW_QUALITY_TO_INT } from '@/rendering/shadows/types';
+import { SHADOW_QUALITY_TO_INT } from '@/rendering/shadows/types';
 import { getEffectiveSdfQuality } from '@/rendering/utils/adaptiveQuality';
 import { useAnimationStore } from '@/stores/animationStore';
 import { useAppearanceStore } from '@/stores/appearanceStore';
@@ -274,7 +274,6 @@ const MandelbulbMesh = () => {
   const shadowEnabled = useLightingStore((state) => state.shadowEnabled);
   const shadowQuality = useLightingStore((state) => state.shadowQuality);
   const shadowSoftness = useLightingStore((state) => state.shadowSoftness);
-  const shadowAnimationMode = useLightingStore((state) => state.shadowAnimationMode);
 
   const uniforms = useMemo(
     () => ({
@@ -374,7 +373,6 @@ const MandelbulbMesh = () => {
       uShadowEnabled: { value: false },
       uShadowQuality: { value: 1 },
       uShadowSoftness: { value: 1.0 },
-      uShadowAnimationMode: { value: 0 },
 
       // Ambient Occlusion uniforms
       uAoEnabled: { value: true },
@@ -706,9 +704,6 @@ const MandelbulbMesh = () => {
       }
       if (material.uniforms.uShadowSoftness) {
         material.uniforms.uShadowSoftness.value = shadowSoftness;
-      }
-      if (material.uniforms.uShadowAnimationMode) {
-        material.uniforms.uShadowAnimationMode.value = SHADOW_ANIMATION_MODE_TO_INT[shadowAnimationMode];
       }
 
       // Ambient Occlusion uniform (controlled by global SSAO toggle)

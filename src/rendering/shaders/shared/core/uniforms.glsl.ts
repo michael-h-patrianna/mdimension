@@ -89,7 +89,6 @@ uniform bool uVolumetricReduceOnAnim;
 uniform bool uShadowEnabled;
 uniform int uShadowQuality;
 uniform float uShadowSoftness;
-uniform int uShadowAnimationMode;
 
 // Ambient Occlusion uniforms
 uniform bool uAoEnabled;

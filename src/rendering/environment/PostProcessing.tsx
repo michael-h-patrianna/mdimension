@@ -605,6 +605,19 @@ export const PostProcessing = memo(function PostProcessing() {
     gtaoPass.output = GTAOPass.OUTPUT.Default; // Blend AO with scene
     gtaoPass.enabled = true; // Enable by default - we control whether to run the composer
 
+    // CRITICAL FIX: Provide existing G-buffer textures to GTAOPass
+    // Without this, GTAOPass renders its own G-buffer using scene.overrideMaterial = MeshNormalMaterial.
+    // This breaks polytopes because:
+    // 1. Polytope vertices are in N-dimensional raw coordinates (e.g., 4D hypercube at [±1,±1,±1,±1])
+    // 2. MeshNormalMaterial uses standard vertex shader without N-D→3D transformation
+    // 3. The untransformed vertices render as a black cube artifact
+    //
+    // By providing our MRT-rendered normals (with correct N-D transformation applied),
+    // we skip GTAOPass's broken G-buffer render pass entirely.
+    if (normalTarget.depthTexture) {
+      gtaoPass.setGBuffer(normalTarget.depthTexture, normalTarget.texture);
+    }
+
     // Create a dedicated composer for GTAO
     // This allows us to render GTAO independently of the main post-processing chain
     const gtaoComposer = new EffectComposer(gl);
@@ -622,7 +635,7 @@ export const PostProcessing = memo(function PostProcessing() {
       gtaoPass.dispose();
       gtaoComposer.dispose();
     };
-  }, [gl, scene, camera, size.width, size.height, sceneTarget.texture, restoreCount]);
+  }, [gl, scene, camera, size.width, size.height, sceneTarget.texture, normalTarget.depthTexture, normalTarget.texture, restoreCount]);
 
   // Update bloom pass enabled state and parameters
   useEffect(() => {

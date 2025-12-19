@@ -81,15 +81,12 @@ void main() {
         float shadow = 1.0;
         #ifdef USE_SHADOWS
         if (uShadowEnabled) {
-            bool shouldRenderShadow = !uFastMode || uShadowAnimationMode > 0;
-            if (shouldRenderShadow) {
-                vec3 shadowOrigin = p + n * 0.02;
-                vec3 shadowDir = l;
-                float shadowMaxDist = lightType == LIGHT_TYPE_DIRECTIONAL ? 10.0 : length(uLightPositions[i] - p);
-                int effectiveQuality = uShadowQuality;
-                if (uFastMode && uShadowAnimationMode == 1) effectiveQuality = 0;
-                shadow = calcSoftShadowQuality(shadowOrigin, shadowDir, 0.02, shadowMaxDist, uShadowSoftness, effectiveQuality);
-            }
+            vec3 shadowOrigin = p + n * 0.02;
+            vec3 shadowDir = l;
+            float shadowMaxDist = lightType == LIGHT_TYPE_DIRECTIONAL ? 10.0 : length(uLightPositions[i] - p);
+            // When fastMode is active (during animation/interaction), use low quality shadows
+            int effectiveQuality = uFastMode ? 0 : uShadowQuality;
+            shadow = calcSoftShadowQuality(shadowOrigin, shadowDir, 0.02, shadowMaxDist, uShadowSoftness, effectiveQuality);
         }
         #endif
 
