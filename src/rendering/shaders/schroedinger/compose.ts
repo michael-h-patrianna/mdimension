@@ -16,7 +16,7 @@ import { hslBlock } from '../shared/color/hsl.glsl';
 import { cosinePaletteBlock } from '../shared/color/cosine-palette.glsl';
 import { oklabBlock } from '../shared/color/oklab.glsl';
 import { selectorBlock } from '../shared/color/selector.glsl';
-import { fresnelBlock } from '../shared/lighting/fresnel.glsl';
+import { ggxBlock } from '../shared/lighting/ggx.glsl';
 import { multiLightBlock } from '../shared/lighting/multi-light.glsl';
 import { opacityBlock } from '../shared/features/opacity.glsl';
 import { temporalBlock } from '../shared/features/temporal.glsl';
@@ -259,7 +259,7 @@ export function composeSchroedingerShader(config: SchroedingerShaderConfig) {
     { name: 'Color Selector', content: selectorBlock },
 
     // Lighting (must come before emission which uses light functions)
-    { name: 'Lighting (Fresnel)', content: fresnelBlock, condition: enableFresnel },
+    { name: 'GGX PBR', content: ggxBlock },
     { name: 'Multi-Light System', content: multiLightBlock },
 
     // Volumetric rendering

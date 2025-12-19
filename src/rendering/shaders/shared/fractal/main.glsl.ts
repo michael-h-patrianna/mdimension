@@ -1,0 +1,146 @@
+/**
+ * Shared main fragment shader block for fractal raymarching
+ *
+ * Used by both Mandelbulb and Julia shaders. Contains:
+ * - Ray setup from camera through fragment
+ * - Raymarching with temporal reprojection support
+ * - Normal calculation (fast/high quality modes)
+ * - Multi-light PBR lighting loop
+ * - SSS, fresnel, fog effects
+ * - Depth and MRT output
+ */
+export const fractalMainBlock = `
+void main() {
+    vec3 ro, rd;
+    vec3 worldRayDir;
+
+    // Perspective projection: ray from camera through fragment
+    ro = (uInverseModelMatrix * vec4(uCameraPosition, 1.0)).xyz;
+    worldRayDir = normalize(vPosition - uCameraPosition);
+    rd = normalize((uInverseModelMatrix * vec4(worldRayDir, 0.0)).xyz);
+
+    float camDist = length(ro);
+    float maxDist = camDist + BOUND_R * 2.0 + 1.0;
+
+    vec2 tSphere = intersectSphere(ro, rd, BOUND_R);
+    float sphereEntry = max(0.0, tSphere.x);
+
+    float trap;
+    bool usedTemporal;
+    float d = RayMarch(ro, rd, worldRayDir, trap, usedTemporal);
+
+    if (d > maxDist && usedTemporal) {
+        usedTemporal = false;
+        d = RayMarchNoTemporal(ro, rd, trap);
+    }
+
+    if (d > maxDist) discard;
+
+    vec3 p = ro + rd * d;
+    vec3 n = uFastMode ? GetNormalFast(p) : GetNormal(p);
+
+    float ao = 1.0;
+    #ifdef USE_AO
+    if (uAoEnabled) {
+        ao = uFastMode ? 1.0 : calcAO(p, n);
+    }
+    #endif
+
+    vec3 baseHSL = rgb2hsl(uColor);
+    float t = 1.0 - trap;
+    vec3 surfaceColor = getColorByAlgorithm(t, n, baseHSL, p);
+    surfaceColor *= (0.3 + 0.7 * ao);
+
+    vec3 col = surfaceColor * uAmbientColor * uAmbientIntensity;
+    vec3 viewDir = -rd;
+    float totalNdotL = 0.0;
+
+    for (int i = 0; i < MAX_LIGHTS; i++) {
+        if (i >= uNumLights) break;
+        if (!uLightsEnabled[i]) continue;
+
+        vec3 l = getLightDirection(i, p);
+        float attenuation = uLightIntensities[i];
+
+        int lightType = uLightTypes[i];
+        if (lightType == LIGHT_TYPE_POINT || lightType == LIGHT_TYPE_SPOT) {
+            float distance = length(uLightPositions[i] - p);
+            attenuation *= getDistanceAttenuation(i, distance);
+        }
+
+        if (lightType == LIGHT_TYPE_SPOT) {
+            vec3 ltfDiff = p - uLightPositions[i];
+            float ltfLen = length(ltfDiff);
+            // Guard against light at fragment position
+            vec3 lightToFrag = ltfLen > 0.0001 ? ltfDiff / ltfLen : vec3(0.0, -1.0, 0.0);
+            attenuation *= getSpotAttenuation(i, lightToFrag);
+        }
+
+        if (attenuation < 0.001) continue;
+
+        float shadow = 1.0;
+        #ifdef USE_SHADOWS
+        if (uShadowEnabled) {
+            bool shouldRenderShadow = !uFastMode || uShadowAnimationMode > 0;
+            if (shouldRenderShadow) {
+                vec3 shadowOrigin = p + n * 0.02;
+                vec3 shadowDir = l;
+                float shadowMaxDist = lightType == LIGHT_TYPE_DIRECTIONAL ? 10.0 : length(uLightPositions[i] - p);
+                int effectiveQuality = uShadowQuality;
+                if (uFastMode && uShadowAnimationMode == 1) effectiveQuality = 0;
+                shadow = calcSoftShadowQuality(shadowOrigin, shadowDir, 0.02, shadowMaxDist, uShadowSoftness, effectiveQuality);
+            }
+        }
+        #endif
+
+        float NdotL = max(dot(n, l), 0.0);
+        totalNdotL = max(totalNdotL, NdotL * attenuation * shadow);
+
+        // Standard Diffuse
+        col += surfaceColor * uLightColors[i] * NdotL * uDiffuseIntensity * attenuation * shadow;
+
+        // GGX Specular
+        vec3 halfDir = normalize(l + viewDir);
+        vec3 F0 = vec3(0.04); // F0 for dielectrics
+
+        vec3 specular = computePBRSpecular(n, viewDir, l, uRoughness, F0);
+        col += specular * uLightColors[i] * NdotL * uSpecularIntensity * attenuation * shadow;
+
+        // Subsurface Scattering (SSS)
+#ifdef USE_SSS
+        if (uSssEnabled) {
+            vec3 sss = computeSSS(l, viewDir, n, 0.5, uSssThickness * 4.0, 0.0, uSssJitter, gl_FragCoord.xy);
+            col += sss * uSssColor * uLightColors[i] * uSssIntensity * attenuation;
+        }
+#endif
+    }
+
+#ifdef USE_FRESNEL
+    if (uFresnelEnabled && uFresnelIntensity > 0.0) {
+        float NdotV = max(dot(n, viewDir), 0.0);
+        float rim = pow(1.0 - NdotV, 3.0) * uFresnelIntensity * 2.0;
+        rim *= (0.3 + 0.7 * totalNdotL);
+        col += uRimColor * rim;
+    }
+#endif
+
+    // Atmospheric Depth Integration (Fog)
+#ifdef USE_FOG
+    col = applyFog(col, d);
+#endif
+
+    vec4 worldHitPos = uModelMatrix * vec4(p, 1.0);
+    vec4 clipPos = uProjectionMatrix * uViewMatrix * worldHitPos;
+    // Guard against clipPos.w = 0
+    float clipW = abs(clipPos.w) < 0.0001 ? 0.0001 : clipPos.w;
+    gl_FragDepth = clamp((clipPos.z / clipW) * 0.5 + 0.5, 0.0, 1.0);
+
+    float alpha = calculateOpacityAlpha(d, sphereEntry, maxDist);
+    // Guard against zero-length view normal
+    vec3 viewNormalRaw = (uViewMatrix * vec4(n, 0.0)).xyz;
+    float vnLen = length(viewNormalRaw);
+    vec3 viewNormal = vnLen > 0.0001 ? viewNormalRaw / vnLen : vec3(0.0, 0.0, 1.0);
+    gColor = vec4(col, alpha);
+    gNormal = vec4(viewNormal * 0.5 + 0.5, uMetallic);
+}
+`;

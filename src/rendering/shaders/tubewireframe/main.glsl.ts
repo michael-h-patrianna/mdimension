@@ -54,12 +54,16 @@ void main() {
     if (attenuation < 0.001) continue;
 
     // Shadow map sampling for mesh-based objects
+#ifdef USE_SHADOWS
     float shadow = uShadowEnabled ? getShadow(i, vWorldPosition) : 1.0;
+#else
+    float shadow = 1.0;
+#endif
 
     // Cook-Torrance BRDF
     float NDF = distributionGGX(N, H, uRoughness);
     float G = geometrySmith(N, V, L, uRoughness);
-    vec3 F = fresnelSchlickVec3(max(dot(H, V), 0.0), F0);
+    vec3 F = fresnelSchlick(max(dot(H, V), 0.0), F0);
 
     // Specular term
     vec3 numerator = NDF * G * F;

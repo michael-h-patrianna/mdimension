@@ -5,30 +5,28 @@ import { hslBlock } from '../shared/color/hsl.glsl';
 import { cosinePaletteBlock } from '../shared/color/cosine-palette.glsl';
 import { oklabBlock } from '../shared/color/oklab.glsl';
 import { selectorBlock } from '../shared/color/selector.glsl';
-import { fresnelBlock } from '../shared/lighting/fresnel.glsl';
 import { multiLightBlock } from '../shared/lighting/multi-light.glsl';
 import { sssBlock } from '../shared/lighting/sss.glsl';
 import { ggxBlock } from '../shared/lighting/ggx.glsl';
 import { shadowMapsUniformsBlock, shadowMapsFunctionsBlock } from '../shared/features/shadowMaps.glsl';
 import { fogUniformsBlock, fogFunctionsBlock } from '../shared/features/fog.glsl';
+import {
+  processMeshFeatureFlags,
+  assembleShaderBlocks,
+  type MeshShaderConfig,
+} from '../shared/fractal/compose-helpers';
 
 import { transformNDBlock } from './transform-nd.glsl';
 import { modulationBlock } from './modulation.glsl';
 
 /**
  * Configuration for Polytope shader compilation.
+ * Extends MeshShaderConfig with polytope-specific options.
  * Each feature flag controls whether that feature's code is compiled into the shader.
  * Disabled features are completely absent from the compiled shader, not just branched.
  */
-export interface PolytopeShaderConfig {
-  /** Enable fog integration (default: true) */
-  fog?: boolean;
-  /** Enable subsurface scattering (default: true) */
-  sss?: boolean;
-  /** Enable fresnel rim lighting (default: true) */
-  fresnel?: boolean;
-  /** Module names to exclude even if feature is enabled */
-  overrides?: string[];
+export interface PolytopeShaderConfig extends MeshShaderConfig {
+  // Currently no polytope-specific options beyond MeshShaderConfig
 }
 
 /**
@@ -109,49 +107,20 @@ export function composeFaceFragmentShader(config: PolytopeShaderConfig = {}): {
   modules: string[];
   features: string[];
 } {
-  const {
-    fog: enableFog = true,
-    sss: enableSss = true,
-    fresnel: enableFresnel = true,
-    overrides = [],
-  } = config;
+  const { shadows: enableShadows = true, overrides = [] } = config;
 
-  // Build defines and features arrays
-  const defines: string[] = [];
-  const features: string[] = ['Multi-Light', 'Shadow Maps'];
-
-  const useFog = enableFog && !overrides.includes('Fog');
-  const useSss = enableSss && !overrides.includes('SSS');
-  const useFresnel = enableFresnel && !overrides.includes('Fresnel');
-
-  if (useFog) {
-    defines.push('#define USE_FOG');
-    features.push('Fog');
-  }
-  if (useSss) {
-    defines.push('#define USE_SSS');
-    features.push('SSS');
-  }
-  if (useFresnel) {
-    defines.push('#define USE_FRESNEL');
-    features.push('Fresnel');
-  }
+  // Process feature flags using shared helper
+  const flags = processMeshFeatureFlags(config);
 
   // Build blocks array with conditional inclusion
   const blocks = [
     { name: 'Precision', content: precisionBlock },
-    { name: 'Defines', content: defines.join('\n') },
+    { name: 'Defines', content: flags.defines.join('\n') },
     {
       name: 'Polytope Uniforms',
       content: `
     // Color uniforms
     uniform float uOpacity;
-
-    // Legacy single-light uniforms
-    uniform bool uLightEnabled;
-    uniform vec3 uLightColor;
-    uniform vec3 uLightDirection;
-    uniform float uLightStrength;
 
     // SSS uniforms (always declared, code conditionally compiled)
     uniform bool uSssEnabled;
@@ -176,34 +145,20 @@ export function composeFaceFragmentShader(config: PolytopeShaderConfig = {}): {
     { name: 'Color (Cosine)', content: cosinePaletteBlock },
     { name: 'Color (Oklab)', content: oklabBlock },
     { name: 'Color Selector', content: selectorBlock },
-    { name: 'Lighting (Fresnel)', content: fresnelBlock, condition: useFresnel },
     { name: 'Multi-Light System', content: multiLightBlock },
-    { name: 'Lighting (SSS)', content: sssBlock, condition: useSss },
+    { name: 'Lighting (SSS)', content: sssBlock, condition: flags.useSss },
     { name: 'Lighting (GGX)', content: ggxBlock },
-    { name: 'Shadow Maps Uniforms', content: shadowMapsUniformsBlock },
-    { name: 'Shadow Maps Functions', content: shadowMapsFunctionsBlock },
-    { name: 'Fog Uniforms', content: fogUniformsBlock, condition: useFog },
-    { name: 'Fog Functions', content: fogFunctionsBlock, condition: useFog },
+    { name: 'Shadow Maps Uniforms', content: shadowMapsUniformsBlock, condition: enableShadows },
+    { name: 'Shadow Maps Functions', content: shadowMapsFunctionsBlock, condition: enableShadows },
+    { name: 'Fog Uniforms', content: fogUniformsBlock, condition: flags.useFog },
+    { name: 'Fog Functions', content: fogFunctionsBlock, condition: flags.useFog },
     { name: 'Main', content: polytopeMainBlock },
   ];
 
-  // Assemble shader from blocks
-  const modules: string[] = [];
-  const glslParts: string[] = [];
+  // Assemble shader from blocks using shared helper
+  const { glsl, modules } = assembleShaderBlocks(blocks, overrides);
 
-  blocks.forEach((b) => {
-    if (b.condition === false) return; // Disabled in config
-
-    modules.push(b.name);
-
-    if (overrides.includes(b.name)) {
-      // Overridden: Don't add content
-    } else {
-      glslParts.push(b.content);
-    }
-  });
-
-  return { glsl: glslParts.join('\n'), modules, features };
+  return { glsl, modules, features: flags.features };
 }
 
 /**
@@ -262,7 +217,11 @@ void main() {
       if (attenuation < 0.001) continue;
 
       // Shadow map sampling for mesh-based objects
+#ifdef USE_SHADOWS
       float shadow = uShadowEnabled ? getShadow(i, vWorldPosition) : 1.0;
+#else
+      float shadow = 1.0;
+#endif
 
       // Two-sided lighting: use abs() so both sides of faces receive diffuse light
       float NdotL = abs(dot(normal, l));
@@ -294,37 +253,6 @@ void main() {
     }
 #endif
 
-  } else if (uLightEnabled) {
-    // Legacy single-light fallback
-    col = baseColor * uAmbientColor * uAmbientIntensity;
-    float ldLen = length(uLightDirection);
-    vec3 lightDir = ldLen > 0.0001 ? uLightDirection / ldLen : vec3(0.0, 1.0, 0.0);
-
-    float NdotL = abs(dot(normal, lightDir));
-    col += baseColor * uLightColor * NdotL * uDiffuseIntensity * uLightStrength;
-
-    // GGX Specular (PBR) - use faceNormal for two-sided lighting
-    vec3 F0 = vec3(0.04);
-    vec3 specular = computePBRSpecular(faceNormal, viewDir, lightDir, roughness, F0);
-    col += specular * uLightColor * NdotL * uSpecularIntensity * uLightStrength;
-
-    // Rim SSS - legacy single light
-#ifdef USE_SSS
-    if (uSssEnabled && uSssIntensity > 0.0) {
-      vec3 sss = computeSSS(lightDir, viewDir, normal, 0.5, uSssThickness * 4.0, 0.0, uSssJitter, gl_FragCoord.xy);
-      col += sss * uSssColor * uLightColor * uSssIntensity * uLightStrength;
-    }
-#endif
-
-    // Fresnel rim lighting - legacy single light
-#ifdef USE_FRESNEL
-    if (uFresnelEnabled && uFresnelIntensity > 0.0) {
-      float NdotV = abs(dot(normal, viewDir));
-      float rim = pow(1.0 - NdotV, 3.0) * uFresnelIntensity * 2.0;
-      rim *= (0.3 + 0.7 * NdotL);
-      col += uRimColor * rim;
-    }
-#endif
   } else {
     // No lighting - just ambient
     col = baseColor * uAmbientColor * uAmbientIntensity;

@@ -1,20 +1,6 @@
 export const shadowsBlock = `
-// Soft shadow calculation - traces toward light to find occlusion
-float calcSoftShadowLegacy(vec3 ro, vec3 rd, float mint, float maxt, float k) {
-    float res = 1.0;
-    float t = mint;
-    for (int i = 0; i < 24; i++) {
-        if (t > maxt) break;
-        float h = GetDist(ro + rd * t);
-        if (h < 0.001) return 0.0;
-        // Guard division by t (t starts at mint which should be > 0, but be safe)
-        res = min(res, k * h / max(t, 0.0001));
-        t += clamp(h, 0.01, 0.2);
-    }
-    return clamp(res, 0.0, 1.0);
-}
-
 // Quality-aware soft shadow with variable sample count and improved penumbra
+// Uses Inigo Quilez's improved soft shadow technique
 // quality: 0=low(8), 1=medium(16), 2=high(24), 3=ultra(32)
 // softness: 0.0-2.0 controls penumbra size (0=hard, 2=very soft)
 float calcSoftShadowQuality(vec3 ro, vec3 rd, float mint, float maxt, float softness, int quality) {
@@ -37,9 +23,12 @@ float calcSoftShadowQuality(vec3 ro, vec3 rd, float mint, float maxt, float soft
         if (h < 0.001) return 0.0;
 
         // Improved soft shadow technique (Inigo Quilez)
-        float y = h * h / (2.0 * ph);
-        // Guard sqrt against negative values (numerical precision)
-        float d = sqrt(max(h * h - y * y, 0.0));
+        // y represents the perpendicular distance to the occluder
+        // Clamp y to [0, h] to ensure h*h - y*y >= 0 (valid for sqrt)
+        // This can occur when h > 2*ph (sudden distance increase)
+        float y = min(h * h / (2.0 * ph), h);
+        // Double guard: clamp y above + max here for floating-point safety
+        float d = sqrt(max(0.0, h * h - y * y));
         res = min(res, k * d / max(0.0001, t - y));
         ph = h;
 
