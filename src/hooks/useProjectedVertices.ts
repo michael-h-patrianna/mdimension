@@ -1,7 +1,6 @@
 import { useMemo, useRef } from 'react';
-import { projectPerspective, projectOrthographic, DEFAULT_PROJECTION_DISTANCE } from '@/lib/math/projection';
+import { projectPerspective, DEFAULT_PROJECTION_DISTANCE } from '@/lib/math/projection';
 import type { VectorND, Vector3D } from '@/lib/math/types';
-import { useProjectionStore } from '@/stores/projectionStore';
 
 /**
  * Calculates a safe projection distance based on vertex data.
@@ -42,7 +41,7 @@ function calculateSafeProjectionDistance(
 }
 
 /**
- * Hook that projects n-dimensional vertices to 3D space using current projection settings
+ * Hook that projects n-dimensional vertices to 3D space using perspective projection
  *
  * Dynamically calculates projection distance based on vertex extent to prevent
  * inversion artifacts in higher dimensions with large scales.
@@ -60,7 +59,6 @@ function calculateSafeProjectionDistance(
 export function useProjectedVertices(
   rotatedVertices: VectorND[]
 ): Vector3D[] {
-  const type = useProjectionStore((state) => state.type);
   const cacheRef = useRef<Vector3D[]>([]);
 
   return useMemo(() => {
@@ -82,25 +80,19 @@ export function useProjectedVertices(
     const cache = cacheRef.current;
 
     try {
-      if (type === 'perspective') {
-        // Pre-calculate normalization factor for performance
-        // Math.sqrt(dimension - 3) is constant for all vertices
-        const normalizationFactor = dimension > 3 ? Math.sqrt(dimension - 3) : 1;
+      // Pre-calculate normalization factor for performance
+      // Math.sqrt(dimension - 3) is constant for all vertices
+      const normalizationFactor = dimension > 3 ? Math.sqrt(dimension - 3) : 1;
 
-        // Calculate safe projection distance based on actual vertex positions
-        // This prevents inversion when effectiveDepth > projectionDistance
-        const projectionDistance = calculateSafeProjectionDistance(
-          rotatedVertices,
-          normalizationFactor
-        );
+      // Calculate safe projection distance based on actual vertex positions
+      // This prevents inversion when effectiveDepth > projectionDistance
+      const projectionDistance = calculateSafeProjectionDistance(
+        rotatedVertices,
+        normalizationFactor
+      );
 
-        for (let i = 0; i < rotatedVertices.length; i++) {
-          projectPerspective(rotatedVertices[i]!, projectionDistance, cache[i], normalizationFactor);
-        }
-      } else {
-        for (let i = 0; i < rotatedVertices.length; i++) {
-          projectOrthographic(rotatedVertices[i]!, cache[i]);
-        }
+      for (let i = 0; i < rotatedVertices.length; i++) {
+        projectPerspective(rotatedVertices[i]!, projectionDistance, cache[i], normalizationFactor);
       }
       // Return a new array reference each time to trigger downstream re-renders.
       // The inner arrays (cache[i]) are mutated in place for memory efficiency,
@@ -111,5 +103,5 @@ export function useProjectedVertices(
       console.error('Projection error:', error);
       return [];
     }
-  }, [rotatedVertices, type]);
+  }, [rotatedVertices]);
 }

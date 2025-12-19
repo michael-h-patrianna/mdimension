@@ -13,8 +13,19 @@ vec2 evalHydrogenNDPsi9D(float xND[MAX_DIM], float t) {
     float x3 = xND[3], x4 = xND[4], x5 = xND[5];
     float x6 = xND[6], x7 = xND[7], x8 = xND[8];
 
+    // EARLY EXIT 1: Check extra dimensions first (fast check)
+    if (extraDimEarlyExit(6, xND)) {
+        return vec2(0.0);
+    }
+
     // 9D radius
     float r9D = sqrt(x0*x0 + x1*x1 + x2*x2 + x3*x3 + x4*x4 + x5*x5 + x6*x6 + x7*x7 + x8*x8);
+
+    // EARLY EXIT 2: Check hydrogen radial threshold
+    if (hydrogenRadialEarlyExit(r9D, uPrincipalN, uBohrRadius, uAzimuthalL)) {
+        return vec2(0.0);
+    }
+
     float r3D = radius3D(x0, x1, x2);
 
     vec2 angles = sphericalAngles3D(x0, x1, x2, r3D);

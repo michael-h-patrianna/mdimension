@@ -329,6 +329,9 @@ export interface SchroedingerSliceState {
 }
 
 export interface SchroedingerSliceActions {
+  // Geometry Settings
+  setSchroedingerScale: (scale: number) => void
+
   // Quality Settings
   setSchroedingerQualityPreset: (preset: SchroedingerQualityPreset) => void
   setSchroedingerResolution: (value: number) => void

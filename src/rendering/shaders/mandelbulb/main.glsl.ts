@@ -3,24 +3,10 @@ void main() {
     vec3 ro, rd;
     vec3 worldRayDir;
 
-    if (uOrthographic) {
-        worldRayDir = normalize(uOrthoRayDir);
-        rd = normalize((uInverseModelMatrix * vec4(worldRayDir, 0.0)).xyz);
-        vec2 screenUV = gl_FragCoord.xy / uResolution;
-        vec2 ndc = screenUV * 2.0 - 1.0;
-        vec4 nearPointClip = vec4(ndc, -1.0, 1.0);
-        vec4 nearPointWorld = uInverseViewProjectionMatrix * nearPointClip;
-        // Guard against w=0
-        float nearW = abs(nearPointWorld.w) < 0.0001 ? 0.0001 : nearPointWorld.w;
-        nearPointWorld /= nearW;
-        vec3 rayOriginWorld = nearPointWorld.xyz;
-        ro = (uInverseModelMatrix * vec4(rayOriginWorld, 1.0)).xyz;
-        ro = ro - rd * (BOUND_R + 1.0);
-    } else {
-        ro = (uInverseModelMatrix * vec4(uCameraPosition, 1.0)).xyz;
-        worldRayDir = normalize(vPosition - uCameraPosition);
-        rd = normalize((uInverseModelMatrix * vec4(worldRayDir, 0.0)).xyz);
-    }
+    // Perspective projection: ray from camera through fragment
+    ro = (uInverseModelMatrix * vec4(uCameraPosition, 1.0)).xyz;
+    worldRayDir = normalize(vPosition - uCameraPosition);
+    rd = normalize((uInverseModelMatrix * vec4(worldRayDir, 0.0)).xyz);
 
     float camDist = length(ro);
     float maxDist = camDist + BOUND_R * 2.0 + 1.0;
@@ -114,30 +100,35 @@ void main() {
         col += specular * uLightColors[i] * NdotL * uSpecularIntensity * attenuation * shadow;
         
         // Subsurface Scattering (SSS)
+#ifdef USE_SSS
         if (uSssEnabled) {
             // SSS happens when light is behind object (NdotL < 0) or grazing
             // Simple wrap lighting approximation: power of (view . -(light + distortion))
-            // Thickness approximation: deeper SDF = thicker? 
+            // Thickness approximation: deeper SDF = thicker?
             // For SDF, "thickness" is hard to know without marching through.
             // But we can use a constant or proxy.
             // For fractals, thin struts have small DE.
             // But 'd' is distance from camera. 'trap' is orbit trap.
             // Let's use uSssThickness as a global factor.
-            
-            vec3 sss = computeSSS(l, viewDir, n, 0.5, uSssThickness * 4.0, 0.0); // 0.0 thickness for now
+
+            vec3 sss = computeSSS(l, viewDir, n, 0.5, uSssThickness * 4.0, 0.0, uSssJitter, gl_FragCoord.xy);
             // Modulate by SSS intensity and color
             col += sss * uSssColor * uLightColors[i] * uSssIntensity * attenuation;
         }
+#endif
     }
 
+#ifdef USE_FRESNEL
     if (uFresnelEnabled && uFresnelIntensity > 0.0) {
         float NdotV = max(dot(n, viewDir), 0.0);
         float rim = pow(1.0 - NdotV, 3.0) * uFresnelIntensity * 2.0;
         rim *= (0.3 + 0.7 * totalNdotL);
         col += uRimColor * rim;
     }
-    
+#endif
+
     // Atmospheric Depth Integration (Fog)
+#ifdef USE_FOG
     if (uFogEnabled) {
         // Scene Fog (Exp2)
         // Check if scene fog uniforms are available? 
@@ -171,6 +162,7 @@ void main() {
              col = mix(col, uAmbientColor * 0.5, fogFactor);
         }
     }
+#endif
 
     vec4 worldHitPos = uModelMatrix * vec4(p, 1.0);
     vec4 clipPos = uProjectionMatrix * uViewMatrix * worldHitPos;

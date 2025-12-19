@@ -15,9 +15,9 @@ import {
   isValidObjectType as isValidObjectTypeRegistry,
 } from '@/lib/geometry/registry'
 import type { ObjectType } from '@/lib/geometry/types'
-import { isQuantumOnlyAlgorithm } from '@/rendering/shaders/palette'
 import { TemporalCloudManager } from '@/rendering/core/TemporalCloudManager'
 import { TemporalDepthManager } from '@/rendering/core/TemporalDepthManager'
+import { isQuantumOnlyAlgorithm } from '@/rendering/shaders/palette'
 import { create } from 'zustand'
 import { useAppearanceStore } from './appearanceStore'
 import { usePerformanceStore } from './performanceStore'
@@ -32,7 +32,7 @@ export const MAX_DIMENSION = 11
 export const DEFAULT_DIMENSION = 4
 
 /** Default object type */
-export const DEFAULT_OBJECT_TYPE: ObjectType = 'schroedinger'
+export const DEFAULT_OBJECT_TYPE: ObjectType = 'hypercube'
 
 /**
  * Dimension constraints for certain object types

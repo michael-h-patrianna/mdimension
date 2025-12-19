@@ -21,7 +21,6 @@ import {
   getEffectiveSampleQuality,
   usePerformanceStore,
 } from '@/stores/performanceStore';
-import { useProjectionStore } from '@/stores/projectionStore';
 import { useRotationStore } from '@/stores/rotationStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useWebGLContextStore } from '@/stores/webglContextStore';
@@ -337,9 +336,7 @@ const SchroedingerMesh = () => {
       uBayerOffset: { value: new THREE.Vector2(0, 0) },
       uFullResolution: { value: new THREE.Vector2(1, 1) },
 
-      // Orthographic projection uniforms
-      uOrthographic: { value: false },
-      uOrthoRayDir: { value: new THREE.Vector3(0, 0, -1) },
+      // Inverse view projection matrix (needed for temporal accumulation ray direction computation)
       uInverseViewProjectionMatrix: { value: new THREE.Matrix4() },
     }),
     []
@@ -350,10 +347,15 @@ const SchroedingerMesh = () => {
   const shaderOverrides = usePerformanceStore((state) => state.shaderOverrides);
   const resetShaderOverrides = usePerformanceStore((state) => state.resetShaderOverrides);
 
+  // Conditionally compiled feature toggles (affect shader compilation)
+  const sssEnabled = useAppearanceStore((state) => state.sssEnabled);
+  const edgesVisible = useAppearanceStore((state) => state.edgesVisible);
+  const fogEnabled = useAppearanceStore((state) => state.fogIntegrationEnabled);
+
   // Reset overrides when configuration changes
   useEffect(() => {
     resetShaderOverrides();
-  }, [dimension, temporalEnabled, opacityMode, isoEnabled, resetShaderOverrides]);
+  }, [dimension, temporalEnabled, opacityMode, isoEnabled, sssEnabled, edgesVisible, fogEnabled, resetShaderOverrides]);
 
   // Compile shader
   // For volumetric mode with temporal enabled, use temporal ACCUMULATION (Horizon-style)
@@ -371,9 +373,12 @@ const SchroedingerMesh = () => {
       overrides: shaderOverrides,
       isosurface: isoEnabled,
       quantumMode: quantumMode, // Modular compilation: only include required quantum modules
+      sss: sssEnabled,
+      fresnel: edgesVisible,
+      fog: fogEnabled,
     });
     return result;
-  }, [dimension, temporalEnabled, opacityMode, shaderOverrides, isoEnabled, useTemporalAccumulation, quantumMode]);
+  }, [dimension, temporalEnabled, opacityMode, shaderOverrides, isoEnabled, useTemporalAccumulation, quantumMode, sssEnabled, edgesVisible, fogEnabled]);
 
   // Update debug info
   useEffect(() => {
@@ -434,6 +439,10 @@ const SchroedingerMesh = () => {
       const schroedinger = useExtendedObjectStore.getState().schroedinger;
       const appearance = useAppearanceStore.getState();
       const lighting = useLightingStore.getState();
+
+      // Apply scale to mesh
+      const scale = schroedinger.scale;
+      meshRef.current.scale.set(scale, scale, scale);
       const uiState = useUIStore.getState();
       const { rotations, version: rotationVersion } = useRotationStore.getState();
       
@@ -722,14 +731,7 @@ const SchroedingerMesh = () => {
       if (material.uniforms.uProjectionMatrix) material.uniforms.uProjectionMatrix.value.copy(camera.projectionMatrix);
       if (material.uniforms.uViewMatrix) material.uniforms.uViewMatrix.value.copy(camera.matrixWorldInverse);
 
-      // Orthographic projection
-      const projectionType = useProjectionStore.getState().type;
-      if (material.uniforms.uOrthographic) {
-        material.uniforms.uOrthographic.value = projectionType === 'orthographic';
-      }
-      if (material.uniforms.uOrthoRayDir) {
-        camera.getWorldDirection(material.uniforms.uOrthoRayDir.value as THREE.Vector3);
-      }
+      // Inverse view projection matrix (needed for temporal accumulation ray direction computation)
       if (material.uniforms.uInverseViewProjectionMatrix) {
         const invVP = material.uniforms.uInverseViewProjectionMatrix.value as THREE.Matrix4;
         invVP.copy(camera.projectionMatrixInverse).premultiply(camera.matrixWorld);

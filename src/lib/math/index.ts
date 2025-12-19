@@ -6,7 +6,7 @@
  * - N-dimensional vector operations
  * - Matrix operations and transformations
  * - Rotation in arbitrary planes
- * - Perspective and orthographic projection from nD to 3D
+ * - Perspective projection from nD to 3D
  */
 
 // Type definitions
@@ -73,7 +73,6 @@ export {
   DEFAULT_PROJECTION_DISTANCE,
   MIN_SAFE_DISTANCE,
   projectEdgesToPositions,
-  projectOrthographic,
   projectPerspective,
   projectVertices,
   projectVerticesToPositions,

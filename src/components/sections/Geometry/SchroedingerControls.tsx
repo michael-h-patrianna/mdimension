@@ -97,9 +97,13 @@ export const SchroedingerControls: React.FC<SchroedingerControlsProps> = React.m
     setHydrogenNDPreset,
     setExtraDimQuantumNumber,
     setExtraDimFrequencySpread,
+    // Geometry actions
+    setScale,
   } = useExtendedObjectStore(
     useShallow((state) => ({
       config: state.schroedinger,
+      // Geometry actions
+      setScale: state.setSchroedingerScale,
       // Mode selection
       setQuantumMode: state.setSchroedingerQuantumMode,
       // Harmonic oscillator actions
@@ -151,6 +155,20 @@ export const SchroedingerControls: React.FC<SchroedingerControlsProps> = React.m
 
   return (
     <div className={className} data-testid="schroedinger-controls">
+        {/* Geometry Settings */}
+        <Section title="Geometry" defaultOpen={true}>
+            <Slider
+                label="Scale"
+                min={0.1}
+                max={2.0}
+                step={0.05}
+                value={config.scale}
+                onChange={setScale}
+                showValue
+                data-testid="schroedinger-scale"
+            />
+        </Section>
+
         {/* Physics Mode Selection */}
         <Section title="Physics Mode" defaultOpen={true}>
             <div className="space-y-3">

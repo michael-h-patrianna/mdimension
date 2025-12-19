@@ -41,7 +41,6 @@ import {
     usePerformanceStore,
 } from '@/stores/performanceStore'
 import { usePostProcessingStore } from '@/stores/postProcessingStore'
-import { useProjectionStore } from '@/stores/projectionStore'
 import { useRotationStore } from '@/stores/rotationStore'
 import { useUIStore } from '@/stores/uiStore'
 import { useWebGLContextStore } from '@/stores/webglContextStore'
@@ -133,9 +132,9 @@ const QuaternionJuliaMesh = () => {
   const basisVectorsDirtyRef = useRef(true)
 
   // Cached uniform values
-  const prevPowerRef = useRef<number | null>(null)
-  const prevIterationsRef = useRef<number | null>(null)
-  const prevEscapeRadiusRef = useRef<number | null>(null)
+  // Note: prevPowerRef, prevIterationsRef, prevEscapeRadiusRef were removed
+  // because the optimization caused uniforms to not update after TrackedShaderMaterial
+  // transitions from placeholder to shader material.
   const prevLightingVersionRef = useRef<number>(-1)
 
   // Cached colors
@@ -178,10 +177,15 @@ const QuaternionJuliaMesh = () => {
   const shaderOverrides = usePerformanceStore((state) => state.shaderOverrides)
   const resetShaderOverrides = usePerformanceStore((state) => state.resetShaderOverrides)
 
+  // Conditionally compiled feature toggles (affect shader compilation)
+  const sssEnabled = useAppearanceStore((state) => state.sssEnabled)
+  const edgesVisible = useAppearanceStore((state) => state.edgesVisible)
+  const fogEnabled = useAppearanceStore((state) => state.fogIntegrationEnabled)
+
   // Reset overrides when base configuration changes
   useEffect(() => {
     resetShaderOverrides()
-  }, [dimension, shadowEnabled, temporalEnabled, opacityMode, resetShaderOverrides])
+  }, [dimension, shadowEnabled, temporalEnabled, opacityMode, sssEnabled, edgesVisible, fogEnabled, resetShaderOverrides])
 
   const { glsl: shaderString, modules, features } = useMemo(() => {
     return composeJuliaShader({
@@ -191,8 +195,11 @@ const QuaternionJuliaMesh = () => {
       ambientOcclusion: true,
       opacityMode,
       overrides: shaderOverrides,
+      sss: sssEnabled,
+      fresnel: edgesVisible,
+      fog: fogEnabled,
     })
-  }, [dimension, shadowEnabled, temporalEnabled, opacityMode, shaderOverrides])
+  }, [dimension, shadowEnabled, temporalEnabled, opacityMode, shaderOverrides, sssEnabled, edgesVisible, fogEnabled])
 
   useEffect(() => {
     setShaderDebugInfo('object', {
@@ -256,7 +263,8 @@ const QuaternionJuliaMesh = () => {
       uSssIntensity: { value: 1.0 },
       uSssColor: { value: new THREE.Color('#ff8844') },
       uSssThickness: { value: 1.0 },
-      
+      uSssJitter: { value: 0.2 },
+
       // Atmosphere
       uFogEnabled: { value: true },
       uFogContribution: { value: 1.0 },
@@ -308,11 +316,6 @@ const QuaternionJuliaMesh = () => {
       uPrevInverseViewProjectionMatrix: { value: new THREE.Matrix4() },
       uTemporalEnabled: { value: false },
       uDepthBufferResolution: { value: new THREE.Vector2(1, 1) },
-
-      // Orthographic projection uniforms
-      uOrthographic: { value: false },
-      uOrthoRayDir: { value: new THREE.Vector3(0, 0, -1) },
-      uInverseViewProjectionMatrix: { value: new THREE.Matrix4() },
     }),
     []
   )
@@ -382,19 +385,12 @@ const QuaternionJuliaMesh = () => {
     // Update dimension
     u.uDimension.value = currentDimension
 
-    // Update fractal parameters (conditionally)
-    if (prevPowerRef.current !== config.power) {
-      u.uPower.value = config.power
-      prevPowerRef.current = config.power
-    }
-    if (prevIterationsRef.current !== config.maxIterations) {
-      u.uIterations.value = config.maxIterations
-      prevIterationsRef.current = config.maxIterations
-    }
-    if (prevEscapeRadiusRef.current !== config.bailoutRadius) {
-      u.uEscapeRadius.value = config.bailoutRadius
-      prevEscapeRadiusRef.current = config.bailoutRadius
-    }
+    // Update fractal parameters
+    // Always set these uniforms unconditionally to ensure they're updated after
+    // TrackedShaderMaterial transitions from placeholder to actual shader material.
+    u.uPower.value = config.power
+    u.uIterations.value = config.maxIterations
+    u.uEscapeRadius.value = config.bailoutRadius
 
     // Julia constant (static)
     u.uJuliaConstant.value.set(...config.juliaConstant)
@@ -491,22 +487,9 @@ const QuaternionJuliaMesh = () => {
     u.uViewMatrix.value.copy(camera.matrixWorldInverse)
     u.uCameraPosition.value.copy(camera.position)
 
-    // Update resolution (needed for orthographic projection)
+    // Update resolution
     if (u.uResolution) {
       u.uResolution.value.set(size.width, size.height)
-    }
-
-    // Update orthographic projection uniforms
-    const projectionType = useProjectionStore.getState().type
-    u.uOrthographic.value = projectionType === 'orthographic'
-    // Get camera's forward direction (negative Z in camera space, transformed to world space)
-    camera.getWorldDirection(u.uOrthoRayDir.value as THREE.Vector3)
-    // Compute inverse view-projection matrix for unprojecting screen coords to world space
-    // inverseVP = inverse(projection * view) = inverse(view) * inverse(projection)
-    // inverse(view) = camera.matrixWorld, inverse(projection) = camera.projectionMatrixInverse
-    if (u.uInverseViewProjectionMatrix) {
-      const invVP = u.uInverseViewProjectionMatrix.value as THREE.Matrix4
-      invVP.copy(camera.projectionMatrixInverse).premultiply(camera.matrixWorld)
     }
 
     // Update temporal reprojection uniforms from manager
@@ -561,7 +544,8 @@ const QuaternionJuliaMesh = () => {
         updateLinearColorUniform(colorCacheRef.current.faceColor /* reuse helper */, u.uSssColor.value as THREE.Color, visuals.sssColor || '#ff8844')
     }
     if (u.uSssThickness) u.uSssThickness.value = visuals.sssThickness
-    
+    if (u.uSssJitter) u.uSssJitter.value = visuals.sssJitter
+
     // Atmosphere (Global Visuals)
     if (u.uFogEnabled) u.uFogEnabled.value = visuals.fogIntegrationEnabled
     if (u.uFogContribution) u.uFogContribution.value = visuals.fogContribution

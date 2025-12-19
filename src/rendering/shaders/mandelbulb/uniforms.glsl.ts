@@ -24,6 +24,7 @@ uniform bool uSssEnabled;         // Enable subsurface scattering
 uniform float uSssIntensity;      // SSS intensity
 uniform vec3 uSssColor;           // SSS tint color
 uniform float uSssThickness;      // SSS thickness factor
+uniform float uSssJitter;         // SSS jitter amount (0.0-1.0)
 
 // Atmosphere
 uniform bool uFogEnabled;         // Enable scene fog

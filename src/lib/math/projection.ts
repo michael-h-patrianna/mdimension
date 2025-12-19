@@ -1,6 +1,6 @@
 /**
  * N-dimensional to 3D projection operations
- * Supports both perspective and orthographic projections
+ * Uses perspective projection for proper depth perception
  */
 
 import type { Vector3D, VectorND } from './types'
@@ -98,36 +98,11 @@ export function projectPerspective(
 }
 
 /**
- * Projects an n-dimensional point to 3D using orthographic projection
- * Simply extracts the first three coordinates (x, y, z)
- *
- * This is useful for debugging or when perspective distortion is not desired
- *
- * @param vertex - N-dimensional vertex (n ≥ 3)
- * @param out
- * @returns 3D projected point (first three coordinates)
- * @throws {Error} If vertex has less than 3 dimensions
- */
-export function projectOrthographic(vertex: VectorND, out?: Vector3D): Vector3D {
-  if (vertex.length < 3) {
-    throw new Error(`Cannot project ${vertex.length}D vertex to 3D: need at least 3 dimensions`)
-  }
-
-  const result = out ?? [0, 0, 0]
-
-  result[0] = vertex[0]!
-  result[1] = vertex[1]!
-  result[2] = vertex[2]!
-  return result
-}
-
-/**
- * Projects an array of n-dimensional vertices to 3D
+ * Projects an array of n-dimensional vertices to 3D using perspective projection
  * Applies the same projection to all vertices
  *
  * @param vertices - Array of n-dimensional vertices
  * @param projectionDistance - Distance from projection plane
- * @param usePerspective - If true, use perspective projection; if false, use orthographic
  * @param out - Optional output array to avoid allocation
  * @returns Array of 3D projected points
  * @throws {Error} If any vertex has less than 3 dimensions (DEV only)
@@ -136,7 +111,6 @@ export function projectOrthographic(vertex: VectorND, out?: Vector3D): Vector3D 
 export function projectVertices(
   vertices: VectorND[],
   projectionDistance: number = DEFAULT_PROJECTION_DISTANCE,
-  usePerspective = true,
   out?: Vector3D[]
 ): Vector3D[] {
   const len = vertices.length
@@ -174,15 +148,9 @@ export function projectVertices(
   // Pre-calculate normalization factor once
   const normalizationFactor = dimension > 3 ? Math.sqrt(dimension - 3) : 1
 
-  // Project each vertex
-  if (usePerspective) {
-    for (let i = 0; i < len; i++) {
-      projectPerspective(vertices[i]!, projectionDistance, result[i], normalizationFactor)
-    }
-  } else {
-    for (let i = 0; i < len; i++) {
-      projectOrthographic(vertices[i]!, result[i])
-    }
+  // Project each vertex with perspective projection
+  for (let i = 0; i < len; i++) {
+    projectPerspective(vertices[i]!, projectionDistance, result[i], normalizationFactor)
   }
 
   return result
@@ -373,7 +341,6 @@ export function clipLine(
  * @param vertices - Array of n-dimensional vertices to project
  * @param positions - Target Float32Array to write into (must have length >= vertices.length * 3)
  * @param projectionDistance - Distance from projection plane (default: 4.0)
- * @param usePerspective - If true, use perspective projection; if false, use orthographic
  * @param offset - Starting offset in the positions array (default: 0)
  * @returns Number of vertices written (same as vertices.length on success)
  * @throws {Error} If positions array is too small or vertices have < 3 dimensions (DEV only)
@@ -382,7 +349,7 @@ export function clipLine(
  * @example
  * ```ts
  * const positions = new Float32Array(vertices.length * 3);
- * projectVerticesToPositions(vertices, positions, 4.0, true);
+ * projectVerticesToPositions(vertices, positions, 4.0);
  * geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
  * ```
  */
@@ -390,7 +357,6 @@ export function projectVerticesToPositions(
   vertices: VectorND[],
   positions: Float32Array,
   projectionDistance: number = DEFAULT_PROJECTION_DISTANCE,
-  usePerspective = true,
   offset = 0
 ): number {
   const len = vertices.length
@@ -412,43 +378,33 @@ export function projectVerticesToPositions(
   const numHigherDims = dimension - 3
   const normalizationFactor = numHigherDims > 0 ? Math.sqrt(numHigherDims) : 1
 
-  if (usePerspective) {
-    for (let i = 0; i < len; i++) {
-      const vertex = vertices[i]!
-      const x = vertex[0]!
-      const y = vertex[1]!
-      const z = vertex[2]!
+  // Perspective projection
+  for (let i = 0; i < len; i++) {
+    const vertex = vertices[i]!
+    const x = vertex[0]!
+    const y = vertex[1]!
+    const z = vertex[2]!
 
-      // Calculate effective depth from higher dimensions
-      let effectiveDepth = 0
-      if (numHigherDims > 0) {
-        for (let d = 3; d < dimension; d++) {
-          effectiveDepth += vertex[d]!
-        }
-        effectiveDepth = effectiveDepth / normalizationFactor
+    // Calculate effective depth from higher dimensions
+    let effectiveDepth = 0
+    if (numHigherDims > 0) {
+      for (let d = 3; d < dimension; d++) {
+        effectiveDepth += vertex[d]!
       }
-
-      // Apply perspective division
-      let denominator = projectionDistance - effectiveDepth
-      if (Math.abs(denominator) < MIN_SAFE_DISTANCE) {
-        denominator = denominator >= 0 ? MIN_SAFE_DISTANCE : -MIN_SAFE_DISTANCE
-      }
-      const scale = 1 / denominator
-
-      const idx = offset + i * 3
-      positions[idx] = x * scale
-      positions[idx + 1] = y * scale
-      positions[idx + 2] = z * scale
+      effectiveDepth = effectiveDepth / normalizationFactor
     }
-  } else {
-    // Orthographic: just copy first 3 coordinates
-    for (let i = 0; i < len; i++) {
-      const vertex = vertices[i]!
-      const idx = offset + i * 3
-      positions[idx] = vertex[0]!
-      positions[idx + 1] = vertex[1]!
-      positions[idx + 2] = vertex[2]!
+
+    // Apply perspective division
+    let denominator = projectionDistance - effectiveDepth
+    if (Math.abs(denominator) < MIN_SAFE_DISTANCE) {
+      denominator = denominator >= 0 ? MIN_SAFE_DISTANCE : -MIN_SAFE_DISTANCE
     }
+    const scale = 1 / denominator
+
+    const idx = offset + i * 3
+    positions[idx] = x * scale
+    positions[idx + 1] = y * scale
+    positions[idx + 2] = z * scale
   }
 
   return len
@@ -465,7 +421,6 @@ export function projectVerticesToPositions(
  * @param edges - Array of edge pairs as [startIndex, endIndex]
  * @param positions - Target Float32Array (must have length >= edges.length * 6)
  * @param projectionDistance - Distance from projection plane (default: 4.0)
- * @param usePerspective - If true, use perspective projection; if false, use orthographic
  * @param offset - Starting offset in the positions array (default: 0)
  * @returns Number of edges written (same as edges.length on success)
  * @throws {Error} If positions array is too small or vertices have < 3 dimensions (DEV only)
@@ -474,7 +429,7 @@ export function projectVerticesToPositions(
  * @example
  * ```ts
  * const positions = new Float32Array(edges.length * 6);
- * projectEdgesToPositions(vertices, edges, positions, 4.0, true);
+ * projectEdgesToPositions(vertices, edges, positions, 4.0);
  * fatLineGeometry.setPositions(positions);
  * ```
  */
@@ -483,7 +438,6 @@ export function projectEdgesToPositions(
   edges: ReadonlyArray<readonly [number, number]> | [number, number][],
   positions: Float32Array,
   projectionDistance: number = DEFAULT_PROJECTION_DISTANCE,
-  usePerspective = true,
   offset = 0
 ): number {
   const numEdges = edges.length
@@ -507,87 +461,60 @@ export function projectEdgesToPositions(
   const numHigherDims = dimension - 3
   const normalizationFactor = numHigherDims > 0 ? Math.sqrt(numHigherDims) : 1
 
-  if (usePerspective) {
-    for (let e = 0; e < numEdges; e++) {
-      const [startIdx, endIdx] = edges[e]!
-      const v1 = vertices[startIdx]
-      const v2 = vertices[endIdx]
+  // Perspective projection for all edges
+  for (let e = 0; e < numEdges; e++) {
+    const [startIdx, endIdx] = edges[e]!
+    const v1 = vertices[startIdx]
+    const v2 = vertices[endIdx]
 
-      const idx = offset + e * 6
+    const idx = offset + e * 6
 
-      if (!v1 || !v2) {
-        // Write zeros for invalid edges
-        positions[idx] = 0
-        positions[idx + 1] = 0
-        positions[idx + 2] = 0
-        positions[idx + 3] = 0
-        positions[idx + 4] = 0
-        positions[idx + 5] = 0
-        continue
-      }
-
-      // Project first vertex
-      let effectiveDepth1 = 0
-      if (numHigherDims > 0) {
-        for (let d = 3; d < dimension; d++) {
-          effectiveDepth1 += v1[d]!
-        }
-        effectiveDepth1 = effectiveDepth1 / normalizationFactor
-      }
-      let denom1 = projectionDistance - effectiveDepth1
-      if (Math.abs(denom1) < MIN_SAFE_DISTANCE) {
-        denom1 = denom1 >= 0 ? MIN_SAFE_DISTANCE : -MIN_SAFE_DISTANCE
-      }
-      const scale1 = 1 / denom1
-
-      positions[idx] = v1[0]! * scale1
-      positions[idx + 1] = v1[1]! * scale1
-      positions[idx + 2] = v1[2]! * scale1
-
-      // Project second vertex
-      let effectiveDepth2 = 0
-      if (numHigherDims > 0) {
-        for (let d = 3; d < dimension; d++) {
-          effectiveDepth2 += v2[d]!
-        }
-        effectiveDepth2 = effectiveDepth2 / normalizationFactor
-      }
-      let denom2 = projectionDistance - effectiveDepth2
-      if (Math.abs(denom2) < MIN_SAFE_DISTANCE) {
-        denom2 = denom2 >= 0 ? MIN_SAFE_DISTANCE : -MIN_SAFE_DISTANCE
-      }
-      const scale2 = 1 / denom2
-
-      positions[idx + 3] = v2[0]! * scale2
-      positions[idx + 4] = v2[1]! * scale2
-      positions[idx + 5] = v2[2]! * scale2
+    if (!v1 || !v2) {
+      // Write zeros for invalid edges
+      positions[idx] = 0
+      positions[idx + 1] = 0
+      positions[idx + 2] = 0
+      positions[idx + 3] = 0
+      positions[idx + 4] = 0
+      positions[idx + 5] = 0
+      continue
     }
-  } else {
-    // Orthographic projection
-    for (let e = 0; e < numEdges; e++) {
-      const [startIdx, endIdx] = edges[e]!
-      const v1 = vertices[startIdx]
-      const v2 = vertices[endIdx]
 
-      const idx = offset + e * 6
-
-      if (!v1 || !v2) {
-        positions[idx] = 0
-        positions[idx + 1] = 0
-        positions[idx + 2] = 0
-        positions[idx + 3] = 0
-        positions[idx + 4] = 0
-        positions[idx + 5] = 0
-        continue
+    // Project first vertex
+    let effectiveDepth1 = 0
+    if (numHigherDims > 0) {
+      for (let d = 3; d < dimension; d++) {
+        effectiveDepth1 += v1[d]!
       }
-
-      positions[idx] = v1[0]!
-      positions[idx + 1] = v1[1]!
-      positions[idx + 2] = v1[2]!
-      positions[idx + 3] = v2[0]!
-      positions[idx + 4] = v2[1]!
-      positions[idx + 5] = v2[2]!
+      effectiveDepth1 = effectiveDepth1 / normalizationFactor
     }
+    let denom1 = projectionDistance - effectiveDepth1
+    if (Math.abs(denom1) < MIN_SAFE_DISTANCE) {
+      denom1 = denom1 >= 0 ? MIN_SAFE_DISTANCE : -MIN_SAFE_DISTANCE
+    }
+    const scale1 = 1 / denom1
+
+    positions[idx] = v1[0]! * scale1
+    positions[idx + 1] = v1[1]! * scale1
+    positions[idx + 2] = v1[2]! * scale1
+
+    // Project second vertex
+    let effectiveDepth2 = 0
+    if (numHigherDims > 0) {
+      for (let d = 3; d < dimension; d++) {
+        effectiveDepth2 += v2[d]!
+      }
+      effectiveDepth2 = effectiveDepth2 / normalizationFactor
+    }
+    let denom2 = projectionDistance - effectiveDepth2
+    if (Math.abs(denom2) < MIN_SAFE_DISTANCE) {
+      denom2 = denom2 >= 0 ? MIN_SAFE_DISTANCE : -MIN_SAFE_DISTANCE
+    }
+    const scale2 = 1 / denom2
+
+    positions[idx + 3] = v2[0]! * scale2
+    positions[idx + 4] = v2[1]! * scale2
+    positions[idx + 5] = v2[2]! * scale2
   }
 
   return numEdges

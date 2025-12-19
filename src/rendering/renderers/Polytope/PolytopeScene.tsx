@@ -12,12 +12,10 @@ import { useFrame } from '@react-three/fiber';
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import {
-    BackSide,
     BufferGeometry,
     Color,
     DoubleSide,
     Float32BufferAttribute,
-    FrontSide,
     Matrix4,
     ShaderMaterial,
     Vector3,
@@ -35,10 +33,16 @@ import type { LightSource } from '@/rendering/lights/types';
 import { LIGHT_TYPE_TO_INT, MAX_LIGHTS, rotationToDirection } from '@/rendering/lights/types';
 import { COLOR_ALGORITHM_TO_INT } from '@/rendering/shaders/palette';
 import { matrixToGPUUniforms } from '@/rendering/shaders/transforms/ndTransform';
+import {
+  blurToPCFSamples,
+  collectShadowDataFromScene,
+  createShadowMapUniforms,
+  SHADOW_MAP_SIZES,
+  updateShadowMapUniforms,
+} from '@/rendering/shadows';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useLightingStore } from '@/stores/lightingStore';
-import { useProjectionStore } from '@/stores/projectionStore';
 import { useRotationStore } from '@/stores/rotationStore';
 import { useTransformStore } from '@/stores/transformStore';
 import { useAnimationStore } from '@/stores/animationStore';
@@ -82,7 +86,6 @@ function createNDUniforms(): Record<string, { value: unknown }> {
     uExtraRotationCols: { value: new Float32Array(MAX_EXTRA_DIMS * 4) },
     uDepthRowSums: { value: new Float32Array(11) },
     uProjectionDistance: { value: DEFAULT_PROJECTION_DISTANCE },
-    uProjectionType: { value: 1 },
     // Vertex modulation uniforms - radial breathing with bias
     uAnimTime: { value: 0.0 },       // Time in seconds
     uModAmplitude: { value: 0.0 },   // Displacement amplitude (0-1)
@@ -101,15 +104,13 @@ function createNDUniforms(): Record<string, { value: unknown }> {
  * @param dimension
  * @param scales
  * @param projectionDistance
- * @param projectionType
  */
 function updateNDUniforms(
   material: THREE.Material,
   gpuData: ReturnType<typeof matrixToGPUUniforms>,
   dimension: number,
   scales: number[],
-  projectionDistance: number,
-  projectionType: string
+  projectionDistance: number
 ): void {
   // Get uniforms - either from ShaderMaterial directly or from userData for Phong
   let u: Record<string, { value: unknown }> | undefined;
@@ -150,7 +151,6 @@ function updateNDUniforms(
     (u.uDepthRowSums.value as Float32Array).set(gpuData.depthRowSums);
   }
   if (u.uProjectionDistance) u.uProjectionDistance.value = projectionDistance;
-  if (u.uProjectionType) u.uProjectionType.value = projectionType === 'perspective' ? 1 : 0;
 }
 
 /**
@@ -189,6 +189,8 @@ function createFaceShaderMaterial(
     uniforms: {
       // N-D transformation uniforms
       ...createNDUniforms(),
+      // Shadow map uniforms
+      ...createShadowMapUniforms(),
       // Color (converted to linear space for physically correct lighting)
       uColor: { value: new Color(faceColor).convertSRGBToLinear() },
       uOpacity: { value: opacity },
@@ -228,6 +230,7 @@ function createFaceShaderMaterial(
       uSssIntensity: { value: 1.0 },
       uSssColor: { value: new Color('#ff8844').convertSRGBToLinear() },
       uSssThickness: { value: 1.0 },
+      uSssJitter: { value: 0.2 },
       // Multi-light system uniforms (colors converted to linear space)
       uNumLights: { value: 0 },
       uLightsEnabled: { value: [false, false, false, false] },
@@ -391,7 +394,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   const extendedObjectStateRef = useRef(useExtendedObjectStore.getState());
   const rotationStateRef = useRef(useRotationStore.getState());
   const transformStateRef = useRef(useTransformStore.getState());
-  const projectionStateRef = useRef(useProjectionStore.getState());
   const appearanceStateRef = useRef(useAppearanceStore.getState());
   const lightingStateRef = useRef(useLightingStore.getState());
 
@@ -401,7 +403,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     const unsubExt = useExtendedObjectStore.subscribe((s) => { extendedObjectStateRef.current = s; });
     const unsubRot = useRotationStore.subscribe((s) => { rotationStateRef.current = s; });
     const unsubTrans = useTransformStore.subscribe((s) => { transformStateRef.current = s; });
-    const unsubProj = useProjectionStore.subscribe((s) => { projectionStateRef.current = s; });
     const unsubApp = useAppearanceStore.subscribe((s) => { appearanceStateRef.current = s; });
     const unsubLight = useLightingStore.subscribe((s) => { lightingStateRef.current = s; });
     return () => {
@@ -409,7 +410,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
       unsubExt();
       unsubRot();
       unsubTrans();
-      unsubProj();
       unsubApp();
       unsubLight();
     };
@@ -672,7 +672,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   }, [faceMaterial, backFaceMaterial, edgeMaterial, faceGeometry, edgeGeometry]);
 
   // ============ USEFRAME: UPDATE UNIFORMS ONLY ============
-  useFrame(({ camera }, delta) => {
+  useFrame(({ camera, scene }, delta) => {
     if (numVertices === 0) return;
 
     // Read state from cached refs (updated via subscriptions, not getState() per frame)
@@ -680,7 +680,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     const extendedObjectState = extendedObjectStateRef.current;
     const rotationState = rotationStateRef.current;
     const transformState = transformStateRef.current;
-    const projectionState = projectionStateRef.current;
     const appearanceState = appearanceStateRef.current;
     const lightingState = lightingStateRef.current;
 
@@ -705,7 +704,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     // Read current state from cached refs
     const rotations = rotationState.rotations;
     const { uniformScale, perAxisScale } = transformState;
-    const projectionType = projectionState.type;
 
     const lightEnabled = lightingState.lightEnabled;
     const lightColor = lightingState.lightColor;
@@ -727,6 +725,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     const sssIntensity = appearanceState.sssIntensity;
     const sssColor = appearanceState.sssColor;
     const sssThickness = appearanceState.sssThickness;
+    const sssJitter = appearanceState.sssJitter;
 
     // Read advanced color system state
     const colorAlgorithm = appearanceState.colorAlgorithm;
@@ -792,7 +791,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
         const material = ref.current.material as ShaderMaterial;
 
         // Update N-D transformation uniforms
-        updateNDUniforms(material, gpuData, dimension, scales, projectionDistance, projectionType);
+        updateNDUniforms(material, gpuData, dimension, scales, projectionDistance);
 
         // Update vertex modulation uniforms
         const u = material.uniforms;
@@ -830,6 +829,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
         if (u.uSssIntensity) u.uSssIntensity.value = sssIntensity;
         if (u.uSssColor) updateLinearColorUniform(cache.sssColor, u.uSssColor.value as Color, sssColor);
         if (u.uSssThickness) u.uSssThickness.value = sssThickness;
+        if (u.uSssJitter) u.uSssJitter.value = sssJitter;
 
         // Update advanced color system uniforms (only for face materials)
         if (u.uColorAlgorithm) u.uColorAlgorithm.value = COLOR_ALGORITHM_TO_INT[colorAlgorithm];
@@ -882,6 +882,21 @@ export const PolytopeScene = React.memo(function PolytopeScene({
               (u.uLightsEnabled.value as boolean[])[i] = false;
             }
           }
+        }
+
+        // Update shadow map uniforms if shadows are enabled
+        if (shadowEnabled) {
+          const shadowData = collectShadowDataFromScene(scene);
+          const shadowQuality = lightingState.shadowQuality;
+          const shadowMapSize = SHADOW_MAP_SIZES[shadowQuality];
+          const pcfSamples = blurToPCFSamples(lightingState.shadowMapBlur);
+          updateShadowMapUniforms(
+            u as Record<string, { value: unknown }>,
+            shadowData,
+            lightingState.shadowMapBias,
+            shadowMapSize,
+            pcfSamples
+          );
         }
       }
     }

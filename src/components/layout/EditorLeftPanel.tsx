@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
 import { DimensionSelector } from '@/components/sections/Geometry/DimensionSelector';
 import { ObjectSettingsSection } from '@/components/sections/Geometry/ObjectSettingsSection';
 import { ObjectTypeExplorer } from '@/components/sections/ObjectTypes/ObjectTypeExplorer';
-import { Tabs, Tab } from '@/components/ui/Tabs';
 import { Icon } from '@/components/ui/Icon';
+import { Tab, Tabs } from '@/components/ui/Tabs';
+import React, { useState } from 'react';
 
 export const EditorLeftPanel: React.FC = () => {
   const [activeTab, setActiveTab] = useState('type');
@@ -40,7 +40,7 @@ export const EditorLeftPanel: React.FC = () => {
   ];
 
   return (
-    <div 
+    <div
       className="h-full flex flex-col bg-panel-bg/50 border-r border-panel-border shrink-0 overflow-hidden relative backdrop-blur-md w-[320px]"
     >
         {/* Header */}
@@ -48,7 +48,7 @@ export const EditorLeftPanel: React.FC = () => {
             <div className="flex items-center gap-2 px-1 overflow-hidden whitespace-nowrap">
                 <Icon name="menu" className="text-accent" />
                 <h2 className="text-xs font-bold text-text-secondary uppercase tracking-widest">
-                  Space & Object
+                  Geometry
                 </h2>
             </div>
         </div>
@@ -59,7 +59,7 @@ export const EditorLeftPanel: React.FC = () => {
           <div className="border-b border-white/5 bg-black/10 shrink-0">
              <div className="flex justify-between items-baseline px-4 py-2 bg-white/5 border-b border-white/5">
                 <label className="text-[10px] text-accent font-bold uppercase tracking-wider text-glow-subtle flex items-center gap-2">
-                    <Icon name="info" size={12} />
+
                     Dimensions
                 </label>
             </div>
@@ -67,7 +67,7 @@ export const EditorLeftPanel: React.FC = () => {
                 <DimensionSelector />
             </div>
           </div>
-          
+
           {/* Tabs Section */}
           <div className="flex-1 overflow-hidden flex flex-col min-h-0">
               <Tabs

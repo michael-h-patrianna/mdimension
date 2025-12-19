@@ -22,7 +22,6 @@ import {
     usePerformanceStore,
 } from '@/stores/performanceStore';
 import { usePostProcessingStore } from '@/stores/postProcessingStore';
-import { useProjectionStore } from '@/stores/projectionStore';
 import { useRotationStore } from '@/stores/rotationStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useWebGLContextStore } from '@/stores/webglContextStore';
@@ -123,9 +122,10 @@ const MandelbulbMesh = () => {
   const basisVectorsDirtyRef = useRef(true);
 
   // Cached uniform values to avoid redundant updates
-  const prevPowerRef = useRef<number | null>(null);
-  const prevIterationsRef = useRef<number | null>(null);
-  const prevEscapeRadiusRef = useRef<number | null>(null);
+  // Note: prevPowerRef, prevIterationsRef, prevEscapeRadiusRef were removed
+  // because the optimization caused uniforms to not update after TrackedShaderMaterial
+  // transitions from placeholder to shader material. These settings don't change
+  // frequently enough to warrant the optimization.
   const prevZoomRef = useRef<number | null>(null);
   const prevLightingVersionRef = useRef<number>(-1);
 
@@ -350,7 +350,8 @@ const MandelbulbMesh = () => {
       uSssIntensity: { value: 1.0 },
       uSssColor: { value: new THREE.Color('#ff8844') },
       uSssThickness: { value: 1.0 },
-      
+      uSssJitter: { value: 0.2 },
+
       // Atmosphere
       uFogEnabled: { value: true },
       uFogContribution: { value: 1.0 },
@@ -404,11 +405,6 @@ const MandelbulbMesh = () => {
       uPrevInverseViewProjectionMatrix: { value: new THREE.Matrix4() },
       uTemporalEnabled: { value: false },
       uDepthBufferResolution: { value: new THREE.Vector2(1, 1) },
-
-      // Orthographic projection uniforms
-      uOrthographic: { value: false },
-      uOrthoRayDir: { value: new THREE.Vector3(0, 0, -1) },
-      uInverseViewProjectionMatrix: { value: new THREE.Matrix4() },
     }),
     []
   );
@@ -419,10 +415,15 @@ const MandelbulbMesh = () => {
   const shaderOverrides = usePerformanceStore((state) => state.shaderOverrides);
   const resetShaderOverrides = usePerformanceStore((state) => state.resetShaderOverrides);
 
+  // Conditionally compiled feature toggles (affect shader compilation)
+  const sssEnabled = useAppearanceStore((state) => state.sssEnabled);
+  const fogEnabled = useAppearanceStore((state) => state.fogIntegrationEnabled);
+  // Note: edgesVisible (line 268) controls fresnel and is already subscribed
+
   // Reset overrides when base configuration changes
   useEffect(() => {
     resetShaderOverrides();
-  }, [dimension, shadowEnabled, temporalEnabled, opacitySettings.mode, resetShaderOverrides]);
+  }, [dimension, shadowEnabled, temporalEnabled, opacitySettings.mode, sssEnabled, edgesVisible, fogEnabled, resetShaderOverrides]);
 
   // Compile shader only when configuration changes
   const { glsl: shaderString, modules, features } = useMemo(() => {
@@ -433,8 +434,11 @@ const MandelbulbMesh = () => {
       ambientOcclusion: true, // Always included unless explicit toggle added
       opacityMode: opacitySettings.mode,
       overrides: shaderOverrides,
+      sss: sssEnabled,
+      fresnel: edgesVisible,
+      fog: fogEnabled,
     });
-  }, [dimension, shadowEnabled, temporalEnabled, opacitySettings.mode, shaderOverrides]);
+  }, [dimension, shadowEnabled, temporalEnabled, opacitySettings.mode, shaderOverrides, sssEnabled, edgesVisible, fogEnabled]);
 
   // Update debug info store
   useEffect(() => {
@@ -512,14 +516,15 @@ const MandelbulbMesh = () => {
       // Update dimension
       if (material.uniforms.uDimension) material.uniforms.uDimension.value = dimension;
 
-      // Update Mandelbulb parameters (conditionally)
-      if (material.uniforms.uIterations && prevIterationsRef.current !== maxIterations) {
+      // Update Mandelbulb parameters
+      // Always set these uniforms unconditionally to ensure they're updated after
+      // TrackedShaderMaterial transitions from placeholder to actual shader material.
+      // The prev ref optimization was causing uniforms to not update when material changed.
+      if (material.uniforms.uIterations) {
         material.uniforms.uIterations.value = maxIterations;
-        prevIterationsRef.current = maxIterations;
       }
-      if (material.uniforms.uEscapeRadius && prevEscapeRadiusRef.current !== escapeRadius) {
+      if (material.uniforms.uEscapeRadius) {
         material.uniforms.uEscapeRadius.value = escapeRadius;
-        prevEscapeRadiusRef.current = escapeRadius;
       }
 
       // Power: either animated or static
@@ -537,12 +542,9 @@ const MandelbulbMesh = () => {
 
           const targetPower = powerMin + normalized * (powerMax - powerMin);
           material.uniforms.uPower.value = targetPower;
-          prevPowerRef.current = targetPower;
         } else {
-          if (prevPowerRef.current !== mandelbulbPower) {
-            material.uniforms.uPower.value = mandelbulbPower;
-            prevPowerRef.current = mandelbulbPower;
-          }
+          // Always set power unconditionally to handle material transitions
+          material.uniforms.uPower.value = mandelbulbPower;
         }
       }
 
@@ -584,24 +586,6 @@ const MandelbulbMesh = () => {
       // Update camera matrices
       if (material.uniforms.uProjectionMatrix) material.uniforms.uProjectionMatrix.value.copy(camera.projectionMatrix);
       if (material.uniforms.uViewMatrix) material.uniforms.uViewMatrix.value.copy(camera.matrixWorldInverse);
-
-      // Update orthographic projection uniforms
-      const projectionType = useProjectionStore.getState().type;
-      if (material.uniforms.uOrthographic) {
-        material.uniforms.uOrthographic.value = projectionType === 'orthographic';
-      }
-      if (material.uniforms.uOrthoRayDir) {
-        // Get camera's forward direction (negative Z in camera space, transformed to world space)
-        const orthoDir = material.uniforms.uOrthoRayDir.value as THREE.Vector3;
-        camera.getWorldDirection(orthoDir);
-      }
-      if (material.uniforms.uInverseViewProjectionMatrix) {
-        // Compute inverse view-projection matrix for unprojecting screen coords to world space
-        // inverseVP = inverse(projection * view) = inverse(view) * inverse(projection)
-        // inverse(view) = camera.matrixWorld, inverse(projection) = camera.projectionMatrixInverse
-        const invVP = material.uniforms.uInverseViewProjectionMatrix.value as THREE.Matrix4;
-        invVP.copy(camera.projectionMatrixInverse).premultiply(camera.matrixWorld);
-      }
 
       // Update temporal reprojection uniforms from manager
       const temporalUniforms = TemporalDepthManager.getUniforms();
@@ -652,6 +636,7 @@ const MandelbulbMesh = () => {
           updateLinearColorUniform(cache.faceColor /* reuse helper */, material.uniforms.uSssColor.value as THREE.Color, visuals.sssColor || '#ff8844');
       }
       if (material.uniforms.uSssThickness) material.uniforms.uSssThickness.value = visuals.sssThickness;
+      if (material.uniforms.uSssJitter) material.uniforms.uSssJitter.value = visuals.sssJitter;
 
       // Atmosphere (Global Visuals)
       if (material.uniforms.uFogEnabled) material.uniforms.uFogEnabled.value = visuals.fogIntegrationEnabled;

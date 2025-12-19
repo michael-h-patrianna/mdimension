@@ -174,9 +174,16 @@ export function TrackedShaderMaterial({
     return null;
   }
 
-  // Don't render shader until overlay has had time to appear
+  // While shader is compiling, render an invisible placeholder material
+  // to prevent Three.js from using a default white MeshBasicMaterial.
+  // Returning null would leave the mesh without a material, causing a white cube flash.
   if (!readyToRender) {
-    return null;
+    return (
+      <meshBasicMaterial
+        visible={false}
+        key="placeholder-while-compiling"
+      />
+    );
   }
 
   return (

@@ -19,6 +19,14 @@ import { ExtendedObjectSlice, SchroedingerSlice } from './types'
 export const createSchroedingerSlice: StateCreator<ExtendedObjectSlice, [], [], SchroedingerSlice> = (set, get) => ({
   schroedinger: { ...DEFAULT_SCHROEDINGER_CONFIG },
 
+  // === Geometry Settings ===
+  setSchroedingerScale: (scale) => {
+    const clampedScale = Math.max(0.1, Math.min(2.0, scale))
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, scale: clampedScale },
+    }))
+  },
+
   // === Quality Settings ===
   setSchroedingerQualityPreset: (preset) => {
     const settings = SCHROEDINGER_QUALITY_PRESETS[preset]

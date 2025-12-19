@@ -16,15 +16,14 @@ in vec4 instanceStartExtraB;
 in vec4 instanceEndExtraA; 
 in vec4 instanceEndExtraB; 
 
-// N-D Transformation uniforms 
-uniform mat4 uRotationMatrix4D; 
-uniform int uDimension; 
-uniform vec4 uScale4D; 
-#define MAX_EXTRA_DIMS 7 
-uniform float uExtraScales[MAX_EXTRA_DIMS]; 
-uniform float uProjectionDistance; 
-uniform int uProjectionType; 
-uniform float uExtraRotationCols[28]; // MAX_EXTRA_DIMS * 4 
+// N-D Transformation uniforms
+uniform mat4 uRotationMatrix4D;
+uniform int uDimension;
+uniform vec4 uScale4D;
+#define MAX_EXTRA_DIMS 7
+uniform float uExtraScales[MAX_EXTRA_DIMS];
+uniform float uProjectionDistance;
+uniform float uExtraRotationCols[28]; // MAX_EXTRA_DIMS * 4
 uniform float uDepthRowSums[11]; 
 
 // Tube rendering uniform 
@@ -64,24 +63,20 @@ vec3 transformNDPoint(vec3 pos, vec4 extraA, vec4 extraB) {
     } 
   } 
 
-  vec3 projected; 
-  if (uProjectionType == 0) { 
-    projected = rotated.xyz; 
-  } else { 
-    float effectiveDepth = rotated.w; 
-    for (int j = 0; j < 11; j++) { 
-      if (j < uDimension) { 
-        effectiveDepth += uDepthRowSums[j] * scaledInputs[j]; 
-      } 
-    } 
-    // Use max(1.0, ...) to prevent sqrt of negative/zero values 
-    float normFactor = uDimension > 4 ? sqrt(max(1.0, float(uDimension - 3))) : 1.0; 
-    effectiveDepth /= normFactor; 
-    // Add safety check for perspective denominator 
-    float denominator = uProjectionDistance - effectiveDepth; 
-    float factor = 1.0 / max(denominator, 0.0001); 
-    projected = rotated.xyz * factor; 
-  } 
+  // Perspective projection: apply depth-based scaling from higher dimensions
+  float effectiveDepth = rotated.w;
+  for (int j = 0; j < 11; j++) {
+    if (j < uDimension) {
+      effectiveDepth += uDepthRowSums[j] * scaledInputs[j];
+    }
+  }
+  // Use max(1.0, ...) to prevent sqrt of negative/zero values
+  float normFactor = uDimension > 4 ? sqrt(max(1.0, float(uDimension - 3))) : 1.0;
+  effectiveDepth /= normFactor;
+  // Add safety check for perspective denominator
+  float denominator = uProjectionDistance - effectiveDepth;
+  float factor = 1.0 / max(denominator, 0.0001);
+  vec3 projected = rotated.xyz * factor;
 
   return projected; 
 } 

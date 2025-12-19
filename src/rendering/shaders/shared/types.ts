@@ -7,5 +7,10 @@ export interface ShaderConfig {
   ambientOcclusion: boolean;
   opacityMode: OpacityMode;
   overrides?: string[];
-  // Future: lighting, normals, etc.
+  /** Enable SSS module compilation (conditionally compiled) */
+  sss?: boolean;
+  /** Enable Fresnel rim lighting module compilation (conditionally compiled) */
+  fresnel?: boolean;
+  /** Enable Fog integration module compilation (conditionally compiled) */
+  fog?: boolean;
 }

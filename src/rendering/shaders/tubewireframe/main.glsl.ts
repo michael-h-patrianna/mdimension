@@ -53,6 +53,9 @@ void main() {
     // Skip negligible contributions
     if (attenuation < 0.001) continue;
 
+    // Shadow map sampling for mesh-based objects
+    float shadow = uShadowEnabled ? getShadow(i, vWorldPosition) : 1.0;
+
     // Cook-Torrance BRDF
     float NDF = distributionGGX(N, H, uRoughness);
     float G = geometrySmith(N, V, L, uRoughness);
@@ -71,13 +74,13 @@ void main() {
 
     float NdotL = max(dot(N, L), 0.0);
 
-    // Add light contribution
+    // Add light contribution with shadow
     vec3 radiance = uLightColors[i] * attenuation;
-    Lo += (kD * uColor / PI + specular * uSpecularIntensity) * radiance * NdotL * uDiffuseIntensity;
+    Lo += (kD * uColor / PI + specular * uSpecularIntensity) * radiance * NdotL * uDiffuseIntensity * shadow;
 
     // Rim SSS (backlight transmission)
     if (uSssEnabled && uSssIntensity > 0.0) {
-      vec3 sss = computeSSS(L, V, N, 0.5, uSssThickness * 4.0, 0.0);
+      vec3 sss = computeSSS(L, V, N, 0.5, uSssThickness * 4.0, 0.0, uSssJitter, gl_FragCoord.xy);
       Lo += sss * uSssColor * uLightColors[i] * uSssIntensity * attenuation;
     }
 

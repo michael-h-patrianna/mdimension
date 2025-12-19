@@ -90,6 +90,11 @@ export interface RenderingCapabilities {
    * True for raymarched fractals where "edges" = rim highlights.
    */
   edgesAreFresnelRim?: boolean
+  /**
+   * Whether this type supports volumetric emission controls.
+   * Only applicable to types with density-based rendering (e.g., Schroedinger).
+   */
+  supportsEmission?: boolean
 }
 
 // ============================================================================

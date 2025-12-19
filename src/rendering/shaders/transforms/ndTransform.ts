@@ -3,7 +3,7 @@
  *
  * Provides utilities for performing N-dimensional transformations on the GPU:
  * - Rotation matrix application in vertex shaders
- * - Perspective/orthographic projection
+ * - Perspective projection
  * - Scale transformations
  *
  * Architecture:
@@ -160,7 +160,6 @@ uniform float uExtraRotationData[${(maxDimension - 4) * maxDimension * 2}];
 
 // Projection uniforms
 uniform float uProjectionDistance;
-uniform int uProjectionType; // 0 = orthographic, 1 = perspective
 
 // Attributes for extra dimensions (beyond xyz)
 attribute float extraDim0; // W (4th dimension)
@@ -187,12 +186,6 @@ vec3 applyNDRotation(vec3 pos3, float w, float extraDims[${extraDims}]) {
 
 // Apply perspective projection from N-D to 3D
 vec3 applyProjection(vec3 pos3, float w, float extraDims[${extraDims}]) {
-  if (uProjectionType == 0) {
-    // Orthographic - just return xyz
-    return pos3;
-  }
-
-  // Perspective projection
   // Compute effective depth from higher dimensions
   float effectiveDepth = w;
   float normFactor = uDimension > 4 ? sqrt(float(uDimension - 3)) : 1.0;
@@ -278,7 +271,6 @@ export function createNDTransformUniforms(dimension: number): Record<string, { v
     uExtraScales: { value: new Float32Array(extraDims).fill(1) },
     uExtraRotationData: { value: new Float32Array((MAX_GPU_DIMENSION - 4) * MAX_GPU_DIMENSION * 2) },
     uProjectionDistance: { value: 5.0 },
-    uProjectionType: { value: 1 }, // perspective by default
     uColor: { value: [1, 1, 1] },
     uOpacity: { value: 1.0 },
   };
@@ -292,15 +284,13 @@ export function createNDTransformUniforms(dimension: number): Record<string, { v
  * @param dimension - Current dimension
  * @param scales - Per-axis scales
  * @param projectionDistance - Projection distance
- * @param projectionType - 'perspective' | 'orthographic'
  */
 export function updateNDTransformUniforms(
   uniforms: Record<string, { value: unknown }>,
   rotationMatrix: MatrixND,
   dimension: number,
   scales: number[],
-  projectionDistance: number,
-  projectionType: 'perspective' | 'orthographic'
+  projectionDistance: number
 ): void {
   const gpuData = matrixToGPUUniforms(rotationMatrix, dimension);
 
@@ -308,7 +298,6 @@ export function updateNDTransformUniforms(
   uniforms.uDimension!.value = dimension;
   uniforms.uExtraRotationData!.value = gpuData.extraRotationData;
   uniforms.uProjectionDistance!.value = projectionDistance;
-  uniforms.uProjectionType!.value = projectionType === 'perspective' ? 1 : 0;
 
   // Update scales
   const scale4D = uniforms.uScale4D!.value as number[];

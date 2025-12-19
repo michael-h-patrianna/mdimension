@@ -50,6 +50,43 @@ vec2 sphericalAngles3D(float x, float y, float z, float r3d) {
     return vec2(theta, phi);
 }
 
+// ============================================
+// Early Exit Optimizations for Extra Dimensions
+// ============================================
+
+// Note: hydrogenRadialEarlyExit() is defined in hydrogenPsi.glsl.ts
+// and is shared between hydrogen 3D and hydrogen ND modes.
+
+/**
+ * Check if extra dimension HO contribution is negligible
+ *
+ * Uses the same 3-sigma threshold as harmonic oscillator mode.
+ * The HO eigenfunction decays as exp(-0.5 * omega * x^2), which
+ * becomes negligible when the sum of squared scaled coordinates
+ * exceeds 18 (approximately 3 sigma per dimension).
+ *
+ * This check is performed BEFORE computing the ND radius and
+ * radial function, providing a fast early exit for points
+ * far from the origin in extra dimensions.
+ *
+ * @param extraDimCount - Number of extra dimensions (dim - 3)
+ * @param xND - Full coordinate array
+ * @return true if contribution is guaranteed negligible
+ */
+bool extraDimEarlyExit(int extraDimCount, float xND[MAX_DIM]) {
+    if (extraDimCount <= 0) return false;
+
+    float distSq = 0.0;
+    for (int i = 0; i < MAX_EXTRA_DIM; i++) {
+        if (i >= extraDimCount) break;
+        float alpha = sqrt(max(uExtraDimOmega[i], 0.01));
+        float u = alpha * xND[3 + i];
+        distSq += u * u;
+    }
+    // 3-sigma threshold: contribution < 1e-8
+    return distSq > 18.0;
+}
+
 /**
  * Evaluate HO eigenfunction for a single extra dimension
  *

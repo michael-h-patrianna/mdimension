@@ -12,10 +12,12 @@
  */
 
 import { Section } from '@/components/sections/Section';
-import { Slider } from '@/components/ui/Slider';
 import { ColorPicker } from '@/components/ui/ColorPicker';
+import { ControlGroup } from '@/components/ui/ControlGroup';
+import { Slider } from '@/components/ui/Slider';
 import { Switch } from '@/components/ui/Switch';
 import { Tabs } from '@/components/ui/Tabs';
+import { isRaymarchingFractal, supportsEmission } from '@/lib/geometry/registry';
 import {
   LAYER_COUNT_OPTIONS,
   LAYER_OPACITY_RANGE,
@@ -28,12 +30,11 @@ import {
   VOLUMETRIC_DENSITY_RANGE,
 } from '@/rendering/opacity/constants';
 import type { OpacityMode, SampleQuality, VolumetricAnimationQuality } from '@/rendering/opacity/types';
-import { isRaymarchingFractal } from '@/lib/geometry/registry';
-import { useGeometryStore } from '@/stores/geometryStore';
+import { useAppearanceStore } from '@/stores/appearanceStore';
 import {
   DEFAULT_SPECULAR_COLOR,
 } from '@/stores/defaults/visualDefaults';
-import { useAppearanceStore } from '@/stores/appearanceStore';
+import { useGeometryStore } from '@/stores/geometryStore';
 import { useLightingStore } from '@/stores/lightingStore';
 import { useUIStore } from '@/stores/uiStore';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -44,7 +45,6 @@ import { CosineGradientEditor } from './CosineGradientEditor';
 import { DistributionControls } from './DistributionControls';
 import { LchPresetSelector } from './LchPresetSelector';
 import { PresetSelector } from './PresetSelector';
-import { ControlGroup } from '@/components/ui/ControlGroup';
 
 export interface FacesSectionProps {
   defaultOpen?: boolean;
@@ -200,7 +200,8 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
           setSpecularIntensity={setSpecularIntensity}
           shininess={shininess}
           setShininess={setShininess}
-          // New emission props
+          // Emission props (only for types that support it)
+          showEmissionControls={supportsEmission(objectType)}
           faceEmission={faceEmission}
           faceEmissionThreshold={faceEmissionThreshold}
           faceEmissionColorShift={faceEmissionColorShift}
@@ -370,8 +371,8 @@ const ColorsTabContent: React.FC<ColorsTabContentProps> = ({
           </div>
         )}
 
-        {(colorAlgorithm === 'phase' || 
-          colorAlgorithm === 'mixed' || 
+        {(colorAlgorithm === 'phase' ||
+          colorAlgorithm === 'mixed' ||
           colorAlgorithm === 'blackbody') && (
           <div className="space-y-4">
             <PresetSelector />
@@ -400,7 +401,8 @@ interface MaterialTabContentProps {
   setSpecularIntensity: (value: number) => void;
   shininess: number;
   setShininess: (value: number) => void;
-  // New emission props
+  // Emission props (only for types that support volumetric emission)
+  showEmissionControls: boolean;
   faceEmission: number;
   faceEmissionThreshold: number;
   faceEmissionColorShift: number;
@@ -443,6 +445,8 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
   setSpecularIntensity,
   shininess,
   setShininess,
+  // Emission props (only for types that support volumetric emission)
+  showEmissionControls,
   faceEmission,
   faceEmissionThreshold,
   faceEmissionColorShift,
@@ -496,52 +500,7 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Emission & Rim */}
-      <ControlGroup title="Emission & Rim" collapsible defaultOpen>
-        <Slider
-          label="Emission Strength"
-          min={0}
-          max={5}
-          step={0.1}
-          value={faceEmission}
-          onChange={setFaceEmission}
-          showValue
-        />
-        <Slider
-          label="Emission Threshold"
-          min={0}
-          max={1}
-          step={0.05}
-          value={faceEmissionThreshold}
-          onChange={setFaceEmissionThreshold}
-          showValue
-        />
-        <Slider
-          label="Color Shift"
-          min={-1}
-          max={1}
-          step={0.1}
-          value={faceEmissionColorShift}
-          onChange={setFaceEmissionColorShift}
-          showValue
-        />
-         <div className="flex items-center justify-between py-2">
-            <label className="text-xs text-text-secondary">Pulsing</label>
-            <Switch
-                checked={faceEmissionPulsing}
-                onCheckedChange={setFaceEmissionPulsing}
-            />
-        </div>
-        <Slider
-          label="Rim Falloff"
-          min={0}
-          max={10}
-          step={0.5}
-          value={faceRimFalloff}
-          onChange={setFaceRimFalloff}
-          showValue
-        />
-      </ControlGroup>
+
 
       {/* Raymarching Fractals Opacity Mode Controls */}
       {isRaymarchingFractalType && (
@@ -751,6 +710,55 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
             Enable lighting in the Visual section to access diffuse and specular settings.
             </p>
         </div>
+      )}
+
+      {/* Emission & Rim - Only shown for types that support volumetric emission */}
+      {showEmissionControls && (
+        <ControlGroup title="Emission & Rim" collapsible defaultOpen>
+          <Slider
+            label="Emission Strength"
+            min={0}
+            max={5}
+            step={0.1}
+            value={faceEmission}
+            onChange={setFaceEmission}
+            showValue
+          />
+          <Slider
+            label="Emission Threshold"
+            min={0}
+            max={1}
+            step={0.05}
+            value={faceEmissionThreshold}
+            onChange={setFaceEmissionThreshold}
+            showValue
+          />
+          <Slider
+            label="Color Shift"
+            min={-1}
+            max={1}
+            step={0.1}
+            value={faceEmissionColorShift}
+            onChange={setFaceEmissionColorShift}
+            showValue
+          />
+          <div className="flex items-center justify-between py-2">
+            <label className="text-xs text-text-secondary">Pulsing</label>
+            <Switch
+              checked={faceEmissionPulsing}
+              onCheckedChange={setFaceEmissionPulsing}
+            />
+          </div>
+          <Slider
+            label="Rim Falloff"
+            min={0}
+            max={10}
+            step={0.5}
+            value={faceRimFalloff}
+            onChange={setFaceRimFalloff}
+            showValue
+          />
+        </ControlGroup>
       )}
     </div>
   );

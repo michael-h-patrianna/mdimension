@@ -243,7 +243,6 @@ describe('ndTransform', () => {
       expect(uniforms.uExtraScales).toBeDefined();
       expect(uniforms.uExtraRotationData).toBeDefined();
       expect(uniforms.uProjectionDistance).toBeDefined();
-      expect(uniforms.uProjectionType).toBeDefined();
       expect(uniforms.uColor).toBeDefined();
       expect(uniforms.uOpacity).toBeDefined();
     });
@@ -270,8 +269,7 @@ describe('ndTransform', () => {
         rotationMatrix,
         4,
         [1, 1, 1, 1],
-        5.0,
-        'perspective'
+        5.0
       );
 
       expect(uniforms.rotationMatrix4D!.value).toBeInstanceOf(Matrix4);
@@ -287,8 +285,7 @@ describe('ndTransform', () => {
         rotationMatrix,
         6,
         [1, 2, 3, 4, 5, 6],
-        5.0,
-        'perspective'
+        5.0
       );
 
       const scale4D = uniforms.uScale4D!.value as number[];
@@ -302,33 +299,6 @@ describe('ndTransform', () => {
       expect(extraScales[1]).toBe(6);
     });
 
-    it('should update projection type', () => {
-      const uniforms = createNDTransformUniforms(4);
-      const rotationMatrix = createIdentityMatrix(4);
-
-      updateNDTransformUniforms(
-        uniforms,
-        rotationMatrix,
-        4,
-        [1, 1, 1, 1],
-        5.0,
-        'orthographic'
-      );
-
-      expect(uniforms.uProjectionType!.value).toBe(0);
-
-      updateNDTransformUniforms(
-        uniforms,
-        rotationMatrix,
-        4,
-        [1, 1, 1, 1],
-        5.0,
-        'perspective'
-      );
-
-      expect(uniforms.uProjectionType!.value).toBe(1);
-    });
-
     it('should update projection distance', () => {
       const uniforms = createNDTransformUniforms(4);
       const rotationMatrix = createIdentityMatrix(4);
@@ -338,8 +308,7 @@ describe('ndTransform', () => {
         rotationMatrix,
         4,
         [1, 1, 1, 1],
-        10.0,
-        'perspective'
+        10.0
       );
 
       expect(uniforms.uProjectionDistance!.value).toBe(10.0);

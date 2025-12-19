@@ -173,6 +173,13 @@ const LightRenderer = memo(function LightRenderer({
           intensity={light.intensity * 10}
           distance={light.range}
           decay={light.decay}
+          castShadow={shadowEnabled}
+          shadow-mapSize-width={shadowMapSize}
+          shadow-mapSize-height={shadowMapSize}
+          shadow-camera-near={0.5}
+          shadow-camera-far={light.range || 50}
+          shadow-bias={shadowBias}
+          shadow-radius={shadowRadius}
         />
       )}
       {light.type === 'directional' && (
@@ -190,7 +197,7 @@ const LightRenderer = memo(function LightRenderer({
           shadow-camera-right={10}
           shadow-camera-top={10}
           shadow-camera-bottom={-10}
-          shadow-bias={-shadowBias}
+          shadow-bias={shadowBias}
           shadow-radius={shadowRadius}
         />
       )}
@@ -209,7 +216,7 @@ const LightRenderer = memo(function LightRenderer({
           shadow-mapSize-height={shadowMapSize}
           shadow-camera-near={0.5}
           shadow-camera-far={light.range || 50}
-          shadow-bias={-shadowBias}
+          shadow-bias={shadowBias}
           shadow-radius={shadowRadius}
         />
       )}

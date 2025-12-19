@@ -1,19 +1,18 @@
-import React, { useState } from 'react';
-import { Tabs, Tab } from '@/components/ui/Tabs';
 import { Icon } from '@/components/ui/Icon';
+import { Tab, Tabs } from '@/components/ui/Tabs';
+import React, { useState } from 'react';
 
 // Import existing sidebar sections
-import { ProjectionSection } from '@/components/sections/Projection/ProjectionSection';
-import { FacesSection } from '@/components/sections/Faces/FacesSection';
+import { AdvancedObjectControls } from '@/components/sections/Advanced/AdvancedObjectControls';
+import { DocumentationSection } from '@/components/sections/Documentation/DocumentationSection';
 import { EdgesSection } from '@/components/sections/Edges/EdgesSection';
-import { LightsSection } from '@/components/sections/Lights/LightsSection';
 import { EnvironmentSection } from '@/components/sections/Environment/EnvironmentSection';
+import { ExportSection } from '@/components/sections/Export/ExportSection';
+import { FacesSection } from '@/components/sections/Faces/FacesSection';
+import { LightsSection } from '@/components/sections/Lights/LightsSection';
+import { PerformanceSection } from '@/components/sections/Performance/PerformanceSection';
 import { PostProcessingSection } from '@/components/sections/PostProcessing/PostProcessingSection';
 import { SettingsSection } from '@/components/sections/Settings/SettingsSection';
-import { ExportSection } from '@/components/sections/Export/ExportSection';
-import { DocumentationSection } from '@/components/sections/Documentation/DocumentationSection';
-import { PerformanceSection } from '@/components/sections/Performance/PerformanceSection';
-import { AdvancedObjectControls } from '@/components/sections/Advanced/AdvancedObjectControls';
 import { ShadowsSection } from '@/components/sections/Shadows/ShadowsSection';
 
 export const EditorRightPanel: React.FC = () => {
@@ -53,7 +52,6 @@ export const EditorRightPanel: React.FC = () => {
           <EnvironmentSection defaultOpen={true} />
           <LightsSection defaultOpen={false} />
           <PostProcessingSection defaultOpen={false} />
-          <ProjectionSection defaultOpen={false} />
         </div>
       ),
     },
@@ -82,7 +80,7 @@ export const EditorRightPanel: React.FC = () => {
       {/* Header Section */}
       <div className="p-4 border-b border-panel-border bg-panel-bg/50 backdrop-blur-sm z-10 shrink-0 flex items-center gap-2">
         <Icon name="menu" className="text-text-secondary" />
-        <h2 className="text-xs font-bold text-text-secondary uppercase tracking-widest">Scene & Render</h2>
+        <h2 className="text-xs font-bold text-text-secondary uppercase tracking-widest">Visuals</h2>
       </div>
 
       {/* Tabs & Content */}
@@ -95,7 +93,7 @@ export const EditorRightPanel: React.FC = () => {
           className="flex-1 flex flex-col min-h-0"
           tabListClassName="px-3 pt-3 pb-0 bg-transparent"
           contentClassName="flex-1 overflow-y-auto p-0 scrollbar-thin scrollbar-thumb-panel-border hover:scrollbar-thumb-text-secondary/50"
-          variant="default" 
+          variant="default"
           fullWidth
         />
       </div>

@@ -7,7 +7,6 @@ import {
   calculateProjectionDistance,
   DEFAULT_PROJECTION_DISTANCE,
   projectEdgesToPositions,
-  projectOrthographic,
   projectPerspective,
   projectVertices,
   projectVerticesToPositions,
@@ -16,31 +15,6 @@ import {
 import { describe, expect, it } from 'vitest'
 
 describe('Projection Operations', () => {
-  describe('projectOrthographic', () => {
-    it('extracts first 3 coordinates from 3D vector', () => {
-      const v = [1, 2, 3]
-      const projected = projectOrthographic(v)
-      expect(projected).toEqual([1, 2, 3])
-    })
-
-    it('extracts first 3 coordinates from 4D vector', () => {
-      const v = [1, 2, 3, 4]
-      const projected = projectOrthographic(v)
-      expect(projected).toEqual([1, 2, 3])
-    })
-
-    it('extracts first 3 coordinates from 5D vector', () => {
-      const v = [1, 2, 3, 4, 5]
-      const projected = projectOrthographic(v)
-      expect(projected).toEqual([1, 2, 3])
-    })
-
-    it('throws error for vectors with less than 3 dimensions', () => {
-      expect(() => projectOrthographic([1])).toThrow()
-      expect(() => projectOrthographic([1, 2])).toThrow()
-    })
-  })
-
   describe('projectPerspective', () => {
     it('applies consistent perspective scaling to 3D vector', () => {
       const v = [1, 2, 3]
@@ -158,7 +132,7 @@ describe('Projection Operations', () => {
         [0, 0, 1, 0],
       ]
 
-      const projected = projectVertices(vertices, 4, true)
+      const projected = projectVertices(vertices, 4)
       expect(projected).toHaveLength(3)
 
       for (const p of projected) {
@@ -169,21 +143,8 @@ describe('Projection Operations', () => {
       }
     })
 
-    it('projects multiple vertices with orthographic', () => {
-      const vertices = [
-        [1, 2, 3, 4],
-        [5, 6, 7, 8],
-      ]
-
-      const projected = projectVertices(vertices, 4, false)
-      expect(projected).toEqual([
-        [1, 2, 3],
-        [5, 6, 7],
-      ])
-    })
-
     it('handles empty array', () => {
-      const projected = projectVertices([], 4, true)
+      const projected = projectVertices([], 4)
       expect(projected).toEqual([])
     })
 
@@ -192,7 +153,7 @@ describe('Projection Operations', () => {
         [1, 2, 3],
         [1, 2, 3, 4],
       ]
-      expect(() => projectVertices(vertices, 4, true)).toThrow()
+      expect(() => projectVertices(vertices, 4)).toThrow()
     })
   })
 
@@ -352,7 +313,7 @@ describe('Projection Operations', () => {
       ]
       const positions = new Float32Array(6)
 
-      projectVerticesToPositions(vertices, positions, 4, true)
+      projectVerticesToPositions(vertices, positions, 4)
 
       // 3D vertices with perspective have effectiveDepth = 0
       // So they are divided by projectionDistance (4)
@@ -370,29 +331,11 @@ describe('Projection Operations', () => {
       ]
       const positions = new Float32Array(3)
 
-      projectVerticesToPositions(vertices, positions, 4, true)
+      projectVerticesToPositions(vertices, positions, 4)
 
       expect(positions[0]).toBeCloseTo(2 / 3, 6)
       expect(positions[1]).toBeCloseTo(4 / 3, 6)
       expect(positions[2]).toBeCloseTo(2, 6)
-    })
-
-    it('projects vertices with orthographic projection', () => {
-      const vertices = [
-        [1, 2, 3, 99],
-        [4, 5, 6, 99],
-      ]
-      const positions = new Float32Array(6)
-
-      projectVerticesToPositions(vertices, positions, 4, false)
-
-      // Orthographic just copies first 3 coords
-      expect(positions[0]).toBe(1)
-      expect(positions[1]).toBe(2)
-      expect(positions[2]).toBe(3)
-      expect(positions[3]).toBe(4)
-      expect(positions[4]).toBe(5)
-      expect(positions[5]).toBe(6)
     })
 
     it('supports offset parameter', () => {
@@ -402,14 +345,16 @@ describe('Projection Operations', () => {
       positions[1] = 99
       positions[2] = 99
 
-      projectVerticesToPositions(vertices, positions, 4, false, 3)
+      projectVerticesToPositions(vertices, positions, 4, 3)
 
+      // First 3 elements unchanged, data written at offset 3
+      // 3D vertices scaled by 1/4 = 0.25
       expect(positions[0]).toBe(99)
       expect(positions[1]).toBe(99)
       expect(positions[2]).toBe(99)
-      expect(positions[3]).toBe(1)
-      expect(positions[4]).toBe(2)
-      expect(positions[5]).toBe(3)
+      expect(positions[3]).toBeCloseTo(0.25, 10)
+      expect(positions[4]).toBeCloseTo(0.5, 10)
+      expect(positions[5]).toBeCloseTo(0.75, 10)
     })
 
     it('returns count of projected vertices', () => {
@@ -420,7 +365,7 @@ describe('Projection Operations', () => {
       ]
       const positions = new Float32Array(9)
 
-      const count = projectVerticesToPositions(vertices, positions, 4, true)
+      const count = projectVerticesToPositions(vertices, positions, 4)
 
       expect(count).toBe(3)
     })
@@ -428,7 +373,7 @@ describe('Projection Operations', () => {
     it('returns 0 for empty array', () => {
       const positions = new Float32Array(6)
 
-      const count = projectVerticesToPositions([], positions, 4, true)
+      const count = projectVerticesToPositions([], positions, 4)
 
       expect(count).toBe(0)
     })
@@ -440,14 +385,14 @@ describe('Projection Operations', () => {
       ]
       const positions = new Float32Array(3) // Too small
 
-      expect(() => projectVerticesToPositions(vertices, positions, 4, true)).toThrow()
+      expect(() => projectVerticesToPositions(vertices, positions, 4)).toThrow()
     })
 
     it('throws error if vertices have < 3 dimensions', () => {
       const vertices = [[1, 2]]
       const positions = new Float32Array(3)
 
-      expect(() => projectVerticesToPositions(vertices, positions, 4, true)).toThrow()
+      expect(() => projectVerticesToPositions(vertices, positions, 4)).toThrow()
     })
 
     it('produces same results as projectPerspective', () => {
@@ -458,7 +403,7 @@ describe('Projection Operations', () => {
       ]
       const positions = new Float32Array(9)
 
-      projectVerticesToPositions(vertices, positions, 4, true)
+      projectVerticesToPositions(vertices, positions, 4)
 
       for (let i = 0; i < vertices.length; i++) {
         const expected = projectPerspective(vertices[i]!, 4)
@@ -471,7 +416,7 @@ describe('Projection Operations', () => {
   })
 
   describe('projectEdgesToPositions (Buffer API)', () => {
-    it('projects edge pairs to Float32Array', () => {
+    it('projects edge pairs to Float32Array with perspective', () => {
       const vertices = [
         [1, 0, 0],
         [0, 1, 0],
@@ -483,26 +428,27 @@ describe('Projection Operations', () => {
       ]
       const positions = new Float32Array(12)
 
-      projectEdgesToPositions(vertices, edges, positions, 4, false)
+      projectEdgesToPositions(vertices, edges, positions, 4)
 
+      // 3D vertices scaled by 1/4 = 0.25
       // First edge: vertex 0 to vertex 1
-      expect(positions[0]).toBe(1)
-      expect(positions[1]).toBe(0)
-      expect(positions[2]).toBe(0)
-      expect(positions[3]).toBe(0)
-      expect(positions[4]).toBe(1)
-      expect(positions[5]).toBe(0)
+      expect(positions[0]).toBeCloseTo(0.25, 10)
+      expect(positions[1]).toBeCloseTo(0, 10)
+      expect(positions[2]).toBeCloseTo(0, 10)
+      expect(positions[3]).toBeCloseTo(0, 10)
+      expect(positions[4]).toBeCloseTo(0.25, 10)
+      expect(positions[5]).toBeCloseTo(0, 10)
 
       // Second edge: vertex 1 to vertex 2
-      expect(positions[6]).toBe(0)
-      expect(positions[7]).toBe(1)
-      expect(positions[8]).toBe(0)
-      expect(positions[9]).toBe(0)
-      expect(positions[10]).toBe(0)
-      expect(positions[11]).toBe(1)
+      expect(positions[6]).toBeCloseTo(0, 10)
+      expect(positions[7]).toBeCloseTo(0.25, 10)
+      expect(positions[8]).toBeCloseTo(0, 10)
+      expect(positions[9]).toBeCloseTo(0, 10)
+      expect(positions[10]).toBeCloseTo(0, 10)
+      expect(positions[11]).toBeCloseTo(0.25, 10)
     })
 
-    it('applies perspective projection to edges', () => {
+    it('applies perspective projection with varying depth', () => {
       const vertices = [
         [2, 0, 0, 0], // projected: 0.5, 0, 0
         [0, 2, 0, 2], // projected: 0, 1, 0 (denom = 4-2 = 2)
@@ -510,7 +456,7 @@ describe('Projection Operations', () => {
       const edges: [number, number][] = [[0, 1]]
       const positions = new Float32Array(6)
 
-      projectEdgesToPositions(vertices, edges, positions, 4, true)
+      projectEdgesToPositions(vertices, edges, positions, 4)
 
       expect(positions[0]).toBeCloseTo(0.5, 10)
       expect(positions[1]).toBeCloseTo(0, 10)
@@ -525,7 +471,7 @@ describe('Projection Operations', () => {
       const edges: [number, number][] = [[0, 99]] // 99 is invalid
       const positions = new Float32Array(6)
 
-      projectEdgesToPositions(vertices, edges, positions, 4, false)
+      projectEdgesToPositions(vertices, edges, positions, 4)
 
       // Should write zeros for invalid edges
       expect(positions[0]).toBe(0)
@@ -545,19 +491,19 @@ describe('Projection Operations', () => {
       const positions = new Float32Array(12)
       positions.fill(99)
 
-      projectEdgesToPositions(vertices, edges, positions, 4, false, 6)
+      projectEdgesToPositions(vertices, edges, positions, 4, 6)
 
       // First 6 elements should be unchanged
       expect(positions[0]).toBe(99)
       expect(positions[5]).toBe(99)
 
-      // Edge data starts at offset 6
-      expect(positions[6]).toBe(1)
-      expect(positions[7]).toBe(2)
-      expect(positions[8]).toBe(3)
-      expect(positions[9]).toBe(4)
-      expect(positions[10]).toBe(5)
-      expect(positions[11]).toBe(6)
+      // Edge data starts at offset 6 (with perspective scaling by 1/4)
+      expect(positions[6]).toBeCloseTo(0.25, 10)
+      expect(positions[7]).toBeCloseTo(0.5, 10)
+      expect(positions[8]).toBeCloseTo(0.75, 10)
+      expect(positions[9]).toBeCloseTo(1, 10)
+      expect(positions[10]).toBeCloseTo(1.25, 10)
+      expect(positions[11]).toBeCloseTo(1.5, 10)
     })
 
     it('returns count of projected edges', () => {
@@ -573,7 +519,7 @@ describe('Projection Operations', () => {
       ]
       const positions = new Float32Array(18)
 
-      const count = projectEdgesToPositions(vertices, edges, positions, 4, false)
+      const count = projectEdgesToPositions(vertices, edges, positions, 4)
 
       expect(count).toBe(3)
     })
@@ -582,7 +528,7 @@ describe('Projection Operations', () => {
       const vertices = [[1, 2, 3]]
       const positions = new Float32Array(6)
 
-      const count = projectEdgesToPositions(vertices, [], positions, 4, false)
+      const count = projectEdgesToPositions(vertices, [], positions, 4)
 
       expect(count).toBe(0)
     })
@@ -595,7 +541,7 @@ describe('Projection Operations', () => {
       const edges: [number, number][] = [[0, 1]]
       const positions = new Float32Array(3) // Too small, need 6
 
-      expect(() => projectEdgesToPositions(vertices, edges, positions, 4, false)).toThrow()
+      expect(() => projectEdgesToPositions(vertices, edges, positions, 4)).toThrow()
     })
 
     it('handles 5D vertices correctly', () => {
@@ -606,7 +552,7 @@ describe('Projection Operations', () => {
       const edges: [number, number][] = [[0, 1]]
       const positions = new Float32Array(6)
 
-      projectEdgesToPositions(vertices, edges, positions, 4, true)
+      projectEdgesToPositions(vertices, edges, positions, 4)
 
       // First vertex: scale = 1/4
       expect(positions[0]).toBeCloseTo(0.25, 10)

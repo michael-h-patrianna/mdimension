@@ -72,11 +72,6 @@ uniform mat4 uPrevInverseViewProjectionMatrix;
 uniform bool uTemporalEnabled;
 uniform vec2 uDepthBufferResolution;
 
-// Orthographic projection uniforms
-uniform bool uOrthographic;
-uniform vec3 uOrthoRayDir;
-uniform mat4 uInverseViewProjectionMatrix;
-
 // Opacity Mode System uniforms
 uniform int uOpacityMode;
 uniform float uSimpleAlpha;

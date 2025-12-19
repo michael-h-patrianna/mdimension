@@ -27,8 +27,6 @@ export {
   useLayoutStore,
 } from './layoutStore'
 export type { LayoutMode, LayoutState } from './layoutStore'
-export { useProjectionStore } from './projectionStore'
-export type { ProjectionType } from './projectionStore'
 export { useRotationStore } from './rotationStore'
 export {
   DEFAULT_SCALE,

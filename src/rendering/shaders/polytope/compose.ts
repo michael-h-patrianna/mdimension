@@ -8,6 +8,7 @@ import { selectorBlock } from '../shared/color/selector.glsl';
 import { fresnelBlock } from '../shared/lighting/fresnel.glsl';
 import { multiLightBlock } from '../shared/lighting/multi-light.glsl';
 import { sssBlock } from '../shared/lighting/sss.glsl';
+import { shadowMapsUniformsBlock, shadowMapsFunctionsBlock } from '../shared/features/shadowMaps.glsl';
 
 import { transformNDBlock } from './transform-nd.glsl';
 import { modulationBlock } from './modulation.glsl';
@@ -97,6 +98,7 @@ export function composeFaceFragmentShader(): string {
     uniform float uSssIntensity;
     uniform vec3 uSssColor;
     uniform float uSssThickness;
+    uniform float uSssJitter;
 
     // Inputs from vertex shader
     in vec3 vWorldPosition;
@@ -113,6 +115,8 @@ export function composeFaceFragmentShader(): string {
     fresnelBlock,
     multiLightBlock,
     sssBlock,
+    shadowMapsUniformsBlock,
+    shadowMapsFunctionsBlock,
     `
     void main() {
       // Compute face normal from screen-space derivatives of world position
@@ -174,9 +178,8 @@ export function composeFaceFragmentShader(): string {
 
             if (attenuation < 0.001) continue;
 
-            // Polytope faces don't support shadows yet (raymarched shadows require SDF)
-            // Shadows are disabled for polytopes in this refactor unless implemented (user says no features needed)
-            float shadow = 1.0; 
+            // Shadow map sampling for mesh-based objects
+            float shadow = uShadowEnabled ? getShadow(i, vWorldPosition) : 1.0;
 
             // Two-sided lighting: use abs() so both sides of faces receive diffuse light
             float NdotL = abs(dot(normal, l));
@@ -195,7 +198,7 @@ export function composeFaceFragmentShader(): string {
 
             // Rim SSS (backlight transmission)
             if (uSssEnabled && uSssIntensity > 0.0) {
-                vec3 sss = computeSSS(l, viewDir, normal, 0.5, uSssThickness * 4.0, 0.0);
+                vec3 sss = computeSSS(l, viewDir, normal, 0.5, uSssThickness * 4.0, 0.0, uSssJitter, gl_FragCoord.xy);
                 col += sss * uSssColor * uLightColors[i] * uSssIntensity * attenuation;
             }
 
@@ -234,7 +237,7 @@ export function composeFaceFragmentShader(): string {
 
         // Rim SSS (backlight transmission) - legacy single light
         if (uSssEnabled && uSssIntensity > 0.0) {
-          vec3 sss = computeSSS(lightDir, viewDir, normal, 0.5, uSssThickness * 4.0, 0.0);
+          vec3 sss = computeSSS(lightDir, viewDir, normal, 0.5, uSssThickness * 4.0, 0.0, uSssJitter, gl_FragCoord.xy);
           col += sss * uSssColor * uLightColor * uSssIntensity * uLightStrength;
         }
 

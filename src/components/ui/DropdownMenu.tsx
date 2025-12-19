@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { m, AnimatePresence } from 'motion/react';
 import { soundManager } from '@/lib/audio/SoundManager';
 
@@ -24,24 +25,71 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
   align = 'left',
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState({ top: 0, left: 0 });
+  const offset = 4;
 
-  // Memoized click outside handler to avoid stale closure
-  const handleClickOutside = useCallback((event: MouseEvent) => {
-    if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-      setIsOpen(false);
+  // Update position - memoized to avoid stale closure in event listeners
+  const updatePosition = useCallback(() => {
+    if (triggerRef.current && isOpen) {
+      const triggerRect = triggerRef.current.getBoundingClientRect();
+      const contentRect = contentRef.current?.getBoundingClientRect() || { width: 180, height: 0 };
+
+      // Position below trigger
+      let top = triggerRect.bottom + offset + window.scrollY;
+      let left = align === 'right'
+        ? triggerRect.right - contentRect.width + window.scrollX
+        : triggerRect.left + window.scrollX;
+
+      // Viewport collision - flip above if overflows bottom
+      const viewportHeight = window.innerHeight;
+      if (top + contentRect.height > window.scrollY + viewportHeight) {
+        top = triggerRect.top - contentRect.height - offset + window.scrollY;
+      }
+
+      // Clamp horizontal to viewport
+      const viewportWidth = window.innerWidth;
+      left = Math.max(8, Math.min(left, viewportWidth - contentRect.width - 8));
+
+      setCoords({ top, left });
     }
-  }, []);
+  }, [isOpen, align]);
 
+  // Position updates on open, resize, scroll
+  useLayoutEffect(() => {
+    if (isOpen) {
+      updatePosition();
+      window.addEventListener('resize', updatePosition);
+      window.addEventListener('scroll', updatePosition, true); // Capture phase for nested scrolls
+    }
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [isOpen, updatePosition]);
+
+  // Click outside handler - checks both trigger and content refs
   useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        isOpen &&
+        triggerRef.current &&
+        !triggerRef.current.contains(event.target as Node) &&
+        contentRef.current &&
+        !contentRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
-
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isOpen, handleClickOutside]);
+  }, [isOpen]);
 
   const handleToggle = () => {
     if (!isOpen) {
@@ -82,72 +130,85 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
   };
 
   return (
-    <div className={`relative ${className}`} ref={menuRef}>
-      <div onClick={handleToggle} role="button" className="cursor-pointer">
+    <>
+      <div
+        ref={triggerRef}
+        onClick={handleToggle}
+        role="button"
+        className={`cursor-pointer ${className}`}
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
+      >
         {trigger}
       </div>
 
-      <AnimatePresence>
-        {isOpen && (
-            <m.div 
-                initial="closed"
-                animate="open"
-                exit="closed"
-                variants={menuVariants}
-                className={`
-                    glass-panel absolute top-full mt-1 min-w-[180px]
-                    rounded-lg py-1.5 z-50 overflow-hidden
-                    ${align === 'right' ? 'right-0' : 'left-0'}
-                `}
-                style={{ backdropFilter: 'blur(16px)' }}
+      {createPortal(
+        <AnimatePresence>
+          {isOpen && (
+            <m.div
+              ref={contentRef}
+              initial="closed"
+              animate="open"
+              exit="closed"
+              variants={menuVariants}
+              className="glass-panel min-w-[180px] rounded-lg py-1.5 z-50 overflow-hidden"
+              style={{
+                position: 'absolute',
+                top: coords.top,
+                left: coords.left,
+                backdropFilter: 'blur(16px)'
+              }}
             >
               {items.map((item, index) => {
                 if (item.label === '---') {
-                    return <div key={index} className="h-px bg-white/10 my-1 mx-2" />;
+                  return <div key={index} className="h-px bg-white/10 my-1 mx-2" />;
                 }
-                
+
                 if (!item.onClick) {
-                    return (
-                        <div key={index} className="px-3 py-1.5 text-[10px] font-bold text-text-tertiary uppercase tracking-wider select-none">
-                            {item.label}
-                        </div>
-                    );
+                  return (
+                    <div key={index} className="px-3 py-1.5 text-[10px] font-bold text-text-tertiary uppercase tracking-wider select-none">
+                      {item.label}
+                    </div>
+                  );
                 }
 
                 return (
-                <button
-                  key={index}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleItemClick(item);
-                  }}
-                  onMouseEnter={() => soundManager.playHover()}
-                  disabled={item.disabled}
-                  className={`
-                    w-full text-left px-3 py-2 text-xs flex justify-between items-center group
-                    ${item.disabled 
-                      ? 'text-text-tertiary cursor-not-allowed opacity-50' 
-                      : 'text-text-secondary hover:text-white hover:bg-white/10 hover:text-glow'
-                    }
-                    transition-all duration-200
-                  `}
-                  data-testid={item['data-testid']}
-                >
-                  <span className="relative z-10">{item.label}</span>
-                  {/* Subtle shine on hover */}
-                  {!item.disabled && (
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 pointer-events-none" />
-                  )}
-                  {item.shortcut && (
-                    <span className="text-[10px] text-text-tertiary ml-4 font-mono opacity-70 border border-white/10 px-1 rounded bg-black/20">
-                      {item.shortcut}
-                    </span>
-                  )}
-                </button>
-              )})}
+                  <button
+                    key={index}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleItemClick(item);
+                    }}
+                    onMouseEnter={() => soundManager.playHover()}
+                    disabled={item.disabled}
+                    className={`
+                      w-full text-left px-3 py-2 text-xs flex justify-between items-center group relative
+                      ${item.disabled
+                        ? 'text-text-tertiary cursor-not-allowed opacity-50'
+                        : 'text-text-secondary hover:text-white hover:bg-white/10 hover:text-glow'
+                      }
+                      transition-all duration-200
+                    `}
+                    data-testid={item['data-testid']}
+                  >
+                    <span className="relative z-10">{item.label}</span>
+                    {/* Subtle shine on hover */}
+                    {!item.disabled && (
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 pointer-events-none" />
+                    )}
+                    {item.shortcut && (
+                      <span className="text-[10px] text-text-tertiary ml-4 font-mono opacity-70 border border-white/10 px-1 rounded bg-black/20">
+                        {item.shortcut}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </m.div>
-        )}
-      </AnimatePresence>
-    </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
+    </>
   );
 };

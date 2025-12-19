@@ -28,9 +28,15 @@ import { composeRotations } from '@/lib/math/rotation'
 import type { VectorND } from '@/lib/math/types'
 import { createLightUniforms, updateLightUniforms, type LightUniforms } from '@/rendering/lights/uniforms'
 import { matrixToGPUUniforms } from '@/rendering/shaders/transforms/ndTransform'
+import {
+  blurToPCFSamples,
+  collectShadowDataFromScene,
+  createShadowMapUniforms,
+  SHADOW_MAP_SIZES,
+  updateShadowMapUniforms,
+} from '@/rendering/shadows'
 import { useAppearanceStore } from '@/stores/appearanceStore'
 import { useLightingStore } from '@/stores/lightingStore'
-import { useProjectionStore } from '@/stores/projectionStore'
 import { useRotationStore } from '@/stores/rotationStore'
 import { useTransformStore } from '@/stores/transformStore'
 import { usePerformanceStore } from '@/stores/performanceStore'
@@ -115,7 +121,6 @@ export function TubeWireframe({
   // Performance optimization: Cache store state in refs to avoid getState() calls every frame
   const rotationStateRef = useRef(useRotationStore.getState())
   const transformStateRef = useRef(useTransformStore.getState())
-  const projectionStateRef = useRef(useProjectionStore.getState())
   const appearanceStateRef = useRef(useAppearanceStore.getState())
   const lightingStateRef = useRef(useLightingStore.getState())
 
@@ -123,13 +128,11 @@ export function TubeWireframe({
   useEffect(() => {
     const unsubRot = useRotationStore.subscribe((s) => { rotationStateRef.current = s })
     const unsubTrans = useTransformStore.subscribe((s) => { transformStateRef.current = s })
-    const unsubProj = useProjectionStore.subscribe((s) => { projectionStateRef.current = s })
     const unsubApp = useAppearanceStore.subscribe((s) => { appearanceStateRef.current = s })
     const unsubLight = useLightingStore.subscribe((s) => { lightingStateRef.current = s })
     return () => {
       unsubRot()
       unsubTrans()
-      unsubProj()
       unsubApp()
       unsubLight()
     }
@@ -177,7 +180,6 @@ export function TubeWireframe({
         uExtraRotationCols: { value: new Float32Array(MAX_EXTRA_DIMS * 4) },
         uDepthRowSums: { value: new Float32Array(11) },
         uProjectionDistance: { value: DEFAULT_PROJECTION_DISTANCE },
-        uProjectionType: { value: 1 },
 
         // Global lighting (colors converted to linear space)
         uAmbientIntensity: { value: 0.01 },
@@ -197,9 +199,12 @@ export function TubeWireframe({
         uSssIntensity: { value: 1.0 },
         uSssColor: { value: new Color('#ff8844').convertSRGBToLinear() },
         uSssThickness: { value: 1.0 },
+        uSssJitter: { value: 0.2 },
 
         // Multi-light system
         ...lightUniforms,
+        // Shadow map uniforms
+        ...createShadowMapUniforms(),
       },
       transparent: opacity < 1,
       depthTest: true,
@@ -362,14 +367,13 @@ export function TubeWireframe({
   }, [vertices, edges, geometry])
 
   // Update uniforms every frame
-  useFrame(() => {
+  useFrame(({ scene }) => {
     if (!material.uniforms.uRotationMatrix4D) return
 
     // Read state from cached refs (updated via subscriptions, not getState() per frame)
     const rotationState = rotationStateRef.current
     const transformState = transformStateRef.current
     const { uniformScale, perAxisScale } = transformState
-    const projectionType = projectionStateRef.current.type
     const appearanceState = appearanceStateRef.current
     const lightingState = lightingStateRef.current
 
@@ -435,7 +439,6 @@ export function TubeWireframe({
     ;(u.uExtraRotationCols!.value as Float32Array).set(gpuData.extraRotationCols)
     ;(u.uDepthRowSums!.value as Float32Array).set(gpuData.depthRowSums)
     u.uProjectionDistance!.value = projectionDistance
-    u.uProjectionType!.value = projectionType === 'perspective' ? 1 : 0
 
     // Update material properties (cached linear conversion)
     const cache = colorCacheRef.current
@@ -463,9 +466,25 @@ export function TubeWireframe({
     u.uSssIntensity!.value = appearanceState.sssIntensity
     updateLinearColorUniform(cache.sssColor, u.uSssColor!.value as Color, appearanceState.sssColor)
     u.uSssThickness!.value = appearanceState.sssThickness
+    if (u.uSssJitter) u.uSssJitter.value = appearanceState.sssJitter
 
     // Update multi-light system (with cached linear color conversion)
     updateLightUniforms(u as unknown as LightUniforms, lightingState.lights, lightColorCacheRef.current)
+
+    // Update shadow map uniforms if shadows are enabled
+    if (shadowEnabled && lightingState.shadowEnabled) {
+      const shadowData = collectShadowDataFromScene(scene)
+      const shadowQuality = lightingState.shadowQuality
+      const shadowMapSize = SHADOW_MAP_SIZES[shadowQuality]
+      const pcfSamples = blurToPCFSamples(lightingState.shadowMapBlur)
+      updateShadowMapUniforms(
+        u as Record<string, { value: unknown }>,
+        shadowData,
+        lightingState.shadowMapBias,
+        shadowMapSize,
+        pcfSamples
+      )
+    }
   })
 
   // Don't render if no valid data

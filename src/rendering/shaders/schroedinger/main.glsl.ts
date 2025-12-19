@@ -44,44 +44,25 @@ void main() {
     // else: Full-res mode - use gl_FragCoord.xy directly (already set above)
     #endif
 
-    // Setup ray origin and direction
-    if (uOrthographic) {
-        worldRayDir = normalize(uOrthoRayDir);
-        rd = normalize((uInverseModelMatrix * vec4(worldRayDir, 0.0)).xyz);
-        #ifdef USE_TEMPORAL_ACCUMULATION
-        vec2 screenUV = screenCoord / uFullResolution;
-        #else
-        vec2 screenUV = screenCoord / uResolution;
-        #endif
-        vec2 ndc = screenUV * 2.0 - 1.0;
-        vec4 nearPointClip = vec4(ndc, -1.0, 1.0);
-        vec4 nearPointWorld = uInverseViewProjectionMatrix * nearPointClip;
-        // Guard against w=0
-        float nearW = abs(nearPointWorld.w) < 0.0001 ? 0.0001 : nearPointWorld.w;
-        nearPointWorld /= nearW;
-        vec3 rayOriginWorld = nearPointWorld.xyz;
-        ro = (uInverseModelMatrix * vec4(rayOriginWorld, 1.0)).xyz;
-        ro = ro - rd * (BOUND_R + 1.0);
-    } else {
-        ro = (uInverseModelMatrix * vec4(uCameraPosition, 1.0)).xyz;
+    // Setup ray origin and direction (perspective projection)
+    ro = (uInverseModelMatrix * vec4(uCameraPosition, 1.0)).xyz;
 
-        #ifdef USE_TEMPORAL_ACCUMULATION
-        // For temporal accumulation, compute ray direction from screen coord
-        // instead of using interpolated vertex position
-        vec2 screenUV = screenCoord / uFullResolution;
-        vec2 ndc = screenUV * 2.0 - 1.0;
-        vec4 farPointClip = vec4(ndc, 1.0, 1.0);
-        vec4 farPointWorld = uInverseViewProjectionMatrix * farPointClip;
-        // Guard against w=0
-        float farW = abs(farPointWorld.w) < 0.0001 ? 0.0001 : farPointWorld.w;
-        farPointWorld /= farW;
-        worldRayDir = normalize(farPointWorld.xyz - uCameraPosition);
-        #else
-        worldRayDir = normalize(vPosition - uCameraPosition);
-        #endif
+    #ifdef USE_TEMPORAL_ACCUMULATION
+    // For temporal accumulation, compute ray direction from screen coord
+    // instead of using interpolated vertex position
+    vec2 screenUV = screenCoord / uFullResolution;
+    vec2 ndc = screenUV * 2.0 - 1.0;
+    vec4 farPointClip = vec4(ndc, 1.0, 1.0);
+    vec4 farPointWorld = uInverseViewProjectionMatrix * farPointClip;
+    // Guard against w=0
+    float farW = abs(farPointWorld.w) < 0.0001 ? 0.0001 : farPointWorld.w;
+    farPointWorld /= farW;
+    worldRayDir = normalize(farPointWorld.xyz - uCameraPosition);
+    #else
+    worldRayDir = normalize(vPosition - uCameraPosition);
+    #endif
 
-        rd = normalize((uInverseModelMatrix * vec4(worldRayDir, 0.0)).xyz);
-    }
+    rd = normalize((uInverseModelMatrix * vec4(worldRayDir, 0.0)).xyz);
 
     // Intersect with bounding sphere
     vec2 tSphere = intersectSphere(ro, rd, BOUND_R);
@@ -198,36 +179,38 @@ void main() {
     }
 
     // Atmospheric Depth Integration (Fog)
+#ifdef USE_FOG
     // Apply fog to the composited color based on the weighted depth
     // weightedCenter is in Local Space. ro is Local Camera Pos.
     float viewDist = distance(volumeResult.weightedCenter, ro);
-    
+
     // Scene Fog
     if (uFogEnabled && uSceneFogDensity > 0.0) {
-        // Standard Exp2 fog: exp(-density * distance * density * distance * LOG2) ? 
+        // Standard Exp2 fog: exp(-density * distance * density * distance * LOG2) ?
         // ThreeJS standard: white = 1 - exp2(-density * density * dist * dist * LOG2) ??
         // Actually ThreeJS Chunk: float fogFactor = 1.0 - exp( - fogDensity * fogDensity * fogDepth * fogDepth * LOG2 );
         // We use a simplified version: factor = exp(-density * dist)
-        
+
         float fogFactor = exp(-uSceneFogDensity * viewDist * uFogContribution);
         fogFactor = clamp(fogFactor, 0.0, 1.0);
-        
+
         // Mix fog color
         gColor.rgb = mix(uSceneFogColor, gColor.rgb, fogFactor);
     }
-    
+
     // Internal Object Fog (Volume Scale)
     if (uInternalFogDensity > 0.0) {
         // Fog based on depth inside the volume (ray length)
         // Longer rays = more internal fog
         float internalDist = viewDist; // Use view distance as proxy for accumulated depth
         // Or we can use physical depth: tFar - tNear (approx)
-        
+
         // Let's use simple distance-based fade for internal "mystery"
         float internalFactor = exp(-uInternalFogDensity * internalDist * 0.5);
         // Darken the interior
         gColor.rgb *= internalFactor;
     }
+#endif
 
     // Transform normal from model space to world space, then to view space
     vec3 worldNormal = normalize((uModelMatrix * vec4(modelNormal, 0.0)).xyz);
@@ -263,24 +246,10 @@ void main() {
     vec3 ro, rd;
     vec3 worldRayDir;
 
-    if (uOrthographic) {
-        worldRayDir = normalize(uOrthoRayDir);
-        rd = normalize((uInverseModelMatrix * vec4(worldRayDir, 0.0)).xyz);
-        vec2 screenUV = gl_FragCoord.xy / uResolution;
-        vec2 ndc = screenUV * 2.0 - 1.0;
-        vec4 nearPointClip = vec4(ndc, -1.0, 1.0);
-        vec4 nearPointWorld = uInverseViewProjectionMatrix * nearPointClip;
-        // Guard against w=0
-        float nearW = abs(nearPointWorld.w) < 0.0001 ? 0.0001 : nearPointWorld.w;
-        nearPointWorld /= nearW;
-        vec3 rayOriginWorld = nearPointWorld.xyz;
-        ro = (uInverseModelMatrix * vec4(rayOriginWorld, 1.0)).xyz;
-        ro = ro - rd * (BOUND_R + 1.0);
-    } else {
-        ro = (uInverseModelMatrix * vec4(uCameraPosition, 1.0)).xyz;
-        worldRayDir = normalize(vPosition - uCameraPosition);
-        rd = normalize((uInverseModelMatrix * vec4(worldRayDir, 0.0)).xyz);
-    }
+    // Perspective projection: ray from camera through fragment
+    ro = (uInverseModelMatrix * vec4(uCameraPosition, 1.0)).xyz;
+    worldRayDir = normalize(vPosition - uCameraPosition);
+    rd = normalize((uInverseModelMatrix * vec4(worldRayDir, 0.0)).xyz);
 
     vec2 tSphere = intersectSphere(ro, rd, BOUND_R);
     if (tSphere.y < 0.0) discard;

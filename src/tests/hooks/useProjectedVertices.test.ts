@@ -1,15 +1,9 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { describe, it, expect } from 'vitest';
+import { renderHook } from '@testing-library/react';
 import { useProjectedVertices } from '@/hooks/useProjectedVertices';
-import { useProjectionStore } from '@/stores/projectionStore';
 import type { VectorND } from '@/lib/math/types';
 
 describe('useProjectedVertices', () => {
-  beforeEach(() => {
-    // Reset store to defaults before each test
-    useProjectionStore.getState().resetToDefaults();
-  });
-
   describe('empty input handling', () => {
     it('should return empty array for empty input', () => {
       const { result } = renderHook(() => useProjectedVertices([]));
@@ -108,61 +102,6 @@ describe('useProjectedVertices', () => {
     });
   });
 
-  describe('orthographic projection', () => {
-    beforeEach(() => {
-      act(() => {
-        useProjectionStore.getState().setType('orthographic');
-      });
-    });
-
-    it('should ignore W coordinate completely', () => {
-      const innerVertex: VectorND = [1, 1, 1, -1]; // w = -1
-      const outerVertex: VectorND = [1, 1, 1, 1];  // w = 1
-
-      const { result } = renderHook(() =>
-        useProjectedVertices([innerVertex, outerVertex])
-      );
-
-      const [innerProjected, outerProjected] = result.current;
-
-      // Orthographic just takes first 3 coordinates
-      expect(innerProjected).toEqual([1, 1, 1]);
-      expect(outerProjected).toEqual([1, 1, 1]);
-
-      // Both should be identical
-      expect(innerProjected).toEqual(outerProjected);
-    });
-
-    it('should make inner and outer structures same size', () => {
-      const vertex1: VectorND = [2, 3, 4, -2];
-      const vertex2: VectorND = [2, 3, 4, 2];
-
-      const { result } = renderHook(() =>
-        useProjectedVertices([vertex1, vertex2])
-      );
-
-      const [proj1, proj2] = result.current;
-
-      // Both should have identical projections
-      expect(proj1).toEqual([2, 3, 4]);
-      expect(proj2).toEqual([2, 3, 4]);
-    });
-
-    it('should work for 5D and 6D vertices', () => {
-      const vertex5D: VectorND = [1, 2, 3, 4, 5];
-      const vertex6D: VectorND = [1, 2, 3, 4, 5, 6];
-
-      const { result } = renderHook(() =>
-        useProjectedVertices([vertex5D, vertex6D])
-      );
-
-      const [proj5D, proj6D] = result.current;
-
-      expect(proj5D).toEqual([1, 2, 3]);
-      expect(proj6D).toEqual([1, 2, 3]);
-    });
-  });
-
   describe('edge cases', () => {
     it('should not produce NaN values', () => {
       // Test various edge case vertices
@@ -224,24 +163,6 @@ describe('useProjectedVertices', () => {
       const secondResult = result.current;
 
       expect(firstResult).toBe(secondResult);
-    });
-
-    it('should recompute when projection type changes', () => {
-      const vertices: VectorND[] = [[1, 1, 1, 1]];
-
-      const { result, rerender } = renderHook(() => useProjectedVertices(vertices));
-
-      // Clone to avoid mutation
-      const perspectiveResult = [...result.current[0]!];
-
-      act(() => {
-        useProjectionStore.getState().setType('orthographic');
-      });
-      rerender();
-
-      const orthographicResult = result.current[0];
-
-      expect(perspectiveResult).not.toEqual(orthographicResult);
     });
   });
 

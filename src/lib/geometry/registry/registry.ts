@@ -698,6 +698,7 @@ export const OBJECT_TYPE_REGISTRY: ObjectTypeRegistry = new Map<ObjectType, Obje
         faceDetection: 'none',
         requiresRaymarching: true,
         edgesAreFresnelRim: true,
+        supportsEmission: true,
       },
 
       animation: {

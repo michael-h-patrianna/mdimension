@@ -34,16 +34,6 @@ vi.mock('@/stores/transformStore', () => ({
   },
 }))
 
-// Mock projection store
-vi.mock('@/stores/projectionStore', () => ({
-  useProjectionStore: {
-    getState: () => ({
-      type: 'perspective',
-    }),
-    subscribe: () => () => {},
-  },
-}))
-
 // Mock appearance store
 vi.mock('@/stores/appearanceStore', () => ({
   useAppearanceStore: {

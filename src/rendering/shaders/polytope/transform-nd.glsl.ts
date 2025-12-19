@@ -7,7 +7,6 @@ export const transformNDBlock = `
     uniform vec4 uScale4D;
     uniform float uExtraScales[${MAX_EXTRA_DIMS}];
     uniform float uProjectionDistance;
-    uniform int uProjectionType;
     uniform float uExtraRotationCols[${MAX_EXTRA_DIMS * 4}];
     uniform float uDepthRowSums[11];
 
@@ -47,25 +46,21 @@ export const transformNDBlock = `
         }
       }
 
-      vec3 projected;
-      if (uProjectionType == 0) {
-        projected = rotated.xyz;
-      } else {
-        float effectiveDepth = rotated.w;
-        for (int j = 0; j < 11; j++) {
-          if (j < uDimension) {
-            effectiveDepth += uDepthRowSums[j] * scaledInputs[j];
-          }
+      // Perspective projection: apply depth-based scaling from higher dimensions
+      float effectiveDepth = rotated.w;
+      for (int j = 0; j < 11; j++) {
+        if (j < uDimension) {
+          effectiveDepth += uDepthRowSums[j] * scaledInputs[j];
         }
-        float normFactor = uDimension > 4 ? sqrt(float(uDimension - 3)) : 1.0;
-        effectiveDepth /= normFactor;
-        // Guard against division by zero when effectiveDepth approaches projectionDistance
-        float denom = uProjectionDistance - effectiveDepth;
-        // Clamp denominator away from zero (preserve sign for correct projection direction)
-        if (abs(denom) < 0.0001) denom = denom >= 0.0 ? 0.0001 : -0.0001;
-        float factor = 1.0 / denom;
-        projected = rotated.xyz * factor;
       }
+      float normFactor = uDimension > 4 ? sqrt(float(uDimension - 3)) : 1.0;
+      effectiveDepth /= normFactor;
+      // Guard against division by zero when effectiveDepth approaches projectionDistance
+      float denom = uProjectionDistance - effectiveDepth;
+      // Clamp denominator away from zero (preserve sign for correct projection direction)
+      if (abs(denom) < 0.0001) denom = denom >= 0.0 ? 0.0001 : -0.0001;
+      float factor = 1.0 / denom;
+      vec3 projected = rotated.xyz * factor;
 
       return projected;
     }

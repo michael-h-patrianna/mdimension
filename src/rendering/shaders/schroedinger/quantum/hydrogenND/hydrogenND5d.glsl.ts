@@ -25,8 +25,18 @@ vec2 evalHydrogenNDPsi5D(float xND[MAX_DIM], float t) {
     float x3 = xND[3]; // Extra dimension 1
     float x4 = xND[4]; // Extra dimension 2
 
+    // EARLY EXIT 1: Check extra dimensions first (fast check)
+    if (extraDimEarlyExit(2, xND)) {
+        return vec2(0.0);
+    }
+
     // Compute 5D radius for radial decay
     float r5D = sqrt(x0*x0 + x1*x1 + x2*x2 + x3*x3 + x4*x4);
+
+    // EARLY EXIT 2: Check hydrogen radial threshold
+    if (hydrogenRadialEarlyExit(r5D, uPrincipalN, uBohrRadius, uAzimuthalL)) {
+        return vec2(0.0);
+    }
 
     // Compute 3D radius for spherical harmonics
     float r3D = radius3D(x0, x1, x2);

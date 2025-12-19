@@ -1097,6 +1097,10 @@ export type HydrogenNDPresetName =
  * - 4D-11D: Schroedinger (hyperspherical coordinates)
  */
 export interface SchroedingerConfig {
+  // === Geometry Settings ===
+  /** Overall scale of the rendered object (0.1-2.0) */
+  scale: number
+
   // === Quality Settings ===
   /** Quality preset (affects sample count and resolution) */
   qualityPreset: SchroedingerQualityPreset
@@ -1342,6 +1346,9 @@ export const SCHROEDINGER_QUALITY_PRESETS: Record<
  * Default Schroedinger quantum visualization configuration
  */
 export const DEFAULT_SCHROEDINGER_CONFIG: SchroedingerConfig = {
+  // Geometry
+  scale: 0.6,
+
   // Quality
   qualityPreset: 'standard',
   resolution: 32,

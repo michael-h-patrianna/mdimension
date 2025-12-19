@@ -3,10 +3,21 @@ export const sssBlock = `
 // Subsurface Scattering Approximation
 // ============================================
 
+// Simple hash for screen-space noise (SSS jitter)
+float sssHash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
 // Fast "Wrap Lighting" SSS Approximation for SDF/Volumetric objects
 // approximating translucency when backlit
-vec3 computeSSS(vec3 lightDir, vec3 viewDir, vec3 normal, float distortion, float power, float thickness) {
-    vec3 halfSum = lightDir + normal * distortion;
+// jitter: 0.0-1.0 adds screen-space noise to distortion for softer results
+// fragCoord: gl_FragCoord.xy for noise seed
+vec3 computeSSS(vec3 lightDir, vec3 viewDir, vec3 normal, float distortion, float power, float thickness, float jitter, vec2 fragCoord) {
+    // Apply jitter: perturb distortion with screen-space noise
+    float noise = sssHash(fragCoord * 0.1) * 2.0 - 1.0; // -1 to 1
+    float jitteredDistortion = distortion * (1.0 + noise * jitter);
+
+    vec3 halfSum = lightDir + normal * jitteredDistortion;
     float halfLen = length(halfSum);
     // Guard against zero-length vector (rare edge case)
     vec3 halfVec = halfLen > 0.0001 ? halfSum / halfLen : vec3(0.0, 1.0, 0.0);

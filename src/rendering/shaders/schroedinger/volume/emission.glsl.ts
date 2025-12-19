@@ -349,9 +349,10 @@ vec3 computeEmissionLit(float rho, float phase, vec3 p, vec3 gradient, vec3 view
         col += specular * uLightColors[i] * NdotL * uSpecularIntensity * attenuation * shadowFactor;
         
         // Subsurface Scattering (SSS)
+#ifdef USE_SSS
         if (uSssEnabled && uSssIntensity > 0.0) {
             // ... SSS code ...
-            // SSS should technically be inverse of shadow? 
+            // SSS should technically be inverse of shadow?
             // If shadow is blocked, SSS might be active if coming from behind?
             // Actually, SSS *is* light passing through.
             // If we calculate shadow, we are calculating how much light reaches point P from Light L.
@@ -360,33 +361,40 @@ vec3 computeEmissionLit(float rho, float phase, vec3 p, vec3 gradient, vec3 view
             // If thick object blocks light, P is dark. No SSS from that light.
             // But SSS logic above uses 'exp(-rho * thickness)'. That IS the shadow calculation for single slice.
             // Real volumetric shadow is better.
-            // Let's multiply SSS by shadowFactor? 
+            // Let's multiply SSS by shadowFactor?
             // Wait, SSS approx uses viewing angle. It approximates light path P -> Eye?
             // No, SSS is Light -> P -> Eye.
             // Shadow is Light -> P.
             // So yes, shadowFactor applies to SSS too.
-            
-            vec3 halfVec = normalize(l + n * 0.5); // Distortion
+
+            // Apply jitter to distortion for softer SSS
+            float sssNoise = fract(sin(dot(gl_FragCoord.xy * 0.1, vec2(127.1, 311.7))) * 43758.5453) * 2.0 - 1.0;
+            float jitteredDistortion = 0.5 * (1.0 + sssNoise * uSssJitter);
+            vec3 halfVec = normalize(l + n * jitteredDistortion);
             float trans = pow(clamp(dot(viewDir, -halfVec), 0.0, 1.0), uSssThickness * 4.0);
-            
+
             // Use shadowFactor instead of simple rho-based approx if available?
-            // Simple approx: exp(-rho). 
+            // Simple approx: exp(-rho).
             // Raymarched: shadowFactor.
             // If shadowing is enabled, use it!
-            
+
             float transmission = trans;
             if (uShadowsEnabled) {
                  transmission *= shadowFactor;
             } else {
                  transmission *= exp(-rho * uSssThickness);
             }
-            
+
             col += uSssColor * uLightColors[i] * transmission * uSssIntensity * attenuation;
         } else {
              // Standard Diffuse with Shadow
              // Apply shadow to diffuse
              col += surfaceColor * uLightColors[i] * NdotL * uDiffuseIntensity * attenuation * powder * phaseFactor * shadowFactor;
         }
+#else
+        // Standard Diffuse with Shadow (SSS disabled at compile time)
+        col += surfaceColor * uLightColors[i] * NdotL * uDiffuseIntensity * attenuation * powder * phaseFactor * shadowFactor;
+#endif
     }
     
     // Volumetric Ambient Occlusion
@@ -456,23 +464,25 @@ vec3 computeEmissionLit(float rho, float phase, vec3 p, vec3 gradient, vec3 view
     }
 
     // Volumetric Fresnel / Rim Lighting
+#ifdef USE_FRESNEL
     if (uFresnelEnabled && uFresnelIntensity > 0.0) {
         float NdotV = max(dot(n, viewDir), 0.0);
         // Standard Fresnel approximation: (1 - N.V)^power
         float rim = pow(1.0 - NdotV, uRimExponent) * uFresnelIntensity;
-        
+
         // Volumetric integration: Rim should be stronger in thin regions (transmittance)
         // We approximate "thinness" by (1.0 - normalizedRho) or just simple weighting
         // The PRD suggests: Rim brightness is scaled by local transmittance
         // Since we are in a density accumulation loop, we don't know total transmittance yet.
         // But we can weigh it by local density contribution.
         // Actually, rim is usually an additive term.
-        
+
         // Modulate rim by AO? Yes, rim shouldn't appear in deep crevices.
         if (uAoEnabled) rim *= aoFactor;
-        
+
         col += uRimColor * rim;
     }
+#endif
 
     // HDR Emission Glow
     if (uEmissionIntensity > 0.0) {

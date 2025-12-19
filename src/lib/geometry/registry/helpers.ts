@@ -180,6 +180,17 @@ export function hasFresnelEdges(type: ObjectType): boolean {
 }
 
 /**
+ * Checks if an object type supports volumetric emission controls.
+ * Only types with density-based rendering (e.g., Schroedinger) support this.
+ *
+ * @param type - The object type
+ * @returns true if the type supports emission controls
+ */
+export function supportsEmission(type: ObjectType): boolean {
+  return getObjectTypeEntry(type)?.rendering.supportsEmission ?? false
+}
+
+/**
  * Gets the full rendering capabilities for an object type.
  *
  * @param type - The object type

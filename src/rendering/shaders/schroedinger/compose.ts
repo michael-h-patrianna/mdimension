@@ -83,6 +83,9 @@ export function composeSchroedingerShader(config: SchroedingerShaderConfig) {
     isosurface = false,
     temporalAccumulation = false,
     quantumMode,
+    sss: enableSss,
+    fresnel: enableFresnel,
+    fog: enableFog,
   } = config;
 
   // Determine which quantum modules to include
@@ -134,6 +137,23 @@ export function composeSchroedingerShader(config: SchroedingerShaderConfig) {
   if (useAO) {
     defines.push('#define USE_AO');
     features.push('Ambient Occlusion');
+  }
+
+  const useSss = enableSss && !overrides.includes('SSS');
+  const useFresnel = enableFresnel && !overrides.includes('Fresnel');
+  const useFog = enableFog && !overrides.includes('Fog');
+
+  if (useSss) {
+    defines.push('#define USE_SSS');
+    features.push('SSS');
+  }
+  if (useFresnel) {
+    defines.push('#define USE_FRESNEL');
+    features.push('Fresnel');
+  }
+  if (useFog) {
+    defines.push('#define USE_FOG');
+    features.push('Fog');
   }
 
   if (isosurface) {
@@ -191,7 +211,7 @@ export function composeSchroedingerShader(config: SchroedingerShaderConfig) {
     { name: 'Color Selector', content: selectorBlock },
 
     // Lighting (must come before emission which uses light functions)
-    { name: 'Lighting (Fresnel)', content: fresnelBlock },
+    { name: 'Lighting (Fresnel)', content: fresnelBlock, condition: enableFresnel },
     { name: 'Multi-Light System', content: multiLightBlock },
 
     // Volumetric rendering

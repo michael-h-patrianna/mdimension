@@ -25,6 +25,11 @@ vec2 evalHydrogenNDPsi3D(float xND[MAX_DIM], float t) {
     // 3D radius
     float r3D = radius3D(x0, x1, x2);
 
+    // EARLY EXIT: Skip if radial contribution is negligible
+    if (hydrogenRadialEarlyExit(r3D, uPrincipalN, uBohrRadius, uAzimuthalL)) {
+        return vec2(0.0);
+    }
+
     vec2 angles = sphericalAngles3D(x0, x1, x2, r3D);
     float theta = angles.x, phi = angles.y;
 

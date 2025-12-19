@@ -39,18 +39,30 @@ import { ShaderConfig } from '../shared/types';
  * @param config
  */
 export function composeMandelbulbShader(config: ShaderConfig) {
-  const { dimension, shadows: enableShadows, temporal: enableTemporal, ambientOcclusion: enableAO, opacityMode, overrides = [] } = config;
+  const {
+    dimension,
+    shadows: enableShadows,
+    temporal: enableTemporal,
+    ambientOcclusion: enableAO,
+    opacityMode,
+    overrides = [],
+    sss: enableSss,
+    fresnel: enableFresnel,
+    fog: enableFog,
+  } = config;
 
   const defines = [];
   const features = [];
-  
+
   features.push('Multi-Light');
-  features.push('Fresnel');
   features.push(`Opacity: ${opacityMode}`);
 
   const useShadows = enableShadows && !overrides.includes('Shadows');
   const useTemporal = enableTemporal && !overrides.includes('Temporal Reprojection');
   const useAO = enableAO && !overrides.includes('Ambient Occlusion');
+  const useSss = enableSss && !overrides.includes('SSS');
+  const useFresnel = enableFresnel && !overrides.includes('Fresnel');
+  const useFog = enableFog && !overrides.includes('Fog');
 
   if (useShadows) {
       defines.push('#define USE_SHADOWS');
@@ -63,6 +75,18 @@ export function composeMandelbulbShader(config: ShaderConfig) {
   if (useAO) {
       defines.push('#define USE_AO');
       features.push('Ambient Occlusion');
+  }
+  if (useSss) {
+      defines.push('#define USE_SSS');
+      features.push('SSS');
+  }
+  if (useFresnel) {
+      defines.push('#define USE_FRESNEL');
+      features.push('Fresnel');
+  }
+  if (useFog) {
+      defines.push('#define USE_FOG');
+      features.push('Fog');
   }
 
   // Select SDF block based on dimension
@@ -94,9 +118,9 @@ export function composeMandelbulbShader(config: ShaderConfig) {
     { name: 'Color (Cosine)', content: cosinePaletteBlock },
     { name: 'Color (Oklab)', content: oklabBlock },
     { name: 'Color Selector', content: selectorBlock },
-    { name: 'Lighting (Fresnel)', content: fresnelBlock },
+    { name: 'Lighting (Fresnel)', content: fresnelBlock, condition: enableFresnel },
     { name: 'Lighting (GGX)', content: ggxBlock },
-    { name: 'Lighting (SSS)', content: sssBlock },
+    { name: 'Lighting (SSS)', content: sssBlock, condition: enableSss },
     { name: sdfName, content: sdfBlock },
     { name: 'Dispatch', content: generateDispatch(dimension) },
     { name: 'Temporal Reprojection', content: temporalBlock, condition: enableTemporal },
