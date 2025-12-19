@@ -64,7 +64,7 @@ export interface SchroedingerShaderConfig extends ShaderConfig {
    * Quantum mode - controls which modules are compiled into the shader.
    * - 'harmonicOscillator': Only HO basis functions (default, fastest compilation)
    * - 'hydrogenOrbital': Adds hydrogen orbital functions
-   * - 'hydrogenND': Adds all hydrogen ND functions (slowest compilation)
+   * - 'hydrogenND': Adds hydrogen ND functions for the specified dimension only
    * If undefined, all modules are included for runtime switching.
    */
   quantumMode?: QuantumModeForShader;
@@ -76,6 +76,7 @@ export interface SchroedingerShaderConfig extends ShaderConfig {
  */
 export function composeSchroedingerShader(config: SchroedingerShaderConfig) {
   const {
+    dimension,
     shadows: enableShadows,
     temporal: enableTemporal,
     ambientOcclusion: enableAO,
@@ -87,12 +88,22 @@ export function composeSchroedingerShader(config: SchroedingerShaderConfig) {
     sss: enableSss,
     fresnel: enableFresnel,
     fog: enableFog,
+    curl: enableCurl,
+    dispersion: enableDispersion,
+    nodal: enableNodal,
+    energyColor: enableEnergyColor,
+    shimmer: enableShimmer,
+    erosion: enableErosion,
   } = config;
 
   // Determine which quantum modules to include
   // If quantumMode is undefined, include all modules for runtime switching
   const includeHydrogen = !quantumMode || quantumMode === 'hydrogenOrbital' || quantumMode === 'hydrogenND';
   const includeHydrogenND = !quantumMode || quantumMode === 'hydrogenND';
+
+  // For hydrogenND mode, we only need to include the specific dimension block
+  // This dramatically reduces shader size and compilation time
+  const hydrogenNDDimension = includeHydrogenND ? Math.min(Math.max(dimension, 3), 11) : 0;
 
   const defines: string[] = [];
   const features: string[] = [];
@@ -103,6 +114,8 @@ export function composeSchroedingerShader(config: SchroedingerShaderConfig) {
   }
   if (includeHydrogenND) {
     defines.push('#define HYDROGEN_ND_MODE_ENABLED');
+    // Add dimension-specific define to eliminate runtime dispatch
+    defines.push(`#define HYDROGEN_ND_DIMENSION ${hydrogenNDDimension}`);
   }
 
   features.push('Quantum Volume');
@@ -157,6 +170,39 @@ export function composeSchroedingerShader(config: SchroedingerShaderConfig) {
     features.push('Fog');
   }
 
+  // Quantum volume effects (compile-time optimization)
+  const useCurl = enableCurl && !overrides.includes('Curl');
+  const useDispersion = enableDispersion && !overrides.includes('Dispersion');
+  const useNodal = enableNodal && !overrides.includes('Nodal');
+  const useEnergyColor = enableEnergyColor && !overrides.includes('Energy Color');
+  const useShimmer = enableShimmer && !overrides.includes('Shimmer');
+  const useErosion = enableErosion && !overrides.includes('Erosion');
+
+  if (useCurl) {
+    defines.push('#define USE_CURL');
+    features.push('Curl Flow');
+  }
+  if (useDispersion) {
+    defines.push('#define USE_DISPERSION');
+    features.push('Chromatic Dispersion');
+  }
+  if (useNodal) {
+    defines.push('#define USE_NODAL');
+    features.push('Nodal Surfaces');
+  }
+  if (useEnergyColor) {
+    defines.push('#define USE_ENERGY_COLOR');
+    features.push('Energy Coloring');
+  }
+  if (useShimmer) {
+    defines.push('#define USE_SHIMMER');
+    features.push('Uncertainty Shimmer');
+  }
+  if (useErosion) {
+    defines.push('#define USE_EROSION');
+    features.push('Edge Erosion');
+  }
+
   if (isosurface) {
     features.push('Isosurface Mode');
   } else {
@@ -189,17 +235,18 @@ export function composeSchroedingerShader(config: SchroedingerShaderConfig) {
     { name: 'Hydrogen Radial', content: hydrogenRadialBlock, condition: includeHydrogen },
     { name: 'Hydrogen Psi', content: hydrogenPsiBlock, condition: includeHydrogen },
 
-    // Hydrogen ND modules (conditionally included, per-dimension unrolled for performance)
+    // Hydrogen ND modules - only include the specific dimension block needed
+    // This reduces shader size by ~400 lines and dramatically speeds up compilation
     { name: 'Hydrogen ND Common', content: hydrogenNDCommonBlock, condition: includeHydrogenND },
-    { name: 'Hydrogen ND 3D', content: hydrogenND3dBlock, condition: includeHydrogenND },
-    { name: 'Hydrogen ND 4D', content: hydrogenND4dBlock, condition: includeHydrogenND },
-    { name: 'Hydrogen ND 5D', content: hydrogenND5dBlock, condition: includeHydrogenND },
-    { name: 'Hydrogen ND 6D', content: hydrogenND6dBlock, condition: includeHydrogenND },
-    { name: 'Hydrogen ND 7D', content: hydrogenND7dBlock, condition: includeHydrogenND },
-    { name: 'Hydrogen ND 8D', content: hydrogenND8dBlock, condition: includeHydrogenND },
-    { name: 'Hydrogen ND 9D', content: hydrogenND9dBlock, condition: includeHydrogenND },
-    { name: 'Hydrogen ND 10D', content: hydrogenND10dBlock, condition: includeHydrogenND },
-    { name: 'Hydrogen ND 11D', content: hydrogenND11dBlock, condition: includeHydrogenND },
+    { name: 'Hydrogen ND 3D', content: hydrogenND3dBlock, condition: includeHydrogenND && hydrogenNDDimension === 3 },
+    { name: 'Hydrogen ND 4D', content: hydrogenND4dBlock, condition: includeHydrogenND && hydrogenNDDimension === 4 },
+    { name: 'Hydrogen ND 5D', content: hydrogenND5dBlock, condition: includeHydrogenND && hydrogenNDDimension === 5 },
+    { name: 'Hydrogen ND 6D', content: hydrogenND6dBlock, condition: includeHydrogenND && hydrogenNDDimension === 6 },
+    { name: 'Hydrogen ND 7D', content: hydrogenND7dBlock, condition: includeHydrogenND && hydrogenNDDimension === 7 },
+    { name: 'Hydrogen ND 8D', content: hydrogenND8dBlock, condition: includeHydrogenND && hydrogenNDDimension === 8 },
+    { name: 'Hydrogen ND 9D', content: hydrogenND9dBlock, condition: includeHydrogenND && hydrogenNDDimension === 9 },
+    { name: 'Hydrogen ND 10D', content: hydrogenND10dBlock, condition: includeHydrogenND && hydrogenNDDimension === 10 },
+    { name: 'Hydrogen ND 11D', content: hydrogenND11dBlock, condition: includeHydrogenND && hydrogenNDDimension === 11 },
 
     // Unified wavefunction evaluation (mode-switching)
     { name: 'Wavefunction (Psi)', content: psiBlock },

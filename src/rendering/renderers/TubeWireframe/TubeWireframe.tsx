@@ -10,16 +10,20 @@
 
 import { createColorCache, createLightColorCache, updateLinearColorUniform } from '@/rendering/colors/linearCache'
 import { RENDER_LAYERS } from '@/rendering/core/layers'
+import { useTrackedShaderMaterial } from '@/rendering/materials/useTrackedShaderMaterial'
 import { useFrame } from '@react-three/fiber'
 import React, { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import {
     Color,
     CylinderGeometry,
     DoubleSide,
+    Fog,
+    FogExp2,
     GLSL3,
     InstancedBufferAttribute,
     InstancedMesh,
     Matrix4,
+    MeshBasicMaterial,
     ShaderMaterial,
 } from 'three'
 
@@ -159,68 +163,90 @@ export function TubeWireframe({
 
   const setShaderDebugInfo = usePerformanceStore((state) => state.setShaderDebugInfo)
 
-  // Create shader material with all uniforms
-  const material = useMemo(() => {
-    // Convert colors from sRGB to linear for physically correct lighting
-    const colorValue = new Color(color).convertSRGBToLinear()
-    const lightUniforms = createLightUniforms()
-    const { glsl: fragmentShaderString } = composeTubeWireframeFragmentShader()
-    const vertexShaderString = composeTubeWireframeVertexShader()
+  // Feature flags for conditional shader compilation
+  const sssEnabled = useAppearanceStore((state) => state.sssEnabled)
+  const fresnelEnabled = useAppearanceStore((state) => state.shaderSettings.surface.fresnelEnabled)
+  const fogIntegrationEnabled = useAppearanceStore((state) => state.fogIntegrationEnabled)
 
-    const mat = new ShaderMaterial({
-      glslVersion: GLSL3,
-      vertexShader: vertexShaderString,
-      fragmentShader: fragmentShaderString,
-      uniforms: {
-        // Material (colors converted to linear space)
-        uColor: { value: colorValue },
-        uOpacity: { value: opacity },
-        uMetallic: { value: metallic },
-        uRoughness: { value: roughness },
-        uRadius: { value: radius },
-
-        // N-D transformation
-        uRotationMatrix4D: { value: new Matrix4() },
-        uDimension: { value: dimension },
-        uScale4D: { value: [1, 1, 1, 1] },
-        uExtraScales: { value: new Float32Array(MAX_EXTRA_DIMS).fill(1) },
-        uExtraRotationCols: { value: new Float32Array(MAX_EXTRA_DIMS * 4) },
-        uDepthRowSums: { value: new Float32Array(11) },
-        uProjectionDistance: { value: DEFAULT_PROJECTION_DISTANCE },
-
-        // Global lighting (colors converted to linear space)
-        uAmbientIntensity: { value: 0.01 },
-        uAmbientColor: { value: new Color('#FFFFFF').convertSRGBToLinear() },
-        uSpecularIntensity: { value: 0.5 },
-        uSpecularPower: { value: 30 },
-        uSpecularColor: { value: new Color('#FFFFFF').convertSRGBToLinear() },
-        uDiffuseIntensity: { value: 1.0 },
-
-        // Fresnel (colors converted to linear space)
-        uFresnelEnabled: { value: true },
-        uFresnelIntensity: { value: 0.1 },
-        uRimColor: { value: new Color(color).convertSRGBToLinear() },
-
-        // Rim SSS (subsurface scattering for backlight transmission)
-        uSssEnabled: { value: false },
-        uSssIntensity: { value: 1.0 },
-        uSssColor: { value: new Color('#ff8844').convertSRGBToLinear() },
-        uSssThickness: { value: 1.0 },
-        uSssJitter: { value: 0.2 },
-
-        // Multi-light system
-        ...lightUniforms,
-        // Shadow map uniforms
-        ...createShadowMapUniforms(),
-      },
-      transparent: opacity < 1,
-      depthTest: true,
-      depthWrite: opacity >= 1,
-      side: DoubleSide,
+  // Compute shader configuration for tracking (used outside the hook)
+  const { glsl: fragmentShaderString, modules: shaderModules, features: shaderFeatures } = useMemo(() => {
+    return composeTubeWireframeFragmentShader({
+      fog: fogIntegrationEnabled,
+      sss: sssEnabled,
+      fresnel: fresnelEnabled,
     })
+  }, [fogIntegrationEnabled, sssEnabled, fresnelEnabled])
 
-    return mat
-  }, [color, opacity, metallic, roughness, radius, dimension])
+  // Create shader material with tracking - shows overlay during compilation
+  // Feature flags in deps trigger shader recompilation when features are toggled
+  const { material, isCompiling } = useTrackedShaderMaterial(
+    'TubeWireframe PBR',
+    () => {
+      // Convert colors from sRGB to linear for physically correct lighting
+      const colorValue = new Color(color).convertSRGBToLinear()
+      const lightUniforms = createLightUniforms()
+      const vertexShaderString = composeTubeWireframeVertexShader()
+
+      return new ShaderMaterial({
+        glslVersion: GLSL3,
+        vertexShader: vertexShaderString,
+        fragmentShader: fragmentShaderString,
+        uniforms: {
+          // Material (colors converted to linear space)
+          uColor: { value: colorValue },
+          uOpacity: { value: opacity },
+          uMetallic: { value: metallic },
+          uRoughness: { value: roughness },
+          uRadius: { value: radius },
+
+          // N-D transformation
+          uRotationMatrix4D: { value: new Matrix4() },
+          uDimension: { value: dimension },
+          uScale4D: { value: [1, 1, 1, 1] },
+          uExtraScales: { value: new Float32Array(MAX_EXTRA_DIMS).fill(1) },
+          uExtraRotationCols: { value: new Float32Array(MAX_EXTRA_DIMS * 4) },
+          uDepthRowSums: { value: new Float32Array(11) },
+          uProjectionDistance: { value: DEFAULT_PROJECTION_DISTANCE },
+
+          // Global lighting (colors converted to linear space)
+          uAmbientIntensity: { value: 0.01 },
+          uAmbientColor: { value: new Color('#FFFFFF').convertSRGBToLinear() },
+          uSpecularIntensity: { value: 0.5 },
+          uSpecularPower: { value: 30 },
+          uSpecularColor: { value: new Color('#FFFFFF').convertSRGBToLinear() },
+          uDiffuseIntensity: { value: 1.0 },
+
+          // Fresnel (colors converted to linear space)
+          uFresnelEnabled: { value: true },
+          uFresnelIntensity: { value: 0.1 },
+          uRimColor: { value: new Color(color).convertSRGBToLinear() },
+
+          // Rim SSS (subsurface scattering for backlight transmission)
+          uSssEnabled: { value: false },
+          uSssIntensity: { value: 1.0 },
+          uSssColor: { value: new Color('#ff8844').convertSRGBToLinear() },
+          uSssThickness: { value: 1.0 },
+          uSssJitter: { value: 0.2 },
+
+          // Multi-light system
+          ...lightUniforms,
+          // Shadow map uniforms
+          ...createShadowMapUniforms(),
+          // Fog/Atmosphere uniforms (always declared, shader code conditionally compiled)
+          uFogEnabled: { value: fogIntegrationEnabled },
+          uFogContribution: { value: 1.0 },
+          uInternalFogDensity: { value: 0.0 },
+          uSceneFogColor: { value: new Color('#000000').convertSRGBToLinear() },
+          uSceneFogDensity: { value: 0.0 },
+        },
+        transparent: opacity < 1,
+        depthTest: true,
+        depthWrite: opacity >= 1,
+        side: DoubleSide,
+      })
+    },
+    [color, opacity, metallic, roughness, radius, dimension, sssEnabled, fresnelEnabled, fogIntegrationEnabled, fragmentShaderString]
+  )
 
   // Custom depth materials for shadow map rendering with nD transformation
   // These ensure shadows animate correctly when the object animates
@@ -262,42 +288,37 @@ export function TubeWireframe({
     })
   }, [radius, dimension])
 
-  // Dispatch shader debug info
+  // Dispatch shader debug info (only when material is ready)
   useEffect(() => {
-    const { modules, features } = composeTubeWireframeFragmentShader()
+    if (!material) return
     setShaderDebugInfo('object', {
       name: 'TubeWireframe PBR',
       vertexShaderLength: material.vertexShader.length,
       fragmentShaderLength: material.fragmentShader.length,
-      activeModules: modules,
-      features: features,
+      activeModules: shaderModules,
+      features: shaderFeatures,
     })
     return () => setShaderDebugInfo('object', null)
-  }, [material, setShaderDebugInfo])
+  }, [material, shaderModules, shaderFeatures, setShaderDebugInfo])
 
-  // Cleanup geometry and material on unmount or when they change
+  // Cleanup geometry on unmount or when it changes
+  // Note: Material disposal is handled by useTrackedShaderMaterial hook
   const prevGeometryRef = useRef<CylinderGeometry | null>(null)
-  const prevMaterialRef = useRef<ShaderMaterial | null>(null)
 
   useEffect(() => {
-    // Dispose old resources if they exist and differ from current
+    // Dispose old geometry if it exists and differs from current
     if (prevGeometryRef.current && prevGeometryRef.current !== geometry) {
       prevGeometryRef.current.dispose()
     }
-    if (prevMaterialRef.current && prevMaterialRef.current !== material) {
-      prevMaterialRef.current.dispose()
-    }
 
-    // Update refs to current values
+    // Update ref to current value
     prevGeometryRef.current = geometry
-    prevMaterialRef.current = material
 
     // Cleanup on unmount
     return () => {
       geometry.dispose()
-      material.dispose()
     }
-  }, [geometry, material])
+  }, [geometry])
 
   // Assign custom depth materials to mesh for animated shadows
   useEffect(() => {
@@ -435,7 +456,8 @@ export function TubeWireframe({
 
   // Update uniforms every frame
   useFrame(({ scene }) => {
-    if (!material.uniforms.uRotationMatrix4D) return
+    // Skip if material is not ready (still compiling)
+    if (!material || !material.uniforms.uRotationMatrix4D) return
 
     // Read state from cached refs (updated via subscriptions, not getState() per frame)
     const rotationState = rotationStateRef.current
@@ -535,6 +557,24 @@ export function TubeWireframe({
     u.uSssThickness!.value = appearanceState.sssThickness
     if (u.uSssJitter) u.uSssJitter.value = appearanceState.sssJitter
 
+    // Update fog uniforms (shared with raymarched objects)
+    if (u.uFogEnabled) u.uFogEnabled.value = appearanceState.fogIntegrationEnabled
+    if (u.uFogContribution) u.uFogContribution.value = appearanceState.fogContribution
+    if (u.uInternalFogDensity) u.uInternalFogDensity.value = appearanceState.internalFogDensity
+
+    // Update scene fog uniforms from Three.js scene
+    if (scene.fog && (scene.fog as FogExp2).isFogExp2) {
+      const fog = scene.fog as FogExp2
+      if (u.uSceneFogColor) (u.uSceneFogColor.value as Color).copy(fog.color)
+      if (u.uSceneFogDensity) u.uSceneFogDensity.value = fog.density
+    } else if (scene.fog && (scene.fog as Fog).isFog) {
+      const fog = scene.fog as Fog
+      if (u.uSceneFogColor) (u.uSceneFogColor.value as Color).copy(fog.color)
+      if (u.uSceneFogDensity) u.uSceneFogDensity.value = 0.0 // Linear fog not directly supported
+    } else {
+      if (u.uSceneFogDensity) u.uSceneFogDensity.value = 0.0
+    }
+
     // Update multi-light system (with cached linear color conversion)
     updateLightUniforms(u as unknown as LightUniforms, lightingState.lights, lightColorCacheRef.current)
 
@@ -590,6 +630,18 @@ export function TubeWireframe({
   // Don't render if no valid data
   if (!vertices || vertices.length === 0 || !edges || edges.length === 0) {
     return null
+  }
+
+  // Render invisible placeholder while shader is compiling
+  // This allows the compilation overlay to appear before GPU blocks
+  if (isCompiling || !material) {
+    return (
+      <instancedMesh
+        ref={meshRef}
+        args={[geometry, new MeshBasicMaterial({ visible: false }), edges.length]}
+        frustumCulled={false}
+      />
+    )
   }
 
   return (

@@ -35,20 +35,35 @@ vi.mock('@/stores/transformStore', () => ({
 }))
 
 // Mock appearance store
-vi.mock('@/stores/appearanceStore', () => ({
-  useAppearanceStore: {
-    getState: () => ({
+const mockAppearanceState = {
+  sssEnabled: false,
+  fresnelEnabled: true,
+  fresnelIntensity: 0.1,
+  edgeColor: '#19e697',
+  sssIntensity: 1.0,
+  sssColor: '#ff8844',
+  sssThickness: 1.0,
+  sssJitter: 0.2,
+  fogIntegrationEnabled: true,
+  fogContribution: 1.0,
+  internalFogDensity: 0.0,
+  shaderSettings: {
+    surface: {
       fresnelEnabled: true,
-      fresnelIntensity: 0.1,
-      edgeColor: '#19e697',
-      shaderSettings: {
-        surface: {
-          fresnelEnabled: true,
-        },
-      },
-    }),
-    subscribe: () => () => {},
+    },
   },
+}
+vi.mock('@/stores/appearanceStore', () => ({
+  useAppearanceStore: Object.assign(
+    (selector?: (state: typeof mockAppearanceState) => unknown) => {
+      if (selector) return selector(mockAppearanceState)
+      return mockAppearanceState
+    },
+    {
+      getState: () => mockAppearanceState,
+      subscribe: () => () => {},
+    }
+  ),
 }))
 
 // Mock lighting store
@@ -103,6 +118,24 @@ vi.mock('@/rendering/shaders/transforms/ndTransform', () => ({
     extraRotationCols: new Float32Array(28),
     depthRowSums: new Float32Array(11),
   }),
+}))
+
+// Mock performance store
+const mockPerformanceState = {
+  setShaderDebugInfo: vi.fn(),
+  setShaderCompiling: vi.fn(),
+}
+vi.mock('@/stores/performanceStore', () => ({
+  usePerformanceStore: Object.assign(
+    (selector?: (state: typeof mockPerformanceState) => unknown) => {
+      if (selector) return selector(mockPerformanceState)
+      return mockPerformanceState
+    },
+    {
+      getState: () => mockPerformanceState,
+      subscribe: () => () => {},
+    }
+  ),
 }))
 
 // Mock light uniforms

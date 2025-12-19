@@ -195,20 +195,21 @@ VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tF
     float animTime = getVolumeTime();
     vec3 viewDir = -rayDir;
 
+#ifdef USE_DISPERSION
     // Dispersion offsets
     vec3 dispOffsetR = vec3(0.0);
     vec3 dispOffsetB = vec3(0.0);
-    
+
     if (uDispersionEnabled && uDispersionStrength > 0.0) {
         float dispAmount = uDispersionStrength * 0.05; // Scaling factor
-        
+
         if (uDispersionDirection == 0) { // Radial (from center)
              // We can't know "center" easily here without sampling position first.
              // Updated inside loop.
         } else { // View-aligned (tangent to view? or along view?)
              // "View-aligned" usually means screen space offset.
              // Here we are in world space.
-             // Simple: offset along camera Up/Right? 
+             // Simple: offset along camera Up/Right?
              // Or just simple constant world vector?
              // Let's use camera up/right proxy or just arbitrary orthogonal vectors.
              // Cross(rayDir, Up).
@@ -217,6 +218,7 @@ VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tF
              dispOffsetB = -right * dispAmount;
         }
     }
+#endif
 
     for (int i = 0; i < MAX_VOLUME_SAMPLES; i++) {
         if (i >= sampleCount) break;
@@ -225,6 +227,7 @@ VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tF
 
         vec3 pos = rayOrigin + rayDir * t;
 
+#ifdef USE_DISPERSION
         // Radial dispersion update per sample
         if (uDispersionEnabled && uDispersionDirection == 0) {
              vec3 normalProxy = normalize(pos); // From center
@@ -232,6 +235,7 @@ VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tF
              dispOffsetR = normalProxy * dispAmount;
              dispOffsetB = -normalProxy * dispAmount;
         }
+#endif
 
         vec3 densityInfo = sampleDensityWithPhase(pos, animTime);
         float rho = densityInfo.x;
@@ -240,34 +244,36 @@ VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tF
         
         // Chromatic Dispersion Logic
         vec3 rhoRGB = vec3(rho); // Default: all channels same
-        
+
+#ifdef USE_DISPERSION
         if (uDispersionEnabled && uDispersionStrength > 0.0) {
              if (uDispersionQuality == 1) { // High Quality: Full Sampling
                  vec3 dInfoR = sampleDensityWithPhase(pos + dispOffsetR, animTime);
                  vec3 dInfoB = sampleDensityWithPhase(pos + dispOffsetB, animTime);
                  rhoRGB.r = dInfoR.x;
                  rhoRGB.b = dInfoB.x;
-             } else { 
+             } else {
                  // Fast Mode: Gradient Hack
                  // Needs gradient. Calculate it first.
                  // We compute gradient anyway for lighting below.
                  // Move gradient calc up?
                  // Gradient calc uses sCenter.
-                 
+
                  vec3 gradient = computeDensityGradientFast(pos, animTime, 0.05, sCenter);
-                 
+
                  // Extrapolate log-density (s) then convert to rho
                  // s_new = s + dot(grad, offset)
                  float s_r = sCenter + dot(gradient, dispOffsetR);
                  float s_b = sCenter + dot(gradient, dispOffsetB);
-                 
+
                  // rho = exp(s)
                  rhoRGB.r = exp(s_r);
                  rhoRGB.b = exp(s_b);
-                 
+
                  // Reuse gradient for lighting later
              }
         }
+#endif
 
         // Alpha per channel
         vec3 alpha;

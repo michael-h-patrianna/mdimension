@@ -79,25 +79,35 @@ void main() {
     Lo += (kD * uColor / PI + specular * uSpecularIntensity) * radiance * NdotL * uDiffuseIntensity * shadow;
 
     // Rim SSS (backlight transmission)
+#ifdef USE_SSS
     if (uSssEnabled && uSssIntensity > 0.0) {
       vec3 sss = computeSSS(L, V, N, 0.5, uSssThickness * 4.0, 0.0, uSssJitter, gl_FragCoord.xy);
       Lo += sss * uSssColor * uLightColors[i] * uSssIntensity * attenuation;
     }
+#endif
 
     // Track total light for fresnel calculation
     totalNdotL = max(totalNdotL, NdotL * attenuation);
   }
 
   // Fresnel rim lighting
+#ifdef USE_FRESNEL
   if (uFresnelEnabled && uFresnelIntensity > 0.0) {
     float NdotV = max(dot(N, V), 0.0);
     float rim = pow(1.0 - NdotV, 3.0) * uFresnelIntensity * 2.0;
     rim *= (0.3 + 0.7 * totalNdotL);
     Lo += uRimColor * rim;
   }
+#endif
 
   // Final color (tone mapping is applied by post-processing OutputPass)
   vec3 color = Lo;
+
+  // Atmospheric Depth Integration (Fog)
+#ifdef USE_FOG
+  float viewDist = length(vWorldPosition - cameraPosition);
+  color = applyFog(color, viewDist);
+#endif
 
   // Explicitly write depth to ensure it's captured in depth-only passes
   gl_FragDepth = gl_FragCoord.z;

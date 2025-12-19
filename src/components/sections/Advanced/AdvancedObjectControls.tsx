@@ -130,7 +130,6 @@ const RaymarchingQualityControl: React.FC<{ objectType: string }> = ({ objectTyp
 
 const SharedAdvancedControls: React.FC = () => {
     const {
-        roughness, setRoughness,
         sssEnabled, setSssEnabled,
         sssIntensity, setSssIntensity,
         sssColor, setSssColor,
@@ -140,7 +139,6 @@ const SharedAdvancedControls: React.FC = () => {
         fresnelIntensity, setFresnelIntensity,
     } = useAppearanceStore(
         useShallow((state) => ({
-            roughness: state.roughness, setRoughness: state.setRoughness,
             sssEnabled: state.sssEnabled, setSssEnabled: state.setSssEnabled,
             sssIntensity: state.sssIntensity, setSssIntensity: state.setSssIntensity,
             sssColor: state.sssColor, setSssColor: state.setSssColor,
@@ -154,18 +152,7 @@ const SharedAdvancedControls: React.FC = () => {
 
     return (
         <div className="space-y-4 mb-4 pb-4 border-b border-white/10">
-            <Slider
-                label="Roughness"
-                min={0.0}
-                max={1.0}
-                step={0.05}
-                value={roughness}
-                onChange={setRoughness}
-                showValue
-                data-testid="global-roughness"
-            />
-            
-            <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
+            <div className="space-y-2">
                 <div className="flex items-center justify-between">
                     <label className="text-xs text-text-secondary font-semibold">Subsurface Scattering</label>
                     <ToggleButton

@@ -85,6 +85,8 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
     setFaceEmissionColorShift,
     setFaceEmissionPulsing,
     setFaceRimFalloff,
+    roughness,
+    setRoughness,
   } = useAppearanceStore(
     useShallow((state) => ({
       facesVisible: state.facesVisible,
@@ -108,6 +110,8 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
       setFaceEmissionColorShift: state.setFaceEmissionColorShift,
       setFaceEmissionPulsing: state.setFaceEmissionPulsing,
       setFaceRimFalloff: state.setFaceRimFalloff,
+      roughness: state.roughness,
+      setRoughness: state.setRoughness,
     }))
   );
 
@@ -200,6 +204,8 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
           setSpecularIntensity={setSpecularIntensity}
           shininess={shininess}
           setShininess={setShininess}
+          roughness={roughness}
+          setRoughness={setRoughness}
           // Emission props (only for types that support it)
           showEmissionControls={supportsEmission(objectType)}
           faceEmission={faceEmission}
@@ -401,6 +407,8 @@ interface MaterialTabContentProps {
   setSpecularIntensity: (value: number) => void;
   shininess: number;
   setShininess: (value: number) => void;
+  roughness: number;
+  setRoughness: (value: number) => void;
   // Emission props (only for types that support volumetric emission)
   showEmissionControls: boolean;
   faceEmission: number;
@@ -445,6 +453,8 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
   setSpecularIntensity,
   shininess,
   setShininess,
+  roughness,
+  setRoughness,
   // Emission props (only for types that support volumetric emission)
   showEmissionControls,
   faceEmission,
@@ -700,6 +710,19 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
             value={shininess}
             onChange={setShininess}
             showValue
+          />
+
+          {/* Roughness (GGX PBR) */}
+          <Slider
+            label="Roughness"
+            min={0}
+            max={1}
+            step={0.05}
+            value={roughness}
+            onChange={setRoughness}
+            showValue
+            tooltip="Surface roughness for PBR specular (0=mirror, 1=matte)"
+            data-testid="slider-roughness"
           />
         </ControlGroup>
       )}

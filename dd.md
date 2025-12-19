@@ -202,3 +202,6 @@ after this refactor, remove the now obsolete on/off toggle switches for
         shouldn't have the energy to cross.
 
 
+do a full code review of your changes and the shader composition for the polytope object types (faces, edges, tubewireframe) in general and review everything in the context of what the purpose of this feature is:
+  performance optimization by just-in-time composing and compilation of shaders only including shader code that is necessary excluding effects and dimension code that the user has not selected. trace also the
+  connection into the stores and the ui to make sure everything is wired correctly and works consistently and reliable

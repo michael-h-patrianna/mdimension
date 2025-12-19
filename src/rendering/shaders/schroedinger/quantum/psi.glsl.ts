@@ -82,18 +82,27 @@ vec2 evalPsi(float xND[MAX_DIM], float t) {
 
 #ifdef HYDROGEN_ND_MODE_ENABLED
     if (uQuantumMode == QUANTUM_MODE_HYDROGEN_ND) {
-        // Hydrogen ND mode - dimension-specific dispatch for unrolled performance
-        if (uDimension == 3) return evalHydrogenNDPsi3D(xND, t);
-        if (uDimension == 4) return evalHydrogenNDPsi4D(xND, t);
-        if (uDimension == 5) return evalHydrogenNDPsi5D(xND, t);
-        if (uDimension == 6) return evalHydrogenNDPsi6D(xND, t);
-        if (uDimension == 7) return evalHydrogenNDPsi7D(xND, t);
-        if (uDimension == 8) return evalHydrogenNDPsi8D(xND, t);
-        if (uDimension == 9) return evalHydrogenNDPsi9D(xND, t);
-        if (uDimension == 10) return evalHydrogenNDPsi10D(xND, t);
-        if (uDimension == 11) return evalHydrogenNDPsi11D(xND, t);
-        // Fallback for dimensions > 11 (use 11D calculation)
+        // Hydrogen ND mode - compile-time dimension dispatch
+        // HYDROGEN_ND_DIMENSION is set at shader compile time to eliminate runtime branching
+        #if HYDROGEN_ND_DIMENSION == 3
+        return evalHydrogenNDPsi3D(xND, t);
+        #elif HYDROGEN_ND_DIMENSION == 4
+        return evalHydrogenNDPsi4D(xND, t);
+        #elif HYDROGEN_ND_DIMENSION == 5
+        return evalHydrogenNDPsi5D(xND, t);
+        #elif HYDROGEN_ND_DIMENSION == 6
+        return evalHydrogenNDPsi6D(xND, t);
+        #elif HYDROGEN_ND_DIMENSION == 7
+        return evalHydrogenNDPsi7D(xND, t);
+        #elif HYDROGEN_ND_DIMENSION == 8
+        return evalHydrogenNDPsi8D(xND, t);
+        #elif HYDROGEN_ND_DIMENSION == 9
+        return evalHydrogenNDPsi9D(xND, t);
+        #elif HYDROGEN_ND_DIMENSION == 10
+        return evalHydrogenNDPsi10D(xND, t);
+        #else
         return evalHydrogenNDPsi11D(xND, t);
+        #endif
     }
 #endif
 
@@ -125,16 +134,26 @@ float evalSpatialPhase(float xND[MAX_DIM]) {
 #ifdef HYDROGEN_ND_MODE_ENABLED
     if (uQuantumMode == QUANTUM_MODE_HYDROGEN_ND) {
         // Hydrogen ND mode - evaluate at t=0 for spatial phase
-        vec2 psi;
-        if (uDimension == 3) psi = evalHydrogenNDPsi3D(xND, 0.0);
-        else if (uDimension == 4) psi = evalHydrogenNDPsi4D(xND, 0.0);
-        else if (uDimension == 5) psi = evalHydrogenNDPsi5D(xND, 0.0);
-        else if (uDimension == 6) psi = evalHydrogenNDPsi6D(xND, 0.0);
-        else if (uDimension == 7) psi = evalHydrogenNDPsi7D(xND, 0.0);
-        else if (uDimension == 8) psi = evalHydrogenNDPsi8D(xND, 0.0);
-        else if (uDimension == 9) psi = evalHydrogenNDPsi9D(xND, 0.0);
-        else if (uDimension == 10) psi = evalHydrogenNDPsi10D(xND, 0.0);
-        else psi = evalHydrogenNDPsi11D(xND, 0.0);
+        // Uses compile-time dimension dispatch
+        #if HYDROGEN_ND_DIMENSION == 3
+        vec2 psi = evalHydrogenNDPsi3D(xND, 0.0);
+        #elif HYDROGEN_ND_DIMENSION == 4
+        vec2 psi = evalHydrogenNDPsi4D(xND, 0.0);
+        #elif HYDROGEN_ND_DIMENSION == 5
+        vec2 psi = evalHydrogenNDPsi5D(xND, 0.0);
+        #elif HYDROGEN_ND_DIMENSION == 6
+        vec2 psi = evalHydrogenNDPsi6D(xND, 0.0);
+        #elif HYDROGEN_ND_DIMENSION == 7
+        vec2 psi = evalHydrogenNDPsi7D(xND, 0.0);
+        #elif HYDROGEN_ND_DIMENSION == 8
+        vec2 psi = evalHydrogenNDPsi8D(xND, 0.0);
+        #elif HYDROGEN_ND_DIMENSION == 9
+        vec2 psi = evalHydrogenNDPsi9D(xND, 0.0);
+        #elif HYDROGEN_ND_DIMENSION == 10
+        vec2 psi = evalHydrogenNDPsi10D(xND, 0.0);
+        #else
+        vec2 psi = evalHydrogenNDPsi11D(xND, 0.0);
+        #endif
         return atan(psi.y, psi.x);
     }
 #endif
@@ -170,39 +189,38 @@ vec4 evalPsiWithSpatialPhase(float xND[MAX_DIM], float t) {
 
 #ifdef HYDROGEN_ND_MODE_ENABLED
     if (uQuantumMode == QUANTUM_MODE_HYDROGEN_ND) {
-        // Hydrogen ND mode - dimension-specific dispatch
-        // Note: The HydrogenND functions already include time evolution,
-        // so we call twice: once with t for density, once with 0 for spatial phase
+        // Hydrogen ND mode - compile-time dimension dispatch
+        // We call twice: once with t for density, once with 0 for spatial phase
         vec2 psiTime;
         vec2 psiSpatial;
-        if (uDimension == 3) {
-            psiTime = evalHydrogenNDPsi3D(xND, t);
-            psiSpatial = evalHydrogenNDPsi3D(xND, 0.0);
-        } else if (uDimension == 4) {
-            psiTime = evalHydrogenNDPsi4D(xND, t);
-            psiSpatial = evalHydrogenNDPsi4D(xND, 0.0);
-        } else if (uDimension == 5) {
-            psiTime = evalHydrogenNDPsi5D(xND, t);
-            psiSpatial = evalHydrogenNDPsi5D(xND, 0.0);
-        } else if (uDimension == 6) {
-            psiTime = evalHydrogenNDPsi6D(xND, t);
-            psiSpatial = evalHydrogenNDPsi6D(xND, 0.0);
-        } else if (uDimension == 7) {
-            psiTime = evalHydrogenNDPsi7D(xND, t);
-            psiSpatial = evalHydrogenNDPsi7D(xND, 0.0);
-        } else if (uDimension == 8) {
-            psiTime = evalHydrogenNDPsi8D(xND, t);
-            psiSpatial = evalHydrogenNDPsi8D(xND, 0.0);
-        } else if (uDimension == 9) {
-            psiTime = evalHydrogenNDPsi9D(xND, t);
-            psiSpatial = evalHydrogenNDPsi9D(xND, 0.0);
-        } else if (uDimension == 10) {
-            psiTime = evalHydrogenNDPsi10D(xND, t);
-            psiSpatial = evalHydrogenNDPsi10D(xND, 0.0);
-        } else {
-            psiTime = evalHydrogenNDPsi11D(xND, t);
-            psiSpatial = evalHydrogenNDPsi11D(xND, 0.0);
-        }
+        #if HYDROGEN_ND_DIMENSION == 3
+        psiTime = evalHydrogenNDPsi3D(xND, t);
+        psiSpatial = evalHydrogenNDPsi3D(xND, 0.0);
+        #elif HYDROGEN_ND_DIMENSION == 4
+        psiTime = evalHydrogenNDPsi4D(xND, t);
+        psiSpatial = evalHydrogenNDPsi4D(xND, 0.0);
+        #elif HYDROGEN_ND_DIMENSION == 5
+        psiTime = evalHydrogenNDPsi5D(xND, t);
+        psiSpatial = evalHydrogenNDPsi5D(xND, 0.0);
+        #elif HYDROGEN_ND_DIMENSION == 6
+        psiTime = evalHydrogenNDPsi6D(xND, t);
+        psiSpatial = evalHydrogenNDPsi6D(xND, 0.0);
+        #elif HYDROGEN_ND_DIMENSION == 7
+        psiTime = evalHydrogenNDPsi7D(xND, t);
+        psiSpatial = evalHydrogenNDPsi7D(xND, 0.0);
+        #elif HYDROGEN_ND_DIMENSION == 8
+        psiTime = evalHydrogenNDPsi8D(xND, t);
+        psiSpatial = evalHydrogenNDPsi8D(xND, 0.0);
+        #elif HYDROGEN_ND_DIMENSION == 9
+        psiTime = evalHydrogenNDPsi9D(xND, t);
+        psiSpatial = evalHydrogenNDPsi9D(xND, 0.0);
+        #elif HYDROGEN_ND_DIMENSION == 10
+        psiTime = evalHydrogenNDPsi10D(xND, t);
+        psiSpatial = evalHydrogenNDPsi10D(xND, 0.0);
+        #else
+        psiTime = evalHydrogenNDPsi11D(xND, t);
+        psiSpatial = evalHydrogenNDPsi11D(xND, 0.0);
+        #endif
         float spatialPhase = atan(psiSpatial.y, psiSpatial.x);
         return vec4(psiTime, spatialPhase, 0.0);
     }

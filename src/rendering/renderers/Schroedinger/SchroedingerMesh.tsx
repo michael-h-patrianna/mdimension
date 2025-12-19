@@ -352,10 +352,19 @@ const SchroedingerMesh = () => {
   const edgesVisible = useAppearanceStore((state) => state.edgesVisible);
   const fogEnabled = useAppearanceStore((state) => state.fogIntegrationEnabled);
 
+  // Quantum volume effects (compile-time optimization)
+  const curlEnabled = useExtendedObjectStore((state) => state.schroedinger.curlEnabled);
+  const dispersionEnabled = useExtendedObjectStore((state) => state.schroedinger.dispersionEnabled);
+  const nodalEnabled = useExtendedObjectStore((state) => state.schroedinger.nodalEnabled);
+  const energyColorEnabled = useExtendedObjectStore((state) => state.schroedinger.energyColorEnabled);
+  const shimmerEnabled = useExtendedObjectStore((state) => state.schroedinger.shimmerEnabled);
+  const erosionStrength = useExtendedObjectStore((state) => state.schroedinger.erosionStrength);
+  const erosionEnabled = erosionStrength > 0;
+
   // Reset overrides when configuration changes
   useEffect(() => {
     resetShaderOverrides();
-  }, [dimension, temporalEnabled, opacityMode, isoEnabled, sssEnabled, edgesVisible, fogEnabled, resetShaderOverrides]);
+  }, [dimension, temporalEnabled, opacityMode, isoEnabled, sssEnabled, edgesVisible, fogEnabled, curlEnabled, dispersionEnabled, nodalEnabled, energyColorEnabled, shimmerEnabled, erosionEnabled, resetShaderOverrides]);
 
   // Compile shader
   // For volumetric mode with temporal enabled, use temporal ACCUMULATION (Horizon-style)
@@ -376,9 +385,16 @@ const SchroedingerMesh = () => {
       sss: sssEnabled,
       fresnel: edgesVisible,
       fog: fogEnabled,
+      // Quantum volume effects (compile-time optimization)
+      curl: curlEnabled,
+      dispersion: dispersionEnabled,
+      nodal: nodalEnabled,
+      energyColor: energyColorEnabled,
+      shimmer: shimmerEnabled,
+      erosion: erosionEnabled,
     });
     return result;
-  }, [dimension, temporalEnabled, opacityMode, shaderOverrides, isoEnabled, useTemporalAccumulation, quantumMode, sssEnabled, edgesVisible, fogEnabled]);
+  }, [dimension, temporalEnabled, opacityMode, shaderOverrides, isoEnabled, useTemporalAccumulation, quantumMode, sssEnabled, edgesVisible, fogEnabled, curlEnabled, dispersionEnabled, nodalEnabled, energyColorEnabled, shimmerEnabled, erosionEnabled]);
 
   // Update debug info
   useEffect(() => {

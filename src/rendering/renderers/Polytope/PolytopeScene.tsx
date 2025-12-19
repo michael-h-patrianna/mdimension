@@ -17,10 +17,12 @@ import {
     DoubleSide,
     Float32BufferAttribute,
     Matrix4,
+    MeshBasicMaterial,
     ShaderMaterial,
     Vector3,
     Vector4,
 } from 'three';
+import { useTrackedShaderMaterial } from '@/rendering/materials/useTrackedShaderMaterial';
 import { useShallow } from 'zustand/react/shallow';
 
 import type { Face } from '@/lib/geometry/faces';
@@ -177,105 +179,6 @@ function anglesToDirection(horizontalDeg: number, verticalDeg: number, target?: 
     Math.sin(vRad),
     Math.cos(vRad) * Math.sin(hRad)
   ).normalize();
-}
-
-/**
- * Create face ShaderMaterial with custom lighting (same approach as Mandelbulb)
- * Includes advanced color system uniforms for cosine palettes, LCH, and multi-source algorithms
- * @param faceColor - CSS color string for face color
- * @param opacity - Face opacity (0-1)
- * @param side - Three.js side mode (default: DoubleSide)
- * @param fogEnabled - Whether fog is enabled (triggers shader recompilation)
- * @returns Object with material and active features list
- */
-function createFaceShaderMaterial(
-  faceColor: string,
-  opacity: number,
-  side: THREE.Side = DoubleSide,
-  fogEnabled: boolean = true
-): { material: ShaderMaterial; features: string[] } {
-  const { glsl: fragmentShader, features } = buildFaceFragmentShader({ fog: fogEnabled });
-
-  const material = new ShaderMaterial({
-    glslVersion: THREE.GLSL3,
-    uniforms: {
-      // N-D transformation uniforms
-      ...createNDUniforms(),
-      // Shadow map uniforms
-      ...createShadowMapUniforms(),
-      // Color (converted to linear space for physically correct lighting)
-      uColor: { value: new Color(faceColor).convertSRGBToLinear() },
-      uOpacity: { value: opacity },
-      // Material properties for G-buffer
-      uMetallic: { value: 0.0 },
-      // View matrix for normal transformation (updated every frame)
-      uViewMatrix: { value: new Matrix4() },
-      // Advanced Color System uniforms
-      uColorAlgorithm: { value: 2 }, // Default to cosine
-      uCosineA: { value: new Vector3(0.5, 0.5, 0.5) },
-      uCosineB: { value: new Vector3(0.5, 0.5, 0.5) },
-      uCosineC: { value: new Vector3(1.0, 1.0, 1.0) },
-      uCosineD: { value: new Vector3(0.0, 0.33, 0.67) },
-      uDistPower: { value: 1.0 },
-      uDistCycles: { value: 1.0 },
-      uDistOffset: { value: 0.0 },
-      uLchLightness: { value: 0.7 },
-      uLchChroma: { value: 0.15 },
-      uMultiSourceWeights: { value: new Vector3(0.5, 0.3, 0.2) },
-      // Lighting (updated every frame from store, colors converted to linear space)
-      uLightEnabled: { value: true },
-      uLightColor: { value: new Color('#ffffff').convertSRGBToLinear() },
-      uLightDirection: { value: new Vector3(0.5, 1, 0.5).normalize() },
-      uLightStrength: { value: 1.0 },
-      uAmbientIntensity: { value: 0.3 },
-      uAmbientColor: { value: new Color('#FFFFFF').convertSRGBToLinear() },
-      uDiffuseIntensity: { value: 1.0 },
-      uSpecularIntensity: { value: 1.0 },
-      uSpecularPower: { value: 32.0 },
-      uSpecularColor: { value: new Color('#ffffff').convertSRGBToLinear() },
-      // Fresnel (colors converted to linear space)
-      uFresnelEnabled: { value: false },
-      uFresnelIntensity: { value: 0.5 },
-      uRimColor: { value: new Color('#ffffff').convertSRGBToLinear() },
-      // Rim SSS (subsurface scattering for backlight transmission)
-      uSssEnabled: { value: false },
-      uSssIntensity: { value: 1.0 },
-      uSssColor: { value: new Color('#ff8844').convertSRGBToLinear() },
-      uSssThickness: { value: 1.0 },
-      uSssJitter: { value: 0.2 },
-      // Multi-light system uniforms (colors converted to linear space)
-      uNumLights: { value: 0 },
-      uLightsEnabled: { value: [false, false, false, false] },
-      uLightTypes: { value: [0, 0, 0, 0] },
-      uLightPositions: { value: [new Vector3(0, 5, 0), new Vector3(0, 5, 0), new Vector3(0, 5, 0), new Vector3(0, 5, 0)] },
-      uLightDirections: { value: [new Vector3(0, -1, 0), new Vector3(0, -1, 0), new Vector3(0, -1, 0), new Vector3(0, -1, 0)] },
-      uLightColors: { value: [new Color('#FFFFFF').convertSRGBToLinear(), new Color('#FFFFFF').convertSRGBToLinear(), new Color('#FFFFFF').convertSRGBToLinear(), new Color('#FFFFFF').convertSRGBToLinear()] },
-      uLightIntensities: { value: [1.0, 1.0, 1.0, 1.0] },
-      uSpotAngles: { value: [Math.PI / 6, Math.PI / 6, Math.PI / 6, Math.PI / 6] },
-      uSpotPenumbras: { value: [0.5, 0.5, 0.5, 0.5] },
-      // Precomputed cosines: default 30° cone with 0.5 penumbra → inner=15°, outer=30°
-      uSpotCosInner: { value: [Math.cos(Math.PI / 12), Math.cos(Math.PI / 12), Math.cos(Math.PI / 12), Math.cos(Math.PI / 12)] },
-      uSpotCosOuter: { value: [Math.cos(Math.PI / 6), Math.cos(Math.PI / 6), Math.cos(Math.PI / 6), Math.cos(Math.PI / 6)] },
-      // Range and decay for distance attenuation (0 = infinite range, 2 = inverse square decay)
-      uLightRanges: { value: [0, 0, 0, 0] },
-      uLightDecays: { value: [2, 2, 2, 2] },
-      // Fog/Atmosphere uniforms (only included when fog is enabled)
-      ...(fogEnabled ? {
-        uFogEnabled: { value: true },
-        uFogContribution: { value: 1.0 },
-        uInternalFogDensity: { value: 0.0 },
-        uSceneFogColor: { value: new Color('#000000').convertSRGBToLinear() },
-        uSceneFogDensity: { value: 0.0 },
-      } : {}),
-    },
-    vertexShader: buildFaceVertexShader(),
-    fragmentShader,
-    transparent: opacity < 1,
-    side: side,
-    depthWrite: opacity >= 1,
-  });
-
-  return { material, features };
 }
 
 /**
@@ -510,6 +413,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     faceColor,
     shaderSettings,
     fogIntegrationEnabled,
+    sssEnabled,
   } = useAppearanceStore(
     useShallow((state) => ({
       edgesVisible: state.edgesVisible,
@@ -521,6 +425,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
       faceColor: state.faceColor,
       shaderSettings: state.shaderSettings,
       fogIntegrationEnabled: state.fogIntegrationEnabled,
+      sssEnabled: state.sssEnabled,
     }))
   );
 
@@ -534,10 +439,102 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   // Uses custom ShaderMaterial with lighting (same approach as Mandelbulb)
   // DoubleSide handles both front and back faces - two-pass rendering disabled
   // because nD transformations can flip winding order, causing culling issues.
-  // fogIntegrationEnabled in deps triggers shader recompilation when fog is toggled
-  const { material: faceMaterial, features: faceShaderFeatures } = useMemo(() => {
-    return createFaceShaderMaterial(faceColor, surfaceSettings.faceOpacity, DoubleSide, fogIntegrationEnabled);
-  }, [faceColor, surfaceSettings.faceOpacity, fogIntegrationEnabled]);
+  // Feature flags in deps trigger shader recompilation when features are toggled
+
+  // Compute shader composition separately to get modules/features for debug info
+  const { glsl: faceFragmentShader, modules: faceShaderModules, features: faceShaderFeatures } = useMemo(() => {
+    return buildFaceFragmentShader({
+      fog: fogIntegrationEnabled,
+      sss: sssEnabled,
+      fresnel: surfaceSettings.fresnelEnabled,
+    });
+  }, [fogIntegrationEnabled, sssEnabled, surfaceSettings.fresnelEnabled]);
+
+  // Create face material with tracking - shows overlay during shader compilation
+  const { material: faceMaterial, isCompiling: isFaceShaderCompiling } = useTrackedShaderMaterial(
+    'Polytope Face Shader',
+    () => {
+      return new ShaderMaterial({
+        glslVersion: THREE.GLSL3,
+        uniforms: {
+          // N-D transformation uniforms
+          ...createNDUniforms(),
+          // Shadow map uniforms
+          ...createShadowMapUniforms(),
+          // Color (converted to linear space for physically correct lighting)
+          uColor: { value: new Color(faceColor).convertSRGBToLinear() },
+          uOpacity: { value: surfaceSettings.faceOpacity },
+          // Material properties for G-buffer
+          uMetallic: { value: 0.0 },
+          // GGX PBR roughness
+          uRoughness: { value: 0.3 },
+          // View matrix for normal transformation (updated every frame)
+          uViewMatrix: { value: new Matrix4() },
+          // Advanced Color System uniforms
+          uColorAlgorithm: { value: 2 }, // Default to cosine
+          uCosineA: { value: new Vector3(0.5, 0.5, 0.5) },
+          uCosineB: { value: new Vector3(0.5, 0.5, 0.5) },
+          uCosineC: { value: new Vector3(1.0, 1.0, 1.0) },
+          uCosineD: { value: new Vector3(0.0, 0.33, 0.67) },
+          uDistPower: { value: 1.0 },
+          uDistCycles: { value: 1.0 },
+          uDistOffset: { value: 0.0 },
+          uLchLightness: { value: 0.7 },
+          uLchChroma: { value: 0.15 },
+          uMultiSourceWeights: { value: new Vector3(0.5, 0.3, 0.2) },
+          // Lighting (updated every frame from store, colors converted to linear space)
+          uLightEnabled: { value: true },
+          uLightColor: { value: new Color('#ffffff').convertSRGBToLinear() },
+          uLightDirection: { value: new Vector3(0.5, 1, 0.5).normalize() },
+          uLightStrength: { value: 1.0 },
+          uAmbientIntensity: { value: 0.3 },
+          uAmbientColor: { value: new Color('#FFFFFF').convertSRGBToLinear() },
+          uDiffuseIntensity: { value: 1.0 },
+          uSpecularIntensity: { value: 1.0 },
+          uSpecularPower: { value: 32.0 },
+          uSpecularColor: { value: new Color('#ffffff').convertSRGBToLinear() },
+          // Fresnel (colors converted to linear space)
+          uFresnelEnabled: { value: false },
+          uFresnelIntensity: { value: 0.5 },
+          uRimColor: { value: new Color('#ffffff').convertSRGBToLinear() },
+          // Rim SSS (subsurface scattering for backlight transmission)
+          uSssEnabled: { value: false },
+          uSssIntensity: { value: 1.0 },
+          uSssColor: { value: new Color('#ff8844').convertSRGBToLinear() },
+          uSssThickness: { value: 1.0 },
+          uSssJitter: { value: 0.2 },
+          // Multi-light system uniforms (colors converted to linear space)
+          uNumLights: { value: 0 },
+          uLightsEnabled: { value: [false, false, false, false] },
+          uLightTypes: { value: [0, 0, 0, 0] },
+          uLightPositions: { value: [new Vector3(0, 5, 0), new Vector3(0, 5, 0), new Vector3(0, 5, 0), new Vector3(0, 5, 0)] },
+          uLightDirections: { value: [new Vector3(0, -1, 0), new Vector3(0, -1, 0), new Vector3(0, -1, 0), new Vector3(0, -1, 0)] },
+          uLightColors: { value: [new Color('#FFFFFF').convertSRGBToLinear(), new Color('#FFFFFF').convertSRGBToLinear(), new Color('#FFFFFF').convertSRGBToLinear(), new Color('#FFFFFF').convertSRGBToLinear()] },
+          uLightIntensities: { value: [1.0, 1.0, 1.0, 1.0] },
+          uSpotAngles: { value: [Math.PI / 6, Math.PI / 6, Math.PI / 6, Math.PI / 6] },
+          uSpotPenumbras: { value: [0.5, 0.5, 0.5, 0.5] },
+          // Precomputed cosines: default 30° cone with 0.5 penumbra → inner=15°, outer=30°
+          uSpotCosInner: { value: [Math.cos(Math.PI / 12), Math.cos(Math.PI / 12), Math.cos(Math.PI / 12), Math.cos(Math.PI / 12)] },
+          uSpotCosOuter: { value: [Math.cos(Math.PI / 6), Math.cos(Math.PI / 6), Math.cos(Math.PI / 6), Math.cos(Math.PI / 6)] },
+          // Range and decay for distance attenuation (0 = infinite range, 2 = inverse square decay)
+          uLightRanges: { value: [0, 0, 0, 0] },
+          uLightDecays: { value: [2, 2, 2, 2] },
+          // Fog/Atmosphere uniforms (always declared, shader code conditionally compiled)
+          uFogEnabled: { value: fogIntegrationEnabled },
+          uFogContribution: { value: 1.0 },
+          uInternalFogDensity: { value: 0.0 },
+          uSceneFogColor: { value: new Color('#000000').convertSRGBToLinear() },
+          uSceneFogDensity: { value: 0.0 },
+        },
+        vertexShader: buildFaceVertexShader(),
+        fragmentShader: faceFragmentShader,
+        transparent: surfaceSettings.faceOpacity < 1,
+        side: DoubleSide,
+        depthWrite: surfaceSettings.faceOpacity >= 1,
+      });
+    },
+    [faceColor, surfaceSettings.faceOpacity, surfaceSettings.fresnelEnabled, fogIntegrationEnabled, sssEnabled, faceFragmentShader]
+  );
 
 
   const edgeMaterial = useMemo(() => {
@@ -552,20 +549,23 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   const setShaderDebugInfo = usePerformanceStore((state) => state.setShaderDebugInfo);
 
   useEffect(() => {
-    // Report shader stats for debugging
+    // Report shader stats for debugging (only when materials are ready)
     const activeMaterial = facesVisible ? faceMaterial : edgeMaterial;
-    const name = facesVisible ? 'Polytope Face Shader' : 'Polytope Edge Shader';
-    const modules = ['ND Transform', 'Color', 'Modulation'];
+    if (!activeMaterial) return;
 
-    // Use features from shader compilation for face shader, compute for edge shader
+    const name = facesVisible ? 'Polytope Face Shader' : 'Polytope Edge Shader';
+
+    // Use modules/features from shader compilation for face shader, compute for edge shader
+    let modules: string[];
     let features: string[];
     if (facesVisible) {
-        modules.push('Lighting', 'Opacity', 'Advanced Color');
-        // Start with shader-compiled features (Multi-Light, Shadow Maps, Fog if enabled)
+        // Use the actual modules from shader composition
+        modules = ['ND Transform', 'Modulation', ...faceShaderModules];
+        // Start with shader-compiled features (Multi-Light, Shadow Maps, Fog/SSS/Fresnel if enabled)
         features = [...faceShaderFeatures];
-        if (surfaceSettings.fresnelEnabled) features.push('Fresnel');
         features.push(`Opacity: ${surfaceSettings.faceOpacity < 1 ? 'Transparent' : 'Solid'}`);
     } else {
+        modules = ['ND Transform', 'Modulation'];
         features = ['Edges'];
     }
 
@@ -578,7 +578,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     });
 
     return () => setShaderDebugInfo('object', null);
-  }, [faceMaterial, edgeMaterial, facesVisible, faceShaderFeatures, surfaceSettings.fresnelEnabled, surfaceSettings.faceOpacity, setShaderDebugInfo]);
+  }, [faceMaterial, edgeMaterial, facesVisible, faceShaderModules, faceShaderFeatures, surfaceSettings.faceOpacity, setShaderDebugInfo]);
 
   // ============ FACE GEOMETRY (INDEXED) ============
   // Uses indexed geometry for efficiency - vertices are shared, indices define triangles
@@ -675,7 +675,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
 
   // ============ CLEANUP ============
   // Track previous resources for proper disposal when dependencies change
-  const prevFaceMaterialRef = useRef<THREE.ShaderMaterial | null>(null);
+  // Note: faceMaterial disposal is handled by useTrackedShaderMaterial hook
   const prevEdgeMaterialRef = useRef<THREE.ShaderMaterial | null>(null);
   const prevFaceGeometryRef = useRef<THREE.BufferGeometry | null>(null);
   const prevEdgeGeometryRef = useRef<THREE.BufferGeometry | null>(null);
@@ -683,9 +683,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   // Dispose previous resources when new ones are created
   useEffect(() => {
     // Dispose old resources if they exist and differ from current
-    if (prevFaceMaterialRef.current && prevFaceMaterialRef.current !== faceMaterial) {
-      prevFaceMaterialRef.current.dispose();
-    }
+    // (faceMaterial disposal handled by useTrackedShaderMaterial hook)
     if (prevEdgeMaterialRef.current && prevEdgeMaterialRef.current !== edgeMaterial) {
       prevEdgeMaterialRef.current.dispose();
     }
@@ -697,19 +695,18 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     }
 
     // Update refs to current values
-    prevFaceMaterialRef.current = faceMaterial;
     prevEdgeMaterialRef.current = edgeMaterial;
     prevFaceGeometryRef.current = faceGeometry;
     prevEdgeGeometryRef.current = edgeGeometry;
 
     // Cleanup on unmount - dispose current resources
+    // (faceMaterial disposed by useTrackedShaderMaterial hook)
     return () => {
-      faceMaterial.dispose();
       edgeMaterial.dispose();
       faceGeometry?.dispose();
       edgeGeometry?.dispose();
     };
-  }, [faceMaterial, edgeMaterial, faceGeometry, edgeGeometry]);
+  }, [edgeMaterial, faceGeometry, edgeGeometry]);
 
   // Assign custom depth materials to face mesh for animated shadows
   // These materials use the same nD transformation as the main shader
@@ -781,6 +778,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     const fresnelEnabled = appearanceState.shaderSettings.surface.fresnelEnabled;
     const fresnelIntensity = appearanceState.fresnelIntensity;
     const rimColor = appearanceState.edgeColor;
+    const roughness = appearanceState.roughness;
 
     // Read SSS state (shared with raymarched objects)
     const sssEnabled = appearanceState.sssEnabled;
@@ -855,6 +853,9 @@ export const PolytopeScene = React.memo(function PolytopeScene({
       if (ref.current) {
         const material = ref.current.material as ShaderMaterial;
 
+        // Skip if material is not ready (still compiling) or not a ShaderMaterial
+        if (!material || !('uniforms' in material)) continue;
+
         // Update N-D transformation uniforms
         updateNDUniforms(material, gpuData, dimension, scales, projectionDistance);
 
@@ -885,6 +886,8 @@ export const PolytopeScene = React.memo(function PolytopeScene({
         if (u.uSpecularIntensity) u.uSpecularIntensity.value = specularIntensity;
         if (u.uSpecularPower) u.uSpecularPower.value = shininess;
         if (u.uSpecularColor) updateLinearColorUniform(cache.specularColor, u.uSpecularColor.value as Color, specularColor);
+        // GGX PBR roughness
+        if (u.uRoughness) u.uRoughness.value = roughness;
         if (u.uFresnelEnabled) u.uFresnelEnabled.value = fresnelEnabled;
         if (u.uFresnelIntensity) u.uFresnelIntensity.value = fresnelIntensity;
         if (u.uRimColor) updateLinearColorUniform(cache.rimColor, u.uRimColor.value as Color, rimColor);
@@ -1017,10 +1020,21 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   });
 
   // ============ RENDER ============
+  // Placeholder material for when shader is compiling
+  const placeholderMaterial = useMemo(() => new MeshBasicMaterial({ visible: false }), []);
+
   return (
     <group>
       {/* Polytope faces - DoubleSide handles both front and back faces */}
-      {facesVisible && faceGeometry && (
+      {/* Render invisible placeholder while shader is compiling to allow overlay to appear */}
+      {facesVisible && faceGeometry && (isFaceShaderCompiling || !faceMaterial) && (
+        <mesh
+          ref={setFaceMeshRef}
+          geometry={faceGeometry}
+          material={placeholderMaterial}
+        />
+      )}
+      {facesVisible && faceGeometry && !isFaceShaderCompiling && faceMaterial && (
         <mesh
           ref={setFaceMeshRef}
           geometry={faceGeometry}

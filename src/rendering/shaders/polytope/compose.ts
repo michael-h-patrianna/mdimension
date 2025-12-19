@@ -8,19 +8,31 @@ import { selectorBlock } from '../shared/color/selector.glsl';
 import { fresnelBlock } from '../shared/lighting/fresnel.glsl';
 import { multiLightBlock } from '../shared/lighting/multi-light.glsl';
 import { sssBlock } from '../shared/lighting/sss.glsl';
+import { ggxBlock } from '../shared/lighting/ggx.glsl';
 import { shadowMapsUniformsBlock, shadowMapsFunctionsBlock } from '../shared/features/shadowMaps.glsl';
 import { fogUniformsBlock, fogFunctionsBlock } from '../shared/features/fog.glsl';
 
 import { transformNDBlock } from './transform-nd.glsl';
 import { modulationBlock } from './modulation.glsl';
 
-/** Configuration for Polytope shader compilation */
+/**
+ * Configuration for Polytope shader compilation.
+ * Each feature flag controls whether that feature's code is compiled into the shader.
+ * Disabled features are completely absent from the compiled shader, not just branched.
+ */
 export interface PolytopeShaderConfig {
+  /** Enable fog integration (default: true) */
   fog?: boolean;
+  /** Enable subsurface scattering (default: true) */
+  sss?: boolean;
+  /** Enable fresnel rim lighting (default: true) */
+  fresnel?: boolean;
+  /** Module names to exclude even if feature is enabled */
+  overrides?: string[];
 }
 
 /**
- *
+ * Compose face vertex shader for Polytope rendering.
  */
 export function composeFaceVertexShader(): string {
   return [
@@ -63,7 +75,7 @@ export function composeFaceVertexShader(): string {
 }
 
 /**
- *
+ * Compose edge vertex shader for Polytope wireframe rendering.
  */
 export function composeEdgeVertexShader(): string {
   return [
@@ -84,25 +96,54 @@ export function composeEdgeVertexShader(): string {
 }
 
 /**
- * Compose face fragment shader with conditional features
- * @param config - Optional configuration for conditional compilation
- * @returns Object with glsl string and features array
+ * Compose face fragment shader with conditional features.
+ *
+ * Features are conditionally compiled - disabled features are completely
+ * absent from the compiled shader, not just branched at runtime.
+ *
+ * @param config - Configuration for conditional compilation
+ * @returns Object with glsl string, module names, and feature names
  */
-export function composeFaceFragmentShader(config: PolytopeShaderConfig = {}): { glsl: string; features: string[] } {
-  const { fog: enableFog = true } = config;
+export function composeFaceFragmentShader(config: PolytopeShaderConfig = {}): {
+  glsl: string;
+  modules: string[];
+  features: string[];
+} {
+  const {
+    fog: enableFog = true,
+    sss: enableSss = true,
+    fresnel: enableFresnel = true,
+    overrides = [],
+  } = config;
 
+  // Build defines and features arrays
   const defines: string[] = [];
   const features: string[] = ['Multi-Light', 'Shadow Maps'];
 
-  if (enableFog) {
+  const useFog = enableFog && !overrides.includes('Fog');
+  const useSss = enableSss && !overrides.includes('SSS');
+  const useFresnel = enableFresnel && !overrides.includes('Fresnel');
+
+  if (useFog) {
     defines.push('#define USE_FOG');
     features.push('Fog');
   }
+  if (useSss) {
+    defines.push('#define USE_SSS');
+    features.push('SSS');
+  }
+  if (useFresnel) {
+    defines.push('#define USE_FRESNEL');
+    features.push('Fresnel');
+  }
 
-  const glsl = [
-    precisionBlock,
-    defines.join('\n'),
-    `
+  // Build blocks array with conditional inclusion
+  const blocks = [
+    { name: 'Precision', content: precisionBlock },
+    { name: 'Defines', content: defines.join('\n') },
+    {
+      name: 'Polytope Uniforms',
+      content: `
     // Color uniforms
     uniform float uOpacity;
 
@@ -112,12 +153,15 @@ export function composeFaceFragmentShader(config: PolytopeShaderConfig = {}): { 
     uniform vec3 uLightDirection;
     uniform float uLightStrength;
 
-    // Rim SSS uniforms
+    // SSS uniforms (always declared, code conditionally compiled)
     uniform bool uSssEnabled;
     uniform float uSssIntensity;
     uniform vec3 uSssColor;
     uniform float uSssThickness;
     uniform float uSssJitter;
+
+    // GGX PBR roughness
+    uniform float uRoughness;
 
     // Inputs from vertex shader
     in vec3 vWorldPosition;
@@ -125,175 +169,181 @@ export function composeFaceFragmentShader(config: PolytopeShaderConfig = {}): { 
     // Face depth with flat interpolation - first vertex of each triangle wins
     flat in float vFaceDepth;
     `,
-    constantsBlock,
-    uniformsBlock,
-    hslBlock,
-    cosinePaletteBlock,
-    oklabBlock,
-    selectorBlock,
-    fresnelBlock,
-    multiLightBlock,
-    sssBlock,
-    shadowMapsUniformsBlock,
-    shadowMapsFunctionsBlock,
-    // Conditionally include fog blocks
-    enableFog ? fogUniformsBlock : '',
-    enableFog ? fogFunctionsBlock : '',
-    `
-    void main() {
-      // Compute face normal from screen-space derivatives of world position
-      vec3 dPdx = dFdx(vWorldPosition);
-      vec3 dPdy = dFdy(vWorldPosition);
-      vec3 crossProd = cross(dPdx, dPdy);
-      float crossLen = length(crossProd);
-      // Guard against degenerate normals (edge-on faces where cross product is near-zero)
-      // Without this, normalize() produces NaN which makes the face render as transparent
-      vec3 normal = crossLen > 0.0001 ? crossProd / crossLen : vec3(0.0, 0.0, 1.0);
-      // Guard against zero-length view direction (already normalized in vertex shader, but double-check)
-      float vViewLen = length(vViewDir);
-      vec3 viewDir = vViewLen > 0.0001 ? vViewDir / vViewLen : vec3(0.0, 0.0, 1.0);
+    },
+    { name: 'Constants', content: constantsBlock },
+    { name: 'Shared Uniforms', content: uniformsBlock },
+    { name: 'Color (HSL)', content: hslBlock },
+    { name: 'Color (Cosine)', content: cosinePaletteBlock },
+    { name: 'Color (Oklab)', content: oklabBlock },
+    { name: 'Color Selector', content: selectorBlock },
+    { name: 'Lighting (Fresnel)', content: fresnelBlock, condition: useFresnel },
+    { name: 'Multi-Light System', content: multiLightBlock },
+    { name: 'Lighting (SSS)', content: sssBlock, condition: useSss },
+    { name: 'Lighting (GGX)', content: ggxBlock },
+    { name: 'Shadow Maps Uniforms', content: shadowMapsUniformsBlock },
+    { name: 'Shadow Maps Functions', content: shadowMapsFunctionsBlock },
+    { name: 'Fog Uniforms', content: fogUniformsBlock, condition: useFog },
+    { name: 'Fog Functions', content: fogFunctionsBlock, condition: useFog },
+    { name: 'Main', content: polytopeMainBlock },
+  ];
 
-      // For two-sided surfaces, we keep the geometric normal as computed
-      // Two-sided lighting is achieved by using abs() in diffuse calculations below
+  // Assemble shader from blocks
+  const modules: string[] = [];
+  const glslParts: string[] = [];
 
-      // Get base color from algorithm using face depth as t value
-      // vFaceDepth is computed from higher dimension coords with flat interpolation
-      vec3 baseHSL = rgb2hsl(uColor);
-      // Pass vWorldPosition as 4th argument for spatial color modes (multi-source, radial)
-      vec3 baseColor = getColorByAlgorithm(vFaceDepth, normal, baseHSL, vWorldPosition);
+  blocks.forEach((b) => {
+    if (b.condition === false) return; // Disabled in config
 
-      // Multi-light calculation
-      vec3 col;
-      if (uNumLights > 0) {
-        // Use multi-light system logic (manual integration since calculateMultiLighting is complex logic, 
-        // but wait, calculateMultiLighting logic IS shared logic mostly? 
-        // No, shared module 'multi-light.glsl.ts' only provides helpers like getLightDirection.
-        // It does NOT provide a 'calculateMultiLighting' function that loops.
-        // Wait, did I check 'multi-light.glsl.ts'?
-        // I created it in step 10. Let's check it.
-        
-        // Loop over lights manually like in Mandelbulb main
-        
-        col = baseColor * uAmbientColor * uAmbientIntensity;
-        float totalNdotL = 0.0; // For fresnel
+    modules.push(b.name);
 
-        for (int i = 0; i < MAX_LIGHTS; i++) {
-            if (i >= uNumLights) break;
-            if (!uLightsEnabled[i]) continue;
+    if (overrides.includes(b.name)) {
+      // Overridden: Don't add content
+    } else {
+      glslParts.push(b.content);
+    }
+  });
 
-            vec3 l = getLightDirection(i, vWorldPosition);
-            float attenuation = uLightIntensities[i];
+  return { glsl: glslParts.join('\n'), modules, features };
+}
 
-            int lightType = uLightTypes[i];
-            if (lightType == LIGHT_TYPE_POINT || lightType == LIGHT_TYPE_SPOT) {
-                float distance = length(uLightPositions[i] - vWorldPosition);
-                attenuation *= getDistanceAttenuation(i, distance);
-            }
+/**
+ * Main block for Polytope fragment shader.
+ * Uses #ifdef for conditional feature compilation.
+ */
+const polytopeMainBlock = `
+void main() {
+  // Compute face normal from screen-space derivatives of world position
+  vec3 dPdx = dFdx(vWorldPosition);
+  vec3 dPdy = dFdy(vWorldPosition);
+  vec3 crossProd = cross(dPdx, dPdy);
+  float crossLen = length(crossProd);
+  // Guard against degenerate normals (edge-on faces where cross product is near-zero)
+  vec3 normal = crossLen > 0.0001 ? crossProd / crossLen : vec3(0.0, 0.0, 1.0);
+  // Guard against zero-length view direction
+  float vViewLen = length(vViewDir);
+  vec3 viewDir = vViewLen > 0.0001 ? vViewDir / vViewLen : vec3(0.0, 0.0, 1.0);
 
-            if (lightType == LIGHT_TYPE_SPOT) {
-                vec3 ltfDiff = vWorldPosition - uLightPositions[i];
-                float ltfLen = length(ltfDiff);
-                // Guard against light at fragment position
-                vec3 lightToFrag = ltfLen > 0.0001 ? ltfDiff / ltfLen : vec3(0.0, -1.0, 0.0);
-                attenuation *= getSpotAttenuation(i, lightToFrag);
-            }
+  // Two-sided lighting: flip normal to face viewer for correct specular
+  vec3 faceNormal = dot(normal, viewDir) < 0.0 ? -normal : normal;
 
-            if (attenuation < 0.001) continue;
+  // Clamp roughness to prevent division by zero in GGX (mirror-like minimum)
+  float roughness = max(uRoughness, 0.04);
 
-            // Shadow map sampling for mesh-based objects
-            float shadow = uShadowEnabled ? getShadow(i, vWorldPosition) : 1.0;
+  // Get base color from algorithm using face depth as t value
+  vec3 baseHSL = rgb2hsl(uColor);
+  vec3 baseColor = getColorByAlgorithm(vFaceDepth, normal, baseHSL, vWorldPosition);
 
-            // Two-sided lighting: use abs() so both sides of faces receive diffuse light
-            float NdotL = abs(dot(normal, l));
-            col += baseColor * uLightColors[i] * NdotL * uDiffuseIntensity * attenuation * shadow;
+  // Multi-light calculation
+  vec3 col;
+  if (uNumLights > 0) {
+    col = baseColor * uAmbientColor * uAmbientIntensity;
+    float totalNdotL = 0.0;
 
-            // Guard against l and viewDir being opposite (zero-length half vector)
-            vec3 halfSum = l + viewDir;
-            float halfLen = length(halfSum);
-            vec3 halfDir = halfLen > 0.0001 ? halfSum / halfLen : normal;
-            // Two-sided specular: use abs() so specular appears on both sides of faces
-            float NdotH = abs(dot(normal, halfDir));
-            // Guard pow() against edge cases
-            float safeSpecPower = max(uSpecularPower, 1.0);
-            float spec = pow(max(NdotH, 0.0001), safeSpecPower) * uSpecularIntensity * attenuation * shadow;
-            col += uSpecularColor * uLightColors[i] * spec;
+    for (int i = 0; i < MAX_LIGHTS; i++) {
+      if (i >= uNumLights) break;
+      if (!uLightsEnabled[i]) continue;
 
-            // Rim SSS (backlight transmission)
-            if (uSssEnabled && uSssIntensity > 0.0) {
-                vec3 sss = computeSSS(l, viewDir, normal, 0.5, uSssThickness * 4.0, 0.0, uSssJitter, gl_FragCoord.xy);
-                col += sss * uSssColor * uLightColors[i] * uSssIntensity * attenuation;
-            }
+      vec3 l = getLightDirection(i, vWorldPosition);
+      float attenuation = uLightIntensities[i];
 
-            totalNdotL = max(totalNdotL, NdotL * attenuation);
-        }
-
-        // Fresnel rim lighting (two-sided: use abs() for symmetric rim effect)
-        if (uFresnelEnabled && uFresnelIntensity > 0.0) {
-          float NdotV = abs(dot(normal, viewDir));
-          float rim = pow(1.0 - NdotV, 3.0) * uFresnelIntensity * 2.0;
-          rim *= (0.3 + 0.7 * totalNdotL);
-          col += uRimColor * rim;
-        }
-
-      } else if (uLightEnabled) {
-        // Legacy single-light fallback
-        col = baseColor * uAmbientColor * uAmbientIntensity;
-        // Guard against zero-length light direction
-        float ldLen = length(uLightDirection);
-        vec3 lightDir = ldLen > 0.0001 ? uLightDirection / ldLen : vec3(0.0, 1.0, 0.0);
-
-        // Two-sided lighting: use abs() so both sides of faces receive diffuse light
-        float NdotL = abs(dot(normal, lightDir));
-        col += baseColor * uLightColor * NdotL * uDiffuseIntensity * uLightStrength;
-
-        // Guard against lightDir and viewDir being opposite (zero-length half vector)
-        vec3 halfSumLegacy = lightDir + viewDir;
-        float halfLenLegacy = length(halfSumLegacy);
-        vec3 halfDir = halfLenLegacy > 0.0001 ? halfSumLegacy / halfLenLegacy : normal;
-        // Two-sided specular: use abs() so specular appears on both sides of faces
-        float NdotH = abs(dot(normal, halfDir));
-        // Guard pow() against edge cases
-        float safeSpecPowerLegacy = max(uSpecularPower, 1.0);
-        float spec = pow(max(NdotH, 0.0001), safeSpecPowerLegacy) * uSpecularIntensity * uLightStrength;
-        col += uSpecularColor * uLightColor * spec;
-
-        // Rim SSS (backlight transmission) - legacy single light
-        if (uSssEnabled && uSssIntensity > 0.0) {
-          vec3 sss = computeSSS(lightDir, viewDir, normal, 0.5, uSssThickness * 4.0, 0.0, uSssJitter, gl_FragCoord.xy);
-          col += sss * uSssColor * uLightColor * uSssIntensity * uLightStrength;
-        }
-
-        // Fresnel rim lighting (two-sided: use abs() for symmetric rim effect)
-        if (uFresnelEnabled && uFresnelIntensity > 0.0) {
-          float NdotV = abs(dot(normal, viewDir));
-          float rim = pow(1.0 - NdotV, 3.0) * uFresnelIntensity * 2.0;
-          rim *= (0.3 + 0.7 * NdotL);
-          col += uRimColor * rim;
-        }
-      } else {
-        // No lighting - just ambient
-        col = baseColor * uAmbientColor * uAmbientIntensity;
+      int lightType = uLightTypes[i];
+      if (lightType == LIGHT_TYPE_POINT || lightType == LIGHT_TYPE_SPOT) {
+        float distance = length(uLightPositions[i] - vWorldPosition);
+        attenuation *= getDistanceAttenuation(i, distance);
       }
 
-      // Atmospheric Depth Integration (Fog)
-#ifdef USE_FOG
-      float viewDist = length(vWorldPosition - cameraPosition);
-      col = applyFog(col, viewDist);
+      if (lightType == LIGHT_TYPE_SPOT) {
+        vec3 ltfDiff = vWorldPosition - uLightPositions[i];
+        float ltfLen = length(ltfDiff);
+        vec3 lightToFrag = ltfLen > 0.0001 ? ltfDiff / ltfLen : vec3(0.0, -1.0, 0.0);
+        attenuation *= getSpotAttenuation(i, lightToFrag);
+      }
+
+      if (attenuation < 0.001) continue;
+
+      // Shadow map sampling for mesh-based objects
+      float shadow = uShadowEnabled ? getShadow(i, vWorldPosition) : 1.0;
+
+      // Two-sided lighting: use abs() so both sides of faces receive diffuse light
+      float NdotL = abs(dot(normal, l));
+      col += baseColor * uLightColors[i] * NdotL * uDiffuseIntensity * attenuation * shadow;
+
+      // GGX Specular (PBR) - use faceNormal for two-sided lighting
+      vec3 F0 = vec3(0.04);
+      vec3 specular = computePBRSpecular(faceNormal, viewDir, l, roughness, F0);
+      col += specular * uLightColors[i] * NdotL * uSpecularIntensity * attenuation * shadow;
+
+      // Rim SSS (backlight transmission)
+#ifdef USE_SSS
+      if (uSssEnabled && uSssIntensity > 0.0) {
+        vec3 sss = computeSSS(l, viewDir, normal, 0.5, uSssThickness * 4.0, 0.0, uSssJitter, gl_FragCoord.xy);
+        col += sss * uSssColor * uLightColors[i] * uSssIntensity * attenuation;
+      }
 #endif
 
-      // Output to MRT
-      // Guard against zero-length view normal (unlikely but possible with degenerate matrices)
-      vec3 viewNormalRaw = (uViewMatrix * vec4(normal, 0.0)).xyz;
-      float vnLen = length(viewNormalRaw);
-      vec3 viewNormal = vnLen > 0.0001 ? viewNormalRaw / vnLen : vec3(0.0, 0.0, 1.0);
-      gColor = vec4(col, uOpacity);
-      gNormal = vec4(viewNormal * 0.5 + 0.5, uMetallic);
+      totalNdotL = max(totalNdotL, NdotL * attenuation);
     }
-    `
-  ].join('\n');
 
-  return { glsl, features };
+    // Fresnel rim lighting
+#ifdef USE_FRESNEL
+    if (uFresnelEnabled && uFresnelIntensity > 0.0) {
+      float NdotV = abs(dot(normal, viewDir));
+      float rim = pow(1.0 - NdotV, 3.0) * uFresnelIntensity * 2.0;
+      rim *= (0.3 + 0.7 * totalNdotL);
+      col += uRimColor * rim;
+    }
+#endif
+
+  } else if (uLightEnabled) {
+    // Legacy single-light fallback
+    col = baseColor * uAmbientColor * uAmbientIntensity;
+    float ldLen = length(uLightDirection);
+    vec3 lightDir = ldLen > 0.0001 ? uLightDirection / ldLen : vec3(0.0, 1.0, 0.0);
+
+    float NdotL = abs(dot(normal, lightDir));
+    col += baseColor * uLightColor * NdotL * uDiffuseIntensity * uLightStrength;
+
+    // GGX Specular (PBR) - use faceNormal for two-sided lighting
+    vec3 F0 = vec3(0.04);
+    vec3 specular = computePBRSpecular(faceNormal, viewDir, lightDir, roughness, F0);
+    col += specular * uLightColor * NdotL * uSpecularIntensity * uLightStrength;
+
+    // Rim SSS - legacy single light
+#ifdef USE_SSS
+    if (uSssEnabled && uSssIntensity > 0.0) {
+      vec3 sss = computeSSS(lightDir, viewDir, normal, 0.5, uSssThickness * 4.0, 0.0, uSssJitter, gl_FragCoord.xy);
+      col += sss * uSssColor * uLightColor * uSssIntensity * uLightStrength;
+    }
+#endif
+
+    // Fresnel rim lighting - legacy single light
+#ifdef USE_FRESNEL
+    if (uFresnelEnabled && uFresnelIntensity > 0.0) {
+      float NdotV = abs(dot(normal, viewDir));
+      float rim = pow(1.0 - NdotV, 3.0) * uFresnelIntensity * 2.0;
+      rim *= (0.3 + 0.7 * NdotL);
+      col += uRimColor * rim;
+    }
+#endif
+  } else {
+    // No lighting - just ambient
+    col = baseColor * uAmbientColor * uAmbientIntensity;
+  }
+
+  // Atmospheric Depth Integration (Fog)
+#ifdef USE_FOG
+  float viewDist = length(vWorldPosition - cameraPosition);
+  col = applyFog(col, viewDist);
+#endif
+
+  // Output to MRT
+  vec3 viewNormalRaw = (uViewMatrix * vec4(normal, 0.0)).xyz;
+  float vnLen = length(viewNormalRaw);
+  vec3 viewNormal = vnLen > 0.0001 ? viewNormalRaw / vnLen : vec3(0.0, 0.0, 1.0);
+  gColor = vec4(col, uOpacity);
+  gNormal = vec4(viewNormal * 0.5 + 0.5, uMetallic);
 }
+`;
 
 /**
  * Edge fragment shader with MRT outputs.

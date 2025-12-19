@@ -93,12 +93,13 @@ vec3 distortPosition(vec3 p, float strength) {
 }
 
 // Erode density based on noise
+#ifdef USE_EROSION
 float erodeDensity(float rho, vec3 pos) {
     if (uErosionStrength <= 0.001) return rho;
-    
+
     // Scale position for noise
     vec3 noisePos = pos * uErosionScale;
-    
+
     // Add turbulence/distortion
     if (uErosionTurbulence > 0.0) {
         // Animate swirl
@@ -106,58 +107,62 @@ float erodeDensity(float rho, vec3 pos) {
         noisePos += vec3(0.0, -t, 0.0); // Simple scroll
         noisePos = distortPosition(noisePos, uErosionTurbulence);
     }
-    
+
     // Sample noise
     float noise = getErosionNoise(noisePos, uErosionNoiseType);
-    
+
     // Erosion logic:
     // We want to erode the *edges* (low density) more than the core (high density).
-    // Remap noise: [0,1] -> [-1, 1] ? 
+    // Remap noise: [0,1] -> [-1, 1] ?
     // Typically: density = density - noise * strength
     // But we want to preserve core.
-    
+
     // HZD Cloud approach: remap density based on noise
     // simplified: rho *= saturate(remap(noise, ...))
-    
+
     // Let's use simple subtractive erosion with density weighting
     // High density resists erosion.
-    
+
     // Normalized density proxy (approx 0-1)
     float densitySignal = clamp(log(rho + 1.0) / 4.0, 0.0, 1.0);
-    
+
     // Erosion factor increases at low density
-    float erosionFactor = uErosionStrength * (1.0 - densitySignal * 0.5); 
-    
+    float erosionFactor = uErosionStrength * (1.0 - densitySignal * 0.5);
+
     // Apply erosion: reduce density
     // We use a smoothstep to carve out shapes
     float threshold = noise * erosionFactor;
-    
+
     // If we just subtract, we might get negative.
     // Let's multiply: rho *= smoothstep(threshold, threshold + 0.2, densitySignal) ?
     // No, densitySignal is just a proxy.
-    
+
     // Direct subtraction on log-space or linear-space?
     // Linear space: rho_new = max(0, rho - noise * strength * multiplier)
     float erodedRho = max(0.0, rho - noise * uErosionStrength * 2.0);
-    
+
     // Smooth blending to avoid hard cuts
     return mix(rho, erodedRho, uErosionStrength);
 }
+#else
+float erodeDensity(float rho, vec3 pos) { return rho; }
+#endif
 
 // Procedural Curl Noise (Divergence Free)
+#ifdef USE_CURL
 vec3 curlNoise(vec3 p) {
     const float e = 0.1;
     // Helper to sample potential function (Perlin-like noise)
     // We use gradientNoise from above
-    
+
     // Gradients of potential function
     vec3 dx = vec3(e, 0.0, 0.0);
     vec3 dy = vec3(0.0, e, 0.0);
     vec3 dz = vec3(0.0, 0.0, e);
-    
+
     // We use 3 separate noise fields for vector potential?
     // Or just one and some cross product?
-    // Simple way: Curl = Cross(Grad(Noise), Vector(1,1,1)) ? 
+    // Simple way: Curl = Cross(Grad(Noise), Vector(1,1,1)) ?
     // Better: 3 noise samples offset.
     // But expensive.
     // Cheap way:
@@ -167,42 +172,42 @@ vec3 curlNoise(vec3 p) {
     // This is vector noise.
     // Actually, curl of a scalar potential field is not enough for 3D curl noise.
     // We need a vector potential A. Curl(A).
-    
+
     // Let's use the 'distortPosition' logic which is basically cheap curl
     // But adapt it for flow field.
-    
+
     float x0 = gradientNoise(p);
     float x1 = gradientNoise(p + dx);
     float y0 = gradientNoise(p + vec3(31.4)); // Offset inputs for different noise
     float y1 = gradientNoise(p + dy + vec3(31.4));
     float z0 = gradientNoise(p + vec3(72.1));
     float z1 = gradientNoise(p + dz + vec3(72.1));
-    
+
     float valX = x1 - x0;
     float valY = y1 - y0;
     float valZ = z1 - z0;
-    
+
     // This is gradient. Not curl.
     // Curl = (dAz/dy - dAy/dz, dAx/dz - dAz/dx, dAy/dx - dAx/dy)
     // We need partial derivatives of 3 potential components.
     // That's 6 noise lookups (or 3 gradients).
     // Expensive!
-    
+
     // Alternative: Simplex noise usually provides derivatives.
     // Since we only have gradientNoise (value noise), let's use a cheaper pseudo-swirl.
-    
+
     return distortPosition(p, 1.0) - p; // Use the existing function's offset
 }
 
 // Apply Curl Noise Flow to position
 vec3 applyFlow(vec3 pos, float t) {
     if (!uCurlEnabled || uCurlStrength <= 0.001) return pos;
-    
+
     vec3 flowPos = pos * uCurlScale + vec3(0.0, 0.0, t * uCurlSpeed * 0.2);
-    
+
     // Base curl vector
     vec3 curl = curlNoise(flowPos);
-    
+
     // Apply bias
     if (uCurlBias == 1) { // Upward
         curl += vec3(0.0, 1.0, 0.0) * 0.5;
@@ -211,7 +216,7 @@ vec3 applyFlow(vec3 pos, float t) {
     } else if (uCurlBias == 3) { // Inward
         curl -= normalize(pos) * 0.5;
     }
-    
+
     // Distort sampling position by the curl vector
     // This means we sample from 'pos + offset'
     // If flow moves UP, density at P comes from P - Velocity?
@@ -219,9 +224,12 @@ vec3 applyFlow(vec3 pos, float t) {
     // Here we are mapping: space -> density.
     // If we want the cloud to "move up", we should sample "down".
     // So pos - curl.
-    
+
     return pos - curl * uCurlStrength;
 }
+#else
+vec3 applyFlow(vec3 pos, float t) { return pos; }
+#endif
 
 // ============================================
 // Density Field Calculations
@@ -383,6 +391,7 @@ vec3 sampleDensityWithPhase(vec3 pos, float t) {
     // Apply Edge Erosion
     rho = erodeDensity(rho, flowedPos);
 
+#ifdef USE_SHIMMER
     // Uncertainty Shimmer
     if (uShimmerEnabled && uShimmerStrength > 0.0) {
         // Only shimmer at low densities (edges)
@@ -401,6 +410,7 @@ vec3 sampleDensityWithPhase(vec3 pos, float t) {
             rho *= (1.0 + (shimmer - 0.5) * uShimmerStrength * uncertainty);
         }
     }
+#endif
 
     float s = sFromRho(rho);
 

@@ -11,6 +11,21 @@
  */
 
 // ============================================================================
+// Shader Compilation Tracking
+// ============================================================================
+
+export {
+  trackShaderCompilation,
+  deferredExecute,
+  waitForGPUCompile,
+} from './shaderCompilationTracking';
+
+export { useTrackedShaderMaterial } from './useTrackedShaderMaterial';
+export type { TrackedShaderMaterialResult } from './useTrackedShaderMaterial';
+
+export { TrackedShaderMaterial } from './TrackedShaderMaterial';
+
+// ============================================================================
 // Skybox Shader Material
 // ============================================================================
 

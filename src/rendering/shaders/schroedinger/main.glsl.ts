@@ -344,15 +344,10 @@ void main() {
         totalNdotL = max(totalNdotL, NdotL * attenuation);
         col += surfaceColor * uLightColors[i] * NdotL * uDiffuseIntensity * attenuation;
 
-        // Guard against l and viewDir being opposite (zero-length half vector)
-        vec3 halfSum = l + viewDir;
-        float halfLen = length(halfSum);
-        vec3 halfDir = halfLen > 0.0001 ? halfSum / halfLen : n;
-        float NdotH = max(dot(n, halfDir), 0.0);
-        // Guard pow() against edge cases
-        float safeSpecPower = max(uSpecularPower, 1.0);
-        float spec = pow(max(NdotH, 0.0001), safeSpecPower) * uSpecularIntensity * attenuation;
-        col += uSpecularColor * uLightColors[i] * spec;
+        // GGX Specular (PBR)
+        vec3 F0 = vec3(0.04);
+        vec3 specular = computePBRSpecular(n, viewDir, l, uRoughness, F0);
+        col += specular * uLightColors[i] * NdotL * uSpecularIntensity * attenuation;
     }
 
     // Fresnel rim

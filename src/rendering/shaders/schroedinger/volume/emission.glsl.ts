@@ -88,6 +88,25 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0) {
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
+// Compute PBR Specular contribution (used by isosurface mode)
+vec3 computePBRSpecular(vec3 N, vec3 V, vec3 L, float roughness, vec3 F0) {
+    // Guard against V and L being opposite (zero-length half vector)
+    vec3 halfSum = V + L;
+    float halfLen = length(halfSum);
+    vec3 H = halfLen > 0.0001 ? halfSum / halfLen : N;
+
+    // Cook-Torrance BRDF
+    float NDF = distributionGGX(N, H, roughness);
+    float G   = geometrySmith(N, V, L, roughness);
+    vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);
+
+    vec3 numerator    = NDF * G * F;
+    float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
+    vec3 specular = numerator / denominator;
+
+    return specular;
+}
+
 // Compute base surface color (no lighting applied)
 vec3 computeBaseColor(float rho, float phase, vec3 pos) {
     // Normalize log-density to [0, 1] range for color mapping
@@ -97,33 +116,35 @@ vec3 computeBaseColor(float rho, float phase, vec3 pos) {
     // Get base color from user's palette
     vec3 baseHSL = rgb2hsl(uColor);
     
+#ifdef USE_ENERGY_COLOR
     // Energy Level Coloring
     if (uEnergyColorEnabled) {
         // Map density/phase to energy-like spectrum
-        // Ideally we need actual energy eigenvalue E_n. 
+        // Ideally we need actual energy eigenvalue E_n.
         // We only have superposition density.
         // Approximation: Phase velocity relates to energy.
         // Or simply map radial distance? Higher n states extend further.
         // Let's use a spectral mapping based on spatial phase gradient or just distance proxy.
         // Better: Use phase itself to show "quantum rainbow".
-        
-        // Simple mapping: 
+
+        // Simple mapping:
         // Low energy = Red/Orange (Center)
         // High energy = Blue/Violet (Edge)
         float r = length(pos);
         float energyProxy = clamp(r * 0.5, 0.0, 1.0);
-        
+
         // Spectral gradient (heatmap)
         // 0.0 = Red, 0.3 = Green, 0.6 = Blue, 1.0 = Violet
         float hue = 0.7 * (1.0 - energyProxy); // Red(0) at center? No, Blue at center usually high energy?
-        // Actually, for HO: E ~ n. High n extends further. 
+        // Actually, for HO: E ~ n. High n extends further.
         // So high r is high energy.
         // Visible spectrum: Red (low freq/energy) -> Violet (high freq/energy).
         // So Center (Low Energy) -> Red. Edge (High Energy) -> Violet.
-        
+
         hue = 0.8 * energyProxy; // 0=Red, 0.8=Violet
         baseHSL = vec3(hue, 1.0, 0.5);
     }
+#endif
 
     // Quantum-specific color algorithms use actual wavefunction phase
     // All other algorithms delegate to the shared getColorByAlgorithm()
@@ -162,6 +183,7 @@ vec3 computeBaseColor(float rho, float phase, vec3 pos) {
         col = getColorByAlgorithm(normalized, vec3(0.0, 1.0, 0.0), baseHSL, pos);
     }
     
+#ifdef USE_NODAL
     // Nodal Surface Highlight
     if (uNodalEnabled) {
         // Node is where density is zero.
@@ -175,19 +197,20 @@ vec3 computeBaseColor(float rho, float phase, vec3 pos) {
         // We only have |Psi|^2.
         // Nodes appear as black stripes.
         // We want to color them.
-        
+
         // Simple way: if density is very low, mix in nodal color.
         // But we need to distinguish "outside" from "node".
         // Distance field? Gradient magnitude?
-        // Nodes have high gradient of phase? 
+        // Nodes have high gradient of phase?
         // Yes, phase jumps by PI across a node.
         // Phase gradient is singular at node.
-        
+
         // Let's use low density threshold + simple logic for now.
         if (normalized < 0.05 && normalized > 0.001) {
              col = mix(col, uNodalColor, uNodalStrength * (1.0 - normalized/0.05));
         }
     }
+#endif
     
     return col;
 }
@@ -290,24 +313,11 @@ vec3 computeEmissionLit(float rho, float phase, vec3 p, vec3 gradient, vec3 view
         float NdotL = max(dot(n, l), 0.0);
         col += surfaceColor * uLightColors[i] * NdotL * uDiffuseIntensity * attenuation * powder * phaseFactor;
 
-        // Specular (GGX)
-        vec3 halfDir = normalize(l + viewDir);
-        float NdotH = max(dot(n, halfDir), 0.0);
-        float NdotV = max(dot(n, viewDir), 0.0);
-        
+        // Specular (GGX) - uses Cook-Torrance BRDF
         // F0 for dielectrics is usually around 0.04.
-        vec3 F0 = vec3(0.04); 
-        // For metals (if we added metalness), F0 would be albedo.
-        // F0 = mix(F0, surfaceColor, uMetallic);
-        
-        // Calculate GGX terms
-        float NDF = distributionGGX(n, halfDir, uRoughness);
-        float G = geometrySmith(n, viewDir, l, uRoughness);
-        vec3 F = fresnelSchlick(max(dot(halfDir, viewDir), 0.0), F0);
-        
-        vec3 numerator = NDF * G * F;
-        float denominator = 4.0 * NdotV * NdotL + 0.0001;
-        vec3 specular = numerator / denominator;
+        // For metals (if we added metalness), F0 would be albedo: mix(F0, surfaceColor, uMetallic)
+        vec3 F0 = vec3(0.04);
+        vec3 specular = computePBRSpecular(n, viewDir, l, uRoughness, F0);
         
         // Volumetric Self-Shadowing (Raymarching towards light)
         float shadowFactor = 1.0;
