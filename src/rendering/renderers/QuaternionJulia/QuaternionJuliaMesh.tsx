@@ -42,6 +42,7 @@ import {
     usePerformanceStore,
 } from '@/stores/performanceStore'
 import { usePostProcessingStore } from '@/stores/postProcessingStore'
+import { useAnimationStore } from '@/stores/animationStore'
 import { useRotationStore } from '@/stores/rotationStore'
 import { useUIStore } from '@/stores/uiStore'
 import { useWebGLContextStore } from '@/stores/webglContextStore'
@@ -118,6 +119,10 @@ const QuaternionJuliaMesh = () => {
   const restoreQualityTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
   )
+
+  // Animation time tracking (respects pause state)
+  const animationTimeRef = useRef(0)
+  const lastFrameTimeRef = useRef(0)
 
   // Pre-allocated working arrays
   const workingArraysRef = useRef<WorkingArrays>(createWorkingArrays())
@@ -344,8 +349,17 @@ const QuaternionJuliaMesh = () => {
     const config = extStore.quaternionJulia
     const { rotations: currentRotations, version: rotationVersion } = rotStore
 
-    // Update time
-    u.uTime.value = state.clock.elapsedTime
+    // Update animation time (respects pause state)
+    const currentTime = state.clock.elapsedTime
+    const deltaTime = currentTime - lastFrameTimeRef.current
+    lastFrameTimeRef.current = currentTime
+    const isPlaying = useAnimationStore.getState().isPlaying
+    if (isPlaying) {
+      animationTimeRef.current += deltaTime
+    }
+
+    // Update time uniform using paused animation time
+    u.uTime.value = animationTimeRef.current
 
     // Quality mode based on rotation changes
     const didRotate = rotationVersion !== prevVersionRef.current

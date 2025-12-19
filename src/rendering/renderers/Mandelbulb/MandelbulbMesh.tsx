@@ -502,7 +502,8 @@ const MandelbulbMesh = () => {
       }
 
       // Update time and resolution
-      if (material.uniforms.uTime) material.uniforms.uTime.value = state.clock.elapsedTime;
+      // Use animationTimeRef which respects pause state, not raw clock time
+      if (material.uniforms.uTime) material.uniforms.uTime.value = animationTimeRef.current;
       if (material.uniforms.uResolution) material.uniforms.uResolution.value.set(size.width, size.height);
       if (material.uniforms.uCameraPosition) material.uniforms.uCameraPosition.value.copy(camera.position);
 
