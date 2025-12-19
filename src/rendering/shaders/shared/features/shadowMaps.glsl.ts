@@ -54,7 +54,7 @@ uniform float uShadowMapSize;
 uniform int uShadowPCFSamples; // 0=hard, 1=3x3 PCF, 2=5x5 PCF
 uniform float uShadowCameraNear;
 uniform float uShadowCameraFar;
-`;
+`
 
 /**
  * Shadow map sampling functions.
@@ -156,6 +156,13 @@ float getPointShadow(int lightIndex, vec3 worldPos) {
   float lightDistance = length(lightToFrag);
   vec3 lightDir = normalize(lightToFrag);
 
+  // Early exit if fragment is outside the shadow camera range
+  float cameraNear = uShadowCameraNear;
+  float cameraFar = uShadowCameraFar;
+  if (lightDistance - cameraFar > 0.0 || lightDistance - cameraNear < 0.0) {
+    return 1.0; // Not in shadow (outside range)
+  }
+
   // Calculate texel size for the packed texture (4:2 aspect ratio)
   float texelSizeY = 1.0 / (uShadowMapSize * 2.0);
 
@@ -166,16 +173,18 @@ float getPointShadow(int lightIndex, vec3 worldPos) {
   vec4 shadowSample = samplePointShadowMap(lightIndex, uv);
   float closestDepth = unpackRGBAToDepth(shadowSample);
 
-  // Convert from normalized depth [0,1] to world distance
-  // Three.js stores depth normalized by camera far plane
-  float shadowDistance = closestDepth * uShadowCameraFar;
+  // Normalize fragment distance the same way the shadow map was written:
+  // dist = (distance - near) / (far - near)
+  // This matches the MeshDistanceMaterial encoding used by Three.js
+  float dp = (lightDistance - cameraNear) / (cameraFar - cameraNear);
 
   // Point lights need larger bias (2x) due to cube map edge discontinuities
   // and inherent precision issues at face boundaries where depth values jump
   float bias = uShadowMapBias * 2.0;
+  dp += bias;
 
-  // Compare: if fragment is farther than shadow map depth, it's in shadow
-  return lightDistance > shadowDistance + bias ? 0.0 : 1.0;
+  // Compare in normalized space: if dp > closestDepth, fragment is in shadow
+  return step(dp, closestDepth);
 }
 
 // Point shadow with PCF (soft edges)
@@ -185,8 +194,22 @@ float getPointShadowPCF(int lightIndex, vec3 worldPos) {
   float lightDistance = length(lightToFrag);
   vec3 lightDir = normalize(lightToFrag);
 
+  // Early exit if fragment is outside the shadow camera range
+  float cameraNear = uShadowCameraNear;
+  float cameraFar = uShadowCameraFar;
+  if (lightDistance - cameraFar > 0.0 || lightDistance - cameraNear < 0.0) {
+    return 1.0; // Not in shadow (outside range)
+  }
+
   float texelSizeY = 1.0 / (uShadowMapSize * 2.0);
   float shadow = 0.0;
+
+  // Normalize fragment distance the same way the shadow map was written
+  float dp = (lightDistance - cameraNear) / (cameraFar - cameraNear);
+
+  // Point lights need larger bias (2x) due to cube map edge discontinuities
+  float bias = uShadowMapBias * 2.0;
+  dp += bias;
 
   // PCF with 9 samples (offset the direction slightly)
   float radius = 0.002; // Small angular offset
@@ -198,10 +221,6 @@ float getPointShadowPCF(int lightIndex, vec3 worldPos) {
   vec3 perpX = normalize(cross(lightDir, up));
   vec3 perpY = normalize(cross(lightDir, perpX));
 
-  // Point lights need larger bias (2x) due to cube map edge discontinuities
-  // and inherent precision issues at face boundaries where depth values jump
-  float bias = uShadowMapBias * 2.0;
-
   for (int x = -1; x <= 1; x++) {
     for (int y = -1; y <= 1; y++) {
       // Offset direction for PCF sampling
@@ -210,9 +229,9 @@ float getPointShadowPCF(int lightIndex, vec3 worldPos) {
       vec2 uv = cubeToUV(offsetDir, texelSizeY);
       vec4 shadowSample = samplePointShadowMap(lightIndex, uv);
       float closestDepth = unpackRGBAToDepth(shadowSample);
-      float shadowDistance = closestDepth * uShadowCameraFar;
 
-      shadow += lightDistance > shadowDistance + bias ? 0.0 : 1.0;
+      // Compare in normalized space
+      shadow += step(dp, closestDepth);
     }
   }
 
@@ -301,4 +320,4 @@ float getShadow(int lightIndex, vec3 worldPos) {
     return sampleShadowPCF(lightIndex, worldPos);
   }
 }
-`;
+`

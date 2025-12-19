@@ -34,12 +34,9 @@ import { RENDER_LAYERS } from '@/rendering/core/layers';
 import type { LightSource } from '@/rendering/lights/types';
 import { LIGHT_TYPE_TO_INT, MAX_LIGHTS, rotationToDirection } from '@/rendering/lights/types';
 import { COLOR_ALGORITHM_TO_INT } from '@/rendering/shaders/palette';
-import {
-    depthFragmentShader,
-    distanceFragmentShader,
-    polytopeDepthVertexShader,
-    polytopeDistanceVertexShader,
-} from '@/rendering/shaders/shared/depth/customDepth.glsl';
+// Note: We no longer use custom shadow shaders - we patch MeshDepthMaterial and
+// MeshDistanceMaterial via onBeforeCompile to inject our nD vertex transformation.
+// This avoids the double shadow bug caused by raw ShaderMaterial shadow materials.
 import { matrixToGPUUniforms, MAX_GPU_DIMENSION } from '@/rendering/shaders/transforms/ndTransform';
 import {
     blurToPCFSamples,
@@ -204,35 +201,136 @@ function createEdgeMaterial(edgeColor: string, opacity: number): ShaderMaterial 
 }
 
 /**
- * Create custom depth material for directional/spot light shadow maps.
- * Uses the same nD transformation as the main shader so shadows animate correctly.
+ * GLSL code block containing the nD transformation functions for shadow materials.
+ * This is injected into MeshDepthMaterial and MeshDistanceMaterial via onBeforeCompile.
  */
-function createCustomDepthMaterial(): ShaderMaterial {
-  return new ShaderMaterial({
-    uniforms: {
-      ...createNDUniforms(),
-    },
-    vertexShader: polytopeDepthVertexShader,
-    fragmentShader: depthFragmentShader,
-  });
+const ND_TRANSFORM_GLSL = `
+#define MAX_EXTRA_DIMS 7
+
+// N-D Transformation uniforms
+uniform mat4 uRotationMatrix4D;
+uniform int uDimension;
+uniform vec4 uScale4D;
+uniform float uExtraScales[MAX_EXTRA_DIMS];
+uniform float uProjectionDistance;
+uniform float uExtraRotationCols[28];
+uniform float uDepthRowSums[11];
+
+// Vertex modulation uniforms
+uniform float uAnimTime;
+uniform float uModAmplitude;
+uniform float uModFrequency;
+uniform float uModWave;
+uniform float uModBias;
+
+// Packed extra dimension attributes
+attribute vec4 aExtraDims0_3;
+attribute vec3 aExtraDims4_6;
+
+vec3 ndTransformVertex(vec3 pos) {
+  float scaledInputs[11];
+  scaledInputs[0] = pos.x * uScale4D.x;
+  scaledInputs[1] = pos.y * uScale4D.y;
+  scaledInputs[2] = pos.z * uScale4D.z;
+  scaledInputs[3] = aExtraDims0_3.x * uScale4D.w;
+  scaledInputs[4] = aExtraDims0_3.y * uExtraScales[0];
+  scaledInputs[5] = aExtraDims0_3.z * uExtraScales[1];
+  scaledInputs[6] = aExtraDims0_3.w * uExtraScales[2];
+  scaledInputs[7] = aExtraDims4_6.x * uExtraScales[3];
+  scaledInputs[8] = aExtraDims4_6.y * uExtraScales[4];
+  scaledInputs[9] = aExtraDims4_6.z * uExtraScales[5];
+  scaledInputs[10] = 0.0;
+
+  vec4 scaledPos = vec4(scaledInputs[0], scaledInputs[1], scaledInputs[2], scaledInputs[3]);
+  vec4 rotated = uRotationMatrix4D * scaledPos;
+
+  for (int i = 0; i < MAX_EXTRA_DIMS; i++) {
+    if (i + 5 <= uDimension) {
+      float extraDimValue = scaledInputs[i + 4];
+      rotated.x += uExtraRotationCols[i * 4 + 0] * extraDimValue;
+      rotated.y += uExtraRotationCols[i * 4 + 1] * extraDimValue;
+      rotated.z += uExtraRotationCols[i * 4 + 2] * extraDimValue;
+      rotated.w += uExtraRotationCols[i * 4 + 3] * extraDimValue;
+    }
+  }
+
+  float effectiveDepth = rotated.w;
+  for (int j = 0; j < 11; j++) {
+    if (j < uDimension) {
+      effectiveDepth += uDepthRowSums[j] * scaledInputs[j];
+    }
+  }
+  float normFactor = uDimension > 4 ? sqrt(float(uDimension - 3)) : 1.0;
+  effectiveDepth /= normFactor;
+  float denom = uProjectionDistance - effectiveDepth;
+  if (abs(denom) < 0.0001) denom = denom >= 0.0 ? 0.0001 : -0.0001;
+  float factor = 1.0 / denom;
+  vec3 projected = rotated.xyz * factor;
+
+  // Apply vertex modulation
+  if (uModAmplitude > 0.001) {
+    float extraSum = aExtraDims0_3.x + aExtraDims0_3.y + aExtraDims0_3.z + aExtraDims0_3.w + aExtraDims4_6.x + aExtraDims4_6.y + aExtraDims4_6.z;
+    float t = uAnimTime * uModFrequency * 0.1;
+    float dist = length(projected);
+    float wavePhase = dist * uModWave * 2.0;
+    float vertexBias = (projected.x * 1.0 + projected.y * 1.618 + projected.z * 2.236) * uModBias;
+    float dimensionBias = extraSum * uModBias * 0.5;
+    float totalPhase = t + wavePhase + vertexBias + dimensionBias;
+    float scale = 1.0 + sin(totalPhase) * uModAmplitude * 0.05;
+    projected = projected * scale;
+  }
+
+  return projected;
 }
+`;
 
 /**
- * Create custom distance material for point light shadow maps.
- * Uses the same nD transformation as the main shader so shadows animate correctly.
+ * Create patched shadow materials using Three.js's built-in MeshDepthMaterial
+ * and MeshDistanceMaterial with our nD vertex transformation injected.
+ *
+ * This approach avoids the double shadow bug that occurs when using raw
+ * ShaderMaterial for shadow materials. Three.js's internal shadow pipeline
+ * has special handling for MeshDistanceMaterial (updating referencePosition,
+ * nearDistance, farDistance automatically) that raw ShaderMaterial can't satisfy.
+ *
+ * @param uniforms - Shared uniform objects that are updated per-frame
+ * @returns Object containing patched depthMaterial and distanceMaterial
  */
-function createCustomDistanceMaterial(): ShaderMaterial {
-  return new ShaderMaterial({
-    uniforms: {
-      ...createNDUniforms(),
-      // Point light shadow uniforms - set by Three.js during shadow pass
-      referencePosition: { value: new Vector3() },
-      nearDistance: { value: 1.0 },
-      farDistance: { value: 1000.0 },
-    },
-    vertexShader: polytopeDistanceVertexShader,
-    fragmentShader: distanceFragmentShader,
+function createPatchedShadowMaterials(uniforms: Record<string, { value: unknown }>): {
+  depthMaterial: THREE.MeshDepthMaterial;
+  distanceMaterial: THREE.MeshDistanceMaterial;
+} {
+  const depthMaterial = new THREE.MeshDepthMaterial({
+    depthPacking: THREE.RGBADepthPacking,
   });
+
+  const distanceMaterial = new THREE.MeshDistanceMaterial();
+
+  const patchMaterial = (mat: THREE.Material) => {
+    mat.onBeforeCompile = (shader) => {
+      // Merge our nD uniforms with Three.js's built-in uniforms
+      Object.assign(shader.uniforms, uniforms);
+
+      // Inject our GLSL helpers after #include <common>
+      shader.vertexShader = shader.vertexShader.replace(
+        '#include <common>',
+        `#include <common>\n${ND_TRANSFORM_GLSL}`
+      );
+
+      // Apply our nD transformation after #include <begin_vertex>
+      // Three.js sets `transformed` to the local-space vertex position there
+      shader.vertexShader = shader.vertexShader.replace(
+        '#include <begin_vertex>',
+        `#include <begin_vertex>\ntransformed = ndTransformVertex(transformed);`
+      );
+    };
+    mat.needsUpdate = true;
+  };
+
+  patchMaterial(depthMaterial);
+  patchMaterial(distanceMaterial);
+
+  return { depthMaterial, distanceMaterial };
 }
 
 /**
@@ -526,10 +624,18 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     return createEdgeMaterial(edgeColor, opacity);
   }, [edgeColor, opacity]);
 
-  // Custom depth materials for shadow map rendering with nD transformation
-  // These ensure shadows animate correctly when the object animates
-  const customDepthMaterial = useMemo(() => createCustomDepthMaterial(), []);
-  const customDistanceMaterial = useMemo(() => createCustomDistanceMaterial(), []);
+  // Create shared uniforms for shadow materials (patched MeshDepthMaterial and MeshDistanceMaterial)
+  // These uniforms are shared with the main face material and updated per-frame
+  const shadowUniforms = useMemo(() => createNDUniforms(), []);
+
+  // Custom depth/distance materials for shadow map rendering with nD transformation.
+  // Uses patched Three.js built-in materials (via onBeforeCompile) to avoid the double
+  // shadow bug that occurs with raw ShaderMaterial. Three.js handles MeshDistanceMaterial
+  // specially (auto-updating referencePosition, nearDistance, farDistance for point lights).
+  const { depthMaterial: customDepthMaterial, distanceMaterial: customDistanceMaterial } = useMemo(
+    () => createPatchedShadowMaterials(shadowUniforms),
+    [shadowUniforms]
+  );
 
   // Callback ref to assign main object layer for depth-based effects (SSR, refraction, bokeh)
   // Also assigns custom depth materials for animated shadows - this MUST happen in the callback
@@ -539,13 +645,21 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     if (mesh?.layers) {
       mesh.layers.set(RENDER_LAYERS.MAIN_OBJECT);
     }
-    // Assign custom depth materials for animated shadows
+    // Assign patched shadow materials for nD transformation:
+    // - customDepthMaterial (MeshDepthMaterial): for directional and spot lights
+    // - customDistanceMaterial (MeshDistanceMaterial): for point lights
+    //
+    // Using patched built-in materials via onBeforeCompile avoids the double shadow bug
+    // that occurred with raw ShaderMaterial. Three.js handles MeshDistanceMaterial specially,
+    // auto-updating referencePosition/nearDistance/farDistance for point light shadow cameras.
+    // No onBeforeShadow callback needed - Three.js manages everything automatically.
     if (mesh && shadowEnabled) {
+      // Always assign both materials - works with any light type combination
       mesh.customDepthMaterial = customDepthMaterial;
       mesh.customDistanceMaterial = customDistanceMaterial;
     } else if (mesh) {
-      mesh.customDepthMaterial = undefined as unknown as THREE.Material;
       mesh.customDistanceMaterial = undefined as unknown as THREE.Material;
+      mesh.customDepthMaterial = undefined as unknown as THREE.Material;
     }
   }, [shadowEnabled, customDepthMaterial, customDistanceMaterial]);
 
@@ -779,6 +893,23 @@ export const PolytopeScene = React.memo(function PolytopeScene({
       customDistanceMaterial.dispose();
     };
   }, [customDepthMaterial, customDistanceMaterial]);
+
+  // Update shadow materials when shadowEnabled changes at runtime
+  // The callback ref only runs on mount, so we need an effect for runtime changes
+  useEffect(() => {
+    const mesh = faceMeshRef.current;
+    if (!mesh) return;
+
+    if (shadowEnabled) {
+      // Always assign both materials - works with any light type combination
+      // Patched MeshDepthMaterial handles directional/spot, MeshDistanceMaterial handles point
+      mesh.customDepthMaterial = customDepthMaterial;
+      mesh.customDistanceMaterial = customDistanceMaterial;
+    } else {
+      mesh.customDistanceMaterial = undefined as unknown as THREE.Material;
+      mesh.customDepthMaterial = undefined as unknown as THREE.Material;
+    }
+  }, [shadowEnabled, customDepthMaterial, customDistanceMaterial]);
 
   // ============ USEFRAME: UPDATE UNIFORMS ONLY ============
   useFrame(({ camera, scene }, delta) => {
@@ -1042,34 +1173,33 @@ export const PolytopeScene = React.memo(function PolytopeScene({
       }
     }
 
-    // Update custom depth materials for animated shadows
-    // These need the same N-D transformation and modulation uniforms as the main shader
-    if (shadowEnabled && faceMeshRef.current) {
-      const mesh = faceMeshRef.current;
+    // Update shadow material uniforms for animated shadows
+    // Patched MeshDepthMaterial and MeshDistanceMaterial share the same shadowUniforms object.
+    // Updates to shadowUniforms are automatically reflected in the compiled shaders.
+    if (shadowEnabled) {
+      const u = shadowUniforms;
 
-      // Update custom depth material (directional/spot shadows)
-      if (mesh.customDepthMaterial && 'uniforms' in mesh.customDepthMaterial) {
-        const depthMat = mesh.customDepthMaterial as ShaderMaterial;
-        updateNDUniforms(depthMat, gpuData, dimension, scales, projectionDistance);
-        const du = depthMat.uniforms;
-        if (du.uAnimTime) du.uAnimTime.value = animTime;
-        if (du.uModAmplitude) du.uModAmplitude.value = modAmplitude;
-        if (du.uModFrequency) du.uModFrequency.value = modFrequency;
-        if (du.uModWave) du.uModWave.value = modWave;
-        if (du.uModBias) du.uModBias.value = modBias;
+      // Update N-D transformation uniforms
+      (u.uRotationMatrix4D!.value as Matrix4).copy(gpuData.rotationMatrix4D);
+      u.uDimension!.value = dimension;
+      const s = u.uScale4D!.value;
+      if (s instanceof Vector4) {
+        s.set(scales[0] ?? 1, scales[1] ?? 1, scales[2] ?? 1, scales[3] ?? 1);
       }
+      const extraScales = u.uExtraScales!.value as Float32Array;
+      for (let i = 0; i < MAX_EXTRA_DIMS; i++) {
+        extraScales[i] = scales[i + 4] ?? 1;
+      }
+      (u.uExtraRotationCols!.value as Float32Array).set(gpuData.extraRotationCols);
+      (u.uDepthRowSums!.value as Float32Array).set(gpuData.depthRowSums);
+      u.uProjectionDistance!.value = projectionDistance;
 
-      // Update custom distance material (point light shadows)
-      if (mesh.customDistanceMaterial && 'uniforms' in mesh.customDistanceMaterial) {
-        const distMat = mesh.customDistanceMaterial as ShaderMaterial;
-        updateNDUniforms(distMat, gpuData, dimension, scales, projectionDistance);
-        const du = distMat.uniforms;
-        if (du.uAnimTime) du.uAnimTime.value = animTime;
-        if (du.uModAmplitude) du.uModAmplitude.value = modAmplitude;
-        if (du.uModFrequency) du.uModFrequency.value = modFrequency;
-        if (du.uModWave) du.uModWave.value = modWave;
-        if (du.uModBias) du.uModBias.value = modBias;
-      }
+      // Update modulation uniforms
+      u.uAnimTime!.value = animTime;
+      u.uModAmplitude!.value = modAmplitude;
+      u.uModFrequency!.value = modFrequency;
+      u.uModWave!.value = modWave;
+      u.uModBias!.value = modBias;
     }
   });
 

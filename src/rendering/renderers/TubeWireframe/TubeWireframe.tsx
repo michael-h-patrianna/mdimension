@@ -13,6 +13,7 @@ import { RENDER_LAYERS } from '@/rendering/core/layers'
 import { useTrackedShaderMaterial } from '@/rendering/materials/useTrackedShaderMaterial'
 import { useFrame } from '@react-three/fiber'
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
+import * as THREE from 'three'
 import {
     Color,
     CylinderGeometry,
@@ -29,12 +30,8 @@ import { DEFAULT_PROJECTION_DISTANCE } from '@/lib/math/projection'
 import { composeRotations } from '@/lib/math/rotation'
 import type { VectorND } from '@/lib/math/types'
 import { createLightUniforms, updateLightUniforms, type LightUniforms } from '@/rendering/lights/uniforms'
-import {
-    depthFragmentShader,
-    distanceFragmentShader,
-    tubeWireframeDepthVertexShader,
-    tubeWireframeDistanceVertexShader,
-} from '@/rendering/shaders/shared/depth/customDepth.glsl'
+// Note: We use patched MeshDepthMaterial and MeshDistanceMaterial instead of raw ShaderMaterial
+// to avoid the double shadow bug. The custom vertex shaders are no longer needed.
 import { matrixToGPUUniforms } from '@/rendering/shaders/transforms/ndTransform'
 import { composeTubeWireframeFragmentShader, composeTubeWireframeVertexShader } from '@/rendering/shaders/tubewireframe/compose'
 import {
@@ -49,13 +46,176 @@ import { useLightingStore } from '@/stores/lightingStore'
 import { usePerformanceStore } from '@/stores/performanceStore'
 import { useRotationStore } from '@/stores/rotationStore'
 import { useTransformStore } from '@/stores/transformStore'
-import { Vector3 } from 'three'
+import { Vector4 } from 'three'
 
 // Maximum extra dimensions (beyond XYZ + W)
 const MAX_EXTRA_DIMS = 7
 
 // Cylinder segments for tube rendering (balance quality/performance)
 const CYLINDER_SEGMENTS = 8
+
+/**
+ * GLSL code block containing the nD transformation for tube wireframe shadow materials.
+ * This is injected into MeshDepthMaterial and MeshDistanceMaterial via onBeforeCompile.
+ * Unlike the polytope version, this handles instanced tube geometry with start/end positions.
+ */
+const TUBE_ND_TRANSFORM_GLSL = `
+#define MAX_EXTRA_DIMS 7
+
+// N-D Transformation uniforms
+uniform mat4 uRotationMatrix4D;
+uniform int uDimension;
+uniform vec4 uScale4D;
+uniform float uExtraScales[MAX_EXTRA_DIMS];
+uniform float uProjectionDistance;
+uniform float uExtraRotationCols[28];
+uniform float uDepthRowSums[11];
+uniform float uRadius;
+
+// Instance attributes for tube start/end points
+attribute vec3 instanceStart;
+attribute vec3 instanceEnd;
+attribute vec4 instanceStartExtraA;
+attribute vec4 instanceStartExtraB;
+attribute vec4 instanceEndExtraA;
+attribute vec4 instanceEndExtraB;
+
+// Transform a single nD point to 3D
+vec3 ndTransformPoint(vec3 pos, vec4 extraA, vec4 extraB) {
+  float scaledInputs[11];
+  scaledInputs[0] = pos.x * uScale4D.x;
+  scaledInputs[1] = pos.y * uScale4D.y;
+  scaledInputs[2] = pos.z * uScale4D.z;
+  scaledInputs[3] = extraA.x * uScale4D.w; // W
+  scaledInputs[4] = extraA.y * uExtraScales[0];
+  scaledInputs[5] = extraA.z * uExtraScales[1];
+  scaledInputs[6] = extraA.w * uExtraScales[2];
+  scaledInputs[7] = extraB.x * uExtraScales[3];
+  scaledInputs[8] = extraB.y * uExtraScales[4];
+  scaledInputs[9] = extraB.z * uExtraScales[5];
+  scaledInputs[10] = 0.0;
+
+  vec4 scaledPos = vec4(scaledInputs[0], scaledInputs[1], scaledInputs[2], scaledInputs[3]);
+  vec4 rotated = uRotationMatrix4D * scaledPos;
+
+  for (int i = 0; i < MAX_EXTRA_DIMS; i++) {
+    if (i + 5 <= uDimension) {
+      float extraDimValue = scaledInputs[i + 4];
+      rotated.x += uExtraRotationCols[i * 4 + 0] * extraDimValue;
+      rotated.y += uExtraRotationCols[i * 4 + 1] * extraDimValue;
+      rotated.z += uExtraRotationCols[i * 4 + 2] * extraDimValue;
+      rotated.w += uExtraRotationCols[i * 4 + 3] * extraDimValue;
+    }
+  }
+
+  float effectiveDepth = rotated.w;
+  for (int j = 0; j < 11; j++) {
+    if (j < uDimension) {
+      effectiveDepth += uDepthRowSums[j] * scaledInputs[j];
+    }
+  }
+  float normFactor = uDimension > 4 ? sqrt(float(uDimension - 3)) : 1.0;
+  effectiveDepth /= normFactor;
+  float denom = uProjectionDistance - effectiveDepth;
+  if (abs(denom) < 0.0001) denom = denom >= 0.0 ? 0.0001 : -0.0001;
+  float factor = 1.0 / denom;
+  return rotated.xyz * factor;
+}
+
+// Transform tube vertex position (cylinder mesh positioned between start and end)
+vec3 tubeTransformVertex(vec3 localPos) {
+  // Transform start and end points through nD pipeline
+  vec3 start3D = ndTransformPoint(instanceStart, instanceStartExtraA, instanceStartExtraB);
+  vec3 end3D = ndTransformPoint(instanceEnd, instanceEndExtraA, instanceEndExtraB);
+
+  // Build tube orientation from start to end
+  vec3 dir = end3D - start3D;
+  float tubeLength = length(dir);
+  if (tubeLength < 0.0001) {
+    return start3D; // Degenerate tube
+  }
+  vec3 axis = dir / tubeLength;
+
+  // Build orthonormal basis for tube cross-section
+  vec3 up = abs(axis.y) < 0.999 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+  vec3 tangent = normalize(cross(up, axis));
+  vec3 bitangent = cross(axis, tangent);
+
+  // Transform local cylinder vertex:
+  // - localPos.xz is the radial position (scaled by radius)
+  // - localPos.y is the height along the tube (scaled by length)
+  vec3 radial = (tangent * localPos.x + bitangent * localPos.z) * uRadius;
+  vec3 axial = axis * (localPos.y + 0.5) * tubeLength; // +0.5 to shift from centered to start
+
+  return start3D + radial + axial;
+}
+`;
+
+/**
+ * Create shared uniforms for tube shadow materials.
+ * @param dimension - Current dimension
+ * @param radius - Tube radius
+ */
+function createTubeShadowUniforms(dimension: number, radius: number): Record<string, { value: unknown }> {
+  return {
+    uRotationMatrix4D: { value: new Matrix4() },
+    uDimension: { value: dimension },
+    uScale4D: { value: new Vector4(1, 1, 1, 1) },
+    uExtraScales: { value: new Float32Array(MAX_EXTRA_DIMS).fill(1) },
+    uExtraRotationCols: { value: new Float32Array(MAX_EXTRA_DIMS * 4) },
+    uDepthRowSums: { value: new Float32Array(11) },
+    uProjectionDistance: { value: DEFAULT_PROJECTION_DISTANCE },
+    uRadius: { value: radius },
+  };
+}
+
+/**
+ * Create patched shadow materials for tube wireframe using Three.js's built-in
+ * MeshDepthMaterial and MeshDistanceMaterial with tube vertex transformation injected.
+ *
+ * This approach avoids the double shadow bug that occurs when using raw ShaderMaterial.
+ * Three.js's internal shadow pipeline has special handling for MeshDistanceMaterial
+ * (updating referencePosition, nearDistance, farDistance automatically).
+ *
+ * @param uniforms - Shared uniform objects that are updated per-frame
+ * @returns Object containing patched depthMaterial and distanceMaterial
+ */
+function createPatchedTubeShadowMaterials(uniforms: Record<string, { value: unknown }>): {
+  depthMaterial: THREE.MeshDepthMaterial;
+  distanceMaterial: THREE.MeshDistanceMaterial;
+} {
+  const depthMaterial = new THREE.MeshDepthMaterial({
+    depthPacking: THREE.RGBADepthPacking,
+  });
+
+  const distanceMaterial = new THREE.MeshDistanceMaterial();
+
+  const patchMaterial = (mat: THREE.Material) => {
+    mat.onBeforeCompile = (shader) => {
+      // Merge our nD uniforms with Three.js's built-in uniforms
+      Object.assign(shader.uniforms, uniforms);
+
+      // Inject our GLSL helpers after #include <common>
+      shader.vertexShader = shader.vertexShader.replace(
+        '#include <common>',
+        `#include <common>\n${TUBE_ND_TRANSFORM_GLSL}`
+      );
+
+      // Apply our tube transformation after #include <begin_vertex>
+      // Three.js sets `transformed` to the local-space vertex position there
+      shader.vertexShader = shader.vertexShader.replace(
+        '#include <begin_vertex>',
+        `#include <begin_vertex>\ntransformed = tubeTransformVertex(transformed);`
+      );
+    };
+    mat.needsUpdate = true;
+  };
+
+  patchMaterial(depthMaterial);
+  patchMaterial(distanceMaterial);
+
+  return { depthMaterial, distanceMaterial };
+}
 
 export interface TubeWireframeProps {
   /** N-dimensional vertices */
@@ -235,45 +395,18 @@ export function TubeWireframe({
     [color, metallic, roughness, radius, dimension, sssEnabled, fresnelEnabled, fragmentShaderString]
   )
 
-  // Custom depth materials for shadow map rendering with nD transformation
-  // These ensure shadows animate correctly when the object animates
-  const customDepthMaterial = useMemo(() => {
-    return new ShaderMaterial({
-      uniforms: {
-        uRotationMatrix4D: { value: new Matrix4() },
-        uDimension: { value: dimension },
-        uScale4D: { value: [1, 1, 1, 1] },
-        uExtraScales: { value: new Float32Array(MAX_EXTRA_DIMS).fill(1) },
-        uExtraRotationCols: { value: new Float32Array(MAX_EXTRA_DIMS * 4) },
-        uDepthRowSums: { value: new Float32Array(11) },
-        uProjectionDistance: { value: DEFAULT_PROJECTION_DISTANCE },
-        uRadius: { value: radius },
-      },
-      vertexShader: tubeWireframeDepthVertexShader,
-      fragmentShader: depthFragmentShader,
-    })
-  }, [radius, dimension])
+  // Create shared uniforms for shadow materials (patched MeshDepthMaterial and MeshDistanceMaterial)
+  // These uniforms are shared and updated per-frame
+  const shadowUniforms = useMemo(() => createTubeShadowUniforms(dimension, radius), [dimension, radius])
 
-  const customDistanceMaterial = useMemo(() => {
-    return new ShaderMaterial({
-      uniforms: {
-        uRotationMatrix4D: { value: new Matrix4() },
-        uDimension: { value: dimension },
-        uScale4D: { value: [1, 1, 1, 1] },
-        uExtraScales: { value: new Float32Array(MAX_EXTRA_DIMS).fill(1) },
-        uExtraRotationCols: { value: new Float32Array(MAX_EXTRA_DIMS * 4) },
-        uDepthRowSums: { value: new Float32Array(11) },
-        uProjectionDistance: { value: DEFAULT_PROJECTION_DISTANCE },
-        uRadius: { value: radius },
-        // Point light shadow uniforms - set by Three.js during shadow pass
-        referencePosition: { value: new Vector3() },
-        nearDistance: { value: 1.0 },
-        farDistance: { value: 1000.0 },
-      },
-      vertexShader: tubeWireframeDistanceVertexShader,
-      fragmentShader: distanceFragmentShader,
-    })
-  }, [radius, dimension])
+  // Custom depth/distance materials for shadow map rendering with tube nD transformation.
+  // Uses patched Three.js built-in materials (via onBeforeCompile) to avoid the double
+  // shadow bug that occurs with raw ShaderMaterial. Three.js handles MeshDistanceMaterial
+  // specially (auto-updating referencePosition, nearDistance, farDistance for point lights).
+  const { depthMaterial: customDepthMaterial, distanceMaterial: customDistanceMaterial } = useMemo(
+    () => createPatchedTubeShadowMaterials(shadowUniforms),
+    [shadowUniforms]
+  )
 
   // Callback ref to assign main object layer for depth-based effects (SSR, refraction, bokeh)
   // Also assigns custom depth materials for animated shadows - this MUST happen in the callback
@@ -283,13 +416,21 @@ export function TubeWireframe({
     if (mesh?.layers) {
       mesh.layers.set(RENDER_LAYERS.MAIN_OBJECT)
     }
-    // Assign custom depth materials for animated shadows
+    // Assign patched shadow materials for tube nD transformation:
+    // - customDepthMaterial (MeshDepthMaterial): for directional and spot lights
+    // - customDistanceMaterial (MeshDistanceMaterial): for point lights
+    //
+    // Using patched built-in materials via onBeforeCompile avoids the double shadow bug
+    // that occurred with raw ShaderMaterial. Three.js handles MeshDistanceMaterial specially,
+    // auto-updating referencePosition/nearDistance/farDistance for point light shadow cameras.
+    // No onBeforeShadow callback needed - Three.js manages everything automatically.
     if (mesh && shadowEnabled) {
+      // Always assign both materials - works with any light type combination
       mesh.customDepthMaterial = customDepthMaterial
       mesh.customDistanceMaterial = customDistanceMaterial
     } else if (mesh) {
-      mesh.customDepthMaterial = undefined as unknown as ShaderMaterial
-      mesh.customDistanceMaterial = undefined as unknown as ShaderMaterial
+      mesh.customDepthMaterial = undefined as unknown as THREE.Material
+      mesh.customDistanceMaterial = undefined as unknown as THREE.Material
     }
   }, [shadowEnabled, customDepthMaterial, customDistanceMaterial])
 
@@ -332,6 +473,23 @@ export function TubeWireframe({
       customDistanceMaterial.dispose()
     }
   }, [customDepthMaterial, customDistanceMaterial])
+
+  // Update shadow materials when shadowEnabled changes at runtime
+  // The callback ref only runs on mount, so we need an effect for runtime changes
+  useEffect(() => {
+    const mesh = meshRef.current
+    if (!mesh) return
+
+    if (shadowEnabled) {
+      // Always assign both materials - works with any light type combination
+      // Patched MeshDepthMaterial handles directional/spot, MeshDistanceMaterial handles point
+      mesh.customDepthMaterial = customDepthMaterial
+      mesh.customDistanceMaterial = customDistanceMaterial
+    } else {
+      mesh.customDistanceMaterial = undefined as unknown as THREE.Material
+      mesh.customDepthMaterial = undefined as unknown as THREE.Material
+    }
+  }, [shadowEnabled, customDepthMaterial, customDistanceMaterial])
 
   // Update instance attributes when vertices/edges change
   // P4 Optimization: Reuse pre-allocated arrays when possible to reduce GC pressure
@@ -578,36 +736,27 @@ export function TubeWireframe({
       )
     }
 
-    // Update custom depth materials for animated shadows
-    // These need the same N-D transformation uniforms as the main shader
-    if (shadowEnabled && meshRef.current) {
-      const mesh = meshRef.current
+    // Update shadow material uniforms for animated shadows
+    // Patched MeshDepthMaterial and MeshDistanceMaterial share the same shadowUniforms object.
+    // Updates to shadowUniforms are automatically reflected in the compiled shaders.
+    if (shadowEnabled) {
+      const su = shadowUniforms
 
-      // Helper function to update N-D uniforms on a depth material
-      const updateDepthNDUniforms = (depthMat: ShaderMaterial) => {
-        const du = depthMat.uniforms
-        ;(du.uRotationMatrix4D!.value as Matrix4).copy(gpuData.rotationMatrix4D)
-        du.uDimension!.value = dimension
-        du.uScale4D!.value = [scales[0] ?? 1, scales[1] ?? 1, scales[2] ?? 1, scales[3] ?? 1]
-        const depthExtraScales = du.uExtraScales!.value as Float32Array
-        for (let i = 0; i < MAX_EXTRA_DIMS; i++) {
-          depthExtraScales[i] = scales[i + 4] ?? 1
-        }
-        ;(du.uExtraRotationCols!.value as Float32Array).set(gpuData.extraRotationCols)
-        ;(du.uDepthRowSums!.value as Float32Array).set(gpuData.depthRowSums)
-        du.uProjectionDistance!.value = projectionDistance
-        du.uRadius!.value = radius
+      // Update N-D transformation uniforms
+      ;(su.uRotationMatrix4D!.value as Matrix4).copy(gpuData.rotationMatrix4D)
+      su.uDimension!.value = dimension
+      const s = su.uScale4D!.value
+      if (s instanceof Vector4) {
+        s.set(scales[0] ?? 1, scales[1] ?? 1, scales[2] ?? 1, scales[3] ?? 1)
       }
-
-      // Update custom depth material (directional/spot shadows)
-      if (mesh.customDepthMaterial && 'uniforms' in mesh.customDepthMaterial) {
-        updateDepthNDUniforms(mesh.customDepthMaterial as ShaderMaterial)
+      const extraScales = su.uExtraScales!.value as Float32Array
+      for (let i = 0; i < MAX_EXTRA_DIMS; i++) {
+        extraScales[i] = scales[i + 4] ?? 1
       }
-
-      // Update custom distance material (point light shadows)
-      if (mesh.customDistanceMaterial && 'uniforms' in mesh.customDistanceMaterial) {
-        updateDepthNDUniforms(mesh.customDistanceMaterial as ShaderMaterial)
-      }
+      ;(su.uExtraRotationCols!.value as Float32Array).set(gpuData.extraRotationCols)
+      ;(su.uDepthRowSums!.value as Float32Array).set(gpuData.depthRowSums)
+      su.uProjectionDistance!.value = projectionDistance
+      su.uRadius!.value = radius
     }
   })
 
