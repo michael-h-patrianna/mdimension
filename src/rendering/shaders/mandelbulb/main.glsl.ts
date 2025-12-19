@@ -129,39 +129,8 @@ void main() {
 
     // Atmospheric Depth Integration (Fog)
 #ifdef USE_FOG
-    if (uFogEnabled) {
-        // Scene Fog (Exp2)
-        // Check if scene fog uniforms are available? 
-        // They are shared uniforms usually.
-        // Let's assume standard ThreeJS fog uniforms: fogColor, fogDensity
-        // But in our pipeline we usually pass them as uSceneFogColor, uSceneFogDensity?
-        // Wait, 'uniforms.glsl.ts' doesn't seem to have them in 'mandelbulbUniformsBlock'.
-        // But 'shared/core/uniforms.glsl' might?
-        // Let's check shared/core/uniforms.glsl.ts.
-        // Assuming we added them to Schroedinger, we might need to add them here or assume shared.
-        // For now, I'll use a simple distance fog using uAmbientColor as fog color proxy if specific not avail.
-        
-        // Actually, let's look at what uniforms are available.
-        // I added 'uFogEnabled' etc to Mandelbulb uniforms.
-        
-        float viewDist = d; // Distance to surface
-        
-        // Internal Fog (Object Fog)
-        if (uInternalFogDensity > 0.0) {
-             float internalFog = 1.0 - exp(-uInternalFogDensity * viewDist * 0.1);
-             col = mix(col, uAmbientColor, internalFog); // mix to ambient
-        }
-        
-        // Scene Fog (Atmosphere)
-        if (uFogContribution > 0.0) {
-             // We don't have explicit uSceneFogColor in mandelbulb uniforms yet.
-             // I should have added it.
-             // But let's assume we fade to black or background.
-             // Or use uAmbientColor.
-             float fogFactor = 1.0 - exp(-0.02 * viewDist * uFogContribution);
-             col = mix(col, uAmbientColor * 0.5, fogFactor);
-        }
-    }
+    // Apply fog using shared module - d is ray march distance
+    col = applyFog(col, d);
 #endif
 
     vec4 worldHitPos = uModelMatrix * vec4(p, 1.0);

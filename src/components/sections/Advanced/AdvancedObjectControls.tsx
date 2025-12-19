@@ -138,9 +138,6 @@ const SharedAdvancedControls: React.FC = () => {
         sssJitter, setSssJitter,
         fresnelEnabled, setSurfaceSettings,
         fresnelIntensity, setFresnelIntensity,
-        fogIntegrationEnabled, setFogIntegrationEnabled,
-        fogContribution, setFogContribution,
-        internalFogDensity, setInternalFogDensity,
     } = useAppearanceStore(
         useShallow((state) => ({
             roughness: state.roughness, setRoughness: state.setRoughness,
@@ -152,9 +149,6 @@ const SharedAdvancedControls: React.FC = () => {
             fresnelEnabled: state.shaderSettings.surface.fresnelEnabled,
             setSurfaceSettings: state.setSurfaceSettings,
             fresnelIntensity: state.fresnelIntensity, setFresnelIntensity: state.setFresnelIntensity,
-            fogIntegrationEnabled: state.fogIntegrationEnabled, setFogIntegrationEnabled: state.setFogIntegrationEnabled,
-            fogContribution: state.fogContribution, setFogContribution: state.setFogContribution,
-            internalFogDensity: state.internalFogDensity, setInternalFogDensity: state.setInternalFogDensity,
         }))
     );
 
@@ -256,43 +250,7 @@ const SharedAdvancedControls: React.FC = () => {
                     />
                 )}
             </div>
-
-            <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
-                <div className="flex items-center justify-between">
-                    <label className="text-xs text-text-secondary font-semibold">Atmosphere</label>
-                    <ToggleButton
-                        pressed={fogIntegrationEnabled}
-                        onToggle={() => setFogIntegrationEnabled(!fogIntegrationEnabled)}
-                        className="text-xs px-2 py-1 h-auto"
-                        ariaLabel="Toggle Fog"
-                        data-testid="global-fog-toggle"
-                    >
-                        {fogIntegrationEnabled ? 'ON' : 'OFF'}
-                    </ToggleButton>
-                </div>
-                {fogIntegrationEnabled && (
-                    <Slider
-                        label="Contribution"
-                        min={0.0}
-                        max={2.0}
-                        step={0.1}
-                        value={fogContribution}
-                        onChange={setFogContribution}
-                        showValue
-                        data-testid="global-fog-contribution"
-                    />
-                )}
-                <Slider
-                    label="Internal Density"
-                    min={0.0}
-                    max={1.0}
-                    step={0.05}
-                    value={internalFogDensity}
-                    onChange={setInternalFogDensity}
-                    showValue
-                    data-testid="global-internal-fog"
-                />
-            </div>
+            {/* Note: Fog/Atmosphere controls moved to Scene → Environment → Fog tab */}
         </div>
     );
 };

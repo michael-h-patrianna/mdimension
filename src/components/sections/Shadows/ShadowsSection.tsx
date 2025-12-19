@@ -14,15 +14,12 @@ import { Slider } from '@/components/ui/Slider';
 import { Switch } from '@/components/ui/Switch';
 import { isPolytopeCategory } from '@/lib/geometry/registry/helpers';
 import {
-  SHADOW_ANIMATION_MODE_LABELS,
-  SHADOW_ANIMATION_MODE_OPTIONS,
-  SHADOW_ANIMATION_MODE_TOOLTIPS,
   SHADOW_QUALITY_LABELS,
   SHADOW_QUALITY_OPTIONS,
   SHADOW_QUALITY_TOOLTIPS,
   SHADOW_SOFTNESS_RANGE,
 } from '@/rendering/shadows/constants';
-import type { ShadowAnimationMode, ShadowQuality } from '@/rendering/shadows/types';
+import type { ShadowQuality } from '@/rendering/shadows/types';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useLightingStore } from '@/stores/lightingStore';
@@ -32,15 +29,6 @@ import { useShallow } from 'zustand/react/shallow';
 export interface ShadowsSectionProps {
   defaultOpen?: boolean;
 }
-
-/**
- * Shadow animation mode options for select dropdown
- */
-const SHADOW_ANIMATION_OPTIONS: SelectOption<ShadowAnimationMode>[] =
-  SHADOW_ANIMATION_MODE_OPTIONS.map((mode: ShadowAnimationMode) => ({
-    value: mode,
-    label: SHADOW_ANIMATION_MODE_LABELS[mode],
-  }));
 
 /**
  * Shadow quality options for select dropdown
@@ -133,18 +121,46 @@ export const ShadowsSection: React.FC<ShadowsSectionProps> = ({
     ? (enabled: boolean) => setSchroedingerShadowsEnabled(enabled)
     : setShadowEnabled;
 
-  // Get object type label for description (memoized)
-  const objectTypeLabel = useMemo(() => {
-    if (isSchroedinger) return 'Volumetric (Schrödinger)';
-    if (isSdfFractal) return 'SDF Raymarched';
-    if (isPolytope) return 'Shadow Maps';
-    return 'Standard';
+  // Get shadow type info for description (memoized)
+  const shadowTypeInfo = useMemo(() => {
+    if (isSchroedinger) {
+      return {
+        label: 'Self-Shadow (Volumetric)',
+        description: 'Light absorption within the probability cloud',
+      };
+    }
+    if (isSdfFractal) {
+      return {
+        label: 'Self-Shadow (Raymarched)',
+        description: 'Parts of the fractal shadow other parts',
+      };
+    }
+    if (isPolytope) {
+      return {
+        label: 'Environment Shadow',
+        description: 'Casts shadows onto walls and floors',
+      };
+    }
+    return {
+      label: 'Standard',
+      description: '',
+    };
   }, [isSchroedinger, isSdfFractal, isPolytope]);
 
   return (
     <Section title="Shadows" defaultOpen={defaultOpen} data-testid="section-shadows">
       {hasEnabledLights ? (
         <div className="space-y-4">
+          {/* Shadow Type Label */}
+          <div className="px-2 py-1.5 rounded bg-white/5 border border-white/10">
+            <p className="text-[10px] font-medium text-text-primary">
+              {shadowTypeInfo.label}
+            </p>
+            <p className="text-[10px] text-text-secondary">
+              {shadowTypeInfo.description}
+            </p>
+          </div>
+
           {/* Main Shadow Toggle */}
           <ControlGroup
             title="Enable Shadows"
@@ -156,9 +172,7 @@ export const ShadowsSection: React.FC<ShadowsSectionProps> = ({
               />
             }
           >
-            <p className="text-[10px] text-text-secondary">
-              Shadow type: {objectTypeLabel}
-            </p>
+            <span />
           </ControlGroup>
 
           {/* Shadow Settings - conditionally rendered based on shadow enabled */}
@@ -166,20 +180,6 @@ export const ShadowsSection: React.FC<ShadowsSectionProps> = ({
             className={`space-y-4 ${!effectiveShadowEnabled ? 'opacity-50 pointer-events-none' : ''}`}
             aria-disabled={!effectiveShadowEnabled}
           >
-
-            {/* Animation Mode - Shared across all types */}
-            <div className="space-y-1">
-              <Select<ShadowAnimationMode>
-                label="Animation Quality"
-                options={SHADOW_ANIMATION_OPTIONS}
-                value={shadowAnimationMode}
-                onChange={setShadowAnimationMode}
-                data-testid="shadow-animation-mode-select"
-              />
-              <p className="text-[10px] text-text-secondary">
-                {SHADOW_ANIMATION_MODE_TOOLTIPS[shadowAnimationMode]}
-              </p>
-            </div>
 
             {/* SDF Fractal Controls (Mandelbulb, Julia) */}
             {isSdfFractal && (
@@ -208,6 +208,18 @@ export const ShadowsSection: React.FC<ShadowsSectionProps> = ({
                     tooltip="Higher values create softer shadow edges"
                     data-testid="shadow-softness-slider"
                   />
+                  <ControlGroup
+                    title="Reduce quality during animation"
+                    rightElement={
+                      <Switch
+                        checked={shadowAnimationMode === 'low'}
+                        onCheckedChange={(checked) => setShadowAnimationMode(checked ? 'low' : 'full')}
+                        data-testid="shadow-animation-reduce-toggle"
+                      />
+                    }
+                  >
+                    <span />
+                  </ControlGroup>
                 </div>
               </ControlGroup>
             )}
@@ -249,10 +261,19 @@ export const ShadowsSection: React.FC<ShadowsSectionProps> = ({
             {/* Polytope Shadow Map Controls */}
             {isPolytope && (
               <ControlGroup title="Shadow Map Settings">
-                <p className="text-[10px] text-text-secondary mb-2">
-                  Three.js PCF soft shadow maps for mesh-based objects.
-                </p>
                 <div className="space-y-3">
+                  <div className="space-y-1">
+                    <Select<ShadowQuality>
+                      label="Resolution"
+                      options={SHADOW_QUALITY_SELECT_OPTIONS}
+                      value={shadowQuality}
+                      onChange={setShadowQuality}
+                      data-testid="shadow-quality-select"
+                    />
+                    <p className="text-[10px] text-text-secondary">
+                      Shadow map size: {shadowQuality === 'low' ? '512' : shadowQuality === 'medium' ? '1024' : shadowQuality === 'high' ? '2048' : '4096'}px
+                    </p>
+                  </div>
                   <Slider
                     label="Bias"
                     min={0}
@@ -265,14 +286,14 @@ export const ShadowsSection: React.FC<ShadowsSectionProps> = ({
                     data-testid="shadow-map-bias"
                   />
                   <Slider
-                    label="Blur"
+                    label="Softness"
                     min={0}
                     max={10}
                     step={0.5}
                     value={shadowMapBlur}
                     onChange={setShadowMapBlur}
                     showValue
-                    tooltip="Higher values create softer shadow edges"
+                    tooltip="Higher values create softer shadow edges (PCF blur)"
                     data-testid="shadow-map-blur"
                   />
                 </div>

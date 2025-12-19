@@ -55,6 +55,12 @@ import {
     buildFaceVertexShader,
     MAX_EXTRA_DIMS,
 } from './index';
+import {
+    polytopeDepthVertexShader,
+    polytopeDistanceVertexShader,
+    depthFragmentShader,
+    distanceFragmentShader,
+} from '@/rendering/shaders/shared/depth/customDepth.glsl';
 
 /**
  * Props for PolytopeScene component
@@ -176,15 +182,21 @@ function anglesToDirection(horizontalDeg: number, verticalDeg: number, target?: 
 /**
  * Create face ShaderMaterial with custom lighting (same approach as Mandelbulb)
  * Includes advanced color system uniforms for cosine palettes, LCH, and multi-source algorithms
- * @param faceColor
- * @param opacity
+ * @param faceColor - CSS color string for face color
+ * @param opacity - Face opacity (0-1)
+ * @param side - Three.js side mode (default: DoubleSide)
+ * @param fogEnabled - Whether fog is enabled (triggers shader recompilation)
+ * @returns Object with material and active features list
  */
 function createFaceShaderMaterial(
   faceColor: string,
   opacity: number,
-  side: THREE.Side = DoubleSide
-): ShaderMaterial {
-  return new ShaderMaterial({
+  side: THREE.Side = DoubleSide,
+  fogEnabled: boolean = true
+): { material: ShaderMaterial; features: string[] } {
+  const { glsl: fragmentShader, features } = buildFaceFragmentShader({ fog: fogEnabled });
+
+  const material = new ShaderMaterial({
     glslVersion: THREE.GLSL3,
     uniforms: {
       // N-D transformation uniforms
@@ -247,13 +259,23 @@ function createFaceShaderMaterial(
       // Range and decay for distance attenuation (0 = infinite range, 2 = inverse square decay)
       uLightRanges: { value: [0, 0, 0, 0] },
       uLightDecays: { value: [2, 2, 2, 2] },
+      // Fog/Atmosphere uniforms (only included when fog is enabled)
+      ...(fogEnabled ? {
+        uFogEnabled: { value: true },
+        uFogContribution: { value: 1.0 },
+        uInternalFogDensity: { value: 0.0 },
+        uSceneFogColor: { value: new Color('#000000').convertSRGBToLinear() },
+        uSceneFogDensity: { value: 0.0 },
+      } : {}),
     },
     vertexShader: buildFaceVertexShader(),
-    fragmentShader: buildFaceFragmentShader(),
+    fragmentShader,
     transparent: opacity < 1,
     side: side,
     depthWrite: opacity >= 1,
   });
+
+  return { material, features };
 }
 
 /**
@@ -275,6 +297,38 @@ function createEdgeMaterial(edgeColor: string, opacity: number): ShaderMaterial 
     transparent: opacity < 1,
     depthWrite: opacity >= 1,
     glslVersion: THREE.GLSL3,
+  });
+}
+
+/**
+ * Create custom depth material for directional/spot light shadow maps.
+ * Uses the same nD transformation as the main shader so shadows animate correctly.
+ */
+function createCustomDepthMaterial(): ShaderMaterial {
+  return new ShaderMaterial({
+    uniforms: {
+      ...createNDUniforms(),
+    },
+    vertexShader: polytopeDepthVertexShader,
+    fragmentShader: depthFragmentShader,
+  });
+}
+
+/**
+ * Create custom distance material for point light shadow maps.
+ * Uses the same nD transformation as the main shader so shadows animate correctly.
+ */
+function createCustomDistanceMaterial(): ShaderMaterial {
+  return new ShaderMaterial({
+    uniforms: {
+      ...createNDUniforms(),
+      // Point light shadow uniforms - set by Three.js during shadow pass
+      referencePosition: { value: new Vector3() },
+      nearDistance: { value: 1.0 },
+      farDistance: { value: 1000.0 },
+    },
+    vertexShader: polytopeDistanceVertexShader,
+    fragmentShader: distanceFragmentShader,
   });
 }
 
@@ -455,6 +509,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     edgeRoughness,
     faceColor,
     shaderSettings,
+    fogIntegrationEnabled,
   } = useAppearanceStore(
     useShallow((state) => ({
       edgesVisible: state.edgesVisible,
@@ -465,6 +520,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
       edgeRoughness: state.edgeRoughness,
       faceColor: state.faceColor,
       shaderSettings: state.shaderSettings,
+      fogIntegrationEnabled: state.fogIntegrationEnabled,
     }))
   );
 
@@ -478,14 +534,20 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   // Uses custom ShaderMaterial with lighting (same approach as Mandelbulb)
   // DoubleSide handles both front and back faces - two-pass rendering disabled
   // because nD transformations can flip winding order, causing culling issues.
-  const faceMaterial = useMemo(() => {
-    return createFaceShaderMaterial(faceColor, surfaceSettings.faceOpacity, DoubleSide);
-  }, [faceColor, surfaceSettings.faceOpacity]);
+  // fogIntegrationEnabled in deps triggers shader recompilation when fog is toggled
+  const { material: faceMaterial, features: faceShaderFeatures } = useMemo(() => {
+    return createFaceShaderMaterial(faceColor, surfaceSettings.faceOpacity, DoubleSide, fogIntegrationEnabled);
+  }, [faceColor, surfaceSettings.faceOpacity, fogIntegrationEnabled]);
 
 
   const edgeMaterial = useMemo(() => {
     return createEdgeMaterial(edgeColor, opacity);
   }, [edgeColor, opacity]);
+
+  // Custom depth materials for shadow map rendering with nD transformation
+  // These ensure shadows animate correctly when the object animates
+  const customDepthMaterial = useMemo(() => createCustomDepthMaterial(), []);
+  const customDistanceMaterial = useMemo(() => createCustomDistanceMaterial(), []);
 
   const setShaderDebugInfo = usePerformanceStore((state) => state.setShaderDebugInfo);
 
@@ -494,16 +556,17 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     const activeMaterial = facesVisible ? faceMaterial : edgeMaterial;
     const name = facesVisible ? 'Polytope Face Shader' : 'Polytope Edge Shader';
     const modules = ['ND Transform', 'Color', 'Modulation'];
-    
-    const features: string[] = [];
+
+    // Use features from shader compilation for face shader, compute for edge shader
+    let features: string[];
     if (facesVisible) {
         modules.push('Lighting', 'Opacity', 'Advanced Color');
-        features.push('Standard Lighting');
-        if (shadowEnabled) features.push('Shadows (Receive)');
+        // Start with shader-compiled features (Multi-Light, Shadow Maps, Fog if enabled)
+        features = [...faceShaderFeatures];
         if (surfaceSettings.fresnelEnabled) features.push('Fresnel');
         features.push(`Opacity: ${surfaceSettings.faceOpacity < 1 ? 'Transparent' : 'Solid'}`);
     } else {
-        features.push('Edges');
+        features = ['Edges'];
     }
 
     setShaderDebugInfo('object', {
@@ -515,7 +578,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     });
 
     return () => setShaderDebugInfo('object', null);
-  }, [faceMaterial, edgeMaterial, facesVisible, shadowEnabled, surfaceSettings.fresnelEnabled, surfaceSettings.faceOpacity, setShaderDebugInfo]);
+  }, [faceMaterial, edgeMaterial, facesVisible, faceShaderFeatures, surfaceSettings.fresnelEnabled, surfaceSettings.faceOpacity, setShaderDebugInfo]);
 
   // ============ FACE GEOMETRY (INDEXED) ============
   // Uses indexed geometry for efficiency - vertices are shared, indices define triangles
@@ -648,6 +711,28 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     };
   }, [faceMaterial, edgeMaterial, faceGeometry, edgeGeometry]);
 
+  // Assign custom depth materials to face mesh for animated shadows
+  // These materials use the same nD transformation as the main shader
+  useEffect(() => {
+    const mesh = faceMeshRef.current;
+    if (mesh && shadowEnabled) {
+      mesh.customDepthMaterial = customDepthMaterial;
+      mesh.customDistanceMaterial = customDistanceMaterial;
+    } else if (mesh) {
+      // Remove custom materials when shadows are disabled
+      mesh.customDepthMaterial = undefined as unknown as THREE.Material;
+      mesh.customDistanceMaterial = undefined as unknown as THREE.Material;
+    }
+  }, [shadowEnabled, customDepthMaterial, customDistanceMaterial]);
+
+  // Cleanup custom depth materials on unmount
+  useEffect(() => {
+    return () => {
+      customDepthMaterial.dispose();
+      customDistanceMaterial.dispose();
+    };
+  }, [customDepthMaterial, customDistanceMaterial]);
+
   // ============ USEFRAME: UPDATE UNIFORMS ONLY ============
   useFrame(({ camera, scene }, delta) => {
     if (numVertices === 0) return;
@@ -703,6 +788,11 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     const sssColor = appearanceState.sssColor;
     const sssThickness = appearanceState.sssThickness;
     const sssJitter = appearanceState.sssJitter;
+
+    // Read fog state (shared with raymarched objects)
+    const fogEnabled = appearanceState.fogIntegrationEnabled;
+    const fogContribution = appearanceState.fogContribution;
+    const internalFogDensity = appearanceState.internalFogDensity;
 
     // Read advanced color system state
     const colorAlgorithm = appearanceState.colorAlgorithm;
@@ -806,6 +896,24 @@ export const PolytopeScene = React.memo(function PolytopeScene({
         if (u.uSssThickness) u.uSssThickness.value = sssThickness;
         if (u.uSssJitter) u.uSssJitter.value = sssJitter;
 
+        // Update fog uniforms (shared with raymarched objects)
+        if (u.uFogEnabled) u.uFogEnabled.value = fogEnabled;
+        if (u.uFogContribution) u.uFogContribution.value = fogContribution;
+        if (u.uInternalFogDensity) u.uInternalFogDensity.value = internalFogDensity;
+
+        // Update scene fog uniforms from Three.js scene
+        if (scene.fog && (scene.fog as THREE.FogExp2).isFogExp2) {
+          const fog = scene.fog as THREE.FogExp2;
+          if (u.uSceneFogColor) (u.uSceneFogColor.value as Color).copy(fog.color);
+          if (u.uSceneFogDensity) u.uSceneFogDensity.value = fog.density;
+        } else if (scene.fog && (scene.fog as THREE.Fog).isFog) {
+          const fog = scene.fog as THREE.Fog;
+          if (u.uSceneFogColor) (u.uSceneFogColor.value as Color).copy(fog.color);
+          if (u.uSceneFogDensity) u.uSceneFogDensity.value = 0.0; // Linear fog not directly supported
+        } else {
+          if (u.uSceneFogDensity) u.uSceneFogDensity.value = 0.0;
+        }
+
         // Update advanced color system uniforms (only for face materials)
         if (u.uColorAlgorithm) u.uColorAlgorithm.value = COLOR_ALGORITHM_TO_INT[colorAlgorithm];
         if (u.uCosineA) (u.uCosineA.value as Vector3).set(cosineCoefficients.a[0], cosineCoefficients.a[1], cosineCoefficients.a[2]);
@@ -860,8 +968,9 @@ export const PolytopeScene = React.memo(function PolytopeScene({
         }
 
         // Update shadow map uniforms if shadows are enabled
+        // Pass store lights to ensure shadow data ordering matches uniform indices
         if (shadowEnabled) {
-          const shadowData = collectShadowDataFromScene(scene);
+          const shadowData = collectShadowDataFromScene(scene, lightingState.lights);
           const shadowQuality = lightingState.shadowQuality;
           const shadowMapSize = SHADOW_MAP_SIZES[shadowQuality];
           const pcfSamples = blurToPCFSamples(lightingState.shadowMapBlur);
@@ -873,6 +982,36 @@ export const PolytopeScene = React.memo(function PolytopeScene({
             pcfSamples
           );
         }
+      }
+    }
+
+    // Update custom depth materials for animated shadows
+    // These need the same N-D transformation and modulation uniforms as the main shader
+    if (shadowEnabled && faceMeshRef.current) {
+      const mesh = faceMeshRef.current;
+
+      // Update custom depth material (directional/spot shadows)
+      if (mesh.customDepthMaterial && 'uniforms' in mesh.customDepthMaterial) {
+        const depthMat = mesh.customDepthMaterial as ShaderMaterial;
+        updateNDUniforms(depthMat, gpuData, dimension, scales, projectionDistance);
+        const du = depthMat.uniforms;
+        if (du.uAnimTime) du.uAnimTime.value = animTime;
+        if (du.uModAmplitude) du.uModAmplitude.value = modAmplitude;
+        if (du.uModFrequency) du.uModFrequency.value = modFrequency;
+        if (du.uModWave) du.uModWave.value = modWave;
+        if (du.uModBias) du.uModBias.value = modBias;
+      }
+
+      // Update custom distance material (point light shadows)
+      if (mesh.customDistanceMaterial && 'uniforms' in mesh.customDistanceMaterial) {
+        const distMat = mesh.customDistanceMaterial as ShaderMaterial;
+        updateNDUniforms(distMat, gpuData, dimension, scales, projectionDistance);
+        const du = distMat.uniforms;
+        if (du.uAnimTime) du.uAnimTime.value = animTime;
+        if (du.uModAmplitude) du.uModAmplitude.value = modAmplitude;
+        if (du.uModFrequency) du.uModFrequency.value = modFrequency;
+        if (du.uModWave) du.uModWave.value = modWave;
+        if (du.uModBias) du.uModBias.value = modBias;
       }
     }
   });

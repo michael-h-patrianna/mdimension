@@ -41,6 +41,13 @@ import { useRotationStore } from '@/stores/rotationStore'
 import { useTransformStore } from '@/stores/transformStore'
 import { usePerformanceStore } from '@/stores/performanceStore'
 import { composeTubeWireframeFragmentShader, composeTubeWireframeVertexShader } from '@/rendering/shaders/tubewireframe/compose'
+import {
+  tubeWireframeDepthVertexShader,
+  tubeWireframeDistanceVertexShader,
+  depthFragmentShader,
+  distanceFragmentShader,
+} from '@/rendering/shaders/shared/depth/customDepth.glsl'
+import { Vector3 } from 'three'
 
 // Maximum extra dimensions (beyond XYZ + W)
 const MAX_EXTRA_DIMS = 7
@@ -215,6 +222,46 @@ export function TubeWireframe({
     return mat
   }, [color, opacity, metallic, roughness, radius, dimension])
 
+  // Custom depth materials for shadow map rendering with nD transformation
+  // These ensure shadows animate correctly when the object animates
+  const customDepthMaterial = useMemo(() => {
+    return new ShaderMaterial({
+      uniforms: {
+        uRotationMatrix4D: { value: new Matrix4() },
+        uDimension: { value: dimension },
+        uScale4D: { value: [1, 1, 1, 1] },
+        uExtraScales: { value: new Float32Array(MAX_EXTRA_DIMS).fill(1) },
+        uExtraRotationCols: { value: new Float32Array(MAX_EXTRA_DIMS * 4) },
+        uDepthRowSums: { value: new Float32Array(11) },
+        uProjectionDistance: { value: DEFAULT_PROJECTION_DISTANCE },
+        uRadius: { value: radius },
+      },
+      vertexShader: tubeWireframeDepthVertexShader,
+      fragmentShader: depthFragmentShader,
+    })
+  }, [radius, dimension])
+
+  const customDistanceMaterial = useMemo(() => {
+    return new ShaderMaterial({
+      uniforms: {
+        uRotationMatrix4D: { value: new Matrix4() },
+        uDimension: { value: dimension },
+        uScale4D: { value: [1, 1, 1, 1] },
+        uExtraScales: { value: new Float32Array(MAX_EXTRA_DIMS).fill(1) },
+        uExtraRotationCols: { value: new Float32Array(MAX_EXTRA_DIMS * 4) },
+        uDepthRowSums: { value: new Float32Array(11) },
+        uProjectionDistance: { value: DEFAULT_PROJECTION_DISTANCE },
+        uRadius: { value: radius },
+        // Point light shadow uniforms - set by Three.js during shadow pass
+        referencePosition: { value: new Vector3() },
+        nearDistance: { value: 1.0 },
+        farDistance: { value: 1000.0 },
+      },
+      vertexShader: tubeWireframeDistanceVertexShader,
+      fragmentShader: distanceFragmentShader,
+    })
+  }, [radius, dimension])
+
   // Dispatch shader debug info
   useEffect(() => {
     const { modules, features } = composeTubeWireframeFragmentShader()
@@ -251,6 +298,26 @@ export function TubeWireframe({
       material.dispose()
     }
   }, [geometry, material])
+
+  // Assign custom depth materials to mesh for animated shadows
+  useEffect(() => {
+    const mesh = meshRef.current
+    if (mesh && shadowEnabled) {
+      mesh.customDepthMaterial = customDepthMaterial
+      mesh.customDistanceMaterial = customDistanceMaterial
+    } else if (mesh) {
+      mesh.customDepthMaterial = undefined as unknown as ShaderMaterial
+      mesh.customDistanceMaterial = undefined as unknown as ShaderMaterial
+    }
+  }, [shadowEnabled, customDepthMaterial, customDistanceMaterial])
+
+  // Cleanup custom depth materials on unmount
+  useEffect(() => {
+    return () => {
+      customDepthMaterial.dispose()
+      customDistanceMaterial.dispose()
+    }
+  }, [customDepthMaterial, customDistanceMaterial])
 
   // Update instance attributes when vertices/edges change
   // P4 Optimization: Reuse pre-allocated arrays when possible to reduce GC pressure
@@ -472,8 +539,9 @@ export function TubeWireframe({
     updateLightUniforms(u as unknown as LightUniforms, lightingState.lights, lightColorCacheRef.current)
 
     // Update shadow map uniforms if shadows are enabled
+    // Pass store lights to ensure shadow data ordering matches uniform indices
     if (shadowEnabled && lightingState.shadowEnabled) {
-      const shadowData = collectShadowDataFromScene(scene)
+      const shadowData = collectShadowDataFromScene(scene, lightingState.lights)
       const shadowQuality = lightingState.shadowQuality
       const shadowMapSize = SHADOW_MAP_SIZES[shadowQuality]
       const pcfSamples = blurToPCFSamples(lightingState.shadowMapBlur)
@@ -484,6 +552,38 @@ export function TubeWireframe({
         shadowMapSize,
         pcfSamples
       )
+    }
+
+    // Update custom depth materials for animated shadows
+    // These need the same N-D transformation uniforms as the main shader
+    if (shadowEnabled && meshRef.current) {
+      const mesh = meshRef.current
+
+      // Helper function to update N-D uniforms on a depth material
+      const updateDepthNDUniforms = (depthMat: ShaderMaterial) => {
+        const du = depthMat.uniforms
+        ;(du.uRotationMatrix4D!.value as Matrix4).copy(gpuData.rotationMatrix4D)
+        du.uDimension!.value = dimension
+        du.uScale4D!.value = [scales[0] ?? 1, scales[1] ?? 1, scales[2] ?? 1, scales[3] ?? 1]
+        const depthExtraScales = du.uExtraScales!.value as Float32Array
+        for (let i = 0; i < MAX_EXTRA_DIMS; i++) {
+          depthExtraScales[i] = scales[i + 4] ?? 1
+        }
+        ;(du.uExtraRotationCols!.value as Float32Array).set(gpuData.extraRotationCols)
+        ;(du.uDepthRowSums!.value as Float32Array).set(gpuData.depthRowSums)
+        du.uProjectionDistance!.value = projectionDistance
+        du.uRadius!.value = radius
+      }
+
+      // Update custom depth material (directional/spot shadows)
+      if (mesh.customDepthMaterial && 'uniforms' in mesh.customDepthMaterial) {
+        updateDepthNDUniforms(mesh.customDepthMaterial as ShaderMaterial)
+      }
+
+      // Update custom distance material (point light shadows)
+      if (mesh.customDistanceMaterial && 'uniforms' in mesh.customDistanceMaterial) {
+        updateDepthNDUniforms(mesh.customDistanceMaterial as ShaderMaterial)
+      }
     }
   })
 

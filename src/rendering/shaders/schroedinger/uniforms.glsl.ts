@@ -87,11 +87,7 @@ uniform float uNodalStrength;     // Nodal highlight strength
 uniform bool uEnergyColorEnabled; // Enable energy level coloring
 uniform bool uShimmerEnabled;     // Enable uncertainty shimmer
 uniform float uShimmerStrength;   // Shimmer strength
-uniform bool uFogEnabled;         // Enable scene fog integration
-uniform float uFogContribution;   // Scene fog contribution (0.0-2.0)
-uniform float uInternalFogDensity;// Internal fog density (0.0-1.0)
-uniform vec3 uSceneFogColor;      // Scene fog color
-uniform float uSceneFogDensity;   // Scene fog density (exponential)
+// Note: Fog uniforms moved to shared/features/fog.glsl.ts
 
 // Animation time (from global uTime, but scaled by uTimeScale)
 uniform float uTime;

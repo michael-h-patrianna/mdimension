@@ -83,19 +83,28 @@ describe('Shadow URL Serialization', () => {
       expect(result).toContain(`${URL_KEY_SHADOW_SOFTNESS}=1.5`);
     });
 
-    it('should serialize all animation modes correctly as strings', () => {
-      const modes: Array<ShareableState['shadowAnimationMode']> = ['low', 'full'];
+    it('should serialize non-default animation mode correctly', () => {
+      // 'low' is the default and won't be serialized
+      // Only 'full' should appear in URL since it's non-default
+      const state: ShareableState = {
+        dimension: 4,
+        objectType: 'mandelbulb',
+        shadowAnimationMode: 'full',
+      };
 
-      for (const mode of modes) {
-        const state: ShareableState = {
-          dimension: 4,
-          objectType: 'mandelbulb',
-          shadowAnimationMode: mode,
-        };
+      const result = serializeState(state);
+      expect(result).toContain(`${URL_KEY_SHADOW_ANIMATION_MODE}=full`);
+    });
 
-        const result = serializeState(state);
-        expect(result).toContain(`${URL_KEY_SHADOW_ANIMATION_MODE}=${mode}`);
-      }
+    it('should not serialize default animation mode (low)', () => {
+      const state: ShareableState = {
+        dimension: 4,
+        objectType: 'mandelbulb',
+        shadowAnimationMode: 'low',
+      };
+
+      const result = serializeState(state);
+      expect(result).not.toContain(URL_KEY_SHADOW_ANIMATION_MODE);
     });
 
     it('should serialize complete shadow configuration', () => {
@@ -271,13 +280,15 @@ describe('Shadow URL Serialization', () => {
 
     it('should preserve complete shadow configuration through round-trip', () => {
       // Use values that serialize cleanly with 1 decimal precision
+      // Note: 'full' is used instead of 'low' because 'low' is now the default
+      // and default values are not serialized
       const original: ShareableState = {
         dimension: 4,
         objectType: 'mandelbulb',
         shadowEnabled: true,
         shadowQuality: 'high',
         shadowSoftness: 0.8,
-        shadowAnimationMode: 'low',
+        shadowAnimationMode: 'full',
       };
 
       const serialized = serializeState(original);
@@ -286,7 +297,7 @@ describe('Shadow URL Serialization', () => {
       expect(deserialized.shadowEnabled).toBe(true);
       expect(deserialized.shadowQuality).toBe('high');
       expect(deserialized.shadowSoftness).toBe(0.8);
-      expect(deserialized.shadowAnimationMode).toBe('low');
+      expect(deserialized.shadowAnimationMode).toBe('full');
     });
   });
 });

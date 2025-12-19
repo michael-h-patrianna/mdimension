@@ -18,11 +18,7 @@ uniform float uSssIntensity;      // SSS intensity
 uniform vec3 uSssColor;           // SSS tint color
 uniform float uSssThickness;      // SSS thickness factor
 uniform float uSssJitter;         // SSS jitter amount (0.0-1.0)
-
-// Atmosphere
-uniform bool uFogEnabled;         // Enable scene fog
-uniform float uFogContribution;   // Fog contribution
-uniform float uInternalFogDensity;// Internal fog density (0.0-1.0)
+// Note: Fog uniforms moved to shared/features/fog.glsl.ts
 
 // LOD
 uniform bool uLodEnabled;         // Enable distance-adaptive LOD

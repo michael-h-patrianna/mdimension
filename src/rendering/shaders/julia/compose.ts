@@ -13,6 +13,7 @@ import { shadowsBlock } from '../shared/features/shadows.glsl';
 import { aoBlock } from '../shared/features/ao.glsl';
 import { temporalBlock } from '../shared/features/temporal.glsl';
 import { opacityBlock } from '../shared/features/opacity.glsl';
+import { fogUniformsBlock, fogFunctionsBlock } from '../shared/features/fog.glsl';
 import { normalBlock } from '../shared/raymarch/normal.glsl';
 import { sphereIntersectBlock } from '../shared/raymarch/sphere-intersect.glsl';
 import { raymarchCoreBlock } from '../shared/raymarch/core.glsl';
@@ -102,6 +103,8 @@ export function composeJuliaShader(config: ShaderConfig) {
     { name: 'Ambient Occlusion', content: aoBlock, condition: enableAO },
     { name: 'Shadows', content: shadowsBlock, condition: enableShadows },
     { name: 'Multi-Light System', content: multiLightBlock },
+    { name: 'Fog Uniforms', content: fogUniformsBlock, condition: useFog },
+    { name: 'Fog Functions', content: fogFunctionsBlock, condition: useFog },
     { name: 'Opacity System', content: opacityBlock },
     { name: 'Main', content: mainBlock }
   ];

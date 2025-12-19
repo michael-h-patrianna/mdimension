@@ -6,15 +6,20 @@
  *
  * Supports:
  * - 2D shadow maps for directional and spot lights
- * - Cube shadow maps for point lights (omnidirectional shadows)
+ * - 2D packed shadow maps for point lights (6 cube faces packed into 2D texture)
  * - PCF (Percentage Closer Filtering) for soft shadow edges
+ *
+ * Point light shadows use Three.js's approach: packing 6 cube faces into a 2D texture
+ * with a 4:2 aspect ratio. This avoids the "bindTexture: textures can not be used
+ * with multiple targets" WebGL error that occurs with cube textures.
+ *
+ * @see https://github.com/mrdoob/three.js/blob/dev/src/renderers/shaders/ShaderChunk/shadowmap_pars_fragment.glsl.js
  */
 
 import type { Matrix4, Texture } from 'three';
-// CubeTexture import removed - cube shadow maps disabled due to WebGL bindTexture errors
 import * as THREE from 'three';
 
-import { MAX_LIGHTS } from '@/rendering/lights/types';
+import { LIGHT_TYPE_TO_INT, MAX_LIGHTS, type LightSource } from '@/rendering/lights/types';
 
 import type { ShadowQuality } from './types';
 
@@ -34,12 +39,21 @@ function createPlaceholder2DTexture(): THREE.DataTexture {
   return texture;
 }
 
-// Cube shadow map placeholder - DISABLED due to WebGL bindTexture errors
-// TODO: Fix cube texture creation for point light shadows
-// function createPlaceholderCubeTexture(): THREE.CubeTexture { ... }
+/**
+ * Create a placeholder RGBA texture for point light shadow maps.
+ * Three.js packs depth as RGBA for precision, so we need an RGBA placeholder.
+ */
+function createPlaceholderRGBATexture(): THREE.DataTexture {
+  // RGBA: all 255 = max depth = fully lit (when unpacked)
+  const data = new Uint8Array([255, 255, 255, 255]);
+  const texture = new THREE.DataTexture(data, 1, 1, THREE.RGBAFormat, THREE.UnsignedByteType);
+  texture.needsUpdate = true;
+  return texture;
+}
 
 // Cached placeholder textures - created once and reused
 let cachedPlaceholder2D: THREE.DataTexture | null = null;
+let cachedPlaceholderRGBA: THREE.DataTexture | null = null;
 
 /** Get the cached placeholder 2D shadow map texture */
 function getPlaceholder2D(): THREE.DataTexture {
@@ -47,6 +61,14 @@ function getPlaceholder2D(): THREE.DataTexture {
     cachedPlaceholder2D = createPlaceholder2DTexture();
   }
   return cachedPlaceholder2D;
+}
+
+/** Get the cached placeholder RGBA texture for point shadows */
+function getPlaceholderRGBA(): THREE.DataTexture {
+  if (!cachedPlaceholderRGBA) {
+    cachedPlaceholderRGBA = createPlaceholderRGBATexture();
+  }
+  return cachedPlaceholderRGBA;
 }
 
 // =============================================================================
@@ -57,15 +79,17 @@ function getPlaceholder2D(): THREE.DataTexture {
 export interface ShadowLightData {
   /** Light type: 0=point, 1=directional, 2=spot */
   lightType: number;
-  /** Shadow map texture (2D for directional/spot, null for point) */
+  /** Shadow map texture (2D for directional/spot) */
   shadowMap: Texture | null;
+  /** Point shadow map texture (2D packed cube faces for point lights) */
+  pointShadowMap: Texture | null;
   /** Shadow matrix (world to light clip space) */
   shadowMatrix: Matrix4;
   /** Whether this light casts shadows */
   castsShadow: boolean;
-  /** Shadow camera near plane (for point lights) */
+  /** Shadow camera near plane */
   cameraNear: number;
-  /** Shadow camera far plane (for point lights) */
+  /** Shadow camera far plane */
   cameraFar: number;
 }
 
@@ -81,12 +105,11 @@ export interface ShadowMapUniforms {
   uShadowMatrix1: { value: Matrix4 };
   uShadowMatrix2: { value: Matrix4 };
   uShadowMatrix3: { value: Matrix4 };
-  // Cube shadow maps (point lights) - DISABLED due to WebGL errors
-  // TODO: Re-enable when cube texture placeholder issue is fixed
-  // uShadowCubeMap0: { value: CubeTexture | null };
-  // uShadowCubeMap1: { value: CubeTexture | null };
-  // uShadowCubeMap2: { value: CubeTexture | null };
-  // uShadowCubeMap3: { value: CubeTexture | null };
+  // Point shadow maps (2D packed cube faces)
+  uPointShadowMap0: { value: Texture | null };
+  uPointShadowMap1: { value: Texture | null };
+  uPointShadowMap2: { value: Texture | null };
+  uPointShadowMap3: { value: Texture | null };
   // Per-light flags
   uLightCastsShadow: { value: boolean[] };
   // Global settings
@@ -127,8 +150,9 @@ const DEFAULT_PCF_SAMPLES = 1;
  * Call this when creating a new ShaderMaterial that should receive shadows.
  */
 export function createShadowMapUniforms(): ShadowMapUniforms {
-  // Use placeholder texture to prevent WebGL binding errors when no shadow map is bound
+  // Use placeholder textures to prevent WebGL binding errors when no shadow map is bound
   const placeholder2D = getPlaceholder2D();
+  const placeholderRGBA = getPlaceholderRGBA();
 
   return {
     // 2D shadow maps (use placeholder to avoid WebGL binding errors)
@@ -141,8 +165,11 @@ export function createShadowMapUniforms(): ShadowMapUniforms {
     uShadowMatrix1: { value: new THREE.Matrix4() },
     uShadowMatrix2: { value: new THREE.Matrix4() },
     uShadowMatrix3: { value: new THREE.Matrix4() },
-    // Cube shadow maps - DISABLED due to WebGL bindTexture errors
-    // TODO: Re-enable when cube texture placeholder issue is fixed
+    // Point shadow maps (2D packed - use RGBA placeholder)
+    uPointShadowMap0: { value: placeholderRGBA },
+    uPointShadowMap1: { value: placeholderRGBA },
+    uPointShadowMap2: { value: placeholderRGBA },
+    uPointShadowMap3: { value: placeholderRGBA },
     // Per-light flags
     uLightCastsShadow: { value: [false, false, false, false] },
     // Global settings
@@ -177,30 +204,42 @@ export function updateShadowMapUniforms(
   // Get typed uniform references
   const u = uniforms as unknown as ShadowMapUniforms;
 
-  // Update per-light shadow data (cube shadow maps disabled due to WebGL errors)
+  // Update per-light shadow data
   const maps = [u.uShadowMap0, u.uShadowMap1, u.uShadowMap2, u.uShadowMap3];
+  const pointMaps = [u.uPointShadowMap0, u.uPointShadowMap1, u.uPointShadowMap2, u.uPointShadowMap3];
   const matrices = [u.uShadowMatrix0, u.uShadowMatrix1, u.uShadowMatrix2, u.uShadowMatrix3];
+
+  let pointLightCameraFar = 50; // Default
 
   for (let i = 0; i < MAX_LIGHTS; i++) {
     const data = shadowData[i];
     const map = maps[i];
+    const pointMap = pointMaps[i];
     const matrix = matrices[i];
 
     if (data && data.castsShadow) {
-      // Update 2D shadow map - use placeholder if null to avoid WebGL binding errors
-      if (map) map.value = data.shadowMap ?? getPlaceholder2D();
+      if (data.lightType === 0) {
+        // Point light - use point shadow map (2D packed)
+        if (map) map.value = getPlaceholder2D();
+        if (pointMap) pointMap.value = data.pointShadowMap ?? getPlaceholderRGBA();
+        pointLightCameraFar = data.cameraFar;
+      } else {
+        // Directional or Spot - use regular 2D shadow map
+        if (map) map.value = data.shadowMap ?? getPlaceholder2D();
+        if (pointMap) pointMap.value = getPlaceholderRGBA();
+      }
 
       // Update shadow matrix (with null guard)
       if (matrix) matrix.value.copy(data.shadowMatrix);
 
       // Update per-light flag (with null guard)
-      // Note: Point light shadows are disabled (lightType 0), only directional (1) and spot (2) work
       if (u.uLightCastsShadow?.value) {
-        u.uLightCastsShadow.value[i] = data.lightType !== 0; // Disable for point lights
+        u.uLightCastsShadow.value[i] = true;
       }
     } else {
       // Clear data for this light - use placeholder instead of null to avoid WebGL binding errors
       if (map) map.value = getPlaceholder2D();
+      if (pointMap) pointMap.value = getPlaceholderRGBA();
       if (u.uLightCastsShadow?.value) u.uLightCastsShadow.value[i] = false;
     }
   }
@@ -210,7 +249,7 @@ export function updateShadowMapUniforms(
   if (u.uShadowMapSize) u.uShadowMapSize.value = mapSize;
   if (u.uShadowPCFSamples) u.uShadowPCFSamples.value = pcfSamples;
   if (u.uShadowCameraNear) u.uShadowCameraNear.value = 0.5;
-  if (u.uShadowCameraFar) u.uShadowCameraFar.value = 50;
+  if (u.uShadowCameraFar) u.uShadowCameraFar.value = pointLightCameraFar;
 }
 
 // =============================================================================
@@ -221,58 +260,141 @@ export function updateShadowMapUniforms(
  * Collect shadow data from a Three.js scene.
  * Traverses the scene to find shadow-casting lights and extracts their shadow maps.
  *
+ * Point lights in Three.js use a 2D packed texture for omnidirectional shadows.
+ * The shadow.map is a WebGLRenderTarget with a 2D texture containing 6 cube faces.
+ *
+ * When storeLights is provided, the shadow data is ordered to match the store's
+ * light array order. This ensures shadow maps are correctly associated with their
+ * corresponding uniform indices.
+ *
  * @param scene - The Three.js scene to traverse
- * @param lightingState - Current lighting state from store
+ * @param storeLights - Optional array of lights from the lighting store (for ordered matching)
  * @returns Array of shadow data for each light (up to MAX_LIGHTS)
  */
 export function collectShadowDataFromScene(
-  scene: THREE.Scene
+  scene: THREE.Scene,
+  storeLights?: LightSource[]
 ): ShadowLightData[] {
-  const shadowData: ShadowLightData[] = [];
-  let lightIdx = 0;
+  // Collect all shadow-casting lights from the scene
+  const sceneLights: Array<{
+    light: THREE.PointLight | THREE.DirectionalLight | THREE.SpotLight;
+    type: number;
+    position: THREE.Vector3;
+  }> = [];
 
   scene.traverse((obj) => {
-    if (lightIdx >= MAX_LIGHTS) return;
-
-    // Check for shadow-casting lights
     if (obj instanceof THREE.DirectionalLight && obj.castShadow) {
-      shadowData[lightIdx] = {
-        lightType: 1, // Directional
-        shadowMap: obj.shadow.map?.texture ?? null,
-        shadowMatrix: obj.shadow.matrix,
-        castsShadow: obj.shadow.map !== null,
-        cameraNear: obj.shadow.camera.near,
-        cameraFar: obj.shadow.camera.far,
-      };
-      lightIdx++;
+      sceneLights.push({ light: obj, type: 1, position: obj.position.clone() });
     } else if (obj instanceof THREE.SpotLight && obj.castShadow) {
-      shadowData[lightIdx] = {
-        lightType: 2, // Spot
-        shadowMap: obj.shadow.map?.texture ?? null,
-        shadowMatrix: obj.shadow.matrix,
-        castsShadow: obj.shadow.map !== null,
-        cameraNear: obj.shadow.camera.near,
-        cameraFar: obj.shadow.camera.far,
-      };
-      lightIdx++;
+      sceneLights.push({ light: obj, type: 2, position: obj.position.clone() });
     } else if (obj instanceof THREE.PointLight && obj.castShadow) {
-      // Point light shadows disabled - cube shadow maps cause WebGL bindTexture errors
-      // Skip point lights entirely for shadow collection
-      lightIdx++;
+      sceneLights.push({ light: obj, type: 0, position: obj.position.clone() });
     }
   });
 
+  const shadowData: ShadowLightData[] = [];
+
+  if (storeLights && storeLights.length > 0) {
+    // Match scene lights to store lights by position and type for correct ordering
+    for (let i = 0; i < Math.min(storeLights.length, MAX_LIGHTS); i++) {
+      const storeLight = storeLights[i];
+      if (!storeLight) continue;
+      const storeType = LIGHT_TYPE_TO_INT[storeLight.type];
+      const storePos = new THREE.Vector3(...storeLight.position);
+
+      // Find matching scene light by type and position (within tolerance)
+      const matchIdx = sceneLights.findIndex((sl) => {
+        if (sl.type !== storeType) return false;
+        return sl.position.distanceTo(storePos) < 0.01;
+      });
+
+      if (matchIdx !== -1) {
+        const matched = sceneLights[matchIdx]!;
+        const light = matched.light;
+
+        if (light instanceof THREE.PointLight) {
+          const pointShadowTexture = light.shadow.map?.texture ?? null;
+          shadowData[i] = {
+            lightType: 0,
+            shadowMap: null,
+            pointShadowMap: pointShadowTexture,
+            shadowMatrix: light.shadow.matrix,
+            castsShadow: pointShadowTexture !== null,
+            cameraNear: light.shadow.camera.near,
+            cameraFar: light.shadow.camera.far,
+          };
+        } else {
+          shadowData[i] = {
+            lightType: matched.type,
+            shadowMap: light.shadow.map?.texture ?? null,
+            pointShadowMap: null,
+            shadowMatrix: light.shadow.matrix,
+            castsShadow: light.shadow.map !== null,
+            cameraNear: light.shadow.camera.near,
+            cameraFar: light.shadow.camera.far,
+          };
+        }
+
+        // Remove matched light to prevent double-matching
+        sceneLights.splice(matchIdx, 1);
+      } else {
+        // No matching scene light found - fill with empty data
+        shadowData[i] = {
+          lightType: storeType,
+          shadowMap: null,
+          pointShadowMap: null,
+          shadowMatrix: new THREE.Matrix4(),
+          castsShadow: false,
+          cameraNear: 0.5,
+          cameraFar: 50,
+        };
+      }
+    }
+  } else {
+    // Fallback: use discovery order (legacy behavior)
+    let lightIdx = 0;
+    for (const sceneLight of sceneLights) {
+      if (lightIdx >= MAX_LIGHTS) break;
+
+      const light = sceneLight.light;
+
+      if (light instanceof THREE.PointLight) {
+        const pointShadowTexture = light.shadow.map?.texture ?? null;
+        shadowData[lightIdx] = {
+          lightType: 0,
+          shadowMap: null,
+          pointShadowMap: pointShadowTexture,
+          shadowMatrix: light.shadow.matrix,
+          castsShadow: pointShadowTexture !== null,
+          cameraNear: light.shadow.camera.near,
+          cameraFar: light.shadow.camera.far,
+        };
+      } else {
+        shadowData[lightIdx] = {
+          lightType: sceneLight.type,
+          shadowMap: light.shadow.map?.texture ?? null,
+          pointShadowMap: null,
+          shadowMatrix: light.shadow.matrix,
+          castsShadow: light.shadow.map !== null,
+          cameraNear: light.shadow.camera.near,
+          cameraFar: light.shadow.camera.far,
+        };
+      }
+      lightIdx++;
+    }
+  }
+
   // Fill remaining slots with empty data
-  while (lightIdx < MAX_LIGHTS) {
-    shadowData[lightIdx] = {
+  while (shadowData.length < MAX_LIGHTS) {
+    shadowData.push({
       lightType: 0,
       shadowMap: null,
+      pointShadowMap: null,
       shadowMatrix: new THREE.Matrix4(),
       castsShadow: false,
       cameraNear: 0.5,
       cameraFar: 50,
-    };
-    lightIdx++;
+    });
   }
 
   return shadowData;
@@ -288,4 +410,93 @@ export function blurToPCFSamples(blur: number): number {
   if (blur <= 0) return 0; // Hard shadows
   if (blur <= 5) return 1; // 3x3 PCF
   return 2; // 5x5 PCF
+}
+
+// =============================================================================
+// Shadow Data Caching
+// =============================================================================
+
+/** Cached shadow data to avoid expensive scene traversal every frame */
+interface ShadowDataCache {
+  /** Cached shadow data array */
+  data: ShadowLightData[];
+  /** Hash of light configuration for invalidation */
+  lightsHash: string;
+}
+
+/** Global shadow data cache */
+let shadowDataCache: ShadowDataCache | null = null;
+
+/**
+ * Generate a hash string from light configuration for cache invalidation.
+ * Includes position, type, and enabled state.
+ */
+function computeLightsHash(lights: LightSource[]): string {
+  return lights
+    .map((l) => `${l.id}:${l.type}:${l.enabled}:${l.position.join(',')}`)
+    .join('|');
+}
+
+/**
+ * Collect shadow data with caching.
+ * Only recomputes when light configuration changes, avoiding expensive
+ * scene traversal on every frame.
+ *
+ * @param scene - The Three.js scene to traverse
+ * @param storeLights - Array of lights from the lighting store
+ * @param forceRefresh - Force cache invalidation (e.g., after shadow map render)
+ * @returns Cached or freshly computed shadow data
+ */
+export function collectShadowDataCached(
+  scene: THREE.Scene,
+  storeLights: LightSource[],
+  forceRefresh = false
+): ShadowLightData[] {
+  const currentHash = computeLightsHash(storeLights);
+
+  // Return cached data if hash matches and not forcing refresh
+  if (!forceRefresh && shadowDataCache && shadowDataCache.lightsHash === currentHash) {
+    return shadowDataCache.data;
+  }
+
+  // Recompute shadow data
+  const data = collectShadowDataFromScene(scene, storeLights);
+
+  // Update cache
+  shadowDataCache = {
+    data,
+    lightsHash: currentHash,
+  };
+
+  return data;
+}
+
+/**
+ * Invalidate the shadow data cache.
+ * Call this when shadow maps have been updated (e.g., after a render pass).
+ */
+export function invalidateShadowDataCache(): void {
+  shadowDataCache = null;
+}
+
+// =============================================================================
+// Cleanup
+// =============================================================================
+
+/**
+ * Dispose of cached placeholder textures.
+ * Call this during WebGL context cleanup or module unload to prevent memory leaks.
+ * Safe to call multiple times.
+ */
+export function disposeShadowPlaceholders(): void {
+  if (cachedPlaceholder2D) {
+    cachedPlaceholder2D.dispose();
+    cachedPlaceholder2D = null;
+  }
+  if (cachedPlaceholderRGBA) {
+    cachedPlaceholderRGBA.dispose();
+    cachedPlaceholderRGBA = null;
+  }
+  // Also clear the shadow data cache
+  shadowDataCache = null;
 }

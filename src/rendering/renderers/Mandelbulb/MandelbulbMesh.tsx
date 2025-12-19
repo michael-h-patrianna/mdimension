@@ -352,10 +352,12 @@ const MandelbulbMesh = () => {
       uSssThickness: { value: 1.0 },
       uSssJitter: { value: 0.2 },
 
-      // Atmosphere
+      // Atmosphere (fog uniforms matching shared/features/fog.glsl.ts)
       uFogEnabled: { value: true },
       uFogContribution: { value: 1.0 },
       uInternalFogDensity: { value: 0.0 },
+      uSceneFogColor: { value: new THREE.Color('#000000').convertSRGBToLinear() },
+      uSceneFogDensity: { value: 0.0 },
 
       // Fresnel rim lighting uniforms (color converted to linear)
       uFresnelEnabled: { value: true },
@@ -642,6 +644,32 @@ const MandelbulbMesh = () => {
       if (material.uniforms.uFogEnabled) material.uniforms.uFogEnabled.value = visuals.fogIntegrationEnabled;
       if (material.uniforms.uFogContribution) material.uniforms.uFogContribution.value = visuals.fogContribution;
       if (material.uniforms.uInternalFogDensity) material.uniforms.uInternalFogDensity.value = visuals.internalFogDensity;
+
+      // Scene fog integration (from Three.js scene.fog)
+      const { scene } = state;
+      if (scene.fog && (scene.fog as THREE.FogExp2).isFogExp2) {
+        const fog = scene.fog as THREE.FogExp2;
+        if (material.uniforms.uSceneFogColor) {
+          (material.uniforms.uSceneFogColor.value as THREE.Color).copy(fog.color);
+        }
+        if (material.uniforms.uSceneFogDensity) {
+          material.uniforms.uSceneFogDensity.value = fog.density;
+        }
+      } else if (scene.fog && (scene.fog as THREE.Fog).isFog) {
+        // Linear fog - copy color but density not directly supported
+        const fog = scene.fog as THREE.Fog;
+        if (material.uniforms.uSceneFogColor) {
+          (material.uniforms.uSceneFogColor.value as THREE.Color).copy(fog.color);
+        }
+        if (material.uniforms.uSceneFogDensity) {
+          material.uniforms.uSceneFogDensity.value = 0.0;
+        }
+      } else {
+        // No scene fog
+        if (material.uniforms.uSceneFogDensity) {
+          material.uniforms.uSceneFogDensity.value = 0.0;
+        }
+      }
 
       // Raymarching Quality (per-object setting)
       // Maps RaymarchQuality preset to quality multiplier with screen coverage adaptation

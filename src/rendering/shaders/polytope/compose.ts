@@ -9,9 +9,15 @@ import { fresnelBlock } from '../shared/lighting/fresnel.glsl';
 import { multiLightBlock } from '../shared/lighting/multi-light.glsl';
 import { sssBlock } from '../shared/lighting/sss.glsl';
 import { shadowMapsUniformsBlock, shadowMapsFunctionsBlock } from '../shared/features/shadowMaps.glsl';
+import { fogUniformsBlock, fogFunctionsBlock } from '../shared/features/fog.glsl';
 
 import { transformNDBlock } from './transform-nd.glsl';
 import { modulationBlock } from './modulation.glsl';
+
+/** Configuration for Polytope shader compilation */
+export interface PolytopeShaderConfig {
+  fog?: boolean;
+}
 
 /**
  *
@@ -78,11 +84,24 @@ export function composeEdgeVertexShader(): string {
 }
 
 /**
- *
+ * Compose face fragment shader with conditional features
+ * @param config - Optional configuration for conditional compilation
+ * @returns Object with glsl string and features array
  */
-export function composeFaceFragmentShader(): string {
-  return [
+export function composeFaceFragmentShader(config: PolytopeShaderConfig = {}): { glsl: string; features: string[] } {
+  const { fog: enableFog = true } = config;
+
+  const defines: string[] = [];
+  const features: string[] = ['Multi-Light', 'Shadow Maps'];
+
+  if (enableFog) {
+    defines.push('#define USE_FOG');
+    features.push('Fog');
+  }
+
+  const glsl = [
     precisionBlock,
+    defines.join('\n'),
     `
     // Color uniforms
     uniform float uOpacity;
@@ -117,6 +136,9 @@ export function composeFaceFragmentShader(): string {
     sssBlock,
     shadowMapsUniformsBlock,
     shadowMapsFunctionsBlock,
+    // Conditionally include fog blocks
+    enableFog ? fogUniformsBlock : '',
+    enableFog ? fogFunctionsBlock : '',
     `
     void main() {
       // Compute face normal from screen-space derivatives of world position
@@ -253,6 +275,12 @@ export function composeFaceFragmentShader(): string {
         col = baseColor * uAmbientColor * uAmbientIntensity;
       }
 
+      // Atmospheric Depth Integration (Fog)
+#ifdef USE_FOG
+      float viewDist = length(vWorldPosition - cameraPosition);
+      col = applyFog(col, viewDist);
+#endif
+
       // Output to MRT
       // Guard against zero-length view normal (unlikely but possible with degenerate matrices)
       vec3 viewNormalRaw = (uViewMatrix * vec4(normal, 0.0)).xyz;
@@ -263,6 +291,8 @@ export function composeFaceFragmentShader(): string {
     }
     `
   ].join('\n');
+
+  return { glsl, features };
 }
 
 /**

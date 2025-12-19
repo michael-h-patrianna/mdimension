@@ -20,6 +20,7 @@ import { fresnelBlock } from '../shared/lighting/fresnel.glsl';
 import { multiLightBlock } from '../shared/lighting/multi-light.glsl';
 import { opacityBlock } from '../shared/features/opacity.glsl';
 import { temporalBlock } from '../shared/features/temporal.glsl';
+import { fogUniformsBlock, fogFunctionsBlock } from '../shared/features/fog.glsl';
 import { sphereIntersectBlock } from '../shared/raymarch/sphere-intersect.glsl';
 
 import { schroedingerUniformsBlock } from './uniforms.glsl';
@@ -224,6 +225,8 @@ export function composeSchroedingerShader(config: SchroedingerShaderConfig) {
 
     // Features
     { name: 'Temporal Features', content: temporalBlock, condition: useTemporal },
+    { name: 'Fog Uniforms', content: fogUniformsBlock, condition: useFog },
+    { name: 'Fog Functions', content: fogFunctionsBlock, condition: useFog },
 
     // Opacity and main
     { name: 'Opacity System', content: opacityBlock },

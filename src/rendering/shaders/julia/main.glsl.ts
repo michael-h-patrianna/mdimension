@@ -118,21 +118,8 @@ void main() {
 
     // Atmospheric Depth Integration (Fog)
 #ifdef USE_FOG
-    if (uFogEnabled) {
-        float viewDist = d; // Distance to surface
-
-        // Internal Fog (Object Fog)
-        if (uInternalFogDensity > 0.0) {
-             float internalFog = 1.0 - exp(-uInternalFogDensity * viewDist * 0.1);
-             col = mix(col, uAmbientColor, internalFog); // mix to ambient
-        }
-
-        // Scene Fog (Atmosphere)
-        if (uFogContribution > 0.0) {
-             float fogFactor = 1.0 - exp(-0.02 * viewDist * uFogContribution);
-             col = mix(col, uAmbientColor * 0.5, fogFactor);
-        }
-    }
+    // Apply fog using shared module - d is ray march distance
+    col = applyFog(col, d);
 #endif
 
     vec4 worldHitPos = uModelMatrix * vec4(p, 1.0);

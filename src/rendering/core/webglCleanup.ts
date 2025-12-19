@@ -7,6 +7,8 @@
 
 import type * as THREE from 'three'
 
+import { disposeShadowPlaceholders } from '@/rendering/shadows'
+
 /**
  * Clean up accumulated WebGL state.
  *
@@ -49,6 +51,9 @@ export function cleanupWebGLState(
       console.debug(`[WebGL] Active shader programs: ${gl.info.programs.length}`)
     }
   }
+
+  // Clean up shadow system placeholder textures and caches
+  disposeShadowPlaceholders()
 }
 
 /**

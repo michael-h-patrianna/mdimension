@@ -13,7 +13,7 @@ import type { ShadowAnimationMode, ShadowQuality } from './types';
 export const DEFAULT_SHADOW_ENABLED = false;
 export const DEFAULT_SHADOW_QUALITY: ShadowQuality = 'medium';
 export const DEFAULT_SHADOW_SOFTNESS = 1.0;
-export const DEFAULT_SHADOW_ANIMATION_MODE: ShadowAnimationMode = 'pause';
+export const DEFAULT_SHADOW_ANIMATION_MODE: ShadowAnimationMode = 'low';
 
 // =============================================================================
 // Softness Range

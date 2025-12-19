@@ -100,7 +100,7 @@ describe('ShadowsSection', () => {
       expect(screen.getByText('Raymarched Shadows')).toBeInTheDocument();
       expect(screen.getByTestId('shadow-quality-select')).toBeInTheDocument();
       expect(screen.getByTestId('shadow-softness-slider')).toBeInTheDocument();
-      expect(screen.getByText(/SDF Raymarched/)).toBeInTheDocument();
+      expect(screen.getByText(/Self-Shadow \(Raymarched\)/)).toBeInTheDocument();
     });
 
     it('should show SDF controls for quaternion-julia', () => {
@@ -123,7 +123,7 @@ describe('ShadowsSection', () => {
       expect(screen.getByText('Volumetric Self-Shadowing')).toBeInTheDocument();
       expect(screen.getByTestId('schroedinger-shadow-strength')).toBeInTheDocument();
       expect(screen.getByTestId('schroedinger-shadow-steps')).toBeInTheDocument();
-      expect(screen.getByText(/Volumetric \(Schrödinger\)/)).toBeInTheDocument();
+      expect(screen.getByText(/Self-Shadow \(Volumetric\)/)).toBeInTheDocument();
     });
 
     it('should show Shadow Map controls (Bias, Blur) for polytope', () => {
@@ -135,7 +135,7 @@ describe('ShadowsSection', () => {
       expect(screen.getByText('Shadow Map Settings')).toBeInTheDocument();
       expect(screen.getByTestId('shadow-map-bias')).toBeInTheDocument();
       expect(screen.getByTestId('shadow-map-blur')).toBeInTheDocument();
-      expect(screen.getByText(/Shadow Maps/)).toBeInTheDocument();
+      expect(screen.getByText(/Environment Shadow/)).toBeInTheDocument();
     });
 
     it('should not show SDF controls when object is schroedinger', () => {
@@ -236,10 +236,9 @@ describe('ShadowsSection', () => {
 
       render(<ShadowsSection defaultOpen />);
 
-      // Find the container with disabled styling
-      const settingsContainer = screen.getByTestId('shadow-animation-mode-select').closest('.space-y-4');
-      expect(settingsContainer).toHaveClass('opacity-50');
-      expect(settingsContainer).toHaveClass('pointer-events-none');
+      // Find the container with disabled styling using a control inside the settings area
+      const settingsContainer = screen.getByTestId('shadow-quality-select').closest('[aria-disabled]');
+      expect(settingsContainer).toHaveAttribute('aria-disabled', 'true');
     });
 
     it('should remove disabled styling when shadows are enabled', () => {
@@ -252,9 +251,8 @@ describe('ShadowsSection', () => {
 
       render(<ShadowsSection defaultOpen />);
 
-      const settingsContainer = screen.getByTestId('shadow-animation-mode-select').closest('.space-y-4');
-      expect(settingsContainer).not.toHaveClass('opacity-50');
-      expect(settingsContainer).not.toHaveClass('pointer-events-none');
+      const settingsContainer = screen.getByTestId('shadow-quality-select').closest('[aria-disabled]');
+      expect(settingsContainer).toHaveAttribute('aria-disabled', 'false');
     });
 
     it('should show disabled styling for schroedinger when shadows are off', () => {
@@ -264,12 +262,13 @@ describe('ShadowsSection', () => {
 
       render(<ShadowsSection defaultOpen />);
 
-      const settingsContainer = screen.getByTestId('shadow-animation-mode-select').closest('.space-y-4');
-      expect(settingsContainer).toHaveClass('opacity-50');
+      // For Schrödinger, use the shadow strength control
+      const settingsContainer = screen.getByTestId('schroedinger-shadow-strength').closest('[aria-disabled]');
+      expect(settingsContainer).toHaveAttribute('aria-disabled', 'true');
     });
   });
 
-  describe('Animation Mode Control', () => {
+  describe('Animation Quality Toggle', () => {
     beforeEach(() => {
       useLightingStore.setState({
         ...LIGHTING_INITIAL_STATE,
@@ -278,14 +277,53 @@ describe('ShadowsSection', () => {
       });
     });
 
-    it('should render animation mode select for all object types', () => {
+    it('should render reduce quality toggle for SDF fractals only', () => {
       useGeometryStore.getState().setObjectType('mandelbulb');
       useGeometryStore.getState().setDimension(4);
 
       render(<ShadowsSection defaultOpen />);
 
-      expect(screen.getByTestId('shadow-animation-mode-select')).toBeInTheDocument();
-      expect(screen.getByText('Animation Quality')).toBeInTheDocument();
+      expect(screen.getByTestId('shadow-animation-reduce-toggle')).toBeInTheDocument();
+      expect(screen.getByText('Reduce quality during animation')).toBeInTheDocument();
+    });
+
+    it('should not render reduce quality toggle for schroedinger', () => {
+      useGeometryStore.getState().setObjectType('schroedinger');
+      useGeometryStore.getState().setDimension(4);
+
+      render(<ShadowsSection defaultOpen />);
+
+      expect(screen.queryByTestId('shadow-animation-reduce-toggle')).not.toBeInTheDocument();
+    });
+
+    it('should not render reduce quality toggle for polytopes', () => {
+      useGeometryStore.getState().setObjectType('wythoff-polytope');
+      useGeometryStore.getState().setDimension(4);
+
+      render(<ShadowsSection defaultOpen />);
+
+      expect(screen.queryByTestId('shadow-animation-reduce-toggle')).not.toBeInTheDocument();
+    });
+
+    it('should toggle animation mode between low and full', () => {
+      useGeometryStore.getState().setObjectType('mandelbulb');
+      useGeometryStore.getState().setDimension(4);
+      useLightingStore.setState({ shadowAnimationMode: 'low' });
+
+      render(<ShadowsSection defaultOpen />);
+
+      const toggle = screen.getByTestId('shadow-animation-reduce-toggle');
+
+      // Should be checked when mode is 'low'
+      expect(useLightingStore.getState().shadowAnimationMode).toBe('low');
+
+      // Toggle to 'full'
+      fireEvent.click(toggle);
+      expect(useLightingStore.getState().shadowAnimationMode).toBe('full');
+
+      // Toggle back to 'low'
+      fireEvent.click(toggle);
+      expect(useLightingStore.getState().shadowAnimationMode).toBe('low');
     });
   });
 });

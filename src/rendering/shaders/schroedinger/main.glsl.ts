@@ -180,36 +180,10 @@ void main() {
 
     // Atmospheric Depth Integration (Fog)
 #ifdef USE_FOG
-    // Apply fog to the composited color based on the weighted depth
-    // weightedCenter is in Local Space. ro is Local Camera Pos.
+    // Apply fog using shared module
+    // weightedCenter is in Local Space, ro is Local Camera Pos
     float viewDist = distance(volumeResult.weightedCenter, ro);
-
-    // Scene Fog
-    if (uFogEnabled && uSceneFogDensity > 0.0) {
-        // Standard Exp2 fog: exp(-density * distance * density * distance * LOG2) ?
-        // ThreeJS standard: white = 1 - exp2(-density * density * dist * dist * LOG2) ??
-        // Actually ThreeJS Chunk: float fogFactor = 1.0 - exp( - fogDensity * fogDensity * fogDepth * fogDepth * LOG2 );
-        // We use a simplified version: factor = exp(-density * dist)
-
-        float fogFactor = exp(-uSceneFogDensity * viewDist * uFogContribution);
-        fogFactor = clamp(fogFactor, 0.0, 1.0);
-
-        // Mix fog color
-        gColor.rgb = mix(uSceneFogColor, gColor.rgb, fogFactor);
-    }
-
-    // Internal Object Fog (Volume Scale)
-    if (uInternalFogDensity > 0.0) {
-        // Fog based on depth inside the volume (ray length)
-        // Longer rays = more internal fog
-        float internalDist = viewDist; // Use view distance as proxy for accumulated depth
-        // Or we can use physical depth: tFar - tNear (approx)
-
-        // Let's use simple distance-based fade for internal "mystery"
-        float internalFactor = exp(-uInternalFogDensity * internalDist * 0.5);
-        // Darken the interior
-        gColor.rgb *= internalFactor;
-    }
+    gColor.rgb = applyFog(gColor.rgb, viewDist);
 #endif
 
     // Transform normal from model space to world space, then to view space
