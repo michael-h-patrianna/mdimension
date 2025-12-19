@@ -3,23 +3,23 @@
  * Provides keyboard shortcuts for common actions
  */
 
-import { useEffect, useCallback } from 'react';
-import { useGeometryStore } from '@/stores/geometryStore';
-import { useLightingStore } from '@/stores/lightingStore';
-import { useLayoutStore } from '@/stores/layoutStore';
-import { exportSceneToPNG, generateTimestampFilename } from '@/lib/export';
+import { exportSceneToPNG, generateTimestampFilename } from '@/lib/export'
+import { useGeometryStore } from '@/stores/geometryStore'
+import { useLayoutStore } from '@/stores/layoutStore'
+import { useLightingStore } from '@/stores/lightingStore'
+import { useCallback, useEffect } from 'react'
 
 export interface ShortcutConfig {
-  key: string;
-  ctrl?: boolean;
-  shift?: boolean;
-  alt?: boolean;
-  description: string;
-  action: () => void;
+  key: string
+  ctrl?: boolean
+  shift?: boolean
+  alt?: boolean
+  description: string
+  action: () => void
 }
 
 export interface UseKeyboardShortcutsOptions {
-  enabled?: boolean;
+  enabled?: boolean
 }
 
 /** Shortcut configuration for display (grouped by category) */
@@ -53,74 +53,69 @@ export const SHORTCUTS: Omit<ShortcutConfig, 'action'>[] = [
   { key: 'd', description: 'Light: Duplicate*' },
   { key: 'Delete', description: 'Light: Remove*' },
   { key: 'Escape', description: 'Light: Deselect*' },
-];
+]
 
 /**
  *
  * @param options
  */
-export function useKeyboardShortcuts(
-  options: UseKeyboardShortcutsOptions = {}
-): void {
-  const { enabled = true } = options;
+export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}): void {
+  const { enabled = true } = options
 
-  const dimension = useGeometryStore((state) => state.dimension);
-  const setDimension = useGeometryStore((state) => state.setDimension);
-  const setObjectType = useGeometryStore((state) => state.setObjectType);
-  
-  const toggleCinematicMode = useLayoutStore((state) => state.toggleCinematicMode);
+  const dimension = useGeometryStore((state) => state.dimension)
+  const setDimension = useGeometryStore((state) => state.setDimension)
+  const setObjectType = useGeometryStore((state) => state.setObjectType)
+
+  const toggleCinematicMode = useLayoutStore((state) => state.toggleCinematicMode)
 
   // Light-related state and actions
-  const selectedLightId = useLightingStore((state) => state.selectedLightId);
-  const setTransformMode = useLightingStore((state) => state.setTransformMode);
-  const selectLight = useLightingStore((state) => state.selectLight);
-  const removeLight = useLightingStore((state) => state.removeLight);
-  const duplicateLight = useLightingStore((state) => state.duplicateLight);
+  const selectedLightId = useLightingStore((state) => state.selectedLightId)
+  const setTransformMode = useLightingStore((state) => state.setTransformMode)
+  const selectLight = useLightingStore((state) => state.selectLight)
+  const removeLight = useLightingStore((state) => state.removeLight)
+  const duplicateLight = useLightingStore((state) => state.duplicateLight)
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
       // Don't trigger shortcuts when typing in input fields
-      if (
-        event.target instanceof HTMLInputElement ||
-        event.target instanceof HTMLTextAreaElement
-      ) {
-        return;
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+        return
       }
 
-      const { key, ctrlKey, metaKey, shiftKey } = event;
-      const isCtrlOrMeta = ctrlKey || metaKey;
-      const lowerKey = key.toLowerCase();
+      const { key, ctrlKey, metaKey, shiftKey } = event
+      const isCtrlOrMeta = ctrlKey || metaKey
+      const lowerKey = key.toLowerCase()
 
       // --- Light-specific shortcuts (High Priority) ---
       if (selectedLightId) {
         // Actions that ignore modifiers (mostly) or handle them specifically
         if (key === 'Delete' || key === 'Backspace') {
-          event.preventDefault();
-          removeLight(selectedLightId);
-          return;
+          event.preventDefault()
+          removeLight(selectedLightId)
+          return
         }
 
         if (key === 'Escape') {
-          event.preventDefault();
-          selectLight(null);
-          return;
+          event.preventDefault()
+          selectLight(null)
+          return
         }
 
         // Mode switching / Actions requiring NO modifiers
         if (!shiftKey && !isCtrlOrMeta) {
           const lightActions: Record<string, () => void> = {
-            'w': () => setTransformMode('translate'),
-            'e': () => setTransformMode('rotate'),
-            'd': () => {
-              const newId = duplicateLight(selectedLightId);
-              if (newId) selectLight(newId);
-            }
-          };
+            w: () => setTransformMode('translate'),
+            e: () => setTransformMode('rotate'),
+            d: () => {
+              const newId = duplicateLight(selectedLightId)
+              if (newId) selectLight(newId)
+            },
+          }
 
           if (lightActions[lowerKey]) {
-            event.preventDefault();
-            lightActions[lowerKey]();
-            return;
+            event.preventDefault()
+            lightActions[lowerKey]()
+            return
           }
         }
       }
@@ -129,36 +124,36 @@ export function useKeyboardShortcuts(
 
       // 1. Modifier-specific actions
       if (isCtrlOrMeta && lowerKey === 's') {
-        event.preventDefault();
-        const filename = generateTimestampFilename('ndimensional');
-        exportSceneToPNG({ filename });
-        return;
+        event.preventDefault()
+        const filename = generateTimestampFilename('ndimensional')
+        exportSceneToPNG({ filename })
+        return
       }
 
       if (!isCtrlOrMeta && !shiftKey && lowerKey === 'c') {
-        event.preventDefault();
-        toggleCinematicMode();
-        return;
+        event.preventDefault()
+        toggleCinematicMode()
+        return
       }
 
       // 2. Simple Key Map (Modifiers ignored/allowed as per original implementation)
       // Note: Original implementation allowed modifiers for Arrows and Numbers
       const globalKeyMap: Record<string, () => void> = {
-        'ArrowUp': () => {
-          if (dimension < 6) setDimension(dimension + 1);
+        ArrowUp: () => {
+          if (dimension < 6) setDimension(dimension + 1)
         },
-        'ArrowDown': () => {
-          if (dimension > 3) setDimension(dimension - 1);
+        ArrowDown: () => {
+          if (dimension > 3) setDimension(dimension - 1)
         },
         '1': () => setObjectType('hypercube'),
         '2': () => setObjectType('simplex'),
         '3': () => setObjectType('cross-polytope'),
-      };
+      }
 
       if (globalKeyMap[key]) {
-        event.preventDefault();
-        globalKeyMap[key]();
-        return;
+        event.preventDefault()
+        globalKeyMap[key]()
+        return
       }
 
       // Note: WASD keys are handled by useCameraMovement hook for camera movement
@@ -174,37 +169,38 @@ export function useKeyboardShortcuts(
       duplicateLight,
       toggleCinematicMode,
     ]
-  );
+  )
 
   useEffect(() => {
     if (!enabled) {
-      return;
+      return
     }
 
-    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown)
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [enabled, handleKeyDown]);
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [enabled, handleKeyDown])
 }
 
 /**
- *
- * @param shortcut
+ * Get a human-readable label for a keyboard shortcut
+ * @param shortcut - The shortcut configuration
+ * @returns Human-readable shortcut label (e.g., "Ctrl + Shift + A")
  */
 export function getShortcutLabel(shortcut: Omit<ShortcutConfig, 'action'>): string {
-  const parts: string[] = [];
-  if (shortcut.ctrl) parts.push('Ctrl');
-  if (shortcut.shift) parts.push('Shift');
-  if (shortcut.alt) parts.push('Alt');
+  const parts: string[] = []
+  if (shortcut.ctrl) parts.push('Ctrl')
+  if (shortcut.shift) parts.push('Shift')
+  if (shortcut.alt) parts.push('Alt')
 
-  let keyLabel = shortcut.key;
-  if (shortcut.key === ' ') keyLabel = 'Space';
-  if (shortcut.key === 'ArrowUp') keyLabel = '↑';
-  if (shortcut.key === 'ArrowDown') keyLabel = '↓';
-  if (shortcut.key === '+') keyLabel = '+';
-  if (shortcut.key === '-') keyLabel = '-';
+  let keyLabel = shortcut.key
+  if (shortcut.key === ' ') keyLabel = 'Space'
+  if (shortcut.key === 'ArrowUp') keyLabel = '↑'
+  if (shortcut.key === 'ArrowDown') keyLabel = '↓'
+  if (shortcut.key === '+') keyLabel = '+'
+  if (shortcut.key === '-') keyLabel = '-'
 
-  parts.push(keyLabel);
-  return parts.join(' + ');
+  parts.push(keyLabel)
+  return parts.join(' + ')
 }

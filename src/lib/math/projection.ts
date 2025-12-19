@@ -185,10 +185,11 @@ let depthScratch: { index: number; depth: number }[] = []
 
 /**
  * Comparator for sorting by depth (furthest first)
- * @param a
- * @param a.depth
- * @param b
- * @param b.depth
+ * @param a - First object with depth
+ * @param a.depth - Depth value of first object
+ * @param b - Second object with depth
+ * @param b.depth - Depth value of second object
+ * @returns Negative if b is closer, positive if a is closer
  */
 function depthComparator(a: { depth: number }, b: { depth: number }): number {
   return b.depth - a.depth

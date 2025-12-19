@@ -17,9 +17,10 @@ export interface RefinementIndicatorProps {
 /**
  * Overlay indicator showing progressive refinement progress.
  * Shows during refinement and auto-hides after completion.
- * @param root0
- * @param root0.position
- * @param root0.autoHideDelay
+ * @param root0 - Component props
+ * @param root0.position - Position in the viewport
+ * @param root0.autoHideDelay - Auto-hide delay after reaching 100%
+ * @returns The refinement progress indicator component
  */
 export const RefinementIndicator: React.FC<RefinementIndicatorProps> = ({
   position = 'bottom-right',

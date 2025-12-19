@@ -19,12 +19,12 @@
  * - Quaternion Julia: constant, power, iterations, etc.
  */
 
-import {
-  getControlsComponentKey,
-  getControlsComponent,
-  hasControlsComponent,
-} from '@/lib/geometry/registry';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
+import {
+    getControlsComponent,
+    getControlsComponentKey,
+    hasControlsComponent,
+} from '@/lib/geometry/registry';
 import { useGeometryStore } from '@/stores/geometryStore';
 import React, { Suspense, useMemo } from 'react';
 
@@ -34,6 +34,7 @@ export interface ObjectSettingsSectionProps {
 
 /**
  * Skeleton loader for controls while they're being loaded
+ * @returns The skeleton loading UI
  */
 const ControlsSkeleton: React.FC = () => (
   <div className="space-y-3 animate-pulse" data-testid="controls-skeleton">
@@ -45,6 +46,7 @@ const ControlsSkeleton: React.FC = () => (
 
 /**
  * Error fallback for failed component loads
+ * @returns The error fallback UI
  */
 const ControlsError: React.FC = () => (
   <div
@@ -65,6 +67,7 @@ const ControlsError: React.FC = () => (
  *
  * @param root0 - Component props
  * @param root0.className - Optional CSS class name
+ * @returns React element displaying object-specific settings controls
  */
 export const ObjectSettingsSection: React.FC<ObjectSettingsSectionProps> = ({
   className = '',

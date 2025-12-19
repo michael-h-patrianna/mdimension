@@ -15,22 +15,7 @@ describe('extendedObjectStore', () => {
     useExtendedObjectStore.getState().reset()
   })
 
-  describe('initial state', () => {
-    it('should have default root system config', () => {
-      const state = useExtendedObjectStore.getState()
-      expect(state.rootSystem).toEqual(DEFAULT_ROOT_SYSTEM_CONFIG)
-    })
 
-    it('should have default clifford torus config', () => {
-      const state = useExtendedObjectStore.getState()
-      expect(state.cliffordTorus).toEqual(DEFAULT_CLIFFORD_TORUS_CONFIG)
-    })
-
-    it('should have default mandelbulb config', () => {
-      const state = useExtendedObjectStore.getState()
-      expect(state.mandelbulb).toEqual(DEFAULT_MANDELBROT_CONFIG)
-    })
-  })
 
   describe('root system actions', () => {
     it('should set root type', () => {

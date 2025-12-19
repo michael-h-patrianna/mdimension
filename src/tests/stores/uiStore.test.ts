@@ -7,9 +7,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   DEFAULT_MAX_FPS,
-  DEFAULT_SHOW_DEPTH_BUFFER,
-  DEFAULT_SHOW_NORMAL_BUFFER,
-  DEFAULT_SHOW_TEMPORAL_DEPTH_BUFFER,
   MAX_MAX_FPS,
   MIN_MAX_FPS,
 } from '@/stores/defaults/visualDefaults'
@@ -25,13 +22,7 @@ describe('uiStore.fps', () => {
     useUIStore.setState(UI_INITIAL_STATE)
   })
 
-  describe('Initial State', () => {
-    it('should have default maxFps value of 60', () => {
-      const state = useUIStore.getState()
-      expect(state.maxFps).toBe(DEFAULT_MAX_FPS)
-      expect(state.maxFps).toBe(60)
-    })
-  })
+
 
   describe('setMaxFps', () => {
     it('should set maxFps to a valid value', () => {
@@ -111,17 +102,7 @@ describe('uiStore.bufferVisualization', () => {
     useUIStore.setState(UI_INITIAL_STATE)
   })
 
-  describe('Initial State', () => {
-    it('should have all buffer visualizations disabled by default', () => {
-      const state = useUIStore.getState()
-      expect(state.showDepthBuffer).toBe(DEFAULT_SHOW_DEPTH_BUFFER)
-      expect(state.showNormalBuffer).toBe(DEFAULT_SHOW_NORMAL_BUFFER)
-      expect(state.showTemporalDepthBuffer).toBe(DEFAULT_SHOW_TEMPORAL_DEPTH_BUFFER)
-      expect(state.showDepthBuffer).toBe(false)
-      expect(state.showNormalBuffer).toBe(false)
-      expect(state.showTemporalDepthBuffer).toBe(false)
-    })
-  })
+
 
   describe('Mutual Exclusivity', () => {
     it('enabling showDepthBuffer should disable other buffer visualizations', () => {

@@ -9,12 +9,12 @@
  * @module components/ui/ContextLostOverlay
  */
 
-import React from 'react'
-import { m, AnimatePresence } from 'motion/react'
-import { useWebGLContextStore } from '@/stores/webglContextStore'
-import { LoadingSpinner } from './LoadingSpinner'
-import { Button } from './Button'
 import { Z_INDEX } from '@/constants/zIndex'
+import { useWebGLContextStore } from '@/stores/webglContextStore'
+import { AnimatePresence, m } from 'motion/react'
+import React from 'react'
+import { Button } from './Button'
+import { LoadingSpinner } from './LoadingSpinner'
 
 /** Animation duration for overlay transitions (seconds) */
 const OVERLAY_ANIMATION_DURATION = 0.2
@@ -27,6 +27,7 @@ const CARD_ANIMATION_DELAY = 0.1
 
 /**
  * Lost state - shown immediately when context is lost.
+ * @returns The lost state UI component
  */
 const LostState: React.FC = () => {
   return (
@@ -64,6 +65,7 @@ const LostState: React.FC = () => {
 
 /**
  * Restoring state - shown during recovery attempts.
+ * @returns The restoring state UI
  */
 const RestoringState: React.FC = () => {
   const recoveryAttempts = useWebGLContextStore((s) => s.recoveryAttempts)
@@ -119,6 +121,7 @@ const RestoringState: React.FC = () => {
 
 /**
  * Failed state - shown when recovery fails after max attempts.
+ * @returns The failed state UI
  */
 const FailedState: React.FC = () => {
   const lastError = useWebGLContextStore((s) => s.lastError)
@@ -174,6 +177,7 @@ const FailedState: React.FC = () => {
 
 /**
  * Main overlay component that shows appropriate state.
+ * @returns The context lost overlay component
  */
 export const ContextLostOverlay: React.FC = () => {
   const status = useWebGLContextStore((s) => s.status)

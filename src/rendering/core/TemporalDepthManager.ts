@@ -17,30 +17,30 @@
  * This manager is updated by PostProcessing and read by mesh components.
  */
 
-import * as THREE from 'three';
-import { usePerformanceStore } from '@/stores';
-import { useWebGLContextStore } from '@/stores/webglContextStore';
-import { DepthCaptureShader } from '@/rendering/shaders/postprocessing/DepthCaptureShader';
-import { resourceRecovery, RECOVERY_PRIORITY } from './ResourceRecovery';
+import { DepthCaptureShader } from '@/rendering/shaders/postprocessing/DepthCaptureShader'
+import { usePerformanceStore } from '@/stores'
+import { useWebGLContextStore } from '@/stores/webglContextStore'
+import * as THREE from 'three'
+import { RECOVERY_PRIORITY, resourceRecovery } from './ResourceRecovery'
 
 /** Depth buffer format - single channel float for depth storage */
-const DEPTH_FORMAT = THREE.RedFormat;
-const DEPTH_TYPE = THREE.FloatType;
+const DEPTH_FORMAT = THREE.RedFormat
+const DEPTH_TYPE = THREE.FloatType
 
 /** Resolution scale for temporal depth buffers (relative to screen) */
-const RESOLUTION_SCALE = 0.5;
+const RESOLUTION_SCALE = 0.5
 
 export interface TemporalDepthUniforms {
   /** Previous frame's ray distance texture (unnormalized world-space ray distances) */
-  uPrevDepthTexture: THREE.Texture | null;
+  uPrevDepthTexture: THREE.Texture | null
   /** Previous frame's view-projection matrix */
-  uPrevViewProjectionMatrix: THREE.Matrix4;
+  uPrevViewProjectionMatrix: THREE.Matrix4
   /** Previous frame's inverse view-projection matrix */
-  uPrevInverseViewProjectionMatrix: THREE.Matrix4;
+  uPrevInverseViewProjectionMatrix: THREE.Matrix4
   /** Whether temporal reprojection is enabled and valid */
-  uTemporalEnabled: boolean;
+  uTemporalEnabled: boolean
   /** Depth buffer resolution for UV calculation */
-  uDepthBufferResolution: THREE.Vector2;
+  uDepthBufferResolution: THREE.Vector2
 }
 
 /**
@@ -51,33 +51,33 @@ class TemporalDepthManagerImpl {
   private renderTargets: [THREE.WebGLRenderTarget | null, THREE.WebGLRenderTarget | null] = [
     null,
     null,
-  ];
-  private bufferIndex = 0;
-  private isValid = false;
-  private width = 1;
-  private height = 1;
-  private _resolution = new THREE.Vector2(1, 1);
+  ]
+  private bufferIndex = 0
+  private isValid = false
+  private width = 1
+  private height = 1
+  private _resolution = new THREE.Vector2(1, 1)
 
   // Camera matrices from previous frame
-  private prevViewProjectionMatrix = new THREE.Matrix4();
-  private prevInverseViewProjectionMatrix = new THREE.Matrix4();
+  private prevViewProjectionMatrix = new THREE.Matrix4()
+  private prevInverseViewProjectionMatrix = new THREE.Matrix4()
 
   // Current frame camera matrices (will become prev after swap)
-  private currentViewProjectionMatrix = new THREE.Matrix4();
-  private currentInverseProjectionMatrix = new THREE.Matrix4();
+  private currentViewProjectionMatrix = new THREE.Matrix4()
+  private currentInverseProjectionMatrix = new THREE.Matrix4()
 
   // Camera clip planes
-  private nearClip = 0.1;
-  private farClip = 1000;
+  private nearClip = 0.1
+  private farClip = 1000
 
   // Depth capture material (for copying depth to temporal buffer)
-  private captureMaterial: THREE.ShaderMaterial | null = null;
-  private captureScene: THREE.Scene | null = null;
-  private captureCamera: THREE.OrthographicCamera | null = null;
+  private captureMaterial: THREE.ShaderMaterial | null = null
+  private captureScene: THREE.Scene | null = null
+  private captureCamera: THREE.OrthographicCamera | null = null
 
   // Reusable vectors for state save/restore (avoid allocations per frame)
-  private savedViewport = new THREE.Vector4();
-  private savedScissor = new THREE.Vector4();
+  private savedViewport = new THREE.Vector4()
+  private savedScissor = new THREE.Vector4()
 
   /**
    * Initialize or resize the temporal depth buffers.
@@ -87,20 +87,20 @@ class TemporalDepthManagerImpl {
    * @param _gl
    */
   initialize(screenWidth: number, screenHeight: number, _gl: THREE.WebGLRenderer): void {
-    const newWidth = Math.max(1, Math.floor(screenWidth * RESOLUTION_SCALE));
-    const newHeight = Math.max(1, Math.floor(screenHeight * RESOLUTION_SCALE));
+    const newWidth = Math.max(1, Math.floor(screenWidth * RESOLUTION_SCALE))
+    const newHeight = Math.max(1, Math.floor(screenHeight * RESOLUTION_SCALE))
 
     // Check if resize needed
     if (this.renderTargets[0] && this.width === newWidth && this.height === newHeight) {
-      return;
+      return
     }
 
-    this.width = newWidth;
-    this.height = newHeight;
-    this._resolution.set(newWidth, newHeight);
+    this.width = newWidth
+    this.height = newHeight
+    this._resolution.set(newWidth, newHeight)
 
     // Dispose old targets
-    this.renderTargets.forEach((target) => target?.dispose());
+    this.renderTargets.forEach((target) => target?.dispose())
 
     // Create new ping-pong targets
     const createTarget = () =>
@@ -114,16 +114,16 @@ class TemporalDepthManagerImpl {
         generateMipmaps: false,
         depthBuffer: false,
         stencilBuffer: false,
-      });
+      })
 
-    this.renderTargets = [createTarget(), createTarget()];
+    this.renderTargets = [createTarget(), createTarget()]
 
     // Reset validity since we have new buffers
-    this.isValid = false;
+    this.isValid = false
 
     // Initialize depth capture infrastructure if not done
     if (!this.captureMaterial) {
-      this.initializeCaptureInfrastructure();
+      this.initializeCaptureInfrastructure()
     }
   }
 
@@ -144,16 +144,16 @@ class TemporalDepthManagerImpl {
       fragmentShader: DepthCaptureShader.fragmentShader,
       depthTest: false,
       depthWrite: false,
-    });
+    })
 
     // Fullscreen quad
-    const geometry = new THREE.PlaneGeometry(2, 2);
-    const mesh = new THREE.Mesh(geometry, this.captureMaterial);
+    const geometry = new THREE.PlaneGeometry(2, 2)
+    const mesh = new THREE.Mesh(geometry, this.captureMaterial)
 
-    this.captureScene = new THREE.Scene();
-    this.captureScene.add(mesh);
+    this.captureScene = new THREE.Scene()
+    this.captureScene.add(mesh)
 
-    this.captureCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    this.captureCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1)
   }
 
   /**
@@ -165,14 +165,14 @@ class TemporalDepthManagerImpl {
     // Store current as will become previous after swap
     this.currentViewProjectionMatrix
       .copy(camera.projectionMatrix)
-      .multiply(camera.matrixWorldInverse);
+      .multiply(camera.matrixWorldInverse)
 
     // Store inverse projection matrix for viewZ → ray distance conversion
-    this.currentInverseProjectionMatrix.copy(camera.projectionMatrix).invert();
+    this.currentInverseProjectionMatrix.copy(camera.projectionMatrix).invert()
 
     if (camera instanceof THREE.PerspectiveCamera) {
-      this.nearClip = camera.near;
-      this.farClip = camera.far;
+      this.nearClip = camera.near
+      this.farClip = camera.far
     }
   }
 
@@ -189,69 +189,69 @@ class TemporalDepthManagerImpl {
    * @param force - Force capture even if temporal reprojection is disabled (for preview)
    */
   captureDepth(gl: THREE.WebGLRenderer, depthTexture: THREE.DepthTexture, force = false): void {
-    if (!force && !this.isEnabled()) return;
+    if (!force && !this.isEnabled()) return
 
-    const writeTarget = this.getWriteTarget();
+    const writeTarget = this.getWriteTarget()
     if (!writeTarget || !this.captureMaterial || !this.captureScene || !this.captureCamera) {
-      return;
+      return
     }
 
     // Update capture shader uniforms
     const uniforms = this.captureMaterial.uniforms as {
-      tDepth: { value: THREE.DepthTexture | null };
-      nearClip: { value: number };
-      farClip: { value: number };
-      sourceResolution: { value: THREE.Vector2 };
-      inverseProjectionMatrix: { value: THREE.Matrix4 };
-    };
-    uniforms.tDepth.value = depthTexture;
-    uniforms.nearClip.value = this.nearClip;
-    uniforms.farClip.value = this.farClip;
+      tDepth: { value: THREE.DepthTexture | null }
+      nearClip: { value: number }
+      farClip: { value: number }
+      sourceResolution: { value: THREE.Vector2 }
+      inverseProjectionMatrix: { value: THREE.Matrix4 }
+    }
+    uniforms.tDepth.value = depthTexture
+    uniforms.nearClip.value = this.nearClip
+    uniforms.farClip.value = this.farClip
     // Pass full-resolution source texture size for conservative MIN sampling
     uniforms.sourceResolution.value.set(
       depthTexture.image?.width ?? this.width * 2,
       depthTexture.image?.height ?? this.height * 2
-    );
+    )
     // Pass inverse projection matrix for viewZ → ray distance conversion
-    uniforms.inverseProjectionMatrix.value.copy(this.currentInverseProjectionMatrix);
+    uniforms.inverseProjectionMatrix.value.copy(this.currentInverseProjectionMatrix)
 
     // Save all relevant renderer state
     // This is critical for robustness in complex post-processing pipelines
-    const savedRenderTarget = gl.getRenderTarget();
-    const savedAutoClear = gl.autoClear;
-    gl.getViewport(this.savedViewport);
-    gl.getScissor(this.savedScissor);
-    const savedScissorTest = gl.getScissorTest();
+    const savedRenderTarget = gl.getRenderTarget()
+    const savedAutoClear = gl.autoClear
+    gl.getViewport(this.savedViewport)
+    gl.getScissor(this.savedScissor)
+    const savedScissorTest = gl.getScissorTest()
 
     // CRITICAL: Use render target's viewport property instead of gl.setViewport()
     // gl.setViewport() internally multiplies by pixel ratio (DPR), which causes
     // incorrect rendering when DPR != 1. The render target's viewport property
     // specifies exact pixel values without DPR multiplication.
     // See: https://github.com/mrdoob/three.js/issues/27655
-    writeTarget.viewport.set(0, 0, this.width, this.height);
-    writeTarget.scissor.set(0, 0, this.width, this.height);
-    writeTarget.scissorTest = false;
+    writeTarget.viewport.set(0, 0, this.width, this.height)
+    writeTarget.scissor.set(0, 0, this.width, this.height)
+    writeTarget.scissorTest = false
 
     // Set up render target
-    gl.setRenderTarget(writeTarget);
-    gl.setScissorTest(false);
+    gl.setRenderTarget(writeTarget)
+    gl.setScissorTest(false)
 
     // Explicit clear to 0 (rather than relying on autoClear which uses
     // renderer's current clear settings and respects scissor)
     // Zero depth = "no temporal info" which the shader treats as invalid,
     // preventing stale data from persisting
-    gl.clear(true, false, false);
+    gl.clear(true, false, false)
 
     // Render the depth capture pass (autoClear disabled since we cleared manually)
-    gl.autoClear = false;
-    gl.render(this.captureScene, this.captureCamera);
+    gl.autoClear = false
+    gl.render(this.captureScene, this.captureCamera)
 
     // Restore all state
-    gl.setRenderTarget(savedRenderTarget);
-    gl.setViewport(this.savedViewport);
-    gl.setScissor(this.savedScissor);
-    gl.setScissorTest(savedScissorTest);
-    gl.autoClear = savedAutoClear;
+    gl.setRenderTarget(savedRenderTarget)
+    gl.setViewport(this.savedViewport)
+    gl.setScissor(this.savedScissor)
+    gl.setScissorTest(savedScissorTest)
+    gl.autoClear = savedAutoClear
   }
 
   /**
@@ -261,17 +261,17 @@ class TemporalDepthManagerImpl {
    * @param force - Force swap even if temporal reprojection is disabled (for preview)
    */
   swap(force = false): void {
-    if (!force && !this.isEnabled()) return;
+    if (!force && !this.isEnabled()) return
 
     // Current matrices become previous
-    this.prevViewProjectionMatrix.copy(this.currentViewProjectionMatrix);
-    this.prevInverseViewProjectionMatrix.copy(this.currentViewProjectionMatrix).invert();
+    this.prevViewProjectionMatrix.copy(this.currentViewProjectionMatrix)
+    this.prevInverseViewProjectionMatrix.copy(this.currentViewProjectionMatrix).invert()
 
     // Swap buffer index
-    this.bufferIndex = 1 - this.bufferIndex;
+    this.bufferIndex = 1 - this.bufferIndex
 
     // Mark as valid after first complete frame
-    this.isValid = true;
+    this.isValid = true
   }
 
   /**
@@ -293,14 +293,14 @@ class TemporalDepthManagerImpl {
     // Render targets are managed by:
     // - initialize() on resize
     // - dispose() on unmount/context loss
-    this.isValid = false;
-    this.bufferIndex = 0;
+    this.isValid = false
+    this.bufferIndex = 0
 
     // Reset matrices to identity to avoid stale reprojection
-    this.prevViewProjectionMatrix.identity();
-    this.prevInverseViewProjectionMatrix.identity();
-    this.currentViewProjectionMatrix.identity();
-    this.currentInverseProjectionMatrix.identity();
+    this.prevViewProjectionMatrix.identity()
+    this.prevInverseViewProjectionMatrix.identity()
+    this.currentViewProjectionMatrix.identity()
+    this.currentInverseProjectionMatrix.identity()
   }
 
   /**
@@ -312,54 +312,58 @@ class TemporalDepthManagerImpl {
    */
   invalidateForContextLoss(): void {
     // Null out render targets WITHOUT disposing - they belong to the dead context
-    this.renderTargets = [null, null];
+    this.renderTargets = [null, null]
 
     // Reset capture infrastructure - materials/scenes need recreation
-    this.captureMaterial = null;
-    this.captureScene = null;
-    this.captureCamera = null;
+    this.captureMaterial = null
+    this.captureScene = null
+    this.captureCamera = null
 
     // Reset temporal state
-    this.isValid = false;
-    this.bufferIndex = 0;
-    this.prevViewProjectionMatrix.identity();
-    this.prevInverseViewProjectionMatrix.identity();
-    this.currentViewProjectionMatrix.identity();
-    this.currentInverseProjectionMatrix.identity();
+    this.isValid = false
+    this.bufferIndex = 0
+    this.prevViewProjectionMatrix.identity()
+    this.prevInverseViewProjectionMatrix.identity()
+    this.currentViewProjectionMatrix.identity()
+    this.currentInverseProjectionMatrix.identity()
   }
 
   /**
    * Reinitialize after context restoration.
    * @param gl - The WebGL renderer with restored context
+   * @returns Promise that resolves when reinitialization is complete
    */
   reinitialize(gl: THREE.WebGLRenderer): Promise<void> {
     // Re-run initialize with stored dimensions
     // This recreates render targets with fresh GPU resources
-    this.initialize(this.width * (1 / RESOLUTION_SCALE), this.height * (1 / RESOLUTION_SCALE), gl);
-    return Promise.resolve();
+    this.initialize(this.width * (1 / RESOLUTION_SCALE), this.height * (1 / RESOLUTION_SCALE), gl)
+    return Promise.resolve()
   }
 
   /**
    * Check if temporal reprojection is enabled in settings.
+   * @returns True if temporal reprojection is enabled
    */
   isEnabled(): boolean {
-    return usePerformanceStore.getState().temporalReprojectionEnabled;
+    return usePerformanceStore.getState().temporalReprojectionEnabled
   }
 
   /**
    * Get the read target (previous frame's depth).
+   * @returns The read render target or null
    */
   private getReadTarget(): THREE.WebGLRenderTarget | null {
-    const target = this.renderTargets[1 - this.bufferIndex];
-    return target ?? null;
+    const target = this.renderTargets[1 - this.bufferIndex]
+    return target ?? null
   }
 
   /**
    * Get the write target (current frame's depth).
+   * @returns The write render target or null
    */
   private getWriteTarget(): THREE.WebGLRenderTarget | null {
-    const target = this.renderTargets[this.bufferIndex];
-    return target ?? null;
+    const target = this.renderTargets[this.bufferIndex]
+    return target ?? null
   }
 
   /**
@@ -370,23 +374,24 @@ class TemporalDepthManagerImpl {
    * Fractal shaders can use these directly as start distances for ray marching.
    *
    * @param forceTexture - Return texture even if temporal reprojection is disabled (for preview)
+   * @returns Uniforms object containing temporal depth textures and matrices
    */
   getUniforms(forceTexture = false): TemporalDepthUniforms {
-    const readTarget = this.getReadTarget();
+    const readTarget = this.getReadTarget()
 
     // Warn if temporal is enabled but render targets are missing - indicates a bug
     // Skip warning during context recovery - targets are intentionally null
-    const contextStatus = useWebGLContextStore.getState().status;
+    const contextStatus = useWebGLContextStore.getState().status
     if (this.isEnabled() && readTarget === null && contextStatus === 'active') {
       console.warn(
         '[TemporalDepthManager] Temporal reprojection enabled but render targets are null. ' +
           'This indicates initialize() was not called or dispose() was called unexpectedly.'
-      );
+      )
     }
 
-    const enabled = this.isEnabled() && this.isValid && readTarget !== null;
+    const enabled = this.isEnabled() && this.isValid && readTarget !== null
     // For preview mode, return texture if we have a valid buffer (even if feature disabled)
-    const hasTexture = (enabled || forceTexture) && readTarget !== null;
+    const hasTexture = (enabled || forceTexture) && readTarget !== null
 
     return {
       uPrevDepthTexture: hasTexture && readTarget ? readTarget.texture : null,
@@ -394,32 +399,33 @@ class TemporalDepthManagerImpl {
       uPrevInverseViewProjectionMatrix: this.prevInverseViewProjectionMatrix,
       uTemporalEnabled: enabled,
       uDepthBufferResolution: this._resolution,
-    };
+    }
   }
 
   /**
    * Dispose all resources.
    */
   dispose(): void {
-    this.renderTargets.forEach((target) => target?.dispose());
-    this.renderTargets = [null, null];
-    this.captureMaterial?.dispose();
-    this.captureMaterial = null;
-    this.captureScene = null;
-    this.captureCamera = null;
-    this.isValid = false;
+    this.renderTargets.forEach((target) => target?.dispose())
+    this.renderTargets = [null, null]
+    this.captureMaterial?.dispose()
+    this.captureMaterial = null
+    this.captureScene = null
+    this.captureCamera = null
+    this.isValid = false
   }
 
   /**
    * Get the current buffer dimensions for debugging.
+   * @returns Object with width and height dimensions
    */
   getDimensions(): { width: number; height: number } {
-    return { width: this.width, height: this.height };
+    return { width: this.width, height: this.height }
   }
 }
 
 // Singleton instance
-export const TemporalDepthManager = new TemporalDepthManagerImpl();
+export const TemporalDepthManager = new TemporalDepthManagerImpl()
 
 // Register with resource recovery coordinator
 resourceRecovery.register({
@@ -427,4 +433,4 @@ resourceRecovery.register({
   priority: RECOVERY_PRIORITY.TEMPORAL_DEPTH,
   invalidate: () => TemporalDepthManager.invalidateForContextLoss(),
   reinitialize: (gl) => TemporalDepthManager.reinitialize(gl),
-});
+})

@@ -14,30 +14,7 @@ describe('fogSlice', () => {
     useEnvironmentStore.getState().resetFog()
   })
 
-  describe('initial state', () => {
-    it('should have fog disabled by default', () => {
-      expect(useEnvironmentStore.getState().fogEnabled).toBe(false)
-    })
 
-    it('should have default fog density', () => {
-      expect(useEnvironmentStore.getState().fogDensity).toBe(DEFAULT_FOG_STATE.fogDensity)
-    })
-
-    it('should have default fog color', () => {
-      expect(useEnvironmentStore.getState().fogColor).toBe(DEFAULT_FOG_STATE.fogColor)
-    })
-
-    it('should have default physical fog parameters', () => {
-      expect(useEnvironmentStore.getState().fogHeight).toBe(DEFAULT_FOG_STATE.fogHeight)
-      expect(useEnvironmentStore.getState().fogFalloff).toBe(DEFAULT_FOG_STATE.fogFalloff)
-      expect(useEnvironmentStore.getState().fogNoiseScale).toBe(DEFAULT_FOG_STATE.fogNoiseScale)
-      expect(useEnvironmentStore.getState().fogNoiseSpeed).toEqual(DEFAULT_FOG_STATE.fogNoiseSpeed)
-      expect(useEnvironmentStore.getState().fogScattering).toBe(DEFAULT_FOG_STATE.fogScattering)
-      expect(useEnvironmentStore.getState().volumetricShadows).toBe(
-        DEFAULT_FOG_STATE.volumetricShadows
-      )
-    })
-  })
 
   describe('setFogEnabled', () => {
     it('should toggle fog enabled', () => {

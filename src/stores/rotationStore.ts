@@ -3,69 +3,71 @@
  * Manages n-dimensional rotation angles
  */
 
-import { create } from 'zustand';
-import { getRotationPlanes } from '@/lib/math/rotation';
-import { MAX_DIMENSION, MIN_DIMENSION } from './geometryStore';
+import { getRotationPlanes } from '@/lib/math/rotation'
+import { create } from 'zustand'
+import { MAX_DIMENSION, MIN_DIMENSION } from './geometryStore'
 
 /**
  * Cache for valid plane names by dimension.
  * Avoids recreating Set on every setRotation/updateRotations call.
  */
-const validPlanesCache = new Map<number, Set<string>>();
+const validPlanesCache = new Map<number, Set<string>>()
 
 /**
  * Get cached Set of valid plane names for a dimension.
  * Creates and caches if not yet present.
- * @param dimension
+ * @param dimension - The dimension to get valid planes for
+ * @returns Set of valid plane names
  */
 function getValidPlanesSet(dimension: number): Set<string> {
-  let cached = validPlanesCache.get(dimension);
+  let cached = validPlanesCache.get(dimension)
   if (!cached) {
-    cached = new Set(getRotationPlanes(dimension).map(p => p.name));
-    validPlanesCache.set(dimension, cached);
+    cached = new Set(getRotationPlanes(dimension).map((p) => p.name))
+    validPlanesCache.set(dimension, cached)
   }
-  return cached;
+  return cached
 }
 
 /** Minimum rotation angle in radians (0 degrees) */
-export const MIN_ROTATION = 0;
+export const MIN_ROTATION = 0
 
 /** Maximum rotation angle in radians (360 degrees) */
-export const MAX_ROTATION = 2 * Math.PI;
+export const MAX_ROTATION = 2 * Math.PI
 
 export interface RotationState {
   /** Map of plane name (e.g. "XY") to rotation angle in radians */
-  rotations: Map<string, number>;
-  
+  rotations: Map<string, number>
+
   /** Current dimension */
-  dimension: number;
+  dimension: number
 
   /** Version counter to track updates without deep comparison */
-  version: number;
+  version: number
 
   /** Set rotation for a specific plane */
-  setRotation: (plane: string, angle: number) => void;
-  
+  setRotation: (plane: string, angle: number) => void
+
   /** Update multiple rotations at once (optimized for animation) */
-  updateRotations: (updates: Map<string, number>) => void;
-  
+  updateRotations: (updates: Map<string, number>) => void
+
   /** Reset all rotations to 0 */
-  resetAllRotations: () => void;
-  
+  resetAllRotations: () => void
+
   /** Update state when dimension changes */
-  setDimension: (dimension: number) => void;
+  setDimension: (dimension: number) => void
 }
 
 /**
  * Normalizes an angle to [0, 2π)
- * @param angle
+ * @param angle - Angle in radians
+ * @returns Normalized angle in [0, 2π)
  */
 function normalizeAngle(angle: number): number {
-  let normalized = angle % (2 * Math.PI);
+  let normalized = angle % (2 * Math.PI)
   if (normalized < 0) {
-    normalized += 2 * Math.PI;
+    normalized += 2 * Math.PI
   }
-  return normalized;
+  return normalized
 }
 
 export const useRotationStore = create<RotationState>((set) => ({
@@ -77,38 +79,38 @@ export const useRotationStore = create<RotationState>((set) => ({
     set((state) => {
       // Only set rotation if plane is valid for current dimension
       // Use cached Set to avoid recreation on every call
-      const validPlanes = getValidPlanesSet(state.dimension);
+      const validPlanes = getValidPlanesSet(state.dimension)
       if (!validPlanes.has(plane)) {
-        return state; // Ignore invalid plane
+        return state // Ignore invalid plane
       }
-      const newRotations = new Map(state.rotations);
-      newRotations.set(plane, normalizeAngle(angle));
-      return { rotations: newRotations, version: state.version + 1 };
-    });
+      const newRotations = new Map(state.rotations)
+      newRotations.set(plane, normalizeAngle(angle))
+      return { rotations: newRotations, version: state.version + 1 }
+    })
   },
 
   updateRotations: (updates: Map<string, number>) => {
     set((state) => {
       // Filter updates to only include valid planes for current dimension
       // Use cached Set to avoid recreation on every call
-      const validPlanes = getValidPlanesSet(state.dimension);
-      const newRotations = new Map(state.rotations);
+      const validPlanes = getValidPlanesSet(state.dimension)
+      const newRotations = new Map(state.rotations)
       for (const [plane, angle] of updates.entries()) {
         if (validPlanes.has(plane)) {
-          newRotations.set(plane, normalizeAngle(angle));
+          newRotations.set(plane, normalizeAngle(angle))
         }
       }
-      return { rotations: newRotations, version: state.version + 1 };
-    });
+      return { rotations: newRotations, version: state.version + 1 }
+    })
   },
 
   resetAllRotations: () => {
-    set((state) => ({ rotations: new Map(), version: state.version + 1 }));
+    set((state) => ({ rotations: new Map(), version: state.version + 1 }))
   },
 
   setDimension: (dimension: number) => {
     if (dimension < MIN_DIMENSION || dimension > MAX_DIMENSION) {
-      return;
+      return
     }
 
     set((state) => {
@@ -118,10 +120,10 @@ export const useRotationStore = create<RotationState>((set) => ({
         return {
           dimension,
           rotations: new Map(),
-          version: state.version + 1
-        };
+          version: state.version + 1,
+        }
       }
-      return state;
-    });
+      return state
+    })
   },
-}));
+}))

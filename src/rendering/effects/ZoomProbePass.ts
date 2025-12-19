@@ -67,12 +67,18 @@ export class ZoomProbePass {
     this.readBuffer = new Float32Array(size * 4)
   }
 
-  /** Get the current probe result */
+  /**
+   * Get the current probe result
+   * @returns The current probe result
+   */
   get result(): ProbeResult {
     return this._result
   }
 
-  /** Get time since last probe in milliseconds */
+  /**
+   * Get time since last probe in milliseconds
+   * @returns Time since last probe in milliseconds
+   */
   get timeSinceLastProbe(): number {
     return performance.now() - this.lastProbeTime
   }
@@ -84,8 +90,8 @@ export class ZoomProbePass {
    * @param renderer The WebGL renderer
    * @param scene The scene to render
    * @param camera The camera to use
-   * @param material The mandelbulb shader material (to temporarily modify)
-   * @param _material
+   * @param _material The mandelbulb shader material (to temporarily modify)
+   * @returns The probe result
    */
   probe(
     renderer: THREE.WebGLRenderer,
@@ -95,12 +101,7 @@ export class ZoomProbePass {
   ): ProbeResult {
     // Set viewport directly on target (avoid DPR multiplication)
     // See CLAUDE.md: CRITICAL DPR/VIEWPORT GOTCHA
-    this.probeTarget.viewport.set(
-      0,
-      0,
-      this.probeTarget.width,
-      this.probeTarget.height
-    )
+    this.probeTarget.viewport.set(0, 0, this.probeTarget.width, this.probeTarget.height)
 
     // Render to probe target
     const previousTarget = renderer.getRenderTarget()
@@ -135,6 +136,7 @@ export class ZoomProbePass {
    *
    * Note: The main shader outputs standard color, so we interpret
    * non-black pixels as "hit" and use luminance as a proxy for trap/distance.
+   * @returns Parsed probe result with hit ratio and statistics
    */
   private parseResults(): ProbeResult {
     let hits = 0

@@ -21,10 +21,10 @@
  */
 
 /** Maximum supported Hermite polynomial order */
-export const MAX_HERMITE_ORDER = 6;
+export const MAX_HERMITE_ORDER = 6
 
 /** Number of coefficients per polynomial (order + 1) */
-export const HERMITE_COEFF_COUNT = MAX_HERMITE_ORDER + 1;
+export const HERMITE_COEFF_COUNT = MAX_HERMITE_ORDER + 1
 
 /**
  * Hermite polynomial coefficients as nested array.
@@ -45,7 +45,7 @@ export const HERMITE_COEFFICIENTS: readonly number[][] = [
   [0, 120, 0, -160, 0, 32, 0],
   // H_6(x) = 64x^6 - 480x^4 + 720x^2 - 120
   [-120, 0, 720, 0, -480, 0, 64],
-];
+]
 
 /**
  * Flattened Hermite coefficients for GPU upload.
@@ -53,14 +53,14 @@ export const HERMITE_COEFFICIENTS: readonly number[][] = [
  * Access: coeffs[order * 7 + coeff_index]
  */
 export const HERMITE_COEFFICIENTS_FLAT: Float32Array = (() => {
-  const flat = new Float32Array(49);
+  const flat = new Float32Array(49)
   for (let order = 0; order <= MAX_HERMITE_ORDER; order++) {
     for (let i = 0; i < HERMITE_COEFF_COUNT; i++) {
-      flat[order * HERMITE_COEFF_COUNT + i] = HERMITE_COEFFICIENTS[order]?.[i] ?? 0;
+      flat[order * HERMITE_COEFF_COUNT + i] = HERMITE_COEFFICIENTS[order]?.[i] ?? 0
     }
   }
-  return flat;
-})();
+  return flat
+})()
 
 /**
  * Evaluate Hermite polynomial H_n(x) using precomputed coefficients.
@@ -72,26 +72,27 @@ export const HERMITE_COEFFICIENTS_FLAT: Float32Array = (() => {
  */
 export function hermiteEval(n: number, x: number): number {
   if (n < 0 || n > MAX_HERMITE_ORDER) {
-    return 0;
+    return 0
   }
 
-  const coeffs = HERMITE_COEFFICIENTS[n];
+  const coeffs = HERMITE_COEFFICIENTS[n]
   if (!coeffs) {
-    return 0;
+    return 0
   }
 
   // Horner's method: evaluate from highest to lowest power
-  let result = coeffs[n] ?? 0;
+  let result = coeffs[n] ?? 0
   for (let k = n - 1; k >= 0; k--) {
-    result = result * x + (coeffs[k] ?? 0);
+    result = result * x + (coeffs[k] ?? 0)
   }
 
-  return result;
+  return result
 }
 
 /**
  * Generate GLSL code defining Hermite coefficients as a const array.
  * This is embedded directly in the shader to avoid uniform overhead.
+ * @returns GLSL code string defining Hermite coefficient constants
  */
 export function generateHermiteGLSL(): string {
   const lines = [
@@ -99,21 +100,21 @@ export function generateHermiteGLSL(): string {
     '// H_n(x) = sum of HERMITE_COEFFS[n*7 + k] * x^k for k = 0 to n',
     `const int MAX_HERMITE_ORDER = ${MAX_HERMITE_ORDER};`,
     `const float HERMITE_COEFFS[${49}] = float[${49}](`,
-  ];
+  ]
 
-  const values: string[] = [];
+  const values: string[] = []
   for (let order = 0; order <= MAX_HERMITE_ORDER; order++) {
-    const coeffs = HERMITE_COEFFICIENTS[order] ?? [];
+    const coeffs = HERMITE_COEFFICIENTS[order] ?? []
     for (let i = 0; i < HERMITE_COEFF_COUNT; i++) {
-      const value = coeffs[i] ?? 0;
-      values.push(`  ${value.toFixed(1)}`);
+      const value = coeffs[i] ?? 0
+      values.push(`  ${value.toFixed(1)}`)
     }
   }
 
-  lines.push(values.join(',\n'));
-  lines.push(');');
+  lines.push(values.join(',\n'))
+  lines.push(');')
 
-  return lines.join('\n');
+  return lines.join('\n')
 }
 
 /**
@@ -134,4 +135,4 @@ float hermiteOptimized(int n, float x) {
 
   return result;
 }
-`;
+`

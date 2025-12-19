@@ -161,21 +161,22 @@ describe('ndTransform', () => {
     it('should correctly handle 9D rotation in multiple planes', () => {
       // Create a composed 9D rotation in XY and VA8 planes
       const matrix = createIdentityMatrix(9);
+      const dim = 9;
       const angle = Math.PI / 6; // 30 degrees
       const cos30 = Math.cos(angle);
       const sin30 = Math.sin(angle);
 
-      // Apply XY rotation (indices 0,1)
-      matrix[0]![0] = cos30;
-      matrix[0]![1] = -sin30;
-      matrix[1]![0] = sin30;
-      matrix[1]![1] = cos30;
+      // Apply XY rotation (indices 0,1) using flat row-major indexing
+      matrix[0 * dim + 0] = cos30;
+      matrix[0 * dim + 1] = -sin30;
+      matrix[1 * dim + 0] = sin30;
+      matrix[1 * dim + 1] = cos30;
 
       // Apply VA8 rotation (indices 4,8)
-      matrix[4]![4] = cos30;
-      matrix[4]![8] = -sin30;
-      matrix[8]![4] = sin30;
-      matrix[8]![8] = cos30;
+      matrix[4 * dim + 4] = cos30;
+      matrix[4 * dim + 8] = -sin30;
+      matrix[8 * dim + 4] = sin30;
+      matrix[8 * dim + 8] = cos30;
 
       const result = matrixToGPUUniforms(matrix, 9);
 

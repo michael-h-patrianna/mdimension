@@ -2,8 +2,8 @@
  * Tests for UnifiedRenderer and determineRenderMode function
  */
 
-import { determineRenderMode, type RenderMode } from '@/rendering/renderers/UnifiedRenderer'
 import type { NdGeometry } from '@/lib/geometry/types'
+import { determineRenderMode, type RenderMode } from '@/rendering/renderers/UnifiedRenderer'
 import { describe, expect, it } from 'vitest'
 
 /**
@@ -13,6 +13,7 @@ import { describe, expect, it } from 'vitest'
  * @param options.edges
  * @param options.dimension
  * @param options.type
+ * @returns NdGeometry object configured with provided options
  */
 function createTestGeometry(options: {
   vertices?: number[][]
@@ -102,8 +103,16 @@ describe('determineRenderMode', () => {
   describe('dimension requirements', () => {
     it('should handle 2D geometry', () => {
       const geometry = createTestGeometry({
-        vertices: [[1, 0], [0, 1], [-1, 0]],
-        edges: [[0, 1], [1, 2], [2, 0]],
+        vertices: [
+          [1, 0],
+          [0, 1],
+          [-1, 0],
+        ],
+        edges: [
+          [0, 1],
+          [1, 2],
+          [2, 0],
+        ],
         dimension: 2,
       })
       const result = determineRenderMode(geometry, 'hypercube', 2, false)
@@ -112,7 +121,10 @@ describe('determineRenderMode', () => {
 
     it('should handle 5D+ geometry', () => {
       const geometry = createTestGeometry({
-        vertices: [[1, 0, 0, 0, 0], [-1, 0, 0, 0, 0]],
+        vertices: [
+          [1, 0, 0, 0, 0],
+          [-1, 0, 0, 0, 0],
+        ],
         edges: [[0, 1]],
         dimension: 5,
       })

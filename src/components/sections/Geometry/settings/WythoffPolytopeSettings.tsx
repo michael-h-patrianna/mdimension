@@ -10,13 +10,13 @@
  * @see https://en.wikipedia.org/wiki/Wythoff_construction
  */
 
+import { Section } from '@/components/sections/Section'
 import { Select } from '@/components/ui/Select'
 import { Slider } from '@/components/ui/Slider'
 import { Switch } from '@/components/ui/Switch'
-import { Section } from '@/components/sections/Section'
 import {
-  WythoffPreset,
-  WythoffSymmetryGroup,
+    WythoffPreset,
+    WythoffSymmetryGroup,
 } from '@/lib/geometry/extended/types'
 import { getWythoffPresetName } from '@/lib/geometry/wythoff'
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore'
@@ -29,6 +29,7 @@ import React from 'react'
  * Provides controls for the Wythoff kaleidoscopic construction parameters.
  * The Wythoff construction creates uniform polytopes by reflecting a seed point
  * through a system of mirrors.
+ * @returns The Wythoff polytope settings UI component
  */
 export function WythoffPolytopeSettings() {
   const dimension = useGeometryStore((state) => state.dimension)

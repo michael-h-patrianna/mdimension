@@ -9,7 +9,7 @@
  * 3. Boundary Target: Classic Mandelbrot boundary tracking
  */
 import * as THREE from 'three'
-import { ZoomProbePass, ProbeSize, ProbeResult } from './ZoomProbePass'
+import { ProbeResult, ProbeSize, ZoomProbePass } from './ZoomProbePass'
 
 /** Autopilot strategy type */
 export type AutopilotStrategy = 'centerRayLock' | 'interestScore' | 'boundaryTarget'
@@ -110,6 +110,7 @@ export class ZoomAutopilot {
 
   /**
    * Get the probe size based on current strategy.
+   * @returns The probe size
    */
   private getProbeSize(): ProbeSize {
     switch (this.config.strategy) {
@@ -179,6 +180,7 @@ export class ZoomAutopilot {
 
   /**
    * Check if we should perform a probe based on strategy timing.
+   * @returns True if a probe should be performed
    */
   private shouldProbe(): boolean {
     switch (this.config.strategy) {
@@ -197,13 +199,14 @@ export class ZoomAutopilot {
    * Strategy A: Center-Ray Lock
    * Simple and fast - nudge D-dimensional origin when missing.
    * The zoom happens around uOrigin, so nudging it tracks interesting regions.
-   * @param probe
-   * @param _currentOrigin
-   * @param dimension
+   * @param probe - The probe result
+   * @param _currentOrigin - Reserved for future origin-based decisions
+   * @param dimension - The number of dimensions
+   * @returns AutopilotResult with nudge and speed adjustments
    */
   private applyCenterRayLock(
     probe: ProbeResult,
-    _currentOrigin: Float32Array,  // Reserved for future origin-based decisions
+    _currentOrigin: Float32Array, // Reserved for future origin-based decisions
     dimension: number
   ): AutopilotResult {
     const { missThreshold, nudgeStrength } = this.config.centerRayLock
@@ -251,13 +254,14 @@ export class ZoomAutopilot {
    * Strategy B: Interest Score
    * Hill-climb to maximize visual interest (variance, edges, etc.)
    * Nudges D-dimensional origin to find more interesting regions.
-   * @param probe
-   * @param _currentOrigin
-   * @param dimension
+   * @param probe - The probe result
+   * @param _currentOrigin - Reserved for future origin-based decisions
+   * @param dimension - The number of dimensions
+   * @returns AutopilotResult with nudge and speed adjustments
    */
   private applyInterestScore(
     probe: ProbeResult,
-    _currentOrigin: Float32Array,  // Reserved for future origin-based decisions
+    _currentOrigin: Float32Array, // Reserved for future origin-based decisions
     dimension: number
   ): AutopilotResult {
     const { candidates, nudgeRadius, metric } = this.config.interestScore
@@ -314,13 +318,14 @@ export class ZoomAutopilot {
    * Strategy C: Boundary Target
    * Aim for pixels near the escape boundary (classic Mandelbrot style).
    * Nudges D-dimensional origin to stay near interesting boundary regions.
-   * @param probe
-   * @param _currentOrigin
-   * @param dimension
+   * @param probe - The probe result
+   * @param _currentOrigin - Reserved for future origin-based decisions
+   * @param dimension - The number of dimensions
+   * @returns AutopilotResult with nudge and speed adjustments
    */
   private applyBoundaryTarget(
     probe: ProbeResult,
-    _currentOrigin: Float32Array,  // Reserved for future origin-based decisions
+    _currentOrigin: Float32Array, // Reserved for future origin-based decisions
     dimension: number
   ): AutopilotResult {
     const { escapeRatio, band, correctionStrength } = this.config.boundaryTarget
@@ -368,8 +373,9 @@ export class ZoomAutopilot {
    * Compute a quasi-random nudge vector in D-space.
    * Uses golden ratio phases for good space coverage.
    * Nudges ALL dimensions including 0,1,2 to steer the zoom center.
-   * @param dimension
-   * @param strength
+   * @param dimension - The number of dimensions
+   * @param strength - The strength of the nudge
+   * @returns Array of nudge values for each dimension
    */
   private computeNudgeVector(dimension: number, strength: number): number[] {
     const PHI = 1.618033988749895
@@ -393,11 +399,7 @@ export class ZoomAutopilot {
    * @param count
    * @param radius
    */
-  private generateCandidates(
-    dimension: number,
-    count: number,
-    radius: number
-  ): void {
+  private generateCandidates(dimension: number, count: number, radius: number): void {
     this.candidateNudges = []
 
     // First candidate is always "no nudge"
@@ -418,8 +420,9 @@ export class ZoomAutopilot {
 
   /**
    * Compute interest score from probe result based on selected metric.
-   * @param probe
-   * @param metric
+   * @param probe - The probe result
+   * @param metric - The interest metric to use
+   * @returns Computed interest score
    */
   private computeInterestScore(probe: ProbeResult, metric: InterestMetric): number {
     switch (metric) {
@@ -439,6 +442,7 @@ export class ZoomAutopilot {
 
   /**
    * Return a no-op result (no changes).
+   * @returns AutopilotResult with no changes
    */
   private noOpResult(): AutopilotResult {
     return {

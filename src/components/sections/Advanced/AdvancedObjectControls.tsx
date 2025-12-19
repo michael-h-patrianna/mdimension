@@ -1,14 +1,14 @@
+import { Section } from '@/components/sections/Section';
+import { ColorPicker } from '@/components/ui/ColorPicker';
+import { Slider } from '@/components/ui/Slider';
+import { ToggleButton } from '@/components/ui/ToggleButton';
+import { ToggleGroup } from '@/components/ui/ToggleGroup';
+import type { RaymarchQuality } from '@/lib/geometry/extended/types';
+import { useAppearanceStore } from '@/stores/appearanceStore';
+import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
+import { useGeometryStore } from '@/stores/geometryStore';
 import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { Slider } from '@/components/ui/Slider';
-import { ToggleGroup } from '@/components/ui/ToggleGroup';
-import { ToggleButton } from '@/components/ui/ToggleButton';
-import { ColorPicker } from '@/components/ui/ColorPicker';
-import { Section } from '@/components/sections/Section';
-import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
-import { useAppearanceStore } from '@/stores/appearanceStore';
-import { useGeometryStore } from '@/stores/geometryStore';
-import type { RaymarchQuality } from '@/lib/geometry/extended/types';
 
 // Object types that show the Advanced Rendering section
 const ADVANCED_RENDERING_OBJECT_TYPES = [
@@ -70,8 +70,9 @@ const QUALITY_DESCRIPTIONS: Record<RaymarchQuality, { volumetric: string; sdf: s
 
 /**
  * Get quality description with concrete numbers based on object type
- * @param quality
- * @param objectType
+ * @param quality - The quality level
+ * @param objectType - The object type (volumetric or SDF)
+ * @returns Human-readable quality description
  */
 const getQualityDescription = (quality: RaymarchQuality, objectType: string): string => {
     const isVolumetric = objectType === 'schroedinger';
@@ -80,8 +81,9 @@ const getQualityDescription = (quality: RaymarchQuality, objectType: string): st
 
 /**
  * Unified Raymarching Quality Control for all 3 raymarching object types
- * @param root0
- * @param root0.objectType
+ * @param root0 - Component props
+ * @param root0.objectType - The type of raymarched object
+ * @returns The quality control UI component
  */
 const RaymarchingQualityControl: React.FC<{ objectType: string }> = ({ objectType }) => {
     const {
@@ -360,7 +362,7 @@ const SchroedingerAdvanced: React.FC = () => {
                         <div className="flex gap-2 pt-2">
                             <div className="flex-1">
                                 <label className="text-xs text-text-secondary">Direction</label>
-                                <select 
+                                <select
                                     className="w-full bg-surface-dark border border-white/10 rounded px-2 py-1 text-xs text-text-primary mt-1 focus:outline-none focus:border-accent"
                                     value={config.dispersionDirection ?? 0}
                                     onChange={(e) => setDispersionDirection(parseInt(e.target.value))}
@@ -372,7 +374,7 @@ const SchroedingerAdvanced: React.FC = () => {
                             </div>
                             <div className="flex-1">
                                 <label className="text-xs text-text-secondary">Quality</label>
-                                <select 
+                                <select
                                     className="w-full bg-surface-dark border border-white/10 rounded px-2 py-1 text-xs text-text-primary mt-1 focus:outline-none focus:border-accent"
                                     value={config.dispersionQuality ?? 0}
                                     onChange={(e) => setDispersionQuality(parseInt(e.target.value))}
@@ -395,7 +397,7 @@ const SchroedingerAdvanced: React.FC = () => {
                 <div className="flex items-center justify-between">
                     <label className="text-xs text-text-secondary font-semibold">Quantum Effects</label>
                 </div>
-                
+
                 {/* Nodal Surfaces */}
                 <div className="space-y-1">
                     <div className="flex items-center justify-between">

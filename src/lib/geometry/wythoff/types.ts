@@ -24,13 +24,13 @@ export type WythoffSymmetryGroup = 'A' | 'B' | 'D'
  * Preset Wythoff polytope types with descriptive names
  */
 export type WythoffPreset =
-  | 'regular'        // Regular polytope (first node ringed)
-  | 'rectified'      // Rectified (second node ringed)
-  | 'truncated'      // Truncated (first two nodes ringed)
-  | 'cantellated'    // Cantellated (first and third nodes ringed)
-  | 'runcinated'     // Runcinated (first and last nodes ringed)
-  | 'omnitruncated'  // All nodes ringed
-  | 'custom'         // Custom Wythoff symbol
+  | 'regular' // Regular polytope (first node ringed)
+  | 'rectified' // Rectified (second node ringed)
+  | 'truncated' // Truncated (first two nodes ringed)
+  | 'cantellated' // Cantellated (first and third nodes ringed)
+  | 'runcinated' // Runcinated (first and last nodes ringed)
+  | 'omnitruncated' // All nodes ringed
+  | 'custom' // Custom Wythoff symbol
 
 /**
  * Configuration for Wythoff polytope generation
@@ -87,6 +87,7 @@ export class WarningCollector {
 
   /**
    * Get all collected warnings (returns a copy)
+   * @returns Array of warning messages
    */
   get(): string[] {
     return [...this.warnings]
@@ -94,6 +95,7 @@ export class WarningCollector {
 
   /**
    * Check if any warnings were collected
+   * @returns True if warnings exist
    */
   hasWarnings(): boolean {
     return this.warnings.length > 0

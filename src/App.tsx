@@ -13,38 +13,39 @@
  * - PolytopeScene: For 3D+ projected wireframes and faces
  */
 
-import { useEffect, useMemo } from 'react';
 import { FpsController } from '@/components/canvas/FpsController';
-import { Scene } from '@/rendering/Scene';
-import { EditorLayout } from '@/components/layout/EditorLayout';
+import { PerformanceMonitor } from '@/components/canvas/PerformanceMonitor';
+import { PerformanceStatsCollector } from '@/components/canvas/PerformanceStatsCollector';
 import { RefinementIndicator } from '@/components/canvas/RefinementIndicator';
+import { EditorLayout } from '@/components/layout/EditorLayout';
+import { ContextLostOverlay } from '@/components/ui/ContextLostOverlay';
+import { ShaderCompilationOverlay } from '@/components/ui/ShaderCompilationOverlay';
+import { ToastProvider, useToast } from '@/contexts/ToastContext';
 import { useAnimationLoop } from '@/hooks/useAnimationLoop';
+import { useDynamicFavicon } from '@/hooks/useDynamicFavicon';
 import { useFaceDepths } from '@/hooks/useFaceDepths';
 import { useFaceDetection } from '@/hooks/useFaceDetection';
 import { useGeometryGenerator } from '@/hooks/useGeometryGenerator';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useSyncedDimension } from '@/hooks/useSyncedDimension';
-import type { VectorND, Vector3D } from '@/lib/math/types';
-import { useAppearanceStore } from '@/stores/appearanceStore';
-import { useLightingStore } from '@/stores/lightingStore';
-import { useUIStore } from '@/stores/uiStore';
-import { useGeometryStore } from '@/stores/geometryStore';
-import { RECOVERY_STATE_KEY, RECOVERY_STATE_MAX_AGE } from '@/stores/webglContextStore';
-import { Canvas } from '@react-three/fiber';
-import { PerformanceMonitor } from '@/components/canvas/PerformanceMonitor';
-import { PerformanceStatsCollector } from '@/components/canvas/PerformanceStatsCollector';
+import type { Vector3D, VectorND } from '@/lib/math/types';
 import { ContextEventHandler } from '@/rendering/core/ContextEventHandler';
 import { VisibilityHandler } from '@/rendering/core/VisibilityHandler';
-import { ContextLostOverlay } from '@/components/ui/ContextLostOverlay';
-import { ShaderCompilationOverlay } from '@/components/ui/ShaderCompilationOverlay';
-import { ToastProvider, useToast } from '@/contexts/ToastContext';
+import { Scene } from '@/rendering/Scene';
+import { useAppearanceStore } from '@/stores/appearanceStore';
+import { useGeometryStore } from '@/stores/geometryStore';
+import { useLightingStore } from '@/stores/lightingStore';
+import { useUIStore } from '@/stores/uiStore';
+import { RECOVERY_STATE_KEY, RECOVERY_STATE_MAX_AGE } from '@/stores/webglContextStore';
+import { Canvas } from '@react-three/fiber';
 import { LazyMotion, domMax } from 'motion/react';
-import { useDynamicFavicon } from '@/hooks/useDynamicFavicon';
+import { useEffect, useMemo } from 'react';
 
 /**
  * Extract 3D positions from N-D vertices for ground plane bounds calculation.
  * This is much cheaper than full transform + projection pipeline.
- * @param vertices
+ * @param vertices - N-dimensional vertices to extract positions from
+ * @returns Array of 3D positions extracted from the first 3 coordinates
  */
 function extractBasePositions(vertices: VectorND[]): Vector3D[] {
   return vertices.map((v) => [v[0] ?? 0, v[1] ?? 0, v[2] ?? 0] as Vector3D);
@@ -55,6 +56,7 @@ function extractBasePositions(vertices: VectorND[]): Vector3D[] {
  *
  * Unified architecture: All renderers use useFrame for GPU-based transformations,
  * reading from stores via getState() to bypass React's render cycle.
+ * @returns The visualization scene with all renderers and effects
  */
 function Visualizer() {
   // 1. Synchronize dimensions across stores
@@ -99,6 +101,7 @@ function Visualizer() {
 /**
  * Hook to restore state after a failed WebGL context recovery.
  * Checks localStorage for saved state and restores it if found.
+ * @returns void
  */
 function useStateRecovery() {
   const { addToast } = useToast();
@@ -137,6 +140,7 @@ function useStateRecovery() {
 
 /**
  * Inner app content that requires ToastProvider context.
+ * @returns The main application layout with all UI components
  */
 function AppContent() {
   // Enable keyboard shortcuts
@@ -203,6 +207,7 @@ function AppContent() {
 
 /**
  * Main App Container
+ * @returns The root application component wrapped in providers
  */
 function App() {
   return (

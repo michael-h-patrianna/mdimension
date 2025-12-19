@@ -12,12 +12,12 @@
  * - Optimized resolution (256px) for performance
  */
 
-import { Environment } from '@react-three/drei';
-import React, { useMemo } from 'react';
-import { SkyboxMesh } from './Skybox';
 import { useAnimationStore } from '@/stores/animationStore';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useEnvironmentStore } from '@/stores/environmentStore';
+import { Environment } from '@react-three/drei';
+import React, { useMemo } from 'react';
+import { SkyboxMesh } from './Skybox';
 
 /** Resolution for environment cubemap (per face) */
 const ENV_MAP_RESOLUTION = 256;
@@ -43,6 +43,7 @@ const STATIC_CAPTURE_FRAMES = 2;
  * Animation behavior:
  * - When animation is playing: continuous environment map updates for dynamic reflections
  * - When animation is paused: captures once after shader initialization, re-captures on settings change
+ * @returns React element rendering procedural skybox with optional environment mapping
  */
 export const ProceduralSkyboxWithEnvironment: React.FC = () => {
   const skyboxMode = useEnvironmentStore((state) => state.skyboxMode);

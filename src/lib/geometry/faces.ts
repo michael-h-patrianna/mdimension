@@ -8,7 +8,7 @@
  * algorithm for each object type, avoiding hardcoded type checks.
  */
 
-import { crossProduct3D, dotProduct, subtractVectors, addVectors, scaleVector } from '@/lib/math'
+import { addVectors, crossProduct3D, dotProduct, scaleVector, subtractVectors } from '@/lib/math'
 import type { Vector3D, VectorND } from '@/lib/math/types'
 import {
   buildCliffordTorusGridFaces,
@@ -88,7 +88,11 @@ function buildAdjacencyList(edges: [number, number][]): AdjacencyList {
  * @param vertices - Vertex positions for winding order correction
  * @returns Array of triangular faces
  */
-function findTriangles(adjacency: AdjacencyList, vertexCount: number, vertices: number[][]): Face[] {
+function findTriangles(
+  adjacency: AdjacencyList,
+  vertexCount: number,
+  vertices: number[][]
+): Face[] {
   const faces: Face[] = []
   const faceSet = new Set<string>()
 
@@ -112,30 +116,30 @@ function findTriangles(adjacency: AdjacencyList, vertexCount: number, vertices: 
 
           if (!faceSet.has(sortedKey)) {
             faceSet.add(sortedKey)
-            
+
             // Check winding order relative to origin (outward facing)
-            const p1 = vertices[v1]!;
-            const p2 = vertices[v2]!;
-            const p3 = vertices[v3]!;
-            
+            const p1 = vertices[v1]!
+            const p2 = vertices[v2]!
+            const p3 = vertices[v3]!
+
             // Project to 3D for normal calculation
-            const u = subtractVectors(to3D(p2), to3D(p1));
-            const v = subtractVectors(to3D(p3), to3D(p1));
-            const normal = crossProduct3D(u, v);
-            
+            const u = subtractVectors(to3D(p2), to3D(p1))
+            const v = subtractVectors(to3D(p3), to3D(p1))
+            const normal = crossProduct3D(u, v)
+
             // Calculate centroid
-            let center = addVectors(p1, p2);
-            center = addVectors(center, p3);
-            center = scaleVector(center, 1.0 / 3.0);
-            
+            let center = addVectors(p1, p2)
+            center = addVectors(center, p3)
+            center = scaleVector(center, 1.0 / 3.0)
+
             // Check orientation: dot(normal, center) > 0 means outward
             // (assuming center of object is origin, which is true for our simplex/cross-polytope)
-            const isOutward = dotProduct(normal, to3D(center)) > 0;
-            
+            const isOutward = dotProduct(normal, to3D(center)) > 0
+
             if (isOutward) {
-              faces.push({ vertices: [v1, v2, v3] });
+              faces.push({ vertices: [v1, v2, v3] })
             } else {
-              faces.push({ vertices: [v1, v3, v2] });
+              faces.push({ vertices: [v1, v3, v2] })
             }
           }
         }
@@ -503,7 +507,8 @@ function detectFacesByMethod(
 /**
  * Retrieves pre-computed faces from geometry metadata.
  * Used for Wythoff polytopes where faces are computed analytically during generation.
- * @param metadata
+ * @param metadata - Geometry metadata containing analytical faces
+ * @returns Array of Face objects
  */
 function detectMetadataFaces(metadata?: GeometryMetadata): Face[] {
   if (!metadata?.properties?.analyticalFaces) {
@@ -517,7 +522,8 @@ function detectMetadataFaces(metadata?: GeometryMetadata): Face[] {
 /**
  * Detects quad faces analytically (used for hypercubes).
  * Uses dimension formula to generate all quad faces without graph traversal.
- * @param vertices
+ * @param vertices - Array of vertex coordinates
+ * @returns Array of Face objects with quad indices
  */
 function detectAnalyticalQuadFaces(vertices: number[][]): Face[] {
   const faceIndices = generateHypercubeFaces(Math.log2(vertices.length))
@@ -527,8 +533,9 @@ function detectAnalyticalQuadFaces(vertices: number[][]): Face[] {
 /**
  * Detects triangular faces by finding 3-cycles in the adjacency graph.
  * Used for simplices and cross-polytopes.
- * @param vertices
- * @param edges
+ * @param vertices - Array of vertex coordinates
+ * @param edges - Array of edge index pairs
+ * @returns Array of Face objects with triangle indices
  */
 function detectTriangleFaces(vertices: number[][], edges: [number, number][]): Face[] {
   const adjacency = buildAdjacencyList(edges)
@@ -538,7 +545,8 @@ function detectTriangleFaces(vertices: number[][], edges: [number, number][]): F
 /**
  * Detects faces using 3D convex hull projection.
  * Used for root systems and Wythoff polytopes where faces are complex.
- * @param vertices
+ * @param vertices - Array of vertex coordinates
+ * @returns Array of Face objects with triangle indices
  */
 function detectConvexHullFaces(vertices: number[][]): Face[] {
   const hullFaces = computeConvexHullFaces(vertices)
@@ -549,8 +557,9 @@ function detectConvexHullFaces(vertices: number[][]): Face[] {
  * Detects faces using UV grid structure from metadata.
  * Used for clifford-torus and nested-torus where faces follow a parametric grid.
  * Uses registry's configStoreKey to determine which grid type to use.
- * @param objectType
- * @param metadata
+ * @param objectType - The type of geometry object
+ * @param metadata - Geometry metadata with grid properties
+ * @returns Array of Face objects
  */
 function detectGridFaces(objectType: ObjectType, metadata?: GeometryMetadata): Face[] {
   if (!metadata?.properties) {
@@ -575,7 +584,8 @@ function detectGridFaces(objectType: ObjectType, metadata?: GeometryMetadata): F
 
 /**
  * Detects faces for clifford-torus based on its mode and resolution.
- * @param props
+ * @param props - Geometry properties
+ * @returns Array of face vertex indices
  */
 function detectCliffordTorusFaces(props: Record<string, unknown>): number[][] {
   const visualizationMode = props.visualizationMode as string | undefined
@@ -606,7 +616,8 @@ function detectCliffordTorusFaces(props: Record<string, unknown>): number[][] {
 
 /**
  * Detects faces for nested-torus based on dimension and resolution.
- * @param props
+ * @param props - Geometry properties
+ * @returns Array of face vertex indices
  */
 function detectNestedTorusFaces(props: Record<string, unknown>): number[][] {
   return detectNestedVisualizationFaces(props)
@@ -614,7 +625,8 @@ function detectNestedTorusFaces(props: Record<string, unknown>): number[][] {
 
 /**
  * Shared logic for nested visualization mode (used by both clifford-torus and nested-torus).
- * @param props
+ * @param props - Geometry properties
+ * @returns Array of face vertex indices
  */
 function detectNestedVisualizationFaces(props: Record<string, unknown>): number[][] {
   const dimension = props.intrinsicDimension as number

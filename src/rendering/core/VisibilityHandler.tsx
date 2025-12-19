@@ -11,13 +11,14 @@
  * @module rendering/core/VisibilityHandler
  */
 
+import { useWebGLContextStore } from '@/stores/webglContextStore'
 import { useThree } from '@react-three/fiber'
 import { useEffect } from 'react'
-import { useWebGLContextStore } from '@/stores/webglContextStore'
 
 /**
  * Handles page visibility changes and checks context state.
  * Returns null as it's a logic-only component with no visual output.
+ * @returns null - no visual output
  */
 export function VisibilityHandler(): null {
   const { gl } = useThree()

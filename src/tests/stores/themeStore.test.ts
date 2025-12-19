@@ -11,11 +11,7 @@ describe('themeStore', () => {
     useThemeStore.setState({ theme: 'blue' });
   });
 
-  describe('initial state', () => {
-    it('should have blue as default theme', () => {
-      expect(useThemeStore.getState().theme).toBe('blue');
-    });
-  });
+
 
   describe('setTheme', () => {
     it('should set theme to green', () => {

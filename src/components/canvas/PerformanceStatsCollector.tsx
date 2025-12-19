@@ -1,32 +1,33 @@
+import { usePerformanceMetricsStore } from '@/stores/performanceMetricsStore';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { usePerformanceMetricsStore } from '@/stores/performanceMetricsStore';
 
 const VRAM_UPDATE_INTERVAL = 2000; // ms
 
 /**
- *
+ * Collects and updates performance metrics from the Three.js renderer.
+ * @returns null - this component doesn't render anything visible
  */
 export function PerformanceStatsCollector() {
-  const { gl, scene, size, viewport } = useThree((state) => ({ 
-    gl: state.gl, 
+  const { gl, scene, size, viewport } = useThree((state) => ({
+    gl: state.gl,
     scene: state.scene,
     size: state.size,
     viewport: state.viewport
   }));
-  
+
   const updateMetrics = usePerformanceMetricsStore((state) => state.updateMetrics);
   const setGpuName = usePerformanceMetricsStore((state) => state.setGpuName);
   const currentHistory = usePerformanceMetricsStore((state) => state.history);
-  
+
   // Accumulators
   const framesRef = useRef(0);
   const prevTimeRef = useRef(performance.now());
   const cpuAccumulatorRef = useRef(0);
   const minFpsRef = useRef(Infinity);
   const maxFpsRef = useRef(0);
-  
+
   // Store render stats from the most recent completed frame
   const lastFrameStatsRef = useRef({ calls: 0, triangles: 0, points: 0, lines: 0 });
   // Accumulate stats for the current frame (resets every frame)
@@ -55,7 +56,7 @@ export function PerformanceStatsCollector() {
       originalRender.apply(this, args);
       const end = performance.now();
       cpuAccumulatorRef.current += (end - start);
-      
+
       // Accumulate stats from this render pass
       // gl.info.render resets automatically at start of render(), so we can safely add its values
       activeFrameStatsRef.current.calls += gl.info.render.calls;
@@ -114,12 +115,12 @@ export function PerformanceStatsCollector() {
     // Reuse existing object to avoid GC
     const last = lastFrameStatsRef.current;
     const active = activeFrameStatsRef.current;
-    
+
     last.calls = active.calls;
     last.triangles = active.triangles;
     last.points = active.points;
     last.lines = active.lines;
-    
+
     // 2. Reset accumulator for the current frame
     active.calls = 0;
     active.triangles = 0;
@@ -139,10 +140,10 @@ export function PerformanceStatsCollector() {
       minFpsRef.current = Math.min(minFpsRef.current, fps);
       if (time > 3000) maxFpsRef.current = Math.max(maxFpsRef.current, fps);
 
-      const heap = (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory 
-        ? Math.round((performance as unknown as { memory: { usedJSHeapSize: number } }).memory.usedJSHeapSize / 1048576) 
+      const heap = (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory
+        ? Math.round((performance as unknown as { memory: { usedJSHeapSize: number } }).memory.usedJSHeapSize / 1048576)
         : 0;
-      
+
       // Update VRAM periodically
       if (time - lastVramUpdateRef.current > VRAM_UPDATE_INTERVAL) {
         currentVramRef.current = updateVRAM();

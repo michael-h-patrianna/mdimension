@@ -9,7 +9,8 @@ import React from 'react';
 
 /**
  * Get stage label for display.
- * @param stage
+ * @param stage - The refinement stage name
+ * @returns Human-readable percentage label
  */
 function getStageLabel(stage: string): string {
   switch (stage) {
@@ -29,6 +30,7 @@ function getStageLabel(stage: string): string {
 /**
  * Progressive refinement controls for the Performance section.
  * Shows quality refinement stages after interaction stops.
+ * @returns The progressive refinement controls UI component
  */
 export const ProgressiveRefinementControls: React.FC = () => {
   const enabled = usePerformanceStore((s) => s.progressiveRefinementEnabled);

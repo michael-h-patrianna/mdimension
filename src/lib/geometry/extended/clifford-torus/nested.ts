@@ -280,8 +280,9 @@ export function generateTorus5DPoints(config: NestedTorusConfig): VectorND[] {
 
 /**
  * Builds grid edges for the 5D twisted 2-torus
- * @param resolutionXi1
- * @param resolutionXi2
+ * @param resolutionXi1 - Resolution in xi1 direction
+ * @param resolutionXi2 - Resolution in xi2 direction
+ * @returns Array of edge index pairs
  */
 export function buildTorus5DEdges(
   resolutionXi1: number,
@@ -292,8 +293,9 @@ export function buildTorus5DEdges(
 
 /**
  * Builds quad faces for the 5D twisted 2-torus
- * @param resolutionXi1
- * @param resolutionXi2
+ * @param resolutionXi1 - Resolution in xi1 direction
+ * @param resolutionXi2 - Resolution in xi2 direction
+ * @returns Array of face vertex indices
  */
 export function buildTorus5DFaces(resolutionXi1: number, resolutionXi2: number): number[][] {
   return buildHopfTorus4DFaces(resolutionXi1, resolutionXi2, 0)
@@ -554,8 +556,9 @@ export function generateTorus7DPoints(config: NestedTorusConfig): VectorND[] {
 
 /**
  * Builds grid edges for the 7D twisted 3-torus
- * @param resolutionXi1
- * @param resolutionXi2
+ * @param resolutionXi1 - Resolution in first direction
+ * @param resolutionXi2 - Resolution in second direction
+ * @returns Array of edge pairs
  */
 export function buildTorus7DEdges(
   resolutionXi1: number,
@@ -566,8 +569,9 @@ export function buildTorus7DEdges(
 
 /**
  * Builds quad faces for the 7D twisted 3-torus
- * @param resolutionXi1
- * @param resolutionXi2
+ * @param resolutionXi1 - Resolution in first direction
+ * @param resolutionXi2 - Resolution in second direction
+ * @returns Array of quad faces
  */
 export function buildTorus7DFaces(resolutionXi1: number, resolutionXi2: number): number[][] {
   return buildHopfTorus4DFaces(resolutionXi1, resolutionXi2, 0)
@@ -973,8 +977,9 @@ export function generateTorus10DPoints(config: NestedTorusConfig): VectorND[] {
 
 /**
  * Builds grid edges for the 10D 5-torus
- * @param resolutionXi1
- * @param resolutionXi2
+ * @param resolutionXi1 - Resolution in first direction
+ * @param resolutionXi2 - Resolution in second direction
+ * @returns Array of edge pairs
  */
 export function buildTorus10DEdges(
   resolutionXi1: number,
@@ -985,8 +990,9 @@ export function buildTorus10DEdges(
 
 /**
  * Builds quad faces for the 10D 5-torus
- * @param resolutionXi1
- * @param resolutionXi2
+ * @param resolutionXi1 - Resolution in first direction
+ * @param resolutionXi2 - Resolution in second direction
+ * @returns Array of quad faces
  */
 export function buildTorus10DFaces(resolutionXi1: number, resolutionXi2: number): number[][] {
   return buildHopfTorus4DFaces(resolutionXi1, resolutionXi2, 0)
@@ -1106,8 +1112,9 @@ export function generateTorus11DPoints(config: NestedTorusConfig): VectorND[] {
 
 /**
  * Builds grid edges for the 11D twisted 5-torus
- * @param resolutionXi1
- * @param resolutionXi2
+ * @param resolutionXi1 - Resolution in first direction
+ * @param resolutionXi2 - Resolution in second direction
+ * @returns Array of edge pairs
  */
 export function buildTorus11DEdges(
   resolutionXi1: number,
@@ -1118,8 +1125,9 @@ export function buildTorus11DEdges(
 
 /**
  * Builds quad faces for the 11D twisted 5-torus
- * @param resolutionXi1
- * @param resolutionXi2
+ * @param resolutionXi1 - Resolution in first direction
+ * @param resolutionXi2 - Resolution in second direction
+ * @returns Array of quad faces
  */
 export function buildTorus11DFaces(resolutionXi1: number, resolutionXi2: number): number[][] {
   return buildHopfTorus4DFaces(resolutionXi1, resolutionXi2, 0)

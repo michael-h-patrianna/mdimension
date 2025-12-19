@@ -1,8 +1,7 @@
-import { Slider } from '@/components/ui/Slider';
 import { Section } from '@/components/sections/Section';
-import {
-} from '@/lib/geometry/extended/types';
-import { getTypeName, getConfigStoreKey } from '@/lib/geometry/registry';
+import { Slider } from '@/components/ui/Slider';
+import { } from '@/lib/geometry/extended/types';
+import { getConfigStoreKey, getTypeName } from '@/lib/geometry/registry';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 
@@ -12,6 +11,7 @@ import { useGeometryStore } from '@/stores/geometryStore';
  * Provides scale control for standard polytopes (hypercube, simplex, cross-polytope).
  * This brings polytopes into alignment with extended objects by providing
  * a unified configuration interface.
+ * @returns The polytope settings UI component
  */
 export function PolytopeSettings() {
   const objectType = useGeometryStore((state) => state.objectType);

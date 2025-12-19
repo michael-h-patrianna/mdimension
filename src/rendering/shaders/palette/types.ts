@@ -76,11 +76,16 @@ export const COLOR_ALGORITHM_TO_INT: Record<ColorAlgorithm, number> = {
  * These use the actual quantum phase from the wavefunction, not geometric position.
  * For non-quantum objects, these should be hidden from the UI.
  */
-export const QUANTUM_ONLY_ALGORITHMS: readonly ColorAlgorithm[] = ['phase', 'mixed', 'blackbody'] as const
+export const QUANTUM_ONLY_ALGORITHMS: readonly ColorAlgorithm[] = [
+  'phase',
+  'mixed',
+  'blackbody',
+] as const
 
 /**
  * Check if a color algorithm is quantum-specific (Schroedinger only).
- * @param algorithm
+ * @param algorithm - The color algorithm to check
+ * @returns True if the algorithm is quantum-only
  */
 export function isQuantumOnlyAlgorithm(algorithm: ColorAlgorithm): boolean {
   return QUANTUM_ONLY_ALGORITHMS.includes(algorithm)

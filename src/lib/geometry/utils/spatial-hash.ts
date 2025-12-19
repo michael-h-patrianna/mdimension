@@ -10,7 +10,7 @@
  */
 
 import type { VectorND } from '@/lib/math'
-import { WYTHOFF_CONFIG, SPATIAL_HASH_CONFIG } from '../config'
+import { SPATIAL_HASH_CONFIG, WYTHOFF_CONFIG } from '../config'
 
 /**
  * Configuration for spatial hash grid
@@ -50,7 +50,8 @@ export class SpatialHash {
    * Get cell key for a vertex position.
    * Uses only first MAX_HASH_DIMS dimensions for the key to keep
    * neighbor count manageable (3^3 = 27 vs 3^11 = 177147).
-   * @param vertex
+   * @param vertex - The vertex position
+   * @returns Cell key string
    */
   private getCellKey(vertex: VectorND): string {
     const effectiveDims = Math.min(this.dimension, SpatialHash.MAX_HASH_DIMS)
@@ -83,7 +84,8 @@ export class SpatialHash {
   /**
    * Get all vertex indices in neighboring cells (including self).
    * For the first MAX_HASH_DIMS dimensions, we check all cells within +-1.
-   * @param vertex
+   * @param vertex - The vertex to find neighbors for
+   * @returns Array of vertex indices in neighboring cells
    */
   getNeighborIndices(vertex: VectorND): number[] {
     const effectiveDims = Math.min(this.dimension, SpatialHash.MAX_HASH_DIMS)
@@ -121,6 +123,7 @@ export class SpatialHash {
 
   /**
    * Get the number of cells in the grid
+   * @returns Number of cells
    */
   get cellCount(): number {
     return this.cells.size
@@ -128,6 +131,7 @@ export class SpatialHash {
 
   /**
    * Get average vertices per cell
+   * @returns Average number of vertices per cell
    */
   get averageVerticesPerCell(): number {
     if (this.cells.size === 0) return 0
@@ -142,8 +146,9 @@ export class SpatialHash {
 
   /**
    * Build spatial hash from vertex array
-   * @param vertices
-   * @param cellSize
+   * @param vertices - Array of vertices
+   * @param cellSize - Size of each cell
+   * @returns SpatialHash instance
    */
   static fromVertices(vertices: VectorND[], cellSize: number): SpatialHash {
     if (vertices.length === 0) {
@@ -260,8 +265,9 @@ export function estimateMinDistance(
 const MIN_CELL_SIZE = WYTHOFF_CONFIG.MIN_CELL_SIZE
 
 /**
- *
- * @param vertices
+ * Generate edges using spatial hashing for O(V * k) complexity.
+ * @param vertices - Array of vertex positions
+ * @returns Array of edge pairs (vertex indices)
  */
 export function generateEdgesWithSpatialHash(vertices: VectorND[]): [number, number][] {
   if (vertices.length < 2) return []

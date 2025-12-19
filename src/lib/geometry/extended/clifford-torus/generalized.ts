@@ -115,7 +115,8 @@ export function buildGeneralizedCliffordTorusEdges(
 
   /**
    * Converts multi-index [i₁, i₂, ..., iₖ] to linear index
-   * @param indices
+   * @param indices - Array of indices for each dimension
+   * @returns Linear index
    */
   function multiIndexToLinear(indices: number[]): number {
     let idx = 0
@@ -127,7 +128,8 @@ export function buildGeneralizedCliffordTorusEdges(
 
   /**
    * Converts linear index to multi-index
-   * @param idx
+   * @param idx - Linear index
+   * @returns Array of indices for each dimension
    */
   function linearToMultiIndex(idx: number): number[] {
     const indices: number[] = new Array(k)
@@ -271,7 +273,8 @@ export function generateGeneralizedCliffordTorus(
 
 /**
  * Helper function to create Unicode superscript for dimension labels
- * @param n
+ * @param n - Number to convert to superscript
+ * @returns Unicode superscript string
  */
 function superscript(n: number): string {
   const superscriptMap: Record<string, string> = {

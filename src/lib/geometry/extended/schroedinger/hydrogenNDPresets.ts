@@ -13,32 +13,32 @@
  * atom look like if the electron could move in D spatial dimensions".
  */
 
-import { HydrogenNDPresetName } from '../types';
+import { HydrogenNDPresetName } from '../types'
 
 /**
  * Hydrogen ND preset configuration
  */
 export interface HydrogenNDPreset {
   /** Display name (e.g., "2pz + 4D") */
-  name: string;
+  name: string
   /** Human-readable description */
-  description: string;
+  description: string
   /** Principal quantum number n (shell) for 3D hydrogen part */
-  n: number;
+  n: number
   /** Azimuthal quantum number l (shape) for 3D hydrogen part */
-  l: number;
+  l: number
   /** Magnetic quantum number m (orientation) for 3D hydrogen part */
-  m: number;
+  m: number
   /** Whether to use real spherical harmonics (px/py/pz vs complex) */
-  useReal: boolean;
+  useReal: boolean
   /** Suggested Bohr radius scale for visualization */
-  bohrRadiusScale: number;
+  bohrRadiusScale: number
   /** Target dimension for this preset (3-11) */
-  dimension: number;
+  dimension: number
   /** Quantum numbers for extra dimensions (dims 4-11), 8 values */
-  extraDimN: number[];
+  extraDimN: number[]
   /** Frequencies for extra dimensions (dims 4-11), 8 values */
-  extraDimOmega: number[];
+  extraDimOmega: number[]
 }
 
 /**
@@ -152,7 +152,7 @@ export const HYDROGEN_ND_PRESETS: Record<HydrogenNDPresetName, HydrogenNDPreset>
   // ============================================
   // Custom - User-defined
   // ============================================
-  'custom': {
+  custom: {
     name: 'Custom',
     description: 'User-defined quantum numbers',
     n: 2,
@@ -164,71 +164,82 @@ export const HYDROGEN_ND_PRESETS: Record<HydrogenNDPresetName, HydrogenNDPreset>
     extraDimN: [0, 0, 0, 0, 0, 0, 0, 0],
     extraDimOmega: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
   },
-};
+}
 
 /**
  * Get a hydrogen ND preset by name
- * @param name
+ * @param name - The preset name
+ * @returns The preset configuration
  */
 export function getHydrogenNDPreset(name: HydrogenNDPresetName): HydrogenNDPreset {
-  return HYDROGEN_ND_PRESETS[name] ?? HYDROGEN_ND_PRESETS['2pz_4d'];
+  return HYDROGEN_ND_PRESETS[name] ?? HYDROGEN_ND_PRESETS['2pz_4d']
 }
 
 /**
  * Get presets grouped by dimension
+ * @returns Record of dimension to array of presets
  */
 export function getHydrogenNDPresetsGroupedByDimension(): Record<number, HydrogenNDPreset[]> {
-  const groups: Record<number, HydrogenNDPreset[]> = {};
+  const groups: Record<number, HydrogenNDPreset[]> = {}
 
   for (const preset of Object.values(HYDROGEN_ND_PRESETS)) {
-    if (preset.name === 'Custom') continue;
-    const dim = preset.dimension;
+    if (preset.name === 'Custom') continue
+    const dim = preset.dimension
     if (!groups[dim]) {
-      groups[dim] = [];
+      groups[dim] = []
     }
-    groups[dim].push(preset);
+    groups[dim].push(preset)
   }
 
-  return groups;
+  return groups
 }
 
 /**
  * Get presets with keys grouped by dimension, suitable for UI dropdowns
  * Returns Record<dimension, [presetKey, preset][]>
+ * @returns Record of dimension to array of [key, preset] tuples
  */
-export function getHydrogenNDPresetsWithKeysByDimension(): Record<number, [HydrogenNDPresetName, HydrogenNDPreset][]> {
-  const groups: Record<number, [HydrogenNDPresetName, HydrogenNDPreset][]> = {};
+export function getHydrogenNDPresetsWithKeysByDimension(): Record<
+  number,
+  [HydrogenNDPresetName, HydrogenNDPreset][]
+> {
+  const groups: Record<number, [HydrogenNDPresetName, HydrogenNDPreset][]> = {}
 
-  for (const [key, preset] of Object.entries(HYDROGEN_ND_PRESETS) as [HydrogenNDPresetName, HydrogenNDPreset][]) {
-    if (preset.name === 'Custom') continue;
-    const dim = preset.dimension;
+  for (const [key, preset] of Object.entries(HYDROGEN_ND_PRESETS) as [
+    HydrogenNDPresetName,
+    HydrogenNDPreset,
+  ][]) {
+    if (preset.name === 'Custom') continue
+    const dim = preset.dimension
     if (!groups[dim]) {
-      groups[dim] = [];
+      groups[dim] = []
     }
-    groups[dim].push([key, preset]);
+    groups[dim].push([key, preset])
   }
 
-  return groups;
+  return groups
 }
 
 /**
  * Get presets available for a specific dimension
  * Returns presets that match the dimension or have lower dimension (can be used with more dims)
- * @param dimension
+ * @param dimension - The dimension to filter for
+ * @returns Array of presets available for the dimension
  */
 export function getPresetsForDimension(dimension: number): HydrogenNDPreset[] {
   return Object.values(HYDROGEN_ND_PRESETS).filter(
     (preset) => preset.name !== 'Custom' && preset.dimension <= dimension
-  );
+  )
 }
 
 /**
  * Generate a label for hydrogen ND configuration
- * @param n
- * @param l
- * @param m
- * @param dimension
- * @param extraDimN
+ * @param n - Principal quantum number
+ * @param l - Angular momentum quantum number
+ * @param m - Magnetic quantum number
+ * @param dimension - Number of dimensions
+ * @param extraDimN - Extra dimension quantum numbers
+ * @returns Human-readable label string
  */
 export function hydrogenNDToLabel(
   n: number,
@@ -238,37 +249,37 @@ export function hydrogenNDToLabel(
   extraDimN: number[]
 ): string {
   // Get base orbital name
-  const letters = ['s', 'p', 'd', 'f', 'g', 'h', 'i'];
-  const letter = letters[l] ?? `l=${l}`;
+  const letters = ['s', 'p', 'd', 'f', 'g', 'h', 'i']
+  const letter = letters[l] ?? `l=${l}`
 
-  let baseName: string;
+  let baseName: string
   if (l === 0) {
-    baseName = `${n}${letter}`;
+    baseName = `${n}${letter}`
   } else if (l === 1) {
-    if (m === 0) baseName = `${n}pz`;
-    else if (m === 1) baseName = `${n}px`;
-    else baseName = `${n}py`;
+    if (m === 0) baseName = `${n}pz`
+    else if (m === 1) baseName = `${n}px`
+    else baseName = `${n}py`
   } else if (l === 2) {
-    if (m === 0) baseName = `${n}dz²`;
-    else baseName = `${n}d`;
+    if (m === 0) baseName = `${n}dz²`
+    else baseName = `${n}d`
   } else {
-    baseName = `${n}${letter}`;
+    baseName = `${n}${letter}`
   }
 
   // Add dimension info
-  const extraCount = Math.max(0, dimension - 3);
+  const extraCount = Math.max(0, dimension - 3)
   if (extraCount === 0) {
-    return baseName;
+    return baseName
   }
 
   // Check if all extra dims are ground state
-  const usedExtra = extraDimN.slice(0, extraCount);
-  const allGround = usedExtra.every((n) => n === 0);
+  const usedExtra = extraDimN.slice(0, extraCount)
+  const allGround = usedExtra.every((n) => n === 0)
 
   if (allGround) {
-    return `${baseName} + ${dimension}D`;
+    return `${baseName} + ${dimension}D`
   } else {
-    const extraStr = usedExtra.map((n, i) => `n${i + 4}=${n}`).join(', ');
-    return `${baseName} + ${dimension}D (${extraStr})`;
+    const extraStr = usedExtra.map((n, i) => `n${i + 4}=${n}`).join(', ')
+    return `${baseName} + ${dimension}D (${extraStr})`
   }
 }

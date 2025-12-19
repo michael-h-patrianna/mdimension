@@ -19,20 +19,20 @@ import { Switch } from '@/components/ui/Switch';
 import { Tabs } from '@/components/ui/Tabs';
 import { isRaymarchingFractal, supportsEmission } from '@/lib/geometry/registry';
 import {
-  LAYER_COUNT_OPTIONS,
-  LAYER_OPACITY_RANGE,
-  OPACITY_MODE_LABELS,
-  OPACITY_MODE_OPTIONS,
-  OPACITY_MODE_TOOLTIPS,
-  SAMPLE_QUALITY_LABELS,
-  SAMPLE_QUALITY_OPTIONS,
-  SIMPLE_ALPHA_RANGE,
-  VOLUMETRIC_DENSITY_RANGE,
+    LAYER_COUNT_OPTIONS,
+    LAYER_OPACITY_RANGE,
+    OPACITY_MODE_LABELS,
+    OPACITY_MODE_OPTIONS,
+    OPACITY_MODE_TOOLTIPS,
+    SAMPLE_QUALITY_LABELS,
+    SAMPLE_QUALITY_OPTIONS,
+    SIMPLE_ALPHA_RANGE,
+    VOLUMETRIC_DENSITY_RANGE,
 } from '@/rendering/opacity/constants';
 import type { OpacityMode, SampleQuality, VolumetricAnimationQuality } from '@/rendering/opacity/types';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import {
-  DEFAULT_SPECULAR_COLOR,
+    DEFAULT_SPECULAR_COLOR,
 } from '@/stores/defaults/visualDefaults';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useLightingStore } from '@/stores/lightingStore';
@@ -793,6 +793,7 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
 
 /**
  * Multi-Source Weights Editor for multiSource algorithm
+ * @returns The weights editor component
  */
 const MultiSourceWeightsEditor: React.FC = () => {
   const { multiSourceWeights, setMultiSourceWeights } = useAppearanceStore(

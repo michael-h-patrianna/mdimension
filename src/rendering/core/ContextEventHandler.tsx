@@ -10,9 +10,9 @@
  * @module rendering/core/ContextEventHandler
  */
 
-import { useThree } from '@react-three/fiber'
-import { useEffect, useRef, useCallback } from 'react'
 import { useWebGLContextStore } from '@/stores/webglContextStore'
+import { useThree } from '@react-three/fiber'
+import { useCallback, useEffect, useRef } from 'react'
 import { resourceRecovery } from './ResourceRecovery'
 
 /** WEBGL_lose_context extension interface */
@@ -24,6 +24,7 @@ interface WEBGL_lose_context {
 /**
  * Handles WebGL context loss and restoration events.
  * Returns null as it's a logic-only component with no visual output.
+ * @returns null - no visual output
  */
 export function ContextEventHandler(): null {
   const { gl } = useThree()

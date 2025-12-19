@@ -8,11 +8,7 @@
  * @see docs/prd/advanced-color-system.md
  */
 
-import type {
-  ColorAlgorithm,
-  CosineCoefficients,
-  DistributionSettings,
-} from './types';
+import type { ColorAlgorithm, CosineCoefficients, DistributionSettings } from './types'
 
 /**
  * Preset keys for type safety
@@ -64,7 +60,7 @@ export type PresetKey =
   | 'ghostwave'
   | 'toxicSpill'
   | 'binaryFade'
-  | 'chromaticShift';
+  | 'chromaticShift'
 
 /**
  * Built-in cosine palette coefficient presets.
@@ -396,15 +392,15 @@ export const COSINE_PRESETS: Record<PresetKey, CosineCoefficients> = {
     c: [0.8, 0.8, 0.8],
     d: [0.0, 0.33, 0.66],
   },
-} as const;
+} as const
 
 /**
  * Preset option type for dropdown menus.
  */
 export interface PresetOption {
-  value: string;
-  label: string;
-  coefficients: CosineCoefficients;
+  value: string
+  label: string
+  coefficients: CosineCoefficients
 }
 
 /**
@@ -455,25 +451,29 @@ export const COSINE_PRESET_OPTIONS: PresetOption[] = [
   { value: 'ghostwave', label: 'Ghostwave', coefficients: COSINE_PRESETS.ghostwave },
   { value: 'toxicSpill', label: 'Toxic Spill', coefficients: COSINE_PRESETS.toxicSpill },
   { value: 'binaryFade', label: 'Binary Fade', coefficients: COSINE_PRESETS.binaryFade },
-  { value: 'chromaticShift', label: 'Chromatic Shift', coefficients: COSINE_PRESETS.chromaticShift },
-];
+  {
+    value: 'chromaticShift',
+    label: 'Chromatic Shift',
+    coefficients: COSINE_PRESETS.chromaticShift,
+  },
+]
 
 /**
  * Full color preset including algorithm and distribution settings.
  */
 export interface ColorPreset {
   /** Unique identifier */
-  id: string;
+  id: string
   /** Display name */
-  name: string;
+  name: string
   /** Color algorithm to use */
-  algorithm: ColorAlgorithm;
+  algorithm: ColorAlgorithm
   /** Cosine palette coefficients */
-  coefficients: CosineCoefficients;
+  coefficients: CosineCoefficients
   /** Distribution settings */
-  distribution: DistributionSettings;
+  distribution: DistributionSettings
   /** Whether this is a built-in preset (cannot be deleted) */
-  isBuiltIn: boolean;
+  isBuiltIn: boolean
 }
 
 /**
@@ -833,24 +833,24 @@ export const BUILT_IN_PRESETS: ColorPreset[] = [
     distribution: { power: 1.0, cycles: 1.0, offset: 0.0 },
     isBuiltIn: true,
   },
-];
+]
 
 /**
  * Get a preset by ID.
- * @param id
+ * @param id - The preset ID
+ * @returns The color preset or undefined if not found
  */
 export function getPresetById(id: string): ColorPreset | undefined {
-  return BUILT_IN_PRESETS.find((preset) => preset.id === id);
+  return BUILT_IN_PRESETS.find((preset) => preset.id === id)
 }
 
 /**
  * Get default preset for a given algorithm.
- * @param algorithm
+ * @param algorithm - The color algorithm
+ * @returns The default preset for that algorithm
  */
-export function getDefaultPresetForAlgorithm(
-  algorithm: ColorAlgorithm
-): ColorPreset {
-  const preset = BUILT_IN_PRESETS.find((p) => p.algorithm === algorithm);
+export function getDefaultPresetForAlgorithm(algorithm: ColorAlgorithm): ColorPreset {
+  const preset = BUILT_IN_PRESETS.find((p) => p.algorithm === algorithm)
   // BUILT_IN_PRESETS is guaranteed to have at least one element
-  return preset ?? BUILT_IN_PRESETS[0]!;
+  return preset ?? BUILT_IN_PRESETS[0]!
 }

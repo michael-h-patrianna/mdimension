@@ -8,48 +8,49 @@
  * - Precomputed energies
  */
 
-import { MAX_DIM, MAX_TERMS } from '@/rendering/shaders/schroedinger/uniforms.glsl';
+import { MAX_DIM, MAX_TERMS } from '@/rendering/shaders/schroedinger/uniforms.glsl'
 
 /**
  * Generated quantum state data
  */
 export interface QuantumPreset {
   /** Number of superposition terms */
-  termCount: number;
+  termCount: number
   /** Per-dimension angular frequencies ω_j */
-  omega: number[];
+  omega: number[]
   /** Quantum numbers n[k][j] for each term and dimension */
-  quantumNumbers: number[][];
+  quantumNumbers: number[][]
   /** Complex coefficients c_k = (re, im) */
-  coefficients: [number, number][];
+  coefficients: [number, number][]
   /** Precomputed energies E_k = Σ ω_j(n_{kj} + 0.5) */
-  energies: number[];
+  energies: number[]
 }
 
 /**
  * Named preset configurations
  */
 export interface NamedPresetConfig {
-  name: string;
-  description: string;
-  seed: number;
-  termCount: number;
-  maxN: number;
-  frequencySpread: number;
+  name: string
+  description: string
+  seed: number
+  termCount: number
+  maxN: number
+  frequencySpread: number
 }
 
 /**
  * Mulberry32 seeded PRNG
  * Fast, deterministic random number generator
- * @param seed
+ * @param seed - Initial seed value
+ * @returns Function that returns next random number between 0 and 1
  */
 function mulberry32(seed: number): () => number {
   return function () {
-    let t = (seed += 0x6d2b79f5);
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
+    let t = (seed += 0x6d2b79f5)
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
 }
 
 /**
@@ -60,6 +61,7 @@ function mulberry32(seed: number): () => number {
  * @param termCount - Number of superposition terms (1-8)
  * @param maxN - Maximum quantum number per dimension (2-6)
  * @param frequencySpread - Variation in ω values (0-0.5)
+ * @returns Generated quantum preset
  */
 export function generateQuantumPreset(
   seed: number,
@@ -68,79 +70,79 @@ export function generateQuantumPreset(
   maxN: number = 5,
   frequencySpread: number = 0.02
 ): QuantumPreset {
-  const rng = mulberry32(seed);
+  const rng = mulberry32(seed)
 
   // Clamp parameters to valid ranges
-  const dim = Math.min(Math.max(dimension, 3), MAX_DIM);
-  const terms = Math.min(Math.max(termCount, 1), MAX_TERMS);
-  const nMax = Math.min(Math.max(maxN, 1), 6);
-  const spread = Math.min(Math.max(frequencySpread, 0), 0.5);
+  const dim = Math.min(Math.max(dimension, 3), MAX_DIM)
+  const terms = Math.min(Math.max(termCount, 1), MAX_TERMS)
+  const nMax = Math.min(Math.max(maxN, 1), 6)
+  const spread = Math.min(Math.max(frequencySpread, 0), 0.5)
 
   // Generate per-dimension frequencies (0.8 - 1.3 base range)
-  const omega: number[] = [];
+  const omega: number[] = []
   for (let j = 0; j < dim; j++) {
-    const baseFreq = 0.8 + rng() * spread * 2;
+    const baseFreq = 0.8 + rng() * spread * 2
     // Add slight golden-ratio-based offset for each dimension
     // This creates non-repeating patterns
-    const offset = (j * 0.618033988749895) % 1.0;
-    omega.push(baseFreq + offset * spread * 0.5);
+    const offset = (j * 0.618033988749895) % 1.0
+    omega.push(baseFreq + offset * spread * 0.5)
   }
 
   // Generate quantum numbers and coefficients for each term
-  const quantumNumbers: number[][] = [];
-  const coefficients: [number, number][] = [];
-  const energies: number[] = [];
+  const quantumNumbers: number[][] = []
+  const coefficients: [number, number][] = []
+  const energies: number[] = []
 
   for (let k = 0; k < terms; k++) {
     // Quantum numbers: distribution biased toward low values
     // This creates smoother, more organic shapes
-    const n: number[] = [];
-    let _totalN = 0;
+    const n: number[] = []
+    let _totalN = 0
 
     for (let j = 0; j < dim; j++) {
-      const r = rng();
-      let quantumN: number;
+      const r = rng()
+      let quantumN: number
 
       // For dimensions beyond the 3D visualization slice (j >= 3),
       // we MUST use even quantum numbers. This is because when the
       // slice coordinate is 0, Hermite polynomials H_n(0) = 0 for odd n,
       // which would zero out the entire wavefunction term.
-      const mustBeEven = j >= 3;
+      const mustBeEven = j >= 3
 
       // Biased distribution: lower numbers more likely
       if (r < 0.4) {
-        quantumN = 0;
+        quantumN = 0
       } else if (r < 0.65) {
-        quantumN = mustBeEven ? 2 : 1;
+        quantumN = mustBeEven ? 2 : 1
       } else if (r < 0.82) {
-        quantumN = 2;
+        quantumN = 2
       } else if (r < 0.92) {
-        quantumN = mustBeEven ? Math.min(4, nMax) : Math.min(3, nMax);
+        quantumN = mustBeEven ? Math.min(4, nMax) : Math.min(3, nMax)
       } else {
-        const raw = Math.floor(rng() * (nMax + 1));
-        quantumN = mustBeEven ? Math.min(raw & ~1, nMax) : Math.min(raw, nMax); // mask off lowest bit if must be even
+        const raw = Math.floor(rng() * (nMax + 1))
+        quantumN = mustBeEven ? Math.min(raw & ~1, nMax) : Math.min(raw, nMax) // mask off lowest bit if must be even
       }
 
-      n.push(quantumN);
-      _totalN += quantumN;
+      n.push(quantumN)
+      _totalN += quantumN
     }
 
-    quantumNumbers.push(n);
+    quantumNumbers.push(n)
 
     // Compute energy: E_k = Σ ω_j(n_{kj} + 0.5)
-    let E = 0;
+    let E = 0
     for (let j = 0; j < dim; j++) {
-      const omegaJ = omega[j] ?? 1.0;
-      const nJ = n[j] ?? 0;
-      E += omegaJ * (nJ + 0.5);
+      const omegaJ = omega[j] ?? 1.0
+      const nJ = n[j] ?? 0
+      E += omegaJ * (nJ + 0.5)
     }
-    energies.push(E);
+    energies.push(E)
 
     // Coefficient: amplitude decreases with energy, random phase
     // This keeps low-energy (smooth) terms dominant
-    const amplitude = 1.0 / (1.0 + 0.15 * E);
-    const phase = rng() * 2 * Math.PI;
-    coefficients.push([amplitude * Math.cos(phase), amplitude * Math.sin(phase)]);
+    const amplitude = 1.0 / (1.0 + 0.15 * E)
+    const phase = rng() * 2 * Math.PI
+    coefficients.push([amplitude * Math.cos(phase), amplitude * Math.sin(phase)])
   }
 
   return {
@@ -149,7 +151,7 @@ export function generateQuantumPreset(
     quantumNumbers,
     coefficients,
     energies,
-  };
+  }
 }
 
 /**
@@ -220,16 +222,17 @@ export const SCHROEDINGER_NAMED_PRESETS: Record<string, NamedPresetConfig> = {
     maxN: 6,
     frequencySpread: 0.02,
   },
-};
+}
 
 /**
  * Get a preset by name
- * @param name
- * @param dimension
+ * @param name - Name of the preset
+ * @param dimension - Number of dimensions
+ * @returns QuantumPreset or null if not found
  */
 export function getNamedPreset(name: string, dimension: number): QuantumPreset | null {
-  const config = SCHROEDINGER_NAMED_PRESETS[name];
-  if (!config) return null;
+  const config = SCHROEDINGER_NAMED_PRESETS[name]
+  if (!config) return null
 
   return generateQuantumPreset(
     config.seed,
@@ -237,67 +240,69 @@ export function getNamedPreset(name: string, dimension: number): QuantumPreset |
     config.termCount,
     config.maxN,
     config.frequencySpread
-  );
+  )
 }
 
 /**
  * Generate a random preset with the given seed
- * @param seed
- * @param dimension
+ * @param seed - Random seed
+ * @param dimension - Number of dimensions
+ * @returns Generated QuantumPreset
  */
 export function generateRandomPreset(seed: number, dimension: number): QuantumPreset {
-  const rng = mulberry32(seed);
+  const rng = mulberry32(seed)
 
   // Randomize parameters within reasonable ranges
-  const termCount = Math.floor(rng() * 4) + 2; // 2-5
-  const maxN = Math.floor(rng() * 4) + 2; // 2-5
-  const frequencySpread = rng() * 0.045 + 0.005; // 0.005-0.05
+  const termCount = Math.floor(rng() * 4) + 2 // 2-5
+  const maxN = Math.floor(rng() * 4) + 2 // 2-5
+  const frequencySpread = rng() * 0.045 + 0.005 // 0.005-0.05
 
-  return generateQuantumPreset(seed, dimension, termCount, maxN, frequencySpread);
+  return generateQuantumPreset(seed, dimension, termCount, maxN, frequencySpread)
 }
 
 /**
  * Flatten quantum preset data for GPU uniforms
- * @param preset
+ * @param preset - The preset to flatten
+ * @returns Object containing typed arrays for GPU uniforms
  */
 export function flattenPresetForUniforms(preset: QuantumPreset): {
-  omega: Float32Array;
-  quantum: Int32Array;
-  coeff: Float32Array;
-  energy: Float32Array;
+  omega: Float32Array
+  quantum: Int32Array
+  coeff: Float32Array
+  energy: Float32Array
 } {
   // Omega array (padded to MAX_DIM)
-  const omega = new Float32Array(MAX_DIM);
+  const omega = new Float32Array(MAX_DIM)
   for (let j = 0; j < preset.omega.length; j++) {
-    omega[j] = preset.omega[j] ?? 1.0;
+    omega[j] = preset.omega[j] ?? 1.0
   }
 
   // Quantum numbers (flattened, padded to MAX_TERMS * MAX_DIM)
-  const quantum = new Int32Array(MAX_TERMS * MAX_DIM);
+  const quantum = new Int32Array(MAX_TERMS * MAX_DIM)
   for (let k = 0; k < preset.quantumNumbers.length; k++) {
-    const row = preset.quantumNumbers[k];
+    const row = preset.quantumNumbers[k]
     if (row) {
       for (let j = 0; j < row.length; j++) {
-        quantum[k * MAX_DIM + j] = row[j] ?? 0;
+        quantum[k * MAX_DIM + j] = row[j] ?? 0
       }
     }
   }
 
   // Coefficients (interleaved re, im)
-  const coeff = new Float32Array(MAX_TERMS * 2);
+  const coeff = new Float32Array(MAX_TERMS * 2)
   for (let k = 0; k < preset.coefficients.length; k++) {
-    const pair = preset.coefficients[k];
+    const pair = preset.coefficients[k]
     if (pair) {
-      coeff[k * 2] = pair[0] ?? 0;
-      coeff[k * 2 + 1] = pair[1] ?? 0;
+      coeff[k * 2] = pair[0] ?? 0
+      coeff[k * 2 + 1] = pair[1] ?? 0
     }
   }
 
   // Energies
-  const energy = new Float32Array(MAX_TERMS);
+  const energy = new Float32Array(MAX_TERMS)
   for (let k = 0; k < preset.energies.length; k++) {
-    energy[k] = preset.energies[k] ?? 0;
+    energy[k] = preset.energies[k] ?? 0
   }
 
-  return { omega, quantum, coeff, energy };
+  return { omega, quantum, coeff, energy }
 }

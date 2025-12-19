@@ -106,6 +106,7 @@ function createWorkingArrays(): WorkingArrays {
 
 /**
  * QuaternionJuliaMesh - Renders Quaternion Julia fractals
+ * @returns The quaternion Julia fractal mesh component
  */
 const QuaternionJuliaMesh = () => {
   const meshRef = useRef<THREE.Mesh>(null)

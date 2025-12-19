@@ -14,60 +14,63 @@
  * of complex spherical harmonics that produce real-valued functions.
  */
 
-import { HydrogenOrbitalPresetName } from '../types';
+import { HydrogenOrbitalPresetName } from '../types'
 
 /**
  * Hydrogen orbital preset configuration
  */
 export interface HydrogenOrbitalPreset {
   /** Display name (e.g., "2pz") */
-  name: string;
+  name: string
   /** Human-readable description */
-  description: string;
+  description: string
   /** Principal quantum number n (shell) */
-  n: number;
+  n: number
   /** Azimuthal quantum number l (shape) */
-  l: number;
+  l: number
   /** Magnetic quantum number m (orientation) */
-  m: number;
+  m: number
   /**
    * Whether to use real spherical harmonics.
    * true: px, py, pz notation (real combinations)
    * false: complex Y_lm
    */
-  useReal: boolean;
+  useReal: boolean
   /** Suggested Bohr radius scale for visualization */
-  bohrRadiusScale: number;
+  bohrRadiusScale: number
 }
 
 /**
  * Orbital shape letter from azimuthal quantum number
- * @param l
+ * @param l - The azimuthal quantum number
+ * @returns The orbital shape letter (s, p, d, f, etc.)
  */
 export function orbitalShapeLetter(l: number): string {
-  const letters = ['s', 'p', 'd', 'f', 'g', 'h', 'i'];
-  return letters[l] ?? `l=${l}`;
+  const letters = ['s', 'p', 'd', 'f', 'g', 'h', 'i']
+  return letters[l] ?? `l=${l}`
 }
 
 /**
  * Get maximum l for a given n
- * @param n
+ * @param n - The principal quantum number
+ * @returns Maximum azimuthal quantum number (n-1)
  */
 export function maxAzimuthalForPrincipal(n: number): number {
-  return Math.max(0, n - 1);
+  return Math.max(0, n - 1)
 }
 
 /**
  * Validate quantum number constraints
- * @param n
- * @param l
- * @param m
+ * @param n - Principal quantum number
+ * @param l - Azimuthal quantum number
+ * @param m - Magnetic quantum number
+ * @returns True if quantum numbers are valid
  */
 export function validateQuantumNumbers(n: number, l: number, m: number): boolean {
-  if (n < 1) return false;
-  if (l < 0 || l >= n) return false;
-  if (Math.abs(m) > l) return false;
-  return true;
+  if (n < 1) return false
+  if (l < 0 || l >= n) return false
+  if (Math.abs(m) > l) return false
+  return true
 }
 
 /**
@@ -270,7 +273,7 @@ export const HYDROGEN_ORBITAL_PRESETS: Record<HydrogenOrbitalPresetName, Hydroge
   // ============================================
   // Custom - User-defined quantum numbers
   // ============================================
-  'custom': {
+  custom: {
     name: 'Custom',
     description: 'User-defined quantum numbers',
     n: 2,
@@ -279,61 +282,64 @@ export const HYDROGEN_ORBITAL_PRESETS: Record<HydrogenOrbitalPresetName, Hydroge
     useReal: true,
     bohrRadiusScale: 1.0,
   },
-};
+}
 
 /**
  * Get a hydrogen orbital preset by name
- * @param name
+ * @param name - Name of the preset
+ * @returns The preset configuration
  */
 export function getHydrogenPreset(name: HydrogenOrbitalPresetName): HydrogenOrbitalPreset {
-  return HYDROGEN_ORBITAL_PRESETS[name] ?? HYDROGEN_ORBITAL_PRESETS['2pz'];
+  return HYDROGEN_ORBITAL_PRESETS[name] ?? HYDROGEN_ORBITAL_PRESETS['2pz']
 }
 
 /**
  * Get all presets grouped by orbital type (s, p, d, f)
+ * @returns Record of orbital type to array of presets
  */
 export function getPresetsGroupedByType(): Record<string, HydrogenOrbitalPreset[]> {
   const groups: Record<string, HydrogenOrbitalPreset[]> = {
-    's': [],
-    'p': [],
-    'd': [],
-    'f': [],
-  };
+    s: [],
+    p: [],
+    d: [],
+    f: [],
+  }
 
   for (const preset of Object.values(HYDROGEN_ORBITAL_PRESETS)) {
-    if (preset.name === 'Custom') continue;
-    const letter = orbitalShapeLetter(preset.l);
+    if (preset.name === 'Custom') continue
+    const letter = orbitalShapeLetter(preset.l)
     if (groups[letter]) {
-      groups[letter].push(preset);
+      groups[letter].push(preset)
     }
   }
 
-  return groups;
+  return groups
 }
 
 /**
  * Generate a label for arbitrary quantum numbers
- * @param n
- * @param l
- * @param m
+ * @param n - Principal quantum number
+ * @param l - Angular momentum quantum number
+ * @param m - Magnetic quantum number
+ * @returns Human-readable label string
  */
 export function quantumNumbersToLabel(n: number, l: number, m: number): string {
-  const letter = orbitalShapeLetter(l);
+  const letter = orbitalShapeLetter(l)
   if (l === 0) {
-    return `${n}${letter}`;
+    return `${n}${letter}`
   } else if (l === 1) {
     // p orbitals
-    if (m === 0) return `${n}pz`;
-    if (m === 1) return `${n}px`;
-    if (m === -1) return `${n}py`;
+    if (m === 0) return `${n}pz`
+    if (m === 1) return `${n}px`
+    if (m === -1) return `${n}py`
   } else if (l === 2) {
     // d orbitals
-    if (m === 0) return `${n}dz²`;
-    if (m === 1) return `${n}dxz`;
-    if (m === -1) return `${n}dyz`;
-    if (m === 2) return `${n}dxy`;
-    if (m === -2) return `${n}dx²-y²`;
+    if (m === 0) return `${n}dz²`
+    if (m === 1) return `${n}dxz`
+    if (m === -1) return `${n}dyz`
+    if (m === 2) return `${n}dxy`
+    if (m === -2) return `${n}dx²-y²`
   }
   // Default: just show quantum numbers
-  return `${n}${letter} (m=${m})`;
+  return `${n}${letter} (m=${m})`
 }

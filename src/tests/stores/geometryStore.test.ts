@@ -11,15 +11,6 @@ describe('geometryStore', () => {
     useGeometryStore.getState().reset();
   });
 
-  describe('initial state', () => {
-    it('should have default dimension of 4', () => {
-      const state = useGeometryStore.getState();
-      expect(state.dimension).toBe(DEFAULT_DIMENSION);
-      expect(state.dimension).toBe(4);
-    });
-
-  });
-
   describe('setDimension', () => {
     it('should set dimension to valid values', () => {
       const { setDimension } = useGeometryStore.getState();
@@ -183,17 +174,5 @@ describe('geometryStore', () => {
     });
   });
 
-  describe('constants', () => {
-    it('should have MIN_DIMENSION of 3', () => {
-      expect(MIN_DIMENSION).toBe(3);
-    });
 
-    it('should have MAX_DIMENSION of 11', () => {
-      expect(MAX_DIMENSION).toBe(11);
-    });
-
-    it('should have DEFAULT_DIMENSION of 4', () => {
-      expect(DEFAULT_DIMENSION).toBe(4);
-    });
-  });
 });

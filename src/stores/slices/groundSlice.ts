@@ -29,10 +29,11 @@ import {
 
 /**
  * Validates hex color string format (accepts #RGB, #RRGGBB, #RRGGBBAA)
- * @param color
+ * @param color - Color string to validate
+ * @returns True if the color is a valid hex color
  */
 const isValidHexColor = (color: string): boolean =>
-  /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/.test(color);
+  /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/.test(color)
 
 // ============================================================================
 // State Interface

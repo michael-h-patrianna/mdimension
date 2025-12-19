@@ -74,7 +74,8 @@ interface GeometryState {
 
 /**
  * Clamps a dimension value to the valid range [MIN_DIMENSION, MAX_DIMENSION]
- * @param dim
+ * @param dim - Dimension value to clamp
+ * @returns Clamped dimension value
  */
 function clampDimension(dim: number): number {
   return Math.max(MIN_DIMENSION, Math.min(MAX_DIMENSION, Math.floor(dim)))
@@ -82,7 +83,8 @@ function clampDimension(dim: number): number {
 
 /**
  * Validates that an object type is supported
- * @param type
+ * @param type - Object type string to validate
+ * @returns True if type is a valid ObjectType
  */
 function isValidObjectType(type: string): type is ObjectType {
   // Use registry for validation
@@ -117,8 +119,9 @@ export function validateObjectTypeForDimension(
 
 /**
  * Gets the fallback object type when current type is invalid for dimension
- * @param type
- * @param dimension
+ * @param type - Current object type
+ * @param dimension - Current dimension
+ * @returns Valid object type for the dimension
  */
 function getFallbackObjectType(type: ObjectType, dimension: number): ObjectType {
   const validation = validateObjectTypeForDimension(type, dimension)

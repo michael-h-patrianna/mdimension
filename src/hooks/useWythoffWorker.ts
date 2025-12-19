@@ -14,11 +14,11 @@
  * ```
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react'
-import type { WythoffPolytopeConfig } from '@/lib/geometry/wythoff'
-import type { PolytopeGeometry } from '@/lib/geometry/types'
-import type { WorkerRequest, WorkerResponse } from '@/workers/wythoff.worker'
 import { inflateGeometry } from '@/lib/geometry/transfer'
+import type { PolytopeGeometry } from '@/lib/geometry/types'
+import type { WythoffPolytopeConfig } from '@/lib/geometry/wythoff'
+import type { WorkerRequest, WorkerResponse } from '@/workers/wythoff.worker'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 // Import worker using Vite's worker import syntax
 // The ?worker query tells Vite to create a worker module
@@ -26,6 +26,7 @@ import WythoffWorkerModule from '@/workers/wythoff.worker?worker'
 
 /**
  * Generate unique request ID
+ * @returns Unique request ID string
  */
 function generateRequestId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
@@ -69,6 +70,7 @@ export interface UseWythoffWorkerResult {
 
 /**
  * React hook for using the Wythoff polytope Web Worker
+ * @returns The worker result object with generate function and state
  */
 export function useWythoffWorker(): UseWythoffWorkerResult {
   const workerRef = useRef<Worker | null>(null)
@@ -141,34 +143,31 @@ export function useWythoffWorker(): UseWythoffWorkerResult {
   }, [])
 
   // Generate function - memoized for stable reference
-  const generate = useCallback(
-    (dimension: number, config: Partial<WythoffPolytopeConfig> = {}) => {
-      if (!workerRef.current) {
-        setError('Worker not initialized')
-        return
-      }
+  const generate = useCallback((dimension: number, config: Partial<WythoffPolytopeConfig> = {}) => {
+    if (!workerRef.current) {
+      setError('Worker not initialized')
+      return
+    }
 
-      // Generate new request ID
-      const requestId = generateRequestId()
-      currentRequestId.current = requestId
+    // Generate new request ID
+    const requestId = generateRequestId()
+    currentRequestId.current = requestId
 
-      // Reset state
-      setIsGenerating(true)
-      setProgress(0)
-      setError(null)
+    // Reset state
+    setIsGenerating(true)
+    setProgress(0)
+    setError(null)
 
-      // Send request to worker
-      const request: WorkerRequest = {
-        type: 'generate',
-        id: requestId,
-        dimension,
-        config,
-      }
+    // Send request to worker
+    const request: WorkerRequest = {
+      type: 'generate',
+      id: requestId,
+      dimension,
+      config,
+    }
 
-      workerRef.current.postMessage(request)
-    },
-    []
-  )
+    workerRef.current.postMessage(request)
+  }, [])
 
   return {
     generate,

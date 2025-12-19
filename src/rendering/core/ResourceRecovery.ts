@@ -103,9 +103,7 @@ class ResourceRecoveryCoordinator {
    */
   register(manager: ResourceManager): void {
     if (this.managers.has(manager.name)) {
-      console.warn(
-        `[ResourceRecovery] Manager "${manager.name}" already registered, replacing`
-      )
+      console.warn(`[ResourceRecovery] Manager "${manager.name}" already registered, replacing`)
     }
     this.managers.set(manager.name, manager)
   }
@@ -168,19 +166,14 @@ class ResourceRecoveryCoordinator {
         try {
           manager.invalidate()
         } catch (e) {
-          console.error(
-            `[ResourceRecovery] Failed to invalidate "${manager.name}":`,
-            e
-          )
+          console.error(`[ResourceRecovery] Failed to invalidate "${manager.name}":`, e)
         }
       }
 
       this.emit({ type: 'invalidated' })
 
       // Phase 2: Reinitialize in priority order
-      const sorted = [...this.managers.values()].sort(
-        (a, b) => a.priority - b.priority
-      )
+      const sorted = [...this.managers.values()].sort((a, b) => a.priority - b.priority)
 
       const total = sorted.length
       let completed = 0
@@ -198,10 +191,7 @@ class ResourceRecoveryCoordinator {
         } catch (e) {
           const error = e instanceof Error ? e : new Error(String(e))
           this.emit({ type: 'error', manager: manager.name, error })
-          console.error(
-            `[ResourceRecovery] Failed to reinitialize "${manager.name}":`,
-            e
-          )
+          console.error(`[ResourceRecovery] Failed to reinitialize "${manager.name}":`, e)
           // Continue with other managers - partial recovery is better than none
         }
 
@@ -216,6 +206,7 @@ class ResourceRecoveryCoordinator {
 
   /**
    * Check if recovery is currently in progress.
+   * @returns True if recovery is in progress
    */
   isInProgress(): boolean {
     return this.isRecovering
@@ -223,6 +214,7 @@ class ResourceRecoveryCoordinator {
 
   /**
    * Get list of registered manager names.
+   * @returns Array of registered manager names
    */
   getRegisteredManagers(): string[] {
     return [...this.managers.keys()]

@@ -1,9 +1,9 @@
-import { render } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Skybox } from '@/rendering/environment/Skybox';
-import { useEnvironmentStore } from '@/stores/environmentStore';
 import type { ColorAlgorithm } from '@/rendering/shaders/palette/types';
 import { DEFAULT_SKYBOX_PROCEDURAL_SETTINGS } from '@/stores/defaults/visualDefaults';
+import { useEnvironmentStore } from '@/stores/environmentStore';
+import { render } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock dependencies
 vi.mock('@react-three/drei', () => ({
@@ -131,6 +131,7 @@ describe('Skybox Color Sync Logic', () => {
    * whether to use simple color interpolation (uUsePalette=0) vs cosine palette (uUsePalette=1)
    * @param syncWithObject
    * @param colorAlgorithm
+   * @returns 0.0 for simple interpolation, 1.0 for cosine palette
    */
   const computeUsePaletteValue = (syncWithObject: boolean, colorAlgorithm: ColorAlgorithm): number => {
     const useSimpleInterpolation = syncWithObject &&
@@ -200,6 +201,7 @@ describe('ProceduralSkyboxWithEnvironment Logic', () => {
    * Helper function that mirrors the logic in ProceduralSkyboxWithEnvironment.tsx
    * for determining whether to generate environment maps for wall reflections.
    * @param activeWalls
+   * @returns True if walls are active and need environment maps
    */
   const needsEnvironmentMap = (activeWalls: string[]): boolean => {
     return activeWalls.length > 0;
@@ -211,6 +213,7 @@ describe('ProceduralSkyboxWithEnvironment Logic', () => {
    * @param skyboxMode
    * @param proceduralSettings
    * @param cosineCoefficients
+   * @returns Stringified key combining all relevant settings
    */
   const generateSettingsKey = (
     skyboxMode: string,

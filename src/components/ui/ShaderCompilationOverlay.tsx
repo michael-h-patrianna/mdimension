@@ -14,11 +14,11 @@
  * @module components/ui/ShaderCompilationOverlay
  */
 
-import React, { useState, useEffect, useRef } from 'react';
-import { m, AnimatePresence } from 'motion/react';
-import { usePerformanceStore } from '@/stores/performanceStore';
-import { LoadingSpinner } from './LoadingSpinner';
 import { Z_INDEX } from '@/constants/zIndex';
+import { usePerformanceStore } from '@/stores/performanceStore';
+import { AnimatePresence, m } from 'motion/react';
+import React, { useEffect, useRef, useState } from 'react';
+import { LoadingSpinner } from './LoadingSpinner';
 
 /** Animation duration for overlay fade in (seconds) */
 const OVERLAY_FADE_IN_DURATION = 0.15;
@@ -47,6 +47,7 @@ const CARD_EXIT_EASE = [0.4, 0, 0.2, 1] as const;
  * Automatically shows/hides based on performanceStore.isShaderCompiling state.
  * Enforces a minimum display time to prevent jarring flashes for fast compilations.
  * Should be mounted once at the app root level.
+ * @returns The shader compilation overlay component
  */
 export const ShaderCompilationOverlay: React.FC = () => {
   const isCompiling = usePerformanceStore((s) => s.isShaderCompiling);

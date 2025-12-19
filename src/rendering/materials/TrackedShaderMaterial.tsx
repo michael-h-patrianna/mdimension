@@ -48,8 +48,8 @@ interface TrackedShaderMaterialProps {
   materialKey?: string;
   /** Shader uniforms (required for functional shaders) */
   uniforms: Record<string, THREE.IUniform>;
-  /** GLSL version */
-  glslVersion?: typeof THREE.GLSL3 | typeof THREE.GLSL1;
+  /** GLSL version (WebGL2/GLSL ES 3.00 required) */
+  glslVersion?: typeof THREE.GLSL3;
   /** Which side of faces to render */
   side?: Side;
   /** Whether material is transparent */
@@ -73,17 +73,20 @@ interface TrackedShaderMaterialProps {
  * Key insight: Shader compilation blocks the main thread, preventing React from
  * rendering the overlay. We solve this by deferring the actual shader render
  * by one frame, giving the overlay time to appear first.
- * @param root0
- * @param root0.shaderName
- * @param root0.fragmentShader
- * @param root0.vertexShader
- * @param root0.materialKey
+ * @param root0 - Component props
+ * @param root0.shaderName - Name of the shader for display
+ * @param root0.fragmentShader - Fragment shader source code
+ * @param root0.vertexShader - Vertex shader source code
+ * @param root0.materialKey - Unique key for material instance
+ * @param root0.glslVersion - GLSL version (defaults to GLSL3 for WebGL2)
+ * @returns The shader material component
  */
 export function TrackedShaderMaterial({
   shaderName,
   fragmentShader,
   vertexShader,
   materialKey,
+  glslVersion = THREE.GLSL3,
   ...props
 }: TrackedShaderMaterialProps) {
   // Input validation - provide fallback for empty shaderName
@@ -209,6 +212,7 @@ export function TrackedShaderMaterial({
       key={materialKey}
       fragmentShader={fragmentShader}
       vertexShader={vertexShader}
+      glslVersion={glslVersion}
       {...props}
     />
   );

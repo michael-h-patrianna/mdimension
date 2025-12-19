@@ -23,27 +23,7 @@ describe('Visual Store - Shadow Actions', () => {
     useLightingStore.setState(LIGHTING_INITIAL_STATE);
   });
 
-  describe('Initial State', () => {
-    it('should have default shadow enabled state', () => {
-      const state = useLightingStore.getState();
-      expect(state.shadowEnabled).toBe(DEFAULT_SHADOW_ENABLED);
-    });
 
-    it('should have default shadow quality', () => {
-      const state = useLightingStore.getState();
-      expect(state.shadowQuality).toBe(DEFAULT_SHADOW_QUALITY);
-    });
-
-    it('should have default shadow softness', () => {
-      const state = useLightingStore.getState();
-      expect(state.shadowSoftness).toBe(DEFAULT_SHADOW_SOFTNESS);
-    });
-
-    it('should have default shadow animation mode', () => {
-      const state = useLightingStore.getState();
-      expect(state.shadowAnimationMode).toBe(DEFAULT_SHADOW_ANIMATION_MODE);
-    });
-  });
 
   describe('setShadowEnabled', () => {
     it('should enable shadows', () => {

@@ -52,7 +52,8 @@ interface AnimationState {
 
 /**
  * Clamps speed to valid range
- * @param speed
+ * @param speed - Speed value to clamp
+ * @returns Clamped speed value between MIN_SPEED and MAX_SPEED
  */
 function clampSpeed(speed: number): number {
   return Math.max(MIN_SPEED, Math.min(MAX_SPEED, speed))
@@ -60,7 +61,8 @@ function clampSpeed(speed: number): number {
 
 /**
  * Gets all rotation plane names for a given dimension
- * @param dimension
+ * @param dimension - The dimension to get planes for
+ * @returns Array of rotation plane names
  */
 function getAllPlaneNames(dimension: number): string[] {
   return getRotationPlanes(dimension).map((p) => p.name)

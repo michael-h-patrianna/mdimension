@@ -81,6 +81,7 @@ export interface PolytopeSceneProps {
 
 /**
  * Create base uniforms for N-D transformation (shared by all materials)
+ * @returns Record of N-D transformation uniforms
  */
 function createNDUniforms(): Record<string, { value: unknown }> {
   return {
@@ -165,6 +166,7 @@ function updateNDUniforms(
  * @param horizontalDeg
  * @param verticalDeg
  * @param target - Optional target vector to write to
+ * @returns Normalized direction vector from origin to light
  */
 function anglesToDirection(horizontalDeg: number, verticalDeg: number, target?: THREE.Vector3): THREE.Vector3 {
   const hRad = (horizontalDeg * Math.PI) / 180;
@@ -337,6 +339,7 @@ function createPatchedShadowMaterials(uniforms: Record<string, { value: unknown 
  * Calculate safe projection distance
  * @param vertices
  * @param normalizationFactor
+ * @returns Safe projection distance ensuring all vertices are visible
  */
 function calculateSafeProjectionDistance(
   vertices: VectorND[],
@@ -364,6 +367,7 @@ function calculateSafeProjectionDistance(
  * Uses packed attributes (vec4 + vec3) for extra dimensions to stay within WebGL 16 attribute limit.
  * @param vertices
  * @param setNormal
+ * @returns BufferGeometry with position, normal, and extra dimension attributes
  */
 function buildNDGeometry(
   vertices: VectorND[],

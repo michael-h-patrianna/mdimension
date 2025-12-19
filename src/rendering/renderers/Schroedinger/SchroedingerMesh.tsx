@@ -113,6 +113,7 @@ function createQuantumArrays(): QuantumArrays {
  * Visualizes superposition of harmonic oscillator eigenstates using
  * Beer-Lambert volumetric raymarching. The 3D slice plane is rotated
  * through D-dimensional space using rotated basis vectors.
+ * @returns The Schroedinger wavefunction mesh component
  */
 const SchroedingerMesh = () => {
   const meshRef = useRef<THREE.Mesh>(null);
@@ -948,7 +949,8 @@ const SchroedingerMesh = () => {
         }
       }
     }
-  }, -10); // Priority -10: Run BEFORE PostProcessing (priority 10)
+  }, 0.5); // Priority 0.5: Run AFTER CameraController (0) but BEFORE PostProcessing (1)
+           // This ensures we use the updated camera position for raymarching uniforms.
 
   // Generate unique key to force material recreation when shader changes or context is restored
   const materialKey = useMemo(() => {

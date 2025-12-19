@@ -9,13 +9,13 @@
  * and scaled on retrieval for better cache hit rates.
  */
 
-import type { PolytopeGeometry } from '../types'
 import { IndexedDBCache } from '@/lib/cache/IndexedDBCache'
 import { WYTHOFF_CONFIG } from '../config'
+import type { PolytopeGeometry } from '../types'
 import {
-  serializeToBinary,
   deserializeFromBinary,
   isBinaryFormat,
+  serializeToBinary,
   type BinaryPolytopeData,
 } from '../utils/binary-serialization'
 import type { WythoffPolytopeConfig } from './types'
@@ -57,8 +57,9 @@ async function getIndexedDBCache(): Promise<IndexedDBCache | null> {
  * Generate a scale-independent cache key for Wythoff polytope configuration.
  * Scale is intentionally excluded - we cache normalized geometry (scale=1.0)
  * and apply scale on retrieval for better cache hit rates.
- * @param dimension
- * @param config
+ * @param dimension - The dimension of the polytope
+ * @param config - Wythoff polytope configuration
+ * @returns JSON string cache key
  */
 export function getCacheKey(dimension: number, config: WythoffPolytopeConfig): string {
   return JSON.stringify({
@@ -79,19 +80,14 @@ export function getCacheKey(dimension: number, config: WythoffPolytopeConfig): s
  * @param scale - Target scale factor
  * @returns New geometry with scaled vertices
  */
-export function applyScaleToGeometry(
-  geometry: PolytopeGeometry,
-  scale: number
-): PolytopeGeometry {
+export function applyScaleToGeometry(geometry: PolytopeGeometry, scale: number): PolytopeGeometry {
   // If scale is ~1.0, return as-is to avoid unnecessary allocation
   if (Math.abs(scale - 1.0) < 1e-9) {
     return geometry
   }
 
   // Scale all vertices
-  const scaledVertices = geometry.vertices.map(vertex =>
-    vertex.map(coord => coord * scale)
-  )
+  const scaledVertices = geometry.vertices.map((vertex) => vertex.map((coord) => coord * scale))
 
   return {
     ...geometry,
@@ -126,11 +122,11 @@ export function cachePolytope(key: string, geometry: PolytopeGeometry): void {
 
   // Persist to IndexedDB in binary format (async, fire-and-forget)
   getIndexedDBCache()
-    .then(cache => {
+    .then((cache) => {
       if (cache) {
         // Serialize to binary format for efficient storage
         const binaryData = serializeToBinary(geometry)
-        cache.set('polytope-geometry', key, binaryData).catch(error => {
+        cache.set('polytope-geometry', key, binaryData).catch((error) => {
           console.warn('[Wythoff] IndexedDB write failed:', error)
         })
       }
@@ -149,9 +145,7 @@ export function cachePolytope(key: string, geometry: PolytopeGeometry): void {
  * @param key - Cache key
  * @returns Promise resolving to cached geometry or null
  */
-export async function getCachedPolytope(
-  key: string
-): Promise<PolytopeGeometry | null> {
+export async function getCachedPolytope(key: string): Promise<PolytopeGeometry | null> {
   // Check memory cache first (fastest)
   if (polytopeCache.has(key)) {
     return polytopeCache.get(key)!
@@ -209,6 +203,7 @@ export function clearMemoryCache(): void {
 
 /**
  * Get current memory cache size.
+ * @returns Number of cached polytopes
  */
 export function getMemoryCacheSize(): number {
   return polytopeCache.size

@@ -116,6 +116,7 @@ export const DEFAULT_NEW_LIGHT_POSITIONS: [number, number, number][] = [
 /**
  * Create a default light matching the current single-light behavior.
  * Position derived from: horizontal=45deg, vertical=130deg, distance=8
+ * @returns A new default light source configuration
  */
 export function createDefaultLight(): LightSource {
   // Convert spherical coordinates to Cartesian
@@ -143,6 +144,7 @@ export function createDefaultLight(): LightSource {
 /**
  * Create a default spot light positioned opposite to the main point light.
  * Points toward the origin.
+ * @returns A new default spot light configuration
  */
 export function createDefaultSpotLight(): LightSource {
   const position: [number, number, number] = [-5, 5, 5]

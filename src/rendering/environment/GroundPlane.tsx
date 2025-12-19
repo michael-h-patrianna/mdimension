@@ -25,12 +25,12 @@
  * ```
  */
 
-import { useCallback, useMemo } from 'react';
-import { FrontSide, DoubleSide, Color, Object3D } from 'three';
-import { Grid } from '@react-three/drei';
 import type { Vector3D } from '@/lib/math/types';
 import { RENDER_LAYERS } from '@/rendering/core/layers';
 import type { GroundPlaneType, WallPosition } from '@/stores/defaults/visualDefaults';
+import { Grid } from '@react-three/drei';
+import { useCallback, useMemo } from 'react';
+import { Color, DoubleSide, FrontSide, Object3D } from 'three';
 
 /**
  * Props for the GroundPlane component
@@ -277,19 +277,20 @@ interface WallProps extends SurfaceMaterialProps {
 
 /**
  * Renders a single wall surface with optional grid overlay.
- * @param root0
- * @param root0.wall
- * @param root0.distance
- * @param root0.size
- * @param root0.color
- * @param root0.roughness
- * @param root0.metalness
- * @param root0.envMapIntensity
- * @param root0.surfaceType
- * @param root0.showGrid
- * @param root0.gridColor
- * @param root0.gridSpacing
- * @param root0.sectionColor
+ * @param root0 - Component props
+ * @param root0.wall - Wall identifier
+ * @param root0.distance - Distance from origin
+ * @param root0.size - Wall size
+ * @param root0.color - Wall color
+ * @param root0.roughness - Surface roughness
+ * @param root0.metalness - Surface metalness
+ * @param root0.envMapIntensity - Environment map intensity
+ * @param root0.surfaceType - Ground plane surface type
+ * @param root0.showGrid - Whether to show grid
+ * @param root0.gridColor - Grid line color
+ * @param root0.gridSpacing - Grid spacing
+ * @param root0.sectionColor - Section line color
+ * @returns The wall mesh with optional grid overlay
  */
 function Wall({
   wall,

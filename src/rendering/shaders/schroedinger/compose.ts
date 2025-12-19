@@ -9,31 +9,29 @@
  * 5. Main shader
  */
 
-import { precisionBlock } from '../shared/core/precision.glsl';
-import { constantsBlock } from '../shared/core/constants.glsl';
-import { uniformsBlock } from '../shared/core/uniforms.glsl';
-import { hslBlock } from '../shared/color/hsl.glsl';
-import { cosinePaletteBlock } from '../shared/color/cosine-palette.glsl';
-import { oklabBlock } from '../shared/color/oklab.glsl';
-import { selectorBlock } from '../shared/color/selector.glsl';
-import { ggxBlock } from '../shared/lighting/ggx.glsl';
-import { multiLightBlock } from '../shared/lighting/multi-light.glsl';
-import { opacityBlock } from '../shared/features/opacity.glsl';
-import { temporalBlock } from '../shared/features/temporal.glsl';
-import { fogUniformsBlock, fogFunctionsBlock } from '../shared/features/fog.glsl';
-import { sphereIntersectBlock } from '../shared/raymarch/sphere-intersect.glsl';
+import { cosinePaletteBlock } from '../shared/color/cosine-palette.glsl'
+import { hslBlock } from '../shared/color/hsl.glsl'
+import { oklabBlock } from '../shared/color/oklab.glsl'
+import { selectorBlock } from '../shared/color/selector.glsl'
+import { constantsBlock } from '../shared/core/constants.glsl'
+import { precisionBlock } from '../shared/core/precision.glsl'
+import { uniformsBlock } from '../shared/core/uniforms.glsl'
+import { fogFunctionsBlock, fogUniformsBlock } from '../shared/features/fog.glsl'
+import { opacityBlock } from '../shared/features/opacity.glsl'
+import { temporalBlock } from '../shared/features/temporal.glsl'
+import { ggxBlock } from '../shared/lighting/ggx.glsl'
+import { multiLightBlock } from '../shared/lighting/multi-light.glsl'
+import { sphereIntersectBlock } from '../shared/raymarch/sphere-intersect.glsl'
 
-import { schroedingerUniformsBlock } from './uniforms.glsl';
-import { complexMathBlock } from './quantum/complex.glsl';
-import { hermiteBlock } from './quantum/hermite.glsl';
-import { ho1dBlock } from './quantum/ho1d.glsl';
-import { laguerreBlock } from './quantum/laguerre.glsl';
-import { legendreBlock } from './quantum/legendre.glsl';
-import { sphericalHarmonicsBlock } from './quantum/sphericalHarmonics.glsl';
-import { hydrogenRadialBlock } from './quantum/hydrogenRadial.glsl';
-import { hydrogenPsiBlock } from './quantum/hydrogenPsi.glsl';
+import { ShaderConfig } from '../shared/types'
+import { mainBlock, mainBlockIsosurface } from './main.glsl'
+import { complexMathBlock } from './quantum/complex.glsl'
+import { densityBlock } from './quantum/density.glsl'
+import { hermiteBlock } from './quantum/hermite.glsl'
+import { ho1dBlock } from './quantum/ho1d.glsl'
 import {
-  hydrogenNDCommonBlock,
+  hydrogenND10dBlock,
+  hydrogenND11dBlock,
   hydrogenND3dBlock,
   hydrogenND4dBlock,
   hydrogenND5dBlock,
@@ -41,25 +39,27 @@ import {
   hydrogenND7dBlock,
   hydrogenND8dBlock,
   hydrogenND9dBlock,
-  hydrogenND10dBlock,
-  hydrogenND11dBlock,
-} from './quantum/hydrogenND';
-import { psiBlock } from './quantum/psi.glsl';
-import { densityBlock } from './quantum/density.glsl';
-import { absorptionBlock } from './volume/absorption.glsl';
-import { emissionBlock } from './volume/emission.glsl';
-import { volumeIntegrationBlock } from './volume/integration.glsl';
-import { mainBlock, mainBlockIsosurface } from './main.glsl';
-import { ShaderConfig } from '../shared/types';
+  hydrogenNDCommonBlock,
+} from './quantum/hydrogenND'
+import { hydrogenPsiBlock } from './quantum/hydrogenPsi.glsl'
+import { hydrogenRadialBlock } from './quantum/hydrogenRadial.glsl'
+import { laguerreBlock } from './quantum/laguerre.glsl'
+import { legendreBlock } from './quantum/legendre.glsl'
+import { psiBlock } from './quantum/psi.glsl'
+import { sphericalHarmonicsBlock } from './quantum/sphericalHarmonics.glsl'
+import { schroedingerUniformsBlock } from './uniforms.glsl'
+import { absorptionBlock } from './volume/absorption.glsl'
+import { emissionBlock } from './volume/emission.glsl'
+import { volumeIntegrationBlock } from './volume/integration.glsl'
 
 /** Quantum physics mode for Schrödinger visualization */
-export type QuantumModeForShader = 'harmonicOscillator' | 'hydrogenOrbital' | 'hydrogenND';
+export type QuantumModeForShader = 'harmonicOscillator' | 'hydrogenOrbital' | 'hydrogenND'
 
 export interface SchroedingerShaderConfig extends ShaderConfig {
   /** Use isosurface mode instead of volumetric */
-  isosurface?: boolean;
+  isosurface?: boolean
   /** Use temporal accumulation (Horizon-style 1/4 res reconstruction) */
-  temporalAccumulation?: boolean;
+  temporalAccumulation?: boolean
   /**
    * Quantum mode - controls which modules are compiled into the shader.
    * - 'harmonicOscillator': Only HO basis functions (default, fastest compilation)
@@ -67,12 +67,13 @@ export interface SchroedingerShaderConfig extends ShaderConfig {
    * - 'hydrogenND': Adds hydrogen ND functions for the specified dimension only
    * If undefined, all modules are included for runtime switching.
    */
-  quantumMode?: QuantumModeForShader;
+  quantumMode?: QuantumModeForShader
 }
 
 /**
- *
- * @param config
+ * Compose Schroedinger fragment shader with specified features.
+ * @param config - Schroedinger shader configuration options
+ * @returns Composed shader source code
  */
 export function composeSchroedingerShader(config: SchroedingerShaderConfig) {
   const {
@@ -94,130 +95,132 @@ export function composeSchroedingerShader(config: SchroedingerShaderConfig) {
     energyColor: enableEnergyColor,
     shimmer: enableShimmer,
     erosion: enableErosion,
-  } = config;
+  } = config
 
   // Determine which quantum modules to include
   // If quantumMode is undefined, include all modules for runtime switching
-  const includeHydrogen = !quantumMode || quantumMode === 'hydrogenOrbital' || quantumMode === 'hydrogenND';
-  const includeHydrogenND = !quantumMode || quantumMode === 'hydrogenND';
+  const includeHydrogen =
+    !quantumMode || quantumMode === 'hydrogenOrbital' || quantumMode === 'hydrogenND'
+  const includeHydrogenND = !quantumMode || quantumMode === 'hydrogenND'
 
   // For hydrogenND mode, we only need to include the specific dimension block
   // This dramatically reduces shader size and compilation time
-  const hydrogenNDDimension = includeHydrogenND ? Math.min(Math.max(dimension, 3), 11) : 0;
+  const hydrogenNDDimension = includeHydrogenND ? Math.min(Math.max(dimension, 3), 11) : 0
 
-  const defines: string[] = [];
-  const features: string[] = [];
+  const defines: string[] = []
+  const features: string[] = []
 
   // Add quantum mode defines for conditional compilation in psi.glsl.ts
   if (includeHydrogen) {
-    defines.push('#define HYDROGEN_MODE_ENABLED');
+    defines.push('#define HYDROGEN_MODE_ENABLED')
   }
   if (includeHydrogenND) {
-    defines.push('#define HYDROGEN_ND_MODE_ENABLED');
+    defines.push('#define HYDROGEN_ND_MODE_ENABLED')
     // Add dimension-specific define to eliminate runtime dispatch
-    defines.push(`#define HYDROGEN_ND_DIMENSION ${hydrogenNDDimension}`);
+    defines.push(`#define HYDROGEN_ND_DIMENSION ${hydrogenNDDimension}`)
   }
 
-  features.push('Quantum Volume');
-  features.push('Beer-Lambert');
-  features.push(`Opacity: ${opacityMode}`);
+  features.push('Quantum Volume')
+  features.push('Beer-Lambert')
+  features.push(`Opacity: ${opacityMode}`)
 
   // Shadows and AO are now enabled for both volumetric and isosurface modes
   // Volumetric mode uses cone-traced self-shadowing and hemisphere-sampled AO
-  const useShadows = enableShadows && !overrides.includes('Shadows');
-  const useAO = enableAO && !overrides.includes('Ambient Occlusion');
+  const useShadows = enableShadows && !overrides.includes('Shadows')
+  const useAO = enableAO && !overrides.includes('Ambient Occlusion')
 
   // Temporal modes are mutually exclusive:
   // - temporalAccumulation: Horizon-style 1/4 res with reconstruction (recommended for volumetric)
   // - temporal: Conservative depth-skip optimization (legacy, may have artifacts)
   const useTemporalAccumulation =
-    temporalAccumulation && !isosurface && !overrides.includes('Temporal Accumulation');
+    temporalAccumulation && !isosurface && !overrides.includes('Temporal Accumulation')
   const useTemporal =
-    enableTemporal &&
-    !useTemporalAccumulation &&
-    !overrides.includes('Temporal Reprojection');
+    enableTemporal && !useTemporalAccumulation && !overrides.includes('Temporal Reprojection')
 
   if (useShadows) {
-    defines.push('#define USE_SHADOWS');
-    features.push('Shadows');
+    defines.push('#define USE_SHADOWS')
+    features.push('Shadows')
   }
   if (useTemporalAccumulation) {
-    defines.push('#define USE_TEMPORAL_ACCUMULATION');
-    features.push('Temporal Accumulation (1/4 res)');
+    defines.push('#define USE_TEMPORAL_ACCUMULATION')
+    features.push('Temporal Accumulation (1/4 res)')
   } else if (useTemporal) {
-    defines.push('#define USE_TEMPORAL');
-    features.push('Temporal Reprojection');
+    defines.push('#define USE_TEMPORAL')
+    features.push('Temporal Reprojection')
   }
   if (useAO) {
-    defines.push('#define USE_AO');
-    features.push('Ambient Occlusion');
+    defines.push('#define USE_AO')
+    features.push('Ambient Occlusion')
   }
 
-  const useSss = enableSss && !overrides.includes('SSS');
-  const useFresnel = enableFresnel && !overrides.includes('Fresnel');
-  const useFog = enableFog && !overrides.includes('Fog');
+  const useSss = enableSss && !overrides.includes('SSS')
+  const useFresnel = enableFresnel && !overrides.includes('Fresnel')
+  const useFog = enableFog && !overrides.includes('Fog')
 
   if (useSss) {
-    defines.push('#define USE_SSS');
-    features.push('SSS');
+    defines.push('#define USE_SSS')
+    features.push('SSS')
   }
   if (useFresnel) {
-    defines.push('#define USE_FRESNEL');
-    features.push('Fresnel');
+    defines.push('#define USE_FRESNEL')
+    features.push('Fresnel')
   }
   if (useFog) {
-    defines.push('#define USE_FOG');
-    features.push('Fog');
+    defines.push('#define USE_FOG')
+    features.push('Fog')
   }
 
   // Quantum volume effects (compile-time optimization)
-  const useCurl = enableCurl && !overrides.includes('Curl');
-  const useDispersion = enableDispersion && !overrides.includes('Dispersion');
-  const useNodal = enableNodal && !overrides.includes('Nodal');
-  const useEnergyColor = enableEnergyColor && !overrides.includes('Energy Color');
-  const useShimmer = enableShimmer && !overrides.includes('Shimmer');
-  const useErosion = enableErosion && !overrides.includes('Erosion');
+  const useCurl = enableCurl && !overrides.includes('Curl')
+  const useDispersion = enableDispersion && !overrides.includes('Dispersion')
+  const useNodal = enableNodal && !overrides.includes('Nodal')
+  const useEnergyColor = enableEnergyColor && !overrides.includes('Energy Color')
+  const useShimmer = enableShimmer && !overrides.includes('Shimmer')
+  const useErosion = enableErosion && !overrides.includes('Erosion')
 
   if (useCurl) {
-    defines.push('#define USE_CURL');
-    features.push('Curl Flow');
+    defines.push('#define USE_CURL')
+    features.push('Curl Flow')
   }
   if (useDispersion) {
-    defines.push('#define USE_DISPERSION');
-    features.push('Chromatic Dispersion');
+    defines.push('#define USE_DISPERSION')
+    features.push('Chromatic Dispersion')
   }
   if (useNodal) {
-    defines.push('#define USE_NODAL');
-    features.push('Nodal Surfaces');
+    defines.push('#define USE_NODAL')
+    features.push('Nodal Surfaces')
   }
   if (useEnergyColor) {
-    defines.push('#define USE_ENERGY_COLOR');
-    features.push('Energy Coloring');
+    defines.push('#define USE_ENERGY_COLOR')
+    features.push('Energy Coloring')
   }
   if (useShimmer) {
-    defines.push('#define USE_SHIMMER');
-    features.push('Uncertainty Shimmer');
+    defines.push('#define USE_SHIMMER')
+    features.push('Uncertainty Shimmer')
   }
   if (useErosion) {
-    defines.push('#define USE_EROSION');
-    features.push('Edge Erosion');
+    defines.push('#define USE_EROSION')
+    features.push('Edge Erosion')
   }
 
   if (isosurface) {
-    features.push('Isosurface Mode');
+    features.push('Isosurface Mode')
   } else {
-    features.push('Volumetric Mode');
+    features.push('Volumetric Mode')
   }
 
   // Select main block based on mode
-  const selectedMainBlock = isosurface ? mainBlockIsosurface : mainBlock;
+  const selectedMainBlock = isosurface ? mainBlockIsosurface : mainBlock
 
   const blocks = [
     // IMPORTANT: Defines must come FIRST so USE_TEMPORAL_ACCUMULATION is available
     // when precision block conditionally declares MRT outputs
     { name: 'Defines', content: defines.join('\n') },
     { name: 'Precision', content: precisionBlock },
-    { name: 'Vertex Inputs', content: `\n// Inputs from vertex shader\nin vec3 vPosition;\nin vec2 vUv;\n` },
+    {
+      name: 'Vertex Inputs',
+      content: `\n// Inputs from vertex shader\nin vec3 vPosition;\nin vec2 vUv;\n`,
+    },
     { name: 'Constants', content: constantsBlock },
     { name: 'Shared Uniforms', content: uniformsBlock },
     { name: 'Schrödinger Uniforms', content: schroedingerUniformsBlock },
@@ -238,15 +241,51 @@ export function composeSchroedingerShader(config: SchroedingerShaderConfig) {
     // Hydrogen ND modules - only include the specific dimension block needed
     // This reduces shader size by ~400 lines and dramatically speeds up compilation
     { name: 'Hydrogen ND Common', content: hydrogenNDCommonBlock, condition: includeHydrogenND },
-    { name: 'Hydrogen ND 3D', content: hydrogenND3dBlock, condition: includeHydrogenND && hydrogenNDDimension === 3 },
-    { name: 'Hydrogen ND 4D', content: hydrogenND4dBlock, condition: includeHydrogenND && hydrogenNDDimension === 4 },
-    { name: 'Hydrogen ND 5D', content: hydrogenND5dBlock, condition: includeHydrogenND && hydrogenNDDimension === 5 },
-    { name: 'Hydrogen ND 6D', content: hydrogenND6dBlock, condition: includeHydrogenND && hydrogenNDDimension === 6 },
-    { name: 'Hydrogen ND 7D', content: hydrogenND7dBlock, condition: includeHydrogenND && hydrogenNDDimension === 7 },
-    { name: 'Hydrogen ND 8D', content: hydrogenND8dBlock, condition: includeHydrogenND && hydrogenNDDimension === 8 },
-    { name: 'Hydrogen ND 9D', content: hydrogenND9dBlock, condition: includeHydrogenND && hydrogenNDDimension === 9 },
-    { name: 'Hydrogen ND 10D', content: hydrogenND10dBlock, condition: includeHydrogenND && hydrogenNDDimension === 10 },
-    { name: 'Hydrogen ND 11D', content: hydrogenND11dBlock, condition: includeHydrogenND && hydrogenNDDimension === 11 },
+    {
+      name: 'Hydrogen ND 3D',
+      content: hydrogenND3dBlock,
+      condition: includeHydrogenND && hydrogenNDDimension === 3,
+    },
+    {
+      name: 'Hydrogen ND 4D',
+      content: hydrogenND4dBlock,
+      condition: includeHydrogenND && hydrogenNDDimension === 4,
+    },
+    {
+      name: 'Hydrogen ND 5D',
+      content: hydrogenND5dBlock,
+      condition: includeHydrogenND && hydrogenNDDimension === 5,
+    },
+    {
+      name: 'Hydrogen ND 6D',
+      content: hydrogenND6dBlock,
+      condition: includeHydrogenND && hydrogenNDDimension === 6,
+    },
+    {
+      name: 'Hydrogen ND 7D',
+      content: hydrogenND7dBlock,
+      condition: includeHydrogenND && hydrogenNDDimension === 7,
+    },
+    {
+      name: 'Hydrogen ND 8D',
+      content: hydrogenND8dBlock,
+      condition: includeHydrogenND && hydrogenNDDimension === 8,
+    },
+    {
+      name: 'Hydrogen ND 9D',
+      content: hydrogenND9dBlock,
+      condition: includeHydrogenND && hydrogenNDDimension === 9,
+    },
+    {
+      name: 'Hydrogen ND 10D',
+      content: hydrogenND10dBlock,
+      condition: includeHydrogenND && hydrogenNDDimension === 10,
+    },
+    {
+      name: 'Hydrogen ND 11D',
+      content: hydrogenND11dBlock,
+      condition: includeHydrogenND && hydrogenNDDimension === 11,
+    },
 
     // Unified wavefunction evaluation (mode-switching)
     { name: 'Wavefunction (Psi)', content: psiBlock },
@@ -278,22 +317,22 @@ export function composeSchroedingerShader(config: SchroedingerShaderConfig) {
     // Opacity and main
     { name: 'Opacity System', content: opacityBlock },
     { name: 'Main', content: selectedMainBlock },
-  ];
+  ]
 
-  const modules: string[] = [];
-  const glslParts: string[] = [];
+  const modules: string[] = []
+  const glslParts: string[] = []
 
-  blocks.forEach(b => {
-    if (b.condition === false) return; // Disabled in config
+  blocks.forEach((b) => {
+    if (b.condition === false) return // Disabled in config
 
-    modules.push(b.name);
+    modules.push(b.name)
 
     if (overrides.includes(b.name)) {
       // Overridden: Don't add content
     } else {
-      glslParts.push(b.content);
+      glslParts.push(b.content)
     }
-  });
+  })
 
-  return { glsl: glslParts.join('\n'), modules, features };
+  return { glsl: glslParts.join('\n'), modules, features }
 }

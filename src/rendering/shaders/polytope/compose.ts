@@ -36,6 +36,7 @@ export type PolytopeShaderConfig = MeshShaderConfig
  * Computes face normal from all 3 triangle vertices after nD transformation.
  * This ensures correct normals even when nD projection flips face winding.
  * Uses packed attributes to stay within WebGL 16 attribute limit.
+ * @returns Composed vertex shader source code
  */
 export function composeFaceVertexShader(): string {
   return [
@@ -102,6 +103,7 @@ export function composeFaceVertexShader(): string {
 /**
  * Compose edge vertex shader for Polytope wireframe rendering.
  * Uses packed aExtraDims0_3 (vec4) and aExtraDims4_6 (vec3) attributes.
+ * @returns GLSL vertex shader code string for edge rendering
  */
 export function composeEdgeVertexShader(): string {
   return [
@@ -307,6 +309,7 @@ void main() {
  * Edge fragment shader with MRT outputs.
  * Must output to both gColor (location 0) and gNormal (location 1)
  * to be compatible with MRT render targets.
+ * @returns GLSL fragment shader code string for edge rendering
  */
 export function composeEdgeFragmentShader(): string {
   return `

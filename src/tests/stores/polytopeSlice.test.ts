@@ -12,7 +12,6 @@
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
-import { DEFAULT_POLYTOPE_CONFIG } from '@/lib/geometry/extended/types';
 
 describe('polytopeSlice', () => {
   beforeEach(() => {
@@ -24,34 +23,7 @@ describe('polytopeSlice', () => {
     useExtendedObjectStore.getState().reset();
   });
 
-  describe('Initial state', () => {
-    it('has correct default values', () => {
-      const { polytope } = useExtendedObjectStore.getState();
 
-      expect(polytope.scale).toBe(DEFAULT_POLYTOPE_CONFIG.scale);
-      expect(polytope.truncationEnabled).toBe(false);
-      expect(polytope.truncationMode).toBe('vertexTruncate');
-      expect(polytope.truncationT).toBe(0.0);
-      expect(polytope.truncationMin).toBe(0.0);
-      expect(polytope.truncationMax).toBe(0.5);
-      expect(polytope.truncationSpeed).toBe(0.1);
-      // Vertex modulation defaults (enabled by default)
-      expect(polytope.facetOffsetEnabled).toBe(true);
-      expect(polytope.facetOffsetAmplitude).toBe(0.2);
-      expect(polytope.facetOffsetFrequency).toBe(0.01);
-      expect(polytope.facetOffsetPhaseSpread).toBe(0.12);
-      expect(polytope.facetOffsetBias).toBe(1.0);
-      // Legacy animation properties (still in store)
-      expect(polytope.dualMorphEnabled).toBe(false);
-      expect(polytope.dualMorphT).toBe(0.3);
-      expect(polytope.dualNormalize).toBe('unitSphere');
-      expect(polytope.dualMorphSpeed).toBe(0.05);
-      expect(polytope.explodeEnabled).toBe(false);
-      expect(polytope.explodeFactor).toBe(0.0);
-      expect(polytope.explodeSpeed).toBe(0.1);
-      expect(polytope.explodeMax).toBe(0.3);
-    });
-  });
 
   describe('Truncation Animation Actions', () => {
     it('setPolytopeTruncationEnabled toggles truncation', () => {

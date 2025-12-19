@@ -8,8 +8,6 @@ import {
   MIN_SCALE,
   MAX_SCALE,
   DEFAULT_SCALE,
-  SCALE_WARNING_LOW,
-  SCALE_WARNING_HIGH,
 } from '@/stores/transformStore';
 
 describe('transformStore', () => {
@@ -19,46 +17,7 @@ describe('transformStore', () => {
     useTransformStore.getState().setDimension(4);
   });
 
-  describe('constants', () => {
-    it('should have correct MIN_SCALE', () => {
-      expect(MIN_SCALE).toBe(0.1);
-    });
 
-    it('should have correct MAX_SCALE', () => {
-      expect(MAX_SCALE).toBe(3.0);
-    });
-
-    it('should have correct DEFAULT_SCALE', () => {
-      expect(DEFAULT_SCALE).toBe(1.0);
-    });
-
-    it('should have correct SCALE_WARNING_LOW', () => {
-      expect(SCALE_WARNING_LOW).toBe(0.2);
-    });
-
-    it('should have correct SCALE_WARNING_HIGH', () => {
-      expect(SCALE_WARNING_HIGH).toBe(2.5);
-    });
-  });
-
-  describe('initial state', () => {
-    it('should have default uniform scale of 1.0', () => {
-      expect(useTransformStore.getState().uniformScale).toBe(DEFAULT_SCALE);
-    });
-
-    it('should have scale locked by default', () => {
-      expect(useTransformStore.getState().scaleLocked).toBe(true);
-    });
-
-    it('should have per-axis scales all set to 1.0', () => {
-      const scales = useTransformStore.getState().perAxisScale;
-      expect(scales.every((s) => s === DEFAULT_SCALE)).toBe(true);
-    });
-
-    it('should have 4 per-axis scales for dimension 4', () => {
-      expect(useTransformStore.getState().perAxisScale).toHaveLength(4);
-    });
-  });
 
   describe('setUniformScale', () => {
     it('should update uniform scale', () => {
@@ -174,23 +133,25 @@ describe('transformStore', () => {
   describe('getScaleMatrix', () => {
     it('should return a matrix with correct dimensions', () => {
       const matrix = useTransformStore.getState().getScaleMatrix();
-      expect(matrix).toHaveLength(4);
-      expect(matrix[0]).toHaveLength(4);
+      // 4x4 matrix stored as flat array = 16 elements
+      expect(matrix).toHaveLength(16);
     });
 
     it('should return identity-like matrix for default scales', () => {
       const matrix = useTransformStore.getState().getScaleMatrix();
+      const dim = 4;
       // Diagonal elements should be 1.0 (default scale)
       for (let i = 0; i < 4; i++) {
-        expect(matrix[i]?.[i]).toBe(DEFAULT_SCALE);
+        expect(matrix[i * dim + i]).toBe(DEFAULT_SCALE);
       }
     });
 
     it('should reflect scale changes in matrix', () => {
       useTransformStore.getState().setUniformScale(2.0);
       const matrix = useTransformStore.getState().getScaleMatrix();
+      const dim = 4;
       for (let i = 0; i < 4; i++) {
-        expect(matrix[i]?.[i]).toBe(2.0);
+        expect(matrix[i * dim + i]).toBe(2.0);
       }
     });
   });

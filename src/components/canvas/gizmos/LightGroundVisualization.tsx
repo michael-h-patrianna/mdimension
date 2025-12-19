@@ -13,11 +13,11 @@
  * 2. Draggable target for adjusting light X,Z position
  */
 
-import { memo, useMemo, useCallback, useRef, useEffect } from 'react';
-import { Line, DragControls } from '@react-three/drei';
-import * as THREE from 'three';
-import { rotationToDirection, directionToRotation } from '@/rendering/lights/types';
 import type { LightSource } from '@/rendering/lights/types';
+import { directionToRotation, rotationToDirection } from '@/rendering/lights/types';
+import { DragControls, Line } from '@react-three/drei';
+import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
+import * as THREE from 'three';
 
 /** Ground plane Y position */
 const GROUND_Y = 0;
@@ -62,8 +62,9 @@ export interface LightGroundVisualizationProps {
 /**
  * Calculate ray-ground intersection point
  * Returns null if light is below ground or pointing upward
- * @param position
- * @param direction
+ * @param position - Light position as [x, y, z]
+ * @param direction - Light direction as [x, y, z]
+ * @returns The intersection point or null if no valid intersection
  */
 function calculateGroundIntersection(
   position: [number, number, number],
@@ -99,10 +100,11 @@ function calculateGroundIntersection(
 
 /**
  * Calculate ellipse points for spotlight cone intersection with ground
- * @param position
- * @param direction
- * @param coneAngle
- * @param intersection
+ * @param position - Light position
+ * @param direction - Light direction
+ * @param coneAngle - Spotlight cone angle
+ * @param intersection - Ground intersection point
+ * @returns Array of 3D points forming the ellipse
  */
 function calculateEllipsePoints(
   position: [number, number, number],

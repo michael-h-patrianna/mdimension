@@ -11,6 +11,7 @@ import React from 'react';
  * Fractal animation quality controls for the Performance section.
  * When enabled, reduces rendering quality during rotation/animation for smoother interaction.
  * Only affects fractal objects (Mandelbulb, Julia, Schroedinger).
+ * @returns The quality controls UI component
  */
 export const FractalAnimationQualityControls: React.FC = () => {
   const enabled = usePerformanceStore((s) => s.fractalAnimationLowQuality);

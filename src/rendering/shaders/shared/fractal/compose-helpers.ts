@@ -70,9 +70,9 @@ export function processFeatureFlags(config: ShaderConfig): FeatureFlags {
   const useShadows = enableShadows && !overrides.includes('Shadows');
   const useTemporal = enableTemporal && !overrides.includes('Temporal Reprojection');
   const useAO = enableAO && !overrides.includes('Ambient Occlusion');
-  const useSss = enableSss && !overrides.includes('SSS');
-  const useFresnel = enableFresnel && !overrides.includes('Fresnel');
-  const useFog = enableFog && !overrides.includes('Fog');
+  const useSss = !!enableSss && !overrides.includes('SSS');
+  const useFresnel = !!enableFresnel && !overrides.includes('Fresnel');
+  const useFog = !!enableFog && !overrides.includes('Fog');
 
   if (useShadows) {
     defines.push('#define USE_SHADOWS');

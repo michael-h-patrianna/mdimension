@@ -10,6 +10,7 @@ import React from 'react';
 /**
  * Temporal reprojection controls for the Performance section.
  * Only affects fractal objects (Mandelbulb).
+ * @returns The temporal reprojection controls UI component
  */
 export const TemporalReprojectionControls: React.FC = () => {
   const enabled = usePerformanceStore((s) => s.temporalReprojectionEnabled);

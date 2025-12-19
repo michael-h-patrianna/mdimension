@@ -8,37 +8,33 @@
  */
 
 /** Available shader types for polytope rendering */
-export type ShaderType =
-  | 'wireframe'
-  | 'surface';
+export type ShaderType = 'wireframe' | 'surface'
 
 /** Wireframe shader settings - simple line rendering */
 export interface WireframeSettings {
   /** Line thickness in pixels (1-5) */
-  lineThickness: number;
+  lineThickness: number
 }
 
 /** Surface shader settings - filled faces with lighting */
 export interface SurfaceSettings {
   /** Face opacity (0-1, 0 = wireframe, 1 = solid) */
-  faceOpacity: number;
+  faceOpacity: number
   /** Specular intensity multiplier (0-2) */
-  specularIntensity: number;
+  specularIntensity: number
   /** Shininess - controls specular highlight size (1-128, Three.js default: 30) */
-  shininess: number;
+  shininess: number
   /** Enable fresnel rim lighting effect */
-  fresnelEnabled: boolean;
+  fresnelEnabled: boolean
 }
 
 /** Union type for all shader settings */
-export type ShaderSettings =
-  | WireframeSettings
-  | SurfaceSettings;
+export type ShaderSettings = WireframeSettings | SurfaceSettings
 
 /** Complete shader settings object for all shader types */
 export interface AllShaderSettings {
-  wireframe: WireframeSettings;
-  surface: SurfaceSettings;
+  wireframe: WireframeSettings
+  surface: SurfaceSettings
 }
 
 // ============================================================================
@@ -51,13 +47,13 @@ export interface AllShaderSettings {
 export const SHADER_DISPLAY_NAMES: Record<ShaderType, string> = {
   wireframe: 'Wireframe',
   surface: 'Surface',
-};
+}
 
 /** Shader descriptions for UI tooltips */
 export const SHADER_DESCRIPTIONS: Record<ShaderType, string> = {
   wireframe: 'Simple solid color edges',
   surface: 'Filled faces with lighting',
-};
+}
 
 // ============================================================================
 // Tone Mapping Types
@@ -76,7 +72,7 @@ export type ToneMappingAlgorithm =
   | 'cineon'
   | 'aces'
   | 'agx'
-  | 'neutral';
+  | 'neutral'
 
 /** Tone mapping algorithm options for UI dropdown */
 export const TONE_MAPPING_OPTIONS = [
@@ -87,21 +83,21 @@ export const TONE_MAPPING_OPTIONS = [
   { value: 'aces' as const, label: 'ACES Filmic', description: 'Industry standard for HDR' },
   { value: 'agx' as const, label: 'AgX', description: 'Modern filmic look' },
   { value: 'neutral' as const, label: 'Neutral', description: 'Balanced output' },
-] as const;
+] as const
 
 /**
  * Maps our algorithm names to Three.js ToneMapping constant values.
  * These match THREE.NoToneMapping (0), THREE.LinearToneMapping (1), etc.
  */
 export const TONE_MAPPING_TO_THREE: Record<ToneMappingAlgorithm, number> = {
-  none: 0,      // THREE.NoToneMapping
-  linear: 1,    // THREE.LinearToneMapping
-  reinhard: 2,  // THREE.ReinhardToneMapping
-  cineon: 3,    // THREE.CineonToneMapping
-  aces: 4,      // THREE.ACESFilmicToneMapping
-  agx: 6,       // THREE.AgXToneMapping
-  neutral: 7,   // THREE.NeutralToneMapping
-};
+  none: 0, // THREE.NoToneMapping
+  linear: 1, // THREE.LinearToneMapping
+  reinhard: 2, // THREE.ReinhardToneMapping
+  cineon: 3, // THREE.CineonToneMapping
+  aces: 4, // THREE.ACESFilmicToneMapping
+  agx: 6, // THREE.AgXToneMapping
+  neutral: 7, // THREE.NeutralToneMapping
+}
 
 /**
  * Maps our algorithm names to postprocessing ToneMappingMode enum values.
@@ -109,32 +105,29 @@ export const TONE_MAPPING_TO_THREE: Record<ToneMappingAlgorithm, number> = {
  * @see postprocessing ToneMappingMode enum
  */
 export const TONE_MAPPING_TO_POSTPROCESSING: Record<ToneMappingAlgorithm, number> = {
-  none: 0,      // ToneMappingMode.LINEAR (no mapping effect)
-  linear: 0,    // ToneMappingMode.LINEAR
-  reinhard: 1,  // ToneMappingMode.REINHARD
-  cineon: 6,    // ToneMappingMode.CINEON
-  aces: 7,      // ToneMappingMode.ACES_FILMIC
-  agx: 8,       // ToneMappingMode.AGX
-  neutral: 9,   // ToneMappingMode.NEUTRAL
-};
+  none: 0, // ToneMappingMode.LINEAR (no mapping effect)
+  linear: 0, // ToneMappingMode.LINEAR
+  reinhard: 1, // ToneMappingMode.REINHARD
+  cineon: 6, // ToneMappingMode.CINEON
+  aces: 7, // ToneMappingMode.ACES_FILMIC
+  agx: 8, // ToneMappingMode.AGX
+  neutral: 9, // ToneMappingMode.NEUTRAL
+}
 
 /**
  * Type guard to check if settings match a specific shader type
- * @param settings
+ * @param settings - The shader settings to check
+ * @returns True if settings are WireframeSettings
  */
-export function isWireframeSettings(
-  settings: ShaderSettings
-): settings is WireframeSettings {
-  return 'lineThickness' in settings;
+export function isWireframeSettings(settings: ShaderSettings): settings is WireframeSettings {
+  return 'lineThickness' in settings
 }
 
 /**
  * Type guard to check if settings match surface shader type
- * @param settings
+ * @param settings - The shader settings to check
+ * @returns True if settings are SurfaceSettings
  */
-export function isSurfaceSettings(
-  settings: ShaderSettings
-): settings is SurfaceSettings {
-  return 'faceOpacity' in settings && 'shininess' in settings;
+export function isSurfaceSettings(settings: ShaderSettings): settings is SurfaceSettings {
+  return 'faceOpacity' in settings && 'shininess' in settings
 }
-

@@ -2,19 +2,28 @@ Important: This is a test of your autonomous capabilities and abilities to creat
 
 You cannot break anything. The project in this local folder is backed up and can be restored. You can create, modify, and delete files as necessary to complete the tasks assigned to you. You have full autonomy to make decisions and take actions to achieve the desired outcomes.
 
-Your task: implement a ground fog system.
+Your task: implement a video export function
 
 Worflow
-1. Read the implementation plan and requirements: docs/plans/volumetric-ground-fog.md
-2. Review project and rendering pipeline
-3. Read docs/meta/volumetric_clouds_hzd_notes.md for context
-4. Do web research for methods to improve performance and visual fidelity. Do not just rely on your training date.
-5. Design the final solution approach
-6. Plan and write the todos
-7. Implement all todos
-8. Write unit tests
-9. Do a full code review
-10. Test and fix until green
+1. Investigate the rendering pipeline
+2. Research with web best practices and ux pattern and examples
+3. Write the requirements
+4. Add all must-haves
+5. Add all best-practices
+6. Add 20 features that improve the usability of the feature
+7. Add 20 features that will delight the user and make the feature look&feel "a million bucks"
+8. Add performance improvements and options for people on weak computers or mobile phones
+9. Plan the implementation
+10. Implement, test, refine, test&fix until green
+
+Must-Haves:
+- Support for MediaStream Recording API and frame by frame rendering
+- Preview function / open video in popup after recording
+- Support for "full screen" export or selection of a subsection of the scene for export
+- Quality, format, etc selection and export in a variety of formats and quality levels
+- Adapts to system and browser
+- Asynchronously running so user can cancel rendering
+- User can select a target length for the rendered video
 
 Important Reminder: This is a test of your autonomous capabilities. You are expected to take initiative and make decisions independently. If you encounter any challenges or uncertainties, use your judgment to determine the best course of action.
 

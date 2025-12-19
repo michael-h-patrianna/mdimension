@@ -1,20 +1,20 @@
 import { RENDER_LAYERS } from '@/rendering/core/layers';
-import { resourceRecovery, RECOVERY_PRIORITY } from '@/rendering/core/ResourceRecovery';
+import { RECOVERY_PRIORITY, resourceRecovery } from '@/rendering/core/ResourceRecovery';
 import { createSkyboxShaderDefaults } from '@/rendering/materials/skybox/SkyboxShader';
-import { composeSkyboxFragmentShader, composeSkyboxVertexShader } from '@/rendering/shaders/skybox/compose';
-import type { SkyboxMode, SkyboxShaderConfig } from '@/rendering/shaders/skybox/types';
 import { applyDistributionTS, getCosinePaletteColorTS } from '@/rendering/shaders/palette/cosine.glsl';
 import type { ColorAlgorithm, CosineCoefficients, DistributionSettings } from '@/rendering/shaders/palette/types';
+import { composeSkyboxFragmentShader, composeSkyboxVertexShader } from '@/rendering/shaders/skybox/compose';
+import type { SkyboxMode, SkyboxShaderConfig } from '@/rendering/shaders/skybox/types';
 import { useAnimationStore } from '@/stores/animationStore';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useEnvironmentStore } from '@/stores/environmentStore';
 import { usePerformanceStore } from '@/stores/performanceStore';
-import { useShallow } from 'zustand/react/shallow';
 import { Environment } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
+import { useShallow } from 'zustand/react/shallow';
 import { ProceduralSkyboxWithEnvironment } from './ProceduralSkyboxWithEnvironment';
 
 // ============================================================================
@@ -72,7 +72,8 @@ let sharedPMREMGenerator: THREE.PMREMGenerator | null = null;
 /**
  * Get or create the shared PMREMGenerator.
  * Lazily initialized and compiled on first use.
- * @param gl
+ * @param gl - The WebGL renderer
+ * @returns The shared PMREMGenerator instance
  */
 function getSharedPMREMGenerator(gl: THREE.WebGLRenderer): THREE.PMREMGenerator {
   if (!sharedPMREMGenerator) {
@@ -253,7 +254,7 @@ interface SkyboxMeshProps {
 export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
   const meshRef = useRef<THREE.Mesh>(null);
   const timeRef = useRef(0);
-  
+
   // Reusable objects
   const eulerRef = useRef(new THREE.Euler());
   const matrix3Ref = useRef(new THREE.Matrix3());
@@ -307,6 +308,7 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
    * @param baseColor
    * @param lchL
    * @param lchC
+   * @returns THREE.Color computed for the given position and algorithm
    */
   const computeColorAtT = (t: number, algorithm: ColorAlgorithm, coeffs: CosineCoefficients, dist: DistributionSettings, baseColor: string, lchL: number, lchC: number): THREE.Color => {
     // Helper: Convert hex color to HSL
@@ -489,10 +491,10 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
 
   // Derive config for shader composition
   const config = useMemo<SkyboxShaderConfig>(() => {
-      const modeStr = skyboxMode.startsWith('procedural_') 
-          ? skyboxMode.replace('procedural_', '') as SkyboxMode 
+      const modeStr = skyboxMode.startsWith('procedural_')
+          ? skyboxMode.replace('procedural_', '') as SkyboxMode
           : 'classic';
-      
+
       return {
           mode: modeStr,
           effects: {
@@ -712,6 +714,7 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
  * Inner component that handles async texture loading.
  * Uses manual async loading instead of useLoader to avoid blocking the scene.
  * Signals loading state to pause animation and trigger low-quality rendering.
+ * @returns React element handling async skybox texture loading
  */
 const SkyboxLoader: React.FC = () => {
   const {
@@ -832,6 +835,7 @@ const SkyboxLoader: React.FC = () => {
  * Main Skybox component with async loading support.
  * Uses manual async loading to prevent blocking scene rendering.
  * Falls back to studio environment lighting while skybox is loading.
+ * @returns React element rendering the skybox with async texture loading
  */
 export const Skybox: React.FC = () => {
   const { skyboxEnabled, skyboxMode } = useEnvironmentStore(useShallow((state) => ({

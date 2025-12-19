@@ -100,7 +100,8 @@ export interface ShareableState {
 
 /**
  * Serializes state to URL search params
- * @param state
+ * @param state - The state to serialize
+ * @returns URL search params string
  */
 export function serializeState(state: ShareableState): string {
   const params = new URLSearchParams()
@@ -283,7 +284,8 @@ export function serializeState(state: ShareableState): string {
 
 /**
  * Deserializes state from URL search params
- * @param searchParams
+ * @param searchParams - URL search params string
+ * @returns Partial state object
  */
 export function deserializeState(searchParams: string): Partial<ShareableState> {
   const params = new URLSearchParams(searchParams)
@@ -591,7 +593,8 @@ export function deserializeState(searchParams: string): Partial<ShareableState> 
 
 /**
  * Generates a shareable URL with current state
- * @param state
+ * @param state - The state to serialize
+ * @returns Full shareable URL
  */
 export function generateShareUrl(state: ShareableState): string {
   const serialized = serializeState(state)
@@ -602,6 +605,7 @@ export function generateShareUrl(state: ShareableState): string {
 
 /**
  * Parses the current URL to extract state
+ * @returns Partial state object from current URL
  */
 export function parseCurrentUrl(): Partial<ShareableState> {
   if (typeof window === 'undefined') {

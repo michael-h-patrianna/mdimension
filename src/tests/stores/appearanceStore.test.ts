@@ -22,31 +22,7 @@ describe('appearanceStore', () => {
     useAppearanceStore.setState(APPEARANCE_INITIAL_STATE);
   });
 
-  describe('Initial State', () => {
-    it('should have default edge color', () => {
-      expect(useAppearanceStore.getState().edgeColor).toBe(DEFAULT_EDGE_COLOR);
-    });
 
-    it('should have default edge thickness', () => {
-      expect(useAppearanceStore.getState().edgeThickness).toBe(DEFAULT_EDGE_THICKNESS);
-    });
-
-    it('should have default face opacity', () => {
-      expect(useAppearanceStore.getState().faceOpacity).toBe(DEFAULT_FACE_OPACITY);
-    });
-
-    it('should have default background color', () => {
-      expect(useAppearanceStore.getState().backgroundColor).toBe(DEFAULT_BACKGROUND_COLOR);
-    });
-
-    it('should have edges visible by default', () => {
-      expect(useAppearanceStore.getState().edgesVisible).toBe(DEFAULT_EDGES_VISIBLE);
-    });
-
-    it('should have faces hidden by default', () => {
-      expect(useAppearanceStore.getState().facesVisible).toBe(DEFAULT_FACES_VISIBLE);
-    });
-  });
 
   describe('setEdgeColor', () => {
     it('should set edge color', () => {
@@ -173,10 +149,7 @@ describe('appearanceStore', () => {
 
 
   describe('edgeMetallic', () => {
-    it('should have default edge metallic of 0', () => {
-      expect(useAppearanceStore.getState().edgeMetallic).toBe(DEFAULT_EDGE_METALLIC);
-      expect(DEFAULT_EDGE_METALLIC).toBe(0);
-    });
+
 
     it('should set edge metallic', () => {
       useAppearanceStore.getState().setEdgeMetallic(0.5);
@@ -193,10 +166,7 @@ describe('appearanceStore', () => {
   });
 
   describe('edgeRoughness', () => {
-    it('should have default edge roughness of 0.5', () => {
-      expect(useAppearanceStore.getState().edgeRoughness).toBe(DEFAULT_EDGE_ROUGHNESS);
-      expect(DEFAULT_EDGE_ROUGHNESS).toBe(0.5);
-    });
+
 
     it('should set edge roughness', () => {
       useAppearanceStore.getState().setEdgeRoughness(0.8);

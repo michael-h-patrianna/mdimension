@@ -1,5 +1,5 @@
-import { Tabs } from '@/components/ui/Tabs';
 import { Switch } from '@/components/ui/Switch';
+import { Tabs } from '@/components/ui/Tabs';
 import { usePanelCollision } from '@/hooks/usePanelCollision';
 import { getConfigStoreKey, isRaymarchingType } from '@/lib/geometry/registry';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
@@ -657,6 +657,7 @@ const Sparkline = ({
  * - CollapsedView updates via refs (no React re-renders)
  * - ExpandedContent has all subscriptions isolated
  * - This prevents 60x/sec sceneGpu updates from causing layout recalcs
+ * @returns The performance monitor overlay component
  */
 export function PerformanceMonitor() {
   // -- State (NO store subscriptions here) --

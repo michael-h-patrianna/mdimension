@@ -1,22 +1,30 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 
-export type Theme = 'cyan' | 'green' | 'magenta' | 'orange' | 'blue' | 'rainbow';
+export type Theme = 'cyan' | 'green' | 'magenta' | 'orange' | 'blue' | 'rainbow'
 
 /** Valid theme values for runtime validation */
-const VALID_THEMES: readonly Theme[] = ['cyan', 'green', 'magenta', 'orange', 'blue', 'rainbow'] as const;
+const VALID_THEMES: readonly Theme[] = [
+  'cyan',
+  'green',
+  'magenta',
+  'orange',
+  'blue',
+  'rainbow',
+] as const
 
 /**
  * Type guard to validate theme values at runtime
- * @param value
+ * @param value - Value to check
+ * @returns True if value is a valid Theme
  */
 function isValidTheme(value: unknown): value is Theme {
-  return typeof value === 'string' && VALID_THEMES.includes(value as Theme);
+  return typeof value === 'string' && VALID_THEMES.includes(value as Theme)
 }
 
 interface ThemeState {
-  theme: Theme;
-  setTheme: (theme: Theme) => void;
+  theme: Theme
+  setTheme: (theme: Theme) => void
 }
 
 export const useThemeStore = create<ThemeState>()(
@@ -27,16 +35,16 @@ export const useThemeStore = create<ThemeState>()(
         // Runtime validation for safety (handles localStorage deserialization edge cases)
         if (!isValidTheme(theme)) {
           if (import.meta.env.DEV) {
-            console.warn(`Invalid theme value: "${theme}". Using default "blue".`);
+            console.warn(`Invalid theme value: "${theme}". Using default "blue".`)
           }
-          set({ theme: 'blue' });
-          return;
+          set({ theme: 'blue' })
+          return
         }
-        set({ theme });
+        set({ theme })
       },
     }),
     {
       name: 'mdimension-theme-storage',
     }
   )
-);
+)

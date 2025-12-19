@@ -1,37 +1,38 @@
-import { precisionBlock } from '../shared/core/precision.glsl';
-import { constantsBlock } from '../shared/core/constants.glsl';
-import { uniformsBlock } from '../shared/core/uniforms.glsl';
-import { hslBlock } from '../shared/color/hsl.glsl';
-import { cosinePaletteBlock } from '../shared/color/cosine-palette.glsl';
-import { oklabBlock } from '../shared/color/oklab.glsl';
-import { selectorBlock } from '../shared/color/selector.glsl';
-import { ggxBlock } from '../shared/lighting/ggx.glsl';
-import { sssBlock } from '../shared/lighting/sss.glsl';
-import { multiLightBlock } from '../shared/lighting/multi-light.glsl';
-import { shadowsBlock } from '../shared/features/shadows.glsl';
-import { aoBlock } from '../shared/features/ao.glsl';
-import { temporalBlock } from '../shared/features/temporal.glsl';
-import { opacityBlock } from '../shared/features/opacity.glsl';
-import { fogUniformsBlock, fogFunctionsBlock } from '../shared/features/fog.glsl';
-import { normalBlock } from '../shared/raymarch/normal.glsl';
-import { sphereIntersectBlock } from '../shared/raymarch/sphere-intersect.glsl';
-import { raymarchCoreBlock } from '../shared/raymarch/core.glsl';
+import { cosinePaletteBlock } from '../shared/color/cosine-palette.glsl'
+import { hslBlock } from '../shared/color/hsl.glsl'
+import { oklabBlock } from '../shared/color/oklab.glsl'
+import { selectorBlock } from '../shared/color/selector.glsl'
+import { constantsBlock } from '../shared/core/constants.glsl'
+import { precisionBlock } from '../shared/core/precision.glsl'
+import { uniformsBlock } from '../shared/core/uniforms.glsl'
+import { aoBlock } from '../shared/features/ao.glsl'
+import { fogFunctionsBlock, fogUniformsBlock } from '../shared/features/fog.glsl'
+import { opacityBlock } from '../shared/features/opacity.glsl'
+import { shadowsBlock } from '../shared/features/shadows.glsl'
+import { temporalBlock } from '../shared/features/temporal.glsl'
 import {
-  processFeatureFlags,
   assembleShaderBlocks,
   fractalVertexInputsBlock,
-} from '../shared/fractal/compose-helpers';
+  processFeatureFlags,
+} from '../shared/fractal/compose-helpers'
+import { ggxBlock } from '../shared/lighting/ggx.glsl'
+import { multiLightBlock } from '../shared/lighting/multi-light.glsl'
+import { sssBlock } from '../shared/lighting/sss.glsl'
+import { raymarchCoreBlock } from '../shared/raymarch/core.glsl'
+import { normalBlock } from '../shared/raymarch/normal.glsl'
+import { sphereIntersectBlock } from '../shared/raymarch/sphere-intersect.glsl'
 
-import { juliaUniformsBlock } from './uniforms.glsl';
-import { quaternionBlock } from './quaternion.glsl';
-import { sdf3dBlock } from './sdf/sdf3d.glsl';
-import { dispatchBlock } from './dispatch.glsl';
-import { mainBlock } from './main.glsl';
-import { ShaderConfig } from '../shared/types';
+import { ShaderConfig } from '../shared/types'
+import { dispatchBlock } from './dispatch.glsl'
+import { mainBlock } from './main.glsl'
+import { quaternionBlock } from './quaternion.glsl'
+import { sdf3dBlock } from './sdf/sdf3d.glsl'
+import { juliaUniformsBlock } from './uniforms.glsl'
 
 /**
  * Compose Julia fragment shader with all features.
- * @param config
+ * @param config - Shader configuration options
+ * @returns Composed shader source code
  */
 export function composeJuliaShader(config: ShaderConfig) {
   const {
@@ -41,10 +42,10 @@ export function composeJuliaShader(config: ShaderConfig) {
     sss: enableSss,
     fog: enableFog,
     overrides = [],
-  } = config;
+  } = config
 
   // Process feature flags using shared helper
-  const flags = processFeatureFlags(config);
+  const flags = processFeatureFlags(config)
 
   const blocks = [
     { name: 'Precision', content: precisionBlock },
@@ -73,9 +74,9 @@ export function composeJuliaShader(config: ShaderConfig) {
     { name: 'Fog Functions', content: fogFunctionsBlock, condition: enableFog },
     { name: 'Opacity System', content: opacityBlock },
     { name: 'Main', content: mainBlock },
-  ];
+  ]
 
-  const { glsl, modules } = assembleShaderBlocks(blocks, overrides);
+  const { glsl, modules } = assembleShaderBlocks(blocks, overrides)
 
-  return { glsl, modules, features: flags.features };
+  return { glsl, modules, features: flags.features }
 }

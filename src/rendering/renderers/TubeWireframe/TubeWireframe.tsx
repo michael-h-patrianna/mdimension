@@ -155,6 +155,7 @@ vec3 tubeTransformVertex(vec3 localPos) {
  * Create shared uniforms for tube shadow materials.
  * @param dimension - Current dimension
  * @param radius - Tube radius
+ * @returns Record of tube shadow uniforms
  */
 function createTubeShadowUniforms(dimension: number, radius: number): Record<string, { value: unknown }> {
   return {
@@ -250,6 +251,7 @@ export interface TubeWireframeProps {
  * @param root0.metallic
  * @param root0.roughness
  * @param root0.shadowEnabled
+ * @returns React element rendering instanced tube wireframe mesh or null
  */
 export function TubeWireframe({
   vertices,

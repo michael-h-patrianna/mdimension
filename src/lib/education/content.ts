@@ -123,8 +123,7 @@ export const POLYTOPE_INFO: Record<string, EducationTopic> = {
 export const PROJECTION_INFO: EducationTopic = {
   id: 'projection',
   title: 'Projection',
-  description:
-    'Projection reduces higher-dimensional objects to 3D for visualization.',
+  description: 'Projection reduces higher-dimensional objects to 3D for visualization.',
   details: [
     'Perspective projection: objects farther away appear smaller',
     'Orthographic projection: parallel lines stay parallel',
@@ -145,24 +144,27 @@ export const ROTATION_INFO: EducationTopic = {
 }
 
 /**
- *
- * @param dimension
+ * Get educational information for a dimension
+ * @param dimension - The dimension to get info for
+ * @returns Dimension info object or undefined if not found
  */
 export function getDimensionInfo(dimension: number): DimensionInfo | undefined {
   return DIMENSION_INFO[dimension]
 }
 
 /**
- *
- * @param type
+ * Get educational information for a polytope type
+ * @param type - The polytope type to get info for
+ * @returns Education topic object or undefined if not found
  */
 export function getPolytopeInfo(type: string): EducationTopic | undefined {
   return POLYTOPE_INFO[type]
 }
 
 /**
- *
- * @param dimension
+ * Get the number of rotation planes for a dimension
+ * @param dimension - The dimension
+ * @returns Number of rotation planes (n*(n-1)/2)
  */
 export function getRotationPlaneCount(dimension: number): number {
   // Formula: n*(n-1)/2
@@ -170,24 +172,27 @@ export function getRotationPlaneCount(dimension: number): number {
 }
 
 /**
- *
- * @param dimension
+ * Get the number of vertices for a hypercube of given dimension
+ * @param dimension - The dimension
+ * @returns Number of vertices (2^dimension)
  */
 export function getHypercubeVertexCount(dimension: number): number {
   return Math.pow(2, dimension)
 }
 
 /**
- *
- * @param dimension
+ * Get the number of vertices for a simplex of given dimension
+ * @param dimension - The dimension
+ * @returns Number of vertices (dimension + 1)
  */
 export function getSimplexVertexCount(dimension: number): number {
   return dimension + 1
 }
 
 /**
- *
- * @param dimension
+ * Get the number of vertices for a cross-polytope of given dimension
+ * @param dimension - The dimension
+ * @returns Number of vertices (2 * dimension)
  */
 export function getCrossPolytopeVertexCount(dimension: number): number {
   return 2 * dimension

@@ -7,8 +7,8 @@
  * @see docs/prd/mandelbulb_performance.md
  */
 
-import { create } from 'zustand'
 import type { ShaderDebugInfo } from '@/types/shaderDebug'
+import { create } from 'zustand'
 
 // ============================================================================
 // Constants
@@ -285,9 +285,10 @@ export const usePerformanceStore = create<PerformanceState>((set, get) => ({
       let message = ''
       if (isCompiling) {
         const shaders = Array.from(newSet)
-        message = shaders.length === 1
-          ? `Building ${shaders[0]} shader...`
-          : `Building ${shaders.length} shaders...`
+        message =
+          shaders.length === 1
+            ? `Building ${shaders[0]} shader...`
+            : `Building ${shaders.length} shaders...`
       }
 
       return {
@@ -326,6 +327,7 @@ export const usePerformanceStore = create<PerformanceState>((set, get) => ({
 /**
  * Select progressive refinement settings
  * @param state
+ * @returns Object containing progressive refinement state properties
  */
 export const selectProgressiveRefinement = (state: PerformanceState) => ({
   enabled: state.progressiveRefinementEnabled,
@@ -337,6 +339,7 @@ export const selectProgressiveRefinement = (state: PerformanceState) => ({
 /**
  * Select temporal reprojection settings
  * @param state
+ * @returns Object containing temporal reprojection state properties
  */
 export const selectTemporalReprojection = (state: PerformanceState) => ({
   enabled: state.temporalReprojectionEnabled,

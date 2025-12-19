@@ -9,6 +9,7 @@ import React from 'react';
  *
  * Root systems always have edges enabled (like polytopes).
  * Provides scale control (0.5-2.0) for adjusting the size of the root system.
+ * @returns The root system settings UI component
  */
 export function RootSystemSettings() {
   const dimension = useGeometryStore((state) => state.dimension);

@@ -3,9 +3,9 @@
  * Provides reactive media query matching
  */
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react'
 
-export type Breakpoint = 'sm' | 'md' | 'lg' | 'xl' | '2xl';
+export type Breakpoint = 'sm' | 'md' | 'lg' | 'xl' | '2xl'
 
 export const BREAKPOINTS: Record<Breakpoint, string> = {
   sm: '(min-width: 640px)',
@@ -13,86 +13,92 @@ export const BREAKPOINTS: Record<Breakpoint, string> = {
   lg: '(min-width: 1024px)',
   xl: '(min-width: 1280px)',
   '2xl': '(min-width: 1536px)',
-};
+}
 
 /**
  * Hook to match a media query
- * @param query
+ * @param query - CSS media query string
+ * @returns True if the media query matches
  */
 export function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(() => {
     if (typeof window === 'undefined') {
-      return false;
+      return false
     }
-    return window.matchMedia(query).matches;
-  });
+    return window.matchMedia(query).matches
+  })
 
   useEffect(() => {
     if (typeof window === 'undefined') {
-      return;
+      return
     }
 
-    const mediaQuery = window.matchMedia(query);
-    setMatches(mediaQuery.matches);
+    const mediaQuery = window.matchMedia(query)
+    setMatches(mediaQuery.matches)
 
     const handler = (event: MediaQueryListEvent) => {
-      setMatches(event.matches);
-    };
+      setMatches(event.matches)
+    }
 
-    mediaQuery.addEventListener('change', handler);
+    mediaQuery.addEventListener('change', handler)
     return () => {
-      mediaQuery.removeEventListener('change', handler);
-    };
-  }, [query]);
+      mediaQuery.removeEventListener('change', handler)
+    }
+  }, [query])
 
-  return matches;
+  return matches
 }
 
 /**
  * Hook to check if screen is at or above a breakpoint
- * @param breakpoint
+ * @param breakpoint - The breakpoint to check
+ * @returns True if screen matches or exceeds the breakpoint
  */
 export function useBreakpoint(breakpoint: Breakpoint): boolean {
-  return useMediaQuery(BREAKPOINTS[breakpoint]);
+  return useMediaQuery(BREAKPOINTS[breakpoint])
 }
 
 /**
  * Hook to get the current breakpoint name
+ * @returns Current breakpoint name or null if below smallest
  */
 export function useCurrentBreakpoint(): Breakpoint | null {
-  const is2xl = useMediaQuery(BREAKPOINTS['2xl']);
-  const isXl = useMediaQuery(BREAKPOINTS.xl);
-  const isLg = useMediaQuery(BREAKPOINTS.lg);
-  const isMd = useMediaQuery(BREAKPOINTS.md);
-  const isSm = useMediaQuery(BREAKPOINTS.sm);
+  const is2xl = useMediaQuery(BREAKPOINTS['2xl'])
+  const isXl = useMediaQuery(BREAKPOINTS.xl)
+  const isLg = useMediaQuery(BREAKPOINTS.lg)
+  const isMd = useMediaQuery(BREAKPOINTS.md)
+  const isSm = useMediaQuery(BREAKPOINTS.sm)
 
-  if (is2xl) return '2xl';
-  if (isXl) return 'xl';
-  if (isLg) return 'lg';
-  if (isMd) return 'md';
-  if (isSm) return 'sm';
-  return null;
+  if (is2xl) return '2xl'
+  if (isXl) return 'xl'
+  if (isLg) return 'lg'
+  if (isMd) return 'md'
+  if (isSm) return 'sm'
+  return null
 }
 
 /**
  * Hook to check if the device is mobile (below md breakpoint)
+ * @returns True if device is mobile
  */
 export function useIsMobile(): boolean {
-  return !useMediaQuery(BREAKPOINTS.md);
+  return !useMediaQuery(BREAKPOINTS.md)
 }
 
 /**
  * Hook to check if the device is tablet (md to lg)
+ * @returns True if device is tablet
  */
 export function useIsTablet(): boolean {
-  const isMd = useMediaQuery(BREAKPOINTS.md);
-  const isLg = useMediaQuery(BREAKPOINTS.lg);
-  return isMd && !isLg;
+  const isMd = useMediaQuery(BREAKPOINTS.md)
+  const isLg = useMediaQuery(BREAKPOINTS.lg)
+  return isMd && !isLg
 }
 
 /**
  * Hook to check if the device is desktop (lg and above)
+ * @returns True if device is desktop
  */
 export function useIsDesktop(): boolean {
-  return useMediaQuery(BREAKPOINTS.lg);
+  return useMediaQuery(BREAKPOINTS.lg)
 }

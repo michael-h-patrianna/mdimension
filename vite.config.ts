@@ -1,11 +1,7 @@
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
-import path, { dirname } from 'path'
-import { fileURLToPath } from 'url'
+import path from 'path'
 import { defineConfig } from 'vite'
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -16,13 +12,13 @@ export default defineConfig(({ mode }) => ({
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
-      '@/components': path.resolve(__dirname, './src/components'),
-      '@/lib': path.resolve(__dirname, './src/lib'),
-      '@/hooks': path.resolve(__dirname, './src/hooks'),
-      '@/stores': path.resolve(__dirname, './src/stores'),
-      '@/types': path.resolve(__dirname, './src/types'),
-      '@/utils': path.resolve(__dirname, './src/utils'),
+      '@': path.resolve(import.meta.dirname, './src'),
+      '@/components': path.resolve(import.meta.dirname, './src/components'),
+      '@/lib': path.resolve(import.meta.dirname, './src/lib'),
+      '@/hooks': path.resolve(import.meta.dirname, './src/hooks'),
+      '@/stores': path.resolve(import.meta.dirname, './src/stores'),
+      '@/types': path.resolve(import.meta.dirname, './src/types'),
+      '@/utils': path.resolve(import.meta.dirname, './src/utils'),
     },
   },
   server: {

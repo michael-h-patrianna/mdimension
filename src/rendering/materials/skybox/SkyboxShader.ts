@@ -31,6 +31,7 @@ export const SKYBOX_MODE_STARFIELD = 8
 /**
  * Default uniform values for the skybox shader.
  * Wrapped in { value: ... } for Three.js ShaderMaterial.
+ * @returns Record of default uniform values
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function createSkyboxShaderDefaults(): Record<string, { value: any }> {

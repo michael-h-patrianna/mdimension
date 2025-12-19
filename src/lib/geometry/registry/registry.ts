@@ -819,11 +819,11 @@ export const OBJECT_TYPE_REGISTRY: ObjectTypeRegistry = new Map<ObjectType, Obje
       configStoreKey: 'schroedinger',
     },
   ],
-
 ])
 
 /**
  * Get all object types as an array (for iteration)
+ * @returns Array of all registered object types
  */
 export function getAllObjectTypes(): ObjectType[] {
   return Array.from(OBJECT_TYPE_REGISTRY.keys())
@@ -831,6 +831,7 @@ export function getAllObjectTypes(): ObjectType[] {
 
 /**
  * Get all registry entries as an array (for iteration)
+ * @returns Array of all registry entries
  */
 export function getAllRegistryEntries(): ObjectTypeEntry[] {
   return Array.from(OBJECT_TYPE_REGISTRY.values())

@@ -16,52 +16,52 @@
  */
 
 import type { VectorND } from '@/lib/math'
-import type { PolytopeGeometry } from '../types'
 import { getMaxVerticesForDimension } from '../config'
+import type { PolytopeGeometry } from '../types'
 
 // Types - import locally and re-export
 import {
-  type WythoffSymbol,
-  type WythoffSymmetryGroup,
+  type PolytopeData,
+  type WythoffGenerationResult,
   type WythoffPolytopeConfig,
   type WythoffPreset,
-  type WythoffGenerationResult,
-  type PolytopeData,
+  type WythoffSymbol,
+  type WythoffSymmetryGroup,
   DEFAULT_WYTHOFF_POLYTOPE_CONFIG,
   WarningCollector,
   getWythoffPresetName,
 } from './types'
 
 export {
-  type WythoffSymbol,
-  type WythoffSymmetryGroup,
-  type WythoffPolytopeConfig,
-  type WythoffPreset,
-  type WythoffGenerationResult,
-  type PolytopeData,
   DEFAULT_WYTHOFF_POLYTOPE_CONFIG,
   WarningCollector,
   getWythoffPresetName,
+  type PolytopeData,
+  type WythoffGenerationResult,
+  type WythoffPolytopeConfig,
+  type WythoffPreset,
+  type WythoffSymbol,
+  type WythoffSymmetryGroup,
 }
 
 import {
-  generateHypercubeData,
-  generateSimplexData,
-  generateRectifiedHypercubeVertices,
-  generateTruncatedHypercubeVertices,
-  generateCantellatedHypercubeVertices,
-  generateRuncinatedHypercubeVertices,
-  generateOmnitruncatedHypercubeVertices,
-  generateDemihypercubeVertices,
   centerAndScale,
+  generateCantellatedHypercubeVertices,
+  generateDemihypercubeVertices,
+  generateHypercubeData,
+  generateOmnitruncatedHypercubeVertices,
+  generateRectifiedHypercubeVertices,
+  generateRuncinatedHypercubeVertices,
+  generateSimplexData,
+  generateTruncatedHypercubeVertices,
 } from './vertices'
 
 import { generateEdgesByMinDistance } from './edges'
 
 import {
-  getCacheKey,
   applyScaleToGeometry,
   cachePolytope,
+  getCacheKey,
   getCachedPolytope,
   getFromMemoryCache,
 } from './cache'
@@ -69,13 +69,11 @@ import {
 /**
  * Calculate maximum vertices based on dimension and preset.
  * Delegates to centralized config for maintainability.
- * @param dimension
- * @param preset
+ * @param dimension - The dimension
+ * @param preset - The Wythoff preset
+ * @returns Maximum vertex count
  */
-function getMaxVertices(
-  dimension: number,
-  preset?: WythoffPreset
-): number {
+function getMaxVertices(dimension: number, preset?: WythoffPreset): number {
   return getMaxVerticesForDimension(dimension, preset === 'omnitruncated')
 }
 
@@ -84,7 +82,8 @@ function getMaxVertices(
  *
  * Optimization: Faces are NOT computed during initial generation.
  * They're computed lazily via useFaceDetection when needed for rendering.
- * @param vertices
+ * @param vertices - Array of vertices
+ * @returns PolytopeData with vertices, edges, and empty faces array
  */
 function generateGenericPolytopeData(vertices: VectorND[]): PolytopeData {
   const edges = generateEdgesByMinDistance(vertices)
@@ -124,9 +123,7 @@ export function generateWythoffPolytope(
   warnings?: WarningCollector
 ): PolytopeGeometry {
   if (dimension < 3 || dimension > 11) {
-    throw new Error(
-      `Wythoff polytope dimension must be between 3 and 11 (got ${dimension})`
-    )
+    throw new Error(`Wythoff polytope dimension must be between 3 and 11 (got ${dimension})`)
   }
 
   const fullConfig: WythoffPolytopeConfig = {
@@ -165,14 +162,10 @@ export function generateWythoffPolytope(
           polytopeData = generateHypercubeData(dimension)
           break
         case 'rectified':
-          polytopeData = generateGenericPolytopeData(
-            generateRectifiedHypercubeVertices(dimension)
-          )
+          polytopeData = generateGenericPolytopeData(generateRectifiedHypercubeVertices(dimension))
           break
         case 'truncated':
-          polytopeData = generateGenericPolytopeData(
-            generateTruncatedHypercubeVertices(dimension)
-          )
+          polytopeData = generateGenericPolytopeData(generateTruncatedHypercubeVertices(dimension))
           break
         case 'cantellated':
           polytopeData = generateGenericPolytopeData(
@@ -180,9 +173,7 @@ export function generateWythoffPolytope(
           )
           break
         case 'runcinated':
-          polytopeData = generateGenericPolytopeData(
-            generateRuncinatedHypercubeVertices(dimension)
-          )
+          polytopeData = generateGenericPolytopeData(generateRuncinatedHypercubeVertices(dimension))
           break
         case 'omnitruncated':
           polytopeData = generateGenericPolytopeData(
@@ -198,9 +189,7 @@ export function generateWythoffPolytope(
 
     case 'D':
       // Demihypercube symmetry (requires dimension >= 4)
-      polytopeData = generateGenericPolytopeData(
-        generateDemihypercubeVertices(dimension)
-      )
+      polytopeData = generateGenericPolytopeData(generateDemihypercubeVertices(dimension))
       break
 
     default:
@@ -259,17 +248,16 @@ export function generateWythoffPolytope(
  *
  * Use this version when you can await the result, as it provides better cache
  * utilization by checking IndexedDB for cached polytopes from previous sessions.
- * @param dimension
- * @param config
+ * @param dimension - Number of dimensions
+ * @param config - Polytope configuration options
+ * @returns Generated polytope geometry
  */
 export async function generateWythoffPolytopeAsync(
   dimension: number,
   config: Partial<WythoffPolytopeConfig> = {}
 ): Promise<PolytopeGeometry> {
   if (dimension < 3 || dimension > 11) {
-    throw new Error(
-      `Wythoff polytope dimension must be between 3 and 11 (got ${dimension})`
-    )
+    throw new Error(`Wythoff polytope dimension must be between 3 and 11 (got ${dimension})`)
   }
 
   const fullConfig: WythoffPolytopeConfig = {
@@ -295,8 +283,9 @@ export async function generateWythoffPolytopeAsync(
  *
  * Use this version when you need to know if any limits were reached
  * during generation (e.g., to show toast notifications to users).
- * @param dimension
- * @param config
+ * @param dimension - Number of dimensions
+ * @param config - Polytope configuration options
+ * @returns Result object with geometry and warnings
  */
 export function generateWythoffPolytopeWithWarnings(
   dimension: number,
@@ -309,8 +298,9 @@ export function generateWythoffPolytopeWithWarnings(
 
 /**
  * Get information about vertex and edge counts for a Wythoff polytope.
- * @param dimension
- * @param config
+ * @param dimension - Number of dimensions
+ * @param config - Polytope configuration options
+ * @returns Object with vertex count, edge count, and name
  */
 export function getWythoffPolytopeInfo(
   dimension: number,
@@ -322,10 +312,6 @@ export function getWythoffPolytopeInfo(
   return {
     vertexCount: polytope.vertices.length,
     edgeCount: polytope.edges.length,
-    name: getWythoffPresetName(
-      fullConfig.preset,
-      fullConfig.symmetryGroup,
-      dimension
-    ),
+    name: getWythoffPresetName(fullConfig.preset, fullConfig.symmetryGroup, dimension),
   }
 }

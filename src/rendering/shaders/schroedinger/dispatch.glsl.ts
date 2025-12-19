@@ -1,27 +1,28 @@
 /**
- *
- * @param dimension
+ * Generate dimension-specific dispatch GLSL code for Schroedinger shaders
+ * @param dimension - The dimension (3-11)
+ * @returns GLSL dispatch code string
  */
 export function generateDispatch(dimension: number): string {
   // Map dimension to function name
   // 3-11 are supported with unrolled versions
-  let sdfName = 'sdfHighD';
-  let simpleSdfName = 'sdfHighD_simple';
-  let args = 'pos, uDimension, pwr, bail, maxIt';
-  let argsTrap = 'pos, uDimension, pwr, bail, maxIt, trap';
+  let sdfName = 'sdfHighD'
+  let simpleSdfName = 'sdfHighD_simple'
+  let args = 'pos, uDimension, pwr, bail, maxIt'
+  let argsTrap = 'pos, uDimension, pwr, bail, maxIt, trap'
 
   if (dimension >= 3 && dimension <= 11) {
-    sdfName = `sdf${dimension}D`;
-    simpleSdfName = `sdf${dimension}D_simple`;
-    args = 'pos, pwr, bail, maxIt';
-    argsTrap = 'pos, pwr, bail, maxIt, trap';
+    sdfName = `sdf${dimension}D`
+    simpleSdfName = `sdf${dimension}D_simple`
+    args = 'pos, pwr, bail, maxIt'
+    argsTrap = 'pos, pwr, bail, maxIt, trap'
   }
 
   return `
-// ============================================ 
+// ============================================
 // Optimized Dispatch (No branching)
 // Dimension: ${dimension}
-// ============================================ 
+// ============================================
 
 float GetDist(vec3 pos) {
     float pwr = getEffectivePower();
@@ -52,5 +53,5 @@ float GetDistWithTrap(vec3 pos, out float trap) {
 
     return ${sdfName}(${argsTrap});
 }
-`;
+`
 }

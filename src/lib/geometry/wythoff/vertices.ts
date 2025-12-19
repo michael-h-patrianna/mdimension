@@ -16,7 +16,8 @@ import type { PolytopeData } from './types'
 /**
  * Generate all vertices of a hypercube {4,3,...,3} in n dimensions.
  * Vertices are at all combinations of ±1 in each coordinate.
- * @param dimension
+ * @param dimension - The dimension of the hypercube
+ * @returns Array of vertex coordinates
  */
 export function generateHypercubeVertices(dimension: number): VectorND[] {
   const vertices: VectorND[] = []
@@ -25,7 +26,7 @@ export function generateHypercubeVertices(dimension: number): VectorND[] {
   for (let i = 0; i < numVertices; i++) {
     const vertex = createVector(dimension, 0)
     for (let j = 0; j < dimension; j++) {
-      vertex[j] = (i & (1 << j)) ? 1 : -1
+      vertex[j] = i & (1 << j) ? 1 : -1
     }
     vertices.push(vertex)
   }
@@ -35,7 +36,8 @@ export function generateHypercubeVertices(dimension: number): VectorND[] {
 
 /**
  * Generate complete hypercube data including analytically correct faces.
- * @param dimension
+ * @param dimension - The dimension of the hypercube
+ * @returns PolytopeData with vertices, edges, and faces
  */
 export function generateHypercubeData(dimension: number): PolytopeData {
   const vertices = generateHypercubeVertices(dimension)
@@ -69,7 +71,7 @@ export function generateHypercubeData(dimension: number): PolytopeData {
         for (let d = 0; d < dimension; d++) {
           if (d !== axis1 && d !== axis2) {
             if (fixed & (1 << fixedBit)) {
-              baseVertex |= (1 << d)
+              baseVertex |= 1 << d
             }
             fixedBit++
           }
@@ -94,7 +96,8 @@ export function generateHypercubeData(dimension: number): PolytopeData {
 /**
  * Generate all vertices of a cross-polytope {3,3,...,4} in n dimensions.
  * Vertices are at ±1 along each axis.
- * @param dimension
+ * @param dimension - Number of dimensions
+ * @returns Array of cross-polytope vertices
  */
 export function generateCrossPolytopeVertices(dimension: number): VectorND[] {
   const vertices: VectorND[] = []
@@ -114,7 +117,8 @@ export function generateCrossPolytopeVertices(dimension: number): VectorND[] {
 /**
  * Generate all vertices of a regular simplex in n dimensions.
  * Uses standard construction with n+1 vertices.
- * @param dimension
+ * @param dimension - Number of dimensions
+ * @returns Array of simplex vertices
  */
 export function generateSimplexVertices(dimension: number): VectorND[] {
   const vertices: VectorND[] = []
@@ -148,7 +152,8 @@ export function generateSimplexVertices(dimension: number): VectorND[] {
 /**
  * Generate complete simplex data including analytically correct faces.
  * A simplex has (n+1 choose 3) triangular faces.
- * @param dimension
+ * @param dimension - Number of dimensions
+ * @returns PolytopeData with vertices, edges, and faces
  */
 export function generateSimplexData(dimension: number): PolytopeData {
   const vertices = generateSimplexVertices(dimension)
@@ -178,7 +183,8 @@ export function generateSimplexData(dimension: number): PolytopeData {
 /**
  * Generate rectified hypercube (n-dimensional cuboctahedron analog).
  * Vertices at midpoints of edges of the hypercube.
- * @param dimension
+ * @param dimension - Number of dimensions
+ * @returns Array of rectified hypercube vertices
  */
 export function generateRectifiedHypercubeVertices(dimension: number): VectorND[] {
   const vertices: VectorND[] = []
@@ -195,7 +201,7 @@ export function generateRectifiedHypercubeVertices(dimension: number): VectorND[
         if (j === zeroIdx) {
           vertex[j] = 0
         } else {
-          vertex[j] = (config & (1 << bitIdx)) ? 1 : -1
+          vertex[j] = config & (1 << bitIdx) ? 1 : -1
           bitIdx++
         }
       }
@@ -212,7 +218,8 @@ export function generateRectifiedHypercubeVertices(dimension: number): VectorND[
 /**
  * Generate truncated hypercube vertices.
  * Vertices are at positions like (±1, ±1, ..., ±(sqrt(2)-1)).
- * @param dimension
+ * @param dimension - Number of dimensions
+ * @returns Array of truncated hypercube vertices
  */
 export function generateTruncatedHypercubeVertices(dimension: number): VectorND[] {
   const vertices: VectorND[] = []
@@ -226,9 +233,9 @@ export function generateTruncatedHypercubeVertices(dimension: number): VectorND[
       const vertex = createVector(dimension, 0)
       for (let j = 0; j < dimension; j++) {
         if (j === truncIdx) {
-          vertex[j] = (config & (1 << j)) ? t : -t
+          vertex[j] = config & (1 << j) ? t : -t
         } else {
-          vertex[j] = (config & (1 << j)) ? 1 : -1
+          vertex[j] = config & (1 << j) ? 1 : -1
         }
       }
 
@@ -243,7 +250,8 @@ export function generateTruncatedHypercubeVertices(dimension: number): VectorND[
 
 /**
  * Generate cantellated hypercube vertices (rhombicuboctahedron analog).
- * @param dimension
+ * @param dimension - Number of dimensions
+ * @returns Array of cantellated hypercube vertices
  */
 export function generateCantellatedHypercubeVertices(dimension: number): VectorND[] {
   const vertices: VectorND[] = []
@@ -258,8 +266,8 @@ export function generateCantellatedHypercubeVertices(dimension: number): VectorN
       for (let config = 0; config < numConfigs; config++) {
         const vertex = createVector(dimension, 0)
         for (let j = 0; j < dimension; j++) {
-          const sign = (config & (1 << j)) ? 1 : -1
-          vertex[j] = (j === largeIdx) ? sign * phi : sign
+          const sign = config & (1 << j) ? 1 : -1
+          vertex[j] = j === largeIdx ? sign * phi : sign
         }
 
         if (seen.add(vertex)) {
@@ -275,7 +283,8 @@ export function generateCantellatedHypercubeVertices(dimension: number): VectorN
 /**
  * Generator function that yields permutations one at a time using Heap's algorithm.
  * This avoids building the entire n! array in memory.
- * @param arr
+ * @param arr - Array to permute
+ * @returns Generator yielding each permutation
  */
 export function* permutationGenerator(arr: number[]): Generator<number[], void, unknown> {
   const n = arr.length
@@ -314,6 +323,7 @@ export function* permutationGenerator(arr: number[]): Generator<number[], void, 
  *
  * @param dimension - Number of dimensions
  * @param maxVertices - Maximum vertices to generate before stopping
+ * @returns Array of omnitruncated hypercube vertices
  */
 export function generateOmnitruncatedHypercubeVertices(
   dimension: number,
@@ -335,7 +345,7 @@ export function generateOmnitruncatedHypercubeVertices(
     for (let signConfig = 0; signConfig < numSigns; signConfig++) {
       const vertex = createVector(dimension, 0)
       for (let j = 0; j < dimension; j++) {
-        const sign = (signConfig & (1 << j)) ? 1 : -1
+        const sign = signConfig & (1 << j) ? 1 : -1
         vertex[j] = sign * (perm[j] ?? 1)
       }
 
@@ -355,7 +365,8 @@ export function generateOmnitruncatedHypercubeVertices(
 
 /**
  * Generate runcinated hypercube vertices (first and last node ringed).
- * @param dimension
+ * @param dimension - Number of dimensions
+ * @returns Array of runcinated hypercube vertices
  */
 export function generateRuncinatedHypercubeVertices(dimension: number): VectorND[] {
   // Combine hypercube vertices with scaled versions
@@ -386,7 +397,8 @@ export function generateRuncinatedHypercubeVertices(dimension: number): VectorND
 /**
  * Generate half-hypercube (demihypercube) vertices.
  * Takes alternating vertices of the hypercube.
- * @param dimension
+ * @param dimension - Number of dimensions
+ * @returns Array of demihypercube vertices
  */
 export function generateDemihypercubeVertices(dimension: number): VectorND[] {
   const vertices: VectorND[] = []
@@ -403,7 +415,7 @@ export function generateDemihypercubeVertices(dimension: number): VectorND[] {
     if (count % 2 === 0) {
       const vertex = createVector(dimension, 0)
       for (let j = 0; j < dimension; j++) {
-        vertex[j] = (i & (1 << j)) ? 1 : -1
+        vertex[j] = i & (1 << j) ? 1 : -1
       }
       vertices.push(vertex)
     }

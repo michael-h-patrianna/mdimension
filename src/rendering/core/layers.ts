@@ -21,9 +21,9 @@ export const RENDER_LAYERS = {
   SKYBOX: 2,
   /** Volumetric objects (Schroedinger) when temporal accumulation is enabled */
   VOLUMETRIC: 3,
-} as const;
+} as const
 
-export type RenderLayer = (typeof RENDER_LAYERS)[keyof typeof RENDER_LAYERS];
+export type RenderLayer = (typeof RENDER_LAYERS)[keyof typeof RENDER_LAYERS]
 
 /**
  * Check if temporal cloud accumulation needs separate volumetric pass.
@@ -35,15 +35,16 @@ export type RenderLayer = (typeof RENDER_LAYERS)[keyof typeof RENDER_LAYERS];
  * 2. Reprojects previous frame's accumulation to current view
  * 3. Reconstructs full resolution by blending new pixels with history
  * 4. Composites over the main scene
- * @param state
- * @param state.temporalCloudAccumulation
- * @param state.objectType
+ * @param state - State containing temporal and object type info
+ * @param state.temporalCloudAccumulation - Whether temporal accumulation is enabled
+ * @param state.objectType - The current object type
+ * @returns True if volumetric separation is needed
  */
 export function needsVolumetricSeparation(state: {
-  temporalCloudAccumulation?: boolean;
-  objectType?: string;
+  temporalCloudAccumulation?: boolean
+  objectType?: string
 }): boolean {
-  return Boolean(state.temporalCloudAccumulation && state.objectType === 'schroedinger');
+  return Boolean(state.temporalCloudAccumulation && state.objectType === 'schroedinger')
 }
 
 /**
@@ -59,26 +60,26 @@ export function needsVolumetricSeparation(state: {
  * @returns True if object-only depth pass should be rendered
  */
 export function needsObjectOnlyDepth(state: {
-  ssrEnabled: boolean;
-  refractionEnabled: boolean;
-  bokehEnabled: boolean;
-  bokehFocusMode: string;
-  temporalReprojectionEnabled?: boolean;
+  ssrEnabled: boolean
+  refractionEnabled: boolean
+  bokehEnabled: boolean
+  bokehFocusMode: string
+  temporalReprojectionEnabled?: boolean
 }): boolean {
   // SSR and refraction always need object-only depth
   if (state.ssrEnabled || state.refractionEnabled) {
-    return true;
+    return true
   }
 
   // Bokeh always needs object-only depth so blur is based on main object, not walls
   if (state.bokehEnabled) {
-    return true;
+    return true
   }
 
   // Temporal reprojection needs depth for raymarching acceleration
   if (state.temporalReprojectionEnabled) {
-    return true;
+    return true
   }
 
-  return false;
+  return false
 }

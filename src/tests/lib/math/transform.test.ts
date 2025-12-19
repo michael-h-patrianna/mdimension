@@ -106,16 +106,16 @@ describe('Transform Operations', () => {
   describe('createTranslationMatrix', () => {
     it('creates translation matrix in homogeneous coordinates', () => {
       const T = createTranslationMatrix(3, [5, 6, 7]);
+      const dim = 4; // 3D + 1 homogeneous = 4x4 matrix
 
-      // Should be 4x4 for 3D translation
-      expect(T).toHaveLength(4);
-      expect(T[0]).toHaveLength(4);
+      // Should be 4x4 for 3D translation (16 elements flat)
+      expect(T).toHaveLength(16);
 
-      // Last column should contain translation
-      expect(T[0]![3]).toBe(5);
-      expect(T[1]![3]).toBe(6);
-      expect(T[2]![3]).toBe(7);
-      expect(T[3]![3]).toBe(1);
+      // Last column should contain translation (row-major: T[row*dim + col])
+      expect(T[0 * dim + 3]).toBe(5);
+      expect(T[1 * dim + 3]).toBe(6);
+      expect(T[2 * dim + 3]).toBe(7);
+      expect(T[3 * dim + 3]).toBe(1);
     });
 
     it('translates homogeneous vector correctly', () => {

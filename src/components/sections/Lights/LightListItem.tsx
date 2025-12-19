@@ -8,8 +8,8 @@
  * - Delete button
  */
 
-import React, { memo } from 'react';
 import type { LightSource } from '@/rendering/lights/types';
+import React, { memo } from 'react';
 
 export interface LightListItemProps {
   light: LightSource;
@@ -19,14 +19,20 @@ export interface LightListItemProps {
   onRemove: () => void;
 }
 
-/** Icon for point light (circle) */
+/**
+ * Icon for point light (circle)
+ * @returns SVG element for point light icon
+ */
 const PointIcon = () => (
   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
     <circle cx="12" cy="12" r="6" />
   </svg>
 );
 
-/** Icon for directional light (sun) */
+/**
+ * Icon for directional light (sun)
+ * @returns SVG element for directional light icon
+ */
 const DirectionalIcon = () => (
   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
     <circle cx="12" cy="12" r="4" />
@@ -35,7 +41,10 @@ const DirectionalIcon = () => (
   </svg>
 );
 
-/** Icon for spot light (cone) */
+/**
+ * Icon for spot light (cone)
+ * @returns SVG element for spot light icon
+ */
 const SpotIcon = () => (
   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
     <path d="M12 4L6 20h12L12 4z" />
@@ -44,7 +53,8 @@ const SpotIcon = () => (
 
 /**
  * Get icon component for light type
- * @param type
+ * @param type - Type of light source
+ * @returns JSX element for the light icon
  */
 const getLightIcon = (type: LightSource['type']) => {
   switch (type) {

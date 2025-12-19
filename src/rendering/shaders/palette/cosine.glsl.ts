@@ -216,16 +216,17 @@ vec3 multiSourceColor(
 
   return getCosinePaletteColor(t, a, b, c, d, power, cycles, offset);
 }
-`;
+`
 
 /**
  * TypeScript utility function to calculate cosine palette color.
  * Used for color preview in UI.
- * @param t
- * @param a
- * @param b
- * @param c
- * @param d
+ * @param t - Input value (0-1)
+ * @param a - Base offset coefficients
+ * @param b - Amplitude coefficients
+ * @param c - Frequency coefficients
+ * @param d - Phase coefficients
+ * @returns RGB color object with values 0-1
  */
 export function calculateCosineColor(
   t: number,
@@ -234,20 +235,21 @@ export function calculateCosineColor(
   c: [number, number, number],
   d: [number, number, number]
 ): { r: number; g: number; b: number } {
-  const TAU = 6.28318;
+  const TAU = 6.28318
   return {
     r: Math.max(0, Math.min(1, a[0] + b[0] * Math.cos(TAU * (c[0] * t + d[0])))),
     g: Math.max(0, Math.min(1, a[1] + b[1] * Math.cos(TAU * (c[1] * t + d[1])))),
     b: Math.max(0, Math.min(1, a[2] + b[2] * Math.cos(TAU * (c[2] * t + d[2])))),
-  };
+  }
 }
 
 /**
  * Apply distribution curve to t value (TypeScript version).
- * @param t
- * @param power
- * @param cycles
- * @param offset
+ * @param t - Input value (0-1)
+ * @param power - Power curve exponent
+ * @param cycles - Number of palette cycles
+ * @param offset - Offset shift
+ * @returns Distributed t value
  */
 export function applyDistributionTS(
   t: number,
@@ -255,23 +257,24 @@ export function applyDistributionTS(
   cycles: number,
   offset: number
 ): number {
-  const clamped = Math.max(0, Math.min(1, t));
-  const curved = Math.pow(clamped, power);
-  const cycled = ((curved * cycles + offset) % 1 + 1) % 1; // fract equivalent
-  return cycled;
+  const clamped = Math.max(0, Math.min(1, t))
+  const curved = Math.pow(clamped, power)
+  const cycled = (((curved * cycles + offset) % 1) + 1) % 1 // fract equivalent
+  return cycled
 }
 
 /**
  * Get cosine palette color with distribution (TypeScript version).
  * Used for UI preview rendering.
- * @param t
- * @param a
- * @param b
- * @param c
- * @param d
- * @param power
- * @param cycles
- * @param offset
+ * @param t - Input value (0-1)
+ * @param a - Base offset coefficients
+ * @param b - Amplitude coefficients
+ * @param c - Frequency coefficients
+ * @param d - Phase coefficients
+ * @param power - Power curve exponent
+ * @param cycles - Number of palette cycles
+ * @param offset - Offset shift
+ * @returns RGB color object with values 0-1
  */
 export function getCosinePaletteColorTS(
   t: number,
@@ -283,6 +286,6 @@ export function getCosinePaletteColorTS(
   cycles: number,
   offset: number
 ): { r: number; g: number; b: number } {
-  const distributedT = applyDistributionTS(t, power, cycles, offset);
-  return calculateCosineColor(distributedT, a, b, c, d);
+  const distributedT = applyDistributionTS(t, power, cycles, offset)
+  return calculateCosineColor(distributedT, a, b, c, d)
 }

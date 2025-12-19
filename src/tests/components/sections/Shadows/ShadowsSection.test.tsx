@@ -19,6 +19,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 /**
  * Helper to create lighting state with at least one enabled light
+ * @returns Array of LightSource with first light enabled
  */
 function createLightsWithOneEnabled(): LightSource[] {
   const lights = LIGHTING_INITIAL_STATE.lights;

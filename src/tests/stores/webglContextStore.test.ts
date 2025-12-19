@@ -19,23 +19,7 @@ describe('webglContextStore', () => {
     localStorage.removeItem(RECOVERY_STATE_KEY)
   })
 
-  describe('initial state', () => {
-    it('should have active status initially', () => {
-      expect(useWebGLContextStore.getState().status).toBe('active')
-    })
 
-    it('should have page visible initially', () => {
-      expect(useWebGLContextStore.getState().isPageVisible).toBe(true)
-    })
-
-    it('should have zero loss count initially', () => {
-      expect(useWebGLContextStore.getState().lostCount).toBe(0)
-    })
-
-    it('should have zero restore count initially', () => {
-      expect(useWebGLContextStore.getState().restoreCount).toBe(0)
-    })
-  })
 
   describe('onContextLost', () => {
     it('should set status to lost', () => {

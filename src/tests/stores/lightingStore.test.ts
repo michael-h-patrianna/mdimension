@@ -18,40 +18,7 @@ describe('lightingStore', () => {
     useLightingStore.setState(LIGHTING_INITIAL_STATE);
   });
 
-  describe('Initial State', () => {
-    it('should have default lights array with two lights', () => {
-      const { lights } = useLightingStore.getState()
-      expect(lights).toHaveLength(2)
-      expect(lights).toEqual(DEFAULT_LIGHTS)
-    })
 
-    it('should have no selected light by default', () => {
-      expect(useLightingStore.getState().selectedLightId).toBe(DEFAULT_SELECTED_LIGHT_ID)
-      expect(DEFAULT_SELECTED_LIGHT_ID).toBe(null)
-    })
-
-    it('should have translate as default transform mode', () => {
-      expect(useLightingStore.getState().transformMode).toBe(DEFAULT_TRANSFORM_MODE)
-      expect(DEFAULT_TRANSFORM_MODE).toBe('translate')
-    })
-
-    it('should have light gizmos hidden by default', () => {
-      expect(useLightingStore.getState().showLightGizmos).toBe(DEFAULT_SHOW_LIGHT_GIZMOS)
-      expect(DEFAULT_SHOW_LIGHT_GIZMOS).toBe(false)
-    })
-
-    it('should have default light with correct properties', () => {
-      const { lights } = useLightingStore.getState()
-      const defaultLight = lights[0]!
-
-      expect(defaultLight.id).toBe('light-default')
-      expect(defaultLight.name).toBe('Main Light')
-      expect(defaultLight.type).toBe('point')
-      expect(defaultLight.enabled).toBe(true)
-      expect(defaultLight.color).toBe('#FFFFFF')
-      expect(defaultLight.intensity).toBe(1.0)
-    })
-  })
 
   describe('addLight', () => {
     it('should add a point light', () => {

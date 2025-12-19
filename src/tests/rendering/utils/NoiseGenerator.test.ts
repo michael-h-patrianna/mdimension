@@ -19,27 +19,28 @@ describe('NoiseGenerator', () => {
     expect(texture.image.width).toBe(size);
     expect(texture.image.height).toBe(size);
     expect(texture.image.depth).toBe(size);
-    expect(texture.image.data.length).toBe(size * size * size);
+    expect(texture.image.data).not.toBeNull();
+    expect(texture.image.data!.length).toBe(size * size * size);
   });
 
   it('should generate valid noise data', () => {
     const size = 16;
     const texture = generateNoiseTexture3D(size);
     const data = texture.image.data;
-    
+    expect(data).not.toBeNull();
+
     // Check if data contains values other than just 0 or 255 (indicating noise)
     let min = 255;
     let max = 0;
-    let hasVariation = false;
-    
-    for (let i = 0; i < data.length; i++) {
-        const val = data[i];
-        if (val < min) min = val;
-        if (val > max) max = val;
+
+    for (let i = 0; i < data!.length; i++) {
+      const val = data![i]!;
+      if (val < min) min = val;
+      if (val > max) max = val;
     }
-    
-    hasVariation = min < max;
-    
+
+    const hasVariation = min < max;
+
     expect(hasVariation).toBe(true);
     expect(min).toBeGreaterThanOrEqual(0);
     expect(max).toBeLessThanOrEqual(255);

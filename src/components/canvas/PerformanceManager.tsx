@@ -15,6 +15,7 @@ import React from 'react';
 /**
  * Performance manager that activates all performance optimization hooks.
  * Must be placed inside a Canvas component.
+ * @returns null - this component doesn't render anything visible
  */
 export const PerformanceManager: React.FC = () => {
   // Interaction state detection (updates store)

@@ -15,16 +15,16 @@
  * that occur when trying to skip ray start positions in soft density fields.
  */
 
-import * as THREE from 'three';
-import { usePerformanceStore } from '@/stores';
-import { useWebGLContextStore } from '@/stores/webglContextStore';
-import { resourceRecovery, RECOVERY_PRIORITY } from './ResourceRecovery';
+import { usePerformanceStore } from '@/stores'
+import { useWebGLContextStore } from '@/stores/webglContextStore'
+import * as THREE from 'three'
+import { RECOVERY_PRIORITY, resourceRecovery } from './ResourceRecovery'
 
 /** Resolution scale for cloud render target (1/2 = quarter pixels) */
-const CLOUD_RESOLUTION_SCALE = 0.5;
+const CLOUD_RESOLUTION_SCALE = 0.5
 
 /** Number of frames in the Bayer cycle */
-const CYCLE_LENGTH = 4;
+const CYCLE_LENGTH = 4
 
 /**
  * MRT attachment indices for the reprojection buffer.
@@ -35,7 +35,7 @@ export const MRT_ATTACHMENTS = {
   REPROJECTED_COLOR: 0,
   /** Reprojection validity mask (R channel = validity 0-1) */
   VALIDITY_MASK: 1,
-} as const;
+} as const
 
 /**
  * Bayer pattern offsets for 4-frame cycle.
@@ -51,27 +51,27 @@ const BAYER_OFFSETS: [number, number][] = [
   [1.0, 1.0],
   [1.0, 0.0],
   [0.0, 1.0],
-];
+]
 
 export interface TemporalCloudUniforms {
   /** Previous frame's accumulated cloud color */
-  uPrevAccumulation: THREE.Texture | null;
+  uPrevAccumulation: THREE.Texture | null
   /** Previous frame's accumulated world positions (for accurate reprojection during camera rotation) */
-  uPrevPositionBuffer: THREE.Texture | null;
+  uPrevPositionBuffer: THREE.Texture | null
   /** Current frame's cloud position texture (quarter-res MRT attachment) */
-  uCloudPositionTexture: THREE.Texture | null;
+  uCloudPositionTexture: THREE.Texture | null
   /** Previous frame's view-projection matrix */
-  uPrevViewProjectionMatrix: THREE.Matrix4;
+  uPrevViewProjectionMatrix: THREE.Matrix4
   /** Current Bayer offset for this frame */
-  uBayerOffset: THREE.Vector2;
+  uBayerOffset: THREE.Vector2
   /** Current frame index (0-3) */
-  uFrameIndex: number;
+  uFrameIndex: number
   /** Whether temporal accumulation is enabled and valid */
-  uTemporalCloudEnabled: boolean;
+  uTemporalCloudEnabled: boolean
   /** Resolution of the cloud render target */
-  uCloudResolution: THREE.Vector2;
+  uCloudResolution: THREE.Vector2
   /** Resolution of the full accumulation buffer */
-  uAccumulationResolution: THREE.Vector2;
+  uAccumulationResolution: THREE.Vector2
 }
 
 /**
@@ -88,45 +88,45 @@ class TemporalCloudManagerImpl {
   private accumulationBuffers: [THREE.WebGLRenderTarget | null, THREE.WebGLRenderTarget | null] = [
     null,
     null,
-  ];
+  ]
 
   // Quarter-resolution cloud render target (MRT: color + position)
-  private cloudRenderTarget: THREE.WebGLRenderTarget | null = null;
+  private cloudRenderTarget: THREE.WebGLRenderTarget | null = null
 
   // Legacy position buffer - now integrated into cloudRenderTarget MRT
-  private positionBuffer: THREE.WebGLRenderTarget | null = null;
+  private positionBuffer: THREE.WebGLRenderTarget | null = null
 
   // Reprojection intermediate buffer (full resolution)
-  private reprojectionBuffer: THREE.WebGLRenderTarget | null = null;
+  private reprojectionBuffer: THREE.WebGLRenderTarget | null = null
 
   // Buffer index for ping-pong (0 or 1)
-  private bufferIndex = 0;
+  private bufferIndex = 0
 
   // Frame counter within cycle (0 to CYCLE_LENGTH-1)
-  private frameIndex = 0;
+  private frameIndex = 0
 
   // Whether we have valid history data
-  private isValid = false;
+  private isValid = false
 
   // Cached temporal enabled state (avoid getState() per call)
   // Updated via subscription in initialize() to avoid circular dependency issues during module load
-  private temporalEnabled = false;
-  private unsubscribeStore: (() => void) | null = null;
+  private temporalEnabled = false
+  private unsubscribeStore: (() => void) | null = null
 
   // Dimensions
-  private fullWidth = 1;
-  private fullHeight = 1;
-  private cloudWidth = 1;
-  private cloudHeight = 1;
+  private fullWidth = 1
+  private fullHeight = 1
+  private cloudWidth = 1
+  private cloudHeight = 1
 
   // Camera matrices for reprojection
-  private prevViewProjectionMatrix = new THREE.Matrix4();
-  private currentViewProjectionMatrix = new THREE.Matrix4();
+  private prevViewProjectionMatrix = new THREE.Matrix4()
+  private currentViewProjectionMatrix = new THREE.Matrix4()
 
   // Reusable objects to avoid allocations
-  private bayerOffset = new THREE.Vector2();
-  private cloudResolution = new THREE.Vector2();
-  private accumulationResolution = new THREE.Vector2();
+  private bayerOffset = new THREE.Vector2()
+  private cloudResolution = new THREE.Vector2()
+  private accumulationResolution = new THREE.Vector2()
 
   /**
    * Initialize or resize all render targets.
@@ -139,17 +139,17 @@ class TemporalCloudManagerImpl {
     // Set up store subscription once (avoid getState() in isEnabled())
     if (!this.unsubscribeStore) {
       // Get initial state value
-      this.temporalEnabled = usePerformanceStore.getState().temporalReprojectionEnabled;
+      this.temporalEnabled = usePerformanceStore.getState().temporalReprojectionEnabled
       // Subscribe for future changes
       this.unsubscribeStore = usePerformanceStore.subscribe((s) => {
-        this.temporalEnabled = s.temporalReprojectionEnabled;
-      });
+        this.temporalEnabled = s.temporalReprojectionEnabled
+      })
     }
 
-    const newFullWidth = Math.max(1, Math.floor(screenWidth));
-    const newFullHeight = Math.max(1, Math.floor(screenHeight));
-    const newCloudWidth = Math.max(1, Math.floor(screenWidth * CLOUD_RESOLUTION_SCALE));
-    const newCloudHeight = Math.max(1, Math.floor(screenHeight * CLOUD_RESOLUTION_SCALE));
+    const newFullWidth = Math.max(1, Math.floor(screenWidth))
+    const newFullHeight = Math.max(1, Math.floor(screenHeight))
+    const newCloudWidth = Math.max(1, Math.floor(screenWidth * CLOUD_RESOLUTION_SCALE))
+    const newCloudHeight = Math.max(1, Math.floor(screenHeight * CLOUD_RESOLUTION_SCALE))
 
     // Check if resize needed
     if (
@@ -157,16 +157,16 @@ class TemporalCloudManagerImpl {
       this.fullWidth === newFullWidth &&
       this.fullHeight === newFullHeight
     ) {
-      return;
+      return
     }
 
-    this.fullWidth = newFullWidth;
-    this.fullHeight = newFullHeight;
-    this.cloudWidth = newCloudWidth;
-    this.cloudHeight = newCloudHeight;
+    this.fullWidth = newFullWidth
+    this.fullHeight = newFullHeight
+    this.cloudWidth = newCloudWidth
+    this.cloudHeight = newCloudHeight
 
     // Dispose old targets
-    this.dispose();
+    this.dispose()
 
     // Create accumulation buffers (full resolution) with MRT
     // Attachment [0]: Accumulated color (RGBA, FloatType for HDR)
@@ -189,29 +189,29 @@ class TemporalCloudManagerImpl {
         depthBuffer: false,
         stencilBuffer: false,
         count: 2, // MRT: [0] = Color, [1] = Position
-      });
+      })
 
-    this.accumulationBuffers = [createAccumulationTarget(), createAccumulationTarget()];
-    this.accumulationBuffers[0]!.textures[0]!.name = 'AccumColor0';
-    this.accumulationBuffers[0]!.textures[1]!.name = 'AccumPosition0';
-    this.accumulationBuffers[1]!.textures[0]!.name = 'AccumColor1';
-    this.accumulationBuffers[1]!.textures[1]!.name = 'AccumPosition1';
+    this.accumulationBuffers = [createAccumulationTarget(), createAccumulationTarget()]
+    this.accumulationBuffers[0]!.textures[0]!.name = 'AccumColor0'
+    this.accumulationBuffers[0]!.textures[1]!.name = 'AccumPosition0'
+    this.accumulationBuffers[1]!.textures[0]!.name = 'AccumColor1'
+    this.accumulationBuffers[1]!.textures[1]!.name = 'AccumPosition1'
 
     // Explicitly clear accumulation buffers if renderer is provided
     // Only clear color buffer - depth/stencil are disabled on these targets
     if (gl) {
-      const currentTarget = gl.getRenderTarget();
+      const currentTarget = gl.getRenderTarget()
 
-      this.accumulationBuffers.forEach(target => {
+      this.accumulationBuffers.forEach((target) => {
         if (target) {
-          gl.setRenderTarget(target);
-          gl.setClearColor(0x000000, 0);
-          gl.clear(true, false, false);
+          gl.setRenderTarget(target)
+          gl.setClearColor(0x000000, 0)
+          gl.clear(true, false, false)
         }
-      });
+      })
 
       // Restore state
-      gl.setRenderTarget(currentTarget);
+      gl.setRenderTarget(currentTarget)
     }
 
     // Create cloud render target (quarter resolution) with MRT
@@ -238,17 +238,17 @@ class TemporalCloudManagerImpl {
       depthBuffer: true, // Need depth for proper rendering
       stencilBuffer: false,
       count: 3, // MRT: [0] = Color, [1] = Normal, [2] = World Position
-    });
-    this.cloudRenderTarget.textures[0]!.name = 'CloudColor';
-    this.cloudRenderTarget.textures[1]!.name = 'CloudNormal';
-    this.cloudRenderTarget.textures[2]!.name = 'CloudPosition';
+    })
+    this.cloudRenderTarget.textures[0]!.name = 'CloudColor'
+    this.cloudRenderTarget.textures[1]!.name = 'CloudNormal'
+    this.cloudRenderTarget.textures[2]!.name = 'CloudPosition'
 
     // NOTE: Position buffer is now integrated into cloudRenderTarget as MRT attachment [2]
     // (was [1] before adding normal output)
     // The Schrödinger shader outputs world position to gPosition (layout location 2)
     // when USE_TEMPORAL_ACCUMULATION is defined. This eliminates the need for a
     // separate position buffer and enables accurate reprojection during camera rotation.
-    this.positionBuffer = null;
+    this.positionBuffer = null
 
     // Create reprojection buffer (full resolution)
     // MRT: [0] = Reprojected Color, [1] = Validity Mask
@@ -263,23 +263,23 @@ class TemporalCloudManagerImpl {
       depthBuffer: false,
       stencilBuffer: false,
       count: 2,
-    });
+    })
 
     // Explicitly clear reprojection buffer to prevent garbage data
     // This is critical because the reconstruction shader samples from this buffer
     // even before the first reprojection pass runs
     if (gl) {
-      const currentTarget = gl.getRenderTarget();
-      gl.setRenderTarget(this.reprojectionBuffer);
-      gl.setClearColor(0x000000, 0);
-      gl.clear(true, false, false);
-      gl.setRenderTarget(currentTarget);
+      const currentTarget = gl.getRenderTarget()
+      gl.setRenderTarget(this.reprojectionBuffer)
+      gl.setClearColor(0x000000, 0)
+      gl.clear(true, false, false)
+      gl.setRenderTarget(currentTarget)
     }
 
     // Reset state
-    this.isValid = false;
-    this.frameIndex = 0;
-    this.bufferIndex = 0;
+    this.isValid = false
+    this.frameIndex = 0
+    this.bufferIndex = 0
   }
 
   /**
@@ -288,13 +288,13 @@ class TemporalCloudManagerImpl {
    * @param camera
    */
   beginFrame(camera: THREE.Camera): void {
-    if (!this.isEnabled()) return;
+    if (!this.isEnabled()) return
 
     // Store current view-projection (will become "previous" after swap)
     this.currentViewProjectionMatrix.multiplyMatrices(
       camera.projectionMatrix,
       camera.matrixWorldInverse
-    );
+    )
   }
 
   /**
@@ -302,112 +302,124 @@ class TemporalCloudManagerImpl {
    * Advances frame counter and swaps buffers.
    */
   endFrame(): void {
-    if (!this.isEnabled()) return;
+    if (!this.isEnabled()) return
 
     // Current becomes previous
-    this.prevViewProjectionMatrix.copy(this.currentViewProjectionMatrix);
+    this.prevViewProjectionMatrix.copy(this.currentViewProjectionMatrix)
 
     // Swap accumulation buffer index
-    this.bufferIndex = 1 - this.bufferIndex;
+    this.bufferIndex = 1 - this.bufferIndex
 
     // Advance frame counter
-    this.frameIndex = (this.frameIndex + 1) % CYCLE_LENGTH;
+    this.frameIndex = (this.frameIndex + 1) % CYCLE_LENGTH
 
     // Mark as valid after first complete cycle
     if (this.frameIndex === 0) {
-      this.isValid = true;
+      this.isValid = true
     }
   }
 
   /**
    * Get the render target for volumetric cloud rendering.
    * This is quarter resolution with Bayer pattern offset.
+   * @returns The cloud render target or null
    */
   getCloudRenderTarget(): THREE.WebGLRenderTarget | null {
-    return this.cloudRenderTarget;
+    return this.cloudRenderTarget
   }
 
   /**
    * Get the cloud render target's position texture (MRT attachment 2).
    * This contains per-pixel world positions from the current frame's quarter-res render.
+   * @returns The position texture or null
    */
   getCloudPositionTexture(): THREE.Texture | null {
-    return this.cloudRenderTarget?.textures[2] ?? null;
+    return this.cloudRenderTarget?.textures[2] ?? null
   }
 
   /**
    * Get the cloud render target's normal texture (MRT attachment 1).
    * This contains per-pixel view-space normals for SSR/SSAO.
+   * @returns The normal texture or null
    */
   getCloudNormalTexture(): THREE.Texture | null {
-    return this.cloudRenderTarget?.textures[1] ?? null;
+    return this.cloudRenderTarget?.textures[1] ?? null
   }
 
   /**
    * Get the reprojection intermediate buffer.
+   * @returns The reprojection buffer or null
    */
   getReprojectionBuffer(): THREE.WebGLRenderTarget | null {
-    return this.reprojectionBuffer;
+    return this.reprojectionBuffer
   }
 
   /**
    * Get the write target for reconstruction output (MRT: color + position).
+   * @returns The write target or null
    */
   getWriteTarget(): THREE.WebGLRenderTarget | null {
-    return this.accumulationBuffers[this.bufferIndex] ?? null;
+    return this.accumulationBuffers[this.bufferIndex] ?? null
   }
 
   /**
    * Get the read target (previous frame's accumulation - MRT: color + position).
+   * @returns The read target or null
    */
   getReadTarget(): THREE.WebGLRenderTarget | null {
-    return this.accumulationBuffers[1 - this.bufferIndex] ?? null;
+    return this.accumulationBuffers[1 - this.bufferIndex] ?? null
   }
 
   /**
    * Get the read target's color texture (MRT attachment 0).
+   * @returns The color texture or null
    */
   getReadColorTexture(): THREE.Texture | null {
-    const target = this.getReadTarget();
-    return target?.textures[0] ?? null;
+    const target = this.getReadTarget()
+    return target?.textures[0] ?? null
   }
 
   /**
    * Get the read target's position texture (MRT attachment 1).
    * Used by reprojection shader to determine where each pixel was in 3D space.
+   * @returns The position texture or null
    */
   getReadPositionTexture(): THREE.Texture | null {
-    const target = this.getReadTarget();
-    return target?.textures[1] ?? null;
+    const target = this.getReadTarget()
+    return target?.textures[1] ?? null
   }
 
   /**
    * Get the current Bayer offset for this frame.
+   * @returns Tuple of [x, y] Bayer offset
    */
   getBayerOffset(): [number, number] {
-    return BAYER_OFFSETS[this.frameIndex] ?? [0, 0];
+    return BAYER_OFFSETS[this.frameIndex] ?? [0, 0]
   }
 
   /**
    * Get the current frame index (0 to CYCLE_LENGTH-1).
+   * @returns Current frame index
    */
   getFrameIndex(): number {
-    return this.frameIndex;
+    return this.frameIndex
   }
 
   /**
    * Check if temporal cloud accumulation is enabled in settings.
+   * @returns True if temporal cloud accumulation is enabled
    */
   isEnabled(): boolean {
     // Use cached value (updated via subscription in initialize())
-    return this.temporalEnabled;
+    return this.temporalEnabled
   }
 
   /**
    * Check if we have valid history data for reprojection.
+   * @returns True if history is valid for reprojection
    */
   hasValidHistory(): boolean {
-    return this.isValid && this.isEnabled();
+    return this.isValid && this.isEnabled()
   }
 
   /**
@@ -440,13 +452,13 @@ class TemporalCloudManagerImpl {
     // Render targets are managed by:
     // - initialize() on resize
     // - dispose() on unmount/context loss
-    this.isValid = false;
-    this.frameIndex = 0;
-    this.bufferIndex = 0;
+    this.isValid = false
+    this.frameIndex = 0
+    this.bufferIndex = 0
 
     // Reset matrices to identity to avoid stale reprojection
-    this.prevViewProjectionMatrix.identity();
-    this.currentViewProjectionMatrix.identity();
+    this.prevViewProjectionMatrix.identity()
+    this.currentViewProjectionMatrix.identity()
   }
 
   /**
@@ -458,53 +470,55 @@ class TemporalCloudManagerImpl {
    */
   invalidateForContextLoss(): void {
     // Null out render targets WITHOUT disposing - they belong to the dead context
-    this.accumulationBuffers = [null, null];
-    this.cloudRenderTarget = null;
-    this.positionBuffer = null;
-    this.reprojectionBuffer = null;
+    this.accumulationBuffers = [null, null]
+    this.cloudRenderTarget = null
+    this.positionBuffer = null
+    this.reprojectionBuffer = null
 
     // Reset temporal state
-    this.isValid = false;
-    this.frameIndex = 0;
-    this.bufferIndex = 0;
-    this.prevViewProjectionMatrix.identity();
-    this.currentViewProjectionMatrix.identity();
+    this.isValid = false
+    this.frameIndex = 0
+    this.bufferIndex = 0
+    this.prevViewProjectionMatrix.identity()
+    this.currentViewProjectionMatrix.identity()
   }
 
   /**
    * Reinitialize after context restoration.
    * @param gl - The WebGL renderer with restored context
+   * @returns Promise that resolves when reinitialization is complete
    */
   reinitialize(gl: THREE.WebGLRenderer): Promise<void> {
     // Re-run initialize with stored dimensions
     // This recreates render targets with fresh GPU resources
-    this.initialize(this.fullWidth, this.fullHeight, gl);
-    return Promise.resolve();
+    this.initialize(this.fullWidth, this.fullHeight, gl)
+    return Promise.resolve()
   }
 
   /**
    * Get all uniforms needed for temporal cloud rendering.
+   * @returns Object containing all temporal cloud uniforms
    */
   getUniforms(): TemporalCloudUniforms {
     // Warn if temporal is enabled but render targets are missing - indicates a bug
     // Skip warning during context recovery - targets are intentionally null
-    const contextStatus = useWebGLContextStore.getState().status;
+    const contextStatus = useWebGLContextStore.getState().status
     if (this.isEnabled() && this.cloudRenderTarget === null && contextStatus === 'active') {
       console.warn(
         '[TemporalCloudManager] Temporal reprojection enabled but render targets are null. ' +
           'This indicates initialize() was not called or dispose() was called unexpectedly.'
-      );
+      )
     }
 
-    const [offsetX, offsetY] = this.getBayerOffset();
-    this.bayerOffset.set(offsetX, offsetY);
-    this.cloudResolution.set(this.cloudWidth, this.cloudHeight);
-    this.accumulationResolution.set(this.fullWidth, this.fullHeight);
+    const [offsetX, offsetY] = this.getBayerOffset()
+    this.bayerOffset.set(offsetX, offsetY)
+    this.cloudResolution.set(this.cloudWidth, this.cloudHeight)
+    this.accumulationResolution.set(this.fullWidth, this.fullHeight)
 
-    const colorTexture = this.getReadColorTexture();
-    const positionTexture = this.getReadPositionTexture();
+    const colorTexture = this.getReadColorTexture()
+    const positionTexture = this.getReadPositionTexture()
     // Only enable if we have valid history AND valid textures to sample
-    const hasHistory = this.hasValidHistory() && colorTexture !== null && positionTexture !== null;
+    const hasHistory = this.hasValidHistory() && colorTexture !== null && positionTexture !== null
 
     return {
       uPrevAccumulation: hasHistory ? colorTexture : null,
@@ -516,50 +530,51 @@ class TemporalCloudManagerImpl {
       uTemporalCloudEnabled: hasHistory,
       uCloudResolution: this.cloudResolution,
       uAccumulationResolution: this.accumulationResolution,
-    };
+    }
   }
 
   /**
    * Get dimensions for debugging.
+   * @returns Object with width and height dimensions
    */
   getDimensions(): {
-    fullWidth: number;
-    fullHeight: number;
-    cloudWidth: number;
-    cloudHeight: number;
+    fullWidth: number
+    fullHeight: number
+    cloudWidth: number
+    cloudHeight: number
   } {
     return {
       fullWidth: this.fullWidth,
       fullHeight: this.fullHeight,
       cloudWidth: this.cloudWidth,
       cloudHeight: this.cloudHeight,
-    };
+    }
   }
 
   /**
    * Dispose all resources.
    */
   dispose(): void {
-    this.accumulationBuffers.forEach((target) => target?.dispose());
-    this.accumulationBuffers = [null, null];
-    this.cloudRenderTarget?.dispose();
-    this.cloudRenderTarget = null;
-    this.positionBuffer?.dispose();
-    this.positionBuffer = null;
-    this.reprojectionBuffer?.dispose();
-    this.reprojectionBuffer = null;
-    this.isValid = false;
+    this.accumulationBuffers.forEach((target) => target?.dispose())
+    this.accumulationBuffers = [null, null]
+    this.cloudRenderTarget?.dispose()
+    this.cloudRenderTarget = null
+    this.positionBuffer?.dispose()
+    this.positionBuffer = null
+    this.reprojectionBuffer?.dispose()
+    this.reprojectionBuffer = null
+    this.isValid = false
 
     // Clean up store subscription if needed
     if (this.unsubscribeStore) {
-      this.unsubscribeStore();
-      this.unsubscribeStore = null;
+      this.unsubscribeStore()
+      this.unsubscribeStore = null
     }
   }
 }
 
 // Singleton instance
-export const TemporalCloudManager = new TemporalCloudManagerImpl();
+export const TemporalCloudManager = new TemporalCloudManagerImpl()
 
 // Register with resource recovery coordinator
 resourceRecovery.register({
@@ -567,4 +582,4 @@ resourceRecovery.register({
   priority: RECOVERY_PRIORITY.TEMPORAL_CLOUD,
   invalidate: () => TemporalCloudManager.invalidateForContextLoss(),
   reinitialize: (gl) => TemporalCloudManager.reinitialize(gl),
-});
+})
