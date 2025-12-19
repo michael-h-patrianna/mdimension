@@ -7,17 +7,17 @@
  * - Mesh-based (Polytopes): Three.js shadow maps
  */
 
-import { ControlGroup } from '@/components/ui/ControlGroup';
 import { Section } from '@/components/sections/Section';
+import { ControlGroup } from '@/components/ui/ControlGroup';
 import { Select, type SelectOption } from '@/components/ui/Select';
 import { Slider } from '@/components/ui/Slider';
 import { Switch } from '@/components/ui/Switch';
 import { isPolytopeCategory } from '@/lib/geometry/registry/helpers';
 import {
-  SHADOW_QUALITY_LABELS,
-  SHADOW_QUALITY_OPTIONS,
-  SHADOW_QUALITY_TOOLTIPS,
-  SHADOW_SOFTNESS_RANGE,
+    SHADOW_QUALITY_LABELS,
+    SHADOW_QUALITY_OPTIONS,
+    SHADOW_QUALITY_TOOLTIPS,
+    SHADOW_SOFTNESS_RANGE,
 } from '@/rendering/shadows/constants';
 import type { ShadowQuality } from '@/rendering/shadows/types';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';

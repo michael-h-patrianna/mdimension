@@ -31,6 +31,7 @@ import { ShaderConfig } from '../shared/types';
 
 /**
  * Compose Julia fragment shader with all features.
+ * @param config
  */
 export function composeJuliaShader(config: ShaderConfig) {
   const {

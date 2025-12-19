@@ -63,6 +63,7 @@ function tokenize(expr: string): (string | number)[] | null {
  *   term   -> factor (('*' | '/' | '%') factor)*
  *   factor -> '-'? primary
  *   primary-> number | '(' expr ')'
+ * @param tokens
  */
 function parseTokens(tokens: (string | number)[]): number | null {
   let pos = 0;

@@ -1,20 +1,23 @@
-import { precisionBlock } from '../shared/core/precision.glsl';
-import { constantsBlock } from '../shared/core/constants.glsl';
-import { uniformsBlock } from '../shared/core/uniforms.glsl';
-import { ggxBlock } from '../shared/lighting/ggx.glsl';
-import { multiLightBlock } from '../shared/lighting/multi-light.glsl';
-import { sssBlock } from '../shared/lighting/sss.glsl';
-import { shadowMapsUniformsBlock, shadowMapsFunctionsBlock } from '../shared/features/shadowMaps.glsl';
-import { fogUniformsBlock, fogFunctionsBlock } from '../shared/features/fog.glsl';
+import { constantsBlock } from '../shared/core/constants.glsl'
+import { precisionBlock } from '../shared/core/precision.glsl'
+import { uniformsBlock } from '../shared/core/uniforms.glsl'
+import { fogFunctionsBlock, fogUniformsBlock } from '../shared/features/fog.glsl'
 import {
-  processMeshFeatureFlags,
+  shadowMapsFunctionsBlock,
+  shadowMapsUniformsBlock,
+} from '../shared/features/shadowMaps.glsl'
+import {
   assembleShaderBlocks,
+  processMeshFeatureFlags,
   type MeshShaderConfig,
-} from '../shared/fractal/compose-helpers';
+} from '../shared/fractal/compose-helpers'
+import { ggxBlock } from '../shared/lighting/ggx.glsl'
+import { multiLightBlock } from '../shared/lighting/multi-light.glsl'
+import { sssBlock } from '../shared/lighting/sss.glsl'
 
-import { tubeUniformsBlock } from './uniforms.glsl';
-import { mainBlock } from './main.glsl';
-import { vertexBlock } from './vertex.glsl';
+import { mainBlock } from './main.glsl'
+import { tubeUniformsBlock } from './uniforms.glsl'
+import { vertexBlock } from './vertex.glsl'
 
 /**
  * Configuration for TubeWireframe shader compilation.
@@ -22,9 +25,7 @@ import { vertexBlock } from './vertex.glsl';
  * Each feature flag controls whether that feature's code is compiled into the shader.
  * Disabled features are completely absent from the compiled shader, not just branched.
  */
-export interface TubeWireframeShaderConfig extends MeshShaderConfig {
-  // Currently no tubewireframe-specific options beyond MeshShaderConfig
-}
+export type TubeWireframeShaderConfig = MeshShaderConfig
 
 /**
  * Compose TubeWireframe fragment shader with conditional features.
@@ -36,21 +37,21 @@ export interface TubeWireframeShaderConfig extends MeshShaderConfig {
  * @returns Object with glsl string, module names, and feature names
  */
 export function composeTubeWireframeFragmentShader(config: TubeWireframeShaderConfig = {}): {
-  glsl: string;
-  modules: string[];
-  features: string[];
+  glsl: string
+  modules: string[]
+  features: string[]
 } {
-  const { shadows: enableShadows = true, overrides = [] } = config;
+  const { shadows: enableShadows = true, overrides = [] } = config
 
   // Process feature flags using shared helper
-  const flags = processMeshFeatureFlags(config);
+  const flags = processMeshFeatureFlags(config)
 
   // Build tubewireframe-specific features list (different display names)
-  const features: string[] = ['PBR Lighting', 'Multi-Light Support', 'MRT Output'];
-  if (flags.useShadows) features.push('Shadow Maps');
-  if (flags.useFog) features.push('Fog');
-  if (flags.useSss) features.push('Rim SSS');
-  if (flags.useFresnel) features.push('Fresnel Rim');
+  const features: string[] = ['PBR Lighting', 'Multi-Light Support', 'MRT Output']
+  if (flags.useShadows) features.push('Shadow Maps')
+  if (flags.useFog) features.push('Fog')
+  if (flags.useSss) features.push('Rim SSS')
+  if (flags.useFresnel) features.push('Fresnel Rim')
 
   // Build blocks array with conditional inclusion
   const blocks = [
@@ -83,12 +84,12 @@ export function composeTubeWireframeFragmentShader(config: TubeWireframeShaderCo
     { name: 'Fog Uniforms', content: fogUniformsBlock, condition: flags.useFog },
     { name: 'Fog Functions', content: fogFunctionsBlock, condition: flags.useFog },
     { name: 'Main', content: mainBlock },
-  ];
+  ]
 
   // Assemble shader from blocks using shared helper
-  const { glsl, modules } = assembleShaderBlocks(blocks, overrides);
+  const { glsl, modules } = assembleShaderBlocks(blocks, overrides)
 
-  return { glsl, modules, features };
+  return { glsl, modules, features }
 }
 
 /**
@@ -98,6 +99,5 @@ export function composeTubeWireframeFragmentShader(config: TubeWireframeShaderCo
  * @returns Vertex shader GLSL string
  */
 export function composeTubeWireframeVertexShader() {
-  return vertexBlock;
+  return vertexBlock
 }
-

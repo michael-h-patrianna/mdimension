@@ -21,10 +21,10 @@ function makeRotationMatrix(dimension: number, axis1: number, axis2: number, ang
   const cos = Math.cos(angle);
   const sin = Math.sin(angle);
 
-  matrix[axis1]![axis1] = cos;
-  matrix[axis2]![axis2] = cos;
-  matrix[axis1]![axis2] = -sin;
-  matrix[axis2]![axis1] = sin;
+  matrix[axis1 * dimension + axis1] = cos;
+  matrix[axis2 * dimension + axis2] = cos;
+  matrix[axis1 * dimension + axis2] = -sin;
+  matrix[axis2 * dimension + axis1] = sin;
 
   return matrix;
 }

@@ -32,6 +32,7 @@ const COORD_TOLERANCE = WYTHOFF_CONFIG.VERTEX_TOLERANCE
  * This ensures vertices that are "equal" (within tolerance) hash to the same value.
  *
  * We multiply by 1e6 (inverse of tolerance) and round to get consistent integers.
+ * @param value
  */
 function quantizeCoord(value: number): number {
   // Round to 6 decimal places (matches tolerance)
@@ -90,6 +91,7 @@ export function verticesEqual(a: VectorND, b: VectorND): boolean {
 /**
  * Create a string key for a vertex (for fallback collision resolution).
  * This is the original approach, used only when hash collision occurs.
+ * @param vertex
  */
 export function vertexToKey(vertex: VectorND): string {
   return vertex.map(v => (v ?? 0).toFixed(6)).join(',')

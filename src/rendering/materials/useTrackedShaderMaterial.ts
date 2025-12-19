@@ -29,22 +29,23 @@
  * @module rendering/materials/useTrackedShaderMaterial
  */
 
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import type { ShaderMaterial } from 'three';
+import type React from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import type { ShaderMaterial } from 'three'
 import {
-  trackShaderCompilation,
   deferredExecute,
+  trackShaderCompilation,
   waitForGPUCompile,
-} from './shaderCompilationTracking';
+} from './shaderCompilationTracking'
 
 /**
  * Result object from useTrackedShaderMaterial hook.
  */
 export interface TrackedShaderMaterialResult<T extends ShaderMaterial> {
   /** The shader material instance, or null during initial creation */
-  material: T | null;
+  material: T | null
   /** True while shader is being compiled (overlay visible) */
-  isCompiling: boolean;
+  isCompiling: boolean
 }
 
 /**
@@ -60,44 +61,44 @@ export function useTrackedShaderMaterial<T extends ShaderMaterial = ShaderMateri
   createMaterial: () => T,
   deps: React.DependencyList
 ): TrackedShaderMaterialResult<T> {
-  const [material, setMaterial] = useState<T | null>(null);
-  const [isCompiling, setIsCompiling] = useState(true);
-  const stopTrackingRef = useRef<(() => void) | null>(null);
-  const cancelRafRef = useRef<(() => void) | null>(null);
-  const prevMaterialRef = useRef<T | null>(null);
+  const [material, setMaterial] = useState<T | null>(null)
+  const [isCompiling, setIsCompiling] = useState(true)
+  const stopTrackingRef = useRef<(() => void) | null>(null)
+  const cancelRafRef = useRef<(() => void) | null>(null)
+  const prevMaterialRef = useRef<T | null>(null)
 
   // Validate shader name
-  const validShaderName = shaderName?.trim() || 'Unknown Shader';
+  const validShaderName = shaderName?.trim() || 'Unknown Shader'
 
   // Create a stable deps key for comparison
-  const depsKey = JSON.stringify(deps);
-  const prevDepsKeyRef = useRef<string | null>(null);
+  const depsKey = JSON.stringify(deps)
+  const prevDepsKeyRef = useRef<string | null>(null)
 
   // Detect if deps changed
-  const depsChanged = prevDepsKeyRef.current !== depsKey;
+  const depsChanged = prevDepsKeyRef.current !== depsKey
 
   // Step 1: Show overlay when deps change (useLayoutEffect runs before paint)
   useLayoutEffect(() => {
     if (depsChanged) {
       // Clean up previous tracking
-      stopTrackingRef.current?.();
-      cancelRafRef.current?.();
+      stopTrackingRef.current?.()
+      cancelRafRef.current?.()
 
       // Mark as compiling (shows overlay)
-      const stopTracking = trackShaderCompilation(validShaderName);
-      stopTrackingRef.current = stopTracking;
-      setIsCompiling(true);
+      const stopTracking = trackShaderCompilation(validShaderName)
+      stopTrackingRef.current = stopTracking
+      setIsCompiling(true)
 
       // Update deps key
-      prevDepsKeyRef.current = depsKey;
+      prevDepsKeyRef.current = depsKey
     }
-  }, [depsKey, depsChanged, validShaderName]);
+  }, [depsKey, depsChanged, validShaderName])
 
   // Step 2: Defer material creation to let overlay paint
   useEffect(() => {
     if (!depsChanged && material !== null) {
       // No change, keep current material
-      return;
+      return
     }
 
     // Defer material creation by one frame
@@ -105,55 +106,55 @@ export function useTrackedShaderMaterial<T extends ShaderMaterial = ShaderMateri
       try {
         // Dispose previous material
         if (prevMaterialRef.current) {
-          prevMaterialRef.current.dispose();
+          prevMaterialRef.current.dispose()
         }
 
         // Create the material (GPU will block during first render)
-        const newMaterial = createMaterial();
-        prevMaterialRef.current = newMaterial;
-        setMaterial(newMaterial);
+        const newMaterial = createMaterial()
+        prevMaterialRef.current = newMaterial
+        setMaterial(newMaterial)
 
         // Step 3: Wait for GPU compilation, then hide overlay
         // IMPORTANT: Call stopTrackingRef directly, don't rely on closure
         const cancelWait = waitForGPUCompile(() => {
-          stopTrackingRef.current?.();
-          stopTrackingRef.current = null;
-          setIsCompiling(false);
-        });
-        cancelRafRef.current = cancelWait;
+          stopTrackingRef.current?.()
+          stopTrackingRef.current = null
+          setIsCompiling(false)
+        })
+        cancelRafRef.current = cancelWait
       } catch (error) {
         console.error(
           `[useTrackedShaderMaterial] Failed to create material for "${validShaderName}":`,
           error
-        );
-        stopTrackingRef.current?.();
-        stopTrackingRef.current = null;
-        setIsCompiling(false);
+        )
+        stopTrackingRef.current?.()
+        stopTrackingRef.current = null
+        setIsCompiling(false)
       }
-    });
+    })
 
-    cancelRafRef.current = cancelDefer;
+    cancelRafRef.current = cancelDefer
 
     return () => {
-      cancelRafRef.current?.();
-    };
+      cancelRafRef.current?.()
+    }
     // We intentionally use depsKey instead of spreading deps to avoid exhaustive-deps warning
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [depsKey, validShaderName]);
+  }, [depsKey, validShaderName])
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      stopTrackingRef.current?.();
-      cancelRafRef.current?.();
+      stopTrackingRef.current?.()
+      cancelRafRef.current?.()
 
       // Dispose material
       if (prevMaterialRef.current) {
-        prevMaterialRef.current.dispose();
-        prevMaterialRef.current = null;
+        prevMaterialRef.current.dispose()
+        prevMaterialRef.current = null
       }
-    };
-  }, []);
+    }
+  }, [])
 
-  return { material, isCompiling };
+  return { material, isCompiling }
 }

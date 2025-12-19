@@ -23,6 +23,8 @@ import { MAX_LIGHTS } from '@/rendering/lights/types';
 
 /**
  * Create a mock shadow camera
+ * @param near
+ * @param far
  */
 function createMockShadowCamera(near = 0.5, far = 50): THREE.Camera {
   const camera = new THREE.PerspectiveCamera();
@@ -41,6 +43,8 @@ function createMockShadowMap(): THREE.WebGLRenderTarget {
 
 /**
  * Create a mock point light with shadow
+ * @param position
+ * @param castShadow
  */
 function createMockPointLight(
   position: [number, number, number] = [5, 5, 5],
@@ -61,6 +65,8 @@ function createMockPointLight(
 
 /**
  * Create a mock directional light with shadow
+ * @param position
+ * @param castShadow
  */
 function createMockDirectionalLight(
   position: [number, number, number] = [10, 10, 10],
@@ -81,6 +87,8 @@ function createMockDirectionalLight(
 
 /**
  * Create a mock spot light with shadow
+ * @param position
+ * @param castShadow
  */
 function createMockSpotLight(
   position: [number, number, number] = [-5, 5, 5],

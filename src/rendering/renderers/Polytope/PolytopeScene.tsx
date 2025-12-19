@@ -738,6 +738,10 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     /**
      * Helper to write vertex data at a given output index.
      * Each vertex gets its own position + the positions of its 2 neighbors.
+     * @param outIdx
+     * @param thisIdx
+     * @param neighbor1Idx
+     * @param neighbor2Idx
      */
     const writeTriangleVertex = (
       outIdx: number,

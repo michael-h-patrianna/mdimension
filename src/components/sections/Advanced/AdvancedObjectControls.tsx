@@ -68,13 +68,21 @@ const QUALITY_DESCRIPTIONS: Record<RaymarchQuality, { volumetric: string; sdf: s
     },
 };
 
-/** Get quality description with concrete numbers based on object type */
+/**
+ * Get quality description with concrete numbers based on object type
+ * @param quality
+ * @param objectType
+ */
 const getQualityDescription = (quality: RaymarchQuality, objectType: string): string => {
     const isVolumetric = objectType === 'schroedinger';
     return isVolumetric ? QUALITY_DESCRIPTIONS[quality].volumetric : QUALITY_DESCRIPTIONS[quality].sdf;
 };
 
-/** Unified Raymarching Quality Control for all 3 raymarching object types */
+/**
+ * Unified Raymarching Quality Control for all 3 raymarching object types
+ * @param root0
+ * @param root0.objectType
+ */
 const RaymarchingQualityControl: React.FC<{ objectType: string }> = ({ objectType }) => {
     const {
         mandelbulbQuality, setMandelbulbQuality,

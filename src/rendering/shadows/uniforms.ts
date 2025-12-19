@@ -430,6 +430,7 @@ let shadowDataCache: ShadowDataCache | null = null;
 /**
  * Generate a hash string from light configuration for cache invalidation.
  * Includes position, type, and enabled state.
+ * @param lights
  */
 function computeLightsHash(lights: LightSource[]): string {
   return lights

@@ -11,6 +11,9 @@ import { describe, it, expect } from 'vitest';
 /**
  * JavaScript implementation of the GLSL threshold calculation
  * Must match hydrogenRadialEarlyExit() in hydrogenPsi.glsl.ts
+ * @param n
+ * @param a0
+ * @param l
  */
 function hydrogenRadialThreshold(n: number, a0: number, l: number): number {
   return 25.0 * n * a0 * (1.0 + 0.1 * l);
@@ -19,6 +22,10 @@ function hydrogenRadialThreshold(n: number, a0: number, l: number): number {
 /**
  * JavaScript implementation of the GLSL hydrogen radial wavefunction
  * Simplified version for testing threshold validity
+ * @param n
+ * @param l
+ * @param r
+ * @param a0
  */
 function hydrogenRadialMagnitude(n: number, l: number, r: number, a0: number): number {
   // rho = 2r / (n * a0)
@@ -72,6 +79,9 @@ function hydrogenRadialMagnitude(n: number, l: number, r: number, a0: number): n
 /**
  * Calculate density boost applied in hydrogen mode
  * Must match the boost in density.glsl.ts
+ * @param n
+ * @param l
+ * @param dimension
  */
 function hydrogenDensityBoost(n: number, l: number, dimension: number = 3): number {
   const lBoost = Math.pow(3.0, l);

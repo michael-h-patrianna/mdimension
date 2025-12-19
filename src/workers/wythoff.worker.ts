@@ -12,9 +12,12 @@
  * @see https://vitejs.dev/guide/features.html#web-workers
  */
 
-import { generateWythoffPolytopeWithWarnings, type WythoffPolytopeConfig } from '@/lib/geometry/wythoff'
-import type { PolytopeGeometry } from '@/lib/geometry/types'
 import { flattenGeometry, type TransferablePolytopeGeometry } from '@/lib/geometry/transfer'
+import type { PolytopeGeometry } from '@/lib/geometry/types'
+import {
+  generateWythoffPolytopeWithWarnings,
+  type WythoffPolytopeConfig,
+} from '@/lib/geometry/wythoff'
 
 /**
  * Request message from main thread to worker
@@ -50,6 +53,7 @@ export interface WorkerResponse {
 
 /**
  * Handle incoming messages from main thread
+ * @param event
  */
 self.onmessage = (event: MessageEvent<WorkerRequest>) => {
   const { type, id, dimension, config } = event.data
@@ -78,10 +82,9 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
       id,
       transferableGeometry: transferable,
       warnings: result.warnings,
-    };
+    }
 
-    const worker = self as unknown as DedicatedWorkerGlobalScope
-    worker.postMessage(response, buffers)
+    self.postMessage(response, { transfer: buffers })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     sendError(id, message)
@@ -90,6 +93,8 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
 
 /**
  * Send progress update to main thread
+ * @param id
+ * @param progress
  */
 function sendProgress(id: string, progress: number): void {
   const response: WorkerResponse = {
@@ -102,6 +107,8 @@ function sendProgress(id: string, progress: number): void {
 
 /**
  * Send error message to main thread
+ * @param id
+ * @param error
  */
 function sendError(id: string, error: string): void {
   const response: WorkerResponse = {

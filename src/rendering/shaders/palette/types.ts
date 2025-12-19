@@ -80,6 +80,7 @@ export const QUANTUM_ONLY_ALGORITHMS: readonly ColorAlgorithm[] = ['phase', 'mix
 
 /**
  * Check if a color algorithm is quantum-specific (Schroedinger only).
+ * @param algorithm
  */
 export function isQuantumOnlyAlgorithm(algorithm: ColorAlgorithm): boolean {
   return QUANTUM_ONLY_ALGORITHMS.includes(algorithm)

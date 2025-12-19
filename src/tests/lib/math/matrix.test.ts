@@ -23,7 +23,7 @@ function mat(rows: number[][]): MatrixND {
   const flat = new Float32Array(rows.length * rows.length);
   for(let i=0; i<rows.length; i++) {
     for(let j=0; j<rows.length; j++) {
-      flat[i*rows.length + j] = rows[i][j];
+      flat[i*rows.length + j] = rows[i]![j]!;
     }
   }
   return flat;
@@ -35,7 +35,7 @@ function expectMatrix(m: MatrixND, expected: number[][]) {
     expect(dim).toBe(expected.length);
     for(let i=0; i<dim; i++) {
         for(let j=0; j<dim; j++) {
-            expect(m[i*dim + j]).toBeCloseTo(expected[i][j]);
+            expect(m[i*dim + j]!).toBeCloseTo(expected[i]![j]!);
         }
     }
 }

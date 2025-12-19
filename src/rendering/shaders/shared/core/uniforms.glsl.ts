@@ -92,4 +92,4 @@ uniform float uShadowSoftness;
 
 // Ambient Occlusion uniforms
 uniform bool uAoEnabled;
-`;
+`

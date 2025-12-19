@@ -79,6 +79,7 @@ export class WarningCollector {
 
   /**
    * Add a warning message
+   * @param message
    */
   add(message: string): void {
     this.warnings.push(message)

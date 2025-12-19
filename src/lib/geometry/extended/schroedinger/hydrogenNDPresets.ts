@@ -168,6 +168,7 @@ export const HYDROGEN_ND_PRESETS: Record<HydrogenNDPresetName, HydrogenNDPreset>
 
 /**
  * Get a hydrogen ND preset by name
+ * @param name
  */
 export function getHydrogenNDPreset(name: HydrogenNDPresetName): HydrogenNDPreset {
   return HYDROGEN_ND_PRESETS[name] ?? HYDROGEN_ND_PRESETS['2pz_4d'];
@@ -213,6 +214,7 @@ export function getHydrogenNDPresetsWithKeysByDimension(): Record<number, [Hydro
 /**
  * Get presets available for a specific dimension
  * Returns presets that match the dimension or have lower dimension (can be used with more dims)
+ * @param dimension
  */
 export function getPresetsForDimension(dimension: number): HydrogenNDPreset[] {
   return Object.values(HYDROGEN_ND_PRESETS).filter(
@@ -222,6 +224,11 @@ export function getPresetsForDimension(dimension: number): HydrogenNDPreset[] {
 
 /**
  * Generate a label for hydrogen ND configuration
+ * @param n
+ * @param l
+ * @param m
+ * @param dimension
+ * @param extraDimN
  */
 export function hydrogenNDToLabel(
   n: number,

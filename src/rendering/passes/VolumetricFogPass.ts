@@ -107,6 +107,9 @@ void main() {
 }
 `
 
+/**
+ *
+ */
 export class VolumetricFogPass extends Pass {
   private material: THREE.ShaderMaterial
   private compositeMaterial: THREE.ShaderMaterial
@@ -209,6 +212,7 @@ export class VolumetricFogPass extends Pass {
   /**
    * Set the depth texture from the scene render target.
    * Must be called before render() each frame.
+   * @param texture
    */
   public setDepthTexture(texture: THREE.DepthTexture | null): void {
     this.depthTexture = texture

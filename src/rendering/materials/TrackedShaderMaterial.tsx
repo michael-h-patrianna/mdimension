@@ -73,6 +73,11 @@ interface TrackedShaderMaterialProps {
  * Key insight: Shader compilation blocks the main thread, preventing React from
  * rendering the overlay. We solve this by deferring the actual shader render
  * by one frame, giving the overlay time to appear first.
+ * @param root0
+ * @param root0.shaderName
+ * @param root0.fragmentShader
+ * @param root0.vertexShader
+ * @param root0.materialKey
  */
 export function TrackedShaderMaterial({
   shaderName,

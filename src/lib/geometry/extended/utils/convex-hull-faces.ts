@@ -77,6 +77,7 @@ function correctWindingOrder(
 
 /**
  * Computes the centroid of a set of vertices
+ * @param vertices
  */
 function computeCentroid(vertices: number[][]): number[] {
   if (vertices.length === 0) return [];

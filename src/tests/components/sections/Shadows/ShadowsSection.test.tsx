@@ -8,14 +8,14 @@
  * - Disabled state styling
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
 import { ShadowsSection } from '@/components/sections/Shadows/ShadowsSection';
+import type { LightSource } from '@/rendering/lights/types';
+import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useLightingStore } from '@/stores/lightingStore';
-import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { LIGHTING_INITIAL_STATE } from '@/stores/slices/lightingSlice';
-import type { LightSource } from '@/rendering/lights/types';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 /**
  * Helper to create lighting state with at least one enabled light

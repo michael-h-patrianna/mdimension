@@ -140,4 +140,4 @@ void main() {
     gColor = vec4(col, alpha);
     gNormal = vec4(viewNormal * 0.5 + 0.5, uMetallic);
 }
-`;
+`

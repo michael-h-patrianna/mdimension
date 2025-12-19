@@ -41,6 +41,7 @@ import { ShaderConfig } from '../shared/types';
 
 /**
  * Compose Mandelbulb fragment shader with all features.
+ * @param config
  */
 export function composeMandelbulbShader(config: ShaderConfig) {
   const {

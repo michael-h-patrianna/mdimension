@@ -122,6 +122,8 @@ export class IndexedDBCache {
 
   /**
    * Get a value from the cache.
+   * @param store
+   * @param key
    */
   async get<T>(store: IndexedDBCacheStore, key: string): Promise<T | null> {
     if (!this.db) {
@@ -162,6 +164,10 @@ export class IndexedDBCache {
   /**
    * Set a value in the cache.
    * Handles quota exceeded errors with LRU eviction.
+   * @param store
+   * @param key
+   * @param value
+   * @param checksum
    */
   async set<T>(store: IndexedDBCacheStore, key: string, value: T, checksum?: string): Promise<void> {
     if (!this.db) {
@@ -210,6 +216,8 @@ export class IndexedDBCache {
 
   /**
    * Delete a value from the cache.
+   * @param store
+   * @param key
    */
   async delete(store: IndexedDBCacheStore, key: string): Promise<void> {
     if (!this.db) {
@@ -229,6 +237,7 @@ export class IndexedDBCache {
 
   /**
    * Clear all values in a store.
+   * @param store
    */
   async clear(store: IndexedDBCacheStore): Promise<void> {
     if (!this.db) {
@@ -248,6 +257,7 @@ export class IndexedDBCache {
 
   /**
    * Get total size of a store in bytes.
+   * @param store
    */
   async getSize(store: IndexedDBCacheStore): Promise<number> {
     if (!this.db) {
@@ -278,6 +288,7 @@ export class IndexedDBCache {
 
   /**
    * Get all keys in a store.
+   * @param store
    */
   async getAllKeys(store: IndexedDBCacheStore): Promise<string[]> {
     if (!this.db) {

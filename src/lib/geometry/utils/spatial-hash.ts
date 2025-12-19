@@ -50,6 +50,7 @@ export class SpatialHash {
    * Get cell key for a vertex position.
    * Uses only first MAX_HASH_DIMS dimensions for the key to keep
    * neighbor count manageable (3^3 = 27 vs 3^11 = 177147).
+   * @param vertex
    */
   private getCellKey(vertex: VectorND): string {
     const effectiveDims = Math.min(this.dimension, SpatialHash.MAX_HASH_DIMS)
@@ -64,6 +65,8 @@ export class SpatialHash {
 
   /**
    * Insert a vertex index into the grid
+   * @param index
+   * @param vertex
    */
   insert(index: number, vertex: VectorND): void {
     const key = this.getCellKey(vertex)
@@ -80,6 +83,7 @@ export class SpatialHash {
   /**
    * Get all vertex indices in neighboring cells (including self).
    * For the first MAX_HASH_DIMS dimensions, we check all cells within +-1.
+   * @param vertex
    */
   getNeighborIndices(vertex: VectorND): number[] {
     const effectiveDims = Math.min(this.dimension, SpatialHash.MAX_HASH_DIMS)
@@ -138,6 +142,8 @@ export class SpatialHash {
 
   /**
    * Build spatial hash from vertex array
+   * @param vertices
+   * @param cellSize
    */
   static fromVertices(vertices: VectorND[], cellSize: number): SpatialHash {
     if (vertices.length === 0) {
@@ -253,6 +259,10 @@ export function estimateMinDistance(
 /** Minimum cell size to prevent division by zero or degenerate cells */
 const MIN_CELL_SIZE = WYTHOFF_CONFIG.MIN_CELL_SIZE
 
+/**
+ *
+ * @param vertices
+ */
 export function generateEdgesWithSpatialHash(vertices: VectorND[]): [number, number][] {
   if (vertices.length < 2) return []
 

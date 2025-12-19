@@ -69,6 +69,8 @@ import {
 /**
  * Calculate maximum vertices based on dimension and preset.
  * Delegates to centralized config for maintainability.
+ * @param dimension
+ * @param preset
  */
 function getMaxVertices(
   dimension: number,
@@ -82,6 +84,7 @@ function getMaxVertices(
  *
  * Optimization: Faces are NOT computed during initial generation.
  * They're computed lazily via useFaceDetection when needed for rendering.
+ * @param vertices
  */
 function generateGenericPolytopeData(vertices: VectorND[]): PolytopeData {
   const edges = generateEdgesByMinDistance(vertices)
@@ -256,6 +259,8 @@ export function generateWythoffPolytope(
  *
  * Use this version when you can await the result, as it provides better cache
  * utilization by checking IndexedDB for cached polytopes from previous sessions.
+ * @param dimension
+ * @param config
  */
 export async function generateWythoffPolytopeAsync(
   dimension: number,
@@ -290,6 +295,8 @@ export async function generateWythoffPolytopeAsync(
  *
  * Use this version when you need to know if any limits were reached
  * during generation (e.g., to show toast notifications to users).
+ * @param dimension
+ * @param config
  */
 export function generateWythoffPolytopeWithWarnings(
   dimension: number,
@@ -302,6 +309,8 @@ export function generateWythoffPolytopeWithWarnings(
 
 /**
  * Get information about vertex and edge counts for a Wythoff polytope.
+ * @param dimension
+ * @param config
  */
 export function getWythoffPolytopeInfo(
   dimension: number,

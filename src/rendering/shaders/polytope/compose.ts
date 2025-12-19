@@ -28,9 +28,7 @@ import { transformNDBlock } from './transform-nd.glsl'
  * Each feature flag controls whether that feature's code is compiled into the shader.
  * Disabled features are completely absent from the compiled shader, not just branched.
  */
-export interface PolytopeShaderConfig extends MeshShaderConfig {
-  // Currently no polytope-specific options beyond MeshShaderConfig
-}
+export type PolytopeShaderConfig = MeshShaderConfig
 
 /**
  * Compose face vertex shader for Polytope rendering.

@@ -71,6 +71,12 @@ volumetricLayerMask.set(RENDER_LAYERS.VOLUMETRIC);
  * 4. If we mark valid here, subsequent frames skip rebuild
  * 5. New volumetric mesh never gets uResolution updated
  * 6. Bug: "enlarged, top-right" rendering due to coordinate mismatch
+ * @param scene
+ * @param width
+ * @param height
+ * @param cachedMeshes
+ * @param isValid
+ * @param isValid.current
  */
 function updateVolumetricResolutionCached(
   scene: THREE.Scene,

@@ -57,6 +57,8 @@ async function getIndexedDBCache(): Promise<IndexedDBCache | null> {
  * Generate a scale-independent cache key for Wythoff polytope configuration.
  * Scale is intentionally excluded - we cache normalized geometry (scale=1.0)
  * and apply scale on retrieval for better cache hit rates.
+ * @param dimension
+ * @param config
  */
 export function getCacheKey(dimension: number, config: WythoffPolytopeConfig): string {
   return JSON.stringify({

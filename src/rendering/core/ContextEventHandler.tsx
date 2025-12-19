@@ -71,6 +71,7 @@ export function ContextEventHandler(): null {
     /**
      * Handle context lost event.
      * CRITICAL: event.preventDefault() allows the browser to attempt restoration.
+     * @param event
      */
     const handleContextLost = (event: Event): void => {
       // Cast to WebGLContextEvent for type safety
@@ -125,6 +126,7 @@ export function ContextEventHandler(): null {
     /**
      * iOS Safari specific: Handle page show event for bfcache.
      * When page is restored from bfcache, context may be lost.
+     * @param event
      */
     const handlePageShow = (event: PageTransitionEvent): void => {
       if (event.persisted) {

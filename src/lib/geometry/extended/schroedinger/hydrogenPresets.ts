@@ -42,6 +42,7 @@ export interface HydrogenOrbitalPreset {
 
 /**
  * Orbital shape letter from azimuthal quantum number
+ * @param l
  */
 export function orbitalShapeLetter(l: number): string {
   const letters = ['s', 'p', 'd', 'f', 'g', 'h', 'i'];
@@ -50,6 +51,7 @@ export function orbitalShapeLetter(l: number): string {
 
 /**
  * Get maximum l for a given n
+ * @param n
  */
 export function maxAzimuthalForPrincipal(n: number): number {
   return Math.max(0, n - 1);
@@ -57,6 +59,9 @@ export function maxAzimuthalForPrincipal(n: number): number {
 
 /**
  * Validate quantum number constraints
+ * @param n
+ * @param l
+ * @param m
  */
 export function validateQuantumNumbers(n: number, l: number, m: number): boolean {
   if (n < 1) return false;
@@ -278,6 +283,7 @@ export const HYDROGEN_ORBITAL_PRESETS: Record<HydrogenOrbitalPresetName, Hydroge
 
 /**
  * Get a hydrogen orbital preset by name
+ * @param name
  */
 export function getHydrogenPreset(name: HydrogenOrbitalPresetName): HydrogenOrbitalPreset {
   return HYDROGEN_ORBITAL_PRESETS[name] ?? HYDROGEN_ORBITAL_PRESETS['2pz'];
@@ -307,6 +313,9 @@ export function getPresetsGroupedByType(): Record<string, HydrogenOrbitalPreset[
 
 /**
  * Generate a label for arbitrary quantum numbers
+ * @param n
+ * @param l
+ * @param m
  */
 export function quantumNumbersToLabel(n: number, l: number, m: number): string {
   const letter = orbitalShapeLetter(l);
