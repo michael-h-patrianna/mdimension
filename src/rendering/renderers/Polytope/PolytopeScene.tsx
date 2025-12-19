@@ -616,7 +616,8 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     },
     // Note: faceOpacity removed from deps - it's updated via uniforms in useFrame.
     // Changing opacity value should NOT trigger shader rebuild, only feature toggles should.
-    [faceColor, surfaceSettings.fresnelEnabled, sssEnabled, faceFragmentShader]
+    // faceColor is also updated via uniforms.
+    [surfaceSettings.fresnelEnabled, sssEnabled, faceFragmentShader]
   );
 
 

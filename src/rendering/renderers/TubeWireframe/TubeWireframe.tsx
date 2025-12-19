@@ -392,7 +392,8 @@ export function TubeWireframe({
     },
     // Note: opacity removed from deps - it's updated via uniforms in useFrame.
     // Changing opacity value should NOT trigger shader rebuild, only feature toggles should.
-    [color, metallic, roughness, radius, dimension, sssEnabled, fresnelEnabled, fragmentShaderString]
+    // Color, metallic, roughness, radius, dimension are also updated via uniforms.
+    [sssEnabled, fresnelEnabled, fragmentShaderString]
   )
 
   // Create shared uniforms for shadow materials (patched MeshDepthMaterial and MeshDistanceMaterial)
