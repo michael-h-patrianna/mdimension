@@ -33,8 +33,8 @@ export { SceneLighting } from '@/rendering/environment/SceneLighting'
 
 // Camera control
 export { useCameraReset } from '@/hooks/useCameraReset'
-export { CameraController } from './CameraController'
-export type { CameraControllerProps } from './CameraController'
+export { CameraController } from '@/rendering/controllers/CameraController'
+export type { CameraControllerProps } from '@/rendering/controllers/CameraController'
 
 // Raymarched renderers
 export { default as MandelbulbMesh } from '@/rendering/renderers/Mandelbulb/MandelbulbMesh'

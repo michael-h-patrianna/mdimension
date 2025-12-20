@@ -13,10 +13,13 @@ vi.mock('mediabunny', () => {
     buffer = mockBuffer
   }
 
+  class MockStreamTarget {}
+
   class MockMp4OutputFormat {}
 
   class MockOutput {
     private started = false
+    // @ts-expect-error - Used for internal state tracking in some tests potentially, but linter complains
     private finalized = false
 
     addVideoTrack = vi.fn()
@@ -45,6 +48,7 @@ vi.mock('mediabunny', () => {
 
   return {
     BufferTarget: MockBufferTarget,
+    StreamTarget: MockStreamTarget,
     Mp4OutputFormat: MockMp4OutputFormat,
     Output: MockOutput,
     CanvasSource: MockCanvasSource,
@@ -115,7 +119,7 @@ describe('VideoRecorder', () => {
       await recorderWithProgress.captureFrame(2.5, 1 / 60) // 2.5s of 5s = 50%
 
       expect(onProgress).toHaveBeenCalled()
-      const progressValue = onProgress.mock.calls[0][0]
+      const progressValue = onProgress.mock.calls[0]![0]
       expect(progressValue).toBeCloseTo(0.5, 1)
     })
 
@@ -130,7 +134,7 @@ describe('VideoRecorder', () => {
       await recorderWithProgress.captureFrame(5, 1 / 60) // 5s of 5s = 100%
 
       expect(onProgress).toHaveBeenCalled()
-      const progressValue = onProgress.mock.calls[0][0]
+      const progressValue = onProgress.mock.calls[0]![0]
       expect(progressValue).toBeLessThanOrEqual(0.99)
     })
   })
@@ -146,7 +150,10 @@ describe('VideoRecorder', () => {
       const blob = await recorder.finalize()
 
       expect(blob).toBeInstanceOf(Blob)
-      expect(blob.type).toBe('video/mp4')
+      expect(blob).not.toBeNull()
+      if (blob) {
+        expect(blob.type).toBe('video/mp4')
+      }
     })
 
     it('should set isRecording to false after finalize', async () => {

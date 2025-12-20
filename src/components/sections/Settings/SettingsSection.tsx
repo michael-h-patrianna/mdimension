@@ -8,7 +8,6 @@ import { Slider } from '@/components/ui/Slider';
 import { Switch } from '@/components/ui/Switch';
 import { useUIStore } from '@/stores/uiStore';
 import React from 'react';
-import { ThemeSelector } from './ThemeSelector';
 
 export interface SettingsSectionProps {
   defaultOpen?: boolean;
@@ -33,8 +32,6 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
 
   return (
     <Section title="Settings" defaultOpen={defaultOpen}>
-      <ThemeSelector />
-
       <div className="mt-3 pt-3 border-t border-panel-border">
         <Switch
           checked={showAxisHelper}

@@ -13,15 +13,12 @@
  * - PolytopeScene: For 3D+ projected wireframes and faces
  */
 
-import { FpsController } from '@/components/canvas/FpsController';
 import { PerformanceMonitor } from '@/components/canvas/PerformanceMonitor';
-import { PerformanceStatsCollector } from '@/components/canvas/PerformanceStatsCollector';
 import { RefinementIndicator } from '@/components/canvas/RefinementIndicator';
-import { VideoExportController } from '@/components/canvas/VideoExportController';
 import { EditorLayout } from '@/components/layout/EditorLayout';
-import { ContextLostOverlay } from '@/components/ui/ContextLostOverlay';
+import { ContextLostOverlay } from '@/components/overlays/ContextLostOverlay';
+import { ShaderCompilationOverlay } from '@/components/overlays/ShaderCompilationOverlay';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
-import { ShaderCompilationOverlay } from '@/components/ui/ShaderCompilationOverlay';
 import { ToastProvider, useToast } from '@/contexts/ToastContext';
 import { useAnimationLoop } from '@/hooks/useAnimationLoop';
 import { useDynamicFavicon } from '@/hooks/useDynamicFavicon';
@@ -31,6 +28,9 @@ import { useGeometryGenerator } from '@/hooks/useGeometryGenerator';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useSyncedDimension } from '@/hooks/useSyncedDimension';
 import type { Vector3D, VectorND } from '@/lib/math/types';
+import { FpsController } from '@/rendering/controllers/FpsController';
+import { PerformanceStatsCollector } from '@/rendering/controllers/PerformanceStatsCollector';
+import { VideoExportController } from '@/rendering/controllers/VideoExportController';
 import { ContextEventHandler } from '@/rendering/core/ContextEventHandler';
 import { VisibilityHandler } from '@/rendering/core/VisibilityHandler';
 import { Scene } from '@/rendering/Scene';

@@ -11,14 +11,14 @@
  * - Centered on screen for visibility
  * - Minimum display time to avoid jarring flashes
  *
- * @module components/ui/ShaderCompilationOverlay
+ * @module components/overlays/ShaderCompilationOverlay
  */
 
 import { Z_INDEX } from '@/constants/zIndex';
 import { usePerformanceStore } from '@/stores/performanceStore';
 import { AnimatePresence, m } from 'motion/react';
 import React, { useEffect, useRef, useState } from 'react';
-import { LoadingSpinner } from './LoadingSpinner';
+import { LoadingSpinner } from '../ui/LoadingSpinner';
 
 /** Animation duration for overlay fade in (seconds) */
 const OVERLAY_FADE_IN_DURATION = 0.15;

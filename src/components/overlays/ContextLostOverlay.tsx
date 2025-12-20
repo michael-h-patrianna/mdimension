@@ -6,15 +6,15 @@
  * - Restoring: Shows "Reconnecting..." with attempt counter
  * - Failed: Shows "Unable to Recover" with reload button
  *
- * @module components/ui/ContextLostOverlay
+ * @module components/overlays/ContextLostOverlay
  */
 
 import { Z_INDEX } from '@/constants/zIndex'
 import { useWebGLContextStore } from '@/stores/webglContextStore'
 import { AnimatePresence, m } from 'motion/react'
 import React from 'react'
-import { Button } from './Button'
-import { LoadingSpinner } from './LoadingSpinner'
+import { Button } from '../ui/Button'
+import { LoadingSpinner } from '../ui/LoadingSpinner'
 
 /** Animation duration for overlay transitions (seconds) */
 const OVERLAY_ANIMATION_DURATION = 0.2

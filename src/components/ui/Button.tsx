@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { m, HTMLMotionProps, useMotionValue, useSpring } from 'motion/react';
+import { m, HTMLMotionProps } from 'motion/react';
 import { LoadingSpinner } from './LoadingSpinner';
 import { soundManager } from '@/lib/audio/SoundManager';
 
@@ -14,7 +14,6 @@ export interface ButtonProps extends Omit<HTMLMotionProps<"button">, "ref"> {
   ariaLabel?: string;
   'data-testid'?: string;
   glow?: boolean;
-  magnetic?: boolean;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -29,19 +28,10 @@ export const Button: React.FC<ButtonProps> = ({
   ariaLabel,
   'data-testid': testId,
   glow = false,
-  magnetic = true, // Enable magnetic by default for that premium feel
   ...props
 }) => {
   const ref = useRef<HTMLButtonElement>(null);
   
-  // Magnetic Motion Values
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-
-  // Smooth spring physics for the magnetic effect
-  const mouseX = useSpring(x, { stiffness: 150, damping: 15, mass: 0.1 });
-  const mouseY = useSpring(y, { stiffness: 150, damping: 15, mass: 0.1 });
-
   // Ripple State
   const [ripples, setRipples] = useState<{ x: number; y: number; id: number }[]>([]);
   const rippleTimersRef = useRef<Set<number>>(new Set());
@@ -53,26 +43,6 @@ export const Button: React.FC<ButtonProps> = ({
       rippleTimersRef.current.clear();
     };
   }, []);
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLButtonElement>) => {
-    if (!magnetic || disabled || loading) return;
-    const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
-    const centerX = left + width / 2;
-    const centerY = top + height / 2;
-    
-    // Calculate distance from center
-    const distanceX = e.clientX - centerX;
-    const distanceY = e.clientY - centerY;
-    
-    // Apply magnetic pull (20% of distance)
-    x.set(distanceX * 0.2);
-    y.set(distanceY * 0.2);
-  };
-
-  const handleMouseLeave = () => {
-    x.set(0);
-    y.set(0);
-  };
 
   const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     if (disabled || loading) return;
@@ -120,13 +90,10 @@ export const Button: React.FC<ButtonProps> = ({
       ref={ref}
       type={type}
       onClick={handleClick}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
       disabled={disabled || loading}
       className={`${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${glowStyle} ${className}`}
       aria-label={ariaLabel}
       data-testid={testId}
-      style={{ x: mouseX, y: mouseY }}
       whileHover={!disabled && !loading ? { scale: 1.02, filter: 'brightness(1.1)' } : undefined}
       whileTap={!disabled && !loading ? { scale: 0.96 } : undefined}
       {...props}

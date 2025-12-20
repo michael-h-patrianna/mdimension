@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { render } from '@testing-library/react'
 import { Canvas } from '@react-three/fiber'
-import { CameraController } from '@/components/canvas/CameraController'
+import { CameraController } from '@/rendering/controllers/CameraController'
 import { useCameraReset } from '@/hooks/useCameraReset'
 
 describe('CameraController', () => {

@@ -1,20 +1,20 @@
-import React, { useEffect, useRef } from 'react';
-import { m, AnimatePresence } from 'motion/react';
-import { useThemeStore } from '@/stores/themeStore';
+import { CanvasContextMenu } from '@/components/layout/CanvasContextMenu';
+import { CommandPalette } from '@/components/layout/CommandPalette';
+import { ShortcutsOverlay } from '@/components/layout/ShortcutsOverlay';
+import { ExportModal } from '@/components/overlays/ExportModal';
+import { GlobalProgress } from '@/components/ui/GlobalProgress';
+import { useKonamiCode } from '@/hooks/useKonamiCode';
+import { useIsDesktop } from '@/hooks/useMediaQuery';
+import { soundManager } from '@/lib/audio/SoundManager';
 import { useLayoutStore, type LayoutStore } from '@/stores/layoutStore';
+import { useThemeStore } from '@/stores/themeStore';
+import { AnimatePresence, m } from 'motion/react';
+import React, { useEffect, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { EditorTopBar } from './EditorTopBar';
+import { EditorBottomPanel } from './EditorBottomPanel';
 import { EditorLeftPanel } from './EditorLeftPanel';
 import { EditorRightPanel } from './EditorRightPanel';
-import { EditorBottomPanel } from './EditorBottomPanel';
-import { ShortcutsOverlay } from '@/components/layout/ShortcutsOverlay';
-import { CommandPalette } from '@/components/layout/CommandPalette';
-import { CanvasContextMenu } from '@/components/layout/CanvasContextMenu';
-import { useIsDesktop } from '@/hooks/useMediaQuery';
-import { useKonamiCode } from '@/hooks/useKonamiCode';
-import { soundManager } from '@/lib/audio/SoundManager';
-import { GlobalProgress } from '@/components/ui/GlobalProgress';
-import { ExportModal } from '@/components/ui/ExportModal';
+import { EditorTopBar } from './EditorTopBar';
 
 interface EditorLayoutProps {
   children?: React.ReactNode;
@@ -24,7 +24,7 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
   const theme = useThemeStore((state) => state.theme);
   const setTheme = useThemeStore((state) => state.setTheme);
   const spotlightRef = useRef<HTMLDivElement>(null);
-  
+
   useKonamiCode(() => {
     setTheme('rainbow');
     soundManager.playSuccess();
@@ -41,17 +41,17 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
     setLeftPanel: state.setLeftPanel,
   }));
 
-  const { 
-    isCollapsed, 
-    toggleCollapsed, 
-    isCinematicMode, 
-    toggleCinematicMode, 
+  const {
+    isCollapsed,
+    toggleCollapsed,
+    isCinematicMode,
+    toggleCinematicMode,
     setCinematicMode,
     setCollapsed,
     showLeftPanel,
-    setLeftPanel 
+    setLeftPanel
   } = useLayoutStore(layoutSelector);
-  
+
   const isDesktop = useIsDesktop();
 
   // Apply theme
@@ -112,9 +112,9 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
 
   const panelVariants = {
     hiddenLeft: { x: -340, opacity: 0, scale: 0.95 },
-    visible: { 
-        x: 0, 
-        opacity: 1, 
+    visible: {
+        x: 0,
+        opacity: 1,
         scale: 1,
         transition: {
             type: "spring" as const,
@@ -127,18 +127,18 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
   };
 
   return (
-    <div 
+    <div
         ref={spotlightRef}
         className="relative h-screen w-screen bg-background overflow-hidden selection:bg-accent selection:text-white font-sans text-text-primary group/app"
     >
       {/* 0. Spotlight & Vignette Layer */}
-      <div 
+      <div
         className="absolute inset-0 z-0 pointer-events-none opacity-40 mix-blend-overlay"
         style={{
             background: `radial-gradient(800px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255,255,255,0.06), transparent 40%)`
         }}
       />
-      
+
       {/* 1. Full-screen Canvas Layer (The Curtain) */}
       <div className="absolute inset-0 z-0">
          {children}
@@ -146,26 +146,26 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
 
       {/* Cinematic Background Gradient (Overlay on canvas if needed) */}
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/10 to-background/60 pointer-events-none z-0" />
-      
+
       {/* 2. UI Overlay Layer */}
-      <m.div 
-        initial={{ opacity: 0 }} 
-        animate={{ opacity: 1 }} 
+      <m.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ duration: 1 }}
         className="relative z-10 flex flex-col h-full w-full pointer-events-none"
       >
         <GlobalProgress />
         <ExportModal />
-        
+
         {!isCinematicMode && (
             <div className="pointer-events-auto shrink-0 z-50">
-                <EditorTopBar 
+                <EditorTopBar
                     showRightPanel={!isCollapsed}
                     toggleRightPanel={toggleCollapsed}
                 />
             </div>
         )}
-        
+
         {/* Floating Exit Cinematic Button */}
         <AnimatePresence>
             {isCinematicMode && (
@@ -193,11 +193,11 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
         </AnimatePresence>
 
         <div className="flex flex-1 min-h-0 overflow-hidden relative p-2 gap-2">
-            
+
             {/* Mobile Overlay Backdrop */}
             <AnimatePresence>
                 {!isDesktop && !isCinematicMode && (showLeftPanel || !isCollapsed) && (
-                    <m.div 
+                    <m.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
@@ -210,7 +210,7 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
             {/* Left Panel */}
             <AnimatePresence mode="popLayout">
                 {!isCinematicMode && showLeftPanel && (
-                    <m.div 
+                    <m.div
                         initial="hiddenLeft"
                         animate="visible"
                         exit="hiddenLeft"
@@ -227,7 +227,7 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
                     </m.div>
                 )}
             </AnimatePresence>
-            
+
             {/* Center Area (Transparent, lets clicks pass to canvas) */}
             <div className="flex-1 flex flex-col min-w-0 relative z-0">
                 <div className="flex-1 relative w-full min-h-0 pointer-events-none">
@@ -254,7 +254,7 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
             {/* Right Panel */}
             <AnimatePresence mode="popLayout">
                 {!isCinematicMode && !isCollapsed && (
-                    <m.div 
+                    <m.div
                         initial="hiddenRight"
                         animate="visible"
                         exit="hiddenRight"
@@ -273,7 +273,7 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
             </AnimatePresence>
         </div>
       </m.div>
-      
+
       <CommandPalette />
       <CanvasContextMenu />
       {!isCinematicMode && <ShortcutsOverlay />}

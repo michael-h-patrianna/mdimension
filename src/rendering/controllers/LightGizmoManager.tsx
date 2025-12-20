@@ -15,8 +15,8 @@ import { memo, useRef, useCallback, useEffect, useState } from 'react';
 import { TransformControls } from '@react-three/drei';
 import type * as THREE from 'three';
 import { useLightingStore } from '@/stores/lightingStore';
-import { LightGizmo } from './LightGizmo';
-import { LightGroundVisualization } from './LightGroundVisualization';
+import { LightGizmo } from '@/components/canvas/gizmos/LightGizmo';
+import { LightGroundVisualization } from '@/components/canvas/gizmos/LightGroundVisualization';
 import type { LightSource, TransformMode } from '@/rendering/lights/types';
 
 /**
@@ -203,8 +203,8 @@ export const LightGizmoManager = memo(function LightGizmoManager() {
           light={light}
           isSelected={light.id === selectedLightId}
           isDragging={isDraggingLight}
-          onRotationChange={(rotation) => handleGroundRotationChange(light.id, rotation)}
-          onPositionChange={(position) => handleGroundPositionChange(light.id, position)}
+          onRotationChange={(rotation: [number, number, number]) => handleGroundRotationChange(light.id, rotation)}
+          onPositionChange={(position: [number, number, number]) => handleGroundPositionChange(light.id, position)}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
           onSelect={() => handleSelect(light.id)}

@@ -220,3 +220,13 @@ do a full code review of your changes and the shader composition for the polytop
 
        - Chromatic Dispersion: Modified main.glsl.ts to forcibly disable Fast Mode when Chromatic Dispersion is enabled. Since dispersion requires multi-channel sampling (which is inherently expensive and only
          implemented in volumeRaymarchHQ), forcing High Quality mode ensures the effect is never lost, fulfilling the user's request to "remove them from being affected by fastmode".
+
+
+review this bug report: there are no guards against invalid data when loading scenes or presets. for example, an invalid scene would just crash the renderer with console error: Uncaught Error: Unknown extended object type: mandelbrot
+    at generateExtendedObject (index.ts:175:13)
+    at generateGeometry (index.ts:266:12)
+    at useGeometryGenerator.ts:128:17
+    at useGeometryGenerator (useGeometryGenerator.ts:73:34)
+    at Visualizer (App.tsx:71:47)
+
+expected: in such

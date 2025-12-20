@@ -9,9 +9,9 @@
  * - UnifiedRenderer: Routes to appropriate high-performance renderer
  */
 
-import { CameraController } from '@/components/canvas/CameraController'
-import { LightGizmoManager } from '@/components/canvas/gizmos/LightGizmoManager'
-import { PerformanceManager } from '@/components/canvas/PerformanceManager'
+import { CameraController } from '@/rendering/controllers/CameraController'
+import { LightGizmoManager } from '@/rendering/controllers/LightGizmoManager'
+import { PerformanceManager } from '@/rendering/controllers/PerformanceManager'
 import { useSmoothResizing } from '@/hooks/useSmoothResizing'
 import { useViewportOffset } from '@/hooks/useViewportOffset'
 import { useWebGLCleanup } from '@/hooks/useWebGLCleanup'

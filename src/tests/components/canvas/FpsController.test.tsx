@@ -8,7 +8,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, cleanup } from '@testing-library/react'
 import { Canvas } from '@react-three/fiber'
-import { FpsController } from '@/components/canvas/FpsController'
+import { FpsController } from '@/rendering/controllers/FpsController'
 import { useUIStore } from '@/stores/uiStore'
 import { UI_INITIAL_STATE } from '@/stores/slices/uiSlice'
 

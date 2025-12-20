@@ -1,5 +1,8 @@
 === CRITICAL TOOL USE INSTRUCTION BLOCK (CIB-001)===
 
+## NEVER COMMIT TO GIT
+- Never commit / push yourself, unless instructed by the user
+
 ## MANDATORY TOOLS
 
 ### For Complex Tasks (research, analysis, debugging)

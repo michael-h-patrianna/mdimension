@@ -7,4 +7,4 @@
 export { LightGizmo } from './LightGizmo';
 export type { LightGizmoProps } from './LightGizmo';
 
-export { LightGizmoManager } from './LightGizmoManager';
+export { LightGizmoManager } from '@/rendering/controllers/LightGizmoManager';

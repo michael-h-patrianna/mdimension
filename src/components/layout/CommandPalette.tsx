@@ -35,86 +35,83 @@ export const CommandPalette: React.FC = () => {
 
     const { toggleCinematicMode, toggleCollapsed, toggleLeftPanel, toggleShortcuts } = useLayoutStore(layoutSelector);
 
-  
+    const setTheme = useThemeStore((state) => state.setTheme);
 
-    const themeSelector = useShallow((state: any) => ({ setTheme: state.setTheme }));
-
-    const { setTheme } = useThemeStore(themeSelector);
   const resetCamera = useCameraStore(state => state.reset);
 
   const commands: Command[] = [
     {
-      id: 'cinematic', 
-      label: 'Toggle Cinematic Mode', 
-      category: 'Actions', 
-      shortcut: 'C', 
+      id: 'cinematic',
+      label: 'Toggle Cinematic Mode',
+      category: 'Actions',
+      shortcut: 'C',
       action: () => toggleCinematicMode(),
       icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/></svg>
     },
     {
-        id: 'sidebar-right', 
-        label: 'Toggle Right Sidebar', 
-        category: 'Navigation', 
-        shortcut: '\\', 
+        id: 'sidebar-right',
+        label: 'Toggle Right Sidebar',
+        category: 'Navigation',
+        shortcut: '\\',
         action: () => toggleCollapsed(),
         icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
     },
     {
-        id: 'sidebar-left', 
-        label: 'Toggle Left Sidebar', 
-        category: 'Navigation', 
-        shortcut: 'Shift+\\', 
+        id: 'sidebar-left',
+        label: 'Toggle Left Sidebar',
+        category: 'Navigation',
+        shortcut: 'Shift+\\',
         action: () => toggleLeftPanel(),
         icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
     },
     {
-        id: 'reset-camera', 
-        label: 'Reset Camera View', 
-        category: 'Actions', 
-        shortcut: 'R', 
+        id: 'reset-camera',
+        label: 'Reset Camera View',
+        category: 'Actions',
+        shortcut: 'R',
         action: () => resetCamera(),
         icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1 2.12-9.36L23 10"/></svg>
     },
     {
-        id: 'shortcuts', 
-        label: 'Show Shortcuts', 
-        category: 'Tools', 
-        shortcut: '?', 
+        id: 'shortcuts',
+        label: 'Show Shortcuts',
+        category: 'Tools',
+        shortcut: '?',
         action: () => toggleShortcuts(),
         icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
     },
     {
-        id: 'theme-green', 
-        label: 'Switch Theme: Green', 
-        category: 'Theme', 
+        id: 'theme-green',
+        label: 'Switch Theme: Green',
+        category: 'Theme',
         action: () => setTheme('green'),
         icon: <div className="w-3 h-3 rounded-full bg-green-500"/>
     },
     {
-        id: 'theme-magenta', 
-        label: 'Switch Theme: Magenta', 
-        category: 'Theme', 
+        id: 'theme-magenta',
+        label: 'Switch Theme: Magenta',
+        category: 'Theme',
         action: () => setTheme('magenta'),
         icon: <div className="w-3 h-3 rounded-full bg-pink-500"/>
     },
     {
-        id: 'theme-orange', 
-        label: 'Switch Theme: Orange', 
-        category: 'Theme', 
+        id: 'theme-orange',
+        label: 'Switch Theme: Orange',
+        category: 'Theme',
         action: () => setTheme('orange'),
         icon: <div className="w-3 h-3 rounded-full bg-orange-500"/>
     },
     {
-        id: 'theme-blue', 
-        label: 'Switch Theme: Blue (Default)', 
-        category: 'Theme', 
+        id: 'theme-blue',
+        label: 'Switch Theme: Blue (Default)',
+        category: 'Theme',
         action: () => setTheme('blue'),
         icon: <div className="w-3 h-3 rounded-full bg-blue-500"/>
     }
   ];
 
-  const filteredCommands = commands.filter(cmd => 
-    cmd.label.toLowerCase().includes(query.toLowerCase()) || 
+  const filteredCommands = commands.filter(cmd =>
+    cmd.label.toLowerCase().includes(query.toLowerCase()) ||
     cmd.category.toLowerCase().includes(query.toLowerCase())
   );
 
@@ -125,7 +122,7 @@ export const CommandPalette: React.FC = () => {
         setIsOpen(prev => !prev);
         setQuery('');
       }
-      
+
       if (e.key === 'Escape') {
         setIsOpen(false);
       }
@@ -168,15 +165,15 @@ export const CommandPalette: React.FC = () => {
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[20vh] px-4">
-          <m.div 
+          <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setIsOpen(false)}
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
           />
-          
-          <m.div 
+
+          <m.div
             initial={{ opacity: 0, scale: 0.95, y: -20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -20 }}
@@ -236,7 +233,7 @@ export const CommandPalette: React.FC = () => {
                  </ul>
                )}
             </div>
-            
+
             <div className="px-4 py-2 bg-black/20 border-t border-white/5 flex justify-between text-[10px] text-text-tertiary">
                 <span>Navigate <span className="font-mono">↑↓</span></span>
                 <span>Select <span className="font-mono">↵</span></span>

@@ -14,7 +14,7 @@ import { PRESETS } from '@/lib/presets';
 import { useToast } from '@/contexts/ToastContext';
 import { useLayoutStore, type LayoutStore } from '@/stores/layoutStore';
 import { usePresetManagerStore, type SavedStyle, type SavedScene, type PresetManagerState } from '@/stores/presetManagerStore';
-import { useThemeStore, type ThemeState } from '@/stores/themeStore';
+import { useThemeStore } from '@/stores/themeStore';
 import { useExportStore } from '@/stores/exportStore';
 import { soundManager } from '@/lib/audio/SoundManager';
 import { m } from 'motion/react';
@@ -30,14 +30,14 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
   toggleRightPanel,
 }) => {
   const { addToast } = useToast();
-  
+
   const layoutSelector = useShallow((state: LayoutStore) => ({
     toggleShortcuts: state.toggleShortcuts,
     showLeftPanel: state.showLeftPanel,
     toggleLeftPanel: state.toggleLeftPanel,
   }));
   const { toggleShortcuts, showLeftPanel, toggleLeftPanel } = useLayoutStore(layoutSelector);
-  
+
   // New Preset Manager Store
   const presetSelector = useShallow((state: PresetManagerState) => ({
     savedStyles: state.savedStyles,
@@ -47,20 +47,17 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
     saveScene: state.saveScene,
     loadScene: state.loadScene,
   }));
-  const { 
-    savedStyles, 
-    saveStyle, 
-    loadStyle, 
-    savedScenes, 
-    saveScene, 
-    loadScene 
+  const {
+    savedStyles,
+    saveStyle,
+    loadStyle,
+    savedScenes,
+    saveScene,
+    loadScene
   } = usePresetManagerStore(presetSelector);
 
-  const themeSelector = useShallow((state: ThemeState) => ({
-    theme: state.theme,
-    setTheme: state.setTheme,
-  }));
-  const { theme, setTheme } = useThemeStore(themeSelector);
+  const theme = useThemeStore((state) => state.theme);
+  const setTheme = useThemeStore((state) => state.setTheme);
 
   const [isStyleManagerOpen, setIsStyleManagerOpen] = useState(false);
   const [isSceneManagerOpen, setIsSceneManagerOpen] = useState(false);
@@ -121,11 +118,11 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
 
   const fileItems = [
     { label: 'Export Image (PNG)', onClick: handleExport, shortcut: '⌘E', 'data-testid': 'menu-export' },
-    { 
-        label: 'Export Video (MP4)', 
-        onClick: () => { setExportModalOpen(true); soundManager.playClick(); }, 
-        shortcut: '⌘⇧E', 
-        'data-testid': 'menu-export-video' 
+    {
+        label: 'Export Video (MP4)',
+        onClick: () => { setExportModalOpen(true); soundManager.playClick(); },
+        shortcut: '⌘⇧E',
+        'data-testid': 'menu-export-video'
     },
     { label: 'Copy Share Link', onClick: handleShare, shortcut: '⌘S', 'data-testid': 'menu-share' },
   ];
@@ -229,7 +226,7 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
           </button>
 
           {/* Holographic Logo */}
-          <m.div 
+          <m.div
             className="text-lg font-bold text-accent tracking-[0.2em] hidden sm:block relative cursor-default group"
             whileHover={{ scale: 1.05 }}
             onMouseEnter={() => soundManager.playHover()}
@@ -241,19 +238,19 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
 
           <div className="h-4 w-px bg-white/10 hidden sm:block" />
           <div className="flex items-center gap-2 text-xs text-text-secondary">
-            <DropdownMenu 
+            <DropdownMenu
               trigger={<button className="hover:text-text-primary px-2 py-1 rounded hover:bg-white/5 transition-colors font-medium tracking-wide" onMouseEnter={() => soundManager.playHover()} data-testid="menu-file">FILE</button>}
               items={fileItems}
             />
-            <DropdownMenu 
+            <DropdownMenu
               trigger={<button className="hover:text-text-primary px-2 py-1 rounded hover:bg-white/5 transition-colors font-medium tracking-wide" onMouseEnter={() => soundManager.playHover()} data-testid="menu-view">VIEW</button>}
               items={viewItems}
             />
-            <DropdownMenu 
+            <DropdownMenu
               trigger={<button className="hover:text-text-primary px-2 py-1 rounded hover:bg-white/5 transition-colors font-medium tracking-wide" onMouseEnter={() => soundManager.playHover()} data-testid="menu-scenes">SCENES</button>}
               items={sceneItems}
             />
-            <DropdownMenu 
+            <DropdownMenu
               trigger={<button className="hover:text-text-primary px-2 py-1 rounded hover:bg-white/5 transition-colors font-medium tracking-wide" onMouseEnter={() => soundManager.playHover()} data-testid="menu-styles">STYLES</button>}
               items={styleItems}
             />
@@ -287,17 +284,17 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
         </div>
       </div>
 
-      <Modal 
-        isOpen={isStyleManagerOpen} 
-        onClose={() => setIsStyleManagerOpen(false)} 
+      <Modal
+        isOpen={isStyleManagerOpen}
+        onClose={() => setIsStyleManagerOpen(false)}
         title="Manage Styles"
       >
         <StyleManager onClose={() => setIsStyleManagerOpen(false)} />
       </Modal>
 
-      <Modal 
-        isOpen={isSceneManagerOpen} 
-        onClose={() => setIsSceneManagerOpen(false)} 
+      <Modal
+        isOpen={isSceneManagerOpen}
+        onClose={() => setIsSceneManagerOpen(false)}
         title="Manage Scenes"
       >
         <SceneManager onClose={() => setIsSceneManagerOpen(false)} />
