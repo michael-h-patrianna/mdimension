@@ -60,7 +60,7 @@ export const RECOMMENDED_DIMENSIONS: Record<string, { dimension?: number; reason
   },
 }
 
-interface GeometryState {
+export interface GeometryState {
   /** Current dimension (3-11) */
   dimension: number
   /** Current object type */

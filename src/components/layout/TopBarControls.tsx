@@ -5,11 +5,11 @@ import {
   canRenderEdges,
   isRaymarchingFractal as isRaymarchedFractal,
 } from '@/lib/geometry/registry';
-import { useGeometryStore } from '@/stores/geometryStore';
-import { useAppearanceStore } from '@/stores/appearanceStore';
-import { useUIStore } from '@/stores/uiStore';
+import { useGeometryStore, type GeometryState } from '@/stores/geometryStore';
+import { useAppearanceStore, type AppearanceSlice } from '@/stores/appearanceStore';
+import { useUIStore, type UISlice } from '@/stores/uiStore';
 import { useAnimationStore } from '@/stores/animationStore';
-import { useLayoutStore } from '@/stores/layoutStore';
+import { useLayoutStore, type LayoutStore } from '@/stores/layoutStore';
 import { useShallow } from 'zustand/react/shallow';
 import { useToast } from '@/contexts/ToastContext';
 import { soundManager } from '@/lib/audio/SoundManager';
@@ -53,7 +53,7 @@ export const TopBarControls: React.FC = () => {
   const { addToast } = useToast();
   
   // Visual Store
-  const appearanceSelector = useShallow((state: any) => ({
+  const appearanceSelector = useShallow((state: AppearanceSlice) => ({
     edgesVisible: state.edgesVisible,
     facesVisible: state.facesVisible,
     setEdgesVisible: state.setEdgesVisible,
@@ -66,7 +66,7 @@ export const TopBarControls: React.FC = () => {
     setFacesVisible,
   } = useAppearanceStore(appearanceSelector);
 
-  const uiSelector = useShallow((state: any) => ({
+  const uiSelector = useShallow((state: UISlice) => ({
     showPerfMonitor: state.showPerfMonitor,
     setShowPerfMonitor: state.setShowPerfMonitor
   }));
@@ -76,14 +76,14 @@ export const TopBarControls: React.FC = () => {
   } = useUIStore(uiSelector);
 
   // Geometry Store
-  const geometrySelector = useShallow((state: any) => ({
+  const geometrySelector = useShallow((state: GeometryState) => ({
     objectType: state.objectType,
     dimension: state.dimension,
   }));
   const { objectType, dimension } = useGeometryStore(geometrySelector);
 
   // Logic for Cinematic Mode
-  const layoutSelector = useShallow((state: any) => ({
+  const layoutSelector = useShallow((state: LayoutStore) => ({
     isCinematicMode: state.isCinematicMode,
     toggleCinematicMode: state.toggleCinematicMode,
   }));

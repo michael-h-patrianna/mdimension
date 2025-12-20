@@ -22,7 +22,7 @@ function isValidTheme(value: unknown): value is Theme {
   return typeof value === 'string' && VALID_THEMES.includes(value as Theme)
 }
 
-interface ThemeState {
+export interface ThemeState {
   theme: Theme
   setTheme: (theme: Theme) => void
 }

@@ -107,8 +107,8 @@ export function VideoExportController() {
         if (abortRef.current) break
         
         // We use advance() to trigger the full R3F pipeline including PostProcessing
-        // We simulate a small time step for temporal stability (e.g. 1/60s)
-        const warmupTimestamp = performance.now() + (i * 16.6)
+        // We simulate a small time step for temporal stability based on target fps
+        const warmupTimestamp = performance.now() + (i * (1000 / fps))
         
         // Note: For temporal clouds/TAA to settle, they often need 'jitter' updates
         // which happen inside the renderer/effects when frame advances.

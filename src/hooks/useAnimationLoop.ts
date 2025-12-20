@@ -23,6 +23,7 @@ export function useAnimationLoop(): void {
   const getRotationDelta = useAnimationStore((state) => state.getRotationDelta)
   const skyboxLoading = useEnvironmentStore((state) => state.skyboxLoading)
   const sceneTransitioning = usePerformanceStore((state) => state.sceneTransitioning)
+  const isExporting = useExportStore((state) => state.isExporting)
 
   const updateRotations = useRotationStore((state) => state.updateRotations)
   const getRotationRadians = useCallback((plane: string) => {
@@ -107,7 +108,6 @@ export function useAnimationLoop(): void {
   useEffect(() => {
     // Don't animate while skybox is loading, scene is transitioning, or exporting
     // (Export handles its own animation stepping)
-    const isExporting = useExportStore.getState().isExporting
     const shouldAnimate =
       isPlaying && animatingPlanes.size > 0 && !skyboxLoading && !sceneTransitioning && !isExporting
     if (shouldAnimate) {
@@ -121,5 +121,5 @@ export function useAnimationLoop(): void {
         frameRef.current = null
       }
     }
-  }, [isPlaying, animatingPlanes, animate, skyboxLoading, sceneTransitioning])
+  }, [isPlaying, animatingPlanes, animate, skyboxLoading, sceneTransitioning, isExporting])
 }

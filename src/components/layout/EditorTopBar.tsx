@@ -13,8 +13,8 @@ import { usePostProcessingStore } from '@/stores/postProcessingStore';
 import { PRESETS } from '@/lib/presets';
 import { useToast } from '@/contexts/ToastContext';
 import { useLayoutStore, type LayoutStore } from '@/stores/layoutStore';
-import { usePresetManagerStore, type SavedStyle, type SavedScene } from '@/stores/presetManagerStore';
-import { useThemeStore } from '@/stores/themeStore';
+import { usePresetManagerStore, type SavedStyle, type SavedScene, type PresetManagerState } from '@/stores/presetManagerStore';
+import { useThemeStore, type ThemeState } from '@/stores/themeStore';
 import { useExportStore } from '@/stores/exportStore';
 import { soundManager } from '@/lib/audio/SoundManager';
 import { m } from 'motion/react';
@@ -39,7 +39,7 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
   const { toggleShortcuts, showLeftPanel, toggleLeftPanel } = useLayoutStore(layoutSelector);
   
   // New Preset Manager Store
-  const presetSelector = useShallow((state: any) => ({
+  const presetSelector = useShallow((state: PresetManagerState) => ({
     savedStyles: state.savedStyles,
     saveStyle: state.saveStyle,
     loadStyle: state.loadStyle,
@@ -56,7 +56,7 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
     loadScene 
   } = usePresetManagerStore(presetSelector);
 
-  const themeSelector = useShallow((state: any) => ({
+  const themeSelector = useShallow((state: ThemeState) => ({
     theme: state.theme,
     setTheme: state.setTheme,
   }));

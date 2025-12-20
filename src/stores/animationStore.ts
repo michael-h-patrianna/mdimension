@@ -18,7 +18,7 @@ export const DEFAULT_SPEED = 0.4
 /** Base rotation rate in radians per second at 1x speed */
 export const BASE_ROTATION_RATE = (2 * Math.PI) / 10 // Full rotation in 10 seconds
 
-interface AnimationState {
+export interface AnimationState {
   /** Whether animation is currently playing */
   isPlaying: boolean
 

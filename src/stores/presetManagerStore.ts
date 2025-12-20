@@ -49,7 +49,7 @@ export interface SavedScene {
   }
 }
 
-interface PresetManagerState {
+export interface PresetManagerState {
   savedStyles: SavedStyle[]
   savedScenes: SavedScene[]
 

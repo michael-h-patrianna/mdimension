@@ -56,7 +56,10 @@ export class VideoRecorder {
     this.output.addVideoTrack(this.source, {
         frameRate: this.options.fps
     })
-    
+
+    // 7. Start the output - REQUIRED before adding frames
+    await this.output.start()
+
     this.isRecording = true
   }
 
