@@ -81,39 +81,49 @@ float computeDeflectionAngle(float ndRadius) {
 /**
  * Apply ray bending for one raymarch step.
  *
- * Uses the Schwarzschild geodesic equation:
+ * Uses the Schwarzschild geodesic equation with N-dimensional embedding:
  *   u″(φ) = -u * (1 - 1.5*u²)
  *
  * Where u = 1/r (inverse radius), integrated along the angular parameter φ.
  * See: https://oseiskar.github.io/black-hole/docs/physics.html
  *
+ * N-D embedding: The black hole singularity is at the N-D origin. Gravity
+ * strength scales with N-D distance, creating an "interdimensional portal"
+ * effect where the black hole appears weaker as you move through hyperspace.
+ *
  * The algorithm:
  * 1. Decompose ray into radial and tangential components in the orbital plane
  * 2. Convert to inverse radius u = 1/r
  * 3. Compute du (derivative of u with respect to φ)
- * 4. Apply geodesic acceleration: ddu = -u*(1 - 1.5*u²)
+ * 4. Apply geodesic acceleration with N-D gravity scaling
  * 5. Update u and reconstruct new direction
  *
  * Units: Schwarzschild radius rs = uHorizonRadius, c = 1
+ *
+ * @param rayDir - Current ray direction (normalized)
+ * @param pos3d - 3D position in the slice
+ * @param stepSize - Current step size
+ * @param ndRadius - N-dimensional distance to origin (includes higher-dim offset)
  */
 vec3 bendRay(vec3 rayDir, vec3 pos3d, float stepSize, float ndRadius) {
-  // Current radius
-  float r = ndRadius;
+  // N-D radius for gravity strength, 3D radius for orbital plane
+  float rND = ndRadius;
+  float r3D = length(pos3d);
   float rs = uHorizonRadius;
 
-  // Skip if too close to singularity or inside photon sphere core
-  if (r < rs * 0.5) {
+  // Skip if too close to singularity
+  if (rND < rs * 0.5) {
     return rayDir;
   }
 
-  // Inverse radius (key variable for geodesic equation)
-  float u = 1.0 / r;
+  // Inverse radius using N-D distance for gravity calculation
+  float u = 1.0 / rND;
 
-  // Radial unit vector (pointing away from center)
-  vec3 radialDir = pos3d / r;
+  // Radial unit vector in 3D (orbital plane is still 3D)
+  // Use 3D position for direction, N-D distance for magnitude
+  vec3 radialDir = r3D > 0.0001 ? pos3d / r3D : vec3(0.0, 1.0, 0.0);
 
   // Decompose ray direction into radial and tangential components
-  // The orbital plane is defined by pos and rayDir
   float radialComponent = dot(rayDir, radialDir);
 
   // Tangent direction (perpendicular to radial, in orbital plane)
@@ -127,41 +137,57 @@ vec3 bendRay(vec3 rayDir, vec3 pos3d, float stepSize, float ndRadius) {
   tangentDir /= tangentMag;
 
   // du/dφ: rate of change of inverse radius with angle
-  // du = -u * (radial_velocity / tangent_velocity)
-  // Since |rayDir| = 1, we have: radial² + tangent² = 1
   float du = -radialComponent * u / tangentMag;
 
-  // Angular step (φ increment)
-  // Scale step by tangent velocity to maintain consistent spatial stepping
-  // Apply gravity strength multiplier for artistic control (Arcade Lensing)
-  float dPhi = stepSize * tangentMag / r * uGravityStrength * uBendScale;
-  
+  // N-D gravity scaling: G(r,N) = k * N^α / (r + ε)^β
+  // - uDimPower = N^α (pre-calculated on CPU)
+  // - uDistanceFalloff = β (distance falloff exponent, default 2.0 for 3D)
+  // Higher dimensions can use β > 2 for faster falloff (e.g., 4D uses 1/r³)
+  float ndGravityScale = uDimPower / pow(rND + uEpsilonMul, uDistanceFalloff - 2.0);
+
+  // Clamp gravity scale to prevent extreme effects
+  ndGravityScale = clamp(ndGravityScale, 0.0, uLensingClamp);
+
+  // Angular step with N-D gravity scaling
+  float dPhi = stepSize * tangentMag / rND * uGravityStrength * uBendScale * ndGravityScale;
+
   // Clamp dPhi to prevent numerical explosion
   dPhi = min(dPhi, uBendMaxPerStep);
 
   // Schwarzschild geodesic equation: u″ = -u + 1.5 * rs * u²
-  // This is the correct relativistic equation for light deflection
-  float ddu = -u + 1.5 * rs * u * u;
+  // Scale by N-D gravity for dimensional embedding effect
+  float ddu = (-u + 1.5 * rs * u * u) * ndGravityScale;
 
-  // Leapfrog integration (Semi-Implicit Euler for stability)
-  du += ddu * dPhi;
-  u += du * dPhi;
+  // Ray bending mode selection
+  if (uRayBendingMode == 1) {
+    // Mode 1: Orbital (Einstein ring) - standard geodesic
+    // Leapfrog integration (Semi-Implicit Euler for stability)
+    du += ddu * dPhi;
+    u += du * dPhi;
+  } else {
+    // Mode 0: Spiral - adds rotation around the radial axis
+    // Creates a more dramatic "falling into" effect
+    du += ddu * dPhi;
+    u += du * dPhi;
+
+    // Add spiral twist proportional to gravity
+    float spiralTwist = dPhi * 0.3 * ndGravityScale;
+    vec3 twistAxis = radialDir;
+    float cosT = cos(spiralTwist);
+    float sinT = sin(spiralTwist);
+    // Rodrigues rotation of tangentDir around radialDir
+    tangentDir = tangentDir * cosT + cross(twistAxis, tangentDir) * sinT
+                 + twistAxis * dot(twistAxis, tangentDir) * (1.0 - cosT);
+  }
 
   // Clamp u to prevent going inside event horizon
   float uMax = 1.0 / (rs * 0.5);
   u = min(u, uMax);
 
-  // New radius from updated inverse radius
-  float newR = 1.0 / max(u, 0.0001);
-
   // Reconstruct velocity components from updated values
-  // The ray direction in the orbital plane is: v = vr * radialDir + vt * tangentDir
-  // where vr/vt = -du/u (from du = -u * vr/vt)
   float newRadialRatio = -du / max(u, 0.0001);
 
   // Renormalize to unit direction
-  // vr² + vt² = 1, and vr/vt = newRadialRatio
-  // So vt = 1/sqrt(1 + ratio²), vr = ratio * vt
   float ratioSq = newRadialRatio * newRadialRatio;
   float newTangent = 1.0 / sqrt(1.0 + ratioSq);
   float newRadial = newRadialRatio * newTangent;

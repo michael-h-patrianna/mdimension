@@ -283,10 +283,13 @@ describe('generateBlackHoleVertexShader', () => {
     expect(vertexShader).toContain('gl_Position')
   })
 
-  it('should use direct NDC for fullscreen quad', () => {
+  it('should use world space raymarching approach', () => {
     const vertexShader = generateBlackHoleVertexShader()
 
-    // Should use position.xy directly for NDC (PlaneGeometry(2, 2))
-    expect(vertexShader).toContain('vec4(position.xy, 0.0, 1.0)')
+    // Uses world space transformation for raymarching (like Mandelbulb/Schroedinger)
+    // Transforms position to world space and outputs to vPosition
+    expect(vertexShader).toContain('modelMatrix * vec4(position, 1.0)')
+    expect(vertexShader).toContain('vPosition = worldPosition.xyz')
+    expect(vertexShader).toContain('projectionMatrix * viewMatrix * worldPosition')
   })
 })

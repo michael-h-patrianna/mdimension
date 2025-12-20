@@ -103,6 +103,11 @@ export function useBlackHoleUniformUpdates({
   const colorCacheRef = useRef(createBlackHoleColorCache())
   const lightColorCacheRef = useRef(createLightColorCache())
 
+  // CRITICAL: Cache last valid env map to survive transient scene.background clears.
+  // PostProcessing and ProceduralSkyboxCapture temporarily set scene.background = null
+  // during their render passes, which would otherwise cause 1-frame lensing flicker.
+  const lastValidEnvMapRef = useRef<THREE.Texture | null>(null)
+
   // CRITICAL: Use negative priority (-10) to ensure uniforms are updated BEFORE
   // PostProcessing's useFrame runs the volumetric render pass.
   useFrame(() => {
@@ -116,7 +121,7 @@ export function useBlackHoleUniformUpdates({
     // CRITICAL: Update camera and resolution uniforms - required for ray reconstruction
     // Without these, raymarching fails with NaN values (division by zero)
     if (u.uCameraPosition?.value) {
-      (u.uCameraPosition.value as THREE.Vector3).copy(camera.position)
+      ;(u.uCameraPosition.value as THREE.Vector3).copy(camera.position)
     }
     if (u.uResolution?.value) {
       // Use logical viewport size - consistent with other raymarching shaders
@@ -125,7 +130,10 @@ export function useBlackHoleUniformUpdates({
       res.set(size.width, size.height)
     }
     if (u.uViewMatrix?.value) {
-      (u.uViewMatrix.value as THREE.Matrix4).copy(camera.matrixWorldInverse)
+      ;(u.uViewMatrix.value as THREE.Matrix4).copy(camera.matrixWorldInverse)
+    }
+    if (u.uProjectionMatrix?.value) {
+      ;(u.uProjectionMatrix.value as THREE.Matrix4).copy(camera.projectionMatrix)
     }
 
     // Get current state from stores
@@ -224,7 +232,11 @@ export function useBlackHoleUniformUpdates({
 
     // Update colors (with null guards)
     if (u.uBaseColor?.value) {
-      updateLinearColorUniform(cache.baseColor, u.uBaseColor.value as THREE.Color, bhState.baseColor)
+      updateLinearColorUniform(
+        cache.baseColor,
+        u.uBaseColor.value as THREE.Color,
+        bhState.baseColor
+      )
     }
     if (u.uShellGlowColor?.value) {
       updateLinearColorUniform(
@@ -241,7 +253,11 @@ export function useBlackHoleUniformUpdates({
       )
     }
     if (u.uJetsColor?.value) {
-      updateLinearColorUniform(cache.jetsColor, u.uJetsColor.value as THREE.Color, bhState.jetsColor)
+      updateLinearColorUniform(
+        cache.jetsColor,
+        u.uJetsColor.value as THREE.Color,
+        bhState.jetsColor
+      )
     }
 
     // Palette mode
@@ -309,13 +325,26 @@ export function useBlackHoleUniformUpdates({
     // scene.background = may be:
     //   - CubeTexture (from KTX2 loader): has isCubeTexture === true
     //   - WebGLCubeRenderTarget.texture (from procedural capture): is Texture but with cube mapping
+    //
+    // CRITICAL: Use sticky fallback to survive transient scene.background clears.
+    // PostProcessing clears scene.background during normal pass, then restores it.
+    // Without this cache, black hole would see null and disable lensing for that frame.
     const bg = scene.background as THREE.Texture | null
-    const isCubeCompatible = bg && (
-      (bg as THREE.CubeTexture).isCubeTexture ||
-      (bg.mapping === THREE.CubeReflectionMapping || bg.mapping === THREE.CubeRefractionMapping)
-    )
+    const isCubeCompatible =
+      bg &&
+      ((bg as THREE.CubeTexture).isCubeTexture ||
+        bg.mapping === THREE.CubeReflectionMapping ||
+        bg.mapping === THREE.CubeRefractionMapping)
+
+    // Cache valid env maps so transient clears don't break lensing
     if (isCubeCompatible) {
-      setUniform(u, 'envMap', bg)
+      lastValidEnvMapRef.current = bg
+    }
+
+    // Use cached env map if current background is invalid but we have a cached one
+    const envMapToUse = isCubeCompatible ? bg : lastValidEnvMapRef.current
+    if (envMapToUse) {
+      setUniform(u, 'envMap', envMapToUse)
       setUniform(u, 'uEnvMapReady', 1.0)
     } else {
       // EnvMap not ready or skybox disabled - shader renders black background
@@ -368,10 +397,10 @@ export function useBlackHoleUniformUpdates({
     if (temporalEnabled) {
       const cloudUniforms = TemporalCloudManager.getUniforms()
       if (u.uBayerOffset?.value) {
-        (u.uBayerOffset.value as THREE.Vector2).copy(cloudUniforms.uBayerOffset)
+        ;(u.uBayerOffset.value as THREE.Vector2).copy(cloudUniforms.uBayerOffset)
       }
       if (u.uFullResolution?.value) {
-        (u.uFullResolution.value as THREE.Vector2).copy(cloudUniforms.uAccumulationResolution)
+        ;(u.uFullResolution.value as THREE.Vector2).copy(cloudUniforms.uAccumulationResolution)
       }
     }
   }, -10) // Priority -10: before PostProcessing volumetric pass

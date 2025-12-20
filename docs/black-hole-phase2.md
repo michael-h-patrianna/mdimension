@@ -6,15 +6,33 @@
 
 ---
 
-## Executive Summary
-The current black hole renderer is a **solid stylized raymarcher** with working horizon, photon shell glow, an SDF-based accretion disk, optional jets, and background sampling. However, the implementation remains **3D-only** in practice (no true N-D embedding), **missing Kerr/spin physics**, and **does not yet lens the rest of the scene**. Several core parameters are **unused in shader code**, so UI controls do not affect the output. The result is a good prototype but far from Interstellar-class fidelity.
+## Implementation Status (2025-12-20)
+
+### ✅ COMPLETED - Phase 1 & 2 N-D Embedding
+
+The following issues have been resolved:
+
+1. **Fixed `uProjectionMatrix` update** - Now properly updates camera.projectionMatrix for correct depth
+2. **N-D gravity scaling implemented** - `bendRay()` now uses:
+   - `ndRadius` (N-dimensional distance including higher-dim offset)
+   - `uDimPower` (N^α pre-calculated on CPU)
+   - `uDistanceFalloff` (β exponent for distance falloff)
+   - `uLensingClamp` (prevents extreme distortion)
+3. **`uRayBendingMode` working** - Mode 0 (spiral) vs Mode 1 (orbital/Einstein ring)
+4. **Disk plane rotates with N-D slice** - Uses `uBasisY[0:2]` for disk normal instead of hardcoded Y=0
+5. **All disk functions updated** - `getDiskNormal()`, `getDiskRadius()`, `getDiskAngle()`, `detectDiskCrossing()`, `shadeDiskHit()` use rotated basis
+
+### Remaining for Interstellar-Quality
 
 The biggest blockers for an Interstellar-style visualization are:
-1. **No Kerr metric / frame dragging**.
+1. **No Kerr metric / frame dragging** (spin parameter needed).
 2. **No full-scene background lensing pass** (deferred lensing not integrated).
-3. **No true N-D embedding** (basis vectors and N-D ray integration are unused).
-4. **Gravitational lensing parameters in UI are not actually applied.**
-5. **Depth/motion/temporal features are partly wired but not used.**
+3. **Depth/motion/temporal features are partly wired but not used.**
+
+---
+
+## Original Executive Summary (Pre-Implementation)
+The current black hole renderer is a **solid stylized raymarcher** with working horizon, photon shell glow, an SDF-based accretion disk, optional jets, and background sampling. ~~However, the implementation remains **3D-only** in practice (no true N-D embedding)~~, **missing Kerr/spin physics**, and **does not yet lens the rest of the scene**. ~~Several core parameters are **unused in shader code**, so UI controls do not affect the output.~~ The result is a good prototype but far from Interstellar-class fidelity.
 
 ---
 

@@ -6,6 +6,10 @@
  * - Multiple crossings create Einstein ring effect
  * - Uses existing manifold coloring and Doppler shift
  *
+ * N-D embedding: The disk plane is defined by the rotated basis vectors,
+ * so it rotates with the viewing slice through hyperspace. The disk normal
+ * is derived from uBasisY (the rotated Y-axis in N-D space).
+ *
  * This module works alongside the volumetric approach (manifold.glsl.ts),
  * providing an alternative rendering mode optimized for Einstein ring visualization.
  */
@@ -19,17 +23,58 @@ export const diskSdfBlock = /* glsl */ `
 const int MAX_DISK_CROSSINGS = 8;
 
 /**
+ * Get the disk plane normal from the rotated basis.
+ * The disk lies perpendicular to the Y-axis in the rotated coordinate system.
+ * This allows the disk to rotate with the N-D slice orientation.
+ *
+ * @returns Normalized disk normal (3D projection of rotated Y-axis)
+ */
+vec3 getDiskNormal() {
+  // Extract 3D components of the rotated Y-axis
+  // uBasisY is an N-D vector; first 3 components are the 3D projection
+  vec3 normal = vec3(uBasisY[0], uBasisY[1], uBasisY[2]);
+  float len = length(normal);
+  return len > 0.0001 ? normal / len : vec3(0.0, 1.0, 0.0);
+}
+
+/**
+ * Project position onto the disk plane and get radial distance.
+ * Uses the rotated basis for proper N-D embedding.
+ *
+ * @param pos3d - 3D position
+ * @param diskNormal - Disk plane normal
+ * @returns Radial distance from origin in the disk plane
+ */
+float getDiskRadius(vec3 pos3d, vec3 diskNormal) {
+  // Project position onto disk plane (remove component along normal)
+  vec3 inPlane = pos3d - dot(pos3d, diskNormal) * diskNormal;
+  return length(inPlane);
+}
+
+/**
+ * Get signed distance from position to disk plane.
+ *
+ * @param pos3d - 3D position
+ * @param diskNormal - Disk plane normal
+ * @returns Signed height above/below disk plane
+ */
+float getDiskHeight(vec3 pos3d, vec3 diskNormal) {
+  return dot(pos3d, diskNormal);
+}
+
+/**
  * SDF for thick disk (annulus with height).
  * Returns signed distance to disk surface.
  *
- * The disk is an annulus in the XZ plane (y=0) with optional thickness.
+ * The disk plane is defined by the rotated basis vectors for N-D embedding.
  *
  * @param pos3d - 3D position
  * @returns Signed distance (negative inside disk)
  */
 float sdfDisk(vec3 pos3d) {
-  float r = length(pos3d.xz);
-  float h = abs(pos3d.y);
+  vec3 diskNormal = getDiskNormal();
+  float r = getDiskRadius(pos3d, diskNormal);
+  float h = abs(getDiskHeight(pos3d, diskNormal));
 
   float innerR = uHorizonRadius * uDiskInnerRadiusMul;
   float outerR = uHorizonRadius * uDiskOuterRadiusMul;
@@ -66,7 +111,8 @@ float sdfDisk(vec3 pos3d) {
  * @returns true if within radial bounds
  */
 bool isInDiskBounds(vec3 pos3d) {
-  float r = length(pos3d.xz);
+  vec3 diskNormal = getDiskNormal();
+  float r = getDiskRadius(pos3d, diskNormal);
   float innerR = uHorizonRadius * uDiskInnerRadiusMul;
   float outerR = uHorizonRadius * uDiskOuterRadiusMul;
   return r >= innerR && r <= outerR;
@@ -76,22 +122,27 @@ bool isInDiskBounds(vec3 pos3d) {
  * Detect plane crossing between two positions.
  * Returns interpolated crossing point if crossing detected.
  *
+ * N-D embedding: Uses the rotated disk normal instead of hardcoded Y-axis.
+ *
  * @param prevPos - Previous ray position
  * @param currPos - Current ray position
  * @param crossingPos - Output: interpolated crossing position
  * @returns true if crossing detected and within disk bounds
  */
 bool detectDiskCrossing(vec3 prevPos, vec3 currPos, out vec3 crossingPos) {
-  float prevY = prevPos.y;
-  float currY = currPos.y;
+  vec3 diskNormal = getDiskNormal();
 
-  // Check for sign change (crossing y=0 plane)
-  if (prevY * currY >= 0.0) {
+  // Signed distance from disk plane
+  float prevH = dot(prevPos, diskNormal);
+  float currH = dot(currPos, diskNormal);
+
+  // Check for sign change (crossing the disk plane)
+  if (prevH * currH >= 0.0) {
     return false;  // No crossing
   }
 
   // Linear interpolation to find crossing point
-  float t = prevY / (prevY - currY);
+  float t = prevH / (prevH - currH);
   t = clamp(t, 0.0, 1.0);  // Safety clamp
 
   crossingPos = mix(prevPos, currPos, t);
@@ -102,20 +153,24 @@ bool detectDiskCrossing(vec3 prevPos, vec3 currPos, out vec3 crossingPos) {
 
 /**
  * Compute disk surface normal.
- * For thin disk, normal is +/- Y based on approach direction.
+ * For thin disk, normal is the rotated disk normal (from basis Y).
  * For thick disk, compute from SDF gradient.
+ *
+ * N-D embedding: Uses the rotated basis for proper orientation.
  *
  * @param pos3d - Position on disk surface
  * @param approachDir - Ray direction (for determining which side)
  * @returns Surface normal
  */
 vec3 computeDiskNormal(vec3 pos3d, vec3 approachDir) {
+  vec3 diskNormal = getDiskNormal();
   float thickness = uManifoldThickness * uHorizonRadius * getManifoldThicknessScale();
 
-  // For very thin disks, use flat normal
+  // For very thin disks, use the rotated disk normal
   if (thickness < 0.05) {
     // Normal points opposite to approach direction (toward viewer)
-    return vec3(0.0, -sign(approachDir.y), 0.0);
+    float approachDot = dot(approachDir, diskNormal);
+    return approachDot > 0.0 ? -diskNormal : diskNormal;
   }
 
   // For thick disks, compute SDF gradient
@@ -128,7 +183,8 @@ vec3 computeDiskNormal(vec3 pos3d, vec3 approachDir) {
   vec3 normal = vec3(dx, dy, dz);
   float len = length(normal);
   if (len < 0.0001) {
-    return vec3(0.0, -sign(approachDir.y), 0.0);
+    float approachDot = dot(approachDir, diskNormal);
+    return approachDot > 0.0 ? -diskNormal : diskNormal;
   }
   normal = normal / len;
 
@@ -141,8 +197,33 @@ vec3 computeDiskNormal(vec3 pos3d, vec3 approachDir) {
 }
 
 /**
+ * Compute angle in the disk plane for swirl/noise patterns.
+ * Uses the rotated basis to maintain consistency with N-D embedding.
+ *
+ * @param pos3d - 3D position
+ * @param diskNormal - Disk plane normal
+ * @returns Angle in radians around the disk
+ */
+float getDiskAngle(vec3 pos3d, vec3 diskNormal) {
+  // Project position onto disk plane
+  vec3 inPlane = pos3d - dot(pos3d, diskNormal) * diskNormal;
+
+  // Get X and Z basis vectors for the disk plane (perpendicular to diskNormal)
+  vec3 basisX = vec3(uBasisX[0], uBasisX[1], uBasisX[2]);
+  vec3 basisZ = vec3(uBasisZ[0], uBasisZ[1], uBasisZ[2]);
+
+  // Project onto disk plane basis
+  float x = dot(inPlane, basisX);
+  float z = dot(inPlane, basisZ);
+
+  return atan(z, x);
+}
+
+/**
  * Shade a disk surface hit.
  * Applies temperature gradient, noise, swirl, Doppler shift, and lighting.
+ *
+ * N-D embedding: Uses the rotated disk plane for all calculations.
  *
  * @param hitPos - Surface hit position
  * @param rayDir - Incoming ray direction
@@ -151,7 +232,8 @@ vec3 computeDiskNormal(vec3 pos3d, vec3 approachDir) {
  * @returns Shaded color contribution
  */
 vec3 shadeDiskHit(vec3 hitPos, vec3 rayDir, int hitIndex, float time) {
-  float r = length(hitPos.xz);
+  vec3 diskNormal = getDiskNormal();
+  float r = getDiskRadius(hitPos, diskNormal);
   float innerR = uHorizonRadius * uDiskInnerRadiusMul;
   float outerR = uHorizonRadius * uDiskOuterRadiusMul;
 
@@ -170,7 +252,7 @@ vec3 shadeDiskHit(vec3 hitPos, vec3 rayDir, int hitIndex, float time) {
     color = mix(innerColor, outerColor, radialT);
   } else if (uPaletteMode == 2) {
     // Quantum mode
-    float angle = atan(hitPos.z, hitPos.x);
+    float angle = getDiskAngle(hitPos, diskNormal);
     float phase = angle * 2.0 + r * 0.3 - time * 0.2;
     vec3 c1 = vec3(0.2, 0.5, 1.0);
     vec3 c2 = vec3(1.0, 0.3, 0.8);
@@ -188,7 +270,7 @@ vec3 shadeDiskHit(vec3 hitPos, vec3 rayDir, int hitIndex, float time) {
 
   // Add swirl pattern
   if (uSwirlAmount > 0.001) {
-    float angle = atan(hitPos.z, hitPos.x);
+    float angle = getDiskAngle(hitPos, diskNormal);
     float swirlPhase = angle * 3.0 + r * 0.5 - time * 0.5;
     float swirlBright = 0.5 + 0.5 * sin(swirlPhase);
     color *= mix(0.7, 1.3, swirlBright * uSwirlAmount);
@@ -196,7 +278,7 @@ vec3 shadeDiskHit(vec3 hitPos, vec3 rayDir, int hitIndex, float time) {
 
   // Add noise turbulence
   if (uNoiseAmount > 0.001) {
-    float angle = atan(hitPos.z, hitPos.x);
+    float angle = getDiskAngle(hitPos, diskNormal);
     vec3 noisePos = vec3(r * 0.3, angle * 2.0, 0.0) * uNoiseScale;
     float n = noise3D(noisePos + time * 0.1);
     float ridged = 1.0 - abs(2.0 * n - 1.0);
