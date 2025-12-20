@@ -20,6 +20,7 @@ import {
     SHADOW_SOFTNESS_RANGE,
 } from '@/rendering/shadows/constants';
 import type { ShadowQuality } from '@/rendering/shadows/types';
+import type { LightSource } from '@/rendering/lights/types';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useLightingStore } from '@/stores/lightingStore';
@@ -107,7 +108,7 @@ export const ShadowsSection: React.FC<ShadowsSectionProps> = ({
   const isSdfFractal = objectType === 'mandelbulb' || objectType === 'quaternion-julia';
 
   // Check if there are any enabled lights (shadows require lights)
-  const hasEnabledLights = lights.some((light) => light.enabled);
+  const hasEnabledLights = lights.some((light: LightSource) => light.enabled);
 
   // For Schrödinger, use its own shadow toggle; for others, use global shadowEnabled
   const effectiveShadowEnabled = isSchroedinger ? schroedingerShadowsEnabled : shadowEnabled;
@@ -188,7 +189,7 @@ export const ShadowsSection: React.FC<ShadowsSectionProps> = ({
                       data-testid="shadow-quality-select"
                     />
                     <p className="text-[10px] text-text-secondary">
-                      {SHADOW_QUALITY_TOOLTIPS[shadowQuality]}
+                      {SHADOW_QUALITY_TOOLTIPS[shadowQuality as ShadowQuality]}
                     </p>
                   </div>
                   <Slider

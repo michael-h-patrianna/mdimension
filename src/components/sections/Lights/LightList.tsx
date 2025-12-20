@@ -11,7 +11,7 @@ import React, { memo, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useLightingStore } from '@/stores/lightingStore';
 import { MAX_LIGHTS } from '@/rendering/lights/types';
-import type { LightType } from '@/rendering/lights/types';
+import type { LightType, LightSource } from '@/rendering/lights/types';
 import { LightListItem } from './LightListItem';
 
 export interface LightListProps {
@@ -66,7 +66,7 @@ export const LightList: React.FC<LightListProps> = memo(function LightList({
         </div>
       ) : (
         <div className="space-y-1">
-          {lights.map((light: any) => (
+          {lights.map((light: LightSource) => (
             <LightListItem
               key={light.id}
               light={light}

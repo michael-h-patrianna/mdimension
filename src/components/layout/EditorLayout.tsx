@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { m, AnimatePresence } from 'motion/react';
 import { useThemeStore } from '@/stores/themeStore';
-import { useLayoutStore } from '@/stores/layoutStore';
+import { useLayoutStore, type LayoutStore } from '@/stores/layoutStore';
 import { useShallow } from 'zustand/react/shallow';
 import { EditorTopBar } from './EditorTopBar';
 import { EditorLeftPanel } from './EditorLeftPanel';
@@ -30,7 +30,7 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
     soundManager.playSuccess();
   });
 
-  const layoutSelector = useShallow((state: any) => ({
+  const layoutSelector = useShallow((state: LayoutStore) => ({
     isCollapsed: state.isCollapsed,
     toggleCollapsed: state.toggleCollapsed,
     isCinematicMode: state.isCinematicMode,

@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { usePresetManagerStore } from '@/stores/presetManagerStore';
+import { usePresetManagerStore, type SavedStyle } from '@/stores/presetManagerStore';
 import { useToast } from '@/contexts/ToastContext';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -91,7 +91,7 @@ export const StyleManager: React.FC<StyleManagerProps> = ({ onClose }) => {
           </div>
         ) : (
           <div className="space-y-2">
-            {savedStyles.map((style: any) => (
+            {savedStyles.map((style: SavedStyle) => (
               <div 
                 key={style.id} 
                 className="group flex items-center justify-between p-3 bg-white/5 rounded-md hover:bg-white/10 transition-colors border border-transparent hover:border-panel-border"

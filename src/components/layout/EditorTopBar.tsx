@@ -12,8 +12,8 @@ import { useAppearanceStore } from '@/stores/appearanceStore';
 import { usePostProcessingStore } from '@/stores/postProcessingStore';
 import { PRESETS } from '@/lib/presets';
 import { useToast } from '@/contexts/ToastContext';
-import { useLayoutStore } from '@/stores/layoutStore';
-import { usePresetManagerStore } from '@/stores/presetManagerStore';
+import { useLayoutStore, type LayoutStore } from '@/stores/layoutStore';
+import { usePresetManagerStore, type SavedStyle, type SavedScene } from '@/stores/presetManagerStore';
 import { useThemeStore } from '@/stores/themeStore';
 import { useExportStore } from '@/stores/exportStore';
 import { soundManager } from '@/lib/audio/SoundManager';
@@ -31,7 +31,7 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
 }) => {
   const { addToast } = useToast();
   
-  const layoutSelector = useShallow((state: any) => ({
+  const layoutSelector = useShallow((state: LayoutStore) => ({
     toggleShortcuts: state.toggleShortcuts,
     showLeftPanel: state.showLeftPanel,
     toggleLeftPanel: state.toggleLeftPanel,
@@ -163,7 +163,7 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
     { label: 'Manage Styles...', onClick: () => { setIsStyleManagerOpen(true); soundManager.playClick(); } },
     { label: '---' },
     { label: 'Saved Styles' },
-    ...(savedStyles.length === 0 ? [{ label: '(None)', disabled: true }] : savedStyles.map((s: any) => ({
+    ...(savedStyles.length === 0 ? [{ label: '(None)', disabled: true }] : savedStyles.map((s: SavedStyle) => ({
         label: s.name,
         onClick: () => {
             loadStyle(s.id);
@@ -191,7 +191,7 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
       { label: 'Manage Scenes...', onClick: () => { setIsSceneManagerOpen(true); soundManager.playClick(); } },
       { label: '---' },
       { label: 'Saved Scenes' },
-      ...(savedScenes.length === 0 ? [{ label: '(None)', disabled: true }] : savedScenes.map((s: any) => ({
+      ...(savedScenes.length === 0 ? [{ label: '(None)', disabled: true }] : savedScenes.map((s: SavedScene) => ({
           label: s.name,
           onClick: () => {
               loadScene(s.id);

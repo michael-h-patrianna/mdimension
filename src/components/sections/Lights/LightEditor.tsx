@@ -17,7 +17,7 @@ import { Select } from '@/components/ui/Select';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import { Slider } from '@/components/ui/Slider';
 import { ToggleButton } from '@/components/ui/ToggleButton';
-import type { LightType } from '@/rendering/lights/types';
+import type { LightType, LightSource } from '@/rendering/lights/types';
 import { useLightingStore } from '@/stores/lightingStore';
 import React, { memo, useCallback } from 'react';
 import { useShallow } from 'zustand/react/shallow';
@@ -56,7 +56,7 @@ export const LightEditor: React.FC<LightEditorProps> = memo(function LightEditor
   } = useLightingStore(lightingSelector);
 
   // Find selected light
-  const selectedLight = lights.find((l: any) => l.id === selectedLightId);
+  const selectedLight = lights.find((l: LightSource) => l.id === selectedLightId);
 
   // Update handlers
   const handleNameChange = useCallback(

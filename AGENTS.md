@@ -69,9 +69,9 @@ See: https://github.com/mrdoob/three.js/issues/27655
 
 **Integrate UI components into theming solution**: Do not hardcode styles, always use the theme.
 
-**Leverage useShallow**: Leverage useShallow and Zustand 5 to improve performance.
+**Critical useShallow instructions**: In React 19 / Zustand 5, useShallow is a hook and cannot be called as an argument to another hook (nested hook call).
 
-**Never use the any type**: Be specific. Using 'any' is lazy.
+**Use strict TypeScript typing**: Be specific. Using 'any' is lazy.
 
 === END CIB-002 ===
 
