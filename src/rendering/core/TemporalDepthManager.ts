@@ -427,10 +427,12 @@ class TemporalDepthManagerImpl {
 // Singleton instance
 export const TemporalDepthManager = new TemporalDepthManagerImpl()
 
-// Register with resource recovery coordinator
-resourceRecovery.register({
-  name: 'TemporalDepthManager',
-  priority: RECOVERY_PRIORITY.TEMPORAL_DEPTH,
-  invalidate: () => TemporalDepthManager.invalidateForContextLoss(),
-  reinitialize: (gl) => TemporalDepthManager.reinitialize(gl),
-})
+// Register with resource recovery coordinator (only once)
+if (!resourceRecovery.has('TemporalDepthManager')) {
+  resourceRecovery.register({
+    name: 'TemporalDepthManager',
+    priority: RECOVERY_PRIORITY.TEMPORAL_DEPTH,
+    invalidate: () => TemporalDepthManager.invalidateForContextLoss(),
+    reinitialize: (gl) => TemporalDepthManager.reinitialize(gl),
+  })
+}

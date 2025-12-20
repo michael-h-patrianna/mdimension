@@ -576,10 +576,12 @@ class TemporalCloudManagerImpl {
 // Singleton instance
 export const TemporalCloudManager = new TemporalCloudManagerImpl()
 
-// Register with resource recovery coordinator
-resourceRecovery.register({
-  name: 'TemporalCloudManager',
-  priority: RECOVERY_PRIORITY.TEMPORAL_CLOUD,
-  invalidate: () => TemporalCloudManager.invalidateForContextLoss(),
-  reinitialize: (gl) => TemporalCloudManager.reinitialize(gl),
-})
+// Register with resource recovery coordinator (only once)
+if (!resourceRecovery.has('TemporalCloudManager')) {
+  resourceRecovery.register({
+    name: 'TemporalCloudManager',
+    priority: RECOVERY_PRIORITY.TEMPORAL_CLOUD,
+    invalidate: () => TemporalCloudManager.invalidateForContextLoss(),
+    reinitialize: (gl) => TemporalCloudManager.reinitialize(gl),
+  })
+}

@@ -1879,14 +1879,6 @@ export type BlackHoleBackgroundMode = 'environment' | 'proceduralStars' | 'solid
 export type BlackHoleRayBendingMode = 'spiral' | 'orbital'
 
 /**
- * Raymarch mode for black hole visualization
- * - slice3D: 3D approximation with uParamValues for extra dimensions (fast, volumetric)
- * - trueND: Full N-dimensional raymarching with float[11] arrays (accurate, volumetric)
- * - sdfDisk: SDF-based plane crossing detection for Einstein ring effect (surface-based)
- */
-export type BlackHoleRaymarchMode = 'slice3D' | 'trueND' | 'sdfDisk'
-
-/**
  * Visual presets - parameter configurations for different looks
  */
 export type BlackHoleVisualPreset = 'interstellar' | 'cosmic' | 'ethereal' | 'custom'
@@ -1935,8 +1927,6 @@ export interface BlackHoleConfig {
   lensingClamp: number
   /** Ray bending mode (spiral or orbital) */
   rayBendingMode: BlackHoleRayBendingMode
-  /** Raymarch mode (slice3D or trueND) */
-  raymarchMode: BlackHoleRaymarchMode
 
   // === PHOTON SHELL (Advanced) ===
   /** Photon shell radius multiplier (1.0-2.0, default 1.3) */
@@ -2246,14 +2236,12 @@ export const DEFAULT_BLACK_HOLE_CONFIG: BlackHoleConfig = {
   distanceFalloff: 1.6,
   epsilonMul: 0.01,
   bendScale: 1.2, // Interstellar: stronger bending
-  bendMaxPerStep: 0.2, // Allow more bending per step for Einstein ring effect
-  lensingClamp: 10.0,
-  rayBendingMode: 'orbital', // Proper geodesic equation for Interstellar-style Einstein rings
-  raymarchMode: 'sdfDisk', // SDF disk with plane crossing for Einstein ring effect
+  bendMaxPerStep: 0.25,
+  lensingClamp: 10,
+  rayBendingMode: 'orbital',
 
-  // Photon shell - physical value is 1.5 Rs (Schwarzschild photon sphere)
-  // This is where light can orbit the black hole, creating the Einstein ring
-  photonShellRadiusMul: 1.5,
+  // Photon shell
+  photonShellRadiusMul: 1.3,
   photonShellRadiusDimBias: 0.05, // Reduced - dimension scaling is speculative
   shellGlowStrength: 0.5, // Reduced - let actual lensed disk light create photon ring
   shellGlowColor: '#ffcc66', // Orange-yellow to match accretion disk (lensed light)

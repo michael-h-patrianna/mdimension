@@ -6,7 +6,6 @@ import {
   BlackHolePaletteMode,
   BlackHoleQuality,
   BlackHoleRayBendingMode,
-  BlackHoleRaymarchMode,
   BlackHoleVisualPreset,
   CliffordTorusConfig,
   CliffordTorusEdgeMode,
@@ -519,7 +518,6 @@ export interface BlackHoleSliceActions {
   setBlackHoleBendMaxPerStep: (max: number) => void
   setBlackHoleLensingClamp: (clamp: number) => void
   setBlackHoleRayBendingMode: (mode: BlackHoleRayBendingMode) => void
-  setBlackHoleRaymarchMode: (mode: BlackHoleRaymarchMode) => void
 
   // Photon Shell
   setBlackHolePhotonShellRadiusMul: (mul: number) => void

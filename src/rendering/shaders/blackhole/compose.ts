@@ -21,12 +21,9 @@ import { manifoldBlock } from './gravity/manifold.glsl'
 import { shellBlock } from './gravity/shell.glsl'
 import { jetsBlock } from './effects/jets.glsl'
 import { motionBlurBlock } from './effects/motion-blur.glsl'
-import { embeddingBlock } from './nd/embedding.glsl'
 import { diskSdfBlock } from './gravity/disk-sdf.glsl'
 import { mainBlock } from './main.glsl'
 import { blackHoleUniformsBlock } from './uniforms.glsl'
-
-import type { BlackHoleRaymarchMode } from '@/lib/geometry/extended/types'
 
 export interface BlackHoleShaderConfig extends ShaderConfig {
   /** Enable temporal accumulation (Horizon-style 1/4 res reconstruction) */
@@ -39,8 +36,6 @@ export interface BlackHoleShaderConfig extends ShaderConfig {
   envMap?: boolean
   /** Enable motion blur effect */
   motionBlur?: boolean
-  /** Raymarch mode: 'slice3D' (fast) or 'trueND' (accurate) */
-  raymarchMode?: BlackHoleRaymarchMode
   /** Enable slice animation for higher dimensions */
   sliceAnimation?: boolean
 }
@@ -63,7 +58,6 @@ export function composeBlackHoleShader(config: BlackHoleShaderConfig) {
     envMap: enableEnvMap = false,
     fog: enableFog,
     motionBlur: enableMotionBlur = false,
-    raymarchMode = 'slice3D',
     sliceAnimation: enableSliceAnimation = false,
   } = config
 
@@ -113,19 +107,9 @@ export function composeBlackHoleShader(config: BlackHoleShaderConfig) {
     features.push('Motion Blur')
   }
 
-  // Raymarching mode selection (mutually exclusive)
-  const useSdfDisk = raymarchMode === 'sdfDisk' && !overrides.includes('SDF Disk')
-  const useTrueND = raymarchMode === 'trueND' && !overrides.includes('True ND')
-
-  if (useSdfDisk) {
-    defines.push('#define USE_SDF_DISK')
-    features.push('SDF Disk Raymarching (Einstein Ring)')
-  } else if (useTrueND) {
-    defines.push('#define USE_TRUE_ND')
-    features.push('True N-D Raymarching')
-  } else {
-    features.push('3D Slice Raymarching')
-  }
+  // Use SDF Disk Raymarching (Einstein Ring) - now the only mode
+  defines.push('#define USE_SDF_DISK')
+  features.push('SDF Disk Raymarching (Einstein Ring)')
 
   // Slice animation (for higher dimensions)
   const useSliceAnimation =
@@ -165,16 +149,13 @@ uniform float uSliceAmplitude;
     { name: 'Black Hole Uniforms', content: blackHoleUniformsBlock },
     { name: 'Environment Map', content: 'uniform samplerCube envMap;', condition: enableEnvMap },
 
-    // N-D embedding (required for trueND mode)
-    { name: 'N-D Embedding', content: embeddingBlock, condition: useTrueND },
-
     // Gravity modules
     { name: 'Lensing', content: lensingBlock },
     { name: 'Horizon', content: horizonBlock },
     { name: 'Photon Shell', content: shellBlock },
     { name: 'Manifold', content: manifoldBlock },
     { name: 'Doppler', content: dopplerBlock },
-    { name: 'Disk SDF', content: diskSdfBlock, condition: useSdfDisk },
+    { name: 'Disk SDF', content: diskSdfBlock },
 
     // Effects
     { name: 'Jets', content: jetsBlock, condition: enableJets },

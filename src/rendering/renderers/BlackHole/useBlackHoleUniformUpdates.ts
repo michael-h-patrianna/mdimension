@@ -309,11 +309,23 @@ export function useBlackHoleUniformUpdates({
 
     // Update environment map (skybox)
     // Note: PMREM textures are 2D textures with special mapping, NOT CubeTextures
-    // Our shader uses samplerCube, so we need actual CubeTextures
+    // Our shader uses samplerCube, so we need textures compatible with cube sampling
     // scene.environment = PMREM processed (2D) - NOT compatible with samplerCube
-    // scene.background = may be CubeTexture (skybox) or Color
-    if (scene.background && (scene.background as THREE.CubeTexture).isCubeTexture) {
-      setUniform(u, 'envMap', scene.background)
+    // scene.background = may be:
+    //   - CubeTexture (from KTX2 loader): has isCubeTexture === true
+    //   - WebGLCubeRenderTarget.texture (from procedural capture): is Texture but with cube mapping
+    // Check for either case by looking for cube-related properties
+    const bg = scene.background as THREE.Texture | null
+    const isCubeCompatible = bg && (
+      (bg as THREE.CubeTexture).isCubeTexture ||
+      (bg.mapping === THREE.CubeReflectionMapping || bg.mapping === THREE.CubeRefractionMapping)
+    )
+    if (isCubeCompatible) {
+      setUniform(u, 'envMap', bg)
+      setUniform(u, 'uEnvMapReady', 1.0)
+    } else {
+      // EnvMap not ready - shader will use fallback (procedural stars)
+      setUniform(u, 'uEnvMapReady', 0.0)
     }
 
     setUniform(u, 'uStarfieldDensity', bhState.starfieldDensity)

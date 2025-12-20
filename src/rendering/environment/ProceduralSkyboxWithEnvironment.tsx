@@ -13,6 +13,7 @@
  * - Captures procedural skybox to CubeRenderTarget for black hole shader
  */
 
+import { RENDER_LAYERS } from '@/rendering/core/layers';
 import { useAnimationStore } from '@/stores/animationStore';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useEnvironmentStore } from '@/stores/environmentStore';
@@ -58,7 +59,15 @@ const ProceduralSkyboxCapture: React.FC = () => {
       magFilter: THREE.LinearFilter,
     });
 
+    // Set mapping so black hole shader can detect this as cube-compatible
+    cubeRenderTarget.current.texture.mapping = THREE.CubeReflectionMapping;
+
     cubeCamera.current = new THREE.CubeCamera(0.1, 1000, cubeRenderTarget.current);
+
+    // CRITICAL: Only capture SKYBOX layer, exclude MAIN_OBJECT (black hole)
+    // This prevents the black hole from being baked into the background cubemap
+    cubeCamera.current.layers.disableAll();
+    cubeCamera.current.layers.enable(RENDER_LAYERS.SKYBOX);
 
     // Create a group to hold the skybox for isolated rendering
     skyboxGroupRef.current = new THREE.Group();
@@ -90,6 +99,10 @@ const ProceduralSkyboxCapture: React.FC = () => {
     if (shouldUpdate) {
       // Position camera at origin (center of skybox sphere)
       cubeCamera.current.position.set(0, 0, 0);
+
+      // CRITICAL: Clear scene.background before capture to avoid feedback loop
+      // (we're reading from scene while writing to the same texture)
+      scene.background = null;
 
       // Update the cube camera (renders all 6 faces)
       // This captures the skybox mesh to the cubemap

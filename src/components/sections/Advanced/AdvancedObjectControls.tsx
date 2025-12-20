@@ -3,7 +3,7 @@ import { ColorPicker } from '@/components/ui/ColorPicker';
 import { Slider } from '@/components/ui/Slider';
 import { ToggleButton } from '@/components/ui/ToggleButton';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
-import type { BlackHoleRayBendingMode, BlackHoleRaymarchMode, RaymarchQuality } from '@/lib/geometry/extended/types';
+import type { BlackHoleRayBendingMode, RaymarchQuality } from '@/lib/geometry/extended/types';
 import { useAppearanceStore, type AppearanceSlice } from '@/stores/appearanceStore';
 import { useExtendedObjectStore, type ExtendedObjectState } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
@@ -525,7 +525,6 @@ const SchroedingerAdvanced: React.FC = () => {
 };
 
 const BlackHoleAdvanced: React.FC = () => {
-    const dimension = useGeometryStore(state => state.dimension);
     const extendedObjectSelector = useShallow((state: ExtendedObjectState) => ({
         config: state.blackhole,
         // Lensing
@@ -551,8 +550,6 @@ const BlackHoleAdvanced: React.FC = () => {
         // Deferred lensing
         setDeferredLensingEnabled: state.setBlackHoleDeferredLensingEnabled,
         setDeferredLensingStrength: state.setBlackHoleDeferredLensingStrength,
-        // Raymarch mode
-        setRaymarchMode: state.setBlackHoleRaymarchMode,
         // Slice animation
         setSliceAnimationEnabled: state.setBlackHoleSliceAnimationEnabled,
         setSliceSpeed: state.setBlackHoleSliceSpeed,
@@ -578,89 +575,10 @@ const BlackHoleAdvanced: React.FC = () => {
         setMotionBlurStrength,
         setDeferredLensingEnabled,
         setDeferredLensingStrength,
-        setRaymarchMode,
-        setSliceAnimationEnabled,
-        setSliceSpeed,
-        setSliceAmplitude,
     } = useExtendedObjectStore(extendedObjectSelector);
 
     return (
         <div className="space-y-4">
-            {/* Raymarch Mode */}
-            <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
-                <label className="text-xs text-text-secondary font-semibold">Raymarch Mode</label>
-                <div className="relative">
-                    <select
-                        className="w-full bg-surface-tertiary border border-white/10 rounded px-2 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent appearance-none cursor-pointer"
-                        value={config.raymarchMode}
-                        onChange={(e) => setRaymarchMode(e.target.value as BlackHoleRaymarchMode)}
-                        aria-label="Raymarch mode selection"
-                        data-testid="blackhole-raymarch-mode"
-                    >
-                        <option value="slice3D">3D Slice (Fast)</option>
-                        <option value="trueND">True N-D (Accurate)</option>
-                        <option value="sdfDisk">SDF Disk (Einstein Ring)</option>
-                    </select>
-                    <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-text-tertiary">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                    </div>
-                </div>
-                <p className="text-xs text-text-tertiary">
-                    {config.raymarchMode === 'slice3D'
-                        ? 'Fast: Uses 3D projection with parameter values for higher dimensions.'
-                        : config.raymarchMode === 'trueND'
-                        ? 'Accurate: Full N-dimensional raymarching with float[11] arrays.'
-                        : 'SDF: Plane crossing detection for Einstein ring effect.'}
-                </p>
-            </div>
-
-            {/* Slice Animation (only for trueND mode and N > 3) */}
-            {config.raymarchMode === 'trueND' && dimension > 3 && (
-                <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
-                    <div className="flex items-center justify-between">
-                        <label className="text-xs text-text-secondary font-semibold">Slice Animation</label>
-                        <ToggleButton
-                            pressed={config.sliceAnimationEnabled}
-                            onToggle={() => setSliceAnimationEnabled(!config.sliceAnimationEnabled)}
-                            className="text-xs px-2 py-1 h-auto"
-                            ariaLabel="Toggle slice animation"
-                            data-testid="blackhole-slice-animation-toggle"
-                        >
-                            {config.sliceAnimationEnabled ? 'ON' : 'OFF'}
-                        </ToggleButton>
-                    </div>
-                    {config.sliceAnimationEnabled && (
-                        <>
-                            <Slider
-                                label="Speed"
-                                min={0.01}
-                                max={0.1}
-                                step={0.01}
-                                value={config.sliceSpeed}
-                                onChange={setSliceSpeed}
-                                showValue
-                                data-testid="blackhole-slice-speed"
-                            />
-                            <Slider
-                                label="Amplitude"
-                                min={0.1}
-                                max={1.0}
-                                step={0.1}
-                                value={config.sliceAmplitude}
-                                onChange={setSliceAmplitude}
-                                showValue
-                                data-testid="blackhole-slice-amplitude"
-                            />
-                        </>
-                    )}
-                    <p className="text-xs text-text-tertiary">
-                        Oscillates through higher-dimensional slices.
-                    </p>
-                </div>
-            )}
-
             {/* Lensing Parameters */}
             <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
                 <label className="text-xs text-text-secondary font-semibold">Gravitational Lensing</label>

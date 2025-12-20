@@ -69,7 +69,13 @@ vec3 sampleBackground(vec3 bentDir) {
   if (uBackgroundMode == 0) {
     // Environment map
     #ifdef USE_ENVMAP
-      bgColor = texture(envMap, bentDir).rgb;
+      // uEnvMapReady is set to 1.0 when envMap is valid (avoids sampling null texture)
+      if (uEnvMapReady > 0.5) {
+        bgColor = texture(envMap, bentDir).rgb;
+      } else {
+        // Fallback while envMap is loading
+        bgColor = proceduralStars(bentDir);
+      }
     #else
       // Fallback: dark blue gradient
       float up = bentDir.y * 0.5 + 0.5;
@@ -93,11 +99,12 @@ struct RaymarchResult {
   vec4 color;           // RGB + alpha
   vec3 weightedCenter;  // Density-weighted position for temporal reprojection
   vec3 averageNormal;   // Accumulated normal direction
+  vec3 firstHitPos;     // First surface hit position (for depth buffer)
+  float hasHit;         // 1.0 if hit anything, 0.0 otherwise (avoid bool for GPU compatibility)
 };
 
 /**
  * Raymarch accumulation state for volumetric integration.
- * Shared between slice3D and trueND modes to avoid code duplication.
  */
 struct AccumulationState {
   vec3 color;              // Accumulated color
@@ -106,6 +113,8 @@ struct AccumulationState {
   vec3 weightedPosSum;     // Density-weighted position sum
   float totalWeight;       // Total weight for averaging
   vec3 normalSum;          // Accumulated normal direction
+  vec3 firstHitPos;        // First hit position for depth
+  float hasFirstHit;       // 1.0 if recorded, 0.0 otherwise (avoid bool for GPU compat)
 };
 
 /**
@@ -119,47 +128,9 @@ AccumulationState initAccumulation() {
   s.weightedPosSum = vec3(0.0);
   s.totalWeight = 0.0;
   s.normalSum = vec3(0.0);
+  s.firstHitPos = vec3(0.0);
+  s.hasFirstHit = 0.0;
   return s;
-}
-
-/**
- * Accumulate emission into the raymarch state.
- * Handles volumetric integration with emission-absorption model.
- *
- * @param state - Current accumulation state (modified in place)
- * @param emission - Emitted color at this sample
- * @param density - Sample density
- * @param stepSize - Current ray step size
- * @param pos3d - 3D position for weighted averaging
- */
-void accumulateEmission(
-  inout AccumulationState state,
-  vec3 emission,
-  float density,
-  float stepSize,
-  vec3 pos3d
-) {
-  // Volumetric integration (emission-absorption)
-  float absorption = manifoldAbsorption(density, stepSize);
-  if (uEnableAbsorption) {
-    // Beer-Lambert: emission weighted by (1 - absorption)
-    state.color += emission * state.transmittance * (1.0 - absorption);
-    state.transmittance *= absorption;
-  } else {
-    // No absorption: use density-based emission only
-    state.color += emission * state.transmittance * density * stepSize;
-  }
-
-  state.totalDensity += density * stepSize;
-
-  // Accumulate weighted position for temporal reprojection
-  float weight = density * state.transmittance;
-  state.weightedPosSum += pos3d * weight;
-  state.totalWeight += weight;
-
-  // Accumulate normal from gravitational direction
-  vec3 toCenter = normalize(-pos3d);
-  state.normalSum += toCenter * weight;
 }
 
 /**
@@ -191,338 +162,12 @@ RaymarchResult finalizeAccumulation(
     ? normalize(state.normalSum)
     : normalize(rayDir);
 
+  // First hit position for depth buffer
+  result.firstHitPos = state.hasFirstHit > 0.5 ? state.firstHitPos : fallbackPos;
+  result.hasHit = state.hasFirstHit;
+
   return result;
 }
-
-//----------------------------------------------
-// TRUE N-D RAYMARCHING (when USE_TRUE_ND is defined)
-//----------------------------------------------
-#ifdef USE_TRUE_ND
-
-/**
- * Main raymarching function for true N-D mode.
- * Uses float[11] arrays for proper N-dimensional calculations.
- *
- * Returns: RaymarchResult with color, weighted position, and normal
- */
-RaymarchResult raymarchBlackHoleND(vec3 rayOrigin, vec3 rayDir, float time) {
-  // Use shared accumulation state to reduce code duplication
-  AccumulationState accum = initAccumulation();
-
-  // Bounding Sphere Skip
-  float farRadius = uFarRadius * uHorizonRadius;
-  vec2 intersect = intersectSphere(rayOrigin, rayDir, farRadius);
-  
-  // If miss or sphere is behind, sample background immediately
-  if (intersect.x < 0.0 && intersect.y < 0.0 || intersect.y < 0.0) {
-      RaymarchResult res;
-      // Alpha = 1.0 so black hole's background is visible (not scene's un-lensed skybox)
-      res.color = vec4(sampleBackground(rayDir), 1.0);
-      res.weightedCenter = rayOrigin + rayDir * 1000.0;
-      res.averageNormal = -rayDir;
-      return res;
-  }
-
-  float tNear = max(0.0, intersect.x);
-  float tFar = intersect.y;
-  
-  // Advance start position to sphere entry
-  vec3 startPos = rayOrigin + rayDir * tNear;
-  
-  // Initialize N-D position and direction from the start point
-  float posN[11];
-  float dirN[11];
-  embedRay3DtoND(startPos, rayDir, posN, dirN, time);
-
-  float totalDist = tNear;
-  float maxDist = tFar;
-
-  // Store direction for background sampling
-  vec3 bentDirection = rayDir;
-
-  bool hitHorizon = false;
-
-  for (int i = 0; i < 512; i++) {
-    if (i >= uMaxSteps) break;
-    if (totalDist > maxDist) break;
-    if (accum.transmittance < uTransmittanceCutoff) break;
-
-    // Calculate N-dimensional distance using full N-D position
-    float ndRadius = ndDistanceND(posN);
-
-    // Check for horizon crossing
-    if (isInsideHorizon(ndRadius)) {
-      hitHorizon = true;
-      break;
-    }
-
-    // Calculate adaptive step size
-    float stepSize = adaptiveStepSize(ndRadius);
-
-    // Apply gravitational lensing in N-D (bend the ray)
-    bendRayND(dirN, posN, stepSize, ndRadius);
-
-    // Project to 3D for background and manifold sampling
-    vec3 pos3d = projectNDto3D(posN);
-    bentDirection = normalize(vec3(dirN[0], dirN[1], dirN[2]));
-
-    // Sample photon shell
-    vec3 shellColor = photonShellEmission(ndRadius);
-    if (length(shellColor) > 0.001) {
-      accum.color += shellColor * accum.transmittance;
-    }
-
-    // Sample accretion manifold using 3D projection
-    float density = manifoldDensity(pos3d, ndRadius, time);
-    if (density > 0.001) {
-      // Get manifold emission
-      vec3 manifoldEmit = manifoldColor(pos3d, ndRadius, density, time);
-
-      // Apply FakeLit lighting if enabled (uLightingMode == 1)
-      if (uLightingMode == 1) {
-        // Compute pseudo-normal from density gradient
-        vec3 normal = computeManifoldNormal(pos3d, ndRadius, time);
-
-        // Simple lambertian diffuse + specular
-        vec3 lightPos = uLightPositions[0];
-        vec3 lightDir = normalize(lightPos - pos3d);
-
-        // Diffuse (Lambertian)
-        float NdotL = max(dot(normal, lightDir), 0.0);
-        float diffuse = NdotL;
-
-        // Specular (Blinn-Phong)
-        vec3 viewDir = normalize(uCameraPosition - pos3d);
-        vec3 halfDir = normalize(lightDir + viewDir);
-        float NdotH = max(dot(normal, halfDir), 0.0);
-        float specular = pow(NdotH, 32.0 * (1.0 - uRoughness + 0.1)) * uSpecular;
-
-        // Apply lighting: ambient + diffuse + specular
-        float lightContrib = uAmbientTint + diffuse * (1.0 - uAmbientTint);
-        manifoldEmit *= lightContrib;
-        manifoldEmit += vec3(specular) * uLightColors[0];
-      }
-
-      // Apply motion blur if enabled
-      #ifdef USE_MOTION_BLUR
-        manifoldEmit = applyMotionBlur(manifoldEmit, pos3d, ndRadius, density, time);
-      #endif
-
-      // Apply Doppler shift
-      float dopplerFac = dopplerFactor(pos3d, rayDir);
-      manifoldEmit = applyDopplerShift(manifoldEmit, dopplerFac);
-
-      // Use shared accumulation helper for volumetric integration
-      accumulateEmission(accum, manifoldEmit, density, stepSize, pos3d);
-    }
-
-    // Sample polar jets
-    #ifdef USE_JETS
-    float jetDens = jetDensity(pos3d, time);
-    if (jetDens > 0.001) {
-      vec3 jetColor = jetEmission(pos3d, jetDens, time);
-      float jetAbsorption = exp(-jetDens * uAbsorption * 0.5 * stepSize);
-      accum.color += jetColor * accum.transmittance * (1.0 - jetAbsorption);
-      accum.transmittance *= jetAbsorption;
-    }
-    #endif
-
-    // Add edge glow near horizon
-    vec3 edgeGlow = computeEdgeGlow(ndRadius, accum.color);
-    accum.color += edgeGlow * accum.transmittance * stepSize * 0.1;
-
-    // Advance ray position in N-D
-    advanceRayND(posN, dirN, stepSize);
-    totalDist += stepSize;
-  }
-
-  // Get final 3D position for fallback
-  vec3 finalPos3d = projectNDto3D(posN);
-
-  // Handle horizon hit or background
-  if (hitHorizon) {
-    accum.color += uEdgeGlowColor * uEdgeGlowIntensity * accum.transmittance * 0.5;
-    accum.transmittance = 0.0;
-  } else if (accum.transmittance > 0.01) {
-    vec3 bgColor = sampleBackground(bentDirection);
-    accum.color += bgColor * accum.transmittance;
-    // Set transmittance to 0 so alpha = 1.0, making bent background opaque
-    accum.transmittance = 0.0;
-  }
-
-  // Apply bloom boost for HDR
-  accum.color *= uBloomBoost;
-
-  // Use shared finalization helper
-  return finalizeAccumulation(accum, finalPos3d, rayDir);
-}
-
-#endif // USE_TRUE_ND
-
-//----------------------------------------------
-// 3D SLICE RAYMARCHING (default mode)
-//----------------------------------------------
-
-/**
- * Main raymarching function (3D slice mode).
- * Uses 3D position with paramValues for higher dimensions.
- *
- * Returns: RaymarchResult with color, weighted position, and normal
- */
-RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
-  // Use shared accumulation state to reduce code duplication
-  AccumulationState accum = initAccumulation();
-
-  // Bounding Sphere Intersection
-  float farRadius = uFarRadius * uHorizonRadius;
-  vec2 intersect = intersectSphere(rayOrigin, rayDir, farRadius);
-
-  // Skip if ray misses the bounding volume
-  if (intersect.x < 0.0 && intersect.y < 0.0 || intersect.y < 0.0) {
-      RaymarchResult res;
-      // Alpha = 1.0 so black hole's background is visible (not scene's un-lensed skybox)
-      res.color = vec4(sampleBackground(rayDir), 1.0);
-      res.weightedCenter = rayOrigin + rayDir * 1000.0;
-      res.averageNormal = -rayDir;
-      return res;
-  }
-
-  // Jump to entry point
-  float tNear = max(0.0, intersect.x);
-  float tFar = intersect.y;
-  
-  vec3 pos = rayOrigin + rayDir * tNear;
-  vec3 dir = rayDir;
-  
-  // Track total distance travelled along the ray (including the jump)
-  float totalDist = tNear;
-  float maxDist = tFar;
-
-  // Store initial direction for background sampling
-  vec3 bentDirection = dir;
-
-  bool hitHorizon = false;
-
-  for (int i = 0; i < 512; i++) {
-    if (i >= uMaxSteps) break;
-    // Stop if we exit the bounding sphere
-    if (totalDist > maxDist) break;
-    if (accum.transmittance < uTransmittanceCutoff) break;
-
-    // Calculate N-dimensional distance
-    float ndRadius = ndDistance(pos);
-
-    // Check for horizon crossing
-    if (isInsideHorizon(ndRadius)) {
-      hitHorizon = true;
-      break;
-    }
-
-    // Calculate adaptive step size
-    float stepSize = adaptiveStepSize(ndRadius);
-
-    // Apply gravitational lensing (bend the ray)
-    dir = bendRay(dir, pos, stepSize, ndRadius);
-    bentDirection = dir; // Track for background
-
-    // Sample photon shell
-    vec3 shellColor = photonShellEmission(ndRadius);
-    if (length(shellColor) > 0.001) {
-      accum.color += shellColor * accum.transmittance;
-    }
-
-    // Sample accretion manifold
-    float density = manifoldDensity(pos, ndRadius, time);
-    if (density > 0.001) {
-      // Get manifold emission
-      vec3 manifoldEmit = manifoldColor(pos, ndRadius, density, time);
-
-      // Apply FakeLit lighting if enabled (uLightingMode == 1)
-      if (uLightingMode == 1) {
-        // Compute pseudo-normal from density gradient
-        vec3 normal = computeManifoldNormal(pos, ndRadius, time);
-
-        // Simple lambertian diffuse + specular
-        // Use first light position if available, otherwise default to camera-relative
-        vec3 lightPos = uLightPositions[0];
-        vec3 lightDir = normalize(lightPos - pos);
-
-        // Diffuse (Lambertian)
-        float NdotL = max(dot(normal, lightDir), 0.0);
-        float diffuse = NdotL;
-
-        // Specular (Blinn-Phong)
-        vec3 viewDir = normalize(uCameraPosition - pos);
-        vec3 halfDir = normalize(lightDir + viewDir);
-        float NdotH = max(dot(normal, halfDir), 0.0);
-        float specular = pow(NdotH, 32.0 * (1.0 - uRoughness + 0.1)) * uSpecular;
-
-        // Apply lighting: ambient + diffuse + specular
-        float lightContrib = uAmbientTint + diffuse * (1.0 - uAmbientTint);
-        manifoldEmit *= lightContrib;
-        manifoldEmit += vec3(specular) * uLightColors[0];
-      }
-
-      // Apply motion blur if enabled
-      #ifdef USE_MOTION_BLUR
-        manifoldEmit = applyMotionBlur(manifoldEmit, pos, ndRadius, density, time);
-      #endif
-
-      // Apply Doppler shift
-      float dopplerFac = dopplerFactor(pos, rayDir);
-      manifoldEmit = applyDopplerShift(manifoldEmit, dopplerFac);
-
-      // Use shared accumulation helper for volumetric integration
-      accumulateEmission(accum, manifoldEmit, density, stepSize, pos);
-    }
-
-    // Sample polar jets
-    #ifdef USE_JETS
-    float jetDens = jetDensity(pos, time);
-    if (jetDens > 0.001) {
-      vec3 jetColor = jetEmission(pos, jetDens, time);
-      float jetAbsorption = exp(-jetDens * uAbsorption * 0.5 * stepSize);
-      accum.color += jetColor * accum.transmittance * (1.0 - jetAbsorption);
-      accum.transmittance *= jetAbsorption;
-    }
-    #endif
-
-    // Add edge glow near horizon
-    vec3 edgeGlow = computeEdgeGlow(ndRadius, accum.color);
-    accum.color += edgeGlow * accum.transmittance * stepSize * 0.1;
-
-    // Advance ray position
-    pos += dir * stepSize;
-    totalDist += stepSize;
-  }
-
-  // Handle horizon hit or background
-  if (hitHorizon) {
-    // Inside horizon: event horizon should be PURE BLACK
-    // Light cannot escape the event horizon - complete absorption
-    // Edge glow is already added NEAR the horizon during raymarch loop
-    accum.color = vec3(0.0);
-    accum.transmittance = 0.0;
-  } else if (accum.transmittance > 0.01) {
-    // Sample background with bent ray direction
-    vec3 bgColor = sampleBackground(bentDirection);
-    accum.color += bgColor * accum.transmittance;
-    // Set transmittance to 0 so alpha = 1.0, making bent background opaque
-    // This prevents the scene's un-lensed skybox from showing through
-    accum.transmittance = 0.0;
-  }
-
-  // Apply bloom boost for HDR
-  accum.color *= uBloomBoost;
-
-  // Use shared finalization helper
-  return finalizeAccumulation(accum, pos, rayDir);
-}
-
-//----------------------------------------------
-// SDF DISK RAYMARCHING (Einstein Ring mode)
-//----------------------------------------------
-#ifdef USE_SDF_DISK
 
 /**
  * Accumulate disk hit into raymarch result.
@@ -534,6 +179,12 @@ void accumulateDiskHit(
   vec3 hitPos,
   vec3 normal
 ) {
+  // Record first hit for depth buffer
+  if (accum.hasFirstHit < 0.5) {
+    accum.firstHitPos = hitPos;
+    accum.hasFirstHit = 1.0;
+  }
+
   // For surface hits, use opacity-based blending
   float hitOpacity = 0.85;
 
@@ -554,7 +205,7 @@ void accumulateDiskHit(
 }
 
 /**
- * Main raymarching function for SDF disk mode.
+ * Main raymarching function for SDF disk mode (Einstein Ring).
  *
  * Uses plane crossing detection for Einstein ring effect:
  * - Rays bend around black hole via gravitational lensing
@@ -563,7 +214,7 @@ void accumulateDiskHit(
  *
  * Photon shell and jets still use volumetric sampling for glow effects.
  */
-RaymarchResult raymarchBlackHoleSDF(vec3 rayOrigin, vec3 rayDir, float time) {
+RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
   AccumulationState accum = initAccumulation();
 
   // Bounding sphere skip
@@ -575,6 +226,8 @@ RaymarchResult raymarchBlackHoleSDF(vec3 rayOrigin, vec3 rayDir, float time) {
     res.color = vec4(sampleBackground(rayDir), 1.0);
     res.weightedCenter = rayOrigin + rayDir * 1000.0;
     res.averageNormal = -rayDir;
+    res.firstHitPos = rayOrigin + rayDir * 1000.0;  // Far away
+    res.hasHit = 0.0;  // No hit, just background
     return res;
   }
 
@@ -655,6 +308,11 @@ RaymarchResult raymarchBlackHoleSDF(vec3 rayOrigin, vec3 rayDir, float time) {
 
   // Handle horizon or background
   if (hitHorizon) {
+    // Record horizon as first hit if nothing else was hit
+    if (accum.hasFirstHit < 0.5) {
+      accum.firstHitPos = pos;
+      accum.hasFirstHit = 1.0;
+    }
     accum.color = vec3(0.0);
     accum.transmittance = 0.0;
   } else if (accum.transmittance > 0.01) {
@@ -667,8 +325,6 @@ RaymarchResult raymarchBlackHoleSDF(vec3 rayOrigin, vec3 rayDir, float time) {
 
   return finalizeAccumulation(accum, pos, rayDir);
 }
-
-#endif // USE_SDF_DISK
 
 void main() {
   // Get ray from camera through box surface point (BackSide rendering)
@@ -685,17 +341,8 @@ void main() {
   // Get animation time
   float time = uTime * uTimeScale;
 
-  // Raymarch the black hole using appropriate mode
-  #ifdef USE_SDF_DISK
-    // SDF disk with plane crossing detection for Einstein ring
-    RaymarchResult result = raymarchBlackHoleSDF(rayOrigin, rayDir, time);
-  #elif defined(USE_TRUE_ND)
-    // True N-D raymarching with float[11] arrays
-    RaymarchResult result = raymarchBlackHoleND(rayOrigin, rayDir, time);
-  #else
-    // 3D slice raymarching (faster, uses paramValues for higher dimensions)
-    RaymarchResult result = raymarchBlackHole(rayOrigin, rayDir, time);
-  #endif
+  // Raymarch the black hole using SDF disk mode
+  RaymarchResult result = raymarchBlackHole(rayOrigin, rayDir, time);
 
   // Output color
   gColor = result.color;
@@ -709,6 +356,18 @@ void main() {
   // Encode normal to [0,1] range and output
   // Alpha = 1.0 to prevent premultiplied alpha issues
   gNormal = vec4(viewNormal * 0.5 + 0.5, 1.0);
+
+  // Output depth buffer (same approach as Mandelbulb)
+  // For hits: compute clip-space depth from first hit position
+  // For background only: use far plane (1.0)
+  if (result.hasHit > 0.5) {
+    vec4 clipPos = uProjectionMatrix * uViewMatrix * vec4(result.firstHitPos, 1.0);
+    float clipW = abs(clipPos.w) < 0.0001 ? 0.0001 : clipPos.w;
+    gl_FragDepth = clamp((clipPos.z / clipW) * 0.5 + 0.5, 0.0, 1.0);
+  } else {
+    // No hit - use far plane depth
+    gl_FragDepth = 1.0;
+  }
 
   // Output world position for temporal reprojection (only when gPosition is declared)
   #ifdef USE_TEMPORAL_ACCUMULATION

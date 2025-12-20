@@ -59,7 +59,6 @@ const BlackHoleMesh = () => {
   const temporalEnabled = useExtendedObjectStore(
     (state) => state.blackhole.temporalAccumulationEnabled
   )
-  const raymarchMode = useExtendedObjectStore((state) => state.blackhole.raymarchMode)
   const sliceAnimationEnabled = useExtendedObjectStore(
     (state) => state.blackhole.sliceAnimationEnabled
   )
@@ -80,18 +79,17 @@ const BlackHoleMesh = () => {
       envMap: true,
       opacityMode,
       fog: false,
-      raymarchMode,
       sliceAnimation: sliceAnimationEnabled,
     })
-  }, [dimension, temporalEnabled, jetsEnabled, dopplerEnabled, opacityMode, raymarchMode, sliceAnimationEnabled])
+  }, [dimension, temporalEnabled, jetsEnabled, dopplerEnabled, opacityMode, sliceAnimationEnabled])
 
   // Generate vertex shader
   const vertexShader = useMemo(() => generateBlackHoleVertexShader(), [])
 
   // Generate material key for caching
   const materialKey = useMemo(() => {
-    return `blackhole-${dimension}-${temporalEnabled}-${jetsEnabled}-${dopplerEnabled}-${opacityMode}-${raymarchMode}-${sliceAnimationEnabled}`
-  }, [dimension, temporalEnabled, jetsEnabled, dopplerEnabled, opacityMode, raymarchMode, sliceAnimationEnabled])
+    return `blackhole-${dimension}-${temporalEnabled}-${jetsEnabled}-${dopplerEnabled}-${opacityMode}-${sliceAnimationEnabled}`
+  }, [dimension, temporalEnabled, jetsEnabled, dopplerEnabled, opacityMode, sliceAnimationEnabled])
 
   // Cleanup material when shader recompiles or component unmounts
   // This prevents WebGL memory leaks when switching modes/dimensions

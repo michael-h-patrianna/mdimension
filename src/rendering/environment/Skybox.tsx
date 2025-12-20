@@ -100,13 +100,15 @@ function clearPMREMCacheForContextLoss(): void {
   sharedPMREMGenerator = null;
 }
 
-// Register PMREM cache with resource recovery coordinator
-resourceRecovery.register({
-  name: 'SkyboxPMREMCache',
-  priority: RECOVERY_PRIORITY.SKYBOX_PMREM,
-  invalidate: () => clearPMREMCacheForContextLoss(),
-  reinitialize: () => Promise.resolve(), // Textures will be regenerated on demand
-});
+// Register PMREM cache with resource recovery coordinator (only once)
+if (!resourceRecovery.has('SkyboxPMREMCache')) {
+  resourceRecovery.register({
+    name: 'SkyboxPMREMCache',
+    priority: RECOVERY_PRIORITY.SKYBOX_PMREM,
+    invalidate: () => clearPMREMCacheForContextLoss(),
+    reinitialize: () => Promise.resolve(), // Textures will be regenerated on demand
+  });
+}
 
 // ============================================================================
 // usePMREMTexture Hook

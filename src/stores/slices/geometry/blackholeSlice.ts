@@ -29,7 +29,6 @@ import {
   BLACK_HOLE_VISUAL_PRESETS,
   BlackHoleConfig,
   BlackHoleRayBendingMode,
-  BlackHoleRaymarchMode,
   DEFAULT_BLACK_HOLE_CONFIG,
 } from '@/lib/geometry/extended/types'
 import { StateCreator } from 'zustand'
@@ -149,12 +148,6 @@ export const createBlackHoleSlice: StateCreator<ExtendedObjectSlice, [], [], Bla
   setBlackHoleRayBendingMode: (mode: BlackHoleRayBendingMode) => {
     set((state) => ({
       blackhole: { ...state.blackhole, rayBendingMode: mode },
-    }))
-  },
-
-  setBlackHoleRaymarchMode: (mode: BlackHoleRaymarchMode) => {
-    set((state) => ({
-      blackhole: { ...state.blackhole, raymarchMode: mode },
     }))
   },
 

@@ -110,6 +110,15 @@ class ResourceRecoveryCoordinator {
   }
 
   /**
+   * Check if a resource manager is already registered.
+   * @param name - The name of the manager to check
+   * @returns true if the manager is registered
+   */
+  has(name: string): boolean {
+    return this.managers.has(name)
+  }
+
+  /**
    * Unregister a resource manager.
    * @param name - The name of the manager to unregister
    */
