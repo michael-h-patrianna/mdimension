@@ -31,6 +31,7 @@ import {
   BlackHoleRayBendingMode,
   DEFAULT_BLACK_HOLE_CONFIG,
 } from '@/lib/geometry/extended/types'
+import { computeKerrRadii, diskTemperatureToColor } from '@/lib/geometry/extended/kerr-physics'
 import { StateCreator } from 'zustand'
 import { BlackHoleSlice, ExtendedObjectSlice } from './types'
 
@@ -45,6 +46,59 @@ export const createBlackHoleSlice: StateCreator<ExtendedObjectSlice, [], [], Bla
     const clamped = clampWithWarning(radius, 0.05, 20, 'horizonRadius')
     set((state) => ({
       blackhole: { ...state.blackhole, horizonRadius: clamped },
+    }))
+  },
+
+  /**
+   * Set black hole spin parameter (Kerr metric).
+   * Automatically updates derived radii:
+   * - diskInnerRadiusMul from ISCO
+   * - photonShellRadiusMul from photon sphere
+   *
+   * @param spin - Dimensionless spin chi = a/M (0-0.998)
+   */
+  setBlackHoleSpin: (spin) => {
+    const clamped = clampWithWarning(spin, 0, 0.998, 'spin')
+    const state = get()
+    const horizonRadius = state.blackhole.horizonRadius
+
+    // Compute Kerr radii from spin (M = rs/2 in geometric units)
+    const M = horizonRadius / 2
+    const kerr = computeKerrRadii(M, clamped)
+
+    // Convert ISCO to multiplier of horizon radius (rs = 2M)
+    // For prograde accretion disk (most common astrophysically)
+    const diskInnerRadiusMul = kerr.iscoPrograde / horizonRadius
+
+    // Convert photon sphere to multiplier
+    // Use prograde photon sphere (inner photon ring)
+    const photonShellRadiusMul = kerr.photonSpherePrograde / horizonRadius
+
+    set((s) => ({
+      blackhole: {
+        ...s.blackhole,
+        spin: clamped,
+        diskInnerRadiusMul,
+        photonShellRadiusMul: Math.max(1.0, Math.min(2.0, photonShellRadiusMul)),
+      },
+    }))
+  },
+
+  /**
+   * Set disk temperature in Kelvin.
+   * Automatically updates baseColor using blackbody approximation.
+   *
+   * @param temperature - Temperature in Kelvin (1000-40000)
+   */
+  setBlackHoleDiskTemperature: (temperature) => {
+    const clamped = clampWithWarning(temperature, 1000, 40000, 'diskTemperature')
+    const baseColor = diskTemperatureToColor(clamped)
+    set((state) => ({
+      blackhole: {
+        ...state.blackhole,
+        diskTemperature: clamped,
+        baseColor,
+      },
     }))
   },
 
@@ -691,9 +745,15 @@ export const createBlackHoleSlice: StateCreator<ExtendedObjectSlice, [], [], Bla
     // Validate and clamp numeric fields to prevent invalid values
     const validated: Partial<BlackHoleConfig> = {}
 
-    // Basic parameters
+    // Physics-based parameters
     if (config.horizonRadius !== undefined) {
       validated.horizonRadius = Math.max(0.05, Math.min(20, config.horizonRadius))
+    }
+    if (config.spin !== undefined) {
+      validated.spin = Math.max(0, Math.min(0.998, config.spin))
+    }
+    if (config.diskTemperature !== undefined) {
+      validated.diskTemperature = Math.max(1000, Math.min(40000, config.diskTemperature))
     }
     if (config.gravityStrength !== undefined) {
       validated.gravityStrength = Math.max(0, Math.min(10, config.gravityStrength))

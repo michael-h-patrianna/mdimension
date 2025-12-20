@@ -27,7 +27,7 @@ describe('blackholeSlice', () => {
       expect(blackhole.horizonRadius).toBe(DEFAULT_BLACK_HOLE_CONFIG.horizonRadius)
       expect(blackhole.gravityStrength).toBe(DEFAULT_BLACK_HOLE_CONFIG.gravityStrength)
       expect(blackhole.manifoldIntensity).toBe(DEFAULT_BLACK_HOLE_CONFIG.manifoldIntensity)
-      expect(blackhole.visualPreset).toBe('custom')
+      expect(blackhole.visualPreset).toBe(DEFAULT_BLACK_HOLE_CONFIG.visualPreset)
     })
   })
 

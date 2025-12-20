@@ -36,6 +36,8 @@ const BACKGROUND_CUBEMAP_RESOLUTION = 512;
  * The black hole shader requires an actual CubeTexture for samplerCube uniforms.
  * drei's Environment only produces PMREM (2D) textures, so we need this separate
  * capture pass to provide a proper cubemap.
+ *
+ * @returns React component that manages skybox capture
  */
 const ProceduralSkyboxCapture: React.FC = () => {
   const { gl, scene } = useThree();

@@ -498,8 +498,10 @@ export interface BlackHoleSliceState {
 }
 
 export interface BlackHoleSliceActions {
-  // Basic Parameters
+  // Physics-Based Parameters (Kerr Black Hole)
   setBlackHoleHorizonRadius: (radius: number) => void
+  setBlackHoleSpin: (spin: number) => void
+  setBlackHoleDiskTemperature: (temperature: number) => void
   setBlackHoleGravityStrength: (strength: number) => void
   setBlackHoleManifoldIntensity: (intensity: number) => void
   setBlackHoleManifoldThickness: (thickness: number) => void

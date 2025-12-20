@@ -247,7 +247,8 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
     // Adaptive step size
     float stepSize = adaptiveStepSize(ndRadius);
 
-    // Apply gravitational lensing (reused from volumetric)
+    // Apply gravitational lensing using "magic potential" approach
+    // This uses a purely radial force that preserves the orbital plane
     dir = bendRay(dir, pos, stepSize, ndRadius);
     bentDirection = dir;
 

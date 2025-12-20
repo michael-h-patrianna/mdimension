@@ -1885,12 +1885,52 @@ export type BlackHoleVisualPreset = 'interstellar' | 'cosmic' | 'ethereal' | 'cu
  * Uses volumetric raymarching with bent rays (unlike SDF-based Mandelbulb).
  *
  * Supports 3D-11D with dimension-aware manifold geometry.
+ *
+ * === Physics-Based Parameters (Kerr Black Hole) ===
+ *
+ * The black hole uses Kerr metric physics. Key parameters:
+ * - horizonRadius: Visual scale (Schwarzschild radius rs = 2M)
+ * - spin: Dimensionless spin chi = a/M (0 = Schwarzschild, 0.998 = near-extremal)
+ * - diskTemperature: Inner disk temperature in Kelvin (for blackbody coloring)
+ *
+ * From these, the system computes:
+ * - Event horizon: r+ = M(1 + sqrt(1 - chi²))
+ * - Photon sphere: r_ph = 2M(1 + cos(2/3 * arccos(-chi)))
+ * - ISCO (inner disk edge): Complex formula dependent on spin
+ *
+ * References:
+ * - https://en.wikipedia.org/wiki/Kerr_metric
+ * - https://www.fabiopacucci.com/resources/black-hole-calculator/formulas-black-hole-calculator/
  */
 export interface BlackHoleConfig {
-  // === BASIC (Artist-facing) ===
-  /** Horizon radius R_h (0.05-20, default 1.0) */
+  // === PHYSICS-BASED (Primary Controls) ===
+  /**
+   * Schwarzschild radius rs = 2M, determines visual scale (0.05-20, default 2.0).
+   * All other radii (ISCO, photon sphere) are computed relative to this.
+   */
   horizonRadius: number
-  /** Gravity strength k (0-10, default 1.0) */
+  /**
+   * Dimensionless spin parameter chi = a/M (0-0.998, default 0).
+   * 0 = non-rotating Schwarzschild black hole
+   * 0.998 = near-extremal Kerr (maximum physical spin)
+   *
+   * Affects:
+   * - Event horizon size (shrinks with spin)
+   * - ISCO (moves inward for prograde disk)
+   * - Photon sphere (asymmetric for prograde/retrograde)
+   * - Frame dragging (not yet implemented in shader)
+   */
+  spin: number
+  /**
+   * Inner disk temperature in Kelvin (1000-40000, default 6500).
+   * Used for blackbody coloring of the accretion disk.
+   * - 1000K: Deep red (cool outer regions)
+   * - 6500K: White (like the Sun)
+   * - 10000K: Blue-white (hot inner regions)
+   * - 40000K: Blue (extremely hot)
+   */
+  diskTemperature: number
+  /** Gravity strength k (0-10, default 1.0) - artistic multiplier */
   gravityStrength: number
   /** Manifold emission intensity (0-20, default 1.0) */
   manifoldIntensity: number
@@ -2205,9 +2245,11 @@ export const BLACK_HOLE_VISUAL_PRESETS: Record<BlackHoleVisualPreset, Partial<Bl
  * Default black hole configuration
  */
 export const DEFAULT_BLACK_HOLE_CONFIG: BlackHoleConfig = {
-  // Basic - Interstellar preset values for movie-accurate look
-  // horizonRadius scaled up from 1.0 to 2.0 so black hole is visible at default camera distance
+  // Physics-based parameters (Kerr black hole)
+  // horizonRadius is the Schwarzschild radius rs = 2M (visual scale)
   horizonRadius: 2.0,
+  spin: 0.9, // High spin for dramatic Interstellar-style effects (prograde ISCO ~ 2.3M)
+  diskTemperature: 6500, // ~Sun temperature for natural white disk color
   gravityStrength: 3.0, // Strong gravity for dramatic Interstellar-style lensing
   manifoldIntensity: 2.0, // Interstellar: bright accretion disk
   manifoldThickness: 0.03, // Thin disk for Interstellar look (combined with high densityFalloff)
