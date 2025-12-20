@@ -89,27 +89,25 @@ export const RenderModeToggles: React.FC<RenderModeTogglesProps> = React.memo(({
   className = '',
 }) => {
   // Consolidate visual store selectors with useShallow to reduce subscriptions
+  const appearanceSelector = useShallow((state: any) => ({
+    edgesVisible: state.edgesVisible,
+    facesVisible: state.facesVisible,
+    setEdgesVisible: state.setEdgesVisible,
+    setFacesVisible: state.setFacesVisible,
+  }));
   const {
     edgesVisible,
     facesVisible,
     setEdgesVisible,
     setFacesVisible,
-  } = useAppearanceStore(
-    useShallow((state) => ({
-      edgesVisible: state.edgesVisible,
-      facesVisible: state.facesVisible,
-      setEdgesVisible: state.setEdgesVisible,
-      setFacesVisible: state.setFacesVisible,
-    }))
-  );
+  } = useAppearanceStore(appearanceSelector);
 
   // Consolidate geometry store selectors with useShallow
-  const { objectType, dimension } = useGeometryStore(
-    useShallow((state) => ({
-      objectType: state.objectType,
-      dimension: state.dimension,
-    }))
-  );
+  const geometrySelector = useShallow((state: any) => ({
+    objectType: state.objectType,
+    dimension: state.dimension,
+  }));
+  const { objectType, dimension } = useGeometryStore(geometrySelector);
 
   // Track if faces/edges were auto-disabled due to object type switch
   // Initialize to false - only set to true when we auto-disable, not for manual toggles

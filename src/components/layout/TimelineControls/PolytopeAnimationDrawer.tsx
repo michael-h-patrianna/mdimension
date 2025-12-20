@@ -30,6 +30,15 @@ import { AnimationDrawerContainer } from './AnimationDrawerContainer';
  */
 export const PolytopeAnimationDrawer: React.FC = React.memo(() => {
   // Get config and setters from store
+  const extendedObjectSelector = useShallow((state: any) => ({
+    config: state.polytope,
+    setModulationEnabled: state.setPolytopeFacetOffsetEnabled,
+    setModulationAmplitude: state.setPolytopeFacetOffsetAmplitude,
+    setModulationFrequency: state.setPolytopeFacetOffsetFrequency,
+    setModulationWave: state.setPolytopeFacetOffsetPhaseSpread,
+    setModulationBias: state.setPolytopeFacetOffsetBias,
+  }));
+
   const {
     config,
     setModulationEnabled,
@@ -37,16 +46,7 @@ export const PolytopeAnimationDrawer: React.FC = React.memo(() => {
     setModulationFrequency,
     setModulationWave,
     setModulationBias,
-  } = useExtendedObjectStore(
-    useShallow((state) => ({
-      config: state.polytope,
-      setModulationEnabled: state.setPolytopeFacetOffsetEnabled,
-      setModulationAmplitude: state.setPolytopeFacetOffsetAmplitude,
-      setModulationFrequency: state.setPolytopeFacetOffsetFrequency,
-      setModulationWave: state.setPolytopeFacetOffsetPhaseSpread,
-      setModulationBias: state.setPolytopeFacetOffsetBias,
-    }))
-  );
+  } = useExtendedObjectStore(extendedObjectSelector);
 
   return (
     <AnimationDrawerContainer data-testid="polytope-animation-drawer">

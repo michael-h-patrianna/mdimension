@@ -19,7 +19,8 @@ export type IconName =
   | 'check'
   | 'cross'
   | 'warning'
-  | 'info';
+  | 'info'
+  | 'download';
 
 interface IconProps {
   name: IconName;
@@ -46,7 +47,8 @@ const icons: Record<IconName, React.ReactNode> = {
   check: <path d="M5.5 11.3L2.2 8l-1.2 1.2 4.5 4.5L15 4.2 13.8 3z" />,
   cross: <path d="M14.53 1.47L13.47 0.41 7.47 6.41 1.47 0.41 0.41 1.47 6.41 7.47 0.41 13.47 1.47 14.53 7.47 8.53 13.47 14.53 14.53 13.47 8.53 7.47z" />,
   warning: <path d="M8 1L0 15h16L8 1zm0 2.8L13.7 13H2.3L8 3.8zM7 11v2h2v-2H7zm0-5v4h2V6H7z" />,
-  info: <path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 12a5 5 0 110-10 5 5 0 010 10zm-1-8h2v2H7V5zm0 3h2v4H7V8z" />
+  info: <path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 12a5 5 0 110-10 5 5 0 010 10zm-1-8h2v2H7V5zm0 3h2v4H7V8z" />,
+  download: <path d="M14 11v2h-12v-2h-2v4h16v-4h-2zM12 6h-3v-6h-2v6h-3l4 5 4-5z" />
 };
 
 export const Icon: React.FC<IconProps> = ({ name, className = "", size = 16 }) => {

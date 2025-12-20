@@ -32,6 +32,23 @@ export const MandelbulbAnimationDrawer: React.FC = React.memo(() => {
   const dimension = useGeometryStore((state) => state.dimension);
 
   // Get config and setters from store
+  const extendedObjectSelector = useShallow((state: any) => ({
+    config: state.mandelbulb,
+    // Power Animation
+    setPowerAnimationEnabled: state.setMandelbulbPowerAnimationEnabled,
+    setPowerMin: state.setMandelbulbPowerMin,
+    setPowerMax: state.setMandelbulbPowerMax,
+    setPowerSpeed: state.setMandelbulbPowerSpeed,
+    // Phase Shifts
+    setPhaseShiftEnabled: state.setMandelbulbPhaseShiftEnabled,
+    setPhaseSpeed: state.setMandelbulbPhaseSpeed,
+    setPhaseAmplitude: state.setMandelbulbPhaseAmplitude,
+    // Slice Animation
+    setSliceAnimationEnabled: state.setMandelbulbSliceAnimationEnabled,
+    setSliceSpeed: state.setMandelbulbSliceSpeed,
+    setSliceAmplitude: state.setMandelbulbSliceAmplitude,
+  }));
+
   const {
     config,
     // Power Animation
@@ -47,24 +64,7 @@ export const MandelbulbAnimationDrawer: React.FC = React.memo(() => {
     setSliceAnimationEnabled,
     setSliceSpeed,
     setSliceAmplitude,
-  } = useExtendedObjectStore(
-    useShallow((state) => ({
-      config: state.mandelbulb,
-      // Power Animation
-      setPowerAnimationEnabled: state.setMandelbulbPowerAnimationEnabled,
-      setPowerMin: state.setMandelbulbPowerMin,
-      setPowerMax: state.setMandelbulbPowerMax,
-      setPowerSpeed: state.setMandelbulbPowerSpeed,
-      // Phase Shifts
-      setPhaseShiftEnabled: state.setMandelbulbPhaseShiftEnabled,
-      setPhaseSpeed: state.setMandelbulbPhaseSpeed,
-      setPhaseAmplitude: state.setMandelbulbPhaseAmplitude,
-      // Slice Animation
-      setSliceAnimationEnabled: state.setMandelbulbSliceAnimationEnabled,
-      setSliceSpeed: state.setMandelbulbSliceSpeed,
-      setSliceAmplitude: state.setMandelbulbSliceAmplitude,
-    }))
-  );
+  } = useExtendedObjectStore(extendedObjectSelector);
 
   return (
     <AnimationDrawerContainer data-testid="mandelbulb-animation-drawer">

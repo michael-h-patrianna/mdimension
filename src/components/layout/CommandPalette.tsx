@@ -21,13 +21,25 @@ export const CommandPalette: React.FC = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  const { toggleCinematicMode, toggleCollapsed, toggleLeftPanel, toggleShortcuts } = useLayoutStore(useShallow((state) => ({
-    toggleCinematicMode: state.toggleCinematicMode,
-    toggleCollapsed: state.toggleCollapsed,
-    toggleLeftPanel: state.toggleLeftPanel,
-    toggleShortcuts: state.toggleShortcuts
-  })));
-  const { setTheme } = useThemeStore(useShallow((state) => ({ setTheme: state.setTheme })));
+    const layoutSelector = useShallow((state: any) => ({
+
+      toggleCinematicMode: state.toggleCinematicMode,
+
+      toggleCollapsed: state.toggleCollapsed,
+
+      toggleLeftPanel: state.toggleLeftPanel,
+
+      toggleShortcuts: state.toggleShortcuts
+
+    }));
+
+    const { toggleCinematicMode, toggleCollapsed, toggleLeftPanel, toggleShortcuts } = useLayoutStore(layoutSelector);
+
+  
+
+    const themeSelector = useShallow((state: any) => ({ setTheme: state.setTheme }));
+
+    const { setTheme } = useThemeStore(themeSelector);
   const resetCamera = useCameraStore(state => state.reset);
 
   const commands: Command[] = [

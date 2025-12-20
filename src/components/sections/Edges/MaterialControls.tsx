@@ -30,6 +30,17 @@ export const MaterialControls: React.FC<MaterialControlsProps> = React.memo(({
 }) => {
   const shaderType = useAppearanceStore((state) => state.shaderType);
 
+  const lightingSelector = useShallow((state: any) => ({
+    lightEnabled: state.lightEnabled,
+    specularIntensity: state.specularIntensity,
+    shininess: state.shininess,
+    specularColor: state.specularColor,
+    diffuseIntensity: state.diffuseIntensity,
+    setSpecularIntensity: state.setSpecularIntensity,
+    setShininess: state.setShininess,
+    setSpecularColor: state.setSpecularColor,
+    setDiffuseIntensity: state.setDiffuseIntensity,
+  }));
   const {
     lightEnabled,
     specularIntensity,
@@ -40,19 +51,7 @@ export const MaterialControls: React.FC<MaterialControlsProps> = React.memo(({
     setShininess,
     setSpecularColor,
     setDiffuseIntensity,
-  } = useLightingStore(
-    useShallow((state) => ({
-      lightEnabled: state.lightEnabled,
-      specularIntensity: state.specularIntensity,
-      shininess: state.shininess,
-      specularColor: state.specularColor,
-      diffuseIntensity: state.diffuseIntensity,
-      setSpecularIntensity: state.setSpecularIntensity,
-      setShininess: state.setShininess,
-      setSpecularColor: state.setSpecularColor,
-      setDiffuseIntensity: state.setDiffuseIntensity,
-    }))
-  );
+  } = useLightingStore(lightingSelector);
 
   // Only show for Surface shader with light enabled
   if (shaderType !== 'surface' || !lightEnabled) {

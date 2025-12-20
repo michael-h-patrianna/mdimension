@@ -18,14 +18,13 @@ export interface LchPresetSelectorProps {
 export const LchPresetSelector: React.FC<LchPresetSelectorProps> = ({
   className = '',
 }) => {
-  const { lchLightness, lchChroma, setLchLightness, setLchChroma } = useAppearanceStore(
-    useShallow((state) => ({
-      lchLightness: state.lchLightness,
-      lchChroma: state.lchChroma,
-      setLchLightness: state.setLchLightness,
-      setLchChroma: state.setLchChroma,
-    }))
-  );
+  const appearanceSelector = useShallow((state: any) => ({
+    lchLightness: state.lchLightness,
+    lchChroma: state.lchChroma,
+    setLchLightness: state.setLchLightness,
+    setLchChroma: state.setLchChroma,
+  }));
+  const { lchLightness, lchChroma, setLchLightness, setLchChroma } = useAppearanceStore(appearanceSelector);
 
   // Find current preset by matching lightness and chroma values
   const currentPreset = useMemo(() => {

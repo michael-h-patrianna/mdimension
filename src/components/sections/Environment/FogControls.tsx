@@ -15,6 +15,27 @@ import { useShallow } from 'zustand/react/shallow';
 
 export const FogControls: React.FC = () => {
   // Physical fog settings
+  const environmentSelector = useShallow((state: any) => ({
+    fogEnabled: state.fogEnabled,
+    fogDensity: state.fogDensity,
+    fogColor: state.fogColor,
+    fogHeight: state.fogHeight,
+    fogFalloff: state.fogFalloff,
+    fogNoiseScale: state.fogNoiseScale,
+    fogNoiseSpeed: state.fogNoiseSpeed,
+    fogScattering: state.fogScattering,
+    volumetricShadows: state.volumetricShadows,
+    setFogEnabled: state.setFogEnabled,
+    setFogDensity: state.setFogDensity,
+    setFogColor: state.setFogColor,
+    setFogHeight: state.setFogHeight,
+    setFogFalloff: state.setFogFalloff,
+    setFogNoiseScale: state.setFogNoiseScale,
+    setFogNoiseSpeed: state.setFogNoiseSpeed,
+    setFogScattering: state.setFogScattering,
+    setVolumetricShadows: state.setVolumetricShadows,
+    resetFog: state.resetFog,
+  }));
   const {
     fogEnabled,
     fogDensity,
@@ -35,29 +56,7 @@ export const FogControls: React.FC = () => {
     setFogScattering,
     setVolumetricShadows,
     resetFog,
-  } = useEnvironmentStore(
-    useShallow((state) => ({
-      fogEnabled: state.fogEnabled,
-      fogDensity: state.fogDensity,
-      fogColor: state.fogColor,
-      fogHeight: state.fogHeight,
-      fogFalloff: state.fogFalloff,
-      fogNoiseScale: state.fogNoiseScale,
-      fogNoiseSpeed: state.fogNoiseSpeed,
-      fogScattering: state.fogScattering,
-      volumetricShadows: state.volumetricShadows,
-      setFogEnabled: state.setFogEnabled,
-      setFogDensity: state.setFogDensity,
-      setFogColor: state.setFogColor,
-      setFogHeight: state.setFogHeight,
-      setFogFalloff: state.setFogFalloff,
-      setFogNoiseScale: state.setFogNoiseScale,
-      setFogNoiseSpeed: state.setFogNoiseSpeed,
-      setFogScattering: state.setFogScattering,
-      setVolumetricShadows: state.setVolumetricShadows,
-      resetFog: state.resetFog,
-    }))
-  );
+  } = useEnvironmentStore(environmentSelector);
 
   return (
     <div className="space-y-4">

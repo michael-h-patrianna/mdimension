@@ -52,6 +52,16 @@ export const BloomControls: React.FC<BloomControlsProps> = React.memo(({
   className = '',
 }) => {
   // Consolidate all visual store subscriptions with useShallow to reduce re-renders
+  const postProcessingSelector = useShallow((state: any) => ({
+    // State
+    bloomIntensity: state.bloomIntensity,
+    bloomThreshold: state.bloomThreshold,
+    bloomRadius: state.bloomRadius,
+    // Actions
+    setBloomIntensity: state.setBloomIntensity,
+    setBloomThreshold: state.setBloomThreshold,
+    setBloomRadius: state.setBloomRadius,
+  }));
   const {
     bloomIntensity,
     bloomThreshold,
@@ -59,18 +69,7 @@ export const BloomControls: React.FC<BloomControlsProps> = React.memo(({
     setBloomIntensity,
     setBloomThreshold,
     setBloomRadius,
-  } = usePostProcessingStore(
-    useShallow((state) => ({
-      // State
-      bloomIntensity: state.bloomIntensity,
-      bloomThreshold: state.bloomThreshold,
-      bloomRadius: state.bloomRadius,
-      // Actions
-      setBloomIntensity: state.setBloomIntensity,
-      setBloomThreshold: state.setBloomThreshold,
-      setBloomRadius: state.setBloomRadius,
-    }))
-  );
+  } = usePostProcessingStore(postProcessingSelector);
 
   return (
     <div className={`space-y-4 ${className}`}>

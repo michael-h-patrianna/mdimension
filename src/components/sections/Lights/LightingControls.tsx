@@ -59,7 +59,7 @@ export const LightingControls: React.FC<LightingControlsProps> = React.memo(({
     setAmbientIntensity,
     setAmbientColor,
   } = useLightingStore(
-    useShallow((state) => ({
+    useShallow((state: any) => ({
       selectedLightId: state.selectedLightId,
       showLightGizmos: state.showLightGizmos,
       ambientIntensity: state.ambientIntensity,
@@ -71,21 +71,32 @@ export const LightingControls: React.FC<LightingControlsProps> = React.memo(({
   );
 
   // Global SSAO settings (for non-Schrödinger objects)
+  const postProcessingSelector = useShallow((state: any) => ({
+    ssaoEnabled: state.ssaoEnabled,
+    setSSAOEnabled: state.setSSAOEnabled,
+    ssaoIntensity: state.ssaoIntensity,
+    setSSAOIntensity: state.setSSAOIntensity,
+  }));
   const {
     ssaoEnabled,
     setSSAOEnabled,
     ssaoIntensity,
     setSSAOIntensity,
-  } = usePostProcessingStore(
-    useShallow((state) => ({
-      ssaoEnabled: state.ssaoEnabled,
-      setSSAOEnabled: state.setSSAOEnabled,
-      ssaoIntensity: state.ssaoIntensity,
-      setSSAOIntensity: state.setSSAOIntensity,
-    }))
-  );
+  } = usePostProcessingStore(postProcessingSelector);
 
   // Schrödinger-specific AO settings
+  const extendedObjectSelector = useShallow((state: any) => ({
+    schroedingerAoEnabled: state.schroedinger.aoEnabled,
+    schroedingerAoStrength: state.schroedinger.aoStrength,
+    schroedingerAoQuality: state.schroedinger.aoQuality,
+    schroedingerAoRadius: state.schroedinger.aoRadius,
+    schroedingerAoColor: state.schroedinger.aoColor,
+    setSchroedingerAoEnabled: state.setSchroedingerAoEnabled,
+    setSchroedingerAoStrength: state.setSchroedingerAoStrength,
+    setSchroedingerAoQuality: state.setSchroedingerAoQuality,
+    setSchroedingerAoRadius: state.setSchroedingerAoRadius,
+    setSchroedingerAoColor: state.setSchroedingerAoColor,
+  }));
   const {
     schroedingerAoEnabled,
     schroedingerAoStrength,
@@ -97,20 +108,7 @@ export const LightingControls: React.FC<LightingControlsProps> = React.memo(({
     setSchroedingerAoQuality,
     setSchroedingerAoRadius,
     setSchroedingerAoColor,
-  } = useExtendedObjectStore(
-    useShallow((state) => ({
-      schroedingerAoEnabled: state.schroedinger.aoEnabled,
-      schroedingerAoStrength: state.schroedinger.aoStrength,
-      schroedingerAoQuality: state.schroedinger.aoQuality,
-      schroedingerAoRadius: state.schroedinger.aoRadius,
-      schroedingerAoColor: state.schroedinger.aoColor,
-      setSchroedingerAoEnabled: state.setSchroedingerAoEnabled,
-      setSchroedingerAoStrength: state.setSchroedingerAoStrength,
-      setSchroedingerAoQuality: state.setSchroedingerAoQuality,
-      setSchroedingerAoRadius: state.setSchroedingerAoRadius,
-      setSchroedingerAoColor: state.setSchroedingerAoColor,
-    }))
-  );
+  } = useExtendedObjectStore(extendedObjectSelector);
 
   // Use appropriate values based on object type
   const effectiveAoEnabled = isSchroedinger ? schroedingerAoEnabled : ssaoEnabled;

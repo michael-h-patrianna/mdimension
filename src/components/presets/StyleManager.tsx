@@ -8,13 +8,14 @@ interface StyleManagerProps {
 }
 
 export const StyleManager: React.FC<StyleManagerProps> = ({ onClose }) => {
-  const { savedStyles, loadStyle, deleteStyle, importStyles, exportStyles } = usePresetManagerStore(useShallow((state) => ({
+  const presetSelector = useShallow((state: any) => ({
     savedStyles: state.savedStyles,
     loadStyle: state.loadStyle,
     deleteStyle: state.deleteStyle,
     importStyles: state.importStyles,
     exportStyles: state.exportStyles
-  })));
+  }));
+  const { savedStyles, loadStyle, deleteStyle, importStyles, exportStyles } = usePresetManagerStore(presetSelector);
   const { addToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -90,7 +91,7 @@ export const StyleManager: React.FC<StyleManagerProps> = ({ onClose }) => {
           </div>
         ) : (
           <div className="space-y-2">
-            {savedStyles.map((style) => (
+            {savedStyles.map((style: any) => (
               <div 
                 key={style.id} 
                 className="group flex items-center justify-between p-3 bg-white/5 rounded-md hover:bg-white/10 transition-colors border border-transparent hover:border-panel-border"

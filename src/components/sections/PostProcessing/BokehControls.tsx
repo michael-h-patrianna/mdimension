@@ -61,6 +61,24 @@ const BLUR_METHOD_OPTIONS = [
 export const BokehControls: React.FC<BokehControlsProps> = React.memo(({
   className = '',
 }) => {
+  const postProcessingSelector = useShallow((state: any) => ({
+    // State
+    bokehFocusMode: state.bokehFocusMode,
+    bokehBlurMethod: state.bokehBlurMethod,
+    bokehWorldFocusDistance: state.bokehWorldFocusDistance,
+    bokehWorldFocusRange: state.bokehWorldFocusRange,
+    bokehScale: state.bokehScale,
+    bokehSmoothTime: state.bokehSmoothTime,
+    bokehShowDebug: state.bokehShowDebug,
+    // Actions
+    setBokehFocusMode: state.setBokehFocusMode,
+    setBokehBlurMethod: state.setBokehBlurMethod,
+    setBokehWorldFocusDistance: state.setBokehWorldFocusDistance,
+    setBokehWorldFocusRange: state.setBokehWorldFocusRange,
+    setBokehScale: state.setBokehScale,
+    setBokehSmoothTime: state.setBokehSmoothTime,
+    setBokehShowDebug: state.setBokehShowDebug,
+  }));
   const {
     bokehFocusMode,
     bokehBlurMethod,
@@ -76,26 +94,7 @@ export const BokehControls: React.FC<BokehControlsProps> = React.memo(({
     setBokehScale,
     setBokehSmoothTime,
     setBokehShowDebug,
-  } = usePostProcessingStore(
-    useShallow((state) => ({
-      // State
-      bokehFocusMode: state.bokehFocusMode,
-      bokehBlurMethod: state.bokehBlurMethod,
-      bokehWorldFocusDistance: state.bokehWorldFocusDistance,
-      bokehWorldFocusRange: state.bokehWorldFocusRange,
-      bokehScale: state.bokehScale,
-      bokehSmoothTime: state.bokehSmoothTime,
-      bokehShowDebug: state.bokehShowDebug,
-      // Actions
-      setBokehFocusMode: state.setBokehFocusMode,
-      setBokehBlurMethod: state.setBokehBlurMethod,
-      setBokehWorldFocusDistance: state.setBokehWorldFocusDistance,
-      setBokehWorldFocusRange: state.setBokehWorldFocusRange,
-      setBokehScale: state.setBokehScale,
-      setBokehSmoothTime: state.setBokehSmoothTime,
-      setBokehShowDebug: state.setBokehShowDebug,
-    }))
-  );
+  } = usePostProcessingStore(postProcessingSelector);
 
   const isManualMode = bokehFocusMode === 'manual';
   const isAutofocusMode = !isManualMode;

@@ -81,6 +81,17 @@ export const QuaternionJuliaControls: React.FC<QuaternionJuliaControlsProps> = R
   className = '',
 }) => {
   // Consolidate extended object store selectors with useShallow
+  const extendedObjectSelector = useShallow((state: any) => ({
+    config: state.quaternionJulia,
+    setJuliaConstant: state.setQuaternionJuliaConstant,
+    setPower: state.setQuaternionJuliaPower,
+    setMaxIterations: state.setQuaternionJuliaMaxIterations,
+    setBailoutRadius: state.setQuaternionJuliaBailoutRadius,
+    setScale: state.setQuaternionJuliaScale,
+    setQualityPreset: state.setQuaternionJuliaQualityPreset,
+    setParameterValue: state.setQuaternionJuliaParameterValue,
+    resetParameters: state.resetQuaternionJuliaParameters,
+  }));
   const {
     config,
     setJuliaConstant,
@@ -91,19 +102,7 @@ export const QuaternionJuliaControls: React.FC<QuaternionJuliaControlsProps> = R
     setQualityPreset,
     setParameterValue,
     resetParameters,
-  } = useExtendedObjectStore(
-    useShallow((state) => ({
-      config: state.quaternionJulia,
-      setJuliaConstant: state.setQuaternionJuliaConstant,
-      setPower: state.setQuaternionJuliaPower,
-      setMaxIterations: state.setQuaternionJuliaMaxIterations,
-      setBailoutRadius: state.setQuaternionJuliaBailoutRadius,
-      setScale: state.setQuaternionJuliaScale,
-      setQualityPreset: state.setQuaternionJuliaQualityPreset,
-      setParameterValue: state.setQuaternionJuliaParameterValue,
-      resetParameters: state.resetQuaternionJuliaParameters,
-    }))
-  );
+  } = useExtendedObjectStore(extendedObjectSelector);
 
   // Get current dimension for slice parameters
   const dimension = useGeometryStore((state) => state.dimension);

@@ -36,6 +36,38 @@ export const ZoomDrawer: React.FC = React.memo(() => {
   const [showStrategySettings, setShowStrategySettings] = useState(false)
 
   // Get config and setters from store
+  const extendedObjectSelector = useShallow((state: any) => ({
+    config: state.mandelbulb,
+    // Core Zoom
+    setZoomEnabled: state.setMandelbulbZoomEnabled,
+    setZoom: state.setMandelbulbZoom,
+    setZoomSpeed: state.setMandelbulbZoomSpeed,
+    // Animation
+    setZoomAnimationEnabled: state.setMandelbulbZoomAnimationEnabled,
+    setZoomAnimationMode: state.setMandelbulbZoomAnimationMode,
+    setZoomTargetLevel: state.setMandelbulbZoomTargetLevel,
+    // Autopilot
+    setAutopilotEnabled: state.setMandelbulbAutopilotEnabled,
+    setAutopilotStrategy: state.setMandelbulbAutopilotStrategy,
+    // Strategy A: Center-Ray Lock
+    setCenterRayProbeSize: state.setMandelbulbCenterRayProbeSize,
+    setCenterRayProbeFrequency: state.setMandelbulbCenterRayProbeFrequency,
+    setCenterRayMissThreshold: state.setMandelbulbCenterRayMissThreshold,
+    setCenterRayNudgeStrength: state.setMandelbulbCenterRayNudgeStrength,
+    // Strategy B: Interest Score
+    setInterestScoreResolution: state.setMandelbulbInterestScoreResolution,
+    setInterestScoreInterval: state.setMandelbulbInterestScoreInterval,
+    setInterestScoreCandidates: state.setMandelbulbInterestScoreCandidates,
+    setInterestScoreNudgeRadius: state.setMandelbulbInterestScoreNudgeRadius,
+    setInterestScoreMetric: state.setMandelbulbInterestScoreMetric,
+    // Strategy C: Boundary Target
+    setBoundaryTargetEscapeRatio: state.setMandelbulbBoundaryTargetEscapeRatio,
+    setBoundaryTargetBand: state.setMandelbulbBoundaryTargetBand,
+    setBoundaryTargetCorrectionStrength: state.setMandelbulbBoundaryTargetCorrectionStrength,
+    // Reset
+    resetZoom: state.resetMandelbulbZoom,
+  }));
+
   const {
     config,
     // Core Zoom
@@ -66,39 +98,7 @@ export const ZoomDrawer: React.FC = React.memo(() => {
     setBoundaryTargetCorrectionStrength,
     // Reset
     resetZoom,
-  } = useExtendedObjectStore(
-    useShallow((state) => ({
-      config: state.mandelbulb,
-      // Core Zoom
-      setZoomEnabled: state.setMandelbulbZoomEnabled,
-      setZoom: state.setMandelbulbZoom,
-      setZoomSpeed: state.setMandelbulbZoomSpeed,
-      // Animation
-      setZoomAnimationEnabled: state.setMandelbulbZoomAnimationEnabled,
-      setZoomAnimationMode: state.setMandelbulbZoomAnimationMode,
-      setZoomTargetLevel: state.setMandelbulbZoomTargetLevel,
-      // Autopilot
-      setAutopilotEnabled: state.setMandelbulbAutopilotEnabled,
-      setAutopilotStrategy: state.setMandelbulbAutopilotStrategy,
-      // Strategy A: Center-Ray Lock
-      setCenterRayProbeSize: state.setMandelbulbCenterRayProbeSize,
-      setCenterRayProbeFrequency: state.setMandelbulbCenterRayProbeFrequency,
-      setCenterRayMissThreshold: state.setMandelbulbCenterRayMissThreshold,
-      setCenterRayNudgeStrength: state.setMandelbulbCenterRayNudgeStrength,
-      // Strategy B: Interest Score
-      setInterestScoreResolution: state.setMandelbulbInterestScoreResolution,
-      setInterestScoreInterval: state.setMandelbulbInterestScoreInterval,
-      setInterestScoreCandidates: state.setMandelbulbInterestScoreCandidates,
-      setInterestScoreNudgeRadius: state.setMandelbulbInterestScoreNudgeRadius,
-      setInterestScoreMetric: state.setMandelbulbInterestScoreMetric,
-      // Strategy C: Boundary Target
-      setBoundaryTargetEscapeRatio: state.setMandelbulbBoundaryTargetEscapeRatio,
-      setBoundaryTargetBand: state.setMandelbulbBoundaryTargetBand,
-      setBoundaryTargetCorrectionStrength: state.setMandelbulbBoundaryTargetCorrectionStrength,
-      // Reset
-      resetZoom: state.resetMandelbulbZoom,
-    }))
-  )
+  } = useExtendedObjectStore(extendedObjectSelector);
 
   // Format zoom level for display (show as "Nx" multiplier)
   const formatZoom = (z: number): string => {

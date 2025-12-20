@@ -25,6 +25,14 @@ const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
 export const CinematicControls: React.FC<CinematicControlsProps> = React.memo(
   ({ className = '' }) => {
     // Cinematic State
+    const postProcessingSelector = useShallow((state: any) => ({
+      cinematicAberration: state.cinematicAberration,
+      cinematicVignette: state.cinematicVignette,
+      cinematicGrain: state.cinematicGrain,
+      setCinematicAberration: state.setCinematicAberration,
+      setCinematicVignette: state.setCinematicVignette,
+      setCinematicGrain: state.setCinematicGrain,
+    }));
     const {
       cinematicAberration,
       cinematicVignette,
@@ -32,31 +40,21 @@ export const CinematicControls: React.FC<CinematicControlsProps> = React.memo(
       setCinematicAberration,
       setCinematicVignette,
       setCinematicGrain,
-    } = usePostProcessingStore(
-      useShallow((state) => ({
-        cinematicAberration: state.cinematicAberration,
-        cinematicVignette: state.cinematicVignette,
-        cinematicGrain: state.cinematicGrain,
-        setCinematicAberration: state.setCinematicAberration,
-        setCinematicVignette: state.setCinematicVignette,
-        setCinematicGrain: state.setCinematicGrain,
-      }))
-    )
+    } = usePostProcessingStore(postProcessingSelector);
 
     // Tone Mapping State
+    const lightingSelector = useShallow((state: any) => ({
+      toneMappingAlgorithm: state.toneMappingAlgorithm,
+      exposure: state.exposure,
+      setToneMappingAlgorithm: state.setToneMappingAlgorithm,
+      setExposure: state.setExposure,
+    }));
     const {
       toneMappingAlgorithm,
       exposure,
       setToneMappingAlgorithm,
       setExposure,
-    } = useLightingStore(
-      useShallow((state) => ({
-        toneMappingAlgorithm: state.toneMappingAlgorithm,
-        exposure: state.exposure,
-        setToneMappingAlgorithm: state.setToneMappingAlgorithm,
-        setExposure: state.setExposure,
-      }))
-    );
+    } = useLightingStore(lightingSelector);
 
     // Filter out 'none' option for tone mapping selector
     const toneMappingOptions = TONE_MAPPING_OPTIONS

@@ -20,10 +20,11 @@ export interface EducationPanelProps {
 export const EducationPanel: React.FC<EducationPanelProps> = ({
   className = '',
 }) => {
-  const { dimension, objectType } = useGeometryStore(useShallow((state) => ({
+  const geometrySelector = useShallow((state: any) => ({
     dimension: state.dimension,
     objectType: state.objectType
-  })));
+  }));
+  const { dimension, objectType } = useGeometryStore(geometrySelector);
 
   const dimensionInfo = useMemo(
     () => getDimensionInfo(dimension),

@@ -23,36 +23,34 @@ export const EdgeControls: React.FC<EdgesControlsProps> = React.memo(({
   const objectType = useGeometryStore(state => state.objectType);
   
   // Consolidate visual store selectors with useShallow to reduce subscriptions
+  const appearanceSelector = useShallow((state: any) => ({
+    edgeColor: state.edgeColor,
+    edgeThickness: state.edgeThickness,
+    setEdgeColor: state.setEdgeColor,
+    setEdgeThickness: state.setEdgeThickness,
+  }));
   const {
     edgeColor,
     edgeThickness,
     setEdgeColor,
     setEdgeThickness,
-  } = useAppearanceStore(
-    useShallow((state) => ({
-      edgeColor: state.edgeColor,
-      edgeThickness: state.edgeThickness,
-      setEdgeColor: state.setEdgeColor,
-      setEdgeThickness: state.setEdgeThickness,
-    }))
-  );
+  } = useAppearanceStore(appearanceSelector);
 
   // Schrödinger specific controls
+  const extendedObjectSelector = useShallow((state: any) => ({
+    config: state.schroedinger,
+    setErosionStrength: state.setSchroedingerErosionStrength,
+    setErosionScale: state.setSchroedingerErosionScale,
+    setErosionTurbulence: state.setSchroedingerErosionTurbulence,
+    setErosionNoiseType: state.setSchroedingerErosionNoiseType,
+  }));
   const {
     config,
     setErosionStrength,
     setErosionScale,
     setErosionTurbulence,
     setErosionNoiseType
-  } = useExtendedObjectStore(
-    useShallow((state) => ({
-      config: state.schroedinger,
-      setErosionStrength: state.setSchroedingerErosionStrength,
-      setErosionScale: state.setSchroedingerErosionScale,
-      setErosionTurbulence: state.setSchroedingerErosionTurbulence,
-      setErosionNoiseType: state.setSchroedingerErosionNoiseType,
-    }))
-  );
+  } = useExtendedObjectStore(extendedObjectSelector);
 
   return (
     <div className={`space-y-4 ${className}`}>

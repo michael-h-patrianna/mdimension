@@ -142,4 +142,8 @@ export type AdvancedRenderingSlice = AdvancedRenderingState & AdvancedRenderingA
 // Combined Appearance Slice
 // ============================================================================
 
-export type AppearanceSlice = ColorSlice & MaterialSlice & RenderSlice & AdvancedRenderingSlice
+export interface AppearanceResetAction {
+  reset: () => void
+}
+
+export type AppearanceSlice = ColorSlice & MaterialSlice & RenderSlice & AdvancedRenderingSlice & AppearanceResetAction

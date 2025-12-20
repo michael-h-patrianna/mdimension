@@ -251,12 +251,11 @@ const SkyboxCoefficientEditor: React.FC<SkyboxCoefficientEditorProps> = ({
 // ============================================================================
 
 export const SkyboxPaletteEditor: React.FC = () => {
-  const { proceduralSettings, setProceduralSettings } = useEnvironmentStore(
-    useShallow((state) => ({
-      proceduralSettings: state.proceduralSettings,
-      setProceduralSettings: state.setProceduralSettings,
-    }))
-  );
+  const environmentSelector = useShallow((state: any) => ({
+    proceduralSettings: state.proceduralSettings,
+    setProceduralSettings: state.setProceduralSettings,
+  }));
+  const { proceduralSettings, setProceduralSettings } = useEnvironmentStore(environmentSelector);
 
   const { cosineCoefficients } = proceduralSettings;
 

@@ -17,12 +17,11 @@ export interface DistributionControlsProps {
 export const DistributionControls: React.FC<DistributionControlsProps> = ({
   className = '',
 }) => {
-  const { distribution, setDistribution } = useAppearanceStore(
-    useShallow((state) => ({
-      distribution: state.distribution,
-      setDistribution: state.setDistribution,
-    }))
-  );
+  const appearanceSelector = useShallow((state: any) => ({
+    distribution: state.distribution,
+    setDistribution: state.setDistribution,
+  }));
+  const { distribution, setDistribution } = useAppearanceStore(appearanceSelector);
 
   return (
     <div className={`space-y-4 ${className}`}>

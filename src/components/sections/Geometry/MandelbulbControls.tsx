@@ -57,6 +57,14 @@ export const MandelbulbControls: React.FC<MandelbulbControlsProps> = React.memo(
   className = '',
 }) => {
   // Consolidate extended object store selectors with useShallow
+  const extendedObjectSelector = useShallow((state: any) => ({
+    config: state.mandelbulb,
+    setMaxIterations: state.setMandelbulbMaxIterations,
+    setEscapeRadius: state.setMandelbulbEscapeRadius,
+    setMandelbulbPower: state.setMandelbulbMandelbulbPower,
+    setMandelbulbParameterValue: state.setMandelbulbParameterValue,
+    resetMandelbulbParameters: state.resetMandelbulbParameters,
+  }));
   const {
     config,
     setMaxIterations,
@@ -64,16 +72,7 @@ export const MandelbulbControls: React.FC<MandelbulbControlsProps> = React.memo(
     setMandelbulbPower,
     setMandelbulbParameterValue,
     resetMandelbulbParameters,
-  } = useExtendedObjectStore(
-    useShallow((state) => ({
-      config: state.mandelbulb,
-      setMaxIterations: state.setMandelbulbMaxIterations,
-      setEscapeRadius: state.setMandelbulbEscapeRadius,
-      setMandelbulbPower: state.setMandelbulbMandelbulbPower,
-      setMandelbulbParameterValue: state.setMandelbulbParameterValue,
-      resetMandelbulbParameters: state.resetMandelbulbParameters,
-    }))
-  );
+  } = useExtendedObjectStore(extendedObjectSelector);
 
   // Get current dimension to show/hide dimension-specific controls
   const dimension = useGeometryStore((state) => state.dimension);

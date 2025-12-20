@@ -72,6 +72,34 @@ export const SchroedingerControls: React.FC<SchroedingerControlsProps> = React.m
   className = '',
 }) => {
   // Consolidate extended object store selectors with useShallow
+  const extendedObjectSelector = useShallow((state: any) => ({
+    config: state.schroedinger,
+    // Geometry actions
+    setScale: state.setSchroedingerScale,
+    // Mode selection
+    setQuantumMode: state.setSchroedingerQuantumMode,
+    // Harmonic oscillator actions
+    setPresetName: state.setSchroedingerPresetName,
+    setSeed: state.setSchroedingerSeed,
+    randomizeSeed: state.randomizeSchroedingerSeed,
+    setTermCount: state.setSchroedingerTermCount,
+    setMaxQuantumNumber: state.setSchroedingerMaxQuantumNumber,
+    setFrequencySpread: state.setSchroedingerFrequencySpread,
+    setFieldScale: state.setSchroedingerFieldScale,
+    setSchroedingerParameterValue: state.setSchroedingerParameterValue,
+    resetSchroedingerParameters: state.resetSchroedingerParameters,
+    // Hydrogen orbital actions
+    setHydrogenPreset: state.setSchroedingerHydrogenPreset,
+    setPrincipalQuantumNumber: state.setSchroedingerPrincipalQuantumNumber,
+    setAzimuthalQuantumNumber: state.setSchroedingerAzimuthalQuantumNumber,
+    setMagneticQuantumNumber: state.setSchroedingerMagneticQuantumNumber,
+    setUseRealOrbitals: state.setSchroedingerUseRealOrbitals,
+    setBohrRadiusScale: state.setSchroedingerBohrRadiusScale,
+    // Hydrogen ND actions
+    setHydrogenNDPreset: state.setSchroedingerHydrogenNDPreset,
+    setExtraDimQuantumNumber: state.setSchroedingerExtraDimQuantumNumber,
+    setExtraDimFrequencySpread: state.setSchroedingerExtraDimFrequencySpread,
+  }));
   const {
     config,
     // Mode selection
@@ -99,36 +127,7 @@ export const SchroedingerControls: React.FC<SchroedingerControlsProps> = React.m
     setExtraDimFrequencySpread,
     // Geometry actions
     setScale,
-  } = useExtendedObjectStore(
-    useShallow((state) => ({
-      config: state.schroedinger,
-      // Geometry actions
-      setScale: state.setSchroedingerScale,
-      // Mode selection
-      setQuantumMode: state.setSchroedingerQuantumMode,
-      // Harmonic oscillator actions
-      setPresetName: state.setSchroedingerPresetName,
-      setSeed: state.setSchroedingerSeed,
-      randomizeSeed: state.randomizeSchroedingerSeed,
-      setTermCount: state.setSchroedingerTermCount,
-      setMaxQuantumNumber: state.setSchroedingerMaxQuantumNumber,
-      setFrequencySpread: state.setSchroedingerFrequencySpread,
-      setFieldScale: state.setSchroedingerFieldScale,
-      setSchroedingerParameterValue: state.setSchroedingerParameterValue,
-      resetSchroedingerParameters: state.resetSchroedingerParameters,
-      // Hydrogen orbital actions
-      setHydrogenPreset: state.setSchroedingerHydrogenPreset,
-      setPrincipalQuantumNumber: state.setSchroedingerPrincipalQuantumNumber,
-      setAzimuthalQuantumNumber: state.setSchroedingerAzimuthalQuantumNumber,
-      setMagneticQuantumNumber: state.setSchroedingerMagneticQuantumNumber,
-      setUseRealOrbitals: state.setSchroedingerUseRealOrbitals,
-      setBohrRadiusScale: state.setSchroedingerBohrRadiusScale,
-      // Hydrogen ND actions
-      setHydrogenNDPreset: state.setSchroedingerHydrogenNDPreset,
-      setExtraDimQuantumNumber: state.setSchroedingerExtraDimQuantumNumber,
-      setExtraDimFrequencySpread: state.setSchroedingerExtraDimFrequencySpread,
-    }))
-  );
+  } = useExtendedObjectStore(extendedObjectSelector);
 
   // Get current dimension to show/hide dimension-specific controls
   const dimension = useGeometryStore((state) => state.dimension);
@@ -263,7 +262,7 @@ export const SchroedingerControls: React.FC<SchroedingerControlsProps> = React.m
                             </div>
                         </div>
                         <p className="text-xs text-text-tertiary pt-1">
-                            {HYDROGEN_ORBITAL_PRESETS[config.hydrogenPreset]?.description}
+                            {HYDROGEN_ORBITAL_PRESETS[config.hydrogenPreset as HydrogenOrbitalPresetName]?.description}
                         </p>
                     </div>
 
@@ -383,7 +382,7 @@ export const SchroedingerControls: React.FC<SchroedingerControlsProps> = React.m
                             </div>
                         </div>
                         <p className="text-xs text-text-tertiary pt-1">
-                            {HYDROGEN_ND_PRESETS[config.hydrogenNDPreset]?.description}
+                            {HYDROGEN_ND_PRESETS[config.hydrogenNDPreset as HydrogenNDPresetName]?.description}
                         </p>
                     </div>
 

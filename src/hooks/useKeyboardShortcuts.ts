@@ -7,6 +7,7 @@ import { exportSceneToPNG, generateTimestampFilename } from '@/lib/export'
 import { useGeometryStore } from '@/stores/geometryStore'
 import { useLayoutStore } from '@/stores/layoutStore'
 import { useLightingStore } from '@/stores/lightingStore'
+import { useExportStore } from '@/stores/exportStore'
 import { useCallback, useEffect } from 'react'
 
 export interface ShortcutConfig {
@@ -47,6 +48,7 @@ export const SHORTCUTS: Omit<ShortcutConfig, 'action'>[] = [
   { key: 'c', description: 'Toggle cinematic mode' },
   // Export
   { key: 's', ctrl: true, description: 'Export PNG' },
+  { key: 'e', ctrl: true, shift: true, description: 'Export Video (MP4)' },
   // Light controls (when light selected)
   { key: 'w', description: 'Light: Move mode*' },
   { key: 'e', description: 'Light: Rotate mode*' },
@@ -128,6 +130,12 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}):
         const filename = generateTimestampFilename('ndimensional')
         exportSceneToPNG({ filename })
         return
+      }
+
+      if (isCtrlOrMeta && shiftKey && lowerKey === 'e') {
+          event.preventDefault()
+          useExportStore.getState().setModalOpen(true)
+          return
       }
 
       if (!isCtrlOrMeta && !shiftKey && lowerKey === 'c') {

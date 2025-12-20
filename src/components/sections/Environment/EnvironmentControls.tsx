@@ -41,6 +41,30 @@ export const EnvironmentControls: React.FC<EnvironmentControlsProps> = React.mem
 }) => {
   const [activeTab, setActiveTab] = useState('walls');
 
+  const environmentSelector = useShallow((state: any) => ({
+    activeWalls: state.activeWalls,
+    groundPlaneOffset: state.groundPlaneOffset,
+    groundPlaneColor: state.groundPlaneColor,
+    groundPlaneType: state.groundPlaneType,
+    groundPlaneSizeScale: state.groundPlaneSizeScale,
+    showGroundGrid: state.showGroundGrid,
+    groundGridColor: state.groundGridColor,
+    groundGridSpacing: state.groundGridSpacing,
+    groundMaterialRoughness: state.groundMaterialRoughness,
+    groundMaterialMetalness: state.groundMaterialMetalness,
+    groundMaterialEnvMapIntensity: state.groundMaterialEnvMapIntensity,
+    setActiveWalls: state.setActiveWalls,
+    setGroundPlaneOffset: state.setGroundPlaneOffset,
+    setGroundPlaneColor: state.setGroundPlaneColor,
+    setGroundPlaneType: state.setGroundPlaneType,
+    setGroundPlaneSizeScale: state.setGroundPlaneSizeScale,
+    setShowGroundGrid: state.setShowGroundGrid,
+    setGroundGridColor: state.setGroundGridColor,
+    setGroundGridSpacing: state.setGroundGridSpacing,
+    setGroundMaterialRoughness: state.setGroundMaterialRoughness,
+    setGroundMaterialMetalness: state.setGroundMaterialMetalness,
+    setGroundMaterialEnvMapIntensity: state.setGroundMaterialEnvMapIntensity,
+  }));
   const {
     activeWalls,
     groundPlaneOffset,
@@ -64,32 +88,7 @@ export const EnvironmentControls: React.FC<EnvironmentControlsProps> = React.mem
     setGroundMaterialRoughness,
     setGroundMaterialMetalness,
     setGroundMaterialEnvMapIntensity,
-  } = useEnvironmentStore(
-    useShallow((state) => ({
-      activeWalls: state.activeWalls,
-      groundPlaneOffset: state.groundPlaneOffset,
-      groundPlaneColor: state.groundPlaneColor,
-      groundPlaneType: state.groundPlaneType,
-      groundPlaneSizeScale: state.groundPlaneSizeScale,
-      showGroundGrid: state.showGroundGrid,
-      groundGridColor: state.groundGridColor,
-      groundGridSpacing: state.groundGridSpacing,
-      groundMaterialRoughness: state.groundMaterialRoughness,
-      groundMaterialMetalness: state.groundMaterialMetalness,
-      groundMaterialEnvMapIntensity: state.groundMaterialEnvMapIntensity,
-      setActiveWalls: state.setActiveWalls,
-      setGroundPlaneOffset: state.setGroundPlaneOffset,
-      setGroundPlaneColor: state.setGroundPlaneColor,
-      setGroundPlaneType: state.setGroundPlaneType,
-      setGroundPlaneSizeScale: state.setGroundPlaneSizeScale,
-      setShowGroundGrid: state.setShowGroundGrid,
-      setGroundGridColor: state.setGroundGridColor,
-      setGroundGridSpacing: state.setGroundGridSpacing,
-      setGroundMaterialRoughness: state.setGroundMaterialRoughness,
-      setGroundMaterialMetalness: state.setGroundMaterialMetalness,
-      setGroundMaterialEnvMapIntensity: state.setGroundMaterialEnvMapIntensity,
-    }))
-  );
+  } = useEnvironmentStore(environmentSelector);
 
   /**
    * Walls tab content - ground plane and grid settings

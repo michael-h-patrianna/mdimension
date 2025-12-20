@@ -14,6 +14,7 @@ import { useIsDesktop } from '@/hooks/useMediaQuery';
 import { useKonamiCode } from '@/hooks/useKonamiCode';
 import { soundManager } from '@/lib/audio/SoundManager';
 import { GlobalProgress } from '@/components/ui/GlobalProgress';
+import { ExportModal } from '@/components/ui/ExportModal';
 
 interface EditorLayoutProps {
   children?: React.ReactNode;
@@ -29,6 +30,17 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
     soundManager.playSuccess();
   });
 
+  const layoutSelector = useShallow((state: any) => ({
+    isCollapsed: state.isCollapsed,
+    toggleCollapsed: state.toggleCollapsed,
+    isCinematicMode: state.isCinematicMode,
+    toggleCinematicMode: state.toggleCinematicMode,
+    setCinematicMode: state.setCinematicMode,
+    setCollapsed: state.setCollapsed,
+    showLeftPanel: state.showLeftPanel,
+    setLeftPanel: state.setLeftPanel,
+  }));
+
   const { 
     isCollapsed, 
     toggleCollapsed, 
@@ -38,18 +50,7 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
     setCollapsed,
     showLeftPanel,
     setLeftPanel 
-  } = useLayoutStore(
-    useShallow((state) => ({
-      isCollapsed: state.isCollapsed,
-      toggleCollapsed: state.toggleCollapsed,
-      isCinematicMode: state.isCinematicMode,
-      toggleCinematicMode: state.toggleCinematicMode,
-      setCinematicMode: state.setCinematicMode,
-      setCollapsed: state.setCollapsed,
-      showLeftPanel: state.showLeftPanel,
-      setLeftPanel: state.setLeftPanel,
-    }))
-  );
+  } = useLayoutStore(layoutSelector);
   
   const isDesktop = useIsDesktop();
 
@@ -154,6 +155,7 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
         className="relative z-10 flex flex-col h-full w-full pointer-events-none"
       >
         <GlobalProgress />
+        <ExportModal />
         
         {!isCinematicMode && (
             <div className="pointer-events-auto shrink-0 z-50">

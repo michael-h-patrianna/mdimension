@@ -53,45 +53,41 @@ export const TopBarControls: React.FC = () => {
   const { addToast } = useToast();
   
   // Visual Store
+  const appearanceSelector = useShallow((state: any) => ({
+    edgesVisible: state.edgesVisible,
+    facesVisible: state.facesVisible,
+    setEdgesVisible: state.setEdgesVisible,
+    setFacesVisible: state.setFacesVisible,
+  }));
   const {
     edgesVisible,
     facesVisible,
     setEdgesVisible,
     setFacesVisible,
-  } = useAppearanceStore(
-    useShallow((state) => ({
-      edgesVisible: state.edgesVisible,
-      facesVisible: state.facesVisible,
-      setEdgesVisible: state.setEdgesVisible,
-      setFacesVisible: state.setFacesVisible,
-    }))
-  );
+  } = useAppearanceStore(appearanceSelector);
 
+  const uiSelector = useShallow((state: any) => ({
+    showPerfMonitor: state.showPerfMonitor,
+    setShowPerfMonitor: state.setShowPerfMonitor
+  }));
   const {
     showPerfMonitor,
     setShowPerfMonitor
-  } = useUIStore(
-    useShallow((state) => ({
-      showPerfMonitor: state.showPerfMonitor,
-      setShowPerfMonitor: state.setShowPerfMonitor
-    }))
-  );
+  } = useUIStore(uiSelector);
 
   // Geometry Store
-  const { objectType, dimension } = useGeometryStore(
-    useShallow((state) => ({
-      objectType: state.objectType,
-      dimension: state.dimension,
-    }))
-  );
+  const geometrySelector = useShallow((state: any) => ({
+    objectType: state.objectType,
+    dimension: state.dimension,
+  }));
+  const { objectType, dimension } = useGeometryStore(geometrySelector);
 
   // Logic for Cinematic Mode
-  const { isCinematicMode, toggleCinematicMode } = useLayoutStore(
-    useShallow((state) => ({
-      isCinematicMode: state.isCinematicMode,
-      toggleCinematicMode: state.toggleCinematicMode,
-    }))
-  );
+  const layoutSelector = useShallow((state: any) => ({
+    isCinematicMode: state.isCinematicMode,
+    toggleCinematicMode: state.toggleCinematicMode,
+  }));
+  const { isCinematicMode, toggleCinematicMode } = useLayoutStore(layoutSelector);
 
   // Local State
   const [isFullscreen, setIsFullscreen] = useState(false);

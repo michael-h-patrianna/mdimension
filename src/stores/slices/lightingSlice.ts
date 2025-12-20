@@ -132,6 +132,8 @@ export interface LightingSliceActions {
   // --- Shadow Map Actions (for mesh-based objects like polytopes) ---
   setShadowMapBias: (bias: number) => void
   setShadowMapBlur: (blur: number) => void
+
+  reset: () => void
 }
 
 export type LightingSlice = LightingSliceState & LightingSliceActions
@@ -355,5 +357,9 @@ export const createLightingSlice: StateCreator<LightingSlice, [], [], LightingSl
 
   setShadowMapBlur: (blur: number) => {
     set({ shadowMapBlur: Math.max(0, Math.min(10, blur)) })
+  },
+
+  reset: () => {
+    set(LIGHTING_INITIAL_STATE)
   },
 })

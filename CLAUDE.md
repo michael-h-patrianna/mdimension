@@ -23,13 +23,27 @@ WHEN: Any non-trivial debugging, planning, solution design task
 WHY: Offers quick access to best practices and solutions
 ```
 
+=== END CIB-001 ===
+
+=== CRITICAL CODE STYLE INSTRUCTION BLOCK (CIB-002)===
+
 ## MANDATORY CODE STYLE AND ARCHITECTURE RULES
 Coding agents must follow `docs/meta/styleguide.md` - No exceptions!
-All shaders MUST use WebGL2/GLSL ES 3.00 syntax (`in`/`out`, `layout`, no `attribute`/`varying`/`gl_FragColor`).
 
-## THREE.JS DPR/VIEWPORT GOTCHA
+**All shaders MUST use WebGL2 and GLSL ES 3.00 syntax.** This is a mandatory requirement with no exceptions.
 
-**CRITICAL**: When rendering to WebGLRenderTarget at non-standard resolutions, NEVER use `gl.setViewport()`. It internally multiplies by device pixel ratio (DPR), causing incorrect rendering on high-DPI displays.
+*** Required GLSL ES 3.00 Syntax ***
+
+| WebGL1 (Forbidden) | WebGL2 (Required) |
+|-------------------|-------------------|
+| `attribute` | `in` (vertex shader) |
+| `varying` (vertex) | `out` |
+| `varying` (fragment) | `in` |
+| `gl_FragColor` | `layout(location = N) out vec4 varName;` |
+| `texture2D()` | `texture()` |
+| `textureCube()` | `texture()` |
+
+**CRITICAL THREE.JS DPR/VIEWPORT GOTCHA**: When rendering to WebGLRenderTarget at non-standard resolutions, NEVER use `gl.setViewport()`. It internally multiplies by device pixel ratio (DPR), causing incorrect rendering on high-DPI displays.
 
 ```typescript
 // ✗ WRONG - DPR multiplication breaks non-standard resolution targets
@@ -51,6 +65,14 @@ gl_Position = vec4(position.xy, 0.0, 1.0);
 ```
 
 See: https://github.com/mrdoob/three.js/issues/27655
+
+**Use custom UI component library**: `src/components/ui`: Do not use default html controls. Use the custom components of this project.
+
+**Integrate UI components into theming solution**: Do not hardcode styles, always use the theme.
+
+**Leverage useShallow**: Leverage useShallow and Zustand 5 to improve performance.
+
+=== END CIB-002 ===
 
 ## MANDATORY EXECUTION PROTOCOL
 1. Always complete all tasks fully. Do not simplify approaches, do not skip tasks.
@@ -93,7 +115,6 @@ If system becomes unresponsive during tests:
 killall -9 node  # Force kill all Node processes
 node scripts/cleanup-vitest.mjs  # Clean up lingering workers
 ```
-
 ## FOLDER USAGE RULES
 
 | Activity | Required Directory | Agent Enforcement |
@@ -104,8 +125,6 @@ node scripts/cleanup-vitest.mjs  # Clean up lingering workers
 | Documentation, research notes | `docs/` | Long-form analysis belongs in this directory instead of new markdown files at the root. |
 | Temporary experiments / sandboxes | `src/dev-tools/` | Use this workspace for throwaway UI/physics spikes and clean it up after. |
 | 🚫 Forbidden | Project root | Keep root pristine—no scripts, screenshots, or scratch docs. |
-
-=== END CIB-001 ===
 
 ## TECH STACK
 

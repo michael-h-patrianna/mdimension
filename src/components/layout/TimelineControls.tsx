@@ -21,6 +21,19 @@ export const TimelineControls: FC = () => {
     const objectType = useGeometryStore((state) => state.objectType);
     
     // Animation Store
+    const animationSelector = useShallow((state: any) => ({
+        isPlaying: state.isPlaying,
+        speed: state.speed,
+        direction: state.direction,
+        animatingPlanes: state.animatingPlanes,
+        toggle: state.toggle,
+        setSpeed: state.setSpeed,
+        toggleDirection: state.toggleDirection,
+        togglePlane: state.togglePlane,
+        animateAll: state.animateAll,
+        clearAllPlanes: state.clearAllPlanes,
+    }));
+    
     const {
         isPlaying,
         speed,
@@ -32,33 +45,20 @@ export const TimelineControls: FC = () => {
         togglePlane,
         animateAll,
         clearAllPlanes
-    } = useAnimationStore(
-        useShallow((state) => ({
-            isPlaying: state.isPlaying,
-            speed: state.speed,
-            direction: state.direction,
-            animatingPlanes: state.animatingPlanes,
-            toggle: state.toggle,
-            setSpeed: state.setSpeed,
-            toggleDirection: state.toggleDirection,
-            togglePlane: state.togglePlane,
-            animateAll: state.animateAll,
-            clearAllPlanes: state.clearAllPlanes,
-        }))
-    );
+    } = useAnimationStore(animationSelector);
 
     const animationBias = useUIStore((state) => state.animationBias);
     const setAnimationBias = useUIStore((state) => state.setAnimationBias);
 
     // Extended object configs for animation state checking
-    const { mandelbulbConfig, polytopeConfig, schroedingerConfig } = useExtendedObjectStore(
-        useShallow((state) => ({
-          mandelbulbConfig: state.mandelbulb,
-          quaternionJuliaConfig: state.quaternionJulia,
-          polytopeConfig: state.polytope,
-          schroedingerConfig: state.schroedinger,
-        }))
-    );
+    const extendedObjectSelector = useShallow((state: any) => ({
+        mandelbulbConfig: state.mandelbulb,
+        quaternionJuliaConfig: state.quaternionJulia,
+        polytopeConfig: state.polytope,
+        schroedingerConfig: state.schroedinger,
+    }));
+    
+    const { mandelbulbConfig, polytopeConfig, schroedingerConfig } = useExtendedObjectStore(extendedObjectSelector);
 
     const planes = useMemo(() => getRotationPlanes(dimension), [dimension]);
     const hasAnimatingPlanes = animatingPlanes.size > 0;

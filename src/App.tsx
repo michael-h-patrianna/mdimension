@@ -17,8 +17,10 @@ import { FpsController } from '@/components/canvas/FpsController';
 import { PerformanceMonitor } from '@/components/canvas/PerformanceMonitor';
 import { PerformanceStatsCollector } from '@/components/canvas/PerformanceStatsCollector';
 import { RefinementIndicator } from '@/components/canvas/RefinementIndicator';
+import { VideoExportController } from '@/components/canvas/VideoExportController';
 import { EditorLayout } from '@/components/layout/EditorLayout';
 import { ContextLostOverlay } from '@/components/ui/ContextLostOverlay';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { ShaderCompilationOverlay } from '@/components/ui/ShaderCompilationOverlay';
 import { ToastProvider, useToast } from '@/contexts/ToastContext';
 import { useAnimationLoop } from '@/hooks/useAnimationLoop';
@@ -172,26 +174,29 @@ function AppContent() {
         {/* Performance indicators */}
         <RefinementIndicator position="bottom-right" />
 
-        <Canvas
-          frameloop="never"
-          camera={{
-            position: [2, 2, 2.5],
-            fov: 60,
-          }}
-          shadows="soft"
-          flat
-          gl={{ alpha: false, antialias: false, preserveDrawingBuffer: true }}
-          style={{ background: backgroundColor }}
-          onPointerMissed={handlePointerMissed}
-        >
-          {/* WebGL Context Management */}
-          <ContextEventHandler />
-          <VisibilityHandler />
+        <ErrorBoundary fallback={<div className="flex h-full w-full items-center justify-center text-red-400 bg-black/90">Renderer Crashed. Reload page.</div>}>
+          <Canvas
+            frameloop="never"
+            camera={{
+              position: [2, 2, 2.5],
+              fov: 60,
+            }}
+            shadows="soft"
+            flat
+            gl={{ alpha: false, antialias: false, preserveDrawingBuffer: true }}
+            style={{ background: backgroundColor }}
+            onPointerMissed={handlePointerMissed}
+          >
+            {/* WebGL Context Management */}
+            <ContextEventHandler />
+            <VisibilityHandler />
 
-          <FpsController />
-          <Visualizer />
-          <PerformanceStatsCollector />
-        </Canvas>
+            <FpsController />
+            <VideoExportController />
+            <Visualizer />
+            <PerformanceStatsCollector />
+          </Canvas>
+        </ErrorBoundary>
 
         {/* Context Lost Overlay - shown when WebGL context is lost */}
         <ContextLostOverlay />

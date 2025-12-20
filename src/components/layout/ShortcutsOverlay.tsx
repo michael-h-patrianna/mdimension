@@ -5,10 +5,12 @@ import { useLayoutStore } from '@/stores/layoutStore';
 import { useShallow } from 'zustand/react/shallow';
 
 export const ShortcutsOverlay: React.FC = () => {
-  const { showShortcuts, setShowShortcuts } = useLayoutStore(useShallow((state) => ({
-    showShortcuts: state.showShortcuts,
-    setShowShortcuts: state.setShowShortcuts
-  })));
+  const { showShortcuts, setShowShortcuts } = useLayoutStore(
+    useShallow((state: any) => ({
+      showShortcuts: state.showShortcuts,
+      setShowShortcuts: state.setShowShortcuts
+    }))
+  );
 
   // Close on Escape
   useEffect(() => {

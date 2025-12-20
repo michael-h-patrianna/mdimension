@@ -54,6 +54,22 @@ const ALL_SKYBOX_OPTIONS: SkyboxOption[] = [
 ]
 
 export const SkyboxControls: React.FC = () => {
+  const environmentSelector = useShallow((state: any) => ({
+    skyboxSelection: state.skyboxSelection,
+    skyboxBlur: state.skyboxBlur,
+    skyboxIntensity: state.skyboxIntensity,
+    skyboxAnimationMode: state.skyboxAnimationMode,
+    skyboxAnimationSpeed: state.skyboxAnimationSpeed,
+    skyboxHighQuality: state.skyboxHighQuality,
+    proceduralSettings: state.proceduralSettings,
+    setSkyboxSelection: state.setSkyboxSelection,
+    setSkyboxBlur: state.setSkyboxBlur,
+    setSkyboxIntensity: state.setSkyboxIntensity,
+    setSkyboxAnimationMode: state.setSkyboxAnimationMode,
+    setSkyboxAnimationSpeed: state.setSkyboxAnimationSpeed,
+    setSkyboxHighQuality: state.setSkyboxHighQuality,
+    setProceduralSettings: state.setProceduralSettings,
+  }));
   const {
     skyboxSelection,
     skyboxBlur,
@@ -69,24 +85,7 @@ export const SkyboxControls: React.FC = () => {
     setSkyboxAnimationSpeed,
     setSkyboxHighQuality,
     setProceduralSettings,
-  } = useEnvironmentStore(
-    useShallow((state) => ({
-      skyboxSelection: state.skyboxSelection,
-      skyboxBlur: state.skyboxBlur,
-      skyboxIntensity: state.skyboxIntensity,
-      skyboxAnimationMode: state.skyboxAnimationMode,
-      skyboxAnimationSpeed: state.skyboxAnimationSpeed,
-      skyboxHighQuality: state.skyboxHighQuality,
-      proceduralSettings: state.proceduralSettings,
-      setSkyboxSelection: state.setSkyboxSelection,
-      setSkyboxBlur: state.setSkyboxBlur,
-      setSkyboxIntensity: state.setSkyboxIntensity,
-      setSkyboxAnimationMode: state.setSkyboxAnimationMode,
-      setSkyboxAnimationSpeed: state.setSkyboxAnimationSpeed,
-      setSkyboxHighQuality: state.setSkyboxHighQuality,
-      setProceduralSettings: state.setProceduralSettings,
-    }))
-  )
+  } = useEnvironmentStore(environmentSelector);
 
   const selectedOption = ALL_SKYBOX_OPTIONS.find((opt) => opt.id === skyboxSelection)
   const isClassicMode = selectedOption?.type === 'classic'

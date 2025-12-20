@@ -44,4 +44,8 @@ export const createAppearanceSlice: StateCreator<AppearanceSlice, [], [], Appear
   ...createMaterialSlice(...a),
   ...createRenderSlice(...a),
   ...createAdvancedRenderingSlice(...a),
+  reset: () => {
+    const [set] = a
+    set(APPEARANCE_INITIAL_STATE)
+  },
 })

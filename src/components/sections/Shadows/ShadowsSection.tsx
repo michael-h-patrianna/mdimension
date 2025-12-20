@@ -56,6 +56,19 @@ export const ShadowsSection: React.FC<ShadowsSectionProps> = ({
   const objectType = useGeometryStore((state) => state.objectType);
 
   // Get global lighting state
+  const lightingSelector = useShallow((state: any) => ({
+    lights: state.lights,
+    shadowEnabled: state.shadowEnabled,
+    shadowQuality: state.shadowQuality,
+    shadowSoftness: state.shadowSoftness,
+    shadowMapBias: state.shadowMapBias,
+    shadowMapBlur: state.shadowMapBlur,
+    setShadowEnabled: state.setShadowEnabled,
+    setShadowQuality: state.setShadowQuality,
+    setShadowSoftness: state.setShadowSoftness,
+    setShadowMapBias: state.setShadowMapBias,
+    setShadowMapBlur: state.setShadowMapBlur,
+  }));
   const {
     lights,
     shadowEnabled,
@@ -68,23 +81,17 @@ export const ShadowsSection: React.FC<ShadowsSectionProps> = ({
     setShadowSoftness,
     setShadowMapBias,
     setShadowMapBlur,
-  } = useLightingStore(
-    useShallow((state) => ({
-      lights: state.lights,
-      shadowEnabled: state.shadowEnabled,
-      shadowQuality: state.shadowQuality,
-      shadowSoftness: state.shadowSoftness,
-      shadowMapBias: state.shadowMapBias,
-      shadowMapBlur: state.shadowMapBlur,
-      setShadowEnabled: state.setShadowEnabled,
-      setShadowQuality: state.setShadowQuality,
-      setShadowSoftness: state.setShadowSoftness,
-      setShadowMapBias: state.setShadowMapBias,
-      setShadowMapBlur: state.setShadowMapBlur,
-    }))
-  );
+  } = useLightingStore(lightingSelector);
 
   // Get Schrödinger-specific shadow settings
+  const extendedObjectSelector = useShallow((state: any) => ({
+    schroedingerShadowsEnabled: state.schroedinger.shadowsEnabled,
+    schroedingerShadowStrength: state.schroedinger.shadowStrength,
+    schroedingerShadowSteps: state.schroedinger.shadowSteps,
+    setSchroedingerShadowsEnabled: state.setSchroedingerShadowsEnabled,
+    setSchroedingerShadowStrength: state.setSchroedingerShadowStrength,
+    setSchroedingerShadowSteps: state.setSchroedingerShadowSteps,
+  }));
   const {
     schroedingerShadowsEnabled,
     schroedingerShadowStrength,
@@ -92,16 +99,7 @@ export const ShadowsSection: React.FC<ShadowsSectionProps> = ({
     setSchroedingerShadowsEnabled,
     setSchroedingerShadowStrength,
     setSchroedingerShadowSteps,
-  } = useExtendedObjectStore(
-    useShallow((state) => ({
-      schroedingerShadowsEnabled: state.schroedinger.shadowsEnabled,
-      schroedingerShadowStrength: state.schroedinger.shadowStrength,
-      schroedingerShadowSteps: state.schroedinger.shadowSteps,
-      setSchroedingerShadowsEnabled: state.setSchroedingerShadowsEnabled,
-      setSchroedingerShadowStrength: state.setSchroedingerShadowStrength,
-      setSchroedingerShadowSteps: state.setSchroedingerShadowSteps,
-    }))
-  );
+  } = useExtendedObjectStore(extendedObjectSelector);
 
   // Determine object category - direct checks for clarity
   const isSchroedinger = objectType === 'schroedinger';

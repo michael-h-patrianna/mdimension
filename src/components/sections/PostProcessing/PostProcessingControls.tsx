@@ -13,26 +13,25 @@ import { useShallow } from 'zustand/react/shallow';
 export const PostProcessingControls: React.FC = () => {
   const [activeTab, setActiveTab] = useState('bloom');
 
+  const postProcessingSelector = useShallow((state: any) => ({
+    bloomEnabled: state.bloomEnabled,
+    setBloomEnabled: state.setBloomEnabled,
+    cinematicEnabled: state.cinematicEnabled,
+    setCinematicEnabled: state.setCinematicEnabled,
+    bokehEnabled: state.bokehEnabled,
+    setBokehEnabled: state.setBokehEnabled,
+    ssrEnabled: state.ssrEnabled,
+    setSsrEnabled: state.setSSREnabled,
+    refractionEnabled: state.refractionEnabled,
+    setRefractionEnabled: state.setRefractionEnabled,
+  }));
   const {
     bloomEnabled, setBloomEnabled,
     cinematicEnabled, setCinematicEnabled,
     bokehEnabled, setBokehEnabled,
     ssrEnabled, setSsrEnabled,
     refractionEnabled, setRefractionEnabled,
-  } = usePostProcessingStore(
-    useShallow((state) => ({
-      bloomEnabled: state.bloomEnabled,
-      setBloomEnabled: state.setBloomEnabled,
-      cinematicEnabled: state.cinematicEnabled,
-      setCinematicEnabled: state.setCinematicEnabled,
-      bokehEnabled: state.bokehEnabled,
-      setBokehEnabled: state.setBokehEnabled,
-      ssrEnabled: state.ssrEnabled,
-      setSsrEnabled: state.setSSREnabled,
-      refractionEnabled: state.refractionEnabled,
-      setRefractionEnabled: state.setRefractionEnabled,
-    }))
-  );
+  } = usePostProcessingStore(postProcessingSelector);
 
   const tabs = [
     {

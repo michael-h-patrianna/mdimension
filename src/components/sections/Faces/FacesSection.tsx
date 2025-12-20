@@ -63,6 +63,31 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
   const isRaymarchingFractalType = isRaymarchingFractal(objectType, dimension);
 
   // Appearance settings
+  const appearanceSelector = useShallow((state: any) => ({
+    facesVisible: state.facesVisible,
+    colorAlgorithm: state.colorAlgorithm,
+    faceColor: state.faceColor,
+    setFaceColor: state.setFaceColor,
+    shaderSettings: state.shaderSettings,
+    setSurfaceSettings: state.setSurfaceSettings,
+    lchLightness: state.lchLightness,
+    setLchLightness: state.setLchLightness,
+    lchChroma: state.lchChroma,
+    setLchChroma: state.setLchChroma,
+    shaderType: state.shaderType,
+    faceEmission: state.faceEmission,
+    faceEmissionThreshold: state.faceEmissionThreshold,
+    faceEmissionColorShift: state.faceEmissionColorShift,
+    faceEmissionPulsing: state.faceEmissionPulsing,
+    faceRimFalloff: state.faceRimFalloff,
+    setFaceEmission: state.setFaceEmission,
+    setFaceEmissionThreshold: state.setFaceEmissionThreshold,
+    setFaceEmissionColorShift: state.setFaceEmissionColorShift,
+    setFaceEmissionPulsing: state.setFaceEmissionPulsing,
+    setFaceRimFalloff: state.setFaceRimFalloff,
+    roughness: state.roughness,
+    setRoughness: state.setRoughness,
+  }));
   const {
     facesVisible,
     colorAlgorithm,
@@ -87,35 +112,20 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
     setFaceRimFalloff,
     roughness,
     setRoughness,
-  } = useAppearanceStore(
-    useShallow((state) => ({
-      facesVisible: state.facesVisible,
-      colorAlgorithm: state.colorAlgorithm,
-      faceColor: state.faceColor,
-      setFaceColor: state.setFaceColor,
-      shaderSettings: state.shaderSettings,
-      setSurfaceSettings: state.setSurfaceSettings,
-      lchLightness: state.lchLightness,
-      setLchLightness: state.setLchLightness,
-      lchChroma: state.lchChroma,
-      setLchChroma: state.setLchChroma,
-      shaderType: state.shaderType,
-      faceEmission: state.faceEmission,
-      faceEmissionThreshold: state.faceEmissionThreshold,
-      faceEmissionColorShift: state.faceEmissionColorShift,
-      faceEmissionPulsing: state.faceEmissionPulsing,
-      faceRimFalloff: state.faceRimFalloff,
-      setFaceEmission: state.setFaceEmission,
-      setFaceEmissionThreshold: state.setFaceEmissionThreshold,
-      setFaceEmissionColorShift: state.setFaceEmissionColorShift,
-      setFaceEmissionPulsing: state.setFaceEmissionPulsing,
-      setFaceRimFalloff: state.setFaceRimFalloff,
-      roughness: state.roughness,
-      setRoughness: state.setRoughness,
-    }))
-  );
+  } = useAppearanceStore(appearanceSelector);
 
   // Lighting settings
+  const lightingSelector = useShallow((state: any) => ({
+    lightEnabled: state.lightEnabled,
+    specularIntensity: state.specularIntensity,
+    shininess: state.shininess,
+    specularColor: state.specularColor,
+    diffuseIntensity: state.diffuseIntensity,
+    setSpecularIntensity: state.setSpecularIntensity,
+    setShininess: state.setShininess,
+    setSpecularColor: state.setSpecularColor,
+    setDiffuseIntensity: state.setDiffuseIntensity,
+  }));
   const {
     lightEnabled,
     specularIntensity,
@@ -126,21 +136,21 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
     setShininess,
     setSpecularColor,
     setDiffuseIntensity,
-  } = useLightingStore(
-    useShallow((state) => ({
-      lightEnabled: state.lightEnabled,
-      specularIntensity: state.specularIntensity,
-      shininess: state.shininess,
-      specularColor: state.specularColor,
-      diffuseIntensity: state.diffuseIntensity,
-      setSpecularIntensity: state.setSpecularIntensity,
-      setShininess: state.setShininess,
-      setSpecularColor: state.setSpecularColor,
-      setDiffuseIntensity: state.setDiffuseIntensity,
-    }))
-  );
+  } = useLightingStore(lightingSelector);
 
   // UI settings (Opacity)
+  const uiSelector = useShallow((state: any) => ({
+    opacitySettings: state.opacitySettings,
+    hasSeenVolumetricWarning: state.hasSeenVolumetricWarning,
+    setOpacityMode: state.setOpacityMode,
+    setSimpleAlphaOpacity: state.setSimpleAlphaOpacity,
+    setLayerCount: state.setLayerCount,
+    setLayerOpacity: state.setLayerOpacity,
+    setVolumetricDensity: state.setVolumetricDensity,
+    setSampleQuality: state.setSampleQuality,
+    setVolumetricAnimationQuality: state.setVolumetricAnimationQuality,
+    setHasSeenVolumetricWarning: state.setHasSeenVolumetricWarning,
+  }));
   const {
     opacitySettings,
     hasSeenVolumetricWarning,
@@ -152,20 +162,7 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
     setSampleQuality,
     setVolumetricAnimationQuality,
     setHasSeenVolumetricWarning,
-  } = useUIStore(
-    useShallow((state) => ({
-      opacitySettings: state.opacitySettings,
-      hasSeenVolumetricWarning: state.hasSeenVolumetricWarning,
-      setOpacityMode: state.setOpacityMode,
-      setSimpleAlphaOpacity: state.setSimpleAlphaOpacity,
-      setLayerCount: state.setLayerCount,
-      setLayerOpacity: state.setLayerOpacity,
-      setVolumetricDensity: state.setVolumetricDensity,
-      setSampleQuality: state.setSampleQuality,
-      setVolumetricAnimationQuality: state.setVolumetricAnimationQuality,
-      setHasSeenVolumetricWarning: state.setHasSeenVolumetricWarning,
-    }))
-  );
+  } = useUIStore(uiSelector);
 
   const surfaceSettings = shaderSettings.surface;
 

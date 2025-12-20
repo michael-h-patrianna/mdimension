@@ -35,14 +35,13 @@ export const CosineGradientEditor: React.FC<CosineGradientEditorProps> = ({
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
+  const appearanceSelector = useShallow((state: any) => ({
+    cosineCoefficients: state.cosineCoefficients,
+    setCosineCoefficient: state.setCosineCoefficient,
+    setCosineCoefficients: state.setCosineCoefficients,
+  }));
   const { cosineCoefficients, setCosineCoefficient, setCosineCoefficients } =
-    useAppearanceStore(
-      useShallow((state) => ({
-        cosineCoefficients: state.cosineCoefficients,
-        setCosineCoefficient: state.setCosineCoefficient,
-        setCosineCoefficients: state.setCosineCoefficients,
-      }))
-    );
+    useAppearanceStore(appearanceSelector);
 
   const handleReset = () => {
     setCosineCoefficients(DEFAULT_COSINE_COEFFICIENTS);

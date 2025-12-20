@@ -9,11 +9,12 @@ export const CanvasContextMenu: React.FC = () => {
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const menuRef = useRef<HTMLDivElement>(null);
   
-  const { toggleCinematicMode, toggleCollapsed, toggleLeftPanel } = useLayoutStore(useShallow((state) => ({
+  const layoutSelector = useShallow((state: any) => ({
     toggleCinematicMode: state.toggleCinematicMode,
     toggleCollapsed: state.toggleCollapsed,
-    toggleLeftPanel: state.toggleLeftPanel
-  })));
+    toggleLeftPanel: state.toggleLeftPanel,
+  }));
+  const { toggleCinematicMode, toggleCollapsed, toggleLeftPanel } = useLayoutStore(layoutSelector);
   const resetCamera = useCameraStore(state => state.reset);
 
   useEffect(() => {

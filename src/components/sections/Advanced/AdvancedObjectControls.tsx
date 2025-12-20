@@ -86,20 +86,19 @@ const getQualityDescription = (quality: RaymarchQuality, objectType: string): st
  * @returns The quality control UI component
  */
 const RaymarchingQualityControl: React.FC<{ objectType: string }> = ({ objectType }) => {
+    const extendedObjectSelector = useShallow((state: any) => ({
+        mandelbulbQuality: state.mandelbulb.raymarchQuality,
+        setMandelbulbQuality: state.setMandelbulbRaymarchQuality,
+        juliaQuality: state.quaternionJulia.raymarchQuality,
+        setJuliaQuality: state.setQuaternionJuliaRaymarchQuality,
+        schroedingerQuality: state.schroedinger.raymarchQuality,
+        setSchroedingerQuality: state.setSchroedingerRaymarchQuality,
+    }));
     const {
         mandelbulbQuality, setMandelbulbQuality,
         juliaQuality, setJuliaQuality,
         schroedingerQuality, setSchroedingerQuality,
-    } = useExtendedObjectStore(
-        useShallow((state) => ({
-            mandelbulbQuality: state.mandelbulb.raymarchQuality,
-            setMandelbulbQuality: state.setMandelbulbRaymarchQuality,
-            juliaQuality: state.quaternionJulia.raymarchQuality,
-            setJuliaQuality: state.setQuaternionJuliaRaymarchQuality,
-            schroedingerQuality: state.schroedinger.raymarchQuality,
-            setSchroedingerQuality: state.setSchroedingerRaymarchQuality,
-        }))
-    );
+    } = useExtendedObjectStore(extendedObjectSelector);
 
     // Select the appropriate quality and setter based on object type
     let quality: RaymarchQuality;
@@ -139,6 +138,16 @@ const RaymarchingQualityControl: React.FC<{ objectType: string }> = ({ objectTyp
 };
 
 const SharedAdvancedControls: React.FC = () => {
+    const appearanceSelector = useShallow((state: any) => ({
+        sssEnabled: state.sssEnabled, setSssEnabled: state.setSssEnabled,
+        sssIntensity: state.sssIntensity, setSssIntensity: state.setSssIntensity,
+        sssColor: state.sssColor, setSssColor: state.setSssColor,
+        sssThickness: state.sssThickness, setSssThickness: state.setSssThickness,
+        sssJitter: state.sssJitter, setSssJitter: state.setSssJitter,
+        fresnelEnabled: state.shaderSettings.surface.fresnelEnabled,
+        setSurfaceSettings: state.setSurfaceSettings,
+        fresnelIntensity: state.fresnelIntensity, setFresnelIntensity: state.setFresnelIntensity,
+    }));
     const {
         sssEnabled, setSssEnabled,
         sssIntensity, setSssIntensity,
@@ -147,18 +156,7 @@ const SharedAdvancedControls: React.FC = () => {
         sssJitter, setSssJitter,
         fresnelEnabled, setSurfaceSettings,
         fresnelIntensity, setFresnelIntensity,
-    } = useAppearanceStore(
-        useShallow((state) => ({
-            sssEnabled: state.sssEnabled, setSssEnabled: state.setSssEnabled,
-            sssIntensity: state.sssIntensity, setSssIntensity: state.setSssIntensity,
-            sssColor: state.sssColor, setSssColor: state.setSssColor,
-            sssThickness: state.sssThickness, setSssThickness: state.setSssThickness,
-            sssJitter: state.sssJitter, setSssJitter: state.setSssJitter,
-            fresnelEnabled: state.shaderSettings.surface.fresnelEnabled,
-            setSurfaceSettings: state.setSurfaceSettings,
-            fresnelIntensity: state.fresnelIntensity, setFresnelIntensity: state.setFresnelIntensity,
-        }))
-    );
+    } = useAppearanceStore(appearanceSelector);
 
     return (
         <div className="space-y-4 mb-4 pb-4 border-b border-white/10">
@@ -253,6 +251,26 @@ const SharedAdvancedControls: React.FC = () => {
 };
 
 const SchroedingerAdvanced: React.FC = () => {
+    const extendedObjectSelector = useShallow((state: any) => ({
+        config: state.schroedinger,
+        setDensityGain: state.setSchroedingerDensityGain,
+        setPowderScale: state.setSchroedingerPowderScale,
+        setScatteringAnisotropy: state.setSchroedingerScatteringAnisotropy,
+        setDispersionEnabled: state.setSchroedingerDispersionEnabled,
+        setDispersionStrength: state.setSchroedingerDispersionStrength,
+        setDispersionDirection: state.setSchroedingerDispersionDirection,
+        setDispersionQuality: state.setSchroedingerDispersionQuality,
+        // Note: Shadow setters removed - now in ShadowsSection
+        // Note: AO setters removed - now in MiscControls (Post Processing)
+        setNodalEnabled: state.setSchroedingerNodalEnabled,
+        setNodalColor: state.setSchroedingerNodalColor,
+        setNodalStrength: state.setSchroedingerNodalStrength,
+        setEnergyColorEnabled: state.setSchroedingerEnergyColorEnabled,
+        setShimmerEnabled: state.setSchroedingerShimmerEnabled,
+        setShimmerStrength: state.setSchroedingerShimmerStrength,
+        setIsoEnabled: state.setSchroedingerIsoEnabled,
+        setIsoThreshold: state.setSchroedingerIsoThreshold
+    }));
     const {
         config,
         setDensityGain,
@@ -272,28 +290,7 @@ const SchroedingerAdvanced: React.FC = () => {
         setShimmerStrength,
         setIsoEnabled,
         setIsoThreshold
-    } = useExtendedObjectStore(
-        useShallow((state) => ({
-            config: state.schroedinger,
-            setDensityGain: state.setSchroedingerDensityGain,
-            setPowderScale: state.setSchroedingerPowderScale,
-            setScatteringAnisotropy: state.setSchroedingerScatteringAnisotropy,
-            setDispersionEnabled: state.setSchroedingerDispersionEnabled,
-            setDispersionStrength: state.setSchroedingerDispersionStrength,
-            setDispersionDirection: state.setSchroedingerDispersionDirection,
-            setDispersionQuality: state.setSchroedingerDispersionQuality,
-            // Note: Shadow setters removed - now in ShadowsSection
-            // Note: AO setters removed - now in MiscControls (Post Processing)
-            setNodalEnabled: state.setSchroedingerNodalEnabled,
-            setNodalColor: state.setSchroedingerNodalColor,
-            setNodalStrength: state.setSchroedingerNodalStrength,
-            setEnergyColorEnabled: state.setSchroedingerEnergyColorEnabled,
-            setShimmerEnabled: state.setSchroedingerShimmerEnabled,
-            setShimmerStrength: state.setSchroedingerShimmerStrength,
-            setIsoEnabled: state.setSchroedingerIsoEnabled,
-            setIsoThreshold: state.setSchroedingerIsoThreshold
-        }))
-    );
+    } = useExtendedObjectStore(extendedObjectSelector);
 
     return (
         <div className="space-y-4">

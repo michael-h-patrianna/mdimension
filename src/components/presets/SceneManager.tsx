@@ -8,13 +8,14 @@ interface SceneManagerProps {
 }
 
 export const SceneManager: React.FC<SceneManagerProps> = ({ onClose }) => {
-  const { savedScenes, loadScene, deleteScene, importScenes, exportScenes } = usePresetManagerStore(useShallow((state) => ({
+  const presetSelector = useShallow((state: any) => ({
     savedScenes: state.savedScenes,
     loadScene: state.loadScene,
     deleteScene: state.deleteScene,
     importScenes: state.importScenes,
     exportScenes: state.exportScenes
-  })));
+  }));
+  const { savedScenes, loadScene, deleteScene, importScenes, exportScenes } = usePresetManagerStore(presetSelector);
   const { addToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -90,7 +91,7 @@ export const SceneManager: React.FC<SceneManagerProps> = ({ onClose }) => {
           </div>
         ) : (
           <div className="space-y-2">
-            {savedScenes.map((scene) => (
+            {savedScenes.map((scene: any) => (
               <div 
                 key={scene.id} 
                 className="group flex items-center justify-between p-3 bg-white/5 rounded-md hover:bg-white/10 transition-colors border border-transparent hover:border-panel-border"

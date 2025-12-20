@@ -116,18 +116,17 @@ export const FractalAnimationDrawer: React.FC = React.memo(() => {
   );
 
   // Get config from store based on object type
-  const config = useExtendedObjectStore(
-    useShallow((state) => {
-      if (configKey && configKey in state) {
-        const value = state[configKey as keyof typeof state];
-        // Only return config objects, not functions (store actions)
-        if (typeof value === 'object' && value !== null) {
-          return value as unknown as Record<string, unknown>;
-        }
+  const extendedObjectSelector = useShallow((state: any) => {
+    if (configKey && configKey in state) {
+      const value = state[configKey as keyof typeof state];
+      // Only return config objects, not functions (store actions)
+      if (typeof value === 'object' && value !== null) {
+        return value as unknown as Record<string, unknown>;
       }
-      return {};
-    })
-  );
+    }
+    return {};
+  });
+  const config = useExtendedObjectStore(extendedObjectSelector);
 
   // Handler to update config in store
   const updateConfig = useCallback(

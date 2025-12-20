@@ -19,6 +19,7 @@ import { useUIStore } from '@/stores/uiStore'
 import { useAnimationStore } from '@/stores/animationStore'
 import { usePerformanceStore } from '@/stores/performanceStore'
 import { useWebGLContextStore } from '@/stores/webglContextStore'
+import { useExportStore } from '@/stores/exportStore'
 import { useThree } from '@react-three/fiber'
 import { useLayoutEffect, useRef } from 'react'
 
@@ -56,7 +57,9 @@ export function FpsController(): null {
       }
 
       // Skip if page is not visible (power saving)
-      if (!contextStore.isPageVisible) {
+      // Also skip if exporting (manual control)
+      const isExporting = useExportStore.getState().isExporting
+      if (!contextStore.isPageVisible || isExporting) {
         return
       }
 

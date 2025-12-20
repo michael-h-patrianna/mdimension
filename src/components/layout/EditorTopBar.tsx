@@ -15,6 +15,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { useLayoutStore } from '@/stores/layoutStore';
 import { usePresetManagerStore } from '@/stores/presetManagerStore';
 import { useThemeStore } from '@/stores/themeStore';
+import { useExportStore } from '@/stores/exportStore';
 import { soundManager } from '@/lib/audio/SoundManager';
 import { m } from 'motion/react';
 import { useShallow } from 'zustand/react/shallow';
@@ -29,13 +30,23 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
   toggleRightPanel,
 }) => {
   const { addToast } = useToast();
-  const { toggleShortcuts, showLeftPanel, toggleLeftPanel } = useLayoutStore(useShallow((state) => ({
+  
+  const layoutSelector = useShallow((state: any) => ({
     toggleShortcuts: state.toggleShortcuts,
     showLeftPanel: state.showLeftPanel,
     toggleLeftPanel: state.toggleLeftPanel,
-  })));
+  }));
+  const { toggleShortcuts, showLeftPanel, toggleLeftPanel } = useLayoutStore(layoutSelector);
   
   // New Preset Manager Store
+  const presetSelector = useShallow((state: any) => ({
+    savedStyles: state.savedStyles,
+    saveStyle: state.saveStyle,
+    loadStyle: state.loadStyle,
+    savedScenes: state.savedScenes,
+    saveScene: state.saveScene,
+    loadScene: state.loadScene,
+  }));
   const { 
     savedStyles, 
     saveStyle, 
@@ -43,19 +54,13 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
     savedScenes, 
     saveScene, 
     loadScene 
-  } = usePresetManagerStore(useShallow((state) => ({
-    savedStyles: state.savedStyles,
-    saveStyle: state.saveStyle,
-    loadStyle: state.loadStyle,
-    savedScenes: state.savedScenes,
-    saveScene: state.saveScene,
-    loadScene: state.loadScene,
-  })));
+  } = usePresetManagerStore(presetSelector);
 
-  const { theme, setTheme } = useThemeStore(useShallow((state) => ({
+  const themeSelector = useShallow((state: any) => ({
     theme: state.theme,
     setTheme: state.setTheme,
-  })));
+  }));
+  const { theme, setTheme } = useThemeStore(themeSelector);
 
   const [isStyleManagerOpen, setIsStyleManagerOpen] = useState(false);
   const [isSceneManagerOpen, setIsSceneManagerOpen] = useState(false);
@@ -112,8 +117,16 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
   // Cinematic toggle logic is now in TopBarControls, but kept here for menu item compatibility
   const toggleCinematic = useLayoutStore((state) => state.toggleCinematicMode);
 
+  const setExportModalOpen = useExportStore((state) => state.setModalOpen);
+
   const fileItems = [
     { label: 'Export Image (PNG)', onClick: handleExport, shortcut: '⌘E', 'data-testid': 'menu-export' },
+    { 
+        label: 'Export Video (MP4)', 
+        onClick: () => { setExportModalOpen(true); soundManager.playClick(); }, 
+        shortcut: '⌘⇧E', 
+        'data-testid': 'menu-export-video' 
+    },
     { label: 'Copy Share Link', onClick: handleShare, shortcut: '⌘S', 'data-testid': 'menu-share' },
   ];
 
@@ -150,7 +163,7 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
     { label: 'Manage Styles...', onClick: () => { setIsStyleManagerOpen(true); soundManager.playClick(); } },
     { label: '---' },
     { label: 'Saved Styles' },
-    ...(savedStyles.length === 0 ? [{ label: '(None)', disabled: true }] : savedStyles.map(s => ({
+    ...(savedStyles.length === 0 ? [{ label: '(None)', disabled: true }] : savedStyles.map((s: any) => ({
         label: s.name,
         onClick: () => {
             loadStyle(s.id);
@@ -178,7 +191,7 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
       { label: 'Manage Scenes...', onClick: () => { setIsSceneManagerOpen(true); soundManager.playClick(); } },
       { label: '---' },
       { label: 'Saved Scenes' },
-      ...(savedScenes.length === 0 ? [{ label: '(None)', disabled: true }] : savedScenes.map(s => ({
+      ...(savedScenes.length === 0 ? [{ label: '(None)', disabled: true }] : savedScenes.map((s: any) => ({
           label: s.name,
           onClick: () => {
               loadScene(s.id);

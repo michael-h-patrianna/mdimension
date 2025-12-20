@@ -40,24 +40,23 @@ const RAD_TO_DEG = 180 / Math.PI;
 export const LightEditor: React.FC<LightEditorProps> = memo(function LightEditor({
   className = '',
 }) {
+  const lightingSelector = useShallow((state: any) => ({
+    lights: state.lights,
+    selectedLightId: state.selectedLightId,
+    updateLight: state.updateLight,
+    duplicateLight: state.duplicateLight,
+    selectLight: state.selectLight,
+  }));
   const {
     lights,
     selectedLightId,
     updateLight,
     duplicateLight,
     selectLight,
-  } = useLightingStore(
-    useShallow((state) => ({
-      lights: state.lights,
-      selectedLightId: state.selectedLightId,
-      updateLight: state.updateLight,
-      duplicateLight: state.duplicateLight,
-      selectLight: state.selectLight,
-    }))
-  );
+  } = useLightingStore(lightingSelector);
 
   // Find selected light
-  const selectedLight = lights.find((l) => l.id === selectedLightId);
+  const selectedLight = lights.find((l: any) => l.id === selectedLightId);
 
   // Update handlers
   const handleNameChange = useCallback(

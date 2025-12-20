@@ -18,21 +18,20 @@ export interface EdgeMaterialControlsProps {
 
 export const EdgeMaterialControls: React.FC<EdgeMaterialControlsProps> = React.memo(
   ({ className = '' }) => {
+    const appearanceSelector = useShallow((state: any) => ({
+      edgeThickness: state.edgeThickness,
+      edgeMetallic: state.edgeMetallic,
+      edgeRoughness: state.edgeRoughness,
+      setEdgeMetallic: state.setEdgeMetallic,
+      setEdgeRoughness: state.setEdgeRoughness,
+    }));
     const {
       edgeThickness,
       edgeMetallic,
       edgeRoughness,
       setEdgeMetallic,
       setEdgeRoughness,
-    } = useAppearanceStore(
-      useShallow((state) => ({
-        edgeThickness: state.edgeThickness,
-        edgeMetallic: state.edgeMetallic,
-        edgeRoughness: state.edgeRoughness,
-        setEdgeMetallic: state.setEdgeMetallic,
-        setEdgeRoughness: state.setEdgeRoughness,
-      }))
-    );
+    } = useAppearanceStore(appearanceSelector);
 
     const lightEnabled = useLightingStore((state) => state.lightEnabled);
     const showMaterialControls = edgeThickness > 1 && lightEnabled;

@@ -9,6 +9,7 @@ import { useGeometryStore } from './geometryStore'
 import { useLightingStore } from './lightingStore'
 import { usePerformanceStore } from './performanceStore'
 import { usePostProcessingStore } from './postProcessingStore'
+import { useRotationStore } from './rotationStore'
 import { useTransformStore } from './transformStore'
 import { useUIStore } from './uiStore'
 
@@ -41,7 +42,8 @@ export interface SavedScene {
     geometry: Record<string, unknown>
     extended: Record<string, unknown>
     transform: Record<string, unknown>
-    animation: Record<string, unknown> // Requires Set -> Array conversion
+    rotation: Record<string, unknown> // Stores Map as Object/Array
+    animation: Record<string, unknown> // Stores Set as Array
     camera: Record<string, unknown>
     ui: Record<string, unknown>
   }
@@ -68,21 +70,42 @@ interface PresetManagerState {
 
 // -- Helpers --
 
-const cleanState = <T extends object>(state: T): Record<string, unknown> => {
+/**
+ * Deep clones state and removes functions to ensure JSON serializability.
+ * Prevents reference mutation issues where saved presets would change when store changes.
+ */
+const serializeState = <T extends object>(state: T): Record<string, unknown> => {
+  // 1. Create a shallow copy first to filter functions
   const clean: Record<string, unknown> = {}
   for (const key in state) {
     if (typeof state[key] !== 'function') {
       clean[key] = state[key]
     }
   }
+  
+  // 2. Deep clone via JSON to break references
+  return JSON.parse(JSON.stringify(clean))
+}
+
+/**
+ * Serializes Animation store (Set -> Array)
+ */
+const serializeAnimationState = <T extends object>(state: T) => {
+  const clean = serializeState(state)
+  if ('animatingPlanes' in state && state.animatingPlanes instanceof Set) {
+    clean.animatingPlanes = Array.from(state.animatingPlanes)
+  }
   return clean
 }
 
-// Specialized helper for Animation store (Set -> Array)
-const cleanAnimationState = <T extends object>(state: T) => {
-  const clean = cleanState(state)
-  if (clean.animatingPlanes instanceof Set) {
-    clean.animatingPlanes = Array.from(clean.animatingPlanes)
+/**
+ * Serializes Rotation store (Map -> Object)
+ */
+const serializeRotationState = <T extends object>(state: T) => {
+  const clean = serializeState(state)
+  if ('rotations' in state && state.rotations instanceof Map) {
+    // Convert Map to Object for JSON serialization
+    clean.rotations = Object.fromEntries(state.rotations as Map<string, unknown>)
   }
   return clean
 }
@@ -96,10 +119,11 @@ export const usePresetManagerStore = create<PresetManagerState>()(
       // --- Style Actions ---
 
       saveStyle: (name) => {
-        const appearance = cleanState(useAppearanceStore.getState())
-        const lighting = cleanState(useLightingStore.getState())
-        const postProcessing = cleanState(usePostProcessingStore.getState())
-        const environment = cleanState(useEnvironmentStore.getState())
+        // Deep clone all states to prevent reference sharing
+        const appearance = serializeState(useAppearanceStore.getState())
+        const lighting = serializeState(useLightingStore.getState())
+        const postProcessing = serializeState(usePostProcessingStore.getState())
+        const environment = serializeState(useEnvironmentStore.getState())
 
         const newStyle: SavedStyle = {
           id: crypto.randomUUID(),
@@ -120,9 +144,11 @@ export const usePresetManagerStore = create<PresetManagerState>()(
         const style = get().savedStyles.find((s) => s.id === id)
         if (!style) return
 
-        // Signal scene transition start - pauses animation, triggers low quality
+        // Signal scene transition start
         usePerformanceStore.getState().setSceneTransitioning(true)
 
+        // Restore states
+        // NOTE: We assume these are plain objects and arrays which Zustand handles fine
         useAppearanceStore.setState(style.data.appearance)
         useLightingStore.setState(style.data.lighting)
         usePostProcessingStore.setState(style.data.postProcessing)
@@ -134,7 +160,6 @@ export const usePresetManagerStore = create<PresetManagerState>()(
         }
         useEnvironmentStore.setState(envData)
 
-        // Signal scene transition complete after a brief delay for React to settle
         requestAnimationFrame(() => {
           usePerformanceStore.getState().setSceneTransitioning(false)
         })
@@ -148,7 +173,10 @@ export const usePresetManagerStore = create<PresetManagerState>()(
         try {
           const imported = JSON.parse(jsonData)
           if (!Array.isArray(imported)) return false
-          // Basic validation could be improved
+          // Basic validation: Check if items look like SavedStyle
+          const valid = imported.every(i => i.id && i.name && i.data && i.data.appearance)
+          if (!valid) return false
+
           set((state) => ({ savedStyles: [...state.savedStyles, ...imported] }))
           return true
         } catch (e) {
@@ -165,21 +193,23 @@ export const usePresetManagerStore = create<PresetManagerState>()(
 
       saveScene: (name) => {
         // Style components
-        const appearance = cleanState(useAppearanceStore.getState())
-        const lighting = cleanState(useLightingStore.getState())
-        const postProcessing = cleanState(usePostProcessingStore.getState())
-        const environment = cleanState(useEnvironmentStore.getState())
+        const appearance = serializeState(useAppearanceStore.getState())
+        const lighting = serializeState(useLightingStore.getState())
+        const postProcessing = serializeState(usePostProcessingStore.getState())
+        const environment = serializeState(useEnvironmentStore.getState())
 
         // Scene components
-        const geometry = cleanState(useGeometryStore.getState())
-        const extended = cleanState(useExtendedObjectStore.getState())
-        const transform = cleanState(useTransformStore.getState())
-        const ui = cleanState(useUIStore.getState())
+        const geometry = serializeState(useGeometryStore.getState())
+        const extended = serializeState(useExtendedObjectStore.getState())
+        const transform = serializeState(useTransformStore.getState())
+        const ui = serializeState(useUIStore.getState())
 
         // Special handling
-        const animation = cleanAnimationState(useAnimationStore.getState())
+        const animation = serializeAnimationState(useAnimationStore.getState())
+        const rotation = serializeRotationState(useRotationStore.getState())
+        
         const cameraState = useCameraStore.getState().captureState()
-        const camera = cameraState ? cleanState(cameraState) : {}
+        const camera = cameraState ? serializeState(cameraState) : {}
 
         const newScene: SavedScene = {
           id: crypto.randomUUID(),
@@ -194,6 +224,7 @@ export const usePresetManagerStore = create<PresetManagerState>()(
             extended,
             transform,
             ui,
+            rotation,
             animation,
             camera,
           },
@@ -206,7 +237,6 @@ export const usePresetManagerStore = create<PresetManagerState>()(
         const scene = get().savedScenes.find((s) => s.id === id)
         if (!scene) return
 
-        // Signal scene transition start - pauses animation, triggers low quality
         usePerformanceStore.getState().setSceneTransitioning(true)
 
         // Restore Style components
@@ -226,6 +256,16 @@ export const usePresetManagerStore = create<PresetManagerState>()(
         useExtendedObjectStore.setState(scene.data.extended)
         useTransformStore.setState(scene.data.transform)
         useUIStore.setState(scene.data.ui)
+
+        // Special handling for Rotation (Object -> Map)
+        if (scene.data.rotation) {
+          const rotState = { ...scene.data.rotation }
+          if (rotState.rotations && typeof rotState.rotations === 'object' && !Array.isArray(rotState.rotations)) {
+            // Convert Object back to Map
+            rotState.rotations = new Map(Object.entries(rotState.rotations as Record<string, number>))
+          }
+          useRotationStore.setState(rotState)
+        }
 
         // Special handling for Animation (Array -> Set)
         if (scene.data.animation) {
@@ -247,7 +287,6 @@ export const usePresetManagerStore = create<PresetManagerState>()(
           }
         }
 
-        // Signal scene transition complete after a brief delay for React to settle
         requestAnimationFrame(() => {
           usePerformanceStore.getState().setSceneTransitioning(false)
         })
@@ -261,6 +300,10 @@ export const usePresetManagerStore = create<PresetManagerState>()(
         try {
           const imported = JSON.parse(jsonData)
           if (!Array.isArray(imported)) return false
+          // Basic validation
+          const valid = imported.every(i => i.id && i.name && i.data && i.data.geometry)
+          if (!valid) return false
+
           set((state) => ({ savedScenes: [...state.savedScenes, ...imported] }))
           return true
         } catch (e) {

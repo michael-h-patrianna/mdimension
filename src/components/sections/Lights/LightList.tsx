@@ -30,6 +30,14 @@ export const LightList: React.FC<LightListProps> = memo(function LightList({
 }) {
   const [showAddMenu, setShowAddMenu] = useState(false);
 
+  const lightingSelector = useShallow((state: any) => ({
+    lights: state.lights,
+    selectedLightId: state.selectedLightId,
+    addLight: state.addLight,
+    removeLight: state.removeLight,
+    updateLight: state.updateLight,
+    selectLight: state.selectLight,
+  }));
   const {
     lights,
     selectedLightId,
@@ -37,16 +45,7 @@ export const LightList: React.FC<LightListProps> = memo(function LightList({
     removeLight,
     updateLight,
     selectLight,
-  } = useLightingStore(
-    useShallow((state) => ({
-      lights: state.lights,
-      selectedLightId: state.selectedLightId,
-      addLight: state.addLight,
-      removeLight: state.removeLight,
-      updateLight: state.updateLight,
-      selectLight: state.selectLight,
-    }))
-  );
+  } = useLightingStore(lightingSelector);
 
   const canAddLight = lights.length < MAX_LIGHTS;
 
@@ -67,7 +66,7 @@ export const LightList: React.FC<LightListProps> = memo(function LightList({
         </div>
       ) : (
         <div className="space-y-1">
-          {lights.map((light) => (
+          {lights.map((light: any) => (
             <LightListItem
               key={light.id}
               light={light}

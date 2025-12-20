@@ -37,6 +37,14 @@ const ANTI_ALIASING_OPTIONS: SelectOption<AntiAliasingMethod>[] = [
 export const MiscControls: React.FC<MiscControlsProps> = React.memo(({
   className = '',
 }) => {
+  const postProcessingSelector = useShallow((state: any) => ({
+    antiAliasingMethod: state.antiAliasingMethod,
+    setAntiAliasingMethod: state.setAntiAliasingMethod,
+    smaaThreshold: state.smaaThreshold,
+    setSmaaThreshold: state.setSmaaThreshold,
+    objectOnlyDepth: state.objectOnlyDepth,
+    setObjectOnlyDepth: state.setObjectOnlyDepth,
+  }));
   const {
     antiAliasingMethod,
     setAntiAliasingMethod,
@@ -44,16 +52,7 @@ export const MiscControls: React.FC<MiscControlsProps> = React.memo(({
     setSmaaThreshold,
     objectOnlyDepth,
     setObjectOnlyDepth,
-  } = usePostProcessingStore(
-    useShallow((state) => ({
-      antiAliasingMethod: state.antiAliasingMethod,
-      setAntiAliasingMethod: state.setAntiAliasingMethod,
-      smaaThreshold: state.smaaThreshold,
-      setSmaaThreshold: state.setSmaaThreshold,
-      objectOnlyDepth: state.objectOnlyDepth,
-      setObjectOnlyDepth: state.setObjectOnlyDepth,
-    }))
-  );
+  } = usePostProcessingStore(postProcessingSelector);
 
   return (
     <div className={`space-y-4 ${className}`}>

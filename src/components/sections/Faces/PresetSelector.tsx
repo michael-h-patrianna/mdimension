@@ -17,12 +17,11 @@ export interface PresetSelectorProps {
 export const PresetSelector: React.FC<PresetSelectorProps> = ({
   className = '',
 }) => {
-  const { cosineCoefficients, setCosineCoefficients } = useAppearanceStore(
-    useShallow((state) => ({
-      cosineCoefficients: state.cosineCoefficients,
-      setCosineCoefficients: state.setCosineCoefficients,
-    }))
-  );
+  const appearanceSelector = useShallow((state: any) => ({
+    cosineCoefficients: state.cosineCoefficients,
+    setCosineCoefficients: state.setCosineCoefficients,
+  }));
+  const { cosineCoefficients, setCosineCoefficients } = useAppearanceStore(appearanceSelector);
 
   // Find current preset by matching coefficients
   const currentPreset = useMemo(() => {

@@ -39,6 +39,29 @@ export const SchroedingerAnimationDrawer: React.FC = React.memo(() => {
   const dimension = useGeometryStore((state) => state.dimension);
 
   // Get config and setters from store
+  const extendedObjectSelector = useShallow((state: any) => ({
+    config: state.schroedinger,
+    // Time Evolution
+    setTimeScale: state.setSchroedingerTimeScale,
+    // Animated Flow
+    setCurlEnabled: state.setSchroedingerCurlEnabled,
+    setCurlStrength: state.setSchroedingerCurlStrength,
+    setCurlScale: state.setSchroedingerCurlScale,
+    setCurlSpeed: state.setSchroedingerCurlSpeed,
+    // Spread Animation
+    setSpreadAnimationEnabled: state.setSchroedingerSpreadAnimationEnabled,
+    setSpreadAnimationSpeed: state.setSchroedingerSpreadAnimationSpeed,
+    // Origin Drift Animation
+    setOriginDriftEnabled: state.setSchroedingerOriginDriftEnabled,
+    setDriftAmplitude: state.setSchroedingerDriftAmplitude,
+    setDriftBaseFrequency: state.setSchroedingerDriftBaseFrequency,
+    setDriftFrequencySpread: state.setSchroedingerDriftFrequencySpread,
+    // Slice Animation
+    setSliceAnimationEnabled: state.setSchroedingerSliceAnimationEnabled,
+    setSliceSpeed: state.setSchroedingerSliceSpeed,
+    setSliceAmplitude: state.setSchroedingerSliceAmplitude,
+  }));
+
   const {
     config,
     // Time Evolution
@@ -60,30 +83,7 @@ export const SchroedingerAnimationDrawer: React.FC = React.memo(() => {
     setSliceAnimationEnabled,
     setSliceSpeed,
     setSliceAmplitude,
-  } = useExtendedObjectStore(
-    useShallow((state) => ({
-      config: state.schroedinger,
-      // Time Evolution
-      setTimeScale: state.setSchroedingerTimeScale,
-      // Animated Flow
-      setCurlEnabled: state.setSchroedingerCurlEnabled,
-      setCurlStrength: state.setSchroedingerCurlStrength,
-      setCurlScale: state.setSchroedingerCurlScale,
-      setCurlSpeed: state.setSchroedingerCurlSpeed,
-      // Spread Animation
-      setSpreadAnimationEnabled: state.setSchroedingerSpreadAnimationEnabled,
-      setSpreadAnimationSpeed: state.setSchroedingerSpreadAnimationSpeed,
-      // Origin Drift Animation
-      setOriginDriftEnabled: state.setSchroedingerOriginDriftEnabled,
-      setDriftAmplitude: state.setSchroedingerDriftAmplitude,
-      setDriftBaseFrequency: state.setSchroedingerDriftBaseFrequency,
-      setDriftFrequencySpread: state.setSchroedingerDriftFrequencySpread,
-      // Slice Animation
-      setSliceAnimationEnabled: state.setSchroedingerSliceAnimationEnabled,
-      setSliceSpeed: state.setSchroedingerSliceSpeed,
-      setSliceAmplitude: state.setSchroedingerSliceAmplitude,
-    }))
-  );
+  } = useExtendedObjectStore(extendedObjectSelector);
 
   // Check if we're in hydrogen orbital mode
   const isHydrogenMode = config.quantumMode === 'hydrogenOrbital';

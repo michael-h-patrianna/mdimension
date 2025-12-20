@@ -9,6 +9,7 @@ import { useEnvironmentStore } from '@/stores/environmentStore'
 import { usePerformanceStore } from '@/stores/performanceStore'
 import { useRotationStore } from '@/stores/rotationStore'
 import { useUIStore } from '@/stores/uiStore'
+import { useExportStore } from '@/stores/exportStore'
 import { useCallback, useEffect, useRef } from 'react'
 
 /**
@@ -104,9 +105,11 @@ export function useAnimationLoop(): void {
   )
 
   useEffect(() => {
-    // Don't animate while skybox is loading or scene is transitioning to avoid artifacts
+    // Don't animate while skybox is loading, scene is transitioning, or exporting
+    // (Export handles its own animation stepping)
+    const isExporting = useExportStore.getState().isExporting
     const shouldAnimate =
-      isPlaying && animatingPlanes.size > 0 && !skyboxLoading && !sceneTransitioning
+      isPlaying && animatingPlanes.size > 0 && !skyboxLoading && !sceneTransitioning && !isExporting
     if (shouldAnimate) {
       lastTimeRef.current = null
       frameRef.current = requestAnimationFrame(animate)

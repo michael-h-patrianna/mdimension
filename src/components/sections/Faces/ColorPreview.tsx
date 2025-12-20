@@ -27,17 +27,16 @@ export const ColorPreview: React.FC<ColorPreviewProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
+  const appearanceSelector = useShallow((state: any) => ({
+    colorAlgorithm: state.colorAlgorithm,
+    cosineCoefficients: state.cosineCoefficients,
+    distribution: state.distribution,
+    lchLightness: state.lchLightness,
+    lchChroma: state.lchChroma,
+    faceColor: state.faceColor,
+  }));
   const { colorAlgorithm, cosineCoefficients, distribution, lchLightness, lchChroma, faceColor } =
-    useAppearanceStore(
-      useShallow((state) => ({
-        colorAlgorithm: state.colorAlgorithm,
-        cosineCoefficients: state.cosineCoefficients,
-        distribution: state.distribution,
-        lchLightness: state.lchLightness,
-        lchChroma: state.lchChroma,
-        faceColor: state.faceColor,
-      }))
-    );
+    useAppearanceStore(appearanceSelector);
 
   useEffect(() => {
     const canvas = canvasRef.current;

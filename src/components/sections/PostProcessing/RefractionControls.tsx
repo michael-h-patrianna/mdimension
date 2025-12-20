@@ -30,6 +30,16 @@ export interface RefractionControlsProps {
 export const RefractionControls: React.FC<RefractionControlsProps> = React.memo(({
   className = '',
 }) => {
+  const postProcessingSelector = useShallow((state: any) => ({
+    // State
+    refractionIOR: state.refractionIOR,
+    refractionStrength: state.refractionStrength,
+    refractionChromaticAberration: state.refractionChromaticAberration,
+    // Actions
+    setRefractionIOR: state.setRefractionIOR,
+    setRefractionStrength: state.setRefractionStrength,
+    setRefractionChromaticAberration: state.setRefractionChromaticAberration,
+  }));
   const {
     refractionIOR,
     refractionStrength,
@@ -37,18 +47,7 @@ export const RefractionControls: React.FC<RefractionControlsProps> = React.memo(
     setRefractionIOR,
     setRefractionStrength,
     setRefractionChromaticAberration,
-  } = usePostProcessingStore(
-    useShallow((state) => ({
-      // State
-      refractionIOR: state.refractionIOR,
-      refractionStrength: state.refractionStrength,
-      refractionChromaticAberration: state.refractionChromaticAberration,
-      // Actions
-      setRefractionIOR: state.setRefractionIOR,
-      setRefractionStrength: state.setRefractionStrength,
-      setRefractionChromaticAberration: state.setRefractionChromaticAberration,
-    }))
-  );
+  } = usePostProcessingStore(postProcessingSelector);
 
   return (
     <div className={`space-y-4 ${className}`}>

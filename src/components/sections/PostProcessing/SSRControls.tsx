@@ -40,6 +40,22 @@ const SSR_QUALITY_OPTIONS: { value: SSRQuality; label: string }[] = [
 export const SSRControls: React.FC<SSRControlsProps> = React.memo(({
   className = '',
 }) => {
+  const postProcessingSelector = useShallow((state: any) => ({
+    // State
+    ssrIntensity: state.ssrIntensity,
+    ssrMaxDistance: state.ssrMaxDistance,
+    ssrThickness: state.ssrThickness,
+    ssrFadeStart: state.ssrFadeStart,
+    ssrFadeEnd: state.ssrFadeEnd,
+    ssrQuality: state.ssrQuality,
+    // Actions
+    setSSRIntensity: state.setSSRIntensity,
+    setSSRMaxDistance: state.setSSRMaxDistance,
+    setSSRThickness: state.setSSRThickness,
+    setSSRFadeStart: state.setSSRFadeStart,
+    setSSRFadeEnd: state.setSSRFadeEnd,
+    setSSRQuality: state.setSSRQuality,
+  }));
   const {
     ssrIntensity,
     ssrMaxDistance,
@@ -53,24 +69,7 @@ export const SSRControls: React.FC<SSRControlsProps> = React.memo(({
     setSSRFadeStart,
     setSSRFadeEnd,
     setSSRQuality,
-  } = usePostProcessingStore(
-    useShallow((state) => ({
-      // State
-      ssrIntensity: state.ssrIntensity,
-      ssrMaxDistance: state.ssrMaxDistance,
-      ssrThickness: state.ssrThickness,
-      ssrFadeStart: state.ssrFadeStart,
-      ssrFadeEnd: state.ssrFadeEnd,
-      ssrQuality: state.ssrQuality,
-      // Actions
-      setSSRIntensity: state.setSSRIntensity,
-      setSSRMaxDistance: state.setSSRMaxDistance,
-      setSSRThickness: state.setSSRThickness,
-      setSSRFadeStart: state.setSSRFadeStart,
-      setSSRFadeEnd: state.setSSRFadeEnd,
-      setSSRQuality: state.setSSRQuality,
-    }))
-  );
+  } = usePostProcessingStore(postProcessingSelector);
 
   return (
     <div className={`space-y-4 ${className}`}>

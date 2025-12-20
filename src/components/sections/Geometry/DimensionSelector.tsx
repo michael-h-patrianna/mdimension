@@ -65,12 +65,11 @@ export const DimensionSelector: React.FC<DimensionSelectorProps> = React.memo(({
   disabled = false,
 }) => {
   // Consolidate store subscriptions with useShallow to reduce re-renders
-  const { dimension, setDimension } = useGeometryStore(
-    useShallow((state) => ({
-      dimension: state.dimension,
-      setDimension: state.setDimension,
-    }))
-  );
+  const geometrySelector = useShallow((state: any) => ({
+    dimension: state.dimension,
+    setDimension: state.setDimension,
+  }));
+  const { dimension, setDimension } = useGeometryStore(geometrySelector);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
