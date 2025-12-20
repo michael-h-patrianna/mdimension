@@ -10,6 +10,7 @@ import {
   useEnvironmentStore,
   usePerformanceStore,
 } from '@/stores'
+import { useExportStore } from '@/stores/exportStore'
 import { useCallback, useEffect, useRef } from 'react'
 
 export interface UseProgressiveRefinementOptions {
@@ -57,6 +58,9 @@ export function useProgressiveRefinement(
 
   // Skybox loading state - keep low quality while loading
   const skyboxLoading = useEnvironmentStore((s) => s.skyboxLoading)
+
+  // Export state - don't interfere with VideoExportController's quality management
+  const isExporting = useExportStore((s) => s.isExporting)
 
   const enabled = optionEnabled && storeEnabled
 
@@ -120,8 +124,14 @@ export function useProgressiveRefinement(
     setRefinementProgress(0)
   }, [clearTimers, setRefinementStage, setRefinementProgress])
 
-  // React to interaction state, skybox loading, and scene transitions
+  // React to interaction state, skybox loading, scene transitions, and export state
   useEffect(() => {
+    // During export, don't manage refinement - VideoExportController handles quality
+    if (isExporting) {
+      clearTimers()
+      return
+    }
+
     if (!enabled) {
       // If disabled, ensure we're at final quality
       setRefinementStage('final')
@@ -141,6 +151,7 @@ export function useProgressiveRefinement(
     return clearTimers
   }, [
     enabled,
+    isExporting,
     isInteracting,
     skyboxLoading,
     sceneTransitioning,

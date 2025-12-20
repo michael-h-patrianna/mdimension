@@ -2,8 +2,8 @@
  * Tests for exportStore
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useExportStore } from '@/stores/exportStore'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mock URL.createObjectURL and URL.revokeObjectURL
 const mockCreateObjectURL = vi.fn(() => 'blob:mock-url')
@@ -287,6 +287,111 @@ describe('exportStore', () => {
 
       expect(useExportStore.getState().status).toBe('error')
       expect(useExportStore.getState().error).toBe('Something went wrong')
+    })
+  })
+
+  describe('Estimated Size Calculation', () => {
+    // Settings are persisted, so we must set explicit known values before each test
+    beforeEach(() => {
+      // First set resolution and fps WITHOUT bitrate to trigger auto-calculation
+      useExportStore.getState().updateSettings({
+        resolution: '1080p',
+        fps: 60,
+        duration: 5,
+      })
+      // Now explicitly set bitrate to 12 for tests that expect that baseline
+      // This ensures a known starting point (even if not the "recommended" value)
+      useExportStore.getState().updateSettings({ bitrate: 12 })
+    })
+
+    it('should calculate size based on bitrate and duration', () => {
+      // 12 Mbps * 5s / 8 = 7.5 MB
+      useExportStore.getState().setModalOpen(true) // Trigger recalculateMode
+      expect(useExportStore.getState().estimatedSizeMB).toBeCloseTo(7.5)
+    })
+
+    it('should update estimated size when bitrate changes', () => {
+      useExportStore.getState().setModalOpen(true)
+
+      // Change bitrate from 12 to 24 Mbps
+      useExportStore.getState().updateSettings({ bitrate: 24 })
+
+      // 24 Mbps * 5s / 8 = 15 MB
+      expect(useExportStore.getState().estimatedSizeMB).toBeCloseTo(15)
+    })
+
+    it('should update estimated size when duration changes', () => {
+      useExportStore.getState().setModalOpen(true)
+
+      // Change duration from 5 to 10 seconds
+      useExportStore.getState().updateSettings({ duration: 10 })
+
+      // 12 Mbps * 10s / 8 = 15 MB
+      expect(useExportStore.getState().estimatedSizeMB).toBeCloseTo(15)
+    })
+
+    it('should update estimated size when both bitrate and duration change', () => {
+      useExportStore.getState().setModalOpen(true)
+
+      useExportStore.getState().updateSettings({ bitrate: 25, duration: 60 })
+
+      // 25 Mbps * 60s / 8 = 187.5 MB
+      expect(useExportStore.getState().estimatedSizeMB).toBeCloseTo(187.5)
+    })
+
+    it('should auto-adjust bitrate and size when resolution changes', () => {
+      useExportStore.getState().setModalOpen(true)
+      const sizeAt1080p = useExportStore.getState().estimatedSizeMB
+      const bitrateAt1080p = useExportStore.getState().settings.bitrate
+
+      useExportStore.getState().updateSettings({ resolution: '4k' })
+      const sizeAt4k = useExportStore.getState().estimatedSizeMB
+      const bitrateAt4k = useExportStore.getState().settings.bitrate
+
+      // 4K should have higher bitrate and larger file size
+      expect(bitrateAt4k).toBeGreaterThan(bitrateAt1080p)
+      expect(sizeAt4k).toBeGreaterThan(sizeAt1080p)
+    })
+
+    it('should auto-adjust bitrate and size when fps changes', () => {
+      // First set to 30fps to ensure we have a known starting point
+      useExportStore.getState().updateSettings({
+        resolution: '1080p',
+        fps: 30,
+        duration: 5,
+      })
+      useExportStore.getState().setModalOpen(true)
+
+      const sizeAt30fps = useExportStore.getState().estimatedSizeMB
+      const bitrateAt30fps = useExportStore.getState().settings.bitrate
+
+      // Expected: 1080p at 30fps = 12 * (30/30) = 12 Mbps
+      expect(bitrateAt30fps).toBe(12)
+
+      // Now change to 60fps - should auto-adjust
+      useExportStore.getState().updateSettings({ fps: 60 })
+      const sizeAt60fps = useExportStore.getState().estimatedSizeMB
+      const bitrateAt60fps = useExportStore.getState().settings.bitrate
+
+      // Expected: 1080p at 60fps = 12 * (60/30) = 24 Mbps
+      expect(bitrateAt60fps).toBe(24)
+
+      // 60fps should have higher bitrate and larger file size
+      expect(bitrateAt60fps).toBeGreaterThan(bitrateAt30fps)
+      expect(sizeAt60fps).toBeGreaterThan(sizeAt30fps)
+    })
+
+    it('should NOT auto-adjust bitrate when bitrate is explicitly set', () => {
+      useExportStore.getState().setModalOpen(true)
+
+      // Explicitly set bitrate to 50 Mbps
+      useExportStore.getState().updateSettings({ bitrate: 50 })
+      expect(useExportStore.getState().settings.bitrate).toBe(50)
+
+      // Now change resolution - bitrate should still be 50 since we just set it
+      // (This tests the case where both are changed in same call)
+      useExportStore.getState().updateSettings({ resolution: '720p', bitrate: 50 })
+      expect(useExportStore.getState().settings.bitrate).toBe(50)
     })
   })
 })

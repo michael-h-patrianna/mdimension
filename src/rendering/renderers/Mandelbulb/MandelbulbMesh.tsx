@@ -26,6 +26,7 @@ import {
 import { usePostProcessingStore } from '@/stores/postProcessingStore';
 import { useRotationStore } from '@/stores/rotationStore';
 import { useUIStore } from '@/stores/uiStore';
+import { useMsgBoxStore } from '@/stores/msgBoxStore';
 import { useWebGLContextStore } from '@/stores/webglContextStore';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
@@ -415,6 +416,9 @@ const MandelbulbMesh = () => {
     resetShaderOverrides();
   }, [dimension, shadowEnabled, temporalEnabled, opacitySettings.mode, sssEnabled, edgesVisible, resetShaderOverrides]);
 
+  // Error tracking to prevent loop spam
+  const hasErroredRef = useRef(false);
+
   // Compile shader only when configuration changes
   const { glsl: shaderString, modules, features } = useMemo(() => {
     return composeMandelbulbShader({
@@ -443,6 +447,9 @@ const MandelbulbMesh = () => {
   }, [shaderString, modules, features, setShaderDebugInfo]);
 
   useFrame((state) => {
+    if (hasErroredRef.current) return;
+
+    try {
     // Update animation time - only advances when isPlaying is true
     const currentTime = state.clock.elapsedTime;
     const deltaTime = currentTime - lastFrameTimeRef.current;
@@ -989,6 +996,34 @@ const MandelbulbMesh = () => {
 
       // Model matrices are always identity for Mandelbulb - no need to set every frame
       // (they are already identity from useMemo initialization)
+    }
+    } catch (error) {
+        if (hasErroredRef.current) return;
+        hasErroredRef.current = true;
+        
+        console.error('Mandelbulb Render Loop Error:', error)
+        
+        // Use getState to avoid hook rules in callback
+        const showMsgBox = useMsgBoxStore.getState().showMsgBox
+        
+        // Show error message
+        showMsgBox(
+          'Rendering Error',
+          `The Mandelbulb renderer encountered an error.\n\n${error instanceof Error ? error.message : 'Unknown error'}`,
+          'error',
+          [
+            {
+              label: 'Reload Page',
+              onClick: () => window.location.reload(),
+              variant: 'danger'
+            },
+            {
+              label: 'Close',
+              onClick: () => useMsgBoxStore.getState().closeMsgBox(),
+              variant: 'secondary'
+            }
+          ]
+        )
     }
   });
 

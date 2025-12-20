@@ -1,12 +1,12 @@
-import { useThree } from '@react-three/fiber'
-import { useEffect, useRef, useCallback } from 'react'
-import { useExportStore } from '@/stores/exportStore'
+import { getPlaneMultiplier } from '@/lib/animation/biasCalculation'
 import { VideoRecorder } from '@/lib/export/video'
 import { BASE_ROTATION_RATE, useAnimationStore } from '@/stores/animationStore'
+import { useExportStore } from '@/stores/exportStore'
+import { usePerformanceStore } from '@/stores/performanceStore'
 import { useRotationStore } from '@/stores/rotationStore'
 import { useUIStore } from '@/stores/uiStore'
-import { usePerformanceStore } from '@/stores/performanceStore'
-import { getPlaneMultiplier } from '@/lib/animation/biasCalculation'
+import { useThree } from '@react-three/fiber'
+import { useCallback, useEffect, useRef } from 'react'
 import * as THREE from 'three'
 
 /**
@@ -16,12 +16,12 @@ import * as THREE from 'three'
  */
 export function VideoExportController() {
   const { gl, advance } = useThree()
-  const { 
-    isExporting, 
-    settings, 
-    status, 
-    setStatus, 
-    setProgress, 
+  const {
+    isExporting,
+    settings,
+    status,
+    setStatus,
+    setProgress,
     setPreviewUrl,
     setEta,
     setError,
@@ -31,10 +31,11 @@ export function VideoExportController() {
   // Refs for state persistence
   const recorderRef = useRef<VideoRecorder | null>(null)
   const abortRef = useRef<boolean>(false)
+  const exportStartedRef = useRef<boolean>(false) // Prevents double-invocation of startExport
   const originalSizeRef = useRef<THREE.Vector2>(new THREE.Vector2())
   const originalPixelRatioRef = useRef<number>(1)
-  const originalPerfSettingsRef = useRef<{ quality: number; lowQualityAnim: boolean }>({ quality: 1, lowQualityAnim: true })
-  
+  const originalPerfSettingsRef = useRef<{ quality: number; lowQualityAnim: boolean; progressiveRefinementEnabled: boolean }>({ quality: 1, lowQualityAnim: true, progressiveRefinementEnabled: true })
+
   // Refs for loop management
   const loopStateRef = useRef({
     phase: 'warmup' as 'warmup' | 'preview' | 'recording',
@@ -63,7 +64,8 @@ export function VideoExportController() {
 
     // Restore Performance Settings
     const perfStore = usePerformanceStore.getState()
-    perfStore.setRefinementStage('final') 
+    perfStore.setProgressiveRefinementEnabled(originalPerfSettingsRef.current.progressiveRefinementEnabled)
+    perfStore.setRefinementStage('final')
     perfStore.setFractalAnimationLowQuality(originalPerfSettingsRef.current.lowQualityAnim)
   }, [gl])
 
@@ -71,6 +73,7 @@ export function VideoExportController() {
       setError(e instanceof Error ? e.message : 'Export failed')
       setStatus('error')
       restoreState()
+      exportStartedRef.current = false
       if (recorderRef.current) {
           recorderRef.current.dispose()
           recorderRef.current = null
@@ -95,12 +98,13 @@ export function VideoExportController() {
       if (abortRef.current) {
         setStatus('idle')
         restoreState()
+        exportStartedRef.current = false
         return
       }
 
       setStatus('encoding')
       const blob = await recorderRef.current?.finalize()
-      
+
       // Handle Final Output
       if (exportMode === 'in-memory') {
           if (blob) {
@@ -131,7 +135,7 @@ export function VideoExportController() {
           }
           setProgress(1)
           setStatus('completed')
-          setCompletionDetails({ 
+          setCompletionDetails({
               type: 'segmented',
               segmentCount: loopStateRef.current.currentSegment
           })
@@ -141,6 +145,7 @@ export function VideoExportController() {
       handleError(e)
     } finally {
       restoreState()
+      exportStartedRef.current = false
       if (recorderRef.current) {
           recorderRef.current.dispose()
           recorderRef.current = null
@@ -157,21 +162,21 @@ export function VideoExportController() {
       if (animatingPlanes.size > 0) {
           const updates = new Map<string, number>()
           const rotationDelta = BASE_ROTATION_RATE * speed * direction * deltaTimeSec
-          
+
           let planeIndex = 0
           animatingPlanes.forEach((plane) => {
               const currentAngle = useRotationStore.getState().rotations.get(plane) ?? 0
               const multiplier = getPlaneMultiplier(planeIndex, animatingPlanes.size, animationBias)
               const biasedDelta = rotationDelta * multiplier
               let newAngle = currentAngle + biasedDelta
-              
+
               if (!isFinite(newAngle)) newAngle = 0
               newAngle = ((newAngle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)
-              
+
               updates.set(plane, newAngle)
               planeIndex++
           })
-          
+
           useRotationStore.getState().updateRotations(updates)
       }
   }, [])
@@ -179,7 +184,7 @@ export function VideoExportController() {
   const processBatch = useCallback(async () => {
       const MAX_BLOCKING_TIME = 30 // ms
       const batchStartTime = performance.now()
-      
+
       if (abortRef.current) {
           finishExport()
           return
@@ -206,7 +211,7 @@ export function VideoExportController() {
                       const previewDuration = Math.min(3, settings.duration)
                       state.totalFrames = Math.ceil(previewDuration * fps)
                       state.frameId = 0
-                      
+
                       const recorder = new VideoRecorder(gl.domElement, {
                           width, height, fps, bitrate, format: settings.format,
                           duration: previewDuration
@@ -223,7 +228,7 @@ export function VideoExportController() {
               }
 
               if (abortRef.current) { finishExport(); return }
-              
+
               updateSceneState(state.frameDuration)
               const warmupTime = state.startTime + (state.warmupFrame * (state.frameDuration * 1000))
               advance(warmupTime)
@@ -251,7 +256,7 @@ export function VideoExportController() {
                   // Transition to Recording
                   state.phase = 'recording'
                   setStatus('rendering')
-                  
+
                   // Setup Main Recording
                   const { fps, bitrate, duration, resolution, customWidth, customHeight } = settings
                   let width = 1920, height = 1080
@@ -274,19 +279,19 @@ export function VideoExportController() {
                   state.totalFrames = Math.ceil(duration * fps)
                   state.exportStartTime = Date.now()
                   state.startTime = performance.now() // Reset timeline base
-                  
-                  // Reset Scene for consistency? 
-                  // No, we continue from where warmup left off? 
+
+                  // Reset Scene for consistency?
+                  // No, we continue from where warmup left off?
                   // Actually, if we generated 3s of preview, the scene advanced 3s.
                   // Ideally, main export should start from frame 0 (post-warmup).
-                  // But we modified the scene state in place. 
+                  // But we modified the scene state in place.
                   // To be perfect, we should probably restore scene state or run warmup again.
                   // For now, let's just continue (the preview is part of the flow) OR
                   // better: The requirement implies preview is "first 3 seconds".
                   // So we should have rendered the same frames.
-                  // Since we are deterministic, we can just reset `state.frameId` to 0 and `startTime` 
+                  // Since we are deterministic, we can just reset `state.frameId` to 0 and `startTime`
                   // but we need to reset the RotationStore state too?
-                  // That's hard. 
+                  // That's hard.
                   // ALTERNATIVE: The preview generation advances the scene.
                   // If we want main export to be identical, we must reset the scene rotation.
                   // Let's rely on the fact that we are in a deterministic loop relative to `advance`.
@@ -337,7 +342,7 @@ export function VideoExportController() {
                   // Calc remaining duration for next segment (might be shorter)
                   const remainingFrames = state.totalFrames - state.frameId
                   const nextSegFrames = Math.min(state.segmentDurationFrames, remainingFrames)
-                  
+
                   // Init new recorder
                   const { fps, bitrate, resolution, customWidth, customHeight } = settings
                   let width = 1920, height = 1080
@@ -364,7 +369,7 @@ export function VideoExportController() {
               // 3. Capture
               // Video time relative to CURRENT SEGMENT (or 0 for simple modes)
               const relativeVideoTime = (state.frameId * state.frameDuration) - state.segmentStartTimeVideo
-              
+
               if (recorderRef.current) {
                   await recorderRef.current.captureFrame(relativeVideoTime, state.frameDuration)
               }
@@ -384,7 +389,7 @@ export function VideoExportController() {
               const elapsed = now - state.exportStartTime
               const framesDone = state.frameId
               const framesTotal = state.totalFrames
-              
+
               // Progress Logic
               const totalProgress = framesDone / framesTotal
               setProgress(totalProgress) // Global progress
@@ -411,6 +416,49 @@ export function VideoExportController() {
   }, [finishExport, advance, gl.domElement, setEta, setProgress, updateSceneState, handleError, setPreviewUrl, setStatus])
 
   const startExport = useCallback(async () => {
+    // Prevent double-invocation due to React re-renders during async operations
+    if (exportStartedRef.current) {
+        return
+    }
+    exportStartedRef.current = true
+
+    // For stream mode, show file picker FIRST before any state changes
+    // This prevents race conditions and ensures user has confirmed file location
+    let streamHandle: FileSystemFileHandle | undefined = undefined
+
+    if (exportMode === 'stream') {
+        // Check for API support
+        if (!('showSaveFilePicker' in window)) {
+            setError('File System Access API not supported in this browser. Please use Chrome/Edge or switch to In-Memory mode.')
+            setStatus('error')
+            exportStartedRef.current = false
+            return
+        }
+
+        try {
+            // Ask user for file location BEFORE starting export
+            streamHandle = await window.showSaveFilePicker({
+                suggestedName: `mdimension-${Date.now()}.mp4`,
+                types: [{
+                    description: 'MP4 Video',
+                    accept: { 'video/mp4': ['.mp4'] },
+                }],
+            })
+        } catch (pickerError: unknown) {
+            // User cancelled - don't start export
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            if ((pickerError as any).name === 'AbortError') {
+                useExportStore.getState().setIsExporting(false)
+                exportStartedRef.current = false
+                return
+            }
+            setError(pickerError instanceof Error ? pickerError.message : 'Failed to select file')
+            setStatus('error')
+            exportStartedRef.current = false
+            return
+        }
+    }
+
     // 1. Save Renderer State
     gl.getSize(originalSizeRef.current)
     originalPixelRatioRef.current = gl.getPixelRatio()
@@ -419,20 +467,22 @@ export function VideoExportController() {
     const perfStore = usePerformanceStore.getState()
     originalPerfSettingsRef.current = {
         quality: perfStore.qualityMultiplier,
-        lowQualityAnim: perfStore.fractalAnimationLowQuality
+        lowQualityAnim: perfStore.fractalAnimationLowQuality,
+        progressiveRefinementEnabled: perfStore.progressiveRefinementEnabled
     }
 
     try {
       setStatus('rendering')
       abortRef.current = false
-      
-      // Force High Quality
+
+      // Force High Quality - disable progressive refinement to prevent it from overriding
+      perfStore.setProgressiveRefinementEnabled(false)
       perfStore.setFractalAnimationLowQuality(false)
-      perfStore.setRefinementStage('final') 
+      perfStore.setRefinementStage('final')
 
       // Yield to allow UI to paint "Rendering..." state
       await new Promise(r => setTimeout(r, 100))
-      
+
       if (abortRef.current) return
 
       const { fps, duration, bitrate, customWidth, customHeight, resolution } = settings
@@ -441,11 +491,11 @@ export function VideoExportController() {
       if (!Number.isFinite(fps) || fps <= 0) throw new Error(`Invalid FPS: ${fps}`)
       if (!Number.isFinite(duration) || duration <= 0) throw new Error(`Invalid duration: ${duration}`)
       if (!Number.isFinite(bitrate) || bitrate <= 0) throw new Error(`Invalid bitrate: ${bitrate}`)
-      
+
       // 2. Calculate Dimensions
       let exportWidth = 1920
       let exportHeight = 1080
-      
+
       if (resolution === 'custom') {
           exportWidth = customWidth
           exportHeight = customHeight
@@ -472,48 +522,22 @@ export function VideoExportController() {
         console.error('Renderer resize failed:', resizeError)
         throw new Error('Failed to resize renderer for export')
       }
-      
+
       if (abortRef.current) {
           restoreState()
           return
       }
 
       // 4. Mode Specific Setup
-      let streamHandle: FileSystemFileHandle | undefined = undefined
+      // Note: For stream mode, streamHandle was already obtained at the start of startExport()
       let segmentDurationFrames = Math.ceil(duration * fps) // Default to full duration
 
-      if (exportMode === 'stream') {
-          // Check for API support
-          if (!('showSaveFilePicker' in window)) {
-              throw new Error('File System Access API not supported in this browser. Please use Chrome/Edge or switch to In-Memory mode.')
-          }
-          
-          try {
-              // Ask user for file location
-              streamHandle = await window.showSaveFilePicker({
-                  suggestedName: `mdimension-${Date.now()}.mp4`,
-                  types: [{
-                      description: 'MP4 Video',
-                      accept: { 'video/mp4': ['.mp4'] },
-                  }],
-              })
-          } catch (pickerError: unknown) {
-              // User cancelled
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              if ((pickerError as any).name === 'AbortError') {
-                  useExportStore.getState().setIsExporting(false)
-                  setStatus('idle')
-                  restoreState()
-                  return
-              }
-              throw pickerError
-          }
-      } else if (exportMode === 'segmented') {
+      if (exportMode === 'segmented') {
           // Calculate segment size
           const targetSizeBytes = 50 * 1024 * 1024 // 50 MB
           const bitrateBps = bitrate * 1024 * 1024
           const calculatedDuration = (targetSizeBytes * 8) / bitrateBps
-          
+
           // Clamp: Min 5s, Max full duration
           const segDuration = Math.max(5, Math.min(duration, calculatedDuration))
           segmentDurationFrames = Math.ceil(segDuration * fps)
@@ -539,7 +563,7 @@ export function VideoExportController() {
       // 5. Initialize Recorder (First Instance)
       // Only for non-stream modes do we init immediately.
       // For Stream mode, we init Preview recorder in processBatch.
-      
+
       if (exportMode !== 'stream') {
           const canvas = gl.domElement
           const recorder = new VideoRecorder(canvas, {
@@ -553,7 +577,7 @@ export function VideoExportController() {
                 if (exportMode !== 'segmented') setProgress(p)
             }
           })
-          
+
           recorderRef.current = recorder
           await recorder.initialize()
       }
@@ -577,18 +601,22 @@ export function VideoExportController() {
     if (isExporting && status === 'idle') {
       startExport()
     }
-    
-    // Cleanup trigger
-    if (!isExporting && recorderRef.current) {
-      abortRef.current = true
+
+    // Cleanup trigger - reset export state when export is cancelled
+    if (!isExporting) {
+      exportStartedRef.current = false
+      if (recorderRef.current) {
+        abortRef.current = true
+      }
     }
-    
+
     return () => {
        // Component unmount cleanup
        if (recorderRef.current) {
          abortRef.current = true
          restoreState()
        }
+       exportStartedRef.current = false
     }
   }, [isExporting, status, startExport, restoreState])
 

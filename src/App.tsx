@@ -17,6 +17,7 @@ import { PerformanceMonitor } from '@/components/canvas/PerformanceMonitor';
 import { RefinementIndicator } from '@/components/canvas/RefinementIndicator';
 import { EditorLayout } from '@/components/layout/EditorLayout';
 import { ContextLostOverlay } from '@/components/overlays/ContextLostOverlay';
+import { MsgBox } from '@/components/overlays/MsgBox';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { ShaderCompilationOverlay } from '@/components/overlays/ShaderCompilationOverlay';
 import { ToastProvider } from '@/contexts/ToastContext';
@@ -201,6 +202,9 @@ function AppContent() {
 
         {/* Context Lost Overlay - shown when WebGL context is lost */}
         <ContextLostOverlay />
+
+        {/* Global Message Box Overlay */}
+        <MsgBox />
 
         {/* Shader Compilation Overlay - shown during shader compilation */}
         <ShaderCompilationOverlay />
