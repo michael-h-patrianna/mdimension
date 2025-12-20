@@ -16,8 +16,10 @@ export { Scene } from '@/rendering/Scene'
 export type { SceneProps } from '@/rendering/Scene'
 
 // Unified rendering architecture
-export { determineRenderMode, UnifiedRenderer } from '@/rendering/renderers/UnifiedRenderer'
-export type { RenderMode, UnifiedRendererProps } from '@/rendering/renderers/UnifiedRenderer'
+export { determineRenderMode } from '@/rendering/renderers/utils'
+export type { RenderMode } from '@/rendering/renderers/utils'
+export { UnifiedRenderer } from '@/rendering/renderers/UnifiedRenderer'
+export type { UnifiedRendererProps } from '@/rendering/renderers/UnifiedRenderer'
 
 // High-performance useFrame-based scene renderers
 export { PolytopeScene } from '@/rendering/renderers/Polytope'

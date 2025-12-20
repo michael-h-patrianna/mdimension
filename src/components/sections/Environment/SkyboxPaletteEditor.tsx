@@ -13,7 +13,7 @@ import {
   getCosinePaletteColorTS,
 } from '@/rendering/shaders/palette';
 import type { CosineCoefficients } from '@/rendering/shaders/palette/types';
-import { useEnvironmentStore } from '@/stores/environmentStore';
+import { useEnvironmentStore, type EnvironmentStore } from '@/stores/environmentStore';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -251,7 +251,7 @@ const SkyboxCoefficientEditor: React.FC<SkyboxCoefficientEditorProps> = ({
 // ============================================================================
 
 export const SkyboxPaletteEditor: React.FC = () => {
-  const environmentSelector = useShallow((state: any) => ({
+  const environmentSelector = useShallow((state: EnvironmentStore) => ({
     proceduralSettings: state.proceduralSettings,
     setProceduralSettings: state.setProceduralSettings,
   }));

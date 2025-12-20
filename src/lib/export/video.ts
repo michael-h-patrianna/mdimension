@@ -18,6 +18,10 @@ export interface VideoExportOptions {
   streamHandle?: FileSystemFileHandle // Optional: for Stream-to-File mode
 }
 
+/**
+ * Handles video recording from a canvas using WebCodecs and MediaBunny.
+ * Supports both in-memory buffering and direct-to-disk streaming.
+ */
 export class VideoRecorder {
   private output: Output | null = null
   private target: BufferTarget | StreamTarget | null = null
@@ -74,7 +78,9 @@ export class VideoRecorder {
   }
 
   /**
-   * Captures the current state of the canvas as a frame
+   * Captures the current state of the canvas as a frame.
+   * @param timestamp - The timestamp of the frame in seconds.
+   * @param duration - The duration of the frame in seconds.
    */
   async captureFrame(timestamp: number, duration: number) {
     if (!this.source || !this.isRecording) {
@@ -93,6 +99,7 @@ export class VideoRecorder {
   /**
    * Finalizes the recording.
    * Returns a Blob if using BufferTarget, or null if using StreamTarget (data already saved).
+   * @returns A promise that resolves with the video Blob or null.
    */
   async finalize(): Promise<Blob | null> {
     if (!this.output || !this.target) {

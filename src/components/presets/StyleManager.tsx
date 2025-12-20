@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { usePresetManagerStore, type SavedStyle, type PresetManagerState } from '@/stores/presetManagerStore';
-import { useToast } from '@/contexts/ToastContext';
+import { useToast } from '@/hooks/useToast';
 import { useShallow } from 'zustand/react/shallow';
 
 interface StyleManagerProps {

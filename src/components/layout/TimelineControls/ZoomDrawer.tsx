@@ -17,7 +17,7 @@
 
 import React, { useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { useExtendedObjectStore } from '@/stores/extendedObjectStore'
+import { useExtendedObjectStore, type ExtendedObjectState } from '@/stores/extendedObjectStore'
 import { ToggleButton } from '@/components/ui/ToggleButton'
 import { AnimationDrawerContainer } from './AnimationDrawerContainer'
 import type { MandelbulbAutopilotStrategy } from '@/lib/geometry/extended/types'
@@ -36,7 +36,7 @@ export const ZoomDrawer: React.FC = React.memo(() => {
   const [showStrategySettings, setShowStrategySettings] = useState(false)
 
   // Get config and setters from store
-  const extendedObjectSelector = useShallow((state: any) => ({
+  const extendedObjectSelector = useShallow((state: ExtendedObjectState) => ({
     config: state.mandelbulb,
     // Core Zoom
     setZoomEnabled: state.setMandelbulbZoomEnabled,

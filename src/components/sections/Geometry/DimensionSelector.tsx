@@ -4,7 +4,7 @@
  */
 
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
-import { MAX_DIMENSION, MIN_DIMENSION, useGeometryStore } from '@/stores/geometryStore';
+import { MAX_DIMENSION, MIN_DIMENSION, useGeometryStore, type GeometryState } from '@/stores/geometryStore';
 import React, { useEffect, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -65,7 +65,7 @@ export const DimensionSelector: React.FC<DimensionSelectorProps> = React.memo(({
   disabled = false,
 }) => {
   // Consolidate store subscriptions with useShallow to reduce re-renders
-  const geometrySelector = useShallow((state: any) => ({
+  const geometrySelector = useShallow((state: GeometryState) => ({
     dimension: state.dimension,
     setDimension: state.setDimension,
   }));

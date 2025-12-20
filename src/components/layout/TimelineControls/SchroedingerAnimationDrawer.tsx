@@ -20,7 +20,7 @@
 
 import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
+import { useExtendedObjectStore, type ExtendedObjectState } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { ToggleButton } from '@/components/ui/ToggleButton';
 import { Slider } from '@/components/ui/Slider';
@@ -39,7 +39,7 @@ export const SchroedingerAnimationDrawer: React.FC = React.memo(() => {
   const dimension = useGeometryStore((state) => state.dimension);
 
   // Get config and setters from store
-  const extendedObjectSelector = useShallow((state: any) => ({
+  const extendedObjectSelector = useShallow((state: ExtendedObjectState) => ({
     config: state.schroedinger,
     // Time Evolution
     setTimeScale: state.setSchroedingerTimeScale,

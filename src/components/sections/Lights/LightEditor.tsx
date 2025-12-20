@@ -19,7 +19,7 @@ import { Select } from '@/components/ui/Select';
 import { Slider } from '@/components/ui/Slider';
 import { ToggleButton } from '@/components/ui/ToggleButton';
 import type { LightSource, LightType } from '@/rendering/lights/types';
-import { useLightingStore } from '@/stores/lightingStore';
+import { useLightingStore, type LightingSlice } from '@/stores/lightingStore';
 import React, { memo, useCallback } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { AMBIENT_LIGHT_ID } from './LightListItem';
@@ -42,7 +42,7 @@ const RAD_TO_DEG = 180 / Math.PI;
 export const LightEditor: React.FC<LightEditorProps> = memo(function LightEditor({
   className = '',
 }) {
-  const lightingSelector = useShallow((state: any) => ({
+  const lightingSelector = useShallow((state: LightingSlice) => ({
     lights: state.lights,
     selectedLightId: state.selectedLightId,
     updateLight: state.updateLight,

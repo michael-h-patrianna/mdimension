@@ -14,10 +14,10 @@ import { Select, type SelectOption } from '@/components/ui/Select';
 import { Slider } from '@/components/ui/Slider';
 import { Switch } from '@/components/ui/Switch';
 import { useAppearanceStore } from '@/stores/appearanceStore';
-import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
+import { useExtendedObjectStore, type ExtendedObjectState } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
-import { useLightingStore } from '@/stores/lightingStore';
-import { usePostProcessingStore } from '@/stores/postProcessingStore';
+import { useLightingStore, type LightingSlice } from '@/stores/lightingStore';
+import { usePostProcessingStore, type PostProcessingSlice } from '@/stores/postProcessingStore';
 import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { LightEditor } from './LightEditor';
@@ -49,7 +49,7 @@ export const LightingControls: React.FC<LightingControlsProps> = React.memo(({
     showLightGizmos,
     setShowLightGizmos,
   } = useLightingStore(
-    useShallow((state: any) => ({
+    useShallow((state: LightingSlice) => ({
       selectedLightId: state.selectedLightId,
       showLightGizmos: state.showLightGizmos,
       setShowLightGizmos: state.setShowLightGizmos,
@@ -57,7 +57,7 @@ export const LightingControls: React.FC<LightingControlsProps> = React.memo(({
   );
 
   // Global SSAO settings (for non-Schrödinger objects)
-  const postProcessingSelector = useShallow((state: any) => ({
+  const postProcessingSelector = useShallow((state: PostProcessingSlice) => ({
     ssaoEnabled: state.ssaoEnabled,
     setSSAOEnabled: state.setSSAOEnabled,
     ssaoIntensity: state.ssaoIntensity,
@@ -71,7 +71,7 @@ export const LightingControls: React.FC<LightingControlsProps> = React.memo(({
   } = usePostProcessingStore(postProcessingSelector);
 
   // Schrödinger-specific AO settings
-  const extendedObjectSelector = useShallow((state: any) => ({
+  const extendedObjectSelector = useShallow((state: ExtendedObjectState) => ({
     schroedingerAoEnabled: state.schroedinger.aoEnabled,
     schroedingerAoStrength: state.schroedinger.aoStrength,
     schroedingerAoQuality: state.schroedinger.aoQuality,

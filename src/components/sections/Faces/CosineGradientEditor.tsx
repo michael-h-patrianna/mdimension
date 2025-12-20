@@ -6,7 +6,7 @@
  */
 
 import { DEFAULT_COSINE_COEFFICIENTS } from '@/rendering/shaders/palette';
-import { useAppearanceStore } from '@/stores/appearanceStore';
+import { useAppearanceStore, type AppearanceSlice } from '@/stores/appearanceStore';
 import React, { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -35,7 +35,7 @@ export const CosineGradientEditor: React.FC<CosineGradientEditorProps> = ({
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const appearanceSelector = useShallow((state: any) => ({
+  const appearanceSelector = useShallow((state: AppearanceSlice) => ({
     cosineCoefficients: state.cosineCoefficients,
     setCosineCoefficient: state.setCosineCoefficient,
     setCosineCoefficients: state.setCosineCoefficients,

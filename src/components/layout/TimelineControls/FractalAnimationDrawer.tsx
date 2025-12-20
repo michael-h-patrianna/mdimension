@@ -21,7 +21,7 @@ import {
     getAvailableAnimationSystems,
     getConfigStoreKey,
 } from '@/lib/geometry/registry';
-import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
+import { useExtendedObjectStore, type ExtendedObjectState } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { m } from 'motion/react';
 import React, { useCallback, useMemo } from 'react';
@@ -116,7 +116,7 @@ export const FractalAnimationDrawer: React.FC = React.memo(() => {
   );
 
   // Get config from store based on object type
-  const extendedObjectSelector = useShallow((state: any) => {
+  const extendedObjectSelector = useShallow((state: ExtendedObjectState) => {
     if (configKey && configKey in state) {
       const value = state[configKey as keyof typeof state];
       // Only return config objects, not functions (store actions)

@@ -7,7 +7,7 @@
 
 import { Slider } from '@/components/ui/Slider'
 import { ControlGroup } from '@/components/ui/ControlGroup'
-import { useAppearanceStore } from '@/stores/appearanceStore';
+import { useAppearanceStore, type AppearanceSlice } from '@/stores/appearanceStore';
 import { useLightingStore } from '@/stores/lightingStore';
 import React from 'react'
 import { useShallow } from 'zustand/react/shallow'
@@ -18,7 +18,7 @@ export interface EdgeMaterialControlsProps {
 
 export const EdgeMaterialControls: React.FC<EdgeMaterialControlsProps> = React.memo(
   ({ className = '' }) => {
-    const appearanceSelector = useShallow((state: any) => ({
+    const appearanceSelector = useShallow((state: AppearanceSlice) => ({
       edgeThickness: state.edgeThickness,
       edgeMetallic: state.edgeMetallic,
       edgeRoughness: state.edgeRoughness,

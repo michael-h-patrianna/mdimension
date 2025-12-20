@@ -8,7 +8,7 @@
  * - Mode-specific controls (Starfield, Aurora, Horizon)
  */
 import { SkyboxSelection } from '@/stores/defaults/visualDefaults'
-import { useEnvironmentStore } from '@/stores/environmentStore'
+import { useEnvironmentStore, type EnvironmentStore } from '@/stores/environmentStore'
 import React from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import {
@@ -54,7 +54,7 @@ const ALL_SKYBOX_OPTIONS: SkyboxOption[] = [
 ]
 
 export const SkyboxControls: React.FC = () => {
-  const environmentSelector = useShallow((state: any) => ({
+  const environmentSelector = useShallow((state: EnvironmentStore) => ({
     skyboxSelection: state.skyboxSelection,
     skyboxBlur: state.skyboxBlur,
     skyboxIntensity: state.skyboxIntensity,

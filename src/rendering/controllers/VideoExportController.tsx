@@ -25,8 +25,7 @@ export function VideoExportController() {
     setPreviewUrl,
     setEta,
     setError,
-    exportMode,
-    setCompletionDetails
+    exportMode
   } = useExportStore()
 
   // Refs for state persistence

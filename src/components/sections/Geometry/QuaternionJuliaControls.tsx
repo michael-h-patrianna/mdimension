@@ -28,7 +28,7 @@ import { Section } from '@/components/sections/Section';
 import {
   JULIA_CONSTANT_PRESETS,
 } from '@/lib/geometry/extended/types';
-import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
+import { useExtendedObjectStore, type ExtendedObjectState } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 
 /**
@@ -81,7 +81,7 @@ export const QuaternionJuliaControls: React.FC<QuaternionJuliaControlsProps> = R
   className = '',
 }) => {
   // Consolidate extended object store selectors with useShallow
-  const extendedObjectSelector = useShallow((state: any) => ({
+  const extendedObjectSelector = useShallow((state: ExtendedObjectState) => ({
     config: state.quaternionJulia,
     setJuliaConstant: state.setQuaternionJuliaConstant,
     setPower: state.setQuaternionJuliaPower,

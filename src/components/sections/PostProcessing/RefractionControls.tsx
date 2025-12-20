@@ -18,7 +18,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { Slider } from '@/components/ui/Slider';
 import {
 } from '@/stores/defaults/visualDefaults';
-import { usePostProcessingStore } from '@/stores/postProcessingStore';
+import { usePostProcessingStore, type PostProcessingSlice } from '@/stores/postProcessingStore';
 
 export interface RefractionControlsProps {
   className?: string;
@@ -30,7 +30,7 @@ export interface RefractionControlsProps {
 export const RefractionControls: React.FC<RefractionControlsProps> = React.memo(({
   className = '',
 }) => {
-  const postProcessingSelector = useShallow((state: any) => ({
+  const postProcessingSelector = useShallow((state: PostProcessingSlice) => ({
     // State
     refractionIOR: state.refractionIOR,
     refractionStrength: state.refractionStrength,

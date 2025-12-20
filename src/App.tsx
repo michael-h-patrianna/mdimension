@@ -17,9 +17,10 @@ import { PerformanceMonitor } from '@/components/canvas/PerformanceMonitor';
 import { RefinementIndicator } from '@/components/canvas/RefinementIndicator';
 import { EditorLayout } from '@/components/layout/EditorLayout';
 import { ContextLostOverlay } from '@/components/overlays/ContextLostOverlay';
-import { ShaderCompilationOverlay } from '@/components/overlays/ShaderCompilationOverlay';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
-import { ToastProvider, useToast } from '@/contexts/ToastContext';
+import { ShaderCompilationOverlay } from '@/components/overlays/ShaderCompilationOverlay';
+import { ToastProvider } from '@/contexts/ToastContext';
+import { useToast } from '@/hooks/useToast';
 import { useAnimationLoop } from '@/hooks/useAnimationLoop';
 import { useDynamicFavicon } from '@/hooks/useDynamicFavicon';
 import { useFaceDepths } from '@/hooks/useFaceDepths';
@@ -77,7 +78,7 @@ function Visualizer() {
   // Ground plane only recalculates on vertex count change, not during animation
   const basePositions = useMemo(
     () => extractBasePositions(geometry.vertices),
-    [geometry.vertices.length]
+    [geometry.vertices]
   );
 
   // 6. Compute per-face depth values for palette color variation (polytopes only)

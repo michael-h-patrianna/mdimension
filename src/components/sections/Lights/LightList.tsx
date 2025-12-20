@@ -11,7 +11,7 @@
 import { Select, type SelectOption } from '@/components/ui/Select';
 import type { LightSource, LightType } from '@/rendering/lights/types';
 import { MAX_LIGHTS } from '@/rendering/lights/types';
-import { useLightingStore } from '@/stores/lightingStore';
+import { useLightingStore, type LightingSlice } from '@/stores/lightingStore';
 import React, { memo, useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { AMBIENT_LIGHT_ID, LightListItem } from './LightListItem';
@@ -31,7 +31,7 @@ const LIGHT_TYPE_OPTIONS: SelectOption<LightType | ''>[] = [
 export const LightList: React.FC<LightListProps> = memo(function LightList({
   className = '',
 }) {
-  const lightingSelector = useShallow((state: any) => ({
+  const lightingSelector = useShallow((state: LightingSlice) => ({
     lights: state.lights,
     selectedLightId: state.selectedLightId,
     addLight: state.addLight,

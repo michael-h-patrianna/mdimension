@@ -73,6 +73,8 @@ export interface PresetManagerState {
 /**
  * Deep clones state and removes functions to ensure JSON serializability.
  * Prevents reference mutation issues where saved presets would change when store changes.
+ * @param state - The state object to serialize.
+ * @returns A JSON-serializable version of the state.
  */
 const serializeState = <T extends object>(state: T): Record<string, unknown> => {
   // 1. Create a shallow copy first to filter functions
@@ -89,6 +91,8 @@ const serializeState = <T extends object>(state: T): Record<string, unknown> => 
 
 /**
  * Serializes Animation store (Set -> Array)
+ * @param state - The animation state to serialize.
+ * @returns A JSON-serializable version of the animation state.
  */
 const serializeAnimationState = <T extends object>(state: T) => {
   const clean = serializeState(state)
@@ -100,6 +104,8 @@ const serializeAnimationState = <T extends object>(state: T) => {
 
 /**
  * Serializes Rotation store (Map -> Object)
+ * @param state - The rotation state to serialize.
+ * @returns A JSON-serializable version of the rotation state.
  */
 const serializeRotationState = <T extends object>(state: T) => {
   const clean = serializeState(state)

@@ -4,8 +4,8 @@ import { Slider } from '@/components/ui/Slider';
 import { ToggleButton } from '@/components/ui/ToggleButton';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import type { RaymarchQuality } from '@/lib/geometry/extended/types';
-import { useAppearanceStore } from '@/stores/appearanceStore';
-import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
+import { useAppearanceStore, type AppearanceSlice } from '@/stores/appearanceStore';
+import { useExtendedObjectStore, type ExtendedObjectState } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
@@ -86,7 +86,7 @@ const getQualityDescription = (quality: RaymarchQuality, objectType: string): st
  * @returns The quality control UI component
  */
 const RaymarchingQualityControl: React.FC<{ objectType: string }> = ({ objectType }) => {
-    const extendedObjectSelector = useShallow((state: any) => ({
+    const extendedObjectSelector = useShallow((state: ExtendedObjectState) => ({
         mandelbulbQuality: state.mandelbulb.raymarchQuality,
         setMandelbulbQuality: state.setMandelbulbRaymarchQuality,
         juliaQuality: state.quaternionJulia.raymarchQuality,
@@ -138,7 +138,7 @@ const RaymarchingQualityControl: React.FC<{ objectType: string }> = ({ objectTyp
 };
 
 const SharedAdvancedControls: React.FC = () => {
-    const appearanceSelector = useShallow((state: any) => ({
+    const appearanceSelector = useShallow((state: AppearanceSlice) => ({
         sssEnabled: state.sssEnabled, setSssEnabled: state.setSssEnabled,
         sssIntensity: state.sssIntensity, setSssIntensity: state.setSssIntensity,
         sssColor: state.sssColor, setSssColor: state.setSssColor,
@@ -251,7 +251,7 @@ const SharedAdvancedControls: React.FC = () => {
 };
 
 const SchroedingerAdvanced: React.FC = () => {
-    const extendedObjectSelector = useShallow((state: any) => ({
+    const extendedObjectSelector = useShallow((state: ExtendedObjectState) => ({
         config: state.schroedinger,
         setDensityGain: state.setSchroedingerDensityGain,
         setPowderScale: state.setSchroedingerPowderScale,

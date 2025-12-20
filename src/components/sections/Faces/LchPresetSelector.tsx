@@ -7,7 +7,7 @@
 
 import { Select } from '@/components/ui/Select';
 import { LCH_PRESET_OPTIONS } from '@/rendering/shaders/palette';
-import { useAppearanceStore } from '@/stores/appearanceStore';
+import { useAppearanceStore, type AppearanceSlice } from '@/stores/appearanceStore';
 import React, { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -18,7 +18,7 @@ export interface LchPresetSelectorProps {
 export const LchPresetSelector: React.FC<LchPresetSelectorProps> = ({
   className = '',
 }) => {
-  const appearanceSelector = useShallow((state: any) => ({
+  const appearanceSelector = useShallow((state: AppearanceSlice) => ({
     lchLightness: state.lchLightness,
     lchChroma: state.lchChroma,
     setLchLightness: state.setLchLightness,

@@ -68,8 +68,8 @@ export const Slider: React.FC<SliderProps> = ({
 
   // Cleanup event listeners on unmount
   useEffect(() => {
+    const listeners = labelDragListenersRef.current;
     return () => {
-      const listeners = labelDragListenersRef.current;
       if (listeners.move) {
         window.removeEventListener('mousemove', listeners.move);
       }

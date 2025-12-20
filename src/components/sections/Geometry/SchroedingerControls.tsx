@@ -32,7 +32,7 @@ import {
   HydrogenOrbitalPresetName,
   HydrogenNDPresetName,
 } from '@/lib/geometry/extended/types';
-import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
+import { useExtendedObjectStore, type ExtendedObjectState } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import React from 'react';
 
@@ -72,7 +72,7 @@ export const SchroedingerControls: React.FC<SchroedingerControlsProps> = React.m
   className = '',
 }) => {
   // Consolidate extended object store selectors with useShallow
-  const extendedObjectSelector = useShallow((state: any) => ({
+  const extendedObjectSelector = useShallow((state: ExtendedObjectState) => ({
     config: state.schroedinger,
     // Geometry actions
     setScale: state.setSchroedingerScale,

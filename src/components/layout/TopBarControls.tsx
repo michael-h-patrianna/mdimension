@@ -11,7 +11,7 @@ import { useUIStore, type UISlice } from '@/stores/uiStore';
 import { useAnimationStore } from '@/stores/animationStore';
 import { useLayoutStore, type LayoutStore } from '@/stores/layoutStore';
 import { useShallow } from 'zustand/react/shallow';
-import { useToast } from '@/contexts/ToastContext';
+import { useToast } from '@/hooks/useToast';
 import { soundManager } from '@/lib/audio/SoundManager';
 
 // Icons

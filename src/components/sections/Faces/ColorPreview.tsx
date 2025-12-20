@@ -10,7 +10,7 @@
  */
 
 import { getCosinePaletteColorTS, applyDistributionTS } from '@/rendering/shaders/palette';
-import { useAppearanceStore } from '@/stores/appearanceStore';
+import { useAppearanceStore, type AppearanceSlice } from '@/stores/appearanceStore';
 import React, { useEffect, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -27,7 +27,7 @@ export const ColorPreview: React.FC<ColorPreviewProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const appearanceSelector = useShallow((state: any) => ({
+  const appearanceSelector = useShallow((state: AppearanceSlice) => ({
     colorAlgorithm: state.colorAlgorithm,
     cosineCoefficients: state.cosineCoefficients,
     distribution: state.distribution,

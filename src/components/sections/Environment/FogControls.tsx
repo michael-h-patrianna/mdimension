@@ -9,13 +9,13 @@ import { Vector3Input } from '@/components/sections/Lights/Vector3Input';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import { Slider } from '@/components/ui/Slider';
 import { Switch } from '@/components/ui/Switch';
-import { useEnvironmentStore } from '@/stores/environmentStore';
+import { useEnvironmentStore, type EnvironmentStore } from '@/stores/environmentStore';
 import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
 export const FogControls: React.FC = () => {
   // Physical fog settings
-  const environmentSelector = useShallow((state: any) => ({
+  const environmentSelector = useShallow((state: EnvironmentStore) => ({
     fogEnabled: state.fogEnabled,
     fogDensity: state.fogDensity,
     fogColor: state.fogColor,

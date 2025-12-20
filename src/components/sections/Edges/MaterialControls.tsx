@@ -12,6 +12,7 @@ import {
 } from '@/stores/defaults/visualDefaults';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useLightingStore } from '@/stores/lightingStore';
+import type { LightingSlice } from '@/stores/lightingStore';
 import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -30,7 +31,7 @@ export const MaterialControls: React.FC<MaterialControlsProps> = React.memo(({
 }) => {
   const shaderType = useAppearanceStore((state) => state.shaderType);
 
-  const lightingSelector = useShallow((state: any) => ({
+  const lightingSelector = useShallow((state: LightingSlice) => ({
     lightEnabled: state.lightEnabled,
     specularIntensity: state.specularIntensity,
     shininess: state.shininess,

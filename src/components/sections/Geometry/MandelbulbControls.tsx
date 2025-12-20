@@ -15,7 +15,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { Slider } from '@/components/ui/Slider';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { Section } from '@/components/sections/Section';
-import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
+import { useExtendedObjectStore, type ExtendedObjectState } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import React from 'react';
 
@@ -57,7 +57,7 @@ export const MandelbulbControls: React.FC<MandelbulbControlsProps> = React.memo(
   className = '',
 }) => {
   // Consolidate extended object store selectors with useShallow
-  const extendedObjectSelector = useShallow((state: any) => ({
+  const extendedObjectSelector = useShallow((state: ExtendedObjectState) => ({
     config: state.mandelbulb,
     setMaxIterations: state.setMandelbulbMaxIterations,
     setEscapeRadius: state.setMandelbulbEscapeRadius,

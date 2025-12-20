@@ -30,7 +30,7 @@ import {
   type BokehBlurMethod,
   type BokehFocusMode,
 } from '@/stores/defaults/visualDefaults';
-import { usePostProcessingStore } from '@/stores/postProcessingStore';
+import { usePostProcessingStore, type PostProcessingSlice } from '@/stores/postProcessingStore';
 import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -61,7 +61,7 @@ const BLUR_METHOD_OPTIONS = [
 export const BokehControls: React.FC<BokehControlsProps> = React.memo(({
   className = '',
 }) => {
-  const postProcessingSelector = useShallow((state: any) => ({
+  const postProcessingSelector = useShallow((state: PostProcessingSlice) => ({
     // State
     bokehFocusMode: state.bokehFocusMode,
     bokehBlurMethod: state.bokehBlurMethod,

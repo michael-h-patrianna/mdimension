@@ -7,13 +7,13 @@ import { RefractionControls } from './RefractionControls';
 import { SSRControls } from './SSRControls';
 import { Switch } from '@/components/ui/Switch';
 import { Tabs } from '@/components/ui/Tabs';
-import { usePostProcessingStore } from '@/stores/postProcessingStore';
+import { usePostProcessingStore, type PostProcessingSlice } from '@/stores/postProcessingStore';
 import { useShallow } from 'zustand/react/shallow';
 
 export const PostProcessingControls: React.FC = () => {
   const [activeTab, setActiveTab] = useState('bloom');
 
-  const postProcessingSelector = useShallow((state: any) => ({
+  const postProcessingSelector = useShallow((state: PostProcessingSlice) => ({
     bloomEnabled: state.bloomEnabled,
     setBloomEnabled: state.setBloomEnabled,
     cinematicEnabled: state.cinematicEnabled,

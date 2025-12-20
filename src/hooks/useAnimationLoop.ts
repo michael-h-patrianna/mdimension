@@ -102,7 +102,7 @@ export function useAnimationLoop(): void {
 
       frameRef.current = requestAnimationFrame(animate)
     },
-    [animatingPlanes, getRotationDelta, getRotationRadians, updateRotations]
+    [getRotationDelta, getRotationRadians, updateRotations]
   )
 
   useEffect(() => {

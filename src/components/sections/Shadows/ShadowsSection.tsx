@@ -21,9 +21,9 @@ import {
 } from '@/rendering/shadows/constants';
 import type { ShadowQuality } from '@/rendering/shadows/types';
 import type { LightSource } from '@/rendering/lights/types';
-import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
+import { useExtendedObjectStore, type ExtendedObjectState } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
-import { useLightingStore } from '@/stores/lightingStore';
+import { useLightingStore, type LightingSlice } from '@/stores/lightingStore';
 import React, { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -57,7 +57,7 @@ export const ShadowsSection: React.FC<ShadowsSectionProps> = ({
   const objectType = useGeometryStore((state) => state.objectType);
 
   // Get global lighting state
-  const lightingSelector = useShallow((state: any) => ({
+  const lightingSelector = useShallow((state: LightingSlice) => ({
     lights: state.lights,
     shadowEnabled: state.shadowEnabled,
     shadowQuality: state.shadowQuality,
@@ -85,7 +85,7 @@ export const ShadowsSection: React.FC<ShadowsSectionProps> = ({
   } = useLightingStore(lightingSelector);
 
   // Get Schrödinger-specific shadow settings
-  const extendedObjectSelector = useShallow((state: any) => ({
+  const extendedObjectSelector = useShallow((state: ExtendedObjectState) => ({
     schroedingerShadowsEnabled: state.schroedinger.shadowsEnabled,
     schroedingerShadowStrength: state.schroedinger.shadowStrength,
     schroedingerShadowSteps: state.schroedinger.shadowSteps,

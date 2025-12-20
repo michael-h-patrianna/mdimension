@@ -11,7 +11,7 @@ import { useTransformStore } from '@/stores/transformStore';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import { usePostProcessingStore } from '@/stores/postProcessingStore';
 import { PRESETS } from '@/lib/presets';
-import { useToast } from '@/contexts/ToastContext';
+import { useToast } from '@/hooks/useToast';
 import { useLayoutStore, type LayoutStore } from '@/stores/layoutStore';
 import { usePresetManagerStore, type SavedStyle, type SavedScene, type PresetManagerState } from '@/stores/presetManagerStore';
 import { useThemeStore } from '@/stores/themeStore';

@@ -22,7 +22,7 @@ import { Select } from '@/components/ui/Select';
 import {
   type SSRQuality,
 } from '@/stores/defaults/visualDefaults';
-import { usePostProcessingStore } from '@/stores/postProcessingStore';
+import { usePostProcessingStore, type PostProcessingSlice } from '@/stores/postProcessingStore';
 
 export interface SSRControlsProps {
   className?: string;
@@ -40,7 +40,7 @@ const SSR_QUALITY_OPTIONS: { value: SSRQuality; label: string }[] = [
 export const SSRControls: React.FC<SSRControlsProps> = React.memo(({
   className = '',
 }) => {
-  const postProcessingSelector = useShallow((state: any) => ({
+  const postProcessingSelector = useShallow((state: PostProcessingSlice) => ({
     // State
     ssrIntensity: state.ssrIntensity,
     ssrMaxDistance: state.ssrMaxDistance,

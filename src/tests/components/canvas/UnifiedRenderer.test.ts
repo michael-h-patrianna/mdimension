@@ -2,9 +2,9 @@
  * Tests for UnifiedRenderer and determineRenderMode function
  */
 
+import { describe, it, expect } from 'vitest'
+import { determineRenderMode, type RenderMode } from '@/rendering/renderers/utils'
 import type { NdGeometry } from '@/lib/geometry/types'
-import { determineRenderMode, type RenderMode } from '@/rendering/renderers/UnifiedRenderer'
-import { describe, expect, it } from 'vitest'
 
 /**
  * Helper to create minimal geometry for testing

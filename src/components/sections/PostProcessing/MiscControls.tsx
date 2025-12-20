@@ -15,7 +15,7 @@ import { ControlGroup } from '@/components/ui/ControlGroup';
 import { Select, type SelectOption } from '@/components/ui/Select';
 import { Slider } from '@/components/ui/Slider';
 import { Switch } from '@/components/ui/Switch';
-import { usePostProcessingStore } from '@/stores/postProcessingStore';
+import { usePostProcessingStore, type PostProcessingSlice } from '@/stores/postProcessingStore';
 import { type AntiAliasingMethod } from '@/stores/defaults/visualDefaults';
 import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
@@ -37,7 +37,7 @@ const ANTI_ALIASING_OPTIONS: SelectOption<AntiAliasingMethod>[] = [
 export const MiscControls: React.FC<MiscControlsProps> = React.memo(({
   className = '',
 }) => {
-  const postProcessingSelector = useShallow((state: any) => ({
+  const postProcessingSelector = useShallow((state: PostProcessingSlice) => ({
     antiAliasingMethod: state.antiAliasingMethod,
     setAntiAliasingMethod: state.setAntiAliasingMethod,
     smaaThreshold: state.smaaThreshold,

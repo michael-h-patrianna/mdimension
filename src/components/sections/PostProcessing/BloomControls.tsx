@@ -37,7 +37,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { Slider } from '@/components/ui/Slider';
 import {
 } from '@/stores/defaults/visualDefaults';
-import { usePostProcessingStore } from '@/stores/postProcessingStore';
+import { usePostProcessingStore, type PostProcessingSlice } from '@/stores/postProcessingStore';
 
 export interface BloomControlsProps {
   className?: string;
@@ -52,7 +52,7 @@ export const BloomControls: React.FC<BloomControlsProps> = React.memo(({
   className = '',
 }) => {
   // Consolidate all visual store subscriptions with useShallow to reduce re-renders
-  const postProcessingSelector = useShallow((state: any) => ({
+  const postProcessingSelector = useShallow((state: PostProcessingSlice) => ({
     // State
     bloomIntensity: state.bloomIntensity,
     bloomThreshold: state.bloomThreshold,

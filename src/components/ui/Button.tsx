@@ -38,9 +38,10 @@ export const Button: React.FC<ButtonProps> = ({
 
   // Cleanup ripple timers on unmount
   useEffect(() => {
+    const timers = rippleTimersRef.current;
     return () => {
-      rippleTimersRef.current.forEach((timer) => clearTimeout(timer));
-      rippleTimersRef.current.clear();
+      timers.forEach((timer) => clearTimeout(timer));
+      timers.clear();
     };
   }, []);
 

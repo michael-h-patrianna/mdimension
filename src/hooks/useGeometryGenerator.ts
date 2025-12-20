@@ -3,7 +3,7 @@ import { generateGeometry } from '@/lib/geometry'
 import { generateWythoffPolytopeWithWarnings } from '@/lib/geometry/wythoff'
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore'
 import { useGeometryStore } from '@/stores/geometryStore'
-import { useToast } from '@/contexts/ToastContext'
+import { useToast } from '@/hooks/useToast'
 import { useMemo, useRef, useEffect } from 'react'
 
 /**

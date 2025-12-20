@@ -30,13 +30,13 @@ import {
     VOLUMETRIC_DENSITY_RANGE,
 } from '@/rendering/opacity/constants';
 import type { OpacityMode, SampleQuality, VolumetricAnimationQuality } from '@/rendering/opacity/types';
-import { useAppearanceStore } from '@/stores/appearanceStore';
+import { useAppearanceStore, type AppearanceSlice } from '@/stores/appearanceStore';
 import {
     DEFAULT_SPECULAR_COLOR,
 } from '@/stores/defaults/visualDefaults';
 import { useGeometryStore } from '@/stores/geometryStore';
-import { useLightingStore } from '@/stores/lightingStore';
-import { useUIStore } from '@/stores/uiStore';
+import { useLightingStore, type LightingSlice } from '@/stores/lightingStore';
+import { useUIStore, type UISlice } from '@/stores/uiStore';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { ColorAlgorithmSelector } from './ColorAlgorithmSelector';
@@ -63,7 +63,7 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
   const isRaymarchingFractalType = isRaymarchingFractal(objectType, dimension);
 
   // Appearance settings
-  const appearanceSelector = useShallow((state: any) => ({
+  const appearanceSelector = useShallow((state: AppearanceSlice) => ({
     facesVisible: state.facesVisible,
     colorAlgorithm: state.colorAlgorithm,
     faceColor: state.faceColor,
@@ -115,7 +115,7 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
   } = useAppearanceStore(appearanceSelector);
 
   // Lighting settings
-  const lightingSelector = useShallow((state: any) => ({
+  const lightingSelector = useShallow((state: LightingSlice) => ({
     lightEnabled: state.lightEnabled,
     specularIntensity: state.specularIntensity,
     shininess: state.shininess,
@@ -139,7 +139,7 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
   } = useLightingStore(lightingSelector);
 
   // UI settings (Opacity)
-  const uiSelector = useShallow((state: any) => ({
+  const uiSelector = useShallow((state: UISlice) => ({
     opacitySettings: state.opacitySettings,
     hasSeenVolumetricWarning: state.hasSeenVolumetricWarning,
     setOpacityMode: state.setOpacityMode,

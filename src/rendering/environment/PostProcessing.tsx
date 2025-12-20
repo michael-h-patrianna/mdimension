@@ -160,7 +160,13 @@ export const PostProcessing = memo(function PostProcessing() {
 
   // Create noise texture for volumetric fog (recreated on context restore)
   const noiseTexture = useMemo(
-    () => (supports3DNoise ? generateNoiseTexture3D(64) : generateNoiseTexture2D(256)),
+    () => {
+      // Use restoreCount as a seed offset or just check it to ensure dependency usage
+      // This forces texture recreation on context restore
+      return restoreCount >= 0 && supports3DNoise 
+        ? generateNoiseTexture3D(64) 
+        : generateNoiseTexture2D(256);
+    },
     [supports3DNoise, restoreCount]
   );
 
@@ -711,9 +717,7 @@ export const PostProcessing = memo(function PostProcessing() {
     // Update the threshold define
     edgesMaterial.defines['SMAA_THRESHOLD'] = smaaThreshold.toFixed(3);
 
-    // Force shader recompilation by incrementing version and marking for update
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (edgesMaterial as any).version++;
+    // Force shader recompilation by marking for update
     edgesMaterial.needsUpdate = true;
   }, [smaaPass, smaaThreshold]);
 
@@ -960,13 +964,12 @@ export const PostProcessing = memo(function PostProcessing() {
     // Update Film Pass (grain effect)
     filmPass.enabled = ppState.cinematicEnabled && ppState.cinematicGrain > 0;
     // FilmPass in Three.js r150+ uses intensity property directly
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const filmUniforms = (filmPass as any).uniforms;
-    if (filmUniforms?.nIntensity) {
-        filmUniforms.nIntensity.value = ppState.cinematicGrain;
+    const filmUniforms = (filmPass as unknown as { uniforms: Record<string, { value: number }> }).uniforms;
+    if (filmUniforms?.['nIntensity']) {
+        filmUniforms['nIntensity'].value = ppState.cinematicGrain;
     }
-    if (filmUniforms?.time) {
-        filmUniforms.time.value += delta;
+    if (filmUniforms?.['time']) {
+        filmUniforms['time'].value += delta;
     }
 
     const currentBloomEnabled = ppState.bloomEnabled;
@@ -1374,10 +1377,9 @@ export const PostProcessing = memo(function PostProcessing() {
         // Do NOT clear - we want to draw on top of environment
 
         if (mainObjectMRT.textures[1] && mainObjectMRT.depthTexture) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const uniforms = normalCopyMaterial.uniforms as any;
-          uniforms.tNormal.value = mainObjectMRT.textures[1];
-          uniforms.tDepth.value = mainObjectMRT.depthTexture;
+          const uniforms = normalCopyMaterial.uniforms as Record<string, THREE.IUniform>;
+          uniforms['tNormal']!.value = mainObjectMRT.textures[1];
+          uniforms['tDepth']!.value = mainObjectMRT.depthTexture;
 
           // CRITICAL: Ensure autoClear is FALSE to preserve wall normals
           const savedAutoClear = gl.autoClear;
@@ -1406,9 +1408,8 @@ export const PostProcessing = memo(function PostProcessing() {
           gl.autoClear = false;
 
           // Use the dedicated volumetric normal copy material (no depth check)
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const volNormalUniforms = volumetricNormalCopyMaterial.uniforms as any;
-          volNormalUniforms.tNormal.value = cloudNormalTexture;
+          const volNormalUniforms = volumetricNormalCopyMaterial.uniforms as Record<string, THREE.IUniform>;
+          volNormalUniforms['tNormal']!.value = cloudNormalTexture;
 
           gl.render(volumetricNormalCopyScene, normalCopyCamera);
 
@@ -1487,26 +1488,25 @@ export const PostProcessing = memo(function PostProcessing() {
 
     // Configure Buffer Preview Pass
     if (isBufferPreviewEnabled && camera instanceof THREE.PerspectiveCamera) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const uniforms = bufferPreviewPass.uniforms as any;
-      uniforms.nearClip.value = camera.near;
-      uniforms.farClip.value = camera.far;
+      const uniforms = bufferPreviewPass.uniforms as Record<string, THREE.IUniform>;
+      if (uniforms['nearClip']) uniforms['nearClip'].value = camera.near;
+      if (uniforms['farClip']) uniforms['farClip'].value = camera.far;
 
       // Determine what to show
       if (currentShowDepthBuffer) {
-        uniforms.type.value = 1; // Depth
-        uniforms.tInput.value = effectDepthTexture;
-        uniforms.debugMode.value = 1; // Linear depth (normalized grayscale)
+        if (uniforms['type']) uniforms['type'].value = 1; // Depth
+        if (uniforms['tInput']) uniforms['tInput'].value = effectDepthTexture;
+        if (uniforms['debugMode']) uniforms['debugMode'].value = 1; // Linear depth (normalized grayscale)
         // debugMode 0 = Raw depth, 1 = Linear depth, 2 = Focus Zones (colored)
 
       } else if (currentShowNormalBuffer) {
-        uniforms.type.value = 2; // Normal
-        uniforms.tInput.value = normalTarget.texture;
+        if (uniforms['type']) uniforms['type'].value = 2; // Normal
+        if (uniforms['tInput']) uniforms['tInput'].value = normalTarget.texture;
 
       } else if (currentShowTemporalDepthBuffer) {
-        uniforms.type.value = 3; // Temporal Depth
+        if (uniforms['type']) uniforms['type'].value = 3; // Temporal Depth
         const temporalUniforms = TemporalDepthManager.getUniforms(true);
-        uniforms.tInput.value = temporalUniforms.uPrevDepthTexture;
+        if (uniforms['tInput']) uniforms['tInput'].value = temporalUniforms.uPrevDepthTexture;
       }
 
       // Pass bokeh focus params for depth debug "Focus Zones" if we implemented that

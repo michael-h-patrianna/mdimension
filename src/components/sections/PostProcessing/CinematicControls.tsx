@@ -6,8 +6,8 @@
 
 import { Select } from '@/components/ui/Select'
 import { Slider } from '@/components/ui/Slider'
-import { usePostProcessingStore } from '@/stores/postProcessingStore'
-import { useLightingStore } from '@/stores/lightingStore'
+import { usePostProcessingStore, type PostProcessingSlice } from '@/stores/postProcessingStore'
+import { useLightingStore, type LightingSlice } from '@/stores/lightingStore'
 import { TONE_MAPPING_OPTIONS, type ToneMappingAlgorithm } from '@/rendering/shaders/types'
 import React from 'react'
 import { useShallow } from 'zustand/react/shallow'
@@ -25,7 +25,7 @@ const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
 export const CinematicControls: React.FC<CinematicControlsProps> = React.memo(
   ({ className = '' }) => {
     // Cinematic State
-    const postProcessingSelector = useShallow((state: any) => ({
+    const postProcessingSelector = useShallow((state: PostProcessingSlice) => ({
       cinematicAberration: state.cinematicAberration,
       cinematicVignette: state.cinematicVignette,
       cinematicGrain: state.cinematicGrain,
@@ -43,7 +43,7 @@ export const CinematicControls: React.FC<CinematicControlsProps> = React.memo(
     } = usePostProcessingStore(postProcessingSelector);
 
     // Tone Mapping State
-    const lightingSelector = useShallow((state: any) => ({
+    const lightingSelector = useShallow((state: LightingSlice) => ({
       toneMappingAlgorithm: state.toneMappingAlgorithm,
       exposure: state.exposure,
       setToneMappingAlgorithm: state.setToneMappingAlgorithm,

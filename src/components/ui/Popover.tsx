@@ -31,12 +31,12 @@ export const Popover: React.FC<PopoverProps> = ({
   const contentRef = useRef<HTMLDivElement>(null);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
 
-  const handleOpenChange = (newOpen: boolean) => {
+  const handleOpenChange = useCallback((newOpen: boolean) => {
     if (!isControlled) {
       setUncontrolledOpen(newOpen);
     }
     onOpenChange?.(newOpen);
-  };
+  }, [isControlled, onOpenChange]);
 
   // Update position - memoized to avoid stale closure in event listeners
   const updatePosition = useCallback(() => {
@@ -111,7 +111,7 @@ export const Popover: React.FC<PopoverProps> = ({
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isOpen]);
+  }, [isOpen, handleOpenChange]);
 
   return (
     <>

@@ -6,9 +6,9 @@
 import { Slider } from '@/components/ui/Slider';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import { ControlGroup } from '@/components/ui/ControlGroup';
-import { useAppearanceStore } from '@/stores/appearanceStore';
+import { useAppearanceStore, type AppearanceSlice } from '@/stores/appearanceStore';
 import { useGeometryStore } from '@/stores/geometryStore';
-import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
+import { useExtendedObjectStore, type ExtendedObjectState } from '@/stores/extendedObjectStore';
 import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { EdgeMaterialControls } from './EdgeMaterialControls';
@@ -23,7 +23,7 @@ export const EdgeControls: React.FC<EdgesControlsProps> = React.memo(({
   const objectType = useGeometryStore(state => state.objectType);
   
   // Consolidate visual store selectors with useShallow to reduce subscriptions
-  const appearanceSelector = useShallow((state: any) => ({
+  const appearanceSelector = useShallow((state: AppearanceSlice) => ({
     edgeColor: state.edgeColor,
     edgeThickness: state.edgeThickness,
     setEdgeColor: state.setEdgeColor,
@@ -37,7 +37,7 @@ export const EdgeControls: React.FC<EdgesControlsProps> = React.memo(({
   } = useAppearanceStore(appearanceSelector);
 
   // Schrödinger specific controls
-  const extendedObjectSelector = useShallow((state: any) => ({
+  const extendedObjectSelector = useShallow((state: ExtendedObjectState) => ({
     config: state.schroedinger,
     setErosionStrength: state.setSchroedingerErosionStrength,
     setErosionScale: state.setSchroedingerErosionScale,
