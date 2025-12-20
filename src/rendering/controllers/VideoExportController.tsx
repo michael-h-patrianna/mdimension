@@ -594,7 +594,7 @@ export function VideoExportController() {
       console.error('Export Start Error:', e)
       handleError(e)
     }
-  }, [gl, settings, exportMode, restoreState, handleError, setStatus, setProgress, processBatch])
+  }, [gl, settings, exportMode, restoreState, handleError, setStatus, setProgress, processBatch, setError])
 
   useEffect(() => {
     // Start export trigger

@@ -1843,6 +1843,524 @@ export const DEFAULT_WYTHOFF_SCALES: Record<WythoffPreset, number> = {
 }
 
 // ============================================================================
+// Black Hole Configuration
+// ============================================================================
+
+/**
+ * Quality presets for black hole rendering
+ */
+export type BlackHoleQuality = 'fast' | 'balanced' | 'quality' | 'ultra'
+
+/**
+ * Palette modes for black hole coloring
+ */
+export type BlackHolePaletteMode = 'diskGradient' | 'normalBased' | 'shellOnly' | 'heatmap'
+
+/**
+ * Lighting mode for accretion material
+ */
+export type BlackHoleLightingMode = 'emissiveOnly' | 'fakeLit'
+
+/**
+ * Manifold type override
+ */
+export type BlackHoleManifoldType = 'autoByN' | 'disk' | 'sheet' | 'slab' | 'field'
+
+/**
+ * Background sampling mode
+ */
+export type BlackHoleBackgroundMode = 'environment' | 'proceduralStars' | 'solid'
+
+/**
+ * Ray bending mode for gravitational lensing
+ * - spiral: Bends rays directly toward center (current, artistic effect)
+ * - orbital: Einstein-ring style orbital arcs (more physically accurate)
+ */
+export type BlackHoleRayBendingMode = 'spiral' | 'orbital'
+
+/**
+ * Raymarch mode for black hole visualization
+ * - slice3D: 3D approximation with uParamValues for extra dimensions (fast, volumetric)
+ * - trueND: Full N-dimensional raymarching with float[11] arrays (accurate, volumetric)
+ * - sdfDisk: SDF-based plane crossing detection for Einstein ring effect (surface-based)
+ */
+export type BlackHoleRaymarchMode = 'slice3D' | 'trueND' | 'sdfDisk'
+
+/**
+ * Visual presets - parameter configurations for different looks
+ */
+export type BlackHoleVisualPreset = 'interstellar' | 'cosmic' | 'ethereal' | 'custom'
+
+/**
+ * Configuration for n-dimensional Black Hole visualization
+ *
+ * Implements gravitational lensing, photon shell, and luminous accretion manifold.
+ * Uses volumetric raymarching with bent rays (unlike SDF-based Mandelbulb).
+ *
+ * Supports 3D-11D with dimension-aware manifold geometry.
+ */
+export interface BlackHoleConfig {
+  // === BASIC (Artist-facing) ===
+  /** Horizon radius R_h (0.05-20, default 1.0) */
+  horizonRadius: number
+  /** Gravity strength k (0-10, default 1.0) */
+  gravityStrength: number
+  /** Manifold emission intensity (0-20, default 1.0) */
+  manifoldIntensity: number
+  /** Manifold thickness (0-2, default 0.15) */
+  manifoldThickness: number
+  /** Photon shell width (0-0.3, default 0.05) */
+  photonShellWidth: number
+  /** Animation time scale (0-5, default 1.0) */
+  timeScale: number
+  /** Base color for accretion (hex string) */
+  baseColor: string
+  /** Palette mode for coloring */
+  paletteMode: BlackHolePaletteMode
+  /** Bloom boost multiplier (0-5, default 1.5) */
+  bloomBoost: number
+
+  // === LENSING (Advanced) ===
+  /** Dimension emphasis alpha (0-2, default 0.8) */
+  dimensionEmphasis: number
+  /** Distance falloff beta (0.5-4, default 1.6) */
+  distanceFalloff: number
+  /** Epsilon multiplier (1e-5 to 0.5, default 0.01) */
+  epsilonMul: number
+  /** Bend scale (0-5, default 1.0) */
+  bendScale: number
+  /** Max bend per step in radians (0-0.8, default 0.25) */
+  bendMaxPerStep: number
+  /** Lensing clamp value (0-100, default 10) */
+  lensingClamp: number
+  /** Ray bending mode (spiral or orbital) */
+  rayBendingMode: BlackHoleRayBendingMode
+  /** Raymarch mode (slice3D or trueND) */
+  raymarchMode: BlackHoleRaymarchMode
+
+  // === PHOTON SHELL (Advanced) ===
+  /** Photon shell radius multiplier (1.0-2.0, default 1.3) */
+  photonShellRadiusMul: number
+  /** Photon shell radius dimension bias (0-0.5, default 0.1) */
+  photonShellRadiusDimBias: number
+  /** Shell glow strength (0-20, default 3.0) */
+  shellGlowStrength: number
+  /** Shell glow color (hex string) */
+  shellGlowColor: string
+  /** Shell step multiplier (0.05-1, default 0.35) */
+  shellStepMul: number
+  /** Shell contrast boost (0-3, default 1.0) */
+  shellContrastBoost: number
+
+  // === MANIFOLD / ACCRETION (Advanced) ===
+  /** Manifold type */
+  manifoldType: BlackHoleManifoldType
+  /** Density falloff (0-40, default 6.0) */
+  densityFalloff: number
+  /** Disk inner radius multiplier (0-10, default 1.2) */
+  diskInnerRadiusMul: number
+  /** Disk outer radius multiplier (0.1-200, default 8.0) */
+  diskOuterRadiusMul: number
+  /** Radial softness multiplier (0-2, default 0.2) */
+  radialSoftnessMul: number
+  /** Thickness per dimension max (1-10, default 4.0) */
+  thicknessPerDimMax: number
+  /** High dimension W scale (1-10, default 2.0) */
+  highDimWScale: number
+  /** Swirl amount (0-2, default 0.6) */
+  swirlAmount: number
+  /** Noise scale (0.1-10, default 1.0) */
+  noiseScale: number
+  /** Noise amount (0-1, default 0.25) */
+  noiseAmount: number
+  /** Multi-intersection gain (0-3, default 1.0) */
+  multiIntersectionGain: number
+
+  // === ROTATION DAMPING ===
+  /** Inner damping multiplier (1-2, default 1.2) */
+  dampInnerMul: number
+  /** Outer damping multiplier (1.2-8, default 3.0) */
+  dampOuterMul: number
+
+  // === RENDERING QUALITY ===
+  /** Raymarch quality preset */
+  raymarchQuality: BlackHoleQuality
+  /** Max raymarch steps (16-512, default 96) */
+  maxSteps: number
+  /** Base step size (0.001-1, default 0.08) */
+  stepBase: number
+  /** Minimum step size (0.0001-0.5, default 0.01) */
+  stepMin: number
+  /** Maximum step size (0.001-5, default 0.2) */
+  stepMax: number
+  /** Adaptive step gravity factor (0-5, default 1.0) */
+  stepAdaptG: number
+  /** Adaptive step radius factor (0-2, default 0.2) */
+  stepAdaptR: number
+  /** Enable absorption (default false) */
+  enableAbsorption: boolean
+  /** Absorption coefficient (0-10, default 1.0) */
+  absorption: number
+  /** Transmittance cutoff (0-0.2, default 0.01) */
+  transmittanceCutoff: number
+  /** Far radius multiplier (default 20.0) */
+  farRadius: number
+
+  // === LIGHTING (Optional) ===
+  /** Lighting mode */
+  lightingMode: BlackHoleLightingMode
+  /** Surface roughness (0-1, default 0.6) */
+  roughness: number
+  /** Specular intensity (0-1, default 0.2) */
+  specular: number
+  /** Ambient tint (0-1, default 0.1) */
+  ambientTint: number
+  /** Shadow enabled (default false) */
+  shadowEnabled: boolean
+  /** Shadow steps (4-64, default 16) */
+  shadowSteps: number
+  /** Shadow density (0-10, default 2.0) */
+  shadowDensity: number
+
+  // === HORIZON ===
+  /** Edge glow enabled (default true) */
+  edgeGlowEnabled: boolean
+  /** Edge glow width (0-1, default 0.1) */
+  edgeGlowWidth: number
+  /** Edge glow color (hex string) */
+  edgeGlowColor: string
+  /** Edge glow intensity (0-5, default 1.0) */
+  edgeGlowIntensity: number
+
+  // === BACKGROUND ===
+  /** Background mode */
+  backgroundMode: BlackHoleBackgroundMode
+  /** Starfield density (0-5, default 1.0) */
+  starfieldDensity: number
+  /** Starfield brightness (0-3, default 1.0) */
+  starfieldBrightness: number
+
+  // === TEMPORAL ===
+  /** Temporal accumulation enabled (default true) */
+  temporalAccumulationEnabled: boolean
+
+  // === DOPPLER EFFECT ===
+  /** Doppler effect enabled (default false) */
+  dopplerEnabled: boolean
+  /** Doppler strength (0-2, default 0.6) */
+  dopplerStrength: number
+  /** Doppler hue shift (0-0.3, default 0.1) */
+  dopplerHueShift: number
+
+  // === VISUAL PRESET ===
+  /** Visual preset (default 'custom') */
+  visualPreset: BlackHoleVisualPreset
+
+  // === CROSS-SECTION (4D+) ===
+  /** Extra dimension slice positions */
+  parameterValues: number[]
+
+  // === POLAR JETS ===
+  /** Jets enabled (default false) */
+  jetsEnabled: boolean
+  /** Jets height in horizon radii (0-50, default 10.0) */
+  jetsHeight: number
+  /** Jets width / opening angle factor (0-5, default 0.5) */
+  jetsWidth: number
+  /** Jets intensity (0-10, default 2.0) */
+  jetsIntensity: number
+  /** Jets color (hex string) */
+  jetsColor: string
+  /** Jets falloff (0-10, default 3.0) */
+  jetsFalloff: number
+  /** Jets noise/turbulence amount (0-1, default 0.3) */
+  jetsNoiseAmount: number
+  /** Jets pulsation speed (0-2, default 0.5) */
+  jetsPulsation: number
+
+  // === MOTION BLUR ===
+  /** Motion blur enabled (default false) */
+  motionBlurEnabled: boolean
+  /** Motion blur strength (0-2, default 0.5) */
+  motionBlurStrength: number
+  /** Motion blur samples (1-8, default 4) */
+  motionBlurSamples: number
+  /** Motion blur radial falloff (0-5, default 2.0) */
+  motionBlurRadialFalloff: number
+
+  // === DEFERRED LENSING ===
+  /** Deferred lensing enabled (default false) */
+  deferredLensingEnabled: boolean
+  /** Deferred lensing strength (0-2, default 1.0) */
+  deferredLensingStrength: number
+  /** Deferred lensing radius in horizon units (0-10, default 5.0) */
+  deferredLensingRadius: number
+
+  // === SCENE OBJECT LENSING ===
+  /** Scene object lensing enabled (default true) */
+  sceneObjectLensingEnabled: boolean
+  /** Scene object lensing strength (0-2, default 1.0) */
+  sceneObjectLensingStrength: number
+
+  // === ANIMATION ===
+  /** Swirl animation enabled */
+  swirlAnimationEnabled: boolean
+  /** Swirl animation speed (0-2, default 0.5) */
+  swirlAnimationSpeed: number
+  /** Manifold pulse animation enabled */
+  pulseEnabled: boolean
+  /** Pulse animation speed (0-2, default 0.3) */
+  pulseSpeed: number
+  /** Pulse animation amount (0-1, default 0.2) */
+  pulseAmount: number
+  /** Slice animation enabled (4D+ only) */
+  sliceAnimationEnabled: boolean
+  /** Slice animation speed (0.01-0.1, default 0.02) */
+  sliceSpeed: number
+  /** Slice animation amplitude (0.1-1.0, default 0.3) */
+  sliceAmplitude: number
+}
+
+/**
+ * Quality presets for black hole rendering
+ */
+export const BLACK_HOLE_QUALITY_PRESETS: Record<BlackHoleQuality, Partial<BlackHoleConfig>> = {
+  fast: {
+    maxSteps: 128,
+    stepBase: 0.1,
+    stepMin: 0.02,
+    stepMax: 0.5,
+    bendMaxPerStep: 0.15, // Larger steps, less accurate orbits
+    shadowEnabled: false,
+    enableAbsorption: false,
+    temporalAccumulationEnabled: true,
+  },
+  balanced: {
+    maxSteps: 256,
+    stepBase: 0.08,
+    stepMin: 0.01,
+    stepMax: 0.3,
+    bendMaxPerStep: 0.08, // Accurate orbits for Einstein ring
+    shadowEnabled: false,
+    enableAbsorption: false,
+    temporalAccumulationEnabled: true,
+  },
+  quality: {
+    maxSteps: 400,
+    stepBase: 0.05,
+    stepMin: 0.005,
+    stepMax: 0.2,
+    bendMaxPerStep: 0.05, // High accuracy orbits
+    shadowEnabled: true,
+    enableAbsorption: true,
+    temporalAccumulationEnabled: false,
+  },
+  ultra: {
+    maxSteps: 512,
+    stepBase: 0.03,
+    stepMin: 0.003,
+    stepMax: 0.15,
+    bendMaxPerStep: 0.03, // Maximum accuracy
+    shadowEnabled: true,
+    enableAbsorption: true,
+    temporalAccumulationEnabled: false,
+  },
+}
+
+/**
+ * Visual presets for black hole aesthetics
+ */
+export const BLACK_HOLE_VISUAL_PRESETS: Record<BlackHoleVisualPreset, Partial<BlackHoleConfig>> = {
+  /** Interstellar movie-accurate look: thin disk, strong lensing, Einstein ring */
+  interstellar: {
+    horizonRadius: 2.0, // Scaled up for visibility at default camera distance
+    manifoldThickness: 0.03, // Very thin disk for Interstellar look
+    densityFalloff: 200.0, // Sharp falloff for razor-thin disk
+    gravityStrength: 3.0, // Strong gravity for Einstein ring
+    bendScale: 1.2,
+    bendMaxPerStep: 0.2, // Allow more bending for Einstein ring
+    maxSteps: 200, // Balanced for performance
+    manifoldIntensity: 2.0,
+    shellGlowStrength: 0.5, // Reduced - let lensed disk light create photon ring
+    shellGlowColor: '#ffcc66', // Orange-yellow (lensed disk light)
+    diskOuterRadiusMul: 8.0, // Compact disk
+    backgroundMode: 'environment', // Use scene's skybox with gravitational lensing
+    dopplerEnabled: true,
+    dopplerStrength: 0.6,
+    dopplerHueShift: 0.1,
+    noiseAmount: 0.1,
+    swirlAmount: 0.3,
+  },
+  /** Cosmic preset: thicker volumetric manifold, softer glow */
+  cosmic: {
+    manifoldThickness: 0.3,
+    densityFalloff: 6.0,
+    gravityStrength: 1.0,
+    bendScale: 1.0,
+    manifoldIntensity: 1.5,
+    shellGlowStrength: 2.0,
+    dopplerEnabled: false,
+    noiseAmount: 0.4,
+    swirlAmount: 0.8,
+    enableAbsorption: true,
+    absorption: 0.5,
+  },
+  /** Ethereal preset: very thick field, strong glow, dreamlike */
+  ethereal: {
+    manifoldThickness: 0.8,
+    densityFalloff: 3.0,
+    gravityStrength: 0.8,
+    bendScale: 0.8,
+    manifoldIntensity: 2.0,
+    shellGlowStrength: 8.0,
+    shellGlowColor: '#aaccff',
+    dopplerEnabled: false,
+    noiseAmount: 0.6,
+    swirlAmount: 1.2,
+    edgeGlowEnabled: true,
+    edgeGlowIntensity: 2.0,
+    edgeGlowColor: '#ff88ff',
+  },
+  /** Custom preset: no changes, user's current settings preserved */
+  custom: {},
+}
+
+/**
+ * Default black hole configuration
+ */
+export const DEFAULT_BLACK_HOLE_CONFIG: BlackHoleConfig = {
+  // Basic - Interstellar preset values for movie-accurate look
+  // horizonRadius scaled up from 1.0 to 2.0 so black hole is visible at default camera distance
+  horizonRadius: 2.0,
+  gravityStrength: 3.0, // Strong gravity for dramatic Interstellar-style lensing
+  manifoldIntensity: 2.0, // Interstellar: bright accretion disk
+  manifoldThickness: 0.03, // Thin disk for Interstellar look (combined with high densityFalloff)
+  photonShellWidth: 0.05,
+  timeScale: 1.0,
+  baseColor: '#fff5e6',
+  paletteMode: 'diskGradient',
+  bloomBoost: 1.0,
+
+  // Lensing - Interstellar preset values
+  dimensionEmphasis: 0.8,
+  distanceFalloff: 1.6,
+  epsilonMul: 0.01,
+  bendScale: 1.2, // Interstellar: stronger bending
+  bendMaxPerStep: 0.2, // Allow more bending per step for Einstein ring effect
+  lensingClamp: 10.0,
+  rayBendingMode: 'orbital', // Proper geodesic equation for Interstellar-style Einstein rings
+  raymarchMode: 'sdfDisk', // SDF disk with plane crossing for Einstein ring effect
+
+  // Photon shell - physical value is 1.5 Rs (Schwarzschild photon sphere)
+  // This is where light can orbit the black hole, creating the Einstein ring
+  photonShellRadiusMul: 1.5,
+  photonShellRadiusDimBias: 0.05, // Reduced - dimension scaling is speculative
+  shellGlowStrength: 0.5, // Reduced - let actual lensed disk light create photon ring
+  shellGlowColor: '#ffcc66', // Orange-yellow to match accretion disk (lensed light)
+  shellStepMul: 0.15, // Smaller steps near photon sphere for accurate orbits
+  shellContrastBoost: 1.0,
+
+  // Manifold - Interstellar preset values (based on rossning92/Blackhole reference)
+  manifoldType: 'autoByN',
+  densityFalloff: 200.0, // Very sharp falloff for razor-thin Interstellar disk
+  diskInnerRadiusMul: 2.6, // ISCO (innermost stable circular orbit) per Interstellar reference
+  diskOuterRadiusMul: 8.0, // Reduced from 12.0 for more compact disk visible at default camera
+  radialSoftnessMul: 0.2,
+  thicknessPerDimMax: 4.0,
+  highDimWScale: 2.0,
+  swirlAmount: 0.6,
+  noiseScale: 1.0,
+  noiseAmount: 0.15, // Interstellar: subtle noise
+  multiIntersectionGain: 1.0,
+
+  // Rotation damping
+  dampInnerMul: 1.2,
+  dampOuterMul: 3.0,
+
+  // Quality
+  raymarchQuality: 'balanced',
+  maxSteps: 350, // Increased for full ray orbits (Einstein ring requires multiple disk crossings)
+  stepBase: 0.08,
+  stepMin: 0.01,
+  stepMax: 0.2,
+  stepAdaptG: 1.0,
+  stepAdaptR: 0.2,
+  enableAbsorption: true,
+  absorption: 0.3, // Low absorption = semi-transparent disk, rays continue for Einstein ring
+  transmittanceCutoff: 0.005, // Lower cutoff = rays continue longer
+  farRadius: 35.0, // Extended for rays that orbit multiple times
+
+  // Lighting
+  lightingMode: 'emissiveOnly',
+  roughness: 0.6,
+  specular: 0.2,
+  ambientTint: 0.1,
+  shadowEnabled: false,
+  shadowSteps: 16,
+  shadowDensity: 2.0,
+
+  // Horizon
+  edgeGlowEnabled: true,
+  edgeGlowWidth: 0.1,
+  edgeGlowColor: '#ff6600',
+  edgeGlowIntensity: 1.0,
+
+  // Background - use scene's skybox with gravitational lensing
+  backgroundMode: 'environment',
+  starfieldDensity: 1.0,
+  starfieldBrightness: 1.0,
+
+  // Temporal
+  temporalAccumulationEnabled: true,
+
+  // Doppler - Interstellar preset values
+  dopplerEnabled: true, // Interstellar: enable Doppler effect
+  dopplerStrength: 0.6,
+  dopplerHueShift: 0.1,
+
+  // Visual preset
+  visualPreset: 'interstellar',
+
+  // Cross-section
+  parameterValues: [0, 0, 0, 0, 0, 0, 0, 0],
+
+  // Polar jets
+  jetsEnabled: false,
+  jetsHeight: 10.0,
+  jetsWidth: 0.5,
+  jetsIntensity: 2.0,
+  jetsColor: '#88ccff',
+  jetsFalloff: 3.0,
+  jetsNoiseAmount: 0.3,
+  jetsPulsation: 0.5,
+
+  // Motion blur
+  motionBlurEnabled: false,
+  motionBlurStrength: 0.5,
+  motionBlurSamples: 4,
+  motionBlurRadialFalloff: 2.0,
+
+  // Deferred lensing
+  deferredLensingEnabled: false,
+  deferredLensingStrength: 1.0,
+  deferredLensingRadius: 5.0,
+
+  // Scene object lensing
+  sceneObjectLensingEnabled: true,
+  sceneObjectLensingStrength: 1.0,
+
+  // Animation
+  swirlAnimationEnabled: false,
+  swirlAnimationSpeed: 0.5,
+  pulseEnabled: false,
+  pulseSpeed: 0.3,
+  pulseAmount: 0.2,
+  sliceAnimationEnabled: false,
+  sliceSpeed: 0.02,
+  sliceAmplitude: 0.3,
+}
+
+// ============================================================================
 // Combined Object Parameters
 // ============================================================================
 
@@ -1876,6 +2394,8 @@ export interface ExtendedObjectParams {
   quaternionJulia: QuaternionJuliaConfig
   /** Configuration for Schroedinger fractal generation */
   schroedinger: SchroedingerConfig
+  /** Configuration for Black Hole visualization */
+  blackhole: BlackHoleConfig
 }
 
 /**
@@ -1890,4 +2410,5 @@ export const DEFAULT_EXTENDED_OBJECT_PARAMS: ExtendedObjectParams = {
   mandelbulb: DEFAULT_MANDELBROT_CONFIG,
   quaternionJulia: DEFAULT_QUATERNION_JULIA_CONFIG,
   schroedinger: DEFAULT_SCHROEDINGER_CONFIG,
+  blackhole: DEFAULT_BLACK_HOLE_CONFIG,
 }

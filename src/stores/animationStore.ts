@@ -31,6 +31,9 @@ export interface AnimationState {
   /** Set of planes currently being animated */
   animatingPlanes: Set<string>
 
+  /** Global accumulated animation time in seconds (synced across objects) */
+  accumulatedTime: number
+
   // Actions
   play: () => void
   pause: () => void
@@ -44,6 +47,7 @@ export interface AnimationState {
   clearAllPlanes: () => void
   stopAll: () => void
   setDimension: (dimension: number) => void
+  updateAccumulatedTime: (delta: number) => void
   reset: () => void
 
   /** Calculate the rotation delta for a given time delta */
@@ -73,6 +77,7 @@ export const useAnimationStore = create<AnimationState>((set, get) => ({
   speed: DEFAULT_SPEED,
   direction: 1,
   animatingPlanes: new Set(['XY', 'YZ', 'ZW']),
+  accumulatedTime: 0,
 
   play: () => {
     set({ isPlaying: true })
@@ -154,12 +159,22 @@ export const useAnimationStore = create<AnimationState>((set, get) => ({
     })
   },
 
+  updateAccumulatedTime: (delta: number) => {
+    const { isPlaying, speed, direction } = get()
+    if (isPlaying) {
+      set((state) => ({ 
+        accumulatedTime: state.accumulatedTime + delta * speed * direction 
+      }))
+    }
+  },
+
   reset: () => {
     set({
       isPlaying: true,
       speed: DEFAULT_SPEED,
       direction: 1,
       animatingPlanes: new Set(['XY', 'YZ', 'ZW']),
+      accumulatedTime: 0,
     })
   },
 

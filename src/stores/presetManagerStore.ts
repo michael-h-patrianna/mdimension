@@ -12,6 +12,7 @@ import { usePostProcessingStore } from './postProcessingStore'
 import { useRotationStore } from './rotationStore'
 import { useTransformStore } from './transformStore'
 import { useUIStore } from './uiStore'
+import { useMsgBoxStore } from './msgBoxStore'
 
 // -- Types --
 
@@ -178,15 +179,22 @@ export const usePresetManagerStore = create<PresetManagerState>()(
       importStyles: (jsonData) => {
         try {
           const imported = JSON.parse(jsonData)
-          if (!Array.isArray(imported)) return false
+          if (!Array.isArray(imported)) {
+            useMsgBoxStore.getState().showMsgBox('Import Failed', 'Invalid format: expected an array of styles.', 'error');
+            return false
+          }
           // Basic validation: Check if items look like SavedStyle
           const valid = imported.every(i => i.id && i.name && i.data && i.data.appearance)
-          if (!valid) return false
+          if (!valid) {
+            useMsgBoxStore.getState().showMsgBox('Import Failed', 'The style data is corrupted or incompatible.', 'error');
+            return false
+          }
 
           set((state) => ({ savedStyles: [...state.savedStyles, ...imported] }))
           return true
         } catch (e) {
           console.error('Failed to import styles', e)
+          useMsgBoxStore.getState().showMsgBox('Import Error', `Failed to parse JSON data: ${e instanceof Error ? e.message : 'Unknown error'}`, 'error');
           return false
         }
       },
@@ -305,15 +313,22 @@ export const usePresetManagerStore = create<PresetManagerState>()(
       importScenes: (jsonData) => {
         try {
           const imported = JSON.parse(jsonData)
-          if (!Array.isArray(imported)) return false
+          if (!Array.isArray(imported)) {
+            useMsgBoxStore.getState().showMsgBox('Import Failed', 'Invalid format: expected an array of scenes.', 'error');
+            return false
+          }
           // Basic validation
           const valid = imported.every(i => i.id && i.name && i.data && i.data.geometry)
-          if (!valid) return false
+          if (!valid) {
+            useMsgBoxStore.getState().showMsgBox('Import Failed', 'The scene data is corrupted or incompatible.', 'error');
+            return false
+          }
 
           set((state) => ({ savedScenes: [...state.savedScenes, ...imported] }))
           return true
         } catch (e) {
           console.error('Failed to import scenes', e)
+          useMsgBoxStore.getState().showMsgBox('Import Error', `Failed to parse JSON data: ${e instanceof Error ? e.message : 'Unknown error'}`, 'error');
           return false
         }
       },

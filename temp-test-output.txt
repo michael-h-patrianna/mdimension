@@ -1,0 +1,62 @@
+=== Black Hole Render Test ===
+
+Verifies that the black hole object renders correctly on page load.
+
+Step 1: Navigating to http://localhost:3000...
+Step 2: Selecting Black Hole object type...
+  - Clicked Black Hole button
+Step 3: Waiting for black hole render (8s for shader compilation)...
+Step 3: Analyzing rendered scene...
+
+=== Pixel Analysis Results ===
+Canvas size: 1280x720
+Sampled pixels: 11021
+White pixels: 1205 (10.9%)
+Black pixels: 0 (0.0%)
+Average brightness: 201.4/255
+Brightness range: 131 - 253 (range: 122)
+
+Color distribution:
+  Red: 0
+  Orange: 5629
+  Blue: 0
+  Other: 5392
+
+Sample pixels:
+  [0] (0,0): RGB(227,154,77) brightness=153
+  [1] (12,0): RGB(227,154,77) brightness=153
+  [2] (24,0): RGB(225,154,77) brightness=152
+  [3] (36,0): RGB(225,154,77) brightness=152
+  [4] (48,0): RGB(225,154,77) brightness=152
+  [5] (60,0): RGB(225,152,77) brightness=151
+  [6] (72,0): RGB(223,152,75) brightness=150
+  [7] (84,0): RGB(223,152,75) brightness=150
+  [8] (96,0): RGB(223,152,75) brightness=150
+  [9] (108,0): RGB(221,150,75) brightness=149
+  [10] (120,0): RGB(223,151,76) brightness=150
+  [11] (132,0): RGB(221,151,74) brightness=149
+  [12] (144,0): RGB(219,149,74) brightness=147
+  [13] (156,0): RGB(219,149,72) brightness=147
+  [14] (168,0): RGB(217,148,73) brightness=146
+
+=== Quality Gate Evaluation ===
+
+GATE 1 (Not mostly black): PASS
+  Black pixel ratio: 0.0%
+  Threshold: < 85%
+
+GATE 2 (Black hole characteristics): PASS
+  Score: 3/4 (need >= 3)
+  - Has colored pixels (orange/red): YES (5629 pixels)
+  - Not mostly white (< 50%): YES (10.9%)
+  - Has brightness variety (>= 20): YES (range: 122)
+  - Has dark pixels (< 100 brightness): NO (min: 131)
+
+GATE 3 (No WebGL errors): PASS
+
+==================================================
+TEST PASSED: Black hole renders correctly
+  - Scene is not mostly black or white
+  - Has visual variety
+  - No shader errors
+==================================================

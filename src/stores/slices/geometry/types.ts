@@ -1,4 +1,13 @@
 import {
+  BlackHoleBackgroundMode,
+  BlackHoleConfig,
+  BlackHoleLightingMode,
+  BlackHoleManifoldType,
+  BlackHolePaletteMode,
+  BlackHoleQuality,
+  BlackHoleRayBendingMode,
+  BlackHoleRaymarchMode,
+  BlackHoleVisualPreset,
   CliffordTorusConfig,
   CliffordTorusEdgeMode,
   CliffordTorusMode,
@@ -484,6 +493,153 @@ export interface SchroedingerSliceActions {
 export type SchroedingerSlice = SchroedingerSliceState & SchroedingerSliceActions
 
 // ============================================================================
+// Black Hole Slice
+// ============================================================================
+export interface BlackHoleSliceState {
+  blackhole: BlackHoleConfig
+}
+
+export interface BlackHoleSliceActions {
+  // Basic Parameters
+  setBlackHoleHorizonRadius: (radius: number) => void
+  setBlackHoleGravityStrength: (strength: number) => void
+  setBlackHoleManifoldIntensity: (intensity: number) => void
+  setBlackHoleManifoldThickness: (thickness: number) => void
+  setBlackHolePhotonShellWidth: (width: number) => void
+  setBlackHoleTimeScale: (scale: number) => void
+  setBlackHoleBaseColor: (color: string) => void
+  setBlackHolePaletteMode: (mode: BlackHolePaletteMode) => void
+  setBlackHoleBloomBoost: (boost: number) => void
+
+  // Lensing
+  setBlackHoleDimensionEmphasis: (emphasis: number) => void
+  setBlackHoleDistanceFalloff: (falloff: number) => void
+  setBlackHoleEpsilonMul: (epsilon: number) => void
+  setBlackHoleBendScale: (scale: number) => void
+  setBlackHoleBendMaxPerStep: (max: number) => void
+  setBlackHoleLensingClamp: (clamp: number) => void
+  setBlackHoleRayBendingMode: (mode: BlackHoleRayBendingMode) => void
+  setBlackHoleRaymarchMode: (mode: BlackHoleRaymarchMode) => void
+
+  // Photon Shell
+  setBlackHolePhotonShellRadiusMul: (mul: number) => void
+  setBlackHolePhotonShellRadiusDimBias: (bias: number) => void
+  setBlackHoleShellGlowStrength: (strength: number) => void
+  setBlackHoleShellGlowColor: (color: string) => void
+  setBlackHoleShellStepMul: (mul: number) => void
+  setBlackHoleShellContrastBoost: (boost: number) => void
+
+  // Manifold
+  setBlackHoleManifoldType: (type: BlackHoleManifoldType) => void
+  setBlackHoleDensityFalloff: (falloff: number) => void
+  setBlackHoleDiskInnerRadiusMul: (mul: number) => void
+  setBlackHoleDiskOuterRadiusMul: (mul: number) => void
+  setBlackHoleRadialSoftnessMul: (mul: number) => void
+  setBlackHoleThicknessPerDimMax: (max: number) => void
+  setBlackHoleHighDimWScale: (scale: number) => void
+  setBlackHoleSwirlAmount: (amount: number) => void
+  setBlackHoleNoiseScale: (scale: number) => void
+  setBlackHoleNoiseAmount: (amount: number) => void
+  setBlackHoleMultiIntersectionGain: (gain: number) => void
+
+  // Rotation Damping
+  setBlackHoleDampInnerMul: (mul: number) => void
+  setBlackHoleDampOuterMul: (mul: number) => void
+
+  // Rendering Quality
+  setBlackHoleRaymarchQuality: (quality: BlackHoleQuality) => void
+  setBlackHoleMaxSteps: (steps: number) => void
+  setBlackHoleStepBase: (step: number) => void
+  setBlackHoleStepMin: (step: number) => void
+  setBlackHoleStepMax: (step: number) => void
+  setBlackHoleStepAdaptG: (adapt: number) => void
+  setBlackHoleStepAdaptR: (adapt: number) => void
+  setBlackHoleEnableAbsorption: (enable: boolean) => void
+  setBlackHoleAbsorption: (absorption: number) => void
+  setBlackHoleTransmittanceCutoff: (cutoff: number) => void
+  setBlackHoleFarRadius: (radius: number) => void
+
+  // Lighting
+  setBlackHoleLightingMode: (mode: BlackHoleLightingMode) => void
+  setBlackHoleRoughness: (roughness: number) => void
+  setBlackHoleSpecular: (specular: number) => void
+  setBlackHoleAmbientTint: (tint: number) => void
+  setBlackHoleShadowEnabled: (enabled: boolean) => void
+  setBlackHoleShadowSteps: (steps: number) => void
+  setBlackHoleShadowDensity: (density: number) => void
+
+  // Horizon / Edge Glow
+  setBlackHoleEdgeGlowEnabled: (enabled: boolean) => void
+  setBlackHoleEdgeGlowWidth: (width: number) => void
+  setBlackHoleEdgeGlowColor: (color: string) => void
+  setBlackHoleEdgeGlowIntensity: (intensity: number) => void
+
+  // Background
+  setBlackHoleBackgroundMode: (mode: BlackHoleBackgroundMode) => void
+  setBlackHoleStarfieldDensity: (density: number) => void
+  setBlackHoleStarfieldBrightness: (brightness: number) => void
+
+  // Temporal
+  setBlackHoleTemporalAccumulationEnabled: (enabled: boolean) => void
+
+  // Doppler Effect
+  setBlackHoleDopplerEnabled: (enabled: boolean) => void
+  setBlackHoleDopplerStrength: (strength: number) => void
+  setBlackHoleDopplerHueShift: (shift: number) => void
+
+  // Visual Preset
+  setBlackHoleVisualPreset: (preset: BlackHoleVisualPreset) => void
+  applyBlackHoleVisualPreset: (preset: BlackHoleVisualPreset) => void
+
+  // Cross-section
+  setBlackHoleParameterValue: (index: number, value: number) => void
+  setBlackHoleParameterValues: (values: number[]) => void
+  resetBlackHoleParameters: () => void
+
+  // Polar Jets
+  setBlackHoleJetsEnabled: (enabled: boolean) => void
+  setBlackHoleJetsHeight: (height: number) => void
+  setBlackHoleJetsWidth: (width: number) => void
+  setBlackHoleJetsIntensity: (intensity: number) => void
+  setBlackHoleJetsColor: (color: string) => void
+  setBlackHoleJetsFalloff: (falloff: number) => void
+  setBlackHoleJetsNoiseAmount: (amount: number) => void
+  setBlackHoleJetsPulsation: (pulsation: number) => void
+
+  // Motion Blur
+  setBlackHoleMotionBlurEnabled: (enabled: boolean) => void
+  setBlackHoleMotionBlurStrength: (strength: number) => void
+  setBlackHoleMotionBlurSamples: (samples: number) => void
+  setBlackHoleMotionBlurRadialFalloff: (falloff: number) => void
+
+  // Deferred Lensing
+  setBlackHoleDeferredLensingEnabled: (enabled: boolean) => void
+  setBlackHoleDeferredLensingStrength: (strength: number) => void
+  setBlackHoleDeferredLensingRadius: (radius: number) => void
+
+  // Scene Object Lensing
+  setBlackHoleSceneObjectLensingEnabled: (enabled: boolean) => void
+  setBlackHoleSceneObjectLensingStrength: (strength: number) => void
+
+  // Animation
+  setBlackHoleSwirlAnimationEnabled: (enabled: boolean) => void
+  setBlackHoleSwirlAnimationSpeed: (speed: number) => void
+  setBlackHolePulseEnabled: (enabled: boolean) => void
+  setBlackHolePulseSpeed: (speed: number) => void
+  setBlackHolePulseAmount: (amount: number) => void
+  setBlackHoleSliceAnimationEnabled: (enabled: boolean) => void
+  setBlackHoleSliceSpeed: (speed: number) => void
+  setBlackHoleSliceAmplitude: (amplitude: number) => void
+
+  // Config Operations
+  setBlackHoleConfig: (config: Partial<BlackHoleConfig>) => void
+  initializeBlackHoleForDimension: (dimension: number) => void
+  getBlackHoleConfig: () => BlackHoleConfig
+}
+
+export type BlackHoleSlice = BlackHoleSliceState & BlackHoleSliceActions
+
+// ============================================================================
 // Combined Extended Object Slice
 // ============================================================================
 export type ExtendedObjectSlice = PolytopeSlice &
@@ -493,6 +649,7 @@ export type ExtendedObjectSlice = PolytopeSlice &
   NestedTorusSlice &
   MandelbulbSlice &
   QuaternionJuliaSlice &
-  SchroedingerSlice & {
+  SchroedingerSlice &
+  BlackHoleSlice & {
     reset: () => void
   }

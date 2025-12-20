@@ -1,0 +1,830 @@
+/**
+ * Black Hole Store Slice
+ *
+ * State management for n-dimensional black hole visualization.
+ */
+
+/**
+ * Clamp a value to min/max range with optional dev warning.
+ * Warns in development mode when value is clamped.
+ *
+ * @param value - Input value
+ * @param min - Minimum allowed value
+ * @param max - Maximum allowed value
+ * @param paramName - Parameter name for warning message
+ * @returns Clamped value
+ */
+function clampWithWarning(value: number, min: number, max: number, paramName: string): number {
+  const clamped = Math.max(min, Math.min(max, value))
+  if (import.meta.env.DEV && clamped !== value) {
+    console.warn(
+      `BlackHole: ${paramName} clamped from ${value} to ${clamped} (range: ${min}-${max})`
+    )
+  }
+  return clamped
+}
+
+import {
+  BLACK_HOLE_QUALITY_PRESETS,
+  BLACK_HOLE_VISUAL_PRESETS,
+  BlackHoleConfig,
+  BlackHoleRayBendingMode,
+  BlackHoleRaymarchMode,
+  DEFAULT_BLACK_HOLE_CONFIG,
+} from '@/lib/geometry/extended/types'
+import { StateCreator } from 'zustand'
+import { BlackHoleSlice, ExtendedObjectSlice } from './types'
+
+export const createBlackHoleSlice: StateCreator<ExtendedObjectSlice, [], [], BlackHoleSlice> = (
+  set,
+  get
+) => ({
+  blackhole: { ...DEFAULT_BLACK_HOLE_CONFIG },
+
+  // === Basic Parameters ===
+  setBlackHoleHorizonRadius: (radius) => {
+    const clamped = clampWithWarning(radius, 0.05, 20, 'horizonRadius')
+    set((state) => ({
+      blackhole: { ...state.blackhole, horizonRadius: clamped },
+    }))
+  },
+
+  setBlackHoleGravityStrength: (strength) => {
+    const clamped = clampWithWarning(strength, 0, 10, 'gravityStrength')
+    set((state) => ({
+      blackhole: { ...state.blackhole, gravityStrength: clamped },
+    }))
+  },
+
+  setBlackHoleManifoldIntensity: (intensity) => {
+    const clamped = clampWithWarning(intensity, 0, 20, 'manifoldIntensity')
+    set((state) => ({
+      blackhole: { ...state.blackhole, manifoldIntensity: clamped },
+    }))
+  },
+
+  setBlackHoleManifoldThickness: (thickness) => {
+    const clamped = Math.max(0, Math.min(2, thickness))
+    set((state) => ({
+      blackhole: { ...state.blackhole, manifoldThickness: clamped },
+    }))
+  },
+
+  setBlackHolePhotonShellWidth: (width) => {
+    const clamped = Math.max(0, Math.min(0.3, width))
+    set((state) => ({
+      blackhole: { ...state.blackhole, photonShellWidth: clamped },
+    }))
+  },
+
+  setBlackHoleTimeScale: (scale) => {
+    const clamped = Math.max(0, Math.min(5, scale))
+    set((state) => ({
+      blackhole: { ...state.blackhole, timeScale: clamped },
+    }))
+  },
+
+  setBlackHoleBaseColor: (color) => {
+    set((state) => ({
+      blackhole: { ...state.blackhole, baseColor: color },
+    }))
+  },
+
+  setBlackHolePaletteMode: (mode) => {
+    set((state) => ({
+      blackhole: { ...state.blackhole, paletteMode: mode },
+    }))
+  },
+
+  setBlackHoleBloomBoost: (boost) => {
+    const clamped = Math.max(0, Math.min(5, boost))
+    set((state) => ({
+      blackhole: { ...state.blackhole, bloomBoost: clamped },
+    }))
+  },
+
+  // === Lensing ===
+  setBlackHoleDimensionEmphasis: (emphasis) => {
+    const clamped = Math.max(0, Math.min(2, emphasis))
+    set((state) => ({
+      blackhole: { ...state.blackhole, dimensionEmphasis: clamped },
+    }))
+  },
+
+  setBlackHoleDistanceFalloff: (falloff) => {
+    const clamped = Math.max(0.5, Math.min(4, falloff))
+    set((state) => ({
+      blackhole: { ...state.blackhole, distanceFalloff: clamped },
+    }))
+  },
+
+  setBlackHoleEpsilonMul: (epsilon) => {
+    const clamped = Math.max(1e-5, Math.min(0.5, epsilon))
+    set((state) => ({
+      blackhole: { ...state.blackhole, epsilonMul: clamped },
+    }))
+  },
+
+  setBlackHoleBendScale: (scale) => {
+    const clamped = Math.max(0, Math.min(5, scale))
+    set((state) => ({
+      blackhole: { ...state.blackhole, bendScale: clamped },
+    }))
+  },
+
+  setBlackHoleBendMaxPerStep: (max) => {
+    const clamped = Math.max(0, Math.min(0.8, max))
+    set((state) => ({
+      blackhole: { ...state.blackhole, bendMaxPerStep: clamped },
+    }))
+  },
+
+  setBlackHoleLensingClamp: (clamp) => {
+    const clamped = Math.max(0, Math.min(100, clamp))
+    set((state) => ({
+      blackhole: { ...state.blackhole, lensingClamp: clamped },
+    }))
+  },
+
+  setBlackHoleRayBendingMode: (mode: BlackHoleRayBendingMode) => {
+    set((state) => ({
+      blackhole: { ...state.blackhole, rayBendingMode: mode },
+    }))
+  },
+
+  setBlackHoleRaymarchMode: (mode: BlackHoleRaymarchMode) => {
+    set((state) => ({
+      blackhole: { ...state.blackhole, raymarchMode: mode },
+    }))
+  },
+
+  // === Photon Shell ===
+  setBlackHolePhotonShellRadiusMul: (mul) => {
+    const clamped = Math.max(1.0, Math.min(2.0, mul))
+    set((state) => ({
+      blackhole: { ...state.blackhole, photonShellRadiusMul: clamped },
+    }))
+  },
+
+  setBlackHolePhotonShellRadiusDimBias: (bias) => {
+    const clamped = Math.max(0, Math.min(0.5, bias))
+    set((state) => ({
+      blackhole: { ...state.blackhole, photonShellRadiusDimBias: clamped },
+    }))
+  },
+
+  setBlackHoleShellGlowStrength: (strength) => {
+    const clamped = Math.max(0, Math.min(20, strength))
+    set((state) => ({
+      blackhole: { ...state.blackhole, shellGlowStrength: clamped },
+    }))
+  },
+
+  setBlackHoleShellGlowColor: (color) => {
+    set((state) => ({
+      blackhole: { ...state.blackhole, shellGlowColor: color },
+    }))
+  },
+
+  setBlackHoleShellStepMul: (mul) => {
+    const clamped = Math.max(0.05, Math.min(1, mul))
+    set((state) => ({
+      blackhole: { ...state.blackhole, shellStepMul: clamped },
+    }))
+  },
+
+  setBlackHoleShellContrastBoost: (boost) => {
+    const clamped = Math.max(0, Math.min(3, boost))
+    set((state) => ({
+      blackhole: { ...state.blackhole, shellContrastBoost: clamped },
+    }))
+  },
+
+  // === Manifold ===
+  setBlackHoleManifoldType: (type) => {
+    set((state) => ({
+      blackhole: { ...state.blackhole, manifoldType: type },
+    }))
+  },
+
+  setBlackHoleDensityFalloff: (falloff) => {
+    const clamped = Math.max(0, Math.min(40, falloff))
+    set((state) => ({
+      blackhole: { ...state.blackhole, densityFalloff: clamped },
+    }))
+  },
+
+  setBlackHoleDiskInnerRadiusMul: (mul) => {
+    const clamped = Math.max(0, Math.min(10, mul))
+    set((state) => ({
+      blackhole: { ...state.blackhole, diskInnerRadiusMul: clamped },
+    }))
+  },
+
+  setBlackHoleDiskOuterRadiusMul: (mul) => {
+    const clamped = Math.max(0.1, Math.min(200, mul))
+    set((state) => ({
+      blackhole: { ...state.blackhole, diskOuterRadiusMul: clamped },
+    }))
+  },
+
+  setBlackHoleRadialSoftnessMul: (mul) => {
+    const clamped = Math.max(0, Math.min(2, mul))
+    set((state) => ({
+      blackhole: { ...state.blackhole, radialSoftnessMul: clamped },
+    }))
+  },
+
+  setBlackHoleThicknessPerDimMax: (max) => {
+    const clamped = Math.max(1, Math.min(10, max))
+    set((state) => ({
+      blackhole: { ...state.blackhole, thicknessPerDimMax: clamped },
+    }))
+  },
+
+  setBlackHoleHighDimWScale: (scale) => {
+    const clamped = Math.max(1, Math.min(10, scale))
+    set((state) => ({
+      blackhole: { ...state.blackhole, highDimWScale: clamped },
+    }))
+  },
+
+  setBlackHoleSwirlAmount: (amount) => {
+    const clamped = Math.max(0, Math.min(2, amount))
+    set((state) => ({
+      blackhole: { ...state.blackhole, swirlAmount: clamped },
+    }))
+  },
+
+  setBlackHoleNoiseScale: (scale) => {
+    const clamped = Math.max(0.1, Math.min(10, scale))
+    set((state) => ({
+      blackhole: { ...state.blackhole, noiseScale: clamped },
+    }))
+  },
+
+  setBlackHoleNoiseAmount: (amount) => {
+    const clamped = Math.max(0, Math.min(1, amount))
+    set((state) => ({
+      blackhole: { ...state.blackhole, noiseAmount: clamped },
+    }))
+  },
+
+  setBlackHoleMultiIntersectionGain: (gain) => {
+    const clamped = Math.max(0, Math.min(3, gain))
+    set((state) => ({
+      blackhole: { ...state.blackhole, multiIntersectionGain: clamped },
+    }))
+  },
+
+  // === Rotation Damping ===
+  setBlackHoleDampInnerMul: (mul) => {
+    const clamped = Math.max(1, Math.min(2, mul))
+    set((state) => ({
+      blackhole: { ...state.blackhole, dampInnerMul: clamped },
+    }))
+  },
+
+  setBlackHoleDampOuterMul: (mul) => {
+    const clamped = Math.max(1.2, Math.min(8, mul))
+    set((state) => ({
+      blackhole: { ...state.blackhole, dampOuterMul: clamped },
+    }))
+  },
+
+  // === Rendering Quality ===
+  setBlackHoleRaymarchQuality: (quality) => {
+    const preset = BLACK_HOLE_QUALITY_PRESETS[quality]
+    set((state) => ({
+      blackhole: {
+        ...state.blackhole,
+        raymarchQuality: quality,
+        ...preset,
+      },
+    }))
+  },
+
+  setBlackHoleMaxSteps: (steps) => {
+    const clamped = Math.max(16, Math.min(512, Math.floor(steps)))
+    set((state) => ({
+      blackhole: { ...state.blackhole, maxSteps: clamped },
+    }))
+  },
+
+  setBlackHoleStepBase: (step) => {
+    const clamped = Math.max(0.001, Math.min(1, step))
+    set((state) => ({
+      blackhole: { ...state.blackhole, stepBase: clamped },
+    }))
+  },
+
+  setBlackHoleStepMin: (step) => {
+    const clamped = Math.max(0.0001, Math.min(0.5, step))
+    set((state) => ({
+      blackhole: { ...state.blackhole, stepMin: clamped },
+    }))
+  },
+
+  setBlackHoleStepMax: (step) => {
+    const clamped = Math.max(0.001, Math.min(5, step))
+    set((state) => ({
+      blackhole: { ...state.blackhole, stepMax: clamped },
+    }))
+  },
+
+  setBlackHoleStepAdaptG: (adapt) => {
+    const clamped = Math.max(0, Math.min(5, adapt))
+    set((state) => ({
+      blackhole: { ...state.blackhole, stepAdaptG: clamped },
+    }))
+  },
+
+  setBlackHoleStepAdaptR: (adapt) => {
+    const clamped = Math.max(0, Math.min(2, adapt))
+    set((state) => ({
+      blackhole: { ...state.blackhole, stepAdaptR: clamped },
+    }))
+  },
+
+  setBlackHoleEnableAbsorption: (enable) => {
+    set((state) => ({
+      blackhole: { ...state.blackhole, enableAbsorption: enable },
+    }))
+  },
+
+  setBlackHoleAbsorption: (absorption) => {
+    const clamped = Math.max(0, Math.min(10, absorption))
+    set((state) => ({
+      blackhole: { ...state.blackhole, absorption: clamped },
+    }))
+  },
+
+  setBlackHoleTransmittanceCutoff: (cutoff) => {
+    const clamped = Math.max(0, Math.min(0.2, cutoff))
+    set((state) => ({
+      blackhole: { ...state.blackhole, transmittanceCutoff: clamped },
+    }))
+  },
+
+  setBlackHoleFarRadius: (radius) => {
+    const clamped = Math.max(1, Math.min(100, radius))
+    set((state) => ({
+      blackhole: { ...state.blackhole, farRadius: clamped },
+    }))
+  },
+
+  // === Lighting ===
+  setBlackHoleLightingMode: (mode) => {
+    set((state) => ({
+      blackhole: { ...state.blackhole, lightingMode: mode },
+    }))
+  },
+
+  setBlackHoleRoughness: (roughness) => {
+    const clamped = Math.max(0, Math.min(1, roughness))
+    set((state) => ({
+      blackhole: { ...state.blackhole, roughness: clamped },
+    }))
+  },
+
+  setBlackHoleSpecular: (specular) => {
+    const clamped = Math.max(0, Math.min(1, specular))
+    set((state) => ({
+      blackhole: { ...state.blackhole, specular: clamped },
+    }))
+  },
+
+  setBlackHoleAmbientTint: (tint) => {
+    const clamped = Math.max(0, Math.min(1, tint))
+    set((state) => ({
+      blackhole: { ...state.blackhole, ambientTint: clamped },
+    }))
+  },
+
+  setBlackHoleShadowEnabled: (enabled) => {
+    set((state) => ({
+      blackhole: { ...state.blackhole, shadowEnabled: enabled },
+    }))
+  },
+
+  setBlackHoleShadowSteps: (steps) => {
+    const clamped = Math.max(4, Math.min(64, Math.floor(steps)))
+    set((state) => ({
+      blackhole: { ...state.blackhole, shadowSteps: clamped },
+    }))
+  },
+
+  setBlackHoleShadowDensity: (density) => {
+    const clamped = Math.max(0, Math.min(10, density))
+    set((state) => ({
+      blackhole: { ...state.blackhole, shadowDensity: clamped },
+    }))
+  },
+
+  // === Edge Glow / Horizon ===
+  setBlackHoleEdgeGlowEnabled: (enabled) => {
+    set((state) => ({
+      blackhole: { ...state.blackhole, edgeGlowEnabled: enabled },
+    }))
+  },
+
+  setBlackHoleEdgeGlowWidth: (width) => {
+    const clamped = Math.max(0, Math.min(1, width))
+    set((state) => ({
+      blackhole: { ...state.blackhole, edgeGlowWidth: clamped },
+    }))
+  },
+
+  setBlackHoleEdgeGlowColor: (color) => {
+    set((state) => ({
+      blackhole: { ...state.blackhole, edgeGlowColor: color },
+    }))
+  },
+
+  setBlackHoleEdgeGlowIntensity: (intensity) => {
+    const clamped = Math.max(0, Math.min(5, intensity))
+    set((state) => ({
+      blackhole: { ...state.blackhole, edgeGlowIntensity: clamped },
+    }))
+  },
+
+  // === Background ===
+  setBlackHoleBackgroundMode: (mode) => {
+    set((state) => ({
+      blackhole: { ...state.blackhole, backgroundMode: mode },
+    }))
+  },
+
+  setBlackHoleStarfieldDensity: (density) => {
+    const clamped = Math.max(0, Math.min(5, density))
+    set((state) => ({
+      blackhole: { ...state.blackhole, starfieldDensity: clamped },
+    }))
+  },
+
+  setBlackHoleStarfieldBrightness: (brightness) => {
+    const clamped = Math.max(0, Math.min(3, brightness))
+    set((state) => ({
+      blackhole: { ...state.blackhole, starfieldBrightness: clamped },
+    }))
+  },
+
+  // === Temporal ===
+  setBlackHoleTemporalAccumulationEnabled: (enabled) => {
+    set((state) => ({
+      blackhole: { ...state.blackhole, temporalAccumulationEnabled: enabled },
+    }))
+  },
+
+  // === Doppler Effect ===
+  setBlackHoleDopplerEnabled: (enabled) => {
+    set((state) => ({
+      blackhole: { ...state.blackhole, dopplerEnabled: enabled },
+    }))
+  },
+
+  setBlackHoleDopplerStrength: (strength) => {
+    const clamped = Math.max(0, Math.min(2, strength))
+    set((state) => ({
+      blackhole: { ...state.blackhole, dopplerStrength: clamped },
+    }))
+  },
+
+  setBlackHoleDopplerHueShift: (shift) => {
+    const clamped = Math.max(0, Math.min(0.3, shift))
+    set((state) => ({
+      blackhole: { ...state.blackhole, dopplerHueShift: clamped },
+    }))
+  },
+
+  // === Visual Preset ===
+  setBlackHoleVisualPreset: (preset) => {
+    set((state) => ({
+      blackhole: { ...state.blackhole, visualPreset: preset },
+    }))
+  },
+
+  applyBlackHoleVisualPreset: (preset) => {
+    if (preset === 'custom') return
+
+    const presetConfig = BLACK_HOLE_VISUAL_PRESETS[preset]
+    set((state) => ({
+      blackhole: {
+        ...state.blackhole,
+        ...presetConfig,
+        visualPreset: preset,
+      },
+    }))
+  },
+
+  // === Cross-section (4D+) ===
+  setBlackHoleParameterValue: (index, value) => {
+    const values = [...get().blackhole.parameterValues]
+    if (index < 0 || index >= values.length) return
+    const clamped = Math.max(-2, Math.min(2, value))
+    values[index] = clamped
+    set((state) => ({
+      blackhole: { ...state.blackhole, parameterValues: values },
+    }))
+  },
+
+  setBlackHoleParameterValues: (values) => {
+    const clamped = values.map((v) => Math.max(-2, Math.min(2, v)))
+    set((state) => ({
+      blackhole: { ...state.blackhole, parameterValues: clamped },
+    }))
+  },
+
+  resetBlackHoleParameters: () => {
+    const len = get().blackhole.parameterValues.length
+    set((state) => ({
+      blackhole: { ...state.blackhole, parameterValues: new Array(len).fill(0) },
+    }))
+  },
+
+  // === Polar Jets ===
+  setBlackHoleJetsEnabled: (enabled) => {
+    set((state) => ({
+      blackhole: { ...state.blackhole, jetsEnabled: enabled },
+    }))
+  },
+
+  setBlackHoleJetsHeight: (height) => {
+    const clamped = Math.max(0, Math.min(50, height))
+    set((state) => ({
+      blackhole: { ...state.blackhole, jetsHeight: clamped },
+    }))
+  },
+
+  setBlackHoleJetsWidth: (width) => {
+    const clamped = Math.max(0, Math.min(5, width))
+    set((state) => ({
+      blackhole: { ...state.blackhole, jetsWidth: clamped },
+    }))
+  },
+
+  setBlackHoleJetsIntensity: (intensity) => {
+    const clamped = Math.max(0, Math.min(10, intensity))
+    set((state) => ({
+      blackhole: { ...state.blackhole, jetsIntensity: clamped },
+    }))
+  },
+
+  setBlackHoleJetsColor: (color) => {
+    set((state) => ({
+      blackhole: { ...state.blackhole, jetsColor: color },
+    }))
+  },
+
+  setBlackHoleJetsFalloff: (falloff) => {
+    const clamped = Math.max(0, Math.min(10, falloff))
+    set((state) => ({
+      blackhole: { ...state.blackhole, jetsFalloff: clamped },
+    }))
+  },
+
+  setBlackHoleJetsNoiseAmount: (amount) => {
+    const clamped = Math.max(0, Math.min(1, amount))
+    set((state) => ({
+      blackhole: { ...state.blackhole, jetsNoiseAmount: clamped },
+    }))
+  },
+
+  setBlackHoleJetsPulsation: (pulsation) => {
+    const clamped = Math.max(0, Math.min(2, pulsation))
+    set((state) => ({
+      blackhole: { ...state.blackhole, jetsPulsation: clamped },
+    }))
+  },
+
+  // === Motion Blur ===
+  setBlackHoleMotionBlurEnabled: (enabled) => {
+    set((state) => ({
+      blackhole: { ...state.blackhole, motionBlurEnabled: enabled },
+    }))
+  },
+
+  setBlackHoleMotionBlurStrength: (strength) => {
+    const clamped = Math.max(0, Math.min(2, strength))
+    set((state) => ({
+      blackhole: { ...state.blackhole, motionBlurStrength: clamped },
+    }))
+  },
+
+  setBlackHoleMotionBlurSamples: (samples) => {
+    const clamped = Math.max(1, Math.min(8, Math.floor(samples)))
+    set((state) => ({
+      blackhole: { ...state.blackhole, motionBlurSamples: clamped },
+    }))
+  },
+
+  setBlackHoleMotionBlurRadialFalloff: (falloff) => {
+    const clamped = Math.max(0, Math.min(5, falloff))
+    set((state) => ({
+      blackhole: { ...state.blackhole, motionBlurRadialFalloff: clamped },
+    }))
+  },
+
+  // === Deferred Lensing ===
+  setBlackHoleDeferredLensingEnabled: (enabled) => {
+    set((state) => ({
+      blackhole: { ...state.blackhole, deferredLensingEnabled: enabled },
+    }))
+  },
+
+  setBlackHoleDeferredLensingStrength: (strength) => {
+    const clamped = Math.max(0, Math.min(2, strength))
+    set((state) => ({
+      blackhole: { ...state.blackhole, deferredLensingStrength: clamped },
+    }))
+  },
+
+  setBlackHoleDeferredLensingRadius: (radius) => {
+    const clamped = Math.max(0, Math.min(10, radius))
+    set((state) => ({
+      blackhole: { ...state.blackhole, deferredLensingRadius: clamped },
+    }))
+  },
+
+  // === Scene Object Lensing ===
+  setBlackHoleSceneObjectLensingEnabled: (enabled) => {
+    set((state) => ({
+      blackhole: { ...state.blackhole, sceneObjectLensingEnabled: enabled },
+    }))
+  },
+
+  setBlackHoleSceneObjectLensingStrength: (strength) => {
+    const clamped = Math.max(0, Math.min(2, strength))
+    set((state) => ({
+      blackhole: { ...state.blackhole, sceneObjectLensingStrength: clamped },
+    }))
+  },
+
+  // === Animation ===
+  setBlackHoleSwirlAnimationEnabled: (enabled) => {
+    set((state) => ({
+      blackhole: { ...state.blackhole, swirlAnimationEnabled: enabled },
+    }))
+  },
+
+  setBlackHoleSwirlAnimationSpeed: (speed) => {
+    const clamped = Math.max(0, Math.min(2, speed))
+    set((state) => ({
+      blackhole: { ...state.blackhole, swirlAnimationSpeed: clamped },
+    }))
+  },
+
+  setBlackHolePulseEnabled: (enabled) => {
+    set((state) => ({
+      blackhole: { ...state.blackhole, pulseEnabled: enabled },
+    }))
+  },
+
+  setBlackHolePulseSpeed: (speed) => {
+    const clamped = Math.max(0, Math.min(2, speed))
+    set((state) => ({
+      blackhole: { ...state.blackhole, pulseSpeed: clamped },
+    }))
+  },
+
+  setBlackHolePulseAmount: (amount) => {
+    const clamped = Math.max(0, Math.min(1, amount))
+    set((state) => ({
+      blackhole: { ...state.blackhole, pulseAmount: clamped },
+    }))
+  },
+
+  setBlackHoleSliceAnimationEnabled: (enabled) => {
+    set((state) => ({
+      blackhole: { ...state.blackhole, sliceAnimationEnabled: enabled },
+    }))
+  },
+
+  setBlackHoleSliceSpeed: (speed) => {
+    const clamped = Math.max(0.01, Math.min(0.1, speed))
+    set((state) => ({
+      blackhole: { ...state.blackhole, sliceSpeed: clamped },
+    }))
+  },
+
+  setBlackHoleSliceAmplitude: (amplitude) => {
+    const clamped = Math.max(0.1, Math.min(1, amplitude))
+    set((state) => ({
+      blackhole: { ...state.blackhole, sliceAmplitude: clamped },
+    }))
+  },
+
+  // === Config Operations ===
+  setBlackHoleConfig: (config) => {
+    // Validate and clamp numeric fields to prevent invalid values
+    const validated: Partial<BlackHoleConfig> = {}
+
+    // Basic parameters
+    if (config.horizonRadius !== undefined) {
+      validated.horizonRadius = Math.max(0.05, Math.min(20, config.horizonRadius))
+    }
+    if (config.gravityStrength !== undefined) {
+      validated.gravityStrength = Math.max(0, Math.min(10, config.gravityStrength))
+    }
+    if (config.manifoldIntensity !== undefined) {
+      validated.manifoldIntensity = Math.max(0, Math.min(20, config.manifoldIntensity))
+    }
+    if (config.manifoldThickness !== undefined) {
+      validated.manifoldThickness = Math.max(0, Math.min(2, config.manifoldThickness))
+    }
+    if (config.photonShellWidth !== undefined) {
+      validated.photonShellWidth = Math.max(0, Math.min(0.3, config.photonShellWidth))
+    }
+    if (config.timeScale !== undefined) {
+      validated.timeScale = Math.max(0, Math.min(5, config.timeScale))
+    }
+    if (config.bloomBoost !== undefined) {
+      validated.bloomBoost = Math.max(0, Math.min(5, config.bloomBoost))
+    }
+
+    // Lensing
+    if (config.dimensionEmphasis !== undefined) {
+      validated.dimensionEmphasis = Math.max(0, Math.min(2, config.dimensionEmphasis))
+    }
+    if (config.distanceFalloff !== undefined) {
+      validated.distanceFalloff = Math.max(0.5, Math.min(4, config.distanceFalloff))
+    }
+    if (config.epsilonMul !== undefined) {
+      validated.epsilonMul = Math.max(1e-5, Math.min(0.5, config.epsilonMul))
+    }
+    if (config.bendScale !== undefined) {
+      validated.bendScale = Math.max(0, Math.min(5, config.bendScale))
+    }
+    if (config.bendMaxPerStep !== undefined) {
+      validated.bendMaxPerStep = Math.max(0, Math.min(0.8, config.bendMaxPerStep))
+    }
+    if (config.lensingClamp !== undefined) {
+      validated.lensingClamp = Math.max(0, Math.min(100, config.lensingClamp))
+    }
+
+    // Photon shell
+    if (config.photonShellRadiusMul !== undefined) {
+      validated.photonShellRadiusMul = Math.max(1.0, Math.min(2.0, config.photonShellRadiusMul))
+    }
+    if (config.shellGlowStrength !== undefined) {
+      validated.shellGlowStrength = Math.max(0, Math.min(20, config.shellGlowStrength))
+    }
+
+    // Manifold
+    if (config.densityFalloff !== undefined) {
+      validated.densityFalloff = Math.max(0, Math.min(40, config.densityFalloff))
+    }
+    if (config.diskInnerRadiusMul !== undefined) {
+      validated.diskInnerRadiusMul = Math.max(0, Math.min(10, config.diskInnerRadiusMul))
+    }
+    if (config.diskOuterRadiusMul !== undefined) {
+      validated.diskOuterRadiusMul = Math.max(0.1, Math.min(200, config.diskOuterRadiusMul))
+    }
+    if (config.swirlAmount !== undefined) {
+      validated.swirlAmount = Math.max(0, Math.min(3, config.swirlAmount))
+    }
+
+    // Pass through non-numeric fields directly (strings, booleans, arrays)
+    // Using explicit assignments to maintain type safety
+    if (config.paletteMode !== undefined) validated.paletteMode = config.paletteMode;
+    if (config.manifoldType !== undefined) validated.manifoldType = config.manifoldType;
+    if (config.lightingMode !== undefined) validated.lightingMode = config.lightingMode;
+    if (config.backgroundMode !== undefined) validated.backgroundMode = config.backgroundMode;
+    if (config.baseColor !== undefined) validated.baseColor = config.baseColor;
+    if (config.shellGlowColor !== undefined) validated.shellGlowColor = config.shellGlowColor;
+    if (config.edgeGlowColor !== undefined) validated.edgeGlowColor = config.edgeGlowColor;
+    if (config.jetsColor !== undefined) validated.jetsColor = config.jetsColor;
+    if (config.visualPreset !== undefined) validated.visualPreset = config.visualPreset;
+    if (config.dopplerEnabled !== undefined) validated.dopplerEnabled = config.dopplerEnabled;
+    if (config.jetsEnabled !== undefined) validated.jetsEnabled = config.jetsEnabled;
+    if (config.edgeGlowEnabled !== undefined) validated.edgeGlowEnabled = config.edgeGlowEnabled;
+    if (config.enableAbsorption !== undefined) validated.enableAbsorption = config.enableAbsorption;
+    if (config.temporalAccumulationEnabled !== undefined) validated.temporalAccumulationEnabled = config.temporalAccumulationEnabled;
+    if (config.swirlAnimationEnabled !== undefined) validated.swirlAnimationEnabled = config.swirlAnimationEnabled;
+    if (config.pulseEnabled !== undefined) validated.pulseEnabled = config.pulseEnabled;
+    if (config.parameterValues !== undefined) validated.parameterValues = config.parameterValues;
+
+    set((state) => ({
+      blackhole: { ...state.blackhole, ...validated },
+    }))
+  },
+
+  initializeBlackHoleForDimension: (dimension) => {
+    const extraDims = Math.max(0, dimension - 3)
+    const parameterValues = new Array(extraDims).fill(0)
+
+    // Adjust thickness based on dimension
+    const baseThickness = 0.15
+    const thicknessMul = 1 + (dimension - 3) * 0.1 // Thicker in higher dimensions
+
+    set((state) => ({
+      blackhole: {
+        ...state.blackhole,
+        parameterValues,
+        manifoldThickness: Math.min(baseThickness * thicknessMul, 2.0),
+      },
+    }))
+  },
+
+  getBlackHoleConfig: () => get().blackhole,
+})

@@ -37,7 +37,7 @@ export const DEFAULT_FACES_VISIBLE = true
 // Bloom Defaults
 // ============================================================================
 
-export const DEFAULT_BLOOM_ENABLED = true
+export const DEFAULT_BLOOM_ENABLED = false
 export const DEFAULT_BLOOM_INTENSITY = 0.2
 export const DEFAULT_BLOOM_THRESHOLD = 0.45
 export const DEFAULT_BLOOM_RADIUS = 0.15
@@ -184,7 +184,7 @@ export const ALL_WALL_POSITIONS: WallPosition[] = ['floor', 'back', 'left', 'rig
 /** Ground plane surface type */
 export type GroundPlaneType = 'two-sided' | 'plane'
 
-export const DEFAULT_ACTIVE_WALLS: WallPosition[] = ['floor']
+export const DEFAULT_ACTIVE_WALLS: WallPosition[] = []
 export const DEFAULT_GROUND_PLANE_OFFSET = 10
 export const DEFAULT_GROUND_PLANE_OPACITY = 0.5
 export const DEFAULT_GROUND_PLANE_REFLECTIVITY = 0.4

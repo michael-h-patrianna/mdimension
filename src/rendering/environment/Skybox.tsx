@@ -9,6 +9,7 @@ import { useAnimationStore } from '@/stores/animationStore';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useEnvironmentStore } from '@/stores/environmentStore';
 import { usePerformanceStore } from '@/stores/performanceStore';
+import { useMsgBoxStore } from '@/stores/msgBoxStore';
 import { Environment } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -788,6 +789,11 @@ const SkyboxLoader: React.FC = () => {
         if (!cancelled) {
           console.error('Failed to load skybox texture:', error);
           setSkyboxLoading(false);
+          useMsgBoxStore.getState().showMsgBox(
+            'Skybox Load Failed',
+            'Could not load the environment texture. Falling back to default lighting.',
+            'warning'
+          );
         }
       }
     );
@@ -810,6 +816,21 @@ const SkyboxLoader: React.FC = () => {
   // Convert to PMREM for proper IBL with meshStandardMaterial
   // Without PMREM, the cubemap won't work with roughness/metalness in PBR materials
   const { texture: pmremTexture, isGenerating: isPMREMGenerating } = usePMREMTexture(texture ?? undefined);
+
+  // Set scene.background to the CubeTexture so black hole shader can access it
+  // (scene.environment is PMREM which is 2D, but we need actual CubeTexture for samplerCube)
+  const scene = useThree((state) => state.scene);
+  useEffect(() => {
+    if (texture && skyboxEnabled) {
+      scene.background = texture;
+    }
+    return () => {
+      // Clear background on unmount or when texture changes
+      if (scene.background === texture) {
+        scene.background = null;
+      }
+    };
+  }, [texture, skyboxEnabled, scene]);
 
   // Check if we should render the custom skybox mesh
   const shouldRenderSkybox = Boolean(skyboxEnabled && ktx2Path && texture);

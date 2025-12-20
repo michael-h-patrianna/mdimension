@@ -87,6 +87,12 @@ const detectBrowser = (): BrowserType => {
  * - 4K:    35 Mbps
  *
  * FPS multiplier: scale proportionally (60fps = 2x base, 24fps = 0.8x base)
+ *
+ * @param resolution - The video resolution preset
+ * @param fps - The target frames per second
+ * @param customWidth - Optional custom width in pixels
+ * @param customHeight - Optional custom height in pixels
+ * @returns Recommended bitrate in Mbps
  */
 export const getRecommendedBitrate = (
   resolution: ExportResolution,

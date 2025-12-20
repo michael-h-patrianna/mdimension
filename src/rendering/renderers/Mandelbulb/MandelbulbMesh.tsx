@@ -231,7 +231,6 @@ const MandelbulbMesh = () => {
   const animationBias = useUIStore((state) => state.animationBias);
 
   // Animation time tracking - only advances when isPlaying is true
-  const animationTimeRef = useRef(0);
   const lastFrameTimeRef = useRef(0);
 
   // Zoom state refs
@@ -450,14 +449,8 @@ const MandelbulbMesh = () => {
     if (hasErroredRef.current) return;
 
     try {
-    // Update animation time - only advances when isPlaying is true
-    const currentTime = state.clock.elapsedTime;
-    const deltaTime = currentTime - lastFrameTimeRef.current;
-    lastFrameTimeRef.current = currentTime;
     const isPlaying = useAnimationStore.getState().isPlaying;
-    if (isPlaying) {
-      animationTimeRef.current += deltaTime;
-    }
+    const accumulatedTime = useAnimationStore.getState().accumulatedTime;
 
     if (meshRef.current) {
       const material = meshRef.current.material as THREE.ShaderMaterial;
@@ -509,8 +502,8 @@ const MandelbulbMesh = () => {
       }
 
       // Update time and resolution
-      // Use animationTimeRef which respects pause state, not raw clock time
-      if (material.uniforms.uTime) material.uniforms.uTime.value = animationTimeRef.current;
+      // Use accumulatedTime which respects pause state and is synced globally
+      if (material.uniforms.uTime) material.uniforms.uTime.value = accumulatedTime;
       if (material.uniforms.uResolution) material.uniforms.uResolution.value.set(size.width, size.height);
       if (material.uniforms.uCameraPosition) material.uniforms.uCameraPosition.value.copy(camera.position);
 
@@ -532,13 +525,9 @@ const MandelbulbMesh = () => {
       // When animated, directly set uPower (same as manually moving the slider)
       if (material.uniforms.uPower) {
         if (powerAnimationEnabled) {
-          // Use raw clock time directly (convert ms to seconds)
+          // Use global accumulatedTime
           // powerSpeed 0.03 = one full cycle (back and forth) every ~33 seconds
-          const timeInSeconds = state.clock.elapsedTime / 1000;
-
-          // Sine wave oscillation - naturally eases at the peaks and troughs
-          // This creates smooth back-and-forth motion without any jump cuts
-          const t = timeInSeconds * powerSpeed * 2 * Math.PI;
+          const t = accumulatedTime * powerSpeed * 2 * Math.PI;
           const normalized = (Math.sin(t) + 1) / 2; // Maps [-1, 1] to [0, 1]
 
           const targetPower = powerMin + normalized * (powerMax - powerMin);
@@ -575,7 +564,7 @@ const MandelbulbMesh = () => {
       if (material.uniforms.uMixTime) {
         // Mix time advances based on animation time and frequency
         // The shader will use this to compute sin/cos values for the mixing matrix
-        material.uniforms.uMixTime.value = animationTimeRef.current * mixFrequency * 2 * Math.PI;
+        material.uniforms.uMixTime.value = accumulatedTime * mixFrequency * 2 * Math.PI;
       }
 
       // Update color and palette (cached linear conversion - only converts when color changes)
@@ -810,7 +799,7 @@ const MandelbulbMesh = () => {
           const animationSpeed = useAnimationStore.getState().speed;
           const driftedOrigin = computeDriftedOrigin(
             parameterValues,
-            animationTimeRef.current,
+            accumulatedTime,
             driftConfig,
             animationSpeed,
             animationBias
@@ -823,15 +812,14 @@ const MandelbulbMesh = () => {
           // Slice Animation: animate through higher-dimensional cross-sections
           // Use sine waves with golden ratio phase offsets for organic motion
           const PHI = 1.618033988749895; // Golden ratio
-          const timeInSeconds = state.clock.elapsedTime / 1000;
 
           for (let i = 3; i < D; i++) {
             const extraDimIndex = i - 3;
             // Each dimension gets a unique phase offset based on golden ratio
             const phase = extraDimIndex * PHI;
             // Multi-frequency sine for more interesting motion
-            const t1 = timeInSeconds * sliceSpeed * 2 * Math.PI + phase;
-            const t2 = timeInSeconds * sliceSpeed * 1.3 * 2 * Math.PI + phase * 1.5;
+            const t1 = accumulatedTime * sliceSpeed * 2 * Math.PI + phase;
+            const t2 = accumulatedTime * sliceSpeed * 1.3 * 2 * Math.PI + phase * 1.5;
             // Blend two frequencies for non-repetitive motion
             const offset = sliceAmplitude * (0.7 * Math.sin(t1) + 0.3 * Math.sin(t2));
             work.origin[i] = (parameterValues[extraDimIndex] ?? 0) + offset;
@@ -861,8 +849,7 @@ const MandelbulbMesh = () => {
         material.uniforms.uPhaseEnabled.value = phaseShiftEnabled;
       }
       if (phaseShiftEnabled) {
-        const timeInSeconds = state.clock.elapsedTime / 1000;
-        const t = timeInSeconds * phaseSpeed * 2 * Math.PI;
+        const t = accumulatedTime * phaseSpeed * 2 * Math.PI;
         // Theta and phi use different frequencies for more organic twisting
         if (material.uniforms.uPhaseTheta) {
           material.uniforms.uPhaseTheta.value = phaseAmplitude * Math.sin(t);
@@ -890,6 +877,7 @@ const MandelbulbMesh = () => {
 
         // Animate zoom if enabled and playing
         if (zoomAnimationEnabled && isPlaying) {
+          const deltaTime = accumulatedTime - lastFrameTimeRef.current;
           if (zoomAnimationMode === 'continuous') {
             // Continuous zoom: increase zoom indefinitely
             logZoomRef.current += zoomSpeed * deltaTime * zoomSpeedMultiplierRef.current;
@@ -993,6 +981,9 @@ const MandelbulbMesh = () => {
           zoomAutopilotRef.current = null;
         }
       }
+
+      // Update last frame time for zoom delta calculation
+      lastFrameTimeRef.current = accumulatedTime;
 
       // Model matrices are always identity for Mandelbulb - no need to set every frame
       // (they are already identity from useMemo initialization)

@@ -66,6 +66,11 @@ const componentLoaders: Record<string, () => Promise<{ default: ComponentType<un
     import('@/components/sections/Geometry/SchroedingerControls').then((m) => ({
       default: m.SchroedingerControls as ComponentType<unknown>,
     })),
+
+  BlackHoleControls: () =>
+    import('@/components/sections/Geometry/BlackHoleControls').then((m) => ({
+      default: m.BlackHoleControls as ComponentType<unknown>,
+    })),
 }
 
 /**

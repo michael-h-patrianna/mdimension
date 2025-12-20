@@ -180,7 +180,7 @@ function AppContent() {
           <Canvas
             frameloop="never"
             camera={{
-              position: [2, 2, 2.5],
+              position: [0, 2.5, 6], // Closer angled view for prominent Interstellar look
               fov: 60,
             }}
             shadows="soft"

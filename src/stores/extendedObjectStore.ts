@@ -15,6 +15,7 @@
  */
 
 import {
+  DEFAULT_BLACK_HOLE_CONFIG,
   DEFAULT_CLIFFORD_TORUS_CONFIG,
   DEFAULT_MANDELBROT_CONFIG,
   DEFAULT_NESTED_TORUS_CONFIG,
@@ -25,6 +26,7 @@ import {
   DEFAULT_WYTHOFF_POLYTOPE_CONFIG,
 } from '@/lib/geometry/extended/types'
 import { create } from 'zustand'
+import { createBlackHoleSlice } from './slices/geometry/blackholeSlice'
 import { createCliffordTorusSlice } from './slices/geometry/cliffordTorusSlice'
 import { createMandelbulbSlice } from './slices/geometry/mandelbulbSlice'
 import { createNestedTorusSlice } from './slices/geometry/nestedTorusSlice'
@@ -54,6 +56,7 @@ export const useExtendedObjectStore = create<ExtendedObjectSlice>()((...a) => {
     ...createMandelbulbSlice(...a),
     ...createQuaternionJuliaSlice(...a),
     ...createSchroedingerSlice(...a),
+    ...createBlackHoleSlice(...a),
 
     // --- Reset Action ---
     reset: () => {
@@ -67,6 +70,7 @@ export const useExtendedObjectStore = create<ExtendedObjectSlice>()((...a) => {
         mandelbulb: { ...DEFAULT_MANDELBROT_CONFIG },
         quaternionJulia: { ...DEFAULT_QUATERNION_JULIA_CONFIG },
         schroedinger: { ...DEFAULT_SCHROEDINGER_CONFIG },
+        blackhole: { ...DEFAULT_BLACK_HOLE_CONFIG },
       })
     },
   }

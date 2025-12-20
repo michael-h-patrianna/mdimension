@@ -3,7 +3,7 @@ import { ColorPicker } from '@/components/ui/ColorPicker';
 import { Slider } from '@/components/ui/Slider';
 import { ToggleButton } from '@/components/ui/ToggleButton';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
-import type { RaymarchQuality } from '@/lib/geometry/extended/types';
+import type { BlackHoleRayBendingMode, BlackHoleRaymarchMode, RaymarchQuality } from '@/lib/geometry/extended/types';
 import { useAppearanceStore, type AppearanceSlice } from '@/stores/appearanceStore';
 import { useExtendedObjectStore, type ExtendedObjectState } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
@@ -15,6 +15,7 @@ const ADVANCED_RENDERING_OBJECT_TYPES = [
     'mandelbulb',
     'quaternion-julia',
     'schroedinger',
+    'blackhole',
     'hypercube',
     'simplex',
     'cross-polytope',
@@ -22,7 +23,7 @@ const ADVANCED_RENDERING_OBJECT_TYPES = [
 ];
 
 // Object types that have raymarching quality controls
-const RAYMARCHING_OBJECT_TYPES = ['mandelbulb', 'quaternion-julia', 'schroedinger'];
+const RAYMARCHING_OBJECT_TYPES = ['mandelbulb', 'quaternion-julia', 'schroedinger', 'blackhole'];
 
 export const AdvancedObjectControls: React.FC = () => {
     const objectType = useGeometryStore(state => state.objectType);
@@ -44,6 +45,7 @@ export const AdvancedObjectControls: React.FC = () => {
 
             {/* Object-Specific Settings */}
             {objectType === 'schroedinger' && <SchroedingerAdvanced />}
+            {objectType === 'blackhole' && <BlackHoleAdvanced />}
         </Section>
     );
 };
@@ -93,11 +95,14 @@ const RaymarchingQualityControl: React.FC<{ objectType: string }> = ({ objectTyp
         setJuliaQuality: state.setQuaternionJuliaRaymarchQuality,
         schroedingerQuality: state.schroedinger.raymarchQuality,
         setSchroedingerQuality: state.setSchroedingerRaymarchQuality,
+        blackholeQuality: state.blackhole.raymarchQuality,
+        setBlackholeQuality: state.setBlackHoleRaymarchQuality,
     }));
     const {
         mandelbulbQuality, setMandelbulbQuality,
         juliaQuality, setJuliaQuality,
         schroedingerQuality, setSchroedingerQuality,
+        blackholeQuality, setBlackholeQuality,
     } = useExtendedObjectStore(extendedObjectSelector);
 
     // Select the appropriate quality and setter based on object type
@@ -110,6 +115,9 @@ const RaymarchingQualityControl: React.FC<{ objectType: string }> = ({ objectTyp
     } else if (objectType === 'quaternion-julia') {
         quality = juliaQuality;
         setQuality = setJuliaQuality;
+    } else if (objectType === 'blackhole') {
+        quality = blackholeQuality;
+        setQuality = setBlackholeQuality;
     } else {
         quality = schroedingerQuality;
         setQuality = setSchroedingerQuality;
@@ -510,6 +518,377 @@ const SchroedingerAdvanced: React.FC = () => {
                     ? 'Sharp surface at constant probability density'
                     : 'Volumetric cloud visualization'
                 }
+                </p>
+            </div>
+        </div>
+    );
+};
+
+const BlackHoleAdvanced: React.FC = () => {
+    const dimension = useGeometryStore(state => state.dimension);
+    const extendedObjectSelector = useShallow((state: ExtendedObjectState) => ({
+        config: state.blackhole,
+        // Lensing
+        setDimensionEmphasis: state.setBlackHoleDimensionEmphasis,
+        setDistanceFalloff: state.setBlackHoleDistanceFalloff,
+        setBendScale: state.setBlackHoleBendScale,
+        setBendMaxPerStep: state.setBlackHoleBendMaxPerStep,
+        setRayBendingMode: state.setBlackHoleRayBendingMode,
+        // Manifold
+        setDensityFalloff: state.setBlackHoleDensityFalloff,
+        setDiskInnerRadiusMul: state.setBlackHoleDiskInnerRadiusMul,
+        setDiskOuterRadiusMul: state.setBlackHoleDiskOuterRadiusMul,
+        setNoiseScale: state.setBlackHoleNoiseScale,
+        setNoiseAmount: state.setBlackHoleNoiseAmount,
+        // Rendering
+        setMaxSteps: state.setBlackHoleMaxSteps,
+        setStepBase: state.setBlackHoleStepBase,
+        setEnableAbsorption: state.setBlackHoleEnableAbsorption,
+        setAbsorption: state.setBlackHoleAbsorption,
+        // Motion blur
+        setMotionBlurEnabled: state.setBlackHoleMotionBlurEnabled,
+        setMotionBlurStrength: state.setBlackHoleMotionBlurStrength,
+        // Deferred lensing
+        setDeferredLensingEnabled: state.setBlackHoleDeferredLensingEnabled,
+        setDeferredLensingStrength: state.setBlackHoleDeferredLensingStrength,
+        // Raymarch mode
+        setRaymarchMode: state.setBlackHoleRaymarchMode,
+        // Slice animation
+        setSliceAnimationEnabled: state.setBlackHoleSliceAnimationEnabled,
+        setSliceSpeed: state.setBlackHoleSliceSpeed,
+        setSliceAmplitude: state.setBlackHoleSliceAmplitude,
+    }));
+    const {
+        config,
+        setDimensionEmphasis,
+        setDistanceFalloff,
+        setBendScale,
+        setBendMaxPerStep,
+        setRayBendingMode,
+        setDensityFalloff,
+        setDiskInnerRadiusMul,
+        setDiskOuterRadiusMul,
+        setNoiseScale,
+        setNoiseAmount,
+        setMaxSteps,
+        setStepBase,
+        setEnableAbsorption,
+        setAbsorption,
+        setMotionBlurEnabled,
+        setMotionBlurStrength,
+        setDeferredLensingEnabled,
+        setDeferredLensingStrength,
+        setRaymarchMode,
+        setSliceAnimationEnabled,
+        setSliceSpeed,
+        setSliceAmplitude,
+    } = useExtendedObjectStore(extendedObjectSelector);
+
+    return (
+        <div className="space-y-4">
+            {/* Raymarch Mode */}
+            <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
+                <label className="text-xs text-text-secondary font-semibold">Raymarch Mode</label>
+                <div className="relative">
+                    <select
+                        className="w-full bg-surface-tertiary border border-white/10 rounded px-2 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent appearance-none cursor-pointer"
+                        value={config.raymarchMode}
+                        onChange={(e) => setRaymarchMode(e.target.value as BlackHoleRaymarchMode)}
+                        aria-label="Raymarch mode selection"
+                        data-testid="blackhole-raymarch-mode"
+                    >
+                        <option value="slice3D">3D Slice (Fast)</option>
+                        <option value="trueND">True N-D (Accurate)</option>
+                        <option value="sdfDisk">SDF Disk (Einstein Ring)</option>
+                    </select>
+                    <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-text-tertiary">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </div>
+                </div>
+                <p className="text-xs text-text-tertiary">
+                    {config.raymarchMode === 'slice3D'
+                        ? 'Fast: Uses 3D projection with parameter values for higher dimensions.'
+                        : config.raymarchMode === 'trueND'
+                        ? 'Accurate: Full N-dimensional raymarching with float[11] arrays.'
+                        : 'SDF: Plane crossing detection for Einstein ring effect.'}
+                </p>
+            </div>
+
+            {/* Slice Animation (only for trueND mode and N > 3) */}
+            {config.raymarchMode === 'trueND' && dimension > 3 && (
+                <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
+                    <div className="flex items-center justify-between">
+                        <label className="text-xs text-text-secondary font-semibold">Slice Animation</label>
+                        <ToggleButton
+                            pressed={config.sliceAnimationEnabled}
+                            onToggle={() => setSliceAnimationEnabled(!config.sliceAnimationEnabled)}
+                            className="text-xs px-2 py-1 h-auto"
+                            ariaLabel="Toggle slice animation"
+                            data-testid="blackhole-slice-animation-toggle"
+                        >
+                            {config.sliceAnimationEnabled ? 'ON' : 'OFF'}
+                        </ToggleButton>
+                    </div>
+                    {config.sliceAnimationEnabled && (
+                        <>
+                            <Slider
+                                label="Speed"
+                                min={0.01}
+                                max={0.1}
+                                step={0.01}
+                                value={config.sliceSpeed}
+                                onChange={setSliceSpeed}
+                                showValue
+                                data-testid="blackhole-slice-speed"
+                            />
+                            <Slider
+                                label="Amplitude"
+                                min={0.1}
+                                max={1.0}
+                                step={0.1}
+                                value={config.sliceAmplitude}
+                                onChange={setSliceAmplitude}
+                                showValue
+                                data-testid="blackhole-slice-amplitude"
+                            />
+                        </>
+                    )}
+                    <p className="text-xs text-text-tertiary">
+                        Oscillates through higher-dimensional slices.
+                    </p>
+                </div>
+            )}
+
+            {/* Lensing Parameters */}
+            <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
+                <label className="text-xs text-text-secondary font-semibold">Gravitational Lensing</label>
+                <Slider
+                    label="Dimension Emphasis"
+                    min={0}
+                    max={2}
+                    step={0.1}
+                    value={config.dimensionEmphasis}
+                    onChange={setDimensionEmphasis}
+                    showValue
+                    data-testid="blackhole-dimension-emphasis"
+                />
+                <Slider
+                    label="Distance Falloff"
+                    min={0.5}
+                    max={4}
+                    step={0.1}
+                    value={config.distanceFalloff}
+                    onChange={setDistanceFalloff}
+                    showValue
+                    data-testid="blackhole-distance-falloff"
+                />
+                <Slider
+                    label="Bend Scale"
+                    min={0}
+                    max={3}
+                    step={0.1}
+                    value={config.bendScale}
+                    onChange={setBendScale}
+                    showValue
+                    data-testid="blackhole-bend-scale"
+                />
+                <Slider
+                    label="Bend Max/Step"
+                    min={0.05}
+                    max={0.8}
+                    step={0.05}
+                    value={config.bendMaxPerStep}
+                    onChange={setBendMaxPerStep}
+                    showValue
+                    data-testid="blackhole-bend-max"
+                />
+                <div className="space-y-1">
+                    <label className="text-xs text-text-tertiary">Ray Bending Mode</label>
+                    <div className="relative">
+                        <select
+                            className="w-full bg-surface-tertiary border border-white/10 rounded px-2 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent appearance-none cursor-pointer"
+                            value={config.rayBendingMode}
+                            onChange={(e) => setRayBendingMode(e.target.value as BlackHoleRayBendingMode)}
+                            aria-label="Ray bending mode selection"
+                            data-testid="blackhole-ray-bending-mode"
+                        >
+                            <option value="spiral">Spiral (Inward)</option>
+                            <option value="orbital">Orbital (Einstein Ring)</option>
+                        </select>
+                        <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-text-tertiary">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </div>
+                    </div>
+                    <p className="text-xs text-text-tertiary">
+                        Spiral: Dramatic inward pull. Orbital: Physical Einstein-ring arcs.
+                    </p>
+                </div>
+            </div>
+
+            {/* Manifold Parameters */}
+            <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
+                <label className="text-xs text-text-secondary font-semibold">Accretion Manifold</label>
+                <Slider
+                    label="Density Falloff"
+                    min={1}
+                    max={40}
+                    step={1}
+                    value={config.densityFalloff}
+                    onChange={setDensityFalloff}
+                    showValue
+                    data-testid="blackhole-density-falloff"
+                />
+                <Slider
+                    label="Inner Radius"
+                    min={1}
+                    max={5}
+                    step={0.1}
+                    value={config.diskInnerRadiusMul}
+                    onChange={setDiskInnerRadiusMul}
+                    showValue
+                    data-testid="blackhole-inner-radius"
+                />
+                <Slider
+                    label="Outer Radius"
+                    min={3}
+                    max={30}
+                    step={1}
+                    value={config.diskOuterRadiusMul}
+                    onChange={setDiskOuterRadiusMul}
+                    showValue
+                    data-testid="blackhole-outer-radius"
+                />
+                <Slider
+                    label="Noise Scale"
+                    min={0.1}
+                    max={5}
+                    step={0.1}
+                    value={config.noiseScale}
+                    onChange={setNoiseScale}
+                    showValue
+                    data-testid="blackhole-noise-scale"
+                />
+                <Slider
+                    label="Noise Amount"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={config.noiseAmount}
+                    onChange={setNoiseAmount}
+                    showValue
+                    data-testid="blackhole-noise-amount"
+                />
+            </div>
+
+            {/* Rendering Quality */}
+            <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
+                <label className="text-xs text-text-secondary font-semibold">Rendering</label>
+                <Slider
+                    label="Max Steps"
+                    min={32}
+                    max={256}
+                    step={16}
+                    value={config.maxSteps}
+                    onChange={setMaxSteps}
+                    showValue
+                    data-testid="blackhole-max-steps"
+                />
+                <Slider
+                    label="Step Size"
+                    min={0.01}
+                    max={0.2}
+                    step={0.01}
+                    value={config.stepBase}
+                    onChange={setStepBase}
+                    showValue
+                    data-testid="blackhole-step-size"
+                />
+                <div className="flex items-center justify-between">
+                    <label className="text-xs text-text-secondary">Absorption</label>
+                    <ToggleButton
+                        pressed={config.enableAbsorption}
+                        onToggle={() => setEnableAbsorption(!config.enableAbsorption)}
+                        className="text-xs px-2 py-1 h-auto"
+                        ariaLabel="Toggle absorption"
+                        data-testid="blackhole-absorption-toggle"
+                    >
+                        {config.enableAbsorption ? 'ON' : 'OFF'}
+                    </ToggleButton>
+                </div>
+                {config.enableAbsorption && (
+                    <Slider
+                        label="Absorption"
+                        min={0}
+                        max={5}
+                        step={0.1}
+                        value={config.absorption}
+                        onChange={setAbsorption}
+                        showValue
+                        data-testid="blackhole-absorption"
+                    />
+                )}
+            </div>
+
+            {/* Motion Blur */}
+            <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
+                <div className="flex items-center justify-between">
+                    <label className="text-xs text-text-secondary font-semibold">Motion Blur</label>
+                    <ToggleButton
+                        pressed={config.motionBlurEnabled}
+                        onToggle={() => setMotionBlurEnabled(!config.motionBlurEnabled)}
+                        className="text-xs px-2 py-1 h-auto"
+                        ariaLabel="Toggle motion blur"
+                        data-testid="blackhole-motion-blur-toggle"
+                    >
+                        {config.motionBlurEnabled ? 'ON' : 'OFF'}
+                    </ToggleButton>
+                </div>
+                {config.motionBlurEnabled && (
+                    <Slider
+                        label="Strength"
+                        min={0}
+                        max={2}
+                        step={0.1}
+                        value={config.motionBlurStrength}
+                        onChange={setMotionBlurStrength}
+                        showValue
+                        data-testid="blackhole-motion-blur-strength"
+                    />
+                )}
+            </div>
+
+            {/* Deferred Lensing */}
+            <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
+                <div className="flex items-center justify-between">
+                    <label className="text-xs text-text-secondary font-semibold">Deferred Lensing</label>
+                    <ToggleButton
+                        pressed={config.deferredLensingEnabled}
+                        onToggle={() => setDeferredLensingEnabled(!config.deferredLensingEnabled)}
+                        className="text-xs px-2 py-1 h-auto"
+                        ariaLabel="Toggle deferred lensing"
+                        data-testid="blackhole-deferred-lensing-toggle"
+                    >
+                        {config.deferredLensingEnabled ? 'ON' : 'OFF'}
+                    </ToggleButton>
+                </div>
+                {config.deferredLensingEnabled && (
+                    <Slider
+                        label="Strength"
+                        min={0}
+                        max={2}
+                        step={0.1}
+                        value={config.deferredLensingStrength}
+                        onChange={setDeferredLensingStrength}
+                        showValue
+                        data-testid="blackhole-deferred-lensing-strength"
+                    />
+                )}
+                <p className="text-xs text-text-tertiary">
+                    Apply gravitational lensing to scene objects
                 </p>
             </div>
         </div>

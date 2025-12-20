@@ -54,6 +54,8 @@ export {
   DEFAULT_COLOR_ALGORITHM,
   QUANTUM_ONLY_ALGORITHMS,
   isQuantumOnlyAlgorithm,
+  BLACKHOLE_ONLY_ALGORITHMS,
+  isBlackHoleOnlyAlgorithm,
   // Cosine palette types
   type CosineCoefficients,
   DEFAULT_COSINE_COEFFICIENTS,

@@ -29,10 +29,10 @@ export const MIN_DIMENSION = 3
 export const MAX_DIMENSION = 11
 
 /** Default dimension (4D tesseract) */
-export const DEFAULT_DIMENSION = 4
+export const DEFAULT_DIMENSION = 3
 
 /** Default object type */
-export const DEFAULT_OBJECT_TYPE: ObjectType = 'hypercube'
+export const DEFAULT_OBJECT_TYPE: ObjectType = 'blackhole'
 
 /**
  * Dimension constraints for certain object types

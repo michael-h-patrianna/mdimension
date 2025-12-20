@@ -38,9 +38,9 @@ import {
 
 describe('Object Type Registry', () => {
   describe('Registry Structure', () => {
-    it('contains all 10 object types', () => {
+    it('contains all 11 object types', () => {
       const types = getAllObjectTypes();
-      expect(types).toHaveLength(10);
+      expect(types).toHaveLength(11);
       expect(types).toContain('hypercube');
       expect(types).toContain('simplex');
       expect(types).toContain('cross-polytope');
@@ -50,6 +50,7 @@ describe('Object Type Registry', () => {
       expect(types).toContain('mandelbulb');
       expect(types).toContain('quaternion-julia');
       expect(types).toContain('schroedinger');
+      expect(types).toContain('blackhole');
     });
 
     it('returns valid entry for each object type', () => {
@@ -176,6 +177,7 @@ describe('Object Type Registry', () => {
       expect(hasTimelineControls('mandelbulb')).toBe(true);
       expect(hasTimelineControls('quaternion-julia')).toBe(true);
       expect(hasTimelineControls('schroedinger')).toBe(true);
+      expect(hasTimelineControls('blackhole')).toBe(true);
       // Polytopes have timeline controls (modulation animation)
       expect(hasTimelineControls('hypercube')).toBe(true);
       expect(hasTimelineControls('simplex')).toBe(true);
@@ -191,7 +193,7 @@ describe('Object Type Registry', () => {
   describe('Validation', () => {
     it('getValidObjectTypes returns all types', () => {
       const validTypes = getValidObjectTypes();
-      expect(validTypes).toHaveLength(10);
+      expect(validTypes).toHaveLength(11);
     });
 
     it('isValidObjectType validates correctly', () => {

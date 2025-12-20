@@ -819,6 +819,130 @@ export const OBJECT_TYPE_REGISTRY: ObjectTypeRegistry = new Map<ObjectType, Obje
       configStoreKey: 'schroedinger',
     },
   ],
+
+  // ============================================================================
+  // ASTROPHYSICAL OBJECTS
+  // ============================================================================
+
+  [
+    'blackhole',
+    {
+      type: 'blackhole',
+      name: 'Black Hole',
+      description: 'N-dimensional black hole with gravitational lensing and accretion disk',
+      category: 'extended',
+
+      dimensions: {
+        min: 3,
+        max: 11,
+        recommended: 4,
+        recommendedReason: '4D provides rich cross-section slicing of higher-D manifold',
+      },
+
+      rendering: {
+        supportsFaces: true,
+        supportsEdges: false,
+        supportsPoints: false,
+        renderMethod: 'raymarch',
+        faceDetection: 'none',
+        requiresRaymarching: true,
+        edgesAreFresnelRim: false,
+        supportsEmission: true,
+      },
+
+      animation: {
+        hasTypeSpecificAnimations: true,
+        systems: {
+          swirlAnimation: {
+            name: 'Accretion Swirl',
+            description: 'Rotating spiral motion of the accretion disk',
+            enabledByDefault: false,
+            enabledKey: 'swirlAnimationEnabled',
+            params: {
+              swirlAnimationSpeed: {
+                min: 0.0,
+                max: 2.0,
+                default: 0.5,
+                step: 0.1,
+                label: 'Speed',
+                description: 'Rotation speed of the accretion disk',
+              },
+            },
+          },
+
+          pulseAnimation: {
+            name: 'Manifold Pulse',
+            description: 'Breathing/pulsing intensity of the accretion manifold',
+            enabledByDefault: false,
+            enabledKey: 'pulseEnabled',
+            params: {
+              pulseSpeed: {
+                min: 0.0,
+                max: 2.0,
+                default: 0.3,
+                step: 0.1,
+                label: 'Speed',
+                description: 'Pulse frequency',
+              },
+              pulseAmount: {
+                min: 0.0,
+                max: 1.0,
+                default: 0.2,
+                step: 0.05,
+                label: 'Amount',
+                description: 'Intensity variation amplitude',
+              },
+            },
+          },
+
+          sliceAnimation: {
+            name: 'Slice Animation',
+            description: 'Animate through higher-dimensional slices (4D+ only)',
+            enabledByDefault: false,
+            minDimension: 4,
+            enabledKey: 'sliceAnimationEnabled',
+            params: {
+              sliceSpeed: {
+                min: 0.01,
+                max: 0.1,
+                default: 0.02,
+                step: 0.01,
+                label: 'Speed',
+                description: 'Speed of slice movement',
+              },
+              sliceAmplitude: {
+                min: 0.1,
+                max: 1.0,
+                default: 0.3,
+                step: 0.05,
+                label: 'Amplitude',
+                description: 'How far the slice moves in each extra dimension',
+              },
+            },
+          },
+        },
+      },
+
+      urlSerialization: {
+        typeKey: 'blackhole',
+        serializableParams: [
+          'horizonRadius',
+          'gravityStrength',
+          'manifoldIntensity',
+          'manifoldThickness',
+          'visualPreset',
+        ],
+      },
+
+      ui: {
+        controlsComponentKey: 'BlackHoleControls',
+        hasTimelineControls: true,
+        qualityPresets: ['fast', 'balanced', 'quality', 'ultra'],
+      },
+
+      configStoreKey: 'blackhole',
+    },
+  ],
 ])
 
 /**

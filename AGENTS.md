@@ -14,7 +14,7 @@ WHY: Prevents cognitive overload, ensures systematic approach
 
 ### For Task Management
 ```
-USE: Todos (write_todos, TodoWrite)
+USE: Todos
 WHEN: Any task with 3+ steps
 WHY: Tracks progress, maintains focus
 ```

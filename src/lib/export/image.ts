@@ -3,6 +3,8 @@
  * Exports Three.js canvas to PNG images
  */
 
+import { useMsgBoxStore } from '@/stores/msgBoxStore';
+
 export interface ExportOptions {
   /** Filename without extension */
   filename?: string;
@@ -76,6 +78,7 @@ export function exportSceneToPNG(options: ExportOptions = {}): boolean {
 
   if (!canvas) {
     console.error('No canvas found for export');
+    useMsgBoxStore.getState().showMsgBox('Export Error', 'Could not find the rendering canvas. Please ensure the scene is visible.', 'error');
     return false;
   }
 
@@ -84,14 +87,16 @@ export function exportSceneToPNG(options: ExportOptions = {}): boolean {
     return true;
   } catch (error) {
     // Handle specific error cases with helpful messages
+    let errorMsg = error instanceof Error ? error.message : 'Unknown error';
+    
     if (error instanceof DOMException && error.name === 'SecurityError') {
-      console.error(
-        'Export failed: Canvas is tainted by cross-origin content. ' +
-        'This can happen when external textures or images are used without CORS headers.'
-      );
+      errorMsg = 'Canvas is tainted by cross-origin content (CORS). External textures or images were used without proper permissions.';
+      console.error('Export failed: ' + errorMsg);
     } else {
       console.error('Export failed:', error);
     }
+
+    useMsgBoxStore.getState().showMsgBox('Export Failed', errorMsg, 'error');
     return false;
   }
 }

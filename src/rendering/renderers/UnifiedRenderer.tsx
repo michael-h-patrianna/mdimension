@@ -17,6 +17,7 @@ import type { NdGeometry, ObjectType } from '@/lib/geometry/types';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import React, { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
+import { BlackHoleMesh } from './BlackHole';
 import MandelbulbMesh from './Mandelbulb/MandelbulbMesh';
 import QuaternionJuliaMesh from './QuaternionJulia/QuaternionJuliaMesh';
 import SchroedingerMesh from './Schroedinger/SchroedingerMesh';
@@ -95,6 +96,9 @@ export const UnifiedRenderer = React.memo(function UnifiedRenderer({
 
       {/* Raymarched 3D-11D Schroedinger */}
       {renderMode === 'raymarch-schroedinger' && <SchroedingerMesh />}
+
+      {/* Raymarched 3D-11D Black Hole */}
+      {renderMode === 'raymarch-blackhole' && <BlackHoleMesh />}
     </>
   );
 });

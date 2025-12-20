@@ -19,6 +19,7 @@ import type { PolytopeGeometry } from '@/lib/geometry/types'
 import type { WythoffPolytopeConfig } from '@/lib/geometry/wythoff'
 import type { WorkerRequest, WorkerResponse } from '@/workers/wythoff.worker'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useMsgBoxStore } from '@/stores/msgBoxStore'
 
 // Import worker using Vite's worker import syntax
 // The ?worker query tells Vite to create a worker module
@@ -75,6 +76,7 @@ export interface UseWythoffWorkerResult {
 export function useWythoffWorker(): UseWythoffWorkerResult {
   const workerRef = useRef<Worker | null>(null)
   const currentRequestId = useRef<string | null>(null)
+  const showMsgBox = useMsgBoxStore(state => state.showMsgBox)
 
   // State
   const [geometry, setGeometry] = useState<PolytopeGeometry | null>(null)
@@ -118,10 +120,19 @@ export function useWythoffWorker(): UseWythoffWorkerResult {
           break
 
         case 'error':
-          setError(response.error ?? 'Unknown error')
-          setIsGenerating(false)
-          setProgress(0)
-          currentRequestId.current = null
+          {
+            const errorMsg = response.error ?? 'Unknown error'
+            setError(errorMsg)
+            setIsGenerating(false)
+            setProgress(0)
+            currentRequestId.current = null
+            
+            showMsgBox(
+              'Geometry Generation Failed',
+              `The Wythoff worker encountered an error while generating the polytope:\n\n${errorMsg}`,
+              'error'
+            )
+          }
           break
       }
     }
@@ -129,10 +140,18 @@ export function useWythoffWorker(): UseWythoffWorkerResult {
     // Set up error handler
     workerRef.current.onerror = (event) => {
       console.error('[useWythoffWorker] Worker error:', event)
-      setError(`Worker error: ${event.message}`)
+      const errorMsg = `Worker error: ${event.message}`
+      setError(errorMsg)
       setIsGenerating(false)
       setProgress(0)
       currentRequestId.current = null
+
+      showMsgBox(
+        'Worker Crash',
+        `The Wythoff generation worker crashed unexpectedly.\n\n${event.message}`,
+        'error',
+        [{ label: 'Reload Page', onClick: () => window.location.reload(), variant: 'danger' }, { label: 'Close', onClick: () => useMsgBoxStore.getState().closeMsgBox() }]
+      )
     }
 
     // Cleanup on unmount
@@ -140,7 +159,7 @@ export function useWythoffWorker(): UseWythoffWorkerResult {
       workerRef.current?.terminate()
       workerRef.current = null
     }
-  }, [])
+  }, [showMsgBox])
 
   // Generate function - memoized for stable reference
   const generate = useCallback((dimension: number, config: Partial<WythoffPolytopeConfig> = {}) => {

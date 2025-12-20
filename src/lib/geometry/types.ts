@@ -29,6 +29,7 @@ export type ExtendedObjectType =
   | 'mandelbulb'
   | 'quaternion-julia'
   | 'schroedinger'
+  | 'blackhole'
 
 /**
  * All supported object types

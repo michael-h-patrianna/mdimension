@@ -4,7 +4,7 @@ import { determineRenderMode as determineRenderModeFromRegistry } from '@/lib/ge
 /**
  * Render mode types
  */
-export type RenderMode = 'polytope' | 'raymarch-mandelbulb' | 'raymarch-quaternion-julia' | 'raymarch-schroedinger' | 'none';
+export type RenderMode = 'polytope' | 'raymarch-mandelbulb' | 'raymarch-quaternion-julia' | 'raymarch-schroedinger' | 'raymarch-blackhole' | 'none';
 
 /**
  * Determines the appropriate render mode based on object type and settings

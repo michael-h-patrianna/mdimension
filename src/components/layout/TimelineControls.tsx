@@ -8,6 +8,7 @@ import { getRotationPlanes } from '@/lib/math';
 import { useShallow } from 'zustand/react/shallow';
 import { AnimatePresence, m } from 'motion/react';
 import { Slider } from '@/components/ui/Slider';
+import { BlackHoleAnimationDrawer } from './TimelineControls/BlackHoleAnimationDrawer';
 import { JuliaAnimationDrawer } from './TimelineControls/JuliaAnimationDrawer';
 import { MandelbulbAnimationDrawer } from './TimelineControls/MandelbulbAnimationDrawer';
 import { PolytopeAnimationDrawer } from './TimelineControls/PolytopeAnimationDrawer';
@@ -56,9 +57,10 @@ export const TimelineControls: FC = () => {
         quaternionJuliaConfig: state.quaternionJulia,
         polytopeConfig: state.polytope,
         schroedingerConfig: state.schroedinger,
+        blackholeConfig: state.blackhole,
     }));
-    
-    const { mandelbulbConfig, polytopeConfig, schroedingerConfig } = useExtendedObjectStore(extendedObjectSelector);
+
+    const { mandelbulbConfig, polytopeConfig, schroedingerConfig, blackholeConfig } = useExtendedObjectStore(extendedObjectSelector);
 
     const planes = useMemo(() => getRotationPlanes(dimension), [dimension]);
     const hasAnimatingPlanes = animatingPlanes.size > 0;
@@ -88,7 +90,11 @@ export const TimelineControls: FC = () => {
                                   schroedingerConfig.sliceAnimationEnabled ||
                                   schroedingerConfig.spreadAnimationEnabled;
 
-    return mandelbulbAnimating || qjAnimating || polytopeAnimating || schroedingerAnimating;
+    // Black hole: swirl, pulse
+    const blackholeAnimating = blackholeConfig.swirlAnimationEnabled ||
+                               blackholeConfig.pulseEnabled;
+
+    return mandelbulbAnimating || qjAnimating || polytopeAnimating || schroedingerAnimating || blackholeAnimating;
   }, [
     mandelbulbConfig.powerAnimationEnabled,
     mandelbulbConfig.alternatePowerEnabled,
@@ -105,6 +111,8 @@ export const TimelineControls: FC = () => {
     schroedingerConfig.originDriftEnabled,
     schroedingerConfig.sliceAnimationEnabled,
     schroedingerConfig.spreadAnimationEnabled,
+    blackholeConfig.swirlAnimationEnabled,
+    blackholeConfig.pulseEnabled,
   ]);
 
     // Animation should only be paused when NOTHING is animating
@@ -187,6 +195,11 @@ export const TimelineControls: FC = () => {
       {/* Schroedinger Animation Drawer */}
       {showFractalAnim && getConfigStoreKey(objectType) === 'schroedinger' && (
         <SchroedingerAnimationDrawer />
+      )}
+
+      {/* Black Hole Animation Drawer */}
+      {showFractalAnim && getConfigStoreKey(objectType) === 'blackhole' && (
+        <BlackHoleAnimationDrawer />
       )}
 
       {/* Zoom Drawer (Mandelbulb only) */}

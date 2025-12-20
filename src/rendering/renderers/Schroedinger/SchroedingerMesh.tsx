@@ -176,10 +176,6 @@ const SchroedingerMesh = () => {
   // Context restore counter - forces material recreation when context is restored
   const restoreCount = useWebGLContextStore((state) => state.restoreCount);
 
-  // Animation time tracking
-  const animationTimeRef = useRef(0);
-  const lastFrameTimeRef = useRef(0);
-
   const uniforms = useMemo(
     () => ({
       // Time and resolution
@@ -429,15 +425,9 @@ const SchroedingerMesh = () => {
   // CRITICAL: Use negative priority (-10) to ensure uniforms are updated BEFORE
   // PostProcessing's useFrame runs the volumetric render pass.
   // Without this, the volumetric render uses stale uniforms and appears black.
-  useFrame((state) => {
+  useFrame(() => {
     // Update animation time
-    const currentTime = state.clock.elapsedTime;
-    const deltaTime = currentTime - lastFrameTimeRef.current;
-    lastFrameTimeRef.current = currentTime;
-    const isPlaying = useAnimationStore.getState().isPlaying;
-    if (isPlaying) {
-      animationTimeRef.current += deltaTime;
-    }
+    const accumulatedTime = useAnimationStore.getState().accumulatedTime;
 
     if (meshRef.current) {
       const material = meshRef.current.material as THREE.ShaderMaterial;
@@ -507,8 +497,8 @@ const SchroedingerMesh = () => {
       }
 
       // Time and resolution
-      // Use animationTimeRef which respects pause state, not raw clock time
-      if (material.uniforms.uTime) material.uniforms.uTime.value = animationTimeRef.current;
+      // Use accumulatedTime which respects pause state and is synced globally
+      if (material.uniforms.uTime) material.uniforms.uTime.value = accumulatedTime;
       if (material.uniforms.uResolution) material.uniforms.uResolution.value.set(size.width, size.height);
       if (material.uniforms.uCameraPosition) material.uniforms.uCameraPosition.value.copy(camera.position);
 
@@ -580,7 +570,7 @@ const SchroedingerMesh = () => {
          // Wavepacket Dispersion Animation
          // Oscillate spread to show "breathing" between localized (low spread) and delocalized (high spread)
          // Range: 0.01 (tight) to 0.45 (messy fog)
-         const t = animationTimeRef.current * (spreadAnimationSpeed ?? 0.5);
+         const t = accumulatedTime * (spreadAnimationSpeed ?? 0.5);
          const phase = (Math.sin(t) + 1.0) * 0.5; // 0 to 1
          effectiveSpread = 0.01 + phase * 0.44;
       }
@@ -916,7 +906,7 @@ const SchroedingerMesh = () => {
           const animationSpeed = useAnimationStore.getState().speed;
           const driftedOrigin = computeDriftedOrigin(
             parameterValues,
-            animationTimeRef.current,
+            accumulatedTime,
             driftConfig,
             animationSpeed,
             animationBias
@@ -927,7 +917,7 @@ const SchroedingerMesh = () => {
         } else if (sliceAnimationEnabled && D > 3) {
           const PHI = 1.618033988749895;
           // Use tracked animation time for proper pause support
-          const timeInSeconds = animationTimeRef.current;
+          const timeInSeconds = accumulatedTime;
 
           for (let i = 3; i < D; i++) {
             const extraDimIndex = i - 3;

@@ -13,6 +13,12 @@
 
 // Type exports
 export type {
+  BlackHoleConfig,
+  BlackHoleLightingMode,
+  BlackHoleManifoldType,
+  BlackHolePaletteMode,
+  BlackHoleQuality,
+  BlackHoleVisualPreset,
   CliffordTorusConfig,
   CliffordTorusEdgeMode,
   CliffordTorusMode,
@@ -37,6 +43,9 @@ export type {
 
 // Default configs
 export {
+  BLACK_HOLE_QUALITY_PRESETS,
+  BLACK_HOLE_VISUAL_PRESETS,
+  DEFAULT_BLACK_HOLE_CONFIG,
   DEFAULT_CLIFFORD_TORUS_CONFIG,
   DEFAULT_EXTENDED_OBJECT_PARAMS,
   DEFAULT_MANDELBROT_CONFIG,
@@ -170,6 +179,22 @@ export function generateExtendedObject(
         dimension,
         params.schroedinger ?? DEFAULT_EXTENDED_OBJECT_PARAMS.schroedinger
       )
+
+    case 'blackhole':
+      // Black hole uses GPU raymarching exclusively - no CPU geometry needed
+      // Return minimal geometry that signals to UnifiedRenderer to use BlackHoleMesh
+      return {
+        dimension,
+        type: 'blackhole',
+        vertices: [],
+        edges: [],
+        metadata: {
+          name: 'Black Hole',
+          properties: {
+            renderMode: 'raymarching',
+          },
+        },
+      }
 
     default:
       throw new Error(`Unknown extended object type: ${type}`)

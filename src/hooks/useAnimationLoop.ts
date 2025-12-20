@@ -66,11 +66,13 @@ export function useAnimationLoop(): void {
           return
         }
 
-        // Snap to frame boundary to prevent drift
-        lastTimeRef.current = currentTime - (deltaTime % frameInterval)
-
-        const rotationDelta = getRotationDelta(deltaTime)
-        // Get animation bias from visual store (0 = uniform, 1 = wildly different)
+              // Snap to frame boundary to prevent drift
+              lastTimeRef.current = currentTime - (deltaTime % frameInterval)
+        
+              // Update global accumulated time (used by fractals and blackholes)
+              useAnimationStore.getState().updateAccumulatedTime(deltaTime / 1000)
+        
+              const rotationDelta = getRotationDelta(deltaTime)        // Get animation bias from visual store (0 = uniform, 1 = wildly different)
         const animationBias = useUIStore.getState().animationBias
         // Get fresh animating planes from store to avoid stale closure
         const currentAnimatingPlanes = useAnimationStore.getState().animatingPlanes

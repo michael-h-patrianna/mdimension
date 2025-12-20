@@ -36,6 +36,11 @@ export type ColorAlgorithm =
   | 'phase'
   | 'mixed'
   | 'blackbody'
+  // Black hole-specific algorithms
+  | 'accretionGradient' // Color by disk radial position
+  | 'gravitationalRedshift' // Gravitational redshift effect
+  | 'lensingIntensity' // Color by ray bend amount
+  | 'jetsEmission' // Color for polar jets
 
 /**
  * Options for the Color Algorithm dropdown in the UI.
@@ -52,6 +57,11 @@ export const COLOR_ALGORITHM_OPTIONS = [
   { value: 'phase' as const, label: 'Phase (Quantum)' },
   { value: 'mixed' as const, label: 'Mixed (Phase/Density)' },
   { value: 'blackbody' as const, label: 'Blackbody (Heat)' },
+  // Black hole-specific
+  { value: 'accretionGradient' as const, label: 'Accretion Gradient' },
+  { value: 'gravitationalRedshift' as const, label: 'Gravitational Redshift' },
+  { value: 'lensingIntensity' as const, label: 'Lensing Intensity' },
+  { value: 'jetsEmission' as const, label: 'Jets Emission' },
 ] as const
 
 /**
@@ -69,6 +79,11 @@ export const COLOR_ALGORITHM_TO_INT: Record<ColorAlgorithm, number> = {
   phase: 8,
   mixed: 9,
   blackbody: 10,
+  // Black hole-specific
+  accretionGradient: 11,
+  gravitationalRedshift: 12,
+  lensingIntensity: 13,
+  jetsEmission: 14,
 }
 
 /**
@@ -89,6 +104,27 @@ export const QUANTUM_ONLY_ALGORITHMS: readonly ColorAlgorithm[] = [
  */
 export function isQuantumOnlyAlgorithm(algorithm: ColorAlgorithm): boolean {
   return QUANTUM_ONLY_ALGORITHMS.includes(algorithm)
+}
+
+/**
+ * Color algorithms that are only meaningful for Black Hole objects.
+ * These use gravitational/accretion-specific data.
+ * For non-black-hole objects, these should be hidden from the UI.
+ */
+export const BLACKHOLE_ONLY_ALGORITHMS: readonly ColorAlgorithm[] = [
+  'accretionGradient',
+  'gravitationalRedshift',
+  'lensingIntensity',
+  'jetsEmission',
+] as const
+
+/**
+ * Check if a color algorithm is black-hole-specific.
+ * @param algorithm - The color algorithm to check
+ * @returns True if the algorithm is black-hole-only
+ */
+export function isBlackHoleOnlyAlgorithm(algorithm: ColorAlgorithm): boolean {
+  return BLACKHOLE_ONLY_ALGORITHMS.includes(algorithm)
 }
 
 /**
