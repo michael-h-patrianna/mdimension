@@ -69,7 +69,6 @@ void main() {
     ${effectCalls.join('\n    ')}
 
     gColor = vec4(color, 1.0);
-    gNormal = vec4(0.5, 0.5, 1.0, 0.0);
 }
 `
 }

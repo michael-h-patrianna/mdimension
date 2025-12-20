@@ -94,10 +94,3 @@ export const LIGHTING_MODE_MAP: Record<string, number> = {
   emissiveOnly: 0,
   fakeLit: 1,
 }
-
-/** Mapping from background mode string to shader integer */
-export const BACKGROUND_MODE_MAP: Record<string, number> = {
-  environment: 0,
-  proceduralStars: 1,
-  solid: 2,
-}

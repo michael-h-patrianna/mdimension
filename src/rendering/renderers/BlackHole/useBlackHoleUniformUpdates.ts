@@ -25,7 +25,6 @@ import React, { useRef } from 'react'
 import * as THREE from 'three'
 import {
   applyRotationInPlace,
-  BACKGROUND_MODE_MAP,
   createWorkingArrays,
   LIGHTING_MODE_MAP,
   MANIFOLD_TYPE_MAP,
@@ -304,17 +303,12 @@ export function useBlackHoleUniformUpdates({
     setUniform(u, 'uEdgeGlowWidth', bhState.edgeGlowWidth)
     setUniform(u, 'uEdgeGlowIntensity', bhState.edgeGlowIntensity)
 
-    // Background mode
-    setUniform(u, 'uBackgroundMode', BACKGROUND_MODE_MAP[bhState.backgroundMode] ?? 0)
-
-    // Update environment map (skybox)
+    // Update environment map from scene.background (set by general skybox system)
     // Note: PMREM textures are 2D textures with special mapping, NOT CubeTextures
     // Our shader uses samplerCube, so we need textures compatible with cube sampling
-    // scene.environment = PMREM processed (2D) - NOT compatible with samplerCube
     // scene.background = may be:
     //   - CubeTexture (from KTX2 loader): has isCubeTexture === true
     //   - WebGLCubeRenderTarget.texture (from procedural capture): is Texture but with cube mapping
-    // Check for either case by looking for cube-related properties
     const bg = scene.background as THREE.Texture | null
     const isCubeCompatible = bg && (
       (bg as THREE.CubeTexture).isCubeTexture ||
@@ -324,12 +318,9 @@ export function useBlackHoleUniformUpdates({
       setUniform(u, 'envMap', bg)
       setUniform(u, 'uEnvMapReady', 1.0)
     } else {
-      // EnvMap not ready - shader will use fallback (procedural stars)
+      // EnvMap not ready or skybox disabled - shader renders black background
       setUniform(u, 'uEnvMapReady', 0.0)
     }
-
-    setUniform(u, 'uStarfieldDensity', bhState.starfieldDensity)
-    setUniform(u, 'uStarfieldBrightness', bhState.starfieldBrightness)
 
     // Doppler
     setUniform(u, 'uDopplerEnabled', bhState.dopplerEnabled)

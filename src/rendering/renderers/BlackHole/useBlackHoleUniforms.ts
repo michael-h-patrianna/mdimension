@@ -114,11 +114,8 @@ export function useBlackHoleUniforms() {
       uEdgeGlowColor: { value: new THREE.Color('#ff6600').convertSRGBToLinear() },
       uEdgeGlowIntensity: { value: 1.0 },
 
-      // Background
-      uBackgroundMode: { value: 0 },
+      // Background (uses general skybox system, no built-in fallback)
       uEnvMapReady: { value: 0.0 },  // Set to 1.0 when envMap is valid
-      uStarfieldDensity: { value: 1.0 },
-      uStarfieldBrightness: { value: 1.0 },
       envMap: { value: null },
 
       // Doppler

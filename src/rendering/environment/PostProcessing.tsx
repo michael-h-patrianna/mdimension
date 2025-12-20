@@ -1294,6 +1294,12 @@ export const PostProcessing = memo(function PostProcessing() {
     if (needsNormalPass) {
       const savedCameraLayers = camera.layers.mask;
 
+      // CRITICAL: Save and clear scene.background for ALL normal pass renders
+      // Three.js renders scene.background unconditionally during gl.render(),
+      // which writes skybox colors to the normal buffer where it shouldn't appear.
+      const savedBackgroundForNormalPass = scene.background;
+      scene.background = null;
+
       // 1. Render Environment (Walls) to normalTarget
       // Uses MeshNormalMaterial (works fine for standard meshes)
       gl.setRenderTarget(normalTarget);
@@ -1417,6 +1423,9 @@ export const PostProcessing = memo(function PostProcessing() {
           gl.autoClear = savedAutoClear;
         }
       }
+
+      // Restore scene.background after all normal pass renders are complete
+      scene.background = savedBackgroundForNormalPass;
 
       // Restore camera layers
       camera.layers.mask = savedCameraLayers;

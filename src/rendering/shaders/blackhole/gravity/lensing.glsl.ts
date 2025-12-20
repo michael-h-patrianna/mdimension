@@ -182,39 +182,6 @@ vec3 sampleBentBackground(vec3 bentDir, samplerCube envMap) {
   return envColor;
 }
 
-/**
- * Procedural starfield for background.
- * Creates tiled stars based on bent ray direction.
- */
-vec3 proceduralStars(vec3 bentDir) {
-  // Hash function for star placement
-  vec3 starDir = normalize(bentDir);
-
-  // Create star grid cells
-  float scale = 50.0 * uStarfieldDensity;
-  vec3 cell = floor(starDir * scale);
-  vec3 frac = fract(starDir * scale);
-
-  // Hash for star position within cell
-  float h = fract(sin(dot(cell, vec3(12.9898, 78.233, 45.164))) * 43758.5453);
-
-  // Star probability
-  float starProb = step(0.98, h);
-
-  // Star brightness varies
-  float brightness = h * h * uStarfieldBrightness;
-
-  // Point spread function (soft star)
-  vec3 starPos = vec3(h, fract(h * 2.1), fract(h * 3.7));
-  float dist = length(frac - starPos) * 3.0;
-  float star = exp(-dist * dist * 10.0) * starProb * brightness;
-
-  // Star color (slight variation)
-  vec3 starColor = mix(vec3(1.0, 0.9, 0.8), vec3(0.8, 0.9, 1.0), h);
-
-  return starColor * star;
-}
-
 //----------------------------------------------
 // N-DIMENSIONAL LENSING (True N-D Mode)
 //----------------------------------------------

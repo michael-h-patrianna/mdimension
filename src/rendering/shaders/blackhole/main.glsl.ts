@@ -62,34 +62,20 @@ float adaptiveStepSize(float ndRadius) {
 
 /**
  * Sample background environment with bent ray.
+ *
+ * Uses the general skybox system - no built-in procedural fallback.
+ * When envMap is not ready or skybox is disabled, returns black.
  */
 vec3 sampleBackground(vec3 bentDir) {
-  vec3 bgColor = vec3(0.0);
+  #ifdef USE_ENVMAP
+    // Only sample envMap when it's valid (avoids sampling null texture)
+    if (uEnvMapReady > 0.5) {
+      return texture(envMap, bentDir).rgb;
+    }
+  #endif
 
-  if (uBackgroundMode == 0) {
-    // Environment map
-    #ifdef USE_ENVMAP
-      // uEnvMapReady is set to 1.0 when envMap is valid (avoids sampling null texture)
-      if (uEnvMapReady > 0.5) {
-        bgColor = texture(envMap, bentDir).rgb;
-      } else {
-        // Fallback while envMap is loading
-        bgColor = proceduralStars(bentDir);
-      }
-    #else
-      // Fallback: dark blue gradient
-      float up = bentDir.y * 0.5 + 0.5;
-      bgColor = mix(vec3(0.0, 0.0, 0.05), vec3(0.0, 0.02, 0.1), up);
-    #endif
-  } else if (uBackgroundMode == 1) {
-    // Procedural starfield
-    bgColor = proceduralStars(bentDir);
-  } else {
-    // Solid black
-    bgColor = vec3(0.0);
-  }
-
-  return bgColor;
+  // No envMap available - return black (relies on general skybox feature)
+  return vec3(0.0);
 }
 
 /**

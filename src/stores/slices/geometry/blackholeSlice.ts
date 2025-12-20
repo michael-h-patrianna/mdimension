@@ -441,27 +441,6 @@ export const createBlackHoleSlice: StateCreator<ExtendedObjectSlice, [], [], Bla
     }))
   },
 
-  // === Background ===
-  setBlackHoleBackgroundMode: (mode) => {
-    set((state) => ({
-      blackhole: { ...state.blackhole, backgroundMode: mode },
-    }))
-  },
-
-  setBlackHoleStarfieldDensity: (density) => {
-    const clamped = Math.max(0, Math.min(5, density))
-    set((state) => ({
-      blackhole: { ...state.blackhole, starfieldDensity: clamped },
-    }))
-  },
-
-  setBlackHoleStarfieldBrightness: (brightness) => {
-    const clamped = Math.max(0, Math.min(3, brightness))
-    set((state) => ({
-      blackhole: { ...state.blackhole, starfieldBrightness: clamped },
-    }))
-  },
-
   // === Temporal ===
   setBlackHoleTemporalAccumulationEnabled: (enabled) => {
     set((state) => ({
@@ -782,7 +761,6 @@ export const createBlackHoleSlice: StateCreator<ExtendedObjectSlice, [], [], Bla
     if (config.paletteMode !== undefined) validated.paletteMode = config.paletteMode;
     if (config.manifoldType !== undefined) validated.manifoldType = config.manifoldType;
     if (config.lightingMode !== undefined) validated.lightingMode = config.lightingMode;
-    if (config.backgroundMode !== undefined) validated.backgroundMode = config.backgroundMode;
     if (config.baseColor !== undefined) validated.baseColor = config.baseColor;
     if (config.shellGlowColor !== undefined) validated.shellGlowColor = config.shellGlowColor;
     if (config.edgeGlowColor !== undefined) validated.edgeGlowColor = config.edgeGlowColor;

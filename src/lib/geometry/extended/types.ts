@@ -1867,11 +1867,6 @@ export type BlackHoleLightingMode = 'emissiveOnly' | 'fakeLit'
 export type BlackHoleManifoldType = 'autoByN' | 'disk' | 'sheet' | 'slab' | 'field'
 
 /**
- * Background sampling mode
- */
-export type BlackHoleBackgroundMode = 'environment' | 'proceduralStars' | 'solid'
-
-/**
  * Ray bending mode for gravitational lensing
  * - spiral: Bends rays directly toward center (current, artistic effect)
  * - orbital: Einstein-ring style orbital arcs (more physically accurate)
@@ -2022,14 +2017,6 @@ export interface BlackHoleConfig {
   /** Edge glow intensity (0-5, default 1.0) */
   edgeGlowIntensity: number
 
-  // === BACKGROUND ===
-  /** Background mode */
-  backgroundMode: BlackHoleBackgroundMode
-  /** Starfield density (0-5, default 1.0) */
-  starfieldDensity: number
-  /** Starfield brightness (0-3, default 1.0) */
-  starfieldBrightness: number
-
   // === TEMPORAL ===
   /** Temporal accumulation enabled (default true) */
   temporalAccumulationEnabled: boolean
@@ -2174,7 +2161,6 @@ export const BLACK_HOLE_VISUAL_PRESETS: Record<BlackHoleVisualPreset, Partial<Bl
     shellGlowStrength: 0.5, // Reduced - let lensed disk light create photon ring
     shellGlowColor: '#ffcc66', // Orange-yellow (lensed disk light)
     diskOuterRadiusMul: 8.0, // Compact disk
-    backgroundMode: 'environment', // Use scene's skybox with gravitational lensing
     dopplerEnabled: true,
     dopplerStrength: 0.6,
     dopplerHueShift: 0.1,
@@ -2292,11 +2278,6 @@ export const DEFAULT_BLACK_HOLE_CONFIG: BlackHoleConfig = {
   edgeGlowWidth: 0.1,
   edgeGlowColor: '#ff6600',
   edgeGlowIntensity: 1.0,
-
-  // Background - use scene's skybox with gravitational lensing
-  backgroundMode: 'environment',
-  starfieldDensity: 1.0,
-  starfieldBrightness: 1.0,
 
   // Temporal
   temporalAccumulationEnabled: true,

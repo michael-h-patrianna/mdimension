@@ -19,7 +19,7 @@ import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useEnvironmentStore } from '@/stores/environmentStore';
 import { Environment } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { SkyboxMesh } from './Skybox';
 
@@ -51,7 +51,9 @@ const ProceduralSkyboxCapture: React.FC = () => {
   const frameCountRef = useRef(0);
 
   // Initialize render target and camera
-  useEffect(() => {
+  // CRITICAL: Use useLayoutEffect to prevent scene.background gap during StrictMode double-mount.
+  // Without this, cleanup sets scene.background=null, and black hole sees stale value before re-mount.
+  useLayoutEffect(() => {
     cubeRenderTarget.current = new THREE.WebGLCubeRenderTarget(BACKGROUND_CUBEMAP_RESOLUTION, {
       format: THREE.RGBAFormat,
       generateMipmaps: true,

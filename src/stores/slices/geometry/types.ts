@@ -1,5 +1,4 @@
 import {
-  BlackHoleBackgroundMode,
   BlackHoleConfig,
   BlackHoleLightingMode,
   BlackHoleManifoldType,
@@ -571,11 +570,6 @@ export interface BlackHoleSliceActions {
   setBlackHoleEdgeGlowWidth: (width: number) => void
   setBlackHoleEdgeGlowColor: (color: string) => void
   setBlackHoleEdgeGlowIntensity: (intensity: number) => void
-
-  // Background
-  setBlackHoleBackgroundMode: (mode: BlackHoleBackgroundMode) => void
-  setBlackHoleStarfieldDensity: (density: number) => void
-  setBlackHoleStarfieldBrightness: (brightness: number) => void
 
   // Temporal
   setBlackHoleTemporalAccumulationEnabled: (enabled: boolean) => void

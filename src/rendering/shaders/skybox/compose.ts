@@ -1,7 +1,7 @@
 import { cosinePaletteBlock } from '../shared/color/cosine-palette.glsl'
-import { precisionBlock } from '../shared/core/precision.glsl'
 
 import { constantsBlock } from './core/constants.glsl'
+import { skyboxPrecisionBlock } from './core/precision.glsl'
 import { uniformsBlock } from './core/uniforms.glsl'
 import { varyingsBlock } from './core/varyings.glsl'
 
@@ -90,7 +90,7 @@ export function composeSkyboxFragmentShader(config: SkyboxShaderConfig) {
   const needsNoise = mode !== 'classic'
 
   const blocks = [
-    { name: 'Precision', content: precisionBlock },
+    { name: 'Precision', content: skyboxPrecisionBlock },
     { name: 'Varyings', content: varyingsBlock },
     { name: 'Constants', content: constantsBlock },
     { name: 'Uniforms', content: uniformsBlock },

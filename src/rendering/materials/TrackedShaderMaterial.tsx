@@ -118,8 +118,14 @@ export function TrackedShaderMaterial({
 
       // Show the compilation overlay immediately
       usePerformanceStore.getState().setShaderCompiling(validShaderName, true);
+    } else if (!readyToRender) {
+      // FIX: If shaders reverted to previous state while hidden (e.g. A->B->A),
+      // we are stuck in hidden state because the RAF effect won't fire (shadersChanged is false).
+      // Since we match the renderedShaderRef, we can show immediately.
+      setReadyToRender(true);
+      usePerformanceStore.getState().setShaderCompiling(validShaderName, false);
     }
-  }, [fragmentShader, vertexShader, validShaderName, hasValidShaders, shadersChanged]);
+  }, [fragmentShader, vertexShader, validShaderName, hasValidShaders, shadersChanged, readyToRender]);
 
   // After overlay has painted, allow shader to render
   useEffect(() => {
@@ -199,10 +205,36 @@ export function TrackedShaderMaterial({
   // to prevent Three.js from using a default white MeshBasicMaterial.
   // Returning null would leave the mesh without a material, causing a white cube flash.
   if (!readyToRender) {
+    // CRITICAL FIX: Use a ShaderMaterial with explicit MRT outputs as placeholder.
+    // When rendering to G-Buffer (2 targets) or Cloud Buffer (3 targets), the active
+    // program MUST have outputs for all active draw buffers, otherwise WebGL throws
+    // "Active draw buffers with missing fragment shader outputs".
+    // MeshBasicMaterial only outputs to location 0, causing this error in MRT passes.
     return (
-      <meshBasicMaterial
-        visible={false}
+      <shaderMaterial
         key="placeholder-while-compiling"
+        visible={false}
+        glslVersion={THREE.GLSL3}
+        vertexShader={`
+          void main() {
+            gl_Position = vec4(0.0); // Collapse geometry to prevent rasterization
+          }
+        `}
+        fragmentShader={`
+          precision highp float;
+          // Declare outputs for up to 3 targets (Color, Normal, Position)
+          // Extra outputs are ignored if not bound, which is safe.
+          layout(location = 0) out vec4 gColor;
+          layout(location = 1) out vec4 gNormal;
+          layout(location = 2) out vec4 gPosition;
+          void main() {
+            gColor = vec4(0.0);
+            gNormal = vec4(0.0);
+            gPosition = vec4(0.0);
+            discard; // Discard fragment
+          }
+        `}
+        {...props}
       />
     );
   }

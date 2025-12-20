@@ -87,11 +87,8 @@ uniform float uEdgeGlowWidth;       // Edge glow width
 uniform vec3 uEdgeGlowColor;        // Edge glow color
 uniform float uEdgeGlowIntensity;   // Edge glow brightness
 
-// Background
-uniform int uBackgroundMode;        // 0=environment, 1=proceduralStars, 2=solid
+// Background (uses general skybox system, no built-in fallback)
 uniform float uEnvMapReady;         // 1.0 when envMap is valid, 0.0 otherwise
-uniform float uStarfieldDensity;    // Starfield density
-uniform float uStarfieldBrightness; // Starfield brightness
 
 // Doppler effect
 uniform bool uDopplerEnabled;       // Enable Doppler shift

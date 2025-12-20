@@ -426,26 +426,4 @@ describe('blackholeSlice', () => {
       expect(useExtendedObjectStore.getState().blackhole.specular).toBe(0.3)
     })
   })
-
-  describe('background actions', () => {
-    it('should set background mode', () => {
-      const { setBlackHoleBackgroundMode } = useExtendedObjectStore.getState()
-
-      setBlackHoleBackgroundMode('proceduralStars')
-      expect(useExtendedObjectStore.getState().blackhole.backgroundMode).toBe('proceduralStars')
-
-      setBlackHoleBackgroundMode('solid')
-      expect(useExtendedObjectStore.getState().blackhole.backgroundMode).toBe('solid')
-    })
-
-    it('should set starfield parameters', () => {
-      const { setBlackHoleStarfieldDensity, setBlackHoleStarfieldBrightness } = useExtendedObjectStore.getState()
-
-      setBlackHoleStarfieldDensity(2.0)
-      expect(useExtendedObjectStore.getState().blackhole.starfieldDensity).toBe(2.0)
-
-      setBlackHoleStarfieldBrightness(1.5)
-      expect(useExtendedObjectStore.getState().blackhole.starfieldBrightness).toBe(1.5)
-    })
-  })
 })

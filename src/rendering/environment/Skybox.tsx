@@ -8,11 +8,11 @@ import type { SkyboxMode, SkyboxShaderConfig } from '@/rendering/shaders/skybox/
 import { useAnimationStore } from '@/stores/animationStore';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useEnvironmentStore } from '@/stores/environmentStore';
-import { usePerformanceStore } from '@/stores/performanceStore';
 import { useMsgBoxStore } from '@/stores/msgBoxStore';
+import { usePerformanceStore } from '@/stores/performanceStore';
 import { Environment } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import { useShallow } from 'zustand/react/shallow';
@@ -263,11 +263,15 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
   const matrix3Ref = useRef(new THREE.Matrix3());
   const matrix4Ref = useRef(new THREE.Matrix4());
 
-  // Set skybox to its own layer so it's excluded from normal pass
-  useEffect(() => {
-    if (meshRef.current) {
-      meshRef.current.layers.set(RENDER_LAYERS.SKYBOX);
+  // CRITICAL: Use callback ref to set layer IMMEDIATELY when mesh is created
+  // This ensures the layer is set before any render pass happens
+  // useEffect/useLayoutEffect both run AFTER the mesh is added to scene
+  const setMeshRef = React.useCallback((mesh: THREE.Mesh | null) => {
+    if (mesh) {
+      mesh.layers.set(RENDER_LAYERS.SKYBOX);
     }
+    // Update the ref for other hooks to use
+    (meshRef as React.MutableRefObject<THREE.Mesh | null>).current = mesh;
   }, []);
 
   const {
@@ -705,7 +709,7 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
   }
 
   return (
-    <mesh ref={meshRef} data-testid="skybox-mesh">
+    <mesh ref={setMeshRef} data-testid="skybox-mesh">
         {/* Use sphere geometry instead of box - no visible seams at corners */}
         <sphereGeometry args={[500, 64, 32]} />
         <primitive object={material} attach="material" />
@@ -821,8 +825,10 @@ const SkyboxLoader: React.FC = () => {
 
   // Set scene.background to the CubeTexture so black hole shader can access it
   // (scene.environment is PMREM which is 2D, but we need actual CubeTexture for samplerCube)
+  // CRITICAL: Use useLayoutEffect to prevent scene.background gap during StrictMode double-mount.
+  // Without this, cleanup sets scene.background=null, and black hole sees stale value before re-mount.
   const scene = useThree((state) => state.scene);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (texture && skyboxEnabled) {
       scene.background = texture;
     }
