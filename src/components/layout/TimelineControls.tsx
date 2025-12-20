@@ -1,9 +1,9 @@
 import { useMemo, useState, type FC } from 'react';
-import { useAnimationStore, MIN_SPEED, MAX_SPEED } from '@/stores/animationStore';
+import { useAnimationStore, MIN_SPEED, MAX_SPEED, type AnimationState } from '@/stores/animationStore';
 import { useUIStore } from '@/stores/uiStore';
 import { MIN_ANIMATION_BIAS, MAX_ANIMATION_BIAS } from '@/stores/defaults/visualDefaults';
 import { useGeometryStore } from '@/stores/geometryStore';
-import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
+import { useExtendedObjectStore, type ExtendedObjectState } from '@/stores/extendedObjectStore';
 import { getRotationPlanes } from '@/lib/math';
 import { useShallow } from 'zustand/react/shallow';
 import { AnimatePresence, m } from 'motion/react';
@@ -21,7 +21,7 @@ export const TimelineControls: FC = () => {
     const objectType = useGeometryStore((state) => state.objectType);
     
     // Animation Store
-    const animationSelector = useShallow((state: any) => ({
+    const animationSelector = useShallow((state: AnimationState) => ({
         isPlaying: state.isPlaying,
         speed: state.speed,
         direction: state.direction,
@@ -51,7 +51,7 @@ export const TimelineControls: FC = () => {
     const setAnimationBias = useUIStore((state) => state.setAnimationBias);
 
     // Extended object configs for animation state checking
-    const extendedObjectSelector = useShallow((state: any) => ({
+    const extendedObjectSelector = useShallow((state: ExtendedObjectState) => ({
         mandelbulbConfig: state.mandelbulb,
         quaternionJuliaConfig: state.quaternionJulia,
         polytopeConfig: state.polytope,

@@ -2,24 +2,27 @@
  * Light List Component
  *
  * Displays list of all lights with:
+ * - Ambient light entry at top (non-deletable)
  * - Light items showing name, type, enable state
- * - Add new light dropdown (Point, Directional, Spot)
+ * - Add new light select (Point, Directional, Spot)
  * - Maximum 4 lights enforced
  */
 
-import React, { memo, useState } from 'react';
-import { useShallow } from 'zustand/react/shallow';
-import { useLightingStore } from '@/stores/lightingStore';
+import { Select, type SelectOption } from '@/components/ui/Select';
+import type { LightSource, LightType } from '@/rendering/lights/types';
 import { MAX_LIGHTS } from '@/rendering/lights/types';
-import type { LightType, LightSource } from '@/rendering/lights/types';
-import { LightListItem } from './LightListItem';
+import { useLightingStore } from '@/stores/lightingStore';
+import React, { memo, useMemo } from 'react';
+import { useShallow } from 'zustand/react/shallow';
+import { AMBIENT_LIGHT_ID, LightListItem } from './LightListItem';
 
 export interface LightListProps {
   className?: string;
 }
 
-/** Light type options for the dropdown */
-const LIGHT_TYPE_OPTIONS: { value: LightType; label: string }[] = [
+/** Light type options for the select */
+const LIGHT_TYPE_OPTIONS: SelectOption<LightType | ''>[] = [
+  { value: '', label: 'Add Light...' },
   { value: 'point', label: 'Point Light' },
   { value: 'directional', label: 'Directional Light' },
   { value: 'spot', label: 'Spot Light' },
@@ -28,8 +31,6 @@ const LIGHT_TYPE_OPTIONS: { value: LightType; label: string }[] = [
 export const LightList: React.FC<LightListProps> = memo(function LightList({
   className = '',
 }) {
-  const [showAddMenu, setShowAddMenu] = useState(false);
-
   const lightingSelector = useShallow((state: any) => ({
     lights: state.lights,
     selectedLightId: state.selectedLightId,
@@ -37,6 +38,9 @@ export const LightList: React.FC<LightListProps> = memo(function LightList({
     removeLight: state.removeLight,
     updateLight: state.updateLight,
     selectLight: state.selectLight,
+    ambientIntensity: state.ambientIntensity,
+    ambientColor: state.ambientColor,
+    setAmbientIntensity: state.setAmbientIntensity,
   }));
   const {
     lights,
@@ -45,88 +49,86 @@ export const LightList: React.FC<LightListProps> = memo(function LightList({
     removeLight,
     updateLight,
     selectLight,
+    ambientIntensity,
+    ambientColor,
+    setAmbientIntensity,
   } = useLightingStore(lightingSelector);
+
+  // Create a virtual ambient light entry for display in the list
+  const ambientLightEntry: LightSource = useMemo(() => ({
+    id: AMBIENT_LIGHT_ID,
+    type: 'point', // Type doesn't matter for ambient, just needed for interface
+    name: 'Ambient Light',
+    color: ambientColor,
+    intensity: ambientIntensity,
+    enabled: ambientIntensity > 0,
+    position: [0, 0, 0],
+    rotation: [0, 0, 0],
+    coneAngle: 45,
+    penumbra: 0.5,
+    range: 10,
+    decay: 2,
+  }), [ambientColor, ambientIntensity]);
+
+  // Toggle ambient light by setting intensity to 0 or restoring to 1
+  const handleAmbientToggle = () => {
+    if (ambientIntensity > 0) {
+      setAmbientIntensity(0);
+    } else {
+      setAmbientIntensity(1);
+    }
+  };
 
   const canAddLight = lights.length < MAX_LIGHTS;
 
-  const handleAddLight = (type: LightType) => {
-    const newId = addLight(type);
+  const handleAddLight = (type: LightType | '') => {
+    if (!type) return; // Ignore placeholder selection
+    const newId = addLight(type as LightType);
     if (newId) {
       selectLight(newId);
     }
-    setShowAddMenu(false);
   };
+
+  // Check if ambient light is selected
+  const isAmbientSelected = selectedLightId === AMBIENT_LIGHT_ID;
 
   return (
     <div className={`space-y-2 ${className}`}>
-      {/* Light list */}
-      {lights.length === 0 ? (
-        <div className="text-center text-sm text-text-tertiary py-4">
-          No lights. Add one below.
-        </div>
-      ) : (
-        <div className="space-y-1">
-          {lights.map((light: LightSource) => (
-            <LightListItem
-              key={light.id}
-              light={light}
-              isSelected={light.id === selectedLightId}
-              onSelect={() => selectLight(light.id)}
-              onToggle={() => updateLight(light.id, { enabled: !light.enabled })}
-              onRemove={() => removeLight(light.id)}
-            />
-          ))}
-        </div>
-      )}
+      {/* Light list - ambient light always first */}
+      <div className="space-y-1">
+        {/* Ambient light entry (always present, non-deletable) */}
+        <LightListItem
+          key={AMBIENT_LIGHT_ID}
+          light={ambientLightEntry}
+          isSelected={isAmbientSelected}
+          onSelect={() => selectLight(AMBIENT_LIGHT_ID)}
+          onToggle={handleAmbientToggle}
+          onRemove={() => {}} // No-op, ambient can't be removed
+          isDeleteDisabled={true}
+        />
 
-      {/* Add light button/dropdown */}
-      <div className="relative">
-        <button
-          onClick={() => canAddLight && setShowAddMenu(!showAddMenu)}
-          disabled={!canAddLight}
-          className={`
-            w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm transition-colors border
-            ${canAddLight
-              ? 'border-dashed border-panel-border text-text-secondary hover:border-accent hover:text-accent'
-              : 'border-transparent bg-panel-border/30 text-text-tertiary cursor-not-allowed'
-            }
-          `}
-          aria-expanded={showAddMenu}
-          aria-haspopup="true"
-        >
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M12 5v14M5 12h14" strokeLinecap="round" />
-          </svg>
-          <span>{canAddLight ? 'Add Light' : `Max ${MAX_LIGHTS} lights`}</span>
-        </button>
-
-        {/* Dropdown menu */}
-        {showAddMenu && (
-          <>
-            {/* Backdrop to close menu */}
-            <div
-              className="fixed inset-0 z-10"
-              onClick={() => setShowAddMenu(false)}
-            />
-            <div className="absolute left-0 right-0 mt-1 py-1 bg-panel-bg border border-panel-border rounded-md shadow-lg z-20">
-              {LIGHT_TYPE_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  onClick={() => handleAddLight(option.value)}
-                  className="w-full px-3 py-2 text-sm text-left text-text-primary hover:bg-accent/20 transition-colors"
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          </>
-        )}
+        {/* Other lights */}
+        {lights.map((light: LightSource) => (
+          <LightListItem
+            key={light.id}
+            light={light}
+            isSelected={light.id === selectedLightId}
+            onSelect={() => selectLight(light.id)}
+            onToggle={() => updateLight(light.id, { enabled: !light.enabled })}
+            onRemove={() => removeLight(light.id)}
+          />
+        ))}
       </div>
 
-      {/* Light count indicator */}
-      <div className="text-xs text-text-tertiary text-center">
-        {lights.length} / {MAX_LIGHTS} lights
-      </div>
+      {/* Add light select - native select has no z-index issues */}
+      <Select<LightType | ''>
+        options={LIGHT_TYPE_OPTIONS}
+        value=""
+        onChange={handleAddLight}
+        disabled={!canAddLight}
+      />
+
+
     </div>
   );
 });

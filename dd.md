@@ -230,3 +230,10 @@ review this bug report: there are no guards against invalid data when loading sc
     at Visualizer (App.tsx:71:47)
 
 expected: in such
+
+
+
+- in the right editor's lights section, ambient light becomes an entry in the light source list on top of all light sources.
+- the ambient light entry cannot be deleted - the delete icon is visible but disabled. it can however be turned off via the icon which sets intensity to 0.
+- the intensity setting for ambient light and its color are sharing the ui component for color and intensity of the other light sources
+- when ambient light is selected, the other controls relevant for the other light types like range are hidden.

@@ -4,7 +4,7 @@
  */
 
 import React, { useMemo } from 'react';
-import { useGeometryStore } from '@/stores/geometryStore';
+import { useGeometryStore, type GeometryState } from '@/stores/geometryStore';
 import {
   getDimensionInfo,
   getPolytopeInfo,
@@ -20,7 +20,7 @@ export interface EducationPanelProps {
 export const EducationPanel: React.FC<EducationPanelProps> = ({
   className = '',
 }) => {
-  const geometrySelector = useShallow((state: any) => ({
+  const geometrySelector = useShallow((state: GeometryState) => ({
     dimension: state.dimension,
     objectType: state.objectType
   }));

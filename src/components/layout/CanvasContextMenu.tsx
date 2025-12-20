@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { m, AnimatePresence } from 'motion/react';
-import { useLayoutStore } from '@/stores/layoutStore';
+import { useLayoutStore, type LayoutStore } from '@/stores/layoutStore';
 import { useCameraStore } from '@/stores/cameraStore';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -9,7 +9,7 @@ export const CanvasContextMenu: React.FC = () => {
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const menuRef = useRef<HTMLDivElement>(null);
   
-  const layoutSelector = useShallow((state: any) => ({
+  const layoutSelector = useShallow((state: LayoutStore) => ({
     toggleCinematicMode: state.toggleCinematicMode,
     toggleCollapsed: state.toggleCollapsed,
     toggleLeftPanel: state.toggleLeftPanel,

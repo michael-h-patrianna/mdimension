@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { usePresetManagerStore, type SavedStyle } from '@/stores/presetManagerStore';
+import { usePresetManagerStore, type SavedStyle, type PresetManagerState } from '@/stores/presetManagerStore';
 import { useToast } from '@/contexts/ToastContext';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -8,7 +8,7 @@ interface StyleManagerProps {
 }
 
 export const StyleManager: React.FC<StyleManagerProps> = ({ onClose }) => {
-  const presetSelector = useShallow((state: any) => ({
+  const presetSelector = useShallow((state: PresetManagerState) => ({
     savedStyles: state.savedStyles,
     loadStyle: state.loadStyle,
     deleteStyle: state.deleteStyle,

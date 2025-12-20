@@ -2,25 +2,27 @@
  * Light Editor Component
  *
  * Displays and edits properties of the currently selected light:
- * - Name input
- * - Type selector (Point, Directional, Spot)
- * - Enable toggle
+ * - Name input (not for ambient)
+ * - Type selector (Point, Directional, Spot) (not for ambient)
+ * - Enable toggle (not for ambient)
  * - Color picker
  * - Intensity slider
- * - Position X/Y/Z inputs
- * - Rotation X/Y/Z inputs (for directional/spot)
+ * - Position X/Y/Z inputs (not for ambient)
+ * - Rotation X/Y/Z inputs (for directional/spot, not for ambient)
  * - Cone Angle slider (spot only)
  * - Penumbra slider (spot only)
+ * - Range/Decay sliders (point/spot only)
  */
 
-import { Select } from '@/components/ui/Select';
 import { ColorPicker } from '@/components/ui/ColorPicker';
+import { Select } from '@/components/ui/Select';
 import { Slider } from '@/components/ui/Slider';
 import { ToggleButton } from '@/components/ui/ToggleButton';
-import type { LightType, LightSource } from '@/rendering/lights/types';
+import type { LightSource, LightType } from '@/rendering/lights/types';
 import { useLightingStore } from '@/stores/lightingStore';
 import React, { memo, useCallback } from 'react';
 import { useShallow } from 'zustand/react/shallow';
+import { AMBIENT_LIGHT_ID } from './LightListItem';
 import { Vector3Input } from './Vector3Input';
 
 export interface LightEditorProps {
@@ -46,6 +48,11 @@ export const LightEditor: React.FC<LightEditorProps> = memo(function LightEditor
     updateLight: state.updateLight,
     duplicateLight: state.duplicateLight,
     selectLight: state.selectLight,
+    // Ambient light state
+    ambientIntensity: state.ambientIntensity,
+    ambientColor: state.ambientColor,
+    setAmbientIntensity: state.setAmbientIntensity,
+    setAmbientColor: state.setAmbientColor,
   }));
   const {
     lights,
@@ -53,10 +60,19 @@ export const LightEditor: React.FC<LightEditorProps> = memo(function LightEditor
     updateLight,
     duplicateLight,
     selectLight,
+    ambientIntensity,
+    ambientColor,
+    setAmbientIntensity,
+    setAmbientColor,
   } = useLightingStore(lightingSelector);
 
-  // Find selected light
-  const selectedLight = lights.find((l: LightSource) => l.id === selectedLightId);
+  // Check if ambient light is selected
+  const isAmbientLightSelected = selectedLightId === AMBIENT_LIGHT_ID;
+
+  // Find selected light (only for non-ambient)
+  const selectedLight = isAmbientLightSelected
+    ? null
+    : lights.find((l: LightSource) => l.id === selectedLightId);
 
   // Update handlers
   const handleNameChange = useCallback(
@@ -154,6 +170,43 @@ export const LightEditor: React.FC<LightEditorProps> = memo(function LightEditor
       }
     }
   }, [selectedLightId, duplicateLight, selectLight]);
+
+  // Show ambient light editor if ambient is selected
+  if (isAmbientLightSelected) {
+    return (
+      <div className={`space-y-4 ${className}`}>
+
+
+        {/* Color picker */}
+        <div className="flex items-center justify-between">
+          <ColorPicker
+            label="Color"
+            value={ambientColor}
+            onChange={setAmbientColor}
+            disableAlpha={true}
+          />
+
+        </div>
+
+        {/* Intensity slider */}
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <Slider
+              label="Intensity"
+              min={0}
+              max={3}
+              step={0.05}
+              value={ambientIntensity}
+              onChange={setAmbientIntensity}
+              showValue
+              tooltip="Global ambient lighting level"
+            />
+          </div>
+
+        </div>
+      </div>
+    );
+  }
 
   // Show placeholder if no light selected
   if (!selectedLight) {

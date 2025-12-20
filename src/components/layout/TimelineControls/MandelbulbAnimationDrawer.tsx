@@ -14,7 +14,7 @@
 
 import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
+import { useExtendedObjectStore, type ExtendedObjectState } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { ToggleButton } from '@/components/ui/ToggleButton';
 import { AnimationDrawerContainer } from './AnimationDrawerContainer';
@@ -32,7 +32,7 @@ export const MandelbulbAnimationDrawer: React.FC = React.memo(() => {
   const dimension = useGeometryStore((state) => state.dimension);
 
   // Get config and setters from store
-  const extendedObjectSelector = useShallow((state: any) => ({
+  const extendedObjectSelector = useShallow((state: ExtendedObjectState) => ({
     config: state.mandelbulb,
     // Power Animation
     setPowerAnimationEnabled: state.setMandelbulbPowerAnimationEnabled,

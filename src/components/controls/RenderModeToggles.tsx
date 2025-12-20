@@ -25,8 +25,8 @@ import {
   isRaymarchingFractal,
 } from '@/lib/geometry/registry';
 import type { ObjectType } from '@/lib/geometry/types';
-import { useGeometryStore } from '@/stores/geometryStore';
-import { useAppearanceStore } from '@/stores/appearanceStore';
+import { useGeometryStore, type GeometryState } from '@/stores/geometryStore';
+import { useAppearanceStore, type AppearanceSlice } from '@/stores/appearanceStore';
 import React, { useEffect, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -89,7 +89,7 @@ export const RenderModeToggles: React.FC<RenderModeTogglesProps> = React.memo(({
   className = '',
 }) => {
   // Consolidate visual store selectors with useShallow to reduce subscriptions
-  const appearanceSelector = useShallow((state: any) => ({
+  const appearanceSelector = useShallow((state: AppearanceSlice) => ({
     edgesVisible: state.edgesVisible,
     facesVisible: state.facesVisible,
     setEdgesVisible: state.setEdgesVisible,
@@ -103,7 +103,7 @@ export const RenderModeToggles: React.FC<RenderModeTogglesProps> = React.memo(({
   } = useAppearanceStore(appearanceSelector);
 
   // Consolidate geometry store selectors with useShallow
-  const geometrySelector = useShallow((state: any) => ({
+  const geometrySelector = useShallow((state: GeometryState) => ({
     objectType: state.objectType,
     dimension: state.dimension,
   }));

@@ -12,6 +12,7 @@ import * as THREE from 'three'
 /**
  * Headless component that orchestrates the video export process.
  * It manages the render loop, frame capture, and encoding steps.
+ * @returns null
  */
 export function VideoExportController() {
   const { gl, advance } = useThree()
@@ -146,7 +147,7 @@ export function VideoExportController() {
           recorderRef.current = null
       }
     }
-  }, [setStatus, restoreState, setPreviewUrl, setProgress, setCompletionDetails, handleError])
+  }, [setStatus, restoreState, setPreviewUrl, setProgress, handleError])
 
   const updateSceneState = useCallback((deltaTimeSec: number) => {
       const animatingPlanes = useAnimationStore.getState().animatingPlanes

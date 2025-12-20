@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { usePresetManagerStore, type SavedScene } from '@/stores/presetManagerStore';
+import { usePresetManagerStore, type SavedScene, type PresetManagerState } from '@/stores/presetManagerStore';
 import { useToast } from '@/contexts/ToastContext';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -8,7 +8,7 @@ interface SceneManagerProps {
 }
 
 export const SceneManager: React.FC<SceneManagerProps> = ({ onClose }) => {
-  const presetSelector = useShallow((state: any) => ({
+  const presetSelector = useShallow((state: PresetManagerState) => ({
     savedScenes: state.savedScenes,
     loadScene: state.loadScene,
     deleteScene: state.deleteScene,

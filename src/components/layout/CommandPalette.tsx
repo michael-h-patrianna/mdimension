@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { m, AnimatePresence } from 'motion/react';
-import { useLayoutStore } from '@/stores/layoutStore';
+import { useLayoutStore, type LayoutStore } from '@/stores/layoutStore';
 import { useThemeStore } from '@/stores/themeStore';
 import { useCameraStore } from '@/stores/cameraStore';
 import { useShallow } from 'zustand/react/shallow';
@@ -21,7 +21,7 @@ export const CommandPalette: React.FC = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-    const layoutSelector = useShallow((state: any) => ({
+    const layoutSelector = useShallow((state: LayoutStore) => ({
 
       toggleCinematicMode: state.toggleCinematicMode,
 

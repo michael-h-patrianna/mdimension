@@ -3,31 +3,25 @@
  *
  * Controls for configuring the multi-light system:
  * - Show/hide light gizmos toggle
- * - Light list (add, remove, select)
+ * - Light list (add, remove, select) - includes ambient light at top
  * - Light editor (selected light properties)
- * - Ambient intensity slider
  * - Ambient Occlusion controls (unified for all object types)
- *
- * Falls back to legacy single-light controls when no lights array exists.
  */
 
-import React from 'react';
-import { useShallow } from 'zustand/react/shallow';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import { ControlGroup } from '@/components/ui/ControlGroup';
 import { Select, type SelectOption } from '@/components/ui/Select';
 import { Slider } from '@/components/ui/Slider';
 import { Switch } from '@/components/ui/Switch';
-import {
-  DEFAULT_AMBIENT_COLOR,
-} from '@/stores/defaults/visualDefaults';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useLightingStore } from '@/stores/lightingStore';
 import { usePostProcessingStore } from '@/stores/postProcessingStore';
-import { LightList } from './LightList';
+import React from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { LightEditor } from './LightEditor';
+import { LightList } from './LightList';
 
 export interface LightingControlsProps {
   className?: string;
@@ -53,20 +47,12 @@ export const LightingControls: React.FC<LightingControlsProps> = React.memo(({
   const {
     selectedLightId,
     showLightGizmos,
-    ambientIntensity,
-    ambientColor,
     setShowLightGizmos,
-    setAmbientIntensity,
-    setAmbientColor,
   } = useLightingStore(
     useShallow((state: any) => ({
       selectedLightId: state.selectedLightId,
       showLightGizmos: state.showLightGizmos,
-      ambientIntensity: state.ambientIntensity,
-      ambientColor: state.ambientColor,
       setShowLightGizmos: state.setShowLightGizmos,
-      setAmbientIntensity: state.setAmbientIntensity,
-      setAmbientColor: state.setAmbientColor,
     }))
   );
 
@@ -161,47 +147,12 @@ export const LightingControls: React.FC<LightingControlsProps> = React.memo(({
         <LightList />
       </ControlGroup>
 
-      {/* Light Editor (when light selected) */}
+      {/* Light Editor (when light selected - includes ambient light) */}
       {hasSelectedLight && (
         <ControlGroup title="Light Properties">
           <LightEditor />
         </ControlGroup>
       )}
-
-      {/* Ambient Light (always visible) */}
-      <ControlGroup title="Ambient Light">
-        {/* Ambient Color */}
-        <div className="flex items-center justify-between">
-            <ColorPicker
-                label="Color"
-                value={ambientColor}
-                onChange={setAmbientColor}
-                disableAlpha={true}
-            />
-            {ambientColor !== DEFAULT_AMBIENT_COLOR && (
-              <button
-                onClick={() => setAmbientColor(DEFAULT_AMBIENT_COLOR)}
-                className="ml-auto text-xs text-text-tertiary hover:text-accent transition-colors"
-                title="Reset to default"
-              >
-                Reset
-              </button>
-            )}
-        </div>
-
-
-        {/* Ambient Intensity */}
-        <Slider
-          label="Intensity"
-          min={0}
-          max={3}
-          step={0.05}
-          value={ambientIntensity}
-          onChange={setAmbientIntensity}
-          showValue
-          tooltip="Global ambient lighting level"
-        />
-      </ControlGroup>
 
       {/* Ambient Occlusion - Unified controls */}
       <ControlGroup

@@ -5,11 +5,14 @@
  * - Light name and type icon
  * - Enable/disable toggle
  * - Selection highlight
- * - Delete button
+ * - Delete button (can be disabled for ambient light)
  */
 
-import type { LightSource } from '@/rendering/lights/types';
+import type { LightSource, LightType } from '@/rendering/lights/types';
 import React, { memo } from 'react';
+
+/** Special ID for the virtual ambient light entry */
+export const AMBIENT_LIGHT_ID = '__ambient__';
 
 export interface LightListItemProps {
   light: LightSource;
@@ -17,6 +20,8 @@ export interface LightListItemProps {
   onSelect: () => void;
   onToggle: () => void;
   onRemove: () => void;
+  /** If true, delete button is visible but disabled (for ambient light) */
+  isDeleteDisabled?: boolean;
 }
 
 /**
@@ -52,11 +57,22 @@ const SpotIcon = () => (
 );
 
 /**
+ * Icon for ambient light (globe/orb with rays)
+ * @returns SVG element for ambient light icon
+ */
+const AmbientIcon = () => (
+  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+    <circle cx="12" cy="12" r="5" opacity="0.6" />
+    <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray="2 2" />
+  </svg>
+);
+
+/**
  * Get icon component for light type
  * @param type - Type of light source
  * @returns JSX element for the light icon
  */
-const getLightIcon = (type: LightSource['type']) => {
+const getLightIcon = (type: LightSource['type'] | 'ambient'): React.ReactNode => {
   switch (type) {
     case 'point':
       return <PointIcon />;
@@ -64,6 +80,8 @@ const getLightIcon = (type: LightSource['type']) => {
       return <DirectionalIcon />;
     case 'spot':
       return <SpotIcon />;
+    case 'ambient':
+      return <AmbientIcon />;
   }
 };
 
@@ -73,7 +91,11 @@ export const LightListItem: React.FC<LightListItemProps> = memo(function LightLi
   onSelect,
   onToggle,
   onRemove,
+  isDeleteDisabled = false,
 }) {
+  // Determine the icon type - use 'ambient' for ambient light entries
+  const iconType: LightType | 'ambient' = light.id === AMBIENT_LIGHT_ID ? 'ambient' : light.type;
+
   return (
     <div
       className={`
@@ -94,7 +116,7 @@ export const LightListItem: React.FC<LightListItemProps> = memo(function LightLi
         className={`flex-shrink-0 ${light.enabled ? '' : 'opacity-40'}`}
         style={{ color: light.color }}
       >
-        {getLightIcon(light.type)}
+        {getLightIcon(iconType)}
       </span>
 
       {/* Light name */}
@@ -138,11 +160,18 @@ export const LightListItem: React.FC<LightListItemProps> = memo(function LightLi
       <button
         onClick={(e) => {
           e.stopPropagation();
-          onRemove();
+          if (!isDeleteDisabled) {
+            onRemove();
+          }
         }}
-        className="p-1 rounded text-text-tertiary hover:text-error transition-colors"
-        aria-label="Remove light"
-        title="Remove light (Delete key)"
+        className={`p-1 rounded transition-colors ${
+          isDeleteDisabled
+            ? 'text-text-tertiary/30 cursor-not-allowed'
+            : 'text-text-tertiary hover:text-error'
+        }`}
+        aria-label={isDeleteDisabled ? 'Cannot remove ambient light' : 'Remove light'}
+        title={isDeleteDisabled ? 'Ambient light cannot be removed' : 'Remove light (Delete key)'}
+        disabled={isDeleteDisabled}
       >
         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
