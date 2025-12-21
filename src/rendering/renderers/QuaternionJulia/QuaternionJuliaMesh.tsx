@@ -32,6 +32,7 @@ import {
     SHADOW_QUALITY_TO_INT,
 } from '@/rendering/shadows/types'
 import { getEffectiveSdfQuality } from '@/rendering/utils/adaptiveQuality'
+import { useAnimationStore } from '@/stores/animationStore'
 import { useAppearanceStore } from '@/stores/appearanceStore'
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore'
 import { useGeometryStore } from '@/stores/geometryStore'
@@ -42,7 +43,6 @@ import {
     usePerformanceStore,
 } from '@/stores/performanceStore'
 import { usePostProcessingStore } from '@/stores/postProcessingStore'
-import { useAnimationStore } from '@/stores/animationStore'
 import { useRotationStore } from '@/stores/rotationStore'
 import { useUIStore } from '@/stores/uiStore'
 import { useWebGLContextStore } from '@/stores/webglContextStore'
@@ -113,6 +113,9 @@ const QuaternionJuliaMesh = () => {
   const meshRef = useRef<THREE.Mesh>(null)
   const { camera, size } = useThree()
 
+  // Get scale for mesh scaling
+  const scale = useExtendedObjectStore((state) => state.quaternionJulia.scale)
+
   // Performance optimization refs
   const prevVersionRef = useRef<number>(-1)
   const fastModeRef = useRef(false)
@@ -131,7 +134,6 @@ const QuaternionJuliaMesh = () => {
   const cachedRotationMatrixRef = useRef<MatrixND | null>(null)
   const prevDimensionRef = useRef<number | null>(null)
   const prevParamValuesRef = useRef<number[] | null>(null)
-  const prevScaleRef = useRef<number | null>(null)
   const basisVectorsDirtyRef = useRef(true)
 
   // Cached uniform values
@@ -312,6 +314,9 @@ const QuaternionJuliaMesh = () => {
       uPrevInverseViewProjectionMatrix: { value: new THREE.Matrix4() },
       uTemporalEnabled: { value: false },
       uDepthBufferResolution: { value: new THREE.Vector2(1, 1) },
+      // Conservative safety margin for Julia - shape changes significantly during N-dimensional rotation
+      // 0.33 = start raymarching at 33% of previous depth (handles up to 67% surface movement)
+      uTemporalSafetyMargin: { value: 0.33 },
     }),
     []
   )
@@ -406,15 +411,15 @@ const QuaternionJuliaMesh = () => {
       !prevParamValuesRef.current ||
       config.parameterValues.length !== prevParamValuesRef.current.length ||
       config.parameterValues.some((v, i) => v !== prevParamValuesRef.current![i])
-    const scaleChanged = prevScaleRef.current !== config.scale
+    // const scaleChanged = prevScaleRef.current !== config.scale // Scale is now handled by mesh transform
 
     const needsRecompute =
-      dimChanged || paramsChanged || scaleChanged || basisVectorsDirtyRef.current || didRotate
+      dimChanged || paramsChanged || basisVectorsDirtyRef.current || didRotate
 
     if (needsRecompute) {
       prevDimensionRef.current = currentDimension
       prevParamValuesRef.current = [...config.parameterValues]
-      prevScaleRef.current = config.scale
+      // prevScaleRef.current = config.scale
 
       // Compose rotation matrix
       const rotMatrix = composeRotations(currentDimension, currentRotations)
@@ -433,13 +438,15 @@ const QuaternionJuliaMesh = () => {
       applyRotationInPlace(rotMatrix, wa.unitY, wa.rotatedY, currentDimension)
       applyRotationInPlace(rotMatrix, wa.unitZ, wa.rotatedZ, currentDimension)
 
-      // Scale basis vectors
+      // Scale basis vectors - REMOVED, mesh scaling handles this now
+      /*
       const boundingSize = config.scale
       for (let i = 0; i < MAX_DIMENSION; i++) {
         wa.rotatedX[i]! *= boundingSize
         wa.rotatedY[i]! *= boundingSize
         wa.rotatedZ[i]! *= boundingSize
       }
+      */
 
       // Copy basis vectors to uniforms
       u.uBasisX.value.set(wa.rotatedX)
@@ -468,11 +475,13 @@ const QuaternionJuliaMesh = () => {
       // Apply rotation to origin
       applyRotationInPlace(cachedRotationMatrixRef.current, wa.origin, wa.rotatedOrigin, currentDimension)
 
-      // Scale origin
+      // Scale origin - REMOVED, mesh scaling handles this now
+      /*
       const boundingSize = config.scale
       for (let i = 0; i < MAX_DIMENSION; i++) {
         wa.rotatedOrigin[i]! *= boundingSize
       }
+      */
 
       // Copy origin to uniform
       u.uOrigin.value.set(wa.rotatedOrigin)
@@ -625,7 +634,7 @@ const QuaternionJuliaMesh = () => {
   const materialKey = `julia-material-${shaderString.length}-${features.join(',')}-${restoreCount}`
 
   return (
-    <mesh ref={meshRef}>
+    <mesh ref={meshRef} scale={[scale ?? 1.0, scale ?? 1.0, scale ?? 1.0]} frustumCulled={true}>
       <boxGeometry args={[4, 4, 4]} />
       <TrackedShaderMaterial
         shaderName="Quaternion Julia Raymarcher"

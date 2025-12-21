@@ -944,15 +944,13 @@ const SchroedingerMesh = () => {
            // This ensures we use the updated camera position for raymarching uniforms.
 
   // Generate unique key to force material recreation when shader changes or context is restored
-  const materialKey = useMemo(() => {
-    return `schroedinger-material-${shaderString.length}-${features.join(',')}-${useTemporalAccumulation}-${restoreCount}`;
-  }, [shaderString, features, useTemporalAccumulation, restoreCount]);
+  const materialKey = `schroedinger-material-${shaderString.length}-${features.join(',')}-${restoreCount}`
 
   return (
-    <mesh ref={meshRef}>
+    <mesh ref={meshRef} frustumCulled={true}>
       <boxGeometry args={[4, 4, 4]} />
       <TrackedShaderMaterial
-        shaderName="Schrödinger Quantum Volume"
+        shaderName="Schroedinger Wavefunction"
         materialKey={materialKey}
         glslVersion={THREE.GLSL3}
         vertexShader={vertexShader}

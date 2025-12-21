@@ -204,8 +204,11 @@ void main() {
     // IMPORTANT: Use alpha = 1.0 to prevent premultiplied alpha issues
     gNormal = vec4(encodedNormal, 1.0);
 
-    #ifdef USE_TEMPORAL_ACCUMULATION
     // Output world position for temporal reprojection
+    // ALWAYS write gPosition to prevent GL_INVALID_OPERATION when switching layers.
+    // When temporal is OFF, this output is ignored by mainObjectMRT (count: 2).
+    // When temporal is ON, this provides actual position data for reprojection.
+    #ifdef USE_TEMPORAL_ACCUMULATION
     // CRITICAL: Use WEIGHTED CENTER instead of entry point!
     // The weighted center is the density-weighted average position along the ray.
     // It's much more stable than the entry point because:
@@ -215,6 +218,9 @@ void main() {
     // This is key to preventing smearing artifacts during camera rotation.
     vec4 worldCenterPos = uModelMatrix * vec4(volumeResult.weightedCenter, 1.0);
     gPosition = vec4(worldCenterPos.xyz, alpha);
+    #else
+    // Dummy output when temporal is disabled (ignored by render target)
+    gPosition = vec4(0.0);
     #endif
 }
 `;
@@ -380,5 +386,7 @@ void main() {
     vec3 viewNormal = vnLen2 > 0.0001 ? viewNormalRaw / vnLen2 : vec3(0.0, 0.0, 1.0);
     gColor = vec4(col, alpha);
     gNormal = vec4(viewNormal * 0.5 + 0.5, uMetallic);
+    // Dummy output for isosurface mode (always required for MRT compatibility)
+    gPosition = vec4(worldHitPos.xyz, alpha);
 }
 `;

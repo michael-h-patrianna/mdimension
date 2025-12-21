@@ -253,6 +253,7 @@ export const createMandelbulbSlice: StateCreator<ExtendedObjectSlice, [], [], Ma
         visualizationAxes: [0, 1, 2],
         colorMode,
         extent,
+        scale: 1.0,
         escapeRadius,
         mandelbulbPower: power,
         maxIterations,
@@ -262,6 +263,14 @@ export const createMandelbulbSlice: StateCreator<ExtendedObjectSlice, [], [], Ma
 
   getMandelbulbConfig: () => {
     return { ...get().mandelbulb }
+  },
+
+  setMandelbulbScale: (scale) => {
+    // Range 0.1 to 10.0
+    const clampedScale = Math.max(0.1, Math.min(10.0, scale))
+    set((state) => ({
+      mandelbulb: { ...state.mandelbulb, scale: clampedScale },
+    }))
   },
 
   // --- Power Animation Actions (Mandelbulb-specific) ---

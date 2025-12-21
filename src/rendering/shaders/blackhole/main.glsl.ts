@@ -56,8 +56,13 @@ float adaptiveStepSize(float ndRadius) {
   float horizonFactor = smoothstep(0.0, uHorizonRadius * uStepAdaptR, horizonDist);
   step *= mix(0.2, 1.0, horizonFactor);
 
-  // Clamp to min/max
-  return clamp(step, uStepMin, uStepMax);
+  // Distance-Based Step Relaxation:
+  // Allow step size to grow with distance to save steps in empty space.
+  // Standard uStepMax (default ~0.2) is too restrictive at far distances (e.g. 35.0).
+  // At radius 30, dynamicMax becomes ~0.2 * 16 = 3.2, allowing efficient traversal.
+  float dynamicMax = uStepMax * (1.0 + ndRadius * 0.5);
+
+  return clamp(step, uStepMin, dynamicMax);
 }
 
 /**
@@ -70,7 +75,12 @@ vec3 sampleBackground(vec3 bentDir) {
   #ifdef USE_ENVMAP
     // Only sample envMap when it's valid (avoids sampling null texture)
     if (uEnvMapReady > 0.5) {
-      return texture(envMap, bentDir).rgb;
+      // Transform bent ray from Local Space to World Space for environment sampling.
+      // The black hole simulation runs in Local Space (for scale/rotation), but the
+      // environment map (Skybox) is in World Space.
+      // Without this transform, rotating the black hole rotates the reflection of the skybox.
+      vec3 worldBentDir = normalize(mat3(uModelMatrix) * bentDir);
+      return texture(envMap, worldBentDir).rgb;
     }
   #endif
 
@@ -203,8 +213,9 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
   AccumulationState accum = initAccumulation();
 
   // Bounding sphere skip
-  float invScale = 1.0 / max(uScale, 0.001);
-  float farRadius = max(uFarRadius * uHorizonRadius, 500.0) * invScale;
+  // Scale is now handled by mesh transform, so rayOrigin/rayDir are already in local space
+  // We remove the hardcoded 500.0 min radius to respect uFarRadius and match geometry
+  float farRadius = uFarRadius * uHorizonRadius;
   vec2 intersect = intersectSphere(rayOrigin, rayDir, farRadius);
 
   // Early exit if entire bounding sphere is behind the camera
@@ -248,8 +259,12 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
   bool hitHorizon = false;
   int diskCrossings = 0;
 
+  // Adaptive quality: reduce max steps based on screen coverage
+  // When zoomed in close, uQualityMultiplier decreases to maintain FPS
+  int effectiveMaxSteps = max(int(float(uMaxSteps) * uQualityMultiplier), 32);
+
   for (int i = 0; i < 512; i++) {
-    if (i >= uMaxSteps) break;
+    if (i >= effectiveMaxSteps) break;
     if (totalDist > maxDist) break;
     if (accum.transmittance < 0.01) break; // Early exit for opaque
 
@@ -394,14 +409,38 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
 }
 
 void main() {
-  // Standard world-space ray setup
-  vec3 rayDir = normalize(vPosition - uCameraPosition);
+  // Transform ray to local space using inverse model matrix
+  // This allows the mesh scale to control the visual size of the black hole
+  vec3 rayOrigin = (uInverseModelMatrix * vec4(uCameraPosition, 1.0)).xyz;
 
-  // Scale ray origin to make black hole appear smaller
-  // Dividing by scale moves camera "further away" in black hole space
-  // e.g., scale=0.25 means camera is 4x further, so object appears 1/4 size
-  float invScale = 1.0 / max(uScale, 0.001);
-  vec3 rayOrigin = uCameraPosition * invScale;
+  vec3 worldRayDir;
+
+#ifdef USE_TEMPORAL_ACCUMULATION
+  // Calculate screen coordinates with Bayer jitter for temporal accumulation
+  vec2 screenCoord = gl_FragCoord.xy;
+
+  // Detect quarter-res rendering mode
+  bool isQuarterRes = uResolution.x < uFullResolution.x * 0.75;
+
+  if (isQuarterRes) {
+    // Quarter-res mode: Each pixel represents a 2x2 block in full res
+    // Apply Bayer offset to sample different sub-pixels each frame
+    screenCoord = floor(gl_FragCoord.xy) * 2.0 + uBayerOffset + 0.5;
+  }
+
+  // Compute ray direction from screen coordinate
+  vec2 screenUV = screenCoord / uFullResolution;
+  vec2 ndc = screenUV * 2.0 - 1.0;
+  vec4 farPointClip = vec4(ndc, 1.0, 1.0);
+  vec4 farPointWorld = uInverseViewProjectionMatrix * farPointClip;
+  float farW = abs(farPointWorld.w) < 0.0001 ? 0.0001 : farPointWorld.w;
+  farPointWorld /= farW;
+  worldRayDir = normalize(farPointWorld.xyz - uCameraPosition);
+#else
+  worldRayDir = normalize(vPosition - uCameraPosition);
+#endif
+
+  vec3 rayDir = normalize((uInverseModelMatrix * vec4(worldRayDir, 0.0)).xyz);
 
   // DEBUG: Visualize ray direction to verify rays are set up correctly
   // Uncomment the following block to debug:
@@ -419,8 +458,13 @@ void main() {
   gColor = result.color;
 
   // Compute view-space normal for deferred rendering
-  // Transform world-space normal to view-space
-  vec3 viewNormalRaw = mat3(uViewMatrix) * result.averageNormal;
+  // Transform local-space normal to world-space (Inverse Transpose of Model Matrix)
+  // Then world-space to view-space
+  // Normal matrix = transpose(inverse(mat3(modelMatrix)))
+  // Since we have uModelMatrix, we can use it directly if uniform scaling
+  // For non-uniform scaling, we'd need a proper normal matrix, but scale is uniform here.
+  vec3 worldNormal = normalize(mat3(uModelMatrix) * result.averageNormal);
+  vec3 viewNormalRaw = mat3(uViewMatrix) * worldNormal;
   float vnLen = length(viewNormalRaw);
   vec3 viewNormal = vnLen > 0.0001 ? viewNormalRaw / vnLen : vec3(0.0, 0.0, 1.0);
 
@@ -430,11 +474,11 @@ void main() {
 
   // Output depth buffer (same approach as Mandelbulb)
   // For hits: compute clip-space depth from first hit position
-  // Scale positions back from "black hole space" to world space
+  // Scale positions back from "black hole space" to world space using Model Matrix
   // For background only: use far plane (1.0)
   if (result.hasHit > 0.5) {
-    vec3 worldHitPos = result.firstHitPos * uScale;
-    vec4 clipPos = uProjectionMatrix * uViewMatrix * vec4(worldHitPos, 1.0);
+    vec4 worldHitPos = uModelMatrix * vec4(result.firstHitPos, 1.0);
+    vec4 clipPos = uProjectionMatrix * uViewMatrix * worldHitPos;
     float clipW = abs(clipPos.w) < 0.0001 ? 0.0001 : clipPos.w;
     gl_FragDepth = clamp((clipPos.z / clipW) * 0.5 + 0.5, 0.0, 1.0);
   } else {
@@ -442,12 +486,18 @@ void main() {
     gl_FragDepth = 1.0;
   }
 
-  // Output world position for temporal reprojection (only when gPosition is declared)
+  // Output world position for temporal reprojection
+  // ALWAYS write gPosition to prevent GL_INVALID_OPERATION when switching layers.
+  // When temporal is OFF, this output is ignored by mainObjectMRT (count: 2).
+  // When temporal is ON, this provides actual position data for reprojection.
   #ifdef USE_TEMPORAL_ACCUMULATION
     // Use density-weighted center position for stable reprojection
-    // Scale back to world space
-    // This prevents smearing artifacts during camera rotation
-    gPosition = vec4(result.weightedCenter * uScale, result.color.a);
+    // Transform back to world space
+    vec4 worldWeightedPos = uModelMatrix * vec4(result.weightedCenter, 1.0);
+    gPosition = vec4(worldWeightedPos.xyz, result.color.a);
+  #else
+    // Dummy output when temporal is disabled (ignored by render target)
+    gPosition = vec4(0.0);
   #endif
 }
 `

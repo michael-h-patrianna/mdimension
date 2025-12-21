@@ -13,10 +13,10 @@ import {
   createLightColorCache,
   updateLinearColorUniform,
 } from '@/rendering/colors/linearCache'
-// Note: Black hole is SDF-based like Mandelbulb, so it should use TemporalDepthManager
-// (not TemporalCloudManager which is for volumetric clouds like Schrödinger).
-// For now, temporal accumulation uniforms are not wired up - the black hole renders
-// on MAIN_OBJECT layer without temporal reprojection.
+import {
+  getScreenCoverage,
+  applyScreenCoverageReduction,
+} from '@/rendering/utils/adaptiveQuality'
 import { type LightUniforms, updateLightUniforms } from '@/rendering/lights/uniforms'
 import { useAppearanceStore } from '@/stores/appearanceStore'
 import { useAnimationStore } from '@/stores/animationStore'
@@ -47,6 +47,13 @@ import {
   RAY_BENDING_MODE_MAP,
   type WorkingArrays,
 } from './types'
+
+/**
+ * useFrame priority for black hole uniform updates.
+ * Negative priority ensures uniforms are updated BEFORE PostProcessing's
+ * useFrame (priority 1) runs the volumetric render pass.
+ */
+const UNIFORM_UPDATE_PRIORITY = -10
 
 /**
  * Create color cache for black hole specific colors
@@ -279,6 +286,16 @@ export function useBlackHoleUniformUpdates({
       ;(u.uProjectionMatrix.value as THREE.Matrix4).copy(camera.projectionMatrix)
     }
 
+    // Update matrices from mesh transform (handles position/rotation/scale)
+    // CRITICAL: Ensure matrixWorld is up-to-date before copying to avoid 1-frame lag
+    meshRef.current.updateMatrixWorld()
+    if (u.uModelMatrix?.value) {
+      ;(u.uModelMatrix.value as THREE.Matrix4).copy(meshRef.current.matrixWorld)
+    }
+    if (u.uInverseModelMatrix?.value) {
+      ;(u.uInverseModelMatrix.value as THREE.Matrix4).copy(meshRef.current.matrixWorld).invert()
+    }
+
     // Get current state from stores
     const geomState = useGeometryStore.getState()
     const { rotations, version: rotationVersion } = useRotationStore.getState()
@@ -310,19 +327,42 @@ export function useBlackHoleUniformUpdates({
     const perfState = usePerformanceStore.getState()
     const fractalAnimLowQuality = perfState.fractalAnimationLowQuality
     setUniform(u, 'uFastMode', fractalAnimLowQuality && fastModeRef.current)
-    setUniform(u, 'uQualityMultiplier', perfState.qualityMultiplier)
+
+    // Get black hole state for coverage and temporal calculations
     const bhState = useExtendedObjectStore.getState().blackhole
+
+    // Calculate actual black hole visual radius for accurate coverage estimation
+    // The visual extent is farRadius * horizonRadius, scaled by mesh scale
+    const blackHoleVisualRadius = bhState.farRadius * bhState.horizonRadius * bhState.scale
+
+    // Calculate screen coverage for temporal and quality decisions
+    const coverage =
+      camera instanceof THREE.PerspectiveCamera
+        ? getScreenCoverage(camera, blackHoleVisualRadius)
+        : 0.5
+
+    // Quality reduction for black hole raymarching
+    // Use the MAXIMUM of performance store multiplier and coverage-based reduction
+    // (i.e., pick the LESS aggressive reduction to avoid compounding)
+    // Also enforce higher floor (0.5) than other objects since black hole needs more steps
+    // With 256 max steps, 0.5 floor = 128 minimum steps for stable rendering
+    const performanceQuality = perfState.qualityMultiplier
+    const coverageQuality = applyScreenCoverageReduction(1.0, coverage)
+    const effectiveQuality = Math.max(performanceQuality, coverageQuality)
+    setUniform(u, 'uQualityMultiplier', Math.max(effectiveQuality, 0.5))
+
+    // NOTE: Temporal accumulation is intentionally disabled for black hole.
+    // The full-screen reconstruction pass (3×3 neighborhood) is too expensive
+    // and negates the quarter-res rendering savings. Black hole stays on
+    // MAIN_OBJECT layer and benefits from adaptive quality (step reduction) instead.
     const appearanceState = useAppearanceStore.getState() // Global appearance
     const lightingState = useLightingStore.getState() // Global lighting
     const uiState = useUIStore.getState() // Global UI state
     const { lights, version: lightingVersion } = lightingState
     const cache = colorCacheRef.current
 
-    // Visual scale: DON'T scale the mesh (causes clipping)
-    // Instead, pass scale to shader where positions are scaled during SDF evaluation
-    // This is the same approach used by Mandelbulb zoom
-    const scale = bhState.scale
-    setUniform(u, 'uScale', scale)
+    // Visual scale: Handled by mesh.scale now
+    // setUniform(u, 'uScale', scale)
 
     // Update dimension
     const currentDimension = geomState.dimension
@@ -617,8 +657,7 @@ export function useBlackHoleUniformUpdates({
       invVP.copy(camera.projectionMatrixInverse).premultiply(camera.matrixWorld)
     }
 
-    // Note: Temporal accumulation uniforms (uBayerOffset, uFullResolution) are not wired up.
-    // Black hole is SDF-based and should use TemporalDepthManager like Mandelbulb,
-    // not TemporalCloudManager which is for volumetric clouds.
-  }, -10) // Priority -10: before PostProcessing volumetric pass
+    // NOTE: Temporal accumulation uniforms (uBayerOffset, uFullResolution) are not used
+    // since black hole doesn't benefit from temporal rendering due to reconstruction overhead
+  }, UNIFORM_UPDATE_PRIORITY)
 }

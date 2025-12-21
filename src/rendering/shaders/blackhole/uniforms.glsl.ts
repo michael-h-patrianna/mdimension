@@ -79,6 +79,7 @@ uniform bool uEnableAbsorption;     // Enable volumetric absorption
 uniform float uAbsorption;          // Absorption coefficient
 uniform float uTransmittanceCutoff; // Early exit transmittance threshold
 uniform float uFarRadius;           // Far clipping radius
+// Note: uQualityMultiplier is declared in shared/core/uniforms.glsl.ts
 
 // Lighting
 uniform int uLightingMode;          // 0=emissiveOnly, 1=fakeLit

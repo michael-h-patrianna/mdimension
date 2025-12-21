@@ -90,19 +90,11 @@ function updateVolumetricResolutionCached(
     cachedMeshes.clear();
     scene.traverse((obj) => {
       if ((obj as THREE.Mesh).isMesh && obj.layers.test(volumetricLayerMask)) {
-        // CRITICAL FIX: Only include meshes with VISIBLE materials.
-        // During shader recompilation, TrackedShaderMaterial uses a placeholder
-        // with visible=false. Including these meshes would cause:
-        // 1. volumetricMeshesRef.current.size > 0 (cache not empty)
-        // 2. useTemporalCloud = true (temporal cloud mode active)
-        // 3. Main scene excludes VOLUMETRIC layer
-        // 4. But cloud render produces no visible output (material invisible)
-        // 5. Object disappears until shader finishes compiling!
-        // By only including visible materials, we ensure temporal cloud mode
-        // is only used when the shader is actually ready to render.
-        const mat = (obj as THREE.Mesh).material as THREE.Material;
-        if (mat && mat.visible !== false) {
-          cachedMeshes.add(obj as THREE.Mesh);
+        // Filter out meshes with invisible material (e.g., placeholder during shader compilation)
+        const mesh = obj as THREE.Mesh;
+        const material = mesh.material as THREE.ShaderMaterial;
+        if (mesh.visible && material.visible !== false) {
+          cachedMeshes.add(mesh);
         }
       }
     });
@@ -1057,6 +1049,31 @@ export const PostProcessing = memo(function PostProcessing() {
       temporalReprojectionEnabled: temporalReprojectionEnabled || currentShowTemporalDepthBuffer,
     });
 
+    // ========================================
+    // Pre-determine Temporal Cloud Usage
+    // ========================================
+    // CRITICAL: Must determine this BEFORE depth pass to avoid double-rendering volumetric objects
+    // When temporal cloud is active, volumetric objects render at 1/4 res in temporal pass,
+    // so they must be EXCLUDED from the full-res depth pass
+    const objectType = geometryStateRef.current.objectType;
+    const wantsTemporalCloud = needsVolumetricSeparation({
+      temporalCloudAccumulation: temporalReprojectionEnabled,
+      objectType,
+    });
+
+    // Check if we have visible volumetric meshes for temporal cloud
+    let useTemporalCloud = false;
+    if (wantsTemporalCloud) {
+      updateVolumetricResolutionCached(
+        scene,
+        size.width,
+        size.height,
+        volumetricMeshesRef.current,
+        volumetricMeshesValidRef
+      );
+      useTemporalCloud = volumetricMeshesRef.current.size > 0;
+    }
+
     // Render object-only depth pass (excludes walls, gizmos, axes)
     // Only rendered when SSR, refraction, or bokeh auto-focus needs it
     if (renderObjectDepth && camera instanceof THREE.PerspectiveCamera) {
@@ -1064,7 +1081,12 @@ export const PostProcessing = memo(function PostProcessing() {
 
       // Only render main object layer
       camera.layers.set(RENDER_LAYERS.MAIN_OBJECT);
-      camera.layers.enable(RENDER_LAYERS.VOLUMETRIC); // Also include volumetric objects
+      // CRITICAL: Only include VOLUMETRIC layer if temporal cloud is NOT active
+      // When temporal cloud is active, volumetric objects render separately at 1/4 res
+      // Including them here would cause DOUBLE RENDERING and DECREASE fps instead of increasing it
+      if (!useTemporalCloud) {
+        camera.layers.enable(RENDER_LAYERS.VOLUMETRIC);
+      }
 
       gl.autoClear = false;
       gl.setRenderTarget(objectDepthTarget);
@@ -1122,39 +1144,7 @@ export const PostProcessing = memo(function PostProcessing() {
     // ========================================
     // Temporal Cloud Accumulation (Horizon-style)
     // ========================================
-    // Check if temporal cloud accumulation should be used for volumetric rendering
-    const objectType = geometryStateRef.current.objectType;
-    const wantsTemporalCloud = needsVolumetricSeparation({
-      temporalCloudAccumulation: temporalReprojectionEnabled,
-      objectType,
-    });
-
-    // CRITICAL FIX: Determine if we should ACTUALLY use temporal cloud mode.
-    // We need visible volumetric meshes to use temporal cloud. During shader
-    // recompilation, TrackedShaderMaterial uses a placeholder with visible=false.
-    // If we use temporal cloud mode while placeholder is active:
-    // 1. Main scene excludes VOLUMETRIC layer (mesh won't render there)
-    // 2. Cloud render produces nothing (placeholder is invisible)
-    // 3. Object disappears until shader compilation finishes!
-    //
-    // By checking for visible volumetric meshes, we only use temporal cloud
-    // when the shader is actually ready to render.
-    let useTemporalCloud = false;
-    let hasVisibleVolumetricMeshes = false;
-
-    if (wantsTemporalCloud) {
-      // First, update the volumetric mesh cache to check if any visible meshes exist
-      // Note: This rebuilds the cache if invalid, checking material.visible
-      updateVolumetricResolutionCached(
-        scene,
-        size.width, // Use screen size for initial check (will update with cloudTarget size below)
-        size.height,
-        volumetricMeshesRef.current,
-        volumetricMeshesValidRef
-      );
-      hasVisibleVolumetricMeshes = volumetricMeshesRef.current.size > 0;
-      useTemporalCloud = hasVisibleVolumetricMeshes;
-    }
+    // NOTE: useTemporalCloud was pre-computed earlier (before depth pass) to avoid double-rendering
 
     if (useTemporalCloud) {
       // Begin temporal cloud frame
@@ -1189,7 +1179,9 @@ export const PostProcessing = memo(function PostProcessing() {
 
         // Render volumetric at quarter res with Bayer jitter
         // The shader applies USE_TEMPORAL_ACCUMULATION jitter based on uBayerOffset
-        // Note: We already verified hasVisibleVolumetricMeshes above, so meshes exist
+        // NOTE: All shaders now always output 3 values (gColor, gNormal, gPosition)
+        // to prevent GL_INVALID_OPERATION during layer transitions.
+        // See: docs/bugfixing/log/2025-12-21-schroedinger-temporal-gl-invalid-operation.md
         gl.render(scene, camera);
 
         // Restore camera layers

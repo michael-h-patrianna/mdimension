@@ -161,6 +161,7 @@ export interface MandelbulbSliceState {
 }
 
 export interface MandelbulbSliceActions {
+  setMandelbulbScale: (scale: number) => void
   setMandelbulbMaxIterations: (value: number) => void
   setMandelbulbEscapeRadius: (value: number) => void
   setMandelbulbQualityPreset: (preset: MandelbulbQualityPreset) => void

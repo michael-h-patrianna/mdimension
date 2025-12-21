@@ -75,6 +75,7 @@ uniform mat4 uPrevViewProjectionMatrix;
 uniform mat4 uPrevInverseViewProjectionMatrix;
 uniform bool uTemporalEnabled;
 uniform vec2 uDepthBufferResolution;
+uniform float uTemporalSafetyMargin;  // How far back to step from temporal hint (0.95 = 5% back, 0.50 = 50% back)
 
 // Opacity Mode System uniforms
 uniform int uOpacityMode;

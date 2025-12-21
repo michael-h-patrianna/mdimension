@@ -16,7 +16,8 @@ precision highp float;
 
 layout(location = 0) out vec4 gColor;
 layout(location = 1) out vec4 gNormal;
-#ifdef USE_TEMPORAL_ACCUMULATION
+// ALWAYS declare gPosition to prevent GL_INVALID_OPERATION when switching layers
+// during temporal toggle. Unused outputs are safely ignored by WebGL.
+// See: docs/bugfixing/log/2025-12-21-schroedinger-temporal-gl-invalid-operation.md
 layout(location = 2) out vec4 gPosition;
-#endif
 `;

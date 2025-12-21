@@ -24,7 +24,7 @@ import { composeBlackHoleShader, generateBlackHoleVertexShader } from '@/renderi
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore'
 import { useGeometryStore } from '@/stores/geometryStore'
 import { useUIStore } from '@/stores/uiStore'
-import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { MAX_DIMENSION } from './types'
 import { useBlackHoleUniforms } from './useBlackHoleUniforms'
@@ -74,9 +74,16 @@ const BlackHoleMesh = () => {
   const temporalEnabled = useExtendedObjectStore(
     (state) => state.blackhole.temporalAccumulationEnabled
   )
+  // Note: globalTemporalEnabled is checked dynamically in useBlackHoleUniformUpdates
+  // along with screen coverage to determine when to use temporal rendering
   const sliceAnimationEnabled = useExtendedObjectStore(
     (state) => state.blackhole.sliceAnimationEnabled
   )
+  // Scale and Bounds
+  const scale = useExtendedObjectStore((state) => state.blackhole.scale)
+  const farRadius = useExtendedObjectStore((state) => state.blackhole.farRadius)
+  const horizonRadius = useExtendedObjectStore((state) => state.blackhole.horizonRadius)
+  const jetsHeight = useExtendedObjectStore((state) => state.blackhole.jetsHeight)
 
   // Create uniforms using extracted hook
   const uniforms = useBlackHoleUniforms()
@@ -126,22 +133,28 @@ const BlackHoleMesh = () => {
     }
   }, [materialKey])
 
-  // Black hole is SDF-based like Mandelbulb, so it stays on MAIN_OBJECT layer
-  // and uses TemporalDepthManager (not TemporalCloudManager which is for volumetric clouds)
-  useLayoutEffect(() => {
-    if (meshRef.current?.layers) {
-      meshRef.current.layers.set(RENDER_LAYERS.MAIN_OBJECT)
-    }
-  }, [])
+  // Layer assignment is handled dynamically in useBlackHoleUniformUpdates
+  // based on screen coverage (only uses temporal when coverage > 50%)
 
   // Update uniforms each frame using extracted hook
   useBlackHoleUniformUpdates({
     meshRef,
   })
 
+  // Calculate box size to ensure it covers the entire visual effect
+  // Shader uses farRadius * horizonRadius as the bounding sphere radius for raymarching.
+  // Jets extend vertically by jetsHeight * horizonRadius.
+  // We use the maximum of these to size the box, preventing clipping.
+  const shaderRadius = farRadius * horizonRadius
+  const jetsRadius = jetsEnabled ? jetsHeight * horizonRadius : 0
+  const maxRadius = Math.max(shaderRadius, jetsRadius)
+  
+  // Use 2.2x max radius (diameter + 10% padding)
+  const boxSize = maxRadius * 2.2
+
   return (
-    <mesh ref={meshRef} layers={RENDER_LAYERS.MAIN_OBJECT} frustumCulled={false}>
-      <boxGeometry args={[100, 100, 100]} />
+    <mesh ref={meshRef} layers={RENDER_LAYERS.MAIN_OBJECT} frustumCulled={true} scale={[scale, scale, scale]}>
+      <boxGeometry args={[boxSize, boxSize, boxSize]} />
       <TrackedShaderMaterial
         shaderName="Black Hole N-Dimensional"
         materialKey={materialKey}

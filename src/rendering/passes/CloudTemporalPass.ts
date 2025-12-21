@@ -193,8 +193,12 @@ export class CloudTemporalPass extends Pass {
     // ========================================
     const reconUniforms = this.reconstructionMaterial.uniforms as unknown as ReconstructionUniforms;
 
-    // cloudTarget is MRT: [0] = color, [1] = position
-    if (cloudTarget.textures && cloudTarget.textures.length >= 2) {
+    // cloudTarget is MRT: [0] = color, [1] = normal, [2] = position
+    if (cloudTarget.textures && cloudTarget.textures.length >= 3) {
+      reconUniforms.uCloudRender.value = cloudTarget.textures[0] ?? null;
+      reconUniforms.uCloudPosition.value = cloudTarget.textures[2] ?? null;
+    } else if (cloudTarget.textures && cloudTarget.textures.length >= 2) {
+      // Legacy fallback (should not happen with current TemporalCloudManager)
       reconUniforms.uCloudRender.value = cloudTarget.textures[0] ?? null;
       reconUniforms.uCloudPosition.value = cloudTarget.textures[1] ?? null;
     } else {

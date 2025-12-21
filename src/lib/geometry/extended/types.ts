@@ -531,6 +531,9 @@ export type MandelbulbAutopilotStrategy = 'centerRayLock' | 'interestScore' | 'b
  * @see docs/research/mandelbulb-guide.md
  */
 export interface MandelbulbConfig {
+  /** Visual scale multiplier for the mesh (0.1-10.0, default 1.0) */
+  scale?: number
+
   // Iteration parameters
   /** Maximum iterations before considering point bounded (10-500) */
   maxIterations: number
@@ -923,6 +926,7 @@ export const MANDELBROT_QUALITY_PRESETS: Record<
  * Default Mandelbulb configuration
  */
 export const DEFAULT_MANDELBROT_CONFIG: MandelbulbConfig = {
+  scale: 1.0,
   maxIterations: 80,
   escapeRadius: 4.0,
   qualityPreset: 'standard',

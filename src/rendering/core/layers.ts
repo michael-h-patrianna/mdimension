@@ -35,6 +35,12 @@ export type RenderLayer = (typeof RENDER_LAYERS)[keyof typeof RENDER_LAYERS]
  * 2. Reprojects previous frame's accumulation to current view
  * 3. Reconstructs full resolution by blending new pixels with history
  * 4. Composites over the main scene
+ *
+ * NOTE: Black hole is intentionally excluded. The full-screen reconstruction pass
+ * (3×3 neighborhood = 9 texture samples per pixel) is too expensive and negates
+ * the quarter-res rendering savings. Black hole rendering benefits more from
+ * adaptive quality (step reduction) than temporal accumulation.
+ *
  * @param state - State containing temporal and object type info
  * @param state.temporalCloudAccumulation - Whether temporal accumulation is enabled
  * @param state.objectType - The current object type
@@ -44,6 +50,8 @@ export function needsVolumetricSeparation(state: {
   temporalCloudAccumulation?: boolean
   objectType?: string
 }): boolean {
+  // Only Schroedinger benefits from temporal accumulation
+  // Black hole excluded: reconstruction overhead > quarter-res savings
   return Boolean(state.temporalCloudAccumulation && state.objectType === 'schroedinger')
 }
 

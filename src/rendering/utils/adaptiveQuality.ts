@@ -21,15 +21,17 @@ const MAX_REDUCTION = 0.6
  * Calculate screen coverage ratio for an object.
  *
  * @param camera - The perspective camera
+ * @param objectRadius - Optional custom radius (defaults to BOUND_R = 2.0)
  * @returns Screen coverage ratio (0 = tiny, 1 = fills screen, >1 = larger than screen)
  */
-export function getScreenCoverage(camera: THREE.PerspectiveCamera): number {
+export function getScreenCoverage(camera: THREE.PerspectiveCamera, objectRadius?: number): number {
   const cameraDistance = camera.position.length()
   if (cameraDistance < 0.01) return 1.0
 
   const fovRad = camera.fov * Math.PI / 180
   const halfFovTan = Math.tan(fovRad / 2)
-  const projectedSize = BOUND_R / cameraDistance
+  const radius = objectRadius ?? BOUND_R
+  const projectedSize = radius / cameraDistance
 
   return projectedSize / halfFovTan
 }

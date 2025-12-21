@@ -53,12 +53,13 @@ const powerPresets = [
  * @param props.className - Optional CSS class name
  * @returns React component
  */
-export const MandelbulbControls: React.FC<MandelbulbControlsProps> = React.memo(({
+const MandelbulbControlsComponent: React.FC<MandelbulbControlsProps> = ({
   className = '',
 }) => {
   // Consolidate extended object store selectors with useShallow
   const extendedObjectSelector = useShallow((state: ExtendedObjectState) => ({
     config: state.mandelbulb,
+    setScale: state.setMandelbulbScale,
     setMaxIterations: state.setMandelbulbMaxIterations,
     setEscapeRadius: state.setMandelbulbEscapeRadius,
     setMandelbulbPower: state.setMandelbulbMandelbulbPower,
@@ -67,6 +68,7 @@ export const MandelbulbControls: React.FC<MandelbulbControlsProps> = React.memo(
   }));
   const {
     config,
+    setScale,
     setMaxIterations,
     setEscapeRadius,
     setMandelbulbPower,
@@ -80,6 +82,18 @@ export const MandelbulbControls: React.FC<MandelbulbControlsProps> = React.memo(
   return (
     <div className={className} data-testid="mandelbulb-controls">
         <Section title="Parameters" defaultOpen={true}>
+            {/* Scale */}
+            <Slider
+            label="Scale"
+            min={0.1}
+            max={5.0}
+            step={0.1}
+            value={config.scale ?? 1.0}
+            onChange={setScale}
+            showValue
+            data-testid="mandelbulb-scale"
+            />
+
             {/* Max Iterations */}
             <Slider
             label="Max Iterations"
@@ -171,4 +185,7 @@ export const MandelbulbControls: React.FC<MandelbulbControlsProps> = React.memo(
       </div>
     </div>
   );
-});
+};
+
+export const MandelbulbControls = React.memo(MandelbulbControlsComponent);
+MandelbulbControls.displayName = 'MandelbulbControls';

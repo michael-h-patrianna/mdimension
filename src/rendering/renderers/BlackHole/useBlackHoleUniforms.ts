@@ -29,7 +29,16 @@ export function useBlackHoleUniforms() {
       // Time and resolution
       uTime: { value: 0 },
       uResolution: { value: new THREE.Vector2() },
-      uCameraPosition: { value: new THREE.Vector3() },
+      uCameraPosition: { value: new THREE.Vector3() }, // Used if we want to override Three.js cameraPosition
+
+      // Matrices - Explicitly passed for full control (and scale handling)
+      uModelMatrix: { value: new THREE.Matrix4() },
+      uInverseModelMatrix: { value: new THREE.Matrix4() },
+      uProjectionMatrix: { value: new THREE.Matrix4() },
+      uViewMatrix: { value: new THREE.Matrix4() },
+      uInverseViewProjectionMatrix: { value: new THREE.Matrix4() },
+
+      // Scale (legacy, now handled via mesh.scale and uInverseModelMatrix)
 
       // Dimension
       uDimension: { value: 4 },
@@ -170,16 +179,9 @@ export function useBlackHoleUniforms() {
       uSliceSpeed: { value: 0.02 },
       uSliceAmplitude: { value: 0.3 },
 
-      // 3D transformation matrices
-      uModelMatrix: { value: new THREE.Matrix4() },
-      uInverseModelMatrix: { value: new THREE.Matrix4() },
-      uProjectionMatrix: { value: new THREE.Matrix4() },
-      uViewMatrix: { value: new THREE.Matrix4() },
-
-      // Temporal accumulation
+      // Temporal accumulation (matrices are defined above in the Matrices section)
       uBayerOffset: { value: new THREE.Vector2(0, 0) },
       uFullResolution: { value: new THREE.Vector2(1, 1) },
-      uInverseViewProjectionMatrix: { value: new THREE.Matrix4() },
 
       // Multi-light system
       ...createLightUniforms(),

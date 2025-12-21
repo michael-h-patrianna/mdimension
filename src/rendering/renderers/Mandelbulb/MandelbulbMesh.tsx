@@ -18,6 +18,7 @@ import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useLightingStore } from '@/stores/lightingStore';
+import { useMsgBoxStore } from '@/stores/msgBoxStore';
 import {
     getEffectiveSampleQuality,
     getEffectiveShadowQuality,
@@ -26,7 +27,6 @@ import {
 import { usePostProcessingStore } from '@/stores/postProcessingStore';
 import { useRotationStore } from '@/stores/rotationStore';
 import { useUIStore } from '@/stores/uiStore';
-import { useMsgBoxStore } from '@/stores/msgBoxStore';
 import { useWebGLContextStore } from '@/stores/webglContextStore';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
@@ -169,6 +169,7 @@ const MandelbulbMesh = () => {
   const mandelbulbPower = useExtendedObjectStore((state) => state.mandelbulb.mandelbulbPower);
   const maxIterations = useExtendedObjectStore((state) => state.mandelbulb.maxIterations);
   const escapeRadius = useExtendedObjectStore((state) => state.mandelbulb.escapeRadius);
+  const scale = useExtendedObjectStore((state) => state.mandelbulb.scale);
   const parameterValues = useExtendedObjectStore((state) => state.mandelbulb.parameterValues);
 
   // Power animation parameters (organic multi-frequency motion)
@@ -396,6 +397,9 @@ const MandelbulbMesh = () => {
       uPrevInverseViewProjectionMatrix: { value: new THREE.Matrix4() },
       uTemporalEnabled: { value: false },
       uDepthBufferResolution: { value: new THREE.Vector2(1, 1) },
+      // Aggressive safety margin for Mandelbulb - geometry is stable during rotation
+      // 0.95 = start raymarching at 95% of previous depth (5% safety margin)
+      uTemporalSafetyMargin: { value: 0.95 },
     }),
     []
   );
@@ -574,6 +578,8 @@ const MandelbulbMesh = () => {
       }
 
       // Update camera matrices
+      if (material.uniforms.uModelMatrix) material.uniforms.uModelMatrix.value.copy(meshRef.current.matrixWorld);
+      if (material.uniforms.uInverseModelMatrix) material.uniforms.uInverseModelMatrix.value.copy(meshRef.current.matrixWorld).invert();
       if (material.uniforms.uProjectionMatrix) material.uniforms.uProjectionMatrix.value.copy(camera.projectionMatrix);
       if (material.uniforms.uViewMatrix) material.uniforms.uViewMatrix.value.copy(camera.matrixWorldInverse);
 
@@ -991,12 +997,12 @@ const MandelbulbMesh = () => {
     } catch (error) {
         if (hasErroredRef.current) return;
         hasErroredRef.current = true;
-        
+
         console.error('Mandelbulb Render Loop Error:', error)
-        
+
         // Use getState to avoid hook rules in callback
         const showMsgBox = useMsgBoxStore.getState().showMsgBox
-        
+
         // Show error message
         showMsgBox(
           'Rendering Error',
@@ -1022,7 +1028,7 @@ const MandelbulbMesh = () => {
   const materialKey = `mandelbulb-material-${shaderString.length}-${features.join(',')}-${restoreCount}`;
 
   return (
-    <mesh ref={meshRef}>
+    <mesh ref={meshRef} scale={[scale ?? 1.0, scale ?? 1.0, scale ?? 1.0]} frustumCulled={true}>
       <boxGeometry args={[4, 4, 4]} />
       <TrackedShaderMaterial
         shaderName="Mandelbulb Raymarcher"
