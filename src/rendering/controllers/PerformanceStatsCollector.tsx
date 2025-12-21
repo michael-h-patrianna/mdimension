@@ -1,4 +1,5 @@
 import { usePerformanceMetricsStore } from '@/stores/performanceMetricsStore';
+import { useUIStore } from '@/stores/uiStore';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
@@ -45,6 +46,12 @@ export function PerformanceStatsCollector() {
       // Clean up strings like "ANGLE (Apple, Apple M1 Pro, OpenGL 4.1)"
       const cleanName = renderer.replace(/angle\s*\((.+)\)/i, '$1').split(',')[1]?.trim() || renderer;
       setGpuName(cleanName);
+    }
+
+    // Expose store for e2e testing
+    if (import.meta.env.DEV) {
+      // @ts-ignore
+      window.__PERF_STORE__ = usePerformanceMetricsStore;
     }
   }, [gl, setGpuName]);
 
@@ -144,9 +151,13 @@ export function PerformanceStatsCollector() {
         ? Math.round((performance as unknown as { memory: { usedJSHeapSize: number } }).memory.usedJSHeapSize / 1048576)
         : 0;
 
-      // Update VRAM periodically
+      // Update VRAM periodically ONLY if monitor is open AND on System tab
+      // This avoids expensive scene traversals when not viewing the data
       if (time - lastVramUpdateRef.current > VRAM_UPDATE_INTERVAL) {
-        currentVramRef.current = updateVRAM();
+        const { showPerfMonitor, perfMonitorTab } = useUIStore.getState();
+        if (showPerfMonitor && perfMonitorTab === 'sys') {
+          currentVramRef.current = updateVRAM();
+        }
         lastVramUpdateRef.current = time;
       }
 

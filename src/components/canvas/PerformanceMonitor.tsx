@@ -297,12 +297,13 @@ const ExpandedContent = React.memo(function ExpandedContent({ onCollapse, didDra
   const setShowNormalBuffer = useUIStore((state) => state.setShowNormalBuffer);
   const showTemporalDepthBuffer = useUIStore((state) => state.showTemporalDepthBuffer);
   const setShowTemporalDepthBuffer = useUIStore((state) => state.setShowTemporalDepthBuffer);
+  const perfMonitorTab = useUIStore((state) => state.perfMonitorTab);
+  const setPerfMonitorTab = useUIStore((state) => state.setPerfMonitorTab);
 
   const triggerContextLoss = useWebGLContextStore((state) => state.debugTriggerContextLoss);
   const contextStatus = useWebGLContextStore((state) => state.status);
 
   // -- Local state --
-  const [activeTab, setActiveTab] = useState<'perf' | 'sys' | 'shader' | 'buffers'>('perf');
   const [bufferStats, setBufferStats] = useState<BufferStats | null>(null);
   const [selectedShaderKey, setSelectedShaderKey] = useState<string | null>(null);
 
@@ -315,8 +316,8 @@ const ExpandedContent = React.memo(function ExpandedContent({ onCollapse, didDra
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'buffers') refreshBufferStats();
-  }, [activeTab, refreshBufferStats]);
+    if (perfMonitorTab === 'buffers') refreshBufferStats();
+  }, [perfMonitorTab, refreshBufferStats]);
 
   // Shader Selection
   useEffect(() => {
@@ -585,8 +586,8 @@ const ExpandedContent = React.memo(function ExpandedContent({ onCollapse, didDra
         <Tabs
           variant="minimal"
           fullWidth
-          value={activeTab}
-          onChange={(id) => setActiveTab(id as 'perf' | 'sys' | 'shader' | 'buffers')}
+          value={perfMonitorTab}
+          onChange={(id) => setPerfMonitorTab(id as 'perf' | 'sys' | 'shader' | 'buffers')}
           tabs={[
             { id: 'perf', label: 'Stats', content: PerfContent },
             { id: 'sys', label: 'System', content: SysContent },

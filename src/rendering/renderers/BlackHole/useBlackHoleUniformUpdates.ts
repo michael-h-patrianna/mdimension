@@ -23,6 +23,7 @@ import { useAnimationStore } from '@/stores/animationStore'
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore'
 import { useGeometryStore } from '@/stores/geometryStore'
 import { useLightingStore } from '@/stores/lightingStore'
+import { usePerformanceStore } from '@/stores/performanceStore'
 import { useRotationStore } from '@/stores/rotationStore'
 import { useUIStore } from '@/stores/uiStore'
 import { useFrame, useThree } from '@react-three/fiber'
@@ -108,6 +109,12 @@ export function useBlackHoleUniformUpdates({
   const prevDimensionRef = useRef<number | null>(null)
   const prevParamValuesRef = useRef<number[] | null>(null)
   const prevLightingVersionRef = useRef<number | null>(null)
+
+  // Fast mode tracking for adaptive quality during rotation/animation
+  const prevRotationVersionRef = useRef<number>(-1)
+  const fastModeRef = useRef(false)
+  const restoreQualityTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const QUALITY_RESTORE_DELAY_MS = 150
 
   // Cached linear colors (avoid sRGB->linear conversion every frame)
   const colorCacheRef = useRef(createBlackHoleColorCache())
@@ -238,6 +245,22 @@ export function useBlackHoleUniformUpdates({
       }
     }
 
+    // Configure material transparency and depth write based on opacity mode.
+    // In solid mode, we write depth to allow proper occlusion.
+    // In transparent modes, we disable depth write for correct blending.
+    const opacitySettings = useUIStore.getState().opacitySettings
+    const isTransparent = opacitySettings.mode !== 'solid'
+    if (material.transparent !== isTransparent) {
+      material.transparent = isTransparent
+      material.depthWrite = !isTransparent
+      material.needsUpdate = true
+      debugLog('useFrame: opacity mode changed', {
+        mode: opacitySettings.mode,
+        transparent: isTransparent,
+        depthWrite: !isTransparent,
+      })
+    }
+
     // CRITICAL: Update camera and resolution uniforms - required for ray reconstruction
     // Without these, raymarching fails with NaN values (division by zero)
     if (u.uCameraPosition?.value) {
@@ -258,8 +281,36 @@ export function useBlackHoleUniformUpdates({
 
     // Get current state from stores
     const geomState = useGeometryStore.getState()
-    const { rotations } = useRotationStore.getState()
+    const { rotations, version: rotationVersion } = useRotationStore.getState()
     const animState = useAnimationStore.getState()
+
+    // Adaptive quality: detect rotation changes and enable fast mode
+    const rotationsChanged = rotationVersion !== prevRotationVersionRef.current
+    if (rotationsChanged) {
+      // Rotation is happening - switch to fast mode for better interactivity
+      fastModeRef.current = true
+      prevRotationVersionRef.current = rotationVersion
+
+      // Clear any pending quality restore timeout
+      if (restoreQualityTimeoutRef.current) {
+        clearTimeout(restoreQualityTimeoutRef.current)
+        restoreQualityTimeoutRef.current = null
+      }
+    } else if (fastModeRef.current) {
+      // Rotation stopped - schedule quality restore after delay
+      if (!restoreQualityTimeoutRef.current) {
+        restoreQualityTimeoutRef.current = setTimeout(() => {
+          fastModeRef.current = false
+          restoreQualityTimeoutRef.current = null
+        }, QUALITY_RESTORE_DELAY_MS)
+      }
+    }
+
+    // Update fast mode uniform (only enable if performance setting allows it)
+    const perfState = usePerformanceStore.getState()
+    const fractalAnimLowQuality = perfState.fractalAnimationLowQuality
+    setUniform(u, 'uFastMode', fractalAnimLowQuality && fastModeRef.current)
+    setUniform(u, 'uQualityMultiplier', perfState.qualityMultiplier)
     const bhState = useExtendedObjectStore.getState().blackhole
     const appearanceState = useAppearanceStore.getState() // Global appearance
     const lightingState = useLightingStore.getState() // Global lighting

@@ -28,7 +28,7 @@
 import type { Vector3D } from '@/lib/math/types';
 import { RENDER_LAYERS } from '@/rendering/core/layers';
 import type { GroundPlaneType, WallPosition } from '@/stores/defaults/visualDefaults';
-import { Grid } from '@react-three/drei';
+import { Grid, Instance, Instances } from '@react-three/drei';
 import { useCallback, useMemo } from 'react';
 import { Color, DoubleSide, FrontSide, Object3D } from 'three';
 
@@ -255,61 +255,33 @@ function getWallConfig(wall: WallPosition, distance: number): WallConfig {
   }
 }
 
-/** Material props shared by surface components */
-interface SurfaceMaterialProps {
-  size: number;
-  color: string;
-  roughness: number;
-  metalness: number;
-  envMapIntensity: number;
-}
-
-/** Props for a single wall */
-interface WallProps extends SurfaceMaterialProps {
+/** Props for a single wall grid overlay */
+interface WallGridProps {
   wall: WallPosition;
   distance: number;
+  size: number;
   surfaceType: GroundPlaneType;
-  showGrid: boolean;
   gridColor: string;
   gridSpacing: number;
   sectionColor: string;
 }
 
 /**
- * Renders a single wall surface with optional grid overlay.
- * @param root0 - Component props
- * @param root0.wall - Wall identifier
- * @param root0.distance - Distance from origin
- * @param root0.size - Wall size
- * @param root0.color - Wall color
- * @param root0.roughness - Surface roughness
- * @param root0.metalness - Surface metalness
- * @param root0.envMapIntensity - Environment map intensity
- * @param root0.surfaceType - Ground plane surface type
- * @param root0.showGrid - Whether to show grid
- * @param root0.gridColor - Grid line color
- * @param root0.gridSpacing - Grid spacing
- * @param root0.sectionColor - Section line color
- * @returns The wall mesh with optional grid overlay
+ * Renders the grid overlay for a single wall.
+ * Currently kept as separate component since Grid is a complex shader mesh that isn't easily instanced.
  */
-function Wall({
+function WallGrid({
   wall,
   distance,
   size,
-  color,
-  roughness,
-  metalness,
-  envMapIntensity,
   surfaceType,
-  showGrid,
   gridColor,
   gridSpacing,
   sectionColor,
-}: WallProps) {
+}: WallGridProps) {
   const config = getWallConfig(wall, distance);
 
   // Callback ref to set SKYBOX layer on Grid and all its children
-  // This excludes the grid from the normal pass rendering
   const setGridLayer = useCallback((obj: Object3D | null) => {
     if (obj) {
       obj.traverse((child) => {
@@ -320,53 +292,23 @@ function Wall({
 
   return (
     <group position={config.position}>
-      {/* Wall surface - PlaneGeometry is in XY plane by default */}
-      {surfaceType === 'two-sided' ? (
-        // Use DoubleSide plane instead of boxGeometry to avoid phantom side faces
-        // in the normal buffer (boxGeometry's thin side faces were being rendered)
-        <mesh receiveShadow rotation={config.surfaceRotation}>
-          <planeGeometry args={[size, size]} />
-          <meshStandardMaterial
-            color={color}
-            side={DoubleSide}
-            roughness={roughness}
-            metalness={metalness}
-            envMapIntensity={envMapIntensity}
-          />
-        </mesh>
-      ) : (
-        <mesh receiveShadow rotation={config.surfaceRotation}>
-          <planeGeometry args={[size, size]} />
-          <meshStandardMaterial
-            color={color}
-            side={FrontSide}
-            roughness={roughness}
-            metalness={metalness}
-            envMapIntensity={envMapIntensity}
-          />
-        </mesh>
-      )}
-
-      {/* Optional grid overlay - excluded from normal pass via SKYBOX layer */}
-      {showGrid && (
-        <group ref={setGridLayer}>
-          <Grid
-            args={[size, size]}
-            rotation={config.gridRotation}
-            cellSize={gridSpacing}
-            cellThickness={0.5}
-            cellColor={gridColor}
-            sectionSize={gridSpacing * 5}
-            sectionThickness={1}
-            sectionColor={sectionColor}
-            fadeDistance={size * 0.5}
-            fadeStrength={2}
-            followCamera={false}
-            side={surfaceType === 'two-sided' ? DoubleSide : FrontSide}
-            position={config.gridOffset}
-          />
-        </group>
-      )}
+      <group ref={setGridLayer}>
+        <Grid
+          args={[size, size]}
+          rotation={config.gridRotation}
+          cellSize={gridSpacing}
+          cellThickness={0.5}
+          cellColor={gridColor}
+          sectionSize={gridSpacing * 5}
+          sectionThickness={1}
+          sectionColor={sectionColor}
+          fadeDistance={size * 0.5}
+          fadeStrength={2}
+          followCamera={false}
+          side={surfaceType === 'two-sided' ? DoubleSide : FrontSide}
+          position={config.gridOffset}
+        />
+      </group>
     </group>
   );
 }
@@ -378,23 +320,7 @@ function Wall({
  * to provide adequate visual coverage. Supports multiple wall positions
  * and two surface types.
  *
- * @param props - Component props
- * @param props.vertices
- * @param props.offset
- * @param props.opacity
- * @param props.reflectivity
- * @param props.activeWalls
- * @param props.minBoundingRadius
- * @param props.color
- * @param props.surfaceType
- * @param props.showGrid
- * @param props.gridColor
- * @param props.gridSpacing
- * @param props.roughness
- * @param props.metalness
- * @param props.envMapIntensity
- * @param props.sizeScale
- * @returns Environment walls with optional grid overlay
+ * Uses instanced rendering for the wall surfaces to reduce draw calls.
  */
 export function GroundPlane({
   vertices,
@@ -414,19 +340,16 @@ export function GroundPlane({
   sizeScale = 1,
 }: GroundPlaneProps) {
   // Calculate position and size based on vertex count (not positions)
-  // This ensures stability during rotation while still adapting to object changes
   const vertexCount = vertices?.length ?? 0;
 
   const wallDistance = useMemo(
     () => calculateWallDistance(vertices, offset, minBoundingRadius),
-    // Only recalculate when vertex count, offset, or minBoundingRadius changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [vertexCount, offset, minBoundingRadius]
   );
 
   const basePlaneSize = useMemo(
     () => calculatePlaneSize(vertices),
-    // Only recalculate when vertex count changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [vertexCount]
   );
@@ -434,7 +357,7 @@ export function GroundPlane({
   // Apply size scale to the base plane size
   const planeSize = basePlaneSize * sizeScale;
 
-  // Calculate grid section color (lighter version of grid color)
+  // Calculate grid section color
   const sectionColor = useMemo(
     () => lightenColor(gridColor, 15),
     [gridColor]
@@ -445,20 +368,48 @@ export function GroundPlane({
     return null;
   }
 
+  // Determine material side
+  const side = surfaceType === 'two-sided' ? DoubleSide : FrontSide;
+
   return (
     <>
-      {activeWalls.map((wall) => (
-        <Wall
-          key={wall}
-          wall={wall}
-          distance={wallDistance}
-          size={planeSize}
+      {/* 
+        Instanced Wall Surfaces 
+        Reduces N draw calls to 1 for the background planes
+      */}
+      <Instances range={activeWalls.length} receiveShadow>
+        <planeGeometry args={[planeSize, planeSize]} />
+        <meshStandardMaterial
           color={color}
+          side={side}
           roughness={roughness}
           metalness={metalness}
           envMapIntensity={envMapIntensity}
+        />
+
+        {activeWalls.map((wall) => {
+          const config = getWallConfig(wall, wallDistance);
+          return (
+            <Instance
+              key={wall}
+              position={config.position}
+              rotation={config.surfaceRotation}
+            />
+          );
+        })}
+      </Instances>
+
+      {/* 
+        Grid Overlays 
+        Rendered separately as Grid component handles its own complex shader
+      */}
+      {showGrid && activeWalls.map((wall) => (
+        <WallGrid
+          key={`grid-${wall}`}
+          wall={wall}
+          distance={wallDistance}
+          size={planeSize}
           surfaceType={surfaceType}
-          showGrid={showGrid}
           gridColor={gridColor}
           gridSpacing={gridSpacing}
           sectionColor={sectionColor}

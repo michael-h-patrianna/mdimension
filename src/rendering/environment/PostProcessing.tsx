@@ -90,7 +90,20 @@ function updateVolumetricResolutionCached(
     cachedMeshes.clear();
     scene.traverse((obj) => {
       if ((obj as THREE.Mesh).isMesh && obj.layers.test(volumetricLayerMask)) {
-        cachedMeshes.add(obj as THREE.Mesh);
+        // CRITICAL FIX: Only include meshes with VISIBLE materials.
+        // During shader recompilation, TrackedShaderMaterial uses a placeholder
+        // with visible=false. Including these meshes would cause:
+        // 1. volumetricMeshesRef.current.size > 0 (cache not empty)
+        // 2. useTemporalCloud = true (temporal cloud mode active)
+        // 3. Main scene excludes VOLUMETRIC layer
+        // 4. But cloud render produces no visible output (material invisible)
+        // 5. Object disappears until shader finishes compiling!
+        // By only including visible materials, we ensure temporal cloud mode
+        // is only used when the shader is actually ready to render.
+        const mat = (obj as THREE.Mesh).material as THREE.Material;
+        if (mat && mat.visible !== false) {
+          cachedMeshes.add(obj as THREE.Mesh);
+        }
       }
     });
     // Only mark valid if we found meshes - if empty, keep invalid
@@ -865,7 +878,17 @@ export const PostProcessing = memo(function PostProcessing() {
     const unsubPP = usePostProcessingStore.subscribe((s) => { ppStateRef.current = s; });
     const unsubUI = useUIStore.subscribe((s) => { uiStateRef.current = s; });
     const unsubRot = useRotationStore.subscribe((s) => { rotationStateRef.current = s; });
-    const unsubPerf = usePerformanceStore.subscribe((s) => { perfStateRef.current = s; });
+    const unsubPerf = usePerformanceStore.subscribe((s) => {
+      // CRITICAL FIX: Invalidate mesh layer caches when temporal reprojection is toggled.
+      // Without this, PostProcessing sees the new temporal state before SchroedingerMesh
+      // re-renders, causing a race condition where cloudTarget (3 attachments) is used
+      // with the old shader (2 outputs), triggering GL_INVALID_OPERATION.
+      if (s.temporalReprojectionEnabled !== perfStateRef.current.temporalReprojectionEnabled) {
+        volumetricMeshesValidRef.current = false;
+        mainObjectCountCacheRef.current.valid = false;
+      }
+      perfStateRef.current = s;
+    });
     const unsubGeo = useGeometryStore.subscribe((s) => {
       // Invalidate caches when geometry changes
       if (s.objectType !== geometryStateRef.current.objectType) {
@@ -1101,10 +1124,37 @@ export const PostProcessing = memo(function PostProcessing() {
     // ========================================
     // Check if temporal cloud accumulation should be used for volumetric rendering
     const objectType = geometryStateRef.current.objectType;
-    const useTemporalCloud = needsVolumetricSeparation({
+    const wantsTemporalCloud = needsVolumetricSeparation({
       temporalCloudAccumulation: temporalReprojectionEnabled,
       objectType,
     });
+
+    // CRITICAL FIX: Determine if we should ACTUALLY use temporal cloud mode.
+    // We need visible volumetric meshes to use temporal cloud. During shader
+    // recompilation, TrackedShaderMaterial uses a placeholder with visible=false.
+    // If we use temporal cloud mode while placeholder is active:
+    // 1. Main scene excludes VOLUMETRIC layer (mesh won't render there)
+    // 2. Cloud render produces nothing (placeholder is invisible)
+    // 3. Object disappears until shader compilation finishes!
+    //
+    // By checking for visible volumetric meshes, we only use temporal cloud
+    // when the shader is actually ready to render.
+    let useTemporalCloud = false;
+    let hasVisibleVolumetricMeshes = false;
+
+    if (wantsTemporalCloud) {
+      // First, update the volumetric mesh cache to check if any visible meshes exist
+      // Note: This rebuilds the cache if invalid, checking material.visible
+      updateVolumetricResolutionCached(
+        scene,
+        size.width, // Use screen size for initial check (will update with cloudTarget size below)
+        size.height,
+        volumetricMeshesRef.current,
+        volumetricMeshesValidRef
+      );
+      hasVisibleVolumetricMeshes = volumetricMeshesRef.current.size > 0;
+      useTemporalCloud = hasVisibleVolumetricMeshes;
+    }
 
     if (useTemporalCloud) {
       // Begin temporal cloud frame
@@ -1128,7 +1178,7 @@ export const PostProcessing = memo(function PostProcessing() {
 
         // Update uResolution on VOLUMETRIC layer meshes to quarter resolution
         // This tells the Schroedinger shader to apply the Bayer coordinate transformation
-        // P2 Optimization: Use cached mesh references
+        // P2 Optimization: Use cached mesh references (cache already built above)
         updateVolumetricResolutionCached(
           scene,
           cloudTarget.width,
@@ -1139,6 +1189,7 @@ export const PostProcessing = memo(function PostProcessing() {
 
         // Render volumetric at quarter res with Bayer jitter
         // The shader applies USE_TEMPORAL_ACCUMULATION jitter based on uBayerOffset
+        // Note: We already verified hasVisibleVolumetricMeshes above, so meshes exist
         gl.render(scene, camera);
 
         // Restore camera layers
@@ -1152,7 +1203,6 @@ export const PostProcessing = memo(function PostProcessing() {
       }
 
       // End temporal cloud frame (swap buffers, advance frame counter)
-      // Called unconditionally to keep frame counter in sync even if rendering skipped
       TemporalCloudManager.endFrame();
     }
 
@@ -1164,8 +1214,9 @@ export const PostProcessing = memo(function PostProcessing() {
       camera.layers.enable(RENDER_LAYERS.MAIN_OBJECT);
       camera.layers.enable(RENDER_LAYERS.SKYBOX);
 
-      // Exclude VOLUMETRIC layer when using temporal cloud accumulation
-      // The volumetric is rendered separately and composited via CloudTemporalPass
+      // Exclude VOLUMETRIC layer ONLY when temporal cloud is actively rendering
+      // During shader compilation (placeholder mode), useTemporalCloud is false,
+      // so the mesh can still render in main scene on whatever layer it's on
       if (useTemporalCloud) {
         camera.layers.disable(RENDER_LAYERS.VOLUMETRIC);
       }

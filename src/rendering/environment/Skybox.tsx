@@ -731,7 +731,8 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
   return (
     <mesh ref={setMeshRef} data-testid="skybox-mesh">
         {/* Use sphere geometry instead of box - no visible seams at corners */}
-        <sphereGeometry args={[200, 64, 32]} />
+        {/* Reduced segments from [64, 32] to [32, 16] for performance optimization */}
+        <sphereGeometry args={[200, 32, 16]} />
         <primitive object={material} attach="material" />
     </mesh>
   );

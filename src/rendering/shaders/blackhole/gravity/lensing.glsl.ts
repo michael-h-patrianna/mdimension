@@ -203,14 +203,4 @@ vec3 bendRay(vec3 rayDir, vec3 pos3d, float stepSize, float ndRadius) {
   // Renormalize to maintain unit direction (light travels at c)
   return normalize(newDir);
 }
-
-/**
- * Sample background with gravitational lensing.
- * Uses the bent ray direction to sample environment.
- */
-vec3 sampleBentBackground(vec3 bentDir, samplerCube envMap) {
-  // Sample environment map with bent direction
-  vec3 envColor = texture(envMap, bentDir).rgb;
-  return envColor;
-}
 `

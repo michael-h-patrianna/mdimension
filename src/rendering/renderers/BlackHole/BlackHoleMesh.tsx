@@ -149,9 +149,9 @@ const BlackHoleMesh = () => {
         vertexShader={vertexShader}
         fragmentShader={fragmentShader}
         uniforms={uniforms}
-        transparent={true}
-        depthWrite={false}
         side={THREE.BackSide}
+        /* transparent and depthWrite are set dynamically in useBlackHoleUniformUpdates
+         * based on opacity mode (solid = depthWrite:true, others = depthWrite:false) */
       />
     </mesh>
   )

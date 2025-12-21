@@ -124,6 +124,10 @@ export function useBlackHoleUniforms() {
       uTransmittanceCutoff: { value: 0.01 },
       uFarRadius: { value: 35.0 }, // Match store default (DEFAULT_BLACK_HOLE_CONFIG.farRadius)
 
+      // Performance mode - enables lower quality during rotation/animation
+      uFastMode: { value: false },
+      uQualityMultiplier: { value: 1.0 },
+
       // Lighting
       uLightingMode: { value: 0 },
       uRoughness: { value: 0.6 },

@@ -27,6 +27,7 @@ import type { LightSource } from '@/rendering/lights/types';
 import { rotationToDirection } from '@/rendering/lights/types';
 import type { ShadowQuality } from '@/rendering/shadows/types';
 import { useLightingStore } from '@/stores/lightingStore';
+import { getEffectiveShadowQuality, usePerformanceStore } from '@/stores/performanceStore';
 import { memo, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { MeshBasicMaterial, SphereGeometry, Vector3 } from 'three';
@@ -250,8 +251,17 @@ export const SceneLighting = memo(function SceneLighting() {
   const shadowMapBias = useLightingStore((state) => state.shadowMapBias);
   const shadowMapBlur = useLightingStore((state) => state.shadowMapBlur);
 
-  // Compute shadow map size and radius from settings
-  const shadowMapSize = SHADOW_MAP_SIZES[shadowQuality];
+  // Progressive Refinement: get quality multiplier to dynamically scale shadow map size
+  const qualityMultiplier = usePerformanceStore((state) => state.qualityMultiplier);
+
+  // Compute effective shadow map size based on progressive refinement
+  // When user interacts (low quality multiplier), this drops to lower resolution
+  // When idle (high quality multiplier), this restores to full resolution
+  const effectiveShadowMapSize = useMemo(() => {
+    const effectiveQuality = getEffectiveShadowQuality(shadowQuality, qualityMultiplier);
+    return SHADOW_MAP_SIZES[effectiveQuality];
+  }, [shadowQuality, qualityMultiplier]);
+
   // Use shadowMapBlur for polytopes (mesh-based objects) which supports PCF radius
   // shadowSoftness is used for SDF raymarched shadows
   const shadowRadiusValue = shadowMapBlur > 0 ? shadowMapBlur : getShadowRadius(shadowSoftness);
@@ -310,16 +320,16 @@ export const SceneLighting = memo(function SceneLighting() {
 
       {useMultiLight ? (
         // Multi-light system
-        // Key includes shadowMapSize to force remount when quality changes
-        // Three.js doesn't recreate shadow map textures on prop changes
+        // Key includes effectiveShadowMapSize to force remount when quality changes
+        // Three.js doesn't recreate shadow map textures on prop changes, so key-based remount is required
         <>
           {lights.map((light) => (
             <LightRenderer
-              key={`${light.id}-${shadowMapSize}`}
+              key={`${light.id}-${effectiveShadowMapSize}`}
               light={light}
               showIndicator={showLightGizmos}
               shadowEnabled={shadowEnabled}
-              shadowMapSize={shadowMapSize}
+              shadowMapSize={effectiveShadowMapSize}
               shadowRadius={shadowRadiusValue}
               shadowBias={shadowMapBias}
             />

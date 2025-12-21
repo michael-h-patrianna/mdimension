@@ -2,28 +2,30 @@ Important: This is a test of your autonomous capabilities and abilities to creat
 
 You cannot break anything. The project in this local folder is backed up and can be restored. You can create, modify, and delete files as necessary to complete the tasks assigned to you. You have full autonomy to make decisions and take actions to achieve the desired outcomes.
 
-Your task: improve the visualization of a black hole render. this project has a "black hole" object type that is a physically correct visualization of a kerr black hole in 3 to 11 dimensions.
-
-problem 1 - visuals: it looks super boring. the accretion disk is just a uniform surface. the jets are just clouds. it is very far away from something visually impressive like the black hole seen in the movie "Interstellar".
-
-problem 2 - performance: the code is unoptimized and slow.
+Your task: A senior developer tasked you to do a full performance review of this project. You are supposed to do in-depth performance profiling and identify bottlenecks, inefficiencies, opportunities for improvements.
 
 Worflow
-1. Investigate the rendering pipeline and understand how a scene is rendered, shaders are composed and what post processing effects we have
-2. Investigate the black hole object type and it's sdf raymarching and lensing and other effects
-3. Investigate the math of black holes on the web, and techniques to visualize them, fake nebula, plasma, particles, and other advanced techniques
-4. Design 20 features that give our black hole the "Interstellar" look
-5. Find 10 opportunities to improve performance that are pure code changes and not things like adding quality presets
-6.  Add performance improvements and options for people on weak computers or mobile phones which are pure code changes and not things like quality presets
-7.  Plan the implementation
-8.  Implement, test, refine, test&fix until green
+1. Investigate the rendering pipeline and understand how a scene is rendered. Everything that is contributing to the rendered scene must be fully understood: objects and their different shader modules and techniques, skyboxes (texture and procedural), walls, lighting, materials, post processing effects, animations, shadows, fog, ...
+2. Design a plan how to performance profile the application and rendering flow. You have already playwright at your disposal. You can add more 3rd party tools and freely add debug code and run expirements at any place. This folder is backed up and its content is solely for you to "play around with".
+3. Run your investigations, expirements, performance profiling.
+4. Create a report in docs/performance-review.md which contains:
+   1. A detailled overview of the measurements and expirements you have taken.
+   2. A breakdown of the rendering pipeline and impact of each step of feature on the GPU, CPU and memory usage - per object type (as object type use different shader techniques and mathematical models)
+   3. A list of 10 "low-hanging fruits" to improve CPU/GPU/memory usage and the perceived performance.
+   4. A list of at least 20 comprehensive improvements or refactoring,regardless of effort, that will bring measurable and visible improvements to the frame rate on most devices and browser, without reducing visual quality (but improving it is always welcome).
+
+Output
+- Full report in docs/performance-review.md
+- Report contains at least 10 "low-hanging fruits" to improve CPU/GPU/memory usage
+- Report contains at least 20 larger improvements that will bring measurable and visible improvements to the frame rate
 
 Important Reminder: This is a test of your autonomous capabilities. You are expected to take initiative and make decisions independently. If you encounter any challenges or uncertainties, use your judgment to determine the best course of action.
 
 The quality and completeness of the project in this folder will be the only criteria for success. If you deliver unfinished or less than exceptional looking work, this test and you are a failure. Be exceptional. Do not just complete the task. Ace it. There is no time or token limit. Do it right instead of fast.
 
-Notes:
-- for icons you have the whole icomoon icon library at your disposal here: src/assets/icons
+The test and you will fail if you suggest obvious improvements like quality presets. Be exceptional. Be smarter than "AI slop". Try to exceed a Senior Staff developer at Meta or Alphabet.
+
+
 
 
 

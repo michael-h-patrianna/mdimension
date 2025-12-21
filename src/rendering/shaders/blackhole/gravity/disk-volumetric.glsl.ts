@@ -16,6 +16,31 @@ export const diskVolumetricBlock = /* glsl */ `
 // VOLUMETRIC ACCRETION DISK
 //----------------------------------------------
 
+// === Named Constants ===
+// Disk geometry
+const float DISK_INNER_EDGE_SOFTNESS = 0.9;  // Fraction of innerR where fade starts
+const float DISK_OUTER_EDGE_SOFTNESS = 0.9;  // Fraction of outerR where fade starts
+const float DISK_OUTER_FADE_END = 1.2;       // Fraction of outerR where disk ends
+const float DISK_FLARE_POWER = 2.5;          // Disk flare exponent (thicker at edges)
+const float DISK_FLARE_SCALE = 1.5;          // Disk flare amplitude
+
+// Density thresholds
+const float DENSITY_CUTOFF = 0.001;          // Minimum density to process
+const float DENSITY_HIT_THRESHOLD = 0.5;     // Density for depth buffer hit
+const float DISK_BASE_INTENSITY = 20.0;      // Base density multiplier
+
+// Temperature profile
+const float TEMP_FALLOFF_EXPONENT = 0.75;    // r^(-3/4) for thin disk
+
+// Brightness constants
+const float BLACKBODY_BOOST = 2.0;           // Boost for blackbody mode
+const float PALETTE_BOOST = 2.5;             // Boost for palette modes
+const float CORE_BRIGHTNESS = 3.0;           // Inner core glow multiplier
+
+// Noise parameters
+const float DUST_LANE_FREQUENCY = 15.0;      // Radial dust lane period
+const float DUST_LANE_STRENGTH = 0.3;        // Dust lane modulation amount
+
 // === Simplex Noise 3D ===
 // standard simplex noise (more expensive but much higher quality than value noise)
 vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
@@ -158,21 +183,21 @@ float getDiskDensity(vec3 pos, float time) {
     float outerR = uHorizonRadius * uDiskOuterRadiusMul;
 
     // 1. Basic Bounds Check
-    if (r < innerR * 0.9 || r > outerR * 1.2) return 0.0;
+    if (r < innerR * DISK_INNER_EDGE_SOFTNESS || r > outerR * DISK_OUTER_FADE_END) return 0.0;
 
     // 2. Vertical Profile (Gaussian with flaring)
-    float flare = 1.0 + pow(r / outerR, 2.5) * 1.5; // Thickness increases with radius
+    float flare = 1.0 + pow(r / outerR, DISK_FLARE_POWER) * DISK_FLARE_SCALE;
     float thickness = uManifoldThickness * uHorizonRadius * 0.5 * flare;
-    
+
     // Very sharp vertical falloff for "thin disk" look at center
     float hDensity = exp(-(h * h) / (thickness * thickness));
-    
+
     // Cut off if too far vertically
-    if (hDensity < 0.001) return 0.0;
+    if (hDensity < DENSITY_CUTOFF) return 0.0;
 
     // 3. Radial Profile
     // Soft inner edge near ISCO, Soft outer edge fade
-    float rDensity = smoothstep(innerR * 0.9, innerR, r) * (1.0 - smoothstep(outerR * 0.9, outerR * 1.2, r));
+    float rDensity = smoothstep(innerR * DISK_INNER_EDGE_SOFTNESS, innerR, r) * (1.0 - smoothstep(outerR * DISK_OUTER_EDGE_SOFTNESS, outerR * DISK_OUTER_FADE_END, r));
     
     // Inverse square falloff for bulk density (denser inside)
     rDensity *= 2.0 / (pow(r/innerR, 2.0) + 0.1);
@@ -217,11 +242,11 @@ float getDiskDensity(vec3 pos, float time) {
 
     // 5. Dust Lanes (dark rings)
     // Sine wave modulation on radius
-    float dustLanes = 0.5 + 0.5 * sin(r * 15.0 / uHorizonRadius);
+    float dustLanes = 0.5 + 0.5 * sin(r * DUST_LANE_FREQUENCY / uHorizonRadius);
     dustLanes = pow(dustLanes, 0.5); // Sharpen
-    rDensity *= mix(1.0, dustLanes, 0.3 * uNoiseAmount); // Subtle banding
+    rDensity *= mix(1.0, dustLanes, DUST_LANE_STRENGTH * uNoiseAmount); // Subtle banding
 
-    return hDensity * rDensity * uManifoldIntensity * 20.0;
+    return hDensity * rDensity * uManifoldIntensity * DISK_BASE_INTENSITY;
 }
 
 /**
@@ -239,38 +264,39 @@ vec3 getDiskEmission(vec3 pos, float density, float time, vec3 rayDir, vec3 norm
     float innerR = uHorizonRadius * uDiskInnerRadiusMul;
 
     // Temperature Profile
-    // T ~ r^(-3/4) standard accretion disk
-    float tempRatio = pow(innerR / max(r, innerR), 0.75);
-    
+    // T ~ r^(-3/4) standard accretion disk (Shakura-Sunyaev thin disk)
+    float tempRatio = pow(innerR / max(r, innerR), TEMP_FALLOFF_EXPONENT);
+
     // Get base color
     vec3 color;
-    
+
     if (uColorAlgorithm == ALGO_BLACKBODY) {
         // Map ratio to temperature
         // Inner edge = uDiskTemperature (e.g. 10000K - Blue/White)
         // Outer edge = Cooler (e.g. 2000K - Red/Orange)
         float temp = uDiskTemperature * tempRatio;
         color = blackbodyColor(temp);
-        
+
         // Boost intensity heavily for the "core" look
-        color *= 2.0; 
+        color *= BLACKBODY_BOOST;
     } else {
         // Use palette based on tempRatio (1.0 = hot/inner, 0.0 = cold/outer)
         // Non-linear mapping to push "cold" colors to the outer edge
         float t = pow(max(0.0, 1.0 - tempRatio), 0.8);
         color = getAlgorithmColor(t, pos, normal);
-        
+
         // Boost contrast of palette colors to avoid pastel/cream look
         // This makes darks darker and brights brighter
         color = pow(color, vec3(1.5));
-        
+
         // Add "thermal core" - lighter/whiter at high temp regardless of palette
         // This simulates incandescence at the inner edge
         vec3 coreColor = vec3(1.0, 0.98, 0.9);
         float coreMix = smoothstep(0.7, 1.0, tempRatio);
-        color = mix(color, coreColor * 3.0, coreMix * 0.6); 
-        
-        color *= 2.5 * tempRatio;
+        color = mix(color, coreColor * CORE_BRIGHTNESS, coreMix * 0.6);
+
+        // Apply temperature-based brightness (inner regions brighter)
+        color *= PALETTE_BOOST * tempRatio;
     }
 
     // Gravitational Redshift

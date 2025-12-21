@@ -207,7 +207,9 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
   float farRadius = max(uFarRadius * uHorizonRadius, 500.0) * invScale;
   vec2 intersect = intersectSphere(rayOrigin, rayDir, farRadius);
 
-  if (intersect.x < 0.0 && intersect.y < 0.0 || intersect.y < 0.0) {
+  // Early exit if entire bounding sphere is behind the camera
+  // intersect.y is the far intersection - if it's negative, the sphere is entirely behind us
+  if (intersect.y < 0.0) {
     RaymarchResult res;
     res.color = vec4(sampleBackground(rayDir), 1.0);
     res.weightedCenter = rayOrigin + rayDir * 1000.0;

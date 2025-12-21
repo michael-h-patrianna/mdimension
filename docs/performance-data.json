@@ -1,0 +1,62 @@
+[
+  {
+    "scenario": "BlackHole",
+    "avgFps": 0,
+    "avgCpuTimeMs": 2.26,
+    "avgDrawCalls": 3,
+    "avgTriangles": 14,
+    "vramGeom": 840,
+    "vramTex": 0,
+    "samples": 1
+  },
+  {
+    "scenario": "Mandelbulb",
+    "avgFps": 25.9,
+    "avgCpuTimeMs": 0.10499999999999998,
+    "avgDrawCalls": 5,
+    "avgTriangles": 3994,
+    "vramGeom": 93288,
+    "vramTex": 0,
+    "samples": 10
+  },
+  {
+    "scenario": "Julia",
+    "avgFps": 22.5,
+    "avgCpuTimeMs": 0.101,
+    "avgDrawCalls": 5,
+    "avgTriangles": 3994,
+    "vramGeom": 93288,
+    "vramTex": 0,
+    "samples": 10
+  },
+  {
+    "scenario": "Hypercube",
+    "avgFps": 43.6,
+    "avgCpuTimeMs": 0.10600000000000001,
+    "avgDrawCalls": 6,
+    "avgTriangles": 4030,
+    "vramGeom": 109728,
+    "vramTex": 0,
+    "samples": 10
+  },
+  {
+    "scenario": "Simplex",
+    "avgFps": 42.8,
+    "avgCpuTimeMs": 0.11800000000000002,
+    "avgDrawCalls": 6,
+    "avgTriangles": 3992,
+    "vramGeom": 96048,
+    "vramTex": 0,
+    "samples": 10
+  },
+  {
+    "scenario": "Schroedinger",
+    "avgFps": 45,
+    "avgCpuTimeMs": 0.11,
+    "avgDrawCalls": 4,
+    "avgTriangles": 3982,
+    "vramGeom": 96048,
+    "vramTex": 0,
+    "samples": 1
+  }
+]
