@@ -47,13 +47,26 @@ float photonShellMask(float ndRadius) {
  * Calculate photon shell emission.
  * Bright ring at the photon sphere.
  */
-vec3 photonShellEmission(float ndRadius) {
+vec3 photonShellEmission(float ndRadius, vec3 pos) {
   float mask = photonShellMask(ndRadius);
 
   if (mask < 0.001) return vec3(0.0);
 
+  // Starburst interference pattern
+  // High frequency angular modulation
+  float angle = atan(pos.z, pos.x);
+  
+  // Use a combination of sines for a "caustic" look
+  float starburst = 0.5 + 0.5 * sin(angle * 40.0 + uTime * 0.5) * sin(angle * 13.0 - uTime * 0.2);
+  starburst = pow(starburst, 2.0); // Sharpen spikes
+  
+  float intensityMod = 0.7 + 0.3 * starburst;
+  
+  // Pulse
+  float pulse = 1.0 + 0.1 * sin(uTime * 2.0);
+
   // Shell color with intensity
-  vec3 emission = uShellGlowColor * uShellGlowStrength * mask;
+  vec3 emission = uShellGlowColor * uShellGlowStrength * mask * pulse * intensityMod;
 
   return emission;
 }

@@ -4,7 +4,9 @@ You cannot break anything. The project in this local folder is backed up and can
 
 Your task: improve the visualization of a black hole render. this project has a "black hole" object type that is a physically correct visualization of a kerr black hole in 3 to 11 dimensions.
 
-problem: it looks super boring. the accretion disk is just a uniform surface. the jets are just clouds. it is very far away from something visually impressive like the black hole seen in the movie "Interstellar"
+problem 1 - visuals: it looks super boring. the accretion disk is just a uniform surface. the jets are just clouds. it is very far away from something visually impressive like the black hole seen in the movie "Interstellar".
+
+problem 2 - performance: the code is unoptimized and slow.
 
 Worflow
 1. Investigate the rendering pipeline and understand how a scene is rendered, shaders are composed and what post processing effects we have

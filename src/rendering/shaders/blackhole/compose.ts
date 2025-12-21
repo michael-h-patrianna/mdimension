@@ -13,6 +13,7 @@ import { precisionBlock } from '../shared/core/precision.glsl'
 import { uniformsBlock } from '../shared/core/uniforms.glsl'
 import { temporalBlock } from '../shared/features/temporal.glsl'
 import { ShaderConfig } from '../shared/types'
+import { GLSL_ALL_PALETTE_FUNCTIONS } from '../palette'
 
 import { dopplerBlock } from './gravity/doppler.glsl'
 import { horizonBlock } from './gravity/horizon.glsl'
@@ -22,6 +23,8 @@ import { shellBlock } from './gravity/shell.glsl'
 import { jetsBlock } from './effects/jets.glsl'
 import { motionBlurBlock } from './effects/motion-blur.glsl'
 import { diskSdfBlock } from './gravity/disk-sdf.glsl'
+import { diskVolumetricBlock } from './gravity/disk-volumetric.glsl'
+import { colorsBlock } from './gravity/colors.glsl'
 import { mainBlock } from './main.glsl'
 import { blackHoleUniformsBlock } from './uniforms.glsl'
 
@@ -38,6 +41,8 @@ export interface BlackHoleShaderConfig extends ShaderConfig {
   motionBlur?: boolean
   /** Enable slice animation for higher dimensions */
   sliceAnimation?: boolean
+  /** Enable volumetric disk rendering */
+  volumetricDisk?: boolean
 }
 
 /**
@@ -59,6 +64,7 @@ export function composeBlackHoleShader(config: BlackHoleShaderConfig) {
     fog: enableFog,
     motionBlur: enableMotionBlur = false,
     sliceAnimation: enableSliceAnimation = false,
+    volumetricDisk: enableVolumetricDisk = true, // Default to true for now
   } = config
 
   const defines: string[] = []
@@ -107,9 +113,14 @@ export function composeBlackHoleShader(config: BlackHoleShaderConfig) {
     features.push('Motion Blur')
   }
 
-  // Use SDF Disk Raymarching (Einstein Ring) - now the only mode
-  defines.push('#define USE_SDF_DISK')
-  features.push('SDF Disk Raymarching (Einstein Ring)')
+  // Volumetric Disk vs SDF Disk
+  if (enableVolumetricDisk && !overrides.includes('Volumetric Disk')) {
+    defines.push('#define USE_VOLUMETRIC_DISK')
+    features.push('Volumetric Accretion Disk')
+  } else {
+    defines.push('#define USE_SDF_DISK')
+    features.push('SDF Disk Raymarching (Einstein Ring)')
+  }
 
   // Slice animation (for higher dimensions)
   const useSliceAnimation =
@@ -148,6 +159,9 @@ uniform float uSliceAmplitude;
     { name: 'Slice Animation Uniforms', content: sliceAnimationUniforms, condition: useSliceAnimation },
     { name: 'Black Hole Uniforms', content: blackHoleUniformsBlock },
     { name: 'Environment Map', content: 'uniform samplerCube envMap;', condition: enableEnvMap },
+    
+    // Core Libraries
+    { name: 'Palette Lib', content: GLSL_ALL_PALETTE_FUNCTIONS },
 
     // Gravity modules
     { name: 'Lensing', content: lensingBlock },
@@ -155,7 +169,11 @@ uniform float uSliceAmplitude;
     { name: 'Photon Shell', content: shellBlock },
     { name: 'Manifold', content: manifoldBlock },
     { name: 'Doppler', content: dopplerBlock },
-    { name: 'Disk SDF', content: diskSdfBlock },
+    { name: 'Colors', content: colorsBlock },
+    
+    // Choose disk implementation
+    { name: 'Disk Volumetric', content: diskVolumetricBlock, condition: enableVolumetricDisk },
+    { name: 'Disk SDF', content: diskSdfBlock, condition: !enableVolumetricDisk },
 
     // Effects
     { name: 'Jets', content: jetsBlock, condition: enableJets },

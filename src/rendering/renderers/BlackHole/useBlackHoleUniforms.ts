@@ -59,6 +59,23 @@ export function useBlackHoleUniforms() {
       uPaletteMode: { value: 0 },
       uBloomBoost: { value: 1.5 },
 
+      // Color Algorithm System
+      uColorAlgorithm: { value: 0 },
+      uCosineA: { value: new THREE.Vector3(0.5, 0.5, 0.5) },
+      uCosineB: { value: new THREE.Vector3(0.5, 0.5, 0.5) },
+      uCosineC: { value: new THREE.Vector3(1.0, 1.0, 1.0) },
+      uCosineD: { value: new THREE.Vector3(0.0, 0.33, 0.67) },
+      uLchLightness: { value: 0.5 },
+      uLchChroma: { value: 0.5 },
+
+      // Opacity Mode System
+      uOpacityMode: { value: 0 },
+      uSimpleAlpha: { value: 1.0 },
+      uLayerCount: { value: 2 },
+      uLayerOpacity: { value: 0.5 },
+      uVolumetricDensity: { value: 1.0 },
+      uSampleQuality: { value: 1 },
+
       // Lensing
       uDimensionEmphasis: { value: 0.8 },
       uDistanceFalloff: { value: 1.6 },

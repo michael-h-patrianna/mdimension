@@ -190,49 +190,41 @@ void accumulateDiskHit(
   accum.normalSum += normal * weight;
 }
 
+// Pseudo-random function for dithering
+float random(vec2 st) {
+    return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
+}
+
 /**
- * Main raymarching function for SDF disk mode (Einstein Ring).
- *
- * Uses plane crossing detection for Einstein ring effect:
- * - Rays bend around black hole via gravitational lensing
- * - Each time the ray crosses y=0 (disk plane), we check if it's in disk bounds
- * - Multiple crossings accumulate color, naturally creating Einstein rings
- *
- * Photon shell and jets still use volumetric sampling for glow effects.
+ * Main raymarching function.
  */
 RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
   AccumulationState accum = initAccumulation();
 
   // Bounding sphere skip
-  // CRITICAL: Use minimum radius of 500.0 to ensure all rays hit the sphere regardless
-  // of uniform sync timing. Without this, first-frame uniform issues cause rays to
-  // miss the sphere and use unbent direction, showing undistorted skybox at edges.
-  float farRadius = max(uFarRadius * uHorizonRadius, 500.0);
+  float invScale = 1.0 / max(uScale, 0.001);
+  float farRadius = max(uFarRadius * uHorizonRadius, 500.0) * invScale;
   vec2 intersect = intersectSphere(rayOrigin, rayDir, farRadius);
-
-  // DEBUG: Visualize rays that take early-out path (uncomment to debug)
-  // if (intersect.x < 0.0 && intersect.y < 0.0 || intersect.y < 0.0) {
-  //   RaymarchResult res;
-  //   res.color = vec4(1.0, 0.0, 0.0, 1.0); // Bright red = early-out path
-  //   res.weightedCenter = rayOrigin + rayDir * 1000.0;
-  //   res.averageNormal = -rayDir;
-  //   res.firstHitPos = rayOrigin + rayDir * 1000.0;
-  //   res.hasHit = 0.0;
-  //   return res;
-  // }
 
   if (intersect.x < 0.0 && intersect.y < 0.0 || intersect.y < 0.0) {
     RaymarchResult res;
     res.color = vec4(sampleBackground(rayDir), 1.0);
     res.weightedCenter = rayOrigin + rayDir * 1000.0;
     res.averageNormal = -rayDir;
-    res.firstHitPos = rayOrigin + rayDir * 1000.0;  // Far away
-    res.hasHit = 0.0;  // No hit, just background
+    res.firstHitPos = rayOrigin + rayDir * 1000.0;
+    res.hasHit = 0.0;
     return res;
   }
 
   float tNear = max(0.0, intersect.x);
   float tFar = intersect.y;
+
+  // Dithering to hide banding
+  float dither = random(gl_FragCoord.xy + fract(time));
+  // Apply dithering to start position (jitter along ray)
+  // Only small jitter to avoid visual noise
+  float startOffset = dither * 0.1; 
+  tNear += startOffset;
 
   vec3 pos = rayOrigin + rayDir * tNear;
   vec3 dir = rayDir;
@@ -241,13 +233,9 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
   float totalDist = tNear;
   float maxDist = tFar;
 
-  // CRITICAL: Pre-bend the ray direction based on entry position.
-  // For rays that barely graze the bounding sphere (tNear ≈ tFar),
-  // the loop might not run any iterations, leaving bentDirection = rayDir.
-  // This causes undistorted skybox at the edges of the lensing region.
-  // Apply an initial bend based on the entry position's distance from center.
+  // Pre-bend ray
   float entryNdRadius = ndDistance(pos);
-  dir = bendRay(dir, pos, 0.1, entryNdRadius);  // Initial bend
+  dir = bendRay(dir, pos, 0.1, entryNdRadius);
   vec3 bentDirection = dir;
 
   bool hitHorizon = false;
@@ -268,38 +256,100 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
 
     // Adaptive step size
     float stepSize = adaptiveStepSize(ndRadius);
+    
+    // In volumetric mode, we might want smaller steps inside the disk
+    #ifdef USE_VOLUMETRIC_DISK
+    float diskH = abs(pos.y);
+    float diskR = length(pos.xz);
+    // Simple check if we are near the disk plane
+    if (diskH < uManifoldThickness * uHorizonRadius * 2.0 && 
+        diskR > uHorizonRadius * uDiskInnerRadiusMul * 0.8 && 
+        diskR < uHorizonRadius * uDiskOuterRadiusMul * 1.2) {
+       stepSize = min(stepSize, 0.05 * uHorizonRadius); // Force smaller steps in disk
+    }
+    #endif
 
-    // Apply gravitational lensing using "magic potential" approach
-    // This uses a purely radial force that preserves the orbital plane
+    // Apply lensing
     dir = bendRay(dir, pos, stepSize, ndRadius);
     bentDirection = dir;
 
     // Sample photon shell (volumetric glow effect)
-    vec3 shellColor = photonShellEmission(ndRadius);
+    vec3 shellColor = photonShellEmission(ndRadius, pos);
     if (length(shellColor) > 0.001) {
       accum.color += shellColor * accum.transmittance * stepSize * 2.0;
     }
 
-    // Store previous position before advancing
     prevPos = pos;
-
-    // Advance ray
     pos += dir * stepSize;
     totalDist += stepSize;
 
-    // === DISK PLANE CROSSING DETECTION ===
+    // === ACCRETION DISK ===
+    
+    #ifdef USE_VOLUMETRIC_DISK
+    // Volumetric sampling
+    float density = getDiskDensity(pos, time);
+    if (density > 0.001) {
+        // Calculate normal if needed for coloring or if likely needed for depth
+        // Optimization: reuse normal for both
+        vec3 stepNormal = vec3(0.0, 1.0, 0.0);
+        bool computedNormal = false;
+
+        if (uColorAlgorithm == ALGO_NORMAL) {
+             stepNormal = computeDiskNormal(pos, dir);
+             computedNormal = true;
+        }
+
+        // Calculate emission with Doppler support (pass dir as viewDir)
+        vec3 emission = getDiskEmission(pos, density, time, dir, stepNormal);
+        
+        // Beer-Lambert law integration
+        // transmittance *= exp(-density * stepSize * absorption_coeff)
+        // For emission-absorption:
+        // L_out = L_in * T + L_emit * (1-T)
+        // Here we approximate with additive blending damped by transmittance
+        
+        float absorption = density * uAbsorption * 2.0;
+        float stepTransmittance = exp(-absorption * stepSize);
+        
+        // Emission contribution
+        // Physically: emission * (1 - stepTransmittance) / absorption
+        // Simply: emission * stepSize * transmittance
+        
+        vec3 stepEmission = emission * stepSize * accum.transmittance;
+        accum.color += stepEmission;
+        accum.transmittance *= stepTransmittance;
+        
+        // Update depth/normal info if this is the first significant hit
+        if (accum.hasFirstHit < 0.5 && density > 0.5) {
+             accum.firstHitPos = pos;
+             accum.hasFirstHit = 1.0;
+             if (!computedNormal) {
+                 stepNormal = computeDiskNormal(pos, dir); // Gradient-based normal
+             }
+             accum.normalSum = stepNormal;
+        }
+        
+        // Accumulate weighted position
+        float weight = (1.0 - stepTransmittance) * accum.transmittance;
+        accum.weightedPosSum += pos * weight;
+        accum.totalWeight += weight;
+    }
+    #endif
+
+    #ifdef USE_SDF_DISK
+    // Thin disk plane crossing (Einstein Ring)
     if (diskCrossings < MAX_DISK_CROSSINGS) {
       vec3 crossingPos;
       if (detectDiskCrossing(prevPos, pos, crossingPos)) {
-        // Shade this disk hit
         vec3 hitColor = shadeDiskHit(crossingPos, dir, diskCrossings, time);
         vec3 diskNormal = computeDiskNormal(crossingPos, dir);
         accumulateDiskHit(accum, hitColor, crossingPos, diskNormal);
         diskCrossings++;
       }
     }
+    #endif
 
-    // Sample polar jets (volumetric, if enabled)
+    // Sample polar jets
     #ifdef USE_JETS
     float jetDens = jetDensity(pos, time);
     if (jetDens > 0.001) {
@@ -310,7 +360,7 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
     }
     #endif
 
-    // Edge glow near horizon
+    // Edge glow
     vec3 edgeGlow = computeEdgeGlow(ndRadius, accum.color);
     accum.color += edgeGlow * accum.transmittance * stepSize * 0.1;
   }
@@ -318,14 +368,10 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
   // Handle horizon or background
   if (hitHorizon) {
     if (accum.hasFirstHit < 0.5) {
-      // Ray went straight into horizon without hitting disk
-      // This should be pure black (no light escapes)
       accum.firstHitPos = pos;
       accum.hasFirstHit = 1.0;
       accum.color = vec3(0.0);
     }
-    // If disk was hit (hasFirstHit >= 0.5), keep the accumulated disk color
-    // The horizon absorbs remaining light but disk emission is already captured
     accum.transmittance = 0.0;
   } else if (accum.transmittance > 0.01) {
     vec3 bgColor = sampleBackground(bentDirection);
@@ -339,11 +385,14 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
 }
 
 void main() {
-  // Transform rays into model space (like Schrödinger)
-  // This allows mesh scaling to work properly for raymarched objects
-  vec3 rayOrigin = (uInverseModelMatrix * vec4(uCameraPosition, 1.0)).xyz;
-  vec3 worldRayDir = normalize(vPosition - uCameraPosition);
-  vec3 rayDir = normalize((uInverseModelMatrix * vec4(worldRayDir, 0.0)).xyz);
+  // Standard world-space ray setup
+  vec3 rayDir = normalize(vPosition - uCameraPosition);
+
+  // Scale ray origin to make black hole appear smaller
+  // Dividing by scale moves camera "further away" in black hole space
+  // e.g., scale=0.25 means camera is 4x further, so object appears 1/4 size
+  float invScale = 1.0 / max(uScale, 0.001);
+  vec3 rayOrigin = uCameraPosition * invScale;
 
   // DEBUG: Visualize ray direction to verify rays are set up correctly
   // Uncomment the following block to debug:
@@ -372,11 +421,11 @@ void main() {
 
   // Output depth buffer (same approach as Mandelbulb)
   // For hits: compute clip-space depth from first hit position
-  // Transform model-space positions back to world space using model matrix
+  // Scale positions back from "black hole space" to world space
   // For background only: use far plane (1.0)
   if (result.hasHit > 0.5) {
-    vec4 worldHitPos = uModelMatrix * vec4(result.firstHitPos, 1.0);
-    vec4 clipPos = uProjectionMatrix * uViewMatrix * worldHitPos;
+    vec3 worldHitPos = result.firstHitPos * uScale;
+    vec4 clipPos = uProjectionMatrix * uViewMatrix * vec4(worldHitPos, 1.0);
     float clipW = abs(clipPos.w) < 0.0001 ? 0.0001 : clipPos.w;
     gl_FragDepth = clamp((clipPos.z / clipW) * 0.5 + 0.5, 0.0, 1.0);
   } else {
@@ -387,10 +436,9 @@ void main() {
   // Output world position for temporal reprojection (only when gPosition is declared)
   #ifdef USE_TEMPORAL_ACCUMULATION
     // Use density-weighted center position for stable reprojection
-    // Transform model-space positions back to world space
+    // Scale back to world space
     // This prevents smearing artifacts during camera rotation
-    vec4 worldCenter = uModelMatrix * vec4(result.weightedCenter, 1.0);
-    gPosition = vec4(worldCenter.xyz, result.color.a);
+    gPosition = vec4(result.weightedCenter * uScale, result.color.a);
   #endif
 }
 `

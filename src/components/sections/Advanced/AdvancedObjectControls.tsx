@@ -527,18 +527,46 @@ const SchroedingerAdvanced: React.FC = () => {
 const BlackHoleAdvanced: React.FC = () => {
     const extendedObjectSelector = useShallow((state: ExtendedObjectState) => ({
         config: state.blackhole,
+        // Visuals
+        setGravityStrength: state.setBlackHoleGravityStrength,
+        setManifoldIntensity: state.setBlackHoleManifoldIntensity,
+        setBloomBoost: state.setBlackHoleBloomBoost,
+        setDiskTemperature: state.setBlackHoleDiskTemperature,
         // Lensing
         setDimensionEmphasis: state.setBlackHoleDimensionEmphasis,
         setDistanceFalloff: state.setBlackHoleDistanceFalloff,
         setBendScale: state.setBlackHoleBendScale,
         setBendMaxPerStep: state.setBlackHoleBendMaxPerStep,
         setRayBendingMode: state.setBlackHoleRayBendingMode,
-        // Manifold
+        setLensingClamp: state.setBlackHoleLensingClamp,
+        setEpsilonMul: state.setBlackHoleEpsilonMul,
+        // Manifold Visuals
         setDensityFalloff: state.setBlackHoleDensityFalloff,
-        setDiskInnerRadiusMul: state.setBlackHoleDiskInnerRadiusMul,
-        setDiskOuterRadiusMul: state.setBlackHoleDiskOuterRadiusMul,
         setNoiseScale: state.setBlackHoleNoiseScale,
         setNoiseAmount: state.setBlackHoleNoiseAmount,
+        setSwirlAmount: state.setBlackHoleSwirlAmount,
+        // Shell
+        setPhotonShellWidth: state.setBlackHolePhotonShellWidth,
+        setShellGlowStrength: state.setBlackHoleShellGlowStrength,
+        setShellGlowColor: state.setBlackHoleShellGlowColor,
+        setShellContrastBoost: state.setBlackHoleShellContrastBoost,
+        // Edge Glow
+        setEdgeGlowEnabled: state.setBlackHoleEdgeGlowEnabled,
+        setEdgeGlowWidth: state.setBlackHoleEdgeGlowWidth,
+        setEdgeGlowIntensity: state.setBlackHoleEdgeGlowIntensity,
+        setEdgeGlowColor: state.setBlackHoleEdgeGlowColor,
+        // Doppler
+        setDopplerEnabled: state.setBlackHoleDopplerEnabled,
+        setDopplerStrength: state.setBlackHoleDopplerStrength,
+        setDopplerHueShift: state.setBlackHoleDopplerHueShift,
+        // Jets
+        setJetsEnabled: state.setBlackHoleJetsEnabled,
+        setJetsHeight: state.setBlackHoleJetsHeight,
+        setJetsWidth: state.setBlackHoleJetsWidth,
+        setJetsIntensity: state.setBlackHoleJetsIntensity,
+        setJetsColor: state.setBlackHoleJetsColor,
+        setJetsFalloff: state.setBlackHoleJetsFalloff,
+        setJetsNoiseAmount: state.setBlackHoleJetsNoiseAmount,
         // Rendering
         setMaxSteps: state.setBlackHoleMaxSteps,
         setStepBase: state.setBlackHoleStepBase,
@@ -550,23 +578,42 @@ const BlackHoleAdvanced: React.FC = () => {
         // Deferred lensing
         setDeferredLensingEnabled: state.setBlackHoleDeferredLensingEnabled,
         setDeferredLensingStrength: state.setBlackHoleDeferredLensingStrength,
-        // Slice animation
-        setSliceAnimationEnabled: state.setBlackHoleSliceAnimationEnabled,
-        setSliceSpeed: state.setBlackHoleSliceSpeed,
-        setSliceAmplitude: state.setBlackHoleSliceAmplitude,
     }));
     const {
         config,
+        setGravityStrength,
+        setManifoldIntensity,
+        setBloomBoost,
+        setDiskTemperature,
         setDimensionEmphasis,
         setDistanceFalloff,
         setBendScale,
         setBendMaxPerStep,
         setRayBendingMode,
+        setLensingClamp,
+        setEpsilonMul,
         setDensityFalloff,
-        setDiskInnerRadiusMul,
-        setDiskOuterRadiusMul,
         setNoiseScale,
         setNoiseAmount,
+        setSwirlAmount,
+        setPhotonShellWidth,
+        setShellGlowStrength,
+        setShellGlowColor,
+        setShellContrastBoost,
+        setEdgeGlowEnabled,
+        setEdgeGlowWidth,
+        setEdgeGlowIntensity,
+        setEdgeGlowColor,
+        setDopplerEnabled,
+        setDopplerStrength,
+        setDopplerHueShift,
+        setJetsEnabled,
+        setJetsHeight,
+        setJetsWidth,
+        setJetsIntensity,
+        setJetsColor,
+        setJetsFalloff,
+        setJetsNoiseAmount,
         setMaxSteps,
         setStepBase,
         setEnableAbsorption,
@@ -578,78 +625,114 @@ const BlackHoleAdvanced: React.FC = () => {
     } = useExtendedObjectStore(extendedObjectSelector);
 
     return (
-        <div className="space-y-4">
-            {/* Lensing Parameters */}
-            <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
-                <label className="text-xs text-text-secondary font-semibold">Gravitational Lensing</label>
+        <div className="space-y-6">
+            {/* Gravity & Lensing */}
+            <div className="space-y-3 pt-2">
+                <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider">Gravity & Lensing</label>
+                
                 <Slider
-                    label="Dimension Emphasis"
+                    label="Gravity Strength"
                     min={0}
-                    max={2}
+                    max={10.0}
                     step={0.1}
-                    value={config.dimensionEmphasis}
-                    onChange={setDimensionEmphasis}
+                    value={config.gravityStrength}
+                    onChange={setGravityStrength}
                     showValue
-                    data-testid="blackhole-dimension-emphasis"
+                    data-testid="blackhole-gravity-strength"
                 />
+                
                 <Slider
-                    label="Distance Falloff"
-                    min={0.5}
-                    max={4}
-                    step={0.1}
-                    value={config.distanceFalloff}
-                    onChange={setDistanceFalloff}
-                    showValue
-                    data-testid="blackhole-distance-falloff"
-                />
-                <Slider
-                    label="Bend Scale"
+                    label="Bloom Boost"
                     min={0}
-                    max={3}
+                    max={5.0}
                     step={0.1}
-                    value={config.bendScale}
-                    onChange={setBendScale}
+                    value={config.bloomBoost}
+                    onChange={setBloomBoost}
                     showValue
-                    data-testid="blackhole-bend-scale"
+                    data-testid="blackhole-bloom-boost"
                 />
-                <Slider
-                    label="Bend Max/Step"
-                    min={0.05}
-                    max={0.8}
-                    step={0.05}
-                    value={config.bendMaxPerStep}
-                    onChange={setBendMaxPerStep}
-                    showValue
-                    data-testid="blackhole-bend-max"
-                />
-                <div className="space-y-1">
-                    <label className="text-xs text-text-tertiary">Ray Bending Mode</label>
-                    <div className="relative">
-                        <select
-                            className="w-full bg-surface-tertiary border border-white/10 rounded px-2 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent appearance-none cursor-pointer"
-                            value={config.rayBendingMode}
-                            onChange={(e) => setRayBendingMode(e.target.value as BlackHoleRayBendingMode)}
-                            aria-label="Ray bending mode selection"
-                            data-testid="blackhole-ray-bending-mode"
-                        >
-                            <option value="spiral">Spiral (Inward)</option>
-                            <option value="orbital">Orbital (Einstein Ring)</option>
-                        </select>
-                        <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-text-tertiary">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                        </div>
+
+                <div className="p-3 bg-black/20 rounded border border-white/5 space-y-3">
+                    <label className="text-xs text-text-tertiary font-medium">Advanced Lensing</label>
+                    <Slider
+                        label="Bend Scale"
+                        min={0}
+                        max={3}
+                        step={0.1}
+                        value={config.bendScale}
+                        onChange={setBendScale}
+                        showValue
+                    />
+                    <Slider
+                        label="Dist. Falloff"
+                        min={0.5}
+                        max={4}
+                        step={0.1}
+                        value={config.distanceFalloff}
+                        onChange={setDistanceFalloff}
+                        showValue
+                    />
+                    <Slider
+                        label="Dim. Emphasis"
+                        min={0}
+                        max={2}
+                        step={0.1}
+                        value={config.dimensionEmphasis}
+                        onChange={setDimensionEmphasis}
+                        showValue
+                    />
+                    <div className="flex gap-2">
+                         <div className="flex-1">
+                            <label className="text-xs text-text-tertiary">Mode</label>
+                            <select
+                                className="w-full bg-surface-tertiary border border-white/10 rounded px-2 py-1 text-xs text-text-primary mt-1 focus:outline-none focus:border-accent"
+                                value={config.rayBendingMode}
+                                onChange={(e) => setRayBendingMode(e.target.value as BlackHoleRayBendingMode)}
+                            >
+                                <option value="spiral">Spiral</option>
+                                <option value="orbital">Orbital</option>
+                            </select>
+                         </div>
+                         <div className="flex-1">
+                             <label className="text-xs text-text-tertiary">Stability</label>
+                             <input
+                                type="number"
+                                step="0.001"
+                                min="0.0001"
+                                max="0.5"
+                                value={config.epsilonMul}
+                                onChange={(e) => setEpsilonMul(parseFloat(e.target.value))}
+                                className="w-full bg-surface-tertiary border border-white/10 rounded px-2 py-1 text-xs text-text-primary mt-1 focus:outline-none focus:border-accent"
+                             />
+                         </div>
                     </div>
-                    <p className="text-xs text-text-tertiary">
-                        Spiral: Dramatic inward pull. Orbital: Physical Einstein-ring arcs.
-                    </p>
                 </div>
             </div>
 
-            {/* Manifold Parameters */}
-            <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
-                <label className="text-xs text-text-secondary font-semibold">Accretion Manifold</label>
+            {/* Accretion Visuals */}
+            <div className="space-y-3 pt-2 border-t border-white/5">
+                <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider">Accretion Disk</label>
+                
+                <Slider
+                    label="Intensity"
+                    min={0}
+                    max={10.0}
+                    step={0.1}
+                    value={config.manifoldIntensity}
+                    onChange={setManifoldIntensity}
+                    showValue
+                />
+                
+                <Slider
+                    label="Temperature (K)"
+                    min={1000}
+                    max={40000}
+                    step={100}
+                    value={config.diskTemperature}
+                    onChange={setDiskTemperature}
+                    showValue
+                />
+
                 <Slider
                     label="Density Falloff"
                     min={1}
@@ -658,48 +741,220 @@ const BlackHoleAdvanced: React.FC = () => {
                     value={config.densityFalloff}
                     onChange={setDensityFalloff}
                     showValue
-                    data-testid="blackhole-density-falloff"
                 />
+                
+                <div className="p-3 bg-black/20 rounded border border-white/5 space-y-3">
+                    <label className="text-xs text-text-tertiary font-medium">Turbulence</label>
+                    <Slider
+                        label="Noise Amount"
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        value={config.noiseAmount}
+                        onChange={setNoiseAmount}
+                        showValue
+                    />
+                    <Slider
+                        label="Noise Scale"
+                        min={0.1}
+                        max={5}
+                        step={0.1}
+                        value={config.noiseScale}
+                        onChange={setNoiseScale}
+                        showValue
+                    />
+                    <Slider
+                        label="Swirl"
+                        min={0}
+                        max={2}
+                        step={0.1}
+                        value={config.swirlAmount}
+                        onChange={setSwirlAmount}
+                        showValue
+                    />
+                </div>
+            </div>
+
+            {/* Photon Shell */}
+            <div className="space-y-3 pt-2 border-t border-white/5">
+                <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider">Photon Shell</label>
+                
                 <Slider
-                    label="Inner Radius"
-                    min={1}
-                    max={5}
-                    step={0.1}
-                    value={config.diskInnerRadiusMul}
-                    onChange={setDiskInnerRadiusMul}
-                    showValue
-                    data-testid="blackhole-inner-radius"
-                />
-                <Slider
-                    label="Outer Radius"
-                    min={3}
-                    max={30}
-                    step={1}
-                    value={config.diskOuterRadiusMul}
-                    onChange={setDiskOuterRadiusMul}
-                    showValue
-                    data-testid="blackhole-outer-radius"
-                />
-                <Slider
-                    label="Noise Scale"
-                    min={0.1}
-                    max={5}
-                    step={0.1}
-                    value={config.noiseScale}
-                    onChange={setNoiseScale}
-                    showValue
-                    data-testid="blackhole-noise-scale"
-                />
-                <Slider
-                    label="Noise Amount"
+                    label="Width"
                     min={0}
-                    max={1}
-                    step={0.05}
-                    value={config.noiseAmount}
-                    onChange={setNoiseAmount}
+                    max={0.3}
+                    step={0.01}
+                    value={config.photonShellWidth}
+                    onChange={setPhotonShellWidth}
                     showValue
-                    data-testid="blackhole-noise-amount"
                 />
+                
+                <Slider
+                    label="Glow Strength"
+                    min={0}
+                    max={10.0}
+                    step={0.5}
+                    value={config.shellGlowStrength}
+                    onChange={setShellGlowStrength}
+                    showValue
+                />
+                
+                <div className="flex items-center justify-between">
+                    <label className="text-xs text-text-secondary">Color</label>
+                    <ColorPicker
+                        value={config.shellGlowColor}
+                        onChange={setShellGlowColor}
+                        disableAlpha={true}
+                        className="w-24"
+                    />
+                </div>
+            </div>
+
+            {/* Relativistic Effects */}
+            <div className="space-y-3 pt-2 border-t border-white/5">
+                <div className="flex items-center justify-between">
+                    <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider">Relativistic Effects</label>
+                    <ToggleButton
+                        pressed={config.dopplerEnabled}
+                        onToggle={() => setDopplerEnabled(!config.dopplerEnabled)}
+                        className="text-xs px-2 py-1 h-auto"
+                    >
+                        {config.dopplerEnabled ? 'ON' : 'OFF'}
+                    </ToggleButton>
+                </div>
+
+                {config.dopplerEnabled && (
+                    <div className="space-y-3 pl-2 border-l border-white/10">
+                        <Slider
+                            label="Doppler Strength"
+                            min={0}
+                            max={2.0}
+                            step={0.1}
+                            value={config.dopplerStrength}
+                            onChange={setDopplerStrength}
+                            showValue
+                        />
+                        <Slider
+                            label="Hue Shift"
+                            min={0}
+                            max={0.5}
+                            step={0.01}
+                            value={config.dopplerHueShift}
+                            onChange={setDopplerHueShift}
+                            showValue
+                        />
+                    </div>
+                )}
+            </div>
+
+            {/* Polar Jets */}
+            <div className="space-y-3 pt-2 border-t border-white/5">
+                <div className="flex items-center justify-between">
+                    <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider">Polar Jets</label>
+                    <ToggleButton
+                        pressed={config.jetsEnabled}
+                        onToggle={() => setJetsEnabled(!config.jetsEnabled)}
+                        className="text-xs px-2 py-1 h-auto"
+                    >
+                        {config.jetsEnabled ? 'ON' : 'OFF'}
+                    </ToggleButton>
+                </div>
+
+                {config.jetsEnabled && (
+                    <div className="space-y-3 pl-2 border-l border-white/10">
+                        <Slider
+                            label="Height"
+                            min={1}
+                            max={30}
+                            step={1}
+                            value={config.jetsHeight}
+                            onChange={setJetsHeight}
+                            showValue
+                        />
+                        <Slider
+                            label="Width"
+                            min={0.1}
+                            max={2.0}
+                            step={0.1}
+                            value={config.jetsWidth}
+                            onChange={setJetsWidth}
+                            showValue
+                        />
+                        <Slider
+                            label="Intensity"
+                            min={0}
+                            max={5.0}
+                            step={0.1}
+                            value={config.jetsIntensity}
+                            onChange={setJetsIntensity}
+                            showValue
+                        />
+                        <Slider
+                            label="Noise"
+                            min={0}
+                            max={1}
+                            step={0.1}
+                            value={config.jetsNoiseAmount}
+                            onChange={setJetsNoiseAmount}
+                            showValue
+                        />
+                        <div className="flex items-center justify-between">
+                            <label className="text-xs text-text-secondary">Color</label>
+                            <ColorPicker
+                                value={config.jetsColor}
+                                onChange={setJetsColor}
+                                disableAlpha={true}
+                                className="w-24"
+                            />
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Edge Glow */}
+            <div className="space-y-3 pt-2 border-t border-white/5">
+                <div className="flex items-center justify-between">
+                    <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider">Event Horizon</label>
+                    <ToggleButton
+                        pressed={config.edgeGlowEnabled}
+                        onToggle={() => setEdgeGlowEnabled(!config.edgeGlowEnabled)}
+                        className="text-xs px-2 py-1 h-auto"
+                    >
+                        {config.edgeGlowEnabled ? 'ON' : 'OFF'}
+                    </ToggleButton>
+                </div>
+
+                {config.edgeGlowEnabled && (
+                    <div className="space-y-3 pl-2 border-l border-white/10">
+                        <Slider
+                            label="Intensity"
+                            min={0}
+                            max={5.0}
+                            step={0.1}
+                            value={config.edgeGlowIntensity}
+                            onChange={setEdgeGlowIntensity}
+                            showValue
+                        />
+                        <Slider
+                            label="Width"
+                            min={0.01}
+                            max={0.5}
+                            step={0.01}
+                            value={config.edgeGlowWidth}
+                            onChange={setEdgeGlowWidth}
+                            showValue
+                        />
+                        <div className="flex items-center justify-between">
+                            <label className="text-xs text-text-secondary">Color</label>
+                            <ColorPicker
+                                value={config.edgeGlowColor}
+                                onChange={setEdgeGlowColor}
+                                disableAlpha={true}
+                                className="w-24"
+                            />
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Rendering Quality */}

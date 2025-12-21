@@ -158,33 +158,14 @@ vec3 shadeDiskHit(vec3 hitPos, vec3 rayDir, int hitIndex, float time) {
   // Normalized radial position [0, 1] (0 = inner edge, 1 = outer edge)
   float radialT = clamp((r - innerR) / (outerR - innerR), 0.0, 1.0);
 
-  // Temperature-based color (hot inner, cool outer)
-  vec3 color;
-  if (uPaletteMode == 0) {
-    // Base color mode - use uniform color
-    color = uBaseColor;
-  } else if (uPaletteMode == 1) {
-    // Blackbody mode - physically accurate temperature profile
-    // T(r) = T_inner * (r/r_inner)^(-3/4) (Shakura-Sunyaev thin disk)
-    float localTemp = diskTemperatureProfile(r, innerR);
-    color = blackbodyColor(localTemp);
-  } else if (uPaletteMode == 2) {
-    // Quantum mode (artistic)
-    float angle = atan(hitPos.z, hitPos.x);
-    float phase = angle * 2.0 + r * 0.3 - time * 0.2;
-    vec3 c1 = vec3(0.2, 0.5, 1.0);
-    vec3 c2 = vec3(1.0, 0.3, 0.8);
-    color = mix(c1, c2, sin(phase) * 0.5 + 0.5);
-  } else if (uPaletteMode == 3) {
-    // Heatmap mode (stylized gradient)
-    vec3 cold = vec3(0.1, 0.0, 0.3);
-    vec3 mid = vec3(1.0, 0.3, 0.0);
-    vec3 hot = vec3(1.0, 1.0, 0.8);
-    float temp = 1.0 - radialT;  // Hotter at inner edge
-    color = temp < 0.5 ? mix(cold, mid, temp * 2.0) : mix(mid, hot, (temp - 0.5) * 2.0);
-  } else {
-    color = uBaseColor;
+  // Compute normal early if needed for lighting or coloring (ALGO_NORMAL)
+  vec3 normal = vec3(0.0, 1.0, 0.0);
+  if (uLightingMode == 1 || uColorAlgorithm == ALGO_NORMAL) {
+      normal = computeDiskNormal(hitPos, rayDir);
   }
+
+  // Get base color from selected algorithm
+  vec3 color = getAlgorithmColor(radialT, hitPos, normal);
 
   // Apply gravitational redshift
   // Light from closer to the horizon is redshifted (dimmer and redder)
@@ -215,7 +196,7 @@ vec3 shadeDiskHit(vec3 hitPos, vec3 rayDir, int hitIndex, float time) {
 
   // Apply lighting (FakeLit mode)
   if (uLightingMode == 1) {
-    vec3 normal = computeDiskNormal(hitPos, rayDir);
+    // normal is already computed above
     vec3 lightDir = normalize(uLightPositions[0] - hitPos);
 
     float NdotL = max(dot(normal, lightDir), 0.0);

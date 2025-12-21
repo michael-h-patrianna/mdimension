@@ -96,6 +96,7 @@ const BlackHoleMesh = () => {
       opacityMode,
       fog: false,
       sliceAnimation: sliceAnimationEnabled,
+      volumetricDisk: true,
     })
     debugLog('composeBlackHoleShader END', { fragmentShaderLength: result.fragmentShader.length })
     return result

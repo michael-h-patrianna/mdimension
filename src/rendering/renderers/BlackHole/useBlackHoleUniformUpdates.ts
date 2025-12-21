@@ -18,11 +18,13 @@ import {
 // For now, temporal accumulation uniforms are not wired up - the black hole renders
 // on MAIN_OBJECT layer without temporal reprojection.
 import { type LightUniforms, updateLightUniforms } from '@/rendering/lights/uniforms'
+import { useAppearanceStore } from '@/stores/appearanceStore'
 import { useAnimationStore } from '@/stores/animationStore'
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore'
 import { useGeometryStore } from '@/stores/geometryStore'
 import { useLightingStore } from '@/stores/lightingStore'
 import { useRotationStore } from '@/stores/rotationStore'
+import { useUIStore } from '@/stores/uiStore'
 import { useFrame, useThree } from '@react-three/fiber'
 import React, { useLayoutEffect, useRef } from 'react'
 import * as THREE from 'three'
@@ -35,9 +37,12 @@ const debugLog = (event: string, data?: Record<string, unknown>) => {
 }
 import {
   applyRotationInPlace,
+  COLOR_ALGORITHM_MAP,
   createWorkingArrays,
   LIGHTING_MODE_MAP,
   MANIFOLD_TYPE_MAP,
+  MAX_DIMENSION,
+  OPACITY_MODE_MAP,
   PALETTE_MODE_MAP,
   RAY_BENDING_MODE_MAP,
   type WorkingArrays,
@@ -257,20 +262,16 @@ export function useBlackHoleUniformUpdates({
     const { rotations } = useRotationStore.getState()
     const animState = useAnimationStore.getState()
     const bhState = useExtendedObjectStore.getState().blackhole
-    const { lights, version: lightingVersion } = useLightingStore.getState()
+    const appearanceState = useAppearanceStore.getState() // Global appearance
+    const lightingState = useLightingStore.getState() // Global lighting
+    const uiState = useUIStore.getState() // Global UI state
+    const { lights, version: lightingVersion } = lightingState
     const cache = colorCacheRef.current
 
-    // Apply visual scale via mesh transform + inverse model matrix (like Schrödinger)
-    // The shader transforms rays into model space using uInverseModelMatrix
+    // Visual scale: DON'T scale the mesh (causes clipping)
+    // Instead, pass scale to shader where positions are scaled during SDF evaluation
+    // This is the same approach used by Mandelbulb zoom
     const scale = bhState.scale
-    console.log('[BlackHole] scale from store:', scale)
-    meshRef.current.scale.set(scale, scale, scale)
-
-    // Update model matrices for model-space raymarching
-    meshRef.current.updateMatrixWorld()
-    setUniform(u, 'uModelMatrix', meshRef.current.matrixWorld)
-    const inverseModelMatrix = meshRef.current.matrixWorld.clone().invert()
-    setUniform(u, 'uInverseModelMatrix', inverseModelMatrix)
     setUniform(u, 'uScale', scale)
 
     // Update dimension
@@ -361,12 +362,12 @@ export function useBlackHoleUniformUpdates({
     setUniform(u, 'uTimeScale', bhState.timeScale)
     setUniform(u, 'uBloomBoost', bhState.bloomBoost)
 
-    // Update colors (with null guards)
+    // Update colors (with null guards) using Global Appearance Store
     if (u.uBaseColor?.value) {
       updateLinearColorUniform(
         cache.baseColor,
         u.uBaseColor.value as THREE.Color,
-        bhState.baseColor
+        appearanceState.faceColor
       )
     }
     if (u.uShellGlowColor?.value) {
@@ -391,8 +392,26 @@ export function useBlackHoleUniformUpdates({
       )
     }
 
-    // Palette mode
+    // Sync Color Algorithm uniforms
+    setUniform(u, 'uColorAlgorithm', COLOR_ALGORITHM_MAP[appearanceState.colorAlgorithm] ?? 0)
+    if (u.uCosineA?.value) (u.uCosineA.value as THREE.Vector3).fromArray(appearanceState.cosineCoefficients.a)
+    if (u.uCosineB?.value) (u.uCosineB.value as THREE.Vector3).fromArray(appearanceState.cosineCoefficients.b)
+    if (u.uCosineC?.value) (u.uCosineC.value as THREE.Vector3).fromArray(appearanceState.cosineCoefficients.c)
+    if (u.uCosineD?.value) (u.uCosineD.value as THREE.Vector3).fromArray(appearanceState.cosineCoefficients.d)
+    setUniform(u, 'uLchLightness', appearanceState.lchLightness)
+    setUniform(u, 'uLchChroma', appearanceState.lchChroma)
+
+    // Palette mode (still supported for black hole specific modes)
     setUniform(u, 'uPaletteMode', PALETTE_MODE_MAP[bhState.paletteMode] ?? 0)
+
+    // Sync Opacity uniforms
+    const opacity = uiState.opacitySettings
+    setUniform(u, 'uOpacityMode', OPACITY_MODE_MAP[opacity.mode] ?? 0)
+    setUniform(u, 'uSimpleAlpha', opacity.simpleAlphaOpacity)
+    setUniform(u, 'uLayerCount', opacity.layerCount)
+    setUniform(u, 'uLayerOpacity', opacity.layerOpacity)
+    setUniform(u, 'uVolumetricDensity', opacity.volumetricDensity)
+    setUniform(u, 'uSampleQuality', opacity.sampleQuality === 'high' ? 2 : opacity.sampleQuality === 'low' ? 0 : 1)
 
     // Lensing
     setUniform(u, 'uDimensionEmphasis', bhState.dimensionEmphasis)
@@ -439,10 +458,10 @@ export function useBlackHoleUniformUpdates({
     setUniform(u, 'uTransmittanceCutoff', bhState.transmittanceCutoff)
     setUniform(u, 'uFarRadius', bhState.farRadius)
 
-    // Lighting
+    // Lighting (from Global Lighting Store)
     setUniform(u, 'uLightingMode', LIGHTING_MODE_MAP[bhState.lightingMode] ?? 0)
-    setUniform(u, 'uRoughness', bhState.roughness)
-    setUniform(u, 'uSpecular', bhState.specular)
+    setUniform(u, 'uRoughness', appearanceState.roughness)
+    setUniform(u, 'uSpecular', lightingState.specularIntensity)
     setUniform(u, 'uAmbientTint', bhState.ambientTint)
 
     // Edge glow

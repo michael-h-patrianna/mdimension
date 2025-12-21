@@ -53,72 +53,14 @@ float dopplerFactor(vec3 pos3d, vec3 viewDir) {
   // Scale by position-dependent velocity (closer = faster)
   // Use epsilon-protected max to prevent division by zero
   float safeRadius = max(r, max(uHorizonRadius, DOPPLER_EPSILON));
-  float orbitSpeed = sqrt(uGravityStrength / safeRadius);
+  
+  // Optimization: Use inversesqrt for 1/sqrt(r)
+  // v = sqrt(GM/r) = sqrt(GM) * 1/sqrt(r)
+  float orbitSpeed = sqrt(uGravityStrength) * inversesqrt(safeRadius);
+  
   float dopplerShift = approaching * orbitSpeed * uDopplerStrength;
 
   return 1.0 + dopplerShift;
-}
-
-/**
- * Convert RGB to HSL color space.
- */
-vec3 rgb2hsl(vec3 rgb) {
-  float maxC = max(max(rgb.r, rgb.g), rgb.b);
-  float minC = min(min(rgb.r, rgb.g), rgb.b);
-  float delta = maxC - minC;
-
-  float l = (maxC + minC) * 0.5;
-  float s = 0.0;
-  float h = 0.0;
-
-  if (delta > 0.0001) {
-    s = l < 0.5 ? delta / (maxC + minC) : delta / (2.0 - maxC - minC);
-
-    if (maxC == rgb.r) {
-      h = (rgb.g - rgb.b) / delta + (rgb.g < rgb.b ? 6.0 : 0.0);
-    } else if (maxC == rgb.g) {
-      h = (rgb.b - rgb.r) / delta + 2.0;
-    } else {
-      h = (rgb.r - rgb.g) / delta + 4.0;
-    }
-    h /= 6.0;
-  }
-
-  return vec3(h, s, l);
-}
-
-/**
- * Helper function for HSL to RGB conversion.
- */
-float hue2rgb(float p, float q, float t) {
-  if (t < 0.0) t += 1.0;
-  if (t > 1.0) t -= 1.0;
-  if (t < 1.0/6.0) return p + (q - p) * 6.0 * t;
-  if (t < 1.0/2.0) return q;
-  if (t < 2.0/3.0) return p + (q - p) * (2.0/3.0 - t) * 6.0;
-  return p;
-}
-
-/**
- * Convert HSL to RGB color space.
- */
-vec3 hsl2rgb(vec3 hsl) {
-  float h = hsl.x;
-  float s = hsl.y;
-  float l = hsl.z;
-
-  if (s < 0.0001) {
-    return vec3(l);
-  }
-
-  float q = l < 0.5 ? l * (1.0 + s) : l + s - l * s;
-  float p = 2.0 * l - q;
-
-  return vec3(
-    hue2rgb(p, q, h + 1.0/3.0),
-    hue2rgb(p, q, h),
-    hue2rgb(p, q, h - 1.0/3.0)
-  );
 }
 
 /**

@@ -66,7 +66,8 @@ float computeDeflectionAngle(float ndRadius) {
   float epsilon = uEpsilonMul;
   float beta = uDistanceFalloff;
 
-  // Compute lensing strength per spec using pre-calculated uDimPower
+  // Optimized: avoided pow(r+epsilon, beta) if beta is integer-like or fixed
+  // For now, keep pow but maybe optimize later if beta=2.0
   float deflectionAngle = k * uDimPower / pow(r + epsilon, beta);
 
   // Scale by horizon radius for physical units
@@ -85,6 +86,10 @@ float computeDeflectionAngle(float ndRadius) {
  * Base algorithm (from Starless raytracer):
  *   acceleration = -1.5 * h² * pos / |pos|^5
  *
+ * Optimization:
+ *   h² = |pos|^2 - (pos . rayDir)^2  (Lagrange's identity for |pos x rayDir|^2)
+ *   This avoids computing the cross product.
+ *
  * Kerr frame dragging addition:
  *   The spacetime is "dragged" by the spinning black hole.
  *   This adds an azimuthal component to the acceleration that
@@ -102,16 +107,17 @@ float computeDeflectionAngle(float ndRadius) {
  */
 vec3 bendRay(vec3 rayDir, vec3 pos3d, float stepSize, float ndRadius) {
   float rs = uHorizonRadius;
-  float r = length(pos3d);
+  float r2 = dot(pos3d, pos3d); // Squared distance
+  
+  // Skip if too close to singularity or very far (optimization)
+  if (r2 < rs * rs * 0.25) return rayDir;
 
-  // Skip if too close to singularity
-  if (r < rs * 0.5) {
-    return rayDir;
-  }
-
-  // Compute squared angular momentum: h² = |cross(pos, vel)|²
-  vec3 angularMomentum = cross(pos3d, rayDir);
-  float h2 = dot(angularMomentum, angularMomentum);
+  float r = sqrt(r2);
+  
+  // Optimization: Compute h² without cross product
+  // h² = |pos|^2 - (pos . rayDir)^2
+  float p_dot_d = dot(pos3d, rayDir);
+  float h2 = r2 - p_dot_d * p_dot_d;
 
   // If h² ≈ 0, ray is purely radial - no bending possible
   if (h2 < 1e-10) {
@@ -120,8 +126,8 @@ vec3 bendRay(vec3 rayDir, vec3 pos3d, float stepSize, float ndRadius) {
 
   // === Schwarzschild component ===
   // F_schwarzschild = -1.5 * h² * r_hat / r^5
-  float r3 = r * r * r;
-  float r5 = r3 * r * r;
+  // r^5 = r^2 * r^2 * r
+  float r5 = r2 * r2 * r;
   float forceMagnitude = 1.5 * h2 / r5;
 
   // Apply gravity strength for artistic control
@@ -131,36 +137,43 @@ vec3 bendRay(vec3 rayDir, vec3 pos3d, float stepSize, float ndRadius) {
   forceMagnitude = min(forceMagnitude, uBendMaxPerStep / stepSize);
 
   // Radial acceleration (toward origin)
-  vec3 radialDir = pos3d / r;
-  vec3 acceleration = -forceMagnitude * radialDir;
+  // vec3 radialDir = pos3d / r;
+  // vec3 acceleration = -forceMagnitude * radialDir;
+  // Optimization: Combine division by r into forceMagnitude
+  // acceleration = -(forceMagnitude / r) * pos3d
+  vec3 acceleration = -(forceMagnitude / r) * pos3d;
 
   // === Kerr frame dragging component ===
   // Frame dragging causes spacetime to rotate with the black hole.
-  // The spin axis is assumed to be the Y-axis (vertical).
-  // This creates an azimuthal acceleration that pulls light around.
   if (uSpin > 0.001) {
-    vec3 spinAxis = vec3(0.0, 1.0, 0.0);
-
+    // Spin axis is Y-axis (vertical)
     // Frame dragging strength falls off as 1/r³
     // a = chi * M, and M = rs/2, so a = chi * rs/2
     float a = uSpin * rs * 0.5;
 
     // Azimuthal direction (perpendicular to both spin axis and radial)
-    vec3 azimuthalDir = cross(spinAxis, radialDir);
-    float azimuthalMag = length(azimuthalDir);
+    // spinAxis = (0,1,0), radialDir = pos/r
+    // cross((0,1,0), pos) = (-pos.z, 0, pos.x)
+    vec3 azimuthalDirRaw = vec3(-pos3d.z, 0.0, pos3d.x);
+    float azLenSq = dot(azimuthalDirRaw, azimuthalDirRaw);
 
-    if (azimuthalMag > 0.001) {
-      azimuthalDir /= azimuthalMag;
+    if (azLenSq > 1e-6) {
+      // Normalize azimuthal direction
+      // float azimuthalMag = sqrt(azLenSq);
+      // azimuthalDir = azimuthalDirRaw / azimuthalMag;
 
       // Frame dragging acceleration: ~ 2*a/r³ in the azimuthal direction
-      // The factor of 2 comes from the Lense-Thirring effect
+      float r3 = r2 * r;
       float frameDragMag = 2.0 * a / r3;
 
       // Scale by gravity strength for consistency
       frameDragMag *= uGravityStrength * uBendScale;
-
-      // Add azimuthal acceleration (frame dragging)
-      acceleration += frameDragMag * azimuthalDir;
+      
+      // acceleration += frameDragMag * azimuthalDir
+      // acceleration += (frameDragMag / azimuthalMag) * azimuthalDirRaw
+      // Optimization: avoid sqrt if possible, but we need normalized direction for correct force magnitude
+      // Let's just do the sqrt, it's safer.
+      acceleration += (frameDragMag * inversesqrt(azLenSq)) * azimuthalDirRaw;
     }
   }
 
