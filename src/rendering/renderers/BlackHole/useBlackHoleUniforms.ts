@@ -34,6 +34,9 @@ export function useBlackHoleUniforms() {
       // Dimension
       uDimension: { value: 4 },
 
+      // Visual scale - scales the raymarching space (default 0.25 to show more skybox)
+      uScale: { value: 0.25 },
+
       // D-dimensional rotated coordinate system
       uBasisX: { value: new Float32Array(MAX_DIMENSION) },
       uBasisY: { value: new Float32Array(MAX_DIMENSION) },
@@ -43,8 +46,10 @@ export function useBlackHoleUniforms() {
       // Parameter values for extra dimensions
       uParamValues: { value: new Float32Array(8) },
 
-      // Basic black hole parameters
-      uHorizonRadius: { value: 1.0 },
+      // Physics (Kerr black hole)
+      uHorizonRadius: { value: 2.0 }, // Match store default (DEFAULT_BLACK_HOLE_CONFIG.horizonRadius)
+      uSpin: { value: 0.0 }, // Dimensionless spin chi = a/M (0 to 0.998)
+      uDiskTemperature: { value: 6500.0 }, // Inner disk temperature in Kelvin
       uGravityStrength: { value: 5.0 },
       uManifoldIntensity: { value: 1.0 },
       uManifoldThickness: { value: 0.15 },
@@ -76,7 +81,7 @@ export function useBlackHoleUniforms() {
       // Manifold
       uManifoldType: { value: 0 },
       uDensityFalloff: { value: 6.0 },
-      uDiskInnerRadiusMul: { value: 1.2 },
+      uDiskInnerRadiusMul: { value: 2.6 }, // Match store default (ISCO for Interstellar-style disk)
       uDiskOuterRadiusMul: { value: 8.0 },
       uRadialSoftnessMul: { value: 0.2 },
       uThicknessPerDimMax: { value: 4.0 },
@@ -100,7 +105,7 @@ export function useBlackHoleUniforms() {
       uEnableAbsorption: { value: false },
       uAbsorption: { value: 1.0 },
       uTransmittanceCutoff: { value: 0.01 },
-      uFarRadius: { value: 20.0 },
+      uFarRadius: { value: 35.0 }, // Match store default (DEFAULT_BLACK_HOLE_CONFIG.farRadius)
 
       // Lighting
       uLightingMode: { value: 0 },

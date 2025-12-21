@@ -233,8 +233,8 @@ export type SkyboxSelection =
   | 'procedural_starfield'
 
 export const DEFAULT_SKYBOX_ENABLED = true
-export const DEFAULT_SKYBOX_TEXTURE: SkyboxTexture = 'space_blue'
-export const DEFAULT_SKYBOX_SELECTION: SkyboxSelection = 'space_blue'
+export const DEFAULT_SKYBOX_TEXTURE: SkyboxTexture = 'space_red'
+export const DEFAULT_SKYBOX_SELECTION: SkyboxSelection = 'space_red'
 export const DEFAULT_SKYBOX_BLUR = 0
 export const DEFAULT_SKYBOX_INTENSITY = 1
 export const DEFAULT_SKYBOX_ROTATION = 0

@@ -2,28 +2,19 @@ Important: This is a test of your autonomous capabilities and abilities to creat
 
 You cannot break anything. The project in this local folder is backed up and can be restored. You can create, modify, and delete files as necessary to complete the tasks assigned to you. You have full autonomy to make decisions and take actions to achieve the desired outcomes.
 
-Your task: implement a video export function
+Your task: improve the visualization of a black hole render. this project has a "black hole" object type that is a physically correct visualization of a kerr black hole in 3 to 11 dimensions.
+
+problem: it looks super boring. the accretion disk is just a uniform surface. the jets are just clouds. it is very far away from something visually impressive like the black hole seen in the movie "Interstellar"
 
 Worflow
-1. Investigate the rendering pipeline
-2. Research with web best practices and ux pattern and examples
-3. Write the requirements
-4. Add all must-haves
-5. Add all best-practices
-6. Add 20 features that improve the usability of the feature
-7. Add 20 features that will delight the user and make the feature look&feel "a million bucks"
-8. Add performance improvements and options for people on weak computers or mobile phones
-9. Plan the implementation
-10. Implement, test, refine, test&fix until green
-
-Must-Haves:
-- Support for MediaStream Recording API and frame by frame rendering
-- Preview function / open video in popup after recording
-- Support for "full screen" export or selection of a subsection of the scene for export
-- Quality, format, etc selection and export in a variety of formats and quality levels
-- Adapts to system and browser
-- Asynchronously running so user can cancel rendering
-- User can select a target length for the rendered video
+1. Investigate the rendering pipeline and understand how a scene is rendered, shaders are composed and what post processing effects we have
+2. Investigate the black hole object type and it's sdf raymarching and lensing and other effects
+3. Investigate the math of black holes on the web, and techniques to visualize them, fake nebula, plasma, particles, and other advanced techniques
+4. Design 20 features that give our black hole the "Interstellar" look
+5. Find 10 opportunities to improve performance that are pure code changes and not things like adding quality presets
+6.  Add performance improvements and options for people on weak computers or mobile phones which are pure code changes and not things like quality presets
+7.  Plan the implementation
+8.  Implement, test, refine, test&fix until green
 
 Important Reminder: This is a test of your autonomous capabilities. You are expected to take initiative and make decisions independently. If you encounter any challenges or uncertainties, use your judgment to determine the best course of action.
 

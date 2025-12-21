@@ -18,7 +18,7 @@
  * This allows background objects to be visibly lensed around the black hole.
  */
 
-import { RENDER_LAYERS, needsVolumetricSeparation } from '@/rendering/core/layers'
+import { RENDER_LAYERS } from '@/rendering/core/layers'
 import { TrackedShaderMaterial } from '@/rendering/materials/TrackedShaderMaterial'
 import { composeBlackHoleShader, generateBlackHoleVertexShader } from '@/rendering/shaders/blackhole/compose'
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore'
@@ -30,12 +30,27 @@ import { MAX_DIMENSION } from './types'
 import { useBlackHoleUniforms } from './useBlackHoleUniforms'
 import { useBlackHoleUniformUpdates } from './useBlackHoleUniformUpdates'
 
+// DEBUG helper
+const debugLog = (event: string, data?: Record<string, unknown>) => {
+  if (typeof window !== 'undefined' && window.__DEBUG_LOG) {
+    window.__DEBUG_LOG('BlackHoleMesh', event, data)
+  }
+}
+
 /**
  * BlackHoleMesh - Renders N-dimensional black hole visualization
  * @returns The black hole mesh component
  */
 const BlackHoleMesh = () => {
   const meshRef = useRef<THREE.Mesh>(null)
+
+  // DEBUG: Log mount
+  useEffect(() => {
+    debugLog('MOUNT')
+    return () => {
+      debugLog('UNMOUNT')
+    }
+  }, [])
 
   // Values that affect shader compilation
   const rawDimension = useGeometryStore((state) => state.dimension)
@@ -68,7 +83,8 @@ const BlackHoleMesh = () => {
 
   // Compile shader
   const { fragmentShader } = useMemo(() => {
-    return composeBlackHoleShader({
+    debugLog('composeBlackHoleShader START', { dimension, temporalEnabled, jetsEnabled, dopplerEnabled })
+    const result = composeBlackHoleShader({
       dimension,
       shadows: false,
       temporal: false,
@@ -81,6 +97,8 @@ const BlackHoleMesh = () => {
       fog: false,
       sliceAnimation: sliceAnimationEnabled,
     })
+    debugLog('composeBlackHoleShader END', { fragmentShaderLength: result.fragmentShader.length })
+    return result
   }, [dimension, temporalEnabled, jetsEnabled, dopplerEnabled, opacityMode, sliceAnimationEnabled])
 
   // Generate vertex shader
@@ -88,7 +106,9 @@ const BlackHoleMesh = () => {
 
   // Generate material key for caching
   const materialKey = useMemo(() => {
-    return `blackhole-${dimension}-${temporalEnabled}-${jetsEnabled}-${dopplerEnabled}-${opacityMode}-${sliceAnimationEnabled}`
+    const key = `blackhole-${dimension}-${temporalEnabled}-${jetsEnabled}-${dopplerEnabled}-${opacityMode}-${sliceAnimationEnabled}`
+    debugLog('materialKey generated', { key })
+    return key
   }, [dimension, temporalEnabled, jetsEnabled, dopplerEnabled, opacityMode, sliceAnimationEnabled])
 
   // Cleanup material when shader recompiles or component unmounts
@@ -105,30 +125,17 @@ const BlackHoleMesh = () => {
     }
   }, [materialKey])
 
-  // Assign layer based on temporal accumulation mode
-  // When temporal cloud accumulation is active, use VOLUMETRIC layer for separate rendering
-  // CRITICAL: Use useLayoutEffect to ensure layer is set BEFORE first render
+  // Black hole is SDF-based like Mandelbulb, so it stays on MAIN_OBJECT layer
+  // and uses TemporalDepthManager (not TemporalCloudManager which is for volumetric clouds)
   useLayoutEffect(() => {
     if (meshRef.current?.layers) {
-      const useVolumetricLayer = needsVolumetricSeparation({
-        temporalCloudAccumulation: temporalEnabled,
-        objectType: 'blackhole',
-      })
-
-      if (useVolumetricLayer) {
-        // Use VOLUMETRIC layer for temporal accumulation (rendered separately at 1/4 res)
-        meshRef.current.layers.set(RENDER_LAYERS.VOLUMETRIC)
-      } else {
-        // Standard main object layer (rendered as part of main scene)
-        meshRef.current.layers.set(RENDER_LAYERS.MAIN_OBJECT)
-      }
+      meshRef.current.layers.set(RENDER_LAYERS.MAIN_OBJECT)
     }
-  }, [temporalEnabled])
+  }, [])
 
   // Update uniforms each frame using extracted hook
   useBlackHoleUniformUpdates({
     meshRef,
-    temporalEnabled,
   })
 
   return (

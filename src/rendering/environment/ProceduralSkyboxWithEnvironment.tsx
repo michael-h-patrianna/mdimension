@@ -23,6 +23,21 @@ import React, { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { SkyboxMesh } from './Skybox';
 
+// DEBUG helper - with fallback for cases where __DEBUG_LOG isn't defined yet
+const debugLog = (event: string, data?: Record<string, unknown>) => {
+  if (typeof window !== 'undefined') {
+    if (window.__DEBUG_LOG) {
+      window.__DEBUG_LOG('SkyboxCapture', event, data);
+    } else {
+      // Fallback to console.log if __DEBUG_LOG not yet defined
+      console.log(`[SkyboxCapture] ${event}`, data || '');
+    }
+  }
+};
+
+// Log immediately at module parse time
+console.log('[SkyboxCapture] MODULE PARSED');
+
 /** Resolution for environment cubemap (per face) */
 const ENV_MAP_RESOLUTION = 256;
 
@@ -40,6 +55,8 @@ const BACKGROUND_CUBEMAP_RESOLUTION = 512;
  * @returns React component that manages skybox capture
  */
 const ProceduralSkyboxCapture: React.FC = () => {
+  console.log('[SkyboxCapture] COMPONENT FUNCTION CALLED');
+
   const { gl, scene } = useThree();
   const isPlaying = useAnimationStore((state) => state.isPlaying);
 
@@ -52,10 +69,19 @@ const ProceduralSkyboxCapture: React.FC = () => {
   const needsUpdateRef = useRef(true);
   const frameCountRef = useRef(0);
 
+  // DEBUG: Log mount/unmount
+  useEffect(() => {
+    console.log('[SkyboxCapture] MOUNT');
+    return () => console.log('[SkyboxCapture] UNMOUNT');
+  }, []);
+
   // Initialize render target and camera
   // CRITICAL: Use useLayoutEffect to prevent scene.background gap during StrictMode double-mount.
   // Without this, cleanup sets scene.background=null, and black hole sees stale value before re-mount.
   useLayoutEffect(() => {
+    console.log('[SkyboxCapture] useLayoutEffect START');
+    debugLog('useLayoutEffect START - creating cubeCamera and cubeRenderTarget');
+
     cubeRenderTarget.current = new THREE.WebGLCubeRenderTarget(BACKGROUND_CUBEMAP_RESOLUTION, {
       format: THREE.RGBAFormat,
       generateMipmaps: true,
@@ -76,7 +102,21 @@ const ProceduralSkyboxCapture: React.FC = () => {
     // Create a group to hold the skybox for isolated rendering
     skyboxGroupRef.current = new THREE.Group();
 
+    // CRITICAL: Perform immediate initial capture in useLayoutEffect.
+    // This ensures scene.background is SET before any useFrame callback runs,
+    // preventing the black hole from seeing null on its first frame.
+    // Without this, there's a ~7 frame gap where scene.background is null.
+    debugLog('useLayoutEffect - performing immediate capture');
+    cubeCamera.current.position.set(0, 0, 0);
+    cubeCamera.current.update(gl, scene);
+    scene.background = cubeRenderTarget.current.texture;
+    debugLog('useLayoutEffect END - scene.background SET', {
+      textureId: cubeRenderTarget.current.texture.uuid,
+      mapping: cubeRenderTarget.current.texture.mapping
+    });
+
     return () => {
+      debugLog('useLayoutEffect CLEANUP - clearing scene.background');
       // Clear scene.background on unmount (before disposing)
       const rt = cubeRenderTarget.current;
       if (rt && scene.background === rt.texture) {
@@ -86,7 +126,7 @@ const ProceduralSkyboxCapture: React.FC = () => {
       cubeRenderTarget.current = null;
       cubeCamera.current = null;
     };
-  }, [scene]);
+  }, [gl, scene]);
 
   // Trigger update when settings change (via key remount) or on initial mount
   useEffect(() => {
@@ -94,11 +134,34 @@ const ProceduralSkyboxCapture: React.FC = () => {
     frameCountRef.current = 0;
   }, []);
 
+  // CRITICAL: Priority -20 ensures this runs BEFORE black hole's useFrame (priority -10).
+  // Without this, on initial page load the black hole checks scene.background before
+  // this capture runs, sees null, and sets uEnvMapReady=0, causing lensing to fail
+  // for rays that hit the early-out path (using unbent direction instead of bent).
   useFrame(() => {
-    if (!cubeCamera.current || !cubeRenderTarget.current) return;
+    // Increment global frame counter
+    if (typeof window !== 'undefined') {
+      window.__DEBUG_FRAME = (window.__DEBUG_FRAME || 0) + 1;
+    }
+
+    if (!cubeCamera.current || !cubeRenderTarget.current) {
+      debugLog('useFrame: EARLY RETURN - cubeCamera or cubeRenderTarget is null', {
+        cubeCamera: !!cubeCamera.current,
+        cubeRenderTarget: !!cubeRenderTarget.current
+      });
+      return;
+    }
 
     // Update when playing or when we need initial capture (first 2 frames)
     const shouldUpdate = isPlaying || (needsUpdateRef.current && frameCountRef.current < 2);
+
+    debugLog('useFrame', {
+      isPlaying,
+      needsUpdate: needsUpdateRef.current,
+      frameCount: frameCountRef.current,
+      shouldUpdate,
+      'scene.background': scene.background ? 'SET' : 'NULL'
+    });
 
     if (shouldUpdate) {
       // Position camera at origin (center of skybox sphere)
@@ -115,12 +178,17 @@ const ProceduralSkyboxCapture: React.FC = () => {
       // Set the captured cubemap as background for black hole shader
       scene.background = cubeRenderTarget.current.texture;
 
+      debugLog('useFrame: CAPTURED - scene.background updated', {
+        frameCount: frameCountRef.current,
+        textureId: cubeRenderTarget.current.texture.uuid
+      });
+
       frameCountRef.current++;
       if (frameCountRef.current >= 2) {
         needsUpdateRef.current = false;
       }
     }
-  });
+  }, -20);
 
   return null;
 };
@@ -149,6 +217,8 @@ const STATIC_CAPTURE_FRAMES = 2;
  * @returns React element rendering procedural skybox with optional environment mapping
  */
 export const ProceduralSkyboxWithEnvironment: React.FC = () => {
+  console.log('[ProceduralSkyboxWithEnvironment] RENDER');
+
   const skyboxMode = useEnvironmentStore((state) => state.skyboxMode);
   const proceduralSettings = useEnvironmentStore((state) => state.proceduralSettings);
   const activeWalls = useEnvironmentStore((state) => state.activeWalls);
@@ -157,6 +227,7 @@ export const ProceduralSkyboxWithEnvironment: React.FC = () => {
 
   // Check if walls need environment reflections
   const needsEnvironmentMap = activeWalls.length > 0;
+  console.log('[ProceduralSkyboxWithEnvironment] needsEnvironmentMap:', needsEnvironmentMap, 'activeWalls:', activeWalls.length);
 
   // Determine frame capture mode:
   // - Infinity: continuous updates for animated skybox reflections

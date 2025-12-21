@@ -16,9 +16,14 @@ export const blackHoleUniformsBlock = /* glsl */ `
 // Time
 uniform float uTime;                // Global time for animations
 
-// Basic
-uniform float uHorizonRadius;       // Event horizon radius
-uniform float uGravityStrength;     // Lensing intensity k
+// Visual scale
+uniform float uScale;               // 3D scale factor (0.1-2.0, default 0.25)
+
+// Physics (Kerr black hole)
+uniform float uHorizonRadius;       // Schwarzschild radius rs = 2M
+uniform float uSpin;                // Dimensionless spin chi = a/M (0 to 0.998)
+uniform float uDiskTemperature;     // Inner disk temperature in Kelvin
+uniform float uGravityStrength;     // Lensing intensity k (artistic multiplier)
 uniform float uManifoldIntensity;   // Accretion disk emission
 uniform float uManifoldThickness;   // Disk thickness
 uniform float uPhotonShellWidth;    // Photon shell ring width

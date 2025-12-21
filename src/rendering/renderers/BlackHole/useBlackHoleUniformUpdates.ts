@@ -13,7 +13,10 @@ import {
   createLightColorCache,
   updateLinearColorUniform,
 } from '@/rendering/colors/linearCache'
-import { TemporalCloudManager } from '@/rendering/core/TemporalCloudManager'
+// Note: Black hole is SDF-based like Mandelbulb, so it should use TemporalDepthManager
+// (not TemporalCloudManager which is for volumetric clouds like Schrödinger).
+// For now, temporal accumulation uniforms are not wired up - the black hole renders
+// on MAIN_OBJECT layer without temporal reprojection.
 import { type LightUniforms, updateLightUniforms } from '@/rendering/lights/uniforms'
 import { useAnimationStore } from '@/stores/animationStore'
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore'
@@ -21,8 +24,15 @@ import { useGeometryStore } from '@/stores/geometryStore'
 import { useLightingStore } from '@/stores/lightingStore'
 import { useRotationStore } from '@/stores/rotationStore'
 import { useFrame, useThree } from '@react-three/fiber'
-import React, { useRef } from 'react'
+import React, { useLayoutEffect, useRef } from 'react'
 import * as THREE from 'three'
+
+// DEBUG helper
+const debugLog = (event: string, data?: Record<string, unknown>) => {
+  if (typeof window !== 'undefined' && window.__DEBUG_LOG) {
+    window.__DEBUG_LOG('BlackHoleUniforms', event, data)
+  }
+}
 import {
   applyRotationInPlace,
   createWorkingArrays,
@@ -52,8 +62,6 @@ function createBlackHoleColorCache() {
 interface UseBlackHoleUniformUpdatesOptions {
   /** Reference to the black hole mesh */
   meshRef: React.RefObject<THREE.Mesh | null>
-  /** Whether temporal accumulation is enabled */
-  temporalEnabled: boolean
 }
 
 /**
@@ -83,11 +91,9 @@ function setUniform<T>(
  *
  * @param options - Configuration options
  * @param options.meshRef - Reference to the black hole mesh
- * @param options.temporalEnabled - Whether temporal accumulation is enabled
  */
 export function useBlackHoleUniformUpdates({
   meshRef,
-  temporalEnabled,
 }: UseBlackHoleUniformUpdatesOptions) {
   const { camera, size, scene } = useThree()
 
@@ -108,15 +114,125 @@ export function useBlackHoleUniformUpdates({
   // during their render passes, which would otherwise cause 1-frame lensing flicker.
   const lastValidEnvMapRef = useRef<THREE.Texture | null>(null)
 
-  // CRITICAL: Use negative priority (-10) to ensure uniforms are updated BEFORE
-  // PostProcessing's useFrame runs the volumetric render pass.
-  useFrame(() => {
+  // Track if envMap was ever null, to detect transition from null → valid
+  const envMapWasNullRef = useRef(true)
+
+  // Track material to detect when TrackedShaderMaterial switches from placeholder to real shader.
+  // When this happens, we need to force-sync all uniforms before the first render.
+  const prevMaterialRef = useRef<THREE.ShaderMaterial | null>(null)
+
+  // CRITICAL: Sync uniforms immediately on mount to prevent first-frame rendering issues.
+  // Without this, the shader uses stale initial values until useFrame runs,
+  // causing ray bending/lensing to not work on initial page load.
+  useLayoutEffect(() => {
     if (!meshRef.current) return
     const material = meshRef.current.material as THREE.ShaderMaterial | undefined
     if (!material?.uniforms) return
 
+    const u = material.uniforms
+    const bhState = useExtendedObjectStore.getState().blackhole
+
+    // Sync critical ray bending uniforms from store
+    setUniform(u, 'uHorizonRadius', bhState.horizonRadius)
+    setUniform(u, 'uSpin', bhState.spin)
+    setUniform(u, 'uDiskTemperature', bhState.diskTemperature)
+    setUniform(u, 'uGravityStrength', bhState.gravityStrength)
+    setUniform(u, 'uBendScale', bhState.bendScale)
+    setUniform(u, 'uBendMaxPerStep', bhState.bendMaxPerStep)
+    setUniform(u, 'uManifoldIntensity', bhState.manifoldIntensity)
+    setUniform(u, 'uDiskInnerRadiusMul', bhState.diskInnerRadiusMul)
+    setUniform(u, 'uDiskOuterRadiusMul', bhState.diskOuterRadiusMul)
+
+    // CRITICAL: Sync farRadius - store default (35.0) differs from uniform default (20.0)
+    // Without this, the bounding sphere is too small and edge rays miss it,
+    // causing them to use unbent rayDir in the early-out path
+    setUniform(u, 'uFarRadius', bhState.farRadius)
+
+    // Sync camera uniforms
+    if (u.uCameraPosition?.value) {
+      ;(u.uCameraPosition.value as THREE.Vector3).copy(camera.position)
+    }
+    if (u.uViewMatrix?.value) {
+      ;(u.uViewMatrix.value as THREE.Matrix4).copy(camera.matrixWorldInverse)
+    }
+    if (u.uProjectionMatrix?.value) {
+      ;(u.uProjectionMatrix.value as THREE.Matrix4).copy(camera.projectionMatrix)
+    }
+
+    // Force material update
+    material.needsUpdate = true
+  }, [meshRef, camera])
+
+  // CRITICAL: Use negative priority (-10) to ensure uniforms are updated BEFORE
+  // PostProcessing's useFrame runs the volumetric render pass.
+  useFrame(() => {
+    if (!meshRef.current) {
+      debugLog('useFrame: EARLY RETURN - meshRef is null')
+      return
+    }
+    const material = meshRef.current.material as THREE.ShaderMaterial | undefined
+    if (!material?.uniforms) {
+      debugLog('useFrame: EARLY RETURN - material or uniforms is null', {
+        hasMaterial: !!material,
+        hasUniforms: !!material?.uniforms,
+        materialType: material?.type
+      })
+      return
+    }
+
     // Uniforms with null-safe access pattern
     const u = material.uniforms
+
+    // CRITICAL: Detect material change (placeholder → real shader) and force-sync critical uniforms.
+    // TrackedShaderMaterial renders a placeholder for ~4 frames before switching to real shader.
+    // The useLayoutEffect runs on mount but syncs to the placeholder, not the real shader.
+    // Without this detection, the first render with real shader uses DEFAULT uniform values,
+    // causing the bounding sphere to be wrong and rays to use unbent directions.
+    const materialChanged = material !== prevMaterialRef.current
+    if (materialChanged) {
+      prevMaterialRef.current = material
+      debugLog('useFrame: MATERIAL CHANGED - force-syncing uniforms', {
+        materialType: material.type,
+        hasFragmentShader: !!material.fragmentShader,
+        fragmentShaderLength: material.fragmentShader?.length
+      })
+
+      // Force-sync all critical ray bending uniforms that affect bounding sphere and lensing
+      const bhState = useExtendedObjectStore.getState().blackhole
+      setUniform(u, 'uHorizonRadius', bhState.horizonRadius)
+      setUniform(u, 'uFarRadius', bhState.farRadius)
+      setUniform(u, 'uGravityStrength', bhState.gravityStrength)
+      setUniform(u, 'uBendScale', bhState.bendScale)
+      setUniform(u, 'uBendMaxPerStep', bhState.bendMaxPerStep)
+      setUniform(u, 'uManifoldIntensity', bhState.manifoldIntensity)
+      setUniform(u, 'uDiskInnerRadiusMul', bhState.diskInnerRadiusMul)
+      setUniform(u, 'uDiskOuterRadiusMul', bhState.diskOuterRadiusMul)
+
+      debugLog('useFrame: SYNCED critical uniforms', {
+        uHorizonRadius: bhState.horizonRadius,
+        uFarRadius: bhState.farRadius,
+        boundingSphere: bhState.farRadius * bhState.horizonRadius
+      })
+
+      // Also check if scene.background is ready and sync envMap state
+      const bg = scene.background as THREE.Texture | null
+      const isCubeCompatible =
+        bg &&
+        ((bg as THREE.CubeTexture).isCubeTexture ||
+          bg.mapping === THREE.CubeReflectionMapping ||
+          bg.mapping === THREE.CubeRefractionMapping)
+      if (isCubeCompatible) {
+        lastValidEnvMapRef.current = bg
+        setUniform(u, 'envMap', bg)
+        setUniform(u, 'uEnvMapReady', 1.0)
+        debugLog('useFrame: SYNCED envMap on material change', { envMapReady: 1.0 })
+      } else {
+        debugLog('useFrame: envMap NOT ready on material change', {
+          'scene.background': bg ? 'SET' : 'NULL',
+          mapping: (bg as THREE.Texture)?.mapping
+        })
+      }
+    }
 
     // CRITICAL: Update camera and resolution uniforms - required for ray reconstruction
     // Without these, raymarching fails with NaN values (division by zero)
@@ -143,6 +259,19 @@ export function useBlackHoleUniformUpdates({
     const bhState = useExtendedObjectStore.getState().blackhole
     const { lights, version: lightingVersion } = useLightingStore.getState()
     const cache = colorCacheRef.current
+
+    // Apply visual scale via mesh transform + inverse model matrix (like Schrödinger)
+    // The shader transforms rays into model space using uInverseModelMatrix
+    const scale = bhState.scale
+    console.log('[BlackHole] scale from store:', scale)
+    meshRef.current.scale.set(scale, scale, scale)
+
+    // Update model matrices for model-space raymarching
+    meshRef.current.updateMatrixWorld()
+    setUniform(u, 'uModelMatrix', meshRef.current.matrixWorld)
+    const inverseModelMatrix = meshRef.current.matrixWorld.clone().invert()
+    setUniform(u, 'uInverseModelMatrix', inverseModelMatrix)
+    setUniform(u, 'uScale', scale)
 
     // Update dimension
     const currentDimension = geomState.dimension
@@ -221,8 +350,10 @@ export function useBlackHoleUniformUpdates({
       }
     }
 
-    // Update black hole uniforms
+    // Update black hole uniforms (Kerr physics)
     setUniform(u, 'uHorizonRadius', bhState.horizonRadius)
+    setUniform(u, 'uSpin', bhState.spin)
+    setUniform(u, 'uDiskTemperature', bhState.diskTemperature)
     setUniform(u, 'uGravityStrength', bhState.gravityStrength)
     setUniform(u, 'uManifoldIntensity', bhState.manifoldIntensity)
     setUniform(u, 'uManifoldThickness', bhState.manifoldThickness)
@@ -343,12 +474,36 @@ export function useBlackHoleUniformUpdates({
 
     // Use cached env map if current background is invalid but we have a cached one
     const envMapToUse = isCubeCompatible ? bg : lastValidEnvMapRef.current
+
+    // DEBUG: Log envMap state every frame (limit to first 30 frames)
+    const globalFrame = typeof window !== 'undefined' ? window.__DEBUG_FRAME || 0 : 0
+    if (globalFrame <= 30) {
+      debugLog('useFrame: envMap state', {
+        'scene.background': bg ? 'SET' : 'NULL',
+        'bg.mapping': bg?.mapping,
+        isCubeCompatible,
+        hasCachedEnvMap: !!lastValidEnvMapRef.current,
+        envMapToUse: envMapToUse ? 'AVAILABLE' : 'NULL',
+        uEnvMapReady: envMapToUse ? 1.0 : 0.0
+      })
+    }
+
     if (envMapToUse) {
       setUniform(u, 'envMap', envMapToUse)
       setUniform(u, 'uEnvMapReady', 1.0)
+
+      // CRITICAL: When envMap transitions from null to valid, THREE.js needs
+      // material.needsUpdate = true to properly rebind the texture to the shader.
+      // Without this, the shader may continue using a null/default texture.
+      if (envMapWasNullRef.current) {
+        envMapWasNullRef.current = false
+        material.needsUpdate = true
+        debugLog('useFrame: envMap transitioned null→valid, forced material.needsUpdate')
+      }
     } else {
       // EnvMap not ready or skybox disabled - shader renders black background
       setUniform(u, 'uEnvMapReady', 0.0)
+      envMapWasNullRef.current = true
     }
 
     // Doppler
@@ -393,15 +548,8 @@ export function useBlackHoleUniformUpdates({
       invVP.copy(camera.projectionMatrixInverse).premultiply(camera.matrixWorld)
     }
 
-    // Wire Bayer offset and full resolution from TemporalCloudManager
-    if (temporalEnabled) {
-      const cloudUniforms = TemporalCloudManager.getUniforms()
-      if (u.uBayerOffset?.value) {
-        ;(u.uBayerOffset.value as THREE.Vector2).copy(cloudUniforms.uBayerOffset)
-      }
-      if (u.uFullResolution?.value) {
-        ;(u.uFullResolution.value as THREE.Vector2).copy(cloudUniforms.uAccumulationResolution)
-      }
-    }
+    // Note: Temporal accumulation uniforms (uBayerOffset, uFullResolution) are not wired up.
+    // Black hole is SDF-based and should use TemporalDepthManager like Mandelbulb,
+    // not TemporalCloudManager which is for volumetric clouds.
   }, -10) // Priority -10: before PostProcessing volumetric pass
 }

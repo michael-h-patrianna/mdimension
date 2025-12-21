@@ -122,6 +122,81 @@ vec3 hsl2rgb(vec3 hsl) {
 }
 
 /**
+ * Calculate gravitational redshift factor.
+ *
+ * Light escaping from near the black hole is redshifted due to
+ * gravitational time dilation: z = 1/sqrt(1 - rs/r) - 1
+ *
+ * For visualization, we use a simplified form that blends smoothly.
+ *
+ * @param r - Distance from black hole center
+ * @returns Redshift factor (1.0 = no shift, <1.0 = redshifted)
+ */
+float gravitationalRedshift(float r) {
+  // Schwarzschild redshift factor: sqrt(1 - rs/r)
+  // Clamp to prevent singularity near horizon
+  float rsOverR = uHorizonRadius / max(r, uHorizonRadius * 1.01);
+  float redshiftFactor = sqrt(max(1.0 - rsOverR, 0.01));
+  return redshiftFactor;
+}
+
+/**
+ * Compute blackbody color from temperature using Planckian locus approximation.
+ *
+ * Based on the algorithm by Tanner Helland for temperatures 1000K - 40000K.
+ *
+ * @param temperature - Temperature in Kelvin
+ * @returns RGB color (normalized to peak intensity)
+ */
+vec3 blackbodyColor(float temperature) {
+  // Clamp to valid range and convert to hectoKelvin
+  float temp = clamp(temperature, 1000.0, 40000.0) / 100.0;
+
+  vec3 rgb;
+
+  // Red channel
+  if (temp <= 66.0) {
+    rgb.r = 1.0;
+  } else {
+    rgb.r = 329.698727446 * pow(temp - 60.0, -0.1332047592) / 255.0;
+  }
+
+  // Green channel
+  if (temp <= 66.0) {
+    rgb.g = (99.4708025861 * log(temp) - 161.1195681661) / 255.0;
+  } else {
+    rgb.g = 288.1221695283 * pow(temp - 60.0, -0.0755148492) / 255.0;
+  }
+
+  // Blue channel
+  if (temp >= 66.0) {
+    rgb.b = 1.0;
+  } else if (temp <= 19.0) {
+    rgb.b = 0.0;
+  } else {
+    rgb.b = (138.5177312231 * log(temp - 10.0) - 305.0447927307) / 255.0;
+  }
+
+  return clamp(rgb, 0.0, 1.0);
+}
+
+/**
+ * Compute disk temperature at radius using standard thin-disk profile.
+ *
+ * T(r) = T_inner * (r / r_inner)^(-3/4)
+ *
+ * This is the Shakura-Sunyaev thin disk temperature profile.
+ *
+ * @param r - Radius from center
+ * @param rInner - Inner disk radius (ISCO)
+ * @returns Temperature in Kelvin
+ */
+float diskTemperatureProfile(float r, float rInner) {
+  if (r <= rInner) return uDiskTemperature;
+  return uDiskTemperature * pow(r / rInner, -0.75);
+}
+
+/**
  * Apply Doppler color shift using proper HSL hue rotation.
  *
  * Blue shift for approaching (hue rotates toward blue/violet)

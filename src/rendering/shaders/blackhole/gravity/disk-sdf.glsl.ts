@@ -161,22 +161,22 @@ vec3 shadeDiskHit(vec3 hitPos, vec3 rayDir, int hitIndex, float time) {
   // Temperature-based color (hot inner, cool outer)
   vec3 color;
   if (uPaletteMode == 0) {
-    // Base color mode
+    // Base color mode - use uniform color
     color = uBaseColor;
   } else if (uPaletteMode == 1) {
-    // Disk gradient (temperature)
-    vec3 innerColor = vec3(1.0, 0.95, 0.85);  // Yellowish-white (hot)
-    vec3 outerColor = vec3(1.0, 0.5, 0.15);   // Orange-red (cooler)
-    color = mix(innerColor, outerColor, radialT);
+    // Blackbody mode - physically accurate temperature profile
+    // T(r) = T_inner * (r/r_inner)^(-3/4) (Shakura-Sunyaev thin disk)
+    float localTemp = diskTemperatureProfile(r, innerR);
+    color = blackbodyColor(localTemp);
   } else if (uPaletteMode == 2) {
-    // Quantum mode
+    // Quantum mode (artistic)
     float angle = atan(hitPos.z, hitPos.x);
     float phase = angle * 2.0 + r * 0.3 - time * 0.2;
     vec3 c1 = vec3(0.2, 0.5, 1.0);
     vec3 c2 = vec3(1.0, 0.3, 0.8);
     color = mix(c1, c2, sin(phase) * 0.5 + 0.5);
   } else if (uPaletteMode == 3) {
-    // Heatmap
+    // Heatmap mode (stylized gradient)
     vec3 cold = vec3(0.1, 0.0, 0.3);
     vec3 mid = vec3(1.0, 0.3, 0.0);
     vec3 hot = vec3(1.0, 1.0, 0.8);
@@ -185,6 +185,15 @@ vec3 shadeDiskHit(vec3 hitPos, vec3 rayDir, int hitIndex, float time) {
   } else {
     color = uBaseColor;
   }
+
+  // Apply gravitational redshift
+  // Light from closer to the horizon is redshifted (dimmer and redder)
+  float gRedshift = gravitationalRedshift(r);
+  color *= gRedshift; // Intensity reduction
+  // Also shift hue slightly toward red for visual effect
+  vec3 hsl = rgb2hsl(color);
+  hsl.x = fract(hsl.x + (1.0 - gRedshift) * 0.05); // Slight red shift
+  color = hsl2rgb(hsl);
 
   // Add swirl pattern
   if (uSwirlAmount > 0.001) {

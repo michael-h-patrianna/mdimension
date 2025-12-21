@@ -258,6 +258,18 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
   const meshRef = useRef<THREE.Mesh>(null);
   const timeRef = useRef(0);
 
+  // DEBUG: Log mount
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && window.__DEBUG_LOG) {
+      window.__DEBUG_LOG('SkyboxMesh', 'MOUNT');
+    }
+    return () => {
+      if (typeof window !== 'undefined' && window.__DEBUG_LOG) {
+        window.__DEBUG_LOG('SkyboxMesh', 'UNMOUNT');
+      }
+    };
+  }, []);
+
   // Reusable objects
   const eulerRef = useRef(new THREE.Euler());
   const matrix3Ref = useRef(new THREE.Matrix3());
@@ -269,6 +281,9 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
   const setMeshRef = React.useCallback((mesh: THREE.Mesh | null) => {
     if (mesh) {
       mesh.layers.set(RENDER_LAYERS.SKYBOX);
+      if (typeof window !== 'undefined' && window.__DEBUG_LOG) {
+        window.__DEBUG_LOG('SkyboxMesh', 'setMeshRef: layer set to SKYBOX', { layer: RENDER_LAYERS.SKYBOX });
+      }
     }
     // Update the ref for other hooks to use
     (meshRef as React.MutableRefObject<THREE.Mesh | null>).current = mesh;
@@ -557,6 +572,11 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
     const newOpacity = Math.min(1, elapsed / FADE_DURATION);
     if (newOpacity !== opacity) {
       setOpacity(newOpacity);
+      // DEBUG: Log opacity changes for first few frames
+      const globalFrame = typeof window !== 'undefined' ? window.__DEBUG_FRAME || 0 : 0;
+      if (globalFrame <= 30 && typeof window !== 'undefined' && window.__DEBUG_LOG) {
+        window.__DEBUG_LOG('SkyboxMesh', 'useFrame: opacity changed', { opacity: newOpacity, elapsed });
+      }
     }
 
     if (!material) return;
@@ -711,7 +731,7 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
   return (
     <mesh ref={setMeshRef} data-testid="skybox-mesh">
         {/* Use sphere geometry instead of box - no visible seams at corners */}
-        <sphereGeometry args={[500, 64, 32]} />
+        <sphereGeometry args={[200, 64, 32]} />
         <primitive object={material} attach="material" />
     </mesh>
   );

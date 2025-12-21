@@ -1903,6 +1903,13 @@ export type BlackHoleVisualPreset = 'interstellar' | 'cosmic' | 'ethereal' | 'cu
  * - https://www.fabiopacucci.com/resources/black-hole-calculator/formulas-black-hole-calculator/
  */
 export interface BlackHoleConfig {
+  // === VISUAL SCALE ===
+  /**
+   * 3D scale factor for the entire black hole visualization (0.1-2.0, default 0.25).
+   * Applied to the mesh scale, does not affect physics calculations.
+   */
+  scale: number
+
   // === PHYSICS-BASED (Primary Controls) ===
   /**
    * Schwarzschild radius rs = 2M, determines visual scale (0.05-20, default 2.0).
@@ -2245,6 +2252,9 @@ export const BLACK_HOLE_VISUAL_PRESETS: Record<BlackHoleVisualPreset, Partial<Bl
  * Default black hole configuration
  */
 export const DEFAULT_BLACK_HOLE_CONFIG: BlackHoleConfig = {
+  // Visual scale - 0.25 to show more skybox for lensing visibility
+  scale: 0.25,
+
   // Physics-based parameters (Kerr black hole)
   // horizonRadius is the Schwarzschild radius rs = 2M (visual scale)
   horizonRadius: 2.0,
@@ -2322,7 +2332,7 @@ export const DEFAULT_BLACK_HOLE_CONFIG: BlackHoleConfig = {
   edgeGlowIntensity: 1.0,
 
   // Temporal
-  temporalAccumulationEnabled: true,
+  temporalAccumulationEnabled: false,
 
   // Doppler - Interstellar preset values
   dopplerEnabled: true, // Interstellar: enable Doppler effect

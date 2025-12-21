@@ -79,17 +79,19 @@ float computeDeflectionAngle(float ndRadius) {
 }
 
 /**
- * Apply ray bending for one raymarch step using "Magic Potential" approach.
+ * Apply ray bending for one raymarch step using "Magic Potential" approach
+ * with Kerr frame dragging.
  *
- * Uses the proven Starless raytracer algorithm:
+ * Base algorithm (from Starless raytracer):
  *   acceleration = -1.5 * h² * pos / |pos|^5
  *
- * Where h² = |cross(pos, vel)|² is the squared angular momentum.
- * This is mathematically equivalent to the Schwarzschild geodesic equation
- * but formulated as a Newtonian-style force.
+ * Kerr frame dragging addition:
+ *   The spacetime is "dragged" by the spinning black hole.
+ *   This adds an azimuthal component to the acceleration that
+ *   pulls light rays in the direction of the black hole's rotation.
  *
- * Key property: The force is purely radial, so the orbital plane
- * (defined by initial position and velocity) is automatically preserved.
+ *   Frame dragging acceleration ∝ (a/r³) × (spin_axis × r_hat)
+ *   where a = chi * M is the spin parameter.
  *
  * Reference: https://rantonels.github.io/starless/
  *
@@ -108,7 +110,6 @@ vec3 bendRay(vec3 rayDir, vec3 pos3d, float stepSize, float ndRadius) {
   }
 
   // Compute squared angular momentum: h² = |cross(pos, vel)|²
-  // This is conserved for geodesic motion (constant of motion)
   vec3 angularMomentum = cross(pos3d, rayDir);
   float h2 = dot(angularMomentum, angularMomentum);
 
@@ -117,14 +118,10 @@ vec3 bendRay(vec3 rayDir, vec3 pos3d, float stepSize, float ndRadius) {
     return rayDir;
   }
 
-  // Schwarzschild "magic potential" force (from Starless raytracer):
-  // F = -1.5 * h² * r_hat / r^5
-  //
-  // This produces geodesics equivalent to:
-  //   u'' + u = 1.5 * u²  (Binet equation in units of rs)
-  //
-  // The h² term includes the scale naturally since h = |r × v|
-  float r5 = r * r * r * r * r;
+  // === Schwarzschild component ===
+  // F_schwarzschild = -1.5 * h² * r_hat / r^5
+  float r3 = r * r * r;
+  float r5 = r3 * r * r;
   float forceMagnitude = 1.5 * h2 / r5;
 
   // Apply gravity strength for artistic control
@@ -133,12 +130,41 @@ vec3 bendRay(vec3 rayDir, vec3 pos3d, float stepSize, float ndRadius) {
   // Clamp force to prevent numerical explosion
   forceMagnitude = min(forceMagnitude, uBendMaxPerStep / stepSize);
 
-  // Purely radial acceleration (toward origin)
+  // Radial acceleration (toward origin)
   vec3 radialDir = pos3d / r;
   vec3 acceleration = -forceMagnitude * radialDir;
 
+  // === Kerr frame dragging component ===
+  // Frame dragging causes spacetime to rotate with the black hole.
+  // The spin axis is assumed to be the Y-axis (vertical).
+  // This creates an azimuthal acceleration that pulls light around.
+  if (uSpin > 0.001) {
+    vec3 spinAxis = vec3(0.0, 1.0, 0.0);
+
+    // Frame dragging strength falls off as 1/r³
+    // a = chi * M, and M = rs/2, so a = chi * rs/2
+    float a = uSpin * rs * 0.5;
+
+    // Azimuthal direction (perpendicular to both spin axis and radial)
+    vec3 azimuthalDir = cross(spinAxis, radialDir);
+    float azimuthalMag = length(azimuthalDir);
+
+    if (azimuthalMag > 0.001) {
+      azimuthalDir /= azimuthalMag;
+
+      // Frame dragging acceleration: ~ 2*a/r³ in the azimuthal direction
+      // The factor of 2 comes from the Lense-Thirring effect
+      float frameDragMag = 2.0 * a / r3;
+
+      // Scale by gravity strength for consistency
+      frameDragMag *= uGravityStrength * uBendScale;
+
+      // Add azimuthal acceleration (frame dragging)
+      acceleration += frameDragMag * azimuthalDir;
+    }
+  }
+
   // Velocity Verlet integration (semi-implicit Euler)
-  // This preserves the orbital plane because acceleration is purely radial
   vec3 newDir = rayDir + acceleration * stepSize;
 
   // Renormalize to maintain unit direction (light travels at c)

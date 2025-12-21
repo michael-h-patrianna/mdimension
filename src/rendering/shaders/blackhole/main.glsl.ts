@@ -204,8 +204,22 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
   AccumulationState accum = initAccumulation();
 
   // Bounding sphere skip
-  float farRadius = uFarRadius * uHorizonRadius;
+  // CRITICAL: Use minimum radius of 500.0 to ensure all rays hit the sphere regardless
+  // of uniform sync timing. Without this, first-frame uniform issues cause rays to
+  // miss the sphere and use unbent direction, showing undistorted skybox at edges.
+  float farRadius = max(uFarRadius * uHorizonRadius, 500.0);
   vec2 intersect = intersectSphere(rayOrigin, rayDir, farRadius);
+
+  // DEBUG: Visualize rays that take early-out path (uncomment to debug)
+  // if (intersect.x < 0.0 && intersect.y < 0.0 || intersect.y < 0.0) {
+  //   RaymarchResult res;
+  //   res.color = vec4(1.0, 0.0, 0.0, 1.0); // Bright red = early-out path
+  //   res.weightedCenter = rayOrigin + rayDir * 1000.0;
+  //   res.averageNormal = -rayDir;
+  //   res.firstHitPos = rayOrigin + rayDir * 1000.0;
+  //   res.hasHit = 0.0;
+  //   return res;
+  // }
 
   if (intersect.x < 0.0 && intersect.y < 0.0 || intersect.y < 0.0) {
     RaymarchResult res;
@@ -226,6 +240,14 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
 
   float totalDist = tNear;
   float maxDist = tFar;
+
+  // CRITICAL: Pre-bend the ray direction based on entry position.
+  // For rays that barely graze the bounding sphere (tNear ≈ tFar),
+  // the loop might not run any iterations, leaving bentDirection = rayDir.
+  // This causes undistorted skybox at the edges of the lensing region.
+  // Apply an initial bend based on the entry position's distance from center.
+  float entryNdRadius = ndDistance(pos);
+  dir = bendRay(dir, pos, 0.1, entryNdRadius);  // Initial bend
   vec3 bentDirection = dir;
 
   bool hitHorizon = false;
@@ -295,12 +317,15 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
 
   // Handle horizon or background
   if (hitHorizon) {
-    // Record horizon as first hit if nothing else was hit
     if (accum.hasFirstHit < 0.5) {
+      // Ray went straight into horizon without hitting disk
+      // This should be pure black (no light escapes)
       accum.firstHitPos = pos;
       accum.hasFirstHit = 1.0;
+      accum.color = vec3(0.0);
     }
-    accum.color = vec3(0.0);
+    // If disk was hit (hasFirstHit >= 0.5), keep the accumulated disk color
+    // The horizon absorbs remaining light but disk emission is already captured
     accum.transmittance = 0.0;
   } else if (accum.transmittance > 0.01) {
     vec3 bgColor = sampleBackground(bentDirection);
@@ -314,10 +339,11 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
 }
 
 void main() {
-  // Get ray from camera through box surface point (BackSide rendering)
-  // This is the standard raymarching approach used by Mandelbulb/Schroedinger
-  vec3 rayOrigin = uCameraPosition;
-  vec3 rayDir = normalize(vPosition - uCameraPosition);
+  // Transform rays into model space (like Schrödinger)
+  // This allows mesh scaling to work properly for raymarched objects
+  vec3 rayOrigin = (uInverseModelMatrix * vec4(uCameraPosition, 1.0)).xyz;
+  vec3 worldRayDir = normalize(vPosition - uCameraPosition);
+  vec3 rayDir = normalize((uInverseModelMatrix * vec4(worldRayDir, 0.0)).xyz);
 
   // DEBUG: Visualize ray direction to verify rays are set up correctly
   // Uncomment the following block to debug:
@@ -346,9 +372,11 @@ void main() {
 
   // Output depth buffer (same approach as Mandelbulb)
   // For hits: compute clip-space depth from first hit position
+  // Transform model-space positions back to world space using model matrix
   // For background only: use far plane (1.0)
   if (result.hasHit > 0.5) {
-    vec4 clipPos = uProjectionMatrix * uViewMatrix * vec4(result.firstHitPos, 1.0);
+    vec4 worldHitPos = uModelMatrix * vec4(result.firstHitPos, 1.0);
+    vec4 clipPos = uProjectionMatrix * uViewMatrix * worldHitPos;
     float clipW = abs(clipPos.w) < 0.0001 ? 0.0001 : clipPos.w;
     gl_FragDepth = clamp((clipPos.z / clipW) * 0.5 + 0.5, 0.0, 1.0);
   } else {
@@ -359,8 +387,10 @@ void main() {
   // Output world position for temporal reprojection (only when gPosition is declared)
   #ifdef USE_TEMPORAL_ACCUMULATION
     // Use density-weighted center position for stable reprojection
+    // Transform model-space positions back to world space
     // This prevents smearing artifacts during camera rotation
-    gPosition = vec4(result.weightedCenter, result.color.a);
+    vec4 worldCenter = uModelMatrix * vec4(result.weightedCenter, 1.0);
+    gPosition = vec4(worldCenter.xyz, result.color.a);
   #endif
 }
 `
