@@ -66,9 +66,15 @@ float computeDeflectionAngle(float ndRadius) {
   float epsilon = uEpsilonMul;
   float beta = uDistanceFalloff;
 
-  // Optimized: avoided pow(r+epsilon, beta) if beta is integer-like or fixed
-  // For now, keep pow but maybe optimize later if beta=2.0
-  float deflectionAngle = k * uDimPower / pow(r + epsilon, beta);
+  float denominator;
+  if (abs(beta - 2.0) < 0.01) {
+    float re = r + epsilon;
+    denominator = re * re;
+  } else {
+    denominator = pow(r + epsilon, beta);
+  }
+
+  float deflectionAngle = k * uDimPower / denominator;
 
   // Scale by horizon radius for physical units
   deflectionAngle *= uHorizonRadius;
@@ -81,7 +87,7 @@ float computeDeflectionAngle(float ndRadius) {
 
 /**
  * Apply ray bending for one raymarch step using "Magic Potential" approach
- * with Kerr frame dragging.
+ * with Kerr frame dragging and N-dimensional scaling.
  *
  * Base algorithm (from Starless raytracer):
  *   acceleration = -1.5 * h² * pos / |pos|^5
@@ -89,6 +95,11 @@ float computeDeflectionAngle(float ndRadius) {
  * Optimization:
  *   h² = |pos|^2 - (pos . rayDir)^2  (Lagrange's identity for |pos x rayDir|^2)
  *   This avoids computing the cross product.
+ *
+ * N-Dimensional Scaling:
+ *   We scale the 3D force by: N^α * r^(2-β)
+ *   - N^α: Dimension emphasis (uDimPower)
+ *   - r^(2-β): Falloff correction. 3D is 1/r^2. If β=3, we want 1/r^3, so we multiply by 1/r.
  *
  * Kerr frame dragging addition:
  *   The spacetime is "dragged" by the spinning black hole.
@@ -103,21 +114,24 @@ float computeDeflectionAngle(float ndRadius) {
  * @param rayDir - Current normalized ray direction
  * @param pos3d - Current 3D position
  * @param stepSize - Integration step size
- * @param ndRadius - N-dimensional radius for gravity strength scaling
+ * @param ndRadius - N-dimensional radius for gravity strength scaling (passed in optimization)
  */
 vec3 bendRay(vec3 rayDir, vec3 pos3d, float stepSize, float ndRadius) {
   float rs = uHorizonRadius;
-  float r2 = dot(pos3d, pos3d); // Squared distance
+  
+  // N-Dimensional radius (already computed and passed in)
+  float r = max(ndRadius, uEpsilonMul);
+  float r2 = r * r;
   
   // Skip if too close to singularity or very far (optimization)
   if (r2 < rs * rs * 0.25) return rayDir;
 
-  float r = sqrt(r2);
-  
   // Optimization: Compute h² without cross product
   // h² = |pos|^2 - (pos . rayDir)^2
+  // Note: using 3D dot product here because ray is in 3D slice
   float p_dot_d = dot(pos3d, rayDir);
-  float h2 = r2 - p_dot_d * p_dot_d;
+  float pos3dLenSq = dot(pos3d, pos3d);
+  float h2 = pos3dLenSq - p_dot_d * p_dot_d;
 
   // If h² ≈ 0, ray is purely radial - no bending possible
   if (h2 < 1e-10) {
@@ -130,18 +144,27 @@ vec3 bendRay(vec3 rayDir, vec3 pos3d, float stepSize, float ndRadius) {
   float r5 = r2 * r2 * r;
   float forceMagnitude = 1.5 * h2 / r5;
 
+  // === N-Dimensional Scaling ===
+  // Scale factor = N^α * r^(2-β)
+  // Optimize: avoid pow if falloff is standard 2.0 (Newtonian/Schwarzschild-like)
+  float ndScale = uDimPower;
+  if (abs(uDistanceFalloff - 2.0) > 0.01) {
+    ndScale *= pow(r, 2.0 - uDistanceFalloff);
+  }
+  
+  forceMagnitude *= ndScale;
+
   // Apply gravity strength for artistic control
   forceMagnitude *= uGravityStrength * uBendScale;
-
-  // Clamp force to prevent numerical explosion
+  
+  // Apply clamping
+  forceMagnitude = min(forceMagnitude, uLensingClamp);
   forceMagnitude = min(forceMagnitude, uBendMaxPerStep / stepSize);
 
   // Radial acceleration (toward origin)
-  // vec3 radialDir = pos3d / r;
-  // vec3 acceleration = -forceMagnitude * radialDir;
-  // Optimization: Combine division by r into forceMagnitude
-  // acceleration = -(forceMagnitude / r) * pos3d
-  vec3 acceleration = -(forceMagnitude / r) * pos3d;
+  // vec3 radialDir = pos3d / r; (Using 3D pos for direction)
+  // acceleration = -forceMagnitude * radialDir;
+  vec3 acceleration = -(forceMagnitude / sqrt(pos3dLenSq)) * pos3d;
 
   // === Kerr frame dragging component ===
   // Frame dragging causes spacetime to rotate with the black hole.
@@ -166,13 +189,10 @@ vec3 bendRay(vec3 rayDir, vec3 pos3d, float stepSize, float ndRadius) {
       float r3 = r2 * r;
       float frameDragMag = 2.0 * a / r3;
 
-      // Scale by gravity strength for consistency
-      frameDragMag *= uGravityStrength * uBendScale;
+      // Scale by gravity strength and ND scale
+      frameDragMag *= uGravityStrength * uBendScale * ndScale;
       
       // acceleration += frameDragMag * azimuthalDir
-      // acceleration += (frameDragMag / azimuthalMag) * azimuthalDirRaw
-      // Optimization: avoid sqrt if possible, but we need normalized direction for correct force magnitude
-      // Let's just do the sqrt, it's safer.
       acceleration += (frameDragMag * inversesqrt(azLenSq)) * azimuthalDirRaw;
     }
   }

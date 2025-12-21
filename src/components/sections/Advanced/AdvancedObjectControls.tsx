@@ -34,6 +34,7 @@ export const AdvancedObjectControls: React.FC = () => {
     }
 
     const showRaymarchingQuality = RAYMARCHING_OBJECT_TYPES.includes(objectType);
+    const isPolytope = ['hypercube', 'simplex', 'cross-polytope', 'wythoff-polytope'].includes(objectType);
 
     return (
         <Section title="Advanced Rendering" defaultOpen={true} data-testid="advanced-object-controls">
@@ -46,6 +47,8 @@ export const AdvancedObjectControls: React.FC = () => {
             {/* Object-Specific Settings */}
             {objectType === 'schroedinger' && <SchroedingerAdvanced />}
             {objectType === 'blackhole' && <BlackHoleAdvanced />}
+            {objectType === 'mandelbulb' && <MandelbulbAdvanced />}
+            {isPolytope && <PolytopeAdvanced />}
         </Section>
     );
 };
@@ -268,8 +271,12 @@ const SchroedingerAdvanced: React.FC = () => {
         setDispersionStrength: state.setSchroedingerDispersionStrength,
         setDispersionDirection: state.setSchroedingerDispersionDirection,
         setDispersionQuality: state.setSchroedingerDispersionQuality,
-        // Note: Shadow setters removed - now in ShadowsSection
-        // Note: AO setters removed - now in MiscControls (Post Processing)
+        // Shadows/AO
+        setShadowsEnabled: state.setSchroedingerShadowsEnabled,
+        setShadowStrength: state.setSchroedingerShadowStrength,
+        setAoEnabled: state.setSchroedingerAoEnabled,
+        setAoStrength: state.setSchroedingerAoStrength,
+        // Quantum Effects
         setNodalEnabled: state.setSchroedingerNodalEnabled,
         setNodalColor: state.setSchroedingerNodalColor,
         setNodalStrength: state.setSchroedingerNodalStrength,
@@ -277,7 +284,9 @@ const SchroedingerAdvanced: React.FC = () => {
         setShimmerEnabled: state.setSchroedingerShimmerEnabled,
         setShimmerStrength: state.setSchroedingerShimmerStrength,
         setIsoEnabled: state.setSchroedingerIsoEnabled,
-        setIsoThreshold: state.setSchroedingerIsoThreshold
+        setIsoThreshold: state.setSchroedingerIsoThreshold,
+        // New features
+        setErosionStrength: state.setSchroedingerErosionStrength,
     }));
     const {
         config,
@@ -288,8 +297,10 @@ const SchroedingerAdvanced: React.FC = () => {
         setDispersionStrength,
         setDispersionDirection,
         setDispersionQuality,
-        // Note: Shadow setters removed - now in ShadowsSection
-        // Note: AO setters removed - now in MiscControls (Post Processing)
+        setShadowsEnabled,
+        setShadowStrength,
+        setAoEnabled,
+        setAoStrength,
         setNodalEnabled,
         setNodalColor,
         setNodalStrength,
@@ -297,7 +308,8 @@ const SchroedingerAdvanced: React.FC = () => {
         setShimmerEnabled,
         setShimmerStrength,
         setIsoEnabled,
-        setIsoThreshold
+        setIsoThreshold,
+        setErosionStrength,
     } = useExtendedObjectStore(extendedObjectSelector);
 
     return (
@@ -336,6 +348,73 @@ const SchroedingerAdvanced: React.FC = () => {
                     showValue
                     data-testid="schroedinger-anisotropy"
                 />
+            </div>
+
+            {/* Volume Effects */}
+            <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
+                <div className="flex items-center justify-between">
+                    <label className="text-xs text-text-secondary font-semibold">Volume Effects</label>
+                </div>
+                
+                {/* Erosion */}
+                <div className="mt-2">
+                    <Slider
+                        label="Surface Erosion"
+                        min={0}
+                        max={1}
+                        step={0.1}
+                        value={config.erosionStrength ?? 0.0}
+                        onChange={setErosionStrength}
+                        showValue
+                    />
+                </div>
+
+                {/* Shadows & AO */}
+                <div className="flex items-center justify-between mt-2">
+                    <label className="text-xs text-text-secondary">Volumetric Shadows</label>
+                    <ToggleButton
+                        pressed={config.shadowsEnabled ?? false}
+                        onToggle={() => setShadowsEnabled(!(config.shadowsEnabled ?? false))}
+                        className="text-xs px-2 py-1 h-auto"
+                        ariaLabel="Toggle shadows"
+                    >
+                        {config.shadowsEnabled ? 'ON' : 'OFF'}
+                    </ToggleButton>
+                </div>
+                {config.shadowsEnabled && (
+                    <Slider
+                        label="Shadow Strength"
+                        min={0}
+                        max={2}
+                        step={0.1}
+                        value={config.shadowStrength ?? 1.0}
+                        onChange={setShadowStrength}
+                        showValue
+                    />
+                )}
+
+                <div className="flex items-center justify-between mt-2">
+                    <label className="text-xs text-text-secondary">Volumetric AO</label>
+                    <ToggleButton
+                        pressed={config.aoEnabled ?? false}
+                        onToggle={() => setAoEnabled(!(config.aoEnabled ?? false))}
+                        className="text-xs px-2 py-1 h-auto"
+                        ariaLabel="Toggle AO"
+                    >
+                        {config.aoEnabled ? 'ON' : 'OFF'}
+                    </ToggleButton>
+                </div>
+                {config.aoEnabled && (
+                    <Slider
+                        label="AO Strength"
+                        min={0}
+                        max={2}
+                        step={0.1}
+                        value={config.aoStrength ?? 1.0}
+                        onChange={setAoStrength}
+                        showValue
+                    />
+                )}
             </div>
 
             {/* Chromatic Dispersion */}
@@ -393,9 +472,6 @@ const SchroedingerAdvanced: React.FC = () => {
                     </>
                 )}
             </div>
-
-            {/* Note: Shadow controls moved to ShadowsSection */}
-            {/* Note: AO controls moved to MiscControls (Post Processing → FX tab) */}
 
             {/* Quantum Effects */}
             <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
@@ -524,6 +600,81 @@ const SchroedingerAdvanced: React.FC = () => {
     );
 };
 
+const MandelbulbAdvanced: React.FC = () => {
+    const extendedObjectSelector = useShallow((state: ExtendedObjectState) => ({
+        config: state.mandelbulb,
+        // Animations
+        setAlternatePowerEnabled: state.setMandelbulbAlternatePowerEnabled,
+        setAlternatePowerValue: state.setMandelbulbAlternatePowerValue,
+        setAlternatePowerBlend: state.setMandelbulbAlternatePowerBlend,
+        // Atmosphere
+        setFogEnabled: state.setMandelbulbFogEnabled,
+        setFogContribution: state.setMandelbulbFogContribution,
+        setInternalFogDensity: state.setMandelbulbInternalFogDensity,
+    }));
+    const {
+        config,
+        setAlternatePowerEnabled,
+        setAlternatePowerValue,
+        setAlternatePowerBlend,
+        setFogEnabled,
+        setFogContribution,
+        setInternalFogDensity,
+    } = useExtendedObjectStore(extendedObjectSelector);
+
+    return (
+        <div className="space-y-6">
+            {/* Alternate Power (Technique B) */}
+            <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between">
+                    <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider">Alternate Power</label>
+                    <ToggleButton
+                        pressed={config.alternatePowerEnabled}
+                        onToggle={() => setAlternatePowerEnabled(!config.alternatePowerEnabled)}
+                        className="text-xs px-2 py-1 h-auto"
+                        ariaLabel="Toggle alternate power"
+                    >
+                        {config.alternatePowerEnabled ? 'ON' : 'OFF'}
+                    </ToggleButton>
+                </div>
+                {config.alternatePowerEnabled && (
+                    <div className="space-y-3 pl-2 border-l border-white/10">
+                        <Slider label="Power 2" min={2} max={16} step={0.1} value={config.alternatePowerValue} onChange={setAlternatePowerValue} showValue />
+                        <Slider label="Blend" min={0} max={1} step={0.05} value={config.alternatePowerBlend} onChange={setAlternatePowerBlend} showValue />
+                    </div>
+                )}
+            </div>
+
+            {/* Atmosphere */}
+            <div className="space-y-3 pt-2 border-t border-white/5">
+                <div className="flex items-center justify-between">
+                    <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider">Atmosphere</label>
+                    <ToggleButton
+                        pressed={config.fogEnabled}
+                        onToggle={() => setFogEnabled(!config.fogEnabled)}
+                        className="text-xs px-2 py-1 h-auto"
+                        ariaLabel="Toggle atmosphere"
+                    >
+                        {config.fogEnabled ? 'ON' : 'OFF'}
+                    </ToggleButton>
+                </div>
+                {config.fogEnabled && (
+                    <div className="space-y-3 pl-2 border-l border-white/10">
+                        <Slider label="Contribution" min={0} max={2} step={0.1} value={config.fogContribution} onChange={setFogContribution} showValue />
+                        <Slider label="Internal Fog" min={0} max={1} step={0.05} value={config.internalFogDensity} onChange={setInternalFogDensity} showValue />
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+const PolytopeAdvanced: React.FC = () => {
+    // All Polytope animations have been moved to the Timeline Animation Drawer.
+    // This component is currently empty but retained for future advanced settings.
+    return null;
+};
+
 const BlackHoleAdvanced: React.FC = () => {
     const extendedObjectSelector = useShallow((state: ExtendedObjectState) => ({
         config: state.blackhole,
@@ -588,9 +739,7 @@ const BlackHoleAdvanced: React.FC = () => {
         setDimensionEmphasis,
         setDistanceFalloff,
         setBendScale,
-        setBendMaxPerStep,
         setRayBendingMode,
-        setLensingClamp,
         setEpsilonMul,
         setDensityFalloff,
         setNoiseScale,
@@ -599,7 +748,6 @@ const BlackHoleAdvanced: React.FC = () => {
         setPhotonShellWidth,
         setShellGlowStrength,
         setShellGlowColor,
-        setShellContrastBoost,
         setEdgeGlowEnabled,
         setEdgeGlowWidth,
         setEdgeGlowIntensity,
@@ -612,7 +760,6 @@ const BlackHoleAdvanced: React.FC = () => {
         setJetsWidth,
         setJetsIntensity,
         setJetsColor,
-        setJetsFalloff,
         setJetsNoiseAmount,
         setMaxSteps,
         setStepBase,
@@ -818,6 +965,7 @@ const BlackHoleAdvanced: React.FC = () => {
                         pressed={config.dopplerEnabled}
                         onToggle={() => setDopplerEnabled(!config.dopplerEnabled)}
                         className="text-xs px-2 py-1 h-auto"
+                        ariaLabel="Toggle doppler effect"
                     >
                         {config.dopplerEnabled ? 'ON' : 'OFF'}
                     </ToggleButton>
@@ -855,6 +1003,7 @@ const BlackHoleAdvanced: React.FC = () => {
                         pressed={config.jetsEnabled}
                         onToggle={() => setJetsEnabled(!config.jetsEnabled)}
                         className="text-xs px-2 py-1 h-auto"
+                        ariaLabel="Toggle polar jets"
                     >
                         {config.jetsEnabled ? 'ON' : 'OFF'}
                     </ToggleButton>
@@ -919,6 +1068,7 @@ const BlackHoleAdvanced: React.FC = () => {
                         pressed={config.edgeGlowEnabled}
                         onToggle={() => setEdgeGlowEnabled(!config.edgeGlowEnabled)}
                         className="text-xs px-2 py-1 h-auto"
+                        ariaLabel="Toggle edge glow"
                     >
                         {config.edgeGlowEnabled ? 'ON' : 'OFF'}
                     </ToggleButton>

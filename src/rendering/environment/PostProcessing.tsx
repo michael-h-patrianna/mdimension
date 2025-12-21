@@ -163,8 +163,8 @@ export const PostProcessing = memo(function PostProcessing() {
     () => {
       // Use restoreCount as a seed offset or just check it to ensure dependency usage
       // This forces texture recreation on context restore
-      return restoreCount >= 0 && supports3DNoise 
-        ? generateNoiseTexture3D(64) 
+      return restoreCount >= 0 && supports3DNoise
+        ? generateNoiseTexture3D(64)
         : generateNoiseTexture2D(256);
     },
     [supports3DNoise, restoreCount]
@@ -1176,7 +1176,12 @@ export const PostProcessing = memo(function PostProcessing() {
     gl.setClearColor(0x000000, 0);
     gl.clear(true, true, true); // Clear color, depth, stencil
 
-    // Force all materials to write depth during this pass
+    // Force OPAQUE materials to write depth during this pass
+    // IMPORTANT: Do NOT force depthWrite for transparent materials!
+    // Transparent objects should not write depth so that fog can raymarch
+    // through them to what's behind (sky, other objects). Without this,
+    // fog stops at the transparent object's surface, creating a fog-free
+    // "hole" where you can see through the transparent object.
     // P3 Optimization: Reuse Map from ref to avoid per-frame allocation
     const savedDepthWrite = savedDepthWriteRef.current;
     savedDepthWrite.clear();
@@ -1184,7 +1189,10 @@ export const PostProcessing = memo(function PostProcessing() {
       if ((obj as THREE.Mesh).isMesh) {
         const mat = (obj as THREE.Mesh).material as THREE.Material;
         savedDepthWrite.set(mat, mat.depthWrite);
-        mat.depthWrite = true;
+        // Only force depthWrite for opaque materials
+        if (!mat.transparent) {
+          mat.depthWrite = true;
+        }
       }
     });
 

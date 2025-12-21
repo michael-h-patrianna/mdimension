@@ -190,9 +190,10 @@ void accumulateDiskHit(
   accum.normalSum += normal * weight;
 }
 
-// Pseudo-random function for dithering
-float random(vec2 st) {
-    return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
+// Interleaved Gradient Noise (High quality dithering)
+float interleavedGradientNoise(vec2 uv) {
+    vec3 magic = vec3(0.06711056, 0.00583715, 52.9829189);
+    return fract(magic.z * fract(dot(uv, magic.xy)));
 }
 
 /**
@@ -219,21 +220,25 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
   float tNear = max(0.0, intersect.x);
   float tFar = intersect.y;
 
-  // Dithering to hide banding
-  float dither = random(gl_FragCoord.xy + fract(time));
+  // Dithering to hide banding (Interleaved Gradient Noise)
+  float dither = interleavedGradientNoise(gl_FragCoord.xy + fract(time));
+  
   // Apply dithering to start position (jitter along ray)
-  // Only small jitter to avoid visual noise
-  float startOffset = dither * 0.1; 
-  tNear += startOffset;
+  // Use a slightly larger jitter window to smooth out steps
+  float startOffset = dither * 0.5 * adaptiveStepSize(ndDistance(rayOrigin + rayDir * tNear)); 
+  
+  // Note: using adaptive step at initial point to scale jitter is smart, but let's keep it simple
+  // just use a small base jitter.
+  startOffset = dither * 0.1;
 
-  vec3 pos = rayOrigin + rayDir * tNear;
+  vec3 pos = rayOrigin + rayDir * (tNear + startOffset);
   vec3 dir = rayDir;
   vec3 prevPos = pos;
-
-  float totalDist = tNear;
+  
+  float totalDist = tNear + startOffset;
   float maxDist = tFar;
 
-  // Pre-bend ray
+  // Pre-bend ray (initial deflection)
   float entryNdRadius = ndDistance(pos);
   dir = bendRay(dir, pos, 0.1, entryNdRadius);
   vec3 bentDirection = dir;
@@ -244,7 +249,7 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
   for (int i = 0; i < 512; i++) {
     if (i >= uMaxSteps) break;
     if (totalDist > maxDist) break;
-    if (accum.transmittance < uTransmittanceCutoff) break;
+    if (accum.transmittance < 0.01) break; // Early exit for opaque
 
     float ndRadius = ndDistance(pos);
 
@@ -265,7 +270,9 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
     if (diskH < uManifoldThickness * uHorizonRadius * 2.0 && 
         diskR > uHorizonRadius * uDiskInnerRadiusMul * 0.8 && 
         diskR < uHorizonRadius * uDiskOuterRadiusMul * 1.2) {
-       stepSize = min(stepSize, 0.05 * uHorizonRadius); // Force smaller steps in disk
+       // Relax step size in fast mode (0.1) vs high quality (0.05)
+       float diskStepLimit = uFastMode ? 0.1 : 0.05;
+       stepSize = min(stepSize, diskStepLimit * uHorizonRadius); // Force smaller steps in disk
     }
     #endif
 
