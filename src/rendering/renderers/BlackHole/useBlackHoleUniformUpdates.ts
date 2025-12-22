@@ -24,7 +24,6 @@ import { useFrame, useThree } from '@react-three/fiber'
 import React, { useLayoutEffect, useRef } from 'react'
 import * as THREE from 'three'
 import {
-  COLOR_ALGORITHM_MAP,
   LIGHTING_MODE_MAP,
   MANIFOLD_TYPE_MAP,
   OPACITY_MODE_MAP,
@@ -279,35 +278,7 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
     }
 
     // Get current state from stores
-    const { version: rotationVersion } = useRotationStore.getState()
     const animState = useAnimationStore.getState()
-
-    // Adaptive quality: detect rotation changes and enable fast mode
-    const rotationsChanged = rotationVersion !== prevRotationVersionRef.current
-    if (rotationsChanged) {
-      // Rotation is happening - switch to fast mode for better interactivity
-      fastModeRef.current = true
-      prevRotationVersionRef.current = rotationVersion
-
-      // Clear any pending quality restore timeout
-      if (restoreQualityTimeoutRef.current) {
-        clearTimeout(restoreQualityTimeoutRef.current)
-        restoreQualityTimeoutRef.current = null
-      }
-    } else if (fastModeRef.current) {
-      // Rotation stopped - schedule quality restore after delay
-      if (!restoreQualityTimeoutRef.current) {
-        restoreQualityTimeoutRef.current = setTimeout(() => {
-          fastModeRef.current = false
-          restoreQualityTimeoutRef.current = null
-        }, QUALITY_RESTORE_DELAY_MS)
-      }
-    }
-
-    // Update fast mode uniform (only enable if performance setting allows it)
-    const perfState = usePerformanceStore.getState()
-    const fractalAnimLowQuality = perfState.fractalAnimationLowQuality
-    setUniform(u, 'uFastMode', fractalAnimLowQuality && fastModeRef.current)
 
     // Get black hole state for coverage and temporal calculations
     const bhState = useExtendedObjectStore.getState().blackhole
@@ -323,20 +294,27 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
         : 0.5
 
     // Quality reduction for black hole raymarching
-    // Use the MAXIMUM of performance store multiplier and coverage-based reduction
-    // (i.e., pick the LESS aggressive reduction to avoid compounding)
+    // Combine UniformManager's quality (performance-based) with coverage-based reduction
     // Also enforce higher floor (0.5) than other objects since black hole needs more steps
-    // With 256 max steps, 0.5 floor = 128 minimum steps for stable rendering
-    const performanceQuality = perfState.qualityMultiplier
     const coverageQuality = applyScreenCoverageReduction(1.0, coverage)
-    const effectiveQuality = Math.max(performanceQuality, coverageQuality)
-    setUniform(u, 'uQualityMultiplier', Math.max(effectiveQuality, 0.5))
+    
+    // Apply centralized uniform sources
+    // Note: 'quality' source updates uFastMode and uQualityMultiplier based on performance/rotation
+    // We override uQualityMultiplier below to include coverage scaling
+    UniformManager.applyToMaterial(material, ['lighting', 'quality', 'color'])
+
+    // Override quality multiplier to include coverage-based reduction
+    // This composes with the base quality from UniformManager
+    if (u.uQualityMultiplier) {
+      const baseQuality = u.uQualityMultiplier.value as number
+      const effectiveQuality = Math.max(baseQuality * coverageQuality, 0.5)
+      u.uQualityMultiplier.value = effectiveQuality
+    }
 
     // NOTE: Temporal accumulation is intentionally disabled for black hole.
     // The full-screen reconstruction pass (3×3 neighborhood) is too expensive
     // and negates the quarter-res rendering savings. Black hole stays on
     // MAIN_OBJECT layer and benefits from adaptive quality (step reduction) instead.
-    const appearanceState = useAppearanceStore.getState() // Global appearance
     const lightingState = useLightingStore.getState() // Global lighting
     const uiState = useUIStore.getState() // Global UI state
     const cache = colorCacheRef.current
@@ -368,6 +346,24 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
     // D-dimensional Rotation & Basis Vectors (via shared hook)
     // Only recomputes when rotations, dimension, or params change
     // ============================================
+    // Note: rotationUpdates.getBasisVectors now accepts a boolean directly
+    // We can use the UniformManager's QualitySource to check for rotation changes if we wanted,
+    // but the hook uses internal state. The hook needs to know if rotations changed.
+    // We can re-derive it or pass true if we want always update?
+    // Actually useRotationUpdates manages 'changed' internally based on prev version.
+    // We just need to pass the current boolean trigger if we have one, or just call it?
+    // The hook signature is `getBasisVectors(rotationsChanged: boolean)`.
+    // We need to know if rotations changed.
+    // Use RotationStore directly for this specific check, similar to how QualitySource does it.
+    const rotationVersion = useRotationStore.getState().version
+    // We can use a ref to track local change detection for this hook call
+    // or just let useRotationUpdates handle it if it could... but it takes the boolean.
+    // Let's keep the rotation version tracking here for the hook input.
+    const rotationsChanged = rotationVersion !== prevRotationVersionRef.current
+    if (rotationsChanged) {
+        prevRotationVersionRef.current = rotationVersion
+    }
+
     const {
       basisX,
       basisY,
@@ -414,6 +410,8 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
     setUniform(u, 'uBloomBoost', bhState.bloomBoost)
 
     // Update colors (with null guards) using Global Appearance Store
+    // Note: ColorSource handles algorithm uniforms, but these are material-specific colors
+    const appearanceState = useAppearanceStore.getState()
     if (u.uBaseColor?.value) {
       updateLinearColorUniform(
         cache.baseColor,
@@ -442,19 +440,6 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
         bhState.jetsColor
       )
     }
-
-    // Sync Color Algorithm uniforms
-    setUniform(u, 'uColorAlgorithm', COLOR_ALGORITHM_MAP[appearanceState.colorAlgorithm] ?? 0)
-    if (u.uCosineA?.value)
-      (u.uCosineA.value as THREE.Vector3).fromArray(appearanceState.cosineCoefficients.a)
-    if (u.uCosineB?.value)
-      (u.uCosineB.value as THREE.Vector3).fromArray(appearanceState.cosineCoefficients.b)
-    if (u.uCosineC?.value)
-      (u.uCosineC.value as THREE.Vector3).fromArray(appearanceState.cosineCoefficients.c)
-    if (u.uCosineD?.value)
-      (u.uCosineD.value as THREE.Vector3).fromArray(appearanceState.cosineCoefficients.d)
-    setUniform(u, 'uLchLightness', appearanceState.lchLightness)
-    setUniform(u, 'uLchChroma', appearanceState.lchChroma)
 
     // Palette mode (still supported for black hole specific modes)
     setUniform(u, 'uPaletteMode', PALETTE_MODE_MAP[bhState.paletteMode] ?? 0)

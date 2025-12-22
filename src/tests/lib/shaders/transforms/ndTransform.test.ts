@@ -213,9 +213,9 @@ describe('ndTransform', () => {
     it('should include extra dimension attributes', () => {
       const shader = generateNDTransformVertexShader();
 
-      // Attributes have 'a' prefix for Three.js convention
-      expect(shader).toContain('attribute float aExtraDim0');
-      expect(shader).toContain('attribute float aExtraDim1');
+      // Attributes have 'a' prefix for Three.js convention (using GLSL ES 3.00 'in' keyword)
+      expect(shader).toContain('in float aExtraDim0');
+      expect(shader).toContain('in float aExtraDim1');
     });
 
     it('should support custom max dimension', () => {
@@ -226,13 +226,16 @@ describe('ndTransform', () => {
   });
 
   describe('generateNDTransformFragmentShader', () => {
-    it('should generate valid GLSL code', () => {
+    it('should generate valid GLSL ES 3.00 code', () => {
       const shader = generateNDTransformFragmentShader();
 
       expect(shader).toContain('uniform vec3 uColor');
       expect(shader).toContain('uniform float uOpacity');
       expect(shader).toContain('void main()');
-      expect(shader).toContain('gl_FragColor');
+      // WebGL2 GLSL ES 3.00 uses layout out declaration instead of gl_FragColor
+      expect(shader).toContain('layout(location = 0) out vec4 fragColor');
+      expect(shader).toContain('fragColor = vec4(color, uOpacity)');
+      expect(shader).not.toContain('gl_FragColor');
     });
   });
 

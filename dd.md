@@ -12,7 +12,7 @@ your task is to find all issues, close the gap, polish and fix issues.
 Worflow:
 1. Understand the migration plan: docs/plans/refactor-rendering-architecture.md
 2. Review the current implementation
-3. Compare to older commits in the git repo what features existed and how they worked
+3. Compare to pre-refactor commits in the git main branch what features existed and how they worked
 4. Plan and design solutions to:
    1. close the gap between current codebase and what the migration plan expected
    2. finish the migration
@@ -50,7 +50,6 @@ Compared current implementation against `docs/plans/refactor-rendering-architect
 - broken sdf raymarching, broken volume raymarching
 - broken temporal reprojection (both: temporal depth and temporal cloud)
 - broken normal/depth/temporal depth buffers
--
 
 
 Your task is to fix the temporal reprojection for the schroedinger object type.
@@ -257,3 +256,15 @@ expected: in such
 
 
 clink codex to write a complete code review of the refactoring of the rendering architecture as outlined in docs/plans/refactor-rendering-architecture.md codex must write the review in docs/refactor-review.md.
+
+
+
+Review this bug report:
+No object type is rendered correctly. It appears that the object is kind of appearing but just tinting the whole scene. Maybe we are zoomed in to the extreme, or the whole render graph is doing something very wrong in its position, vertex, face, rotation, scale, perspective or scale calculations.
+
+these two tests need to pass to even a tiny chance that everything is rendered correctly:
+scripts/playwright/object-types-rendering.spec.ts
+scripts/playwright/polytope-rendering.spec.ts
+
+notes:
+- except for the black hole, scene will show green tint as all object types have a green material color in the start. except the black hole which at its center is obviously black.

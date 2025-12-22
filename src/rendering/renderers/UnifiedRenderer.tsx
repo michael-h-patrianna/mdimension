@@ -74,6 +74,11 @@ export const UnifiedRenderer = React.memo(function UnifiedRenderer({
       verticesCount: geometry.vertices.length,
       edgesCount: geometry.edges.length,
     });
+    // #region agent log - Track render mode
+    const debugData = {location:'UnifiedRenderer.tsx',message:'Render mode determined',data:{mode,objectType,dimension,facesVisible,verticesCount:geometry.vertices.length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'RENDER-MODE'};
+    console.log('[DEBUG-RENDER-MODE]', JSON.stringify(debugData));
+    fetch('http://127.0.0.1:7242/ingest/af54dc2c-228f-456b-a43d-a100942bc421',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(debugData)}).catch(()=>{});
+    // #endregion
     return mode;
   }, [geometry, objectType, dimension, facesVisible]);
 

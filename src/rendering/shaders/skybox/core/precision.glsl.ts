@@ -1,19 +1,22 @@
 /**
  * Skybox-specific precision block
  *
- * Unlike the shared precision block used by MRT renderers (Mandelbulb, Schroedinger, BlackHole),
- * the skybox only needs a single color output. The skybox is rendered to:
- * - Single-attachment WebGLRenderTarget (main scene pass)
- * - WebGLCubeRenderTarget (for black hole lensing capture)
+ * CRITICAL FIX: Must output to all 3 MRT locations to prevent GL_INVALID_OPERATION
+ * when the skybox mesh is in the scene and any MRT pass renders. Even though skybox
+ * is on a separate layer (SKYBOX = 2) and should only render during ScenePass
+ * (single attachment), having incomplete outputs can cause driver issues.
  *
- * Writing to undefined output locations (like gNormal at location 1) when rendering
- * to single-attachment targets is undefined behavior in WebGL2/GLSL3.
+ * Extra outputs (gNormal, gPosition) are safely ignored when rendering to
+ * single-attachment targets.
  *
- * See layers.ts: "Skybox - excluded from normal buffer (skybox normals shouldn't affect SSR)"
+ * See: docs/bugfixing/log/2025-12-21-schroedinger-temporal-gl-invalid-operation.md
  */
 export const skyboxPrecisionBlock = `
 precision highp float;
 
-// Single color output - skybox never writes to normal buffer
+// MRT outputs - must output to all 3 locations for compatibility
+// Extra outputs are safely ignored when rendering to single-attachment targets
 layout(location = 0) out vec4 gColor;
+layout(location = 1) out vec4 gNormal;
+layout(location = 2) out vec4 gPosition;
 `

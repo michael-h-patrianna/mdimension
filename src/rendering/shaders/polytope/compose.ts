@@ -302,22 +302,30 @@ void main() {
   vec3 viewNormal = vnLen > 0.0001 ? viewNormalRaw / vnLen : vec3(0.0, 0.0, 1.0);
   gColor = vec4(col, uOpacity);
   gNormal = vec4(viewNormal * 0.5 + 0.5, uMetallic);
+  // CRITICAL: Always write to gPosition to prevent GL_INVALID_OPERATION when
+  // rendering to MRT targets with 3 attachments. Unused outputs are silently
+  // ignored when rendering to 2-attachment targets.
+  // See: docs/bugfixing/log/2025-12-21-schroedinger-temporal-gl-invalid-operation.md
+  gPosition = vec4(vWorldPosition, 1.0);
 }
 `
 
 /**
  * Edge fragment shader with MRT outputs.
- * Must output to both gColor (location 0) and gNormal (location 1)
- * to be compatible with MRT render targets.
+ * Must output to gColor (location 0), gNormal (location 1), and gPosition (location 2)
+ * to be compatible with MRT render targets (2 or 3 attachments).
  * @returns GLSL fragment shader code string for edge rendering
  */
 export function composeEdgeFragmentShader(): string {
   return `
     precision highp float;
 
-    // MRT outputs - must match face shader outputs
+    // MRT outputs - must output to all 3 locations for compatibility with 3-attachment targets
+    // Extra outputs are silently ignored when rendering to 2-attachment targets.
+    // See: docs/bugfixing/log/2025-12-21-schroedinger-temporal-gl-invalid-operation.md
     layout(location = 0) out vec4 gColor;
     layout(location = 1) out vec4 gNormal;
+    layout(location = 2) out vec4 gPosition;
 
     uniform vec3 uColor;
     uniform float uOpacity;
@@ -328,6 +336,8 @@ export function composeEdgeFragmentShader(): string {
       // Neutral view-space normal (facing camera) encoded to 0-1, no metallic
       // This ensures edges work with post-processing that reads the normal buffer
       gNormal = vec4(0.5, 0.5, 1.0, 0.0);
+      // Dummy position output for MRT compatibility (edges don't need world position)
+      gPosition = vec4(0.0);
     }
   `
 }

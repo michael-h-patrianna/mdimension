@@ -56,7 +56,8 @@ function setupErrorCollection(page: Page): ErrorCollector {
     if (
       text.includes('[PolytopeScene]') ||
       text.includes('[PostProcessing') ||
-      text.includes('[RenderGraph')
+      text.includes('[RenderGraph') ||
+      text.includes('[DEBUG-H')
     ) {
       console.log('[BROWSER]', text)
     }

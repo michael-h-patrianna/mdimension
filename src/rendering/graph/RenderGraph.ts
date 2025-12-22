@@ -121,6 +121,7 @@ class RenderGraphContext implements RenderContext {
 export class RenderGraph {
   private compiler = new GraphCompiler()
   private pool = new ResourcePool()
+  private instanceId = Math.random().toString(36).slice(2, 8)
   private compiled: CompiledGraph | null = null
   private isDirty = true
 
@@ -400,6 +401,17 @@ export class RenderGraph {
     // Update pool with current screen size
     this.pool.updateSize(this.width, this.height)
 
+    // #region agent log - H22: execute debug
+    console.log('[DEBUG-H22-execute]', JSON.stringify({
+      location: 'RenderGraph.ts:render',
+      message: 'H22: render executing with size',
+      data: { instanceId: this.instanceId, width: this.width, height: this.height },
+      timestamp: Date.now(),
+      sessionId: 'debug-session',
+      hypothesisId: 'H22',
+    }));
+    // #endregion
+
     // Begin GPU timing frame
     this.gpuTimer.beginFrame()
 
@@ -518,9 +530,23 @@ export class RenderGraph {
    * @param height - Screen height in pixels
    */
   setSize(width: number, height: number): void {
+    // #region agent log - H19b: RenderGraph.setSize debug
+    console.log('[DEBUG-H19b-RenderGraph.setSize]', JSON.stringify({
+      location: 'RenderGraph.ts:setSize',
+      message: 'H19b: setSize called on RenderGraph',
+      data: { instanceId: this.instanceId, inputWidth: width, inputHeight: height, prevWidth: this.width, prevHeight: this.height },
+      timestamp: Date.now(),
+      sessionId: 'debug-session',
+      hypothesisId: 'H19b',
+    }));
+    // #endregion
     this.width = Math.max(1, width)
     this.height = Math.max(1, height)
+    // CRITICAL: Force resize on next ensureAllocated call
+    // This ensures the pool actually resizes targets on the next frame
     this.pool.updateSize(this.width, this.height)
+    // Force a recompile to ensure all passes use new dimensions
+    this.isDirty = true
   }
 
   /**

@@ -226,9 +226,9 @@ export class TemporalCloudPass extends BasePass {
         if (u['uResolution']) u['uResolution'].value.set(target.width, target.height)
         if (u['uBayerOffset']) u['uBayerOffset'].value.set(bayerOffset[0], bayerOffset[1])
         if (u['uFrameIndex']) u['uFrameIndex'].value = this.frameIndex
-        // Also provide full resolution for jitter calc
+        // Full resolution = half-res target * 2 (inverse of 0.5 scale factor)
         if (u['uFullResolution'])
-          u['uFullResolution'].value.set(target.width / 0.5, target.height / 0.5) // Assuming 0.5 scale
+          u['uFullResolution'].value.set(target.width * 2, target.height * 2)
       }
     }
 

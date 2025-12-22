@@ -26,12 +26,10 @@ import {
     useRotationUpdates,
 } from '@/rendering/renderers/base'
 import { composeJuliaShader } from '@/rendering/shaders/julia/compose'
-import { COLOR_ALGORITHM_TO_INT } from '@/rendering/shaders/palette'
 import {
     SHADOW_QUALITY_TO_INT,
 } from '@/rendering/shadows/types'
 import { UniformManager } from '@/rendering/uniforms/UniformManager'
-import { getEffectiveSdfQuality } from '@/rendering/utils/adaptiveQuality'
 import { useAnimationStore } from '@/stores/animationStore'
 import { useAppearanceStore } from '@/stores/appearanceStore'
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore'
@@ -240,7 +238,6 @@ const QuaternionJuliaMesh = () => {
     const appStore = useAppearanceStore.getState()
     const lightStore = useLightingStore.getState()
     const uiStore = useUIStore.getState()
-    const perfStore = usePerformanceStore.getState()
 
     const currentDimension = geoStore.dimension
     const config = extStore.quaternionJulia
@@ -257,16 +254,10 @@ const QuaternionJuliaMesh = () => {
     // Update time uniform using paused animation time
     u.uTime.value = animationTimeRef.current
 
-    // Use shared quality tracking values
-    u.uFastMode.value = effectiveFastMode
-    u.uQualityMultiplier.value = qualityMultiplier
-
     // Update dimension
     u.uDimension.value = currentDimension
 
     // Update fractal parameters
-    // Always set these uniforms unconditionally to ensure they're updated after
-    // TrackedShaderMaterial transitions from placeholder to actual shader material.
     u.uPower.value = config.power
     u.uIterations.value = config.maxIterations
     u.uEscapeRadius.value = config.bailoutRadius
@@ -326,28 +317,14 @@ const QuaternionJuliaMesh = () => {
     }
 
     // Update temporal reprojection uniforms from context
+    // Only uPrevDepthTexture comes from context; matrices/enabled are handled by UniformManager
     const temporalUniforms = temporalDepth.getUniforms()
     if (u.uPrevDepthTexture) {
       u.uPrevDepthTexture.value = temporalUniforms.uPrevDepthTexture
     }
-    if (u.uPrevViewProjectionMatrix) {
-      u.uPrevViewProjectionMatrix.value.copy(temporalUniforms.uPrevViewProjectionMatrix)
-    }
-    if (u.uPrevInverseViewProjectionMatrix) {
-      u.uPrevInverseViewProjectionMatrix.value.copy(temporalUniforms.uPrevInverseViewProjectionMatrix)
-    }
-    if (u.uTemporalEnabled) {
-      u.uTemporalEnabled.value = temporalUniforms.uTemporalEnabled
-    }
-    if (u.uDepthBufferResolution) {
-      u.uDepthBufferResolution.value.copy(temporalUniforms.uDepthBufferResolution)
-    }
-    // Note: uCameraNear and uCameraFar are no longer needed - temporal buffer now stores
-    // unnormalized ray distances directly (world-space units)
 
-    // Update lighting uniforms via centralized UniformManager (Phase 2 integration)
-    // The LightingSource automatically tracks store version and only updates when changed
-    UniformManager.applyToMaterial(material, ['lighting'])
+    // Update centralized uniform sources (Lighting, Temporal, Quality, Color)
+    UniformManager.applyToMaterial(material, ['lighting', 'temporal', 'quality', 'color'])
 
     // Advanced Rendering (Global Visuals)
     const visuals = appStore; // appStore is already available
@@ -359,15 +336,6 @@ const QuaternionJuliaMesh = () => {
     }
     if (u.uSssThickness) u.uSssThickness.value = visuals.sssThickness
     if (u.uSssJitter) u.uSssJitter.value = visuals.sssJitter
-
-    // Raymarching Quality (per-object setting)
-    // Maps RaymarchQuality preset to quality multiplier with screen coverage adaptation
-    const baseQuality = RAYMARCH_QUALITY_TO_MULTIPLIER[config.raymarchQuality] ?? 0.5
-    const effectiveQuality = getEffectiveSdfQuality(baseQuality, camera as THREE.PerspectiveCamera, perfStore.qualityMultiplier ?? 1.0)
-
-    if (u.uQualityMultiplier) {
-        u.uQualityMultiplier.value = effectiveQuality
-    }
 
     // Update fresnel
     u.uFresnelEnabled.value = appStore.edgesVisible
@@ -387,7 +355,7 @@ const QuaternionJuliaMesh = () => {
     u.uVolumetricDensity.value = opacity.volumetricDensity
     const effectiveSampleQuality = getEffectiveSampleQuality(
       opacity.sampleQuality,
-      effectiveFastMode ? 0 : 1
+      qualityMultiplier
     )
     u.uSampleQuality.value = SAMPLE_QUALITY_TO_INT[effectiveSampleQuality]
     u.uVolumetricReduceOnAnim.value = opacity.volumetricAnimationQuality === 'reduce' ? 1 : 0
@@ -404,30 +372,13 @@ const QuaternionJuliaMesh = () => {
     u.uShadowEnabled.value = lightStore.shadowEnabled
     const effectiveShadowQuality = getEffectiveShadowQuality(
       lightStore.shadowQuality,
-      effectiveFastMode ? 0 : 1
+      qualityMultiplier
     )
     u.uShadowQuality.value = SHADOW_QUALITY_TO_INT[effectiveShadowQuality]
     u.uShadowSoftness.value = lightStore.shadowSoftness
 
     // Update ambient occlusion (controlled by global SSAO toggle)
     u.uAoEnabled.value = usePostProcessingStore.getState().ssaoEnabled
-
-    // Update advanced color system
-    u.uColorAlgorithm.value = COLOR_ALGORITHM_TO_INT[appStore.colorAlgorithm] ?? 2
-    u.uCosineA.value.set(...appStore.cosineCoefficients.a)
-    u.uCosineB.value.set(...appStore.cosineCoefficients.b)
-    u.uCosineC.value.set(...appStore.cosineCoefficients.c)
-    u.uCosineD.value.set(...appStore.cosineCoefficients.d)
-    u.uDistPower.value = appStore.distribution.power
-    u.uDistCycles.value = appStore.distribution.cycles
-    u.uDistOffset.value = appStore.distribution.offset
-    u.uLchLightness.value = appStore.lchLightness
-    u.uLchChroma.value = appStore.lchChroma
-    u.uMultiSourceWeights.value.set(
-      appStore.multiSourceWeights.depth,
-      appStore.multiSourceWeights.orbitTrap,
-      appStore.multiSourceWeights.normal
-    )
   }, FRAME_PRIORITY.RENDERER_UNIFORMS)
 
   // Generate unique key to force material recreation when shader changes or context is restored

@@ -264,12 +264,12 @@ uniform float uDepthRowSums[11];
 uniform float uProjectionDistance;
 
 // Attributes for extra dimensions (beyond xyz)
-attribute float aExtraDim0; // W (4th dimension)
-${Array.from({ length: extraDims - 1 }, (_, i) => `attribute float aExtraDim${i + 1}; // ${i + 5}th dimension`).join('\n')}
+in float aExtraDim0; // W (4th dimension)
+${Array.from({ length: extraDims - 1 }, (_, i) => `in float aExtraDim${i + 1}; // ${i + 5}th dimension`).join('\n')}
 
-// Varying for fragment shader
-varying vec3 vNormal;
-varying float vDepth;
+// Outputs for fragment shader
+out vec3 vNormal;
+out float vDepth;
 
 vec4 applyNDRotation(vec3 pos3, float w, float extraDims[${extraDims}]) {
   // Build full N-dimensional position vector
@@ -355,18 +355,21 @@ void main() {
 export function generateNDTransformFragmentShader(): string {
   return `
 // N-Dimensional Transform Fragment Shader
+precision highp float;
 
 uniform vec3 uColor;
 uniform float uOpacity;
 
-varying vec3 vNormal;
-varying float vDepth;
+in vec3 vNormal;
+in float vDepth;
+
+layout(location = 0) out vec4 fragColor;
 
 void main() {
   // Simple depth-based color variation
   vec3 color = uColor * (0.5 + 0.5 * vDepth);
 
-  gl_FragColor = vec4(color, uOpacity);
+  fragColor = vec4(color, uOpacity);
 }
 `
 }

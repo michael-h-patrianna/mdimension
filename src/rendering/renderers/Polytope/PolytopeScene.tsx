@@ -414,6 +414,25 @@ export const PolytopeScene = React.memo(function PolytopeScene({
 
   // Debug logging
   console.log('[PolytopeScene] RENDER', { numVertices, numEdges: edges.length, numFaces: faces.length, dimension });
+
+  // #region agent log - H4, H5: Log first few vertex positions on mount/change
+  useEffect(() => {
+    if (baseVertices.length > 0) {
+      const sampleVertices = baseVertices.slice(0, 3).map(v => Array.from(v));
+      const minMax = {
+        minX: Math.min(...baseVertices.map(v => v[0] ?? 0)),
+        maxX: Math.max(...baseVertices.map(v => v[0] ?? 0)),
+        minY: Math.min(...baseVertices.map(v => v[1] ?? 0)),
+        maxY: Math.max(...baseVertices.map(v => v[1] ?? 0)),
+        minZ: Math.min(...baseVertices.map(v => v[2] ?? 0)),
+        maxZ: Math.max(...baseVertices.map(v => v[2] ?? 0)),
+      };
+      const vertexDebug = {location:'PolytopeScene.tsx:vertexData',message:'H4-H5: vertex data on mount',data:{numVertices,dimension,sampleVertices,minMax},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H4-H5'};
+      console.log('[DEBUG-H4H5-vertex]', JSON.stringify(vertexDebug));
+      fetch('http://127.0.0.1:7242/ingest/af54dc2c-228f-456b-a43d-a100942bc421',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(vertexDebug)}).catch(()=>{});
+    }
+  }, [baseVertices, dimension]);
+  // #endregion
   const numEdges = edges.length;
   const numFaces = faces.length;
 
@@ -596,10 +615,21 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   // Also assigns custom depth materials for animated shadows - this MUST happen in the callback
   // because if done in useEffect, the effect may run before the mesh exists
   const setFaceMeshRef = useCallback((mesh: THREE.Mesh | null) => {
+    // #region agent log - H25: Track which mesh gets ref
+    const isPlaceholder = mesh?.material && 'visible' in mesh.material && mesh.material.visible === false;
+    const isRealMesh = mesh?.material && mesh.material.type === 'ShaderMaterial';
+    console.log('[PolytopeScene] setFaceMeshRef called', {
+      meshExists: !!mesh,
+      isPlaceholder,
+      isRealMesh,
+      materialType: mesh?.material?.type,
+      materialVisible: mesh?.material && 'visible' in mesh.material ? (mesh.material as THREE.MeshBasicMaterial).visible : 'N/A',
+    });
+    // #endregion
     faceMeshRef.current = mesh;
     if (mesh?.layers) {
       mesh.layers.set(RENDER_LAYERS.MAIN_OBJECT);
-      console.log('[PolytopeScene] Face mesh layer set', { layer: RENDER_LAYERS.MAIN_OBJECT, mask: mesh.layers.mask });
+      console.log('[PolytopeScene] Face mesh layer set', { layer: RENDER_LAYERS.MAIN_OBJECT, mask: mesh.layers.mask, isRealMesh });
     } else {
       console.log('[PolytopeScene] Face mesh ref cleared or no layers');
     }
@@ -794,6 +824,13 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     geo.setAttribute('aNeighbor2Extra0_3', new Float32BufferAttribute(neighbor2Extra0_3, 4));
     geo.setAttribute('aNeighbor2Extra4_6', new Float32BufferAttribute(neighbor2Extra4_6, 3));
 
+    // #region agent log - H11: Log face geometry buffer values
+    const samplePos = positions.slice(0, 9); // First 3 vertices (9 floats)
+    const bufferDebug = {location:'PolytopeScene.tsx:faceGeometry',message:'H11: face geometry buffer created',data:{vertexCount,triangleCount,samplePositions:Array.from(samplePos),minX:Math.min(...positions.filter((_,i)=>i%3===0)),maxX:Math.max(...positions.filter((_,i)=>i%3===0)),minY:Math.min(...positions.filter((_,i)=>i%3===1)),maxY:Math.max(...positions.filter((_,i)=>i%3===1)),minZ:Math.min(...positions.filter((_,i)=>i%3===2)),maxZ:Math.max(...positions.filter((_,i)=>i%3===2)),hasNaN:positions.some(v=>isNaN(v)),hasInfinity:positions.some(v=>!isFinite(v))},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H11'};
+    console.log('[DEBUG-H11-buffer]', JSON.stringify(bufferDebug));
+    fetch('http://127.0.0.1:7242/ingest/af54dc2c-228f-456b-a43d-a100942bc421',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(bufferDebug)}).catch(()=>{});
+    // #endregion
+
     return geo;
   }, [numFaces, faces, baseVertices]);
 
@@ -874,8 +911,17 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   }, [shadowEnabled, customDepthMaterial, customDistanceMaterial]);
 
   // ============ USEFRAME: UPDATE UNIFORMS ONLY ============
+  // #region agent log - Debug frame counter for limiting log frequency
+  const debugFrameCounterRef = useRef(0);
+  // #endregion
+
   useFrame(({ camera, scene }, delta) => {
     if (numVertices === 0) return;
+
+    // #region agent log - H1-H5: Comprehensive debug logging (first 5 frames only)
+    debugFrameCounterRef.current++;
+    const shouldLog = debugFrameCounterRef.current <= 5;
+    // #endregion
 
     // Read state from cached refs (updated via subscriptions, not getState() per frame)
     // Note: rotation state is handled by ndTransform hook
@@ -943,6 +989,78 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     ndTransform.update({ scales });
     const gpuData = ndTransform.source.getGPUData();
 
+    // #region agent log - H1-H2: Log rotation matrix and dimension
+    if (shouldLog) {
+      const rotMatrixElements = gpuData.rotationMatrix4D.elements;
+      const debugData = {location:'PolytopeScene.tsx:USEFRAME',message:'H1-H2: gpuData',data:{dimension,rotMatrix:[rotMatrixElements[0],rotMatrixElements[5],rotMatrixElements[10],rotMatrixElements[15]],extraRotationColsFirst4:[gpuData.extraRotationCols[0],gpuData.extraRotationCols[1],gpuData.extraRotationCols[2],gpuData.extraRotationCols[3]],depthRowSumsFirst4:[gpuData.depthRowSums[0],gpuData.depthRowSums[1],gpuData.depthRowSums[2],gpuData.depthRowSums[3]]},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1-H2'};
+      console.log('[DEBUG-H1H2]', JSON.stringify(debugData));
+      fetch('http://127.0.0.1:7242/ingest/af54dc2c-228f-456b-a43d-a100942bc421',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(debugData)}).catch(()=>{});
+      
+      // #region H14: CPU simulation of transformND for first vertex
+      if (baseVertices.length > 0) {
+        const v = baseVertices[0]!;
+        // Scale is from the scales array, not gpuData
+        const uScale4D = { x: scales[0] ?? 1, y: scales[1] ?? 1, z: scales[2] ?? 1, w: scales[3] ?? 1 };
+        const uRotationMatrix4D = gpuData.rotationMatrix4D;
+        const uProjectionDistance = cachedProjectionDistanceRef.current.distance;
+        
+        // Simulate transformNDFromInputs
+        const scaledInputs = [
+          (v[0] ?? 0) * uScale4D.x,
+          (v[1] ?? 0) * uScale4D.y,
+          (v[2] ?? 0) * uScale4D.z,
+          (v[3] ?? 0) * uScale4D.w,
+        ];
+        
+        // Apply 4D rotation matrix (column-major)
+        const m = uRotationMatrix4D.elements;
+        const rotated = {
+          x: m[0]*scaledInputs[0] + m[4]*scaledInputs[1] + m[8]*scaledInputs[2] + m[12]*scaledInputs[3],
+          y: m[1]*scaledInputs[0] + m[5]*scaledInputs[1] + m[9]*scaledInputs[2] + m[13]*scaledInputs[3],
+          z: m[2]*scaledInputs[0] + m[6]*scaledInputs[1] + m[10]*scaledInputs[2] + m[14]*scaledInputs[3],
+          w: m[3]*scaledInputs[0] + m[7]*scaledInputs[1] + m[11]*scaledInputs[2] + m[15]*scaledInputs[3],
+        };
+        
+        // Calculate effective depth
+        let effectiveDepth = rotated.w;
+        for (let j = 0; j < dimension && j < 4; j++) {
+          effectiveDepth += gpuData.depthRowSums[j] * scaledInputs[j];
+        }
+        
+        // Normalize
+        const normFactor = dimension > 4 ? Math.sqrt(Math.max(1, dimension - 3)) : 1;
+        effectiveDepth /= normFactor;
+        
+        // Perspective projection
+        let denom = uProjectionDistance - effectiveDepth;
+        if (Math.abs(denom) < 0.0001) denom = denom >= 0 ? 0.0001 : -0.0001;
+        const factor = 1.0 / denom;
+        
+        const projected = {
+          x: rotated.x * factor,
+          y: rotated.y * factor,
+          z: rotated.z * factor,
+        };
+        
+        const simDebug = {location:'PolytopeScene.tsx:cpuSim',message:'H14: CPU simulation of transformND',data:{
+          inputVertex:Array.from(v).slice(0,4),
+          scaledInputs,
+          rotated,
+          effectiveDepth,
+          normFactor,
+          denom,
+          factor,
+          projected,
+          uProjectionDistance,
+          uScale4D:{x:uScale4D.x,y:uScale4D.y,z:uScale4D.z,w:uScale4D.w}
+        },timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H14'};
+        console.log('[DEBUG-H14-cpuSim]', JSON.stringify(simDebug));
+        fetch('http://127.0.0.1:7242/ingest/af54dc2c-228f-456b-a43d-a100942bc421',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(simDebug)}).catch(()=>{});
+      }
+      // #endregion
+    }
+    // #endregion
+
     // P3 Optimization: Cache projection distance - only recalculate when vertex count changes or scale significantly changes
     const normalizationFactor = dimension > 3 ? Math.sqrt(dimension - 3) : 1;
     let projectionDistance: number;
@@ -969,9 +1087,12 @@ export const PolytopeScene = React.memo(function PolytopeScene({
         distance: projectionDistance,
         scaleSum: currentScaleSum
       };
-      // Debug: Log projection calculation on change
-      // const sample = baseVertices[0];
-      // console.log('[PolytopeScene] Recalculated projection:', { rawDistance, maxScale, projectionDistance });
+
+      // #region agent log - H1, H3: Log projection distance and scale on recalculation
+      const projDebug = {location:'PolytopeScene.tsx:projectionCalc',message:'H1-H3: projection recalculated',data:{rawDistance,maxScale,projectionDistance,scales:scales.slice(0,4),contentRadius,numVertices},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1-H3'};
+      console.log('[DEBUG-H1H3]', JSON.stringify(projDebug));
+      fetch('http://127.0.0.1:7242/ingest/af54dc2c-228f-456b-a43d-a100942bc421',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(projDebug)}).catch(()=>{});
+      // #endregion
     } else {
       projectionDistance = cachedProjectionDistanceRef.current.distance;
     }
@@ -994,6 +1115,38 @@ export const PolytopeScene = React.memo(function PolytopeScene({
 
         // Update N-D transformation uniforms
         updateNDUniforms(material, gpuData, dimension, scales, projectionDistance);
+
+        // #region agent log - H1, H4, H5: Log uniform values actually sent to GPU
+        if (shouldLog && material.uniforms.uProjectionDistance) {
+          const actualProjDist = material.uniforms.uProjectionDistance.value;
+          const actualDim = material.uniforms.uDimension?.value;
+          const actualScale4D = material.uniforms.uScale4D?.value;
+          const uniformDebug = {location:'PolytopeScene.tsx:uniformUpdate',message:'H1-H5: uniforms sent to GPU',data:{actualProjDist,actualDim,actualScale4D:actualScale4D instanceof Float32Array?Array.from(actualScale4D.slice(0,4)):actualScale4D,cameraPosition:[camera.position.x,camera.position.y,camera.position.z],meshName:ref.current?.name||'unknown'},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1-H5'};
+          console.log('[DEBUG-H1H5-uniform]', JSON.stringify(uniformDebug));
+          fetch('http://127.0.0.1:7242/ingest/af54dc2c-228f-456b-a43d-a100942bc421',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(uniformDebug)}).catch(()=>{});
+        }
+        // #endregion
+        
+        // #region agent log - H12, H13: Log camera and mesh matrices
+        if (shouldLog && ref === faceMeshRef && ref.current) {
+          const mesh = ref.current;
+          const modelMatrix = mesh.matrixWorld.elements;
+          const projMatrix = (camera as THREE.PerspectiveCamera).projectionMatrix?.elements;
+          const viewMatrix = camera.matrixWorldInverse?.elements;
+          const matrixDebug = {location:'PolytopeScene.tsx:matrices',message:'H12-H13: camera and mesh matrices',data:{
+            meshScale:[mesh.scale.x,mesh.scale.y,mesh.scale.z],
+            meshPosition:[mesh.position.x,mesh.position.y,mesh.position.z],
+            modelMatrixDiag:[modelMatrix[0],modelMatrix[5],modelMatrix[10],modelMatrix[15]],
+            projMatrixDiag:projMatrix?[projMatrix[0],projMatrix[5],projMatrix[10],projMatrix[15]]:null,
+            viewMatrixDiag:viewMatrix?[viewMatrix[0],viewMatrix[5],viewMatrix[10],viewMatrix[15]]:null,
+            cameraFov:(camera as THREE.PerspectiveCamera).fov,
+            cameraNear:(camera as THREE.PerspectiveCamera).near,
+            cameraFar:(camera as THREE.PerspectiveCamera).far
+          },timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H12-H13'};
+          console.log('[DEBUG-H12H13-matrices]', JSON.stringify(matrixDebug));
+          fetch('http://127.0.0.1:7242/ingest/af54dc2c-228f-456b-a43d-a100942bc421',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(matrixDebug)}).catch(()=>{});
+        }
+        // #endregion
 
         // Update vertex modulation uniforms
         const u = material.uniforms;

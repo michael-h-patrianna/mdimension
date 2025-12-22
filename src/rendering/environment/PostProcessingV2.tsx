@@ -339,6 +339,10 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
     // ========================================================================
 
     // Main scene HDR color buffer (with depth texture)
+    // NOTE: This is a SINGLE-attachment target, not an MRT.
+    // Built-in materials (MeshBasicMaterial, etc.) don't output to multiple
+    // render targets, so using MRT here would cause GL_INVALID_OPERATION.
+    // For deferred effects (SSR, SSAO), use MAIN_OBJECT_MRT instead.
     g.addResource({
       id: RESOURCES.SCENE_COLOR,
       type: 'renderTarget',
@@ -989,12 +993,29 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
   }, [ppState, blackHoleState, noiseTextureData]);
 
   // ==========================================================================
-  // Update size
+  // Update size - use useLayoutEffect to run BEFORE useFrame
   // ==========================================================================
 
-  useEffect(() => {
-    graph.setSize(size.width, size.height);
-  }, [graph, size.width, size.height]);
+  useLayoutEffect(() => {
+    // CRITICAL: Use graphRef.current to match what useFrame uses
+    // Using `graph` from useMemo causes a mismatch during React StrictMode double-render
+    const graphInstance = graphRef.current;
+    if (!graphInstance) return;
+
+    // #region agent log - H19: Size update debug
+    const h19Data = {
+      location: 'PostProcessingV2.tsx:useLayoutEffect-size',
+      message: 'H19: setSize called (useLayoutEffect)',
+      data: { sizeWidth: size.width, sizeHeight: size.height, graphExists: !!graphInstance },
+      timestamp: Date.now(),
+      sessionId: 'debug-session',
+      hypothesisId: 'H19',
+    };
+    console.log('[DEBUG-H19-setSize]', JSON.stringify(h19Data));
+    fetch('http://127.0.0.1:7242/ingest/af54dc2c-228f-456b-a43d-a100942bc421', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(h19Data) }).catch(() => {});
+    // #endregion
+    graphInstance.setSize(size.width, size.height);
+  }, [graph, size.width, size.height]); // Still depend on graph to re-run when graph changes
 
   // ==========================================================================
   // Cleanup

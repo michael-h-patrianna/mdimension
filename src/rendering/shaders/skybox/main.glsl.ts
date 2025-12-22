@@ -68,7 +68,11 @@ void main() {
     // 3. Post-Process Delight Features
     ${effectCalls.join('\n    ')}
 
+    // Output to MRT - must write to all 3 locations for compatibility
+    // Extra outputs are safely ignored when rendering to single-attachment targets
     gColor = vec4(color, 1.0);
+    gNormal = vec4(0.5, 0.5, 1.0, 0.0);  // Neutral skybox normal (facing camera)
+    gPosition = vec4(0.0);  // Skybox has no world position
 }
 `
 }

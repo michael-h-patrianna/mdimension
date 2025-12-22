@@ -149,6 +149,16 @@ export class ResourcePool {
    */
   updateSize(width: number, height: number): void {
     if (width !== this.screenWidth || height !== this.screenHeight) {
+      // #region agent log - H21: updateSize debug
+      console.log('[DEBUG-H21-ResourcePool.updateSize]', JSON.stringify({
+        location: 'ResourcePool.ts:updateSize',
+        message: 'H21: ResourcePool size changed',
+        data: { newWidth: width, newHeight: height, prevWidth: this.screenWidth, prevHeight: this.screenHeight },
+        timestamp: Date.now(),
+        sessionId: 'debug-session',
+        hypothesisId: 'H21',
+      }));
+      // #endregion
       this.screenWidth = Math.max(1, width);
       this.screenHeight = Math.max(1, height);
       this.needsResize = true;
@@ -349,6 +359,28 @@ export class ResourcePool {
     const needsAllocation = !entry.target;
     const needsResizeCheck = this.needsResize && entry.config.size.mode !== 'fixed';
     const dimensionsChanged = width !== entry.lastWidth || height !== entry.lastHeight;
+
+    // #region agent log - H20: ensureAllocated debug
+    if (entry.config.id === 'sceneColor') {
+      console.log('[DEBUG-H20-ensureAllocated]', JSON.stringify({
+        location: 'ResourcePool.ts:ensureAllocated',
+        message: 'H20: ensureAllocated for sceneColor',
+        data: {
+          computed: { width, height },
+          last: { w: entry.lastWidth, h: entry.lastHeight },
+          screenSize: { w: this.screenWidth, h: this.screenHeight },
+          needsResize: this.needsResize,
+          needsAllocation,
+          needsResizeCheck,
+          dimensionsChanged,
+          willResize: needsAllocation || (needsResizeCheck && dimensionsChanged),
+        },
+        timestamp: Date.now(),
+        sessionId: 'debug-session',
+        hypothesisId: 'H20',
+      }));
+    }
+    // #endregion
 
     if (needsAllocation || (needsResizeCheck && dimensionsChanged)) {
       // Dispose old targets

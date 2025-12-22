@@ -152,6 +152,24 @@ export class ToScreenPass extends BasePass {
     const texture = ctx.getReadTexture(inputConfig.resourceId);
     this.material.uniforms['uInput']!.value = texture;
 
+    // #region agent log - H18: ToScreenPass debug
+    const h18Data = {
+      location: 'ToScreenPass.ts:execute',
+      message: 'H18: ToScreenPass execution',
+      data: {
+        inputResourceId: inputConfig.resourceId,
+        textureExists: !!texture,
+        textureSize: texture ? { w: texture.image?.width, h: texture.image?.height } : null,
+        ctxSize: ctx.size,
+      },
+      timestamp: Date.now(),
+      sessionId: 'debug-session',
+      hypothesisId: 'H18',
+    };
+    console.log('[DEBUG-H18-ToScreenPass]', JSON.stringify(h18Data));
+    fetch('http://127.0.0.1:7242/ingest/af54dc2c-228f-456b-a43d-a100942bc421', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(h18Data) }).catch(() => {});
+    // #endregion
+
     // Render to screen
     renderer.setRenderTarget(null);
     renderer.render(this.scene, this.camera);

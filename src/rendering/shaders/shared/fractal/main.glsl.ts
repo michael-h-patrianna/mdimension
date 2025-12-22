@@ -139,5 +139,8 @@ void main() {
     vec3 viewNormal = vnLen > 0.0001 ? viewNormalRaw / vnLen : vec3(0.0, 0.0, 1.0);
     gColor = vec4(col, alpha);
     gNormal = vec4(viewNormal * 0.5 + 0.5, uMetallic);
+    // CRITICAL: Always write to gPosition to prevent GL_INVALID_OPERATION
+    // when rendering to MRT targets with 3 attachments.
+    gPosition = vec4(worldHitPos.xyz, 1.0);
 }
 `

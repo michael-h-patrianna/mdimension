@@ -119,7 +119,13 @@ void main() {
   // Output to MRT (Multiple Render Targets)
   // gColor: Color buffer (RGBA)
   // gNormal: Normal buffer (RGB = normal * 0.5 + 0.5, A = reflectivity/metallic)
+  // gPosition: World position for temporal reprojection (or dummy for compatibility)
   gColor = vec4(color, uOpacity);
   gNormal = vec4(N * 0.5 + 0.5, uMetallic);
+  // CRITICAL: Always write to gPosition to prevent GL_INVALID_OPERATION when
+  // rendering to MRT targets with 3 attachments. Unused outputs are silently
+  // ignored when rendering to 2-attachment targets.
+  // See: docs/bugfixing/log/2025-12-21-schroedinger-temporal-gl-invalid-operation.md
+  gPosition = vec4(vWorldPosition, 1.0);
 }
 `;

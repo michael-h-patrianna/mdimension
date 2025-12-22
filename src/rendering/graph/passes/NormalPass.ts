@@ -80,14 +80,19 @@ export class NormalPass extends BasePass {
 
     // Create normal material for override rendering
     // Uses world-space normals, encoded to [0, 1] range
+    // CRITICAL: Must output to all 3 MRT locations to prevent GL_INVALID_OPERATION
+    // Extra outputs are safely ignored when rendering to single-attachment targets
     this.normalMaterial = new THREE.ShaderMaterial({
       glslVersion: THREE.GLSL3,
       vertexShader: /* glsl */ `
         out vec3 vWorldNormal;
+        out vec3 vWorldPosition;
 
         void main() {
           // Transform normal to world space
           vWorldNormal = normalize(mat3(modelMatrix) * normal);
+          vec4 worldPos = modelMatrix * vec4(position, 1.0);
+          vWorldPosition = worldPos.xyz;
           gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         }
       `,
@@ -95,12 +100,19 @@ export class NormalPass extends BasePass {
         precision highp float;
 
         in vec3 vWorldNormal;
-        layout(location = 0) out vec4 fragColor;
+        in vec3 vWorldPosition;
+        
+        // MRT outputs - must output to all 3 locations for compatibility
+        layout(location = 0) out vec4 gColor;
+        layout(location = 1) out vec4 gNormal;
+        layout(location = 2) out vec4 gPosition;
 
         void main() {
           // Normalize and remap from [-1, 1] to [0, 1]
           vec3 normal = normalize(vWorldNormal);
-          fragColor = vec4(normal * 0.5 + 0.5, 1.0);
+          gColor = vec4(normal * 0.5 + 0.5, 1.0);
+          gNormal = vec4(normal * 0.5 + 0.5, 0.0);
+          gPosition = vec4(vWorldPosition, 1.0);
         }
       `,
     })

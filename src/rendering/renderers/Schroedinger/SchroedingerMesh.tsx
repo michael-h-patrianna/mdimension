@@ -208,17 +208,17 @@ const SchroedingerMesh = () => {
       uProjectionMatrix: { value: new THREE.Matrix4() },
       uViewMatrix: { value: new THREE.Matrix4() },
 
-      // Lighting uniforms (via UniformManager)
-      ...UniformManager.getCombinedUniforms(['lighting']),
+      // Centralized Uniform Sources:
+      // - Lighting: Ambient, Diffuse, Specular, Multi-lights
+      // - Temporal: Matrices, Enabled state (matrices updated via source)
+      // - Quality: FastMode, QualityMultiplier
+      // - Color: Algorithm, Cosine coeffs, Distribution, LCH
+      ...UniformManager.getCombinedUniforms(['lighting', 'temporal', 'quality', 'color']),
 
       // Fresnel rim lighting
       uFresnelEnabled: { value: true },
       uFresnelIntensity: { value: 0.5 },
       uRimColor: { value: new THREE.Color('#FFFFFF').convertSRGBToLinear() },
-
-      // Performance mode
-      uFastMode: { value: false },
-      uQualityMultiplier: { value: 1.0 },
 
       // Opacity Mode System uniforms
       uOpacityMode: { value: 0 },
@@ -379,11 +379,6 @@ const SchroedingerMesh = () => {
       // Cache for colors
       const cache = colorCacheRef.current;
 
-      // Use shared quality tracking values
-      if (material.uniforms.uFastMode) {
-        material.uniforms.uFastMode.value = effectiveFastMode;
-      }
-
       // Sample Count System
       // Maps RaymarchQuality preset to sample count with screen coverage adaptation
       const baseSamples = RAYMARCH_QUALITY_TO_SAMPLES[schroedinger.raymarchQuality] ?? 32;
@@ -391,11 +386,6 @@ const SchroedingerMesh = () => {
 
       if (material.uniforms.uSampleCount) {
           material.uniforms.uSampleCount.value = effectiveSamples;
-      }
-
-      // Quality multiplier uniform
-      if (material.uniforms.uQualityMultiplier) {
-        material.uniforms.uQualityMultiplier.value = qualityMultiplier;
       }
 
       // Time and resolution
@@ -626,25 +616,13 @@ const SchroedingerMesh = () => {
       if (material.uniforms.uPrevDepthTexture) {
         material.uniforms.uPrevDepthTexture.value = temporalUniforms.uPrevDepthTexture;
       }
-      if (material.uniforms.uPrevViewProjectionMatrix) {
-        material.uniforms.uPrevViewProjectionMatrix.value.copy(temporalUniforms.uPrevViewProjectionMatrix);
-      }
-      if (material.uniforms.uPrevInverseViewProjectionMatrix) {
-        material.uniforms.uPrevInverseViewProjectionMatrix.value.copy(temporalUniforms.uPrevInverseViewProjectionMatrix);
-      }
-      if (material.uniforms.uTemporalEnabled) {
-        material.uniforms.uTemporalEnabled.value = temporalUniforms.uTemporalEnabled;
-      }
-      if (material.uniforms.uDepthBufferResolution) {
-        material.uniforms.uDepthBufferResolution.value.copy(temporalUniforms.uDepthBufferResolution);
-      }
 
       // Note: Temporal accumulation uniforms (uBayerOffset, uFullResolution) are now
       // managed by TemporalCloudPass in the render graph. The pass directly updates
       // these uniforms on volumetric meshes during scene traversal.
 
-      // Lighting (via UniformManager)
-      UniformManager.applyToMaterial(material, ['lighting']);
+      // Apply centralized uniform sources
+      UniformManager.applyToMaterial(material, ['lighting', 'temporal', 'quality', 'color']);
 
       // Fresnel
       const { edgesVisible, fresnelIntensity, edgeColor } = appearance;
@@ -653,32 +631,6 @@ const SchroedingerMesh = () => {
       if (material.uniforms.uRimColor) {
         updateLinearColorUniform(cache.rimColor, material.uniforms.uRimColor.value as THREE.Color, edgeColor);
       }
-
-      // Advanced Color System
-      const { colorAlgorithm, cosineCoefficients, distribution, lchLightness, lchChroma, multiSourceWeights } = appearance;
-
-      // Update color algorithm uniforms only if algorithm changed or always?
-      // Coefficients might change even if algorithm doesn't.
-      // But we can check if colorAlgorithm is 'cosine' etc.
-      // For now, let's just optimize the integer mapping part if possible, or leave as is since .set() is cheap.
-      // Actually, we can skip updating cosine coefficients if colorAlgorithm is not 'palette' (3).
-      // But uColorAlgorithm is always needed.
-      if (material.uniforms.uColorAlgorithm) material.uniforms.uColorAlgorithm.value = COLOR_ALGORITHM_TO_INT[colorAlgorithm];
-
-      // Only update extensive cosine arrays if we are in a mode that might use them (or just update them, they are fast)
-      // Optimization: Only update if changed? We don't have versioning for appearance store yet.
-      // We'll stick to unconditional updates for now as Float32Array.set is fast enough.
-
-      if (material.uniforms.uCosineA) material.uniforms.uCosineA.value.set(cosineCoefficients.a[0], cosineCoefficients.a[1], cosineCoefficients.a[2]);
-      if (material.uniforms.uCosineB) material.uniforms.uCosineB.value.set(cosineCoefficients.b[0], cosineCoefficients.b[1], cosineCoefficients.b[2]);
-      if (material.uniforms.uCosineC) material.uniforms.uCosineC.value.set(cosineCoefficients.c[0], cosineCoefficients.c[1], cosineCoefficients.c[2]);
-      if (material.uniforms.uCosineD) material.uniforms.uCosineD.value.set(cosineCoefficients.d[0], cosineCoefficients.d[1], cosineCoefficients.d[2]);
-      if (material.uniforms.uDistPower) material.uniforms.uDistPower.value = distribution.power;
-      if (material.uniforms.uDistCycles) material.uniforms.uDistCycles.value = distribution.cycles;
-      if (material.uniforms.uDistOffset) material.uniforms.uDistOffset.value = distribution.offset;
-      if (material.uniforms.uLchLightness) material.uniforms.uLchLightness.value = lchLightness;
-      if (material.uniforms.uLchChroma) material.uniforms.uLchChroma.value = lchChroma;
-      if (material.uniforms.uMultiSourceWeights) material.uniforms.uMultiSourceWeights.value.set(multiSourceWeights.depth, multiSourceWeights.orbitTrap, multiSourceWeights.normal);
 
       // Opacity Mode System
       const { opacitySettings, animationBias } = uiState;
