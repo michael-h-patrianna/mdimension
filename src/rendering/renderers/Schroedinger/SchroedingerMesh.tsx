@@ -6,74 +6,36 @@ import {
     type QuantumPreset,
 } from '@/lib/geometry/extended/schroedinger/presets';
 import { RAYMARCH_QUALITY_TO_SAMPLES } from '@/lib/geometry/extended/types';
-import { composeRotations } from '@/lib/math/rotation';
-import type { MatrixND } from '@/lib/math/types';
-import { createColorCache, createLightColorCache, updateLinearColorUniform } from '@/rendering/colors/linearCache';
-import { RENDER_LAYERS, needsVolumetricSeparation } from '@/rendering/core/layers';
-import { TemporalCloudManager } from '@/rendering/core/TemporalCloudManager';
-import { TemporalDepthManager } from '@/rendering/core/TemporalDepthManager';
-import { createLightUniforms, updateLightUniforms, type LightUniforms } from '@/rendering/lights/uniforms';
+import { createColorCache, updateLinearColorUniform } from '@/rendering/colors/linearCache';
+import { FRAME_PRIORITY } from '@/rendering/core/framePriorities';
+import { needsVolumetricSeparation, RENDER_LAYERS } from '@/rendering/core/layers';
+import { useTemporalDepth } from '@/rendering/core/temporalDepth';
 import { TrackedShaderMaterial } from '@/rendering/materials/TrackedShaderMaterial';
 import { OPACITY_MODE_TO_INT, SAMPLE_QUALITY_TO_INT } from '@/rendering/opacity/types';
+import {
+    MAX_DIMENSION,
+    useQualityTracking,
+    useRotationUpdates,
+} from '@/rendering/renderers/base';
 import { COLOR_ALGORITHM_TO_INT } from '@/rendering/shaders/palette';
 import { composeSchroedingerShader } from '@/rendering/shaders/schroedinger/compose';
 import { MAX_DIM, MAX_TERMS } from '@/rendering/shaders/schroedinger/uniforms.glsl';
+import { UniformManager } from '@/rendering/uniforms/UniformManager';
 import { getEffectiveVolumeSamples } from '@/rendering/utils/adaptiveQuality';
 import { useAnimationStore } from '@/stores/animationStore';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
-import { useLightingStore } from '@/stores/lightingStore';
 import {
     getEffectiveSampleQuality,
     usePerformanceStore,
 } from '@/stores/performanceStore';
-import { useRotationStore } from '@/stores/rotationStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useWebGLContextStore } from '@/stores/webglContextStore';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import vertexShader from './schroedinger.vert?raw';
-
-/** Debounce time in ms before restoring high quality after rotation stops */
-const QUALITY_RESTORE_DELAY_MS = 150;
-
-/** Maximum supported dimension */
-const MAX_DIMENSION = 11;
-
-/**
- * Apply D-dimensional rotation matrix to a vector, writing result into pre-allocated output.
- * @param matrix
- * @param vec
- * @param out
- * @param dimension
- */
-function applyRotationInPlace(matrix: MatrixND, vec: number[], out: Float32Array, dimension: number): void {
-  out.fill(0);
-  for (let i = 0; i < dimension; i++) {
-    let sum = 0;
-    const rowOffset = i * dimension;
-    for (let j = 0; j < dimension; j++) {
-      sum += (matrix[rowOffset + j] ?? 0) * (vec[j] ?? 0);
-    }
-    out[i] = sum;
-  }
-}
-
-/**
- * Pre-allocated working arrays to avoid per-frame allocations.
- */
-interface WorkingArrays {
-  unitX: number[];
-  unitY: number[];
-  unitZ: number[];
-  origin: number[];
-  rotatedX: Float32Array;
-  rotatedY: Float32Array;
-  rotatedZ: Float32Array;
-  rotatedOrigin: Float32Array;
-}
 
 /**
  * Pre-allocated quantum uniform arrays
@@ -83,19 +45,6 @@ interface QuantumArrays {
   quantum: Int32Array;
   coeff: Float32Array;
   energy: Float32Array;
-}
-
-function createWorkingArrays(): WorkingArrays {
-  return {
-    unitX: new Array(MAX_DIMENSION).fill(0),
-    unitY: new Array(MAX_DIMENSION).fill(0),
-    unitZ: new Array(MAX_DIMENSION).fill(0),
-    origin: new Array(MAX_DIMENSION).fill(0),
-    rotatedX: new Float32Array(MAX_DIMENSION),
-    rotatedY: new Float32Array(MAX_DIMENSION),
-    rotatedZ: new Float32Array(MAX_DIMENSION),
-    rotatedOrigin: new Float32Array(MAX_DIMENSION),
-  };
 }
 
 function createQuantumArrays(): QuantumArrays {
@@ -119,23 +68,16 @@ const SchroedingerMesh = () => {
   const meshRef = useRef<THREE.Mesh>(null);
   const { size, camera } = useThree();
 
-  // Performance optimization: track rotation changes for adaptive quality
-  const prevVersionRef = useRef<number>(-1);
-  const fastModeRef = useRef(false);
-  const restoreQualityTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Get temporal depth state from context for temporal reprojection
+  const temporalDepth = useTemporalDepth();
 
-  // Pre-allocated working arrays
-  const workingArraysRef = useRef<WorkingArrays>(createWorkingArrays());
+  // Use shared quality tracking hook
+  const { effectiveFastMode, qualityMultiplier, rotationsChanged } = useQualityTracking();
+
+  // Pre-allocated quantum arrays
   const quantumArraysRef = useRef<QuantumArrays>(createQuantumArrays());
 
-  // Cached rotation matrix and quantum preset
-  const cachedRotationMatrixRef = useRef<MatrixND | null>(null);
-  const prevDimensionRef = useRef<number | null>(null);
-  const prevParamValuesRef = useRef<number[] | null>(null);
-  const basisVectorsDirtyRef = useRef(true);
-
-  // Cached state versions for optimization
-  const prevLightingVersionRef = useRef<number>(-1);
+  // Note: Lighting version tracking and color caching now handled by LightingSource via UniformManager
 
   // Track quantum config changes to regenerate preset
   const prevQuantumConfigRef = useRef<{
@@ -148,19 +90,8 @@ const SchroedingerMesh = () => {
   } | null>(null);
   const currentPresetRef = useRef<QuantumPreset | null>(null);
 
-  // Cached linear colors
+  // Cached linear colors for non-lighting uniforms
   const colorCacheRef = useRef(createColorCache());
-  const lightColorCacheRef = useRef(createLightColorCache());
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (restoreQualityTimeoutRef.current) {
-        clearTimeout(restoreQualityTimeoutRef.current);
-        restoreQualityTimeoutRef.current = null;
-      }
-    };
-  }, []);
 
   // ============================================
   // PERFORMANCE OPTIMIZATION: Only subscribe to values that affect shader compilation
@@ -172,6 +103,12 @@ const SchroedingerMesh = () => {
   const isoEnabled = useExtendedObjectStore((state) => state.schroedinger.isoEnabled);
   const quantumMode = useExtendedObjectStore((state) => state.schroedinger.quantumMode);
   const opacityMode = useUIStore((state) => state.opacitySettings.mode);
+
+  // ParameterValues subscription for rotation hook (also read via getState in useFrame for other uses)
+  const parameterValues = useExtendedObjectStore((state) => state.schroedinger.parameterValues);
+
+  // Use shared rotation hook for basis vector computation with caching
+  const rotationUpdates = useRotationUpdates({ dimension, parameterValues });
 
   // Context restore counter - forces material recreation when context is restored
   const restoreCount = useWebGLContextStore((state) => state.restoreCount);
@@ -271,17 +208,8 @@ const SchroedingerMesh = () => {
       uProjectionMatrix: { value: new THREE.Matrix4() },
       uViewMatrix: { value: new THREE.Matrix4() },
 
-      // Multi-light system uniforms
-      ...createLightUniforms(),
-
-      // Global lighting uniforms
-      uAmbientIntensity: { value: 0.2 },
-      uAmbientColor: { value: new THREE.Color('#FFFFFF').convertSRGBToLinear() },
-      uSpecularIntensity: { value: 1.0 },
-      uSpecularPower: { value: 32.0 },
-      uSpecularColor: { value: new THREE.Color('#FFFFFF').convertSRGBToLinear() },
-      uDiffuseIntensity: { value: 1.0 },
-      uMetallic: { value: 0.0 },
+      // Lighting uniforms (via UniformManager)
+      ...UniformManager.getCombinedUniforms(['lighting']),
 
       // Fresnel rim lighting
       uFresnelEnabled: { value: true },
@@ -441,50 +369,24 @@ const SchroedingerMesh = () => {
       // ============================================
       const schroedinger = useExtendedObjectStore.getState().schroedinger;
       const appearance = useAppearanceStore.getState();
-      const lighting = useLightingStore.getState();
+      // Note: Lighting state available via useLightingStore.getState() when needed
 
       // Apply scale to mesh
       const scale = schroedinger.scale;
       meshRef.current.scale.set(scale, scale, scale);
       const uiState = useUIStore.getState();
-      const { rotations, version: rotationVersion } = useRotationStore.getState();
 
       // Cache for colors
       const cache = colorCacheRef.current;
 
-      // ============================================
-      // Adaptive Quality
-      // ============================================
-      const rotationsChanged = rotationVersion !== prevVersionRef.current;
-      const fractalAnimLowQuality = usePerformanceStore.getState().fractalAnimationLowQuality;
-
-      if (rotationsChanged && fractalAnimLowQuality) {
-        fastModeRef.current = true;
-        prevVersionRef.current = rotationVersion;
-        if (restoreQualityTimeoutRef.current) {
-          clearTimeout(restoreQualityTimeoutRef.current);
-          restoreQualityTimeoutRef.current = null;
-        }
-      } else if (fastModeRef.current) {
-        if (!restoreQualityTimeoutRef.current) {
-          restoreQualityTimeoutRef.current = setTimeout(() => {
-            fastModeRef.current = false;
-            restoreQualityTimeoutRef.current = null;
-          }, QUALITY_RESTORE_DELAY_MS);
-        }
-      }
-
-      // Update fast mode uniform
-      // Note: For volumetric rendering, we typically want HQ mode, but allow fast mode
-      // during rotation if explicitly enabled in performance settings.
+      // Use shared quality tracking values
       if (material.uniforms.uFastMode) {
-        material.uniforms.uFastMode.value = fastModeRef.current;
+        material.uniforms.uFastMode.value = effectiveFastMode;
       }
 
       // Sample Count System
       // Maps RaymarchQuality preset to sample count with screen coverage adaptation
       const baseSamples = RAYMARCH_QUALITY_TO_SAMPLES[schroedinger.raymarchQuality] ?? 32;
-      const qualityMultiplier = usePerformanceStore.getState().qualityMultiplier;
       const effectiveSamples = getEffectiveVolumeSamples(baseSamples, camera as THREE.PerspectiveCamera, qualityMultiplier);
 
       if (material.uniforms.uSampleCount) {
@@ -720,7 +622,7 @@ const SchroedingerMesh = () => {
       }
 
       // Temporal reprojection (depth-skip for isosurface mode)
-      const temporalUniforms = TemporalDepthManager.getUniforms();
+      const temporalUniforms = temporalDepth.getUniforms();
       if (material.uniforms.uPrevDepthTexture) {
         material.uniforms.uPrevDepthTexture.value = temporalUniforms.uPrevDepthTexture;
       }
@@ -737,34 +639,12 @@ const SchroedingerMesh = () => {
         material.uniforms.uDepthBufferResolution.value.copy(temporalUniforms.uDepthBufferResolution);
       }
 
-      // Temporal accumulation (Horizon-style for volumetric mode)
-      // These uniforms are only used when USE_TEMPORAL_ACCUMULATION is defined
-      const cloudUniforms = TemporalCloudManager.getUniforms();
-      if (material.uniforms.uBayerOffset) {
-        material.uniforms.uBayerOffset.value.copy(cloudUniforms.uBayerOffset);
-      }
-      if (material.uniforms.uFullResolution) {
-        material.uniforms.uFullResolution.value.copy(cloudUniforms.uAccumulationResolution);
-      }
+      // Note: Temporal accumulation uniforms (uBayerOffset, uFullResolution) are now
+      // managed by TemporalCloudPass in the render graph. The pass directly updates
+      // these uniforms on volumetric meshes during scene traversal.
 
-      // Lighting
-      const { lights, ambientIntensity, ambientColor, specularIntensity, shininess, specularColor, diffuseIntensity, version: lightingVersion } = lighting;
-
-      if (prevLightingVersionRef.current !== lightingVersion) {
-        updateLightUniforms(material.uniforms as unknown as LightUniforms, lights, lightColorCacheRef.current);
-        prevLightingVersionRef.current = lightingVersion;
-      }
-
-      if (material.uniforms.uAmbientIntensity) material.uniforms.uAmbientIntensity.value = ambientIntensity;
-      if (material.uniforms.uAmbientColor) {
-        updateLinearColorUniform(cache.ambientColor, material.uniforms.uAmbientColor.value as THREE.Color, ambientColor);
-      }
-      if (material.uniforms.uSpecularIntensity) material.uniforms.uSpecularIntensity.value = specularIntensity;
-      if (material.uniforms.uSpecularPower) material.uniforms.uSpecularPower.value = shininess;
-      if (material.uniforms.uSpecularColor) {
-        updateLinearColorUniform(cache.specularColor, material.uniforms.uSpecularColor.value as THREE.Color, specularColor);
-      }
-      if (material.uniforms.uDiffuseIntensity) material.uniforms.uDiffuseIntensity.value = diffuseIntensity;
+      // Lighting (via UniformManager)
+      UniformManager.applyToMaterial(material, ['lighting']);
 
       // Fresnel
       const { edgesVisible, fresnelIntensity, edgeColor } = appearance;
@@ -840,61 +720,38 @@ const SchroedingerMesh = () => {
       }
 
       // ============================================
-      // D-dimensional Rotation & Basis Vectors
+      // D-dimensional Rotation & Basis Vectors (via shared hook)
+      // Only recomputes when rotations, dimension, or params change
       // ============================================
       const D = dimension;
-      const work = workingArraysRef.current;
+      const { basisX, basisY, basisZ, changed: basisChanged } = rotationUpdates.getBasisVectors(rotationsChanged);
 
-      const { parameterValues, originDriftEnabled, driftAmplitude, driftBaseFrequency, driftFrequencySpread,
-              sliceAnimationEnabled, sliceSpeed, sliceAmplitude } = schroedinger;
-
-      const paramsChanged = !prevParamValuesRef.current ||
-        prevParamValuesRef.current.length !== parameterValues.length ||
-        parameterValues.some((v, i) => prevParamValuesRef.current![i] !== v);
-
-      const needsRecompute = rotationsChanged ||
-        dimension !== prevDimensionRef.current ||
-        paramsChanged ||
-        basisVectorsDirtyRef.current;
-
-      if (needsRecompute) {
-        cachedRotationMatrixRef.current = composeRotations(dimension, rotations);
-
-        for (let i = 0; i < MAX_DIMENSION; i++) work.unitX[i] = 0;
-        work.unitX[0] = 1;
-
-        for (let i = 0; i < MAX_DIMENSION; i++) work.unitY[i] = 0;
-        work.unitY[1] = 1;
-
-        for (let i = 0; i < MAX_DIMENSION; i++) work.unitZ[i] = 0;
-        work.unitZ[2] = 1;
-
-        applyRotationInPlace(cachedRotationMatrixRef.current, work.unitX, work.rotatedX, dimension);
-        applyRotationInPlace(cachedRotationMatrixRef.current, work.unitY, work.rotatedY, dimension);
-        applyRotationInPlace(cachedRotationMatrixRef.current, work.unitZ, work.rotatedZ, dimension);
-
+      if (basisChanged) {
         if (material.uniforms.uBasisX) {
-          (material.uniforms.uBasisX.value as Float32Array).set(work.rotatedX);
+          (material.uniforms.uBasisX.value as Float32Array).set(basisX);
         }
         if (material.uniforms.uBasisY) {
-          (material.uniforms.uBasisY.value as Float32Array).set(work.rotatedY);
+          (material.uniforms.uBasisY.value as Float32Array).set(basisY);
         }
         if (material.uniforms.uBasisZ) {
-          (material.uniforms.uBasisZ.value as Float32Array).set(work.rotatedZ);
+          (material.uniforms.uBasisZ.value as Float32Array).set(basisZ);
         }
-
-        prevDimensionRef.current = dimension;
-        prevParamValuesRef.current = [...parameterValues];
-        basisVectorsDirtyRef.current = false;
       }
 
-      // ============================================
-      // Origin Update
-      // ============================================
-      const needsOriginUpdate = needsRecompute || originDriftEnabled || sliceAnimationEnabled;
+      // Get origin drift/slice animation settings from schroedinger store (already retrieved)
+      const { parameterValues: schroedingerParamValues, originDriftEnabled, driftAmplitude, driftBaseFrequency, driftFrequencySpread,
+              sliceAnimationEnabled, sliceSpeed, sliceAmplitude } = schroedinger;
 
-      if (needsOriginUpdate && cachedRotationMatrixRef.current) {
-        for (let i = 0; i < MAX_DIMENSION; i++) work.origin[i] = 0;
+      // ============================================
+      // Origin Update (separate from basis vectors)
+      // Must update every frame when origin drift or slice animation is enabled
+      // ============================================
+      const needsOriginUpdate = basisChanged || originDriftEnabled || sliceAnimationEnabled;
+      const { rotationMatrix: cachedRotationMatrix } = rotationUpdates;
+
+      if (needsOriginUpdate && cachedRotationMatrix) {
+        // Build origin values array for rotation
+        const originValues = new Array(MAX_DIMENSION).fill(0);
 
         if (originDriftEnabled && D > 3) {
           const driftConfig: OriginDriftConfig = {
@@ -905,14 +762,14 @@ const SchroedingerMesh = () => {
           };
           const animationSpeed = useAnimationStore.getState().speed;
           const driftedOrigin = computeDriftedOrigin(
-            parameterValues,
+            schroedingerParamValues,
             accumulatedTime,
             driftConfig,
             animationSpeed,
             animationBias
           );
           for (let i = 3; i < D; i++) {
-            work.origin[i] = driftedOrigin[i - 3] ?? 0;
+            originValues[i] = driftedOrigin[i - 3] ?? 0;
           }
         } else if (sliceAnimationEnabled && D > 3) {
           const PHI = 1.618033988749895;
@@ -925,23 +782,23 @@ const SchroedingerMesh = () => {
             const t1 = timeInSeconds * sliceSpeed * 2 * Math.PI + phase;
             const t2 = timeInSeconds * sliceSpeed * 1.3 * 2 * Math.PI + phase * 1.5;
             const offset = sliceAmplitude * (0.7 * Math.sin(t1) + 0.3 * Math.sin(t2));
-            work.origin[i] = (parameterValues[extraDimIndex] ?? 0) + offset;
+            originValues[i] = (schroedingerParamValues[extraDimIndex] ?? 0) + offset;
           }
         } else {
           for (let i = 3; i < D; i++) {
-            work.origin[i] = parameterValues[i - 3] ?? 0;
+            originValues[i] = schroedingerParamValues[i - 3] ?? 0;
           }
         }
 
-        applyRotationInPlace(cachedRotationMatrixRef.current, work.origin, work.rotatedOrigin, dimension);
+        // Get rotated origin from hook
+        const { origin } = rotationUpdates.getOrigin(originValues);
 
         if (material.uniforms.uOrigin) {
-          (material.uniforms.uOrigin.value as Float32Array).set(work.rotatedOrigin);
+          (material.uniforms.uOrigin.value as Float32Array).set(origin);
         }
       }
     }
-  }, 0.5); // Priority 0.5: Run AFTER CameraController (0) but BEFORE PostProcessing (1)
-           // This ensures we use the updated camera position for raymarching uniforms.
+  }, FRAME_PRIORITY.RENDERER_UNIFORMS);
 
   // Generate unique key to force material recreation when shader changes or context is restored
   const materialKey = `schroedinger-material-${shaderString.length}-${features.join(',')}-${restoreCount}`

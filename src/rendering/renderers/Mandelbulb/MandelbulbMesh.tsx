@@ -1,18 +1,20 @@
 import { computeDriftedOrigin, type OriginDriftConfig } from '@/lib/animation/originDrift';
 import { RAYMARCH_QUALITY_TO_MULTIPLIER } from '@/lib/geometry/extended/types';
-import { composeRotations } from '@/lib/math/rotation';
-import type { MatrixND } from '@/lib/math/types';
-import { createColorCache, createLightColorCache, updateLinearColorUniform } from '@/rendering/colors/linearCache';
-import { RENDER_LAYERS } from '@/rendering/core/layers';
-import { TemporalDepthManager } from '@/rendering/core/TemporalDepthManager';
+import { createColorCache, updateLinearColorUniform } from '@/rendering/colors/linearCache';
+import { FRAME_PRIORITY } from '@/rendering/core/framePriorities';
+import { useTemporalDepth } from '@/rendering/core/temporalDepth';
 import { ZoomAutopilot, type AutopilotConfig } from '@/rendering/effects/ZoomAutopilot';
-import { createLightUniforms, updateLightUniforms, type LightUniforms } from '@/rendering/lights/uniforms';
 import { TrackedShaderMaterial } from '@/rendering/materials/TrackedShaderMaterial';
 import { OPACITY_MODE_TO_INT, SAMPLE_QUALITY_TO_INT } from '@/rendering/opacity/types';
+import {
+    MAX_DIMENSION,
+    useLayerAssignment,
+    useQualityTracking,
+    useRotationUpdates,
+} from '@/rendering/renderers/base';
 import { composeMandelbulbShader } from '@/rendering/shaders/mandelbulb/compose';
-import { COLOR_ALGORITHM_TO_INT } from '@/rendering/shaders/palette';
 import { SHADOW_QUALITY_TO_INT } from '@/rendering/shadows/types';
-import { getEffectiveSdfQuality } from '@/rendering/utils/adaptiveQuality';
+import { UniformManager } from '@/rendering/uniforms/UniformManager';
 import { useAnimationStore } from '@/stores/animationStore';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
@@ -25,75 +27,12 @@ import {
     usePerformanceStore,
 } from '@/stores/performanceStore';
 import { usePostProcessingStore } from '@/stores/postProcessingStore';
-import { useRotationStore } from '@/stores/rotationStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useWebGLContextStore } from '@/stores/webglContextStore';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import vertexShader from './mandelbulb.vert?raw';
-
-/** Debounce time in ms before restoring high quality after rotation stops */
-const QUALITY_RESTORE_DELAY_MS = 150;
-
-/** Maximum supported dimension */
-const MAX_DIMENSION = 11;
-
-/**
- * Apply D-dimensional rotation matrix to a vector, writing result into pre-allocated output.
- * Matrix is row-major: result[i] = sum(matrix[i * dimension + j] * vec[j])
- * @param matrix - D×D rotation matrix (flat)
- * @param vec - Input vector (length D)
- * @param out - Pre-allocated output Float32Array (length MAX_DIMENSION)
- * @param dimension - Current dimension (optimization: only loop up to this)
- */
-function applyRotationInPlace(matrix: MatrixND, vec: number[] | Float32Array, out: Float32Array, dimension: number): void {
-  // Clear output first (only needed if we assume clean buffer beyond D)
-  // For consistency with previous behavior and safety we fill with 0
-  out.fill(0);
-
-  for (let i = 0; i < dimension; i++) {
-    let sum = 0;
-    const rowOffset = i * dimension;
-    for (let j = 0; j < dimension; j++) {
-      sum += (matrix[rowOffset + j] ?? 0) * (vec[j] ?? 0);
-    }
-    out[i] = sum;
-  }
-}
-
-/**
- * Pre-allocated working arrays to avoid per-frame allocations.
- * These are module-level to ensure single allocation across component lifecycle.
- */
-interface WorkingArrays {
-  unitX: number[];
-  unitY: number[];
-  unitZ: number[];
-  origin: number[];
-  rotatedX: Float32Array;
-  rotatedY: Float32Array;
-  rotatedZ: Float32Array;
-  rotatedOrigin: Float32Array;
-}
-
-/**
- * Create pre-allocated working arrays for rotation calculations.
- * All arrays sized to MAX_DIMENSION to handle any dimension without reallocation.
- * @returns Pre-allocated working arrays for basis vector computations
- */
-function createWorkingArrays(): WorkingArrays {
-  return {
-    unitX: new Array(MAX_DIMENSION).fill(0),
-    unitY: new Array(MAX_DIMENSION).fill(0),
-    unitZ: new Array(MAX_DIMENSION).fill(0),
-    origin: new Array(MAX_DIMENSION).fill(0),
-    rotatedX: new Float32Array(MAX_DIMENSION),
-    rotatedY: new Float32Array(MAX_DIMENSION),
-    rotatedZ: new Float32Array(MAX_DIMENSION),
-    rotatedOrigin: new Float32Array(MAX_DIMENSION),
-  };
-}
 
 /**
  * MandelbulbMesh - Renders 4D-11D Mandelbulb fractals using GPU raymarching
@@ -106,19 +45,11 @@ const MandelbulbMesh = () => {
   const meshRef = useRef<THREE.Mesh>(null);
   const { size, camera } = useThree();
 
-  // Performance optimization: track rotation changes for adaptive quality
-  const prevVersionRef = useRef<number>(-1);
-  const fastModeRef = useRef(false);
-  const restoreQualityTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Get temporal depth state from context for temporal reprojection
+  const temporalDepth = useTemporalDepth();
 
-  // Pre-allocated working arrays to avoid per-frame allocations
-  const workingArraysRef = useRef<WorkingArrays>(createWorkingArrays());
-
-  // Cached rotation matrix and basis vectors - only recomputed when rotations/dimension/params change
-  const cachedRotationMatrixRef = useRef<MatrixND | null>(null);
-  const prevDimensionRef = useRef<number | null>(null);
-  const prevParamValuesRef = useRef<number[] | null>(null);
-  const basisVectorsDirtyRef = useRef(true);
+  // Use shared quality tracking hook (replaces manual fast mode management)
+  const { effectiveFastMode, qualityMultiplier, rotationsChanged } = useQualityTracking();
 
   // Cached uniform values to avoid redundant updates
   // Note: prevPowerRef, prevIterationsRef, prevEscapeRadiusRef were removed
@@ -126,28 +57,13 @@ const MandelbulbMesh = () => {
   // transitions from placeholder to shader material. These settings don't change
   // frequently enough to warrant the optimization.
   const prevZoomRef = useRef<number | null>(null);
-  const prevLightingVersionRef = useRef<number>(-1);
 
   // Cached linear colors - avoid per-frame sRGB->linear conversion
+  // Note: Light color caching now handled by LightingSource via UniformManager
   const colorCacheRef = useRef(createColorCache());
-  const lightColorCacheRef = useRef(createLightColorCache());
-
-  // Cleanup timeout on unmount to prevent memory leaks
-  useEffect(() => {
-    return () => {
-      if (restoreQualityTimeoutRef.current) {
-        clearTimeout(restoreQualityTimeoutRef.current);
-        restoreQualityTimeoutRef.current = null;
-      }
-    };
-  }, []);
 
   // Assign main object layer for depth-based effects (SSR, refraction, bokeh)
-  useEffect(() => {
-    if (meshRef.current?.layers) {
-      meshRef.current.layers.set(RENDER_LAYERS.MAIN_OBJECT);
-    }
-  }, []);
+  useLayerAssignment(meshRef);
 
   // Cleanup zoom autopilot on unmount
   useEffect(() => {
@@ -171,6 +87,9 @@ const MandelbulbMesh = () => {
   const escapeRadius = useExtendedObjectStore((state) => state.mandelbulb.escapeRadius);
   const scale = useExtendedObjectStore((state) => state.mandelbulb.scale);
   const parameterValues = useExtendedObjectStore((state) => state.mandelbulb.parameterValues);
+
+  // Use shared rotation hook for basis vector computation with caching
+  const rotationUpdates = useRotationUpdates({ dimension, parameterValues });
 
   // Power animation parameters (organic multi-frequency motion)
   const powerAnimationEnabled = useExtendedObjectStore((state) => state.mandelbulb.powerAnimationEnabled);
@@ -242,26 +161,11 @@ const MandelbulbMesh = () => {
   // Get color state from visual store
   const faceColor = useAppearanceStore((state) => state.faceColor);
 
-  // Advanced color system state
-  const colorAlgorithm = useAppearanceStore((state) => state.colorAlgorithm);
-  const cosineCoefficients = useAppearanceStore((state) => state.cosineCoefficients);
-  const distribution = useAppearanceStore((state) => state.distribution);
-  const lchLightness = useAppearanceStore((state) => state.lchLightness);
-  const lchChroma = useAppearanceStore((state) => state.lchChroma);
-  const multiSourceWeights = useAppearanceStore((state) => state.multiSourceWeights);
-
-  // Get multi-light system from visual store
-  const lights = useLightingStore((state) => state.lights);
-
-  // Get global lighting settings from visual store
-  const ambientIntensity = useLightingStore((state) => state.ambientIntensity);
-  const ambientColor = useLightingStore((state) => state.ambientColor);
-  const specularIntensity = useLightingStore((state) => state.specularIntensity);
-  const shininess = useLightingStore((state) => state.shininess);
-  // Enhanced lighting settings
-  const specularColor = useLightingStore((state) => state.specularColor);
-  const diffuseIntensity = useLightingStore((state) => state.diffuseIntensity);
-
+  // NOTE: Multi-light system and global lighting settings are now managed by
+  // LightingSource via UniformManager. The following selectors were removed:
+  // - lights, ambientIntensity, ambientColor, specularIntensity, shininess
+  // - specularColor, diffuseIntensity
+  // LightingSource accesses useLightingStore.getState() directly with version tracking.
 
   // Edges render mode controls fresnel rim lighting for Mandelbulb
   const edgesVisible = useAppearanceStore((state) => state.edgesVisible);
@@ -328,17 +232,13 @@ const MandelbulbMesh = () => {
       uProjectionMatrix: { value: new THREE.Matrix4() },
       uViewMatrix: { value: new THREE.Matrix4() },
 
-      // Multi-light system uniforms
-      ...createLightUniforms(),
+      // Centralized Uniform Sources:
+      // - Lighting: Ambient, Diffuse, Specular, Multi-lights
+      // - Temporal: Matrices, Enabled state (matrices updated via source)
+      // - Quality: FastMode, QualityMultiplier
+      // - Color: Algorithm, Cosine coeffs, Distribution, LCH
+      ...UniformManager.getCombinedUniforms(['lighting', 'temporal', 'quality', 'color']),
 
-      // Global lighting uniforms (colors converted to linear for physically correct lighting)
-      uAmbientIntensity: { value: 0.2 },
-      uAmbientColor: { value: new THREE.Color('#FFFFFF').convertSRGBToLinear() },
-      uSpecularIntensity: { value: 1.0 },
-      uSpecularPower: { value: 32.0 },
-      // Enhanced lighting uniforms
-      uSpecularColor: { value: new THREE.Color('#FFFFFF').convertSRGBToLinear() },
-      uDiffuseIntensity: { value: 1.0 },
       // Material property for G-buffer (reflectivity for SSR)
       uMetallic: { value: 0.0 },
 
@@ -354,12 +254,6 @@ const MandelbulbMesh = () => {
       uFresnelEnabled: { value: true },
       uFresnelIntensity: { value: 0.5 },
       uRimColor: { value: new THREE.Color('#FFFFFF').convertSRGBToLinear() },
-
-      // Performance mode: reduces quality during rotation animations
-      uFastMode: { value: false },
-
-      // Progressive refinement quality multiplier (0.25-1.0)
-      uQualityMultiplier: { value: 1.0 },
 
       // Opacity Mode System uniforms
       uOpacityMode: { value: 0 },
@@ -378,28 +272,8 @@ const MandelbulbMesh = () => {
       // Ambient Occlusion uniforms
       uAoEnabled: { value: true },
 
-      // Advanced Color System uniforms
-      uColorAlgorithm: { value: 1 },
-      uCosineA: { value: new THREE.Vector3(0.5, 0.5, 0.5) },
-      uCosineB: { value: new THREE.Vector3(0.5, 0.5, 0.5) },
-      uCosineC: { value: new THREE.Vector3(1.0, 1.0, 1.0) },
-      uCosineD: { value: new THREE.Vector3(0.0, 0.33, 0.67) },
-      uDistPower: { value: 1.0 },
-      uDistCycles: { value: 1.0 },
-      uDistOffset: { value: 0.0 },
-      uLchLightness: { value: 0.7 },
-      uLchChroma: { value: 0.15 },
-      uMultiSourceWeights: { value: new THREE.Vector3(0.5, 0.3, 0.2) },
-
-      // Temporal Reprojection uniforms
+      // Temporal Reprojection - Texture must be manually handled as it comes from context
       uPrevDepthTexture: { value: null },
-      uPrevViewProjectionMatrix: { value: new THREE.Matrix4() },
-      uPrevInverseViewProjectionMatrix: { value: new THREE.Matrix4() },
-      uTemporalEnabled: { value: false },
-      uDepthBufferResolution: { value: new THREE.Vector2(1, 1) },
-      // Aggressive safety margin for Mandelbulb - geometry is stable during rotation
-      // 0.95 = start raymarching at 95% of previous depth (5% safety margin)
-      uTemporalSafetyMargin: { value: 0.95 },
     }),
     []
   );
@@ -461,49 +335,6 @@ const MandelbulbMesh = () => {
 
       // Skip uniform updates if material has no uniforms (placeholder material during shader compilation)
       if (!material.uniforms) return;
-
-      // Get rotations from store
-      // Use version to detect changes cheaply
-      const { rotations, version: rotationVersion } = useRotationStore.getState();
-
-      // ============================================
-      // Adaptive Quality: Detect rotation animation
-      // ============================================
-      const rotationsChanged = rotationVersion !== prevVersionRef.current;
-
-      if (rotationsChanged) {
-        // Rotation is happening - switch to fast mode
-        fastModeRef.current = true;
-        prevVersionRef.current = rotationVersion;
-
-        // Clear any pending quality restore timeout
-        if (restoreQualityTimeoutRef.current) {
-          clearTimeout(restoreQualityTimeoutRef.current);
-          restoreQualityTimeoutRef.current = null;
-        }
-      } else if (fastModeRef.current) {
-        // Rotation stopped - schedule quality restore after delay
-        if (!restoreQualityTimeoutRef.current) {
-          restoreQualityTimeoutRef.current = setTimeout(() => {
-            fastModeRef.current = false;
-            restoreQualityTimeoutRef.current = null;
-          }, QUALITY_RESTORE_DELAY_MS);
-        }
-      }
-
-      // Update fast mode uniform
-      // Only enable fast mode if fractalAnimationLowQuality is enabled in performance settings
-      if (material.uniforms.uFastMode) {
-        const fractalAnimLowQuality = usePerformanceStore.getState().fractalAnimationLowQuality;
-        material.uniforms.uFastMode.value = fractalAnimLowQuality && fastModeRef.current;
-      }
-
-      // Get progressive refinement quality multiplier from performance store
-      // Used for raymarching quality and to compute effective quality for other effects
-      const qualityMultiplier = usePerformanceStore.getState().qualityMultiplier;
-      if (material.uniforms.uQualityMultiplier) {
-        material.uniforms.uQualityMultiplier.value = qualityMultiplier;
-      }
 
       // Update time and resolution
       // Use accumulatedTime which respects pause state and is synced globally
@@ -583,47 +414,19 @@ const MandelbulbMesh = () => {
       if (material.uniforms.uProjectionMatrix) material.uniforms.uProjectionMatrix.value.copy(camera.projectionMatrix);
       if (material.uniforms.uViewMatrix) material.uniforms.uViewMatrix.value.copy(camera.matrixWorldInverse);
 
-      // Update temporal reprojection uniforms from manager
-      const temporalUniforms = TemporalDepthManager.getUniforms();
+      // Update temporal reprojection uniforms
+      // uPrevDepthTexture comes from context and must be set manually
+      // Matrices and enabled state are handled by UniformManager (TemporalSource)
+      const temporalUniforms = temporalDepth.getUniforms();
       if (material.uniforms.uPrevDepthTexture) {
         material.uniforms.uPrevDepthTexture.value = temporalUniforms.uPrevDepthTexture;
       }
-      if (material.uniforms.uPrevViewProjectionMatrix) {
-        material.uniforms.uPrevViewProjectionMatrix.value.copy(temporalUniforms.uPrevViewProjectionMatrix);
-      }
-      if (material.uniforms.uPrevInverseViewProjectionMatrix) {
-        material.uniforms.uPrevInverseViewProjectionMatrix.value.copy(temporalUniforms.uPrevInverseViewProjectionMatrix);
-      }
-      if (material.uniforms.uTemporalEnabled) {
-        material.uniforms.uTemporalEnabled.value = temporalUniforms.uTemporalEnabled;
-      }
-      if (material.uniforms.uDepthBufferResolution) {
-        material.uniforms.uDepthBufferResolution.value.copy(temporalUniforms.uDepthBufferResolution);
-      }
-      // Note: uCameraNear and uCameraFar are no longer needed - temporal buffer now stores
-      // unnormalized ray distances directly (world-space units)
 
-      // Update multi-light uniforms (with cached color conversion and version check)
-      const currentLightingVersion = useLightingStore.getState().version;
-      if (prevLightingVersionRef.current !== currentLightingVersion) {
-        updateLightUniforms(material.uniforms as unknown as LightUniforms, lights, lightColorCacheRef.current);
-        prevLightingVersionRef.current = currentLightingVersion;
-      }
+      // Apply centralized uniform sources (Lighting, Temporal, Quality, Color)
+      // These sources auto-update from stores in UniformLifecycleController
+      UniformManager.applyToMaterial(material, ['lighting', 'temporal', 'quality', 'color']);
 
-      // Update global lighting uniforms (cached linear conversion)
-      if (material.uniforms.uAmbientIntensity) material.uniforms.uAmbientIntensity.value = ambientIntensity;
-      if (material.uniforms.uAmbientColor) {
-        updateLinearColorUniform(cache.ambientColor, material.uniforms.uAmbientColor.value as THREE.Color, ambientColor);
-      }
-      if (material.uniforms.uSpecularIntensity) material.uniforms.uSpecularIntensity.value = specularIntensity;
-      if (material.uniforms.uSpecularPower) material.uniforms.uSpecularPower.value = shininess;
-      // Enhanced lighting uniforms
-      if (material.uniforms.uSpecularColor) {
-        updateLinearColorUniform(cache.specularColor, material.uniforms.uSpecularColor.value as THREE.Color, specularColor);
-      }
-      if (material.uniforms.uDiffuseIntensity) material.uniforms.uDiffuseIntensity.value = diffuseIntensity;
-
-      // Advanced Rendering (Global Visuals)
+      // Advanced Rendering (Global Visuals) - Manual update for now as these aren't in sources
       const visuals = useAppearanceStore.getState();
       if (material.uniforms.uRoughness) material.uniforms.uRoughness.value = visuals.roughness;
       if (material.uniforms.uSssEnabled) material.uniforms.uSssEnabled.value = visuals.sssEnabled;
@@ -634,36 +437,12 @@ const MandelbulbMesh = () => {
       if (material.uniforms.uSssThickness) material.uniforms.uSssThickness.value = visuals.sssThickness;
       if (material.uniforms.uSssJitter) material.uniforms.uSssJitter.value = visuals.sssJitter;
 
-      // Raymarching Quality (per-object setting)
-      // Maps RaymarchQuality preset to quality multiplier with screen coverage adaptation
-      const mandelbulbConfig = useExtendedObjectStore.getState().mandelbulb;
-      const baseQuality = RAYMARCH_QUALITY_TO_MULTIPLIER[mandelbulbConfig.raymarchQuality] ?? 0.5;
-      const perfQuality = usePerformanceStore.getState().qualityMultiplier;
-      const effectiveQuality = getEffectiveSdfQuality(baseQuality, camera as THREE.PerspectiveCamera, perfQuality);
-
-      if (material.uniforms.uQualityMultiplier) {
-          material.uniforms.uQualityMultiplier.value = effectiveQuality;
-      }
-
       // Fresnel rim lighting (controlled by Edges render mode, cached linear conversion)
       if (material.uniforms.uFresnelEnabled) material.uniforms.uFresnelEnabled.value = edgesVisible;
       if (material.uniforms.uFresnelIntensity) material.uniforms.uFresnelIntensity.value = fresnelIntensity;
       if (material.uniforms.uRimColor) {
         updateLinearColorUniform(cache.rimColor, material.uniforms.uRimColor.value as THREE.Color, edgeColor);
       }
-
-      // Advanced Color System uniforms
-      if (material.uniforms.uColorAlgorithm) material.uniforms.uColorAlgorithm.value = COLOR_ALGORITHM_TO_INT[colorAlgorithm];
-      if (material.uniforms.uCosineA) material.uniforms.uCosineA.value.set(cosineCoefficients.a[0], cosineCoefficients.a[1], cosineCoefficients.a[2]);
-      if (material.uniforms.uCosineB) material.uniforms.uCosineB.value.set(cosineCoefficients.b[0], cosineCoefficients.b[1], cosineCoefficients.b[2]);
-      if (material.uniforms.uCosineC) material.uniforms.uCosineC.value.set(cosineCoefficients.c[0], cosineCoefficients.c[1], cosineCoefficients.c[2]);
-      if (material.uniforms.uCosineD) material.uniforms.uCosineD.value.set(cosineCoefficients.d[0], cosineCoefficients.d[1], cosineCoefficients.d[2]);
-      if (material.uniforms.uDistPower) material.uniforms.uDistPower.value = distribution.power;
-      if (material.uniforms.uDistCycles) material.uniforms.uDistCycles.value = distribution.cycles;
-      if (material.uniforms.uDistOffset) material.uniforms.uDistOffset.value = distribution.offset;
-      if (material.uniforms.uLchLightness) material.uniforms.uLchLightness.value = lchLightness;
-      if (material.uniforms.uLchChroma) material.uniforms.uLchChroma.value = lchChroma;
-      if (material.uniforms.uMultiSourceWeights) material.uniforms.uMultiSourceWeights.value.set(multiSourceWeights.depth, multiSourceWeights.orbitTrap, multiSourceWeights.normal);
 
       // Opacity Mode System uniforms
       if (material.uniforms.uOpacityMode) {
@@ -723,75 +502,37 @@ const MandelbulbMesh = () => {
         material.needsUpdate = true;
       }
 
+
       // ============================================
-      // Optimized D-dimensional Rotation & Basis Vectors
-      // Only recompute when rotations, dimension, or params change
+      // D-dimensional Rotation & Basis Vectors (via shared hook)
+      // Only recomputes when rotations, dimension, or params change
       // ============================================
       const D = dimension;
-      const work = workingArraysRef.current;
+      const { basisX, basisY, basisZ, changed: basisChanged } = rotationUpdates.getBasisVectors(rotationsChanged);
 
-      // Check if parameterValues changed (shallow array comparison)
-      const paramsChanged = !prevParamValuesRef.current ||
-        prevParamValuesRef.current.length !== parameterValues.length ||
-        parameterValues.some((v, i) => prevParamValuesRef.current![i] !== v);
-
-      // Determine if we need to recompute basis vectors
-      const needsRecompute = rotationsChanged ||
-        dimension !== prevDimensionRef.current ||
-        paramsChanged ||
-        basisVectorsDirtyRef.current;
-
-      if (needsRecompute) {
-        // Compute rotation matrix only when needed
-        cachedRotationMatrixRef.current = composeRotations(dimension, rotations);
-
-        // Prepare unit vectors in pre-allocated arrays (no allocation)
-        // Clear and set up unitX = [1, 0, 0, ...]
-        for (let i = 0; i < MAX_DIMENSION; i++) work.unitX[i] = 0;
-        work.unitX[0] = 1;
-
-        // Clear and set up unitY = [0, 1, 0, ...]
-        for (let i = 0; i < MAX_DIMENSION; i++) work.unitY[i] = 0;
-        work.unitY[1] = 1;
-
-        // Clear and set up unitZ = [0, 0, 1, ...]
-        for (let i = 0; i < MAX_DIMENSION; i++) work.unitZ[i] = 0;
-        work.unitZ[2] = 1;
-
-        // Apply rotation to basis vectors using pre-allocated output arrays
-        applyRotationInPlace(cachedRotationMatrixRef.current, work.unitX, work.rotatedX, dimension);
-        applyRotationInPlace(cachedRotationMatrixRef.current, work.unitY, work.rotatedY, dimension);
-        applyRotationInPlace(cachedRotationMatrixRef.current, work.unitZ, work.rotatedZ, dimension);
-
+      if (basisChanged) {
         // Update basis vector uniforms
         if (material.uniforms.uBasisX) {
-          const arr = material.uniforms.uBasisX.value as Float32Array;
-          arr.set(work.rotatedX);
+          (material.uniforms.uBasisX.value as Float32Array).set(basisX);
         }
         if (material.uniforms.uBasisY) {
-          const arr = material.uniforms.uBasisY.value as Float32Array;
-          arr.set(work.rotatedY);
+          (material.uniforms.uBasisY.value as Float32Array).set(basisY);
         }
         if (material.uniforms.uBasisZ) {
-          const arr = material.uniforms.uBasisZ.value as Float32Array;
-          arr.set(work.rotatedZ);
+          (material.uniforms.uBasisZ.value as Float32Array).set(basisZ);
         }
-
-        // Update tracking refs
-        prevDimensionRef.current = dimension;
-        prevParamValuesRef.current = [...parameterValues];
-        basisVectorsDirtyRef.current = false;
       }
 
       // ============================================
       // Origin Update (separate from basis vectors)
       // Must update every frame when origin drift or slice animation is enabled
       // ============================================
-      const needsOriginUpdate = needsRecompute || originDriftEnabled || sliceAnimationEnabled;
+      const needsOriginUpdate = basisChanged || originDriftEnabled || sliceAnimationEnabled;
+      const { rotationMatrix: cachedRotationMatrix } = rotationUpdates;
 
-      if (needsOriginUpdate && cachedRotationMatrixRef.current) {
-        // Clear and set up origin = [0, 0, 0, slice[0], slice[1], ...]
-        for (let i = 0; i < MAX_DIMENSION; i++) work.origin[i] = 0;
+      if (needsOriginUpdate && cachedRotationMatrix) {
+        // Build origin values array for rotation
+        const originValues = new Array(MAX_DIMENSION).fill(0);
 
         // Apply origin drift if enabled (Technique C)
         if (originDriftEnabled && D > 3) {
@@ -812,7 +553,7 @@ const MandelbulbMesh = () => {
           );
           // Set drifted values for extra dimensions
           for (let i = 3; i < D; i++) {
-            work.origin[i] = driftedOrigin[i - 3] ?? 0;
+            originValues[i] = driftedOrigin[i - 3] ?? 0;
           }
         } else if (sliceAnimationEnabled && D > 3) {
           // Slice Animation: animate through higher-dimensional cross-sections
@@ -828,22 +569,21 @@ const MandelbulbMesh = () => {
             const t2 = accumulatedTime * sliceSpeed * 1.3 * 2 * Math.PI + phase * 1.5;
             // Blend two frequencies for non-repetitive motion
             const offset = sliceAmplitude * (0.7 * Math.sin(t1) + 0.3 * Math.sin(t2));
-            work.origin[i] = (parameterValues[extraDimIndex] ?? 0) + offset;
+            originValues[i] = (parameterValues[extraDimIndex] ?? 0) + offset;
           }
         } else {
           // No drift or slice animation - use static parameter values
           for (let i = 3; i < D; i++) {
-            work.origin[i] = parameterValues[i - 3] ?? 0;
+            originValues[i] = parameterValues[i - 3] ?? 0;
           }
         }
 
-        // Apply rotation to origin
-        applyRotationInPlace(cachedRotationMatrixRef.current, work.origin, work.rotatedOrigin, dimension);
+        // Get rotated origin from hook
+        const { origin } = rotationUpdates.getOrigin(originValues);
 
         // Update origin uniform
         if (material.uniforms.uOrigin) {
-          const arr = material.uniforms.uOrigin.value as Float32Array;
-          arr.set(work.rotatedOrigin);
+          (material.uniforms.uOrigin.value as Float32Array).set(origin);
         }
       }
 
@@ -935,14 +675,15 @@ const MandelbulbMesh = () => {
             zoomAutopilotRef.current = new ZoomAutopilot(config);
           }
 
-          // Run autopilot update
+          // Run autopilot update - use working arrays from rotation hook
           const gl = state.gl;
           const scene = state.scene;
+          const autopilotWork = rotationUpdates.workingArrays;
           const result = zoomAutopilotRef.current.update(
             gl,
             scene,
             camera,
-            work.rotatedOrigin,
+            autopilotWork.rotatedOrigin,
             dimension
           );
 
@@ -952,6 +693,7 @@ const MandelbulbMesh = () => {
           // Apply D-dimensional origin nudge to track interesting fractal regions
           // CRITICAL: Must nudge ALL dimensions (0,1,2 control zoom target in 3D fractal space)
           if (result.originNudge.length > 0) {
+            const work = rotationUpdates.workingArrays;
             for (let i = 0; i < dimension; i++) {
               const nudge = result.originNudge[i] ?? 0;
               if (nudge !== 0) {
@@ -959,13 +701,12 @@ const MandelbulbMesh = () => {
                 work.origin[i] = currentValue + nudge;
               }
             }
-            // Re-apply rotation to updated origin
-            if (cachedRotationMatrixRef.current) {
-              applyRotationInPlace(cachedRotationMatrixRef.current, work.origin, work.rotatedOrigin, dimension);
-              if (material.uniforms.uOrigin) {
-                const arr = material.uniforms.uOrigin.value as Float32Array;
-                arr.set(work.rotatedOrigin);
-              }
+            // Re-apply rotation to updated origin using hook's getOrigin
+            const nudgedOriginValues = Array.from(work.origin);
+            const { origin: rotatedOrigin } = rotationUpdates.getOrigin(nudgedOriginValues);
+            if (material.uniforms.uOrigin) {
+              const arr = material.uniforms.uOrigin.value as Float32Array;
+              arr.set(rotatedOrigin);
             }
           }
         } else {
@@ -1022,7 +763,7 @@ const MandelbulbMesh = () => {
           ]
         )
     }
-  });
+  }, FRAME_PRIORITY.RENDERER_UNIFORMS);
 
   // Generate unique key to force material recreation when shader changes or context is restored
   const materialKey = `mandelbulb-material-${shaderString.length}-${features.join(',')}-${restoreCount}`;

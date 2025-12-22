@@ -249,12 +249,12 @@ export interface MandelbulbSliceActions {
   setMandelbulbSssIntensity: (value: number) => void
   setMandelbulbSssColor: (value: string) => void
   setMandelbulbSssThickness: (value: number) => void
-  
+
   // Atmosphere
   setMandelbulbFogEnabled: (value: boolean) => void
   setMandelbulbFogContribution: (value: number) => void
   setMandelbulbInternalFogDensity: (value: number) => void
-  
+
   // Raymarching Quality
   setMandelbulbRaymarchQuality: (quality: RaymarchQuality) => void
 }
@@ -317,12 +317,12 @@ export interface QuaternionJuliaSliceActions {
   setQuaternionJuliaSssIntensity: (value: number) => void
   setQuaternionJuliaSssColor: (value: string) => void
   setQuaternionJuliaSssThickness: (value: number) => void
-  
+
   // Atmosphere
   setQuaternionJuliaFogEnabled: (value: boolean) => void
   setQuaternionJuliaFogContribution: (value: number) => void
   setQuaternionJuliaInternalFogDensity: (value: number) => void
-  
+
   // Raymarching Quality
   setQuaternionJuliaRaymarchQuality: (quality: RaymarchQuality) => void
 }
@@ -614,6 +614,12 @@ export interface BlackHoleSliceActions {
   setBlackHoleDeferredLensingEnabled: (enabled: boolean) => void
   setBlackHoleDeferredLensingStrength: (strength: number) => void
   setBlackHoleDeferredLensingRadius: (radius: number) => void
+  setBlackHoleDeferredLensingChromaticAberration: (amount: number) => void
+  setBlackHoleSkyCubemapResolution: (resolution: number) => void
+
+  // Screen-Space Lensing
+  setBlackHoleScreenSpaceLensingEnabled: (enabled: boolean) => void
+  setBlackHoleLensingFalloff: (falloff: number) => void
 
   // Scene Object Lensing
   setBlackHoleSceneObjectLensingEnabled: (enabled: boolean) => void

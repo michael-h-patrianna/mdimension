@@ -19,20 +19,27 @@ export const deferredLensingBlock = /* glsl */ `
 /**
  * Compute radial distortion magnitude based on distance from center.
  *
- * Uses the gravitational lensing formula to determine how much
- * each pixel should be displaced toward the black hole center.
+ * Uses the gravitational lensing formula: deflection = strength / r^falloff
+ *
+ * The falloff exponent controls how lensing intensity changes with distance:
+ * - Higher falloff (2.0-4.0): Effect concentrated near center, drops rapidly
+ * - Lower falloff (0.5-1.0): Effect extends further from center, more gradual
+ *
+ * Note: deflection always increases as r decreases (toward center).
+ * The exponent only affects the RATE of change, not the direction.
+ * Valid range is [0.5, 4.0] with default 1.5.
  *
  * @param r - Distance from black hole center (in NDC space, 0-1)
  * @param strength - Overall lensing strength
- * @param falloff - How quickly lensing falls off with distance
- * @returns Displacement magnitude (can be negative for inward pull)
+ * @param falloff - Distance falloff exponent (0.5-4.0, default 1.5)
+ * @returns Displacement magnitude (always positive, clamped to 0.5 max)
  */
 float lensingMagnitude(float r, float strength, float falloff) {
   // Prevent division by zero at center
   float safeR = max(r, 0.001);
 
-  // Gravitational lensing falls off with distance
-  // Using 1/r^falloff formula with Einstein ring scaling
+  // Gravitational lensing: deflection = strength / r^falloff
+  // Higher falloff = steeper curve (concentrated), lower = flatter (extended)
   float deflection = strength / pow(safeR, falloff);
 
   // Clamp to prevent extreme distortion

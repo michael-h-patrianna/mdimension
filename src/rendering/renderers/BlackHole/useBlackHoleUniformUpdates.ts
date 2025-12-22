@@ -7,19 +7,13 @@
  * Extracted from BlackHoleMesh.tsx to reduce component complexity.
  */
 
-import { composeRotations } from '@/lib/math/rotation'
-import {
-  createCachedLinearColor,
-  createLightColorCache,
-  updateLinearColorUniform,
-} from '@/rendering/colors/linearCache'
-import {
-  getScreenCoverage,
-  applyScreenCoverageReduction,
-} from '@/rendering/utils/adaptiveQuality'
-import { type LightUniforms, updateLightUniforms } from '@/rendering/lights/uniforms'
-import { useAppearanceStore } from '@/stores/appearanceStore'
+import { createCachedLinearColor, updateLinearColorUniform } from '@/rendering/colors/linearCache'
+import { FRAME_PRIORITY } from '@/rendering/core/framePriorities'
+import { MAX_DIMENSION, useRotationUpdates } from '@/rendering/renderers/base'
+import { UniformManager } from '@/rendering/uniforms/UniformManager'
+import { applyScreenCoverageReduction, getScreenCoverage } from '@/rendering/utils/adaptiveQuality'
 import { useAnimationStore } from '@/stores/animationStore'
+import { useAppearanceStore } from '@/stores/appearanceStore'
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore'
 import { useGeometryStore } from '@/stores/geometryStore'
 import { useLightingStore } from '@/stores/lightingStore'
@@ -29,6 +23,14 @@ import { useUIStore } from '@/stores/uiStore'
 import { useFrame, useThree } from '@react-three/fiber'
 import React, { useLayoutEffect, useRef } from 'react'
 import * as THREE from 'three'
+import {
+  COLOR_ALGORITHM_MAP,
+  LIGHTING_MODE_MAP,
+  MANIFOLD_TYPE_MAP,
+  OPACITY_MODE_MAP,
+  PALETTE_MODE_MAP,
+  RAY_BENDING_MODE_MAP,
+} from './types'
 
 // DEBUG helper
 const debugLog = (event: string, data?: Record<string, unknown>) => {
@@ -36,24 +38,8 @@ const debugLog = (event: string, data?: Record<string, unknown>) => {
     window.__DEBUG_LOG('BlackHoleUniforms', event, data)
   }
 }
-import {
-  applyRotationInPlace,
-  COLOR_ALGORITHM_MAP,
-  createWorkingArrays,
-  LIGHTING_MODE_MAP,
-  MANIFOLD_TYPE_MAP,
-  OPACITY_MODE_MAP,
-  PALETTE_MODE_MAP,
-  RAY_BENDING_MODE_MAP,
-  type WorkingArrays,
-} from './types'
 
-/**
- * useFrame priority for black hole uniform updates.
- * Negative priority ensures uniforms are updated BEFORE PostProcessing's
- * useFrame (priority 1) runs the volumetric render pass.
- */
-const UNIFORM_UPDATE_PRIORITY = -10
+// REMOVED: Local priority constant. Now using centralized FRAME_PRIORITY.BLACK_HOLE_UNIFORMS
 
 /**
  * Create color cache for black hole specific colors
@@ -104,18 +90,15 @@ function setUniform<T>(
  * @param options - Configuration options
  * @param options.meshRef - Reference to the black hole mesh
  */
-export function useBlackHoleUniformUpdates({
-  meshRef,
-}: UseBlackHoleUniformUpdatesOptions) {
+export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdatesOptions) {
   const { camera, size, scene } = useThree()
 
-  // Pre-allocated working arrays for rotation calculations
-  const workingArraysRef = useRef<WorkingArrays>(createWorkingArrays())
+  // Subscribe to dimension and parameterValues for useRotationUpdates hook
+  const dimension = useGeometryStore((state) => state.dimension)
+  const parameterValues = useExtendedObjectStore((state) => state.blackhole.parameterValues)
 
-  // Cached state for change detection
-  const prevDimensionRef = useRef<number | null>(null)
-  const prevParamValuesRef = useRef<number[] | null>(null)
-  const prevLightingVersionRef = useRef<number | null>(null)
+  // Use shared rotation updates hook for basis vector computation
+  const rotationUpdates = useRotationUpdates({ dimension, parameterValues })
 
   // Fast mode tracking for adaptive quality during rotation/animation
   const prevRotationVersionRef = useRef<number>(-1)
@@ -125,7 +108,6 @@ export function useBlackHoleUniformUpdates({
 
   // Cached linear colors (avoid sRGB->linear conversion every frame)
   const colorCacheRef = useRef(createBlackHoleColorCache())
-  const lightColorCacheRef = useRef(createLightColorCache())
 
   // CRITICAL: Cache last valid env map to survive transient scene.background clears.
   // PostProcessing and ProceduralSkyboxCapture temporarily set scene.background = null
@@ -193,7 +175,7 @@ export function useBlackHoleUniformUpdates({
       debugLog('useFrame: EARLY RETURN - material or uniforms is null', {
         hasMaterial: !!material,
         hasUniforms: !!material?.uniforms,
-        materialType: material?.type
+        materialType: material?.type,
       })
       return
     }
@@ -212,7 +194,7 @@ export function useBlackHoleUniformUpdates({
       debugLog('useFrame: MATERIAL CHANGED - force-syncing uniforms', {
         materialType: material.type,
         hasFragmentShader: !!material.fragmentShader,
-        fragmentShaderLength: material.fragmentShader?.length
+        fragmentShaderLength: material.fragmentShader?.length,
       })
 
       // Force-sync all critical ray bending uniforms that affect bounding sphere and lensing
@@ -229,7 +211,7 @@ export function useBlackHoleUniformUpdates({
       debugLog('useFrame: SYNCED critical uniforms', {
         uHorizonRadius: bhState.horizonRadius,
         uFarRadius: bhState.farRadius,
-        boundingSphere: bhState.farRadius * bhState.horizonRadius
+        boundingSphere: bhState.farRadius * bhState.horizonRadius,
       })
 
       // Also check if scene.background is ready and sync envMap state
@@ -247,7 +229,7 @@ export function useBlackHoleUniformUpdates({
       } else {
         debugLog('useFrame: envMap NOT ready on material change', {
           'scene.background': bg ? 'SET' : 'NULL',
-          mapping: (bg as THREE.Texture)?.mapping
+          mapping: (bg as THREE.Texture)?.mapping,
         })
       }
     }
@@ -297,8 +279,7 @@ export function useBlackHoleUniformUpdates({
     }
 
     // Get current state from stores
-    const geomState = useGeometryStore.getState()
-    const { rotations, version: rotationVersion } = useRotationStore.getState()
+    const { version: rotationVersion } = useRotationStore.getState()
     const animState = useAnimationStore.getState()
 
     // Adaptive quality: detect rotation changes and enable fast mode
@@ -358,22 +339,20 @@ export function useBlackHoleUniformUpdates({
     const appearanceState = useAppearanceStore.getState() // Global appearance
     const lightingState = useLightingStore.getState() // Global lighting
     const uiState = useUIStore.getState() // Global UI state
-    const { lights, version: lightingVersion } = lightingState
     const cache = colorCacheRef.current
 
     // Visual scale: Handled by mesh.scale now
     // setUniform(u, 'uScale', scale)
 
-    // Update dimension
-    const currentDimension = geomState.dimension
-    setUniform(u, 'uDimension', currentDimension)
+    // Update dimension (from subscribed value at top of hook)
+    setUniform(u, 'uDimension', dimension)
 
     // Update time using global synced time
     setUniform(u, 'uTime', animState.accumulatedTime)
 
     // Pre-calculate dimension scaling factor for lensing
     // Formula: pow(N, alpha) where N is dimension
-    const dimPower = Math.pow(currentDimension, bhState.dimensionEmphasis)
+    const dimPower = Math.pow(dimension, bhState.dimensionEmphasis)
     setUniform(u, 'uDimPower', dimPower)
 
     // Pre-calculate origin offset length squared (sum of param values squared)
@@ -385,53 +364,35 @@ export function useBlackHoleUniformUpdates({
     }
     setUniform(u, 'uOriginOffsetLengthSq', originOffsetLengthSq)
 
-    // Update resolution
+    // ============================================
+    // D-dimensional Rotation & Basis Vectors (via shared hook)
+    // Only recomputes when rotations, dimension, or params change
+    // ============================================
+    const {
+      basisX,
+      basisY,
+      basisZ,
+      changed: basisChanged,
+    } = rotationUpdates.getBasisVectors(rotationsChanged)
 
-    // Update basis vectors if needed
+    // Copy basis vectors to uniforms (with null guards)
+    if (basisChanged) {
+      if (u.uBasisX?.value) (u.uBasisX.value as Float32Array).set(basisX)
+      if (u.uBasisY?.value) (u.uBasisY.value as Float32Array).set(basisY)
+      if (u.uBasisZ?.value) (u.uBasisZ.value as Float32Array).set(basisZ)
+    }
+
+    // ============================================
+    // Origin Update (separate from basis vectors)
+    // ============================================
+    // Build origin values array for rotation
+    const originValues = new Array(MAX_DIMENSION).fill(0)
     const currentParamValues = bhState.parameterValues
-
-    if (
-      prevDimensionRef.current !== currentDimension ||
-      prevParamValuesRef.current !== currentParamValues
-    ) {
-      prevDimensionRef.current = currentDimension
-      prevParamValuesRef.current = currentParamValues
+    for (let i = 3; i < dimension; i++) {
+      originValues[i] = currentParamValues[i - 3] ?? 0
     }
-
-    // Update rotation matrix
-    const rotation = composeRotations(currentDimension, rotations)
-
-    // Update basis vectors
-    const arrays = workingArraysRef.current
-
-    // Initialize unit vectors
-    arrays.unitX.fill(0)
-    arrays.unitY.fill(0)
-    arrays.unitZ.fill(0)
-    arrays.origin.fill(0)
-
-    arrays.unitX[0] = 1
-    arrays.unitY[1] = 1
-    arrays.unitZ[2] = 1
-
-    // Set origin from parameter values
-    for (let i = 0; i < currentParamValues.length && i < currentDimension - 3; i++) {
-      arrays.origin[3 + i] = currentParamValues[i] ?? 0
-    }
-
-    // Apply rotation to basis vectors
-    if (rotation) {
-      applyRotationInPlace(rotation, arrays.unitX, arrays.rotatedX, currentDimension)
-      applyRotationInPlace(rotation, arrays.unitY, arrays.rotatedY, currentDimension)
-      applyRotationInPlace(rotation, arrays.unitZ, arrays.rotatedZ, currentDimension)
-      applyRotationInPlace(rotation, arrays.origin, arrays.rotatedOrigin, currentDimension)
-    }
-
-    // Copy to uniforms (with null guards)
-    if (u.uBasisX?.value) (u.uBasisX.value as Float32Array).set(arrays.rotatedX)
-    if (u.uBasisY?.value) (u.uBasisY.value as Float32Array).set(arrays.rotatedY)
-    if (u.uBasisZ?.value) (u.uBasisZ.value as Float32Array).set(arrays.rotatedZ)
-    if (u.uOrigin?.value) (u.uOrigin.value as Float32Array).set(arrays.rotatedOrigin)
+    const { origin } = rotationUpdates.getOrigin(originValues)
+    if (u.uOrigin?.value) (u.uOrigin.value as Float32Array).set(origin)
 
     // Update parameter values uniform
     if (u.uParamValues?.value) {
@@ -484,10 +445,14 @@ export function useBlackHoleUniformUpdates({
 
     // Sync Color Algorithm uniforms
     setUniform(u, 'uColorAlgorithm', COLOR_ALGORITHM_MAP[appearanceState.colorAlgorithm] ?? 0)
-    if (u.uCosineA?.value) (u.uCosineA.value as THREE.Vector3).fromArray(appearanceState.cosineCoefficients.a)
-    if (u.uCosineB?.value) (u.uCosineB.value as THREE.Vector3).fromArray(appearanceState.cosineCoefficients.b)
-    if (u.uCosineC?.value) (u.uCosineC.value as THREE.Vector3).fromArray(appearanceState.cosineCoefficients.c)
-    if (u.uCosineD?.value) (u.uCosineD.value as THREE.Vector3).fromArray(appearanceState.cosineCoefficients.d)
+    if (u.uCosineA?.value)
+      (u.uCosineA.value as THREE.Vector3).fromArray(appearanceState.cosineCoefficients.a)
+    if (u.uCosineB?.value)
+      (u.uCosineB.value as THREE.Vector3).fromArray(appearanceState.cosineCoefficients.b)
+    if (u.uCosineC?.value)
+      (u.uCosineC.value as THREE.Vector3).fromArray(appearanceState.cosineCoefficients.c)
+    if (u.uCosineD?.value)
+      (u.uCosineD.value as THREE.Vector3).fromArray(appearanceState.cosineCoefficients.d)
     setUniform(u, 'uLchLightness', appearanceState.lchLightness)
     setUniform(u, 'uLchChroma', appearanceState.lchChroma)
 
@@ -501,7 +466,11 @@ export function useBlackHoleUniformUpdates({
     setUniform(u, 'uLayerCount', opacity.layerCount)
     setUniform(u, 'uLayerOpacity', opacity.layerOpacity)
     setUniform(u, 'uVolumetricDensity', opacity.volumetricDensity)
-    setUniform(u, 'uSampleQuality', opacity.sampleQuality === 'high' ? 2 : opacity.sampleQuality === 'low' ? 0 : 1)
+    setUniform(
+      u,
+      'uSampleQuality',
+      opacity.sampleQuality === 'high' ? 2 : opacity.sampleQuality === 'low' ? 0 : 1
+    )
 
     // Lensing
     setUniform(u, 'uDimensionEmphasis', bhState.dimensionEmphasis)
@@ -593,7 +562,7 @@ export function useBlackHoleUniformUpdates({
         isCubeCompatible,
         hasCachedEnvMap: !!lastValidEnvMapRef.current,
         envMapToUse: envMapToUse ? 'AVAILABLE' : 'NULL',
-        uEnvMapReady: envMapToUse ? 1.0 : 0.0
+        uEnvMapReady: envMapToUse ? 1.0 : 0.0,
       })
     }
 
@@ -640,15 +609,8 @@ export function useBlackHoleUniformUpdates({
     setUniform(u, 'uSliceSpeed', bhState.sliceSpeed)
     setUniform(u, 'uSliceAmplitude', bhState.sliceAmplitude)
 
-    // Update lights
-    if (prevLightingVersionRef.current !== lightingVersion) {
-      updateLightUniforms(
-        material.uniforms as unknown as LightUniforms,
-        lights,
-        lightColorCacheRef.current
-      )
-      prevLightingVersionRef.current = lightingVersion
-    }
+    // Update lights (via UniformManager)
+    UniformManager.applyToMaterial(material, ['lighting'])
 
     // Temporal accumulation uniforms
     // Compute inverse view-projection matrix for ray reconstruction
@@ -659,5 +621,5 @@ export function useBlackHoleUniformUpdates({
 
     // NOTE: Temporal accumulation uniforms (uBayerOffset, uFullResolution) are not used
     // since black hole doesn't benefit from temporal rendering due to reconstruction overhead
-  }, UNIFORM_UPDATE_PRIORITY)
+  }, FRAME_PRIORITY.BLACK_HOLE_UNIFORMS)
 }

@@ -3,6 +3,7 @@
  * Detects camera movement, canvas resize, and user interaction for performance optimizations
  */
 
+import { FRAME_PRIORITY } from '@/rendering/core/framePriorities'
 import { INTERACTION_RESTORE_DELAY, usePerformanceStore } from '@/stores'
 import { useLayoutStore } from '@/stores/layoutStore'
 import { useFrame, useThree } from '@react-three/fiber'
@@ -228,7 +229,7 @@ export function useInteractionState(options: UseInteractionStateOptions = {}): I
     // Update previous values
     prevPos.copy(pos)
     prevRot.copy(rot)
-  })
+  }, FRAME_PRIORITY.ANIMATION)
 
   // Initialize previous camera values (runs once per camera change)
   useEffect(() => {

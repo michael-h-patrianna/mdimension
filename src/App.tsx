@@ -29,11 +29,13 @@ import { useFaceDetection } from '@/hooks/useFaceDetection';
 import { useGeometryGenerator } from '@/hooks/useGeometryGenerator';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useSyncedDimension } from '@/hooks/useSyncedDimension';
+import { useUrlState } from '@/hooks/useUrlState';
 import type { Vector3D, VectorND } from '@/lib/math/types';
 import { FpsController } from '@/rendering/controllers/FpsController';
 import { PerformanceStatsCollector } from '@/rendering/controllers/PerformanceStatsCollector';
 import { VideoExportController } from '@/rendering/controllers/VideoExportController';
 import { ContextEventHandler } from '@/rendering/core/ContextEventHandler';
+import { UniformLifecycleController } from '@/rendering/core/UniformLifecycleController';
 import { VisibilityHandler } from '@/rendering/core/VisibilityHandler';
 import { Scene } from '@/rendering/Scene';
 import { useAppearanceStore } from '@/stores/appearanceStore';
@@ -147,6 +149,9 @@ function useStateRecovery() {
  * @returns The main application layout with all UI components
  */
 function AppContent() {
+  // Initialize state from URL parameters (must be first)
+  useUrlState();
+
   // Enable keyboard shortcuts
   useKeyboardShortcuts();
 
@@ -192,6 +197,7 @@ function AppContent() {
             {/* WebGL Context Management */}
             <ContextEventHandler />
             <VisibilityHandler />
+            <UniformLifecycleController />
 
             <FpsController />
             <VideoExportController />

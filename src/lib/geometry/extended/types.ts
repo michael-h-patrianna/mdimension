@@ -1883,6 +1883,15 @@ export type BlackHoleRayBendingMode = 'spiral' | 'orbital'
 export type BlackHoleVisualPreset = 'interstellar' | 'cosmic' | 'ethereal' | 'custom'
 
 /**
+ * Sky cubemap resolution options for gravitational lensing.
+ * Higher resolutions provide sharper reflections but use more memory.
+ * - 256: Fast, suitable for performance mode
+ * - 512: Balanced (default)
+ * - 1024: High quality
+ */
+export type SkyCubemapResolution = 256 | 512 | 1024
+
+/**
  * Configuration for n-dimensional Black Hole visualization
  *
  * Implements gravitational lensing, photon shell, and luminous accretion manifold.
@@ -2123,6 +2132,25 @@ export interface BlackHoleConfig {
   deferredLensingStrength: number
   /** Deferred lensing radius in horizon units (0-10, default 5.0) */
   deferredLensingRadius: number
+  /** Deferred lensing chromatic aberration amount (0-1, default 0.3) */
+  deferredLensingChromaticAberration: number
+  /** Sky cubemap resolution for lensing (256, 512, or 1024) */
+  skyCubemapResolution: SkyCubemapResolution
+
+  // === SCREEN-SPACE LENSING ===
+  /** Screen-space lensing enabled (default true when black hole) */
+  screenSpaceLensingEnabled: boolean
+  /**
+   * Screen-space lensing falloff exponent (0.5-4.0, default 1.5)
+   *
+   * Controls how lensing intensity changes with distance from center:
+   * - Higher values (2.0-4.0): Effect concentrated near center, drops rapidly
+   * - Lower values (0.5-1.0): Effect extends further from center, more gradual
+   *
+   * Note: Deflection always increases closer to center; this parameter only
+   * controls the rate of falloff, not the direction of the effect.
+   */
+  lensingFalloff: number
 
   // === SCENE OBJECT LENSING ===
   /** Scene object lensing enabled (default true) */
@@ -2369,6 +2397,12 @@ export const DEFAULT_BLACK_HOLE_CONFIG: BlackHoleConfig = {
   deferredLensingEnabled: false,
   deferredLensingStrength: 1.0,
   deferredLensingRadius: 5.0,
+  deferredLensingChromaticAberration: 0.3,
+  skyCubemapResolution: 512,
+
+  // Screen-space lensing
+  screenSpaceLensingEnabled: true,
+  lensingFalloff: 1.5,
 
   // Scene object lensing
   sceneObjectLensingEnabled: true,

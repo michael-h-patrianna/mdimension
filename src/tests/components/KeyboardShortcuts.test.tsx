@@ -41,6 +41,8 @@ describe('KeyboardShortcuts', () => {
 
   it('should display Ctrl modifier', () => {
     render(<KeyboardShortcuts />);
-    expect(screen.getByText(/Ctrl/)).toBeInTheDocument();
+    // Multiple shortcuts may use Ctrl, so use getAllByText
+    const ctrlElements = screen.getAllByText(/Ctrl/);
+    expect(ctrlElements.length).toBeGreaterThan(0);
   });
 });

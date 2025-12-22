@@ -15,8 +15,7 @@ import {
   isValidObjectType as isValidObjectTypeRegistry,
 } from '@/lib/geometry/registry'
 import type { ObjectType } from '@/lib/geometry/types'
-import { TemporalCloudManager } from '@/rendering/core/TemporalCloudManager'
-import { TemporalDepthManager } from '@/rendering/core/TemporalDepthManager'
+import { invalidateAllTemporalDepth } from '@/rendering/core/temporalDepth'
 import { isQuantumOnlyAlgorithm } from '@/rendering/shaders/palette'
 import { create } from 'zustand'
 import { useAppearanceStore } from './appearanceStore'
@@ -149,7 +148,7 @@ export const useGeometryStore = create<GeometryState>((set, get) => ({
     usePerformanceStore.getState().setSceneTransitioning(true)
 
     // Invalidate temporal depth data - dimensions change depth completely
-    TemporalDepthManager.invalidate()
+    invalidateAllTemporalDepth()
     usePerformanceStore.getState().setCameraTeleported(true)
 
     set({
@@ -207,8 +206,9 @@ export const useGeometryStore = create<GeometryState>((set, get) => ({
     usePerformanceStore.getState().setSceneTransitioning(true)
 
     // Invalidate temporal data - object types have completely different depth/accumulation values
-    TemporalDepthManager.invalidate()
-    TemporalCloudManager.invalidate()
+    invalidateAllTemporalDepth()
+    // Note: Temporal cloud accumulation is now managed by the RenderGraph's TemporalCloudPass
+    // which automatically invalidates when the pass is disabled/re-enabled
     usePerformanceStore.getState().setCameraTeleported(true)
 
     // Check if this object type has a recommended dimension (from registry)

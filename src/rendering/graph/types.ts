@@ -1,0 +1,343 @@
+/**
+ * Render Graph Type Definitions
+ *
+ * Core interfaces for the declarative render graph system.
+ * Based on industry patterns from Frostbite, Unity SRP, and Unreal RDG.
+ *
+ * Key concepts:
+ * - RenderResource: Describes a GPU resource (texture, render target, MRT)
+ * - RenderPass: A unit of rendering work with explicit inputs/outputs
+ * - ResourceAccess: Declares how a pass accesses a resource
+ * - RenderContext: Execution context passed to each pass
+ *
+ * @module rendering/graph/types
+ */
+
+import type * as THREE from 'three'
+
+// =============================================================================
+// Resource Types
+// =============================================================================
+
+/**
+ * Size policy for render resources.
+ */
+export type ResourceSizeMode = 'screen' | 'fixed' | 'fraction'
+
+/**
+ * Resource size configuration.
+ */
+export interface ResourceSize {
+  /** How the size is determined */
+  mode: ResourceSizeMode
+  /** Fixed width (for 'fixed' mode) */
+  width?: number
+  /** Fixed height (for 'fixed' mode) */
+  height?: number
+  /** Fraction of screen size (for 'fraction' mode, e.g., 0.5 for half-res) */
+  fraction?: number
+}
+
+/**
+ * Resource type enumeration.
+ */
+export type ResourceType = 'texture' | 'renderTarget' | 'mrt' | 'cubemap'
+
+/**
+ * Configuration for a render resource.
+ *
+ * Resources are GPU objects managed by the graph's ResourcePool.
+ * The graph handles allocation, resizing, and disposal automatically.
+ */
+export interface RenderResourceConfig {
+  /** Unique identifier for this resource */
+  id: string
+
+  /** Type of GPU resource */
+  type: ResourceType
+
+  /** Size policy */
+  size: ResourceSize
+
+  /** Pixel format (default: RGBAFormat) */
+  format?: THREE.PixelFormat
+
+  /** Internal GPU format for HDR (e.g., RGBA16F) */
+  internalFormat?: string
+
+  /** Texture data type (default: UnsignedByteType, use FloatType for HDR) */
+  dataType?: THREE.TextureDataType
+
+  /** Number of MRT attachments (for 'mrt' type) */
+  attachmentCount?: number
+
+  /** Per-attachment formats for MRT */
+  attachmentFormats?: THREE.PixelFormat[]
+
+  /** MSAA sample count (0 or 1 for no MSAA) */
+  samples?: number
+
+  /** Whether resource persists across frames (for temporal effects) */
+  persistent?: boolean
+
+  /** Include depth buffer */
+  depthBuffer?: boolean
+
+  /** Include stencil buffer */
+  stencilBuffer?: boolean
+
+  /** Texture min filtering (default: LinearFilter) */
+  minFilter?: THREE.MinificationTextureFilter
+  /** Texture mag filtering (default: LinearFilter) */
+  magFilter?: THREE.MagnificationTextureFilter
+
+  /** Texture wrapping (default: ClampToEdgeWrapping) */
+  wrapS?: THREE.Wrapping
+  wrapT?: THREE.Wrapping
+
+  /** Color space for the texture (default: LinearSRGBColorSpace for HDR, SRGBColorSpace for LDR) */
+  colorSpace?: THREE.ColorSpace
+
+  /** Create a DepthTexture for this render target (default: false) */
+  depthTexture?: boolean
+
+  /** Depth texture format (default: DepthFormat) */
+  depthTextureFormat?: THREE.PixelFormat
+
+  /** Depth texture data type (default: UnsignedShortType) */
+  depthTextureType?: THREE.TextureDataType
+
+  /** Depth texture min filter (default: NearestFilter) */
+  depthTextureMinFilter?: THREE.TextureFilter
+
+  /** Depth texture mag filter (default: NearestFilter) */
+  depthTextureMagFilter?: THREE.TextureFilter
+
+  /** Which texture to expose via getTexture/getReadTexture (default: 'color') */
+  textureRole?: 'color' | 'depth'
+}
+
+/**
+ * Access mode for resource bindings.
+ */
+export type AccessMode = 'read' | 'write' | 'readwrite'
+
+/**
+ * Declares how a pass accesses a resource.
+ *
+ * The compiler uses this information to:
+ * - Order passes correctly (writes before reads)
+ * - Detect read-while-write hazards
+ * - Allocate ping-pong buffers when needed
+ */
+export interface ResourceAccess {
+  /** Resource identifier */
+  resourceId: string
+
+  /** How the resource is accessed */
+  access: AccessMode
+
+  /** Optional binding name in shader (defaults to resourceId) */
+  binding?: string
+
+  /** For MRT: which attachment index (or 'depth' for depth texture) */
+  attachment?: number | 'depth'
+}
+
+// =============================================================================
+// Pass Types
+// =============================================================================
+
+/**
+ * Configuration for a render pass.
+ */
+export interface RenderPassConfig {
+  /** Unique identifier for this pass */
+  id: string
+
+  /** Human-readable name for debugging */
+  name?: string
+
+  /** Resources this pass reads from */
+  inputs: ResourceAccess[]
+
+  /** Resources this pass writes to */
+  outputs: ResourceAccess[]
+
+  /** Function to determine if pass should execute this frame */
+  enabled?: () => boolean
+
+  /** Optional priority hint for passes with no dependencies */
+  priority?: number
+}
+
+/**
+ * Render pass interface.
+ *
+ * Passes are the building blocks of the render graph.
+ * Each pass declares its resource dependencies and implements execute().
+ */
+export interface RenderPass {
+  /** Unique identifier */
+  readonly id: string
+
+  /** Pass configuration */
+  readonly config: RenderPassConfig
+
+  /**
+   * Execute this pass.
+   *
+   * @param ctx - Render context with access to resources and renderer
+   */
+  execute(ctx: RenderContext): void
+
+  /**
+   * Optional cleanup when pass is removed from graph.
+   */
+  dispose?(): void
+}
+
+// =============================================================================
+// Execution Context
+// =============================================================================
+
+/**
+ * Context passed to each pass during execution.
+ *
+ * Provides access to:
+ * - Resolved GPU resources (render targets, textures)
+ * - Three.js renderer
+ * - Scene and camera
+ * - Frame timing information
+ */
+export interface RenderContext {
+  /** Three.js WebGL renderer */
+  renderer: THREE.WebGLRenderer
+
+  /** Current scene */
+  scene: THREE.Scene
+
+  /** Current camera */
+  camera: THREE.Camera
+
+  /** Frame delta time in seconds */
+  delta: number
+
+  /** Total elapsed time in seconds */
+  time: number
+
+  /** Current viewport size */
+  size: { width: number; height: number }
+
+  /**
+   * Get a resource's GPU object.
+   *
+   * For render targets, returns WebGLRenderTarget.
+   * For textures, returns Texture.
+   *
+   * @param resourceId - Resource identifier
+   * @returns The GPU resource or null if not found
+   */
+  getResource<T = THREE.WebGLRenderTarget | THREE.Texture>(resourceId: string): T | null
+
+  /**
+   * Get the write target for a resource (handles ping-pong).
+   *
+   * For resources with read-while-write access, this returns
+   * the ping-pong swap buffer.
+   *
+   * @param resourceId - Resource identifier
+   * @returns The write target or null
+   */
+  getWriteTarget(resourceId: string): THREE.WebGLRenderTarget | null
+
+  /**
+   * Get the read target for a ping-pong resource.
+   *
+   * For non-ping-pong resources, returns the primary target.
+   *
+   * @param resourceId - Resource identifier
+   * @returns The read target or null
+   */
+  getReadTarget(resourceId: string): THREE.WebGLRenderTarget | null
+
+  /**
+   * Get the read texture for a resource.
+   *
+   * @param resourceId - Resource identifier
+   * @returns The read texture or null
+   */
+  getReadTexture(resourceId: string, attachment?: number | 'depth'): THREE.Texture | null
+}
+
+// =============================================================================
+// Compiled Graph Types
+// =============================================================================
+
+/**
+ * Result of graph compilation.
+ *
+ * Contains the execution order and resource allocation plan.
+ */
+export interface CompiledGraph {
+  /** Passes in execution order */
+  passes: RenderPass[]
+
+  /** Resource allocation order */
+  resourceOrder: string[]
+
+  /** Resources that need ping-pong buffers */
+  pingPongResources: Set<string>
+
+  /** Detected issues (warnings, not errors) */
+  warnings: string[]
+}
+
+/**
+ * Graph compilation options.
+ */
+export interface CompileOptions {
+  /** Enable verbose logging */
+  debug?: boolean
+
+  /** Validate resource bindings against shader uniforms */
+  validateBindings?: boolean
+}
+
+// =============================================================================
+// Graph Statistics (for performance monitoring)
+// =============================================================================
+
+/**
+ * Per-pass timing information.
+ */
+export interface PassTiming {
+  /** Pass identifier */
+  passId: string
+
+  /** GPU time in milliseconds (requires timer query extension) */
+  gpuTimeMs: number
+
+  /** CPU time in milliseconds */
+  cpuTimeMs: number
+
+  /** Whether the pass was skipped (disabled) */
+  skipped: boolean
+}
+
+/**
+ * Frame statistics from graph execution.
+ */
+export interface FrameStats {
+  /** Total frame time in milliseconds */
+  totalTimeMs: number
+
+  /** Per-pass timing breakdown */
+  passTiming: PassTiming[]
+
+  /** Number of render target switches */
+  targetSwitches: number
+
+  /** Estimated VRAM usage in bytes */
+  vramUsage: number
+}

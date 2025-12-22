@@ -4,6 +4,27 @@
  * State management for n-dimensional black hole visualization.
  */
 
+import type { SkyCubemapResolution } from '@/lib/geometry/extended/types'
+
+/** Valid sky cubemap resolutions */
+const VALID_SKY_RESOLUTIONS: SkyCubemapResolution[] = [256, 512, 1024]
+
+/**\n * Snap a resolution value to the nearest valid SkyCubemapResolution.\n *\n * @param value - Input resolution value\n * @returns Nearest valid SkyCubemapResolution (256, 512, or 1024)\n */
+function snapToValidResolution(value: number): SkyCubemapResolution {
+  const floored = Math.floor(value)
+  // Find nearest valid resolution
+  let nearest: SkyCubemapResolution = 512 // Default to middle value
+  let minDiff = Math.abs(floored - nearest)
+  for (const res of VALID_SKY_RESOLUTIONS) {
+    const diff = Math.abs(floored - res)
+    if (diff < minDiff) {
+      minDiff = diff
+      nearest = res
+    }
+  }
+  return nearest
+}
+
 /**
  * Clamp a value to min/max range with optional dev warning.
  * Warns in development mode when value is clamped.
@@ -24,6 +45,7 @@ function clampWithWarning(value: number, min: number, max: number, paramName: st
   return clamped
 }
 
+import { computeKerrRadii, diskTemperatureToColor } from '@/lib/geometry/extended/kerr-physics'
 import {
   BLACK_HOLE_QUALITY_PRESETS,
   BLACK_HOLE_VISUAL_PRESETS,
@@ -31,7 +53,6 @@ import {
   BlackHoleRayBendingMode,
   DEFAULT_BLACK_HOLE_CONFIG,
 } from '@/lib/geometry/extended/types'
-import { computeKerrRadii, diskTemperatureToColor } from '@/lib/geometry/extended/kerr-physics'
 import { StateCreator } from 'zustand'
 import { BlackHoleSlice, ExtendedObjectSlice } from './types'
 
@@ -681,6 +702,34 @@ export const createBlackHoleSlice: StateCreator<ExtendedObjectSlice, [], [], Bla
     }))
   },
 
+  setBlackHoleDeferredLensingChromaticAberration: (amount) => {
+    const clamped = Math.max(0, Math.min(1, amount))
+    set((state) => ({
+      blackhole: { ...state.blackhole, deferredLensingChromaticAberration: clamped },
+    }))
+  },
+
+  setBlackHoleSkyCubemapResolution: (resolution) => {
+    const snapped = snapToValidResolution(resolution)
+    set((state) => ({
+      blackhole: { ...state.blackhole, skyCubemapResolution: snapped },
+    }))
+  },
+
+  // === Screen-Space Lensing ===
+  setBlackHoleScreenSpaceLensingEnabled: (enabled) => {
+    set((state) => ({
+      blackhole: { ...state.blackhole, screenSpaceLensingEnabled: enabled },
+    }))
+  },
+
+  setBlackHoleLensingFalloff: (falloff) => {
+    const clamped = Math.max(0.5, Math.min(4, falloff))
+    set((state) => ({
+      blackhole: { ...state.blackhole, lensingFalloff: clamped },
+    }))
+  },
+
   // === Scene Object Lensing ===
   setBlackHoleSceneObjectLensingEnabled: (enabled) => {
     set((state) => ({
@@ -802,6 +851,9 @@ export const createBlackHoleSlice: StateCreator<ExtendedObjectSlice, [], [], Bla
     if (config.lensingClamp !== undefined) {
       validated.lensingClamp = Math.max(0, Math.min(100, config.lensingClamp))
     }
+    if (config.skyCubemapResolution !== undefined) {
+      validated.skyCubemapResolution = snapToValidResolution(config.skyCubemapResolution)
+    }
 
     // Photon shell
     if (config.photonShellRadiusMul !== undefined) {
@@ -827,22 +879,24 @@ export const createBlackHoleSlice: StateCreator<ExtendedObjectSlice, [], [], Bla
 
     // Pass through non-numeric fields directly (strings, booleans, arrays)
     // Using explicit assignments to maintain type safety
-    if (config.paletteMode !== undefined) validated.paletteMode = config.paletteMode;
-    if (config.manifoldType !== undefined) validated.manifoldType = config.manifoldType;
-    if (config.lightingMode !== undefined) validated.lightingMode = config.lightingMode;
-    if (config.baseColor !== undefined) validated.baseColor = config.baseColor;
-    if (config.shellGlowColor !== undefined) validated.shellGlowColor = config.shellGlowColor;
-    if (config.edgeGlowColor !== undefined) validated.edgeGlowColor = config.edgeGlowColor;
-    if (config.jetsColor !== undefined) validated.jetsColor = config.jetsColor;
-    if (config.visualPreset !== undefined) validated.visualPreset = config.visualPreset;
-    if (config.dopplerEnabled !== undefined) validated.dopplerEnabled = config.dopplerEnabled;
-    if (config.jetsEnabled !== undefined) validated.jetsEnabled = config.jetsEnabled;
-    if (config.edgeGlowEnabled !== undefined) validated.edgeGlowEnabled = config.edgeGlowEnabled;
-    if (config.enableAbsorption !== undefined) validated.enableAbsorption = config.enableAbsorption;
-    if (config.temporalAccumulationEnabled !== undefined) validated.temporalAccumulationEnabled = config.temporalAccumulationEnabled;
-    if (config.swirlAnimationEnabled !== undefined) validated.swirlAnimationEnabled = config.swirlAnimationEnabled;
-    if (config.pulseEnabled !== undefined) validated.pulseEnabled = config.pulseEnabled;
-    if (config.parameterValues !== undefined) validated.parameterValues = config.parameterValues;
+    if (config.paletteMode !== undefined) validated.paletteMode = config.paletteMode
+    if (config.manifoldType !== undefined) validated.manifoldType = config.manifoldType
+    if (config.lightingMode !== undefined) validated.lightingMode = config.lightingMode
+    if (config.baseColor !== undefined) validated.baseColor = config.baseColor
+    if (config.shellGlowColor !== undefined) validated.shellGlowColor = config.shellGlowColor
+    if (config.edgeGlowColor !== undefined) validated.edgeGlowColor = config.edgeGlowColor
+    if (config.jetsColor !== undefined) validated.jetsColor = config.jetsColor
+    if (config.visualPreset !== undefined) validated.visualPreset = config.visualPreset
+    if (config.dopplerEnabled !== undefined) validated.dopplerEnabled = config.dopplerEnabled
+    if (config.jetsEnabled !== undefined) validated.jetsEnabled = config.jetsEnabled
+    if (config.edgeGlowEnabled !== undefined) validated.edgeGlowEnabled = config.edgeGlowEnabled
+    if (config.enableAbsorption !== undefined) validated.enableAbsorption = config.enableAbsorption
+    if (config.temporalAccumulationEnabled !== undefined)
+      validated.temporalAccumulationEnabled = config.temporalAccumulationEnabled
+    if (config.swirlAnimationEnabled !== undefined)
+      validated.swirlAnimationEnabled = config.swirlAnimationEnabled
+    if (config.pulseEnabled !== undefined) validated.pulseEnabled = config.pulseEnabled
+    if (config.parameterValues !== undefined) validated.parameterValues = config.parameterValues
 
     set((state) => ({
       blackhole: { ...state.blackhole, ...validated },

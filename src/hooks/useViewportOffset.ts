@@ -1,3 +1,4 @@
+import { FRAME_PRIORITY } from '@/rendering/core/framePriorities';
 import { useEffect } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import { useSpring } from 'framer-motion';
@@ -114,7 +115,7 @@ export function useViewportOffset() {
     
     // Important: We must force projection matrix update if it's not auto-updated by setViewOffset
     // (Three.js usually updates it when calling setViewOffset)
-  });
+  }, FRAME_PRIORITY.ANIMATION);
 
   // Cleanup: Reset view offset when unmounting or changing modes significantly
   useEffect(() => {

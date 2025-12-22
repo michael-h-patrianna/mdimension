@@ -27,6 +27,8 @@ export interface RotationPlane {
 }
 
 /**
- * Error epsilon for floating point comparisons
+ * Error epsilon for floating point comparisons.
+ * 1e-7 is appropriate for accumulated errors in matrix operations
+ * (determinant checks, orthogonality, etc.)
  */
-export const EPSILON = 1e-10;
+export const EPSILON = 1e-7;

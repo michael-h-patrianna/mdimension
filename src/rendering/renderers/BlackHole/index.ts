@@ -5,15 +5,12 @@
  */
 
 export { default as BlackHoleMesh } from './BlackHoleMesh'
-export { useBlackHoleUniforms, type BlackHoleUniforms } from './useBlackHoleUniforms'
-export { useBlackHoleUniformUpdates } from './useBlackHoleUniformUpdates'
 export {
+  LIGHTING_MODE_MAP,
+  MANIFOLD_TYPE_MAP,
   MAX_DIMENSION,
-  type WorkingArrays,
-  createWorkingArrays,
-  applyRotationInPlace,
   PALETTE_MODE_MAP,
   RAY_BENDING_MODE_MAP,
-  MANIFOLD_TYPE_MAP,
-  LIGHTING_MODE_MAP,
 } from './types'
+export { useBlackHoleUniforms, type BlackHoleUniforms } from './useBlackHoleUniforms'
+export { useBlackHoleUniformUpdates } from './useBlackHoleUniformUpdates'

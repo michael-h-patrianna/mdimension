@@ -3,6 +3,7 @@
  * Provides WASD camera movement and Shift+WASD camera rotation
  */
 
+import { FRAME_PRIORITY } from '@/rendering/core/framePriorities'
 import { useFrame, useThree } from '@react-three/fiber'
 import { MutableRefObject, useEffect, useRef } from 'react'
 import { Spherical, Vector3 } from 'three'
@@ -256,7 +257,7 @@ export function useCameraMovement(options: UseCameraMovementOptions = {}): void 
     if (controls) {
       controls.target.add(movement.current)
     }
-  })
+  }, FRAME_PRIORITY.ANIMATION)
 }
 
 /**

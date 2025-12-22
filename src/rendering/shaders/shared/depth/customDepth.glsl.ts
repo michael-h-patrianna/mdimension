@@ -13,12 +13,24 @@
  * The mode is switched via `uIsPointLight` uniform, set in onBeforeShadow
  * by detecting the shadow camera type (fov=90 = point light).
  *
+ * ## Depth Normalization
+ * All shaders use sqrt(dimension - 3) normalization for consistent visual scaling
+ * across different dimensions. See src/rendering/shaders/transforms/ndTransform.ts
+ * for the full mathematical justification of this heuristic.
+ *
  * Three.js depth packing format:
  * - Depth is packed into RGBA channels for precision
  * - Uses the same formula as MeshDepthMaterial
  *
  * @see https://threejs.org/docs/#api/en/materials/MeshDepthMaterial
+ * @see src/rendering/shaders/transforms/ndTransform.ts - Depth normalization documentation
  */
+
+/**
+ * Depth normalization base dimension constant (from ndTransform.ts)
+ * The normalization factor is sqrt(dimension - this value).
+ */
+const DEPTH_NORM_BASE = 3
 
 /**
  * Pack depth to RGBA - matches Three.js packDepthToRGBA
@@ -95,7 +107,9 @@ vec3 transformND() {
       effectiveDepth += uDepthRowSums[j] * scaledInputs[j];
     }
   }
-  float normFactor = uDimension > 4 ? sqrt(float(uDimension - 3)) : 1.0;
+  // Normalize depth by sqrt(dimension - 3) for consistent visual scale.
+  // See transforms/ndTransform.ts for mathematical justification.
+  float normFactor = uDimension > 4 ? sqrt(max(1.0, float(uDimension - ${DEPTH_NORM_BASE}))) : 1.0;
   effectiveDepth /= normFactor;
   float denom = uProjectionDistance - effectiveDepth;
   if (abs(denom) < 0.0001) denom = denom >= 0.0 ? 0.0001 : -0.0001;
@@ -215,7 +229,9 @@ vec3 transformND() {
       effectiveDepth += uDepthRowSums[j] * scaledInputs[j];
     }
   }
-  float normFactor = uDimension > 4 ? sqrt(float(uDimension - 3)) : 1.0;
+  // Normalize depth by sqrt(dimension - 3) for consistent visual scale.
+  // See transforms/ndTransform.ts for mathematical justification.
+  float normFactor = uDimension > 4 ? sqrt(max(1.0, float(uDimension - ${DEPTH_NORM_BASE}))) : 1.0;
   effectiveDepth /= normFactor;
   float denom = uProjectionDistance - effectiveDepth;
   if (abs(denom) < 0.0001) denom = denom >= 0.0 ? 0.0001 : -0.0001;
@@ -335,7 +351,9 @@ vec3 transformNDPoint(vec3 pos, vec4 extraA, vec4 extraB) {
       effectiveDepth += uDepthRowSums[j] * scaledInputs[j];
     }
   }
-  float normFactor = uDimension > 4 ? sqrt(max(1.0, float(uDimension - 3))) : 1.0;
+  // Normalize depth by sqrt(dimension - 3) for consistent visual scale.
+  // See transforms/ndTransform.ts for mathematical justification.
+  float normFactor = uDimension > 4 ? sqrt(max(1.0, float(uDimension - ${DEPTH_NORM_BASE}))) : 1.0;
   effectiveDepth /= normFactor;
   float denominator = uProjectionDistance - effectiveDepth;
   float factor = 1.0 / max(denominator, 0.0001);
@@ -449,7 +467,9 @@ vec3 transformNDPoint(vec3 pos, vec4 extraA, vec4 extraB) {
       effectiveDepth += uDepthRowSums[j] * scaledInputs[j];
     }
   }
-  float normFactor = uDimension > 4 ? sqrt(max(1.0, float(uDimension - 3))) : 1.0;
+  // Normalize depth by sqrt(dimension - 3) for consistent visual scale.
+  // See transforms/ndTransform.ts for mathematical justification.
+  float normFactor = uDimension > 4 ? sqrt(max(1.0, float(uDimension - ${DEPTH_NORM_BASE}))) : 1.0;
   effectiveDepth /= normFactor;
   float denominator = uProjectionDistance - effectiveDepth;
   float factor = 1.0 / max(denominator, 0.0001);
@@ -571,7 +591,9 @@ vec3 transformND() {
       effectiveDepth += uDepthRowSums[j] * scaledInputs[j];
     }
   }
-  float normFactor = uDimension > 4 ? sqrt(float(uDimension - 3)) : 1.0;
+  // Normalize depth by sqrt(dimension - 3) for consistent visual scale.
+  // See transforms/ndTransform.ts for mathematical justification.
+  float normFactor = uDimension > 4 ? sqrt(max(1.0, float(uDimension - ${DEPTH_NORM_BASE}))) : 1.0;
   effectiveDepth /= normFactor;
   float denom = uProjectionDistance - effectiveDepth;
   if (abs(denom) < 0.0001) denom = denom >= 0.0 ? 0.0001 : -0.0001;
@@ -704,7 +726,9 @@ vec3 transformNDPoint(vec3 pos, vec4 extraA, vec4 extraB) {
       effectiveDepth += uDepthRowSums[j] * scaledInputs[j];
     }
   }
-  float normFactor = uDimension > 4 ? sqrt(max(1.0, float(uDimension - 3))) : 1.0;
+  // Normalize depth by sqrt(dimension - 3) for consistent visual scale.
+  // See transforms/ndTransform.ts for mathematical justification.
+  float normFactor = uDimension > 4 ? sqrt(max(1.0, float(uDimension - ${DEPTH_NORM_BASE}))) : 1.0;
   effectiveDepth /= normFactor;
   float denominator = uProjectionDistance - effectiveDepth;
   float factor = 1.0 / max(denominator, 0.0001);

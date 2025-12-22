@@ -249,7 +249,8 @@ describe('Matrix Operations', () => {
       const I = createIdentityMatrix(3)
       const v = [1, 2, 3]
       const result = multiplyMatrixVector(I, v)
-      expect(result).toEqual(new Float32Array([1, 2, 3]))
+      // VectorND is number[], not Float32Array
+      expect(result).toEqual([1, 2, 3])
     })
 
     it('multiplies matrix by vector', () => {

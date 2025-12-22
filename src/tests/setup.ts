@@ -55,24 +55,388 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 })
 
-// Mock canvas contexts for Three.js (WebGL) and UI components (2D)
-const webglContextMock = {
-  canvas: {},
-  getExtension: vi.fn(),
-  getParameter: vi.fn(),
-  createShader: vi.fn(),
-  shaderSource: vi.fn(),
-  compileShader: vi.fn(),
-  getShaderParameter: vi.fn(() => true),
-  createProgram: vi.fn(),
-  attachShader: vi.fn(),
-  linkProgram: vi.fn(),
-  getProgramParameter: vi.fn(() => true),
-  useProgram: vi.fn(),
-  viewport: vi.fn(),
-  clearColor: vi.fn(),
-  clear: vi.fn(),
+// In-memory localStorage/sessionStorage mocks for Zustand persist in tests
+const storageData = new Map<string, string>()
+const storageMock = {
+  getItem: (key: string) => (storageData.has(key) ? storageData.get(key)! : null),
+  setItem: (key: string, value: string) => {
+    storageData.set(key, String(value))
+  },
+  removeItem: (key: string) => {
+    storageData.delete(key)
+  },
+  clear: () => {
+    storageData.clear()
+  },
+  key: (index: number) => Array.from(storageData.keys())[index] ?? null,
+  get length() {
+    return storageData.size
+  },
 }
+
+Object.defineProperty(window, 'localStorage', {
+  writable: true,
+  value: storageMock,
+})
+Object.defineProperty(window, 'sessionStorage', {
+  writable: true,
+  value: storageMock,
+})
+
+// Comprehensive WebGL2 mock for Three.js support
+const createWebGL2ContextMock = () => {
+  const canvas = document.createElement('canvas')
+
+  // WebGL constants
+  const GL = {
+    MAX_TEXTURE_SIZE: 16384,
+    MAX_CUBE_MAP_TEXTURE_SIZE: 16384,
+    MAX_TEXTURE_IMAGE_UNITS: 32,
+    MAX_VERTEX_TEXTURE_IMAGE_UNITS: 32,
+    MAX_COMBINED_TEXTURE_IMAGE_UNITS: 64,
+    MAX_VERTEX_UNIFORM_VECTORS: 4096,
+    MAX_FRAGMENT_UNIFORM_VECTORS: 4096,
+    MAX_VARYING_VECTORS: 32,
+    MAX_VERTEX_ATTRIBS: 32,
+    MAX_RENDERBUFFER_SIZE: 16384,
+    MAX_VIEWPORT_DIMS: 3379 as const, // WebGL constant
+    MAX_SAMPLES: 8,
+    HIGH_FLOAT: 127,
+    MEDIUM_FLOAT: 23,
+    LOW_FLOAT: 7,
+    HIGH_INT: 127,
+    MEDIUM_INT: 15,
+    LOW_INT: 7,
+    FRAGMENT_SHADER: 35632,
+    VERTEX_SHADER: 35633,
+    COMPILE_STATUS: 35713,
+    LINK_STATUS: 35714,
+    DEPTH_TEST: 2929,
+    BLEND: 3042,
+    CULL_FACE: 2884,
+    TEXTURE_2D: 3553,
+    TEXTURE_CUBE_MAP: 34067,
+    ARRAY_BUFFER: 34962,
+    ELEMENT_ARRAY_BUFFER: 34963,
+    STATIC_DRAW: 35044,
+    DYNAMIC_DRAW: 35048,
+    FLOAT: 5126,
+    UNSIGNED_SHORT: 5123,
+    UNSIGNED_INT: 5125,
+    TRIANGLES: 4,
+    COLOR_BUFFER_BIT: 16384,
+    DEPTH_BUFFER_BIT: 256,
+    STENCIL_BUFFER_BIT: 1024,
+    FRAMEBUFFER: 36160,
+    RENDERBUFFER: 36161,
+    RGBA: 6408,
+    RGBA8: 32856,
+    DEPTH_COMPONENT16: 33189,
+    DEPTH_COMPONENT24: 33190,
+    DEPTH_COMPONENT32F: 36012,
+    COLOR_ATTACHMENT0: 36064,
+    DEPTH_ATTACHMENT: 36096,
+    FRAMEBUFFER_COMPLETE: 36053,
+    TEXTURE0: 33984,
+    NEAREST: 9728,
+    LINEAR: 9729,
+    LINEAR_MIPMAP_LINEAR: 9987,
+    CLAMP_TO_EDGE: 33071,
+    REPEAT: 10497,
+    UNPACK_FLIP_Y_WEBGL: 37440,
+    UNPACK_PREMULTIPLY_ALPHA_WEBGL: 37441,
+    VERSION: 7938,
+    SHADING_LANGUAGE_VERSION: 35724,
+    RENDERER: 7937,
+    VENDOR: 7936,
+  }
+
+  // Track created resources for cleanup verification
+  const createdResources = {
+    textures: new Set(),
+    framebuffers: new Set(),
+    renderbuffers: new Set(),
+    buffers: new Set(),
+    programs: new Set(),
+    shaders: new Set(),
+  }
+
+  const mock: Record<string, unknown> = {
+    canvas,
+    drawingBufferWidth: 1920,
+    drawingBufferHeight: 1080,
+
+    // Parameter retrieval
+    getParameter: vi.fn((param: number) => {
+      const params: Record<number, unknown> = {
+        [GL.MAX_TEXTURE_SIZE]: GL.MAX_TEXTURE_SIZE,
+        [GL.MAX_CUBE_MAP_TEXTURE_SIZE]: GL.MAX_CUBE_MAP_TEXTURE_SIZE,
+        [GL.MAX_TEXTURE_IMAGE_UNITS]: GL.MAX_TEXTURE_IMAGE_UNITS,
+        [GL.MAX_VERTEX_TEXTURE_IMAGE_UNITS]: GL.MAX_VERTEX_TEXTURE_IMAGE_UNITS,
+        [GL.MAX_COMBINED_TEXTURE_IMAGE_UNITS]: GL.MAX_COMBINED_TEXTURE_IMAGE_UNITS,
+        [GL.MAX_VERTEX_UNIFORM_VECTORS]: GL.MAX_VERTEX_UNIFORM_VECTORS,
+        [GL.MAX_FRAGMENT_UNIFORM_VECTORS]: GL.MAX_FRAGMENT_UNIFORM_VECTORS,
+        [GL.MAX_VARYING_VECTORS]: GL.MAX_VARYING_VECTORS,
+        [GL.MAX_VERTEX_ATTRIBS]: GL.MAX_VERTEX_ATTRIBS,
+        [GL.MAX_RENDERBUFFER_SIZE]: GL.MAX_RENDERBUFFER_SIZE,
+        [GL.MAX_VIEWPORT_DIMS]: [16384, 16384],
+        [GL.MAX_SAMPLES]: GL.MAX_SAMPLES,
+        [GL.VERSION]: 'WebGL 2.0',
+        [GL.SHADING_LANGUAGE_VERSION]: 'WebGL GLSL ES 3.00',
+        [GL.RENDERER]: 'Mock WebGL2 Renderer',
+        [GL.VENDOR]: 'Mock Vendor',
+      }
+      return params[param] ?? 0
+    }),
+
+    // Shader precision format
+    getShaderPrecisionFormat: vi.fn(() => ({
+      rangeMin: 127,
+      rangeMax: 127,
+      precision: 23,
+    })),
+
+    // Extension support
+    getExtension: vi.fn((name: string) => {
+      // Return mock extensions that Three.js commonly checks for
+      const extensions: Record<string, object | null> = {
+        EXT_color_buffer_float: {},
+        EXT_color_buffer_half_float: {},
+        EXT_texture_filter_anisotropic: { MAX_TEXTURE_MAX_ANISOTROPY_EXT: 16 },
+        WEBGL_compressed_texture_s3tc: {},
+        WEBGL_compressed_texture_etc1: {},
+        WEBGL_compressed_texture_pvrtc: {},
+        WEBGL_compressed_texture_astc: {},
+        OES_texture_float_linear: {},
+        OES_texture_half_float_linear: {},
+        WEBGL_multisampled_render_to_texture: { framebufferTexture2DMultisampleEXT: vi.fn() },
+        OVR_multiview2: {},
+        KHR_parallel_shader_compile: { COMPLETION_STATUS_KHR: 37297 },
+        WEBGL_lose_context: { loseContext: vi.fn(), restoreContext: vi.fn() },
+      }
+      return extensions[name] ?? null
+    }),
+
+    getSupportedExtensions: vi.fn(() => [
+      'EXT_color_buffer_float',
+      'EXT_color_buffer_half_float',
+      'EXT_texture_filter_anisotropic',
+      'OES_texture_float_linear',
+      'OES_texture_half_float_linear',
+    ]),
+
+    // Shader operations
+    createShader: vi.fn(() => {
+      const shader = { id: Math.random() }
+      createdResources.shaders.add(shader)
+      return shader
+    }),
+    shaderSource: vi.fn(),
+    compileShader: vi.fn(),
+    getShaderParameter: vi.fn(() => true),
+    getShaderInfoLog: vi.fn(() => ''),
+    deleteShader: vi.fn((shader) => createdResources.shaders.delete(shader)),
+
+    // Program operations
+    createProgram: vi.fn(() => {
+      const program = { id: Math.random() }
+      createdResources.programs.add(program)
+      return program
+    }),
+    attachShader: vi.fn(),
+    linkProgram: vi.fn(),
+    getProgramParameter: vi.fn(() => true),
+    getProgramInfoLog: vi.fn(() => ''),
+    useProgram: vi.fn(),
+    deleteProgram: vi.fn((program) => createdResources.programs.delete(program)),
+    validateProgram: vi.fn(),
+
+    // Uniform operations
+    getUniformLocation: vi.fn(() => ({ id: Math.random() })),
+    uniform1i: vi.fn(),
+    uniform1f: vi.fn(),
+    uniform2f: vi.fn(),
+    uniform3f: vi.fn(),
+    uniform4f: vi.fn(),
+    uniform1fv: vi.fn(),
+    uniform2fv: vi.fn(),
+    uniform3fv: vi.fn(),
+    uniform4fv: vi.fn(),
+    uniformMatrix3fv: vi.fn(),
+    uniformMatrix4fv: vi.fn(),
+    getActiveUniform: vi.fn(() => ({ name: 'uMock', type: GL.FLOAT, size: 1 })),
+    getActiveAttrib: vi.fn(() => ({ name: 'aMock', type: GL.FLOAT, size: 1 })),
+
+    // Attribute operations
+    getAttribLocation: vi.fn(() => 0),
+    enableVertexAttribArray: vi.fn(),
+    disableVertexAttribArray: vi.fn(),
+    vertexAttribPointer: vi.fn(),
+    vertexAttribDivisor: vi.fn(),
+
+    // Buffer operations
+    createBuffer: vi.fn(() => {
+      const buffer = { id: Math.random() }
+      createdResources.buffers.add(buffer)
+      return buffer
+    }),
+    bindBuffer: vi.fn(),
+    bufferData: vi.fn(),
+    bufferSubData: vi.fn(),
+    deleteBuffer: vi.fn((buffer) => createdResources.buffers.delete(buffer)),
+
+    // Texture operations
+    createTexture: vi.fn(() => {
+      const texture = { id: Math.random() }
+      createdResources.textures.add(texture)
+      return texture
+    }),
+    bindTexture: vi.fn(),
+    texImage2D: vi.fn(),
+    texSubImage2D: vi.fn(),
+    texStorage2D: vi.fn(),
+    texParameteri: vi.fn(),
+    texParameterf: vi.fn(),
+    generateMipmap: vi.fn(),
+    deleteTexture: vi.fn((texture) => createdResources.textures.delete(texture)),
+    activeTexture: vi.fn(),
+    pixelStorei: vi.fn(),
+    copyTexImage2D: vi.fn(),
+    copyTexSubImage2D: vi.fn(),
+    texImage3D: vi.fn(),
+    texSubImage3D: vi.fn(),
+    texStorage3D: vi.fn(),
+    copyTexSubImage3D: vi.fn(),
+    compressedTexImage2D: vi.fn(),
+    compressedTexImage3D: vi.fn(),
+    compressedTexSubImage2D: vi.fn(),
+    compressedTexSubImage3D: vi.fn(),
+
+    // Framebuffer operations
+    createFramebuffer: vi.fn(() => {
+      const fb = { id: Math.random() }
+      createdResources.framebuffers.add(fb)
+      return fb
+    }),
+    bindFramebuffer: vi.fn(),
+    framebufferTexture2D: vi.fn(),
+    framebufferRenderbuffer: vi.fn(),
+    checkFramebufferStatus: vi.fn(() => GL.FRAMEBUFFER_COMPLETE),
+    deleteFramebuffer: vi.fn((fb) => createdResources.framebuffers.delete(fb)),
+    readBuffer: vi.fn(),
+    blitFramebuffer: vi.fn(),
+    invalidateFramebuffer: vi.fn(),
+
+    // Renderbuffer operations
+    createRenderbuffer: vi.fn(() => {
+      const rb = { id: Math.random() }
+      createdResources.renderbuffers.add(rb)
+      return rb
+    }),
+    bindRenderbuffer: vi.fn(),
+    renderbufferStorage: vi.fn(),
+    renderbufferStorageMultisample: vi.fn(),
+    deleteRenderbuffer: vi.fn((rb) => createdResources.renderbuffers.delete(rb)),
+
+    // VAO operations (WebGL2)
+    createVertexArray: vi.fn(() => ({ id: Math.random() })),
+    bindVertexArray: vi.fn(),
+    deleteVertexArray: vi.fn(),
+
+    // Drawing operations
+    viewport: vi.fn(),
+    scissor: vi.fn(),
+    clearColor: vi.fn(),
+    clearDepth: vi.fn(),
+    clearStencil: vi.fn(),
+    clear: vi.fn(),
+    drawArrays: vi.fn(),
+    drawElements: vi.fn(),
+    drawArraysInstanced: vi.fn(),
+    drawElementsInstanced: vi.fn(),
+    drawBuffers: vi.fn(),
+
+    // State operations
+    enable: vi.fn(),
+    disable: vi.fn(),
+    isEnabled: vi.fn(() => false),
+    blendFunc: vi.fn(),
+    blendFuncSeparate: vi.fn(),
+    blendEquation: vi.fn(),
+    blendEquationSeparate: vi.fn(),
+    blendColor: vi.fn(),
+    depthFunc: vi.fn(),
+    depthMask: vi.fn(),
+    depthRange: vi.fn(),
+    cullFace: vi.fn(),
+    frontFace: vi.fn(),
+    colorMask: vi.fn(),
+    stencilFunc: vi.fn(),
+    stencilMask: vi.fn(),
+    stencilOp: vi.fn(),
+    stencilFuncSeparate: vi.fn(),
+    stencilMaskSeparate: vi.fn(),
+    stencilOpSeparate: vi.fn(),
+    polygonOffset: vi.fn(),
+    sampleCoverage: vi.fn(),
+    lineWidth: vi.fn(),
+
+    // Query operations
+    getContextAttributes: vi.fn(() => ({
+      alpha: true,
+      antialias: true,
+      depth: true,
+      stencil: true,
+      premultipliedAlpha: true,
+      preserveDrawingBuffer: false,
+      powerPreference: 'default',
+      failIfMajorPerformanceCaveat: false,
+    })),
+    isContextLost: vi.fn(() => false),
+    getError: vi.fn(() => 0),
+
+    // Read operations
+    readPixels: vi.fn(),
+
+    // Flush/finish
+    flush: vi.fn(),
+    finish: vi.fn(),
+
+    // UBO operations (WebGL2)
+    createTransformFeedback: vi.fn(() => ({})),
+    bindTransformFeedback: vi.fn(),
+    deleteTransformFeedback: vi.fn(),
+    transformFeedbackVaryings: vi.fn(),
+    beginTransformFeedback: vi.fn(),
+    endTransformFeedback: vi.fn(),
+    getUniformBlockIndex: vi.fn(() => 0),
+    uniformBlockBinding: vi.fn(),
+    bindBufferBase: vi.fn(),
+    bindBufferRange: vi.fn(),
+
+    // Sync objects (WebGL2)
+    fenceSync: vi.fn(() => ({})),
+    clientWaitSync: vi.fn(() => 37149), // ALREADY_SIGNALED
+    deleteSync: vi.fn(),
+    getSyncParameter: vi.fn(() => 37147), // SIGNALED
+
+    // Query objects (WebGL2)
+    createQuery: vi.fn(() => ({})),
+    deleteQuery: vi.fn(),
+    beginQuery: vi.fn(),
+    endQuery: vi.fn(),
+    getQueryParameter: vi.fn(() => 0),
+  }
+
+  // Add GL constants to mock
+  Object.entries(GL).forEach(([key, value]) => {
+    mock[key] = value
+  })
+
+  return mock
+}
+
+const webglContextMock = createWebGL2ContextMock()
 
 const canvas2dContextMock = {
   canvas: {},

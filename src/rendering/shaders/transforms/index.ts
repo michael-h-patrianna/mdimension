@@ -5,11 +5,14 @@
  */
 
 export {
-  MAX_GPU_DIMENSION,
+  DEPTH_NORMALIZATION_BASE_DIMENSION,
   EXTRA_DIMS_SIZE,
-  matrixToGPUUniforms,
-  generateNDTransformVertexShader,
-  generateNDTransformFragmentShader,
+  MAX_GPU_DIMENSION,
+  calculateDepthNormalizationFactor,
   createNDTransformUniforms,
+  generateDepthNormalizationGLSL,
+  generateNDTransformFragmentShader,
+  generateNDTransformVertexShader,
+  matrixToGPUUniforms,
   updateNDTransformUniforms,
-} from './ndTransform';
+} from './ndTransform'

@@ -26,12 +26,21 @@ import {
   DEFAULT_BOKEH_SMOOTH_TIME,
   DEFAULT_BOKEH_WORLD_FOCUS_DISTANCE,
   DEFAULT_BOKEH_WORLD_FOCUS_RANGE,
+  DEFAULT_LENSING_CENTER_X,
+  DEFAULT_LENSING_CENTER_Y,
+  DEFAULT_LENSING_CHROMATIC_ABERRATION,
+  DEFAULT_LENSING_DISTORTION_SCALE,
+  DEFAULT_LENSING_ENABLED,
+  DEFAULT_LENSING_INTENSITY,
+  DEFAULT_LENSING_MASS,
   DEFAULT_OBJECT_ONLY_DEPTH,
   DEFAULT_REFRACTION_CHROMATIC_ABERRATION,
   DEFAULT_REFRACTION_ENABLED,
   DEFAULT_REFRACTION_IOR,
   DEFAULT_REFRACTION_STRENGTH,
   DEFAULT_SMAA_THRESHOLD,
+  DEFAULT_SSAO_ENABLED,
+  DEFAULT_SSAO_INTENSITY,
   DEFAULT_SSR_ENABLED,
   DEFAULT_SSR_FADE_END,
   DEFAULT_SSR_FADE_START,
@@ -39,8 +48,6 @@ import {
   DEFAULT_SSR_MAX_DISTANCE,
   DEFAULT_SSR_QUALITY,
   DEFAULT_SSR_THICKNESS,
-  DEFAULT_SSAO_ENABLED,
-  DEFAULT_SSAO_INTENSITY,
 } from '../defaults/visualDefaults'
 
 // ============================================================================
@@ -99,6 +106,22 @@ export interface PostProcessingSliceState {
   ssaoEnabled: boolean
   /** AO intensity/strength (0-2 range) */
   ssaoIntensity: number
+
+  // --- Screen-Space Lensing (Gravitational Lensing Effect) ---
+  /** Whether screen-space lensing is enabled (for black hole effect) */
+  lensingEnabled: boolean
+  /** Lensing intensity (0-5) */
+  lensingIntensity: number
+  /** Lens mass parameter (0.1-10) */
+  lensingMass: number
+  /** Distortion scale (0.1-5) */
+  lensingDistortionScale: number
+  /** Chromatic aberration for lensing (0-1) */
+  lensingChromaticAberration: number
+  /** Black hole center X in UV space (0-1) */
+  lensingCenterX: number
+  /** Black hole center Y in UV space (0-1) */
+  lensingCenterY: number
 }
 
 export interface PostProcessingSliceActions {
@@ -150,6 +173,14 @@ export interface PostProcessingSliceActions {
   // --- SSAO Actions ---
   setSSAOEnabled: (enabled: boolean) => void
   setSSAOIntensity: (intensity: number) => void
+
+  // --- Lensing Actions ---
+  setLensingEnabled: (enabled: boolean) => void
+  setLensingIntensity: (intensity: number) => void
+  setLensingMass: (mass: number) => void
+  setLensingDistortionScale: (scale: number) => void
+  setLensingChromaticAberration: (aberration: number) => void
+  setLensingCenter: (x: number, y: number) => void
 }
 
 export type PostProcessingSlice = PostProcessingSliceState & PostProcessingSliceActions
@@ -207,6 +238,15 @@ export const POST_PROCESSING_INITIAL_STATE: PostProcessingSliceState = {
   // SSAO (Screen-Space Ambient Occlusion)
   ssaoEnabled: DEFAULT_SSAO_ENABLED,
   ssaoIntensity: DEFAULT_SSAO_INTENSITY,
+
+  // Screen-Space Lensing
+  lensingEnabled: DEFAULT_LENSING_ENABLED,
+  lensingIntensity: DEFAULT_LENSING_INTENSITY,
+  lensingMass: DEFAULT_LENSING_MASS,
+  lensingDistortionScale: DEFAULT_LENSING_DISTORTION_SCALE,
+  lensingChromaticAberration: DEFAULT_LENSING_CHROMATIC_ABERRATION,
+  lensingCenterX: DEFAULT_LENSING_CENTER_X,
+  lensingCenterY: DEFAULT_LENSING_CENTER_Y,
 }
 
 // ============================================================================
@@ -366,5 +406,33 @@ export const createPostProcessingSlice: StateCreator<
 
   setSSAOIntensity: (intensity: number) => {
     set({ ssaoIntensity: Math.max(0, Math.min(2, intensity)) })
+  },
+
+  // --- Lensing Actions ---
+  setLensingEnabled: (enabled: boolean) => {
+    set({ lensingEnabled: enabled })
+  },
+
+  setLensingIntensity: (intensity: number) => {
+    set({ lensingIntensity: Math.max(0, Math.min(5, intensity)) })
+  },
+
+  setLensingMass: (mass: number) => {
+    set({ lensingMass: Math.max(0.1, Math.min(10, mass)) })
+  },
+
+  setLensingDistortionScale: (scale: number) => {
+    set({ lensingDistortionScale: Math.max(0.1, Math.min(5, scale)) })
+  },
+
+  setLensingChromaticAberration: (aberration: number) => {
+    set({ lensingChromaticAberration: Math.max(0, Math.min(1, aberration)) })
+  },
+
+  setLensingCenter: (x: number, y: number) => {
+    set({
+      lensingCenterX: Math.max(0, Math.min(1, x)),
+      lensingCenterY: Math.max(0, Math.min(1, y)),
+    })
   },
 })

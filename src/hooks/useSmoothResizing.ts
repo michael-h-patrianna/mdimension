@@ -1,3 +1,4 @@
+import { FRAME_PRIORITY } from '@/rendering/core/framePriorities';
 import { useEffect, useRef } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import { useSpring } from 'framer-motion';
@@ -71,5 +72,5 @@ export function useSmoothResizing() {
         camera.zoom = scale;
         camera.updateProjectionMatrix();
     }
-  });
+  }, FRAME_PRIORITY.ANIMATION);
 }

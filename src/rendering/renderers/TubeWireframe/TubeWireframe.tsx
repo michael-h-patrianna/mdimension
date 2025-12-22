@@ -8,9 +8,12 @@
  * @see docs/prd/enhanced-visuals-rendering-pipeline.md
  */
 
-import { createColorCache, createLightColorCache, updateLinearColorUniform } from '@/rendering/colors/linearCache'
+import { createColorCache, updateLinearColorUniform } from '@/rendering/colors/linearCache'
+import { FRAME_PRIORITY } from '@/rendering/core/framePriorities'
 import { RENDER_LAYERS } from '@/rendering/core/layers'
 import { useTrackedShaderMaterial } from '@/rendering/materials/useTrackedShaderMaterial'
+import { useNDTransformUpdates } from '@/rendering/renderers/base'
+import { UniformManager } from '@/rendering/uniforms/UniformManager'
 import { useFrame } from '@react-three/fiber'
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
@@ -27,12 +30,9 @@ import {
 } from 'three'
 
 import { DEFAULT_PROJECTION_DISTANCE } from '@/lib/math/projection'
-import { composeRotations } from '@/lib/math/rotation'
 import type { VectorND } from '@/lib/math/types'
-import { createLightUniforms, updateLightUniforms, type LightUniforms } from '@/rendering/lights/uniforms'
 // Note: We use patched MeshDepthMaterial and MeshDistanceMaterial instead of raw ShaderMaterial
 // to avoid the double shadow bug. The custom vertex shaders are no longer needed.
-import { matrixToGPUUniforms } from '@/rendering/shaders/transforms/ndTransform'
 import { composeTubeWireframeFragmentShader, composeTubeWireframeVertexShader } from '@/rendering/shaders/tubewireframe/compose'
 import {
     blurToPCFSamples,
@@ -44,7 +44,6 @@ import {
 import { useAppearanceStore } from '@/stores/appearanceStore'
 import { useLightingStore } from '@/stores/lightingStore'
 import { usePerformanceStore } from '@/stores/performanceStore'
-import { useRotationStore } from '@/stores/rotationStore'
 import { useTransformStore } from '@/stores/transformStore'
 import { Vector4 } from 'three'
 
@@ -114,7 +113,9 @@ vec3 ndTransformPoint(vec3 pos, vec4 extraA, vec4 extraB) {
       effectiveDepth += uDepthRowSums[j] * scaledInputs[j];
     }
   }
-  float normFactor = uDimension > 4 ? sqrt(float(uDimension - 3)) : 1.0;
+  // Normalize depth by sqrt(dimension - 3) for consistent visual scale.
+  // See transforms/ndTransform.ts for mathematical justification.
+  float normFactor = uDimension > 4 ? sqrt(max(1.0, float(uDimension - 3))) : 1.0;
   effectiveDepth /= normFactor;
   float denom = uProjectionDistance - effectiveDepth;
   if (abs(denom) < 0.0001) denom = denom >= 0.0 ? 0.0001 : -0.0001;
@@ -266,16 +267,15 @@ export function TubeWireframe({
 }: TubeWireframeProps): React.JSX.Element | null {
   const meshRef = useRef<InstancedMesh>(null)
 
+  // N-D transform hook - handles rotation matrix computation with version tracking
+  const ndTransform = useNDTransformUpdates()
+
   // Cached linear colors - avoid per-frame sRGB->linear conversion
   const colorCacheRef = useRef(createColorCache())
-  const lightColorCacheRef = useRef(createLightColorCache())
 
   // Performance optimization: Cache objects to avoid per-frame allocation/calculation
   const cachedScalesRef = useRef<number[]>([])
-  const cachedGpuDataRef = useRef<ReturnType<typeof matrixToGPUUniforms> | null>(null)
-  const prevRotationVersionRef = useRef<number>(-1)
-  const cachedDimensionRef = useRef<number>(0)
-  const cachedProjectionDistanceRef = useRef<{ count: number; distance: number }>({ count: 0, distance: DEFAULT_PROJECTION_DISTANCE })
+  const cachedProjectionDistanceRef = useRef<{ count: number; distance: number; scaleSum?: number }>({ count: 0, distance: DEFAULT_PROJECTION_DISTANCE, scaleSum: 0 })
 
   // P4 Optimization: Pre-allocated instance attribute arrays to avoid per-change allocations
   // These are resized only when edge count increases, otherwise reused
@@ -290,19 +290,17 @@ export function TubeWireframe({
   } | null>(null)
 
   // Performance optimization: Cache store state in refs to avoid getState() calls every frame
-  const rotationStateRef = useRef(useRotationStore.getState())
+  // Note: rotation state is handled by ndTransform hook
   const transformStateRef = useRef(useTransformStore.getState())
   const appearanceStateRef = useRef(useAppearanceStore.getState())
   const lightingStateRef = useRef(useLightingStore.getState())
 
   // Subscribe to store changes to update refs
   useEffect(() => {
-    const unsubRot = useRotationStore.subscribe((s) => { rotationStateRef.current = s })
     const unsubTrans = useTransformStore.subscribe((s) => { transformStateRef.current = s })
     const unsubApp = useAppearanceStore.subscribe((s) => { appearanceStateRef.current = s })
     const unsubLight = useLightingStore.subscribe((s) => { lightingStateRef.current = s })
     return () => {
-      unsubRot()
       unsubTrans()
       unsubApp()
       unsubLight()
@@ -336,7 +334,6 @@ export function TubeWireframe({
     () => {
       // Convert colors from sRGB to linear for physically correct lighting
       const colorValue = new Color(color).convertSRGBToLinear()
-      const lightUniforms = createLightUniforms()
       const vertexShaderString = composeTubeWireframeVertexShader()
 
       return new ShaderMaterial({
@@ -360,13 +357,8 @@ export function TubeWireframe({
           uDepthRowSums: { value: new Float32Array(11) },
           uProjectionDistance: { value: DEFAULT_PROJECTION_DISTANCE },
 
-          // Global lighting (colors converted to linear space)
-          uAmbientIntensity: { value: 0.01 },
-          uAmbientColor: { value: new Color('#FFFFFF').convertSRGBToLinear() },
-          uSpecularIntensity: { value: 0.5 },
-          uSpecularPower: { value: 30 },
-          uSpecularColor: { value: new Color('#FFFFFF').convertSRGBToLinear() },
-          uDiffuseIntensity: { value: 1.0 },
+          // Lighting uniforms (via UniformManager)
+          ...UniformManager.getCombinedUniforms(['lighting']),
 
           // Fresnel (colors converted to linear space)
           uFresnelEnabled: { value: true },
@@ -380,8 +372,7 @@ export function TubeWireframe({
           uSssThickness: { value: 1.0 },
           uSssJitter: { value: 0.2 },
 
-          // Multi-light system
-          ...lightUniforms,
+          // Shadow map uniforms
           // Shadow map uniforms
           ...createShadowMapUniforms(),
         },
@@ -614,7 +605,6 @@ export function TubeWireframe({
     if (!material || !material.uniforms.uRotationMatrix4D) return
 
     // Read state from cached refs (updated via subscriptions, not getState() per frame)
-    const rotationState = rotationStateRef.current
     const transformState = transformStateRef.current
     const { uniformScale, perAxisScale } = transformState
     const appearanceState = appearanceStateRef.current
@@ -629,27 +619,20 @@ export function TubeWireframe({
       scales[i] = perAxisScale[i] ?? uniformScale
     }
 
-    // Compute rotation matrix and GPU data (only when changed)
-    const rotationVersion = rotationState.version
-    const rotationsChanged = dimension !== cachedDimensionRef.current || rotationVersion !== prevRotationVersionRef.current
+    // Update rotation matrix via shared hook (handles version tracking)
+    ndTransform.update({ scales })
+    const gpuData = ndTransform.source.getGPUData()
 
-    let gpuData: ReturnType<typeof matrixToGPUUniforms>
-    if (rotationsChanged || !cachedGpuDataRef.current) {
-      const rotationMatrix = composeRotations(dimension, rotationState.rotations)
-      gpuData = matrixToGPUUniforms(rotationMatrix, dimension)
-      // Update cache
-      cachedGpuDataRef.current = gpuData
-      cachedDimensionRef.current = dimension
-      prevRotationVersionRef.current = rotationVersion
-    } else {
-      gpuData = cachedGpuDataRef.current
-    }
-
-    // Calculate safe projection distance (only when vertex count changes)
+    // Calculate safe projection distance (only when vertex count changes or scale changes)
     // Avoids O(N) loop every frame
     let projectionDistance: number
     const numVertices = vertices.length
-    if (numVertices !== cachedProjectionDistanceRef.current.count) {
+
+    // Check if scale changed significantly
+    const currentScaleSum = scales.reduce((a, b) => a + b, 0);
+    const scaleChanged = Math.abs(currentScaleSum - (cachedProjectionDistanceRef.current.scaleSum ?? 0)) > 0.01;
+
+    if (numVertices !== cachedProjectionDistanceRef.current.count || scaleChanged) {
       const normalizationFactor = dimension > 3 ? Math.sqrt(dimension - 3) : 1
       let maxEffectiveDepth = 0
       if (numVertices > 0 && vertices[0]!.length > 3) {
@@ -662,8 +645,20 @@ export function TubeWireframe({
           maxEffectiveDepth = Math.max(maxEffectiveDepth, effectiveDepth)
         }
       }
-      projectionDistance = Math.max(DEFAULT_PROJECTION_DISTANCE, maxEffectiveDepth + 2.0)
-      cachedProjectionDistanceRef.current = { count: numVertices, distance: projectionDistance }
+
+      // Calculate max scale
+      let maxScale = 1;
+      for (const s of scales) maxScale = Math.max(maxScale, s);
+
+      const rawDistance = Math.max(DEFAULT_PROJECTION_DISTANCE, maxEffectiveDepth + 2.0);
+      const contentRadius = Math.max(0, rawDistance - 2.0);
+      projectionDistance = contentRadius * maxScale + 2.0;
+
+      cachedProjectionDistanceRef.current = {
+        count: numVertices,
+        distance: projectionDistance,
+        scaleSum: currentScaleSum
+      }
     } else {
       projectionDistance = cachedProjectionDistanceRef.current.distance
     }
@@ -720,8 +715,8 @@ export function TubeWireframe({
     u.uSssThickness!.value = appearanceState.sssThickness
     if (u.uSssJitter) u.uSssJitter.value = appearanceState.sssJitter
 
-    // Update multi-light system (with cached linear color conversion)
-    updateLightUniforms(u as unknown as LightUniforms, lightingState.lights, lightColorCacheRef.current)
+    // Update multi-light system (via UniformManager)
+    UniformManager.applyToMaterial(material, ['lighting'])
 
     // Update shadow map uniforms if shadows are enabled
     // Pass store lights to ensure shadow data ordering matches uniform indices
@@ -761,7 +756,7 @@ export function TubeWireframe({
       su.uProjectionDistance!.value = projectionDistance
       su.uRadius!.value = radius
     }
-  })
+  }, FRAME_PRIORITY.RENDERER_UNIFORMS)
 
   // Don't render if no valid data
   if (!vertices || vertices.length === 0 || !edges || edges.length === 0) {

@@ -64,12 +64,12 @@ describe('Light Types', () => {
       expect(light.intensity).toBe(1.0)
     })
 
-    it('should have position derived from h=45, v=130, d=8', () => {
+    it('should have position derived from h=45, v=130, d=7', () => {
       const light = createDefaultLight()
-      // Expected: x~-3.64, y~6.13, z~-3.64
-      expect(light.position[0]).toBeCloseTo(-3.64, 1)
-      expect(light.position[1]).toBeCloseTo(6.13, 1)
-      expect(light.position[2]).toBeCloseTo(-3.64, 1)
+      // With d=7: x~-3.18, y~5.36, z~-3.18
+      expect(light.position[0]).toBeCloseTo(-3.18, 1)
+      expect(light.position[1]).toBeCloseTo(5.36, 1)
+      expect(light.position[2]).toBeCloseTo(-3.18, 1)
     })
 
     it('should have zero rotation', () => {

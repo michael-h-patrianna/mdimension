@@ -1,4 +1,5 @@
 import { MAX_EXTRA_DIMS } from '../../renderers/Polytope/constants'
+import { DEPTH_NORMALIZATION_BASE_DIMENSION } from '../transforms/ndTransform'
 
 /**
  * N-D Transformation Block for Polytope Rendering
@@ -19,6 +20,10 @@ import { MAX_EXTRA_DIMS } from '../../renderers/Polytope/constants'
  *   - aNeighbor2Extra0_3 (vec4) = 1 slot
  *   - aNeighbor2Extra4_6 (vec3) = 1 slot
  *   Total: 9 slots (under 16 limit)
+ *
+ * ## Depth Normalization
+ * Uses sqrt(dimension - 3) normalization for consistent visual scaling.
+ * See ndTransform.ts module documentation for mathematical justification.
  */
 export const transformNDBlock = `
     // N-D Transformation uniforms
@@ -82,7 +87,9 @@ export const transformNDBlock = `
           effectiveDepth += uDepthRowSums[j] * scaledInputs[j];
         }
       }
-      float normFactor = uDimension > 4 ? sqrt(float(uDimension - 3)) : 1.0;
+      // Normalize depth by sqrt(dimension - 3) for consistent visual scale across dimensions.
+      // See ndTransform.ts module documentation for mathematical justification.
+      float normFactor = uDimension > 4 ? sqrt(max(1.0, float(uDimension - ${DEPTH_NORMALIZATION_BASE_DIMENSION}))) : 1.0;
       effectiveDepth /= normFactor;
       // Guard against division by zero when effectiveDepth approaches projectionDistance
       float denom = uProjectionDistance - effectiveDepth;

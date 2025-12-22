@@ -4,6 +4,7 @@ import { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { useCameraMovement } from '@/hooks/useCameraMovement'
 import { useLightingStore } from '@/stores/lightingStore';
 import { useCameraStore } from '@/stores/cameraStore';
+import { FRAME_PRIORITY } from '@/rendering/core/framePriorities';
 
 /**
  * Props for the CameraController component.
@@ -159,11 +160,21 @@ export function CameraController({
   }, [isDraggingLight])
 
   // Update controls every frame (required for damping and auto-rotate)
-  useFrame(() => {
+  useFrame((state) => {
     if (controlsRef.current) {
       controlsRef.current.update()
     }
-  })
+    // DEBUG: Log camera state occasionally
+    if (state.clock.elapsedTime > 1.0 && state.clock.elapsedTime < 1.1) {
+        console.log('[CameraController] Camera State:', {
+            position: state.camera.position.toArray(),
+            rotation: state.camera.rotation.toArray(),
+            fov: (state.camera as any).fov,
+            zoom: (state.camera as any).zoom,
+            projectionMatrix: state.camera.projectionMatrix.elements.slice(0, 16)
+        });
+    }
+  }, FRAME_PRIORITY.CAMERA)
 
   // Expose reset function if callback is provided
   useEffect(() => {

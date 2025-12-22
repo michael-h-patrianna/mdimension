@@ -203,7 +203,8 @@ describe('ndTransform', () => {
     it('should generate valid GLSL code', () => {
       const shader = generateNDTransformVertexShader();
 
-      expect(shader).toContain('uniform mat4 rotationMatrix4D');
+      // Uniforms have 'u' prefix for Three.js convention
+      expect(shader).toContain('uniform mat4 uRotationMatrix4D');
       expect(shader).toContain('uniform int uDimension');
       expect(shader).toContain('void main()');
       expect(shader).toContain('gl_Position');
@@ -212,8 +213,9 @@ describe('ndTransform', () => {
     it('should include extra dimension attributes', () => {
       const shader = generateNDTransformVertexShader();
 
-      expect(shader).toContain('attribute float extraDim0');
-      expect(shader).toContain('attribute float extraDim1');
+      // Attributes have 'a' prefix for Three.js convention
+      expect(shader).toContain('attribute float aExtraDim0');
+      expect(shader).toContain('attribute float aExtraDim1');
     });
 
     it('should support custom max dimension', () => {
@@ -242,7 +244,8 @@ describe('ndTransform', () => {
       expect(uniforms.uDimension).toBeDefined();
       expect(uniforms.uScale4D).toBeDefined();
       expect(uniforms.uExtraScales).toBeDefined();
-      expect(uniforms.uExtraRotationData).toBeDefined();
+      expect(uniforms.uExtraRotationCols).toBeDefined(); // Note: Was renamed from uExtraRotationData
+      expect(uniforms.uDepthRowSums).toBeDefined();
       expect(uniforms.uProjectionDistance).toBeDefined();
       expect(uniforms.uColor).toBeDefined();
       expect(uniforms.uOpacity).toBeDefined();

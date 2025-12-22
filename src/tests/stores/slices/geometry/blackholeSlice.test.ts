@@ -9,10 +9,7 @@
  * - Dimension-aware initialization
  */
 
-import {
-  BLACK_HOLE_VISUAL_PRESETS,
-  DEFAULT_BLACK_HOLE_CONFIG,
-} from '@/lib/geometry/extended/types'
+import { BLACK_HOLE_VISUAL_PRESETS, DEFAULT_BLACK_HOLE_CONFIG } from '@/lib/geometry/extended/types'
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore'
 import { beforeEach, describe, expect, it } from 'vitest'
 
@@ -117,7 +114,9 @@ describe('blackholeSlice', () => {
       const { blackhole } = useExtendedObjectStore.getState()
 
       expect(blackhole.visualPreset).toBe('interstellar')
-      expect(blackhole.manifoldThickness).toBe(BLACK_HOLE_VISUAL_PRESETS.interstellar.manifoldThickness)
+      expect(blackhole.manifoldThickness).toBe(
+        BLACK_HOLE_VISUAL_PRESETS.interstellar.manifoldThickness
+      )
       expect(blackhole.gravityStrength).toBe(BLACK_HOLE_VISUAL_PRESETS.interstellar.gravityStrength)
     })
 
@@ -140,7 +139,6 @@ describe('blackholeSlice', () => {
       expect(blackhole.visualPreset).toBe('ethereal')
       expect(blackhole.manifoldThickness).toBe(BLACK_HOLE_VISUAL_PRESETS.ethereal.manifoldThickness)
     })
-
   })
 
   describe('photon shell actions', () => {
@@ -292,11 +290,8 @@ describe('blackholeSlice', () => {
 
   describe('lensing actions', () => {
     it('should set lensing parameters', () => {
-      const {
-        setBlackHoleDimensionEmphasis,
-        setBlackHoleDistanceFalloff,
-        setBlackHoleBendScale,
-      } = useExtendedObjectStore.getState()
+      const { setBlackHoleDimensionEmphasis, setBlackHoleDistanceFalloff, setBlackHoleBendScale } =
+        useExtendedObjectStore.getState()
 
       setBlackHoleDimensionEmphasis(0.5)
       expect(useExtendedObjectStore.getState().blackhole.dimensionEmphasis).toBe(0.5)
@@ -316,6 +311,65 @@ describe('blackholeSlice', () => {
 
       setBlackHoleRayBendingMode('spiral')
       expect(useExtendedObjectStore.getState().blackhole.rayBendingMode).toBe('spiral')
+    })
+  })
+
+  describe('deferred lensing actions', () => {
+    it('should toggle deferred lensing', () => {
+      const { setBlackHoleDeferredLensingEnabled } = useExtendedObjectStore.getState()
+
+      setBlackHoleDeferredLensingEnabled(true)
+      expect(useExtendedObjectStore.getState().blackhole.deferredLensingEnabled).toBe(true)
+
+      setBlackHoleDeferredLensingEnabled(false)
+      expect(useExtendedObjectStore.getState().blackhole.deferredLensingEnabled).toBe(false)
+    })
+
+    it('should set deferred lensing strength with clamping', () => {
+      const { setBlackHoleDeferredLensingStrength } = useExtendedObjectStore.getState()
+
+      setBlackHoleDeferredLensingStrength(1.5)
+      expect(useExtendedObjectStore.getState().blackhole.deferredLensingStrength).toBe(1.5)
+
+      // Test clamping - too low (min is 0)
+      setBlackHoleDeferredLensingStrength(-0.5)
+      expect(useExtendedObjectStore.getState().blackhole.deferredLensingStrength).toBe(0)
+
+      // Test clamping - too high (max is 2)
+      setBlackHoleDeferredLensingStrength(5)
+      expect(useExtendedObjectStore.getState().blackhole.deferredLensingStrength).toBe(2)
+    })
+
+    it('should set deferred lensing chromatic aberration with clamping', () => {
+      const { setBlackHoleDeferredLensingChromaticAberration } = useExtendedObjectStore.getState()
+
+      setBlackHoleDeferredLensingChromaticAberration(0.5)
+      expect(useExtendedObjectStore.getState().blackhole.deferredLensingChromaticAberration).toBe(
+        0.5
+      )
+
+      // Test clamping - too low (min is 0)
+      setBlackHoleDeferredLensingChromaticAberration(-0.2)
+      expect(useExtendedObjectStore.getState().blackhole.deferredLensingChromaticAberration).toBe(0)
+
+      // Test clamping - too high (max is 1)
+      setBlackHoleDeferredLensingChromaticAberration(1.5)
+      expect(useExtendedObjectStore.getState().blackhole.deferredLensingChromaticAberration).toBe(1)
+    })
+
+    it('should set deferred lensing radius with clamping', () => {
+      const { setBlackHoleDeferredLensingRadius } = useExtendedObjectStore.getState()
+
+      setBlackHoleDeferredLensingRadius(5.0)
+      expect(useExtendedObjectStore.getState().blackhole.deferredLensingRadius).toBe(5.0)
+
+      // Test clamping - too low (min is 0)
+      setBlackHoleDeferredLensingRadius(-1)
+      expect(useExtendedObjectStore.getState().blackhole.deferredLensingRadius).toBe(0)
+
+      // Test clamping - too high (max is 10)
+      setBlackHoleDeferredLensingRadius(15)
+      expect(useExtendedObjectStore.getState().blackhole.deferredLensingRadius).toBe(10)
     })
   })
 
@@ -353,7 +407,8 @@ describe('blackholeSlice', () => {
     })
 
     it('should reset parameters', () => {
-      const { setBlackHoleParameterValue, resetBlackHoleParameters } = useExtendedObjectStore.getState()
+      const { setBlackHoleParameterValue, resetBlackHoleParameters } =
+        useExtendedObjectStore.getState()
 
       // Set some values
       setBlackHoleParameterValue(0, 1.5)

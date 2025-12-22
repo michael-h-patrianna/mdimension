@@ -7,19 +7,21 @@
  * Architecture:
  * - Scene: Lighting, camera, effects, ground plane
  * - UnifiedRenderer: Routes to appropriate high-performance renderer
+ * - TemporalDepthProvider: Scopes temporal depth state to this scene
  */
 
-import { CameraController } from '@/rendering/controllers/CameraController'
-import { LightGizmoManager } from '@/rendering/controllers/LightGizmoManager'
-import { PerformanceManager } from '@/rendering/controllers/PerformanceManager'
 import { useSmoothResizing } from '@/hooks/useSmoothResizing'
 import { useViewportOffset } from '@/hooks/useViewportOffset'
 import { useWebGLCleanup } from '@/hooks/useWebGLCleanup'
 import type { Face } from '@/lib/geometry/faces'
 import type { NdGeometry, ObjectType } from '@/lib/geometry/types'
 import type { Vector3D } from '@/lib/math/types'
+import { CameraController } from '@/rendering/controllers/CameraController'
+import { LightGizmoManager } from '@/rendering/controllers/LightGizmoManager'
+import { PerformanceManager } from '@/rendering/controllers/PerformanceManager'
+import { TemporalDepthProvider } from '@/rendering/core/temporalDepth'
 import { GroundPlane } from '@/rendering/environment/GroundPlane'
-import { PostProcessing } from '@/rendering/environment/PostProcessing'
+import { PostProcessingV2 } from '@/rendering/environment/PostProcessingV2'
 import { SceneLighting } from '@/rendering/environment/SceneLighting'
 import { Skybox } from '@/rendering/environment/Skybox'
 import { UnifiedRenderer } from '@/rendering/renderers/UnifiedRenderer'
@@ -117,7 +119,7 @@ export const Scene = React.memo(function Scene({
   useWebGLCleanup()
 
   return (
-    <>
+    <TemporalDepthProvider>
       {/* Performance optimization manager */}
       <PerformanceManager />
 
@@ -130,8 +132,8 @@ export const Scene = React.memo(function Scene({
       {/* Light gizmos for manipulating lights */}
       <LightGizmoManager />
 
-      {/* Post-processing effects (bloom) */}
-      <PostProcessing />
+      {/* Post-processing effects (Render Graph V2) */}
+      <PostProcessingV2 />
 
       {/* Camera controls */}
       <CameraController autoRotate={autoRotate} />
@@ -167,6 +169,6 @@ export const Scene = React.memo(function Scene({
         faceDepths={faceDepths}
         opacity={opacity}
       />
-    </>
+    </TemporalDepthProvider>
   )
 })

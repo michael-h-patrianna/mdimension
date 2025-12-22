@@ -21,11 +21,8 @@ describe('Transform Operations', () => {
   describe('createScaleMatrix', () => {
     it('creates non-uniform scale matrix', () => {
       const S = createScaleMatrix(3, [2, 3, 4]);
-      expect(S).toEqual([
-        [2, 0, 0],
-        [0, 3, 0],
-        [0, 0, 4],
-      ]);
+      // MatrixND is flat row-major Float32Array
+      expect(S).toEqual(new Float32Array([2, 0, 0, 0, 3, 0, 0, 0, 4]));
     });
 
     it('scales vector correctly', () => {
@@ -51,11 +48,8 @@ describe('Transform Operations', () => {
   describe('createUniformScaleMatrix', () => {
     it('creates uniform scale matrix', () => {
       const S = createUniformScaleMatrix(3, 2);
-      expect(S).toEqual([
-        [2, 0, 0],
-        [0, 2, 0],
-        [0, 0, 2],
-      ]);
+      // MatrixND is flat row-major Float32Array
+      expect(S).toEqual(new Float32Array([2, 0, 0, 0, 2, 0, 0, 0, 2]));
     });
 
     it('scales vector uniformly', () => {

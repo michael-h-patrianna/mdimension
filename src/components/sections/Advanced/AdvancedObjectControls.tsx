@@ -355,7 +355,7 @@ const SchroedingerAdvanced: React.FC = () => {
                 <div className="flex items-center justify-between">
                     <label className="text-xs text-text-secondary font-semibold">Volume Effects</label>
                 </div>
-                
+
                 {/* Erosion */}
                 <div className="mt-2">
                     <Slider
@@ -729,6 +729,7 @@ const BlackHoleAdvanced: React.FC = () => {
         // Deferred lensing
         setDeferredLensingEnabled: state.setBlackHoleDeferredLensingEnabled,
         setDeferredLensingStrength: state.setBlackHoleDeferredLensingStrength,
+        setDeferredLensingChromaticAberration: state.setBlackHoleDeferredLensingChromaticAberration,
     }));
     const {
         config,
@@ -769,6 +770,7 @@ const BlackHoleAdvanced: React.FC = () => {
         setMotionBlurStrength,
         setDeferredLensingEnabled,
         setDeferredLensingStrength,
+        setDeferredLensingChromaticAberration,
     } = useExtendedObjectStore(extendedObjectSelector);
 
     return (
@@ -776,7 +778,7 @@ const BlackHoleAdvanced: React.FC = () => {
             {/* Gravity & Lensing */}
             <div className="space-y-3 pt-2">
                 <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider">Gravity & Lensing</label>
-                
+
                 <Slider
                     label="Gravity Strength"
                     min={0}
@@ -787,7 +789,7 @@ const BlackHoleAdvanced: React.FC = () => {
                     showValue
                     data-testid="blackhole-gravity-strength"
                 />
-                
+
                 <Slider
                     label="Bloom Boost"
                     min={0}
@@ -859,7 +861,7 @@ const BlackHoleAdvanced: React.FC = () => {
             {/* Accretion Visuals */}
             <div className="space-y-3 pt-2 border-t border-white/5">
                 <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider">Accretion Disk</label>
-                
+
                 <Slider
                     label="Intensity"
                     min={0}
@@ -869,7 +871,7 @@ const BlackHoleAdvanced: React.FC = () => {
                     onChange={setManifoldIntensity}
                     showValue
                 />
-                
+
                 <Slider
                     label="Temperature (K)"
                     min={1000}
@@ -889,7 +891,7 @@ const BlackHoleAdvanced: React.FC = () => {
                     onChange={setDensityFalloff}
                     showValue
                 />
-                
+
                 <div className="p-3 bg-black/20 rounded border border-white/5 space-y-3">
                     <label className="text-xs text-text-tertiary font-medium">Turbulence</label>
                     <Slider
@@ -925,7 +927,7 @@ const BlackHoleAdvanced: React.FC = () => {
             {/* Photon Shell */}
             <div className="space-y-3 pt-2 border-t border-white/5">
                 <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider">Photon Shell</label>
-                
+
                 <Slider
                     label="Width"
                     min={0}
@@ -935,7 +937,7 @@ const BlackHoleAdvanced: React.FC = () => {
                     onChange={setPhotonShellWidth}
                     showValue
                 />
-                
+
                 <Slider
                     label="Glow Strength"
                     min={0}
@@ -945,7 +947,7 @@ const BlackHoleAdvanced: React.FC = () => {
                     onChange={setShellGlowStrength}
                     showValue
                 />
-                
+
                 <div className="flex items-center justify-between">
                     <label className="text-xs text-text-secondary">Color</label>
                     <ColorPicker
@@ -1208,6 +1210,18 @@ const BlackHoleAdvanced: React.FC = () => {
                         onChange={setDeferredLensingStrength}
                         showValue
                         data-testid="blackhole-deferred-lensing-strength"
+                    />
+                )}
+                {config.deferredLensingEnabled && (
+                    <Slider
+                        label="Chromatic Aberration"
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        value={config.deferredLensingChromaticAberration}
+                        onChange={setDeferredLensingChromaticAberration}
+                        showValue
+                        data-testid="blackhole-deferred-lensing-chromatic-aberration"
                     />
                 )}
                 <p className="text-xs text-text-tertiary">

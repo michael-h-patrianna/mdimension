@@ -8,29 +8,29 @@
  */
 
 import { RAYMARCH_QUALITY_TO_MULTIPLIER } from '@/lib/geometry/extended/types'
-import { composeRotations } from '@/lib/math/rotation'
-import type { MatrixND } from '@/lib/math/types'
 import {
     createColorCache,
-    createLightColorCache,
     updateLinearColorUniform,
 } from '@/rendering/colors/linearCache'
-import { RENDER_LAYERS } from '@/rendering/core/layers'
-import { TemporalDepthManager } from '@/rendering/core/TemporalDepthManager'
-import {
-    createLightUniforms,
-    updateLightUniforms,
-} from '@/rendering/lights/uniforms'
+import { FRAME_PRIORITY } from '@/rendering/core/framePriorities'
+import { useTemporalDepth } from '@/rendering/core/temporalDepth'
 import { TrackedShaderMaterial } from '@/rendering/materials/TrackedShaderMaterial'
 import {
     OPACITY_MODE_TO_INT,
     SAMPLE_QUALITY_TO_INT,
 } from '@/rendering/opacity/types'
+import {
+    MAX_DIMENSION,
+    useLayerAssignment,
+    useQualityTracking,
+    useRotationUpdates,
+} from '@/rendering/renderers/base'
 import { composeJuliaShader } from '@/rendering/shaders/julia/compose'
 import { COLOR_ALGORITHM_TO_INT } from '@/rendering/shaders/palette'
 import {
     SHADOW_QUALITY_TO_INT,
 } from '@/rendering/shadows/types'
+import { UniformManager } from '@/rendering/uniforms/UniformManager'
 import { getEffectiveSdfQuality } from '@/rendering/utils/adaptiveQuality'
 import { useAnimationStore } from '@/stores/animationStore'
 import { useAppearanceStore } from '@/stores/appearanceStore'
@@ -43,67 +43,12 @@ import {
     usePerformanceStore,
 } from '@/stores/performanceStore'
 import { usePostProcessingStore } from '@/stores/postProcessingStore'
-import { useRotationStore } from '@/stores/rotationStore'
 import { useUIStore } from '@/stores/uiStore'
 import { useWebGLContextStore } from '@/stores/webglContextStore'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import vertexShader from './quaternion-julia.vert?raw'
-
-/** Debounce time in ms before restoring high quality after rotation stops */
-const QUALITY_RESTORE_DELAY_MS = 150
-
-/** Maximum supported dimension */
-const MAX_DIMENSION = 11
-
-/**
- * Apply D-dimensional rotation matrix to a vector
- * @param matrix
- * @param vec
- * @param out
- * @param dimension
- */
-function applyRotationInPlace(
-  matrix: MatrixND,
-  vec: number[] | Float32Array,
-  out: Float32Array,
-  dimension: number
-): void {
-  out.fill(0);
-  for (let i = 0; i < dimension; i++) {
-    let sum = 0;
-    const rowOffset = i * dimension;
-    for (let j = 0; j < dimension; j++) {
-      sum += (matrix[rowOffset + j] ?? 0) * (vec[j] ?? 0);
-    }
-    out[i] = sum;
-  }
-}
-
-interface WorkingArrays {
-  unitX: number[]
-  unitY: number[]
-  unitZ: number[]
-  origin: number[]
-  rotatedX: Float32Array
-  rotatedY: Float32Array
-  rotatedZ: Float32Array
-  rotatedOrigin: Float32Array
-}
-
-function createWorkingArrays(): WorkingArrays {
-  return {
-    unitX: new Array(MAX_DIMENSION).fill(0),
-    unitY: new Array(MAX_DIMENSION).fill(0),
-    unitZ: new Array(MAX_DIMENSION).fill(0),
-    origin: new Array(MAX_DIMENSION).fill(0),
-    rotatedX: new Float32Array(MAX_DIMENSION),
-    rotatedY: new Float32Array(MAX_DIMENSION),
-    rotatedZ: new Float32Array(MAX_DIMENSION),
-    rotatedOrigin: new Float32Array(MAX_DIMENSION),
-  }
-}
 
 /**
  * QuaternionJuliaMesh - Renders Quaternion Julia fractals
@@ -113,55 +58,31 @@ const QuaternionJuliaMesh = () => {
   const meshRef = useRef<THREE.Mesh>(null)
   const { camera, size } = useThree()
 
+  // Get temporal depth state from context for temporal reprojection
+  const temporalDepth = useTemporalDepth()
+
   // Get scale for mesh scaling
   const scale = useExtendedObjectStore((state) => state.quaternionJulia.scale)
 
-  // Performance optimization refs
-  const prevVersionRef = useRef<number>(-1)
-  const fastModeRef = useRef(false)
-  const restoreQualityTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null
-  )
+  // Use shared quality tracking hook
+  const { effectiveFastMode, qualityMultiplier, rotationsChanged } = useQualityTracking()
+
+  // Use shared layer assignment hook
+  useLayerAssignment(meshRef)
 
   // Animation time tracking (respects pause state)
   const animationTimeRef = useRef(0)
   const lastFrameTimeRef = useRef(0)
 
-  // Pre-allocated working arrays
-  const workingArraysRef = useRef<WorkingArrays>(createWorkingArrays())
-
-  // Cached rotation matrix
-  const cachedRotationMatrixRef = useRef<MatrixND | null>(null)
-  const prevDimensionRef = useRef<number | null>(null)
-  const prevParamValuesRef = useRef<number[] | null>(null)
-  const basisVectorsDirtyRef = useRef(true)
-
   // Cached uniform values
   // Note: prevPowerRef, prevIterationsRef, prevEscapeRadiusRef were removed
   // because the optimization caused uniforms to not update after TrackedShaderMaterial
   // transitions from placeholder to shader material.
-  const prevLightingVersionRef = useRef<number>(-1)
+  // Note: Lighting version tracking and color caching now handled by LightingSource via UniformManager
 
-  // Cached colors
+  // Cached colors for non-lighting uniforms
   const colorCacheRef = useRef(createColorCache())
-  const lightColorCacheRef = useRef(createLightColorCache())
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (restoreQualityTimeoutRef.current) {
-        clearTimeout(restoreQualityTimeoutRef.current)
-        restoreQualityTimeoutRef.current = null
-      }
-    }
-  }, [])
-
-  // Assign layer
-  useEffect(() => {
-    if (meshRef.current?.layers) {
-      meshRef.current.layers.set(RENDER_LAYERS.MAIN_OBJECT)
-    }
-  }, [])
 
   // Get dimension from geometry store (used for useEffect dependency)
   const dimension = useGeometryStore((state) => state.dimension)
@@ -173,6 +94,9 @@ const QuaternionJuliaMesh = () => {
   const parameterValues = useExtendedObjectStore(
     (state) => state.quaternionJulia.parameterValues
   )
+
+  // Use shared rotation hook for basis vector computation with caching
+  const rotationUpdates = useRotationUpdates({ dimension, parameterValues })
 
   // Get config for shader compilation (re-compiles when these change)
   const shadowEnabled = useLightingStore((state) => state.shadowEnabled)
@@ -249,16 +173,14 @@ const QuaternionJuliaMesh = () => {
       uProjectionMatrix: { value: new THREE.Matrix4() },
       uViewMatrix: { value: new THREE.Matrix4() },
 
-      // Multi-light system
-      ...createLightUniforms(),
+      // Centralized Uniform Sources:
+      // - Lighting: Ambient, Diffuse, Specular, Multi-lights
+      // - Temporal: Matrices, Enabled state (matrices updated via source)
+      // - Quality: FastMode, QualityMultiplier
+      // - Color: Algorithm, Cosine coeffs, Distribution, LCH
+      ...UniformManager.getCombinedUniforms(['lighting', 'temporal', 'quality', 'color']),
 
-      // Global lighting
-      uAmbientIntensity: { value: 0.2 },
-      uAmbientColor: { value: new THREE.Color('#FFFFFF').convertSRGBToLinear() },
-      uSpecularIntensity: { value: 1.0 },
-      uSpecularPower: { value: 32.0 },
-      uSpecularColor: { value: new THREE.Color('#FFFFFF').convertSRGBToLinear() },
-      uDiffuseIntensity: { value: 1.0 },
+      // Material property for G-buffer (reflectivity for SSR)
       uMetallic: { value: 0.0 },
 
       // Advanced Rendering
@@ -273,10 +195,6 @@ const QuaternionJuliaMesh = () => {
       uFresnelEnabled: { value: true },
       uFresnelIntensity: { value: 0.5 },
       uRimColor: { value: new THREE.Color('#FFFFFF').convertSRGBToLinear() },
-
-      // Performance
-      uFastMode: { value: false },
-      uQualityMultiplier: { value: 1.0 },
 
       // Opacity
       uOpacityMode: { value: 0 },
@@ -295,36 +213,11 @@ const QuaternionJuliaMesh = () => {
       // Ambient Occlusion
       uAoEnabled: { value: true },
 
-      // Advanced Color
-      uColorAlgorithm: { value: 2 },
-      uCosineA: { value: new THREE.Vector3(0.5, 0.5, 0.5) },
-      uCosineB: { value: new THREE.Vector3(0.5, 0.5, 0.5) },
-      uCosineC: { value: new THREE.Vector3(1.0, 1.0, 1.0) },
-      uCosineD: { value: new THREE.Vector3(0.0, 0.33, 0.67) },
-      uDistPower: { value: 1.0 },
-      uDistCycles: { value: 1.0 },
-      uDistOffset: { value: 0.0 },
-      uLchLightness: { value: 0.7 },
-      uLchChroma: { value: 0.15 },
-      uMultiSourceWeights: { value: new THREE.Vector3(0.5, 0.3, 0.2) },
-
-      // Temporal Reprojection uniforms
+      // Temporal Reprojection - Texture must be manually handled as it comes from context
       uPrevDepthTexture: { value: null },
-      uPrevViewProjectionMatrix: { value: new THREE.Matrix4() },
-      uPrevInverseViewProjectionMatrix: { value: new THREE.Matrix4() },
-      uTemporalEnabled: { value: false },
-      uDepthBufferResolution: { value: new THREE.Vector2(1, 1) },
-      // Conservative safety margin for Julia - shape changes significantly during N-dimensional rotation
-      // 0.33 = start raymarching at 33% of previous depth (handles up to 67% surface movement)
-      uTemporalSafetyMargin: { value: 0.33 },
     }),
     []
   )
-
-  // Invalidate basis vectors when dimension/params change
-  useEffect(() => {
-    basisVectorsDirtyRef.current = true
-  }, [dimension, parameterValues])
 
   // Per-frame updates
   useFrame((state) => {
@@ -342,7 +235,6 @@ const QuaternionJuliaMesh = () => {
     if (!u) return;
 
     // Get current state directly from stores
-    const rotStore = useRotationStore.getState()
     const geoStore = useGeometryStore.getState()
     const extStore = useExtendedObjectStore.getState()
     const appStore = useAppearanceStore.getState()
@@ -352,7 +244,6 @@ const QuaternionJuliaMesh = () => {
 
     const currentDimension = geoStore.dimension
     const config = extStore.quaternionJulia
-    const { rotations: currentRotations, version: rotationVersion } = rotStore
 
     // Update animation time (respects pause state)
     const currentTime = state.clock.elapsedTime
@@ -366,30 +257,8 @@ const QuaternionJuliaMesh = () => {
     // Update time uniform using paused animation time
     u.uTime.value = animationTimeRef.current
 
-    // Quality mode based on rotation changes
-    const didRotate = rotationVersion !== prevVersionRef.current
-
-    if (didRotate) {
-      fastModeRef.current = true
-      prevVersionRef.current = rotationVersion
-      if (restoreQualityTimeoutRef.current) {
-        clearTimeout(restoreQualityTimeoutRef.current)
-      }
-    } else if (fastModeRef.current) {
-        if (!restoreQualityTimeoutRef.current) {
-            restoreQualityTimeoutRef.current = setTimeout(() => {
-                fastModeRef.current = false
-                restoreQualityTimeoutRef.current = null
-            }, QUALITY_RESTORE_DELAY_MS)
-        }
-    }
-
-    // Only enable fast mode if fractalAnimationLowQuality is enabled in performance settings
-    const fractalAnimLowQuality = perfStore.fractalAnimationLowQuality;
-    u.uFastMode.value = fractalAnimLowQuality && fastModeRef.current
-
-    // Progressive refinement
-    const qualityMultiplier = perfStore.qualityMultiplier ?? 1.0
+    // Use shared quality tracking values
+    u.uFastMode.value = effectiveFastMode
     u.uQualityMultiplier.value = qualityMultiplier
 
     // Update dimension
@@ -405,86 +274,36 @@ const QuaternionJuliaMesh = () => {
     // Julia constant (static)
     u.uJuliaConstant.value.set(...config.juliaConstant)
 
-    // Check if basis vectors need recomputation
-    const dimChanged = currentDimension !== prevDimensionRef.current
-    const paramsChanged =
-      !prevParamValuesRef.current ||
-      config.parameterValues.length !== prevParamValuesRef.current.length ||
-      config.parameterValues.some((v, i) => v !== prevParamValuesRef.current![i])
-    // const scaleChanged = prevScaleRef.current !== config.scale // Scale is now handled by mesh transform
+    // ============================================
+    // D-dimensional Rotation & Basis Vectors (via shared hook)
+    // Only recomputes when rotations, dimension, or params change
+    // ============================================
+    const { basisX, basisY, basisZ, changed: basisChanged } = rotationUpdates.getBasisVectors(rotationsChanged)
 
-    const needsRecompute =
-      dimChanged || paramsChanged || basisVectorsDirtyRef.current || didRotate
-
-    if (needsRecompute) {
-      prevDimensionRef.current = currentDimension
-      prevParamValuesRef.current = [...config.parameterValues]
-      // prevScaleRef.current = config.scale
-
-      // Compose rotation matrix
-      const rotMatrix = composeRotations(currentDimension, currentRotations)
-      cachedRotationMatrixRef.current = rotMatrix
-
-      // Build basis vectors
-      const wa = workingArraysRef.current
-      for (let i = 0; i < MAX_DIMENSION; i++) {
-        wa.unitX[i] = i === 0 ? 1 : 0
-        wa.unitY[i] = i === 1 ? 1 : 0
-        wa.unitZ[i] = i === 2 ? 1 : 0
-      }
-
-      // Apply rotations to basis vectors
-      applyRotationInPlace(rotMatrix, wa.unitX, wa.rotatedX, currentDimension)
-      applyRotationInPlace(rotMatrix, wa.unitY, wa.rotatedY, currentDimension)
-      applyRotationInPlace(rotMatrix, wa.unitZ, wa.rotatedZ, currentDimension)
-
-      // Scale basis vectors - REMOVED, mesh scaling handles this now
-      /*
-      const boundingSize = config.scale
-      for (let i = 0; i < MAX_DIMENSION; i++) {
-        wa.rotatedX[i]! *= boundingSize
-        wa.rotatedY[i]! *= boundingSize
-        wa.rotatedZ[i]! *= boundingSize
-      }
-      */
-
+    if (basisChanged) {
       // Copy basis vectors to uniforms
-      u.uBasisX.value.set(wa.rotatedX)
-      u.uBasisY.value.set(wa.rotatedY)
-      u.uBasisZ.value.set(wa.rotatedZ)
-
-      basisVectorsDirtyRef.current = false
+      u.uBasisX.value.set(basisX)
+      u.uBasisY.value.set(basisY)
+      u.uBasisZ.value.set(basisZ)
     }
 
     // ============================================
     // Origin Update (separate from basis vectors)
     // ============================================
-    if (needsRecompute && cachedRotationMatrixRef.current) {
-      const wa = workingArraysRef.current
-
-      // Clear and set up origin
-      for (let i = 0; i < MAX_DIMENSION; i++) {
-        wa.origin[i] = 0
-      }
+    if (basisChanged) {
+      // Build origin values array for rotation
+      const originValues = new Array(MAX_DIMENSION).fill(0)
 
       // Set extra dimension values from parameters
       for (let i = 0; i < config.parameterValues.length; i++) {
-        wa.origin[3 + i] = config.parameterValues[i] ?? 0
+        originValues[3 + i] = config.parameterValues[i] ?? 0
       }
 
-      // Apply rotation to origin
-      applyRotationInPlace(cachedRotationMatrixRef.current, wa.origin, wa.rotatedOrigin, currentDimension)
-
-      // Scale origin - REMOVED, mesh scaling handles this now
-      /*
-      const boundingSize = config.scale
-      for (let i = 0; i < MAX_DIMENSION; i++) {
-        wa.rotatedOrigin[i]! *= boundingSize
-      }
-      */
+      // Get rotated origin from hook
+      const { origin } = rotationUpdates.getOrigin(originValues)
 
       // Copy origin to uniform
-      u.uOrigin.value.set(wa.rotatedOrigin)
+      u.uOrigin.value.set(origin)
     }
 
     // Update color
@@ -506,8 +325,8 @@ const QuaternionJuliaMesh = () => {
       u.uResolution.value.set(size.width, size.height)
     }
 
-    // Update temporal reprojection uniforms from manager
-    const temporalUniforms = TemporalDepthManager.getUniforms()
+    // Update temporal reprojection uniforms from context
+    const temporalUniforms = temporalDepth.getUniforms()
     if (u.uPrevDepthTexture) {
       u.uPrevDepthTexture.value = temporalUniforms.uPrevDepthTexture
     }
@@ -526,28 +345,9 @@ const QuaternionJuliaMesh = () => {
     // Note: uCameraNear and uCameraFar are no longer needed - temporal buffer now stores
     // unnormalized ray distances directly (world-space units)
 
-    // Update multi-light system (conditionally)
-    const currentLightingVersion = lightStore.version
-    if (prevLightingVersionRef.current !== currentLightingVersion) {
-      updateLightUniforms(u, lightStore.lights, lightColorCacheRef.current)
-      prevLightingVersionRef.current = currentLightingVersion
-    }
-
-    // Update global lighting
-    u.uAmbientIntensity.value = lightStore.ambientIntensity
-    updateLinearColorUniform(
-      colorCacheRef.current.ambientColor,
-      u.uAmbientColor.value as THREE.Color,
-      lightStore.ambientColor
-    )
-    u.uSpecularIntensity.value = lightStore.specularIntensity
-    u.uSpecularPower.value = lightStore.shininess
-    updateLinearColorUniform(
-      colorCacheRef.current.specularColor,
-      u.uSpecularColor.value as THREE.Color,
-      lightStore.specularColor
-    )
-    u.uDiffuseIntensity.value = lightStore.diffuseIntensity
+    // Update lighting uniforms via centralized UniformManager (Phase 2 integration)
+    // The LightingSource automatically tracks store version and only updates when changed
+    UniformManager.applyToMaterial(material, ['lighting'])
 
     // Advanced Rendering (Global Visuals)
     const visuals = appStore; // appStore is already available
@@ -587,7 +387,7 @@ const QuaternionJuliaMesh = () => {
     u.uVolumetricDensity.value = opacity.volumetricDensity
     const effectiveSampleQuality = getEffectiveSampleQuality(
       opacity.sampleQuality,
-      fastModeRef.current ? 0 : 1
+      effectiveFastMode ? 0 : 1
     )
     u.uSampleQuality.value = SAMPLE_QUALITY_TO_INT[effectiveSampleQuality]
     u.uVolumetricReduceOnAnim.value = opacity.volumetricAnimationQuality === 'reduce' ? 1 : 0
@@ -604,7 +404,7 @@ const QuaternionJuliaMesh = () => {
     u.uShadowEnabled.value = lightStore.shadowEnabled
     const effectiveShadowQuality = getEffectiveShadowQuality(
       lightStore.shadowQuality,
-      fastModeRef.current ? 0 : 1
+      effectiveFastMode ? 0 : 1
     )
     u.uShadowQuality.value = SHADOW_QUALITY_TO_INT[effectiveShadowQuality]
     u.uShadowSoftness.value = lightStore.shadowSoftness
@@ -628,7 +428,7 @@ const QuaternionJuliaMesh = () => {
       appStore.multiSourceWeights.orbitTrap,
       appStore.multiSourceWeights.normal
     )
-  })
+  }, FRAME_PRIORITY.RENDERER_UNIFORMS)
 
   // Generate unique key to force material recreation when shader changes or context is restored
   const materialKey = `julia-material-${shaderString.length}-${features.join(',')}-${restoreCount}`

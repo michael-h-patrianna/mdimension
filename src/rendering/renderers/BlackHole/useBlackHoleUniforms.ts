@@ -5,7 +5,7 @@
  * These uniforms are passed to the shader material and updated each frame.
  */
 
-import { createLightUniforms } from '@/rendering/lights/uniforms'
+import { UniformManager } from '@/rendering/uniforms/UniformManager'
 import { useMemo } from 'react'
 import * as THREE from 'three'
 import { MAX_DIMENSION } from './types'
@@ -150,7 +150,7 @@ export function useBlackHoleUniforms() {
       uEdgeGlowIntensity: { value: 1.0 },
 
       // Background (uses general skybox system, no built-in fallback)
-      uEnvMapReady: { value: 0.0 },  // Set to 1.0 when envMap is valid
+      uEnvMapReady: { value: 0.0 }, // Set to 1.0 when envMap is valid
       envMap: { value: null },
 
       // Doppler
@@ -183,8 +183,8 @@ export function useBlackHoleUniforms() {
       uBayerOffset: { value: new THREE.Vector2(0, 0) },
       uFullResolution: { value: new THREE.Vector2(1, 1) },
 
-      // Multi-light system
-      ...createLightUniforms(),
+      // Multi-light system (via UniformManager)
+      ...UniformManager.getCombinedUniforms(['lighting']),
     }),
     []
   )

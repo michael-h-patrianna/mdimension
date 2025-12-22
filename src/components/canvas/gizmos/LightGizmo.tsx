@@ -13,6 +13,7 @@
  * - Disabled state visualization (30% opacity)
  */
 
+import { FRAME_PRIORITY } from '@/rendering/core/framePriorities';
 import { memo, useMemo, useRef, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Billboard } from '@react-three/drei';
@@ -254,7 +255,7 @@ export const LightGizmo = memo(function LightGizmo({
       const scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, distance * 0.1)) * BASE_GIZMO_SIZE;
       groupRef.current.scale.setScalar(scale);
     }
-  });
+  }, FRAME_PRIORITY.RENDERERS);
 
   // Handle click
   const handleClick = (e: { stopPropagation?: () => void }) => {

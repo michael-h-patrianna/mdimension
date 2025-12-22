@@ -6,9 +6,10 @@ describe('NoiseGenerator', () => {
   it('should generate a 3D texture with default size', () => {
     const texture = generateNoiseTexture3D();
     expect(texture).toBeInstanceOf(THREE.Data3DTexture);
-    expect(texture.image.width).toBe(64);
-    expect(texture.image.height).toBe(64);
-    expect(texture.image.depth).toBe(64);
+    // Default size is 128 for better quality
+    expect(texture.image.width).toBe(128);
+    expect(texture.image.height).toBe(128);
+    expect(texture.image.depth).toBe(128);
     expect(texture.format).toBe(THREE.RedFormat);
     expect(texture.type).toBe(THREE.UnsignedByteType);
   });

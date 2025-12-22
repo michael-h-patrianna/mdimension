@@ -2,9 +2,9 @@
  * Tests for TubeWireframe component
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render } from '@testing-library/react'
 import { TubeWireframe } from '@/rendering/renderers/TubeWireframe'
+import { render } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mock Three.js and R3F context
 vi.mock('@react-three/fiber', () => ({
@@ -118,6 +118,18 @@ vi.mock('@/rendering/shaders/transforms/ndTransform', () => ({
     extraRotationCols: new Float32Array(28),
     depthRowSums: new Float32Array(11),
   }),
+  MAX_GPU_DIMENSION: 11,
+  EXTRA_DIMS_SIZE: 7,
+}))
+
+// Mock geometry store (required by useNDTransformUpdates hook)
+vi.mock('@/stores/geometryStore', () => ({
+  useGeometryStore: {
+    getState: () => ({
+      dimension: 3,
+    }),
+    subscribe: () => () => {},
+  },
 }))
 
 // Mock performance store

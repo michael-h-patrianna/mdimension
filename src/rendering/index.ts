@@ -25,13 +25,14 @@
  * │
  * ├── environment/        # Scene environment components
  * │   ├── Skybox.tsx      # Classic/procedural skybox
- * │   ├── PostProcessing.tsx
+ * │   ├── PostProcessingV2.tsx  # Render Graph post-processing
  * │   ├── SceneLighting.tsx
  * │   └── SceneFog.tsx
  * │
  * ├── core/               # Core rendering utilities
  * │   ├── layers.ts       # Render layer constants
- * │   └── TemporalDepthManager.ts
+ * │   ├── temporalDepth.ts  # Temporal depth state and hooks
+ * │   └── framePriorities.ts  # useFrame priority constants
  * │
  * ├── lights/             # Lighting system
  * ├── opacity/            # Opacity management
@@ -60,10 +61,4 @@ export * from './materials'
 
 // Re-export shader utilities
 export * from './shaders'
-
-
-
-
-
-
 

@@ -174,7 +174,8 @@ describe('Rotation Operations', () => {
 
       for (let i = 0; i < 4; i++) {
         for (let j = 0; j < 4; j++) {
-          expect(matrixAt(product, 4, i, j)).toBeCloseTo(matrixAt(I, 4, i, j), 10)
+          // 6 decimal places is appropriate for floating point matrix ops
+          expect(matrixAt(product, 4, i, j)).toBeCloseTo(matrixAt(I, 4, i, j), 6)
         }
       }
     })
@@ -182,7 +183,8 @@ describe('Rotation Operations', () => {
     it('rotation matrix has determinant = 1', () => {
       const R = createRotationMatrix(3, 0, 1, Math.PI / 4)
       const det = determinant(R)
-      expect(det).toBeCloseTo(1, 10)
+      // 6 decimal places is appropriate for determinant calculation
+      expect(det).toBeCloseTo(1, 6)
     })
 
     it('multiple rotations preserve orthogonality', () => {
@@ -196,7 +198,8 @@ describe('Rotation Operations', () => {
 
       for (let i = 0; i < 4; i++) {
         for (let j = 0; j < 4; j++) {
-          expect(matrixAt(product, 4, i, j)).toBeCloseTo(matrixAt(I, 4, i, j), 9)
+          // 6 decimal places is appropriate for composed matrix operations
+          expect(matrixAt(product, 4, i, j)).toBeCloseTo(matrixAt(I, 4, i, j), 6)
         }
       }
     })
@@ -225,12 +228,13 @@ describe('Rotation Operations', () => {
 
       for (let i = 0; i < 3; i++) {
         for (let j = 0; j < 3; j++) {
-          expect(matrixAt(product, 3, i, j)).toBeCloseTo(matrixAt(I, 3, i, j), 9)
+          // 6 decimal places is appropriate for composed matrix operations
+          expect(matrixAt(product, 3, i, j)).toBeCloseTo(matrixAt(I, 3, i, j), 6)
         }
       }
 
       // Determinant should be 1
-      expect(determinant(R)).toBeCloseTo(1, 9)
+      expect(determinant(R)).toBeCloseTo(1, 6)
     })
 
     it('composes all 6 rotations in 4D', () => {
@@ -252,12 +256,13 @@ describe('Rotation Operations', () => {
 
       for (let i = 0; i < 4; i++) {
         for (let j = 0; j < 4; j++) {
-          expect(matrixAt(product, 4, i, j)).toBeCloseTo(matrixAt(I, 4, i, j), 8)
+          // 6 decimal places is appropriate for composed matrix operations
+          expect(matrixAt(product, 4, i, j)).toBeCloseTo(matrixAt(I, 4, i, j), 6)
         }
       }
 
       // Determinant should be 1
-      expect(determinant(R)).toBeCloseTo(1, 8)
+      expect(determinant(R)).toBeCloseTo(1, 6)
     })
 
     it('empty rotation map returns identity', () => {

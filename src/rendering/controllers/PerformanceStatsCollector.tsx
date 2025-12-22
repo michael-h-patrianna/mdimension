@@ -1,3 +1,4 @@
+import { FRAME_PRIORITY } from '@/rendering/core/framePriorities';
 import { usePerformanceMetricsStore } from '@/stores/performanceMetricsStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useFrame, useThree } from '@react-three/fiber';
@@ -187,7 +188,7 @@ export function PerformanceStatsCollector() {
       prevTimeRef.current = time;
       cpuAccumulatorRef.current = 0;
     }
-  });
+  }, FRAME_PRIORITY.STATS);
 
   return null;
 }

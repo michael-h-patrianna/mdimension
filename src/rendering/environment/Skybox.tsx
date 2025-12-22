@@ -1,3 +1,4 @@
+import { FRAME_PRIORITY } from '@/rendering/core/framePriorities';
 import { RENDER_LAYERS } from '@/rendering/core/layers';
 import { RECOVERY_PRIORITY, resourceRecovery } from '@/rendering/core/ResourceRecovery';
 import { createSkyboxShaderDefaults } from '@/rendering/materials/skybox/SkyboxShader';
@@ -722,7 +723,7 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
 
     if (uniforms.uParallaxEnabled) uniforms.uParallaxEnabled.value = proceduralSettings.parallaxEnabled ? 1.0 : 0.0;
     if (uniforms.uParallaxStrength) uniforms.uParallaxStrength.value = proceduralSettings.parallaxStrength ?? 0.5;
-  });
+  }, FRAME_PRIORITY.ANIMATION);
 
   if (opacity === 0 && fadeStartTime.current === null) {
     return null;
@@ -855,9 +856,8 @@ const SkyboxLoader: React.FC = () => {
     }
     return () => {
       // Clear background on unmount or when texture changes
-      if (scene.background === texture) {
-        scene.background = null;
-      }
+      // Relaxed check: always clear if we set it
+      scene.background = null;
     };
   }, [texture, skyboxEnabled, scene]);
 

@@ -2,33 +2,55 @@ Important: This is a test of your autonomous capabilities and abilities to creat
 
 You cannot break anything. The project in this local folder is backed up and can be restored. You can create, modify, and delete files as necessary to complete the tasks assigned to you. You have full autonomy to make decisions and take actions to achieve the desired outcomes.
 
-Your task: A senior developer tasked you to do a full performance review of this project. You are supposed to do in-depth performance profiling and identify bottlenecks, inefficiencies, opportunities for improvements.
+Your task:
+this project underwent a major refactoring to switch the rendering pipeline into a industry-standard render graph.
 
-Worflow
-1. Investigate the rendering pipeline and understand how a scene is rendered. Everything that is contributing to the rendered scene must be fully understood: objects and their different shader modules and techniques, skyboxes (texture and procedural), walls, lighting, materials, post processing effects, animations, shadows, fog, ...
-2. Design a plan how to performance profile the application and rendering flow. You have already playwright at your disposal. You can add more 3rd party tools and freely add debug code and run expirements at any place. This folder is backed up and its content is solely for you to "play around with".
-3. Run your investigations, expirements, performance profiling.
-4. Create a report in docs/performance-review.md which contains:
-   1. A detailled overview of the measurements and expirements you have taken.
-   2. A breakdown of the rendering pipeline and impact of each step of feature on the GPU, CPU and memory usage - per object type (as object type use different shader techniques and mathematical models)
-   3. A list of 10 "low-hanging fruits" to improve CPU/GPU/memory usage and the perceived performance.
-   4. A list of at least 20 comprehensive improvements or refactoring,regardless of effort, that will bring measurable and visible improvements to the frame rate on most devices and browser, without reducing visual quality (but improving it is always welcome).
+this migration went wrong and now features are broken or missing.
 
-Output
-- Full report in docs/performance-review.md
-- Report contains at least 10 "low-hanging fruits" to improve CPU/GPU/memory usage
-- Report contains at least 20 larger improvements that will bring measurable and visible improvements to the frame rate
+your task is to find all issues, close the gap, polish and fix issues.
+
+Worflow:
+1. Understand the migration plan: docs/plans/refactor-rendering-architecture.md
+2. Review the current implementation
+3. Compare to older commits in the git repo what features existed and how they worked
+4. Plan and design solutions to:
+   1. close the gap between current codebase and what the migration plan expected
+   2. finish the migration
+   3. reintroduce features that have been lost during migration (compare to older commits in the git repo)
+   4. fix bugs
+   5. upgrade code that is not in line with best practices or our tech stack of React 19, ThreeJs r182, WebGL2, GSLS3, Zustand 5
+   6. improve performance and replace inefficient code
+5. implement
+6. write meaningful tests that are actually testing full functionality of the render graph, skyboxes, object types, walls, materials, shaders, post processing effects, animations, geometry
+
+Test gates that must pass:
+Gate 1: scripts/playwright/object-types-rendering.spec.ts
+Gate 2: scripts/playwright/polytope-rendering.spec.ts
+
+Constraint:
+- You cannot deviate and simplify. The only acceptable outcome is the state-of-the-art rendergraph architecture as outlined in docs/plans/refactor-rendering-architecture.md
 
 Important Reminder: This is a test of your autonomous capabilities. You are expected to take initiative and make decisions independently. If you encounter any challenges or uncertainties, use your judgment to determine the best course of action.
 
 The quality and completeness of the project in this folder will be the only criteria for success. If you deliver unfinished or less than exceptional looking work, this test and you are a failure. Be exceptional. Do not just complete the task. Ace it. There is no time or token limit. Do it right instead of fast.
 
-The test and you will fail if you suggest obvious improvements like quality presets. Be exceptional. Be smarter than "AI slop". Try to exceed a Senior Staff developer at Meta or Alphabet.
 
 
 
-
-
+Compared current implementation against `docs/plans/refactor-rendering-architecture.md` across phases 0–6. check for:
+- bugs
+- unfinished implementations
+- code not in line with our tech stack and versions (React 19, WebGL2, Zustand 5, GSLS3)
+- dead code
+- ui components not "wired" to their actual parameters in the render graph
+- logic flaws
+- broken math
+- broken transformations, projections, rotation
+- disfunctional post processing effects
+- broken sdf raymarching, broken volume raymarching
+- broken temporal reprojection (both: temporal depth and temporal cloud)
+- broken normal/depth/temporal depth buffers
+-
 
 
 Your task is to fix the temporal reprojection for the schroedinger object type.
@@ -232,3 +254,6 @@ expected: in such
 - the ambient light entry cannot be deleted - the delete icon is visible but disabled. it can however be turned off via the icon which sets intensity to 0.
 - the intensity setting for ambient light and its color are sharing the ui component for color and intensity of the other light sources
 - when ambient light is selected, the other controls relevant for the other light types like range are hidden.
+
+
+clink codex to write a complete code review of the refactoring of the rendering architecture as outlined in docs/plans/refactor-rendering-architecture.md codex must write the review in docs/refactor-review.md.

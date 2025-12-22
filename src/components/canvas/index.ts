@@ -16,10 +16,10 @@ export { Scene } from '@/rendering/Scene'
 export type { SceneProps } from '@/rendering/Scene'
 
 // Unified rendering architecture
-export { determineRenderMode } from '@/rendering/renderers/utils'
-export type { RenderMode } from '@/rendering/renderers/utils'
 export { UnifiedRenderer } from '@/rendering/renderers/UnifiedRenderer'
 export type { UnifiedRendererProps } from '@/rendering/renderers/UnifiedRenderer'
+export { determineRenderMode } from '@/rendering/renderers/utils'
+export type { RenderMode } from '@/rendering/renderers/utils'
 
 // High-performance useFrame-based scene renderers
 export { PolytopeScene } from '@/rendering/renderers/Polytope'
@@ -29,7 +29,7 @@ export type { PolytopeSceneProps } from '@/rendering/renderers/Polytope'
 export { GroundPlane } from '@/rendering/environment/GroundPlane'
 export type { GroundPlaneProps } from '@/rendering/environment/GroundPlane'
 
-export { PostProcessing } from '@/rendering/environment/PostProcessing'
+export { PostProcessingV2 } from '@/rendering/environment/PostProcessingV2'
 
 export { SceneLighting } from '@/rendering/environment/SceneLighting'
 

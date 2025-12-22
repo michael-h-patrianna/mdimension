@@ -9,6 +9,7 @@
  */
 
 import { useTrackedShaderMaterial } from '@/rendering/materials/useTrackedShaderMaterial';
+import { useNDTransformUpdates } from '@/rendering/renderers/base';
 import { useFrame } from '@react-three/fiber';
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
@@ -27,17 +28,16 @@ import { useShallow } from 'zustand/react/shallow';
 
 import type { Face } from '@/lib/geometry/faces';
 import { DEFAULT_PROJECTION_DISTANCE } from '@/lib/math/projection';
-import { composeRotations } from '@/lib/math/rotation';
 import type { VectorND } from '@/lib/math/types';
-import { createColorCache, createLightColorCache, updateLightColorUniform, updateLinearColorUniform } from '@/rendering/colors/linearCache';
+import { createColorCache, updateLinearColorUniform } from '@/rendering/colors/linearCache';
+import { FRAME_PRIORITY } from '@/rendering/core/framePriorities';
 import { RENDER_LAYERS } from '@/rendering/core/layers';
-import type { LightSource } from '@/rendering/lights/types';
-import { LIGHT_TYPE_TO_INT, MAX_LIGHTS, rotationToDirection } from '@/rendering/lights/types';
 import { COLOR_ALGORITHM_TO_INT } from '@/rendering/shaders/palette';
+import { matrixToGPUUniforms } from '@/rendering/shaders/transforms/ndTransform';
+import { UniformManager } from '@/rendering/uniforms/UniformManager';
 // Note: We no longer use custom shadow shaders - we patch MeshDepthMaterial and
 // MeshDistanceMaterial via onBeforeCompile to inject our nD vertex transformation.
 // This avoids the double shadow bug caused by raw ShaderMaterial shadow materials.
-import { matrixToGPUUniforms, MAX_GPU_DIMENSION } from '@/rendering/shaders/transforms/ndTransform';
 import {
     blurToPCFSamples,
     collectShadowDataFromScene,
@@ -50,7 +50,6 @@ import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useLightingStore } from '@/stores/lightingStore';
 import { usePerformanceStore } from '@/stores/performanceStore';
-import { useRotationStore } from '@/stores/rotationStore';
 import { useTransformStore } from '@/stores/transformStore';
 import { TubeWireframe } from '../TubeWireframe';
 import {
@@ -160,27 +159,6 @@ function updateNDUniforms(
 }
 
 /**
- * Convert horizontal/vertical angles to a normalized direction vector.
- * MUST match the light position calculation in SceneLighting.tsx exactly.
- * This is the direction FROM origin TO light (same as light position normalized).
- * @param horizontalDeg
- * @param verticalDeg
- * @param target - Optional target vector to write to
- * @returns Normalized direction vector from origin to light
- */
-function anglesToDirection(horizontalDeg: number, verticalDeg: number, target?: THREE.Vector3): THREE.Vector3 {
-  const hRad = (horizontalDeg * Math.PI) / 180;
-  const vRad = (verticalDeg * Math.PI) / 180;
-  const t = target || new THREE.Vector3();
-  // Match SceneLighting: x = cos(v)*cos(h), y = sin(v), z = cos(v)*sin(h)
-  return t.set(
-    Math.cos(vRad) * Math.cos(hRad),
-    Math.sin(vRad),
-    Math.cos(vRad) * Math.sin(hRad)
-  ).normalize();
-}
-
-/**
  * Create edge material with N-D transformation (no lighting)
  *
  * @param edgeColor - CSS color string for the edge
@@ -262,7 +240,9 @@ vec3 ndTransformVertex(vec3 pos) {
       effectiveDepth += uDepthRowSums[j] * scaledInputs[j];
     }
   }
-  float normFactor = uDimension > 4 ? sqrt(float(uDimension - 3)) : 1.0;
+  // Normalize depth by sqrt(dimension - 3) for consistent visual scale.
+  // See transforms/ndTransform.ts for mathematical justification.
+  float normFactor = uDimension > 4 ? sqrt(max(1.0, float(uDimension - 3))) : 1.0;
   effectiveDepth /= normFactor;
   float denom = uProjectionDistance - effectiveDepth;
   if (abs(denom) < 0.0001) denom = denom >= 0.0 ? 0.0001 : -0.0001;
@@ -431,6 +411,9 @@ export const PolytopeScene = React.memo(function PolytopeScene({
 }: PolytopeSceneProps) {
   void _faceDepths; // Reserved for future per-face depth-based coloring
   const numVertices = baseVertices.length;
+
+  // Debug logging
+  console.log('[PolytopeScene] RENDER', { numVertices, numEdges: edges.length, numFaces: faces.length, dimension });
   const numEdges = edges.length;
   const numFaces = faces.length;
 
@@ -438,17 +421,19 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   const faceMeshRef = useRef<THREE.Mesh>(null);
   const edgeMeshRef = useRef<THREE.LineSegments>(null);
 
+  // N-D transform hook - handles rotation matrix computation with version tracking
+  const ndTransform = useNDTransformUpdates();
+
   // Animation time accumulator for polytope animations
   const animTimeRef = useRef(0.0);
 
   // Cached linear colors - avoid per-frame sRGB->linear conversion
   const colorCacheRef = useRef(createColorCache());
-  const lightColorCacheRef = useRef(createLightColorCache());
 
   // Performance optimization: Cache store state in refs to avoid getState() calls every frame
+  // Note: rotation state is handled by ndTransform hook
   const animationStateRef = useRef(useAnimationStore.getState());
   const extendedObjectStateRef = useRef(useExtendedObjectStore.getState());
-  const rotationStateRef = useRef(useRotationStore.getState());
   const transformStateRef = useRef(useTransformStore.getState());
   const appearanceStateRef = useRef(useAppearanceStore.getState());
   const lightingStateRef = useRef(useLightingStore.getState());
@@ -457,33 +442,23 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   useEffect(() => {
     const unsubAnim = useAnimationStore.subscribe((s) => { animationStateRef.current = s; });
     const unsubExt = useExtendedObjectStore.subscribe((s) => { extendedObjectStateRef.current = s; });
-    const unsubRot = useRotationStore.subscribe((s) => { rotationStateRef.current = s; });
     const unsubTrans = useTransformStore.subscribe((s) => { transformStateRef.current = s; });
     const unsubApp = useAppearanceStore.subscribe((s) => { appearanceStateRef.current = s; });
     const unsubLight = useLightingStore.subscribe((s) => { lightingStateRef.current = s; });
     return () => {
       unsubAnim();
       unsubExt();
-      unsubRot();
       unsubTrans();
       unsubApp();
       unsubLight();
     };
   }, []);
 
-  // P3 Optimization: Cache matrix computations to avoid per-frame recomputation
-  // Only recompute when rotations or dimension actually change
-  // const cachedRotationsRef = useRef<Map<string, number>>(new Map()); // REMOVED
-  const prevRotationVersionRef = useRef<number>(-1);
-  const cachedGpuDataRef = useRef<ReturnType<typeof matrixToGPUUniforms> | null>(null);
-  const cachedDimensionRef = useRef<number>(0);
   // Cache projection distance (only changes when baseVertices change, i.e., geometry change)
-  const cachedProjectionDistanceRef = useRef<{ count: number; distance: number }>({ count: 0, distance: 10 });
+  const cachedProjectionDistanceRef = useRef<{ count: number; distance: number; scaleSum?: number }>({ count: 0, distance: 10, scaleSum: 0 });
 
   // Cache scales array to avoid per-frame allocation
   const cachedScalesRef = useRef<number[]>([]);
-  // Cache light direction to avoid per-frame allocation
-  const cachedLightDirectionRef = useRef(new Vector3());
 
   // Simple callback ref for edge mesh - just assigns layer
   const setEdgeMeshRef = useCallback((lineSegments: THREE.LineSegments | null) => {
@@ -572,17 +547,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
           uLchLightness: { value: 0.7 },
           uLchChroma: { value: 0.15 },
           uMultiSourceWeights: { value: new Vector3(0.5, 0.3, 0.2) },
-          // Lighting (updated every frame from store, colors converted to linear space)
-          uLightEnabled: { value: true },
-          uLightColor: { value: new Color('#ffffff').convertSRGBToLinear() },
-          uLightDirection: { value: new Vector3(0.5, 1, 0.5).normalize() },
-          uLightStrength: { value: 1.0 },
-          uAmbientIntensity: { value: 0.3 },
-          uAmbientColor: { value: new Color('#FFFFFF').convertSRGBToLinear() },
-          uDiffuseIntensity: { value: 1.0 },
-          uSpecularIntensity: { value: 1.0 },
-          uSpecularPower: { value: 32.0 },
-          uSpecularColor: { value: new Color('#ffffff').convertSRGBToLinear() },
           // Fresnel (colors converted to linear space)
           uFresnelEnabled: { value: false },
           uFresnelIntensity: { value: 0.5 },
@@ -593,22 +557,8 @@ export const PolytopeScene = React.memo(function PolytopeScene({
           uSssColor: { value: new Color('#ff8844').convertSRGBToLinear() },
           uSssThickness: { value: 1.0 },
           uSssJitter: { value: 0.2 },
-          // Multi-light system uniforms (colors converted to linear space)
-          uNumLights: { value: 0 },
-          uLightsEnabled: { value: [false, false, false, false] },
-          uLightTypes: { value: [0, 0, 0, 0] },
-          uLightPositions: { value: [new Vector3(0, 5, 0), new Vector3(0, 5, 0), new Vector3(0, 5, 0), new Vector3(0, 5, 0)] },
-          uLightDirections: { value: [new Vector3(0, -1, 0), new Vector3(0, -1, 0), new Vector3(0, -1, 0), new Vector3(0, -1, 0)] },
-          uLightColors: { value: [new Color('#FFFFFF').convertSRGBToLinear(), new Color('#FFFFFF').convertSRGBToLinear(), new Color('#FFFFFF').convertSRGBToLinear(), new Color('#FFFFFF').convertSRGBToLinear()] },
-          uLightIntensities: { value: [1.0, 1.0, 1.0, 1.0] },
-          uSpotAngles: { value: [Math.PI / 6, Math.PI / 6, Math.PI / 6, Math.PI / 6] },
-          uSpotPenumbras: { value: [0.5, 0.5, 0.5, 0.5] },
-          // Precomputed cosines: default 30° cone with 0.5 penumbra → inner=15°, outer=30°
-          uSpotCosInner: { value: [Math.cos(Math.PI / 12), Math.cos(Math.PI / 12), Math.cos(Math.PI / 12), Math.cos(Math.PI / 12)] },
-          uSpotCosOuter: { value: [Math.cos(Math.PI / 6), Math.cos(Math.PI / 6), Math.cos(Math.PI / 6), Math.cos(Math.PI / 6)] },
-          // Range and decay for distance attenuation (0 = infinite range, 2 = inverse square decay)
-          uLightRanges: { value: [0, 0, 0, 0] },
-          uLightDecays: { value: [2, 2, 2, 2] },
+          // Lighting uniforms (via UniformManager)
+          ...UniformManager.getCombinedUniforms(['lighting']),
         },
         vertexShader: buildFaceVertexShader(),
         fragmentShader: faceFragmentShader,
@@ -649,6 +599,9 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     faceMeshRef.current = mesh;
     if (mesh?.layers) {
       mesh.layers.set(RENDER_LAYERS.MAIN_OBJECT);
+      console.log('[PolytopeScene] Face mesh layer set', { layer: RENDER_LAYERS.MAIN_OBJECT, mask: mesh.layers.mask });
+    } else {
+      console.log('[PolytopeScene] Face mesh ref cleared or no layers');
     }
     // Assign patched shadow materials for nD transformation:
     // - customDepthMaterial (MeshDepthMaterial): for directional and spot lights
@@ -925,9 +878,9 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     if (numVertices === 0) return;
 
     // Read state from cached refs (updated via subscriptions, not getState() per frame)
+    // Note: rotation state is handled by ndTransform hook
     const animationState = animationStateRef.current;
     const extendedObjectState = extendedObjectStateRef.current;
-    const rotationState = rotationStateRef.current;
     const transformState = transformStateRef.current;
     const appearanceState = appearanceStateRef.current;
     const lightingState = lightingStateRef.current;
@@ -950,21 +903,9 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     const modWave = polytopeConfig.facetOffsetPhaseSpread;
     const modBias = polytopeConfig.facetOffsetBias;
 
-    // Read current state from cached refs
-    const rotations = rotationState.rotations;
+    // Read current state from cached refs (rotation handled by ndTransform hook)
     const { uniformScale, perAxisScale } = transformState;
 
-    const lightEnabled = lightingState.lightEnabled;
-    const lightColor = lightingState.lightColor;
-    const lightHorizontalAngle = lightingState.lightHorizontalAngle;
-    const lightVerticalAngle = lightingState.lightVerticalAngle;
-    const lightStrength = lightingState.lightStrength ?? 1.0;
-    const ambientIntensity = lightingState.ambientIntensity;
-    const ambientColor = lightingState.ambientColor;
-    const diffuseIntensity = lightingState.diffuseIntensity;
-    const specularIntensity = lightingState.specularIntensity;
-    const shininess = lightingState.shininess;
-    const specularColor = lightingState.specularColor;
     const fresnelEnabled = appearanceState.shaderSettings.surface.fresnelEnabled;
     const fresnelIntensity = appearanceState.fresnelIntensity;
     const rimColor = appearanceState.edgeColor;
@@ -987,9 +928,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     const lchChroma = appearanceState.lchChroma;
     const multiSourceWeights = appearanceState.multiSourceWeights;
 
-    // Calculate light direction from angles (use cached vector)
-    const lightDirection = anglesToDirection(lightHorizontalAngle, lightVerticalAngle, cachedLightDirectionRef.current);
-
     // Build transformation data
     const scales = cachedScalesRef.current;
     // Resize array if needed (rare)
@@ -1001,40 +939,39 @@ export const PolytopeScene = React.memo(function PolytopeScene({
       scales[i] = perAxisScale[i] ?? uniformScale;
     }
 
-    // P3 Optimization: Cache matrix computations - only recompute when rotations change
-    const rotationVersion = rotationState.version;
-    const rotationsChanged = dimension !== cachedDimensionRef.current || rotationVersion !== prevRotationVersionRef.current;
+    // Update rotation matrix via shared hook (handles version tracking and lazy evaluation)
+    ndTransform.update({ scales });
+    const gpuData = ndTransform.source.getGPUData();
 
-    // Initialize cache if null (first run)
-    if (!cachedGpuDataRef.current) {
-      // Create initial structure
-      cachedGpuDataRef.current = {
-        rotationMatrix4D: new Matrix4(),
-        extraRotationData: new Float32Array(Math.max((MAX_GPU_DIMENSION - 4) * MAX_GPU_DIMENSION * 2, 1)),
-        extraRotationCols: new Float32Array(MAX_EXTRA_DIMS * 4),
-        depthRowSums: new Float32Array(MAX_GPU_DIMENSION),
-        dimension: dimension
-      };
-      // Force update
-      const rotationMatrix = composeRotations(dimension, rotations);
-      matrixToGPUUniforms(rotationMatrix, dimension, cachedGpuDataRef.current);
-      cachedDimensionRef.current = dimension;
-      prevRotationVersionRef.current = rotationVersion;
-    } else if (rotationsChanged) {
-       const rotationMatrix = composeRotations(dimension, rotations);
-       matrixToGPUUniforms(rotationMatrix, dimension, cachedGpuDataRef.current);
-       cachedDimensionRef.current = dimension;
-       prevRotationVersionRef.current = rotationVersion;
-    }
-
-    const gpuData = cachedGpuDataRef.current;
-
-    // P3 Optimization: Cache projection distance - only recalculate when vertex count changes
+    // P3 Optimization: Cache projection distance - only recalculate when vertex count changes or scale significantly changes
     const normalizationFactor = dimension > 3 ? Math.sqrt(dimension - 3) : 1;
     let projectionDistance: number;
-    if (numVertices !== cachedProjectionDistanceRef.current.count) {
-      projectionDistance = calculateSafeProjectionDistance(baseVertices, normalizationFactor);
-      cachedProjectionDistanceRef.current = { count: numVertices, distance: projectionDistance };
+
+    // Check if scale changed significantly (simple sum check for speed)
+    const currentScaleSum = scales.reduce((a, b) => a + b, 0);
+    const scaleChanged = Math.abs(currentScaleSum - (cachedProjectionDistanceRef.current.scaleSum ?? 0)) > 0.01;
+
+    if (numVertices !== cachedProjectionDistanceRef.current.count || scaleChanged) {
+      // Find max scale factor
+      let maxScale = 1;
+      for (const s of scales) maxScale = Math.max(maxScale, s);
+
+      const rawDistance = calculateSafeProjectionDistance(baseVertices, normalizationFactor);
+
+      // Adjust projection distance by max scale to prevent near-clipping when object grows
+      // rawDistance includes a constant margin (+2.0), so we scale the "content" part and add margin
+      // approximate content radius ~ (rawDistance - 2.0)
+      const contentRadius = Math.max(0, rawDistance - 2.0);
+      projectionDistance = contentRadius * maxScale + 2.0;
+
+      cachedProjectionDistanceRef.current = {
+        count: numVertices,
+        distance: projectionDistance,
+        scaleSum: currentScaleSum
+      };
+      // Debug: Log projection calculation on change
+      // const sample = baseVertices[0];
+      // console.log('[PolytopeScene] Recalculated projection:', { rawDistance, maxScale, projectionDistance });
     } else {
       projectionDistance = cachedProjectionDistanceRef.current.distance;
     }
@@ -1088,16 +1025,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
           }
         }
 
-        if (u.uLightEnabled) u.uLightEnabled.value = lightEnabled;
-        if (u.uLightColor) updateLinearColorUniform(cache.lightColor, u.uLightColor.value as Color, lightColor);
-        if (u.uLightDirection) (u.uLightDirection.value as Vector3).copy(lightDirection);
-        if (u.uLightStrength) u.uLightStrength.value = lightStrength;
-        if (u.uAmbientIntensity) u.uAmbientIntensity.value = ambientIntensity;
-        if (u.uAmbientColor) updateLinearColorUniform(cache.ambientColor, u.uAmbientColor.value as Color, ambientColor);
-        if (u.uDiffuseIntensity) u.uDiffuseIntensity.value = diffuseIntensity;
-        if (u.uSpecularIntensity) u.uSpecularIntensity.value = specularIntensity;
-        if (u.uSpecularPower) u.uSpecularPower.value = shininess;
-        if (u.uSpecularColor) updateLinearColorUniform(cache.specularColor, u.uSpecularColor.value as Color, specularColor);
         // GGX PBR roughness
         if (u.uRoughness) u.uRoughness.value = roughness;
         if (u.uFresnelEnabled) u.uFresnelEnabled.value = fresnelEnabled;
@@ -1124,45 +1051,8 @@ export const PolytopeScene = React.memo(function PolytopeScene({
         if (u.uLchChroma) u.uLchChroma.value = lchChroma;
         if (u.uMultiSourceWeights) (u.uMultiSourceWeights.value as Vector3).set(multiSourceWeights.depth, multiSourceWeights.orbitTrap, multiSourceWeights.normal);
 
-        // Update multi-light system uniforms
-        if (u.uNumLights && u.uLightsEnabled && u.uLightTypes && u.uLightPositions &&
-            u.uLightDirections && u.uLightColors && u.uLightIntensities &&
-            u.uSpotAngles && u.uSpotPenumbras && u.uSpotCosInner && u.uSpotCosOuter &&
-            u.uLightRanges && u.uLightDecays) {
-          const lights = lightingState.lights;
-          const numLights = Math.min(lights.length, MAX_LIGHTS);
-          u.uNumLights.value = numLights;
-
-          for (let i = 0; i < MAX_LIGHTS; i++) {
-            const light: LightSource | undefined = lights[i];
-
-            if (light) {
-              (u.uLightsEnabled.value as boolean[])[i] = light.enabled;
-              (u.uLightTypes.value as number[])[i] = LIGHT_TYPE_TO_INT[light.type];
-              (u.uLightPositions.value as Vector3[])[i]!.set(light.position[0], light.position[1], light.position[2]);
-
-              // Calculate direction from rotation
-              const dir = rotationToDirection(light.rotation);
-              (u.uLightDirections.value as Vector3[])[i]!.set(dir[0], dir[1], dir[2]);
-
-              // Update light color with cached linear conversion
-              updateLightColorUniform(lightColorCacheRef.current, i, (u.uLightColors.value as Color[])[i]!, light.color);
-              (u.uLightIntensities.value as number[])[i] = light.intensity;
-              // Precompute spotlight cone cosines on CPU to avoid per-fragment trig
-              const outerAngleRad = (light.coneAngle * Math.PI) / 180;
-              const innerAngleRad = outerAngleRad * (1.0 - light.penumbra);
-              (u.uSpotAngles.value as number[])[i] = outerAngleRad;
-              (u.uSpotPenumbras.value as number[])[i] = light.penumbra;
-              (u.uSpotCosOuter.value as number[])[i] = Math.cos(outerAngleRad);
-              (u.uSpotCosInner.value as number[])[i] = Math.cos(innerAngleRad);
-              // Range and decay for distance attenuation
-              (u.uLightRanges.value as number[])[i] = light.range;
-              (u.uLightDecays.value as number[])[i] = light.decay;
-            } else {
-              (u.uLightsEnabled.value as boolean[])[i] = false;
-            }
-          }
-        }
+        // Lighting (via UniformManager)
+        UniformManager.applyToMaterial(material, ['lighting']);
 
         // Update shadow map uniforms if shadows are enabled
         // Pass store lights to ensure shadow data ordering matches uniform indices
@@ -1210,11 +1100,26 @@ export const PolytopeScene = React.memo(function PolytopeScene({
       u.uModWave!.value = modWave;
       u.uModBias!.value = modBias;
     }
-  });
+  }, FRAME_PRIORITY.RENDERER_UNIFORMS);
 
   // ============ RENDER ============
   // Placeholder material for when shader is compiling
   const placeholderMaterial = useMemo(() => new MeshBasicMaterial({ visible: false }), []);
+
+  // Debug logging for render conditions
+  console.log('[PolytopeScene] FACES', {
+    facesVisible,
+    hasFaceGeometry: !!faceGeometry,
+    hasFaceMaterial: !!faceMaterial,
+    isFaceShaderCompiling,
+  });
+  console.log('[PolytopeScene] EDGES', {
+    edgesVisible,
+    useFatWireframe,
+    edgeThickness,
+    hasEdgeGeometry: !!edgeGeometry,
+    hasEdgeMaterial: !!edgeMaterial,
+  });
 
   return (
     <group>
