@@ -250,7 +250,7 @@ export function generateGeometry(
       vertices: polytope.vertices,
       edges: polytope.edges,
       metadata: {
-        name: polytope.metadata?.name ?? getTypeNameLocal(type),
+        name: polytope.metadata?.name ?? getTypeNameFromRegistry(type),
         properties: {
           ...polytope.metadata?.properties, // Preserve analyticalFaces and other computed properties
           scale,
@@ -307,36 +307,3 @@ export function getPolytopeProperties(geometry: PolytopeGeometry): PolytopePrope
 
 // Import getTypeName from registry for local use
 import { getTypeName as getTypeNameFromRegistry } from './registry'
-
-/**
- * Gets the display name for an object type
- *
- * @param type - Object type
- * @returns Human-readable name
- * @deprecated Use getTypeName from '@/lib/geometry/registry' instead
- */
-function getTypeNameLocal(type: ObjectType): string {
-  return getTypeNameFromRegistry(type)
-}
-
-// Import getAvailableTypesForDimension from registry
-import { getAvailableTypesForDimension } from './registry'
-
-/**
- * Returns metadata about all available object types
- *
- * @param dimension - Current dimension (for filtering dimension-constrained types)
- * @returns Array of object type information with availability status
- * @deprecated Use getAvailableTypesForDimension from '@/lib/geometry/registry' instead
- */
-export function getAvailableTypes(dimension?: number): Array<{
-  type: ObjectType
-  name: string
-  description: string
-  available: boolean
-  disabledReason?: string
-}> {
-  // Delegate to registry-based implementation
-  // If no dimension provided, default to 4 (all types available at 4D)
-  return getAvailableTypesForDimension(dimension ?? 4)
-}

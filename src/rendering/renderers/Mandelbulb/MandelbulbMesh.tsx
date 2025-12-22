@@ -1,5 +1,4 @@
 import { computeDriftedOrigin, type OriginDriftConfig } from '@/lib/animation/originDrift';
-import { RAYMARCH_QUALITY_TO_MULTIPLIER } from '@/lib/geometry/extended/types';
 import { createColorCache, updateLinearColorUniform } from '@/rendering/colors/linearCache';
 import { FRAME_PRIORITY } from '@/rendering/core/framePriorities';
 import { useTemporalDepth } from '@/rendering/core/temporalDepth';
@@ -49,7 +48,7 @@ const MandelbulbMesh = () => {
   const temporalDepth = useTemporalDepth();
 
   // Use shared quality tracking hook (replaces manual fast mode management)
-  const { effectiveFastMode, qualityMultiplier, rotationsChanged } = useQualityTracking();
+  const { qualityMultiplier, rotationsChanged } = useQualityTracking();
 
   // Cached uniform values to avoid redundant updates
   // Note: prevPowerRef, prevIterationsRef, prevEscapeRadiusRef were removed

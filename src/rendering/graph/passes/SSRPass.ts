@@ -70,6 +70,11 @@ export class SSRPass extends BasePass {
   private scene: THREE.Scene;
   private camera: THREE.OrthographicCamera;
 
+  // Copy material for passthrough
+  private copyMaterial: THREE.ShaderMaterial;
+  private copyMesh: THREE.Mesh;
+  private copyScene: THREE.Scene;
+
   private colorInputId: string;
   private normalInputId: string;
   private depthInputId: string;
@@ -144,17 +149,49 @@ export class SSRPass extends BasePass {
     this.scene.add(this.mesh);
 
     this.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+    // Create copy material for passthrough
+    this.copyMaterial = new THREE.ShaderMaterial({
+      glslVersion: THREE.GLSL3,
+      uniforms: { tDiffuse: { value: null } },
+      vertexShader: /* glsl */ `
+        out vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = vec4(position.xy, 0.0, 1.0);
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        precision highp float;
+        in vec2 vUv;
+        uniform sampler2D tDiffuse;
+        layout(location = 0) out vec4 fragColor;
+        void main() {
+          fragColor = texture(tDiffuse, vUv);
+        }
+      `,
+      depthTest: false,
+      depthWrite: false,
+    });
+    this.copyMesh = new THREE.Mesh(geometry.clone(), this.copyMaterial);
+    this.copyMesh.frustumCulled = false;
+    this.copyScene = new THREE.Scene();
+    this.copyScene.add(this.copyMesh);
   }
 
   execute(ctx: RenderContext): void {
     const { renderer, camera, size } = ctx;
 
+    // Get textures
+    const colorTex = ctx.getReadTexture(this.colorInputId);
+    const outputTarget = ctx.getWriteTarget(this.outputId);
+
+    // Passthrough if camera is not perspective or required inputs missing
     if (!(camera instanceof THREE.PerspectiveCamera)) {
+      this.copyToOutput(renderer, colorTex, outputTarget);
       return;
     }
 
-    // Get textures
-    const colorTex = ctx.getReadTexture(this.colorInputId);
     const normalTex = ctx.getReadTexture(this.normalInputId);
     const depthResourceId = this.depthInputSelector ? this.depthInputSelector() : this.depthInputId;
     const depthAttachment =
@@ -164,9 +201,10 @@ export class SSRPass extends BasePass {
           ? this.alternateDepthInputAttachment
           : undefined;
     const depthTex = ctx.getReadTexture(depthResourceId, depthAttachment);
-    const outputTarget = ctx.getWriteTarget(this.outputId);
 
+    // Passthrough if required inputs missing
     if (!colorTex || !normalTex || !depthTex) {
+      this.copyToOutput(renderer, colorTex, outputTarget);
       return;
     }
 
@@ -208,8 +246,24 @@ export class SSRPass extends BasePass {
     (this.material.uniforms as unknown as SSRUniforms).maxSteps.value = value;
   }
 
+  /** Copy input texture directly to output (passthrough) */
+  private copyToOutput(
+    renderer: THREE.WebGLRenderer,
+    inputTex: THREE.Texture | null,
+    outputTarget: THREE.WebGLRenderTarget | null
+  ): void {
+    if (!inputTex) return;
+
+    this.copyMaterial.uniforms['tDiffuse']!.value = inputTex;
+    renderer.setRenderTarget(outputTarget);
+    renderer.render(this.copyScene, this.camera);
+    renderer.setRenderTarget(null);
+  }
+
   dispose(): void {
     this.material.dispose();
     this.mesh.geometry.dispose();
+    this.copyMaterial.dispose();
+    this.copyMesh.geometry.dispose();
   }
 }

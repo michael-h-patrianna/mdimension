@@ -40,7 +40,7 @@ uniform vec3 uAmbientColor;
 uniform float uSpecularIntensity;
 uniform float uSpecularPower;
 uniform vec3 uSpecularColor;
-uniform float uDiffuseIntensity;
+// Note: uDiffuseIntensity removed - energy conservation derives diffuse from (1-kS)*(1-metallic)
 uniform float uMetallic;
 
 // Fresnel rim lighting uniforms

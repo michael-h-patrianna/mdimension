@@ -46,7 +46,11 @@ export class TemporalDepthCapturePass extends BasePass {
     super({
       id: config.id,
       name: config.name ?? 'Temporal Depth Capture Pass',
-      inputs: [{ resourceId: config.depthInput, access: 'read' }],
+      // Include outputResource as input to force Ping-Pong buffering (Read-While-Write pattern)
+      inputs: [
+        { resourceId: config.depthInput, access: 'read' },
+        { resourceId: config.outputResource, access: 'read' }
+      ],
       outputs: [{ resourceId: config.outputResource, access: 'write' }],
       enabled: config.enabled,
       priority: config.priority,
@@ -120,16 +124,19 @@ export class TemporalDepthCapturePass extends BasePass {
 
     if (this.material.uniforms['tDepth']) this.material.uniforms['tDepth'].value = depthTex
 
-    // Render
+    // Render with state restoration in finally block
     const savedAutoClear = renderer.autoClear
-    renderer.autoClear = false
-    renderer.setRenderTarget(writeTarget)
-    // Explicitly clear to 0 (invalid depth)
-    renderer.setClearColor(0, 0)
-    renderer.clear(true, false, false)
-    renderer.render(this.fsScene, this.fsCamera)
-    renderer.setRenderTarget(null)
-    renderer.autoClear = savedAutoClear
+    try {
+      renderer.autoClear = false
+      renderer.setRenderTarget(writeTarget)
+      // Explicitly clear to 0 (invalid depth)
+      renderer.setClearColor(0, 0)
+      renderer.clear(true, false, false)
+      renderer.render(this.fsScene, this.fsCamera)
+    } finally {
+      renderer.setRenderTarget(null)
+      renderer.autoClear = savedAutoClear
+    }
 
     // Update Manager State with the NEW texture (which will be read next frame)
     // The graph swaps ping-pong buffers after execution, so 'writeTarget' becomes 'readTarget'

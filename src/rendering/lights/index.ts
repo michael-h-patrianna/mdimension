@@ -47,6 +47,4 @@ export {
   updateLightUniforms,
   mergeLightUniforms,
   getLightUniformDeclarations,
-  getLightHelperFunctions,
-  getMultiLightFunction,
 } from './uniforms';

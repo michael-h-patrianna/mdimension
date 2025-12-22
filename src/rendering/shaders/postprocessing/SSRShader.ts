@@ -86,6 +86,7 @@ export const SSRShader = {
     uniform float farClip;
 
     in vec2 vUv;
+    layout(location = 0) out vec4 fragColor;
 
     // Get linear depth from depth buffer
     float getLinearDepth(vec2 coord) {
@@ -184,7 +185,7 @@ export const SSRShader = {
 
       // Early exit if SSR is disabled or intensity is zero
       if (intensity <= 0.0) {
-        pc_fragColor = sceneColor;
+        fragColor = sceneColor;
         return;
       }
 
@@ -193,7 +194,7 @@ export const SSRShader = {
 
       // Skip background (depth = 1.0 means nothing there)
       if (depth >= 0.9999) {
-        pc_fragColor = sceneColor;
+        fragColor = sceneColor;
         return;
       }
 
@@ -202,7 +203,7 @@ export const SSRShader = {
 
       // Skip non-reflective surfaces
       if (reflectivity <= 0.0) {
-        pc_fragColor = sceneColor;
+        fragColor = sceneColor;
         return;
       }
 
@@ -275,9 +276,9 @@ export const SSRShader = {
         float reflectionStrength = intensity * reflectivity * fresnelFactor * distFade * edgeFade;
 
         // Blend reflection with scene color
-        pc_fragColor = mix(sceneColor, reflectionColor, reflectionStrength);
+        fragColor = mix(sceneColor, reflectionColor, reflectionStrength);
       } else {
-        pc_fragColor = sceneColor;
+        fragColor = sceneColor;
       }
     }
   `,

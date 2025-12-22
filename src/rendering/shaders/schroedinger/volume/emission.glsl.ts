@@ -150,9 +150,9 @@ vec3 computeEmission(float rho, float phase, vec3 pos) {
 vec3 computeEmissionLit(float rho, float phase, vec3 p, vec3 gradient, vec3 viewDir) {
     vec3 surfaceColor = computeBaseColor(rho, phase, p);
 
-    // OPTIMIZATION: Early return if no lights or ambient-only mode
+    // OPTIMIZATION: Early return if no lights (ambient-only mode)
     // Skips expensive lighting loop when not needed (~30% faster for ambient-only scenes)
-    if (uNumLights == 0 || uDiffuseIntensity < 0.001) {
+    if (uNumLights == 0) {
         return computeEmission(rho, phase, p); // Delegate to fast path which now handles nodes
     }
 
@@ -208,12 +208,21 @@ vec3 computeEmissionLit(float rho, float phase, vec3 p, vec3 gradient, vec3 view
             phaseFactor *= 12.56; 
         }
 
-        // Diffuse
+        // GGX Specular (PBR) with energy conservation
         float NdotL = max(dot(n, l), 0.0);
-        col += surfaceColor * uLightColors[i] * NdotL * uDiffuseIntensity * attenuation * powder * phaseFactor;
+        // F0: mix dielectric base (0.04) with albedo for metals
+        vec3 F0 = mix(vec3(0.04), surfaceColor, uMetallic);
+        vec3 H = normalize(l + viewDir);
+        vec3 F = fresnelSchlick(max(dot(H, viewDir), 0.0), F0);
+
+        // Energy conservation: kS is specular reflectance, kD is diffuse
+        vec3 kS = F;
+        vec3 kD = (vec3(1.0) - kS) * (1.0 - uMetallic);
+
+        // Diffuse (energy-conserved, with volumetric powder and phase)
+        col += kD * surfaceColor * uLightColors[i] * NdotL * attenuation * powder * phaseFactor;
 
         // Specular (GGX) - uses Cook-Torrance BRDF
-        vec3 F0 = vec3(0.04);
         vec3 specular = computePBRSpecular(n, viewDir, l, uRoughness, F0);
         
         // Volumetric Self-Shadowing (Raymarching towards light)
@@ -256,11 +265,9 @@ vec3 computeEmissionLit(float rho, float phase, vec3 p, vec3 gradient, vec3 view
             }
 
             col += uSssColor * uLightColors[i] * transmission * uSssIntensity * attenuation;
-        } else {
-             col += surfaceColor * uLightColors[i] * NdotL * uDiffuseIntensity * attenuation * powder * phaseFactor * shadowFactor;
         }
-#else
-        col += surfaceColor * uLightColors[i] * NdotL * uDiffuseIntensity * attenuation * powder * phaseFactor * shadowFactor;
+        // Note: diffuse is already energy-conserved and added above (line ~223)
+        // No else branch needed - SSS is an additive effect, not replacement
 #endif
     }
     

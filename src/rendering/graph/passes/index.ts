@@ -32,7 +32,6 @@ export {
   type CompositeInput,
   type CompositePassConfig,
 } from './CompositePass'
-export { EffectComposerPass, type EffectComposerPassConfig } from './EffectComposerPass'
 export { FXAAPass, type FXAAPassConfig } from './FXAAPass'
 export { RefractionPass, type RefractionPassConfig } from './RefractionPass'
 export { ScreenSpaceLensingPass, type ScreenSpaceLensingPassConfig } from './ScreenSpaceLensingPass'
@@ -47,6 +46,7 @@ export { GTAOPass, type GTAOPassConfig } from './GTAOPass'
 
 // Cinematic passes
 export { FilmGrainPass, type FilmGrainPassConfig } from './FilmGrainPass'
+export { ToneMappingPass, type ToneMappingPassConfig } from './ToneMappingPass'
 
 // Debug passes
 export {

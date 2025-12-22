@@ -92,32 +92,6 @@ export class ScenePass extends BasePass {
 
     const target = ctx.getWriteTarget(outputConfig.resourceId);
 
-    // #region agent log - H15-H17: ScenePass debug
-    const perspCam = camera as THREE.PerspectiveCamera;
-    const targetInfo = target ? { w: target.width, h: target.height } : null;
-    const h15Data = {
-      location: 'ScenePass.ts:execute',
-      message: 'H15-H17: ScenePass execution',
-      data: {
-        resourceId: outputConfig.resourceId,
-        targetSize: targetInfo,
-        cameraType: camera.type,
-        cameraFov: perspCam.fov,
-        cameraNear: perspCam.near,
-        cameraFar: perspCam.far,
-        cameraAspect: perspCam.aspect,
-        cameraPos: [camera.position.x, camera.position.y, camera.position.z],
-        layers: this.layers,
-        ctxSize: ctx.size,
-      },
-      timestamp: Date.now(),
-      sessionId: 'debug-session',
-      hypothesisId: 'H15-H17',
-    };
-    console.log('[DEBUG-H15H17-ScenePass]', JSON.stringify(h15Data));
-    fetch('http://127.0.0.1:7242/ingest/af54dc2c-228f-456b-a43d-a100942bc421', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(h15Data) }).catch(() => {});
-    // #endregion
-
     // Save renderer state (only things we actually modify)
     this.savedClearColor.copy(renderer.getClearColor(this.savedClearColor));
     this.savedClearAlpha = renderer.getClearAlpha();
@@ -128,84 +102,50 @@ export class ScenePass extends BasePass {
       this.cameraLayers.mask = camera.layers.mask;
     }
 
-    // Configure renderer
-    if (this.clearColor !== null) {
-      renderer.setClearColor(this.clearColor, this.clearAlpha);
-    }
-    renderer.autoClear = this.autoClear;
-
     // Handle background: only modify if renderBackground is false
     // IMPORTANT: Do NOT save/restore scene.background - let the scene own its state.
     // Saving and restoring can cause race conditions when React updates scene.background
     // during the frame (e.g., when skybox texture changes).
     const originalBackground = !this.renderBackground ? scene.background : null;
-    if (!this.renderBackground) {
-      scene.background = null;
-    }
 
-    // Configure layers
-    if (this.layers !== null) {
-      camera.layers.disableAll();
-      for (const layer of this.layers) {
-        camera.layers.enable(layer);
+    try {
+      // Configure renderer
+      if (this.clearColor !== null) {
+        renderer.setClearColor(this.clearColor, this.clearAlpha);
       }
-    }
+      renderer.autoClear = this.autoClear;
 
-    // Render
-    renderer.setRenderTarget(target);
-    
-    // #region agent log - H26: Count visible objects before render
-    let visibleMeshes = 0;
-    let visibleOnLayer1 = 0;
-    scene.traverse((obj) => {
-      if ((obj as THREE.Mesh).isMesh && obj.visible) {
-        visibleMeshes++;
-        if (obj.layers.test(camera.layers)) {
-          visibleOnLayer1++;
+      if (!this.renderBackground) {
+        scene.background = null;
+      }
+
+      // Configure layers
+      if (this.layers !== null) {
+        camera.layers.disableAll();
+        for (const layer of this.layers) {
+          camera.layers.enable(layer);
         }
       }
-    });
-    console.log('[DEBUG-H26-ScenePass]', JSON.stringify({
-      location: 'ScenePass.ts:render',
-      message: 'H26: Scene objects before render',
-      data: { visibleMeshes, visibleOnLayer1, cameraLayerMask: camera.layers.mask },
-      timestamp: Date.now(),
-      sessionId: 'debug-session',
-      hypothesisId: 'H26',
-    }));
-    // #endregion
-    
-    renderer.render(scene, camera);
-    
-    // #region agent log - H27: Render stats after scene render
-    console.log('[DEBUG-H27-RenderStats]', JSON.stringify({
-      location: 'ScenePass.ts:postRender',
-      message: 'H27: Render stats after scene render',
-      data: {
-        calls: renderer.info.render.calls,
-        triangles: renderer.info.render.triangles,
-        programs: renderer.info.programs?.length ?? 0,
-      },
-      timestamp: Date.now(),
-      sessionId: 'debug-session',
-      hypothesisId: 'H27',
-    }));
-    // #endregion
 
-    // Restore renderer state
-    renderer.setClearColor(this.savedClearColor, this.savedClearAlpha);
-    renderer.autoClear = this.savedAutoClear;
+      // Render
+      renderer.setRenderTarget(target);
+      renderer.render(scene, camera);
+    } finally {
+      // Restore renderer state - always runs even if render throws
+      renderer.setClearColor(this.savedClearColor, this.savedClearAlpha);
+      renderer.autoClear = this.savedAutoClear;
 
-    // Only restore background if we explicitly disabled it
-    if (!this.renderBackground && originalBackground !== null) {
-      scene.background = originalBackground;
+      // Only restore background if we explicitly disabled it
+      if (!this.renderBackground && originalBackground !== null) {
+        scene.background = originalBackground;
+      }
+
+      if (this.layers !== null) {
+        camera.layers.mask = this.cameraLayers.mask;
+      }
+
+      // Reset render target (caller will handle final target)
+      renderer.setRenderTarget(null);
     }
-
-    if (this.layers !== null) {
-      camera.layers.mask = this.cameraLayers.mask;
-    }
-
-    // Reset render target (caller will handle final target)
-    renderer.setRenderTarget(null);
   }
 }

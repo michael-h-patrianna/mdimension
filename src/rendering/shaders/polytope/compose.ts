@@ -257,10 +257,21 @@ void main() {
 
       // Two-sided lighting: use abs() so both sides of faces receive diffuse light
       float NdotL = abs(dot(normal, l));
-      col += baseColor * uLightColors[i] * NdotL * uDiffuseIntensity * attenuation * shadow;
 
       // GGX Specular (PBR) - use faceNormal for two-sided lighting
-      vec3 F0 = vec3(0.04);
+      // F0: mix dielectric base (0.04) with albedo for metals
+      vec3 F0 = mix(vec3(0.04), baseColor, uMetallic);
+      vec3 H = normalize(l + viewDir);
+      vec3 F = fresnelSchlick(max(dot(H, viewDir), 0.0), F0);
+
+      // Energy conservation: kS is specular reflectance, kD is diffuse
+      vec3 kS = F;
+      vec3 kD = (vec3(1.0) - kS) * (1.0 - uMetallic);
+
+      // Diffuse (energy-conserved)
+      col += kD * baseColor * uLightColors[i] * NdotL * attenuation * shadow;
+
+      // Specular
       vec3 specular = computePBRSpecular(faceNormal, viewDir, l, roughness, F0);
       col += specular * uLightColors[i] * NdotL * uSpecularIntensity * attenuation * shadow;
 

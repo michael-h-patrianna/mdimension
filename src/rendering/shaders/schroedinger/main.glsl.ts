@@ -356,10 +356,21 @@ void main() {
 
         float NdotL = max(dot(n, l), 0.0);
         totalNdotL = max(totalNdotL, NdotL * attenuation);
-        col += surfaceColor * uLightColors[i] * NdotL * uDiffuseIntensity * attenuation;
 
-        // GGX Specular (PBR)
-        vec3 F0 = vec3(0.04);
+        // GGX Specular (PBR) with energy conservation
+        // F0: mix dielectric base (0.04) with albedo for metals
+        vec3 F0 = mix(vec3(0.04), surfaceColor, uMetallic);
+        vec3 H = normalize(l + viewDir);
+        vec3 F = fresnelSchlick(max(dot(H, viewDir), 0.0), F0);
+
+        // Energy conservation: kS is specular reflectance, kD is diffuse
+        vec3 kS = F;
+        vec3 kD = (vec3(1.0) - kS) * (1.0 - uMetallic);
+
+        // Diffuse (energy-conserved)
+        col += kD * surfaceColor * uLightColors[i] * NdotL * attenuation;
+
+        // Specular
         vec3 specular = computePBRSpecular(n, viewDir, l, uRoughness, F0);
         col += specular * uLightColors[i] * NdotL * uSpecularIntensity * attenuation;
     }

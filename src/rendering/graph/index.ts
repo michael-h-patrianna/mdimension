@@ -28,7 +28,6 @@ export {
   CompositePass,
   // G-buffer passes
   DepthPass,
-  EffectComposerPass,
   FullscreenPass,
   NormalPass,
   // Core passes
@@ -40,7 +39,6 @@ export {
   type CompositeInput,
   type CompositePassConfig,
   type DepthPassConfig,
-  type EffectComposerPassConfig,
   type FullscreenPassConfig,
   type NormalPassConfig,
   // Types

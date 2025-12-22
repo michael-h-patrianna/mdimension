@@ -78,7 +78,6 @@ export class ResourcePool {
   private resources = new Map<string, ResourceEntry>();
   private screenWidth = 1;
   private screenHeight = 1;
-  private needsResize = true;
 
   // ==========================================================================
   // Registration
@@ -149,19 +148,8 @@ export class ResourcePool {
    */
   updateSize(width: number, height: number): void {
     if (width !== this.screenWidth || height !== this.screenHeight) {
-      // #region agent log - H21: updateSize debug
-      console.log('[DEBUG-H21-ResourcePool.updateSize]', JSON.stringify({
-        location: 'ResourcePool.ts:updateSize',
-        message: 'H21: ResourcePool size changed',
-        data: { newWidth: width, newHeight: height, prevWidth: this.screenWidth, prevHeight: this.screenHeight },
-        timestamp: Date.now(),
-        sessionId: 'debug-session',
-        hypothesisId: 'H21',
-      }));
-      // #endregion
       this.screenWidth = Math.max(1, width);
       this.screenHeight = Math.max(1, height);
-      this.needsResize = true;
     }
   }
 
@@ -357,46 +345,41 @@ export class ResourcePool {
 
     // Check if we need to (re)allocate
     const needsAllocation = !entry.target;
-    const needsResizeCheck = this.needsResize && entry.config.size.mode !== 'fixed';
     const dimensionsChanged = width !== entry.lastWidth || height !== entry.lastHeight;
 
-    // #region agent log - H20: ensureAllocated debug
-    if (entry.config.id === 'sceneColor') {
-      console.log('[DEBUG-H20-ensureAllocated]', JSON.stringify({
-        location: 'ResourcePool.ts:ensureAllocated',
-        message: 'H20: ensureAllocated for sceneColor',
-        data: {
-          computed: { width, height },
-          last: { w: entry.lastWidth, h: entry.lastHeight },
-          screenSize: { w: this.screenWidth, h: this.screenHeight },
-          needsResize: this.needsResize,
-          needsAllocation,
-          needsResizeCheck,
-          dimensionsChanged,
-          willResize: needsAllocation || (needsResizeCheck && dimensionsChanged),
-        },
-        timestamp: Date.now(),
-        sessionId: 'debug-session',
-        hypothesisId: 'H20',
-      }));
-    }
-    // #endregion
+    if (needsAllocation || dimensionsChanged) {
+      // Store whether we had a swap target before disposal
+      const hadSwapTarget = !!entry.swapTarget;
 
-    if (needsAllocation || (needsResizeCheck && dimensionsChanged)) {
       // Dispose old targets
       entry.target?.dispose();
       entry.swapTarget?.dispose();
 
-      // Create new target
-      entry.target = this.createTarget(entry.config, width, height);
+      // Reset entry state to ensure retry on next frame if allocation fails
+      entry.target = null;
+      entry.swapTarget = null;
+      entry.lastWidth = 0;
+      entry.lastHeight = 0;
 
-      // Recreate swap if it existed
-      if (entry.swapTarget) {
-        entry.swapTarget = this.createTarget(entry.config, width, height);
+      try {
+        // Create new target
+        entry.target = this.createTarget(entry.config, width, height);
+
+        // Recreate swap target if it existed before
+        if (hadSwapTarget) {
+          entry.swapTarget = this.createTarget(entry.config, width, height);
+        }
+
+        // Only update dimensions after successful allocation
+        entry.lastWidth = width;
+        entry.lastHeight = height;
+      } catch (err) {
+        // Cleanup partial allocation on failure
+        entry.target?.dispose();
+        entry.target = null;
+        entry.swapTarget = null;
+        throw err;
       }
-
-      entry.lastWidth = width;
-      entry.lastHeight = height;
     }
   }
 
@@ -531,12 +514,13 @@ export class ResourcePool {
   // ==========================================================================
 
   /**
-   * Mark resize check complete.
+   * Mark frame complete.
    *
    * Call this after processing all resources for a frame.
+   * Currently a no-op but kept for API consistency and future use.
    */
   endFrame(): void {
-    this.needsResize = false;
+    // No-op - resize is now handled lazily per-resource via dimensionsChanged check
   }
 
   /**
@@ -581,7 +565,8 @@ export class ResourcePool {
    */
   reinitialize(): void {
     // Resources will be recreated lazily on next get()
-    this.needsResize = true;
+    // The per-resource dimensionsChanged check handles this automatically
+    // since lastWidth/lastHeight are reset by invalidateForContextLoss()
   }
 
   // ==========================================================================

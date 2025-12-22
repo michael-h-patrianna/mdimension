@@ -3,7 +3,7 @@ import { useGeometryStore } from '@/stores/geometryStore';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useRotationStore } from '@/stores/rotationStore';
-import { getAvailableTypes } from '@/lib/geometry';
+import { getAvailableTypesForDimension } from '@/lib/geometry';
 import type { ObjectType } from '@/lib/geometry/types';
 import { isPolytopeType } from '@/lib/geometry/types';
 import { isRaymarchingType, getConfigStoreKey } from '@/lib/geometry/registry';
@@ -63,7 +63,7 @@ export const ObjectTypeExplorer: React.FC = () => {
   }, [objectType, initializePolytopeForType]);
 
   // Get available types based on current dimension
-  const availableTypes = useMemo(() => getAvailableTypes(dimension), [dimension]);
+  const availableTypes = useMemo(() => getAvailableTypesForDimension(dimension), [dimension]);
 
   const handleSelect = (value: ObjectType) => {
      soundManager.playClick();

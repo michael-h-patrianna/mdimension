@@ -20,6 +20,8 @@ const createMockState = (): UniformUpdateState => ({
   time: 1.0,
   delta: 0.016,
   camera: new THREE.PerspectiveCamera(),
+  scene: new THREE.Scene(),
+  gl: new THREE.WebGLRenderer(),
   size: { width: 1920, height: 1080 },
 })
 
@@ -513,7 +515,7 @@ describe('LightingSource', () => {
 
       expect(uniforms.uNumLights!.value).toBe(0)
       expect(uniforms.uAmbientIntensity!.value).toBe(0.3)
-      expect(uniforms.uDiffuseIntensity!.value).toBe(0.7)
+      // Note: uDiffuseIntensity removed - energy conservation derives diffuse from (1-kS)*(1-metallic)
       expect(uniforms.uSpecularIntensity!.value).toBe(0.5)
       expect(uniforms.uSpecularPower!.value).toBe(32)
     })
@@ -526,7 +528,6 @@ describe('LightingSource', () => {
         storeVersion: 1,
         ambientColor: '#FF0000',
         ambientIntensity: 0.5,
-        diffuseIntensity: 0.8,
         specularIntensity: 0.6,
         specularColor: '#00FF00',
         shininess: 64,
@@ -534,7 +535,6 @@ describe('LightingSource', () => {
 
       const uniforms = source.getUniforms()
       expect(uniforms.uAmbientIntensity!.value).toBe(0.5)
-      expect(uniforms.uDiffuseIntensity!.value).toBe(0.8)
       expect(uniforms.uSpecularIntensity!.value).toBe(0.6)
       expect(uniforms.uSpecularPower!.value).toBe(64)
     })
@@ -547,7 +547,6 @@ describe('LightingSource', () => {
         storeVersion: 1,
         ambientColor: '#FFFFFF',
         ambientIntensity: 0.5,
-        diffuseIntensity: 0.7,
         specularIntensity: 0.5,
         specularColor: '#FFFFFF',
         shininess: 32,
@@ -563,7 +562,6 @@ describe('LightingSource', () => {
         storeVersion: 1,
         ambientColor: '#FFFFFF',
         ambientIntensity: 0.3,
-        diffuseIntensity: 0.7,
         specularIntensity: 0.5,
         specularColor: '#FFFFFF',
         shininess: 32,
@@ -576,7 +574,6 @@ describe('LightingSource', () => {
         storeVersion: 1,
         ambientColor: '#FFFFFF',
         ambientIntensity: 0.3,
-        diffuseIntensity: 0.7,
         specularIntensity: 0.5,
         specularColor: '#FFFFFF',
         shininess: 32,
@@ -605,7 +602,6 @@ describe('LightingSource', () => {
 
       const uniforms = source.getUniforms()
       expect(uniforms.uAmbientIntensity!.value).toBe(0.4)
-      expect(uniforms.uDiffuseIntensity!.value).toBe(0.9)
       expect(uniforms.uSpecularIntensity!.value).toBe(0.7)
       expect(uniforms.uSpecularPower!.value).toBe(128)
     })
@@ -617,7 +613,6 @@ describe('LightingSource', () => {
         lights: [],
         ambientColor: '#FFFFFF',
         ambientIntensity: 0.3,
-        diffuseIntensity: 0.7,
         specularIntensity: 0.5,
         specularColor: '#FFFFFF',
         shininess: 32,
@@ -641,7 +636,6 @@ describe('LightingSource', () => {
         storeVersion: 5,
         ambientColor: '#FF0000',
         ambientIntensity: 0.8,
-        diffuseIntensity: 0.9,
         specularIntensity: 0.7,
         specularColor: '#00FF00',
         shininess: 64,
@@ -660,7 +654,6 @@ describe('LightingSource', () => {
         storeVersion: 1,
         ambientColor: '#FFFFFF',
         ambientIntensity: 0.6,
-        diffuseIntensity: 0.8,
         specularIntensity: 0.4,
         specularColor: '#FFFFFF',
         shininess: 48,
@@ -669,7 +662,6 @@ describe('LightingSource', () => {
       const material = new THREE.ShaderMaterial({
         uniforms: {
           uAmbientIntensity: { value: 0 },
-          uDiffuseIntensity: { value: 0 },
           uSpecularIntensity: { value: 0 },
           uSpecularPower: { value: 0 },
           uNumLights: { value: -1 },
@@ -679,7 +671,6 @@ describe('LightingSource', () => {
       source.applyToMaterial(material)
 
       expect(material.uniforms.uAmbientIntensity!.value).toBe(0.6)
-      expect(material.uniforms.uDiffuseIntensity!.value).toBe(0.8)
       expect(material.uniforms.uSpecularIntensity!.value).toBe(0.4)
       expect(material.uniforms.uSpecularPower!.value).toBe(48)
       expect(material.uniforms.uNumLights!.value).toBe(0)

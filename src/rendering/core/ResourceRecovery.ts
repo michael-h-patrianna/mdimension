@@ -5,12 +5,10 @@
  * resources after a context loss/restore event. Resources are registered
  * with priority values and reinitialized in order (lower priority first).
  *
- * Priority Order (as defined in the plan):
+ * Priority Order:
  * - 5:  WebGL State Reset
  * - 10: PostProcessing (creates render targets first)
- * - 20: TemporalDepthManager (needs valid gl)
- * - 30: TemporalCloudManager (needs valid gl)
- * - 40: CloudTemporalPass (materials/quads)
+ * - 20: Temporal Depth State (needs valid gl)
  * - 50: Scene Materials (shader recompilation)
  * - 60: Skybox PMREM Cache (expensive, can wait)
  *

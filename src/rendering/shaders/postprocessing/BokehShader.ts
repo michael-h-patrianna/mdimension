@@ -82,6 +82,7 @@ export const BokehShader = {
     uniform float time;
 
     in vec2 vUv;
+    layout(location = 0) out vec4 fragColor;
 
     // Pseudo-random function for jittered sampling
     float rand(vec2 co) {
@@ -250,8 +251,8 @@ export const BokehShader = {
         col = hexagonalBlur(vUv, dofblur);
       }
 
-      pc_fragColor = col;
-      pc_fragColor.a = 1.0;
+      fragColor = col;
+      fragColor.a = 1.0;
     }
   `,
 };

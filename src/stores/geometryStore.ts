@@ -31,7 +31,7 @@ export const MAX_DIMENSION = 11
 export const DEFAULT_DIMENSION = 3
 
 /** Default object type */
-export const DEFAULT_OBJECT_TYPE: ObjectType = 'blackhole'
+export const DEFAULT_OBJECT_TYPE: ObjectType = 'hypercube'
 
 /**
  * Dimension constraints for certain object types

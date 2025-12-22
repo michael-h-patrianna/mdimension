@@ -27,6 +27,10 @@ export interface UniformUpdateState {
   delta: number;
   /** Current camera */
   camera: THREE.Camera;
+  /** Current scene */
+  scene: THREE.Scene;
+  /** WebGL renderer */
+  gl: THREE.WebGLRenderer;
   /** Viewport size */
   size: { width: number; height: number };
 }

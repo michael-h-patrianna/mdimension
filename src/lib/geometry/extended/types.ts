@@ -26,26 +26,21 @@
  * @see src/lib/shaders/constants.ts for shared visual constants
  */
 
+// Import Wythoff types from canonical source (avoid duplication)
+// Import values for local use and re-export them
+import {
+  DEFAULT_WYTHOFF_POLYTOPE_CONFIG,
+  DEFAULT_WYTHOFF_SCALES,
+  type WythoffPolytopeConfig,
+  type WythoffPreset,
+  type WythoffSymmetryGroup,
+} from '../wythoff/types'
+export type { WythoffPolytopeConfig, WythoffPreset, WythoffSymmetryGroup }
+export { DEFAULT_WYTHOFF_POLYTOPE_CONFIG, DEFAULT_WYTHOFF_SCALES }
+
 // ============================================================================
 // Polytope Configuration (for consistency with extended objects)
 // ============================================================================
-
-/**
- * Truncation mode for polytope animation
- * - vertexTruncate: Cut corners (bevels vertices)
- * - edgeTruncate: Bevels edges
- * - cantellate: Combined vertex and edge truncation
- * - none: No truncation
- */
-export type TruncationMode = 'vertexTruncate' | 'edgeTruncate' | 'cantellate' | 'none'
-
-/**
- * Dual morph normalization mode
- * - unitSphere: Normalize to unit sphere
- * - inradius1: Normalize inradius to 1
- * - circumradius1: Normalize circumradius to 1
- */
-export type DualNormalizeMode = 'unitSphere' | 'inradius1' | 'circumradius1'
 
 // ============================================================================
 // Raymarching Quality System
@@ -109,61 +104,23 @@ export interface PolytopeConfig {
    */
   scale: number
 
-  // === Truncation Animation ===
+  // === Modulation Animation (organic breathing) ===
 
   /**
-   * Enable truncation animation.
-   * Smoothly "shaves" vertices or edges based on truncation mode.
-   */
-  truncationEnabled: boolean
-
-  /**
-   * Truncation mode determines which features are cut.
-   * - vertexTruncate: Bevels vertices
-   * - edgeTruncate: Bevels edges
-   * - cantellate: Combined vertex and edge truncation
-   */
-  truncationMode: TruncationMode
-
-  /**
-   * Current truncation parameter (0.0-1.0).
-   * 0 = original polytope, 1 = fully truncated.
-   * When animated, this value oscillates between truncationMin and truncationMax.
-   */
-  truncationT: number
-
-  /**
-   * Minimum truncation value during animation (0.0-0.5, default 0.0).
-   */
-  truncationMin: number
-
-  /**
-   * Maximum truncation value during animation (0.5-1.0, default 0.5).
-   */
-  truncationMax: number
-
-  /**
-   * Speed of truncation animation (0.01-0.5, default 0.1).
-   */
-  truncationSpeed: number
-
-  // === Pulse Animation (organic breathing) ===
-
-  /**
-   * Enable pulse animation.
+   * Enable modulation animation.
    * Creates gentle breathing effect using layered sine waves
    * with irrational frequency ratios for smooth, non-repeating motion.
    */
   facetOffsetEnabled: boolean
 
   /**
-   * Intensity of pulse animation (0.0-1.0, default 0.3).
+   * Intensity of modulation animation (0.0-1.0, default 0.3).
    * Controls the amplitude of organic breathing modulation.
    */
   facetOffsetAmplitude: number
 
   /**
-   * Base frequency modifier for pulse animation (0.1-2.0, default 0.3).
+   * Base frequency modifier for modulation animation (0.1-2.0, default 0.3).
    * Note: Actual frequencies are determined by layered sine waves in shader.
    */
   facetOffsetFrequency: number
@@ -179,58 +136,6 @@ export interface PolytopeConfig {
    * Creates variation so vertices move at different times.
    */
   facetOffsetBias: number
-
-  // === Flow Animation (organic vertex drift) ===
-
-  /**
-   * Enable flow animation.
-   * Creates organic vertex drift where each vertex moves
-   * independently in smooth, flowing patterns.
-   */
-  dualMorphEnabled: boolean
-
-  /**
-   * Intensity of flow animation (0.0-1.0, default 0.3).
-   * Controls how much vertices drift from their base positions.
-   */
-  dualMorphT: number
-
-  /**
-   * Flow normalization mode (legacy, not used in organic system).
-   */
-  dualNormalize: DualNormalizeMode
-
-  /**
-   * Flow animation speed modifier (0.01-0.3, default 0.05).
-   * Note: Actual speeds are determined by layered frequencies in shader.
-   */
-  dualMorphSpeed: number
-
-  // === Ripple Animation (smooth radial waves) ===
-
-  /**
-   * Enable ripple animation.
-   * Creates smooth radial waves emanating from center,
-   * giving a gentle pulsing wave effect across the surface.
-   */
-  explodeEnabled: boolean
-
-  /**
-   * Current ripple factor (0.0-1.0, legacy).
-   */
-  explodeFactor: number
-
-  /**
-   * Ripple animation speed modifier (0.01-0.3, default 0.1).
-   * Note: Actual wave speed is determined by shader.
-   */
-  explodeSpeed: number
-
-  /**
-   * Intensity of ripple animation (0.0-1.0, default 0.3).
-   * Controls the amplitude of radial wave displacement.
-   */
-  explodeMax: number
 }
 
 /**
@@ -250,35 +155,13 @@ export const DEFAULT_POLYTOPE_SCALES: Record<string, number> = {
 export const DEFAULT_POLYTOPE_CONFIG: PolytopeConfig = {
   scale: 1.8,
 
-  // Truncation Animation defaults
-  truncationEnabled: false,
-  truncationMode: 'vertexTruncate',
-  truncationT: 0.0,
-  truncationMin: 0.0,
-  truncationMax: 0.5,
-  truncationSpeed: 0.1,
-
-  // Vertex Modulation defaults (radial breathing)
+  // Modulation Animation defaults (radial breathing)
   // Enabled by default with smooth, organic motion
   facetOffsetEnabled: true,
   facetOffsetAmplitude: 0.2,
   facetOffsetFrequency: 0.01,
   facetOffsetPhaseSpread: 0.12, // Wave effect
   facetOffsetBias: 1.0, // Full per-vertex/dimension variation
-
-  // Flow Animation defaults (organic vertex drift)
-  // Creates smooth flowing deformation
-  dualMorphEnabled: false,
-  dualMorphT: 0.3, // Moderate intensity
-  dualNormalize: 'unitSphere',
-  dualMorphSpeed: 0.05,
-
-  // Ripple Animation defaults (smooth radial waves)
-  // Gentle pulsing waves across the surface
-  explodeEnabled: false,
-  explodeFactor: 0.0,
-  explodeSpeed: 0.1,
-  explodeMax: 0.3, // Moderate intensity for visible but subtle effect
 }
 
 // ============================================================================
@@ -1744,106 +1627,6 @@ export const DEFAULT_QUATERNION_JULIA_CONFIG: QuaternionJuliaConfig = {
 
   // Raymarching Quality
   raymarchQuality: 'balanced',
-}
-
-// ============================================================================
-// Wythoff Polytope Configuration
-// ============================================================================
-
-/**
- * Symmetry group type for Wythoff construction
- * - A: Simplex symmetry (An) - n! symmetry operations
- * - B: Hypercube/Orthoplex symmetry (Bn/Cn) - 2^n * n! symmetry operations
- * - D: Demihypercube symmetry (Dn) - 2^(n-1) * n! symmetry operations
- */
-export type WythoffSymmetryGroup = 'A' | 'B' | 'D'
-
-/**
- * Preset Wythoff polytope types with descriptive names
- */
-export type WythoffPreset =
-  | 'regular' // Regular polytope (first node ringed)
-  | 'rectified' // Rectified (second node ringed)
-  | 'truncated' // Truncated (first two nodes ringed)
-  | 'cantellated' // Cantellated (first and third nodes ringed)
-  | 'runcinated' // Runcinated (first and last nodes ringed)
-  | 'omnitruncated' // All nodes ringed
-  | 'custom' // Custom Wythoff symbol
-
-/**
- * Configuration for Wythoff polytope generation
- *
- * Wythoff polytopes are uniform polytopes generated by the Wythoff construction,
- * which reflects a seed point through a system of mirrors arranged according
- * to a Coxeter-Dynkin diagram.
- *
- * @see https://en.wikipedia.org/wiki/Wythoff_construction
- */
-export interface WythoffPolytopeConfig {
-  /**
-   * Symmetry group determines the mirror arrangement:
-   * - A: Simplex group (generates simplex-based forms)
-   * - B: Hypercube group (generates hypercube/cross-polytope forms)
-   * - D: Demihypercube group (generates half-hypercube forms)
-   */
-  symmetryGroup: WythoffSymmetryGroup
-
-  /**
-   * Preset type provides common Wythoff symbol configurations:
-   * - regular: First node ringed (standard regular polytope)
-   * - rectified: Second node ringed (edge-truncated form)
-   * - truncated: First two nodes ringed (vertex-truncated form)
-   * - cantellated: First and third nodes ringed
-   * - runcinated: First and last nodes ringed
-   * - omnitruncated: All nodes ringed (maximum vertex count)
-   * - custom: User-defined Wythoff symbol
-   */
-  preset: WythoffPreset
-
-  /**
-   * Custom Wythoff symbol (only used when preset is 'custom').
-   * Each boolean indicates whether the corresponding node is "ringed"
-   * in the Coxeter-Dynkin diagram.
-   */
-  customSymbol: boolean[]
-
-  /**
-   * Scale factor for the polytope (0.5-5.0, default 2.0).
-   * Vertices are normalized to fit within [-scale, scale] per axis.
-   */
-  scale: number
-
-  /**
-   * Enable snub variant (alternated omnitruncation).
-   * Creates chiral forms with fewer vertices.
-   * Only effective for certain configurations.
-   */
-  snub: boolean
-}
-
-/**
- * Default Wythoff polytope configuration
- */
-export const DEFAULT_WYTHOFF_POLYTOPE_CONFIG: WythoffPolytopeConfig = {
-  symmetryGroup: 'B',
-  preset: 'regular',
-  customSymbol: [],
-  scale: 2.0,
-  snub: false,
-}
-
-/**
- * Type-specific default scales for Wythoff polytopes based on preset.
- * Different presets look best at different initial scales.
- */
-export const DEFAULT_WYTHOFF_SCALES: Record<WythoffPreset, number> = {
-  regular: 2.0,
-  rectified: 2.2,
-  truncated: 2.5,
-  cantellated: 2.5,
-  runcinated: 2.5,
-  omnitruncated: 3.0,
-  custom: 2.0,
 }
 
 // ============================================================================

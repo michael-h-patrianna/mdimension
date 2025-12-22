@@ -166,6 +166,14 @@ export class VolumetricFogPass extends BasePass {
   // Light arrays
   private lightTypes: number[];
   private lightPositions: THREE.Vector3[];
+  private lightDirections: THREE.Vector3[];
+  private lightColors: THREE.Color[];
+  private lightIntensities: number[];
+  private lightRanges: number[];
+  private lightDecays: number[];
+  private spotCosInner: number[];
+  private spotCosOuter: number[];
+  private lightsEnabled: boolean[];
 
   constructor(config: VolumetricFogPassConfig) {
     super({
@@ -192,8 +200,18 @@ export class VolumetricFogPass extends BasePass {
     // Initialize light arrays
     this.lightTypes = new Array(MAX_LIGHTS).fill(0);
     this.lightPositions = [];
+    this.lightDirections = [];
+    this.lightColors = [];
+    this.lightIntensities = new Array(MAX_LIGHTS).fill(1.0);
+    this.lightRanges = new Array(MAX_LIGHTS).fill(0);
+    this.lightDecays = new Array(MAX_LIGHTS).fill(2);
+    this.spotCosInner = new Array(MAX_LIGHTS).fill(1.0);
+    this.spotCosOuter = new Array(MAX_LIGHTS).fill(0.9);
+    this.lightsEnabled = new Array(MAX_LIGHTS).fill(false);
     for (let i = 0; i < MAX_LIGHTS; i++) {
       this.lightPositions.push(new THREE.Vector3());
+      this.lightDirections.push(new THREE.Vector3(0, -1, 0));
+      this.lightColors.push(new THREE.Color(1, 1, 1));
     }
 
     const shadowUniforms = createShadowMapUniforms();
@@ -226,8 +244,19 @@ export class VolumetricFogPass extends BasePass {
         uLightDirection: { value: new THREE.Vector3(0.5, 1.0, 0.5).normalize() },
         uLightColor: { value: new THREE.Color(1, 1, 1) },
         uLightIntensity: { value: 1.0 },
+
+        // Multi-light system
+        uNumLights: { value: 0 },
+        uLightsEnabled: { value: this.lightsEnabled },
         uLightTypes: { value: this.lightTypes },
         uLightPositions: { value: this.lightPositions },
+        uLightDirections: { value: this.lightDirections },
+        uLightColors: { value: this.lightColors },
+        uLightIntensities: { value: this.lightIntensities },
+        uLightRanges: { value: this.lightRanges },
+        uLightDecays: { value: this.lightDecays },
+        uSpotCosInner: { value: this.spotCosInner },
+        uSpotCosOuter: { value: this.spotCosOuter },
         uShadowLightIndex: { value: -1 },
 
         ...shadowUniforms,
@@ -369,13 +398,31 @@ export class VolumetricFogPass extends BasePass {
       u['uLightIntensity']!.value = sun.intensity;
     }
 
-    // Update light arrays
+    // Update light arrays with full multi-light data
+    u['uNumLights']!.value = Math.min(lightState.lights.length, MAX_LIGHTS);
     for (let i = 0; i < MAX_LIGHTS; i++) {
       const light = lightState.lights[i];
       if (light) {
+        this.lightsEnabled[i] = light.enabled;
         this.lightTypes[i] = LIGHT_TYPE_TO_INT[light.type];
         this.lightPositions[i]!.set(light.position[0], light.position[1], light.position[2]);
+
+        // Direction for spot lights
+        const dir = rotationToDirection(light.rotation);
+        this.lightDirections[i]!.set(dir[0], dir[1], dir[2]);
+
+        this.lightColors[i]!.set(light.color);
+        this.lightIntensities[i] = light.intensity;
+        this.lightRanges[i] = light.range;
+        this.lightDecays[i] = light.decay;
+
+        // Precompute cone cosines for spotlights
+        const outerAngleRad = (light.coneAngle * Math.PI) / 180;
+        const innerAngleRad = outerAngleRad * (1.0 - light.penumbra);
+        this.spotCosOuter[i] = Math.cos(outerAngleRad);
+        this.spotCosInner[i] = Math.cos(innerAngleRad);
       } else {
+        this.lightsEnabled[i] = false;
         this.lightTypes[i] = 0;
         this.lightPositions[i]!.set(0, 0, 0);
       }
@@ -388,22 +435,25 @@ export class VolumetricFogPass extends BasePass {
       updateShadowMapUniforms(u, shadowData, lightState.shadowMapBias, 1024, 1);
     }
 
-    // 1. Render fog to half-res target
-    this.mesh.material = this.material;
-    renderer.setRenderTarget(this.halfResTarget);
-    renderer.clear();
-    renderer.render(this.scene, this.camera);
+    // Render with state restoration in finally block
+    try {
+      // 1. Render fog to half-res target
+      this.mesh.material = this.material;
+      renderer.setRenderTarget(this.halfResTarget);
+      renderer.clear();
+      renderer.render(this.scene, this.camera);
 
-    // 2. Composite fog with scene
-    this.compositeMaterial.uniforms['tScene']!.value = colorTex;
-    this.compositeMaterial.uniforms['tFog']!.value = this.halfResTarget.texture;
-    this.compositeMaterial.uniforms['tDepth']!.value = depthTex;
+      // 2. Composite fog with scene
+      this.compositeMaterial.uniforms['tScene']!.value = colorTex;
+      this.compositeMaterial.uniforms['tFog']!.value = this.halfResTarget.texture;
+      this.compositeMaterial.uniforms['tDepth']!.value = depthTex;
 
-    this.mesh.material = this.compositeMaterial;
-    renderer.setRenderTarget(outputTarget);
-    renderer.render(this.scene, this.camera);
-
-    renderer.setRenderTarget(null);
+      this.mesh.material = this.compositeMaterial;
+      renderer.setRenderTarget(outputTarget);
+      renderer.render(this.scene, this.camera);
+    } finally {
+      renderer.setRenderTarget(null);
+    }
   }
 
   /** Update noise texture */

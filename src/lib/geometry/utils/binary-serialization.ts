@@ -12,6 +12,7 @@
  */
 
 import type { VectorND } from '@/lib/math'
+import { BINARY_FORMAT_VERSION } from '../config'
 import type { PolytopeGeometry } from '../types'
 
 /**
@@ -33,9 +34,6 @@ export interface BinaryPolytopeData {
   /** Format version for future compatibility */
   version: number
 }
-
-/** Current binary format version */
-const BINARY_FORMAT_VERSION = 1
 
 /**
  * Serialize polytope geometry to compact binary format.

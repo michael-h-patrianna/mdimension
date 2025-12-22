@@ -78,9 +78,9 @@ void main() {
 
     float NdotL = max(dot(N, L), 0.0);
 
-    // Add light contribution with shadow
+    // Add light contribution with shadow (energy-conserved PBR)
     vec3 radiance = uLightColors[i] * attenuation;
-    Lo += (kD * uColor / PI + specular * uSpecularIntensity) * radiance * NdotL * uDiffuseIntensity * shadow;
+    Lo += (kD * uColor / PI + specular * uSpecularIntensity) * radiance * NdotL * shadow;
 
     // Rim SSS (backlight transmission)
 #ifdef USE_SSS

@@ -60,6 +60,20 @@ export const DEFAULT_WYTHOFF_POLYTOPE_CONFIG: WythoffPolytopeConfig = {
 }
 
 /**
+ * Type-specific default scales for Wythoff polytopes based on preset.
+ * Different presets look best at different initial scales.
+ */
+export const DEFAULT_WYTHOFF_SCALES: Record<WythoffPreset, number> = {
+  regular: 2.0,
+  rectified: 2.2,
+  truncated: 2.5,
+  cantellated: 2.5,
+  runcinated: 2.5,
+  omnitruncated: 3.0,
+  custom: 2.0,
+}
+
+/**
  * Result type for Wythoff polytope generation with warnings.
  * Use this when you need to know if limits were reached during generation.
  */

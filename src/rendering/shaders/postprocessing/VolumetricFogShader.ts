@@ -100,9 +100,18 @@ uniform vec3 uLightDirection;
 uniform vec3 uLightColor;
 uniform float uLightIntensity;
 
-// Light arrays (required by shadow functions)
+// Multi-Light System Uniforms
+uniform int uNumLights;
+uniform bool uLightsEnabled[MAX_LIGHTS];
 uniform int uLightTypes[MAX_LIGHTS];
 uniform vec3 uLightPositions[MAX_LIGHTS];
+uniform vec3 uLightDirections[MAX_LIGHTS];
+uniform vec3 uLightColors[MAX_LIGHTS];
+uniform float uLightIntensities[MAX_LIGHTS];
+uniform float uLightRanges[MAX_LIGHTS];
+uniform float uLightDecays[MAX_LIGHTS];
+uniform float uSpotCosInner[MAX_LIGHTS];
+uniform float uSpotCosOuter[MAX_LIGHTS];
 uniform int uShadowLightIndex;
 
 // Shadow Maps
@@ -150,6 +159,23 @@ float henyeyGreenstein(float g, float costh) {
     // Guard against division by zero when g=1 and costh=1
     denom = max(denom, 0.0001);
     return (1.0 - g2) / (4.0 * 3.14159265 * pow(denom, 1.5));
+}
+
+// Distance attenuation for point/spot lights
+float getDistanceAttenuation(int lightIndex, float distance) {
+    float range = uLightRanges[lightIndex];
+    if (range <= 0.0) return 1.0; // 0 = infinite range
+    float d = max(distance, 0.0001);
+    float rangeAtten = clamp(1.0 - d / range, 0.0, 1.0);
+    float decay = uLightDecays[lightIndex];
+    return pow(rangeAtten, decay);
+}
+
+// Spotlight cone attenuation
+float getSpotAttenuation(int lightIndex, vec3 lightToFrag) {
+    vec3 spotDir = normalize(uLightDirections[lightIndex]);
+    float cosAngle = dot(lightToFrag, spotDir);
+    return smoothstep(uSpotCosOuter[lightIndex], uSpotCosInner[lightIndex], cosAngle);
 }
 
 // World Position Reconstruction from depth buffer
@@ -349,6 +375,34 @@ void main() {
 
             // In-scattering from directional light
             vec3 lightScatter = phase * uLightColor * uLightIntensity * shadow;
+
+            // Multi-light scattering: add point and spot light contributions
+            for (int li = 0; li < MAX_LIGHTS; li++) {
+                if (li >= uNumLights) break;
+                if (!uLightsEnabled[li]) continue;
+                if (uLightTypes[li] == LIGHT_TYPE_DIRECTIONAL) continue; // Already handled above
+
+                vec3 lightPos = uLightPositions[li];
+                vec3 toLight = lightPos - currentPos;
+                float dist = length(toLight);
+                vec3 lightDir = toLight / max(dist, 0.0001);
+
+                float atten = uLightIntensities[li] * getDistanceAttenuation(li, dist);
+
+                if (uLightTypes[li] == LIGHT_TYPE_SPOT) {
+                    atten *= getSpotAttenuation(li, -lightDir);
+                }
+
+                if (atten < 0.001) continue;
+
+                // Phase function for this light direction
+                float costhLocal = dot(rayDir, lightDir);
+                float phaseLocal = henyeyGreenstein(uFogScattering, costhLocal);
+
+                // Add contribution (no shadows for point/spot - too expensive)
+                // Weight at 30% vs directional for balanced contribution
+                lightScatter += phaseLocal * uLightColors[li] * atten * 0.3;
+            }
 
             // Fog's own color contribution (ambient self-illumination of the fog)
             // Shadow also darkens ambient fog to create visible god rays

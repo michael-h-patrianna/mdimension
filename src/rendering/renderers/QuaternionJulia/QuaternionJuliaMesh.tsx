@@ -7,7 +7,6 @@
  * @see docs/prd/quaternion-julia-fractal.md
  */
 
-import { RAYMARCH_QUALITY_TO_MULTIPLIER } from '@/lib/geometry/extended/types'
 import {
     createColorCache,
     updateLinearColorUniform,
@@ -63,7 +62,7 @@ const QuaternionJuliaMesh = () => {
   const scale = useExtendedObjectStore((state) => state.quaternionJulia.scale)
 
   // Use shared quality tracking hook
-  const { effectiveFastMode, qualityMultiplier, rotationsChanged } = useQualityTracking()
+  const { qualityMultiplier, rotationsChanged } = useQualityTracking()
 
   // Use shared layer assignment hook
   useLayerAssignment(meshRef)

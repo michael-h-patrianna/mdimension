@@ -339,15 +339,14 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
     // ========================================================================
 
     // Main scene HDR color buffer (with depth texture)
-    // NOTE: This is a SINGLE-attachment target, not an MRT.
-    // Built-in materials (MeshBasicMaterial, etc.) don't output to multiple
-    // render targets, so using MRT here would cause GL_INVALID_OPERATION.
-    // For deferred effects (SSR, SSAO), use MAIN_OBJECT_MRT instead.
+    // Uses 3 attachments to match shader outputs (gColor, gNormal, gPosition)
+    // All shaders output to 3 locations to prevent GL_INVALID_OPERATION
     g.addResource({
       id: RESOURCES.SCENE_COLOR,
-      type: 'renderTarget',
+      type: 'mrt',
       size: { mode: 'screen' },
-      format: THREE.RGBAFormat,
+      attachmentCount: 3,
+      attachmentFormats: [THREE.RGBAFormat, THREE.RGBAFormat, THREE.RGBAFormat],
       dataType: THREE.HalfFloatType,
       depthBuffer: true,
       depthTexture: true,
@@ -383,13 +382,14 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       depthBuffer: false,
     });
 
-    // Main object MRT (color + normal + depth)
+    // Main object MRT (color + normal + position)
+    // Must have 3 attachments to match shader outputs (gColor, gNormal, gPosition)
     g.addResource({
       id: RESOURCES.MAIN_OBJECT_MRT,
       type: 'mrt',
       size: { mode: 'screen' },
-      attachmentCount: 2,
-      attachmentFormats: [THREE.RGBAFormat, THREE.RGBAFormat],
+      attachmentCount: 3,
+      attachmentFormats: [THREE.RGBAFormat, THREE.RGBAFormat, THREE.RGBAFormat],
       dataType: THREE.HalfFloatType,
       depthBuffer: true,
       depthTexture: true,
@@ -586,7 +586,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       return needsVolumetricSeparation({ temporalCloudAccumulation, objectType: objectTypeRef.current });
     };
 
-    // Scene render pass
+    // Scene render pass - renders all layers to 3-attachment MRT
     g.addPass(
       new ScenePass({
         id: 'scene',
@@ -652,14 +652,15 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
     passRefs.current.normalPass = normalPass;
     g.addPass(normalPass);
 
-    // Main object MRT (color + normal)
+    // Main object MRT (color + normal + position)
+    // ALWAYS enabled - main objects only render here now (not in ScenePass)
     const mainObjectMrt = new MainObjectMRTPass({
       id: 'mainObjectMrt',
       outputResource: RESOURCES.MAIN_OBJECT_MRT,
       layers: [RENDER_LAYERS.MAIN_OBJECT],
       renderBackground: false,
       forceOpaque: true,
-      enabled: shouldRenderNormals,
+      // Always enabled - this is where main objects render
     });
     passRefs.current.mainObjectMrt = mainObjectMrt;
     g.addPass(mainObjectMrt);

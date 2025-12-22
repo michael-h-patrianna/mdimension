@@ -31,6 +31,10 @@ export function useUrlState(): void {
     // Parse URL state
     const urlState = parseCurrentUrl();
 
+    // #region agent log - H1,H3: Track URL state initialization
+    console.log('[DEBUG-URL-STATE] parsed:', JSON.stringify(urlState));
+    // #endregion
+
     // Skip if no URL params
     if (Object.keys(urlState).length === 0) return;
 
@@ -39,7 +43,15 @@ export function useUrlState(): void {
       useGeometryStore.getState().setDimension(urlState.dimension);
     }
     if (urlState.objectType !== undefined) {
+      // #region agent log - H1,H3: Track object type change from URL
+      const beforeType = useGeometryStore.getState().objectType;
+      console.log('[DEBUG-URL-STATE] Before setObjectType:', beforeType, '-> new:', urlState.objectType);
+      // #endregion
       useGeometryStore.getState().setObjectType(urlState.objectType);
+      // #region agent log - H1,H3: Track object type after change
+      const afterState = useGeometryStore.getState();
+      console.log('[DEBUG-URL-STATE] After setObjectType:', afterState.objectType, 'dimension:', afterState.dimension);
+      // #endregion
     }
 
     // Apply to appearance store

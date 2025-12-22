@@ -5,9 +5,7 @@
 import { MAX_LIGHTS, type LightSource } from '@/rendering/lights/types'
 import {
   createLightUniforms,
-  getLightHelperFunctions,
   getLightUniformDeclarations,
-  getMultiLightFunction,
   mergeLightUniforms,
   updateLightUniforms,
 } from '@/rendering/lights/uniforms'
@@ -351,70 +349,8 @@ describe('Light Uniforms', () => {
       })
     })
 
-    describe('getLightHelperFunctions', () => {
-      it('should include getLightDirection function', () => {
-        const glsl = getLightHelperFunctions()
-        expect(glsl).toContain('vec3 getLightDirection(int lightIndex, vec3 fragPos)')
-      })
-
-      it('should include getSpotAttenuation function', () => {
-        const glsl = getLightHelperFunctions()
-        expect(glsl).toContain('float getSpotAttenuation(int lightIndex, vec3 lightToFrag)')
-      })
-
-      it('should use precomputed cosines in getSpotAttenuation (no per-fragment trig)', () => {
-        const glsl = getLightHelperFunctions()
-        // Should use precomputed uniforms
-        expect(glsl).toContain('uSpotCosOuter[lightIndex]')
-        expect(glsl).toContain('uSpotCosInner[lightIndex]')
-        // Should NOT compute cos() per fragment
-        expect(glsl).not.toContain('cos(uSpotAngles')
-      })
-
-      it('should handle all light types in getLightDirection', () => {
-        const glsl = getLightHelperFunctions()
-        expect(glsl).toContain('LIGHT_TYPE_POINT')
-        expect(glsl).toContain('LIGHT_TYPE_DIRECTIONAL')
-        expect(glsl).toContain('LIGHT_TYPE_SPOT')
-      })
-    })
-
-    describe('getMultiLightFunction', () => {
-      it('should include calculateMultiLighting function', () => {
-        const glsl = getMultiLightFunction()
-        expect(glsl).toContain('vec3 calculateMultiLighting(')
-      })
-
-      it('should loop through MAX_LIGHTS', () => {
-        const glsl = getMultiLightFunction()
-        expect(glsl).toContain('for (int i = 0; i < MAX_LIGHTS; i++)')
-      })
-
-      it('should check enabled state', () => {
-        const glsl = getMultiLightFunction()
-        expect(glsl).toContain('if (i >= uNumLights) break')
-        expect(glsl).toContain('if (!uLightsEnabled[i]) continue')
-      })
-
-      it('should include diffuse calculation', () => {
-        const glsl = getMultiLightFunction()
-        expect(glsl).toContain('NdotL')
-        expect(glsl).toContain('uDiffuseIntensity')
-      })
-
-      it('should include specular calculation', () => {
-        const glsl = getMultiLightFunction()
-        expect(glsl).toContain('NdotH')
-        expect(glsl).toContain('uSpecularPower')
-        expect(glsl).toContain('uSpecularIntensity')
-      })
-
-      it('should include spot light attenuation', () => {
-        const glsl = getMultiLightFunction()
-        expect(glsl).toContain('getSpotAttenuation')
-        expect(glsl).toContain('LIGHT_TYPE_SPOT')
-      })
-    })
+    // Note: getLightHelperFunctions and getMultiLightFunction tests removed.
+    // These functions were superseded by multi-light.glsl.ts with GGX/Cook-Torrance lighting.
   })
 })
 

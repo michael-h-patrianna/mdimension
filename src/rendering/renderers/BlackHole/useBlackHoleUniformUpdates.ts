@@ -17,7 +17,6 @@ import { useAppearanceStore } from '@/stores/appearanceStore'
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore'
 import { useGeometryStore } from '@/stores/geometryStore'
 import { useLightingStore } from '@/stores/lightingStore'
-import { usePerformanceStore } from '@/stores/performanceStore'
 import { useRotationStore } from '@/stores/rotationStore'
 import { useUIStore } from '@/stores/uiStore'
 import { useFrame, useThree } from '@react-three/fiber'
@@ -99,11 +98,8 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
   // Use shared rotation updates hook for basis vector computation
   const rotationUpdates = useRotationUpdates({ dimension, parameterValues })
 
-  // Fast mode tracking for adaptive quality during rotation/animation
+  // Track rotation version changes for adaptive quality
   const prevRotationVersionRef = useRef<number>(-1)
-  const fastModeRef = useRef(false)
-  const restoreQualityTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const QUALITY_RESTORE_DELAY_MS = 150
 
   // Cached linear colors (avoid sRGB->linear conversion every frame)
   const colorCacheRef = useRef(createBlackHoleColorCache())

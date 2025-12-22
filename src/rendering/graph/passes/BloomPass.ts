@@ -211,6 +211,7 @@ export class BloomPass extends BasePass {
     renderer.render(this.copyScene, this.copyCamera);
 
     // Run bloom pass
+    // NOTE: UnrealBloomPass has needsSwap=false and writes back to readBuffer!
     this.bloomPass.render(
       renderer,
       this.bloomWriteTarget,
@@ -220,7 +221,9 @@ export class BloomPass extends BasePass {
     );
 
     // Copy bloom result to output
-    this.copyMaterial.uniforms['tDiffuse']!.value = this.bloomWriteTarget.texture;
+    // BUG FIX: UnrealBloomPass writes to readBuffer (not writeBuffer) due to needsSwap=false
+    // We should read from bloomReadTarget, not bloomWriteTarget
+    this.copyMaterial.uniforms['tDiffuse']!.value = this.bloomReadTarget.texture;
     renderer.setRenderTarget(outputTarget);
     renderer.render(this.copyScene, this.copyCamera);
 

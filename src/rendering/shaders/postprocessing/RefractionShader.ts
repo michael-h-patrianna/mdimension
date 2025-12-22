@@ -70,6 +70,7 @@ export const RefractionShader = {
     uniform float farClip;
 
     in vec2 vUv;
+    layout(location = 0) out vec4 fragColor;
 
     // Get linear depth from depth buffer
     float getLinearDepth(vec2 coord) {
@@ -152,7 +153,7 @@ export const RefractionShader = {
     void main() {
       // Early exit if no G-buffer data at this pixel
       if (!hasGBufferData(vUv)) {
-        pc_fragColor = texture(tDiffuse, vUv);
+        fragColor = texture(tDiffuse, vUv);
         return;
       }
 
@@ -174,9 +175,10 @@ export const RefractionShader = {
       offset.x *= resolution.y / resolution.x;
 
       if (chromaticAberration > 0.0) {
-        // Chromatic aberration: sample R, G, B at slightly different offsets
+        // Chromatic aberration: sample R, G, B at different offsets
         // Red bends less, blue bends more (matches real-world dispersion)
-        float caOffset = chromaticAberration * 0.02;
+        // Scale by 0.3 to make effect visible while keeping it subtle at low values
+        float caOffset = chromaticAberration * 0.3;
 
         vec2 offsetR = offset * (1.0 - caOffset);
         vec2 offsetG = offset;
@@ -191,11 +193,11 @@ export const RefractionShader = {
         float g = texture(tDiffuse, uvG).g;
         float b = texture(tDiffuse, uvB).b;
 
-        pc_fragColor = vec4(r, g, b, 1.0);
+        fragColor = vec4(r, g, b, 1.0);
       } else {
         // No chromatic aberration - simple offset
         vec2 refractedUV = clamp(vUv + offset, 0.0, 1.0);
-        pc_fragColor = texture(tDiffuse, refractedUV);
+        fragColor = texture(tDiffuse, refractedUV);
       }
     }
   `,

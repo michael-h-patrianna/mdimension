@@ -701,7 +701,7 @@ export function TubeWireframe({
     u.uSpecularIntensity!.value = lightingState.specularIntensity
     u.uSpecularPower!.value = lightingState.shininess
     updateLinearColorUniform(cache.specularColor, u.uSpecularColor!.value as Color, lightingState.specularColor)
-    u.uDiffuseIntensity!.value = lightingState.diffuseIntensity
+    // Note: uDiffuseIntensity removed - energy conservation derives diffuse from (1-kS)*(1-metallic)
 
     // Fresnel (cached linear conversion)
     u.uFresnelEnabled!.value = appearanceState.shaderSettings.surface.fresnelEnabled

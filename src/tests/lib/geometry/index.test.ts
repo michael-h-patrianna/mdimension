@@ -7,7 +7,7 @@ import { describe, it, expect } from 'vitest';
 import {
   generatePolytope,
   getPolytopeProperties,
-  getAvailableTypes,
+  getAvailableTypesForDimension,
   generateHypercube,
   generateSimplex,
   generateCrossPolytope,
@@ -77,9 +77,9 @@ describe('geometry library API', () => {
     });
   });
 
-  describe('getAvailableTypes', () => {
+  describe('getAvailableTypesForDimension', () => {
         it('should return all object types (polytopes and extended)', () => {
-          const types = getAvailableTypes();
+          const types = getAvailableTypesForDimension(4);
           expect(types).toHaveLength(11);
 
           const typeNames = types.map(t => t.type);
@@ -98,7 +98,7 @@ describe('geometry library API', () => {
     });
 
     it('should include name, description, and availability for each type', () => {
-      const types = getAvailableTypes();
+      const types = getAvailableTypesForDimension(4);
 
       types.forEach(type => {
         expect(type.type).toBeDefined();
@@ -111,17 +111,17 @@ describe('geometry library API', () => {
     });
 
     it('should mark Clifford torus as available for dimension 3+', () => {
-      const types3D = getAvailableTypes(3);
+      const types3D = getAvailableTypesForDimension(3);
       const cliffordTorus3D = types3D.find(t => t.type === 'clifford-torus');
       expect(cliffordTorus3D?.available).toBe(true);
 
-      const types4D = getAvailableTypes(4);
+      const types4D = getAvailableTypesForDimension(4);
       const cliffordTorus4D = types4D.find(t => t.type === 'clifford-torus');
       expect(cliffordTorus4D?.available).toBe(true);
     });
 
     it('should mark all types as available for dimension 4', () => {
-      const types = getAvailableTypes(4);
+      const types = getAvailableTypesForDimension(4);
       types.forEach(type => {
         expect(type.available).toBe(true);
       });
@@ -130,7 +130,7 @@ describe('geometry library API', () => {
     it('should mark mandelbulb as available for dimensions 3-11', () => {
       // Available for 3-11
       for (const dim of [3, 4, 5, 6, 7, 8, 9, 10, 11]) {
-        const types = getAvailableTypes(dim);
+        const types = getAvailableTypesForDimension(dim);
         const mandelbulb = types.find(t => t.type === 'mandelbulb');
         expect(mandelbulb?.available).toBe(true);
       }
@@ -138,7 +138,7 @@ describe('geometry library API', () => {
 
     it('should mark mandelbulb as unavailable for dimension > 11', () => {
       // Currently app only supports up to dimension 6, but test the constraint
-      const types = getAvailableTypes(12);
+      const types = getAvailableTypesForDimension(12);
       const mandelbulb = types.find(t => t.type === 'mandelbulb');
       expect(mandelbulb?.available).toBe(false);
       expect(mandelbulb?.disabledReason).toContain('11');

@@ -74,7 +74,19 @@ export function waitForGPUCompile(callback: () => void): () => void {
     if (cancelled) return
     requestAnimationFrame(() => {
       if (cancelled) return
+      // #region agent log - H11: Track exact moment GPU compile wait ends
+      console.log('[DEBUG-GPU-COMPILE-DONE]', JSON.stringify({
+        message: 'waitForGPUCompile callback about to execute',
+        timestamp: Date.now(),
+      }));
+      // #endregion
       callback()
+      // #region agent log - H11: Track after callback
+      console.log('[DEBUG-GPU-COMPILE-CALLBACK-DONE]', JSON.stringify({
+        message: 'waitForGPUCompile callback completed',
+        timestamp: Date.now(),
+      }));
+      // #endregion
     })
   })
 

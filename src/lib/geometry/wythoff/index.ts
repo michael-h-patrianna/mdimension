@@ -28,12 +28,14 @@ import {
   type WythoffSymbol,
   type WythoffSymmetryGroup,
   DEFAULT_WYTHOFF_POLYTOPE_CONFIG,
+  DEFAULT_WYTHOFF_SCALES,
   WarningCollector,
   getWythoffPresetName,
 } from './types'
 
 export {
   DEFAULT_WYTHOFF_POLYTOPE_CONFIG,
+  DEFAULT_WYTHOFF_SCALES,
   WarningCollector,
   getWythoffPresetName,
   type PolytopeData,

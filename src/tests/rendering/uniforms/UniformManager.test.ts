@@ -56,6 +56,8 @@ const mockUpdateState: UniformUpdateState = {
   time: 1.0,
   delta: 0.016,
   camera: new THREE.PerspectiveCamera(),
+  scene: new THREE.Scene(),
+  gl: new THREE.WebGLRenderer(),
   size: { width: 1920, height: 1080 },
 };
 

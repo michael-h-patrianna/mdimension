@@ -37,8 +37,6 @@ export interface LightingSourceConfig {
   ambientColor: string
   /** Ambient intensity */
   ambientIntensity: number
-  /** Diffuse intensity */
-  diffuseIntensity: number
   /** Specular intensity */
   specularIntensity: number
   /** Specular color (hex string) */
@@ -53,7 +51,6 @@ export interface LightingSourceConfig {
 interface LightingUniforms extends LightUniforms {
   uAmbientColor: { value: Color }
   uAmbientIntensity: { value: number }
-  uDiffuseIntensity: { value: number }
   uSpecularIntensity: { value: number }
   uSpecularColor: { value: Color }
   uSpecularPower: { value: number }
@@ -95,7 +92,6 @@ export class LightingSource extends BaseUniformSource {
   private cachedAmbientColor = new Color()
   private cachedSpecularColor = new Color()
   private cachedAmbientIntensity = 0
-  private cachedDiffuseIntensity = 0
   private cachedSpecularIntensity = 0
   private cachedShininess = 0
 
@@ -106,11 +102,11 @@ export class LightingSource extends BaseUniformSource {
     const baseLightUniforms = createLightUniforms()
 
     // Add material uniforms
+    // Note: uDiffuseIntensity removed - energy conservation derives diffuse from (1-kS)*(1-metallic)
     this.lightUniforms = {
       ...baseLightUniforms,
       uAmbientColor: { value: new Color('#ffffff') },
       uAmbientIntensity: { value: 0.3 },
-      uDiffuseIntensity: { value: 0.7 },
       uSpecularIntensity: { value: 0.5 },
       uSpecularColor: { value: new Color('#ffffff') },
       uSpecularPower: { value: 32 },
@@ -167,11 +163,6 @@ export class LightingSource extends BaseUniformSource {
       this.cachedAmbientIntensity = config.ambientIntensity
     }
 
-    if (this.cachedDiffuseIntensity !== config.diffuseIntensity) {
-      this.lightUniforms.uDiffuseIntensity.value = config.diffuseIntensity
-      this.cachedDiffuseIntensity = config.diffuseIntensity
-    }
-
     if (this.cachedSpecularIntensity !== config.specularIntensity) {
       this.lightUniforms.uSpecularIntensity.value = config.specularIntensity
       this.cachedSpecularIntensity = config.specularIntensity
@@ -207,7 +198,6 @@ export class LightingSource extends BaseUniformSource {
       storeVersion: lightingState.version,
       ambientColor: lightingState.ambientColor,
       ambientIntensity: lightingState.ambientIntensity,
-      diffuseIntensity: lightingState.diffuseIntensity,
       specularIntensity: lightingState.specularIntensity,
       specularColor: lightingState.specularColor,
       shininess: lightingState.shininess,

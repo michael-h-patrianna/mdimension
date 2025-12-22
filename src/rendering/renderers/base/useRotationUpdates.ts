@@ -155,15 +155,19 @@ export function useRotationUpdates(
   // Track last computed origin for change detection
   const prevOriginValuesRef = useRef<number[] | null>(null);
 
-  // Subscription ref for rotations - updated reactively via Zustand subscribe
+  // Subscription refs for rotations - updated reactively via Zustand subscribe
   // This avoids getState() calls during callbacks
   const rotationsRef = useRef(useRotationStore.getState().rotations);
+  const rotationVersionRef = useRef(useRotationStore.getState().version);
+  // Track the last version we used for basis vector computation
+  const lastComputedVersionRef = useRef<number>(-1);
 
   useEffect(() => {
-    // Subscribe to rotation changes and update ref
+    // Subscribe to rotation changes and update refs
     // Zustand 5 subscribe takes a single listener that receives full state
     const unsubscribe = useRotationStore.subscribe((state) => {
       rotationsRef.current = state.rotations;
+      rotationVersionRef.current = state.version;
     });
     return unsubscribe;
   }, []);
@@ -172,8 +176,14 @@ export function useRotationUpdates(
     basisVectorsDirtyRef.current = true;
   };
 
-  const getBasisVectors = (rotationsChanged: boolean): BasisVectorsResult => {
+  const getBasisVectors = (rotationsChangedHint: boolean): BasisVectorsResult => {
     const work = workingArraysRef.current;
+
+    // Detect rotation changes by comparing version numbers
+    // This is the authoritative check - the hint parameter is for backwards compatibility
+    // and may be stale if caller computed it during React render
+    const currentVersion = rotationVersionRef.current;
+    const rotationsActuallyChanged = currentVersion !== lastComputedVersionRef.current;
 
     // Check if parameterValues changed (shallow array comparison)
     const paramsChanged =
@@ -182,9 +192,11 @@ export function useRotationUpdates(
       parameterValues.some((v, i) => prevParamValuesRef.current![i] !== v);
 
     // Determine if we need to recompute basis vectors
+    // Use both the hint AND our internal version check
     const needsRecompute =
       forceUpdate ||
-      rotationsChanged ||
+      rotationsChangedHint ||
+      rotationsActuallyChanged ||
       dimension !== prevDimensionRef.current ||
       paramsChanged ||
       basisVectorsDirtyRef.current;
@@ -192,6 +204,9 @@ export function useRotationUpdates(
     if (needsRecompute) {
       // Get current rotations from subscription ref (no getState during callbacks)
       const rotations = rotationsRef.current;
+
+      // Update version tracking
+      lastComputedVersionRef.current = currentVersion;
 
       // Compute rotation matrix only when needed
       cachedRotationMatrixRef.current = composeRotations(dimension, rotations);

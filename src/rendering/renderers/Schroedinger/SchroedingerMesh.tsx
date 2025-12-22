@@ -17,7 +17,6 @@ import {
     useQualityTracking,
     useRotationUpdates,
 } from '@/rendering/renderers/base';
-import { COLOR_ALGORITHM_TO_INT } from '@/rendering/shaders/palette';
 import { composeSchroedingerShader } from '@/rendering/shaders/schroedinger/compose';
 import { MAX_DIM, MAX_TERMS } from '@/rendering/shaders/schroedinger/uniforms.glsl';
 import { UniformManager } from '@/rendering/uniforms/UniformManager';
@@ -72,7 +71,7 @@ const SchroedingerMesh = () => {
   const temporalDepth = useTemporalDepth();
 
   // Use shared quality tracking hook
-  const { effectiveFastMode, qualityMultiplier, rotationsChanged } = useQualityTracking();
+  const { qualityMultiplier, rotationsChanged } = useQualityTracking();
 
   // Pre-allocated quantum arrays
   const quantumArraysRef = useRef<QuantumArrays>(createQuantumArrays());
