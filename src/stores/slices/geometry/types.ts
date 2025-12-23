@@ -447,10 +447,6 @@ export interface BlackHoleSliceState {
 }
 
 export interface BlackHoleSliceActions {
-  // Visual Scale
-  setBlackHoleScale: (scale: number) => void
-
-  // Physics-Based Parameters (Kerr Black Hole)
   setBlackHoleHorizonRadius: (radius: number) => void
   setBlackHoleSpin: (spin: number) => void
   setBlackHoleDiskTemperature: (temperature: number) => void

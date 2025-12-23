@@ -72,8 +72,6 @@ export const BlackHoleControls: React.FC<BlackHoleControlsProps> = React.memo(({
     config: state.blackhole,
     // Visual preset
     applyVisualPreset: state.applyBlackHoleVisualPreset,
-    // Scale (3D mesh scale)
-    setScale: state.setBlackHoleScale,
     // Basic settings
     setHorizonRadius: state.setBlackHoleHorizonRadius,
     setSpin: state.setBlackHoleSpin,
@@ -87,7 +85,6 @@ export const BlackHoleControls: React.FC<BlackHoleControlsProps> = React.memo(({
   const {
     config,
     applyVisualPreset,
-    setScale,
     setHorizonRadius,
     setSpin,
     setManifoldThickness,
@@ -118,17 +115,6 @@ export const BlackHoleControls: React.FC<BlackHoleControlsProps> = React.memo(({
 
       {/* Geometry Settings */}
       <Section title="Geometry" defaultOpen={true}>
-        <Slider
-          label="Scale"
-          min={0.1}
-          max={0.7}
-          step={0.05}
-          value={config.scale}
-          onChange={setScale}
-          showValue
-          data-testid="blackhole-scale"
-        />
-
         <Slider
           label="Horizon Radius"
           min={0.1}

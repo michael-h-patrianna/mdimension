@@ -62,15 +62,6 @@ export const createBlackHoleSlice: StateCreator<ExtendedObjectSlice, [], [], Bla
 ) => ({
   blackhole: { ...DEFAULT_BLACK_HOLE_CONFIG },
 
-  // === Visual Scale ===
-  setBlackHoleScale: (scale) => {
-    const clamped = Math.max(0.1, Math.min(0.7, scale))
-    console.log('[BlackHole] setBlackHoleScale called:', scale, '-> clamped:', clamped)
-    set((state) => ({
-      blackhole: { ...state.blackhole, scale: clamped },
-    }))
-  },
-
   // === Basic Parameters ===
   /**
    * Set Schwarzschild radius (rs = 2M).

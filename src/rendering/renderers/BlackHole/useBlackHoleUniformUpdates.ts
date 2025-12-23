@@ -238,8 +238,8 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
     const bhState = useExtendedObjectStore.getState().blackhole
 
     // Calculate actual black hole visual radius for accurate coverage estimation
-    // The visual extent is farRadius * horizonRadius, scaled by mesh scale
-    const blackHoleVisualRadius = bhState.farRadius * bhState.horizonRadius * bhState.scale
+    // The visual extent is farRadius * horizonRadius (scale is always 1.0 now)
+    const blackHoleVisualRadius = bhState.farRadius * bhState.horizonRadius
 
     // Calculate screen coverage for temporal and quality decisions
     const coverage =

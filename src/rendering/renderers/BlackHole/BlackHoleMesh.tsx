@@ -65,7 +65,6 @@ const BlackHoleMesh = () => {
     (state) => state.blackhole.sliceAnimationEnabled
   )
   // Scale and Bounds
-  const scale = useExtendedObjectStore((state) => state.blackhole.scale)
   const farRadius = useExtendedObjectStore((state) => state.blackhole.farRadius)
   const horizonRadius = useExtendedObjectStore((state) => state.blackhole.horizonRadius)
   const jetsHeight = useExtendedObjectStore((state) => state.blackhole.jetsHeight)
@@ -123,7 +122,7 @@ const BlackHoleMesh = () => {
   const boxSize = maxRadius * 2.2
 
   return (
-    <mesh ref={meshRef} layers={RENDER_LAYERS.MAIN_OBJECT} frustumCulled={true} scale={[scale, scale, scale]}>
+    <mesh ref={meshRef} layers={RENDER_LAYERS.MAIN_OBJECT} frustumCulled={true} scale={[1, 1, 1]}>
       <boxGeometry args={[boxSize, boxSize, boxSize]} />
       <TrackedShaderMaterial
         shaderName="Black Hole N-Dimensional"

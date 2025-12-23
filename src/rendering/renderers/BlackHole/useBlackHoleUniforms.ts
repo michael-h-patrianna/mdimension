@@ -43,9 +43,6 @@ export function useBlackHoleUniforms() {
       // Dimension
       uDimension: { value: 4 },
 
-      // Visual scale - scales the raymarching space (default 0.25 to show more skybox)
-      uScale: { value: 0.25 },
-
       // D-dimensional rotated coordinate system
       uBasisX: { value: new Float32Array(MAX_DIMENSION) },
       uBasisY: { value: new Float32Array(MAX_DIMENSION) },

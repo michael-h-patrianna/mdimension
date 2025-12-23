@@ -54,7 +54,9 @@ float adaptiveStepSize(float ndRadius) {
   // Reduce step when close to horizon
   float horizonDist = max(ndRadius - uHorizonRadius, 0.0);
   float horizonFactor = smoothstep(0.0, uHorizonRadius * uStepAdaptR, horizonDist);
-  step *= mix(0.2, 1.0, horizonFactor);
+  // CRITICAL: Allow very small steps near horizon (0.02x) to capture grazing rays
+  // for the photon ring and Einstein ring effects without clipping into the horizon.
+  step *= mix(0.02, 1.0, horizonFactor);
 
   // Distance-Based Step Relaxation:
   // Allow step size to grow with distance to save steps in empty space.
