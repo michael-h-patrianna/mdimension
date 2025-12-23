@@ -171,9 +171,12 @@ uniform float uSliceAmplitude;
     { name: 'Doppler', content: dopplerBlock },
     { name: 'Colors', content: colorsBlock },
     
-    // Choose disk implementation
+    // Disk implementations
+    // Volumetric disk provides continuous density sampling
     { name: 'Disk Volumetric', content: diskVolumetricBlock, condition: enableVolumetricDisk },
-    { name: 'Disk SDF', content: diskSdfBlock, condition: !enableVolumetricDisk },
+    // SDF disk provides plane crossing detection for Einstein rings
+    // Always included because volumetric mode now also uses crossing detection
+    { name: 'Disk SDF', content: diskSdfBlock },
 
     // Effects
     { name: 'Jets', content: jetsBlock, condition: enableJets },

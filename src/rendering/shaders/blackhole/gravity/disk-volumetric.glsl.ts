@@ -325,9 +325,10 @@ vec3 getDiskEmission(vec3 pos, float density, float time, vec3 rayDir, vec3 norm
 
 /**
  * Compute disk surface normal from density gradient.
- * Used for lighting/shading interactions.
+ * Used for volumetric lighting/shading interactions.
+ * Named differently from SDF version to avoid conflicts when both are included.
  */
-vec3 computeDiskNormal(vec3 pos, vec3 rayDir) {
+vec3 computeVolumetricDiskNormal(vec3 pos, vec3 rayDir) {
     // Standard central difference
     float eps = 0.02 * uHorizonRadius; // Scale epsilon with size
     float time = uTime * uTimeScale;

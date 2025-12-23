@@ -262,7 +262,7 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
   for (int i = 0; i < 512; i++) {
     if (i >= effectiveMaxSteps) break;
     if (totalDist > maxDist) break;
-    if (accum.transmittance < 0.01) break; // Early exit for opaque
+    if (accum.transmittance < uTransmittanceCutoff) break; // Early exit for opaque
 
     float ndRadius = ndDistance(pos);
 
@@ -315,7 +315,7 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
         bool computedNormal = false;
 
         if (uColorAlgorithm == ALGO_NORMAL) {
-             stepNormal = computeDiskNormal(pos, dir);
+             stepNormal = computeVolumetricDiskNormal(pos, dir);
              computedNormal = true;
         }
 
@@ -344,7 +344,7 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
              accum.firstHitPos = pos;
              accum.hasFirstHit = 1.0;
              if (!computedNormal) {
-                 stepNormal = computeDiskNormal(pos, dir); // Gradient-based normal
+                 stepNormal = computeVolumetricDiskNormal(pos, dir); // Gradient-based normal
              }
              accum.normalSum = stepNormal;
         }
@@ -354,10 +354,24 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
         accum.weightedPosSum += pos * weight;
         accum.totalWeight += weight;
     }
+    
+    // === DISK PLANE CROSSING DETECTION (Einstein Ring) ===
+    // Even in volumetric mode, we detect disk plane crossings to create
+    // the Einstein ring effect. Rays bending around the black hole cross
+    // the disk plane multiple times, and each crossing accumulates color.
+    if (diskCrossings < MAX_DISK_CROSSINGS) {
+      vec3 crossingPos;
+      if (detectDiskCrossing(prevPos, pos, crossingPos)) {
+        vec3 hitColor = shadeDiskHit(crossingPos, dir, diskCrossings, time);
+        vec3 diskNormal = vec3(0.0, sign(prevPos.y), 0.0); // Simple normal for thin disk
+        accumulateDiskHit(accum, hitColor, crossingPos, diskNormal);
+        diskCrossings++;
+      }
+    }
     #endif
 
     #ifdef USE_SDF_DISK
-    // Thin disk plane crossing (Einstein Ring)
+    // Thin disk plane crossing (Einstein Ring) - Legacy SDF-only mode
     if (diskCrossings < MAX_DISK_CROSSINGS) {
       vec3 crossingPos;
       if (detectDiskCrossing(prevPos, pos, crossingPos)) {
