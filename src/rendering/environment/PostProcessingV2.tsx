@@ -375,12 +375,16 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
     });
 
     // Main object MRT (color + normal + position)
-    // Must have 3 attachments to match shader outputs (gColor, gNormal, gPosition)
+    // Uses 3 attachments: gColor, gNormal, gPosition
+    // Position is needed for raymarching objects (Schroedinger, BlackHole) that use
+    // temporal reprojection even when on MAIN_OBJECT layer.
+    // IMPORTANT: All shaders rendering to this target MUST output to all 3 locations
+    // to avoid GL_INVALID_OPERATION errors.
     g.addResource({
       id: RESOURCES.MAIN_OBJECT_MRT,
       type: 'mrt',
       size: { mode: 'screen' },
-      attachmentCount: 3,
+      attachmentCount: 3, // DO NOT CHANGE - needed for temporal reprojection, reducing to 2 is NOT the fix for GL errors
       attachmentFormats: [THREE.RGBAFormat, THREE.RGBAFormat, THREE.RGBAFormat],
       dataType: THREE.HalfFloatType,
       depthBuffer: true,
@@ -652,7 +656,6 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       layers: [RENDER_LAYERS.MAIN_OBJECT],
       renderBackground: false,
       forceOpaque: true,
-      // Always enabled - this is where main objects render
     });
     passRefs.current.mainObjectMrt = mainObjectMrt;
     g.addPass(mainObjectMrt);
@@ -1014,7 +1017,6 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
   // ==========================================================================
 
   useFrame((_, delta) => {
-    console.log('[PostProcessing V2] useFrame running');
     const graphInstance = graphRef.current;
     if (!graphInstance) return;
 

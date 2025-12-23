@@ -207,6 +207,13 @@ export class RenderGraph {
 
     this.passthroughMaterial.uniforms['tDiffuse']!.value = inputTexture
     renderer.setRenderTarget(outputTarget)
+
+    // CRITICAL: Reset drawBuffers to single attachment.
+    // Passthrough shader only outputs to location 0. If previous MRT pass left
+    // drawBuffers configured for multiple attachments, we get GL_INVALID_OPERATION.
+    const gl = renderer.getContext()
+    gl.drawBuffers([gl.COLOR_ATTACHMENT0])
+
     renderer.render(this.passthroughScene, this.passthroughCamera)
   }
 

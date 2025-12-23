@@ -52,6 +52,12 @@ describe('MainObjectMRTPass', () => {
       setRenderTarget: vi.fn(),
       clear: vi.fn(),
       render: vi.fn(),
+      getContext: vi.fn().mockReturnValue({
+        drawBuffers: vi.fn(),
+        COLOR_ATTACHMENT0: 0x8CE0,
+        COLOR_ATTACHMENT1: 0x8CE1,
+        COLOR_ATTACHMENT2: 0x8CE2,
+      }),
     } as unknown as THREE.WebGLRenderer;
 
     const ctx = {
@@ -89,6 +95,12 @@ describe('MainObjectMRTPass', () => {
         setRenderTarget: vi.fn(),
         clear: vi.fn(),
         render: vi.fn(),
+        getContext: vi.fn().mockReturnValue({
+          drawBuffers: vi.fn(),
+          COLOR_ATTACHMENT0: 0x8CE0,
+          COLOR_ATTACHMENT1: 0x8CE1,
+          COLOR_ATTACHMENT2: 0x8CE2,
+        }),
       } as unknown as THREE.WebGLRenderer;
 
       ctx = {

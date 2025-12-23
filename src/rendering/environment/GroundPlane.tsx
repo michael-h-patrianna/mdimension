@@ -169,7 +169,7 @@ interface WallConfig {
 /**
  * Offset to prevent z-fighting between grid and surface.
  */
-const Z_OFFSET = 0.02;
+const Z_OFFSET = 0.05;
 
 /**
  * Get wall configuration for a given wall position and distance.
@@ -287,6 +287,7 @@ function WallGrid({
     <group position={config.position}>
       <group ref={setGridLayer}>
         <Grid
+          renderOrder={1}
           args={[size, size]}
           rotation={config.gridRotation}
           cellSize={gridSpacing}

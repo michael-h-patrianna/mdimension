@@ -28,7 +28,6 @@ import {
     InstancedBufferAttribute,
     InstancedMesh,
     Matrix4,
-    MeshBasicMaterial,
     ShaderMaterial,
 } from 'three'
 
@@ -514,7 +513,12 @@ export function TubeWireframe({
 
     // Update instance count
     mesh.count = instanceCount
-  }, [vertices, edges, geometry])
+    // Note: `isCompiling` in deps ensures this runs after shader compilation finishes.
+    // When compiling, we return null (no mesh), so meshRef.current is null and effect exits early.
+    // When isCompiling becomes false, the mesh renders and this effect re-runs to set up
+    // instance attributes. Using isCompiling (not material) because material reference changes
+    // BEFORE isCompiling becomes false.
+  }, [vertices, edges, geometry, isCompiling])
 
   // Update uniforms every frame
   useFrame(({ scene }) => {
@@ -651,16 +655,12 @@ export function TubeWireframe({
     return null
   }
 
-  // Render invisible placeholder while shader is compiling
-  // This allows the compilation overlay to appear before GPU blocks
+  // NOTE: No placeholder mesh during shader compilation. The placeholder was using
+  // MeshBasicMaterial which only outputs to 1 color attachment, causing
+  // GL_INVALID_OPERATION when rendered to 3-attachment MRT targets.
+  // The shader compilation overlay still shows because it's a separate React component.
   if (isCompiling || !material) {
-    return (
-      <instancedMesh
-        ref={setMeshRef}
-        args={[geometry, new MeshBasicMaterial({ visible: false }), edges.length]}
-        frustumCulled={false}
-      />
-    )
+    return null
   }
 
   return (

@@ -93,7 +93,7 @@ export function FpsController(): null {
         // Advance the frame - this triggers useFrame callbacks and renders
         // Pass timestamp for proper delta calculation in useFrame
         advance(now)
-        
+
         // Account for elapsed time to prevent drift, but don't set it to future
         // and ensure we don't 'lose' time if we skipped many frames.
         thenRef.current = now - (elapsed % interval)

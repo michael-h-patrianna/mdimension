@@ -23,8 +23,8 @@ import type { ShaderType, ToneMappingAlgorithm } from '@/rendering/shaders/types
 // ============================================================================
 
 export const DEFAULT_EDGE_COLOR = '#19e697'
-export const DEFAULT_EDGE_THICKNESS = 1
-export const DEFAULT_FACE_OPACITY = 0.3
+export const DEFAULT_EDGE_THICKNESS = 2
+export const DEFAULT_FACE_OPACITY = 1
 export const DEFAULT_FACE_COLOR = '#33cc9e'
 export const DEFAULT_BACKGROUND_COLOR = '#0F0F1A'
 
@@ -36,7 +36,7 @@ export const DEFAULT_METALLIC = 0.0
 export const DEFAULT_EDGE_SPECULAR_INTENSITY = 0.5
 export const DEFAULT_EDGE_SPECULAR_COLOR = '#ffffff'
 
-export const DEFAULT_EDGES_VISIBLE = true
+export const DEFAULT_EDGES_VISIBLE = false
 export const DEFAULT_FACES_VISIBLE = true
 
 // ============================================================================
@@ -189,7 +189,7 @@ export type { ShadowAnimationMode, ShadowQuality } from '@/rendering/shadows/typ
 // Surface Effect Defaults
 // ============================================================================
 
-export const DEFAULT_FRESNEL_ENABLED = true
+export const DEFAULT_FRESNEL_ENABLED = false
 export const DEFAULT_FRESNEL_INTENSITY = 0.1
 export const DEFAULT_PER_DIMENSION_COLOR_ENABLED = false
 
@@ -235,10 +235,10 @@ export const DEFAULT_GROUND_MATERIAL_METALNESS = 0.6
  * All three object types (face, edge, ground) use this structure.
  */
 export interface PBRConfig {
-  roughness: number        // 0.04-1.0 (min 0.04 avoids GGX divide-by-zero)
-  metallic: number         // 0.0-1.0
+  roughness: number // 0.04-1.0 (min 0.04 avoids GGX divide-by-zero)
+  metallic: number // 0.0-1.0
   specularIntensity: number // 0.0-2.0 (artistic multiplier)
-  specularColor: string    // hex color string
+  specularColor: string // hex color string
 }
 
 /** PBR for main objects (polytope faces, mandelbulb, julia, schroedinger, blackhole) */
@@ -311,8 +311,8 @@ export type SkyboxSelection =
   | 'procedural_starfield'
 
 export const DEFAULT_SKYBOX_ENABLED = true
-export const DEFAULT_SKYBOX_TEXTURE: SkyboxTexture = 'space_red'
-export const DEFAULT_SKYBOX_SELECTION: SkyboxSelection = 'space_red'
+export const DEFAULT_SKYBOX_TEXTURE: SkyboxTexture = 'none'
+export const DEFAULT_SKYBOX_SELECTION: SkyboxSelection = 'none'
 export const DEFAULT_SKYBOX_BLUR = 0
 export const DEFAULT_SKYBOX_INTENSITY = 1
 export const DEFAULT_SKYBOX_ROTATION = 0
@@ -474,7 +474,7 @@ export const DEFAULT_SHADER_SETTINGS = {
 // ============================================================================
 
 export const DEFAULT_SHOW_AXIS_HELPER = false
-export const DEFAULT_SHOW_PERF_MONITOR = true
+export const DEFAULT_SHOW_PERF_MONITOR = false
 export const DEFAULT_SHOW_DEPTH_BUFFER = false
 export const DEFAULT_SHOW_NORMAL_BUFFER = false
 export const DEFAULT_SHOW_TEMPORAL_DEPTH_BUFFER = false

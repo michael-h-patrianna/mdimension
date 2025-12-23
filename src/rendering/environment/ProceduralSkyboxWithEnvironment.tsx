@@ -107,12 +107,21 @@ const ProceduralSkyboxCapture: React.FC = () => {
       return;
     }
 
+    // DEBUG: Check for GL errors before and after cube camera update
+    const glCtx = gl.getContext();
+    const errorBefore = glCtx.getError();
+    if (errorBefore !== glCtx.NO_ERROR) {
+      console.warn('[ProceduralSkyboxCapture] GL error BEFORE useFrame:', errorBefore);
+    }
+
     // Determine if we should capture this frame:
     // 1. Initial capture needed (first 2 frames after mount/settings change)
     const needsInitialCapture = needsUpdateRef.current && frameCountRef.current < 2;
     const shouldUpdate = needsInitialCapture;
 
     if (shouldUpdate) {
+      console.log('[ProceduralSkyboxCapture] Starting cube camera update');
+
       // Position camera at origin (center of skybox sphere)
       cubeCamera.current.position.set(0, 0, 0);
 
@@ -123,6 +132,12 @@ const ProceduralSkyboxCapture: React.FC = () => {
       // Update the cube camera (renders all 6 faces)
       // This captures the skybox mesh to the cubemap
       cubeCamera.current.update(gl, scene);
+
+      // DEBUG: Check for GL errors after cube camera update
+      const errorAfterCube = glCtx.getError();
+      if (errorAfterCube !== glCtx.NO_ERROR) {
+        console.error('[ProceduralSkyboxCapture] GL error AFTER cubeCamera.update:', errorAfterCube);
+      }
 
       // Set the captured cubemap as background for black hole shader
       scene.background = cubeRenderTarget.current.texture;

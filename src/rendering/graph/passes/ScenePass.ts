@@ -129,6 +129,22 @@ export class ScenePass extends BasePass {
 
       // Render
       renderer.setRenderTarget(target);
+
+      // Set drawBuffers based on target type
+      const gl = renderer.getContext();
+      const isMRT = 'textures' in target && Array.isArray(target.textures) && target.textures.length > 1;
+      if (isMRT) {
+        // MRT target - set all attachments
+        const attachments = [];
+        for (let i = 0; i < target.textures.length; i++) {
+          attachments.push(gl.COLOR_ATTACHMENT0 + i);
+        }
+        gl.drawBuffers(attachments);
+      } else {
+        // Single attachment - reset to prevent GL_INVALID_OPERATION from stale MRT state
+        gl.drawBuffers([gl.COLOR_ATTACHMENT0]);
+      }
+
       renderer.render(scene, camera);
     } finally {
       // Restore renderer state - always runs even if render throws

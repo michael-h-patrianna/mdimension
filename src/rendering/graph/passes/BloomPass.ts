@@ -148,14 +148,18 @@ export class BloomPass extends BasePass {
       );
 
       // Create reusable render targets for bloom processing
+      // CRITICAL: Must use LinearSRGBColorSpace to match pipeline targets
       this.bloomReadTarget = new THREE.WebGLRenderTarget(width, height, {
         format: THREE.RGBAFormat,
         type: THREE.HalfFloatType,
       });
+      this.bloomReadTarget.texture.colorSpace = THREE.LinearSRGBColorSpace;
+
       this.bloomWriteTarget = new THREE.WebGLRenderTarget(width, height, {
         format: THREE.RGBAFormat,
         type: THREE.HalfFloatType,
       });
+      this.bloomWriteTarget.texture.colorSpace = THREE.LinearSRGBColorSpace;
 
       this.lastWidth = width;
       this.lastHeight = height;

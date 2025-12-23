@@ -23,7 +23,6 @@ import {
   DoubleSide,
   Float32BufferAttribute,
   Matrix4,
-  MeshBasicMaterial,
   ShaderMaterial,
   Vector3,
   Vector4,
@@ -976,20 +975,15 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   }, FRAME_PRIORITY.RENDERER_UNIFORMS);
 
   // ============ RENDER ============
-  // Placeholder material for when shader is compiling
-  const placeholderMaterial = useMemo(() => new MeshBasicMaterial({ visible: false }), []);
+  // NOTE: No placeholder mesh during shader compilation. The placeholder was using
+  // MeshBasicMaterial which only outputs to 1 color attachment, causing
+  // GL_INVALID_OPERATION when rendered to 3-attachment MRT targets.
+  // The shader compilation overlay still shows because it's a separate React component.
 
   return (
     <group>
       {/* Polytope faces - DoubleSide handles both front and back faces */}
-      {/* Render invisible placeholder while shader is compiling to allow overlay to appear */}
-      {facesVisible && faceGeometry && (isFaceShaderCompiling || !faceMaterial) && (
-        <mesh
-          ref={setFaceMeshRef}
-          geometry={faceGeometry}
-          material={placeholderMaterial}
-        />
-      )}
+      {/* Only render when shader is ready - no placeholder to avoid MRT mismatch */}
       {facesVisible && faceGeometry && !isFaceShaderCompiling && faceMaterial && (
         <mesh
           ref={setFaceMeshRef}
