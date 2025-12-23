@@ -176,12 +176,6 @@ export const GroundPlaneMaterial = forwardRef<THREE.ShaderMaterial, GroundPlaneM
       const env = state.scene.environment
       const isPMREM = env && env.mapping === THREE.CubeUVReflectionMapping
       u.uEnvMap!.value = isPMREM ? env : null
-      // #region agent log
-      if (!u.uEnvMap._logged && env) {
-        console.log('[IBL-DEBUG] GroundPlane uEnvMap', JSON.stringify({hasEnv:!!env,mapping:env?.mapping,isPMREM,iblQuality:u.uIBLQuality?.value}));
-        u.uEnvMap._logged = true;
-      }
-      // #endregion
 
       // Update grid uniforms
       u.uShowGrid!.value = showGrid

@@ -181,7 +181,6 @@ export class CubemapCapturePass extends BasePass {
     // Check for skybox mode changes (procedural <-> classic)
     const currentSkyboxMode = ctx.frame?.stores?.environment?.skyboxMode ?? null;
     if (currentSkyboxMode !== this.lastSkyboxMode) {
-      console.log('[IBL-DEBUG] Skybox mode changed:', this.lastSkyboxMode, '->', currentSkyboxMode);
       this.lastSkyboxMode = currentSkyboxMode;
       this.requestCapture();
     }
@@ -191,13 +190,11 @@ export class CubemapCapturePass extends BasePass {
     const externalTexture = this.getExternalCubeTexture();
     if (externalTexture) {
       if (externalTexture.uuid !== this.lastExternalTextureUuid) {
-        console.log('[IBL-DEBUG] External texture changed:', this.lastExternalTextureUuid, '->', externalTexture.uuid);
         this.lastExternalTextureUuid = externalTexture.uuid;
         this.requestCapture();
       }
     } else {
       if (this.lastExternalTextureUuid !== null) {
-        console.log('[IBL-DEBUG] External texture removed');
         this.lastExternalTextureUuid = null;
         this.requestCapture();
       }
@@ -228,10 +225,6 @@ export class CubemapCapturePass extends BasePass {
     this.ensureCubeCamera();
     if (!this.cubeCamera) return;
 
-    // #region agent log
-    console.log('[IBL-DEBUG] executeCapture', JSON.stringify({needsCapture:this.needsCapture,framesSinceReset:this.cubemapHistory.getFramesSinceReset()}));
-    // #endregion
-
     // 1. Capture Logic (Conditional, with throttling)
     this.captureFrameCounter++;
     const shouldCapture = this.needsCapture && (
@@ -247,10 +240,6 @@ export class CubemapCapturePass extends BasePass {
       scene.traverse((obj) => {
         if (obj.layers.test(this.cubeCamera!.layers)) skyboxObjectCount++;
       });
-      
-      // #region agent log  
-      console.log('[IBL-DEBUG] Capture check, objects on SKYBOX layer:', skyboxObjectCount);
-      // #endregion
       
       // Skip capture if no skybox objects yet - will retry next frame
       if (skyboxObjectCount === 0) {
@@ -315,9 +304,6 @@ export class CubemapCapturePass extends BasePass {
           // Let's stick to using 'writeTarget' for PMREM to minimize latency, as it's a separate effect.
           // actually, let's use the same logic as before: create from the just-rendered cubemap.
           this.pmremRenderTarget = this.pmremGenerator.fromCubemap(writeTarget.texture);
-          // #region agent log
-          console.log('[IBL-DEBUG] PMREM generated', JSON.stringify({width:this.pmremRenderTarget.width,height:this.pmremRenderTarget.height,textureId:this.pmremRenderTarget.texture.id}));
-          // #endregion
 
           // Force sync after PMREM generation
           getGlobalMRTManager().forceSync();
@@ -331,14 +317,9 @@ export class CubemapCapturePass extends BasePass {
     // For IBL, 1 frame is enough. For Black Hole, 2 frames are needed.
     // Use hasValidHistory(0) for faster IBL startup
     const hasValidHistory = this.cubemapHistory.hasValidHistory(0);
-    console.log('[IBL] hasValidHistory(0):', hasValidHistory, 'framesSinceReset:', this.cubemapHistory.getFramesSinceReset());
     
     if (hasValidHistory) {
       const readTarget = this.cubemapHistory.getRead(1);
-
-      // #region agent log
-      console.log('[IBL-DEBUG] hasValidHistory export', JSON.stringify({readTargetId:readTarget?.texture?.id,isCubeTexture:!!(readTarget?.texture as any)?.isCubeTexture,mapping:readTarget?.texture?.mapping,writeIndex:(this.cubemapHistory as any)?.writeIndex,pmremExists:!!this.pmremRenderTarget}));
-      // #endregion
 
       // Note: scene.background export is disabled to avoid rendering issues.
       // The black hole shader reads from getLastFrameExternal('sceneBackground')
@@ -383,10 +364,6 @@ export class CubemapCapturePass extends BasePass {
    * Advance the temporal resource to the next frame.
    */
   postFrame(): void {
-    // #region agent log
-    console.log('[IBL-DEBUG] postFrame', JSON.stringify({didCapture:this.didCaptureThisFrame,framesSinceReset:this.cubemapHistory?.getFramesSinceReset()}));
-    // #endregion
-
     // 1. Dispose old PMREM target if one is pending
     // Safe to do now because scene.environment has been updated to the NEW target (if any)
     if (this.pendingPMREMDispose) {

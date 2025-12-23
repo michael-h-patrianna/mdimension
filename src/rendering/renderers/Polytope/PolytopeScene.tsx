@@ -912,12 +912,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
           const env = scene.environment;
           const isPMREM = env && env.mapping === THREE.CubeUVReflectionMapping;
           u.uEnvMap.value = isPMREM ? env : null;
-          // #region agent log
-          if (!u.uEnvMap._logged && env) {
-            console.log('[IBL-DEBUG] PolytopeScene uEnvMap', JSON.stringify({hasEnv:!!env,mapping:env?.mapping,isPMREM,iblQuality:u.uIBLQuality?.value}));
-            u.uEnvMap._logged = true;
-          }
-          // #endregion
         }
 
         // Update advanced color system uniforms (only for face materials)

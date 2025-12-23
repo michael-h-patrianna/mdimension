@@ -4,6 +4,7 @@ import { useRotationStore } from '@/stores/rotationStore';
 import { useTransformStore } from '@/stores/transformStore';
 import { useAnimationStore } from '@/stores/animationStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
+import { useAppearanceStore } from '@/stores/appearanceStore';
 
 /**
  * Synchronizes the dimension across all relevant stores and resets rotations
@@ -31,6 +32,7 @@ export function useSyncedDimension() {
     // Object-specific re-initialization
     if (objectType === 'blackhole') {
       initializeBlackHoleForDimension(dimension);
+      useAppearanceStore.getState().setColorAlgorithm('blackbody');
     }
   }, [dimension, objectType, setRotationDimension, setTransformDimension, setAnimationDimension, initializeBlackHoleForDimension]);
 

@@ -56,7 +56,8 @@ export function useBlackHoleUniforms() {
       uParamValues: { value: new Float32Array(8) },
 
       // Physics (Kerr black hole)
-      uHorizonRadius: { value: 2.0 }, // Match store default (DEFAULT_BLACK_HOLE_CONFIG.horizonRadius)
+      uHorizonRadius: { value: 2.0 }, // Schwarzschild radius rs = 2M
+      uVisualEventHorizon: { value: 2.0 }, // Kerr event horizon r+ (shrinks with spin)
       uSpin: { value: 0.0 }, // Dimensionless spin chi = a/M (0 to 0.998)
       uDiskTemperature: { value: 6500.0 }, // Inner disk temperature in Kelvin
       uGravityStrength: { value: 5.0 },

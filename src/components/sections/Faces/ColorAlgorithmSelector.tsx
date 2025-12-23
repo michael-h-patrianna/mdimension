@@ -35,6 +35,10 @@ export const ColorAlgorithmSelector: React.FC<ColorAlgorithmSelectorProps> = ({
     const isBlackHole = objectType === 'blackhole';
 
     return COLOR_ALGORITHM_OPTIONS.filter((opt) => {
+      // Special case: Blackbody is shared by Schroedinger and Black Hole
+      if (opt.value === 'blackbody') {
+        return isSchroedinger || isBlackHole;
+      }
       // Show quantum algorithms only for Schroedinger
       if (isQuantumOnlyAlgorithm(opt.value)) {
         return isSchroedinger;

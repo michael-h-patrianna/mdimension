@@ -113,6 +113,7 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
 
     // Sync critical ray bending uniforms from store
     setUniform(u, 'uHorizonRadius', bhState.horizonRadius)
+    setUniform(u, 'uVisualEventHorizon', bhState._visualEventHorizon)
     setUniform(u, 'uSpin', bhState.spin)
     setUniform(u, 'uDiskTemperature', bhState.diskTemperature)
     setUniform(u, 'uGravityStrength', bhState.gravityStrength)
@@ -168,6 +169,7 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
       // Force-sync all critical ray bending uniforms that affect bounding sphere and lensing
       const bhState = useExtendedObjectStore.getState().blackhole
       setUniform(u, 'uHorizonRadius', bhState.horizonRadius)
+      setUniform(u, 'uVisualEventHorizon', bhState._visualEventHorizon)
       setUniform(u, 'uFarRadius', bhState.farRadius)
       setUniform(u, 'uGravityStrength', bhState.gravityStrength)
       setUniform(u, 'uBendScale', bhState.bendScale)
@@ -353,6 +355,7 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
 
     // Update black hole uniforms (Kerr physics)
     setUniform(u, 'uHorizonRadius', bhState.horizonRadius)
+    setUniform(u, 'uVisualEventHorizon', bhState._visualEventHorizon)
     setUniform(u, 'uSpin', bhState.spin)
     setUniform(u, 'uDiskTemperature', bhState.diskTemperature)
     setUniform(u, 'uGravityStrength', bhState.gravityStrength)

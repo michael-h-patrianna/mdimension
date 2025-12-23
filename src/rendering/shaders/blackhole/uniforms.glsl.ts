@@ -21,6 +21,7 @@ uniform float uScale;               // 3D scale factor (0.1-2.0, default 0.25)
 
 // Physics (Kerr black hole)
 uniform float uHorizonRadius;       // Schwarzschild radius rs = 2M
+uniform float uVisualEventHorizon;  // Kerr event horizon r+ = M(1+√(1-χ²)), shrinks with spin
 uniform float uSpin;                // Dimensionless spin chi = a/M (0 to 0.998)
 uniform float uDiskTemperature;     // Inner disk temperature in Kelvin
 uniform float uGravityStrength;     // Lensing intensity k (artistic multiplier)

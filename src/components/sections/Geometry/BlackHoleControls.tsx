@@ -78,7 +78,6 @@ export const BlackHoleControls: React.FC<BlackHoleControlsProps> = React.memo(({
     setHorizonRadius: state.setBlackHoleHorizonRadius,
     setSpin: state.setBlackHoleSpin,
     setManifoldThickness: state.setBlackHoleManifoldThickness,
-    setDiskInnerRadiusMul: state.setBlackHoleDiskInnerRadiusMul,
     setDiskOuterRadiusMul: state.setBlackHoleDiskOuterRadiusMul,
     // Cross-section
     setParameterValue: state.setBlackHoleParameterValue,
@@ -92,7 +91,6 @@ export const BlackHoleControls: React.FC<BlackHoleControlsProps> = React.memo(({
     setHorizonRadius,
     setSpin,
     setManifoldThickness,
-    setDiskInnerRadiusMul,
     setDiskOuterRadiusMul,
     setParameterValue,
     resetParameters,
@@ -150,7 +148,7 @@ export const BlackHoleControls: React.FC<BlackHoleControlsProps> = React.memo(({
           value={config.spin}
           onChange={setSpin}
           showValue
-          tooltip="Black hole rotation (0=Schwarzschild, 1=Extreme Kerr)"
+          tooltip="Determines event horizon size, ISCO, and photon sphere"
           data-testid="blackhole-spin"
         />
 
@@ -164,29 +162,17 @@ export const BlackHoleControls: React.FC<BlackHoleControlsProps> = React.memo(({
           showValue
           data-testid="blackhole-manifold-thickness"
         />
-        
+
         <Slider
-            label="Inner Radius"
-            min={1}
-            max={5}
-            step={0.1}
-            value={config.diskInnerRadiusMul}
-            onChange={setDiskInnerRadiusMul}
-            showValue
-            tooltip="Accretion disk inner edge (ISCO multiplier)"
-            data-testid="blackhole-inner-radius"
-        />
-        
-        <Slider
-            label="Outer Radius"
-            min={3}
-            max={30}
-            step={1}
-            value={config.diskOuterRadiusMul}
-            onChange={setDiskOuterRadiusMul}
-            showValue
-            tooltip="Accretion disk outer edge"
-            data-testid="blackhole-outer-radius"
+          label="Disk Outer Radius"
+          min={3}
+          max={30}
+          step={1}
+          value={config.diskOuterRadiusMul}
+          onChange={setDiskOuterRadiusMul}
+          showValue
+          tooltip="Accretion disk outer edge (artistic choice)"
+          data-testid="blackhole-outer-radius"
         />
       </Section>
 

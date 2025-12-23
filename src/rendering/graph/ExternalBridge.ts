@@ -310,12 +310,6 @@ export class ExternalBridge {
           ? registered.config.transform(pending.value)
           : pending.value
 
-        // #region agent log
-        if (id === 'scene.background' || id === 'scene.environment') {
-          console.log('[IBL-DEBUG] executeExport', id, JSON.stringify({textureId:(value as any)?.id,isCubeTexture:!!(value as any)?.isCubeTexture,mapping:(value as any)?.mapping}));
-        }
-        // #endregion
-
         // Apply to external target
         registered.config.setter(value)
       } catch (error) {

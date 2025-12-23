@@ -94,7 +94,6 @@ export const COLOR_ALGORITHM_TO_INT: Record<ColorAlgorithm, number> = {
 export const QUANTUM_ONLY_ALGORITHMS: readonly ColorAlgorithm[] = [
   'phase',
   'mixed',
-  'blackbody',
 ] as const
 
 /**

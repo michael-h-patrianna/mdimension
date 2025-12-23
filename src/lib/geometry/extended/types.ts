@@ -1782,6 +1782,16 @@ export interface BlackHoleConfig {
   sliceSpeed: number
   /** Slice animation amplitude (0.1-1.0, default 0.3) */
   sliceAmplitude: number
+
+  // === DERIVED VALUES (Internal - computed from spin, do not set directly) ===
+  /**
+   * Visual event horizon radius for Kerr black hole.
+   * Computed from spin: r+ = M × (1 + √(1 - χ²))
+   * For χ=0 (Schwarzschild): equals horizonRadius
+   * For χ=0.9: ~72% of horizonRadius
+   * @internal Computed by setBlackHoleSpin, do not set directly
+   */
+  _visualEventHorizon: number
 }
 
 /**
@@ -1831,22 +1841,36 @@ export const BLACK_HOLE_QUALITY_PRESETS: Record<BlackHoleQuality, Partial<BlackH
 }
 
 /**
- * Visual presets for black hole aesthetics
+ * Visual presets for black hole aesthetics.
+ *
+ * IMPORTANT: Presets should NOT set derived values (diskInnerRadiusMul, photonShellRadiusMul)
+ * as these are automatically computed from the spin parameter.
+ *
+ * Note: densityFalloff is clamped to [0.1, 10.0] in the shader for numerical stability.
  */
 export const BLACK_HOLE_VISUAL_PRESETS: Record<BlackHoleVisualPreset, Partial<BlackHoleConfig>> = {
   /** Interstellar movie-accurate look: thin disk, strong lensing, Einstein ring */
   interstellar: {
-    horizonRadius: 2.0, // Scaled up for visibility at default camera distance
+    // Physics - spin determines ISCO and photon sphere automatically
+    spin: 0.9, // High spin for dramatic Kerr effects
+    horizonRadius: 2.0,
+    diskTemperature: 6500, // Warm white
+
+    // Disk appearance
     manifoldThickness: 0.03, // Very thin disk for Interstellar look
-    densityFalloff: 200.0, // Sharp falloff for razor-thin disk
+    densityFalloff: 10.0, // Max shader value (was 200, clamped to 10)
+    diskOuterRadiusMul: 8.0, // Compact disk
+
+    // Lensing
     gravityStrength: 3.0, // Strong gravity for Einstein ring
     bendScale: 1.2,
-    bendMaxPerStep: 0.2, // Allow more bending for Einstein ring
-    maxSteps: 200, // Balanced for performance
+    bendMaxPerStep: 0.2,
+    maxSteps: 200,
+
+    // Visual effects
     manifoldIntensity: 2.0,
-    shellGlowStrength: 0.5, // Reduced - let lensed disk light create photon ring
-    shellGlowColor: '#ffcc66', // Orange-yellow (lensed disk light)
-    diskOuterRadiusMul: 8.0, // Compact disk
+    shellGlowStrength: 0.5, // Let lensed disk light create photon ring
+    shellGlowColor: '#ffcc66',
     dopplerEnabled: true,
     dopplerStrength: 0.6,
     dopplerHueShift: 0.1,
@@ -1855,9 +1879,11 @@ export const BLACK_HOLE_VISUAL_PRESETS: Record<BlackHoleVisualPreset, Partial<Bl
   },
   /** Cosmic preset: thicker volumetric manifold, softer glow */
   cosmic: {
+    spin: 0.5, // Moderate spin
     manifoldThickness: 0.3,
     densityFalloff: 6.0,
-    gravityStrength: 1.0,
+    diskOuterRadiusMul: 12.0,
+    gravityStrength: 1.5,
     bendScale: 1.0,
     manifoldIntensity: 1.5,
     shellGlowStrength: 2.0,
@@ -1869,8 +1895,10 @@ export const BLACK_HOLE_VISUAL_PRESETS: Record<BlackHoleVisualPreset, Partial<Bl
   },
   /** Ethereal preset: very thick field, strong glow, dreamlike */
   ethereal: {
+    spin: 0.3, // Low spin
     manifoldThickness: 0.8,
     densityFalloff: 3.0,
+    diskOuterRadiusMul: 15.0,
     gravityStrength: 0.8,
     bendScale: 0.8,
     manifoldIntensity: 2.0,
@@ -1899,8 +1927,8 @@ export const DEFAULT_BLACK_HOLE_CONFIG: BlackHoleConfig = {
   horizonRadius: 2.0,
   spin: 0.9, // High spin for dramatic Interstellar-style effects (prograde ISCO ~ 2.3M)
   diskTemperature: 6500, // ~Sun temperature for natural white disk color
-  gravityStrength: 3.0, // Strong gravity for dramatic Interstellar-style lensing
-  manifoldIntensity: 2.0, // Interstellar: bright accretion disk
+  gravityStrength: 5.0, // Strong gravity for dramatic Interstellar-style lensing
+  manifoldIntensity: 5.0, // Interstellar: bright accretion disk
   manifoldThickness: 0.03, // Thin disk for Interstellar look (combined with high densityFalloff)
   photonShellWidth: 0.05,
   timeScale: 1.0,
@@ -1925,11 +1953,11 @@ export const DEFAULT_BLACK_HOLE_CONFIG: BlackHoleConfig = {
   shellStepMul: 0.15, // Smaller steps near photon sphere for accurate orbits
   shellContrastBoost: 1.0,
 
-  // Manifold - Interstellar preset values (based on rossning92/Blackhole reference)
+  // Manifold - Interstellar preset values
   manifoldType: 'autoByN',
-  densityFalloff: 200.0, // Very sharp falloff for razor-thin Interstellar disk
-  diskInnerRadiusMul: 2.6, // ISCO (innermost stable circular orbit) per Interstellar reference
-  diskOuterRadiusMul: 8.0, // Reduced from 12.0 for more compact disk visible at default camera
+  densityFalloff: 10.0, // Sharp falloff (shader clamps to [0.1, 10.0])
+  diskInnerRadiusMul: 2.3, // ISCO - auto-computed from spin=0.9 (prograde Kerr)
+  diskOuterRadiusMul: 8.0, // Artistic choice for disk extent
   radialSoftnessMul: 0.2,
   thicknessPerDimMax: 4.0,
   highDimWScale: 2.0,
@@ -2024,6 +2052,11 @@ export const DEFAULT_BLACK_HOLE_CONFIG: BlackHoleConfig = {
   sliceAnimationEnabled: false,
   sliceSpeed: 0.02,
   sliceAmplitude: 0.3,
+
+  // Derived values (computed from spin)
+  // For spin=0.9: r+ = M(1 + √(1-0.81)) = M(1.436) ≈ 1.44
+  // With horizonRadius=2.0 (rs=2M, so M=1): _visualEventHorizon ≈ 1.44
+  _visualEventHorizon: 1.44,
 }
 
 // ============================================================================

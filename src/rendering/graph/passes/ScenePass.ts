@@ -127,10 +127,6 @@ export class ScenePass extends BasePass {
       }
       renderer.autoClear = this.autoClear
 
-      // #region agent log
-      console.log('[IBL-DEBUG] ScenePass before bg disable', JSON.stringify({hasBackground:!!scene.background,backgroundId:(scene.background as any)?.id,hasEnvironment:!!scene.environment,shouldDisableBackground}));
-      // #endregion
-
       if (shouldDisableBackground) {
         scene.background = null
       }

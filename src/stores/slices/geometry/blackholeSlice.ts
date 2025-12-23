@@ -72,18 +72,42 @@ export const createBlackHoleSlice: StateCreator<ExtendedObjectSlice, [], [], Bla
   },
 
   // === Basic Parameters ===
+  /**
+   * Set Schwarzschild radius (rs = 2M).
+   * Automatically recomputes all derived values based on current spin.
+   *
+   * @param radius - Schwarzschild radius (0.05-20)
+   */
   setBlackHoleHorizonRadius: (radius) => {
     const clamped = clampWithWarning(radius, 0.05, 20, 'horizonRadius')
-    set((state) => ({
-      blackhole: { ...state.blackhole, horizonRadius: clamped },
+    const state = get()
+    const spin = state.blackhole.spin
+
+    // Recompute derived values with new horizon radius
+    const M = clamped / 2
+    const kerr = computeKerrRadii(M, spin)
+
+    const _visualEventHorizon = kerr.eventHorizon
+    const diskInnerRadiusMul = kerr.iscoPrograde / clamped
+    const photonShellRadiusMul = kerr.photonSpherePrograde / clamped
+
+    set((s) => ({
+      blackhole: {
+        ...s.blackhole,
+        horizonRadius: clamped,
+        _visualEventHorizon,
+        diskInnerRadiusMul,
+        photonShellRadiusMul: Math.max(1.0, Math.min(2.0, photonShellRadiusMul)),
+      },
     }))
   },
 
   /**
    * Set black hole spin parameter (Kerr metric).
-   * Automatically updates derived radii:
-   * - diskInnerRadiusMul from ISCO
-   * - photonShellRadiusMul from photon sphere
+   * Automatically updates ALL derived values:
+   * - _visualEventHorizon: actual event horizon radius (shrinks with spin)
+   * - diskInnerRadiusMul: ISCO radius
+   * - photonShellRadiusMul: photon sphere radius
    *
    * @param spin - Dimensionless spin chi = a/M (0-0.998)
    */
@@ -95,6 +119,11 @@ export const createBlackHoleSlice: StateCreator<ExtendedObjectSlice, [], [], Bla
     // Compute Kerr radii from spin (M = rs/2 in geometric units)
     const M = horizonRadius / 2
     const kerr = computeKerrRadii(M, clamped)
+
+    // Visual event horizon (shrinks with spin for Kerr black hole)
+    // For spin=0: equals horizonRadius (2M = Schwarzschild)
+    // For spin=0.9: ~72% of horizonRadius
+    const _visualEventHorizon = kerr.eventHorizon
 
     // Convert ISCO to multiplier of horizon radius (rs = 2M)
     // For prograde accretion disk (most common astrophysically)
@@ -108,6 +137,7 @@ export const createBlackHoleSlice: StateCreator<ExtendedObjectSlice, [], [], Bla
       blackhole: {
         ...s.blackhole,
         spin: clamped,
+        _visualEventHorizon,
         diskInnerRadiusMul,
         photonShellRadiusMul: Math.max(1.0, Math.min(2.0, photonShellRadiusMul)),
       },
@@ -285,7 +315,8 @@ export const createBlackHoleSlice: StateCreator<ExtendedObjectSlice, [], [], Bla
   },
 
   setBlackHoleDensityFalloff: (falloff) => {
-    const clamped = Math.max(0, Math.min(40, falloff))
+    // Note: shader clamps to [0.1, 10.0] for numerical stability
+    const clamped = Math.max(0.1, Math.min(10, falloff))
     set((state) => ({
       blackhole: { ...state.blackhole, densityFalloff: clamped },
     }))
@@ -869,9 +900,9 @@ export const createBlackHoleSlice: StateCreator<ExtendedObjectSlice, [], [], Bla
       validated.shellGlowStrength = Math.max(0, Math.min(20, config.shellGlowStrength))
     }
 
-    // Manifold
+    // Manifold (densityFalloff clamped to shader range [0.1, 10.0])
     if (config.densityFalloff !== undefined) {
-      validated.densityFalloff = Math.max(0, Math.min(40, config.densityFalloff))
+      validated.densityFalloff = Math.max(0.1, Math.min(10, config.densityFalloff))
     }
     if (config.diskInnerRadiusMul !== undefined) {
       validated.diskInnerRadiusMul = Math.max(0, Math.min(10, config.diskInnerRadiusMul))

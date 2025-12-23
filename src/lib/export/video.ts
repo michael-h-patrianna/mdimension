@@ -57,10 +57,16 @@ export class VideoRecorder {
       target: this.target
     })
 
-    // 3. Configure Encoder
+    // 3. Configure Encoder with quality-optimized settings
+    // These settings prioritize visual quality over encoding speed, critical for
+    // smooth gradients and avoiding color banding artifacts in WebGL renders.
     const config: VideoEncodingConfig = {
       codec: 'avc', // H.264
       bitrate: this.options.bitrate * 1_000_000, // Convert Mbps to bps
+      bitrateMode: 'constant', // CBR provides more consistent quality, prevents banding in gradients
+      latencyMode: 'quality', // Prioritize visual quality over encoding speed
+      keyFrameInterval: this.options.fps * 2, // Keyframe every 2 seconds for good seeking + quality
+      hardwareAcceleration: 'prefer-software', // Software encoding often produces better quality
     }
 
     // 4. Create Source

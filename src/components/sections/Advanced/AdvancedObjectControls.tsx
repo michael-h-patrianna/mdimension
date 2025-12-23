@@ -695,7 +695,6 @@ const BlackHoleAdvanced: React.FC = () => {
         setDensityFalloff: state.setBlackHoleDensityFalloff,
         setNoiseScale: state.setBlackHoleNoiseScale,
         setNoiseAmount: state.setBlackHoleNoiseAmount,
-        setSwirlAmount: state.setBlackHoleSwirlAmount,
         // Shell
         setPhotonShellWidth: state.setBlackHolePhotonShellWidth,
         setShellGlowStrength: state.setBlackHoleShellGlowStrength,
@@ -745,7 +744,6 @@ const BlackHoleAdvanced: React.FC = () => {
         setDensityFalloff,
         setNoiseScale,
         setNoiseAmount,
-        setSwirlAmount,
         setPhotonShellWidth,
         setShellGlowStrength,
         setShellGlowColor,
@@ -912,15 +910,6 @@ const BlackHoleAdvanced: React.FC = () => {
                         onChange={setNoiseScale}
                         showValue
                     />
-                    <Slider
-                        label="Swirl"
-                        min={0}
-                        max={2}
-                        step={0.1}
-                        value={config.swirlAmount}
-                        onChange={setSwirlAmount}
-                        showValue
-                    />
                 </div>
             </div>
 
@@ -1065,7 +1054,7 @@ const BlackHoleAdvanced: React.FC = () => {
             {/* Edge Glow */}
             <div className="space-y-3 pt-2 border-t border-white/5">
                 <div className="flex items-center justify-between">
-                    <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider">Event Horizon</label>
+                    <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider">Horizon Glow</label>
                     <ToggleButton
                         pressed={config.edgeGlowEnabled}
                         onToggle={() => setEdgeGlowEnabled(!config.edgeGlowEnabled)}
