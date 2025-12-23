@@ -297,9 +297,22 @@ export function GroundPlane({
 
   // Callback ref to set layer on wall meshes
   // IMPORTANT: Must be called before any early returns to maintain hook order
+  // Floor is on ENVIRONMENT layer (0), NOT SKYBOX layer (2).
+  //
+  // WHY NOT SKYBOX LAYER:
+  // CubemapCapturePass captures SKYBOX layer to create the environment cubemap.
+  // If floor is on SKYBOX layer, it would be rendered into the cubemap while
+  // potentially sampling from that same cubemap (feedback loop).
+  //
+  // The floor is rendered by:
+  // - ScenePass: [MAIN_OBJECT, ENVIRONMENT, SKYBOX] - includes floor
+  // - NormalPass: [ENVIRONMENT] - includes floor for SSAO/edge detection
   const setWallLayer = useCallback((obj: Object3D | null) => {
     if (obj) {
-      obj.layers.set(RENDER_LAYERS.SKYBOX);
+      obj.layers.set(RENDER_LAYERS.ENVIRONMENT);
+      // #region agent log
+      console.log('[DEBUG:GroundPlane] layer set', { layer: RENDER_LAYERS.ENVIRONMENT, objType: obj.type });
+      // #endregion
     }
   }, []);
 

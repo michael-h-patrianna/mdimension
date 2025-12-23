@@ -18,10 +18,9 @@ import { RefinementIndicator } from '@/components/canvas/RefinementIndicator';
 import { EditorLayout } from '@/components/layout/EditorLayout';
 import { ContextLostOverlay } from '@/components/overlays/ContextLostOverlay';
 import { MsgBox } from '@/components/overlays/MsgBox';
-import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { ShaderCompilationOverlay } from '@/components/overlays/ShaderCompilationOverlay';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { ToastProvider } from '@/contexts/ToastContext';
-import { useToast } from '@/hooks/useToast';
 import { useAnimationLoop } from '@/hooks/useAnimationLoop';
 import { useDynamicFavicon } from '@/hooks/useDynamicFavicon';
 import { useFaceDepths } from '@/hooks/useFaceDepths';
@@ -29,6 +28,7 @@ import { useFaceDetection } from '@/hooks/useFaceDetection';
 import { useGeometryGenerator } from '@/hooks/useGeometryGenerator';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useSyncedDimension } from '@/hooks/useSyncedDimension';
+import { useToast } from '@/hooks/useToast';
 import { useUrlState } from '@/hooks/useUrlState';
 import type { Vector3D, VectorND } from '@/lib/math/types';
 import { FpsController } from '@/rendering/controllers/FpsController';
@@ -45,9 +45,9 @@ import { useLightingStore } from '@/stores/lightingStore';
 import { useUIStore } from '@/stores/uiStore';
 import { RECOVERY_STATE_KEY, RECOVERY_STATE_MAX_AGE } from '@/stores/webglContextStore';
 import { Canvas, type RootState } from '@react-three/fiber';
-import * as THREE from 'three';
 import { LazyMotion, domMax } from 'motion/react';
 import { useCallback, useEffect, useMemo } from 'react';
+import * as THREE from 'three';
 
 /**
  * Extract 3D positions from N-D vertices for ground plane bounds calculation.
@@ -186,7 +186,9 @@ function AppContent() {
   // to MRT targets before drawBuffers is properly configured, causing
   // GL_INVALID_OPERATION: Active draw buffers with missing fragment shader outputs
   const handleCanvasCreated = useCallback((state: RootState) => {
+
     initializeGlobalMRT(state.gl);
+
     if (import.meta.env.DEV) {
       console.log('[App] Canvas created, MRT state manager initialized');
     }

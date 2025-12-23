@@ -63,6 +63,12 @@ export const GroundPlaneMaterial = forwardRef<THREE.ShaderMaterial, GroundPlaneM
     const materialRef = useRef<THREE.ShaderMaterial>(null)
     const colorCacheRef = useRef(createColorCache())
 
+    // #region agent log
+    useEffect(() => {
+      console.log('[DEBUG:GroundPlaneMaterial] mounted');
+    }, []);
+    // #endregion
+
     // Get shadow settings for shader compilation
     const shadowEnabled = useLightingStore((state) => state.shadowEnabled)
 
@@ -162,14 +168,17 @@ export const GroundPlaneMaterial = forwardRef<THREE.ShaderMaterial, GroundPlaneM
       }
 
       // Update IBL
+      // IMPORTANT: Do NOT bind uEnvMap here! This useFrame runs BEFORE the render graph,
+      // so binding scene.background here would cause a feedback loop when CubemapCapturePass
+      // renders the floor while writing to the same cubemap texture.
+      //
+      // Instead, uEnvMap is bound by the render graph AFTER CubemapCapturePass completes.
+      // The IBL shader handles uEnvMap being null gracefully.
       const iblState = useEnvironmentStore.getState()
       const qualityMap = { off: 0, low: 1, high: 2 } as const
       u.uIBLQuality!.value = qualityMap[iblState.iblQuality]
       u.uIBLIntensity!.value = iblState.iblIntensity
-      const bg = state.scene.background
-      if (bg && (bg as THREE.CubeTexture).isCubeTexture) {
-        u.uEnvMap!.value = bg
-      }
+      // uEnvMap is now bound by ScenePass after cubemap capture is complete
 
       // Update grid uniforms
       u.uShowGrid!.value = showGrid

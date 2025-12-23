@@ -11,6 +11,29 @@
  * - graph.execute() runs everything in dependency order
  * - Passes dynamically enabled/disabled via enabled() callbacks
  *
+ * ## Callback Architecture: Config-Time vs Frame-Time
+ *
+ * This component uses two types of callbacks with different lifecycle semantics:
+ *
+ * ### Frame-Time Callbacks (enabled())
+ * - Called every frame during graph execution
+ * - Receive frozen FrameContext for consistent state reads
+ * - MUST use frozen context, NOT refs
+ * - Signature: `(frame: FrozenFrameContext | null) => boolean`
+ * - Example: `enabled: (frame) => frame?.stores.environment.fogEnabled ?? false`
+ *
+ * ### Config-Time Callbacks (everything else)
+ * - Called during graph setup/configuration, not per-frame
+ * - CAN use refs because they run before execute() captures state
+ * - Include: generatePMREM, getExternalCubeTexture, depthInputSelector,
+ *   forceCapture, shouldRender, etc.
+ * - Example: `generatePMREM: () => envStateRef.current.activeWalls.length > 0`
+ *
+ * This distinction is critical for frame stability. Frame-time callbacks
+ * (enabled()) must see frozen state to prevent mid-frame state changes from
+ * causing render inconsistencies. Config-time callbacks run at graph setup
+ * when refs are the appropriate way to access current state.
+ *
  * @module rendering/environment/PostProcessingV2
  */
 
@@ -48,11 +71,16 @@ import {
   ToScreenPass,
   VolumetricFogPass,
 } from '@/rendering/graph/passes';
+import {
+  createSceneBackgroundExport,
+  createSceneEnvironmentExport,
+} from '@/rendering/graph/ExternalBridge';
 import { RenderGraph } from '@/rendering/graph/RenderGraph';
 import { cloudCompositeFragmentShader } from '@/rendering/shaders/postprocessing/cloudComposite.glsl';
 import { normalCompositeFragmentShader } from '@/rendering/shaders/postprocessing/normalComposite.glsl';
 import { TONE_MAPPING_TO_THREE } from '@/rendering/shaders/types';
 import { generateNoiseTexture2D, generateNoiseTexture3D } from '@/rendering/utils/NoiseGenerator';
+import { useAnimationStore } from '@/stores/animationStore';
 import { SSR_QUALITY_STEPS } from '@/stores/defaults/visualDefaults';
 import { useEnvironmentStore } from '@/stores/environmentStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
@@ -334,18 +362,83 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
     const g = new RenderGraph();
 
     // ========================================================================
+    // Set Store Getters for Frozen Frame Context
+    // ========================================================================
+    // These are called ONCE at frame start to capture frozen state.
+    // Passes should read from ctx.frame.stores.* instead of live stores.
+    g.setStoreGetters({
+      getAnimationState: () => {
+        const s = useAnimationStore.getState();
+        return {
+          accumulatedTime: s.accumulatedTime,
+          speed: s.speed,
+          isPlaying: s.isPlaying,
+          direction: s.direction,
+          animatingPlanes: s.animatingPlanes,
+        };
+      },
+      getGeometryState: () => {
+        const s = useGeometryStore.getState();
+        return {
+          objectType: s.objectType,
+          dimension: s.dimension,
+        };
+      },
+      getEnvironmentState: () => {
+        const s = useEnvironmentStore.getState();
+        return {
+          fog: s,
+          skybox: s,
+          ground: s,
+        };
+      },
+      getPostProcessingState: () => usePostProcessingStore.getState(),
+      getPerformanceState: () => {
+        const s = usePerformanceStore.getState();
+        return {
+          isInteracting: s.isInteracting,
+          sceneTransitioning: s.sceneTransitioning,
+          progressiveRefinementEnabled: s.progressiveRefinementEnabled,
+          qualityMultiplier: s.qualityMultiplier,
+          refinementStage: s.refinementStage,
+          temporalReprojectionEnabled: s.temporalReprojectionEnabled,
+          cameraTeleported: s.cameraTeleported,
+          fractalAnimationLowQuality: s.fractalAnimationLowQuality,
+          isShaderCompiling: s.isShaderCompiling,
+        };
+      },
+      getBlackHoleState: () => useExtendedObjectStore.getState().blackhole,
+      getUIState: () => {
+        const s = useUIStore.getState();
+        return {
+          showDepthBuffer: s.showDepthBuffer,
+          showNormalBuffer: s.showNormalBuffer,
+          showTemporalDepthBuffer: s.showTemporalDepthBuffer,
+        };
+      },
+    });
+
+    // ========================================================================
+    // Register External Bridge Exports
+    // ========================================================================
+    // These define how internal resources are exported to external systems.
+    // CubemapCapturePass calls ctx.queueExport() which batches exports.
+    // executeExports() applies them AFTER all passes complete.
+    g.registerExport(createSceneBackgroundExport(scene));
+    g.registerExport(createSceneEnvironmentExport(scene));
+
+    // ========================================================================
     // Register Resources
     // ========================================================================
 
     // Main scene HDR color buffer (with depth texture)
-    // Uses 3 attachments to match shader outputs (gColor, gNormal, gPosition)
-    // All shaders output to 3 locations to prevent GL_INVALID_OPERATION
+    // Single attachment to support mixed materials (standard objects + MRT-aware objects).
+    // G-Buffer data for Main Object is captured separately in MainObjectMRTPass.
     g.addResource({
       id: RESOURCES.SCENE_COLOR,
-      type: 'mrt',
+      type: 'renderTarget',
       size: { mode: 'screen' },
-      attachmentCount: 3,
-      attachmentFormats: [THREE.RGBAFormat, THREE.RGBAFormat, THREE.RGBAFormat],
+      format: THREE.RGBAFormat,
       dataType: THREE.HalfFloatType,
       depthBuffer: true,
       depthTexture: true,
@@ -567,9 +660,11 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
     // Add Passes (order determined by graph compiler!)
     // ========================================================================
 
-    const shouldRenderNormals = () => {
-      const pp = ppStateRef.current;
-      const ui = uiStateRef.current;
+    // Helper functions receive frozen frame context for consistent state
+    const shouldRenderNormals = (frame: import('@/rendering/graph/FrameContext').FrozenFrameContext | null) => {
+      if (!frame) return false;
+      const pp = frame.stores.postProcessing;
+      const ui = frame.stores.ui;
       return (
         pp.ssrEnabled ||
         pp.refractionEnabled ||
@@ -578,10 +673,11 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       );
     };
 
-    const shouldRenderObjectDepth = () => {
-      const pp = ppStateRef.current;
-      const ui = uiStateRef.current;
-      const perf = perfStateRef.current;
+    const shouldRenderObjectDepth = (frame: import('@/rendering/graph/FrameContext').FrozenFrameContext | null) => {
+      if (!frame) return false;
+      const pp = frame.stores.postProcessing;
+      const ui = frame.stores.ui;
+      const perf = frame.stores.performance;
       const depthForEffects =
         pp.objectOnlyDepth && (pp.ssrEnabled || pp.refractionEnabled || pp.bokehEnabled);
       const depthForTemporal = perf.temporalReprojectionEnabled || ui.showTemporalDepthBuffer;
@@ -589,8 +685,11 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       return depthForEffects || depthForTemporal || depthPreview;
     };
 
-    const shouldRenderTemporalCloud = () => {
-      const perf = perfStateRef.current;
+    const shouldRenderTemporalCloud = (frame: import('@/rendering/graph/FrameContext').FrozenFrameContext | null) => {
+      if (!frame) return false;
+      const perf = frame.stores.performance;
+      // Note: schroedingerIsoEnabled comes from extendedObjectStore, not captured in frozen context
+      // Use ref for this specific field as it's not in the frozen context
       const temporalCloudAccumulation = perf.temporalReprojectionEnabled && !blackHoleStateRef.current.schroedingerIsoEnabled;
       return needsVolumetricSeparation({ temporalCloudAccumulation, objectType: objectTypeRef.current });
     };
@@ -608,8 +707,9 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       backgroundResolution: blackHoleStateRef.current.skyCubemapResolution,
       environmentResolution: 256,
       // Enabled when skybox is active and something needs it (black hole or walls)
-      enabled: () => {
-        const env = envStateRef.current;
+      enabled: (frame) => {
+        if (!frame) return false;
+        const env = frame.stores.environment;
         if (!env.skyboxEnabled) return false;
         // For classic mode, also need the texture to be loaded
         if (env.skyboxMode === 'classic' && !env.classicCubeTexture) return false;
@@ -617,8 +717,10 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
         return hasConsumer;
       },
       // Generate PMREM only when walls need reflections
+      // Note: This is not an enabled() callback, so it still uses refs
       generatePMREM: () => envStateRef.current.activeWalls.length > 0,
       // Provide external CubeTexture for classic skybox mode
+      // Note: This is not an enabled() callback, so it still uses refs
       getExternalCubeTexture: () => {
         const env = envStateRef.current;
         if (env.skyboxMode === 'classic' && env.classicCubeTexture) {
@@ -665,21 +767,29 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       depthInput: RESOURCES.OBJECT_DEPTH,
       outputResource: RESOURCES.TEMPORAL_DEPTH_OUTPUT,
       temporalDepthState: temporalDepth,
-      enabled: () => {
-        const perf = perfStateRef.current;
-        const ui = uiStateRef.current;
+      enabled: (frame) => {
+        if (!frame) return false;
+        const perf = frame.stores.performance;
+        const ui = frame.stores.ui;
         return perf.temporalReprojectionEnabled || ui.showTemporalDepthBuffer;
       },
+      // Note: forceCapture is not an enabled() callback, so it still uses refs
       forceCapture: () => uiStateRef.current.showTemporalDepthBuffer,
     });
     passRefs.current.temporalDepthCapture = temporalDepthCapture;
     g.addPass(temporalDepthCapture);
 
     // Temporal cloud accumulation (quarter-res volumetric pass)
+    // Note: shouldRender uses refs because it's not an enabled() callback (different interface)
+    const shouldRenderTemporalCloudRef = () => {
+      const perf = perfStateRef.current;
+      const temporalCloudAccumulation = perf.temporalReprojectionEnabled && !blackHoleStateRef.current.schroedingerIsoEnabled;
+      return needsVolumetricSeparation({ temporalCloudAccumulation, objectType: objectTypeRef.current });
+    };
     const temporalCloudPass = new TemporalCloudPass({
       id: 'temporalCloud',
       volumetricLayer: RENDER_LAYERS.VOLUMETRIC,
-      shouldRender: shouldRenderTemporalCloud,
+      shouldRender: shouldRenderTemporalCloudRef,
       cloudBuffer: RESOURCES.TEMPORAL_CLOUD_BUFFER,
       accumulationBuffer: RESOURCES.TEMPORAL_ACCUMULATION,
       reprojectionBuffer: RESOURCES.TEMPORAL_REPROJECTION,
@@ -755,7 +865,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       outputResource: RESOURCES.FOG_OUTPUT,
       noiseTexture: noiseTextureData.texture,
       use3DNoise: noiseTextureData.use3D,
-      enabled: () => envStateRef.current.fogEnabled,
+      enabled: (frame) => frame?.stores.environment.fogEnabled ?? false,
     });
     passRefs.current.fog = fogPass;
     g.addPass(fogPass);
@@ -768,7 +878,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       depthInput: RESOURCES.SCENE_COLOR,
       depthInputAttachment: 'depth',
       outputResource: RESOURCES.GTAO_OUTPUT,
-      enabled: () => ppStateRef.current.ssaoEnabled && isPolytope,
+      enabled: (frame) => (frame?.stores.postProcessing.ssaoEnabled ?? false) && isPolytope,
     });
     passRefs.current.gtao = gtaoPass;
     g.addPass(gtaoPass);
@@ -781,7 +891,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       strength: ppStateRef.current.bloomIntensity,
       radius: ppStateRef.current.bloomRadius,
       threshold: ppStateRef.current.bloomThreshold,
-      enabled: () => ppStateRef.current.bloomEnabled,
+      enabled: (frame) => frame?.stores.postProcessing.bloomEnabled ?? false,
     });
     passRefs.current.bloom = bloomPass;
     g.addPass(bloomPass);
@@ -794,6 +904,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       depthInput: RESOURCES.OBJECT_DEPTH,
       alternateDepthInput: RESOURCES.SCENE_COLOR,
       alternateDepthInputAttachment: 'depth',
+      // Note: depthInputSelector is not an enabled() callback, so it still uses refs
       depthInputSelector: () =>
         ppStateRef.current.objectOnlyDepth ? RESOURCES.OBJECT_DEPTH : RESOURCES.SCENE_COLOR,
       outputResource: RESOURCES.SSR_OUTPUT,
@@ -802,7 +913,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       thickness: ppStateRef.current.ssrThickness,
       fadeStart: ppStateRef.current.ssrFadeStart,
       fadeEnd: ppStateRef.current.ssrFadeEnd,
-      enabled: () => ppStateRef.current.ssrEnabled,
+      enabled: (frame) => frame?.stores.postProcessing.ssrEnabled ?? false,
     });
     passRefs.current.ssr = ssrPass;
     g.addPass(ssrPass);
@@ -815,13 +926,14 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       depthInput: RESOURCES.OBJECT_DEPTH,
       alternateDepthInput: RESOURCES.SCENE_COLOR,
       alternateDepthInputAttachment: 'depth',
+      // Note: depthInputSelector is not an enabled() callback, so it still uses refs
       depthInputSelector: () =>
         ppStateRef.current.objectOnlyDepth ? RESOURCES.OBJECT_DEPTH : RESOURCES.SCENE_COLOR,
       outputResource: RESOURCES.REFRACTION_OUTPUT,
       ior: ppStateRef.current.refractionIOR,
       strength: ppStateRef.current.refractionStrength,
       chromaticAberration: ppStateRef.current.refractionChromaticAberration,
-      enabled: () => ppStateRef.current.refractionEnabled,
+      enabled: (frame) => frame?.stores.postProcessing.refractionEnabled ?? false,
     });
     passRefs.current.refraction = refractionPass;
     g.addPass(refractionPass);
@@ -833,6 +945,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       depthInput: RESOURCES.OBJECT_DEPTH,
       alternateDepthInput: RESOURCES.SCENE_COLOR,
       alternateDepthInputAttachment: 'depth',
+      // Note: depthInputSelector is not an enabled() callback, so it still uses refs
       depthInputSelector: () =>
         ppStateRef.current.objectOnlyDepth ? RESOURCES.OBJECT_DEPTH : RESOURCES.SCENE_COLOR,
       outputResource: RESOURCES.BOKEH_OUTPUT,
@@ -840,9 +953,11 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       focusRange: ppStateRef.current.bokehWorldFocusRange,
       aperture: ppStateRef.current.bokehScale * 0.005,
       maxBlur: ppStateRef.current.bokehScale * 0.02,
-      enabled: () => {
-        const ui = uiStateRef.current;
-        return ppStateRef.current.bokehEnabled &&
+      enabled: (frame) => {
+        if (!frame) return false;
+        const pp = frame.stores.postProcessing;
+        const ui = frame.stores.ui;
+        return pp.bokehEnabled &&
           !(ui.showDepthBuffer || ui.showNormalBuffer || ui.showTemporalDepthBuffer);
       },
     });
@@ -861,7 +976,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       distortionScale: blackHoleStateRef.current.bendScale,
       chromaticAberration: blackHoleStateRef.current.deferredLensingChromaticAberration,
       falloff: blackHoleStateRef.current.lensingFalloff,
-      enabled: () => blackHoleStateRef.current.screenSpaceLensingEnabled && isBlackHole,
+      enabled: (frame) => (frame?.stores.blackHole.screenSpaceLensingEnabled ?? false) && isBlackHole,
     });
     passRefs.current.lensing = lensingPass;
     g.addPass(lensingPass);
@@ -873,7 +988,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       outputResource: RESOURCES.CINEMATIC_OUTPUT,
       aberration: ppStateRef.current.cinematicAberration,
       vignette: ppStateRef.current.cinematicVignette,
-      enabled: () => ppStateRef.current.cinematicEnabled,
+      enabled: (frame) => frame?.stores.postProcessing.cinematicEnabled ?? false,
     });
     passRefs.current.cinematic = cinematicPass;
     g.addPass(cinematicPass);
@@ -886,7 +1001,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       intensity: ppStateRef.current.cinematicGrain,
       grainSize: 1.0,
       colored: false,
-      enabled: () => ppStateRef.current.cinematicGrain > 0.01,
+      enabled: (frame) => (frame?.stores.postProcessing.cinematicGrain ?? 0) > 0.01,
     });
     passRefs.current.filmGrain = filmGrainPass;
     g.addPass(filmGrainPass);
@@ -931,8 +1046,9 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       outputResource: RESOURCES.PREVIEW_OUTPUT,
       bufferType: 'copy',
       depthMode: 'linear',
-      enabled: () => {
-        const ui = uiStateRef.current;
+      enabled: (frame) => {
+        if (!frame) return false;
+        const ui = frame.stores.ui;
         return ui.showDepthBuffer || ui.showNormalBuffer || ui.showTemporalDepthBuffer;
       },
     });
@@ -946,8 +1062,9 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
         inputs: [{ resourceId: RESOURCES.PREVIEW_OUTPUT, access: 'read' }],
         gammaCorrection: false,
         toneMapping: false,
-        enabled: () => {
-          const ui = uiStateRef.current;
+        enabled: (frame) => {
+          if (!frame) return false;
+          const ui = frame.stores.ui;
           return ui.showDepthBuffer || ui.showNormalBuffer || ui.showTemporalDepthBuffer;
         },
       })
@@ -959,8 +1076,9 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
         inputs: [{ resourceId: RESOURCES.AA_OUTPUT, access: 'read' }],
         gammaCorrection: false, // Let renderer handle it
         toneMapping: false,
-        enabled: () => {
-          const ui = uiStateRef.current;
+        enabled: (frame) => {
+          if (!frame) return true; // Default to showing final output
+          const ui = frame.stores.ui;
           return !(ui.showDepthBuffer || ui.showNormalBuffer || ui.showTemporalDepthBuffer);
         },
       })

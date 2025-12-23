@@ -95,14 +95,6 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
   // Cached linear colors (avoid sRGB->linear conversion every frame)
   const colorCacheRef = useRef(createBlackHoleColorCache())
 
-  // CRITICAL: Cache last valid env map to survive transient scene.background clears.
-  // PostProcessing and ProceduralSkyboxCapture temporarily set scene.background = null
-  // during their render passes, which would otherwise cause 1-frame lensing flicker.
-  const lastValidEnvMapRef = useRef<THREE.Texture | null>(null)
-
-  // Track if envMap was ever null, to detect transition from null → valid
-  const envMapWasNullRef = useRef(true)
-
   // Track material to detect when TrackedShaderMaterial switches from placeholder to real shader.
   // When this happens, we need to force-sync all uniforms before the first render.
   const prevMaterialRef = useRef<THREE.ShaderMaterial | null>(null)
@@ -191,7 +183,6 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
           bg.mapping === THREE.CubeReflectionMapping ||
           bg.mapping === THREE.CubeRefractionMapping)
       if (isCubeCompatible) {
-        lastValidEnvMapRef.current = bg
         setUniform(u, 'envMap', bg)
         setUniform(u, 'uEnvMapReady', 1.0)
       }
@@ -473,16 +464,28 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
     setUniform(u, 'uEdgeGlowWidth', bhState.edgeGlowWidth)
     setUniform(u, 'uEdgeGlowIntensity', bhState.edgeGlowIntensity)
 
-    // Update environment map from scene.background (set by general skybox system)
-    // Note: PMREM textures are 2D textures with special mapping, NOT CubeTextures
-    // Our shader uses samplerCube, so we need textures compatible with cube sampling
-    // scene.background = may be:
-    //   - CubeTexture (from KTX2 loader): has isCubeTexture === true
-    //   - WebGLCubeRenderTarget.texture (from procedural capture): is Texture but with cube mapping
+    // ========================================================================
+    // Environment Map Update (Frame-Consistent via ExternalBridge)
+    // ========================================================================
+    // scene.background is set by CubemapCapturePass via ExternalBridge at FRAME END.
+    // This hook runs at FRAME START (priority -10), so it reads the PREVIOUS frame's
+    // cubemap. This one-frame delay is intentional and provides frame consistency:
     //
-    // CRITICAL: Use sticky fallback to survive transient scene.background clears.
-    // PostProcessing clears scene.background during normal pass, then restores it.
-    // Without this cache, black hole would see null and disable lensing for that frame.
+    // Frame N: CubemapCapturePass captures cubemap, queues export
+    // Frame N: executeExports() sets scene.background at frame END
+    // Frame N+1: This hook reads scene.background at frame START (reads frame N's value)
+    //
+    // This architecture replaces the old lastValidEnvMapRef workaround. The combination of:
+    // 1. TemporalResource (ensures cubemap is only exported when valid history exists)
+    // 2. ExternalBridge (batches exports to frame end)
+    // 3. StateBarrier (saves/restores scene state around each pass)
+    // ...guarantees the black hole shader never reads from an uninitialized cubemap.
+    //
+    // Note: PMREM textures are 2D textures with special mapping, NOT CubeTextures.
+    // Our shader uses samplerCube, so we need textures compatible with cube sampling.
+    // scene.background may be:
+    //   - CubeTexture (from KTX2 loader): has isCubeTexture === true
+    //   - WebGLCubeRenderTarget.texture (from procedural capture): Texture with cube mapping
     const bg = scene.background as THREE.Texture | null
     const isCubeCompatible =
       bg &&
@@ -490,29 +493,12 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
         bg.mapping === THREE.CubeReflectionMapping ||
         bg.mapping === THREE.CubeRefractionMapping)
 
-    // Cache valid env maps so transient clears don't break lensing
     if (isCubeCompatible) {
-      lastValidEnvMapRef.current = bg
-    }
-
-    // Use cached env map if current background is invalid but we have a cached one
-    const envMapToUse = isCubeCompatible ? bg : lastValidEnvMapRef.current
-
-    if (envMapToUse) {
-      setUniform(u, 'envMap', envMapToUse)
+      setUniform(u, 'envMap', bg)
       setUniform(u, 'uEnvMapReady', 1.0)
-
-      // CRITICAL: When envMap transitions from null to valid, THREE.js needs
-      // material.needsUpdate = true to properly rebind the texture to the shader.
-      // Without this, the shader may continue using a null/default texture.
-      if (envMapWasNullRef.current) {
-        envMapWasNullRef.current = false
-        material.needsUpdate = true
-      }
     } else {
       // EnvMap not ready or skybox disabled - shader renders black background
       setUniform(u, 'uEnvMapReady', 0.0)
-      envMapWasNullRef.current = true
     }
 
     // Doppler

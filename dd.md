@@ -5,30 +5,27 @@ You cannot break anything. The project in this local folder is backed up and can
 Your task:
 this project underwent a major refactoring to switch the rendering pipeline into a industry-standard render graph.
 
-this migration went wrong and now features are broken or missing.
+this migration is kind of done, but not at the highest possible quality.
 
-your task is to find all issues, close the gap, polish and fix issues.
+your task is to find and fix and refactor all
+- bugs
+- "band-aid" code
+- low quality architecture not in line with an industry-standard render graph engine like unreal, unity, forstbite
+- code that renders outside of the render path
+- code that requires shaders and renderers to have knowledge about the topography of the render graph
+- performance hogs and imperformant code
+- violation of using deferred shader composition
+- dead code
+- duplicate code
+- code leading to circular dependencies
+- code creating uncertainty about number of output targets and potentially creating gl errors
+- code not using WebGL2, GSLS3, Threejs r182, React 19, Zustand5 or not taking into account the special constraints and abilities of these technologies
 
-Worflow:
-1. Understand the migration plan: docs/plans/refactor-rendering-architecture.md
-2. Review the current implementation
-3. Compare to pre-refactor commits in the git main branch what features existed and how they worked
-4. Plan and design solutions to:
-   1. close the gap between current codebase and what the migration plan expected
-   2. finish the migration
-   3. reintroduce features that have been lost during migration (compare to older commits in the git repo)
-   4. fix bugs
-   5. upgrade code that is not in line with best practices or our tech stack of React 19, ThreeJs r182, WebGL2, GSLS3, Zustand 5
-   6. improve performance and replace inefficient code
-5. implement
-6. write meaningful tests that are actually testing full functionality of the render graph, skyboxes, object types, walls, materials, shaders, post processing effects, animations, geometry
-
-Test gates that must pass:
-Gate 1: scripts/playwright/object-types-rendering.spec.ts
-Gate 2: scripts/playwright/polytope-rendering.spec.ts
 
 Constraint:
-- You cannot deviate and simplify. The only acceptable outcome is the state-of-the-art rendergraph architecture as outlined in docs/plans/refactor-rendering-architecture.md
+- You cannot "hack". The only acceptable outcome is the state-of-the-art render graph architecture
+
+
 
 Important Reminder: This is a test of your autonomous capabilities. You are expected to take initiative and make decisions independently. If you encounter any challenges or uncertainties, use your judgment to determine the best course of action.
 

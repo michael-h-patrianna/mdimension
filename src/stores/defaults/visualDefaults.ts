@@ -215,7 +215,7 @@ export const ALL_WALL_POSITIONS: WallPosition[] = ['floor', 'back', 'left', 'rig
 /** Ground plane surface type */
 export type GroundPlaneType = 'two-sided' | 'plane'
 
-export const DEFAULT_ACTIVE_WALLS: WallPosition[] = []
+export const DEFAULT_ACTIVE_WALLS: WallPosition[] = ['floor']
 export const DEFAULT_GROUND_PLANE_OFFSET = 10
 export const DEFAULT_GROUND_PLANE_COLOR = '#ead6e8'
 export const DEFAULT_GROUND_PLANE_TYPE: GroundPlaneType = 'plane'
@@ -314,7 +314,7 @@ export type SkyboxSelection =
 
 export const DEFAULT_SKYBOX_ENABLED = true
 export const DEFAULT_SKYBOX_TEXTURE: SkyboxTexture = 'space_blue'
-export const DEFAULT_SKYBOX_SELECTION: SkyboxSelection = 'space_blue'
+export const DEFAULT_SKYBOX_SELECTION: SkyboxSelection = 'procedural_aurora'
 export const DEFAULT_SKYBOX_BLUR = 0
 export const DEFAULT_SKYBOX_INTENSITY = 1
 export const DEFAULT_SKYBOX_ROTATION = 0
@@ -423,7 +423,7 @@ export interface SkyboxProceduralSettings {
   parallaxStrength: number // 0-1
 }
 
-export const DEFAULT_SKYBOX_MODE: SkyboxMode = 'classic'
+export const DEFAULT_SKYBOX_MODE: SkyboxMode = 'procedural_aurora'
 
 export const DEFAULT_SKYBOX_PROCEDURAL_SETTINGS: SkyboxProceduralSettings = {
   scale: 1.0,

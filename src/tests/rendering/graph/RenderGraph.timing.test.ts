@@ -91,7 +91,14 @@ function createMockRenderer(): {
       if (pname === 0x8866) return state.result
       return 0
     }),
+
+    // MRTStateManager required methods
+    drawBuffers: vi.fn(),
+    BACK: 0x0405,
+    COLOR_ATTACHMENT0: 0x8ce0,
   } as unknown as WebGL2RenderingContext
+
+  const tempColor = new THREE.Color(0, 0, 0)
 
   const renderer = {
     getContext: () => gl,
@@ -101,10 +108,21 @@ function createMockRenderer(): {
     clearColor: vi.fn(),
     clearDepth: vi.fn(),
     clearStencil: vi.fn(),
-    autoClear: false,
+    autoClear: true,
+    autoClearColor: true,
+    autoClearDepth: true,
+    autoClearStencil: false,
     info: {
       render: { triangles: 0, points: 0, lines: 0 },
     },
+    // StateBarrier required methods
+    getRenderTarget: vi.fn().mockReturnValue(null),
+    getClearColor: vi.fn().mockImplementation((target: THREE.Color) => {
+      target.copy(tempColor)
+      return target
+    }),
+    getClearAlpha: vi.fn().mockReturnValue(1.0),
+    setClearColor: vi.fn(),
   } as unknown as THREE.WebGLRenderer
 
   return { renderer, gl }

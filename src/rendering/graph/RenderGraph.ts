@@ -16,6 +16,17 @@
 
 import * as THREE from 'three'
 
+import {
+  ExternalBridge,
+  type ExportConfig,
+  type PendingExport,
+} from './ExternalBridge'
+import {
+  ExternalResourceRegistry,
+  type ExternalResourceConfig,
+} from './ExternalResourceRegistry'
+import type { FrozenFrameContext, StoreGetters } from './FrameContext'
+import { captureFrameContext } from './FrameContext'
 import { GPUTimer } from './GPUTimer'
 import { GraphCompiler } from './GraphCompiler'
 import {
@@ -24,6 +35,7 @@ import {
   reinitializeGlobalMRT,
 } from './MRTStateManager'
 import { ResourcePool } from './ResourcePool'
+import { StateBarrier } from './StateBarrier'
 import type {
   CompiledGraph,
   CompileOptions,
@@ -50,7 +62,10 @@ class RenderGraphContext implements RenderContext {
     public time: number,
     public size: { width: number; height: number },
     private pool: ResourcePool,
-    private pingPongResources: Set<string>
+    private pingPongResources: Set<string>,
+    private externalRegistry: ExternalResourceRegistry,
+    private externalBridge: ExternalBridge,
+    public frame: FrozenFrameContext | null
   ) {}
 
   getResource<T = THREE.WebGLRenderTarget | THREE.Texture>(resourceId: string): T | null {
@@ -76,6 +91,27 @@ class RenderGraphContext implements RenderContext {
       return this.pool.getReadTarget(resourceId)?.texture ?? null
     }
     return this.pool.getTexture(resourceId, attachment)
+  }
+
+  /**
+   * Get a frozen external resource captured at frame start.
+   */
+  getExternal<T>(id: string): T | null {
+    return this.externalRegistry.get<T>(id)
+  }
+
+  /**
+   * Queue an export to be applied at frame end.
+   */
+  queueExport<T>(pending: PendingExport<T>): void {
+    this.externalBridge.queueExport(pending)
+  }
+
+  /**
+   * Check if an export is registered with the bridge.
+   */
+  hasExportRegistered(id: string): boolean {
+    return this.externalBridge.hasExport(id)
   }
 }
 
@@ -129,6 +165,24 @@ export class RenderGraph {
   private compiled: CompiledGraph | null = null
   private isDirty = true
 
+  // External resource registry - captures external state at frame start
+  private externalRegistry = new ExternalResourceRegistry()
+
+  // External bridge - manages import/export contract with external systems
+  private externalBridge = new ExternalBridge('RenderGraph')
+
+  // State barrier - saves/restores Three.js state around each pass
+  private stateBarrier = new StateBarrier()
+
+  // Store getters - used to capture frozen frame context
+  private storeGetters: StoreGetters | null = null
+
+  // Frame number counter
+  private frameNumber = 0
+
+  // Last captured frame context (for debugging)
+  private lastFrameContext: FrozenFrameContext | null = null
+
   // Statistics
   private timingEnabled = false
   private lastFrameStats: FrameStats | null = null
@@ -148,48 +202,109 @@ export class RenderGraph {
   private elapsedTime = 0
 
   // Passthrough resources for disabled passes
-  private passthroughMaterial: THREE.ShaderMaterial | null = null
+  // Industry-standard pattern: separate materials per attachment count for optimal GPU usage
+  private passthroughMaterials: Map<number, THREE.ShaderMaterial> = new Map()
   private passthroughMesh: THREE.Mesh | null = null
   private passthroughScene: THREE.Scene | null = null
   private passthroughCamera: THREE.OrthographicCamera | null = null
+  private passthroughGeometry: THREE.PlaneGeometry | null = null
 
   // ==========================================================================
   // Passthrough for disabled passes
   // ==========================================================================
 
+  /** Shared vertex shader for all passthrough materials */
+  private static readonly PASSTHROUGH_VERTEX = `
+    out vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = vec4(position.xy, 0.0, 1.0);
+    }
+  `
+
   /**
-   * Ensure passthrough resources are initialized.
+   * Generate a passthrough fragment shader for the specified attachment count.
+   *
+   * Industry-standard pattern: generate shaders that match target configuration
+   * exactly, avoiding unnecessary output writes and ensuring GL compliance.
+   *
+   * @param attachmentCount - Number of output attachments (1, 2, 3, or 4)
+   * @returns GLSL ES 3.00 fragment shader source
    */
-  private ensurePassthrough(): void {
-    if (this.passthroughMaterial) return
+  private static generatePassthroughFragment(attachmentCount: number): string {
+    const outputs: string[] = []
+    const writes: string[] = []
 
-    this.passthroughMaterial = new THREE.ShaderMaterial({
-      glslVersion: THREE.GLSL3,
-      uniforms: {
-        tDiffuse: { value: null },
-      },
-      vertexShader: `
-        out vec2 vUv;
-        void main() {
-          vUv = uv;
-          gl_Position = vec4(position.xy, 0.0, 1.0);
-        }
-      `,
-      fragmentShader: `
-        precision highp float;
-        in vec2 vUv;
-        uniform sampler2D tDiffuse;
-        layout(location = 0) out vec4 fragColor;
-        void main() {
-          fragColor = texture(tDiffuse, vUv);
-        }
-      `,
-      depthTest: false,
-      depthWrite: false,
-    })
+    // Always output color at location 0
+    outputs.push('layout(location = 0) out vec4 gColor;')
+    writes.push('gColor = texture(tDiffuse, vUv);')
 
-    const geometry = new THREE.PlaneGeometry(2, 2)
-    this.passthroughMesh = new THREE.Mesh(geometry, this.passthroughMaterial)
+    // Additional outputs for MRT targets
+    if (attachmentCount >= 2) {
+      outputs.push('layout(location = 1) out vec4 gNormal;')
+      writes.push('gNormal = vec4(0.5, 0.5, 1.0, 0.0);') // Neutral normal
+    }
+    if (attachmentCount >= 3) {
+      outputs.push('layout(location = 2) out vec4 gPosition;')
+      writes.push('gPosition = vec4(0.0);') // Zero position
+    }
+    if (attachmentCount >= 4) {
+      outputs.push('layout(location = 3) out vec4 gExtra;')
+      writes.push('gExtra = vec4(0.0);')
+    }
+
+    return `
+      precision highp float;
+      in vec2 vUv;
+      uniform sampler2D tDiffuse;
+      ${outputs.join('\n      ')}
+      void main() {
+        ${writes.join('\n        ')}
+      }
+    `
+  }
+
+  /**
+   * Get or create a passthrough material for the specified attachment count.
+   *
+   * Materials are cached per attachment count to avoid per-frame allocation.
+   * This follows the industry pattern of lazy material creation with caching.
+   *
+   * @param attachmentCount - Number of target attachments
+   * @returns Cached or newly created ShaderMaterial
+   */
+  private getPassthroughMaterial(attachmentCount: number): THREE.ShaderMaterial {
+    // Clamp to supported range
+    const count = Math.max(1, Math.min(4, attachmentCount))
+
+    let material = this.passthroughMaterials.get(count)
+    if (!material) {
+      material = new THREE.ShaderMaterial({
+        glslVersion: THREE.GLSL3,
+        uniforms: {
+          tDiffuse: { value: null },
+        },
+        vertexShader: RenderGraph.PASSTHROUGH_VERTEX,
+        fragmentShader: RenderGraph.generatePassthroughFragment(count),
+        depthTest: false,
+        depthWrite: false,
+      })
+      this.passthroughMaterials.set(count, material)
+    }
+
+    return material
+  }
+
+  /**
+   * Ensure passthrough scene resources are initialized.
+   * Materials are created lazily per attachment count, not here.
+   */
+  private ensurePassthroughScene(): void {
+    if (this.passthroughScene) return
+
+    this.passthroughGeometry = new THREE.PlaneGeometry(2, 2)
+    // Start with 1-attachment material, will be swapped as needed
+    this.passthroughMesh = new THREE.Mesh(this.passthroughGeometry, this.getPassthroughMaterial(1))
     this.passthroughMesh.frustumCulled = false
 
     this.passthroughScene = new THREE.Scene()
@@ -200,19 +315,36 @@ export class RenderGraph {
 
   /**
    * Copy input texture to output for disabled pass.
-   */
+   *
+   * Industry-standard pattern: selects appropriate passthrough shader based on
+   * target attachment count. This ensures GL compliance without wasting GPU cycles
+   * on unnecessary output writes.
+   *
+   * @param renderer - WebGL renderer
+     * @param inputTexture - Source texture to copy
+     * @param outputTarget - Destination render target (null = screen)
+     */
   private executePassthrough(
     renderer: THREE.WebGLRenderer,
     inputTexture: THREE.Texture,
     outputTarget: THREE.WebGLRenderTarget | null
   ): void {
-    this.ensurePassthrough()
+    this.ensurePassthroughScene()
 
-    if (!this.passthroughMaterial || !this.passthroughScene || !this.passthroughCamera) {
+    if (!this.passthroughMesh || !this.passthroughScene || !this.passthroughCamera) {
       return
     }
 
-    this.passthroughMaterial.uniforms['tDiffuse']!.value = inputTexture
+    // Determine attachment count and select appropriate material
+    const attachmentCount = outputTarget?.textures?.length ?? 1
+    const material = this.getPassthroughMaterial(attachmentCount)
+
+    // Swap material if needed (hot path optimization: only swap when count changes)
+    if (this.passthroughMesh.material !== material) {
+      this.passthroughMesh.material = material
+    }
+
+    material.uniforms['tDiffuse']!.value = inputTexture
     renderer.setRenderTarget(outputTarget)
     // MRTStateManager automatically configures drawBuffers via patched setRenderTarget
     renderer.render(this.passthroughScene, this.passthroughCamera)
@@ -285,9 +417,178 @@ export class RenderGraph {
    * Get a resource's texture directly.
    *
    * @param resourceId - Resource identifier
+   * @param attachment
    */
   getTexture(resourceId: string, attachment?: number | 'depth'): THREE.Texture | null {
     return this.pool.getTexture(resourceId, attachment)
+  }
+
+  // ==========================================================================
+  // External Resource Management
+  // ==========================================================================
+
+  /**
+   * Register an external resource to be captured at frame start.
+   *
+   * External resources are values from outside the render graph (scene.background,
+   * store values, etc.) that can be modified by React/external code at any time.
+   *
+   * By registering them, the graph captures their values ONCE at frame start
+   * and passes read frozen values via ctx.getExternal().
+   *
+   * @example
+   * ```typescript
+   * graph.registerExternal({
+   *   id: 'scene.background',
+   *   getter: () => scene.background,
+   *   description: 'Scene background for black hole lensing'
+   * });
+   * ```
+   *
+   * @param config - External resource configuration
+   * @returns this for chaining
+   */
+  registerExternal<T>(config: ExternalResourceConfig<T>): this {
+    this.externalRegistry.register(config)
+    return this
+  }
+
+  /**
+   * Unregister an external resource.
+   *
+   * @param id - External resource identifier
+   * @returns this for chaining
+   */
+  unregisterExternal(id: string): this {
+    this.externalRegistry.unregister(id)
+    return this
+  }
+
+  /**
+   * Check if an external resource is registered.
+   *
+   * @param id - External resource identifier
+   */
+  hasExternal(id: string): boolean {
+    return this.externalRegistry.has(id)
+  }
+
+  /**
+   * Get debug information about external resources.
+   */
+  getExternalDebugInfo(): string {
+    return this.externalRegistry.getDebugInfo()
+  }
+
+  // ==========================================================================
+  // External Bridge (Import/Export Contract)
+  // ==========================================================================
+
+  /**
+   * Register an export configuration.
+   *
+   * Exports define how internal render graph resources are pushed to external
+   * systems (like scene.background, scene.environment) at frame end.
+   *
+   * @example
+   * ```typescript
+   * graph.registerExport({
+   *   id: 'scene.background',
+   *   resourceId: 'skyCubeRT',  // Internal resource (or empty if direct value)
+   *   setter: (texture) => { scene.background = texture; },
+   *   transform: (rt) => rt.texture  // Optional transform
+   * });
+   * ```
+   *
+   * @param config - Export configuration
+   * @returns this for chaining
+   */
+  registerExport<TInternal, TExternal = TInternal>(
+    config: ExportConfig<TInternal, TExternal>
+  ): this {
+    this.externalBridge.registerExport(config)
+    return this
+  }
+
+  /**
+   * Unregister an export.
+   *
+   * @param id - External resource ID to unregister
+   * @returns this for chaining
+   */
+  unregisterExport(id: string): this {
+    this.externalBridge.unregisterExport(id)
+    return this
+  }
+
+  /**
+   * Check if an export is registered.
+   *
+   * @param id - External resource ID
+   */
+  hasExport(id: string): boolean {
+    return this.externalBridge.hasExport(id)
+  }
+
+  /**
+   * Get debug information about the external bridge.
+   */
+  getExternalBridgeDebugInfo(): { imports: Array<{ id: string; captured: boolean }>; exports: Array<{ id: string; queued: boolean }> } {
+    return this.externalBridge.getDebugInfo()
+  }
+
+  // ==========================================================================
+  // Store Getters (Frame Context)
+  // ==========================================================================
+
+  /**
+   * Set store getters for capturing frozen frame context.
+   *
+   * Store getters are functions that retrieve current state from Zustand stores.
+   * They are called ONCE at frame start to capture frozen state.
+   *
+   * @example
+   * ```typescript
+   * graph.setStoreGetters({
+   *   getAnimationState: () => useAnimationStore.getState(),
+   *   getGeometryState: () => useGeometryStore.getState(),
+   *   getEnvironmentState: () => ({
+   *     fog: useEnvironmentStore.getState(),
+   *     skybox: useEnvironmentStore.getState(),
+   *   }),
+   *   getPostProcessingState: () => usePostProcessingStore.getState(),
+   *   getPerformanceState: () => usePerformanceStore.getState(),
+   *   getBlackHoleState: () => useExtendedObjectStore.getState().blackhole,
+   * });
+   * ```
+   *
+   * @param getters - Store getter functions
+   * @returns this for chaining
+   */
+  setStoreGetters(getters: StoreGetters): this {
+    this.storeGetters = getters
+    return this
+  }
+
+  /**
+   * Check if store getters are configured.
+   */
+  hasStoreGetters(): boolean {
+    return this.storeGetters !== null
+  }
+
+  /**
+   * Get the last captured frame context (for debugging).
+   */
+  getLastFrameContext(): FrozenFrameContext | null {
+    return this.lastFrameContext
+  }
+
+  /**
+   * Get current frame number.
+   */
+  getFrameNumber(): number {
+    return this.frameNumber
   }
 
   // ==========================================================================
@@ -410,8 +711,29 @@ export class RenderGraph {
     // Update pool with current screen size
     this.pool.updateSize(this.width, this.height)
 
+    // CRITICAL: Capture all external resources at frame start
+    // This freezes external state (scene.background, store values, etc.)
+    // so passes see consistent values throughout the frame.
+    this.externalRegistry.captureAll()
+
+    // CRITICAL: Capture frozen frame context from stores
+    // This ensures passes see consistent store state throughout the frame.
+    let frozenFrameContext: FrozenFrameContext | null = null
+    if (this.storeGetters) {
+      frozenFrameContext = captureFrameContext(
+        this.frameNumber,
+        scene,
+        camera,
+        this.storeGetters
+      )
+      this.lastFrameContext = frozenFrameContext
+    }
+
     // Begin GPU timing frame
     this.gpuTimer.beginFrame()
+
+    // Begin ExternalBridge frame (clears previous frame state)
+    this.externalBridge.beginFrame()
 
     // Create execution context
     const context = new RenderGraphContext(
@@ -422,7 +744,10 @@ export class RenderGraph {
       this.elapsedTime,
       { width: this.width, height: this.height },
       this.pool,
-      this.compiled.pingPongResources
+      this.compiled.pingPongResources,
+      this.externalRegistry,
+      this.externalBridge,
+      frozenFrameContext
     )
 
     // Execute passes
@@ -431,8 +756,15 @@ export class RenderGraph {
 
     for (const pass of this.compiled.passes) {
       // Check if pass is enabled (also check debug disable flag)
-      const debugDisabled = (pass as unknown as { _debugDisabled?: boolean })._debugDisabled ?? false
-      const enabled = !debugDisabled && (pass.config.enabled?.() ?? true)
+      // CRITICAL: Pass frozen frame context to enabled() so passes can read store state safely
+      const debugDisabled =
+        (pass as unknown as { _debugDisabled?: boolean })._debugDisabled ?? false
+      const enabled = !debugDisabled && (pass.config.enabled?.(frozenFrameContext) ?? true)
+
+      // Debug: log pass execution for first pass only (to avoid spam)
+      if (import.meta.env.DEV && this.compiled.passes.indexOf(pass) === 0) {
+        console.log('[RenderGraph] Executing frame, pass count:', this.compiled.passes.length)
+      }
 
       if (!enabled) {
         // For disabled passes, do passthrough to maintain the chain
@@ -464,31 +796,41 @@ export class RenderGraph {
         continue
       }
 
-      // Execute pass with timing if enabled
-      if (this.timingEnabled) {
-        const startTime = performance.now()
+      // CRITICAL: Capture Three.js state before pass execution
+      // This prevents cross-pass state leakage (render targets, clear flags, etc.)
+      this.stateBarrier.capture(renderer, scene, camera)
 
-        // Begin GPU query for this pass
-        this.gpuTimer.beginQuery(pass.id)
+      try {
+        // Execute pass with timing if enabled
+        if (this.timingEnabled) {
+          const startTime = performance.now()
 
-        pass.execute(context)
+          // Begin GPU query for this pass
+          this.gpuTimer.beginQuery(pass.id)
 
-        // End GPU query
-        this.gpuTimer.endQuery()
+          pass.execute(context)
 
-        const endTime = performance.now()
+          // End GPU query
+          this.gpuTimer.endQuery()
 
-        // Get GPU time from previous frames (queries are async)
-        const gpuTimeMs = this.gpuTimer.getPassTime(pass.id)
+          const endTime = performance.now()
 
-        passTiming.push({
-          passId: pass.id,
-          gpuTimeMs,
-          cpuTimeMs: endTime - startTime,
-          skipped: false,
-        })
-      } else {
-        pass.execute(context)
+          // Get GPU time from previous frames (queries are async)
+          const gpuTimeMs = this.gpuTimer.getPassTime(pass.id)
+
+          passTiming.push({
+            passId: pass.id,
+            gpuTimeMs,
+            cpuTimeMs: endTime - startTime,
+            skipped: false,
+          })
+        } else {
+          pass.execute(context)
+        }
+      } finally {
+        // CRITICAL: Restore Three.js state after pass execution
+        // This ensures subsequent passes see expected initial state
+        this.stateBarrier.restore(renderer, scene, camera)
       }
 
       targetSwitches++
@@ -497,6 +839,11 @@ export class RenderGraph {
     // End GPU timing frame
     this.gpuTimer.endFrame()
 
+    // CRITICAL: Execute all queued exports AFTER passes complete
+    // This ensures scene.background, scene.environment etc. are set consistently
+    // after the render graph has finished all internal rendering.
+    this.externalBridge.executeExports()
+
     // Swap ping-pong buffers
     for (const resourceId of this.compiled.pingPongResources) {
       this.pool.swap(resourceId)
@@ -504,6 +851,13 @@ export class RenderGraph {
 
     // End frame
     this.pool.endFrame()
+
+    // Advance external resource registry frame
+    // This resets captured state for next frame
+    this.externalRegistry.advanceFrame()
+
+    // Increment frame number
+    this.frameNumber++
 
     // Store stats
     if (this.timingEnabled) {
@@ -663,6 +1017,12 @@ export class RenderGraph {
     // Dispose GPU timer
     this.gpuTimer.dispose()
 
+    // Dispose external resource registry
+    this.externalRegistry.dispose()
+
+    // Dispose external bridge
+    this.externalBridge.dispose()
+
     // Note: Global MRT manager is NOT disposed here - it's a singleton shared across
     // RenderGraph instances and persists for the app lifetime. It only gets cleaned
     // up on context loss/restore or full app shutdown.
@@ -671,12 +1031,16 @@ export class RenderGraph {
     this.pool.dispose()
 
     // Dispose passthrough resources
-    if (this.passthroughMaterial) {
-      this.passthroughMaterial.dispose()
-      this.passthroughMaterial = null
+    for (const material of this.passthroughMaterials.values()) {
+      material.dispose()
+    }
+    this.passthroughMaterials.clear()
+
+    if (this.passthroughGeometry) {
+      this.passthroughGeometry.dispose()
+      this.passthroughGeometry = null
     }
     if (this.passthroughMesh) {
-      this.passthroughMesh.geometry.dispose()
       this.passthroughMesh = null
     }
     this.passthroughScene = null
@@ -696,6 +1060,7 @@ export class RenderGraph {
   invalidateForContextLoss(): void {
     this.pool.invalidateForContextLoss()
     this.gpuTimer.invalidateForContextLoss()
+    this.externalRegistry.invalidateCaptures()
     invalidateGlobalMRTForContextLoss()
     this.rendererInitialized = false
   }
@@ -742,6 +1107,7 @@ export class RenderGraph {
 
   /**
    * Force disable a pass by ID (for debugging).
+   * @param passId
    * @internal Debug only - not for production use
    */
   debugDisablePass(passId: string): boolean {
@@ -755,6 +1121,7 @@ export class RenderGraph {
 
   /**
    * Re-enable a previously disabled pass (for debugging).
+   * @param passId
    * @internal Debug only - not for production use
    */
   debugEnablePass(passId: string): boolean {

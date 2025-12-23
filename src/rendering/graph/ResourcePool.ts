@@ -362,6 +362,9 @@ export class ResourcePool {
       entry.lastHeight = 0;
 
       try {
+        // #region agent log
+        console.log('[DEBUG:ResourcePool] Creating target for ' + entry.config.id + ' size=' + width + 'x' + height);
+        // #endregion
         // Create new target
         entry.target = this.createTarget(entry.config, width, height);
 

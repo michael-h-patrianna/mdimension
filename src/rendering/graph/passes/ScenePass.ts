@@ -12,30 +12,30 @@
  * @module rendering/graph/passes/ScenePass
  */
 
-import * as THREE from 'three';
+import * as THREE from 'three'
 
-import { BasePass } from '../BasePass';
-import { isMRTTarget } from '../MRTStateManager';
-import type { RenderContext, RenderPassConfig } from '../types';
+import { BasePass } from '../BasePass'
+import { isMRTTarget } from '../MRTStateManager'
+import type { RenderContext, RenderPassConfig } from '../types'
 
 /**
  * Configuration for ScenePass.
  */
 export interface ScenePassConfig extends Omit<RenderPassConfig, 'inputs'> {
   /** Layers to render (null = all layers) */
-  layers?: number[];
+  layers?: number[]
 
   /** Clear color (null = use renderer's clear color) */
-  clearColor?: THREE.ColorRepresentation | null;
+  clearColor?: THREE.ColorRepresentation | null
 
   /** Clear alpha */
-  clearAlpha?: number;
+  clearAlpha?: number
 
   /** Whether to clear before rendering */
-  autoClear?: boolean;
+  autoClear?: boolean
 
   /** Whether to render background */
-  renderBackground?: boolean;
+  renderBackground?: boolean
 }
 
 /**
@@ -54,53 +54,60 @@ export interface ScenePassConfig extends Omit<RenderPassConfig, 'inputs'> {
  * ```
  */
 export class ScenePass extends BasePass {
-  private layers: number[] | null;
-  private clearColor: THREE.Color | null;
-  private clearAlpha: number;
-  private autoClear: boolean;
-  private renderBackground: boolean;
+  private layers: number[] | null
+  private clearColor: THREE.Color | null
+  private clearAlpha: number
+  private autoClear: boolean
+  private renderBackground: boolean
 
   // Saved state for restoration
-  private savedClearColor = new THREE.Color();
-  private savedClearAlpha = 1;
-  private savedAutoClear = true;
-  private cameraLayers = new THREE.Layers();
+  private savedClearColor = new THREE.Color()
+  private savedClearAlpha = 1
+  private savedAutoClear = true
+  private cameraLayers = new THREE.Layers()
 
   constructor(config: ScenePassConfig) {
     super({
       ...config,
       inputs: [], // ScenePass has no inputs
-    });
+    })
 
-    this.layers = config.layers ?? null;
-    this.clearColor = config.clearColor !== undefined && config.clearColor !== null
-      ? new THREE.Color(config.clearColor)
-      : null;
-    this.clearAlpha = config.clearAlpha ?? 1;
-    this.autoClear = config.autoClear ?? true;
-    this.renderBackground = config.renderBackground ?? true;
+    this.layers = config.layers ?? null
+    this.clearColor =
+      config.clearColor !== undefined && config.clearColor !== null
+        ? new THREE.Color(config.clearColor)
+        : null
+    this.clearAlpha = config.clearAlpha ?? 1
+    this.autoClear = config.autoClear ?? true
+    this.renderBackground = config.renderBackground ?? true
   }
 
   execute(ctx: RenderContext): void {
-    const { renderer, scene, camera } = ctx;
+    const { renderer, scene, camera } = ctx
 
     // Get output target
-    const outputConfig = this.config.outputs[0];
+    const outputConfig = this.config.outputs[0]
     if (!outputConfig) {
-      console.warn('ScenePass: No output configured');
-      return;
+      console.warn('ScenePass: No output configured')
+      return
     }
 
-    const target = ctx.getWriteTarget(outputConfig.resourceId);
+    const target = ctx.getWriteTarget(outputConfig.resourceId)
+
+    // #region agent log
+    if (!target) {
+      console.error('[DEBUG:ScenePass] ERROR: target is null for resourceId=' + outputConfig.resourceId);
+    }
+    // #endregion
 
     // Save renderer state (only things we actually modify)
-    this.savedClearColor.copy(renderer.getClearColor(this.savedClearColor));
-    this.savedClearAlpha = renderer.getClearAlpha();
-    this.savedAutoClear = renderer.autoClear;
+    this.savedClearColor.copy(renderer.getClearColor(this.savedClearColor))
+    this.savedClearAlpha = renderer.getClearAlpha()
+    this.savedAutoClear = renderer.autoClear
 
     // Save camera layers
     if (this.layers !== null) {
-      this.cameraLayers.mask = camera.layers.mask;
+      this.cameraLayers.mask = camera.layers.mask
     }
 
     // MRT SAFETY ENFORCEMENT:
@@ -110,53 +117,53 @@ export class ScenePass extends BasePass {
     //
     // Solution: Automatically disable background for MRT targets.
     // This is a structural safety measure - the render graph OWNS this decision.
-    const isMRT = isMRTTarget(target);
-    const shouldDisableBackground = !this.renderBackground || isMRT;
+    const isMRT = isMRTTarget(target)
+    const shouldDisableBackground = !this.renderBackground || isMRT
 
     // Handle background: only modify if renderBackground is false OR target is MRT
     // IMPORTANT: Do NOT save/restore scene.background - let the scene own its state.
     // Saving and restoring can cause race conditions when React updates scene.background
     // during the frame (e.g., when skybox texture changes).
-    const originalBackground = shouldDisableBackground ? scene.background : null;
+    const originalBackground = shouldDisableBackground ? scene.background : null
 
     try {
       // Configure renderer
       if (this.clearColor !== null) {
-        renderer.setClearColor(this.clearColor, this.clearAlpha);
+        renderer.setClearColor(this.clearColor, this.clearAlpha)
       }
-      renderer.autoClear = this.autoClear;
+      renderer.autoClear = this.autoClear
 
       if (shouldDisableBackground) {
-        scene.background = null;
+        scene.background = null
       }
 
       // Configure layers
       if (this.layers !== null) {
-        camera.layers.disableAll();
+        camera.layers.disableAll()
         for (const layer of this.layers) {
-          camera.layers.enable(layer);
+          camera.layers.enable(layer)
         }
       }
 
       // Render - MRTStateManager automatically configures drawBuffers via patched setRenderTarget
-      renderer.setRenderTarget(target);
-      renderer.render(scene, camera);
+      renderer.setRenderTarget(target)
+      renderer.render(scene, camera)
     } finally {
       // Restore renderer state - always runs even if render throws
-      renderer.setClearColor(this.savedClearColor, this.savedClearAlpha);
-      renderer.autoClear = this.savedAutoClear;
+      renderer.setClearColor(this.savedClearColor, this.savedClearAlpha)
+      renderer.autoClear = this.savedAutoClear
 
       // Only restore background if we explicitly disabled it (for renderBackground=false or MRT)
       if (shouldDisableBackground && originalBackground !== null) {
-        scene.background = originalBackground;
+        scene.background = originalBackground
       }
 
       if (this.layers !== null) {
-        camera.layers.mask = this.cameraLayers.mask;
+        camera.layers.mask = this.cameraLayers.mask
       }
 
       // Reset render target (caller will handle final target)
-      renderer.setRenderTarget(null);
+      renderer.setRenderTarget(null)
     }
   }
 }

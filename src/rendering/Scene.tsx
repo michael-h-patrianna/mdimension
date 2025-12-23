@@ -131,6 +131,25 @@ export const Scene = React.memo(function Scene({
       {/* Camera controls */}
       <CameraController autoRotate={autoRotate} />
 
+      {/* Axis helper for orientation reference (DEBUG layer for MRT compatibility) */}
+      {showAxisHelper && (
+        <DebugLayerGroup>
+          <axesHelper args={[5]} />
+        </DebugLayerGroup>
+      )}
+
+      {/* Unified renderer for all object types - MUST render before GroundPlane */}
+      {/* The floor's shader compilation can block main thread; hypercube needs to schedule its */}
+      {/* deferred material creation first */}
+      <UnifiedRenderer
+        geometry={geometry}
+        dimension={dimension}
+        objectType={objectType}
+        faces={faces}
+        faceDepths={faceDepths}
+        opacity={opacity}
+      />
+
       {/* Environment walls with optional grid overlay */}
       {/* PBR properties managed via 'pbr-ground' UniformManager source */}
       <GroundPlane
@@ -144,23 +163,6 @@ export const Scene = React.memo(function Scene({
         showGrid={showGroundGrid}
         gridColor={groundGridColor}
         gridSpacing={groundGridSpacing}
-      />
-
-      {/* Axis helper for orientation reference (DEBUG layer for MRT compatibility) */}
-      {showAxisHelper && (
-        <DebugLayerGroup>
-          <axesHelper args={[5]} />
-        </DebugLayerGroup>
-      )}
-
-      {/* Unified renderer for all object types */}
-      <UnifiedRenderer
-        geometry={geometry}
-        dimension={dimension}
-        objectType={objectType}
-        faces={faces}
-        faceDepths={faceDepths}
-        opacity={opacity}
       />
     </TemporalDepthProvider>
   )

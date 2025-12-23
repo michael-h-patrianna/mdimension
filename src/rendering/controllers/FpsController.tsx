@@ -15,11 +15,11 @@
  * - Pauses rendering when WebGL context is lost or page is not visible
  */
 
-import { useUIStore } from '@/stores/uiStore'
 import { useAnimationStore } from '@/stores/animationStore'
-import { usePerformanceStore } from '@/stores/performanceStore'
-import { useWebGLContextStore } from '@/stores/webglContextStore'
 import { useExportStore } from '@/stores/exportStore'
+import { usePerformanceStore } from '@/stores/performanceStore'
+import { useUIStore } from '@/stores/uiStore'
+import { useWebGLContextStore } from '@/stores/webglContextStore'
 import { useThree } from '@react-three/fiber'
 import { useLayoutEffect, useRef } from 'react'
 
@@ -90,6 +90,7 @@ export function FpsController(): null {
       // If we use >= interval - 1, we might trigger at 32ms, then again at 40ms.
       // Strict > ensures we only trigger when we've actually passed the target duration.
       if (elapsed > interval) {
+
         // Advance the frame - this triggers useFrame callbacks and renders
         // Pass timestamp for proper delta calculation in useFrame
         advance(now)

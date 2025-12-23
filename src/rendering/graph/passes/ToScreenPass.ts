@@ -150,6 +150,9 @@ export class ToScreenPass extends BasePass {
     }
 
     const texture = ctx.getReadTexture(inputConfig.resourceId);
+    // #region agent log
+    console.log('[DEBUG:ToScreenPass] id=' + this.config.id + ' input=' + inputConfig.resourceId + ' hasTexture=' + !!texture);
+    // #endregion
     this.material.uniforms['uInput']!.value = texture;
 
     // Render to screen

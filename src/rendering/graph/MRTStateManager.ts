@@ -173,6 +173,7 @@ export class MRTStateManager {
     this.originalSetRenderTarget = this.renderer.setRenderTarget.bind(this.renderer)
     this.originalRender = this.renderer.render.bind(this.renderer)
 
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this
     const originalSetRenderTarget = this.originalSetRenderTarget
     const originalRender = this.originalRender
@@ -190,24 +191,35 @@ export class MRTStateManager {
       self.syncDrawBuffers(renderTarget)
     }
 
-    // Patch render() to ensure drawBuffers is correct after internal operations
-    // This handles shadow map rendering which changes targets internally
+    // Patch render() to detect if Three.js internally changed targets
+    // This handles shadow map rendering which changes targets internally.
+    //
+    // OPTIMIZATION: Instead of forcing a full resync after every render (which
+    // caused 70% redundant gl.drawBuffers calls), we now only resync if the
+    // target actually changed during render. This follows the principle of
+    // "don't pay for what you don't use".
     this.renderer.render = function (scene: THREE.Scene, camera: THREE.Camera): void {
       self.renderDepth++
+
+      // Capture target BEFORE render to detect if Three.js changed it internally
+      const targetBeforeRender = self.renderDepth === 1 ? self.currentTargetUuid : null
 
       // Call original render (may internally change targets for shadows, etc.)
       originalRender(scene, camera)
 
-      // On outermost render completion, ensure drawBuffers matches current target
-      // Three.js may have changed targets internally and not restored correctly
+      // On outermost render completion, check if target diverged
       if (self.renderDepth === 1) {
-        // Force resync - Three.js internal state may have diverged
-        self.currentAttachmentCount = -1
-        self.currentTargetUuid = null
-
         // Get the ACTUAL current target from Three.js state
         const actualTarget = (self.renderer as THREE.WebGLRenderer).getRenderTarget()
-        self.syncDrawBuffers(actualTarget)
+        const actualUuid = (actualTarget as unknown as { uuid?: string })?.uuid ?? null
+
+        // Only resync if target actually changed during render
+        // (e.g., shadow map rendering that didn't restore correctly)
+        if (actualUuid !== targetBeforeRender) {
+          self.currentAttachmentCount = -1
+          self.currentTargetUuid = null
+          self.syncDrawBuffers(actualTarget)
+        }
       }
 
       self.renderDepth--
@@ -253,7 +265,8 @@ export class MRTStateManager {
     const count = target ? this.getAttachmentCount(target) : 0
 
     // Check if target changed (not just count) - use UUID to detect different targets
-    const targetUuid = target?.uuid ?? null
+
+    const targetUuid = (target as unknown as { uuid?: string })?.uuid ?? null
     const targetChanged = targetUuid !== this.currentTargetUuid
 
     // Skip ONLY if BOTH count AND target are unchanged

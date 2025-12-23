@@ -15,6 +15,9 @@
 
 import type * as THREE from 'three'
 
+import type { ExternalResourceId, PendingExport } from './ExternalBridge'
+import type { FrozenFrameContext } from './FrameContext'
+
 // =============================================================================
 // Resource Types
 // =============================================================================
@@ -164,8 +167,13 @@ export interface RenderPassConfig {
   /** Resources this pass writes to */
   outputs: ResourceAccess[]
 
-  /** Function to determine if pass should execute this frame */
-  enabled?: () => boolean
+  /**
+   * Function to determine if pass should execute this frame.
+   *
+   * Receives frozen frame context to allow reading store state safely.
+   * If frame context is null (first frame before stores configured), pass runs.
+   */
+  enabled?: (frame: FrozenFrameContext | null) => boolean
 
   /** Optional priority hint for passes with no dependencies */
   priority?: number
@@ -268,6 +276,57 @@ export interface RenderContext {
    * @returns The read texture or null
    */
   getReadTexture(resourceId: string, attachment?: number | 'depth'): THREE.Texture | null
+
+  /**
+   * Get a frozen external resource captured at frame start.
+   *
+   * External resources are values from outside the render graph (scene.background,
+   * store values, etc.) that are captured once at frame start and remain frozen
+   * throughout frame execution.
+   *
+   * @param id - External resource identifier
+   * @returns The captured value or null if not found/invalid
+   */
+  getExternal<T>(id: string): T | null
+
+  /**
+   * Get the frozen frame context.
+   *
+   * Contains all store state and external values captured at frame start.
+   * This is the preferred way to access store state from passes, as it
+   * guarantees consistent values throughout the frame.
+   *
+   * @returns Frozen frame context or null if not captured
+   */
+  readonly frame: FrozenFrameContext | null
+
+  /**
+   * Queue an export to be applied at frame end.
+   *
+   * Passes use this to export internal resources to external systems
+   * (like scene.background, scene.environment). Exports are batched and
+   * applied AFTER all passes complete to maintain consistent state.
+   *
+   * @example
+   * ```typescript
+   * // In a pass's execute() method:
+   * ctx.queueExport({
+   *   id: 'scene.background',
+   *   value: myCubemapTexture
+   * });
+   * ```
+   *
+   * @param pending - The export to queue
+   */
+  queueExport<T>(pending: PendingExport<T>): void
+
+  /**
+   * Check if an export is registered with the bridge.
+   *
+   * @param id - External resource ID
+   * @returns True if the export is registered
+   */
+  hasExportRegistered(id: ExternalResourceId): boolean
 }
 
 // =============================================================================

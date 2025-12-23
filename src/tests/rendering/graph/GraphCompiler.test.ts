@@ -345,4 +345,107 @@ describe('GraphCompiler', () => {
       expect(info).toContain('color');
     });
   });
+
+  describe('ResourceStateMachine simulation', () => {
+    it('should validate state transitions during simulated execution', () => {
+      // Create a valid pipeline
+      compiler.addResource({ id: 'a', type: 'renderTarget', size: { mode: 'screen' } });
+      compiler.addResource({ id: 'b', type: 'renderTarget', size: { mode: 'screen' } });
+
+      const pass1 = new TestPass({
+        id: 'pass1',
+        inputs: [],
+        outputs: [{ resourceId: 'a', access: 'write' }],
+      });
+
+      const pass2 = new TestPass({
+        id: 'pass2',
+        inputs: [{ resourceId: 'a', access: 'read' }],
+        outputs: [{ resourceId: 'b', access: 'write' }],
+      });
+
+      compiler.addPass(pass1);
+      compiler.addPass(pass2);
+
+      const result = compiler.compile();
+
+      // Should compile without any warnings from state machine simulation
+      // since pass1 writes before pass2 reads
+      const stateValidationWarnings = result.warnings.filter(w => w.includes('validation failed'));
+      expect(stateValidationWarnings).toHaveLength(0);
+    });
+
+    it('should handle readwrite access patterns correctly', () => {
+      compiler.addResource({ id: 'buffer', type: 'renderTarget', size: { mode: 'screen' } });
+
+      // First pass writes to buffer
+      const passWrite = new TestPass({
+        id: 'passWrite',
+        inputs: [],
+        outputs: [{ resourceId: 'buffer', access: 'write' }],
+      });
+
+      // Second pass does readwrite on buffer (like a blur pass)
+      const passBlur = new TestPass({
+        id: 'passBlur',
+        inputs: [{ resourceId: 'buffer', access: 'readwrite' }],
+        outputs: [],
+      });
+
+      compiler.addPass(passWrite);
+      compiler.addPass(passBlur);
+
+      const result = compiler.compile();
+
+      // Should detect ping-pong need for readwrite
+      expect(result.pingPongResources.has('buffer')).toBe(true);
+
+      // Should not have state machine validation errors since passWrite runs first
+      const stateValidationWarnings = result.warnings.filter(w => w.includes('validation failed'));
+      expect(stateValidationWarnings).toHaveLength(0);
+    });
+
+    it('should handle complex dependency chains with state machine validation', () => {
+      compiler.addResource({ id: 'color', type: 'renderTarget', size: { mode: 'screen' } });
+      compiler.addResource({ id: 'bloom', type: 'renderTarget', size: { mode: 'screen' } });
+      compiler.addResource({ id: 'composite', type: 'renderTarget', size: { mode: 'screen' } });
+
+      const scenePass = new TestPass({
+        id: 'scene',
+        inputs: [],
+        outputs: [{ resourceId: 'color', access: 'write' }],
+        priority: 0,
+      });
+
+      const bloomPass = new TestPass({
+        id: 'bloom',
+        inputs: [{ resourceId: 'color', access: 'read' }],
+        outputs: [{ resourceId: 'bloom', access: 'write' }],
+        priority: 1,
+      });
+
+      const compositePass = new TestPass({
+        id: 'composite',
+        inputs: [
+          { resourceId: 'color', access: 'read' },
+          { resourceId: 'bloom', access: 'read' },
+        ],
+        outputs: [{ resourceId: 'composite', access: 'write' }],
+        priority: 2,
+      });
+
+      compiler.addPass(compositePass);
+      compiler.addPass(bloomPass);
+      compiler.addPass(scenePass);
+
+      const result = compiler.compile();
+
+      // Should be ordered correctly: scene -> bloom -> composite
+      expect(result.passes.map(p => p.id)).toEqual(['scene', 'bloom', 'composite']);
+
+      // No state validation errors
+      const stateValidationWarnings = result.warnings.filter(w => w.includes('validation failed'));
+      expect(stateValidationWarnings).toHaveLength(0);
+    });
+  });
 });

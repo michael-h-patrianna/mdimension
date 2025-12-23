@@ -11,6 +11,7 @@
  * @module rendering/graph/GraphCompiler
  */
 
+import { ResourceState, ResourceStateMachine, type TransitionValidation } from './ResourceStateMachine'
 import type { CompiledGraph, CompileOptions, RenderPass, RenderResourceConfig } from './types'
 
 // =============================================================================
@@ -155,8 +156,12 @@ export class GraphCompiler {
     // Detect read-while-write hazards (needs sorted order)
     const pingPongResources = this.detectPingPongResources(resourceUsage, sortedPasses, warnings)
 
-    // Validate read-before-write hazards
+    // Validate read-before-write hazards (static analysis)
     this.validateReadBeforeWrite(resourceUsage, sortedPasses, warnings)
+
+    // Enhanced validation using ResourceStateMachine simulation
+    // This catches issues that static analysis might miss
+    this.simulateExecutionWithStateMachine(sortedPasses, warnings)
 
     // Determine resource allocation order
     const resourceOrder = this.computeResourceOrder(sortedPasses)
@@ -326,6 +331,101 @@ export class GraphCompiler {
         }
       }
     }
+  }
+
+  /**
+   * Simulate execution using ResourceStateMachine for enhanced validation.
+   *
+   * This method creates a temporary state machine, registers all resources,
+   * then simulates pass execution to validate state transitions. This catches
+   * issues that static analysis might miss, such as:
+   * - Invalid state transitions
+   * - Read-before-write hazards with precise pass identification
+   * - Resources left in invalid states
+   *
+   * @param sortedPasses - Passes in execution order
+   * @param warnings - Array to collect warnings
+   */
+  private simulateExecutionWithStateMachine(
+    sortedPasses: RenderPass[],
+    warnings: string[]
+  ): void {
+    const stateMachine = new ResourceStateMachine({ keepHistory: false })
+
+    // Register all resources
+    for (const resourceId of this.resources.keys()) {
+      stateMachine.register(resourceId)
+    }
+
+    // Simulate execution
+    for (const pass of sortedPasses) {
+      // First, validate and transition outputs to WriteTarget
+      for (const output of pass.config.outputs) {
+        const resourceId = output.resourceId
+        if (!stateMachine.isRegistered(resourceId)) continue
+
+        const validation = stateMachine.validateTransition(resourceId, ResourceState.WriteTarget)
+        if (!validation.valid) {
+          warnings.push(
+            `Pass '${pass.id}' output validation failed for '${resourceId}': ${validation.error}`
+          )
+        } else {
+          stateMachine.transition(resourceId, ResourceState.WriteTarget, pass.id)
+        }
+      }
+
+      // Then transition outputs to ShaderRead (after writing completes)
+      for (const output of pass.config.outputs) {
+        const resourceId = output.resourceId
+        if (!stateMachine.isRegistered(resourceId)) continue
+
+        const currentState = stateMachine.getState(resourceId)
+        if (currentState === ResourceState.WriteTarget) {
+          stateMachine.transition(resourceId, ResourceState.ShaderRead, pass.id)
+        }
+      }
+
+      // Validate inputs are readable
+      for (const input of pass.config.inputs) {
+        const resourceId = input.resourceId
+        if (!stateMachine.isRegistered(resourceId)) continue
+
+        // For readwrite access, we need to check both read and write
+        if (input.access === 'readwrite') {
+          // Readwrite access is valid from ShaderRead or WriteTarget state
+          const currentState = stateMachine.getState(resourceId)
+          if (currentState === ResourceState.Created) {
+            const validation = stateMachine.validateReadAfterWrite(resourceId, pass.id)
+            if (!validation.valid) {
+              warnings.push(validation.error!)
+            }
+          }
+        } else {
+          // Read-only access requires ShaderRead state
+          const validation = stateMachine.validateReadAfterWrite(resourceId, pass.id)
+          if (!validation.valid) {
+            warnings.push(validation.error!)
+          }
+        }
+      }
+
+      // Handle readwrite inputs - transition to WriteTarget then back to ShaderRead
+      for (const input of pass.config.inputs) {
+        const resourceId = input.resourceId
+        if (!stateMachine.isRegistered(resourceId)) continue
+
+        if (input.access === 'readwrite') {
+          const currentState = stateMachine.getState(resourceId)
+          if (currentState === ResourceState.ShaderRead) {
+            stateMachine.transition(resourceId, ResourceState.WriteTarget, pass.id)
+            stateMachine.transition(resourceId, ResourceState.ShaderRead, pass.id)
+          }
+        }
+      }
+    }
+
+    // Cleanup
+    stateMachine.dispose()
   }
 
   /**
