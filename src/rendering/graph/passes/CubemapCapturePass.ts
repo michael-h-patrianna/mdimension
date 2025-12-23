@@ -28,6 +28,7 @@ import * as THREE from 'three';
 import { RENDER_LAYERS } from '@/rendering/core/layers';
 
 import { BasePass } from '../BasePass';
+import { getGlobalMRTManager } from '../MRTStateManager';
 import { TemporalResource } from '../TemporalResource';
 import type { RenderContext, RenderPassConfig } from '../types';
 
@@ -60,8 +61,6 @@ export class CubemapCapturePass extends BasePass {
   // PMREM for environment (for walls)
   private pmremGenerator: THREE.PMREMGenerator | null = null;
   private pmremRenderTarget: THREE.WebGLRenderTarget | null = null;
-  // Reserved for future PMREM resolution customization
-  private _environmentResolution: number;
   private generatePMREM: () => boolean;
 
   // External texture support (classic skybox)
@@ -86,7 +85,6 @@ export class CubemapCapturePass extends BasePass {
     });
 
     this.backgroundResolution = config.backgroundResolution ?? 256;
-    this._environmentResolution = config.environmentResolution ?? 256;
     this.generatePMREM = config.generatePMREM ?? (() => false);
     this.getExternalCubeTexture = config.getExternalCubeTexture ?? (() => null);
   }
@@ -218,6 +216,10 @@ export class CubemapCapturePass extends BasePass {
           // Convert cubemap to PMREM format
           // This goes through setRenderTarget internally, ensuring proper MRT state
           this.externalPmremRenderTarget = this.pmremGenerator.fromCubemap(cubeTexture);
+
+          // Force sync after PMREM generation as it may have altered GL state (e.g. viewport, scissor)
+          // that MRTStateManager missed if PMREMGenerator restored to null (screen)
+          getGlobalMRTManager().forceSync();
 
           // Queue export for scene.environment (applied at frame end)
           ctx.queueExport({

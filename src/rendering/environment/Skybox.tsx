@@ -578,7 +578,10 @@ const SkyboxLoader: React.FC = () => {
           // Note: KTX2 compressed textures cannot generate mipmaps at runtime -
           // they must be pre-baked into the .ktx2 file. Setting generateMipmaps=true
           // causes GL_INVALID_OPERATION on compressed formats.
-          cubeTexture.minFilter = THREE.LinearMipmapLinearFilter;
+          // CRITICAL: Check if mipmaps actually exist. Using Mipmap filter on texture without mipmaps
+          // causes "Texture Incomplete" state -> samples as black (0,0,0,1).
+          const hasMipmaps = cubeTexture.mipmaps && cubeTexture.mipmaps.length > 1;
+          cubeTexture.minFilter = hasMipmaps ? THREE.LinearMipmapLinearFilter : THREE.LinearFilter;
           cubeTexture.magFilter = THREE.LinearFilter;
           cubeTexture.generateMipmaps = false;
           cubeTexture.needsUpdate = true;
