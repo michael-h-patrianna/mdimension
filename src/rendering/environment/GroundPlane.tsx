@@ -28,7 +28,6 @@
 import type { Vector3D } from '@/lib/math/types';
 import { RENDER_LAYERS } from '@/rendering/core/layers';
 import type { GroundPlaneType, WallPosition } from '@/stores/defaults/visualDefaults';
-import { Grid } from '@react-three/drei';
 import { useCallback, useMemo } from 'react';
 import { Color, DoubleSide, FrontSide, Object3D } from 'three';
 import { GroundPlaneMaterial } from './GroundPlaneMaterial';
@@ -248,65 +247,6 @@ function getWallConfig(wall: WallPosition, distance: number): WallConfig {
   }
 }
 
-/** Props for a single wall grid overlay */
-interface WallGridProps {
-  wall: WallPosition;
-  distance: number;
-  size: number;
-  surfaceType: GroundPlaneType;
-  gridColor: string;
-  gridSpacing: number;
-  sectionColor: string;
-}
-
-/**
- * Renders the grid overlay for a single wall.
- * Currently kept as separate component since Grid is a complex shader mesh that isn't easily instanced.
- */
-function WallGrid({
-  wall,
-  distance,
-  size,
-  surfaceType,
-  gridColor,
-  gridSpacing,
-  sectionColor,
-}: WallGridProps) {
-  const config = getWallConfig(wall, distance);
-
-  // Callback ref to set SKYBOX layer on Grid and all its children
-  const setGridLayer = useCallback((obj: Object3D | null) => {
-    if (obj) {
-      obj.traverse((child) => {
-        child.layers.set(RENDER_LAYERS.SKYBOX);
-      });
-    }
-  }, []);
-
-  return (
-    <group position={config.position}>
-      <group ref={setGridLayer}>
-        <Grid
-          renderOrder={1}
-          args={[size, size]}
-          rotation={config.gridRotation}
-          cellSize={gridSpacing}
-          cellThickness={0.5}
-          cellColor={gridColor}
-          sectionSize={gridSpacing * 5}
-          sectionThickness={1}
-          sectionColor={sectionColor}
-          fadeDistance={size * 0.5}
-          fadeStrength={2}
-          followCamera={false}
-          side={surfaceType === 'two-sided' ? DoubleSide : FrontSide}
-          position={config.gridOffset}
-        />
-      </group>
-    </group>
-  );
-}
-
 /**
  * Renders environment walls with optional grid overlay.
  *
@@ -371,8 +311,9 @@ export function GroundPlane({
   return (
     <>
       {/*
-        Wall Surfaces with Custom PBR Shader
-        Uses same GGX BRDF as other objects for visual consistency
+        Wall Surfaces with Custom PBR Shader and Procedural Grid
+        Uses same GGX BRDF as other objects for visual consistency.
+        Grid is rendered directly in the shader for MRT compatibility.
       */}
       {activeWalls.map((wall) => {
         const config = getWallConfig(wall, wallDistance);
@@ -390,27 +331,16 @@ export function GroundPlane({
               color={color}
               opacity={1}
               side={side}
+              showGrid={showGrid}
+              gridColor={gridColor}
+              sectionColor={sectionColor}
+              gridSpacing={gridSpacing}
+              gridFadeDistance={planeSize * 0.5}
+              gridFadeStrength={2}
             />
           </mesh>
         );
       })}
-
-      {/*
-        Grid Overlays
-        Rendered separately as Grid component handles its own complex shader
-      */}
-      {showGrid && activeWalls.map((wall) => (
-        <WallGrid
-          key={`grid-${wall}`}
-          wall={wall}
-          distance={wallDistance}
-          size={planeSize}
-          surfaceType={surfaceType}
-          gridColor={gridColor}
-          gridSpacing={gridSpacing}
-          sectionColor={sectionColor}
-        />
-      ))}
     </>
   );
 }

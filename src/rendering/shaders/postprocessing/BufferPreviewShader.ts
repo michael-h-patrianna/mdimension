@@ -29,7 +29,8 @@ export const BufferPreviewShader = {
 
     void main() {
       vUv = uv;
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      // Use direct NDC coordinates for fullscreen quad (avoids DPR issues)
+      gl_Position = vec4(position.xy, 0.0, 1.0);
     }
   `,
 
@@ -42,13 +43,16 @@ export const BufferPreviewShader = {
     uniform int type;
     uniform float nearClip;
     uniform float farClip;
-    
+
     // Depth specific
     uniform int debugMode;
     uniform float focus;
     uniform float focusRange;
 
     in vec2 vUv;
+
+    // WebGL2 GLSL ES 3.00 output declaration
+    layout(location = 0) out vec4 fragColor;
 
     float getDepth(float depth) {
       return depth;
@@ -67,7 +71,7 @@ export const BufferPreviewShader = {
         
         // Mode 0: Raw Depth (Inverted so near=white, far=black)
         if (debugMode == 0) {
-          pc_fragColor = vec4(vec3(1.0 - depth), 1.0);
+          fragColor = vec4(vec3(1.0 - depth), 1.0);
           return;
         }
 
@@ -76,7 +80,7 @@ export const BufferPreviewShader = {
         // Mode 1: Linear Depth (normalized)
         if (debugMode == 1) {
           float normalized = (viewZ - nearClip) / (farClip - nearClip);
-          pc_fragColor = vec4(vec3(clamp(normalized, 0.0, 1.0)), 1.0);
+          fragColor = vec4(vec3(clamp(normalized, 0.0, 1.0)), 1.0);
           return;
         }
 
@@ -97,7 +101,7 @@ export const BufferPreviewShader = {
           // Blue: In front of focus
           float infront = clamp(-diff / (safeFocusRange * 3.0), 0.0, 1.0);
 
-          pc_fragColor = vec4(behind, inFocus, infront, 1.0);
+          fragColor = vec4(behind, inFocus, infront, 1.0);
           return;
         }
       }
@@ -109,10 +113,10 @@ export const BufferPreviewShader = {
         // Check if there is valid data (assuming 0,0,0 is empty/background)
         float hasNormal = step(0.01, length(normal));
         
-        pc_fragColor = vec4(normal, 1.0);
+        fragColor = vec4(normal, 1.0);
         
         if (hasNormal < 0.5) {
-          pc_fragColor = vec4(0.05, 0.05, 0.1, 1.0);
+          fragColor = vec4(0.05, 0.05, 0.1, 1.0);
         }
         return;
       }
@@ -123,7 +127,7 @@ export const BufferPreviewShader = {
         
         // 0.0 indicates invalid/empty data (cleared buffer)
         if (temporalDepth < 0.0001) {
-          pc_fragColor = vec4(0.0, 0.0, 0.0, 1.0);
+          fragColor = vec4(0.0, 0.0, 0.0, 1.0);
           return;
         }
 
@@ -131,12 +135,12 @@ export const BufferPreviewShader = {
         float normalized = (temporalDepth - nearClip) / (farClip - nearClip);
         
         // Invert: Near=White, Far=Black
-        pc_fragColor = vec4(vec3(1.0 - clamp(normalized, 0.0, 1.0)), 1.0);
+        fragColor = vec4(vec3(1.0 - clamp(normalized, 0.0, 1.0)), 1.0);
         return;
       }
 
       // Default: Just copy
-      pc_fragColor = texel;
+      fragColor = texel;
     }
   `,
 };

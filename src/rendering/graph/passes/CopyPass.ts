@@ -132,5 +132,7 @@ export class CopyPass extends BasePass {
   dispose(): void {
     this.material.dispose()
     this.mesh.geometry.dispose()
+    // Remove mesh from scene to ensure proper cleanup
+    this.scene.remove(this.mesh)
   }
 }

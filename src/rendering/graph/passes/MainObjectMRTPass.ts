@@ -140,7 +140,8 @@ export class MainObjectMRTPass extends BasePass {
 
       // Manually force drawBuffers to all 3 MRT attachments
       // This ensures Three.js has the correct draw buffer configuration
-      const glCtx = renderer.getContext();
+      // Cast to WebGL2RenderingContext since this project requires WebGL2
+      const glCtx = renderer.getContext() as WebGL2RenderingContext;
       glCtx.drawBuffers([glCtx.COLOR_ATTACHMENT0, glCtx.COLOR_ATTACHMENT1, glCtx.COLOR_ATTACHMENT2]);
 
       if (this.clear) {

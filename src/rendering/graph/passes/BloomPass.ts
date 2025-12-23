@@ -275,5 +275,7 @@ export class BloomPass extends BasePass {
     this.bloomWriteTarget = null;
     this.copyMaterial.dispose();
     this.copyMesh.geometry.dispose();
+    // Remove mesh from scene to ensure proper cleanup
+    this.copyScene.remove(this.copyMesh);
   }
 }

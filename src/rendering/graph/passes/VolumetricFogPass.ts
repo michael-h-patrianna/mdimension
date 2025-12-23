@@ -466,5 +466,7 @@ export class VolumetricFogPass extends BasePass {
     this.compositeMaterial.dispose();
     this.mesh.geometry.dispose();
     this.halfResTarget.dispose();
+    // Remove mesh from scene to ensure proper cleanup
+    this.scene.remove(this.mesh);
   }
 }

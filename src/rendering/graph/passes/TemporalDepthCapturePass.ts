@@ -146,5 +146,7 @@ export class TemporalDepthCapturePass extends BasePass {
   dispose(): void {
     this.material.dispose()
     this.fsQuad.geometry.dispose()
+    // Remove mesh from scene to ensure proper cleanup
+    this.fsScene.remove(this.fsQuad)
   }
 }

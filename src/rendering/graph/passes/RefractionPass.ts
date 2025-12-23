@@ -249,5 +249,8 @@ export class RefractionPass extends BasePass {
     this.mesh.geometry.dispose();
     this.copyMaterial.dispose();
     this.copyMesh.geometry.dispose();
+    // Remove meshes from scenes to ensure proper cleanup
+    this.scene.remove(this.mesh);
+    this.copyScene.remove(this.copyMesh);
   }
 }

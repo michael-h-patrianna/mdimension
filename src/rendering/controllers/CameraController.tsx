@@ -1,6 +1,7 @@
 import { useRef, useEffect } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
+import * as THREE from 'three'
 import { useCameraMovement } from '@/hooks/useCameraMovement'
 import { useLightingStore } from '@/stores/lightingStore';
 import { useCameraStore } from '@/stores/cameraStore';
@@ -164,28 +165,36 @@ export function CameraController({
     if (controlsRef.current) {
       controlsRef.current.update()
     }
-    // DEBUG: Log camera state occasionally
-    if (state.clock.elapsedTime > 1.0 && state.clock.elapsedTime < 1.1) {
+    // DEBUG: Log camera state occasionally (development only)
+    if (import.meta.env.DEV && state.clock.elapsedTime > 1.0 && state.clock.elapsedTime < 1.1) {
+        const perspCam = state.camera as THREE.PerspectiveCamera;
         console.log('[CameraController] Camera State:', {
             position: state.camera.position.toArray(),
             rotation: state.camera.rotation.toArray(),
-            fov: (state.camera as any).fov,
-            zoom: (state.camera as any).zoom,
+            fov: perspCam.fov,
+            zoom: perspCam.zoom,
             projectionMatrix: state.camera.projectionMatrix.elements.slice(0, 16)
         });
     }
   }, FRAME_PRIORITY.CAMERA)
 
-  // Expose reset function if callback is provided
+  // Reset camera when onReset callback is provided and changes
+  // NOTE: onReset is treated as a trigger - when parent provides a new function
+  // reference (e.g., via a reset counter change), the camera resets.
+  // Using a ref to track whether we've initialized to avoid resetting on mount.
+  const hasInitializedRef = useRef(false)
   useEffect(() => {
-    if (onReset && controlsRef.current) {
-      const controls = controlsRef.current
-      // Trigger the callback with a reset handler
-      const resetHandler = () => {
-        controls.reset()
-      }
-      // Call the callback to expose the reset function
-      resetHandler()
+    if (!controlsRef.current) return
+
+    // Skip initial mount to avoid unwanted reset
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true
+      return
+    }
+
+    // Only reset if onReset is provided and has changed
+    if (onReset) {
+      controlsRef.current.reset()
     }
   }, [onReset])
 

@@ -261,8 +261,13 @@ export class CompositePass extends BasePass {
     const outputTarget = ctx.getWriteTarget(this.outputResourceId);
 
     // Set up textures and blend parameters
-    const weights = new THREE.Vector4(1, 1, 1, 1);
-    const blendModes = new THREE.Vector4(0, 0, 0, 0);
+    // Reuse existing uniform Vector4 values to avoid per-frame allocations
+    const weights = this.material.uniforms['uWeights']!.value as THREE.Vector4;
+    const blendModes = this.material.uniforms['uBlendModes']!.value as THREE.Vector4;
+
+    // Reset to defaults before populating
+    weights.set(1, 1, 1, 1);
+    blendModes.set(0, 0, 0, 0);
 
     const textureUniforms = ['tInput0', 'tInput1', 'tInput2', 'tInput3'];
     const inputCount = Math.min(this.compositeInputs.length, 4);
@@ -286,9 +291,6 @@ export class CompositePass extends BasePass {
       else if (i === 2) blendModes.z = blendMode;
       else blendModes.w = blendMode;
     }
-
-    this.material.uniforms['uWeights']!.value = weights;
-    this.material.uniforms['uBlendModes']!.value = blendModes;
     this.material.uniforms['uInputCount']!.value = inputCount;
 
     // Render composite
@@ -334,5 +336,7 @@ export class CompositePass extends BasePass {
   dispose(): void {
     this.material.dispose();
     this.mesh.geometry.dispose();
+    // Remove mesh from scene to ensure proper cleanup
+    this.scene.remove(this.mesh);
   }
 }

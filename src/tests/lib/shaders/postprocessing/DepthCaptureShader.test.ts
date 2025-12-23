@@ -120,10 +120,12 @@ describe('DepthCaptureShader', () => {
     });
 
     it('should output unnormalized ray distance using layout output', () => {
-      // Should use pc_fragColor (Three.js auto-injected output for GLSL3) not gl_FragColor
+      // Should use proper WebGL2/GLSL ES 3.00 layout output declaration
       // Should output rayDistance (unnormalized), not normalizedDepth
-      expect(DepthCaptureShader.fragmentShader).toContain('pc_fragColor = vec4(rayDistance');
+      expect(DepthCaptureShader.fragmentShader).toContain('layout(location = 0) out vec4 fragColor');
+      expect(DepthCaptureShader.fragmentShader).toContain('fragColor = vec4(rayDistance');
       expect(DepthCaptureShader.fragmentShader).not.toContain('gl_FragColor');
+      expect(DepthCaptureShader.fragmentShader).not.toContain('pc_fragColor');
     });
   });
 

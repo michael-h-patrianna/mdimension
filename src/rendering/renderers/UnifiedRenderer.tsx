@@ -65,23 +65,13 @@ export const UnifiedRenderer = React.memo(function UnifiedRenderer({
   );
 
   // Determine render mode
-  const renderMode = useMemo(() => {
-    const mode = determineRenderMode(geometry, objectType, dimension, facesVisible);
-    console.log('[UnifiedRenderer] renderMode:', mode, {
-      objectType,
-      dimension,
-      facesVisible,
-      verticesCount: geometry.vertices.length,
-      edgesCount: geometry.edges.length,
-    });
+  const renderMode = useMemo(
+    () => determineRenderMode(geometry, objectType, dimension, facesVisible),
+    [geometry, objectType, dimension, facesVisible]
+  );
 
-    return mode;
-  }, [geometry, objectType, dimension, facesVisible]);
-
-  // Prepare edges
-  const edges = useMemo(() => {
-    return geometry.edges as [number, number][];
-  }, [geometry.edges]);
+  // Type assertion for edges (no computation needed, just cast)
+  const edges = geometry.edges as [number, number][];
 
   return (
     <>

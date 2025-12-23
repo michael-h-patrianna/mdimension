@@ -71,6 +71,7 @@ export class TemporalCloudPass extends BasePass {
   private volumetricLayer: number
   private shouldRender: () => boolean
   private cameraLayers = new THREE.Layers()
+  private volumetricMask = new THREE.Layers() // Cached to avoid per-frame allocation
 
   // Resources
   private cloudBufferId: string
@@ -82,6 +83,11 @@ export class TemporalCloudPass extends BasePass {
   private hasValidHistory = false
   private prevViewProjectionMatrix = new THREE.Matrix4()
   private prevCameraPosition = new THREE.Vector3()
+
+  // Reusable temp objects to avoid per-frame allocations
+  private tempViewProjMatrix = new THREE.Matrix4()
+  private tempInverseViewProjMatrix = new THREE.Matrix4()
+  private tempWorldPos = new THREE.Vector3()
 
   // Materials
   private reprojectionMaterial: THREE.ShaderMaterial
@@ -108,6 +114,7 @@ export class TemporalCloudPass extends BasePass {
 
     this.volumetricLayer = config.volumetricLayer
     this.shouldRender = config.shouldRender
+    this.volumetricMask.set(this.volumetricLayer) // Initialize cached mask
     this.cloudBufferId = config.cloudBuffer
     this.accumulationBufferId = config.accumulationBuffer
     this.reprojectionBufferId = config.reprojectionBuffer
@@ -260,17 +267,17 @@ export class TemporalCloudPass extends BasePass {
     if (u['uPrevViewProjectionMatrix'])
       u['uPrevViewProjectionMatrix'].value.copy(this.prevViewProjectionMatrix)
 
-    const viewProj = new THREE.Matrix4().multiplyMatrices(
-      camera.projectionMatrix,
-      camera.matrixWorldInverse
-    )
-    if (u['uViewProjectionMatrix']) u['uViewProjectionMatrix'].value.copy(viewProj)
-    if (u['uInverseViewProjectionMatrix'])
-      u['uInverseViewProjectionMatrix'].value.copy(viewProj.clone().invert())
+    // Reuse temp matrices to avoid per-frame allocations
+    this.tempViewProjMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse)
+    if (u['uViewProjectionMatrix']) u['uViewProjectionMatrix'].value.copy(this.tempViewProjMatrix)
+    if (u['uInverseViewProjectionMatrix']) {
+      this.tempInverseViewProjMatrix.copy(this.tempViewProjMatrix).invert()
+      u['uInverseViewProjectionMatrix'].value.copy(this.tempInverseViewProjMatrix)
+    }
 
-    const worldPos = new THREE.Vector3()
-    camera.getWorldPosition(worldPos)
-    if (u['uCameraPosition']) u['uCameraPosition'].value.copy(worldPos)
+    // Reuse temp vector to avoid per-frame allocations
+    camera.getWorldPosition(this.tempWorldPos)
+    if (u['uCameraPosition']) u['uCameraPosition'].value.copy(this.tempWorldPos)
 
     if (u['uAccumulationResolution'])
       u['uAccumulationResolution'].value.set(size.width, size.height)
@@ -335,14 +342,15 @@ export class TemporalCloudPass extends BasePass {
   }
 
   private getVolumetricMask(): THREE.Layers {
-    const layers = new THREE.Layers()
-    layers.set(this.volumetricLayer)
-    return layers
+    // Return cached mask to avoid per-frame allocation
+    return this.volumetricMask
   }
 
   dispose(): void {
     this.reprojectionMaterial.dispose()
     this.reconstructionMaterial.dispose()
     this.fsQuad.geometry.dispose()
+    // Remove mesh from scene to ensure proper cleanup
+    this.fsScene.remove(this.fsQuad)
   }
 }

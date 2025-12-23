@@ -69,10 +69,11 @@ export function deferredExecute(callback: () => void): () => void {
  */
 export function waitForGPUCompile(callback: () => void): () => void {
   let cancelled = false
+  let innerFrameId: number | null = null
 
-  requestAnimationFrame(() => {
+  const outerFrameId = requestAnimationFrame(() => {
     if (cancelled) return
-    requestAnimationFrame(() => {
+    innerFrameId = requestAnimationFrame(() => {
       if (cancelled) return
 
       callback()
@@ -81,5 +82,9 @@ export function waitForGPUCompile(callback: () => void): () => void {
 
   return () => {
     cancelled = true
+    cancelAnimationFrame(outerFrameId)
+    if (innerFrameId !== null) {
+      cancelAnimationFrame(innerFrameId)
+    }
   }
 }

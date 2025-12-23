@@ -84,7 +84,6 @@ export const ReflectionsSection: React.FC<ReflectionsSectionProps> = ({
             options={IBL_QUALITY_OPTIONS}
             value={iblQuality}
             onChange={setIBLQuality}
-            tooltip="Enable environment reflections (skybox reflected on surfaces)"
             data-testid="ibl-quality-select"
           />
 

@@ -37,7 +37,7 @@ describe('useShadowPatching', () => {
       expect(options.transformGLSL).toContain('testTransform')
       expect(options.transformFunctionCall).toBe('testTransform(transformed)')
       expect(options.shadowEnabled).toBe(true)
-      expect(options.uniforms.uTestUniform.value).toBe(1.0)
+      expect(options.uniforms.uTestUniform!.value).toBe(1.0)
     })
 
     it('should accept shadowEnabled as false', () => {
@@ -65,8 +65,8 @@ describe('useShadowPatching', () => {
         uProjectionDistance: { value: 10.0 },
       }
 
-      expect(uniforms.uDimension.value).toBe(4)
-      expect(uniforms.uProjectionDistance.value).toBe(10.0)
+      expect(uniforms.uDimension!.value).toBe(4)
+      expect(uniforms.uProjectionDistance!.value).toBe(10.0)
     })
 
     it('should support modulation uniforms for polytope', () => {
@@ -78,8 +78,8 @@ describe('useShadowPatching', () => {
         uModBias: { value: 0.0 },
       }
 
-      expect(uniforms.uAnimTime.value).toBe(0.0)
-      expect(uniforms.uModFrequency.value).toBe(0.05)
+      expect(uniforms.uAnimTime!.value).toBe(0.0)
+      expect(uniforms.uModFrequency!.value).toBe(0.05)
     })
 
     it('should support tube-specific uniforms', () => {
@@ -87,10 +87,11 @@ describe('useShadowPatching', () => {
         uRadius: { value: 0.02 },
       }
 
-      expect(uniforms.uRadius.value).toBe(0.02)
+      expect(uniforms.uRadius!.value).toBe(0.02)
     })
   })
 })
+
 
 
 

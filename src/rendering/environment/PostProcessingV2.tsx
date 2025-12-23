@@ -476,6 +476,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       size: { mode: 'screen' },
       format: THREE.RGBAFormat,
       dataType: THREE.HalfFloatType,
+      colorSpace: THREE.LinearSRGBColorSpace,
     });
 
     g.addResource({
@@ -484,6 +485,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       size: { mode: 'screen' },
       format: THREE.RGBAFormat,
       dataType: THREE.HalfFloatType,
+      colorSpace: THREE.LinearSRGBColorSpace,
     });
 
     g.addResource({
@@ -492,6 +494,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       size: { mode: 'screen' },
       format: THREE.RGBAFormat,
       dataType: THREE.HalfFloatType,
+      colorSpace: THREE.LinearSRGBColorSpace,
     });
 
     g.addResource({
@@ -500,6 +503,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       size: { mode: 'screen' },
       format: THREE.RGBAFormat,
       dataType: THREE.HalfFloatType,
+      colorSpace: THREE.LinearSRGBColorSpace,
     });
 
     g.addResource({
@@ -508,6 +512,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       size: { mode: 'screen' },
       format: THREE.RGBAFormat,
       dataType: THREE.HalfFloatType,
+      colorSpace: THREE.LinearSRGBColorSpace,
     });
 
     g.addResource({
@@ -516,6 +521,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       size: { mode: 'screen' },
       format: THREE.RGBAFormat,
       dataType: THREE.HalfFloatType,
+      colorSpace: THREE.LinearSRGBColorSpace,
     });
 
     g.addResource({
@@ -737,7 +743,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
     // SSR pass
     const ssrPass = new SSRPass({
       id: 'ssr',
-      colorInput: RESOURCES.BLOOM_OUTPUT,
+      colorInput: RESOURCES.BOKEH_OUTPUT,
       normalInput: RESOURCES.NORMAL_BUFFER,
       depthInput: RESOURCES.OBJECT_DEPTH,
       alternateDepthInput: RESOURCES.SCENE_COLOR,
@@ -777,7 +783,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
     // Bokeh pass
     const bokehPass = new BokehPass({
       id: 'bokeh',
-      colorInput: RESOURCES.REFRACTION_OUTPUT,
+      colorInput: RESOURCES.BLOOM_OUTPUT,
       depthInput: RESOURCES.OBJECT_DEPTH,
       alternateDepthInput: RESOURCES.SCENE_COLOR,
       alternateDepthInputAttachment: 'depth',
@@ -800,7 +806,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
     // Screen-space lensing pass (black hole)
     const lensingPass = new ScreenSpaceLensingPass({
       id: 'lensing',
-      colorInput: RESOURCES.BOKEH_OUTPUT,
+      colorInput: RESOURCES.REFRACTION_OUTPUT,
       depthInput: RESOURCES.SCENE_COLOR,
       depthInputAttachment: 'depth',
       outputResource: RESOURCES.LENSING_OUTPUT,

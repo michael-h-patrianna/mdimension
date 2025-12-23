@@ -15,11 +15,16 @@ precision highp float;
 
 // Outputs to fragment shader
 out vec3 vWorldPosition;
+out vec3 vLocalPosition;  // Local position before transformation (for grid)
 out vec3 vNormal;
 out vec3 vViewDirection;
 out vec2 vUv;
 
 void main() {
+  // Store local position before transformation (for grid calculation)
+  // PlaneGeometry is always created in XY plane, so we use XY for grid
+  vLocalPosition = position;
+
   // Transform to world space
   vec4 worldPos = modelMatrix * vec4(position, 1.0);
   vWorldPosition = worldPos.xyz;

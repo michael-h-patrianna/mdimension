@@ -579,10 +579,8 @@ export function TubeWireframe({
       material.needsUpdate = true
     }
 
-    // Update lighting uniforms from visual store (cached linear conversion)
-    // Note: Specular (uSpecularIntensity, uSpecularColor) now provided by 'pbr-edge' source
-    u.uAmbientIntensity!.value = lightingState.ambientIntensity
-    updateLinearColorUniform(cache.ambientColor, u.uAmbientColor!.value as Color, lightingState.ambientColor)
+    // Note: Ambient and Specular uniforms are provided by UniformManager 'lighting' source below.
+    // Do not set them manually here - they would be immediately overwritten.
 
     // Fresnel (cached linear conversion)
     u.uFresnelEnabled!.value = appearanceState.shaderSettings.surface.fresnelEnabled
@@ -606,9 +604,8 @@ export function TubeWireframe({
     u.uIBLIntensity!.value = iblState.iblIntensity
     const bg = scene.background
     const isCubeTexture = bg && (bg as THREE.CubeTexture).isCubeTexture
-    if (isCubeTexture) {
-      u.uEnvMap!.value = bg
-    }
+    // Always update envMap - set to null if not a cube texture to prevent stale references
+    u.uEnvMap!.value = isCubeTexture ? bg : null
 
     // Update shadow map uniforms if shadows are enabled
     // Pass store lights to ensure shadow data ordering matches uniform indices

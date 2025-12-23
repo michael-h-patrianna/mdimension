@@ -5,7 +5,7 @@
  */
 
 import { describe, expect, it, beforeEach } from 'vitest';
-import { renderHook } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
 
 import { useQualityTracking } from '@/rendering/renderers/base/useQualityTracking';
 import { useRotationStore } from '@/stores/rotationStore';
@@ -57,8 +57,10 @@ describe('useQualityTracking', () => {
       const { result, rerender } = renderHook(() => useQualityTracking());
       const initialVersion = result.current.rotationVersion;
 
-      // Update rotation
-      useRotationStore.getState().setRotation('XY', 0.5);
+      // Update rotation wrapped in act() to prevent React warning
+      act(() => {
+        useRotationStore.getState().setRotation('XY', 0.5);
+      });
       rerender();
 
       expect(result.current.rotationVersion).toBe(initialVersion + 1);
@@ -72,8 +74,10 @@ describe('useQualityTracking', () => {
         useQualityTracking({ enabled: false })
       );
 
-      // Change rotation
-      useRotationStore.getState().setRotation('XY', 0.5);
+      // Change rotation wrapped in act() to prevent React warning
+      act(() => {
+        useRotationStore.getState().setRotation('XY', 0.5);
+      });
       rerender();
 
       // Should not track rotations when disabled

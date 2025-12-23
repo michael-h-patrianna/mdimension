@@ -76,7 +76,9 @@ export function useLayerAssignment(
         mesh.layers.set(0); // Reset to default layer
       }
     };
-  }, [meshRef, layer, enabled]);
+  // Note: meshRef excluded from deps - it's a stable ref object that won't change.
+  // The effect runs after render when meshRef.current is already assigned.
+  }, [layer, enabled]);
 }
 
 /**
@@ -116,5 +118,6 @@ export function useVolumetricLayerAssignment(
         mesh.layers.set(0); // Reset to default layer
       }
     };
-  }, [meshRef, needsSeparation]);
+  // Note: meshRef excluded from deps - it's a stable ref object that won't change.
+  }, [needsSeparation]);
 }

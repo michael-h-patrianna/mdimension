@@ -170,5 +170,7 @@ export class SMAAPass extends BasePass {
     this.writeTarget = null;
     this.copyMaterial.dispose();
     this.copyMesh.geometry.dispose();
+    // Remove mesh from scene to ensure proper cleanup
+    this.copyScene.remove(this.copyMesh);
   }
 }

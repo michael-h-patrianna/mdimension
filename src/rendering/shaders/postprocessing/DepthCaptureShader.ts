@@ -68,7 +68,9 @@ export const DepthCaptureShader = {
     uniform mat4 inverseProjectionMatrix;
 
     in vec2 vUv;
-    out vec4 pc_fragColor;
+
+    // WebGL2 GLSL ES 3.00 output declaration
+    layout(location = 0) out vec4 fragColor;
 
     /**
      * Convert perspective depth buffer value to linear view-space Z.
@@ -136,7 +138,7 @@ export const DepthCaptureShader = {
       // Store raw ray distance (no normalization)
       // Using FloatType allows us to store real distances with full precision
       // Zero distance indicates invalid/no temporal data
-      pc_fragColor = vec4(rayDistance, 0.0, 0.0, 1.0);
+      fragColor = vec4(rayDistance, 0.0, 0.0, 1.0);
     }
   `,
 };

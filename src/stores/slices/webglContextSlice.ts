@@ -178,16 +178,16 @@ export const createWebGLContextSlice: StateCreator<
     const state = get()
 
     // Update loss history for rapid failure detection
+    // Use spread instead of push for immutability
     const recentLosses = state.lossHistory.filter(
       (t) => now - t < state.recoveryConfig.rapidFailureWindow
     )
-    recentLosses.push(now)
 
     set({
       status: 'lost',
       lostAt: now,
       lostCount: state.lostCount + 1,
-      lossHistory: recentLosses,
+      lossHistory: [...recentLosses, now],
       lastError: null,
     })
   },

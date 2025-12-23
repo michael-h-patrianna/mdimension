@@ -182,7 +182,8 @@ function usePMREMTexture(texture: THREE.CubeTexture | undefined): PMREMResult {
           const renderTarget = pmremGenerator.fromCubemap(texture);
 
           if (cancelled) {
-            renderTarget.texture.dispose();
+            // Dispose full render target, not just texture
+            renderTarget.dispose();
             return;
           }
 
@@ -661,8 +662,6 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
     const uniforms = material.uniforms;
 
     if (uniforms.uTex) uniforms.uTex.value = texture;
-
-    if (uniforms.uTex) uniforms.uTex.value = texture;
     if (uniforms.uRotation) uniforms.uRotation.value = rotationMatrix;
     if (uniforms.uMode) uniforms.uMode.value = modeInt;
     if (uniforms.uTime) uniforms.uTime.value = t;
@@ -773,9 +772,17 @@ const SkyboxLoader: React.FC = () => {
      return key ? skyboxAssets[key] : null;
   }, [skyboxTexture, skyboxHighQuality]);
 
+  // Track current texture for proper cleanup
+  const currentTextureRef = useRef<THREE.CubeTexture | null>(null);
+
   // Manual async texture loading - doesn't block rendering
   useEffect(() => {
     if (!ktx2Path) {
+      // Dispose previous texture when switching to no skybox
+      if (currentTextureRef.current) {
+        currentTextureRef.current.dispose();
+        currentTextureRef.current = null;
+      }
       setTexture(null);
       setSkyboxLoading(false);
       return;
@@ -798,6 +805,11 @@ const SkyboxLoader: React.FC = () => {
       ktx2Path,
       (loadedTexture) => {
         if (!cancelled) {
+          // Dispose previous texture before replacing
+          if (currentTextureRef.current) {
+            currentTextureRef.current.dispose();
+          }
+
           const cubeTexture = loadedTexture as unknown as THREE.CubeTexture;
           // Configure texture for best quality
           // Note: KTX2 compressed textures cannot generate mipmaps at runtime -
@@ -807,9 +819,13 @@ const SkyboxLoader: React.FC = () => {
           cubeTexture.magFilter = THREE.LinearFilter;
           cubeTexture.generateMipmaps = false;
           cubeTexture.needsUpdate = true;
+          currentTextureRef.current = cubeTexture;
           setTexture(cubeTexture);
           // Signal loading complete - resume animation and quality refinement
           setSkyboxLoading(false);
+        } else {
+          // Dispose newly loaded texture if load was cancelled
+          loadedTexture.dispose();
         }
       },
       undefined, // onProgress
@@ -828,6 +844,11 @@ const SkyboxLoader: React.FC = () => {
 
     return () => {
       cancelled = true;
+      // Dispose texture on unmount or when ktx2Path changes
+      if (currentTextureRef.current) {
+        currentTextureRef.current.dispose();
+        currentTextureRef.current = null;
+      }
     };
   }, [ktx2Path, gl, setSkyboxLoading]);
 

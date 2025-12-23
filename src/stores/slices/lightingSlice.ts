@@ -199,11 +199,17 @@ export const createLightingSlice: StateCreator<LightingSlice, [], [], LightingSl
   },
 
   setAmbientIntensity: (intensity: number) => {
-    set({ ambientIntensity: Math.max(0, Math.min(3, intensity)) })
+    set((state) => ({
+      ambientIntensity: Math.max(0, Math.min(3, intensity)),
+      version: state.version + 1,
+    }))
   },
 
   setAmbientColor: (color: string) => {
-    set({ ambientColor: color })
+    set((state) => ({
+      ambientColor: color,
+      version: state.version + 1,
+    }))
   },
 
   setShowLightIndicator: (show: boolean) => {

@@ -28,6 +28,7 @@ interface WEBGL_lose_context {
  */
 export function ContextEventHandler(): null {
   const { gl } = useThree()
+  const debugRestoreTimeoutRef = useRef<number | null>(null)
   const recoveryTimeoutRef = useRef<number | null>(null)
   const loseContextExtRef = useRef<WEBGL_lose_context | null>(null)
 
@@ -46,12 +47,18 @@ export function ContextEventHandler(): null {
       console.warn('[ContextEventHandler] Forcing context loss for debugging')
       loseContextExtRef.current.loseContext()
 
+      // Clear any existing timeout to prevent multiple restores
+      if (debugRestoreTimeoutRef.current !== null) {
+        window.clearTimeout(debugRestoreTimeoutRef.current)
+      }
+
       // Simulated context loss requires manual restore - browser only auto-restores real GPU crashes
-      window.setTimeout(() => {
+      debugRestoreTimeoutRef.current = window.setTimeout(() => {
         if (loseContextExtRef.current) {
           console.warn('[ContextEventHandler] Restoring context after simulated loss')
           loseContextExtRef.current.restoreContext()
         }
+        debugRestoreTimeoutRef.current = null
       }, 3000)
     } else {
       console.warn('[ContextEventHandler] WEBGL_lose_context extension not available')
@@ -62,6 +69,13 @@ export function ContextEventHandler(): null {
   useEffect(() => {
     if (debugContextLossCounter > 0) {
       forceContextLoss()
+    }
+    // Cleanup timeout on unmount
+    return () => {
+      if (debugRestoreTimeoutRef.current !== null) {
+        window.clearTimeout(debugRestoreTimeoutRef.current)
+        debugRestoreTimeoutRef.current = null
+      }
     }
   }, [debugContextLossCounter, forceContextLoss])
 

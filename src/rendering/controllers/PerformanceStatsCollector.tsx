@@ -51,9 +51,17 @@ export function PerformanceStatsCollector() {
 
     // Expose store for e2e testing
     if (import.meta.env.DEV) {
-      // @ts-ignore
+      // @ts-expect-error - Attaching store to window for e2e testing
       window.__PERF_STORE__ = usePerformanceMetricsStore;
     }
+
+    // Cleanup window property on unmount
+    return () => {
+      if (import.meta.env.DEV) {
+        // @ts-expect-error - Cleaning up e2e testing property
+        delete window.__PERF_STORE__;
+      }
+    };
   }, [gl, setGpuName]);
 
   // Hook: Render Instrumentation

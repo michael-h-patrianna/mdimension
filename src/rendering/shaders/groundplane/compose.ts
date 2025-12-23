@@ -18,6 +18,7 @@ import { ggxBlock } from '../shared/lighting/ggx.glsl'
 import { iblBlock, iblUniformsBlock } from '../shared/lighting/ibl.glsl'
 import { multiLightBlock } from '../shared/lighting/multi-light.glsl'
 
+import { gridFunctionsBlock, gridUniformsBlock } from './grid.glsl'
 import { mainBlock } from './main.glsl'
 import { vertexBlock } from './vertex.glsl'
 
@@ -64,6 +65,7 @@ export function composeGroundPlaneFragmentShader(config: GroundPlaneShaderConfig
       content: `
 // Inputs from vertex shader
 in vec3 vWorldPosition;
+in vec3 vLocalPosition;  // Local position before transformation (for grid)
 in vec3 vNormal;
 in vec3 vViewDirection;
 in vec2 vUv;
@@ -84,6 +86,8 @@ uniform float uRoughness;
     { name: 'Shadow Maps Functions', content: shadowMapsFunctionsBlock, condition: enableShadows },
     { name: 'Fog Uniforms', content: fogUniformsBlock, condition: enableFog },
     { name: 'Fog Functions', content: fogFunctionsBlock, condition: enableFog },
+    { name: 'Grid Uniforms', content: gridUniformsBlock },
+    { name: 'Grid Functions', content: gridFunctionsBlock },
     { name: 'Main', content: mainBlock },
   ]
 

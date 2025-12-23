@@ -119,19 +119,9 @@ const BlackHoleMesh = () => {
     return key
   }, [dimension, temporalEnabled, jetsEnabled, dopplerEnabled, opacityMode, sliceAnimationEnabled])
 
-  // Cleanup material when shader recompiles or component unmounts
-  // This prevents WebGL memory leaks when switching modes/dimensions
-  useEffect(() => {
-    const mesh = meshRef.current;
-    return () => {
-      if (mesh) {
-        const material = mesh.material as THREE.ShaderMaterial
-        if (material && typeof material.dispose === 'function') {
-          material.dispose()
-        }
-      }
-    }
-  }, [materialKey])
+  // Note: Material disposal is handled automatically by React Three Fiber
+  // when TrackedShaderMaterial unmounts (materialKey change causes remount).
+  // Manual disposal here would cause double-disposal and WebGL errors.
 
   // Layer assignment is handled dynamically in useBlackHoleUniformUpdates
   // based on screen coverage (only uses temporal when coverage > 50%)

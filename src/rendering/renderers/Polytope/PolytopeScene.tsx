@@ -905,9 +905,8 @@ export const PolytopeScene = React.memo(function PolytopeScene({
         if (u.uEnvMap) {
           const bg = scene.background;
           const isCubeTexture = bg && (bg as THREE.CubeTexture).isCubeTexture;
-          if (isCubeTexture) {
-            u.uEnvMap.value = bg;
-          }
+          // Always update envMap - set to null if not a cube texture to prevent stale references
+          u.uEnvMap.value = isCubeTexture ? bg : null;
         }
 
         // Update advanced color system uniforms (only for face materials)

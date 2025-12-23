@@ -362,3 +362,144 @@ Available aliases (from vite.config.ts):
 - `@/rendering` → `src/rendering`
 - `@/types` → `src/types`
 - `@/utils` → `src/utils`
+
+---
+
+## How to Create a Shader
+
+**CRITICAL**: All shaders MUST use WebGL2 / GLSL ES 3.00 syntax. This is mandatory with no exceptions.
+
+### Required GLSL ES 3.00 Syntax
+
+| WebGL1 (FORBIDDEN) | WebGL2 (REQUIRED) |
+|-------------------|-------------------|
+| `attribute` | `in` (vertex shader) |
+| `varying` (vertex) | `out` |
+| `varying` (fragment) | `in` |
+| `gl_FragColor` | `layout(location = N) out vec4 varName;` |
+| `texture2D()` | `texture()` |
+| `textureCube()` | `texture()` |
+
+### Shader File Types
+
+- `.glsl.ts` - TypeScript template strings (preferred for dynamic shaders)
+- `.vert` / `.frag` - Raw GLSL files (for static shaders)
+
+### Location
+
+- `src/rendering/shaders/[feature]/` - Shader blocks and composers
+
+### Template (TypeScript template string)
+
+**File**: `src/rendering/shaders/[feature]/[name].glsl.ts`
+```typescript
+/**
+ * {Name} Shader Block
+ * {Brief description}
+ */
+
+/**
+ * {Name} shader block for use in composed shaders.
+ * @glsl WebGL2 / GLSL ES 3.00
+ */
+export const {name}Block = /* glsl */ `
+  // GLSL ES 3.00 - use 'in' not 'attribute', 'out' not 'varying'
+
+  // Uniform declarations
+  uniform float uMyUniform;
+
+  // Function implementations
+  vec3 myShaderFunction(vec3 input) {
+    return input * uMyUniform;
+  }
+`;
+```
+
+### Vertex Shader Pattern
+
+```glsl
+precision highp float;
+precision highp int;
+
+// Inputs (WebGL2: 'in' not 'attribute')
+in vec3 position;
+in vec3 normal;
+
+// Outputs to fragment shader (WebGL2: 'out' not 'varying')
+out vec3 vWorldPosition;
+out vec3 vNormal;
+
+void main() {
+  vec4 worldPos = modelMatrix * vec4(position, 1.0);
+  gl_Position = projectionMatrix * viewMatrix * worldPos;
+  vWorldPosition = worldPos.xyz;
+  vNormal = normalize(mat3(modelMatrix) * normal);
+}
+```
+
+### Fragment Shader Pattern
+
+```glsl
+precision highp float;
+precision highp int;
+
+// Inputs from vertex shader (WebGL2: 'in' not 'varying')
+in vec3 vWorldPosition;
+in vec3 vNormal;
+
+// Output (WebGL2: 'layout' not 'gl_FragColor')
+layout(location = 0) out vec4 fragColor;
+
+void main() {
+  vec3 color = vNormal * 0.5 + 0.5;
+  fragColor = vec4(color, 1.0);
+}
+```
+
+### MRT (Multiple Render Target) Pattern
+
+```glsl
+// Fragment shader with multiple outputs (G-Buffer)
+layout(location = 0) out vec4 gColor;   // Color buffer
+layout(location = 1) out vec4 gNormal;  // Normal buffer (RGB = normal, A = metallic)
+
+void main() {
+  gColor = vec4(albedo, 1.0);
+  gNormal = vec4(normal * 0.5 + 0.5, metallic);
+}
+```
+
+### Using with Three.js ShaderMaterial
+
+```typescript
+import * as THREE from 'three';
+
+const material = new THREE.ShaderMaterial({
+  glslVersion: THREE.GLSL3,  // REQUIRED for WebGL2
+  vertexShader: myVertexShader,
+  fragmentShader: myFragmentShader,
+  uniforms: {
+    uMyUniform: { value: 1.0 },
+  },
+});
+```
+
+### Common Mistakes (Shaders)
+
+❌ **Don't**: Use `attribute` keyword
+✅ **Do**: Use `in` in vertex shaders
+
+❌ **Don't**: Use `varying` keyword
+✅ **Do**: Use `out` in vertex shaders, `in` in fragment shaders
+
+❌ **Don't**: Use `gl_FragColor`
+✅ **Do**: Use `layout(location = 0) out vec4 fragColor;`
+
+❌ **Don't**: Use `texture2D()` or `textureCube()`
+✅ **Do**: Use `texture()` for all texture sampling
+
+❌ **Don't**: Forget `glslVersion: THREE.GLSL3` in ShaderMaterial
+✅ **Do**: Always set this for WebGL2 compatibility
+
+❌ **Don't**: Use `gl.setViewport()` with WebGLRenderTarget (DPR multiplication bug)
+✅ **Do**: Use `target.viewport.set(0, 0, width, height)` directly

@@ -278,5 +278,10 @@ export class GTAOPass extends BasePass {
     this.writeTarget = null;
     this.copyMaterial.dispose();
     this.copyMesh.geometry.dispose();
+    // Remove mesh from scene to ensure proper cleanup
+    this.copyScene.remove(this.copyMesh);
+    // Clear scene/camera references to allow garbage collection
+    this.sceneRef = null;
+    this.cameraRef = null;
   }
 }

@@ -120,7 +120,9 @@ const ProceduralSkyboxCapture: React.FC = () => {
     const shouldUpdate = needsInitialCapture;
 
     if (shouldUpdate) {
-      console.log('[ProceduralSkyboxCapture] Starting cube camera update');
+      if (import.meta.env.DEV) {
+        console.log('[ProceduralSkyboxCapture] Starting cube camera update');
+      }
 
       // Position camera at origin (center of skybox sphere)
       cubeCamera.current.position.set(0, 0, 0);

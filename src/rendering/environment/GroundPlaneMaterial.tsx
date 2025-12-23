@@ -29,6 +29,15 @@ export interface GroundPlaneMaterialProps {
   color: string
   opacity: number
   side?: THREE.Side
+  // Grid properties
+  showGrid?: boolean
+  gridColor?: string
+  sectionColor?: string
+  gridSpacing?: number
+  gridThickness?: number
+  sectionThickness?: number
+  gridFadeDistance?: number
+  gridFadeStrength?: number
   // Note: PBR properties (metallic, roughness, specularIntensity, specularColor)
   // are managed via UniformManager using 'pbr-ground' source
 }
@@ -37,7 +46,19 @@ export interface GroundPlaneMaterialProps {
  * Custom shader material for ground plane that matches GGX BRDF of other objects.
  */
 export const GroundPlaneMaterial = forwardRef<THREE.ShaderMaterial, GroundPlaneMaterialProps>(
-  function GroundPlaneMaterial({ color, opacity, side = THREE.DoubleSide }, ref) {
+  function GroundPlaneMaterial({
+    color,
+    opacity,
+    side = THREE.DoubleSide,
+    showGrid = false,
+    gridColor = '#3a3a3a',
+    sectionColor = '#4a4a4a',
+    gridSpacing = 1,
+    gridThickness = 0.5,
+    sectionThickness = 1.0,
+    gridFadeDistance = 20,
+    gridFadeStrength = 2,
+  }, ref) {
     const { scene } = useThree()
     const materialRef = useRef<THREE.ShaderMaterial>(null)
     const colorCacheRef = useRef(createColorCache())
@@ -71,6 +92,17 @@ export const GroundPlaneMaterial = forwardRef<THREE.ShaderMaterial, GroundPlaneM
         uEnvMap: { value: null },
         uIBLIntensity: { value: 1.0 },
         uIBLQuality: { value: 0 },
+
+        // Grid uniforms
+        uShowGrid: { value: showGrid },
+        uGridColor: { value: new THREE.Color(gridColor).convertSRGBToLinear() },
+        uSectionColor: { value: new THREE.Color(sectionColor).convertSRGBToLinear() },
+        uGridSpacing: { value: gridSpacing },
+        uSectionSpacing: { value: gridSpacing * 5 },
+        uGridThickness: { value: gridThickness },
+        uSectionThickness: { value: sectionThickness },
+        uGridFadeDistance: { value: gridFadeDistance },
+        uGridFadeStrength: { value: gridFadeStrength },
       }),
       // Only recreate when shader config changes, not when prop values change
       // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -138,6 +170,17 @@ export const GroundPlaneMaterial = forwardRef<THREE.ShaderMaterial, GroundPlaneM
       if (bg && (bg as THREE.CubeTexture).isCubeTexture) {
         u.uEnvMap!.value = bg
       }
+
+      // Update grid uniforms
+      u.uShowGrid!.value = showGrid
+      updateLinearColorUniform(cache.gridColor, u.uGridColor!.value as THREE.Color, gridColor)
+      updateLinearColorUniform(cache.sectionColor, u.uSectionColor!.value as THREE.Color, sectionColor)
+      u.uGridSpacing!.value = gridSpacing
+      u.uSectionSpacing!.value = gridSpacing * 5
+      u.uGridThickness!.value = gridThickness
+      u.uSectionThickness!.value = sectionThickness
+      u.uGridFadeDistance!.value = gridFadeDistance
+      u.uGridFadeStrength!.value = gridFadeStrength
     }, FRAME_PRIORITY.RENDERER_UNIFORMS)
 
     return (
@@ -150,6 +193,9 @@ export const GroundPlaneMaterial = forwardRef<THREE.ShaderMaterial, GroundPlaneM
         side={side}
         transparent={opacity < 1}
         depthWrite={opacity >= 1}
+        polygonOffset={true}
+        polygonOffsetFactor={1}
+        polygonOffsetUnits={1}
       />
     )
   }

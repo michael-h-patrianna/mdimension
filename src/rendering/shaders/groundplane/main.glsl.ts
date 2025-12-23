@@ -89,6 +89,11 @@ void main() {
 
   vec3 color = Lo;
 
+  // Apply procedural grid overlay using LOCAL coordinates
+  // vLocalPosition.xy is the vertex position before model rotation
+  // This ensures consistent grid for all wall orientations
+  color = applyGrid(color, vLocalPosition.xy, vWorldPosition, uCameraPosition);
+
   // Output to render targets (MRT)
   gColor = vec4(color, uOpacity);
   gNormal = vec4(N * 0.5 + 0.5, uMetallic);

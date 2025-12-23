@@ -134,7 +134,7 @@ void main() {
  */
 export function createDeferredLensingUniforms(): Record<string, THREE.IUniform> {
   return {
-    uSceneTexture: { value: null },
+    uSceneTexture: { value: null as THREE.Texture | null },
     uBlackHoleCenter: { value: new THREE.Vector2(0.5, 0.5) },
     uHorizonRadiusUV: { value: 0.05 },
     uLensingStrength: { value: 0.1 },

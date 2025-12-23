@@ -211,7 +211,8 @@ export class RenderGraph {
     // CRITICAL: Reset drawBuffers to single attachment.
     // Passthrough shader only outputs to location 0. If previous MRT pass left
     // drawBuffers configured for multiple attachments, we get GL_INVALID_OPERATION.
-    const gl = renderer.getContext()
+    // Cast to WebGL2RenderingContext since this project requires WebGL2
+    const gl = renderer.getContext() as WebGL2RenderingContext
     gl.drawBuffers([gl.COLOR_ATTACHMENT0])
 
     renderer.render(this.passthroughScene, this.passthroughCamera)

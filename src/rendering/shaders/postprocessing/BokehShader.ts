@@ -60,7 +60,8 @@ export const BokehShader = {
 
     void main() {
       vUv = uv;
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      // Use direct NDC coordinates for fullscreen quad (avoids DPR issues)
+      gl_Position = vec4(position.xy, 0.0, 1.0);
     }
   `,
 

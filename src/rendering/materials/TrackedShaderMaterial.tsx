@@ -197,11 +197,12 @@ export function TrackedShaderMaterial({
 
     // Shader is rendering this frame, hide overlay after GPU compile finishes
     let cancelled = false;
+    let innerFrameId: number | null = null;
 
     // Double RAF ensures we're past the blocking GPU compilation
-    requestAnimationFrame(() => {
+    const outerFrameId = requestAnimationFrame(() => {
       if (cancelled) return;
-      requestAnimationFrame(() => {
+      innerFrameId = requestAnimationFrame(() => {
         if (cancelled) return;
         usePerformanceStore.getState().setShaderCompiling(validShaderName, false);
       });
@@ -209,6 +210,10 @@ export function TrackedShaderMaterial({
 
     return () => {
       cancelled = true;
+      cancelAnimationFrame(outerFrameId);
+      if (innerFrameId !== null) {
+        cancelAnimationFrame(innerFrameId);
+      }
     };
   }, [readyToRender, validShaderName, hasValidShaders]);
 
