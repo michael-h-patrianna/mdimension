@@ -16,19 +16,13 @@
 
 import * as THREE from 'three'
 
-import {
-  ExternalBridge,
-  type ExportConfig,
-  type PendingExport,
-} from './ExternalBridge'
-import {
-  ExternalResourceRegistry,
-  type ExternalResourceConfig,
-} from './ExternalResourceRegistry'
+import { ExternalBridge, type ExportConfig, type PendingExport } from './ExternalBridge'
+import { ExternalResourceRegistry, type ExternalResourceConfig } from './ExternalResourceRegistry'
 import type { FrozenFrameContext, StoreGetters } from './FrameContext'
 import { captureFrameContext } from './FrameContext'
 import { GPUTimer } from './GPUTimer'
 import { GraphCompiler } from './GraphCompiler'
+import { setLastFrameContext } from './lastFrameContext'
 import {
   initializeGlobalMRT,
   invalidateGlobalMRTForContextLoss,
@@ -95,6 +89,7 @@ class RenderGraphContext implements RenderContext {
 
   /**
    * Get a frozen external resource captured at frame start.
+   * @param id
    */
   getExternal<T>(id: string): T | null {
     return this.externalRegistry.get<T>(id)
@@ -102,6 +97,7 @@ class RenderGraphContext implements RenderContext {
 
   /**
    * Queue an export to be applied at frame end.
+   * @param pending
    */
   queueExport<T>(pending: PendingExport<T>): void {
     this.externalBridge.queueExport(pending)
@@ -109,6 +105,7 @@ class RenderGraphContext implements RenderContext {
 
   /**
    * Check if an export is registered with the bridge.
+   * @param id
    */
   hasExportRegistered(id: string): boolean {
     return this.externalBridge.hasExport(id)
@@ -321,9 +318,9 @@ export class RenderGraph {
    * on unnecessary output writes.
    *
    * @param renderer - WebGL renderer
-     * @param inputTexture - Source texture to copy
-     * @param outputTarget - Destination render target (null = screen)
-     */
+   * @param inputTexture - Source texture to copy
+   * @param outputTarget - Destination render target (null = screen)
+   */
   private executePassthrough(
     renderer: THREE.WebGLRenderer,
     inputTexture: THREE.Texture,
@@ -533,7 +530,10 @@ export class RenderGraph {
   /**
    * Get debug information about the external bridge.
    */
-  getExternalBridgeDebugInfo(): { imports: Array<{ id: string; captured: boolean }>; exports: Array<{ id: string; queued: boolean }> } {
+  getExternalBridgeDebugInfo(): {
+    imports: Array<{ id: string; captured: boolean }>
+    exports: Array<{ id: string; queued: boolean }>
+  } {
     return this.externalBridge.getDebugInfo()
   }
 
@@ -720,13 +720,10 @@ export class RenderGraph {
     // This ensures passes see consistent store state throughout the frame.
     let frozenFrameContext: FrozenFrameContext | null = null
     if (this.storeGetters) {
-      frozenFrameContext = captureFrameContext(
-        this.frameNumber,
-        scene,
-        camera,
-        this.storeGetters
-      )
+      frozenFrameContext = captureFrameContext(this.frameNumber, scene, camera, this.storeGetters)
       this.lastFrameContext = frozenFrameContext
+      // Expose globally for components outside the render graph
+      setLastFrameContext(frozenFrameContext)
     }
 
     // Begin GPU timing frame
@@ -760,11 +757,6 @@ export class RenderGraph {
       const debugDisabled =
         (pass as unknown as { _debugDisabled?: boolean })._debugDisabled ?? false
       const enabled = !debugDisabled && (pass.config.enabled?.(frozenFrameContext) ?? true)
-
-      // Debug: log pass execution for first pass only (to avoid spam)
-      if (import.meta.env.DEV && this.compiled.passes.indexOf(pass) === 0) {
-        console.log('[RenderGraph] Executing frame, pass count:', this.compiled.passes.length)
-      }
 
       if (!enabled) {
         // For disabled passes, do passthrough to maintain the chain

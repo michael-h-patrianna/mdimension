@@ -9,6 +9,7 @@
 
 import { createCachedLinearColor, updateLinearColorUniform } from '@/rendering/colors/linearCache'
 import { FRAME_PRIORITY } from '@/rendering/core/framePriorities'
+import { getLastFrameExternal } from '@/rendering/graph/lastFrameContext'
 import { MAX_DIMENSION, useRotationUpdates } from '@/rendering/renderers/base'
 import { UniformManager } from '@/rendering/uniforms/UniformManager'
 import { applyScreenCoverageReduction, getScreenCoverage } from '@/rendering/utils/adaptiveQuality'
@@ -80,7 +81,7 @@ function setUniform<T>(
  * @param options.meshRef - Reference to the black hole mesh
  */
 export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdatesOptions) {
-  const { camera, size, scene } = useThree()
+  const { camera, size } = useThree()
 
   // Subscribe to dimension and parameterValues for useRotationUpdates hook
   const dimension = useGeometryStore((state) => state.dimension)
@@ -176,7 +177,8 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
       setUniform(u, 'uDiskOuterRadiusMul', bhState.diskOuterRadiusMul)
 
       // Also check if scene.background is ready and sync envMap state
-      const bg = scene.background as THREE.Texture | null
+      // Read from frozen frame context for frame-consistent state
+      const bg = getLastFrameExternal('sceneBackground') as THREE.Texture | null
       const isCubeCompatible =
         bg &&
         ((bg as THREE.CubeTexture).isCubeTexture ||
@@ -486,7 +488,8 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
     // scene.background may be:
     //   - CubeTexture (from KTX2 loader): has isCubeTexture === true
     //   - WebGLCubeRenderTarget.texture (from procedural capture): Texture with cube mapping
-    const bg = scene.background as THREE.Texture | null
+    // Read from frozen frame context for frame-consistent state (instead of live scene.background)
+    const bg = getLastFrameExternal('sceneBackground') as THREE.Texture | null
     const isCubeCompatible =
       bg &&
       ((bg as THREE.CubeTexture).isCubeTexture ||

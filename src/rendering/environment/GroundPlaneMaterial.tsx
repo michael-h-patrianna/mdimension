@@ -63,11 +63,7 @@ export const GroundPlaneMaterial = forwardRef<THREE.ShaderMaterial, GroundPlaneM
     const materialRef = useRef<THREE.ShaderMaterial>(null)
     const colorCacheRef = useRef(createColorCache())
 
-    // #region agent log
-    useEffect(() => {
-      console.log('[DEBUG:GroundPlaneMaterial] mounted');
-    }, []);
-    // #endregion
+
 
     // Get shadow settings for shader compilation
     const shadowEnabled = useLightingStore((state) => state.shadowEnabled)

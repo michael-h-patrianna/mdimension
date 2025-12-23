@@ -13,12 +13,9 @@
  * @module rendering/graph/ResourcePool
  */
 
-import * as THREE from 'three';
+import * as THREE from 'three'
 
-import type {
-  RenderResourceConfig,
-  ResourceSize,
-} from './types';
+import type { RenderResourceConfig, ResourceSize } from './types'
 
 // =============================================================================
 // Types
@@ -29,20 +26,20 @@ import type {
  */
 interface ResourceEntry {
   /** Resource configuration */
-  config: RenderResourceConfig;
+  config: RenderResourceConfig
 
   /** Primary GPU resource */
-  target: THREE.WebGLRenderTarget | null;
+  target: THREE.WebGLRenderTarget | null
 
   /** Swap buffer for ping-pong (if needed) */
-  swapTarget: THREE.WebGLRenderTarget | null;
+  swapTarget: THREE.WebGLRenderTarget | null
 
   /** Current ping-pong index (0 or 1) */
-  pingPongIndex: number;
+  pingPongIndex: number
 
   /** Last computed dimensions */
-  lastWidth: number;
-  lastHeight: number;
+  lastWidth: number
+  lastHeight: number
 }
 
 // =============================================================================
@@ -75,9 +72,9 @@ interface ResourceEntry {
  * ```
  */
 export class ResourcePool {
-  private resources = new Map<string, ResourceEntry>();
-  private screenWidth = 1;
-  private screenHeight = 1;
+  private resources = new Map<string, ResourceEntry>()
+  private screenWidth = 1
+  private screenHeight = 1
 
   // ==========================================================================
   // Registration
@@ -93,9 +90,9 @@ export class ResourcePool {
    */
   register(config: RenderResourceConfig): void {
     // Dispose existing if replacing
-    const existing = this.resources.get(config.id);
+    const existing = this.resources.get(config.id)
     if (existing) {
-      this.disposeEntry(existing);
+      this.disposeEntry(existing)
     }
 
     this.resources.set(config.id, {
@@ -105,7 +102,7 @@ export class ResourcePool {
       pingPongIndex: 0,
       lastWidth: 0,
       lastHeight: 0,
-    });
+    })
   }
 
   /**
@@ -115,13 +112,13 @@ export class ResourcePool {
    * @returns true if resource was found and removed
    */
   unregister(id: string): boolean {
-    const entry = this.resources.get(id);
+    const entry = this.resources.get(id)
     if (entry) {
-      this.disposeEntry(entry);
-      this.resources.delete(id);
-      return true;
+      this.disposeEntry(entry)
+      this.resources.delete(id)
+      return true
     }
-    return false;
+    return false
   }
 
   /**
@@ -130,7 +127,7 @@ export class ResourcePool {
    * @param id - Resource identifier
    */
   has(id: string): boolean {
-    return this.resources.has(id);
+    return this.resources.has(id)
   }
 
   // ==========================================================================
@@ -148,35 +145,36 @@ export class ResourcePool {
    */
   updateSize(width: number, height: number): void {
     if (width !== this.screenWidth || height !== this.screenHeight) {
-      this.screenWidth = Math.max(1, width);
-      this.screenHeight = Math.max(1, height);
+      this.screenWidth = Math.max(1, width)
+      this.screenHeight = Math.max(1, height)
     }
   }
 
   /**
    * Compute actual pixel dimensions for a size config.
+   * @param size
    */
   private computeDimensions(size: ResourceSize): { width: number; height: number } {
     switch (size.mode) {
       case 'screen':
-        return { width: this.screenWidth, height: this.screenHeight };
+        return { width: this.screenWidth, height: this.screenHeight }
 
       case 'fraction': {
-        const fraction = size.fraction ?? 1;
+        const fraction = size.fraction ?? 1
         return {
           width: Math.max(1, Math.floor(this.screenWidth * fraction)),
           height: Math.max(1, Math.floor(this.screenHeight * fraction)),
-        };
+        }
       }
 
       case 'fixed':
         return {
           width: size.width ?? 256,
           height: size.height ?? 256,
-        };
+        }
 
       default:
-        return { width: this.screenWidth, height: this.screenHeight };
+        return { width: this.screenWidth, height: this.screenHeight }
     }
   }
 
@@ -191,9 +189,9 @@ export class ResourcePool {
    * @returns True if the resource is an MRT with multiple attachments
    */
   isMRT(id: string): boolean {
-    const entry = this.resources.get(id);
-    if (!entry) return false;
-    return entry.config.type === 'mrt' && (entry.config.attachmentCount ?? 1) > 1;
+    const entry = this.resources.get(id)
+    if (!entry) return false
+    return entry.config.type === 'mrt' && (entry.config.attachmentCount ?? 1) > 1
   }
 
   /**
@@ -206,54 +204,55 @@ export class ResourcePool {
    * @returns The render target or null if not found
    */
   get(id: string): THREE.WebGLRenderTarget | null {
-    const entry = this.resources.get(id);
+    const entry = this.resources.get(id)
     if (!entry) {
-      console.warn(`ResourcePool: Resource '${id}' not found`);
-      return null;
+      console.warn(`ResourcePool: Resource '${id}' not found`)
+      return null
     }
 
-    this.ensureAllocated(entry);
-    return entry.target;
+    this.ensureAllocated(entry)
+    return entry.target
   }
 
   /**
    * Get a resource's texture (from render target).
    *
    * @param id - Resource identifier
+   * @param attachment
    * @returns The texture or null
    */
   getTexture(id: string, attachment?: number | 'depth'): THREE.Texture | null {
-    const entry = this.resources.get(id);
+    const entry = this.resources.get(id)
     if (!entry) {
-      return null;
+      return null
     }
 
-    this.ensureAllocated(entry);
+    this.ensureAllocated(entry)
 
-    const target = entry.target;
+    const target = entry.target
     if (!target) {
-      return null;
+      return null
     }
 
     // Depth attachment request
     if (attachment === 'depth') {
-      return target.depthTexture ?? null;
+      return target.depthTexture ?? null
     }
 
     // MRT attachment request
     if (typeof attachment === 'number') {
       if (target.textures && target.textures[attachment]) {
-        return target.textures[attachment] ?? null;
+        return target.textures[attachment] ?? null
       }
-      return null;
+      return null
     }
 
     // Default texture role
     if (entry.config.textureRole === 'depth') {
-      return target.depthTexture ?? null;
+      return target.depthTexture ?? null
     }
 
-    return target.texture ?? null;
+    return target.texture ?? null
   }
 
   /**
@@ -264,18 +263,18 @@ export class ResourcePool {
    * @param id - Resource identifier
    */
   getReadTarget(id: string): THREE.WebGLRenderTarget | null {
-    const entry = this.resources.get(id);
-    if (!entry) return null;
+    const entry = this.resources.get(id)
+    if (!entry) return null
 
-    this.ensureAllocated(entry);
+    this.ensureAllocated(entry)
 
     // If no swap buffer, return primary
     if (!entry.swapTarget) {
-      return entry.target;
+      return entry.target
     }
 
     // Return the "read" buffer based on ping-pong index
-    return entry.pingPongIndex === 0 ? entry.target : entry.swapTarget;
+    return entry.pingPongIndex === 0 ? entry.target : entry.swapTarget
   }
 
   /**
@@ -286,18 +285,18 @@ export class ResourcePool {
    * @param id - Resource identifier
    */
   getWriteTarget(id: string): THREE.WebGLRenderTarget | null {
-    const entry = this.resources.get(id);
-    if (!entry) return null;
+    const entry = this.resources.get(id)
+    if (!entry) return null
 
-    this.ensureAllocated(entry);
+    this.ensureAllocated(entry)
 
     // If no swap buffer, return primary
     if (!entry.swapTarget) {
-      return entry.target;
+      return entry.target
     }
 
     // Return the "write" buffer (opposite of read)
-    return entry.pingPongIndex === 0 ? entry.swapTarget : entry.target;
+    return entry.pingPongIndex === 0 ? entry.swapTarget : entry.target
   }
 
   /**
@@ -308,9 +307,9 @@ export class ResourcePool {
    * @param id - Resource identifier
    */
   swap(id: string): void {
-    const entry = this.resources.get(id);
+    const entry = this.resources.get(id)
     if (entry && entry.swapTarget) {
-      entry.pingPongIndex = 1 - entry.pingPongIndex;
+      entry.pingPongIndex = 1 - entry.pingPongIndex
     }
   }
 
@@ -322,14 +321,14 @@ export class ResourcePool {
    * @param id - Resource identifier
    */
   enablePingPong(id: string): void {
-    const entry = this.resources.get(id);
-    if (!entry) return;
+    const entry = this.resources.get(id)
+    if (!entry) return
 
-    this.ensureAllocated(entry);
+    this.ensureAllocated(entry)
 
     if (!entry.swapTarget && entry.target) {
       // Create swap buffer with same config
-      entry.swapTarget = this.createTarget(entry.config, entry.lastWidth, entry.lastHeight);
+      entry.swapTarget = this.createTarget(entry.config, entry.lastWidth, entry.lastHeight)
     }
   }
 
@@ -339,55 +338,56 @@ export class ResourcePool {
 
   /**
    * Ensure a resource is allocated and correctly sized.
+   * @param entry
    */
   private ensureAllocated(entry: ResourceEntry): void {
-    const { width, height } = this.computeDimensions(entry.config.size);
+    const { width, height } = this.computeDimensions(entry.config.size)
 
     // Check if we need to (re)allocate
-    const needsAllocation = !entry.target;
-    const dimensionsChanged = width !== entry.lastWidth || height !== entry.lastHeight;
+    const needsAllocation = !entry.target
+    const dimensionsChanged = width !== entry.lastWidth || height !== entry.lastHeight
 
     if (needsAllocation || dimensionsChanged) {
       // Store whether we had a swap target before disposal
-      const hadSwapTarget = !!entry.swapTarget;
+      const hadSwapTarget = !!entry.swapTarget
 
       // Dispose old targets
-      entry.target?.dispose();
-      entry.swapTarget?.dispose();
+      entry.target?.dispose()
+      entry.swapTarget?.dispose()
 
       // Reset entry state to ensure retry on next frame if allocation fails
-      entry.target = null;
-      entry.swapTarget = null;
-      entry.lastWidth = 0;
-      entry.lastHeight = 0;
+      entry.target = null
+      entry.swapTarget = null
+      entry.lastWidth = 0
+      entry.lastHeight = 0
 
       try {
-        // #region agent log
-        console.log('[DEBUG:ResourcePool] Creating target for ' + entry.config.id + ' size=' + width + 'x' + height);
-        // #endregion
         // Create new target
-        entry.target = this.createTarget(entry.config, width, height);
+        entry.target = this.createTarget(entry.config, width, height)
 
         // Recreate swap target if it existed before
         if (hadSwapTarget) {
-          entry.swapTarget = this.createTarget(entry.config, width, height);
+          entry.swapTarget = this.createTarget(entry.config, width, height)
         }
 
         // Only update dimensions after successful allocation
-        entry.lastWidth = width;
-        entry.lastHeight = height;
+        entry.lastWidth = width
+        entry.lastHeight = height
       } catch (err) {
         // Cleanup partial allocation on failure
-        entry.target?.dispose();
-        entry.target = null;
-        entry.swapTarget = null;
-        throw err;
+        entry.target?.dispose()
+        entry.target = null
+        entry.swapTarget = null
+        throw err
       }
     }
   }
 
   /**
    * Create a render target from configuration.
+   * @param config
+   * @param width
+   * @param height
    */
   private createTarget(
     config: RenderResourceConfig,
@@ -405,110 +405,118 @@ export class ResourcePool {
       depthBuffer: config.depthTexture ? true : (config.depthBuffer ?? false),
       stencilBuffer: config.stencilBuffer ?? false,
       samples: config.samples ?? 0,
-    };
+    }
 
     // Determine color space: HDR targets use LinearSRGBColorSpace for proper color management
     // This is critical for the OutputPass to correctly convert to display color space
-    const isHDR = config.dataType === THREE.FloatType || config.dataType === THREE.HalfFloatType;
-    const colorSpace = config.colorSpace ?? (isHDR ? THREE.LinearSRGBColorSpace : THREE.SRGBColorSpace);
+    const isHDR = config.dataType === THREE.FloatType || config.dataType === THREE.HalfFloatType
+    const colorSpace =
+      config.colorSpace ?? (isHDR ? THREE.LinearSRGBColorSpace : THREE.SRGBColorSpace)
 
     // Determine internalFormat for HDR targets
     // This is critical for proper HDR rendering - controls GPU-side format
     // Common formats: 'RGBA16F' (half-float), 'RGBA32F' (float), 'RGBA8' (standard)
-    const internalFormat: THREE.PixelFormatGPU | null = (config.internalFormat as THREE.PixelFormatGPU | undefined)
-      ?? this.getDefaultInternalFormat(config.dataType);
+    const internalFormat: THREE.PixelFormatGPU | null =
+      (config.internalFormat as THREE.PixelFormatGPU | undefined) ??
+      this.getDefaultInternalFormat(config.dataType)
 
     // Handle MRT
     if (config.type === 'mrt' && config.attachmentCount && config.attachmentCount > 1) {
       const target = new THREE.WebGLRenderTarget(width, height, {
         ...options,
         count: config.attachmentCount,
-      });
+      })
 
-      const count = config.attachmentCount;
-      const textures = target.textures ?? [];
+      const count = config.attachmentCount
+      const textures = target.textures ?? []
 
       // Ensure textures array has the correct length
       if (textures.length < count) {
-        target.textures = new Array(count).fill(null).map(() => new THREE.Texture());
+        target.textures = new Array(count).fill(null).map(() => new THREE.Texture())
       }
 
       for (let i = 0; i < count; i++) {
-        const texture = target.textures[i] ?? new THREE.Texture();
-        texture.format = config.attachmentFormats?.[i] ?? THREE.RGBAFormat;
-        texture.type = config.dataType ?? THREE.UnsignedByteType;
-        texture.minFilter = config.minFilter ?? THREE.LinearFilter;
-        texture.magFilter = config.magFilter ?? THREE.LinearFilter;
-        texture.generateMipmaps = false;
-        texture.colorSpace = colorSpace;
+        const texture = target.textures[i] ?? new THREE.Texture()
+        texture.format = config.attachmentFormats?.[i] ?? THREE.RGBAFormat
+        texture.type = config.dataType ?? THREE.UnsignedByteType
+        texture.minFilter = config.minFilter ?? THREE.LinearFilter
+        texture.magFilter = config.magFilter ?? THREE.LinearFilter
+        texture.generateMipmaps = false
+        texture.colorSpace = colorSpace
         if (internalFormat) {
-          texture.internalFormat = internalFormat;
+          texture.internalFormat = internalFormat
         }
-        target.textures[i] = texture;
+        target.textures[i] = texture
       }
 
       // Ensure target.texture points to attachment 0
-      target.texture = target.textures[0] ?? target.texture;
+      target.texture = target.textures[0] ?? target.texture
 
       // Apply internalFormat and color space to primary texture as well
-      target.texture.colorSpace = colorSpace;
+      target.texture.colorSpace = colorSpace
       if (internalFormat) {
-        target.texture.internalFormat = internalFormat;
+        target.texture.internalFormat = internalFormat
       }
 
       // Configure depth texture if requested
       if (config.depthTexture) {
-        target.depthTexture = this.createDepthTexture(config, width, height);
+        target.depthTexture = this.createDepthTexture(config, width, height)
       }
 
-      return target;
+      return target
     }
 
-    const target = new THREE.WebGLRenderTarget(width, height, options);
-    target.texture.colorSpace = colorSpace;
+    const target = new THREE.WebGLRenderTarget(width, height, options)
+    target.texture.colorSpace = colorSpace
     if (internalFormat) {
-      target.texture.internalFormat = internalFormat;
+      target.texture.internalFormat = internalFormat
     }
 
     if (config.depthTexture) {
-      target.depthTexture = this.createDepthTexture(config, width, height);
+      target.depthTexture = this.createDepthTexture(config, width, height)
     }
 
-    return target;
+    return target
   }
 
   /**
    * Create a depth texture based on config.
+   * @param config
+   * @param width
+   * @param height
    */
   private createDepthTexture(
     config: RenderResourceConfig,
     width: number,
     height: number
   ): THREE.DepthTexture {
-    const depthTexture = new THREE.DepthTexture(width, height);
-    depthTexture.format = (config.depthTextureFormat ?? THREE.DepthFormat) as THREE.DepthTexturePixelFormat;
-    depthTexture.type = config.depthTextureType ?? THREE.UnsignedShortType;
-    depthTexture.minFilter = config.depthTextureMinFilter ?? THREE.NearestFilter;
-    depthTexture.magFilter = (config.depthTextureMagFilter ?? THREE.NearestFilter) as THREE.MagnificationTextureFilter;
-    depthTexture.generateMipmaps = false;
-    return depthTexture;
+    const depthTexture = new THREE.DepthTexture(width, height)
+    depthTexture.format = (config.depthTextureFormat ??
+      THREE.DepthFormat) as THREE.DepthTexturePixelFormat
+    depthTexture.type = config.depthTextureType ?? THREE.UnsignedShortType
+    depthTexture.minFilter = config.depthTextureMinFilter ?? THREE.NearestFilter
+    depthTexture.magFilter = (config.depthTextureMagFilter ??
+      THREE.NearestFilter) as THREE.MagnificationTextureFilter
+    depthTexture.generateMipmaps = false
+    return depthTexture
   }
 
   /**
    * Get default internal format based on data type.
    * Returns the appropriate WebGL2 internal format.
    * Uses THREE.PixelFormatGPU type for Three.js r181+ compatibility.
+   * @param dataType
    */
   private getDefaultInternalFormat(dataType?: THREE.TextureDataType): THREE.PixelFormatGPU | null {
     switch (dataType) {
       case THREE.FloatType:
-        return 'RGBA32F' as THREE.PixelFormatGPU;
+        return 'RGBA32F' as THREE.PixelFormatGPU
       case THREE.HalfFloatType:
-        return 'RGBA16F' as THREE.PixelFormatGPU;
+        return 'RGBA16F' as THREE.PixelFormatGPU
       case THREE.UnsignedByteType:
-        return 'RGBA8' as THREE.PixelFormatGPU;
+        return 'RGBA8' as THREE.PixelFormatGPU
       default:
-        return null; // Let Three.js use its default
+        return null // Let Three.js use its default
     }
   }
 
@@ -528,12 +536,13 @@ export class ResourcePool {
 
   /**
    * Dispose a single entry's GPU resources.
+   * @param entry
    */
   private disposeEntry(entry: ResourceEntry): void {
-    entry.target?.dispose();
-    entry.swapTarget?.dispose();
-    entry.target = null;
-    entry.swapTarget = null;
+    entry.target?.dispose()
+    entry.swapTarget?.dispose()
+    entry.target = null
+    entry.swapTarget = null
   }
 
   /**
@@ -541,9 +550,9 @@ export class ResourcePool {
    */
   dispose(): void {
     for (const entry of this.resources.values()) {
-      this.disposeEntry(entry);
+      this.disposeEntry(entry)
     }
-    this.resources.clear();
+    this.resources.clear()
   }
 
   /**
@@ -554,10 +563,10 @@ export class ResourcePool {
   invalidateForContextLoss(): void {
     for (const entry of this.resources.values()) {
       // Don't dispose - GPU resources are already gone
-      entry.target = null;
-      entry.swapTarget = null;
-      entry.lastWidth = 0;
-      entry.lastHeight = 0;
+      entry.target = null
+      entry.swapTarget = null
+      entry.lastWidth = 0
+      entry.lastHeight = 0
     }
   }
 
@@ -580,47 +589,48 @@ export class ResourcePool {
    * Get estimated VRAM usage in bytes.
    */
   getVRAMUsage(): number {
-    let total = 0;
+    let total = 0
 
     for (const entry of this.resources.values()) {
-      if (!entry.target) continue;
+      if (!entry.target) continue
 
-      const { width, height } = this.computeDimensions(entry.config.size);
-      const bytesPerPixel = this.getBytesPerPixel(entry.config);
-      const attachments = entry.config.attachmentCount ?? 1;
+      const { width, height } = this.computeDimensions(entry.config.size)
+      const bytesPerPixel = this.getBytesPerPixel(entry.config)
+      const attachments = entry.config.attachmentCount ?? 1
 
-      let size = width * height * bytesPerPixel * attachments;
+      let size = width * height * bytesPerPixel * attachments
 
       // Add depth buffer if present
       if (entry.config.depthBuffer) {
-        size += width * height * 4; // Assume 32-bit depth
+        size += width * height * 4 // Assume 32-bit depth
       }
 
       // Double for ping-pong
       if (entry.swapTarget) {
-        size *= 2;
+        size *= 2
       }
 
-      total += size;
+      total += size
     }
 
-    return total;
+    return total
   }
 
   /**
    * Get bytes per pixel for a resource config.
+   * @param config
    */
   private getBytesPerPixel(config: RenderResourceConfig): number {
-    const dataType = config.dataType ?? THREE.UnsignedByteType;
+    const dataType = config.dataType ?? THREE.UnsignedByteType
 
     switch (dataType) {
       case THREE.FloatType:
-        return 16; // RGBA32F
+        return 16 // RGBA32F
       case THREE.HalfFloatType:
-        return 8; // RGBA16F
+        return 8 // RGBA16F
       case THREE.UnsignedByteType:
       default:
-        return 4; // RGBA8
+        return 4 // RGBA8
     }
   }
 
@@ -628,13 +638,14 @@ export class ResourcePool {
    * Get list of registered resource IDs.
    */
   getResourceIds(): string[] {
-    return Array.from(this.resources.keys());
+    return Array.from(this.resources.keys())
   }
 
   /**
    * Get resource configuration.
+   * @param id
    */
   getConfig(id: string): RenderResourceConfig | undefined {
-    return this.resources.get(id)?.config;
+    return this.resources.get(id)?.config
   }
 }

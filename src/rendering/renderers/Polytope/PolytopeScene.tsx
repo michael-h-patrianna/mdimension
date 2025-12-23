@@ -37,7 +37,6 @@ import { FRAME_PRIORITY } from '@/rendering/core/framePriorities';
 import { RENDER_LAYERS } from '@/rendering/core/layers';
 import { COLOR_ALGORITHM_TO_INT } from '@/rendering/shaders/palette';
 import { matrixToGPUUniforms } from '@/rendering/shaders/transforms/ndTransform';
-import { UniformManager } from '@/rendering/uniforms/UniformManager';
 import {
   blurToPCFSamples,
   collectShadowDataFromScene,
@@ -45,6 +44,7 @@ import {
   SHADOW_MAP_SIZES,
   updateShadowMapUniforms,
 } from '@/rendering/shadows';
+import { UniformManager } from '@/rendering/uniforms/UniformManager';
 import { useAnimationStore } from '@/stores/animationStore';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useEnvironmentStore } from '@/stores/environmentStore';
@@ -444,9 +444,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   const { material: faceMaterial, isCompiling: isFaceShaderCompiling } = useTrackedShaderMaterial(
     'Polytope Face Shader',
     () => {
-      // #region agent log
-      console.log('[DEBUG:PolytopeScene] Creating face material...');
-      // #endregion
+
       return new ShaderMaterial({
         glslVersion: THREE.GLSL3,
         uniforms: {
@@ -526,15 +524,11 @@ export const PolytopeScene = React.memo(function PolytopeScene({
 
   // Combined callback ref for face mesh: assigns layer and shadow materials
   const setFaceMeshRef = useCallback((mesh: THREE.Mesh | null) => {
-    // #region agent log
-    console.log('[DEBUG:PolytopeScene] setFaceMeshRef called, mesh=' + (mesh ? 'present' : 'null') + (mesh ? ', layer=' + mesh.layers.mask : ''));
-    // #endregion
+
     faceMeshRef.current = mesh;
     // Delegate layer and shadow material assignment to the hook
     assignShadowToFaceMesh(mesh);
-    // #region agent log
-    if (mesh) console.log('[DEBUG:PolytopeScene] after assignShadow, mesh layer=' + mesh.layers.mask);
-    // #endregion
+
   }, [assignShadowToFaceMesh]);
 
   const setShaderDebugInfo = usePerformanceStore((state) => state.setShaderDebugInfo);
@@ -988,9 +982,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   // GL_INVALID_OPERATION when rendered to 3-attachment MRT targets.
   // The shader compilation overlay still shows because it's a separate React component.
 
-  // #region agent log
-  console.log('[DEBUG:PolytopeScene] facesVisible=' + facesVisible + ' faceGeometry=' + !!faceGeometry + ' isFaceShaderCompiling=' + isFaceShaderCompiling + ' faceMaterial=' + !!faceMaterial);
-  // #endregion
+
 
   return (
     <group>

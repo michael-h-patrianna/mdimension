@@ -97,23 +97,14 @@ export function useTrackedShaderMaterial<T extends ShaderMaterial = ShaderMateri
 
   // Step 2: Defer material creation to let overlay paint
   useEffect(() => {
-    // #region agent log
-    console.log('[DEBUG:useTrackedShaderMaterial] ' + validShaderName + ' depsChanged=' + depsChanged + ' material=' + (material !== null));
-    // #endregion
-
     if (!depsChanged && material !== null) {
       // No change, keep current material
       return
     }
 
     // Defer material creation by one frame
-    // #region agent log
-    console.log('[DEBUG:useTrackedShaderMaterial] ' + validShaderName + ' scheduling deferredExecute');
-    // #endregion
+
     const cancelDefer = deferredExecute(() => {
-      // #region agent log
-      console.log('[DEBUG:useTrackedShaderMaterial] ' + validShaderName + ' deferredExecute callback running');
-      // #endregion
       try {
         // Dispose previous material
         if (prevMaterialRef.current) {
@@ -147,9 +138,6 @@ export function useTrackedShaderMaterial<T extends ShaderMaterial = ShaderMateri
     cancelRafRef.current = cancelDefer
 
     return () => {
-      // #region agent log
-      console.log('[DEBUG:useTrackedShaderMaterial] ' + validShaderName + ' cleanup called');
-      // #endregion
       cancelRafRef.current?.()
     }
     // We intentionally use depsKey instead of spreading deps to avoid exhaustive-deps warning

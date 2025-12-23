@@ -44,26 +44,15 @@ export function trackShaderCompilation(shaderName: string): () => void {
  */
 export function deferredExecute(callback: () => void): () => void {
   let cancelled = false
-  // #region agent log
-  console.log('[DEBUG:deferredExecute] starting double RAF');
-  // #endregion
+
   const frameId = requestAnimationFrame(() => {
-    // #region agent log
-    console.log('[DEBUG:deferredExecute] RAF1 fired, cancelled=' + cancelled);
-    // #endregion
     if (cancelled) return
     requestAnimationFrame(() => {
-      // #region agent log
-      console.log('[DEBUG:deferredExecute] RAF2 fired, cancelled=' + cancelled);
-      // #endregion
       if (cancelled) return
       callback()
     })
   })
   return () => {
-    // #region agent log
-    console.log('[DEBUG:deferredExecute] cleanup called');
-    // #endregion
     cancelled = true
     cancelAnimationFrame(frameId)
   }

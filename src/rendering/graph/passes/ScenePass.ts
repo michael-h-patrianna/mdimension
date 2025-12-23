@@ -94,12 +94,6 @@ export class ScenePass extends BasePass {
 
     const target = ctx.getWriteTarget(outputConfig.resourceId)
 
-    // #region agent log
-    if (!target) {
-      console.error('[DEBUG:ScenePass] ERROR: target is null for resourceId=' + outputConfig.resourceId);
-    }
-    // #endregion
-
     // Save renderer state (only things we actually modify)
     this.savedClearColor.copy(renderer.getClearColor(this.savedClearColor))
     this.savedClearAlpha = renderer.getClearAlpha()

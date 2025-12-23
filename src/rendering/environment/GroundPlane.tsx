@@ -255,6 +255,17 @@ function getWallConfig(wall: WallPosition, distance: number): WallConfig {
  * and two surface types.
  *
  * Uses instanced rendering for the wall surfaces to reduce draw calls.
+ * @param root0
+ * @param root0.vertices
+ * @param root0.offset
+ * @param root0.activeWalls
+ * @param root0.minBoundingRadius
+ * @param root0.color
+ * @param root0.surfaceType
+ * @param root0.showGrid
+ * @param root0.gridColor
+ * @param root0.gridSpacing
+ * @param root0.sizeScale
  */
 export function GroundPlane({
   vertices,
@@ -310,9 +321,7 @@ export function GroundPlane({
   const setWallLayer = useCallback((obj: Object3D | null) => {
     if (obj) {
       obj.layers.set(RENDER_LAYERS.ENVIRONMENT);
-      // #region agent log
-      console.log('[DEBUG:GroundPlane] layer set', { layer: RENDER_LAYERS.ENVIRONMENT, objType: obj.type });
-      // #endregion
+
     }
   }, []);
 

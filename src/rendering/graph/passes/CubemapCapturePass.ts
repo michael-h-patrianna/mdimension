@@ -4,10 +4,11 @@
  * Handles cubemap environment maps for both procedural and classic skyboxes:
  *
  * 1. PROCEDURAL MODE: Captures the SKYBOX layer to a CubeRenderTarget
- * 2. CLASSIC MODE: Uses externally loaded CubeTexture directly
+ * 2. CLASSIC MODE: Captures the SKYBOX layer (displaying KTX2 texture) to a CubeRenderTarget
+ *    to ensure mipmaps are generated for proper roughness-based IBL.
  *
  * For both modes, generates PMREM for PBR reflections and exports via ExternalBridge:
- * - scene.background (raw CubeTexture) - for black hole gravitational lensing
+ * - scene.background (captured CubeTexture) - for black hole gravitational lensing
  * - scene.environment (PMREM texture) - for wall PBR reflections
  *
  * CRITICAL: This pass uses ctx.queueExport() instead of directly modifying scene.background.
@@ -39,7 +40,7 @@ export interface CubemapCapturePassConfig extends Omit<RenderPassConfig, 'inputs
   environmentResolution?: number;
   /** Whether to generate PMREM for scene.environment (for wall reflections) */
   generatePMREM?: () => boolean;
-  /** Callback to get external CubeTexture for classic skybox mode (bypasses capture) */
+  /** Callback to get external CubeTexture for classic skybox mode */
   getExternalCubeTexture?: () => THREE.CubeTexture | null;
 }
 
@@ -48,12 +49,16 @@ export interface CubemapCapturePassConfig extends Omit<RenderPassConfig, 'inputs
  * - Black hole gravitational lensing (scene.background)
  * - Wall PBR reflections (scene.environment via PMREM)
  *
- * Works in two modes:
- * - PROCEDURAL: Captures SKYBOX layer to CubeRenderTarget
- * - CLASSIC: Uses externally provided CubeTexture directly
+ * Works in two modes (unified pipeline):
+ * - PROCEDURAL: Captures SKYBOX layer (procedural shader) to CubeRenderTarget
+ * - CLASSIC: Captures SKYBOX layer (KTX2 texture on mesh) to CubeRenderTarget
+ *
+ * Unification ensures that we always have a mipmapped CubeTexture for scene.background,
+ * solving issues where KTX2 textures lack mipmaps and cause black rendering in shaders
+ * using textureLod().
  */
 export class CubemapCapturePass extends BasePass {
-  // Background capture (for procedural skybox)
+  // Background capture
   private cubeRenderTarget: THREE.WebGLCubeRenderTarget | null = null;
   private cubeCamera: THREE.CubeCamera | null = null;
   private backgroundResolution: number;
@@ -63,14 +68,11 @@ export class CubemapCapturePass extends BasePass {
   private pmremRenderTarget: THREE.WebGLRenderTarget | null = null;
   private generatePMREM: () => boolean;
 
-  // External texture support (classic skybox)
+  // External texture tracking
   private getExternalCubeTexture: () => THREE.CubeTexture | null;
   private lastExternalTextureUuid: string | null = null;
-  private externalPmremRenderTarget: THREE.WebGLRenderTarget | null = null;
 
   // Temporal cubemap history (2-frame buffer for proper initialization)
-  // Frame N writes to history slot, frame N+1 reads from previous slot
-  // This ensures the black hole shader never reads from an uninitialized cubemap
   private cubemapHistory: TemporalResource<THREE.WebGLCubeRenderTarget> | null = null;
 
   // Capture control
@@ -79,7 +81,6 @@ export class CubemapCapturePass extends BasePass {
   constructor(config: CubemapCapturePassConfig) {
     super({
       ...config,
-      // No resource inputs/outputs - this pass manages its own render targets
       inputs: [],
       outputs: [],
     });
@@ -119,7 +120,6 @@ export class CubemapCapturePass extends BasePass {
     if (this.pmremGenerator) return;
 
     this.pmremGenerator = new THREE.PMREMGenerator(renderer);
-    // Pre-compile shaders to avoid stutter on first conversion
     this.pmremGenerator.compileEquirectangularShader();
   }
 
@@ -129,12 +129,11 @@ export class CubemapCapturePass extends BasePass {
    */
   requestCapture(): void {
     this.needsCapture = true;
-    // Invalidate history so hasValidCubemap() returns false until warmup completes
     this.cubemapHistory?.invalidateHistory();
   }
 
   /**
-   * Set the background capture resolution (recreates render target).
+   * Set the background capture resolution.
    */
   setBackgroundResolution(resolution: number): void {
     if (resolution !== this.backgroundResolution) {
@@ -146,18 +145,11 @@ export class CubemapCapturePass extends BasePass {
 
   /**
    * Get the captured cubemap texture (for external use if needed).
-   * Returns the previous frame's texture if history is valid.
    */
   getCubemapTexture(): THREE.CubeTexture | null {
-    // External texture takes priority
-    const externalTexture = this.getExternalCubeTexture();
-    if (externalTexture) return externalTexture;
-
-    // Return from temporal history if valid
     if (this.cubemapHistory?.hasValidHistory(1)) {
       return this.cubemapHistory.getRead(1).texture;
     }
-
     return null;
   }
 
@@ -171,86 +163,38 @@ export class CubemapCapturePass extends BasePass {
   execute(ctx: RenderContext): void {
     const { renderer, scene } = ctx;
 
-    // Check for external texture (classic skybox mode)
+    // Check for external texture changes (classic mode)
+    // If UUID changes, we need to recapture (re-render SkyboxMesh to cube target)
     const externalTexture = this.getExternalCubeTexture();
-
     if (externalTexture) {
-      // CLASSIC MODE: Use externally provided CubeTexture
-      this.executeClassicMode(ctx, renderer, externalTexture);
+      if (externalTexture.uuid !== this.lastExternalTextureUuid) {
+        this.lastExternalTextureUuid = externalTexture.uuid;
+        this.requestCapture();
+      }
     } else {
-      // PROCEDURAL MODE: Capture SKYBOX layer to CubeRenderTarget
-      this.executeProceduralMode(ctx, renderer, scene);
-    }
-  }
-
-  /**
-   * Execute in classic mode - use externally loaded CubeTexture.
-   * Skips CubeCamera capture, generates PMREM if needed.
-   * Uses ctx.queueExport() for frame-consistent state updates.
-   */
-  private executeClassicMode(
-    ctx: RenderContext,
-    renderer: THREE.WebGLRenderer,
-    cubeTexture: THREE.CubeTexture
-  ): void {
-    // Check if texture changed (need to regenerate PMREM)
-    const textureChanged = cubeTexture.uuid !== this.lastExternalTextureUuid;
-    this.lastExternalTextureUuid = cubeTexture.uuid;
-
-    // Queue export for scene.background (applied at frame end via executeExports)
-    ctx.queueExport({
-      id: 'scene.background',
-      value: cubeTexture,
-    });
-
-    // Generate PMREM for wall reflections if needed
-    if (this.generatePMREM()) {
-      // Only regenerate if texture changed
-      if (textureChanged || !this.externalPmremRenderTarget) {
-        this.ensurePMREMGenerator(renderer);
-
-        if (this.pmremGenerator) {
-          // Dispose previous PMREM render target
-          this.externalPmremRenderTarget?.dispose();
-
-          // Convert cubemap to PMREM format
-          // This goes through setRenderTarget internally, ensuring proper MRT state
-          this.externalPmremRenderTarget = this.pmremGenerator.fromCubemap(cubeTexture);
-
-          // Force sync after PMREM generation as it may have altered GL state (e.g. viewport, scissor)
-          // that MRTStateManager missed if PMREMGenerator restored to null (screen)
-          getGlobalMRTManager().forceSync();
-
-          // Queue export for scene.environment (applied at frame end)
-          ctx.queueExport({
-            id: 'scene.environment',
-            value: this.externalPmremRenderTarget.texture,
-          });
-        }
-      } else if (this.externalPmremRenderTarget) {
-        // Reuse existing PMREM - still need to queue export
-        ctx.queueExport({
-          id: 'scene.environment',
-          value: this.externalPmremRenderTarget.texture,
-        });
+      if (this.lastExternalTextureUuid !== null) {
+        this.lastExternalTextureUuid = null;
+        this.requestCapture();
       }
     }
+
+    // Always use capture path - unifies Procedural and Classic modes
+    // This ensures scene.background is always a mipmapped WebGLCubeRenderTarget
+    this.executeCapture(ctx, renderer, scene);
   }
 
   /**
-   * Execute in procedural mode - capture SKYBOX layer to CubeRenderTarget.
-   * Uses TemporalResource for proper 2-frame initialization.
-   * Uses ctx.queueExport() for frame-consistent state updates.
+   * Capture SKYBOX layer to CubeRenderTarget.
+   * Handles both Procedural (shader) and Classic (SkyboxMesh with texture) modes.
    */
-  private executeProceduralMode(
+  private executeCapture(
     ctx: RenderContext,
     renderer: THREE.WebGLRenderer,
     scene: THREE.Scene
   ): void {
-    // Only capture when requested (e.g., settings changed, initial load)
+    // Only capture when requested
     if (!this.needsCapture) return;
 
-    // Initialize temporal history if needed
     this.ensureTemporalHistory();
     if (!this.cubemapHistory) return;
 
@@ -260,54 +204,46 @@ export class CubemapCapturePass extends BasePass {
     // Get the current write target from temporal buffer
     const writeTarget = this.cubemapHistory.getWrite();
 
-    // Position camera at origin (center of skybox sphere)
     this.cubeCamera.position.set(0, 0, 0);
 
-    // CRITICAL: Clear BOTH scene.background AND scene.environment before capture
-    // to avoid feedback loop. The floor (on SKYBOX layer) samples from scene.background
-    // via its uEnvMap uniform. If we're writing to cubeRenderTarget while the floor
-    // reads from the same texture, WebGL throws:
-    // "GL_INVALID_OPERATION: Feedback loop formed between Framebuffer and active Texture"
+    // CRITICAL: Clear background/environment before capture to avoid feedback loop
     const previousBackground = scene.background;
     const previousEnvironment = scene.environment;
     scene.background = null;
     scene.environment = null;
 
-    // Update the cube camera to render to our temporal write target
-    // This is a bit hacky but CubeCamera.update() renders to its internal target
-    // We need to swap targets temporarily
+    // Render to cubemap
     const originalTarget = this.cubeCamera.renderTarget;
     this.cubeCamera.renderTarget = writeTarget;
     this.cubeCamera.update(renderer, scene);
     this.cubeCamera.renderTarget = originalTarget;
 
-    // Restore scene state after capture (StateBarrier will also restore, but be explicit)
+    // Restore scene state
     scene.background = previousBackground;
     scene.environment = previousEnvironment;
 
     // ONLY queue exports if we have valid history
-    // This prevents black hole from reading uninitialized data
     if (this.cubemapHistory.hasValidHistory(1)) {
       const readTarget = this.cubemapHistory.getRead(1);
 
-      // Queue export for scene.background (applied at frame end via executeExports)
+      // Queue export for scene.background
       ctx.queueExport({
         id: 'scene.background',
         value: readTarget.texture,
       });
 
-      // Generate PMREM for wall reflections if needed
+      // Generate PMREM if needed
       if (this.generatePMREM()) {
         this.ensurePMREMGenerator(renderer);
 
         if (this.pmremGenerator) {
-          // Dispose previous PMREM render target
           this.pmremRenderTarget?.dispose();
-
-          // Convert cubemap to PMREM format
           this.pmremRenderTarget = this.pmremGenerator.fromCubemap(readTarget.texture);
 
-          // Queue export for scene.environment (applied at frame end)
+          // Force sync after PMREM generation
+          getGlobalMRTManager().forceSync();
+
+          // Queue export for scene.environment
           ctx.queueExport({
             id: 'scene.environment',
             value: this.pmremRenderTarget.texture,
@@ -315,10 +251,8 @@ export class CubemapCapturePass extends BasePass {
         }
       }
 
-      // Stop capturing once we have valid history
       this.needsCapture = false;
     }
-    // If history not yet valid, no exports are queued - scene.background stays as-is
   }
 
   /**
@@ -337,7 +271,6 @@ export class CubemapCapturePass extends BasePass {
           minFilter: THREE.LinearMipmapLinearFilter,
           magFilter: THREE.LinearFilter,
         });
-        // Set mapping for black hole shader compatibility (samplerCube)
         target.texture.mapping = THREE.CubeReflectionMapping;
         return target;
       },
@@ -348,28 +281,18 @@ export class CubemapCapturePass extends BasePass {
 
   /**
    * Advance the temporal resource to the next frame.
-   * Call this at the END of each frame after all passes have executed.
    */
   postFrame(): void {
     this.cubemapHistory?.advanceFrame();
   }
 
   /**
-   * Check if the cubemap has valid history (ready for use by black hole shader).
-   * Returns false during warmup period (first 2 frames after capture request).
+   * Check if the cubemap has valid history.
    */
   hasValidCubemap(): boolean {
-    // Classic mode always has valid texture (from external source)
-    const externalTexture = this.getExternalCubeTexture();
-    if (externalTexture) return true;
-
-    // Procedural mode needs valid temporal history
     return this.cubemapHistory?.hasValidHistory(1) ?? false;
   }
 
-  /**
-   * Get frames since last history reset (for debugging).
-   */
   getFramesSinceReset(): number {
     return this.cubemapHistory?.getFramesSinceReset() ?? 0;
   }
@@ -396,12 +319,5 @@ export class CubemapCapturePass extends BasePass {
     this.disposeCubeCamera();
     this.disposeTemporalHistory();
     this.disposePMREM();
-    this.disposeExternalPMREM();
-  }
-
-  private disposeExternalPMREM(): void {
-    this.externalPmremRenderTarget?.dispose();
-    this.externalPmremRenderTarget = null;
-    this.lastExternalTextureUuid = null;
   }
 }
