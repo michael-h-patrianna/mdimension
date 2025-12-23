@@ -51,7 +51,9 @@ void main() {
     vec3 surfaceColor = getColorByAlgorithm(t, n, baseHSL, p);
     surfaceColor *= (0.3 + 0.7 * ao);
 
-    vec3 col = surfaceColor * uAmbientColor * uAmbientIntensity * uAmbientEnabled;
+    // Ambient light (energy-conserved: metals don't scatter diffuse light)
+    // max() guards against uMetallic > 1.0 which would cause negative diffuse
+    vec3 col = surfaceColor * max(1.0 - uMetallic, 0.0) * uAmbientColor * uAmbientIntensity * uAmbientEnabled;
     vec3 viewDir = -rd;
     float totalNdotL = 0.0;
 

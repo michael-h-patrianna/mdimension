@@ -20,8 +20,9 @@ void main() {
   // F0 with metallic mixing (industry-standard PBR)
   vec3 F0 = mix(vec3(0.04), uColor, uMetallic);
 
-  // Start with ambient light
-  vec3 Lo = uColor * uAmbientColor * uAmbientIntensity * uAmbientEnabled;
+  // Start with ambient light (energy-conserved: metals don't scatter diffuse light)
+  // max() guards against uMetallic > 1.0 which would cause negative diffuse
+  vec3 Lo = uColor * max(1.0 - uMetallic, 0.0) * uAmbientColor * uAmbientIntensity * uAmbientEnabled;
 
   // Loop over all active lights
   for (int i = 0; i < MAX_LIGHTS; i++) {

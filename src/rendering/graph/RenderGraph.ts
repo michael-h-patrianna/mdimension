@@ -836,6 +836,13 @@ export class RenderGraph {
     // after the render graph has finished all internal rendering.
     this.externalBridge.executeExports()
 
+    // Call postFrame on passes for temporal resource advancement
+    for (const pass of this.compiled.passes) {
+      if (pass.postFrame) {
+        pass.postFrame()
+      }
+    }
+
     // Swap ping-pong buffers
     for (const resourceId of this.compiled.pingPongResources) {
       this.pool.swap(resourceId)

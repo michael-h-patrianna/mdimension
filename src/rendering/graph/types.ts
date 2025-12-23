@@ -200,6 +200,11 @@ export interface RenderPass {
   execute(ctx: RenderContext): void
 
   /**
+   * Optional post-frame hook for temporal resource advancement.
+   */
+  postFrame?(): void
+
+  /**
    * Optional cleanup when pass is removed from graph.
    */
   dispose?(): void

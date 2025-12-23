@@ -90,8 +90,9 @@ export const GroundPlaneMaterial = forwardRef<THREE.ShaderMaterial, GroundPlaneM
         // Shadow map uniforms
         ...createShadowMapUniforms(),
 
-        // IBL uniforms
+        // IBL uniforms - PMREM texture (sampler2D)
         uEnvMap: { value: null },
+        uEnvMapSize: { value: 256.0 },
         uIBLIntensity: { value: 1.0 },
         uIBLQuality: { value: 0 },
 
@@ -164,17 +165,23 @@ export const GroundPlaneMaterial = forwardRef<THREE.ShaderMaterial, GroundPlaneM
       }
 
       // Update IBL
-      // IMPORTANT: Do NOT bind uEnvMap here! This useFrame runs BEFORE the render graph,
-      // so binding scene.background here would cause a feedback loop when CubemapCapturePass
-      // renders the floor while writing to the same cubemap texture.
-      //
-      // Instead, uEnvMap is bound by the render graph AFTER CubemapCapturePass completes.
-      // The IBL shader handles uEnvMap being null gracefully.
+      // Use scene.environment (PMREM texture) which is set at the END of each frame
+      // by CubemapCapturePass. This means we read the PREVIOUS frame's environment,
+      // which provides frame consistency and avoids feedback loops.
       const iblState = useEnvironmentStore.getState()
       const qualityMap = { off: 0, low: 1, high: 2 } as const
       u.uIBLQuality!.value = qualityMap[iblState.iblQuality]
       u.uIBLIntensity!.value = iblState.iblIntensity
-      // uEnvMap is now bound by ScenePass after cubemap capture is complete
+      // Use scene.environment (PMREM texture) for IBL
+      const env = state.scene.environment
+      const isPMREM = env && env.mapping === THREE.CubeUVReflectionMapping
+      u.uEnvMap!.value = isPMREM ? env : null
+      // #region agent log
+      if (!u.uEnvMap._logged && env) {
+        console.log('[IBL-DEBUG] GroundPlane uEnvMap', JSON.stringify({hasEnv:!!env,mapping:env?.mapping,isPMREM,iblQuality:u.uIBLQuality?.value}));
+        u.uEnvMap._logged = true;
+      }
+      // #endregion
 
       // Update grid uniforms
       u.uShowGrid!.value = showGrid

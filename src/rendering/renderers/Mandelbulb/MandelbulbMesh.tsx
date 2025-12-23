@@ -221,8 +221,9 @@ const MandelbulbMesh = () => {
       // Temporal Reprojection - Texture must be manually handled as it comes from context
       uPrevDepthTexture: { value: null },
 
-      // IBL (Image-Based Lighting) uniforms
+      // IBL (Image-Based Lighting) uniforms - PMREM texture (sampler2D)
       uEnvMap: { value: null },
+      uEnvMapSize: { value: 256.0 },
       uIBLIntensity: { value: 1.0 },
       uIBLQuality: { value: 0 }, // 0=off, 1=low, 2=high
     }),
@@ -454,11 +455,10 @@ const MandelbulbMesh = () => {
         material.uniforms.uIBLIntensity.value = iblState.iblIntensity;
       }
       if (material.uniforms.uEnvMap) {
-        const bg = state.scene.background;
-        const isCubeTexture = bg && (bg as THREE.CubeTexture).isCubeTexture;
-        if (isCubeTexture) {
-          material.uniforms.uEnvMap.value = bg;
-        }
+        // Use scene.environment (PMREM texture) for IBL
+        const env = state.scene.environment;
+        const isPMREM = env && env.mapping === THREE.CubeUVReflectionMapping;
+        material.uniforms.uEnvMap.value = isPMREM ? env : null;
       }
 
       // Configure material transparency based on opacity mode

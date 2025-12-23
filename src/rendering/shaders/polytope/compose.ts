@@ -16,7 +16,7 @@ import {
   type MeshShaderConfig,
 } from '../shared/fractal/compose-helpers'
 import { ggxBlock } from '../shared/lighting/ggx.glsl'
-import { iblBlock, iblUniformsBlock } from '../shared/lighting/ibl.glsl'
+import { iblBlock, iblUniformsBlock, pmremSamplingBlock } from '../shared/lighting/ibl.glsl'
 import { multiLightBlock } from '../shared/lighting/multi-light.glsl'
 import { sssBlock } from '../shared/lighting/sss.glsl'
 
@@ -183,6 +183,7 @@ export function composeFaceFragmentShader(config: PolytopeShaderConfig = {}): {
     { name: 'Lighting (SSS)', content: sssBlock, condition: flags.useSss },
     { name: 'Lighting (GGX)', content: ggxBlock },
     { name: 'IBL Uniforms', content: iblUniformsBlock },
+    { name: 'PMREM Sampling', content: pmremSamplingBlock },
     { name: 'IBL Functions', content: iblBlock },
     { name: 'Shadow Maps Uniforms', content: shadowMapsUniformsBlock, condition: enableShadows },
     { name: 'Shadow Maps Functions', content: shadowMapsFunctionsBlock, condition: enableShadows },
@@ -230,7 +231,9 @@ void main() {
   // Multi-light calculation
   vec3 col;
   if (uNumLights > 0) {
-    col = baseColor * uAmbientColor * uAmbientIntensity * uAmbientEnabled;
+    // Ambient light (energy-conserved: metals don't scatter diffuse light)
+    // max() guards against uMetallic > 1.0 which would cause negative diffuse
+    col = baseColor * max(1.0 - uMetallic, 0.0) * uAmbientColor * uAmbientIntensity * uAmbientEnabled;
     float totalNdotL = 0.0;
 
     for (int i = 0; i < MAX_LIGHTS; i++) {
@@ -305,8 +308,9 @@ void main() {
     col += computeIBL(normal, viewDir, F0, roughness, uMetallic, baseColor);
 
   } else {
-    // No lighting - just ambient
-    col = baseColor * uAmbientColor * uAmbientIntensity * uAmbientEnabled;
+    // No lighting - just ambient (energy-conserved: metals don't scatter diffuse light)
+    // max() guards against uMetallic > 1.0 which would cause negative diffuse
+    col = baseColor * max(1.0 - uMetallic, 0.0) * uAmbientColor * uAmbientIntensity * uAmbientEnabled;
 
     // IBL still applies without direct lights (uses F0 computed above)
     col += computeIBL(normal, viewDir, F0, roughness, uMetallic, baseColor);

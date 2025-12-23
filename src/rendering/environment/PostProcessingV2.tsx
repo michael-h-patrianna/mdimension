@@ -216,6 +216,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
     skyboxMode: s.skyboxMode,
     skyboxEnabled: s.skyboxEnabled,
     classicCubeTexture: s.classicCubeTexture,
+    iblQuality: s.iblQuality,
   }));
   const envState = useEnvironmentStore(envSelector);
 
@@ -718,10 +719,9 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
         const hasConsumer = isBlackHole || env.activeWalls.length > 0 || hasIBL;
         return hasConsumer;
       },
-      // Generate PMREM only when walls need reflections
+      // Generate PMREM only when walls need reflections OR when IBL is enabled for objects
       // Note: This is not an enabled() callback, so it still uses refs
-      // TEMPORARILY DISABLED to test PMREM disposal hypothesis - see docs/bugfixing/log/ibl.md
-      generatePMREM: () => false, // () => envStateRef.current.activeWalls.length > 0,
+      generatePMREM: () => envStateRef.current.activeWalls.length > 0 || envStateRef.current.iblQuality !== 'off',
       // Provide external CubeTexture for classic skybox mode
       // Note: This is not an enabled() callback, so it still uses refs
       getExternalCubeTexture: () => {

@@ -1,7 +1,7 @@
 # IBL (Image-Based Lighting) Debugging Log
 
-**Date:** 2024-12-23  
-**Status:** TESTING SOLUTION - Codex analysis provided key insights  
+**Date:** 2024-12-23
+**Status:** Resolved
 
 ## Problem Statement
 
@@ -259,7 +259,7 @@ This means `scene.environment` (still bound in shaders) points to a **disposed W
 **Logs showed:**
 ```
 Frame 0: framesSinceReset=0, hasValid=false, capturedThisFrame=true
-Frame 1: framesSinceReset=1, hasValid=false, capturedThisFrame=true  
+Frame 1: framesSinceReset=1, hasValid=false, capturedThisFrame=true
 Frame 2: framesSinceReset=2, hasValid=TRUE, capturedThisFrame=true ← Success!
 Frame 3: needsCapture=false, capture skipped
 ```
@@ -284,33 +284,85 @@ Something about calling ANY `postFrame()` method from RenderGraph breaks renderi
 
 ## Current State (After All Reverts)
 
-- **All CubemapCapturePass changes:** Reverted via `git checkout`
-- **types.ts:** Reverted via `git checkout`  
-- **RenderGraph.ts:** Reverted (no postFrame loop)
-- **visualDefaults.ts:** IBL still set to `'high'` for testing
-- **Rendering:** ✅ Working (object, skybox visible)
-- **IBL:** ❌ NOT working (hasValidHistory always false)
+solved
 
-## Hypotheses for Future Investigation
 
-1. **WebGL State Corruption:**
-   - Maybe iterating over `this.compiled.passes` after execution corrupts something
-   - Maybe the try/catch around postFrame affects WebGL state
+## Solution
+ The reason "nothing renders at all" is a Premature Disposal / Race Condition in the CubemapCapturePass logic regarding the PMREM generation.
 
-2. **React/Three.js Reconciliation:**
-   - Maybe calling methods on passes triggers React re-renders
-   - Maybe scene.background/environment changes cause cascade effects
+  Here is the exact sequence causing the black screen:
 
-3. **PMREM Generator Side Effects:**
-   - When `hasValid=true`, PMREM is generated
-   - PMREM generator may leave WebGL in bad state
-   - Next frame's rendering fails
+   1. Frame Start: The scene.environment is holding a reference to PMREM_Texture_A (generated in the previous frame).
+   2. `CubemapCapturePass` Executes:
+       * It determines it needs to update (because hasValidHistory is true due to your postFrame fix).
+       * It calls this.pmremRenderTarget?.dispose(). This immediately destroys `PMREM_Texture_A`.
+       * It generates PMREM_Texture_B.
+       * It queues PMREM_Texture_B to be exported to scene.environment at the end of the frame.
+   3. `ScenePass` Executes:
+       * It tries to render the main scene.
+       * Three.js looks at scene.environment to compute PBR lighting.
+       * It sees PMREM_Texture_A, which is now disposed/invalid.
+       * Result: The shader receives invalid texture data (black), causing the entire render to fail or output black.
+   4. Frame End: ExternalBridge updates scene.environment to PMREM_Texture_B.
 
-4. **Texture Binding Issues:**
-   - Exported textures may be bound incorrectly
-   - CubeRenderTarget texture may not be valid for scene.background
+  Why the previous solutions failed:
+   * Without postFrame: The capture logic never ran, so dispose() was never called. scene.environment remained null or stale but valid.
+   * With postFrame: The capture logic runs, destroys the active environment map before the scene can use it, resulting in a black render.
 
-5. **Alternative Approach Needed:**
-   - Skip TemporalResource entirely
-   - Export cubemap immediately on first capture
-   - Use single buffer instead of ping-pong
+  The Fix Required:
+  You must implement Double Buffering (Ping-Pong) for the PMREM target, just like you have for the Cubemap target. You cannot dispose the pmremRenderTarget immediately. You need to hold onto two targets and
+  flip-flop between them, or only dispose the old one after you are sure the scene has switched to the new one (next frame).
+
+---
+
+## Session 2024-12-23 (continued) - Additional Attempts
+
+### Issue Found: `writeTarget` Out of Scope
+
+When `hasValidHistory=true` but `needsCapture=false`, the export code tried to use `writeTarget.texture` for PMREM generation, but `writeTarget` is only defined inside the `if (this.needsCapture)` block.
+
+**Fix attempted:** Changed to use `readTarget.texture` instead (which is always defined when hasValidHistory is true).
+
+### Issue Found: `needsCapture` Set Too Early
+
+After first capture, `needsCapture` was set to `false`, but `hasValidHistory(1)` needs `framesSinceReset > 1` (2+ captures). Since `advanceFrame()` only runs when `didCaptureThisFrame=true`, and that only happens when `needsCapture=true`, the frame counter got stuck at 1.
+
+**Fix attempted:** Only set `needsCapture=false` after `hasValidHistory(1)` returns true.
+
+### Result: Still Black Screen
+
+Even with both fixes applied:
+- Logs showed correct progression: framesSinceReset 0→1→2
+- `hasValidHistory` became true on frame 2
+- PMREM was generated from readTarget
+- scene.environment export was queued
+- BUT scene went black
+
+### New Hypothesis: scene.background Export Problem
+
+The exports are queued for both `scene.background` AND `scene.environment`. When `hasValidHistory` becomes true:
+1. `ctx.queueExport({ id: 'scene.background', value: readTarget.texture })`
+2. `ctx.queueExport({ id: 'scene.environment', value: pmremTexture })`
+
+Both exports happen AFTER all passes complete via `executeExports()`. But something about setting `scene.background` to the cubemap texture might be causing issues.
+
+### Current State (Reverted)
+
+All changes reverted via `git checkout`. Rendering works, IBL does not.
+
+### Remaining Questions
+
+1. **Why does setting scene.background break rendering?**
+   - The black hole shader reads scene.background
+   - Maybe setting it to the cubemap texture causes issues with the ScenePass?
+
+2. **Is the texture format wrong?**
+   - CubeRenderTarget texture vs CubeTexture
+   - Mapping type (CubeReflectionMapping)
+
+3. **Is ScenePass reading stale data?**
+   - Even with deferred PMREM disposal, maybe something else is wrong
+
+4. **Should IBL even use scene.environment?**
+   - Maybe IBL should use a separate uniform instead of scene.environment
+

@@ -12,7 +12,7 @@ import {
   type MeshShaderConfig,
 } from '../shared/fractal/compose-helpers'
 import { ggxBlock } from '../shared/lighting/ggx.glsl'
-import { iblBlock, iblUniformsBlock } from '../shared/lighting/ibl.glsl'
+import { iblBlock, iblUniformsBlock, pmremSamplingBlock } from '../shared/lighting/ibl.glsl'
 import { multiLightBlock } from '../shared/lighting/multi-light.glsl'
 import { sssBlock } from '../shared/lighting/sss.glsl'
 
@@ -80,6 +80,7 @@ export function composeTubeWireframeFragmentShader(config: TubeWireframeShaderCo
     { name: 'GGX PBR', content: ggxBlock },
     { name: 'Multi-Light System', content: multiLightBlock },
     { name: 'IBL Uniforms', content: iblUniformsBlock },
+    { name: 'PMREM Sampling', content: pmremSamplingBlock },
     { name: 'IBL Functions', content: iblBlock },
     { name: 'Lighting (SSS)', content: sssBlock, condition: flags.useSss },
     { name: 'Shadow Maps Uniforms', content: shadowMapsUniformsBlock, condition: enableShadows },

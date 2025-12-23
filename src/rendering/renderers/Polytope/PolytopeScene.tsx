@@ -485,8 +485,9 @@ export const PolytopeScene = React.memo(function PolytopeScene({
           uSssJitter: { value: 0.2 },
           // Lighting and PBR uniforms (via UniformManager)
           ...UniformManager.getCombinedUniforms(['lighting', 'pbr-face']),
-          // IBL (Image-Based Lighting) uniforms
+          // IBL (Image-Based Lighting) uniforms - PMREM texture (sampler2D)
           uEnvMap: { value: null },
+          uEnvMapSize: { value: 256.0 }, // PMREMGenerator default size
           uIBLIntensity: { value: 1.0 },
           uIBLQuality: { value: 0 }, // 0=off, 1=low, 2=high
         },
@@ -906,10 +907,17 @@ export const PolytopeScene = React.memo(function PolytopeScene({
         }
         if (u.uIBLIntensity) u.uIBLIntensity.value = iblState.iblIntensity;
         if (u.uEnvMap) {
-          const bg = scene.background;
-          const isCubeTexture = bg && (bg as THREE.CubeTexture).isCubeTexture;
-          // Always update envMap - set to null if not a cube texture to prevent stale references
-          u.uEnvMap.value = isCubeTexture ? bg : null;
+          // Use scene.environment (PMREM texture) for IBL
+          // PMREM produces CubeUVReflectionMapping textures (sampler2D, not samplerCube)
+          const env = scene.environment;
+          const isPMREM = env && env.mapping === THREE.CubeUVReflectionMapping;
+          u.uEnvMap.value = isPMREM ? env : null;
+          // #region agent log
+          if (!u.uEnvMap._logged && env) {
+            console.log('[IBL-DEBUG] PolytopeScene uEnvMap', JSON.stringify({hasEnv:!!env,mapping:env?.mapping,isPMREM,iblQuality:u.uIBLQuality?.value}));
+            u.uEnvMap._logged = true;
+          }
+          // #endregion
         }
 
         // Update advanced color system uniforms (only for face materials)

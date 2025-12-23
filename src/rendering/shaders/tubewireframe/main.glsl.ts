@@ -14,8 +14,9 @@ void main() {
   vec3 F0 = vec3(0.04);
   F0 = mix(F0, uColor, uMetallic);
 
-  // Start with ambient light
-  vec3 Lo = uColor * uAmbientColor * uAmbientIntensity * uAmbientEnabled;
+  // Start with ambient light (energy-conserved: metals don't scatter diffuse light)
+  // max() guards against uMetallic > 1.0 which would cause negative diffuse
+  vec3 Lo = uColor * max(1.0 - uMetallic, 0.0) * uAmbientColor * uAmbientIntensity * uAmbientEnabled;
 
   // Accumulator for total light contribution (for fresnel rim)
   float totalNdotL = 0.0;

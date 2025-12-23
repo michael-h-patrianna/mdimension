@@ -329,8 +329,9 @@ export function TubeWireframe({
           // Shadow map uniforms
           ...createShadowMapUniforms(),
 
-          // IBL (Image-Based Lighting) uniforms
+          // IBL (Image-Based Lighting) uniforms - PMREM texture (sampler2D)
           uEnvMap: { value: null },
+          uEnvMapSize: { value: 256.0 },
           uIBLIntensity: { value: 1.0 },
           uIBLQuality: { value: 0 }, // 0=off, 1=low, 2=high
         },
@@ -602,10 +603,10 @@ export function TubeWireframe({
     const qualityMap = { off: 0, low: 1, high: 2 } as const
     u.uIBLQuality!.value = qualityMap[iblState.iblQuality]
     u.uIBLIntensity!.value = iblState.iblIntensity
-    const bg = scene.background
-    const isCubeTexture = bg && (bg as THREE.CubeTexture).isCubeTexture
-    // Always update envMap - set to null if not a cube texture to prevent stale references
-    u.uEnvMap!.value = isCubeTexture ? bg : null
+    // Use scene.environment (PMREM texture) for IBL
+    const env = scene.environment
+    const isPMREM = env && env.mapping === THREE.CubeUVReflectionMapping
+    u.uEnvMap!.value = isPMREM ? env : null
 
     // Update shadow map uniforms if shadows are enabled
     // Pass store lights to ensure shadow data ordering matches uniform indices

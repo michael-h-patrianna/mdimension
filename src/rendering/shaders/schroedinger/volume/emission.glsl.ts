@@ -126,10 +126,11 @@ vec3 computeBaseColor(float rho, float phase, vec3 pos) {
 }
 
 // Compute emission with ambient lighting only (for fast mode)
-// Same pattern as Mandelbulb: col = surfaceColor * uAmbientColor * uAmbientIntensity * uAmbientEnabled
+// Energy-conserved: metals don't scatter diffuse light
+// max() guards against uMetallic > 1.0 which would cause negative diffuse
 vec3 computeEmission(float rho, float phase, vec3 pos) {
     vec3 baseColor = computeBaseColor(rho, phase, pos);
-    vec3 col = baseColor * uAmbientColor * uAmbientIntensity * uAmbientEnabled;
+    vec3 col = baseColor * max(1.0 - uMetallic, 0.0) * uAmbientColor * uAmbientIntensity * uAmbientEnabled;
 
 #ifdef USE_NODAL
     if (uNodalEnabled) {
@@ -156,8 +157,9 @@ vec3 computeEmissionLit(float rho, float phase, vec3 p, vec3 gradient, vec3 view
         return computeEmission(rho, phase, p); // Delegate to fast path which now handles nodes
     }
 
-    // Start with ambient (same as Mandelbulb line 53)
-    vec3 col = surfaceColor * uAmbientColor * uAmbientIntensity * uAmbientEnabled;
+    // Start with ambient (energy-conserved: metals don't scatter diffuse light)
+    // max() guards against uMetallic > 1.0 which would cause negative diffuse
+    vec3 col = surfaceColor * max(1.0 - uMetallic, 0.0) * uAmbientColor * uAmbientIntensity * uAmbientEnabled;
 
     // Normalize gradient as pseudo-normal
     float gradLen = length(gradient);

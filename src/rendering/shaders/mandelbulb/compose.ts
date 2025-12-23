@@ -16,7 +16,7 @@ import {
   processFeatureFlags,
 } from '../shared/fractal/compose-helpers'
 import { ggxBlock } from '../shared/lighting/ggx.glsl'
-import { iblBlock, iblUniformsBlock } from '../shared/lighting/ibl.glsl'
+import { iblBlock, iblUniformsBlock, pmremSamplingBlock } from '../shared/lighting/ibl.glsl'
 import { multiLightBlock } from '../shared/lighting/multi-light.glsl'
 import { sssBlock } from '../shared/lighting/sss.glsl'
 import { raymarchCoreBlock } from '../shared/raymarch/core.glsl'
@@ -105,6 +105,7 @@ export function composeMandelbulbShader(config: ShaderConfig) {
     { name: 'Color Selector', content: selectorBlock },
     { name: 'Lighting (GGX)', content: ggxBlock },
     { name: 'IBL Uniforms', content: iblUniformsBlock },
+    { name: 'PMREM Sampling', content: pmremSamplingBlock },
     { name: 'IBL Functions', content: iblBlock },
     { name: 'Lighting (SSS)', content: sssBlock, condition: enableSss },
     { name: sdfName, content: sdfBlock },
