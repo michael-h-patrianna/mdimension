@@ -214,6 +214,7 @@ export const ALL_WALL_POSITIONS: WallPosition[] = ['floor', 'back', 'left', 'rig
 
 /** Ground plane surface type */
 export type GroundPlaneType = 'two-sided' | 'plane'
+//export const DEFAULT_ACTIVE_WALLS: WallPosition[] = ['floor']
 
 export const DEFAULT_ACTIVE_WALLS: WallPosition[] = ['floor']
 export const DEFAULT_GROUND_PLANE_OFFSET = 10
@@ -274,8 +275,8 @@ export const DEFAULT_GROUND_PBR: PBRConfig = {
 /** IBL quality level for wall/environment reflections on objects */
 export type IBLQuality = 'off' | 'low' | 'high'
 
-/** Default IBL quality - off for performance */
-export const DEFAULT_IBL_QUALITY: IBLQuality = 'off'
+/** Default IBL quality - high for testing */
+export const DEFAULT_IBL_QUALITY: IBLQuality = 'high'
 
 /** IBL intensity multiplier */
 export const DEFAULT_IBL_INTENSITY = 1.0

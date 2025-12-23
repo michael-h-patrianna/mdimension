@@ -706,19 +706,22 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       id: 'cubemapCapture',
       backgroundResolution: blackHoleStateRef.current.skyCubemapResolution,
       environmentResolution: 256,
-      // Enabled when skybox is active and something needs it (black hole or walls)
+      // Enabled when skybox is active and something needs it (black hole, walls, or IBL)
       enabled: (frame) => {
         if (!frame) return false;
         const env = frame.stores.environment;
         if (!env.skyboxEnabled) return false;
         // For classic mode, also need the texture to be loaded
         if (env.skyboxMode === 'classic' && !env.classicCubeTexture) return false;
-        const hasConsumer = isBlackHole || env.activeWalls.length > 0;
+        // IBL needs the cubemap for environment reflections on all objects
+        const hasIBL = env.iblQuality !== 'off';
+        const hasConsumer = isBlackHole || env.activeWalls.length > 0 || hasIBL;
         return hasConsumer;
       },
       // Generate PMREM only when walls need reflections
       // Note: This is not an enabled() callback, so it still uses refs
-      generatePMREM: () => envStateRef.current.activeWalls.length > 0,
+      // TEMPORARILY DISABLED to test PMREM disposal hypothesis - see docs/bugfixing/log/ibl.md
+      generatePMREM: () => false, // () => envStateRef.current.activeWalls.length > 0,
       // Provide external CubeTexture for classic skybox mode
       // Note: This is not an enabled() callback, so it still uses refs
       getExternalCubeTexture: () => {

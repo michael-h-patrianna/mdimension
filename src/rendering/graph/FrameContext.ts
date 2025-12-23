@@ -26,7 +26,7 @@ import * as THREE from 'three'
 
 import type { BlackHoleConfig } from '@/lib/geometry/extended/types'
 import type { ObjectType } from '@/lib/geometry/types'
-import type { WallPosition } from '@/stores/defaults/visualDefaults'
+import type { IBLQuality, WallPosition } from '@/stores/defaults/visualDefaults'
 import type { FogSliceState } from '@/stores/slices/fogSlice'
 import type { GroundSliceState } from '@/stores/slices/groundSlice'
 import type { PostProcessingSliceState } from '@/stores/slices/postProcessingSlice'
@@ -86,6 +86,10 @@ export interface FrozenEnvironmentState {
 
   // Ground (for environment capture decisions)
   readonly activeWalls: readonly WallPosition[]
+
+  // IBL (Image-Based Lighting)
+  readonly iblQuality: IBLQuality
+  readonly iblIntensity: number
 }
 
 /**
@@ -378,6 +382,10 @@ function captureEnvironmentState(
 
     // Ground
     activeWalls: [...ground.activeWalls],
+
+    // IBL
+    iblQuality: ground.iblQuality,
+    iblIntensity: ground.iblIntensity,
   }
 }
 
@@ -615,6 +623,8 @@ export function createEmptyFrameContext(): FrozenFrameContext {
         skyboxLoading: false,
         classicCubeTexture: null,
         activeWalls: [],
+        iblQuality: 'low',
+        iblIntensity: 1.0,
       },
       postProcessing: {
         bloomEnabled: true,
