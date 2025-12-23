@@ -234,3 +234,83 @@ This means `scene.environment` (still bound in shaders) points to a **disposed W
 - ✅ Everything works including wall reflections
 
 **Current State:** TESTING - Dev server running on port 3002
+
+---
+
+## Additional Attempts (2024-12-23 continued)
+
+### Attempt 4: Decouple Export from Capture Logic
+
+**Insight from user:** The issue is a synchronization problem:
+- When `needsCapture = false`, no new data is written
+- But `advanceFrame()` keeps cycling buffer indices
+- Read pointer eventually points to empty/stale buffers
+- Empty buffers exported → black PMREM → black scene
+
+**Changes Made:**
+1. Added `capturedThisFrame` flag to track when actual capture happened
+2. Created separate `executeExports()` method - exports every frame if history valid
+3. Modified `postFrame()` to only call `advanceFrame()` if `capturedThisFrame === true`
+4. Added `postFrame()` to RenderPass interface
+5. Added postFrame loop to RenderGraph after `executeExports()`
+
+**Result:** ❌ STILL BROKE RENDERING
+
+**Logs showed:**
+```
+Frame 0: framesSinceReset=0, hasValid=false, capturedThisFrame=true
+Frame 1: framesSinceReset=1, hasValid=false, capturedThisFrame=true  
+Frame 2: framesSinceReset=2, hasValid=TRUE, capturedThisFrame=true ← Success!
+Frame 3: needsCapture=false, capture skipped
+```
+
+Despite `hasValid=true` and exports being queued, scene went black.
+
+### Key Finding
+
+The problem is NOT just about buffer cycling. Even with:
+- `capturedThisFrame` tracking
+- `advanceFrame()` only called when capture happened
+- Separate export logic that runs every frame
+
+...the scene still goes black when the postFrame loop is added to RenderGraph.
+
+### Unresolved Mystery
+
+Something about calling ANY `postFrame()` method from RenderGraph breaks rendering, even when:
+1. Only CubemapCapturePass has the method
+2. The method only advances when capture happened
+3. The logs show correct behavior
+
+## Current State (After All Reverts)
+
+- **All CubemapCapturePass changes:** Reverted via `git checkout`
+- **types.ts:** Reverted via `git checkout`  
+- **RenderGraph.ts:** Reverted (no postFrame loop)
+- **visualDefaults.ts:** IBL still set to `'high'` for testing
+- **Rendering:** ✅ Working (object, skybox visible)
+- **IBL:** ❌ NOT working (hasValidHistory always false)
+
+## Hypotheses for Future Investigation
+
+1. **WebGL State Corruption:**
+   - Maybe iterating over `this.compiled.passes` after execution corrupts something
+   - Maybe the try/catch around postFrame affects WebGL state
+
+2. **React/Three.js Reconciliation:**
+   - Maybe calling methods on passes triggers React re-renders
+   - Maybe scene.background/environment changes cause cascade effects
+
+3. **PMREM Generator Side Effects:**
+   - When `hasValid=true`, PMREM is generated
+   - PMREM generator may leave WebGL in bad state
+   - Next frame's rendering fails
+
+4. **Texture Binding Issues:**
+   - Exported textures may be bound incorrectly
+   - CubeRenderTarget texture may not be valid for scene.background
+
+5. **Alternative Approach Needed:**
+   - Skip TemporalResource entirely
+   - Export cubemap immediately on first capture
+   - Use single buffer instead of ping-pong

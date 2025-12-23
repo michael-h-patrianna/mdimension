@@ -77,6 +77,8 @@ export class CubemapCapturePass extends BasePass {
 
   // Capture control
   private needsCapture = true;
+  private didCaptureThisFrame = false;
+  private pendingPMREMDispose: THREE.WebGLRenderTarget | null = null;
 
   constructor(config: CubemapCapturePassConfig) {
     super({
@@ -161,6 +163,10 @@ export class CubemapCapturePass extends BasePass {
   }
 
   execute(ctx: RenderContext): void {
+    
+    // Reset frame state
+    this.didCaptureThisFrame = false;
+    
     const { renderer, scene } = ctx;
 
     // Check for external texture changes (classic mode)
@@ -192,38 +198,81 @@ export class CubemapCapturePass extends BasePass {
     renderer: THREE.WebGLRenderer,
     scene: THREE.Scene
   ): void {
-    // Only capture when requested
-    if (!this.needsCapture) return;
-
     this.ensureTemporalHistory();
     if (!this.cubemapHistory) return;
 
     this.ensureCubeCamera();
     if (!this.cubeCamera) return;
 
-    // Get the current write target from temporal buffer
-    const writeTarget = this.cubemapHistory.getWrite();
+    // 1. Capture Logic (Conditional)
+    if (this.needsCapture) {
 
-    this.cubeCamera.position.set(0, 0, 0);
+      // Get the current write target from temporal buffer
+      const writeTarget = this.cubemapHistory.getWrite();
 
-    // CRITICAL: Clear background/environment before capture to avoid feedback loop
-    const previousBackground = scene.background;
-    const previousEnvironment = scene.environment;
-    scene.background = null;
-    scene.environment = null;
+      this.cubeCamera.position.set(0, 0, 0);
 
-    // Render to cubemap
-    const originalTarget = this.cubeCamera.renderTarget;
-    this.cubeCamera.renderTarget = writeTarget;
-    this.cubeCamera.update(renderer, scene);
-    this.cubeCamera.renderTarget = originalTarget;
+      // CRITICAL: Clear background/environment before capture to avoid feedback loop
+      const previousBackground = scene.background;
+      const previousEnvironment = scene.environment;
+      scene.background = null;
+      scene.environment = null;
 
-    // Restore scene state
-    scene.background = previousBackground;
-    scene.environment = previousEnvironment;
+      // Render to cubemap
+      const originalTarget = this.cubeCamera.renderTarget;
+      this.cubeCamera.renderTarget = writeTarget;
+      this.cubeCamera.update(renderer, scene);
+      this.cubeCamera.renderTarget = originalTarget;
 
-    // ONLY queue exports if we have valid history
-    if (this.cubemapHistory.hasValidHistory(1)) {
+      // Restore scene state
+      scene.background = previousBackground;
+      scene.environment = previousEnvironment;
+
+      // Mark capture as occurred
+      this.didCaptureThisFrame = true;
+      this.needsCapture = false;
+
+      // Generate PMREM if needed
+      // Note: We generate it immediately after capture so it's ready for export
+      if (this.generatePMREM()) {
+        this.ensurePMREMGenerator(renderer);
+
+        if (this.pmremGenerator) {
+          // DEFERRED DISPOSAL: Don't dispose immediately.
+          // Store current as pending dispose, generate new one, assign new to current.
+          if (this.pmremRenderTarget) {
+            this.pendingPMREMDispose = this.pmremRenderTarget;
+          }
+
+          // Generate new PMREM target
+          // fromCubemap returns a new WebGLRenderTarget
+          // We read from the JUST WRITTEN target (writeTarget) because we want the freshest data
+          // for the next frame's environment.
+          // Wait, is 'writeTarget' valid yet? Yes, we just rendered to it.
+          // But 'getRead(1)' is the PREVIOUS frame.
+          // For PMREM, we want the LATEST capture.
+          // The cubemap history is for the black hole shader (which needs 2 frames).
+          // PMREM is for PBR reflections, which can use the latest frame immediately if we want.
+          // However, consistency suggests using the same frame as scene.background.
+          // If we use 'writeTarget', we are effectively using "Frame 0" data while scene.background uses "Frame -1".
+          // Let's stick to using 'writeTarget' for PMREM to minimize latency, as it's a separate effect.
+          // actually, let's use the same logic as before: create from the just-rendered cubemap.
+          this.pmremRenderTarget = this.pmremGenerator.fromCubemap(writeTarget.texture);
+
+          // Force sync after PMREM generation
+          getGlobalMRTManager().forceSync();
+        }
+      }
+    }
+
+    // 2. Export Logic (Always, if valid)
+    // Use getValidHistoryCount() > 0 to ensure we have at least one frame
+    // But hasValidHistory(1) checks for 2 frames (offset 1).
+    // For PMREM, 1 frame is enough. For Black Hole, 2 frames are needed.
+    // Let's stick to hasValidHistory(1) for safety and consistency.
+    const hasValidHistory = this.cubemapHistory.hasValidHistory(1);
+    
+    if (hasValidHistory) {
       const readTarget = this.cubemapHistory.getRead(1);
 
       // Queue export for scene.background
@@ -232,26 +281,13 @@ export class CubemapCapturePass extends BasePass {
         value: readTarget.texture,
       });
 
-      // Generate PMREM if needed
-      if (this.generatePMREM()) {
-        this.ensurePMREMGenerator(renderer);
-
-        if (this.pmremGenerator) {
-          this.pmremRenderTarget?.dispose();
-          this.pmremRenderTarget = this.pmremGenerator.fromCubemap(readTarget.texture);
-
-          // Force sync after PMREM generation
-          getGlobalMRTManager().forceSync();
-
-          // Queue export for scene.environment
-          ctx.queueExport({
-            id: 'scene.environment',
-            value: this.pmremRenderTarget.texture,
-          });
-        }
+      // Queue export for scene.environment
+      if (this.pmremRenderTarget) {
+        ctx.queueExport({
+          id: 'scene.environment',
+          value: this.pmremRenderTarget.texture,
+        });
       }
-
-      this.needsCapture = false;
     }
   }
 
@@ -283,7 +319,20 @@ export class CubemapCapturePass extends BasePass {
    * Advance the temporal resource to the next frame.
    */
   postFrame(): void {
-    this.cubemapHistory?.advanceFrame();
+
+    // 1. Dispose old PMREM target if one is pending
+    // Safe to do now because scene.environment has been updated to the NEW target (if any)
+    if (this.pendingPMREMDispose) {
+      this.pendingPMREMDispose.dispose();
+      this.pendingPMREMDispose = null;
+    }
+
+    // 2. Advance history ONLY if we captured a new frame
+    // This prevents the read pointer from advancing into stale/empty buffers
+    // when needsCapture is false (static skybox).
+    if (this.didCaptureThisFrame) {
+      this.cubemapHistory?.advanceFrame();
+    }
   }
 
   /**
