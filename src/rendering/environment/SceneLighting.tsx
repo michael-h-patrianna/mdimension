@@ -9,8 +9,10 @@
  * - Multi-light system with up to 4 lights (Point, Directional, Spot)
  * - Per-light enable/disable, color, intensity, position, rotation
  * - Spot light cone angle and penumbra
- * - Optional visual indicators for light positions
  * - Backward compatible with legacy single-light system
+ *
+ * Note: Visual light indicators (gizmos) are handled separately by
+ * LightGizmoManager on the DEBUG render layer to avoid MRT compatibility issues.
  *
  * @example
  * ```tsx
@@ -21,6 +23,7 @@
  * ```
  *
  * @see {@link useLightingStore} for lighting configuration state
+ * @see {@link LightGizmoManager} for light position indicators
  */
 
 import type { LightSource } from '@/rendering/lights/types';
@@ -30,7 +33,7 @@ import { useLightingStore } from '@/stores/lightingStore';
 import { getEffectiveShadowQuality, usePerformanceStore } from '@/stores/performanceStore';
 import { memo, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { MeshBasicMaterial, SphereGeometry, Vector3 } from 'three';
+import { Vector3 } from 'three';
 
 /**
  * Shadow map size for each quality level.
@@ -55,12 +58,6 @@ function getShadowRadius(softness: number): number {
 }
 
 /**
- * Shared sphere geometry for the light indicator.
- * Created once and reused.
- */
-const LIGHT_INDICATOR_GEOMETRY = new SphereGeometry(1, 16, 16);
-
-/**
  * Default distance for the legacy point light from the origin.
  */
 const LIGHT_DISTANCE = 10;
@@ -68,10 +65,12 @@ const LIGHT_DISTANCE = 10;
 /**
  * Individual light renderer component for the multi-light system.
  * Renders the appropriate Three.js light based on light type.
+ *
+ * Note: Visual indicators (gizmos) are handled separately by LightGizmoManager
+ * on the DEBUG render layer to avoid MRT compatibility issues.
  */
 interface LightRendererProps {
   light: LightSource;
-  showIndicator: boolean;
   shadowEnabled: boolean;
   shadowMapSize: number;
   shadowRadius: number;
@@ -80,7 +79,6 @@ interface LightRendererProps {
 
 const LightRenderer = memo(function LightRenderer({
   light,
-  showIndicator,
   shadowEnabled,
   shadowMapSize,
   shadowRadius,
@@ -121,41 +119,10 @@ const LightRenderer = memo(function LightRenderer({
     }
   }, [targetPosition]);
 
-  // Create light indicator material
-  const indicatorMaterial = useMemo(() => {
-    return new MeshBasicMaterial({
-      color: light.color,
-      transparent: !light.enabled,
-      opacity: light.enabled ? 1.0 : 0.3,
-    });
-  }, [light.color, light.enabled]);
-
-  // Dispose material on change
-  const materialRef = useRef<MeshBasicMaterial | null>(null);
-  useEffect(() => {
-    if (materialRef.current && materialRef.current !== indicatorMaterial) {
-      materialRef.current.dispose();
-    }
-    materialRef.current = indicatorMaterial;
-
-    return () => {
-      if (materialRef.current) {
-        materialRef.current.dispose();
-        materialRef.current = null;
-      }
-    };
-  }, [indicatorMaterial]);
-
+  // Disabled lights don't render any Three.js light
+  // Visual indicators for disabled lights are handled by LightGizmoManager
   if (!light.enabled) {
-    // Only render indicator for disabled lights
-    return showIndicator ? (
-      <mesh
-        position={position}
-        scale={0.15}
-        geometry={LIGHT_INDICATOR_GEOMETRY}
-        material={indicatorMaterial}
-      />
-    ) : null;
+    return null;
   }
 
   // Determine if we need a target object (for spot and directional lights)
@@ -222,14 +189,6 @@ const LightRenderer = memo(function LightRenderer({
           shadow-radius={shadowRadius}
         />
       )}
-      {showIndicator && (
-        <mesh
-          position={position}
-          scale={0.2}
-          geometry={LIGHT_INDICATOR_GEOMETRY}
-          material={indicatorMaterial}
-        />
-      )}
     </>
   );
 });
@@ -242,7 +201,6 @@ const LightRenderer = memo(function LightRenderer({
 export const SceneLighting = memo(function SceneLighting() {
   // Multi-light system state
   const lights = useLightingStore((state) => state.lights);
-  const showLightGizmos = useLightingStore((state) => state.showLightGizmos);
 
   // Shadow system state
   const shadowEnabled = useLightingStore((state) => state.shadowEnabled);
@@ -271,11 +229,11 @@ export const SceneLighting = memo(function SceneLighting() {
   const lightColor = useLightingStore((state) => state.lightColor);
   const lightHorizontalAngle = useLightingStore((state) => state.lightHorizontalAngle);
   const lightVerticalAngle = useLightingStore((state) => state.lightVerticalAngle);
+  const ambientEnabled = useLightingStore((state) => state.ambientEnabled);
   const ambientIntensity = useLightingStore((state) => state.ambientIntensity);
   const ambientColor = useLightingStore((state) => state.ambientColor);
   // Note: diffuseIntensity removed - energy conservation derives diffuse from (1-kS)*(1-metallic)
   const lightStrength = useLightingStore((state) => state.lightStrength);
-  const showLightIndicator = useLightingStore((state) => state.showLightIndicator);
 
   /**
    * Legacy light position from spherical coordinates (backward compatibility)
@@ -290,44 +248,25 @@ export const SceneLighting = memo(function SceneLighting() {
     ] as [number, number, number];
   }, [lightHorizontalAngle, lightVerticalAngle]);
 
-  // Create legacy light indicator material
-  const legacyIndicatorMaterial = useMemo(() => {
-    return new MeshBasicMaterial({ color: lightColor });
-  }, [lightColor]);
-
-  // Dispose legacy material on change or unmount
-  const materialRef = useRef<MeshBasicMaterial | null>(null);
-  useEffect(() => {
-    if (materialRef.current && materialRef.current !== legacyIndicatorMaterial) {
-      materialRef.current.dispose();
-    }
-    materialRef.current = legacyIndicatorMaterial;
-
-    return () => {
-      if (materialRef.current) {
-        materialRef.current.dispose();
-        materialRef.current = null;
-      }
-    };
-  }, [legacyIndicatorMaterial]);
-
   // Determine if we should use multi-light or legacy
   const useMultiLight = lights.length > 0;
 
   return (
     <>
-      <ambientLight intensity={ambientIntensity} color={ambientColor} />
+      {ambientEnabled && (
+        <ambientLight intensity={ambientIntensity} color={ambientColor} />
+      )}
 
       {useMultiLight ? (
         // Multi-light system
         // Key includes effectiveShadowMapSize to force remount when quality changes
         // Three.js doesn't recreate shadow map textures on prop changes, so key-based remount is required
+        // Note: Visual indicators are handled by LightGizmoManager on DEBUG layer
         <>
           {lights.map((light) => (
             <LightRenderer
               key={`${light.id}-${effectiveShadowMapSize}`}
               light={light}
-              showIndicator={showLightGizmos}
               shadowEnabled={shadowEnabled}
               shadowMapSize={effectiveShadowMapSize}
               shadowRadius={shadowRadiusValue}
@@ -337,6 +276,7 @@ export const SceneLighting = memo(function SceneLighting() {
         </>
       ) : (
         // Legacy single-light (backward compatibility)
+        // Note: Visual indicator removed - handled by LightGizmoManager on DEBUG layer
         <>
           {lightEnabled && (
             <pointLight
@@ -345,14 +285,6 @@ export const SceneLighting = memo(function SceneLighting() {
               intensity={(lightStrength ?? 1.0) * 10}
               distance={0}
               decay={0}
-            />
-          )}
-          {showLightIndicator && lightEnabled && (
-            <mesh
-              position={legacyLightPosition}
-              scale={0.2}
-              geometry={LIGHT_INDICATOR_GEOMETRY}
-              material={legacyIndicatorMaterial}
             />
           )}
         </>

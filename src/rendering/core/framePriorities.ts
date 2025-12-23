@@ -68,7 +68,7 @@ export const FRAME_PRIORITY = {
   /**
    * Uniform Manager update.
    * Runs after camera (0) but before renderer uniform updates (1).
-   * Ensures all global uniform sources are fresh before renderers use them.
+   * Also called at start of RenderGraph.execute() for proper ordering.
    */
   UNIFORM_MANAGER_UPDATE: 0.5,
 

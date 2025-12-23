@@ -11,6 +11,13 @@
  * Point lights:
  * 1. Circle showing sphere intersection with ground (based on range)
  * 2. Draggable target for adjusting light X,Z position
+ *
+ * RENDER LAYER:
+ * This component is rendered on RENDER_LAYERS.DEBUG via LightGizmoManager.
+ * The DEBUG layer is processed by DebugOverlayPass AFTER all post-processing,
+ * which means we can use standard Three.js materials (MeshBasicMaterial,
+ * Line from drei) WITHOUT needing MRT-compatible shaders that output to
+ * gColor/gNormal/gPosition.
  */
 
 import type { LightSource } from '@/rendering/lights/types';
@@ -366,7 +373,9 @@ const DraggableGroundTarget = memo(function DraggableGroundTarget({
         ref={groupRef}
         position={[intersection.x, GROUND_Y + 0.02, intersection.z]}
       >
-        {/* Solid filled circle for reliable drag detection */}
+        {/* Solid filled circle for reliable drag detection
+            Uses standard MeshBasicMaterial - no MRT outputs needed because
+            this renders on DEBUG layer via DebugOverlayPass. */}
         <mesh rotation={[-Math.PI / 2, 0, 0]}>
           <circleGeometry args={[TARGET_RING_OUTER, 32]} />
           <meshBasicMaterial
@@ -496,7 +505,9 @@ const PointLightGroundCircle = memo(function PointLightGroundCircle({
         transparent
       />
 
-      {/* Draggable center target - solid circle for reliable drag detection */}
+      {/* Draggable center target - solid circle for reliable drag detection
+          Uses standard MeshBasicMaterial - no MRT outputs needed because
+          this renders on DEBUG layer via DebugOverlayPass. */}
       <DragControls
         autoTransform={false}
         matrix={matrix.current}

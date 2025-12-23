@@ -9,11 +9,19 @@
  * - Handles TransformControls for selected light (translate/rotate modes)
  * - Syncs transform changes back to lightingStore
  * - Respects showLightGizmos toggle
+ *
+ * RENDER LAYER:
+ * All gizmos are rendered on RENDER_LAYERS.DEBUG, which is processed by
+ * DebugOverlayPass AFTER all post-processing. This allows standard Three.js
+ * materials (MeshBasicMaterial, LineBasicMaterial, ArrowHelper, TransformControls)
+ * to render without needing MRT-compatible shaders.
  */
 
-import { memo, useRef, useCallback, useEffect, useState } from 'react';
+import { memo, useRef, useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import { TransformControls } from '@react-three/drei';
-import type * as THREE from 'three';
+import { useThree } from '@react-three/fiber';
+import * as THREE from 'three';
+import { RENDER_LAYERS } from '@/rendering/core/layers';
 import { useLightingStore } from '@/stores/lightingStore';
 import { LightGizmo } from '@/components/canvas/gizmos/LightGizmo';
 import { LightGroundVisualization } from '@/components/canvas/gizmos/LightGroundVisualization';
@@ -111,6 +119,19 @@ const TransformTarget = memo(function TransformTarget({
  * Light Gizmo Manager - Main orchestrator for light gizmos
  */
 export const LightGizmoManager = memo(function LightGizmoManager() {
+  const { camera } = useThree();
+
+  // Enable DEBUG layer on camera for raycasting/interaction.
+  // R3F's event system uses camera.layers to filter raycast targets.
+  // Without this, objects on layer 4 (DEBUG) wouldn't receive click events.
+  // Note: This doesn't affect rendering - each render pass controls camera layers independently.
+  useEffect(() => {
+    camera.layers.enable(RENDER_LAYERS.DEBUG);
+    return () => {
+      camera.layers.disable(RENDER_LAYERS.DEBUG);
+    };
+  }, [camera]);
+
   // Get state from store
   const lights = useLightingStore((state) => state.lights);
   const selectedLightId = useLightingStore((state) => state.selectedLightId);
@@ -179,13 +200,30 @@ export const LightGizmoManager = memo(function LightGizmoManager() {
     }
   }, [showLightGizmos, setIsDraggingLight]);
 
+  // Ref to set DEBUG layer on all gizmo objects
+  const gizmoGroupRef = useRef<THREE.Group>(null);
+
+  // Set DEBUG layer on all gizmo objects (recursive)
+  // CRITICAL: useLayoutEffect ensures layers are set BEFORE first paint, preventing
+  // objects from rendering on the wrong layer for even a single frame. This avoids
+  // GL_INVALID_OPERATION errors when MRT passes render objects with non-MRT materials.
+  // No dependency array = runs every render to catch dynamically added children
+  // (like TransformControls internal meshes).
+  useLayoutEffect(() => {
+    if (gizmoGroupRef.current) {
+      gizmoGroupRef.current.traverse((obj) => {
+        obj.layers.set(RENDER_LAYERS.DEBUG);
+      });
+    }
+  });
+
   // Don't render if gizmos are hidden
   if (!showLightGizmos) {
     return null;
   }
 
   return (
-    <group>
+    <group ref={gizmoGroupRef}>
       {/* Render gizmos for all lights */}
       {lights.map((light) => (
         <LightGizmo

@@ -33,23 +33,6 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Side } from 'three';
 import * as THREE from 'three';
 
-// DEBUG: Global frame counter for timing analysis
-declare global {
-  interface Window {
-    __DEBUG_FRAME: number;
-    __DEBUG_START_TIME: number;
-    __DEBUG_LOG: (component: string, event: string, data?: Record<string, unknown>) => void;
-  }
-}
-if (typeof window !== 'undefined' && !window.__DEBUG_LOG) {
-  window.__DEBUG_FRAME = 0;
-  window.__DEBUG_START_TIME = performance.now();
-  window.__DEBUG_LOG = (component: string, event: string, data?: Record<string, unknown>) => {
-    const elapsed = (performance.now() - window.__DEBUG_START_TIME).toFixed(1);
-    console.log(`[${elapsed}ms F${window.__DEBUG_FRAME}] [${component}] ${event}`, data || '');
-  };
-}
-
 /**
  * Props for TrackedShaderMaterial component.
  * Extends standard shaderMaterial props with tracking metadata.
@@ -117,14 +100,6 @@ export function TrackedShaderMaterial({
   // When shaders change, we set this to false, show overlay, then set to true next frame
   const [readyToRender, setReadyToRender] = useState(false);
 
-  // DEBUG: Log mount
-  useEffect(() => {
-    window.__DEBUG_LOG?.('TrackedShaderMaterial', `MOUNT: ${validShaderName}`, { hasValidShaders, readyToRender });
-    return () => {
-      window.__DEBUG_LOG?.('TrackedShaderMaterial', `UNMOUNT: ${validShaderName}`);
-    };
-  }, [validShaderName, hasValidShaders, readyToRender]);
-
   // Detect if shaders have changed since last render
   const shadersChanged =
     !renderedShaderRef.current ||
@@ -139,7 +114,6 @@ export function TrackedShaderMaterial({
 
     if (shadersChanged) {
       // Reset ready state - this will cause us to return null this render
-      window.__DEBUG_LOG?.('TrackedShaderMaterial', `useLayoutEffect: shadersChanged=true, setting readyToRender=false`, { shader: validShaderName });
       setReadyToRender(false);
 
       // Show the compilation overlay immediately
@@ -148,7 +122,6 @@ export function TrackedShaderMaterial({
       // FIX: If shaders reverted to previous state while hidden (e.g. A->B->A),
       // we are stuck in hidden state because the RAF effect won't fire (shadersChanged is false).
       // Since we match the renderedShaderRef, we can show immediately.
-      window.__DEBUG_LOG?.('TrackedShaderMaterial', `useLayoutEffect: revert case, setting readyToRender=true`, { shader: validShaderName });
       setReadyToRender(true);
       usePerformanceStore.getState().setShaderCompiling(validShaderName, false);
     }
@@ -166,14 +139,11 @@ export function TrackedShaderMaterial({
       // block before the overlay is visible. Double RAF ensures:
       // 1st RAF: overlay render is queued for paint
       // 2nd RAF: browser has painted the overlay, safe to block for compilation
-      window.__DEBUG_LOG?.('TrackedShaderMaterial', `useEffect: scheduling double-RAF for ${validShaderName}`);
       let cancelled = false;
       const frameId = requestAnimationFrame(() => {
         if (cancelled) return;
-        window.__DEBUG_LOG?.('TrackedShaderMaterial', `RAF-1 fired for ${validShaderName}`);
         requestAnimationFrame(() => {
           if (cancelled) return;
-          window.__DEBUG_LOG?.('TrackedShaderMaterial', `RAF-2 fired, setting readyToRender=true for ${validShaderName}`);
           setReadyToRender(true);
           // Update the ref to track what we're about to render
           renderedShaderRef.current = { fragment: fragmentShader, vertex: vertexShader };
@@ -187,7 +157,7 @@ export function TrackedShaderMaterial({
     }
 
     return;
-  }, [fragmentShader, vertexShader, hasValidShaders, readyToRender, shadersChanged, validShaderName]);
+  }, [fragmentShader, vertexShader, hasValidShaders, readyToRender, shadersChanged]);
 
   // Hide overlay after shader has compiled (render completes)
   useEffect(() => {
@@ -240,7 +210,6 @@ export function TrackedShaderMaterial({
   // to prevent Three.js from using a default white MeshBasicMaterial.
   // Returning null would leave the mesh without a material, causing a white cube flash.
   if (!readyToRender) {
-    window.__DEBUG_LOG?.('TrackedShaderMaterial', `RENDER: returning PLACEHOLDER for ${validShaderName}`);
     // CRITICAL FIX: Use a ShaderMaterial with explicit MRT outputs as placeholder.
     // When rendering to G-Buffer (2 targets) or Cloud Buffer (3 targets), the active
     // program MUST have outputs for all active draw buffers, otherwise WebGL throws
@@ -275,7 +244,6 @@ export function TrackedShaderMaterial({
     );
   }
 
-  window.__DEBUG_LOG?.('TrackedShaderMaterial', `RENDER: returning REAL SHADER for ${validShaderName}`);
   return (
     <shaderMaterial
       key={materialKey}

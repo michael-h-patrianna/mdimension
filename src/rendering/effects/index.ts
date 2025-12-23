@@ -4,15 +4,7 @@
  * Contains post-processing effects and feedback systems
  * for enhanced fractal rendering.
  */
-export { ZoomProbePass, type ProbeResult, type ProbeSize } from './ZoomProbePass'
-export {
-  ZoomAutopilot,
-  DEFAULT_AUTOPILOT_CONFIG,
-  type AutopilotStrategy,
-  type InterestMetric,
-  type CenterRayLockConfig,
-  type InterestScoreConfig,
-  type BoundaryTargetConfig,
-  type AutopilotConfig,
-  type AutopilotResult,
-} from './ZoomAutopilot'
+
+// Currently empty - ZoomProbePass and ZoomAutopilot have been removed
+// as they rendered outside the render graph, causing MRT state issues.
+// Future effects should be integrated as proper render graph passes.

@@ -17,6 +17,7 @@
 import * as THREE from 'three';
 
 import { BasePass } from '../BasePass';
+import { isMRTTarget } from '../MRTStateManager';
 import type { RenderContext, RenderPassConfig } from '../types';
 
 /**
@@ -106,9 +107,13 @@ export class MainObjectMRTPass extends BasePass {
       this.cameraLayers.mask = camera.layers.mask;
     }
 
-    // Optionally hide background to avoid skybox bleed into MRT
-    const savedBackground = !this.renderBackground ? scene.background : null;
-    if (!this.renderBackground) {
+    // MRT SAFETY: Always disable background when rendering to MRT targets.
+    // Three.js's internal skybox shader only outputs to location 0, causing
+    // GL_INVALID_OPERATION when drawBuffers expects multiple outputs.
+    const isMRT = isMRTTarget(target);
+    const shouldDisableBackground = !this.renderBackground || isMRT;
+    const savedBackground = shouldDisableBackground ? scene.background : null;
+    if (shouldDisableBackground) {
       scene.background = null;
     }
 
@@ -136,13 +141,8 @@ export class MainObjectMRTPass extends BasePass {
         }
       }
 
+      // MRTStateManager automatically configures drawBuffers via patched setRenderTarget
       renderer.setRenderTarget(target);
-
-      // Manually force drawBuffers to all 3 MRT attachments
-      // This ensures Three.js has the correct draw buffer configuration
-      // Cast to WebGL2RenderingContext since this project requires WebGL2
-      const glCtx = renderer.getContext() as WebGL2RenderingContext;
-      glCtx.drawBuffers([glCtx.COLOR_ATTACHMENT0, glCtx.COLOR_ATTACHMENT1, glCtx.COLOR_ATTACHMENT2]);
 
       if (this.clear) {
         renderer.autoClear = false;
@@ -161,8 +161,8 @@ export class MainObjectMRTPass extends BasePass {
         }
       }
 
-      // Restore background
-      if (!this.renderBackground && savedBackground !== null) {
+      // Restore background (only if we disabled it)
+      if (shouldDisableBackground && savedBackground !== null) {
         scene.background = savedBackground;
       }
 

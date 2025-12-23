@@ -126,10 +126,10 @@ vec3 computeBaseColor(float rho, float phase, vec3 pos) {
 }
 
 // Compute emission with ambient lighting only (for fast mode)
-// Same pattern as Mandelbulb: col = surfaceColor * uAmbientColor * uAmbientIntensity
+// Same pattern as Mandelbulb: col = surfaceColor * uAmbientColor * uAmbientIntensity * uAmbientEnabled
 vec3 computeEmission(float rho, float phase, vec3 pos) {
     vec3 baseColor = computeBaseColor(rho, phase, pos);
-    vec3 col = baseColor * uAmbientColor * uAmbientIntensity;
+    vec3 col = baseColor * uAmbientColor * uAmbientIntensity * uAmbientEnabled;
 
 #ifdef USE_NODAL
     if (uNodalEnabled) {
@@ -157,7 +157,7 @@ vec3 computeEmissionLit(float rho, float phase, vec3 p, vec3 gradient, vec3 view
     }
 
     // Start with ambient (same as Mandelbulb line 53)
-    vec3 col = surfaceColor * uAmbientColor * uAmbientIntensity;
+    vec3 col = surfaceColor * uAmbientColor * uAmbientIntensity * uAmbientEnabled;
 
     // Normalize gradient as pseudo-normal
     float gradLen = length(gradient);

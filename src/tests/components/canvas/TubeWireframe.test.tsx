@@ -70,7 +70,8 @@ vi.mock('@/stores/appearanceStore', () => ({
 vi.mock('@/stores/lightingStore', () => ({
   useLightingStore: {
     getState: () => ({
-      ambientIntensity: 0.01,
+      ambientEnabled: true,
+      ambientIntensity: 0.3,
       ambientColor: '#FFFFFF',
       specularIntensity: 0.5,
       shininess: 30,

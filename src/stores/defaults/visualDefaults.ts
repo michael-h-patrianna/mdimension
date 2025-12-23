@@ -157,7 +157,8 @@ export const DEFAULT_LIGHT_ENABLED = true
 export const DEFAULT_LIGHT_COLOR = '#FFFFFF'
 export const DEFAULT_LIGHT_HORIZONTAL_ANGLE = 145
 export const DEFAULT_LIGHT_VERTICAL_ANGLE = 30
-export const DEFAULT_AMBIENT_INTENSITY = 0.01
+export const DEFAULT_AMBIENT_ENABLED = true
+export const DEFAULT_AMBIENT_INTENSITY = 0.15
 export const DEFAULT_AMBIENT_COLOR = '#FFFFFF'
 export const DEFAULT_SPECULAR_INTENSITY = 0.8
 export const DEFAULT_SHOW_LIGHT_INDICATOR = false
@@ -170,6 +171,7 @@ export const DEFAULT_TONE_MAPPING_ALGORITHM: ToneMappingAlgorithm = 'aces'
 export const DEFAULT_EXPOSURE = 0.7
 
 // Multi-light system
+//export const DEFAULT_LIGHTS = [createDefaultLight(), createDefaultSpotLight()]
 export const DEFAULT_LIGHTS = [createDefaultLight(), createDefaultSpotLight()]
 export const DEFAULT_SELECTED_LIGHT_ID: string | null = null
 export const DEFAULT_TRANSFORM_MODE: TransformMode = 'translate'
@@ -311,8 +313,8 @@ export type SkyboxSelection =
   | 'procedural_starfield'
 
 export const DEFAULT_SKYBOX_ENABLED = true
-export const DEFAULT_SKYBOX_TEXTURE: SkyboxTexture = 'none'
-export const DEFAULT_SKYBOX_SELECTION: SkyboxSelection = 'none'
+export const DEFAULT_SKYBOX_TEXTURE: SkyboxTexture = 'space_blue'
+export const DEFAULT_SKYBOX_SELECTION: SkyboxSelection = 'space_blue'
 export const DEFAULT_SKYBOX_BLUR = 0
 export const DEFAULT_SKYBOX_INTENSITY = 1
 export const DEFAULT_SKYBOX_ROTATION = 0

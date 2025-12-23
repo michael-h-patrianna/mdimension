@@ -172,3 +172,142 @@ Screenshot comparison with `screenshots/Interstellar.jpg` confirms:
 - ✅ Photon ring glow around horizon
 - ✅ Dark space background
 - ✅ Gravitational lensing visible
+
+---
+
+## Investigation (2025-12-23) - Iteration 4: Complete Black Screen
+
+### Problem Statement
+Black hole renders as 100% black pixels after 5 seconds. No accretion disk, no photon shell, nothing visible.
+
+### Attempts and Results
+
+#### Attempt 1: Check for leftover debug code
+- **Finding**: Found debug code at lines 388-406 in `main.glsl.ts` that was overriding output:
+  ```glsl
+  // DEBUG: Output diagnostic based on path taken
+  accum.color = debugColor;
+  accum.transmittance = 0.0;
+  return finalizeAccumulation(accum, pos, rayDir);
+  ```
+- **Action**: Removed the debug block
+- **Result**: Still 100% black - NOT THE ROOT CAUSE
+
+#### Attempt 2: Add constant color debug before raymarch
+- **Action**: Added `gColor = vec4(1.0, 0.0, 1.0, 1.0);` (MAGENTA) at start of main(), before calling raymarchBlackHole()
+- **Result**: MAGENTA IS VISIBLE when zoomed out
+- **Insight**: The mesh IS rendering, shader IS compiling, MRT outputs ARE reaching the screen
+
+#### Attempt 3: Investigate camera position
+- **Finding**: Camera at [0, 2.5, 6] (~6.5 units from origin)
+- **Finding**: Black hole box size = farRadius(35) × horizonRadius(2) × 2.2 × scale(0.25) = ~38.5 units
+- **Finding**: Camera is INSIDE the bounding box
+- **Finding**: Mesh uses `side={THREE.BackSide}` - renders inside faces
+- **Hypothesis**: Camera inside box = back faces behind camera = nothing visible
+- **User Feedback**: "Zooming out doesn't fix the actual black hole rendering" - NOT THE ROOT CAUSE
+
+#### Attempt 4: Add debug inside raymarchBlackHole
+- **Action**: Added debug at start of raymarchBlackHole to return YELLOW/CYAN immediately
+- **Result**: Still 100% black
+- **Contradiction**: Constant output before function works, but debug inside function returns black
+
+### Current Status: UNRESOLVED
+
+The issue is that `raymarchBlackHole()` returns zero color even with debug code that should return non-zero. Possible causes:
+
+1. **Function call/return path broken** - Unlikely given GLSL semantics
+2. **Post-processing chain overwriting output** - Needs investigation
+3. **MRT target not being read correctly** - Needs investigation
+4. **Uniforms not set correctly causing early exit** - Needs investigation
+
+### Key Observations
+
+1. Shader compiles successfully (82168 chars for real shader)
+2. TrackedShaderMaterial transitions from PLACEHOLDER to REAL correctly
+3. Mesh geometry renders (constant MAGENTA visible when zoomed out)
+4. But any code path through raymarchBlackHole produces black output
+
+### Files Modified During Investigation
+
+- `src/rendering/shaders/blackhole/main.glsl.ts` - Removed leftover debug code (lines 388-406, 221-233, 491-497)
+
+### Next Steps to Try
+
+1. Check if layer/render pass is actually compositing black hole output
+2. Add debug AFTER raymarchBlackHole call to verify result.color value
+3. Check if uMaxSteps or other uniforms are zero
+4. Verify the render graph is including MAIN_OBJECT layer in final composite
+
+---
+
+## Investigation (2025-12-23) - Iteration 5: Continued Black Screen
+
+### Key Differences Between `render-graph` and `main` Branch
+
+Compared `main.glsl.ts` using `git diff main`:
+
+1. **Debug block with early return was present** (lines 455-463):
+   ```glsl
+   // DEBUG: Show accumulated color intensity as grayscale to diagnose
+   float colorMag = length(result.color.rgb);
+   float alphaMag = result.color.a;
+   gColor = vec4(min(colorMag, 1.0), alphaMag, result.hasHit, 1.0);
+   gNormal = vec4(0.5, 0.5, 1.0, 1.0);
+   gPosition = vec4(0.0);
+   return;  // <-- EARLY RETURN before actual color output!
+   ```
+   - **Action**: Removed this debug block
+   - **Result**: Still 100% black
+
+2. **Horizon color reset was removed** (good change):
+   ```glsl
+   // BEFORE (main branch):
+   accum.color = vec3(0.0);  // Reset accumulated color on horizon hit
+
+   // AFTER (render-graph):
+   // Note: We intentionally do NOT set accum.color = vec3(0.0) here
+   ```
+
+3. **NaN guards added to disk-volumetric.glsl.ts** (good change):
+   - Added `max(innerR, 0.001)` guards to prevent division by zero
+   - These are defensive fixes, not the root cause
+
+### Architecture Difference: PostProcessingV2
+
+The `render-graph` branch uses a completely new rendering pipeline:
+- **Main branch**: `PostProcessing.tsx` (single EffectComposer)
+- **Render-graph branch**: `PostProcessingV2.tsx` (RenderGraph-based)
+
+Key components in PostProcessingV2:
+- `ScenePass` - renders layers [MAIN_OBJECT, ENVIRONMENT, SKYBOX] to SCENE_COLOR
+- `MainObjectMRTPass` - renders layer [MAIN_OBJECT] to MAIN_OBJECT_MRT (3 attachments)
+- Black hole mesh is on `RENDER_LAYERS.MAIN_OBJECT` (layer 1)
+
+### Current State
+
+- Camera position restored to `[0, 2.5, 6]`
+- Debug block removed from shader
+- Test still shows 100% black pixels
+- Added constant MAGENTA debug at start of main() to verify shader execution
+
+### Files Currently Modified (Uncommitted)
+
+- `src/rendering/shaders/blackhole/main.glsl.ts` - Has debug MAGENTA output at start of main()
+- `src/App.tsx` - Camera at [0, 2.5, 6]
+
+### Remaining Hypotheses
+
+1. **RenderGraph compositing issue**: MainObjectMRTPass output may not be composited into final image
+2. **Layer visibility**: Camera layers may not include MAIN_OBJECT during certain passes
+3. **MRT attachment mismatch**: Shader outputs to gColor but pass reads wrong attachment
+4. **Volumetric disk emission returning zero**: getDiskEmission may return 0 due to uniforms
+
+### Uniforms Verified (from test logs)
+
+```
+uHorizonRadius: 2
+uFarRadius: 35
+boundingSphere: 70
+fragmentShaderLength: 80880 (real shader compiled)
+```
+

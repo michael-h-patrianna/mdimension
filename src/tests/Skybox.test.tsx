@@ -66,9 +66,9 @@ describe('SkyboxSlice', () => {
     useEnvironmentStore.getState().resetSkyboxSettings();
 
     const state = useEnvironmentStore.getState();
-    // Default skybox selection is 'none' per visualDefaults (DEFAULT_SKYBOX_SELECTION)
-    expect(state.skyboxSelection).toBe('none');
-    expect(state.skyboxEnabled).toBe(false); // 'none' selection disables skybox
+    // Default skybox selection is 'space_blue' per visualDefaults (DEFAULT_SKYBOX_SELECTION)
+    expect(state.skyboxSelection).toBe('space_blue');
+    expect(state.skyboxEnabled).toBe(true); // 'space_blue' selection enables skybox
     expect(state.skyboxMode).toBe('classic');
   });
 });

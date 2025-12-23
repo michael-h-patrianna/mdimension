@@ -38,9 +38,10 @@ export const LightList: React.FC<LightListProps> = memo(function LightList({
     removeLight: state.removeLight,
     updateLight: state.updateLight,
     selectLight: state.selectLight,
+    ambientEnabled: state.ambientEnabled,
     ambientIntensity: state.ambientIntensity,
     ambientColor: state.ambientColor,
-    setAmbientIntensity: state.setAmbientIntensity,
+    setAmbientEnabled: state.setAmbientEnabled,
   }));
   const {
     lights,
@@ -49,9 +50,10 @@ export const LightList: React.FC<LightListProps> = memo(function LightList({
     removeLight,
     updateLight,
     selectLight,
+    ambientEnabled,
     ambientIntensity,
     ambientColor,
-    setAmbientIntensity,
+    setAmbientEnabled,
   } = useLightingStore(lightingSelector);
 
   // Create a virtual ambient light entry for display in the list
@@ -61,22 +63,18 @@ export const LightList: React.FC<LightListProps> = memo(function LightList({
     name: 'Ambient Light',
     color: ambientColor,
     intensity: ambientIntensity,
-    enabled: ambientIntensity > 0,
+    enabled: ambientEnabled,
     position: [0, 0, 0],
     rotation: [0, 0, 0],
     coneAngle: 45,
     penumbra: 0.5,
     range: 10,
     decay: 2,
-  }), [ambientColor, ambientIntensity]);
+  }), [ambientColor, ambientIntensity, ambientEnabled]);
 
-  // Toggle ambient light by setting intensity to 0 or restoring to 1
+  // Toggle ambient light using the enabled boolean (consistent with other lights)
   const handleAmbientToggle = () => {
-    if (ambientIntensity > 0) {
-      setAmbientIntensity(0);
-    } else {
-      setAmbientIntensity(1);
-    }
+    setAmbientEnabled(!ambientEnabled);
   };
 
   const canAddLight = lights.length < MAX_LIGHTS;

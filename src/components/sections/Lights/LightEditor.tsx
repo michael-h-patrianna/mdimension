@@ -194,7 +194,7 @@ export const LightEditor: React.FC<LightEditorProps> = memo(function LightEditor
             <Slider
               label="Intensity"
               min={0}
-              max={3}
+              max={1}
               step={0.05}
               value={ambientIntensity}
               onChange={setAmbientIntensity}

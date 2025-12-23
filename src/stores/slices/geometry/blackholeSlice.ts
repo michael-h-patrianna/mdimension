@@ -292,16 +292,22 @@ export const createBlackHoleSlice: StateCreator<ExtendedObjectSlice, [], [], Bla
   },
 
   setBlackHoleDiskInnerRadiusMul: (mul) => {
-    const clamped = Math.max(0, Math.min(10, mul))
-    set((state) => ({
-      blackhole: { ...state.blackhole, diskInnerRadiusMul: clamped },
+    const state = get()
+    // Ensure inner < outer with a minimum gap of 0.1
+    const maxInner = Math.max(0, state.blackhole.diskOuterRadiusMul - 0.1)
+    const clamped = Math.max(0, Math.min(Math.min(10, maxInner), mul))
+    set((s) => ({
+      blackhole: { ...s.blackhole, diskInnerRadiusMul: clamped },
     }))
   },
 
   setBlackHoleDiskOuterRadiusMul: (mul) => {
-    const clamped = Math.max(0.1, Math.min(200, mul))
-    set((state) => ({
-      blackhole: { ...state.blackhole, diskOuterRadiusMul: clamped },
+    const state = get()
+    // Ensure outer > inner with a minimum gap of 0.1
+    const minOuter = state.blackhole.diskInnerRadiusMul + 0.1
+    const clamped = Math.max(Math.max(0.1, minOuter), Math.min(200, mul))
+    set((s) => ({
+      blackhole: { ...s.blackhole, diskOuterRadiusMul: clamped },
     }))
   },
 

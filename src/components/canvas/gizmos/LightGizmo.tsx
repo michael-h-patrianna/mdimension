@@ -11,6 +11,13 @@
  * - Selection highlighting
  * - Click-to-select interaction
  * - Disabled state visualization (30% opacity)
+ *
+ * RENDER LAYER:
+ * This component is rendered on RENDER_LAYERS.DEBUG via LightGizmoManager.
+ * The DEBUG layer is processed by DebugOverlayPass AFTER all post-processing,
+ * which means we can use standard Three.js materials (MeshBasicMaterial,
+ * LineBasicMaterial, ArrowHelper) WITHOUT needing MRT-compatible shaders
+ * that output to gColor/gNormal/gPosition.
  */
 
 import { FRAME_PRIORITY } from '@/rendering/core/framePriorities';
@@ -44,6 +51,9 @@ const MAX_SCALE = 2.0;
 
 /**
  * Point Light Gizmo - Sphere icon
+ *
+ * Uses standard MeshBasicMaterial - no MRT outputs needed because
+ * this renders on DEBUG layer via DebugOverlayPass.
  */
 const PointLightGizmo = memo(function PointLightGizmo({
   light,
@@ -58,9 +68,11 @@ const PointLightGizmo = memo(function PointLightGizmo({
     const color = new THREE.Color(light.color);
     return new THREE.MeshBasicMaterial({
       color,
-      transparent: !light.enabled,
+      transparent: true,
       opacity: light.enabled ? 1.0 : 0.3,
       wireframe: !isSelected,
+      depthTest: false,
+      depthWrite: false,
     });
   }, [light.color, light.enabled, isSelected]);
 
@@ -79,7 +91,7 @@ const PointLightGizmo = memo(function PointLightGizmo({
         <Billboard>
           <mesh>
             <ringGeometry args={[1.2, 1.4, 32]} />
-            <meshBasicMaterial color="#00ff00" transparent opacity={0.8} side={THREE.DoubleSide} />
+            <meshBasicMaterial color="#00ff00" transparent opacity={0.8} side={THREE.DoubleSide} depthTest={false} depthWrite={false} />
           </mesh>
         </Billboard>
       )}
@@ -89,6 +101,9 @@ const PointLightGizmo = memo(function PointLightGizmo({
 
 /**
  * Directional Light Gizmo - Sun with arrow
+ *
+ * Uses standard MeshBasicMaterial and ArrowHelper - no MRT outputs needed
+ * because this renders on DEBUG layer via DebugOverlayPass.
  */
 const DirectionalLightGizmo = memo(function DirectionalLightGizmo({
   light,
@@ -106,8 +121,10 @@ const DirectionalLightGizmo = memo(function DirectionalLightGizmo({
     const color = new THREE.Color(light.color);
     return new THREE.MeshBasicMaterial({
       color,
-      transparent: !light.enabled,
+      transparent: true,
       opacity: light.enabled ? 1.0 : 0.3,
+      depthTest: false,
+      depthWrite: false,
     });
   }, [light.color, light.enabled]);
 
@@ -152,7 +169,7 @@ const DirectionalLightGizmo = memo(function DirectionalLightGizmo({
         <Billboard>
           <mesh>
             <ringGeometry args={[1.2, 1.4, 32]} />
-            <meshBasicMaterial color="#00ff00" transparent opacity={0.8} side={THREE.DoubleSide} />
+            <meshBasicMaterial color="#00ff00" transparent opacity={0.8} side={THREE.DoubleSide} depthTest={false} depthWrite={false} />
           </mesh>
         </Billboard>
       )}
@@ -162,6 +179,9 @@ const DirectionalLightGizmo = memo(function DirectionalLightGizmo({
 
 /**
  * Spot Light Gizmo - Cone wireframe
+ *
+ * Uses standard MeshBasicMaterial - no MRT outputs needed because
+ * this renders on DEBUG layer via DebugOverlayPass.
  */
 const SpotLightGizmo = memo(function SpotLightGizmo({
   light,
@@ -186,6 +206,8 @@ const SpotLightGizmo = memo(function SpotLightGizmo({
       transparent: true,
       opacity: light.enabled ? 0.5 : 0.15,
       wireframe: true,
+      depthTest: false,
+      depthWrite: false,
     });
   }, [light.color, light.enabled]);
 
@@ -212,8 +234,10 @@ const SpotLightGizmo = memo(function SpotLightGizmo({
         <sphereGeometry args={[0.3, 8, 8]} />
         <meshBasicMaterial
           color={light.color}
-          transparent={!light.enabled}
+          transparent
           opacity={light.enabled ? 1.0 : 0.3}
+          depthTest={false}
+          depthWrite={false}
         />
       </mesh>
       {/* Cone wireframe */}
@@ -225,7 +249,7 @@ const SpotLightGizmo = memo(function SpotLightGizmo({
         <Billboard>
           <mesh>
             <ringGeometry args={[0.5, 0.6, 32]} />
-            <meshBasicMaterial color="#00ff00" transparent opacity={0.8} side={THREE.DoubleSide} />
+            <meshBasicMaterial color="#00ff00" transparent opacity={0.8} side={THREE.DoubleSide} depthTest={false} depthWrite={false} />
           </mesh>
         </Billboard>
       )}

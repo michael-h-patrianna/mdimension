@@ -54,8 +54,10 @@ void main() {
     vec2 ndc = screenUV * 2.0 - 1.0;
     vec4 farPointClip = vec4(ndc, 1.0, 1.0);
     vec4 farPointWorld = uInverseViewProjectionMatrix * farPointClip;
-    // Guard against w=0
-    float farW = abs(farPointWorld.w) < 0.0001 ? 0.0001 : farPointWorld.w;
+    // Guard against w=0 while preserving sign
+    float farW = abs(farPointWorld.w) < 0.0001
+      ? (farPointWorld.w >= 0.0 ? 0.0001 : -0.0001)
+      : farPointWorld.w;
     farPointWorld /= farW;
     worldRayDir = normalize(farPointWorld.xyz - uCameraPosition);
     #else
@@ -165,8 +167,10 @@ void main() {
     vec3 entryPoint = ro + rd * depthT;
     vec4 worldEntryPos = uModelMatrix * vec4(entryPoint, 1.0);
     vec4 clipPos = uProjectionMatrix * uViewMatrix * worldEntryPos;
-    // Guard against clipPos.w = 0
-    float clipW = abs(clipPos.w) < 0.0001 ? 0.0001 : clipPos.w;
+    // Guard against clipPos.w = 0 while preserving sign
+    float clipW = abs(clipPos.w) < 0.0001
+      ? (clipPos.w >= 0.0 ? 0.0001 : -0.0001)
+      : clipPos.w;
     gl_FragDepth = clamp((clipPos.z / clipW) * 0.5 + 0.5, 0.0, 1.0);
 
     // Output
@@ -327,7 +331,7 @@ void main() {
     }
 
     // Lighting
-    vec3 col = surfaceColor * uAmbientColor * uAmbientIntensity;
+    vec3 col = surfaceColor * uAmbientColor * uAmbientIntensity * uAmbientEnabled;
     vec3 viewDir = -rd;
     float totalNdotL = 0.0;
 
@@ -390,8 +394,10 @@ void main() {
     // Depth
     vec4 worldHitPos = uModelMatrix * vec4(p, 1.0);
     vec4 clipPos = uProjectionMatrix * uViewMatrix * worldHitPos;
-    // Guard against clipPos.w = 0
-    float clipW2 = abs(clipPos.w) < 0.0001 ? 0.0001 : clipPos.w;
+    // Guard against clipPos.w = 0 while preserving sign
+    float clipW2 = abs(clipPos.w) < 0.0001
+      ? (clipPos.w >= 0.0 ? 0.0001 : -0.0001)
+      : clipPos.w;
     gl_FragDepth = clamp((clipPos.z / clipW2) * 0.5 + 0.5, 0.0, 1.0);
 
     float alpha = calculateOpacityAlpha(hitT, tSphere.x, tFar + 1.0);

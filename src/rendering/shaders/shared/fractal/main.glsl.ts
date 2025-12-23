@@ -51,7 +51,7 @@ void main() {
     vec3 surfaceColor = getColorByAlgorithm(t, n, baseHSL, p);
     surfaceColor *= (0.3 + 0.7 * ao);
 
-    vec3 col = surfaceColor * uAmbientColor * uAmbientIntensity;
+    vec3 col = surfaceColor * uAmbientColor * uAmbientIntensity * uAmbientEnabled;
     vec3 viewDir = -rd;
     float totalNdotL = 0.0;
 
@@ -139,8 +139,10 @@ void main() {
 
     vec4 worldHitPos = uModelMatrix * vec4(p, 1.0);
     vec4 clipPos = uProjectionMatrix * uViewMatrix * worldHitPos;
-    // Guard against clipPos.w = 0
-    float clipW = abs(clipPos.w) < 0.0001 ? 0.0001 : clipPos.w;
+    // Guard against clipPos.w = 0 while preserving sign
+    float clipW = abs(clipPos.w) < 0.0001
+      ? (clipPos.w >= 0.0 ? 0.0001 : -0.0001)
+      : clipPos.w;
     gl_FragDepth = clamp((clipPos.z / clipW) * 0.5 + 0.5, 0.0, 1.0);
 
     float alpha = calculateOpacityAlpha(d, sphereEntry, maxDist);

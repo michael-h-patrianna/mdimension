@@ -112,7 +112,9 @@ vec3 applyLensingChromatic(sampler2D sceneTexture, vec2 uv, vec2 displacement, f
 float einsteinRingBoost(float r, float ringRadius, float ringWidth) {
   // Gaussian profile centered on ring radius
   float diff = abs(r - ringRadius);
-  float falloff = exp(-diff * diff / (ringWidth * ringWidth * 2.0));
+  // Guard against zero ringWidth to prevent NaN
+  float safeWidth = max(ringWidth, 0.001);
+  float falloff = exp(-diff * diff / (safeWidth * safeWidth * 2.0));
 
   // Return boost factor (1.0 = no boost)
   return 1.0 + falloff * 0.5;

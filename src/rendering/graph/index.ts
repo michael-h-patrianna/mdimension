@@ -18,6 +18,7 @@
 export { BasePass } from './BasePass'
 export { GPUTimer, type GPUTimingResult } from './GPUTimer'
 export { GraphCompiler } from './GraphCompiler'
+export { getAttachmentCount, isMRTTarget, MRTStateManager } from './MRTStateManager'
 export { RenderGraph } from './RenderGraph'
 export { ResourcePool } from './ResourcePool'
 

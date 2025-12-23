@@ -23,12 +23,13 @@ export const motionBlurBlock = /* glsl */ `
  * @returns Normalized velocity factor [0, 1]
  */
 float orbitalVelocityFactor(float radius, float innerR, float outerR) {
-  // Avoid division by zero
-  float r = max(radius, innerR * 0.5);
+  // Avoid division by zero - ensure both innerR and r have minimum values
+  float safeInnerR = max(innerR, 0.001);
+  float r = max(radius, safeInnerR * 0.5);
 
   // Keplerian velocity: v ∝ 1/√r
   // Normalize so inner edge = 1.0, outer edge ≈ 0.35 (for typical disk ratio)
-  float v = sqrt(innerR / r);
+  float v = sqrt(safeInnerR / r);
 
   // Apply radial falloff (no blur outside disk)
   float radialMask = smoothstep(innerR * 0.8, innerR, radius) *

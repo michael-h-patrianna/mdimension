@@ -188,7 +188,9 @@ vec3 manifoldColor(vec3 pos3d, float ndRadius, float density, float time) {
   float outerR = uHorizonRadius * uDiskOuterRadiusMul;
 
   // Normalized radial position [0, 1]
-  float radialT = clamp((r - innerR) / (outerR - innerR), 0.0, 1.0);
+  // Guard against division by zero when innerR >= outerR
+  float radialRange = max(outerR - innerR, 0.001);
+  float radialT = clamp((r - innerR) / radialRange, 0.0, 1.0);
 
   vec3 color = uBaseColor;
 

@@ -491,6 +491,7 @@ describe('LightingSource', () => {
     useLightingStore.setState({
       version: 0,
       lights: [],
+      ambientEnabled: true,
       ambientColor: '#FFFFFF',
       ambientIntensity: 0.3,
     })
@@ -524,6 +525,7 @@ describe('LightingSource', () => {
       source.updateFromStore({
         lights: [],
         storeVersion: 1,
+        ambientEnabled: true,
         ambientColor: '#FF0000',
         ambientIntensity: 0.5,
       })
@@ -538,6 +540,7 @@ describe('LightingSource', () => {
       source.updateFromStore({
         lights: [],
         storeVersion: 1,
+        ambientEnabled: true,
         ambientColor: '#FFFFFF',
         ambientIntensity: 0.5,
       })
@@ -550,6 +553,7 @@ describe('LightingSource', () => {
       source.updateFromStore({
         lights: [],
         storeVersion: 1,
+        ambientEnabled: true,
         ambientColor: '#FFFFFF',
         ambientIntensity: 0.3,
       })
@@ -559,6 +563,7 @@ describe('LightingSource', () => {
       source.updateFromStore({
         lights: [],
         storeVersion: 1,
+        ambientEnabled: true,
         ambientColor: '#FFFFFF',
         ambientIntensity: 0.3,
       })
@@ -574,6 +579,7 @@ describe('LightingSource', () => {
       useLightingStore.setState({
         version: 5,
         lights: [],
+        ambientEnabled: true,
         ambientColor: '#FF0000',
         ambientIntensity: 0.4,
       })
@@ -590,6 +596,7 @@ describe('LightingSource', () => {
       useLightingStore.setState({
         version: 1,
         lights: [],
+        ambientEnabled: true,
         ambientColor: '#FFFFFF',
         ambientIntensity: 0.3,
       })
@@ -611,6 +618,7 @@ describe('LightingSource', () => {
       source.updateFromStore({
         lights: [],
         storeVersion: 5,
+        ambientEnabled: true,
         ambientColor: '#FF0000',
         ambientIntensity: 0.8,
       })
@@ -627,12 +635,14 @@ describe('LightingSource', () => {
       source.updateFromStore({
         lights: [],
         storeVersion: 1,
+        ambientEnabled: true,
         ambientColor: '#FFFFFF',
         ambientIntensity: 0.6,
       })
 
       const material = new THREE.ShaderMaterial({
         uniforms: {
+          uAmbientEnabled: { value: 0 },
           uAmbientIntensity: { value: 0 },
           // Note: uSpecularIntensity now in PBRSource
           uNumLights: { value: -1 },

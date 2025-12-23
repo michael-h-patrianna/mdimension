@@ -200,19 +200,21 @@ float getDiskDensity(vec3 pos, float time) {
     float rDensity = smoothstep(innerR * DISK_INNER_EDGE_SOFTNESS, innerR, r) * (1.0 - smoothstep(outerR * DISK_OUTER_EDGE_SOFTNESS, outerR * DISK_OUTER_FADE_END, r));
     
     // Inverse square falloff for bulk density (denser inside)
-    rDensity *= 2.0 / (pow(r/innerR, 2.0) + 0.1);
+    // Guard against innerR being zero to prevent NaN
+    float safeInnerR = max(innerR, 0.001);
+    rDensity *= 2.0 / (pow(r / safeInnerR, 2.0) + 0.1);
 
     // 4. Volumetric Detail (The "Interstellar" Look)
-    
+
     // Coordinate mapping for "streak" texture
     // Map (x,y,z) -> (radius, angle, height)
     float angle = atan(pos.z, pos.x);
-    
+
     // Differential rotation: Inner parts move faster (Keplerian)
     // Omega ~ r^(-1.5)
-    // Guard against r being zero or very small (use innerR as minimum safe radius)
-    float safeR = max(r, innerR * 0.1);
-    float rotSpeed = 5.0 * pow(innerR / safeR, 1.5);
+    // Guard against r and innerR being zero to prevent NaN
+    float safeR = max(r, max(safeInnerR * 0.1, 0.001));
+    float rotSpeed = 5.0 * pow(safeInnerR / safeR, 1.5);
     float phase = angle + time * rotSpeed;
     
     // Streak coordinates: High freq in R, Low freq in Angle
@@ -267,9 +269,10 @@ vec3 getDiskEmission(vec3 pos, float density, float time, vec3 rayDir, vec3 norm
 
     // Temperature Profile
     // T ~ r^(-3/4) standard accretion disk (Shakura-Sunyaev thin disk)
-    // Guard against r being smaller than innerR (clamp to innerR for safe ratio)
-    float safeR = max(r, innerR);
-    float tempRatio = pow(innerR / safeR, TEMP_FALLOFF_EXPONENT);
+    // Guard against both innerR and r being zero to prevent NaN
+    float safeInnerR = max(innerR, 0.001);
+    float safeR = max(r, safeInnerR);
+    float tempRatio = pow(safeInnerR / safeR, TEMP_FALLOFF_EXPONENT);
 
     // Get base color
     vec3 color;

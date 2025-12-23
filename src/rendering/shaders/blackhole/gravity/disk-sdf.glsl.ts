@@ -162,7 +162,9 @@ vec3 shadeDiskHit(vec3 hitPos, vec3 rayDir, int hitIndex, float time) {
   float outerR = uHorizonRadius * uDiskOuterRadiusMul;
 
   // Normalized radial position [0, 1] (0 = inner edge, 1 = outer edge)
-  float radialT = clamp((r - innerR) / (outerR - innerR), 0.0, 1.0);
+  // Guard against division by zero when innerR >= outerR (invalid but possible configuration)
+  float radialRange = max(outerR - innerR, 0.001);
+  float radialT = clamp((r - innerR) / radialRange, 0.0, 1.0);
 
   // Compute normal early if needed for lighting or coloring (ALGO_NORMAL)
   vec3 normal = vec3(0.0, 1.0, 0.0);

@@ -18,7 +18,6 @@ describe('lightingStore', () => {
     const state = useLightingStore.getState();
     expect(state.lights.length).toBeGreaterThan(0);
     expect(state.transformMode).toBe(DEFAULT_TRANSFORM_MODE);
-    expect(state.showLightGizmos).toBe(false);
   });
 
   it('should add a new light', () => {

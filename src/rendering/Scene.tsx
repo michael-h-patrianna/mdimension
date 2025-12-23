@@ -10,6 +10,7 @@
  * - TemporalDepthProvider: Scopes temporal depth state to this scene
  */
 
+import { DebugLayerGroup } from '@/components/canvas/DebugLayerGroup'
 import { useSmoothResizing } from '@/hooks/useSmoothResizing'
 import { useViewportOffset } from '@/hooks/useViewportOffset'
 import { useWebGLCleanup } from '@/hooks/useWebGLCleanup'
@@ -145,8 +146,12 @@ export const Scene = React.memo(function Scene({
         gridSpacing={groundGridSpacing}
       />
 
-      {/* Axis helper for orientation reference */}
-      {showAxisHelper && <axesHelper args={[5]} />}
+      {/* Axis helper for orientation reference (DEBUG layer for MRT compatibility) */}
+      {showAxisHelper && (
+        <DebugLayerGroup>
+          <axesHelper args={[5]} />
+        </DebugLayerGroup>
+      )}
 
       {/* Unified renderer for all object types */}
       <UnifiedRenderer

@@ -28,6 +28,7 @@
 import * as THREE from 'three'
 
 import { BasePass } from '../BasePass'
+import { isMRTTarget } from '../MRTStateManager'
 import type { RenderContext, RenderPassConfig } from '../types'
 
 /**
@@ -132,7 +133,12 @@ export class NormalPass extends BasePass {
 
     // Save scene state
     const savedOverrideMaterial = scene.overrideMaterial
-    const savedBackground = !this.renderBackground ? scene.background : null
+
+    // MRT SAFETY: Always disable background when rendering to MRT targets.
+    // Three.js's internal skybox shader only outputs to location 0.
+    const isMRT = isMRTTarget(target)
+    const shouldDisableBackground = !this.renderBackground || isMRT
+    const savedBackground = shouldDisableBackground ? scene.background : null
 
     // Save camera layers if filtering
     if (this.layers !== null) {
@@ -150,12 +156,12 @@ export class NormalPass extends BasePass {
     // Override with normal material
     scene.overrideMaterial = this.normalMaterial
 
-    // Disable background if requested
-    if (!this.renderBackground) {
+    // Disable background for MRT safety or if explicitly requested
+    if (shouldDisableBackground) {
       scene.background = null
     }
 
-    // Render normals
+    // Render normals - MRTStateManager automatically configures drawBuffers via patched setRenderTarget
     renderer.setRenderTarget(target)
     renderer.clear()
     renderer.render(scene, camera)
@@ -163,7 +169,7 @@ export class NormalPass extends BasePass {
     // Restore state
     scene.overrideMaterial = savedOverrideMaterial
 
-    if (!this.renderBackground && savedBackground !== null) {
+    if (shouldDisableBackground && savedBackground !== null) {
       scene.background = savedBackground
     }
 

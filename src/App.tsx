@@ -37,15 +37,17 @@ import { VideoExportController } from '@/rendering/controllers/VideoExportContro
 import { ContextEventHandler } from '@/rendering/core/ContextEventHandler';
 import { UniformLifecycleController } from '@/rendering/core/UniformLifecycleController';
 import { VisibilityHandler } from '@/rendering/core/VisibilityHandler';
+import { initializeGlobalMRT } from '@/rendering/graph/MRTStateManager';
 import { Scene } from '@/rendering/Scene';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useLightingStore } from '@/stores/lightingStore';
 import { useUIStore } from '@/stores/uiStore';
 import { RECOVERY_STATE_KEY, RECOVERY_STATE_MAX_AGE } from '@/stores/webglContextStore';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, type RootState } from '@react-three/fiber';
+import * as THREE from 'three';
 import { LazyMotion, domMax } from 'motion/react';
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 
 /**
  * Extract 3D positions from N-D vertices for ground plane bounds calculation.
@@ -175,6 +177,21 @@ function AppContent() {
     selectLight(null);
   };
 
+  // ==========================================================================
+  // CRITICAL: Initialize MRT state management on Canvas creation
+  // ==========================================================================
+  // This runs BEFORE any child component mounts, ensuring the renderer's
+  // setRenderTarget is patched before any rendering occurs.
+  // Without this, CubeCamera.update() in ProceduralSkyboxCapture would render
+  // to MRT targets before drawBuffers is properly configured, causing
+  // GL_INVALID_OPERATION: Active draw buffers with missing fragment shader outputs
+  const handleCanvasCreated = useCallback((state: RootState) => {
+    initializeGlobalMRT(state.gl);
+    if (import.meta.env.DEV) {
+      console.log('[App] Canvas created, MRT state manager initialized');
+    }
+  }, []);
+
   return (
     <EditorLayout>
       <div style={{ position: 'relative', width: '100%', height: '100%' }}>
@@ -188,11 +205,22 @@ function AppContent() {
               position: [0, 2.5, 6], // Closer angled view for prominent Interstellar look
               fov: 60,
             }}
+            raycaster={{
+              // Enable DEBUG layer for raycasting so gizmos on layer 4 are interactive.
+              // The raycaster's layers determine which objects receive pointer events.
+              // By default only layer 0 is enabled; we add layer 4 (DEBUG) for gizmo interaction.
+              layers: (() => {
+                const layers = new THREE.Layers();
+                layers.enableAll(); // Enable all layers for comprehensive event handling
+                return layers;
+              })(),
+            }}
             shadows="soft"
             flat
             gl={{ alpha: false, antialias: false, preserveDrawingBuffer: true }}
             style={{ background: backgroundColor }}
             onPointerMissed={handlePointerMissed}
+            onCreated={handleCanvasCreated}
           >
             {/* WebGL Context Management */}
             <ContextEventHandler />

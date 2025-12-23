@@ -175,6 +175,12 @@ export function useBlackHoleUniforms() {
       uPulseSpeed: { value: 0.3 },
       uPulseAmount: { value: 0.2 },
 
+      // Motion blur
+      uMotionBlurEnabled: { value: false },
+      uMotionBlurStrength: { value: 0.5 },
+      uMotionBlurSamples: { value: 4 },
+      uMotionBlurRadialFalloff: { value: 1.0 },
+
       // Slice animation (for trueND mode)
       uSliceSpeed: { value: 0.02 },
       uSliceAmplitude: { value: 0.3 },

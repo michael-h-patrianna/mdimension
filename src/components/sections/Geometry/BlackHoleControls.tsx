@@ -13,6 +13,7 @@
  */
 
 import { useShallow } from 'zustand/react/shallow';
+import { Select, type SelectOption } from '@/components/ui/Select';
 import { Slider } from '@/components/ui/Slider';
 import { Section } from '@/components/sections/Section';
 import { type BlackHoleVisualPreset } from '@/lib/geometry/extended/types';
@@ -34,12 +35,22 @@ export interface BlackHoleControlsProps {
 /**
  * Visual preset options for dropdown
  */
-const visualPresetOptions: Array<{ value: BlackHoleVisualPreset; label: string; description: string }> = [
-  { value: 'interstellar', label: 'Interstellar', description: 'Movie-accurate thin disk with strong lensing' },
-  { value: 'cosmic', label: 'Cosmic', description: 'Thicker volumetric manifold with softer glow' },
-  { value: 'ethereal', label: 'Ethereal', description: 'Dreamlike thick field with intense glow' },
-  { value: 'custom', label: 'Custom', description: 'Your current settings' },
+const visualPresetOptions: SelectOption<BlackHoleVisualPreset>[] = [
+  { value: 'interstellar', label: 'Interstellar' },
+  { value: 'cosmic', label: 'Cosmic' },
+  { value: 'ethereal', label: 'Ethereal' },
+  { value: 'custom', label: 'Custom' },
 ];
+
+/**
+ * Descriptions for visual presets (shown below select)
+ */
+const presetDescriptions: Record<BlackHoleVisualPreset, string> = {
+  interstellar: 'Movie-accurate thin disk with strong lensing',
+  cosmic: 'Thicker volumetric manifold with softer glow',
+  ethereal: 'Dreamlike thick field with intense glow',
+  custom: 'Your current settings',
+};
 
 /**
  * BlackHoleControls component
@@ -95,27 +106,14 @@ export const BlackHoleControls: React.FC<BlackHoleControlsProps> = React.memo(({
       {/* Visual Preset Selection */}
       <Section title="Visual Preset" defaultOpen={true}>
         <div className="space-y-2">
-          <div className="relative">
-            <select
-              className="w-full bg-surface-tertiary border border-white/10 rounded px-2 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent appearance-none cursor-pointer"
-              value={config.visualPreset}
-              onChange={(e) => applyVisualPreset(e.target.value as BlackHoleVisualPreset)}
-              data-testid="blackhole-visual-preset"
-            >
-              {visualPresetOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-text-tertiary">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </div>
-          </div>
-          <p className="text-xs text-text-tertiary pt-1">
-            {visualPresetOptions.find(o => o.value === config.visualPreset)?.description}
+          <Select
+            options={visualPresetOptions}
+            value={config.visualPreset}
+            onChange={applyVisualPreset}
+            data-testid="blackhole-visual-preset"
+          />
+          <p className="text-xs text-text-tertiary">
+            {presetDescriptions[config.visualPreset]}
           </p>
         </div>
       </Section>

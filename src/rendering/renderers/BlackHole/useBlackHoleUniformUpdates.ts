@@ -30,15 +30,6 @@ import {
   RAY_BENDING_MODE_MAP,
 } from './types'
 
-// DEBUG helper
-const debugLog = (event: string, data?: Record<string, unknown>) => {
-  if (typeof window !== 'undefined' && window.__DEBUG_LOG) {
-    window.__DEBUG_LOG('BlackHoleUniforms', event, data)
-  }
-}
-
-// REMOVED: Local priority constant. Now using centralized FRAME_PRIORITY.BLACK_HOLE_UNIFORMS
-
 /**
  * Create color cache for black hole specific colors
  * @returns Object containing cached linear colors
@@ -162,16 +153,10 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
   // PostProcessing's useFrame runs the volumetric render pass.
   useFrame(() => {
     if (!meshRef.current) {
-      debugLog('useFrame: EARLY RETURN - meshRef is null')
       return
     }
     const material = meshRef.current.material as THREE.ShaderMaterial | undefined
     if (!material?.uniforms) {
-      debugLog('useFrame: EARLY RETURN - material or uniforms is null', {
-        hasMaterial: !!material,
-        hasUniforms: !!material?.uniforms,
-        materialType: material?.type,
-      })
       return
     }
 
@@ -186,11 +171,6 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
     const materialChanged = material !== prevMaterialRef.current
     if (materialChanged) {
       prevMaterialRef.current = material
-      debugLog('useFrame: MATERIAL CHANGED - force-syncing uniforms', {
-        materialType: material.type,
-        hasFragmentShader: !!material.fragmentShader,
-        fragmentShaderLength: material.fragmentShader?.length,
-      })
 
       // Force-sync all critical ray bending uniforms that affect bounding sphere and lensing
       const bhState = useExtendedObjectStore.getState().blackhole
@@ -203,12 +183,6 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
       setUniform(u, 'uDiskInnerRadiusMul', bhState.diskInnerRadiusMul)
       setUniform(u, 'uDiskOuterRadiusMul', bhState.diskOuterRadiusMul)
 
-      debugLog('useFrame: SYNCED critical uniforms', {
-        uHorizonRadius: bhState.horizonRadius,
-        uFarRadius: bhState.farRadius,
-        boundingSphere: bhState.farRadius * bhState.horizonRadius,
-      })
-
       // Also check if scene.background is ready and sync envMap state
       const bg = scene.background as THREE.Texture | null
       const isCubeCompatible =
@@ -220,12 +194,6 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
         lastValidEnvMapRef.current = bg
         setUniform(u, 'envMap', bg)
         setUniform(u, 'uEnvMapReady', 1.0)
-        debugLog('useFrame: SYNCED envMap on material change', { envMapReady: 1.0 })
-      } else {
-        debugLog('useFrame: envMap NOT ready on material change', {
-          'scene.background': bg ? 'SET' : 'NULL',
-          mapping: (bg as THREE.Texture)?.mapping,
-        })
       }
     }
 
@@ -238,11 +206,6 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
       material.transparent = isTransparent
       material.depthWrite = !isTransparent
       material.needsUpdate = true
-      debugLog('useFrame: opacity mode changed', {
-        mode: opacitySettings.mode,
-        transparent: isTransparent,
-        depthWrite: !isTransparent,
-      })
     }
 
     // CRITICAL: Update camera and resolution uniforms - required for ray reconstruction
@@ -535,19 +498,6 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
     // Use cached env map if current background is invalid but we have a cached one
     const envMapToUse = isCubeCompatible ? bg : lastValidEnvMapRef.current
 
-    // DEBUG: Log envMap state every frame (limit to first 30 frames)
-    const globalFrame = typeof window !== 'undefined' ? window.__DEBUG_FRAME || 0 : 0
-    if (globalFrame <= 30) {
-      debugLog('useFrame: envMap state', {
-        'scene.background': bg ? 'SET' : 'NULL',
-        'bg.mapping': bg?.mapping,
-        isCubeCompatible,
-        hasCachedEnvMap: !!lastValidEnvMapRef.current,
-        envMapToUse: envMapToUse ? 'AVAILABLE' : 'NULL',
-        uEnvMapReady: envMapToUse ? 1.0 : 0.0,
-      })
-    }
-
     if (envMapToUse) {
       setUniform(u, 'envMap', envMapToUse)
       setUniform(u, 'uEnvMapReady', 1.0)
@@ -558,7 +508,6 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
       if (envMapWasNullRef.current) {
         envMapWasNullRef.current = false
         material.needsUpdate = true
-        debugLog('useFrame: envMap transitioned null→valid, forced material.needsUpdate')
       }
     } else {
       // EnvMap not ready or skybox disabled - shader renders black background
@@ -587,12 +536,18 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
     setUniform(u, 'uPulseSpeed', bhState.pulseSpeed)
     setUniform(u, 'uPulseAmount', bhState.pulseAmount)
 
+    // Motion blur
+    setUniform(u, 'uMotionBlurEnabled', bhState.motionBlurEnabled)
+    setUniform(u, 'uMotionBlurStrength', bhState.motionBlurStrength)
+    setUniform(u, 'uMotionBlurSamples', bhState.motionBlurSamples)
+    setUniform(u, 'uMotionBlurRadialFalloff', bhState.motionBlurRadialFalloff)
+
     // Slice animation (for trueND mode)
     setUniform(u, 'uSliceSpeed', bhState.sliceSpeed)
     setUniform(u, 'uSliceAmplitude', bhState.sliceAmplitude)
 
-    // Update lights and PBR (via UniformManager)
-    UniformManager.applyToMaterial(material, ['lighting', 'pbr-face'])
+    // Note: Lighting and PBR uniforms already applied at line ~301 via UniformManager
+    // ['lighting', 'quality', 'color', 'pbr-face']
 
     // Temporal accumulation uniforms
     // Compute inverse view-projection matrix for ray reconstruction

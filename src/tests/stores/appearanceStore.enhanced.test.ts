@@ -162,9 +162,9 @@ describe('Enhanced Features Stores', () => {
       expect(useLightingStore.getState().ambientIntensity).toBe(0.5);
     });
 
-    it('should clamp ambient intensity to [0, 3]', () => {
+    it('should clamp ambient intensity to [0, 1]', () => {
       useLightingStore.getState().setAmbientIntensity(5);
-      expect(useLightingStore.getState().ambientIntensity).toBe(3);
+      expect(useLightingStore.getState().ambientIntensity).toBe(1);
 
       useLightingStore.getState().setAmbientIntensity(-0.5);
       expect(useLightingStore.getState().ambientIntensity).toBe(0);

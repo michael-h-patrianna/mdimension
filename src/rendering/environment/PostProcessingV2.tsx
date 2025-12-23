@@ -29,6 +29,8 @@ import {
   BufferPreviewPass,
   CinematicPass,
   CopyPass,
+  CubemapCapturePass,
+  DebugOverlayPass,
   DepthPass,
   FXAAPass,
   FilmGrainPass,
@@ -179,11 +181,15 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
   }));
   const ppState = usePostProcessingStore(postProcessingSelector);
 
-  // Store subscriptions - Environment (fog)
-  const fogSelector = useShallow((s: ReturnType<typeof useEnvironmentStore.getState>) => ({
+  // Store subscriptions - Environment (fog, walls, skybox)
+  const envSelector = useShallow((s: ReturnType<typeof useEnvironmentStore.getState>) => ({
     fogEnabled: s.fogEnabled,
+    activeWalls: s.activeWalls,
+    skyboxMode: s.skyboxMode,
+    skyboxEnabled: s.skyboxEnabled,
+    classicCubeTexture: s.classicCubeTexture,
   }));
-  const fogState = useEnvironmentStore(fogSelector);
+  const envState = useEnvironmentStore(envSelector);
 
   // Store subscriptions - Lighting (tone mapping)
   const lightingSelector = useShallow((s: ReturnType<typeof useLightingStore.getState>) => ({
@@ -227,7 +233,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
 
   // Keep latest store states in refs for render graph callbacks
   const ppStateRef = useRef(ppState);
-  const fogStateRef = useRef(fogState);
+  const envStateRef = useRef(envState);
   const uiStateRef = useRef(uiState);
   const perfStateRef = useRef(perfState);
   const blackHoleStateRef = useRef(blackHoleState);
@@ -237,8 +243,8 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
   }, [ppState]);
 
   useEffect(() => {
-    fogStateRef.current = fogState;
-  }, [fogState]);
+    envStateRef.current = envState;
+  }, [envState]);
 
   useEffect(() => {
     uiStateRef.current = uiState;
@@ -298,6 +304,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
 
   const graphRef = useRef<RenderGraph | null>(null);
   const passRefs = useRef<{
+    cubemapCapture?: CubemapCapturePass;
     objectDepth?: DepthPass;
     temporalDepthCapture?: TemporalDepthCapturePass;
     temporalCloud?: TemporalCloudPass;
@@ -588,7 +595,45 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       return needsVolumetricSeparation({ temporalCloudAccumulation, objectType: objectTypeRef.current });
     };
 
+    // Cubemap capture pass - handles both procedural and classic skyboxes
+    // CRITICAL: Must run first, before any pass that depends on scene.background/environment
+    // This consolidates ALL environment map handling into the render graph, ensuring proper
+    // MRT state management via patched renderer.setRenderTarget.
+    //
+    // Two modes:
+    // - PROCEDURAL: Captures SKYBOX layer to CubeRenderTarget
+    // - CLASSIC: Uses externally loaded CubeTexture from store (set by SkyboxLoader)
+    const cubemapCapturePass = new CubemapCapturePass({
+      id: 'cubemapCapture',
+      backgroundResolution: blackHoleStateRef.current.skyCubemapResolution,
+      environmentResolution: 256,
+      // Enabled when skybox is active and something needs it (black hole or walls)
+      enabled: () => {
+        const env = envStateRef.current;
+        if (!env.skyboxEnabled) return false;
+        // For classic mode, also need the texture to be loaded
+        if (env.skyboxMode === 'classic' && !env.classicCubeTexture) return false;
+        const hasConsumer = isBlackHole || env.activeWalls.length > 0;
+        return hasConsumer;
+      },
+      // Generate PMREM only when walls need reflections
+      generatePMREM: () => envStateRef.current.activeWalls.length > 0,
+      // Provide external CubeTexture for classic skybox mode
+      getExternalCubeTexture: () => {
+        const env = envStateRef.current;
+        if (env.skyboxMode === 'classic' && env.classicCubeTexture) {
+          return env.classicCubeTexture;
+        }
+        return null;
+      },
+    });
+    passRefs.current.cubemapCapture = cubemapCapturePass;
+    g.addPass(cubemapCapturePass);
+
     // Scene render pass - renders all layers to 3-attachment MRT
+    // CRITICAL: renderBackground: false prevents Three.js from rendering scene.background
+    // with its internal shader that only outputs to 1 location. The custom SkyboxMesh on
+    // SKYBOX layer uses a proper 3-output shader and handles skybox rendering correctly.
     g.addPass(
       new ScenePass({
         id: 'scene',
@@ -596,6 +641,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
         layers: [RENDER_LAYERS.MAIN_OBJECT, RENDER_LAYERS.ENVIRONMENT, RENDER_LAYERS.SKYBOX],
         clearColor: 0x000000,
         autoClear: true,
+        renderBackground: false,
       })
     );
 
@@ -709,7 +755,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       outputResource: RESOURCES.FOG_OUTPUT,
       noiseTexture: noiseTextureData.texture,
       use3DNoise: noiseTextureData.use3D,
-      enabled: () => fogStateRef.current.fogEnabled,
+      enabled: () => envStateRef.current.fogEnabled,
     });
     passRefs.current.fog = fogPass;
     g.addPass(fogPass);
@@ -920,6 +966,15 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       })
     );
 
+    // Debug overlay pass - renders RENDER_LAYERS.DEBUG after all post-processing.
+    // This allows standard Three.js materials (MeshBasicMaterial, LineBasicMaterial,
+    // ArrowHelper, TransformControls, etc.) to render without MRT compatibility.
+    g.addPass(
+      new DebugOverlayPass({
+        id: 'debugOverlay',
+      })
+    );
+
     // Compile the graph (resolves dependencies, orders passes)
     const result = g.compile({ debug: false });
     if (result.warnings.length > 0) {
@@ -927,6 +982,12 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
     }
 
     graphRef.current = g;
+
+    // Expose for debugging (development only)
+    if (typeof window !== 'undefined') {
+      (window as unknown as { __RENDER_GRAPH__: typeof g }).__RENDER_GRAPH__ = g;
+    }
+
     return g;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [restoreCount, isPolytope, isBlackHole, noiseTextureData, ppState.antiAliasingMethod, temporalDepth]); // Recreate on context restore, object type, noise texture, AA method, or temporal depth change
@@ -1006,6 +1067,21 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
 
     graphInstance.setSize(size.width, size.height);
   }, [graph, size.width, size.height]); // Still depend on graph to re-run when graph changes
+
+  // ==========================================================================
+  // CRITICAL: Initialize MRT state manager BEFORE any useFrame rendering
+  // ==========================================================================
+  // This MUST run before ProceduralSkyboxCapture's useFrame which calls
+  // cubeCamera.update(). Without early initialization, those renders happen
+  // with an unpatched renderer, causing GL_INVALID_OPERATION errors.
+
+  useLayoutEffect(() => {
+    const graphInstance = graphRef.current;
+    if (!graphInstance) return;
+
+    // Initialize renderer patching for MRT state management
+    graphInstance.initializeRenderer(gl);
+  }, [gl, graph]);
 
   // ==========================================================================
   // Cleanup

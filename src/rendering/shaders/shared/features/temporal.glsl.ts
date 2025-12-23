@@ -18,8 +18,10 @@ float getTemporalDepth(vec3 ro, vec3 rd, vec3 worldRayDir) {
     // Transform estimated hit point to previous frame's clip space
     vec4 prevClipPos = uPrevViewProjectionMatrix * vec4(estimatedWorldHit, 1.0);
 
-    // Perspective divide to get NDC - guard against w=0 (point at camera)
-    float safeW = abs(prevClipPos.w) < 0.0001 ? 0.0001 : prevClipPos.w;
+    // Perspective divide to get NDC - guard against w=0 while preserving sign
+    float safeW = abs(prevClipPos.w) < 0.0001
+      ? (prevClipPos.w >= 0.0 ? 0.0001 : -0.0001)
+      : prevClipPos.w;
     vec2 prevNDC = prevClipPos.xy / safeW;
 
     // Convert from NDC [-1, 1] to UV [0, 1]

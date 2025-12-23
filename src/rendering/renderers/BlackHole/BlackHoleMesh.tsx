@@ -24,18 +24,11 @@ import { composeBlackHoleShader, generateBlackHoleVertexShader } from '@/renderi
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore'
 import { useGeometryStore } from '@/stores/geometryStore'
 import { useUIStore } from '@/stores/uiStore'
-import { useEffect, useMemo, useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { MAX_DIMENSION } from './types'
 import { useBlackHoleUniforms } from './useBlackHoleUniforms'
 import { useBlackHoleUniformUpdates } from './useBlackHoleUniformUpdates'
-
-// DEBUG helper
-const debugLog = (event: string, data?: Record<string, unknown>) => {
-  if (typeof window !== 'undefined' && window.__DEBUG_LOG) {
-    window.__DEBUG_LOG('BlackHoleMesh', event, data)
-  }
-}
 
 /**
  * BlackHoleMesh - Renders N-dimensional black hole visualization
@@ -43,14 +36,6 @@ const debugLog = (event: string, data?: Record<string, unknown>) => {
  */
 const BlackHoleMesh = () => {
   const meshRef = useRef<THREE.Mesh>(null)
-
-  // DEBUG: Log mount
-  useEffect(() => {
-    debugLog('MOUNT')
-    return () => {
-      debugLog('UNMOUNT')
-    }
-  }, [])
 
   // Values that affect shader compilation
   const rawDimension = useGeometryStore((state) => state.dimension)
@@ -90,8 +75,7 @@ const BlackHoleMesh = () => {
 
   // Compile shader
   const { fragmentShader } = useMemo(() => {
-    debugLog('composeBlackHoleShader START', { dimension, temporalEnabled, jetsEnabled, dopplerEnabled })
-    const result = composeBlackHoleShader({
+    return composeBlackHoleShader({
       dimension,
       shadows: false,
       temporal: false,
@@ -105,8 +89,6 @@ const BlackHoleMesh = () => {
       sliceAnimation: sliceAnimationEnabled,
       volumetricDisk: true,
     })
-    debugLog('composeBlackHoleShader END', { fragmentShaderLength: result.fragmentShader.length })
-    return result
   }, [dimension, temporalEnabled, jetsEnabled, dopplerEnabled, opacityMode, sliceAnimationEnabled])
 
   // Generate vertex shader
@@ -114,9 +96,7 @@ const BlackHoleMesh = () => {
 
   // Generate material key for caching
   const materialKey = useMemo(() => {
-    const key = `blackhole-${dimension}-${temporalEnabled}-${jetsEnabled}-${dopplerEnabled}-${opacityMode}-${sliceAnimationEnabled}`
-    debugLog('materialKey generated', { key })
-    return key
+    return `blackhole-${dimension}-${temporalEnabled}-${jetsEnabled}-${dopplerEnabled}-${opacityMode}-${sliceAnimationEnabled}`
   }, [dimension, temporalEnabled, jetsEnabled, dopplerEnabled, opacityMode, sliceAnimationEnabled])
 
   // Note: Material disposal is handled automatically by React Three Fiber

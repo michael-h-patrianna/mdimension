@@ -230,7 +230,7 @@ void main() {
   // Multi-light calculation
   vec3 col;
   if (uNumLights > 0) {
-    col = baseColor * uAmbientColor * uAmbientIntensity;
+    col = baseColor * uAmbientColor * uAmbientIntensity * uAmbientEnabled;
     float totalNdotL = 0.0;
 
     for (int i = 0; i < MAX_LIGHTS; i++) {
@@ -306,7 +306,7 @@ void main() {
 
   } else {
     // No lighting - just ambient
-    col = baseColor * uAmbientColor * uAmbientIntensity;
+    col = baseColor * uAmbientColor * uAmbientIntensity * uAmbientEnabled;
 
     // IBL still applies without direct lights (uses F0 computed above)
     col += computeIBL(normal, viewDir, F0, roughness, uMetallic, baseColor);

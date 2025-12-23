@@ -235,14 +235,10 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
 
   // Dithering to hide banding (Interleaved Gradient Noise)
   float dither = interleavedGradientNoise(gl_FragCoord.xy + fract(time));
-  
+
   // Apply dithering to start position (jitter along ray)
-  // Use a slightly larger jitter window to smooth out steps
-  float startOffset = dither * 0.5 * adaptiveStepSize(ndDistance(rayOrigin + rayDir * tNear)); 
-  
-  // Note: using adaptive step at initial point to scale jitter is smart, but let's keep it simple
-  // just use a small base jitter.
-  startOffset = dither * 0.1;
+  // Small base jitter to break up banding artifacts
+  float startOffset = dither * 0.1;
 
   vec3 pos = rayOrigin + rayDir * (tNear + startOffset);
   vec3 dir = rayDir;
@@ -391,10 +387,14 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
 
   // Handle horizon or background
   if (hitHorizon) {
+    // Record hit position for depth buffer, but DON'T reset accumulated color
+    // Color from photon shell, disk, etc. should be preserved
     if (accum.hasFirstHit < 0.5) {
       accum.firstHitPos = pos;
       accum.hasFirstHit = 1.0;
-      accum.color = vec3(0.0);
+      // Note: We intentionally do NOT set accum.color = vec3(0.0) here
+      // because the ray may have accumulated color from the photon shell
+      // or disk before reaching the horizon
     }
     accum.transmittance = 0.0;
   } else if (accum.transmittance > 0.01) {
@@ -433,7 +433,11 @@ void main() {
   vec2 ndc = screenUV * 2.0 - 1.0;
   vec4 farPointClip = vec4(ndc, 1.0, 1.0);
   vec4 farPointWorld = uInverseViewProjectionMatrix * farPointClip;
-  float farW = abs(farPointWorld.w) < 0.0001 ? 0.0001 : farPointWorld.w;
+  // Guard against division by zero while preserving sign
+  // If w is small negative, we need to preserve the negative to avoid flipping ray direction
+  float farW = abs(farPointWorld.w) < 0.0001
+    ? (farPointWorld.w >= 0.0 ? 0.0001 : -0.0001)
+    : farPointWorld.w;
   farPointWorld /= farW;
   worldRayDir = normalize(farPointWorld.xyz - uCameraPosition);
 #else
@@ -441,12 +445,6 @@ void main() {
 #endif
 
   vec3 rayDir = normalize((uInverseModelMatrix * vec4(worldRayDir, 0.0)).xyz);
-
-  // DEBUG: Visualize ray direction to verify rays are set up correctly
-  // Uncomment the following block to debug:
-  // gColor = vec4(rayDir * 0.5 + 0.5, 1.0);
-  // gNormal = vec4(0.5, 0.5, 1.0, 1.0);
-  // return;
 
   // Get animation time
   float time = uTime * uTimeScale;
@@ -479,7 +477,10 @@ void main() {
   if (result.hasHit > 0.5) {
     vec4 worldHitPos = uModelMatrix * vec4(result.firstHitPos, 1.0);
     vec4 clipPos = uProjectionMatrix * uViewMatrix * worldHitPos;
-    float clipW = abs(clipPos.w) < 0.0001 ? 0.0001 : clipPos.w;
+    // Guard against division by zero while preserving sign for correct depth
+    float clipW = abs(clipPos.w) < 0.0001
+      ? (clipPos.w >= 0.0 ? 0.0001 : -0.0001)
+      : clipPos.w;
     gl_FragDepth = clamp((clipPos.z / clipW) * 0.5 + 0.5, 0.0, 1.0);
   } else {
     // No hit - use far plane depth

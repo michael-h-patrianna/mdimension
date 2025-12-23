@@ -5,7 +5,7 @@
 
 import { chromium } from 'playwright';
 
-const BASE_URL = 'http://localhost:3002';
+const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 
 async function main() {
   console.log('Launching browser (headless)...');
@@ -30,7 +30,7 @@ async function main() {
   try {
     // Navigate directly to black hole
     console.log('Loading black hole...');
-    await page.goto(`${BASE_URL}/?object=blackhole`, { waitUntil: 'networkidle' });
+    await page.goto(`${BASE_URL}/?t=blackhole`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(3000);
 
     // Check if black hole mesh exists and get its state

@@ -55,3 +55,7 @@ export {
   type BufferType,
   type DepthMode,
 } from './BufferPreviewPass'
+export { DebugOverlayPass, type DebugOverlayPassConfig } from './DebugOverlayPass'
+
+// Environment passes
+export { CubemapCapturePass, type CubemapCapturePassConfig } from './CubemapCapturePass'

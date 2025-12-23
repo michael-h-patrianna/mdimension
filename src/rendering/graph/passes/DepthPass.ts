@@ -146,7 +146,7 @@ export class DepthPass extends BasePass {
       glContext.colorMask(false, false, false, false);
     }
 
-    // Render depth
+    // Render depth - MRTStateManager automatically configures drawBuffers via patched setRenderTarget
     renderer.setRenderTarget(target);
     if (this.clear) {
       renderer.autoClear = false;

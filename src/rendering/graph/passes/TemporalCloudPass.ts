@@ -41,6 +41,7 @@ import {
 } from '@/rendering/shaders/schroedinger/temporal'
 import * as THREE from 'three'
 import { BasePass } from '../BasePass'
+import { isMRTTarget } from '../MRTStateManager'
 import type { RenderContext, RenderPassConfig } from '../types'
 
 export interface TemporalCloudPassConfig extends Omit<RenderPassConfig, 'inputs' | 'outputs'> {
@@ -225,6 +226,14 @@ export class TemporalCloudPass extends BasePass {
     camera.layers.disableAll()
     camera.layers.enable(this.volumetricLayer)
 
+    // MRT SAFETY: Disable background when rendering to MRT targets.
+    // Three.js's internal skybox shader only outputs to location 0.
+    const isMRT = isMRTTarget(target)
+    const savedBackground = isMRT ? scene.background : null
+    if (isMRT) {
+      scene.background = null
+    }
+
     // Update uniforms on meshes
     const bayerOffset = BAYER_OFFSETS[this.frameIndex] ?? [0, 0]
     for (const mesh of volumetricMeshes) {
@@ -240,11 +249,17 @@ export class TemporalCloudPass extends BasePass {
     }
 
     const oldTarget = renderer.getRenderTarget()
+    // MRTStateManager automatically configures drawBuffers via patched setRenderTarget
     renderer.setRenderTarget(target)
     renderer.setClearColor(0x000000, 0)
     renderer.clear(true, true, true) // Clear color, depth, stencil
     renderer.render(scene, camera)
     renderer.setRenderTarget(oldTarget)
+
+    // Restore background
+    if (isMRT && savedBackground !== null) {
+      scene.background = savedBackground
+    }
 
     camera.layers.mask = this.cameraLayers.mask
   }
@@ -283,6 +298,7 @@ export class TemporalCloudPass extends BasePass {
       u['uAccumulationResolution'].value.set(size.width, size.height)
 
     this.fsQuad.material = this.reprojectionMaterial
+    // MRTStateManager automatically configures drawBuffers via patched setRenderTarget
     renderer.setRenderTarget(reprojTarget)
     renderer.render(this.fsScene, this.fsCamera)
     renderer.setRenderTarget(null)
@@ -328,6 +344,7 @@ export class TemporalCloudPass extends BasePass {
     if (u['uHasValidHistory']) u['uHasValidHistory'].value = this.hasValidHistory
 
     this.fsQuad.material = this.reconstructionMaterial
+    // MRTStateManager automatically configures drawBuffers via patched setRenderTarget
     renderer.setRenderTarget(accumWrite)
     renderer.render(this.fsScene, this.fsCamera)
     renderer.setRenderTarget(null)

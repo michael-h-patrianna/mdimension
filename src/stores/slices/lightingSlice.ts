@@ -24,6 +24,7 @@ import type { ShadowAnimationMode, ShadowQuality } from '@/rendering/shadows/typ
 import { SHADOW_SOFTNESS_RANGE } from '@/rendering/shadows/constants'
 import {
   DEFAULT_AMBIENT_COLOR,
+  DEFAULT_AMBIENT_ENABLED,
   DEFAULT_AMBIENT_INTENSITY,
   DEFAULT_EXPOSURE,
   DEFAULT_LIGHT_COLOR,
@@ -59,6 +60,7 @@ export interface LightingSliceState {
   lightColor: string
   lightHorizontalAngle: number
   lightVerticalAngle: number
+  ambientEnabled: boolean
   ambientIntensity: number
   ambientColor: string
   showLightIndicator: boolean
@@ -96,6 +98,7 @@ export interface LightingSliceActions {
   setLightColor: (color: string) => void
   setLightHorizontalAngle: (angle: number) => void
   setLightVerticalAngle: (angle: number) => void
+  setAmbientEnabled: (enabled: boolean) => void
   setAmbientIntensity: (intensity: number) => void
   setAmbientColor: (color: string) => void
   setShowLightIndicator: (show: boolean) => void
@@ -141,6 +144,7 @@ export const LIGHTING_INITIAL_STATE: LightingSliceState = {
   lightColor: DEFAULT_LIGHT_COLOR,
   lightHorizontalAngle: DEFAULT_LIGHT_HORIZONTAL_ANGLE,
   lightVerticalAngle: DEFAULT_LIGHT_VERTICAL_ANGLE,
+  ambientEnabled: DEFAULT_AMBIENT_ENABLED,
   ambientIntensity: DEFAULT_AMBIENT_INTENSITY,
   ambientColor: DEFAULT_AMBIENT_COLOR,
   showLightIndicator: DEFAULT_SHOW_LIGHT_INDICATOR,
@@ -198,9 +202,16 @@ export const createLightingSlice: StateCreator<LightingSlice, [], [], LightingSl
     set({ lightVerticalAngle: Math.max(-90, Math.min(90, angle)) })
   },
 
+  setAmbientEnabled: (enabled: boolean) => {
+    set((state) => ({
+      ambientEnabled: enabled,
+      version: state.version + 1,
+    }))
+  },
+
   setAmbientIntensity: (intensity: number) => {
     set((state) => ({
-      ambientIntensity: Math.max(0, Math.min(3, intensity)),
+      ambientIntensity: Math.max(0, Math.min(1, intensity)),
       version: state.version + 1,
     }))
   },

@@ -38,7 +38,6 @@ import { sdf7dBlock } from './sdf/sdf7d.glsl'
 import { sdf8dBlock } from './sdf/sdf8d.glsl'
 import { sdf9dBlock } from './sdf/sdf9d.glsl'
 import { mandelbulbUniformsBlock } from './uniforms.glsl'
-import { zoomDeScalingBlock, zoomMappingBlock, zoomUniformsBlock } from './zoom'
 
 /**
  * Compose Mandelbulb fragment shader with all features.
@@ -99,10 +98,7 @@ export function composeMandelbulbShader(config: ShaderConfig) {
     { name: 'Constants', content: constantsBlock },
     { name: 'Shared Uniforms', content: uniformsBlock },
     { name: 'Mandelbulb Uniforms', content: mandelbulbUniformsBlock },
-    { name: 'Zoom Uniforms', content: zoomUniformsBlock },
     { name: 'Power Functions', content: powerBlock },
-    { name: 'Zoom Mapping', content: zoomMappingBlock },
-    { name: 'Zoom DE Scaling', content: zoomDeScalingBlock },
     { name: 'Color (HSL)', content: hslBlock },
     { name: 'Color (Cosine)', content: cosinePaletteBlock },
     { name: 'Color (Oklab)', content: oklabBlock },

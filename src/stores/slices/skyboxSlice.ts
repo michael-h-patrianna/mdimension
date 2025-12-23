@@ -1,3 +1,4 @@
+import type * as THREE from 'three'
 import type { StateCreator } from 'zustand'
 import {
   type SkyboxAnimationMode,
@@ -37,6 +38,12 @@ export interface SkyboxSliceState {
   skyboxLoading: boolean
   /** Procedural settings for new modes */
   proceduralSettings: SkyboxProceduralSettings
+  /**
+   * Loaded CubeTexture for classic skybox mode.
+   * Set by SkyboxLoader when KTX2 texture finishes loading.
+   * Used by CubemapCapturePass to set scene.background and generate PMREM.
+   */
+  classicCubeTexture: THREE.CubeTexture | null
 }
 
 export interface SkyboxSliceActions {
@@ -53,6 +60,8 @@ export interface SkyboxSliceActions {
   setSkyboxHighQuality: (highQuality: boolean) => void
   setSkyboxLoading: (loading: boolean) => void
   setProceduralSettings: (settings: Partial<SkyboxProceduralSettings>) => void
+  /** Set the loaded CubeTexture for classic skybox mode (used by render graph) */
+  setClassicCubeTexture: (texture: THREE.CubeTexture | null) => void
   resetSkyboxSettings: () => void
 }
 
@@ -71,6 +80,7 @@ export const SKYBOX_INITIAL_STATE: SkyboxSliceState = {
   skyboxHighQuality: DEFAULT_SKYBOX_HIGH_QUALITY,
   skyboxLoading: false,
   proceduralSettings: DEFAULT_SKYBOX_PROCEDURAL_SETTINGS,
+  classicCubeTexture: null,
 }
 
 /** All procedural mode prefixes */
@@ -148,6 +158,8 @@ export const createSkyboxSlice: StateCreator<SkyboxSlice, [], [], SkyboxSlice> =
     set((state) => ({
       proceduralSettings: { ...state.proceduralSettings, ...settings },
     })),
+  setClassicCubeTexture: (texture: THREE.CubeTexture | null) =>
+    set({ classicCubeTexture: texture }),
   resetSkyboxSettings: () =>
     set({
       skyboxSelection: DEFAULT_SKYBOX_SELECTION,
@@ -159,5 +171,6 @@ export const createSkyboxSlice: StateCreator<SkyboxSlice, [], [], SkyboxSlice> =
       skyboxAnimationSpeed: DEFAULT_SKYBOX_ANIMATION_SPEED,
       skyboxHighQuality: DEFAULT_SKYBOX_HIGH_QUALITY,
       proceduralSettings: DEFAULT_SKYBOX_PROCEDURAL_SETTINGS,
+      classicCubeTexture: null,
     }),
 })

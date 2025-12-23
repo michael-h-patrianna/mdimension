@@ -15,6 +15,7 @@
 import * as THREE from 'three';
 
 import { BasePass } from '../BasePass';
+import { isMRTTarget } from '../MRTStateManager';
 import type { RenderContext, RenderPassConfig } from '../types';
 
 /**
@@ -102,11 +103,21 @@ export class ScenePass extends BasePass {
       this.cameraLayers.mask = camera.layers.mask;
     }
 
-    // Handle background: only modify if renderBackground is false
+    // MRT SAFETY ENFORCEMENT:
+    // Three.js's internal skybox/environment shaders only output to location 0.
+    // When rendering to MRT targets (multiple attachments), this causes:
+    // GL_INVALID_OPERATION: Active draw buffers with missing fragment shader outputs
+    //
+    // Solution: Automatically disable background for MRT targets.
+    // This is a structural safety measure - the render graph OWNS this decision.
+    const isMRT = isMRTTarget(target);
+    const shouldDisableBackground = !this.renderBackground || isMRT;
+
+    // Handle background: only modify if renderBackground is false OR target is MRT
     // IMPORTANT: Do NOT save/restore scene.background - let the scene own its state.
     // Saving and restoring can cause race conditions when React updates scene.background
     // during the frame (e.g., when skybox texture changes).
-    const originalBackground = !this.renderBackground ? scene.background : null;
+    const originalBackground = shouldDisableBackground ? scene.background : null;
 
     try {
       // Configure renderer
@@ -115,7 +126,7 @@ export class ScenePass extends BasePass {
       }
       renderer.autoClear = this.autoClear;
 
-      if (!this.renderBackground) {
+      if (shouldDisableBackground) {
         scene.background = null;
       }
 
@@ -127,7 +138,7 @@ export class ScenePass extends BasePass {
         }
       }
 
-      // Render
+      // Render - MRTStateManager automatically configures drawBuffers via patched setRenderTarget
       renderer.setRenderTarget(target);
       renderer.render(scene, camera);
     } finally {
@@ -135,8 +146,8 @@ export class ScenePass extends BasePass {
       renderer.setClearColor(this.savedClearColor, this.savedClearAlpha);
       renderer.autoClear = this.savedAutoClear;
 
-      // Only restore background if we explicitly disabled it
-      if (!this.renderBackground && originalBackground !== null) {
+      // Only restore background if we explicitly disabled it (for renderBackground=false or MRT)
+      if (shouldDisableBackground && originalBackground !== null) {
         scene.background = originalBackground;
       }
 

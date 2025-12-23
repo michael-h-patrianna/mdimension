@@ -15,7 +15,7 @@ void main() {
   F0 = mix(F0, uColor, uMetallic);
 
   // Start with ambient light
-  vec3 Lo = uColor * uAmbientColor * uAmbientIntensity;
+  vec3 Lo = uColor * uAmbientColor * uAmbientIntensity * uAmbientEnabled;
 
   // Accumulator for total light contribution (for fresnel rim)
   float totalNdotL = 0.0;

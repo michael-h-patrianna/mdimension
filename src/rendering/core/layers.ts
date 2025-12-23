@@ -13,7 +13,7 @@
  * Render layer assignments for scene objects
  */
 export const RENDER_LAYERS = {
-  /** Environment elements: walls, grid, light gizmos, axes helper */
+  /** Environment elements: walls, grid */
   ENVIRONMENT: 0,
   /** Main n-dimensional object: polytope, mandelbulb, point cloud */
   MAIN_OBJECT: 1,
@@ -21,6 +21,22 @@ export const RENDER_LAYERS = {
   SKYBOX: 2,
   /** Volumetric objects (Schroedinger) when temporal accumulation is enabled */
   VOLUMETRIC: 3,
+  /**
+   * Debug/Gizmo layer - rendered AFTER all post-processing via DebugOverlayPass.
+   *
+   * Objects on this layer bypass MRT rendering entirely, so they can use
+   * standard Three.js materials (MeshBasicMaterial, LineBasicMaterial,
+   * ArrowHelper, TransformControls, Line from drei, etc.) WITHOUT needing
+   * custom shaders that output to 3 MRT color attachments.
+   *
+   * Use this layer for:
+   * - Light gizmos (icons, direction arrows, cones)
+   * - Transform controls (translate/rotate/scale helpers)
+   * - Axis helpers (global coordinate system display)
+   * - Ground plane visualizations (light intersection circles/ellipses)
+   * - Any debug visualization that shouldn't affect post-processing
+   */
+  DEBUG: 4,
 } as const
 
 export type RenderLayer = (typeof RENDER_LAYERS)[keyof typeof RENDER_LAYERS]

@@ -4,7 +4,7 @@ description: Fix temporal depth buffer bug.
 
 === IMMUTABLE QUALITY GATES (MUST PASS BEFORE CLAIMING SUCCESS) ===
 
-**GATE 1**: No GL_INVALID_OPERATION message in the browser console
+**GATE 1**: Scene not just black
 
 You CANNOT claim success without running PASSING THE GATE.
 
@@ -22,11 +22,11 @@ You CANNOT claim success without running PASSING THE GATE.
 
 ## Bug Description
 
-Open the page for any object type, e.g. http://localhost:3000/?t=hypercube. Capture browser console messages. It shows and GL_INVALID_OPERATION error
+Open the page for any object type, e.g. http://localhost:3000/?t=blackhole. Wait 5 seconds for the shader to build and compile. The scene stays black. The black hole is not renderered.
 
 ## Success Criteria
 
-Open the page at `http://localhost:3000/?t=hypercube`, wait 2 seconds for scene initialization, then read browser console and confirm that there is not message "GL_INVALID_OPERATION"
+Open the page at `http://localhost:3000/?t=blackhole`, wait 5 seconds for scene initialization, then read number of non-black pixels and overall brightness in scene. Scene cannot be all dark.
 
 ## Mandatory Workflow
 
@@ -34,7 +34,8 @@ Execute steps IN ORDER. Do not skip steps. Do not claim success without evidence
 
 ### Step 0: Initialize
 
-Read log file if provided by the user. Else create log file in `docs/bugfixing/log/gl_invalid_operation.md`
+1. Read log file if provided by the user. Else create log file in `docs/bugfixing/log/blackhole.md`
+2. Write a playwright test that tests for the success criteria. Do not add visual inspection because AI agents inspecting screenshots is expensive. Use algorithmic/code-based inspections like counting pixels or measuring brightness.
 
 ### Step 1: Instrument
 
@@ -45,15 +46,15 @@ Add debug logging for it.
 ### Step 2: Observe
 
 Use Playwright to:
-1. Navigate to `http://localhost:3000/?type=hypercube`
-2. Wait 2 seconds for scene render
-3. Capture console output containing `GL_INVALID_OPERATION`
-4. Capute console ouput with the added debug output
+1. Navigate to `http://localhost:3000/?type=blackhole`
+2. Wait 5 seconds for scene render
+3. Capute console ouput with the added debug output
+4. Capture test data
 
 ### Step 3: Hypothesize & Research
 - Review the debug output
 - Take a step back and think what the debug output is telling you in the context of the whole rendering engine and web app
-- Review what you have learned so far `docs/bugfixing/log/gl_invalid_operation.md`
+- Review what you have learned so far `docs/bugfixing/log/blackhole.md`
 - Hypothize likely reasons for this behaviour
 
 ### Step 4: Fix & Verify & Update Log File
@@ -61,7 +62,7 @@ Use Playwright to:
 Make ONE targeted change. Then re-run Step 2. Compare before/after. Add any insights to the log file. Add the result of failed fix attempts to the log file.
 
 ### Step 5: Run Gate
-Run test again. The gate passes when GL_INVALID_OPERATION is no longer appearing in dev console output. If bug persists, go back to step 1.
+Run test again. If bug persists, go back to step 1.
 
 ### Step 6: Document
 
@@ -72,9 +73,6 @@ Run test again. The gate passes when GL_INVALID_OPERATION is no longer appearing
 
 
 ## Constraints
-
-- Do NOT change attachments to 2 (3 are needed for temporal reprojection)
-- Do NOT break temporal accumulation mode (both modes must work)
 - If stuck after 5 iterations, summarize findings and ask for guidance
 
 ## Success Declaration Format
@@ -88,10 +86,9 @@ Fix applied: [file:line - what changed]
 ===
 ```
 
-**WARNING**: If you cannot confirm "GL_INVALID_OPERATION" no longer being present in the browser console, the bug is NOT fixed. Do NOT proceed to success declaration.
+**WARNING**: If you cannot confirm that the black hole is not visually rendering with an accretion disk, the bug is NOT fixed. Do NOT proceed to success declaration.
 
-## Technical Context: Normal Buffer Encoding
+## Technical Context
 
-- This is not an issue specific to an object type. All object types will cause the bug.
-- This is likely not a shader bug. It only appears when launching the page. It does not reproduce when on page and selecting other object types and then returning back to the initial object type.
-- Setting attachments to 2 is not the solution. We need 3 for temporal reprojection.
+- Normal and depth buffer debug images show a correct shape.
+- We recently migrated to a new render graph engine. The main branch has the pre-migration code with a black hole that is rendered but gravitational lensing not working for skybox and walls (the reason why we migrated to the new render graph)

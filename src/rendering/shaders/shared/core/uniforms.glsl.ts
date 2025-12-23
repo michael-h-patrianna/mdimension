@@ -35,6 +35,7 @@ uniform float uLightRanges[MAX_LIGHTS];
 uniform float uLightDecays[MAX_LIGHTS];
 
 // Global lighting uniforms
+uniform float uAmbientEnabled;  // 1.0 = enabled, 0.0 = disabled
 uniform float uAmbientIntensity;
 uniform vec3 uAmbientColor;
 uniform float uSpecularIntensity;

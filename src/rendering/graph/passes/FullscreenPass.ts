@@ -175,6 +175,7 @@ export class FullscreenPass extends BasePass {
     const savedAutoClear = renderer.autoClear;
     renderer.autoClear = this.clearOutput;
 
+    // MRTStateManager automatically configures drawBuffers via patched setRenderTarget
     renderer.setRenderTarget(target);
     if (this.clearOutput) {
       renderer.clear();

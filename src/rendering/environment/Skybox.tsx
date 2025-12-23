@@ -1,6 +1,5 @@
 import { FRAME_PRIORITY } from '@/rendering/core/framePriorities';
 import { RENDER_LAYERS } from '@/rendering/core/layers';
-import { RECOVERY_PRIORITY, resourceRecovery } from '@/rendering/core/ResourceRecovery';
 import { createSkyboxShaderDefaults } from '@/rendering/materials/skybox/SkyboxShader';
 import { applyDistributionTS, getCosinePaletteColorTS } from '@/rendering/shaders/palette/cosine.glsl';
 import type { ColorAlgorithm, CosineCoefficients, DistributionSettings } from '@/rendering/shaders/palette/types';
@@ -11,241 +10,12 @@ import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useEnvironmentStore } from '@/stores/environmentStore';
 import { useMsgBoxStore } from '@/stores/msgBoxStore';
 import { usePerformanceStore } from '@/stores/performanceStore';
-import { Environment } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import { useShallow } from 'zustand/react/shallow';
 import { ProceduralSkyboxWithEnvironment } from './ProceduralSkyboxWithEnvironment';
-
-// ============================================================================
-// PMREM Cache - Module-level cache to avoid regenerating PMREM for same textures
-// ============================================================================
-
-/** Maximum number of PMREM textures to keep in cache (LRU eviction) */
-const PMREM_CACHE_MAX_SIZE = 6;
-
-interface PMREMCacheEntry {
-  pmremTexture: THREE.Texture;
-  /** Track usage count to know when to dispose */
-  refCount: number;
-  /** Last access timestamp for LRU eviction */
-  lastAccess: number;
-}
-
-/**
- * Module-level cache for PMREM textures.
- * Keyed by the source texture UUID to avoid regenerating when switching skyboxes.
- * Uses LRU eviction when cache exceeds PMREM_CACHE_MAX_SIZE.
- */
-const pmremCache = new Map<string, PMREMCacheEntry>();
-
-/**
- * Evict least recently used entries when cache exceeds max size.
- * Only evicts entries with refCount === 0 (not currently in use).
- */
-function evictLRUCacheEntries(): void {
-  if (pmremCache.size <= PMREM_CACHE_MAX_SIZE) return;
-
-  // Collect entries eligible for eviction (refCount === 0)
-  const evictable: Array<[string, PMREMCacheEntry]> = [];
-  for (const [key, entry] of pmremCache) {
-    if (entry.refCount === 0) {
-      evictable.push([key, entry]);
-    }
-  }
-
-  // Sort by lastAccess (oldest first)
-  evictable.sort((a, b) => a[1].lastAccess - b[1].lastAccess);
-
-  // Evict until we're at or below max size
-  const numToEvict = pmremCache.size - PMREM_CACHE_MAX_SIZE;
-  for (let i = 0; i < Math.min(numToEvict, evictable.length); i++) {
-    const [key, entry] = evictable[i]!;
-    entry.pmremTexture.dispose();
-    pmremCache.delete(key);
-  }
-}
-
-/** Shared PMREMGenerator instance - reused across all conversions */
-let sharedPMREMGenerator: THREE.PMREMGenerator | null = null;
-
-/**
- * Get or create the shared PMREMGenerator.
- * Lazily initialized and compiled on first use.
- * @param gl - The WebGL renderer
- * @returns The shared PMREMGenerator instance
- */
-function getSharedPMREMGenerator(gl: THREE.WebGLRenderer): THREE.PMREMGenerator {
-  if (!sharedPMREMGenerator) {
-    sharedPMREMGenerator = new THREE.PMREMGenerator(gl);
-    // Pre-compile shader to avoid stutter on first conversion
-    sharedPMREMGenerator.compileEquirectangularShader();
-  }
-  return sharedPMREMGenerator;
-}
-
-/**
- * Clear all PMREM cache entries after WebGL context loss.
- *
- * IMPORTANT: This function nulls out resources WITHOUT disposing them.
- * After context loss, GPU resources are already gone - calling dispose()
- * would cause "object does not belong to this context" errors.
- */
-function clearPMREMCacheForContextLoss(): void {
-  // Clear cache without disposing - textures belong to the dead context
-  pmremCache.clear();
-
-  // Null out shared PMREM generator without disposing
-  sharedPMREMGenerator = null;
-}
-
-// Register PMREM cache with resource recovery coordinator (only once)
-if (!resourceRecovery.has('SkyboxPMREMCache')) {
-  resourceRecovery.register({
-    name: 'SkyboxPMREMCache',
-    priority: RECOVERY_PRIORITY.SKYBOX_PMREM,
-    invalidate: () => clearPMREMCacheForContextLoss(),
-    reinitialize: () => Promise.resolve(), // Textures will be regenerated on demand
-  });
-}
-
-// ============================================================================
-// usePMREMTexture Hook
-// ============================================================================
-
-interface PMREMResult {
-  /** The PMREM-processed texture, or null if not yet generated */
-  texture: THREE.Texture | null;
-  /** True while PMREM generation is in progress */
-  isGenerating: boolean;
-}
-
-/**
- * Custom hook to convert a CubeTexture to PMREM format for PBR lighting.
- *
- * Optimizations:
- * - Caches PMREM textures by source texture UUID to avoid regeneration
- * - Uses async generation to avoid blocking the main thread
- * - Shares a single PMREMGenerator instance across all conversions
- * - Properly manages cache lifecycle with reference counting
- *
- * Three.js's meshStandardMaterial requires environment maps to be in PMREM
- * (Prefiltered Mipmap Radiance Environment Map) format for proper roughness-based
- * reflections. Raw CubeTextures from KTX2Loader don't work correctly with
- * scene.environment - they need PMREM processing first.
- *
- * @param texture - The source CubeTexture to convert
- * @returns Object with texture and loading state
- */
-function usePMREMTexture(texture: THREE.CubeTexture | undefined): PMREMResult {
-  const gl = useThree((state) => state.gl);
-  const [pmremTexture, setPmremTexture] = useState<THREE.Texture | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const currentTextureUuid = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (!texture) {
-      setPmremTexture(null);
-      setIsGenerating(false);
-      return;
-    }
-
-    const textureUuid = texture.uuid;
-
-    // Check cache first
-    const cached = pmremCache.get(textureUuid);
-    if (cached) {
-      // Increment ref count, update access time, and use cached texture
-      cached.refCount++;
-      cached.lastAccess = Date.now();
-      currentTextureUuid.current = textureUuid;
-      setPmremTexture(cached.pmremTexture);
-      setIsGenerating(false);
-      return;
-    }
-
-    // Generate PMREM asynchronously
-    setIsGenerating(true);
-    let cancelled = false;
-
-    // Use requestAnimationFrame to defer PMREM generation to next frame
-    // This prevents blocking user interaction during texture switch
-    const generatePMREM = () => {
-      requestAnimationFrame(() => {
-        if (cancelled) return;
-
-        const pmremGenerator = getSharedPMREMGenerator(gl);
-
-        try {
-          const renderTarget = pmremGenerator.fromCubemap(texture);
-
-          if (cancelled) {
-            // Dispose full render target, not just texture
-            renderTarget.dispose();
-            return;
-          }
-
-          const envMap = renderTarget.texture;
-          envMap.colorSpace = THREE.SRGBColorSpace;
-
-          // Store in cache with LRU eviction
-          pmremCache.set(textureUuid, {
-            pmremTexture: envMap,
-            refCount: 1,
-            lastAccess: Date.now(),
-          });
-
-          // Evict old entries if cache is too large
-          evictLRUCacheEntries();
-
-          currentTextureUuid.current = textureUuid;
-          setPmremTexture(envMap);
-          setIsGenerating(false);
-        } catch {
-          // Generation failed - fall back to null
-          setIsGenerating(false);
-          setPmremTexture(null);
-        }
-      });
-    };
-
-    generatePMREM();
-
-    return () => {
-      cancelled = true;
-      // Decrement ref count when texture changes or unmounts
-      if (currentTextureUuid.current) {
-        const entry = pmremCache.get(currentTextureUuid.current);
-        if (entry) {
-          entry.refCount--;
-          // Keep in cache even if refCount is 0 - allows quick switching back
-          // Cache will be cleared when sharedPMREMGenerator is disposed
-        }
-      }
-    };
-  }, [texture, gl]);
-
-  // Cleanup shared resources on unmount
-  useEffect(() => {
-    return () => {
-      // If this is the last Skybox unmounting, clean up everything
-      // In practice, we keep the generator alive for the app lifetime
-      // but dispose cached textures that are no longer used
-      if (currentTextureUuid.current) {
-        const entry = pmremCache.get(currentTextureUuid.current);
-        if (entry && entry.refCount <= 0) {
-          // Optional: Could dispose here, but keeping for quick switching
-          // entry.pmremTexture.dispose();
-          // pmremCache.delete(currentTextureUuid.current);
-        }
-      }
-    };
-  }, []);
-
-  return { texture: pmremTexture, isGenerating };
-}
 
 // Import all skybox ktx2 files as URLs
 const skyboxAssets = import.meta.glob('/src/assets/skyboxes/**/*.ktx2', { eager: true, import: 'default', query: '?url' }) as Record<string, string>;
@@ -260,18 +30,6 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
   const meshRef = useRef<THREE.Mesh>(null);
   const timeRef = useRef(0);
 
-  // DEBUG: Log mount
-  React.useEffect(() => {
-    if (typeof window !== 'undefined' && window.__DEBUG_LOG) {
-      window.__DEBUG_LOG('SkyboxMesh', 'MOUNT');
-    }
-    return () => {
-      if (typeof window !== 'undefined' && window.__DEBUG_LOG) {
-        window.__DEBUG_LOG('SkyboxMesh', 'UNMOUNT');
-      }
-    };
-  }, []);
-
   // Reusable objects
   const eulerRef = useRef(new THREE.Euler());
   const matrix3Ref = useRef(new THREE.Matrix3());
@@ -283,9 +41,6 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
   const setMeshRef = React.useCallback((mesh: THREE.Mesh | null) => {
     if (mesh) {
       mesh.layers.set(RENDER_LAYERS.SKYBOX);
-      if (typeof window !== 'undefined' && window.__DEBUG_LOG) {
-        window.__DEBUG_LOG('SkyboxMesh', 'setMeshRef: layer set to SKYBOX', { layer: RENDER_LAYERS.SKYBOX });
-      }
     }
     // Update the ref for other hooks to use
     (meshRef as React.MutableRefObject<THREE.Mesh | null>).current = mesh;
@@ -574,11 +329,6 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
     const newOpacity = Math.min(1, elapsed / FADE_DURATION);
     if (newOpacity !== opacity) {
       setOpacity(newOpacity);
-      // DEBUG: Log opacity changes for first few frames
-      const globalFrame = typeof window !== 'undefined' ? window.__DEBUG_FRAME || 0 : 0;
-      if (globalFrame <= 30 && typeof window !== 'undefined' && window.__DEBUG_LOG) {
-        window.__DEBUG_LOG('SkyboxMesh', 'useFrame: opacity changed', { opacity: newOpacity, elapsed });
-      }
     }
 
     if (!material) return;
@@ -742,6 +492,16 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
  * Inner component that handles async texture loading.
  * Uses manual async loading instead of useLoader to avoid blocking the scene.
  * Signals loading state to pause animation and trigger low-quality rendering.
+ *
+ * IMPORTANT: This component only handles LOADING the KTX2 texture.
+ * It sets the loaded texture in the store (setClassicCubeTexture), which is then
+ * read by CubemapCapturePass in the render graph to:
+ * - Set scene.background (for black hole shader)
+ * - Generate PMREM and set scene.environment (for wall reflections)
+ *
+ * This keeps all environment map operations inside the render graph for proper
+ * MRT state management, preventing GL_INVALID_OPERATION errors.
+ *
  * @returns React element handling async skybox texture loading
  */
 const SkyboxLoader: React.FC = () => {
@@ -749,12 +509,14 @@ const SkyboxLoader: React.FC = () => {
     skyboxEnabled,
     skyboxTexture,
     skyboxHighQuality,
-    setSkyboxLoading
+    setSkyboxLoading,
+    setClassicCubeTexture,
   } = useEnvironmentStore(useShallow((state) => ({
     skyboxEnabled: state.skyboxEnabled,
     skyboxTexture: state.skyboxTexture,
     skyboxHighQuality: state.skyboxHighQuality,
-    setSkyboxLoading: state.setSkyboxLoading
+    setSkyboxLoading: state.setSkyboxLoading,
+    setClassicCubeTexture: state.setClassicCubeTexture,
   })));
 
   const gl = useThree((state) => state.gl);
@@ -784,6 +546,7 @@ const SkyboxLoader: React.FC = () => {
         currentTextureRef.current = null;
       }
       setTexture(null);
+      setClassicCubeTexture(null); // Clear from store
       setSkyboxLoading(false);
       return;
     }
@@ -821,6 +584,8 @@ const SkyboxLoader: React.FC = () => {
           cubeTexture.needsUpdate = true;
           currentTextureRef.current = cubeTexture;
           setTexture(cubeTexture);
+          // Set in store for CubemapCapturePass to use
+          setClassicCubeTexture(cubeTexture);
           // Signal loading complete - resume animation and quality refinement
           setSkyboxLoading(false);
         } else {
@@ -833,6 +598,7 @@ const SkyboxLoader: React.FC = () => {
         if (!cancelled) {
           console.error('Failed to load skybox texture:', error);
           setSkyboxLoading(false);
+          setClassicCubeTexture(null);
           useMsgBoxStore.getState().showMsgBox(
             'Skybox Load Failed',
             'Could not load the environment texture. Falling back to default lighting.',
@@ -849,8 +615,10 @@ const SkyboxLoader: React.FC = () => {
         currentTextureRef.current.dispose();
         currentTextureRef.current = null;
       }
+      // Clear from store on cleanup
+      setClassicCubeTexture(null);
     };
-  }, [ktx2Path, gl, setSkyboxLoading]);
+  }, [ktx2Path, gl, setSkyboxLoading, setClassicCubeTexture]);
 
   // Cleanup loader on unmount
   useEffect(() => {
@@ -862,39 +630,15 @@ const SkyboxLoader: React.FC = () => {
     };
   }, []);
 
-  // Convert to PMREM for proper IBL with meshStandardMaterial
-  // Without PMREM, the cubemap won't work with roughness/metalness in PBR materials
-  const { texture: pmremTexture, isGenerating: isPMREMGenerating } = usePMREMTexture(texture ?? undefined);
-
-  // Set scene.background to the CubeTexture so black hole shader can access it
-  // (scene.environment is PMREM which is 2D, but we need actual CubeTexture for samplerCube)
-  // CRITICAL: Use useLayoutEffect to prevent scene.background gap during StrictMode double-mount.
-  // Without this, cleanup sets scene.background=null, and black hole sees stale value before re-mount.
-  const scene = useThree((state) => state.scene);
-  useLayoutEffect(() => {
-    if (texture && skyboxEnabled) {
-      scene.background = texture;
-    }
-    return () => {
-      // Clear background on unmount or when texture changes
-      // Relaxed check: always clear if we set it
-      scene.background = null;
-    };
-  }, [texture, skyboxEnabled, scene]);
+  // NOTE: scene.background and scene.environment are now handled by CubemapCapturePass
+  // in the render graph. This component only handles texture loading.
 
   // Check if we should render the custom skybox mesh
   const shouldRenderSkybox = Boolean(skyboxEnabled && ktx2Path && texture);
 
   return (
     <>
-        {shouldRenderSkybox && pmremTexture && !isPMREMGenerating ? (
-            <Environment
-                key={pmremTexture.uuid}
-                map={pmremTexture}
-                background={false}
-            />
-        ) : null}
-
+        {/* Skybox mesh for visual rendering - uses loaded texture directly */}
         {shouldRenderSkybox && texture && (
             <SkyboxMesh texture={texture} />
         )}

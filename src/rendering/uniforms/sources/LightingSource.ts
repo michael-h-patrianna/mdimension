@@ -34,6 +34,8 @@ export interface LightingSourceConfig {
   lights: LightSourceConfig[]
   /** Lighting slice version for change detection */
   storeVersion: number
+  /** Whether ambient light is enabled */
+  ambientEnabled: boolean
   /** Ambient color (hex string) */
   ambientColor: string
   /** Ambient intensity */
@@ -45,6 +47,7 @@ export interface LightingSourceConfig {
  * NOTE: Specular uniforms (uSpecularIntensity, uSpecularColor) are now in PBRSource.
  */
 interface LightingUniforms extends LightUniforms {
+  uAmbientEnabled: { value: number } // 0.0 or 1.0 for GLSL compatibility
   uAmbientColor: { value: Color }
   uAmbientIntensity: { value: number }
 }
@@ -82,6 +85,7 @@ export class LightingSource extends BaseUniformSource {
   private lastStoreVersion = -1
 
   // Cached ambient values
+  private cachedAmbientEnabled = true
   private cachedAmbientColor = new Color()
   private cachedAmbientIntensity = 0
 
@@ -94,6 +98,7 @@ export class LightingSource extends BaseUniformSource {
     // Add ambient uniforms (specular now in PBRSource)
     this.lightUniforms = {
       ...baseLightUniforms,
+      uAmbientEnabled: { value: 1.0 }, // 1.0 = enabled, 0.0 = disabled
       uAmbientColor: { value: new Color('#ffffff') },
       uAmbientIntensity: { value: 0.3 },
     }
@@ -132,6 +137,12 @@ export class LightingSource extends BaseUniformSource {
    * NOTE: Specular uniforms are now handled by PBRSource.
    */
   private updateAmbientUniforms(config: LightingSourceConfig): void {
+    // Ambient enabled (convert boolean to float for GLSL)
+    if (this.cachedAmbientEnabled !== config.ambientEnabled) {
+      this.lightUniforms.uAmbientEnabled.value = config.ambientEnabled ? 1.0 : 0.0
+      this.cachedAmbientEnabled = config.ambientEnabled
+    }
+
     // Ambient color (convert sRGB to linear)
     if (this.cachedAmbientColor.getHexString() !== config.ambientColor.replace('#', '')) {
       this.lightUniforms.uAmbientColor.value.set(config.ambientColor).convertSRGBToLinear()
@@ -169,6 +180,7 @@ export class LightingSource extends BaseUniformSource {
     this.updateFromStore({
       lights: lightingState.lights,
       storeVersion: lightingState.version,
+      ambientEnabled: lightingState.ambientEnabled,
       ambientColor: lightingState.ambientColor,
       ambientIntensity: lightingState.ambientIntensity,
     })

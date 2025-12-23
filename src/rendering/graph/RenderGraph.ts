@@ -18,6 +18,11 @@ import * as THREE from 'three'
 
 import { GPUTimer } from './GPUTimer'
 import { GraphCompiler } from './GraphCompiler'
+import {
+  initializeGlobalMRT,
+  invalidateGlobalMRTForContextLoss,
+  reinitializeGlobalMRT,
+} from './MRTStateManager'
 import { ResourcePool } from './ResourcePool'
 import type {
   CompiledGraph,
@@ -133,6 +138,8 @@ export class RenderGraph {
   private gpuTimingEnabled = false
   private rendererInitialized = false
 
+  // MRT State Management - uses global singleton (see MRTStateManager.ts)
+
   // Screen size
   private width = 1
   private height = 1
@@ -207,14 +214,7 @@ export class RenderGraph {
 
     this.passthroughMaterial.uniforms['tDiffuse']!.value = inputTexture
     renderer.setRenderTarget(outputTarget)
-
-    // CRITICAL: Reset drawBuffers to single attachment.
-    // Passthrough shader only outputs to location 0. If previous MRT pass left
-    // drawBuffers configured for multiple attachments, we get GL_INVALID_OPERATION.
-    // Cast to WebGL2RenderingContext since this project requires WebGL2
-    const gl = renderer.getContext() as WebGL2RenderingContext
-    gl.drawBuffers([gl.COLOR_ATTACHMENT0])
-
+    // MRTStateManager automatically configures drawBuffers via patched setRenderTarget
     renderer.render(this.passthroughScene, this.passthroughCamera)
   }
 
@@ -383,9 +383,11 @@ export class RenderGraph {
       return
     }
 
-    // Initialize GPU timer on first execution (renderer is now available)
+    // Initialize GPU timer and MRT manager on first execution (renderer is now available)
+    // Note: MRT manager may already be initialized by Scene.tsx's early useLayoutEffect
     if (!this.rendererInitialized) {
       this.gpuTimer.initialize(renderer)
+      initializeGlobalMRT(renderer) // Safe to call multiple times
       if (this.gpuTimingEnabled) {
         this.gpuTimer.setEnabled(true)
       }
@@ -428,8 +430,9 @@ export class RenderGraph {
     let targetSwitches = 0
 
     for (const pass of this.compiled.passes) {
-      // Check if pass is enabled
-      const enabled = pass.config.enabled?.() ?? true
+      // Check if pass is enabled (also check debug disable flag)
+      const debugDisabled = (pass as unknown as { _debugDisabled?: boolean })._debugDisabled ?? false
+      const enabled = !debugDisabled && (pass.config.enabled?.() ?? true)
 
       if (!enabled) {
         // For disabled passes, do passthrough to maintain the chain
@@ -624,6 +627,29 @@ export class RenderGraph {
   // ==========================================================================
 
   /**
+   * Initialize the MRT state manager early.
+   *
+   * CRITICAL: Call this in useLayoutEffect BEFORE any useFrame callbacks run.
+   * This ensures the renderer's setRenderTarget is patched before ANY rendering
+   * happens, including CubeCamera captures and other pre-graph rendering.
+   *
+   * Without early initialization, rendering that happens before execute() will
+   * not have proper drawBuffers management, leading to GL_INVALID_OPERATION errors.
+   *
+   * @param renderer - Three.js WebGL renderer to patch
+   */
+  initializeRenderer(renderer: THREE.WebGLRenderer): void {
+    if (!this.rendererInitialized) {
+      this.gpuTimer.initialize(renderer)
+      initializeGlobalMRT(renderer) // Safe to call multiple times
+      if (this.gpuTimingEnabled) {
+        this.gpuTimer.setEnabled(true)
+      }
+      this.rendererInitialized = true
+    }
+  }
+
+  /**
    * Dispose all resources and passes.
    */
   dispose(): void {
@@ -636,6 +662,10 @@ export class RenderGraph {
 
     // Dispose GPU timer
     this.gpuTimer.dispose()
+
+    // Note: Global MRT manager is NOT disposed here - it's a singleton shared across
+    // RenderGraph instances and persists for the app lifetime. It only gets cleaned
+    // up on context loss/restore or full app shutdown.
 
     // Dispose resource pool
     this.pool.dispose()
@@ -666,18 +696,20 @@ export class RenderGraph {
   invalidateForContextLoss(): void {
     this.pool.invalidateForContextLoss()
     this.gpuTimer.invalidateForContextLoss()
+    invalidateGlobalMRTForContextLoss()
     this.rendererInitialized = false
   }
 
   /**
    * Reinitialize after context restoration.
    *
-   * @param renderer - Three.js WebGL renderer (required to reinitialize GPU timer)
+   * @param renderer - Three.js WebGL renderer (required to reinitialize GPU timer and MRT manager)
    */
   reinitialize(renderer?: THREE.WebGLRenderer): void {
     this.pool.reinitialize()
     if (renderer) {
       this.gpuTimer.reinitialize(renderer)
+      reinitializeGlobalMRT(renderer)
       this.rendererInitialized = true
     }
   }
@@ -698,5 +730,39 @@ export class RenderGraph {
    */
   getPassOrder(): string[] {
     return this.compiled?.passes.map((p) => p.id) ?? []
+  }
+
+  /**
+   * Get all compiled passes for debugging.
+   * @internal Debug only - not for production use
+   */
+  getPasses(): RenderPass[] {
+    return this.compiled?.passes ?? []
+  }
+
+  /**
+   * Force disable a pass by ID (for debugging).
+   * @internal Debug only - not for production use
+   */
+  debugDisablePass(passId: string): boolean {
+    const pass = this.compiled?.passes.find((p) => p.id === passId)
+    if (pass) {
+      ;(pass as unknown as { _debugDisabled?: boolean })._debugDisabled = true
+      return true
+    }
+    return false
+  }
+
+  /**
+   * Re-enable a previously disabled pass (for debugging).
+   * @internal Debug only - not for production use
+   */
+  debugEnablePass(passId: string): boolean {
+    const pass = this.compiled?.passes.find((p) => p.id === passId)
+    if (pass) {
+      ;(pass as unknown as { _debugDisabled?: boolean })._debugDisabled = false
+      return true
+    }
+    return false
   }
 }

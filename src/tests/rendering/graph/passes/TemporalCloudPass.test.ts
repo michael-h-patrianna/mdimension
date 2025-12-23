@@ -30,12 +30,21 @@ describe('TemporalCloudPass', () => {
     const accumRead = new THREE.WebGLRenderTarget(200, 200)
     const reprojTarget = new THREE.WebGLRenderTarget(200, 200)
 
+    // Mock WebGL2 context for MRTUtil.configureDrawBuffers
+    const mockGlContext = {
+      COLOR_ATTACHMENT0: 0x8ce0,
+      COLOR_ATTACHMENT1: 0x8ce1,
+      COLOR_ATTACHMENT2: 0x8ce2,
+      drawBuffers: vi.fn(),
+    } as unknown as WebGL2RenderingContext
+
     const renderer = {
       setRenderTarget: vi.fn(),
       setClearColor: vi.fn(),
       clear: vi.fn(),
       render: vi.fn(),
       getRenderTarget: vi.fn(() => null),
+      getContext: vi.fn(() => mockGlContext),
     } as unknown as THREE.WebGLRenderer
 
     // Create a mock volumetric mesh that is on layer 3
