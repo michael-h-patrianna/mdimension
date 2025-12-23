@@ -24,27 +24,27 @@ import { FRAME_PRIORITY } from '@/rendering/core/framePriorities';
 import { RENDER_LAYERS, needsVolumetricSeparation } from '@/rendering/core/layers';
 import { useTemporalDepth } from '@/rendering/core/temporalDepth';
 import {
-    BloomPass,
-    BokehPass,
-    BufferPreviewPass,
-    CinematicPass,
-    CopyPass,
-    DepthPass,
-    FXAAPass,
-    FilmGrainPass,
-    FullscreenPass,
-    GTAOPass,
-    MainObjectMRTPass,
-    NormalPass,
-    RefractionPass,
-    SMAAPass,
-    SSRPass,
-    ScenePass,
-    ScreenSpaceLensingPass,
-    TemporalCloudPass,
-    TemporalDepthCapturePass,
-    ToScreenPass,
-    VolumetricFogPass,
+  BloomPass,
+  BokehPass,
+  BufferPreviewPass,
+  CinematicPass,
+  CopyPass,
+  DepthPass,
+  FXAAPass,
+  FilmGrainPass,
+  FullscreenPass,
+  GTAOPass,
+  MainObjectMRTPass,
+  NormalPass,
+  RefractionPass,
+  SMAAPass,
+  SSRPass,
+  ScenePass,
+  ScreenSpaceLensingPass,
+  TemporalCloudPass,
+  TemporalDepthCapturePass,
+  ToScreenPass,
+  VolumetricFogPass,
 } from '@/rendering/graph/passes';
 import { RenderGraph } from '@/rendering/graph/RenderGraph';
 import { cloudCompositeFragmentShader } from '@/rendering/shaders/postprocessing/cloudComposite.glsl';
@@ -291,14 +291,6 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       noiseTextureData.texture.dispose();
     };
   }, [noiseTextureData]);
-
-  // ==========================================================================
-  // Initialize temporal managers (before first render)
-  // ==========================================================================
-
-  useLayoutEffect(() => {
-    temporalDepth.initialize(size.width, size.height, gl);
-  }, [gl, size.width, size.height, restoreCount, temporalDepth]);
 
   // ==========================================================================
   // Create Render Graph (once, with all passes)
@@ -1003,18 +995,6 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
     const graphInstance = graphRef.current;
     if (!graphInstance) return;
 
-    // #region agent log - H19: Size update debug
-    const h19Data = {
-      location: 'PostProcessingV2.tsx:useLayoutEffect-size',
-      message: 'H19: setSize called (useLayoutEffect)',
-      data: { sizeWidth: size.width, sizeHeight: size.height, graphExists: !!graphInstance },
-      timestamp: Date.now(),
-      sessionId: 'debug-session',
-      hypothesisId: 'H19',
-    };
-    console.log('[DEBUG-H19-setSize]', JSON.stringify(h19Data));
-    fetch('http://127.0.0.1:7242/ingest/af54dc2c-228f-456b-a43d-a100942bc421', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(h19Data) }).catch(() => {});
-    // #endregion
     graphInstance.setSize(size.width, size.height);
   }, [graph, size.width, size.height]); // Still depend on graph to re-run when graph changes
 
@@ -1142,9 +1122,6 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
 
     // Execute the graph
     graphInstance.execute(gl, scene, camera, delta);
-
-    // Swap temporal buffers after rendering
-    temporalDepth.swap(showTemporalDepthBuffer);
 
     // Temporal Cloud swap handled by RenderGraph (ping-pong on TEMPORAL_ACCUMULATION)
   }, FRAME_PRIORITY.POST_EFFECTS);

@@ -10,9 +10,12 @@
 
 import { createColorCache, updateLinearColorUniform } from '@/rendering/colors/linearCache'
 import { FRAME_PRIORITY } from '@/rendering/core/framePriorities'
-import { RENDER_LAYERS } from '@/rendering/core/layers'
 import { useTrackedShaderMaterial } from '@/rendering/materials/useTrackedShaderMaterial'
-import { useNDTransformUpdates } from '@/rendering/renderers/base'
+import {
+    useNDTransformUpdates,
+    useProjectionDistanceCache,
+    useShadowPatching,
+} from '@/rendering/renderers/base'
 import { UniformManager } from '@/rendering/uniforms/UniformManager'
 import { useFrame } from '@react-three/fiber'
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
@@ -31,8 +34,6 @@ import {
 
 import { DEFAULT_PROJECTION_DISTANCE } from '@/lib/math/projection'
 import type { VectorND } from '@/lib/math/types'
-// Note: We use patched MeshDepthMaterial and MeshDistanceMaterial instead of raw ShaderMaterial
-// to avoid the double shadow bug. The custom vertex shaders are no longer needed.
 import { composeTubeWireframeFragmentShader, composeTubeWireframeVertexShader } from '@/rendering/shaders/tubewireframe/compose'
 import {
     blurToPCFSamples,
@@ -42,6 +43,7 @@ import {
     updateShadowMapUniforms,
 } from '@/rendering/shadows'
 import { useAppearanceStore } from '@/stores/appearanceStore'
+import { useEnvironmentStore } from '@/stores/environmentStore'
 import { useLightingStore } from '@/stores/lightingStore'
 import { usePerformanceStore } from '@/stores/performanceStore'
 import { useTransformStore } from '@/stores/transformStore'
@@ -171,54 +173,6 @@ function createTubeShadowUniforms(dimension: number, radius: number): Record<str
   };
 }
 
-/**
- * Create patched shadow materials for tube wireframe using Three.js's built-in
- * MeshDepthMaterial and MeshDistanceMaterial with tube vertex transformation injected.
- *
- * This approach avoids the double shadow bug that occurs when using raw ShaderMaterial.
- * Three.js's internal shadow pipeline has special handling for MeshDistanceMaterial
- * (updating referencePosition, nearDistance, farDistance automatically).
- *
- * @param uniforms - Shared uniform objects that are updated per-frame
- * @returns Object containing patched depthMaterial and distanceMaterial
- */
-function createPatchedTubeShadowMaterials(uniforms: Record<string, { value: unknown }>): {
-  depthMaterial: THREE.MeshDepthMaterial;
-  distanceMaterial: THREE.MeshDistanceMaterial;
-} {
-  const depthMaterial = new THREE.MeshDepthMaterial({
-    depthPacking: THREE.RGBADepthPacking,
-  });
-
-  const distanceMaterial = new THREE.MeshDistanceMaterial();
-
-  const patchMaterial = (mat: THREE.Material) => {
-    mat.onBeforeCompile = (shader) => {
-      // Merge our nD uniforms with Three.js's built-in uniforms
-      Object.assign(shader.uniforms, uniforms);
-
-      // Inject our GLSL helpers after #include <common>
-      shader.vertexShader = shader.vertexShader.replace(
-        '#include <common>',
-        `#include <common>\n${TUBE_ND_TRANSFORM_GLSL}`
-      );
-
-      // Apply our tube transformation after #include <begin_vertex>
-      // Three.js sets `transformed` to the local-space vertex position there
-      shader.vertexShader = shader.vertexShader.replace(
-        '#include <begin_vertex>',
-        `#include <begin_vertex>\ntransformed = tubeTransformVertex(transformed);`
-      );
-    };
-    mat.needsUpdate = true;
-  };
-
-  patchMaterial(depthMaterial);
-  patchMaterial(distanceMaterial);
-
-  return { depthMaterial, distanceMaterial };
-}
-
 export interface TubeWireframeProps {
   /** N-dimensional vertices */
   vertices: VectorND[]
@@ -232,16 +186,16 @@ export interface TubeWireframeProps {
   opacity?: number
   /** Tube radius */
   radius?: number
-  /** Metallic value for PBR (0-1) */
-  metallic?: number
-  /** Roughness value for PBR (0-1) */
-  roughness?: number
   /** Whether shadows are enabled */
   shadowEnabled?: boolean
+  // Note: PBR properties (metallic, roughness, specularIntensity, specularColor)
+  // are now managed via UniformManager using 'pbr-edge' source
 }
 
 /**
  * GPU-accelerated tube wireframe renderer with N-D transformation and PBR lighting.
+ * PBR properties (metallic, roughness, specularIntensity, specularColor) are managed
+ * via UniformManager using the 'pbr-edge' source.
  * @param root0
  * @param root0.vertices
  * @param root0.edges
@@ -249,8 +203,6 @@ export interface TubeWireframeProps {
  * @param root0.color
  * @param root0.opacity
  * @param root0.radius
- * @param root0.metallic
- * @param root0.roughness
  * @param root0.shadowEnabled
  * @returns React element rendering instanced tube wireframe mesh or null
  */
@@ -261,8 +213,6 @@ export function TubeWireframe({
   color,
   opacity = 1.0,
   radius = 0.02,
-  metallic = 0.0,
-  roughness = 0.5,
   shadowEnabled = false,
 }: TubeWireframeProps): React.JSX.Element | null {
   const meshRef = useRef<InstancedMesh>(null)
@@ -275,7 +225,9 @@ export function TubeWireframe({
 
   // Performance optimization: Cache objects to avoid per-frame allocation/calculation
   const cachedScalesRef = useRef<number[]>([])
-  const cachedProjectionDistanceRef = useRef<{ count: number; distance: number; scaleSum?: number }>({ count: 0, distance: DEFAULT_PROJECTION_DISTANCE, scaleSum: 0 })
+
+  // Projection distance caching - uses shared hook to avoid O(N) recalculation every frame
+  const projDistCache = useProjectionDistanceCache()
 
   // P4 Optimization: Pre-allocated instance attribute arrays to avoid per-change allocations
   // These are resized only when edge count increases, otherwise reused
@@ -294,16 +246,19 @@ export function TubeWireframe({
   const transformStateRef = useRef(useTransformStore.getState())
   const appearanceStateRef = useRef(useAppearanceStore.getState())
   const lightingStateRef = useRef(useLightingStore.getState())
+  const environmentStateRef = useRef(useEnvironmentStore.getState())
 
   // Subscribe to store changes to update refs
   useEffect(() => {
     const unsubTrans = useTransformStore.subscribe((s) => { transformStateRef.current = s })
     const unsubApp = useAppearanceStore.subscribe((s) => { appearanceStateRef.current = s })
     const unsubLight = useLightingStore.subscribe((s) => { lightingStateRef.current = s })
+    const unsubEnv = useEnvironmentStore.subscribe((s) => { environmentStateRef.current = s })
     return () => {
       unsubTrans()
       unsubApp()
       unsubLight()
+      unsubEnv()
     }
   }, [])
 
@@ -342,10 +297,9 @@ export function TubeWireframe({
         fragmentShader: fragmentShaderString,
         uniforms: {
           // Material (colors converted to linear space)
+          // Note: uMetallic and uRoughness are provided by 'pbr-edge' source via UniformManager
           uColor: { value: colorValue },
           uOpacity: { value: opacity },
-          uMetallic: { value: metallic },
-          uRoughness: { value: roughness },
           uRadius: { value: radius },
 
           // N-D transformation
@@ -357,8 +311,8 @@ export function TubeWireframe({
           uDepthRowSums: { value: new Float32Array(11) },
           uProjectionDistance: { value: DEFAULT_PROJECTION_DISTANCE },
 
-          // Lighting uniforms (via UniformManager)
-          ...UniformManager.getCombinedUniforms(['lighting']),
+          // Lighting and PBR uniforms (via UniformManager)
+          ...UniformManager.getCombinedUniforms(['lighting', 'pbr-edge']),
 
           // Fresnel (colors converted to linear space)
           uFresnelEnabled: { value: true },
@@ -375,6 +329,11 @@ export function TubeWireframe({
           // Shadow map uniforms
           // Shadow map uniforms
           ...createShadowMapUniforms(),
+
+          // IBL (Image-Based Lighting) uniforms
+          uEnvMap: { value: null },
+          uIBLIntensity: { value: 1.0 },
+          uIBLQuality: { value: 0 }, // 0=off, 1=low, 2=high
         },
         // Initial transparency state - updated dynamically in useFrame based on current opacity
         transparent: true,
@@ -393,40 +352,21 @@ export function TubeWireframe({
   // These uniforms are shared and updated per-frame
   const shadowUniforms = useMemo(() => createTubeShadowUniforms(dimension, radius), [dimension, radius])
 
-  // Custom depth/distance materials for shadow map rendering with tube nD transformation.
-  // Uses patched Three.js built-in materials (via onBeforeCompile) to avoid the double
-  // shadow bug that occurs with raw ShaderMaterial. Three.js handles MeshDistanceMaterial
-  // specially (auto-updating referencePosition, nearDistance, farDistance for point lights).
-  const { depthMaterial: customDepthMaterial, distanceMaterial: customDistanceMaterial } = useMemo(
-    () => createPatchedTubeShadowMaterials(shadowUniforms),
-    [shadowUniforms]
-  )
+  // Use shared shadow patching hook for tube N-D transformation in shadow materials.
+  // This handles creation, lifecycle, and runtime toggling of patched materials.
+  const { assignToMesh: assignShadowToMesh } = useShadowPatching({
+    transformGLSL: TUBE_ND_TRANSFORM_GLSL,
+    transformFunctionCall: 'tubeTransformVertex(transformed)',
+    uniforms: shadowUniforms,
+    shadowEnabled,
+  })
 
-  // Callback ref to assign main object layer for depth-based effects (SSR, refraction, bokeh)
-  // Also assigns custom depth materials for animated shadows - this MUST happen in the callback
-  // because if done in useEffect, the effect may run before the mesh exists
+  // Combined callback ref for mesh: assigns layer and shadow materials
   const setMeshRef = useCallback((mesh: InstancedMesh | null) => {
     meshRef.current = mesh
-    if (mesh?.layers) {
-      mesh.layers.set(RENDER_LAYERS.MAIN_OBJECT)
-    }
-    // Assign patched shadow materials for tube nD transformation:
-    // - customDepthMaterial (MeshDepthMaterial): for directional and spot lights
-    // - customDistanceMaterial (MeshDistanceMaterial): for point lights
-    //
-    // Using patched built-in materials via onBeforeCompile avoids the double shadow bug
-    // that occurred with raw ShaderMaterial. Three.js handles MeshDistanceMaterial specially,
-    // auto-updating referencePosition/nearDistance/farDistance for point light shadow cameras.
-    // No onBeforeShadow callback needed - Three.js manages everything automatically.
-    if (mesh && shadowEnabled) {
-      // Always assign both materials - works with any light type combination
-      mesh.customDepthMaterial = customDepthMaterial
-      mesh.customDistanceMaterial = customDistanceMaterial
-    } else if (mesh) {
-      mesh.customDepthMaterial = undefined as unknown as THREE.Material
-      mesh.customDistanceMaterial = undefined as unknown as THREE.Material
-    }
-  }, [shadowEnabled, customDepthMaterial, customDistanceMaterial])
+    // Delegate layer and shadow material assignment to the hook
+    assignShadowToMesh(mesh)
+  }, [assignShadowToMesh])
 
   // Dispatch shader debug info (only when material is ready)
   useEffect(() => {
@@ -460,30 +400,7 @@ export function TubeWireframe({
     }
   }, [geometry])
 
-  // Cleanup custom depth materials on unmount
-  useEffect(() => {
-    return () => {
-      customDepthMaterial.dispose()
-      customDistanceMaterial.dispose()
-    }
-  }, [customDepthMaterial, customDistanceMaterial])
-
-  // Update shadow materials when shadowEnabled changes at runtime
-  // The callback ref only runs on mount, so we need an effect for runtime changes
-  useEffect(() => {
-    const mesh = meshRef.current
-    if (!mesh) return
-
-    if (shadowEnabled) {
-      // Always assign both materials - works with any light type combination
-      // Patched MeshDepthMaterial handles directional/spot, MeshDistanceMaterial handles point
-      mesh.customDepthMaterial = customDepthMaterial
-      mesh.customDistanceMaterial = customDistanceMaterial
-    } else {
-      mesh.customDistanceMaterial = undefined as unknown as THREE.Material
-      mesh.customDepthMaterial = undefined as unknown as THREE.Material
-    }
-  }, [shadowEnabled, customDepthMaterial, customDistanceMaterial])
+  // Note: Shadow material cleanup and runtime toggle are handled by useShadowPatching hook
 
   // Update instance attributes when vertices/edges change
   // P4 Optimization: Reuse pre-allocated arrays when possible to reduce GC pressure
@@ -623,45 +540,8 @@ export function TubeWireframe({
     ndTransform.update({ scales })
     const gpuData = ndTransform.source.getGPUData()
 
-    // Calculate safe projection distance (only when vertex count changes or scale changes)
-    // Avoids O(N) loop every frame
-    let projectionDistance: number
-    const numVertices = vertices.length
-
-    // Check if scale changed significantly
-    const currentScaleSum = scales.reduce((a, b) => a + b, 0);
-    const scaleChanged = Math.abs(currentScaleSum - (cachedProjectionDistanceRef.current.scaleSum ?? 0)) > 0.01;
-
-    if (numVertices !== cachedProjectionDistanceRef.current.count || scaleChanged) {
-      const normalizationFactor = dimension > 3 ? Math.sqrt(dimension - 3) : 1
-      let maxEffectiveDepth = 0
-      if (numVertices > 0 && vertices[0]!.length > 3) {
-        for (const vertex of vertices) {
-          let sum = 0
-          for (let d = 3; d < vertex.length; d++) {
-            sum += vertex[d]!
-          }
-          const effectiveDepth = sum / normalizationFactor
-          maxEffectiveDepth = Math.max(maxEffectiveDepth, effectiveDepth)
-        }
-      }
-
-      // Calculate max scale
-      let maxScale = 1;
-      for (const s of scales) maxScale = Math.max(maxScale, s);
-
-      const rawDistance = Math.max(DEFAULT_PROJECTION_DISTANCE, maxEffectiveDepth + 2.0);
-      const contentRadius = Math.max(0, rawDistance - 2.0);
-      projectionDistance = contentRadius * maxScale + 2.0;
-
-      cachedProjectionDistanceRef.current = {
-        count: numVertices,
-        distance: projectionDistance,
-        scaleSum: currentScaleSum
-      }
-    } else {
-      projectionDistance = cachedProjectionDistanceRef.current.distance
-    }
+    // Get cached projection distance (recalculates only when vertex count or scales change)
+    const projectionDistance = projDistCache.getProjectionDistance(vertices, dimension, scales)
 
     // Update N-D transformation uniforms
     const u = material.uniforms
@@ -679,11 +559,11 @@ export function TubeWireframe({
     u.uProjectionDistance!.value = projectionDistance
 
     // Update material properties (cached linear conversion)
+    // Note: PBR properties (uMetallic, uRoughness, uSpecularIntensity, uSpecularColor)
+    // are applied via UniformManager using 'pbr-edge' source
     const cache = colorCacheRef.current
     updateLinearColorUniform(cache.edgeColor, u.uColor!.value as Color, color)
     u.uOpacity!.value = opacity
-    u.uMetallic!.value = metallic
-    u.uRoughness!.value = roughness
     u.uRadius!.value = radius
 
     // Update material transparency based on opacity dynamically (like Mandelbulb)
@@ -696,12 +576,9 @@ export function TubeWireframe({
     }
 
     // Update lighting uniforms from visual store (cached linear conversion)
+    // Note: Specular (uSpecularIntensity, uSpecularColor) now provided by 'pbr-edge' source
     u.uAmbientIntensity!.value = lightingState.ambientIntensity
     updateLinearColorUniform(cache.ambientColor, u.uAmbientColor!.value as Color, lightingState.ambientColor)
-    u.uSpecularIntensity!.value = lightingState.specularIntensity
-    u.uSpecularPower!.value = lightingState.shininess
-    updateLinearColorUniform(cache.specularColor, u.uSpecularColor!.value as Color, lightingState.specularColor)
-    // Note: uDiffuseIntensity removed - energy conservation derives diffuse from (1-kS)*(1-metallic)
 
     // Fresnel (cached linear conversion)
     u.uFresnelEnabled!.value = appearanceState.shaderSettings.surface.fresnelEnabled
@@ -715,8 +592,19 @@ export function TubeWireframe({
     u.uSssThickness!.value = appearanceState.sssThickness
     if (u.uSssJitter) u.uSssJitter.value = appearanceState.sssJitter
 
-    // Update multi-light system (via UniformManager)
-    UniformManager.applyToMaterial(material, ['lighting'])
+    // Update multi-light system and PBR (via UniformManager)
+    UniformManager.applyToMaterial(material, ['lighting', 'pbr-edge'])
+
+    // IBL (Image-Based Lighting) uniforms - use cached ref for performance
+    const iblState = environmentStateRef.current
+    const qualityMap = { off: 0, low: 1, high: 2 } as const
+    u.uIBLQuality!.value = qualityMap[iblState.iblQuality]
+    u.uIBLIntensity!.value = iblState.iblIntensity
+    const bg = scene.background
+    const isCubeTexture = bg && (bg as THREE.CubeTexture).isCubeTexture
+    if (isCubeTexture) {
+      u.uEnvMap!.value = bg
+    }
 
     // Update shadow map uniforms if shadows are enabled
     // Pass store lights to ensure shadow data ordering matches uniform indices

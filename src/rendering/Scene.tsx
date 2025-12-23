@@ -75,35 +75,27 @@ export const Scene = React.memo(function Scene({
   minBoundingRadius,
 }: SceneProps) {
   // Get environment settings with shallow comparison
+  // Note: PBR properties (roughness, metallic, specularIntensity, specularColor)
+  // are now managed via UniformManager using 'pbr-ground' source
   const {
     activeWalls,
     groundPlaneOffset,
-    groundPlaneOpacity,
-    groundPlaneReflectivity,
     groundPlaneColor,
     groundPlaneType,
     groundPlaneSizeScale,
     showGroundGrid,
     groundGridColor,
     groundGridSpacing,
-    groundMaterialRoughness,
-    groundMaterialMetalness,
-    groundMaterialEnvMapIntensity,
   } = useEnvironmentStore(
     useShallow((state) => ({
       activeWalls: state.activeWalls,
       groundPlaneOffset: state.groundPlaneOffset,
-      groundPlaneOpacity: state.groundPlaneOpacity,
-      groundPlaneReflectivity: state.groundPlaneReflectivity,
       groundPlaneColor: state.groundPlaneColor,
       groundPlaneType: state.groundPlaneType,
       groundPlaneSizeScale: state.groundPlaneSizeScale,
       showGroundGrid: state.showGroundGrid,
       groundGridColor: state.groundGridColor,
       groundGridSpacing: state.groundGridSpacing,
-      groundMaterialRoughness: state.groundMaterialRoughness,
-      groundMaterialMetalness: state.groundMaterialMetalness,
-      groundMaterialEnvMapIntensity: state.groundMaterialEnvMapIntensity,
     }))
   )
 
@@ -139,11 +131,10 @@ export const Scene = React.memo(function Scene({
       <CameraController autoRotate={autoRotate} />
 
       {/* Environment walls with optional grid overlay */}
+      {/* PBR properties managed via 'pbr-ground' UniformManager source */}
       <GroundPlane
         vertices={projectedVertices}
         offset={groundPlaneOffset}
-        opacity={groundPlaneOpacity}
-        reflectivity={groundPlaneReflectivity}
         activeWalls={activeWalls}
         minBoundingRadius={minBoundingRadius}
         color={groundPlaneColor}
@@ -152,9 +143,6 @@ export const Scene = React.memo(function Scene({
         showGrid={showGroundGrid}
         gridColor={groundGridColor}
         gridSpacing={groundGridSpacing}
-        roughness={groundMaterialRoughness}
-        metalness={groundMaterialMetalness}
-        envMapIntensity={groundMaterialEnvMapIntensity}
       />
 
       {/* Axis helper for orientation reference */}

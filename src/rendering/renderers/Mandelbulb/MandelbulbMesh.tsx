@@ -16,6 +16,7 @@ import { SHADOW_QUALITY_TO_INT } from '@/rendering/shadows/types';
 import { UniformManager } from '@/rendering/uniforms/UniformManager';
 import { useAnimationStore } from '@/stores/animationStore';
 import { useAppearanceStore } from '@/stores/appearanceStore';
+import { useEnvironmentStore } from '@/stores/environmentStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useLightingStore } from '@/stores/lightingStore';
@@ -273,6 +274,11 @@ const MandelbulbMesh = () => {
 
       // Temporal Reprojection - Texture must be manually handled as it comes from context
       uPrevDepthTexture: { value: null },
+
+      // IBL (Image-Based Lighting) uniforms
+      uEnvMap: { value: null },
+      uIBLIntensity: { value: 1.0 },
+      uIBLQuality: { value: 0 }, // 0=off, 1=low, 2=high
     }),
     []
   );
@@ -421,13 +427,12 @@ const MandelbulbMesh = () => {
         material.uniforms.uPrevDepthTexture.value = temporalUniforms.uPrevDepthTexture;
       }
 
-      // Apply centralized uniform sources (Lighting, Temporal, Quality, Color)
+      // Apply centralized uniform sources (Lighting, Temporal, Quality, Color, PBR)
       // These sources auto-update from stores in UniformLifecycleController
-      UniformManager.applyToMaterial(material, ['lighting', 'temporal', 'quality', 'color']);
+      UniformManager.applyToMaterial(material, ['lighting', 'temporal', 'quality', 'color', 'pbr-face']);
 
-      // Advanced Rendering (Global Visuals) - Manual update for now as these aren't in sources
+      // SSS (Subsurface Scattering) properties
       const visuals = useAppearanceStore.getState();
-      if (material.uniforms.uRoughness) material.uniforms.uRoughness.value = visuals.roughness;
       if (material.uniforms.uSssEnabled) material.uniforms.uSssEnabled.value = visuals.sssEnabled;
       if (material.uniforms.uSssIntensity) material.uniforms.uSssIntensity.value = visuals.sssIntensity;
       if (material.uniforms.uSssColor) {
@@ -491,6 +496,23 @@ const MandelbulbMesh = () => {
       if (material.uniforms.uAoEnabled) {
         const ssaoEnabled = usePostProcessingStore.getState().ssaoEnabled;
         material.uniforms.uAoEnabled.value = ssaoEnabled;
+      }
+
+      // IBL (Image-Based Lighting) uniforms
+      const iblState = useEnvironmentStore.getState();
+      if (material.uniforms.uIBLQuality) {
+        const qualityMap = { off: 0, low: 1, high: 2 } as const;
+        material.uniforms.uIBLQuality.value = qualityMap[iblState.iblQuality];
+      }
+      if (material.uniforms.uIBLIntensity) {
+        material.uniforms.uIBLIntensity.value = iblState.iblIntensity;
+      }
+      if (material.uniforms.uEnvMap) {
+        const bg = state.scene.background;
+        const isCubeTexture = bg && (bg as THREE.CubeTexture).isCubeTexture;
+        if (isCubeTexture) {
+          material.uniforms.uEnvMap.value = bg;
+        }
       }
 
       // Configure material transparency based on opacity mode

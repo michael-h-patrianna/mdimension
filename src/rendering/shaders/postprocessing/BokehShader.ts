@@ -175,7 +175,8 @@ export const BokehShader = {
         total += w;
       }
 
-      return col / total;
+      // Guard against zero total weight (shouldn't happen with these fixed weights, but be safe)
+      return col / max(total, 0.0001);
     }
 
     // Method 3: Hexagonal bokeh (cinematic look with weighted samples)
@@ -215,7 +216,8 @@ export const BokehShader = {
         total += 0.5;
       }
 
-      return col / total;
+      // Guard against zero total weight (shouldn't happen, but be safe)
+      return col / max(total, 0.0001);
     }
 
     void main() {

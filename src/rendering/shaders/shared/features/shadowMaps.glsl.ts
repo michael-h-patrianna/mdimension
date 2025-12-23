@@ -114,8 +114,9 @@ float unpackRGBAToDepth(vec4 v) {
 vec2 cubeToUV(vec3 v, float texelSizeY) {
   vec3 absV = abs(v);
 
-  // Scale to unit cube intersection
-  float scaleToCube = 1.0 / max(absV.x, max(absV.y, absV.z));
+  // Scale to unit cube intersection - guard against zero vector
+  float maxComponent = max(absV.x, max(absV.y, absV.z));
+  float scaleToCube = 1.0 / max(maxComponent, 0.0001);
   absV *= scaleToCube;
 
   // Apply scale to avoid seams (pull slightly inward from edges)
@@ -154,7 +155,12 @@ float getPointShadow(int lightIndex, vec3 worldPos) {
   vec3 lightPos = uLightPositions[lightIndex];
   vec3 lightToFrag = worldPos - lightPos;
   float lightDistance = length(lightToFrag);
-  vec3 lightDir = normalize(lightToFrag);
+  
+  // Guard against zero distance (fragment at light position)
+  if (lightDistance < 0.0001) {
+    return 1.0; // Not in shadow
+  }
+  vec3 lightDir = lightToFrag / lightDistance;
 
   // Early exit if fragment is outside the shadow camera range
   float cameraNear = uShadowCameraNear;
@@ -176,7 +182,9 @@ float getPointShadow(int lightIndex, vec3 worldPos) {
   // Normalize fragment distance the same way the shadow map was written:
   // dist = (distance - near) / (far - near)
   // This matches the MeshDistanceMaterial encoding used by Three.js
-  float dp = (lightDistance - cameraNear) / (cameraFar - cameraNear);
+  // Guard against cameraFar == cameraNear
+  float depthRange = cameraFar - cameraNear;
+  float dp = depthRange > 0.0001 ? (lightDistance - cameraNear) / depthRange : 0.0;
 
   // Point lights need larger bias (2x) due to cube map edge discontinuities
   // and inherent precision issues at face boundaries where depth values jump
@@ -192,7 +200,12 @@ float getPointShadowPCF(int lightIndex, vec3 worldPos) {
   vec3 lightPos = uLightPositions[lightIndex];
   vec3 lightToFrag = worldPos - lightPos;
   float lightDistance = length(lightToFrag);
-  vec3 lightDir = normalize(lightToFrag);
+  
+  // Guard against zero distance (fragment at light position)
+  if (lightDistance < 0.0001) {
+    return 1.0; // Not in shadow
+  }
+  vec3 lightDir = lightToFrag / lightDistance;
 
   // Early exit if fragment is outside the shadow camera range
   float cameraNear = uShadowCameraNear;
@@ -205,7 +218,9 @@ float getPointShadowPCF(int lightIndex, vec3 worldPos) {
   float shadow = 0.0;
 
   // Normalize fragment distance the same way the shadow map was written
-  float dp = (lightDistance - cameraNear) / (cameraFar - cameraNear);
+  // Guard against cameraFar == cameraNear
+  float depthRange = cameraFar - cameraNear;
+  float dp = depthRange > 0.0001 ? (lightDistance - cameraNear) / depthRange : 0.0;
 
   // Point lights need larger bias (2x) due to cube map edge discontinuities
   float bias = uShadowMapBias * 2.0;

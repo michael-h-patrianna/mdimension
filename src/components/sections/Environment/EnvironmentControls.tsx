@@ -10,8 +10,9 @@ import { Select } from '@/components/ui/Select';
 import { Slider } from '@/components/ui/Slider';
 import { Switch } from '@/components/ui/Switch';
 import { Tabs } from '@/components/ui/Tabs';
-import { type GroundPlaneType, type WallPosition } from '@/stores/defaults/visualDefaults'; // Types can stay or move if exported from environmentStore
+import { DEFAULT_GROUND_PBR, type GroundPlaneType, type WallPosition } from '@/stores/defaults/visualDefaults';
 import { useEnvironmentStore, type EnvironmentStore } from '@/stores/environmentStore';
+import { usePBRStore, type PBRSlice } from '@/stores/pbrStore';
 import React, { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { FogControls } from './FogControls';
@@ -50,9 +51,6 @@ export const EnvironmentControls: React.FC<EnvironmentControlsProps> = React.mem
     showGroundGrid: state.showGroundGrid,
     groundGridColor: state.groundGridColor,
     groundGridSpacing: state.groundGridSpacing,
-    groundMaterialRoughness: state.groundMaterialRoughness,
-    groundMaterialMetalness: state.groundMaterialMetalness,
-    groundMaterialEnvMapIntensity: state.groundMaterialEnvMapIntensity,
     setActiveWalls: state.setActiveWalls,
     setGroundPlaneOffset: state.setGroundPlaneOffset,
     setGroundPlaneColor: state.setGroundPlaneColor,
@@ -61,9 +59,6 @@ export const EnvironmentControls: React.FC<EnvironmentControlsProps> = React.mem
     setShowGroundGrid: state.setShowGroundGrid,
     setGroundGridColor: state.setGroundGridColor,
     setGroundGridSpacing: state.setGroundGridSpacing,
-    setGroundMaterialRoughness: state.setGroundMaterialRoughness,
-    setGroundMaterialMetalness: state.setGroundMaterialMetalness,
-    setGroundMaterialEnvMapIntensity: state.setGroundMaterialEnvMapIntensity,
   }));
   const {
     activeWalls,
@@ -74,9 +69,6 @@ export const EnvironmentControls: React.FC<EnvironmentControlsProps> = React.mem
     showGroundGrid,
     groundGridColor,
     groundGridSpacing,
-    groundMaterialRoughness,
-    groundMaterialMetalness,
-    groundMaterialEnvMapIntensity,
     setActiveWalls,
     setGroundPlaneOffset,
     setGroundPlaneColor,
@@ -85,10 +77,29 @@ export const EnvironmentControls: React.FC<EnvironmentControlsProps> = React.mem
     setShowGroundGrid,
     setGroundGridColor,
     setGroundGridSpacing,
-    setGroundMaterialRoughness,
-    setGroundMaterialMetalness,
-    setGroundMaterialEnvMapIntensity,
   } = useEnvironmentStore(environmentSelector);
+
+  // PBR settings for ground/walls (from dedicated PBR store)
+  const pbrSelector = useShallow((state: PBRSlice) => ({
+    roughness: state.ground.roughness,
+    metallic: state.ground.metallic,
+    specularIntensity: state.ground.specularIntensity,
+    specularColor: state.ground.specularColor,
+    setRoughness: state.setGroundRoughness,
+    setMetallic: state.setGroundMetallic,
+    setSpecularIntensity: state.setGroundSpecularIntensity,
+    setSpecularColor: state.setGroundSpecularColor,
+  }));
+  const {
+    roughness,
+    metallic,
+    specularIntensity,
+    specularColor,
+    setRoughness,
+    setMetallic,
+    setSpecularIntensity,
+    setSpecularColor,
+  } = usePBRStore(pbrSelector);
 
   /**
    * Walls tab content - ground plane and grid settings
@@ -179,34 +190,53 @@ export const EnvironmentControls: React.FC<EnvironmentControlsProps> = React.mem
       {/* Roughness */}
       <Slider
         label="Roughness"
-        value={groundMaterialRoughness}
-        min={0}
+        value={roughness}
+        min={0.04}
         max={1}
-        step={0.05}
-        onChange={setGroundMaterialRoughness}
-        tooltip="Surface roughness (0 = sharp reflections, 1 = matte)"
+        step={0.01}
+        onChange={setRoughness}
+        showValue
       />
 
-      {/* Metalness */}
+      {/* Metallic */}
       <Slider
-        label="Metalness"
-        value={groundMaterialMetalness}
+        label="Metallic"
+        value={metallic}
         min={0}
         max={1}
-        step={0.05}
-        onChange={setGroundMaterialMetalness}
-        tooltip="Metallic appearance (0 = plastic, 1 = metal)"
+        step={0.01}
+        onChange={setMetallic}
+        showValue
       />
 
-      {/* Environment Map Intensity */}
+      {/* Specular Color */}
+      <div className="flex items-center justify-between">
+        <ColorPicker
+          label="Specular Color"
+          value={specularColor}
+          onChange={setSpecularColor}
+          disableAlpha={true}
+        />
+        {specularColor !== DEFAULT_GROUND_PBR.specularColor && (
+          <button
+            onClick={() => setSpecularColor(DEFAULT_GROUND_PBR.specularColor)}
+            className="text-xs text-accent hover:text-accent/80 transition-colors"
+            title="Reset to default"
+          >
+            Reset
+          </button>
+        )}
+      </div>
+
+      {/* Specular Intensity */}
       <Slider
-        label="Env Reflection"
-        value={groundMaterialEnvMapIntensity}
+        label="Specular Intensity"
+        value={specularIntensity}
         min={0}
         max={2}
         step={0.1}
-        onChange={setGroundMaterialEnvMapIntensity}
-        tooltip="Brightness of reflections (requires low Roughness to be visible)"
+        onChange={setSpecularIntensity}
+        showValue
       />
     </div>
   );

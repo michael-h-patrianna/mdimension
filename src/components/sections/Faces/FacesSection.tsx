@@ -31,11 +31,10 @@ import {
 } from '@/rendering/opacity/constants';
 import type { OpacityMode, SampleQuality, VolumetricAnimationQuality } from '@/rendering/opacity/types';
 import { useAppearanceStore, type AppearanceSlice } from '@/stores/appearanceStore';
-import {
-    DEFAULT_SPECULAR_COLOR,
-} from '@/stores/defaults/visualDefaults';
+import { DEFAULT_FACE_PBR } from '@/stores/defaults/visualDefaults';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useLightingStore, type LightingSlice } from '@/stores/lightingStore';
+import { usePBRStore, type PBRSlice } from '@/stores/pbrStore';
 import { useUIStore, type UISlice } from '@/stores/uiStore';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
@@ -85,8 +84,6 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
     setFaceEmissionColorShift: state.setFaceEmissionColorShift,
     setFaceEmissionPulsing: state.setFaceEmissionPulsing,
     setFaceRimFalloff: state.setFaceRimFalloff,
-    roughness: state.roughness,
-    setRoughness: state.setRoughness,
   }));
   const {
     facesVisible,
@@ -110,33 +107,35 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
     setFaceEmissionColorShift,
     setFaceEmissionPulsing,
     setFaceRimFalloff,
-    roughness,
-    setRoughness,
   } = useAppearanceStore(appearanceSelector);
 
   // Lighting settings
   const lightingSelector = useShallow((state: LightingSlice) => ({
     lightEnabled: state.lightEnabled,
-    specularIntensity: state.specularIntensity,
-    shininess: state.shininess,
-    specularColor: state.specularColor,
-    diffuseIntensity: state.diffuseIntensity,
-    setSpecularIntensity: state.setSpecularIntensity,
-    setShininess: state.setShininess,
-    setSpecularColor: state.setSpecularColor,
-    setDiffuseIntensity: state.setDiffuseIntensity,
+  }));
+  const { lightEnabled } = useLightingStore(lightingSelector);
+
+  // PBR settings for faces (from dedicated PBR store)
+  const pbrSelector = useShallow((state: PBRSlice) => ({
+    roughness: state.face.roughness,
+    metallic: state.face.metallic,
+    specularIntensity: state.face.specularIntensity,
+    specularColor: state.face.specularColor,
+    setRoughness: state.setFaceRoughness,
+    setMetallic: state.setFaceMetallic,
+    setSpecularIntensity: state.setFaceSpecularIntensity,
+    setSpecularColor: state.setFaceSpecularColor,
   }));
   const {
-    lightEnabled,
+    roughness,
+    metallic,
     specularIntensity,
-    shininess,
     specularColor,
-    diffuseIntensity,
+    setRoughness,
+    setMetallic,
     setSpecularIntensity,
-    setShininess,
     setSpecularColor,
-    setDiffuseIntensity,
-  } = useLightingStore(lightingSelector);
+  } = usePBRStore(pbrSelector);
 
   // UI settings (Opacity)
   const uiSelector = useShallow((state: UISlice) => ({
@@ -193,16 +192,14 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
           faceOpacity={surfaceSettings.faceOpacity}
           setFaceOpacity={(value) => setSurfaceSettings({ faceOpacity: value })}
           showLightingControls={showLightingControls}
-          diffuseIntensity={diffuseIntensity}
-          setDiffuseIntensity={setDiffuseIntensity}
           specularColor={specularColor}
           setSpecularColor={setSpecularColor}
           specularIntensity={specularIntensity}
           setSpecularIntensity={setSpecularIntensity}
-          shininess={shininess}
-          setShininess={setShininess}
           roughness={roughness}
           setRoughness={setRoughness}
+          metallic={metallic}
+          setMetallic={setMetallic}
           // Emission props (only for types that support it)
           showEmissionControls={supportsEmission(objectType)}
           faceEmission={faceEmission}
@@ -396,16 +393,14 @@ interface MaterialTabContentProps {
   faceOpacity: number;
   setFaceOpacity: (value: number) => void;
   showLightingControls: boolean;
-  diffuseIntensity: number;
-  setDiffuseIntensity: (value: number) => void;
   specularColor: string;
   setSpecularColor: (color: string) => void;
   specularIntensity: number;
   setSpecularIntensity: (value: number) => void;
-  shininess: number;
-  setShininess: (value: number) => void;
   roughness: number;
   setRoughness: (value: number) => void;
+  metallic: number;
+  setMetallic: (value: number) => void;
   // Emission props (only for types that support volumetric emission)
   showEmissionControls: boolean;
   faceEmission: number;
@@ -442,16 +437,14 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
   faceOpacity,
   setFaceOpacity,
   showLightingControls,
-  diffuseIntensity,
-  setDiffuseIntensity,
   specularColor,
   setSpecularColor,
   specularIntensity,
   setSpecularIntensity,
-  shininess,
-  setShininess,
   roughness,
   setRoughness,
+  metallic,
+  setMetallic,
   // Emission props (only for types that support volumetric emission)
   showEmissionControls,
   faceEmission,
@@ -651,62 +644,20 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
         </ControlGroup>
       )}
 
-      {/* Diffuse and Specular - Only when lighting is enabled */}
+      {/* PBR Material - Only when lighting is enabled */}
       {showLightingControls && (
-        <ControlGroup title="Lighting Response" collapsible defaultOpen>
-          {/* Diffuse */}
+        <ControlGroup title="PBR Material" collapsible defaultOpen>
+          {/* Metallic */}
           <Slider
-            label="Diffuse Intensity"
+            label="Metallic"
             min={0}
-            max={2}
-            step={0.01}
-            value={diffuseIntensity}
-            onChange={setDiffuseIntensity}
+            max={1}
+            step={0.05}
+            value={metallic}
+            onChange={setMetallic}
             showValue
-          />
-
-          <div className="h-px bg-white/5 my-2" />
-
-          {/* Specular Color */}
-          <div className="flex items-center justify-between">
-              <ColorPicker
-                label="Specular Color"
-                value={specularColor}
-                onChange={setSpecularColor}
-                disableAlpha={true}
-              />
-              {specularColor !== DEFAULT_SPECULAR_COLOR && (
-                <button
-                  onClick={() => setSpecularColor(DEFAULT_SPECULAR_COLOR)}
-                  className="text-xs text-accent hover:text-accent/80 transition-colors"
-                  title="Reset to default"
-                >
-                  Reset
-                </button>
-              )}
-          </div>
-
-
-          {/* Specular Intensity */}
-          <Slider
-            label="Specular Intensity"
-            min={0}
-            max={2}
-            step={0.1}
-            value={specularIntensity}
-            onChange={setSpecularIntensity}
-            showValue
-          />
-
-          {/* Shininess */}
-          <Slider
-            label="Shininess"
-            min={1}
-            max={128}
-            step={1}
-            value={shininess}
-            onChange={setShininess}
-            showValue
+            tooltip="0 = dielectric (plastic, wood), 1 = metal (gold, chrome)"
+            data-testid="slider-metallic"
           />
 
           {/* Roughness (GGX PBR) */}
@@ -718,16 +669,49 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
             value={roughness}
             onChange={setRoughness}
             showValue
-            tooltip="Surface roughness for PBR specular (0=mirror, 1=matte)"
+            tooltip="Surface roughness (0 = mirror, 1 = matte)"
             data-testid="slider-roughness"
           />
+
+          <div className="h-px bg-white/5 my-2" />
+
+          {/* Specular Intensity */}
+          <Slider
+            label="Specular Intensity"
+            min={0}
+            max={2}
+            step={0.1}
+            value={specularIntensity}
+            onChange={setSpecularIntensity}
+            showValue
+            tooltip="Artistic multiplier for specular highlights"
+          />
+
+          {/* Specular Color */}
+          <div className="flex items-center justify-between">
+              <ColorPicker
+                label="Specular Color"
+                value={specularColor}
+                onChange={setSpecularColor}
+                disableAlpha={true}
+              />
+              {specularColor !== DEFAULT_FACE_PBR.specularColor && (
+                <button
+                  onClick={() => setSpecularColor(DEFAULT_FACE_PBR.specularColor)}
+                  className="text-xs text-accent hover:text-accent/80 transition-colors"
+                  title="Reset to default"
+                >
+                  Reset
+                </button>
+              )}
+          </div>
         </ControlGroup>
       )}
 
       {!showLightingControls && (
         <div className="p-4 rounded-lg bg-black/20 border border-white/5 border-dashed text-center">
             <p className="text-xs text-text-secondary italic">
-            Enable lighting in the Visual section to access diffuse and specular settings.
+            Enable lighting in the Visual section to access PBR material settings.
             </p>
         </div>
       )}

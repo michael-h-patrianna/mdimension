@@ -247,10 +247,8 @@ describe('state-serializer', () => {
       expect(result.specularColor).toBe('#FFFFFF');
     });
 
-    it('should deserialize diffuse intensity', () => {
-      const result = deserializeState('di=1.5');
-      expect(result.diffuseIntensity).toBeCloseTo(1.5);
-    });
+    // Note: diffuseIntensity was removed in favor of energy-conserved PBR
+    // Legacy 'di' params in URLs are now ignored
   });
 
   describe('roundtrip serialization', () => {

@@ -32,14 +32,16 @@ float jetDensity(vec3 pos3d, float time) {
   // Cone angle (width increases with height)
   float coneRadius = h * uJetsWidth;
 
-  // Check if inside cone
-  if (r > coneRadius) return 0.0;
+  // Check if inside cone - guard against coneRadius being zero
+  if (coneRadius < 0.0001 || r > coneRadius) return 0.0;
 
   // Radial falloff within cone
   float radialFactor = 1.0 - pow(r / coneRadius, 2.0);
 
-  // Height falloff
-  float heightFactor = exp(-pow(h / maxHeight, uJetsFalloff));
+  // Height falloff - guard against maxHeight being zero
+  float safeMaxHeight = max(maxHeight, 0.0001);
+  float safeJetsFalloff = max(uJetsFalloff, 0.1);
+  float heightFactor = exp(-pow(min(h / safeMaxHeight, 10.0), safeJetsFalloff));
 
   // Base at horizon
   float baseFactor = smoothstep(uHorizonRadius * 0.5, uHorizonRadius * 1.5, h);
@@ -74,7 +76,9 @@ vec3 jetEmission(vec3 pos3d, float density, float time) {
   // Vary color along height
   float h = abs(pos3d.z);
   float maxHeight = uJetsHeight * uHorizonRadius;
-  float heightT = h / maxHeight;
+  // Guard against maxHeight being zero
+  float safeMaxHeight = max(maxHeight, 0.0001);
+  float heightT = clamp(h / safeMaxHeight, 0.0, 1.0);
 
   // Hotter at base, cooler at tip
   vec3 baseColor = vec3(1.0, 0.8, 0.5); // Yellow-white

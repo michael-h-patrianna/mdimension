@@ -54,12 +54,10 @@ describe('Enhanced Features Stores', () => {
       useAppearanceStore.getState().setSurfaceSettings({
         faceOpacity: 0.5,
         specularIntensity: 1.5,
-        shininess: 64,
         fresnelEnabled: false,
       });
       expect(useAppearanceStore.getState().shaderSettings.surface.faceOpacity).toBe(0.5);
       expect(useAppearanceStore.getState().shaderSettings.surface.specularIntensity).toBe(1.5);
-      expect(useAppearanceStore.getState().shaderSettings.surface.shininess).toBe(64);
       expect(useAppearanceStore.getState().shaderSettings.surface.fresnelEnabled).toBe(false);
     });
 
@@ -67,11 +65,9 @@ describe('Enhanced Features Stores', () => {
       useAppearanceStore.getState().setSurfaceSettings({
         faceOpacity: 2,
         specularIntensity: 10,
-        shininess: 200,
       });
       expect(useAppearanceStore.getState().shaderSettings.surface.faceOpacity).toBe(1);
       expect(useAppearanceStore.getState().shaderSettings.surface.specularIntensity).toBe(2);
-      expect(useAppearanceStore.getState().shaderSettings.surface.shininess).toBe(128);
     });
   });
 
@@ -174,28 +170,8 @@ describe('Enhanced Features Stores', () => {
       expect(useLightingStore.getState().ambientIntensity).toBe(0);
     });
 
-    it('should set specular intensity', () => {
-      useLightingStore.getState().setSpecularIntensity(1.5);
-      expect(useLightingStore.getState().specularIntensity).toBe(1.5);
-    });
-
-    it('should clamp specular intensity to [0, 2]', () => {
-      useLightingStore.getState().setSpecularIntensity(5);
-      expect(useLightingStore.getState().specularIntensity).toBe(2);
-    });
-
-    it('should set shininess', () => {
-      useLightingStore.getState().setShininess(64);
-      expect(useLightingStore.getState().shininess).toBe(64);
-    });
-
-    it('should clamp shininess to [1, 128]', () => {
-      useLightingStore.getState().setShininess(200);
-      expect(useLightingStore.getState().shininess).toBe(128);
-
-      useLightingStore.getState().setShininess(0);
-      expect(useLightingStore.getState().shininess).toBe(1);
-    });
+    // Note: specularIntensity tests moved to pbrStore tests
+    // These properties are now in the unified PBR system
 
     it('should toggle light indicator', () => {
       useLightingStore.getState().setShowLightIndicator(true);
@@ -292,4 +268,8 @@ describe('Enhanced Features Stores', () => {
       expect(useAppearanceStore.getState().colorAlgorithm).toBe(DEFAULT_COLOR_ALGORITHM);
     });
   });
+
+  // Note: Edge-specific Specular and Unified PBR Properties tests have been moved to
+  // a dedicated pbrStore.test.ts file. These properties are now managed by the
+  // unified PBR system via usePBRStore with face/edge/ground configurations.
 });

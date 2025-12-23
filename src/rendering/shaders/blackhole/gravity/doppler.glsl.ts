@@ -105,9 +105,11 @@ vec3 blackbodyColor(float temperature) {
 
   // Green channel
   if (temp <= 66.0) {
-    rgb.g = (99.4708025861 * log(temp) - 161.1195681661) / 255.0;
+    // Guard against log(0) - temp is already clamped above to minimum 10 (1000K/100)
+    rgb.g = (99.4708025861 * log(max(temp, 1.0)) - 161.1195681661) / 255.0;
   } else {
-    rgb.g = 288.1221695283 * pow(temp - 60.0, -0.0755148492) / 255.0;
+    // Guard against pow with zero or negative base
+    rgb.g = 288.1221695283 * pow(max(temp - 60.0, 0.01), -0.0755148492) / 255.0;
   }
 
   // Blue channel
@@ -116,7 +118,8 @@ vec3 blackbodyColor(float temperature) {
   } else if (temp <= 19.0) {
     rgb.b = 0.0;
   } else {
-    rgb.b = (138.5177312231 * log(temp - 10.0) - 305.0447927307) / 255.0;
+    // Guard against log(0) - ensure temp - 10.0 > 0
+    rgb.b = (138.5177312231 * log(max(temp - 10.0, 0.01)) - 305.0447927307) / 255.0;
   }
 
   return clamp(rgb, 0.0, 1.0);

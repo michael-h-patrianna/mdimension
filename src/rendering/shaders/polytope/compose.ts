@@ -16,6 +16,7 @@ import {
   type MeshShaderConfig,
 } from '../shared/fractal/compose-helpers'
 import { ggxBlock } from '../shared/lighting/ggx.glsl'
+import { iblBlock, iblUniformsBlock } from '../shared/lighting/ibl.glsl'
 import { multiLightBlock } from '../shared/lighting/multi-light.glsl'
 import { sssBlock } from '../shared/lighting/sss.glsl'
 
@@ -181,6 +182,8 @@ export function composeFaceFragmentShader(config: PolytopeShaderConfig = {}): {
     { name: 'Multi-Light System', content: multiLightBlock },
     { name: 'Lighting (SSS)', content: sssBlock, condition: flags.useSss },
     { name: 'Lighting (GGX)', content: ggxBlock },
+    { name: 'IBL Uniforms', content: iblUniformsBlock },
+    { name: 'IBL Functions', content: iblBlock },
     { name: 'Shadow Maps Uniforms', content: shadowMapsUniformsBlock, condition: enableShadows },
     { name: 'Shadow Maps Functions', content: shadowMapsFunctionsBlock, condition: enableShadows },
     { name: 'Fog Uniforms', content: fogUniformsBlock, condition: flags.useFog },
@@ -219,6 +222,10 @@ void main() {
   // Get base color from algorithm using face depth as t value
   vec3 baseHSL = rgb2hsl(uColor);
   vec3 baseColor = getColorByAlgorithm(vFaceDepth, normal, baseHSL, vWorldPosition);
+
+  // F0: mix dielectric base (0.04) with albedo for metals
+  // Computed once before light loop - same for all lights and IBL
+  vec3 F0 = mix(vec3(0.04), baseColor, uMetallic);
 
   // Multi-light calculation
   vec3 col;
@@ -259,8 +266,6 @@ void main() {
       float NdotL = abs(dot(normal, l));
 
       // GGX Specular (PBR) - use faceNormal for two-sided lighting
-      // F0: mix dielectric base (0.04) with albedo for metals
-      vec3 F0 = mix(vec3(0.04), baseColor, uMetallic);
       vec3 H = normalize(l + viewDir);
       vec3 F = fresnelSchlick(max(dot(H, viewDir), 0.0), F0);
 
@@ -271,9 +276,9 @@ void main() {
       // Diffuse (energy-conserved)
       col += kD * baseColor * uLightColors[i] * NdotL * attenuation * shadow;
 
-      // Specular
+      // Specular (with artist-controlled color tint)
       vec3 specular = computePBRSpecular(faceNormal, viewDir, l, roughness, F0);
-      col += specular * uLightColors[i] * NdotL * uSpecularIntensity * attenuation * shadow;
+      col += specular * uSpecularColor * uLightColors[i] * NdotL * uSpecularIntensity * attenuation * shadow;
 
       // Rim SSS (backlight transmission)
 #ifdef USE_SSS
@@ -296,9 +301,15 @@ void main() {
     }
 #endif
 
+    // IBL (environment reflections)
+    col += computeIBL(normal, viewDir, F0, roughness, uMetallic, baseColor);
+
   } else {
     // No lighting - just ambient
     col = baseColor * uAmbientColor * uAmbientIntensity;
+
+    // IBL still applies without direct lights (uses F0 computed above)
+    col += computeIBL(normal, viewDir, F0, roughness, uMetallic, baseColor);
   }
 
   // Atmospheric Depth Integration (Fog)

@@ -28,9 +28,10 @@
 import type { Vector3D } from '@/lib/math/types';
 import { RENDER_LAYERS } from '@/rendering/core/layers';
 import type { GroundPlaneType, WallPosition } from '@/stores/defaults/visualDefaults';
-import { Grid, Instance, Instances } from '@react-three/drei';
+import { Grid } from '@react-three/drei';
 import { useCallback, useMemo } from 'react';
 import { Color, DoubleSide, FrontSide, Object3D } from 'three';
+import { GroundPlaneMaterial } from './GroundPlaneMaterial';
 
 /**
  * Props for the GroundPlane component
@@ -40,10 +41,6 @@ export interface GroundPlaneProps {
   vertices?: Vector3D[];
   /** Additional offset below the lowest point (default: 0.5) */
   offset?: number;
-  /** Plane opacity (default: 0.3) */
-  opacity?: number;
-  /** Reflectivity strength (default: 0.4) */
-  reflectivity?: number;
   /** Which walls are currently active/visible */
   activeWalls?: WallPosition[];
   /**
@@ -62,14 +59,10 @@ export interface GroundPlaneProps {
   gridColor?: string;
   /** Grid cell spacing (default: 1) */
   gridSpacing?: number;
-  /** Material roughness (0-1, lower = shinier) */
-  roughness?: number;
-  /** Material metalness (0-1, higher = more metallic) */
-  metalness?: number;
-  /** Environment map intensity (0-1) */
-  envMapIntensity?: number;
   /** Size scale multiplier (1-5, 1 = auto-calculated minimum) */
   sizeScale?: number;
+  // Note: PBR properties (metallic, roughness, specularIntensity, specularColor)
+  // are managed via UniformManager using 'pbr-ground' source
 }
 
 /**
@@ -325,8 +318,6 @@ function WallGrid({
 export function GroundPlane({
   vertices,
   offset = 0.5,
-  opacity: _opacity = 0.3,
-  reflectivity: _reflectivity = 0.4,
   activeWalls = ['floor'],
   minBoundingRadius,
   color = '#101010',
@@ -334,9 +325,6 @@ export function GroundPlane({
   showGrid = true,
   gridColor = '#3a3a3a',
   gridSpacing = 1,
-  roughness = 0.3,
-  metalness = 0.5,
-  envMapIntensity = 0.5,
   sizeScale = 1,
 }: GroundPlaneProps) {
   // Calculate position and size based on vertex count (not positions)
@@ -363,44 +351,51 @@ export function GroundPlane({
     [gridColor]
   );
 
+  // Determine material side
+  const side = surfaceType === 'two-sided' ? DoubleSide : FrontSide;
+
+  // Callback ref to set layer on wall meshes
+  // IMPORTANT: Must be called before any early returns to maintain hook order
+  const setWallLayer = useCallback((obj: Object3D | null) => {
+    if (obj) {
+      obj.layers.set(RENDER_LAYERS.SKYBOX);
+    }
+  }, []);
+
   // Don't render if no walls are active
   if (!activeWalls || activeWalls.length === 0) {
     return null;
   }
 
-  // Determine material side
-  const side = surfaceType === 'two-sided' ? DoubleSide : FrontSide;
-
   return (
     <>
-      {/* 
-        Instanced Wall Surfaces 
-        Reduces N draw calls to 1 for the background planes
+      {/*
+        Wall Surfaces with Custom PBR Shader
+        Uses same GGX BRDF as other objects for visual consistency
       */}
-      <Instances range={activeWalls.length} receiveShadow>
-        <planeGeometry args={[planeSize, planeSize]} />
-        <meshStandardMaterial
-          color={color}
-          side={side}
-          roughness={roughness}
-          metalness={metalness}
-          envMapIntensity={envMapIntensity}
-        />
-
-        {activeWalls.map((wall) => {
-          const config = getWallConfig(wall, wallDistance);
-          return (
-            <Instance
-              key={wall}
-              position={config.position}
-              rotation={config.surfaceRotation}
+      {activeWalls.map((wall) => {
+        const config = getWallConfig(wall, wallDistance);
+        return (
+          <mesh
+            key={wall}
+            ref={setWallLayer}
+            position={config.position}
+            rotation={config.surfaceRotation}
+            receiveShadow
+          >
+            <planeGeometry args={[planeSize, planeSize]} />
+            {/* PBR properties managed via 'pbr-ground' UniformManager source */}
+            <GroundPlaneMaterial
+              color={color}
+              opacity={1}
+              side={side}
             />
-          );
-        })}
-      </Instances>
+          </mesh>
+        );
+      })}
 
-      {/* 
-        Grid Overlays 
+      {/*
+        Grid Overlays
         Rendered separately as Grid component handles its own complex shader
       */}
       {showGrid && activeWalls.map((wall) => (

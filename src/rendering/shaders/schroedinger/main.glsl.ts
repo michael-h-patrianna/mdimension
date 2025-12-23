@@ -370,9 +370,9 @@ void main() {
         // Diffuse (energy-conserved)
         col += kD * surfaceColor * uLightColors[i] * NdotL * attenuation;
 
-        // Specular
+        // Specular (with artist-controlled color tint)
         vec3 specular = computePBRSpecular(n, viewDir, l, uRoughness, F0);
-        col += specular * uLightColors[i] * NdotL * uSpecularIntensity * attenuation;
+        col += specular * uSpecularColor * uLightColors[i] * NdotL * uSpecularIntensity * attenuation;
     }
 
     // Fresnel rim
@@ -382,6 +382,10 @@ void main() {
         rim *= (0.3 + 0.7 * totalNdotL);
         col += uRimColor * rim;
     }
+
+    // IBL (environment reflections)
+    vec3 F0_ibl = mix(vec3(0.04), surfaceColor, uMetallic);
+    col += computeIBL(n, viewDir, F0_ibl, uRoughness, uMetallic, surfaceColor);
 
     // Depth
     vec4 worldHitPos = uModelMatrix * vec4(p, 1.0);

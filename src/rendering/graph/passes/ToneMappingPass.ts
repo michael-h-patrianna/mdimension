@@ -57,14 +57,18 @@ vec3 ReinhardToneMapping(vec3 color, float exposure) {
 vec3 CineonToneMapping(vec3 color, float exposure) {
   color *= exposure;
   color = max(vec3(0.0), color - 0.004);
-  return pow((color * (6.2 * color + 0.5)) / (color * (6.2 * color + 1.7) + 0.06), vec3(2.2));
+  vec3 numerator = color * (6.2 * color + 0.5);
+  vec3 denominator = color * (6.2 * color + 1.7) + 0.06;
+  // Guard against division by zero (denominator is always >= 0.06 for non-negative color)
+  return pow(numerator / max(denominator, vec3(0.0001)), vec3(2.2));
 }
 
 // ACES helper
 vec3 RRTAndODTFit(vec3 v) {
   vec3 a = v * (v + 0.0245786) - 0.000090537;
   vec3 b = v * (0.983729 * v + 0.4329510) + 0.238081;
-  return a / b;
+  // Guard against division by zero (b is always > 0.238 for non-negative v, but be safe)
+  return a / max(b, vec3(0.0001));
 }
 
 // ACES Filmic - https://github.com/selfshadow/ltc_code/blob/master/webgl/shaders/ltc/ltc_blit.fs
@@ -162,8 +166,12 @@ vec3 NeutralToneMapping(vec3 color, float exposure) {
   if (peak < StartCompression) return color;
 
   float d = 1.0 - StartCompression;
-  float newPeak = 1.0 - d * d / (peak + d - StartCompression);
-  color *= newPeak / peak;
+  // Guard against division by zero (peak + d - StartCompression is always > 0 when peak >= StartCompression)
+  float denominator = peak + d - StartCompression;
+  float newPeak = 1.0 - d * d / max(denominator, 0.0001);
+  // Guard against peak being zero
+  float safePeak = max(peak, 0.0001);
+  color *= newPeak / safePeak;
 
   float g = 1.0 - 1.0 / (Desaturation * (peak - newPeak) + 1.0);
   return mix(color, vec3(newPeak), g);

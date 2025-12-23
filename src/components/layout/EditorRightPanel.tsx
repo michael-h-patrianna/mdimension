@@ -12,6 +12,7 @@ import { FacesSection } from '@/components/sections/Faces/FacesSection';
 import { LightsSection } from '@/components/sections/Lights/LightsSection';
 import { PerformanceSection } from '@/components/sections/Performance/PerformanceSection';
 import { PostProcessingSection } from '@/components/sections/PostProcessing/PostProcessingSection';
+import { ReflectionsSection } from '@/components/sections/Reflections/ReflectionsSection';
 import { SettingsSection } from '@/components/sections/Settings/SettingsSection';
 import { ShadowsSection } from '@/components/sections/Shadows/ShadowsSection';
 
@@ -30,10 +31,11 @@ export const EditorRightPanel: React.FC = () => {
       ),
       content: (
         <div>
-          {/* The "Subject" - Materials, Lines, Shadows */}
+          {/* The "Subject" - Materials, Lines, Shadows, Reflections */}
           <FacesSection defaultOpen={true} />
           <EdgesSection defaultOpen={false} />
           <ShadowsSection defaultOpen={false} />
+          <ReflectionsSection defaultOpen={false} />
           <AdvancedObjectControls />
         </div>
       ),

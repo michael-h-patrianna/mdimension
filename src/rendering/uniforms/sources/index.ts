@@ -9,5 +9,11 @@
 export { ColorSource, type ColorSourceConfig } from './ColorSource'
 export { LightingSource, type LightingSourceConfig } from './LightingSource'
 export { NDTransformSource, type NDTransformConfig } from './NDTransformSource'
+export {
+  createEdgePBRSource,
+  createFacePBRSource,
+  createGroundPBRSource,
+  PBRSource,
+} from './PBRSource'
 export { QualitySource, type QualitySourceConfig } from './QualitySource'
 export { TemporalSource, type TemporalSourceConfig } from './TemporalSource'

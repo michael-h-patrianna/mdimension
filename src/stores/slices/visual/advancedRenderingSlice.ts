@@ -2,8 +2,6 @@ import type { StateCreator } from 'zustand'
 import type { AdvancedRenderingSlice } from './types'
 
 export const ADVANCED_RENDERING_INITIAL_STATE = {
-  roughness: 0.3,
-
   sssEnabled: false,
   sssIntensity: 1.0,
   sssColor: '#ff8844',
@@ -18,8 +16,6 @@ export const createAdvancedRenderingSlice: StateCreator<
   AdvancedRenderingSlice
 > = (set) => ({
   ...ADVANCED_RENDERING_INITIAL_STATE,
-
-  setRoughness: (roughness) => set({ roughness }),
 
   setSssEnabled: (sssEnabled) => set({ sssEnabled }),
   setSssIntensity: (sssIntensity) => set({ sssIntensity }),

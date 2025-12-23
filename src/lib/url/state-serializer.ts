@@ -43,7 +43,6 @@ import {
 } from '@/rendering/shadows/constants'
 import type { ShadowAnimationMode, ShadowQuality } from '@/rendering/shadows/types'
 import {
-  DEFAULT_DIFFUSE_INTENSITY,
   DEFAULT_EXPOSURE,
   DEFAULT_SHADER_SETTINGS,
   DEFAULT_SHADER_TYPE,
@@ -82,7 +81,6 @@ export interface ShareableState {
   toneMappingEnabled?: boolean
   toneMappingAlgorithm?: ToneMappingAlgorithm
   exposure?: number
-  diffuseIntensity?: number
   // Mandelbulb opacity settings
   opacityMode?: OpacityMode
   simpleAlphaOpacity?: number
@@ -178,13 +176,6 @@ export function serializeState(state: ShareableState): string {
 
   if (state.exposure !== undefined && state.exposure !== DEFAULT_EXPOSURE) {
     params.set('ex', state.exposure.toFixed(1))
-  }
-
-  if (
-    state.diffuseIntensity !== undefined &&
-    state.diffuseIntensity !== DEFAULT_DIFFUSE_INTENSITY
-  ) {
-    params.set('di', state.diffuseIntensity.toFixed(1))
   }
 
   // Per-shader settings (PRD Story 7 AC7)
@@ -437,14 +428,6 @@ export function deserializeState(searchParams: string): Partial<ShareableState> 
     const ex = parseFloat(exposure)
     if (!isNaN(ex) && ex >= 0.1 && ex <= 3) {
       state.exposure = ex
-    }
-  }
-
-  const diffuseIntensity = params.get('di')
-  if (diffuseIntensity) {
-    const di = parseFloat(diffuseIntensity)
-    if (!isNaN(di) && di >= 0 && di <= 2) {
-      state.diffuseIntensity = di
     }
   }
 

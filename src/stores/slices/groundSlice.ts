@@ -3,27 +3,28 @@
  *
  * Manages ground plane and environment surfaces:
  * - Active walls (floor, back, left, right, top)
- * - Ground plane appearance (offset, opacity, reflectivity, color)
+ * - Ground plane appearance (offset, color, type, size)
  * - Ground grid settings
  * - Ground material PBR properties
+ * - IBL (environment reflections on objects)
  */
 
 import type { StateCreator } from 'zustand'
 import {
   type GroundPlaneType,
+  type IBLQuality,
   type WallPosition,
   DEFAULT_ACTIVE_WALLS,
   DEFAULT_GROUND_GRID_COLOR,
   DEFAULT_GROUND_GRID_SPACING,
-  DEFAULT_GROUND_MATERIAL_ENVMAP_INTENSITY,
   DEFAULT_GROUND_MATERIAL_METALNESS,
   DEFAULT_GROUND_MATERIAL_ROUGHNESS,
   DEFAULT_GROUND_PLANE_COLOR,
   DEFAULT_GROUND_PLANE_OFFSET,
-  DEFAULT_GROUND_PLANE_OPACITY,
-  DEFAULT_GROUND_PLANE_REFLECTIVITY,
   DEFAULT_GROUND_PLANE_SIZE_SCALE,
   DEFAULT_GROUND_PLANE_TYPE,
+  DEFAULT_IBL_INTENSITY,
+  DEFAULT_IBL_QUALITY,
   DEFAULT_SHOW_GROUND_GRID,
 } from '../defaults/visualDefaults'
 
@@ -43,8 +44,6 @@ export interface GroundSliceState {
   // --- Ground Plane ---
   activeWalls: WallPosition[]
   groundPlaneOffset: number
-  groundPlaneOpacity: number
-  groundPlaneReflectivity: number
   groundPlaneColor: string
   groundPlaneType: GroundPlaneType
   groundPlaneSizeScale: number
@@ -57,7 +56,10 @@ export interface GroundSliceState {
   // --- Ground Material ---
   groundMaterialRoughness: number
   groundMaterialMetalness: number
-  groundMaterialEnvMapIntensity: number
+
+  // --- IBL (Wall Reflections) ---
+  iblQuality: IBLQuality
+  iblIntensity: number
 }
 
 export interface GroundSliceActions {
@@ -65,8 +67,6 @@ export interface GroundSliceActions {
   setActiveWalls: (walls: WallPosition[]) => void
   toggleWall: (wall: WallPosition) => void
   setGroundPlaneOffset: (offset: number) => void
-  setGroundPlaneOpacity: (opacity: number) => void
-  setGroundPlaneReflectivity: (reflectivity: number) => void
   setGroundPlaneColor: (color: string) => void
   setGroundPlaneType: (type: GroundPlaneType) => void
   setGroundPlaneSizeScale: (scale: number) => void
@@ -79,7 +79,10 @@ export interface GroundSliceActions {
   // --- Ground Material Actions ---
   setGroundMaterialRoughness: (roughness: number) => void
   setGroundMaterialMetalness: (metalness: number) => void
-  setGroundMaterialEnvMapIntensity: (intensity: number) => void
+
+  // --- IBL Actions ---
+  setIBLQuality: (quality: IBLQuality) => void
+  setIBLIntensity: (intensity: number) => void
 }
 
 export type GroundSlice = GroundSliceState & GroundSliceActions
@@ -92,8 +95,6 @@ export const GROUND_INITIAL_STATE: GroundSliceState = {
   // Ground plane
   activeWalls: [...DEFAULT_ACTIVE_WALLS],
   groundPlaneOffset: DEFAULT_GROUND_PLANE_OFFSET,
-  groundPlaneOpacity: DEFAULT_GROUND_PLANE_OPACITY,
-  groundPlaneReflectivity: DEFAULT_GROUND_PLANE_REFLECTIVITY,
   groundPlaneColor: DEFAULT_GROUND_PLANE_COLOR,
   groundPlaneType: DEFAULT_GROUND_PLANE_TYPE,
   groundPlaneSizeScale: DEFAULT_GROUND_PLANE_SIZE_SCALE,
@@ -106,7 +107,10 @@ export const GROUND_INITIAL_STATE: GroundSliceState = {
   // Ground material
   groundMaterialRoughness: DEFAULT_GROUND_MATERIAL_ROUGHNESS,
   groundMaterialMetalness: DEFAULT_GROUND_MATERIAL_METALNESS,
-  groundMaterialEnvMapIntensity: DEFAULT_GROUND_MATERIAL_ENVMAP_INTENSITY,
+
+  // IBL
+  iblQuality: DEFAULT_IBL_QUALITY,
+  iblIntensity: DEFAULT_IBL_INTENSITY,
 }
 
 // ============================================================================
@@ -134,14 +138,6 @@ export const createGroundSlice: StateCreator<GroundSlice, [], [], GroundSlice> =
 
   setGroundPlaneOffset: (offset: number) => {
     set({ groundPlaneOffset: Math.max(0, Math.min(10, offset)) })
-  },
-
-  setGroundPlaneOpacity: (opacity: number) => {
-    set({ groundPlaneOpacity: Math.max(0, Math.min(1, opacity)) })
-  },
-
-  setGroundPlaneReflectivity: (reflectivity: number) => {
-    set({ groundPlaneReflectivity: Math.max(0, Math.min(1, reflectivity)) })
   },
 
   setGroundPlaneColor: (color: string) => {
@@ -182,7 +178,12 @@ export const createGroundSlice: StateCreator<GroundSlice, [], [], GroundSlice> =
     set({ groundMaterialMetalness: Math.max(0, Math.min(1, metalness)) })
   },
 
-  setGroundMaterialEnvMapIntensity: (intensity: number) => {
-    set({ groundMaterialEnvMapIntensity: Math.max(0, Math.min(2, intensity)) })
+  // --- IBL Actions ---
+  setIBLQuality: (quality: IBLQuality) => {
+    set({ iblQuality: quality })
+  },
+
+  setIBLIntensity: (intensity: number) => {
+    set({ iblIntensity: Math.max(0, Math.min(2, intensity)) })
   },
 })

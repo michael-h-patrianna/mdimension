@@ -273,7 +273,7 @@ export const SceneLighting = memo(function SceneLighting() {
   const lightVerticalAngle = useLightingStore((state) => state.lightVerticalAngle);
   const ambientIntensity = useLightingStore((state) => state.ambientIntensity);
   const ambientColor = useLightingStore((state) => state.ambientColor);
-  const diffuseIntensity = useLightingStore((state) => state.diffuseIntensity);
+  // Note: diffuseIntensity removed - energy conservation derives diffuse from (1-kS)*(1-metallic)
   const lightStrength = useLightingStore((state) => state.lightStrength);
   const showLightIndicator = useLightingStore((state) => state.showLightIndicator);
 
@@ -342,7 +342,7 @@ export const SceneLighting = memo(function SceneLighting() {
             <pointLight
               position={legacyLightPosition}
               color={lightColor}
-              intensity={diffuseIntensity * (lightStrength ?? 1.0) * 10}
+              intensity={(lightStrength ?? 1.0) * 10}
               distance={0}
               decay={0}
             />

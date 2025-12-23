@@ -66,9 +66,6 @@ export const createRenderSlice: StateCreator<AppearanceSlice, [], [], RenderSlic
         specularIntensity: settings.specularIntensity !== undefined
           ? Math.max(0, Math.min(2, settings.specularIntensity))
           : state.shaderSettings.surface.specularIntensity,
-        shininess: settings.shininess !== undefined
-          ? Math.max(1, Math.min(128, settings.shininess))
-          : state.shaderSettings.surface.shininess,
       },
     },
   })),

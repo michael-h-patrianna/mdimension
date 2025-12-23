@@ -106,9 +106,9 @@ void main() {
         // Diffuse (energy-conserved)
         col += kD * surfaceColor * uLightColors[i] * NdotL * attenuation * shadow;
 
-        // Specular
+        // Specular (with artist-controlled color tint)
         vec3 specular = computePBRSpecular(n, viewDir, l, uRoughness, F0);
-        col += specular * uLightColors[i] * NdotL * uSpecularIntensity * attenuation * shadow;
+        col += specular * uSpecularColor * uLightColors[i] * NdotL * uSpecularIntensity * attenuation * shadow;
 
         // Subsurface Scattering (SSS)
 #ifdef USE_SSS
@@ -127,6 +127,10 @@ void main() {
         col += uRimColor * rim;
     }
 #endif
+
+    // IBL (environment reflections)
+    vec3 F0_ibl = mix(vec3(0.04), surfaceColor, uMetallic);
+    col += computeIBL(n, viewDir, F0_ibl, uRoughness, uMetallic, surfaceColor);
 
     // Atmospheric Depth Integration (Fog)
 #ifdef USE_FOG

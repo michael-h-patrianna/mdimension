@@ -31,6 +31,7 @@ import {
 import { UniformManager } from '@/rendering/uniforms/UniformManager'
 import { useAnimationStore } from '@/stores/animationStore'
 import { useAppearanceStore } from '@/stores/appearanceStore'
+import { useEnvironmentStore } from '@/stores/environmentStore'
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore'
 import { useGeometryStore } from '@/stores/geometryStore'
 import { useLightingStore } from '@/stores/lightingStore'
@@ -212,6 +213,11 @@ const QuaternionJuliaMesh = () => {
 
       // Temporal Reprojection - Texture must be manually handled as it comes from context
       uPrevDepthTexture: { value: null },
+
+      // IBL (Image-Based Lighting) uniforms
+      uEnvMap: { value: null },
+      uIBLIntensity: { value: 1.0 },
+      uIBLQuality: { value: 0 }, // 0=off, 1=low, 2=high
     }),
     []
   )
@@ -322,19 +328,17 @@ const QuaternionJuliaMesh = () => {
       u.uPrevDepthTexture.value = temporalUniforms.uPrevDepthTexture
     }
 
-    // Update centralized uniform sources (Lighting, Temporal, Quality, Color)
-    UniformManager.applyToMaterial(material, ['lighting', 'temporal', 'quality', 'color'])
+    // Update centralized uniform sources (Lighting, Temporal, Quality, Color, PBR)
+    UniformManager.applyToMaterial(material, ['lighting', 'temporal', 'quality', 'color', 'pbr-face'])
 
-    // Advanced Rendering (Global Visuals)
-    const visuals = appStore; // appStore is already available
-    if (u.uRoughness) u.uRoughness.value = visuals.roughness
-    if (u.uSssEnabled) u.uSssEnabled.value = visuals.sssEnabled
-    if (u.uSssIntensity) u.uSssIntensity.value = visuals.sssIntensity
+    // SSS (Subsurface Scattering) properties
+    if (u.uSssEnabled) u.uSssEnabled.value = appStore.sssEnabled
+    if (u.uSssIntensity) u.uSssIntensity.value = appStore.sssIntensity
     if (u.uSssColor) {
-        updateLinearColorUniform(colorCacheRef.current.faceColor /* reuse helper */, u.uSssColor.value as THREE.Color, visuals.sssColor || '#ff8844')
+        updateLinearColorUniform(colorCacheRef.current.faceColor /* reuse helper */, u.uSssColor.value as THREE.Color, appStore.sssColor || '#ff8844')
     }
-    if (u.uSssThickness) u.uSssThickness.value = visuals.sssThickness
-    if (u.uSssJitter) u.uSssJitter.value = visuals.sssJitter
+    if (u.uSssThickness) u.uSssThickness.value = appStore.sssThickness
+    if (u.uSssJitter) u.uSssJitter.value = appStore.sssJitter
 
     // Update fresnel
     u.uFresnelEnabled.value = appStore.edgesVisible
@@ -378,6 +382,17 @@ const QuaternionJuliaMesh = () => {
 
     // Update ambient occlusion (controlled by global SSAO toggle)
     u.uAoEnabled.value = usePostProcessingStore.getState().ssaoEnabled
+
+    // IBL (Image-Based Lighting) uniforms
+    const iblState = useEnvironmentStore.getState()
+    const qualityMap = { off: 0, low: 1, high: 2 } as const
+    u.uIBLQuality.value = qualityMap[iblState.iblQuality]
+    u.uIBLIntensity.value = iblState.iblIntensity
+    const bg = state.scene.background
+    const isCubeTexture = bg && (bg as THREE.CubeTexture).isCubeTexture
+    if (isCubeTexture) {
+      u.uEnvMap.value = bg
+    }
   }, FRAME_PRIORITY.RENDERER_UNIFORMS)
 
   // Generate unique key to force material recreation when shader changes or context is restored

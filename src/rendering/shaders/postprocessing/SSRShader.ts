@@ -171,7 +171,9 @@ export const SSRShader = {
     // Project view-space position to screen UV
     vec2 projectToScreen(vec3 viewPos) {
       vec4 clipPos = projMatrix * vec4(viewPos, 1.0);
-      return (clipPos.xy / clipPos.w) * 0.5 + 0.5;
+      // Guard against w being zero (point at camera plane)
+      float safeW = abs(clipPos.w) < 0.0001 ? 0.0001 : clipPos.w;
+      return (clipPos.xy / safeW) * 0.5 + 0.5;
     }
 
     // Fresnel approximation (Schlick)
@@ -223,13 +225,15 @@ export const SSRShader = {
       vec3 rayDir = reflectDir;
 
       // Calculate step size based on max distance and steps
-      float stepSize = maxDistance / float(maxSteps);
+      // Guard against maxSteps being zero
+      int safeMaxSteps = max(maxSteps, 1);
+      float stepSize = maxDistance / float(safeMaxSteps);
 
       vec2 hitUV = vec2(-1.0);
       float hitDist = 0.0;
 
       for (int i = 1; i <= 64; i++) {
-        if (i > maxSteps) break;
+        if (i > safeMaxSteps) break;
 
         // Step along ray
         vec3 rayPos = rayOrigin + rayDir * (stepSize * float(i));

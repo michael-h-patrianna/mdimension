@@ -1,14 +1,18 @@
 /**
  * Edge Material Controls Component
  *
- * Controls for edge/tube material properties: metallic and roughness.
+ * Controls for PBR material properties for tube edges.
+ * Includes metallic, roughness, and edge-specific specular settings.
  * Only visible when edge thickness > 1 (tube rendering mode).
  */
 
-import { Slider } from '@/components/ui/Slider'
+import { ColorPicker } from '@/components/ui/ColorPicker'
 import { ControlGroup } from '@/components/ui/ControlGroup'
-import { useAppearanceStore, type AppearanceSlice } from '@/stores/appearanceStore';
-import { useLightingStore } from '@/stores/lightingStore';
+import { Slider } from '@/components/ui/Slider'
+import { useAppearanceStore } from '@/stores/appearanceStore'
+import { DEFAULT_EDGE_PBR } from '@/stores/defaults/visualDefaults'
+import { useLightingStore } from '@/stores/lightingStore'
+import { usePBRStore, type PBRSlice } from '@/stores/pbrStore'
 import React from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
@@ -18,48 +22,87 @@ export interface EdgeMaterialControlsProps {
 
 export const EdgeMaterialControls: React.FC<EdgeMaterialControlsProps> = React.memo(
   ({ className = '' }) => {
-    const appearanceSelector = useShallow((state: AppearanceSlice) => ({
-      edgeThickness: state.edgeThickness,
-      edgeMetallic: state.edgeMetallic,
-      edgeRoughness: state.edgeRoughness,
-      setEdgeMetallic: state.setEdgeMetallic,
-      setEdgeRoughness: state.setEdgeRoughness,
-    }));
+    const edgeThickness = useAppearanceStore((state) => state.edgeThickness)
+    const lightEnabled = useLightingStore((state) => state.lightEnabled)
+
+    // PBR settings for edges (from dedicated PBR store)
+    const pbrSelector = useShallow((state: PBRSlice) => ({
+      metallic: state.edge.metallic,
+      roughness: state.edge.roughness,
+      specularIntensity: state.edge.specularIntensity,
+      specularColor: state.edge.specularColor,
+      setMetallic: state.setEdgeMetallic,
+      setRoughness: state.setEdgeRoughness,
+      setSpecularIntensity: state.setEdgeSpecularIntensity,
+      setSpecularColor: state.setEdgeSpecularColor,
+    }))
     const {
-      edgeThickness,
-      edgeMetallic,
-      edgeRoughness,
-      setEdgeMetallic,
-      setEdgeRoughness,
-    } = useAppearanceStore(appearanceSelector);
+      metallic,
+      roughness,
+      specularIntensity,
+      specularColor,
+      setMetallic,
+      setRoughness,
+      setSpecularIntensity,
+      setSpecularColor,
+    } = usePBRStore(pbrSelector)
 
-    const lightEnabled = useLightingStore((state) => state.lightEnabled);
-    const showMaterialControls = edgeThickness > 1 && lightEnabled;
+    const showMaterialControls = edgeThickness > 1 && lightEnabled
 
-    if (!showMaterialControls) return null;
+    if (!showMaterialControls) return null
 
     return (
-      <ControlGroup title="Edge Material" className={className} defaultOpen>
+      <ControlGroup title="Material" className={className} defaultOpen>
         {/* Metallic */}
         <Slider
-            label="Metallic"
-            min={0}
-            max={1}
-            step={0.01}
-            value={edgeMetallic}
-            onChange={setEdgeMetallic}
-            showValue
+          label="Metallic"
+          min={0}
+          max={1}
+          step={0.01}
+          value={metallic}
+          onChange={setMetallic}
+          showValue
         />
 
         {/* Roughness */}
         <Slider
-            label="Roughness"
-            min={0}
-            max={1}
-            step={0.01}
-            value={edgeRoughness}
-            onChange={setEdgeRoughness}
-            showValue
+          label="Roughness"
+          min={0.04}
+          max={1}
+          step={0.01}
+          value={roughness}
+          onChange={setRoughness}
+          showValue
+        />
+
+        {/* Specular Color */}
+        <div className="flex items-center justify-between">
+          <ColorPicker
+            label="Specular Color"
+            value={specularColor}
+            onChange={setSpecularColor}
+            disableAlpha={true}
+          />
+          {specularColor !== DEFAULT_EDGE_PBR.specularColor && (
+            <button
+              onClick={() => setSpecularColor(DEFAULT_EDGE_PBR.specularColor)}
+              className="text-xs text-accent hover:text-accent/80 transition-colors"
+              title="Reset to default"
+            >
+              Reset
+            </button>
+          )}
+        </div>
+
+        {/* Specular Intensity */}
+        <Slider
+          label="Specular Intensity"
+          min={0}
+          max={2}
+          step={0.1}
+          value={specularIntensity}
+          onChange={setSpecularIntensity}
+          showValue
         />
       </ControlGroup>
     )

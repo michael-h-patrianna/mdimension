@@ -55,11 +55,17 @@ export type ColorSlice = ColorSliceState & ColorSliceActions
 // Material Slice
 // ============================================================================
 
+/**
+ * Material slice state - display and emission properties.
+ * NOTE: PBR properties (roughness, metallic, specularIntensity, specularColor)
+ * have been moved to the dedicated pbrStore (usePBRStore).
+ */
 export interface MaterialSliceState {
+  // Display properties
   edgeThickness: number
-  edgeMetallic: number
-  edgeRoughness: number
   faceOpacity: number
+
+  // Emission
   faceEmission: number
   faceEmissionThreshold: number
   faceEmissionColorShift: number
@@ -69,8 +75,6 @@ export interface MaterialSliceState {
 
 export interface MaterialSliceActions {
   setEdgeThickness: (thickness: number) => void
-  setEdgeMetallic: (metallic: number) => void
-  setEdgeRoughness: (roughness: number) => void
   setFaceOpacity: (opacity: number) => void
   setFaceEmission: (emission: number) => void
   setFaceEmissionThreshold: (threshold: number) => void
@@ -116,9 +120,6 @@ export type RenderSlice = RenderSliceState & RenderSliceActions
 // ============================================================================
 
 export interface AdvancedRenderingState {
-  // Roughness (Global override for fractals)
-  roughness: number
-
   // Subsurface Scattering
   sssEnabled: boolean
   sssIntensity: number
@@ -128,7 +129,6 @@ export interface AdvancedRenderingState {
 }
 
 export interface AdvancedRenderingActions {
-  setRoughness: (roughness: number) => void
   setSssEnabled: (enabled: boolean) => void
   setSssIntensity: (intensity: number) => void
   setSssColor: (color: string) => void

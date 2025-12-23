@@ -4,7 +4,6 @@ import { BokehControls } from './BokehControls';
 import { CinematicControls } from './CinematicControls';
 import { MiscControls } from './MiscControls';
 import { RefractionControls } from './RefractionControls';
-import { SSRControls } from './SSRControls';
 import { Switch } from '@/components/ui/Switch';
 import { Tabs } from '@/components/ui/Tabs';
 import { usePostProcessingStore, type PostProcessingSlice } from '@/stores/postProcessingStore';
@@ -20,8 +19,6 @@ export const PostProcessingControls: React.FC = () => {
     setCinematicEnabled: state.setCinematicEnabled,
     bokehEnabled: state.bokehEnabled,
     setBokehEnabled: state.setBokehEnabled,
-    ssrEnabled: state.ssrEnabled,
-    setSsrEnabled: state.setSSREnabled,
     refractionEnabled: state.refractionEnabled,
     setRefractionEnabled: state.setRefractionEnabled,
   }));
@@ -29,7 +26,6 @@ export const PostProcessingControls: React.FC = () => {
     bloomEnabled, setBloomEnabled,
     cinematicEnabled, setCinematicEnabled,
     bokehEnabled, setBokehEnabled,
-    ssrEnabled, setSsrEnabled,
     refractionEnabled, setRefractionEnabled,
   } = usePostProcessingStore(postProcessingSelector);
 
@@ -78,22 +74,6 @@ export const PostProcessingControls: React.FC = () => {
           />
           <div className={!bokehEnabled ? 'opacity-50 pointer-events-none' : ''}>
             <BokehControls />
-          </div>
-        </div>
-      ),
-    },
-    {
-      id: 'ssr',
-      label: 'Reflections',
-      content: (
-        <div className="space-y-4">
-          <Switch 
-            checked={ssrEnabled} 
-            onCheckedChange={setSsrEnabled}
-            label="Enable SSR"
-          />
-          <div className={!ssrEnabled ? 'opacity-50 pointer-events-none' : ''}>
-            <SSRControls />
           </div>
         </div>
       ),

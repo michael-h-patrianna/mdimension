@@ -246,8 +246,8 @@ vec3 computeEmissionLit(float rho, float phase, vec3 p, vec3 gradient, vec3 view
             shadowFactor = exp(-shadowDens * uDensityGain * uShadowStrength);
         }
         
-        // Add specular contribution
-        col += specular * uLightColors[i] * NdotL * uSpecularIntensity * attenuation * shadowFactor;
+        // Add specular contribution (with artist-controlled color tint)
+        col += specular * uSpecularColor * uLightColors[i] * NdotL * uSpecularIntensity * attenuation * shadowFactor;
         
         // Subsurface Scattering (SSS)
 #ifdef USE_SSS

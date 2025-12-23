@@ -25,7 +25,6 @@ import { SHADOW_SOFTNESS_RANGE } from '@/rendering/shadows/constants'
 import {
   DEFAULT_AMBIENT_COLOR,
   DEFAULT_AMBIENT_INTENSITY,
-  DEFAULT_DIFFUSE_INTENSITY,
   DEFAULT_EXPOSURE,
   DEFAULT_LIGHT_COLOR,
   DEFAULT_LIGHT_ENABLED,
@@ -34,24 +33,26 @@ import {
   DEFAULT_LIGHT_VERTICAL_ANGLE,
   DEFAULT_LIGHTS,
   DEFAULT_SELECTED_LIGHT_ID,
-  DEFAULT_SHININESS,
-  DEFAULT_SHOW_LIGHT_GIZMOS,
-  DEFAULT_SHOW_LIGHT_INDICATOR,
-  DEFAULT_SPECULAR_COLOR,
-  DEFAULT_SPECULAR_INTENSITY,
-  DEFAULT_TONE_MAPPING_ALGORITHM,
-  DEFAULT_TONE_MAPPING_ENABLED,
-  DEFAULT_TRANSFORM_MODE,
+  DEFAULT_SHADOW_ANIMATION_MODE,
   DEFAULT_SHADOW_ENABLED,
   DEFAULT_SHADOW_QUALITY,
   DEFAULT_SHADOW_SOFTNESS,
-  DEFAULT_SHADOW_ANIMATION_MODE,
+  DEFAULT_SHOW_LIGHT_GIZMOS,
+  DEFAULT_SHOW_LIGHT_INDICATOR,
+  DEFAULT_TONE_MAPPING_ALGORITHM,
+  DEFAULT_TONE_MAPPING_ENABLED,
+  DEFAULT_TRANSFORM_MODE,
 } from '../defaults/visualDefaults'
 
 // ============================================================================
 // State Interface
 // ============================================================================
 
+/**
+ * Lighting slice state.
+ * NOTE: specularIntensity and specularColor have been moved to the dedicated
+ * pbrStore for better organization. Use usePBRStore for face/edge/ground PBR.
+ */
 export interface LightingSliceState {
   // --- Basic Lighting ---
   lightEnabled: boolean
@@ -60,13 +61,9 @@ export interface LightingSliceState {
   lightVerticalAngle: number
   ambientIntensity: number
   ambientColor: string
-  specularIntensity: number
-  shininess: number
   showLightIndicator: boolean
 
   // --- Enhanced Lighting ---
-  specularColor: string
-  diffuseIntensity: number
   lightStrength: number
   toneMappingEnabled: boolean
   toneMappingAlgorithm: ToneMappingAlgorithm
@@ -101,13 +98,9 @@ export interface LightingSliceActions {
   setLightVerticalAngle: (angle: number) => void
   setAmbientIntensity: (intensity: number) => void
   setAmbientColor: (color: string) => void
-  setSpecularIntensity: (intensity: number) => void
-  setShininess: (shininess: number) => void
   setShowLightIndicator: (show: boolean) => void
 
   // --- Enhanced Lighting Actions ---
-  setSpecularColor: (color: string) => void
-  setDiffuseIntensity: (intensity: number) => void
   setLightStrength: (strength: number) => void
   setToneMappingEnabled: (enabled: boolean) => void
   setToneMappingAlgorithm: (algorithm: ToneMappingAlgorithm) => void
@@ -150,13 +143,9 @@ export const LIGHTING_INITIAL_STATE: LightingSliceState = {
   lightVerticalAngle: DEFAULT_LIGHT_VERTICAL_ANGLE,
   ambientIntensity: DEFAULT_AMBIENT_INTENSITY,
   ambientColor: DEFAULT_AMBIENT_COLOR,
-  specularIntensity: DEFAULT_SPECULAR_INTENSITY,
-  shininess: DEFAULT_SHININESS,
   showLightIndicator: DEFAULT_SHOW_LIGHT_INDICATOR,
 
   // Enhanced lighting
-  specularColor: DEFAULT_SPECULAR_COLOR,
-  diffuseIntensity: DEFAULT_DIFFUSE_INTENSITY,
   lightStrength: DEFAULT_LIGHT_STRENGTH,
   toneMappingEnabled: DEFAULT_TONE_MAPPING_ENABLED,
   toneMappingAlgorithm: DEFAULT_TONE_MAPPING_ALGORITHM,
@@ -217,27 +206,11 @@ export const createLightingSlice: StateCreator<LightingSlice, [], [], LightingSl
     set({ ambientColor: color })
   },
 
-  setSpecularIntensity: (intensity: number) => {
-    set({ specularIntensity: Math.max(0, Math.min(2, intensity)) })
-  },
-
-  setShininess: (shininess: number) => {
-    set({ shininess: Math.max(1, Math.min(128, shininess)) })
-  },
-
   setShowLightIndicator: (show: boolean) => {
     set({ showLightIndicator: show })
   },
 
   // --- Enhanced Lighting Actions ---
-  setSpecularColor: (color: string) => {
-    set({ specularColor: color })
-  },
-
-  setDiffuseIntensity: (intensity: number) => {
-    set({ diffuseIntensity: Math.max(0, Math.min(2, intensity)) })
-  },
-
   setLightStrength: (strength: number) => {
     set({ lightStrength: Math.max(0, Math.min(3, strength)) })
   },

@@ -17,8 +17,9 @@ vec3 getLightDirection(int lightIndex, vec3 fragPos) {
         return len > 0.0001 ? diff / len : vec3(0.0, 1.0, 0.0);
     }
     else if (lightType == LIGHT_TYPE_DIRECTIONAL) {
-        // Directional lights: use the stored direction (pointing toward surface)
-        vec3 dir = uLightDirections[lightIndex];
+        // Directional lights: stored direction points Light -> Surface
+        // We need L vector: Surface -> Light, so we negate it
+        vec3 dir = -uLightDirections[lightIndex];
         float len = length(dir);
         // Guard against zero-length direction
         return len > 0.0001 ? dir / len : vec3(0.0, 1.0, 0.0);

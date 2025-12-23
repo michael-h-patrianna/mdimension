@@ -27,3 +27,6 @@ console.log('\nScreenshot saved to screenshots/debug-manual-switch-result.png');
 await browser.close();
 
 
+
+
+

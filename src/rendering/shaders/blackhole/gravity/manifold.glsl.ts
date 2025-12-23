@@ -149,7 +149,12 @@ float manifoldDensity(vec3 pos3d, float ndRadius, float time) {
   #endif
 
   // Vertical falloff
-  float verticalFactor = exp(-pow(effectiveH / max(thickness, 0.001), uDensityFalloff));
+  // Guard against zero thickness and extreme exponent values
+  float safeThickness = max(thickness, 0.0001);
+  float safeExponent = clamp(uDensityFalloff, 0.1, 10.0);
+  float heightRatio = effectiveH / safeThickness;
+  // Clamp the ratio before pow to prevent extreme values
+  float verticalFactor = exp(-pow(min(heightRatio, 100.0), safeExponent));
 
   // Combine factors
   float density = radialFactor * verticalFactor;

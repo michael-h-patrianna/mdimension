@@ -80,7 +80,7 @@ void main() {
 
     // Add light contribution with shadow (energy-conserved PBR)
     vec3 radiance = uLightColors[i] * attenuation;
-    Lo += (kD * uColor / PI + specular * uSpecularIntensity) * radiance * NdotL * shadow;
+    Lo += (kD * uColor / PI + specular * uSpecularColor * uSpecularIntensity) * radiance * NdotL * shadow;
 
     // Rim SSS (backlight transmission)
 #ifdef USE_SSS
@@ -103,6 +103,9 @@ void main() {
     Lo += uRimColor * rim;
   }
 #endif
+
+  // IBL (environment reflections)
+  Lo += computeIBL(N, V, F0, roughness, uMetallic, uColor);
 
   // Final color (tone mapping is applied by post-processing OutputPass)
   vec3 color = Lo;

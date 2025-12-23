@@ -202,8 +202,7 @@ describe('TubeWireframe', () => {
         edges={mockEdges}
         color="#00ff00"
         radius={0.03}
-        metallic={0.8}
-        roughness={0.2}
+        // Note: metallic and roughness are now managed via UniformManager 'pbr-edge' source
       />
     )
   })
@@ -239,15 +238,8 @@ describe('TubeWireframe', () => {
     // No error means it used default dimension successfully
   })
 
-  it('should use default metallic of 0 when not specified', () => {
-    render(<TubeWireframe vertices={mockVertices} edges={mockEdges} color="#ffffff" />)
-    // No error means it used default metallic successfully
-  })
-
-  it('should use default roughness of 0.5 when not specified', () => {
-    render(<TubeWireframe vertices={mockVertices} edges={mockEdges} color="#ffffff" />)
-    // No error means it used default roughness successfully
-  })
+  // Note: metallic and roughness tests removed - these properties are now managed
+  // via UniformManager using 'pbr-edge' source, not as component props
 
   it('should support full opacity range', () => {
     render(
@@ -269,8 +261,7 @@ describe('TubeWireframe', () => {
         dimension={7}
         color="#ff00ff"
         radius={0.02}
-        metallic={0.5}
-        roughness={0.3}
+        // Note: metallic and roughness are now managed via UniformManager 'pbr-edge' source
       />
     )
   })

@@ -16,7 +16,7 @@ import { useAnimationStore } from '@/stores/animationStore'
 import { useAppearanceStore } from '@/stores/appearanceStore'
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore'
 import { useGeometryStore } from '@/stores/geometryStore'
-import { useLightingStore } from '@/stores/lightingStore'
+// Note: useLightingStore no longer imported - PBR handled via UniformManager 'pbr-face' source
 import { useRotationStore } from '@/stores/rotationStore'
 import { useUIStore } from '@/stores/uiStore'
 import { useFrame, useThree } from '@react-three/fiber'
@@ -297,7 +297,8 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
     // Apply centralized uniform sources
     // Note: 'quality' source updates uFastMode and uQualityMultiplier based on performance/rotation
     // We override uQualityMultiplier below to include coverage scaling
-    UniformManager.applyToMaterial(material, ['lighting', 'quality', 'color'])
+    // Note: 'pbr-face' provides uRoughness, uMetallic, uSpecularIntensity, uSpecularColor
+    UniformManager.applyToMaterial(material, ['lighting', 'quality', 'color', 'pbr-face'])
 
     // Override quality multiplier to include coverage-based reduction
     // This composes with the base quality from UniformManager
@@ -311,7 +312,7 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
     // The full-screen reconstruction pass (3×3 neighborhood) is too expensive
     // and negates the quarter-res rendering savings. Black hole stays on
     // MAIN_OBJECT layer and benefits from adaptive quality (step reduction) instead.
-    const lightingState = useLightingStore.getState() // Global lighting
+    // Note: lightingState no longer needed here - specular now via 'pbr-face' source
     const uiState = useUIStore.getState() // Global UI state
     const cache = colorCacheRef.current
 
@@ -499,9 +500,9 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
     setUniform(u, 'uFarRadius', bhState.farRadius)
 
     // Lighting (from Global Lighting Store)
+    // Note: uRoughness and uSpecular (specularIntensity) are now provided by 'pbr-face' source
+    // via UniformManager.applyToMaterial above
     setUniform(u, 'uLightingMode', LIGHTING_MODE_MAP[bhState.lightingMode] ?? 0)
-    setUniform(u, 'uRoughness', appearanceState.roughness)
-    setUniform(u, 'uSpecular', lightingState.specularIntensity)
     setUniform(u, 'uAmbientTint', bhState.ambientTint)
 
     // Edge glow
@@ -590,8 +591,8 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
     setUniform(u, 'uSliceSpeed', bhState.sliceSpeed)
     setUniform(u, 'uSliceAmplitude', bhState.sliceAmplitude)
 
-    // Update lights (via UniformManager)
-    UniformManager.applyToMaterial(material, ['lighting'])
+    // Update lights and PBR (via UniformManager)
+    UniformManager.applyToMaterial(material, ['lighting', 'pbr-face'])
 
     // Temporal accumulation uniforms
     // Compute inverse view-projection matrix for ray reconstruction

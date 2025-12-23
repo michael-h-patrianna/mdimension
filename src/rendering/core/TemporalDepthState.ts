@@ -160,38 +160,6 @@ export class TemporalDepthState {
   }
 
   /**
-   * Legacy method - no-op now as resources are managed by graph.
-   *
-   * @param _w - Width (unused)
-   * @param _h - Height (unused)
-   * @param _gl - WebGL renderer (unused)
-   * @returns Nothing
-   */
-  initialize(_w: number, _h: number, _gl: THREE.WebGLRenderer): void {
-    // No-op: Resources managed by RenderGraph
-  }
-
-  /**
-   * Legacy method - no-op.
-   *
-   * @param _gl - WebGL renderer (unused)
-   * @returns Empty promise
-   */
-  reinitialize(_gl: THREE.WebGLRenderer): Promise<void> {
-    return Promise.resolve()
-  }
-
-  /**
-   * Legacy method - no-op.
-   *
-   * @param _force - Force flag (unused)
-   * @returns Nothing
-   */
-  swap(_force = false): void {
-    // No-op: Ping-pong managed by RenderGraph
-  }
-
-  /**
    * Check if temporal reprojection is enabled in settings.
    *
    * @returns True if temporal reprojection is enabled

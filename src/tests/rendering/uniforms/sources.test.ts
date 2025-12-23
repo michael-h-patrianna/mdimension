@@ -487,15 +487,12 @@ describe('LightingSource', () => {
   beforeEach(() => {
     source = new LightingSource()
     // Reset store to default state
+    // Note: specularIntensity/specularColor now in PBRSource, not LightingSource
     useLightingStore.setState({
       version: 0,
       lights: [],
       ambientColor: '#FFFFFF',
       ambientIntensity: 0.3,
-      diffuseIntensity: 0.7,
-      specularIntensity: 0.5,
-      specularColor: '#FFFFFF',
-      shininess: 32,
     })
   })
 
@@ -516,27 +513,23 @@ describe('LightingSource', () => {
       expect(uniforms.uNumLights!.value).toBe(0)
       expect(uniforms.uAmbientIntensity!.value).toBe(0.3)
       // Note: uDiffuseIntensity removed - energy conservation derives diffuse from (1-kS)*(1-metallic)
-      expect(uniforms.uSpecularIntensity!.value).toBe(0.5)
-      expect(uniforms.uSpecularPower!.value).toBe(32)
+      // Note: uSpecularPower removed - PBR uses roughness instead of Blinn-Phong shininess
+      // Note: uSpecularIntensity moved to PBRSource
     })
   })
 
   describe('updateFromStore', () => {
     it('should update lighting uniforms', () => {
+      // Note: specularIntensity/specularColor now in PBRSource
       source.updateFromStore({
         lights: [],
         storeVersion: 1,
         ambientColor: '#FF0000',
         ambientIntensity: 0.5,
-        specularIntensity: 0.6,
-        specularColor: '#00FF00',
-        shininess: 64,
       })
 
       const uniforms = source.getUniforms()
       expect(uniforms.uAmbientIntensity!.value).toBe(0.5)
-      expect(uniforms.uSpecularIntensity!.value).toBe(0.6)
-      expect(uniforms.uSpecularPower!.value).toBe(64)
     })
 
     it('should increment version on change', () => {
@@ -547,9 +540,6 @@ describe('LightingSource', () => {
         storeVersion: 1,
         ambientColor: '#FFFFFF',
         ambientIntensity: 0.5,
-        specularIntensity: 0.5,
-        specularColor: '#FFFFFF',
-        shininess: 32,
       })
 
       expect(source.version).toBe(initialVersion + 1)
@@ -562,9 +552,6 @@ describe('LightingSource', () => {
         storeVersion: 1,
         ambientColor: '#FFFFFF',
         ambientIntensity: 0.3,
-        specularIntensity: 0.5,
-        specularColor: '#FFFFFF',
-        shininess: 32,
       })
       const version = source.version
 
@@ -574,9 +561,6 @@ describe('LightingSource', () => {
         storeVersion: 1,
         ambientColor: '#FFFFFF',
         ambientIntensity: 0.3,
-        specularIntensity: 0.5,
-        specularColor: '#FFFFFF',
-        shininess: 32,
       })
 
       expect(source.version).toBe(version)
@@ -586,15 +570,12 @@ describe('LightingSource', () => {
   describe('update', () => {
     it('should access store directly and update uniforms', () => {
       // Set up store with specific values
+      // Note: specularIntensity/specularColor now in PBRSource
       useLightingStore.setState({
         version: 5,
         lights: [],
         ambientColor: '#FF0000',
         ambientIntensity: 0.4,
-        diffuseIntensity: 0.9,
-        specularIntensity: 0.7,
-        specularColor: '#00FF00',
-        shininess: 128,
       })
 
       const state = createMockState()
@@ -602,8 +583,6 @@ describe('LightingSource', () => {
 
       const uniforms = source.getUniforms()
       expect(uniforms.uAmbientIntensity!.value).toBe(0.4)
-      expect(uniforms.uSpecularIntensity!.value).toBe(0.7)
-      expect(uniforms.uSpecularPower!.value).toBe(128)
     })
 
     it('should only update when store version changes', () => {
@@ -613,9 +592,6 @@ describe('LightingSource', () => {
         lights: [],
         ambientColor: '#FFFFFF',
         ambientIntensity: 0.3,
-        specularIntensity: 0.5,
-        specularColor: '#FFFFFF',
-        shininess: 32,
       })
 
       const state = createMockState()
@@ -631,14 +607,12 @@ describe('LightingSource', () => {
 
   describe('reset', () => {
     it('should reset to initial state', () => {
+      // Note: specularIntensity/specularColor now in PBRSource
       source.updateFromStore({
         lights: [],
         storeVersion: 5,
         ambientColor: '#FF0000',
         ambientIntensity: 0.8,
-        specularIntensity: 0.7,
-        specularColor: '#00FF00',
-        shininess: 64,
       })
 
       source.reset()
@@ -649,21 +623,18 @@ describe('LightingSource', () => {
 
   describe('applyToMaterial', () => {
     it('should apply uniforms to material', () => {
+      // Note: specularIntensity/specularColor now in PBRSource
       source.updateFromStore({
         lights: [],
         storeVersion: 1,
         ambientColor: '#FFFFFF',
         ambientIntensity: 0.6,
-        specularIntensity: 0.4,
-        specularColor: '#FFFFFF',
-        shininess: 48,
       })
 
       const material = new THREE.ShaderMaterial({
         uniforms: {
           uAmbientIntensity: { value: 0 },
-          uSpecularIntensity: { value: 0 },
-          uSpecularPower: { value: 0 },
+          // Note: uSpecularIntensity now in PBRSource
           uNumLights: { value: -1 },
         },
       })
@@ -671,8 +642,7 @@ describe('LightingSource', () => {
       source.applyToMaterial(material)
 
       expect(material.uniforms.uAmbientIntensity!.value).toBe(0.6)
-      expect(material.uniforms.uSpecularIntensity!.value).toBe(0.4)
-      expect(material.uniforms.uSpecularPower!.value).toBe(48)
+      // Note: uSpecularIntensity now tested in PBRSource tests
       expect(material.uniforms.uNumLights!.value).toBe(0)
     })
   })

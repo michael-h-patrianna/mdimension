@@ -90,8 +90,14 @@ bool detectDiskCrossing(vec3 prevPos, vec3 currPos, out vec3 crossingPos) {
     return false;  // No crossing
   }
 
+  // Guard against division by zero when prevY == currY (shouldn't happen after sign check, but be safe)
+  float deltaY = prevY - currY;
+  if (abs(deltaY) < 0.0001) {
+    return false;
+  }
+
   // Linear interpolation to find crossing point
-  float t = prevY / (prevY - currY);
+  float t = prevY / deltaY;
   t = clamp(t, 0.0, 1.0);  // Safety clamp
 
   crossingPos = mix(prevPos, currPos, t);

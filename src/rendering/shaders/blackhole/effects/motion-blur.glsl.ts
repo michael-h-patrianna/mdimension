@@ -46,7 +46,12 @@ float orbitalVelocityFactor(float radius, float innerR, float outerR) {
  */
 vec3 getMotionBlurDirection(vec3 pos3d) {
   // Tangent direction in XY plane (orbital direction)
-  vec3 radial = normalize(vec3(pos3d.xy, 0.0));
+  float xyLen = length(pos3d.xy);
+  // Guard against zero-length vector (position on Z axis)
+  if (xyLen < 0.0001) {
+    return vec3(1.0, 0.0, 0.0); // Default tangent direction
+  }
+  vec3 radial = vec3(pos3d.xy / xyLen, 0.0);
   vec3 tangent = vec3(-radial.y, radial.x, 0.0);
 
   return tangent;
@@ -105,7 +110,9 @@ vec3 applyMotionBlur(
     if (i >= samples) break;
 
     // Sample offset: -0.5 to +0.5 of blur range
-    float t = (float(i) / float(samples - 1) - 0.5) * 2.0;
+    // Guard against samples - 1 being zero (samples >= 2 checked above, but be safe)
+    float safeSamples = float(max(samples - 1, 1));
+    float t = (float(i) / safeSamples - 0.5) * 2.0;
 
     // Position offset along blur direction (tangent)
     vec3 samplePos = pos3d + blurDir * t * blurAmount * radius * 0.05;

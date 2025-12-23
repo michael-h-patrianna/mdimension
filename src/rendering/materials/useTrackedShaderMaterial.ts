@@ -64,17 +64,6 @@ export function useTrackedShaderMaterial<T extends ShaderMaterial = ShaderMateri
   const [material, setMaterial] = useState<T | null>(null)
   const [isCompiling, setIsCompiling] = useState(true)
 
-  // #region agent log - H3,H5: Track material state changes
-  useEffect(() => {
-    console.log('[DEBUG-SHADER-MATERIAL-STATE]', JSON.stringify({
-      shader: shaderName,
-      hasMaterial: material !== null,
-      isCompiling,
-      materialId: material?.uuid?.slice(0, 8) ?? 'null',
-      timestamp: Date.now(),
-    }));
-  }, [material, isCompiling, shaderName]);
-  // #endregion
   const stopTrackingRef = useRef<(() => void) | null>(null)
   const cancelRafRef = useRef<(() => void) | null>(null)
   const prevMaterialRef = useRef<T | null>(null)
@@ -108,15 +97,6 @@ export function useTrackedShaderMaterial<T extends ShaderMaterial = ShaderMateri
 
   // Step 2: Defer material creation to let overlay paint
   useEffect(() => {
-    // #region agent log - H8: Track deps changes
-    console.log('[DEBUG-DEPS-CHECK]', JSON.stringify({
-      shader: validShaderName,
-      depsChanged,
-      hasMaterial: material !== null,
-      depsKey: depsKey.slice(0, 50),
-      timestamp: Date.now(),
-    }));
-    // #endregion
     if (!depsChanged && material !== null) {
       // No change, keep current material
       return

@@ -210,7 +210,9 @@ float getDiskDensity(vec3 pos, float time) {
     
     // Differential rotation: Inner parts move faster (Keplerian)
     // Omega ~ r^(-1.5)
-    float rotSpeed = 5.0 * pow(innerR / max(r, 0.1), 1.5);
+    // Guard against r being zero or very small (use innerR as minimum safe radius)
+    float safeR = max(r, innerR * 0.1);
+    float rotSpeed = 5.0 * pow(innerR / safeR, 1.5);
     float phase = angle + time * rotSpeed;
     
     // Streak coordinates: High freq in R, Low freq in Angle
@@ -265,7 +267,9 @@ vec3 getDiskEmission(vec3 pos, float density, float time, vec3 rayDir, vec3 norm
 
     // Temperature Profile
     // T ~ r^(-3/4) standard accretion disk (Shakura-Sunyaev thin disk)
-    float tempRatio = pow(innerR / max(r, innerR), TEMP_FALLOFF_EXPONENT);
+    // Guard against r being smaller than innerR (clamp to innerR for safe ratio)
+    float safeR = max(r, innerR);
+    float tempRatio = pow(innerR / safeR, TEMP_FALLOFF_EXPONENT);
 
     // Get base color
     vec3 color;

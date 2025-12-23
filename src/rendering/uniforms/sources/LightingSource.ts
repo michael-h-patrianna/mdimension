@@ -27,6 +27,7 @@ import { BaseUniformSource, type IUniform, type UniformUpdateState } from '../Un
 
 /**
  * Configuration for LightingSource.
+ * NOTE: specularIntensity and specularColor have been moved to PBRSource.
  */
 export interface LightingSourceConfig {
   /** Light sources from the store */
@@ -37,23 +38,15 @@ export interface LightingSourceConfig {
   ambientColor: string
   /** Ambient intensity */
   ambientIntensity: number
-  /** Specular intensity */
-  specularIntensity: number
-  /** Specular color (hex string) */
-  specularColor: string
-  /** Shininess / specular power */
-  shininess: number
 }
 
 /**
- * Extended uniform interface including material uniforms.
+ * Extended uniform interface including ambient uniforms.
+ * NOTE: Specular uniforms (uSpecularIntensity, uSpecularColor) are now in PBRSource.
  */
 interface LightingUniforms extends LightUniforms {
   uAmbientColor: { value: Color }
   uAmbientIntensity: { value: number }
-  uSpecularIntensity: { value: number }
-  uSpecularColor: { value: Color }
-  uSpecularPower: { value: number }
 }
 
 /**
@@ -88,12 +81,9 @@ export class LightingSource extends BaseUniformSource {
   private colorCache: LightColorCache
   private lastStoreVersion = -1
 
-  // Cached material values
+  // Cached ambient values
   private cachedAmbientColor = new Color()
-  private cachedSpecularColor = new Color()
   private cachedAmbientIntensity = 0
-  private cachedSpecularIntensity = 0
-  private cachedShininess = 0
 
   constructor() {
     super()
@@ -101,15 +91,11 @@ export class LightingSource extends BaseUniformSource {
     // Initialize light uniforms from existing factory
     const baseLightUniforms = createLightUniforms()
 
-    // Add material uniforms
-    // Note: uDiffuseIntensity removed - energy conservation derives diffuse from (1-kS)*(1-metallic)
+    // Add ambient uniforms (specular now in PBRSource)
     this.lightUniforms = {
       ...baseLightUniforms,
       uAmbientColor: { value: new Color('#ffffff') },
       uAmbientIntensity: { value: 0.3 },
-      uSpecularIntensity: { value: 0.5 },
-      uSpecularColor: { value: new Color('#ffffff') },
-      uSpecularPower: { value: 32 },
     }
 
     // Initialize color cache for sRGB->linear conversion
@@ -134,43 +120,28 @@ export class LightingSource extends BaseUniformSource {
     // Update light array uniforms
     updateLightUniforms(this.lightUniforms, config.lights, this.colorCache)
 
-    // Update material uniforms
-    this.updateMaterialUniforms(config)
+    // Update ambient uniforms (specular now in PBRSource)
+    this.updateAmbientUniforms(config)
 
     // Increment version to signal change
     this.incrementVersion()
   }
 
   /**
-   * Update material-related uniforms.
+   * Update ambient uniforms.
+   * NOTE: Specular uniforms are now handled by PBRSource.
    */
-  private updateMaterialUniforms(config: LightingSourceConfig): void {
+  private updateAmbientUniforms(config: LightingSourceConfig): void {
     // Ambient color (convert sRGB to linear)
     if (this.cachedAmbientColor.getHexString() !== config.ambientColor.replace('#', '')) {
       this.lightUniforms.uAmbientColor.value.set(config.ambientColor).convertSRGBToLinear()
       this.cachedAmbientColor.copy(this.lightUniforms.uAmbientColor.value)
     }
 
-    // Specular color (convert sRGB to linear)
-    if (this.cachedSpecularColor.getHexString() !== config.specularColor.replace('#', '')) {
-      this.lightUniforms.uSpecularColor.value.set(config.specularColor).convertSRGBToLinear()
-      this.cachedSpecularColor.copy(this.lightUniforms.uSpecularColor.value)
-    }
-
-    // Numeric uniforms
+    // Ambient intensity
     if (this.cachedAmbientIntensity !== config.ambientIntensity) {
       this.lightUniforms.uAmbientIntensity.value = config.ambientIntensity
       this.cachedAmbientIntensity = config.ambientIntensity
-    }
-
-    if (this.cachedSpecularIntensity !== config.specularIntensity) {
-      this.lightUniforms.uSpecularIntensity.value = config.specularIntensity
-      this.cachedSpecularIntensity = config.specularIntensity
-    }
-
-    if (this.cachedShininess !== config.shininess) {
-      this.lightUniforms.uSpecularPower.value = config.shininess
-      this.cachedShininess = config.shininess
     }
   }
 
@@ -187,6 +158,8 @@ export class LightingSource extends BaseUniformSource {
    * This method accesses the store directly to update lighting uniforms,
    * eliminating the need for renderers to manually call updateFromStore().
    * Only updates when the store version changes (efficient change detection).
+   *
+   * NOTE: Specular uniforms are now handled by PBRSource (pbr-face, pbr-edge, pbr-ground).
    */
   update(_state: UniformUpdateState): void {
     // Access store directly - this is the standard pattern in the codebase
@@ -198,9 +171,6 @@ export class LightingSource extends BaseUniformSource {
       storeVersion: lightingState.version,
       ambientColor: lightingState.ambientColor,
       ambientIntensity: lightingState.ambientIntensity,
-      specularIntensity: lightingState.specularIntensity,
-      specularColor: lightingState.specularColor,
-      shininess: lightingState.shininess,
     })
   }
 

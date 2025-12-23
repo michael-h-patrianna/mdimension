@@ -83,7 +83,10 @@ vec3 getAlgorithmColor(float t, vec3 pos, vec3 normal) {
   
   // 6. Blackbody
   if (uColorAlgorithm == ALGO_BLACKBODY) {
-      float temp = uDiskTemperature * pow(max(t + 0.1, 0.001), -0.5); 
+      // Guard against negative/zero base for pow with fractional exponent
+      // t + 0.1 ensures minimum of 0.1, max guards against very small values
+      float safeBase = max(t + 0.1, 0.01);
+      float temp = uDiskTemperature * pow(safeBase, -0.5); 
       return blackbodyColor(temp);
   }
   

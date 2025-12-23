@@ -91,3 +91,16 @@ export {
   type FramePriorityKey,
   type UseFramePriorityOptions,
 } from './useFramePriority'
+
+export {
+  useShadowPatching,
+  type UseShadowPatchingOptions,
+  type UseShadowPatchingResult,
+} from './useShadowPatching'
+
+export {
+  calculateSafeProjectionDistance,
+  DEFAULT_PROJECTION_DISTANCE,
+  useProjectionDistanceCache,
+  type UseProjectionDistanceCacheResult,
+} from './projectionUtils'

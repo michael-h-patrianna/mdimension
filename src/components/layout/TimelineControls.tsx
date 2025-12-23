@@ -79,10 +79,8 @@ export const TimelineControls: FC = () => {
     // Quaternion Julia: currently no animations (removed)
     const qjAnimating = false;
 
-    // Polytope: any of its animations (breathing, twist, explode)
-    const polytopeAnimating = polytopeConfig.facetOffsetEnabled ||
-                              polytopeConfig.dualMorphEnabled ||
-                              polytopeConfig.explodeEnabled;
+    // Polytope: facet offset animation
+    const polytopeAnimating = polytopeConfig.facetOffsetEnabled;
 
     // Schroedinger: flow, drift, slice, spread
     const schroedingerAnimating = schroedingerConfig.curlEnabled ||
@@ -105,8 +103,6 @@ export const TimelineControls: FC = () => {
     mandelbulbConfig.zoomEnabled,
     mandelbulbConfig.zoomAnimationEnabled,
     polytopeConfig.facetOffsetEnabled,
-    polytopeConfig.dualMorphEnabled,
-    polytopeConfig.explodeEnabled,
     schroedingerConfig.curlEnabled,
     schroedingerConfig.originDriftEnabled,
     schroedingerConfig.sliceAnimationEnabled,

@@ -20,6 +20,7 @@ import { fogFunctionsBlock, fogUniformsBlock } from '../shared/features/fog.glsl
 import { opacityBlock } from '../shared/features/opacity.glsl'
 import { temporalBlock } from '../shared/features/temporal.glsl'
 import { ggxBlock } from '../shared/lighting/ggx.glsl'
+import { iblBlock, iblUniformsBlock } from '../shared/lighting/ibl.glsl'
 import { multiLightBlock } from '../shared/lighting/multi-light.glsl'
 import { sphereIntersectBlock } from '../shared/raymarch/sphere-intersect.glsl'
 
@@ -300,6 +301,8 @@ export function composeSchroedingerShader(config: SchroedingerShaderConfig) {
     // Lighting (must come before emission which uses light functions)
     { name: 'GGX PBR', content: ggxBlock },
     { name: 'Multi-Light System', content: multiLightBlock },
+    { name: 'IBL Uniforms', content: iblUniformsBlock },
+    { name: 'IBL Functions', content: iblBlock },
 
     // Volumetric rendering
     { name: 'Beer-Lambert Absorption', content: absorptionBlock },

@@ -104,3 +104,6 @@ export function createSkyboxShaderDefaults(): Record<string, { value: any }> {
 export const skyboxGlslVersion = THREE.GLSL3
 
 
+
+
+

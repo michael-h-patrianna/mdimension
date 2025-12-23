@@ -23,6 +23,7 @@ import { UniformManager } from '@/rendering/uniforms/UniformManager';
 import { getEffectiveVolumeSamples } from '@/rendering/utils/adaptiveQuality';
 import { useAnimationStore } from '@/stores/animationStore';
 import { useAppearanceStore } from '@/stores/appearanceStore';
+import { useEnvironmentStore } from '@/stores/environmentStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import {
@@ -208,11 +209,12 @@ const SchroedingerMesh = () => {
       uViewMatrix: { value: new THREE.Matrix4() },
 
       // Centralized Uniform Sources:
-      // - Lighting: Ambient, Diffuse, Specular, Multi-lights
+      // - Lighting: Ambient, Diffuse, Multi-lights
+      // - PBR: Roughness, Metallic, Specular (via 'pbr-face')
       // - Temporal: Matrices, Enabled state (matrices updated via source)
       // - Quality: FastMode, QualityMultiplier
       // - Color: Algorithm, Cosine coeffs, Distribution, LCH
-      ...UniformManager.getCombinedUniforms(['lighting', 'temporal', 'quality', 'color']),
+      ...UniformManager.getCombinedUniforms(['lighting', 'temporal', 'quality', 'color', 'pbr-face']),
 
       // Fresnel rim lighting
       uFresnelEnabled: { value: true },
@@ -255,6 +257,11 @@ const SchroedingerMesh = () => {
 
       // Inverse view projection matrix (needed for temporal accumulation ray direction computation)
       uInverseViewProjectionMatrix: { value: new THREE.Matrix4() },
+
+      // IBL (Image-Based Lighting) uniforms
+      uEnvMap: { value: null },
+      uIBLIntensity: { value: 1.0 },
+      uIBLQuality: { value: 0 }, // 0=off, 1=low, 2=high
     }),
     []
   );
@@ -352,7 +359,7 @@ const SchroedingerMesh = () => {
   // CRITICAL: Use negative priority (-10) to ensure uniforms are updated BEFORE
   // PostProcessing's useFrame runs the volumetric render pass.
   // Without this, the volumetric render uses stale uniforms and appears black.
-  useFrame(() => {
+  useFrame((state) => {
     // Update animation time
     const accumulatedTime = useAnimationStore.getState().accumulatedTime;
 
@@ -524,7 +531,7 @@ const SchroedingerMesh = () => {
       const { timeScale, fieldScale, densityGain, powderScale, erosionStrength, erosionScale, erosionTurbulence, erosionNoiseType, curlEnabled, curlStrength, curlScale, curlSpeed, curlBias, dispersionEnabled, dispersionStrength, dispersionDirection, dispersionQuality, shadowsEnabled, shadowStrength, shadowSteps, aoEnabled, aoStrength, aoQuality, aoRadius, aoColor, nodalEnabled, nodalColor, nodalStrength, energyColorEnabled, shimmerEnabled, shimmerStrength, isoThreshold, scatteringAnisotropy } = schroedinger;
 
       // Global visuals from appearance store
-      const { roughness, sssEnabled, sssIntensity, sssColor, sssThickness, sssJitter, faceEmission, faceEmissionThreshold, faceEmissionColorShift, faceEmissionPulsing, faceRimFalloff } = appearance;
+      const { sssEnabled, sssIntensity, sssColor, sssThickness, sssJitter, faceEmission, faceEmissionThreshold, faceEmissionColorShift, faceEmissionPulsing, faceRimFalloff } = appearance;
 
       // Note: We use faceRimFalloff from appearance store for uRimExponent if available (which it is now)
       // We keep scatteringAnisotropy in schroedinger store for now.
@@ -545,8 +552,8 @@ const SchroedingerMesh = () => {
 
       if (material.uniforms.uScatteringAnisotropy) material.uniforms.uScatteringAnisotropy.value = scatteringAnisotropy;
 
-      // Unified Visuals
-      if (material.uniforms.uRoughness) material.uniforms.uRoughness.value = roughness;
+      // Note: PBR uniforms (uRoughness, uMetallic, uSpecularIntensity, uSpecularColor)
+      // are now applied via UniformManager using 'pbr-face' source
       if (material.uniforms.uSssEnabled) material.uniforms.uSssEnabled.value = sssEnabled;
       if (material.uniforms.uSssIntensity) material.uniforms.uSssIntensity.value = sssIntensity;
       if (material.uniforms.uSssColor) {
@@ -620,8 +627,8 @@ const SchroedingerMesh = () => {
       // managed by TemporalCloudPass in the render graph. The pass directly updates
       // these uniforms on volumetric meshes during scene traversal.
 
-      // Apply centralized uniform sources
-      UniformManager.applyToMaterial(material, ['lighting', 'temporal', 'quality', 'color']);
+      // Apply centralized uniform sources (including PBR via 'pbr-face')
+      UniformManager.applyToMaterial(material, ['lighting', 'temporal', 'quality', 'color', 'pbr-face']);
 
       // Fresnel
       const { edgesVisible, fresnelIntensity, edgeColor } = appearance;
@@ -629,6 +636,23 @@ const SchroedingerMesh = () => {
       if (material.uniforms.uFresnelIntensity) material.uniforms.uFresnelIntensity.value = fresnelIntensity;
       if (material.uniforms.uRimColor) {
         updateLinearColorUniform(cache.rimColor, material.uniforms.uRimColor.value as THREE.Color, edgeColor);
+      }
+
+      // IBL (Image-Based Lighting) uniforms
+      const iblState = useEnvironmentStore.getState();
+      if (material.uniforms.uIBLQuality) {
+        const qualityMap = { off: 0, low: 1, high: 2 } as const;
+        material.uniforms.uIBLQuality.value = qualityMap[iblState.iblQuality];
+      }
+      if (material.uniforms.uIBLIntensity) {
+        material.uniforms.uIBLIntensity.value = iblState.iblIntensity;
+      }
+      if (material.uniforms.uEnvMap) {
+        const bg = state.scene.background;
+        const isCubeTexture = bg && (bg as THREE.CubeTexture).isCubeTexture;
+        if (isCubeTexture) {
+          material.uniforms.uEnvMap.value = bg;
+        }
       }
 
       // Opacity Mode System

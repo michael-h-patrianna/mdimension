@@ -9,20 +9,24 @@
  */
 
 import { useTrackedShaderMaterial } from '@/rendering/materials/useTrackedShaderMaterial';
-import { useNDTransformUpdates } from '@/rendering/renderers/base';
+import {
+  useNDTransformUpdates,
+  useProjectionDistanceCache,
+  useShadowPatching,
+} from '@/rendering/renderers/base';
 import { useFrame } from '@react-three/fiber';
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import {
-    BufferGeometry,
-    Color,
-    DoubleSide,
-    Float32BufferAttribute,
-    Matrix4,
-    MeshBasicMaterial,
-    ShaderMaterial,
-    Vector3,
-    Vector4,
+  BufferGeometry,
+  Color,
+  DoubleSide,
+  Float32BufferAttribute,
+  Matrix4,
+  MeshBasicMaterial,
+  ShaderMaterial,
+  Vector3,
+  Vector4,
 } from 'three';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -35,29 +39,27 @@ import { RENDER_LAYERS } from '@/rendering/core/layers';
 import { COLOR_ALGORITHM_TO_INT } from '@/rendering/shaders/palette';
 import { matrixToGPUUniforms } from '@/rendering/shaders/transforms/ndTransform';
 import { UniformManager } from '@/rendering/uniforms/UniformManager';
-// Note: We no longer use custom shadow shaders - we patch MeshDepthMaterial and
-// MeshDistanceMaterial via onBeforeCompile to inject our nD vertex transformation.
-// This avoids the double shadow bug caused by raw ShaderMaterial shadow materials.
 import {
-    blurToPCFSamples,
-    collectShadowDataFromScene,
-    createShadowMapUniforms,
-    SHADOW_MAP_SIZES,
-    updateShadowMapUniforms,
+  blurToPCFSamples,
+  collectShadowDataFromScene,
+  createShadowMapUniforms,
+  SHADOW_MAP_SIZES,
+  updateShadowMapUniforms,
 } from '@/rendering/shadows';
 import { useAnimationStore } from '@/stores/animationStore';
 import { useAppearanceStore } from '@/stores/appearanceStore';
+import { useEnvironmentStore } from '@/stores/environmentStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useLightingStore } from '@/stores/lightingStore';
 import { usePerformanceStore } from '@/stores/performanceStore';
 import { useTransformStore } from '@/stores/transformStore';
 import { TubeWireframe } from '../TubeWireframe';
 import {
-    buildEdgeFragmentShader,
-    buildEdgeVertexShader,
-    buildFaceFragmentShader,
-    buildFaceVertexShader,
-    MAX_EXTRA_DIMS,
+  buildEdgeFragmentShader,
+  buildEdgeVertexShader,
+  buildFaceFragmentShader,
+  buildFaceVertexShader,
+  MAX_EXTRA_DIMS,
 } from './index';
 
 /**
@@ -266,81 +268,6 @@ vec3 ndTransformVertex(vec3 pos) {
 }
 `;
 
-/**
- * Create patched shadow materials using Three.js's built-in MeshDepthMaterial
- * and MeshDistanceMaterial with our nD vertex transformation injected.
- *
- * This approach avoids the double shadow bug that occurs when using raw
- * ShaderMaterial for shadow materials. Three.js's internal shadow pipeline
- * has special handling for MeshDistanceMaterial (updating referencePosition,
- * nearDistance, farDistance automatically) that raw ShaderMaterial can't satisfy.
- *
- * @param uniforms - Shared uniform objects that are updated per-frame
- * @returns Object containing patched depthMaterial and distanceMaterial
- */
-function createPatchedShadowMaterials(uniforms: Record<string, { value: unknown }>): {
-  depthMaterial: THREE.MeshDepthMaterial;
-  distanceMaterial: THREE.MeshDistanceMaterial;
-} {
-  const depthMaterial = new THREE.MeshDepthMaterial({
-    depthPacking: THREE.RGBADepthPacking,
-  });
-
-  const distanceMaterial = new THREE.MeshDistanceMaterial();
-
-  const patchMaterial = (mat: THREE.Material) => {
-    mat.onBeforeCompile = (shader) => {
-      // Merge our nD uniforms with Three.js's built-in uniforms
-      Object.assign(shader.uniforms, uniforms);
-
-      // Inject our GLSL helpers after #include <common>
-      shader.vertexShader = shader.vertexShader.replace(
-        '#include <common>',
-        `#include <common>\n${ND_TRANSFORM_GLSL}`
-      );
-
-      // Apply our nD transformation after #include <begin_vertex>
-      // Three.js sets `transformed` to the local-space vertex position there
-      shader.vertexShader = shader.vertexShader.replace(
-        '#include <begin_vertex>',
-        `#include <begin_vertex>\ntransformed = ndTransformVertex(transformed);`
-      );
-    };
-    mat.needsUpdate = true;
-  };
-
-  patchMaterial(depthMaterial);
-  patchMaterial(distanceMaterial);
-
-  return { depthMaterial, distanceMaterial };
-}
-
-/**
- * Calculate safe projection distance
- * @param vertices
- * @param normalizationFactor
- * @returns Safe projection distance ensuring all vertices are visible
- */
-function calculateSafeProjectionDistance(
-  vertices: VectorND[],
-  normalizationFactor: number
-): number {
-  if (vertices.length === 0 || vertices[0]!.length <= 3) {
-    return DEFAULT_PROJECTION_DISTANCE;
-  }
-
-  let maxEffectiveDepth = 0;
-  for (const vertex of vertices) {
-    let sum = 0;
-    for (let d = 3; d < vertex.length; d++) {
-      sum += vertex[d]!;
-    }
-    const effectiveDepth = sum / normalizationFactor;
-    maxEffectiveDepth = Math.max(maxEffectiveDepth, effectiveDepth);
-  }
-
-  return Math.max(DEFAULT_PROJECTION_DISTANCE, maxEffectiveDepth + 2.0);
-}
 
 /**
  * Build BufferGeometry with N-D attributes from vertices.
@@ -412,36 +339,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   void _faceDepths; // Reserved for future per-face depth-based coloring
   const numVertices = baseVertices.length;
 
-  // Debug logging
-  console.log('[PolytopeScene] RENDER', { numVertices, numEdges: edges.length, numFaces: faces.length, dimension });
 
-  // #region agent log - H9: Track component mount/unmount
-  useEffect(() => {
-    console.log('[DEBUG-POLYTOPE-MOUNT]', JSON.stringify({ action: 'MOUNT', timestamp: Date.now() }));
-    return () => {
-      console.log('[DEBUG-POLYTOPE-MOUNT]', JSON.stringify({ action: 'UNMOUNT', timestamp: Date.now() }));
-    };
-  }, []);
-  // #endregion
-
-  // #region agent log - H4, H5: Log first few vertex positions on mount/change
-  useEffect(() => {
-    if (baseVertices.length > 0) {
-      const sampleVertices = baseVertices.slice(0, 3).map(v => Array.from(v));
-      const minMax = {
-        minX: Math.min(...baseVertices.map(v => v[0] ?? 0)),
-        maxX: Math.max(...baseVertices.map(v => v[0] ?? 0)),
-        minY: Math.min(...baseVertices.map(v => v[1] ?? 0)),
-        maxY: Math.max(...baseVertices.map(v => v[1] ?? 0)),
-        minZ: Math.min(...baseVertices.map(v => v[2] ?? 0)),
-        maxZ: Math.max(...baseVertices.map(v => v[2] ?? 0)),
-      };
-      const vertexDebug = {location:'PolytopeScene.tsx:vertexData',message:'H4-H5: vertex data on mount',data:{numVertices,dimension,sampleVertices,minMax},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H4-H5'};
-      console.log('[DEBUG-H4H5-vertex]', JSON.stringify(vertexDebug));
-      fetch('http://127.0.0.1:7242/ingest/af54dc2c-228f-456b-a43d-a100942bc421',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(vertexDebug)}).catch(()=>{});
-    }
-  }, [baseVertices, dimension]);
-  // #endregion
   const numEdges = edges.length;
   const numFaces = faces.length;
 
@@ -465,6 +363,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   const transformStateRef = useRef(useTransformStore.getState());
   const appearanceStateRef = useRef(useAppearanceStore.getState());
   const lightingStateRef = useRef(useLightingStore.getState());
+  const environmentStateRef = useRef(useEnvironmentStore.getState());
 
   // Subscribe to store changes to update refs
   useEffect(() => {
@@ -473,17 +372,19 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     const unsubTrans = useTransformStore.subscribe((s) => { transformStateRef.current = s; });
     const unsubApp = useAppearanceStore.subscribe((s) => { appearanceStateRef.current = s; });
     const unsubLight = useLightingStore.subscribe((s) => { lightingStateRef.current = s; });
+    const unsubEnv = useEnvironmentStore.subscribe((s) => { environmentStateRef.current = s; });
     return () => {
       unsubAnim();
       unsubExt();
       unsubTrans();
       unsubApp();
       unsubLight();
+      unsubEnv();
     };
   }, []);
 
-  // Cache projection distance (only changes when baseVertices change, i.e., geometry change)
-  const cachedProjectionDistanceRef = useRef<{ count: number; distance: number; scaleSum?: number }>({ count: 0, distance: 10, scaleSum: 0 });
+  // Projection distance caching - uses shared hook to avoid O(N) recalculation every frame
+  const projDistCache = useProjectionDistanceCache();
 
   // Cache scales array to avoid per-frame allocation
   const cachedScalesRef = useRef<number[]>([]);
@@ -502,8 +403,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     facesVisible,
     edgeColor,
     edgeThickness,
-    edgeMetallic,
-    edgeRoughness,
     faceColor,
     shaderSettings,
     sssEnabled,
@@ -513,8 +412,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
       facesVisible: state.facesVisible,
       edgeColor: state.edgeColor,
       edgeThickness: state.edgeThickness,
-      edgeMetallic: state.edgeMetallic,
-      edgeRoughness: state.edgeRoughness,
       faceColor: state.faceColor,
       shaderSettings: state.shaderSettings,
       sssEnabled: state.sssEnabled,
@@ -523,11 +420,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
 
   const shadowEnabled = useLightingStore((state) => state.shadowEnabled);
 
-  // #region agent log - H10: Track shadowEnabled changes
-  useEffect(() => {
-    console.log('[DEBUG-SHADOW-ENABLED-CHANGE]', JSON.stringify({ shadowEnabled, timestamp: Date.now() }));
-  }, [shadowEnabled]);
-  // #endregion
 
   const surfaceSettings = shaderSettings.surface;
   // Use TubeWireframe for thick lines (>1), native lineSegments for thin lines (1)
@@ -591,8 +483,12 @@ export const PolytopeScene = React.memo(function PolytopeScene({
           uSssColor: { value: new Color('#ff8844').convertSRGBToLinear() },
           uSssThickness: { value: 1.0 },
           uSssJitter: { value: 0.2 },
-          // Lighting uniforms (via UniformManager)
-          ...UniformManager.getCombinedUniforms(['lighting']),
+          // Lighting and PBR uniforms (via UniformManager)
+          ...UniformManager.getCombinedUniforms(['lighting', 'pbr-face']),
+          // IBL (Image-Based Lighting) uniforms
+          uEnvMap: { value: null },
+          uIBLIntensity: { value: 1.0 },
+          uIBLQuality: { value: 0 }, // 0=off, 1=low, 2=high
         },
         vertexShader: buildFaceVertexShader(),
         fragmentShader: faceFragmentShader,
@@ -617,40 +513,21 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   // These uniforms are shared with the main face material and updated per-frame
   const shadowUniforms = useMemo(() => createNDUniforms(), []);
 
-  // Custom depth/distance materials for shadow map rendering with nD transformation.
-  // Uses patched Three.js built-in materials (via onBeforeCompile) to avoid the double
-  // shadow bug that occurs with raw ShaderMaterial. Three.js handles MeshDistanceMaterial
-  // specially (auto-updating referencePosition, nearDistance, farDistance for point lights).
-  const { depthMaterial: customDepthMaterial, distanceMaterial: customDistanceMaterial } = useMemo(
-    () => createPatchedShadowMaterials(shadowUniforms),
-    [shadowUniforms]
-  );
+  // Use shared shadow patching hook for N-D transformation in shadow materials.
+  // This handles creation, lifecycle, and runtime toggling of patched materials.
+  const { assignToMesh: assignShadowToFaceMesh } = useShadowPatching({
+    transformGLSL: ND_TRANSFORM_GLSL,
+    transformFunctionCall: 'ndTransformVertex(transformed)',
+    uniforms: shadowUniforms,
+    shadowEnabled,
+  });
 
-  // Callback ref to assign main object layer for depth-based effects (SSR, refraction, bokeh)
-  // Also assigns custom depth materials for animated shadows - this MUST happen in the callback
-  // because if done in useEffect, the effect may run before the mesh exists
+  // Combined callback ref for face mesh: assigns layer and shadow materials
   const setFaceMeshRef = useCallback((mesh: THREE.Mesh | null) => {
     faceMeshRef.current = mesh;
-    if (mesh?.layers) {
-      mesh.layers.set(RENDER_LAYERS.MAIN_OBJECT);
-    }
-    // Assign patched shadow materials for nD transformation:
-    // - customDepthMaterial (MeshDepthMaterial): for directional and spot lights
-    // - customDistanceMaterial (MeshDistanceMaterial): for point lights
-    //
-    // Using patched built-in materials via onBeforeCompile avoids the double shadow bug
-    // that occurred with raw ShaderMaterial. Three.js handles MeshDistanceMaterial specially,
-    // auto-updating referencePosition/nearDistance/farDistance for point light shadow cameras.
-    // No onBeforeShadow callback needed - Three.js manages everything automatically.
-    if (mesh && shadowEnabled) {
-      // Always assign both materials - works with any light type combination
-      mesh.customDepthMaterial = customDepthMaterial;
-      mesh.customDistanceMaterial = customDistanceMaterial;
-    } else if (mesh) {
-      mesh.customDistanceMaterial = undefined as unknown as THREE.Material;
-      mesh.customDepthMaterial = undefined as unknown as THREE.Material;
-    }
-  }, [shadowEnabled, customDepthMaterial, customDistanceMaterial]);
+    // Delegate layer and shadow material assignment to the hook
+    assignShadowToFaceMesh(mesh);
+  }, [assignShadowToFaceMesh]);
 
   const setShaderDebugInfo = usePerformanceStore((state) => state.setShaderDebugInfo);
 
@@ -825,12 +702,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     geo.setAttribute('aNeighbor2Extra0_3', new Float32BufferAttribute(neighbor2Extra0_3, 4));
     geo.setAttribute('aNeighbor2Extra4_6', new Float32BufferAttribute(neighbor2Extra4_6, 3));
 
-    // #region agent log - H11: Log face geometry buffer values
-    const samplePos = positions.slice(0, 9); // First 3 vertices (9 floats)
-    const bufferDebug = {location:'PolytopeScene.tsx:faceGeometry',message:'H11: face geometry buffer created',data:{vertexCount,triangleCount,samplePositions:Array.from(samplePos),minX:Math.min(...positions.filter((_,i)=>i%3===0)),maxX:Math.max(...positions.filter((_,i)=>i%3===0)),minY:Math.min(...positions.filter((_,i)=>i%3===1)),maxY:Math.max(...positions.filter((_,i)=>i%3===1)),minZ:Math.min(...positions.filter((_,i)=>i%3===2)),maxZ:Math.max(...positions.filter((_,i)=>i%3===2)),hasNaN:positions.some(v=>isNaN(v)),hasInfinity:positions.some(v=>!isFinite(v))},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H11'};
-    console.log('[DEBUG-H11-buffer]', JSON.stringify(bufferDebug));
-    fetch('http://127.0.0.1:7242/ingest/af54dc2c-228f-456b-a43d-a100942bc421',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(bufferDebug)}).catch(()=>{});
-    // #endregion
+
 
     return geo;
   }, [numFaces, faces, baseVertices]);
@@ -886,30 +758,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     };
   }, [edgeMaterial, faceGeometry, edgeGeometry]);
 
-  // Cleanup custom depth materials on unmount
-  useEffect(() => {
-    return () => {
-      customDepthMaterial.dispose();
-      customDistanceMaterial.dispose();
-    };
-  }, [customDepthMaterial, customDistanceMaterial]);
-
-  // Update shadow materials when shadowEnabled changes at runtime
-  // The callback ref only runs on mount, so we need an effect for runtime changes
-  useEffect(() => {
-    const mesh = faceMeshRef.current;
-    if (!mesh) return;
-
-    if (shadowEnabled) {
-      // Always assign both materials - works with any light type combination
-      // Patched MeshDepthMaterial handles directional/spot, MeshDistanceMaterial handles point
-      mesh.customDepthMaterial = customDepthMaterial;
-      mesh.customDistanceMaterial = customDistanceMaterial;
-    } else {
-      mesh.customDistanceMaterial = undefined as unknown as THREE.Material;
-      mesh.customDepthMaterial = undefined as unknown as THREE.Material;
-    }
-  }, [shadowEnabled, customDepthMaterial, customDistanceMaterial]);
+  // Note: Shadow material cleanup and runtime toggle are handled by useShadowPatching hook
 
   // ============ USEFRAME: UPDATE UNIFORMS ONLY ============
   useFrame(({ camera, scene }, delta) => {
@@ -947,7 +796,8 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     const fresnelEnabled = appearanceState.shaderSettings.surface.fresnelEnabled;
     const fresnelIntensity = appearanceState.fresnelIntensity;
     const rimColor = appearanceState.edgeColor;
-    const roughness = appearanceState.roughness;
+    // Note: PBR properties (roughness, metallic, specularIntensity, specularColor)
+    // are now applied via UniformManager using 'pbr-face' source
     // Face opacity - read dynamically to update uniform without shader rebuild
     const faceOpacity = appearanceState.shaderSettings.surface.faceOpacity;
 
@@ -981,41 +831,8 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     ndTransform.update({ scales });
     const gpuData = ndTransform.source.getGPUData();
 
-    // P3 Optimization: Cache projection distance - only recalculate when vertex count changes or scale significantly changes
-    const normalizationFactor = dimension > 3 ? Math.sqrt(dimension - 3) : 1;
-    let projectionDistance: number;
-
-    // Check if scale changed significantly (simple sum check for speed)
-    const currentScaleSum = scales.reduce((a, b) => a + b, 0);
-    const scaleChanged = Math.abs(currentScaleSum - (cachedProjectionDistanceRef.current.scaleSum ?? 0)) > 0.01;
-
-    if (numVertices !== cachedProjectionDistanceRef.current.count || scaleChanged) {
-      // Find max scale factor
-      let maxScale = 1;
-      for (const s of scales) maxScale = Math.max(maxScale, s);
-
-      const rawDistance = calculateSafeProjectionDistance(baseVertices, normalizationFactor);
-
-      // Adjust projection distance by max scale to prevent near-clipping when object grows
-      // rawDistance includes a constant margin (+2.0), so we scale the "content" part and add margin
-      // approximate content radius ~ (rawDistance - 2.0)
-      const contentRadius = Math.max(0, rawDistance - 2.0);
-      projectionDistance = contentRadius * maxScale + 2.0;
-
-      cachedProjectionDistanceRef.current = {
-        count: numVertices,
-        distance: projectionDistance,
-        scaleSum: currentScaleSum
-      };
-
-      // #region agent log - H1, H3: Log projection distance and scale on recalculation
-      const projDebug = {location:'PolytopeScene.tsx:projectionCalc',message:'H1-H3: projection recalculated',data:{rawDistance,maxScale,projectionDistance,scales:scales.slice(0,4),contentRadius,numVertices},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1-H3'};
-      console.log('[DEBUG-H1H3]', JSON.stringify(projDebug));
-      fetch('http://127.0.0.1:7242/ingest/af54dc2c-228f-456b-a43d-a100942bc421',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(projDebug)}).catch(()=>{});
-      // #endregion
-    } else {
-      projectionDistance = cachedProjectionDistanceRef.current.distance;
-    }
+    // Get cached projection distance (recalculates only when vertex count or scales change)
+    const projectionDistance = projDistCache.getProjectionDistance(baseVertices, dimension, scales);
 
     // Cached linear colors - avoid per-frame sRGB->linear conversion
     const cache = colorCacheRef.current;
@@ -1066,8 +883,8 @@ export const PolytopeScene = React.memo(function PolytopeScene({
           }
         }
 
-        // GGX PBR roughness
-        if (u.uRoughness) u.uRoughness.value = roughness;
+        // Note: PBR material properties (uRoughness, uMetallic, uSpecularIntensity, uSpecularColor)
+        // are applied via UniformManager using 'pbr-face' source
         if (u.uFresnelEnabled) u.uFresnelEnabled.value = fresnelEnabled;
         if (u.uFresnelIntensity) u.uFresnelIntensity.value = fresnelIntensity;
         if (u.uRimColor) updateLinearColorUniform(cache.rimColor, u.uRimColor.value as Color, rimColor);
@@ -1078,6 +895,21 @@ export const PolytopeScene = React.memo(function PolytopeScene({
         if (u.uSssColor) updateLinearColorUniform(cache.sssColor, u.uSssColor.value as Color, sssColor);
         if (u.uSssThickness) u.uSssThickness.value = sssThickness;
         if (u.uSssJitter) u.uSssJitter.value = sssJitter;
+
+        // IBL (Image-Based Lighting) uniforms
+        const iblState = environmentStateRef.current;
+        if (u.uIBLQuality) {
+          const qualityMap = { off: 0, low: 1, high: 2 } as const;
+          u.uIBLQuality.value = qualityMap[iblState.iblQuality];
+        }
+        if (u.uIBLIntensity) u.uIBLIntensity.value = iblState.iblIntensity;
+        if (u.uEnvMap) {
+          const bg = scene.background;
+          const isCubeTexture = bg && (bg as THREE.CubeTexture).isCubeTexture;
+          if (isCubeTexture) {
+            u.uEnvMap.value = bg;
+          }
+        }
 
         // Update advanced color system uniforms (only for face materials)
         if (u.uColorAlgorithm) u.uColorAlgorithm.value = COLOR_ALGORITHM_TO_INT[colorAlgorithm];
@@ -1092,8 +924,8 @@ export const PolytopeScene = React.memo(function PolytopeScene({
         if (u.uLchChroma) u.uLchChroma.value = lchChroma;
         if (u.uMultiSourceWeights) (u.uMultiSourceWeights.value as Vector3).set(multiSourceWeights.depth, multiSourceWeights.orbitTrap, multiSourceWeights.normal);
 
-        // Lighting (via UniformManager)
-        UniformManager.applyToMaterial(material, ['lighting']);
+        // Lighting and PBR (via UniformManager)
+        UniformManager.applyToMaterial(material, ['lighting', 'pbr-face']);
 
         // Update shadow map uniforms if shadows are enabled
         // Pass store lights to ensure shadow data ordering matches uniform indices
@@ -1147,21 +979,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   // Placeholder material for when shader is compiling
   const placeholderMaterial = useMemo(() => new MeshBasicMaterial({ visible: false }), []);
 
-  // Debug logging for render conditions
-  console.log('[PolytopeScene] FACES', {
-    facesVisible,
-    hasFaceGeometry: !!faceGeometry,
-    hasFaceMaterial: !!faceMaterial,
-    isFaceShaderCompiling,
-  });
-  console.log('[PolytopeScene] EDGES', {
-    edgesVisible,
-    useFatWireframe,
-    edgeThickness,
-    hasEdgeGeometry: !!edgeGeometry,
-    hasEdgeMaterial: !!edgeMaterial,
-  });
-
   return (
     <group>
       {/* Polytope faces - DoubleSide handles both front and back faces */}
@@ -1184,6 +1001,8 @@ export const PolytopeScene = React.memo(function PolytopeScene({
       )}
 
       {/* Polytope edges - use TubeWireframe for thick lines, native lineSegments for thin */}
+      {/* Note: PBR properties (metallic, roughness, specularIntensity, specularColor) */}
+      {/* are managed via UniformManager using 'pbr-edge' source inside TubeWireframe */}
       {edgesVisible && useFatWireframe && (
         <TubeWireframe
           vertices={baseVertices}
@@ -1192,8 +1011,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
           color={edgeColor}
           opacity={opacity}
           radius={edgeThickness * 0.015}
-          metallic={edgeMetallic}
-          roughness={edgeRoughness}
           shadowEnabled={shadowEnabled}
         />
       )}

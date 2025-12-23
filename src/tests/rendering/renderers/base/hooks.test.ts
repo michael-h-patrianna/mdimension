@@ -7,14 +7,18 @@
  */
 
 import {
+  calculateSafeProjectionDistance,
+  DEFAULT_PROJECTION_DISTANCE,
   getFramePriorityOrder,
   getFramePriorityValue,
   isFramePriorityKey,
   useFramePriority,
   useFramePriorityValue,
   useLayerAssignment,
+  useProjectionDistanceCache,
   useQualityTracking,
   useRotationUpdates,
+  useShadowPatching,
   useVolumetricLayerAssignment,
 } from '@/rendering/renderers/base'
 import { describe, expect, it } from 'vitest'
@@ -71,6 +75,31 @@ describe('base/hooks exports', () => {
   describe('getFramePriorityOrder', () => {
     it('should be exported as a function', () => {
       expect(typeof getFramePriorityOrder).toBe('function')
+    })
+  })
+
+  describe('useShadowPatching', () => {
+    it('should be exported as a function', () => {
+      expect(typeof useShadowPatching).toBe('function')
+    })
+  })
+
+  describe('useProjectionDistanceCache', () => {
+    it('should be exported as a function', () => {
+      expect(typeof useProjectionDistanceCache).toBe('function')
+    })
+  })
+
+  describe('calculateSafeProjectionDistance', () => {
+    it('should be exported as a function', () => {
+      expect(typeof calculateSafeProjectionDistance).toBe('function')
+    })
+  })
+
+  describe('DEFAULT_PROJECTION_DISTANCE', () => {
+    it('should be exported as a number', () => {
+      expect(typeof DEFAULT_PROJECTION_DISTANCE).toBe('number')
+      expect(DEFAULT_PROJECTION_DISTANCE).toBeGreaterThan(0)
     })
   })
 })

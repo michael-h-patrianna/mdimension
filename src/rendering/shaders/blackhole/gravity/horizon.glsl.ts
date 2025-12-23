@@ -58,9 +58,15 @@ float horizonIntersect(vec3 rayOrigin, vec3 rayDir) {
     return -1.0; // No intersection
   }
 
+  // Guard against a being zero (degenerate ray direction)
+  if (abs(a) < 0.0001) {
+    return -1.0;
+  }
+
   float sqrtDisc = sqrt(discriminant);
-  float t1 = (-b - sqrtDisc) / (2.0 * a);
-  float t2 = (-b + sqrtDisc) / (2.0 * a);
+  float invTwoA = 1.0 / (2.0 * a);
+  float t1 = (-b - sqrtDisc) * invTwoA;
+  float t2 = (-b + sqrtDisc) * invTwoA;
 
   // Return nearest positive intersection
   if (t1 > 0.0) return t1;

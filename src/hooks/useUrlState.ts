@@ -5,13 +5,13 @@
  * Uses the state serializer to parse URL and applies to stores.
  */
 
-import { useEffect, useRef } from 'react';
-import { parseCurrentUrl } from '@/lib/url/state-serializer';
-import { useGeometryStore } from '@/stores/geometryStore';
-import { useAppearanceStore } from '@/stores/appearanceStore';
-import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
-import { useLightingStore } from '@/stores/lightingStore';
-import { usePostProcessingStore } from '@/stores/postProcessingStore';
+import { parseCurrentUrl } from '@/lib/url/state-serializer'
+import { useAppearanceStore } from '@/stores/appearanceStore'
+import { useExtendedObjectStore } from '@/stores/extendedObjectStore'
+import { useGeometryStore } from '@/stores/geometryStore'
+import { useLightingStore } from '@/stores/lightingStore'
+import { usePostProcessingStore } from '@/stores/postProcessingStore'
+import { useEffect, useRef } from 'react'
 
 /**
  * Hook to initialize app state from URL parameters.
@@ -21,76 +21,64 @@ import { usePostProcessingStore } from '@/stores/postProcessingStore';
  * URL format: /?t=hypercube&d=4&fv=1&ev=0
  */
 export function useUrlState(): void {
-  const initialized = useRef(false);
+  const initialized = useRef(false)
 
   useEffect(() => {
     // Only initialize once
-    if (initialized.current) return;
-    initialized.current = true;
+    if (initialized.current) return
+    initialized.current = true
 
     // Parse URL state
-    const urlState = parseCurrentUrl();
-
-    // #region agent log - H1,H3: Track URL state initialization
-    console.log('[DEBUG-URL-STATE] parsed:', JSON.stringify(urlState));
-    // #endregion
+    const urlState = parseCurrentUrl()
 
     // Skip if no URL params
-    if (Object.keys(urlState).length === 0) return;
+    if (Object.keys(urlState).length === 0) return
 
     // Apply to geometry store
     if (urlState.dimension !== undefined) {
-      useGeometryStore.getState().setDimension(urlState.dimension);
+      useGeometryStore.getState().setDimension(urlState.dimension)
     }
     if (urlState.objectType !== undefined) {
-      // #region agent log - H1,H3: Track object type change from URL
-      const beforeType = useGeometryStore.getState().objectType;
-      console.log('[DEBUG-URL-STATE] Before setObjectType:', beforeType, '-> new:', urlState.objectType);
-      // #endregion
-      useGeometryStore.getState().setObjectType(urlState.objectType);
-      // #region agent log - H1,H3: Track object type after change
-      const afterState = useGeometryStore.getState();
-      console.log('[DEBUG-URL-STATE] After setObjectType:', afterState.objectType, 'dimension:', afterState.dimension);
-      // #endregion
+      useGeometryStore.getState().setObjectType(urlState.objectType)
     }
 
     // Apply to appearance store
     if (urlState.facesVisible !== undefined) {
-      useAppearanceStore.getState().setFacesVisible(urlState.facesVisible);
+      useAppearanceStore.getState().setFacesVisible(urlState.facesVisible)
     }
     if (urlState.edgesVisible !== undefined) {
-      useAppearanceStore.getState().setEdgesVisible(urlState.edgesVisible);
+      useAppearanceStore.getState().setEdgesVisible(urlState.edgesVisible)
     }
     if (urlState.edgeColor !== undefined) {
-      useAppearanceStore.getState().setEdgeColor(urlState.edgeColor);
+      useAppearanceStore.getState().setEdgeColor(urlState.edgeColor)
     }
     if (urlState.backgroundColor !== undefined) {
-      useAppearanceStore.getState().setBackgroundColor(urlState.backgroundColor);
+      useAppearanceStore.getState().setBackgroundColor(urlState.backgroundColor)
     }
     if (urlState.shaderType !== undefined) {
-      useAppearanceStore.getState().setShaderType(urlState.shaderType);
+      useAppearanceStore.getState().setShaderType(urlState.shaderType)
     }
 
     // Apply to lighting store
     if (urlState.toneMappingEnabled !== undefined) {
-      useLightingStore.getState().setToneMappingEnabled(urlState.toneMappingEnabled);
+      useLightingStore.getState().setToneMappingEnabled(urlState.toneMappingEnabled)
     }
     if (urlState.exposure !== undefined) {
-      useLightingStore.getState().setExposure(urlState.exposure);
+      useLightingStore.getState().setExposure(urlState.exposure)
     }
     if (urlState.shadowEnabled !== undefined) {
-      useLightingStore.getState().setShadowEnabled(urlState.shadowEnabled);
+      useLightingStore.getState().setShadowEnabled(urlState.shadowEnabled)
     }
 
     // Apply to post-processing store (bloom settings moved here from lighting)
     if (urlState.bloomEnabled !== undefined) {
-      usePostProcessingStore.getState().setBloomEnabled(urlState.bloomEnabled);
+      usePostProcessingStore.getState().setBloomEnabled(urlState.bloomEnabled)
     }
     if (urlState.bloomIntensity !== undefined) {
-      usePostProcessingStore.getState().setBloomIntensity(urlState.bloomIntensity);
+      usePostProcessingStore.getState().setBloomIntensity(urlState.bloomIntensity)
     }
     if (urlState.bloomThreshold !== undefined) {
-      usePostProcessingStore.getState().setBloomThreshold(urlState.bloomThreshold);
+      usePostProcessingStore.getState().setBloomThreshold(urlState.bloomThreshold)
     }
 
     // Apply to extended object store for mandelbulb settings
@@ -99,7 +87,7 @@ export function useUrlState(): void {
     // Apply uniformScale if present
     if (urlState.uniformScale !== undefined) {
       // Scale is applied to the polytope config
-      useExtendedObjectStore.getState().setPolytopeScale(urlState.uniformScale);
+      useExtendedObjectStore.getState().setPolytopeScale(urlState.uniformScale)
     }
-  }, []);
+  }, [])
 }

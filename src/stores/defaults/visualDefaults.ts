@@ -24,11 +24,17 @@ import type { ShaderType, ToneMappingAlgorithm } from '@/rendering/shaders/types
 
 export const DEFAULT_EDGE_COLOR = '#19e697'
 export const DEFAULT_EDGE_THICKNESS = 1
-export const DEFAULT_EDGE_METALLIC = 0.0
-export const DEFAULT_EDGE_ROUGHNESS = 0.5
 export const DEFAULT_FACE_OPACITY = 0.3
 export const DEFAULT_FACE_COLOR = '#33cc9e'
 export const DEFAULT_BACKGROUND_COLOR = '#0F0F1A'
+
+// Unified PBR properties (single value for all objects: faces, edges, fractals)
+export const DEFAULT_ROUGHNESS = 0.3
+export const DEFAULT_METALLIC = 0.0
+
+// Edge-specific specular (for TubeWireframe when thickness > 1)
+export const DEFAULT_EDGE_SPECULAR_INTENSITY = 0.5
+export const DEFAULT_EDGE_SPECULAR_COLOR = '#ffffff'
 
 export const DEFAULT_EDGES_VISIBLE = true
 export const DEFAULT_FACES_VISIBLE = true
@@ -154,12 +160,10 @@ export const DEFAULT_LIGHT_VERTICAL_ANGLE = 30
 export const DEFAULT_AMBIENT_INTENSITY = 0.01
 export const DEFAULT_AMBIENT_COLOR = '#FFFFFF'
 export const DEFAULT_SPECULAR_INTENSITY = 0.8
-export const DEFAULT_SHININESS = 70
 export const DEFAULT_SHOW_LIGHT_INDICATOR = false
 
 // Enhanced lighting
 export const DEFAULT_SPECULAR_COLOR = '#FFFFFF'
-export const DEFAULT_DIFFUSE_INTENSITY = 0.5
 export const DEFAULT_LIGHT_STRENGTH = 1.0
 export const DEFAULT_TONE_MAPPING_ENABLED = true
 export const DEFAULT_TONE_MAPPING_ALGORITHM: ToneMappingAlgorithm = 'aces'
@@ -211,8 +215,6 @@ export type GroundPlaneType = 'two-sided' | 'plane'
 
 export const DEFAULT_ACTIVE_WALLS: WallPosition[] = []
 export const DEFAULT_GROUND_PLANE_OFFSET = 10
-export const DEFAULT_GROUND_PLANE_OPACITY = 0.5
-export const DEFAULT_GROUND_PLANE_REFLECTIVITY = 0.4
 export const DEFAULT_GROUND_PLANE_COLOR = '#ead6e8'
 export const DEFAULT_GROUND_PLANE_TYPE: GroundPlaneType = 'plane'
 export const DEFAULT_GROUND_PLANE_SIZE_SCALE = 10
@@ -220,10 +222,61 @@ export const DEFAULT_SHOW_GROUND_GRID = true
 export const DEFAULT_GROUND_GRID_COLOR = '#dbdcdb'
 export const DEFAULT_GROUND_GRID_SPACING = 5.0
 
-// Ground material
+// Ground material (legacy - use PBR defaults below)
 export const DEFAULT_GROUND_MATERIAL_ROUGHNESS = 0.2
 export const DEFAULT_GROUND_MATERIAL_METALNESS = 0.6
-export const DEFAULT_GROUND_MATERIAL_ENVMAP_INTENSITY = 1.6
+
+// ============================================================================
+// PBR Settings Defaults (Unified for Face, Edge, Ground)
+// ============================================================================
+
+/**
+ * PBR configuration for a single object type.
+ * All three object types (face, edge, ground) use this structure.
+ */
+export interface PBRConfig {
+  roughness: number        // 0.04-1.0 (min 0.04 avoids GGX divide-by-zero)
+  metallic: number         // 0.0-1.0
+  specularIntensity: number // 0.0-2.0 (artistic multiplier)
+  specularColor: string    // hex color string
+}
+
+/** PBR for main objects (polytope faces, mandelbulb, julia, schroedinger, blackhole) */
+export const DEFAULT_FACE_PBR: PBRConfig = {
+  roughness: 0.3,
+  metallic: 0.0,
+  specularIntensity: 0.8,
+  specularColor: '#ffffff',
+}
+
+/** PBR for TubeWireframe (edges with thickness > 1) */
+export const DEFAULT_EDGE_PBR: PBRConfig = {
+  roughness: 0.3,
+  metallic: 0.0,
+  specularIntensity: 0.5,
+  specularColor: '#ffffff',
+}
+
+/** PBR for ground plane and walls */
+export const DEFAULT_GROUND_PBR: PBRConfig = {
+  roughness: 0.2,
+  metallic: 0.6,
+  specularIntensity: 0.8,
+  specularColor: '#ffffff',
+}
+
+// ============================================================================
+// IBL (Image-Based Lighting) Defaults
+// ============================================================================
+
+/** IBL quality level for wall/environment reflections on objects */
+export type IBLQuality = 'off' | 'low' | 'high'
+
+/** Default IBL quality - off for performance */
+export const DEFAULT_IBL_QUALITY: IBLQuality = 'off'
+
+/** IBL intensity multiplier */
+export const DEFAULT_IBL_INTENSITY = 1.0
 
 // ============================================================================
 // Skybox Defaults
@@ -408,7 +461,6 @@ export const DEFAULT_WIREFRAME_SETTINGS = {
 export const DEFAULT_SURFACE_SETTINGS = {
   faceOpacity: DEFAULT_FACE_OPACITY,
   specularIntensity: DEFAULT_SPECULAR_INTENSITY,
-  shininess: DEFAULT_SHININESS,
   fresnelEnabled: DEFAULT_FRESNEL_ENABLED,
 }
 

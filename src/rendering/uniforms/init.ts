@@ -8,7 +8,15 @@
  */
 
 import { UniformManager } from './UniformManager';
-import { ColorSource, LightingSource, QualitySource, TemporalSource } from './sources';
+import {
+  ColorSource,
+  createEdgePBRSource,
+  createFacePBRSource,
+  createGroundPBRSource,
+  LightingSource,
+  QualitySource,
+  TemporalSource,
+} from './sources';
 
 let initialized = false;
 
@@ -36,6 +44,11 @@ export function initUniformSources(): void {
   UniformManager.register(new QualitySource());
   UniformManager.register(new TemporalSource());
   UniformManager.register(new ColorSource());
+
+  // Register PBR sources for each object type
+  UniformManager.register(createFacePBRSource());
+  UniformManager.register(createEdgePBRSource());
+  UniformManager.register(createGroundPBRSource());
 
   initialized = true;
 }
