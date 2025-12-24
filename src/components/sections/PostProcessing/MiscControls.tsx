@@ -13,7 +13,6 @@
 
 import { ControlGroup } from '@/components/ui/ControlGroup';
 import { Select, type SelectOption } from '@/components/ui/Select';
-import { Slider } from '@/components/ui/Slider';
 import { Switch } from '@/components/ui/Switch';
 import { usePostProcessingStore, type PostProcessingSlice } from '@/stores/postProcessingStore';
 import { type AntiAliasingMethod } from '@/stores/defaults/visualDefaults';
@@ -40,16 +39,12 @@ export const MiscControls: React.FC<MiscControlsProps> = React.memo(({
   const postProcessingSelector = useShallow((state: PostProcessingSlice) => ({
     antiAliasingMethod: state.antiAliasingMethod,
     setAntiAliasingMethod: state.setAntiAliasingMethod,
-    smaaThreshold: state.smaaThreshold,
-    setSmaaThreshold: state.setSmaaThreshold,
     objectOnlyDepth: state.objectOnlyDepth,
     setObjectOnlyDepth: state.setObjectOnlyDepth,
   }));
   const {
     antiAliasingMethod,
     setAntiAliasingMethod,
-    smaaThreshold,
-    setSmaaThreshold,
     objectOnlyDepth,
     setObjectOnlyDepth,
   } = usePostProcessingStore(postProcessingSelector);
@@ -65,23 +60,6 @@ export const MiscControls: React.FC<MiscControlsProps> = React.memo(({
           onChange={setAntiAliasingMethod}
           data-testid="anti-aliasing-select"
         />
-
-        {/* SMAA Threshold - only visible when SMAA is selected */}
-        {antiAliasingMethod === 'smaa' && (
-          <Slider
-            label="Threshold"
-            value={smaaThreshold}
-            min={0.01}
-            max={0.2}
-            step={0.01}
-            onChange={setSmaaThreshold}
-            showValue
-            tooltip="Edge detection sensitivity. Lower = more aggressive."
-            minLabel="Strong"
-            maxLabel="Subtle"
-            data-testid="smaa-threshold-slider"
-          />
-        )}
       </ControlGroup>
 
       {/* Depth Settings */}

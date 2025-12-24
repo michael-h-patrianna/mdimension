@@ -11,6 +11,8 @@
 // Color Algorithm System
 // ============================================================================
 
+import type { ObjectType } from '@/lib/geometry/types'
+
 /**
  * Color algorithm selection.
  * Determines how the color palette is generated.
@@ -24,6 +26,7 @@
  * - multiSource: Blend multiple value sources for complex coloring
  * - radial: Color based on 3D distance from origin (spherical gradient)
  */
+
 export type ColorAlgorithm =
   | 'monochromatic'
   | 'analogous'
@@ -39,8 +42,6 @@ export type ColorAlgorithm =
   // Black hole-specific algorithms
   | 'accretionGradient' // Color by disk radial position
   | 'gravitationalRedshift' // Gravitational redshift effect
-  | 'lensingIntensity' // Color by ray bend amount
-  | 'jetsEmission' // Color for polar jets
 
 /**
  * Options for the Color Algorithm dropdown in the UI.
@@ -60,8 +61,6 @@ export const COLOR_ALGORITHM_OPTIONS = [
   // Black hole-specific
   { value: 'accretionGradient' as const, label: 'Accretion Gradient' },
   { value: 'gravitationalRedshift' as const, label: 'Gravitational Redshift' },
-  { value: 'lensingIntensity' as const, label: 'Lensing Intensity' },
-  { value: 'jetsEmission' as const, label: 'Jets Emission' },
 ] as const
 
 /**
@@ -82,16 +81,22 @@ export const COLOR_ALGORITHM_TO_INT: Record<ColorAlgorithm, number> = {
   // Black hole-specific
   accretionGradient: 11,
   gravitationalRedshift: 12,
-  lensingIntensity: 13,
-  jetsEmission: 14,
 }
 
 /**
  * Color algorithms that are only meaningful for Schroedinger (quantum wavefunction).
- * These use the actual quantum phase from the wavefunction, not geometric position.
- * For non-quantum objects, these should be hidden from the UI.
+ * These use quantum-specific data that only exists for Schroedinger objects.
+ * Note: 'phase' and 'mixed' use geometric position, not quantum data, so they're
+ * available for all object types except blackhole.
  */
-export const QUANTUM_ONLY_ALGORITHMS: readonly ColorAlgorithm[] = [
+export const QUANTUM_ONLY_ALGORITHMS: readonly ColorAlgorithm[] = [] as const
+
+/**
+ * Color algorithms that use geometric phase/position data.
+ * These work for all object types EXCEPT blackhole (which has its own specialized algorithms).
+ * Named "phase" because they use angular position, not to be confused with quantum phase.
+ */
+export const GEOMETRIC_PHASE_ALGORITHMS: readonly ColorAlgorithm[] = [
   'phase',
   'mixed',
 ] as const
@@ -106,6 +111,15 @@ export function isQuantumOnlyAlgorithm(algorithm: ColorAlgorithm): boolean {
 }
 
 /**
+ * Check if a color algorithm is geometric-phase-based (not for blackhole).
+ * @param algorithm - The color algorithm to check
+ * @returns True if the algorithm uses geometric phase
+ */
+export function isGeometricPhaseAlgorithm(algorithm: ColorAlgorithm): boolean {
+  return GEOMETRIC_PHASE_ALGORITHMS.includes(algorithm)
+}
+
+/**
  * Color algorithms that are only meaningful for Black Hole objects.
  * These use gravitational/accretion-specific data.
  * For non-black-hole objects, these should be hidden from the UI.
@@ -113,8 +127,6 @@ export function isQuantumOnlyAlgorithm(algorithm: ColorAlgorithm): boolean {
 export const BLACKHOLE_ONLY_ALGORITHMS: readonly ColorAlgorithm[] = [
   'accretionGradient',
   'gravitationalRedshift',
-  'lensingIntensity',
-  'jetsEmission',
 ] as const
 
 /**
@@ -124,6 +136,40 @@ export const BLACKHOLE_ONLY_ALGORITHMS: readonly ColorAlgorithm[] = [
  */
 export function isBlackHoleOnlyAlgorithm(algorithm: ColorAlgorithm): boolean {
   return BLACKHOLE_ONLY_ALGORITHMS.includes(algorithm)
+}
+
+/**
+ * Check if a color algorithm is available for a specific object type.
+ * Encapsulates the logic for showing/hiding algorithms based on object capability.
+ *
+ * @param algorithm - The color algorithm to check
+ * @param objectType - The object type to check availability for
+ * @returns True if the algorithm can be used with the object type
+ */
+export function isColorAlgorithmAvailable(algorithm: ColorAlgorithm, objectType: ObjectType): boolean {
+  // Special case: Blackbody is shared by Schroedinger and Black Hole
+  if (algorithm === 'blackbody') {
+    return objectType === 'schroedinger' || objectType === 'blackhole'
+  }
+
+  // Quantum algorithms only for Schroedinger
+  if (isQuantumOnlyAlgorithm(algorithm)) {
+    return objectType === 'schroedinger'
+  }
+
+  // Geometric phase algorithms (phase, mixed) available for all EXCEPT blackhole
+  // Blackhole has its own specialized algorithms instead
+  if (isGeometricPhaseAlgorithm(algorithm)) {
+    return objectType !== 'blackhole'
+  }
+
+  // Black hole algorithms only for Black Hole
+  if (isBlackHoleOnlyAlgorithm(algorithm)) {
+    return objectType === 'blackhole'
+  }
+
+  // All other algorithms are available for all objects
+  return true
 }
 
 /**

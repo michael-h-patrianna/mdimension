@@ -8,15 +8,15 @@
  */
 
 import {
-  getRecommendedDimension,
-  getUnavailabilityReason,
-  isAvailableForDimension,
-  isRaymarchingFractal,
-  isValidObjectType as isValidObjectTypeRegistry,
+    getRecommendedDimension,
+    getUnavailabilityReason,
+    isAvailableForDimension,
+    isRaymarchingFractal,
+    isValidObjectType as isValidObjectTypeRegistry,
 } from '@/lib/geometry/registry'
 import type { ObjectType } from '@/lib/geometry/types'
 import { invalidateAllTemporalDepth } from '@/rendering/core/temporalDepth'
-import { isQuantumOnlyAlgorithm } from '@/rendering/shaders/palette'
+import { DEFAULT_COLOR_ALGORITHM, isColorAlgorithmAvailable } from '@/rendering/shaders/palette/types'
 import { create } from 'zustand'
 import { useAppearanceStore } from './appearanceStore'
 import { usePerformanceStore } from './performanceStore'
@@ -185,12 +185,11 @@ export const useGeometryStore = create<GeometryState>((set, get) => ({
       return
     }
 
-    // When switching away from Schroedinger, fallback from quantum-only algorithms to radial
-    if (currentType === 'schroedinger' && type !== 'schroedinger') {
-      const appearanceStore = useAppearanceStore.getState()
-      if (isQuantumOnlyAlgorithm(appearanceStore.colorAlgorithm)) {
-        appearanceStore.setColorAlgorithm('radial')
-      }
+    // When switching object types, validate that the current color algorithm is still supported.
+    // If not, revert to the default (monochromatic) to avoid rendering artifacts or mismatch with UI.
+    const appearanceStore = useAppearanceStore.getState()
+    if (!isColorAlgorithmAvailable(appearanceStore.colorAlgorithm, type)) {
+      appearanceStore.setColorAlgorithm(DEFAULT_COLOR_ALGORITHM)
     }
 
     // Raymarched fractals require facesVisible=true to render (determineRenderMode returns 'none' otherwise)

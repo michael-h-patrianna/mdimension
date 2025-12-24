@@ -36,7 +36,7 @@ export const DEFAULT_METALLIC = 0.0
 export const DEFAULT_EDGE_SPECULAR_INTENSITY = 0.5
 export const DEFAULT_EDGE_SPECULAR_COLOR = '#ffffff'
 
-export const DEFAULT_EDGES_VISIBLE = false
+export const DEFAULT_EDGES_VISIBLE = true
 export const DEFAULT_FACES_VISIBLE = true
 
 // ============================================================================
@@ -107,9 +107,6 @@ export const DEFAULT_REFRACTION_CHROMATIC_ABERRATION = 0.0
 export type AntiAliasingMethod = 'none' | 'fxaa' | 'smaa'
 
 export const DEFAULT_ANTI_ALIASING_METHOD: AntiAliasingMethod = 'none'
-
-/** SMAA edge detection threshold (lower = more aggressive, 0.05-0.15 typical range) */
-export const DEFAULT_SMAA_THRESHOLD = 0.05
 
 /** Whether depth-based effects use object-only depth (excludes walls) or full scene depth */
 export const DEFAULT_OBJECT_ONLY_DEPTH = true
@@ -471,7 +468,7 @@ export const DEFAULT_SHADER_SETTINGS = {
 // ============================================================================
 
 export const DEFAULT_SHOW_AXIS_HELPER = false
-export const DEFAULT_SHOW_PERF_MONITOR = false
+export const DEFAULT_SHOW_PERF_MONITOR = true
 export const DEFAULT_SHOW_DEPTH_BUFFER = false
 export const DEFAULT_SHOW_NORMAL_BUFFER = false
 export const DEFAULT_SHOW_TEMPORAL_DEPTH_BUFFER = false

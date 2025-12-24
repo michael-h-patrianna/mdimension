@@ -580,7 +580,9 @@ const SkyboxLoader: React.FC = () => {
           // causes GL_INVALID_OPERATION on compressed formats.
           // CRITICAL: Check if mipmaps actually exist. Using Mipmap filter on texture without mipmaps
           // causes "Texture Incomplete" state -> samples as black (0,0,0,1).
-          const hasMipmaps = cubeTexture.mipmaps && cubeTexture.mipmaps.length > 1;
+          // For CubeTextures, mipmaps are stored per-face in image[n].mipmaps, not texture.mipmaps
+          const firstFace = cubeTexture.image?.[0] as { mipmaps?: unknown[] } | undefined;
+          const hasMipmaps = firstFace?.mipmaps && firstFace.mipmaps.length > 1;
           cubeTexture.minFilter = hasMipmaps ? THREE.LinearMipmapLinearFilter : THREE.LinearFilter;
           cubeTexture.magFilter = THREE.LinearFilter;
           cubeTexture.generateMipmaps = false;

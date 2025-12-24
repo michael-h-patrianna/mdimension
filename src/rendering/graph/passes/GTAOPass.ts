@@ -260,12 +260,12 @@ export class GTAOPass extends BasePass {
   }
 
   /**
-   * Set the AO intensity/scale.
+   * Set the AO intensity using blendIntensity.
+   * blendIntensity controls how strongly the AO effect blends with the scene.
    */
   setIntensity(intensity: number): void {
     if (this.gtaoPass) {
-      // @ts-expect-error - GTAOPass params may vary by Three.js version
-      this.gtaoPass.scale = intensity;
+      this.gtaoPass.blendIntensity = intensity;
     }
   }
 

@@ -164,7 +164,7 @@ export const usePerformanceStore = create<PerformanceState>((set, get) => ({
   qualityMultiplier: 1.0,
 
   // Temporal Reprojection
-  temporalReprojectionEnabled: false,
+  temporalReprojectionEnabled: true,
   cameraTeleported: false,
 
   // Fractal Animation Quality

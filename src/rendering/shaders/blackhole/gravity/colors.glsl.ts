@@ -24,8 +24,6 @@ export const colorsBlock = /* glsl */ `
 #define ALGO_BLACKBODY 10
 #define ALGO_ACCRETION_GRADIENT 11
 #define ALGO_GRAVITATIONAL_REDSHIFT 12
-#define ALGO_LENSING_INTENSITY 13
-#define ALGO_JETS_EMISSION 14
 
 /**
  * Get color from the selected algorithm.
@@ -37,17 +35,17 @@ export const colorsBlock = /* glsl */ `
  */
 vec3 getAlgorithmColor(float t, vec3 pos, vec3 normal) {
   // 1. Monochromatic / Analogous / Complementary (Legacy Palette)
-  if (uColorAlgorithm == ALGO_MONOCHROMATIC || 
+  if (uColorAlgorithm == ALGO_MONOCHROMATIC ||
       uColorAlgorithm == ALGO_ANALOGOUS) {
       vec3 baseHSL = rgb2hsl(uBaseColor);
       return getPaletteColor(baseHSL, t, uColorAlgorithm);
   }
-  
+
   // 2. Cosine Gradient (Standard Radial)
   if (uColorAlgorithm == ALGO_COSINE || uColorAlgorithm == ALGO_DISTANCE || uColorAlgorithm == ALGO_RADIAL) {
       return getCosinePaletteColor(
-          t, 
-          uCosineA, uCosineB, uCosineC, uCosineD, 
+          t,
+          uCosineA, uCosineB, uCosineC, uCosineD,
           1.0, 1.0, 0.0
       );
   }
@@ -58,8 +56,8 @@ vec3 getAlgorithmColor(float t, vec3 pos, vec3 normal) {
       // Perturbed normal from turbulence gives nice variation
       float nt = normal.y * 0.5 + 0.5;
       return getCosinePaletteColor(
-          nt, 
-          uCosineA, uCosineB, uCosineC, uCosineD, 
+          nt,
+          uCosineA, uCosineB, uCosineC, uCosineD,
           1.0, 1.0, 0.0
       );
   }
@@ -70,33 +68,33 @@ vec3 getAlgorithmColor(float t, vec3 pos, vec3 normal) {
       float angle = atan(pos.z, pos.x);
       float pt = angle * 0.15915 + 0.5; // [-PI, PI] -> [0, 1]
       return getCosinePaletteColor(
-          pt, 
-          uCosineA, uCosineB, uCosineC, uCosineD, 
+          pt,
+          uCosineA, uCosineB, uCosineC, uCosineD,
           1.0, 1.0, 0.0
       );
   }
-  
+
   // 5. LCH
   if (uColorAlgorithm == ALGO_LCH) {
       return lchColor(t, uLchLightness, uLchChroma);
   }
-  
+
   // 6. Blackbody
   if (uColorAlgorithm == ALGO_BLACKBODY) {
       // Guard against negative/zero base for pow with fractional exponent
       // t + 0.1 ensures minimum of 0.1, max guards against very small values
       float safeBase = max(t + 0.1, 0.01);
-      float temp = uDiskTemperature * pow(safeBase, -0.5); 
+      float temp = uDiskTemperature * pow(safeBase, -0.5);
       return blackbodyColor(temp);
   }
-  
+
   // 7. Specific Algorithms
   if (uColorAlgorithm == ALGO_ACCRETION_GRADIENT) {
       vec3 deepGold = vec3(1.0, 0.5, 0.1);
       vec3 brightGold = vec3(1.0, 0.9, 0.7);
       return mix(brightGold, deepGold, t);
   }
-  
+
   if (uColorAlgorithm == ALGO_GRAVITATIONAL_REDSHIFT) {
       float r = length(pos.xz);
       float redshift = gravitationalRedshift(r);

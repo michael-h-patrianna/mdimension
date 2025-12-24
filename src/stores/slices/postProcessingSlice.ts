@@ -36,7 +36,6 @@ import {
   DEFAULT_REFRACTION_ENABLED,
   DEFAULT_REFRACTION_IOR,
   DEFAULT_REFRACTION_STRENGTH,
-  DEFAULT_SMAA_THRESHOLD,
   DEFAULT_SSAO_ENABLED,
   DEFAULT_SSAO_INTENSITY,
   DEFAULT_SSR_ENABLED,
@@ -87,7 +86,6 @@ export interface PostProcessingSliceState {
 
   // --- Anti-aliasing ---
   antiAliasingMethod: AntiAliasingMethod
-  smaaThreshold: number
 
   // --- Cinematic ---
   cinematicEnabled: boolean
@@ -153,7 +151,6 @@ export interface PostProcessingSliceActions {
 
   // --- Anti-aliasing Actions ---
   setAntiAliasingMethod: (method: AntiAliasingMethod) => void
-  setSmaaThreshold: (threshold: number) => void
 
   // --- Cinematic Actions ---
   setCinematicEnabled: (enabled: boolean) => void
@@ -217,7 +214,6 @@ export const POST_PROCESSING_INITIAL_STATE: PostProcessingSliceState = {
 
   // Anti-aliasing
   antiAliasingMethod: DEFAULT_ANTI_ALIASING_METHOD,
-  smaaThreshold: DEFAULT_SMAA_THRESHOLD,
 
   // Cinematic
   cinematicEnabled: false,
@@ -361,11 +357,6 @@ export const createPostProcessingSlice: StateCreator<
   // --- Anti-aliasing Actions ---
   setAntiAliasingMethod: (method: AntiAliasingMethod) => {
     set({ antiAliasingMethod: method })
-  },
-
-  setSmaaThreshold: (threshold: number) => {
-    // Clamp to valid range: 0.01 (very aggressive) to 0.2 (subtle)
-    set({ smaaThreshold: Math.max(0.01, Math.min(0.2, threshold)) })
   },
 
   // --- Cinematic Actions ---

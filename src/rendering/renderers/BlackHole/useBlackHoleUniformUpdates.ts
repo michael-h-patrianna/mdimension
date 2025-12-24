@@ -25,11 +25,11 @@ import { useFrame, useThree } from '@react-three/fiber'
 import React, { useLayoutEffect, useRef } from 'react'
 import * as THREE from 'three'
 import {
-  LIGHTING_MODE_MAP,
-  MANIFOLD_TYPE_MAP,
-  OPACITY_MODE_MAP,
-  PALETTE_MODE_MAP,
-  RAY_BENDING_MODE_MAP,
+    LIGHTING_MODE_MAP,
+    MANIFOLD_TYPE_MAP,
+    OPACITY_MODE_MAP,
+    PALETTE_MODE_MAP,
+    RAY_BENDING_MODE_MAP,
 } from './types'
 
 /**
@@ -259,7 +259,7 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
     // Combine UniformManager's quality (performance-based) with coverage-based reduction
     // Also enforce higher floor (0.5) than other objects since black hole needs more steps
     const coverageQuality = applyScreenCoverageReduction(1.0, coverage)
-    
+
     // Apply centralized uniform sources
     // Note: 'quality' source updates uFastMode and uQualityMultiplier based on performance/rotation
     // We override uQualityMultiplier below to include coverage scaling
@@ -437,7 +437,7 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
 
     // Manifold
     setUniform(u, 'uManifoldType', MANIFOLD_TYPE_MAP[bhState.manifoldType] ?? 0)
-    setUniform(u, 'uDensityFalloff', bhState.densityFalloff)
+
     setUniform(u, 'uDiskInnerRadiusMul', bhState.diskInnerRadiusMul)
     setUniform(u, 'uDiskOuterRadiusMul', bhState.diskOuterRadiusMul)
     setUniform(u, 'uRadialSoftnessMul', bhState.radialSoftnessMul)
@@ -507,7 +507,7 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
     // Doppler
     setUniform(u, 'uDopplerEnabled', bhState.dopplerEnabled)
     setUniform(u, 'uDopplerStrength', bhState.dopplerStrength)
-    setUniform(u, 'uDopplerHueShift', bhState.dopplerHueShift)
+
 
     // Jets
     setUniform(u, 'uJetsEnabled', bhState.jetsEnabled)

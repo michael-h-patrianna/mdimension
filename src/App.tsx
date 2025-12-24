@@ -204,7 +204,7 @@ function AppContent() {
           <Canvas
             frameloop="never"
             camera={{
-              position: [0, 2.5, 6], // Closer angled view for prominent Interstellar look
+              position: [0, 3.125, 7.5], // Closer angled view for prominent Interstellar look (25% further out)
               fov: 60,
             }}
             raycaster={{

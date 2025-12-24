@@ -12,6 +12,7 @@ import { QualitySource } from '@/rendering/uniforms/sources/QualitySource'
 import { TemporalSource } from '@/rendering/uniforms/sources/TemporalSource'
 import type { UniformUpdateState } from '@/rendering/uniforms/UniformSource'
 import { useLightingStore } from '@/stores/lightingStore'
+import { usePerformanceStore } from '@/stores/performanceStore'
 import * as THREE from 'three'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
@@ -179,6 +180,9 @@ describe('TemporalSource', () => {
 
   describe('update', () => {
     it('should not update when disabled', () => {
+      // Explicitly disable temporal in the store (default is true)
+      usePerformanceStore.getState().setTemporalReprojectionEnabled(false)
+
       const state = createMockState()
       const initialVersion = source.version
 
@@ -186,6 +190,9 @@ describe('TemporalSource', () => {
 
       // Version should not change when disabled
       expect(source.version).toBe(initialVersion)
+
+      // Cleanup: reset store to default
+      usePerformanceStore.getState().setTemporalReprojectionEnabled(true)
     })
 
     it('should update matrices when enabled', () => {
@@ -216,7 +223,8 @@ describe('TemporalSource', () => {
 
   describe('resetHistory', () => {
     it('should mark for reset on next frame', () => {
-      source.updateFromStore({ enabled: true })
+      // Enable temporal in the store so update() reads correct value
+      usePerformanceStore.getState().setTemporalReprojectionEnabled(true)
       const state = createMockState()
 
       // First update
@@ -230,6 +238,9 @@ describe('TemporalSource', () => {
 
       // Should still be enabled
       expect(source.isEnabled()).toBe(true)
+
+      // Cleanup: reset store
+      usePerformanceStore.getState().setTemporalReprojectionEnabled(false)
     })
   })
 

@@ -26,15 +26,12 @@ export { GLSL_PALETTE_FUNCTIONS } from './palette.glsl';
 
 // New cosine palette functions
 export {
-  GLSL_COSINE_PALETTE,
-  calculateCosineColor,
-  applyDistributionTS,
-  getCosinePaletteColorTS,
+    applyDistributionTS, calculateCosineColor, getCosinePaletteColorTS, GLSL_COSINE_PALETTE
 } from './cosine.glsl';
 
 // Combined GLSL for shaders that need everything
-import { GLSL_PALETTE_FUNCTIONS } from './palette.glsl';
 import { GLSL_COSINE_PALETTE } from './cosine.glsl';
+import { GLSL_PALETTE_FUNCTIONS } from './palette.glsl';
 
 /**
  * All palette GLSL functions combined.
@@ -47,36 +44,26 @@ ${GLSL_PALETTE_FUNCTIONS}
 
 // Types
 export {
-  // Color algorithm types
-  type ColorAlgorithm,
-  COLOR_ALGORITHM_OPTIONS,
-  COLOR_ALGORITHM_TO_INT,
-  DEFAULT_COLOR_ALGORITHM,
-  QUANTUM_ONLY_ALGORITHMS,
-  isQuantumOnlyAlgorithm,
-  BLACKHOLE_ONLY_ALGORITHMS,
-  isBlackHoleOnlyAlgorithm,
-  // Cosine palette types
-  type CosineCoefficients,
-  DEFAULT_COSINE_COEFFICIENTS,
-  // Distribution types
-  type DistributionSettings,
-  DEFAULT_DISTRIBUTION,
-  // Multi-source types
-  type MultiSourceWeights,
-  DEFAULT_MULTI_SOURCE_WEIGHTS,
-  // LCH preset types
-  type LchPreset,
-  LCH_PRESET_OPTIONS,
+    BLACKHOLE_ONLY_ALGORITHMS, COLOR_ALGORITHM_OPTIONS,
+    COLOR_ALGORITHM_TO_INT,
+    DEFAULT_COLOR_ALGORITHM, DEFAULT_COSINE_COEFFICIENTS, DEFAULT_DISTRIBUTION, DEFAULT_MULTI_SOURCE_WEIGHTS,
+    GEOMETRIC_PHASE_ALGORITHMS,
+    isBlackHoleOnlyAlgorithm,
+    isColorAlgorithmAvailable, isGeometricPhaseAlgorithm, isQuantumOnlyAlgorithm, LCH_PRESET_OPTIONS, QUANTUM_ONLY_ALGORITHMS,
+    // Color algorithm types
+    type ColorAlgorithm,
+    // Cosine palette types
+    type CosineCoefficients,
+    // Distribution types
+    type DistributionSettings,
+    // LCH preset types
+    type LchPreset,
+    // Multi-source types
+    type MultiSourceWeights
 } from './types';
 
 // Presets
 export {
-  COSINE_PRESETS,
-  COSINE_PRESET_OPTIONS,
-  type PresetOption,
-  type ColorPreset,
-  BUILT_IN_PRESETS,
-  getPresetById,
-  getDefaultPresetForAlgorithm,
+    BUILT_IN_PRESETS, COSINE_PRESET_OPTIONS, COSINE_PRESETS, getDefaultPresetForAlgorithm, getPresetById, type ColorPreset, type PresetOption
 } from './presets';
+

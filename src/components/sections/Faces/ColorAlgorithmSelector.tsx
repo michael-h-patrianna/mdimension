@@ -11,8 +11,7 @@ import { Select } from '@/components/ui/Select';
 import {
   COLOR_ALGORITHM_OPTIONS,
   type ColorAlgorithm,
-  isQuantumOnlyAlgorithm,
-  isBlackHoleOnlyAlgorithm,
+  isColorAlgorithmAvailable,
 } from '@/rendering/shaders/palette';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useGeometryStore } from '@/stores/geometryStore';
@@ -31,24 +30,8 @@ export const ColorAlgorithmSelector: React.FC<ColorAlgorithmSelectorProps> = ({
 
   // Filter algorithms based on object type
   const availableOptions = useMemo(() => {
-    const isSchroedinger = objectType === 'schroedinger';
-    const isBlackHole = objectType === 'blackhole';
-
     return COLOR_ALGORITHM_OPTIONS.filter((opt) => {
-      // Special case: Blackbody is shared by Schroedinger and Black Hole
-      if (opt.value === 'blackbody') {
-        return isSchroedinger || isBlackHole;
-      }
-      // Show quantum algorithms only for Schroedinger
-      if (isQuantumOnlyAlgorithm(opt.value)) {
-        return isSchroedinger;
-      }
-      // Show black hole algorithms only for Black Hole
-      if (isBlackHoleOnlyAlgorithm(opt.value)) {
-        return isBlackHole;
-      }
-      // Show all other algorithms for all objects
-      return true;
+      return isColorAlgorithmAvailable(opt.value, objectType);
     });
   }, [objectType]);
 

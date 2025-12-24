@@ -9,6 +9,8 @@
 
 import { Matrix4, Vector2 } from 'three';
 
+import { usePerformanceStore } from '@/stores/performanceStore';
+
 import { BaseUniformSource, type IUniform, type UniformUpdateState } from '../UniformSource';
 
 /**
@@ -114,21 +116,26 @@ export class TemporalSource extends BaseUniformSource {
   }
 
   /**
-   * Frame update - stores current matrices as previous for next frame.
+   * Frame update - automatically pulls from performanceStore and updates matrices.
+   *
+   * This method accesses the store directly to update temporal uniforms,
+   * eliminating the need for renderers to manually call updateFromStore().
    */
   update(state: UniformUpdateState): void {
+    // Access store directly - this is the standard pattern in the codebase
+    const perfState = usePerformanceStore.getState();
+
+    // Update enabled state from store
+    this.updateFromStore({
+      enabled: perfState.temporalReprojectionEnabled,
+      depthBufferResolution: { width: state.size.width, height: state.size.height },
+    });
+
     if (!this.enabled) {
       return;
     }
 
-    const { camera, size } = state;
-
-    // Update depth buffer resolution if changed
-    const res = this.temporalUniforms.uDepthBufferResolution.value;
-    if (res.x !== size.width || res.y !== size.height) {
-      res.set(size.width, size.height);
-      this.incrementVersion();
-    }
+    const { camera } = state;
 
     // Copy current to previous
     this.temporalUniforms.uPrevViewProjectionMatrix.value.copy(this.currentViewProjection);

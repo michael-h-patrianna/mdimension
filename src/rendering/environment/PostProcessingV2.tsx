@@ -47,6 +47,10 @@ import { FRAME_PRIORITY } from '@/rendering/core/framePriorities';
 import { RENDER_LAYERS, needsVolumetricSeparation } from '@/rendering/core/layers';
 import { useTemporalDepth } from '@/rendering/core/temporalDepth';
 import {
+  createSceneBackgroundExport,
+  createSceneEnvironmentExport,
+} from '@/rendering/graph/ExternalBridge';
+import {
   BloomPass,
   BokehPass,
   BufferPreviewPass,
@@ -59,8 +63,8 @@ import {
   FXAAPass,
   FilmGrainPass,
   FullscreenPass,
-  GravitationalLensingPass,
   GTAOPass,
+  GravitationalLensingPass,
   MainObjectMRTPass,
   NormalPass,
   RefractionPass,
@@ -73,10 +77,6 @@ import {
   ToScreenPass,
   VolumetricFogPass,
 } from '@/rendering/graph/passes';
-import {
-  createSceneBackgroundExport,
-  createSceneEnvironmentExport,
-} from '@/rendering/graph/ExternalBridge';
 import { RenderGraph } from '@/rendering/graph/RenderGraph';
 import { cloudCompositeFragmentShader } from '@/rendering/shaders/postprocessing/cloudComposite.glsl';
 import { normalCompositeFragmentShader } from '@/rendering/shaders/postprocessing/normalComposite.glsl';
@@ -139,6 +139,26 @@ function supports3DTextures(gl: THREE.WebGLRenderer): boolean {
   // WebGL2 supports sampler3D
   const ctx = gl.getContext();
   return ctx instanceof WebGL2RenderingContext;
+}
+
+// =============================================================================
+// Helper: Object Type Temporal Support
+// =============================================================================
+
+/**
+ * Check if object type uses temporal depth reprojection (raymarching acceleration).
+ * Only Mandelbulb and Julia fractals benefit from depth-skip temporal optimization.
+ */
+function usesTemporalDepth(objectType: string): boolean {
+  return objectType === 'mandelbulb' || objectType === 'quaternion-julia';
+}
+
+/**
+ * Check if object type uses temporal cloud accumulation (Horizon-style).
+ * Only Schroedinger volumetric rendering uses quarter-res temporal accumulation.
+ */
+function usesTemporalCloud(objectType: string): boolean {
+  return objectType === 'schroedinger';
 }
 
 // =============================================================================
@@ -715,11 +735,13 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       const pp = frame.stores.postProcessing;
       const ui = frame.stores.ui;
       const perf = frame.stores.performance;
+      const objectType = frame.stores.geometry?.objectType ?? '';
       const depthForEffects =
         pp.objectOnlyDepth && (pp.ssrEnabled || pp.refractionEnabled || pp.bokehEnabled);
-      const depthForTemporal = perf.temporalReprojectionEnabled || ui.showTemporalDepthBuffer;
+      // Only enable temporal depth for object types that actually use it (Mandelbulb/Julia)
+      const temporalDepthNeeded = (perf.temporalReprojectionEnabled || ui.showTemporalDepthBuffer) && usesTemporalDepth(objectType);
       const depthPreview = ui.showDepthBuffer && pp.objectOnlyDepth;
-      return depthForEffects || depthForTemporal || depthPreview;
+      return depthForEffects || temporalDepthNeeded || depthPreview;
     };
 
     const shouldRenderTemporalCloud = (frame: import('@/rendering/graph/FrameContext').FrozenFrameContext | null) => {
@@ -867,7 +889,10 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
         if (!frame) return false;
         const perf = frame.stores.performance;
         const ui = frame.stores.ui;
-        return perf.temporalReprojectionEnabled || ui.showTemporalDepthBuffer;
+        const objectType = frame.stores.geometry?.objectType ?? '';
+        // Only enable for object types that use temporal depth (Mandelbulb/Julia)
+        const usesDepth = usesTemporalDepth(objectType);
+        return (perf.temporalReprojectionEnabled && usesDepth) || (ui.showTemporalDepthBuffer && usesDepth);
       },
       // Note: forceCapture is not an enabled() callback, so it still uses refs
       forceCapture: () => uiStateRef.current.showTemporalDepthBuffer,
@@ -1205,7 +1230,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
     }
 
     return g;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [restoreCount, isPolytope, isBlackHole, noiseTextureData, ppState.antiAliasingMethod, temporalDepth]); // Recreate on context restore, object type, noise texture, AA method, or temporal depth change
 
   // ==========================================================================
@@ -1412,9 +1437,22 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
         passRefs.current.bufferPreview.setExternalTexture(null);
         passRefs.current.bufferPreview.setBufferInput(RESOURCES.NORMAL_BUFFER);
       } else if (showTemporalDepthBuffer) {
-        passRefs.current.bufferPreview.setBufferType('temporalDepth');
-        const temporalUniforms = temporalDepth.getUniforms(true);
-        passRefs.current.bufferPreview.setExternalTexture(temporalUniforms.uPrevDepthTexture);
+        const objectType = objectTypeRef.current;
+        // Show temporal depth buffer for Mandelbulb/Julia, temporal cloud for Schroedinger
+        if (usesTemporalDepth(objectType)) {
+          passRefs.current.bufferPreview.setBufferType('temporalDepth');
+          const temporalUniforms = temporalDepth.getUniforms(true);
+          passRefs.current.bufferPreview.setExternalTexture(temporalUniforms.uPrevDepthTexture);
+        } else if (usesTemporalCloud(objectType)) {
+          // Show temporal cloud accumulation buffer for Schroedinger
+          passRefs.current.bufferPreview.setBufferType('temporalDepth');
+          passRefs.current.bufferPreview.setExternalTexture(
+            graphInstance.getTexture(RESOURCES.TEMPORAL_ACCUMULATION, 0)
+          );
+        } else {
+          // Graceful fallback: turn off the toggle if object doesn't support temporal
+          useUIStore.getState().setShowTemporalDepthBuffer(false);
+        }
       } else {
         passRefs.current.bufferPreview.setExternalTexture(null);
       }

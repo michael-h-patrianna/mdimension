@@ -29,14 +29,14 @@
 // Import Wythoff types from canonical source (avoid duplication)
 // Import values for local use and re-export them
 import {
-  DEFAULT_WYTHOFF_POLYTOPE_CONFIG,
-  DEFAULT_WYTHOFF_SCALES,
-  type WythoffPolytopeConfig,
-  type WythoffPreset,
-  type WythoffSymmetryGroup,
+    DEFAULT_WYTHOFF_POLYTOPE_CONFIG,
+    DEFAULT_WYTHOFF_SCALES,
+    type WythoffPolytopeConfig,
+    type WythoffPreset,
+    type WythoffSymmetryGroup,
 } from '../wythoff/types'
-export type { WythoffPolytopeConfig, WythoffPreset, WythoffSymmetryGroup }
 export { DEFAULT_WYTHOFF_POLYTOPE_CONFIG, DEFAULT_WYTHOFF_SCALES }
+export type { WythoffPolytopeConfig, WythoffPreset, WythoffSymmetryGroup }
 
 // ============================================================================
 // Polytope Configuration (for consistency with extended objects)
@@ -1600,8 +1600,7 @@ export interface BlackHoleConfig {
   // === MANIFOLD / ACCRETION (Advanced) ===
   /** Manifold type */
   manifoldType: BlackHoleManifoldType
-  /** Density falloff (0-40, default 6.0) */
-  densityFalloff: number
+
   /** Disk inner radius multiplier (0-10, default 1.2) */
   diskInnerRadiusMul: number
   /** Disk outer radius multiplier (0.1-200, default 8.0) */
@@ -1670,8 +1669,7 @@ export interface BlackHoleConfig {
   dopplerEnabled: boolean
   /** Doppler strength (0-2, default 0.6) */
   dopplerStrength: number
-  /** Doppler hue shift (0-0.3, default 0.1) */
-  dopplerHueShift: number
+
 
   // === VISUAL PRESET ===
   /** Visual preset (default 'custom') */
@@ -1834,7 +1832,6 @@ export const BLACK_HOLE_VISUAL_PRESETS: Record<BlackHoleVisualPreset, Partial<Bl
 
     // Disk appearance
     manifoldThickness: 0.03, // Very thin disk for Interstellar look
-    densityFalloff: 10.0, // Max shader value (was 200, clamped to 10)
     diskOuterRadiusMul: 8.0, // Compact disk
 
     // Lensing
@@ -1849,7 +1846,6 @@ export const BLACK_HOLE_VISUAL_PRESETS: Record<BlackHoleVisualPreset, Partial<Bl
     shellGlowColor: '#ffcc66',
     dopplerEnabled: true,
     dopplerStrength: 0.6,
-    dopplerHueShift: 0.1,
     noiseAmount: 0.1,
     swirlAmount: 0.3,
   },
@@ -1857,7 +1853,7 @@ export const BLACK_HOLE_VISUAL_PRESETS: Record<BlackHoleVisualPreset, Partial<Bl
   cosmic: {
     spin: 0.5, // Moderate spin
     manifoldThickness: 0.3,
-    densityFalloff: 6.0,
+
     diskOuterRadiusMul: 12.0,
     gravityStrength: 1.5,
     bendScale: 1.0,
@@ -1873,7 +1869,7 @@ export const BLACK_HOLE_VISUAL_PRESETS: Record<BlackHoleVisualPreset, Partial<Bl
   ethereal: {
     spin: 0.3, // Low spin
     manifoldThickness: 0.8,
-    densityFalloff: 3.0,
+
     diskOuterRadiusMul: 15.0,
     gravityStrength: 0.8,
     bendScale: 0.8,
@@ -1925,7 +1921,6 @@ export const DEFAULT_BLACK_HOLE_CONFIG: BlackHoleConfig = {
 
   // Manifold - Interstellar preset values
   manifoldType: 'autoByN',
-  densityFalloff: 10.0, // Sharp falloff (shader clamps to [0.1, 10.0])
   diskInnerRadiusMul: 2.3, // ISCO - auto-computed from spin=0.9 (prograde Kerr)
   diskOuterRadiusMul: 8.0, // Artistic choice for disk extent
   radialSoftnessMul: 0.2,
@@ -1964,7 +1959,7 @@ export const DEFAULT_BLACK_HOLE_CONFIG: BlackHoleConfig = {
   // Doppler - Interstellar preset values
   dopplerEnabled: true, // Interstellar: enable Doppler effect
   dopplerStrength: 0.6,
-  dopplerHueShift: 0.1,
+
 
   // Visual preset
   visualPreset: 'interstellar',

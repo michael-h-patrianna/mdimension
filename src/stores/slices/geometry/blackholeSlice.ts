@@ -47,11 +47,11 @@ function clampWithWarning(value: number, min: number, max: number, paramName: st
 
 import { computeKerrRadii, diskTemperatureToColor } from '@/lib/geometry/extended/kerr-physics'
 import {
-  BLACK_HOLE_QUALITY_PRESETS,
-  BLACK_HOLE_VISUAL_PRESETS,
-  BlackHoleConfig,
-  BlackHoleRayBendingMode,
-  DEFAULT_BLACK_HOLE_CONFIG,
+    BLACK_HOLE_QUALITY_PRESETS,
+    BLACK_HOLE_VISUAL_PRESETS,
+    BlackHoleConfig,
+    BlackHoleRayBendingMode,
+    DEFAULT_BLACK_HOLE_CONFIG,
 } from '@/lib/geometry/extended/types'
 import { StateCreator } from 'zustand'
 import { BlackHoleSlice, ExtendedObjectSlice } from './types'
@@ -305,13 +305,7 @@ export const createBlackHoleSlice: StateCreator<ExtendedObjectSlice, [], [], Bla
     }))
   },
 
-  setBlackHoleDensityFalloff: (falloff) => {
-    // Note: shader clamps to [0.1, 10.0] for numerical stability
-    const clamped = Math.max(0.1, Math.min(10, falloff))
-    set((state) => ({
-      blackhole: { ...state.blackhole, densityFalloff: clamped },
-    }))
-  },
+
 
   setBlackHoleDiskInnerRadiusMul: (mul) => {
     const state = get()
@@ -532,12 +526,7 @@ export const createBlackHoleSlice: StateCreator<ExtendedObjectSlice, [], [], Bla
     }))
   },
 
-  setBlackHoleDopplerHueShift: (shift) => {
-    const clamped = Math.max(0, Math.min(0.3, shift))
-    set((state) => ({
-      blackhole: { ...state.blackhole, dopplerHueShift: clamped },
-    }))
-  },
+
 
   // === Visual Preset ===
   setBlackHoleVisualPreset: (preset) => {
@@ -845,10 +834,7 @@ export const createBlackHoleSlice: StateCreator<ExtendedObjectSlice, [], [], Bla
       validated.shellGlowStrength = Math.max(0, Math.min(20, config.shellGlowStrength))
     }
 
-    // Manifold (densityFalloff clamped to shader range [0.1, 10.0])
-    if (config.densityFalloff !== undefined) {
-      validated.densityFalloff = Math.max(0.1, Math.min(10, config.densityFalloff))
-    }
+
     if (config.diskInnerRadiusMul !== undefined) {
       validated.diskInnerRadiusMul = Math.max(0, Math.min(10, config.diskInnerRadiusMul))
     }

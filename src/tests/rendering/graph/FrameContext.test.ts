@@ -95,7 +95,6 @@ describe('FrameContext', () => {
         refractionStrength: 0.5,
         refractionChromaticAberration: 0,
         antiAliasingMethod: 'smaa',
-        smaaThreshold: 0.1,
         cinematicEnabled: false,
         cinematicAberration: 0.005,
         cinematicVignette: 1.2,

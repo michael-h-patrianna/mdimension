@@ -130,7 +130,6 @@ export interface FrozenPostProcessingState {
 
   // Anti-aliasing
   readonly antiAliasingMethod: PostProcessingSliceState['antiAliasingMethod']
-  readonly smaaThreshold: number
 
   // Cinematic
   readonly cinematicEnabled: boolean
@@ -429,7 +428,6 @@ function capturePostProcessingState(
 
     // Anti-aliasing
     antiAliasingMethod: state.antiAliasingMethod,
-    smaaThreshold: state.smaaThreshold,
 
     // Cinematic
     cinematicEnabled: state.cinematicEnabled,
@@ -647,7 +645,6 @@ export function createEmptyFrameContext(): FrozenFrameContext {
         refractionStrength: 0.5,
         refractionChromaticAberration: 0,
         antiAliasingMethod: 'smaa',
-        smaaThreshold: 0.1,
         cinematicEnabled: false,
         cinematicAberration: 0.005,
         cinematicVignette: 1.2,
@@ -657,7 +654,6 @@ export function createEmptyFrameContext(): FrozenFrameContext {
         ssaoIntensity: 1,
         gravityEnabled: false,
         gravityStrength: 1,
-        gravityIntensity: 1,
         gravityDistortionScale: 1,
         gravityFalloff: 1.5,
         gravityChromaticAberration: 0,

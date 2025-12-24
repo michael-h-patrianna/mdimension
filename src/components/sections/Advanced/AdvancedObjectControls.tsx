@@ -8,73 +8,73 @@ import { useAppearanceStore, type AppearanceSlice } from '@/stores/appearanceSto
 import { useExtendedObjectStore, type ExtendedObjectState } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { usePostProcessingStore, type PostProcessingSlice } from '@/stores/postProcessingStore';
-import React, { useCallback, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
 // Object types that show the Advanced Rendering section
 const ADVANCED_RENDERING_OBJECT_TYPES = [
-    'mandelbulb',
-    'quaternion-julia',
-    'schroedinger',
-    'blackhole',
-    'hypercube',
-    'simplex',
-    'cross-polytope',
-    'wythoff-polytope',
+  'mandelbulb',
+  'quaternion-julia',
+  'schroedinger',
+  'blackhole',
+  'hypercube',
+  'simplex',
+  'cross-polytope',
+  'wythoff-polytope',
 ];
 
 // Object types that have raymarching quality controls
 const RAYMARCHING_OBJECT_TYPES = ['mandelbulb', 'quaternion-julia', 'schroedinger', 'blackhole'];
 
 export const AdvancedObjectControls: React.FC = () => {
-    const objectType = useGeometryStore(state => state.objectType);
+  const objectType = useGeometryStore(state => state.objectType);
 
-    // Show for all supported object types (fractals + polytopes)
-    if (!ADVANCED_RENDERING_OBJECT_TYPES.includes(objectType)) {
-        return null;
-    }
+  // Show for all supported object types (fractals + polytopes)
+  if (!ADVANCED_RENDERING_OBJECT_TYPES.includes(objectType)) {
+    return null;
+  }
 
-    const showRaymarchingQuality = RAYMARCHING_OBJECT_TYPES.includes(objectType);
-    const isPolytope = ['hypercube', 'simplex', 'cross-polytope', 'wythoff-polytope'].includes(objectType);
+  const showRaymarchingQuality = RAYMARCHING_OBJECT_TYPES.includes(objectType);
+  const isPolytope = ['hypercube', 'simplex', 'cross-polytope', 'wythoff-polytope'].includes(objectType);
 
-    return (
-        <Section title="Advanced Rendering" defaultOpen={true} data-testid="advanced-object-controls">
-            {/* Raymarching Quality - only for raymarching objects */}
-            {showRaymarchingQuality && <RaymarchingQualityControl objectType={objectType} />}
+  return (
+    <Section title="Advanced Rendering" defaultOpen={true} data-testid="advanced-object-controls">
+      {/* Raymarching Quality - only for raymarching objects */}
+      {showRaymarchingQuality && <RaymarchingQualityControl objectType={objectType} />}
 
-            {/* Global Settings (Shared) - for all objects */}
-            <SharedAdvancedControls />
+      {/* Global Settings (Shared) - for all objects */}
+      <SharedAdvancedControls />
 
-            {/* Gravitational Lensing - available for all objects */}
-            <GravityAdvanced />
+      {/* Gravitational Lensing - available for all objects */}
+      <GravityAdvanced />
 
-            {/* Object-Specific Settings */}
-            {objectType === 'schroedinger' && <SchroedingerAdvanced />}
-            {objectType === 'blackhole' && <BlackHoleAdvanced />}
-            {objectType === 'mandelbulb' && <MandelbulbAdvanced />}
-            {isPolytope && <PolytopeAdvanced />}
-        </Section>
-    );
+      {/* Object-Specific Settings */}
+      {objectType === 'schroedinger' && <SchroedingerAdvanced />}
+      {objectType === 'blackhole' && <BlackHoleAdvanced />}
+      {objectType === 'mandelbulb' && <MandelbulbAdvanced />}
+      {isPolytope && <PolytopeAdvanced />}
+    </Section>
+  );
 };
 
 /** Quality descriptions with concrete numbers for each object type */
 const QUALITY_DESCRIPTIONS: Record<RaymarchQuality, { volumetric: string; sdf: string }> = {
-    fast: {
-        volumetric: '16 samples/ray - fastest, some banding',
-        sdf: '4x larger steps - fastest, lower detail',
-    },
-    balanced: {
-        volumetric: '32 samples/ray - good balance',
-        sdf: '2x larger steps - balanced quality',
-    },
-    quality: {
-        volumetric: '48 samples/ray - smooth gradients',
-        sdf: '1.33x larger steps - high detail',
-    },
-    ultra: {
-        volumetric: '64 samples/ray - maximum quality',
-        sdf: 'Full resolution - maximum detail',
-    },
+  fast: {
+    volumetric: '16 samples/ray - fastest, some banding',
+    sdf: '4x larger steps - fastest, lower detail',
+  },
+  balanced: {
+    volumetric: '32 samples/ray - good balance',
+    sdf: '2x larger steps - balanced quality',
+  },
+  quality: {
+    volumetric: '48 samples/ray - smooth gradients',
+    sdf: '1.33x larger steps - high detail',
+  },
+  ultra: {
+    volumetric: '64 samples/ray - maximum quality',
+    sdf: 'Full resolution - maximum detail',
+  },
 };
 
 /**
@@ -84,8 +84,8 @@ const QUALITY_DESCRIPTIONS: Record<RaymarchQuality, { volumetric: string; sdf: s
  * @returns Human-readable quality description
  */
 const getQualityDescription = (quality: RaymarchQuality, objectType: string): string => {
-    const isVolumetric = objectType === 'schroedinger';
-    return isVolumetric ? QUALITY_DESCRIPTIONS[quality].volumetric : QUALITY_DESCRIPTIONS[quality].sdf;
+  const isVolumetric = objectType === 'schroedinger';
+  return isVolumetric ? QUALITY_DESCRIPTIONS[quality].volumetric : QUALITY_DESCRIPTIONS[quality].sdf;
 };
 
 /**
@@ -95,588 +95,588 @@ const getQualityDescription = (quality: RaymarchQuality, objectType: string): st
  * @returns The quality control UI component
  */
 const RaymarchingQualityControl: React.FC<{ objectType: string }> = ({ objectType }) => {
-    const extendedObjectSelector = useShallow((state: ExtendedObjectState) => ({
-        mandelbulbQuality: state.mandelbulb.raymarchQuality,
-        setMandelbulbQuality: state.setMandelbulbRaymarchQuality,
-        juliaQuality: state.quaternionJulia.raymarchQuality,
-        setJuliaQuality: state.setQuaternionJuliaRaymarchQuality,
-        schroedingerQuality: state.schroedinger.raymarchQuality,
-        setSchroedingerQuality: state.setSchroedingerRaymarchQuality,
-        blackholeQuality: state.blackhole.raymarchQuality,
-        setBlackholeQuality: state.setBlackHoleRaymarchQuality,
-    }));
-    const {
-        mandelbulbQuality, setMandelbulbQuality,
-        juliaQuality, setJuliaQuality,
-        schroedingerQuality, setSchroedingerQuality,
-        blackholeQuality, setBlackholeQuality,
-    } = useExtendedObjectStore(extendedObjectSelector);
+  const extendedObjectSelector = useShallow((state: ExtendedObjectState) => ({
+    mandelbulbQuality: state.mandelbulb.raymarchQuality,
+    setMandelbulbQuality: state.setMandelbulbRaymarchQuality,
+    juliaQuality: state.quaternionJulia.raymarchQuality,
+    setJuliaQuality: state.setQuaternionJuliaRaymarchQuality,
+    schroedingerQuality: state.schroedinger.raymarchQuality,
+    setSchroedingerQuality: state.setSchroedingerRaymarchQuality,
+    blackholeQuality: state.blackhole.raymarchQuality,
+    setBlackholeQuality: state.setBlackHoleRaymarchQuality,
+  }));
+  const {
+    mandelbulbQuality, setMandelbulbQuality,
+    juliaQuality, setJuliaQuality,
+    schroedingerQuality, setSchroedingerQuality,
+    blackholeQuality, setBlackholeQuality,
+  } = useExtendedObjectStore(extendedObjectSelector);
 
-    // Select the appropriate quality and setter based on object type
-    let quality: RaymarchQuality;
-    let setQuality: (q: RaymarchQuality) => void;
+  // Select the appropriate quality and setter based on object type
+  let quality: RaymarchQuality;
+  let setQuality: (q: RaymarchQuality) => void;
 
-    if (objectType === 'mandelbulb') {
-        quality = mandelbulbQuality;
-        setQuality = setMandelbulbQuality;
-    } else if (objectType === 'quaternion-julia') {
-        quality = juliaQuality;
-        setQuality = setJuliaQuality;
-    } else if (objectType === 'blackhole') {
-        quality = blackholeQuality;
-        setQuality = setBlackholeQuality;
-    } else {
-        quality = schroedingerQuality;
-        setQuality = setSchroedingerQuality;
-    }
+  if (objectType === 'mandelbulb') {
+    quality = mandelbulbQuality;
+    setQuality = setMandelbulbQuality;
+  } else if (objectType === 'quaternion-julia') {
+    quality = juliaQuality;
+    setQuality = setJuliaQuality;
+  } else if (objectType === 'blackhole') {
+    quality = blackholeQuality;
+    setQuality = setBlackholeQuality;
+  } else {
+    quality = schroedingerQuality;
+    setQuality = setSchroedingerQuality;
+  }
 
-    return (
-        <div className="space-y-2 mb-4 pb-4 border-b border-white/10">
-            <label className="text-xs text-text-secondary font-semibold">Raymarching Quality</label>
-            <ToggleGroup
-                options={[
-                    { value: 'fast', label: 'Fast' },
-                    { value: 'balanced', label: 'Balanced' },
-                    { value: 'quality', label: 'Quality' },
-                    { value: 'ultra', label: 'Ultra' },
-                ]}
-                value={quality}
-                onChange={(v) => setQuality(v as RaymarchQuality)}
-                ariaLabel="Raymarching quality selection"
-                data-testid="raymarching-quality"
-            />
-            <p className="text-xs text-text-tertiary">
-                {getQualityDescription(quality, objectType)}
-            </p>
-        </div>
-    );
+  return (
+    <div className="space-y-2 mb-4 pb-4 border-b border-white/10">
+      <label className="text-xs text-text-secondary font-semibold">Raymarching Quality</label>
+      <ToggleGroup
+        options={[
+          { value: 'fast', label: 'Fast' },
+          { value: 'balanced', label: 'Balanced' },
+          { value: 'quality', label: 'Quality' },
+          { value: 'ultra', label: 'Ultra' },
+        ]}
+        value={quality}
+        onChange={(v) => setQuality(v as RaymarchQuality)}
+        ariaLabel="Raymarching quality selection"
+        data-testid="raymarching-quality"
+      />
+      <p className="text-xs text-text-tertiary">
+        {getQualityDescription(quality, objectType)}
+      </p>
+    </div>
+  );
 };
 
 const SharedAdvancedControls: React.FC = () => {
-    const appearanceSelector = useShallow((state: AppearanceSlice) => ({
-        sssEnabled: state.sssEnabled, setSssEnabled: state.setSssEnabled,
-        sssIntensity: state.sssIntensity, setSssIntensity: state.setSssIntensity,
-        sssColor: state.sssColor, setSssColor: state.setSssColor,
-        sssThickness: state.sssThickness, setSssThickness: state.setSssThickness,
-        sssJitter: state.sssJitter, setSssJitter: state.setSssJitter,
-        fresnelEnabled: state.shaderSettings.surface.fresnelEnabled,
-        setSurfaceSettings: state.setSurfaceSettings,
-        fresnelIntensity: state.fresnelIntensity, setFresnelIntensity: state.setFresnelIntensity,
-    }));
-    const {
-        sssEnabled, setSssEnabled,
-        sssIntensity, setSssIntensity,
-        sssColor, setSssColor,
-        sssThickness, setSssThickness,
-        sssJitter, setSssJitter,
-        fresnelEnabled, setSurfaceSettings,
-        fresnelIntensity, setFresnelIntensity,
-    } = useAppearanceStore(appearanceSelector);
+  const appearanceSelector = useShallow((state: AppearanceSlice) => ({
+    sssEnabled: state.sssEnabled, setSssEnabled: state.setSssEnabled,
+    sssIntensity: state.sssIntensity, setSssIntensity: state.setSssIntensity,
+    sssColor: state.sssColor, setSssColor: state.setSssColor,
+    sssThickness: state.sssThickness, setSssThickness: state.setSssThickness,
+    sssJitter: state.sssJitter, setSssJitter: state.setSssJitter,
+    fresnelEnabled: state.shaderSettings.surface.fresnelEnabled,
+    setSurfaceSettings: state.setSurfaceSettings,
+    fresnelIntensity: state.fresnelIntensity, setFresnelIntensity: state.setFresnelIntensity,
+  }));
+  const {
+    sssEnabled, setSssEnabled,
+    sssIntensity, setSssIntensity,
+    sssColor, setSssColor,
+    sssThickness, setSssThickness,
+    sssJitter, setSssJitter,
+    fresnelEnabled, setSurfaceSettings,
+    fresnelIntensity, setFresnelIntensity,
+  } = useAppearanceStore(appearanceSelector);
 
-    return (
-        <div className="space-y-4 mb-4 pb-4 border-b border-white/10">
-            <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                    <label className="text-xs text-text-secondary font-semibold">Subsurface Scattering</label>
-                    <ToggleButton
-                        pressed={sssEnabled}
-                        onToggle={() => setSssEnabled(!sssEnabled)}
-                        className="text-xs px-2 py-1 h-auto"
-                        ariaLabel="Toggle SSS"
-                        data-testid="global-sss-toggle"
-                    >
-                        {sssEnabled ? 'ON' : 'OFF'}
-                    </ToggleButton>
-                </div>
-                {sssEnabled && (
-                    <>
-                        <Slider
-                            label="Intensity"
-                            min={0.0}
-                            max={2.0}
-                            step={0.1}
-                            value={sssIntensity}
-                            onChange={setSssIntensity}
-                            showValue
-                            data-testid="global-sss-intensity"
-                        />
-                        <div className="flex items-center justify-between">
-                            <label className="text-xs text-text-secondary">SSS Tint</label>
-                            <ColorPicker
-                                value={sssColor}
-                                onChange={(c) => setSssColor(c)}
-                                disableAlpha={true}
-                                className="w-24"
-                            />
-                        </div>
-                        <Slider
-                            label="Thickness"
-                            min={0.1}
-                            max={5.0}
-                            step={0.1}
-                            value={sssThickness}
-                            onChange={setSssThickness}
-                            showValue
-                            data-testid="global-sss-thickness"
-                        />
-                        <Slider
-                            label="Sample Jitter"
-                            min={0.0}
-                            max={1.0}
-                            step={0.05}
-                            value={sssJitter}
-                            onChange={setSssJitter}
-                            showValue
-                            data-testid="global-sss-jitter"
-                        />
-                    </>
-                )}
-            </div>
-
-            {/* Fresnel Rim */}
-            <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
-                <div className="flex items-center justify-between">
-                    <label className="text-xs text-text-secondary font-semibold">Fresnel Rim</label>
-                    <ToggleButton
-                        pressed={fresnelEnabled}
-                        onToggle={() => setSurfaceSettings({ fresnelEnabled: !fresnelEnabled })}
-                        className="text-xs px-2 py-1 h-auto"
-                        ariaLabel="Toggle Fresnel Rim"
-                        data-testid="global-fresnel-toggle"
-                    >
-                        {fresnelEnabled ? 'ON' : 'OFF'}
-                    </ToggleButton>
-                </div>
-                {fresnelEnabled && (
-                    <Slider
-                        label="Intensity"
-                        min={0.0}
-                        max={1.0}
-                        step={0.1}
-                        value={fresnelIntensity}
-                        onChange={setFresnelIntensity}
-                        showValue
-                        data-testid="global-fresnel-intensity"
-                    />
-                )}
-            </div>
-            {/* Note: Fog/Atmosphere controls moved to Scene → Environment → Fog tab */}
+  return (
+    <div className="space-y-4 mb-4 pb-4 border-b border-white/10">
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <label className="text-xs text-text-secondary font-semibold">Subsurface Scattering</label>
+          <ToggleButton
+            pressed={sssEnabled}
+            onToggle={() => setSssEnabled(!sssEnabled)}
+            className="text-xs px-2 py-1 h-auto"
+            ariaLabel="Toggle SSS"
+            data-testid="global-sss-toggle"
+          >
+            {sssEnabled ? 'ON' : 'OFF'}
+          </ToggleButton>
         </div>
-    );
+        {sssEnabled && (
+          <>
+            <Slider
+              label="Intensity"
+              min={0.0}
+              max={2.0}
+              step={0.1}
+              value={sssIntensity}
+              onChange={setSssIntensity}
+              showValue
+              data-testid="global-sss-intensity"
+            />
+            <div className="flex items-center justify-between">
+              <label className="text-xs text-text-secondary">SSS Tint</label>
+              <ColorPicker
+                value={sssColor}
+                onChange={(c) => setSssColor(c)}
+                disableAlpha={true}
+                className="w-24"
+              />
+            </div>
+            <Slider
+              label="Thickness"
+              min={0.1}
+              max={5.0}
+              step={0.1}
+              value={sssThickness}
+              onChange={setSssThickness}
+              showValue
+              data-testid="global-sss-thickness"
+            />
+            <Slider
+              label="Sample Jitter"
+              min={0.0}
+              max={1.0}
+              step={0.05}
+              value={sssJitter}
+              onChange={setSssJitter}
+              showValue
+              data-testid="global-sss-jitter"
+            />
+          </>
+        )}
+      </div>
+
+      {/* Fresnel Rim */}
+      <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
+        <div className="flex items-center justify-between">
+          <label className="text-xs text-text-secondary font-semibold">Fresnel Rim</label>
+          <ToggleButton
+            pressed={fresnelEnabled}
+            onToggle={() => setSurfaceSettings({ fresnelEnabled: !fresnelEnabled })}
+            className="text-xs px-2 py-1 h-auto"
+            ariaLabel="Toggle Fresnel Rim"
+            data-testid="global-fresnel-toggle"
+          >
+            {fresnelEnabled ? 'ON' : 'OFF'}
+          </ToggleButton>
+        </div>
+        {fresnelEnabled && (
+          <Slider
+            label="Intensity"
+            min={0.0}
+            max={1.0}
+            step={0.1}
+            value={fresnelIntensity}
+            onChange={setFresnelIntensity}
+            showValue
+            data-testid="global-fresnel-intensity"
+          />
+        )}
+      </div>
+      {/* Note: Fog/Atmosphere controls moved to Scene → Environment → Fog tab */}
+    </div>
+  );
 };
 
 const SchroedingerAdvanced: React.FC = () => {
-    const extendedObjectSelector = useShallow((state: ExtendedObjectState) => ({
-        config: state.schroedinger,
-        setDensityGain: state.setSchroedingerDensityGain,
-        setPowderScale: state.setSchroedingerPowderScale,
-        setScatteringAnisotropy: state.setSchroedingerScatteringAnisotropy,
-        setDispersionEnabled: state.setSchroedingerDispersionEnabled,
-        setDispersionStrength: state.setSchroedingerDispersionStrength,
-        setDispersionDirection: state.setSchroedingerDispersionDirection,
-        setDispersionQuality: state.setSchroedingerDispersionQuality,
-        // Shadows/AO
-        setShadowsEnabled: state.setSchroedingerShadowsEnabled,
-        setShadowStrength: state.setSchroedingerShadowStrength,
-        setAoEnabled: state.setSchroedingerAoEnabled,
-        setAoStrength: state.setSchroedingerAoStrength,
-        // Quantum Effects
-        setNodalEnabled: state.setSchroedingerNodalEnabled,
-        setNodalColor: state.setSchroedingerNodalColor,
-        setNodalStrength: state.setSchroedingerNodalStrength,
-        setEnergyColorEnabled: state.setSchroedingerEnergyColorEnabled,
-        setShimmerEnabled: state.setSchroedingerShimmerEnabled,
-        setShimmerStrength: state.setSchroedingerShimmerStrength,
-        setIsoEnabled: state.setSchroedingerIsoEnabled,
-        setIsoThreshold: state.setSchroedingerIsoThreshold,
-        // New features
-        setErosionStrength: state.setSchroedingerErosionStrength,
-    }));
-    const {
-        config,
-        setDensityGain,
-        setPowderScale,
-        setScatteringAnisotropy,
-        setDispersionEnabled,
-        setDispersionStrength,
-        setDispersionDirection,
-        setDispersionQuality,
-        setShadowsEnabled,
-        setShadowStrength,
-        setAoEnabled,
-        setAoStrength,
-        setNodalEnabled,
-        setNodalColor,
-        setNodalStrength,
-        setEnergyColorEnabled,
-        setShimmerEnabled,
-        setShimmerStrength,
-        setIsoEnabled,
-        setIsoThreshold,
-        setErosionStrength,
-    } = useExtendedObjectStore(extendedObjectSelector);
+  const extendedObjectSelector = useShallow((state: ExtendedObjectState) => ({
+    config: state.schroedinger,
+    setDensityGain: state.setSchroedingerDensityGain,
+    setPowderScale: state.setSchroedingerPowderScale,
+    setScatteringAnisotropy: state.setSchroedingerScatteringAnisotropy,
+    setDispersionEnabled: state.setSchroedingerDispersionEnabled,
+    setDispersionStrength: state.setSchroedingerDispersionStrength,
+    setDispersionDirection: state.setSchroedingerDispersionDirection,
+    setDispersionQuality: state.setSchroedingerDispersionQuality,
+    // Shadows/AO
+    setShadowsEnabled: state.setSchroedingerShadowsEnabled,
+    setShadowStrength: state.setSchroedingerShadowStrength,
+    setAoEnabled: state.setSchroedingerAoEnabled,
+    setAoStrength: state.setSchroedingerAoStrength,
+    // Quantum Effects
+    setNodalEnabled: state.setSchroedingerNodalEnabled,
+    setNodalColor: state.setSchroedingerNodalColor,
+    setNodalStrength: state.setSchroedingerNodalStrength,
+    setEnergyColorEnabled: state.setSchroedingerEnergyColorEnabled,
+    setShimmerEnabled: state.setSchroedingerShimmerEnabled,
+    setShimmerStrength: state.setSchroedingerShimmerStrength,
+    setIsoEnabled: state.setSchroedingerIsoEnabled,
+    setIsoThreshold: state.setSchroedingerIsoThreshold,
+    // New features
+    setErosionStrength: state.setSchroedingerErosionStrength,
+  }));
+  const {
+    config,
+    setDensityGain,
+    setPowderScale,
+    setScatteringAnisotropy,
+    setDispersionEnabled,
+    setDispersionStrength,
+    setDispersionDirection,
+    setDispersionQuality,
+    setShadowsEnabled,
+    setShadowStrength,
+    setAoEnabled,
+    setAoStrength,
+    setNodalEnabled,
+    setNodalColor,
+    setNodalStrength,
+    setEnergyColorEnabled,
+    setShimmerEnabled,
+    setShimmerStrength,
+    setIsoEnabled,
+    setIsoThreshold,
+    setErosionStrength,
+  } = useExtendedObjectStore(extendedObjectSelector);
 
-    return (
-        <div className="space-y-4">
+  return (
+    <div className="space-y-4">
+      <Slider
+        label="Density Gain"
+        min={0.1}
+        max={5.0}
+        step={0.1}
+        value={config.densityGain}
+        onChange={setDensityGain}
+        showValue
+        data-testid="schroedinger-density-gain"
+      />
+
+      <Slider
+        label="Powder Effect"
+        min={0.0}
+        max={2.0}
+        step={0.1}
+        value={config.powderScale}
+        onChange={setPowderScale}
+        showValue
+        data-testid="schroedinger-powder-scale"
+      />
+
+      {/* Anisotropy (Phase) */}
+      <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
+        <Slider
+          label="Anisotropy (Phase)"
+          min={-0.9}
+          max={0.9}
+          step={0.05}
+          value={config.scatteringAnisotropy ?? 0.0}
+          onChange={setScatteringAnisotropy}
+          showValue
+          data-testid="schroedinger-anisotropy"
+        />
+      </div>
+
+      {/* Volume Effects */}
+      <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
+        <div className="flex items-center justify-between">
+          <label className="text-xs text-text-secondary font-semibold">Volume Effects</label>
+        </div>
+
+        {/* Erosion */}
+        <div className="mt-2">
+          <Slider
+            label="Surface Erosion"
+            min={0}
+            max={1}
+            step={0.1}
+            value={config.erosionStrength ?? 0.0}
+            onChange={setErosionStrength}
+            showValue
+          />
+        </div>
+
+        {/* Shadows & AO */}
+        <div className="flex items-center justify-between mt-2">
+          <label className="text-xs text-text-secondary">Volumetric Shadows</label>
+          <ToggleButton
+            pressed={config.shadowsEnabled ?? false}
+            onToggle={() => setShadowsEnabled(!(config.shadowsEnabled ?? false))}
+            className="text-xs px-2 py-1 h-auto"
+            ariaLabel="Toggle shadows"
+          >
+            {config.shadowsEnabled ? 'ON' : 'OFF'}
+          </ToggleButton>
+        </div>
+        {config.shadowsEnabled && (
+          <Slider
+            label="Shadow Strength"
+            min={0}
+            max={2}
+            step={0.1}
+            value={config.shadowStrength ?? 1.0}
+            onChange={setShadowStrength}
+            showValue
+          />
+        )}
+
+        <div className="flex items-center justify-between mt-2">
+          <label className="text-xs text-text-secondary">Volumetric AO</label>
+          <ToggleButton
+            pressed={config.aoEnabled ?? false}
+            onToggle={() => setAoEnabled(!(config.aoEnabled ?? false))}
+            className="text-xs px-2 py-1 h-auto"
+            ariaLabel="Toggle AO"
+          >
+            {config.aoEnabled ? 'ON' : 'OFF'}
+          </ToggleButton>
+        </div>
+        {config.aoEnabled && (
+          <Slider
+            label="AO Strength"
+            min={0}
+            max={2}
+            step={0.1}
+            value={config.aoStrength ?? 1.0}
+            onChange={setAoStrength}
+            showValue
+          />
+        )}
+      </div>
+
+      {/* Chromatic Dispersion */}
+      <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
+        <div className="flex items-center justify-between">
+          <label className="text-xs text-text-secondary font-semibold">Chromatic Dispersion</label>
+          <ToggleButton
+            pressed={config.dispersionEnabled ?? false}
+            onToggle={() => setDispersionEnabled(!(config.dispersionEnabled ?? false))}
+            className="text-xs px-2 py-1 h-auto"
+            ariaLabel="Toggle dispersion"
+            data-testid="schroedinger-dispersion-toggle"
+          >
+            {config.dispersionEnabled ? 'ON' : 'OFF'}
+          </ToggleButton>
+        </div>
+        {config.dispersionEnabled && (
+          <>
             <Slider
-                label="Density Gain"
-                min={0.1}
-                max={5.0}
-                step={0.1}
-                value={config.densityGain}
-                onChange={setDensityGain}
-                showValue
-                data-testid="schroedinger-density-gain"
+              label="Strength"
+              min={0.0}
+              max={1.0}
+              step={0.05}
+              value={config.dispersionStrength ?? 0.2}
+              onChange={setDispersionStrength}
+              showValue
+              data-testid="schroedinger-dispersion-strength"
             />
+            <div className="flex gap-2 pt-2">
+              <div className="flex-1">
+                <label className="text-xs text-text-secondary">Direction</label>
+                <select
+                  className="w-full bg-surface-dark border border-white/10 rounded px-2 py-1 text-xs text-text-primary mt-1 focus:outline-none focus:border-accent"
+                  value={config.dispersionDirection ?? 0}
+                  onChange={(e) => setDispersionDirection(parseInt(e.target.value))}
+                  data-testid="schroedinger-dispersion-direction"
+                >
+                  <option value={0}>Radial</option>
+                  <option value={1}>View</option>
+                </select>
+              </div>
+              <div className="flex-1">
+                <label className="text-xs text-text-secondary">Quality</label>
+                <select
+                  className="w-full bg-surface-dark border border-white/10 rounded px-2 py-1 text-xs text-text-primary mt-1 focus:outline-none focus:border-accent"
+                  value={config.dispersionQuality ?? 0}
+                  onChange={(e) => setDispersionQuality(parseInt(e.target.value))}
+                  data-testid="schroedinger-dispersion-quality"
+                >
+                  <option value={0}>Fast (Grad)</option>
+                  <option value={1}>High (Sample)</option>
+                </select>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
 
-            <Slider
-                label="Powder Effect"
+      {/* Quantum Effects */}
+      <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
+        <div className="flex items-center justify-between">
+          <label className="text-xs text-text-secondary font-semibold">Quantum Effects</label>
+        </div>
+
+        {/* Nodal Surfaces */}
+        <div className="space-y-1">
+          <div className="flex items-center justify-between">
+            <label className="text-xs text-text-secondary">Nodal Surfaces</label>
+            <ToggleButton
+              pressed={config.nodalEnabled ?? false}
+              onToggle={() => setNodalEnabled(!(config.nodalEnabled ?? false))}
+              className="text-xs px-2 py-1 h-auto"
+              ariaLabel="Toggle nodal surfaces"
+              data-testid="schroedinger-nodal-toggle"
+            >
+              {config.nodalEnabled ? 'ON' : 'OFF'}
+            </ToggleButton>
+          </div>
+          {config.nodalEnabled && (
+            <div className="pl-2 border-l border-white/10">
+              <Slider
+                label="Strength"
                 min={0.0}
                 max={2.0}
                 step={0.1}
-                value={config.powderScale}
-                onChange={setPowderScale}
+                value={config.nodalStrength ?? 1.0}
+                onChange={setNodalStrength}
                 showValue
-                data-testid="schroedinger-powder-scale"
-            />
-
-            {/* Anisotropy (Phase) */}
-            <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
-                <Slider
-                    label="Anisotropy (Phase)"
-                    min={-0.9}
-                    max={0.9}
-                    step={0.05}
-                    value={config.scatteringAnisotropy ?? 0.0}
-                    onChange={setScatteringAnisotropy}
-                    showValue
-                    data-testid="schroedinger-anisotropy"
+                data-testid="schroedinger-nodal-strength"
+              />
+              <div className="flex items-center justify-between mt-1">
+                <label className="text-xs text-text-secondary">Color</label>
+                <ColorPicker
+                  value={config.nodalColor ?? '#00ffff'}
+                  onChange={(c) => setNodalColor(c)}
+                  disableAlpha={true}
+                  className="w-24"
                 />
+              </div>
             </div>
-
-            {/* Volume Effects */}
-            <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
-                <div className="flex items-center justify-between">
-                    <label className="text-xs text-text-secondary font-semibold">Volume Effects</label>
-                </div>
-
-                {/* Erosion */}
-                <div className="mt-2">
-                    <Slider
-                        label="Surface Erosion"
-                        min={0}
-                        max={1}
-                        step={0.1}
-                        value={config.erosionStrength ?? 0.0}
-                        onChange={setErosionStrength}
-                        showValue
-                    />
-                </div>
-
-                {/* Shadows & AO */}
-                <div className="flex items-center justify-between mt-2">
-                    <label className="text-xs text-text-secondary">Volumetric Shadows</label>
-                    <ToggleButton
-                        pressed={config.shadowsEnabled ?? false}
-                        onToggle={() => setShadowsEnabled(!(config.shadowsEnabled ?? false))}
-                        className="text-xs px-2 py-1 h-auto"
-                        ariaLabel="Toggle shadows"
-                    >
-                        {config.shadowsEnabled ? 'ON' : 'OFF'}
-                    </ToggleButton>
-                </div>
-                {config.shadowsEnabled && (
-                    <Slider
-                        label="Shadow Strength"
-                        min={0}
-                        max={2}
-                        step={0.1}
-                        value={config.shadowStrength ?? 1.0}
-                        onChange={setShadowStrength}
-                        showValue
-                    />
-                )}
-
-                <div className="flex items-center justify-between mt-2">
-                    <label className="text-xs text-text-secondary">Volumetric AO</label>
-                    <ToggleButton
-                        pressed={config.aoEnabled ?? false}
-                        onToggle={() => setAoEnabled(!(config.aoEnabled ?? false))}
-                        className="text-xs px-2 py-1 h-auto"
-                        ariaLabel="Toggle AO"
-                    >
-                        {config.aoEnabled ? 'ON' : 'OFF'}
-                    </ToggleButton>
-                </div>
-                {config.aoEnabled && (
-                    <Slider
-                        label="AO Strength"
-                        min={0}
-                        max={2}
-                        step={0.1}
-                        value={config.aoStrength ?? 1.0}
-                        onChange={setAoStrength}
-                        showValue
-                    />
-                )}
-            </div>
-
-            {/* Chromatic Dispersion */}
-            <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
-                <div className="flex items-center justify-between">
-                    <label className="text-xs text-text-secondary font-semibold">Chromatic Dispersion</label>
-                    <ToggleButton
-                        pressed={config.dispersionEnabled ?? false}
-                        onToggle={() => setDispersionEnabled(!(config.dispersionEnabled ?? false))}
-                        className="text-xs px-2 py-1 h-auto"
-                        ariaLabel="Toggle dispersion"
-                        data-testid="schroedinger-dispersion-toggle"
-                    >
-                        {config.dispersionEnabled ? 'ON' : 'OFF'}
-                    </ToggleButton>
-                </div>
-                {config.dispersionEnabled && (
-                    <>
-                        <Slider
-                            label="Strength"
-                            min={0.0}
-                            max={1.0}
-                            step={0.05}
-                            value={config.dispersionStrength ?? 0.2}
-                            onChange={setDispersionStrength}
-                            showValue
-                            data-testid="schroedinger-dispersion-strength"
-                        />
-                        <div className="flex gap-2 pt-2">
-                            <div className="flex-1">
-                                <label className="text-xs text-text-secondary">Direction</label>
-                                <select
-                                    className="w-full bg-surface-dark border border-white/10 rounded px-2 py-1 text-xs text-text-primary mt-1 focus:outline-none focus:border-accent"
-                                    value={config.dispersionDirection ?? 0}
-                                    onChange={(e) => setDispersionDirection(parseInt(e.target.value))}
-                                    data-testid="schroedinger-dispersion-direction"
-                                >
-                                    <option value={0}>Radial</option>
-                                    <option value={1}>View</option>
-                                </select>
-                            </div>
-                            <div className="flex-1">
-                                <label className="text-xs text-text-secondary">Quality</label>
-                                <select
-                                    className="w-full bg-surface-dark border border-white/10 rounded px-2 py-1 text-xs text-text-primary mt-1 focus:outline-none focus:border-accent"
-                                    value={config.dispersionQuality ?? 0}
-                                    onChange={(e) => setDispersionQuality(parseInt(e.target.value))}
-                                    data-testid="schroedinger-dispersion-quality"
-                                >
-                                    <option value={0}>Fast (Grad)</option>
-                                    <option value={1}>High (Sample)</option>
-                                </select>
-                            </div>
-                        </div>
-                    </>
-                )}
-            </div>
-
-            {/* Quantum Effects */}
-            <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
-                <div className="flex items-center justify-between">
-                    <label className="text-xs text-text-secondary font-semibold">Quantum Effects</label>
-                </div>
-
-                {/* Nodal Surfaces */}
-                <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                        <label className="text-xs text-text-secondary">Nodal Surfaces</label>
-                        <ToggleButton
-                            pressed={config.nodalEnabled ?? false}
-                            onToggle={() => setNodalEnabled(!(config.nodalEnabled ?? false))}
-                            className="text-xs px-2 py-1 h-auto"
-                            ariaLabel="Toggle nodal surfaces"
-                            data-testid="schroedinger-nodal-toggle"
-                        >
-                            {config.nodalEnabled ? 'ON' : 'OFF'}
-                        </ToggleButton>
-                    </div>
-                    {config.nodalEnabled && (
-                        <div className="pl-2 border-l border-white/10">
-                            <Slider
-                                label="Strength"
-                                min={0.0}
-                                max={2.0}
-                                step={0.1}
-                                value={config.nodalStrength ?? 1.0}
-                                onChange={setNodalStrength}
-                                showValue
-                                data-testid="schroedinger-nodal-strength"
-                            />
-                            <div className="flex items-center justify-between mt-1">
-                                <label className="text-xs text-text-secondary">Color</label>
-                                <ColorPicker
-                                    value={config.nodalColor ?? '#00ffff'}
-                                    onChange={(c) => setNodalColor(c)}
-                                    disableAlpha={true}
-                                    className="w-24"
-                                />
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                {/* Energy Coloring */}
-                <div className="flex items-center justify-between mt-2">
-                    <label className="text-xs text-text-secondary">Energy Coloring</label>
-                    <ToggleButton
-                        pressed={config.energyColorEnabled ?? false}
-                        onToggle={() => setEnergyColorEnabled(!(config.energyColorEnabled ?? false))}
-                        className="text-xs px-2 py-1 h-auto"
-                        ariaLabel="Toggle energy coloring"
-                        data-testid="schroedinger-energy-toggle"
-                    >
-                        {config.energyColorEnabled ? 'ON' : 'OFF'}
-                    </ToggleButton>
-                </div>
-
-                {/* Uncertainty Shimmer */}
-                <div className="space-y-1 mt-2">
-                    <div className="flex items-center justify-between">
-                        <label className="text-xs text-text-secondary">Uncertainty Shimmer</label>
-                        <ToggleButton
-                            pressed={config.shimmerEnabled ?? false}
-                            onToggle={() => setShimmerEnabled(!(config.shimmerEnabled ?? false))}
-                            className="text-xs px-2 py-1 h-auto"
-                            ariaLabel="Toggle shimmer"
-                            data-testid="schroedinger-shimmer-toggle"
-                        >
-                            {config.shimmerEnabled ? 'ON' : 'OFF'}
-                        </ToggleButton>
-                    </div>
-                    {config.shimmerEnabled && (
-                        <Slider
-                            label="Strength"
-                            min={0.0}
-                            max={1.0}
-                            step={0.1}
-                            value={config.shimmerStrength ?? 0.5}
-                            onChange={setShimmerStrength}
-                            showValue
-                            data-testid="schroedinger-shimmer-strength"
-                        />
-                    )}
-                </div>
-            </div>
-
-            {/* Isosurface Mode */}
-            <div className="space-y-2 pt-2">
-                <div className="flex items-center justify-between">
-                <label className="text-xs text-text-secondary">
-                    Isosurface Mode
-                </label>
-                <ToggleButton
-                    pressed={config.isoEnabled}
-                    onToggle={() => setIsoEnabled(!config.isoEnabled)}
-                    className="text-xs px-2 py-1 h-auto"
-                    ariaLabel="Toggle isosurface mode"
-                    data-testid="schroedinger-iso-toggle"
-                >
-                    {config.isoEnabled ? 'ON' : 'OFF'}
-                </ToggleButton>
-                </div>
-                {config.isoEnabled && (
-                <Slider
-                    label="Iso Threshold (log)"
-                    min={-6}
-                    max={0}
-                    step={0.1}
-                    value={config.isoThreshold}
-                    onChange={setIsoThreshold}
-                    showValue
-                    data-testid="schroedinger-iso-threshold"
-                />
-                )}
-                <p className="text-xs text-text-tertiary">
-                {config.isoEnabled
-                    ? 'Sharp surface at constant probability density'
-                    : 'Volumetric cloud visualization'
-                }
-                </p>
-            </div>
+          )}
         </div>
-    );
+
+        {/* Energy Coloring */}
+        <div className="flex items-center justify-between mt-2">
+          <label className="text-xs text-text-secondary">Energy Coloring</label>
+          <ToggleButton
+            pressed={config.energyColorEnabled ?? false}
+            onToggle={() => setEnergyColorEnabled(!(config.energyColorEnabled ?? false))}
+            className="text-xs px-2 py-1 h-auto"
+            ariaLabel="Toggle energy coloring"
+            data-testid="schroedinger-energy-toggle"
+          >
+            {config.energyColorEnabled ? 'ON' : 'OFF'}
+          </ToggleButton>
+        </div>
+
+        {/* Uncertainty Shimmer */}
+        <div className="space-y-1 mt-2">
+          <div className="flex items-center justify-between">
+            <label className="text-xs text-text-secondary">Uncertainty Shimmer</label>
+            <ToggleButton
+              pressed={config.shimmerEnabled ?? false}
+              onToggle={() => setShimmerEnabled(!(config.shimmerEnabled ?? false))}
+              className="text-xs px-2 py-1 h-auto"
+              ariaLabel="Toggle shimmer"
+              data-testid="schroedinger-shimmer-toggle"
+            >
+              {config.shimmerEnabled ? 'ON' : 'OFF'}
+            </ToggleButton>
+          </div>
+          {config.shimmerEnabled && (
+            <Slider
+              label="Strength"
+              min={0.0}
+              max={1.0}
+              step={0.1}
+              value={config.shimmerStrength ?? 0.5}
+              onChange={setShimmerStrength}
+              showValue
+              data-testid="schroedinger-shimmer-strength"
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Isosurface Mode */}
+      <div className="space-y-2 pt-2">
+        <div className="flex items-center justify-between">
+          <label className="text-xs text-text-secondary">
+            Isosurface Mode
+          </label>
+          <ToggleButton
+            pressed={config.isoEnabled}
+            onToggle={() => setIsoEnabled(!config.isoEnabled)}
+            className="text-xs px-2 py-1 h-auto"
+            ariaLabel="Toggle isosurface mode"
+            data-testid="schroedinger-iso-toggle"
+          >
+            {config.isoEnabled ? 'ON' : 'OFF'}
+          </ToggleButton>
+        </div>
+        {config.isoEnabled && (
+          <Slider
+            label="Iso Threshold (log)"
+            min={-6}
+            max={0}
+            step={0.1}
+            value={config.isoThreshold}
+            onChange={setIsoThreshold}
+            showValue
+            data-testid="schroedinger-iso-threshold"
+          />
+        )}
+        <p className="text-xs text-text-tertiary">
+          {config.isoEnabled
+            ? 'Sharp surface at constant probability density'
+            : 'Volumetric cloud visualization'
+          }
+        </p>
+      </div>
+    </div>
+  );
 };
 
 const MandelbulbAdvanced: React.FC = () => {
-    const extendedObjectSelector = useShallow((state: ExtendedObjectState) => ({
-        config: state.mandelbulb,
-        // Animations
-        setAlternatePowerEnabled: state.setMandelbulbAlternatePowerEnabled,
-        setAlternatePowerValue: state.setMandelbulbAlternatePowerValue,
-        setAlternatePowerBlend: state.setMandelbulbAlternatePowerBlend,
-        // Atmosphere
-        setFogEnabled: state.setMandelbulbFogEnabled,
-        setFogContribution: state.setMandelbulbFogContribution,
-        setInternalFogDensity: state.setMandelbulbInternalFogDensity,
-    }));
-    const {
-        config,
-        setAlternatePowerEnabled,
-        setAlternatePowerValue,
-        setAlternatePowerBlend,
-        setFogEnabled,
-        setFogContribution,
-        setInternalFogDensity,
-    } = useExtendedObjectStore(extendedObjectSelector);
+  const extendedObjectSelector = useShallow((state: ExtendedObjectState) => ({
+    config: state.mandelbulb,
+    // Animations
+    setAlternatePowerEnabled: state.setMandelbulbAlternatePowerEnabled,
+    setAlternatePowerValue: state.setMandelbulbAlternatePowerValue,
+    setAlternatePowerBlend: state.setMandelbulbAlternatePowerBlend,
+    // Atmosphere
+    setFogEnabled: state.setMandelbulbFogEnabled,
+    setFogContribution: state.setMandelbulbFogContribution,
+    setInternalFogDensity: state.setMandelbulbInternalFogDensity,
+  }));
+  const {
+    config,
+    setAlternatePowerEnabled,
+    setAlternatePowerValue,
+    setAlternatePowerBlend,
+    setFogEnabled,
+    setFogContribution,
+    setInternalFogDensity,
+  } = useExtendedObjectStore(extendedObjectSelector);
 
-    return (
-        <div className="space-y-6">
-            {/* Alternate Power (Technique B) */}
-            <div className="space-y-3 pt-2">
-                <div className="flex items-center justify-between">
-                    <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider">Alternate Power</label>
-                    <ToggleButton
-                        pressed={config.alternatePowerEnabled}
-                        onToggle={() => setAlternatePowerEnabled(!config.alternatePowerEnabled)}
-                        className="text-xs px-2 py-1 h-auto"
-                        ariaLabel="Toggle alternate power"
-                    >
-                        {config.alternatePowerEnabled ? 'ON' : 'OFF'}
-                    </ToggleButton>
-                </div>
-                {config.alternatePowerEnabled && (
-                    <div className="space-y-3 pl-2 border-l border-white/10">
-                        <Slider label="Power 2" min={2} max={16} step={0.1} value={config.alternatePowerValue} onChange={setAlternatePowerValue} showValue />
-                        <Slider label="Blend" min={0} max={1} step={0.05} value={config.alternatePowerBlend} onChange={setAlternatePowerBlend} showValue />
-                    </div>
-                )}
-            </div>
-
-            {/* Atmosphere */}
-            <div className="space-y-3 pt-2 border-t border-white/5">
-                <div className="flex items-center justify-between">
-                    <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider">Atmosphere</label>
-                    <ToggleButton
-                        pressed={config.fogEnabled}
-                        onToggle={() => setFogEnabled(!config.fogEnabled)}
-                        className="text-xs px-2 py-1 h-auto"
-                        ariaLabel="Toggle atmosphere"
-                    >
-                        {config.fogEnabled ? 'ON' : 'OFF'}
-                    </ToggleButton>
-                </div>
-                {config.fogEnabled && (
-                    <div className="space-y-3 pl-2 border-l border-white/10">
-                        <Slider label="Contribution" min={0} max={2} step={0.1} value={config.fogContribution} onChange={setFogContribution} showValue />
-                        <Slider label="Internal Fog" min={0} max={1} step={0.05} value={config.internalFogDensity} onChange={setInternalFogDensity} showValue />
-                    </div>
-                )}
-            </div>
+  return (
+    <div className="space-y-6">
+      {/* Alternate Power (Technique B) */}
+      <div className="space-y-3 pt-2">
+        <div className="flex items-center justify-between">
+          <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider">Alternate Power</label>
+          <ToggleButton
+            pressed={config.alternatePowerEnabled}
+            onToggle={() => setAlternatePowerEnabled(!config.alternatePowerEnabled)}
+            className="text-xs px-2 py-1 h-auto"
+            ariaLabel="Toggle alternate power"
+          >
+            {config.alternatePowerEnabled ? 'ON' : 'OFF'}
+          </ToggleButton>
         </div>
-    );
+        {config.alternatePowerEnabled && (
+          <div className="space-y-3 pl-2 border-l border-white/10">
+            <Slider label="Power 2" min={2} max={16} step={0.1} value={config.alternatePowerValue} onChange={setAlternatePowerValue} showValue />
+            <Slider label="Blend" min={0} max={1} step={0.05} value={config.alternatePowerBlend} onChange={setAlternatePowerBlend} showValue />
+          </div>
+        )}
+      </div>
+
+      {/* Atmosphere */}
+      <div className="space-y-3 pt-2 border-t border-white/5">
+        <div className="flex items-center justify-between">
+          <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider">Atmosphere</label>
+          <ToggleButton
+            pressed={config.fogEnabled}
+            onToggle={() => setFogEnabled(!config.fogEnabled)}
+            className="text-xs px-2 py-1 h-auto"
+            ariaLabel="Toggle atmosphere"
+          >
+            {config.fogEnabled ? 'ON' : 'OFF'}
+          </ToggleButton>
+        </div>
+        {config.fogEnabled && (
+          <div className="space-y-3 pl-2 border-l border-white/10">
+            <Slider label="Contribution" min={0} max={2} step={0.1} value={config.fogContribution} onChange={setFogContribution} showValue />
+            <Slider label="Internal Fog" min={0} max={1} step={0.05} value={config.internalFogDensity} onChange={setInternalFogDensity} showValue />
+          </div>
+        )}
+      </div>
+    </div>
+  );
 };
 
 const PolytopeAdvanced: React.FC = () => {
-    // All Polytope animations have been moved to the Timeline Animation Drawer.
-    // This component is currently empty but retained for future advanced settings.
-    return null;
+  // All Polytope animations have been moved to the Timeline Animation Drawer.
+  // This component is currently empty but retained for future advanced settings.
+  return null;
 };
 
 /**
@@ -684,523 +684,502 @@ const PolytopeAdvanced: React.FC = () => {
  * Available for all object types. When black hole is selected, settings sync with internal lensing.
  */
 const GravityAdvanced: React.FC = () => {
-    const objectType = useGeometryStore(state => state.objectType);
-    const isBlackHole = objectType === 'blackhole';
+  const objectType = useGeometryStore(state => state.objectType);
+  const isBlackHole = objectType === 'blackhole';
 
-    // Global gravity settings from postProcessingStore
-    const ppSelector = useShallow((state: PostProcessingSlice) => ({
-        gravityEnabled: state.gravityEnabled,
-        setGravityEnabled: state.setGravityEnabled,
-        gravityStrength: state.gravityStrength,
-        setGravityStrength: state.setGravityStrength,
-        gravityDistortionScale: state.gravityDistortionScale,
-        setGravityDistortionScale: state.setGravityDistortionScale,
-        gravityFalloff: state.gravityFalloff,
-        setGravityFalloff: state.setGravityFalloff,
-        gravityChromaticAberration: state.gravityChromaticAberration,
-        setGravityChromaticAberration: state.setGravityChromaticAberration,
-    }));
-    const ppState = usePostProcessingStore(ppSelector);
+  // Global gravity settings from postProcessingStore
+  const ppSelector = useShallow((state: PostProcessingSlice) => ({
+    gravityEnabled: state.gravityEnabled,
+    setGravityEnabled: state.setGravityEnabled,
+    gravityStrength: state.gravityStrength,
+    setGravityStrength: state.setGravityStrength,
+    gravityDistortionScale: state.gravityDistortionScale,
+    setGravityDistortionScale: state.setGravityDistortionScale,
+    gravityFalloff: state.gravityFalloff,
+    setGravityFalloff: state.setGravityFalloff,
+    gravityChromaticAberration: state.gravityChromaticAberration,
+    setGravityChromaticAberration: state.setGravityChromaticAberration,
+  }));
+  const ppState = usePostProcessingStore(ppSelector);
 
-    // Black hole state for syncing
-    const bhSelector = useShallow((state: ExtendedObjectState) => ({
-        gravityStrength: state.blackhole.gravityStrength,
-        bendScale: state.blackhole.bendScale,
-        lensingFalloff: state.blackhole.lensingFalloff,
-        chromaticAberration: state.blackhole.deferredLensingChromaticAberration,
-    }));
-    const bhState = useExtendedObjectStore(bhSelector);
+  // Black hole state for syncing
+  const bhSelector = useShallow((state: ExtendedObjectState) => ({
+    gravityStrength: state.blackhole.gravityStrength,
+    bendScale: state.blackhole.bendScale,
+    lensingFalloff: state.blackhole.lensingFalloff,
+    chromaticAberration: state.blackhole.deferredLensingChromaticAberration,
+  }));
+  const bhState = useExtendedObjectStore(bhSelector);
 
-    // When black hole is selected, sync global gravity settings from black hole
-    useEffect(() => {
-        if (isBlackHole) {
-            // Force gravity enabled when black hole is active
-            if (!ppState.gravityEnabled) {
-                ppState.setGravityEnabled(true);
-            }
-            // Sync from black hole to global on initial selection
-            ppState.setGravityStrength(bhState.gravityStrength);
-            ppState.setGravityDistortionScale(bhState.bendScale);
-            ppState.setGravityFalloff(bhState.lensingFalloff);
-            ppState.setGravityChromaticAberration(bhState.chromaticAberration);
-        }
-        // Only run when isBlackHole changes
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isBlackHole]);
+  // When black hole is selected, sync global gravity settings from black hole
+  useEffect(() => {
+    if (isBlackHole) {
+      // Force gravity enabled when black hole is active
+      if (!ppState.gravityEnabled) {
+        ppState.setGravityEnabled(true);
+      }
+      // Sync from black hole to global on initial selection
+      ppState.setGravityStrength(bhState.gravityStrength);
+      ppState.setGravityDistortionScale(bhState.bendScale);
+      ppState.setGravityFalloff(bhState.lensingFalloff);
+      ppState.setGravityChromaticAberration(bhState.chromaticAberration);
+    }
+    // Only run when isBlackHole changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isBlackHole]);
 
-    // For black hole, gravity is always enabled
-    const isEnabled = isBlackHole ? true : ppState.gravityEnabled;
+  // For black hole, gravity is always enabled
+  const isEnabled = isBlackHole ? true : ppState.gravityEnabled;
 
-    return (
-        <div className="space-y-3 pt-2 border-t border-white/5 mt-2">
-            <div className="flex items-center justify-between">
-                <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider">
-                    Gravitational Lensing
-                </label>
-                <ToggleButton
-                    pressed={isEnabled}
-                    onToggle={() => !isBlackHole && ppState.setGravityEnabled(!ppState.gravityEnabled)}
-                    className="text-xs px-2 py-1 h-auto"
-                    ariaLabel="Toggle gravitational lensing"
-                    data-testid="gravity-toggle"
-                    disabled={isBlackHole}
-                >
-                    {isEnabled ? 'ON' : 'OFF'}
-                </ToggleButton>
-            </div>
+  return (
+    <div className="space-y-3 pt-2 border-t border-white/5 mt-2">
+      <div className="flex items-center justify-between">
+        <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider">
+          Gravitational Lensing
+        </label>
+        <ToggleButton
+          pressed={isEnabled}
+          onToggle={() => !isBlackHole && ppState.setGravityEnabled(!ppState.gravityEnabled)}
+          className="text-xs px-2 py-1 h-auto"
+          ariaLabel="Toggle gravitational lensing"
+          data-testid="gravity-toggle"
+          disabled={isBlackHole}
+        >
+          {isEnabled ? 'ON' : 'OFF'}
+        </ToggleButton>
+      </div>
 
-            {isBlackHole && (
-                <p className="text-xs text-text-tertiary">
-                    Gravity always active for Black Holes. Controls sync with internal lensing.
-                </p>
-            )}
+      {isBlackHole && (
+        <p className="text-xs text-text-tertiary">
+          Gravity always active for Black Holes. Controls sync with internal lensing.
+        </p>
+      )}
 
-            {isEnabled && (
-                <div className="space-y-3 pl-2 border-l border-white/10">
-                    <Slider
-                        label="Strength"
-                        min={0.1}
-                        max={10}
-                        step={0.1}
-                        value={ppState.gravityStrength}
-                        onChange={ppState.setGravityStrength}
-                        showValue
-                        data-testid="gravity-strength"
-                    />
-                    <Slider
-                        label="Distortion Scale"
-                        min={0.1}
-                        max={5}
-                        step={0.1}
-                        value={ppState.gravityDistortionScale}
-                        onChange={ppState.setGravityDistortionScale}
-                        showValue
-                        data-testid="gravity-distortion-scale"
-                    />
-                    <Slider
-                        label="Falloff"
-                        min={0.5}
-                        max={4}
-                        step={0.1}
-                        value={ppState.gravityFalloff}
-                        onChange={ppState.setGravityFalloff}
-                        showValue
-                        data-testid="gravity-falloff"
-                    />
-                    <Slider
-                        label="Chromatic Aberration"
-                        min={0}
-                        max={1}
-                        step={0.01}
-                        value={ppState.gravityChromaticAberration}
-                        onChange={ppState.setGravityChromaticAberration}
-                        showValue
-                        data-testid="gravity-chromatic-aberration"
-                    />
-                </div>
-            )}
+      {isEnabled && (
+        <div className="space-y-3 pl-2 border-l border-white/10">
+          <Slider
+            label="Strength"
+            min={0.1}
+            max={10}
+            step={0.1}
+            value={ppState.gravityStrength}
+            onChange={ppState.setGravityStrength}
+            showValue
+            data-testid="gravity-strength"
+          />
+          <Slider
+            label="Distortion Scale"
+            min={0.1}
+            max={5}
+            step={0.1}
+            value={ppState.gravityDistortionScale}
+            onChange={ppState.setGravityDistortionScale}
+            showValue
+            data-testid="gravity-distortion-scale"
+          />
+          <Slider
+            label="Falloff"
+            min={0.5}
+            max={4}
+            step={0.1}
+            value={ppState.gravityFalloff}
+            onChange={ppState.setGravityFalloff}
+            showValue
+            data-testid="gravity-falloff"
+          />
+          <Slider
+            label="Chromatic Aberration"
+            min={0}
+            max={1}
+            step={0.01}
+            value={ppState.gravityChromaticAberration}
+            onChange={ppState.setGravityChromaticAberration}
+            showValue
+            data-testid="gravity-chromatic-aberration"
+          />
         </div>
-    );
+      )}
+    </div>
+  );
 };
 
 const BlackHoleAdvanced: React.FC = () => {
-    const extendedObjectSelector = useShallow((state: ExtendedObjectState) => ({
-        config: state.blackhole,
-        // Visuals (gravity-related moved to global GravityAdvanced)
-        setBloomBoost: state.setBlackHoleBloomBoost,
-        setDiskTemperature: state.setBlackHoleDiskTemperature,
-        setManifoldIntensity: state.setBlackHoleManifoldIntensity,
-        // Lensing (non-gravity params only - gravity params in GravityAdvanced)
-        setDimensionEmphasis: state.setBlackHoleDimensionEmphasis,
-        setRayBendingMode: state.setBlackHoleRayBendingMode,
-        setEpsilonMul: state.setBlackHoleEpsilonMul,
-        // Manifold Visuals
-        setDensityFalloff: state.setBlackHoleDensityFalloff,
-        setNoiseScale: state.setBlackHoleNoiseScale,
-        setNoiseAmount: state.setBlackHoleNoiseAmount,
-        // Shell
-        setPhotonShellWidth: state.setBlackHolePhotonShellWidth,
-        setShellGlowStrength: state.setBlackHoleShellGlowStrength,
-        setShellGlowColor: state.setBlackHoleShellGlowColor,
-        // Doppler
-        setDopplerEnabled: state.setBlackHoleDopplerEnabled,
-        setDopplerStrength: state.setBlackHoleDopplerStrength,
-        setDopplerHueShift: state.setBlackHoleDopplerHueShift,
-        // Jets
-        setJetsEnabled: state.setBlackHoleJetsEnabled,
-        setJetsHeight: state.setBlackHoleJetsHeight,
-        setJetsWidth: state.setBlackHoleJetsWidth,
-        setJetsIntensity: state.setBlackHoleJetsIntensity,
-        setJetsColor: state.setBlackHoleJetsColor,
-        setJetsNoiseAmount: state.setBlackHoleJetsNoiseAmount,
-        // Rendering
-        setMaxSteps: state.setBlackHoleMaxSteps,
-        setStepBase: state.setBlackHoleStepBase,
-        setEnableAbsorption: state.setBlackHoleEnableAbsorption,
-        setAbsorption: state.setBlackHoleAbsorption,
-        // Motion blur
-        setMotionBlurEnabled: state.setBlackHoleMotionBlurEnabled,
-        setMotionBlurStrength: state.setBlackHoleMotionBlurStrength,
-    }));
-    const {
-        config,
-        setBloomBoost,
-        setDiskTemperature,
-        setManifoldIntensity,
-        setDimensionEmphasis,
-        setRayBendingMode,
-        setEpsilonMul,
-        setDensityFalloff,
-        setNoiseScale,
-        setNoiseAmount,
-        setPhotonShellWidth,
-        setShellGlowStrength,
-        setShellGlowColor,
-        setDopplerEnabled,
-        setDopplerStrength,
-        setDopplerHueShift,
-        setJetsEnabled,
-        setJetsHeight,
-        setJetsWidth,
-        setJetsIntensity,
-        setJetsColor,
-        setJetsNoiseAmount,
-        setMaxSteps,
-        setStepBase,
-        setEnableAbsorption,
-        setAbsorption,
-        setMotionBlurEnabled,
-        setMotionBlurStrength,
-    } = useExtendedObjectStore(extendedObjectSelector);
+  const extendedObjectSelector = useShallow((state: ExtendedObjectState) => ({
+    config: state.blackhole,
+    // Visuals (gravity-related moved to global GravityAdvanced)
+    setBloomBoost: state.setBlackHoleBloomBoost,
+    setDiskTemperature: state.setBlackHoleDiskTemperature,
+    setManifoldIntensity: state.setBlackHoleManifoldIntensity,
+    // Lensing (non-gravity params only - gravity params in GravityAdvanced)
+    setDimensionEmphasis: state.setBlackHoleDimensionEmphasis,
+    setRayBendingMode: state.setBlackHoleRayBendingMode,
+    setEpsilonMul: state.setBlackHoleEpsilonMul,
+    // Manifold Visuals
+    setNoiseScale: state.setBlackHoleNoiseScale,
+    setNoiseAmount: state.setBlackHoleNoiseAmount,
+    // Shell
+    setPhotonShellWidth: state.setBlackHolePhotonShellWidth,
+    setShellGlowStrength: state.setBlackHoleShellGlowStrength,
+    setShellGlowColor: state.setBlackHoleShellGlowColor,
+    // Doppler
+    setDopplerEnabled: state.setBlackHoleDopplerEnabled,
+    setDopplerStrength: state.setBlackHoleDopplerStrength,
+    // Jets
+    setJetsEnabled: state.setBlackHoleJetsEnabled,
+    setJetsHeight: state.setBlackHoleJetsHeight,
+    setJetsWidth: state.setBlackHoleJetsWidth,
+    setJetsIntensity: state.setBlackHoleJetsIntensity,
+    setJetsColor: state.setBlackHoleJetsColor,
+    setJetsNoiseAmount: state.setBlackHoleJetsNoiseAmount,
+    // Rendering
+    setMaxSteps: state.setBlackHoleMaxSteps,
+    setStepBase: state.setBlackHoleStepBase,
+    setEnableAbsorption: state.setBlackHoleEnableAbsorption,
+    setAbsorption: state.setBlackHoleAbsorption,
+    // Motion blur
+    setMotionBlurEnabled: state.setBlackHoleMotionBlurEnabled,
+    setMotionBlurStrength: state.setBlackHoleMotionBlurStrength,
+  }));
+  const {
+    config,
+    setBloomBoost,
+    setDiskTemperature,
+    setManifoldIntensity,
+    setDimensionEmphasis,
+    setRayBendingMode,
+    setEpsilonMul,
+    setNoiseScale,
+    setNoiseAmount,
+    setPhotonShellWidth,
+    setShellGlowStrength,
+    setShellGlowColor,
+    setDopplerEnabled,
+    setDopplerStrength,
+    setJetsEnabled,
+    setJetsHeight,
+    setJetsWidth,
+    setJetsIntensity,
+    setJetsColor,
+    setJetsNoiseAmount,
+    setMaxSteps,
+    setStepBase,
+    setEnableAbsorption,
+    setAbsorption,
+    setMotionBlurEnabled,
+    setMotionBlurStrength,
+  } = useExtendedObjectStore(extendedObjectSelector);
 
-    return (
-        <div className="space-y-6">
-            {/* Bloom Boost - kept separate from global gravity */}
-            <div className="space-y-3 pt-2">
-                <Slider
-                    label="Bloom Boost"
-                    min={0}
-                    max={5.0}
-                    step={0.1}
-                    value={config.bloomBoost}
-                    onChange={setBloomBoost}
-                    showValue
-                    data-testid="blackhole-bloom-boost"
-                />
+  return (
+    <div className="space-y-6">
+      {/* Bloom Boost - kept separate from global gravity */}
+      <div className="space-y-3 pt-2">
+        <Slider
+          label="Bloom Boost"
+          min={0}
+          max={5.0}
+          step={0.1}
+          value={config.bloomBoost}
+          onChange={setBloomBoost}
+          showValue
+          data-testid="blackhole-bloom-boost"
+        />
 
-                {/* Advanced Lensing Parameters (non-gravity) */}
-                <div className="p-3 bg-black/20 rounded border border-white/5 space-y-3">
-                    <label className="text-xs text-text-tertiary font-medium">Advanced Lensing</label>
-                    <Slider
-                        label="Dim. Emphasis"
-                        min={0}
-                        max={2}
-                        step={0.1}
-                        value={config.dimensionEmphasis}
-                        onChange={setDimensionEmphasis}
-                        showValue
-                    />
-                    <div className="flex gap-2">
-                         <div className="flex-1">
-                            <label className="text-xs text-text-tertiary">Mode</label>
-                            <select
-                                className="w-full bg-surface-tertiary border border-white/10 rounded px-2 py-1 text-xs text-text-primary mt-1 focus:outline-none focus:border-accent"
-                                value={config.rayBendingMode}
-                                onChange={(e) => setRayBendingMode(e.target.value as BlackHoleRayBendingMode)}
-                            >
-                                <option value="spiral">Spiral</option>
-                                <option value="orbital">Orbital</option>
-                            </select>
-                         </div>
-                         <div className="flex-1">
-                             <label className="text-xs text-text-tertiary">Stability</label>
-                             <input
-                                type="number"
-                                step="0.001"
-                                min="0.0001"
-                                max="0.5"
-                                value={config.epsilonMul}
-                                onChange={(e) => setEpsilonMul(parseFloat(e.target.value))}
-                                className="w-full bg-surface-tertiary border border-white/10 rounded px-2 py-1 text-xs text-text-primary mt-1 focus:outline-none focus:border-accent"
-                             />
-                         </div>
-                    </div>
-                </div>
+        {/* Advanced Lensing Parameters (non-gravity) */}
+        <div className="p-3 bg-black/20 rounded border border-white/5 space-y-3">
+          <label className="text-xs text-text-tertiary font-medium">Advanced Lensing</label>
+          <Slider
+            label="Dim. Emphasis"
+            min={0}
+            max={2}
+            step={0.1}
+            value={config.dimensionEmphasis}
+            onChange={setDimensionEmphasis}
+            showValue
+          />
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <label className="text-xs text-text-tertiary">Mode</label>
+              <select
+                className="w-full bg-surface-tertiary border border-white/10 rounded px-2 py-1 text-xs text-text-primary mt-1 focus:outline-none focus:border-accent"
+                value={config.rayBendingMode}
+                onChange={(e) => setRayBendingMode(e.target.value as BlackHoleRayBendingMode)}
+              >
+                <option value="spiral">Spiral</option>
+                <option value="orbital">Orbital</option>
+              </select>
             </div>
-
-            {/* Accretion Visuals */}
-            <div className="space-y-3 pt-2 border-t border-white/5">
-                <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider">Accretion Disk</label>
-
-                <Slider
-                    label="Intensity"
-                    min={0}
-                    max={10.0}
-                    step={0.1}
-                    value={config.manifoldIntensity}
-                    onChange={setManifoldIntensity}
-                    showValue
-                />
-
-                <Slider
-                    label="Temperature (K)"
-                    min={1000}
-                    max={40000}
-                    step={100}
-                    value={config.diskTemperature}
-                    onChange={setDiskTemperature}
-                    showValue
-                />
-
-                <Slider
-                    label="Density Falloff"
-                    min={1}
-                    max={40}
-                    step={1}
-                    value={config.densityFalloff}
-                    onChange={setDensityFalloff}
-                    showValue
-                />
-
-                <div className="p-3 bg-black/20 rounded border border-white/5 space-y-3">
-                    <label className="text-xs text-text-tertiary font-medium">Turbulence</label>
-                    <Slider
-                        label="Noise Amount"
-                        min={0}
-                        max={1}
-                        step={0.05}
-                        value={config.noiseAmount}
-                        onChange={setNoiseAmount}
-                        showValue
-                    />
-                    <Slider
-                        label="Noise Scale"
-                        min={0.1}
-                        max={5}
-                        step={0.1}
-                        value={config.noiseScale}
-                        onChange={setNoiseScale}
-                        showValue
-                    />
-                </div>
+            <div className="flex-1">
+              <label className="text-xs text-text-tertiary">Stability</label>
+              <input
+                type="number"
+                step="0.001"
+                min="0.0001"
+                max="0.5"
+                value={config.epsilonMul}
+                onChange={(e) => setEpsilonMul(parseFloat(e.target.value))}
+                className="w-full bg-surface-tertiary border border-white/10 rounded px-2 py-1 text-xs text-text-primary mt-1 focus:outline-none focus:border-accent"
+              />
             </div>
-
-            {/* Photon Shell */}
-            <div className="space-y-3 pt-2 border-t border-white/5">
-                <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider">Photon Shell</label>
-
-                <Slider
-                    label="Width"
-                    min={0}
-                    max={0.3}
-                    step={0.01}
-                    value={config.photonShellWidth}
-                    onChange={setPhotonShellWidth}
-                    showValue
-                />
-
-                <Slider
-                    label="Glow Strength"
-                    min={0}
-                    max={10.0}
-                    step={0.5}
-                    value={config.shellGlowStrength}
-                    onChange={setShellGlowStrength}
-                    showValue
-                />
-
-                <div className="flex items-center justify-between">
-                    <label className="text-xs text-text-secondary">Color</label>
-                    <ColorPicker
-                        value={config.shellGlowColor}
-                        onChange={setShellGlowColor}
-                        disableAlpha={true}
-                        className="w-24"
-                    />
-                </div>
-            </div>
-
-            {/* Relativistic Effects */}
-            <div className="space-y-3 pt-2 border-t border-white/5">
-                <div className="flex items-center justify-between">
-                    <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider">Relativistic Effects</label>
-                    <ToggleButton
-                        pressed={config.dopplerEnabled}
-                        onToggle={() => setDopplerEnabled(!config.dopplerEnabled)}
-                        className="text-xs px-2 py-1 h-auto"
-                        ariaLabel="Toggle doppler effect"
-                    >
-                        {config.dopplerEnabled ? 'ON' : 'OFF'}
-                    </ToggleButton>
-                </div>
-
-                {config.dopplerEnabled && (
-                    <div className="space-y-3 pl-2 border-l border-white/10">
-                        <Slider
-                            label="Doppler Strength"
-                            min={0}
-                            max={2.0}
-                            step={0.1}
-                            value={config.dopplerStrength}
-                            onChange={setDopplerStrength}
-                            showValue
-                        />
-                        <Slider
-                            label="Hue Shift"
-                            min={0}
-                            max={0.5}
-                            step={0.01}
-                            value={config.dopplerHueShift}
-                            onChange={setDopplerHueShift}
-                            showValue
-                        />
-                    </div>
-                )}
-            </div>
-
-            {/* Polar Jets */}
-            <div className="space-y-3 pt-2 border-t border-white/5">
-                <div className="flex items-center justify-between">
-                    <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider">Polar Jets</label>
-                    <ToggleButton
-                        pressed={config.jetsEnabled}
-                        onToggle={() => setJetsEnabled(!config.jetsEnabled)}
-                        className="text-xs px-2 py-1 h-auto"
-                        ariaLabel="Toggle polar jets"
-                    >
-                        {config.jetsEnabled ? 'ON' : 'OFF'}
-                    </ToggleButton>
-                </div>
-
-                {config.jetsEnabled && (
-                    <div className="space-y-3 pl-2 border-l border-white/10">
-                        <Slider
-                            label="Height"
-                            min={1}
-                            max={30}
-                            step={1}
-                            value={config.jetsHeight}
-                            onChange={setJetsHeight}
-                            showValue
-                        />
-                        <Slider
-                            label="Width"
-                            min={0.1}
-                            max={2.0}
-                            step={0.1}
-                            value={config.jetsWidth}
-                            onChange={setJetsWidth}
-                            showValue
-                        />
-                        <Slider
-                            label="Intensity"
-                            min={0}
-                            max={5.0}
-                            step={0.1}
-                            value={config.jetsIntensity}
-                            onChange={setJetsIntensity}
-                            showValue
-                        />
-                        <Slider
-                            label="Noise"
-                            min={0}
-                            max={1}
-                            step={0.1}
-                            value={config.jetsNoiseAmount}
-                            onChange={setJetsNoiseAmount}
-                            showValue
-                        />
-                        <div className="flex items-center justify-between">
-                            <label className="text-xs text-text-secondary">Color</label>
-                            <ColorPicker
-                                value={config.jetsColor}
-                                onChange={setJetsColor}
-                                disableAlpha={true}
-                                className="w-24"
-                            />
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            {/* Rendering Quality */}
-            <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
-                <label className="text-xs text-text-secondary font-semibold">Rendering</label>
-                <Slider
-                    label="Max Steps"
-                    min={32}
-                    max={256}
-                    step={16}
-                    value={config.maxSteps}
-                    onChange={setMaxSteps}
-                    showValue
-                    data-testid="blackhole-max-steps"
-                />
-                <Slider
-                    label="Step Size"
-                    min={0.01}
-                    max={0.2}
-                    step={0.01}
-                    value={config.stepBase}
-                    onChange={setStepBase}
-                    showValue
-                    data-testid="blackhole-step-size"
-                />
-                <div className="flex items-center justify-between">
-                    <label className="text-xs text-text-secondary">Absorption</label>
-                    <ToggleButton
-                        pressed={config.enableAbsorption}
-                        onToggle={() => setEnableAbsorption(!config.enableAbsorption)}
-                        className="text-xs px-2 py-1 h-auto"
-                        ariaLabel="Toggle absorption"
-                        data-testid="blackhole-absorption-toggle"
-                    >
-                        {config.enableAbsorption ? 'ON' : 'OFF'}
-                    </ToggleButton>
-                </div>
-                {config.enableAbsorption && (
-                    <Slider
-                        label="Absorption"
-                        min={0}
-                        max={5}
-                        step={0.1}
-                        value={config.absorption}
-                        onChange={setAbsorption}
-                        showValue
-                        data-testid="blackhole-absorption"
-                    />
-                )}
-            </div>
-
-            {/* Motion Blur */}
-            <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
-                <div className="flex items-center justify-between">
-                    <label className="text-xs text-text-secondary font-semibold">Motion Blur</label>
-                    <ToggleButton
-                        pressed={config.motionBlurEnabled}
-                        onToggle={() => setMotionBlurEnabled(!config.motionBlurEnabled)}
-                        className="text-xs px-2 py-1 h-auto"
-                        ariaLabel="Toggle motion blur"
-                        data-testid="blackhole-motion-blur-toggle"
-                    >
-                        {config.motionBlurEnabled ? 'ON' : 'OFF'}
-                    </ToggleButton>
-                </div>
-                {config.motionBlurEnabled && (
-                    <Slider
-                        label="Strength"
-                        min={0}
-                        max={2}
-                        step={0.1}
-                        value={config.motionBlurStrength}
-                        onChange={setMotionBlurStrength}
-                        showValue
-                        data-testid="blackhole-motion-blur-strength"
-                    />
-                )}
-            </div>
-
-            {/* NOTE: Deferred Lensing / Gravity controls moved to global GravityAdvanced section */}
+          </div>
         </div>
-    );
+      </div>
+
+      {/* Accretion Visuals */}
+      <div className="space-y-3 pt-2 border-t border-white/5">
+        <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider">Accretion Disk</label>
+
+        <Slider
+          label="Intensity"
+          min={0}
+          max={10.0}
+          step={0.1}
+          value={config.manifoldIntensity}
+          onChange={setManifoldIntensity}
+          showValue
+        />
+
+        <Slider
+          label="Temperature (K)"
+          min={1000}
+          max={40000}
+          step={100}
+          value={config.diskTemperature}
+          onChange={setDiskTemperature}
+          showValue
+        />
+
+
+
+        <div className="p-3 bg-black/20 rounded border border-white/5 space-y-3">
+          <label className="text-xs text-text-tertiary font-medium">Turbulence</label>
+          <Slider
+            label="Noise Amount"
+            min={0}
+            max={1}
+            step={0.05}
+            value={config.noiseAmount}
+            onChange={setNoiseAmount}
+            showValue
+          />
+          <Slider
+            label="Noise Scale"
+            min={0.1}
+            max={5}
+            step={0.1}
+            value={config.noiseScale}
+            onChange={setNoiseScale}
+            showValue
+          />
+        </div>
+      </div>
+
+      {/* Photon Shell */}
+      <div className="space-y-3 pt-2 border-t border-white/5">
+        <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider">Photon Shell</label>
+
+        <Slider
+          label="Width"
+          min={0}
+          max={0.3}
+          step={0.01}
+          value={config.photonShellWidth}
+          onChange={setPhotonShellWidth}
+          showValue
+        />
+
+        <Slider
+          label="Glow Strength"
+          min={0}
+          max={10.0}
+          step={0.5}
+          value={config.shellGlowStrength}
+          onChange={setShellGlowStrength}
+          showValue
+        />
+
+        <div className="flex items-center justify-between">
+          <label className="text-xs text-text-secondary">Color</label>
+          <ColorPicker
+            value={config.shellGlowColor}
+            onChange={setShellGlowColor}
+            disableAlpha={true}
+            className="w-24"
+          />
+        </div>
+      </div>
+
+      {/* Relativistic Effects */}
+      <div className="space-y-3 pt-2 border-t border-white/5">
+        <div className="flex items-center justify-between">
+          <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider">Relativistic Effects</label>
+          <ToggleButton
+            pressed={config.dopplerEnabled}
+            onToggle={() => setDopplerEnabled(!config.dopplerEnabled)}
+            className="text-xs px-2 py-1 h-auto"
+            ariaLabel="Toggle doppler effect"
+          >
+            {config.dopplerEnabled ? 'ON' : 'OFF'}
+          </ToggleButton>
+        </div>
+
+        {config.dopplerEnabled && (
+          <div className="space-y-3 pl-2 border-l border-white/10">
+            <Slider
+              label="Doppler Strength"
+              min={0}
+              max={2.0}
+              step={0.1}
+              value={config.dopplerStrength}
+              onChange={setDopplerStrength}
+              showValue
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Polar Jets */}
+      <div className="space-y-3 pt-2 border-t border-white/5">
+        <div className="flex items-center justify-between">
+          <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider">Polar Jets</label>
+          <ToggleButton
+            pressed={config.jetsEnabled}
+            onToggle={() => setJetsEnabled(!config.jetsEnabled)}
+            className="text-xs px-2 py-1 h-auto"
+            ariaLabel="Toggle polar jets"
+          >
+            {config.jetsEnabled ? 'ON' : 'OFF'}
+          </ToggleButton>
+        </div>
+
+        {config.jetsEnabled && (
+          <div className="space-y-3 pl-2 border-l border-white/10">
+            <Slider
+              label="Height"
+              min={1}
+              max={30}
+              step={1}
+              value={config.jetsHeight}
+              onChange={setJetsHeight}
+              showValue
+            />
+            <Slider
+              label="Width"
+              min={0.1}
+              max={2.0}
+              step={0.1}
+              value={config.jetsWidth}
+              onChange={setJetsWidth}
+              showValue
+            />
+            <Slider
+              label="Intensity"
+              min={0}
+              max={5.0}
+              step={0.1}
+              value={config.jetsIntensity}
+              onChange={setJetsIntensity}
+              showValue
+            />
+            <Slider
+              label="Noise"
+              min={0}
+              max={1}
+              step={0.1}
+              value={config.jetsNoiseAmount}
+              onChange={setJetsNoiseAmount}
+              showValue
+            />
+            <div className="flex items-center justify-between">
+              <label className="text-xs text-text-secondary">Color</label>
+              <ColorPicker
+                value={config.jetsColor}
+                onChange={setJetsColor}
+                disableAlpha={true}
+                className="w-24"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Rendering Quality */}
+      <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
+        <label className="text-xs text-text-secondary font-semibold">Rendering</label>
+        <Slider
+          label="Max Steps"
+          min={32}
+          max={256}
+          step={16}
+          value={config.maxSteps}
+          onChange={setMaxSteps}
+          showValue
+          data-testid="blackhole-max-steps"
+        />
+        <Slider
+          label="Step Size"
+          min={0.01}
+          max={0.2}
+          step={0.01}
+          value={config.stepBase}
+          onChange={setStepBase}
+          showValue
+          data-testid="blackhole-step-size"
+        />
+        <div className="flex items-center justify-between">
+          <label className="text-xs text-text-secondary">Absorption</label>
+          <ToggleButton
+            pressed={config.enableAbsorption}
+            onToggle={() => setEnableAbsorption(!config.enableAbsorption)}
+            className="text-xs px-2 py-1 h-auto"
+            ariaLabel="Toggle absorption"
+            data-testid="blackhole-absorption-toggle"
+          >
+            {config.enableAbsorption ? 'ON' : 'OFF'}
+          </ToggleButton>
+        </div>
+        {config.enableAbsorption && (
+          <Slider
+            label="Absorption"
+            min={0}
+            max={5}
+            step={0.1}
+            value={config.absorption}
+            onChange={setAbsorption}
+            showValue
+            data-testid="blackhole-absorption"
+          />
+        )}
+      </div>
+
+      {/* Motion Blur */}
+      <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
+        <div className="flex items-center justify-between">
+          <label className="text-xs text-text-secondary font-semibold">Motion Blur</label>
+          <ToggleButton
+            pressed={config.motionBlurEnabled}
+            onToggle={() => setMotionBlurEnabled(!config.motionBlurEnabled)}
+            className="text-xs px-2 py-1 h-auto"
+            ariaLabel="Toggle motion blur"
+            data-testid="blackhole-motion-blur-toggle"
+          >
+            {config.motionBlurEnabled ? 'ON' : 'OFF'}
+          </ToggleButton>
+        </div>
+        {config.motionBlurEnabled && (
+          <Slider
+            label="Strength"
+            min={0}
+            max={2}
+            step={0.1}
+            value={config.motionBlurStrength}
+            onChange={setMotionBlurStrength}
+            showValue
+            data-testid="blackhole-motion-blur-strength"
+          />
+        )}
+      </div>
+
+      {/* NOTE: Deferred Lensing / Gravity controls moved to global GravityAdvanced section */}
+    </div>
+  );
 };
