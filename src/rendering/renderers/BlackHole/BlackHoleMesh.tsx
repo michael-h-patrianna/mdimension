@@ -72,6 +72,10 @@ const BlackHoleMesh = () => {
   // Create uniforms using extracted hook
   const uniforms = useBlackHoleUniforms()
 
+  // Shader version - increment to force recompilation when GLSL source changes
+  // v2: Added immediate horizon check after ray step to fix transparency bug
+  const SHADER_VERSION = 2
+
   // Compile shader
   const { fragmentShader } = useMemo(() => {
     return composeBlackHoleShader({
@@ -88,15 +92,16 @@ const BlackHoleMesh = () => {
       sliceAnimation: sliceAnimationEnabled,
       volumetricDisk: true,
     })
-  }, [dimension, temporalEnabled, jetsEnabled, dopplerEnabled, opacityMode, sliceAnimationEnabled])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dimension, temporalEnabled, jetsEnabled, dopplerEnabled, opacityMode, sliceAnimationEnabled, SHADER_VERSION])
 
   // Generate vertex shader
   const vertexShader = useMemo(() => generateBlackHoleVertexShader(), [])
 
   // Generate material key for caching
   const materialKey = useMemo(() => {
-    return `blackhole-${dimension}-${temporalEnabled}-${jetsEnabled}-${dopplerEnabled}-${opacityMode}-${sliceAnimationEnabled}`
-  }, [dimension, temporalEnabled, jetsEnabled, dopplerEnabled, opacityMode, sliceAnimationEnabled])
+    return `blackhole-${dimension}-${temporalEnabled}-${jetsEnabled}-${dopplerEnabled}-${opacityMode}-${sliceAnimationEnabled}-v${SHADER_VERSION}`
+  }, [dimension, temporalEnabled, jetsEnabled, dopplerEnabled, opacityMode, sliceAnimationEnabled, SHADER_VERSION])
 
   // Note: Material disposal is handled automatically by React Three Fiber
   // when TrackedShaderMaterial unmounts (materialKey change causes remount).

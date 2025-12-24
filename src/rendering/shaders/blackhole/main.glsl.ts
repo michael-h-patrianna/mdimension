@@ -315,6 +315,24 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
     pos += dir * stepSize;
     totalDist += stepSize;
 
+    // === IMMEDIATE HORIZON CHECK ===
+    // Must check horizon immediately after stepping to catch rays that cross
+    // the horizon boundary. Without this, a ray could:
+    // 1. Step from outside (ndRadius=0.52) to inside (ndRadius=0.47) the horizon
+    // 2. totalDist increases past maxDist
+    // 3. Next iteration exits via "totalDist > maxDist" BEFORE horizon check
+    // 4. hitHorizon remains false → background is added → TRANSPARENCY BUG
+    //
+    // This check ensures rays are caught the instant they cross the horizon.
+    {
+      float postStepRadius = ndDistance(pos);
+      if (isInsideHorizon(postStepRadius)) {
+        accum.transmittance = 0.0;
+        hitHorizon = true;
+        break;
+      }
+    }
+
     // === ACCRETION DISK ===
     
     #ifdef USE_VOLUMETRIC_DISK
