@@ -17,6 +17,7 @@ import { useAnimationStore } from '@/stores/animationStore'
 import { useAppearanceStore } from '@/stores/appearanceStore'
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore'
 import { useGeometryStore } from '@/stores/geometryStore'
+import { usePostProcessingStore } from '@/stores/postProcessingStore'
 // Note: useLightingStore no longer imported - PBR handled via UniformManager 'pbr-face' source
 import { useRotationStore } from '@/stores/rotationStore'
 import { useUIStore } from '@/stores/uiStore'
@@ -109,15 +110,19 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
 
     const u = material.uniforms
     const bhState = useExtendedObjectStore.getState().blackhole
+    // CRITICAL: Use global gravity settings from postProcessingStore
+    const ppState = usePostProcessingStore.getState()
 
     // Sync critical ray bending uniforms from store
     setUniform(u, 'uHorizonRadius', bhState.horizonRadius)
     setUniform(u, 'uVisualEventHorizon', bhState._visualEventHorizon)
     setUniform(u, 'uSpin', bhState.spin)
     setUniform(u, 'uDiskTemperature', bhState.diskTemperature)
-    setUniform(u, 'uGravityStrength', bhState.gravityStrength)
-    setUniform(u, 'uBendScale', bhState.bendScale)
+    // Use GLOBAL gravity settings (synced with black hole via UI)
+    setUniform(u, 'uGravityStrength', ppState.gravityStrength)
+    setUniform(u, 'uBendScale', ppState.gravityDistortionScale)
     setUniform(u, 'uBendMaxPerStep', bhState.bendMaxPerStep)
+    // ManifoldIntensity is for accretion disk, NOT gravity - keep from bhState
     setUniform(u, 'uManifoldIntensity', bhState.manifoldIntensity)
     setUniform(u, 'uDiskInnerRadiusMul', bhState.diskInnerRadiusMul)
     setUniform(u, 'uDiskOuterRadiusMul', bhState.diskOuterRadiusMul)
@@ -167,12 +172,16 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
 
       // Force-sync all critical ray bending uniforms that affect bounding sphere and lensing
       const bhState = useExtendedObjectStore.getState().blackhole
+      // CRITICAL: Use global gravity settings from postProcessingStore
+      const ppState = usePostProcessingStore.getState()
       setUniform(u, 'uHorizonRadius', bhState.horizonRadius)
       setUniform(u, 'uVisualEventHorizon', bhState._visualEventHorizon)
       setUniform(u, 'uFarRadius', bhState.farRadius)
-      setUniform(u, 'uGravityStrength', bhState.gravityStrength)
-      setUniform(u, 'uBendScale', bhState.bendScale)
+      // Use GLOBAL gravity settings (synced with black hole via UI)
+      setUniform(u, 'uGravityStrength', ppState.gravityStrength)
+      setUniform(u, 'uBendScale', ppState.gravityDistortionScale)
       setUniform(u, 'uBendMaxPerStep', bhState.bendMaxPerStep)
+      // ManifoldIntensity is for accretion disk, NOT gravity - keep from bhState
       setUniform(u, 'uManifoldIntensity', bhState.manifoldIntensity)
       setUniform(u, 'uDiskInnerRadiusMul', bhState.diskInnerRadiusMul)
       setUniform(u, 'uDiskOuterRadiusMul', bhState.diskOuterRadiusMul)
@@ -352,12 +361,17 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
       }
     }
 
+    // Get global gravity settings from postProcessingStore
+    const ppState = usePostProcessingStore.getState()
+
     // Update black hole uniforms (Kerr physics)
     setUniform(u, 'uHorizonRadius', bhState.horizonRadius)
     setUniform(u, 'uVisualEventHorizon', bhState._visualEventHorizon)
     setUniform(u, 'uSpin', bhState.spin)
     setUniform(u, 'uDiskTemperature', bhState.diskTemperature)
-    setUniform(u, 'uGravityStrength', bhState.gravityStrength)
+    // Use GLOBAL gravity settings (synced with black hole via UI)
+    setUniform(u, 'uGravityStrength', ppState.gravityStrength)
+    // ManifoldIntensity is for accretion disk, NOT gravity - keep from bhState
     setUniform(u, 'uManifoldIntensity', bhState.manifoldIntensity)
     setUniform(u, 'uManifoldThickness', bhState.manifoldThickness)
     setUniform(u, 'uPhotonShellWidth', bhState.photonShellWidth)
@@ -405,11 +419,11 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
       opacity.sampleQuality === 'high' ? 2 : opacity.sampleQuality === 'low' ? 0 : 1
     )
 
-    // Lensing
+    // Lensing - Use GLOBAL gravity settings for key parameters
     setUniform(u, 'uDimensionEmphasis', bhState.dimensionEmphasis)
-    setUniform(u, 'uDistanceFalloff', bhState.distanceFalloff)
+    setUniform(u, 'uDistanceFalloff', ppState.gravityFalloff) // Global setting
     setUniform(u, 'uEpsilonMul', bhState.epsilonMul)
-    setUniform(u, 'uBendScale', bhState.bendScale)
+    setUniform(u, 'uBendScale', ppState.gravityDistortionScale) // Global setting
     setUniform(u, 'uBendMaxPerStep', bhState.bendMaxPerStep)
     setUniform(u, 'uLensingClamp', bhState.lensingClamp)
     setUniform(u, 'uRayBendingMode', RAY_BENDING_MODE_MAP[bhState.rayBendingMode] ?? 0)

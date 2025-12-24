@@ -55,9 +55,11 @@ import {
   CubemapCapturePass,
   DebugOverlayPass,
   DepthPass,
+  EnvironmentCompositePass,
   FXAAPass,
   FilmGrainPass,
   FullscreenPass,
+  GravitationalLensingPass,
   GTAOPass,
   MainObjectMRTPass,
   NormalPass,
@@ -104,6 +106,11 @@ const RESOURCES = {
   NORMAL_BUFFER: 'normalBuffer',
   SCENE_COMPOSITE: 'sceneComposite',
   PREVIEW_OUTPUT: 'previewOutput',
+
+  // Environment separation resources (for gravitational lensing)
+  ENVIRONMENT_COLOR: 'environmentColor',
+  MAIN_OBJECT_COLOR: 'mainObjectColor',
+  LENSED_ENVIRONMENT: 'lensedEnvironment',
 
   // Temporal Cloud resources
   TEMPORAL_CLOUD_BUFFER: 'temporalCloudBuffer',
@@ -243,17 +250,11 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
   }));
   const perfState = usePerformanceStore(perfSelector);
 
-  // Store subscriptions - Black hole config
+  // Store subscriptions - Black hole config (non-gravity params only)
+  // NOTE: Gravity-related settings (gravityStrength, bendScale, distanceFalloff, lensingFalloff)
+  // are now read from global postProcessingStore (ppState) instead of blackhole store
   const blackHoleSelector = useShallow((s: ReturnType<typeof useExtendedObjectStore.getState>) => ({
-    deferredLensingEnabled: s.blackhole.deferredLensingEnabled,
-    deferredLensingStrength: s.blackhole.deferredLensingStrength,
-    deferredLensingRadius: s.blackhole.deferredLensingRadius,
-    deferredLensingChromaticAberration: s.blackhole.deferredLensingChromaticAberration,
-    screenSpaceLensingEnabled: s.blackhole.screenSpaceLensingEnabled,
-    lensingFalloff: s.blackhole.lensingFalloff,
-    distanceFalloff: s.blackhole.distanceFalloff,
-    bendScale: s.blackhole.bendScale,
-    gravityStrength: s.blackhole.gravityStrength,
+    // Non-gravity black hole settings only
     horizonRadius: s.blackhole.horizonRadius,
     skyCubemapResolution: s.blackhole.skyCubemapResolution,
     schroedingerIsoEnabled: s.schroedinger.isoEnabled,
@@ -561,6 +562,41 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       dataType: THREE.HalfFloatType,
     });
 
+    // Environment color (skybox + walls only, for gravitational lensing)
+    g.addResource({
+      id: RESOURCES.ENVIRONMENT_COLOR,
+      type: 'renderTarget',
+      size: { mode: 'screen' },
+      format: THREE.RGBAFormat,
+      dataType: THREE.HalfFloatType,
+      depthBuffer: true,
+      depthTexture: true,
+      depthTextureFormat: THREE.DepthFormat,
+      depthTextureType: THREE.UnsignedShortType,
+    });
+
+    // Main object color (separate from environment for gravity composite)
+    g.addResource({
+      id: RESOURCES.MAIN_OBJECT_COLOR,
+      type: 'renderTarget',
+      size: { mode: 'screen' },
+      format: THREE.RGBAFormat,
+      dataType: THREE.HalfFloatType,
+      depthBuffer: true,
+      depthTexture: true,
+      depthTextureFormat: THREE.DepthFormat,
+      depthTextureType: THREE.UnsignedShortType,
+    });
+
+    // Lensed environment (after gravitational lensing applied)
+    g.addResource({
+      id: RESOURCES.LENSED_ENVIRONMENT,
+      type: 'renderTarget',
+      size: { mode: 'screen' },
+      format: THREE.RGBAFormat,
+      dataType: THREE.HalfFloatType,
+    });
+
     // Buffer preview output
     g.addResource({
       id: RESOURCES.PREVIEW_OUTPUT,
@@ -735,7 +771,8 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
     passRefs.current.cubemapCapture = cubemapCapturePass;
     g.addPass(cubemapCapturePass);
 
-    // Scene render pass - renders all layers to 3-attachment MRT
+    // Scene render pass - renders all layers to SCENE_COLOR
+    // Used when gravity is disabled (no split rendering needed)
     // CRITICAL: renderBackground: false prevents Three.js from rendering scene.background
     // with its internal shader that only outputs to 1 location. The custom SkyboxMesh on
     // SKYBOX layer uses a proper 3-output shader and handles skybox rendering correctly.
@@ -747,8 +784,64 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
         clearColor: 0x000000,
         autoClear: true,
         renderBackground: false,
+        // Disabled when gravity is enabled (use split rendering instead)
+        enabled: (frame) => !(frame?.stores.postProcessing.gravityEnabled ?? false),
       })
     );
+
+    // ========================================================================
+    // Gravitational Lensing Pipeline (Split Scene Rendering)
+    // ========================================================================
+    // When gravity is enabled, render environment and main object separately
+    // so we can apply gravitational lensing only to the environment layer.
+
+    // Environment scene pass - renders ENVIRONMENT + SKYBOX layers only
+    g.addPass(
+      new ScenePass({
+        id: 'environmentScene',
+        outputs: [{ resourceId: RESOURCES.ENVIRONMENT_COLOR, access: 'write' }],
+        layers: [RENDER_LAYERS.ENVIRONMENT, RENDER_LAYERS.SKYBOX],
+        clearColor: 0x000000,
+        autoClear: true,
+        renderBackground: false,
+        enabled: (frame) => frame?.stores.postProcessing.gravityEnabled ?? false,
+      })
+    );
+
+    // Main object scene pass - renders MAIN_OBJECT layer only
+    g.addPass(
+      new ScenePass({
+        id: 'mainObjectScene',
+        outputs: [{ resourceId: RESOURCES.MAIN_OBJECT_COLOR, access: 'write' }],
+        layers: [RENDER_LAYERS.MAIN_OBJECT],
+        clearColor: 0x000000,
+        clearAlpha: 0, // Clear with transparent black so alpha blending works
+        autoClear: true,
+        renderBackground: false,
+        enabled: (frame) => frame?.stores.postProcessing.gravityEnabled ?? false,
+      })
+    );
+
+    // Gravitational lensing pass - applies lensing to environment only
+    const gravityLensingPass = new GravitationalLensingPass({
+      id: 'gravityLensing',
+      environmentInput: RESOURCES.ENVIRONMENT_COLOR,
+      outputResource: RESOURCES.LENSED_ENVIRONMENT,
+      enabled: (frame) => frame?.stores.postProcessing.gravityEnabled ?? false,
+    });
+    g.addPass(gravityLensingPass);
+
+    // Environment composite pass - combines lensed environment with main object
+    const gravityCompositePass = new EnvironmentCompositePass({
+      id: 'gravityComposite',
+      lensedEnvironmentInput: RESOURCES.LENSED_ENVIRONMENT,
+      mainObjectInput: RESOURCES.MAIN_OBJECT_COLOR,
+      mainObjectDepthInput: RESOURCES.MAIN_OBJECT_COLOR,
+      mainObjectDepthInputAttachment: 'depth', // Read depth attachment from render target
+      outputResource: RESOURCES.SCENE_COLOR, // Output to SCENE_COLOR so rest of pipeline works
+      enabled: (frame) => frame?.stores.postProcessing.gravityEnabled ?? false,
+    });
+    g.addPass(gravityCompositePass);
 
     // Object depth pass
     const objectDepthPass = new DepthPass({
@@ -967,7 +1060,8 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
     passRefs.current.bokeh = bokehPass;
     g.addPass(bokehPass);
 
-    // Screen-space lensing pass (black hole)
+    // Screen-space lensing pass (DEPRECATED for black hole - use global gravity lensing instead)
+    // Kept for potential future use on other objects, but always disabled
     const lensingPass = new ScreenSpaceLensingPass({
       id: 'lensing',
       colorInput: RESOURCES.REFRACTION_OUTPUT,
@@ -979,7 +1073,8 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       distortionScale: blackHoleStateRef.current.bendScale,
       chromaticAberration: blackHoleStateRef.current.deferredLensingChromaticAberration,
       falloff: blackHoleStateRef.current.lensingFalloff,
-      enabled: (frame) => (frame?.stores.blackHole.screenSpaceLensingEnabled ?? false) && isBlackHole,
+      // DEPRECATED: SSL for black holes is replaced by global gravity lensing (GravitationalLensingPass)
+      enabled: () => false,
     });
     passRefs.current.lensing = lensingPass;
     g.addPass(lensingPass);

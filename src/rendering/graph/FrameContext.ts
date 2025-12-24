@@ -145,14 +145,12 @@ export interface FrozenPostProcessingState {
   readonly ssaoEnabled: boolean
   readonly ssaoIntensity: number
 
-  // Screen-Space Lensing
-  readonly lensingEnabled: boolean
-  readonly lensingIntensity: number
-  readonly lensingMass: number
-  readonly lensingDistortionScale: number
-  readonly lensingChromaticAberration: number
-  readonly lensingCenterX: number
-  readonly lensingCenterY: number
+  // Gravitational Lensing
+  readonly gravityEnabled: boolean
+  readonly gravityStrength: number
+  readonly gravityDistortionScale: number
+  readonly gravityFalloff: number
+  readonly gravityChromaticAberration: number
 }
 
 /**
@@ -190,7 +188,7 @@ export interface FrozenBlackHoleState {
   readonly stepBase: number
   readonly deferredLensingEnabled: boolean
   readonly deferredLensingStrength: number
-  readonly screenSpaceLensingEnabled: boolean
+  // NOTE: screenSpaceLensingEnabled removed - gravity lensing is now controlled globally
   readonly skyCubemapResolution: BlackHoleConfig['skyCubemapResolution']
   readonly temporalAccumulationEnabled: boolean
 }
@@ -446,14 +444,12 @@ function capturePostProcessingState(
     ssaoEnabled: state.ssaoEnabled,
     ssaoIntensity: state.ssaoIntensity,
 
-    // Lensing
-    lensingEnabled: state.lensingEnabled,
-    lensingIntensity: state.lensingIntensity,
-    lensingMass: state.lensingMass,
-    lensingDistortionScale: state.lensingDistortionScale,
-    lensingChromaticAberration: state.lensingChromaticAberration,
-    lensingCenterX: state.lensingCenterX,
-    lensingCenterY: state.lensingCenterY,
+    // Gravity
+    gravityEnabled: state.gravityEnabled,
+    gravityStrength: state.gravityStrength,
+    gravityDistortionScale: state.gravityDistortionScale,
+    gravityFalloff: state.gravityFalloff,
+    gravityChromaticAberration: state.gravityChromaticAberration,
   }
 }
 
@@ -500,7 +496,6 @@ function captureBlackHoleState(
     stepBase: state.stepBase,
     deferredLensingEnabled: state.deferredLensingEnabled,
     deferredLensingStrength: state.deferredLensingStrength,
-    screenSpaceLensingEnabled: state.screenSpaceLensingEnabled,
     skyCubemapResolution: state.skyCubemapResolution,
     temporalAccumulationEnabled: state.temporalAccumulationEnabled,
   }
@@ -660,13 +655,12 @@ export function createEmptyFrameContext(): FrozenFrameContext {
         objectOnlyDepth: false,
         ssaoEnabled: false,
         ssaoIntensity: 1,
-        lensingEnabled: false,
-        lensingIntensity: 1,
-        lensingMass: 1,
-        lensingDistortionScale: 1,
-        lensingChromaticAberration: 0,
-        lensingCenterX: 0.5,
-        lensingCenterY: 0.5,
+        gravityEnabled: false,
+        gravityStrength: 1,
+        gravityIntensity: 1,
+        gravityDistortionScale: 1,
+        gravityFalloff: 1.5,
+        gravityChromaticAberration: 0,
       },
       performance: {
         isInteracting: false,
@@ -695,7 +689,6 @@ export function createEmptyFrameContext(): FrozenFrameContext {
         stepBase: 0.1,
         deferredLensingEnabled: false,
         deferredLensingStrength: 1,
-        screenSpaceLensingEnabled: false,
         skyCubemapResolution: 512,
         temporalAccumulationEnabled: false,
       },

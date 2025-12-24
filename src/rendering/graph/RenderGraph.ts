@@ -751,6 +751,9 @@ export class RenderGraph {
     const passTiming: PassTiming[] = []
     let targetSwitches = 0
 
+    // Track resources written by enabled passes to prevent passthrough overwriting them
+    const writtenByEnabledPass = new Set<string>()
+
     for (const pass of this.compiled.passes) {
       // Check if pass is enabled (also check debug disable flag)
       // CRITICAL: Pass frozen frame context to enabled() so passes can read store state safely
@@ -769,6 +772,21 @@ export class RenderGraph {
           const inputId = inputs[0]!.resourceId
           const outputId = outputs[0]!.resourceId
 
+          // CRITICAL: Skip passthrough if output was already written by an enabled pass
+          // This prevents mutually exclusive passes (like scene vs gravityComposite)
+          // from overwriting each other's output via passthrough
+          if (writtenByEnabledPass.has(outputId)) {
+            if (this.timingEnabled) {
+              passTiming.push({
+                passId: pass.id,
+                gpuTimeMs: 0,
+                cpuTimeMs: 0,
+                skipped: true,
+              })
+            }
+            continue
+          }
+
           const inputTexture = context.getReadTexture(inputId)
           const outputTarget = context.getWriteTarget(outputId)
 
@@ -786,6 +804,11 @@ export class RenderGraph {
           })
         }
         continue
+      }
+
+      // Track outputs written by this enabled pass
+      for (const output of pass.config.outputs ?? []) {
+        writtenByEnabledPass.add(output.resourceId)
       }
 
       // CRITICAL: Capture Three.js state before pass execution

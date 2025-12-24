@@ -33,6 +33,10 @@ export {
   type CompositePassConfig,
 } from './CompositePass'
 export { FXAAPass, type FXAAPassConfig } from './FXAAPass'
+export {
+  GravitationalLensingPass,
+  type GravitationalLensingPassConfig,
+} from './GravitationalLensingPass'
 export { RefractionPass, type RefractionPassConfig } from './RefractionPass'
 export { ScreenSpaceLensingPass, type ScreenSpaceLensingPassConfig } from './ScreenSpaceLensingPass'
 export { SMAAPass, type SMAAPassConfig } from './SMAAPass'
@@ -59,3 +63,7 @@ export { DebugOverlayPass, type DebugOverlayPassConfig } from './DebugOverlayPas
 
 // Environment passes
 export { CubemapCapturePass, type CubemapCapturePassConfig } from './CubemapCapturePass'
+export {
+  EnvironmentCompositePass,
+  type EnvironmentCompositePassConfig,
+} from './EnvironmentCompositePass'

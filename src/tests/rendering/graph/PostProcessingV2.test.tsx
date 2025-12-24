@@ -288,7 +288,7 @@ describe('PostProcessing Store Integration', () => {
     expect(typeof state.refractionEnabled).toBe('boolean');
     expect(typeof state.cinematicEnabled).toBe('boolean');
     expect(typeof state.ssaoEnabled).toBe('boolean');
-    expect(typeof state.lensingEnabled).toBe('boolean');
+    expect(typeof state.gravityEnabled).toBe('boolean');
   });
 
   it('should have anti-aliasing method configuration', () => {

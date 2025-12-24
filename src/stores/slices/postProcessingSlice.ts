@@ -26,13 +26,11 @@ import {
   DEFAULT_BOKEH_SMOOTH_TIME,
   DEFAULT_BOKEH_WORLD_FOCUS_DISTANCE,
   DEFAULT_BOKEH_WORLD_FOCUS_RANGE,
-  DEFAULT_LENSING_CENTER_X,
-  DEFAULT_LENSING_CENTER_Y,
-  DEFAULT_LENSING_CHROMATIC_ABERRATION,
-  DEFAULT_LENSING_DISTORTION_SCALE,
-  DEFAULT_LENSING_ENABLED,
-  DEFAULT_LENSING_INTENSITY,
-  DEFAULT_LENSING_MASS,
+  DEFAULT_GRAVITY_CHROMATIC_ABERRATION,
+  DEFAULT_GRAVITY_DISTORTION_SCALE,
+  DEFAULT_GRAVITY_ENABLED,
+  DEFAULT_GRAVITY_FALLOFF,
+  DEFAULT_GRAVITY_STRENGTH,
   DEFAULT_OBJECT_ONLY_DEPTH,
   DEFAULT_REFRACTION_CHROMATIC_ABERRATION,
   DEFAULT_REFRACTION_ENABLED,
@@ -107,21 +105,17 @@ export interface PostProcessingSliceState {
   /** AO intensity/strength (0-2 range) */
   ssaoIntensity: number
 
-  // --- Screen-Space Lensing (Gravitational Lensing Effect) ---
-  /** Whether screen-space lensing is enabled (for black hole effect) */
-  lensingEnabled: boolean
-  /** Lensing intensity (0-5) */
-  lensingIntensity: number
-  /** Lens mass parameter (0.1-10) */
-  lensingMass: number
+  // --- Gravitational Lensing (Environment Effect) ---
+  /** Whether gravitational lensing is enabled (applies to environment layer) */
+  gravityEnabled: boolean
+  /** Gravity strength / mass parameter (0.1-10) */
+  gravityStrength: number
   /** Distortion scale (0.1-5) */
-  lensingDistortionScale: number
+  gravityDistortionScale: number
+  /** Distance falloff exponent (0.5-4) */
+  gravityFalloff: number
   /** Chromatic aberration for lensing (0-1) */
-  lensingChromaticAberration: number
-  /** Black hole center X in UV space (0-1) */
-  lensingCenterX: number
-  /** Black hole center Y in UV space (0-1) */
-  lensingCenterY: number
+  gravityChromaticAberration: number
 }
 
 export interface PostProcessingSliceActions {
@@ -174,13 +168,12 @@ export interface PostProcessingSliceActions {
   setSSAOEnabled: (enabled: boolean) => void
   setSSAOIntensity: (intensity: number) => void
 
-  // --- Lensing Actions ---
-  setLensingEnabled: (enabled: boolean) => void
-  setLensingIntensity: (intensity: number) => void
-  setLensingMass: (mass: number) => void
-  setLensingDistortionScale: (scale: number) => void
-  setLensingChromaticAberration: (aberration: number) => void
-  setLensingCenter: (x: number, y: number) => void
+  // --- Gravity Actions ---
+  setGravityEnabled: (enabled: boolean) => void
+  setGravityStrength: (strength: number) => void
+  setGravityDistortionScale: (scale: number) => void
+  setGravityFalloff: (falloff: number) => void
+  setGravityChromaticAberration: (aberration: number) => void
 }
 
 export type PostProcessingSlice = PostProcessingSliceState & PostProcessingSliceActions
@@ -239,14 +232,12 @@ export const POST_PROCESSING_INITIAL_STATE: PostProcessingSliceState = {
   ssaoEnabled: DEFAULT_SSAO_ENABLED,
   ssaoIntensity: DEFAULT_SSAO_INTENSITY,
 
-  // Screen-Space Lensing
-  lensingEnabled: DEFAULT_LENSING_ENABLED,
-  lensingIntensity: DEFAULT_LENSING_INTENSITY,
-  lensingMass: DEFAULT_LENSING_MASS,
-  lensingDistortionScale: DEFAULT_LENSING_DISTORTION_SCALE,
-  lensingChromaticAberration: DEFAULT_LENSING_CHROMATIC_ABERRATION,
-  lensingCenterX: DEFAULT_LENSING_CENTER_X,
-  lensingCenterY: DEFAULT_LENSING_CENTER_Y,
+  // Gravitational Lensing
+  gravityEnabled: DEFAULT_GRAVITY_ENABLED,
+  gravityStrength: DEFAULT_GRAVITY_STRENGTH,
+  gravityDistortionScale: DEFAULT_GRAVITY_DISTORTION_SCALE,
+  gravityFalloff: DEFAULT_GRAVITY_FALLOFF,
+  gravityChromaticAberration: DEFAULT_GRAVITY_CHROMATIC_ABERRATION,
 }
 
 // ============================================================================
@@ -408,31 +399,24 @@ export const createPostProcessingSlice: StateCreator<
     set({ ssaoIntensity: Math.max(0, Math.min(2, intensity)) })
   },
 
-  // --- Lensing Actions ---
-  setLensingEnabled: (enabled: boolean) => {
-    set({ lensingEnabled: enabled })
+  // --- Gravity Actions ---
+  setGravityEnabled: (enabled: boolean) => {
+    set({ gravityEnabled: enabled })
   },
 
-  setLensingIntensity: (intensity: number) => {
-    set({ lensingIntensity: Math.max(0, Math.min(5, intensity)) })
+  setGravityStrength: (strength: number) => {
+    set({ gravityStrength: Math.max(0.1, Math.min(10, strength)) })
   },
 
-  setLensingMass: (mass: number) => {
-    set({ lensingMass: Math.max(0.1, Math.min(10, mass)) })
+  setGravityDistortionScale: (scale: number) => {
+    set({ gravityDistortionScale: Math.max(0.1, Math.min(5, scale)) })
   },
 
-  setLensingDistortionScale: (scale: number) => {
-    set({ lensingDistortionScale: Math.max(0.1, Math.min(5, scale)) })
+  setGravityFalloff: (falloff: number) => {
+    set({ gravityFalloff: Math.max(0.5, Math.min(4, falloff)) })
   },
 
-  setLensingChromaticAberration: (aberration: number) => {
-    set({ lensingChromaticAberration: Math.max(0, Math.min(1, aberration)) })
-  },
-
-  setLensingCenter: (x: number, y: number) => {
-    set({
-      lensingCenterX: Math.max(0, Math.min(1, x)),
-      lensingCenterY: Math.max(0, Math.min(1, y)),
-    })
+  setGravityChromaticAberration: (aberration: number) => {
+    set({ gravityChromaticAberration: Math.max(0, Math.min(1, aberration)) })
   },
 })

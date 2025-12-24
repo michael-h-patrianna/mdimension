@@ -1722,8 +1722,7 @@ export interface BlackHoleConfig {
   skyCubemapResolution: SkyCubemapResolution
 
   // === SCREEN-SPACE LENSING ===
-  /** Screen-space lensing enabled (default true when black hole) */
-  screenSpaceLensingEnabled: boolean
+  // NOTE: screenSpaceLensingEnabled removed - gravity lensing is now controlled globally
   /**
    * Screen-space lensing falloff exponent (0.5-4.0, default 1.5)
    *
@@ -1996,8 +1995,7 @@ export const DEFAULT_BLACK_HOLE_CONFIG: BlackHoleConfig = {
   deferredLensingChromaticAberration: 0.3,
   skyCubemapResolution: 512,
 
-  // Screen-space lensing
-  screenSpaceLensingEnabled: true,
+  // Screen-space lensing falloff (used for global gravity lensing)
   lensingFalloff: 1.5,
 
   // Scene object lensing

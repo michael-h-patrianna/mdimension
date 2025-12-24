@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { BloomControls } from './BloomControls';
 import { BokehControls } from './BokehControls';
 import { CinematicControls } from './CinematicControls';
+// NOTE: GravityControls moved to Advanced Rendering section (AdvancedObjectControls)
 import { MiscControls } from './MiscControls';
 import { RefractionControls } from './RefractionControls';
 import { Switch } from '@/components/ui/Switch';
@@ -103,6 +104,7 @@ export const PostProcessingControls: React.FC = () => {
         </div>
       ),
     },
+    // NOTE: Gravity tab removed - controls moved to Advanced Rendering section
   ];
 
   return (

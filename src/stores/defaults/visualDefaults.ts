@@ -125,29 +125,23 @@ export const DEFAULT_SSAO_ENABLED = false
 export const DEFAULT_SSAO_INTENSITY = 1.0
 
 // ============================================================================
-// Screen-Space Lensing Defaults (Gravitational Lensing Effect)
+// Gravitational Lensing Defaults
 // ============================================================================
 
-/** Screen-space lensing enabled (for black hole effect) */
-export const DEFAULT_LENSING_ENABLED = false
+/** Gravitational lensing enabled (global effect applied to environment) */
+export const DEFAULT_GRAVITY_ENABLED = false
 
-/** Lensing intensity (0-5, how strong the distortion effect is) */
-export const DEFAULT_LENSING_INTENSITY = 1.0
-
-/** Lens mass parameter (affects distortion falloff, 0.1-10) */
-export const DEFAULT_LENSING_MASS = 1.0
+/** Gravity strength (0.1-10, affects lensing intensity) */
+export const DEFAULT_GRAVITY_STRENGTH = 1.0
 
 /** Distortion scale (0.1-5, affects warping strength) */
-export const DEFAULT_LENSING_DISTORTION_SCALE = 1.0
+export const DEFAULT_GRAVITY_DISTORTION_SCALE = 1.0
+
+/** Distance falloff exponent (0.5-4, how quickly effect fades with distance) */
+export const DEFAULT_GRAVITY_FALLOFF = 1.5
 
 /** Chromatic aberration for lensing (0-1, color fringing effect) */
-export const DEFAULT_LENSING_CHROMATIC_ABERRATION = 0.0
-
-/** Black hole center X in UV space (0-1, 0.5 is center) */
-export const DEFAULT_LENSING_CENTER_X = 0.5
-
-/** Black hole center Y in UV space (0-1, 0.5 is center) */
-export const DEFAULT_LENSING_CENTER_Y = 0.5
+export const DEFAULT_GRAVITY_CHROMATIC_ABERRATION = 0.0
 
 // ============================================================================
 // Lighting Defaults

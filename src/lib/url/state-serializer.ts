@@ -44,6 +44,11 @@ import {
 import type { ShadowAnimationMode, ShadowQuality } from '@/rendering/shadows/types'
 import {
   DEFAULT_EXPOSURE,
+  DEFAULT_GRAVITY_CHROMATIC_ABERRATION,
+  DEFAULT_GRAVITY_DISTORTION_SCALE,
+  DEFAULT_GRAVITY_ENABLED,
+  DEFAULT_GRAVITY_FALLOFF,
+  DEFAULT_GRAVITY_STRENGTH,
   DEFAULT_SHADER_SETTINGS,
   DEFAULT_SHADER_TYPE,
   DEFAULT_SPECULAR_COLOR,
@@ -94,6 +99,12 @@ export interface ShareableState {
   shadowQuality?: ShadowQuality
   shadowSoftness?: number
   shadowAnimationMode?: ShadowAnimationMode
+  // Gravity settings (gravitational lensing)
+  gravityEnabled?: boolean
+  gravityStrength?: number
+  gravityDistortionScale?: number
+  gravityFalloff?: number
+  gravityChromaticAberration?: number
 }
 
 /**
@@ -268,6 +279,23 @@ export function serializeState(state: ShareableState): string {
   }
   if (state.shadowAnimationMode && state.shadowAnimationMode !== DEFAULT_SHADOW_ANIMATION_MODE) {
     params.set(URL_KEY_SHADOW_ANIMATION_MODE, state.shadowAnimationMode)
+  }
+
+  // Gravity settings (omit defaults for shorter URLs)
+  if (state.gravityEnabled === true) {
+    params.set('ge', '1')
+  }
+  if (state.gravityStrength !== undefined && state.gravityStrength !== DEFAULT_GRAVITY_STRENGTH) {
+    params.set('gs', state.gravityStrength.toFixed(2))
+  }
+  if (state.gravityDistortionScale !== undefined && state.gravityDistortionScale !== DEFAULT_GRAVITY_DISTORTION_SCALE) {
+    params.set('gds', state.gravityDistortionScale.toFixed(2))
+  }
+  if (state.gravityFalloff !== undefined && state.gravityFalloff !== DEFAULT_GRAVITY_FALLOFF) {
+    params.set('gf', state.gravityFalloff.toFixed(1))
+  }
+  if (state.gravityChromaticAberration !== undefined && state.gravityChromaticAberration !== DEFAULT_GRAVITY_CHROMATIC_ABERRATION) {
+    params.set('gca', state.gravityChromaticAberration.toFixed(2))
   }
 
   return params.toString()
@@ -568,6 +596,46 @@ export function deserializeState(searchParams: string): Partial<ShareableState> 
   if (shadowAnimationMode) {
     if (SHADOW_ANIMATION_MODE_OPTIONS.includes(shadowAnimationMode as ShadowAnimationMode)) {
       state.shadowAnimationMode = shadowAnimationMode as ShadowAnimationMode
+    }
+  }
+
+  // Gravity settings
+  const gravityEnabled = params.get('ge')
+  if (gravityEnabled === '1') {
+    state.gravityEnabled = true
+  } else if (gravityEnabled === '0') {
+    state.gravityEnabled = false
+  }
+
+  const gravityStrength = params.get('gs')
+  if (gravityStrength) {
+    const gs = parseFloat(gravityStrength)
+    if (!isNaN(gs) && gs >= 0.1 && gs <= 10) {
+      state.gravityStrength = gs
+    }
+  }
+
+  const gravityDistortionScale = params.get('gds')
+  if (gravityDistortionScale) {
+    const gds = parseFloat(gravityDistortionScale)
+    if (!isNaN(gds) && gds >= 0.1 && gds <= 5) {
+      state.gravityDistortionScale = gds
+    }
+  }
+
+  const gravityFalloff = params.get('gf')
+  if (gravityFalloff) {
+    const gf = parseFloat(gravityFalloff)
+    if (!isNaN(gf) && gf >= 0.5 && gf <= 4) {
+      state.gravityFalloff = gf
+    }
+  }
+
+  const gravityChromaticAberration = params.get('gca')
+  if (gravityChromaticAberration) {
+    const gca = parseFloat(gravityChromaticAberration)
+    if (!isNaN(gca) && gca >= 0 && gca <= 1) {
+      state.gravityChromaticAberration = gca
     }
   }
 

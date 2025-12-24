@@ -7,7 +7,8 @@ import type { BlackHoleRayBendingMode, RaymarchQuality } from '@/lib/geometry/ex
 import { useAppearanceStore, type AppearanceSlice } from '@/stores/appearanceStore';
 import { useExtendedObjectStore, type ExtendedObjectState } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
-import React from 'react';
+import { usePostProcessingStore, type PostProcessingSlice } from '@/stores/postProcessingStore';
+import React, { useCallback, useEffect } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
 // Object types that show the Advanced Rendering section
@@ -43,6 +44,9 @@ export const AdvancedObjectControls: React.FC = () => {
 
             {/* Global Settings (Shared) - for all objects */}
             <SharedAdvancedControls />
+
+            {/* Gravitational Lensing - available for all objects */}
+            <GravityAdvanced />
 
             {/* Object-Specific Settings */}
             {objectType === 'schroedinger' && <SchroedingerAdvanced />}
@@ -675,21 +679,140 @@ const PolytopeAdvanced: React.FC = () => {
     return null;
 };
 
+/**
+ * Global Gravity Controls
+ * Available for all object types. When black hole is selected, settings sync with internal lensing.
+ */
+const GravityAdvanced: React.FC = () => {
+    const objectType = useGeometryStore(state => state.objectType);
+    const isBlackHole = objectType === 'blackhole';
+
+    // Global gravity settings from postProcessingStore
+    const ppSelector = useShallow((state: PostProcessingSlice) => ({
+        gravityEnabled: state.gravityEnabled,
+        setGravityEnabled: state.setGravityEnabled,
+        gravityStrength: state.gravityStrength,
+        setGravityStrength: state.setGravityStrength,
+        gravityDistortionScale: state.gravityDistortionScale,
+        setGravityDistortionScale: state.setGravityDistortionScale,
+        gravityFalloff: state.gravityFalloff,
+        setGravityFalloff: state.setGravityFalloff,
+        gravityChromaticAberration: state.gravityChromaticAberration,
+        setGravityChromaticAberration: state.setGravityChromaticAberration,
+    }));
+    const ppState = usePostProcessingStore(ppSelector);
+
+    // Black hole state for syncing
+    const bhSelector = useShallow((state: ExtendedObjectState) => ({
+        gravityStrength: state.blackhole.gravityStrength,
+        bendScale: state.blackhole.bendScale,
+        lensingFalloff: state.blackhole.lensingFalloff,
+        chromaticAberration: state.blackhole.deferredLensingChromaticAberration,
+    }));
+    const bhState = useExtendedObjectStore(bhSelector);
+
+    // When black hole is selected, sync global gravity settings from black hole
+    useEffect(() => {
+        if (isBlackHole) {
+            // Force gravity enabled when black hole is active
+            if (!ppState.gravityEnabled) {
+                ppState.setGravityEnabled(true);
+            }
+            // Sync from black hole to global on initial selection
+            ppState.setGravityStrength(bhState.gravityStrength);
+            ppState.setGravityDistortionScale(bhState.bendScale);
+            ppState.setGravityFalloff(bhState.lensingFalloff);
+            ppState.setGravityChromaticAberration(bhState.chromaticAberration);
+        }
+        // Only run when isBlackHole changes
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isBlackHole]);
+
+    // For black hole, gravity is always enabled
+    const isEnabled = isBlackHole ? true : ppState.gravityEnabled;
+
+    return (
+        <div className="space-y-3 pt-2 border-t border-white/5 mt-2">
+            <div className="flex items-center justify-between">
+                <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider">
+                    Gravitational Lensing
+                </label>
+                <ToggleButton
+                    pressed={isEnabled}
+                    onToggle={() => !isBlackHole && ppState.setGravityEnabled(!ppState.gravityEnabled)}
+                    className="text-xs px-2 py-1 h-auto"
+                    ariaLabel="Toggle gravitational lensing"
+                    data-testid="gravity-toggle"
+                    disabled={isBlackHole}
+                >
+                    {isEnabled ? 'ON' : 'OFF'}
+                </ToggleButton>
+            </div>
+
+            {isBlackHole && (
+                <p className="text-xs text-text-tertiary">
+                    Gravity always active for Black Holes. Controls sync with internal lensing.
+                </p>
+            )}
+
+            {isEnabled && (
+                <div className="space-y-3 pl-2 border-l border-white/10">
+                    <Slider
+                        label="Strength"
+                        min={0.1}
+                        max={10}
+                        step={0.1}
+                        value={ppState.gravityStrength}
+                        onChange={ppState.setGravityStrength}
+                        showValue
+                        data-testid="gravity-strength"
+                    />
+                    <Slider
+                        label="Distortion Scale"
+                        min={0.1}
+                        max={5}
+                        step={0.1}
+                        value={ppState.gravityDistortionScale}
+                        onChange={ppState.setGravityDistortionScale}
+                        showValue
+                        data-testid="gravity-distortion-scale"
+                    />
+                    <Slider
+                        label="Falloff"
+                        min={0.5}
+                        max={4}
+                        step={0.1}
+                        value={ppState.gravityFalloff}
+                        onChange={ppState.setGravityFalloff}
+                        showValue
+                        data-testid="gravity-falloff"
+                    />
+                    <Slider
+                        label="Chromatic Aberration"
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        value={ppState.gravityChromaticAberration}
+                        onChange={ppState.setGravityChromaticAberration}
+                        showValue
+                        data-testid="gravity-chromatic-aberration"
+                    />
+                </div>
+            )}
+        </div>
+    );
+};
+
 const BlackHoleAdvanced: React.FC = () => {
     const extendedObjectSelector = useShallow((state: ExtendedObjectState) => ({
         config: state.blackhole,
-        // Visuals
-        setGravityStrength: state.setBlackHoleGravityStrength,
-        setManifoldIntensity: state.setBlackHoleManifoldIntensity,
+        // Visuals (gravity-related moved to global GravityAdvanced)
         setBloomBoost: state.setBlackHoleBloomBoost,
         setDiskTemperature: state.setBlackHoleDiskTemperature,
-        // Lensing
+        setManifoldIntensity: state.setBlackHoleManifoldIntensity,
+        // Lensing (non-gravity params only - gravity params in GravityAdvanced)
         setDimensionEmphasis: state.setBlackHoleDimensionEmphasis,
-        setDistanceFalloff: state.setBlackHoleDistanceFalloff,
-        setBendScale: state.setBlackHoleBendScale,
-        setBendMaxPerStep: state.setBlackHoleBendMaxPerStep,
         setRayBendingMode: state.setBlackHoleRayBendingMode,
-        setLensingClamp: state.setBlackHoleLensingClamp,
         setEpsilonMul: state.setBlackHoleEpsilonMul,
         // Manifold Visuals
         setDensityFalloff: state.setBlackHoleDensityFalloff,
@@ -699,7 +822,6 @@ const BlackHoleAdvanced: React.FC = () => {
         setPhotonShellWidth: state.setBlackHolePhotonShellWidth,
         setShellGlowStrength: state.setBlackHoleShellGlowStrength,
         setShellGlowColor: state.setBlackHoleShellGlowColor,
-        setShellContrastBoost: state.setBlackHoleShellContrastBoost,
         // Doppler
         setDopplerEnabled: state.setBlackHoleDopplerEnabled,
         setDopplerStrength: state.setBlackHoleDopplerStrength,
@@ -710,7 +832,6 @@ const BlackHoleAdvanced: React.FC = () => {
         setJetsWidth: state.setBlackHoleJetsWidth,
         setJetsIntensity: state.setBlackHoleJetsIntensity,
         setJetsColor: state.setBlackHoleJetsColor,
-        setJetsFalloff: state.setBlackHoleJetsFalloff,
         setJetsNoiseAmount: state.setBlackHoleJetsNoiseAmount,
         // Rendering
         setMaxSteps: state.setBlackHoleMaxSteps,
@@ -720,20 +841,13 @@ const BlackHoleAdvanced: React.FC = () => {
         // Motion blur
         setMotionBlurEnabled: state.setBlackHoleMotionBlurEnabled,
         setMotionBlurStrength: state.setBlackHoleMotionBlurStrength,
-        // Deferred lensing
-        setDeferredLensingEnabled: state.setBlackHoleDeferredLensingEnabled,
-        setDeferredLensingStrength: state.setBlackHoleDeferredLensingStrength,
-        setDeferredLensingChromaticAberration: state.setBlackHoleDeferredLensingChromaticAberration,
     }));
     const {
         config,
-        setGravityStrength,
-        setManifoldIntensity,
         setBloomBoost,
         setDiskTemperature,
+        setManifoldIntensity,
         setDimensionEmphasis,
-        setDistanceFalloff,
-        setBendScale,
         setRayBendingMode,
         setEpsilonMul,
         setDensityFalloff,
@@ -757,28 +871,12 @@ const BlackHoleAdvanced: React.FC = () => {
         setAbsorption,
         setMotionBlurEnabled,
         setMotionBlurStrength,
-        setDeferredLensingEnabled,
-        setDeferredLensingStrength,
-        setDeferredLensingChromaticAberration,
     } = useExtendedObjectStore(extendedObjectSelector);
 
     return (
         <div className="space-y-6">
-            {/* Gravity & Lensing */}
+            {/* Bloom Boost - kept separate from global gravity */}
             <div className="space-y-3 pt-2">
-                <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider">Gravity & Lensing</label>
-
-                <Slider
-                    label="Gravity Strength"
-                    min={0}
-                    max={10.0}
-                    step={0.1}
-                    value={config.gravityStrength}
-                    onChange={setGravityStrength}
-                    showValue
-                    data-testid="blackhole-gravity-strength"
-                />
-
                 <Slider
                     label="Bloom Boost"
                     min={0}
@@ -790,26 +888,9 @@ const BlackHoleAdvanced: React.FC = () => {
                     data-testid="blackhole-bloom-boost"
                 />
 
+                {/* Advanced Lensing Parameters (non-gravity) */}
                 <div className="p-3 bg-black/20 rounded border border-white/5 space-y-3">
                     <label className="text-xs text-text-tertiary font-medium">Advanced Lensing</label>
-                    <Slider
-                        label="Bend Scale"
-                        min={0}
-                        max={3}
-                        step={0.1}
-                        value={config.bendScale}
-                        onChange={setBendScale}
-                        showValue
-                    />
-                    <Slider
-                        label="Dist. Falloff"
-                        min={0.5}
-                        max={4}
-                        step={0.1}
-                        value={config.distanceFalloff}
-                        onChange={setDistanceFalloff}
-                        showValue
-                    />
                     <Slider
                         label="Dim. Emphasis"
                         min={0}
@@ -1119,48 +1200,7 @@ const BlackHoleAdvanced: React.FC = () => {
                 )}
             </div>
 
-            {/* Deferred Lensing */}
-            <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
-                <div className="flex items-center justify-between">
-                    <label className="text-xs text-text-secondary font-semibold">Deferred Lensing</label>
-                    <ToggleButton
-                        pressed={config.deferredLensingEnabled}
-                        onToggle={() => setDeferredLensingEnabled(!config.deferredLensingEnabled)}
-                        className="text-xs px-2 py-1 h-auto"
-                        ariaLabel="Toggle deferred lensing"
-                        data-testid="blackhole-deferred-lensing-toggle"
-                    >
-                        {config.deferredLensingEnabled ? 'ON' : 'OFF'}
-                    </ToggleButton>
-                </div>
-                {config.deferredLensingEnabled && (
-                    <Slider
-                        label="Strength"
-                        min={0}
-                        max={2}
-                        step={0.1}
-                        value={config.deferredLensingStrength}
-                        onChange={setDeferredLensingStrength}
-                        showValue
-                        data-testid="blackhole-deferred-lensing-strength"
-                    />
-                )}
-                {config.deferredLensingEnabled && (
-                    <Slider
-                        label="Chromatic Aberration"
-                        min={0}
-                        max={1}
-                        step={0.05}
-                        value={config.deferredLensingChromaticAberration}
-                        onChange={setDeferredLensingChromaticAberration}
-                        showValue
-                        data-testid="blackhole-deferred-lensing-chromatic-aberration"
-                    />
-                )}
-                <p className="text-xs text-text-tertiary">
-                    Apply gravitational lensing to scene objects
-                </p>
-            </div>
+            {/* NOTE: Deferred Lensing / Gravity controls moved to global GravityAdvanced section */}
         </div>
     );
 };

@@ -703,11 +703,7 @@ export const createBlackHoleSlice: StateCreator<ExtendedObjectSlice, [], [], Bla
   },
 
   // === Screen-Space Lensing ===
-  setBlackHoleScreenSpaceLensingEnabled: (enabled) => {
-    set((state) => ({
-      blackhole: { ...state.blackhole, screenSpaceLensingEnabled: enabled },
-    }))
-  },
+  // NOTE: setBlackHoleScreenSpaceLensingEnabled removed - gravity lensing is now controlled globally
 
   setBlackHoleLensingFalloff: (falloff) => {
     const clamped = Math.max(0.5, Math.min(4, falloff))

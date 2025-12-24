@@ -551,8 +551,7 @@ export interface BlackHoleSliceActions {
   setBlackHoleDeferredLensingChromaticAberration: (amount: number) => void
   setBlackHoleSkyCubemapResolution: (resolution: number) => void
 
-  // Screen-Space Lensing
-  setBlackHoleScreenSpaceLensingEnabled: (enabled: boolean) => void
+  // Screen-Space Lensing (NOTE: screenSpaceLensingEnabled removed - controlled globally)
   setBlackHoleLensingFalloff: (falloff: number) => void
 
   // Scene Object Lensing

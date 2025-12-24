@@ -139,6 +139,38 @@ describe('state-serializer', () => {
       expect(result).toContain('ta=reinhard');
       expect(result).toContain('ex=1.5');
     });
+
+    it('should serialize gravity settings when different from defaults', () => {
+      // Use non-default values to ensure they get serialized
+      // Defaults: enabled=false, strength=1.0, distortionScale=1.0, falloff=1.5, chromatic=0.0
+      const state: ShareableState = {
+        dimension: 4,
+        objectType: 'hypercube',
+        gravityEnabled: true,        // different from default (false)
+        gravityStrength: 2.5,        // different from default (1.0)
+        gravityDistortionScale: 2.0, // different from default (1.0)
+        gravityFalloff: 2.5,         // different from default (1.5)
+        gravityChromaticAberration: 0.3, // different from default (0.0)
+      };
+      const result = serializeState(state);
+      expect(result).toContain('ge=1');
+      expect(result).toContain('gs=2.50');
+      expect(result).toContain('gds=2.00');
+      expect(result).toContain('gf=2.5');
+      expect(result).toContain('gca=0.30');
+    });
+
+    it('should omit gravityEnabled when false (default)', () => {
+      // gravityEnabled=false is the default, so it should NOT be serialized
+      const state: ShareableState = {
+        dimension: 4,
+        objectType: 'hypercube',
+        gravityEnabled: false,
+      };
+      const result = serializeState(state);
+      // Default values are omitted for shorter URLs
+      expect(result).not.toContain('ge=');
+    });
   });
 
   describe('deserializeState', () => {
@@ -237,6 +269,35 @@ describe('state-serializer', () => {
       expect(result.exposure).toBeCloseTo(1.5);
     });
 
+    it('should deserialize gravity settings', () => {
+      const result = deserializeState('ge=1&gs=2.50&gds=1.00&gf=1.5&gca=0.30');
+      expect(result.gravityEnabled).toBe(true);
+      expect(result.gravityStrength).toBeCloseTo(2.5);
+      expect(result.gravityDistortionScale).toBeCloseTo(1.0);
+      expect(result.gravityFalloff).toBeCloseTo(1.5);
+      expect(result.gravityChromaticAberration).toBeCloseTo(0.3);
+    });
+
+    it('should deserialize gravityEnabled', () => {
+      expect(deserializeState('ge=0').gravityEnabled).toBe(false);
+      expect(deserializeState('ge=1').gravityEnabled).toBe(true);
+    });
+
+    it('should clamp gravity values to valid ranges', () => {
+      // Out of range values should be ignored
+      const resultStrength = deserializeState('gs=100');
+      expect(resultStrength.gravityStrength).toBeUndefined();
+
+      const resultDistortion = deserializeState('gds=20');
+      expect(resultDistortion.gravityDistortionScale).toBeUndefined();
+
+      const resultFalloff = deserializeState('gf=10');
+      expect(resultFalloff.gravityFalloff).toBeUndefined();
+
+      const resultChromatic = deserializeState('gca=5');
+      expect(resultChromatic.gravityChromaticAberration).toBeUndefined();
+    });
+
     it('should handle legacy dualOutline shader type', () => {
       const result = deserializeState('sh=dualOutline');
       expect(result.shaderType).toBe('wireframe');
@@ -277,6 +338,29 @@ describe('state-serializer', () => {
       expect(deserialized.backgroundColor).toBe(original.backgroundColor);
       expect(deserialized.edgesVisible).toBe(original.edgesVisible);
       expect(deserialized.facesVisible).toBe(original.facesVisible);
+    });
+
+    it('should preserve gravity settings through serialize/deserialize cycle', () => {
+      // Use non-default values to ensure they get serialized and roundtrip correctly
+      // Defaults: enabled=false, strength=1.0, distortionScale=1.0, falloff=1.5, chromatic=0.0
+      const original: ShareableState = {
+        dimension: 4,
+        objectType: 'hypercube',
+        gravityEnabled: true,        // non-default
+        gravityStrength: 2.5,        // non-default
+        gravityDistortionScale: 2.0, // non-default
+        gravityFalloff: 2.5,         // non-default
+        gravityChromaticAberration: 0.3, // non-default
+      };
+
+      const serialized = serializeState(original);
+      const deserialized = deserializeState(serialized);
+
+      expect(deserialized.gravityEnabled).toBe(original.gravityEnabled);
+      expect(deserialized.gravityStrength).toBeCloseTo(original.gravityStrength!);
+      expect(deserialized.gravityDistortionScale).toBeCloseTo(original.gravityDistortionScale!);
+      expect(deserialized.gravityFalloff).toBeCloseTo(original.gravityFalloff!);
+      expect(deserialized.gravityChromaticAberration).toBeCloseTo(original.gravityChromaticAberration!);
     });
   });
 

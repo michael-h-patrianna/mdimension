@@ -1,0 +1,66 @@
+/**
+ * Environment Composite Shader
+ *
+ * Composites the lensed environment layer behind the main object layer.
+ * Uses alpha blending to allow transparent objects (wireframes, glass) to
+ * show the lensed environment through them.
+ *
+ * @module rendering/shaders/postprocessing/environmentComposite
+ */
+
+export const environmentCompositeVertexShader = /* glsl */ `
+  out vec2 vUv;
+
+  void main() {
+    vUv = uv;
+    gl_Position = vec4(position.xy, 0.0, 1.0);
+  }
+`
+
+export const environmentCompositeFragmentShader = /* glsl */ `
+  precision highp float;
+
+  in vec2 vUv;
+  layout(location = 0) out vec4 fragColor;
+
+  uniform sampler2D tLensedEnvironment;  // Lensed environment color
+  uniform sampler2D tMainObject;         // Main object color (RGBA)
+  uniform sampler2D tMainObjectDepth;    // Main object depth buffer
+  uniform float uNear;
+  uniform float uFar;
+
+  /**
+   * Check if depth value represents the far plane (no object rendered).
+   * NDC depth of 1.0 = far plane = no object at this pixel.
+   */
+  bool isAtFarPlane(float depth) {
+    return depth >= 0.9999;
+  }
+
+  void main() {
+    // Sample both layers
+    vec4 envColor = texture(tLensedEnvironment, vUv);
+    vec4 objColor = texture(tMainObject, vUv);
+    float objDepth = texture(tMainObjectDepth, vUv).r;
+
+    // Alpha blend strategy:
+    // - If object depth is at far plane (1.0), show environment only
+    // - Otherwise, blend based on object's alpha channel
+    //
+    // This allows:
+    // - Wireframe polytopes: low alpha = env shows through
+    // - Solid objects: alpha = 1.0 = fully opaque
+    // - Semi-transparent effects: partial blending
+
+    if (isAtFarPlane(objDepth)) {
+      // No object at this pixel - show environment
+      fragColor = envColor;
+    } else {
+      // Object exists - blend based on alpha
+      // Standard alpha-over compositing: result = obj + env * (1 - obj.a)
+      vec3 blended = objColor.rgb * objColor.a + envColor.rgb * (1.0 - objColor.a);
+      float alpha = max(envColor.a, objColor.a);
+      fragColor = vec4(blended, alpha);
+    }
+  }
+`
