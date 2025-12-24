@@ -1,47 +1,40 @@
+import type { Face } from '@/lib/geometry/faces'
 import type { NdGeometry, ObjectType } from '@/lib/geometry'
-import { detectFaces, getFaceDetectionMethod, getConfigStoreKey } from '@/lib/geometry'
-import { useMemo } from 'react'
+import { useAsyncFaceDetection } from './useAsyncFaceDetection'
+
+/**
+ * Return type for useFaceDetection hook
+ */
+export interface FaceDetectionResult {
+  /** Detected faces */
+  faces: Face[]
+  /** Whether face detection is in progress */
+  isLoading: boolean
+  /** Error if face detection failed */
+  error: Error | null
+}
 
 /**
  * Hook to detect faces for a given geometry and object type.
  *
- * Uses the registry to determine if the object type supports face detection.
+ * Uses Web Worker for convex-hull method (root-system, wythoff-polytope)
+ * to prevent UI blocking during heavy computation.
  *
- * @param geometry - The geometry object containing vertices and edges.
+ * Falls back to synchronous detection for other methods (grid, none).
+ *
+ * @param geometry - The geometry object containing vertices and edges (nullable during loading).
  * @param objectType - The type of object being rendered.
- * @returns An array of detected faces.
+ * @returns Object with detected faces and loading state.
  */
-export function useFaceDetection(geometry: NdGeometry, objectType: ObjectType) {
-  return useMemo(() => {
-    // Use registry to check if object type supports face rendering
-    // Note: Raymarched types (mandelbulb, quaternion-julia) support faces via raymarching,
-    // but don't use detectFaces - they render directly in the shader
-    const faceDetectionMethod = getFaceDetectionMethod(objectType)
-    if (faceDetectionMethod === 'none') {
-      return []
-    }
+export function useFaceDetection(
+  geometry: NdGeometry | null,
+  objectType: ObjectType
+): FaceDetectionResult {
+  const { faces, isLoading, error } = useAsyncFaceDetection(geometry, objectType)
 
-    // Get config store key for data-driven checks
-    const configKey = getConfigStoreKey(objectType)
-
-    // Root-system needs edges to detect faces (convex-hull method)
-    if (configKey === 'rootSystem' && geometry.edges.length === 0) {
-      return []
-    }
-
-    // Torus types need metadata for resolution info (grid method)
-    if (
-      (configKey === 'cliffordTorus' || configKey === 'nestedTorus') &&
-      !geometry.metadata?.properties
-    ) {
-      return []
-    }
-
-    try {
-      return detectFaces(geometry.vertices, geometry.edges, objectType, geometry.metadata)
-    } catch (e) {
-      console.warn('Face detection failed:', e)
-      return []
-    }
-  }, [geometry, objectType])
+  return {
+    faces,
+    isLoading,
+    error,
+  }
 }

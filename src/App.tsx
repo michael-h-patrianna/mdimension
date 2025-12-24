@@ -20,6 +20,7 @@ import { ContextLostOverlay } from '@/components/overlays/ContextLostOverlay';
 import { MsgBox } from '@/components/overlays/MsgBox';
 import { ShaderCompilationOverlay } from '@/components/overlays/ShaderCompilationOverlay';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
+import { GeometryLoadingIndicator } from '@/components/ui/GeometryLoadingIndicator';
 import { ToastProvider } from '@/contexts/ToastContext';
 import { useAnimationLoop } from '@/hooks/useAnimationLoop';
 import { useDynamicFavicon } from '@/hooks/useDynamicFavicon';
@@ -44,6 +45,7 @@ import { useGeometryStore } from '@/stores/geometryStore';
 import { useLightingStore } from '@/stores/lightingStore';
 import { useUIStore } from '@/stores/uiStore';
 import { RECOVERY_STATE_KEY, RECOVERY_STATE_MAX_AGE } from '@/stores/webglContextStore';
+import { Html } from '@react-three/drei';
 import { Canvas, type RootState } from '@react-three/fiber';
 import { LazyMotion, domMax } from 'motion/react';
 import { useCallback, useEffect, useMemo } from 'react';
@@ -73,36 +75,72 @@ function Visualizer() {
   // 2. Run animation loops
   useAnimationLoop();
 
-  // 3. Generate geometry based on store state
-  const { geometry, dimension, objectType } = useGeometryGenerator();
+  // 3. Generate geometry based on store state (async for Wythoff polytopes)
+  const {
+    geometry,
+    dimension,
+    objectType,
+    isLoading: geometryLoading,
+    progress,
+    stage,
+  } = useGeometryGenerator();
 
-  // 4. Detect faces for surface rendering (polytopes only)
-  const faces = useFaceDetection(geometry, objectType);
+  // 4. Detect faces for surface rendering (polytopes only, async for convex-hull)
+  const { faces, isLoading: faceLoading } = useFaceDetection(geometry, objectType);
+
+  // Combined loading state for any async operation
+  const isLoading = geometryLoading || faceLoading;
 
   // 5. Extract base 3D positions for ground plane bounds (no transform needed)
   // Ground plane only recalculates on vertex count change, not during animation
   const basePositions = useMemo(
-    () => extractBasePositions(geometry.vertices),
-    [geometry.vertices]
+    () => (geometry ? extractBasePositions(geometry.vertices) : []),
+    [geometry]
   );
 
   // 6. Compute per-face depth values for palette color variation (polytopes only)
-  const faceDepths = useFaceDepths(geometry.vertices, faces, dimension);
+  const faceDepths = useFaceDepths(geometry?.vertices ?? [], faces, dimension);
 
   // Minimum bounding radius for ground plane positioning
   // Currently all objects use the same radius for consistent ground placement
   const minBoundingRadius = 1.5;
 
+  // Show loading indicator while geometry is being generated
+  // Render nothing until geometry is available
+  if (!geometry) {
+    return (
+      <Html fullscreen style={{ pointerEvents: 'none' }}>
+        <GeometryLoadingIndicator
+          isLoading={geometryLoading}
+          progress={progress}
+          stage={stage}
+        />
+      </Html>
+    );
+  }
+
   return (
-    <Scene
-      geometry={geometry}
-      dimension={dimension}
-      objectType={objectType}
-      faces={faces}
-      faceDepths={faceDepths}
-      projectedVertices={basePositions}
-      minBoundingRadius={minBoundingRadius}
-    />
+    <>
+      {/* Loading indicator for async face detection */}
+      {isLoading && !geometryLoading && (
+        <Html fullscreen style={{ pointerEvents: 'none' }}>
+          <GeometryLoadingIndicator
+            isLoading={true}
+            progress={100}
+            stage="faces"
+          />
+        </Html>
+      )}
+      <Scene
+        geometry={geometry}
+        dimension={dimension}
+        objectType={objectType}
+        faces={faces}
+        faceDepths={faceDepths}
+        projectedVertices={basePositions}
+        minBoundingRadius={minBoundingRadius}
+      />
+    </>
   );
 }
 

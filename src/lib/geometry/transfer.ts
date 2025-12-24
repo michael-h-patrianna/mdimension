@@ -141,3 +141,174 @@ export function inflateGeometry(transferable: TransferablePolytopeGeometry): Pol
     metadata
   }
 }
+
+// ============================================================================
+// Face Transfer Utilities
+// ============================================================================
+
+/**
+ * Flattens triangular faces into a Uint32Array for zero-copy transfer.
+ *
+ * Each triangle is stored as 3 consecutive vertex indices.
+ * Total array length = faces.length * 3.
+ *
+ * @param faces - Array of triangular faces as [v0, v1, v2] tuples
+ * @returns Flattened Uint32Array and its buffer for transfer
+ *
+ * @example
+ * ```typescript
+ * const faces: [number, number, number][] = [[0, 1, 2], [1, 2, 3]]
+ * const { flatFaces, buffer } = flattenFaces(faces)
+ * // flatFaces = Uint32Array([0, 1, 2, 1, 2, 3])
+ * worker.postMessage({ faces: flatFaces }, [buffer])
+ * ```
+ */
+export function flattenFaces(faces: [number, number, number][]): {
+  flatFaces: Uint32Array
+  buffer: ArrayBuffer
+} {
+  const flatFaces = new Uint32Array(faces.length * 3)
+
+  for (let i = 0; i < faces.length; i++) {
+    const face = faces[i]!
+    flatFaces[i * 3] = face[0]
+    flatFaces[i * 3 + 1] = face[1]
+    flatFaces[i * 3 + 2] = face[2]
+  }
+
+  return {
+    flatFaces,
+    buffer: flatFaces.buffer,
+  }
+}
+
+/**
+ * Inflates a flattened Uint32Array back into triangular face tuples.
+ *
+ * @param flatFaces - Flattened face indices from worker
+ * @returns Array of triangular faces as [v0, v1, v2] tuples
+ * @throws Error if array length is not divisible by 3
+ *
+ * @example
+ * ```typescript
+ * const flatFaces = new Uint32Array([0, 1, 2, 1, 2, 3])
+ * const faces = inflateFaces(flatFaces)
+ * // faces = [[0, 1, 2], [1, 2, 3]]
+ * ```
+ */
+export function inflateFaces(flatFaces: Uint32Array): [number, number, number][] {
+  if (flatFaces.length % 3 !== 0) {
+    throw new Error(
+      `Face data corruption: buffer length ${flatFaces.length} is not divisible by 3`
+    )
+  }
+
+  const numFaces = flatFaces.length / 3
+  const faces: [number, number, number][] = new Array(numFaces)
+
+  for (let i = 0; i < numFaces; i++) {
+    const idx = i * 3
+    const v0 = flatFaces[idx]
+    const v1 = flatFaces[idx + 1]
+    const v2 = flatFaces[idx + 2]
+
+    if (v0 === undefined || v1 === undefined || v2 === undefined) {
+      throw new Error(`Face data corruption: face ${i} has undefined indices`)
+    }
+
+    faces[i] = [v0, v1, v2]
+  }
+
+  return faces
+}
+
+// ============================================================================
+// Vertex-Only Transfer Utilities
+// ============================================================================
+
+/**
+ * Inflates a flattened Float64Array back into vertex arrays.
+ *
+ * Used when only vertices need to be reconstructed (e.g., for face computation
+ * in worker where edges aren't needed).
+ *
+ * @param flatVertices - Flattened vertex positions
+ * @param dimension - Dimensionality of each vertex
+ * @returns Array of vertex coordinate arrays
+ * @throws Error if buffer length is not divisible by dimension
+ *
+ * @example
+ * ```typescript
+ * const flatVertices = new Float64Array([1, 0, 0, 0, 1, 0, 0, 0, 1])
+ * const vertices = inflateVerticesOnly(flatVertices, 3)
+ * // vertices = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+ * ```
+ */
+export function inflateVerticesOnly(flatVertices: Float64Array, dimension: number): number[][] {
+  if (dimension < 1) {
+    throw new Error(`Invalid dimension ${dimension}, must be >= 1`)
+  }
+
+  if (flatVertices.length % dimension !== 0) {
+    throw new Error(
+      `Vertex data corruption: buffer length ${flatVertices.length} is not divisible by dimension ${dimension}`
+    )
+  }
+
+  const numVertices = flatVertices.length / dimension
+  const vertices: number[][] = new Array(numVertices)
+
+  for (let i = 0; i < numVertices; i++) {
+    const vertex: number[] = new Array(dimension)
+    for (let d = 0; d < dimension; d++) {
+      const idx = i * dimension + d
+      const value = flatVertices[idx]
+      if (value === undefined) {
+        throw new Error(`Vertex data corruption: index ${idx} out of bounds`)
+      }
+      vertex[d] = value
+    }
+    vertices[i] = vertex
+  }
+
+  return vertices
+}
+
+/**
+ * Flattens vertex arrays into a Float64Array for zero-copy transfer.
+ *
+ * Used when only vertices need to be sent to worker (e.g., for face computation).
+ *
+ * @param vertices - Array of vertex coordinate arrays
+ * @param dimension - Dimensionality of each vertex
+ * @returns Flattened Float64Array and its buffer for transfer
+ *
+ * @example
+ * ```typescript
+ * const vertices = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+ * const { flatVertices, buffer } = flattenVerticesOnly(vertices, 3)
+ * // flatVertices = Float64Array([1, 0, 0, 0, 1, 0, 0, 0, 1])
+ * worker.postMessage({ vertices: flatVertices }, [buffer])
+ * ```
+ */
+export function flattenVerticesOnly(
+  vertices: number[][],
+  dimension: number
+): {
+  flatVertices: Float64Array
+  buffer: ArrayBuffer
+} {
+  const flatVertices = new Float64Array(vertices.length * dimension)
+
+  for (let i = 0; i < vertices.length; i++) {
+    const vertex = vertices[i]!
+    for (let d = 0; d < dimension; d++) {
+      flatVertices[i * dimension + d] = vertex[d] ?? 0
+    }
+  }
+
+  return {
+    flatVertices,
+    buffer: flatVertices.buffer,
+  }
+}

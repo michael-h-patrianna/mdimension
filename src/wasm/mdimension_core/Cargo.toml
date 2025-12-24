@@ -1,0 +1,18 @@
+[package]
+name = "mdimension-core"
+version = "0.1.0"
+edition = "2021"
+description = "Core geometric algorithms for mdimension (WASM)"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+wasm-bindgen = "0.2"
+
+# Optimization profile for Release builds (Small binary size)
+[profile.release]
+opt-level = "s"
+lto = true
+strip = true
+codegen-units = 1

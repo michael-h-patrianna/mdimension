@@ -666,9 +666,16 @@ export const PolytopeScene = React.memo(function PolytopeScene({
 
     // Build non-indexed geometry with neighbor data
     let outIdx = 0;
+    const vertexBound = baseVertices.length;
 
     for (const face of faces) {
       const vis = face.vertices;
+
+      // Skip faces with any out-of-bounds vertex indices
+      // This can happen during async face detection when geometry changes
+      const hasValidIndices = vis.every((idx) => idx >= 0 && idx < vertexBound);
+      if (!hasValidIndices) continue;
+
       if (vis.length === 3) {
         // Triangle: each vertex needs to know its 2 neighbors
         // Vertex 0: neighbors are 1, 2

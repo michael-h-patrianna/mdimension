@@ -1,4 +1,4 @@
-import { renderHook } from '@testing-library/react';
+import { renderHook, waitFor } from '@testing-library/react';
 import { useGeometryGenerator } from '@/hooks/useGeometryGenerator';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
@@ -29,14 +29,28 @@ describe('useGeometryGenerator', () => {
     });
   });
 
+  it('should return GeometryGeneratorResult with correct shape', () => {
+    const { result } = renderHook(() => useGeometryGenerator(), { wrapper });
+
+    // Check the return type has all expected properties
+    expect(result.current).toHaveProperty('geometry');
+    expect(result.current).toHaveProperty('dimension');
+    expect(result.current).toHaveProperty('objectType');
+    expect(result.current).toHaveProperty('isLoading');
+    expect(result.current).toHaveProperty('progress');
+    expect(result.current).toHaveProperty('stage');
+    expect(result.current).toHaveProperty('warnings');
+  });
+
   it('should generate initial geometry (3D hypercube)', () => {
     const { result } = renderHook(() => useGeometryGenerator(), { wrapper });
 
     expect(result.current.dimension).toBe(3);
     expect(result.current.objectType).toBe('hypercube');
-    expect(result.current.geometry).toBeDefined();
-    expect(result.current.geometry.type).toBe('hypercube');
-    expect(result.current.geometry.vertices.length).toBe(8); // 2^3
+    expect(result.current.isLoading).toBe(false); // Sync generation is immediate
+    expect(result.current.geometry).not.toBeNull();
+    expect(result.current.geometry?.type).toBe('hypercube');
+    expect(result.current.geometry?.vertices.length).toBe(8); // 2^3
   });
 
   it('should update geometry when dimension changes', () => {
@@ -47,7 +61,7 @@ describe('useGeometryGenerator', () => {
     });
 
     expect(result.current.dimension).toBe(4);
-    expect(result.current.geometry.vertices.length).toBe(16); // 2^4
+    expect(result.current.geometry?.vertices.length).toBe(16); // 2^4
   });
 
   it('should update geometry when object type changes', () => {
@@ -58,8 +72,8 @@ describe('useGeometryGenerator', () => {
     });
 
     expect(result.current.objectType).toBe('simplex');
-    expect(result.current.geometry.type).toBe('simplex');
-    expect(result.current.geometry.vertices.length).toBe(4); // n+1
+    expect(result.current.geometry?.type).toBe('simplex');
+    expect(result.current.geometry?.vertices.length).toBe(4); // n+1
   });
 
   it('should use extended object params', () => {
@@ -75,6 +89,17 @@ describe('useGeometryGenerator', () => {
 
     expect(result.current.objectType).toBe('root-system');
     // Root system generates vertices for the selected root type
-    expect(result.current.geometry.vertices.length).toBeGreaterThan(0);
+    expect(result.current.geometry?.vertices.length).toBeGreaterThan(0);
+  });
+
+  it('should not be loading for sync geometry types', async () => {
+    const { result } = renderHook(() => useGeometryGenerator(), { wrapper });
+
+    // For hypercube (sync), loading should be false
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+    expect(result.current.progress).toBe(100);
+    expect(result.current.stage).toBe('complete');
   });
 });

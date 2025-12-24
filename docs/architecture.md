@@ -86,7 +86,10 @@ src/
 │   ├── lights/       # Lighting Logic
 │   └── materials/    # Three.js Materials
 ├── stores/           # Global State (Zustand)
-└── theme/            # Styling Constants
+├── theme/            # Styling Constants
+└── workers/          # Web Workers (Heavy Computation)
+    ├── geometry.worker.ts  # Wythoff/Face computation
+    └── types.ts           # Worker message types
 ```
 
 ### Decision Tree: "Where do I put X?"
@@ -99,6 +102,7 @@ src/
 7. **Is it a reusable UI element (Button)?** → `src/components/ui/`
 8. **Is it a functional section of the editor?** → `src/components/sections/`
 9. **Is it a layout component?** → `src/components/layout/`
+10. **Is it computationally expensive and can run off main thread?** → `src/workers/`
 
 ---
 
@@ -241,6 +245,70 @@ export function generate{Name}(dimension: number, scale = 1.0): PolytopeGeometry
 
 **Purpose**: Offload heavy computations (e.g., complex geometry generation) to background threads to prevent UI freezing.
 
+### Geometry Worker Architecture
+
+The geometry worker (`src/workers/geometry.worker.ts`) handles computationally intensive operations:
+- **Wythoff Polytope Generation**: Complex polytope generation for high dimensions (4D-11D)
+- **Convex Hull Face Detection**: Face computation for root systems and Wythoff polytopes
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        Main Thread                                   │
+├──────────────────────┬──────────────────────────────────────────────┤
+│  useGeometryGenerator │  useFaceDetection                            │
+│         │             │         │                                    │
+│         ▼             │         ▼                                    │
+│  useGeometryWorker ───┴──▶ useAsyncFaceDetection                    │
+│         │                                                            │
+│         ▼                                                            │
+│   sendRequest()/cancelRequest()                                      │
+│         │                                                            │
+└─────────│────────────────────────────────────────────────────────────┘
+          │ postMessage (WorkerRequest)
+          ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                    geometry.worker.ts                                │
+│  ┌─────────────────┐  ┌──────────────────┐  ┌──────────────────┐   │
+│  │ generate-wythoff │  │   compute-faces   │  │     cancel       │   │
+│  └────────┬────────┘  └────────┬─────────┘  └────────┬─────────┘   │
+│           │                     │                     │             │
+│           ▼                     ▼                     ▼             │
+│  generateWythoffPolytope  computeConvexHullFaces  Cancel pending   │
+│           │                     │                                   │
+│           └──────────┬──────────┘                                   │
+│                      ▼                                              │
+│           Progress updates (0-100%, stage)                          │
+│                      │                                              │
+└──────────────────────│──────────────────────────────────────────────┘
+                       │ postMessage (WorkerResponse)
+                       ▼
+               Promise resolution on main thread
+```
+
+**Files**:
+- `src/workers/types.ts` - Type definitions for worker messages
+- `src/workers/geometry.worker.ts` - Worker implementation
+- `src/hooks/useGeometryWorker.ts` - Singleton worker management hook
+- `src/hooks/useAsyncFaceDetection.ts` - Async face detection hook
+- `src/lib/geometry/transfer.ts` - Zero-copy transfer utilities
+
+### Request/Response Types
+
+```typescript
+// Request types (discriminated union)
+type WorkerRequest =
+  | { type: 'generate-wythoff'; id: string; dimension: number; config: WythoffConfig }
+  | { type: 'compute-faces'; id: string; vertices: Float64Array; dimension: number }
+  | { type: 'cancel'; id: string }
+
+// Response types (discriminated union)
+type WorkerResponse =
+  | { type: 'result'; id: string; geometry?: TransferableGeometry; faces?: Uint32Array }
+  | { type: 'progress'; id: string; progress: number; stage: GenerationStage }
+  | { type: 'error'; id: string; error: string }
+  | { type: 'cancelled'; id: string }
+```
+
 ### Zero-Copy Transfer Pattern
 For large datasets, use `Transferable` objects (TypedArrays) to move memory ownership between threads instantly, avoiding expensive serialization/copying.
 
@@ -252,15 +320,62 @@ For large datasets, use `Transferable` objects (TypedArrays) to move memory owne
 ```typescript
 // Worker: Flatten and Transfer
 const { transferable, buffers } = flattenGeometry(result);
-self.postMessage({ result: transferable }, buffers);
+self.postMessage({ type: 'result', id, geometry: transferable }, buffers);
 
 // Main Thread: Inflate
-worker.onmessage = (e) => {
-  const geometry = inflateGeometry(e.data.result);
-};
+const inflated = inflateGeometry(response.geometry);
 ```
 
-**Utilities**: See `src/lib/geometry/transfer.ts`.
+**Transfer Utilities** (`src/lib/geometry/transfer.ts`):
+- `flattenGeometry` / `inflateGeometry` - Full geometry objects
+- `flattenFaces` / `inflateFaces` - Face triangle indices
+- `flattenVerticesOnly` / `inflateVerticesOnly` - Vertex data only
+
+### Using the Worker Hook
+
+```typescript
+import { useGeometryWorker, generateRequestId } from '@/hooks/useGeometryWorker';
+
+function MyComponent() {
+  const { sendRequest, cancelRequest } = useGeometryWorker();
+
+  const generatePolytope = async () => {
+    const requestId = generateRequestId('wythoff');
+
+    try {
+      const response = await sendRequest(
+        {
+          type: 'generate-wythoff',
+          id: requestId,
+          dimension: 4,
+          config: { preset: 'regular', symmetryGroup: 'B' },
+        },
+        (progress, stage) => {
+          console.log(`${stage}: ${progress}%`);
+        }
+      );
+
+      if (response.type === 'result' && response.geometry) {
+        const geometry = inflateGeometry(response.geometry);
+        // Use geometry...
+      }
+    } catch (err) {
+      console.error('Generation failed:', err);
+    }
+  };
+
+  // Cleanup on parameter change
+  useEffect(() => {
+    return () => cancelRequest(requestId);
+  }, [params]);
+}
+```
+
+### Important Notes
+- The worker uses a **singleton pattern** with reference counting
+- Request IDs must be unique (use `generateRequestId()`)
+- Always cancel pending requests on unmount or parameter changes
+- In test environments (happy-dom), Worker is unavailable - the hook gracefully returns a rejection, allowing hooks to fall back to synchronous generation
 
 ---
 
