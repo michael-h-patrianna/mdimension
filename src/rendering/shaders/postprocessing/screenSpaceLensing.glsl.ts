@@ -126,12 +126,6 @@ export const screenSpaceLensingFragmentShader = /* glsl */ `
     return vec3(r, g, b);
   }
 
-  // DISABLED: clampOutsideHorizon was breaking the lensing effect.
-  // The function prevented proper Einstein ring formation by clamping UVs.
-  // Do NOT re-enable without thorough visual testing.
-  //
-  // vec2 clampOutsideHorizon(vec2 sampleUV, vec2 originalUV) { ... }
-
   /**
    * Apply chromatic aberration to lensing.
    */
@@ -208,10 +202,39 @@ export const screenSpaceLensingFragmentShader = /* glsl */ `
         color = texture(tSkyCubemap, bentDir).rgb;
       }
     } else {
-      vec2 finalUV = mix(vUv, distortedUV, depthFactor);
+      // =======================================================================
+      // CRITICAL: Do NOT apply SSL distortion to the inner black hole region!
+      // =======================================================================
+      //
+      // The raymarcher already handles gravitational lensing correctly for the
+      // disk and horizon area. Applying SSL here causes:
+      //
+      // 1. BLACK BAND ARTIFACT: SSL samples horizon blackness and smears it
+      //    onto the accretion disk, creating an ugly dark band.
+      //
+      // 2. DOUBLE LENSING: The raymarcher bends light correctly. SSL on top
+      //    creates unrealistic "double vision" layering effects.
+      //
+      // 3. DESTROYS MOVIE LOOK: The "Interstellar" black hole aesthetic requires
+      //    clean Einstein rings and smooth disk gradients. SSL interference
+      //    makes this impossible to achieve.
+      //
+      // FAILED APPROACHES (do NOT retry):
+      // - Depth-based source check: Depth buffer doesn't align with visual horizon
+      // - Brightness check: Would break dark skybox areas
+      // - UV clamping outside horizon: Breaks Einstein ring formation
+      //
+      // The ONLY working solution is to disable SSL in the inner region entirely.
+      // =======================================================================
+      float distFromCenter = length(vUv - uBlackHoleCenter);
+      float innerRadius = uHorizonRadius * 2.5;  // No SSL inside this radius
+      float outerRadius = uHorizonRadius * 3.5;  // Full SSL outside this radius
+      float sslFactor = smoothstep(innerRadius, outerRadius, distFromCenter);
+
+      vec2 finalUV = mix(vUv, distortedUV, depthFactor * sslFactor);
 
       if (uChromaticAberration > 0.01) {
-        vec2 finalDisplacement = displacement * depthFactor;
+        vec2 finalDisplacement = displacement * depthFactor * sslFactor;
         color = applyLensingChromatic(vUv, finalDisplacement);
       } else {
         color = texture(tColor, finalUV).rgb;

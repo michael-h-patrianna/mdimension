@@ -415,15 +415,12 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
 
   // Handle horizon or background
   if (hitHorizon) {
-    // Record hit position for depth buffer, but DON'T reset accumulated color
-    // Color from photon shell, disk, etc. should be preserved
-    if (accum.hasFirstHit < 0.5) {
-      accum.firstHitPos = pos;
-      accum.hasFirstHit = 1.0;
-      // Note: We intentionally do NOT set accum.color = vec3(0.0) here
-      // because the ray may have accumulated color from the photon shell
-      // or disk before reaching the horizon
-    }
+    // Don't record horizon as first hit for depth buffer.
+    // Horizon should have FAR depth so SSL can distinguish it from disk.
+    // This prevents SSL from smearing horizon blackness onto disk pixels.
+    // Color accumulation is preserved - only depth output is affected.
+    // If ray hit disk first, hasFirstHit is already set with disk depth.
+    // If ray hit horizon directly, it will write far depth (1.0).
     accum.transmittance = 0.0;
   } else if (accum.transmittance > 0.01) {
     vec3 bgColor = sampleBackground(bentDirection);
