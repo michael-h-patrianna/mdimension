@@ -115,10 +115,6 @@ export function useBlackHoleUniforms() {
       uNoiseAmount: { value: 0.25 },
       uMultiIntersectionGain: { value: 1.0 },
 
-      // Rotation damping
-      uDampInnerMul: { value: 1.2 },
-      uDampOuterMul: { value: 3.0 },
-
       // Quality
       uMaxSteps: { value: 256 },
       uStepBase: { value: 0.08 },
@@ -140,12 +136,6 @@ export function useBlackHoleUniforms() {
       uRoughness: { value: 0.6 },
       uSpecular: { value: 0.2 },
       uAmbientTint: { value: 0.1 },
-
-      // Edge glow
-      uEdgeGlowEnabled: { value: true },
-      uEdgeGlowWidth: { value: 0.1 },
-      uEdgeGlowColor: { value: new THREE.Color('#ff6600').convertSRGBToLinear() },
-      uEdgeGlowIntensity: { value: 1.0 },
 
       // Background (uses general skybox system, no built-in fallback)
       uEnvMapReady: { value: 0.0 }, // Set to 1.0 when envMap is valid

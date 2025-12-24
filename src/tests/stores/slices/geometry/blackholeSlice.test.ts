@@ -171,32 +171,6 @@ describe('blackholeSlice', () => {
     })
   })
 
-  describe('edge glow actions', () => {
-    it('should toggle edge glow', () => {
-      const { setBlackHoleEdgeGlowEnabled } = useExtendedObjectStore.getState()
-
-      setBlackHoleEdgeGlowEnabled(false)
-      expect(useExtendedObjectStore.getState().blackhole.edgeGlowEnabled).toBe(false)
-
-      setBlackHoleEdgeGlowEnabled(true)
-      expect(useExtendedObjectStore.getState().blackhole.edgeGlowEnabled).toBe(true)
-    })
-
-    it('should set edge glow intensity', () => {
-      const { setBlackHoleEdgeGlowIntensity } = useExtendedObjectStore.getState()
-
-      setBlackHoleEdgeGlowIntensity(2.5)
-      expect(useExtendedObjectStore.getState().blackhole.edgeGlowIntensity).toBe(2.5)
-    })
-
-    it('should set edge glow color', () => {
-      const { setBlackHoleEdgeGlowColor } = useExtendedObjectStore.getState()
-
-      setBlackHoleEdgeGlowColor('#0000ff')
-      expect(useExtendedObjectStore.getState().blackhole.edgeGlowColor).toBe('#0000ff')
-    })
-  })
-
   describe('doppler actions', () => {
     it('should toggle doppler effect', () => {
       const { setBlackHoleDopplerEnabled } = useExtendedObjectStore.getState()

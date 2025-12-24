@@ -1,8 +1,8 @@
 /**
  * Polar Jets
  *
- * Conical emission along the rotation axis (Z axis).
- * Jets extend above and below the accretion disk.
+ * Conical emission along the rotation axis (Y axis).
+ * Jets extend above and below the accretion disk (XZ plane).
  */
 
 export const jetsBlock = /* glsl */ `
@@ -13,17 +13,21 @@ export const jetsBlock = /* glsl */ `
 /**
  * Calculate jet density at a position.
  *
- * Jets are modeled as double cones along the Z axis,
+ * Jets are modeled as double cones along the Y axis (perpendicular to disk),
  * with emission intensity falling off with distance.
+ *
+ * Coordinate system matches accretion disk:
+ * - Disk plane: XZ (horizontal, like Saturn's rings)
+ * - Vertical axis: Y (jets shoot along Y axis)
  */
 float jetDensity(vec3 pos3d, float time) {
   if (!uJetsEnabled) return 0.0;
 
-  // Height along jet axis
-  float h = abs(pos3d.z);
+  // Height along jet axis (Y is vertical, perpendicular to disk)
+  float h = abs(pos3d.y);
 
-  // Radial distance from axis
-  float r = length(pos3d.xy);
+  // Radial distance from axis (XZ plane)
+  float r = length(pos3d.xz);
 
   // Jet height range
   float maxHeight = uJetsHeight * uHorizonRadius;
@@ -36,7 +40,9 @@ float jetDensity(vec3 pos3d, float time) {
   if (coneRadius < 0.0001 || r > coneRadius) return 0.0;
 
   // Radial falloff within cone
-  float radialFactor = 1.0 - pow(r / coneRadius, 2.0);
+  // PERF: Use multiplication instead of pow(x, 2.0)
+  float rRatio = r / coneRadius;
+  float radialFactor = 1.0 - rRatio * rRatio;
 
   // Height falloff - guard against maxHeight being zero
   float safeMaxHeight = max(maxHeight, 0.0001);
@@ -51,7 +57,7 @@ float jetDensity(vec3 pos3d, float time) {
 
   // Add turbulence
   if (uJetsNoiseAmount > 0.001) {
-    float noise = noise3D(vec3(r * 2.0, pos3d.z * 0.5, time * uJetsPulsation));
+    float noise = noise3D(vec3(r * 2.0, pos3d.y * 0.5, time * uJetsPulsation));
     density *= mix(1.0, 0.5 + noise, uJetsNoiseAmount);
   }
 
@@ -73,8 +79,8 @@ vec3 jetEmission(vec3 pos3d, float density, float time) {
   // Base jet color
   vec3 color = uJetsColor;
 
-  // Vary color along height
-  float h = abs(pos3d.z);
+  // Vary color along height (Y is vertical axis)
+  float h = abs(pos3d.y);
   float maxHeight = uJetsHeight * uHorizonRadius;
   // Guard against maxHeight being zero
   float safeMaxHeight = max(maxHeight, 0.0001);

@@ -40,20 +40,26 @@ float orbitalVelocityFactor(float radius, float innerR, float outerR) {
 
 /**
  * Get motion blur offset direction at given position.
- * Returns the tangent direction (perpendicular to radial in XY plane).
+ * Returns the tangent direction (perpendicular to radial in XZ plane).
+ *
+ * Coordinate system matches accretion disk:
+ * - Disk plane: XZ (horizontal)
+ * - Vertical axis: Y
+ * - Orbital motion: circular in XZ plane
  *
  * @param pos3d - Current 3D position
  * @returns Tangent direction for motion blur sampling
  */
 vec3 getMotionBlurDirection(vec3 pos3d) {
-  // Tangent direction in XY plane (orbital direction)
-  float xyLen = length(pos3d.xy);
-  // Guard against zero-length vector (position on Z axis)
-  if (xyLen < 0.0001) {
+  // Tangent direction in XZ plane (orbital direction)
+  float xzLen = length(pos3d.xz);
+  // Guard against zero-length vector (position on Y axis)
+  if (xzLen < 0.0001) {
     return vec3(1.0, 0.0, 0.0); // Default tangent direction
   }
-  vec3 radial = vec3(pos3d.xy / xyLen, 0.0);
-  vec3 tangent = vec3(-radial.y, radial.x, 0.0);
+  // Radial direction in XZ plane: (x/r, 0, z/r)
+  // Tangent (perpendicular, orbital direction): (-z/r, 0, x/r)
+  vec3 tangent = vec3(-pos3d.z / xzLen, 0.0, pos3d.x / xzLen);
 
   return tangent;
 }
@@ -82,7 +88,8 @@ vec3 applyMotionBlur(
     return baseColor;
   }
 
-  float radius = length(pos3d.xy);
+  // Disk is in XZ plane, so radius is in XZ
+  float radius = length(pos3d.xz);
   float innerR = uHorizonRadius * uDiskInnerRadiusMul;
   float outerR = uHorizonRadius * uDiskOuterRadiusMul;
 
@@ -107,19 +114,19 @@ vec3 applyMotionBlur(
   vec3 accumColor = vec3(0.0);
   float totalWeight = 0.0;
 
+  // PERF: Pre-compute shared values outside loop
+  float safeSamples = float(max(samples - 1, 1));
+  float blurScale = blurAmount * radius * 0.05;
+
   for (int i = 0; i < 4; i++) {
     if (i >= samples) break;
 
     // Sample offset: -0.5 to +0.5 of blur range
-    // Guard against samples - 1 being zero (samples >= 2 checked above, but be safe)
-    float safeSamples = float(max(samples - 1, 1));
     float t = (float(i) / safeSamples - 0.5) * 2.0;
 
     // Position offset along blur direction (tangent)
-    vec3 samplePos = pos3d + blurDir * t * blurAmount * radius * 0.05;
+    vec3 samplePos = pos3d + blurDir * t * blurScale;
 
-    // Simplified manifold sampling inside blur loop:
-    // Skip expensive ndDistance if blur amount is small
     float sampleDensity = manifoldDensity(samplePos, ndRadius, time);
 
     if (sampleDensity > 0.001) {

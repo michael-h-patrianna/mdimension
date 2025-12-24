@@ -126,6 +126,12 @@ export const screenSpaceLensingFragmentShader = /* glsl */ `
     return vec3(r, g, b);
   }
 
+  // DISABLED: clampOutsideHorizon was breaking the lensing effect.
+  // The function prevented proper Einstein ring formation by clamping UVs.
+  // Do NOT re-enable without thorough visual testing.
+  //
+  // vec2 clampOutsideHorizon(vec2 sampleUV, vec2 originalUV) { ... }
+
   /**
    * Apply chromatic aberration to lensing.
    */
@@ -182,6 +188,9 @@ export const screenSpaceLensingFragmentShader = /* glsl */ `
 
     vec2 distortedUV = vUv + displacement;
     distortedUV = clamp(distortedUV, vec2(0.0), vec2(1.0));
+
+    // DISABLED: clampOutsideHorizon was breaking lensing - see comment above
+    // distortedUV = clampOutsideHorizon(distortedUV, vUv);
 
     float depthFactor = uDepthAvailable
       ? smoothstep(1.0, 10.0, linearDepth)

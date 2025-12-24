@@ -171,19 +171,29 @@ export function diskTemperatureToColor(temperature: number): string {
 }
 
 /**
- * Standard accretion disk temperature profile.
+ * Standard accretion disk temperature profile with stress-free ISCO boundary.
  *
- * For a thin disk around a Schwarzschild black hole:
- *   T(r) = T_inner * (r / r_inner)^(-3/4)
+ * For a thin disk around a Schwarzschild/Kerr black hole:
+ *   T(r) = T_max * (r/r_ISCO)^(-3/4) * [1 - sqrt(r_ISCO/r)]^(1/4)
+ *
+ * The [1 - sqrt(r_ISCO/r)]^(1/4) factor accounts for the stress-free
+ * boundary condition at ISCO where torque vanishes:
+ * - Goes to 0 at r = r_ISCO (no radiation at inner edge)
+ * - Approaches 1 for r >> r_ISCO (standard profile at large r)
+ * - Peak temperature occurs at r ≈ 1.36 * r_ISCO
+ *
+ * Reference: Novikov & Thorne (1973), Page & Thorne (1974)
  *
  * @param r - Radius from center
  * @param rInner - Inner disk radius (ISCO)
- * @param tInner - Temperature at inner edge (in Kelvin)
+ * @param tInner - Temperature scale (peak temperature, not at ISCO)
  * @returns Temperature at radius r (in Kelvin)
  */
 export function diskTemperatureProfile(r: number, rInner: number, tInner: number): number {
-  if (r <= rInner) return tInner
-  return tInner * Math.pow(r / rInner, -0.75)
+  if (r <= rInner) return 0 // No emission at ISCO due to stress-free boundary
+  const basicFalloff = Math.pow(rInner / r, 0.75)
+  const iscoCorrection = Math.pow(Math.max(0, 1 - Math.sqrt(rInner / r)), 0.25)
+  return tInner * basicFalloff * iscoCorrection
 }
 
 /**

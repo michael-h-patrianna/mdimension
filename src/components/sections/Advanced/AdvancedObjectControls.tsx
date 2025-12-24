@@ -700,11 +700,6 @@ const BlackHoleAdvanced: React.FC = () => {
         setShellGlowStrength: state.setBlackHoleShellGlowStrength,
         setShellGlowColor: state.setBlackHoleShellGlowColor,
         setShellContrastBoost: state.setBlackHoleShellContrastBoost,
-        // Edge Glow
-        setEdgeGlowEnabled: state.setBlackHoleEdgeGlowEnabled,
-        setEdgeGlowWidth: state.setBlackHoleEdgeGlowWidth,
-        setEdgeGlowIntensity: state.setBlackHoleEdgeGlowIntensity,
-        setEdgeGlowColor: state.setBlackHoleEdgeGlowColor,
         // Doppler
         setDopplerEnabled: state.setBlackHoleDopplerEnabled,
         setDopplerStrength: state.setBlackHoleDopplerStrength,
@@ -747,10 +742,6 @@ const BlackHoleAdvanced: React.FC = () => {
         setPhotonShellWidth,
         setShellGlowStrength,
         setShellGlowColor,
-        setEdgeGlowEnabled,
-        setEdgeGlowWidth,
-        setEdgeGlowIntensity,
-        setEdgeGlowColor,
         setDopplerEnabled,
         setDopplerStrength,
         setDopplerHueShift,
@@ -1043,53 +1034,6 @@ const BlackHoleAdvanced: React.FC = () => {
                             <ColorPicker
                                 value={config.jetsColor}
                                 onChange={setJetsColor}
-                                disableAlpha={true}
-                                className="w-24"
-                            />
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            {/* Edge Glow */}
-            <div className="space-y-3 pt-2 border-t border-white/5">
-                <div className="flex items-center justify-between">
-                    <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider">Horizon Glow</label>
-                    <ToggleButton
-                        pressed={config.edgeGlowEnabled}
-                        onToggle={() => setEdgeGlowEnabled(!config.edgeGlowEnabled)}
-                        className="text-xs px-2 py-1 h-auto"
-                        ariaLabel="Toggle edge glow"
-                    >
-                        {config.edgeGlowEnabled ? 'ON' : 'OFF'}
-                    </ToggleButton>
-                </div>
-
-                {config.edgeGlowEnabled && (
-                    <div className="space-y-3 pl-2 border-l border-white/10">
-                        <Slider
-                            label="Intensity"
-                            min={0}
-                            max={5.0}
-                            step={0.1}
-                            value={config.edgeGlowIntensity}
-                            onChange={setEdgeGlowIntensity}
-                            showValue
-                        />
-                        <Slider
-                            label="Width"
-                            min={0.01}
-                            max={0.5}
-                            step={0.01}
-                            value={config.edgeGlowWidth}
-                            onChange={setEdgeGlowWidth}
-                            showValue
-                        />
-                        <div className="flex items-center justify-between">
-                            <label className="text-xs text-text-secondary">Color</label>
-                            <ColorPicker
-                                value={config.edgeGlowColor}
-                                onChange={setEdgeGlowColor}
                                 disableAlpha={true}
                                 className="w-24"
                             />

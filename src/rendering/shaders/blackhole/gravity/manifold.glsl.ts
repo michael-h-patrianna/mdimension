@@ -2,7 +2,7 @@
  * Luminous Manifold (Accretion Disk)
  *
  * N-dimensional accretion structure:
- * - 3D: Classic thin disk in XY plane
+ * - 3D: Classic thin disk in XZ plane (Y is vertical)
  * - 4D: Sheet (disk with thickness in W)
  * - 5D+: Slab/field with increasing volume
  *
@@ -171,7 +171,7 @@ float manifoldDensity(vec3 pos3d, float ndRadius, float time) {
     // Ridged multifractal noise (electric/filigree look)
     // Convert [0,1] to [-1,1], then take 1 - abs()
     float ridged = 1.0 - abs(2.0 * n - 1.0);
-    ridged = pow(ridged, 2.0); // Sharpen ridges
+    ridged = ridged * ridged; // PERF: Sharpen ridges (x² instead of pow)
     
     density *= mix(1.0, ridged, uNoiseAmount);
   }

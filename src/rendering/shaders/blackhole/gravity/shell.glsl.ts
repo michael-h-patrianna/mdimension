@@ -58,7 +58,7 @@ vec3 photonShellEmission(float ndRadius, vec3 pos) {
   
   // Use a combination of sines for a "caustic" look
   float starburst = 0.5 + 0.5 * sin(angle * 40.0 + uTime * 0.5) * sin(angle * 13.0 - uTime * 0.2);
-  starburst = pow(starburst, 2.0); // Sharpen spikes
+  starburst = starburst * starburst; // PERF: Sharpen spikes (x² instead of pow)
   
   float intensityMod = 0.7 + 0.3 * starburst;
   
@@ -74,8 +74,23 @@ vec3 photonShellEmission(float ndRadius, vec3 pos) {
 /**
  * Get adaptive step size modifier near shell.
  * Smaller steps near the photon sphere for accurate capture.
+ *
+ * PERF: Uses early exit when clearly outside shell region to avoid
+ * expensive getPhotonShellRadius() and smoothstep/pow computations.
  */
 float shellStepModifier(float ndRadius) {
+  // PERF: Quick bounding check before full mask calculation
+  // Uses same formula as getPhotonShellRadius() to ensure consistency
+  float shellDimBias = uPhotonShellRadiusDimBias * log(float(DIMENSION));
+  float shellRp = uHorizonRadius * (uPhotonShellRadiusMul + shellDimBias);
+  float shellDelta = uPhotonShellWidth * uHorizonRadius * 2.0;
+
+  // Early exit if clearly outside shell region
+  if (abs(ndRadius - shellRp) > shellDelta) {
+    return 1.0;
+  }
+
+  // Inside potential shell region - compute full mask
   float mask = photonShellMask(ndRadius);
 
   // Reduce step size near shell

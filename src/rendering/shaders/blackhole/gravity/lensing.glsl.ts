@@ -136,17 +136,31 @@ vec3 bendRay(vec3 rayDir, vec3 pos3d, float stepSize, float ndRadius) {
   }
 
   // === Photon Sphere Proximity Factor ===
-  // Reduce lensing for rays far from the photon sphere.
-  // This allows rays to travel more straight when far from the BH,
-  // enabling the front portion of the accretion disk to be visible.
+  // ⚠️ ARTISTIC DEPARTURE FROM PHYSICS ⚠️
   //
-  // Physics: The photon sphere is at r = 1.5 * Rs (Schwarzschild).
-  // Light can orbit there. Beyond that, lensing should decrease rapidly.
+  // This factor intentionally reduces lensing for rays far from the photon sphere.
+  // It is NOT physically accurate but provides a more visually appealing result.
   //
-  // Factor:
-  // - 1.0 when r <= photonSphereR (full lensing at photon sphere)
-  // - Smoothly decreases as r increases beyond photon sphere
-  // - Very weak lensing for rays far from BH (allows front disk visibility)
+  // PHYSICS CONTEXT:
+  // The "Magic Potential" formula (Schwarzschild geodesic approximation) has
+  // natural 1/r^5 falloff which is sufficient for correct lensing at all distances.
+  // In reality, light should bend proportionally regardless of distance.
+  //
+  // ARTISTIC RATIONALE:
+  // Without this modification, strong lensing bends rays around the black hole
+  // even at the outer disk edges. This creates a "wrapped" appearance where
+  // the front of the accretion disk is not visible because rays are pulled
+  // behind the black hole. While physically correct, this is visually confusing
+  // for users expecting to see "Interstellar"-style imagery.
+  //
+  // This factor allows:
+  // - Full lensing near the photon sphere (r < 2 * rs) for Einstein ring formation
+  // - Reduced lensing at outer disk (r > 2 * rs) so front disk is visible
+  // - Nearly straight rays at far distances (r > 5 * rs)
+  //
+  // To disable this artistic enhancement and use physically accurate lensing,
+  // set proximityFactor = 1.0 unconditionally.
+  //
   float photonSphereR = rs * 1.5;
   float lensingFalloffStart = rs * 2.0;   // Start reducing right after photon sphere
   float lensingFalloffEnd = rs * 5.0;     // Minimum lensing reached here

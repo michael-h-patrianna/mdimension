@@ -1,7 +1,7 @@
 /**
  * Event Horizon
  *
- * Handles ray-horizon intersection and edge glow effects.
+ * Handles ray-horizon intersection.
  *
  * Uses uVisualEventHorizon for the actual event horizon check (shrinks with spin),
  * while uHorizonRadius remains the Schwarzschild radius (rs = 2M) for scale reference.
@@ -23,30 +23,6 @@ bool isInsideHorizon(float ndRadius) {
   // Use a tiny "Kill Sphere" near the singularity (0.1x) to allow natural shadow formation.
   // The visual horizon is handled by volumetric absorption in main.glsl.ts.
   return ndRadius < uVisualEventHorizon * 0.1;
-}
-
-/**
- * Compute proximity to horizon for edge glow.
- * Returns 0 at horizon, 1 far from horizon.
- */
-float horizonProximity(float ndRadius) {
-  float diff = ndRadius - uVisualEventHorizon;
-  return smoothstep(0.0, uEdgeGlowWidth * uVisualEventHorizon, diff);
-}
-
-/**
- * Compute edge glow contribution.
- * Creates a bright ring at the edge of the horizon.
- */
-vec3 computeEdgeGlow(float ndRadius, vec3 accumulatedColor) {
-  if (!uEdgeGlowEnabled) return vec3(0.0);
-
-  float proximity = horizonProximity(ndRadius);
-  // Glow is strongest near horizon
-  float glowFactor = 1.0 - proximity;
-  glowFactor = pow(glowFactor, 2.0); // Sharper falloff
-
-  return uEdgeGlowColor * glowFactor * uEdgeGlowIntensity;
 }
 
 /**

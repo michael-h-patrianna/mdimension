@@ -1621,12 +1621,6 @@ export interface BlackHoleConfig {
   /** Multi-intersection gain (0-3, default 1.0) */
   multiIntersectionGain: number
 
-  // === ROTATION DAMPING ===
-  /** Inner damping multiplier (1-2, default 1.2) */
-  dampInnerMul: number
-  /** Outer damping multiplier (1.2-8, default 3.0) */
-  dampOuterMul: number
-
   // === RENDERING QUALITY ===
   /** Raymarch quality preset */
   raymarchQuality: BlackHoleQuality
@@ -1666,16 +1660,6 @@ export interface BlackHoleConfig {
   shadowSteps: number
   /** Shadow density (0-10, default 2.0) */
   shadowDensity: number
-
-  // === HORIZON ===
-  /** Edge glow enabled (default true) */
-  edgeGlowEnabled: boolean
-  /** Edge glow width (0-1, default 0.1) */
-  edgeGlowWidth: number
-  /** Edge glow color (hex string) */
-  edgeGlowColor: string
-  /** Edge glow intensity (0-5, default 1.0) */
-  edgeGlowIntensity: number
 
   // === TEMPORAL ===
   /** Temporal accumulation enabled (default true) */
@@ -1900,9 +1884,6 @@ export const BLACK_HOLE_VISUAL_PRESETS: Record<BlackHoleVisualPreset, Partial<Bl
     dopplerEnabled: false,
     noiseAmount: 0.6,
     swirlAmount: 1.2,
-    edgeGlowEnabled: true,
-    edgeGlowIntensity: 2.0,
-    edgeGlowColor: '#ff88ff',
   },
   /** Custom preset: no changes, user's current settings preserved */
   custom: {},
@@ -1956,10 +1937,6 @@ export const DEFAULT_BLACK_HOLE_CONFIG: BlackHoleConfig = {
   noiseAmount: 0.15, // Interstellar: subtle noise
   multiIntersectionGain: 1.0,
 
-  // Rotation damping
-  dampInnerMul: 1.2,
-  dampOuterMul: 3.0,
-
   // Quality
   raymarchQuality: 'balanced',
   maxSteps: 600, // Increased to prevent black voids with adaptive steps
@@ -1981,12 +1958,6 @@ export const DEFAULT_BLACK_HOLE_CONFIG: BlackHoleConfig = {
   shadowEnabled: false,
   shadowSteps: 16,
   shadowDensity: 2.0,
-
-  // Horizon
-  edgeGlowEnabled: true,
-  edgeGlowWidth: 0.1,
-  edgeGlowColor: '#ff6600',
-  edgeGlowIntensity: 1.0,
 
   // Temporal
   temporalAccumulationEnabled: false,

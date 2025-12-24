@@ -39,7 +39,6 @@ function createBlackHoleColorCache() {
   return {
     baseColor: createCachedLinearColor(),
     shellGlowColor: createCachedLinearColor(),
-    edgeGlowColor: createCachedLinearColor(),
     jetsColor: createCachedLinearColor(),
   }
 }
@@ -382,13 +381,6 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
         bhState.shellGlowColor
       )
     }
-    if (u.uEdgeGlowColor?.value) {
-      updateLinearColorUniform(
-        cache.edgeGlowColor,
-        u.uEdgeGlowColor.value as THREE.Color,
-        bhState.edgeGlowColor
-      )
-    }
     if (u.uJetsColor?.value) {
       updateLinearColorUniform(
         cache.jetsColor,
@@ -442,10 +434,6 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
     setUniform(u, 'uNoiseAmount', bhState.noiseAmount)
     setUniform(u, 'uMultiIntersectionGain', bhState.multiIntersectionGain)
 
-    // Rotation damping
-    setUniform(u, 'uDampInnerMul', bhState.dampInnerMul)
-    setUniform(u, 'uDampOuterMul', bhState.dampOuterMul)
-
     // Quality
     setUniform(u, 'uMaxSteps', bhState.maxSteps)
     setUniform(u, 'uStepBase', bhState.stepBase)
@@ -463,11 +451,6 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
     // via UniformManager.applyToMaterial above
     setUniform(u, 'uLightingMode', LIGHTING_MODE_MAP[bhState.lightingMode] ?? 0)
     setUniform(u, 'uAmbientTint', bhState.ambientTint)
-
-    // Edge glow
-    setUniform(u, 'uEdgeGlowEnabled', bhState.edgeGlowEnabled)
-    setUniform(u, 'uEdgeGlowWidth', bhState.edgeGlowWidth)
-    setUniform(u, 'uEdgeGlowIntensity', bhState.edgeGlowIntensity)
 
     // ========================================================================
     // Environment Map Update (Frame-Consistent via ExternalBridge)

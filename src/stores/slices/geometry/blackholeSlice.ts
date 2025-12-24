@@ -382,21 +382,6 @@ export const createBlackHoleSlice: StateCreator<ExtendedObjectSlice, [], [], Bla
     }))
   },
 
-  // === Rotation Damping ===
-  setBlackHoleDampInnerMul: (mul) => {
-    const clamped = Math.max(1, Math.min(2, mul))
-    set((state) => ({
-      blackhole: { ...state.blackhole, dampInnerMul: clamped },
-    }))
-  },
-
-  setBlackHoleDampOuterMul: (mul) => {
-    const clamped = Math.max(1.2, Math.min(8, mul))
-    set((state) => ({
-      blackhole: { ...state.blackhole, dampOuterMul: clamped },
-    }))
-  },
-
   // === Rendering Quality ===
   setBlackHoleRaymarchQuality: (quality) => {
     const preset = BLACK_HOLE_QUALITY_PRESETS[quality]
@@ -523,33 +508,6 @@ export const createBlackHoleSlice: StateCreator<ExtendedObjectSlice, [], [], Bla
     const clamped = Math.max(0, Math.min(10, density))
     set((state) => ({
       blackhole: { ...state.blackhole, shadowDensity: clamped },
-    }))
-  },
-
-  // === Edge Glow / Horizon ===
-  setBlackHoleEdgeGlowEnabled: (enabled) => {
-    set((state) => ({
-      blackhole: { ...state.blackhole, edgeGlowEnabled: enabled },
-    }))
-  },
-
-  setBlackHoleEdgeGlowWidth: (width) => {
-    const clamped = Math.max(0, Math.min(1, width))
-    set((state) => ({
-      blackhole: { ...state.blackhole, edgeGlowWidth: clamped },
-    }))
-  },
-
-  setBlackHoleEdgeGlowColor: (color) => {
-    set((state) => ({
-      blackhole: { ...state.blackhole, edgeGlowColor: color },
-    }))
-  },
-
-  setBlackHoleEdgeGlowIntensity: (intensity) => {
-    const clamped = Math.max(0, Math.min(5, intensity))
-    set((state) => ({
-      blackhole: { ...state.blackhole, edgeGlowIntensity: clamped },
     }))
   },
 
@@ -912,12 +870,10 @@ export const createBlackHoleSlice: StateCreator<ExtendedObjectSlice, [], [], Bla
     if (config.lightingMode !== undefined) validated.lightingMode = config.lightingMode
     if (config.baseColor !== undefined) validated.baseColor = config.baseColor
     if (config.shellGlowColor !== undefined) validated.shellGlowColor = config.shellGlowColor
-    if (config.edgeGlowColor !== undefined) validated.edgeGlowColor = config.edgeGlowColor
     if (config.jetsColor !== undefined) validated.jetsColor = config.jetsColor
     if (config.visualPreset !== undefined) validated.visualPreset = config.visualPreset
     if (config.dopplerEnabled !== undefined) validated.dopplerEnabled = config.dopplerEnabled
     if (config.jetsEnabled !== undefined) validated.jetsEnabled = config.jetsEnabled
-    if (config.edgeGlowEnabled !== undefined) validated.edgeGlowEnabled = config.edgeGlowEnabled
     if (config.enableAbsorption !== undefined) validated.enableAbsorption = config.enableAbsorption
     if (config.temporalAccumulationEnabled !== undefined)
       validated.temporalAccumulationEnabled = config.temporalAccumulationEnabled

@@ -65,10 +65,6 @@ uniform float uNoiseScale;          // Turbulence noise scale
 uniform float uNoiseAmount;         // Turbulence noise amount
 uniform float uMultiIntersectionGain; // Gain for multiple manifold hits
 
-// Rotation damping
-uniform float uDampInnerMul;        // Inner damping multiplier
-uniform float uDampOuterMul;        // Outer damping multiplier
-
 // Rendering quality
 uniform int uMaxSteps;              // Max raymarch steps
 uniform float uStepBase;            // Base step size
@@ -87,12 +83,6 @@ uniform int uLightingMode;          // 0=emissiveOnly, 1=fakeLit
 uniform float uRoughness;           // Surface roughness
 uniform float uSpecular;            // Specular intensity
 uniform float uAmbientTint;         // Ambient contribution
-
-// Edge glow / Horizon
-uniform bool uEdgeGlowEnabled;      // Enable horizon edge glow
-uniform float uEdgeGlowWidth;       // Edge glow width
-uniform vec3 uEdgeGlowColor;        // Edge glow color
-uniform float uEdgeGlowIntensity;   // Edge glow brightness
 
 // Background (uses general skybox system, no built-in fallback)
 uniform float uEnvMapReady;         // 1.0 when envMap is valid, 0.0 otherwise

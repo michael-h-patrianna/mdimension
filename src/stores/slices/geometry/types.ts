@@ -489,10 +489,6 @@ export interface BlackHoleSliceActions {
   setBlackHoleNoiseAmount: (amount: number) => void
   setBlackHoleMultiIntersectionGain: (gain: number) => void
 
-  // Rotation Damping
-  setBlackHoleDampInnerMul: (mul: number) => void
-  setBlackHoleDampOuterMul: (mul: number) => void
-
   // Rendering Quality
   setBlackHoleRaymarchQuality: (quality: BlackHoleQuality) => void
   setBlackHoleMaxSteps: (steps: number) => void
@@ -514,12 +510,6 @@ export interface BlackHoleSliceActions {
   setBlackHoleShadowEnabled: (enabled: boolean) => void
   setBlackHoleShadowSteps: (steps: number) => void
   setBlackHoleShadowDensity: (density: number) => void
-
-  // Horizon / Edge Glow
-  setBlackHoleEdgeGlowEnabled: (enabled: boolean) => void
-  setBlackHoleEdgeGlowWidth: (width: number) => void
-  setBlackHoleEdgeGlowColor: (color: string) => void
-  setBlackHoleEdgeGlowIntensity: (intensity: number) => void
 
   // Temporal
   setBlackHoleTemporalAccumulationEnabled: (enabled: boolean) => void

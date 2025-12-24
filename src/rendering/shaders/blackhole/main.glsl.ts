@@ -17,11 +17,7 @@ export const mainBlock = /* glsl */ `
 // Note: MRT (Multiple Render Target) output declarations are in precision.glsl.ts
 // gColor (location 0), gNormal (location 1), gPosition (location 2 when USE_TEMPORAL_ACCUMULATION)
 
-// Named constants for raymarching
-const float RAYMARCH_EPSILON = 0.0001;
-const float PHOTON_SPHERE_RATIO = 1.5;        // r_photon = 1.5 * r_schwarzschild
-const float EINSTEIN_RING_WIDTH_RATIO = 0.3;  // Fraction of horizon radius
-const float MAX_LENSING_DEFLECTION = 0.5;     // Prevents extreme distortion
+// Note: Shader constants are defined locally where used (e.g., in shell.glsl.ts, deferred-lensing.glsl.ts)
 
 /**
  * Calculate intersection with a sphere.
@@ -300,9 +296,19 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
     bentDirection = dir;
 
     // Sample photon shell (volumetric glow effect)
-    vec3 shellColor = photonShellEmission(ndRadius, pos);
-    if (length(shellColor) > 0.001) {
-      accum.color += shellColor * accum.transmittance * stepSize * 2.0;
+    // PERF: Quick bounding check before expensive emission calculation
+    // Photon shell radius = horizonRadius * (photonShellRadiusMul + dimBias * log(DIMENSION))
+    // Skip if clearly outside shell region to avoid mask/starburst computation
+    // Note: Must match getPhotonShellRadius() formula in shell.glsl.ts
+    float shellDimBias = uPhotonShellRadiusDimBias * log(float(DIMENSION));
+    float shellRp = uHorizonRadius * (uPhotonShellRadiusMul + shellDimBias);
+    float shellDelta = uPhotonShellWidth * uHorizonRadius * 2.0; // Conservative bound
+    if (abs(ndRadius - shellRp) < shellDelta) {
+      vec3 shellColor = photonShellEmission(ndRadius, pos);
+      // PERF: dot() avoids sqrt in length()
+      if (dot(shellColor, shellColor) > 0.000001) {
+        accum.color += shellColor * accum.transmittance * stepSize * 2.0;
+      }
     }
 
     prevPos = pos;
@@ -313,6 +319,10 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
     
     #ifdef USE_VOLUMETRIC_DISK
     // Volumetric sampling
+    // PERF: Reuse diskR from step size calculation, update for new position
+    // diskInnerR pre-computed to pass to getDiskEmission (avoids redundant calculation)
+    diskR = length(pos.xz); // Update diskR for the new position after stepping
+    float diskInnerR = uHorizonRadius * uDiskInnerRadiusMul;
     float density = getDiskDensity(pos, time);
     if (density > 0.001) {
         // Calculate normal if needed for coloring or if likely needed for depth
@@ -326,7 +336,8 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
         }
 
         // Calculate emission with Doppler support (pass dir as viewDir)
-        vec3 emission = getDiskEmission(pos, density, time, dir, stepNormal);
+        // PERF: Pass pre-computed r and innerR to avoid redundant calculations
+        vec3 emission = getDiskEmission(pos, density, time, dir, stepNormal, diskR, diskInnerR);
         
         // Beer-Lambert law integration
         // transmittance *= exp(-density * stepSize * absorption_coeff)
@@ -400,9 +411,6 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
     }
     #endif
 
-    // Edge glow
-    vec3 edgeGlow = computeEdgeGlow(ndRadius, accum.color);
-    accum.color += edgeGlow * accum.transmittance * stepSize * 0.1;
   }
 
   // Handle horizon or background
