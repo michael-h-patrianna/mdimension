@@ -71,9 +71,9 @@ All 6 renderers consistently:
 - Read `scene.environment` for IBL
 - Read IBL settings from `useEnvironmentStore`
 
-## Known Limitation
+## Known Limitation (RESOLVED)
 
-**`scene.background` export disabled** - Exporting the captured cubemap to `scene.background` causes black screen. This doesn't affect IBL (uses `scene.environment`), but may affect black hole gravitational lensing with procedural skyboxes. Marked with TODO for future investigation.
+**`scene.background` export** - ~~Previously disabled due to black screen.~~ **Now fixed!** The root cause was `generateMipmaps: true` on WebGLCubeRenderTarget causing WebGL binding conflicts. Fixed by setting `generateMipmaps: false` and `minFilter: LinearFilter`. See `docs/bugfixing/log/gravitational-lensing-root-cause.md` for details.
 
 ## Files Modified
 

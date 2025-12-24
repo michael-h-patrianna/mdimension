@@ -1,17 +1,100 @@
 # Gravitational Lensing Root Cause Analysis
 
 **Date:** 2024-12-24
-**Status:** ✅ FIXED
+**Status:** 🔴 PARTIALLY FIXED - Wall lensing still broken
 **Issue:** No gravitational lensing visible on skybox or walls around black hole
 
-## Solution Summary
+## Current State (2024-12-24 Session 2)
 
-The root cause was **mipmap generation causing WebGL binding conflicts**. When `generateMipmaps: true` was set on WebGLCubeRenderTarget, THREE.js bound the texture in a way that caused `INVALID_OPERATION` when the same texture was later used as `scene.background`.
+### What Works
+- ✅ Skybox lensing via raymarcher envMap sampling
+- ✅ Wall is visible
+- ✅ scene.background export enabled
+
+### What's Broken
+- 🔴 Wall is NOT lensed - large elliptical dead zone around black hole
+- 🔴 SSL disabled its cubemap auto-detection (to fix wall visibility)
+- 🔴 Inner radius exclusion (2.5x-3.5x) creates visible "no lensing" band
+
+### The Conflict
+1. SSL auto-detecting scene.background → Wall pixels replaced with cubemap samples (wall invisible)
+2. SSL NOT using scene.background → No hybrid sky sampling, wall not lensed
+
+---
+
+## Fixes Applied (Mipmap Issue)
+
+The root cause of BLACK SCREEN was **mipmap generation causing WebGL binding conflicts**. When `generateMipmaps: true` was set on WebGLCubeRenderTarget, THREE.js bound the texture in a way that caused `INVALID_OPERATION` when the same texture was later used as `scene.background`.
 
 **Fixes applied:**
 1. `CubemapCapturePass.ts`: Set `generateMipmaps: false` and `minFilter: LinearFilter`
 2. `DebugOverlayPass.ts`: Clear `scene.background` before rendering to prevent WebGLBackground issues
 3. Re-enabled `scene.background` export in CubemapCapturePass
+4. `ScreenSpaceLensingPass.ts`: Disabled auto-detection of scene.background (fixes wall visibility but breaks wall lensing)
+
+---
+
+## The Real Problem: SSL Depth Classification
+
+**File:** `src/rendering/shaders/postprocessing/screenSpaceLensing.glsl.ts:173-177`
+
+```glsl
+if (uDepthAvailable) {
+  depth = texture(tDepth, vUv).r;
+  linearDepth = linearizeDepth(depth, uNear, uFar);
+  isSky = depth > 0.99;  // <-- PROBLEM: Wall depth << 0.99, so wall is NOT sky
+}
+```
+
+The shader correctly identifies wall as NOT sky (`isSky = false`). But then at line 195:
+
+```glsl
+if (uHybridSkyEnabled && uSkyCubemapAvailable && isSky) {
+  // Sample cubemap with bent rays
+} else {
+  // Screen-space UV distortion only
+}
+```
+
+**For wall pixels:**
+- `isSky = false` → Enters the ELSE branch
+- Uses screen-space UV distortion only
+- BUT inner radius exclusion (lines 229-232) DISABLES even this distortion near the center
+
+**Result:** Wall near black hole has NO lensing effect at all.
+
+---
+
+## Failed Approaches (DO NOT RETRY)
+
+| Approach | Why It Failed |
+|----------|---------------|
+| SSL auto-detect scene.background | Wall pixels classified as "sky" and replaced with cubemap samples - wall disappears |
+| Inner radius exclusion only | Creates visible "no lensing" band around black hole |
+| Depth-based source check | Depth buffer doesn't align with visual horizon |
+| Brightness check | Would break dark skybox areas |
+| UV clamping outside horizon | Breaks Einstein ring formation |
+
+---
+
+## Potential Solutions (NOT YET TRIED)
+
+### Option 1: Fix SSL Depth Classification for Wall Lensing
+- Wall should be lensed via screen-space UV distortion (NOT cubemap sampling)
+- Remove or reduce inner radius exclusion for wall pixels
+- Keep cubemap sampling ONLY for actual sky pixels (depth > 0.99)
+
+### Option 2: Remove SSL Entirely (Original Plan)
+- The raymarcher already lenses the skybox correctly
+- Wall lensing may not be physically accurate anyway (wall is close, lensing is for distant light)
+- Simplest solution, removes ~600 lines of code
+
+### Option 3: Capture Wall in Cubemap
+- CubemapCapturePass captures SKYBOX layer only
+- Could add ENVIRONMENT layer to capture
+- Problem: Wall would be captured from wrong perspective (center of scene, not camera)
+
+---
 
 ## Executive Summary
 

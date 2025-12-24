@@ -223,15 +223,13 @@ export class ScreenSpaceLensingPass extends BasePass {
     this.material.uniforms['uFalloff']!.value = this.falloff
     this.material.uniforms['uChromaticAberration']!.value = this.chromaticAberration
     this.material.uniforms['uHybridSkyEnabled']!.value = this.hybridSkyEnabled
-    // Auto-detect sky cubemap from scene background if available
-    const backgroundCubemap =
-      scene.background && (scene.background as THREE.CubeTexture).isCubeTexture
-        ? (scene.background as THREE.CubeTexture)
-        : null
-    const activeCubemap = backgroundCubemap ?? this.skyCubemap
-
-    this.material.uniforms['tSkyCubemap']!.value = activeCubemap
-    this.material.uniforms['uSkyCubemapAvailable']!.value = activeCubemap !== null
+    // NOTE: We intentionally do NOT auto-detect scene.background for sky cubemap.
+    // scene.background is now used by the black hole raymarcher for gravitational lensing
+    // via envMap sampling. If SSL auto-detected it, wall pixels would be incorrectly
+    // classified as "background" and replaced with cubemap samples, making walls invisible.
+    // Use setSkyCubemap() to explicitly enable hybrid sky mode if needed.
+    this.material.uniforms['tSkyCubemap']!.value = this.skyCubemap
+    this.material.uniforms['uSkyCubemapAvailable']!.value = this.skyCubemap !== null
 
     // Update camera matrices for world ray reconstruction
     if (camera instanceof THREE.PerspectiveCamera || camera instanceof THREE.OrthographicCamera) {

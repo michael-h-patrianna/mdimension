@@ -72,6 +72,13 @@ export class DebugOverlayPass extends BasePass {
     // Save camera layers
     this.savedCameraLayers.mask = camera.layers.mask;
 
+    // IMPORTANT: Clear scene.background to prevent WebGLBackground from rendering.
+    // When scene.background is a WebGLCubeRenderTarget.texture, THREE.js's WebGLBackground
+    // attempts to render it, which can cause WebGL state issues. Since we only render
+    // the DEBUG layer here (gizmos, helpers), we don't need the background.
+    const savedBackground = scene.background;
+    scene.background = null;
+
     try {
       // Configure camera to ONLY render DEBUG layer
       camera.layers.disableAll();
@@ -91,6 +98,8 @@ export class DebugOverlayPass extends BasePass {
       // Restore camera layers
       camera.layers.mask = this.savedCameraLayers.mask;
       renderer.autoClear = true;
+      // Restore scene.background
+      scene.background = savedBackground;
     }
   }
 }

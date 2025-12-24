@@ -321,11 +321,12 @@ export class CubemapCapturePass extends BasePass {
     if (hasValidHistory) {
       const readTarget = this.cubemapHistory.getRead(1);
 
-      // Note: scene.background export is disabled to avoid rendering issues.
-      // The black hole shader reads from getLastFrameExternal('sceneBackground')
-      // which captures the React-managed scene.background at frame start.
-      // TODO: Investigate why exporting captured cubemap to scene.background causes black screen.
-      
+      // Export scene.background for black hole gravitational lensing
+      ctx.queueExport({
+        id: 'scene.background',
+        value: readTarget.texture,
+      });
+
       // Queue export for scene.environment (for IBL reflections)
       if (this.pmremRenderTarget) {
         ctx.queueExport({
@@ -346,10 +347,16 @@ export class CubemapCapturePass extends BasePass {
     this.cubemapHistory = new TemporalResource<THREE.WebGLCubeRenderTarget>({
       historyLength: 2,
       factory: () => {
+        // IMPORTANT: generateMipmaps must be FALSE to avoid WebGL binding conflicts.
+        // When mipmaps are generated, THREE.js binds the texture in a way that causes
+        // "INVALID_OPERATION: bindTexture: textures can not be used with multiple targets"
+        // when the same texture is later used as scene.background.
+        // See: docs/bugfixing/log/gravitational-lensing-root-cause.md
+        // See: https://github.com/mrdoob/three.js/issues/29628
         const target = new THREE.WebGLCubeRenderTarget(resolution, {
           format: THREE.RGBAFormat,
-          generateMipmaps: true,
-          minFilter: THREE.LinearMipmapLinearFilter,
+          generateMipmaps: false,
+          minFilter: THREE.LinearFilter,
           magFilter: THREE.LinearFilter,
         });
         target.texture.mapping = THREE.CubeReflectionMapping;
