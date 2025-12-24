@@ -197,11 +197,36 @@ float getDiskDensity(vec3 pos, float time) {
 
     // 3. Radial Profile
     // Soft inner edge near ISCO, Soft outer edge fade
-    float rDensity = smoothstep(innerR * DISK_INNER_EDGE_SOFTNESS, innerR, r) * (1.0 - smoothstep(outerR * DISK_OUTER_EDGE_SOFTNESS, outerR * DISK_OUTER_FADE_END, r));
+    
+    // Asymmetric ISCO: Modulate inner radius based on spin and angle
+    // Prograde side (moving with spin) allows closer orbits (smaller ISCO)
+    // Retrograde side (moving against spin) forces further orbits (larger ISCO)
+    // We approximate this by modulating innerR with the dot product of position and tangential vector
+    float spinMod = 0.0;
+    if (uSpin > 0.01) {
+        // Tangential direction in XZ plane (-z, x)
+        // Dot with position (x, z) -> x*(-z) + z*x = 0... wait, dot is with VIEW direction or SPIN?
+        // The ISCO asymmetry is spatial. It depends on the phi coordinate relative to rotation.
+        // Actually, simpler: Prograde is one side of the hole, Retrograde is the other.
+        // We can modulate based on x coordinate (assuming Y-axis spin)
+        // But we want it to rotate with the camera/coordinate system.
+        // Let's use the X coordinate in local space.
+        // spinFactor: -1 to 1.
+        float spinFactor = pos.x / (r + 0.001); 
+        // uSpin 0..1. Maximum asymmetry at 1.
+        // Prograde (x>0 usually) -> innerR * 0.6
+        // Retrograde (x<0) -> innerR * 1.0 (or larger)
+        // Note: This is an artistic approximation of the complex r_isco(theta) function
+        spinMod = -spinFactor * uSpin * 0.4;
+    }
+    
+    float effectiveInnerR = innerR * (1.0 + spinMod);
+    
+    float rDensity = smoothstep(effectiveInnerR * DISK_INNER_EDGE_SOFTNESS, effectiveInnerR, r) * (1.0 - smoothstep(outerR * DISK_OUTER_EDGE_SOFTNESS, outerR * DISK_OUTER_FADE_END, r));
     
     // Inverse square falloff for bulk density (denser inside)
     // Guard against innerR being zero to prevent NaN
-    float safeInnerR = max(innerR, 0.001);
+    float safeInnerR = max(effectiveInnerR, 0.001);
     rDensity *= 2.0 / (pow(r / safeInnerR, 2.0) + 0.1);
 
     // 4. Volumetric Detail (The "Interstellar" Look)

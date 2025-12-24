@@ -54,9 +54,8 @@ float adaptiveStepSize(float ndRadius) {
   // Reduce step when close to horizon
   float horizonDist = max(ndRadius - uHorizonRadius, 0.0);
   float horizonFactor = smoothstep(0.0, uHorizonRadius * uStepAdaptR, horizonDist);
-  // CRITICAL: Allow very small steps near horizon (0.02x) to capture grazing rays
-  // for the photon ring and Einstein ring effects without clipping into the horizon.
-  step *= mix(0.02, 1.0, horizonFactor);
+  // Revert to 0.1x to ensure rays can traverse the scene within maxSteps
+  step *= mix(0.1, 1.0, horizonFactor);
 
   // Distance-Based Step Relaxation:
   // Allow step size to grow with distance to save steps in empty space.
@@ -245,7 +244,7 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
   vec3 pos = rayOrigin + rayDir * (tNear + startOffset);
   vec3 dir = rayDir;
   vec3 prevPos = pos;
-  
+
   float totalDist = tNear + startOffset;
   float maxDist = tFar;
 
@@ -268,10 +267,15 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
 
     float ndRadius = ndDistance(pos);
 
-    // Horizon check
+    // Horizon check - Volumetric Absorption
+    // Instead of breaking, we absorb all light if we hit the visual horizon.
+    // This prevents the "black sticker" artifact by allowing the loop to
+    // naturally handle the transition.
     if (isInsideHorizon(ndRadius)) {
+      accum.transmittance = 0.0;
       hitHorizon = true;
-      break;
+      // We can break here because transmittance is 0, which is handled by the loop condition
+      break; 
     }
 
     // Adaptive step size

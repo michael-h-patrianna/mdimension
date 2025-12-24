@@ -1914,7 +1914,7 @@ export const BLACK_HOLE_VISUAL_PRESETS: Record<BlackHoleVisualPreset, Partial<Bl
 export const DEFAULT_BLACK_HOLE_CONFIG: BlackHoleConfig = {
   // Physics-based parameters (Kerr black hole)
   // horizonRadius is the Schwarzschild radius rs = 2M (visual scale)
-  horizonRadius: 2.0,
+  horizonRadius: 0.5,
   spin: 0.9, // High spin for dramatic Interstellar-style effects (prograde ISCO ~ 2.3M)
   diskTemperature: 6500, // ~Sun temperature for natural white disk color
   gravityStrength: 5.0, // Strong gravity for dramatic Interstellar-style lensing
@@ -1962,7 +1962,7 @@ export const DEFAULT_BLACK_HOLE_CONFIG: BlackHoleConfig = {
 
   // Quality
   raymarchQuality: 'balanced',
-  maxSteps: 350, // Increased for full ray orbits (Einstein ring requires multiple disk crossings)
+  maxSteps: 600, // Increased to prevent black voids with adaptive steps
   stepBase: 0.08,
   stepMin: 0.01,
   stepMax: 0.2,

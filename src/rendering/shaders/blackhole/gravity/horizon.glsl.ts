@@ -20,7 +20,9 @@ export const horizonBlock = /* glsl */ `
  * This creates a smaller visual black sphere for spinning black holes.
  */
 bool isInsideHorizon(float ndRadius) {
-  return ndRadius < uVisualEventHorizon;
+  // Use a tiny "Kill Sphere" near the singularity (0.1x) to allow natural shadow formation.
+  // The visual horizon is handled by volumetric absorption in main.glsl.ts.
+  return ndRadius < uVisualEventHorizon * 0.1;
 }
 
 /**

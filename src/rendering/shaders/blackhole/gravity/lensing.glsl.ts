@@ -118,13 +118,10 @@ float computeDeflectionAngle(float ndRadius) {
  */
 vec3 bendRay(vec3 rayDir, vec3 pos3d, float stepSize, float ndRadius) {
   float rs = uHorizonRadius;
-  
+
   // N-Dimensional radius (already computed and passed in)
   float r = max(ndRadius, uEpsilonMul);
   float r2 = r * r;
-  
-  // Skip if too close to singularity or very far (optimization)
-  if (r2 < rs * rs * 0.25) return rayDir;
 
   // Optimization: Compute h² without cross product
   // h² = |pos|^2 - (pos . rayDir)^2
@@ -137,6 +134,31 @@ vec3 bendRay(vec3 rayDir, vec3 pos3d, float stepSize, float ndRadius) {
   if (h2 < 1e-10) {
     return rayDir;
   }
+
+  // === Photon Sphere Proximity Factor ===
+  // Reduce lensing for rays far from the photon sphere.
+  // This allows rays to travel more straight when far from the BH,
+  // enabling the front portion of the accretion disk to be visible.
+  //
+  // Physics: The photon sphere is at r = 1.5 * Rs (Schwarzschild).
+  // Light can orbit there. Beyond that, lensing should decrease rapidly.
+  //
+  // Factor:
+  // - 1.0 when r <= photonSphereR (full lensing at photon sphere)
+  // - Smoothly decreases as r increases beyond photon sphere
+  // - Very weak lensing for rays far from BH (allows front disk visibility)
+  float photonSphereR = rs * 1.5;
+  float lensingFalloffStart = rs * 2.0;   // Start reducing right after photon sphere
+  float lensingFalloffEnd = rs * 5.0;     // Minimum lensing reached here
+  float minLensingFactor = 0.05;          // Keep only 5% for far rays
+
+  float proximityFactor = 1.0 - smoothstep(lensingFalloffStart, lensingFalloffEnd, r);
+  proximityFactor = mix(minLensingFactor, 1.0, proximityFactor);
+
+  // Additional quadratic falloff for very far rays
+  // This ensures rays at the disk's outer edge travel nearly straight
+  float farFalloff = 1.0 / (1.0 + max(0.0, r - lensingFalloffStart) * 0.5 / rs);
+  proximityFactor *= farFalloff;
 
   // === Schwarzschild component ===
   // F_schwarzschild = -1.5 * h² * r_hat / r^5
@@ -151,11 +173,12 @@ vec3 bendRay(vec3 rayDir, vec3 pos3d, float stepSize, float ndRadius) {
   if (abs(uDistanceFalloff - 2.0) > 0.01) {
     ndScale *= pow(r, 2.0 - uDistanceFalloff);
   }
-  
+
   forceMagnitude *= ndScale;
 
   // Apply gravity strength for artistic control
-  forceMagnitude *= uGravityStrength * uBendScale;
+  // Also apply photon sphere proximity factor to reduce lensing far from BH
+  forceMagnitude *= uGravityStrength * uBendScale * proximityFactor;
   
   // Apply clamping
   forceMagnitude = min(forceMagnitude, uLensingClamp);
@@ -189,8 +212,9 @@ vec3 bendRay(vec3 rayDir, vec3 pos3d, float stepSize, float ndRadius) {
       float r3 = r2 * r;
       float frameDragMag = 2.0 * a / r3;
 
-      // Scale by gravity strength and ND scale
-      frameDragMag *= uGravityStrength * uBendScale * ndScale;
+      // Scale by gravity strength, ND scale, and proximity factor
+      // Use physical 1.0 scaling - visual asymmetry comes from the accretion disk ISCO
+      frameDragMag *= uGravityStrength * uBendScale * ndScale * proximityFactor;
       
       // acceleration += frameDragMag * azimuthalDir
       acceleration += (frameDragMag * inversesqrt(azLenSq)) * azimuthalDirRaw;

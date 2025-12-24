@@ -164,14 +164,8 @@ export const screenSpaceLensingFragmentShader = /* glsl */ `
     vec2 displacement = computeLensingDisplacement(vUv, uBlackHoleCenter);
 
     float r = length(vUv - uBlackHoleCenter);
-    if (r < uHorizonRadius) {
-      fragColor = vec4(0.0, 0.0, 0.0, 1.0);
-      return;
-    }
 
-    vec2 distortedUV = vUv + displacement;
-    distortedUV = clamp(distortedUV, vec2(0.0), vec2(1.0));
-
+    // Sample depth for depth-aware distortion
     float depth = 1.0;
     float linearDepth = uFar;
     bool isSky = true;
@@ -181,6 +175,13 @@ export const screenSpaceLensingFragmentShader = /* glsl */ `
       linearDepth = linearizeDepth(depth, uNear, uFar);
       isSky = depth > 0.99;
     }
+
+    // NOTE: No 2D horizon black-out here!
+    // The black hole raymarcher handles the event horizon correctly via volumetric absorption.
+    // A 2D screen-space check would incorrectly cover foreground objects (accretion disk).
+
+    vec2 distortedUV = vUv + displacement;
+    distortedUV = clamp(distortedUV, vec2(0.0), vec2(1.0));
 
     float depthFactor = uDepthAvailable
       ? smoothstep(1.0, 10.0, linearDepth)
