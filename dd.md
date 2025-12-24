@@ -265,3 +265,45 @@ scripts/playwright/polytope-rendering.spec.ts
 
 notes:
 - except for the black hole, scene will show green tint as all object types have a green material color in the start. except the black hole which at its center is obviously black.
+
+
+  1. The "Tunable Handoff" (Recommended Fix)
+  Fix the mathematical errors in the current approach to make the transitions seamless.
+
+   * Implementation:
+       * Fix Aspect Ratio: In the shader, correct the distance calculation by multiplying the UV x-coordinate by the screen aspect ratio (vUv.x * uAspectRatio). This turns the ellipsoid mask back into a sphere.
+       * Align Radii: Change the innerRadius logic. Instead of multiplying by an arbitrary 2.5, pass the exact "end" radius of the internal raymarcher (e.g., 5.0) to the SSL shader.
+       * Gradient Mix: Introduce a smooth smoothstep transition at the boundary instead of a hard cut-off to blend the internal raymarched lensing with the external screen-space lensing.
+   * Pros:
+       * Lowest Risk: Minimal code changes; purely correcting existing logic.
+       * High Performance: Keeps the expensive raymarching constrained to the center and cheap screen-space hacks for the periphery.
+   * Cons:
+       * Imperfection: It is still a screen-space effect. Objects passing behind the black hole might still have minor visual discontinuities where the two effects meet.
+
+  2. Depth-Aware 3D Distortion (High Quality Post-FX)
+  Upgrade the SSL shader to calculate distortion in View Space rather than UV Space.
+
+   * Implementation:
+       * reconstruct the World Position of every pixel using the Depth Buffer.
+       * Calculate the distance from the Black Hole's actual 3D center to that pixel's 3D position.
+       * Apply the distortion vector based on 3D proximity, then project back to screen UVs.
+       * Use the depth buffer to strictly mask out pixels that are in front of the black hole (to avoid distorting the black hole with its own background).
+   * Pros:
+       * Geometrically Correct: The "ellipsoid" issue vanishes completely because math happens in 3D.
+       * Robust: Handles camera movement and FOV changes perfectly.
+   * Cons:
+       * Complexity: Requires accurate depth reconstruction and inverse projection matrices in the shader.
+       * Performance: Slightly heavier on the GPU than simple 2D UV distortion.
+
+  3. Vertex Shader Displacement (The "Object-Level" Approach)
+  Move the lensing effect out of Post-Processing entirely and into the materials of the surrounding objects (Walls, Skybox).
+
+   * Implementation:
+       * Add a "Gravitational Lensing" chunk to the vertex shaders of the wall and skybox materials.
+       * Distort the gl_Position or varying UVs of the geometry itself based on proximity to the black hole uniform.
+   * Pros:
+       * Perfect Occlusion: Solves all "masking" issues naturally. The black hole (an object) simply sits in front of the distorted walls. No need to "handoff" between effects.
+       * Artifact-Free: No screen-edge smearing or resolution-dependent artifacts.
+   * Cons:
+       * Invasive: Requires modifying the shader code for every object type in the scene that needs to be lensed.
+       * Tessellation Dependent: If the walls are simple cubes with few vertices, the distortion will look jagged unless highly subdivided.
