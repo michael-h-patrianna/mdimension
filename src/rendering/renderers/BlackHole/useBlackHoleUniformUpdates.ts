@@ -93,6 +93,12 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
   // Track rotation version changes for adaptive quality
   const prevRotationVersionRef = useRef<number>(-1)
 
+  // PERF (OPT-BH-3): Camera velocity tracking for ultra-fast mode
+  // When camera moves quickly, enable ultra-fast mode to skip noise computation
+  const prevCameraPosRef = useRef(new THREE.Vector3())
+  const cameraVelocityRef = useRef(0)
+  const ULTRA_FAST_THRESHOLD = 2.0 // units per second - above this, enable ultra-fast
+
   // Cached linear colors (avoid sRGB->linear conversion every frame)
   const colorCacheRef = useRef(createBlackHoleColorCache())
 
@@ -149,7 +155,7 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
 
   // CRITICAL: Use negative priority (-10) to ensure uniforms are updated BEFORE
   // PostProcessing's useFrame runs the volumetric render pass.
-  useFrame(() => {
+  useFrame((_, delta) => {
     if (!meshRef.current) {
       return
     }
@@ -216,6 +222,18 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
     if (u.uCameraPosition?.value) {
       ;(u.uCameraPosition.value as THREE.Vector3).copy(camera.position)
     }
+
+    // PERF (OPT-BH-3): Track camera velocity for ultra-fast mode
+    // When camera moves quickly, skip noise computation entirely
+    const safeDelta = Math.max(delta, 0.001) // Avoid division by zero
+    const frameDist = camera.position.distanceTo(prevCameraPosRef.current)
+    const frameVelocity = frameDist / safeDelta
+    // Smooth velocity using exponential moving average (0.8 current, 0.2 new)
+    cameraVelocityRef.current = cameraVelocityRef.current * 0.8 + frameVelocity * 0.2
+    prevCameraPosRef.current.copy(camera.position)
+    // Enable ultra-fast mode when velocity exceeds threshold
+    setUniform(u, 'uUltraFastMode', cameraVelocityRef.current > ULTRA_FAST_THRESHOLD)
+
     if (u.uResolution?.value) {
       // Use logical viewport size - consistent with other raymarching shaders
       // Ray direction now calculated from vPosition, not screen coordinates
@@ -434,6 +452,15 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
     setUniform(u, 'uShellGlowStrength', bhState.shellGlowStrength)
     setUniform(u, 'uShellStepMul', bhState.shellStepMul)
     setUniform(u, 'uShellContrastBoost', bhState.shellContrastBoost)
+
+    // PERF OPTIMIZATION (OPT-BH-5): Pre-compute photon shell values on CPU
+    // Avoids log() and multiple multiplications per-pixel in the shader.
+    // Formula: shellRp = horizonRadius * (radiusMul + radiusDimBias * log(dimension))
+    const shellDimBias = bhState.photonShellRadiusDimBias * Math.log(dimension)
+    const shellRp = bhState.horizonRadius * (bhState.photonShellRadiusMul + shellDimBias)
+    const shellDelta = bhState.photonShellWidth * bhState.horizonRadius
+    setUniform(u, 'uShellRpPrecomputed', shellRp)
+    setUniform(u, 'uShellDeltaPrecomputed', shellDelta)
 
     // Manifold
     setUniform(u, 'uManifoldType', MANIFOLD_TYPE_MAP[bhState.manifoldType] ?? 0)

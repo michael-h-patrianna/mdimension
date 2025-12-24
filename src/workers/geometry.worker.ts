@@ -18,9 +18,10 @@
  * @see https://vitejs.dev/guide/features.html#web-workers
  */
 
-import { flattenGeometry, flattenFaces, inflateVerticesOnly } from '@/lib/geometry/transfer'
+import { flattenGeometry, flattenFaces, inflateVerticesOnly, inflateEdges } from '@/lib/geometry/transfer'
 import { generateWythoffPolytopeWithWarnings } from '@/lib/geometry/wythoff'
 import { computeConvexHullFaces } from '@/lib/geometry/extended/utils/convex-hull-faces'
+import { computeTriangleFaces, computeGridFaces } from '@/lib/geometry/faces'
 import type {
   WorkerRequest,
   GenerateWythoffRequest,
@@ -141,10 +142,11 @@ function handleWythoffGeneration(request: GenerateWythoffRequest): void {
 // ============================================================================
 
 /**
- * Handle convex hull face computation request
+ * Handle face computation request
+ * Dispatches to appropriate algorithm based on method
  */
 function handleFaceComputation(request: ComputeFacesRequest): void {
-  const { id, vertices: flatVertices, dimension } = request
+  const { id, method, vertices: flatVertices, dimension, edges: flatEdges, gridProps } = request
 
   // Register request as active
   activeRequests.add(id)
@@ -152,9 +154,6 @@ function handleFaceComputation(request: ComputeFacesRequest): void {
   try {
     // Stage: initializing
     sendProgress(id, 0, 'initializing')
-
-    // Reconstruct vertices from flat array
-    const vertices = inflateVerticesOnly(flatVertices, dimension)
 
     // Check cancellation
     if (!activeRequests.has(id)) {
@@ -164,8 +163,39 @@ function handleFaceComputation(request: ComputeFacesRequest): void {
     // Stage: faces
     sendProgress(id, 20, 'faces')
 
-    // Compute convex hull faces
-    const faces = computeConvexHullFaces(vertices)
+    let faces: [number, number, number][] | number[][]
+
+    switch (method) {
+      case 'convex-hull': {
+        // Reconstruct vertices from flat array
+        const vertices = inflateVerticesOnly(flatVertices, dimension)
+        faces = computeConvexHullFaces(vertices)
+        break
+      }
+
+      case 'triangles': {
+        if (!flatEdges) {
+          throw new Error('Edges required for triangle face detection')
+        }
+        // Reconstruct vertices and edges from flat arrays
+        const vertices = inflateVerticesOnly(flatVertices, dimension)
+        const edges = inflateEdges(flatEdges)
+        faces = computeTriangleFaces(vertices, edges)
+        break
+      }
+
+      case 'grid': {
+        if (!gridProps) {
+          throw new Error('Grid properties required for grid face detection')
+        }
+        // Grid faces are computed directly from properties, no vertex data needed
+        faces = computeGridFaces(gridProps)
+        break
+      }
+
+      default:
+        throw new Error(`Unknown face detection method: ${method}`)
+    }
 
     // Check cancellation after expensive operation
     if (!activeRequests.has(id)) {
@@ -176,7 +206,19 @@ function handleFaceComputation(request: ComputeFacesRequest): void {
     sendProgress(id, 90, 'complete')
 
     // Flatten faces for transfer
-    const { flatFaces, buffer } = flattenFaces(faces)
+    // Handle both triangle and quad faces by splitting quads into triangles
+    const triangleFaces: [number, number, number][] = []
+    for (const f of faces) {
+      if (f.length === 3) {
+        triangleFaces.push([f[0]!, f[1]!, f[2]!])
+      } else if (f.length === 4) {
+        // Split quad into two triangles: (0,1,2) and (0,2,3)
+        triangleFaces.push([f[0]!, f[1]!, f[2]!])
+        triangleFaces.push([f[0]!, f[2]!, f[3]!])
+      }
+    }
+
+    const { flatFaces, buffer } = flattenFaces(triangleFaces)
 
     // Send the result with zero-copy transfer
     const response: ResultResponse = {

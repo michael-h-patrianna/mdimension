@@ -29,18 +29,57 @@ export interface GenerateWythoffRequest {
 }
 
 /**
- * Request to compute convex hull faces from vertices
+ * Face detection methods supported by the worker
+ */
+export type WorkerFaceMethod = 'convex-hull' | 'triangles' | 'grid'
+
+/**
+ * Request to compute faces from vertices using specified method
  */
 export interface ComputeFacesRequest {
   type: 'compute-faces'
   /** Unique request ID for matching responses */
   id: string
+  /** Face detection method to use */
+  method: WorkerFaceMethod
   /** Flattened vertex data [v0_d0, v0_d1, ..., v1_d0, ...] */
   vertices: Float64Array
   /** Dimensionality of the vertices */
   dimension: number
   /** Object type for face detection method selection */
   objectType: ObjectType
+  /** Flattened edge data [e0_v0, e0_v1, e1_v0, e1_v1, ...] (required for 'triangles') */
+  edges?: Uint32Array
+  /** Grid metadata properties (required for 'grid') */
+  gridProps?: GridFaceProps
+}
+
+/**
+ * Properties needed for grid-based face detection (clifford-torus, nested-torus)
+ */
+export interface GridFaceProps {
+  /** Visualization mode ('flat' | 'nested') */
+  visualizationMode?: string
+  /** Internal mode ('classic' | 'generalized' | '3d-torus') */
+  mode?: string
+  /** U resolution for grid */
+  resolutionU?: number
+  /** V resolution for grid */
+  resolutionV?: number
+  /** Xi1 resolution for nested tori */
+  resolutionXi1?: number
+  /** Xi2 resolution for nested tori */
+  resolutionXi2?: number
+  /** K parameter for generalized mode */
+  k?: number
+  /** Steps per circle for generalized mode */
+  stepsPerCircle?: number
+  /** Intrinsic dimension for nested tori */
+  intrinsicDimension?: number
+  /** Number of tori for nested visualization */
+  torusCount?: number
+  /** Config store key to determine grid type */
+  configKey: 'cliffordTorus' | 'nestedTorus'
 }
 
 /**

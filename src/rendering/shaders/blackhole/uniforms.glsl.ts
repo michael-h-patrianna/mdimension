@@ -51,6 +51,8 @@ uniform float uShellGlowStrength;       // Shell emission intensity
 uniform vec3 uShellGlowColor;           // Shell color
 uniform float uShellStepMul;            // Step size near shell
 uniform float uShellContrastBoost;      // Shell sharpness
+uniform float uShellRpPrecomputed;      // Pre-calculated photon shell radius (CPU-side optimization)
+uniform float uShellDeltaPrecomputed;   // Pre-calculated shell width delta (CPU-side optimization)
 
 // Manifold / Accretion
 uniform int uManifoldType;          // 0=auto, 1=disk, 2=sheet, 3=slab, 4=field
@@ -77,6 +79,11 @@ uniform float uAbsorption;          // Absorption coefficient
 uniform float uTransmittanceCutoff; // Early exit transmittance threshold
 uniform float uFarRadius;           // Far clipping radius
 // Note: uQualityMultiplier is declared in shared/core/uniforms.glsl.ts
+
+// PERF (OPT-BH-3): Ultra-fast mode for rapid camera movement
+// When camera velocity exceeds threshold, skip all noise computation
+// and use smooth radial density gradient only. Triggered by CPU velocity tracking.
+uniform bool uUltraFastMode;
 
 // Lighting
 uniform int uLightingMode;          // 0=emissiveOnly, 1=fakeLit

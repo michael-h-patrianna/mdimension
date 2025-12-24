@@ -101,6 +101,9 @@ export function useBlackHoleUniforms() {
       uShellGlowColor: { value: new THREE.Color('#ffffff').convertSRGBToLinear() },
       uShellStepMul: { value: 0.35 },
       uShellContrastBoost: { value: 1.0 },
+      // PERF (OPT-BH-5): Pre-calculated shell values to avoid per-pixel log() and multiplications
+      uShellRpPrecomputed: { value: 2.6 }, // Default: 2.0 * (1.3 + 0.1 * log(4)) ≈ 2.6
+      uShellDeltaPrecomputed: { value: 0.1 }, // Default: 0.05 * 2.0 = 0.1
 
       // Manifold
       uManifoldType: { value: 0 },
@@ -126,6 +129,10 @@ export function useBlackHoleUniforms() {
       uAbsorption: { value: 1.0 },
       uTransmittanceCutoff: { value: 0.01 },
       uFarRadius: { value: 35.0 }, // Match store default (DEFAULT_BLACK_HOLE_CONFIG.farRadius)
+      // PERF (OPT-BH-3): Ultra-fast mode for rapid camera movement
+      uUltraFastMode: { value: false },
+      // PERF (OPT-BH-1): Pre-baked noise texture for volumetric disk
+      tDiskNoise: { value: null },
 
       // Performance mode - enables lower quality during rotation/animation
       uFastMode: { value: false },

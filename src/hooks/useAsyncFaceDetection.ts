@@ -24,10 +24,38 @@
 
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useGeometryWorker, generateRequestId } from './useGeometryWorker'
-import { inflateFaces, flattenVerticesOnly } from '@/lib/geometry/transfer'
+import { inflateFaces, flattenVerticesOnly, flattenEdges } from '@/lib/geometry/transfer'
 import { detectFaces, getFaceDetectionMethod } from '@/lib/geometry'
+import { OBJECT_TYPE_REGISTRY } from '@/lib/geometry/registry/registry'
 import type { Face } from '@/lib/geometry/faces'
 import type { NdGeometry, ObjectType } from '@/lib/geometry/types'
+import type { WorkerFaceMethod, GridFaceProps } from '@/workers/types'
+import type { FaceDetectionMethod } from '@/lib/geometry/registry/types'
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+/**
+ * Maps registry face detection method to worker method.
+ * Returns undefined for methods that should run synchronously.
+ *
+ * Worker methods: convex-hull, triangles, grid (potentially expensive)
+ * Sync methods: analytical-quad, metadata (fast O(1) or O(n) operations)
+ */
+function getWorkerMethod(faceMethod: FaceDetectionMethod): WorkerFaceMethod | undefined {
+  switch (faceMethod) {
+    case 'convex-hull':
+      return 'convex-hull'
+    case 'triangles':
+      return 'triangles'
+    case 'grid':
+      return 'grid'
+    default:
+      // analytical-quad, metadata, none - run sync
+      return undefined
+  }
+}
 
 // ============================================================================
 // Types
@@ -114,7 +142,7 @@ export function useAsyncFaceDetection(
    * Falls back to synchronous detection if worker is unavailable.
    */
   const detectViaWorker = useCallback(
-    async (geo: NdGeometry) => {
+    async (geo: NdGeometry, method: WorkerFaceMethod) => {
       const requestId = generateRequestId('faces')
       currentRequestId.current = requestId
 
@@ -124,21 +152,58 @@ export function useAsyncFaceDetection(
 
       try {
         // Flatten vertices for transfer
-        const { flatVertices } = flattenVerticesOnly(
+        const { flatVertices, buffer: vertexBuffer } = flattenVerticesOnly(
           geo.vertices as number[][],
           geo.dimension
         )
+
+        // Prepare transfer buffers
+        const transferBuffers: ArrayBuffer[] = [vertexBuffer]
+
+        // Build request based on method
+        let flatEdges: Uint32Array | undefined
+        let gridProps: GridFaceProps | undefined
+
+        if (method === 'triangles') {
+          // Triangle detection needs edges
+          const { flatEdges: edges, buffer: edgeBuffer } = flattenEdges(geo.edges)
+          flatEdges = edges
+          transferBuffers.push(edgeBuffer)
+        } else if (method === 'grid') {
+          // Grid detection needs metadata properties
+          const registryEntry = OBJECT_TYPE_REGISTRY.get(objectType)
+          const configKey = registryEntry?.configStoreKey as 'cliffordTorus' | 'nestedTorus' | undefined
+
+          if (configKey && geo.metadata?.properties) {
+            const props = geo.metadata.properties
+            gridProps = {
+              visualizationMode: props.visualizationMode as string | undefined,
+              mode: props.mode as string | undefined,
+              resolutionU: props.resolutionU as number | undefined,
+              resolutionV: props.resolutionV as number | undefined,
+              resolutionXi1: props.resolutionXi1 as number | undefined,
+              resolutionXi2: props.resolutionXi2 as number | undefined,
+              k: props.k as number | undefined,
+              stepsPerCircle: props.stepsPerCircle as number | undefined,
+              intrinsicDimension: props.intrinsicDimension as number | undefined,
+              torusCount: props.torusCount as number | undefined,
+            }
+          }
+        }
 
         const response = await sendRequest(
           {
             type: 'compute-faces',
             id: requestId,
+            method,
             vertices: flatVertices,
             dimension: geo.dimension,
             objectType,
+            edges: flatEdges,
+            gridProps: gridProps ? { ...gridProps, configKey: OBJECT_TYPE_REGISTRY.get(objectType)?.configStoreKey as 'cliffordTorus' | 'nestedTorus' } : undefined,
           },
           undefined, // no progress callback
-          [flatVertices.buffer] // zero-copy transfer
+          transferBuffers // zero-copy transfer
         )
 
         // Check if this response is for the current request
@@ -236,14 +301,16 @@ export function useAsyncFaceDetection(
       return
     }
 
-    // Check if this method should use the worker
-    const useWorker = faceMethod === 'convex-hull'
+    // Map registry face method to worker method
+    // Worker handles: convex-hull, triangles, grid
+    // Sync handles: analytical-quad, metadata (fast operations)
+    const workerMethod = getWorkerMethod(faceMethod)
 
-    if (useWorker) {
+    if (workerMethod) {
       // Async path via worker
-      detectViaWorker(geometry)
+      detectViaWorker(geometry, workerMethod)
     } else {
-      // Sync path for other detection methods
+      // Sync path for fast detection methods (analytical-quad, metadata)
       detectSync(geometry)
     }
 

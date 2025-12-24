@@ -14,25 +14,30 @@ export const shellBlock = /* glsl */ `
  * Calculate photon sphere radius for given dimension.
  * R_p = uPhotonShellRadiusMul * R_h * (1 + bias * log(N))
  *
- * Uses logarithmic scaling for smooth transition across dimensions.
- * log(3) ≈ 1.1, log(11) ≈ 2.4, providing gentle expansion in high-D.
+ * PERF OPTIMIZATION: Now uses precomputed value from CPU to avoid
+ * log() and multiplication per-pixel. The value is computed once per
+ * frame in useBlackHoleUniformUpdates.ts.
+ *
+ * Original formula (for reference):
+ *   dimBias = uPhotonShellRadiusDimBias * log(DIMENSION)
+ *   return uHorizonRadius * (uPhotonShellRadiusMul + dimBias)
  */
 float getPhotonShellRadius() {
-  float baseMul = uPhotonShellRadiusMul;
-  // Use log(N) for smoother scaling across dimensions
-  float dimBias = uPhotonShellRadiusDimBias * log(float(DIMENSION));
-  return uHorizonRadius * (baseMul + dimBias);
+  return uShellRpPrecomputed;
 }
 
 /**
  * Calculate photon shell mask.
  * Returns 1 when on the shell, 0 elsewhere.
  *
+ * PERF OPTIMIZATION: Uses precomputed Rp and delta from CPU.
+ *
  * mask = 1 - smoothstep(0, Δ, |r - R_p|)
  */
 float photonShellMask(float ndRadius) {
-  float Rp = getPhotonShellRadius();
-  float delta = uPhotonShellWidth * uHorizonRadius;
+  // Use precomputed values (avoids per-pixel getPhotonShellRadius() call)
+  float Rp = uShellRpPrecomputed;
+  float delta = uShellDeltaPrecomputed;
 
   float dist = abs(ndRadius - Rp);
   float mask = 1.0 - smoothstep(0.0, delta, dist);
@@ -75,18 +80,13 @@ vec3 photonShellEmission(float ndRadius, vec3 pos) {
  * Get adaptive step size modifier near shell.
  * Smaller steps near the photon sphere for accurate capture.
  *
- * PERF: Uses early exit when clearly outside shell region to avoid
- * expensive getPhotonShellRadius() and smoothstep/pow computations.
+ * PERF OPTIMIZATION: Uses precomputed shellRp and shellDelta from CPU.
+ * This eliminates log() and multiple multiplications per-pixel.
  */
 float shellStepModifier(float ndRadius) {
-  // PERF: Quick bounding check before full mask calculation
-  // Uses same formula as getPhotonShellRadius() to ensure consistency
-  float shellDimBias = uPhotonShellRadiusDimBias * log(float(DIMENSION));
-  float shellRp = uHorizonRadius * (uPhotonShellRadiusMul + shellDimBias);
-  float shellDelta = uPhotonShellWidth * uHorizonRadius * 2.0;
-
-  // Early exit if clearly outside shell region
-  if (abs(ndRadius - shellRp) > shellDelta) {
+  // PERF: Use precomputed values for early exit check
+  // shellDelta * 2.0 gives a conservative bounding region
+  if (abs(ndRadius - uShellRpPrecomputed) > uShellDeltaPrecomputed * 2.0) {
     return 1.0;
   }
 

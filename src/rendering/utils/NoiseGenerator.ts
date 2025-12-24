@@ -128,6 +128,69 @@ export function generateNoiseTexture3D(size: number = 128): THREE.Data3DTexture 
 }
 
 /**
+ * PERF (OPT-BH-1): Generates a 3D texture containing ridged multifractal noise
+ * for the black hole accretion disk.
+ *
+ * This pre-bakes the expensive ridged noise computation that normally happens
+ * per-pixel in the shader, replacing ~50+ ALU ops with a single texture fetch.
+ *
+ * The texture stores ridged noise: n = (1 - |noise|)² which gives the
+ * characteristic "electric/plasma" look of the accretion disk.
+ *
+ * Uses a fixed seed for consistency across renders - the disk should look
+ * the same every time.
+ *
+ * @param size Resolution of the 3D texture (default: 64, gives 256KB with RedFormat)
+ * @returns Data3DTexture with ridged noise values in [0, 1]
+ */
+export function generateRidgedNoiseTexture3D(size: number = 64): THREE.Data3DTexture {
+  const totalSize = size * size * size
+  const data = new Uint8Array(totalSize)
+
+  // Fixed seed for consistent noise across sessions
+  const noiseGen = new FastNoise(42)
+
+  let idx = 0
+  const scale = 1.0 / size
+  // Frequency multiplier to match shader's noise coordinate space
+  const freqMul = 4.0
+
+  for (let z = 0; z < size; z++) {
+    const nz = z * scale * freqMul
+    for (let y = 0; y < size; y++) {
+      const ny = y * scale * freqMul
+      for (let x = 0; x < size; x++) {
+        const nx = x * scale * freqMul
+
+        // Sample Perlin noise (returns -1 to 1)
+        let n = noiseGen.noise(nx, ny, nz)
+
+        // Apply ridged multifractal transformation: (1 - |n|)²
+        // This gives the characteristic sharp ridges
+        n = 1.0 - Math.abs(n)
+        n = n * n
+
+        // Map from [0, 1] to [0, 255]
+        data[idx] = Math.floor(n * 255)
+        idx++
+      }
+    }
+  }
+
+  const texture = new THREE.Data3DTexture(data, size, size, size)
+  texture.format = THREE.RedFormat
+  texture.type = THREE.UnsignedByteType
+  texture.minFilter = THREE.LinearFilter
+  texture.magFilter = THREE.LinearFilter
+  texture.wrapS = THREE.RepeatWrapping
+  texture.wrapT = THREE.RepeatWrapping
+  texture.wrapR = THREE.RepeatWrapping
+  texture.needsUpdate = true
+
+  return texture
+}
+
+/**
  * Generates a 2D noise texture as a fallback for WebGL1 (no sampler3D support).
  *
  * This is a graceful degradation path for volumetric fog: we approximate 3D noise

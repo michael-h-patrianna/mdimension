@@ -21,10 +21,11 @@
 import { RENDER_LAYERS } from '@/rendering/core/layers'
 import { TrackedShaderMaterial } from '@/rendering/materials/TrackedShaderMaterial'
 import { composeBlackHoleShader, generateBlackHoleVertexShader } from '@/rendering/shaders/blackhole/compose'
+import { generateRidgedNoiseTexture3D } from '@/rendering/utils/NoiseGenerator'
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore'
 import { useGeometryStore } from '@/stores/geometryStore'
 import { useUIStore } from '@/stores/uiStore'
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { MAX_DIMENSION } from './types'
 import { useBlackHoleUniforms } from './useBlackHoleUniforms'
@@ -72,9 +73,28 @@ const BlackHoleMesh = () => {
   // Create uniforms using extracted hook
   const uniforms = useBlackHoleUniforms()
 
+  // PERF (OPT-BH-1): Create pre-baked noise texture for faster volumetric disk rendering
+  // This replaces expensive per-pixel noise computation with a single texture lookup
+  const noiseTexture = useMemo(() => generateRidgedNoiseTexture3D(64), [])
+
+  // Dispose noise texture on unmount
+  useEffect(() => {
+    return () => {
+      noiseTexture.dispose()
+    }
+  }, [noiseTexture])
+
+  // Pass noise texture to uniforms (static, only needs to be set once)
+  useEffect(() => {
+    if (uniforms.tDiskNoise) {
+      uniforms.tDiskNoise.value = noiseTexture
+    }
+  }, [uniforms, noiseTexture])
+
   // Shader version - increment to force recompilation when GLSL source changes
   // v2: Added immediate horizon check after ray step to fix transparency bug
-  const SHADER_VERSION = 2
+  // v3: Added OPT-BH-1/2/3/5 performance optimizations
+  const SHADER_VERSION = 3
 
   // Compile shader
   const { fragmentShader } = useMemo(() => {
@@ -91,6 +111,7 @@ const BlackHoleMesh = () => {
       fog: false,
       sliceAnimation: sliceAnimationEnabled,
       volumetricDisk: true,
+      noiseTexture: true, // PERF (OPT-BH-1): Enable noise texture for faster rendering
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dimension, temporalEnabled, jetsEnabled, dopplerEnabled, opacityMode, sliceAnimationEnabled, SHADER_VERSION])

@@ -42,7 +42,34 @@ const float DUST_LANE_FREQUENCY = 15.0;      // Radial dust lane period
 const float DUST_LANE_STRENGTH = 0.3;        // Dust lane modulation amount
 
 // === Simplex Noise 3D ===
-// standard simplex noise (more expensive but much higher quality than value noise)
+// PERF (OPT-BH-1): Two implementations - texture-based (fast) and procedural (fallback)
+
+#ifdef USE_NOISE_TEXTURE
+// =====================================================
+// TEXTURE-BASED NOISE (OPT-BH-1)
+// Replaces ~50+ ALU ops with a single texture fetch.
+// The texture is pre-baked with ridged noise values.
+// =====================================================
+
+/**
+ * Texture-based noise sampling.
+ * Samples from pre-baked 3D noise texture for massive performance gain.
+ * Returns noise in [-1, 1] range to match procedural snoise().
+ */
+float snoise(vec3 v) {
+    // Scale factor matches the frequency used in texture generation (freqMul = 4.0)
+    // We use fract() for seamless tiling
+    vec3 uv = fract(v * 0.25); // 1/4 = 0.25 to match the 4.0 frequency in generator
+    // Sample texture and remap from [0,1] to [-1,1]
+    return texture(tDiskNoise, uv).r * 2.0 - 1.0;
+}
+
+#else
+// =====================================================
+// PROCEDURAL SIMPLEX NOISE (fallback)
+// Standard simplex noise - higher quality but expensive
+// =====================================================
+
 vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
@@ -121,29 +148,36 @@ float snoise(vec3 v) {
   return 105.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), 
                                 dot(p2,x2), dot(p3,x3) ) );
 }
+#endif
 
 // === FBM & Domain Warping ===
 
 /**
  * Ridged multifractal noise for electric/plasma look.
  *
- * PERF: Octave count adapts to quality settings:
- * - Fast mode: 2 octaves (2 snoise calls)
+ * PERF OPTIMIZATION (OPT-BH-2): Octave count adapts to quality settings:
+ * - Fast mode: 1 octave with amplitude boost (saves 1-3 snoise calls)
  * - Low quality: 3 octaves (3 snoise calls)
  * - High quality: 4 octaves (4 snoise calls)
- * Reduced from 5 max octaves - the visual difference is minimal but cost is linear.
+ *
+ * The amplitude boost (0.8) compensates for missing octave energy,
+ * maintaining perceived density while cutting noise samples in half.
  */
 float ridgedMF(vec3 p) {
+    // PERF (OPT-BH-2): Ultra-fast path - single octave with amplitude boost
+    // During camera interaction, fine noise detail is imperceptible
+    if (uFastMode) {
+        float n = snoise(p);
+        n = 1.0 - abs(n);
+        n = n * n;
+        return n * 0.8; // Boosted amplitude to compensate for missing octaves
+    }
+
+    // Standard path: 3-4 octaves based on quality
     float sum = 0.0;
-    float amp = 0.5;
-    float freq = 1.0;
+    int octaves = uSampleQuality < 2 ? 3 : 4;
 
-    // PERF: Reduced max octaves from 5 to 4 - imperceptible quality difference
-    // Adapt octaves based on quality: fast=2, low=3, medium/high=4
-    int octaves = uFastMode ? 2 : (uSampleQuality < 2 ? 3 : 4);
-
-    // PERF: Unrolled first 2 iterations (always needed) to avoid branch overhead
-    // First octave
+    // First octave (always)
     float n = snoise(p);
     n = 1.0 - abs(n);
     n = n * n;
@@ -155,19 +189,20 @@ float ridgedMF(vec3 p) {
     n = n * n;
     sum += n * 0.25;
 
-    // Remaining octaves (only in non-fast mode)
+    // Third octave (quality >= low)
     if (octaves > 2) {
         n = snoise(p * 4.0);
         n = 1.0 - abs(n);
         n = n * n;
         sum += n * 0.125;
+    }
 
-        if (octaves > 3) {
-            n = snoise(p * 8.0);
-            n = 1.0 - abs(n);
-            n = n * n;
-            sum += n * 0.0625;
-        }
+    // Fourth octave (quality >= medium)
+    if (octaves > 3) {
+        n = snoise(p * 8.0);
+        n = 1.0 - abs(n);
+        n = n * n;
+        sum += n * 0.0625;
     }
 
     return sum;
@@ -225,6 +260,20 @@ float getDiskDensity(vec3 pos, float time) {
 
     // Cut off if too far vertically
     if (hDensity < DENSITY_CUTOFF) return 0.0;
+
+    // PERF (OPT-BH-3): Ultra-fast mode - skip ALL noise computation
+    // During rapid camera movement, return smooth radial density gradient only.
+    // The motion blur and low detail make noise patterns imperceptible.
+    if (uUltraFastMode) {
+        // Simple radial profile without noise
+        float rDensity = smoothstep(innerR * DISK_INNER_EDGE_SOFTNESS, innerR, r)
+                       * (1.0 - smoothstep(outerR * DISK_OUTER_EDGE_SOFTNESS, outerR * DISK_OUTER_FADE_END, r));
+        // Inverse square falloff for bulk density (denser inside)
+        float rOverInner = r / max(innerR, 0.001);
+        rDensity *= 2.0 / (rOverInner * rOverInner + 0.1);
+
+        return hDensity * rDensity * uManifoldIntensity * DISK_BASE_INTENSITY;
+    }
 
     // 3. Radial Profile
     // Soft inner edge near ISCO, Soft outer edge fade

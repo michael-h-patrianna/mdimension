@@ -60,7 +60,7 @@ type AdjacencyList = Map<number, Set<number>>
  * // adj.get(1) => Set(0, 2)
  * ```
  */
-function buildAdjacencyList(edges: [number, number][]): AdjacencyList {
+export function buildAdjacencyList(edges: [number, number][]): AdjacencyList {
   const adjacency: AdjacencyList = new Map()
 
   for (const [v1, v2] of edges) {
@@ -151,90 +151,126 @@ function findTriangles(
 }
 
 /**
- * Finds all quadrilateral faces (4-cycles) in the graph
+ * Computes triangle faces from vertices and edges (worker-compatible)
  *
- * Searches for all unique quads where vertices form a closed loop.
- * Uses depth-first search to find 4-cycles efficiently.
+ * This is a standalone function that can be called from the web worker.
+ * It builds the adjacency list and finds all triangular 3-cycles.
  *
- * @param adjacency - Adjacency list representing the graph
- * @param vertices - Array of vertex positions for planarity checking
- * @param vertexCount - Total number of vertices in the polytope
- * @returns Array of quadrilateral faces
- *
- * @example
- * ```typescript
- * const edges = [[0,1], [1,2], [2,3], [3,0]];
- * const adj = buildAdjacencyList(edges);
- * const quads = findQuads(adj, vertices, 4);
- * // quads = [{ vertices: [0, 1, 2, 3] }]
- * ```
- *
- * @remarks
- * This implementation finds simple 4-cycles by checking if four vertices
- * form a closed loop where each consecutive pair is connected.
+ * @param vertices - Array of vertex positions
+ * @param edges - Array of edge pairs
+ * @returns Array of triangle face indices as [v0, v1, v2] tuples
  */
-export function findQuads(
-  adjacency: AdjacencyList,
+export function computeTriangleFaces(
   vertices: number[][],
-  vertexCount: number
-): Face[] {
-  const faces: Face[] = []
-  const faceSet = new Set<string>()
+  edges: [number, number][]
+): [number, number, number][] {
+  const adjacency = buildAdjacencyList(edges)
+  const faces = findTriangles(adjacency, vertices.length, vertices)
+  return faces.map((f) => [f.vertices[0]!, f.vertices[1]!, f.vertices[2]!])
+}
 
-  // Find all quads by checking 4-vertex cycles
-  for (let v1 = 0; v1 < vertexCount; v1++) {
-    const neighbors1 = adjacency.get(v1)
-    if (!neighbors1 || neighbors1.size < 2) continue
+/**
+ * Grid face properties for worker computation
+ */
+export interface GridFacePropsWorker {
+  visualizationMode?: string
+  mode?: string
+  resolutionU?: number
+  resolutionV?: number
+  resolutionXi1?: number
+  resolutionXi2?: number
+  k?: number
+  stepsPerCircle?: number
+  intrinsicDimension?: number
+  torusCount?: number
+  /** Config store key to determine grid type */
+  configKey: 'cliffordTorus' | 'nestedTorus'
+}
 
-    const n1Array = Array.from(neighbors1)
+/**
+ * Computes grid faces from properties (worker-compatible)
+ *
+ * This is a standalone function that can be called from the web worker.
+ * It dispatches to the appropriate grid face builder based on the config key.
+ *
+ * @param props - Grid face properties
+ * @returns Array of face vertex indices
+ */
+export function computeGridFaces(props: GridFacePropsWorker): number[][] {
+  if (props.configKey === 'cliffordTorus') {
+    return computeCliffordTorusGridFaces(props)
+  } else if (props.configKey === 'nestedTorus') {
+    return computeNestedTorusGridFaces(props)
+  }
+  return []
+}
 
-    for (let i = 0; i < n1Array.length; i++) {
-      const v2 = n1Array[i]!
-      if (v2 <= v1) continue // Avoid duplicates
+/**
+ * Computes clifford-torus grid faces
+ */
+function computeCliffordTorusGridFaces(props: GridFacePropsWorker): number[][] {
+  const { visualizationMode, mode, resolutionU, resolutionV, k, stepsPerCircle } = props
 
-      const neighbors2 = adjacency.get(v2)
-      if (!neighbors2) continue
-
-      for (const v3 of neighbors2) {
-        if (v3 <= v1 || v3 === v2) continue // Avoid duplicates and self
-
-        const neighbors3 = adjacency.get(v3)
-        if (!neighbors3) continue
-
-        for (const v4 of neighbors3) {
-          if (v4 <= v1 || v4 === v2 || v4 === v3) continue
-
-          // Check if v4 connects back to v1 to complete the quad
-          if (adjacency.get(v4)?.has(v1)) {
-            // Found a potential quad: v1-v2-v3-v4-v1
-            // Verify it's a proper quad (not just a 4-cycle with diagonals)
-            const hasDiagonal1 = adjacency.get(v1)?.has(v3)
-            const hasDiagonal2 = adjacency.get(v2)?.has(v4)
-
-            // For a proper quad face, we don't want diagonals
-            if (!hasDiagonal1 && !hasDiagonal2) {
-              // Use sorted key for deduplication only
-              const sortedKey = [v1, v2, v3, v4].sort((a, b) => a - b).join(',')
-
-              if (!faceSet.has(sortedKey)) {
-                // Store vertices in winding order: v1 -> v2 -> v3 -> v4 -> v1
-                // This preserves the perimeter walk for proper triangulation
-                const windingOrder = [v1, v2, v3, v4]
-
-                // Additional planarity check for quads
-                if (isCoplanarQuad(windingOrder, vertices)) {
-                  faceSet.add(sortedKey)
-                  faces.push({ vertices: windingOrder })
-                }
-              }
-            }
-          }
-        }
-      }
-    }
+  // Check for nested visualization mode first
+  if (visualizationMode === 'nested') {
+    return computeNestedVisualizationGridFaces(props)
   }
 
-  return faces
+  // Flat mode or legacy mode - check internal mode
+  if (mode === '3d-torus' && resolutionU && resolutionV) {
+    return buildTorus3DGridFaces(resolutionU, resolutionV)
+  } else if (mode === 'classic' && resolutionU && resolutionV) {
+    return buildCliffordTorusGridFaces(resolutionU, resolutionV)
+  } else if (mode === 'generalized' && k && stepsPerCircle) {
+    return buildGeneralizedCliffordTorusFaces(k, stepsPerCircle)
+  }
+
+  return []
+}
+
+/**
+ * Computes nested-torus grid faces
+ */
+function computeNestedTorusGridFaces(props: GridFacePropsWorker): number[][] {
+  return computeNestedVisualizationGridFaces(props)
+}
+
+/**
+ * Shared logic for nested visualization grid faces
+ */
+function computeNestedVisualizationGridFaces(props: GridFacePropsWorker): number[][] {
+  const { intrinsicDimension, resolutionXi1, resolutionXi2, torusCount } = props
+
+  if (!resolutionXi1 || !resolutionXi2) return []
+
+  switch (intrinsicDimension) {
+    case 4: {
+      const count = torusCount ?? 1
+      let faceIndices: number[][] = []
+      for (let t = 0; t < count; t++) {
+        const offset = t * resolutionXi1 * resolutionXi2
+        const torusFaces = buildHopfTorus4DFaces(resolutionXi1, resolutionXi2, offset)
+        faceIndices = faceIndices.concat(torusFaces)
+      }
+      return faceIndices
+    }
+    case 5:
+      return buildTorus5DFaces(resolutionXi1, resolutionXi2)
+    case 6:
+      return buildTorus6DFaces(resolutionXi1, resolutionXi2)
+    case 7:
+      return buildTorus7DFaces(resolutionXi1, resolutionXi2)
+    case 8:
+      return buildHopfTorus8DFaces(resolutionXi1, resolutionXi2)
+    case 9:
+      return buildTorus9DFaces(resolutionXi1, resolutionXi2)
+    case 10:
+      return buildTorus10DFaces(resolutionXi1, resolutionXi2)
+    case 11:
+      return buildTorus11DFaces(resolutionXi1, resolutionXi2)
+    default:
+      return []
+  }
 }
 
 /**
@@ -246,161 +282,6 @@ function to3D(v: number[]): VectorND {
   return [v[0] ?? 0, v[1] ?? 0, v[2] ?? 0]
 }
 
-/**
- * Checks if four vertices form a planar quadrilateral
- *
- * Verifies that all four vertices lie in the same plane by checking
- * if the fourth vertex lies in the plane defined by the first three.
- *
- * For 3D: Uses the scalar triple product: if (e1 × e2) · e3 ≈ 0, points are coplanar.
- * For N-D: Checks if e3 lies in the span of {e1, e2} using orthogonal projection.
- *
- * @param vertexIndices - Array of 4 vertex indices
- * @param vertices - Array of all vertex positions
- * @returns True if the quad is coplanar (within epsilon)
- */
-function isCoplanarQuad(vertexIndices: number[], vertices: number[][]): boolean {
-  if (vertexIndices.length !== 4) return false
-
-  const [i0, i1, i2, i3] = vertexIndices
-  const v0 = vertices[i0!]
-  const v1 = vertices[i1!]
-  const v2 = vertices[i2!]
-  const v3 = vertices[i3!]
-
-  if (!v0 || !v1 || !v2 || !v3) return false
-
-  // Get the minimum dimension across all vertices
-  const dim = Math.min(v0.length, v1.length, v2.length, v3.length)
-
-  // For 3D, use library functions for clarity and efficiency
-  if (dim === 3) {
-    // Create edge vectors from v0 to other points (first 3 coords only)
-    const p0 = to3D(v0)
-    const e1 = subtractVectors(to3D(v1), p0)
-    const e2 = subtractVectors(to3D(v2), p0)
-    const e3 = subtractVectors(to3D(v3), p0)
-
-    // Compute normal via cross product, then check if e3 is perpendicular
-    const normal = crossProduct3D(e1, e2)
-    const scalarTripleProduct = dotProduct(normal, e3)
-
-    return Math.abs(scalarTripleProduct) < 1e-6
-  }
-
-  // For N-D: Check if edge vectors e1, e2, e3 have rank ≤ 2
-  // (i.e., e3 lies in the span of {e1, e2})
-  // Uses Gram-Schmidt orthogonalization to project e3 onto span{e1, e2}
-  return isCoplanarND(v0, v1, v2, v3)
-}
-
-/**
- * N-dimensional coplanarity check using Gram-Schmidt projection
- *
- * Four points are coplanar if the three edge vectors from v0 to v1, v2, v3
- * span at most a 2D subspace. This is verified by:
- * 1. Orthonormalizing e1, e2 to form basis {u1, u2}
- * 2. Projecting e3 onto span{u1, u2}
- * 3. Checking if the residual (orthogonal component) is near zero
- *
- * @param v0 - First vertex (reference point)
- * @param v1 - Second vertex
- * @param v2 - Third vertex
- * @param v3 - Fourth vertex
- * @returns True if all four points are coplanar
- */
-function isCoplanarND(v0: number[], v1: number[], v2: number[], v3: number[]): boolean {
-  const dim = v0.length
-  const epsilon = 1e-6
-
-  // Compute edge vectors e1 = v1 - v0, e2 = v2 - v0, e3 = v3 - v0
-  const e1: number[] = new Array(dim)
-  const e2: number[] = new Array(dim)
-  const e3: number[] = new Array(dim)
-
-  for (let i = 0; i < dim; i++) {
-    e1[i] = (v1[i] ?? 0) - (v0[i] ?? 0)
-    e2[i] = (v2[i] ?? 0) - (v0[i] ?? 0)
-    e3[i] = (v3[i] ?? 0) - (v0[i] ?? 0)
-  }
-
-  // Gram-Schmidt: orthonormalize e1, e2
-  // u1 = normalize(e1)
-  let norm1Sq = 0
-  for (let i = 0; i < dim; i++) {
-    norm1Sq += e1[i]! * e1[i]!
-  }
-
-  // Degenerate case: e1 is zero vector
-  if (norm1Sq < epsilon * epsilon) {
-    return true // Points v0, v1 coincide - trivially coplanar
-  }
-
-  const invNorm1 = 1 / Math.sqrt(norm1Sq)
-  const u1 = e1.map((x: number) => x * invNorm1)
-
-  // e2_perp = e2 - (e2 · u1) * u1
-  let e2DotU1 = 0
-  for (let i = 0; i < dim; i++) {
-    e2DotU1 += e2[i]! * u1[i]!
-  }
-
-  const e2Perp: number[] = new Array(dim)
-  for (let i = 0; i < dim; i++) {
-    e2Perp[i] = e2[i]! - e2DotU1 * u1[i]!
-  }
-
-  // u2 = normalize(e2_perp)
-  let norm2Sq = 0
-  for (let i = 0; i < dim; i++) {
-    norm2Sq += e2Perp[i]! * e2Perp[i]!
-  }
-
-  // If e2_perp is near zero, e1 and e2 are parallel (1D span)
-  // In this case, we need to check if e3 is also in the same direction
-  if (norm2Sq < epsilon * epsilon) {
-    // e1 and e2 are parallel; check if e3 is parallel to e1
-    // e3_perp = e3 - (e3 · u1) * u1
-    let e3DotU1 = 0
-    for (let i = 0; i < dim; i++) {
-      e3DotU1 += e3[i]! * u1[i]!
-    }
-    let e3PerpNormSq = 0
-    for (let i = 0; i < dim; i++) {
-      const comp = e3[i]! - e3DotU1 * u1[i]!
-      e3PerpNormSq += comp * comp
-    }
-    // Coplanar if e3 is also in the 1D span (collinear)
-    return e3PerpNormSq < epsilon * epsilon * norm1Sq
-  }
-
-  const invNorm2 = 1 / Math.sqrt(norm2Sq)
-  const u2 = e2Perp.map((x: number) => x * invNorm2)
-
-  // Project e3 onto span{u1, u2} and compute residual
-  // projection = (e3 · u1) * u1 + (e3 · u2) * u2
-  // residual = e3 - projection
-  let e3DotU1 = 0
-  let e3DotU2 = 0
-  for (let i = 0; i < dim; i++) {
-    e3DotU1 += e3[i]! * u1[i]!
-    e3DotU2 += e3[i]! * u2[i]!
-  }
-
-  // Compute ||e3 - projection||² = ||e3||² - (e3·u1)² - (e3·u2)²
-  let e3NormSq = 0
-  for (let i = 0; i < dim; i++) {
-    e3NormSq += e3[i]! * e3[i]!
-  }
-
-  const residualSq = e3NormSq - e3DotU1 * e3DotU1 - e3DotU2 * e3DotU2
-
-  // Points are coplanar if residual is small relative to edge lengths
-  // Use relative tolerance based on the maximum edge length
-  const maxEdgeLengthSq = Math.max(norm1Sq, norm2Sq, e3NormSq)
-
-  return residualSq < epsilon * epsilon * maxEdgeLengthSq
-}
 
 /**
  * Detects 2D faces (polygons) from an edge list of a polytope

@@ -275,6 +275,81 @@ export function inflateVerticesOnly(flatVertices: Float64Array, dimension: numbe
 }
 
 /**
+ * Inflates a flattened Uint32Array back into edge pairs.
+ *
+ * Used when edges need to be reconstructed for face computation in worker.
+ *
+ * @param flatEdges - Flattened edge indices [e0_v0, e0_v1, e1_v0, e1_v1, ...]
+ * @returns Array of edge pairs as [v0, v1] tuples
+ * @throws Error if buffer length is not divisible by 2
+ *
+ * @example
+ * ```typescript
+ * const flatEdges = new Uint32Array([0, 1, 1, 2, 2, 0])
+ * const edges = inflateEdges(flatEdges)
+ * // edges = [[0, 1], [1, 2], [2, 0]]
+ * ```
+ */
+export function inflateEdges(flatEdges: Uint32Array): [number, number][] {
+  if (flatEdges.length % 2 !== 0) {
+    throw new Error(
+      `Edge data corruption: buffer length ${flatEdges.length} is not divisible by 2`
+    )
+  }
+
+  const numEdges = flatEdges.length / 2
+  const edges: [number, number][] = new Array(numEdges)
+
+  for (let i = 0; i < numEdges; i++) {
+    const idx = i * 2
+    const v0 = flatEdges[idx]
+    const v1 = flatEdges[idx + 1]
+
+    if (v0 === undefined || v1 === undefined) {
+      throw new Error(`Edge data corruption: edge ${i} has undefined indices`)
+    }
+
+    edges[i] = [v0, v1]
+  }
+
+  return edges
+}
+
+/**
+ * Flattens edge pairs into a Uint32Array for zero-copy transfer.
+ *
+ * Used when edges need to be sent to worker (e.g., for triangle face computation).
+ *
+ * @param edges - Array of edge pairs as [v0, v1] tuples
+ * @returns Flattened Uint32Array and its buffer for transfer
+ *
+ * @example
+ * ```typescript
+ * const edges = [[0, 1], [1, 2], [2, 0]]
+ * const { flatEdges, buffer } = flattenEdges(edges)
+ * // flatEdges = Uint32Array([0, 1, 1, 2, 2, 0])
+ * worker.postMessage({ edges: flatEdges }, [buffer])
+ * ```
+ */
+export function flattenEdges(edges: [number, number][]): {
+  flatEdges: Uint32Array
+  buffer: ArrayBuffer
+} {
+  const flatEdges = new Uint32Array(edges.length * 2)
+
+  for (let i = 0; i < edges.length; i++) {
+    const edge = edges[i]!
+    flatEdges[i * 2] = edge[0]
+    flatEdges[i * 2 + 1] = edge[1]
+  }
+
+  return {
+    flatEdges,
+    buffer: flatEdges.buffer,
+  }
+}
+
+/**
  * Flattens vertex arrays into a Float64Array for zero-copy transfer.
  *
  * Used when only vertices need to be sent to worker (e.g., for face computation).

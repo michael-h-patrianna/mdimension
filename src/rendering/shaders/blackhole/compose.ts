@@ -43,6 +43,8 @@ export interface BlackHoleShaderConfig extends ShaderConfig {
   sliceAnimation?: boolean
   /** Enable volumetric disk rendering */
   volumetricDisk?: boolean
+  /** PERF (OPT-BH-1): Enable pre-baked noise texture for faster disk rendering */
+  noiseTexture?: boolean
 }
 
 /**
@@ -65,6 +67,7 @@ export function composeBlackHoleShader(config: BlackHoleShaderConfig) {
     motionBlur: enableMotionBlur = false,
     sliceAnimation: enableSliceAnimation = false,
     volumetricDisk: enableVolumetricDisk = true, // Default to true for now
+    noiseTexture: enableNoiseTexture = true, // PERF (OPT-BH-1): Enable by default for faster rendering
   } = config
 
   const defines: string[] = []
@@ -122,6 +125,15 @@ export function composeBlackHoleShader(config: BlackHoleShaderConfig) {
     features.push('SDF Disk Raymarching (Einstein Ring)')
   }
 
+  // PERF (OPT-BH-1): Noise texture for faster volumetric disk rendering
+  // Only applies when volumetric disk is enabled
+  const useNoiseTexture =
+    enableNoiseTexture && enableVolumetricDisk && !overrides.includes('Noise Texture')
+  if (useNoiseTexture) {
+    defines.push('#define USE_NOISE_TEXTURE')
+    features.push('Noise Texture LUT')
+  }
+
   // Slice animation (for higher dimensions)
   const useSliceAnimation =
     enableSliceAnimation && dimension > 3 && !overrides.includes('Slice Animation')
@@ -159,6 +171,8 @@ uniform float uSliceAmplitude;
     { name: 'Slice Animation Uniforms', content: sliceAnimationUniforms, condition: useSliceAnimation },
     { name: 'Black Hole Uniforms', content: blackHoleUniformsBlock },
     { name: 'Environment Map', content: 'uniform samplerCube envMap;', condition: enableEnvMap },
+    // PERF (OPT-BH-1): Pre-baked 3D noise texture for volumetric disk
+    { name: 'Disk Noise Texture', content: 'uniform sampler3D tDiskNoise;', condition: useNoiseTexture },
     
     // Core Libraries
     { name: 'Palette Lib', content: GLSL_ALL_PALETTE_FUNCTIONS },
