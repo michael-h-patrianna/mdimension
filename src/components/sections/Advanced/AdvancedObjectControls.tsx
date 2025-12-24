@@ -21,6 +21,9 @@ const ADVANCED_RENDERING_OBJECT_TYPES = [
   'simplex',
   'cross-polytope',
   'wythoff-polytope',
+  'root-system',
+  'clifford-torus',
+  'nested-torus',
 ];
 
 // Object types that have raymarching quality controls

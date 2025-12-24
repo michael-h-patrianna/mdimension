@@ -21,7 +21,7 @@
 import { flattenGeometry, flattenFaces, inflateVerticesOnly, inflateEdges } from '@/lib/geometry/transfer'
 import { generateWythoffPolytopeWithWarnings } from '@/lib/geometry/wythoff'
 import { computeConvexHullFaces } from '@/lib/geometry/extended/utils/convex-hull-faces'
-import { computeTriangleFaces, computeGridFaces } from '@/lib/geometry/faces'
+import { computeTriangleFaces, computeGridFaces, type GridFacePropsWorker } from '@/lib/geometry/faces'
 import type {
   WorkerRequest,
   GenerateWythoffRequest,
@@ -32,6 +32,76 @@ import type {
   ResultResponse,
   GenerationStage,
 } from './types'
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+/** Minimum supported dimension for polytopes */
+const MIN_DIMENSION = 3
+
+/** Maximum supported dimension for polytopes */
+const MAX_DIMENSION = 11
+
+/** Maximum number of faces to prevent memory exhaustion */
+const MAX_FACE_COUNT = 500000
+
+/** Minimum vertices required for convex hull (tetrahedron) */
+const MIN_CONVEX_HULL_VERTICES = 4
+
+// ============================================================================
+// Validation Helpers
+// ============================================================================
+
+/**
+ * Validates dimension is within supported range
+ */
+function validateDimension(dimension: number): void {
+  if (dimension < MIN_DIMENSION || dimension > MAX_DIMENSION) {
+    throw new Error(
+      `Dimension ${dimension} out of range. Supported: ${MIN_DIMENSION}-${MAX_DIMENSION}`
+    )
+  }
+  if (!Number.isInteger(dimension)) {
+    throw new Error(`Dimension must be an integer, got ${dimension}`)
+  }
+}
+
+/**
+ * Validates face count doesn't exceed memory limit
+ */
+function validateFaceCount(faceCount: number): void {
+  if (faceCount > MAX_FACE_COUNT) {
+    throw new Error(
+      `Face count ${faceCount} exceeds maximum ${MAX_FACE_COUNT}. ` +
+      `Try reducing resolution or dimension.`
+    )
+  }
+}
+
+/**
+ * Validates grid properties have required fields
+ */
+function validateGridProps(gridProps: unknown): gridProps is GridFacePropsWorker {
+  if (!gridProps || typeof gridProps !== 'object') {
+    return false
+  }
+
+  const props = gridProps as Record<string, unknown>
+
+  // Must have a valid configKey
+  if (props.configKey !== 'cliffordTorus' && props.configKey !== 'nestedTorus') {
+    return false
+  }
+
+  // Must have some resolution parameters
+  const hasResolution =
+    (typeof props.resolutionU === 'number' && typeof props.resolutionV === 'number') ||
+    (typeof props.resolutionXi1 === 'number' && typeof props.resolutionXi2 === 'number') ||
+    (typeof props.k === 'number' && typeof props.stepsPerCircle === 'number')
+
+  return hasResolution
+}
 
 // ============================================================================
 // Active Request Tracking (for cancellation)
@@ -155,6 +225,9 @@ function handleFaceComputation(request: ComputeFacesRequest): void {
     // Stage: initializing
     sendProgress(id, 0, 'initializing')
 
+    // Validate dimension (applies to all methods)
+    validateDimension(dimension)
+
     // Check cancellation
     if (!activeRequests.has(id)) {
       return
@@ -169,6 +242,14 @@ function handleFaceComputation(request: ComputeFacesRequest): void {
       case 'convex-hull': {
         // Reconstruct vertices from flat array
         const vertices = inflateVerticesOnly(flatVertices, dimension)
+
+        // Validate minimum vertices for convex hull
+        if (vertices.length < MIN_CONVEX_HULL_VERTICES) {
+          throw new Error(
+            `Convex hull requires at least ${MIN_CONVEX_HULL_VERTICES} vertices, got ${vertices.length}`
+          )
+        }
+
         faces = computeConvexHullFaces(vertices)
         break
       }
@@ -177,18 +258,44 @@ function handleFaceComputation(request: ComputeFacesRequest): void {
         if (!flatEdges) {
           throw new Error('Edges required for triangle face detection')
         }
+
+        // Validate edges array is not empty
+        if (flatEdges.length === 0) {
+          throw new Error('Edges array is empty, cannot detect triangles')
+        }
+
         // Reconstruct vertices and edges from flat arrays
         const vertices = inflateVerticesOnly(flatVertices, dimension)
         const edges = inflateEdges(flatEdges)
+
+        // Validate vertices array is not empty
+        if (vertices.length === 0) {
+          throw new Error('Vertices array is empty')
+        }
+
         faces = computeTriangleFaces(vertices, edges)
         break
       }
 
       case 'grid': {
-        if (!gridProps) {
-          throw new Error('Grid properties required for grid face detection')
+        // Validate grid properties using type guard
+        if (!validateGridProps(gridProps)) {
+          throw new Error(
+            'Invalid grid properties: missing configKey or resolution parameters'
+          )
         }
-        // Grid faces are computed directly from properties, no vertex data needed
+
+        // For nested tori, validate dimension >= 4
+        if (gridProps.configKey === 'nestedTorus' || gridProps.visualizationMode === 'nested') {
+          const intrinsicDim = gridProps.intrinsicDimension ?? dimension
+          if (intrinsicDim < 4) {
+            throw new Error(
+              `Nested torus requires dimension >= 4, got ${intrinsicDim}`
+            )
+          }
+        }
+
+        // Grid faces are computed directly from properties
         faces = computeGridFaces(gridProps)
         break
       }
@@ -217,6 +324,9 @@ function handleFaceComputation(request: ComputeFacesRequest): void {
         triangleFaces.push([f[0]!, f[2]!, f[3]!])
       }
     }
+
+    // Validate face count to prevent memory exhaustion
+    validateFaceCount(triangleFaces.length)
 
     const { flatFaces, buffer } = flattenFaces(triangleFaces)
 

@@ -33,6 +33,13 @@ import type { WorkerFaceMethod, GridFaceProps } from '@/workers/types'
 import type { FaceDetectionMethod } from '@/lib/geometry/registry/types'
 
 // ============================================================================
+// Constants
+// ============================================================================
+
+/** Timeout for worker requests in milliseconds (30 seconds) */
+const WORKER_REQUEST_TIMEOUT_MS = 30000
+
+// ============================================================================
 // Helpers
 // ============================================================================
 
@@ -55,6 +62,77 @@ function getWorkerMethod(faceMethod: FaceDetectionMethod): WorkerFaceMethod | un
       // analytical-quad, metadata, none - run sync
       return undefined
   }
+}
+
+/**
+ * Validates that all face indices are within bounds of vertex count.
+ * @param faces - Array of triangle faces as [v0, v1, v2] tuples
+ * @param vertexCount - Number of vertices in the geometry
+ * @returns True if all indices are valid
+ */
+function validateFaceIndices(
+  faces: [number, number, number][],
+  vertexCount: number
+): boolean {
+  for (const [v0, v1, v2] of faces) {
+    if (v0 >= vertexCount || v1 >= vertexCount || v2 >= vertexCount) {
+      return false
+    }
+    if (v0 < 0 || v1 < 0 || v2 < 0) {
+      return false
+    }
+  }
+  return true
+}
+
+/**
+ * Builds and validates grid properties for worker request.
+ * Returns undefined if required properties are missing.
+ */
+function buildGridProps(
+  objectType: ObjectType,
+  metadata: NdGeometry['metadata']
+): GridFaceProps | undefined {
+  const registryEntry = OBJECT_TYPE_REGISTRY.get(objectType)
+  const configKey = registryEntry?.configStoreKey
+
+  // Only cliffordTorus and nestedTorus are valid grid types
+  if (configKey !== 'cliffordTorus' && configKey !== 'nestedTorus') {
+    return undefined
+  }
+
+  if (!metadata?.properties) {
+    return undefined
+  }
+
+  const props = metadata.properties
+
+  // Build the grid props with runtime validation
+  const gridProps: GridFaceProps = {
+    configKey,
+    visualizationMode: props.visualizationMode as string | undefined,
+    mode: props.mode as string | undefined,
+    resolutionU: props.resolutionU as number | undefined,
+    resolutionV: props.resolutionV as number | undefined,
+    resolutionXi1: props.resolutionXi1 as number | undefined,
+    resolutionXi2: props.resolutionXi2 as number | undefined,
+    k: props.k as number | undefined,
+    stepsPerCircle: props.stepsPerCircle as number | undefined,
+    intrinsicDimension: props.intrinsicDimension as number | undefined,
+    torusCount: props.torusCount as number | undefined,
+  }
+
+  // Validate that at least some resolution parameters exist
+  const hasResolution =
+    (gridProps.resolutionU !== undefined && gridProps.resolutionV !== undefined) ||
+    (gridProps.resolutionXi1 !== undefined && gridProps.resolutionXi2 !== undefined) ||
+    (gridProps.k !== undefined && gridProps.stepsPerCircle !== undefined)
+
+  if (!hasResolution) {
+    return undefined
+  }
+
+  return gridProps
 }
 
 // ============================================================================
@@ -98,15 +176,19 @@ export function useAsyncFaceDetection(
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
 
-  // Track current request for cancellation
+  // Track current request for cancellation and race condition prevention
   const currentRequestId = useRef<string | null>(null)
+  // Track geometry key associated with current request to prevent stale responses
+  const currentGeometryKey = useRef<string>('empty')
 
   // Stable geometry reference for dependency tracking
-  // Use vertex count and first vertex as a proxy for geometry identity
+  // Use vertex count, dimension, and first vertex hash as proxy for geometry identity
   const geometryKey = useMemo(() => {
     if (!geometry || geometry.vertices.length === 0) return 'empty'
     const firstVertex = geometry.vertices[0]
-    return `${geometry.vertices.length}-${geometry.dimension}-${firstVertex?.join(',')}`
+    // Include a hash of more vertex data for better uniqueness
+    const vertexHash = firstVertex ? firstVertex.slice(0, 3).map(v => v.toFixed(6)).join(',') : ''
+    return `${geometry.vertices.length}-${geometry.dimension}-${vertexHash}`
   }, [geometry])
 
   /**
@@ -139,18 +221,49 @@ export function useAsyncFaceDetection(
 
   /**
    * Detect faces via Web Worker (async)
-   * Falls back to synchronous detection if worker is unavailable.
+   * Falls back to synchronous detection if worker is unavailable or on error.
    */
   const detectViaWorker = useCallback(
-    async (geo: NdGeometry, method: WorkerFaceMethod) => {
+    async (geo: NdGeometry, method: WorkerFaceMethod, geoKey: string) => {
       const requestId = generateRequestId('faces')
       currentRequestId.current = requestId
+      currentGeometryKey.current = geoKey
+      const vertexCount = geo.vertices.length
 
       // Reset state
       setIsLoading(true)
       setError(null)
 
+      // Timeout promise for worker requests
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error(`Worker request timed out after ${WORKER_REQUEST_TIMEOUT_MS}ms`))
+        }, WORKER_REQUEST_TIMEOUT_MS)
+      })
+
       try {
+        // For grid method, validate we have proper grid props
+        // If not, fall back to sync detection immediately
+        if (method === 'grid') {
+          const gridProps = buildGridProps(objectType, geo.metadata)
+          if (!gridProps) {
+            if (import.meta.env.DEV) {
+              console.warn('[useAsyncFaceDetection] Missing grid properties, using sync fallback')
+            }
+            // Fall back to sync detection
+            const detected = detectFaces(
+              geo.vertices as number[][],
+              geo.edges,
+              objectType,
+              geo.metadata
+            )
+            setFaces(detected)
+            setIsLoading(false)
+            currentRequestId.current = null
+            return
+          }
+        }
+
         // Flatten vertices for transfer
         const { flatVertices, buffer: vertexBuffer } = flattenVerticesOnly(
           geo.vertices as number[][],
@@ -165,55 +278,83 @@ export function useAsyncFaceDetection(
         let gridProps: GridFaceProps | undefined
 
         if (method === 'triangles') {
-          // Triangle detection needs edges
+          // Triangle detection needs edges - validate we have some
+          if (geo.edges.length === 0) {
+            if (import.meta.env.DEV) {
+              console.warn('[useAsyncFaceDetection] No edges for triangle detection, returning empty')
+            }
+            setFaces([])
+            setIsLoading(false)
+            currentRequestId.current = null
+            return
+          }
           const { flatEdges: edges, buffer: edgeBuffer } = flattenEdges(geo.edges)
           flatEdges = edges
           transferBuffers.push(edgeBuffer)
         } else if (method === 'grid') {
-          // Grid detection needs metadata properties
-          const registryEntry = OBJECT_TYPE_REGISTRY.get(objectType)
-          const configKey = registryEntry?.configStoreKey as 'cliffordTorus' | 'nestedTorus' | undefined
-
-          if (configKey && geo.metadata?.properties) {
-            const props = geo.metadata.properties
-            gridProps = {
-              visualizationMode: props.visualizationMode as string | undefined,
-              mode: props.mode as string | undefined,
-              resolutionU: props.resolutionU as number | undefined,
-              resolutionV: props.resolutionV as number | undefined,
-              resolutionXi1: props.resolutionXi1 as number | undefined,
-              resolutionXi2: props.resolutionXi2 as number | undefined,
-              k: props.k as number | undefined,
-              stepsPerCircle: props.stepsPerCircle as number | undefined,
-              intrinsicDimension: props.intrinsicDimension as number | undefined,
-              torusCount: props.torusCount as number | undefined,
+          gridProps = buildGridProps(objectType, geo.metadata)
+          // Already validated above, but TypeScript needs this
+          if (!gridProps) {
+            setFaces([])
+            setIsLoading(false)
+            currentRequestId.current = null
+            return
+          }
+        } else if (method === 'convex-hull') {
+          // Convex hull needs at least 4 vertices (for 3D)
+          if (geo.vertices.length < 4) {
+            if (import.meta.env.DEV) {
+              console.warn('[useAsyncFaceDetection] Insufficient vertices for convex hull')
             }
+            setFaces([])
+            setIsLoading(false)
+            currentRequestId.current = null
+            return
           }
         }
 
-        const response = await sendRequest(
-          {
-            type: 'compute-faces',
-            id: requestId,
-            method,
-            vertices: flatVertices,
-            dimension: geo.dimension,
-            objectType,
-            edges: flatEdges,
-            gridProps: gridProps ? { ...gridProps, configKey: OBJECT_TYPE_REGISTRY.get(objectType)?.configStoreKey as 'cliffordTorus' | 'nestedTorus' } : undefined,
-          },
-          undefined, // no progress callback
-          transferBuffers // zero-copy transfer
-        )
+        // Race between actual request and timeout
+        const response = await Promise.race([
+          sendRequest(
+            {
+              type: 'compute-faces',
+              id: requestId,
+              method,
+              vertices: flatVertices,
+              dimension: geo.dimension,
+              objectType,
+              edges: flatEdges,
+              gridProps,
+            },
+            undefined, // no progress callback
+            transferBuffers // zero-copy transfer
+          ),
+          timeoutPromise,
+        ])
 
-        // Check if this response is for the current request
-        if (currentRequestId.current !== requestId) {
+        // Check if this response is for the current request AND current geometry
+        // This prevents stale responses from being applied to new geometry
+        if (currentRequestId.current !== requestId || currentGeometryKey.current !== geoKey) {
+          if (import.meta.env.DEV) {
+            console.debug('[useAsyncFaceDetection] Discarding stale response')
+          }
           return // Stale response, ignore
         }
 
         if (response.type === 'result' && response.faces) {
           // Inflate the face data
           const inflated = inflateFaces(response.faces)
+
+          // CRITICAL: Validate face indices against current vertex count
+          // This prevents crashes if response arrives for old geometry
+          if (!validateFaceIndices(inflated, vertexCount)) {
+            if (import.meta.env.DEV) {
+              console.error('[useAsyncFaceDetection] Face indices out of bounds, discarding')
+            }
+            setError(new Error('Face indices out of bounds - geometry mismatch'))
+            setFaces([])
+            return
+          }
 
           // Convert to Face objects
           const faceObjects: Face[] = inflated.map(([v0, v1, v2]) => ({
@@ -227,13 +368,17 @@ export function useAsyncFaceDetection(
         }
       } catch (err) {
         // Only handle if this is still the current request
-        if (currentRequestId.current === requestId) {
+        if (currentRequestId.current === requestId && currentGeometryKey.current === geoKey) {
           const errorMessage = err instanceof Error ? err.message : String(err)
 
-          // Fallback to sync detection if worker is unavailable
-          if (errorMessage.includes('Worker not available')) {
+          // Fallback to sync detection if worker is unavailable or timed out
+          const shouldFallback =
+            errorMessage.includes('Worker not available') ||
+            errorMessage.includes('timed out')
+
+          if (shouldFallback) {
             if (import.meta.env.DEV) {
-              console.warn('[useAsyncFaceDetection] Worker unavailable, using sync fallback')
+              console.warn(`[useAsyncFaceDetection] ${errorMessage}, using sync fallback`)
             }
             // Use sync detection as fallback
             try {
@@ -284,12 +429,16 @@ export function useAsyncFaceDetection(
       setFaces([])
       setIsLoading(false)
       setError(null)
+      currentGeometryKey.current = 'empty'
       return
     }
 
     // CRITICAL: Clear stale faces immediately when geometry changes
     // This prevents rendering old faces (with invalid vertex indices) against new geometry
     setFaces([])
+
+    // Update geometry key for race condition detection
+    currentGeometryKey.current = geometryKey
 
     // Get face detection method from registry
     const faceMethod = getFaceDetectionMethod(objectType)
@@ -307,8 +456,8 @@ export function useAsyncFaceDetection(
     const workerMethod = getWorkerMethod(faceMethod)
 
     if (workerMethod) {
-      // Async path via worker
-      detectViaWorker(geometry, workerMethod)
+      // Async path via worker - pass geometry key for race condition detection
+      detectViaWorker(geometry, workerMethod, geometryKey)
     } else {
       // Sync path for fast detection methods (analytical-quad, metadata)
       detectSync(geometry)

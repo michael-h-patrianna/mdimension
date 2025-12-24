@@ -18,8 +18,10 @@ import type { ObjectType } from '@/lib/geometry/types'
 import { invalidateAllTemporalDepth } from '@/rendering/core/temporalDepth'
 import { DEFAULT_COLOR_ALGORITHM, isColorAlgorithmAvailable } from '@/rendering/shaders/palette/types'
 import { create } from 'zustand'
+import { useAnimationStore } from './animationStore'
 import { useAppearanceStore } from './appearanceStore'
 import { usePerformanceStore } from './performanceStore'
+import { useRotationStore } from './rotationStore'
 
 /** Minimum supported dimension */
 export const MIN_DIMENSION = 3
@@ -151,6 +153,11 @@ export const useGeometryStore = create<GeometryState>((set, get) => ({
     invalidateAllTemporalDepth()
     usePerformanceStore.getState().setCameraTeleported(true)
 
+    // Update animation and rotation stores BEFORE setting geometry state
+    // This filters out invalid planes for the new dimension (e.g., "XV" doesn't exist in 4D)
+    useAnimationStore.getState().setDimension(clampedDimension)
+    useRotationStore.getState().setDimension(clampedDimension)
+
     set({
       dimension: clampedDimension,
       objectType: newType,
@@ -213,6 +220,11 @@ export const useGeometryStore = create<GeometryState>((set, get) => ({
     // Check if this object type has a recommended dimension (from registry)
     const recommendedDimension = getRecommendedDimension(type)
     if (recommendedDimension !== undefined && currentDimension !== recommendedDimension) {
+      // Update animation and rotation stores BEFORE setting geometry state
+      // This filters out invalid planes for the new dimension (e.g., "XV" doesn't exist in 4D)
+      useAnimationStore.getState().setDimension(recommendedDimension)
+      useRotationStore.getState().setDimension(recommendedDimension)
+
       // Auto-switch to recommended dimension for optimal visualization
       set({
         objectType: type,

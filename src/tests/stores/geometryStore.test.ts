@@ -3,12 +3,16 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
+import { useAnimationStore } from '@/stores/animationStore';
 import { useGeometryStore, MIN_DIMENSION, MAX_DIMENSION, DEFAULT_DIMENSION } from '@/stores/geometryStore';
+import { useRotationStore } from '@/stores/rotationStore';
 
 describe('geometryStore', () => {
   beforeEach(() => {
-    // Reset store before each test
+    // Reset stores before each test
     useGeometryStore.getState().reset();
+    useAnimationStore.getState().reset();
+    useRotationStore.getState().setDimension(4);
   });
 
   describe('setDimension', () => {
@@ -174,5 +178,89 @@ describe('geometryStore', () => {
     });
   });
 
+  describe('dimension-animation synchronization', () => {
+    it('should filter animation planes when setDimension is called', () => {
+      const { setDimension } = useGeometryStore.getState();
 
+      // Start in 8D with all planes animated
+      setDimension(8);
+      useAnimationStore.getState().animateAll(8);
+
+      // Should have planes like XV (axis 4 and 5)
+      expect(useAnimationStore.getState().animatingPlanes.has('VU')).toBe(true);
+      expect(useAnimationStore.getState().animatingPlanes.size).toBe(28); // 8D has 28 planes
+
+      // Switch to 4D
+      setDimension(4);
+
+      // Animation planes should be filtered
+      const planes = useAnimationStore.getState().animatingPlanes;
+      expect(planes.size).toBe(6); // 4D has 6 planes
+      expect(planes.has('VU')).toBe(false); // V and U don't exist in 4D
+      expect(planes.has('XY')).toBe(true);
+      expect(planes.has('ZW')).toBe(true);
+    });
+
+    it('should update rotation store dimension when setDimension is called', () => {
+      const { setDimension } = useGeometryStore.getState();
+
+      setDimension(8);
+      expect(useRotationStore.getState().dimension).toBe(8);
+
+      setDimension(4);
+      expect(useRotationStore.getState().dimension).toBe(4);
+    });
+
+    it('should filter animation planes when setObjectType changes dimension (Mandelbulb bug fix)', () => {
+      const { setDimension, setObjectType } = useGeometryStore.getState();
+
+      // Start in 8D with all planes animated
+      setDimension(8);
+      useAnimationStore.getState().animateAll(8);
+
+      // Verify XV plane exists (axis X=0 and V=4)
+      expect(useAnimationStore.getState().animatingPlanes.has('XV')).toBe(true);
+      expect(useAnimationStore.getState().animatingPlanes.size).toBe(28);
+
+      // Switch to Mandelbulb - which auto-switches to 4D (recommended dimension)
+      setObjectType('mandelbulb');
+
+      // Verify dimension changed
+      expect(useGeometryStore.getState().dimension).toBe(4);
+
+      // Animation planes should be filtered - XV should NOT exist in 4D
+      const planes = useAnimationStore.getState().animatingPlanes;
+      expect(planes.has('XV')).toBe(false); // This was the bug!
+      expect(planes.size).toBe(6); // 4D has only 6 planes
+    });
+
+    it('should update rotation store when setObjectType changes dimension', () => {
+      const { setDimension, setObjectType } = useGeometryStore.getState();
+
+      // Start in 8D
+      setDimension(8);
+      expect(useRotationStore.getState().dimension).toBe(8);
+
+      // Switch to Mandelbulb (auto-switches to 4D)
+      setObjectType('mandelbulb');
+
+      // Rotation store should be updated to 4D
+      expect(useRotationStore.getState().dimension).toBe(4);
+    });
+
+    it('should not filter planes when object type change does not change dimension', () => {
+      const { setDimension, setObjectType } = useGeometryStore.getState();
+
+      // Set to 4D with all planes
+      setDimension(4);
+      useAnimationStore.getState().animateAll(4);
+      expect(useAnimationStore.getState().animatingPlanes.size).toBe(6);
+
+      // Switch to hypercube (no recommended dimension, stays at 4D)
+      setObjectType('hypercube');
+
+      // Should still have 6 planes
+      expect(useAnimationStore.getState().animatingPlanes.size).toBe(6);
+    });
+  });
 });

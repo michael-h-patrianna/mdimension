@@ -37,7 +37,9 @@ void main() {
     if (d > maxDist) discard;
 
     vec3 p = ro + rd * d;
-    vec3 n = uFastMode ? GetNormalFast(p) : GetNormal(p);
+    // PERF (OPT-FR-1): Use tetrahedron normals - 4 SDF evals with quality
+    // comparable to 6-eval central differences. Saves 33% on normal calculation.
+    vec3 n = GetNormalTetra(p);
 
     float ao = 1.0;
     #ifdef USE_AO
