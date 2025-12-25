@@ -20,14 +20,12 @@ import { useGeometryStore } from '@/stores/geometryStore'
 import { usePostProcessingStore } from '@/stores/postProcessingStore'
 // Note: useLightingStore no longer imported - PBR handled via UniformManager 'pbr-face' source
 import { useRotationStore } from '@/stores/rotationStore'
-import { useUIStore } from '@/stores/uiStore'
 import { useFrame, useThree } from '@react-three/fiber'
 import React, { useLayoutEffect, useRef } from 'react'
 import * as THREE from 'three'
 import {
     LIGHTING_MODE_MAP,
     MANIFOLD_TYPE_MAP,
-    OPACITY_MODE_MAP,
     PALETTE_MODE_MAP,
     RAY_BENDING_MODE_MAP,
 } from './types'
@@ -206,14 +204,10 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
       }
     }
 
-    // Configure material transparency and depth write based on opacity mode.
-    // In solid mode, we write depth to allow proper occlusion.
-    // In transparent modes, we disable depth write for correct blending.
-    const opacitySettings = useUIStore.getState().opacitySettings
-    const isTransparent = opacitySettings.mode !== 'solid'
-    if (material.transparent !== isTransparent) {
-      material.transparent = isTransparent
-      material.depthWrite = !isTransparent
+    // Black hole is always fully opaque (solid mode) - set material once
+    if (material.transparent !== false) {
+      material.transparent = false
+      material.depthWrite = true
       material.needsUpdate = true
     }
 
@@ -297,7 +291,6 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
     // and negates the quarter-res rendering savings. Black hole stays on
     // MAIN_OBJECT layer and benefits from adaptive quality (step reduction) instead.
     // Note: lightingState no longer needed here - specular now via 'pbr-face' source
-    const uiState = useUIStore.getState() // Global UI state
     const cache = colorCacheRef.current
 
     // Visual scale: Handled by mesh.scale now
@@ -423,19 +416,6 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
 
     // Palette mode (still supported for black hole specific modes)
     setUniform(u, 'uPaletteMode', PALETTE_MODE_MAP[bhState.paletteMode] ?? 0)
-
-    // Sync Opacity uniforms
-    const opacity = uiState.opacitySettings
-    setUniform(u, 'uOpacityMode', OPACITY_MODE_MAP[opacity.mode] ?? 0)
-    setUniform(u, 'uSimpleAlpha', opacity.simpleAlphaOpacity)
-    setUniform(u, 'uLayerCount', opacity.layerCount)
-    setUniform(u, 'uLayerOpacity', opacity.layerOpacity)
-    setUniform(u, 'uVolumetricDensity', opacity.volumetricDensity)
-    setUniform(
-      u,
-      'uSampleQuality',
-      opacity.sampleQuality === 'high' ? 2 : opacity.sampleQuality === 'low' ? 0 : 1
-    )
 
     // Lensing - Use GLOBAL gravity settings for key parameters
     setUniform(u, 'uDimensionEmphasis', bhState.dimensionEmphasis)

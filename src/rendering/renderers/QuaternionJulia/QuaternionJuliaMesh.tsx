@@ -15,10 +15,6 @@ import { FRAME_PRIORITY } from '@/rendering/core/framePriorities'
 import { useTemporalDepth } from '@/rendering/core/temporalDepth'
 import { TrackedShaderMaterial } from '@/rendering/materials/TrackedShaderMaterial'
 import {
-    OPACITY_MODE_TO_INT,
-    SAMPLE_QUALITY_TO_INT,
-} from '@/rendering/opacity/types'
-import {
     MAX_DIMENSION,
     useLayerAssignment,
     useQualityTracking,
@@ -36,12 +32,10 @@ import { useExtendedObjectStore } from '@/stores/extendedObjectStore'
 import { useGeometryStore } from '@/stores/geometryStore'
 import { useLightingStore } from '@/stores/lightingStore'
 import {
-    getEffectiveSampleQuality,
     getEffectiveShadowQuality,
     usePerformanceStore,
 } from '@/stores/performanceStore'
 import { usePostProcessingStore } from '@/stores/postProcessingStore'
-import { useUIStore } from '@/stores/uiStore'
 import { useWebGLContextStore } from '@/stores/webglContextStore'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
@@ -99,7 +93,6 @@ const QuaternionJuliaMesh = () => {
   // Get config for shader compilation (re-compiles when these change)
   const shadowEnabled = useLightingStore((state) => state.shadowEnabled)
   const temporalEnabled = usePerformanceStore((state) => state.temporalReprojectionEnabled)
-  const opacityMode = useUIStore((state) => state.opacitySettings.mode)
   const setShaderDebugInfo = usePerformanceStore((state) => state.setShaderDebugInfo)
   const shaderOverrides = usePerformanceStore((state) => state.shaderOverrides)
   const resetShaderOverrides = usePerformanceStore((state) => state.resetShaderOverrides)
@@ -111,7 +104,7 @@ const QuaternionJuliaMesh = () => {
   // Reset overrides when base configuration changes
   useEffect(() => {
     resetShaderOverrides()
-  }, [dimension, shadowEnabled, temporalEnabled, opacityMode, sssEnabled, edgesVisible, resetShaderOverrides])
+  }, [dimension, shadowEnabled, temporalEnabled, sssEnabled, edgesVisible, resetShaderOverrides])
 
   const { glsl: shaderString, modules, features } = useMemo(() => {
     return composeJuliaShader({
@@ -119,13 +112,12 @@ const QuaternionJuliaMesh = () => {
       shadows: shadowEnabled,
       temporal: temporalEnabled,
       ambientOcclusion: true,
-      opacityMode,
       overrides: shaderOverrides,
       sss: sssEnabled,
       fresnel: edgesVisible,
       fog: false, // Physical fog handled by post-process
     })
-  }, [dimension, shadowEnabled, temporalEnabled, opacityMode, shaderOverrides, sssEnabled, edgesVisible])
+  }, [dimension, shadowEnabled, temporalEnabled, shaderOverrides, sssEnabled, edgesVisible])
 
   useEffect(() => {
     setShaderDebugInfo('object', {
@@ -194,15 +186,6 @@ const QuaternionJuliaMesh = () => {
       uFresnelIntensity: { value: 0.5 },
       uRimColor: { value: new THREE.Color('#FFFFFF').convertSRGBToLinear() },
 
-      // Opacity
-      uOpacityMode: { value: 0 },
-      uSimpleAlpha: { value: 0.7 },
-      uLayerCount: { value: 2 },
-      uLayerOpacity: { value: 0.5 },
-      uVolumetricDensity: { value: 1.0 },
-      uSampleQuality: { value: 1 },
-      uVolumetricReduceOnAnim: { value: true },
-
       // Shadow
       uShadowEnabled: { value: false },
       uShadowQuality: { value: 1 },
@@ -243,7 +226,6 @@ const QuaternionJuliaMesh = () => {
     const extStore = useExtendedObjectStore.getState()
     const appStore = useAppearanceStore.getState()
     const lightStore = useLightingStore.getState()
-    const uiStore = useUIStore.getState()
 
     const currentDimension = geoStore.dimension
     const config = extStore.quaternionJulia
@@ -350,25 +332,10 @@ const QuaternionJuliaMesh = () => {
       appStore.edgeColor
     )
 
-    // Update opacity settings
-    const opacity = uiStore.opacitySettings
-    u.uOpacityMode.value = OPACITY_MODE_TO_INT[opacity.mode] ?? 0
-    u.uSimpleAlpha.value = opacity.simpleAlphaOpacity
-    u.uLayerCount.value = opacity.layerCount
-    u.uLayerOpacity.value = opacity.layerOpacity
-    u.uVolumetricDensity.value = opacity.volumetricDensity
-    const effectiveSampleQuality = getEffectiveSampleQuality(
-      opacity.sampleQuality,
-      qualityMultiplier
-    )
-    u.uSampleQuality.value = SAMPLE_QUALITY_TO_INT[effectiveSampleQuality]
-    u.uVolumetricReduceOnAnim.value = opacity.volumetricAnimationQuality === 'reduce' ? 1 : 0
-
-    // Configure material transparency based on opacity mode
-    const isTransparent = opacity.mode !== 'solid'
-    if (material.transparent !== isTransparent) {
-      material.transparent = isTransparent
-      material.depthWrite = !isTransparent
+    // Quaternion Julia is always fully opaque (solid mode)
+    if (material.transparent !== false) {
+      material.transparent = false
+      material.depthWrite = true
       material.needsUpdate = true
     }
 

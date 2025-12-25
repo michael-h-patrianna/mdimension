@@ -82,7 +82,6 @@ export function composeSchroedingerShader(config: SchroedingerShaderConfig) {
     shadows: enableShadows,
     temporal: enableTemporal,
     ambientOcclusion: enableAO,
-    opacityMode,
     overrides = [],
     isosurface = false,
     temporalAccumulation = false,
@@ -123,7 +122,6 @@ export function composeSchroedingerShader(config: SchroedingerShaderConfig) {
 
   features.push('Quantum Volume')
   features.push('Beer-Lambert')
-  features.push(`Opacity: ${opacityMode}`)
 
   // Shadows and AO are now enabled for both volumetric and isosurface modes
   // Volumetric mode uses cone-traced self-shadowing and hemisphere-sampled AO

@@ -722,18 +722,12 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       if (!frame) return false;
       const pp = frame.stores.postProcessing;
       const ui = frame.stores.ui;
-      const result = (
+      return (
         pp.ssrEnabled ||
         pp.refractionEnabled ||
         (pp.ssaoEnabled && isPolytope) ||
         ui.showNormalBuffer
       );
-      // #region agent log
-      if (frame.frameNumber % 60 === 0) {
-        console.log(`[DEBUG:shouldRenderNormals] frame=${frame.frameNumber} ssrEnabled=${pp.ssrEnabled} showNormalBuffer=${ui.showNormalBuffer} result=${result}`);
-      }
-      // #endregion
-      return result;
     };
 
     const shouldRenderObjectDepth = (frame: import('@/rendering/graph/FrameContext').FrozenFrameContext | null) => {
@@ -837,15 +831,18 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
     );
 
     // Main object scene pass - renders MAIN_OBJECT layer only
+    // forceOpaque: true ensures the object is rendered without blending
+    // The composite pass handles alpha blending using the material's opacity uniform
     g.addPass(
       new ScenePass({
         id: 'mainObjectScene',
         outputs: [{ resourceId: RESOURCES.MAIN_OBJECT_COLOR, access: 'write' }],
         layers: [RENDER_LAYERS.MAIN_OBJECT],
         clearColor: 0x000000,
-        clearAlpha: 0, // Clear with transparent black so alpha blending works
+        clearAlpha: 0, // Clear with transparent black
         autoClear: true,
         renderBackground: false,
+        forceOpaque: true, // Render opaque, let composite shader handle alpha
         enabled: (frame) => frame?.stores.postProcessing.gravityEnabled ?? false,
       })
     );
@@ -950,13 +947,14 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
     g.addPass(mainObjectMrt);
 
     // Composite normals (env + main object + volumetric)
+    // Composite normals from environment and main object MRT
+    // Note: Depth-based compositing was removed because after the scene pass split
+    // for gravitational lensing, the depths no longer match reliably.
     const normalComposite = new FullscreenPass({
       id: 'normalComposite',
       inputs: [
         { resourceId: RESOURCES.NORMAL_ENV, access: 'read', binding: 'uNormalEnv' },
         { resourceId: RESOURCES.MAIN_OBJECT_MRT, access: 'read', attachment: 1, binding: 'uMainNormal' },
-        { resourceId: RESOURCES.MAIN_OBJECT_MRT, access: 'read', attachment: 'depth', binding: 'uMainDepth' },
-        { resourceId: RESOURCES.SCENE_COLOR, access: 'read', attachment: 'depth', binding: 'uSceneDepth' },
       ],
       outputs: [{ resourceId: RESOURCES.NORMAL_BUFFER, access: 'write' }],
       fragmentShader: normalCompositeFragmentShader,

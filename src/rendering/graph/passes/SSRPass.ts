@@ -4,6 +4,9 @@
  * Render graph pass for screen-space reflections.
  * Uses ray marching in screen space to find reflections.
  *
+ * OPTIMIZATION: Supports half-resolution rendering with bilateral upsampling
+ * for 50-75% performance improvement with minimal visual quality loss.
+ *
  * @module rendering/graph/passes/SSRPass
  */
 
@@ -12,6 +15,14 @@ import * as THREE from 'three';
 import { BasePass } from '../BasePass';
 import type { RenderContext, RenderPassConfig } from '../types';
 import { SSRShader, type SSRUniforms } from '@/rendering/shaders/postprocessing/SSRShader';
+import {
+  BilateralUpsampleShader,
+  type BilateralUpsampleUniforms,
+} from '@/rendering/shaders/postprocessing/BilateralUpsampleShader';
+import {
+  getFullscreenQuadGeometry,
+  releaseFullscreenQuadGeometry,
+} from '@/rendering/core/FullscreenQuad';
 
 /**
  * Configuration for SSRPass.
@@ -46,6 +57,18 @@ export interface SSRPassConfig extends Omit<RenderPassConfig, 'inputs' | 'output
   fadeEnd?: number;
   /** Max ray march steps */
   maxSteps?: number;
+  /**
+   * Enable half-resolution rendering with bilateral upsampling.
+   * OPTIMIZATION: Reduces SSR cost by 50-75% with minimal quality loss.
+   * @default true
+   */
+  halfResolution?: boolean;
+  /**
+   * Depth threshold for bilateral upsampling.
+   * Lower values = sharper edges but potential artifacts.
+   * @default 0.01
+   */
+  bilateralDepthThreshold?: number;
 }
 
 /**
@@ -61,6 +84,7 @@ export interface SSRPassConfig extends Omit<RenderPassConfig, 'inputs' | 'output
  *   outputResource: 'ssrOutput',
  *   intensity: 0.8,
  *   maxSteps: 64,
+ *   halfResolution: true, // Enable half-res optimization
  * });
  * ```
  */
@@ -74,6 +98,14 @@ export class SSRPass extends BasePass {
   private copyMaterial: THREE.ShaderMaterial;
   private copyMesh: THREE.Mesh;
   private copyScene: THREE.Scene;
+
+  // Half-resolution pipeline
+  private useHalfRes: boolean;
+  private halfResTarget: THREE.WebGLRenderTarget | null = null;
+  private upsampleMaterial: THREE.ShaderMaterial | null = null;
+  private upsampleMesh: THREE.Mesh | null = null;
+  private upsampleScene: THREE.Scene | null = null;
+  private bilateralDepthThreshold: number;
 
   private colorInputId: string;
   private normalInputId: string;
@@ -177,6 +209,69 @@ export class SSRPass extends BasePass {
     this.copyMesh.frustumCulled = false;
     this.copyScene = new THREE.Scene();
     this.copyScene.add(this.copyMesh);
+
+    // Half-resolution pipeline setup
+    this.useHalfRes = config.halfResolution ?? true;
+    this.bilateralDepthThreshold = config.bilateralDepthThreshold ?? 0.01;
+
+    if (this.useHalfRes) {
+      this.initHalfResPipeline();
+    }
+  }
+
+  /**
+   * Initialize the half-resolution rendering pipeline.
+   */
+  private initHalfResPipeline(): void {
+    // Upsample material for bilateral upsampling
+    this.upsampleMaterial = new THREE.ShaderMaterial({
+      glslVersion: THREE.GLSL3,
+      vertexShader: BilateralUpsampleShader.vertexShader,
+      fragmentShader: BilateralUpsampleShader.fragmentShader,
+      uniforms: THREE.UniformsUtils.clone(
+        BilateralUpsampleShader.uniforms as unknown as Record<string, THREE.IUniform>
+      ),
+      depthTest: false,
+      depthWrite: false,
+    });
+
+    const upsampleUniforms = this.upsampleMaterial.uniforms as unknown as BilateralUpsampleUniforms;
+    upsampleUniforms.uDepthThreshold.value = this.bilateralDepthThreshold;
+
+    this.upsampleMesh = new THREE.Mesh(getFullscreenQuadGeometry(), this.upsampleMaterial);
+    this.upsampleMesh.frustumCulled = false;
+    this.upsampleScene = new THREE.Scene();
+    this.upsampleScene.add(this.upsampleMesh);
+  }
+
+  /**
+   * Ensure half-res target matches current size.
+   */
+  private ensureHalfResTarget(width: number, height: number): void {
+    const halfWidth = Math.max(1, Math.floor(width / 2));
+    const halfHeight = Math.max(1, Math.floor(height / 2));
+
+    if (
+      this.halfResTarget &&
+      this.halfResTarget.width === halfWidth &&
+      this.halfResTarget.height === halfHeight
+    ) {
+      return;
+    }
+
+    // Dispose old target
+    if (this.halfResTarget) {
+      this.halfResTarget.dispose();
+    }
+
+    // Create new half-res target
+    this.halfResTarget = new THREE.WebGLRenderTarget(halfWidth, halfHeight, {
+      format: THREE.RGBAFormat,
+      type: THREE.HalfFloatType,
+      minFilter: THREE.LinearFilter,
+      magFilter: THREE.LinearFilter,
+      depthBuffer: false,
+    });
   }
 
   execute(ctx: RenderContext): void {
@@ -208,7 +303,28 @@ export class SSRPass extends BasePass {
       return;
     }
 
-    // Update uniforms
+    // Use half-resolution pipeline if enabled
+    if (this.useHalfRes && this.upsampleMaterial && this.upsampleScene) {
+      this.executeHalfRes(ctx, colorTex, normalTex, depthTex, camera, outputTarget);
+      return;
+    }
+
+    // Full-resolution path
+    this.executeFullRes(colorTex, normalTex, depthTex, camera, size, renderer, outputTarget);
+  }
+
+  /**
+   * Execute SSR at full resolution (original behavior).
+   */
+  private executeFullRes(
+    colorTex: THREE.Texture,
+    normalTex: THREE.Texture,
+    depthTex: THREE.Texture,
+    camera: THREE.PerspectiveCamera,
+    size: { width: number; height: number },
+    renderer: THREE.WebGLRenderer,
+    outputTarget: THREE.WebGLRenderTarget | null
+  ): void {
     const uniforms = this.material.uniforms as unknown as SSRUniforms;
     uniforms.tDiffuse.value = colorTex;
     uniforms.tNormal.value = normalTex;
@@ -220,9 +336,65 @@ export class SSRPass extends BasePass {
     uniforms.nearClip.value = camera.near;
     uniforms.farClip.value = camera.far;
 
-    // Render
     renderer.setRenderTarget(outputTarget);
     renderer.render(this.scene, this.camera);
+    renderer.setRenderTarget(null);
+  }
+
+  /**
+   * Execute SSR at half resolution with bilateral upsampling.
+   * OPTIMIZATION: Reduces SSR cost by 50-75% (4x fewer pixels).
+   */
+  private executeHalfRes(
+    ctx: RenderContext,
+    colorTex: THREE.Texture,
+    normalTex: THREE.Texture,
+    depthTex: THREE.Texture,
+    camera: THREE.PerspectiveCamera,
+    outputTarget: THREE.WebGLRenderTarget | null
+  ): void {
+    const { renderer, size } = ctx;
+
+    // Ensure half-res target is correct size
+    this.ensureHalfResTarget(size.width, size.height);
+
+    if (!this.halfResTarget || !this.upsampleMaterial || !this.upsampleScene) {
+      // Fallback to full-res
+      this.executeFullRes(colorTex, normalTex, depthTex, camera, size, renderer, outputTarget);
+      return;
+    }
+
+    const halfWidth = this.halfResTarget.width;
+    const halfHeight = this.halfResTarget.height;
+
+    // Step 1: Render SSR at half resolution
+    const uniforms = this.material.uniforms as unknown as SSRUniforms;
+    uniforms.tDiffuse.value = colorTex;
+    uniforms.tNormal.value = normalTex;
+    uniforms.tDepth.value = depthTex as unknown as THREE.DepthTexture;
+    uniforms.resolution.value.set(halfWidth, halfHeight);
+    uniforms.projMatrix.value.copy(camera.projectionMatrix);
+    uniforms.invProjMatrix.value.copy(camera.projectionMatrixInverse);
+    uniforms.uViewMat.value.copy(camera.matrixWorldInverse);
+    uniforms.nearClip.value = camera.near;
+    uniforms.farClip.value = camera.far;
+
+    // Set viewport for half-res target (use target.viewport to avoid DPR issues)
+    this.halfResTarget.viewport.set(0, 0, halfWidth, halfHeight);
+    renderer.setRenderTarget(this.halfResTarget);
+    renderer.render(this.scene, this.camera);
+
+    // Step 2: Bilateral upsample to full resolution
+    const upsampleUniforms = this.upsampleMaterial.uniforms as unknown as BilateralUpsampleUniforms;
+    upsampleUniforms.tInput.value = this.halfResTarget.texture;
+    upsampleUniforms.tColor.value = colorTex;
+    upsampleUniforms.tDepth.value = depthTex;
+    upsampleUniforms.uResolution.value.set(size.width, size.height);
+    upsampleUniforms.uNearClip.value = camera.near;
+    upsampleUniforms.uFarClip.value = camera.far;
+
+    renderer.setRenderTarget(outputTarget);
+    renderer.render(this.upsampleScene, this.camera);
     renderer.setRenderTarget(null);
   }
 
@@ -244,6 +416,30 @@ export class SSRPass extends BasePass {
   /** Set max ray march steps */
   setMaxSteps(value: number): void {
     (this.material.uniforms as unknown as SSRUniforms).maxSteps.value = value;
+  }
+
+  /**
+   * Enable or disable half-resolution rendering at runtime.
+   */
+  setHalfResolution(enabled: boolean): void {
+    if (this.useHalfRes === enabled) return;
+
+    this.useHalfRes = enabled;
+
+    if (enabled && !this.upsampleMaterial) {
+      this.initHalfResPipeline();
+    }
+  }
+
+  /**
+   * Set bilateral depth threshold for upsampling.
+   */
+  setBilateralDepthThreshold(threshold: number): void {
+    this.bilateralDepthThreshold = threshold;
+    if (this.upsampleMaterial) {
+      (this.upsampleMaterial.uniforms as unknown as BilateralUpsampleUniforms).uDepthThreshold.value =
+        threshold;
+    }
   }
 
   /** Copy input texture directly to output (passthrough) */
@@ -268,5 +464,21 @@ export class SSRPass extends BasePass {
     // Remove meshes from scenes to ensure proper cleanup
     this.scene.remove(this.mesh);
     this.copyScene.remove(this.copyMesh);
+
+    // Dispose half-res resources
+    if (this.halfResTarget) {
+      this.halfResTarget.dispose();
+      this.halfResTarget = null;
+    }
+    if (this.upsampleMaterial) {
+      this.upsampleMaterial.dispose();
+      this.upsampleMaterial = null;
+    }
+    if (this.upsampleMesh && this.upsampleScene) {
+      this.upsampleScene.remove(this.upsampleMesh);
+      releaseFullscreenQuadGeometry();
+      this.upsampleMesh = null;
+      this.upsampleScene = null;
+    }
   }
 }

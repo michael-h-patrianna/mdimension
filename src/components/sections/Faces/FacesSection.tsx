@@ -18,25 +18,12 @@ import { Slider } from '@/components/ui/Slider';
 import { Switch } from '@/components/ui/Switch';
 import { Tabs } from '@/components/ui/Tabs';
 import { isRaymarchingFractal, supportsEmission } from '@/lib/geometry/registry';
-import {
-    LAYER_COUNT_OPTIONS,
-    LAYER_OPACITY_RANGE,
-    OPACITY_MODE_LABELS,
-    OPACITY_MODE_OPTIONS,
-    OPACITY_MODE_TOOLTIPS,
-    SAMPLE_QUALITY_LABELS,
-    SAMPLE_QUALITY_OPTIONS,
-    SIMPLE_ALPHA_RANGE,
-    VOLUMETRIC_DENSITY_RANGE,
-} from '@/rendering/opacity/constants';
-import type { OpacityMode, SampleQuality, VolumetricAnimationQuality } from '@/rendering/opacity/types';
 import { useAppearanceStore, type AppearanceSlice } from '@/stores/appearanceStore';
 import { DEFAULT_FACE_PBR } from '@/stores/defaults/visualDefaults';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useLightingStore, type LightingSlice } from '@/stores/lightingStore';
 import { usePBRStore, type PBRSlice } from '@/stores/pbrStore';
-import { useUIStore, type UISlice } from '@/stores/uiStore';
-import React, { useCallback, useEffect, useState } from 'react';
+import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { ColorAlgorithmSelector } from './ColorAlgorithmSelector';
 import { ColorPreview } from './ColorPreview';
@@ -54,11 +41,13 @@ type FacesTabId = 'colors' | 'material';
 export const FacesSection: React.FC<FacesSectionProps> = ({
   defaultOpen = false,
 }) => {
-  const [activeTab, setActiveTab] = useState<FacesTabId>('colors');
+  const [activeTab, setActiveTab] = React.useState<FacesTabId>('colors');
 
-  // Get object type and dimension to check if we're viewing a raymarching fractal
+  // Get object type and dimension to check rendering mode
   const objectType = useGeometryStore((state) => state.objectType);
   const dimension = useGeometryStore((state) => state.dimension);
+  
+  // Raymarching fractals (mandelbulb, julia, schroedinger, blackhole) are always fully opaque
   const isRaymarchingFractalType = isRaymarchingFractal(objectType, dimension);
 
   // Appearance settings
@@ -137,32 +126,6 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
     setSpecularColor,
   } = usePBRStore(pbrSelector);
 
-  // UI settings (Opacity)
-  const uiSelector = useShallow((state: UISlice) => ({
-    opacitySettings: state.opacitySettings,
-    hasSeenVolumetricWarning: state.hasSeenVolumetricWarning,
-    setOpacityMode: state.setOpacityMode,
-    setSimpleAlphaOpacity: state.setSimpleAlphaOpacity,
-    setLayerCount: state.setLayerCount,
-    setLayerOpacity: state.setLayerOpacity,
-    setVolumetricDensity: state.setVolumetricDensity,
-    setSampleQuality: state.setSampleQuality,
-    setVolumetricAnimationQuality: state.setVolumetricAnimationQuality,
-    setHasSeenVolumetricWarning: state.setHasSeenVolumetricWarning,
-  }));
-  const {
-    opacitySettings,
-    hasSeenVolumetricWarning,
-    setOpacityMode,
-    setSimpleAlphaOpacity,
-    setLayerCount,
-    setLayerOpacity,
-    setVolumetricDensity,
-    setSampleQuality,
-    setVolumetricAnimationQuality,
-    setHasSeenVolumetricWarning,
-  } = useUIStore(uiSelector);
-
   const surfaceSettings = shaderSettings.surface;
 
   // Check if lighting controls should be shown
@@ -212,24 +175,8 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
           setFaceEmissionColorShift={setFaceEmissionColorShift}
           setFaceEmissionPulsing={setFaceEmissionPulsing}
           setFaceRimFalloff={setFaceRimFalloff}
-          // Opacity props (raymarching fractals)
-          isRaymarchingFractalType={isRaymarchingFractalType}
-          opacityMode={opacitySettings.mode}
-          simpleAlphaOpacity={opacitySettings.simpleAlphaOpacity}
-          layerCount={opacitySettings.layerCount}
-          layerOpacity={opacitySettings.layerOpacity}
-          volumetricDensity={opacitySettings.volumetricDensity}
-          sampleQuality={opacitySettings.sampleQuality}
-          volumetricAnimationQuality={opacitySettings.volumetricAnimationQuality}
-          hasSeenVolumetricWarning={hasSeenVolumetricWarning}
-          onOpacityModeChange={setOpacityMode}
-          onSimpleAlphaChange={setSimpleAlphaOpacity}
-          onLayerCountChange={setLayerCount}
-          onLayerOpacityChange={setLayerOpacity}
-          onVolumetricDensityChange={setVolumetricDensity}
-          onSampleQualityChange={setSampleQuality}
-          onVolumetricAnimationQualityChange={setVolumetricAnimationQuality}
-          onSeenVolumetricWarning={() => setHasSeenVolumetricWarning(true)}
+          // Hide opacity for raymarching fractals (always fully opaque)
+          hideOpacity={isRaymarchingFractalType}
         />
       ),
     },
@@ -413,24 +360,8 @@ interface MaterialTabContentProps {
   setFaceEmissionColorShift: (value: number) => void;
   setFaceEmissionPulsing: (value: boolean) => void;
   setFaceRimFalloff: (value: number) => void;
-  // Raymarching fractals opacity props
-  isRaymarchingFractalType: boolean;
-  opacityMode: OpacityMode;
-  simpleAlphaOpacity: number;
-  layerCount: 2 | 3 | 4;
-  layerOpacity: number;
-  volumetricDensity: number;
-  sampleQuality: SampleQuality;
-  volumetricAnimationQuality: VolumetricAnimationQuality;
-  hasSeenVolumetricWarning: boolean;
-  onOpacityModeChange: (mode: OpacityMode) => void;
-  onSimpleAlphaChange: (value: number) => void;
-  onLayerCountChange: (count: 2 | 3 | 4) => void;
-  onLayerOpacityChange: (value: number) => void;
-  onVolumetricDensityChange: (value: number) => void;
-  onSampleQualityChange: (quality: SampleQuality) => void;
-  onVolumetricAnimationQualityChange: (quality: VolumetricAnimationQuality) => void;
-  onSeenVolumetricWarning: () => void;
+  // Hide opacity controls for raymarching fractals (always fully opaque)
+  hideOpacity?: boolean;
 }
 
 const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
@@ -457,179 +388,12 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
   setFaceEmissionColorShift,
   setFaceEmissionPulsing,
   setFaceRimFalloff,
-  // Raymarching fractals opacity props
-  isRaymarchingFractalType,
-  opacityMode,
-  simpleAlphaOpacity,
-  layerCount,
-  layerOpacity,
-  volumetricDensity,
-  sampleQuality,
-  volumetricAnimationQuality,
-  hasSeenVolumetricWarning,
-  onOpacityModeChange,
-  onSimpleAlphaChange,
-  onLayerCountChange,
-  onLayerOpacityChange,
-  onVolumetricDensityChange,
-  onSampleQualityChange,
-  onVolumetricAnimationQualityChange,
-  onSeenVolumetricWarning,
+  hideOpacity = false,
 }) => {
-  // State for volumetric warning toast
-  const [showVolumetricWarning, setShowVolumetricWarning] = useState(false);
-
-  // Handle opacity mode change with volumetric warning
-  const handleOpacityModeChange = useCallback(
-    (mode: OpacityMode) => {
-      if (mode === 'volumetricDensity' && !hasSeenVolumetricWarning) {
-        setShowVolumetricWarning(true);
-        onSeenVolumetricWarning();
-      }
-      onOpacityModeChange(mode);
-    },
-    [hasSeenVolumetricWarning, onOpacityModeChange, onSeenVolumetricWarning]
-  );
-
-  // Auto-dismiss warning after 3 seconds
-  useEffect(() => {
-    if (!showVolumetricWarning) return;
-    const timer = setTimeout(() => setShowVolumetricWarning(false), 3000);
-    return () => clearTimeout(timer);
-  }, [showVolumetricWarning]);
-
   return (
     <div className="space-y-4">
-
-
-      {/* Raymarching Fractals Opacity Mode Controls */}
-      {isRaymarchingFractalType && (
-        <ControlGroup title="Opacity Mode" collapsible defaultOpen>
-          {/* Opacity Mode Dropdown */}
-          <div className="space-y-2">
-            <select
-              value={opacityMode}
-              onChange={(e) => handleOpacityModeChange(e.target.value as OpacityMode)}
-              className="w-full px-3 py-2 bg-control-bg border border-panel-border rounded text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
-              title={OPACITY_MODE_TOOLTIPS[opacityMode]}
-            >
-              {OPACITY_MODE_OPTIONS.map((mode) => (
-                <option key={mode} value={mode}>
-                  {OPACITY_MODE_LABELS[mode]}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-text-secondary">
-              {OPACITY_MODE_TOOLTIPS[opacityMode]}
-            </p>
-          </div>
-
-          {/* Volumetric Warning Toast */}
-          {showVolumetricWarning && (
-            <div className="bg-warning/20 border border-warning/50 rounded px-3 py-2 text-xs text-warning">
-              Volumetric mode may reduce performance on some devices.
-            </div>
-          )}
-
-          {/* Simple Alpha Mode Controls */}
-          {opacityMode === 'simpleAlpha' && (
-            <Slider
-              label="Face Opacity"
-              min={SIMPLE_ALPHA_RANGE.min}
-              max={SIMPLE_ALPHA_RANGE.max}
-              step={SIMPLE_ALPHA_RANGE.step}
-              value={simpleAlphaOpacity}
-              onChange={onSimpleAlphaChange}
-              showValue
-            />
-          )}
-
-          {/* Layered Surfaces Mode Controls */}
-          {opacityMode === 'layeredSurfaces' && (
-            <>
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-text-secondary">
-                  Layer Count
-                </label>
-                <select
-                  value={layerCount}
-                  onChange={(e) => onLayerCountChange(Number(e.target.value) as 2 | 3 | 4)}
-                  className="w-full px-3 py-2 bg-control-bg border border-panel-border rounded text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
-                >
-                  {LAYER_COUNT_OPTIONS.map((count) => (
-                    <option key={count} value={count}>
-                      {count} Layers
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <Slider
-                label="Layer Opacity"
-                min={LAYER_OPACITY_RANGE.min}
-                max={LAYER_OPACITY_RANGE.max}
-                step={LAYER_OPACITY_RANGE.step}
-                value={layerOpacity}
-                onChange={onLayerOpacityChange}
-                showValue
-              />
-            </>
-          )}
-
-          {/* Volumetric Density Mode Controls */}
-          {opacityMode === 'volumetricDensity' && (
-            <>
-              <Slider
-                label="Density"
-                min={VOLUMETRIC_DENSITY_RANGE.min}
-                max={VOLUMETRIC_DENSITY_RANGE.max}
-                step={VOLUMETRIC_DENSITY_RANGE.step}
-                value={volumetricDensity}
-                onChange={onVolumetricDensityChange}
-                showValue
-              />
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-text-secondary">
-                  Sample Quality
-                </label>
-                <select
-                  value={sampleQuality}
-                  onChange={(e) => onSampleQualityChange(e.target.value as SampleQuality)}
-                  className="w-full px-3 py-2 bg-control-bg border border-panel-border rounded text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
-                >
-                  {SAMPLE_QUALITY_OPTIONS.map((quality) => (
-                    <option key={quality} value={quality}>
-                      {SAMPLE_QUALITY_LABELS[quality]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-text-secondary">
-                  Animation Quality
-                </label>
-                <select
-                  value={volumetricAnimationQuality}
-                  onChange={(e) =>
-                    onVolumetricAnimationQualityChange(e.target.value as VolumetricAnimationQuality)
-                  }
-                  className="w-full px-3 py-2 bg-control-bg border border-panel-border rounded text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
-                >
-                  <option value="reduce">Reduce during animation</option>
-                  <option value="full">Full quality always</option>
-                </select>
-                <p className="text-xs text-text-secondary">
-                  {volumetricAnimationQuality === 'reduce'
-                    ? 'Lower quality during rotation for better performance'
-                    : 'Maintain full quality (may affect performance)'}
-                </p>
-              </div>
-            </>
-          )}
-        </ControlGroup>
-      )}
-
-      {/* Face Opacity - Only shown for non-mandelbulb objects */}
-      {!isRaymarchingFractalType && (
+      {/* Face Opacity - Hidden for raymarching fractals (always fully opaque) */}
+      {!hideOpacity && (
         <ControlGroup title="Opacity">
           <Slider
             label=""

@@ -11,7 +11,6 @@ import { FRAME_PRIORITY } from '@/rendering/core/framePriorities';
 import { needsVolumetricSeparation, RENDER_LAYERS } from '@/rendering/core/layers';
 import { useTemporalDepth } from '@/rendering/core/temporalDepth';
 import { TrackedShaderMaterial } from '@/rendering/materials/TrackedShaderMaterial';
-import { OPACITY_MODE_TO_INT, SAMPLE_QUALITY_TO_INT } from '@/rendering/opacity/types';
 import {
     MAX_DIMENSION,
     useQualityTracking,
@@ -26,10 +25,7 @@ import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useEnvironmentStore } from '@/stores/environmentStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
-import {
-    getEffectiveSampleQuality,
-    usePerformanceStore,
-} from '@/stores/performanceStore';
+import { usePerformanceStore } from '@/stores/performanceStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useWebGLContextStore } from '@/stores/webglContextStore';
 import { useFrame, useThree } from '@react-three/fiber';
@@ -102,7 +98,6 @@ const SchroedingerMesh = () => {
   const dimension = useGeometryStore((state) => state.dimension);
   const isoEnabled = useExtendedObjectStore((state) => state.schroedinger.isoEnabled);
   const quantumMode = useExtendedObjectStore((state) => state.schroedinger.quantumMode);
-  const opacityMode = useUIStore((state) => state.opacitySettings.mode);
 
   // ParameterValues subscription for rotation hook (also read via getState in useFrame for other uses)
   const parameterValues = useExtendedObjectStore((state) => state.schroedinger.parameterValues);
@@ -221,16 +216,6 @@ const SchroedingerMesh = () => {
       uFresnelIntensity: { value: 0.5 },
       uRimColor: { value: new THREE.Color('#FFFFFF').convertSRGBToLinear() },
 
-      // Opacity Mode System uniforms
-      uOpacityMode: { value: 0 },
-      uSimpleAlpha: { value: 0.7 },
-      uLayerCount: { value: 2 },
-      uLayerOpacity: { value: 0.5 },
-      uVolumetricDensity: { value: 1.0 },
-      uSampleQuality: { value: 64 },
-      uSampleCount: { value: 64 },
-      uVolumetricReduceOnAnim: { value: true },
-
       // Advanced Color System uniforms
       uColorAlgorithm: { value: 1 },
       uCosineA: { value: new THREE.Vector3(0.5, 0.5, 0.5) },
@@ -288,7 +273,7 @@ const SchroedingerMesh = () => {
   // Reset overrides when configuration changes
   useEffect(() => {
     resetShaderOverrides();
-  }, [dimension, temporalEnabled, opacityMode, isoEnabled, sssEnabled, edgesVisible, curlEnabled, dispersionEnabled, nodalEnabled, energyColorEnabled, shimmerEnabled, erosionEnabled, resetShaderOverrides]);
+  }, [dimension, temporalEnabled, isoEnabled, sssEnabled, edgesVisible, curlEnabled, dispersionEnabled, nodalEnabled, energyColorEnabled, shimmerEnabled, erosionEnabled, resetShaderOverrides]);
 
   // Compile shader
   // For volumetric mode with temporal enabled, use temporal ACCUMULATION (Horizon-style)
@@ -302,7 +287,6 @@ const SchroedingerMesh = () => {
       temporal: temporalEnabled && isoEnabled, // Depth-skip only for isosurface
       temporalAccumulation: useTemporalAccumulation,
       ambientOcclusion: true, // Enable volumetric AO (runtime toggle via uAoEnabled)
-      opacityMode: opacityMode,
       overrides: shaderOverrides,
       isosurface: isoEnabled,
       quantumMode: quantumMode, // Modular compilation: only include required quantum modules
@@ -318,7 +302,7 @@ const SchroedingerMesh = () => {
       erosion: erosionEnabled,
     });
     return result;
-  }, [dimension, temporalEnabled, opacityMode, shaderOverrides, isoEnabled, useTemporalAccumulation, quantumMode, sssEnabled, edgesVisible, curlEnabled, dispersionEnabled, nodalEnabled, energyColorEnabled, shimmerEnabled, erosionEnabled]);
+  }, [dimension, temporalEnabled, shaderOverrides, isoEnabled, useTemporalAccumulation, quantumMode, sssEnabled, edgesVisible, curlEnabled, dispersionEnabled, nodalEnabled, energyColorEnabled, shimmerEnabled, erosionEnabled]);
 
   // Update debug info
   useEffect(() => {
@@ -655,39 +639,14 @@ const SchroedingerMesh = () => {
         material.uniforms.uEnvMap.value = isPMREM ? env : null;
       }
 
-      // Opacity Mode System
-      const { opacitySettings, animationBias } = uiState;
-      if (material.uniforms.uOpacityMode) {
-        // Respect user's opacity mode selection, including SOLID mode
-        // The temporal accumulation compositing pass now correctly handles all modes
-        // Note: Previous workaround forced 'volumetricDensity' mode to avoid compositing bugs
-        // which have since been fixed (autoClear and alpha preservation in reconstruction)
-        material.uniforms.uOpacityMode.value = OPACITY_MODE_TO_INT[opacitySettings.mode as keyof typeof OPACITY_MODE_TO_INT];
-      }
-      if (material.uniforms.uSimpleAlpha) {
-        material.uniforms.uSimpleAlpha.value = opacitySettings.simpleAlphaOpacity;
-      }
-      if (material.uniforms.uLayerCount) {
-        material.uniforms.uLayerCount.value = opacitySettings.layerCount;
-      }
-      if (material.uniforms.uLayerOpacity) {
-        material.uniforms.uLayerOpacity.value = opacitySettings.layerOpacity;
-      }
-      if (material.uniforms.uVolumetricDensity) {
-        material.uniforms.uVolumetricDensity.value = opacitySettings.volumetricDensity;
-      }
-      if (material.uniforms.uSampleQuality) {
-        const effectiveSampleQuality = getEffectiveSampleQuality(opacitySettings.sampleQuality, qualityMultiplier);
-        material.uniforms.uSampleQuality.value = SAMPLE_QUALITY_TO_INT[effectiveSampleQuality];
-      }
-      if (material.uniforms.uVolumetricReduceOnAnim) {
-        material.uniforms.uVolumetricReduceOnAnim.value = opacitySettings.volumetricAnimationQuality === 'reduce';
-      }
+      // Animation bias from UI settings
+      const { animationBias } = uiState;
 
       // Configure transparency
+      // Schrödinger is always fully opaque (solid mode) unless temporal accumulation requires transparency
       // When temporal accumulation is active, we MUST treat the material as transparent
-      // to ensure correct alpha behavior and rendering order, even if mode is 'solid'
-      const isTransparent = opacitySettings.mode !== 'solid' || useTemporalAccumulation;
+      // to ensure correct alpha behavior and rendering order
+      const isTransparent = useTemporalAccumulation;
       if (material.transparent !== isTransparent) {
         material.transparent = isTransparent;
         material.depthWrite = !isTransparent;

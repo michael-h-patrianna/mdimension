@@ -75,14 +75,6 @@ export function useBlackHoleUniforms() {
       uLchLightness: { value: 0.5 },
       uLchChroma: { value: 0.5 },
 
-      // Opacity Mode System
-      uOpacityMode: { value: 0 },
-      uSimpleAlpha: { value: 1.0 },
-      uLayerCount: { value: 2 },
-      uLayerOpacity: { value: 0.5 },
-      uVolumetricDensity: { value: 1.0 },
-      uSampleQuality: { value: 1 },
-
       // Lensing
       uDimensionEmphasis: { value: 0.8 },
       uDistanceFalloff: { value: 1.6 },

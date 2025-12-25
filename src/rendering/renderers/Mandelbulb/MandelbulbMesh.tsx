@@ -3,7 +3,6 @@ import { createColorCache, updateLinearColorUniform } from '@/rendering/colors/l
 import { FRAME_PRIORITY } from '@/rendering/core/framePriorities';
 import { useTemporalDepth } from '@/rendering/core/temporalDepth';
 import { TrackedShaderMaterial } from '@/rendering/materials/TrackedShaderMaterial';
-import { OPACITY_MODE_TO_INT, SAMPLE_QUALITY_TO_INT } from '@/rendering/opacity/types';
 import {
     MAX_DIMENSION,
     useLayerAssignment,
@@ -21,7 +20,6 @@ import { useGeometryStore } from '@/stores/geometryStore';
 import { useLightingStore } from '@/stores/lightingStore';
 import { useMsgBoxStore } from '@/stores/msgBoxStore';
 import {
-    getEffectiveSampleQuality,
     getEffectiveShadowQuality,
     usePerformanceStore,
 } from '@/stores/performanceStore';
@@ -122,9 +120,6 @@ const MandelbulbMesh = () => {
   const fresnelIntensity = useAppearanceStore((state) => state.fresnelIntensity);
   const edgeColor = useAppearanceStore((state) => state.edgeColor);
 
-  // Opacity settings (shared global state)
-  const opacitySettings = useUIStore((state) => state.opacitySettings);
-
   // Shadow settings
   const shadowEnabled = useLightingStore((state) => state.shadowEnabled);
   const shadowQuality = useLightingStore((state) => state.shadowQuality);
@@ -201,15 +196,6 @@ const MandelbulbMesh = () => {
       uFresnelIntensity: { value: 0.5 },
       uRimColor: { value: new THREE.Color('#FFFFFF').convertSRGBToLinear() },
 
-      // Opacity Mode System uniforms
-      uOpacityMode: { value: 0 },
-      uSimpleAlpha: { value: 0.7 },
-      uLayerCount: { value: 2 },
-      uLayerOpacity: { value: 0.5 },
-      uVolumetricDensity: { value: 1.0 },
-      uSampleQuality: { value: 1 },
-      uVolumetricReduceOnAnim: { value: true },
-
       // Shadow System uniforms
       uShadowEnabled: { value: false },
       uShadowQuality: { value: 1 },
@@ -243,7 +229,7 @@ const MandelbulbMesh = () => {
   // Reset overrides when base configuration changes
   useEffect(() => {
     resetShaderOverrides();
-  }, [dimension, shadowEnabled, temporalEnabled, opacitySettings.mode, sssEnabled, edgesVisible, resetShaderOverrides]);
+  }, [dimension, shadowEnabled, temporalEnabled, sssEnabled, edgesVisible, resetShaderOverrides]);
 
   // Error tracking to prevent loop spam
   const hasErroredRef = useRef(false);
@@ -255,13 +241,12 @@ const MandelbulbMesh = () => {
       shadows: shadowEnabled,
       temporal: temporalEnabled,
       ambientOcclusion: true, // Always included unless explicit toggle added
-      opacityMode: opacitySettings.mode,
       overrides: shaderOverrides,
       sss: sssEnabled,
       fresnel: edgesVisible,
       fog: false, // Physical fog handled by post-process
     });
-  }, [dimension, shadowEnabled, temporalEnabled, opacitySettings.mode, shaderOverrides, sssEnabled, edgesVisible]);
+  }, [dimension, shadowEnabled, temporalEnabled, shaderOverrides, sssEnabled, edgesVisible]);
 
   // Update debug info store
   useEffect(() => {
@@ -395,34 +380,6 @@ const MandelbulbMesh = () => {
         updateLinearColorUniform(cache.rimColor, material.uniforms.uRimColor.value as THREE.Color, edgeColor);
       }
 
-      // Opacity Mode System uniforms
-      if (material.uniforms.uOpacityMode) {
-        material.uniforms.uOpacityMode.value = OPACITY_MODE_TO_INT[opacitySettings.mode];
-      }
-      if (material.uniforms.uSimpleAlpha) {
-        material.uniforms.uSimpleAlpha.value = opacitySettings.simpleAlphaOpacity;
-      }
-      if (material.uniforms.uLayerCount) {
-        material.uniforms.uLayerCount.value = opacitySettings.layerCount;
-      }
-      if (material.uniforms.uLayerOpacity) {
-        material.uniforms.uLayerOpacity.value = opacitySettings.layerOpacity;
-      }
-      if (material.uniforms.uVolumetricDensity) {
-        material.uniforms.uVolumetricDensity.value = opacitySettings.volumetricDensity;
-      }
-      if (material.uniforms.uSampleQuality) {
-        // Progressive refinement: scale volumetric quality from low → user's target
-        const effectiveSampleQuality = getEffectiveSampleQuality(
-          opacitySettings.sampleQuality,
-          qualityMultiplier
-        );
-        material.uniforms.uSampleQuality.value = SAMPLE_QUALITY_TO_INT[effectiveSampleQuality];
-      }
-      if (material.uniforms.uVolumetricReduceOnAnim) {
-        material.uniforms.uVolumetricReduceOnAnim.value = opacitySettings.volumetricAnimationQuality === 'reduce';
-      }
-
       // Shadow System uniforms
       if (material.uniforms.uShadowEnabled) {
         material.uniforms.uShadowEnabled.value = shadowEnabled;
@@ -461,11 +418,10 @@ const MandelbulbMesh = () => {
         material.uniforms.uEnvMap.value = isPMREM ? env : null;
       }
 
-      // Configure material transparency based on opacity mode
-      const isTransparent = opacitySettings.mode !== 'solid';
-      if (material.transparent !== isTransparent) {
-        material.transparent = isTransparent;
-        material.depthWrite = !isTransparent;
+      // Mandelbulb is always fully opaque (solid mode)
+      if (material.transparent !== false) {
+        material.transparent = false;
+        material.depthWrite = true;
         material.needsUpdate = true;
       }
 

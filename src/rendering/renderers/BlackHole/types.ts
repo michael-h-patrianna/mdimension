@@ -114,11 +114,3 @@ export const COLOR_ALGORITHM_MAP: Record<string, number> = {
   lensingIntensity: 13,
   jetsEmission: 14,
 }
-
-/** Mapping from opacity mode string to shader integer */
-export const OPACITY_MODE_MAP: Record<string, number> = {
-  solid: 0,
-  simpleAlpha: 1,
-  layeredSurfaces: 2,
-  volumetricDensity: 3,
-}

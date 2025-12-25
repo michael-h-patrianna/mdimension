@@ -128,12 +128,21 @@ export class MainObjectMRTPass extends BasePass {
     try {
       // Force materials to be opaque for MRT outputs
       if (this.forceOpaque) {
-        // Build cache lazily on first render or after invalidation
-        if (this.materialCache === null) {
-          this.rebuildMaterialCache(scene, camera);
+        // Always rebuild cache because:
+        // 1. Mesh layers may be set AFTER first render (via ref callbacks)
+        // 2. Materials may change at runtime
+        // 3. Transparency state may change dynamically
+        // The traversal is O(N) but N is typically small for main objects
+        this.rebuildMaterialCache(scene, camera);
+
+        // Save CURRENT material state before forcing opaque
+        for (const entry of this.materialCache!) {
+          entry.transparent = entry.material.transparent;
+          entry.depthWrite = entry.material.depthWrite;
+          entry.blending = entry.material.blending;
         }
 
-        // Apply opacity forcing - O(M) where M is materials needing modification
+        // Apply opacity forcing
         for (const entry of this.materialCache!) {
           entry.material.transparent = false;
           entry.material.depthWrite = true;
@@ -152,7 +161,7 @@ export class MainObjectMRTPass extends BasePass {
 
       renderer.render(scene, camera);
     } finally {
-      // Restore material props - O(M)
+      // Restore material props to their state before this pass - O(M)
       if (this.forceOpaque && this.materialCache) {
         for (const entry of this.materialCache) {
           entry.material.transparent = entry.transparent;
@@ -181,6 +190,10 @@ export class MainObjectMRTPass extends BasePass {
    * Rebuild the material cache by traversing the scene.
    * Only called on first render or after invalidateCache().
    *
+   * Caches ALL materials on the target layers so we can force them opaque
+   * during MRT rendering, even if they become transparent at runtime
+   * (e.g., when opacity is changed from 1.0 to < 1.0).
+   *
    * @param scene - The scene to traverse
    * @param camera - The camera with layer mask to test against
    */
@@ -188,7 +201,9 @@ export class MainObjectMRTPass extends BasePass {
     this.materialCache = [];
 
     scene.traverse((obj) => {
-      // Skip objects not on the active camera layers
+      // Check if object is on the target layers
+      // Note: We check against camera.layers which has already been configured
+      // to only have the target layers enabled
       if (this.layers !== null && !obj.layers.test(camera.layers)) {
         return;
       }
@@ -196,15 +211,14 @@ export class MainObjectMRTPass extends BasePass {
       if ((obj as THREE.Mesh).isMesh) {
         const mat = (obj as THREE.Mesh).material as THREE.Material;
 
-        // Only cache materials that actually need modification
-        if (mat.transparent || !mat.depthWrite || mat.blending !== THREE.NoBlending) {
-          this.materialCache!.push({
-            material: mat,
-            transparent: mat.transparent,
-            depthWrite: mat.depthWrite,
-            blending: mat.blending,
-          });
-        }
+        // Cache ALL materials so we can force opaque even if they become
+        // transparent at runtime (e.g., opacity slider changed)
+        this.materialCache!.push({
+          material: mat,
+          transparent: mat.transparent,
+          depthWrite: mat.depthWrite,
+          blending: mat.blending,
+        });
       }
     });
   }

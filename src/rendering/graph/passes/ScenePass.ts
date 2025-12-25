@@ -19,6 +19,16 @@ import { isMRTTarget } from '../MRTStateManager'
 import type { RenderContext, RenderPassConfig } from '../types'
 
 /**
+ * Cached material entry for opacity forcing.
+ */
+interface CachedMaterialEntry {
+  material: THREE.Material
+  transparent: boolean
+  depthWrite: boolean
+  blending: THREE.Blending
+}
+
+/**
  * Configuration for ScenePass.
  */
 export interface ScenePassConfig extends Omit<RenderPassConfig, 'inputs'> {
@@ -36,6 +46,9 @@ export interface ScenePassConfig extends Omit<RenderPassConfig, 'inputs'> {
 
   /** Whether to render background */
   renderBackground?: boolean
+
+  /** Force materials to be opaque (useful for separate layer rendering where compositing handles alpha) */
+  forceOpaque?: boolean
 }
 
 /**
@@ -59,12 +72,16 @@ export class ScenePass extends BasePass {
   private clearAlpha: number
   private autoClear: boolean
   private renderBackground: boolean
+  private forceOpaque: boolean
 
   // Saved state for restoration
   private savedClearColor = new THREE.Color()
   private savedClearAlpha = 1
   private savedAutoClear = true
   private cameraLayers = new THREE.Layers()
+
+  // Material cache for forceOpaque
+  private materialCache: CachedMaterialEntry[] = []
 
   constructor(config: ScenePassConfig) {
     super({
@@ -80,6 +97,31 @@ export class ScenePass extends BasePass {
     this.clearAlpha = config.clearAlpha ?? 1
     this.autoClear = config.autoClear ?? true
     this.renderBackground = config.renderBackground ?? true
+    this.forceOpaque = config.forceOpaque ?? false
+  }
+
+  /**
+   * Rebuild material cache by traversing the scene.
+   */
+  private rebuildMaterialCache(scene: THREE.Scene, camera: THREE.Camera): void {
+    this.materialCache = []
+
+    scene.traverse((obj) => {
+      // Check if object is on the target layers
+      if (this.layers !== null && !obj.layers.test(camera.layers)) {
+        return
+      }
+
+      if ((obj as THREE.Mesh).isMesh) {
+        const mat = (obj as THREE.Mesh).material as THREE.Material
+        this.materialCache.push({
+          material: mat,
+          transparent: mat.transparent,
+          depthWrite: mat.depthWrite,
+          blending: mat.blending,
+        })
+      }
+    })
   }
 
   execute(ctx: RenderContext): void {
@@ -139,10 +181,36 @@ export class ScenePass extends BasePass {
         }
       }
 
+      // Force materials to be opaque if configured
+      // This is useful for separate layer rendering where compositing handles alpha
+      if (this.forceOpaque) {
+        this.rebuildMaterialCache(scene, camera)
+
+        // Save current state and force opaque
+        for (const entry of this.materialCache) {
+          entry.transparent = entry.material.transparent
+          entry.depthWrite = entry.material.depthWrite
+          entry.blending = entry.material.blending
+
+          entry.material.transparent = false
+          entry.material.depthWrite = true
+          entry.material.blending = THREE.NoBlending
+        }
+      }
+
       // Render - MRTStateManager automatically configures drawBuffers via patched setRenderTarget
       renderer.setRenderTarget(target)
       renderer.render(scene, camera)
     } finally {
+      // Restore material properties if we forced opaque
+      if (this.forceOpaque) {
+        for (const entry of this.materialCache) {
+          entry.material.transparent = entry.transparent
+          entry.material.depthWrite = entry.depthWrite
+          entry.material.blending = entry.blending
+        }
+      }
+
       // Restore renderer state - always runs even if render throws
       renderer.setClearColor(this.savedClearColor, this.savedClearAlpha)
       renderer.autoClear = this.savedAutoClear

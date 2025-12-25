@@ -24,7 +24,6 @@ import { composeBlackHoleShader, generateBlackHoleVertexShader } from '@/renderi
 import { generateRidgedNoiseTexture3D } from '@/rendering/utils/NoiseGenerator'
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore'
 import { useGeometryStore } from '@/stores/geometryStore'
-import { useUIStore } from '@/stores/uiStore'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { MAX_DIMENSION } from './types'
@@ -40,7 +39,6 @@ const BlackHoleMesh = () => {
 
   // Values that affect shader compilation
   const rawDimension = useGeometryStore((state) => state.dimension)
-  const opacityMode = useUIStore((state) => state.opacitySettings.mode)
 
   // Validate dimension at compile time (not every frame)
   // This ensures dimension is within valid bounds for N-D array operations
@@ -107,22 +105,21 @@ const BlackHoleMesh = () => {
       jets: jetsEnabled,
       doppler: dopplerEnabled,
       envMap: true,
-      opacityMode,
       fog: false,
       sliceAnimation: sliceAnimationEnabled,
       volumetricDisk: true,
       noiseTexture: true, // PERF (OPT-BH-1): Enable noise texture for faster rendering
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dimension, temporalEnabled, jetsEnabled, dopplerEnabled, opacityMode, sliceAnimationEnabled, SHADER_VERSION])
+  }, [dimension, temporalEnabled, jetsEnabled, dopplerEnabled, sliceAnimationEnabled, SHADER_VERSION])
 
   // Generate vertex shader
   const vertexShader = useMemo(() => generateBlackHoleVertexShader(), [])
 
   // Generate material key for caching
   const materialKey = useMemo(() => {
-    return `blackhole-${dimension}-${temporalEnabled}-${jetsEnabled}-${dopplerEnabled}-${opacityMode}-${sliceAnimationEnabled}-v${SHADER_VERSION}`
-  }, [dimension, temporalEnabled, jetsEnabled, dopplerEnabled, opacityMode, sliceAnimationEnabled, SHADER_VERSION])
+    return `blackhole-${dimension}-${temporalEnabled}-${jetsEnabled}-${dopplerEnabled}-${sliceAnimationEnabled}-v${SHADER_VERSION}`
+  }, [dimension, temporalEnabled, jetsEnabled, dopplerEnabled, sliceAnimationEnabled, SHADER_VERSION])
 
   // Note: Material disposal is handled automatically by React Three Fiber
   // when TrackedShaderMaterial unmounts (materialKey change causes remount).

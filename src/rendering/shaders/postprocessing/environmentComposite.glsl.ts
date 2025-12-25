@@ -57,7 +57,9 @@ export const environmentCompositeFragmentShader = /* glsl */ `
       fragColor = envColor;
     } else {
       // Object exists - blend based on alpha
-      // Standard alpha-over compositing: result = obj + env * (1 - obj.a)
+      // The main object is rendered with forceOpaque=true, so objColor.rgb is NOT pre-multiplied.
+      // objColor.a contains the material's opacity (uOpacity from shader).
+      // Use standard straight alpha compositing: result = obj.rgb * obj.a + env.rgb * (1 - obj.a)
       vec3 blended = objColor.rgb * objColor.a + envColor.rgb * (1.0 - objColor.a);
       float alpha = max(envColor.a, objColor.a);
       fragColor = vec4(blended, alpha);

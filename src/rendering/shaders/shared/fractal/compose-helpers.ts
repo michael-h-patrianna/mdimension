@@ -32,6 +32,9 @@ export interface FeatureFlags {
  * Process shader config to generate feature flags and defines.
  * Common logic shared by all fractal shaders.
  *
+ * Note: Raymarching fractals (mandelbulb, julia, schroedinger, blackhole) are always
+ * rendered as fully opaque (solid mode). Opacity mode configuration was removed.
+ *
  * @param config - Shader configuration with feature toggles
  * @returns Feature flags object with defines array and boolean flags
  *
@@ -41,12 +44,11 @@ export interface FeatureFlags {
  *   shadows: true,
  *   temporal: false,
  *   ambientOcclusion: true,
- *   opacityMode: 'solid',
  *   sss: true,
  *   fog: false,
  * });
  * // flags.defines = ['#define USE_SHADOWS', '#define USE_AO', '#define USE_SSS']
- * // flags.features = ['Multi-Light', 'Opacity: solid', 'Shadows', 'Ambient Occlusion', 'SSS']
+ * // flags.features = ['Multi-Light', 'Shadows', 'Ambient Occlusion', 'SSS']
  * // flags.useShadows = true, flags.useTemporal = false, etc.
  */
 export function processFeatureFlags(config: ShaderConfig): FeatureFlags {
@@ -54,7 +56,6 @@ export function processFeatureFlags(config: ShaderConfig): FeatureFlags {
     shadows: enableShadows,
     temporal: enableTemporal,
     ambientOcclusion: enableAO,
-    opacityMode,
     overrides = [],
     sss: enableSss,
     fresnel: enableFresnel,
@@ -65,7 +66,6 @@ export function processFeatureFlags(config: ShaderConfig): FeatureFlags {
   const features: string[] = [];
 
   features.push('Multi-Light');
-  features.push(`Opacity: ${opacityMode}`);
 
   const useShadows = enableShadows && !overrides.includes('Shadows');
   const useTemporal = enableTemporal && !overrides.includes('Temporal Reprojection');
