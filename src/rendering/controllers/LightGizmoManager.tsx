@@ -47,18 +47,18 @@ const TransformTarget = memo(function TransformTarget({
   onDragEnd,
 }: TransformTargetProps) {
   const targetRef = useRef<THREE.Group>(null);
+  // Use state to trigger re-render after ref is attached
   const [isReady, setIsReady] = useState(false);
 
-  // Set ready state after mount
-  useEffect(() => {
+  // Use layoutEffect for synchronous setup before first paint
+  useLayoutEffect(() => {
     if (targetRef.current) {
       setIsReady(true);
     }
-    return () => setIsReady(false);
   }, []);
 
   // Update target position/rotation when light changes
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (targetRef.current) {
       targetRef.current.position.set(
         light.position[0],

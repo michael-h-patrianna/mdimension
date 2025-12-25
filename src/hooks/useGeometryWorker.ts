@@ -106,7 +106,9 @@ function handleWorkerMessage(event: MessageEvent<WorkerResponse>): void {
  * Handle worker errors
  */
 function handleWorkerError(event: ErrorEvent): void {
-  console.error('[useGeometryWorker] Worker error:', event.message)
+  if (import.meta.env.DEV) {
+    console.error('[useGeometryWorker] Worker error:', event.message)
+  }
 
   // Reject all pending requests
   for (const [id, pending] of globalPendingRequests) {
@@ -275,22 +277,13 @@ export function useGeometryWorker(): UseGeometryWorkerResult {
       transferables?: Transferable[]
     ): Promise<WorkerResponse> => {
       return new Promise((resolve, reject) => {
-        console.log('[DEBUG:sendRequest] Called', { 
-          type: request.type, 
-          id: request.id,
-          workerAvailable: workerAvailable.current,
-          hasWorkerRef: !!workerRef.current
-        })
-        
         // Handle environments where Worker is not available
         if (!workerAvailable.current) {
-          console.log('[DEBUG:sendRequest] Worker not available')
           reject(new Error('Worker not available in this environment'))
           return
         }
 
         if (!workerRef.current) {
-          console.log('[DEBUG:sendRequest] Worker not initialized')
           reject(new Error('Worker not initialized'))
           return
         }

@@ -17,6 +17,7 @@ import {
 import type { ObjectType } from '@/lib/geometry/types'
 import { invalidateAllTemporalDepth } from '@/rendering/core/temporalDepth'
 import { DEFAULT_COLOR_ALGORITHM, isColorAlgorithmAvailable } from '@/rendering/shaders/palette/types'
+import { flushSync } from 'react-dom'
 import { create } from 'zustand'
 import { useAnimationStore } from './animationStore'
 import { useAppearanceStore } from './appearanceStore'
@@ -146,21 +147,24 @@ export const useGeometryStore = create<GeometryState>((set, get) => ({
     // Check if current object type is still valid for new dimension
     const newType = getFallbackObjectType(currentType, clampedDimension)
 
-    // Trigger progressive refinement: start at low quality during dimension switch
-    usePerformanceStore.getState().setSceneTransitioning(true)
-
     // Invalidate temporal depth data - dimensions change depth completely
     invalidateAllTemporalDepth()
-    usePerformanceStore.getState().setCameraTeleported(true)
 
-    // Update animation and rotation stores BEFORE setting geometry state
-    // This filters out invalid planes for the new dimension (e.g., "XV" doesn't exist in 4D)
-    useAnimationStore.getState().setDimension(clampedDimension)
-    useRotationStore.getState().setDimension(clampedDimension)
+    // Batch all store updates atomically to prevent intermediate renders
+    flushSync(() => {
+      // Trigger progressive refinement: start at low quality during dimension switch
+      usePerformanceStore.getState().setSceneTransitioning(true)
+      usePerformanceStore.getState().setCameraTeleported(true)
 
-    set({
-      dimension: clampedDimension,
-      objectType: newType,
+      // Update animation and rotation stores BEFORE setting geometry state
+      // This filters out invalid planes for the new dimension (e.g., "XV" doesn't exist in 4D)
+      useAnimationStore.getState().setDimension(clampedDimension)
+      useRotationStore.getState().setDimension(clampedDimension)
+
+      set({
+        dimension: clampedDimension,
+        objectType: newType,
+      })
     })
 
     // Signal transition complete after React settles - triggers progressive refinement
@@ -192,47 +196,52 @@ export const useGeometryStore = create<GeometryState>((set, get) => ({
       return
     }
 
-    // When switching object types, validate that the current color algorithm is still supported.
-    // If not, revert to the default (monochromatic) to avoid rendering artifacts or mismatch with UI.
-    const appearanceStore = useAppearanceStore.getState()
-    if (!isColorAlgorithmAvailable(appearanceStore.colorAlgorithm, type)) {
-      appearanceStore.setColorAlgorithm(DEFAULT_COLOR_ALGORITHM)
-    }
-
-    // Raymarched fractals require facesVisible=true to render (determineRenderMode returns 'none' otherwise)
-    // Ensure it's set when switching to a raymarching type
-    if (isRaymarchingFractal(type, currentDimension)) {
-      const appearanceStore = useAppearanceStore.getState()
-      if (!appearanceStore.facesVisible) {
-        appearanceStore.setFacesVisible(true)
-      }
-    }
-
-    // Trigger progressive refinement: start at low quality during content type switch
-    usePerformanceStore.getState().setSceneTransitioning(true)
-
     // Invalidate temporal data - object types have completely different depth/accumulation values
     invalidateAllTemporalDepth()
-    // Note: Temporal cloud accumulation is now managed by the RenderGraph's TemporalCloudPass
-    // which automatically invalidates when the pass is disabled/re-enabled
-    usePerformanceStore.getState().setCameraTeleported(true)
 
     // Check if this object type has a recommended dimension (from registry)
     const recommendedDimension = getRecommendedDimension(type)
-    if (recommendedDimension !== undefined && currentDimension !== recommendedDimension) {
-      // Update animation and rotation stores BEFORE setting geometry state
-      // This filters out invalid planes for the new dimension (e.g., "XV" doesn't exist in 4D)
-      useAnimationStore.getState().setDimension(recommendedDimension)
-      useRotationStore.getState().setDimension(recommendedDimension)
+    const targetDimension = (recommendedDimension !== undefined && currentDimension !== recommendedDimension)
+      ? recommendedDimension
+      : currentDimension
 
-      // Auto-switch to recommended dimension for optimal visualization
-      set({
-        objectType: type,
-        dimension: recommendedDimension,
-      })
-    } else {
-      set({ objectType: type })
-    }
+    // Batch all store updates atomically to prevent intermediate renders
+    flushSync(() => {
+      // When switching object types, validate that the current color algorithm is still supported.
+      // If not, revert to the default (monochromatic) to avoid rendering artifacts or mismatch with UI.
+      // IMPORTANT: This must be inside flushSync to ensure atomic update with object type change.
+      const appearanceStore = useAppearanceStore.getState()
+      if (!isColorAlgorithmAvailable(appearanceStore.colorAlgorithm, type)) {
+        appearanceStore.setColorAlgorithm(DEFAULT_COLOR_ALGORITHM)
+      }
+
+      // Raymarched fractals require facesVisible=true to render (determineRenderMode returns 'none' otherwise)
+      // Ensure it's set when switching to a raymarching type
+      if (isRaymarchingFractal(type, targetDimension)) {
+        if (!appearanceStore.facesVisible) {
+          appearanceStore.setFacesVisible(true)
+        }
+      }
+
+      // Trigger progressive refinement: start at low quality during content type switch
+      usePerformanceStore.getState().setSceneTransitioning(true)
+      usePerformanceStore.getState().setCameraTeleported(true)
+
+      if (targetDimension !== currentDimension) {
+        // Update animation and rotation stores BEFORE setting geometry state
+        // This filters out invalid planes for the new dimension (e.g., "XV" doesn't exist in 4D)
+        useAnimationStore.getState().setDimension(targetDimension)
+        useRotationStore.getState().setDimension(targetDimension)
+
+        // Auto-switch to recommended dimension for optimal visualization
+        set({
+          objectType: type,
+          dimension: targetDimension,
+        })
+      } else {
+        set({ objectType: type })
+      }
+    })
 
     // Signal transition complete after React settles - triggers progressive refinement
     requestAnimationFrame(() => {

@@ -35,11 +35,20 @@ export function useUrlState(): void {
     if (Object.keys(urlState).length === 0) return
 
     // Apply to geometry store
-    if (urlState.dimension !== undefined) {
-      useGeometryStore.getState().setDimension(urlState.dimension)
-    }
-    if (urlState.objectType !== undefined) {
-      useGeometryStore.getState().setObjectType(urlState.objectType)
+    // IMPORTANT: Set dimension FIRST (enables more object types), then objectType
+    // Wrap in try/catch to handle validation errors gracefully
+    try {
+      if (urlState.dimension !== undefined) {
+        useGeometryStore.getState().setDimension(urlState.dimension)
+      }
+      if (urlState.objectType !== undefined) {
+        useGeometryStore.getState().setObjectType(urlState.objectType)
+      }
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.warn('[useUrlState] Failed to apply geometry URL state:', error)
+      }
+      // Continue with defaults - geometry store will use fallback values
     }
 
     // Apply to appearance store

@@ -106,7 +106,10 @@ const LightRenderer = memo(function LightRenderer({
   }, [light.position, direction]);
 
   // Update light target when direction changes
+  // Guard: Skip effect for disabled lights to prevent unnecessary updates
   useEffect(() => {
+    if (!light.enabled) return;
+
     if (spotLightRef.current && targetRef.current) {
       targetRef.current.position.set(...targetPosition);
       spotLightRef.current.target = targetRef.current;
@@ -117,7 +120,7 @@ const LightRenderer = memo(function LightRenderer({
       directionalLightRef.current.target = targetRef.current;
       directionalLightRef.current.target.updateMatrixWorld();
     }
-  }, [targetPosition]);
+  }, [targetPosition, light.enabled]);
 
   // Disabled lights don't render any Three.js light
   // Visual indicators for disabled lights are handled by LightGizmoManager

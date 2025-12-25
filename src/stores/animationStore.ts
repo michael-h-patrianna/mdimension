@@ -155,7 +155,14 @@ export const useAnimationStore = create<AnimationState>((set, get) => ({
         }
       }
 
-      return { animatingPlanes: newAnimatingPlanes }
+      // If no valid planes remain and animation was playing, stop it
+      // This prevents isPlaying=true with empty animatingPlanes set
+      const shouldStopPlaying = newAnimatingPlanes.size === 0 && state.isPlaying
+
+      return {
+        animatingPlanes: newAnimatingPlanes,
+        isPlaying: shouldStopPlaying ? false : state.isPlaying,
+      }
     })
   },
 

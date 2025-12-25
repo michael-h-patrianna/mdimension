@@ -265,7 +265,9 @@ export function useGeometryGenerator(): GeometryGeneratorResult {
           } as NdGeometry)
           setWarnings(result.warnings)
         } catch (syncErr) {
-          console.error('[useGeometryGenerator] Sync fallback error:', syncErr)
+          if (import.meta.env.DEV) {
+            console.error('[useGeometryGenerator] Sync fallback error:', syncErr)
+          }
           if (generationRef.current === thisGeneration) {
             setAsyncGeometry(null)
           }
@@ -273,7 +275,9 @@ export function useGeometryGenerator(): GeometryGeneratorResult {
         return
       }
 
-      console.error('[useGeometryGenerator] Worker error:', err)
+      if (import.meta.env.DEV) {
+        console.error('[useGeometryGenerator] Worker error:', err)
+      }
       setAsyncGeometry(null)
     } finally {
       // Clear request ID if this was our request and still current generation
@@ -290,10 +294,6 @@ export function useGeometryGenerator(): GeometryGeneratorResult {
 
     // Parse config from stable JSON to avoid dependency on object reference
     const config = JSON.parse(configJson) as RootSystemConfig
-
-    if (import.meta.env.DEV) {
-      console.log('[useGeometryGenerator] Starting root system generation', { dimension, config })
-    }
 
     // Cancel any previous request
     if (currentRequestId.current) {
@@ -337,9 +337,6 @@ export function useGeometryGenerator(): GeometryGeneratorResult {
       }
 
       if (response.type === 'result' && response.geometry) {
-        if (import.meta.env.DEV) {
-          console.log('[useGeometryGenerator] Got root system result, inflating geometry')
-        }
         const inflated = inflateGeometry(response.geometry)
 
         setAsyncGeometry({
@@ -384,7 +381,9 @@ export function useGeometryGenerator(): GeometryGeneratorResult {
 
           setAsyncGeometry(geometry as NdGeometry)
         } catch (syncErr) {
-          console.error('[useGeometryGenerator] Sync fallback error:', syncErr)
+          if (import.meta.env.DEV) {
+            console.error('[useGeometryGenerator] Sync fallback error:', syncErr)
+          }
           if (generationRef.current === thisGeneration) {
             setAsyncGeometry(null)
           }
@@ -392,7 +391,9 @@ export function useGeometryGenerator(): GeometryGeneratorResult {
         return
       }
 
-      console.error('[useGeometryGenerator] Worker error:', err)
+      if (import.meta.env.DEV) {
+        console.error('[useGeometryGenerator] Worker error:', err)
+      }
       setAsyncGeometry(null)
     } finally {
       // Clear request ID if this was our request and still current generation
@@ -418,10 +419,6 @@ export function useGeometryGenerator(): GeometryGeneratorResult {
 
   // Trigger async generation for worker-based types
   useEffect(() => {
-    if (import.meta.env.DEV) {
-      console.log('[useGeometryGenerator] Trigger effect running', { objectType, dimension })
-    }
-
     if (objectType === 'wythoff-polytope') {
       generateWythoffAsync()
     } else if (objectType === 'root-system') {

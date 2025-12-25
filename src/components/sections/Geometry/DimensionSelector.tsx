@@ -116,15 +116,23 @@ export const DimensionSelector: React.FC<DimensionSelectorProps> = React.memo(({
 
   // Re-check when dimension changes (content size might change if styling changes)
   useEffect(() => {
+    let rafId: number | null = null;
+
     if (scrollContainerRef.current) {
-      requestAnimationFrame(() => {
+      rafId = requestAnimationFrame(() => {
         if (scrollContainerRef.current) {
-           const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
-           setCanScrollLeft(scrollLeft > 0);
-           setCanScrollRight(Math.ceil(scrollLeft + clientWidth) < scrollWidth);
+          const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
+          setCanScrollLeft(scrollLeft > 0);
+          setCanScrollRight(Math.ceil(scrollLeft + clientWidth) < scrollWidth);
         }
       });
     }
+
+    return () => {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
+    };
   }, [dimension]);
 
   const scroll = (direction: 'left' | 'right') => {

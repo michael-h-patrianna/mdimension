@@ -91,17 +91,6 @@ function Visualizer() {
   // Combined loading state for any async operation
   const isLoading = geometryLoading || faceLoading;
 
-  // Debug logging for state
-  console.log('[DEBUG:VISUALIZER] State', {
-    dimension,
-    objectType,
-    hasGeometry: !!geometry,
-    vertexCount: geometry?.vertices?.length ?? 0,
-    faceCount: faces?.length ?? 0,
-    faceLoading,
-    geometryLoading,
-  });
-
   // 5. Extract base 3D positions for ground plane bounds (no transform needed)
   // Ground plane only recalculates on vertex count change, not during animation
   const basePositions = useMemo(

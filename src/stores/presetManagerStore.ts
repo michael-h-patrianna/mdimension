@@ -1,3 +1,4 @@
+import { flushSync } from 'react-dom'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { useAnimationStore } from './animationStore'
@@ -7,12 +8,12 @@ import { useEnvironmentStore } from './environmentStore'
 import { useExtendedObjectStore } from './extendedObjectStore'
 import { useGeometryStore } from './geometryStore'
 import { useLightingStore } from './lightingStore'
+import { useMsgBoxStore } from './msgBoxStore'
 import { usePerformanceStore } from './performanceStore'
 import { usePostProcessingStore } from './postProcessingStore'
 import { useRotationStore } from './rotationStore'
 import { useTransformStore } from './transformStore'
 import { useUIStore } from './uiStore'
-import { useMsgBoxStore } from './msgBoxStore'
 
 // -- Types --
 
@@ -251,55 +252,67 @@ export const usePresetManagerStore = create<PresetManagerState>()(
         const scene = get().savedScenes.find((s) => s.id === id)
         if (!scene) return
 
-        usePerformanceStore.getState().setSceneTransitioning(true)
+        // Batch all store updates atomically to prevent intermediate renders
+        flushSync(() => {
+          usePerformanceStore.getState().setSceneTransitioning(true)
 
-        // Restore Style components
-        useAppearanceStore.setState(scene.data.appearance)
-        useLightingStore.setState(scene.data.lighting)
-        usePostProcessingStore.setState(scene.data.postProcessing)
+          // Restore Style components (no validation needed)
+          useAppearanceStore.setState(scene.data.appearance)
+          useLightingStore.setState(scene.data.lighting)
+          usePostProcessingStore.setState(scene.data.postProcessing)
 
-        // Handle legacy environment data
-        const envData = { ...scene.data.environment }
-        if (envData.skyboxEnabled === undefined) {
-          envData.skyboxEnabled = false
-        }
-        useEnvironmentStore.setState(envData)
-
-        // Restore Scene components
-        useGeometryStore.setState(scene.data.geometry)
-        useExtendedObjectStore.setState(scene.data.extended)
-        useTransformStore.setState(scene.data.transform)
-        useUIStore.setState(scene.data.ui)
-
-        // Special handling for Rotation (Object -> Map)
-        if (scene.data.rotation) {
-          const rotState = { ...scene.data.rotation }
-          if (rotState.rotations && typeof rotState.rotations === 'object' && !Array.isArray(rotState.rotations)) {
-            // Convert Object back to Map
-            rotState.rotations = new Map(Object.entries(rotState.rotations as Record<string, number>))
+          // Handle legacy environment data
+          const envData = { ...scene.data.environment }
+          if (envData.skyboxEnabled === undefined) {
+            envData.skyboxEnabled = false
           }
-          useRotationStore.setState(rotState)
-        }
+          useEnvironmentStore.setState(envData)
 
-        // Special handling for Animation (Array -> Set)
-        if (scene.data.animation) {
-          const animState = { ...scene.data.animation }
-          if (Array.isArray(animState.animatingPlanes)) {
-            animState.animatingPlanes = new Set(animState.animatingPlanes)
+          // Restore Geometry using validated setters to ensure dimension/type constraints
+          // IMPORTANT: Set dimension FIRST to enable more object types, then set objectType
+          const geometryData = scene.data.geometry as { dimension?: number; objectType?: string }
+          if (geometryData.dimension !== undefined) {
+            useGeometryStore.getState().setDimension(geometryData.dimension)
           }
-          useAnimationStore.setState(animState)
-        }
+          if (geometryData.objectType !== undefined) {
+            useGeometryStore.getState().setObjectType(geometryData.objectType as import('@/lib/geometry/types').ObjectType)
+          }
 
-        // Special handling for Camera
-        if (scene.data.camera && Object.keys(scene.data.camera).length > 0) {
-          const cameraData = scene.data.camera as { position?: [number, number, number]; target?: [number, number, number] }
-          if (cameraData.position && cameraData.target) {
-            useCameraStore.getState().applyState({
-              position: cameraData.position,
-              target: cameraData.target,
-            })
+          // Restore other scene components
+          useExtendedObjectStore.setState(scene.data.extended)
+          useTransformStore.setState(scene.data.transform)
+          useUIStore.setState(scene.data.ui)
+
+          // Special handling for Rotation (Object -> Map)
+          if (scene.data.rotation) {
+            const rotState = { ...scene.data.rotation }
+            if (rotState.rotations && typeof rotState.rotations === 'object' && !Array.isArray(rotState.rotations)) {
+              // Convert Object back to Map
+              rotState.rotations = new Map(Object.entries(rotState.rotations as Record<string, number>))
+            }
+            useRotationStore.setState(rotState)
           }
-        }
+
+          // Special handling for Animation (Array -> Set)
+          if (scene.data.animation) {
+            const animState = { ...scene.data.animation }
+            if (Array.isArray(animState.animatingPlanes)) {
+              animState.animatingPlanes = new Set(animState.animatingPlanes)
+            }
+            useAnimationStore.setState(animState)
+          }
+
+          // Special handling for Camera
+          if (scene.data.camera && Object.keys(scene.data.camera).length > 0) {
+            const cameraData = scene.data.camera as { position?: [number, number, number]; target?: [number, number, number] }
+            if (cameraData.position && cameraData.target) {
+              useCameraStore.getState().applyState({
+                position: cameraData.position,
+                target: cameraData.target,
+              })
+            }
+          }
+        })
 
         requestAnimationFrame(() => {
           usePerformanceStore.getState().setSceneTransitioning(false)
