@@ -48,13 +48,6 @@ export function multiply_matrix_vector_wasm(
   return new Float64Array(0)
 }
 
-export function apply_rotation_wasm(
-  _flat_vertices: Float64Array,
-  _dimension: number,
-  _rotation_matrix: Float64Array
-): Float64Array {
-  return new Float64Array(0)
-}
 
 // Phase 2: Matrix and vector functions
 export function multiply_matrices_wasm(
@@ -81,13 +74,6 @@ export function subtract_vectors_wasm(_a: Float64Array, _b: Float64Array): Float
   return new Float64Array(0)
 }
 
-export function distance_wasm(_a: Float64Array, _b: Float64Array): number {
-  return 0
-}
-
-export function distance_squared_wasm(_a: Float64Array, _b: Float64Array): number {
-  return 0
-}
 
 // Geometry worker functions (matching lib.rs exports)
 

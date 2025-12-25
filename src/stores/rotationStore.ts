@@ -90,6 +90,9 @@ export const useRotationStore = create<RotationState>((set) => ({
   },
 
   updateRotations: (updates: Map<string, number>) => {
+    // Early exit if no updates - avoid unnecessary state change and version bump
+    if (updates.size === 0) return
+
     set((state) => {
       // Filter updates to only include valid planes for current dimension
       // Use cached Set to avoid recreation on every call

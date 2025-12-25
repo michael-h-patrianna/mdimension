@@ -8,8 +8,13 @@
  * Functions:
  * - composeRotationsWasm: Compose rotation matrices from plane names and angles
  * - projectVerticesWasm: Project nD vertices to 3D positions
+ * - projectEdgesWasm: Project nD edges to 3D positions
  * - multiplyMatrixVectorWasm: Matrix-vector multiplication
- * - applyRotationWasm: Apply rotation matrix to vertices
+ * - multiplyMatricesWasm: Matrix-matrix multiplication
+ * - dotProductWasm: Vector dot product
+ * - magnitudeWasm: Vector magnitude
+ * - normalizeVectorWasm: Normalize vector to unit length
+ * - subtractVectorsWasm: Vector subtraction
  */
 
 import type { MatrixND, VectorND } from '@/lib/math/types'
@@ -38,19 +43,12 @@ interface WasmModule {
     vector: Float64Array,
     dimension: number
   ) => Float64Array
-  apply_rotation_wasm: (
-    flat_vertices: Float64Array,
-    dimension: number,
-    rotation_matrix: Float64Array
-  ) => Float64Array
   // Phase 2: Matrix and vector operations
   multiply_matrices_wasm: (a: Float64Array, b: Float64Array, dimension: number) => Float64Array
   dot_product_wasm: (a: Float64Array, b: Float64Array) => number
   magnitude_wasm: (v: Float64Array) => number
   normalize_vector_wasm: (v: Float64Array) => Float64Array
   subtract_vectors_wasm: (a: Float64Array, b: Float64Array) => Float64Array
-  distance_wasm: (a: Float64Array, b: Float64Array) => number
-  distance_squared_wasm: (a: Float64Array, b: Float64Array) => number
 }
 
 // ============================================================================
@@ -118,14 +116,6 @@ export async function initAnimationWasm(): Promise<void> {
  */
 export function isAnimationWasmReady(): boolean {
   return wasmReady
-}
-
-/**
- * Get the initialization error if any.
- * @returns Error if initialization failed, null otherwise
- */
-export function getWasmError(): Error | null {
-  return wasmError
 }
 
 // ============================================================================
@@ -238,33 +228,6 @@ export function multiplyMatrixVectorWasm(
   } catch (err) {
     if (import.meta.env.DEV) {
       console.warn('[AnimationWASM] multiply_matrix_vector_wasm failed:', err)
-    }
-    return null
-  }
-}
-
-/**
- * Apply rotation matrix to vertices using WASM if available.
- *
- * @param flatVertices - Flat array of vertex coordinates
- * @param dimension - Dimensionality of each vertex
- * @param rotationMatrix - Flat rotation matrix (dimension × dimension)
- * @returns Rotated vertices as Float64Array, or null if WASM not ready
- */
-export function applyRotationWasm(
-  flatVertices: Float64Array,
-  dimension: number,
-  rotationMatrix: Float64Array
-): Float64Array | null {
-  if (!wasmReady || !wasmModule) {
-    return null
-  }
-
-  try {
-    return wasmModule.apply_rotation_wasm(flatVertices, dimension, rotationMatrix)
-  } catch (err) {
-    if (import.meta.env.DEV) {
-      console.warn('[AnimationWASM] apply_rotation_wasm failed:', err)
     }
     return null
   }
@@ -387,50 +350,6 @@ export function subtractVectorsWasm(a: Float64Array, b: Float64Array): Float64Ar
   }
 }
 
-/**
- * Compute distance using WASM if available.
- *
- * @param a - First point as Float64Array
- * @param b - Second point as Float64Array
- * @returns Distance value, or null if WASM not ready
- */
-export function distanceWasm(a: Float64Array, b: Float64Array): number | null {
-  if (!wasmReady || !wasmModule) {
-    return null
-  }
-
-  try {
-    return wasmModule.distance_wasm(a, b)
-  } catch (err) {
-    if (import.meta.env.DEV) {
-      console.warn('[AnimationWASM] distance_wasm failed:', err)
-    }
-    return null
-  }
-}
-
-/**
- * Compute squared distance using WASM if available.
- *
- * @param a - First point as Float64Array
- * @param b - Second point as Float64Array
- * @returns Squared distance value, or null if WASM not ready
- */
-export function distanceSquaredWasm(a: Float64Array, b: Float64Array): number | null {
-  if (!wasmReady || !wasmModule) {
-    return null
-  }
-
-  try {
-    return wasmModule.distance_squared_wasm(a, b)
-  } catch (err) {
-    if (import.meta.env.DEV) {
-      console.warn('[AnimationWASM] distance_squared_wasm failed:', err)
-    }
-    return null
-  }
-}
-
 // ============================================================================
 // Helper Functions for Data Conversion
 // ============================================================================
@@ -442,15 +361,6 @@ export function distanceSquaredWasm(a: Float64Array, b: Float64Array): number | 
  */
 export function matrixToFloat64(matrix: MatrixND): Float64Array {
   return new Float64Array(matrix)
-}
-
-/**
- * Convert Float64Array result back to MatrixND (Float32Array).
- * @param matrix - Input matrix as Float64Array
- * @returns Matrix as Float32Array
- */
-export function float64ToMatrix(matrix: Float64Array): MatrixND {
-  return new Float32Array(matrix)
 }
 
 /**

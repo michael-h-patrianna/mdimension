@@ -9,7 +9,6 @@ export * from './DropdownMenu';
 export * from './Envelope';
 export * from './ErrorBoundary';
 export * from './Knob';
-export * from './KnobEnvelopeDemo';
 export * from './MultiToggleGroup';
 export * from './Select';
 export * from './Slider';

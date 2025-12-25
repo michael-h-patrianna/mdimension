@@ -75,14 +75,13 @@ vec3 computeDensityGradientFast(vec3 pos, float t, float delta, float sCenter) {
 
 // Main volume raymarching function (Fast Mode)
 // Now supports lighting (matched to Mandelbulb behavior) but with reduced sample count
+// When dispersion is enabled, uses vec3 transmittance for proper per-channel absorption
 // Returns: VolumeResult with color, alpha, entry distance, and density-weighted centroid
 VolumeResult volumeRaymarch(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar) {
     vec3 accColor = vec3(0.0);
-    float transmittance = 1.0;
     float entryT = -1.0;  // Track first meaningful contribution
 
     // Centroid accumulation for stable temporal reprojection
-    // Uses alpha * transmittance weighting - gives more weight to visible contributions
     vec3 centroidSum = vec3(0.0);
     float centroidWeight = 0.0;
 
@@ -98,16 +97,43 @@ VolumeResult volumeRaymarch(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar
     float animTime = getVolumeTime();
     vec3 viewDir = -rayDir;
 
+#ifdef USE_DISPERSION
+    // Dispersion requires per-channel transmittance for proper wavelength-dependent absorption
+    vec3 transmittance3 = vec3(1.0);
+    vec3 dispOffsetR = vec3(0.0);
+    vec3 dispOffsetB = vec3(0.0);
+    bool dispersionActive = uDispersionEnabled && uDispersionStrength > 0.0;
+
+    if (dispersionActive) {
+        float dispAmount = uDispersionStrength * 0.15;
+
+        if (uDispersionDirection == 1) { // View-aligned
+            vec3 right = normalize(cross(rayDir, vec3(0.0, 1.0, 0.0)));
+            dispOffsetR = right * dispAmount;
+            dispOffsetB = -right * dispAmount;
+        }
+        // Radial mode: offset updated inside loop
+    }
+#else
+    // Without dispersion, use scalar transmittance for better performance
+    float transmittance = 1.0;
+#endif
+
     // Consecutive low-density samples (for early exit)
-    // NOTE: Early exit is DISABLED for hydrogen modes because hydrogen orbitals
-    // have multiple lobes separated by nodal surfaces (zero density regions).
-    // Early exit would cause the ray to stop before reaching far lobes.
     int lowDensityCount = 0;
     bool allowEarlyExit = (uQuantumMode == QUANTUM_MODE_HARMONIC);
 
     for (int i = 0; i < MAX_VOLUME_SAMPLES; i++) {
         if (i >= sampleCount) break;
+
+#ifdef USE_DISPERSION
+        // Exit when all channels are blocked
+        if (transmittance3.r < MIN_TRANSMITTANCE && 
+            transmittance3.g < MIN_TRANSMITTANCE && 
+            transmittance3.b < MIN_TRANSMITTANCE) break;
+#else
         if (transmittance < MIN_TRANSMITTANCE) break;
+#endif
 
         vec3 pos = rayOrigin + rayDir * t;
 
@@ -118,7 +144,6 @@ VolumeResult volumeRaymarch(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar
         float phase = densityInfo.z;
 
         // Early exit if density is consistently low (harmonic oscillator only)
-        // Hydrogen orbitals have nodal surfaces - must traverse full volume
         if (allowEarlyExit && rho < MIN_DENSITY) {
             lowDensityCount++;
             if (lowDensityCount > 5) break;
@@ -126,11 +151,80 @@ VolumeResult volumeRaymarch(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar
             lowDensityCount = 0;
         }
 
-        // Nodal Surface Opacity Boost (Fast Mode)
+        // Compute gradient for lighting (Fast version - 3 taps)
+        // Must be computed BEFORE dispersion to enable gradient-based density extrapolation
+        vec3 gradient = computeDensityGradientFast(pos, animTime, 0.05, sCenter);
+
+#ifdef USE_DISPERSION
+        // Chromatic Dispersion: compute per-channel densities BEFORE alpha check
+        // This matches HQ mode structure - dispersion can make R/B visible even when center is dim
+        vec3 rhoRGB = vec3(rho);
+
+        if (dispersionActive) {
+            // Update radial offset per sample
+            if (uDispersionDirection == 0) {
+                vec3 normalProxy = normalize(pos);
+                float dispAmount = uDispersionStrength * 0.15;
+                dispOffsetR = normalProxy * dispAmount;
+                dispOffsetB = -normalProxy * dispAmount;
+            }
+
+            // Extrapolate log-density for R/B channels using gradient (zero extra cost)
+            float s_r = sCenter + dot(gradient, dispOffsetR);
+            float s_b = sCenter + dot(gradient, dispOffsetB);
+
+            // Per-channel density from gradient extrapolation
+            rhoRGB.r = exp(s_r);
+            rhoRGB.b = exp(s_b);
+        }
+
+        // Nodal Surface Opacity Boost - apply to ALL channels (matches HQ mode)
+        vec3 rhoAlpha = rhoRGB;
+#ifdef USE_NODAL
+        if (uNodalEnabled) {
+             if (sCenter < -5.0 && sCenter > -12.0) {
+                 float intensity = 1.0 - smoothstep(-12.0, -5.0, sCenter);
+                 rhoAlpha += vec3(5.0 * uNodalStrength * intensity);
+             }
+        }
+#endif
+
+        // Per-channel alpha (matches HQ mode structure)
+        vec3 alpha3;
+        alpha3.r = computeAlpha(rhoAlpha.r, stepLen, uDensityGain);
+        alpha3.g = computeAlpha(rhoAlpha.g, stepLen, uDensityGain);
+        alpha3.b = computeAlpha(rhoAlpha.b, stepLen, uDensityGain);
+
+        // Check if ANY channel has significant contribution (matches HQ mode)
+        if (alpha3.g > 0.001 || alpha3.r > 0.001 || alpha3.b > 0.001) {
+            // Track entry point (use Green/Center channel)
+            if (entryT < 0.0 && alpha3.g > ENTRY_ALPHA_THRESHOLD) {
+                entryT = t;
+            }
+
+            // CENTROID ACCUMULATION (use average)
+            float avgAlpha = (alpha3.r + alpha3.g + alpha3.b) / 3.0;
+            float avgTrans = (transmittance3.r + transmittance3.g + transmittance3.b) / 3.0;
+            float weight = avgAlpha * avgTrans;
+            centroidSum += pos * weight;
+            centroidWeight += weight;
+
+            // Compute emission from green channel, modulate R/B (matches HQ mode)
+            vec3 emissionCenter = computeEmissionLit(rhoRGB.g, phase, pos, gradient, viewDir);
+            vec3 emission;
+            emission.g = emissionCenter.g;
+            emission.r = emissionCenter.r * (rhoRGB.r / max(rhoRGB.g, 0.0001));
+            emission.b = emissionCenter.b * (rhoRGB.b / max(rhoRGB.g, 0.0001));
+
+            // Front-to-back compositing with per-channel transmittance
+            accColor += transmittance3 * alpha3 * emission;
+            transmittance3 *= (vec3(1.0) - alpha3);
+        }
+#else
+        // Non-dispersion path: scalar alpha for better performance
         float rhoAlpha = rho;
 #ifdef USE_NODAL
         if (uNodalEnabled) {
-             // Robust nodal detection matching HQ mode
              if (sCenter < -5.0 && sCenter > -12.0) {
                  float intensity = 1.0 - smoothstep(-12.0, -5.0, sCenter);
                  rhoAlpha += 5.0 * uNodalStrength * intensity;
@@ -138,48 +232,43 @@ VolumeResult volumeRaymarch(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar
         }
 #endif
 
-        // Compute local alpha
         float alpha = computeAlpha(rhoAlpha, stepLen, uDensityGain);
 
-        // Skip negligible contributions
         if (alpha > 0.001) {
-            // Track entry point (still useful for some purposes)
             if (entryT < 0.0 && alpha > ENTRY_ALPHA_THRESHOLD) {
                 entryT = t;
             }
 
-            // CENTROID ACCUMULATION:
-            // Weight each position by its contribution to the final pixel color.
-            // alpha * transmittance represents how much this sample contributes.
-            // This gives a stable "center of mass" position that doesn't jump
-            // when viewing angle changes (unlike entry point which is view-dependent).
+            // CENTROID ACCUMULATION
             float weight = alpha * transmittance;
             centroidSum += pos * weight;
             centroidWeight += weight;
 
-            // Compute gradient for lighting (Fast version - 3 taps)
-            vec3 gradient = computeDensityGradientFast(pos, animTime, 0.05, sCenter);
-
             // Compute emission with lighting
             vec3 emission = computeEmissionLit(rho, phase, pos, gradient, viewDir);
 
-            // Front-to-back compositing
+            // Front-to-back compositing (scalar path)
             accColor += transmittance * alpha * emission;
             transmittance *= (1.0 - alpha);
         }
+#endif
 
         t += stepLen;
     }
 
-    // Final alpha is 1 - remaining transmittance
+    // Final alpha
+#ifdef USE_DISPERSION
+    float finalAlpha = 1.0 - (transmittance3.r + transmittance3.g + transmittance3.b) / 3.0;
+#else
     float finalAlpha = 1.0 - transmittance;
+#endif
 
     // Fallback: if no entry found, use midpoint for depth
     if (entryT < 0.0) {
         entryT = (tNear + tFar) * 0.5;
     }
 
-    // Compute final weighted center (or fallback to entry point position)
+    // Compute final weighted center
     vec3 wCenter = centroidWeight > 0.001
         ? centroidSum / centroidWeight
         : rayOrigin + rayDir * entryT;
@@ -249,6 +338,10 @@ VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tF
         float rho = densityInfo.x;
         float sCenter = densityInfo.y; // Pre-computed log-density
         float phase = densityInfo.z;
+
+        // OPTIMIZATION: Compute gradient ONCE for reuse by both dispersion and lighting
+        // This eliminates the duplicate gradient computation that was wasting 3 density samples
+        vec3 gradient = computeDensityGradientFast(pos, animTime, 0.05, sCenter);
         
         // Chromatic Dispersion Logic
         vec3 rhoRGB = vec3(rho); // Default: all channels same
@@ -264,9 +357,7 @@ VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tF
                  rhoRGB.r = dInfoR.x;
                  rhoRGB.b = dInfoB.x;
              } else {
-                 // Gradient Hack: extrapolate R/B from density gradient (much faster)
-                 vec3 gradient = computeDensityGradientFast(pos, animTime, 0.05, sCenter);
-
+                 // Gradient Hack: reuse cached gradient (zero additional cost)
                  float s_r = sCenter + dot(gradient, dispOffsetR);
                  float s_b = sCenter + dot(gradient, dispOffsetB);
 
@@ -316,11 +407,9 @@ VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tF
             centroidSum += pos * weight;
             centroidWeight += weight;
 
-            // OPTIMIZED: Use forward differences with pre-computed center value
-            vec3 gradient = computeDensityGradientFast(pos, animTime, 0.05, sCenter);
-            
             // Compute emission using ORIGINAL density (rhoRGB) so coloring logic works
             // Use Green channel as representative for center
+            // Note: gradient was computed earlier and is reused here (no redundant computation)
             vec3 emissionCenter = computeEmissionLit(rhoRGB.g, phase, pos, gradient, viewDir);
             
             // Modulate emission for R/B channels based on their density relative to G

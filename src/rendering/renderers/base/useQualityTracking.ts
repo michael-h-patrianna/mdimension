@@ -1,17 +1,16 @@
 /**
- * Hook for adaptive quality tracking during user interactions.
+ * Hook for adaptive quality tracking during animation playback.
  *
- * Reduces rendering quality during rotation/animation to maintain smooth
- * frame rates, then restores quality after a delay when interaction stops.
+ * Reduces rendering quality during animation to maintain smooth
+ * frame rates, restores quality when animation is paused.
  *
  * @module rendering/renderers/base/useQualityTracking
  */
 
+import { useAnimationStore } from '@/stores/animationStore'
 import { usePerformanceStore } from '@/stores/performanceStore'
 import { useRotationStore } from '@/stores/rotationStore'
-import { useCallback, useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { QUALITY_RESTORE_DELAY_MS } from './types'
 
 /**
  * Options for the useQualityTracking hook.
@@ -31,7 +30,7 @@ export interface UseQualityTrackingOptions {
 export interface UseQualityTrackingResult {
   /**
    * Whether fast (low quality) mode is currently active.
-   * True during rotation and for QUALITY_RESTORE_DELAY_MS after rotation stops.
+   * True when animation is playing.
    */
   fastMode: boolean
 
@@ -103,14 +102,8 @@ export function useQualityTracking(
 ): UseQualityTrackingResult {
   const { enabled = true } = options
 
-  // Use state for fastMode so changes trigger re-renders
-  const [fastMode, setFastMode] = useState(false)
-
-  // Track rotation version for change detection
-  const prevVersionRef = useRef<number>(-1)
-  const restoreQualityTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
   // Get current state from stores - using proper selectors for reactivity
+  const isPlaying = useAnimationStore((s) => s.isPlaying)
   const rotationVersion = useRotationStore((s) => s.version)
 
   const perfSelector = useShallow((s: ReturnType<typeof usePerformanceStore.getState>) => ({
@@ -120,55 +113,13 @@ export function useQualityTracking(
 
   const { qualityMultiplier, fractalAnimLowQuality } = usePerformanceStore(perfSelector)
 
-  // Detect rotation changes (computed during render, but no side effects)
-  const rotationsChanged = enabled && rotationVersion !== prevVersionRef.current
+  // Fast mode is simply: animation is playing (regardless of which planes are selected)
+  // This applies to all object types uniformly
+  const fastMode = enabled && isPlaying
 
-  // Clear timeout helper
-  const clearRestoreTimeout = useCallback(() => {
-    if (restoreQualityTimeoutRef.current) {
-      clearTimeout(restoreQualityTimeoutRef.current)
-      restoreQualityTimeoutRef.current = null
-    }
-  }, [])
-
-  // Handle rotation changes in useEffect to avoid render-time side effects
-  useEffect(() => {
-    if (!enabled) {
-      // When disabled, ensure fastMode is off and clean up
-      setFastMode(false)
-      clearRestoreTimeout()
-      return
-    }
-
-    // Check if rotation version changed
-    if (rotationVersion !== prevVersionRef.current) {
-      // Rotation is happening - switch to fast mode
-      prevVersionRef.current = rotationVersion
-      setFastMode(true)
-
-      // Clear any pending quality restore timeout
-      clearRestoreTimeout()
-    } else if (fastMode) {
-      // Rotation stopped but still in fast mode - schedule quality restore
-      if (!restoreQualityTimeoutRef.current) {
-        restoreQualityTimeoutRef.current = setTimeout(() => {
-          setFastMode(false)
-          restoreQualityTimeoutRef.current = null
-        }, QUALITY_RESTORE_DELAY_MS)
-      }
-    }
-
-    // Cleanup on unmount or when deps change
-    return () => {
-      clearRestoreTimeout()
-    }
-  }, [enabled, rotationVersion, fastMode, clearRestoreTimeout])
-
-  // Update prevVersionRef when rotationVersion changes
-  // This is safe because it's just a ref update for tracking
-  if (rotationsChanged) {
-    prevVersionRef.current = rotationVersion
-  }
+  // Rotation changes detection for callers that need it
+  // Note: This is a simple version check, callers should track their own prevVersion if needed
+  const rotationsChanged = false // Deprecated - callers should use rotationVersion directly
 
   return {
     fastMode,

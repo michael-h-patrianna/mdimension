@@ -7,9 +7,6 @@
 //!
 //! All functions operate on flat arrays for efficient WASM<->JS transfer.
 
-/// Default projection distance for perspective projection
-const DEFAULT_PROJECTION_DISTANCE: f64 = 4.0;
-
 /// Minimum safe distance from projection plane to avoid division issues
 const MIN_SAFE_DISTANCE: f64 = 0.01;
 
@@ -406,44 +403,6 @@ pub fn project_edges_to_positions(
     positions
 }
 
-/// Applies a rotation matrix to vertices in-place.
-///
-/// # Arguments
-/// * `flat_vertices` - Flat array of vertex coordinates (modified in-place)
-/// * `dimension` - Dimensionality of each vertex
-/// * `rotation_matrix` - Flat rotation matrix (dimension × dimension)
-///
-/// # Returns
-/// The modified vertices array
-pub fn apply_rotation_to_vertices(
-    flat_vertices: &[f64],
-    dimension: usize,
-    rotation_matrix: &[f64],
-) -> Vec<f64> {
-    if flat_vertices.is_empty() || rotation_matrix.len() != dimension * dimension {
-        return flat_vertices.to_vec();
-    }
-
-    let vertex_count = flat_vertices.len() / dimension;
-    let mut result = vec![0.0; flat_vertices.len()];
-
-    for i in 0..vertex_count {
-        let offset = i * dimension;
-
-        // Apply matrix multiplication for this vertex
-        for row in 0..dimension {
-            let mut sum = 0.0;
-            let row_offset = row * dimension;
-            for col in 0..dimension {
-                sum += rotation_matrix[row_offset + col] * flat_vertices[offset + col];
-            }
-            result[offset + row] = sum;
-        }
-    }
-
-    result
-}
-
 // ============================================================================
 // Vector Operations
 // ============================================================================
@@ -511,37 +470,6 @@ pub fn subtract_vectors(a: &[f64], b: &[f64]) -> Vec<f64> {
         result[i] = a[i] - b[i];
     }
     result
-}
-
-/// Computes the squared distance between two points
-/// This is faster than distance() when you only need to compare distances.
-///
-/// # Arguments
-/// * `a` - First point
-/// * `b` - Second point
-///
-/// # Returns
-/// The squared Euclidean distance
-pub fn distance_squared(a: &[f64], b: &[f64]) -> f64 {
-    let len = a.len().min(b.len());
-    let mut sum = 0.0;
-    for i in 0..len {
-        let diff = a[i] - b[i];
-        sum += diff * diff;
-    }
-    sum
-}
-
-/// Computes the Euclidean distance between two points
-///
-/// # Arguments
-/// * `a` - First point
-/// * `b` - Second point
-///
-/// # Returns
-/// The Euclidean distance
-pub fn distance(a: &[f64], b: &[f64]) -> f64 {
-    distance_squared(a, b).sqrt()
 }
 
 #[cfg(test)]
@@ -621,24 +549,6 @@ mod tests {
     }
 
     #[test]
-    fn test_apply_rotation_to_vertices() {
-        // 90° rotation in XY plane
-        let angle = std::f64::consts::FRAC_PI_2;
-        let cos = angle.cos();
-        let sin = angle.sin();
-
-        // 2D rotation matrix
-        let rotation = vec![cos, -sin, sin, cos];
-        let vertices = vec![1.0, 0.0]; // Point at (1, 0)
-
-        let result = apply_rotation_to_vertices(&vertices, 2, &rotation);
-
-        // After 90° rotation, (1, 0) -> (0, 1)
-        assert!((result[0] - 0.0).abs() < 1e-10);
-        assert!((result[1] - 1.0).abs() < 1e-10);
-    }
-
-    #[test]
     fn test_multiply_matrices() {
         // 2x2 identity × 2x2 other = 2x2 other
         let identity = vec![1.0, 0.0, 0.0, 1.0];
@@ -690,13 +600,5 @@ mod tests {
         let b = vec![1.0, 2.0, 3.0];
         let result = subtract_vectors(&a, &b);
         assert_eq!(result, vec![4.0, 1.0, -2.0]);
-    }
-
-    #[test]
-    fn test_distance() {
-        let a = vec![0.0, 0.0];
-        let b = vec![3.0, 4.0];
-        // sqrt(9 + 16) = 5
-        assert!((distance(&a, &b) - 5.0).abs() < 1e-10);
     }
 }

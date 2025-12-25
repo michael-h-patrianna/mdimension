@@ -1,7 +1,7 @@
 /**
  * Tests for useQualityTracking hook.
  *
- * Tests adaptive quality management during user interactions.
+ * Tests adaptive quality management during animation playback.
  */
 
 import { describe, expect, it, beforeEach } from 'vitest';
@@ -10,6 +10,7 @@ import { act, renderHook } from '@testing-library/react';
 import { useQualityTracking } from '@/rendering/renderers/base/useQualityTracking';
 import { useRotationStore } from '@/stores/rotationStore';
 import { usePerformanceStore } from '@/stores/performanceStore';
+import { useAnimationStore } from '@/stores/animationStore';
 
 describe('useQualityTracking', () => {
   beforeEach(() => {
@@ -19,15 +20,25 @@ describe('useQualityTracking', () => {
       qualityMultiplier: 1.0,
       fractalAnimationLowQuality: true,
     });
+    // Animation is playing by default in the store, pause it for most tests
+    useAnimationStore.getState().pause();
   });
 
   describe('initial state', () => {
-    it('should return fastMode as false initially', () => {
+    it('should return fastMode as false when animation is paused', () => {
       const { result } = renderHook(() => useQualityTracking());
       expect(result.current.fastMode).toBe(false);
     });
 
-    it('should return effectiveFastMode as false initially', () => {
+    it('should return fastMode as true when animation is playing', () => {
+      act(() => {
+        useAnimationStore.getState().play();
+      });
+      const { result } = renderHook(() => useQualityTracking());
+      expect(result.current.fastMode).toBe(true);
+    });
+
+    it('should return effectiveFastMode as false when animation is paused', () => {
       const { result } = renderHook(() => useQualityTracking());
       expect(result.current.effectiveFastMode).toBe(false);
     });
@@ -69,43 +80,58 @@ describe('useQualityTracking', () => {
 
   describe('hook options', () => {
     it('should respect enabled option', () => {
-      // When disabled, rotationsChanged should always be false
-      const { result, rerender } = renderHook(() =>
+      // Start with animation playing
+      act(() => {
+        useAnimationStore.getState().play();
+      });
+      
+      // When disabled, fastMode should be false regardless of isPlaying
+      const { result } = renderHook(() =>
         useQualityTracking({ enabled: false })
       );
 
-      // Change rotation wrapped in act() to prevent React warning
-      act(() => {
-        useRotationStore.getState().setRotation('XY', 0.5);
-      });
-      rerender();
-
-      // Should not track rotations when disabled
-      expect(result.current.rotationsChanged).toBe(false);
+      // Should not enable fast mode when disabled
       expect(result.current.fastMode).toBe(false);
     });
 
     it('should enable tracking by default', () => {
+      // With animation playing, fastMode should be true
+      act(() => {
+        useAnimationStore.getState().play();
+      });
       const { result } = renderHook(() => useQualityTracking());
-      // enabled defaults to true
-      expect(result.current.fastMode).toBe(false); // Initially false
+      // enabled defaults to true, and isPlaying is true
+      expect(result.current.fastMode).toBe(true);
     });
   });
 
   describe('effectiveFastMode computation', () => {
-    it('should be false when fastMode is false', () => {
+    it('should be false when animation is paused', () => {
       usePerformanceStore.setState({ fractalAnimationLowQuality: true });
       const { result } = renderHook(() => useQualityTracking());
 
-      // fastMode is false initially, so effectiveFastMode should be false
+      // animation is paused, so effectiveFastMode should be false
       expect(result.current.effectiveFastMode).toBe(false);
     });
 
-    it('should be false when fractalAnimLowQuality is false (regardless of fastMode)', () => {
-      usePerformanceStore.setState({ fractalAnimationLowQuality: false });
+    it('should be true when animation is playing and fractalAnimLowQuality is true', () => {
+      usePerformanceStore.setState({ fractalAnimationLowQuality: true });
+      act(() => {
+        useAnimationStore.getState().play();
+      });
       const { result } = renderHook(() => useQualityTracking());
 
-      // Even if we could set fastMode to true, effectiveFastMode should be false
+      expect(result.current.effectiveFastMode).toBe(true);
+    });
+
+    it('should be false when fractalAnimLowQuality is false (regardless of animation state)', () => {
+      usePerformanceStore.setState({ fractalAnimationLowQuality: false });
+      act(() => {
+        useAnimationStore.getState().play();
+      });
+      const { result } = renderHook(() => useQualityTracking());
+
+      // Even with animation playing, effectiveFastMode should be false
       expect(result.current.effectiveFastMode).toBe(false);
     });
   });

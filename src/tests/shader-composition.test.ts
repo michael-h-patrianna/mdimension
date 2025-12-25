@@ -178,6 +178,21 @@ describe('Schrödinger Shader Composition - Quantum Volume Effects', () => {
     expect(result.features).toContain('Chromatic Dispersion');
   });
 
+  it('should include dispersion code in both fast and HQ raymarch paths when enabled', () => {
+    const result = composeSchroedingerShader({
+      ...baseConfig,
+      dispersion: true,
+    });
+
+    // Verify dispersion code is in fast path (volumeRaymarch)
+    // The fast path should have per-channel transmittance for proper dispersion
+    expect(result.glsl).toContain('vec3 transmittance3 = vec3(1.0)');
+
+    // Verify dispersion code is in HQ path (volumeRaymarchHQ)
+    // The HQ path should have chromatic dispersion logic with full sampling option
+    expect(result.glsl).toContain('bool useFullSampling');
+  });
+
   it('should NOT include USE_DISPERSION define when dispersion is disabled', () => {
     const result = composeSchroedingerShader({
       ...baseConfig,

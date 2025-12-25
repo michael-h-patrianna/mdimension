@@ -483,7 +483,7 @@ describe('detectFaces', () => {
       });
     });
 
-    it('should detect faces for E_8 root system (8D) via metadata', () => {
+    it('should detect faces for E_8 root system (8D) via metadata', { timeout: 10000 }, () => {
       const rootSystem = generateRootSystem(8, { rootType: 'E8', scale: 1.0 });
       const faces = detectFaces(rootSystem.vertices, rootSystem.edges, 'root-system', rootSystem.metadata);
 

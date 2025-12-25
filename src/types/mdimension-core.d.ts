@@ -193,19 +193,6 @@ declare module 'mdimension-core' {
     dimension: number
   ): Float64Array;
 
-  /**
-   * Applies a rotation matrix to all vertices.
-   * @param flat_vertices Flat array of vertex coordinates
-   * @param dimension Dimensionality of each vertex
-   * @param rotation_matrix Flat rotation matrix (dimension × dimension)
-   * @returns Rotated vertices as flat array
-   */
-  export function apply_rotation_wasm(
-    flat_vertices: Float64Array,
-    dimension: number,
-    rotation_matrix: Float64Array
-  ): Float64Array;
-
   // ============================================================================
   // Phase 2: Matrix and Vector Operations
   // ============================================================================
@@ -252,20 +239,4 @@ declare module 'mdimension-core' {
    * @returns The difference vector
    */
   export function subtract_vectors_wasm(a: Float64Array, b: Float64Array): Float64Array;
-
-  /**
-   * Computes the Euclidean distance between two points
-   * @param a First point
-   * @param b Second point
-   * @returns The Euclidean distance
-   */
-  export function distance_wasm(a: Float64Array, b: Float64Array): number;
-
-  /**
-   * Computes the squared distance between two points (faster than distance)
-   * @param a First point
-   * @param b Second point
-   * @returns The squared Euclidean distance
-   */
-  export function distance_squared_wasm(a: Float64Array, b: Float64Array): number;
 }

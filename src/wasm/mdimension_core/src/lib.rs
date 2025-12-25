@@ -14,18 +14,6 @@ pub fn start() {
     log("WASM Module Initialized (with panic hook)");
 }
 
-// Export a function that can be called by JavaScript.
-#[wasm_bindgen]
-pub fn greet(name: &str) {
-    log(&format!("Hello, {}! This is Rust running in WASM.", name));
-}
-
-// Simple math function to verify typed bindings
-#[wasm_bindgen]
-pub fn add_wasm(a: i32, b: i32) -> i32 {
-    a + b
-}
-
 mod hull;
 mod knn;
 mod edges;
@@ -234,20 +222,6 @@ pub fn multiply_matrix_vector_wasm(matrix: &[f64], vector: &[f64], dimension: us
     animation::multiply_matrix_vector(matrix, vector, dimension)
 }
 
-/// Applies a rotation matrix to all vertices.
-///
-/// # Arguments
-/// * `flat_vertices` - Flat array of vertex coordinates
-/// * `dimension` - Dimensionality of each vertex
-/// * `rotation_matrix` - Flat rotation matrix (dimension × dimension)
-///
-/// # Returns
-/// Rotated vertices as flat array
-#[wasm_bindgen]
-pub fn apply_rotation_wasm(flat_vertices: &[f64], dimension: usize, rotation_matrix: &[f64]) -> Vec<f64> {
-    animation::apply_rotation_to_vertices(flat_vertices, dimension, rotation_matrix)
-}
-
 // ============================================================================
 // Phase 2: Matrix and Vector Operations
 // ============================================================================
@@ -314,30 +288,4 @@ pub fn normalize_vector_wasm(v: &[f64]) -> Vec<f64> {
 #[wasm_bindgen]
 pub fn subtract_vectors_wasm(a: &[f64], b: &[f64]) -> Vec<f64> {
     animation::subtract_vectors(a, b)
-}
-
-/// Computes the Euclidean distance between two points
-///
-/// # Arguments
-/// * `a` - First point
-/// * `b` - Second point
-///
-/// # Returns
-/// The Euclidean distance
-#[wasm_bindgen]
-pub fn distance_wasm(a: &[f64], b: &[f64]) -> f64 {
-    animation::distance(a, b)
-}
-
-/// Computes the squared distance between two points (faster than distance)
-///
-/// # Arguments
-/// * `a` - First point
-/// * `b` - Second point
-///
-/// # Returns
-/// The squared Euclidean distance
-#[wasm_bindgen]
-pub fn distance_squared_wasm(a: &[f64], b: &[f64]) -> f64 {
-    animation::distance_squared(a, b)
 }
