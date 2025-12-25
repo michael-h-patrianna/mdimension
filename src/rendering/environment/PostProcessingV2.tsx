@@ -86,6 +86,7 @@ import { useEnvironmentStore } from '@/stores/environmentStore';
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useLightingStore } from '@/stores/lightingStore';
+import { usePerformanceMetricsStore } from '@/stores/performanceMetricsStore';
 import { getEffectiveSSRQuality, usePerformanceStore, type SSRQualityLevel } from '@/stores/performanceStore';
 import { usePostProcessingStore } from '@/stores/postProcessingStore';
 import { useUIStore } from '@/stores/uiStore';
@@ -303,6 +304,9 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
   const autoFocusDistanceRef = useRef(ppState.bokehWorldFocusDistance);
   const currentFocusRef = useRef(ppState.bokehWorldFocusDistance);
   const blackHoleWorldPosition = useMemo(() => new THREE.Vector3(0, 0, 0), []);
+
+  // Buffer stats update interval (for performance monitor)
+  const bufferStatsTimeRef = useRef(0);
   const projectedBlackHole = useMemo(() => new THREE.Vector3(), []);
 
   // Set up Three.js renderer tone mapping
@@ -765,6 +769,10 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
         renderBackground: false,
         // Disabled when gravity is enabled (use split rendering instead)
         enabled: (frame) => !(frame?.stores.postProcessing.gravityEnabled ?? false),
+        // Capture scene-only GPU stats for performance monitoring (excludes post-processing)
+        onRenderStats: (stats) => {
+          usePerformanceMetricsStore.getState().updateSceneGpu(stats);
+        },
       })
     );
 
@@ -801,6 +809,10 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
         renderBackground: false,
         forceOpaque: true, // Render opaque, let composite shader handle alpha
         enabled: (frame) => frame?.stores.postProcessing.gravityEnabled ?? false,
+        // Capture scene-only GPU stats when gravity path is active (excludes post-processing)
+        onRenderStats: (stats) => {
+          usePerformanceMetricsStore.getState().updateSceneGpu(stats);
+        },
       })
     );
 
@@ -1404,6 +1416,20 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
     graphInstance.execute(gl, scene, camera, delta);
 
     // Temporal Cloud swap handled by RenderGraph (ping-pong on TEMPORAL_ACCUMULATION)
+
+    // Periodically update buffer stats for performance monitor
+    bufferStatsTimeRef.current += delta;
+    if (bufferStatsTimeRef.current >= 1.0) {
+      bufferStatsTimeRef.current = 0;
+
+      const dims = graphInstance.getResourceDimensions();
+      usePerformanceMetricsStore.getState().updateBufferStats({
+        screen: dims.get(RESOURCES.SCENE_COLOR) ?? { width: 0, height: 0 },
+        depth: dims.get(RESOURCES.OBJECT_DEPTH) ?? { width: 0, height: 0 },
+        normal: dims.get(RESOURCES.NORMAL_ENV) ?? { width: 0, height: 0 },
+        temporal: dims.get(RESOURCES.TEMPORAL_DEPTH_OUTPUT) ?? { width: 0, height: 0 },
+      });
+    }
   }, FRAME_PRIORITY.POST_EFFECTS);
 
   return null;

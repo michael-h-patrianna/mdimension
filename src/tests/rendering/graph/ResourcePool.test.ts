@@ -270,4 +270,99 @@ describe('ResourcePool', () => {
       // No assertion - just verify it doesn't throw
     });
   });
+
+  describe('getResourceDimensions', () => {
+    it('should return empty map for empty pool', () => {
+      const dims = pool.getResourceDimensions();
+      expect(dims.size).toBe(0);
+    });
+
+    it('should return empty map when resources registered but not allocated', () => {
+      pool.register({
+        id: 'test',
+        type: 'renderTarget',
+        size: { mode: 'fixed', width: 256, height: 256 },
+      });
+
+      // Resources are lazily allocated, so dimensions should be empty
+      const dims = pool.getResourceDimensions();
+      expect(dims.size).toBe(0);
+    });
+
+    it('should return dimensions for allocated resources', () => {
+      pool.updateSize(1920, 1080);
+      pool.register({
+        id: 'sceneColor',
+        type: 'renderTarget',
+        size: { mode: 'screen' },
+      });
+
+      // Trigger allocation by getting the resource
+      pool.get('sceneColor');
+
+      const dims = pool.getResourceDimensions();
+      expect(dims.size).toBe(1);
+      expect(dims.get('sceneColor')).toEqual({ width: 1920, height: 1080 });
+    });
+
+    it('should return correct dimensions for fixed-size resources', () => {
+      pool.register({
+        id: 'fixedBuffer',
+        type: 'renderTarget',
+        size: { mode: 'fixed', width: 512, height: 512 },
+      });
+
+      // Trigger allocation
+      pool.get('fixedBuffer');
+
+      const dims = pool.getResourceDimensions();
+      expect(dims.get('fixedBuffer')).toEqual({ width: 512, height: 512 });
+    });
+
+    it('should return correct dimensions for fractional resources', () => {
+      pool.updateSize(1920, 1080);
+      pool.register({
+        id: 'halfRes',
+        type: 'renderTarget',
+        size: { mode: 'fraction', fraction: 0.5 },
+      });
+
+      // Trigger allocation
+      pool.get('halfRes');
+
+      const dims = pool.getResourceDimensions();
+      expect(dims.get('halfRes')).toEqual({ width: 960, height: 540 });
+    });
+
+    it('should return dimensions for multiple resources', () => {
+      pool.updateSize(1920, 1080);
+      pool.register({
+        id: 'screen',
+        type: 'renderTarget',
+        size: { mode: 'screen' },
+      });
+      pool.register({
+        id: 'depth',
+        type: 'renderTarget',
+        size: { mode: 'screen' },
+        depthBuffer: true,
+      });
+      pool.register({
+        id: 'temporal',
+        type: 'renderTarget',
+        size: { mode: 'fraction', fraction: 0.5 },
+      });
+
+      // Trigger allocation for all
+      pool.get('screen');
+      pool.get('depth');
+      pool.get('temporal');
+
+      const dims = pool.getResourceDimensions();
+      expect(dims.size).toBe(3);
+      expect(dims.get('screen')).toEqual({ width: 1920, height: 1080 });
+      expect(dims.get('depth')).toEqual({ width: 1920, height: 1080 });
+      expect(dims.get('temporal')).toEqual({ width: 960, height: 540 });
+    });
+  });
 });

@@ -38,6 +38,10 @@ export function PerformanceStatsCollector() {
   const lastVramUpdateRef = useRef(0);
   const currentVramRef = useRef({ geometries: 0, textures: 0, total: 0 });
 
+  // Track if performance monitor was visible in the previous frame
+  // Used to trigger immediate VRAM update when monitor opens
+  const wasMonitorVisibleRef = useRef(false);
+
   // Initialization: Hardware Detection
   useEffect(() => {
     // Attempt to get GPU renderer name
@@ -160,15 +164,18 @@ export function PerformanceStatsCollector() {
         ? Math.round((performance as unknown as { memory: { usedJSHeapSize: number } }).memory.usedJSHeapSize / 1048576)
         : 0;
 
-      // Update VRAM periodically ONLY if monitor is open AND on System tab
-      // This avoids expensive scene traversals when not viewing the data
-      if (time - lastVramUpdateRef.current > VRAM_UPDATE_INTERVAL) {
-        const { showPerfMonitor, perfMonitorTab } = useUIStore.getState();
-        if (showPerfMonitor && perfMonitorTab === 'sys') {
-          currentVramRef.current = updateVRAM();
-        }
+      // Update VRAM when performance monitor is visible
+      // Triggers immediately when monitor opens, then periodically while visible
+      const { showPerfMonitor } = useUIStore.getState();
+      const justBecameVisible = showPerfMonitor && !wasMonitorVisibleRef.current;
+      const intervalElapsed = time - lastVramUpdateRef.current > VRAM_UPDATE_INTERVAL;
+
+      if (showPerfMonitor && (justBecameVisible || intervalElapsed)) {
+        currentVramRef.current = updateVRAM();
         lastVramUpdateRef.current = time;
       }
+
+      wasMonitorVisibleRef.current = showPerfMonitor;
 
       updateMetrics({
         fps,

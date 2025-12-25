@@ -149,4 +149,34 @@ describe('ScenePass', () => {
       expect(fullPass.id).toBe('full')
     })
   })
+
+  describe('onRenderStats callback', () => {
+    it('should accept onRenderStats callback option', () => {
+      const statsCallback = () => {
+        // Empty callback for test
+      }
+      const statsPass = new ScenePass({
+        id: 'stats',
+        outputs: [{ resourceId: 'color', access: 'write' }],
+        onRenderStats: statsCallback,
+      })
+      expect(statsPass.id).toBe('stats')
+    })
+
+    it('should accept onRenderStats with full config', () => {
+      let capturedStats: { calls: number; triangles: number; points: number; lines: number } | null = null
+      const statsPass = new ScenePass({
+        id: 'stats-full',
+        outputs: [{ resourceId: 'color', access: 'write' }],
+        clearColor: 0x000000,
+        autoClear: true,
+        onRenderStats: (stats) => {
+          capturedStats = stats
+        },
+      })
+      expect(statsPass.id).toBe('stats-full')
+      // Callback is not invoked until execute() is called with proper context
+      expect(capturedStats).toBeNull()
+    })
+  })
 })

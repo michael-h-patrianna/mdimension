@@ -648,4 +648,24 @@ export class ResourcePool {
   getConfig(id: string): RenderResourceConfig | undefined {
     return this.resources.get(id)?.config
   }
+
+  /**
+   * Get dimensions of all allocated resources.
+   * Returns a map of resource IDs to their current dimensions.
+   * Useful for performance monitoring and debugging.
+   */
+  getResourceDimensions(): Map<string, { width: number; height: number }> {
+    const result = new Map<string, { width: number; height: number }>()
+
+    for (const [id, entry] of this.resources.entries()) {
+      if (entry.target) {
+        result.set(id, {
+          width: entry.target.width,
+          height: entry.target.height,
+        })
+      }
+    }
+
+    return result
+  }
 }

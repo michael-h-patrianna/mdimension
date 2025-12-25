@@ -998,6 +998,15 @@ export class RenderGraph {
     return this.pool.getResourceIds()
   }
 
+  /**
+   * Get dimensions of all allocated resources.
+   * Returns a map of resource IDs to their current dimensions.
+   * Useful for performance monitoring buffer stats display.
+   */
+  getResourceDimensions(): Map<string, { width: number; height: number }> {
+    return this.pool.getResourceDimensions()
+  }
+
   // ==========================================================================
   // Lifecycle
   // ==========================================================================

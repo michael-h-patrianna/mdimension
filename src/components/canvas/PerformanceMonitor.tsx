@@ -281,6 +281,7 @@ const ExpandedContent = React.memo(function ExpandedContent({ onCollapse, didDra
   const minFps = usePerformanceMetricsStore((s) => s.minFps);
   const maxFps = usePerformanceMetricsStore((s) => s.maxFps);
   const fpsHistory = usePerformanceMetricsStore((s) => s.history.fps);
+  const gpu = usePerformanceMetricsStore((s) => s.gpu);
   const sceneGpu = usePerformanceMetricsStore((s) => s.sceneGpu);
   const memory = usePerformanceMetricsStore((s) => s.memory);
   const gpuName = usePerformanceMetricsStore((s) => s.gpuName);
@@ -335,7 +336,8 @@ const ExpandedContent = React.memo(function ExpandedContent({ onCollapse, didDra
 
   // Derived values
   const fpsColor = getHealthColor(fps, 55, 30);
-  const processedVertices = sceneGpu.triangles * 3 + sceneGpu.lines * 2 + sceneGpu.points;
+  const sceneVertices = sceneGpu.triangles * 3 + sceneGpu.lines * 2 + sceneGpu.points;
+  const totalVertices = gpu.triangles * 3 + gpu.lines * 2 + gpu.points;
   const isRaymarching = isRaymarchingType(objectType);
   const configKey = getConfigStoreKey(objectType);
   const raySteps = configKey === 'mandelbulb' ? mandelbulbConfig.maxIterations :
@@ -359,12 +361,21 @@ const ExpandedContent = React.memo(function ExpandedContent({ onCollapse, didDra
   const PerfContent = (
     <div className="grid grid-cols-1 gap-5 p-5">
       <div className="space-y-3">
-        <SectionHeader icon={<Icons.Zap />} label="Geometry" />
+        <SectionHeader icon={<Icons.Zap />} label="Scene Geometry" />
         <div className="grid grid-cols-2 gap-2">
           <InfoCard label="Calls" value={sceneGpu.calls} />
           <InfoCard label="Triangles" value={formatMetric(sceneGpu.triangles)} />
-          <InfoCard label="Vertices" value={formatMetric(processedVertices)} />
+          <InfoCard label="Vertices" value={formatMetric(sceneVertices)} />
           <InfoCard label="Points" value={formatMetric(sceneGpu.points)} />
+        </div>
+      </div>
+      <div className="space-y-3">
+        <SectionHeader icon={<Icons.Layers />} label="Total Rendered" />
+        <div className="grid grid-cols-2 gap-2">
+          <InfoCard label="Calls" value={gpu.calls} />
+          <InfoCard label="Triangles" value={formatMetric(gpu.triangles)} />
+          <InfoCard label="Vertices" value={formatMetric(totalVertices)} />
+          <InfoCard label="Points" value={formatMetric(gpu.points)} />
         </div>
       </div>
       <div className="space-y-3">
@@ -378,7 +389,7 @@ const ExpandedContent = React.memo(function ExpandedContent({ onCollapse, didDra
       </div>
       {isRaymarching && (
         <div className="space-y-3">
-          <SectionHeader icon={<Icons.Layers />} label="Raymarching" />
+          <SectionHeader icon={<Icons.Activity />} label="Raymarching" />
           <div className="grid grid-cols-2 gap-2">
             <InfoCard label="Steps" value={raySteps} highlight />
             <InfoCard label="Precision" value="High" />

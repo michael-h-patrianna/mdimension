@@ -58,6 +58,8 @@ export interface PerformanceMetricsState {
   updateMetrics: (metrics: Partial<PerformanceMetricsState>) => void
   setGpuName: (name: string) => void
   updateBufferStats: (buffers: BufferStats) => void
+  /** Update scene-only GPU stats (excludes post-processing passes) */
+  updateSceneGpu: (stats: GPUStats) => void
 }
 
 export const GRAPH_POINTS = 40
@@ -91,4 +93,5 @@ export const usePerformanceMetricsStore = create<PerformanceMetricsState>((set) 
   updateMetrics: (metrics) => set((state) => ({ ...state, ...metrics })),
   setGpuName: (name) => set({ gpuName: name }),
   updateBufferStats: (buffers) => set({ buffers }),
+  updateSceneGpu: (stats) => set({ sceneGpu: stats }),
 }))

@@ -29,6 +29,20 @@ interface CachedMaterialEntry {
 }
 
 /**
+ * Render stats captured after scene render.
+ */
+export interface SceneRenderStats {
+  /** Number of draw calls */
+  calls: number
+  /** Number of triangles rendered */
+  triangles: number
+  /** Number of points rendered */
+  points: number
+  /** Number of lines rendered */
+  lines: number
+}
+
+/**
  * Configuration for ScenePass.
  */
 export interface ScenePassConfig extends Omit<RenderPassConfig, 'inputs'> {
@@ -49,6 +63,9 @@ export interface ScenePassConfig extends Omit<RenderPassConfig, 'inputs'> {
 
   /** Force materials to be opaque (useful for separate layer rendering where compositing handles alpha) */
   forceOpaque?: boolean
+
+  /** Optional callback to receive render stats after scene render (for performance monitoring) */
+  onRenderStats?: (stats: SceneRenderStats) => void
 }
 
 /**
@@ -73,6 +90,7 @@ export class ScenePass extends BasePass {
   private autoClear: boolean
   private renderBackground: boolean
   private forceOpaque: boolean
+  private onRenderStats: ((stats: SceneRenderStats) => void) | null
 
   // Saved state for restoration
   private savedClearColor = new THREE.Color()
@@ -98,6 +116,7 @@ export class ScenePass extends BasePass {
     this.autoClear = config.autoClear ?? true
     this.renderBackground = config.renderBackground ?? true
     this.forceOpaque = config.forceOpaque ?? false
+    this.onRenderStats = config.onRenderStats ?? null
   }
 
   /**
@@ -201,6 +220,17 @@ export class ScenePass extends BasePass {
       // Render - MRTStateManager automatically configures drawBuffers via patched setRenderTarget
       renderer.setRenderTarget(target)
       renderer.render(scene, camera)
+
+      // Capture render stats after scene render (for performance monitoring)
+      // This captures stats BEFORE post-processing passes inflate the numbers
+      if (this.onRenderStats) {
+        this.onRenderStats({
+          calls: renderer.info.render.calls,
+          triangles: renderer.info.render.triangles,
+          points: renderer.info.render.points,
+          lines: renderer.info.render.lines,
+        })
+      }
     } finally {
       // Restore material properties if we forced opaque
       if (this.forceOpaque) {
