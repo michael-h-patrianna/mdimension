@@ -131,4 +131,141 @@ declare module 'mdimension-core' {
     dimension: number,
     scale: number
   ): RootSystemResultWasm;
+
+  // ============================================================================
+  // Animation Operations (Hot Path - 60 FPS)
+  // ============================================================================
+
+  /**
+   * Composes multiple rotations from plane names and angles.
+   * This is the high-performance WASM version for animation loops.
+   * @param dimension The dimensionality of the space
+   * @param plane_names Array of plane names (e.g., ["XY", "XW", "ZW"])
+   * @param angles Array of rotation angles in radians (same length as plane_names)
+   * @returns Flat rotation matrix (dimension × dimension) as Float64Array
+   */
+  export function compose_rotations_wasm(
+    dimension: number,
+    plane_names: string[],
+    angles: Float64Array | number[]
+  ): Float64Array;
+
+  /**
+   * Projects n-dimensional vertices to 3D positions using perspective projection.
+   * Writes directly into output for Three.js buffer updates.
+   * @param flat_vertices Flat array of vertex coordinates
+   * @param dimension Dimensionality of each vertex
+   * @param projection_distance Distance from projection plane (default: 4.0)
+   * @returns Flat array of 3D positions as Float32Array [x0, y0, z0, x1, y1, z1, ...]
+   */
+  export function project_vertices_wasm(
+    flat_vertices: Float64Array,
+    dimension: number,
+    projection_distance: number
+  ): Float32Array;
+
+  /**
+   * Projects edge pairs to 3D positions for LineSegments2 geometry.
+   * Each edge is 6 floats: [x1, y1, z1, x2, y2, z2].
+   * @param flat_vertices Flat array of vertex coordinates
+   * @param dimension Dimensionality of each vertex
+   * @param flat_edges Flat array of edge indices [start0, end0, start1, end1, ...]
+   * @param projection_distance Distance from projection plane
+   * @returns Flat array of edge positions
+   */
+  export function project_edges_wasm(
+    flat_vertices: Float64Array,
+    dimension: number,
+    flat_edges: Uint32Array,
+    projection_distance: number
+  ): Float32Array;
+
+  /**
+   * Multiplies a matrix by a vector.
+   * @param matrix Flat n×n matrix (row-major)
+   * @param vector Input vector of length n
+   * @param dimension Matrix/vector dimension
+   * @returns Result vector of length n
+   */
+  export function multiply_matrix_vector_wasm(
+    matrix: Float64Array,
+    vector: Float64Array,
+    dimension: number
+  ): Float64Array;
+
+  /**
+   * Applies a rotation matrix to all vertices.
+   * @param flat_vertices Flat array of vertex coordinates
+   * @param dimension Dimensionality of each vertex
+   * @param rotation_matrix Flat rotation matrix (dimension × dimension)
+   * @returns Rotated vertices as flat array
+   */
+  export function apply_rotation_wasm(
+    flat_vertices: Float64Array,
+    dimension: number,
+    rotation_matrix: Float64Array
+  ): Float64Array;
+
+  // ============================================================================
+  // Phase 2: Matrix and Vector Operations
+  // ============================================================================
+
+  /**
+   * Multiplies two square matrices: C = A × B
+   * @param a First matrix (n×n, row-major)
+   * @param b Second matrix (n×n, row-major)
+   * @param dimension Matrix dimension
+   * @returns Result matrix (n×n, row-major)
+   */
+  export function multiply_matrices_wasm(
+    a: Float64Array,
+    b: Float64Array,
+    dimension: number
+  ): Float64Array;
+
+  /**
+   * Computes the dot product of two vectors: a · b = Σ(a[i] * b[i])
+   * @param a First vector
+   * @param b Second vector
+   * @returns The scalar dot product
+   */
+  export function dot_product_wasm(a: Float64Array, b: Float64Array): number;
+
+  /**
+   * Computes the magnitude (length) of a vector: ||v|| = √(Σ(v[i]²))
+   * @param v Input vector
+   * @returns The magnitude of the vector
+   */
+  export function magnitude_wasm(v: Float64Array): number;
+
+  /**
+   * Normalizes a vector to unit length: v̂ = v / ||v||
+   * @param v Input vector
+   * @returns Unit vector in the same direction
+   */
+  export function normalize_vector_wasm(v: Float64Array): Float64Array;
+
+  /**
+   * Subtracts two vectors element-wise: c = a - b
+   * @param a First vector
+   * @param b Second vector
+   * @returns The difference vector
+   */
+  export function subtract_vectors_wasm(a: Float64Array, b: Float64Array): Float64Array;
+
+  /**
+   * Computes the Euclidean distance between two points
+   * @param a First point
+   * @param b Second point
+   * @returns The Euclidean distance
+   */
+  export function distance_wasm(a: Float64Array, b: Float64Array): number;
+
+  /**
+   * Computes the squared distance between two points (faster than distance)
+   * @param a First point
+   * @param b Second point
+   * @returns The squared Euclidean distance
+   */
+  export function distance_squared_wasm(a: Float64Array, b: Float64Array): number;
 }

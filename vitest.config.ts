@@ -30,6 +30,8 @@ export default defineConfig({
       '@/stores': path.resolve(import.meta.dirname, './src/stores'),
       '@/types': path.resolve(import.meta.dirname, './src/types'),
       '@/utils': path.resolve(import.meta.dirname, './src/utils'),
+      // Mock WASM module for tests (Vite import analysis runs before vitest mocks)
+      'mdimension-core': path.resolve(import.meta.dirname, './src/tests/__mocks__/mdimension-core.ts'),
     },
     dedupe: ['three'],
   },

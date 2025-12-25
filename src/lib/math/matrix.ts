@@ -2,10 +2,20 @@
  * N-dimensional matrix operations
  * All operations are pure functions with no side effects
  * Matrices are stored as flat Float32Arrays (row-major)
+ *
+ * Uses WASM acceleration when available for improved performance.
  */
 
 import type { MatrixND, VectorND } from './types'
 import { EPSILON } from './types'
+import {
+  isAnimationWasmReady,
+  multiplyMatrixVectorWasm,
+  multiplyMatricesWasm,
+  matrixToFloat64,
+  vectorToFloat64,
+  float64ToVector,
+} from '@/lib/wasm'
 
 /**
  * Creates an n×n identity matrix
@@ -44,6 +54,9 @@ export function createZeroMatrix(rows: number, cols: number): MatrixND {
 /**
  * Multiplies two square matrices
  * Formula: C[i][j] = Σ(A[i][k] * B[k][j])
+ *
+ * Uses WASM acceleration when available for improved performance.
+ *
  * @param a - First matrix (n×n)
  * @param b - Second matrix (n×n)
  * @param out - Optional output matrix to avoid allocation (must be n×n)
@@ -70,6 +83,19 @@ export function multiplyMatrices(a: MatrixND, b: MatrixND, out?: MatrixND): Matr
   // Use provided output matrix or allocate new one
   const result = out ?? new Float32Array(len)
 
+  // Try WASM path if available
+  if (isAnimationWasmReady()) {
+    const aF64 = matrixToFloat64(a)
+    const bF64 = matrixToFloat64(b)
+    const wasmResult = multiplyMatricesWasm(aF64, bF64, dim)
+    if (wasmResult) {
+      result.set(new Float32Array(wasmResult))
+      return result
+    }
+    // WASM failed, fall through to JS implementation
+  }
+
+  // JS fallback
   for (let i = 0; i < dim; i++) {
     const rowOffset = i * dim
     for (let j = 0; j < dim; j++) {
@@ -157,6 +183,9 @@ export function multiplyMatricesInto(out: MatrixND, a: MatrixND, b: MatrixND): v
 /**
  * Multiplies a matrix by a vector
  * Formula: b[i] = Σ(M[i][j] * v[j])
+ *
+ * Uses WASM acceleration when available for improved performance.
+ *
  * @param m - Matrix (n×n)
  * @param v - Vector (n)
  * @param out
@@ -185,6 +214,22 @@ export function multiplyMatrixVector(m: MatrixND, v: VectorND, out?: VectorND): 
     }
   }
 
+  // Try WASM path if available
+  if (isAnimationWasmReady()) {
+    const matrixF64 = matrixToFloat64(m)
+    const vectorF64 = vectorToFloat64(v)
+    const wasmResult = multiplyMatrixVectorWasm(matrixF64, vectorF64, dim)
+    if (wasmResult) {
+      const jsResult = float64ToVector(wasmResult)
+      for (let i = 0; i < dim; i++) {
+        result[i] = jsResult[i]!
+      }
+      return result
+    }
+    // WASM failed, fall through to JS implementation
+  }
+
+  // JS fallback
   for (let i = 0; i < dim; i++) {
     let sum = 0
     const rowOffset = i * dim

@@ -9,6 +9,11 @@ import './index.css'
 import { initUniformSources } from '@/rendering/uniforms/init'
 initUniformSources()
 
+// Initialize WASM module for high-performance animation operations
+// This is async and non-blocking - functions fallback to JS until ready
+import { initAnimationWasm } from '@/lib/wasm'
+initAnimationWasm()
+
 // Expose stores for e2e testing
 import { useAppearanceStore } from '@/stores/appearanceStore'
 import { useEnvironmentStore } from '@/stores/environmentStore'

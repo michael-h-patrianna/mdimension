@@ -1,9 +1,18 @@
 /**
  * N-dimensional to 3D projection operations
  * Uses perspective projection for proper depth perception
+ *
+ * Uses WASM acceleration when available for improved performance.
  */
 
 import type { Vector3D, VectorND } from './types'
+import {
+  isAnimationWasmReady,
+  projectVerticesWasm,
+  projectEdgesWasm,
+  flattenVertices,
+  flattenEdges,
+} from '@/lib/wasm'
 
 /**
  * Default projection distance for perspective projection
@@ -339,6 +348,8 @@ export function clipLine(
  * Instead of creating intermediate Vector3D[] arrays, this writes projected
  * (x, y, z) values directly into a Float32Array suitable for BufferAttribute.
  *
+ * Uses WASM acceleration when available for improved performance.
+ *
  * @param vertices - Array of n-dimensional vertices to project
  * @param positions - Target Float32Array to write into (must have length >= vertices.length * 3)
  * @param projectionDistance - Distance from projection plane (default: 4.0)
@@ -376,10 +387,22 @@ export function projectVerticesToPositions(
   }
 
   const dimension = firstVertex!.length
+
+  // Try WASM path if available and offset is 0 (most common case)
+  if (isAnimationWasmReady() && offset === 0) {
+    const flatVerts = flattenVertices(vertices)
+    const wasmResult = projectVerticesWasm(flatVerts, dimension, projectionDistance)
+    if (wasmResult && wasmResult.length === len * 3) {
+      positions.set(wasmResult)
+      return len
+    }
+    // WASM failed, fall through to JS implementation
+  }
+
   const numHigherDims = dimension - 3
   const normalizationFactor = numHigherDims > 0 ? Math.sqrt(numHigherDims) : 1
 
-  // Perspective projection
+  // Perspective projection (JS fallback)
   for (let i = 0; i < len; i++) {
     const vertex = vertices[i]!
     const x = vertex[0]!
@@ -417,6 +440,8 @@ export function projectVerticesToPositions(
  *
  * This eliminates the need for intermediate Vector3D[] buffers when updating
  * fat line geometry in the animation loop.
+ *
+ * Uses WASM acceleration when available for improved performance.
  *
  * @param vertices - Array of n-dimensional vertices (source positions)
  * @param edges - Array of edge pairs as [startIndex, endIndex]
@@ -459,10 +484,23 @@ export function projectEdgesToPositions(
   }
 
   const dimension = firstVertex!.length
+
+  // Try WASM path if available and offset is 0 (most common case)
+  if (isAnimationWasmReady() && offset === 0) {
+    const flatVerts = flattenVertices(vertices)
+    const flatEdgeIndices = flattenEdges(edges as [number, number][])
+    const wasmResult = projectEdgesWasm(flatVerts, dimension, flatEdgeIndices, projectionDistance)
+    if (wasmResult && wasmResult.length === numEdges * 6) {
+      positions.set(wasmResult)
+      return numEdges
+    }
+    // WASM failed, fall through to JS implementation
+  }
+
   const numHigherDims = dimension - 3
   const normalizationFactor = numHigherDims > 0 ? Math.sqrt(numHigherDims) : 1
 
-  // Perspective projection for all edges
+  // Perspective projection for all edges (JS fallback)
   for (let e = 0; e < numEdges; e++) {
     const [startIdx, endIdx] = edges[e]!
     const v1 = vertices[startIdx]

@@ -1,10 +1,13 @@
 /**
  * N-dimensional rotation operations
  * Implements rotation in arbitrary planes with mathematically correct formulas
+ *
+ * Uses WASM acceleration when available for improved performance.
  */
 
 import { copyMatrix, createIdentityMatrix, multiplyMatricesInto } from './matrix'
 import type { MatrixND, RotationPlane } from './types'
+import { composeRotationsWasm, isAnimationWasmReady } from '@/lib/wasm'
 
 /**
  * Axis naming convention for display
@@ -200,8 +203,8 @@ export function createRotationMatrix(
  * Composes multiple rotations from a map of plane names to angles
  * Rotations are applied in the order they appear when iterating the map
  *
- * Uses swap-based composition with pre-allocated scratch buffers to avoid
- * intermediate allocations during animation loops.
+ * Uses WASM acceleration when available, otherwise falls back to
+ * swap-based composition with pre-allocated scratch buffers.
  *
  * @param dimension - The dimensionality of the space
  * @param angles - Map from plane name (e.g., "XY", "XW") to angle in radians
@@ -221,14 +224,36 @@ export function composeRotations(
   // Use provided output or allocate new matrix
   const result = out ?? createIdentityMatrix(dimension)
 
-  // Reset to identity if reusing
-  if (out) {
-    resetToIdentity(result, dimension)
-  }
-
   // Early exit if no rotations
   if (angles.size === 0) {
+    // Reset to identity if reusing
+    if (out) {
+      resetToIdentity(result, dimension)
+    }
     return result
+  }
+
+  // Try WASM path if available
+  if (isAnimationWasmReady()) {
+    const planeNames: string[] = []
+    const angleValues: number[] = []
+    for (const [name, angle] of angles.entries()) {
+      planeNames.push(name)
+      angleValues.push(angle)
+    }
+
+    const wasmResult = composeRotationsWasm(dimension, planeNames, angleValues)
+    if (wasmResult) {
+      // Copy Float64Array result to Float32Array output
+      result.set(new Float32Array(wasmResult))
+      return result
+    }
+    // WASM failed, fall through to JS implementation
+  }
+
+  // Reset to identity if reusing (only for JS path, WASM handles this internally)
+  if (out) {
+    resetToIdentity(result, dimension)
   }
 
   // Get all valid planes for validation

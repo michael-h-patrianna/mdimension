@@ -168,7 +168,7 @@ export function useInteractionState(options: UseInteractionStateOptions = {}): I
     canvas.addEventListener('pointerup', handlePointerUp)
     canvas.addEventListener('pointerleave', handlePointerUp)
     canvas.addEventListener('pointermove', handlePointerMove)
-    canvas.addEventListener('wheel', handleWheel)
+    canvas.addEventListener('wheel', handleWheel, { passive: true })
 
     return () => {
       canvas.removeEventListener('pointerdown', handlePointerDown)

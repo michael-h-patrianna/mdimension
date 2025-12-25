@@ -1,10 +1,21 @@
 /**
  * N-dimensional vector operations
  * All operations are pure functions with no side effects
+ *
+ * Uses WASM acceleration when available for improved performance.
  */
 
 import type { VectorND } from './types'
 import { EPSILON } from './types'
+import {
+  isAnimationWasmReady,
+  dotProductWasm,
+  magnitudeWasm,
+  normalizeVectorWasm,
+  subtractVectorsWasm,
+  vectorToFloat64,
+  float64ToVector,
+} from '@/lib/wasm'
 
 /**
  * Creates an n-dimensional vector initialized with a fill value
@@ -45,6 +56,9 @@ export function addVectors(a: VectorND, b: VectorND, out?: VectorND): VectorND {
 /**
  * Subtracts vector b from vector a element-wise
  * Formula: c[i] = a[i] - b[i]
+ *
+ * Uses WASM acceleration when available for improved performance.
+ *
  * @param a - First vector
  * @param b - Second vector (subtracted from first)
  * @param out - Optional output vector to avoid allocation
@@ -56,6 +70,19 @@ export function subtractVectors(a: VectorND, b: VectorND, out?: VectorND): Vecto
   if (import.meta.env.DEV && a.length !== b.length) {
     throw new Error(`Vector dimensions must match: ${a.length} !== ${b.length}`)
   }
+
+  // Try WASM path if available (only when no out buffer, as WASM allocates)
+  if (isAnimationWasmReady() && !out) {
+    const aF64 = vectorToFloat64(a)
+    const bF64 = vectorToFloat64(b)
+    const wasmResult = subtractVectorsWasm(aF64, bF64)
+    if (wasmResult) {
+      return float64ToVector(wasmResult)
+    }
+    // WASM failed, fall through to JS implementation
+  }
+
+  // JS fallback
   const result = out ?? new Array(a.length)
   for (let i = 0; i < a.length; i++) {
     result[i] = a[i]! - b[i]!
@@ -82,6 +109,9 @@ export function scaleVector(v: VectorND, scalar: number, out?: VectorND): Vector
 /**
  * Computes the dot product of two vectors
  * Formula: a · b = Σ(a[i] * b[i])
+ *
+ * Uses WASM acceleration when available for improved performance.
+ *
  * @param a - First vector
  * @param b - Second vector
  * @returns The scalar dot product
@@ -92,6 +122,19 @@ export function dotProduct(a: VectorND, b: VectorND): number {
   if (import.meta.env.DEV && a.length !== b.length) {
     throw new Error(`Vector dimensions must match: ${a.length} !== ${b.length}`)
   }
+
+  // Try WASM path if available
+  if (isAnimationWasmReady()) {
+    const aF64 = vectorToFloat64(a)
+    const bF64 = vectorToFloat64(b)
+    const wasmResult = dotProductWasm(aF64, bF64)
+    if (wasmResult !== null) {
+      return wasmResult
+    }
+    // WASM failed, fall through to JS implementation
+  }
+
+  // JS fallback
   let sum = 0
   for (let i = 0; i < a.length; i++) {
     sum += a[i]! * b[i]!
@@ -102,10 +145,24 @@ export function dotProduct(a: VectorND, b: VectorND): number {
 /**
  * Computes the magnitude (length) of a vector
  * Formula: ||v|| = √(Σ(v[i]²))
+ *
+ * Uses WASM acceleration when available for improved performance.
+ *
  * @param v - Input vector
  * @returns The magnitude of the vector
  */
 export function magnitude(v: VectorND): number {
+  // Try WASM path if available
+  if (isAnimationWasmReady()) {
+    const vF64 = vectorToFloat64(v)
+    const wasmResult = magnitudeWasm(vF64)
+    if (wasmResult !== null) {
+      return wasmResult
+    }
+    // WASM failed, fall through to JS implementation
+  }
+
+  // JS fallback
   let sumSquares = 0
   for (let i = 0; i < v.length; i++) {
     sumSquares += v[i]! * v[i]!
@@ -116,12 +173,26 @@ export function magnitude(v: VectorND): number {
 /**
  * Normalizes a vector to unit length
  * Formula: v̂ = v / ||v||
+ *
+ * Uses WASM acceleration when available for improved performance.
+ *
  * @param v - Input vector
  * @param out - Optional output vector to avoid allocation
  * @returns Unit vector in the same direction
  * @throws {Error} If the vector has zero magnitude
  */
 export function normalize(v: VectorND, out?: VectorND): VectorND {
+  // Try WASM path if available (only when no out buffer, as WASM allocates)
+  if (isAnimationWasmReady() && !out) {
+    const vF64 = vectorToFloat64(v)
+    const wasmResult = normalizeVectorWasm(vF64)
+    if (wasmResult) {
+      return float64ToVector(wasmResult)
+    }
+    // WASM failed, fall through to JS implementation
+  }
+
+  // JS fallback
   const mag = magnitude(v)
 
   if (mag < EPSILON) {
