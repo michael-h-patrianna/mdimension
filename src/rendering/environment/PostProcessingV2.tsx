@@ -956,6 +956,8 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
     g.addPass(cloudComposite);
 
     // GTAO pass (only for polytopes)
+    // OPTIMIZATION: Half-resolution rendering with bilateral upsampling
+    // reduces GTAO cost by 50-75% with minimal visual quality loss
     const gtaoPass = new GTAOPass({
       id: 'gtao',
       colorInput: RESOURCES.SCENE_COMPOSITE,
@@ -965,6 +967,8 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       outputResource: RESOURCES.GTAO_OUTPUT,
       enabled: (frame) => (frame?.stores.postProcessing.ssaoEnabled ?? false) && isPolytope,
       skipPassthrough: true,
+      halfResolution: true, // Enable half-res optimization
+      bilateralDepthThreshold: 0.02, // Depth threshold for edge preservation
     });
     passRefs.current.gtao = gtaoPass;
     g.addPass(gtaoPass);
