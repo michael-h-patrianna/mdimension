@@ -76,8 +76,9 @@ describe('useGeometryGenerator', () => {
     expect(result.current.geometry?.vertices.length).toBe(4); // n+1
   });
 
-  it('should use extended object params', () => {
+  it('should use extended object params', async () => {
     // This tests that the hook correctly pulls from extendedObjectStore
+    // Root system is now worker-based (async), so we need to wait for geometry
     const { result } = renderHook(() => useGeometryGenerator(), { wrapper });
 
     act(() => {
@@ -88,8 +89,15 @@ describe('useGeometryGenerator', () => {
     });
 
     expect(result.current.objectType).toBe('root-system');
+
+    // Wait for async geometry generation to complete
+    await waitFor(() => {
+      expect(result.current.geometry).not.toBeNull();
+    }, { timeout: 5000 });
+
     // Root system generates vertices for the selected root type
     expect(result.current.geometry?.vertices.length).toBeGreaterThan(0);
+    expect(result.current.geometry?.type).toBe('root-system');
   });
 
   it('should not be loading for sync geometry types', async () => {

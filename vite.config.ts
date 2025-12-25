@@ -28,6 +28,7 @@ export default defineConfig(({ mode }) => ({
       '@/stores': path.resolve(import.meta.dirname, './src/stores'),
       '@/types': path.resolve(import.meta.dirname, './src/types'),
       '@/utils': path.resolve(import.meta.dirname, './src/utils'),
+      'mdimension-core': path.resolve(import.meta.dirname, './src/wasm/mdimension_core/pkg'),
     },
   },
   server: {

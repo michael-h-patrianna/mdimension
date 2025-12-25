@@ -9,6 +9,7 @@
 
 import type { TransferablePolytopeGeometry } from '@/lib/geometry/transfer'
 import type { WythoffPolytopeConfig } from '@/lib/geometry/wythoff/types'
+import type { RootSystemConfig } from '@/lib/geometry/extended/types'
 import type { ObjectType } from '@/lib/geometry/types'
 
 // ============================================================================
@@ -26,6 +27,19 @@ export interface GenerateWythoffRequest {
   dimension: number
   /** Wythoff polytope configuration */
   config: Partial<WythoffPolytopeConfig>
+}
+
+/**
+ * Request to generate a root system polytope
+ */
+export interface GenerateRootSystemRequest {
+  type: 'generate-root-system'
+  /** Unique request ID for matching responses */
+  id: string
+  /** Dimension of the polytope (3-11) */
+  dimension: number
+  /** Root system configuration */
+  config: RootSystemConfig
 }
 
 /**
@@ -94,7 +108,11 @@ export interface CancelRequest {
 /**
  * Union of all worker request types
  */
-export type WorkerRequest = GenerateWythoffRequest | ComputeFacesRequest | CancelRequest
+export type WorkerRequest =
+  | GenerateWythoffRequest
+  | GenerateRootSystemRequest
+  | ComputeFacesRequest
+  | CancelRequest
 
 // ============================================================================
 // Response Types (Worker -> Main Thread)
@@ -182,6 +200,13 @@ export interface TransferableFaceData {
  */
 export function isGenerateWythoffRequest(req: WorkerRequest): req is GenerateWythoffRequest {
   return req.type === 'generate-wythoff'
+}
+
+/**
+ * Type guard for GenerateRootSystemRequest
+ */
+export function isGenerateRootSystemRequest(req: WorkerRequest): req is GenerateRootSystemRequest {
+  return req.type === 'generate-root-system'
 }
 
 /**

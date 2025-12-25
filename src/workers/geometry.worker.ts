@@ -18,19 +18,24 @@
  * @see https://vitejs.dev/guide/features.html#web-workers
  */
 
-import { flattenGeometry, flattenFaces, inflateVerticesOnly, inflateEdges } from '@/lib/geometry/transfer'
-import { generateWythoffPolytopeWithWarnings } from '@/lib/geometry/wythoff'
+// Import WASM module - Vite handles the loading and initialization
+import init, { add_wasm, greet, start } from 'mdimension-core'
+
 import { computeConvexHullFaces } from '@/lib/geometry/extended/utils/convex-hull-faces'
-import { computeTriangleFaces, computeGridFaces, type GridFacePropsWorker } from '@/lib/geometry/faces'
+import { generateRootSystem } from '@/lib/geometry/extended/root-system'
+import { computeGridFaces, computeTriangleFaces, type GridFacePropsWorker } from '@/lib/geometry/faces'
+import { flattenFaces, flattenGeometry, inflateEdges, inflateVerticesOnly } from '@/lib/geometry/transfer'
+import { generateWythoffPolytopeWithWarnings } from '@/lib/geometry/wythoff'
 import type {
-  WorkerRequest,
-  GenerateWythoffRequest,
-  ComputeFacesRequest,
-  ProgressResponse,
-  ErrorResponse,
-  CancelledResponse,
-  ResultResponse,
-  GenerationStage,
+    CancelledResponse,
+    ComputeFacesRequest,
+    ErrorResponse,
+    GenerateRootSystemRequest,
+    GenerateWythoffRequest,
+    GenerationStage,
+    ProgressResponse,
+    ResultResponse,
+    WorkerRequest,
 } from './types'
 
 // ============================================================================
@@ -128,6 +133,10 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
       handleWythoffGeneration(request)
       break
 
+    case 'generate-root-system':
+      handleRootSystemGeneration(request)
+      break
+
     case 'compute-faces':
       handleFaceComputation(request)
       break
@@ -195,6 +204,73 @@ function handleWythoffGeneration(request: GenerateWythoffRequest): void {
       id,
       geometry: transferable,
       warnings: result.warnings,
+    }
+
+    // Clean up and send
+    activeRequests.delete(id)
+    self.postMessage(response, { transfer: buffers })
+  } catch (error) {
+    activeRequests.delete(id)
+    const message = error instanceof Error ? error.message : String(error)
+    sendError(id, message)
+  }
+}
+
+// ============================================================================
+// Root System Generation
+// ============================================================================
+
+/**
+ * Handle root system polytope generation request
+ */
+function handleRootSystemGeneration(request: GenerateRootSystemRequest): void {
+  const { id, dimension, config } = request
+
+  // Register request as active
+  activeRequests.add(id)
+
+  try {
+    // Validate dimension
+    validateDimension(dimension)
+
+    // Stage: initializing
+    sendProgress(id, 0, 'initializing')
+
+    // Check cancellation
+    if (!activeRequests.has(id)) {
+      return
+    }
+
+    // Stage: vertices
+    sendProgress(id, 10, 'vertices')
+
+    // Generate the root system (includes vertices, edges, and faces)
+    const geometry = generateRootSystem(dimension, config)
+
+    // Check cancellation after expensive operation
+    if (!activeRequests.has(id)) {
+      return
+    }
+
+    // Stage: edges
+    sendProgress(id, 60, 'edges')
+
+    // Flatten for efficient transfer (includes faces from metadata)
+    const { transferable, buffers } = flattenGeometry(geometry)
+
+    // Check cancellation
+    if (!activeRequests.has(id)) {
+      return
+    }
+
+    // Stage: complete
+    sendProgress(id, 100, 'complete')
+
+    // Send the result with zero-copy transfer
+    const response: ResultResponse = {
+      type: 'result',
+      id,
+      geometry: transferable,
     }
 
     // Clean up and send
@@ -405,6 +481,21 @@ function sendError(id: string, error: string): void {
 // ============================================================================
 
 // Signal that the worker is ready
-if (import.meta.env.DEV) {
-  console.log('[GeometryWorker] Worker initialized and ready')
-}
+// Signal that the worker is ready
+// Initialize WASM
+init().then(() => {
+  // Initialize panic hook
+  start()
+
+  if (import.meta.env.DEV) {
+    console.log('[GeometryWorker] WASM initialized')
+    // Sanity check
+    greet('Worker')
+    const sum = add_wasm(10, 20)
+    console.log(`[GeometryWorker] WASM Sanity Check: 10 + 20 = ${sum}`)
+    if (sum !== 30) console.error('[GeometryWorker] WASM Sanity Check FAILED')
+    console.log('[GeometryWorker] Worker initialized and ready')
+  }
+}).catch((err: unknown) => {
+  console.error('[GeometryWorker] Failed to initialize WASM:', err)
+})

@@ -236,16 +236,18 @@ export interface UseGeometryWorkerResult {
  * @returns Object with sendRequest, cancelRequest, and isRequestPending functions
  */
 export function useGeometryWorker(): UseGeometryWorkerResult {
-  const workerRef = useRef<Worker | null>(null)
   const localRequestIds = useRef<Set<string>>(new Set())
   const workerAvailable = useRef<boolean>(isWorkerAvailable())
 
-  // Initialize worker on mount (only if available)
-  useEffect(() => {
-    if (workerAvailable.current) {
-      workerRef.current = getWorker()
-    }
+  // Initialize worker SYNCHRONOUSLY to avoid race conditions where
+  // sendRequest is called before the useEffect runs.
+  // This ensures the worker is available on the very first render.
+  const workerRef = useRef<Worker | null>(
+    workerAvailable.current ? getWorker() : null
+  )
 
+  // Cleanup on unmount
+  useEffect(() => {
     return () => {
       if (!workerRef.current) return
 
@@ -273,13 +275,22 @@ export function useGeometryWorker(): UseGeometryWorkerResult {
       transferables?: Transferable[]
     ): Promise<WorkerResponse> => {
       return new Promise((resolve, reject) => {
+        console.log('[DEBUG:sendRequest] Called', { 
+          type: request.type, 
+          id: request.id,
+          workerAvailable: workerAvailable.current,
+          hasWorkerRef: !!workerRef.current
+        })
+        
         // Handle environments where Worker is not available
         if (!workerAvailable.current) {
+          console.log('[DEBUG:sendRequest] Worker not available')
           reject(new Error('Worker not available in this environment'))
           return
         }
 
         if (!workerRef.current) {
+          console.log('[DEBUG:sendRequest] Worker not initialized')
           reject(new Error('Worker not initialized'))
           return
         }

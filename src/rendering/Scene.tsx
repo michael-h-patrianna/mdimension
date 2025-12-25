@@ -35,8 +35,8 @@ import { useShallow } from 'zustand/react/shallow'
  * Props for the Scene component.
  */
 export interface SceneProps {
-  /** Generated geometry containing vertices, edges, and metadata */
-  geometry: NdGeometry
+  /** Generated geometry containing vertices, edges, and metadata (optional during loading) */
+  geometry: NdGeometry | null
   /** Current dimension of the object */
   dimension: number
   /** Type of object being rendered */
@@ -141,14 +141,17 @@ export const Scene = React.memo(function Scene({
       {/* Unified renderer for all object types - MUST render before GroundPlane */}
       {/* The floor's shader compilation can block main thread; hypercube needs to schedule its */}
       {/* deferred material creation first */}
-      <UnifiedRenderer
-        geometry={geometry}
-        dimension={dimension}
-        objectType={objectType}
-        faces={faces}
-        faceDepths={faceDepths}
-        opacity={opacity}
-      />
+      {/* Only render when geometry is available - during loading, scene shows environment only */}
+      {geometry && (
+        <UnifiedRenderer
+          geometry={geometry}
+          dimension={dimension}
+          objectType={objectType}
+          faces={faces}
+          faceDepths={faceDepths}
+          opacity={opacity}
+        />
+      )}
 
       {/* Environment walls with optional grid overlay */}
       {/* PBR properties managed via 'pbr-ground' UniformManager source */}

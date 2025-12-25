@@ -379,6 +379,16 @@ function detectFacesByMethod(
     case 'metadata':
       return detectMetadataFaces(metadata)
 
+    case 'metadata-or-triangles': {
+      // Try metadata first (for presets with pre-computed faces like regular hypercube)
+      const metadataFaces = detectMetadataFaces(metadata)
+      if (metadataFaces.length > 0) {
+        return metadataFaces
+      }
+      // Fall back to triangle detection (for presets without pre-computed faces)
+      return detectTriangleFaces(vertices, edges)
+    }
+
     case 'none':
     default:
       return []

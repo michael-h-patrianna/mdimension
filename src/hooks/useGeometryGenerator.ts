@@ -7,6 +7,7 @@
 
 import type { ExtendedObjectParams, NdGeometry } from '@/lib/geometry'
 import { generateGeometry } from '@/lib/geometry'
+import { generateRootSystem } from '@/lib/geometry/extended/root-system'
 import { generateWythoffPolytopeWithWarnings } from '@/lib/geometry/wythoff'
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore'
 import { useGeometryStore } from '@/stores/geometryStore'
@@ -16,6 +17,7 @@ import { useGeometryWorker, generateRequestId } from './useGeometryWorker'
 import { inflateGeometry } from '@/lib/geometry/transfer'
 import type { GenerationStage } from '@/workers/types'
 import type { WythoffPolytopeConfig } from '@/lib/geometry/wythoff/types'
+import type { RootSystemConfig } from '@/lib/geometry/extended/types'
 
 /**
  * Return type for useGeometryGenerator hook
@@ -62,6 +64,10 @@ export function useGeometryGenerator(): GeometryGeneratorResult {
   const [stage, setStage] = useState<GenerationStage>('initializing')
   const [warnings, setWarnings] = useState<string[]>([])
   const currentRequestId = useRef<string | null>(null)
+
+  // Generation counter to prevent stale async functions from mutating state
+  // Only the most recent generation is allowed to update React state
+  const generationRef = useRef(0)
 
   const polytopeConfig = useExtendedObjectStore((state) => state.polytope)
   const wythoffPolytopeConfig = useExtendedObjectStore((state) => state.wythoffPolytope)
@@ -111,10 +117,11 @@ export function useGeometryGenerator(): GeometryGeneratorResult {
   // Stable config reference for dependency tracking
   const configJson = useMemo(() => JSON.stringify(relevantConfig), [relevantConfig])
 
-  // Generate synchronous geometry for non-Wythoff types
+  // Generate synchronous geometry for non-worker types
   const syncGeometry = useMemo(() => {
-    if (objectType === 'wythoff-polytope') {
-      return null // Handled by async path
+    // These types are handled by async worker path
+    if (objectType === 'wythoff-polytope' || objectType === 'root-system') {
+      return null
     }
 
     const params: Partial<ExtendedObjectParams> = {}
@@ -124,9 +131,6 @@ export function useGeometryGenerator(): GeometryGeneratorResult {
       case 'simplex':
       case 'cross-polytope':
         params.polytope = relevantConfig as typeof polytopeConfig
-        break
-      case 'root-system':
-        params.rootSystem = relevantConfig as typeof rootSystemConfig
         break
       case 'clifford-torus':
         params.cliffordTorus = relevantConfig as typeof cliffordTorusConfig
@@ -152,6 +156,12 @@ export function useGeometryGenerator(): GeometryGeneratorResult {
 
   // Generate Wythoff polytopes via worker
   const generateWythoffAsync = useCallback(async () => {
+    // Increment generation - only this generation can mutate state
+    const thisGeneration = ++generationRef.current
+
+    // Parse config from stable JSON to avoid dependency on object reference
+    const config = JSON.parse(configJson) as Partial<WythoffPolytopeConfig>
+
     // Cancel any previous request
     if (currentRequestId.current) {
       cancelRequest(currentRequestId.current)
@@ -171,21 +181,20 @@ export function useGeometryGenerator(): GeometryGeneratorResult {
           type: 'generate-wythoff',
           id: requestId,
           dimension,
-          config: wythoffPolytopeConfig as Partial<WythoffPolytopeConfig>,
+          config,
         },
         (prog, stg) => {
-          if (currentRequestId.current === requestId) {
+          // Check generation before updating progress
+          if (generationRef.current === thisGeneration && currentRequestId.current === requestId) {
             setProgress(prog)
             setStage(stg)
           }
         }
       )
 
-      // Check if this response is for the current request
-      if (currentRequestId.current !== requestId) {
-        // Request was cancelled - ensure loading state is cleared
-        setIsLoading(false)
-        return
+      // CRITICAL: Check generation before ANY state mutation
+      if (generationRef.current !== thisGeneration) {
+        return // Stale - newer request is in flight
       }
 
       // Handle cancelled response explicitly
@@ -196,7 +205,7 @@ export function useGeometryGenerator(): GeometryGeneratorResult {
 
       if (response.type === 'result' && response.geometry) {
         const inflated = inflateGeometry(response.geometry)
-        const scale = (wythoffPolytopeConfig as WythoffPolytopeConfig).scale ?? 1
+        const scale = (config as WythoffPolytopeConfig).scale ?? 1
 
         setAsyncGeometry({
           ...inflated,
@@ -220,80 +229,215 @@ export function useGeometryGenerator(): GeometryGeneratorResult {
         setIsLoading(false)
       }
     } catch (err) {
-      // Always clear loading state on error
+      // Check generation before error state mutation
+      if (generationRef.current !== thisGeneration) {
+        return // Stale - newer request is in flight
+      }
+
       setIsLoading(false)
 
-      if (currentRequestId.current === requestId) {
-        const errorMessage = err instanceof Error ? err.message : String(err)
+      const errorMessage = err instanceof Error ? err.message : String(err)
 
-        // Fallback to sync generation if worker is unavailable
-        if (errorMessage.includes('Worker not available')) {
-          if (import.meta.env.DEV) {
-            console.warn('[useGeometryGenerator] Worker unavailable, using sync fallback')
+      // Fallback to sync generation if worker is unavailable or not initialized
+      if (errorMessage.includes('Worker not available') || errorMessage.includes('Worker not initialized')) {
+        if (import.meta.env.DEV) {
+          console.warn('[useGeometryGenerator] Worker unavailable, using sync fallback')
+        }
+        try {
+          const result = generateWythoffPolytopeWithWarnings(dimension, config as WythoffPolytopeConfig)
+          const scale = (config as WythoffPolytopeConfig).scale ?? 1
+
+          // Check generation again after sync operation
+          if (generationRef.current !== thisGeneration) {
+            return
           }
-          try {
-            const result = generateWythoffPolytopeWithWarnings(
-              dimension,
-              wythoffPolytopeConfig as WythoffPolytopeConfig
-            )
-            const scale = (wythoffPolytopeConfig as WythoffPolytopeConfig).scale ?? 1
 
-            setAsyncGeometry({
-              ...result.geometry,
-              type: 'wythoff-polytope',
-              metadata: {
-                ...result.geometry.metadata,
-                properties: {
-                  ...result.geometry.metadata?.properties,
-                  scale,
-                },
+          setAsyncGeometry({
+            ...result.geometry,
+            type: 'wythoff-polytope',
+            metadata: {
+              ...result.geometry.metadata,
+              properties: {
+                ...result.geometry.metadata?.properties,
+                scale,
               },
-            } as NdGeometry)
-            setWarnings(result.warnings)
-          } catch (syncErr) {
-            console.error('[useGeometryGenerator] Sync fallback error:', syncErr)
+            },
+          } as NdGeometry)
+          setWarnings(result.warnings)
+        } catch (syncErr) {
+          console.error('[useGeometryGenerator] Sync fallback error:', syncErr)
+          if (generationRef.current === thisGeneration) {
             setAsyncGeometry(null)
           }
-          return
         }
-
-        console.error('[useGeometryGenerator] Worker error:', err)
-        setAsyncGeometry(null)
+        return
       }
+
+      console.error('[useGeometryGenerator] Worker error:', err)
+      setAsyncGeometry(null)
     } finally {
-      // Clear request ID if this was our request
-      if (currentRequestId.current === requestId) {
+      // Clear request ID if this was our request and still current generation
+      if (generationRef.current === thisGeneration && currentRequestId.current === requestId) {
         currentRequestId.current = null
       }
     }
-  }, [dimension, wythoffPolytopeConfig, sendRequest, cancelRequest])
+  }, [dimension, configJson, sendRequest, cancelRequest])
 
-  // Reset async state when switching away from Wythoff
-  useEffect(() => {
-    if (objectType !== 'wythoff-polytope') {
-      // Clear async state when not on Wythoff to prevent stale data
-      setAsyncGeometry(null)
-      setIsLoading(false)
-      setProgress(0)
-      setStage('initializing')
+  // Generate root systems via worker
+  const generateRootSystemAsync = useCallback(async () => {
+    // Increment generation - only this generation can mutate state
+    const thisGeneration = ++generationRef.current
+
+    // Parse config from stable JSON to avoid dependency on object reference
+    const config = JSON.parse(configJson) as RootSystemConfig
+
+    if (import.meta.env.DEV) {
+      console.log('[useGeometryGenerator] Starting root system generation', { dimension, config })
     }
+
+    // Cancel any previous request
+    if (currentRequestId.current) {
+      cancelRequest(currentRequestId.current)
+    }
+
+    const requestId = generateRequestId('root-system')
+    currentRequestId.current = requestId
+
+    setIsLoading(true)
+    setProgress(0)
+    setStage('initializing')
+    setWarnings([])
+
+    try {
+      const response = await sendRequest(
+        {
+          type: 'generate-root-system',
+          id: requestId,
+          dimension,
+          config,
+        },
+        (prog, stg) => {
+          // Check generation before updating progress
+          if (generationRef.current === thisGeneration && currentRequestId.current === requestId) {
+            setProgress(prog)
+            setStage(stg)
+          }
+        }
+      )
+
+      // CRITICAL: Check generation before ANY state mutation
+      if (generationRef.current !== thisGeneration) {
+        return // Stale - newer request is in flight
+      }
+
+      // Handle cancelled response explicitly
+      if (response.type === 'cancelled') {
+        setIsLoading(false)
+        return
+      }
+
+      if (response.type === 'result' && response.geometry) {
+        if (import.meta.env.DEV) {
+          console.log('[useGeometryGenerator] Got root system result, inflating geometry')
+        }
+        const inflated = inflateGeometry(response.geometry)
+
+        setAsyncGeometry({
+          ...inflated,
+          type: 'root-system',
+        } as NdGeometry)
+
+        setWarnings(response.warnings ?? [])
+        setIsLoading(false)
+      } else {
+        // Unexpected response type - log and clear loading
+        if (import.meta.env.DEV) {
+          console.warn('[useGeometryGenerator] Unexpected response:', response)
+        }
+        setIsLoading(false)
+      }
+    } catch (err) {
+      // Check generation before error state mutation
+      if (generationRef.current !== thisGeneration) {
+        return // Stale - newer request is in flight
+      }
+
+      if (import.meta.env.DEV) {
+        console.error('[useGeometryGenerator] Root system generation error:', err)
+      }
+      setIsLoading(false)
+
+      const errorMessage = err instanceof Error ? err.message : String(err)
+
+      // Fallback to sync generation if worker is unavailable or not initialized
+      if (errorMessage.includes('Worker not available') || errorMessage.includes('Worker not initialized')) {
+        if (import.meta.env.DEV) {
+          console.warn('[useGeometryGenerator] Worker unavailable, using sync fallback')
+        }
+        try {
+          const geometry = generateRootSystem(dimension, config)
+
+          // Check generation again after sync operation
+          if (generationRef.current !== thisGeneration) {
+            return
+          }
+
+          setAsyncGeometry(geometry as NdGeometry)
+        } catch (syncErr) {
+          console.error('[useGeometryGenerator] Sync fallback error:', syncErr)
+          if (generationRef.current === thisGeneration) {
+            setAsyncGeometry(null)
+          }
+        }
+        return
+      }
+
+      console.error('[useGeometryGenerator] Worker error:', err)
+      setAsyncGeometry(null)
+    } finally {
+      // Clear request ID if this was our request and still current generation
+      if (generationRef.current === thisGeneration && currentRequestId.current === requestId) {
+        currentRequestId.current = null
+      }
+    }
+  }, [dimension, configJson, sendRequest, cancelRequest])
+
+  // Reset async state when object type changes (catches ALL type changes including async-to-async)
+  // This prevents stale geometry from persisting when switching between types
+  useEffect(() => {
+    // Always clear async geometry when type changes - prevents stale data
+    setAsyncGeometry(null)
+    setIsLoading(false)
+    setProgress(0)
+    setStage('initializing')
+    setWarnings([])
+
+    // Increment generation to invalidate any in-flight requests from previous type
+    generationRef.current++
   }, [objectType])
 
-  // Trigger async generation for Wythoff polytopes
+  // Trigger async generation for worker-based types
   useEffect(() => {
+    if (import.meta.env.DEV) {
+      console.log('[useGeometryGenerator] Trigger effect running', { objectType, dimension })
+    }
+
     if (objectType === 'wythoff-polytope') {
       generateWythoffAsync()
+    } else if (objectType === 'root-system') {
+      generateRootSystemAsync()
     }
 
     return () => {
+      // Only cancel the request - DO NOT set loading state here
+      // The generation counter pattern handles state consistency
+      // New effect will set proper loading state when it runs
       if (currentRequestId.current) {
         cancelRequest(currentRequestId.current)
         currentRequestId.current = null
-        // Ensure loading is cleared on cleanup
-        setIsLoading(false)
       }
     }
-  }, [objectType, dimension, configJson, generateWythoffAsync, cancelRequest])
+  }, [objectType, dimension, configJson, generateWythoffAsync, generateRootSystemAsync, cancelRequest])
 
   // Show warnings via toast (only new warnings, not duplicates)
   useEffect(() => {
@@ -310,16 +454,19 @@ export function useGeometryGenerator(): GeometryGeneratorResult {
     shownWarningsRef.current.clear()
   }, [objectType, dimension])
 
+  // Check if this is a worker-based async type
+  const isAsyncType = objectType === 'wythoff-polytope' || objectType === 'root-system'
+
   // Determine which geometry to return
-  const geometry = objectType === 'wythoff-polytope' ? asyncGeometry : syncGeometry
+  const geometry = isAsyncType ? asyncGeometry : syncGeometry
 
   return {
     geometry,
     dimension,
     objectType,
-    isLoading: objectType === 'wythoff-polytope' ? isLoading : false,
-    progress: objectType === 'wythoff-polytope' ? progress : 100,
-    stage: objectType === 'wythoff-polytope' ? stage : 'complete',
+    isLoading: isAsyncType ? isLoading : false,
+    progress: isAsyncType ? progress : 100,
+    stage: isAsyncType ? stage : 'complete',
     warnings,
   }
 }

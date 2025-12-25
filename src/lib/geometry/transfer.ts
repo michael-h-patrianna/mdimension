@@ -4,12 +4,14 @@
  * Uses TypedArrays and Transferable objects to minimize serialization overhead.
  */
 
-import type { PolytopeGeometry, PolytopeType, GeometryMetadata } from './types'
+import type { PolytopeGeometry, NdGeometry, ObjectType, GeometryMetadata } from './types'
 import { createVector } from '@/lib/math'
 
 /**
  * Transfer-optimized representation of PolytopeGeometry.
  * Uses flat TypedArrays instead of arrays of arrays.
+ *
+ * Supports both polytope types and extended object types (e.g., root-system).
  */
 export interface TransferablePolytopeGeometry {
   /** Flattened vertex positions [v0_d0, v0_d1, ..., v1_d0, v1_d1, ...] */
@@ -18,24 +20,28 @@ export interface TransferablePolytopeGeometry {
   edges: Uint32Array
   /** Dimensionality of the vertices */
   dimension: number
-  /** Type of polytope */
-  type: PolytopeType
+  /** Type of object (polytope or extended) */
+  type: ObjectType
   /** Metadata (copied, not transferred) */
   metadata?: GeometryMetadata
+  /** Pre-computed face indices [f0_v0, f0_v1, f0_v2, f1_v0, ...] (optional) */
+  faces?: Uint32Array
 }
 
 /**
- * Flattens a PolytopeGeometry into a TransferablePolytopeGeometry.
- * 
- * @param geometry Source geometry
+ * Flattens a PolytopeGeometry or NdGeometry into a TransferablePolytopeGeometry.
+ *
+ * Extracts pre-computed faces from metadata.properties.analyticalFaces if present.
+ *
+ * @param geometry Source geometry (PolytopeGeometry or NdGeometry)
  * @returns Object containing the transferable geometry and the buffers to transfer
  */
-export function flattenGeometry(geometry: PolytopeGeometry): {
+export function flattenGeometry(geometry: PolytopeGeometry | NdGeometry): {
   transferable: TransferablePolytopeGeometry
   buffers: ArrayBuffer[]
 } {
   const { vertices, edges, dimension, type, metadata } = geometry
-  
+
   // Flatten vertices
   const numVertices = vertices.length
   const flatVertices = new Float64Array(numVertices * dimension)
@@ -55,27 +61,46 @@ export function flattenGeometry(geometry: PolytopeGeometry): {
     flatEdges[i * 2 + 1] = e[1]
   }
 
-  return {
-    transferable: {
-      vertices: flatVertices,
-      edges: flatEdges,
-      dimension,
-      type,
-      metadata
-    },
-    buffers: [flatVertices.buffer, flatEdges.buffer]
+  const buffers: ArrayBuffer[] = [flatVertices.buffer, flatEdges.buffer]
+  const transferable: TransferablePolytopeGeometry = {
+    vertices: flatVertices,
+    edges: flatEdges,
+    dimension,
+    type: type as ObjectType,
+    metadata,
   }
+
+  // Extract and flatten pre-computed faces from metadata if present
+  const analyticalFaces = metadata?.properties?.analyticalFaces as number[][] | undefined
+  if (analyticalFaces && analyticalFaces.length > 0) {
+    // Assume triangular faces (3 indices each)
+    const flatFaces = new Uint32Array(analyticalFaces.length * 3)
+    for (let i = 0; i < analyticalFaces.length; i++) {
+      const face = analyticalFaces[i]!
+      flatFaces[i * 3] = face[0]!
+      flatFaces[i * 3 + 1] = face[1]!
+      flatFaces[i * 3 + 2] = face[2]!
+    }
+    transferable.faces = flatFaces
+    buffers.push(flatFaces.buffer)
+  }
+
+  return { transferable, buffers }
 }
 
 /**
- * Inflates a TransferablePolytopeGeometry back into a PolytopeGeometry.
+ * Inflates a TransferablePolytopeGeometry back into a NdGeometry.
+ *
+ * Also reconstructs pre-computed faces from the flat array if present,
+ * storing them in metadata.properties.analyticalFaces.
  *
  * @param transferable Transferable geometry received from worker
- * @returns Standard PolytopeGeometry
+ * @returns Standard NdGeometry (compatible with both PolytopeGeometry and NdGeometry)
  * @throws Error if data is corrupted or indices are out of bounds
  */
-export function inflateGeometry(transferable: TransferablePolytopeGeometry): PolytopeGeometry {
-  const { vertices: flatVertices, edges: flatEdges, dimension, type, metadata } = transferable
+export function inflateGeometry(transferable: TransferablePolytopeGeometry): NdGeometry {
+  const { vertices: flatVertices, edges: flatEdges, faces: flatFaces, dimension, type, metadata } =
+    transferable
 
   // Validate input
   if (dimension < 1) {
@@ -112,7 +137,7 @@ export function inflateGeometry(transferable: TransferablePolytopeGeometry): Pol
 
   // Reconstruct edges with bounds checking
   const numEdges = flatEdges.length / 2
-  const edges = new Array(numEdges)
+  const edges: [number, number][] = new Array(numEdges)
   for (let i = 0; i < numEdges; i++) {
     const idx0 = i * 2
     const idx1 = i * 2 + 1
@@ -133,12 +158,55 @@ export function inflateGeometry(transferable: TransferablePolytopeGeometry): Pol
     edges[i] = [v0, v1]
   }
 
+  // Reconstruct faces if present
+  let resultMetadata = metadata
+  if (flatFaces && flatFaces.length > 0) {
+    if (flatFaces.length % 3 !== 0) {
+      throw new Error(
+        `Face data corruption: buffer length ${flatFaces.length} is not divisible by 3`
+      )
+    }
+
+    const numFaces = flatFaces.length / 3
+    const analyticalFaces: number[][] = new Array(numFaces)
+    for (let i = 0; i < numFaces; i++) {
+      const idx = i * 3
+      const v0 = flatFaces[idx]
+      const v1 = flatFaces[idx + 1]
+      const v2 = flatFaces[idx + 2]
+
+      if (v0 === undefined || v1 === undefined || v2 === undefined) {
+        throw new Error(`Face data corruption: face ${i} has undefined indices`)
+      }
+
+      // Validate face indices reference valid vertices
+      const maxIdx = Math.max(v0, v1, v2)
+      if (maxIdx >= numVertices) {
+        throw new Error(
+          `Face data corruption: face ${i} references vertex ${maxIdx} but only ${numVertices} vertices exist`
+        )
+      }
+
+      analyticalFaces[i] = [v0, v1, v2]
+    }
+
+    // Merge faces into metadata
+    resultMetadata = {
+      ...metadata,
+      properties: {
+        ...metadata?.properties,
+        analyticalFaces,
+        faceCount: numFaces,
+      },
+    }
+  }
+
   return {
     vertices,
     edges,
     dimension,
     type,
-    metadata
+    metadata: resultMetadata,
   }
 }
 

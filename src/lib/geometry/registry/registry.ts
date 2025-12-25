@@ -165,7 +165,7 @@ export const OBJECT_TYPE_REGISTRY: ObjectTypeRegistry = new Map<ObjectType, Obje
         supportsEdges: true,
         supportsPoints: true,
         renderMethod: 'polytope',
-        faceDetection: 'metadata', // Uses pre-computed faces stored in geometry metadata
+        faceDetection: 'metadata-or-triangles', // Regular preset has pre-computed faces; others fall back to triangles
       },
 
       animation: {

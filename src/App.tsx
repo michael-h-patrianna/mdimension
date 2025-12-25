@@ -116,32 +116,20 @@ function Visualizer() {
   // Currently all objects use the same radius for consistent ground placement
   const minBoundingRadius = 1.5;
 
-  // Show loading indicator while geometry is being generated
-  // Render nothing until geometry is available
-  if (!geometry) {
-    return (
-      <Html fullscreen style={{ pointerEvents: 'none' }}>
-        <GeometryLoadingIndicator
-          isLoading={geometryLoading}
-          progress={progress}
-          stage={stage}
-        />
-      </Html>
-    );
-  }
-
   return (
     <>
-      {/* Loading indicator for async face detection */}
-      {isLoading && !geometryLoading && (
+      {/* Loading indicator for async geometry or face detection */}
+      {isLoading && (
         <Html fullscreen style={{ pointerEvents: 'none' }}>
           <GeometryLoadingIndicator
             isLoading={true}
-            progress={100}
-            stage="faces"
+            progress={geometryLoading ? progress : 100}
+            stage={geometryLoading ? stage : 'faces'}
           />
         </Html>
       )}
+      {/* Always render Scene to ensure proper WebGL cleanup during transitions.
+          When geometry is null, Scene renders environment only (no object). */}
       <Scene
         geometry={geometry}
         dimension={dimension}
