@@ -149,54 +149,10 @@ float erodeDensity(float rho, vec3 pos) { return rho; }
 #endif
 
 // Procedural Curl Noise (Divergence Free)
+// Uses distortPosition which computes a pseudo-curl via gradient cross product
 #ifdef USE_CURL
 vec3 curlNoise(vec3 p) {
-    const float e = 0.1;
-    // Helper to sample potential function (Perlin-like noise)
-    // We use gradientNoise from above
-
-    // Gradients of potential function
-    vec3 dx = vec3(e, 0.0, 0.0);
-    vec3 dy = vec3(0.0, e, 0.0);
-    vec3 dz = vec3(0.0, 0.0, e);
-
-    // We use 3 separate noise fields for vector potential?
-    // Or just one and some cross product?
-    // Simple way: Curl = Cross(Grad(Noise), Vector(1,1,1)) ?
-    // Better: 3 noise samples offset.
-    // But expensive.
-    // Cheap way:
-    float n1 = gradientNoise(p + vec3(0, 0, 0));
-    float n2 = gradientNoise(p + vec3(12.3, 4.5, 6.7));
-    float n3 = gradientNoise(p + vec3(5.6, 7.8, 9.0));
-    // This is vector noise.
-    // Actually, curl of a scalar potential field is not enough for 3D curl noise.
-    // We need a vector potential A. Curl(A).
-
-    // Let's use the 'distortPosition' logic which is basically cheap curl
-    // But adapt it for flow field.
-
-    float x0 = gradientNoise(p);
-    float x1 = gradientNoise(p + dx);
-    float y0 = gradientNoise(p + vec3(31.4)); // Offset inputs for different noise
-    float y1 = gradientNoise(p + dy + vec3(31.4));
-    float z0 = gradientNoise(p + vec3(72.1));
-    float z1 = gradientNoise(p + dz + vec3(72.1));
-
-    float valX = x1 - x0;
-    float valY = y1 - y0;
-    float valZ = z1 - z0;
-
-    // This is gradient. Not curl.
-    // Curl = (dAz/dy - dAy/dz, dAx/dz - dAz/dx, dAy/dx - dAx/dy)
-    // We need partial derivatives of 3 potential components.
-    // That's 6 noise lookups (or 3 gradients).
-    // Expensive!
-
-    // Alternative: Simplex noise usually provides derivatives.
-    // Since we only have gradientNoise (value noise), let's use a cheaper pseudo-swirl.
-
-    return distortPosition(p, 1.0) - p; // Use the existing function's offset
+    return distortPosition(p, 1.0) - p;
 }
 
 // Apply Curl Noise Flow to position

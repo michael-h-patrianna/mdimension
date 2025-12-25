@@ -430,6 +430,9 @@ export interface SchroedingerSliceActions {
   setSchroedingerSpreadAnimationEnabled: (enabled: boolean) => void
   setSchroedingerSpreadAnimationSpeed: (speed: number) => void
 
+  // Phase Animation (Hydrogen ND only)
+  setSchroedingerPhaseAnimationEnabled: (enabled: boolean) => void
+
   // Config Operations
   setSchroedingerConfig: (config: Partial<SchroedingerConfig>) => void
   initializeSchroedingerForDimension: (dimension: number) => void

@@ -189,40 +189,54 @@ vec4 evalPsiWithSpatialPhase(float xND[MAX_DIM], float t) {
 
 #ifdef HYDROGEN_ND_MODE_ENABLED
     if (uQuantumMode == QUANTUM_MODE_HYDROGEN_ND) {
-        // Hydrogen ND mode - compile-time dimension dispatch
-        // We call twice: once with t for density, once with 0 for spatial phase
-        vec2 psiTime;
+        // OPTIMIZED: Evaluate spatial wavefunction ONCE (at t=0)
+        // For a single eigenstate, |ψ(t)|² = |ψ_spatial|² since time evolution
+        // is just a global phase rotation: e^{-iEt} has unit magnitude.
+        // This cuts wavefunction evaluation cost in half.
         vec2 psiSpatial;
         #if HYDROGEN_ND_DIMENSION == 3
-        psiTime = evalHydrogenNDPsi3D(xND, t);
         psiSpatial = evalHydrogenNDPsi3D(xND, 0.0);
         #elif HYDROGEN_ND_DIMENSION == 4
-        psiTime = evalHydrogenNDPsi4D(xND, t);
         psiSpatial = evalHydrogenNDPsi4D(xND, 0.0);
         #elif HYDROGEN_ND_DIMENSION == 5
-        psiTime = evalHydrogenNDPsi5D(xND, t);
         psiSpatial = evalHydrogenNDPsi5D(xND, 0.0);
         #elif HYDROGEN_ND_DIMENSION == 6
-        psiTime = evalHydrogenNDPsi6D(xND, t);
         psiSpatial = evalHydrogenNDPsi6D(xND, 0.0);
         #elif HYDROGEN_ND_DIMENSION == 7
-        psiTime = evalHydrogenNDPsi7D(xND, t);
         psiSpatial = evalHydrogenNDPsi7D(xND, 0.0);
         #elif HYDROGEN_ND_DIMENSION == 8
-        psiTime = evalHydrogenNDPsi8D(xND, t);
         psiSpatial = evalHydrogenNDPsi8D(xND, 0.0);
         #elif HYDROGEN_ND_DIMENSION == 9
-        psiTime = evalHydrogenNDPsi9D(xND, t);
         psiSpatial = evalHydrogenNDPsi9D(xND, 0.0);
         #elif HYDROGEN_ND_DIMENSION == 10
-        psiTime = evalHydrogenNDPsi10D(xND, t);
         psiSpatial = evalHydrogenNDPsi10D(xND, 0.0);
         #else
-        psiTime = evalHydrogenNDPsi11D(xND, t);
         psiSpatial = evalHydrogenNDPsi11D(xND, 0.0);
         #endif
+
+        // Spatial phase for stable coloring (default)
         float spatialPhase = atan(psiSpatial.y, psiSpatial.x);
-        return vec4(psiTime, spatialPhase, 0.0);
+
+        // Phase animation: compute time-dependent phase rotation when enabled
+        float outputPhase = spatialPhase;
+        if (uPhaseAnimationEnabled) {
+            // Compute total energy: E = E_hydrogen + Σ ω_j × (n_j + 0.5)
+            float fn = float(uPrincipalN);
+            float E = -0.5 / (fn * fn);  // Hydrogen ground state energy
+
+            // Add extra dimension HO contributions
+            int extraDimCount = uDimension - 3;
+            for (int i = 0; i < MAX_EXTRA_DIM; i++) {
+                if (i >= extraDimCount) break;
+                E += uExtraDimOmega[i] * (float(uExtraDimN[i]) + 0.5);
+            }
+
+            // phase(t) = phase_spatial - E * t
+            outputPhase = spatialPhase - E * t;
+        }
+
+        // Return spatial wavefunction (density unchanged) with animated phase
+        return vec4(psiSpatial, outputPhase, 0.0);
     }
 #endif
 

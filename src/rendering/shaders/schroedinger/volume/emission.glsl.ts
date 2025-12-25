@@ -233,9 +233,11 @@ vec3 computeEmissionLit(float rho, float phase, vec3 p, vec3 gradient, vec3 view
             float shadowDens = 0.0;
             float shadowStep = 0.1;
             float tShadow = 0.05;
-            
+
+            // Halve shadow steps in fast mode for better interactivity
+            int effectiveShadowSteps = uFastMode ? max(uShadowSteps / 2, 1) : uShadowSteps;
             for (int s = 0; s < 8; s++) { // Max 8 steps, controlled by uniform
-                if (s >= uShadowSteps) break;
+                if (s >= effectiveShadowSteps) break;
                 
                 vec3 shadowPos = p + l * tShadow;
                 float rhoS = sampleDensity(shadowPos, uTime * uTimeScale);
@@ -278,7 +280,8 @@ vec3 computeEmissionLit(float rho, float phase, vec3 p, vec3 gradient, vec3 view
     if (uAoEnabled && uAoStrength > 0.0) {
         float ao = 0.0;
         float radius = uAoRadius;
-        int steps = uAoSteps;
+        // Halve AO steps in fast mode for better interactivity (min 2 for basic coverage)
+        int steps = uFastMode ? max(uAoSteps / 2, 2) : uAoSteps;
         
         vec3 t1 = normalize(cross(n, vec3(0.0, 1.0, 0.0) + vec3(0.001)));
         vec3 t2 = cross(n, t1);

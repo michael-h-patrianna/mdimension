@@ -145,6 +145,9 @@ const SchroedingerMesh = () => {
       uExtraDimN: { value: new Int32Array(8) },
       uExtraDimOmega: { value: new Float32Array(8) },
 
+      // Phase animation (Hydrogen ND only)
+      uPhaseAnimationEnabled: { value: false },
+
       // Volume rendering parameters
       uTimeScale: { value: 0.5 },
       uFieldScale: { value: 1.0 },
@@ -446,6 +449,11 @@ const SchroedingerMesh = () => {
           const spread = 1.0 + (i - 3.5) * (extraDimFrequencySpread ?? 0);
           arr[i] = baseOmega * spread;
         }
+      }
+
+      // Phase animation (Hydrogen ND only)
+      if (material.uniforms.uPhaseAnimationEnabled) {
+        material.uniforms.uPhaseAnimationEnabled.value = schroedinger.phaseAnimationEnabled;
       }
 
       let effectiveSpread = frequencySpread;

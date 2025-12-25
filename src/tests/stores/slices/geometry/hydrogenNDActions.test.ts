@@ -308,4 +308,34 @@ describe('Hydrogen ND Store Actions', () => {
       ); // |m| <= l
     });
   });
+
+  describe('setSchroedingerPhaseAnimationEnabled', () => {
+    it('should toggle phase animation', () => {
+      const store = useExtendedObjectStore.getState();
+      expect(store.schroedinger.phaseAnimationEnabled).toBe(false);
+
+      store.setSchroedingerPhaseAnimationEnabled(true);
+      expect(useExtendedObjectStore.getState().schroedinger.phaseAnimationEnabled).toBe(true);
+
+      store.setSchroedingerPhaseAnimationEnabled(false);
+      expect(useExtendedObjectStore.getState().schroedinger.phaseAnimationEnabled).toBe(false);
+    });
+
+    it('should preserve phase animation state when switching modes', () => {
+      const store = useExtendedObjectStore.getState();
+
+      // Enable phase animation in Hydrogen ND mode
+      store.setSchroedingerQuantumMode('hydrogenND');
+      store.setSchroedingerPhaseAnimationEnabled(true);
+
+      // Switch to harmonic oscillator
+      store.setSchroedingerQuantumMode('harmonicOscillator');
+
+      // Switch back to hydrogen ND
+      store.setSchroedingerQuantumMode('hydrogenND');
+
+      // Phase animation should still be enabled
+      expect(useExtendedObjectStore.getState().schroedinger.phaseAnimationEnabled).toBe(true);
+    });
+  });
 });

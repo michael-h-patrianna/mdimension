@@ -801,6 +801,13 @@ export const createSchroedingerSlice: StateCreator<ExtendedObjectSlice, [], [], 
     }))
   },
 
+  // === Phase Animation (Hydrogen ND only) ===
+  setSchroedingerPhaseAnimationEnabled: (enabled) => {
+    set((state) => ({
+      schroedinger: { ...state.schroedinger, phaseAnimationEnabled: enabled },
+    }))
+  },
+
   // === Config Operations ===
   setSchroedingerConfig: (config) => {
     set((state) => ({

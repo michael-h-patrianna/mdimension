@@ -152,4 +152,39 @@ vec2 hydrogenNDTimeEvolution(float psiReal, int n, float t) {
     vec2 timeFactor = vec2(cos(phase), sin(phase));
     return vec2(psiReal * timeFactor.x, psiReal * timeFactor.y);
 }
+
+/**
+ * Apply time evolution with FULL energy calculation
+ *
+ * Includes energy contributions from extra dimensions (HO modes):
+ *   E_total = E_hydrogen + Σ ω_j × (n_j + 0.5)
+ *
+ * This is physically correct - extra dimensions contribute to total
+ * energy and affect animation speed.
+ *
+ * @param psiReal - Real part of wavefunction at t=0
+ * @param n - Principal quantum number (hydrogen)
+ * @param t - Time
+ * @param extraDimCount - Number of extra dimensions (0-8)
+ * @return vec2(re, im) of time-evolved wavefunction
+ */
+vec2 hydrogenNDTimeEvolutionFull(float psiReal, int n, float t, int extraDimCount) {
+    if (n < 1) return vec2(psiReal, 0.0);
+
+    // Base hydrogen energy: E = -1/(2n²)
+    float fn = float(n);
+    float E = -0.5 / (fn * fn);
+
+    // Add extra dimension HO contributions: ω × (n + 0.5)
+    for (int i = 0; i < MAX_EXTRA_DIM; i++) {
+        if (i >= extraDimCount) break;
+        float omega = uExtraDimOmega[i];
+        float nj = float(uExtraDimN[i]);
+        E += omega * (nj + 0.5);
+    }
+
+    float phase = -E * t;
+    vec2 timeFactor = vec2(cos(phase), sin(phase));
+    return vec2(psiReal * timeFactor.x, psiReal * timeFactor.y);
+}
 `;

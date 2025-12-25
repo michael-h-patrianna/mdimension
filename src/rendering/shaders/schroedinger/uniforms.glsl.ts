@@ -43,6 +43,9 @@ uniform bool uUseRealOrbitals;               // Use real orbitals (px/py/pz) vs 
 uniform int uExtraDimN[MAX_EXTRA_DIM];       // Quantum numbers for dims 4-11 (0-6 each)
 uniform float uExtraDimOmega[MAX_EXTRA_DIM]; // Frequencies for dims 4-11 (0.1-2.0 each)
 
+// Phase animation (Hydrogen ND only)
+uniform bool uPhaseAnimationEnabled;         // Enable time-dependent phase rotation
+
 // Volume rendering parameters
 uniform float uTimeScale;      // Time evolution speed (0.1-2.0)
 uniform float uFieldScale;     // Coordinate scale into HO basis (0.5-2.0)

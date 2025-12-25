@@ -1067,6 +1067,10 @@ export interface SchroedingerConfig {
   spreadAnimationEnabled: boolean
   /** Spread animation speed (0.1-2.0) */
   spreadAnimationSpeed: number
+
+  // === Phase Animation (Hydrogen ND only) ===
+  /** Enable quantum phase evolution animation for Hydrogen ND mode */
+  phaseAnimationEnabled: boolean
 }
 
 /**
@@ -1226,6 +1230,9 @@ export const DEFAULT_SCHROEDINGER_CONFIG: SchroedingerConfig = {
   // Spread Animation
   spreadAnimationEnabled: false,
   spreadAnimationSpeed: 0.5,
+
+  // Phase Animation (Hydrogen ND only)
+  phaseAnimationEnabled: false,
 }
 
 // ============================================================================

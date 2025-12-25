@@ -60,6 +60,8 @@ export const SchroedingerAnimationDrawer: React.FC = React.memo(() => {
     setSliceAnimationEnabled: state.setSchroedingerSliceAnimationEnabled,
     setSliceSpeed: state.setSchroedingerSliceSpeed,
     setSliceAmplitude: state.setSchroedingerSliceAmplitude,
+    // Phase Animation (Hydrogen ND only)
+    setPhaseAnimationEnabled: state.setSchroedingerPhaseAnimationEnabled,
   }));
 
   const {
@@ -83,10 +85,13 @@ export const SchroedingerAnimationDrawer: React.FC = React.memo(() => {
     setSliceAnimationEnabled,
     setSliceSpeed,
     setSliceAmplitude,
+    // Phase Animation - Hydrogen ND only
+    setPhaseAnimationEnabled,
   } = useExtendedObjectStore(extendedObjectSelector);
 
-  // Check if we're in hydrogen orbital mode
+  // Check quantum mode for UI visibility
   const isHydrogenMode = config.quantumMode === 'hydrogenOrbital';
+  const isHydrogenNDMode = config.quantumMode === 'hydrogenND';
 
   return (
     <AnimationDrawerContainer data-testid="schroedinger-animation-drawer">
@@ -275,11 +280,33 @@ export const SchroedingerAnimationDrawer: React.FC = React.memo(() => {
         </div>
       )}
 
-      {/* Mode info for hydrogen */}
-      {isHydrogenMode && (
+      {/* Quantum Phase Evolution - Hydrogen ND mode only */}
+      {isHydrogenNDMode && (
+        <div className="space-y-4" data-testid="animation-panel-phaseEvolution">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">
+              Quantum Phase Evolution
+            </label>
+            <ToggleButton
+              pressed={config.phaseAnimationEnabled}
+              onToggle={() => setPhaseAnimationEnabled(!config.phaseAnimationEnabled)}
+              className="text-xs px-2 py-1 h-auto"
+              ariaLabel="Toggle phase animation"
+            >
+              {config.phaseAnimationEnabled ? 'ON' : 'OFF'}
+            </ToggleButton>
+          </div>
+          <p className="text-xs text-text-tertiary">
+            Animates phase coloring based on quantum energy eigenvalue. Speed controlled by Time Scale.
+          </p>
+        </div>
+      )}
+
+      {/* Mode info for hydrogen 3D orbitals */}
+      {isHydrogenMode && !isHydrogenNDMode && (
         <div className="space-y-2 px-1">
           <p className="text-xs text-text-tertiary italic">
-            Hydrogen orbitals use time evolution for phase animation. Additional animation features are available in Harmonic Oscillator mode.
+            Hydrogen 3D orbitals have static phase. Switch to Hydrogen ND mode for phase animation.
           </p>
         </div>
       )}
