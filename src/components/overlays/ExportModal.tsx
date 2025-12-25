@@ -8,6 +8,7 @@ import { Modal } from '../ui/Modal'
 import { NumberInput } from '../ui/NumberInput'
 import { Slider } from '../ui/Slider'
 import { ToggleGroup } from '../ui/ToggleGroup'
+import { ConfirmModal } from '../ui/ConfirmModal'
 
 export const ExportModal = () => {
   const {
@@ -35,6 +36,7 @@ export const ExportModal = () => {
 
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [dismissedBrowserWarning, setDismissedBrowserWarning] = useState(false)
+  const [showStopConfirm, setShowStopConfirm] = useState(false)
 
   const clampDimension = (val: number) => {
       // 128x128 min, 7680x7680 max (8K), round to even
@@ -47,16 +49,23 @@ export const ExportModal = () => {
         return // Prevent closing during encoding to avoid leaks/desync
     }
     if (isExporting && status === 'rendering') {
-        if (confirm('Stop recording?')) {
-            setIsExporting(false) // This aborts the controller
-        } else {
-            return
-        }
+        setShowStopConfirm(true)
+        return
     }
+    closeModal()
+  }
+
+  const closeModal = () => {
     setModalOpen(false)
     reset()
     setDismissedBrowserWarning(false)
     setShowAdvanced(false)
+  }
+
+  const handleConfirmStop = () => {
+    setIsExporting(false) // This aborts the controller
+    setShowStopConfirm(false)
+    closeModal()
   }
 
   const handleExport = () => {
@@ -114,6 +123,7 @@ export const ExportModal = () => {
   }
 
   return (
+    <>
     <Modal
       isOpen={isModalOpen}
       onClose={handleClose}
@@ -555,5 +565,15 @@ export const ExportModal = () => {
             )}
         </div>
     </Modal>
+    <ConfirmModal
+        isOpen={showStopConfirm}
+        onClose={() => setShowStopConfirm(false)}
+        onConfirm={handleConfirmStop}
+        title="Stop Recording?"
+        message="Are you sure you want to stop the recording? The progress will be lost."
+        confirmText="Stop Recording"
+        isDestructive
+    />
+    </>
   )
 }

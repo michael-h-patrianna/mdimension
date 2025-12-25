@@ -10,6 +10,7 @@ import { useGeometryStore } from '@/stores/geometryStore';
 import { useTransformStore } from '@/stores/transformStore';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import { usePostProcessingStore } from '@/stores/postProcessingStore';
+import { InputModal } from '@/components/ui/InputModal';
 
 export interface ShareButtonProps {
   className?: string;
@@ -17,6 +18,8 @@ export interface ShareButtonProps {
 
 export const ShareButton: React.FC<ShareButtonProps> = ({ className = '' }) => {
   const [copied, setCopied] = useState(false);
+  const [fallbackOpen, setFallbackOpen] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const dimension = useGeometryStore((state) => state.dimension);
@@ -68,7 +71,8 @@ export const ShareButton: React.FC<ShareButtonProps> = ({ className = '' }) => {
       // Log error and provide user feedback
       console.warn('Clipboard API failed:', error);
       // Since Clipboard API has 95%+ support, provide manual copy fallback
-      window.prompt('Copy this URL to share:', url);
+      setShareUrl(url);
+      setFallbackOpen(true);
     }
   };
 
@@ -86,6 +90,18 @@ export const ShareButton: React.FC<ShareButtonProps> = ({ className = '' }) => {
       {copied && (
         <p className="text-xs text-accent">Link copied to clipboard</p>
       )}
+
+      <InputModal
+        isOpen={fallbackOpen}
+        onClose={() => setFallbackOpen(false)}
+        onConfirm={() => {}} 
+        title="Share Link"
+        message="Copy this URL to share your scene:"
+        initialValue={shareUrl}
+        readOnly
+        confirmText="Close"
+        cancelText="Close"
+      />
     </div>
   );
 };

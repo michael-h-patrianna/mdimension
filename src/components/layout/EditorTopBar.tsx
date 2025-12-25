@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { TopBarControls } from '@/components/layout/TopBarControls';
 import { DropdownMenu } from '@/components/ui/DropdownMenu';
 import { Modal } from '@/components/ui/Modal';
+import { InputModal } from '@/components/ui/InputModal';
 import { StyleManager } from '@/components/presets/StyleManager';
 import { SceneManager } from '@/components/presets/SceneManager';
 import { exportSceneToPNG, generateTimestampFilename } from '@/lib/export';
@@ -61,6 +62,12 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
 
   const [isStyleManagerOpen, setIsStyleManagerOpen] = useState(false);
   const [isSceneManagerOpen, setIsSceneManagerOpen] = useState(false);
+  
+  // Modal states for inputs
+  const [saveStyleOpen, setSaveStyleOpen] = useState(false);
+  const [saveSceneOpen, setSaveSceneOpen] = useState(false);
+  const [shareUrlOpen, setShareUrlOpen] = useState(false);
+  const [currentShareUrl, setCurrentShareUrl] = useState('');
 
   // Store access for Share URL generation
   const dimension = useGeometryStore((state) => state.dimension);
@@ -101,7 +108,8 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
       addToast('Share URL copied to clipboard!', 'success');
     } catch (error) {
       console.warn('Clipboard API failed:', error);
-      window.prompt('Copy this URL to share:', url);
+      setCurrentShareUrl(url);
+      setShareUrlOpen(true);
     }
   };
 
@@ -144,14 +152,15 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
 
   // --- Style Menu ---
   const handleSaveStyle = () => {
-      setTimeout(() => {
-          const name = window.prompt('Enter a name for this style:');
-          if (name) {
-              saveStyle(name);
-              addToast(`Style "${name}" saved!`, 'success');
-              soundManager.playSuccess();
-          }
-      }, 10);
+    setSaveStyleOpen(true);
+  };
+
+  const onConfirmSaveStyle = (name: string) => {
+    if (name) {
+      saveStyle(name);
+      addToast(`Style "${name}" saved!`, 'success');
+      soundManager.playSuccess();
+    }
   };
 
   const styleItems = [
@@ -172,14 +181,15 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
 
   // --- Scene Menu ---
   const handleSaveScene = () => {
-      setTimeout(() => {
-          const name = window.prompt('Enter a name for this scene:');
-          if (name) {
-              saveScene(name);
-              addToast(`Scene "${name}" saved!`, 'success');
-              soundManager.playSuccess();
-          }
-      }, 10);
+    setSaveSceneOpen(true);
+  };
+
+  const onConfirmSaveScene = (name: string) => {
+    if (name) {
+      saveScene(name);
+      addToast(`Scene "${name}" saved!`, 'success');
+      soundManager.playSuccess();
+    }
   };
 
   const sceneItems = [
@@ -299,6 +309,36 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
       >
         <SceneManager onClose={() => setIsSceneManagerOpen(false)} />
       </Modal>
+
+      <InputModal
+        isOpen={saveStyleOpen}
+        onClose={() => setSaveStyleOpen(false)}
+        onConfirm={onConfirmSaveStyle}
+        title="Save Style"
+        placeholder="Enter style name..."
+        confirmText="Save"
+      />
+
+      <InputModal
+        isOpen={saveSceneOpen}
+        onClose={() => setSaveSceneOpen(false)}
+        onConfirm={onConfirmSaveScene}
+        title="Save Scene"
+        placeholder="Enter scene name..."
+        confirmText="Save"
+      />
+
+      <InputModal
+        isOpen={shareUrlOpen}
+        onClose={() => setShareUrlOpen(false)}
+        onConfirm={() => {}} // No-op, just copy
+        title="Share Link"
+        message="Copy this URL to share your scene:"
+        initialValue={currentShareUrl}
+        readOnly
+        confirmText="Close"
+        cancelText="Close"
+      />
     </>
   );
 };

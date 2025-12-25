@@ -1,7 +1,8 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { usePresetManagerStore, type SavedStyle, type PresetManagerState } from '@/stores/presetManagerStore';
 import { useToast } from '@/hooks/useToast';
 import { useShallow } from 'zustand/react/shallow';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 
 interface StyleManagerProps {
   onClose: () => void;
@@ -18,6 +19,8 @@ export const StyleManager: React.FC<StyleManagerProps> = ({ onClose }) => {
   const { savedStyles, loadStyle, deleteStyle, importStyles, exportStyles } = usePresetManagerStore(presetSelector);
   const { addToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [styleToDelete, setStyleToDelete] = useState<SavedStyle | null>(null);
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -48,6 +51,14 @@ export const StyleManager: React.FC<StyleManagerProps> = ({ onClose }) => {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     addToast('Styles exported', 'success');
+  };
+
+  const handleDeleteConfirm = () => {
+    if (styleToDelete) {
+      deleteStyle(styleToDelete.id);
+      addToast('Style deleted', 'info');
+      setStyleToDelete(null);
+    }
   };
 
   const formatDate = (timestamp: number) => {
@@ -111,10 +122,7 @@ export const StyleManager: React.FC<StyleManagerProps> = ({ onClose }) => {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (confirm(`Delete style "${style.name}"?`)) {
-                      deleteStyle(style.id);
-                      addToast('Style deleted', 'info');
-                    }
+                    setStyleToDelete(style);
                   }}
                   className="opacity-0 group-hover:opacity-100 p-1.5 text-text-secondary hover:text-red-400 hover:bg-red-400/10 rounded transition-all"
                   title="Delete"
@@ -129,6 +137,16 @@ export const StyleManager: React.FC<StyleManagerProps> = ({ onClose }) => {
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={!!styleToDelete}
+        onClose={() => setStyleToDelete(null)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Style"
+        message={`Are you sure you want to delete style "${styleToDelete?.name}"? This action cannot be undone.`}
+        confirmText="Delete"
+        isDestructive
+      />
     </div>
   );
 };

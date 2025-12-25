@@ -1,7 +1,8 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { usePresetManagerStore, type SavedScene, type PresetManagerState } from '@/stores/presetManagerStore';
 import { useToast } from '@/hooks/useToast';
 import { useShallow } from 'zustand/react/shallow';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 
 interface SceneManagerProps {
   onClose: () => void;
@@ -18,6 +19,8 @@ export const SceneManager: React.FC<SceneManagerProps> = ({ onClose }) => {
   const { savedScenes, loadScene, deleteScene, importScenes, exportScenes } = usePresetManagerStore(presetSelector);
   const { addToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [sceneToDelete, setSceneToDelete] = useState<SavedScene | null>(null);
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -48,6 +51,14 @@ export const SceneManager: React.FC<SceneManagerProps> = ({ onClose }) => {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     addToast('Scenes exported', 'success');
+  };
+
+  const handleDeleteConfirm = () => {
+    if (sceneToDelete) {
+      deleteScene(sceneToDelete.id);
+      addToast('Scene deleted', 'info');
+      setSceneToDelete(null);
+    }
   };
 
   const formatDate = (timestamp: number) => {
@@ -111,10 +122,7 @@ export const SceneManager: React.FC<SceneManagerProps> = ({ onClose }) => {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (confirm(`Delete scene "${scene.name}"?`)) {
-                      deleteScene(scene.id);
-                      addToast('Scene deleted', 'info');
-                    }
+                    setSceneToDelete(scene);
                   }}
                   className="opacity-0 group-hover:opacity-100 p-1.5 text-text-secondary hover:text-red-400 hover:bg-red-400/10 rounded transition-all"
                   title="Delete"
@@ -129,6 +137,16 @@ export const SceneManager: React.FC<SceneManagerProps> = ({ onClose }) => {
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={!!sceneToDelete}
+        onClose={() => setSceneToDelete(null)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Scene"
+        message={`Are you sure you want to delete scene "${sceneToDelete?.name}"? This action cannot be undone.`}
+        confirmText="Delete"
+        isDestructive
+      />
     </div>
   );
 };
