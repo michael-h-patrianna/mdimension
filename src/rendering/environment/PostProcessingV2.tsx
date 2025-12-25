@@ -722,12 +722,18 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       if (!frame) return false;
       const pp = frame.stores.postProcessing;
       const ui = frame.stores.ui;
-      return (
+      const result = (
         pp.ssrEnabled ||
         pp.refractionEnabled ||
         (pp.ssaoEnabled && isPolytope) ||
         ui.showNormalBuffer
       );
+      // #region agent log
+      if (frame.frameNumber % 60 === 0) {
+        console.log(`[DEBUG:shouldRenderNormals] frame=${frame.frameNumber} ssrEnabled=${pp.ssrEnabled} showNormalBuffer=${ui.showNormalBuffer} result=${result}`);
+      }
+      // #endregion
+      return result;
     };
 
     const shouldRenderObjectDepth = (frame: import('@/rendering/graph/FrameContext').FrozenFrameContext | null) => {

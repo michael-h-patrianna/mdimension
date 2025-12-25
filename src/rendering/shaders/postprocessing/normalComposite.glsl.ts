@@ -31,7 +31,8 @@ void main() {
   vec4 outNormal = envNormal;
 
   float hasMainNormal = step(0.001, normalMagnitude(mainNormal));
-  if (hasMainNormal > 0.5 && mainDepth <= sceneDepth + 0.0001) {
+  // DEBUG: Bypass depth comparison to see if mainNormal is valid
+  if (hasMainNormal > 0.5) {
     outNormal = mainNormal;
   }
 
