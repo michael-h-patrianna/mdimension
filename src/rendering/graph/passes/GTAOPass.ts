@@ -14,6 +14,25 @@ import * as THREE from 'three';
 import { GTAOPass as ThreeGTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
 
 import { BasePass } from '../BasePass';
+
+/**
+ * Type augmentation for Three.js GTAOPass internal properties.
+ * These are accessed to properly configure external G-buffer usage.
+ *
+ * NOTE: Three.js internal API - may change between versions.
+ * Current implementation based on Three.js r181.
+ */
+declare module 'three/examples/jsm/postprocessing/GTAOPass.js' {
+  interface GTAOPass {
+    /** Internal flag controlling whether to render G-buffer or use external textures */
+    _renderGBuffer: boolean;
+    /** GTAO computation shader material */
+    gtaoMaterial: THREE.ShaderMaterial;
+    /** Poisson denoise shader material */
+    pdMaterial: THREE.ShaderMaterial;
+  }
+}
+
 import type { RenderContext, RenderPassConfig } from '../types';
 import {
   GTAOBilateralUpsampleShader,
@@ -347,6 +366,57 @@ export class GTAOPass extends BasePass {
     }
   }
 
+  /**
+   * Configure GTAOPass to use external G-buffer textures.
+   *
+   * CRITICAL: This method replicates Three.js GTAOPass.setGBuffer() behavior
+   * to properly integrate external normal/depth textures. Without this:
+   * 1. _renderGBuffer remains true, causing GTAOPass to re-render normals
+   * 2. scene.overrideMaterial breaks raymarched objects (hypercube, fractals)
+   * 3. Shader uniforms aren't bound, causing incorrect/missing AO
+   *
+   * @param gtaoPass - The Three.js GTAOPass instance to configure
+   * @param normalTex - External normal texture ([0,1] encoded world-space normals)
+   * @param depthTex - External depth texture
+   */
+  private configureExternalGBuffer(
+    gtaoPass: ThreeGTAOPass,
+    normalTex: THREE.Texture,
+    depthTex: THREE.Texture
+  ): void {
+    // 1. CRITICAL: Disable internal G-buffer rendering
+    // Without this, GTAOPass renders its own normals with scene.overrideMaterial
+    // which breaks raymarched objects that compute normals in fragment shaders
+    gtaoPass._renderGBuffer = false;
+
+    // 2. Set texture references on the pass
+    gtaoPass.normalTexture = normalTex;
+    gtaoPass.depthTexture = depthTex as unknown as THREE.DepthTexture;
+
+    // 3. Update shader defines for texture interpretation
+    // NORMAL_VECTOR_TYPE = 1: Use unpackRGBToNormal() for [0,1] encoded normals
+    // (NormalPass outputs: normal * 0.5 + 0.5)
+    gtaoPass.gtaoMaterial.defines.NORMAL_VECTOR_TYPE = 1;
+    // DEPTH_SWIZZLING = 'x': Read depth from .r channel (separate depth texture)
+    gtaoPass.gtaoMaterial.defines.DEPTH_SWIZZLING = 'x';
+    gtaoPass.gtaoMaterial.needsUpdate = true;
+
+    gtaoPass.pdMaterial.defines.NORMAL_VECTOR_TYPE = 1;
+    gtaoPass.pdMaterial.defines.DEPTH_SWIZZLING = 'x';
+    gtaoPass.pdMaterial.needsUpdate = true;
+
+    // 4. CRITICAL: Bind textures to shader uniforms
+    // This was the missing step causing the "rectangular shadow" bug
+    // Note: These uniforms are guaranteed to exist in Three.js GTAOPass
+    const gtaoUniforms = gtaoPass.gtaoMaterial.uniforms as Record<string, THREE.IUniform>;
+    const pdUniforms = gtaoPass.pdMaterial.uniforms as Record<string, THREE.IUniform>;
+
+    if (gtaoUniforms['tNormal']) gtaoUniforms['tNormal'].value = normalTex;
+    if (gtaoUniforms['tDepth']) gtaoUniforms['tDepth'].value = depthTex;
+    if (pdUniforms['tNormal']) pdUniforms['tNormal'].value = normalTex;
+    if (pdUniforms['tDepth']) pdUniforms['tDepth'].value = depthTex;
+  }
+
   execute(ctx: RenderContext): void {
     const { size } = ctx;
 
@@ -389,15 +459,8 @@ export class GTAOPass extends BasePass {
       return;
     }
 
-    // CRITICAL: Provide existing G-buffer textures to GTAOPass
-    // Without this, GTAOPass renders its own G-buffer using scene.overrideMaterial
-    // which breaks raymarched objects that don't use standard materials.
-    if (this.gtaoPass.normalTexture !== normalTex) {
-      this.gtaoPass.normalTexture = normalTex;
-    }
-    if (this.gtaoPass.depthTexture !== depthTex) {
-      this.gtaoPass.depthTexture = depthTex as unknown as THREE.DepthTexture;
-    }
+    // Configure external G-buffer textures (disables internal rendering)
+    this.configureExternalGBuffer(this.gtaoPass, normalTex, depthTex);
 
     // Ensure output mode is Default (composited) for full-res
     this.gtaoPass.output = ThreeGTAOPass.OUTPUT.Default;
@@ -465,13 +528,8 @@ export class GTAOPass extends BasePass {
       return;
     }
 
-    // Provide existing G-buffer textures to half-res GTAOPass
-    if (this.halfResGtaoPass.normalTexture !== normalTex) {
-      this.halfResGtaoPass.normalTexture = normalTex;
-    }
-    if (this.halfResGtaoPass.depthTexture !== depthTex) {
-      this.halfResGtaoPass.depthTexture = depthTex as unknown as THREE.DepthTexture;
-    }
+    // Configure external G-buffer textures for half-res pass
+    this.configureExternalGBuffer(this.halfResGtaoPass, normalTex, depthTex);
 
     // Ensure output mode is Denoise (AO-only) for half-res
     this.halfResGtaoPass.output = ThreeGTAOPass.OUTPUT.Denoise;

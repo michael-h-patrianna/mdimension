@@ -342,17 +342,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   const numEdges = edges.length;
   const numFaces = faces.length;
 
-  // Debug logging for root-system face issues
-  if (dimension >= 6 && numFaces > 0) {
-    console.log('[DEBUG:POLYTOPE_SCENE] Root-system render state', {
-      dimension,
-      numVertices,
-      numEdges,
-      numFaces,
-      vertexDimension: baseVertices[0]?.length,
-      sampleFaceIndices: faces.slice(0, 3).map(f => f.vertices),
-    });
-  }
 
   // ============ REFS ============
   const faceMeshRef = useRef<THREE.Mesh>(null);
@@ -613,16 +602,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
         }
         maxNorm = Math.max(maxNorm, Math.sqrt(norm));
       }
-      console.log('[DEBUG:FACE_GEO] Building face geometry', {
-        dimension,
-        numFaces,
-        triangleCount,
-        vertexCount: baseVertices.length,
-        vertexDimension: baseVertices[0]?.length,
-        coordRange: [minCoord.toFixed(3), maxCoord.toFixed(3)],
-        maxNorm: maxNorm.toFixed(3),
-        sampleFaceIndices: faces.slice(0, 3).map(f => f.vertices),
-      });
+
     }
 
     const geo = new BufferGeometry();
@@ -759,49 +739,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     geo.setAttribute('aNeighbor2Extra0_3', new Float32BufferAttribute(neighbor2Extra0_3, 4));
     geo.setAttribute('aNeighbor2Extra4_6', new Float32BufferAttribute(neighbor2Extra4_6, 3));
 
-    // Debug logging for root-system face vs edge vertex comparison
-    if (dimension >= 6) {
-      // Collect edge vertex indices
-      const edgeVertexIndices = new Set<number>();
-      for (const [a, b] of edges) {
-        edgeVertexIndices.add(a);
-        edgeVertexIndices.add(b);
-      }
-
-      // Check if face indices are a subset of edge indices
-      const faceOnlyIndices = [...faceVertexIndices].filter(i => !edgeVertexIndices.has(i));
-      const edgeOnlyIndices = [...edgeVertexIndices].filter(i => !faceVertexIndices.has(i));
-
-      console.log('[DEBUG:FACE_EDGE_MISMATCH] Face vs Edge vertex indices', {
-        dimension,
-        totalVertices: baseVertices.length,
-        faceVertexCount: faceVertexIndices.size,
-        edgeVertexCount: edgeVertexIndices.size,
-        faceOnlyCount: faceOnlyIndices.length,
-        edgeOnlyCount: edgeOnlyIndices.length,
-        faceOnlyIndices: faceOnlyIndices.slice(0, 10),
-        edgeOnlyIndices: edgeOnlyIndices.slice(0, 10),
-      });
-
-      // Log sample face vertex positions to verify they're not all zeros
-      const sampleFacePositions: number[][] = [];
-      for (let i = 0; i < Math.min(5, outIdx); i++) {
-        sampleFacePositions.push([
-          positions[i * 3],
-          positions[i * 3 + 1],
-          positions[i * 3 + 2],
-          extraDims0_3[i * 4],
-          extraDims0_3[i * 4 + 1],
-          extraDims0_3[i * 4 + 2],
-          extraDims0_3[i * 4 + 3],
-        ]);
-      }
-      console.log('[DEBUG:FACE_POSITIONS] Sample face vertex positions', {
-        samplePositions: sampleFacePositions,
-        trianglesBuilt: outIdx / 3,
-        trianglesExpected: triangleCount,
-      });
-    }
 
     return geo;
   }, [numFaces, faces, baseVertices, dimension, edges]);
@@ -933,16 +870,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     // Get cached projection distance (recalculates only when vertex count or scales change)
     const projectionDistance = projDistCache.getProjectionDistance(baseVertices, dimension, scales);
 
-    // Debug logging for high dimensions (only log occasionally to avoid spam)
-    if (dimension >= 6 && Math.random() < 0.01) {
-      console.log('[DEBUG:FRAME] GPU transform state', {
-        dimension,
-        projectionDistance: projectionDistance.toFixed(3),
-        numVertices: baseVertices.length,
-        numFaces,
-        depthRowSumsNonZero: gpuData.depthRowSums.filter((v: number) => Math.abs(v) > 0.001).length,
-      });
-    }
+
 
     // Cached linear colors - avoid per-frame sRGB->linear conversion
     const cache = colorCacheRef.current;

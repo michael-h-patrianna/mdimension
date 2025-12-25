@@ -209,16 +209,6 @@ export function computeConvexHullFaces(vertices: number[][]): [number, number, n
   // Project to affine hull to handle degenerate cases (like A_n roots)
   const { projected, actualDimension } = projectToAffineHull(vertices)
 
-  // Debug logging for high-dimension face detection
-  if (originalDimension >= 6) {
-    console.log('[DEBUG:HULL] computeConvexHullFaces', {
-      vertexCount: vertices.length,
-      originalDimension,
-      actualDimension,
-      projectedSampleLength: projected[0]?.length,
-    })
-  }
-
   // Need at least 3D for meaningful faces
   if (actualDimension < 3) {
     return []
@@ -278,25 +268,6 @@ export function computeConvexHullFaces(vertices: number[][]): [number, number, n
         }
       }
     }
-  }
-
-  // Debug logging for high-dimension face detection
-  if (originalDimension >= 6) {
-    // Analyze triangle vertex distribution
-    const usedVertices = new Set<number>()
-    for (const [a, b, c] of triangles) {
-      usedVertices.add(a)
-      usedVertices.add(b)
-      usedVertices.add(c)
-    }
-    console.log('[DEBUG:HULL] Face detection result', {
-      hullFacetCount: hull.length,
-      facetSize: hull[0]?.length,
-      triangleCount: triangles.length,
-      uniqueVerticesInFaces: usedVertices.size,
-      totalVertices: vertices.length,
-      sampleTriangles: triangles.slice(0, 3),
-    })
   }
 
   return triangles

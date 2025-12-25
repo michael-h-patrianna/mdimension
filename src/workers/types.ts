@@ -172,9 +172,31 @@ export interface CancelledResponse {
 }
 
 /**
+ * Worker ready notification (sent after WASM initialization)
+ */
+export interface ReadyResponse {
+  type: 'ready'
+}
+
+/**
+ * Worker initialization error response
+ */
+export interface InitErrorResponse {
+  type: 'init-error'
+  /** Error message from initialization failure */
+  error: string
+}
+
+/**
  * Union of all worker response types
  */
-export type WorkerResponse = ResultResponse | ProgressResponse | ErrorResponse | CancelledResponse
+export type WorkerResponse =
+  | ResultResponse
+  | ProgressResponse
+  | ErrorResponse
+  | CancelledResponse
+  | ReadyResponse
+  | InitErrorResponse
 
 // ============================================================================
 // Transfer Data Types
@@ -242,4 +264,18 @@ export function isProgressResponse(res: WorkerResponse): res is ProgressResponse
  */
 export function isErrorResponse(res: WorkerResponse): res is ErrorResponse {
   return res.type === 'error'
+}
+
+/**
+ * Type guard for ReadyResponse
+ */
+export function isReadyResponse(res: WorkerResponse): res is ReadyResponse {
+  return res.type === 'ready'
+}
+
+/**
+ * Type guard for InitErrorResponse
+ */
+export function isInitErrorResponse(res: WorkerResponse): res is InitErrorResponse {
+  return res.type === 'init-error'
 }

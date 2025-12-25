@@ -67,10 +67,47 @@ const globalPendingRequests = new Map<
 >()
 
 /**
+ * Flag indicating worker WASM is initialized and ready.
+ * Used for logging/debugging; worker handles queuing internally.
+ */
+let workerReady = false
+
+/**
+ * Callbacks waiting for worker ready state
+ */
+const readyCallbacks: Array<() => void> = []
+
+/**
  * Global message handler (attached once when worker is created)
  */
 function handleWorkerMessage(event: MessageEvent<WorkerResponse>): void {
   const response = event.data
+
+  // Handle worker lifecycle messages (no request ID)
+  if (response.type === 'ready') {
+    workerReady = true
+    if (import.meta.env.DEV) {
+      console.log('[useGeometryWorker] Worker WASM initialized and ready')
+    }
+    // Notify any waiting callbacks
+    for (const callback of readyCallbacks) {
+      callback()
+    }
+    readyCallbacks.length = 0
+    return
+  }
+
+  if (response.type === 'init-error') {
+    console.error('[useGeometryWorker] Worker initialization failed:', response.error)
+    // Reject all pending requests
+    for (const [id, pending] of globalPendingRequests) {
+      globalPendingRequests.delete(id)
+      pending.reject(new Error(`Worker initialization failed: ${response.error}`))
+    }
+    return
+  }
+
+  // Handle request-specific responses
   const pending = globalPendingRequests.get(response.id)
 
   if (!pending) {
@@ -179,6 +216,8 @@ function releaseWorker(): void {
     workerInstance.terminate()
     workerInstance = null
     workerRefCount = 0
+    workerReady = false
+    readyCallbacks.length = 0
 
     if (import.meta.env.DEV) {
       console.log('[useGeometryWorker] Worker instance terminated')

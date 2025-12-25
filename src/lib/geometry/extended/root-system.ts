@@ -237,10 +237,17 @@ function correctTriangleWinding(
 }
 
 /**
+ * Edge builder function type for dependency injection
+ * Allows WASM edge building to be injected by the worker
+ */
+export type EdgeBuilder = (vertices: number[][]) => [number, number][]
+
+/**
  * Generates a root system geometry
  *
  * @param dimension - Dimensionality of the ambient space (3-11)
  * @param config - Root system configuration options
+ * @param edgeBuilder - Optional edge builder function (defaults to JS buildShortEdges)
  * @returns NdGeometry representing the root system polytope
  * @throws {Error} If dimension constraints are violated
  *
@@ -253,7 +260,11 @@ function correctTriangleWinding(
  * });
  * ```
  */
-export function generateRootSystem(dimension: number, config: RootSystemConfig): NdGeometry {
+export function generateRootSystem(
+  dimension: number,
+  config: RootSystemConfig,
+  edgeBuilder?: EdgeBuilder
+): NdGeometry {
   if (dimension < 3) {
     throw new Error('Root system dimension must be at least 3')
   }
@@ -297,7 +308,8 @@ export function generateRootSystem(dimension: number, config: RootSystemConfig):
   }
 
   // Always generate edges (root systems behave like polytopes)
-  const edges: [number, number][] = buildShortEdges(vertices)
+  // Use injected edge builder if provided, otherwise default to JS implementation
+  const edges: [number, number][] = edgeBuilder ? edgeBuilder(vertices) : buildShortEdges(vertices)
 
   // Generate faces analytically using 3-cycle detection in edge graph
   // This ensures all vertices are covered by faces, not just convex hull boundary

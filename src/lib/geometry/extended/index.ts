@@ -61,9 +61,13 @@ export {
   generateARoots,
   generateDRoots,
   generateRootSystem,
+  generateRootSystemFaces,
   getRootCount,
   validateRootSystemType,
 } from './root-system'
+
+// Root system types
+export type { EdgeBuilder } from './root-system'
 
 // E8 roots exports
 export { generateE8Roots, verifyE8Roots } from './e8-roots'
