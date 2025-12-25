@@ -29,11 +29,11 @@
 // Import Wythoff types from canonical source (avoid duplication)
 // Import values for local use and re-export them
 import {
-    DEFAULT_WYTHOFF_POLYTOPE_CONFIG,
-    DEFAULT_WYTHOFF_SCALES,
-    type WythoffPolytopeConfig,
-    type WythoffPreset,
-    type WythoffSymmetryGroup,
+  DEFAULT_WYTHOFF_POLYTOPE_CONFIG,
+  DEFAULT_WYTHOFF_SCALES,
+  type WythoffPolytopeConfig,
+  type WythoffPreset,
+  type WythoffSymmetryGroup,
 } from '../wythoff/types'
 export { DEFAULT_WYTHOFF_POLYTOPE_CONFIG, DEFAULT_WYTHOFF_SCALES }
 export type { WythoffPolytopeConfig, WythoffPreset, WythoffSymmetryGroup }
@@ -1485,11 +1485,6 @@ export type BlackHoleManifoldType = 'autoByN' | 'disk' | 'sheet' | 'slab' | 'fie
 export type BlackHoleRayBendingMode = 'spiral' | 'orbital'
 
 /**
- * Visual presets - parameter configurations for different looks
- */
-export type BlackHoleVisualPreset = 'interstellar' | 'cosmic' | 'ethereal' | 'custom'
-
-/**
  * Sky cubemap resolution options for gravitational lensing.
  * Higher resolutions provide sharper reflections but use more memory.
  * - 256: Fast, suitable for performance mode
@@ -1670,11 +1665,6 @@ export interface BlackHoleConfig {
   /** Doppler strength (0-2, default 0.6) */
   dopplerStrength: number
 
-
-  // === VISUAL PRESET ===
-  /** Visual preset (default 'custom') */
-  visualPreset: BlackHoleVisualPreset
-
   // === CROSS-SECTION (4D+) ===
   /** Extra dimension slice positions */
   parameterValues: number[]
@@ -1815,98 +1805,28 @@ export const BLACK_HOLE_QUALITY_PRESETS: Record<BlackHoleQuality, Partial<BlackH
 }
 
 /**
- * Visual presets for black hole aesthetics.
- *
- * IMPORTANT: Presets should NOT set derived values (diskInnerRadiusMul, photonShellRadiusMul)
- * as these are automatically computed from the spin parameter.
- *
- * Note: densityFalloff is clamped to [0.1, 10.0] in the shader for numerical stability.
- */
-export const BLACK_HOLE_VISUAL_PRESETS: Record<BlackHoleVisualPreset, Partial<BlackHoleConfig>> = {
-  /** Interstellar movie-accurate look: thin disk, strong lensing, Einstein ring */
-  interstellar: {
-    // Physics - spin determines ISCO and photon sphere automatically
-    spin: 0.9, // High spin for dramatic Kerr effects
-    horizonRadius: 2.0,
-    diskTemperature: 6500, // Warm white
-
-    // Disk appearance
-    manifoldThickness: 0.03, // Very thin disk for Interstellar look
-    diskOuterRadiusMul: 8.0, // Compact disk
-
-    // Lensing
-    gravityStrength: 3.0, // Strong gravity for Einstein ring
-    bendScale: 1.2,
-    bendMaxPerStep: 0.2,
-    maxSteps: 200,
-
-    // Visual effects
-    manifoldIntensity: 2.0,
-    shellGlowStrength: 0.5, // Let lensed disk light create photon ring
-    shellGlowColor: '#ffcc66',
-    dopplerEnabled: true,
-    dopplerStrength: 0.6,
-    noiseAmount: 0.1,
-    swirlAmount: 0.3,
-  },
-  /** Cosmic preset: thicker volumetric manifold, softer glow */
-  cosmic: {
-    spin: 0.5, // Moderate spin
-    manifoldThickness: 0.3,
-
-    diskOuterRadiusMul: 12.0,
-    gravityStrength: 1.5,
-    bendScale: 1.0,
-    manifoldIntensity: 1.5,
-    shellGlowStrength: 2.0,
-    dopplerEnabled: false,
-    noiseAmount: 0.4,
-    swirlAmount: 0.8,
-    enableAbsorption: true,
-    absorption: 0.5,
-  },
-  /** Ethereal preset: very thick field, strong glow, dreamlike */
-  ethereal: {
-    spin: 0.3, // Low spin
-    manifoldThickness: 0.8,
-
-    diskOuterRadiusMul: 15.0,
-    gravityStrength: 0.8,
-    bendScale: 0.8,
-    manifoldIntensity: 2.0,
-    shellGlowStrength: 8.0,
-    shellGlowColor: '#aaccff',
-    dopplerEnabled: false,
-    noiseAmount: 0.6,
-    swirlAmount: 1.2,
-  },
-  /** Custom preset: no changes, user's current settings preserved */
-  custom: {},
-}
-
-/**
  * Default black hole configuration
  */
 export const DEFAULT_BLACK_HOLE_CONFIG: BlackHoleConfig = {
   // Physics-based parameters (Kerr black hole)
   // horizonRadius is the Schwarzschild radius rs = 2M (visual scale)
   horizonRadius: 0.5,
-  spin: 0.9, // High spin for dramatic Interstellar-style effects (prograde ISCO ~ 2.3M)
+  spin: 0.3, // Low spin for ethereal dreamlike effect
   diskTemperature: 6500, // ~Sun temperature for natural white disk color
-  gravityStrength: 5.0, // Strong gravity for dramatic Interstellar-style lensing
-  manifoldIntensity: 5.0, // Interstellar: bright accretion disk
-  manifoldThickness: 0.03, // Thin disk for Interstellar look (combined with high densityFalloff)
+  gravityStrength: 0.8, // Ethereal: softer gravity
+  manifoldIntensity: 2.0, // Ethereal: moderate brightness
+  manifoldThickness: 0.8, // Ethereal: thick volumetric disk
   photonShellWidth: 0.05,
   timeScale: 1.0,
   baseColor: '#fff5e6',
   paletteMode: 'diskGradient',
   bloomBoost: 1.0,
 
-  // Lensing - Interstellar preset values
+  // Lensing - Ethereal preset values
   dimensionEmphasis: 0.8,
   distanceFalloff: 1.6,
   epsilonMul: 0.01,
-  bendScale: 1.2, // Interstellar: stronger bending
+  bendScale: 0.8, // Ethereal: softer bending
   bendMaxPerStep: 0.25,
   lensingClamp: 10,
   rayBendingMode: 'orbital',
@@ -1914,21 +1834,21 @@ export const DEFAULT_BLACK_HOLE_CONFIG: BlackHoleConfig = {
   // Photon shell
   photonShellRadiusMul: 1.3,
   photonShellRadiusDimBias: 0.05, // Reduced - dimension scaling is speculative
-  shellGlowStrength: 0.5, // Reduced - let actual lensed disk light create photon ring
-  shellGlowColor: '#ffcc66', // Orange-yellow to match accretion disk (lensed light)
+  shellGlowStrength: 8.0, // Ethereal: strong glow
+  shellGlowColor: '#aaccff', // Ethereal: blue-white glow
   shellStepMul: 0.15, // Smaller steps near photon sphere for accurate orbits
   shellContrastBoost: 1.0,
 
-  // Manifold - Interstellar preset values
+  // Manifold - Ethereal preset values
   manifoldType: 'autoByN',
-  diskInnerRadiusMul: 2.3, // ISCO - auto-computed from spin=0.9 (prograde Kerr)
-  diskOuterRadiusMul: 8.0, // Artistic choice for disk extent
+  diskInnerRadiusMul: 4.23, // ISCO - auto-computed from spin=0.3 (prograde Kerr)
+  diskOuterRadiusMul: 15.0, // Ethereal: wide disk
   radialSoftnessMul: 0.2,
   thicknessPerDimMax: 4.0,
   highDimWScale: 2.0,
-  swirlAmount: 0.6,
+  swirlAmount: 1.2, // Ethereal: more swirl
   noiseScale: 1.0,
-  noiseAmount: 0.15, // Interstellar: subtle noise
+  noiseAmount: 0.6, // Ethereal: more noise
   multiIntersectionGain: 1.0,
 
   // Quality
@@ -1956,13 +1876,9 @@ export const DEFAULT_BLACK_HOLE_CONFIG: BlackHoleConfig = {
   // Temporal
   temporalAccumulationEnabled: false,
 
-  // Doppler - Interstellar preset values
-  dopplerEnabled: true, // Interstellar: enable Doppler effect
+  // Doppler - Ethereal preset values
+  dopplerEnabled: false, // Ethereal: disable Doppler effect
   dopplerStrength: 0.6,
-
-
-  // Visual preset
-  visualPreset: 'interstellar',
 
   // Cross-section
   parameterValues: [0, 0, 0, 0, 0, 0, 0, 0],

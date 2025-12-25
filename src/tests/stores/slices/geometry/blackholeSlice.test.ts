@@ -3,13 +3,12 @@
  *
  * Tests the black hole state management functionality including:
  * - Basic parameter updates
- * - Visual preset application
  * - Quality preset application
  * - Animation controls
  * - Dimension-aware initialization
  */
 
-import { BLACK_HOLE_VISUAL_PRESETS, DEFAULT_BLACK_HOLE_CONFIG } from '@/lib/geometry/extended/types'
+import { DEFAULT_BLACK_HOLE_CONFIG } from '@/lib/geometry/extended/types'
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore'
 import { beforeEach, describe, expect, it } from 'vitest'
 
@@ -24,7 +23,6 @@ describe('blackholeSlice', () => {
       expect(blackhole.horizonRadius).toBe(DEFAULT_BLACK_HOLE_CONFIG.horizonRadius)
       expect(blackhole.gravityStrength).toBe(DEFAULT_BLACK_HOLE_CONFIG.gravityStrength)
       expect(blackhole.manifoldIntensity).toBe(DEFAULT_BLACK_HOLE_CONFIG.manifoldIntensity)
-      expect(blackhole.visualPreset).toBe(DEFAULT_BLACK_HOLE_CONFIG.visualPreset)
     })
   })
 
@@ -103,41 +101,6 @@ describe('blackholeSlice', () => {
 
       setBlackHoleBloomBoost(10)
       expect(useExtendedObjectStore.getState().blackhole.bloomBoost).toBe(5.0)
-    })
-  })
-
-  describe('visual preset actions', () => {
-    it('should apply interstellar preset', () => {
-      const { applyBlackHoleVisualPreset } = useExtendedObjectStore.getState()
-
-      applyBlackHoleVisualPreset('interstellar')
-      const { blackhole } = useExtendedObjectStore.getState()
-
-      expect(blackhole.visualPreset).toBe('interstellar')
-      expect(blackhole.manifoldThickness).toBe(
-        BLACK_HOLE_VISUAL_PRESETS.interstellar.manifoldThickness
-      )
-      expect(blackhole.gravityStrength).toBe(BLACK_HOLE_VISUAL_PRESETS.interstellar.gravityStrength)
-    })
-
-    it('should apply cosmic preset', () => {
-      const { applyBlackHoleVisualPreset } = useExtendedObjectStore.getState()
-
-      applyBlackHoleVisualPreset('cosmic')
-      const { blackhole } = useExtendedObjectStore.getState()
-
-      expect(blackhole.visualPreset).toBe('cosmic')
-      expect(blackhole.manifoldThickness).toBe(BLACK_HOLE_VISUAL_PRESETS.cosmic.manifoldThickness)
-    })
-
-    it('should apply ethereal preset', () => {
-      const { applyBlackHoleVisualPreset } = useExtendedObjectStore.getState()
-
-      applyBlackHoleVisualPreset('ethereal')
-      const { blackhole } = useExtendedObjectStore.getState()
-
-      expect(blackhole.visualPreset).toBe('ethereal')
-      expect(blackhole.manifoldThickness).toBe(BLACK_HOLE_VISUAL_PRESETS.ethereal.manifoldThickness)
     })
   })
 

@@ -144,6 +144,30 @@ Add tests for:
 
 ### Phase 1: Create GTAO Bilateral Upsample Shader
 
+> ⚠️ **CRITICAL BUG PREVENTION**: The original SSR BilateralUpsampleShader had two critical bugs:
+>
+> **Bug 1 - Bilinear weights always 0:**
+> ```glsl
+> // WRONG: This was always (1.0, 1.0), making distWeight always 0!
+> vec2 distToSample = abs(offsets[i]) / halfOffset;
+> float distWeight = (1.0 - distToSample.x) * (1.0 - distToSample.y); // Always 0!
+> ```
+>
+> **Bug 2 - Additive instead of alpha blending:**
+> ```glsl
+> // WRONG: Additive blending
+> fragColor = vec4(sceneColor.rgb + result.rgb * result.a, sceneColor.a);
+> // CORRECT: Alpha blending
+> fragColor = vec4(mix(sceneColor.rgb, result.rgb, result.a), sceneColor.a);
+> ```
+
+The GTAO shader must use the **corrected pattern** from the fixed `BilateralUpsampleShader`:
+
+1. Calculate `cellPos = fract(vUv / halfResTexelSize)` - position within 2x2 cell
+2. Calculate bilinear weights from `cellPos`, NOT from offsets
+3. Align sampling to half-res grid using `floor()` + snap
+4. Use multiplicative blending for AO: `color * aoFactor`
+
 ```typescript
 // src/rendering/shaders/postprocessing/GTAOBilateralUpsampleShader.ts
 
@@ -173,7 +197,7 @@ export const GTAOBilateralUpsampleShader = {
     uniform sampler2D tAO;
     uniform sampler2D tColor;
     uniform sampler2D tDepth;
-    uniform vec2 uResolution;
+    uniform vec2 uResolution;     // Full resolution
     uniform float uDepthThreshold;
     uniform float uNearClip;
     uniform float uFarClip;
@@ -189,42 +213,73 @@ export const GTAOBilateralUpsampleShader = {
     
     void main() {
       vec2 texelSize = 1.0 / uResolution;
-      vec2 halfOffset = texelSize * 0.5;
+      vec2 halfResTexelSize = texelSize * 2.0;  // Half-res texel in full-res UV space
       
       float centerDepth = linearizeDepth(texture(tDepth, vUv).r);
       
-      // Sample 4 nearest half-res pixels
-      vec2 offsets[4];
-      offsets[0] = vec2(-halfOffset.x, -halfOffset.y);
-      offsets[1] = vec2( halfOffset.x, -halfOffset.y);
-      offsets[2] = vec2(-halfOffset.x,  halfOffset.y);
-      offsets[3] = vec2( halfOffset.x,  halfOffset.y);
+      // ============================================================
+      // CRITICAL: Calculate position within the 2x2 half-res cell
+      // This is a value from 0-1 representing where in the cell we are
+      // ============================================================
+      vec2 cellPos = fract(vUv / halfResTexelSize);
       
-      float aoSum = 0.0;
+      // ============================================================
+      // CRITICAL: Align to half-res grid by snapping to cell boundaries
+      // Then sample the 4 corners of this cell
+      // ============================================================
+      vec2 baseUv = floor(vUv / halfResTexelSize) * halfResTexelSize + halfResTexelSize * 0.5;
+      
+      vec2 offsets[4];
+      offsets[0] = vec2(0.0, 0.0);
+      offsets[1] = vec2(halfResTexelSize.x, 0.0);
+      offsets[2] = vec2(0.0, halfResTexelSize.y);
+      offsets[3] = vec2(halfResTexelSize.x, halfResTexelSize.y);
+      
+      // ============================================================
+      // CRITICAL: Bilinear weights from cellPos, NOT from offsets!
+      // The old bug calculated this from offsets which always gave 0
+      // ============================================================
+      float wx0 = 1.0 - cellPos.x;
+      float wx1 = cellPos.x;
+      float wy0 = 1.0 - cellPos.y;
+      float wy1 = cellPos.y;
+      float bilinearWeights[4];
+      bilinearWeights[0] = wx0 * wy0;  // Top-left corner
+      bilinearWeights[1] = wx1 * wy0;  // Top-right corner
+      bilinearWeights[2] = wx0 * wy1;  // Bottom-left corner
+      bilinearWeights[3] = wx1 * wy1;  // Bottom-right corner
+      
+      float aoSamples[4];
+      float weights[4];
       float totalWeight = 0.0;
       
       for (int i = 0; i < 4; i++) {
-        vec2 sampleUv = vUv + offsets[i];
-        float aoSample = texture(tAO, sampleUv).r;
+        vec2 sampleUv = baseUv - halfResTexelSize * 0.5 + offsets[i];
+        aoSamples[i] = texture(tAO, sampleUv).r;
         float sampleDepth = linearizeDepth(texture(tDepth, sampleUv).r);
         
-        // Bilateral weight
+        // Bilateral weight based on depth similarity
         float depthDiff = abs(sampleDepth - centerDepth);
-        float depthWeight = exp(-depthDiff / (uDepthThreshold * centerDepth));
+        float depthWeight = exp(-depthDiff / (uDepthThreshold * max(centerDepth, 0.001)));
         
-        // Distance weight
-        vec2 distToSample = abs(offsets[i]) / halfOffset;
-        float distWeight = (1.0 - distToSample.x) * (1.0 - distToSample.y);
-        
-        float weight = depthWeight * distWeight;
-        aoSum += aoSample * weight;
-        totalWeight += weight;
+        // Combine bilinear and depth weights
+        weights[i] = bilinearWeights[i] * depthWeight;
+        totalWeight += weights[i];
       }
       
-      // Normalize AO
-      float ao = totalWeight > 0.001 ? aoSum / totalWeight : 1.0;
+      // Normalize and compute final AO
+      float ao = 1.0;  // Default: no occlusion
+      if (totalWeight > 0.001) {
+        ao = 0.0;
+        for (int i = 0; i < 4; i++) {
+          ao += aoSamples[i] * (weights[i] / totalWeight);
+        }
+      }
       
-      // Apply AO to scene color (multiplicative)
+      // ============================================================
+      // GTAO-specific: Multiplicative blending (NOT additive or alpha)
+      // AO darkens the scene: result = color * lerp(1.0, ao, intensity)
+      // ============================================================
       vec4 sceneColor = texture(tColor, vUv);
       float aoFactor = mix(1.0, ao, uAOIntensity);
       fragColor = vec4(sceneColor.rgb * aoFactor, sceneColor.a);
@@ -355,6 +410,89 @@ Measure:
 - GPU time for GTAO pass (before/after)
 - Memory usage (additional half-res targets)
 - Visual quality comparison screenshots
+
+---
+
+## Critical Bug Prevention Checklist
+
+> 🚨 **These bugs caused SSR to be completely non-functional. DO NOT REPEAT.**
+
+### Bug Pattern 1: Bilinear Weights Always Zero
+
+**Root Cause**: Calculating distance weight from offset values instead of cell position.
+
+```glsl
+// ❌ WRONG - This produces (1.0, 1.0), making distWeight = 0
+vec2 distToSample = abs(offsets[i]) / halfOffset;
+float distWeight = (1.0 - distToSample.x) * (1.0 - distToSample.y); // ALWAYS 0!
+
+// ✅ CORRECT - Use fractional position within the cell
+vec2 cellPos = fract(vUv / halfResTexelSize);  // 0.0 to 1.0
+float wx0 = 1.0 - cellPos.x;
+float wx1 = cellPos.x;
+float wy0 = 1.0 - cellPos.y;
+float wy1 = cellPos.y;
+bilinearWeights[0] = wx0 * wy0;  // Varies correctly from 0.0 to 1.0
+```
+
+**Verification**: Print/visualize `totalWeight` - it should vary smoothly, never be 0 everywhere.
+
+### Bug Pattern 2: Wrong Blending Mode
+
+**Root Cause**: Using additive blending instead of appropriate blend for the effect type.
+
+| Effect Type | Correct Blending | Wrong Blending |
+|-------------|------------------|----------------|
+| **SSR** (reflections) | `mix(scene, reflection, alpha)` | `scene + reflection * alpha` (additive) |
+| **GTAO** (occlusion) | `scene * aoFactor` (multiplicative) | `mix(scene, ao, intensity)` or additive |
+
+```glsl
+// ❌ WRONG for SSR - additive adds energy, looks washed out
+fragColor = vec4(sceneColor.rgb + result.rgb * result.a, sceneColor.a);
+
+// ✅ CORRECT for SSR - alpha blend replaces, not adds
+vec3 blended = mix(sceneColor.rgb, result.rgb, result.a);
+fragColor = vec4(blended, sceneColor.a);
+
+// ✅ CORRECT for GTAO - multiplicative darkening
+float aoFactor = mix(1.0, ao, uAOIntensity);
+fragColor = vec4(sceneColor.rgb * aoFactor, sceneColor.a);
+```
+
+### Bug Pattern 3: Misaligned Half-Res Sampling
+
+**Root Cause**: Not aligning sample coordinates to half-res texel centers.
+
+```glsl
+// ❌ WRONG - Samples at wrong locations
+vec2 sampleUv = vUv + offsets[i];
+
+// ✅ CORRECT - Snap to half-res grid, then sample corners
+vec2 baseUv = floor(vUv / halfResTexelSize) * halfResTexelSize + halfResTexelSize * 0.5;
+vec2 sampleUv = baseUv - halfResTexelSize * 0.5 + offsets[i];
+```
+
+### Implementation Verification Steps
+
+Before considering the shader complete:
+
+1. **Visual Test**: Render with half-res and compare to full-res
+   - Effect should be visible (not just scene color)
+   - Quality should be similar with slight softening
+
+2. **Debug Visualization**: Add debug output mode
+   ```glsl
+   // Temporarily output totalWeight as color to verify it's non-zero
+   fragColor = vec4(vec3(totalWeight), 1.0);
+   ```
+
+3. **Edge Preservation Test**: Check depth discontinuities
+   - Object edges should remain sharp
+   - No halos around silhouettes
+
+4. **Intensity Test**: Vary AO intensity from 0 to 1
+   - At 0: scene unchanged
+   - At 1: full AO effect visible
 
 ---
 

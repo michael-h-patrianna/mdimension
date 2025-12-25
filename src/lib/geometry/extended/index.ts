@@ -18,7 +18,6 @@ export type {
   BlackHoleManifoldType,
   BlackHolePaletteMode,
   BlackHoleQuality,
-  BlackHoleVisualPreset,
   CliffordTorusConfig,
   CliffordTorusEdgeMode,
   CliffordTorusMode,
@@ -44,7 +43,6 @@ export type {
 // Default configs
 export {
   BLACK_HOLE_QUALITY_PRESETS,
-  BLACK_HOLE_VISUAL_PRESETS,
   DEFAULT_BLACK_HOLE_CONFIG,
   DEFAULT_CLIFFORD_TORUS_CONFIG,
   DEFAULT_EXTENDED_OBJECT_PARAMS,

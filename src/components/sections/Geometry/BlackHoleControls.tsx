@@ -3,7 +3,6 @@
  *
  * Controls for configuring n-dimensional black hole visualization.
  * Provides artist-friendly controls for:
- * - Visual presets (Interstellar, Cosmic, Ethereal)
  * - Basic parameters (horizon size, gravity, manifold)
  * - Photon shell glow
  * - Lensing strength
@@ -12,14 +11,12 @@
  * @see docs/prd/ndimensional-visualizer.md
  */
 
-import { useShallow } from 'zustand/react/shallow';
-import { Select, type SelectOption } from '@/components/ui/Select';
-import { Slider } from '@/components/ui/Slider';
 import { Section } from '@/components/sections/Section';
-import { type BlackHoleVisualPreset } from '@/lib/geometry/extended/types';
+import { Slider } from '@/components/ui/Slider';
 import { useExtendedObjectStore, type ExtendedObjectState } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import React from 'react';
+import { useShallow } from 'zustand/react/shallow';
 
 /**
  * Props for the BlackHoleControls component.
@@ -33,30 +30,9 @@ export interface BlackHoleControlsProps {
 }
 
 /**
- * Visual preset options for dropdown
- */
-const visualPresetOptions: SelectOption<BlackHoleVisualPreset>[] = [
-  { value: 'interstellar', label: 'Interstellar' },
-  { value: 'cosmic', label: 'Cosmic' },
-  { value: 'ethereal', label: 'Ethereal' },
-  { value: 'custom', label: 'Custom' },
-];
-
-/**
- * Descriptions for visual presets (shown below select)
- */
-const presetDescriptions: Record<BlackHoleVisualPreset, string> = {
-  interstellar: 'Movie-accurate thin disk with strong lensing',
-  cosmic: 'Thicker volumetric manifold with softer glow',
-  ethereal: 'Dreamlike thick field with intense glow',
-  custom: 'Your current settings',
-};
-
-/**
  * BlackHoleControls component
  *
  * Provides controls for black hole visualization:
- * - Visual presets for quick configuration
  * - Basic parameters (horizon, gravity, manifold)
  * - Slice parameters for 4D+
  *
@@ -70,8 +46,6 @@ export const BlackHoleControls: React.FC<BlackHoleControlsProps> = React.memo(({
   // Consolidate extended object store selectors with useShallow
   const extendedObjectSelector = useShallow((state: ExtendedObjectState) => ({
     config: state.blackhole,
-    // Visual preset
-    applyVisualPreset: state.applyBlackHoleVisualPreset,
     // Basic settings
     setHorizonRadius: state.setBlackHoleHorizonRadius,
     setSpin: state.setBlackHoleSpin,
@@ -84,7 +58,6 @@ export const BlackHoleControls: React.FC<BlackHoleControlsProps> = React.memo(({
 
   const {
     config,
-    applyVisualPreset,
     setHorizonRadius,
     setSpin,
     setManifoldThickness,
@@ -98,21 +71,6 @@ export const BlackHoleControls: React.FC<BlackHoleControlsProps> = React.memo(({
 
   return (
     <div className={className} data-testid="blackhole-controls">
-      {/* Visual Preset Selection */}
-      <Section title="Visual Preset" defaultOpen={true}>
-        <div className="space-y-2">
-          <Select
-            options={visualPresetOptions}
-            value={config.visualPreset}
-            onChange={applyVisualPreset}
-            data-testid="blackhole-visual-preset"
-          />
-          <p className="text-xs text-text-tertiary">
-            {presetDescriptions[config.visualPreset]}
-          </p>
-        </div>
-      </Section>
-
       {/* Geometry Settings */}
       <Section title="Geometry" defaultOpen={true}>
         <Slider

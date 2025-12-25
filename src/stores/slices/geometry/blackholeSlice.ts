@@ -47,11 +47,10 @@ function clampWithWarning(value: number, min: number, max: number, paramName: st
 
 import { computeKerrRadii, diskTemperatureToColor } from '@/lib/geometry/extended/kerr-physics'
 import {
-    BLACK_HOLE_QUALITY_PRESETS,
-    BLACK_HOLE_VISUAL_PRESETS,
-    BlackHoleConfig,
-    BlackHoleRayBendingMode,
-    DEFAULT_BLACK_HOLE_CONFIG,
+  BLACK_HOLE_QUALITY_PRESETS,
+  BlackHoleConfig,
+  BlackHoleRayBendingMode,
+  DEFAULT_BLACK_HOLE_CONFIG,
 } from '@/lib/geometry/extended/types'
 import { StateCreator } from 'zustand'
 import { BlackHoleSlice, ExtendedObjectSlice } from './types'
@@ -305,8 +304,6 @@ export const createBlackHoleSlice: StateCreator<ExtendedObjectSlice, [], [], Bla
     }))
   },
 
-
-
   setBlackHoleDiskInnerRadiusMul: (mul) => {
     const state = get()
     // Ensure inner < outer with a minimum gap of 0.1
@@ -523,28 +520,6 @@ export const createBlackHoleSlice: StateCreator<ExtendedObjectSlice, [], [], Bla
     const clamped = Math.max(0, Math.min(2, strength))
     set((state) => ({
       blackhole: { ...state.blackhole, dopplerStrength: clamped },
-    }))
-  },
-
-
-
-  // === Visual Preset ===
-  setBlackHoleVisualPreset: (preset) => {
-    set((state) => ({
-      blackhole: { ...state.blackhole, visualPreset: preset },
-    }))
-  },
-
-  applyBlackHoleVisualPreset: (preset) => {
-    if (preset === 'custom') return
-
-    const presetConfig = BLACK_HOLE_VISUAL_PRESETS[preset]
-    set((state) => ({
-      blackhole: {
-        ...state.blackhole,
-        ...presetConfig,
-        visualPreset: preset,
-      },
     }))
   },
 
@@ -833,7 +808,6 @@ export const createBlackHoleSlice: StateCreator<ExtendedObjectSlice, [], [], Bla
     if (config.shellGlowStrength !== undefined) {
       validated.shellGlowStrength = Math.max(0, Math.min(20, config.shellGlowStrength))
     }
-
 
     if (config.diskInnerRadiusMul !== undefined) {
       validated.diskInnerRadiusMul = Math.max(0, Math.min(10, config.diskInnerRadiusMul))

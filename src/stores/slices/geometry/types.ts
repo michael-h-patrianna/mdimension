@@ -1,38 +1,37 @@
 import {
-    BlackHoleConfig,
-    BlackHoleLightingMode,
-    BlackHoleManifoldType,
-    BlackHolePaletteMode,
-    BlackHoleQuality,
-    BlackHoleRayBendingMode,
-    BlackHoleVisualPreset,
-    CliffordTorusConfig,
-    CliffordTorusEdgeMode,
-    CliffordTorusMode,
-    HydrogenNDPresetName,
-    HydrogenOrbitalPresetName,
-    MandelbulbColorMode,
-    MandelbulbConfig,
-    MandelbulbPalette,
-    MandelbulbQualityPreset,
-    MandelbulbRenderStyle,
-    NestedTorusConfig,
-    NestedTorusEdgeMode,
-    PolytopeConfig,
-    QuaternionJuliaConfig,
-    RaymarchQuality,
-    RootSystemConfig,
-    RootSystemType,
-    SchroedingerColorMode,
-    SchroedingerConfig,
-    SchroedingerPalette,
-    SchroedingerPresetName,
-    SchroedingerQualityPreset,
-    SchroedingerQuantumMode,
-    SchroedingerRenderStyle,
-    WythoffPolytopeConfig,
-    WythoffPreset,
-    WythoffSymmetryGroup,
+  BlackHoleConfig,
+  BlackHoleLightingMode,
+  BlackHoleManifoldType,
+  BlackHolePaletteMode,
+  BlackHoleQuality,
+  BlackHoleRayBendingMode,
+  CliffordTorusConfig,
+  CliffordTorusEdgeMode,
+  CliffordTorusMode,
+  HydrogenNDPresetName,
+  HydrogenOrbitalPresetName,
+  MandelbulbColorMode,
+  MandelbulbConfig,
+  MandelbulbPalette,
+  MandelbulbQualityPreset,
+  MandelbulbRenderStyle,
+  NestedTorusConfig,
+  NestedTorusEdgeMode,
+  PolytopeConfig,
+  QuaternionJuliaConfig,
+  RaymarchQuality,
+  RootSystemConfig,
+  RootSystemType,
+  SchroedingerColorMode,
+  SchroedingerConfig,
+  SchroedingerPalette,
+  SchroedingerPresetName,
+  SchroedingerQualityPreset,
+  SchroedingerQuantumMode,
+  SchroedingerRenderStyle,
+  WythoffPolytopeConfig,
+  WythoffPreset,
+  WythoffSymmetryGroup,
 } from '@/lib/geometry/extended/types'
 
 // ============================================================================
@@ -517,11 +516,6 @@ export interface BlackHoleSliceActions {
   // Doppler Effect
   setBlackHoleDopplerEnabled: (enabled: boolean) => void
   setBlackHoleDopplerStrength: (strength: number) => void
-
-
-  // Visual Preset
-  setBlackHoleVisualPreset: (preset: BlackHoleVisualPreset) => void
-  applyBlackHoleVisualPreset: (preset: BlackHoleVisualPreset) => void
 
   // Cross-section
   setBlackHoleParameterValue: (index: number, value: number) => void
