@@ -6,6 +6,7 @@
 import { Slider } from '@/components/ui/Slider';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import { ControlGroup } from '@/components/ui/ControlGroup';
+import { Switch } from '@/components/ui/Switch';
 import { useAppearanceStore, type AppearanceSlice } from '@/stores/appearanceStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useExtendedObjectStore, type ExtendedObjectState } from '@/stores/extendedObjectStore';
@@ -26,14 +27,18 @@ export const EdgeControls: React.FC<EdgesControlsProps> = React.memo(({
   const appearanceSelector = useShallow((state: AppearanceSlice) => ({
     edgeColor: state.edgeColor,
     edgeThickness: state.edgeThickness,
+    tubeCaps: state.tubeCaps,
     setEdgeColor: state.setEdgeColor,
     setEdgeThickness: state.setEdgeThickness,
+    setTubeCaps: state.setTubeCaps,
   }));
   const {
     edgeColor,
     edgeThickness,
+    tubeCaps,
     setEdgeColor,
     setEdgeThickness,
+    setTubeCaps,
   } = useAppearanceStore(appearanceSelector);
 
   // Schrödinger specific controls
@@ -73,6 +78,16 @@ export const EdgeControls: React.FC<EdgesControlsProps> = React.memo(({
             onChange={setEdgeThickness}
             showValue
         />
+
+        {/* Tube End Caps - only visible when using tube rendering (thickness > 1) */}
+        {edgeThickness > 1 && (
+          <Switch
+            checked={tubeCaps}
+            onCheckedChange={setTubeCaps}
+            label="Tube End Caps"
+            data-testid="tube-caps-toggle"
+          />
+        )}
       </ControlGroup>
 
       {/* Edge Material Controls (only visible when thickness > 1) */}

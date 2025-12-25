@@ -1,6 +1,7 @@
 export const sdf6dBlock = `
 // ============================================
 // 6D Hyperbulb - FULLY UNROLLED with rotated basis
+// Uses fast trig approximations for performance
 // ============================================
 
 float sdf6D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
@@ -26,21 +27,21 @@ float sdf6D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
         dr = pow(max(r, EPS), pwr - 1.0) * pwr * dr + 1.0;
 
         // 6D: 5 angles, z-axis primary (like Mandelbulb)
-        float t0 = acos(clamp(zz / max(r, EPS), -1.0, 1.0));
+        float t0 = fast_acos(clamp(zz / max(r, EPS), -1.0, 1.0));
         float r1 = sqrt(zx*zx + zy*zy + z3*z3 + z4*z4 + z5*z5);
-        float t1 = r1 > EPS ? acos(clamp(zx / max(r1, EPS), -1.0, 1.0)) : 0.0;
+        float t1 = r1 > EPS ? fast_acos(clamp(zx / max(r1, EPS), -1.0, 1.0)) : 0.0;
         float r2 = sqrt(zy*zy + z3*z3 + z4*z4 + z5*z5);
-        float t2 = r2 > EPS ? acos(clamp(zy / max(r2, EPS), -1.0, 1.0)) : 0.0;
+        float t2 = r2 > EPS ? fast_acos(clamp(zy / max(r2, EPS), -1.0, 1.0)) : 0.0;
         float r3 = sqrt(z3*z3 + z4*z4 + z5*z5);
-        float t3 = r3 > EPS ? acos(clamp(z3 / max(r3, EPS), -1.0, 1.0)) : 0.0;
+        float t3 = r3 > EPS ? fast_acos(clamp(z3 / max(r3, EPS), -1.0, 1.0)) : 0.0;
         float t4 = atan(z5, z4);
 
         float rp = pow(r, pwr);
-        float s0 = sin((t0+phaseT)*pwr), c0 = cos((t0+phaseT)*pwr);
-        float s1 = sin((t1+phaseP)*pwr), c1 = cos((t1+phaseP)*pwr);
-        float s2 = sin(t2*pwr), c2 = cos(t2*pwr);
-        float s3 = sin(t3*pwr), c3_ = cos(t3*pwr);
-        float s4 = sin(t4*pwr), c4_ = cos(t4*pwr);
+        float s0 = fast_sin((t0+phaseT)*pwr), c0 = fast_cos((t0+phaseT)*pwr);
+        float s1 = fast_sin((t1+phaseP)*pwr), c1 = fast_cos((t1+phaseP)*pwr);
+        float s2 = fast_sin(t2*pwr), c2 = fast_cos(t2*pwr);
+        float s3 = fast_sin(t3*pwr), c3_ = fast_cos(t3*pwr);
+        float s4 = fast_sin(t4*pwr), c4_ = fast_cos(t4*pwr);
 
         float sp = rp * s0 * s1 * s2 * s3;
         zz = rp * c0 + cz;
@@ -74,15 +75,15 @@ float sdf6D_simple(vec3 pos, float pwr, float bail, int maxIt) {
         r = sqrt(zx*zx + zy*zy + zz*zz + z3*z3 + z4*z4 + z5*z5);
         if (r > bail) break;
         dr = pow(max(r, EPS), pwr - 1.0) * pwr * dr + 1.0;
-        float t0 = acos(clamp(zz / max(r, EPS), -1.0, 1.0));
-        float r1 = sqrt(zx*zx+zy*zy+z3*z3+z4*z4+z5*z5); float t1 = r1>EPS ? acos(clamp(zx / max(r1, EPS),-1.0,1.0)) : 0.0;
-        float r2 = sqrt(zy*zy+z3*z3+z4*z4+z5*z5); float t2 = r2>EPS ? acos(clamp(zy / max(r2, EPS),-1.0,1.0)) : 0.0;
-        float r3 = sqrt(z3*z3+z4*z4+z5*z5); float t3 = r3>EPS ? acos(clamp(z3 / max(r3, EPS),-1.0,1.0)) : 0.0;
+        float t0 = fast_acos(clamp(zz / max(r, EPS), -1.0, 1.0));
+        float r1 = sqrt(zx*zx+zy*zy+z3*z3+z4*z4+z5*z5); float t1 = r1>EPS ? fast_acos(clamp(zx / max(r1, EPS),-1.0,1.0)) : 0.0;
+        float r2 = sqrt(zy*zy+z3*z3+z4*z4+z5*z5); float t2 = r2>EPS ? fast_acos(clamp(zy / max(r2, EPS),-1.0,1.0)) : 0.0;
+        float r3 = sqrt(z3*z3+z4*z4+z5*z5); float t3 = r3>EPS ? fast_acos(clamp(z3 / max(r3, EPS),-1.0,1.0)) : 0.0;
         float t4 = atan(z5, z4);
         float rp = pow(r, pwr);
-        float s0=sin((t0+phaseT)*pwr),c0=cos((t0+phaseT)*pwr),s1=sin((t1+phaseP)*pwr),c1=cos((t1+phaseP)*pwr);
-        float s2=sin(t2*pwr),c2=cos(t2*pwr),s3=sin(t3*pwr),c3_=cos(t3*pwr);
-        float s4=sin(t4*pwr),c4_=cos(t4*pwr);
+        float s0=fast_sin((t0+phaseT)*pwr),c0=fast_cos((t0+phaseT)*pwr),s1=fast_sin((t1+phaseP)*pwr),c1=fast_cos((t1+phaseP)*pwr);
+        float s2=fast_sin(t2*pwr),c2=fast_cos(t2*pwr),s3=fast_sin(t3*pwr),c3_=fast_cos(t3*pwr);
+        float s4=fast_sin(t4*pwr),c4_=fast_cos(t4*pwr);
         float sp = rp*s0*s1*s2*s3;
         zz=rp*c0+cz; zx=rp*s0*c1+cx; zy=rp*s0*s1*c2+cy;
         z3=rp*s0*s1*s2*c3_+c3; z4=sp*c4_+c4; z5=sp*s4+c5;

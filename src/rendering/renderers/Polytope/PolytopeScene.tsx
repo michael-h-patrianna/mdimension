@@ -414,6 +414,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     facesVisible,
     edgeColor,
     edgeThickness,
+    tubeCaps,
     faceColor,
     shaderSettings,
     sssEnabled,
@@ -423,6 +424,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
       facesVisible: state.facesVisible,
       edgeColor: state.edgeColor,
       edgeThickness: state.edgeThickness,
+      tubeCaps: state.tubeCaps,
       faceColor: state.faceColor,
       shaderSettings: state.shaderSettings,
       sssEnabled: state.sssEnabled,
@@ -1115,6 +1117,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
           opacity={opacity}
           radius={edgeThickness * 0.015}
           shadowEnabled={shadowEnabled}
+          caps={tubeCaps}
         />
       )}
       {edgesVisible && !useFatWireframe && edgeGeometry && (

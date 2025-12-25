@@ -18,6 +18,7 @@ import { ggxBlock } from '../shared/lighting/ggx.glsl'
 import { iblBlock, iblUniformsBlock, pmremSamplingBlock } from '../shared/lighting/ibl.glsl'
 import { multiLightBlock } from '../shared/lighting/multi-light.glsl'
 import { sssBlock } from '../shared/lighting/sss.glsl'
+import { fastTrigBlock } from '../shared/math/fast-trig.glsl'
 import { raymarchCoreBlock } from '../shared/raymarch/core.glsl'
 import { normalBlock } from '../shared/raymarch/normal.glsl'
 import { sphereIntersectBlock } from '../shared/raymarch/sphere-intersect.glsl'
@@ -55,6 +56,9 @@ export function composeMandelbulbShader(config: ShaderConfig) {
 
   // Process feature flags using shared helper
   const flags = processFeatureFlags(config)
+
+  // Use fast trig approximations for high dimensions (5D+)
+  const usesFastTrig = dimension >= 5
 
   // Select SDF block based on dimension
   let sdfBlock = sdfHighDBlock
@@ -94,6 +98,7 @@ export function composeMandelbulbShader(config: ShaderConfig) {
     { name: 'Vertex Inputs', content: fractalVertexInputsBlock },
     { name: 'Defines', content: flags.defines.join('\n') },
     { name: 'Constants', content: constantsBlock },
+    { name: 'Fast Trig', content: fastTrigBlock, condition: usesFastTrig },
     { name: 'Shared Uniforms', content: uniformsBlock },
     { name: 'Mandelbulb Uniforms', content: mandelbulbUniformsBlock },
     { name: 'Power Functions', content: powerBlock },

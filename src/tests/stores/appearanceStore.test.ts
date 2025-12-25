@@ -5,6 +5,7 @@ import {
   DEFAULT_FACE_OPACITY,
   DEFAULT_EDGES_VISIBLE,
   DEFAULT_FACES_VISIBLE,
+  DEFAULT_TUBE_CAPS,
   VISUAL_PRESETS,
 } from '@/stores/defaults/visualDefaults';
 import { useAppearanceStore } from '@/stores/appearanceStore';
@@ -23,6 +24,12 @@ describe('appearanceStore', () => {
     expect(state.edgeColor).toBe(DEFAULT_EDGE_COLOR);
     expect(state.edgeThickness).toBe(DEFAULT_EDGE_THICKNESS);
     expect(state.backgroundColor).toBe(DEFAULT_BACKGROUND_COLOR);
+    expect(state.tubeCaps).toBe(DEFAULT_TUBE_CAPS);
+  });
+
+  it('should have tubeCaps default to false for performance', () => {
+    const state = useAppearanceStore.getState();
+    expect(state.tubeCaps).toBe(false);
   });
 
   it('should update edge color', () => {
@@ -39,6 +46,19 @@ describe('appearanceStore', () => {
       result.current.setEdgeThickness(5);
     });
     expect(result.current.edgeThickness).toBe(5);
+  });
+
+  it('should toggle tube caps', () => {
+    const { result } = renderHook(() => useAppearanceStore());
+    expect(result.current.tubeCaps).toBe(false);
+    act(() => {
+      result.current.setTubeCaps(true);
+    });
+    expect(result.current.tubeCaps).toBe(true);
+    act(() => {
+      result.current.setTubeCaps(false);
+    });
+    expect(result.current.tubeCaps).toBe(false);
   });
 
   it('should update background color', () => {

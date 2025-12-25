@@ -13,12 +13,16 @@ import { AppearanceSlice, MaterialSlice, MaterialSliceState } from './types'
 import {
   DEFAULT_EDGE_THICKNESS,
   DEFAULT_FACE_OPACITY,
+  DEFAULT_TUBE_CAPS,
 } from '@/stores/defaults/visualDefaults'
 
 export const MATERIAL_INITIAL_STATE: MaterialSliceState = {
   // Display properties
   edgeThickness: DEFAULT_EDGE_THICKNESS,
   faceOpacity: DEFAULT_FACE_OPACITY,
+
+  // Tube wireframe settings (only applies when edgeThickness > 1)
+  tubeCaps: DEFAULT_TUBE_CAPS,
 
   // Emission
   faceEmission: 0.0,
@@ -39,6 +43,7 @@ export const createMaterialSlice: StateCreator<AppearanceSlice, [], [], Material
     })
   },
   setFaceOpacity: (opacity) => set({ faceOpacity: Math.max(0, Math.min(1, opacity)) }),
+  setTubeCaps: (caps) => set({ tubeCaps: caps }),
   setFaceEmission: (emission) => set({ faceEmission: Math.max(0, Math.min(5, emission)) }),
   setFaceEmissionThreshold: (threshold) => set({ faceEmissionThreshold: Math.max(0, Math.min(1, threshold)) }),
   setFaceEmissionColorShift: (shift) => set({ faceEmissionColorShift: Math.max(-1, Math.min(1, shift)) }),

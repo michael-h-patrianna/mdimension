@@ -187,6 +187,8 @@ export interface TubeWireframeProps {
   radius?: number
   /** Whether shadows are enabled */
   shadowEnabled?: boolean
+  /** Whether to render end caps on tubes (default: false for performance) */
+  caps?: boolean
   // Note: PBR properties (metallic, roughness, specularIntensity, specularColor)
   // are now managed via UniformManager using 'pbr-edge' source
 }
@@ -213,6 +215,7 @@ export function TubeWireframe({
   opacity = 1.0,
   radius = 0.02,
   shadowEnabled = false,
+  caps = false,
 }: TubeWireframeProps): React.JSX.Element | null {
   const meshRef = useRef<InstancedMesh>(null)
 
@@ -262,9 +265,10 @@ export function TubeWireframe({
   }, [])
 
   // Base cylinder geometry (Y-axis aligned, height 1, centered at origin)
+  // openEnded = !caps: when caps is false (default), tubes are hollow for performance
   const geometry = useMemo(() => {
-    return new CylinderGeometry(1, 1, 1, CYLINDER_SEGMENTS, 1, false)
-  }, [])
+    return new CylinderGeometry(1, 1, 1, CYLINDER_SEGMENTS, 1, !caps)
+  }, [caps])
 
   const setShaderDebugInfo = usePerformanceStore((state) => state.setShaderDebugInfo)
 

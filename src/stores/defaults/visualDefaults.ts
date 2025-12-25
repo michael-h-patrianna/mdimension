@@ -36,6 +36,9 @@ export const DEFAULT_METALLIC = 0.0
 export const DEFAULT_EDGE_SPECULAR_INTENSITY = 0.5
 export const DEFAULT_EDGE_SPECULAR_COLOR = '#ffffff'
 
+// Tube wireframe caps (false = hollow tubes for performance, true = capped ends)
+export const DEFAULT_TUBE_CAPS = false
+
 export const DEFAULT_EDGES_VISIBLE = true
 export const DEFAULT_FACES_VISIBLE = true
 

@@ -239,6 +239,19 @@ describe('TubeWireframe', () => {
     // No error means it used default dimension successfully
   })
 
+  it('should accept caps prop for tube end caps', () => {
+    // Default: caps=false (hollow tubes for performance)
+    render(
+      <TubeWireframe vertices={mockVertices} edges={mockEdges} color="#ff0000" caps={false} />
+    )
+  })
+
+  it('should accept caps=true for capped tube ends', () => {
+    render(
+      <TubeWireframe vertices={mockVertices} edges={mockEdges} color="#ff0000" caps={true} />
+    )
+  })
+
   // Note: metallic and roughness tests removed - these properties are now managed
   // via UniformManager using 'pbr-edge' source, not as component props
 

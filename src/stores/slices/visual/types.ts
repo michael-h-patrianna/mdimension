@@ -65,6 +65,9 @@ export interface MaterialSliceState {
   edgeThickness: number
   faceOpacity: number
 
+  // Tube wireframe settings (only applies when edgeThickness > 1)
+  tubeCaps: boolean
+
   // Emission
   faceEmission: number
   faceEmissionThreshold: number
@@ -76,6 +79,7 @@ export interface MaterialSliceState {
 export interface MaterialSliceActions {
   setEdgeThickness: (thickness: number) => void
   setFaceOpacity: (opacity: number) => void
+  setTubeCaps: (caps: boolean) => void
   setFaceEmission: (emission: number) => void
   setFaceEmissionThreshold: (threshold: number) => void
   setFaceEmissionColorShift: (shift: number) => void
