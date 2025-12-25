@@ -16,7 +16,6 @@ import { selectorBlock } from '../shared/color/selector.glsl'
 import { constantsBlock } from '../shared/core/constants.glsl'
 import { precisionBlock } from '../shared/core/precision.glsl'
 import { uniformsBlock } from '../shared/core/uniforms.glsl'
-import { fogFunctionsBlock, fogUniformsBlock } from '../shared/features/fog.glsl'
 import { opacityBlock } from '../shared/features/opacity.glsl'
 import { temporalBlock } from '../shared/features/temporal.glsl'
 import { ggxBlock } from '../shared/lighting/ggx.glsl'
@@ -88,7 +87,6 @@ export function composeSchroedingerShader(config: SchroedingerShaderConfig) {
     quantumMode,
     sss: enableSss,
     fresnel: enableFresnel,
-    fog: enableFog,
     curl: enableCurl,
     dispersion: enableDispersion,
     nodal: enableNodal,
@@ -154,7 +152,6 @@ export function composeSchroedingerShader(config: SchroedingerShaderConfig) {
 
   const useSss = enableSss && !overrides.includes('SSS')
   const useFresnel = enableFresnel && !overrides.includes('Fresnel')
-  const useFog = enableFog && !overrides.includes('Fog')
 
   if (useSss) {
     defines.push('#define USE_SSS')
@@ -163,10 +160,6 @@ export function composeSchroedingerShader(config: SchroedingerShaderConfig) {
   if (useFresnel) {
     defines.push('#define USE_FRESNEL')
     features.push('Fresnel')
-  }
-  if (useFog) {
-    defines.push('#define USE_FOG')
-    features.push('Fog')
   }
 
   // Quantum volume effects (compile-time optimization)
@@ -313,8 +306,6 @@ export function composeSchroedingerShader(config: SchroedingerShaderConfig) {
 
     // Features
     { name: 'Temporal Features', content: temporalBlock, condition: useTemporal },
-    { name: 'Fog Uniforms', content: fogUniformsBlock, condition: useFog },
-    { name: 'Fog Functions', content: fogFunctionsBlock, condition: useFog },
 
     // Opacity and main
     { name: 'Opacity System', content: opacityBlock },

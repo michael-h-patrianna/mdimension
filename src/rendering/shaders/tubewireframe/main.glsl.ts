@@ -111,11 +111,6 @@ void main() {
   // Final color (tone mapping is applied by post-processing OutputPass)
   vec3 color = Lo;
 
-  // Atmospheric Depth Integration (Fog)
-#ifdef USE_FOG
-  float viewDist = length(vWorldPosition - cameraPosition);
-  color = applyFog(color, viewDist);
-#endif
 
   // Explicitly write depth to ensure it's captured in depth-only passes
   gl_FragDepth = gl_FragCoord.z;

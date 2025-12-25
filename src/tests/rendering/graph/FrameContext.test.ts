@@ -41,17 +41,6 @@ describe('FrameContext', () => {
         dimension: 4,
       }),
       getEnvironmentState: vi.fn().mockReturnValue({
-        fog: {
-          fogEnabled: true,
-          fogDensity: 0.1,
-          fogColor: '#aabbcc',
-          fogHeight: 20,
-          fogFalloff: 0.15,
-          fogNoiseScale: 0.2,
-          fogNoiseSpeed: [0.1, 0.0, 0.1] as [number, number, number],
-          fogScattering: 0.5,
-          volumetricShadows: true,
-        },
         skybox: {
           skyboxEnabled: true,
           skyboxMode: 'classic',
@@ -174,11 +163,10 @@ describe('FrameContext', () => {
     it('should capture environment state', () => {
       const context = captureFrameContext(0, mockScene, mockCamera, mockStoreGetters)
 
-      expect(context.stores.environment.fogEnabled).toBe(true)
-      expect(context.stores.environment.fogDensity).toBe(0.1)
-      expect(context.stores.environment.fogColor).toBe('#aabbcc')
       expect(context.stores.environment.skyboxEnabled).toBe(true)
       expect(context.stores.environment.skyboxMode).toBe('classic')
+      expect(context.stores.environment.skyboxTexture).toBe('space_blue')
+      expect(context.stores.environment.skyboxBlur).toBe(0.5)
     })
 
     it('should capture post-processing state', () => {
@@ -279,47 +267,6 @@ describe('FrameContext', () => {
       expect(context.stores.animation.animatingPlanes).not.toContain('YZ')
     })
 
-    it('should freeze fog noise speed array', () => {
-      const originalSpeed: [number, number, number] = [0.1, 0.2, 0.3]
-      ;(mockStoreGetters.getEnvironmentState as ReturnType<typeof vi.fn>).mockReturnValue({
-        fog: {
-          fogEnabled: true,
-          fogDensity: 0.1,
-          fogColor: '#aabbcc',
-          fogHeight: 20,
-          fogFalloff: 0.15,
-          fogNoiseScale: 0.2,
-          fogNoiseSpeed: originalSpeed,
-          fogScattering: 0.5,
-          volumetricShadows: true,
-        },
-        skybox: {
-          skyboxEnabled: false,
-          skyboxMode: 'classic',
-          skyboxTexture: 'none',
-          skyboxBlur: 0,
-          skyboxIntensity: 1,
-          skyboxRotation: 0,
-          skyboxAnimationMode: 'none',
-          skyboxAnimationSpeed: 0.5,
-          skyboxHighQuality: true,
-          skyboxLoading: false,
-          classicCubeTexture: null,
-        },
-        ground: {
-          activeWalls: [],
-        },
-      })
-
-      const context = captureFrameContext(0, mockScene, mockCamera, mockStoreGetters)
-
-      // Modify original array
-      originalSpeed[0] = 999
-
-      // Frozen array should not be affected
-      expect(context.stores.environment.fogNoiseSpeed[0]).toBe(0.1)
-    })
-
     it('should clone camera matrices', () => {
       const context = captureFrameContext(0, mockScene, mockCamera, mockStoreGetters)
       const capturedPosition = context.camera.position.clone()
@@ -341,7 +288,7 @@ describe('FrameContext', () => {
       expect(context.stores.animation.accumulatedTime).toBe(0)
       expect(context.stores.geometry.objectType).toBe('hypercube')
       expect(context.stores.geometry.dimension).toBe(4)
-      expect(context.stores.environment.fogEnabled).toBe(false)
+      expect(context.stores.environment.skyboxEnabled).toBe(false)
       expect(context.stores.postProcessing.bloomEnabled).toBe(true)
       expect(context.stores.performance.qualityMultiplier).toBe(1)
       expect(context.stores.blackHole.horizonRadius).toBe(1)

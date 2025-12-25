@@ -129,22 +129,6 @@ describe('composeBlackHoleShader', () => {
       expect(features).toContain('Temporal Accumulation (1/4 res)')
     })
 
-    it('should enable fog when configured', () => {
-      const configWithFog: BlackHoleShaderConfig = {
-        dimension: 4,
-        shadows: false,
-        temporal: false,
-        ambientOcclusion: false,
-        opacityMode: 'solid',
-        fog: true,
-      }
-
-      const { fragmentShader, features } = composeBlackHoleShader(configWithFog)
-
-      expect(fragmentShader).toContain('#define USE_FOG')
-      expect(features).toContain('Fog')
-    })
-
     // Note: shadows not implemented for black holes - no shader code exists yet
     // Test removed until volumetric shadow raymarching is implemented
 
@@ -246,7 +230,6 @@ describe('composeBlackHoleShader', () => {
         temporalAccumulation: true,
         jets: true,
         doppler: true,
-        fog: true,
       }
 
       const { fragmentShader, features } = composeBlackHoleShader(config)
@@ -255,12 +238,10 @@ describe('composeBlackHoleShader', () => {
       expect(fragmentShader).toContain('#define USE_TEMPORAL_ACCUMULATION')
       expect(fragmentShader).toContain('#define USE_JETS')
       expect(fragmentShader).toContain('#define USE_DOPPLER')
-      expect(fragmentShader).toContain('#define USE_FOG')
 
       expect(features).toContain('Temporal Accumulation (1/4 res)')
       expect(features).toContain('Polar Jets')
       expect(features).toContain('Doppler Effect')
-      expect(features).toContain('Fog')
     })
   })
 })

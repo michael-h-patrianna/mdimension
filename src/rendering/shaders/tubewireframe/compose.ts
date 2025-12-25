@@ -1,7 +1,6 @@
 import { constantsBlock } from '../shared/core/constants.glsl'
 import { precisionBlock } from '../shared/core/precision.glsl'
 import { uniformsBlock } from '../shared/core/uniforms.glsl'
-import { fogFunctionsBlock, fogUniformsBlock } from '../shared/features/fog.glsl'
 import {
   shadowMapsFunctionsBlock,
   shadowMapsUniformsBlock,
@@ -50,7 +49,6 @@ export function composeTubeWireframeFragmentShader(config: TubeWireframeShaderCo
   // Build tubewireframe-specific features list (different display names)
   const features: string[] = ['PBR Lighting', 'Multi-Light Support', 'MRT Output']
   if (flags.useShadows) features.push('Shadow Maps')
-  if (flags.useFog) features.push('Fog')
   if (flags.useSss) features.push('Rim SSS')
   if (flags.useFresnel) features.push('Fresnel Rim')
 
@@ -85,8 +83,6 @@ export function composeTubeWireframeFragmentShader(config: TubeWireframeShaderCo
     { name: 'Lighting (SSS)', content: sssBlock, condition: flags.useSss },
     { name: 'Shadow Maps Uniforms', content: shadowMapsUniformsBlock, condition: enableShadows },
     { name: 'Shadow Maps Functions', content: shadowMapsFunctionsBlock, condition: enableShadows },
-    { name: 'Fog Uniforms', content: fogUniformsBlock, condition: flags.useFog },
-    { name: 'Fog Functions', content: fogFunctionsBlock, condition: flags.useFog },
     { name: 'Main', content: mainBlock },
   ]
 

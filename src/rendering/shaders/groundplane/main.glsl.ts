@@ -82,12 +82,6 @@ void main() {
   // IBL (environment reflections)
   Lo += computeIBL(N, V, F0, roughness, uMetallic, uColor);
 
-  // Fog
-#ifdef USE_FOG
-  float viewDist = length(vWorldPosition - uCameraPosition);
-  Lo = applyFog(Lo, viewDist);
-#endif
-
   vec3 color = Lo;
 
   // Apply procedural grid overlay using LOCAL coordinates

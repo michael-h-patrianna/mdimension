@@ -14,7 +14,7 @@
  * Only 6 stores are captured for performance:
  * - animation: Time and playback state
  * - geometry: Object type and dimension
- * - environment: Fog, skybox, ground settings
+ * - environment: Skybox and ground settings
  * - postProcessing: Effect parameters
  * - performance: Quality settings
  * - blackHole: Black hole visualization state
@@ -27,7 +27,6 @@ import * as THREE from 'three'
 import type { BlackHoleConfig } from '@/lib/geometry/extended/types'
 import type { ObjectType } from '@/lib/geometry/types'
 import type { IBLQuality, WallPosition } from '@/stores/defaults/visualDefaults'
-import type { FogSliceState } from '@/stores/slices/fogSlice'
 import type { GroundSliceState } from '@/stores/slices/groundSlice'
 import type { PostProcessingSliceState } from '@/stores/slices/postProcessingSlice'
 import type { SkyboxSliceState } from '@/stores/slices/skyboxSlice'
@@ -57,20 +56,9 @@ export interface FrozenGeometryState {
 
 /**
  * Frozen environment store state.
- * Combines fog, skybox, and ground settings.
+ * Combines skybox and ground settings.
  */
 export interface FrozenEnvironmentState {
-  // Fog
-  readonly fogEnabled: boolean
-  readonly fogDensity: number
-  readonly fogColor: string
-  readonly fogHeight: number
-  readonly fogFalloff: number
-  readonly fogNoiseScale: number
-  readonly fogNoiseSpeed: readonly [number, number, number]
-  readonly fogScattering: number
-  readonly volumetricShadows: boolean
-
   // Skybox
   readonly skyboxEnabled: boolean
   readonly skyboxMode: SkyboxSliceState['skyboxMode']
@@ -287,7 +275,6 @@ export interface StoreGetters {
     dimension: number
   }
   getEnvironmentState: () => {
-    fog: FogSliceState
     skybox: SkyboxSliceState
     ground: GroundSliceState
   }
@@ -351,19 +338,8 @@ function captureGeometryState(
 function captureEnvironmentState(
   getter: StoreGetters['getEnvironmentState']
 ): FrozenEnvironmentState {
-  const { fog, skybox, ground } = getter()
+  const { skybox, ground } = getter()
   return {
-    // Fog
-    fogEnabled: fog.fogEnabled,
-    fogDensity: fog.fogDensity,
-    fogColor: fog.fogColor,
-    fogHeight: fog.fogHeight,
-    fogFalloff: fog.fogFalloff,
-    fogNoiseScale: fog.fogNoiseScale,
-    fogNoiseSpeed: [...fog.fogNoiseSpeed] as [number, number, number],
-    fogScattering: fog.fogScattering,
-    volumetricShadows: fog.volumetricShadows,
-
     // Skybox
     skyboxEnabled: skybox.skyboxEnabled,
     skyboxMode: skybox.skyboxMode,
@@ -595,15 +571,6 @@ export function createEmptyFrameContext(): FrozenFrameContext {
         dimension: 4,
       },
       environment: {
-        fogEnabled: false,
-        fogDensity: 0.05,
-        fogColor: '#e5e2e2',
-        fogHeight: 15.0,
-        fogFalloff: 0.08,
-        fogNoiseScale: 0.15,
-        fogNoiseSpeed: [0.02, 0, 0.02],
-        fogScattering: 0.3,
-        volumetricShadows: true,
         skyboxEnabled: false,
         skyboxMode: 'classic',
         skyboxTexture: 'none',

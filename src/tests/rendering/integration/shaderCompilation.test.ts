@@ -127,7 +127,6 @@ describe('Shader Compilation - Mandelbulb', () => {
       temporal: true,
       ambientOcclusion: true,
       sss: true,
-      fog: true,
       opacityMode: 'solid',
     });
 
@@ -135,7 +134,6 @@ describe('Shader Compilation - Mandelbulb', () => {
     expect(fragmentShader).toContain('#define USE_TEMPORAL');
     expect(fragmentShader).toContain('#define USE_AO');
     expect(fragmentShader).toContain('#define USE_SSS');
-    expect(fragmentShader).toContain('#define USE_FOG');
   });
 });
 
@@ -376,28 +374,20 @@ describe('Shader Feature Flags', () => {
     expect(withoutTemporal).not.toContain('#define USE_TEMPORAL');
   });
 
-  it('should conditionally include fog code', () => {
-    const { glsl: withFog } = composeMandelbulbShader({
+  it('should compile with minimal configuration', () => {
+    const { glsl: minimal } = composeMandelbulbShader({
       dimension: 4,
       shadows: false,
       temporal: false,
       ambientOcclusion: false,
       sss: false,
-      fog: true,
       opacityMode: 'solid',
     });
 
-    const { glsl: withoutFog } = composeMandelbulbShader({
-      dimension: 4,
-      shadows: false,
-      temporal: false,
-      ambientOcclusion: false,
-      sss: false,
-      fog: false,
-      opacityMode: 'solid',
-    });
-
-    expect(withFog).toContain('#define USE_FOG');
-    expect(withoutFog).not.toContain('#define USE_FOG');
+    // Verify shader compiles with basic configuration
+    expect(minimal).toContain('void main()');
+    expect(minimal).not.toContain('#define USE_SHADOWS');
+    expect(minimal).not.toContain('#define USE_TEMPORAL');
+    expect(minimal).not.toContain('#define USE_AO');
   });
 });

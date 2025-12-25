@@ -99,7 +99,7 @@ describe('Object Type Registry', () => {
     it('returns correct face detection method', () => {
       expect(getFaceDetectionMethod('hypercube')).toBe('analytical-quad');
       expect(getFaceDetectionMethod('simplex')).toBe('triangles');
-      expect(getFaceDetectionMethod('root-system')).toBe('convex-hull');
+      expect(getFaceDetectionMethod('root-system')).toBe('metadata'); // Pre-computed faces from 3-cycle detection
       expect(getFaceDetectionMethod('clifford-torus')).toBe('grid');
       expect(getFaceDetectionMethod('mandelbulb')).toBe('none');
     });

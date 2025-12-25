@@ -105,4 +105,43 @@ describe('Wythoff polytope face detection', () => {
     // D_6 should have many faces
     expect(faces.length).toBeGreaterThan(0)
   })
+
+  it('should cover all vertices with faces for A_7 root-system (8D)', () => {
+    // This is the specific case from the bug report where convex-hull was failing
+    const geo = generateGeometry('root-system', 8, {
+      rootSystem: {
+        rootType: 'A',
+        rank: 8,
+        scale: 1.0,
+        showPositive: true,
+        showNegative: true,
+      }
+    })
+
+    console.log('=== 8D Root System A_7 ===')
+    console.log('Vertices:', geo.vertices.length)
+    console.log('Edges:', geo.edges.length)
+
+    const faceMethod = getFaceDetectionMethod('root-system')
+    console.log('Face detection method:', faceMethod)
+    expect(faceMethod).toBe('metadata') // Now uses metadata, not convex-hull
+
+    const faces = detectFaces(geo.vertices, geo.edges, 'root-system', geo.metadata)
+    console.log('Detected faces:', faces.length)
+
+    // A_7 should have many faces
+    expect(faces.length).toBeGreaterThan(0)
+
+    // Collect all vertices covered by faces
+    const coveredVertices = new Set<number>()
+    faces.forEach(face => {
+      face.vertices.forEach(idx => coveredVertices.add(idx))
+    })
+
+    console.log('Vertices covered by faces:', coveredVertices.size, 'of', geo.vertices.length)
+
+    // All 56 vertices should be covered (this was failing with convex-hull)
+    expect(geo.vertices.length).toBe(56)
+    expect(coveredVertices.size).toBe(56)
+  })
 })

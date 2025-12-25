@@ -25,7 +25,6 @@ export interface FeatureFlags {
   useAO: boolean;
   useSss: boolean;
   useFresnel: boolean;
-  useFog: boolean;
 }
 
 /**
@@ -45,7 +44,6 @@ export interface FeatureFlags {
  *   temporal: false,
  *   ambientOcclusion: true,
  *   sss: true,
- *   fog: false,
  * });
  * // flags.defines = ['#define USE_SHADOWS', '#define USE_AO', '#define USE_SSS']
  * // flags.features = ['Multi-Light', 'Shadows', 'Ambient Occlusion', 'SSS']
@@ -59,7 +57,6 @@ export function processFeatureFlags(config: ShaderConfig): FeatureFlags {
     overrides = [],
     sss: enableSss,
     fresnel: enableFresnel,
-    fog: enableFog,
   } = config;
 
   const defines: string[] = [];
@@ -72,7 +69,6 @@ export function processFeatureFlags(config: ShaderConfig): FeatureFlags {
   const useAO = enableAO && !overrides.includes('Ambient Occlusion');
   const useSss = !!enableSss && !overrides.includes('SSS');
   const useFresnel = !!enableFresnel && !overrides.includes('Fresnel');
-  const useFog = !!enableFog && !overrides.includes('Fog');
 
   if (useShadows) {
     defines.push('#define USE_SHADOWS');
@@ -94,10 +90,6 @@ export function processFeatureFlags(config: ShaderConfig): FeatureFlags {
     defines.push('#define USE_FRESNEL');
     features.push('Fresnel');
   }
-  if (useFog) {
-    defines.push('#define USE_FOG');
-    features.push('Fog');
-  }
 
   return {
     defines,
@@ -107,7 +99,6 @@ export function processFeatureFlags(config: ShaderConfig): FeatureFlags {
     useAO,
     useSss,
     useFresnel,
-    useFog,
   };
 }
 
@@ -165,7 +156,6 @@ in vec2 vUv;
 /** Configuration for mesh-based shaders (Polytope, TubeWireframe) */
 export interface MeshShaderConfig {
   shadows?: boolean;
-  fog?: boolean;
   sss?: boolean;
   fresnel?: boolean;
   overrides?: string[];
@@ -176,7 +166,6 @@ export interface MeshFeatureFlags {
   defines: string[];
   features: string[];
   useShadows: boolean;
-  useFog: boolean;
   useSss: boolean;
   useFresnel: boolean;
 }
@@ -191,17 +180,15 @@ export interface MeshFeatureFlags {
  * @example
  * const flags = processMeshFeatureFlags({
  *   shadows: true,
- *   fog: true,
  *   sss: false,
  *   fresnel: true,
  * });
- * // flags.defines = ['#define USE_SHADOWS', '#define USE_FOG', '#define USE_FRESNEL']
- * // flags.features = ['Multi-Light', 'Shadow Maps', 'Fog', 'Fresnel']
+ * // flags.defines = ['#define USE_SHADOWS', '#define USE_FRESNEL']
+ * // flags.features = ['Multi-Light', 'Shadow Maps', 'Fresnel']
  */
 export function processMeshFeatureFlags(config: MeshShaderConfig): MeshFeatureFlags {
   const {
     shadows: enableShadows = true,
-    fog: enableFog = true,
     sss: enableSss = true,
     fresnel: enableFresnel = true,
     overrides = [],
@@ -211,17 +198,12 @@ export function processMeshFeatureFlags(config: MeshShaderConfig): MeshFeatureFl
   const features: string[] = ['Multi-Light'];
 
   const useShadows = enableShadows && !overrides.includes('Shadow Maps');
-  const useFog = enableFog && !overrides.includes('Fog');
   const useSss = enableSss && !overrides.includes('SSS');
   const useFresnel = enableFresnel && !overrides.includes('Fresnel');
 
   if (useShadows) {
     defines.push('#define USE_SHADOWS');
     features.push('Shadow Maps');
-  }
-  if (useFog) {
-    defines.push('#define USE_FOG');
-    features.push('Fog');
   }
   if (useSss) {
     defines.push('#define USE_SSS');
@@ -232,5 +214,5 @@ export function processMeshFeatureFlags(config: MeshShaderConfig): MeshFeatureFl
     features.push('Fresnel');
   }
 
-  return { defines, features, useShadows, useFog, useSss, useFresnel };
+  return { defines, features, useShadows, useSss, useFresnel };
 }

@@ -110,6 +110,133 @@ export function generateDRoots(dimension: number, scale: number = 1.0): VectorND
 }
 
 /**
+ * Generates triangular faces for root system polytopes using 3-cycle detection.
+ *
+ * Root system 2-faces are always triangular - they are triplets of vertices
+ * where all three pairs are connected by edges. This function finds all such
+ * triangles in the edge adjacency graph.
+ *
+ * This approach works for all root system types (A_n, D_n, E_8) because:
+ * - The edge graph encodes the polytope skeleton via minimum-distance connectivity
+ * - All 2-faces of root system polytopes are triangular
+ * - Finding 3-cycles captures exactly the face structure
+ *
+ * @param edges - Array of edge pairs (vertex indices) from buildShortEdges
+ * @param vertices - Array of vertex positions (used for winding order correction)
+ * @returns Array of triangular face indices with correct winding order
+ *
+ * @example
+ * ```typescript
+ * const roots = generateARoots(4, 1.0);
+ * const edges = buildShortEdges(roots);
+ * const faces = generateRootSystemFaces(edges, roots);
+ * ```
+ */
+export function generateRootSystemFaces(
+  edges: [number, number][],
+  vertices: number[][]
+): number[][] {
+  // Build adjacency map for efficient neighbor lookup
+  const adj = new Map<number, Set<number>>()
+  for (const [a, b] of edges) {
+    if (!adj.has(a)) adj.set(a, new Set())
+    if (!adj.has(b)) adj.set(b, new Set())
+    adj.get(a)!.add(b)
+    adj.get(b)!.add(a)
+  }
+
+  // Find all triangles (3-cycles) in the edge graph
+  const faces: number[][] = []
+  const seen = new Set<string>()
+
+  for (const [v1, neighbors] of adj) {
+    for (const v2 of neighbors) {
+      // Only process v2 > v1 to avoid duplicates
+      if (v2 <= v1) continue
+
+      const v2Neighbors = adj.get(v2)
+      if (!v2Neighbors) continue
+
+      for (const v3 of v2Neighbors) {
+        // Only process v3 > v2 to ensure v1 < v2 < v3 ordering
+        if (v3 <= v2) continue
+
+        // Check if v3 is also a neighbor of v1 (completing the triangle)
+        if (neighbors.has(v3)) {
+          const key = `${v1},${v2},${v3}`
+          if (!seen.has(key)) {
+            seen.add(key)
+            // Apply winding order correction for proper face orientation
+            const correctedFace = correctTriangleWinding(v1, v2, v3, vertices)
+            faces.push(correctedFace)
+          }
+        }
+      }
+    }
+  }
+
+  return faces
+}
+
+/**
+ * Corrects winding order of a triangle so its normal points outward from the origin.
+ *
+ * Root system polytopes are centered at the origin, so we use the triangle's
+ * centroid direction to determine outward-facing orientation.
+ *
+ * @param v0 - First vertex index
+ * @param v1 - Second vertex index
+ * @param v2 - Third vertex index
+ * @param vertices - Array of vertex positions
+ * @returns Triangle indices [v0, v1, v2] or [v0, v2, v1] with correct winding
+ */
+function correctTriangleWinding(
+  v0: number,
+  v1: number,
+  v2: number,
+  vertices: number[][]
+): number[] {
+  const p0 = vertices[v0]!
+  const p1 = vertices[v1]!
+  const p2 = vertices[v2]!
+
+  // Get first 3 coordinates for cross product (project to 3D)
+  const get3D = (v: number[]): [number, number, number] => [
+    v[0] ?? 0,
+    v[1] ?? 0,
+    v[2] ?? 0,
+  ]
+
+  const a = get3D(p0)
+  const b = get3D(p1)
+  const c = get3D(p2)
+
+  // Compute edge vectors
+  const edge1: [number, number, number] = [b[0] - a[0], b[1] - a[1], b[2] - a[2]]
+  const edge2: [number, number, number] = [c[0] - a[0], c[1] - a[1], c[2] - a[2]]
+
+  // Cross product for normal
+  const normal: [number, number, number] = [
+    edge1[1] * edge2[2] - edge1[2] * edge2[1],
+    edge1[2] * edge2[0] - edge1[0] * edge2[2],
+    edge1[0] * edge2[1] - edge1[1] * edge2[0],
+  ]
+
+  // Triangle centroid (in 3D)
+  const centroid: [number, number, number] = [
+    (a[0] + b[0] + c[0]) / 3,
+    (a[1] + b[1] + c[1]) / 3,
+    (a[2] + b[2] + c[2]) / 3,
+  ]
+
+  // Dot product of normal with centroid direction (centroid points outward from origin)
+  const dot = normal[0] * centroid[0] + normal[1] * centroid[1] + normal[2] * centroid[2]
+
+  // If dot > 0, normal points outward (correct winding); otherwise flip
+  return dot >= 0 ? [v0, v1, v2] : [v0, v2, v1]
+}
+
+/**
  * Generates a root system geometry
  *
  * @param dimension - Dimensionality of the ambient space (3-11)
@@ -172,6 +299,10 @@ export function generateRootSystem(dimension: number, config: RootSystemConfig):
   // Always generate edges (root systems behave like polytopes)
   const edges: [number, number][] = buildShortEdges(vertices)
 
+  // Generate faces analytically using 3-cycle detection in edge graph
+  // This ensures all vertices are covered by faces, not just convex hull boundary
+  const faces: number[][] = generateRootSystemFaces(edges, vertices)
+
   return {
     dimension,
     type: 'root-system',
@@ -186,6 +317,8 @@ export function generateRootSystem(dimension: number, config: RootSystemConfig):
         rootCount: vertices.length,
         expectedCount,
         edgeCount: edges.length,
+        faceCount: faces.length,
+        analyticalFaces: faces,
       },
     },
   }

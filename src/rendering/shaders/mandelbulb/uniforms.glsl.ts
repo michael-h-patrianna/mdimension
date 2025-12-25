@@ -25,7 +25,6 @@ uniform float uSssIntensity;      // SSS intensity
 uniform vec3 uSssColor;           // SSS tint color
 uniform float uSssThickness;      // SSS thickness factor
 uniform float uSssJitter;         // SSS jitter amount (0.0-1.0)
-// Note: Fog uniforms moved to shared/features/fog.glsl.ts
 
 // Animation bias
 uniform float uBias[11];

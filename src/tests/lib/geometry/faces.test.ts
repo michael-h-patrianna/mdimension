@@ -425,10 +425,11 @@ describe('detectFaces', () => {
     });
   });
 
-  describe('root system faces (convex hull)', () => {
-    it('should detect faces for A_3 root system (4D)', () => {
+  describe('root system faces (metadata from analyticalFaces)', () => {
+    it('should detect faces for A_3 root system (4D) via metadata', () => {
       const rootSystem = generateRootSystem(4, { rootType: 'A', scale: 1.0 });
-      const faces = detectFaces(rootSystem.vertices, rootSystem.edges, 'root-system');
+      // Root systems now use 'metadata' face detection - must pass metadata
+      const faces = detectFaces(rootSystem.vertices, rootSystem.edges, 'root-system', rootSystem.metadata);
 
       // A_3 root polytope should have many triangular faces
       expect(faces.length).toBeGreaterThan(0);
@@ -447,11 +448,11 @@ describe('detectFaces', () => {
       });
     });
 
-    it('should detect faces for D_4 root system (24-cell)', () => {
+    it('should detect faces for D_4 root system (24-cell) via metadata', () => {
       const rootSystem = generateRootSystem(4, { rootType: 'D', scale: 1.0 });
-      const faces = detectFaces(rootSystem.vertices, rootSystem.edges, 'root-system');
+      const faces = detectFaces(rootSystem.vertices, rootSystem.edges, 'root-system', rootSystem.metadata);
 
-      // D_4 (24-cell) has 96 triangular faces
+      // D_4 (24-cell) has many triangular faces
       expect(faces.length).toBeGreaterThan(0);
 
       // All faces should be triangular
@@ -460,9 +461,9 @@ describe('detectFaces', () => {
       });
     });
 
-    it('should detect faces for A_4 root system (5D)', () => {
+    it('should detect faces for A_4 root system (5D) via metadata', () => {
       const rootSystem = generateRootSystem(5, { rootType: 'A', scale: 1.0 });
-      const faces = detectFaces(rootSystem.vertices, rootSystem.edges, 'root-system');
+      const faces = detectFaces(rootSystem.vertices, rootSystem.edges, 'root-system', rootSystem.metadata);
 
       expect(faces.length).toBeGreaterThan(0);
 
@@ -471,9 +472,9 @@ describe('detectFaces', () => {
       });
     });
 
-    it('should detect faces for D_5 root system (5D)', () => {
+    it('should detect faces for D_5 root system (5D) via metadata', () => {
       const rootSystem = generateRootSystem(5, { rootType: 'D', scale: 1.0 });
-      const faces = detectFaces(rootSystem.vertices, rootSystem.edges, 'root-system');
+      const faces = detectFaces(rootSystem.vertices, rootSystem.edges, 'root-system', rootSystem.metadata);
 
       expect(faces.length).toBeGreaterThan(0);
 
@@ -482,9 +483,9 @@ describe('detectFaces', () => {
       });
     });
 
-    it('should detect faces for E_8 root system (8D)', () => {
+    it('should detect faces for E_8 root system (8D) via metadata', () => {
       const rootSystem = generateRootSystem(8, { rootType: 'E8', scale: 1.0 });
-      const faces = detectFaces(rootSystem.vertices, rootSystem.edges, 'root-system');
+      const faces = detectFaces(rootSystem.vertices, rootSystem.edges, 'root-system', rootSystem.metadata);
 
       // E_8 polytope should have many triangular faces
       expect(faces.length).toBeGreaterThan(0);
@@ -505,7 +506,7 @@ describe('detectFaces', () => {
 
     it('should have unique faces (no duplicates)', () => {
       const rootSystem = generateRootSystem(4, { rootType: 'A', scale: 1.0 });
-      const faces = detectFaces(rootSystem.vertices, rootSystem.edges, 'root-system');
+      const faces = detectFaces(rootSystem.vertices, rootSystem.edges, 'root-system', rootSystem.metadata);
 
       const faceSet = new Set<string>();
       faces.forEach(face => {
@@ -513,6 +514,22 @@ describe('detectFaces', () => {
         expect(faceSet.has(key)).toBe(false);
         faceSet.add(key);
       });
+    });
+
+    it('should cover all vertices with faces for high-D A root system', () => {
+      // A_7 (8D) - the case from the bug report where convex-hull was failing
+      const rootSystem = generateRootSystem(8, { rootType: 'A', scale: 1.0 });
+      const faces = detectFaces(rootSystem.vertices, rootSystem.edges, 'root-system', rootSystem.metadata);
+
+      // Collect all vertices covered by faces
+      const coveredVertices = new Set<number>();
+      faces.forEach(face => {
+        face.vertices.forEach(idx => coveredVertices.add(idx));
+      });
+
+      // All 56 vertices should be covered (this was failing with convex-hull)
+      expect(rootSystem.vertices.length).toBe(56);
+      expect(coveredVertices.size).toBe(56);
     });
   });
 

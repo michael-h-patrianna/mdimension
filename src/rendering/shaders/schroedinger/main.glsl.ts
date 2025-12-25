@@ -190,14 +190,6 @@ void main() {
         modelNormal = normalize(modelNormal);
     }
 
-    // Atmospheric Depth Integration (Fog)
-#ifdef USE_FOG
-    // Apply fog using shared module
-    // weightedCenter is in Local Space, ro is Local Camera Pos
-    float viewDist = distance(volumeResult.weightedCenter, ro);
-    gColor.rgb = applyFog(gColor.rgb, viewDist);
-#endif
-
     // Transform normal from model space to world space, then to view space
     vec3 worldNormal = normalize((uModelMatrix * vec4(modelNormal, 0.0)).xyz);
     vec4 viewNormalVec = uViewMatrix * vec4(worldNormal, 0.0);

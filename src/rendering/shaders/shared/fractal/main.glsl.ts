@@ -136,10 +136,6 @@ void main() {
     vec3 F0_ibl = mix(vec3(0.04), surfaceColor, uMetallic);
     col += computeIBL(n, viewDir, F0_ibl, uRoughness, uMetallic, surfaceColor);
 
-    // Atmospheric Depth Integration (Fog)
-#ifdef USE_FOG
-    col = applyFog(col, d);
-#endif
 
     vec4 worldHitPos = uModelMatrix * vec4(p, 1.0);
     vec4 clipPos = uProjectionMatrix * uViewMatrix * worldHitPos;

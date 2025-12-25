@@ -42,9 +42,6 @@ export { ScreenSpaceLensingPass, type ScreenSpaceLensingPassConfig } from './Scr
 export { SMAAPass, type SMAAPassConfig } from './SMAAPass'
 export { SSRPass, type SSRPassConfig } from './SSRPass'
 
-// Atmospheric passes
-export { VolumetricFogPass, type VolumetricFogPassConfig } from './VolumetricFogPass'
-
 // Ambient occlusion
 export { GTAOPass, type GTAOPassConfig } from './GTAOPass'
 

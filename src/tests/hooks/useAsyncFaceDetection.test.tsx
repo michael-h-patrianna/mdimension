@@ -92,9 +92,9 @@ describe('useAsyncFaceDetection', () => {
     })
   })
 
-  describe('root-system face detection (convex-hull method)', () => {
-    it('should detect faces for root-system using sync fallback', async () => {
-      // Use actual root-system geometry (which includes edges)
+  describe('root-system face detection (metadata method)', () => {
+    it('should detect faces for root-system via metadata (pre-computed analyticalFaces)', async () => {
+      // Use actual root-system geometry (which includes edges and analyticalFaces in metadata)
       const rootGeometry = generateGeometry('root-system', 4, {
         rootSystem: {
           rootType: 'A',
@@ -114,7 +114,7 @@ describe('useAsyncFaceDetection', () => {
         expect(result.current.isLoading).toBe(false)
       })
 
-      // Should have detected faces via sync fallback
+      // Should have detected faces from metadata (analyticalFaces)
       expect(result.current.faces.length).toBeGreaterThan(0)
       expect(result.current.error).toBeNull()
 
@@ -124,7 +124,7 @@ describe('useAsyncFaceDetection', () => {
       })
     })
 
-    it('should detect faces for D_4 root system (24-cell)', async () => {
+    it('should detect faces for D_4 root system (24-cell) via metadata', async () => {
       // D_4 roots in 4D (24 roots = 24-cell)
       const rootGeometry = generateGeometry('root-system', 4, {
         rootSystem: {
@@ -147,6 +147,37 @@ describe('useAsyncFaceDetection', () => {
       // D_4 / 24-cell has many triangular faces
       expect(result.current.faces.length).toBeGreaterThan(0)
       expect(result.current.error).toBeNull()
+    })
+
+    it('should cover all vertices with faces for high-D A root system', async () => {
+      // A_7 (8D) - the case from the bug where convex-hull failed to cover all vertices
+      const rootGeometry = generateGeometry('root-system', 8, {
+        rootSystem: {
+          rootType: 'A',
+          rank: 8,
+          scale: 1.0,
+          showPositive: true,
+          showNegative: true,
+        },
+      })
+
+      const { result } = renderHook(() =>
+        useAsyncFaceDetection(rootGeometry, 'root-system')
+      )
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+
+      // Collect all vertices covered by faces
+      const coveredVertices = new Set<number>()
+      result.current.faces.forEach((face) => {
+        face.vertices.forEach((idx) => coveredVertices.add(idx))
+      })
+
+      // All 56 vertices of A_7 should be covered
+      expect(rootGeometry.vertices.length).toBe(56)
+      expect(coveredVertices.size).toBe(56)
     })
 
     it('should update faces when geometry changes', async () => {

@@ -53,14 +53,6 @@ export {
 } from './uiSlice'
 
 export {
-  DEFAULT_FOG_STATE,
-  createFogSlice,
-  type FogSlice,
-  type FogSliceActions,
-  type FogSliceState,
-} from './fogSlice'
-
-export {
   SKYBOX_INITIAL_STATE,
   createSkyboxSlice,
   type SkyboxSlice,

@@ -209,7 +209,7 @@ export const OBJECT_TYPE_REGISTRY: ObjectTypeRegistry = new Map<ObjectType, Obje
         supportsEdges: true,
         supportsPoints: true,
         renderMethod: 'polytope',
-        faceDetection: 'convex-hull',
+        faceDetection: 'metadata', // Pre-computed faces from 3-cycle detection (was: convex-hull)
       },
 
       animation: {

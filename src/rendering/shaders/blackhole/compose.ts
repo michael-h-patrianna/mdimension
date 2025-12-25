@@ -63,7 +63,6 @@ export function composeBlackHoleShader(config: BlackHoleShaderConfig) {
     jets: enableJets = false,
     doppler: enableDoppler = true,
     envMap: enableEnvMap = false,
-    fog: enableFog,
     motionBlur: enableMotionBlur = false,
     sliceAnimation: enableSliceAnimation = false,
     volumetricDisk: enableVolumetricDisk = true, // Default to true for now
@@ -102,12 +101,6 @@ export function composeBlackHoleShader(config: BlackHoleShaderConfig) {
   if (enableEnvMap && !overrides.includes('EnvMap')) {
     defines.push('#define USE_ENVMAP')
     features.push('Environment Map')
-  }
-
-  // Fog
-  if (enableFog && !overrides.includes('Fog')) {
-    defines.push('#define USE_FOG')
-    features.push('Fog')
   }
 
   // Motion Blur

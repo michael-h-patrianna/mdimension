@@ -5,7 +5,6 @@ import { selectorBlock } from '../shared/color/selector.glsl'
 import { constantsBlock } from '../shared/core/constants.glsl'
 import { precisionBlock } from '../shared/core/precision.glsl'
 import { uniformsBlock } from '../shared/core/uniforms.glsl'
-import { fogFunctionsBlock, fogUniformsBlock } from '../shared/features/fog.glsl'
 import {
   shadowMapsFunctionsBlock,
   shadowMapsUniformsBlock,
@@ -187,8 +186,6 @@ export function composeFaceFragmentShader(config: PolytopeShaderConfig = {}): {
     { name: 'IBL Functions', content: iblBlock },
     { name: 'Shadow Maps Uniforms', content: shadowMapsUniformsBlock, condition: enableShadows },
     { name: 'Shadow Maps Functions', content: shadowMapsFunctionsBlock, condition: enableShadows },
-    { name: 'Fog Uniforms', content: fogUniformsBlock, condition: flags.useFog },
-    { name: 'Fog Functions', content: fogFunctionsBlock, condition: flags.useFog },
     { name: 'Main', content: polytopeMainBlock },
   ]
 
@@ -315,12 +312,6 @@ void main() {
     // IBL still applies without direct lights (uses F0 computed above)
     col += computeIBL(normal, viewDir, F0, roughness, uMetallic, baseColor);
   }
-
-  // Atmospheric Depth Integration (Fog)
-#ifdef USE_FOG
-  float viewDist = length(vWorldPosition - cameraPosition);
-  col = applyFog(col, viewDist);
-#endif
 
   // Output to MRT
   vec3 viewNormalRaw = (uViewMatrix * vec4(normal, 0.0)).xyz;

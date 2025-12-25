@@ -20,7 +20,7 @@
  * - Receive frozen FrameContext for consistent state reads
  * - MUST use frozen context, NOT refs
  * - Signature: `(frame: FrozenFrameContext | null) => boolean`
- * - Example: `enabled: (frame) => frame?.stores.environment.fogEnabled ?? false`
+ * - Example: `enabled: (frame) => frame?.stores.postProcessing.bloomEnabled ?? false`
  *
  * ### Config-Time Callbacks (everything else)
  * - Called during graph setup/configuration, not per-frame
@@ -75,13 +75,11 @@ import {
   TemporalCloudPass,
   TemporalDepthCapturePass,
   ToScreenPass,
-  VolumetricFogPass,
 } from '@/rendering/graph/passes';
 import { RenderGraph } from '@/rendering/graph/RenderGraph';
 import { cloudCompositeFragmentShader } from '@/rendering/shaders/postprocessing/cloudComposite.glsl';
 import { normalCompositeFragmentShader } from '@/rendering/shaders/postprocessing/normalComposite.glsl';
 import { TONE_MAPPING_TO_THREE } from '@/rendering/shaders/types';
-import { generateNoiseTexture2D, generateNoiseTexture3D } from '@/rendering/utils/NoiseGenerator';
 import { useAnimationStore } from '@/stores/animationStore';
 import { SSR_QUALITY_STEPS } from '@/stores/defaults/visualDefaults';
 import { useEnvironmentStore } from '@/stores/environmentStore';
@@ -119,7 +117,6 @@ const RESOURCES = {
   TEMPORAL_DEPTH_OUTPUT: 'temporalDepthOutput',
 
   // Effect chain resources
-  FOG_OUTPUT: 'fogOutput',
   GTAO_OUTPUT: 'gtaoOutput',
   BLOOM_OUTPUT: 'bloomOutput',
   SSR_OUTPUT: 'ssrOutput',
@@ -130,16 +127,6 @@ const RESOURCES = {
   GRAIN_OUTPUT: 'grainOutput',
   AA_OUTPUT: 'aaOutput',
 } as const;
-
-// =============================================================================
-// Helper: Check WebGL2 support for 3D textures
-// =============================================================================
-
-function supports3DTextures(gl: THREE.WebGLRenderer): boolean {
-  // WebGL2 supports sampler3D
-  const ctx = gl.getContext();
-  return ctx instanceof WebGL2RenderingContext;
-}
 
 // =============================================================================
 // Helper: Object Type Temporal Support
@@ -236,9 +223,8 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
   }));
   const ppState = usePostProcessingStore(postProcessingSelector);
 
-  // Store subscriptions - Environment (fog, walls, skybox)
+  // Store subscriptions - Environment (walls, skybox)
   const envSelector = useShallow((s: ReturnType<typeof useEnvironmentStore.getState>) => ({
-    fogEnabled: s.fogEnabled,
     activeWalls: s.activeWalls,
     skyboxMode: s.skyboxMode,
     skyboxEnabled: s.skyboxEnabled,
@@ -331,24 +317,6 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
   }, [gl, lightingState.toneMappingEnabled, lightingState.toneMappingAlgorithm, lightingState.exposure]);
 
   // ==========================================================================
-  // Noise texture for volumetric fog (created synchronously so graph can use it)
-  // ==========================================================================
-
-  // Create noise texture synchronously in useMemo so it's available for graph creation
-  const noiseTextureData = useMemo(() => {
-    const use3D = supports3DTextures(gl);
-    const texture = use3D ? generateNoiseTexture3D(128) : generateNoiseTexture2D(256);
-    return { texture, use3D };
-  }, [gl, restoreCount]);
-
-  // Cleanup noise texture on unmount or recreation
-  useEffect(() => {
-    return () => {
-      noiseTextureData.texture.dispose();
-    };
-  }, [noiseTextureData]);
-
-  // ==========================================================================
   // Create Render Graph (once, with all passes)
   // ==========================================================================
 
@@ -363,7 +331,6 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
     normalComposite?: FullscreenPass;
     cloudComposite?: FullscreenPass;
     bufferPreview?: BufferPreviewPass;
-    fog?: VolumetricFogPass;
     gtao?: GTAOPass;
     bloom?: BloomPass;
     ssr?: SSRPass;
@@ -409,7 +376,6 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       getEnvironmentState: () => {
         const s = useEnvironmentStore.getState();
         return {
-          fog: s,
           skybox: s,
           ground: s,
         };
@@ -627,15 +593,6 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
     });
 
     // Effect chain buffers
-    g.addResource({
-      id: RESOURCES.FOG_OUTPUT,
-      type: 'renderTarget',
-      size: { mode: 'screen' },
-      format: THREE.RGBAFormat,
-      dataType: THREE.HalfFloatType,
-      colorSpace: THREE.LinearSRGBColorSpace,
-    });
-
     g.addResource({
       id: RESOURCES.GTAO_OUTPUT,
       type: 'renderTarget',
@@ -981,24 +938,10 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
     passRefs.current.cloudComposite = cloudComposite;
     g.addPass(cloudComposite);
 
-    // Volumetric Fog pass (early in chain, after scene render)
-    const fogPass = new VolumetricFogPass({
-      id: 'volumetricFog',
-      colorInput: RESOURCES.SCENE_COMPOSITE,
-      depthInput: RESOURCES.SCENE_COLOR,
-      depthInputAttachment: 'depth',
-      outputResource: RESOURCES.FOG_OUTPUT,
-      noiseTexture: noiseTextureData.texture,
-      use3DNoise: noiseTextureData.use3D,
-      enabled: (frame) => frame?.stores.environment.fogEnabled ?? false,
-    });
-    passRefs.current.fog = fogPass;
-    g.addPass(fogPass);
-
     // GTAO pass (only for polytopes)
     const gtaoPass = new GTAOPass({
       id: 'gtao',
-      colorInput: RESOURCES.FOG_OUTPUT,
+      colorInput: RESOURCES.SCENE_COMPOSITE,
       normalInput: RESOURCES.NORMAL_BUFFER,
       depthInput: RESOURCES.SCENE_COLOR,
       depthInputAttachment: 'depth',
@@ -1235,19 +1178,14 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
 
     return g;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [restoreCount, isPolytope, isBlackHole, noiseTextureData, ppState.antiAliasingMethod, temporalDepth]); // Recreate on context restore, object type, noise texture, AA method, or temporal depth change
+  }, [restoreCount, isPolytope, isBlackHole, ppState.antiAliasingMethod, temporalDepth]); // Recreate on context restore, object type, AA method, or temporal depth change
 
   // ==========================================================================
   // Update pass parameters when store changes
   // ==========================================================================
 
   useEffect(() => {
-    const { fog, gtao, bloom, ssr, bokeh, refraction, lensing, cinematic, filmGrain } = passRefs.current;
-
-    // Update noise texture if it changed
-    if (fog) {
-      fog.setNoiseTexture(noiseTextureData.texture);
-    }
+    const { gtao, bloom, ssr, bokeh, refraction, lensing, cinematic, filmGrain } = passRefs.current;
 
     if (gtao) {
       gtao.setIntensity(ppState.ssaoIntensity);
@@ -1298,7 +1236,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
     if (filmGrain) {
       filmGrain.setIntensity(ppState.cinematicGrain);
     }
-  }, [ppState, blackHoleState, noiseTextureData]);
+  }, [ppState, blackHoleState]);
 
   // ==========================================================================
   // Update size - use useLayoutEffect to run BEFORE useFrame
@@ -1332,20 +1270,12 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
   // Cleanup
   // ==========================================================================
 
-  // Cleanup: dispose graph when it changes or component unmounts
-  // NOTE: This must depend on `graph` (not empty []) to work correctly with StrictMode.
-  // StrictMode double-renders components, and an empty dependency array causes cleanup
-  // to run between renders, disposing the graph that was just created by useMemo.
   useEffect(() => {
-    // Return cleanup that disposes THIS specific graph instance
     return () => {
-      graph?.dispose();
-      // Only null the ref if it still points to this graph (avoid race conditions)
-      if (graphRef.current === graph) {
-        graphRef.current = null;
-      }
+      graphRef.current?.dispose();
+      graphRef.current = null;
     };
-  }, [graph]);
+  }, []);
 
   // ==========================================================================
   // Main Render Loop - Just call graph.execute()!

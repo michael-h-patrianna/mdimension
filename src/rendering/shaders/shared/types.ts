@@ -14,8 +14,6 @@ export interface ShaderConfig {
   sss?: boolean;
   /** Enable Fresnel rim lighting module compilation (conditionally compiled) */
   fresnel?: boolean;
-  /** Enable Fog integration module compilation (conditionally compiled) */
-  fog?: boolean;
   /** Enable Curl noise flow distortion (conditionally compiled) */
   curl?: boolean;
   /** Enable Chromatic dispersion effect (conditionally compiled) */

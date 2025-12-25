@@ -9,7 +9,6 @@
 import { constantsBlock } from '../shared/core/constants.glsl'
 import { precisionBlock } from '../shared/core/precision.glsl'
 import { uniformsBlock } from '../shared/core/uniforms.glsl'
-import { fogFunctionsBlock, fogUniformsBlock } from '../shared/features/fog.glsl'
 import {
   shadowMapsFunctionsBlock,
   shadowMapsUniformsBlock,
@@ -28,8 +27,6 @@ import { vertexBlock } from './vertex.glsl'
 export interface GroundPlaneShaderConfig {
   /** Enable shadow map sampling (default: true) */
   shadows?: boolean
-  /** Enable fog (default: false) */
-  fog?: boolean
 }
 
 /**
@@ -43,7 +40,7 @@ export function composeGroundPlaneFragmentShader(config: GroundPlaneShaderConfig
   modules: string[]
   features: string[]
 } {
-  const { shadows: enableShadows = true, fog: enableFog = false } = config
+  const { shadows: enableShadows = true } = config
 
   const defines: string[] = []
   const features: string[] = ['PBR Lighting', 'Multi-Light', 'IBL']
@@ -51,10 +48,6 @@ export function composeGroundPlaneFragmentShader(config: GroundPlaneShaderConfig
   if (enableShadows) {
     defines.push('#define USE_SHADOWS')
     features.push('Shadow Maps')
-  }
-  if (enableFog) {
-    defines.push('#define USE_FOG')
-    features.push('Fog')
   }
 
   const blocks = [
@@ -85,8 +78,6 @@ uniform float uRoughness;
     { name: 'IBL Functions', content: iblBlock },
     { name: 'Shadow Maps Uniforms', content: shadowMapsUniformsBlock, condition: enableShadows },
     { name: 'Shadow Maps Functions', content: shadowMapsFunctionsBlock, condition: enableShadows },
-    { name: 'Fog Uniforms', content: fogUniformsBlock, condition: enableFog },
-    { name: 'Fog Functions', content: fogFunctionsBlock, condition: enableFog },
     { name: 'Grid Uniforms', content: gridUniformsBlock },
     { name: 'Grid Functions', content: gridFunctionsBlock },
     { name: 'Main', content: mainBlock },

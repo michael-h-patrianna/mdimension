@@ -25,16 +25,26 @@ const PROJECTION_MARGIN = 2.0
 /**
  * Calculate a safe projection distance that ensures all vertices are visible.
  *
- * The projection distance is calculated as:
- * 1. Find the maximum effective depth (sum of higher dimensions)
- * 2. Normalize by sqrt(dimension - 3) for consistent scale
+ * ROTATION-SAFE CALCULATION:
+ * When N-D objects rotate with all planes active, coordinates from any dimension
+ * can rotate into the "depth" dimensions (4+). The maximum possible effective depth
+ * after any rotation equals the vertex's N-dimensional norm.
+ *
+ * Mathematical basis:
+ * - effectiveDepth_raw = sum of coordinates in dimensions 4+ after rotation
+ * - By Cauchy-Schwarz: |effectiveDepth_raw| ≤ ||v|| × sqrt(numHigherDims)
+ * - After normalization by sqrt(numHigherDims): |effectiveDepth_normalized| ≤ ||v||
+ *
+ * The calculation:
+ * 1. Find the maximum N-dimensional norm of any vertex
+ * 2. Use this as the worst-case effective depth after rotation
  * 3. Add safety margin
  * 4. Optionally scale by max scale factor
  *
  * @param vertices - Array of N-dimensional vertices
  * @param dimension - Current dimension of the object
  * @param scales - Per-axis scale factors (optional)
- * @returns Safe projection distance
+ * @returns Safe projection distance that works for any rotation state
  */
 export function calculateSafeProjectionDistance(
   vertices: VectorND[],
@@ -51,19 +61,22 @@ export function calculateSafeProjectionDistance(
     return DEFAULT_PROJECTION_DISTANCE
   }
 
-  // Normalization factor for consistent scale across dimensions
-  const normalizationFactor = dimension > 3 ? Math.sqrt(dimension - 3) : 1
-
-  // Find maximum effective depth
-  let maxEffectiveDepth = 0
+  // Find maximum vertex norm - this bounds the effective depth after any rotation
+  // After rotation, the effective depth (normalized by sqrt(numHigherDims)) can be
+  // at most the vertex's L2 norm when the vertex aligns with depth dimensions.
+  let maxNormSquared = 0
   for (const vertex of vertices) {
-    let sum = 0
-    for (let d = 3; d < vertex.length; d++) {
-      sum += vertex[d] ?? 0
+    let normSquared = 0
+    for (let d = 0; d < vertex.length; d++) {
+      const val = vertex[d] ?? 0
+      normSquared += val * val
     }
-    const effectiveDepth = sum / normalizationFactor
-    maxEffectiveDepth = Math.max(maxEffectiveDepth, effectiveDepth)
+    maxNormSquared = Math.max(maxNormSquared, normSquared)
   }
+  const maxNorm = Math.sqrt(maxNormSquared)
+
+  // The max effective depth after any rotation is bounded by the vertex norm
+  const maxEffectiveDepth = maxNorm
 
   // Calculate raw distance with margin
   const rawDistance = Math.max(DEFAULT_PROJECTION_DISTANCE, maxEffectiveDepth + PROJECTION_MARGIN)
