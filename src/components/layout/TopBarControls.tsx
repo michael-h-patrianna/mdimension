@@ -145,38 +145,44 @@ export const TopBarControls: React.FC = () => {
     setFacesVisible(visible);
   };
 
+  // Consolidated visibility effect - handles all visibility rules in one place
+  // This prevents multiple render cycles from separate effects triggering each other
   useEffect(() => {
+    let nextFaces = facesVisible;
+    let nextEdges = edgesVisible;
+    
+    // Rule 1: If faces not supported, disable (track for restore)
     if (!facesSupported && facesVisible) {
       previousFacesState.current = true;
-      setFacesVisible(false);
+      nextFaces = false;
     } else if (facesSupported && previousFacesState.current && !facesVisible) {
-      setFacesVisible(true);
+      nextFaces = true;
       previousFacesState.current = false;
     }
-  }, [facesSupported, facesVisible, setFacesVisible]);
-
-  useEffect(() => {
+    
+    // Rule 2: If edges not supported, disable (track for restore)
     if (!edgesSupported && edgesVisible) {
       previousEdgesState.current = true;
-      setEdgesVisible(false);
+      nextEdges = false;
     } else if (edgesSupported && previousEdgesState.current && !edgesVisible) {
-      setEdgesVisible(true);
+      nextEdges = true;
       previousEdgesState.current = false;
     }
-  }, [edgesSupported, edgesVisible, setEdgesVisible]);
-
-  useEffect(() => {
-    if (isRaymarched && edgesVisible && !facesVisible) {
-      setFacesVisible(true);
+    
+    // Rule 3: Raymarched objects need faces when edges are on
+    if (isRaymarched && nextEdges && !nextFaces) {
+      nextFaces = true;
     }
-  }, [isRaymarched, facesVisible, edgesVisible, setFacesVisible]);
-
-  useEffect(() => {
-    const noModeActive = !edgesVisible && !facesVisible;
-    if (noModeActive) {
-      setEdgesVisible(true);
+    
+    // Rule 4: At least one mode must be active
+    if (!nextEdges && !nextFaces) {
+      nextEdges = true;
     }
-  }, [edgesVisible, facesVisible, setEdgesVisible]);
+    
+    // Apply changes only if needed (prevents unnecessary re-renders)
+    if (nextFaces !== facesVisible) setFacesVisible(nextFaces);
+    if (nextEdges !== edgesVisible) setEdgesVisible(nextEdges);
+  }, [facesSupported, edgesSupported, isRaymarched, facesVisible, edgesVisible, setFacesVisible, setEdgesVisible]);
 
   const toggleCinematic = () => {
     soundManager.playClick();

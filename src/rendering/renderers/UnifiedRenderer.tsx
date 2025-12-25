@@ -66,13 +66,7 @@ export const UnifiedRenderer = React.memo(function UnifiedRenderer({
 
   // Determine render mode
   const renderMode = useMemo(
-    () => {
-      const mode = determineRenderMode(geometry, objectType, dimension, facesVisible);
-      // #region agent log
-      console.log('[DEBUG:E] Render mode determined', { mode, objectType, dimension, facesVisible, vertexCount: geometry.vertices.length, edgeCount: geometry.edges.length });
-      // #endregion
-      return mode;
-    },
+    () => determineRenderMode(geometry, objectType, dimension, facesVisible),
     [geometry, objectType, dimension, facesVisible]
   );
 

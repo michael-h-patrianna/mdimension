@@ -678,17 +678,9 @@ export class RenderGraph {
     camera: THREE.Camera,
     delta: number
   ): void {
-    // #region agent log
-    const meshCount = scene.children.filter((c) => (c as THREE.Mesh).isMesh || (c as THREE.LineSegments).isLineSegments).length;
-    const groupCount = scene.children.filter((c) => (c as THREE.Group).isGroup).length;
-    console.log('[DEBUG:H] RenderGraph.execute', JSON.stringify({ width: this.width, height: this.height, frameNum: this.frameNumber, sceneChildren: scene.children.length, meshCount, groupCount }));
-    // #endregion
     // Skip execution if size is invalid (can happen on first frames before canvas is sized)
     // This prevents GL_INVALID_FRAMEBUFFER_OPERATION errors from zero-sized render targets
     if (this.width < 1 || this.height < 1) {
-      // #region agent log
-      console.log('[DEBUG:H] RenderGraph.execute - SKIPPED (invalid size)');
-      // #endregion
       return
     }
 

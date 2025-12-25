@@ -105,9 +105,6 @@ function Visualizer() {
   // Currently all objects use the same radius for consistent ground placement
   const minBoundingRadius = 1.5;
 
-  // #region agent log
-  console.log('[DEBUG:A,B] Visualizer render', { hasGeometry: !!geometry, geometryLoading, objectType, faceLoading, faceCount: faces?.length ?? 0 });
-  // #endregion
   // Show loading indicator while geometry is being generated
   // Render nothing until geometry is available
   if (!geometry) {
