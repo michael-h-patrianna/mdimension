@@ -485,48 +485,6 @@ export const MIN_MAX_FPS = 15
 export const MAX_MAX_FPS = 120
 
 // ============================================================================
-// Visual Presets
-// ============================================================================
-
-export interface VisualPresetConfig {
-  edgeColor: string
-  edgeThickness: number
-  backgroundColor: string
-  faceColor?: string
-}
-
-export const VISUAL_PRESETS = {
-  neon: {
-    edgeColor: '#00FF88',
-    edgeThickness: 3,
-    backgroundColor: '#0A0A12',
-  },
-  blueprint: {
-    edgeColor: '#4488FF',
-    edgeThickness: 1,
-    backgroundColor: '#0A1628',
-  },
-  hologram: {
-    edgeColor: '#00FFFF',
-    edgeThickness: 2,
-    backgroundColor: '#000011',
-  },
-  scientific: {
-    edgeColor: '#FFFFFF',
-    edgeThickness: 1,
-    backgroundColor: '#1A1A2E',
-  },
-  synthwave: {
-    edgeColor: '#FF00FF',
-    edgeThickness: 2,
-    backgroundColor: '#1A0A2E',
-    faceColor: '#8800FF',
-  },
-} as const satisfies Record<string, VisualPresetConfig>
-
-export type VisualPreset = keyof typeof VISUAL_PRESETS
-
-// ============================================================================
 // Re-exports from lib for convenience
 // ============================================================================
 

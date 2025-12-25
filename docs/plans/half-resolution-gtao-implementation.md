@@ -64,6 +64,29 @@ GTAO output is **ambient occlusion only** (grayscale intensity), not a reflectio
 - Apply depth-aware upsampling
 - Composite AO with the full-res scene color
 
+### Critical: Three.js GTAOPass Output Modes
+
+The Three.js `GTAOPass` has multiple output modes:
+- `OUTPUT.Default` - Composited: scene color * AO (current mode)
+- `OUTPUT.AO` - AO texture only (grayscale)
+- `OUTPUT.Denoise` - Denoised AO only
+
+**For half-resolution rendering, we MUST use `OUTPUT.Denoise` or `OUTPUT.AO`** to get an AO-only texture that we can then upsample and composite ourselves.
+
+```typescript
+// Full-res mode (current)
+this.gtaoPass.output = ThreeGTAOPass.OUTPUT.Default;
+
+// Half-res mode (new)
+this.gtaoPass.output = ThreeGTAOPass.OUTPUT.Denoise; // or OUTPUT.AO
+```
+
+**AO Texture Format**: The AO output is typically:
+- R channel: AO value (0.0 = full occlusion, 1.0 = no occlusion)
+- Or may use different channels depending on Three.js version
+
+**Verification Required**: During implementation, verify the AO output format by rendering a debug visualization.
+
 ---
 
 ## File Changes
@@ -339,6 +362,9 @@ execute(ctx: RenderContext): void {
 ```typescript
 private executeHalfRes(ctx: RenderContext): void {
   const { renderer, size, scene, camera } = ctx;
+  const colorTex = ctx.getReadTexture(this.colorInputId);
+  const depthTex = ctx.getReadTexture(this.depthInputId, this.depthInputAttachment);
+  const outputTarget = ctx.getWriteTarget(this.outputId);
   
   // 1. Ensure half-res targets exist
   this.ensureHalfResTarget(size.width, size.height);
@@ -350,12 +376,18 @@ private executeHalfRes(ctx: RenderContext): void {
   // 3. Ensure GTAOPass is initialized at half resolution
   this.ensureInitialized(halfWidth, halfHeight, scene, camera);
   
-  // 4. Copy input color to half-res read buffer (downsampled)
+  // 4. CRITICAL: Switch to AO-only output mode for half-res
+  //    This gives us raw AO values instead of composited result
+  this.gtaoPass.output = ThreeGTAOPass.OUTPUT.Denoise; // or OUTPUT.AO
+  
+  // 5. Copy input color to half-res read buffer (downsampled)
   this.copyMaterial.uniforms['tDiffuse'].value = colorTex;
+  this.halfResReadTarget.viewport.set(0, 0, halfWidth, halfHeight);
   renderer.setRenderTarget(this.halfResReadTarget);
   renderer.render(this.copyScene, this.copyCamera);
   
-  // 5. Run GTAOPass at half resolution
+  // 6. Run GTAOPass at half resolution - outputs AO-only
+  this.halfResWriteTarget.viewport.set(0, 0, halfWidth, halfHeight);
   this.gtaoPass.render(
     renderer,
     this.halfResWriteTarget,
@@ -364,11 +396,11 @@ private executeHalfRes(ctx: RenderContext): void {
     false
   );
   
-  // 6. Bilateral upsample to full resolution
+  // 7. Bilateral upsample to full resolution with scene color compositing
   const upsampleUniforms = this.upsampleMaterial.uniforms;
   upsampleUniforms.tAO.value = this.halfResWriteTarget.texture;
-  upsampleUniforms.tColor.value = colorTex;
-  upsampleUniforms.tDepth.value = depthTex;
+  upsampleUniforms.tColor.value = colorTex;  // Full-res scene color
+  upsampleUniforms.tDepth.value = depthTex;  // Full-res depth
   upsampleUniforms.uResolution.value.set(size.width, size.height);
   upsampleUniforms.uNearClip.value = camera.near;
   upsampleUniforms.uFarClip.value = camera.far;
@@ -376,6 +408,15 @@ private executeHalfRes(ctx: RenderContext): void {
   renderer.setRenderTarget(outputTarget);
   renderer.render(this.upsampleScene, this.copyCamera);
   renderer.setRenderTarget(null);
+}
+
+private executeFullRes(ctx: RenderContext): void {
+  // ... existing logic ...
+  
+  // CRITICAL: Use Default output mode for full-res (composited)
+  this.gtaoPass.output = ThreeGTAOPass.OUTPUT.Default;
+  
+  // ... rest of existing logic ...
 }
 ```
 
@@ -502,15 +543,18 @@ Before considering the shader complete:
 - [ ] Create `GTAOBilateralUpsampleShader.ts`
 - [ ] Add uniform types export
 - [ ] Test shader compilation
+- [ ] **VERIFY**: Bilinear weights use `cellPos`, NOT offsets
+- [ ] **VERIFY**: Multiplicative blending (`color * aoFactor`)
+- [ ] **VERIFY**: Sample UVs aligned to half-res grid
 
 ### Phase 2: GTAOPass Updates
-- [ ] Add config interface options
+- [ ] Add config interface options (`halfResolution`, `bilateralDepthThreshold`)
 - [ ] Add private properties for half-res pipeline
 - [ ] Implement `initHalfResPipeline()`
 - [ ] Implement `ensureHalfResTarget()`
 - [ ] Implement `executeFullRes()` (extract from current `execute()`)
 - [ ] Implement `executeHalfRes()`
-- [ ] Add runtime setters
+- [ ] Add runtime setters (`setHalfResolution()`, `setBilateralDepthThreshold()`)
 - [ ] Update `dispose()` for cleanup
 - [ ] Update JSDoc documentation
 
@@ -519,10 +563,14 @@ Before considering the shader complete:
 - [ ] (Optional) Add store settings for user control
 - [ ] Update index.ts exports
 
-### Phase 4: Testing
+### Phase 4: Testing & Bug Verification
 - [ ] Update GTAOPass.test.ts with new test cases
 - [ ] Create Playwright visual regression test
 - [ ] Performance benchmark comparison
+- [ ] **CRITICAL**: Visual test - AO effect visible at half-res (not just scene color)
+- [ ] **CRITICAL**: Debug `totalWeight` output - must vary, never all zeros
+- [ ] **CRITICAL**: Compare half-res to full-res - similar quality, slightly softer
+- [ ] Edge preservation test - no halos at depth discontinuities
 
 ### Phase 5: Documentation
 - [ ] Update rendering-pipeline.md

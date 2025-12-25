@@ -10,7 +10,6 @@ import type {
   SurfaceSettings,
   WireframeSettings,
 } from '@/rendering/shaders/types'
-import { VisualPreset } from '@/stores/defaults/visualDefaults'
 
 // ============================================================================
 // Color Slice
@@ -45,8 +44,6 @@ export interface ColorSliceActions {
   setMultiSourceWeights: (weights: Partial<MultiSourceWeights>) => void
   setLchLightness: (lightness: number) => void
   setLchChroma: (chroma: number) => void
-
-  applyPreset: (preset: VisualPreset) => void
 }
 
 export type ColorSlice = ColorSliceState & ColorSliceActions
@@ -150,4 +147,8 @@ export interface AppearanceResetAction {
   reset: () => void
 }
 
-export type AppearanceSlice = ColorSlice & MaterialSlice & RenderSlice & AdvancedRenderingSlice & AppearanceResetAction
+export type AppearanceSlice = ColorSlice &
+  MaterialSlice &
+  RenderSlice &
+  AdvancedRenderingSlice &
+  AppearanceResetAction

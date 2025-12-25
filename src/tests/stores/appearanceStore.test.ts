@@ -1,146 +1,120 @@
+import { useAppearanceStore } from '@/stores/appearanceStore'
 import {
   DEFAULT_BACKGROUND_COLOR,
   DEFAULT_EDGE_COLOR,
   DEFAULT_EDGE_THICKNESS,
-  DEFAULT_FACE_OPACITY,
   DEFAULT_EDGES_VISIBLE,
+  DEFAULT_FACE_OPACITY,
   DEFAULT_FACES_VISIBLE,
   DEFAULT_TUBE_CAPS,
-  VISUAL_PRESETS,
-} from '@/stores/defaults/visualDefaults';
-import { useAppearanceStore } from '@/stores/appearanceStore';
-import { act, renderHook } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+} from '@/stores/defaults/visualDefaults'
+import { act, renderHook } from '@testing-library/react'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 describe('appearanceStore', () => {
   beforeEach(() => {
     act(() => {
-      useAppearanceStore.getState().reset();
-    });
-  });
+      useAppearanceStore.getState().reset()
+    })
+  })
 
   it('should have correct initial values', () => {
-    const state = useAppearanceStore.getState();
-    expect(state.edgeColor).toBe(DEFAULT_EDGE_COLOR);
-    expect(state.edgeThickness).toBe(DEFAULT_EDGE_THICKNESS);
-    expect(state.backgroundColor).toBe(DEFAULT_BACKGROUND_COLOR);
-    expect(state.tubeCaps).toBe(DEFAULT_TUBE_CAPS);
-  });
+    const state = useAppearanceStore.getState()
+    expect(state.edgeColor).toBe(DEFAULT_EDGE_COLOR)
+    expect(state.edgeThickness).toBe(DEFAULT_EDGE_THICKNESS)
+    expect(state.backgroundColor).toBe(DEFAULT_BACKGROUND_COLOR)
+    expect(state.tubeCaps).toBe(DEFAULT_TUBE_CAPS)
+  })
 
   it('should have tubeCaps default to false for performance', () => {
-    const state = useAppearanceStore.getState();
-    expect(state.tubeCaps).toBe(false);
-  });
+    const state = useAppearanceStore.getState()
+    expect(state.tubeCaps).toBe(false)
+  })
 
   it('should update edge color', () => {
-    const { result } = renderHook(() => useAppearanceStore());
+    const { result } = renderHook(() => useAppearanceStore())
     act(() => {
-      result.current.setEdgeColor('#ff0000');
-    });
-    expect(result.current.edgeColor).toBe('#ff0000');
-  });
+      result.current.setEdgeColor('#ff0000')
+    })
+    expect(result.current.edgeColor).toBe('#ff0000')
+  })
 
   it('should update edge thickness', () => {
-    const { result } = renderHook(() => useAppearanceStore());
+    const { result } = renderHook(() => useAppearanceStore())
     act(() => {
-      result.current.setEdgeThickness(5);
-    });
-    expect(result.current.edgeThickness).toBe(5);
-  });
+      result.current.setEdgeThickness(5)
+    })
+    expect(result.current.edgeThickness).toBe(5)
+  })
 
   it('should toggle tube caps', () => {
-    const { result } = renderHook(() => useAppearanceStore());
-    expect(result.current.tubeCaps).toBe(false);
+    const { result } = renderHook(() => useAppearanceStore())
+    expect(result.current.tubeCaps).toBe(false)
     act(() => {
-      result.current.setTubeCaps(true);
-    });
-    expect(result.current.tubeCaps).toBe(true);
+      result.current.setTubeCaps(true)
+    })
+    expect(result.current.tubeCaps).toBe(true)
     act(() => {
-      result.current.setTubeCaps(false);
-    });
-    expect(result.current.tubeCaps).toBe(false);
-  });
+      result.current.setTubeCaps(false)
+    })
+    expect(result.current.tubeCaps).toBe(false)
+  })
 
   it('should update background color', () => {
-    const { result } = renderHook(() => useAppearanceStore());
+    const { result } = renderHook(() => useAppearanceStore())
     act(() => {
-      result.current.setBackgroundColor('#ffffff');
-    });
-    expect(result.current.backgroundColor).toBe('#ffffff');
-  });
-
-  it('should apply visual presets', () => {
-    const { result } = renderHook(() => useAppearanceStore());
-
-    act(() => {
-      result.current.applyPreset('neon');
-    });
-    expect(useAppearanceStore.getState().edgeColor).toBe(VISUAL_PRESETS.neon.edgeColor);
-    expect(useAppearanceStore.getState().backgroundColor).toBe(VISUAL_PRESETS.neon.backgroundColor);
-
-    act(() => {
-      result.current.applyPreset('blueprint');
-    });
-    expect(useAppearanceStore.getState().edgeColor).toBe(VISUAL_PRESETS.blueprint.edgeColor);
-
-    act(() => {
-      result.current.applyPreset('hologram');
-    });
-    expect(useAppearanceStore.getState().edgeColor).toBe(VISUAL_PRESETS.hologram.edgeColor);
-
-    act(() => {
-      result.current.applyPreset('scientific');
-    });
-    expect(useAppearanceStore.getState().edgeColor).toBe(VISUAL_PRESETS.scientific.edgeColor);
-  });
+      result.current.setBackgroundColor('#ffffff')
+    })
+    expect(result.current.backgroundColor).toBe('#ffffff')
+  })
 
   it('should toggle face visibility', () => {
-    const { result } = renderHook(() => useAppearanceStore());
-    const initial = result.current.facesVisible;
+    const { result } = renderHook(() => useAppearanceStore())
+    const initial = result.current.facesVisible
     act(() => {
-      result.current.setFacesVisible(!initial);
-    });
-    expect(result.current.facesVisible).toBe(!initial);
-  });
+      result.current.setFacesVisible(!initial)
+    })
+    expect(result.current.facesVisible).toBe(!initial)
+  })
 
   it('should toggle edge visibility', () => {
-    const { result } = renderHook(() => useAppearanceStore());
-    const initial = result.current.edgesVisible;
+    const { result } = renderHook(() => useAppearanceStore())
+    const initial = result.current.edgesVisible
     act(() => {
-      result.current.setEdgesVisible(!initial);
-    });
-    expect(result.current.edgesVisible).toBe(!initial);
-  });
+      result.current.setEdgesVisible(!initial)
+    })
+    expect(result.current.edgesVisible).toBe(!initial)
+  })
 
   it('should update opacity settings', () => {
-    const { result } = renderHook(() => useAppearanceStore());
-    
+    const { result } = renderHook(() => useAppearanceStore())
+
     // Test base face opacity (simple setter)
     act(() => {
-      result.current.setFaceOpacity(0.8);
-    });
-    expect(result.current.faceOpacity).toBe(0.8);
-  });
+      result.current.setFaceOpacity(0.8)
+    })
+    expect(result.current.faceOpacity).toBe(0.8)
+  })
 
   it('should reset to defaults', () => {
-    const { result } = renderHook(() => useAppearanceStore());
+    const { result } = renderHook(() => useAppearanceStore())
 
     // Change some values
     act(() => {
-      result.current.setEdgeColor('#ff0000');
-      result.current.setFaceOpacity(0.9);
-      result.current.setEdgesVisible(!DEFAULT_EDGES_VISIBLE);
-    });
+      result.current.setEdgeColor('#ff0000')
+      result.current.setFaceOpacity(0.9)
+      result.current.setEdgesVisible(!DEFAULT_EDGES_VISIBLE)
+    })
 
     // Reset
     act(() => {
-      result.current.reset();
-    });
+      result.current.reset()
+    })
 
     // Check defaults
-    expect(result.current.edgeColor).toBe(DEFAULT_EDGE_COLOR);
-    expect(result.current.faceOpacity).toBe(DEFAULT_FACE_OPACITY);
-    expect(result.current.edgesVisible).toBe(DEFAULT_EDGES_VISIBLE);
-    expect(result.current.facesVisible).toBe(DEFAULT_FACES_VISIBLE);
-  });
-});
+    expect(result.current.edgeColor).toBe(DEFAULT_EDGE_COLOR)
+    expect(result.current.faceOpacity).toBe(DEFAULT_FACE_OPACITY)
+    expect(result.current.edgesVisible).toBe(DEFAULT_EDGES_VISIBLE)
+    expect(result.current.facesVisible).toBe(DEFAULT_FACES_VISIBLE)
+  })
+})
