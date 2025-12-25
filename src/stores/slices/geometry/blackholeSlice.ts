@@ -548,61 +548,6 @@ export const createBlackHoleSlice: StateCreator<ExtendedObjectSlice, [], [], Bla
     }))
   },
 
-  // === Polar Jets ===
-  setBlackHoleJetsEnabled: (enabled) => {
-    set((state) => ({
-      blackhole: { ...state.blackhole, jetsEnabled: enabled },
-    }))
-  },
-
-  setBlackHoleJetsHeight: (height) => {
-    const clamped = Math.max(0, Math.min(50, height))
-    set((state) => ({
-      blackhole: { ...state.blackhole, jetsHeight: clamped },
-    }))
-  },
-
-  setBlackHoleJetsWidth: (width) => {
-    const clamped = Math.max(0, Math.min(5, width))
-    set((state) => ({
-      blackhole: { ...state.blackhole, jetsWidth: clamped },
-    }))
-  },
-
-  setBlackHoleJetsIntensity: (intensity) => {
-    const clamped = Math.max(0, Math.min(10, intensity))
-    set((state) => ({
-      blackhole: { ...state.blackhole, jetsIntensity: clamped },
-    }))
-  },
-
-  setBlackHoleJetsColor: (color) => {
-    set((state) => ({
-      blackhole: { ...state.blackhole, jetsColor: color },
-    }))
-  },
-
-  setBlackHoleJetsFalloff: (falloff) => {
-    const clamped = Math.max(0, Math.min(10, falloff))
-    set((state) => ({
-      blackhole: { ...state.blackhole, jetsFalloff: clamped },
-    }))
-  },
-
-  setBlackHoleJetsNoiseAmount: (amount) => {
-    const clamped = Math.max(0, Math.min(1, amount))
-    set((state) => ({
-      blackhole: { ...state.blackhole, jetsNoiseAmount: clamped },
-    }))
-  },
-
-  setBlackHoleJetsPulsation: (pulsation) => {
-    const clamped = Math.max(0, Math.min(2, pulsation))
-    set((state) => ({
-      blackhole: { ...state.blackhole, jetsPulsation: clamped },
-    }))
-  },
-
   // === Motion Blur ===
   setBlackHoleMotionBlurEnabled: (enabled) => {
     set((state) => ({
@@ -826,10 +771,8 @@ export const createBlackHoleSlice: StateCreator<ExtendedObjectSlice, [], [], Bla
     if (config.lightingMode !== undefined) validated.lightingMode = config.lightingMode
     if (config.baseColor !== undefined) validated.baseColor = config.baseColor
     if (config.shellGlowColor !== undefined) validated.shellGlowColor = config.shellGlowColor
-    if (config.jetsColor !== undefined) validated.jetsColor = config.jetsColor
     if (config.visualPreset !== undefined) validated.visualPreset = config.visualPreset
     if (config.dopplerEnabled !== undefined) validated.dopplerEnabled = config.dopplerEnabled
-    if (config.jetsEnabled !== undefined) validated.jetsEnabled = config.jetsEnabled
     if (config.enableAbsorption !== undefined) validated.enableAbsorption = config.enableAbsorption
     if (config.temporalAccumulationEnabled !== undefined)
       validated.temporalAccumulationEnabled = config.temporalAccumulationEnabled

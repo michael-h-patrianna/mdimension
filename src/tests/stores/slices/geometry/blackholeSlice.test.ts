@@ -153,39 +153,6 @@ describe('blackholeSlice', () => {
     })
   })
 
-  describe('jets actions', () => {
-    it('should toggle jets', () => {
-      const { setBlackHoleJetsEnabled } = useExtendedObjectStore.getState()
-
-      setBlackHoleJetsEnabled(true)
-      expect(useExtendedObjectStore.getState().blackhole.jetsEnabled).toBe(true)
-
-      setBlackHoleJetsEnabled(false)
-      expect(useExtendedObjectStore.getState().blackhole.jetsEnabled).toBe(false)
-    })
-
-    it('should set jets height', () => {
-      const { setBlackHoleJetsHeight } = useExtendedObjectStore.getState()
-
-      setBlackHoleJetsHeight(15)
-      expect(useExtendedObjectStore.getState().blackhole.jetsHeight).toBe(15)
-    })
-
-    it('should set jets intensity', () => {
-      const { setBlackHoleJetsIntensity } = useExtendedObjectStore.getState()
-
-      setBlackHoleJetsIntensity(3.0)
-      expect(useExtendedObjectStore.getState().blackhole.jetsIntensity).toBe(3.0)
-    })
-
-    it('should set jets color', () => {
-      const { setBlackHoleJetsColor } = useExtendedObjectStore.getState()
-
-      setBlackHoleJetsColor('#ff00ff')
-      expect(useExtendedObjectStore.getState().blackhole.jetsColor).toBe('#ff00ff')
-    })
-  })
-
   describe('animation actions', () => {
     it('should toggle swirl animation', () => {
       const { setBlackHoleSwirlAnimationEnabled } = useExtendedObjectStore.getState()

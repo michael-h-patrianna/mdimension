@@ -4,7 +4,7 @@
  * Assembles shader blocks in dependency order:
  * 1. Core: precision, constants, uniforms
  * 2. Gravity: lensing, horizon, shell, manifold, doppler
- * 3. Effects: jets (optional)
+ * 3. Effects: motion blur (optional)
  * 4. Main raymarching loop
  */
 
@@ -20,7 +20,6 @@ import { horizonBlock } from './gravity/horizon.glsl'
 import { lensingBlock } from './gravity/lensing.glsl'
 import { manifoldBlock } from './gravity/manifold.glsl'
 import { shellBlock } from './gravity/shell.glsl'
-import { jetsBlock } from './effects/jets.glsl'
 import { motionBlurBlock } from './effects/motion-blur.glsl'
 import { diskSdfBlock } from './gravity/disk-sdf.glsl'
 import { diskVolumetricBlock } from './gravity/disk-volumetric.glsl'
@@ -31,8 +30,6 @@ import { blackHoleUniformsBlock } from './uniforms.glsl'
 export interface BlackHoleShaderConfig extends ShaderConfig {
   /** Enable temporal accumulation (Horizon-style 1/4 res reconstruction) */
   temporalAccumulation?: boolean
-  /** Enable polar jets */
-  jets?: boolean
   /** Enable Doppler effect */
   doppler?: boolean
   /** Enable environment map sampling */
@@ -60,7 +57,6 @@ export function composeBlackHoleShader(config: BlackHoleShaderConfig) {
     temporal: enableTemporal,
     overrides = [],
     temporalAccumulation = false,
-    jets: enableJets = false,
     doppler: enableDoppler = true,
     envMap: enableEnvMap = false,
     motionBlur: enableMotionBlur = false,
@@ -83,12 +79,6 @@ export function composeBlackHoleShader(config: BlackHoleShaderConfig) {
   if (useTemporalAccumulation) {
     defines.push('#define USE_TEMPORAL_ACCUMULATION')
     features.push('Temporal Accumulation (1/4 res)')
-  }
-
-  // Jets
-  if (enableJets && !overrides.includes('Jets')) {
-    defines.push('#define USE_JETS')
-    features.push('Polar Jets')
   }
 
   // Doppler
@@ -186,7 +176,6 @@ uniform float uSliceAmplitude;
     { name: 'Disk SDF', content: diskSdfBlock },
 
     // Effects
-    { name: 'Jets', content: jetsBlock, condition: enableJets },
     { name: 'Motion Blur', content: motionBlurBlock, condition: enableMotionBlur },
 
     // Temporal (if needed)

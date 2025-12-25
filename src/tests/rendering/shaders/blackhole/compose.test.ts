@@ -79,39 +79,6 @@ describe('composeBlackHoleShader', () => {
       expect(features).toContain('Doppler Effect')
     })
 
-    it('should enable jets when configured', () => {
-      const configWithJets: BlackHoleShaderConfig = {
-        dimension: 4,
-        shadows: false,
-        temporal: false,
-        ambientOcclusion: false,
-        opacityMode: 'solid',
-        jets: true,
-      }
-
-      const { fragmentShader, features } = composeBlackHoleShader(configWithJets)
-
-      expect(fragmentShader).toContain('#define USE_JETS')
-      expect(fragmentShader).toContain('// === Jets ===')
-      expect(features).toContain('Polar Jets')
-    })
-
-    it('should not include jets block when disabled', () => {
-      const configWithoutJets: BlackHoleShaderConfig = {
-        dimension: 4,
-        shadows: false,
-        temporal: false,
-        ambientOcclusion: false,
-        opacityMode: 'solid',
-        jets: false,
-      }
-
-      const { fragmentShader, features } = composeBlackHoleShader(configWithoutJets)
-
-      expect(fragmentShader).not.toContain('#define USE_JETS')
-      expect(features).not.toContain('Polar Jets')
-    })
-
     it('should enable temporal accumulation when configured', () => {
       const configWithTemporal: BlackHoleShaderConfig = {
         dimension: 4,
@@ -150,23 +117,6 @@ describe('composeBlackHoleShader', () => {
   })
 
   describe('feature overrides', () => {
-    it('should respect overrides for jets', () => {
-      const config: BlackHoleShaderConfig = {
-        dimension: 4,
-        shadows: false,
-        temporal: false,
-        ambientOcclusion: false,
-        opacityMode: 'solid',
-        jets: true,
-        overrides: ['Jets'],
-      }
-
-      const { fragmentShader, features } = composeBlackHoleShader(config)
-
-      expect(fragmentShader).not.toContain('#define USE_JETS')
-      expect(features).not.toContain('Polar Jets')
-    })
-
     it('should respect overrides for Doppler', () => {
       const config: BlackHoleShaderConfig = {
         dimension: 4,
@@ -228,7 +178,6 @@ describe('composeBlackHoleShader', () => {
         ambientOcclusion: false,
         opacityMode: 'solid',
         temporalAccumulation: true,
-        jets: true,
         doppler: true,
       }
 
@@ -236,11 +185,9 @@ describe('composeBlackHoleShader', () => {
 
       // Note: shadows not tested - not implemented for black holes
       expect(fragmentShader).toContain('#define USE_TEMPORAL_ACCUMULATION')
-      expect(fragmentShader).toContain('#define USE_JETS')
       expect(fragmentShader).toContain('#define USE_DOPPLER')
 
       expect(features).toContain('Temporal Accumulation (1/4 res)')
-      expect(features).toContain('Polar Jets')
       expect(features).toContain('Doppler Effect')
     })
   })

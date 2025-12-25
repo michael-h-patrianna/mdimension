@@ -145,16 +145,6 @@ export function useBlackHoleUniforms() {
       uDopplerStrength: { value: 0.6 },
       uDopplerHueShift: { value: 0.1 },
 
-      // Jets
-      uJetsEnabled: { value: false },
-      uJetsHeight: { value: 10.0 },
-      uJetsWidth: { value: 0.5 },
-      uJetsIntensity: { value: 2.0 },
-      uJetsColor: { value: new THREE.Color('#88ccff').convertSRGBToLinear() },
-      uJetsFalloff: { value: 3.0 },
-      uJetsNoiseAmount: { value: 0.3 },
-      uJetsPulsation: { value: 0.5 },
-
       // Animation
       uSwirlAnimationEnabled: { value: false },
       uSwirlAnimationSpeed: { value: 0.5 },

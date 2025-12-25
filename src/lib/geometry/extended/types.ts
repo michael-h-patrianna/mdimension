@@ -1676,24 +1676,6 @@ export interface BlackHoleConfig {
   /** Extra dimension slice positions */
   parameterValues: number[]
 
-  // === POLAR JETS ===
-  /** Jets enabled (default false) */
-  jetsEnabled: boolean
-  /** Jets height in horizon radii (0-50, default 10.0) */
-  jetsHeight: number
-  /** Jets width / opening angle factor (0-5, default 0.5) */
-  jetsWidth: number
-  /** Jets intensity (0-10, default 2.0) */
-  jetsIntensity: number
-  /** Jets color (hex string) */
-  jetsColor: string
-  /** Jets falloff (0-10, default 3.0) */
-  jetsFalloff: number
-  /** Jets noise/turbulence amount (0-1, default 0.3) */
-  jetsNoiseAmount: number
-  /** Jets pulsation speed (0-2, default 0.5) */
-  jetsPulsation: number
-
   // === MOTION BLUR ===
   /** Motion blur enabled (default false) */
   motionBlurEnabled: boolean
@@ -1889,16 +1871,6 @@ export const DEFAULT_BLACK_HOLE_CONFIG: BlackHoleConfig = {
 
   // Cross-section
   parameterValues: [0, 0, 0, 0, 0, 0, 0, 0],
-
-  // Polar jets
-  jetsEnabled: false,
-  jetsHeight: 10.0,
-  jetsWidth: 0.5,
-  jetsIntensity: 2.0,
-  jetsColor: '#88ccff',
-  jetsFalloff: 3.0,
-  jetsNoiseAmount: 0.3,
-  jetsPulsation: 0.5,
 
   // Motion blur
   motionBlurEnabled: false,

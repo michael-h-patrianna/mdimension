@@ -99,16 +99,6 @@ uniform bool uDopplerEnabled;       // Enable Doppler shift
 uniform float uDopplerStrength;     // Doppler intensity
 uniform float uDopplerHueShift;     // Max hue shift
 
-// Polar jets
-uniform bool uJetsEnabled;          // Enable polar jets
-uniform float uJetsHeight;          // Jet height in R_h units
-uniform float uJetsWidth;           // Jet width / cone angle
-uniform float uJetsIntensity;       // Jet emission intensity
-uniform vec3 uJetsColor;            // Jet base color
-uniform float uJetsFalloff;         // Jet intensity falloff
-uniform float uJetsNoiseAmount;     // Jet turbulence
-uniform float uJetsPulsation;       // Jet pulsation speed
-
 // Motion blur
 uniform bool uMotionBlurEnabled;    // Enable motion blur
 uniform float uMotionBlurStrength;  // Blur intensity

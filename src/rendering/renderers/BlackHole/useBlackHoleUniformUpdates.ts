@@ -38,7 +38,6 @@ function createBlackHoleColorCache() {
   return {
     baseColor: createCachedLinearColor(),
     shellGlowColor: createCachedLinearColor(),
-    jetsColor: createCachedLinearColor(),
   }
 }
 
@@ -406,13 +405,6 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
         bhState.shellGlowColor
       )
     }
-    if (u.uJetsColor?.value) {
-      updateLinearColorUniform(
-        cache.jetsColor,
-        u.uJetsColor.value as THREE.Color,
-        bhState.jetsColor
-      )
-    }
 
     // Palette mode (still supported for black hole specific modes)
     setUniform(u, 'uPaletteMode', PALETTE_MODE_MAP[bhState.paletteMode] ?? 0)
@@ -514,16 +506,6 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
     // Doppler
     setUniform(u, 'uDopplerEnabled', bhState.dopplerEnabled)
     setUniform(u, 'uDopplerStrength', bhState.dopplerStrength)
-
-
-    // Jets
-    setUniform(u, 'uJetsEnabled', bhState.jetsEnabled)
-    setUniform(u, 'uJetsHeight', bhState.jetsHeight)
-    setUniform(u, 'uJetsWidth', bhState.jetsWidth)
-    setUniform(u, 'uJetsIntensity', bhState.jetsIntensity)
-    setUniform(u, 'uJetsFalloff', bhState.jetsFalloff)
-    setUniform(u, 'uJetsNoiseAmount', bhState.jetsNoiseAmount)
-    setUniform(u, 'uJetsPulsation', bhState.jetsPulsation)
 
     // Animation
     setUniform(u, 'uSwirlAnimationEnabled', bhState.swirlAnimationEnabled)

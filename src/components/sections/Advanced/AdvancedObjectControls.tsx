@@ -874,13 +874,6 @@ const BlackHoleAdvanced: React.FC = () => {
     // Doppler
     setDopplerEnabled: state.setBlackHoleDopplerEnabled,
     setDopplerStrength: state.setBlackHoleDopplerStrength,
-    // Jets
-    setJetsEnabled: state.setBlackHoleJetsEnabled,
-    setJetsHeight: state.setBlackHoleJetsHeight,
-    setJetsWidth: state.setBlackHoleJetsWidth,
-    setJetsIntensity: state.setBlackHoleJetsIntensity,
-    setJetsColor: state.setBlackHoleJetsColor,
-    setJetsNoiseAmount: state.setBlackHoleJetsNoiseAmount,
     // Rendering
     setMaxSteps: state.setBlackHoleMaxSteps,
     setStepBase: state.setBlackHoleStepBase,
@@ -905,12 +898,6 @@ const BlackHoleAdvanced: React.FC = () => {
     setShellGlowColor,
     setDopplerEnabled,
     setDopplerStrength,
-    setJetsEnabled,
-    setJetsHeight,
-    setJetsWidth,
-    setJetsIntensity,
-    setJetsColor,
-    setJetsNoiseAmount,
     setMaxSteps,
     setStepBase,
     setEnableAbsorption,
@@ -1083,71 +1070,6 @@ const BlackHoleAdvanced: React.FC = () => {
               onChange={setDopplerStrength}
               showValue
             />
-          </div>
-        )}
-      </div>
-
-      {/* Polar Jets */}
-      <div className="space-y-3 pt-2 border-t border-white/5">
-        <div className="flex items-center justify-between">
-          <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider">Polar Jets</label>
-          <ToggleButton
-            pressed={config.jetsEnabled}
-            onToggle={() => setJetsEnabled(!config.jetsEnabled)}
-            className="text-xs px-2 py-1 h-auto"
-            ariaLabel="Toggle polar jets"
-          >
-            {config.jetsEnabled ? 'ON' : 'OFF'}
-          </ToggleButton>
-        </div>
-
-        {config.jetsEnabled && (
-          <div className="space-y-3 pl-2 border-l border-white/10">
-            <Slider
-              label="Height"
-              min={1}
-              max={30}
-              step={1}
-              value={config.jetsHeight}
-              onChange={setJetsHeight}
-              showValue
-            />
-            <Slider
-              label="Width"
-              min={0.1}
-              max={2.0}
-              step={0.1}
-              value={config.jetsWidth}
-              onChange={setJetsWidth}
-              showValue
-            />
-            <Slider
-              label="Intensity"
-              min={0}
-              max={5.0}
-              step={0.1}
-              value={config.jetsIntensity}
-              onChange={setJetsIntensity}
-              showValue
-            />
-            <Slider
-              label="Noise"
-              min={0}
-              max={1}
-              step={0.1}
-              value={config.jetsNoiseAmount}
-              onChange={setJetsNoiseAmount}
-              showValue
-            />
-            <div className="flex items-center justify-between">
-              <label className="text-xs text-text-secondary">Color</label>
-              <ColorPicker
-                value={config.jetsColor}
-                onChange={setJetsColor}
-                disableAlpha={true}
-                className="w-24"
-              />
-            </div>
           </div>
         )}
       </div>

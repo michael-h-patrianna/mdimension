@@ -525,16 +525,6 @@ export interface BlackHoleSliceActions {
   setBlackHoleParameterValues: (values: number[]) => void
   resetBlackHoleParameters: () => void
 
-  // Polar Jets
-  setBlackHoleJetsEnabled: (enabled: boolean) => void
-  setBlackHoleJetsHeight: (height: number) => void
-  setBlackHoleJetsWidth: (width: number) => void
-  setBlackHoleJetsIntensity: (intensity: number) => void
-  setBlackHoleJetsColor: (color: string) => void
-  setBlackHoleJetsFalloff: (falloff: number) => void
-  setBlackHoleJetsNoiseAmount: (amount: number) => void
-  setBlackHoleJetsPulsation: (pulsation: number) => void
-
   // Motion Blur
   setBlackHoleMotionBlurEnabled: (enabled: boolean) => void
   setBlackHoleMotionBlurStrength: (strength: number) => void
