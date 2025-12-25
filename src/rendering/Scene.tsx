@@ -111,6 +111,15 @@ export const Scene = React.memo(function Scene({
   // Clean up WebGL state during scene transitions to prevent memory accumulation
   useWebGLCleanup()
 
+  // #region agent log
+  console.log('[DEBUG:G] Scene render', {
+    hasGeometry: !!geometry,
+    objectType,
+    faceCount: faces?.length ?? 0,
+    activeWalls,
+  });
+  // #endregion
+
   return (
     <TemporalDepthProvider>
       {/* Performance optimization manager */}

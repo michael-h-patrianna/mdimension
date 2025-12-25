@@ -90,7 +90,6 @@ export function FpsController(): null {
       // If we use >= interval - 1, we might trigger at 32ms, then again at 40ms.
       // Strict > ensures we only trigger when we've actually passed the target duration.
       if (elapsed > interval) {
-
         // Advance the frame - this triggers useFrame callbacks and renders
         // Pass timestamp for proper delta calculation in useFrame
         advance(now)

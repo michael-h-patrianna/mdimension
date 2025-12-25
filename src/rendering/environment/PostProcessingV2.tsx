@@ -1332,12 +1332,20 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
   // Cleanup
   // ==========================================================================
 
+  // Cleanup: dispose graph when it changes or component unmounts
+  // NOTE: This must depend on `graph` (not empty []) to work correctly with StrictMode.
+  // StrictMode double-renders components, and an empty dependency array causes cleanup
+  // to run between renders, disposing the graph that was just created by useMemo.
   useEffect(() => {
+    // Return cleanup that disposes THIS specific graph instance
     return () => {
-      graphRef.current?.dispose();
-      graphRef.current = null;
+      graph?.dispose();
+      // Only null the ref if it still points to this graph (avoid race conditions)
+      if (graphRef.current === graph) {
+        graphRef.current = null;
+      }
     };
-  }, []);
+  }, [graph]);
 
   // ==========================================================================
   // Main Render Loop - Just call graph.execute()!

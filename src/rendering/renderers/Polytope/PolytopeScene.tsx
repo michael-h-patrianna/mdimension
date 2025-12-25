@@ -991,8 +991,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   // GL_INVALID_OPERATION when rendered to 3-attachment MRT targets.
   // The shader compilation overlay still shows because it's a separate React component.
 
-
-
   return (
     <group>
       {/* Polytope faces - DoubleSide handles both front and back faces */}
