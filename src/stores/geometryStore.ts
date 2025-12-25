@@ -8,15 +8,18 @@
  */
 
 import {
-    getRecommendedDimension,
-    getUnavailabilityReason,
-    isAvailableForDimension,
-    isRaymarchingFractal,
-    isValidObjectType as isValidObjectTypeRegistry,
+  getRecommendedDimension,
+  getUnavailabilityReason,
+  isAvailableForDimension,
+  isRaymarchingFractal,
+  isValidObjectType as isValidObjectTypeRegistry,
 } from '@/lib/geometry/registry'
 import type { ObjectType } from '@/lib/geometry/types'
 import { invalidateAllTemporalDepth } from '@/rendering/core/temporalDepth'
-import { DEFAULT_COLOR_ALGORITHM, isColorAlgorithmAvailable } from '@/rendering/shaders/palette/types'
+import {
+  DEFAULT_COLOR_ALGORITHM,
+  isColorAlgorithmAvailable,
+} from '@/rendering/shaders/palette/types'
 import { flushSync } from 'react-dom'
 import { create } from 'zustand'
 import { useAnimationStore } from './animationStore'
@@ -34,7 +37,7 @@ export const MAX_DIMENSION = 11
 export const DEFAULT_DIMENSION = 3
 
 /** Default object type */
-export const DEFAULT_OBJECT_TYPE: ObjectType = 'blackhole'
+export const DEFAULT_OBJECT_TYPE: ObjectType = 'hypercube'
 
 /**
  * Dimension constraints for certain object types
@@ -201,9 +204,10 @@ export const useGeometryStore = create<GeometryState>((set, get) => ({
 
     // Check if this object type has a recommended dimension (from registry)
     const recommendedDimension = getRecommendedDimension(type)
-    const targetDimension = (recommendedDimension !== undefined && currentDimension !== recommendedDimension)
-      ? recommendedDimension
-      : currentDimension
+    const targetDimension =
+      recommendedDimension !== undefined && currentDimension !== recommendedDimension
+        ? recommendedDimension
+        : currentDimension
 
     // Batch all store updates atomically to prevent intermediate renders
     flushSync(() => {

@@ -336,6 +336,8 @@ export class SSRPass extends BasePass {
     uniforms.uViewMat.value.copy(camera.matrixWorldInverse);
     uniforms.nearClip.value = camera.near;
     uniforms.farClip.value = camera.far;
+    // Full-res mode: output composited result directly
+    uniforms.uOutputMode.value = 0;
 
     renderer.setRenderTarget(outputTarget);
     renderer.render(this.scene, this.camera);
@@ -379,6 +381,8 @@ export class SSRPass extends BasePass {
     uniforms.uViewMat.value.copy(camera.matrixWorldInverse);
     uniforms.nearClip.value = camera.near;
     uniforms.farClip.value = camera.far;
+    // Half-res mode: output reflection-only for bilateral upsampling
+    uniforms.uOutputMode.value = 1;
 
     // Set viewport for half-res target (use target.viewport to avoid DPR issues)
     this.halfResTarget.viewport.set(0, 0, halfWidth, halfHeight);

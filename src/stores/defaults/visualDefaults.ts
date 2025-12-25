@@ -23,7 +23,7 @@ import type { ShaderType, ToneMappingAlgorithm } from '@/rendering/shaders/types
 // ============================================================================
 
 export const DEFAULT_EDGE_COLOR = '#19e697'
-export const DEFAULT_EDGE_THICKNESS = 2
+export const DEFAULT_EDGE_THICKNESS = 1
 export const DEFAULT_FACE_OPACITY = 1
 export const DEFAULT_FACE_COLOR = '#33cc9e'
 export const DEFAULT_BACKGROUND_COLOR = '#0F0F1A'
@@ -79,7 +79,7 @@ export const DEFAULT_BOKEH_SHOW_DEBUG = false
 export type SSRQuality = 'low' | 'medium' | 'high'
 
 export const DEFAULT_SSR_ENABLED = false
-export const DEFAULT_SSR_INTENSITY = 0.0
+export const DEFAULT_SSR_INTENSITY = 0.5
 export const DEFAULT_SSR_MAX_DISTANCE = 30
 export const DEFAULT_SSR_THICKNESS = 0.5
 export const DEFAULT_SSR_FADE_START = 0.7
@@ -270,10 +270,10 @@ export const DEFAULT_GROUND_PBR: PBRConfig = {
 export type IBLQuality = 'off' | 'low' | 'high'
 
 /** Default IBL quality - high for testing */
-export const DEFAULT_IBL_QUALITY: IBLQuality = 'high'
+export const DEFAULT_IBL_QUALITY: IBLQuality = 'low'
 
 /** IBL intensity multiplier */
-export const DEFAULT_IBL_INTENSITY = 1.0
+export const DEFAULT_IBL_INTENSITY = 0.5
 
 // ============================================================================
 // Skybox Defaults

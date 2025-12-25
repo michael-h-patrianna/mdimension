@@ -29,6 +29,8 @@ export interface SSRUniforms {
   maxSteps: { value: number }
   nearClip: { value: number }
   farClip: { value: number }
+  /** Output mode: 0 = composited (full-res), 1 = reflection-only for upsampling (half-res) */
+  uOutputMode: { value: number }
 }
 
 export const SSRShader = {
@@ -53,6 +55,7 @@ export const SSRShader = {
     maxSteps: { value: 32 },
     nearClip: { value: 0.1 },
     farClip: { value: 1000.0 },
+    uOutputMode: { value: 0 },
   } as SSRUniforms,
 
   vertexShader: /* glsl */ `
@@ -85,6 +88,7 @@ export const SSRShader = {
     uniform int maxSteps;
     uniform float nearClip;
     uniform float farClip;
+    uniform int uOutputMode; // 0 = composited (full-res), 1 = reflection-only (half-res)
 
     in vec2 vUv;
     layout(location = 0) out vec4 fragColor;
@@ -186,9 +190,14 @@ export const SSRShader = {
     void main() {
       vec4 sceneColor = texture(tDiffuse, vUv);
 
+      // Helper for early exit - respects output mode
+      // Mode 0 (full-res): output scene color
+      // Mode 1 (half-res): output zero (no reflection contribution)
+      vec4 noReflectionOutput = (uOutputMode == 1) ? vec4(0.0) : sceneColor;
+
       // Early exit if SSR is disabled or intensity is zero
       if (intensity <= 0.0) {
-        fragColor = sceneColor;
+        fragColor = noReflectionOutput;
         return;
       }
 
@@ -197,7 +206,7 @@ export const SSRShader = {
 
       // Skip background (depth = 1.0 means nothing there)
       if (depth >= 0.9999) {
-        fragColor = sceneColor;
+        fragColor = noReflectionOutput;
         return;
       }
 
@@ -206,7 +215,7 @@ export const SSRShader = {
 
       // Skip non-reflective surfaces
       if (reflectivity <= 0.0) {
-        fragColor = sceneColor;
+        fragColor = noReflectionOutput;
         return;
       }
 
@@ -280,10 +289,23 @@ export const SSRShader = {
         // Combine all factors
         float reflectionStrength = intensity * reflectivity * fresnelFactor * distFade * edgeFade;
 
-        // Blend reflection with scene color
-        fragColor = mix(sceneColor, reflectionColor, reflectionStrength);
+        if (uOutputMode == 1) {
+          // Half-resolution mode: output reflection-only for bilateral upsampling
+          // RGB = reflection color, A = blend strength
+          // The upsampler will composite: mix(sceneColor, reflectionColor, alpha)
+          fragColor = vec4(reflectionColor.rgb, reflectionStrength);
+        } else {
+          // Full-resolution mode: output composited result directly
+          fragColor = mix(sceneColor, reflectionColor, reflectionStrength);
+        }
       } else {
-        fragColor = sceneColor;
+        if (uOutputMode == 1) {
+          // Half-res: no reflection - output zero alpha
+          fragColor = vec4(0.0, 0.0, 0.0, 0.0);
+        } else {
+          // Full-res: no reflection - output scene color
+          fragColor = sceneColor;
+        }
       }
     }
   `,
