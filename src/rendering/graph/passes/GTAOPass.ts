@@ -110,6 +110,7 @@ export class GTAOPass extends BasePass {
       outputs: [{ resourceId: config.outputResource, access: 'write' }],
       enabled: config.enabled,
       priority: config.priority,
+      skipPassthrough: config.skipPassthrough,
     });
 
     this.colorInputId = config.colorInput;

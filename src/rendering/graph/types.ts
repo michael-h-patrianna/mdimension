@@ -177,6 +177,27 @@ export interface RenderPassConfig {
 
   /** Optional priority hint for passes with no dependencies */
   priority?: number
+
+  /**
+   * Skip automatic passthrough when this pass is disabled.
+   *
+   * By default, when a pass is disabled, the render graph copies the first input
+   * to the first output to maintain the resource chain. This is correct for
+   * single-input passes but WRONG for multi-input compositing passes where
+   * data from other inputs would be lost.
+   *
+   * Set to true for:
+   * - Multi-input compositing passes (e.g., normalComposite, gravityComposite)
+   * - Passes where passthrough would produce incorrect results
+   *
+   * When skipPassthrough is true, resource aliasing is used instead:
+   * - The output resource is aliased to the first input
+   * - Downstream passes read from the aliased source directly
+   * - No texture copy occurs
+   *
+   * @default false
+   */
+  skipPassthrough?: boolean
 }
 
 /**

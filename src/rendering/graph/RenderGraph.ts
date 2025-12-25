@@ -59,7 +59,8 @@ class RenderGraphContext implements RenderContext {
     private pingPongResources: Set<string>,
     private externalRegistry: ExternalResourceRegistry,
     private externalBridge: ExternalBridge,
-    public frame: FrozenFrameContext | null
+    public frame: FrozenFrameContext | null,
+    private resourceAliases: Map<string, string>
   ) {}
 
   getResource<T = THREE.WebGLRenderTarget | THREE.Texture>(resourceId: string): T | null {
@@ -74,17 +75,53 @@ class RenderGraphContext implements RenderContext {
   }
 
   getReadTarget(resourceId: string): THREE.WebGLRenderTarget | null {
-    if (this.pingPongResources.has(resourceId)) {
-      return this.pool.getReadTarget(resourceId)
+    // Resolve alias chain to find the actual resource
+    const resolvedId = this.resolveAlias(resourceId)
+
+    if (this.pingPongResources.has(resolvedId)) {
+      return this.pool.getReadTarget(resolvedId)
     }
-    return this.pool.get(resourceId)
+    return this.pool.get(resolvedId)
   }
 
   getReadTexture(resourceId: string, attachment?: number | 'depth'): THREE.Texture | null {
-    if (this.pingPongResources.has(resourceId)) {
-      return this.pool.getReadTarget(resourceId)?.texture ?? null
+    // Resolve alias chain to find the actual resource
+    const resolvedId = this.resolveAlias(resourceId)
+
+    if (this.pingPongResources.has(resolvedId)) {
+      return this.pool.getReadTarget(resolvedId)?.texture ?? null
     }
-    return this.pool.getTexture(resourceId, attachment)
+    return this.pool.getTexture(resolvedId, attachment)
+  }
+
+  /**
+   * Resolve resource alias chain to find actual resource ID.
+   *
+   * When a pass is disabled with skipPassthrough=true, its output is aliased
+   * to its input. This creates a chain: C → B → A where downstream passes
+   * reading from C should actually read from A.
+   *
+   * This method follows the chain to find the final (non-aliased) resource.
+   * Includes cycle detection to prevent infinite loops.
+   *
+   * @param resourceId - Resource ID to resolve
+   * @returns Resolved resource ID (may be same as input if no alias)
+   */
+  private resolveAlias(resourceId: string): string {
+    let current = resourceId
+    const visited = new Set<string>()
+
+    while (this.resourceAliases.has(current)) {
+      if (visited.has(current)) {
+        // Cycle detected - break out and return current
+        console.warn(`RenderGraph: Alias cycle detected at '${current}'`)
+        return current
+      }
+      visited.add(current)
+      current = this.resourceAliases.get(current)!
+    }
+
+    return current
   }
 
   /**
@@ -205,6 +242,12 @@ export class RenderGraph {
   private passthroughScene: THREE.Scene | null = null
   private passthroughCamera: THREE.OrthographicCamera | null = null
   private passthroughGeometry: THREE.PlaneGeometry | null = null
+
+  // Resource aliasing for disabled passes
+  // When a pass is disabled with skipPassthrough=true, its output is aliased
+  // to its input so downstream passes read from the correct source without copying.
+  // Map: outputResourceId → inputResourceId
+  private resourceAliases: Map<string, string> = new Map()
 
   // ==========================================================================
   // Passthrough for disabled passes
@@ -732,6 +775,10 @@ export class RenderGraph {
     // Begin ExternalBridge frame (clears previous frame state)
     this.externalBridge.beginFrame()
 
+    // Clear resource aliases from previous frame
+    // Aliases are re-computed each frame based on which passes are enabled
+    this.resourceAliases.clear()
+
     // Create execution context
     const context = new RenderGraphContext(
       renderer,
@@ -744,7 +791,8 @@ export class RenderGraph {
       this.compiled.pingPongResources,
       this.externalRegistry,
       this.externalBridge,
-      frozenFrameContext
+      frozenFrameContext,
+      this.resourceAliases
     )
 
     // Execute passes
@@ -762,8 +810,7 @@ export class RenderGraph {
       const enabled = !debugDisabled && (pass.config.enabled?.(frozenFrameContext) ?? true)
 
       if (!enabled) {
-        // For disabled passes, do passthrough to maintain the chain
-        // Use the first input (typically color buffer) and first output
+        // For disabled passes, maintain the resource chain
         const inputs = pass.config.inputs ?? []
         const outputs = pass.config.outputs ?? []
 
@@ -772,7 +819,7 @@ export class RenderGraph {
           const inputId = inputs[0]!.resourceId
           const outputId = outputs[0]!.resourceId
 
-          // CRITICAL: Skip passthrough if output was already written by an enabled pass
+          // CRITICAL: Skip if output was already written by an enabled pass
           // This prevents mutually exclusive passes (like scene vs gravityComposite)
           // from overwriting each other's output via passthrough
           if (writtenByEnabledPass.has(outputId)) {
@@ -787,11 +834,25 @@ export class RenderGraph {
             continue
           }
 
-          const inputTexture = context.getReadTexture(inputId)
-          const outputTarget = context.getWriteTarget(outputId)
+          // Check if this pass should use aliasing instead of passthrough
+          // Aliasing is preferred because:
+          // 1. Zero GPU cost (no texture copy)
+          // 2. Works correctly for multi-input passes where passthrough loses data
+          // 3. Chains automatically: if A→B→C are all aliased, C resolves to A
+          const skipPassthrough = pass.config.skipPassthrough ?? false
 
-          if (inputTexture && outputTarget) {
-            this.executePassthrough(renderer, inputTexture, outputTarget)
+          if (skipPassthrough) {
+            // Register alias: output → input
+            // Downstream passes reading 'outputId' will resolve to 'inputId'
+            this.resourceAliases.set(outputId, inputId)
+          } else {
+            // Legacy behavior: copy input texture to output target
+            const inputTexture = context.getReadTexture(inputId)
+            const outputTarget = context.getWriteTarget(outputId)
+
+            if (inputTexture && outputTarget) {
+              this.executePassthrough(renderer, inputTexture, outputTarget)
+            }
           }
         }
 
@@ -1119,6 +1180,29 @@ export class RenderGraph {
    */
   getDebugInfo(): string {
     return this.compiler.getDebugInfo()
+  }
+
+  /**
+   * Get current resource aliases for debugging.
+   *
+   * Shows which output resources are aliased to which input resources
+   * when passes are disabled with skipPassthrough=true.
+   *
+   * @returns Map of outputId → resolvedInputId
+   */
+  getResourceAliases(): Map<string, string> {
+    // Return resolved aliases (follow chains to final source)
+    const resolved = new Map<string, string>()
+    for (const [outputId] of this.resourceAliases) {
+      let current = outputId
+      const visited = new Set<string>()
+      while (this.resourceAliases.has(current) && !visited.has(current)) {
+        visited.add(current)
+        current = this.resourceAliases.get(current)!
+      }
+      resolved.set(outputId, current)
+    }
+    return resolved
   }
 
   /**

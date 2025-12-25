@@ -200,6 +200,7 @@ export class BufferPreviewPass extends BasePass {
       outputs: [{ resourceId: config.outputResource, access: 'write' }],
       enabled: config.enabled,
       priority: config.priority,
+      skipPassthrough: config.skipPassthrough,
     });
 
     this.bufferInputId = config.bufferInput;

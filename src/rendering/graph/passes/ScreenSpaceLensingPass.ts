@@ -137,6 +137,7 @@ export class ScreenSpaceLensingPass extends BasePass {
       outputs: [{ resourceId: config.outputResource, access: 'write' }],
       enabled: config.enabled,
       priority: config.priority,
+      skipPassthrough: config.skipPassthrough,
     })
 
     this.inputColorResourceId = config.colorInput

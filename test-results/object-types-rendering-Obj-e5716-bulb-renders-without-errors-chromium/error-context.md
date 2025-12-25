@@ -1,0 +1,263 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - generic [ref=e5]:
+    - status "Shader compilation in progress":
+      - generic:
+        - generic:
+          - img
+        - generic:
+          - generic: Building Mandelbulb Raymarcher shader...
+          - generic: This may take a moment
+        - status:
+          - img
+    - generic [ref=e11] [cursor=pointer]:
+      - generic [ref=e15]:
+        - generic [ref=e16]: "0"
+        - generic [ref=e17]: FPS
+      - img [ref=e20]
+      - generic [ref=e22]:
+        - generic [ref=e23]: "25814.4"
+        - generic [ref=e24]: ms
+  - generic:
+    - generic [ref=e26]:
+      - generic [ref=e27]:
+        - button "Toggle Explorer" [ref=e28] [cursor=pointer]:
+          - img [ref=e29]
+        - generic [ref=e31]:
+          - text: MDIMENSION
+          - generic [ref=e32]: MDIMENSION
+          - generic [ref=e33]: MDIMENSION
+        - generic [ref=e35]:
+          - button "FILE" [ref=e36] [cursor=pointer]:
+            - button "FILE" [ref=e37]
+          - button "VIEW" [ref=e38] [cursor=pointer]:
+            - button "VIEW" [ref=e39]
+          - button "SCENES" [ref=e40] [cursor=pointer]:
+            - button "SCENES" [ref=e41]
+          - button "STYLES" [ref=e42] [cursor=pointer]:
+            - button "STYLES" [ref=e43]
+      - generic [ref=e45]:
+        - generic [ref=e46]:
+          - button "Toggle edges" [pressed] [ref=e48] [cursor=pointer]: Edges
+          - button "Toggle faces" [pressed] [ref=e50] [cursor=pointer]: Faces
+        - button "Mute Sound" [ref=e52] [cursor=pointer]:
+          - img [ref=e53]
+        - button "Performance Monitor" [ref=e56] [cursor=pointer]:
+          - img [ref=e57]
+        - button "Fullscreen" [ref=e59] [cursor=pointer]:
+          - img [ref=e60]
+        - button "Cinematic Mode" [ref=e65] [cursor=pointer]:
+          - img [ref=e66]
+      - button "Toggle Inspector" [ref=e69] [cursor=pointer]:
+        - img [ref=e70]
+    - generic:
+      - generic [ref=e74]:
+        - generic [ref=e76]:
+          - img [ref=e77]
+          - heading "Geometry" [level=2] [ref=e79]
+        - generic [ref=e80]:
+          - generic [ref=e81]:
+            - generic [ref=e83]: Dimensions
+            - generic [ref=e86]:
+              - radiogroup "Select dimension" [ref=e88]:
+                - radio "3D" [ref=e89] [cursor=pointer]
+                - radio "4D" [checked] [ref=e90] [cursor=pointer]: 4D
+                - radio "5D" [ref=e92] [cursor=pointer]
+                - radio "6D" [ref=e93] [cursor=pointer]
+                - radio "7D" [ref=e94] [cursor=pointer]
+                - radio "8D" [ref=e95] [cursor=pointer]
+                - radio "9D" [ref=e96] [cursor=pointer]
+                - radio "10D" [ref=e97] [cursor=pointer]
+                - radio "11D" [ref=e98] [cursor=pointer]
+              - button "Scroll right" [ref=e99] [cursor=pointer]:
+                - img [ref=e100]
+          - generic [ref=e103]:
+            - tablist [ref=e106]:
+              - tab "Type" [selected] [ref=e107] [cursor=pointer]:
+                - generic [ref=e110]:
+                  - img [ref=e111]
+                  - generic [ref=e113]: Type
+              - tab "Geometry" [ref=e114] [cursor=pointer]:
+                - generic [ref=e116]:
+                  - img [ref=e117]
+                  - generic [ref=e119]: Geometry
+            - tabpanel "Type" [ref=e121]:
+              - generic [ref=e123]:
+                - button "Hypercube Generalization of a cube to n dimensions (n-cube)" [ref=e124] [cursor=pointer]:
+                  - generic [ref=e126]: Hypercube
+                  - generic [ref=e127]: Generalization of a cube to n dimensions (n-cube)
+                - button "Simplex Generalization of a tetrahedron to n dimensions (n-simplex)" [ref=e128] [cursor=pointer]:
+                  - generic [ref=e130]: Simplex
+                  - generic [ref=e131]: Generalization of a tetrahedron to n dimensions (n-simplex)
+                - button "Cross-Polytope Generalization of an octahedron to n dimensions (n-orthoplex)" [ref=e132] [cursor=pointer]:
+                  - generic [ref=e134]: Cross-Polytope
+                  - generic [ref=e135]: Generalization of an octahedron to n dimensions (n-orthoplex)
+                - button "Wythoff Polytope Uniform polytopes via Wythoff kaleidoscopic construction" [ref=e136] [cursor=pointer]:
+                  - generic [ref=e138]: Wythoff Polytope
+                  - generic [ref=e139]: Uniform polytopes via Wythoff kaleidoscopic construction
+                - button "Root System Root polytopes from Lie algebra (A, D, or E8)" [ref=e140] [cursor=pointer]:
+                  - generic [ref=e142]: Root System
+                  - generic [ref=e143]: Root polytopes from Lie algebra (A, D, or E8)
+                - 'button "Clifford Torus Flat torus with independent circles (3D: torus, 4D+: Clifford)" [ref=e144] [cursor=pointer]':
+                  - generic [ref=e146]: Clifford Torus
+                  - generic [ref=e147]: "Flat torus with independent circles (3D: torus, 4D+: Clifford)"
+                - 'button "Nested Torus Coupled tori with Hopf-like structure (4D: Hopf fibration, 5D-11D: n-tori)" [ref=e148] [cursor=pointer]':
+                  - generic [ref=e150]: Nested Torus
+                  - generic [ref=e151]: "Coupled tori with Hopf-like structure (4D: Hopf fibration, 5D-11D: n-tori)"
+                - 'button "Mandelbulb Fractal via escape-time iteration (3D: Mandelbulb, 4D+: Mandelbulb)" [ref=e152] [cursor=pointer]':
+                  - generic [ref=e154]: Mandelbulb
+                  - generic [ref=e158]: "Fractal via escape-time iteration (3D: Mandelbulb, 4D+: Mandelbulb)"
+                - button "Quaternion Julia Julia set fractal using quaternion algebra (z = z^n + c)" [ref=e159] [cursor=pointer]:
+                  - generic [ref=e161]: Quaternion Julia
+                  - generic [ref=e162]: Julia set fractal using quaternion algebra (z = z^n + c)
+                - button "Schrödinger Slices Organic volumes from an N-dimensional wavefunction." [ref=e163] [cursor=pointer]:
+                  - generic [ref=e165]: Schrödinger Slices
+                  - generic [ref=e166]: Organic volumes from an N-dimensional wavefunction.
+                - button "Black Hole N-dimensional black hole with gravitational lensing and accretion disk" [ref=e167] [cursor=pointer]:
+                  - generic [ref=e169]: Black Hole
+                  - generic [ref=e170]: N-dimensional black hole with gravitational lensing and accretion disk
+      - generic [ref=e174]:
+        - button "Pause" [ref=e176] [cursor=pointer]:
+          - img [ref=e177]
+        - generic [ref=e180]:
+          - generic [ref=e182]:
+            - generic [ref=e183]:
+              - generic "Drag label to adjust value" [ref=e184]: SPEED
+              - generic [ref=e186]:
+                - textbox [ref=e187]: "0.4"
+                - generic: x
+            - slider "SPEED" [ref=e191] [cursor=pointer]: "0.4"
+          - button "FWD" [ref=e192] [cursor=pointer]:
+            - generic [ref=e193]: FWD
+            - img [ref=e194]
+        - generic [ref=e198]:
+          - generic [ref=e199]:
+            - generic "Drag label to adjust value" [ref=e200]: BIAS
+            - textbox [ref=e203]: "0.00"
+          - slider "BIAS" [ref=e206] [cursor=pointer]: "0"
+        - generic [ref=e207]:
+          - button "Animations" [ref=e208] [cursor=pointer]
+          - button "Rotation3" [ref=e209] [cursor=pointer]
+      - generic [ref=e212]:
+        - generic [ref=e213]:
+          - img [ref=e214]
+          - heading "Visuals" [level=2] [ref=e216]
+        - generic [ref=e218]:
+          - generic [ref=e219]:
+            - tablist [ref=e221]:
+              - tab "Object" [selected] [ref=e222] [cursor=pointer]:
+                - generic [ref=e225]:
+                  - img [ref=e226]
+                  - generic [ref=e228]: Object
+              - tab "Scene" [ref=e229] [cursor=pointer]:
+                - generic [ref=e231]:
+                  - img [ref=e232]
+                  - generic [ref=e234]: Scene
+              - tab "System" [ref=e235] [cursor=pointer]:
+                - generic [ref=e237]:
+                  - img [ref=e238]
+                  - generic [ref=e240]: System
+            - button [ref=e241] [cursor=pointer]:
+              - img [ref=e242]
+          - tabpanel "Object" [ref=e245]:
+            - generic [ref=e246]:
+              - generic [ref=e247]:
+                - button "Faces" [expanded] [ref=e249] [cursor=pointer]:
+                  - heading "Faces" [level=3] [ref=e254]
+                  - img [ref=e256]
+                - generic [ref=e261]:
+                  - generic [ref=e262]:
+                    - tablist [ref=e264]:
+                      - tab "Colors" [selected] [ref=e265] [cursor=pointer]: Colors
+                      - tab "Material" [ref=e267] [cursor=pointer]
+                    - button [ref=e268] [cursor=pointer]:
+                      - img [ref=e269]
+                  - tabpanel "Colors" [ref=e272]:
+                    - generic [ref=e273]:
+                      - generic [ref=e274]:
+                        - generic [ref=e277]: Algorithm
+                        - generic [ref=e282]:
+                          - combobox [ref=e283] [cursor=pointer]:
+                            - option "Monochromatic" [selected]
+                            - option "Analogous"
+                            - option "Cosine Gradient"
+                            - option "Normal-Based"
+                            - option "Distance Field"
+                            - option "LCH Perceptual"
+                            - option "Multi-Source"
+                            - option "Radial (from center)"
+                            - option "Phase (Quantum)"
+                            - option "Mixed (Phase/Density)"
+                          - generic:
+                            - img
+                      - generic [ref=e287]: Preview
+                      - generic [ref=e292]:
+                        - generic [ref=e295]: Settings
+                        - generic [ref=e298]:
+                          - generic [ref=e299]: Base Color
+                          - button "#33cc9e" [ref=e300] [cursor=pointer]:
+                            - generic [ref=e305]: "#33cc9e"
+              - button "Edges" [ref=e308] [cursor=pointer]:
+                - heading "Edges" [level=3] [ref=e312]
+                - img [ref=e314]
+              - button "Shadows" [ref=e318] [cursor=pointer]:
+                - heading "Shadows" [level=3] [ref=e322]
+                - img [ref=e324]
+              - button "Reflections" [ref=e328] [cursor=pointer]:
+                - heading "Reflections" [level=3] [ref=e332]
+                - img [ref=e334]
+              - generic [ref=e336]:
+                - button "Advanced Rendering" [expanded] [ref=e338] [cursor=pointer]:
+                  - heading "Advanced Rendering" [level=3] [ref=e343]
+                  - img [ref=e345]
+                - generic [ref=e348]:
+                  - generic [ref=e349]:
+                    - text: Raymarching Quality
+                    - radiogroup "Raymarching quality selection" [ref=e350]:
+                      - radio "Fast" [ref=e351] [cursor=pointer]
+                      - radio "Balanced" [checked] [ref=e352] [cursor=pointer]: Balanced
+                      - radio "Quality" [ref=e354] [cursor=pointer]
+                      - radio "Ultra" [ref=e355] [cursor=pointer]
+                    - paragraph [ref=e356]: 2x larger steps - balanced quality
+                  - generic [ref=e357]:
+                    - generic [ref=e359]:
+                      - generic [ref=e360]: Subsurface Scattering
+                      - button "Toggle SSS" [ref=e361] [cursor=pointer]: "OFF"
+                    - generic [ref=e363]:
+                      - generic [ref=e364]: Fresnel Rim
+                      - button "Toggle Fresnel Rim" [ref=e365] [cursor=pointer]: "OFF"
+                  - generic [ref=e366]:
+                    - generic [ref=e367]:
+                      - generic [ref=e368]: Gravitational Lensing
+                      - button "Toggle gravitational lensing" [pressed] [ref=e369] [cursor=pointer]: "ON"
+                    - generic [ref=e370]:
+                      - generic [ref=e371]:
+                        - generic [ref=e372]:
+                          - generic "Drag label to adjust value" [ref=e373]: Strength
+                          - textbox [ref=e376]: "5.0"
+                        - slider "Strength" [ref=e380] [cursor=pointer]: "5"
+                      - generic [ref=e381]:
+                        - generic [ref=e382]:
+                          - generic "Drag label to adjust value" [ref=e383]: Distortion Scale
+                          - textbox [ref=e386]: "1.2"
+                        - slider "Distortion Scale" [ref=e390] [cursor=pointer]: "1.2"
+                      - generic [ref=e391]:
+                        - generic [ref=e392]:
+                          - generic "Drag label to adjust value" [ref=e393]: Falloff
+                          - textbox [ref=e396]: "1.5"
+                        - slider "Falloff" [ref=e400] [cursor=pointer]: "1.5"
+                      - generic [ref=e401]:
+                        - generic [ref=e402]:
+                          - generic "Drag label to adjust value" [ref=e403]: Chromatic Aberration
+                          - textbox [ref=e406]: "0.30"
+                        - slider "Chromatic Aberration" [ref=e410] [cursor=pointer]: "0.3"
+                  - generic [ref=e411]:
+                    - generic [ref=e413]:
+                      - generic [ref=e414]: Alternate Power
+                      - button "Toggle alternate power" [ref=e415] [cursor=pointer]: "OFF"
+                    - generic [ref=e417]:
+                      - generic [ref=e418]: Atmosphere
+                      - button "Toggle atmosphere" [ref=e419] [cursor=pointer]: "OFF"
+```

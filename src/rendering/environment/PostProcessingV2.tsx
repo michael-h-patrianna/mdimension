@@ -868,6 +868,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       },
       // Note: forceCapture is not an enabled() callback, so it still uses refs
       forceCapture: () => uiStateRef.current.showTemporalDepthBuffer,
+      skipPassthrough: true,
     });
     passRefs.current.temporalDepthCapture = temporalDepthCapture;
     g.addPass(temporalDepthCapture);
@@ -937,6 +938,8 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
     g.addPass(normalComposite);
 
     // Composite temporal clouds over the scene color
+    // This pass is only needed when temporal clouds are active.
+    // When disabled, passthrough correctly copies SCENE_COLOR → SCENE_COMPOSITE.
     const cloudComposite = new FullscreenPass({
       id: 'cloudComposite',
       inputs: [{ resourceId: RESOURCES.SCENE_COLOR, access: 'read', binding: 'uSceneColor' }],
@@ -946,6 +949,8 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
         uCloud: { value: null },
         uCloudAvailable: { value: 0 },
       },
+      enabled: shouldRenderTemporalCloud,
+      skipPassthrough: true,
     });
     passRefs.current.cloudComposite = cloudComposite;
     g.addPass(cloudComposite);
@@ -959,6 +964,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       depthInputAttachment: 'depth',
       outputResource: RESOURCES.GTAO_OUTPUT,
       enabled: (frame) => (frame?.stores.postProcessing.ssaoEnabled ?? false) && isPolytope,
+      skipPassthrough: true,
     });
     passRefs.current.gtao = gtaoPass;
     g.addPass(gtaoPass);
@@ -972,6 +978,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       radius: ppStateRef.current.bloomRadius,
       threshold: ppStateRef.current.bloomThreshold,
       enabled: (frame) => frame?.stores.postProcessing.bloomEnabled ?? false,
+      skipPassthrough: true,
     });
     passRefs.current.bloom = bloomPass;
     g.addPass(bloomPass);
@@ -994,6 +1001,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       fadeStart: ppStateRef.current.ssrFadeStart,
       fadeEnd: ppStateRef.current.ssrFadeEnd,
       enabled: (frame) => frame?.stores.postProcessing.ssrEnabled ?? false,
+      skipPassthrough: true,
     });
     passRefs.current.ssr = ssrPass;
     g.addPass(ssrPass);
@@ -1014,6 +1022,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       strength: ppStateRef.current.refractionStrength,
       chromaticAberration: ppStateRef.current.refractionChromaticAberration,
       enabled: (frame) => frame?.stores.postProcessing.refractionEnabled ?? false,
+      skipPassthrough: true,
     });
     passRefs.current.refraction = refractionPass;
     g.addPass(refractionPass);
@@ -1040,6 +1049,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
         return pp.bokehEnabled &&
           !(ui.showDepthBuffer || ui.showNormalBuffer || ui.showTemporalDepthBuffer);
       },
+      skipPassthrough: true,
     });
     passRefs.current.bokeh = bokehPass;
     g.addPass(bokehPass);
@@ -1059,6 +1069,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       falloff: blackHoleStateRef.current.lensingFalloff,
       // DEPRECATED: SSL for black holes is replaced by global gravity lensing (GravitationalLensingPass)
       enabled: () => false,
+      skipPassthrough: true,
     });
     passRefs.current.lensing = lensingPass;
     g.addPass(lensingPass);
@@ -1071,6 +1082,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       aberration: ppStateRef.current.cinematicAberration,
       vignette: ppStateRef.current.cinematicVignette,
       enabled: (frame) => frame?.stores.postProcessing.cinematicEnabled ?? false,
+      skipPassthrough: true,
     });
     passRefs.current.cinematic = cinematicPass;
     g.addPass(cinematicPass);
@@ -1084,6 +1096,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       grainSize: 1.0,
       colored: false,
       enabled: (frame) => (frame?.stores.postProcessing.cinematicGrain ?? 0) > 0.01,
+      skipPassthrough: true,
     });
     passRefs.current.filmGrain = filmGrainPass;
     g.addPass(filmGrainPass);
@@ -1133,6 +1146,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
         const ui = frame.stores.ui;
         return ui.showDepthBuffer || ui.showNormalBuffer || ui.showTemporalDepthBuffer;
       },
+      skipPassthrough: true,
     });
     passRefs.current.bufferPreview = bufferPreview;
     g.addPass(bufferPreview);
