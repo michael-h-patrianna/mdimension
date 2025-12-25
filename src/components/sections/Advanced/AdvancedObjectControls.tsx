@@ -292,8 +292,11 @@ const SchroedingerAdvanced: React.FC = () => {
     setShimmerStrength: state.setSchroedingerShimmerStrength,
     setIsoEnabled: state.setSchroedingerIsoEnabled,
     setIsoThreshold: state.setSchroedingerIsoThreshold,
-    // New features
+    // Erosion
     setErosionStrength: state.setSchroedingerErosionStrength,
+    setErosionScale: state.setSchroedingerErosionScale,
+    setErosionTurbulence: state.setSchroedingerErosionTurbulence,
+    setErosionNoiseType: state.setSchroedingerErosionNoiseType,
   }));
   const {
     config,
@@ -317,6 +320,9 @@ const SchroedingerAdvanced: React.FC = () => {
     setIsoEnabled,
     setIsoThreshold,
     setErosionStrength,
+    setErosionScale,
+    setErosionTurbulence,
+    setErosionNoiseType,
   } = useExtendedObjectStore(extendedObjectSelector);
 
   return (
@@ -361,19 +367,6 @@ const SchroedingerAdvanced: React.FC = () => {
       <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
         <div className="flex items-center justify-between">
           <label className="text-xs text-text-secondary font-semibold">Volume Effects</label>
-        </div>
-
-        {/* Erosion */}
-        <div className="mt-2">
-          <Slider
-            label="Surface Erosion"
-            min={0}
-            max={1}
-            step={0.1}
-            value={config.erosionStrength ?? 0.0}
-            onChange={setErosionStrength}
-            showValue
-          />
         </div>
 
         {/* Shadows & AO */}
@@ -602,6 +595,60 @@ const SchroedingerAdvanced: React.FC = () => {
             : 'Volumetric cloud visualization'
           }
         </p>
+      </div>
+
+      {/* Edge Erosion */}
+      <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
+        <div className="flex items-center justify-between">
+          <label className="text-xs text-text-secondary font-semibold">Edge Erosion</label>
+        </div>
+        <Slider
+          label="Strength"
+          min={0.0}
+          max={1.0}
+          step={0.05}
+          value={config.erosionStrength ?? 0.0}
+          onChange={setErosionStrength}
+          showValue
+          data-testid="schroedinger-erosion-strength"
+        />
+        {(config.erosionStrength ?? 0) > 0 && (
+          <>
+            <Slider
+              label="Scale"
+              min={0.25}
+              max={4.0}
+              step={0.25}
+              value={config.erosionScale ?? 1.0}
+              onChange={setErosionScale}
+              showValue
+              data-testid="schroedinger-erosion-scale"
+            />
+            <Slider
+              label="Turbulence"
+              min={0.0}
+              max={1.0}
+              step={0.1}
+              value={config.erosionTurbulence ?? 0.5}
+              onChange={setErosionTurbulence}
+              showValue
+              data-testid="schroedinger-erosion-turbulence"
+            />
+            <div className="pt-2">
+              <label className="text-xs text-text-secondary">Noise Type</label>
+              <select
+                className="w-full bg-surface-dark border border-white/10 rounded px-2 py-1 text-xs text-text-primary mt-1 focus:outline-none focus:border-accent"
+                value={config.erosionNoiseType ?? 0}
+                onChange={(e) => setErosionNoiseType(parseInt(e.target.value))}
+                data-testid="schroedinger-erosion-type"
+              >
+                <option value={0}>Worley (Cloudy)</option>
+                <option value={1}>Perlin (Smooth)</option>
+                <option value={2}>Hybrid (Billowy)</option>
+              </select>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
