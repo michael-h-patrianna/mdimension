@@ -30,29 +30,26 @@ export const gravitationalLensingFragmentShader = /* glsl */ `
   uniform float uFalloff;           // Distance falloff exponent (0.5-4)
   uniform float uChromaticAberration; // Chromatic aberration amount (0-1)
 
-  /**
-   * Compute radial distortion magnitude based on distance from gravity center.
-   * Uses gravitational lensing formula: deflection = strength / r^falloff
-   */
-  float lensingMagnitude(float r) {
-    float safeR = max(r, 0.001);
-    float strength = uStrength * uDistortionScale * 0.02;
-    float deflection = strength / pow(safeR, uFalloff);
-    return min(deflection, 0.5);
-  }
+  // Early-exit threshold: deflection below this value is sub-pixel and imperceptible
+  const float DEFLECTION_THRESHOLD = 0.001;
+  // Minimum effective strength to process lensing at all
+  const float MIN_EFFECTIVE_STRENGTH = 0.01;
 
   /**
    * Compute displacement vector for a UV coordinate toward the gravity center.
+   * Uses pre-computed magnitude to avoid redundant calculation.
+   *
+   * @param toCenter Vector from UV to gravity center
+   * @param r Distance from UV to gravity center
+   * @param magnitude Pre-computed lensing magnitude
+   * @return Displacement vector toward gravity center
    */
-  vec2 computeLensingDisplacement(vec2 uv, vec2 center) {
-    vec2 toCenter = center - uv;
-    float r = length(toCenter);
+  vec2 computeLensingDisplacementOptimized(vec2 toCenter, float r, float magnitude) {
     if (r < 0.001) {
       return vec2(0.0);
     }
-    vec2 dir = normalize(toCenter);
-    float mag = lensingMagnitude(r);
-    return dir * mag;
+    vec2 dir = toCenter / r; // normalize without extra length() call
+    return dir * magnitude;
   }
 
   /**
@@ -82,7 +79,33 @@ export const gravitationalLensingFragmentShader = /* glsl */ `
   }
 
   void main() {
-    vec2 displacement = computeLensingDisplacement(vUv, uGravityCenter);
+    // Compute effective strength for early-exit checks
+    float effectiveStrength = uStrength * uDistortionScale;
+
+    // Early exit 1: Effect globally disabled or negligible
+    if (effectiveStrength < MIN_EFFECTIVE_STRENGTH) {
+      fragColor = texture(tEnvironment, vUv);
+      return;
+    }
+
+    // Compute distance from gravity center (reused for deflection and Einstein ring)
+    vec2 toCenter = uGravityCenter - vUv;
+    float r = length(toCenter);
+    float safeR = max(r, 0.001);
+
+    // Compute lensing magnitude (deflection) for early-exit check
+    // Formula: deflection = (strength * distortionScale * 0.02) / r^falloff
+    float deflection = (effectiveStrength * 0.02) / pow(safeR, uFalloff);
+    deflection = min(deflection, 0.5); // Clamp to prevent extreme distortion
+
+    // Early exit 2: Deflection is sub-pixel, no visible effect
+    if (deflection < DEFLECTION_THRESHOLD) {
+      fragColor = texture(tEnvironment, vUv);
+      return;
+    }
+
+    // Full lensing computation using pre-computed magnitude
+    vec2 displacement = computeLensingDisplacementOptimized(toCenter, r, deflection);
     vec2 distortedUV = vUv + displacement;
 
     // Clamp to valid UV range
@@ -96,8 +119,7 @@ export const gravitationalLensingFragmentShader = /* glsl */ `
       color = texture(tEnvironment, distortedUV).rgb;
     }
 
-    // Apply subtle Einstein ring boost
-    float r = length(vUv - uGravityCenter);
+    // Apply subtle Einstein ring boost (reuses r computed above)
     float ringRadius = 0.15 * uStrength * 0.1; // Dynamic ring radius based on strength
     float boost = einsteinRingBoost(r, ringRadius);
     color *= boost;
