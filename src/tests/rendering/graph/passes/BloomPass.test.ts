@@ -22,6 +22,8 @@ describe('BloomPass', () => {
       strength: 1.5,
       radius: 0.4,
       threshold: 0.8,
+      smoothing: 0.15,
+      levels: 6,
     });
   });
 
@@ -38,6 +40,9 @@ describe('BloomPass', () => {
         strength: 2.0,
         radius: 0.6,
         threshold: 0.9,
+        smoothing: 0.2,
+        levels: 7,
+        hdrPeak: 8.0,
       });
 
       expect(pass.id).toBe('custom-bloom');
@@ -50,6 +55,9 @@ describe('BloomPass', () => {
       expect(params.strength).toBe(2.0);
       expect(params.radius).toBe(0.6);
       expect(params.threshold).toBe(0.9);
+      expect(params.smoothing).toBe(0.2);
+      expect(params.levels).toBe(7);
+      expect(params.hdrPeak).toBe(8.0);
 
       pass.dispose();
     });
@@ -62,9 +70,12 @@ describe('BloomPass', () => {
       });
 
       const params = pass.getParameters();
-      expect(params.strength).toBe(1.0);
+      expect(params.strength).toBe(0.5);
       expect(params.radius).toBe(0.4);
       expect(params.threshold).toBe(0.8);
+      expect(params.smoothing).toBe(0.1);
+      expect(params.levels).toBe(5);
+      expect(params.hdrPeak).toBe(5.0);
 
       pass.dispose();
     });
@@ -85,6 +96,26 @@ describe('BloomPass', () => {
       bloomPass.setThreshold(0.5);
       expect(bloomPass.getParameters().threshold).toBe(0.5);
     });
+
+    it('should update smoothing', () => {
+      bloomPass.setSmoothing(0.25);
+      expect(bloomPass.getParameters().smoothing).toBe(0.25);
+    });
+
+    it('should update levels', () => {
+      bloomPass.setLevels(4);
+      expect(bloomPass.getParameters().levels).toBe(4);
+    });
+
+    it('should update hdrPeak', () => {
+      bloomPass.setHdrPeak(10.0);
+      expect(bloomPass.getParameters().hdrPeak).toBe(10.0);
+    });
+
+    it('should clamp hdrPeak to minimum of 1.0', () => {
+      bloomPass.setHdrPeak(0.5);
+      expect(bloomPass.getParameters().hdrPeak).toBe(1.0);
+    });
   });
 
   describe('getParameters', () => {
@@ -95,6 +126,9 @@ describe('BloomPass', () => {
         strength: 1.5,
         radius: 0.4,
         threshold: 0.8,
+        smoothing: 0.15,
+        levels: 6,
+        hdrPeak: 5.0,
       });
     });
 
@@ -102,6 +136,9 @@ describe('BloomPass', () => {
       bloomPass.setStrength(3.0);
       bloomPass.setRadius(0.8);
       bloomPass.setThreshold(0.6);
+      bloomPass.setSmoothing(0.3);
+      bloomPass.setLevels(3);
+      bloomPass.setHdrPeak(8.0);
 
       const params = bloomPass.getParameters();
 
@@ -109,36 +146,36 @@ describe('BloomPass', () => {
         strength: 3.0,
         radius: 0.8,
         threshold: 0.6,
+        smoothing: 0.3,
+        levels: 3,
+        hdrPeak: 8.0,
       });
     });
   });
 
   describe('execute', () => {
-    it('should warn when input texture not found', () => {
-      const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-      // Create mock renderer (avoid WebGLRenderer which needs full GL context)
+    it('should skip when size is invalid', () => {
+      // Create minimal mock renderer
       const mockRenderer = {
         setRenderTarget: vi.fn(),
         render: vi.fn(),
         getContext: vi.fn(() => ({})),
+        getSize: vi.fn(() => new THREE.Vector2(0, 0)),
         dispose: vi.fn(),
       } as unknown as THREE.WebGLRenderer;
 
       const mockContext = {
         renderer: mockRenderer,
-        size: { width: 1920, height: 1080 },
+        size: { width: 0, height: 0 }, // Invalid size - should skip
         getReadTexture: vi.fn().mockReturnValue(null),
         getWriteTarget: vi.fn(),
       };
 
-      bloomPass.execute(mockContext as any);
+      // Should not throw when size is invalid (early return)
+      expect(() => bloomPass.execute(mockContext as any)).not.toThrow();
 
-      expect(consoleWarn).toHaveBeenCalledWith(
-        "BloomPass: Input texture 'sceneColor' not found"
-      );
-
-      consoleWarn.mockRestore();
+      // getReadTexture should NOT be called because we early-return on invalid size
+      expect(mockContext.getReadTexture).not.toHaveBeenCalled();
     });
   });
 

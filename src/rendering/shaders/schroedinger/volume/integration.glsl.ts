@@ -128,8 +128,8 @@ VolumeResult volumeRaymarch(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar
 
 #ifdef USE_DISPERSION
         // Exit when all channels are blocked
-        if (transmittance3.r < MIN_TRANSMITTANCE && 
-            transmittance3.g < MIN_TRANSMITTANCE && 
+        if (transmittance3.r < MIN_TRANSMITTANCE &&
+            transmittance3.g < MIN_TRANSMITTANCE &&
             transmittance3.b < MIN_TRANSMITTANCE) break;
 #else
         if (transmittance < MIN_TRANSMITTANCE) break;
@@ -342,7 +342,7 @@ VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tF
         // OPTIMIZATION: Compute gradient ONCE for reuse by both dispersion and lighting
         // This eliminates the duplicate gradient computation that was wasting 3 density samples
         vec3 gradient = computeDensityGradientFast(pos, animTime, 0.05, sCenter);
-        
+
         // Chromatic Dispersion Logic
         vec3 rhoRGB = vec3(rho); // Default: all channels same
 
@@ -411,13 +411,13 @@ VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tF
             // Use Green channel as representative for center
             // Note: gradient was computed earlier and is reused here (no redundant computation)
             vec3 emissionCenter = computeEmissionLit(rhoRGB.g, phase, pos, gradient, viewDir);
-            
+
             // Modulate emission for R/B channels based on their density relative to G
             vec3 emission;
             emission.g = emissionCenter.g;
             emission.r = emissionCenter.r * (rhoRGB.r / max(rhoRGB.g, 0.0001));
             emission.b = emissionCenter.b * (rhoRGB.b / max(rhoRGB.g, 0.0001));
-            
+
             accColor += transmittance * alpha * emission;
             transmittance *= (vec3(1.0) - alpha);
         }
@@ -434,11 +434,11 @@ VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tF
     vec3 wCenter = centroidWeight > 0.001
         ? centroidSum / centroidWeight
         : rayOrigin + rayDir * entryT;
-        
+
     // Final alpha (average or max?)
     // For depth writing and composition, average remaining transmittance?
     float finalAlpha = 1.0 - (transmittance.r + transmittance.g + transmittance.b) / 3.0;
 
     return VolumeResult(accColor, finalAlpha, entryT, wCenter, centroidWeight);
 }
-`;
+`

@@ -47,9 +47,16 @@ export const DEFAULT_FACES_VISIBLE = true
 // ============================================================================
 
 export const DEFAULT_BLOOM_ENABLED = false
-export const DEFAULT_BLOOM_INTENSITY = 0.2
-export const DEFAULT_BLOOM_THRESHOLD = 0.45
-export const DEFAULT_BLOOM_RADIUS = 0.15
+/** Bloom intensity/strength (0-2, default 0.5) */
+export const DEFAULT_BLOOM_INTENSITY = 0.5
+/** Luminance threshold - pixels below this won't bloom (0-1, default 0.8) */
+export const DEFAULT_BLOOM_THRESHOLD = 0.8
+/** Blur radius/spread (0-1, default 0.4) */
+export const DEFAULT_BLOOM_RADIUS = 0.4
+/** Luminance smoothing - softens the threshold transition (0-1, default 0.1) */
+export const DEFAULT_BLOOM_SMOOTHING = 0.1
+/** Number of blur levels/mip levels (1-8, default 5) */
+export const DEFAULT_BLOOM_LEVELS = 5
 
 // ============================================================================
 // Bokeh (Depth of Field) Defaults

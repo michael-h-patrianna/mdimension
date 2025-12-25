@@ -89,6 +89,8 @@ export interface FrozenPostProcessingState {
   readonly bloomIntensity: number
   readonly bloomThreshold: number
   readonly bloomRadius: number
+  readonly bloomSmoothing: number
+  readonly bloomLevels: number
 
   // Bokeh (Depth of Field)
   readonly bokehEnabled: boolean
@@ -375,6 +377,8 @@ function capturePostProcessingState(
     bloomIntensity: state.bloomIntensity,
     bloomThreshold: state.bloomThreshold,
     bloomRadius: state.bloomRadius,
+    bloomSmoothing: state.bloomSmoothing,
+    bloomLevels: state.bloomLevels,
 
     // Bokeh
     bokehEnabled: state.bokehEnabled,
@@ -589,8 +593,10 @@ export function createEmptyFrameContext(): FrozenFrameContext {
       postProcessing: {
         bloomEnabled: true,
         bloomIntensity: 0.5,
-        bloomThreshold: 0.5,
-        bloomRadius: 0.5,
+        bloomThreshold: 0.8,
+        bloomRadius: 0.4,
+        bloomSmoothing: 0.1,
+        bloomLevels: 5,
         bokehEnabled: false,
         bokehFocusMode: 'auto-center',
         bokehBlurMethod: 'hexagonal',

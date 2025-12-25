@@ -4,6 +4,10 @@
  * Wraps Three.js UnrealBloomPass for the RenderGraph system.
  * Applies HDR bloom/glow effect to bright areas of the scene.
  *
+ * HDR-Aware: Uses normalized luminance thresholding so that
+ * threshold and smoothing parameters work intuitively with
+ * HDR content (luminance values > 1.0).
+ *
  * @module rendering/graph/passes/BloomPass
  */
 
@@ -12,6 +16,64 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 
 import { BasePass } from '../BasePass';
 import type { RenderContext, RenderPassConfig } from '../types';
+
+/**
+ * HDR-aware Luminosity High Pass Shader
+ *
+ * Modified version of Three.js LuminosityHighPassShader that normalizes
+ * luminance by an HDR peak value before thresholding. This makes the
+ * threshold and smoothWidth parameters work intuitively with HDR content.
+ *
+ * Formula: normalizedLuminance = luminance / hdrPeak
+ * Then: alpha = smoothstep(threshold, threshold + smoothWidth, normalizedLuminance)
+ */
+const HDRLuminosityHighPassShader = {
+  uniforms: {
+    tDiffuse: { value: null as THREE.Texture | null },
+    luminosityThreshold: { value: 1.0 },
+    smoothWidth: { value: 1.0 },
+    defaultColor: { value: new THREE.Color(0x000000) },
+    defaultOpacity: { value: 0.0 },
+    hdrPeak: { value: 5.0 },
+  },
+
+  vertexShader: /* glsl */ `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+
+  fragmentShader: /* glsl */ `
+    uniform sampler2D tDiffuse;
+    uniform vec3 defaultColor;
+    uniform float defaultOpacity;
+    uniform float luminosityThreshold;
+    uniform float smoothWidth;
+    uniform float hdrPeak;
+
+    varying vec2 vUv;
+
+    void main() {
+      vec4 texel = texture2D(tDiffuse, vUv);
+
+      // Calculate luminance (Rec. 709 coefficients)
+      float v = dot(texel.rgb, vec3(0.2126, 0.7152, 0.0722));
+
+      // Normalize luminance by HDR peak for intuitive thresholding
+      // This makes threshold=0.8 mean "80% of peak brightness"
+      float normalizedV = v / hdrPeak;
+
+      vec4 outputColor = vec4(defaultColor, defaultOpacity);
+
+      // Apply threshold with smoothing on normalized luminance
+      float alpha = smoothstep(luminosityThreshold, luminosityThreshold + smoothWidth, normalizedV);
+
+      gl_FragColor = mix(outputColor, texel, alpha);
+    }
+  `,
+};
 
 /**
  * Configuration for BloomPass.
@@ -23,14 +85,23 @@ export interface BloomPassConfig extends Omit<RenderPassConfig, 'inputs' | 'outp
   /** Output resource (can be same as input for in-place) */
   outputResource: string;
 
-  /** Bloom strength (default: 1.0) */
+  /** Bloom strength (default: 0.5) */
   strength?: number;
 
   /** Bloom radius (default: 0.4) */
   radius?: number;
 
-  /** Luminance threshold for bloom (default: 0.8) */
+  /** Luminance threshold for bloom, normalized 0-1 (default: 0.8) */
   threshold?: number;
+
+  /** Luminance smoothing - softens threshold transition (default: 0.1) */
+  smoothing?: number;
+
+  /** Number of blur levels to use 1-5 (default: 5) */
+  levels?: number;
+
+  /** HDR peak luminance for normalization (default: 5.0) */
+  hdrPeak?: number;
 }
 
 /**
@@ -62,6 +133,12 @@ export class BloomPass extends BasePass {
   private strength: number;
   private radius: number;
   private threshold: number;
+  private smoothing: number;
+  private levels: number;
+  private hdrPeak: number;
+
+  // Custom HDR-aware high pass material (replaces UnrealBloomPass's default)
+  private hdrHighPassMaterial: THREE.ShaderMaterial | null = null;
 
   // Cached size for resize detection
   private lastWidth = 0;
@@ -90,9 +167,12 @@ export class BloomPass extends BasePass {
 
     this.inputResourceId = config.inputResource;
     this.outputResourceId = config.outputResource;
-    this.strength = config.strength ?? 1.0;
+    this.strength = config.strength ?? 0.5;
     this.radius = config.radius ?? 0.4;
     this.threshold = config.threshold ?? 0.8;
+    this.smoothing = config.smoothing ?? 0.1;
+    this.levels = config.levels ?? 5;
+    this.hdrPeak = config.hdrPeak ?? 5.0;
 
     // Create copy material for transferring bloom result
     this.copyMaterial = new THREE.ShaderMaterial({
@@ -137,6 +217,7 @@ export class BloomPass extends BasePass {
     if (!this.bloomPass || width !== this.lastWidth || height !== this.lastHeight) {
       // Dispose old resources
       this.bloomPass?.dispose();
+      this.hdrHighPassMaterial?.dispose();
       this.bloomReadTarget?.dispose();
       this.bloomWriteTarget?.dispose();
 
@@ -147,6 +228,24 @@ export class BloomPass extends BasePass {
         this.radius,
         this.threshold
       );
+
+      // Create HDR-aware high pass material to replace the default one
+      // This normalizes luminance by hdrPeak before thresholding, making
+      // the threshold and smoothing parameters work intuitively with HDR content
+      this.hdrHighPassMaterial = new THREE.ShaderMaterial({
+        uniforms: THREE.UniformsUtils.clone(HDRLuminosityHighPassShader.uniforms),
+        vertexShader: HDRLuminosityHighPassShader.vertexShader,
+        fragmentShader: HDRLuminosityHighPassShader.fragmentShader,
+      });
+
+      // Replace UnrealBloomPass's default high pass material with our HDR-aware version
+      // CRITICAL: Must also update highPassUniforms reference - UnrealBloomPass uses this
+      // internally to set tDiffuse during render. If we only replace materialHighPassFilter,
+      // highPassUniforms still points to the old material's uniforms and nothing renders!
+      const oldMaterial = this.bloomPass.materialHighPassFilter;
+      this.bloomPass.materialHighPassFilter = this.hdrHighPassMaterial;
+      (this.bloomPass as unknown as { highPassUniforms: typeof this.hdrHighPassMaterial.uniforms }).highPassUniforms = this.hdrHighPassMaterial.uniforms;
+      oldMaterial.dispose();
 
       // Create reusable render targets for bloom processing
       // CRITICAL: Must use LinearSRGBColorSpace to match pipeline targets
@@ -197,6 +296,29 @@ export class BloomPass extends BasePass {
     this.bloomPass.strength = this.strength;
     this.bloomPass.radius = this.radius;
     this.bloomPass.threshold = this.threshold;
+
+    // Update HDR high pass material uniforms
+    // Our custom material normalizes luminance by hdrPeak before thresholding
+    if (this.hdrHighPassMaterial) {
+      this.hdrHighPassMaterial.uniforms['luminosityThreshold']!.value = this.threshold;
+      this.hdrHighPassMaterial.uniforms['smoothWidth']!.value = this.smoothing;
+      this.hdrHighPassMaterial.uniforms['hdrPeak']!.value = this.hdrPeak;
+    }
+
+    // Adjust bloomFactors based on levels (1-5)
+    // Lower levels = tighter bloom (reduce contribution of larger mips)
+    const levelScale = this.levels / 5; // 1.0 when levels=5, 0.2 when levels=1
+    const baseFactors = [1.0, 0.8, 0.6, 0.4, 0.2];
+    const adjustedFactors = baseFactors.map((f, i) => {
+      // Scale down higher mips when levels is low
+      const mipScale = i < this.levels ? 1.0 : 0.0;
+      return f * mipScale * (i === 0 ? 1.0 : levelScale);
+    });
+    // Cast to access internal uniforms
+    const compositeUniforms = this.bloomPass.compositeMaterial.uniforms as {
+      bloomFactors: { value: number[] };
+    };
+    compositeUniforms.bloomFactors.value = adjustedFactors;
 
     // The UnrealBloomPass needs to work with its own read/write buffers
     // We need to:
@@ -257,19 +379,54 @@ export class BloomPass extends BasePass {
   }
 
   /**
+   * Set luminance smoothing (softens threshold transition).
+   */
+  setSmoothing(smoothing: number): void {
+    this.smoothing = smoothing;
+  }
+
+  /**
+   * Set number of blur levels (1-5).
+   */
+  setLevels(levels: number): void {
+    this.levels = Math.max(1, Math.min(5, Math.round(levels)));
+  }
+
+  /**
+   * Set HDR peak luminance for normalization.
+   * This controls what luminance value is considered "maximum brightness".
+   * Higher values = more gradual bloom transition for HDR content.
+   */
+  setHdrPeak(hdrPeak: number): void {
+    this.hdrPeak = Math.max(1.0, hdrPeak);
+  }
+
+  /**
    * Get current bloom parameters.
    */
-  getParameters(): { strength: number; radius: number; threshold: number } {
+  getParameters(): {
+    strength: number;
+    radius: number;
+    threshold: number;
+    smoothing: number;
+    levels: number;
+    hdrPeak: number;
+  } {
     return {
       strength: this.strength,
       radius: this.radius,
       threshold: this.threshold,
+      smoothing: this.smoothing,
+      levels: this.levels,
+      hdrPeak: this.hdrPeak,
     };
   }
 
   dispose(): void {
     this.bloomPass?.dispose();
     this.bloomPass = null;
+    this.hdrHighPassMaterial?.dispose();
+    this.hdrHighPassMaterial = null;
     this.bloomReadTarget?.dispose();
     this.bloomReadTarget = null;
     this.bloomWriteTarget?.dispose();

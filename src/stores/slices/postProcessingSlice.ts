@@ -15,7 +15,9 @@ import {
   DEFAULT_ANTI_ALIASING_METHOD,
   DEFAULT_BLOOM_ENABLED,
   DEFAULT_BLOOM_INTENSITY,
+  DEFAULT_BLOOM_LEVELS,
   DEFAULT_BLOOM_RADIUS,
+  DEFAULT_BLOOM_SMOOTHING,
   DEFAULT_BLOOM_THRESHOLD,
   DEFAULT_BOKEH_BLUR_METHOD,
   DEFAULT_BOKEH_ENABLED,
@@ -54,9 +56,16 @@ import {
 export interface PostProcessingSliceState {
   // --- Bloom ---
   bloomEnabled: boolean
+  /** Bloom intensity/strength (0-2) */
   bloomIntensity: number
+  /** Luminance threshold - pixels below this won't bloom (0-1) */
   bloomThreshold: number
+  /** Blur radius/spread (0-1) */
   bloomRadius: number
+  /** Luminance smoothing - softens the threshold transition (0-1) */
+  bloomSmoothing: number
+  /** Number of blur levels/mip levels (1-8) */
+  bloomLevels: number
 
   // --- Bokeh (Depth of Field) ---
   bokehEnabled: boolean
@@ -122,6 +131,8 @@ export interface PostProcessingSliceActions {
   setBloomIntensity: (intensity: number) => void
   setBloomThreshold: (threshold: number) => void
   setBloomRadius: (radius: number) => void
+  setBloomSmoothing: (smoothing: number) => void
+  setBloomLevels: (levels: number) => void
 
   // --- Bokeh Actions ---
   setBokehEnabled: (enabled: boolean) => void
@@ -185,6 +196,8 @@ export const POST_PROCESSING_INITIAL_STATE: PostProcessingSliceState = {
   bloomIntensity: DEFAULT_BLOOM_INTENSITY,
   bloomThreshold: DEFAULT_BLOOM_THRESHOLD,
   bloomRadius: DEFAULT_BLOOM_RADIUS,
+  bloomSmoothing: DEFAULT_BLOOM_SMOOTHING,
+  bloomLevels: DEFAULT_BLOOM_LEVELS,
 
   // Bokeh
   bokehEnabled: DEFAULT_BOKEH_ENABLED,
@@ -263,6 +276,14 @@ export const createPostProcessingSlice: StateCreator<
 
   setBloomRadius: (radius: number) => {
     set({ bloomRadius: Math.max(0, Math.min(1, radius)) })
+  },
+
+  setBloomSmoothing: (smoothing: number) => {
+    set({ bloomSmoothing: Math.max(0, Math.min(1, smoothing)) })
+  },
+
+  setBloomLevels: (levels: number) => {
+    set({ bloomLevels: Math.max(1, Math.min(5, Math.round(levels))) })
   },
 
   // --- Bokeh Actions ---

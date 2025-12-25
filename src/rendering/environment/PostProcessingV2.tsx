@@ -61,7 +61,6 @@ import {
   DepthPass,
   EnvironmentCompositePass,
   FXAAPass,
-  FilmGrainPass,
   FullscreenPass,
   GTAOPass,
   GravitationalLensingPass,
@@ -74,6 +73,7 @@ import {
   ScreenSpaceLensingPass,
   TemporalCloudPass,
   TemporalDepthCapturePass,
+  ToneMappingPass,
   ToScreenPass,
 } from '@/rendering/graph/passes';
 import { RenderGraph } from '@/rendering/graph/RenderGraph';
@@ -125,7 +125,7 @@ const RESOURCES = {
   REFRACTION_OUTPUT: 'refractionOutput',
   LENSING_OUTPUT: 'lensingOutput',
   CINEMATIC_OUTPUT: 'cinematicOutput',
-  GRAIN_OUTPUT: 'grainOutput',
+  TONEMAPPED_OUTPUT: 'tonemappedOutput',
   AA_OUTPUT: 'aaOutput',
 } as const;
 
@@ -188,6 +188,8 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
     bloomIntensity: s.bloomIntensity,
     bloomRadius: s.bloomRadius,
     bloomThreshold: s.bloomThreshold,
+    bloomSmoothing: s.bloomSmoothing,
+    bloomLevels: s.bloomLevels,
     // Bokeh
     bokehEnabled: s.bokehEnabled,
     bokehFocusMode: s.bokehFocusMode,
@@ -309,16 +311,10 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
   const bufferStatsTimeRef = useRef(0);
   const projectedBlackHole = useMemo(() => new THREE.Vector3(), []);
 
-  // Set up Three.js renderer tone mapping
-  useEffect(() => {
-    if (lightingState.toneMappingEnabled) {
-      gl.toneMapping = TONE_MAPPING_TO_THREE[lightingState.toneMappingAlgorithm] as THREE.ToneMapping;
-      gl.toneMappingExposure = lightingState.exposure;
-    } else {
-      gl.toneMapping = THREE.NoToneMapping;
-      gl.toneMappingExposure = 1;
-    }
-  }, [gl, lightingState.toneMappingEnabled, lightingState.toneMappingAlgorithm, lightingState.exposure]);
+  // NOTE: Three.js renderer tone mapping (gl.toneMapping) is NOT used here.
+  // It only applies when rendering directly to screen (null render target),
+  // but our render graph renders everything to off-screen targets first.
+  // Tone mapping is handled by ToneMappingPass in the render graph instead.
 
   // ==========================================================================
   // Create Render Graph (once, with all passes)
@@ -342,7 +338,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
     refraction?: RefractionPass;
     lensing?: ScreenSpaceLensingPass;
     cinematic?: CinematicPass;
-    filmGrain?: FilmGrainPass;
+    toneMapping?: ToneMappingPass;
     fxaa?: FXAAPass;
     smaa?: SMAAPass;
   }>({});
@@ -659,7 +655,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
     });
 
     g.addResource({
-      id: RESOURCES.GRAIN_OUTPUT,
+      id: RESOURCES.TONEMAPPED_OUTPUT,
       type: 'renderTarget',
       size: { mode: 'screen' },
       format: THREE.RGBAFormat,
@@ -973,7 +969,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
     passRefs.current.gtao = gtaoPass;
     g.addPass(gtaoPass);
 
-    // Bloom pass
+    // Bloom pass (using postprocessing library for better HDR support)
     const bloomPass = new BloomPass({
       id: 'bloom',
       inputResource: RESOURCES.GTAO_OUTPUT,
@@ -981,6 +977,8 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       strength: ppStateRef.current.bloomIntensity,
       radius: ppStateRef.current.bloomRadius,
       threshold: ppStateRef.current.bloomThreshold,
+      smoothing: ppStateRef.current.bloomSmoothing,
+      levels: ppStateRef.current.bloomLevels,
       enabled: (frame) => frame?.stores.postProcessing.bloomEnabled ?? false,
       skipPassthrough: true,
     });
@@ -1078,39 +1076,45 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
     passRefs.current.lensing = lensingPass;
     g.addPass(lensingPass);
 
-    // Cinematic pass
+    // Cinematic pass (includes chromatic aberration, vignette, and film grain)
     const cinematicPass = new CinematicPass({
       id: 'cinematic',
       colorInput: RESOURCES.LENSING_OUTPUT,
       outputResource: RESOURCES.CINEMATIC_OUTPUT,
       aberration: ppStateRef.current.cinematicAberration,
       vignette: ppStateRef.current.cinematicVignette,
+      grain: ppStateRef.current.cinematicGrain,
       enabled: (frame) => frame?.stores.postProcessing.cinematicEnabled ?? false,
       skipPassthrough: true,
     });
     passRefs.current.cinematic = cinematicPass;
     g.addPass(cinematicPass);
 
-    // Film grain pass (separate from cinematic for better control)
-    const filmGrainPass = new FilmGrainPass({
-      id: 'filmGrain',
+    // Tone mapping pass - converts HDR to LDR
+    // Position: After all HDR effects (cinematic), before AA
+    const toneMappingPass = new ToneMappingPass({
+      id: 'toneMapping',
       colorInput: RESOURCES.CINEMATIC_OUTPUT,
-      outputResource: RESOURCES.GRAIN_OUTPUT,
-      intensity: ppStateRef.current.cinematicGrain,
-      grainSize: 1.0,
-      colored: false,
-      enabled: (frame) => (frame?.stores.postProcessing.cinematicGrain ?? 0) > 0.01,
+      outputResource: RESOURCES.TONEMAPPED_OUTPUT,
+      toneMapping: TONE_MAPPING_TO_THREE[lightingState.toneMappingAlgorithm],
+      exposure: lightingState.exposure,
+      enabled: (frame) => {
+        if (!frame) return false;
+        // Access lighting state from frozen frame context
+        // Note: We need to add lighting to frozen context, for now use ref
+        return lightingState.toneMappingEnabled;
+      },
       skipPassthrough: true,
     });
-    passRefs.current.filmGrain = filmGrainPass;
-    g.addPass(filmGrainPass);
+    passRefs.current.toneMapping = toneMappingPass;
+    g.addPass(toneMappingPass);
 
     // Anti-aliasing pass (only add the active one to avoid multiple writers)
     // Graph is recreated when antiAliasingMethod changes (see dependency array)
     if (ppStateRef.current.antiAliasingMethod === 'fxaa') {
       const fxaaPass = new FXAAPass({
         id: 'fxaa',
-        colorInput: RESOURCES.GRAIN_OUTPUT,
+        colorInput: RESOURCES.TONEMAPPED_OUTPUT,
         outputResource: RESOURCES.AA_OUTPUT,
       });
       passRefs.current.fxaa = fxaaPass;
@@ -1119,7 +1123,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
     } else if (ppStateRef.current.antiAliasingMethod === 'smaa') {
       const smaaPass = new SMAAPass({
         id: 'smaa',
-        colorInput: RESOURCES.GRAIN_OUTPUT,
+        colorInput: RESOURCES.TONEMAPPED_OUTPUT,
         outputResource: RESOURCES.AA_OUTPUT,
       });
       passRefs.current.smaa = smaaPass;
@@ -1129,7 +1133,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       // No AA - use efficient CopyPass instead of FXAAPass for passthrough
       const passthroughPass = new CopyPass({
         id: 'aaPassthrough',
-        colorInput: RESOURCES.GRAIN_OUTPUT,
+        colorInput: RESOURCES.TONEMAPPED_OUTPUT,
         outputResource: RESOURCES.AA_OUTPUT,
       });
       passRefs.current.fxaa = undefined;
@@ -1208,14 +1212,14 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
 
     return g;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [restoreCount, isPolytope, isBlackHole, ppState.antiAliasingMethod, temporalDepth]); // Recreate on context restore, object type, AA method, or temporal depth change
+  }, [restoreCount, isPolytope, isBlackHole, ppState.antiAliasingMethod, temporalDepth, lightingState.toneMappingEnabled]); // Recreate on context restore, object type, AA method, temporal depth, or tone mapping toggle
 
   // ==========================================================================
   // Update pass parameters when store changes
   // ==========================================================================
 
   useEffect(() => {
-    const { gtao, bloom, ssr, bokeh, refraction, lensing, cinematic, filmGrain } = passRefs.current;
+    const { gtao, bloom, ssr, bokeh, refraction, lensing, cinematic, toneMapping } = passRefs.current;
 
     if (gtao) {
       gtao.setIntensity(ppState.ssaoIntensity);
@@ -1225,6 +1229,8 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       bloom.setStrength(ppState.bloomIntensity);
       bloom.setRadius(ppState.bloomRadius);
       bloom.setThreshold(ppState.bloomThreshold);
+      bloom.setSmoothing(ppState.bloomSmoothing);
+      bloom.setLevels(ppState.bloomLevels);
     }
 
     if (ssr) {
@@ -1261,12 +1267,14 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
     if (cinematic) {
       cinematic.setAberration(ppState.cinematicAberration);
       cinematic.setVignette(ppState.cinematicVignette);
+      cinematic.setGrain(ppState.cinematicGrain);
     }
 
-    if (filmGrain) {
-      filmGrain.setIntensity(ppState.cinematicGrain);
+    if (toneMapping) {
+      toneMapping.setToneMapping(TONE_MAPPING_TO_THREE[lightingState.toneMappingAlgorithm]);
+      toneMapping.setExposure(lightingState.exposure);
     }
-  }, [ppState, blackHoleState]);
+  }, [ppState, blackHoleState, lightingState]);
 
   // ==========================================================================
   // Update size - use useLayoutEffect to run BEFORE useFrame

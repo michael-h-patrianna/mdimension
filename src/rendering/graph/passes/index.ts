@@ -46,7 +46,6 @@ export { SSRPass, type SSRPassConfig } from './SSRPass'
 export { GTAOPass, type GTAOPassConfig } from './GTAOPass'
 
 // Cinematic passes
-export { FilmGrainPass, type FilmGrainPassConfig } from './FilmGrainPass'
 export { ToneMappingPass, type ToneMappingPassConfig } from './ToneMappingPass'
 
 // Debug passes
