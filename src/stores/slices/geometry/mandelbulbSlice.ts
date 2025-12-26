@@ -6,7 +6,10 @@ import {
 import { StateCreator } from 'zustand'
 import { ExtendedObjectSlice, MandelbulbSlice } from './types'
 
-export const createMandelbulbSlice: StateCreator<ExtendedObjectSlice, [], [], MandelbulbSlice> = (set, get) => ({
+export const createMandelbulbSlice: StateCreator<ExtendedObjectSlice, [], [], MandelbulbSlice> = (
+  set,
+  get
+) => ({
   mandelbulb: { ...DEFAULT_MANDELBROT_CONFIG },
 
   setMandelbulbMaxIterations: (value) => {

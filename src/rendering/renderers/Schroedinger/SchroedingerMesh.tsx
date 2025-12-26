@@ -152,6 +152,7 @@ const SchroedingerMesh = () => {
       uPhaseAnimationEnabled: { value: false },
 
       // Volume rendering parameters
+      uSampleCount: { value: 32 }, // Raymarching sample count (from quality preset)
       uTimeScale: { value: 0.5 },
       uFieldScale: { value: 1.0 },
       uDensityGain: { value: 2.0 },
@@ -379,6 +380,18 @@ const SchroedingerMesh = () => {
       // Maps RaymarchQuality preset to sample count with screen coverage adaptation
       const baseSamples = RAYMARCH_QUALITY_TO_SAMPLES[schroedinger.raymarchQuality] ?? 32;
       const effectiveSamples = getEffectiveVolumeSamples(baseSamples, camera as THREE.PerspectiveCamera, qualityMultiplier);
+
+      // DEBUG: Log sample count values (remove after verification)
+      if (Math.random() < 0.01) { // Log ~1% of frames to avoid spam
+        console.log('[Schrödinger Quality Debug]', {
+          raymarchQuality: schroedinger.raymarchQuality,
+          baseSamples,
+          qualityMultiplier,
+          effectiveSamples,
+          uniformExists: !!material.uniforms.uSampleCount,
+          currentUniformValue: material.uniforms.uSampleCount?.value,
+        });
+      }
 
       if (material.uniforms.uSampleCount) {
           material.uniforms.uSampleCount.value = effectiveSamples;

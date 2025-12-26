@@ -26,36 +26,24 @@ export function generateDispatch(dimension: number): string {
 
 /**
  * Get distance to Mandelbulb surface (simple version).
+ * Fixed values: iterations 32 (fast) / 64 (HQ), escape radius 8.0
  */
 float GetDist(vec3 pos) {
     float pwr = getEffectivePower();
-    float bail = max(uEscapeRadius, 2.0);
-    // Use reduced iterations in fast mode for better performance
-    int maxIterLimit = uFastMode ? MAX_ITER_LQ : MAX_ITER_HQ;
-    int maxIt = int(min(uIterations, float(maxIterLimit)));
+    float bail = 8.0;  // Fixed escape radius for optimal quality
+    int maxIt = uFastMode ? 32 : 64;
 
     return ${simpleSdfName}(${args});
 }
 
 /**
  * Get distance to Mandelbulb surface with trap value output.
+ * Fixed values: iterations 32 (fast) / 64 (HQ), escape radius 8.0
  */
 float GetDistWithTrap(vec3 pos, out float trap) {
     float pwr = getEffectivePower();
-    float bail = max(uEscapeRadius, 2.0);
-    // Calculate iteration limit based on performance mode and quality multiplier
-    // Fast mode: use LQ settings immediately
-    // Normal mode: interpolate between LQ and HQ based on quality multiplier (0.25-1.0)
-    int maxIterLimit;
-    if (uFastMode) {
-        maxIterLimit = MAX_ITER_LQ;
-    } else {
-        // Progressive refinement: interpolate iterations based on quality multiplier
-        // At 0.25: use LQ iterations, at 1.0: use HQ iterations
-        float t = clamp((uQualityMultiplier - 0.25) / 0.75, 0.0, 1.0);
-        maxIterLimit = int(mix(float(MAX_ITER_LQ), float(MAX_ITER_HQ), t));
-    }
-    int maxIt = int(min(uIterations, float(maxIterLimit)));
+    float bail = 8.0;  // Fixed escape radius for optimal quality
+    int maxIt = uFastMode ? 32 : 64;
 
     return ${sdfName}(${argsTrap});
 }

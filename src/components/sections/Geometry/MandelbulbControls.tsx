@@ -5,10 +5,11 @@
  * Mandelbulb uses GPU raymarching exclusively.
  *
  * Features:
- * - Max iterations slider
- * - Escape radius slider
  * - Power presets and custom slider
  * - Slice parameters for 4D+
+ *
+ * Note: Max iterations (32 fast / 64 HQ) and escape radius (8.0) are fixed
+ * in the shader for optimal quality/performance balance.
  */
 
 import { useShallow } from 'zustand/react/shallow';
@@ -44,8 +45,7 @@ const powerPresets = [
  * MandelbulbControls component
  *
  * Provides controls for Mandelbulb GPU raymarching:
- * - Iteration count adjustment
- * - Escape radius adjustment
+ * - Scale adjustment
  * - Power presets and slider
  * - Slice parameters for 4D+
  *
@@ -60,8 +60,6 @@ const MandelbulbControlsComponent: React.FC<MandelbulbControlsProps> = ({
   const extendedObjectSelector = useShallow((state: ExtendedObjectState) => ({
     config: state.mandelbulb,
     setScale: state.setMandelbulbScale,
-    setMaxIterations: state.setMandelbulbMaxIterations,
-    setEscapeRadius: state.setMandelbulbEscapeRadius,
     setMandelbulbPower: state.setMandelbulbMandelbulbPower,
     setMandelbulbParameterValue: state.setMandelbulbParameterValue,
     resetMandelbulbParameters: state.resetMandelbulbParameters,
@@ -69,8 +67,6 @@ const MandelbulbControlsComponent: React.FC<MandelbulbControlsProps> = ({
   const {
     config,
     setScale,
-    setMaxIterations,
-    setEscapeRadius,
     setMandelbulbPower,
     setMandelbulbParameterValue,
     resetMandelbulbParameters,
@@ -92,30 +88,6 @@ const MandelbulbControlsComponent: React.FC<MandelbulbControlsProps> = ({
             onChange={setScale}
             showValue
             data-testid="mandelbulb-scale"
-            />
-
-            {/* Max Iterations */}
-            <Slider
-            label="Max Iterations"
-            min={10}
-            max={500}
-            step={10}
-            value={config.maxIterations}
-            onChange={setMaxIterations}
-            showValue
-            data-testid="mandelbulb-iterations"
-            />
-
-            {/* Escape Radius */}
-            <Slider
-            label={dimension >= 4 ? 'Escape Radius (8+ recommended for 4D+)' : 'Escape Radius'}
-            min={2.0}
-            max={16.0}
-            step={0.5}
-            value={config.escapeRadius}
-            onChange={setEscapeRadius}
-            showValue
-            data-testid="mandelbulb-escape-radius"
             />
 
             {/* Power Control (shown for 3D+ Mandelbulb) */}

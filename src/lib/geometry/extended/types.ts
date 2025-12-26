@@ -637,7 +637,6 @@ export interface MandelbulbConfig {
   fogContribution: number
   /** Internal fog density (0.0-1.0) */
   internalFogDensity: number
-
 }
 
 /**

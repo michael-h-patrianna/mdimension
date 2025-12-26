@@ -2,7 +2,7 @@ export const constantsBlock = `
 // Performance constants
 // High quality mode (when idle)
 #define MAX_MARCH_STEPS_HQ 128
-#define MAX_ITER_HQ 64
+#define MAX_ITER_HQ 256
 #define SURF_DIST_HQ 0.002
 
 // Low quality mode (during animation)
@@ -35,4 +35,4 @@ export const constantsBlock = `
 #define PAL_COMP 2
 #define PAL_TRIAD 3
 #define PAL_SPLIT 4
-`;
+`
