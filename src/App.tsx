@@ -228,6 +228,7 @@ function AppContent() {
 
         <ErrorBoundary fallback={<div className="flex h-full w-full items-center justify-center text-red-400 bg-black/90">Renderer Crashed. Reload page.</div>}>
           <Canvas
+            id="main-webgl-canvas"
             frameloop="never"
             camera={{
               position: [0, 3.125, 7.5], // Closer angled view for prominent Interstellar look (25% further out)

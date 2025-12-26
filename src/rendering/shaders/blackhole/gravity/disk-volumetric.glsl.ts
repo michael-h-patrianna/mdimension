@@ -497,7 +497,8 @@ vec3 computeVolumetricDiskNormal(vec3 pos, vec3 rayDir) {
         // - Vertical component: sign based on which side of disk plane
         // - Radial component: slight outward tilt at edges (disk flare)
         float r = length(pos.xz);
-        float outerR = uHorizonRadius * uDiskOuterRadiusMul;
+        // PERF (OPT-BH-6): Use pre-computed uDiskOuterR uniform
+        float outerR = uDiskOuterR;
 
         // Radial direction in XZ plane (outward from center)
         vec3 radialDir = r > 0.001 ? vec3(pos.x / r, 0.0, pos.z / r) : vec3(1.0, 0.0, 0.0);

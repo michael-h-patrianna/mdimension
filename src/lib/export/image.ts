@@ -62,9 +62,15 @@ export function exportCanvasToPNG(
  * @returns The canvas element or null if not found
  */
 export function findThreeCanvas(): HTMLCanvasElement | null {
-  // Three.js typically renders to a canvas inside the Canvas component
-  const canvas = document.querySelector('canvas');
-  return canvas as HTMLCanvasElement | null;
+  // The 'main-webgl-canvas' ID is on the R3F wrapper div, so we need to find the canvas inside it
+  const wrapper = document.getElementById('main-webgl-canvas');
+  if (!wrapper) return null;
+
+  if (wrapper instanceof HTMLCanvasElement) {
+    return wrapper;
+  }
+
+  return wrapper.querySelector('canvas');
 }
 
 /**
@@ -88,7 +94,7 @@ export function exportSceneToPNG(options: ExportOptions = {}): boolean {
   } catch (error) {
     // Handle specific error cases with helpful messages
     let errorMsg = error instanceof Error ? error.message : 'Unknown error';
-    
+
     if (error instanceof DOMException && error.name === 'SecurityError') {
       errorMsg = 'Canvas is tainted by cross-origin content (CORS). External textures or images were used without proper permissions.';
       console.error('Export failed: ' + errorMsg);
