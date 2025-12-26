@@ -21,6 +21,7 @@ export type IconName =
   | 'warning'
   | 'info'
   | 'download'
+  | 'copy'
   | 'chevron-right'
   | 'chevron-down';
 
@@ -51,6 +52,7 @@ const icons: Record<IconName, React.ReactNode> = {
   warning: <path d="M8 1L0 15h16L8 1zm0 2.8L13.7 13H2.3L8 3.8zM7 11v2h2v-2H7zm0-5v4h2V6H7z" />,
   info: <path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 12a5 5 0 110-10 5 5 0 010 10zm-1-8h2v2H7V5zm0 3h2v4H7V8z" />,
   download: <path d="M14 11v2h-12v-2h-2v4h16v-4h-2zM12 6h-3v-6h-2v6h-3l4 5 4-5z" />,
+  copy: <path d="M10 0H2C0.9 0 0 0.9 0 2v10h2V2h8V0zm4 4H6C4.9 4 4 4.9 4 6v10c0 1.1 0.9 2 2 2h8c1.1 0 2-0.9 2-2V6c0-1.1-0.9-2-2-2zm0 12H6V6h8v10z" />,
   'chevron-right': <path d="M5.5 3L10.5 8L5.5 13" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
   'chevron-down': <path d="M3 5.5L8 10.5L13 5.5" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
 };

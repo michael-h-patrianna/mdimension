@@ -68,7 +68,7 @@ const SchroedingerMesh = () => {
   const temporalDepth = useTemporalDepth();
 
   // Use shared quality tracking hook
-  const { qualityMultiplier, rotationsChanged } = useQualityTracking();
+  const { rotationsChanged } = useQualityTracking();
 
   // Pre-allocated quantum arrays
   const quantumArraysRef = useRef<QuantumArrays>(createQuantumArrays());

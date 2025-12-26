@@ -82,7 +82,7 @@ export function findThreeCanvas(): HTMLCanvasElement | null {
  * @param options - Export options (filename ignored in favor of modal flow)
  * @returns True if capture was successful
  */
-export function exportSceneToPNG(options: ExportOptions = {}): boolean {
+export function exportSceneToPNG(_options: ExportOptions = {}): boolean {
   const canvas = findThreeCanvas();
 
   if (!canvas) {

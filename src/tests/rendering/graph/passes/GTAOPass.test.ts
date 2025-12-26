@@ -152,7 +152,7 @@ describe('GTAOPass', () => {
     expect(upsampleMaterial).toBeTruthy()
 
     const uniforms = upsampleMaterial!.uniforms as Record<string, THREE.IUniform>
-    expect(uniforms.uAOIntensity.value).toBe(0.75)
-    expect(uniforms.uDepthThreshold.value).toBe(0.05)
+    expect(uniforms.uAOIntensity?.value).toBe(0.75)
+    expect(uniforms.uDepthThreshold?.value).toBe(0.05)
   })
 })
