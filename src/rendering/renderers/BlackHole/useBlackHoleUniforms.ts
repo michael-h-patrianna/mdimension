@@ -53,8 +53,10 @@ export function useBlackHoleUniforms() {
       uParamValues: { value: new Float32Array(8) },
 
       // Physics (Kerr black hole)
-      uHorizonRadius: { value: 2.0 }, // Schwarzschild radius rs = 2M
-      uVisualEventHorizon: { value: 2.0 }, // Kerr event horizon r+ (shrinks with spin)
+      // Defaults match DEFAULT_BLACK_HOLE_CONFIG: horizonRadius=0.5, spin=0.3
+      // Shadow radius ≈ 1.285 for these values
+      uHorizonRadius: { value: 0.5 }, // Schwarzschild radius rs = 2M
+      uVisualEventHorizon: { value: 1.285 }, // Shadow radius (where rays are absorbed)
       uSpin: { value: 0.0 }, // Dimensionless spin chi = a/M (0 to 0.998)
       uDiskTemperature: { value: 6500.0 }, // Inner disk temperature in Kelvin
       uGravityStrength: { value: 5.0 },
@@ -94,17 +96,18 @@ export function useBlackHoleUniforms() {
       uShellStepMul: { value: 0.35 },
       uShellContrastBoost: { value: 1.0 },
       // PERF (OPT-BH-5): Pre-calculated shell values to avoid per-pixel log() and multiplications
-      uShellRpPrecomputed: { value: 2.6 }, // Default: 2.0 * (1.3 + 0.1 * log(4)) ≈ 2.6
-      uShellDeltaPrecomputed: { value: 0.1 }, // Default: 0.05 * 2.0 = 0.1
+      // Shell center 15% outside shadow radius (~1.48), width 25% of shadow (~0.32)
+      uShellRpPrecomputed: { value: 1.48 }, // Shell center: 1.285 * 1.15
+      uShellDeltaPrecomputed: { value: 0.32 }, // Shell width: 1.285 * 0.25
 
       // Manifold
       uManifoldType: { value: 0 },
       uDensityFalloff: { value: 6.0 },
-      uDiskInnerRadiusMul: { value: 2.6 }, // Match store default (ISCO for Interstellar-style disk)
-      uDiskOuterRadiusMul: { value: 8.0 },
+      uDiskInnerRadiusMul: { value: 4.23 }, // Match store default (ISCO for spin=0.3)
+      uDiskOuterRadiusMul: { value: 15.0 }, // Match store default
       // PERF (OPT-BH-6): Pre-computed disk radii (horizonRadius * multiplier)
-      uDiskInnerR: { value: 5.2 }, // Default: 2.0 * 2.6 = 5.2
-      uDiskOuterR: { value: 16.0 }, // Default: 2.0 * 8.0 = 16.0
+      uDiskInnerR: { value: 2.115 }, // Default: 0.5 * 4.23
+      uDiskOuterR: { value: 7.5 }, // Default: 0.5 * 15.0
       uRadialSoftnessMul: { value: 0.2 },
       uThicknessPerDimMax: { value: 4.0 },
       uHighDimWScale: { value: 2.0 },

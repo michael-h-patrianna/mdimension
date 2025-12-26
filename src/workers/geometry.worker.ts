@@ -20,28 +20,33 @@
 
 // Import WASM module - Vite handles the loading and initialization
 import init, {
-    detect_faces_wasm,
-    generate_root_system_wasm,
-    generate_wythoff_wasm,
-    start,
+  detect_faces_wasm,
+  generate_root_system_wasm,
+  generate_wythoff_wasm,
+  start,
 } from 'mdimension-core'
 
 import { computeGridFaces, type GridFacePropsWorker } from '@/lib/geometry/faces'
 import { flattenFaces, flattenGeometry } from '@/lib/geometry/transfer'
 import type { NdGeometry } from '@/lib/geometry/types'
-import { generateWythoffPolytopeWithWarnings, getWythoffPresetName } from '@/lib/geometry/wythoff'
+import {
+  generateWythoffPolytopeWithWarnings,
+  getWythoffPresetName,
+  type WythoffPreset,
+  type WythoffSymmetryGroup,
+} from '@/lib/geometry/wythoff'
 import type {
-    CancelledResponse,
-    ComputeFacesRequest,
-    ErrorResponse,
-    GenerateRootSystemRequest,
-    GenerateWythoffRequest,
-    GenerationStage,
-    InitErrorResponse,
-    ProgressResponse,
-    ReadyResponse,
-    ResultResponse,
-    WorkerRequest,
+  CancelledResponse,
+  ComputeFacesRequest,
+  ErrorResponse,
+  GenerateRootSystemRequest,
+  GenerateWythoffRequest,
+  GenerationStage,
+  InitErrorResponse,
+  ProgressResponse,
+  ReadyResponse,
+  ResultResponse,
+  WorkerRequest,
 } from './types'
 
 // ============================================================================
@@ -78,6 +83,7 @@ const MIN_CONVEX_HULL_VERTICES = 4
 
 /**
  * Validates vertex count meets minimum requirements for convex hull
+ * @param vertexCount
  */
 function validateVertexCount(vertexCount: number): void {
   if (vertexCount < MIN_CONVEX_HULL_VERTICES) {
@@ -93,6 +99,7 @@ function validateVertexCount(vertexCount: number): void {
 
 /**
  * Validates dimension is within supported range
+ * @param dimension
  */
 function validateDimension(dimension: number): void {
   if (dimension < MIN_DIMENSION || dimension > MAX_DIMENSION) {
@@ -107,18 +114,21 @@ function validateDimension(dimension: number): void {
 
 /**
  * Validates face count doesn't exceed memory limit
+ * @param faceCount
  */
 function validateFaceCount(faceCount: number): void {
   if (faceCount > MAX_FACE_COUNT) {
     throw new Error(
       `Face count ${faceCount} exceeds maximum ${MAX_FACE_COUNT}. ` +
-      `Try reducing resolution or dimension.`
+        `Try reducing resolution or dimension.`
     )
   }
 }
 
 /**
  * Validates grid properties have required fields
+ * @param gridProps - Properties to validate
+ * @returns True if valid GridFacePropsWorker
  */
 function validateGridProps(gridProps: unknown): gridProps is GridFacePropsWorker {
   if (!gridProps || typeof gridProps !== 'object') {
@@ -166,6 +176,7 @@ const cancelledWhilePending = new Set<string>()
 
 /**
  * Dispatch a request to the appropriate handler
+ * @param request
  */
 function handleRequest(request: WorkerRequest): void {
   switch (request.type) {
@@ -198,6 +209,7 @@ function handleRequest(request: WorkerRequest): void {
 /**
  * Handle incoming messages from main thread.
  * Queues requests if WASM is not yet initialized.
+ * @param event
  */
 self.onmessage = (event: MessageEvent<WorkerRequest>) => {
   const request = event.data
@@ -227,6 +239,7 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
 
 /**
  * Handle Wythoff polytope generation request
+ * @param request
  */
 function handleWythoffGeneration(request: GenerateWythoffRequest): void {
   const { id, dimension, config } = request
@@ -252,83 +265,92 @@ function handleWythoffGeneration(request: GenerateWythoffRequest): void {
     // Stage: vertices (WASM)
     sendProgress(id, 10, 'vertices')
 
+    // Calculate max vertices based on dimension and preset
+    // Omnitruncated now uses O(V × n) combinatorial edge generation (not O(V²))
+    // so we can allow higher vertex counts
+    const isOmnitruncated = config.preset === 'omnitruncated'
+    const maxVertices = isOmnitruncated
+      ? Math.min(20000, 2000 + dimension * 2000) // 2000-20000 based on dimension
+      : 40000
+
     const wasmConfig = {
       symmetry_group: config.symmetryGroup || 'B',
       preset: config.preset || 'regular',
       dimension,
       scale: config.scale || 1.0,
       custom_symbol: config.customSymbol,
+      max_vertices: maxVertices,
     }
 
     // WASM is guaranteed ready at this point (handled by message queue)
     const wasmResult = generate_wythoff_wasm(wasmConfig)
 
     if (wasmResult && wasmResult.vertices.length > 0) {
-       // Success path via WASM
-       // Stage: edges (Included in WASM generation)
-       sendProgress(id, 60, 'edges')
+      // Success path via WASM
+      // Stage: edges (Included in WASM generation)
+      sendProgress(id, 60, 'edges')
 
-       const { warnings } = wasmResult;
+      const { warnings } = wasmResult
 
-       // serde_wasm_bindgen returns plain JS arrays, not TypedArrays
-       // Wrap them in TypedArrays for efficient zero-copy transfer
-       const vertices = new Float64Array(wasmResult.vertices);
-       const edges = new Uint32Array(wasmResult.edges);
+      // serde_wasm_bindgen returns plain JS arrays, not TypedArrays
+      // Wrap them in TypedArrays for efficient zero-copy transfer
+      const vertices = new Float64Array(wasmResult.vertices)
+      const edges = new Uint32Array(wasmResult.edges)
 
-       // Stage: faces - now generated directly in WASM
-       sendProgress(id, 70, 'faces')
+      // Stage: faces - now generated directly in WASM
+      sendProgress(id, 70, 'faces')
 
-       // WASM now returns faces directly - convert flat array to nested for metadata
-       // wasmResult.faces is flat [v0, v1, v2, v0, v1, v2, ...]
-       const analyticalFaces: number[][] = [];
-       const wasmFaces = wasmResult.faces || [];
-       // Only process complete triangles (length must be divisible by 3)
-       const completeTriangleCount = Math.floor(wasmFaces.length / 3);
-       for (let i = 0; i < completeTriangleCount; i++) {
-         const idx = i * 3;
-         analyticalFaces.push([wasmFaces[idx]!, wasmFaces[idx + 1]!, wasmFaces[idx + 2]!]);
-       }
+      // WASM now returns faces directly - convert flat array to nested for metadata
+      // wasmResult.faces is flat [v0, v1, v2, v0, v1, v2, ...]
+      const analyticalFaces: number[][] = []
+      const wasmFaces = wasmResult.faces || []
+      // Only process complete triangles (length must be divisible by 3)
+      const completeTriangleCount = Math.floor(wasmFaces.length / 3)
+      for (let i = 0; i < completeTriangleCount; i++) {
+        const idx = i * 3
+        analyticalFaces.push([wasmFaces[idx]!, wasmFaces[idx + 1]!, wasmFaces[idx + 2]!])
+      }
 
-       // Construct TransferablePolytopeGeometry directly
-       const transferable = {
-         vertices,
-         edges,
-         dimension,
-         type: 'wythoff-polytope' as const,
-         metadata: {
-           name: getWythoffPresetName(
-             wasmConfig.preset as any,
-             wasmConfig.symmetry_group as any,
-             dimension
-           ),
-           properties: {
-             ...config,
-             scale: wasmConfig.scale,
-             analyticalFaces,
-           }
-         }
-       }
+      // Construct TransferablePolytopeGeometry directly
+      const transferable = {
+        vertices,
+        edges,
+        dimension,
+        type: 'wythoff-polytope' as const,
+        metadata: {
+          name: getWythoffPresetName(
+            wasmConfig.preset as WythoffPreset,
+            wasmConfig.symmetry_group as WythoffSymmetryGroup,
+            dimension
+          ),
+          properties: {
+            ...config,
+            scale: wasmConfig.scale,
+            analyticalFaces,
+          },
+        },
+      }
 
-       const buffers = [vertices.buffer, edges.buffer];
+      const buffers = [vertices.buffer, edges.buffer]
 
-        // Check cancellation
-        if (!activeRequests.has(id)) {
-          return
-        }
+      // Check cancellation
+      if (!activeRequests.has(id)) {
+        return
+      }
 
-        // Stage: complete
-        sendProgress(id, 100, 'complete')
+      // Stage: complete
+      sendProgress(id, 100, 'complete')
 
-        const response: ResultResponse = {
-          type: 'result',
-          id,
-          geometry: transferable,
-          warnings,
-        }
+      const response: ResultResponse = {
+        type: 'result',
+        id,
+        geometry: transferable,
+        warnings,
+      }
 
-        activeRequests.delete(id)
-        self.postMessage(response, { transfer: buffers })
-        return;
+      activeRequests.delete(id)
+      self.postMessage(response, { transfer: buffers })
+      return
     }
 
     // --- FALLBACK PATH ---
@@ -336,7 +358,7 @@ function handleWythoffGeneration(request: GenerateWythoffRequest): void {
     if (import.meta.env.DEV) {
       console.warn(
         `[GeometryWorker] WASM returned empty for ${config.preset ?? 'regular'} ` +
-        `(${config.symmetryGroup ?? 'B'}${dimension}), using JS fallback`
+          `(${config.symmetryGroup ?? 'B'}${dimension}), using JS fallback`
       )
     }
 
@@ -348,25 +370,24 @@ function handleWythoffGeneration(request: GenerateWythoffRequest): void {
     const { transferable, buffers } = flattenGeometry(result.geometry)
 
     // Check cancellation
-     if (!activeRequests.has(id)) {
-       return
-     }
+    if (!activeRequests.has(id)) {
+      return
+    }
 
-     // Stage: complete
-     sendProgress(id, 100, 'complete')
+    // Stage: complete
+    sendProgress(id, 100, 'complete')
 
-     // Send the result with zero-copy transfer
-     const response: ResultResponse = {
-       type: 'result',
-       id,
-       geometry: transferable,
-       warnings: result.warnings,
-     }
+    // Send the result with zero-copy transfer
+    const response: ResultResponse = {
+      type: 'result',
+      id,
+      geometry: transferable,
+      warnings: result.warnings,
+    }
 
-     // Clean up and send
-     activeRequests.delete(id)
-     self.postMessage(response, { transfer: buffers })
-
+    // Clean up and send
+    activeRequests.delete(id)
+    self.postMessage(response, { transfer: buffers })
   } catch (error) {
     activeRequests.delete(id)
     const message = error instanceof Error ? error.message : String(error)
@@ -380,6 +401,7 @@ function handleWythoffGeneration(request: GenerateWythoffRequest): void {
 
 /**
  * Handle root system polytope generation request
+ * @param request
  */
 function handleRootSystemGeneration(request: GenerateRootSystemRequest): void {
   const { id, dimension, config } = request
@@ -412,7 +434,11 @@ function handleRootSystemGeneration(request: GenerateRootSystemRequest): void {
     }
 
     try {
-      wasmResult = generate_root_system_wasm(config.rootType, dimension, config.scale) as typeof wasmResult
+      wasmResult = generate_root_system_wasm(
+        config.rootType,
+        dimension,
+        config.scale
+      ) as typeof wasmResult
     } catch (wasmError) {
       // WASM threw an error, fall through to error handling
       throw new Error(`WASM root system generation failed: ${wasmError}`)
@@ -420,7 +446,9 @@ function handleRootSystemGeneration(request: GenerateRootSystemRequest): void {
 
     // Validate WASM result
     if (!wasmResult || wasmResult.vertex_count === 0 || wasmResult.vertices.length === 0) {
-      throw new Error(`WASM returned empty root system for type=${config.rootType} dim=${dimension}`)
+      throw new Error(
+        `WASM returned empty root system for type=${config.rootType} dim=${dimension}`
+      )
     }
 
     // Convert flat vertices to 2D array for NdGeometry
@@ -459,7 +487,10 @@ function handleRootSystemGeneration(request: GenerateRootSystemRequest): void {
       vertices,
       edges,
       metadata: {
-        name: config.rootType === 'E8' ? 'E₈ Root System' : `${config.rootType}_${config.rootType === 'A' ? dimension - 1 : dimension} Root System`,
+        name:
+          config.rootType === 'E8'
+            ? 'E₈ Root System'
+            : `${config.rootType}_${config.rootType === 'A' ? dimension - 1 : dimension} Root System`,
         properties: {
           rootType: config.rootType,
           vertexCount: wasmResult.vertex_count,
@@ -513,6 +544,7 @@ function handleRootSystemGeneration(request: GenerateRootSystemRequest): void {
 /**
  * Handle face computation request
  * Dispatches to appropriate algorithm based on method
+ * @param request
  */
 function handleFaceComputation(request: ComputeFacesRequest): void {
   const { id, method, vertices: flatVertices, dimension, edges: flatEdges, gridProps } = request
@@ -532,63 +564,59 @@ function handleFaceComputation(request: ComputeFacesRequest): void {
       return
     }
 
-     // Stage: faces
-     sendProgress(id, 20, 'faces')
+    // Stage: faces
+    sendProgress(id, 20, 'faces')
 
     if (method === 'convex-hull' || method === 'triangles') {
-       // --- WASM PATH (Unified) ---
+      // --- WASM PATH (Unified) ---
 
-       // Validate vertex count for convex hull (needs at least 4 vertices for tetrahedron)
-       if (method === 'convex-hull') {
-           const vertexCount = flatVertices.length / dimension
-           validateVertexCount(vertexCount)
-       }
+      // Validate vertex count for convex hull (needs at least 4 vertices for tetrahedron)
+      if (method === 'convex-hull') {
+        const vertexCount = flatVertices.length / dimension
+        validateVertexCount(vertexCount)
+      }
 
-       if (method === 'triangles') {
-           if (!flatEdges || flatEdges.length === 0) {
-               throw new Error('Edges required for triangle face detection');
-           }
-       }
+      if (method === 'triangles') {
+        if (!flatEdges || flatEdges.length === 0) {
+          throw new Error('Edges required for triangle face detection')
+        }
+      }
 
-       // Call unified WASM function
-       // Note: we pass flatEdges for triangles; for hull it ignores it (or we pass empty)
-       const edgesToPass = flatEdges || new Uint32Array(0);
+      // Call unified WASM function
+      // Note: we pass flatEdges for triangles; for hull it ignores it (or we pass empty)
+      const edgesToPass = flatEdges || new Uint32Array(0)
 
-       const flatFaces = detect_faces_wasm(flatVertices, edgesToPass, dimension, method);
+      const flatFaces = detect_faces_wasm(flatVertices, edgesToPass, dimension, method)
 
-       // Stage: complete
-       sendProgress(id, 90, 'complete')
+      // Stage: complete
+      sendProgress(id, 90, 'complete')
 
-       const response: ResultResponse = {
-         type: 'result',
-         id,
-         faces: flatFaces,
-       }
+      const response: ResultResponse = {
+        type: 'result',
+        id,
+        faces: flatFaces,
+      }
 
-       const buffer = flatFaces.buffer
-       activeRequests.delete(id)
-       self.postMessage(response, { transfer: [buffer] })
-       return;
+      const buffer = flatFaces.buffer
+      activeRequests.delete(id)
+      self.postMessage(response, { transfer: [buffer] })
+      return
     }
 
-     let faces: [number, number, number][] | number[][] = []
+    let faces: [number, number, number][] | number[][] = []
 
-     switch (method) {
+    switch (method) {
       case 'grid': {
         // Validate grid properties using type guard
         if (!validateGridProps(gridProps)) {
-          throw new Error(
-            'Invalid grid properties: missing configKey or resolution parameters'
-          )
+          throw new Error('Invalid grid properties: missing configKey or resolution parameters')
         }
 
         // For nested tori, validate dimension >= 4
         if (gridProps.configKey === 'nestedTorus' || gridProps.visualizationMode === 'nested') {
           const intrinsicDim = gridProps.intrinsicDimension ?? dimension
           if (intrinsicDim < 4) {
-            throw new Error(
-              `Nested torus requires dimension >= 4, got ${intrinsicDim}`
-            )
+            throw new Error(`Nested torus requires dimension >= 4, got ${intrinsicDim}`)
           }
         }
 
@@ -648,6 +676,7 @@ function handleFaceComputation(request: ComputeFacesRequest): void {
 
 /**
  * Handle cancellation request
+ * @param id
  */
 function handleCancellation(id: string): void {
   // Remove from active requests (ongoing operations will check this)
@@ -682,6 +711,9 @@ function handleCancellation(id: string): void {
 
 /**
  * Send progress update to main thread
+ * @param id
+ * @param progress
+ * @param stage
  */
 function sendProgress(id: string, progress: number, stage: GenerationStage): void {
   const response: ProgressResponse = {
@@ -695,6 +727,8 @@ function sendProgress(id: string, progress: number, stage: GenerationStage): voi
 
 /**
  * Send error message to main thread
+ * @param id
+ * @param error
  */
 function sendError(id: string, error: string): void {
   const response: ErrorResponse = {
@@ -712,58 +746,60 @@ function sendError(id: string, error: string): void {
 /**
  * Initialize WASM module, process queued requests, and notify main thread.
  */
-init().then(() => {
-  // Initialize panic hook for better error messages
-  start()
+init()
+  .then(() => {
+    // Initialize panic hook for better error messages
+    start()
 
-  if (import.meta.env.DEV) {
-    console.log('[GeometryWorker] WASM initialized')
-  }
-
-  // Mark WASM as ready
-  wasmReady = true
-
-  // Process any queued requests, skipping those that were cancelled
-  if (pendingQueue.length > 0) {
     if (import.meta.env.DEV) {
-      console.log(`[GeometryWorker] Processing ${pendingQueue.length} queued request(s)`)
+      console.log('[GeometryWorker] WASM initialized')
     }
-    for (const request of pendingQueue) {
-      // Skip requests that were cancelled while in the pending queue
-      if ('id' in request && cancelledWhilePending.has(request.id)) {
-        if (import.meta.env.DEV) {
-          console.log(`[GeometryWorker] Skipping cancelled request: ${request.id}`)
-        }
-        continue
+
+    // Mark WASM as ready
+    wasmReady = true
+
+    // Process any queued requests, skipping those that were cancelled
+    if (pendingQueue.length > 0) {
+      if (import.meta.env.DEV) {
+        console.log(`[GeometryWorker] Processing ${pendingQueue.length} queued request(s)`)
       }
-      handleRequest(request)
+      for (const request of pendingQueue) {
+        // Skip requests that were cancelled while in the pending queue
+        if ('id' in request && cancelledWhilePending.has(request.id)) {
+          if (import.meta.env.DEV) {
+            console.log(`[GeometryWorker] Skipping cancelled request: ${request.id}`)
+          }
+          continue
+        }
+        handleRequest(request)
+      }
+      pendingQueue.length = 0 // Clear the queue
+      cancelledWhilePending.clear() // Clear the cancelled set
     }
-    pendingQueue.length = 0 // Clear the queue
-    cancelledWhilePending.clear() // Clear the cancelled set
-  }
 
-  // Notify main thread that worker is ready
-  const readyResponse: ReadyResponse = { type: 'ready' }
-  self.postMessage(readyResponse)
+    // Notify main thread that worker is ready
+    const readyResponse: ReadyResponse = { type: 'ready' }
+    self.postMessage(readyResponse)
 
-  if (import.meta.env.DEV) {
-    console.log('[GeometryWorker] Worker initialized and ready')
-  }
-}).catch((err: unknown) => {
-  console.error('[GeometryWorker] Failed to initialize WASM:', err)
-
-  // Notify main thread of initialization failure
-  const errorResponse: InitErrorResponse = {
-    type: 'init-error',
-    error: err instanceof Error ? err.message : String(err),
-  }
-  self.postMessage(errorResponse)
-
-  // Reject all queued requests
-  for (const request of pendingQueue) {
-    if ('id' in request) {
-      sendError(request.id, 'WASM initialization failed')
+    if (import.meta.env.DEV) {
+      console.log('[GeometryWorker] Worker initialized and ready')
     }
-  }
-  pendingQueue.length = 0
-})
+  })
+  .catch((err: unknown) => {
+    console.error('[GeometryWorker] Failed to initialize WASM:', err)
+
+    // Notify main thread of initialization failure
+    const errorResponse: InitErrorResponse = {
+      type: 'init-error',
+      error: err instanceof Error ? err.message : String(err),
+    }
+    self.postMessage(errorResponse)
+
+    // Reject all queued requests
+    for (const request of pendingQueue) {
+      if ('id' in request) {
+        sendError(request.id, 'WASM initialization failed')
+      }
+    }
+    pendingQueue.length = 0
+  })

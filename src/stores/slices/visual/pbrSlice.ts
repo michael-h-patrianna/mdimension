@@ -75,13 +75,25 @@ export type PBRSlice = PBRSliceState & PBRSliceActions
 // Clamping Utilities
 // ============================================================================
 
-/** Clamp roughness to valid PBR range (0.04 min to avoid GGX divide-by-zero) */
+/**
+ * Clamp roughness to valid PBR range (0.04 min to avoid GGX divide-by-zero)
+ * @param value - Value to clamp
+ * @returns Clamped value
+ */
 const clampRoughness = (value: number): number => Math.max(0.04, Math.min(1.0, value))
 
-/** Clamp metallic to valid range */
+/**
+ * Clamp metallic to valid range
+ * @param value - Value to clamp
+ * @returns Clamped value
+ */
 const clampMetallic = (value: number): number => Math.max(0.0, Math.min(1.0, value))
 
-/** Clamp specular intensity to artistic range */
+/**
+ * Clamp specular intensity to artistic range
+ * @param value - Value to clamp
+ * @returns Clamped value
+ */
 const clampSpecularIntensity = (value: number): number => Math.max(0.0, Math.min(2.0, value))
 
 // ============================================================================

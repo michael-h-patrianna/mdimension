@@ -126,6 +126,7 @@ export class CubemapCapturePass extends BasePass {
 
   /**
    * Initialize PMREMGenerator for environment map conversion.
+   * @param renderer
    */
   private ensurePMREMGenerator(renderer: THREE.WebGLRenderer): void {
     if (this.pmremGenerator) return;
@@ -145,6 +146,7 @@ export class CubemapCapturePass extends BasePass {
 
   /**
    * Set the background capture resolution.
+   * @param resolution
    */
   setBackgroundResolution(resolution: number): void {
     if (resolution !== this.backgroundResolution) {
@@ -156,6 +158,7 @@ export class CubemapCapturePass extends BasePass {
 
   /**
    * Get the captured cubemap texture (for external use if needed).
+   * @returns The captured cubemap texture or null
    */
   getCubemapTexture(): THREE.CubeTexture | null {
     if (this.cubemapHistory?.hasValidHistory(1)) {
@@ -166,6 +169,7 @@ export class CubemapCapturePass extends BasePass {
 
   /**
    * Get the PMREM texture (for external use if needed).
+   * @returns The PMREM texture or null
    */
   getPMREMTexture(): THREE.Texture | null {
     return this.pmremRenderTarget?.texture ?? null;
@@ -213,6 +217,9 @@ export class CubemapCapturePass extends BasePass {
   /**
    * Capture SKYBOX layer to CubeRenderTarget.
    * Handles both Procedural (shader) and Classic (SkyboxMesh with texture) modes.
+   * @param ctx
+   * @param renderer
+   * @param scene
    */
   private executeCapture(
     ctx: RenderContext,
@@ -388,6 +395,7 @@ export class CubemapCapturePass extends BasePass {
 
   /**
    * Check if the cubemap has valid history.
+   * @returns True if valid history exists
    */
   hasValidCubemap(): boolean {
     return this.cubemapHistory?.hasValidHistory(1) ?? false;

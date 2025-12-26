@@ -303,6 +303,21 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
 
     // ndRadius is already computed (from initial before loop OR from previous iteration's post-step)
 
+    // PERF (OPT-BH-2): Adaptive step size with cached shell mask
+    // shellMask is computed once here and reused in photonShellEmissionWithMask below
+    float shellMask;
+    float stepSize = adaptiveStepSizeWithMask(ndRadius, shellMask);
+
+    // CRITICAL: Emit photon shell BEFORE horizon check!
+    // The visual event horizon (shadow radius) is larger than the photon shell radius.
+    // If we check horizon first, rays would be absorbed before emitting shell glow.
+    // By emitting first, we capture the shell's contribution then absorb the ray.
+    if (shellMask > 0.001) {
+      vec3 shellEmit = photonShellEmissionWithMask(shellMask, pos);
+      // Volumetric integration: accumulate emission weighted by transmittance
+      accum.color += shellEmit * stepSize * accum.transmittance;
+    }
+
     // Horizon check - Volumetric Absorption
     // Instead of breaking, we absorb all light if we hit the visual horizon.
     // This prevents the "black sticker" artifact by allowing the loop to
@@ -313,11 +328,6 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
       // We can break here because transmittance is 0, which is handled by the loop condition
       break;
     }
-
-    // PERF (OPT-BH-2): Adaptive step size with cached shell mask
-    // shellMask is computed once here and reused in photonShellEmissionWithMask below
-    float shellMask;
-    float stepSize = adaptiveStepSizeWithMask(ndRadius, shellMask);
 
     // In volumetric mode, we might want smaller steps inside the disk
     #ifdef USE_VOLUMETRIC_DISK
@@ -345,14 +355,8 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
     dir = bendRay(dir, pos, stepSize, ndRadius);
     bentDirection = dir;
 
-    // PERF (OPT-BH-2): Use cached shell mask from adaptiveStepSizeWithMask
-    // The mask was already computed for step size adaptation, so reuse it here.
-    // shellMask > 0 only when within 2× shell thickness of photon sphere.
-    if (shellMask > 0.001) {
-      vec3 shellEmit = photonShellEmissionWithMask(shellMask, pos);
-      // Volumetric integration: accumulate emission weighted by transmittance
-      accum.color += shellEmit * stepSize * accum.transmittance;
-    }
+    // NOTE: Shell emission moved BEFORE horizon check (see above)
+    // This ensures shell glow is captured even when absorption radius > shell radius
 
     prevPos = pos;
     pos += dir * stepSize;

@@ -217,6 +217,8 @@ export class BloomPass extends BasePass {
 
   /**
    * Ensure bloom pass and render targets are initialized with correct size.
+   * @param width
+   * @param height
    */
   private ensureInitialized(width: number, height: number): void {
     if (!this.bloomPass || width !== this.lastWidth || height !== this.lastHeight) {
@@ -365,6 +367,7 @@ export class BloomPass extends BasePass {
 
   /**
    * Set bloom strength.
+   * @param strength
    */
   setStrength(strength: number): void {
     this.strength = strength;
@@ -372,6 +375,7 @@ export class BloomPass extends BasePass {
 
   /**
    * Set bloom radius.
+   * @param radius
    */
   setRadius(radius: number): void {
     this.radius = radius;
@@ -379,6 +383,7 @@ export class BloomPass extends BasePass {
 
   /**
    * Set luminance threshold.
+   * @param threshold
    */
   setThreshold(threshold: number): void {
     this.threshold = threshold;
@@ -386,6 +391,7 @@ export class BloomPass extends BasePass {
 
   /**
    * Set luminance smoothing (softens threshold transition).
+   * @param smoothing
    */
   setSmoothing(smoothing: number): void {
     this.smoothing = smoothing;
@@ -393,6 +399,7 @@ export class BloomPass extends BasePass {
 
   /**
    * Set number of blur levels (1-5).
+   * @param levels
    */
   setLevels(levels: number): void {
     this.levels = Math.max(1, Math.min(5, Math.round(levels)));
@@ -402,6 +409,7 @@ export class BloomPass extends BasePass {
    * Set HDR peak luminance for normalization.
    * This controls what luminance value is considered "maximum brightness".
    * Higher values = more gradual bloom transition for HDR content.
+   * @param hdrPeak
    */
   setHdrPeak(hdrPeak: number): void {
     this.hdrPeak = Math.max(1.0, hdrPeak);
@@ -409,6 +417,7 @@ export class BloomPass extends BasePass {
 
   /**
    * Get current bloom parameters.
+   * @returns Object with bloom parameters
    */
   getParameters(): {
     strength: number;

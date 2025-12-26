@@ -1,7 +1,9 @@
 use serde::{Serialize, Deserialize};
 use nalgebra::DVector;
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
 use itertools::Itertools;
+
+use crate::hull;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct WythoffConfig {
@@ -10,6 +12,13 @@ pub struct WythoffConfig {
     pub dimension: usize,
     pub scale: f64,
     pub custom_symbol: Option<Vec<bool>>,
+    /// Maximum vertices to generate (prevents O(n²) edge computation from blocking)
+    #[serde(default = "default_max_vertices")]
+    pub max_vertices: usize,
+}
+
+fn default_max_vertices() -> usize {
+    5000
 }
 
 #[derive(Serialize)]
@@ -154,9 +163,16 @@ fn generate_simplex(dim: usize) -> (Vec<DVector<f64>>, Vec<[usize; 2]>) {
 }
 
 /// Generate Omnitruncated Hypercube (Permutations + Sign flipping)
+///
+/// Uses combinatorial edge generation: O(V × n) instead of O(V²)
+///
+/// Mathematical insight: Two signed permutation vertices are adjacent iff:
+/// 1. They differ by swapping adjacent positions where values differ by 1, OR
+/// 2. They differ by flipping the sign of the coordinate with value ±1
 fn generate_omnitruncated(dim: usize, max_vertices: usize) -> (Vec<DVector<f64>>, Vec<[usize; 2]>) {
+    // Step 1: Generate all vertices with their canonical keys
     let mut vertices = Vec::new();
-    let mut seen = HashSet::new();
+    let mut vertex_to_index: HashMap<String, usize> = HashMap::new();
 
     let coords: Vec<f64> = (1..=dim).map(|i| i as f64).collect();
     let num_signs = 1 << dim;
@@ -172,12 +188,13 @@ fn generate_omnitruncated(dim: usize, max_vertices: usize) -> (Vec<DVector<f64>>
             }
 
             let key = vertex_key(&v);
-            if !seen.contains(&key) {
-                seen.insert(key);
+            if !vertex_to_index.contains_key(&key) {
+                let idx = vertices.len();
+                vertex_to_index.insert(key, idx);
                 vertices.push(v);
 
                 if vertices.len() >= max_vertices {
-                    // Generate edges for truncated vertex set
+                    // Truncated - fall back to distance-based for partial set
                     let edges = generate_edges_by_distance(&vertices, f64::MAX);
                     return (vertices, edges);
                 }
@@ -185,9 +202,73 @@ fn generate_omnitruncated(dim: usize, max_vertices: usize) -> (Vec<DVector<f64>>
         }
     }
 
-    // Generate edges by minimum distance (same as other polytopes)
-    let edges = generate_edges_by_distance(&vertices, f64::MAX);
+    // Step 2: Generate edges combinatorially in O(V × n)
+    // For omnitruncated hypercube (B_n group), edges connect vertices differing by:
+    // - Adjacent transposition of positions with adjacent-ranked values
+    // - Sign flip of the ±1 coordinate
+    let edges = generate_omnitruncated_edges_combinatorial(&vertices, &vertex_to_index, dim);
+
     (vertices, edges)
+}
+
+/// Generate edges for omnitruncated polytope using combinatorial rules
+///
+/// Complexity: O(V × n) instead of O(V²)
+///
+/// For each vertex (signed permutation), potential neighbors are:
+/// 1. Swap positions i, i+1 if |rank[i] - rank[i+1]| == 1
+/// 2. Flip sign of the coordinate with absolute value 1
+fn generate_omnitruncated_edges_combinatorial(
+    vertices: &[DVector<f64>],
+    vertex_to_index: &HashMap<String, usize>,
+    dim: usize
+) -> Vec<[usize; 2]> {
+    let mut edges = Vec::new();
+    let mut seen_edges: HashSet<(usize, usize)> = HashSet::new();
+
+    for (idx, v) in vertices.iter().enumerate() {
+        // Type 1: Adjacent transpositions where values differ by 1
+        for i in 0..(dim - 1) {
+            let val_i = v[i].abs();
+            let val_j = v[i + 1].abs();
+
+            // Check if absolute values are adjacent (differ by 1)
+            if (val_i - val_j).abs() < 1.5 && (val_i - val_j).abs() > 0.5 {
+                // Create neighbor by swapping positions i and i+1
+                let mut neighbor = v.clone();
+                neighbor.swap((i, 0), (i + 1, 0));
+
+                let neighbor_key = vertex_key(&neighbor);
+                if let Some(&neighbor_idx) = vertex_to_index.get(&neighbor_key) {
+                    let edge = if idx < neighbor_idx { (idx, neighbor_idx) } else { (neighbor_idx, idx) };
+                    if !seen_edges.contains(&edge) {
+                        seen_edges.insert(edge);
+                        edges.push([edge.0, edge.1]);
+                    }
+                }
+            }
+        }
+
+        // Type 2: Sign flip of coordinate with absolute value 1
+        for i in 0..dim {
+            if (v[i].abs() - 1.0).abs() < 0.01 {
+                // Flip sign of coordinate with value ±1
+                let mut neighbor = v.clone();
+                neighbor[i] = -neighbor[i];
+
+                let neighbor_key = vertex_key(&neighbor);
+                if let Some(&neighbor_idx) = vertex_to_index.get(&neighbor_key) {
+                    let edge = if idx < neighbor_idx { (idx, neighbor_idx) } else { (neighbor_idx, idx) };
+                    if !seen_edges.contains(&edge) {
+                        seen_edges.insert(edge);
+                        edges.push([edge.0, edge.1]);
+                    }
+                }
+            }
+        }
+    }
+
+    edges
 }
 
 /// Generate Rectified Hypercube (n-dimensional cuboctahedron analog)
@@ -580,17 +661,61 @@ fn generate_triangle_faces(vertices: &[DVector<f64>], edges: &[[usize; 2]]) -> V
     faces
 }
 
+/// Generate faces using convex hull algorithm
+/// 
+/// This properly handles non-triangular faces (squares, hexagons, etc.)
+/// by computing the actual convex hull of the polytope.
+/// 
+/// Performance: O(V × F) where F can be O(V^⌊d/2⌋) worst case
+/// Best for polytopes with <1000 vertices
+fn generate_convex_hull_faces(vertices: &[DVector<f64>], dim: usize) -> Vec<u32> {
+    // Need at least dim+1 vertices for a non-degenerate simplex in dim-D
+    // and dim must be at least 3 for meaningful face generation
+    if vertices.len() < dim + 1 || dim < 3 {
+        return vec![];
+    }
+    
+    // Convert DVector to Vec<f64> for hull module
+    let vec_vertices: Vec<Vec<f64>> = vertices.iter()
+        .map(|v| v.iter().cloned().collect())
+        .collect();
+    
+    // Project to affine hull (handles degenerate cases)
+    let (projected, actual_dim) = hull::project_to_affine_hull(&vec_vertices, dim);
+    
+    // Need at least 3D for triangular faces and enough points
+    if actual_dim < 3 || projected.len() < actual_dim + 1 {
+        return vec![];
+    }
+    
+    // Use catch_unwind to gracefully handle any edge cases in convex hull
+    let result = std::panic::catch_unwind(|| {
+        hull::convex_hull(&projected, actual_dim)
+    });
+    
+    match result {
+        Ok(hull_indices) => hull_indices.into_iter().map(|idx| idx as u32).collect(),
+        Err(_) => {
+            // Convex hull failed - return empty faces rather than crashing
+            vec![]
+        }
+    }
+}
+
 /// Main entry point for generation (to be exposed via lib.rs)
 pub fn generate_wythoff(config: &WythoffConfig) -> PolytopeResult {
     let dim = config.dimension;
     let mut warnings = Vec::new();
+
+    // Use config max_vertices to prevent O(n²) edge computation from blocking too long
+    let max_verts = config.max_vertices;
 
     let (mut vertices, edges) = match (config.symmetry_group.as_str(), config.preset.as_str()) {
         ("B", "regular") => generate_hypercube(dim),
         ("B", "cross") => generate_cross_polytope(dim),
         ("B", "orthoplex") => generate_cross_polytope(dim),
         ("A", "regular") => generate_simplex(dim),
-        ("B", "omnitruncated") => generate_omnitruncated(dim, 40000),
+        ("B", "omnitruncated") => generate_omnitruncated(dim, max_verts),
         ("B", "rectified") => generate_rectified(dim),
         ("B", "truncated") => generate_truncated(dim),
         ("B", "cantellated") => generate_cantellated(dim),
@@ -615,8 +740,18 @@ pub fn generate_wythoff(config: &WythoffConfig) -> PolytopeResult {
             // Simplex and cross-polytope: use triangle face detection
             generate_triangle_faces(&vertices, &edges)
         }
+        ("B", "rectified") | ("B", "truncated") | ("B", "runcinated") => {
+            // Use convex hull for proper face detection on these convex polytopes
+            // These have manageable vertex counts (<1000 in most dimensions)
+            if !vertices.is_empty() {
+                generate_convex_hull_faces(&vertices, dim)
+            } else {
+                vec![]
+            }
+        }
         _ => {
-            // Other presets: use triangle face detection if vertices and edges exist
+            // Other presets (cantellated, omnitruncated): use triangle face detection
+            // Convex hull would be too slow for high vertex counts
             if !vertices.is_empty() && !edges.is_empty() {
                 generate_triangle_faces(&vertices, &edges)
             } else {

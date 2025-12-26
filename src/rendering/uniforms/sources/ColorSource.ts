@@ -146,6 +146,7 @@ export class ColorSource extends BaseUniformSource {
 
   /**
    * Get all color uniforms.
+   * @returns Record of color uniforms
    */
   getUniforms(): Record<string, IUniform> {
     return this.colorUniforms as unknown as Record<string, IUniform>;
@@ -153,6 +154,7 @@ export class ColorSource extends BaseUniformSource {
 
   /**
    * Frame update - automatically pulls from appearanceStore.
+   * @param _state
    */
   update(_state: UniformUpdateState): void {
     const appearanceState = useAppearanceStore.getState();
@@ -169,6 +171,7 @@ export class ColorSource extends BaseUniformSource {
 
   /**
    * Get current color algorithm.
+   * @returns Current color algorithm
    */
   getColorAlgorithm(): ColorAlgorithm {
     return this.cachedAlgorithm;
@@ -176,6 +179,9 @@ export class ColorSource extends BaseUniformSource {
 
   /**
    * Compare cosine coefficients for equality.
+   * @param a - First coefficient set
+   * @param b - Second coefficient set
+   * @returns True if equal
    */
   private cosineEquals(a: CosineCoefficients, b: CosineCoefficients): boolean {
     return (
@@ -188,6 +194,9 @@ export class ColorSource extends BaseUniformSource {
 
   /**
    * Compare distribution settings for equality.
+   * @param a - First settings
+   * @param b - Second settings
+   * @returns True if equal
    */
   private distributionEquals(a: DistributionSettings, b: DistributionSettings): boolean {
     return (
@@ -199,6 +208,9 @@ export class ColorSource extends BaseUniformSource {
 
   /**
    * Compare multi-source weights for equality.
+   * @param a - First weights
+   * @param b - Second weights
+   * @returns True if equal
    */
   private multiSourceEquals(a: MultiSourceWeights, b: MultiSourceWeights): boolean {
     return (

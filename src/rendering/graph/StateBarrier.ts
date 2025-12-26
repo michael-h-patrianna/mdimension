@@ -155,6 +155,7 @@ export class StateBarrier {
 
   /**
    * Check if state has been captured.
+   * @returns True if state has been captured
    */
   hasCapturedState(): boolean {
     return this.rendererState !== null
@@ -162,6 +163,7 @@ export class StateBarrier {
 
   /**
    * Get captured renderer state (for debugging).
+   * @returns Captured renderer state or null
    */
   getRendererState(): RendererState | null {
     return this.rendererState ? { ...this.rendererState } : null
@@ -169,6 +171,7 @@ export class StateBarrier {
 
   /**
    * Get captured scene state (for debugging).
+   * @returns Captured scene state or null
    */
   getSceneState(): SceneState | null {
     return this.sceneState ? { ...this.sceneState } : null
@@ -176,6 +179,7 @@ export class StateBarrier {
 
   /**
    * Get captured camera state (for debugging).
+   * @returns Captured camera state or null
    */
   getCameraState(): CameraState | null {
     return this.cameraState ? { ...this.cameraState } : null

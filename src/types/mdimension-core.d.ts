@@ -1,6 +1,7 @@
 declare module 'mdimension-core' {
   /**
    * Initialize the WASM module
+   * @returns Promise that resolves when WASM is initialized
    */
   export default function init(): Promise<void>;
 
@@ -11,11 +12,15 @@ declare module 'mdimension-core' {
 
   /**
    * Log a greeting to the console
+   * @param name
    */
   export function greet(name: string): void;
 
   /**
    * Add two numbers (sanity check)
+   * @param a - First number
+   * @param b - Second number
+   * @returns Sum of a and b
    */
   export function add_wasm(a: number, b: number): number;
 
@@ -24,6 +29,7 @@ declare module 'mdimension-core' {
    * Returns flat array of triangle vertex indices.
    * @param flat_vertices Flat array of coordinates
    * @param dimension Dimension of points
+   * @returns Flat array of triangle vertex indices
    */
   export function compute_convex_hull_wasm(flat_vertices: Float64Array, dimension: number): Uint32Array;
 
@@ -74,6 +80,8 @@ declare module 'mdimension-core' {
 
   /**
    * Generate Wythoff polytope geometry in WASM.
+   * @param config - Wythoff configuration
+   * @returns Generated polytope result
    */
   export function generate_wythoff_wasm(config: WythoffConfigWasm): PolytopeResultWasm;
 

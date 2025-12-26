@@ -72,30 +72,30 @@ export const WYTHOFF_CONFIG = {
 
   /**
    * Maximum vertices for omnitruncated preset.
-   * Omnitruncated polytopes have many more vertices, so we use
-   * stricter limits to keep edge generation (O(V*k)) fast.
+   * Now uses O(V × n) combinatorial edge generation instead of O(V²),
+   * allowing significantly higher vertex counts.
    */
   MAX_VERTICES_OMNITRUNCATED: {
-    3: 500,
-    4: 1500,
-    5: 2500,
-    6: 3500,
-    7: 4000,
-    8: 4500,
-    9: 5000,
-    10: 5000,
-    11: 5000,
+    3: 2000,
+    4: 4000,
+    5: 6000,
+    6: 10000,
+    7: 14000,
+    8: 16000,
+    9: 18000,
+    10: 20000,
+    11: 20000,
   } as Record<number, number>,
 
   /**
    * Default max vertices for unknown dimensions.
    */
-  DEFAULT_MAX_VERTICES: 10_000,
+  DEFAULT_MAX_VERTICES: 40_000,
 
   /**
    * Default max vertices for omnitruncated at unknown dimensions.
    */
-  DEFAULT_MAX_VERTICES_OMNITRUNCATED: 5000,
+  DEFAULT_MAX_VERTICES_OMNITRUNCATED: 20000,
 } as const
 
 /**
@@ -146,8 +146,5 @@ export function getMaxVerticesForDimension(
       WYTHOFF_CONFIG.DEFAULT_MAX_VERTICES_OMNITRUNCATED
     )
   }
-  return (
-    WYTHOFF_CONFIG.MAX_VERTICES[dimension] ??
-    WYTHOFF_CONFIG.DEFAULT_MAX_VERTICES
-  )
+  return WYTHOFF_CONFIG.MAX_VERTICES[dimension] ?? WYTHOFF_CONFIG.DEFAULT_MAX_VERTICES
 }

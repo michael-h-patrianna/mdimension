@@ -30,6 +30,15 @@ export interface KerrRadii {
   iscoPrograde: number
   /** Retrograde ISCO */
   iscoRetrograde: number
+  /**
+   * Shadow radius (apparent black hole silhouette as seen from infinity).
+   * For Schwarzschild: 3√3 * M ≈ 5.196 * M ≈ 2.598 * rs
+   * For Kerr: varies with spin and viewing angle (this is approximate average)
+   *
+   * This is the critical impact parameter - rays with smaller impact
+   * parameter will be captured by the black hole.
+   */
+  shadowRadius: number
 }
 
 /**
@@ -74,6 +83,17 @@ export function computeKerrRadii(mass: number, spin: number): KerrRadii {
   const iscoPrograde = M * (3 + Z2 - sqrtISCO)
   const iscoRetrograde = M * (3 + Z2 + sqrtISCO)
 
+  // Shadow radius (critical impact parameter)
+  // For Schwarzschild (chi=0): b_crit = 3√3 * M ≈ 5.196 * M
+  // For Kerr: The shadow shrinks with spin. Using approximate formula based on
+  // the prograde photon sphere which dominates the shadow appearance.
+  // Shadow ≈ 3√3 * M * sqrt(1 - chi²/4) for moderate spins
+  // This is a simplification - actual Kerr shadow is asymmetric
+  const sqrt3 = Math.sqrt(3)
+  const schwarzschildShadow = 3 * sqrt3 * M // ≈ 5.196 * M
+  const spinCorrection = Math.sqrt(1 - (chi * chi) / 4) // Approximate shrinkage with spin
+  const shadowRadius = schwarzschildShadow * spinCorrection
+
   return {
     eventHorizon,
     cauchyHorizon,
@@ -81,6 +101,7 @@ export function computeKerrRadii(mass: number, spin: number): KerrRadii {
     photonSphereRetrograde,
     iscoPrograde,
     iscoRetrograde,
+    shadowRadius,
   }
 }
 

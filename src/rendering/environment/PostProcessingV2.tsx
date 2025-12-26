@@ -136,6 +136,8 @@ const RESOURCES = {
 /**
  * Check if object type uses temporal depth reprojection (raymarching acceleration).
  * Only Mandelbulb and Julia fractals benefit from depth-skip temporal optimization.
+ * @param objectType - The current object type
+ * @returns True if the object type uses temporal depth
  */
 function usesTemporalDepth(objectType: string): boolean {
   return objectType === 'mandelbulb' || objectType === 'quaternion-julia';
@@ -144,6 +146,8 @@ function usesTemporalDepth(objectType: string): boolean {
 /**
  * Check if object type uses temporal cloud accumulation (Horizon-style).
  * Only Schroedinger volumetric rendering uses quarter-res temporal accumulation.
+ * @param objectType - The current object type
+ * @returns True if the object type uses temporal cloud
  */
 function usesTemporalCloud(objectType: string): boolean {
   return objectType === 'schroedinger';

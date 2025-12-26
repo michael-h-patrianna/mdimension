@@ -126,7 +126,8 @@ class RenderGraphContext implements RenderContext {
 
   /**
    * Get a frozen external resource captured at frame start.
-   * @param id
+   * @param id - Resource identifier
+   * @returns The frozen resource value or null
    */
   getExternal<T>(id: string): T | null {
     return this.externalRegistry.get<T>(id)
@@ -142,7 +143,8 @@ class RenderGraphContext implements RenderContext {
 
   /**
    * Check if an export is registered with the bridge.
-   * @param id
+   * @param id - Export identifier
+   * @returns True if the export is registered
    */
   hasExportRegistered(id: string): boolean {
     return this.externalBridge.hasExport(id)
@@ -427,6 +429,7 @@ export class RenderGraph {
    * Check if a resource exists.
    *
    * @param resourceId - Resource identifier
+   * @returns True if the resource exists
    */
   hasResource(resourceId: string): boolean {
     return this.pool.has(resourceId)
@@ -438,6 +441,7 @@ export class RenderGraph {
    * Useful for external code that needs to access graph resources.
    *
    * @param resourceId - Resource identifier
+   * @returns The render target or null
    */
   getResource(resourceId: string): THREE.WebGLRenderTarget | null {
     return this.pool.get(resourceId)
@@ -449,6 +453,7 @@ export class RenderGraph {
    * Useful for accessing the current write buffer of a ping-pong resource.
    *
    * @param resourceId - Resource identifier
+   * @returns The write target or null
    */
   getWriteTarget(resourceId: string): THREE.WebGLRenderTarget | null {
     return this.pool.getWriteTarget(resourceId)
@@ -457,7 +462,8 @@ export class RenderGraph {
    * Get a resource's texture directly.
    *
    * @param resourceId - Resource identifier
-   * @param attachment
+   * @param attachment - Attachment index or 'depth'
+   * @returns The texture or null
    */
   getTexture(resourceId: string, attachment?: number | 'depth'): THREE.Texture | null {
     return this.pool.getTexture(resourceId, attachment)
@@ -508,6 +514,7 @@ export class RenderGraph {
    * Check if an external resource is registered.
    *
    * @param id - External resource identifier
+   * @returns True if the external resource is registered
    */
   hasExternal(id: string): boolean {
     return this.externalRegistry.has(id)
@@ -515,6 +522,7 @@ export class RenderGraph {
 
   /**
    * Get debug information about external resources.
+   * @returns Debug information string
    */
   getExternalDebugInfo(): string {
     return this.externalRegistry.getDebugInfo()
@@ -565,6 +573,7 @@ export class RenderGraph {
    * Check if an export is registered.
    *
    * @param id - External resource ID
+   * @returns True if the export is registered
    */
   hasExport(id: string): boolean {
     return this.externalBridge.hasExport(id)
@@ -572,6 +581,7 @@ export class RenderGraph {
 
   /**
    * Get debug information about the external bridge.
+   * @returns Debug information about imports and exports
    */
   getExternalBridgeDebugInfo(): {
     imports: Array<{ id: string; captured: boolean }>
@@ -615,6 +625,7 @@ export class RenderGraph {
 
   /**
    * Check if store getters are configured.
+   * @returns True if store getters are configured
    */
   hasStoreGetters(): boolean {
     return this.storeGetters !== null
@@ -622,6 +633,7 @@ export class RenderGraph {
 
   /**
    * Get the last captured frame context (for debugging).
+   * @returns The last captured frame context or null
    */
   getLastFrameContext(): FrozenFrameContext | null {
     return this.lastFrameContext
@@ -629,6 +641,7 @@ export class RenderGraph {
 
   /**
    * Get current frame number.
+   * @returns The current frame number
    */
   getFrameNumber(): number {
     return this.frameNumber
@@ -691,6 +704,7 @@ export class RenderGraph {
 
   /**
    * Check if graph needs recompilation.
+   * @returns True if the graph needs recompilation
    */
   needsCompile(): boolean {
     return this.isDirty || this.compiled === null
@@ -977,6 +991,7 @@ export class RenderGraph {
 
   /**
    * Get current screen dimensions.
+   * @returns Object containing width and height in pixels
    */
   getSize(): { width: number; height: number } {
     return { width: this.width, height: this.height }
@@ -1029,7 +1044,6 @@ export class RenderGraph {
    *
    * Returns timing data from the most recent frame where results
    * are available. GPU timings are asynchronous and may lag by 1-2 frames.
-   *
    * @returns Array of pass timing data
    */
   getPassTimings(): PassTiming[] {
@@ -1047,6 +1061,7 @@ export class RenderGraph {
 
   /**
    * Get estimated VRAM usage.
+   * @returns VRAM usage in bytes
    */
   getVRAMUsage(): number {
     return this.pool.getVRAMUsage()
@@ -1054,6 +1069,7 @@ export class RenderGraph {
 
   /**
    * Get list of registered resource IDs.
+   * @returns Array of registered resource IDs
    */
   getResourceIds(): string[] {
     return this.pool.getResourceIds()
@@ -1063,6 +1079,7 @@ export class RenderGraph {
    * Get dimensions of all allocated resources.
    * Returns a map of resource IDs to their current dimensions.
    * Useful for performance monitoring buffer stats display.
+   * @returns Map of resource IDs to dimensions
    */
   getResourceDimensions(): Map<string, { width: number; height: number }> {
     return this.pool.getResourceDimensions()
@@ -1177,6 +1194,7 @@ export class RenderGraph {
 
   /**
    * Get debug information about the graph.
+   * @returns Debug information string
    */
   getDebugInfo(): string {
     return this.compiler.getDebugInfo()
@@ -1207,6 +1225,7 @@ export class RenderGraph {
 
   /**
    * Get the compiled pass order.
+   * @returns Array of pass IDs in execution order
    */
   getPassOrder(): string[] {
     return this.compiled?.passes.map((p) => p.id) ?? []
@@ -1215,6 +1234,7 @@ export class RenderGraph {
   /**
    * Get all compiled passes for debugging.
    * @internal Debug only - not for production use
+   * @returns Array of compiled render passes
    */
   getPasses(): RenderPass[] {
     return this.compiled?.passes ?? []
@@ -1222,7 +1242,8 @@ export class RenderGraph {
 
   /**
    * Force disable a pass by ID (for debugging).
-   * @param passId
+   * @param passId - Pass identifier
+   * @returns True if pass was found and disabled
    * @internal Debug only - not for production use
    */
   debugDisablePass(passId: string): boolean {
@@ -1236,7 +1257,8 @@ export class RenderGraph {
 
   /**
    * Re-enable a previously disabled pass (for debugging).
-   * @param passId
+   * @param passId - Pass identifier
+   * @returns True if pass was found and enabled
    * @internal Debug only - not for production use
    */
   debugEnablePass(passId: string): boolean {

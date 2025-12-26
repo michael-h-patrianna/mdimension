@@ -113,6 +113,7 @@ export class LightingSource extends BaseUniformSource {
    * This is the primary update method that should be called when
    * lighting state changes. It uses the store version for efficient
    * change detection.
+   * @param config
    */
   updateFromStore(config: LightingSourceConfig): void {
     // Check if store version changed
@@ -135,6 +136,7 @@ export class LightingSource extends BaseUniformSource {
   /**
    * Update ambient uniforms.
    * NOTE: Specular uniforms are now handled by PBRSource.
+   * @param config
    */
   private updateAmbientUniforms(config: LightingSourceConfig): void {
     // Ambient enabled (convert boolean to float for GLSL)
@@ -158,6 +160,7 @@ export class LightingSource extends BaseUniformSource {
 
   /**
    * Get all lighting uniforms.
+   * @returns Record of lighting uniforms
    */
   getUniforms(): Record<string, IUniform> {
     return this.lightUniforms as unknown as Record<string, IUniform>
@@ -171,6 +174,7 @@ export class LightingSource extends BaseUniformSource {
    * Only updates when the store version changes (efficient change detection).
    *
    * NOTE: Specular uniforms are now handled by PBRSource (pbr-face, pbr-edge, pbr-ground).
+   * @param _state
    */
   update(_state: UniformUpdateState): void {
     // Access store directly - this is the standard pattern in the codebase

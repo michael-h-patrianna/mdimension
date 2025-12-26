@@ -159,6 +159,8 @@ export class GravitationalLensingPass extends BasePass {
 
   /**
    * Manually set gravity center (for testing or special cases).
+   * @param x
+   * @param y
    */
   setGravityCenter(x: number, y: number): void {
     this.gravityCenter.set(x, y)

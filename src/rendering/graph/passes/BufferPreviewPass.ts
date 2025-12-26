@@ -277,7 +277,10 @@ export class BufferPreviewPass extends BasePass {
     renderer.setRenderTarget(null);
   }
 
-  /** Set buffer type to preview */
+  /**
+   * Set buffer type to preview
+   * @param type
+   */
   setBufferType(type: BufferType): void {
     const typeMap: Record<BufferType, number> = {
       copy: 0,
@@ -288,17 +291,26 @@ export class BufferPreviewPass extends BasePass {
     this.material.uniforms['uType']!.value = typeMap[type];
   }
 
-  /** Set which resource ID to preview */
+  /**
+   * Set which resource ID to preview
+   * @param resourceId
+   */
   setBufferInput(resourceId: string): void {
     this.bufferInputId = resourceId;
   }
 
-  /** Provide an external texture (bypasses resource lookup) */
+  /**
+   * Provide an external texture (bypasses resource lookup)
+   * @param texture
+   */
   setExternalTexture(texture: THREE.Texture | null): void {
     this.externalTexture = texture;
   }
 
-  /** Set depth visualization mode */
+  /**
+   * Set depth visualization mode
+   * @param mode
+   */
   setDepthMode(mode: DepthMode): void {
     const modeMap: Record<DepthMode, number> = {
       raw: 0,
@@ -308,7 +320,11 @@ export class BufferPreviewPass extends BasePass {
     this.material.uniforms['uDepthMode']!.value = modeMap[mode];
   }
 
-  /** Set focus parameters for focus zones visualization */
+  /**
+   * Set focus parameters for focus zones visualization
+   * @param focus
+   * @param focusRange
+   */
   setFocusParams(focus: number, focusRange: number): void {
     this.material.uniforms['uFocus']!.value = focus;
     this.material.uniforms['uFocusRange']!.value = focusRange;

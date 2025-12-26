@@ -247,6 +247,8 @@ export class SSRPass extends BasePass {
 
   /**
    * Ensure half-res target matches current size.
+   * @param width
+   * @param height
    */
   private ensureHalfResTarget(width: number, height: number): void {
     const halfWidth = Math.max(1, Math.floor(width / 2));
@@ -316,6 +318,15 @@ export class SSRPass extends BasePass {
 
   /**
    * Execute SSR at full resolution (original behavior).
+   * @param colorTex
+   * @param normalTex
+   * @param depthTex
+   * @param camera
+   * @param size
+   * @param size.width
+   * @param size.height
+   * @param renderer
+   * @param outputTarget
    */
   private executeFullRes(
     colorTex: THREE.Texture,
@@ -347,6 +358,12 @@ export class SSRPass extends BasePass {
   /**
    * Execute SSR at half resolution with bilateral upsampling.
    * OPTIMIZATION: Reduces SSR cost by 50-75% (4x fewer pixels).
+   * @param ctx
+   * @param colorTex
+   * @param normalTex
+   * @param depthTex
+   * @param camera
+   * @param outputTarget
    */
   private executeHalfRes(
     ctx: RenderContext,
@@ -403,28 +420,41 @@ export class SSRPass extends BasePass {
     renderer.setRenderTarget(null);
   }
 
-  /** Set SSR intensity */
+  /**
+   * Set SSR intensity
+   * @param value
+   */
   setIntensity(value: number): void {
     (this.material.uniforms as unknown as SSRUniforms).intensity.value = value;
   }
 
-  /** Set max ray distance */
+  /**
+   * Set max ray distance
+   * @param value
+   */
   setMaxDistance(value: number): void {
     (this.material.uniforms as unknown as SSRUniforms).maxDistance.value = value;
   }
 
-  /** Set depth thickness */
+  /**
+   * Set depth thickness
+   * @param value
+   */
   setThickness(value: number): void {
     (this.material.uniforms as unknown as SSRUniforms).thickness.value = value;
   }
 
-  /** Set max ray march steps */
+  /**
+   * Set max ray march steps
+   * @param value
+   */
   setMaxSteps(value: number): void {
     (this.material.uniforms as unknown as SSRUniforms).maxSteps.value = value;
   }
 
   /**
    * Enable or disable half-resolution rendering at runtime.
+   * @param enabled
    */
   setHalfResolution(enabled: boolean): void {
     if (this.useHalfRes === enabled) return;
@@ -438,6 +468,7 @@ export class SSRPass extends BasePass {
 
   /**
    * Set bilateral depth threshold for upsampling.
+   * @param threshold
    */
   setBilateralDepthThreshold(threshold: number): void {
     this.bilateralDepthThreshold = threshold;
@@ -447,7 +478,12 @@ export class SSRPass extends BasePass {
     }
   }
 
-  /** Copy input texture directly to output (passthrough) */
+  /**
+   * Copy input texture directly to output (passthrough)
+   * @param renderer
+   * @param inputTex
+   * @param outputTarget
+   */
   private copyToOutput(
     renderer: THREE.WebGLRenderer,
     inputTex: THREE.Texture | null,

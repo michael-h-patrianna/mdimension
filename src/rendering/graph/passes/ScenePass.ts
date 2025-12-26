@@ -121,6 +121,8 @@ export class ScenePass extends BasePass {
 
   /**
    * Rebuild material cache by traversing the scene.
+   * @param scene
+   * @param camera
    */
   private rebuildMaterialCache(scene: THREE.Scene, camera: THREE.Camera): void {
     this.materialCache = []

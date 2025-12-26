@@ -225,32 +225,52 @@ export class BokehPass extends BasePass {
     renderer.setRenderTarget(null);
   }
 
-  /** Set focus distance */
+  /**
+   * Set focus distance
+   * @param value
+   */
   setFocus(value: number): void {
     this.focus = value;
   }
 
-  /** Set focus range */
+  /**
+   * Set focus range
+   * @param value
+   */
   setFocusRange(value: number): void {
     this.focusRange = value;
   }
 
-  /** Set aperture */
+  /**
+   * Set aperture
+   * @param value
+   */
   setAperture(value: number): void {
     this.aperture = value;
   }
 
-  /** Set max blur */
+  /**
+   * Set max blur
+   * @param value
+   */
   setMaxBlur(value: number): void {
     this.maxBlur = value;
   }
 
-  /** Set blur method */
+  /**
+   * Set blur method
+   * @param value
+   */
   setBlurMethod(value: number): void {
     this.blurMethod = value;
   }
 
-  /** Copy input texture directly to output (passthrough) */
+  /**
+   * Copy input texture directly to output (passthrough)
+   * @param renderer
+   * @param inputTex
+   * @param outputTarget
+   */
   private copyToOutput(
     renderer: THREE.WebGLRenderer,
     inputTex: THREE.Texture | null,

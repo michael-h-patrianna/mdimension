@@ -116,17 +116,26 @@ export class CinematicPass extends BasePass {
     renderer.setRenderTarget(null);
   }
 
-  /** Set chromatic aberration */
+  /**
+   * Set chromatic aberration
+   * @param value
+   */
   setAberration(value: number): void {
     this.material.uniforms['uDistortion']!.value = value;
   }
 
-  /** Set vignette darkness */
+  /**
+   * Set vignette darkness
+   * @param value
+   */
   setVignette(value: number): void {
     this.material.uniforms['uVignetteDarkness']!.value = value;
   }
 
-  /** Set film grain intensity */
+  /**
+   * Set film grain intensity
+   * @param value
+   */
   setGrain(value: number): void {
     this.material.uniforms['uNoiseIntensity']!.value = value;
   }

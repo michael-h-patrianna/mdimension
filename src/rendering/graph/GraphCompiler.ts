@@ -190,6 +190,7 @@ export class GraphCompiler {
 
   /**
    * Validate resource configurations.
+   * @param warnings
    */
   private validateResources(warnings: string[]): void {
     for (const pass of this.passes.values()) {
@@ -211,6 +212,8 @@ export class GraphCompiler {
 
   /**
    * Warn about unused resources.
+   * @param resourceUsage
+   * @param warnings
    */
   private validateUnusedResources(
     resourceUsage: Map<string, ResourceUsage>,
@@ -234,6 +237,7 @@ export class GraphCompiler {
 
   /**
    * Build map of resource usage across all passes.
+   * @returns Map of resource ID to usage information
    */
   private buildResourceUsage(): Map<string, ResourceUsage> {
     const usage = new Map<string, ResourceUsage>()
@@ -278,6 +282,9 @@ export class GraphCompiler {
    *
    * This detects cases where a pass tries to read a resource that
    * hasn't been written to yet in the execution order.
+   * @param resourceUsage
+   * @param sortedPasses
+   * @param warnings
    */
   private validateReadBeforeWrite(
     resourceUsage: Map<string, ResourceUsage>,
@@ -439,6 +446,10 @@ export class GraphCompiler {
    * Note: Ping-pong detection is automatic and correct behavior for temporal
    * accumulation patterns. We don't generate warnings for successfully detected
    * patterns since they're handled correctly by the system.
+   * @param resourceUsage - Map of resource usage
+   * @param sortedPasses - Sorted pass list
+   * @returns Set of resource IDs that need ping-pong
+   * @param _warnings
    */
   private detectPingPongResources(
     resourceUsage: Map<string, ResourceUsage>,
@@ -499,6 +510,8 @@ export class GraphCompiler {
    *
    * A pass P1 depends on P2 if:
    * - P1 reads a resource that P2 writes
+   * @param resourceUsage - Map of resource usage
+   * @returns Dependency graph as a map of pass ID to node
    */
   private buildDependencyGraph(
     resourceUsage: Map<string, ResourceUsage>
@@ -556,6 +569,8 @@ export class GraphCompiler {
   /**
    * Perform topological sort using Kahn's algorithm.
    *
+   * @param nodes - Dependency graph nodes
+   * @returns Sorted list of render passes
    * @throws Error if graph contains cycles
    */
   private topologicalSort(nodes: Map<string, DependencyNode>): RenderPass[] {
@@ -637,6 +652,8 @@ export class GraphCompiler {
    * Compute optimal resource allocation order.
    *
    * Resources are ordered by first use in the pass sequence.
+   * @param passes - Sorted pass list
+   * @returns Ordered list of resource IDs
    */
   private computeResourceOrder(passes: RenderPass[]): string[] {
     const order: string[] = []
@@ -669,6 +686,7 @@ export class GraphCompiler {
 
   /**
    * Get a visual representation of the graph for debugging.
+   * @returns Debug information string
    */
   getDebugInfo(): string {
     const lines: string[] = ['Render Graph:']

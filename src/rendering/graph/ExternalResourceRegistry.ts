@@ -114,6 +114,7 @@ export class ExternalResourceRegistry {
    * Check if a resource is registered.
    *
    * @param id - Resource identifier
+   * @returns True if the resource is registered
    */
   has(id: string): boolean {
     return this.resources.has(id)
@@ -138,6 +139,7 @@ export class ExternalResourceRegistry {
 
   /**
    * Capture a single resource.
+   * @param entry - The resource entry to capture
    */
   private captureResource(entry: CapturedResource<unknown>): void {
     try {
@@ -205,6 +207,7 @@ export class ExternalResourceRegistry {
    * Check if a resource was successfully captured this frame.
    *
    * @param id - Resource identifier
+   * @returns True if the resource was successfully captured
    */
   isCaptured(id: string): boolean {
     const entry = this.resources.get(id)
@@ -213,6 +216,7 @@ export class ExternalResourceRegistry {
 
   /**
    * Check if any capture has happened this frame.
+   * @returns True if capture has happened this frame
    */
   hasCapturedThisFrame(): boolean {
     return this.capturedThisFrame
@@ -234,6 +238,7 @@ export class ExternalResourceRegistry {
 
   /**
    * Get the current frame number.
+   * @returns The current frame number
    */
   getCurrentFrame(): number {
     return this.currentFrame
@@ -245,6 +250,7 @@ export class ExternalResourceRegistry {
 
   /**
    * Get debug information about registered resources.
+   * @returns Debug information string
    */
   getDebugInfo(): string {
     const lines: string[] = ['External Resources:']
@@ -261,6 +267,7 @@ export class ExternalResourceRegistry {
 
   /**
    * Get list of registered resource IDs.
+   * @returns Array of registered resource IDs
    */
   getResourceIds(): string[] {
     return Array.from(this.resources.keys())

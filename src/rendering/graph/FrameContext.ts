@@ -305,6 +305,8 @@ export interface StoreGetters {
 
 /**
  * Capture frozen animation state.
+ * @param getter - Store getter function
+ * @returns Frozen animation state
  */
 function captureAnimationState(
   getter: StoreGetters['getAnimationState']
@@ -322,6 +324,8 @@ function captureAnimationState(
 
 /**
  * Capture frozen geometry state.
+ * @param getter - Store getter function
+ * @returns Frozen geometry state
  */
 function captureGeometryState(
   getter: StoreGetters['getGeometryState']
@@ -335,6 +339,8 @@ function captureGeometryState(
 
 /**
  * Capture frozen environment state.
+ * @param getter - Store getter function
+ * @returns Frozen environment state
  */
 function captureEnvironmentState(
   getter: StoreGetters['getEnvironmentState']
@@ -365,6 +371,8 @@ function captureEnvironmentState(
 
 /**
  * Capture frozen post-processing state.
+ * @param getter - Store getter function
+ * @returns Frozen post-processing state
  */
 function capturePostProcessingState(
   getter: StoreGetters['getPostProcessingState']
@@ -432,6 +440,8 @@ function capturePostProcessingState(
 
 /**
  * Capture frozen performance state.
+ * @param getter - Store getter function
+ * @returns Frozen performance state
  */
 function capturePerformanceState(
   getter: StoreGetters['getPerformanceState']
@@ -452,6 +462,8 @@ function capturePerformanceState(
 
 /**
  * Capture frozen black hole state.
+ * @param getter - Store getter function
+ * @returns Frozen black hole state
  */
 function captureBlackHoleState(
   getter: StoreGetters['getBlackHoleState']
@@ -479,6 +491,8 @@ function captureBlackHoleState(
 
 /**
  * Capture frozen UI state (debug toggles only).
+ * @param getter - Store getter function
+ * @returns Frozen UI state
  */
 function captureUIState(
   getter: StoreGetters['getUIState']
@@ -493,6 +507,8 @@ function captureUIState(
 
 /**
  * Capture frozen camera state.
+ * @param camera - The Three.js camera
+ * @returns Frozen camera state
  */
 function captureCameraState(camera: THREE.Camera): FrozenCameraState {
   return {
@@ -506,6 +522,8 @@ function captureCameraState(camera: THREE.Camera): FrozenCameraState {
 
 /**
  * Capture frozen external state from scene.
+ * @param scene - The Three.js scene
+ * @returns Frozen external state
  */
 function captureExternalState(scene: THREE.Scene): FrozenExternalState {
   return {
@@ -556,6 +574,7 @@ export function captureFrameContext(
  * Create empty/default frozen frame context.
  *
  * Useful for initialization before first real capture.
+ * @returns Empty frozen frame context
  */
 export function createEmptyFrameContext(): FrozenFrameContext {
   return {

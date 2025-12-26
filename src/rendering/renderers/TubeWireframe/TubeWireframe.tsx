@@ -205,6 +205,7 @@ export interface TubeWireframeProps {
  * @param root0.opacity
  * @param root0.radius
  * @param root0.shadowEnabled
+ * @param root0.caps
  * @returns React element rendering instanced tube wireframe mesh or null
  */
 export function TubeWireframe({

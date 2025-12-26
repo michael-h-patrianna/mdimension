@@ -264,6 +264,8 @@ export class ScreenSpaceLensingPass extends BasePass {
 
   /**
    * Set black hole center in UV space (0 to 1, where 0.5, 0.5 is screen center).
+   * @param x
+   * @param y
    */
   setBlackHoleCenter(x: number, y: number): void {
     this.blackHoleCenter.set(x, y)
@@ -271,6 +273,8 @@ export class ScreenSpaceLensingPass extends BasePass {
 
   /**
    * Set black hole center (alias for setBlackHoleCenter).
+   * @param x
+   * @param y
    */
   setCenter(x: number, y: number): void {
     this.blackHoleCenter.set(x, y)
@@ -278,6 +282,7 @@ export class ScreenSpaceLensingPass extends BasePass {
 
   /**
    * Set event horizon radius in UV space.
+   * @param radius
    */
   setHorizonRadius(radius: number): void {
     this.horizonRadius = radius
@@ -285,6 +290,7 @@ export class ScreenSpaceLensingPass extends BasePass {
 
   /**
    * Set lensing intensity (0-5).
+   * @param intensity
    */
   setIntensity(intensity: number): void {
     this.intensity = intensity
@@ -292,6 +298,7 @@ export class ScreenSpaceLensingPass extends BasePass {
 
   /**
    * Set lens mass parameter (0.1-10).
+   * @param mass
    */
   setMass(mass: number): void {
     this.mass = mass
@@ -299,6 +306,7 @@ export class ScreenSpaceLensingPass extends BasePass {
 
   /**
    * Set distortion scale (0.1-5).
+   * @param scale
    */
   setDistortionScale(scale: number): void {
     this.distortionScale = scale
@@ -306,6 +314,7 @@ export class ScreenSpaceLensingPass extends BasePass {
 
   /**
    * Set distance falloff exponent.
+   * @param falloff
    */
   setFalloff(falloff: number): void {
     this.falloff = falloff
@@ -313,6 +322,7 @@ export class ScreenSpaceLensingPass extends BasePass {
 
   /**
    * Set chromatic aberration amount (0-1).
+   * @param amount
    */
   setChromaticAberration(amount: number): void {
     this.chromaticAberration = amount
@@ -320,6 +330,7 @@ export class ScreenSpaceLensingPass extends BasePass {
 
   /**
    * Enable/disable hybrid sky cubemap sampling.
+   * @param enabled
    */
   setHybridSkyEnabled(enabled: boolean): void {
     this.hybridSkyEnabled = enabled
@@ -329,6 +340,7 @@ export class ScreenSpaceLensingPass extends BasePass {
    * Set the sky cubemap for hybrid mode.
    * When set, background pixels will sample this cubemap with bent rays
    * instead of using screen-space UV distortion.
+   * @param cubemap
    */
   setSkyCubemap(cubemap: THREE.CubeTexture | null): void {
     this.skyCubemap = cubemap
@@ -336,6 +348,7 @@ export class ScreenSpaceLensingPass extends BasePass {
 
   /**
    * Get current lensing parameters.
+   * @returns Object with lensing parameters
    */
   getParameters(): {
     blackHoleCenter: THREE.Vector2

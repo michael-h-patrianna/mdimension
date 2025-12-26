@@ -93,6 +93,46 @@ impl Facet {
         let p0_slice = &all_points[vertex_indices[0]];
         let p0 = DVector::from_column_slice(p0_slice);
 
+        // Special case for 3D: use cross product (more robust and faster)
+        // For 3D, a facet has 3 vertices defining a plane, and we need the normal
+        if dim == 3 {
+            let p1 = &all_points[vertex_indices[1]];
+            let p2 = &all_points[vertex_indices[2]];
+            
+            // Edge vectors
+            let e1 = [p1[0] - p0_slice[0], p1[1] - p0_slice[1], p1[2] - p0_slice[2]];
+            let e2 = [p2[0] - p0_slice[0], p2[1] - p0_slice[1], p2[2] - p0_slice[2]];
+            
+            // Cross product: e1 × e2
+            let cross = [
+                e1[1] * e2[2] - e1[2] * e2[1],
+                e1[2] * e2[0] - e1[0] * e2[2],
+                e1[0] * e2[1] - e1[1] * e2[0],
+            ];
+            
+            let len = (cross[0]*cross[0] + cross[1]*cross[1] + cross[2]*cross[2]).sqrt();
+            if len < EPSILON {
+                return None; // Degenerate (collinear points)
+            }
+            
+            let mut normal = DVector::from_vec(vec![cross[0]/len, cross[1]/len, cross[2]/len]);
+            
+            // Orient normal outward (away from centroid)
+            let to_centroid = centroid - &p0;
+            if to_centroid.dot(&normal) > 0.0 {
+                normal = -normal;
+            }
+
+            let offset = normal.dot(&p0);
+
+            return Some(Facet {
+                vertices: vertex_indices.to_vec(),
+                normal,
+                offset,
+            });
+        }
+
+        // General case for dim > 3: use SVD to find null space
         // Construct matrix (dim-1 rows, dim cols) where rows are edges (p_i - p_0)
         let mut matrix_data = Vec::with_capacity((dim - 1) * dim);
         for i in 1..dim {
@@ -103,18 +143,49 @@ impl Facet {
         }
 
         // Create matrix from row-major data.
-        // nalgebra's from_vec is column-major by default, so we construct transpose or use iterator.
-        // Actually DMatrix::from_row_slice requires known compile-time or dynamic.
         let mat = DMatrix::from_row_slice(dim - 1, dim, &matrix_data);
 
         // Compute SVD to find null space (normal vector)
-        // We need V^T. The last row of V^T (last col of V) corresponds to smallest singular value (should be 0).
+        // We need V^T. For a (m,n) matrix with m < n, thin SVD gives V^T of shape (m, n).
+        // The null space has dimension n - m = 1, so we need the last column of V,
+        // which we compute by finding a vector orthogonal to all rows of mat.
+        // 
         // More iterations for high dimensions (200 vs 100), slightly looser tolerance (1e-8 vs 1e-9)
         let svd = mat.try_svd(false, true, 1e-8, 200)?;
         let v_t = svd.v_t?;
 
-        // The normal is the last row of V^T (or last column of V)
-        let mut normal = v_t.row(dim - 1).transpose();
+        // The thin SVD gives V^T with shape (min(m,n), n) = (dim-1, dim).
+        // We need a vector orthogonal to all the rows of V^T (the row space).
+        // This is done by finding the null space of V^T, which is a vector
+        // orthogonal to all singular vectors.
+        // 
+        // For the null space, we compute: the vector orthogonal to the (dim-1) rows.
+        // We use Gram-Schmidt to find a vector orthogonal to all rows of V^T.
+        let mut normal = DVector::zeros(dim);
+        
+        // Start with a random-ish vector and orthogonalize against all rows of V^T
+        // We try each basis vector until we find one that isn't in the row space
+        for start_idx in 0..dim {
+            let mut candidate = DVector::zeros(dim);
+            candidate[start_idx] = 1.0;
+            
+            // Project out all rows of V^T
+            for row_idx in 0..v_t.nrows() {
+                let row: DVector<f64> = v_t.row(row_idx).transpose().into();
+                let dot = candidate.dot(&row);
+                candidate -= &row * dot;
+            }
+            
+            let len = candidate.norm();
+            if len > EPSILON {
+                normal = candidate / len;
+                break;
+            }
+        }
+        
+        if normal.norm() < EPSILON {
+            return None; // Failed to find normal (degenerate case)
+        }
 
         // Orient normal outward (away from centroid)
         // If (centroid - p0) . normal > 0, normal points IN. Flip it.

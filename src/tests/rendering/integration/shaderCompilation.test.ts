@@ -22,6 +22,7 @@ import { composeBlackHoleShader } from '@/rendering/shaders/blackhole/compose'
 /**
  * Static checks for GLSL ES 3.00 compliance and common pitfalls.
  * These are intentionally minimal: the authoritative compile/link gate is E2E.
+ * @param fragmentShader
  */
 function verifyGlsl3(fragmentShader: string): void {
   expect(typeof fragmentShader).toBe('string')

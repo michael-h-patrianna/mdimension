@@ -73,6 +73,7 @@ const readyCallbacks: Array<() => void> = []
 
 /**
  * Global message handler (attached once when worker is created)
+ * @param event
  */
 function handleWorkerMessage(event: MessageEvent<WorkerResponse>): void {
   const response = event.data
@@ -134,6 +135,7 @@ function handleWorkerMessage(event: MessageEvent<WorkerResponse>): void {
 
 /**
  * Handle worker errors
+ * @param event
  */
 function handleWorkerError(event: ErrorEvent): void {
   if (import.meta.env.DEV) {
@@ -150,6 +152,7 @@ function handleWorkerError(event: ErrorEvent): void {
 /**
  * Check if Web Workers are available in this environment.
  * Workers are not available in test environments (happy-dom/jsdom).
+ * @returns True if Worker API is available
  */
 function isWorkerAvailable(): boolean {
   return typeof Worker !== 'undefined'
@@ -159,6 +162,7 @@ function isWorkerAvailable(): boolean {
  * Get or create the singleton worker instance.
  * Increments reference count.
  * Returns null if Worker is not available (e.g., in test environment).
+ * @returns Worker instance or null if unavailable
  */
 function getWorker(): Worker | null {
   // Check if Worker API is available

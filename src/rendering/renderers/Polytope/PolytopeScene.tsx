@@ -734,7 +734,7 @@ export const PolytopeScene = React.memo(function PolytopeScene({
 
 
     return geo;
-  }, [numFaces, faces, baseVertices, dimension, edges]);
+  }, [numFaces, faces, baseVertices, dimension]);
 
   // ============ EDGE GEOMETRY ============
   const edgeGeometry = useMemo(() => {

@@ -16,6 +16,7 @@ let lastFrameContext: FrozenFrameContext | null = null
 
 /**
  * Set the last frame context (called by RenderGraph.execute())
+ * @param ctx
  */
 export function setLastFrameContext(ctx: FrozenFrameContext | null): void {
   lastFrameContext = ctx

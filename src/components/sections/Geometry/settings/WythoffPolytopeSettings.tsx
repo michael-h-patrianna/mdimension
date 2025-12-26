@@ -15,8 +15,8 @@ import { Select } from '@/components/ui/Select'
 import { Slider } from '@/components/ui/Slider'
 import { Switch } from '@/components/ui/Switch'
 import {
-    WythoffPreset,
-    WythoffSymmetryGroup,
+  WythoffPreset,
+  WythoffSymmetryGroup,
 } from '@/lib/geometry/extended/types'
 import { getWythoffPresetName } from '@/lib/geometry/wythoff'
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore'

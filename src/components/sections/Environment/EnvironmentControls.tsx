@@ -102,7 +102,7 @@ export const EnvironmentControls: React.FC<EnvironmentControlsProps> = React.mem
 
   /**
    * Walls tab content - ground plane and grid settings
-   * @param e
+   * @returns JSX element for walls tab
    */
   const wallsContent = (
     <div className="space-y-4">

@@ -255,17 +255,18 @@ function getWallConfig(wall: WallPosition, distance: number): WallConfig {
  * and two surface types.
  *
  * Uses instanced rendering for the wall surfaces to reduce draw calls.
- * @param root0
- * @param root0.vertices
- * @param root0.offset
- * @param root0.activeWalls
- * @param root0.minBoundingRadius
- * @param root0.color
- * @param root0.surfaceType
- * @param root0.showGrid
- * @param root0.gridColor
- * @param root0.gridSpacing
- * @param root0.sizeScale
+ * @param root0 - Component props
+ * @param root0.vertices - Vertex data for positioning
+ * @param root0.offset - Wall offset distance
+ * @param root0.activeWalls - Which walls to render
+ * @param root0.minBoundingRadius - Minimum bounding radius
+ * @param root0.color - Wall color
+ * @param root0.surfaceType - Surface material type
+ * @param root0.showGrid - Whether to show grid overlay
+ * @param root0.gridColor - Grid line color
+ * @param root0.gridSpacing - Grid line spacing
+ * @param root0.sizeScale - Size scaling factor
+ * @returns React element rendering the environment walls
  */
 export function GroundPlane({
   vertices,

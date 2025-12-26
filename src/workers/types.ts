@@ -219,6 +219,8 @@ export interface TransferableFaceData {
 
 /**
  * Type guard for GenerateWythoffRequest
+ * @param req - The worker request
+ * @returns True if it's a GenerateWythoffRequest
  */
 export function isGenerateWythoffRequest(req: WorkerRequest): req is GenerateWythoffRequest {
   return req.type === 'generate-wythoff'
@@ -226,6 +228,8 @@ export function isGenerateWythoffRequest(req: WorkerRequest): req is GenerateWyt
 
 /**
  * Type guard for GenerateRootSystemRequest
+ * @param req - The worker request
+ * @returns True if it's a GenerateRootSystemRequest
  */
 export function isGenerateRootSystemRequest(req: WorkerRequest): req is GenerateRootSystemRequest {
   return req.type === 'generate-root-system'
@@ -233,6 +237,8 @@ export function isGenerateRootSystemRequest(req: WorkerRequest): req is Generate
 
 /**
  * Type guard for ComputeFacesRequest
+ * @param req - The worker request
+ * @returns True if it's a ComputeFacesRequest
  */
 export function isComputeFacesRequest(req: WorkerRequest): req is ComputeFacesRequest {
   return req.type === 'compute-faces'
@@ -240,6 +246,8 @@ export function isComputeFacesRequest(req: WorkerRequest): req is ComputeFacesRe
 
 /**
  * Type guard for CancelRequest
+ * @param req - The worker request
+ * @returns True if it's a CancelRequest
  */
 export function isCancelRequest(req: WorkerRequest): req is CancelRequest {
   return req.type === 'cancel'
@@ -247,6 +255,8 @@ export function isCancelRequest(req: WorkerRequest): req is CancelRequest {
 
 /**
  * Type guard for ResultResponse
+ * @param res - The worker response
+ * @returns True if it's a ResultResponse
  */
 export function isResultResponse(res: WorkerResponse): res is ResultResponse {
   return res.type === 'result'
@@ -254,6 +264,8 @@ export function isResultResponse(res: WorkerResponse): res is ResultResponse {
 
 /**
  * Type guard for ProgressResponse
+ * @param res - The worker response
+ * @returns True if it's a ProgressResponse
  */
 export function isProgressResponse(res: WorkerResponse): res is ProgressResponse {
   return res.type === 'progress'
@@ -261,6 +273,8 @@ export function isProgressResponse(res: WorkerResponse): res is ProgressResponse
 
 /**
  * Type guard for ErrorResponse
+ * @param res - The worker response
+ * @returns True if it's an ErrorResponse
  */
 export function isErrorResponse(res: WorkerResponse): res is ErrorResponse {
   return res.type === 'error'
@@ -268,6 +282,8 @@ export function isErrorResponse(res: WorkerResponse): res is ErrorResponse {
 
 /**
  * Type guard for ReadyResponse
+ * @param res - The worker response
+ * @returns True if it's a ReadyResponse
  */
 export function isReadyResponse(res: WorkerResponse): res is ReadyResponse {
   return res.type === 'ready'
@@ -275,6 +291,8 @@ export function isReadyResponse(res: WorkerResponse): res is ReadyResponse {
 
 /**
  * Type guard for InitErrorResponse
+ * @param res - The worker response
+ * @returns True if it's an InitErrorResponse
  */
 export function isInitErrorResponse(res: WorkerResponse): res is InitErrorResponse {
   return res.type === 'init-error'

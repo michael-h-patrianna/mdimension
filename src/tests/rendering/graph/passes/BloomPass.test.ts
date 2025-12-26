@@ -172,7 +172,7 @@ describe('BloomPass', () => {
       };
 
       // Should not throw when size is invalid (early return)
-      expect(() => bloomPass.execute(mockContext as any)).not.toThrow();
+      expect(() => bloomPass.execute(mockContext as unknown as import('@/rendering/graph/types').RenderContext)).not.toThrow();
 
       // getReadTexture should NOT be called because we early-return on invalid size
       expect(mockContext.getReadTexture).not.toHaveBeenCalled();

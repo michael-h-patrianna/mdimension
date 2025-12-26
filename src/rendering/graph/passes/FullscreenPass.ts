@@ -188,6 +188,7 @@ export class FullscreenPass extends BasePass {
 
   /**
    * Get the material for external uniform updates.
+   * @returns The shader material
    */
   getMaterial(): THREE.ShaderMaterial {
     return this.material;
@@ -195,6 +196,8 @@ export class FullscreenPass extends BasePass {
 
   /**
    * Update a uniform value.
+   * @param name
+   * @param value
    */
   setUniform(name: string, value: unknown): void {
     if (this.material.uniforms[name]) {

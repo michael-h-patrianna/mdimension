@@ -125,6 +125,7 @@ export class ResourcePool {
    * Check if a resource is registered.
    *
    * @param id - Resource identifier
+   * @returns True if the resource is registered
    */
   has(id: string): boolean {
     return this.resources.has(id)
@@ -152,7 +153,8 @@ export class ResourcePool {
 
   /**
    * Compute actual pixel dimensions for a size config.
-   * @param size
+   * @param size - Size configuration
+   * @returns Width and height in pixels
    */
   private computeDimensions(size: ResourceSize): { width: number; height: number } {
     switch (size.mode) {
@@ -261,6 +263,7 @@ export class ResourcePool {
    * For non-ping-pong resources, returns the primary target.
    *
    * @param id - Resource identifier
+   * @returns The read target or null
    */
   getReadTarget(id: string): THREE.WebGLRenderTarget | null {
     const entry = this.resources.get(id)
@@ -283,6 +286,7 @@ export class ResourcePool {
    * For non-ping-pong resources, returns the primary target.
    *
    * @param id - Resource identifier
+   * @returns The write target or null
    */
   getWriteTarget(id: string): THREE.WebGLRenderTarget | null {
     const entry = this.resources.get(id)
@@ -385,9 +389,10 @@ export class ResourcePool {
 
   /**
    * Create a render target from configuration.
-   * @param config
-   * @param width
-   * @param height
+   * @param config - Resource configuration
+   * @param width - Target width in pixels
+   * @param height - Target height in pixels
+   * @returns The created render target
    */
   private createTarget(
     config: RenderResourceConfig,
@@ -481,9 +486,10 @@ export class ResourcePool {
 
   /**
    * Create a depth texture based on config.
-   * @param config
-   * @param width
-   * @param height
+   * @param config - Resource configuration
+   * @param width - Texture width in pixels
+   * @param height - Texture height in pixels
+   * @returns The created depth texture
    */
   private createDepthTexture(
     config: RenderResourceConfig,
@@ -505,7 +511,8 @@ export class ResourcePool {
    * Get default internal format based on data type.
    * Returns the appropriate WebGL2 internal format.
    * Uses THREE.PixelFormatGPU type for Three.js r181+ compatibility.
-   * @param dataType
+   * @param dataType - The texture data type
+   * @returns The appropriate internal format or null
    */
   private getDefaultInternalFormat(dataType?: THREE.TextureDataType): THREE.PixelFormatGPU | null {
     switch (dataType) {
@@ -587,6 +594,7 @@ export class ResourcePool {
 
   /**
    * Get estimated VRAM usage in bytes.
+   * @returns VRAM usage in bytes
    */
   getVRAMUsage(): number {
     let total = 0
@@ -618,7 +626,8 @@ export class ResourcePool {
 
   /**
    * Get bytes per pixel for a resource config.
-   * @param config
+   * @param config - Resource configuration
+   * @returns Bytes per pixel
    */
   private getBytesPerPixel(config: RenderResourceConfig): number {
     const dataType = config.dataType ?? THREE.UnsignedByteType
@@ -636,6 +645,7 @@ export class ResourcePool {
 
   /**
    * Get list of registered resource IDs.
+   * @returns Array of resource IDs
    */
   getResourceIds(): string[] {
     return Array.from(this.resources.keys())
@@ -643,7 +653,8 @@ export class ResourcePool {
 
   /**
    * Get resource configuration.
-   * @param id
+   * @param id - Resource identifier
+   * @returns Resource configuration or undefined
    */
   getConfig(id: string): RenderResourceConfig | undefined {
     return this.resources.get(id)?.config
@@ -653,6 +664,7 @@ export class ResourcePool {
    * Get dimensions of all allocated resources.
    * Returns a map of resource IDs to their current dimensions.
    * Useful for performance monitoring and debugging.
+   * @returns Map of resource IDs to dimensions
    */
   getResourceDimensions(): Map<string, { width: number; height: number }> {
     const result = new Map<string, { width: number; height: number }>()

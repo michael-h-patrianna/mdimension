@@ -29,10 +29,9 @@ import type { RenderContext, RenderPassConfig } from '../types';
 
 /**
  * Configuration for DebugOverlayPass.
+ * No additional config needed - always renders DEBUG layer to screen.
  */
-export interface DebugOverlayPassConfig extends Omit<RenderPassConfig, 'inputs' | 'outputs'> {
-  // No additional config needed - always renders DEBUG layer to screen
-}
+export type DebugOverlayPassConfig = Omit<RenderPassConfig, 'inputs' | 'outputs'>
 
 /**
  * Renders debug/gizmo layer after post-processing, directly to screen.

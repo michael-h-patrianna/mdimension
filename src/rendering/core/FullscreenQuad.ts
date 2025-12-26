@@ -61,6 +61,7 @@ export function releaseFullscreenQuadGeometry(): void {
 
 /**
  * Gets the current reference count (for debugging).
+ * @returns The current reference count
  */
 export function getFullscreenQuadRefCount(): number {
   return referenceCount;

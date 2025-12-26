@@ -83,6 +83,7 @@ export class QualitySource extends BaseUniformSource {
 
   /**
    * Get all quality uniforms.
+   * @returns Record of quality uniforms
    */
   getUniforms(): Record<string, IUniform> {
     return this.qualityUniforms as unknown as Record<string, IUniform>
@@ -90,6 +91,7 @@ export class QualitySource extends BaseUniformSource {
 
   /**
    * Frame update - automatically pulls from stores and handles fast mode logic.
+   * @param _state
    */
   update(_state: UniformUpdateState): void {
     const perfState = usePerformanceStore.getState()
@@ -107,6 +109,7 @@ export class QualitySource extends BaseUniformSource {
 
   /**
    * Get current quality multiplier.
+   * @returns Current quality multiplier
    */
   getQualityMultiplier(): number {
     return this.cachedQualityMultiplier
@@ -114,6 +117,7 @@ export class QualitySource extends BaseUniformSource {
 
   /**
    * Get current fast mode state.
+   * @returns True if in fast mode
    */
   isFastMode(): boolean {
     return this.cachedFastMode

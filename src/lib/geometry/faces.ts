@@ -207,6 +207,8 @@ export function computeGridFaces(props: GridFacePropsWorker): number[][] {
 
 /**
  * Computes clifford-torus grid faces
+ * @param props - Grid face computation properties
+ * @returns Array of face indices
  */
 function computeCliffordTorusGridFaces(props: GridFacePropsWorker): number[][] {
   const { visualizationMode, mode, resolutionU, resolutionV, k, stepsPerCircle } = props
@@ -230,6 +232,8 @@ function computeCliffordTorusGridFaces(props: GridFacePropsWorker): number[][] {
 
 /**
  * Computes nested-torus grid faces
+ * @param props - Grid face computation properties
+ * @returns Array of face indices
  */
 function computeNestedTorusGridFaces(props: GridFacePropsWorker): number[][] {
   return computeNestedVisualizationGridFaces(props)
@@ -237,6 +241,8 @@ function computeNestedTorusGridFaces(props: GridFacePropsWorker): number[][] {
 
 /**
  * Shared logic for nested visualization grid faces
+ * @param props - Grid face computation properties
+ * @returns Array of face indices
  */
 function computeNestedVisualizationGridFaces(props: GridFacePropsWorker): number[][] {
   const { intrinsicDimension, resolutionXi1, resolutionXi2, torusCount } = props

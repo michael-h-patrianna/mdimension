@@ -17,6 +17,7 @@ export const ScreenshotModal = () => {
   /**
    * Generate the final cropped image as a Blob.
    * Falls back to full image if crop is null or invalid.
+   * @returns Promise resolving to the image blob or null on failure
    */
   const generateOutput = async (): Promise<Blob | null> => {
     return new Promise((resolve) => {

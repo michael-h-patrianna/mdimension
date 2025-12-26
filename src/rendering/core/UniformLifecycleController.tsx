@@ -10,6 +10,7 @@ import { FRAME_PRIORITY } from './framePriorities';
  * are up-to-date before renderers attempt to apply them.
  *
  * Must be placed inside the Canvas/Scene.
+ * @returns Null - this component only provides side effects
  */
 export function UniformLifecycleController() {
   useFrame((state, delta) => {

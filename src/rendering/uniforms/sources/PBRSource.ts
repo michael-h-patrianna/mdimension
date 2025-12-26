@@ -80,6 +80,7 @@ export class PBRSource extends BaseUniformSource {
 
   /**
    * Get all PBR uniforms.
+   * @returns Record of PBR uniforms
    */
   getUniforms(): Record<string, IUniform> {
     return this.pbrUniforms as unknown as Record<string, IUniform>
@@ -91,6 +92,7 @@ export class PBRSource extends BaseUniformSource {
    * This method accesses the store directly to update PBR uniforms,
    * eliminating the need for renderers to manually call updateFromStore().
    * Only updates when the store version changes (efficient change detection).
+   * @param _state
    */
   update(_state: UniformUpdateState): void {
     const pbrState = usePBRStore.getState()

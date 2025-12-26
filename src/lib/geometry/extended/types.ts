@@ -1709,15 +1709,6 @@ export interface BlackHoleConfig {
   /** Slice animation amplitude (0.1-1.0, default 0.3) */
   sliceAmplitude: number
 
-  // === DERIVED VALUES (Internal - computed from spin, do not set directly) ===
-  /**
-   * Visual event horizon radius for Kerr black hole.
-   * Computed from spin: r+ = M × (1 + √(1 - χ²))
-   * For χ=0 (Schwarzschild): equals horizonRadius
-   * For χ=0.9: ~72% of horizonRadius
-   * @internal Computed by setBlackHoleSpin, do not set directly
-   */
-  _visualEventHorizon: number
 }
 
 /**
@@ -1874,11 +1865,6 @@ export const DEFAULT_BLACK_HOLE_CONFIG: BlackHoleConfig = {
   sliceAnimationEnabled: false,
   sliceSpeed: 0.02,
   sliceAmplitude: 0.3,
-
-  // Derived values (computed from spin)
-  // For spin=0.9: r+ = M(1 + √(1-0.81)) = M(1.436) ≈ 1.44
-  // With horizonRadius=2.0 (rs=2M, so M=1): _visualEventHorizon ≈ 1.44
-  _visualEventHorizon: 1.44,
 }
 
 // ============================================================================

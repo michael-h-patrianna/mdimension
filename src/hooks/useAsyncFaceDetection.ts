@@ -49,6 +49,8 @@ const WORKER_REQUEST_TIMEOUT_MS = 30000
  *
  * Worker methods: convex-hull, triangles, grid (potentially expensive)
  * Sync methods: analytical-quad, metadata (fast O(1) or O(n) operations)
+ * @param faceMethod - The face detection method from registry
+ * @returns Worker method or undefined for sync methods
  */
 function getWorkerMethod(faceMethod: FaceDetectionMethod): WorkerFaceMethod | undefined {
   switch (faceMethod) {
@@ -88,6 +90,9 @@ function validateFaceIndices(
 /**
  * Builds and validates grid properties for worker request.
  * Returns undefined if required properties are missing.
+ * @param objectType - The type of geometry object
+ * @param metadata - The geometry metadata
+ * @returns Grid properties or undefined if invalid
  */
 function buildGridProps(
   objectType: ObjectType,

@@ -76,8 +76,7 @@ export function useLayerAssignment(
         mesh.layers.set(0); // Reset to default layer
       }
     };
-  // Note: meshRef excluded from deps - it's a stable ref object that won't change.
-  // The effect runs after render when meshRef.current is already assigned.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- meshRef is a stable ref object
   }, [layer, enabled]);
 }
 
@@ -118,6 +117,6 @@ export function useVolumetricLayerAssignment(
         mesh.layers.set(0); // Reset to default layer
       }
     };
-  // Note: meshRef excluded from deps - it's a stable ref object that won't change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- meshRef is a stable ref object
   }, [needsSeparation]);
 }

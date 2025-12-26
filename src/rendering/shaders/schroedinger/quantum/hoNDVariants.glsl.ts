@@ -487,6 +487,8 @@ float hoND11D(float xND[MAX_DIM], int termIdx) {
  * Generate dimension-specific dispatch block.
  * Instead of a #if/#elif chain that references undefined functions,
  * we generate a direct call to the specific dimension's function.
+ * @param dimension - The dimension to generate for
+ * @returns GLSL dispatch block code
  */
 export function generateHoNDDispatchBlock(dimension: number): string {
   const dim = Math.min(Math.max(dimension, 3), 11)

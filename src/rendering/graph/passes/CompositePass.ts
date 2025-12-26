@@ -301,6 +301,8 @@ export class CompositePass extends BasePass {
 
   /**
    * Convert blend mode string to integer.
+   * @param mode - The blend mode
+   * @returns Integer representation of the blend mode
    */
   private blendModeToInt(mode: BlendMode): number {
     const modeMap: Record<BlendMode, number> = {
@@ -315,6 +317,8 @@ export class CompositePass extends BasePass {
 
   /**
    * Update input weight.
+   * @param index
+   * @param weight
    */
   setInputWeight(index: number, weight: number): void {
     const input = this.compositeInputs[index];
@@ -325,6 +329,8 @@ export class CompositePass extends BasePass {
 
   /**
    * Update input blend mode.
+   * @param index
+   * @param mode
    */
   setInputBlendMode(index: number, mode: BlendMode): void {
     const input = this.compositeInputs[index];

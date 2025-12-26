@@ -45,6 +45,7 @@ class TestPass extends BasePass {
 
 /**
  * Create a mock WebGLRenderer that satisfies minimal requirements.
+ * @returns Mock WebGLRenderer
  */
 function createMockRenderer(): THREE.WebGLRenderer {
   const canvas = document.createElement('canvas');
@@ -107,6 +108,7 @@ function createMockRenderer(): THREE.WebGLRenderer {
 
 /**
  * Create a basic scene and camera for testing.
+ * @returns Object with scene and camera
  */
 function createSceneAndCamera(): { scene: THREE.Scene; camera: THREE.Camera } {
   const scene = new THREE.Scene();

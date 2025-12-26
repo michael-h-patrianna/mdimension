@@ -74,10 +74,10 @@ export const createBlackHoleSlice: StateCreator<ExtendedObjectSlice, [], [], Bla
     const spin = state.blackhole.spin
 
     // Recompute derived values with new horizon radius
+    // Note: _visualEventHorizon is computed on-demand in useBlackHoleUniformUpdates
     const M = clamped / 2
     const kerr = computeKerrRadii(M, spin)
 
-    const _visualEventHorizon = kerr.eventHorizon
     const diskInnerRadiusMul = kerr.iscoPrograde / clamped
     const photonShellRadiusMul = kerr.photonSpherePrograde / clamped
 
@@ -85,7 +85,6 @@ export const createBlackHoleSlice: StateCreator<ExtendedObjectSlice, [], [], Bla
       blackhole: {
         ...s.blackhole,
         horizonRadius: clamped,
-        _visualEventHorizon,
         diskInnerRadiusMul,
         photonShellRadiusMul: Math.max(1.0, Math.min(2.0, photonShellRadiusMul)),
       },
@@ -94,10 +93,11 @@ export const createBlackHoleSlice: StateCreator<ExtendedObjectSlice, [], [], Bla
 
   /**
    * Set black hole spin parameter (Kerr metric).
-   * Automatically updates ALL derived values:
-   * - _visualEventHorizon: actual event horizon radius (shrinks with spin)
+   * Automatically updates derived values:
    * - diskInnerRadiusMul: ISCO radius
    * - photonShellRadiusMul: photon sphere radius
+   *
+   * Note: _visualEventHorizon is computed on-demand in useBlackHoleUniformUpdates
    *
    * @param spin - Dimensionless spin chi = a/M (0-0.998)
    */
@@ -109,11 +109,6 @@ export const createBlackHoleSlice: StateCreator<ExtendedObjectSlice, [], [], Bla
     // Compute Kerr radii from spin (M = rs/2 in geometric units)
     const M = horizonRadius / 2
     const kerr = computeKerrRadii(M, clamped)
-
-    // Visual event horizon (shrinks with spin for Kerr black hole)
-    // For spin=0: equals horizonRadius (2M = Schwarzschild)
-    // For spin=0.9: ~72% of horizonRadius
-    const _visualEventHorizon = kerr.eventHorizon
 
     // Convert ISCO to multiplier of horizon radius (rs = 2M)
     // For prograde accretion disk (most common astrophysically)
@@ -127,7 +122,6 @@ export const createBlackHoleSlice: StateCreator<ExtendedObjectSlice, [], [], Bla
       blackhole: {
         ...s.blackhole,
         spin: clamped,
-        _visualEventHorizon,
         diskInnerRadiusMul,
         photonShellRadiusMul: Math.max(1.0, Math.min(2.0, photonShellRadiusMul)),
       },

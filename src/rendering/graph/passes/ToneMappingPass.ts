@@ -301,6 +301,7 @@ export class ToneMappingPass extends BasePass {
 
   /**
    * Set tone mapping algorithm (Three.js constant).
+   * @param mode
    */
   setToneMapping(mode: number): void {
     this.material.uniforms['uToneMapping']!.value = mode;
@@ -308,6 +309,7 @@ export class ToneMappingPass extends BasePass {
 
   /**
    * Set exposure value.
+   * @param exposure
    */
   setExposure(exposure: number): void {
     this.material.uniforms['uExposure']!.value = exposure;
@@ -315,6 +317,7 @@ export class ToneMappingPass extends BasePass {
 
   /**
    * Get current settings.
+   * @returns Object with tone mapping and exposure settings
    */
   getSettings(): { toneMapping: number; exposure: number } {
     return {

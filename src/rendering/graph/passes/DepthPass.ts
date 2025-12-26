@@ -179,6 +179,7 @@ export class DepthPass extends BasePass {
 
   /**
    * Set which layers to render.
+   * @param layers
    */
   setLayers(layers: number[] | null): void {
     this.layers = layers;
@@ -186,6 +187,7 @@ export class DepthPass extends BasePass {
 
   /**
    * Update depth pass mode.
+   * @param mode
    */
   setMode(mode: 'override' | 'material'): void {
     this.mode = mode;
@@ -193,6 +195,7 @@ export class DepthPass extends BasePass {
 
   /**
    * Update force depth write behavior.
+   * @param mode
    */
   setForceDepthWrite(mode: 'all' | 'opaque' | 'none'): void {
     this.forceDepthWrite = mode;

@@ -631,6 +631,7 @@ const PolytopeAdvanced: React.FC = () => {
 /**
  * Global Gravity Controls
  * Available for all object types. When black hole is selected, settings sync with internal lensing.
+ * @returns React element for gravity controls
  */
 const GravityAdvanced: React.FC = () => {
   const objectType = useGeometryStore(state => state.objectType);

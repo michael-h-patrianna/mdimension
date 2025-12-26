@@ -233,6 +233,7 @@ export class TemporalResource<T> {
    * Get frames since last reset/invalidation.
    *
    * Useful for debugging and determining warmup state.
+   * @returns Number of frames since last reset
    */
   getFramesSinceReset(): number {
     return this.framesSinceReset
@@ -242,6 +243,7 @@ export class TemporalResource<T> {
    * Check if the resource has accumulated enough frames to be "warm".
    *
    * A resource is warm when it has valid history at all offsets.
+   * @returns True if the resource is warm
    */
   isWarm(): boolean {
     return this.framesSinceReset >= this.config.historyLength
@@ -276,6 +278,7 @@ export class TemporalResource<T> {
 
   /**
    * Check if the resource has been disposed.
+   * @returns True if disposed
    */
   isDisposed(): boolean {
     return this.disposed
@@ -287,6 +290,7 @@ export class TemporalResource<T> {
 
   /**
    * Get the history length configuration.
+   * @returns The history length
    */
   getHistoryLength(): number {
     return this.config.historyLength
@@ -294,6 +298,7 @@ export class TemporalResource<T> {
 
   /**
    * Get the debug name (if configured).
+   * @returns Debug name or undefined
    */
   getDebugName(): string | undefined {
     return this.config.debugName

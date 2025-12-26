@@ -216,22 +216,36 @@ export class RefractionPass extends BasePass {
     renderer.setRenderTarget(null);
   }
 
-  /** Set index of refraction */
+  /**
+   * Set index of refraction
+   * @param value
+   */
   setIOR(value: number): void {
     (this.material.uniforms as unknown as RefractionUniforms).ior.value = value;
   }
 
-  /** Set refraction strength */
+  /**
+   * Set refraction strength
+   * @param value
+   */
   setStrength(value: number): void {
     (this.material.uniforms as unknown as RefractionUniforms).strength.value = value;
   }
 
-  /** Set chromatic aberration */
+  /**
+   * Set chromatic aberration
+   * @param value
+   */
   setChromaticAberration(value: number): void {
     (this.material.uniforms as unknown as RefractionUniforms).chromaticAberration.value = value;
   }
 
-  /** Copy input texture directly to output (passthrough) */
+  /**
+   * Copy input texture directly to output (passthrough)
+   * @param renderer
+   * @param inputTex
+   * @param outputTarget
+   */
   private copyToOutput(
     renderer: THREE.WebGLRenderer,
     inputTex: THREE.Texture | null,

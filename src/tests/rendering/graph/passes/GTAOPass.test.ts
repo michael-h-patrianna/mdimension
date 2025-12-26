@@ -130,15 +130,15 @@ describe('GTAOPass', () => {
 
     pass.execute(ctx)
 
-    const internal = (pass as unknown as { gtaoPass: any }).gtaoPass
+    const internal = (pass as unknown as { gtaoPass: import('three/examples/jsm/postprocessing/GTAOPass.js').GTAOPass }).gtaoPass
     expect(internal).toBeTruthy()
     expect(internal._renderGBuffer).toBe(false)
     expect(internal.normalTexture).toBe(normalTex)
     expect(internal.depthTexture).toBe(depthTex)
     expect(internal.gtaoMaterial.defines.NORMAL_VECTOR_TYPE).toBe(1)
     expect(internal.gtaoMaterial.defines.DEPTH_SWIZZLING).toBe('x')
-    expect(internal.gtaoMaterial.uniforms.tNormal.value).toBe(normalTex)
-    expect(internal.gtaoMaterial.uniforms.tDepth.value).toBe(depthTex)
+    expect(internal.gtaoMaterial.uniforms.tNormal?.value).toBe(normalTex)
+    expect(internal.gtaoMaterial.uniforms.tDepth?.value).toBe(depthTex)
   })
 
   it('propagates AO intensity + bilateral depth threshold into the half-res upsample shader', () => {

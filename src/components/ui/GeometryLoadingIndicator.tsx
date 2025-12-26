@@ -38,6 +38,12 @@ interface GeometryLoadingIndicatorProps {
  * Positioned in the top-right corner of its container by default.
  * Use className to override positioning.
  *
+ * @param root0 - Component props
+ * @param root0.isLoading - Whether loading is in progress
+ * @param root0.progress - Loading progress (0-100)
+ * @param root0.stage - Current generation stage
+ * @param root0.className - Optional additional class name
+ * @returns React element showing loading indicator or null
  * @example
  * ```tsx
  * <GeometryLoadingIndicator
@@ -115,6 +121,10 @@ export const GeometryLoadingIndicator: React.FC<GeometryLoadingIndicatorProps> =
 
 /**
  * Compact version for inline use
+ * @param root0 - Component props
+ * @param root0.isLoading - Whether loading is in progress
+ * @param root0.stage - Current generation stage
+ * @returns React element showing inline loading indicator
  */
 export const GeometryLoadingInline: React.FC<{
   isLoading: boolean

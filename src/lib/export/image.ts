@@ -80,6 +80,7 @@ export function findThreeCanvas(): HTMLCanvasElement | null {
  * Captures the current Three.js scene and opens the preview modal
  *
  * @param options - Export options (filename ignored in favor of modal flow)
+ * @param _options
  * @returns True if capture was successful
  */
 export function exportSceneToPNG(_options: ExportOptions = {}): boolean {

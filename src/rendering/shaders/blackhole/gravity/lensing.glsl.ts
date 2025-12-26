@@ -154,24 +154,28 @@ vec3 bendRay(vec3 rayDir, vec3 pos3d, float stepSize, float ndRadius) {
   // for users expecting to see "Interstellar"-style imagery.
   //
   // This factor allows:
-  // - Full lensing near the photon sphere (r < 2 * rs) for Einstein ring formation
-  // - Reduced lensing at outer disk (r > 2 * rs) so front disk is visible
-  // - Nearly straight rays at far distances (r > 5 * rs)
+  // - Full lensing within the shadow radius (~2.6 * rs) for proper capture
+  // - Reduced lensing at outer disk (r > 3 * rs) so front disk is visible
+  // - Nearly straight rays at far distances (r > 8 * rs)
   //
   // To disable this artistic enhancement and use physically accurate lensing,
   // set proximityFactor = 1.0 unconditionally.
   //
+  // NOTE: Shadow radius ≈ 2.6 * rs, so we must maintain full lensing up to ~3 * rs
+  // to ensure rays at the shadow boundary are properly captured. The previous
+  // falloff starting at 2 * rs was causing horizon transparency bugs.
+  //
   float photonSphereR = rs * 1.5;
-  float lensingFalloffStart = rs * 2.0;   // Start reducing right after photon sphere
-  float lensingFalloffEnd = rs * 5.0;     // Minimum lensing reached here
-  float minLensingFactor = 0.05;          // Keep only 5% for far rays
+  float lensingFalloffStart = rs * 3.5;   // Start reducing AFTER shadow radius (~2.6 * rs)
+  float lensingFalloffEnd = rs * 8.0;     // Minimum lensing reached here
+  float minLensingFactor = 0.1;           // Keep 10% for far rays (was 5%)
 
   float proximityFactor = 1.0 - smoothstep(lensingFalloffStart, lensingFalloffEnd, r);
   proximityFactor = mix(minLensingFactor, 1.0, proximityFactor);
 
-  // Additional quadratic falloff for very far rays
+  // Additional quadratic falloff for very far rays (gentler than before)
   // This ensures rays at the disk's outer edge travel nearly straight
-  float farFalloff = 1.0 / (1.0 + max(0.0, r - lensingFalloffStart) * 0.5 / rs);
+  float farFalloff = 1.0 / (1.0 + max(0.0, r - lensingFalloffStart) * 0.25 / rs);
   proximityFactor *= farFalloff;
 
   // === Schwarzschild component ===

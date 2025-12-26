@@ -134,6 +134,7 @@ export abstract class BaseUniformSource implements UniformSource {
   /**
    * Apply uniforms to a material.
    * Only updates uniforms that exist on the material.
+   * @param material
    */
   applyToMaterial(material: THREE.ShaderMaterial): void {
     const uniforms = this.getUniforms();

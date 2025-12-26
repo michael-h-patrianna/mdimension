@@ -55,6 +55,7 @@ export function initUniformSources(): void {
 
 /**
  * Check if uniform sources have been initialized.
+ * @returns True if initialized
  */
 export function isUniformSourcesInitialized(): boolean {
   return initialized;

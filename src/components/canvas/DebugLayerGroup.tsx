@@ -49,6 +49,9 @@ interface DebugLayerGroupProps {
  *
  * Re-runs on every render (no dependency array) to catch dynamically
  * added children like TransformControls internal meshes.
+ * @param root0 - Component props
+ * @param root0.children - Child elements to render on the debug layer
+ * @returns React element wrapping children in a debug layer group
  */
 export function DebugLayerGroup({ children }: DebugLayerGroupProps) {
   const groupRef = useRef<THREE.Group>(null);

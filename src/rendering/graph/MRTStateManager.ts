@@ -369,6 +369,7 @@ export class MRTStateManager {
 
   /**
    * Check if the manager is initialized.
+   * @returns True if initialized
    */
   isInitialized(): boolean {
     return this.initialized
@@ -412,6 +413,7 @@ export class MRTStateManager {
   /**
    * Get current render depth (for debugging).
    * Non-zero means we're inside a renderer.render() call.
+   * @returns Current render depth
    */
   getRenderDepth(): number {
     return this.renderDepth

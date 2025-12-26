@@ -110,6 +110,7 @@ export class TemporalSource extends BaseUniformSource {
 
   /**
    * Get all temporal uniforms.
+   * @returns Record of temporal uniforms
    */
   getUniforms(): Record<string, IUniform> {
     return this.temporalUniforms as unknown as Record<string, IUniform>;
@@ -120,6 +121,7 @@ export class TemporalSource extends BaseUniformSource {
    *
    * This method accesses the store directly to update temporal uniforms,
    * eliminating the need for renderers to manually call updateFromStore().
+   * @param state
    */
   update(state: UniformUpdateState): void {
     // Access store directly - this is the standard pattern in the codebase
@@ -169,6 +171,7 @@ export class TemporalSource extends BaseUniformSource {
 
   /**
    * Check if temporal reprojection is enabled.
+   * @returns True if enabled
    */
   isEnabled(): boolean {
     return this.enabled;

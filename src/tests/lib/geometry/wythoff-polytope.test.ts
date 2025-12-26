@@ -5,13 +5,13 @@
  * in dimensions 3-11.
  */
 
-import { describe, it, expect } from 'vitest'
 import {
-  generateWythoffPolytope,
-  getWythoffPresetName,
-  getWythoffPolytopeInfo,
   DEFAULT_WYTHOFF_POLYTOPE_CONFIG,
+  generateWythoffPolytope,
+  getWythoffPolytopeInfo,
+  getWythoffPresetName,
 } from '@/lib/geometry/wythoff'
+import { describe, expect, it } from 'vitest'
 
 describe('Wythoff Polytope Generation', () => {
   describe('generateWythoffPolytope', () => {
@@ -105,17 +105,20 @@ describe('Wythoff Polytope Generation', () => {
       ['cantellated', 'B', 4],
       ['runcinated', 'B', 4],
       ['omnitruncated', 'B', 4],
-    ] as const)('generates %s preset with %s symmetry in %dD', (preset, symmetryGroup, dimension) => {
-      const polytope = generateWythoffPolytope(dimension, {
-        symmetryGroup,
-        preset,
-        scale: 2.0,
-      })
+    ] as const)(
+      'generates %s preset with %s symmetry in %dD',
+      (preset, symmetryGroup, dimension) => {
+        const polytope = generateWythoffPolytope(dimension, {
+          symmetryGroup,
+          preset,
+          scale: 2.0,
+        })
 
-      expect(polytope.dimension).toBe(dimension)
-      expect(polytope.vertices.length).toBeGreaterThan(0)
-      expect(polytope.edges.length).toBeGreaterThan(0)
-    })
+        expect(polytope.dimension).toBe(dimension)
+        expect(polytope.vertices.length).toBeGreaterThan(0)
+        expect(polytope.edges.length).toBeGreaterThan(0)
+      }
+    )
 
     it('uses default config when no config provided', () => {
       const polytope = generateWythoffPolytope(4)
@@ -396,7 +399,7 @@ describe('High-dimensional omnitruncated memory safety', () => {
   //
   // The fix has two parts:
   // 1. Lazy permutation generation with early termination (prevents memory exhaustion)
-  // 2. Lower vertex limits for omnitruncated (prevents slow O(V²) edge generation)
+  // 2. O(V × n) combinatorial edge generation (instead of O(V²) distance-based)
 
   it('generates 11D omnitruncated polytope without memory exhaustion', { timeout: 15000 }, () => {
     // This previously crashed due to generating all 11! permutations upfront
@@ -406,10 +409,10 @@ describe('High-dimensional omnitruncated memory safety', () => {
       scale: 3.0,
     })
 
-    // Should have generated vertices (capped at 5,000 for omnitruncated to keep edge gen fast)
+    // Should have generated vertices (now allows up to 20,000 with O(V×n) edge generation)
     expect(polytope.dimension).toBe(11)
     expect(polytope.vertices.length).toBeGreaterThan(0)
-    expect(polytope.vertices.length).toBeLessThanOrEqual(5000)
+    expect(polytope.vertices.length).toBeLessThanOrEqual(20000)
     expect(polytope.edges.length).toBeGreaterThan(0)
 
     // Vertices should have correct dimension
@@ -425,7 +428,7 @@ describe('High-dimensional omnitruncated memory safety', () => {
 
     expect(polytope.dimension).toBe(10)
     expect(polytope.vertices.length).toBeGreaterThan(0)
-    expect(polytope.vertices.length).toBeLessThanOrEqual(5000) // Omnitruncated limit
+    expect(polytope.vertices.length).toBeLessThanOrEqual(20000) // Omnitruncated limit
   })
 
   it('generates 9D omnitruncated polytope efficiently', () => {
@@ -437,17 +440,18 @@ describe('High-dimensional omnitruncated memory safety', () => {
 
     expect(polytope.dimension).toBe(9)
     expect(polytope.vertices.length).toBeGreaterThan(0)
-    expect(polytope.vertices.length).toBeLessThanOrEqual(5000) // Omnitruncated limit
+    expect(polytope.vertices.length).toBeLessThanOrEqual(20000) // Omnitruncated limit
   })
 
   it('respects stricter vertex limits for omnitruncated presets', () => {
-    // Omnitruncated uses O(V²) edge generation, so limits are much stricter
+    // Omnitruncated now uses O(V × n) combinatorial edge generation
+    // allowing higher limits than before
     const omniLimits: Record<number, number> = {
-      7: 4000,
-      8: 4500,
-      9: 5000,
-      10: 5000,
-      11: 5000,
+      7: 14000,
+      8: 16000,
+      9: 18000,
+      10: 20000,
+      11: 20000,
     }
 
     for (const [dim, limit] of Object.entries(omniLimits)) {
@@ -477,7 +481,7 @@ describe('High-dimensional omnitruncated memory safety', () => {
 })
 
 // Integration test: verify faces flow through generateGeometry
-import { generateGeometry, DEFAULT_EXTENDED_OBJECT_PARAMS, detectFaces } from '@/lib/geometry'
+import { DEFAULT_EXTENDED_OBJECT_PARAMS, detectFaces, generateGeometry } from '@/lib/geometry'
 
 describe('Wythoff Polytope Integration', () => {
   it('preserves analyticalFaces when generated via generateGeometry', () => {
@@ -533,4 +537,3 @@ describe('Wythoff Polytope Integration', () => {
     expect(detectedFaces.length).toBe(12)
   })
 })
-

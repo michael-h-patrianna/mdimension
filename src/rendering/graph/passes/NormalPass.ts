@@ -182,6 +182,7 @@ export class NormalPass extends BasePass {
 
   /**
    * Set which layers to render.
+   * @param layers
    */
   setLayers(layers: number[] | null): void {
     this.layers = layers
@@ -189,6 +190,7 @@ export class NormalPass extends BasePass {
 
   /**
    * Enable/disable background rendering.
+   * @param enabled
    */
   setRenderBackground(enabled: boolean): void {
     this.renderBackground = enabled

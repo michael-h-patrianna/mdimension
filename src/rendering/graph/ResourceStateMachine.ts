@@ -383,6 +383,7 @@ export class ResourceStateMachine {
 
   /**
    * Get the current frame number.
+   * @returns Current frame number
    */
   getFrameNumber(): number {
     return this.frameNumber
