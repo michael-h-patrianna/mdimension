@@ -3,6 +3,7 @@ import { m, AnimatePresence } from 'motion/react';
 import { SHORTCUTS, getShortcutLabel } from '@/hooks/useKeyboardShortcuts';
 import { useLayoutStore, type LayoutStore } from '@/stores/layoutStore';
 import { useShallow } from 'zustand/react/shallow';
+import { Button } from '@/components/ui/Button';
 
 export const ShortcutsOverlay: React.FC = () => {
   const { showShortcuts, setShowShortcuts } = useLayoutStore(
@@ -45,17 +46,19 @@ export const ShortcutsOverlay: React.FC = () => {
           >
             <div className="flex items-center justify-between p-6 border-b border-panel-border sticky top-0 bg-panel-bg/95 backdrop-blur z-10">
               <h2 className="text-xl font-bold text-accent tracking-tight">Keyboard Shortcuts</h2>
-              <button
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => setShowShortcuts(false)}
-                className="p-1.5 rounded-lg hover:bg-white/10 text-text-secondary hover:text-text-primary transition-colors"
-                aria-label="Close"
+                ariaLabel="Close"
                 data-testid="shortcuts-close"
+                className="p-1.5"
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M18 6L6 18" />
                   <path d="M6 6l12 12" />
                 </svg>
-              </button>
+              </Button>
             </div>
 
             <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">

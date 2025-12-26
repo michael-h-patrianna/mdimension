@@ -18,8 +18,8 @@ import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useExtendedObjectStore, type ExtendedObjectState } from '@/stores/extendedObjectStore';
 import { ToggleButton } from '@/components/ui/ToggleButton';
+import { Slider } from '@/components/ui/Slider';
 import { AnimationDrawerContainer } from './AnimationDrawerContainer';
-import { soundManager } from '@/lib/audio/SoundManager';
 
 /**
  * PolytopeAnimationDrawer component
@@ -70,81 +70,45 @@ export const PolytopeAnimationDrawer: React.FC = React.memo(() => {
         </div>
 
         <div className={`space-y-3 ${!config.facetOffsetEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
-          {/* Amplitude control */}
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-text-secondary w-16">Amplitude</span>
-            <input
-              type="range"
-              min={0}
-              max={1.0}
-              step={0.01}
-              value={config.facetOffsetAmplitude}
-              onChange={(e) => setModulationAmplitude(parseFloat(e.target.value))}
-              onMouseEnter={() => soundManager.playHover()}
-              className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
-              aria-label="Modulation amplitude"
-            />
-            <span className="text-xs font-mono w-10 text-right">
-              {config.facetOffsetAmplitude.toFixed(2)}
-            </span>
-          </div>
+          <Slider
+            label="Amplitude"
+            min={0}
+            max={1.0}
+            step={0.01}
+            value={config.facetOffsetAmplitude}
+            onChange={setModulationAmplitude}
+            showValue
+          />
 
-          {/* Frequency control */}
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-text-secondary w-16">Frequency</span>
-            <input
-              type="range"
-              min={0.01}
-              max={0.20}
-              step={0.005}
-              value={config.facetOffsetFrequency}
-              onChange={(e) => setModulationFrequency(parseFloat(e.target.value))}
-              onMouseEnter={() => soundManager.playHover()}
-              className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
-              aria-label="Modulation frequency"
-            />
-            <span className="text-xs font-mono w-10 text-right">
-              {config.facetOffsetFrequency.toFixed(2)}
-            </span>
-          </div>
+          <Slider
+            label="Frequency"
+            min={0.01}
+            max={0.20}
+            step={0.005}
+            value={config.facetOffsetFrequency}
+            onChange={setModulationFrequency}
+            showValue
+          />
 
-          {/* Wave control - phase offset based on distance */}
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-text-secondary w-16">Wave</span>
-            <input
-              type="range"
-              min={0}
-              max={1.0}
-              step={0.01}
-              value={config.facetOffsetPhaseSpread}
-              onChange={(e) => setModulationWave(parseFloat(e.target.value))}
-              onMouseEnter={() => soundManager.playHover()}
-              className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
-              aria-label="Modulation wave"
-            />
-            <span className="text-xs font-mono w-10 text-right">
-              {config.facetOffsetPhaseSpread.toFixed(2)}
-            </span>
-          </div>
+          <Slider
+            label="Wave"
+            min={0}
+            max={1.0}
+            step={0.01}
+            value={config.facetOffsetPhaseSpread}
+            onChange={setModulationWave}
+            showValue
+          />
 
-          {/* Bias control - per-vertex/dimension variation */}
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-text-secondary w-16">Bias</span>
-            <input
-              type="range"
-              min={0}
-              max={1.0}
-              step={0.01}
-              value={config.facetOffsetBias}
-              onChange={(e) => setModulationBias(parseFloat(e.target.value))}
-              onMouseEnter={() => soundManager.playHover()}
-              className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
-              aria-label="Modulation bias"
-            />
-            <span className="text-xs font-mono w-10 text-right">
-              {config.facetOffsetBias.toFixed(2)}
-            </span>
-          </div>
+          <Slider
+            label="Bias"
+            min={0}
+            max={1.0}
+            step={0.01}
+            value={config.facetOffsetBias}
+            onChange={setModulationBias}
+            showValue
+          />
         </div>
       </div>
     </AnimationDrawerContainer>

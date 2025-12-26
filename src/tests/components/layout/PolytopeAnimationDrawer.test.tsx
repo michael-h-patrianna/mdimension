@@ -39,53 +39,54 @@ describe('PolytopeAnimationDrawer', () => {
       expect(useExtendedObjectStore.getState().polytope.facetOffsetEnabled).toBe(true)
     })
 
-    it('updates amplitude', () => {
+    it('updates amplitude via Slider component', () => {
       useExtendedObjectStore.setState({
         polytope: { ...DEFAULT_POLYTOPE_CONFIG, facetOffsetEnabled: true },
       })
 
       render(<PolytopeAnimationDrawer />)
 
-      const amplitudeSlider = screen.getByLabelText('Modulation amplitude')
+      // The Slider component uses aria-label on the hidden range input
+      const amplitudeSlider = screen.getByRole('slider', { name: 'Amplitude' })
       fireEvent.change(amplitudeSlider, { target: { value: '0.5' } })
 
       expect(useExtendedObjectStore.getState().polytope.facetOffsetAmplitude).toBe(0.5)
     })
 
-    it('updates frequency', () => {
+    it('updates frequency via Slider component', () => {
       useExtendedObjectStore.setState({
         polytope: { ...DEFAULT_POLYTOPE_CONFIG, facetOffsetEnabled: true },
       })
 
       render(<PolytopeAnimationDrawer />)
 
-      const frequencySlider = screen.getByLabelText('Modulation frequency')
+      const frequencySlider = screen.getByRole('slider', { name: 'Frequency' })
       fireEvent.change(frequencySlider, { target: { value: '0.10' } })
 
       expect(useExtendedObjectStore.getState().polytope.facetOffsetFrequency).toBe(0.1)
     })
 
-    it('updates wave', () => {
+    it('updates wave via Slider component', () => {
       useExtendedObjectStore.setState({
         polytope: { ...DEFAULT_POLYTOPE_CONFIG, facetOffsetEnabled: true },
       })
 
       render(<PolytopeAnimationDrawer />)
 
-      const waveSlider = screen.getByLabelText('Modulation wave')
+      const waveSlider = screen.getByRole('slider', { name: 'Wave' })
       fireEvent.change(waveSlider, { target: { value: '0.5' } })
 
       expect(useExtendedObjectStore.getState().polytope.facetOffsetPhaseSpread).toBe(0.5)
     })
 
-    it('updates bias', () => {
+    it('updates bias via Slider component', () => {
       useExtendedObjectStore.setState({
         polytope: { ...DEFAULT_POLYTOPE_CONFIG, facetOffsetEnabled: true },
       })
 
       render(<PolytopeAnimationDrawer />)
 
-      const biasSlider = screen.getByLabelText('Modulation bias')
+      const biasSlider = screen.getByRole('slider', { name: 'Bias' })
       fireEvent.change(biasSlider, { target: { value: '0.7' } })
 
       expect(useExtendedObjectStore.getState().polytope.facetOffsetBias).toBe(0.7)

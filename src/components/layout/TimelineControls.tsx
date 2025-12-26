@@ -15,7 +15,8 @@ import { PolytopeAnimationDrawer } from './TimelineControls/PolytopeAnimationDra
 import { SchroedingerAnimationDrawer } from './TimelineControls/SchroedingerAnimationDrawer';
 import { hasTimelineControls, isPolytopeCategory, getConfigStoreKey } from '@/lib/geometry/registry';
 import { Icon } from '@/components/ui/Icon';
-import { soundManager } from '@/lib/audio/SoundManager';
+import { Button } from '@/components/ui/Button';
+import { ToggleButton } from '@/components/ui/ToggleButton';
 
 export const TimelineControls: FC = () => {
     const dimension = useGeometryStore((state) => state.dimension);
@@ -130,20 +131,22 @@ export const TimelineControls: FC = () => {
                             <div className="flex items-center justify-between">
                                 <h3 className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">Rotation Planes</h3>
                                 <div className="flex gap-2">
-                                    <button
-                                        onClick={() => { soundManager.playClick(); animateAll(dimension); }}
-                                        onMouseEnter={() => soundManager.playHover()}
-                                        className="text-[10px] uppercase font-bold text-accent hover:text-accent-glow transition-colors"
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => animateAll(dimension)}
+                                        className="text-[10px] uppercase font-bold text-accent hover:text-accent-glow px-2 py-1"
                                     >
                                         Select All
-                                    </button>
-                                    <button
-                                        onClick={() => { soundManager.playClick(); clearAllPlanes(); }}
-                                        onMouseEnter={() => soundManager.playHover()}
-                                        className="text-[10px] uppercase font-bold text-text-secondary hover:text-text-primary transition-colors"
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => clearAllPlanes()}
+                                        className="text-[10px] uppercase font-bold px-2 py-1"
                                     >
                                         Deselect All
-                                    </button>
+                                    </Button>
                                 </div>
                             </div>
                             
@@ -151,19 +154,15 @@ export const TimelineControls: FC = () => {
                                 {planes.map((plane) => {
                                     const isActive = animatingPlanes.has(plane.name);
                                     return (
-                                        <button
+                                        <ToggleButton
                                             key={plane.name}
-                                            onClick={() => { soundManager.playClick(); togglePlane(plane.name); }}
-                                            onMouseEnter={() => soundManager.playHover()}
-                                            className={`
-                                                flex-1 min-w-[60px] px-3 py-2 rounded-md text-[10px] font-mono border transition-all text-center uppercase tracking-wider
-                                                ${isActive 
-                                                    ? 'bg-accent/20 border-accent text-accent shadow-[0_0_10px_color-mix(in_oklch,var(--color-accent)_20%,transparent)]' 
-                                                    : 'bg-white/5 border-transparent text-text-secondary hover:bg-white/10 hover:text-text-primary'}
-                                            `}
+                                            pressed={isActive}
+                                            onToggle={() => togglePlane(plane.name)}
+                                            ariaLabel={`Toggle ${plane.name} rotation`}
+                                            className="flex-1 min-w-[60px] px-3 py-2 text-[10px] font-mono text-center uppercase tracking-wider"
                                         >
                                             {plane.name}
-                                        </button>
+                                        </ToggleButton>
                                     );
                                 })}
                             </div>
@@ -202,26 +201,24 @@ export const TimelineControls: FC = () => {
             <div className="h-16 flex items-center px-6 gap-6 border-t border-white/5 shrink-0 overflow-x-auto no-scrollbar z-30 bg-panel-bg/80 backdrop-blur-md relative">
                 {/* Playback Controls */}
                 <div className="flex items-center gap-4 shrink-0">
-                     <button
-                        onClick={() => { soundManager.playClick(); toggle(); }}
-                        onMouseEnter={() => hasAnythingToAnimate && soundManager.playHover()}
+                     <Button
+                        variant={isPlaying ? 'primary' : 'secondary'}
+                        size="icon"
+                        onClick={toggle}
                         disabled={!hasAnythingToAnimate}
+                        ariaLabel={isPlaying ? "Pause" : "Play"}
+                        glow={isPlaying}
                         className={`
-                            group flex items-center justify-center w-10 h-10 rounded-full transition-all shrink-0 border border-white/10 cursor-pointer
-                            ${isPlaying
-                                ? 'bg-accent text-black hover:bg-accent/90 shadow-[0_0_15px_var(--color-accent)]'
-                                : 'bg-white/5 hover:bg-white/10 text-text-primary'
-                            }
-                            ${!hasAnythingToAnimate ? 'opacity-50 cursor-not-allowed' : ''}
+                            w-10 h-10 rounded-full shrink-0
+                            ${isPlaying ? 'bg-accent text-black' : ''}
                         `}
-                        title={isPlaying ? "Pause" : "Play"}
                     >
                         {isPlaying ? (
                             <Icon name="pause" size={12} />
                         ) : (
                             <Icon name="play" size={12} className="ml-0.5" />
                         )}
-                    </button>
+                    </Button>
                 </div>
 
                 <div className="h-8 w-px bg-white/5 shrink-0" />
@@ -241,11 +238,12 @@ export const TimelineControls: FC = () => {
                         />
                     </div>
 
-                    <button
-                        onClick={() => { soundManager.playClick(); toggleDirection(); }}
-                        onMouseEnter={() => soundManager.playHover()}
-                        className="glass-button px-3 py-1 rounded text-[10px] font-mono font-bold tracking-wider text-text-secondary hover:text-text-primary transition-colors flex items-center gap-1.5 cursor-pointer"
-                        title={direction === 1 ? 'Forward' : 'Reverse'}
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={toggleDirection}
+                        ariaLabel={direction === 1 ? 'Forward' : 'Reverse'}
+                        className="px-3 py-1 text-[10px] font-mono font-bold tracking-wider"
                     >
                         {direction === 1 ? (
                             <>
@@ -258,7 +256,7 @@ export const TimelineControls: FC = () => {
                                 <span>REV</span>
                             </>
                         )}
-                    </button>
+                    </Button>
                 </div>
 
                  <div className="h-8 w-px bg-white/5 shrink-0" />
@@ -281,35 +279,27 @@ export const TimelineControls: FC = () => {
                  {/* Advanced Toggles */}
                  <div className="flex items-center gap-2 shrink-0">
                     {hasTimelineControls(objectType) && (
-                         <button
-                            onClick={() => { soundManager.playClick(); setShowFractalAnim(!showFractalAnim); setShowRotation(false); }}
-                            onMouseEnter={() => soundManager.playHover()}
-                            className={`
-                                text-[10px] font-bold uppercase tracking-widest px-4 py-2 rounded-full transition-all border cursor-pointer
-                                ${showFractalAnim 
-                                    ? 'bg-accent/10 border-accent text-accent shadow-[0_0_10px_color-mix(in_oklch,var(--color-accent)_10%,transparent)]' 
-                                    : 'bg-transparent border-transparent hover:bg-white/5 text-text-secondary hover:text-text-primary'}
-                            `}
+                         <ToggleButton
+                            pressed={showFractalAnim}
+                            onToggle={() => { setShowFractalAnim(!showFractalAnim); setShowRotation(false); }}
+                            ariaLabel="Toggle animations drawer"
+                            className="text-[10px] font-bold uppercase tracking-widest px-4 py-2 rounded-full"
                          >
                             Animations
-                         </button>
+                         </ToggleButton>
                     )}
 
-                     <button
-                        onClick={() => { soundManager.playClick(); setShowRotation(!showRotation); setShowFractalAnim(false); }}
-                        onMouseEnter={() => soundManager.playHover()}
-                        className={`
-                            text-[10px] font-bold uppercase tracking-widest px-4 py-2 rounded-full transition-all border cursor-pointer
-                            ${showRotation 
-                                ? 'bg-accent/10 border-accent text-accent shadow-[0_0_10px_color-mix(in_oklch,var(--color-accent)_10%,transparent)]' 
-                                : 'bg-transparent border-transparent hover:bg-white/5 text-text-secondary hover:text-text-primary'}
-                            `}
+                     <ToggleButton
+                        pressed={showRotation}
+                        onToggle={() => { setShowRotation(!showRotation); setShowFractalAnim(false); }}
+                        ariaLabel="Toggle rotation drawer"
+                        className="text-[10px] font-bold uppercase tracking-widest px-4 py-2 rounded-full"
                      >
                         Rotation
                          <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[9px] ${showRotation ? 'bg-accent text-black' : 'bg-white/10 text-text-tertiary'}`}>
                              {animatingPlanes.size}
                          </span>
-                     </button>
+                     </ToggleButton>
                  </div>
             </div>
         </div>

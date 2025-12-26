@@ -19,6 +19,7 @@
 
 import type { AnimationSystemDef } from '@/lib/geometry/registry';
 import { ToggleButton } from '@/components/ui/ToggleButton';
+import { Slider } from '@/components/ui/Slider';
 import React from 'react';
 
 /**
@@ -103,24 +104,16 @@ export const AnimationSystemPanel: React.FC<AnimationSystemPanelProps> = React.m
           const step = range.step ?? 0.01;
 
           return (
-            <div key={paramKey} className="flex items-center gap-3">
-              <span className="text-xs text-text-secondary w-16">
-                {formatParamLabel(paramKey)}
-              </span>
-              <input
-                type="range"
-                min={range.min}
-                max={range.max}
-                step={step}
-                value={currentValue}
-                onChange={(e) => onParamChange(paramKey, parseFloat(e.target.value))}
-                className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
-                aria-label={`${system.name} ${formatParamLabel(paramKey)}`}
-              />
-              <span className="text-xs font-mono w-10 text-right">
-                {currentValue.toFixed(step < 0.1 ? 2 : 1)}
-              </span>
-            </div>
+            <Slider
+              key={paramKey}
+              label={formatParamLabel(paramKey)}
+              min={range.min}
+              max={range.max}
+              step={step}
+              value={currentValue}
+              onChange={(value) => onParamChange(paramKey, value)}
+              showValue
+            />
           );
         })}
       </div>

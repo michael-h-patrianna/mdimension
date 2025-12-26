@@ -17,8 +17,8 @@ import { useShallow } from 'zustand/react/shallow';
 import { useExtendedObjectStore, type ExtendedObjectState } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { ToggleButton } from '@/components/ui/ToggleButton';
+import { Slider } from '@/components/ui/Slider';
 import { AnimationDrawerContainer } from './AnimationDrawerContainer';
-import { soundManager } from '@/lib/audio/SoundManager';
 
 /**
  * MandelbulbAnimationDrawer component
@@ -100,57 +100,33 @@ export const MandelbulbAnimationDrawer: React.FC = React.memo(() => {
         </div>
 
         <div className={`space-y-3 ${!config.powerAnimationEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-text-secondary w-16">Min</span>
-            <input
-              type="range"
-              min={2}
-              max={16}
-              step={0.5}
-              value={config.powerMin}
-              onChange={(e) => setPowerMin(parseFloat(e.target.value))}
-              onMouseEnter={() => soundManager.playHover()}
-              className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
-              aria-label="Power animation min"
-            />
-            <span className="text-xs font-mono w-10 text-right">
-              {config.powerMin.toFixed(1)}
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-text-secondary w-16">Max</span>
-            <input
-              type="range"
-              min={3}
-              max={24}
-              step={0.5}
-              value={config.powerMax}
-              onChange={(e) => setPowerMax(parseFloat(e.target.value))}
-              onMouseEnter={() => soundManager.playHover()}
-              className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
-              aria-label="Power animation max"
-            />
-            <span className="text-xs font-mono w-10 text-right">
-              {config.powerMax.toFixed(1)}
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-text-secondary w-16">Speed</span>
-            <input
-              type="range"
-              min={0.01}
-              max={0.2}
-              step={0.01}
-              value={config.powerSpeed}
-              onChange={(e) => setPowerSpeed(parseFloat(e.target.value))}
-              onMouseEnter={() => soundManager.playHover()}
-              className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
-              aria-label="Power animation speed"
-            />
-            <span className="text-xs font-mono w-10 text-right">
-              {config.powerSpeed.toFixed(2)}
-            </span>
-          </div>
+          <Slider
+            label="Min"
+            min={2}
+            max={16}
+            step={0.5}
+            value={config.powerMin}
+            onChange={setPowerMin}
+            showValue
+          />
+          <Slider
+            label="Max"
+            min={3}
+            max={24}
+            step={0.5}
+            value={config.powerMax}
+            onChange={setPowerMax}
+            showValue
+          />
+          <Slider
+            label="Speed"
+            min={0.01}
+            max={0.2}
+            step={0.01}
+            value={config.powerSpeed}
+            onChange={setPowerSpeed}
+            showValue
+          />
         </div>
       </div>
 
@@ -171,40 +147,24 @@ export const MandelbulbAnimationDrawer: React.FC = React.memo(() => {
         </div>
 
         <div className={`space-y-3 ${!config.phaseShiftEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-text-secondary w-16">Amplitude</span>
-            <input
-              type="range"
-              min={0}
-              max={0.785}
-              step={0.01}
-              value={config.phaseAmplitude}
-              onChange={(e) => setPhaseAmplitude(parseFloat(e.target.value))}
-              onMouseEnter={() => soundManager.playHover()}
-              className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
-              aria-label="Phase shifts amplitude"
-            />
-            <span className="text-xs font-mono w-10 text-right">
-              {config.phaseAmplitude.toFixed(2)}
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-text-secondary w-16">Speed</span>
-            <input
-              type="range"
-              min={0.01}
-              max={0.2}
-              step={0.01}
-              value={config.phaseSpeed}
-              onChange={(e) => setPhaseSpeed(parseFloat(e.target.value))}
-              onMouseEnter={() => soundManager.playHover()}
-              className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
-              aria-label="Phase shifts speed"
-            />
-            <span className="text-xs font-mono w-10 text-right">
-              {config.phaseSpeed.toFixed(2)}
-            </span>
-          </div>
+          <Slider
+            label="Amplitude"
+            min={0}
+            max={0.785}
+            step={0.01}
+            value={config.phaseAmplitude}
+            onChange={setPhaseAmplitude}
+            showValue
+          />
+          <Slider
+            label="Speed"
+            min={0.01}
+            max={0.2}
+            step={0.01}
+            value={config.phaseSpeed}
+            onChange={setPhaseSpeed}
+            showValue
+          />
         </div>
       </div>
 
@@ -225,40 +185,24 @@ export const MandelbulbAnimationDrawer: React.FC = React.memo(() => {
         </div>
 
         <div className={`space-y-3 ${!config.dimensionMixEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-text-secondary w-16">Intensity</span>
-            <input
-              type="range"
-              min={0}
-              max={0.3}
-              step={0.01}
-              value={config.mixIntensity}
-              onChange={(e) => setMixIntensity(parseFloat(e.target.value))}
-              onMouseEnter={() => soundManager.playHover()}
-              className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
-              aria-label="Mixing intensity"
-            />
-            <span className="text-xs font-mono w-10 text-right">
-              {config.mixIntensity.toFixed(2)}
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-text-secondary w-16">Frequency</span>
-            <input
-              type="range"
-              min={0.1}
-              max={2.0}
-              step={0.1}
-              value={config.mixFrequency}
-              onChange={(e) => setMixFrequency(parseFloat(e.target.value))}
-              onMouseEnter={() => soundManager.playHover()}
-              className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
-              aria-label="Mixing frequency"
-            />
-            <span className="text-xs font-mono w-10 text-right">
-              {config.mixFrequency.toFixed(1)}
-            </span>
-          </div>
+          <Slider
+            label="Intensity"
+            min={0}
+            max={0.3}
+            step={0.01}
+            value={config.mixIntensity}
+            onChange={setMixIntensity}
+            showValue
+          />
+          <Slider
+            label="Frequency"
+            min={0.1}
+            max={2.0}
+            step={0.1}
+            value={config.mixFrequency}
+            onChange={setMixFrequency}
+            showValue
+          />
         </div>
       </div>
 
@@ -280,23 +224,15 @@ export const MandelbulbAnimationDrawer: React.FC = React.memo(() => {
           </div>
 
           <div className={`space-y-3 ${!config.originDriftEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-text-secondary w-16">Amplitude</span>
-              <input
-                type="range"
-                min={0.01}
-                max={0.5}
-                step={0.01}
-                value={config.driftAmplitude}
-                onChange={(e) => setDriftAmplitude(parseFloat(e.target.value))}
-                onMouseEnter={() => soundManager.playHover()}
-                className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
-                aria-label="Drift amplitude"
-              />
-              <span className="text-xs font-mono w-10 text-right">
-                {config.driftAmplitude.toFixed(2)}
-              </span>
-            </div>
+            <Slider
+              label="Amplitude"
+              min={0.01}
+              max={0.5}
+              step={0.01}
+              value={config.driftAmplitude}
+              onChange={setDriftAmplitude}
+              showValue
+            />
           </div>
         </div>
       )}
@@ -319,40 +255,24 @@ export const MandelbulbAnimationDrawer: React.FC = React.memo(() => {
           </div>
 
           <div className={`space-y-3 ${!config.sliceAnimationEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-text-secondary w-16">Amplitude</span>
-              <input
-                type="range"
-                min={0.1}
-                max={1.0}
-                step={0.05}
-                value={config.sliceAmplitude}
-                onChange={(e) => setSliceAmplitude(parseFloat(e.target.value))}
-                onMouseEnter={() => soundManager.playHover()}
-                className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
-                aria-label="Slice animation amplitude"
-              />
-              <span className="text-xs font-mono w-10 text-right">
-                {config.sliceAmplitude.toFixed(2)}
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-text-secondary w-16">Speed</span>
-              <input
-                type="range"
-                min={0.01}
-                max={0.1}
-                step={0.01}
-                value={config.sliceSpeed}
-                onChange={(e) => setSliceSpeed(parseFloat(e.target.value))}
-                onMouseEnter={() => soundManager.playHover()}
-                className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
-                aria-label="Slice animation speed"
-              />
-              <span className="text-xs font-mono w-10 text-right">
-                {config.sliceSpeed.toFixed(2)}
-              </span>
-            </div>
+            <Slider
+              label="Amplitude"
+              min={0.1}
+              max={1.0}
+              step={0.05}
+              value={config.sliceAmplitude}
+              onChange={setSliceAmplitude}
+              showValue
+            />
+            <Slider
+              label="Speed"
+              min={0.01}
+              max={0.1}
+              step={0.01}
+              value={config.sliceSpeed}
+              onChange={setSliceSpeed}
+              showValue
+            />
           </div>
         </div>
       )}

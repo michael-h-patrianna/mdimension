@@ -1,29 +1,15 @@
-Important: This is a test of your autonomous capabilities and abilities to create and optimize a high performance WebGL2 rendering pipeline.
+Important: This is a test of your autonomous capabilities.
 
 You cannot break anything. The project in this local folder is backed up and can be restored. You can create, modify, and delete files as necessary to complete the tasks assigned to you. You have full autonomy to make decisions and take actions to achieve the desired outcomes.
 
 Your task:
-this project underwent a major refactoring to switch the rendering pipeline into a industry-standard render graph.
+This project has a video export function that renders the scene canvas with its animation to video and allows the user to downlaod the video. this core function works very well. but it lacks a bit of polish and user delight features - something that goes beyond of just "working well".
 
-this migration is kind of done, but not at the highest possible quality.
-
-your task is to find and fix and refactor all
-- bugs
-- "band-aid" code
-- low quality architecture not in line with an industry-standard render graph engine like unreal, unity, forstbite
-- code that renders outside of the render path
-- code that requires shaders and renderers to have knowledge about the topography of the render graph
-- performance hogs and imperformant code
-- violation of using deferred shader composition
-- dead code
-- duplicate code
-- code leading to circular dependencies
-- code creating uncertainty about number of output targets and potentially creating gl errors
-- code not using WebGL2, GSLS3, Threejs r182, React 19, Zustand5 or not taking into account the special constraints and abilities of these technologies
-
-
-Constraint:
-- You cannot "hack". The only acceptable outcome is the state-of-the-art render graph architecture
+Your task is to design and implement a few user delight features:
+- User can select another tab in the export modal "Text" and enter there a line of text and select styles and position (check what Mediabunny offers) and this text is then overlayed and added to the video export
+- User can choose to select a crop area of the canvas that is used for the export, so not the whole canvas is used for the export. Should look nice, for example user can click a "Select crop area button" that turns the canvas into "cinematic mode" and hides the video export modal and instead user gets to see the scene with a crop control and other controls that allow them to select exactly the area of the canvas that will be used for the video export.
+- Presets with video settings and crop/size for social media platforms sharing (note: the main object is always in 0,0,0)
+- 4 other user delight features
 
 Important Reminder: This is a test of your autonomous capabilities. You are expected to take initiative and make decisions independently. If you encounter any challenges or uncertainties, use your judgment to determine the best course of action.
 

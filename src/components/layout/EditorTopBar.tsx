@@ -22,6 +22,7 @@ import { useUIStore } from '@/stores/uiStore';
 import { m } from 'motion/react';
 import React, { useEffect, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
+import { Button } from '@/components/ui/Button';
 
 interface EditorTopBarProps {
   showRightPanel: boolean;
@@ -280,20 +281,21 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
         {/* Left: Branding & Menu */}
         <div className="flex items-center gap-4">
           {/* Left Panel Toggle */}
-          <button
-              onClick={() => { toggleLeftPanel(); soundManager.playClick(); }}
-              className={`p-1.5 rounded-md transition-colors ${
+          <Button
+              variant={showLeftPanel ? 'primary' : 'ghost'}
+              size="icon"
+              onClick={toggleLeftPanel}
+              ariaLabel="Toggle Explorer"
+              data-testid="toggle-left-panel"
+              className={`p-1.5 ${
                 showLeftPanel ? 'bg-accent/10 text-accent' : 'text-text-secondary hover:text-text-primary hover:bg-white/5'
               }`}
-              title="Toggle Explorer"
-              data-testid="toggle-left-panel"
-              onMouseEnter={() => soundManager.playHover()}
           >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
                 <line x1="9" y1="3" x2="9" y2="21" />
               </svg>
-          </button>
+          </Button>
 
           {/* Holographic Logo (Hidden on very small screens, visible on desktop) */}
           <m.div
@@ -311,19 +313,19 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
           {/* Desktop Menus (Hidden on Mobile) */}
           <div className="hidden sm:flex items-center gap-2 text-xs text-text-secondary">
             <DropdownMenu
-              trigger={<button className="hover:text-text-primary px-2 py-1 rounded hover:bg-white/5 transition-colors font-medium tracking-wide" onMouseEnter={() => soundManager.playHover()} data-testid="menu-file">FILE</button>}
+              trigger={<Button variant="ghost" size="sm" data-testid="menu-file" className="px-2 py-1 font-medium tracking-wide">FILE</Button>}
               items={fileItems}
             />
             <DropdownMenu
-              trigger={<button className="hover:text-text-primary px-2 py-1 rounded hover:bg-white/5 transition-colors font-medium tracking-wide" onMouseEnter={() => soundManager.playHover()} data-testid="menu-view">VIEW</button>}
+              trigger={<Button variant="ghost" size="sm" data-testid="menu-view" className="px-2 py-1 font-medium tracking-wide">VIEW</Button>}
               items={viewItems}
             />
             <DropdownMenu
-              trigger={<button className="hover:text-text-primary px-2 py-1 rounded hover:bg-white/5 transition-colors font-medium tracking-wide" onMouseEnter={() => soundManager.playHover()} data-testid="menu-scenes">SCENES</button>}
+              trigger={<Button variant="ghost" size="sm" data-testid="menu-scenes" className="px-2 py-1 font-medium tracking-wide">SCENES</Button>}
               items={sceneSubmenuItems}
             />
             <DropdownMenu
-              trigger={<button className="hover:text-text-primary px-2 py-1 rounded hover:bg-white/5 transition-colors font-medium tracking-wide" onMouseEnter={() => soundManager.playHover()} data-testid="menu-styles">STYLES</button>}
+              trigger={<Button variant="ghost" size="sm" data-testid="menu-styles" className="px-2 py-1 font-medium tracking-wide">STYLES</Button>}
               items={styleSubmenuItems}
             />
           </div>
@@ -332,17 +334,18 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
           <div className="flex sm:hidden">
             <DropdownMenu
               trigger={
-                <button
-                  className="p-1.5 rounded-md text-text-secondary hover:text-text-primary hover:bg-white/5 transition-colors"
-                  onMouseEnter={() => soundManager.playHover()}
-                  aria-label="Menu"
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  ariaLabel="Menu"
+                  className="p-1.5"
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="3" y1="12" x2="21" y2="12"></line>
                     <line x1="3" y1="6" x2="21" y2="6"></line>
                     <line x1="3" y1="18" x2="21" y2="18"></line>
                   </svg>
-                </button>
+                </Button>
               }
               items={mobileMenuItems}
             />
@@ -360,20 +363,21 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
         {/* Right: Tools */}
         <div className="flex items-center gap-2">
            {/* Right Panel Toggle */}
-           <button
-              onClick={() => { toggleRightPanel(); soundManager.playClick(); }}
-              className={`p-1.5 rounded-md transition-colors ${
+           <Button
+              variant={showRightPanel ? 'primary' : 'ghost'}
+              size="icon"
+              onClick={toggleRightPanel}
+              ariaLabel="Toggle Inspector"
+              data-testid="toggle-right-panel"
+              className={`p-1.5 ${
                 showRightPanel ? 'bg-accent/10 text-accent' : 'text-text-secondary hover:text-text-primary hover:bg-white/5'
               }`}
-              title="Toggle Inspector"
-              data-testid="toggle-right-panel"
-              onMouseEnter={() => soundManager.playHover()}
           >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
                 <line x1="15" y1="3" x2="15" y2="21" />
               </svg>
-          </button>
+          </Button>
         </div>
       </div>
 

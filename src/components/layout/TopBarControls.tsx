@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Button } from '@/components/ui/Button';
 import { ToggleButton } from '@/components/ui/ToggleButton';
 import {
   canRenderFaces,
@@ -219,7 +220,7 @@ export const TopBarControls: React.FC<TopBarControlsProps> = ({ compact = false 
 
   // Helper for Icon Buttons
   const IconButton = ({ 
-    icon: Icon, 
+    icon: IconComponent, 
     active, 
     onClick, 
     label,
@@ -231,22 +232,23 @@ export const TopBarControls: React.FC<TopBarControlsProps> = ({ compact = false 
     label: string,
     className?: string
   }) => (
-    <button
+    <Button
+      variant={active ? 'primary' : 'ghost'}
+      size="icon"
       onClick={onClick}
-      onMouseEnter={() => soundManager.playHover()}
-      title={label}
+      ariaLabel={label}
+      data-testid={`control-${label.toLowerCase().replace(/\s+/g, '-')}`}
       className={`
-        p-1.5 rounded-md transition-all duration-300 border cursor-pointer
+        p-1.5 transition-all duration-300 border
         ${active
           ? 'bg-accent/20 text-accent border-accent/50 shadow-[0_0_10px_color-mix(in_oklch,var(--color-accent)_20%,transparent)]'
           : 'bg-transparent text-text-secondary border-transparent hover:text-text-primary hover:bg-white/5'
         }
         ${className}
       `}
-      data-testid={`control-${label.toLowerCase().replace(/\s+/g, '-')}`}
     >
-      <Icon />
-    </button>
+      <IconComponent />
+    </Button>
   );
 
   return (
