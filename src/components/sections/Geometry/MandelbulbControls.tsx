@@ -6,6 +6,7 @@
  *
  * Features:
  * - Power presets and custom slider
+ * - Alternate Power (dual-power morphing)
  * - Slice parameters for 4D+
  *
  * Note: Max iterations (32 fast / 64 HQ) and escape radius (8.0) are fixed
@@ -14,6 +15,7 @@
 
 import { useShallow } from 'zustand/react/shallow';
 import { Slider } from '@/components/ui/Slider';
+import { ToggleButton } from '@/components/ui/ToggleButton';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { Section } from '@/components/sections/Section';
 import { useExtendedObjectStore, type ExtendedObjectState } from '@/stores/extendedObjectStore';
@@ -63,6 +65,10 @@ const MandelbulbControlsComponent: React.FC<MandelbulbControlsProps> = ({
     setMandelbulbPower: state.setMandelbulbMandelbulbPower,
     setMandelbulbParameterValue: state.setMandelbulbParameterValue,
     resetMandelbulbParameters: state.resetMandelbulbParameters,
+    // Alternate Power controls
+    setAlternatePowerEnabled: state.setMandelbulbAlternatePowerEnabled,
+    setAlternatePowerValue: state.setMandelbulbAlternatePowerValue,
+    setAlternatePowerBlend: state.setMandelbulbAlternatePowerBlend,
   }));
   const {
     config,
@@ -70,6 +76,9 @@ const MandelbulbControlsComponent: React.FC<MandelbulbControlsProps> = ({
     setMandelbulbPower,
     setMandelbulbParameterValue,
     resetMandelbulbParameters,
+    setAlternatePowerEnabled,
+    setAlternatePowerValue,
+    setAlternatePowerBlend,
   } = useExtendedObjectStore(extendedObjectSelector);
 
   // Get current dimension to show/hide dimension-specific controls
@@ -89,24 +98,27 @@ const MandelbulbControlsComponent: React.FC<MandelbulbControlsProps> = ({
             showValue
             data-testid="mandelbulb-scale"
             />
+        </Section>
 
-            {/* Power Control (shown for 3D+ Mandelbulb) */}
-            {dimension >= 3 && (
-            <div className="space-y-2 pt-2 border-t border-white/5">
-                <label className="text-xs text-text-secondary">
+        {/* Power Section (shown for 3D+ Mandelbulb) */}
+        {dimension >= 3 && (
+          <Section title="Power" defaultOpen={true}>
+            {/* Main Power Control */}
+            <div className="space-y-2">
+              <label className="text-xs text-text-secondary">
                 Mandelbulb Power (n={config.mandelbulbPower})
-                </label>
-                <ToggleGroup
+              </label>
+              <ToggleGroup
                 options={powerPresets.map((p) => ({
-                    value: String(p.value),
-                    label: p.label,
+                  value: String(p.value),
+                  label: p.label,
                 }))}
                 value={String(config.mandelbulbPower)}
                 onChange={(v) => setMandelbulbPower(parseInt(v, 10))}
                 ariaLabel="Mandelbulb power preset"
                 data-testid="mandelbulb-power-preset"
-                />
-                <Slider
+              />
+              <Slider
                 label="Custom Power"
                 min={2}
                 max={16}
@@ -115,15 +127,58 @@ const MandelbulbControlsComponent: React.FC<MandelbulbControlsProps> = ({
                 onChange={setMandelbulbPower}
                 showValue
                 data-testid="mandelbulb-power-slider"
-                />
-                <p className="text-xs text-text-tertiary">
+              />
+              <p className="text-xs text-text-tertiary">
                 {dimension === 3
-                    ? 'Controls the shape of the 3D Mandelbulb fractal'
-                    : `Controls the shape of the ${dimension}D Mandelbulb fractal`}
-                </p>
+                  ? 'Controls the shape of the 3D Mandelbulb fractal'
+                  : `Controls the shape of the ${dimension}D Mandelbulb fractal`}
+              </p>
             </div>
-            )}
-        </Section>
+
+            {/* Alternate Power (Technique B) */}
+            <div className="space-y-3 pt-3 mt-3 border-t border-white/5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs text-text-secondary font-semibold">Alternate Power</label>
+                <ToggleButton
+                  pressed={config.alternatePowerEnabled}
+                  onToggle={() => setAlternatePowerEnabled(!config.alternatePowerEnabled)}
+                  className="text-xs px-2 py-1 h-auto"
+                  ariaLabel="Toggle alternate power"
+                  data-testid="mandelbulb-alternate-power-toggle"
+                >
+                  {config.alternatePowerEnabled ? 'ON' : 'OFF'}
+                </ToggleButton>
+              </div>
+              {config.alternatePowerEnabled && (
+                <div className="space-y-3 pl-2 border-l border-white/10">
+                  <Slider
+                    label="Power 2"
+                    min={2}
+                    max={16}
+                    step={0.1}
+                    value={config.alternatePowerValue}
+                    onChange={setAlternatePowerValue}
+                    showValue
+                    data-testid="mandelbulb-alternate-power-value"
+                  />
+                  <Slider
+                    label="Blend"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={config.alternatePowerBlend}
+                    onChange={setAlternatePowerBlend}
+                    showValue
+                    data-testid="mandelbulb-alternate-power-blend"
+                  />
+                  <p className="text-xs text-text-tertiary">
+                    Blend between two power values for unique hybrid shapes
+                  </p>
+                </div>
+              )}
+            </div>
+          </Section>
+        )}
 
         {/* Slice Parameters - shown for 4D+ */}
         {dimension >= 4 && (

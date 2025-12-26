@@ -1828,7 +1828,7 @@ export const DEFAULT_BLACK_HOLE_CONFIG: BlackHoleConfig = {
 
   // Quality
   raymarchQuality: 'balanced',
-  maxSteps: 600, // Increased to prevent black voids with adaptive steps
+  maxSteps: 256,
   stepBase: 0.08,
   stepMin: 0.01,
   stepMax: 0.2,

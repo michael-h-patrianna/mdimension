@@ -77,6 +77,8 @@ vec3 computeDensityGradientFast(vec3 pos, float t, float delta, float sCenter) {
 // Now supports lighting (matched to Mandelbulb behavior) but with reduced sample count
 // When dispersion is enabled, uses vec3 transmittance for proper per-channel absorption
 // Returns: VolumeResult with color, alpha, entry distance, and density-weighted centroid
+//
+// Fixed sample counts: 64 for HQ, 32 for fast mode
 VolumeResult volumeRaymarch(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar) {
     vec3 accColor = vec3(0.0);
     float entryT = -1.0;  // Track first meaningful contribution
@@ -85,10 +87,8 @@ VolumeResult volumeRaymarch(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar
     vec3 centroidSum = vec3(0.0);
     float centroidWeight = 0.0;
 
-    // Calculate step count based on uniform (from LOD system)
-    int sampleCount = uSampleCount > 0 ? uSampleCount : uSampleQuality;
-    if (uFastMode) sampleCount /= 2;
-    sampleCount = clamp(sampleCount, 16, MAX_VOLUME_SAMPLES);
+    // Fixed sample count: 64 for HQ, 32 for fast mode
+    int sampleCount = uFastMode ? 32 : 64;
 
     float stepLen = (tFar - tNear) / float(sampleCount);
     float t = tNear;
@@ -280,6 +280,8 @@ VolumeResult volumeRaymarch(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar
 
 // High-quality volume integration with lighting
 // OPTIMIZED: Uses forward differences gradient (3 samples) instead of central (6 samples)
+//
+// Fixed sample counts: 64 for HQ, 32 for fast mode
 VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar) {
     vec3 accColor = vec3(0.0);
     vec3 transmittance = vec3(1.0); // Now vec3 for chromatic dispersion support
@@ -289,11 +291,8 @@ VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tF
     vec3 centroidSum = vec3(0.0);
     float centroidWeight = 0.0;
 
-    int sampleCount = uSampleCount > 0 ? uSampleCount : 48; // Fallback to 48 if not set
-    // Fast mode: halve sample count for better performance during rotation
-    // This applies even with dispersion enabled (via gradient hack)
-    if (uFastMode) sampleCount /= 2;
-    sampleCount = clamp(sampleCount, 16, MAX_VOLUME_SAMPLES); // Allow down to 16 for performance
+    // Fixed sample count: 64 for HQ, 32 for fast mode
+    int sampleCount = uFastMode ? 32 : 64;
 
     float stepLen = (tFar - tNear) / float(sampleCount);
     float t = tNear;

@@ -449,7 +449,7 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
     setUniform(u, 'uNoiseAmount', bhState.noiseAmount)
     setUniform(u, 'uMultiIntersectionGain', bhState.multiIntersectionGain)
 
-    // Quality
+    // Quality - Read from store (controlled by UI sliders in BlackHoleAdvanced)
     setUniform(u, 'uMaxSteps', bhState.maxSteps)
     setUniform(u, 'uStepBase', bhState.stepBase)
     setUniform(u, 'uStepMin', bhState.stepMin)

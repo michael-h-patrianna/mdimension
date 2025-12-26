@@ -2,8 +2,7 @@ import { Section } from '@/components/sections/Section';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import { Slider } from '@/components/ui/Slider';
 import { ToggleButton } from '@/components/ui/ToggleButton';
-import { ToggleGroup } from '@/components/ui/ToggleGroup';
-import type { BlackHoleRayBendingMode, RaymarchQuality } from '@/lib/geometry/extended/types';
+import type { BlackHoleRayBendingMode } from '@/lib/geometry/extended/types';
 import { useAppearanceStore, type AppearanceSlice } from '@/stores/appearanceStore';
 import { useExtendedObjectStore, type ExtendedObjectState } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
@@ -26,9 +25,9 @@ const ADVANCED_RENDERING_OBJECT_TYPES = [
   'nested-torus',
 ];
 
-// Object types that have raymarching quality controls
-// Note: mandelbulb and quaternion-julia use maxIterations directly, not raymarchQuality
-const RAYMARCHING_OBJECT_TYPES = ['schroedinger', 'blackhole'];
+// Note: Quality preset toggles (fast/balanced/quality/ultra) have been removed
+// - Schrödinger uses fixed sample counts (64 HQ, 32 fast) in shader
+// - Black hole uses Max Steps and Step Size sliders in BlackHoleAdvanced
 
 export const AdvancedObjectControls: React.FC = () => {
   const objectType = useGeometryStore(state => state.objectType);
@@ -38,19 +37,14 @@ export const AdvancedObjectControls: React.FC = () => {
     return null;
   }
 
-  const showRaymarchingQuality = RAYMARCHING_OBJECT_TYPES.includes(objectType);
   const isPolytope = ['hypercube', 'simplex', 'cross-polytope', 'wythoff-polytope'].includes(objectType);
 
   return (
     <Section title="Advanced Rendering" defaultOpen={true} data-testid="advanced-object-controls">
-      {/* Raymarching Quality - only for raymarching objects */}
-      {showRaymarchingQuality && <RaymarchingQualityControl objectType={objectType} />}
-
       {/* Global Settings (Shared) - for all objects */}
       <SharedAdvancedControls />
 
-      {/* Gravitational Lensing - available for all objects */}
-      <GravityAdvanced />
+
 
       {/* Object-Specific Settings */}
       {objectType === 'schroedinger' && <SchroedingerAdvanced />}
@@ -58,89 +52,6 @@ export const AdvancedObjectControls: React.FC = () => {
       {objectType === 'mandelbulb' && <MandelbulbAdvanced />}
       {isPolytope && <PolytopeAdvanced />}
     </Section>
-  );
-};
-
-/** Quality descriptions with concrete numbers for each object type */
-const QUALITY_DESCRIPTIONS: Record<RaymarchQuality, { volumetric: string; sdf: string }> = {
-  fast: {
-    volumetric: '16 samples/ray - fastest, some banding',
-    sdf: '4x larger steps - fastest, lower detail',
-  },
-  balanced: {
-    volumetric: '32 samples/ray - good balance',
-    sdf: '2x larger steps - balanced quality',
-  },
-  quality: {
-    volumetric: '48 samples/ray - smooth gradients',
-    sdf: '1.33x larger steps - high detail',
-  },
-  ultra: {
-    volumetric: '64 samples/ray - maximum quality',
-    sdf: 'Full resolution - maximum detail',
-  },
-};
-
-/**
- * Get quality description with concrete numbers based on object type
- * @param quality - The quality level
- * @param objectType - The object type (volumetric or SDF)
- * @returns Human-readable quality description
- */
-const getQualityDescription = (quality: RaymarchQuality, objectType: string): string => {
-  const isVolumetric = objectType === 'schroedinger';
-  return isVolumetric ? QUALITY_DESCRIPTIONS[quality].volumetric : QUALITY_DESCRIPTIONS[quality].sdf;
-};
-
-/**
- * Unified Raymarching Quality Control for all 3 raymarching object types
- * @param root0 - Component props
- * @param root0.objectType - The type of raymarched object
- * @returns The quality control UI component
- */
-const RaymarchingQualityControl: React.FC<{ objectType: string }> = ({ objectType }) => {
-  const extendedObjectSelector = useShallow((state: ExtendedObjectState) => ({
-    schroedingerQuality: state.schroedinger.raymarchQuality,
-    setSchroedingerQuality: state.setSchroedingerRaymarchQuality,
-    blackholeQuality: state.blackhole.raymarchQuality,
-    setBlackholeQuality: state.setBlackHoleRaymarchQuality,
-  }));
-  const {
-    schroedingerQuality, setSchroedingerQuality,
-    blackholeQuality, setBlackholeQuality,
-  } = useExtendedObjectStore(extendedObjectSelector);
-
-  // Select the appropriate quality and setter based on object type
-  let quality: RaymarchQuality;
-  let setQuality: (q: RaymarchQuality) => void;
-
-  if (objectType === 'blackhole') {
-    quality = blackholeQuality;
-    setQuality = setBlackholeQuality;
-  } else {
-    quality = schroedingerQuality;
-    setQuality = setSchroedingerQuality;
-  }
-
-  return (
-    <div className="space-y-2 mb-4 pb-4 border-b border-white/10">
-      <label className="text-xs text-text-secondary font-semibold">Raymarching Quality</label>
-      <ToggleGroup
-        options={[
-          { value: 'fast', label: 'Fast' },
-          { value: 'balanced', label: 'Balanced' },
-          { value: 'quality', label: 'Quality' },
-          { value: 'ultra', label: 'Ultra' },
-        ]}
-        value={quality}
-        onChange={(v) => setQuality(v as RaymarchQuality)}
-        ariaLabel="Raymarching quality selection"
-        data-testid="raymarching-quality"
-      />
-      <p className="text-xs text-text-tertiary">
-        {getQualityDescription(quality, objectType)}
-      </p>
-    </div>
   );
 };
 
@@ -166,7 +77,7 @@ const SharedAdvancedControls: React.FC = () => {
   } = useAppearanceStore(appearanceSelector);
 
   return (
-    <div className="space-y-4 mb-4 pb-4 border-b border-white/10">
+    <div className="space-y-4 mb-4 pb-4">
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <label className="text-xs text-text-secondary font-semibold">Subsurface Scattering</label>
@@ -181,7 +92,7 @@ const SharedAdvancedControls: React.FC = () => {
           </ToggleButton>
         </div>
         {sssEnabled && (
-          <>
+          <div className="space-y-3 pl-2 border-l border-white/10">
             <Slider
               label="Intensity"
               min={0.0}
@@ -221,7 +132,7 @@ const SharedAdvancedControls: React.FC = () => {
               showValue
               data-testid="global-sss-jitter"
             />
-          </>
+          </div>
         )}
       </div>
 
@@ -240,6 +151,7 @@ const SharedAdvancedControls: React.FC = () => {
           </ToggleButton>
         </div>
         {fresnelEnabled && (
+          <div className="space-y-3 pl-2 border-l border-white/10">
           <Slider
             label="Intensity"
             min={0.0}
@@ -250,9 +162,12 @@ const SharedAdvancedControls: React.FC = () => {
             showValue
             data-testid="global-fresnel-intensity"
           />
+          </div>
         )}
       </div>
-      {/* Note: Fog/Atmosphere controls moved to Scene → Environment → Fog tab */}
+              {/* Gravitational Lensing - available for all objects */}
+      <GravityAdvanced />
+
     </div>
   );
 };
@@ -646,10 +561,6 @@ const SchroedingerAdvanced: React.FC = () => {
 const MandelbulbAdvanced: React.FC = () => {
   const extendedObjectSelector = useShallow((state: ExtendedObjectState) => ({
     config: state.mandelbulb,
-    // Animations
-    setAlternatePowerEnabled: state.setMandelbulbAlternatePowerEnabled,
-    setAlternatePowerValue: state.setMandelbulbAlternatePowerValue,
-    setAlternatePowerBlend: state.setMandelbulbAlternatePowerBlend,
     // Atmosphere
     setFogEnabled: state.setMandelbulbFogEnabled,
     setFogContribution: state.setMandelbulbFogContribution,
@@ -657,9 +568,6 @@ const MandelbulbAdvanced: React.FC = () => {
   }));
   const {
     config,
-    setAlternatePowerEnabled,
-    setAlternatePowerValue,
-    setAlternatePowerBlend,
     setFogEnabled,
     setFogContribution,
     setInternalFogDensity,
@@ -667,29 +575,8 @@ const MandelbulbAdvanced: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Alternate Power (Technique B) */}
-      <div className="space-y-3 pt-2">
-        <div className="flex items-center justify-between">
-          <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider">Alternate Power</label>
-          <ToggleButton
-            pressed={config.alternatePowerEnabled}
-            onToggle={() => setAlternatePowerEnabled(!config.alternatePowerEnabled)}
-            className="text-xs px-2 py-1 h-auto"
-            ariaLabel="Toggle alternate power"
-          >
-            {config.alternatePowerEnabled ? 'ON' : 'OFF'}
-          </ToggleButton>
-        </div>
-        {config.alternatePowerEnabled && (
-          <div className="space-y-3 pl-2 border-l border-white/10">
-            <Slider label="Power 2" min={2} max={16} step={0.1} value={config.alternatePowerValue} onChange={setAlternatePowerValue} showValue />
-            <Slider label="Blend" min={0} max={1} step={0.05} value={config.alternatePowerBlend} onChange={setAlternatePowerBlend} showValue />
-          </div>
-        )}
-      </div>
-
       {/* Atmosphere */}
-      <div className="space-y-3 pt-2 border-t border-white/5">
+      <div className="space-y-3 pt-2">
         <div className="flex items-center justify-between">
           <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider">Atmosphere</label>
           <ToggleButton
@@ -771,11 +658,11 @@ const GravityAdvanced: React.FC = () => {
   const isEnabled = isBlackHole ? true : ppState.gravityEnabled;
 
   return (
-    <div className="space-y-3 pt-2 border-t border-white/5 mt-2">
-      <div className="flex items-center justify-between">
-        <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider">
-          Gravitational Lensing
-        </label>
+
+      <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
+        <div className="flex items-center justify-between">
+          <label className="text-xs text-text-secondary font-semibold">Gravitational Lensing</label>
+
         <ToggleButton
           pressed={isEnabled}
           onToggle={() => !isBlackHole && ppState.setGravityEnabled(!ppState.gravityEnabled)}
@@ -1068,9 +955,9 @@ const BlackHoleAdvanced: React.FC = () => {
         <label className="text-xs text-text-secondary font-semibold">Rendering</label>
         <Slider
           label="Max Steps"
-          min={32}
-          max={256}
-          step={16}
+          min={128}
+          max={768}
+          step={64}
           value={config.maxSteps}
           onChange={setMaxSteps}
           showValue
@@ -1078,14 +965,17 @@ const BlackHoleAdvanced: React.FC = () => {
         />
         <Slider
           label="Step Size"
-          min={0.01}
-          max={0.2}
+          min={0.02}
+          max={0.15}
           step={0.01}
           value={config.stepBase}
           onChange={setStepBase}
           showValue
           data-testid="blackhole-step-size"
         />
+        <p className="text-xs text-text-tertiary">
+          Lower step size = higher quality, slower. Higher max steps = more detail.
+        </p>
         <div className="flex items-center justify-between">
           <label className="text-xs text-text-secondary">Absorption</label>
           <ToggleButton

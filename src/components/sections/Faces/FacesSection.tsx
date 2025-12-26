@@ -46,7 +46,7 @@ export const FacesSection: React.FC<FacesSectionProps> = ({
   // Get object type and dimension to check rendering mode
   const objectType = useGeometryStore((state) => state.objectType);
   const dimension = useGeometryStore((state) => state.dimension);
-  
+
   // Raymarching fractals (mandelbulb, julia, schroedinger, blackhole) are always fully opaque
   const isRaymarchingFractalType = isRaymarchingFractal(objectType, dimension);
 
@@ -394,9 +394,9 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
     <div className="space-y-4">
       {/* Face Opacity - Hidden for raymarching fractals (always fully opaque) */}
       {!hideOpacity && (
-        <ControlGroup title="Opacity">
+
           <Slider
-            label=""
+            label="Opacity"
             min={0}
             max={1}
             step={0.1}
@@ -405,12 +405,13 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
             showValue
             data-testid="slider-face-opacity"
           />
-        </ControlGroup>
+
       )}
 
       {/* PBR Material - Only when lighting is enabled */}
       {showLightingControls && (
         <ControlGroup title="PBR Material" collapsible defaultOpen>
+
           {/* Metallic */}
           <Slider
             label="Metallic"

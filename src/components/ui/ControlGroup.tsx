@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { m, AnimatePresence } from 'motion/react';
 import { soundManager } from '@/lib/audio/SoundManager';
+import { AnimatePresence, m } from 'motion/react';
+import React, { useState } from 'react';
 
 export interface ControlGroupProps {
   title: string;
@@ -38,7 +38,6 @@ export const ControlGroup: React.FC<ControlGroupProps> = ({
   };
 
   const isCard = variant === 'card';
-
   return (
     <div className={`
       ${isCard ? 'border border-white/5 rounded-lg bg-white/2 overflow-hidden' : 'border-b border-white/5 pb-2 last:border-0'}
@@ -59,7 +58,7 @@ export const ControlGroup: React.FC<ControlGroupProps> = ({
       >
         <div className="flex items-center gap-2">
           {collapsible && (
-            <m.div 
+            <m.div
               animate={{ rotate: isOpen ? 90 : 0 }}
               transition={{ duration: 0.2 }}
               className="text-text-tertiary"
@@ -71,7 +70,7 @@ export const ControlGroup: React.FC<ControlGroupProps> = ({
             {title}
           </span>
         </div>
-        
+
         {rightElement && (
           <div onClick={(e) => e.stopPropagation()}>
             {rightElement}
@@ -88,7 +87,7 @@ export const ControlGroup: React.FC<ControlGroupProps> = ({
             transition={{ duration: 0.2, ease: "easeInOut" }}
             className="overflow-hidden"
           >
-            <div className={`${isCard ? 'p-3' : 'pt-2'} space-y-3`}>
+            <div className={`${isCard ? 'p-3' : 'pt-2'} space-y-3 ml-1 pl-2 border-l border-white/10`}>
               {children}
             </div>
           </m.div>

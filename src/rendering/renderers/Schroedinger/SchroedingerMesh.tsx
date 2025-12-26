@@ -1,25 +1,25 @@
 import { computeDriftedOrigin, type OriginDriftConfig } from '@/lib/animation/originDrift';
 import {
-    flattenPresetForUniforms,
-    generateQuantumPreset,
-    getNamedPreset,
-    type QuantumPreset,
+  flattenPresetForUniforms,
+  generateQuantumPreset,
+  getNamedPreset,
+  type QuantumPreset,
 } from '@/lib/geometry/extended/schroedinger/presets';
-import { RAYMARCH_QUALITY_TO_SAMPLES } from '@/lib/geometry/extended/types';
+// Note: Schrödinger uses fixed sample counts (64 HQ, 32 fast) directly in shader
 import { createColorCache, updateLinearColorUniform } from '@/rendering/colors/linearCache';
 import { FRAME_PRIORITY } from '@/rendering/core/framePriorities';
 import { needsVolumetricSeparation, RENDER_LAYERS } from '@/rendering/core/layers';
 import { useTemporalDepth } from '@/rendering/core/temporalDepth';
 import { TrackedShaderMaterial } from '@/rendering/materials/TrackedShaderMaterial';
 import {
-    MAX_DIMENSION,
-    useQualityTracking,
-    useRotationUpdates,
+  MAX_DIMENSION,
+  useQualityTracking,
+  useRotationUpdates,
 } from '@/rendering/renderers/base';
 import { composeSchroedingerShader } from '@/rendering/shaders/schroedinger/compose';
 import { MAX_DIM, MAX_TERMS } from '@/rendering/shaders/schroedinger/uniforms.glsl';
 import { UniformManager } from '@/rendering/uniforms/UniformManager';
-import { getEffectiveVolumeSamples } from '@/rendering/utils/adaptiveQuality';
+// Sample count is fixed in shader: 64 (HQ) or 32 (fast mode)
 import { useAnimationStore } from '@/stores/animationStore';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useEnvironmentStore } from '@/stores/environmentStore';
@@ -376,26 +376,8 @@ const SchroedingerMesh = () => {
       // Cache for colors
       const cache = colorCacheRef.current;
 
-      // Sample Count System
-      // Maps RaymarchQuality preset to sample count with screen coverage adaptation
-      const baseSamples = RAYMARCH_QUALITY_TO_SAMPLES[schroedinger.raymarchQuality] ?? 32;
-      const effectiveSamples = getEffectiveVolumeSamples(baseSamples, camera as THREE.PerspectiveCamera, qualityMultiplier);
-
-      // DEBUG: Log sample count values (remove after verification)
-      if (Math.random() < 0.01) { // Log ~1% of frames to avoid spam
-        console.log('[Schrödinger Quality Debug]', {
-          raymarchQuality: schroedinger.raymarchQuality,
-          baseSamples,
-          qualityMultiplier,
-          effectiveSamples,
-          uniformExists: !!material.uniforms.uSampleCount,
-          currentUniformValue: material.uniforms.uSampleCount?.value,
-        });
-      }
-
-      if (material.uniforms.uSampleCount) {
-          material.uniforms.uSampleCount.value = effectiveSamples;
-      }
+      // Sample count is now fixed in shader (64 HQ / 32 fast mode)
+      // No uniform update needed - shader handles fast mode automatically
 
       // Time and resolution
       // Use accumulatedTime which respects pause state and is synced globally
