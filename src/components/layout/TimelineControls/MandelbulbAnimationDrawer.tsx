@@ -18,6 +18,7 @@ import { useExtendedObjectStore, type ExtendedObjectState } from '@/stores/exten
 import { useGeometryStore } from '@/stores/geometryStore';
 import { ToggleButton } from '@/components/ui/ToggleButton';
 import { AnimationDrawerContainer } from './AnimationDrawerContainer';
+import { soundManager } from '@/lib/audio/SoundManager';
 
 /**
  * MandelbulbAnimationDrawer component
@@ -108,6 +109,7 @@ export const MandelbulbAnimationDrawer: React.FC = React.memo(() => {
               step={0.5}
               value={config.powerMin}
               onChange={(e) => setPowerMin(parseFloat(e.target.value))}
+              onMouseEnter={() => soundManager.playHover()}
               className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
               aria-label="Power animation min"
             />
@@ -124,6 +126,7 @@ export const MandelbulbAnimationDrawer: React.FC = React.memo(() => {
               step={0.5}
               value={config.powerMax}
               onChange={(e) => setPowerMax(parseFloat(e.target.value))}
+              onMouseEnter={() => soundManager.playHover()}
               className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
               aria-label="Power animation max"
             />
@@ -140,6 +143,7 @@ export const MandelbulbAnimationDrawer: React.FC = React.memo(() => {
               step={0.01}
               value={config.powerSpeed}
               onChange={(e) => setPowerSpeed(parseFloat(e.target.value))}
+              onMouseEnter={() => soundManager.playHover()}
               className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
               aria-label="Power animation speed"
             />
@@ -176,6 +180,7 @@ export const MandelbulbAnimationDrawer: React.FC = React.memo(() => {
               step={0.01}
               value={config.phaseAmplitude}
               onChange={(e) => setPhaseAmplitude(parseFloat(e.target.value))}
+              onMouseEnter={() => soundManager.playHover()}
               className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
               aria-label="Phase shifts amplitude"
             />
@@ -192,6 +197,7 @@ export const MandelbulbAnimationDrawer: React.FC = React.memo(() => {
               step={0.01}
               value={config.phaseSpeed}
               onChange={(e) => setPhaseSpeed(parseFloat(e.target.value))}
+              onMouseEnter={() => soundManager.playHover()}
               className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
               aria-label="Phase shifts speed"
             />
@@ -228,6 +234,7 @@ export const MandelbulbAnimationDrawer: React.FC = React.memo(() => {
               step={0.01}
               value={config.mixIntensity}
               onChange={(e) => setMixIntensity(parseFloat(e.target.value))}
+              onMouseEnter={() => soundManager.playHover()}
               className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
               aria-label="Mixing intensity"
             />
@@ -244,6 +251,7 @@ export const MandelbulbAnimationDrawer: React.FC = React.memo(() => {
               step={0.1}
               value={config.mixFrequency}
               onChange={(e) => setMixFrequency(parseFloat(e.target.value))}
+              onMouseEnter={() => soundManager.playHover()}
               className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
               aria-label="Mixing frequency"
             />
@@ -281,6 +289,7 @@ export const MandelbulbAnimationDrawer: React.FC = React.memo(() => {
                 step={0.01}
                 value={config.driftAmplitude}
                 onChange={(e) => setDriftAmplitude(parseFloat(e.target.value))}
+                onMouseEnter={() => soundManager.playHover()}
                 className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
                 aria-label="Drift amplitude"
               />
@@ -319,6 +328,7 @@ export const MandelbulbAnimationDrawer: React.FC = React.memo(() => {
                 step={0.05}
                 value={config.sliceAmplitude}
                 onChange={(e) => setSliceAmplitude(parseFloat(e.target.value))}
+                onMouseEnter={() => soundManager.playHover()}
                 className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
                 aria-label="Slice animation amplitude"
               />
@@ -335,6 +345,7 @@ export const MandelbulbAnimationDrawer: React.FC = React.memo(() => {
                 step={0.01}
                 value={config.sliceSpeed}
                 onChange={(e) => setSliceSpeed(parseFloat(e.target.value))}
+                onMouseEnter={() => soundManager.playHover()}
                 className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
                 aria-label="Slice animation speed"
               />

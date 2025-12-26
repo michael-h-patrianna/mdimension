@@ -9,6 +9,7 @@ export interface DropdownMenuItem {
   disabled?: boolean;
   shortcut?: string;
   'data-testid'?: string;
+  items?: DropdownMenuItem[]; // Submenu support
 }
 
 export interface DropdownMenuProps {
@@ -16,13 +17,216 @@ export interface DropdownMenuProps {
   items: DropdownMenuItem[];
   className?: string;
   align?: 'left' | 'right';
+  maxHeight?: number;
+  onClose?: () => void;
 }
+
+/**
+ * Portaled submenu that positions itself relative to a trigger rect
+ */
+const PortaledSubmenu: React.FC<{
+  items: DropdownMenuItem[];
+  triggerRect: DOMRect;
+  onClose: () => void;
+  depth: number;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
+}> = ({ items, triggerRect, onClose, depth, onMouseEnter, onMouseLeave }) => {
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState({ top: 0, left: 0 });
+  const [ready, setReady] = useState(false);
+
+  useLayoutEffect(() => {
+    if (menuRef.current) {
+      const menuRect = menuRef.current.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+
+      // Try to position to the right of the trigger
+      let left = triggerRect.right + 2;
+      let top = triggerRect.top;
+
+      // If overflows right, try left side
+      if (left + menuRect.width > viewportWidth - 8) {
+        left = triggerRect.left - menuRect.width - 2;
+      }
+
+      // If still overflows (very narrow screen), position below
+      if (left < 8) {
+        left = Math.max(8, triggerRect.left);
+        top = triggerRect.bottom + 2;
+      }
+
+      // Clamp vertical position
+      if (top + menuRect.height > viewportHeight - 8) {
+        top = Math.max(8, viewportHeight - menuRect.height - 8);
+      }
+
+      setCoords({ top, left });
+      setReady(true);
+    }
+  }, [triggerRect]);
+
+  return createPortal(
+    <m.div
+      ref={menuRef}
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: ready ? 1 : 0, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.12 }}
+      className="glass-panel min-w-[180px] max-w-[280px] rounded-lg py-1 shadow-xl border border-white/10"
+      style={{
+        position: 'fixed',
+        top: coords.top,
+        left: coords.left,
+        zIndex: 200 + depth * 10,
+        maxHeight: '60vh',
+        overflowY: 'auto',
+        backdropFilter: 'blur(16px)',
+        visibility: ready ? 'visible' : 'hidden',
+      }}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+    >
+      <MenuItems items={items} onClose={onClose} depth={depth + 1} />
+    </m.div>,
+    document.body
+  );
+};
+
+/**
+ * Renders menu items with submenu support
+ */
+const MenuItems: React.FC<{
+  items: DropdownMenuItem[];
+  onClose: () => void;
+  depth?: number;
+}> = ({ items, onClose, depth = 0 }) => {
+  const [activeSubmenuIndex, setActiveSubmenuIndex] = useState<number | null>(null);
+  const [submenuTriggerRect, setSubmenuTriggerRect] = useState<DOMRect | null>(null);
+  const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearCloseTimeout = () => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+  };
+
+  const scheduleClose = () => {
+    clearCloseTimeout();
+    closeTimeoutRef.current = setTimeout(() => {
+      setActiveSubmenuIndex(null);
+      setSubmenuTriggerRect(null);
+    }, 100);
+  };
+
+  const openSubmenu = (index: number) => {
+    clearCloseTimeout();
+    const button = itemRefs.current[index];
+    if (button) {
+      setSubmenuTriggerRect(button.getBoundingClientRect());
+      setActiveSubmenuIndex(index);
+    }
+  };
+
+  useEffect(() => {
+    return () => clearCloseTimeout();
+  }, []);
+
+  return (
+    <>
+      {items.map((item, index) => {
+        // Separator
+        if (item.label === '---') {
+          return <div key={index} className="h-px bg-white/10 my-1.5 mx-2" />;
+        }
+        
+        // Header (non-clickable, no children)
+        if (!item.onClick && !item.items && !item.disabled) {
+          return (
+            <div key={index} className="px-3 py-1.5 text-xs font-bold text-accent uppercase tracking-wider opacity-70">
+              {item.label}
+            </div>
+          );
+        }
+
+        const hasSubmenu = !!item.items;
+        const isSubmenuOpen = activeSubmenuIndex === index;
+
+        return (
+          <React.Fragment key={index}>
+            <button
+              ref={el => { itemRefs.current[index] = el; }}
+              onClick={() => {
+                if (hasSubmenu) {
+                  if (isSubmenuOpen) {
+                    setActiveSubmenuIndex(null);
+                    setSubmenuTriggerRect(null);
+                  } else {
+                    openSubmenu(index);
+                  }
+                } else if (!item.disabled && item.onClick) {
+                  soundManager.playClick();
+                  item.onClick();
+                  onClose();
+                }
+              }}
+              onMouseEnter={() => {
+                if (!item.disabled) soundManager.playHover();
+                if (hasSubmenu) {
+                  openSubmenu(index);
+                } else {
+                  // Close any open submenu when hovering a non-submenu item
+                  scheduleClose();
+                }
+              }}
+              disabled={item.disabled}
+              className={`
+                w-full text-left px-3 py-1.5 text-sm flex items-center justify-between group
+                ${item.disabled ? 'text-text-secondary/50 cursor-not-allowed' : 'text-text-secondary hover:text-text-primary hover:bg-white/5 cursor-pointer'}
+                ${isSubmenuOpen ? 'bg-white/5 text-text-primary' : ''}
+              `}
+              data-testid={item['data-testid']}
+            >
+              <span>{item.label}</span>
+              {hasSubmenu ? (
+                <span className="ml-2 opacity-50 text-xs">›</span>
+              ) : item.shortcut ? (
+                <span className="text-xs text-text-secondary/50 group-hover:text-text-secondary font-mono ml-4">
+                  {item.shortcut}
+                </span>
+              ) : null}
+            </button>
+
+            {/* Portaled Submenu */}
+            <AnimatePresence>
+              {hasSubmenu && isSubmenuOpen && submenuTriggerRect && (
+                <PortaledSubmenu
+                  items={item.items!}
+                  triggerRect={submenuTriggerRect}
+                  onClose={onClose}
+                  depth={depth}
+                  onMouseEnter={clearCloseTimeout}
+                  onMouseLeave={scheduleClose}
+                />
+              )}
+            </AnimatePresence>
+          </React.Fragment>
+        );
+      })}
+    </>
+  );
+};
 
 export const DropdownMenu: React.FC<DropdownMenuProps> = ({
   trigger,
   items,
   className = '',
   align = 'left',
+  maxHeight,
+  onClose
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const triggerRef = useRef<HTMLDivElement>(null);
@@ -30,38 +234,39 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
   const [coords, setCoords] = useState({ top: 0, left: 0 });
   const offset = 4;
 
-  // Update position - memoized to avoid stale closure in event listeners
   const updatePosition = useCallback(() => {
-    if (triggerRef.current && isOpen) {
+    if (triggerRef.current && isOpen && contentRef.current) {
       const triggerRect = triggerRef.current.getBoundingClientRect();
-      const contentRect = contentRef.current?.getBoundingClientRect() || { width: 180, height: 0 };
-
-      // Position below trigger
-      let top = triggerRect.bottom + offset + window.scrollY;
-      let left = align === 'right'
-        ? triggerRect.right - contentRect.width + window.scrollX
-        : triggerRect.left + window.scrollX;
-
-      // Viewport collision - flip above if overflows bottom
+      const contentRect = contentRef.current.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
-      if (top + contentRect.height > window.scrollY + viewportHeight) {
-        top = triggerRect.top - contentRect.height - offset + window.scrollY;
+      const viewportWidth = window.innerWidth;
+
+      let top = triggerRect.bottom + offset;
+      const overflowsBottom = (triggerRect.bottom + offset + contentRect.height) > viewportHeight;
+      
+      if (overflowsBottom) {
+        const topSpace = triggerRect.top;
+        const bottomSpace = viewportHeight - triggerRect.bottom;
+        if (topSpace > bottomSpace) {
+          top = triggerRect.top - contentRect.height - offset;
+          if (top < 8) top = 8;
+        }
       }
 
-      // Clamp horizontal to viewport
-      const viewportWidth = window.innerWidth;
-      left = Math.max(8, Math.min(left, viewportWidth - contentRect.width - 8));
+      let left = align === 'right'
+        ? triggerRect.right - contentRect.width
+        : triggerRect.left;
 
+      left = Math.max(8, Math.min(left, viewportWidth - contentRect.width - 8));
       setCoords({ top, left });
     }
   }, [isOpen, align]);
 
-  // Position updates on open, resize, scroll
   useLayoutEffect(() => {
     if (isOpen) {
-      updatePosition();
+      requestAnimationFrame(() => updatePosition());
       window.addEventListener('resize', updatePosition);
-      window.addEventListener('scroll', updatePosition, true); // Capture phase for nested scrolls
+      window.addEventListener('scroll', updatePosition, true);
     }
     return () => {
       window.removeEventListener('resize', updatePosition);
@@ -69,64 +274,53 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
     };
   }, [isOpen, updatePosition]);
 
-  // Click outside handler - checks both trigger and content refs
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      // Check if click is inside ANY dropdown menu (including submenus)
+      const target = event.target as HTMLElement;
+      const isInsideMenu = target.closest('.glass-panel');
+      
       if (
         isOpen &&
         triggerRef.current &&
-        !triggerRef.current.contains(event.target as Node) &&
-        contentRef.current &&
-        !contentRef.current.contains(event.target as Node)
+        !triggerRef.current.contains(target) &&
+        !isInsideMenu
       ) {
         setIsOpen(false);
+        if (onClose) onClose();
       }
     };
 
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isOpen]);
+    if (isOpen) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen, onClose]);
 
-  const handleToggle = () => {
-    if (!isOpen) {
-        soundManager.playClick();
-    }
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isOpen) {
+        setIsOpen(false);
+        if (onClose) onClose();
+      }
+    };
+    
+    if (isOpen) document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen, onClose]);
+
+  const handleToggle = (e: React.MouseEvent) => {
+    if (!isOpen) soundManager.playClick();
     setIsOpen(!isOpen);
+    e.stopPropagation();
   };
 
-  const handleItemClick = (item: DropdownMenuItem) => {
-    if (!item.disabled && item.onClick) {
-      soundManager.playClick();
-      item.onClick();
-      setIsOpen(false);
-    }
+  const closeMenu = () => {
+    setIsOpen(false);
+    if (onClose) onClose();
   };
 
   const menuVariants = {
-    closed: { 
-        opacity: 0, 
-        y: -10, 
-        scale: 0.98,
-        transition: {
-            duration: 0.1,
-            ease: "easeOut" as const
-        }
-    },
-    open: { 
-        opacity: 1, 
-        y: 0, 
-        scale: 1,
-        transition: {
-            type: "spring" as const,
-            damping: 25,
-            stiffness: 400,
-            mass: 0.6
-        }
-    }
+    closed: { opacity: 0, y: -8, scale: 0.95, transition: { duration: 0.1 } },
+    open: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', damping: 25, stiffness: 400, mass: 0.5 } }
   };
 
   return (
@@ -151,59 +345,19 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
               animate="open"
               exit="closed"
               variants={menuVariants}
-              className="glass-panel min-w-[180px] rounded-lg py-1.5 z-50 overflow-hidden"
+              className="glass-panel min-w-[180px] rounded-lg py-1 shadow-xl border border-white/10"
               style={{
-                position: 'absolute',
+                position: 'fixed',
                 top: coords.top,
                 left: coords.left,
-                backdropFilter: 'blur(16px)'
+                zIndex: 150,
+                maxHeight: maxHeight || '80vh',
+                overflowY: 'auto',
+                backdropFilter: 'blur(16px)',
               }}
+              onClick={(e) => e.stopPropagation()}
             >
-              {items.map((item, index) => {
-                if (item.label === '---') {
-                  return <div key={index} className="h-px bg-white/10 my-1 mx-2" />;
-                }
-
-                if (!item.onClick) {
-                  return (
-                    <div key={index} className="px-3 py-1.5 text-[10px] font-bold text-text-tertiary uppercase tracking-wider select-none">
-                      {item.label}
-                    </div>
-                  );
-                }
-
-                return (
-                  <button
-                    key={index}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleItemClick(item);
-                    }}
-                    onMouseEnter={() => soundManager.playHover()}
-                    disabled={item.disabled}
-                    className={`
-                      w-full text-left px-3 py-2 text-xs flex justify-between items-center group relative
-                      ${item.disabled
-                        ? 'text-text-tertiary cursor-not-allowed opacity-50'
-                        : 'text-text-secondary hover:text-white hover:bg-white/10 hover:text-glow'
-                      }
-                      transition-all duration-200
-                    `}
-                    data-testid={item['data-testid']}
-                  >
-                    <span className="relative z-10">{item.label}</span>
-                    {/* Subtle shine on hover */}
-                    {!item.disabled && (
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 pointer-events-none" />
-                    )}
-                    {item.shortcut && (
-                      <span className="text-[10px] text-text-tertiary ml-4 font-mono opacity-70 border border-white/10 px-1 rounded bg-black/20">
-                        {item.shortcut}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
+              <MenuItems items={items} onClose={closeMenu} />
             </m.div>
           )}
         </AnimatePresence>,

@@ -127,19 +127,21 @@ export const ScreenshotModal = () => {
       isOpen={isOpen}
       onClose={closeModal}
       title="Screenshot Preview"
-      width="max-w-5xl"
+      width="max-w-[calc(100vw-2rem)] sm:max-w-3xl md:max-w-4xl lg:max-w-5xl"
       data-testid="screenshot-modal"
     >
-      <div className="flex flex-col gap-4 h-[70vh]" data-testid="screenshot-modal-content">
+      <div className="flex flex-col gap-3 sm:gap-4 h-[55vh] sm:h-[65vh] md:h-[70vh]" data-testid="screenshot-modal-content">
         {/* Editor Area */}
-        <div className="flex-1 relative rounded-lg overflow-hidden bg-black border border-white/10">
+        <div className="flex-1 relative rounded-lg overflow-hidden bg-black border border-white/10 min-h-0">
           <ImageCropper imageSrc={imageSrc} onCropChange={setCrop} />
         </div>
 
-        {/* Footer Controls */}
-        <div className="flex items-center justify-between pt-2">
-          <div className="text-xs text-text-tertiary" data-testid="crop-dimensions">
-            Drag corners to crop. Click and drag box to move.
+        {/* Footer Controls - Mobile: stacked, Desktop: horizontal */}
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 pt-1 sm:pt-2">
+          {/* Instructions - abbreviated on mobile */}
+          <div className="text-xs text-text-tertiary text-center sm:text-left" data-testid="crop-dimensions">
+            <span className="hidden sm:inline">Drag corners to crop. Click and drag box to move.</span>
+            <span className="sm:hidden">Drag to crop</span>
             {crop && crop.width > 0 && crop.height > 0 && (
               <span className="ml-2 font-mono text-text-secondary" data-testid="crop-size-display">
                 {crop.width} &times; {crop.height} px
@@ -147,15 +149,18 @@ export const ScreenshotModal = () => {
             )}
           </div>
 
-          <div className="flex gap-3">
+          {/* Buttons - full width on mobile, auto on desktop */}
+          <div className="flex gap-2 sm:gap-3 w-full sm:w-auto">
             <Button
               variant="secondary"
               onClick={handleCopy}
               size="lg"
+              className="flex-1 sm:flex-initial"
               data-testid="screenshot-copy-button"
             >
-              <Icon name="copy" className="mr-2" />
-              Copy to Clipboard
+              <Icon name="copy" className="sm:mr-2" />
+              <span className="hidden sm:inline">Copy to Clipboard</span>
+              <span className="sm:hidden">Copy</span>
             </Button>
             <Button
               variant="primary"
@@ -163,10 +168,12 @@ export const ScreenshotModal = () => {
               loading={isSaving}
               size="lg"
               glow
+              className="flex-1 sm:flex-initial"
               data-testid="screenshot-save-button"
             >
-              <Icon name="download" className="mr-2" />
-              Save Image
+              <Icon name="download" className="sm:mr-2" />
+              <span className="hidden sm:inline">Save Image</span>
+              <span className="sm:hidden">Save</span>
             </Button>
           </div>
         </div>

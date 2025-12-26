@@ -81,10 +81,15 @@ export function VideoExportController() {
   }, [setError, setStatus, restoreState])
 
   const triggerDownload = (blob: Blob, filename: string) => {
+      // Ensure filename has correct extension if not already
+      const { format } = useExportStore.getState().settings
+      const ext = format === 'webm' ? '.webm' : '.mp4'
+      const finalFilename = filename.endsWith(ext) ? filename : filename.replace(/\.(mp4|webm)$/, '') + ext
+
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = filename
+      a.download = finalFilename
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
@@ -123,11 +128,12 @@ export function VideoExportController() {
           setCompletionDetails({ type: 'stream' })
       } else if (exportMode === 'segmented') {
           // Download final segment
+          const ext = settings.format === 'webm' ? 'webm' : 'mp4'
           if (blob) {
               const url = URL.createObjectURL(blob)
               const a = document.createElement('a')
               a.href = url
-              a.download = `mdimension-${Date.now()}-part${loopStateRef.current.currentSegment}.mp4`
+              a.download = `mdimension-${Date.now()}-part${loopStateRef.current.currentSegment}.${ext}`
               document.body.appendChild(a)
               a.click()
               document.body.removeChild(a)
@@ -214,7 +220,10 @@ export function VideoExportController() {
 
                       const recorder = new VideoRecorder(gl.domElement, {
                           width, height, fps, bitrate, format: settings.format,
-                          duration: previewDuration
+                          codec: settings.codec,
+                          duration: previewDuration,
+                          hardwareAcceleration: settings.hardwareAcceleration,
+                          bitrateMode: settings.bitrateMode
                       })
                       await recorder.initialize()
                       recorderRef.current = recorder
@@ -267,9 +276,12 @@ export function VideoExportController() {
                   // Init Main Recorder (Stream)
                   const recorder = new VideoRecorder(gl.domElement, {
                       width, height, fps, bitrate, format: settings.format,
+                      codec: settings.codec,
                       duration,
                       streamHandle: state.mainStreamHandle,
-                      onProgress: (p) => setProgress(p)
+                      onProgress: (p) => setProgress(p),
+                      hardwareAcceleration: settings.hardwareAcceleration,
+                      bitrateMode: settings.bitrateMode
                   })
                   await recorder.initialize()
                   recorderRef.current = recorder
@@ -328,7 +340,8 @@ export function VideoExportController() {
                   if (recorderRef.current) {
                       const blob = await recorderRef.current.finalize()
                       if (blob) {
-                          triggerDownload(blob, `mdimension-${Date.now()}-part${state.currentSegment}.mp4`)
+                          const ext = settings.format === 'webm' ? 'webm' : 'mp4'
+                          triggerDownload(blob, `mdimension-${Date.now()}-part${state.currentSegment}.${ext}`)
                       }
                       recorderRef.current.dispose()
                       recorderRef.current = null
@@ -353,7 +366,10 @@ export function VideoExportController() {
 
                   const recorder = new VideoRecorder(gl.domElement, {
                       width, height, fps, bitrate, format: settings.format,
-                      duration: nextSegFrames / fps // Duration of THIS segment
+                      codec: settings.codec,
+                      duration: nextSegFrames / fps, // Duration of THIS segment
+                      hardwareAcceleration: settings.hardwareAcceleration,
+                      bitrateMode: settings.bitrateMode
                   })
                   await recorder.initialize()
                   recorderRef.current = recorder
@@ -437,11 +453,15 @@ export function VideoExportController() {
 
         try {
             // Ask user for file location BEFORE starting export
+            const extension = settings.format === 'webm' ? '.webm' : '.mp4'
+            const description = settings.format === 'webm' ? 'WebM Video' : 'MP4 Video'
+            const mimeType = settings.format === 'webm' ? 'video/webm' : 'video/mp4'
+            
             streamHandle = await window.showSaveFilePicker({
-                suggestedName: `mdimension-${Date.now()}.mp4`,
+                suggestedName: `mdimension-${Date.now()}${extension}`,
                 types: [{
-                    description: 'MP4 Video',
-                    accept: { 'video/mp4': ['.mp4'] },
+                    description,
+                    accept: { [mimeType]: [extension] },
                 }],
             })
         } catch (pickerError: unknown) {
@@ -573,9 +593,12 @@ export function VideoExportController() {
             duration: exportMode === 'segmented' ? (segmentDurationFrames / fps) : duration,
             bitrate,
             format: settings.format,
+            codec: settings.codec,
             onProgress: (p) => {
                 if (exportMode !== 'segmented') setProgress(p)
-            }
+            },
+            hardwareAcceleration: settings.hardwareAcceleration,
+            bitrateMode: settings.bitrateMode
           })
 
           recorderRef.current = recorder

@@ -2,7 +2,7 @@
  * Tests for exportStore
  */
 
-import { getRecommendedBitrate, useExportStore } from '@/stores/exportStore'
+import { getCompressionFactor, getRecommendedBitrate, useExportStore } from '@/stores/exportStore'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mock URL.createObjectURL and URL.revokeObjectURL
@@ -138,35 +138,95 @@ describe('exportStore', () => {
   })
 
   describe('Mode/tier selection (recalculateMode)', () => {
-    it('computes estimatedSizeMB and selects tier/mode based on size and browser type', () => {
+    it('computes estimatedSizeMB with compression factor and selects tier/mode', () => {
       // Force a known browser type for deterministic mode selection
       useExportStore.setState({ browserType: 'standard' })
 
-      // sizeMB = (bitrate * duration)/8. Choose bitrate/duration that produces medium/large tiers.
-      useExportStore.getState().updateSettings({ bitrate: 80, duration: 10 }) // 100MB
+      // Default codec is 'avc' with CBR => compression factor 0.55
+      // Theoretical: (bitrate * duration)/8, then multiply by compression factor
+      // With bitrate=160, duration=10: theoretical=200MB, compressed=200*0.55=110MB
+      useExportStore.getState().updateSettings({ bitrate: 160, duration: 10 })
       useExportStore.getState().setModalOpen(true) // triggers recalculateMode
-      expect(useExportStore.getState().estimatedSizeMB).toBeCloseTo(100)
+
+      const theoreticalSize = (160 * 10) / 8 // 200MB
+      const expectedSize = theoreticalSize * getCompressionFactor('avc', 'constant') // 200 * 0.55 = 110MB
+      expect(useExportStore.getState().estimatedSizeMB).toBeCloseTo(expectedSize)
+
       // Standard browser => segmented for >=100MB
       expect(useExportStore.getState().exportMode).toBe('segmented')
-      // 100MB => medium tier
+      // 110MB => medium tier (50-150)
       expect(useExportStore.getState().exportTier).toBe('medium')
 
       useExportStore.setState({ browserType: 'chromium-capable' })
       useExportStore.getState().recalculateMode()
       expect(useExportStore.getState().exportMode).toBe('stream')
 
-      // Large tier
-      useExportStore.getState().updateSettings({ bitrate: 120, duration: 12.5 }) // 187.5MB
+      // Large tier: bitrate=280, duration=10 => theoretical=350MB, compressed=192.5MB (>=150)
+      useExportStore.getState().updateSettings({ bitrate: 280, duration: 10 })
       expect(useExportStore.getState().exportTier).toBe('large')
+    })
+
+    it('applies different compression factors for different codecs', () => {
+      // AVC CBR: 0.55
+      useExportStore.getState().updateSettings({ codec: 'avc', bitrateMode: 'constant', bitrate: 80, duration: 10 })
+      const avcSize = useExportStore.getState().estimatedSizeMB
+      expect(avcSize).toBeCloseTo((80 * 10) / 8 * 0.55) // 55MB
+
+      // AV1 CBR: 0.32 (most efficient)
+      useExportStore.getState().updateSettings({ codec: 'av1' })
+      const av1Size = useExportStore.getState().estimatedSizeMB
+      expect(av1Size).toBeCloseTo((80 * 10) / 8 * 0.32) // 32MB
+
+      // AV1 is more efficient than AVC
+      expect(av1Size).toBeLessThan(avcSize)
+    })
+
+    it('applies VBR mode reduction to compression factor', () => {
+      useExportStore.getState().updateSettings({ codec: 'avc', bitrateMode: 'constant', bitrate: 80, duration: 10 })
+      const cbrSize = useExportStore.getState().estimatedSizeMB
+
+      useExportStore.getState().updateSettings({ bitrateMode: 'variable' })
+      const vbrSize = useExportStore.getState().estimatedSizeMB
+
+      // VBR should be ~20% smaller (factor *= 0.80)
+      expect(vbrSize).toBeCloseTo(cbrSize * 0.80)
     })
 
     it('exportModeOverride wins over auto selection', () => {
       useExportStore.setState({ browserType: 'chromium-capable' })
-      useExportStore.getState().updateSettings({ bitrate: 120, duration: 12.5 }) // would choose stream
+      // Use high bitrate to exceed auto threshold
+      useExportStore.getState().updateSettings({ bitrate: 200, duration: 10 }) // would choose stream
       expect(useExportStore.getState().exportMode).toBe('stream')
 
       useExportStore.getState().setExportModeOverride('segmented')
       expect(useExportStore.getState().exportMode).toBe('segmented')
+    })
+  })
+
+  describe('getCompressionFactor', () => {
+    it('returns correct factors for each codec in CBR mode', () => {
+      expect(getCompressionFactor('avc', 'constant')).toBe(0.55)
+      expect(getCompressionFactor('hevc', 'constant')).toBe(0.42)
+      expect(getCompressionFactor('vp9', 'constant')).toBe(0.42)
+      expect(getCompressionFactor('av1', 'constant')).toBe(0.32)
+    })
+
+    it('applies 20% reduction for VBR mode', () => {
+      expect(getCompressionFactor('avc', 'variable')).toBeCloseTo(0.55 * 0.80)
+      expect(getCompressionFactor('av1', 'variable')).toBeCloseTo(0.32 * 0.80)
+    })
+
+    it('shows codec efficiency ranking: AV1 > HEVC/VP9 > AVC', () => {
+      const avc = getCompressionFactor('avc', 'constant')
+      const hevc = getCompressionFactor('hevc', 'constant')
+      const vp9 = getCompressionFactor('vp9', 'constant')
+      const av1 = getCompressionFactor('av1', 'constant')
+
+      // Lower factor = better compression = smaller files
+      expect(av1).toBeLessThan(hevc)
+      expect(av1).toBeLessThan(vp9)
+      expect(hevc).toBeLessThan(avc)
+      expect(vp9).toBeLessThan(avc)
     })
   })
 

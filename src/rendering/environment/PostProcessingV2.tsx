@@ -275,6 +275,9 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
     gravityStrength: s.blackhole.gravityStrength,
     bendScale: s.blackhole.bendScale,
     lensingFalloff: s.blackhole.distanceFalloff, // Aliased from distanceFalloff
+    // Photon shell settings (screen-space edge glow)
+    shellGlowStrength: s.blackhole.shellGlowStrength,
+    shellGlowColor: s.blackhole.shellGlowColor,
     // DEPRECATED: Deferred lensing properties (pass is always disabled, use defaults)
     deferredLensingStrength: 0,
     deferredLensingChromaticAberration: 0,
@@ -343,6 +346,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
     normalComposite?: FullscreenPass;
     cloudComposite?: FullscreenPass;
     bufferPreview?: BufferPreviewPass;
+    gravityComposite?: EnvironmentCompositePass;
     gtao?: GTAOPass;
     bloom?: BloomPass;
     ssr?: SSRPass;
@@ -834,6 +838,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
     g.addPass(gravityLensingPass);
 
     // Environment composite pass - combines lensed environment with main object
+    // Also handles screen-space photon shell (edge glow) for black holes
     const gravityCompositePass = new EnvironmentCompositePass({
       id: 'gravityComposite',
       lensedEnvironmentInput: RESOURCES.LENSED_ENVIRONMENT,
@@ -843,6 +848,7 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
       outputResource: RESOURCES.SCENE_COLOR, // Output to SCENE_COLOR so rest of pipeline works
       enabled: (frame) => frame?.stores.postProcessing.gravityEnabled ?? false,
     });
+    passRefs.current.gravityComposite = gravityCompositePass;
     g.addPass(gravityCompositePass);
 
     // Object depth pass
@@ -1285,6 +1291,15 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
     if (toneMapping) {
       toneMapping.setToneMapping(TONE_MAPPING_TO_THREE[lightingState.toneMappingAlgorithm]);
       toneMapping.setExposure(lightingState.exposure);
+    }
+
+    // Update photon shell (screen-space edge glow) settings
+    if (passRefs.current.gravityComposite) {
+      passRefs.current.gravityComposite.setShellConfig({
+        enabled: blackHoleState.shellGlowStrength > 0,
+        color: new THREE.Color(blackHoleState.shellGlowColor),
+        strength: blackHoleState.shellGlowStrength,
+      });
     }
   }, [ppState, blackHoleState, lightingState]);
 

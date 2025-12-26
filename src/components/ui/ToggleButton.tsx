@@ -1,4 +1,5 @@
 import React from 'react';
+import { soundManager } from '@/lib/audio/SoundManager';
 
 export interface ToggleButtonProps extends Omit<React.ComponentPropsWithoutRef<'button'>, 'onToggle'> {
   pressed: boolean;
@@ -22,7 +23,8 @@ export const ToggleButton = ({
         ref={ref}
         type="button"
         aria-pressed={pressed}
-        onClick={() => onToggle(!pressed)}
+        onClick={() => { soundManager.playClick(); onToggle(!pressed); }}
+        onMouseEnter={() => soundManager.playHover()}
         className={`
           px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-300 border
           ${pressed

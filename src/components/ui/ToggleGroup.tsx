@@ -5,6 +5,7 @@ import { soundManager } from '@/lib/audio/SoundManager';
 export interface ToggleOption<T extends string = string> {
   value: T;
   label: string;
+  disabled?: boolean;
 }
 
 export interface ToggleGroupProps<T extends string = string> {
@@ -38,17 +39,18 @@ export const ToggleGroup = <T extends string = string>({
       >
         {options.map((option) => {
           const isSelected = option.value === value;
+          const isDisabled = disabled || option.disabled;
           return (
             <button
               key={option.value}
               onClick={() => {
-                if (!disabled && !isSelected) {
+                if (!isDisabled && !isSelected) {
                     onChange(option.value);
                     soundManager.playClick();
                 }
               }}
-              onMouseEnter={() => !isSelected && soundManager.playHover()}
-              disabled={disabled}
+              onMouseEnter={() => !isSelected && !isDisabled && soundManager.playHover()}
+              disabled={isDisabled}
               className={`
                 flex-1 relative px-3 py-1.5 text-xs font-medium rounded-md transition-colors duration-200 z-10
                 disabled:opacity-50 disabled:cursor-not-allowed

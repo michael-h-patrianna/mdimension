@@ -1,11 +1,14 @@
 import { 
   Output, 
   Mp4OutputFormat, 
+  WebMOutputFormat,
   BufferTarget, 
   StreamTarget,
   CanvasSource, 
   VideoEncodingConfig 
 } from 'mediabunny'
+
+import { VideoCodec } from '@/stores/exportStore'
 
 export interface VideoExportOptions {
   width: number
@@ -14,6 +17,9 @@ export interface VideoExportOptions {
   duration: number
   bitrate: number
   format: 'mp4' | 'webm'
+  codec?: VideoCodec
+  hardwareAcceleration?: 'no-preference' | 'prefer-hardware' | 'prefer-software'
+  bitrateMode?: 'constant' | 'variable'
   onProgress?: (progress: number) => void
   streamHandle?: FileSystemFileHandle // Optional: for Stream-to-File mode
 }
@@ -37,7 +43,9 @@ export class VideoRecorder {
 
   async initialize() {
     // 1. Setup Target & Format Options
-    const format = new Mp4OutputFormat()
+    const format = this.options.format === 'webm' 
+      ? new WebMOutputFormat() 
+      : new Mp4OutputFormat()
 
     if (this.options.streamHandle) {
         // Stream Mode
@@ -60,13 +68,15 @@ export class VideoRecorder {
     // 3. Configure Encoder with quality-optimized settings
     // These settings prioritize visual quality over encoding speed, critical for
     // smooth gradients and avoiding color banding artifacts in WebGL renders.
+    const codec = this.options.codec || (this.options.format === 'webm' ? 'vp9' : 'avc')
+
     const config: VideoEncodingConfig = {
-      codec: 'avc', // H.264
+      codec, 
       bitrate: this.options.bitrate * 1_000_000, // Convert Mbps to bps
-      bitrateMode: 'constant', // CBR provides more consistent quality, prevents banding in gradients
+      bitrateMode: this.options.bitrateMode || 'constant', // Default to CBR for consistency
       latencyMode: 'quality', // Prioritize visual quality over encoding speed
       keyFrameInterval: this.options.fps * 2, // Keyframe every 2 seconds for good seeking + quality
-      hardwareAcceleration: 'prefer-software', // Software encoding often produces better quality
+      hardwareAcceleration: this.options.hardwareAcceleration || 'prefer-software', 
     }
 
     // 4. Create Source
@@ -123,7 +133,8 @@ export class VideoRecorder {
         if (!buffer) {
             throw new Error('Buffer is empty after finalization')
         }
-        return new Blob([buffer], { type: 'video/mp4' })
+        const mimeType = this.options.format === 'webm' ? 'video/webm' : 'video/mp4'
+        return new Blob([buffer], { type: mimeType })
     }
 
     // For StreamTarget, data is already written to disk

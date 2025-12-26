@@ -19,6 +19,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { useExtendedObjectStore, type ExtendedObjectState } from '@/stores/extendedObjectStore';
 import { ToggleButton } from '@/components/ui/ToggleButton';
 import { AnimationDrawerContainer } from './AnimationDrawerContainer';
+import { soundManager } from '@/lib/audio/SoundManager';
 
 /**
  * PolytopeAnimationDrawer component
@@ -79,6 +80,7 @@ export const PolytopeAnimationDrawer: React.FC = React.memo(() => {
               step={0.01}
               value={config.facetOffsetAmplitude}
               onChange={(e) => setModulationAmplitude(parseFloat(e.target.value))}
+              onMouseEnter={() => soundManager.playHover()}
               className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
               aria-label="Modulation amplitude"
             />
@@ -97,6 +99,7 @@ export const PolytopeAnimationDrawer: React.FC = React.memo(() => {
               step={0.005}
               value={config.facetOffsetFrequency}
               onChange={(e) => setModulationFrequency(parseFloat(e.target.value))}
+              onMouseEnter={() => soundManager.playHover()}
               className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
               aria-label="Modulation frequency"
             />
@@ -115,6 +118,7 @@ export const PolytopeAnimationDrawer: React.FC = React.memo(() => {
               step={0.01}
               value={config.facetOffsetPhaseSpread}
               onChange={(e) => setModulationWave(parseFloat(e.target.value))}
+              onMouseEnter={() => soundManager.playHover()}
               className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
               aria-label="Modulation wave"
             />
@@ -133,6 +137,7 @@ export const PolytopeAnimationDrawer: React.FC = React.memo(() => {
               step={0.01}
               value={config.facetOffsetBias}
               onChange={(e) => setModulationBias(parseFloat(e.target.value))}
+              onMouseEnter={() => soundManager.playHover()}
               className="flex-1 accent-accent h-1.5 bg-panel-border rounded-lg cursor-pointer"
               aria-label="Modulation bias"
             />

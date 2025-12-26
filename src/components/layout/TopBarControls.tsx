@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/useToast';
 import { soundManager } from '@/lib/audio/SoundManager';
 
 // Icons
-const Icons = {
+export const Icons = {
   Perf: () => (
     <svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
       <path d="M2 14h14v2h-16v-16h2zM4.5 13c-0.828 0-1.5-0.672-1.5-1.5s0.672-1.5 1.5-1.5c0.044 0 0.088 0.002 0.131 0.006l1.612-2.687c-0.154-0.235-0.243-0.517-0.243-0.819 0-0.828 0.672-1.5 1.5-1.5s1.5 0.672 1.5 1.5c0 0.302-0.090 0.583-0.243 0.819l1.612 2.687c0.043-0.004 0.087-0.006 0.131-0.006 0.033 0 0.066 0.001 0.099 0.004l2.662-4.658c-0.165-0.241-0.261-0.532-0.261-0.845 0-0.828 0.672-1.5 1.5-1.5s1.5 0.672 1.5 1.5c0 0.828-0.672 1.5-1.5 1.5-0.033 0-0.066-0.001-0.099-0.004l-2.662 4.658c0.165 0.241 0.261 0.532 0.261 0.845 0 0.828-0.672 1.5-1.5 1.5s-1.5-0.672-1.5-1.5c0-0.302 0.090-0.583 0.243-0.819l-1.612-2.687c-0.043 0.004-0.087 0.006-0.131 0.006s-0.088-0.002-0.131-0.006l-1.612 2.687c0.154 0.235 0.243 0.517 0.243 0.819 0 0.828-0.672 1.5-1.5 1.5z"></path>
@@ -47,9 +47,23 @@ const Icons = {
        <path d="M1.406 2.812l1.406-1.406 11.188 11.188-1.406 1.406z"></path>
     </svg>
   ),
+  Edges: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 3h18v18H3zM3 3l18 18M21 3L3 21" />
+    </svg>
+  ),
+  Faces: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+      <path d="M3 3h18v18H3z" />
+    </svg>
+  )
 };
 
-export const TopBarControls: React.FC = () => {
+interface TopBarControlsProps {
+  compact?: boolean;
+}
+
+export const TopBarControls: React.FC<TopBarControlsProps> = ({ compact = false }) => {
   const { addToast } = useToast();
   
   // Visual Store
@@ -146,7 +160,6 @@ export const TopBarControls: React.FC = () => {
   };
 
   // Consolidated visibility effect - handles all visibility rules in one place
-  // This prevents multiple render cycles from separate effects triggering each other
   useEffect(() => {
     let nextFaces = facesVisible;
     let nextEdges = edgesVisible;
@@ -237,9 +250,9 @@ export const TopBarControls: React.FC = () => {
   );
 
   return (
-    <div className="flex items-center gap-1 bg-black/20 p-1 rounded-lg border border-white/5 backdrop-blur-sm">
+    <div className={`flex items-center gap-1 ${compact ? '' : 'bg-black/20 p-1 rounded-lg border border-white/5 backdrop-blur-sm'}`}>
       {/* Render Mode Toggles */}
-      <div className="flex gap-1 mr-2">
+      <div className={`flex gap-1 ${compact ? '' : 'mr-2'}`}>
         <div title={!edgesSupported ? 'Edges not available' : undefined}>
             <ToggleButton
                 pressed={edgesVisible}
@@ -248,7 +261,7 @@ export const TopBarControls: React.FC = () => {
                 disabled={!edgesSupported}
                 className="!text-xs !py-1 !px-2 cursor-pointer"
             >
-                Edges
+                {compact ? <Icons.Edges /> : 'Edges'}
             </ToggleButton>
         </div>
         <div title={!facesSupported ? 'Faces not available' : undefined}>
@@ -259,38 +272,42 @@ export const TopBarControls: React.FC = () => {
                 disabled={!facesSupported}
                 className="!text-xs !py-1 !px-2 cursor-pointer"
             >
-                Faces
+                {compact ? <Icons.Faces /> : 'Faces'}
             </ToggleButton>
         </div>
       </div>
 
-      <div className="w-px h-4 bg-white/10 mx-1" />
+      {!compact && (
+        <>
+          <div className="w-px h-4 bg-white/10 mx-1" />
 
-      {/* App Controls */}
-      <IconButton 
-        icon={isSoundEnabled ? Icons.SoundOn : Icons.SoundOff} 
-        active={isSoundEnabled} 
-        onClick={toggleSound} 
-        label={isSoundEnabled ? "Mute Sound" : "Enable Sound"} 
-      />
-      <IconButton 
-        icon={Icons.Perf} 
-        active={showPerfMonitor} 
-        onClick={() => { setShowPerfMonitor(!showPerfMonitor); soundManager.playClick(); }} 
-        label="Performance Monitor" 
-      />
-      <IconButton 
-        icon={Icons.Fullscreen} 
-        active={isFullscreen} 
-        onClick={toggleFullscreen} 
-        label="Fullscreen" 
-      />
-      <IconButton 
-        icon={Icons.Cinematic} 
-        active={isCinematicMode} 
-        onClick={toggleCinematic} 
-        label="Cinematic Mode" 
-      />
+          {/* App Controls */}
+          <IconButton 
+            icon={isSoundEnabled ? Icons.SoundOn : Icons.SoundOff} 
+            active={isSoundEnabled} 
+            onClick={toggleSound} 
+            label={isSoundEnabled ? "Mute Sound" : "Enable Sound"} 
+          />
+          <IconButton 
+            icon={Icons.Perf} 
+            active={showPerfMonitor} 
+            onClick={() => { setShowPerfMonitor(!showPerfMonitor); soundManager.playClick(); }} 
+            label="Performance Monitor" 
+          />
+          <IconButton 
+            icon={Icons.Fullscreen} 
+            active={isFullscreen} 
+            onClick={toggleFullscreen} 
+            label="Fullscreen" 
+          />
+          <IconButton 
+            icon={Icons.Cinematic} 
+            active={isCinematicMode} 
+            onClick={toggleCinematic} 
+            label="Cinematic Mode" 
+          />
+        </>
+      )}
     </div>
   );
 };

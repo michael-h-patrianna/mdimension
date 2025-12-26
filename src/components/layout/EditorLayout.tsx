@@ -126,6 +126,33 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
     hiddenRight: { x: 340, opacity: 0, scale: 0.95 },
   };
 
+  // Animation variants for mobile bottom app bar
+  const mobileBottomVariants = {
+    visible: {
+        y: 0,
+        opacity: 1,
+        transition: {
+            type: "spring" as const,
+            damping: 25,
+            stiffness: 300,
+            mass: 0.8
+        }
+    },
+    hidden: {
+        y: 80, // Slide below viewport (h-16 = 64px + safe margin)
+        opacity: 0,
+        transition: {
+            type: "spring" as const,
+            damping: 25,
+            stiffness: 300,
+            mass: 0.8
+        }
+    },
+  };
+
+  // Mobile bottom panel visibility: shown when both side panels are closed
+  const showMobileBottomPanel = !isCinematicMode && !isDesktop && isCollapsed && !showLeftPanel;
+
   return (
     <div
         ref={spotlightRef}
@@ -273,6 +300,24 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
             </AnimatePresence>
         </div>
       </m.div>
+
+      {/* Mobile Bottom App Bar - Timeline Controls */}
+      <AnimatePresence>
+        {showMobileBottomPanel && (
+          <m.div
+            initial="hidden"
+            animate="visible"
+            exit="hidden"
+            variants={mobileBottomVariants}
+            className="fixed bottom-0 left-0 right-0 z-30 pointer-events-auto pb-[env(safe-area-inset-bottom)]"
+            data-testid="mobile-timeline-controls"
+          >
+            <div className="glass-panel border-t border-white/10 shadow-2xl">
+              <EditorBottomPanel />
+            </div>
+          </m.div>
+        )}
+      </AnimatePresence>
 
       <CommandPalette />
       <CanvasContextMenu />

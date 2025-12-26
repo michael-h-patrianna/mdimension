@@ -15,6 +15,7 @@ import { PolytopeAnimationDrawer } from './TimelineControls/PolytopeAnimationDra
 import { SchroedingerAnimationDrawer } from './TimelineControls/SchroedingerAnimationDrawer';
 import { hasTimelineControls, isPolytopeCategory, getConfigStoreKey } from '@/lib/geometry/registry';
 import { Icon } from '@/components/ui/Icon';
+import { soundManager } from '@/lib/audio/SoundManager';
 
 export const TimelineControls: FC = () => {
     const dimension = useGeometryStore((state) => state.dimension);
@@ -130,13 +131,15 @@ export const TimelineControls: FC = () => {
                                 <h3 className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">Rotation Planes</h3>
                                 <div className="flex gap-2">
                                     <button
-                                        onClick={() => animateAll(dimension)}
+                                        onClick={() => { soundManager.playClick(); animateAll(dimension); }}
+                                        onMouseEnter={() => soundManager.playHover()}
                                         className="text-[10px] uppercase font-bold text-accent hover:text-accent-glow transition-colors"
                                     >
                                         Select All
                                     </button>
                                     <button
-                                        onClick={() => clearAllPlanes()}
+                                        onClick={() => { soundManager.playClick(); clearAllPlanes(); }}
+                                        onMouseEnter={() => soundManager.playHover()}
                                         className="text-[10px] uppercase font-bold text-text-secondary hover:text-text-primary transition-colors"
                                     >
                                         Deselect All
@@ -150,7 +153,8 @@ export const TimelineControls: FC = () => {
                                     return (
                                         <button
                                             key={plane.name}
-                                            onClick={() => togglePlane(plane.name)}
+                                            onClick={() => { soundManager.playClick(); togglePlane(plane.name); }}
+                                            onMouseEnter={() => soundManager.playHover()}
                                             className={`
                                                 flex-1 min-w-[60px] px-3 py-2 rounded-md text-[10px] font-mono border transition-all text-center uppercase tracking-wider
                                                 ${isActive 
@@ -199,7 +203,8 @@ export const TimelineControls: FC = () => {
                 {/* Playback Controls */}
                 <div className="flex items-center gap-4 shrink-0">
                      <button
-                        onClick={toggle}
+                        onClick={() => { soundManager.playClick(); toggle(); }}
+                        onMouseEnter={() => hasAnythingToAnimate && soundManager.playHover()}
                         disabled={!hasAnythingToAnimate}
                         className={`
                             group flex items-center justify-center w-10 h-10 rounded-full transition-all shrink-0 border border-white/10 cursor-pointer
@@ -237,7 +242,8 @@ export const TimelineControls: FC = () => {
                     </div>
 
                     <button
-                        onClick={toggleDirection}
+                        onClick={() => { soundManager.playClick(); toggleDirection(); }}
+                        onMouseEnter={() => soundManager.playHover()}
                         className="glass-button px-3 py-1 rounded text-[10px] font-mono font-bold tracking-wider text-text-secondary hover:text-text-primary transition-colors flex items-center gap-1.5 cursor-pointer"
                         title={direction === 1 ? 'Forward' : 'Reverse'}
                     >
@@ -276,7 +282,8 @@ export const TimelineControls: FC = () => {
                  <div className="flex items-center gap-2 shrink-0">
                     {hasTimelineControls(objectType) && (
                          <button
-                            onClick={() => { setShowFractalAnim(!showFractalAnim); setShowRotation(false); }}
+                            onClick={() => { soundManager.playClick(); setShowFractalAnim(!showFractalAnim); setShowRotation(false); }}
+                            onMouseEnter={() => soundManager.playHover()}
                             className={`
                                 text-[10px] font-bold uppercase tracking-widest px-4 py-2 rounded-full transition-all border cursor-pointer
                                 ${showFractalAnim 
@@ -289,7 +296,8 @@ export const TimelineControls: FC = () => {
                     )}
 
                      <button
-                        onClick={() => { setShowRotation(!showRotation); setShowFractalAnim(false); }}
+                        onClick={() => { soundManager.playClick(); setShowRotation(!showRotation); setShowFractalAnim(false); }}
+                        onMouseEnter={() => soundManager.playHover()}
                         className={`
                             text-[10px] font-bold uppercase tracking-widest px-4 py-2 rounded-full transition-all border cursor-pointer
                             ${showRotation 

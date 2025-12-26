@@ -123,13 +123,6 @@ struct AccumulationState {
   vec3 normalSum;          // Accumulated normal direction
   vec3 firstHitPos;        // First hit position for depth
   float hasFirstHit;       // 1.0 if recorded, 0.0 otherwise (avoid bool for GPU compat)
-  float closestApproach;   // Minimum ndRadius achieved during raymarch (for lensing-aware effects)
-  vec3 closestApproachPos; // Position at closest approach
-  float totalDeflection;   // Cumulative ray bending angle (for lensing-aware shell)
-  vec3 maxDeflectionPos;   // Position where deflection rate was highest
-  float maxTransmittanceDrop;  // Maximum transmittance drop in a single step
-  vec3 shellEmissionPos;       // Position where max drop occurred (shell emission point)
-  float shellEmissionTrans;    // Transmittance at shell emission point
 };
 
 /**
@@ -145,13 +138,6 @@ AccumulationState initAccumulation() {
   s.normalSum = vec3(0.0);
   s.firstHitPos = vec3(0.0);
   s.hasFirstHit = 0.0;
-  s.closestApproach = 1000.0;    // Start far away
-  s.closestApproachPos = vec3(0.0);
-  s.totalDeflection = 0.0;       // No bending yet
-  s.maxDeflectionPos = vec3(0.0);
-  s.maxTransmittanceDrop = 0.0;  // No absorption yet
-  s.shellEmissionPos = vec3(0.0);
-  s.shellEmissionTrans = 1.0;
   return s;
 }
 
@@ -317,17 +303,21 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
 
     // ndRadius is already computed (from initial before loop OR from previous iteration's post-step)
 
+    // Horizon check - Volumetric Absorption
+    // Instead of breaking, we absorb all light if we hit the visual horizon.
+    // This prevents the "black sticker" artifact by allowing the loop to
+    // naturally handle the transition.
+    if (isInsideHorizon(ndRadius)) {
+      accum.transmittance = 0.0;
+      hitHorizon = true;
+      // We can break here because transmittance is 0, which is handled by the loop condition
+      break;
+    }
+
     // PERF (OPT-BH-2): Adaptive step size with cached shell mask
     // shellMask is computed once here and reused in photonShellEmissionWithMask below
     float shellMask;
     float stepSize = adaptiveStepSizeWithMask(ndRadius, shellMask);
-
-    // NOTE: Shell emission moved to AFTER the raymarch loop (see below)
-    // This ensures we use the ray's TRUE closest approach, not intermediate values
-
-    // NOTE: Geometric horizon check REMOVED to eliminate circular artifact.
-    // Horizon absorption is now handled ONLY by lensing-aware absorption after the loop.
-    // This ensures the visual horizon follows the lensing-deformed shape for Kerr black holes.
 
     // In volumetric mode, we might want smaller steps inside the disk
     #ifdef USE_VOLUMETRIC_DISK
@@ -351,21 +341,17 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
     float jitterScale = (stepJitter - 0.5) * 0.4; // Map [0,1] to [-0.2, 0.2]
     stepSize *= (1.0 + jitterScale);
 
-    // Apply lensing and track deflection
-    vec3 prevDir = dir;
+    // Apply lensing
     dir = bendRay(dir, pos, stepSize, ndRadius);
     bentDirection = dir;
 
-    // Track cumulative ray deflection (for lensing-aware shell emission)
-    // Frame dragging causes ASYMMETRIC deflection - prograde vs retrograde rays
-    // bend differently. This is key for deformed shell appearance.
-    float stepDeflection = acos(clamp(dot(prevDir, dir), -1.0, 1.0));
-    accum.totalDeflection += stepDeflection;
-
-    // Track position of maximum deflection rate (where shell should emit)
-    if (stepDeflection > 0.001) {
-      // Weight position by deflection strength
-      accum.maxDeflectionPos = mix(accum.maxDeflectionPos, pos, stepDeflection * 10.0);
+    // PERF (OPT-BH-2): Use cached shell mask from adaptiveStepSizeWithMask
+    // The mask was already computed for step size adaptation, so reuse it here.
+    // shellMask > 0 only when within 2× shell thickness of photon sphere.
+    if (shellMask > 0.001) {
+      vec3 shellEmit = photonShellEmissionWithMask(shellMask, pos);
+      // Volumetric integration: accumulate emission weighted by transmittance
+      accum.color += shellEmit * stepSize * accum.transmittance;
     }
 
     prevPos = pos;
@@ -383,46 +369,9 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
     // PERF (OPT-BH-1): Compute ndRadius for new position and reuse it in next iteration.
     // This replaces the separate postStepRadius computation, eliminating one ndDistance() call.
     ndRadius = ndDistance(pos);
-
-    // Track ray's closest approach to black hole center
-    if (ndRadius < accum.closestApproach) {
-      accum.closestApproach = ndRadius;
-      accum.closestApproachPos = pos;
-    }
-
-    // === PER-STEP GRAVITATIONAL ABSORPTION ===
-    // Apply absorption based on CURRENT position, not minimum distance.
-    // This ensures the visual horizon follows the lensing-deformed shape
-    // because absorption happens where each ray actually IS, which is
-    // affected by frame dragging asymmetrically.
-    //
-    // Key insight: closestApproach-based absorption creates circular boundaries
-    // because Euclidean distance is symmetric. But per-step absorption follows
-    // the actual bent ray path, which IS asymmetric due to frame dragging.
-    float Rh = uVisualEventHorizon;
-    float ratio = Rh / max(ndRadius, 0.001);
-
-    // Absorption per step - stronger when closer to horizon
-    // Use ratio^4 for sharp falloff (rays far from horizon barely absorbed)
-    float stepAbsorption = uGravityStrength * ratio * ratio * ratio * ratio * stepSize * 2.0;
-    stepAbsorption = min(stepAbsorption, 0.5); // Cap per-step absorption
-
-    // Store previous transmittance for tracking absorption boundary
-    float prevTrans = accum.transmittance;
-    accum.transmittance *= (1.0 - stepAbsorption);
-
-    // Track position of maximum transmittance drop (absorption boundary)
-    // This is where shell will emit IF the ray escapes
-    float transmittanceDrop = prevTrans - accum.transmittance;
-    if (transmittanceDrop > accum.maxTransmittanceDrop) {
-      accum.maxTransmittanceDrop = transmittanceDrop;
-      accum.shellEmissionPos = pos;
-      accum.shellEmissionTrans = prevTrans;
-    }
-
-    // Early exit if fully absorbed
-    if (accum.transmittance < 0.01) {
+    if (isInsideHorizon(ndRadius)) {
       accum.transmittance = 0.0;
+      hitHorizon = true;
       break;
     }
 
@@ -467,11 +416,14 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
         accum.transmittance *= stepTransmittance;
 
         // Update depth/normal info if this is the first significant hit
-        if (accum.hasFirstHit < 0.5 && density > 0.5) {
+        // Use lower threshold (0.05) to capture volumetric normals when there's
+        // visible emission contribution. Previous threshold (0.5) was too high,
+        // causing uniform normals when density was in the 0.001-0.5 range.
+        if (accum.hasFirstHit < 0.5 && density > 0.05) {
              accum.firstHitPos = pos;
              accum.hasFirstHit = 1.0;
              if (!computedNormal) {
-                 stepNormal = computeVolumetricDiskNormal(pos, dir); // Gradient-based normal
+                 stepNormal = computeVolumetricDiskNormal(pos, dir);
              }
              accum.normalSum = stepNormal;
         }
@@ -514,31 +466,6 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
 
   }
 
-  // Absorption happens PER-STEP in the loop above.
-  // This ensures the horizon follows the lensing-deformed shape.
-  //
-  // Determine if ray was absorbed (hitHorizon) based on final transmittance
-  hitHorizon = (accum.transmittance < 0.01);
-
-  // === PHOTON SHELL EMISSION ===
-  // Emit shell ONLY for rays that ESCAPED (not absorbed).
-  // The shell appears at the position where the ray experienced maximum absorption,
-  // which is the closest approach to the absorption boundary.
-  // This naturally follows the deformed horizon shape.
-  if (!hitHorizon && accum.maxTransmittanceDrop > 0.03) {
-    // Ray escaped but experienced significant absorption - emit shell
-    float edgeIntensity = accum.maxTransmittanceDrop * 5.0;
-    edgeIntensity = clamp(edgeIntensity, 0.0, 1.0);
-
-    // Starburst pattern based on shell emission position
-    float angle = atan(accum.shellEmissionPos.z, accum.shellEmissionPos.x);
-    float starburst = 0.5 + 0.5 * sin(angle * 40.0 + uTime * 0.5) * sin(angle * 13.0 - uTime * 0.2);
-    float intensityMod = 0.7 + 0.3 * starburst * starburst;
-
-    vec3 shellEmit = uShellGlowColor * uShellGlowStrength * edgeIntensity * intensityMod;
-    accum.color += shellEmit * accum.shellEmissionTrans;
-  }
-
   // Handle horizon or background
   if (hitHorizon) {
     // Don't record horizon as first hit for depth buffer.
@@ -549,9 +476,14 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
     // If ray hit horizon directly, it will write far depth (1.0).
     accum.transmittance = 0.0;
   } else if (accum.transmittance > 0.01) {
+    // Ray escaped - sample background for color but keep transmittance high
+    // This ensures alpha stays low (transparent) so the gravity composite pass
+    // can properly show the environment layer through these pixels.
     vec3 bgColor = sampleBackground(bentDirection);
     accum.color += bgColor * accum.transmittance;
-    accum.transmittance = 0.0;
+    // DO NOT set transmittance = 0 here! That would make alpha = 1.0 and
+    // block the environment layer in the composite pass.
+    // Keep transmittance as-is so alpha = 1.0 - transmittance stays low.
   }
 
   accum.color *= uBloomBoost;
@@ -606,6 +538,27 @@ void main() {
   // Output color
   gColor = result.color;
 
+  // Compute view-space normal for deferred rendering
+  // Only output meaningful normals for pixels that hit geometry.
+  // For sky/background pixels (no hit), output neutral normal to prevent
+  // normal-based effects from seeing garbage ray direction data.
+  if (result.hasHit > 0.5) {
+    // Transform local-space normal to world-space (Inverse Transpose of Model Matrix)
+    // Then world-space to view-space
+    // Normal matrix = transpose(inverse(mat3(modelMatrix)))
+    // Since we have uModelMatrix, we can use it directly if uniform scaling
+    vec3 worldNormal = normalize(mat3(uModelMatrix) * result.averageNormal);
+    vec3 viewNormalRaw = mat3(uViewMatrix) * worldNormal;
+    float vnLen = length(viewNormalRaw);
+    vec3 viewNormal = vnLen > 0.0001 ? viewNormalRaw / vnLen : vec3(0.0, 0.0, 1.0);
+    // Encode normal to [0,1] range, alpha=1 indicates valid normal
+    gNormal = vec4(viewNormal * 0.5 + 0.5, 1.0);
+  } else {
+    // No hit - output zero normal so normalComposite uses environment normal
+    // The composite shader checks length(rgb) > 0.001 to detect valid normals
+    gNormal = vec4(0.0, 0.0, 0.0, 0.0);
+  }
+
   // Output depth buffer (same approach as Mandelbulb)
   // For hits: compute clip-space depth from first hit position
   // Scale positions back from "black hole space" to world space using Model Matrix
@@ -623,26 +576,8 @@ void main() {
     gl_FragDepth = 1.0;
   }
 
-  // MRT outputs (gNormal, gPosition) - only when NOT in single-target mode
-  // In single-target mode (gravity-enabled rendering), only gColor is output
-  // to prevent GL_INVALID_OPERATION errors on single-attachment render targets.
-  #ifndef USE_SINGLE_TARGET
-  // Compute view-space normal for deferred rendering
-  // Transform local-space normal to world-space (Inverse Transpose of Model Matrix)
-  // Then world-space to view-space
-  // Normal matrix = transpose(inverse(mat3(modelMatrix)))
-  // Since we have uModelMatrix, we can use it directly if uniform scaling
-  // For non-uniform scaling, we'd need a proper normal matrix, but scale is uniform here.
-  vec3 worldNormal = normalize(mat3(uModelMatrix) * result.averageNormal);
-  vec3 viewNormalRaw = mat3(uViewMatrix) * worldNormal;
-  float vnLen = length(viewNormalRaw);
-  vec3 viewNormal = vnLen > 0.0001 ? viewNormalRaw / vnLen : vec3(0.0, 0.0, 1.0);
-
-  // Encode normal to [0,1] range and output
-  // Alpha = 1.0 to prevent premultiplied alpha issues
-  gNormal = vec4(viewNormal * 0.5 + 0.5, 1.0);
-
   // Output world position for temporal reprojection
+  // ALWAYS write gPosition to prevent GL_INVALID_OPERATION when switching layers.
   // When temporal is OFF, this output is ignored by mainObjectMRT (count: 2).
   // When temporal is ON, this provides actual position data for reprojection.
   #ifdef USE_TEMPORAL_ACCUMULATION
@@ -654,7 +589,6 @@ void main() {
     // Dummy output when temporal is disabled (ignored by render target)
     gPosition = vec4(0.0);
   #endif
-  #endif // USE_SINGLE_TARGET
 }
 `
 

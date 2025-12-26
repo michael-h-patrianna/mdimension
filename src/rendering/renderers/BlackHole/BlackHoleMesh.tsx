@@ -24,7 +24,6 @@ import { composeBlackHoleShader, generateBlackHoleVertexShader } from '@/renderi
 import { generateRidgedNoiseTexture3D } from '@/rendering/utils/NoiseGenerator'
 import { useExtendedObjectStore } from '@/stores/extendedObjectStore'
 import { useGeometryStore } from '@/stores/geometryStore'
-import { usePostProcessingStore } from '@/stores/postProcessingStore'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { MAX_DIMENSION } from './types'
@@ -67,11 +66,6 @@ const BlackHoleMesh = () => {
   const farRadius = useExtendedObjectStore((state) => state.blackhole.farRadius)
   const horizonRadius = useExtendedObjectStore((state) => state.blackhole.horizonRadius)
 
-  // Gravity-enabled mode requires single-target shader variant
-  // When gravity is ON, mainObjectScene pass renders to single-attachment target
-  // MRT outputs (gNormal, gPosition) must be disabled to prevent GL errors
-  const gravityEnabled = usePostProcessingStore((state) => state.gravityEnabled)
-
   // Create uniforms using extracted hook
   const uniforms = useBlackHoleUniforms()
 
@@ -96,8 +90,7 @@ const BlackHoleMesh = () => {
   // Shader version - increment to force recompilation when GLSL source changes
   // v2: Added immediate horizon check after ray step to fix transparency bug
   // v3: Added OPT-BH-1/2/3/5 performance optimizations
-  // v4: Added USE_SINGLE_TARGET for gravity-enabled rendering (fixes transparent horizon)
-  const SHADER_VERSION = 4
+  const SHADER_VERSION = 3
 
   // Compile shader
   const { fragmentShader } = useMemo(() => {
@@ -112,22 +105,17 @@ const BlackHoleMesh = () => {
       sliceAnimation: sliceAnimationEnabled,
       volumetricDisk: true,
       noiseTexture: true, // PERF (OPT-BH-1): Enable noise texture for faster rendering
-      // Single-target mode for gravity-enabled rendering:
-      // When gravity is ON, mainObjectScene pass renders to single-attachment target.
-      // USE_SINGLE_TARGET disables gNormal/gPosition outputs to prevent GL errors.
-      singleTarget: gravityEnabled,
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dimension, temporalEnabled, dopplerEnabled, sliceAnimationEnabled, gravityEnabled, SHADER_VERSION])
+  }, [dimension, temporalEnabled, dopplerEnabled, sliceAnimationEnabled, SHADER_VERSION])
 
   // Generate vertex shader
   const vertexShader = useMemo(() => generateBlackHoleVertexShader(), [])
 
   // Generate material key for caching
-  // Includes gravityEnabled to ensure shader recompilation when gravity mode changes
   const materialKey = useMemo(() => {
-    return `blackhole-${dimension}-${temporalEnabled}-${dopplerEnabled}-${sliceAnimationEnabled}-${gravityEnabled ? 'st' : 'mrt'}-v${SHADER_VERSION}`
-  }, [dimension, temporalEnabled, dopplerEnabled, sliceAnimationEnabled, gravityEnabled, SHADER_VERSION])
+    return `blackhole-${dimension}-${temporalEnabled}-${dopplerEnabled}-${sliceAnimationEnabled}-v${SHADER_VERSION}`
+  }, [dimension, temporalEnabled, dopplerEnabled, sliceAnimationEnabled, SHADER_VERSION])
 
   // Note: Material disposal is handled automatically by React Three Fiber
   // when TrackedShaderMaterial unmounts (materialKey change causes remount).

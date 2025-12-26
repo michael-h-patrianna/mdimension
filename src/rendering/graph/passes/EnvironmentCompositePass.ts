@@ -17,6 +17,15 @@ import { BasePass } from '../BasePass'
 import type { RenderContext, RenderPassConfig } from '../types'
 
 /**
+ * Shell glow configuration for screen-space edge detection.
+ */
+export interface ShellGlowConfig {
+  enabled: boolean
+  color: THREE.Color
+  strength: number
+}
+
+/**
  * Configuration for EnvironmentCompositePass.
  */
 export interface EnvironmentCompositePassConfig extends Omit<RenderPassConfig, 'inputs' | 'outputs'> {
@@ -59,6 +68,13 @@ export class EnvironmentCompositePass extends BasePass {
   private mainObjectDepthInputAttachment?: number | 'depth'
   private outputResourceId: string
 
+  // Shell glow configuration
+  private shellConfig: ShellGlowConfig = {
+    enabled: false,
+    color: new THREE.Color(1, 1, 1),
+    strength: 0,
+  }
+
   // Rendering resources
   private material: THREE.ShaderMaterial
   private mesh: THREE.Mesh
@@ -94,6 +110,11 @@ export class EnvironmentCompositePass extends BasePass {
         tMainObjectDepth: { value: null },
         uNear: { value: 0.1 },
         uFar: { value: 100 },
+        // Shell glow uniforms
+        uShellEnabled: { value: false },
+        uShellGlowColor: { value: new THREE.Color(1, 1, 1) },
+        uShellGlowStrength: { value: 0.0 },
+        uResolution: { value: new THREE.Vector2(1, 1) },
       },
       vertexShader: environmentCompositeVertexShader,
       fragmentShader: environmentCompositeFragmentShader,
@@ -146,10 +167,51 @@ export class EnvironmentCompositePass extends BasePass {
     this.material.uniforms['uNear']!.value = near
     this.material.uniforms['uFar']!.value = far
 
+    // Update shell glow uniforms
+    this.material.uniforms['uShellEnabled']!.value = this.shellConfig.enabled
+    this.material.uniforms['uShellGlowColor']!.value = this.shellConfig.color
+    this.material.uniforms['uShellGlowStrength']!.value = this.shellConfig.strength
+
+    // Update resolution from output target or renderer size
+    const size = new THREE.Vector2()
+    if (outputTarget) {
+      size.set(outputTarget.width, outputTarget.height)
+    } else {
+      renderer.getSize(size)
+    }
+    this.material.uniforms['uResolution']!.value = size
+
     // Render
     renderer.setRenderTarget(outputTarget)
     renderer.render(this.scene, this.camera)
     renderer.setRenderTarget(null)
+  }
+
+  /**
+   * Update shell glow configuration.
+   * Call this before rendering to control the photon shell appearance.
+   */
+  setShellConfig(config: Partial<ShellGlowConfig>): void {
+    if (config.enabled !== undefined) {
+      this.shellConfig.enabled = config.enabled
+    }
+    if (config.color !== undefined) {
+      this.shellConfig.color.copy(config.color)
+    }
+    if (config.strength !== undefined) {
+      this.shellConfig.strength = config.strength
+    }
+  }
+
+  /**
+   * Get current shell glow configuration.
+   */
+  getShellConfig(): ShellGlowConfig {
+    return {
+      enabled: this.shellConfig.enabled,
+      color: this.shellConfig.color.clone(),
+      strength: this.shellConfig.strength,
+    }
   }
 
   dispose(): void {

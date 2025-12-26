@@ -191,7 +191,7 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({ imageSrc, onCropChan
 
   return (
     <div
-      className="relative w-full h-full bg-black/50 overflow-hidden select-none flex items-center justify-center p-8"
+      className="relative w-full h-full bg-black/50 overflow-hidden select-none flex items-center justify-center p-2 sm:p-4 md:p-8"
       data-testid="image-cropper"
     >
       <div ref={containerRef} className="relative inline-block shadow-2xl shadow-black group">
@@ -199,7 +199,7 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({ imageSrc, onCropChan
           ref={imgRef}
           src={imageSrc}
           alt="Preview"
-          className="max-h-[60vh] max-w-full object-contain block pointer-events-none"
+          className="max-h-[45vh] sm:max-h-[55vh] md:max-h-[60vh] max-w-full object-contain block pointer-events-none"
           data-testid="crop-preview-image"
           onLoad={handleImageLoad}
         />
@@ -240,21 +240,21 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({ imageSrc, onCropChan
               <div className="flex-1"></div>
             </div>
 
-            {/* HANDLES */}
+            {/* HANDLES - Larger on mobile for touch targets (44px minimum tap area) */}
             {[
-              { id: 'nw', cursor: 'nw-resize', style: { top: '-6px', left: '-6px' } },
-              { id: 'n', cursor: 'n-resize', style: { top: '-6px', left: '50%', marginLeft: '-4px' } },
-              { id: 'ne', cursor: 'ne-resize', style: { top: '-6px', right: '-6px' } },
-              { id: 'e', cursor: 'e-resize', style: { top: '50%', right: '-6px', marginTop: '-4px' } },
-              { id: 'se', cursor: 'se-resize', style: { bottom: '-6px', right: '-6px' } },
-              { id: 's', cursor: 's-resize', style: { bottom: '-6px', left: '50%', marginLeft: '-4px' } },
-              { id: 'sw', cursor: 'sw-resize', style: { bottom: '-6px', left: '-6px' } },
-              { id: 'w', cursor: 'w-resize', style: { top: '50%', left: '-6px', marginTop: '-4px' } },
+              { id: 'nw', cursor: 'nw-resize', pos: 'top-0 left-0 -translate-x-1/2 -translate-y-1/2' },
+              { id: 'n', cursor: 'n-resize', pos: 'top-0 left-1/2 -translate-x-1/2 -translate-y-1/2' },
+              { id: 'ne', cursor: 'ne-resize', pos: 'top-0 right-0 translate-x-1/2 -translate-y-1/2' },
+              { id: 'e', cursor: 'e-resize', pos: 'top-1/2 right-0 translate-x-1/2 -translate-y-1/2' },
+              { id: 'se', cursor: 'se-resize', pos: 'bottom-0 right-0 translate-x-1/2 translate-y-1/2' },
+              { id: 's', cursor: 's-resize', pos: 'bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2' },
+              { id: 'sw', cursor: 'sw-resize', pos: 'bottom-0 left-0 -translate-x-1/2 translate-y-1/2' },
+              { id: 'w', cursor: 'w-resize', pos: 'top-1/2 left-0 -translate-x-1/2 -translate-y-1/2' },
             ].map((h) => (
               <div
                 key={h.id}
-                className="absolute w-3 h-3 bg-white border border-black/30 rounded-full z-20 hover:scale-125 transition-transform"
-                style={{ ...h.style, cursor: h.cursor }}
+                className={`absolute w-5 h-5 sm:w-3 sm:h-3 bg-white border border-black/30 rounded-full z-20 hover:scale-125 active:scale-110 transition-transform touch-none ${h.pos}`}
+                style={{ cursor: h.cursor }}
                 onPointerDown={(e) => startResize(e, h.id)}
                 data-testid={`crop-handle-${h.id}`}
               />

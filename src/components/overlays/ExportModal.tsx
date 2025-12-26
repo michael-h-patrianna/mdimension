@@ -1,14 +1,15 @@
 import { Icon } from '@/components/ui/Icon'
 import { soundManager } from '@/lib/audio/SoundManager'
-import { ExportMode, ExportResolution, useExportStore } from '@/stores/exportStore'
+import { ExportMode, ExportResolution, VideoCodec, useExportStore } from '@/stores/exportStore'
 import { AnimatePresence, m } from 'motion/react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '../ui/Button'
 import { Modal } from '../ui/Modal'
 import { NumberInput } from '../ui/NumberInput'
 import { Slider } from '../ui/Slider'
 import { ToggleGroup } from '../ui/ToggleGroup'
 import { ConfirmModal } from '../ui/ConfirmModal'
+import { Tabs } from '../ui/Tabs'
 
 export const ExportModal = () => {
   const {
@@ -34,9 +35,51 @@ export const ExportModal = () => {
     completionDetails
   } = useExportStore()
 
-  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [activeTab, setActiveTab] = useState<'basic' | 'advanced'>('basic')
   const [dismissedBrowserWarning, setDismissedBrowserWarning] = useState(false)
   const [showStopConfirm, setShowStopConfirm] = useState(false)
+  const [supportedCodecs, setSupportedCodecs] = useState<Record<VideoCodec, boolean>>({
+      avc: true, hevc: false, vp9: true, av1: false
+  })
+
+  // Check Codec support on mount
+  useEffect(() => {
+    const checkSupport = async () => {
+        if (typeof VideoEncoder === 'undefined') {
+            setSupportedCodecs({ avc: false, hevc: false, vp9: false, av1: false })
+            return
+        }
+
+        const check = async (codec: string) => {
+            try {
+                // Approximate config for 1080p
+                const config: VideoEncoderConfig = {
+                    codec, width: 1920, height: 1080, bitrate: 4_000_000, framerate: 30
+                }
+                const support = await VideoEncoder.isConfigSupported(config)
+                return !!support.supported
+            } catch (e) { return false }
+        }
+
+        const [avc, hevc, vp9, av1] = await Promise.all([
+            check('avc1.42001E'), // H.264 Main
+            check('hvc1.1.6.L120.B0'), // HEVC Main10 (Apple) or Main
+            check('vp09.00.10.08'), // VP9 Profile 0
+            check('av01.0.05M.08') // AV1 Main
+        ])
+
+        const newSupport = { avc, hevc, vp9, av1 }
+        setSupportedCodecs(newSupport)
+
+        // Auto-fix invalid selection
+        if (!newSupport[settings.codec]) {
+            // Fallback: If current format is mp4, try avc. If webm, try vp9.
+            if (settings.format === 'mp4') updateSettings({ codec: 'avc' })
+            else if (settings.format === 'webm') updateSettings({ codec: 'vp9' })
+        }
+    }
+    checkSupport()
+  }, []) // Run once
 
   const clampDimension = (val: number) => {
       // 128x128 min, 7680x7680 max (8K), round to even
@@ -59,7 +102,7 @@ export const ExportModal = () => {
     setModalOpen(false)
     reset()
     setDismissedBrowserWarning(false)
-    setShowAdvanced(false)
+    setActiveTab('basic')
   }
 
   const handleConfirmStop = () => {
@@ -77,7 +120,8 @@ export const ExportModal = () => {
     if (previewUrl) {
         const link = document.createElement('a')
         link.href = previewUrl
-        link.download = `mdimension-${Date.now()}.mp4`
+        const ext = settings.format === 'webm' ? 'webm' : 'mp4'
+        link.download = `mdimension-${Date.now()}.${ext}`
         document.body.appendChild(link)
         link.click()
         document.body.removeChild(link)
@@ -93,6 +137,11 @@ export const ExportModal = () => {
     { value: 'custom', label: 'Custom' }
   ])
 
+  const formatOptions = ([
+    { value: 'mp4', label: 'MP4' },
+    { value: 'webm', label: 'WebM', disabled: !supportedCodecs.vp9 }
+  ])
+
   const fpsOptions = ([
     { value: '24', label: '24 FPS' },
     { value: '30', label: '30 FPS' },
@@ -103,6 +152,16 @@ export const ExportModal = () => {
     { value: 'in-memory', label: 'In-Memory' },
     { value: 'stream', label: 'Stream' },
     { value: 'segmented', label: 'Segmented' }
+  ])
+
+  const encodingOptions = ([
+    { value: 'prefer-software', label: 'Quality (Software)' },
+    { value: 'prefer-hardware', label: 'Speed (Hardware)' },
+  ])
+
+  const bitrateModeOptions = ([
+    { value: 'constant', label: 'Constant (CBR)' },
+    { value: 'variable', label: 'Variable (VBR)' },
   ])
 
   // Helper for size tier color
@@ -362,75 +421,236 @@ export const ExportModal = () => {
 
             {/* STATUS: IDLE (SETTINGS) */}
             {status === 'idle' && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <Tabs
+                    value={activeTab}
+                    onChange={(val) => setActiveTab(val as 'basic' | 'advanced')}
+                    fullWidth
+                    tabs={[
+                        {
+                            id: 'basic',
+                            label: 'Basic',
+                            content: (
+                                <div className="space-y-6 pt-6">
+                                    {/* Format Section */}
+                                    <div className="space-y-3">
+                                        <div className="flex justify-between items-center">
+                                            <label className="text-xs font-bold text-text-secondary uppercase tracking-widest pl-1">Format</label>
+                                            {!supportedCodecs.vp9 && (
+                                                <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                                                    WebM unavailable on this device
+                                                </span>
+                                            )}
+                                        </div>
+                                        <ToggleGroup
+                                            options={formatOptions}
+                                            value={settings.format}
+                                            onChange={(val) => {
+                                                const fmt = val as ExportFormat
+                                                // Reset codec to safe default when changing format
+                                                const defaultCodec = fmt === 'mp4' ? 'avc' : 'vp9'
+                                                updateSettings({ format: fmt, codec: defaultCodec })
+                                            }}
+                                        />
+                                    </div>
 
-                {/* Resolution Section */}
-                <div className="space-y-3">
-                    <label className="text-xs font-bold text-text-secondary uppercase tracking-widest pl-1">Resolution</label>
-                    <ToggleGroup
-                        options={resolutionOptions}
-                        value={settings.resolution}
-                        onChange={(val) => updateSettings({ resolution: val as ExportResolution })}
-                    />
+                                    {/* Resolution Section */}
+                                    <div className="space-y-3">
+                                        <label className="text-xs font-bold text-text-secondary uppercase tracking-widest pl-1">Resolution</label>
+                                        <ToggleGroup
+                                            options={resolutionOptions}
+                                            value={settings.resolution}
+                                            onChange={(val) => updateSettings({ resolution: val as ExportResolution })}
+                                        />
 
-                    <AnimatePresence>
-                        {settings.resolution === 'custom' && (
-                            <m.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                exit={{ opacity: 0, height: 0 }}
-                                className="flex gap-4 pt-2 overflow-hidden"
-                            >
-                                <div className="space-y-1.5 flex-1">
-                                    <label className="text-[10px] text-text-tertiary uppercase tracking-wide">Width</label>
-                                    <NumberInput
-                                        value={settings.customWidth}
-                                        onChange={(val) => updateSettings({ customWidth: clampDimension(val) })}
-                                        min={128} max={7680} step={2}
-                                    />
+                                        <AnimatePresence>
+                                            {settings.resolution === 'custom' && (
+                                                <m.div
+                                                    initial={{ opacity: 0, height: 0 }}
+                                                    animate={{ opacity: 1, height: 'auto' }}
+                                                    exit={{ opacity: 0, height: 0 }}
+                                                    className="flex gap-4 pt-2 overflow-hidden"
+                                                >
+                                                    <div className="space-y-1.5 flex-1">
+                                                        <label className="text-[10px] text-text-tertiary uppercase tracking-wide">Width</label>
+                                                        <NumberInput
+                                                            value={settings.customWidth}
+                                                            onChange={(val) => updateSettings({ customWidth: clampDimension(val) })}
+                                                            min={128} max={7680} step={2}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1.5 flex-1">
+                                                        <label className="text-[10px] text-text-tertiary uppercase tracking-wide">Height</label>
+                                                        <NumberInput
+                                                            value={settings.customHeight}
+                                                            onChange={(val) => updateSettings({ customHeight: clampDimension(val) })}
+                                                            min={128} max={7680} step={2}
+                                                        />
+                                                    </div>
+                                                </m.div>
+                                            )}
+                                        </AnimatePresence>
+                                    </div>
+
+                                    {/* Quality Controls */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {/* Duration */}
+                                        <div className="space-y-1">
+                                            <Slider
+                                                label="Duration"
+                                                value={settings.duration}
+                                                onChange={(val) => updateSettings({ duration: val })}
+                                                min={1} max={30} step={1}
+                                                unit="s"
+                                                minLabel="1s"
+                                                maxLabel="30s"
+                                            />
+                                        </div>
+
+                                        {/* FPS */}
+                                        <div className="space-y-3">
+                                            <label className="text-xs font-bold text-text-secondary uppercase tracking-widest pl-1">Framerate</label>
+                                            <ToggleGroup
+                                                options={fpsOptions}
+                                                value={settings.fps.toString()}
+                                                onChange={(val) => updateSettings({ fps: Number(val) })}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Warnings Area */}
+                                    <div className="space-y-4">
+                                        {/* Browser Recommendation */}
+                                        <AnimatePresence>
+                                            {exportTier === 'large' && browserType === 'standard' && !dismissedBrowserWarning && (
+                                                <m.div
+                                                    initial={{ opacity: 0, height: 0 }}
+                                                    animate={{ opacity: 1, height: 'auto' }}
+                                                    exit={{ opacity: 0, height: 0 }}
+                                                    className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 relative overflow-hidden"
+                                                >
+                                                    <div className="flex gap-3">
+                                                        <Icon name="info" className="text-blue-400 mt-0.5 shrink-0" />
+                                                        <div className="text-xs text-blue-200/90 pr-6">
+                                                            <p className="font-bold text-blue-300 mb-1">Browser Recommendation</p>
+                                                            For large exports, Chrome or Edge can save directly to disk without memory limits.
+                                                        </div>
+                                                        <button
+                                                            onClick={() => setDismissedBrowserWarning(true)}
+                                                            className="absolute top-2 right-2 text-blue-400 hover:text-white"
+                                                        >
+                                                            <Icon name="cross" className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                </m.div>
+                                            )}
+                                        </AnimatePresence>
+
+                                        {/* Size Warnings */}
+                                        <AnimatePresence>
+                                            {exportTier !== 'small' && (
+                                                <m.div
+                                                    initial={{ opacity: 0, height: 0 }}
+                                                    animate={{ opacity: 1, height: 'auto' }}
+                                                    exit={{ opacity: 0, height: 0 }}
+                                                    className={`rounded-lg p-3 text-xs border ${
+                                                        exportTier === 'large'
+                                                            ? 'bg-red-500/10 border-red-500/30 text-red-200'
+                                                            : 'bg-amber-500/10 border-amber-500/30 text-amber-200'
+                                                    }`}
+                                                >
+                                                    {exportTier === 'medium' && "This is a moderately large export. Ensure other tabs are closed for best results."}
+                                                    {exportTier === 'large' && exportMode === 'in-memory' && "This export may exceed your browser's memory. Consider using Chrome/Edge for safer disk-based export."}
+                                                    {exportTier === 'large' && exportMode === 'stream' && `Large export. Ensure sufficient disk space (~${Math.round(estimatedSizeMB)} MB required).`}
+                                                    {exportTier === 'large' && exportMode === 'segmented' && "This export will download as multiple separate files."}
+                                                </m.div>
+                                            )}
+                                        </AnimatePresence>
+                                    </div>
                                 </div>
-                                <div className="space-y-1.5 flex-1">
-                                    <label className="text-[10px] text-text-tertiary uppercase tracking-wide">Height</label>
-                                    <NumberInput
-                                        value={settings.customHeight}
-                                        onChange={(val) => updateSettings({ customHeight: clampDimension(val) })}
-                                        min={128} max={7680} step={2}
-                                    />
+                            )
+                        },
+                        {
+                            id: 'advanced',
+                            label: 'Advanced',
+                            content: (
+                                <div className="space-y-6 pt-6">
+                                    <div className="space-y-1">
+                                        <Slider
+                                            label="Bitrate"
+                                            value={settings.bitrate}
+                                            onChange={(val) => updateSettings({ bitrate: val })}
+                                            min={2} max={50} step={1}
+                                            unit=" Mbps"
+                                        />
+                                    </div>
+
+                                    {/* Codec Selection */}
+                                    <div className="space-y-3">
+                                        <label className="text-xs font-bold text-text-secondary uppercase tracking-widest pl-1">Codec</label>
+                                        <ToggleGroup
+                                            options={[
+                                                { value: 'avc', label: 'H.264 (AVC)', disabled: settings.format !== 'mp4' },
+                                                { value: 'hevc', label: 'H.265 (HEVC)', disabled: settings.format !== 'mp4' || !supportedCodecs.hevc },
+                                                { value: 'vp9', label: 'VP9', disabled: settings.format !== 'webm' },
+                                                { value: 'av1', label: 'AV1', disabled: !supportedCodecs.av1 }
+                                            ].filter(opt => !opt.disabled || opt.value === settings.codec)}
+                                            value={settings.codec}
+                                            onChange={(val) => updateSettings({ codec: val as VideoCodec })}
+                                        />
+                                    </div>
+
+                                    {/* Encoding Options */}
+                                    <div className="space-y-3">
+                                        <label className="text-xs font-bold text-text-secondary uppercase tracking-widest pl-1">Encoding</label>
+                                        <ToggleGroup
+                                            options={encodingOptions}
+                                            value={settings.hardwareAcceleration}
+                                            onChange={(val) => updateSettings({ hardwareAcceleration: val as 'no-preference' | 'prefer-hardware' | 'prefer-software' })}
+                                        />
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <label className="text-xs font-bold text-text-secondary uppercase tracking-widest pl-1">Bitrate Mode</label>
+                                        <ToggleGroup
+                                            options={bitrateModeOptions}
+                                            value={settings.bitrateMode}
+                                            onChange={(val) => updateSettings({ bitrateMode: val as 'constant' | 'variable' })}
+                                        />
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <label className="text-xs font-bold text-text-secondary uppercase tracking-widest pl-1">Export Mode</label>
+                                            <span className="text-[10px] text-text-tertiary bg-white/5 px-2 py-0.5 rounded">
+                                                {exportModeOverride ? 'Manual' : 'Auto'}
+                                            </span>
+                                        </div>
+                                        <ToggleGroup
+                                            options={modeOptions}
+                                            value={exportModeOverride || exportMode}
+                                            onChange={(val) => setExportModeOverride(val as ExportMode)}
+                                        />
+                                        {exportModeOverride && (
+                                            <div className="flex items-center gap-2 text-[10px] text-amber-400 bg-amber-500/10 p-2 rounded border border-amber-500/20">
+                                                <Icon name="warning" className="w-3 h-3" />
+                                                Manual mode selection may cause instability.
+                                                <button
+                                                    onClick={() => setExportModeOverride(null)}
+                                                    className="ml-auto underline hover:text-amber-200"
+                                                >
+                                                    Reset to Auto
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                            </m.div>
-                        )}
-                    </AnimatePresence>
-                </div>
+                            )
+                        }
+                    ]}
+                />
 
-                {/* Quality Controls */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Duration */}
-                    <div className="space-y-1">
-                        <Slider
-                            label="Duration"
-                            value={settings.duration}
-                            onChange={(val) => updateSettings({ duration: val })}
-                            min={1} max={30} step={1}
-                            unit="s"
-                            minLabel="1s"
-                            maxLabel="30s"
-                        />
-                    </div>
-
-                    {/* FPS */}
-                    <div className="space-y-3">
-                        <label className="text-xs font-bold text-text-secondary uppercase tracking-widest pl-1">Framerate</label>
-                        <ToggleGroup
-                            options={fpsOptions}
-                            value={settings.fps.toString()}
-                            onChange={(val) => updateSettings({ fps: Number(val) })}
-                        />
-                    </div>
-                </div>
-
-                {/* Advanced / Info Area */}
-                <div className="space-y-4">
-
+                <div className="space-y-4 pt-4 mt-2 border-t border-white/5">
                     {/* Size Estimate & Tier */}
                     <div className="flex items-center justify-between text-sm bg-white/5 p-4 rounded-lg border border-white/10">
                         <span className="text-text-secondary font-medium">Estimated Size</span>
@@ -442,125 +662,18 @@ export const ExportModal = () => {
                         </div>
                     </div>
 
-                    {/* Browser Recommendation (Story 3) */}
-                    <AnimatePresence>
-                        {exportTier === 'large' && browserType === 'standard' && !dismissedBrowserWarning && (
-                            <m.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                exit={{ opacity: 0, height: 0 }}
-                                className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 relative overflow-hidden"
-                            >
-                                <div className="flex gap-3">
-                                    <Icon name="info" className="text-blue-400 mt-0.5 shrink-0" />
-                                    <div className="text-xs text-blue-200/90 pr-6">
-                                        <p className="font-bold text-blue-300 mb-1">Browser Recommendation</p>
-                                        For large exports, Chrome or Edge can save directly to disk without memory limits.
-                                    </div>
-                                    <button
-                                        onClick={() => setDismissedBrowserWarning(true)}
-                                        className="absolute top-2 right-2 text-blue-400 hover:text-white"
-                                    >
-                                        <Icon name="cross" className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            </m.div>
-                        )}
-                    </AnimatePresence>
-
-                    {/* Size Warnings (Story 13) */}
-                    <AnimatePresence>
-                        {exportTier !== 'small' && (
-                            <m.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                exit={{ opacity: 0, height: 0 }}
-                                className={`rounded-lg p-3 text-xs border ${
-                                    exportTier === 'large'
-                                        ? 'bg-red-500/10 border-red-500/30 text-red-200'
-                                        : 'bg-amber-500/10 border-amber-500/30 text-amber-200'
-                                }`}
-                            >
-                                {exportTier === 'medium' && "This is a moderately large export. Ensure other tabs are closed for best results."}
-                                {exportTier === 'large' && exportMode === 'in-memory' && "This export may exceed your browser's memory. Consider using Chrome/Edge for safer disk-based export."}
-                                {exportTier === 'large' && exportMode === 'stream' && `Large export. Ensure sufficient disk space (~${Math.round(estimatedSizeMB)} MB required).`}
-                                {exportTier === 'large' && exportMode === 'segmented' && "This export will download as multiple separate files."}
-                            </m.div>
-                        )}
-                    </AnimatePresence>
-
-                    {/* Advanced Toggle */}
-                    <div className="pt-2">
-                        <button
-                            onClick={() => setShowAdvanced(!showAdvanced)}
-                            className="flex items-center gap-2 text-xs text-text-tertiary hover:text-text-primary transition-colors"
-                        >
-                            <Icon name={showAdvanced ? 'chevron-down' : 'chevron-right'} className="w-3 h-3" />
-                            Advanced Settings
-                        </button>
-                    </div>
-
-                    <AnimatePresence>
-                        {showAdvanced && (
-                            <m.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                exit={{ opacity: 0, height: 0 }}
-                                className="space-y-4 pt-2 overflow-hidden"
-                            >
-                                <div className="space-y-1">
-                                    <Slider
-                                        label="Bitrate"
-                                        value={settings.bitrate}
-                                        onChange={(val) => updateSettings({ bitrate: val })}
-                                        min={2} max={50} step={1}
-                                        unit=" Mbps"
-                                    />
-                                </div>
-
-                                <div className="space-y-3">
-                                    <div className="flex items-center justify-between">
-                                        <label className="text-xs font-bold text-text-secondary uppercase tracking-widest pl-1">Export Mode</label>
-                                        <span className="text-[10px] text-text-tertiary bg-white/5 px-2 py-0.5 rounded">
-                                            {exportModeOverride ? 'Manual' : 'Auto'}
-                                        </span>
-                                    </div>
-                                    <ToggleGroup
-                                        options={modeOptions}
-                                        value={exportModeOverride || exportMode} // Show active mode
-                                        onChange={(val) => setExportModeOverride(val as ExportMode)}
-                                    />
-                                    {exportModeOverride && (
-                                        <div className="flex items-center gap-2 text-[10px] text-amber-400 bg-amber-500/10 p-2 rounded border border-amber-500/20">
-                                            <Icon name="warning" className="w-3 h-3" />
-                                            Manual mode selection may cause instability.
-                                            <button
-                                                onClick={() => setExportModeOverride(null)}
-                                                className="ml-auto underline hover:text-amber-200"
-                                            >
-                                                Reset to Auto
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                            </m.div>
-                        )}
-                    </AnimatePresence>
-
+                    {/* Action Button */}
+                    <Button
+                        onClick={handleExport}
+                        variant="primary"
+                        size="lg"
+                        className="w-full py-4 shadow-lg shadow-accent/10"
+                        glow
+                    >
+                        <Icon name="image" className="w-5 h-5" />
+                        {exportMode === 'stream' ? 'Select File & Start' : 'Start Rendering'}
+                    </Button>
                 </div>
-
-                {/* Action Button */}
-                <Button
-                    onClick={handleExport}
-                    variant="primary"
-                    size="lg"
-                    className="w-full py-4 shadow-lg shadow-accent/10"
-                    glow
-                >
-                    <Icon name="image" className="w-5 h-5" />
-                    {exportMode === 'stream' ? 'Select File & Start' : 'Start Rendering'}
-                </Button>
-
             </div>
             )}
         </div>

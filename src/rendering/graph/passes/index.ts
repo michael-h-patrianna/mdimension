@@ -62,4 +62,5 @@ export { CubemapCapturePass, type CubemapCapturePassConfig } from './CubemapCapt
 export {
   EnvironmentCompositePass,
   type EnvironmentCompositePassConfig,
+  type ShellGlowConfig,
 } from './EnvironmentCompositePass'
