@@ -59,7 +59,7 @@ export function useBlackHoleUniforms() {
       uVisualEventHorizon: { value: 1.285 }, // Shadow radius (where rays are absorbed)
       uSpin: { value: 0.0 }, // Dimensionless spin chi = a/M (0 to 0.998)
       uDiskTemperature: { value: 6500.0 }, // Inner disk temperature in Kelvin
-      uGravityStrength: { value: 5.0 },
+      uGravityStrength: { value: 1.0 }, // Match DEFAULT_GRAVITY_STRENGTH
       uManifoldIntensity: { value: 1.0 },
       uManifoldThickness: { value: 0.15 },
       uPhotonShellWidth: { value: 0.05 },
