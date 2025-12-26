@@ -312,7 +312,8 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
     // The visual event horizon (shadow radius) is larger than the photon shell radius.
     // If we check horizon first, rays would be absorbed before emitting shell glow.
     // By emitting first, we capture the shell's contribution then absorb the ray.
-    if (shellMask > 0.001) {
+    // Threshold 0.1 prevents soft gradients from low mask values accumulating
+    if (shellMask > 0.1) {
       vec3 shellEmit = photonShellEmissionWithMask(shellMask, pos);
       // Volumetric integration: accumulate emission weighted by transmittance
       accum.color += shellEmit * stepSize * accum.transmittance;
@@ -534,21 +535,6 @@ void main() {
   // Output color
   gColor = result.color;
 
-  // Compute view-space normal for deferred rendering
-  // Transform local-space normal to world-space (Inverse Transpose of Model Matrix)
-  // Then world-space to view-space
-  // Normal matrix = transpose(inverse(mat3(modelMatrix)))
-  // Since we have uModelMatrix, we can use it directly if uniform scaling
-  // For non-uniform scaling, we'd need a proper normal matrix, but scale is uniform here.
-  vec3 worldNormal = normalize(mat3(uModelMatrix) * result.averageNormal);
-  vec3 viewNormalRaw = mat3(uViewMatrix) * worldNormal;
-  float vnLen = length(viewNormalRaw);
-  vec3 viewNormal = vnLen > 0.0001 ? viewNormalRaw / vnLen : vec3(0.0, 0.0, 1.0);
-
-  // Encode normal to [0,1] range and output
-  // Alpha = 1.0 to prevent premultiplied alpha issues
-  gNormal = vec4(viewNormal * 0.5 + 0.5, 1.0);
-
   // Output depth buffer (same approach as Mandelbulb)
   // For hits: compute clip-space depth from first hit position
   // Scale positions back from "black hole space" to world space using Model Matrix
@@ -566,8 +552,26 @@ void main() {
     gl_FragDepth = 1.0;
   }
 
+  // MRT outputs (gNormal, gPosition) - only when NOT in single-target mode
+  // In single-target mode (gravity-enabled rendering), only gColor is output
+  // to prevent GL_INVALID_OPERATION errors on single-attachment render targets.
+  #ifndef USE_SINGLE_TARGET
+  // Compute view-space normal for deferred rendering
+  // Transform local-space normal to world-space (Inverse Transpose of Model Matrix)
+  // Then world-space to view-space
+  // Normal matrix = transpose(inverse(mat3(modelMatrix)))
+  // Since we have uModelMatrix, we can use it directly if uniform scaling
+  // For non-uniform scaling, we'd need a proper normal matrix, but scale is uniform here.
+  vec3 worldNormal = normalize(mat3(uModelMatrix) * result.averageNormal);
+  vec3 viewNormalRaw = mat3(uViewMatrix) * worldNormal;
+  float vnLen = length(viewNormalRaw);
+  vec3 viewNormal = vnLen > 0.0001 ? viewNormalRaw / vnLen : vec3(0.0, 0.0, 1.0);
+
+  // Encode normal to [0,1] range and output
+  // Alpha = 1.0 to prevent premultiplied alpha issues
+  gNormal = vec4(viewNormal * 0.5 + 0.5, 1.0);
+
   // Output world position for temporal reprojection
-  // ALWAYS write gPosition to prevent GL_INVALID_OPERATION when switching layers.
   // When temporal is OFF, this output is ignored by mainObjectMRT (count: 2).
   // When temporal is ON, this provides actual position data for reprojection.
   #ifdef USE_TEMPORAL_ACCUMULATION
@@ -579,6 +583,7 @@ void main() {
     // Dummy output when temporal is disabled (ignored by render target)
     gPosition = vec4(0.0);
   #endif
+  #endif // USE_SINGLE_TARGET
 }
 `
 

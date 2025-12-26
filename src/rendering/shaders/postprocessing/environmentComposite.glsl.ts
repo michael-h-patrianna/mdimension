@@ -44,16 +44,20 @@ export const environmentCompositeFragmentShader = /* glsl */ `
     float objDepth = texture(tMainObjectDepth, vUv).r;
 
     // Alpha blend strategy:
-    // - If object depth is at far plane (1.0), show environment only
+    // - If object depth is at far plane (1.0) AND alpha is low, show environment only
     // - Otherwise, blend based on object's alpha channel
     //
     // This allows:
     // - Wireframe polytopes: low alpha = env shows through
     // - Solid objects: alpha = 1.0 = fully opaque
     // - Semi-transparent effects: partial blending
+    // - Black hole horizon: depth=1.0 but alpha=1.0 = fully opaque black
+    //
+    // NOTE: Black hole horizon intentionally outputs depth=1.0 (far plane) to avoid
+    // SSL smearing artifacts, but outputs alpha=1.0 to remain fully opaque.
 
-    if (isAtFarPlane(objDepth)) {
-      // No object at this pixel - show environment
+    if (isAtFarPlane(objDepth) && objColor.a < 0.01) {
+      // No object at this pixel (far depth + zero alpha) - show environment
       fragColor = envColor;
     } else {
       // Object exists - blend based on alpha

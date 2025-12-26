@@ -9,7 +9,6 @@
  */
 
 import { constantsBlock } from '../shared/core/constants.glsl'
-import { precisionBlock } from '../shared/core/precision.glsl'
 import { uniformsBlock } from '../shared/core/uniforms.glsl'
 import { temporalBlock } from '../shared/features/temporal.glsl'
 import { ShaderConfig } from '../shared/types'
@@ -26,6 +25,7 @@ import { diskVolumetricBlock } from './gravity/disk-volumetric.glsl'
 import { colorsBlock } from './gravity/colors.glsl'
 import { mainBlock } from './main.glsl'
 import { blackHoleUniformsBlock } from './uniforms.glsl'
+import { blackholePrecisionBlock } from './precision.glsl'
 
 export interface BlackHoleShaderConfig extends ShaderConfig {
   /** Enable temporal accumulation (Horizon-style 1/4 res reconstruction) */
@@ -42,6 +42,13 @@ export interface BlackHoleShaderConfig extends ShaderConfig {
   volumetricDisk?: boolean
   /** PERF (OPT-BH-1): Enable pre-baked noise texture for faster disk rendering */
   noiseTexture?: boolean
+  /**
+   * Single-target rendering mode.
+   * When true, only outputs gColor (location 0). Skips gNormal/gPosition outputs.
+   * Use this when rendering to single-attachment render targets (e.g., mainObjectColor
+   * when gravity lensing is enabled) to avoid GL_INVALID_OPERATION errors.
+   */
+  singleTarget?: boolean
 }
 
 /**
@@ -63,6 +70,7 @@ export function composeBlackHoleShader(config: BlackHoleShaderConfig) {
     sliceAnimation: enableSliceAnimation = false,
     volumetricDisk: enableVolumetricDisk = true, // Default to true for now
     noiseTexture: enableNoiseTexture = true, // PERF (OPT-BH-1): Enable by default for faster rendering
+    singleTarget: enableSingleTarget = false, // Single-target mode for gravity-enabled rendering
   } = config
 
   const defines: string[] = []
@@ -71,6 +79,13 @@ export function composeBlackHoleShader(config: BlackHoleShaderConfig) {
   // Add dimension define
   defines.push(`#define DIMENSION ${dimension}`)
   features.push(`${dimension}D Black Hole`)
+
+  // Single-target mode (for gravity-enabled rendering to single-attachment targets)
+  // When enabled, only gColor is output to prevent GL_INVALID_OPERATION errors
+  if (enableSingleTarget && !overrides.includes('Single Target')) {
+    defines.push('#define USE_SINGLE_TARGET')
+    features.push('Single Target (No MRT)')
+  }
 
   // Temporal accumulation
   const useTemporalAccumulation =
@@ -143,7 +158,8 @@ uniform float uSliceAmplitude;
   const blocks = [
     // Defines first
     { name: 'Defines', content: defines.join('\n') },
-    { name: 'Precision', content: precisionBlock },
+    // Black-hole-specific precision block with conditional MRT outputs
+    { name: 'Precision', content: blackholePrecisionBlock },
     {
       name: 'Vertex Inputs',
       content: `\n// Inputs from vertex shader\nin vec3 vPosition;\nin vec2 vUv;\n`,

@@ -166,10 +166,10 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
 
     // CRITICAL: Sync shell precomputed values on mount
     // Shell center 15% outside shadow radius
-    // Shell width: use photonShellWidth setting (scaled by 5.0 so default 0.05 ≈ old 0.25)
+    // Shell width: use photonShellWidth directly (0.05 = 5% of horizon radius)
     const initVisualHorizon = computeVisualEventHorizon(bhState.horizonRadius, bhState.spin)
     const initShellRp = initVisualHorizon * 1.15
-    const initShellDelta = initVisualHorizon * bhState.photonShellWidth * 5.0
+    const initShellDelta = initVisualHorizon * bhState.photonShellWidth
     setUniform(u, 'uShellRpPrecomputed', initShellRp)
     setUniform(u, 'uShellDeltaPrecomputed', initShellDelta)
     setUniform(u, 'uShellGlowStrength', bhState.shellGlowStrength)
@@ -232,7 +232,7 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
       // CRITICAL: Sync shell precomputed values on material change
       // Without this, shell is invisible until user moves a slider
       const initShellRp = initVisualHorizon * 1.15
-      const initShellDelta = initVisualHorizon * bhState.photonShellWidth * 5.0
+      const initShellDelta = initVisualHorizon * bhState.photonShellWidth
       setUniform(u, 'uShellRpPrecomputed', initShellRp)
       setUniform(u, 'uShellDeltaPrecomputed', initShellDelta)
       setUniform(u, 'uShellGlowStrength', bhState.shellGlowStrength)
@@ -487,9 +487,8 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
     // Shell center 15% outside shadow radius (so the ring is clearly visible)
     const shellCenterOffset = 1.15
     const shellRp = visualHorizon * shellCenterOffset
-    // Shell width: use photonShellWidth UI setting (scaled by 5.0 so default 0.05 ≈ old 0.25)
-    // This makes the UI slider control the ring thickness
-    const shellDelta = visualHorizon * bhState.photonShellWidth * 5.0
+    // Shell width: use photonShellWidth directly (0.05 = 5% of horizon radius)
+    const shellDelta = visualHorizon * bhState.photonShellWidth
     setUniform(u, 'uShellRpPrecomputed', shellRp)
     setUniform(u, 'uShellDeltaPrecomputed', shellDelta)
 

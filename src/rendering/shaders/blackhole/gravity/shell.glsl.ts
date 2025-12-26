@@ -39,10 +39,21 @@ float photonShellMask(float ndRadius) {
   float Rp = uShellRpPrecomputed;
   float delta = uShellDeltaPrecomputed;
 
-  float dist = abs(ndRadius - Rp);
-  float mask = 1.0 - smoothstep(0.0, delta, dist);
+  // HARD CHECK: Shell must be OUTSIDE the visual horizon
+  // Use uShellRpPrecomputed (shell center = visualHorizon * 1.15)
+  // Require ndRadius > visualHorizon, i.e. ndRadius > Rp * 0.87
+  if (ndRadius < uShellRpPrecomputed * 0.87) {
+    return 0.0;
+  }
 
-  // Apply contrast boost for sharper ring
+  float dist = abs(ndRadius - Rp);
+
+  // Sharp ring falloff: use smoothstep with tighter inner edge
+  // Inner 30% is full intensity, outer 70% falls off
+  float innerEdge = delta * 0.3;
+  float mask = 1.0 - smoothstep(innerEdge, delta, dist);
+
+  // Apply contrast boost for even sharper ring (default 1.0 = no change)
   mask = pow(mask, 1.0 / max(uShellContrastBoost, 0.1));
 
   return mask;
@@ -56,7 +67,10 @@ float photonShellMask(float ndRadius) {
  * redundant photonShellMask() call when mask was already computed in shellStepModifier.
  */
 vec3 photonShellEmissionWithMask(float mask, vec3 pos) {
-  if (mask < 0.001) return vec3(0.0);
+  // DISABLED: Shell uses spherical geometry but visual horizon is lensing-deformed
+  // TODO: Implement lensing-aware shell that follows the apparent horizon shape
+  return vec3(0.0);
+  if (mask < 0.1) return vec3(0.0);
 
   // Starburst interference pattern
   // High frequency angular modulation
@@ -72,8 +86,8 @@ vec3 photonShellEmissionWithMask(float mask, vec3 pos) {
   float pulse = 1.0 + 0.1 * sin(uTime * 2.0);
 
   // Shell color with intensity
-  // Boosted by 3x to ensure visibility against bright Einstein ring
-  vec3 emission = uShellGlowColor * uShellGlowStrength * mask * pulse * intensityMod * 3.0;
+  // uShellGlowStrength controls visibility (default 8.0)
+  vec3 emission = uShellGlowColor * uShellGlowStrength * mask * pulse * intensityMod;
 
   return emission;
 }
@@ -99,6 +113,15 @@ vec3 photonShellEmission(float ndRadius, vec3 pos) {
  * @returns Step size modifier (1.0 = no change, <1.0 = smaller steps)
  */
 float shellStepModifierWithMask(float ndRadius, out float outMask) {
+  // HARD CHECK: No shell inside the visual horizon
+  // Use uShellRpPrecomputed (shell center = visualHorizon * 1.15)
+  // So visualHorizon ≈ uShellRpPrecomputed / 1.15
+  // Require ndRadius > visualHorizon, i.e. ndRadius > Rp / 1.15 = Rp * 0.87
+  if (ndRadius < uShellRpPrecomputed * 0.87) {
+    outMask = 0.0;
+    return 1.0;
+  }
+
   // PERF: Use precomputed values for early exit check
   // shellDelta * 2.0 gives a conservative bounding region
   if (abs(ndRadius - uShellRpPrecomputed) > uShellDeltaPrecomputed * 2.0) {
