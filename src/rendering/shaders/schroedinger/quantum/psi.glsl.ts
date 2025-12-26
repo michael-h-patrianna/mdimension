@@ -54,7 +54,8 @@ vec2 evalHarmonicOscillatorPsi(float xND[MAX_DIM], float t) {
         vec2 term = cmul(coeff, timeFactor);
 
         // Spatial eigenfunction Φ_k(x)
-        float spatial = hoND(xND, uDimension, k);
+        // Uses compile-time dimension dispatch for loop unrolling optimization
+        float spatial = hoNDOptimized(xND, k);
 
         // Accumulate: ψ += c_k · Φ_k(x) · e^{-iE_k t}
         psi += cscale(spatial, term);
@@ -166,7 +167,8 @@ float evalSpatialPhase(float xND[MAX_DIM]) {
 
         // No time factor - just spatial part
         vec2 coeff = uCoeff[k];
-        float spatial = hoND(xND, uDimension, k);
+        // Uses compile-time dimension dispatch for loop unrolling optimization
+        float spatial = hoNDOptimized(xND, k);
         psi += cscale(spatial, coeff);
     }
 
@@ -248,7 +250,8 @@ vec4 evalPsiWithSpatialPhase(float xND[MAX_DIM], float t) {
         if (k >= uTermCount) break;
 
         // Spatial eigenfunction - computed ONCE per term
-        float spatial = hoND(xND, uDimension, k);
+        // Uses compile-time dimension dispatch for loop unrolling optimization
+        float spatial = hoNDOptimized(xND, k);
 
         // Complex coefficient c_k
         vec2 coeff = uCoeff[k];

@@ -11,8 +11,8 @@
 import { ConsoleMessage, expect, Page, test } from '@playwright/test'
 import { installWebGLShaderCompileLinkGuard } from './webglShaderCompileLinkGuard'
 
-// Extended timeout for complex shader compilation
-test.setTimeout(60000)
+// Extended timeout for complex shader compilation and rendering
+test.setTimeout(120000)
 
 /** Collected console messages for verification */
 interface ErrorCollector {
@@ -112,12 +112,6 @@ test.describe('Schrödinger Tetrahedral Gradient Rendering', () => {
     // Verify canvas is visible and has content
     const canvas = page.locator('canvas').first()
     await expect(canvas).toBeVisible()
-
-    // Take screenshot for visual verification (optional baseline)
-    await page.screenshot({
-      path: 'screenshots/schroedinger-tetrahedral-gradient.png',
-      fullPage: false,
-    })
   })
 
   test('Schrödinger volumetric mode with lighting renders correctly', async ({ page }) => {

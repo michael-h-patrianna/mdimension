@@ -37,7 +37,7 @@ if (alpha > 0.001) {
 
 **Fix:** Move gradient computation inside the alpha check block.
 
-**Performance:** +15-25% FPS  
+**Performance:** +15-25% FPS
 **Quality:** None (identical output)
 
 ---
@@ -59,7 +59,7 @@ vec3 flowedPos = applyFlow(pos, t);  // Calls 2, 3, 4 - REDUNDANT
 
 **Fix:** Pass pre-flowed position to gradient function, or create `sampleDensityAtFlowedPos()` variant.
 
-**Performance:** +10-15% FPS (when curl enabled)  
+**Performance:** +10-15% FPS (when curl enabled)
 **Quality:** None
 
 ---
@@ -81,7 +81,7 @@ for (int s = 0; s < 8; s++) {
 
 **Fix:** Create `sampleDensityFast()` that skips time evolution: `evalPsi(xND, 0.0)`.
 
-**Performance:** +8-12% FPS (when shadows enabled)  
+**Performance:** +8-12% FPS (when shadows enabled)
 **Quality:** Imperceptible (shadow timing slightly off)
 
 ---
@@ -102,7 +102,7 @@ for (int j = 0; j < MAX_DIM; j++) {  // MAX_DIM = 11
 
 **Fix:** Compile dimension-specific shader variants (already done for hydrogenND, not for HO mode). Add `#define ACTUAL_DIM 4` at compile time.
 
-**Performance:** +10-20% FPS (for 3D/4D mode)  
+**Performance:** +10-20% FPS (for 3D/4D mode)
 **Quality:** None
 
 ---
@@ -124,9 +124,9 @@ float alpha = sqrt(max(uOmega[j], 0.01));  // First computation
 float alpha = sqrt(max(omega, 0.01));  // SAME computation again
 ```
 
-**Fix:** Cache alpha values in first loop, pass to ho1D. Or precompute on CPU.
+**Fix:** Cache alpha values in first loop, pass to ho1D.
 
-**Performance:** +8-12% FPS  
+**Performance:** +8-12% FPS
 **Quality:** None
 
 ---
@@ -156,7 +156,7 @@ const vec3 AO_OFFSETS[8] = vec3[8](
 vec3 dir = normalize(n + t1 * AO_OFFSETS[k].x + t2 * AO_OFFSETS[k].y);
 ```
 
-**Performance:** +3-5% FPS (when AO enabled)  
+**Performance:** +3-5% FPS (when AO enabled)
 **Quality:** None
 
 ---
@@ -175,7 +175,7 @@ return vec4(psiTime, spatialPhase, 0.0);
 
 **Fix:** Make conditional: `uColorAlgorithm >= 8 || uEmissionPulsing`, or compile-time define.
 
-**Performance:** +5-8% FPS (when not using phase coloring)  
+**Performance:** +5-8% FPS (when not using phase coloring)
 **Quality:** None
 
 ---
@@ -195,7 +195,7 @@ vec2 cexp_i(float theta) {
 
 **Fix:** Some GLSL compilers auto-fuse. For others, manual optimization or compute sin then `cos = sqrt(1-sin²)`.
 
-**Performance:** +2-4% FPS  
+**Performance:** +2-4% FPS
 **Quality:** None
 
 ---
@@ -218,7 +218,7 @@ float x2 = x * x;
 return F0 + (1.0 - F0) * x2 * x2 * x;  // 4 muls vs log/exp
 ```
 
-**Performance:** +2-4% FPS  
+**Performance:** +2-4% FPS
 **Quality:** None
 
 ---
@@ -243,7 +243,7 @@ float dist = length(toLight);
 vec3 l = toLight / dist;
 ```
 
-**Performance:** +2-4% FPS  
+**Performance:** +2-4% FPS
 **Quality:** None
 
 ---
@@ -258,7 +258,7 @@ vec3 l = toLight / dist;
 
 **Fix:** Fuse: `xND[j] = (uOrigin[j] + flowedPos.x * uBasisX[j] + ...) * uFieldScale`
 
-**Performance:** +3-5% FPS  
+**Performance:** +3-5% FPS
 **Quality:** None
 
 ---
@@ -271,7 +271,7 @@ vec3 l = toLight / dist;
 
 **Fix:** Extract `mapToNDCoordinates()` helper.
 
-**Performance:** +2-4% FPS (better icache)  
+**Performance:** +2-4% FPS (better icache)
 **Quality:** None
 
 ---
@@ -284,7 +284,7 @@ vec3 l = toLight / dist;
 
 **Fix:** Pass `animTime` to `computeEmissionLit()`.
 
-**Performance:** +1-2% FPS  
+**Performance:** +1-2% FPS
 **Quality:** None
 
 ---
@@ -297,7 +297,7 @@ vec3 l = toLight / dist;
 
 **Fix:** Add `float sCenter` parameter to `computeBaseColor()`.
 
-**Performance:** +2-3% FPS (saves log() per sample)  
+**Performance:** +2-3% FPS (saves log() per sample)
 **Quality:** None
 
 ---
@@ -310,7 +310,7 @@ vec3 l = toLight / dist;
 
 **Fix:** `denom * sqrt(denom)`
 
-**Performance:** +1-2% FPS  
+**Performance:** +1-2% FPS
 **Quality:** None
 
 ---
@@ -323,7 +323,7 @@ vec3 l = toLight / dist;
 
 **Fix:** `1.0 / (Temp * sqrt(Temp))`
 
-**Performance:** +0.5-1% FPS  
+**Performance:** +0.5-1% FPS
 **Quality:** None
 
 ---
@@ -336,7 +336,7 @@ vec3 l = toLight / dist;
 
 **Fix:** Cache and reuse normalized value.
 
-**Performance:** +1-2% FPS  
+**Performance:** +1-2% FPS
 **Quality:** None
 
 ---
@@ -349,7 +349,7 @@ vec3 l = toLight / dist;
 
 **Fix:** Move before light loop.
 
-**Performance:** +2-3% FPS (with multiple lights)  
+**Performance:** +2-3% FPS (with multiple lights)
 **Quality:** None
 
 ---
@@ -362,7 +362,7 @@ vec3 l = toLight / dist;
 
 **Fix:** Compute once in caller, pass as parameters.
 
-**Performance:** +2-3% FPS  
+**Performance:** +2-3% FPS
 **Quality:** None
 
 ---
@@ -375,7 +375,7 @@ vec3 l = toLight / dist;
 
 **Fix:** Cache before loop: `float fm = float(absM);`
 
-**Performance:** +1-2% FPS (hydrogen mode)  
+**Performance:** +1-2% FPS (hydrogen mode)
 **Quality:** None
 
 ---
@@ -419,7 +419,7 @@ float spatialPhase = atan(psi0.y, psi0.x);
 
 **Fix:** `evalHydrogenPsiTime` internally calls `evalHydrogenPsi` and applies time factor. Refactor to share the base computation.
 
-**Performance:** +5-10% FPS (hydrogen mode)  
+**Performance:** +5-10% FPS (hydrogen mode)
 **Quality:** None
 
 ---
@@ -438,7 +438,7 @@ float rho_xy = sqrt(pos.x * pos.x + pos.y * pos.y);       // sqrt(x² + y²) - R
 
 **Fix:** Compute x²+y² once, reuse: `float xy2 = pos.x*pos.x + pos.y*pos.y; float rho_xy = sqrt(xy2); float r = sqrt(xy2 + pos.z*pos.z);`
 
-**Performance:** +1-2% FPS (hydrogen mode)  
+**Performance:** +1-2% FPS (hydrogen mode)
 **Quality:** None
 
 ---
@@ -459,7 +459,7 @@ else if (uColorAlgorithm == 2) { ... }
 
 **Fix:** Use compile-time `#define COLOR_ALGORITHM N` and `#if` blocks, since color algorithm rarely changes mid-render.
 
-**Performance:** +3-5% FPS  
+**Performance:** +3-5% FPS
 **Quality:** None
 
 ---
@@ -477,7 +477,7 @@ return vec3(hue2rgb(p, q, hsl.x + 0.33333), hue2rgb(p, q, hsl.x), hue2rgb(p, q, 
 
 **Fix:** Inline and use branchless formulation: `max(0, min(1, abs(fract(h + offset) * 6 - 3) - 1))`.
 
-**Performance:** +2-4% FPS (when using HSL coloring)  
+**Performance:** +2-4% FPS (when using HSL coloring)
 **Quality:** None
 
 ---
@@ -501,7 +501,7 @@ if (mipF == 0.0) {
 
 **Fix:** Use hardware trilinear filtering by computing single fractional mip level. Or snap to nearest mip for fast mode.
 
-**Performance:** +3-5% FPS (when IBL enabled)  
+**Performance:** +3-5% FPS (when IBL enabled)
 **Quality:** Minor (slightly blocky reflections)
 
 ---
@@ -514,7 +514,7 @@ if (mipF == 0.0) {
 
 **Fix:** Use arithmetic: `face = step(abs.x, abs.z) * (step(abs.z, abs.y) * (4.0 - step(0.0, dir.y)) + ...) + ...`
 
-**Performance:** +1-2% FPS (when IBL enabled)  
+**Performance:** +1-2% FPS (when IBL enabled)
 **Quality:** None
 
 ---
@@ -527,7 +527,7 @@ if (mipF == 0.0) {
 
 **Fix:** Use indexing with precomputed swizzle patterns or branchless formulation.
 
-**Performance:** +1-2% FPS (when IBL enabled)  
+**Performance:** +1-2% FPS (when IBL enabled)
 **Quality:** None
 
 ---
@@ -546,7 +546,7 @@ float r3D = radius3D(x0, x1, x2);                  // Recomputes x0² + x1² + x
 
 **Fix:** `float r3D_sq = x0*x0 + x1*x1 + x2*x2; float r3D = sqrt(r3D_sq); float rND = sqrt(r3D_sq + x3*x3 + ...);`
 
-**Performance:** +2-4% FPS (hydrogenND mode)  
+**Performance:** +2-4% FPS (hydrogenND mode)
 **Quality:** None
 
 ---
@@ -559,7 +559,7 @@ float r3D = radius3D(x0, x1, x2);                  // Recomputes x0² + x1² + x
 
 **Fix:** Precompute `sqrt(uExtraDimOmega[i])` on CPU, pass as uniform array.
 
-**Performance:** +2-3% FPS (hydrogenND mode with many extra dims)  
+**Performance:** +2-3% FPS (hydrogenND mode with many extra dims)
 **Quality:** None
 
 ---
@@ -583,7 +583,7 @@ for(int k=-1; k<=1; k++) {
 
 **Fix:** Use 2D Worley slice (9 cells) when erosion quality is low. Or use hash-based approximation.
 
-**Performance:** +5-10% FPS (when erosion enabled with Worley)  
+**Performance:** +5-10% FPS (when erosion enabled with Worley)
 **Quality:** Minor (less accurate cell boundaries)
 
 ---
@@ -596,7 +596,7 @@ for(int k=-1; k<=1; k++) {
 
 **Fix:** Use cheaper hash (integer-based) or precomputed noise texture.
 
-**Performance:** +3-5% FPS (when curl/erosion enabled)  
+**Performance:** +3-5% FPS (when curl/erosion enabled)
 **Quality:** None (still random)
 
 ---
@@ -617,7 +617,7 @@ float n0 = gradientNoise(p);
 
 **Fix:** Use analytical curl noise that computes gradient directly, or use simplex noise which has better derivative properties.
 
-**Performance:** +5-8% FPS (when curl enabled)  
+**Performance:** +5-8% FPS (when curl enabled)
 **Quality:** None
 
 ---
@@ -630,7 +630,7 @@ float n0 = gradientNoise(p);
 
 **Fix:** Use lookup table for common l,m pairs (l ≤ 3 covers 90% of cases).
 
-**Performance:** +2-4% FPS (hydrogen mode with high l)  
+**Performance:** +2-4% FPS (hydrogen mode with high l)
 **Quality:** None
 
 ---
@@ -643,7 +643,7 @@ float n0 = gradientNoise(p);
 
 **Fix:** Precompute factorial LUT: `const float FACTORIAL[8] = float[8](1, 1, 2, 6, 24, 120, 720, 5040);`
 
-**Performance:** +1-2% FPS (hydrogen mode)  
+**Performance:** +1-2% FPS (hydrogen mode)
 **Quality:** None
 
 ---
@@ -661,7 +661,7 @@ if ((absM & 1) == 1) pmm = -pmm;
 
 **Fix:** Use `pmm *= 1.0 - 2.0 * float(absM & 1);` or precompute sign.
 
-**Performance:** +0.5-1% FPS  
+**Performance:** +0.5-1% FPS
 **Quality:** None
 
 ---
@@ -674,7 +674,7 @@ if ((absM & 1) == 1) pmm = -pmm;
 
 **Fix:** When phase not needed, only compute `psiTime`.
 
-**Performance:** +3-5% FPS (HO mode without phase coloring)  
+**Performance:** +3-5% FPS (HO mode without phase coloring)
 **Quality:** None
 
 ---
@@ -687,7 +687,7 @@ if ((absM & 1) == 1) pmm = -pmm;
 
 **Fix:** Use a single loop with early exit: `for (int i = n; i >= 0; i--) result = result * u + COEFFS[offset + i];`
 
-**Performance:** +2-3% FPS  
+**Performance:** +2-3% FPS
 **Quality:** None
 
 ---
@@ -700,7 +700,7 @@ if ((absM & 1) == 1) pmm = -pmm;
 
 **Fix:** Check `uNumLights == 0` before computing `surfaceColor` for the fast path.
 
-**Performance:** +1-2% FPS (ambient-only mode)  
+**Performance:** +1-2% FPS (ambient-only mode)
 **Quality:** None
 
 ---
@@ -720,7 +720,7 @@ float curved = pow(safeBase, safePower);
 
 **Fix:** Fast path: `if (abs(power - 1.0) < 0.01) return fract(clamped * cycles + offset);`
 
-**Performance:** +1-2% FPS  
+**Performance:** +1-2% FPS
 **Quality:** None
 
 ---
@@ -733,7 +733,7 @@ float curved = pow(safeBase, safePower);
 
 **Fix:** Use `out` parameters instead of struct return, or ensure compiler inlines the struct construction.
 
-**Performance:** +1-2% FPS  
+**Performance:** +1-2% FPS
 **Quality:** None
 
 ---

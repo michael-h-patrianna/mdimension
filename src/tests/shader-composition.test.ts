@@ -133,6 +133,179 @@ describe('Schrödinger Shader Composition - Dimension-Specific Optimization', ()
   });
 });
 
+describe('Schrödinger Shader Composition - HO Loop Unrolling Optimization', () => {
+  const baseConfig = {
+    shadows: false,
+    temporal: false,
+    ambientOcclusion: false,
+    overrides: [] as string[],
+  };
+
+  it('should include ACTUAL_DIM define for all quantum modes', () => {
+    // Harmonic oscillator mode
+    const hoResult = composeSchroedingerShader({
+      ...baseConfig,
+      dimension: 4,
+      quantumMode: 'harmonicOscillator',
+    });
+    expect(hoResult.glsl).toContain('#define ACTUAL_DIM 4');
+
+    // Hydrogen orbital mode
+    const hydrogenResult = composeSchroedingerShader({
+      ...baseConfig,
+      dimension: 5,
+      quantumMode: 'hydrogenOrbital',
+    });
+    expect(hydrogenResult.glsl).toContain('#define ACTUAL_DIM 5');
+
+    // Hydrogen ND mode
+    const hydrogenNDResult = composeSchroedingerShader({
+      ...baseConfig,
+      dimension: 6,
+      quantumMode: 'hydrogenND',
+    });
+    expect(hydrogenNDResult.glsl).toContain('#define ACTUAL_DIM 6');
+  });
+
+  it('should include dimension-specific HO ND variant for dimension 3', () => {
+    const result = composeSchroedingerShader({
+      ...baseConfig,
+      dimension: 3,
+      quantumMode: 'harmonicOscillator',
+    });
+
+    expect(result.modules).toContain('HO ND 3D');
+    expect(result.modules).toContain('HO ND Dispatch');
+    expect(result.modules).not.toContain('HO ND 4D');
+    expect(result.modules).not.toContain('HO ND 5D');
+    expect(result.glsl).toContain('#define ACTUAL_DIM 3');
+    expect(result.glsl).toContain('float hoND3D(');
+    expect(result.glsl).toContain('hoNDOptimized');
+  });
+
+  it('should include dimension-specific HO ND variant for dimension 4', () => {
+    const result = composeSchroedingerShader({
+      ...baseConfig,
+      dimension: 4,
+      quantumMode: 'harmonicOscillator',
+    });
+
+    expect(result.modules).toContain('HO ND 4D');
+    expect(result.modules).not.toContain('HO ND 3D');
+    expect(result.modules).not.toContain('HO ND 5D');
+    expect(result.glsl).toContain('#define ACTUAL_DIM 4');
+    expect(result.glsl).toContain('float hoND4D(');
+  });
+
+  it('should include dimension-specific HO ND variant for dimension 11', () => {
+    const result = composeSchroedingerShader({
+      ...baseConfig,
+      dimension: 11,
+      quantumMode: 'harmonicOscillator',
+    });
+
+    expect(result.modules).toContain('HO ND 11D');
+    expect(result.modules).not.toContain('HO ND 10D');
+    expect(result.glsl).toContain('#define ACTUAL_DIM 11');
+    expect(result.glsl).toContain('float hoND11D(');
+  });
+
+  it('should clamp ACTUAL_DIM to valid range (3-11)', () => {
+    // Test lower bound
+    const lowResult = composeSchroedingerShader({
+      ...baseConfig,
+      dimension: 1,
+      quantumMode: 'harmonicOscillator',
+    });
+    expect(lowResult.glsl).toContain('#define ACTUAL_DIM 3');
+    expect(lowResult.modules).toContain('HO ND 3D');
+
+    // Test upper bound
+    const highResult = composeSchroedingerShader({
+      ...baseConfig,
+      dimension: 20,
+      quantumMode: 'harmonicOscillator',
+    });
+    expect(highResult.glsl).toContain('#define ACTUAL_DIM 11');
+    expect(highResult.modules).toContain('HO ND 11D');
+  });
+
+  it('should include hoNDOptimized dispatcher that directly calls dimension-specific variant', () => {
+    const result = composeSchroedingerShader({
+      ...baseConfig,
+      dimension: 5,
+      quantumMode: 'harmonicOscillator',
+    });
+
+    // Check that the dispatch function directly calls the dimension-specific variant
+    // (no preprocessor conditionals - following mandelbulb pattern)
+    expect(result.glsl).toContain('float hoNDOptimized(float xND[MAX_DIM], int termIdx)');
+    expect(result.glsl).toContain('return hoND5D(xND, termIdx);');
+  });
+
+  it('should generate dimension-specific mapPosToND function', () => {
+    const result4D = composeSchroedingerShader({
+      ...baseConfig,
+      dimension: 4,
+      quantumMode: 'harmonicOscillator',
+    });
+
+    // Check that mapPosToND is generated for dimension 4 (no preprocessor conditionals)
+    expect(result4D.glsl).toContain('void mapPosToND(vec3 pos, out float xND[MAX_DIM])');
+    expect(result4D.glsl).toContain('xND[3] ='); // 4D includes index 3
+    expect(result4D.modules).toContain('Density mapPosToND (4D)');
+
+    const result5D = composeSchroedingerShader({
+      ...baseConfig,
+      dimension: 5,
+      quantumMode: 'harmonicOscillator',
+    });
+
+    // Check that dimension 5 includes index 4
+    expect(result5D.glsl).toContain('xND[4] =');
+    expect(result5D.modules).toContain('Density mapPosToND (5D)');
+  });
+
+  it('should use hoNDOptimized in evalHarmonicOscillatorPsi', () => {
+    const result = composeSchroedingerShader({
+      ...baseConfig,
+      dimension: 4,
+      quantumMode: 'harmonicOscillator',
+    });
+
+    // The psi evaluation should use the optimized version
+    expect(result.glsl).toContain('float spatial = hoNDOptimized(xND, k)');
+  });
+
+  it('should use mapPosToND in sampleDensity', () => {
+    const result = composeSchroedingerShader({
+      ...baseConfig,
+      dimension: 4,
+      quantumMode: 'harmonicOscillator',
+    });
+
+    // The density sampling should use the optimized mapping
+    expect(result.glsl).toContain('mapPosToND(flowedPos, xND)');
+  });
+
+  it('should include only one HO ND dimension variant per compilation', () => {
+    for (let dim = 3; dim <= 11; dim++) {
+      const result = composeSchroedingerShader({
+        ...baseConfig,
+        dimension: dim,
+        quantumMode: 'harmonicOscillator',
+      });
+
+      // Count how many HO ND dimension modules are included
+      const hoNDModules = result.modules.filter(
+        (m: string) => m.startsWith('HO ND ') && m !== 'HO ND Dispatch'
+      );
+      expect(hoNDModules).toHaveLength(1);
+      expect(hoNDModules[0]).toBe(`HO ND ${dim}D`);
+    }
+  });
+});
+
 describe('Schrödinger Shader Composition - Quantum Volume Effects', () => {
   const baseConfig = {
     dimension: 4,

@@ -161,8 +161,9 @@ VolumeResult volumeRaymarch(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar
 
         vec3 pos = rayOrigin + rayDir * t;
 
+#ifdef USE_DISPERSION
+        // DISPERSION PATH: Need gradient for R/B channel extrapolation before alpha check
         // Combined density+gradient via tetrahedral sampling (4 samples total)
-        // More accurate O(h^2) gradient with same sample count as before
         TetraSample tetra = sampleWithTetrahedralGradient(pos, animTime, 0.05);
         float rho = tetra.rho;
         float sCenter = tetra.s;
@@ -177,7 +178,6 @@ VolumeResult volumeRaymarch(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar
             lowDensityCount = 0;
         }
 
-#ifdef USE_DISPERSION
         // Chromatic Dispersion: compute per-channel densities BEFORE alpha check
         // This matches HQ mode structure - dispersion can make R/B visible even when center is dim
         vec3 rhoRGB = vec3(rho);
@@ -243,7 +243,21 @@ VolumeResult volumeRaymarch(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar
             transmittance3 *= (vec3(1.0) - alpha3);
         }
 #else
-        // Non-dispersion path: scalar alpha for better performance
+        // NON-DISPERSION PATH: LAZY GRADIENT - only compute when visible
+        // Step 1: Quick density check (1 sample instead of 4)
+        vec3 densityInfo = sampleDensityWithPhase(pos, animTime);
+        float rho = densityInfo.x;
+        float sCenter = densityInfo.y;
+        float phase = densityInfo.z;
+
+        // Early exit if density is consistently low (harmonic oscillator only)
+        if (allowEarlyExit && rho < MIN_DENSITY) {
+            lowDensityCount++;
+            if (lowDensityCount > 5) break;
+        } else {
+            lowDensityCount = 0;
+        }
+
         float rhoAlpha = rho;
 #ifdef USE_NODAL
         if (uNodalEnabled) {
@@ -265,6 +279,9 @@ VolumeResult volumeRaymarch(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar
             float weight = alpha * transmittance;
             centroidSum += pos * weight;
             centroidWeight += weight;
+
+            // Step 2: Compute gradient only for visible samples (4 samples)
+            vec3 gradient = computeGradientTetrahedral(pos, animTime, 0.05);
 
             // Compute emission with lighting
             vec3 emission = computeEmissionLit(rho, phase, pos, gradient, viewDir);
@@ -348,6 +365,7 @@ VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tF
         vec3 pos = rayOrigin + rayDir * t;
 
 #ifdef USE_DISPERSION
+        // DISPERSION PATH: Need gradient for R/B channel extrapolation before alpha check
         // Radial dispersion update per sample
         if (uDispersionEnabled && uDispersionDirection == 0) {
              vec3 normalProxy = normalize(pos); // From center
@@ -355,10 +373,8 @@ VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tF
              dispOffsetR = normalProxy * dispAmount;
              dispOffsetB = -normalProxy * dispAmount;
         }
-#endif
 
         // Combined density+gradient via tetrahedral sampling (4 samples total)
-        // More accurate O(h^2) gradient with same sample count as before
         TetraSample tetra = sampleWithTetrahedralGradient(pos, animTime, 0.05);
         float rho = tetra.rho;
         float sCenter = tetra.s;
@@ -368,7 +384,6 @@ VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tF
         // Chromatic Dispersion Logic
         vec3 rhoRGB = vec3(rho); // Default: all channels same
 
-#ifdef USE_DISPERSION
         if (uDispersionEnabled && uDispersionStrength > 0.0) {
              // Force gradient hack when in fast mode (during rotation)
              // Full sampling (3x density evaluations) is too expensive for interactive use
@@ -387,21 +402,13 @@ VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tF
                  rhoRGB.b = exp(s_b);
              }
         }
-#endif
 
         // Nodal Surface Opacity Boost
-        // We calculate a separate density for alpha/opacity to make nodes visible (opaque)
-        // while keeping the original density for emission color logic (so it knows it's a node)
         vec3 rhoAlpha = rhoRGB;
 
 #ifdef USE_NODAL
         if (uNodalEnabled) {
-            // Use raw log-density for robust detection of nodal shells
-            // Range: -12 (approx 6e-6) to -5 (approx 0.006)
-            // This captures the transition zone around nodes without hitting background noise
             if (sCenter < -5.0 && sCenter > -12.0) {
-                // Boost factor: stronger when density is lower (closer to node core)
-                // 1.0 at s=-12, 0.0 at s=-5
                 float intensity = 1.0 - smoothstep(-12.0, -5.0, sCenter);
                 float boost = 5.0 * uNodalStrength * intensity;
                 rhoAlpha += vec3(boost);
@@ -422,7 +429,6 @@ VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tF
             }
 
             // CENTROID ACCUMULATION
-            // Use average alpha/transmittance for weighting
             float avgAlpha = (alpha.r + alpha.g + alpha.b) / 3.0;
             float avgTrans = (transmittance.r + transmittance.g + transmittance.b) / 3.0;
             float weight = avgAlpha * avgTrans;
@@ -430,8 +436,6 @@ VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tF
             centroidWeight += weight;
 
             // Compute emission using ORIGINAL density (rhoRGB) so coloring logic works
-            // Use Green channel as representative for center
-            // Note: gradient was computed earlier and is reused here (no redundant computation)
             vec3 emissionCenter = computeEmissionLit(rhoRGB.g, phase, pos, gradient, viewDir);
 
             // Modulate emission for R/B channels based on their density relative to G
@@ -443,6 +447,55 @@ VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tF
             accColor += transmittance * alpha * emission;
             transmittance *= (vec3(1.0) - alpha);
         }
+#else
+        // NON-DISPERSION PATH: LAZY GRADIENT - only compute when visible
+        // Step 1: Quick density check (1 sample instead of 4)
+        vec3 densityInfo = sampleDensityWithPhase(pos, animTime);
+        float rho = densityInfo.x;
+        float sCenter = densityInfo.y;
+        float phase = densityInfo.z;
+
+        vec3 rhoAlpha = vec3(rho);
+
+#ifdef USE_NODAL
+        if (uNodalEnabled) {
+            if (sCenter < -5.0 && sCenter > -12.0) {
+                float intensity = 1.0 - smoothstep(-12.0, -5.0, sCenter);
+                float boost = 5.0 * uNodalStrength * intensity;
+                rhoAlpha += vec3(boost);
+            }
+        }
+#endif
+
+        // Alpha per channel (uniform since no dispersion)
+        vec3 alpha;
+        alpha.r = computeAlpha(rhoAlpha.r, stepLen, uDensityGain);
+        alpha.g = computeAlpha(rhoAlpha.g, stepLen, uDensityGain);
+        alpha.b = computeAlpha(rhoAlpha.b, stepLen, uDensityGain);
+
+        if (alpha.g > 0.001 || alpha.r > 0.001 || alpha.b > 0.001) {
+            // Track entry point (use Green/Center channel)
+            if (entryT < 0.0 && alpha.g > ENTRY_ALPHA_THRESHOLD) {
+                entryT = t;
+            }
+
+            // CENTROID ACCUMULATION
+            float avgAlpha = (alpha.r + alpha.g + alpha.b) / 3.0;
+            float avgTrans = (transmittance.r + transmittance.g + transmittance.b) / 3.0;
+            float weight = avgAlpha * avgTrans;
+            centroidSum += pos * weight;
+            centroidWeight += weight;
+
+            // Step 2: Compute gradient only for visible samples (4 samples)
+            vec3 gradient = computeGradientTetrahedral(pos, animTime, 0.05);
+
+            // Compute emission (all channels same density since no dispersion)
+            vec3 emission = computeEmissionLit(rho, phase, pos, gradient, viewDir);
+
+            accColor += transmittance * alpha * emission;
+            transmittance *= (vec3(1.0) - alpha);
+        }
+#endif
 
         t += stepLen;
     }

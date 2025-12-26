@@ -11,7 +11,11 @@
  * This compresses the large range of ρ values and provides
  * better numerical stability for gradient computation.
  */
-export const densityBlock = `
+
+/**
+ * First part of density block - noise and flow functions (before mapPosToND)
+ */
+export const densityPreMapBlock = `
 // ============================================
 // Noise & Erosion Functions
 // ============================================
@@ -186,7 +190,46 @@ vec3 applyFlow(vec3 pos, float t) {
 #else
 vec3 applyFlow(vec3 pos, float t) { return pos; }
 #endif
+`
 
+/**
+ * Generate dimension-specific mapPosToND function.
+ * Following mandelbulb pattern: generate exact code at JS level, no preprocessor conditionals.
+ * @param dimension - The dimension (3-11)
+ * @returns GLSL mapPosToND function for the specified dimension
+ */
+export function generateMapPosToND(dimension: number): string {
+  const dim = Math.min(Math.max(dimension, 3), 11)
+  
+  // Generate unrolled coordinate assignments
+  const assignments = []
+  for (let j = 0; j < dim; j++) {
+    assignments.push(`    xND[${j}] = (uOrigin[${j}] + pos.x*uBasisX[${j}] + pos.y*uBasisY[${j}] + pos.z*uBasisZ[${j}]) * uFieldScale;`)
+  }
+  
+  // Zero out remaining dimensions if not at MAX_DIM
+  const zeroLoop = dim < 11 
+    ? `\n    for (int j = ${dim}; j < MAX_DIM; j++) xND[j] = 0.0;`
+    : ''
+  
+  return `
+// ============================================
+// Dimension-Specific Coordinate Mapping (Unrolled)
+// Dimension: ${dim}
+// ============================================
+
+// Maps 3D position to ND coordinates using rotated basis vectors.
+// Unrolled for dimension ${dim} - no runtime branching.
+void mapPosToND(vec3 pos, out float xND[MAX_DIM]) {
+${assignments.join('\n')}${zeroLoop}
+}
+`
+}
+
+/**
+ * Second part of density block - density calculations (after mapPosToND)
+ */
+export const densityPostMapBlock = `
 // ============================================
 // Density Field Calculations
 // ============================================
@@ -219,24 +262,9 @@ float sampleDensity(vec3 pos, float t) {
     // We warp the sampling position 'pos' before mapping to ND space
     vec3 flowedPos = applyFlow(pos, t);
 
-    // Map 3D position to ND coordinates
+    // Map 3D position to ND coordinates (uses unrolled dimension-specific mapping)
     float xND[MAX_DIM];
-    for (int j = 0; j < MAX_DIM; j++) {
-        if (j >= uDimension) {
-            xND[j] = 0.0;
-        } else {
-            xND[j] = uOrigin[j]
-                   + flowedPos.x * uBasisX[j]
-                   + flowedPos.y * uBasisY[j]
-                   + flowedPos.z * uBasisZ[j];
-        }
-    }
-
-    // Scale coordinates by field scale
-    for (int j = 0; j < MAX_DIM; j++) {
-        if (j >= uDimension) break;
-        xND[j] *= uFieldScale;
-    }
+    mapPosToND(flowedPos, xND);
 
     // Evaluate wavefunction and density
     vec2 psi = evalPsi(xND, t);
@@ -294,24 +322,9 @@ vec3 sampleDensityWithPhase(vec3 pos, float t) {
     // Apply Animated Flow (Curl Noise)
     vec3 flowedPos = applyFlow(pos, t);
 
-    // Map 3D position to ND coordinates
+    // Map 3D position to ND coordinates (uses unrolled dimension-specific mapping)
     float xND[MAX_DIM];
-    for (int j = 0; j < MAX_DIM; j++) {
-        if (j >= uDimension) {
-            xND[j] = 0.0;
-        } else {
-            xND[j] = uOrigin[j]
-                   + flowedPos.x * uBasisX[j]
-                   + flowedPos.y * uBasisY[j]
-                   + flowedPos.z * uBasisZ[j];
-        }
-    }
-
-    // Scale coordinates
-    for (int j = 0; j < MAX_DIM; j++) {
-        if (j >= uDimension) break;
-        xND[j] *= uFieldScale;
-    }
+    mapPosToND(flowedPos, xND);
 
     // OPTIMIZED: Single-pass evaluation for both time-dependent density and spatial phase
     // This avoids calling hoND() twice per sample point
@@ -372,4 +385,24 @@ vec3 sampleDensityWithPhase(vec3 pos, float t) {
 
     return vec3(rho, s, spatialPhase);
 }
-`;
+`
+
+/**
+ * Legacy combined block - kept for backwards compatibility
+ * @deprecated Use densityPreMapBlock + generateMapPosToND(dim) + densityPostMapBlock instead
+ */
+export const densityBlock = densityPreMapBlock + `
+// Fallback: generic loop-based mapping
+void mapPosToND(vec3 pos, out float xND[MAX_DIM]) {
+    for (int j = 0; j < MAX_DIM; j++) {
+        if (j >= uDimension) {
+            xND[j] = 0.0;
+        } else {
+            xND[j] = (uOrigin[j]
+                   + pos.x * uBasisX[j]
+                   + pos.y * uBasisY[j]
+                   + pos.z * uBasisZ[j]) * uFieldScale;
+        }
+    }
+}
+` + densityPostMapBlock

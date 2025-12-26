@@ -26,9 +26,21 @@ import { sphereIntersectBlock } from '../shared/raymarch/sphere-intersect.glsl'
 import { ShaderConfig } from '../shared/types'
 import { mainBlock, mainBlockIsosurface } from './main.glsl'
 import { complexMathBlock } from './quantum/complex.glsl'
-import { densityBlock } from './quantum/density.glsl'
+import { densityPreMapBlock, generateMapPosToND, densityPostMapBlock } from './quantum/density.glsl'
 import { hermiteBlock } from './quantum/hermite.glsl'
 import { ho1dBlock } from './quantum/ho1d.glsl'
+import {
+  hoND3dBlock,
+  hoND4dBlock,
+  hoND5dBlock,
+  hoND6dBlock,
+  hoND7dBlock,
+  hoND8dBlock,
+  hoND9dBlock,
+  hoND10dBlock,
+  hoND11dBlock,
+  generateHoNDDispatchBlock,
+} from './quantum/hoNDVariants.glsl'
 import {
   hydrogenND10dBlock,
   hydrogenND11dBlock,
@@ -117,6 +129,11 @@ export function composeSchroedingerShader(config: SchroedingerShaderConfig) {
     // Add dimension-specific define to eliminate runtime dispatch
     defines.push(`#define HYDROGEN_ND_DIMENSION ${hydrogenNDDimension}`)
   }
+
+  // Add compile-time dimension define for loop unrolling in hoND and density mapping
+  // This eliminates runtime branching in hot loops (GPU can't branch-predict early exit)
+  const actualDim = Math.min(Math.max(dimension, 3), 11)
+  defines.push(`#define ACTUAL_DIM ${actualDim}`)
 
   features.push('Quantum Volume')
   features.push('Beer-Lambert')
@@ -223,6 +240,22 @@ export function composeSchroedingerShader(config: SchroedingerShaderConfig) {
     { name: 'Hermite Polynomials', content: hermiteBlock },
     { name: 'HO 1D Eigenfunction', content: ho1dBlock },
 
+    // HO ND dimension-specific variants (unrolled for performance)
+    // Only include the specific dimension block needed to reduce shader size
+    // HO ND dimension-specific variant (only ONE is included based on actualDim)
+    // Pattern follows mandelbulb: pick exact block, dispatch directly calls it
+    { name: 'HO ND 3D', content: hoND3dBlock, condition: actualDim === 3 },
+    { name: 'HO ND 4D', content: hoND4dBlock, condition: actualDim === 4 },
+    { name: 'HO ND 5D', content: hoND5dBlock, condition: actualDim === 5 },
+    { name: 'HO ND 6D', content: hoND6dBlock, condition: actualDim === 6 },
+    { name: 'HO ND 7D', content: hoND7dBlock, condition: actualDim === 7 },
+    { name: 'HO ND 8D', content: hoND8dBlock, condition: actualDim === 8 },
+    { name: 'HO ND 9D', content: hoND9dBlock, condition: actualDim === 9 },
+    { name: 'HO ND 10D', content: hoND10dBlock, condition: actualDim === 10 },
+    { name: 'HO ND 11D', content: hoND11dBlock, condition: actualDim === 11 },
+    // Generated dispatch: directly calls hoND${actualDim}D without preprocessor conditionals
+    { name: 'HO ND Dispatch', content: generateHoNDDispatchBlock(actualDim) },
+
     // Hydrogen orbital basis functions (conditionally included)
     { name: 'Laguerre Polynomials', content: laguerreBlock, condition: includeHydrogen },
     { name: 'Legendre Polynomials', content: legendreBlock, condition: includeHydrogen },
@@ -281,7 +314,12 @@ export function composeSchroedingerShader(config: SchroedingerShaderConfig) {
 
     // Unified wavefunction evaluation (mode-switching)
     { name: 'Wavefunction (Psi)', content: psiBlock },
-    { name: 'Density Field', content: densityBlock },
+    
+    // Density field blocks - split for dimension-specific mapPosToND generation
+    // Following mandelbulb pattern: generate exact code at JS level, no preprocessor conditionals
+    { name: 'Density Pre-Map', content: densityPreMapBlock },
+    { name: `Density mapPosToND (${actualDim}D)`, content: generateMapPosToND(actualDim) },
+    { name: 'Density Post-Map', content: densityPostMapBlock },
 
     // Color system
     { name: 'Color (HSL)', content: hslBlock },
