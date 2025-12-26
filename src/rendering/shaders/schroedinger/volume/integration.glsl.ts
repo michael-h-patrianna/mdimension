@@ -95,6 +95,17 @@ vec3 computeGradientTetrahedral(vec3 pos, float t, float delta) {
     return (TETRA_V0 * s0 + TETRA_V1 * s1 + TETRA_V2 * s2 + TETRA_V3 * s3) * (0.75 / delta);
 }
 
+// OPTIMIZED: Gradient at pre-flowed position (skips 4 redundant applyFlow calls)
+// Use when flowedPos is already computed from sampleDensityWithPhaseAndFlow
+vec3 computeGradientTetrahedralAtFlowedPos(vec3 flowedPos, float t, float delta) {
+    float s0 = sFromRho(sampleDensityAtFlowedPos(flowedPos + TETRA_V0 * delta, t));
+    float s1 = sFromRho(sampleDensityAtFlowedPos(flowedPos + TETRA_V1 * delta, t));
+    float s2 = sFromRho(sampleDensityAtFlowedPos(flowedPos + TETRA_V2 * delta, t));
+    float s3 = sFromRho(sampleDensityAtFlowedPos(flowedPos + TETRA_V3 * delta, t));
+    
+    return (TETRA_V0 * s0 + TETRA_V1 * s1 + TETRA_V2 * s2 + TETRA_V3 * s3) * (0.75 / delta);
+}
+
 // Main volume raymarching function (Fast Mode)
 // Now supports lighting (matched to Mandelbulb behavior) but with reduced sample count
 // When dispersion is enabled, uses vec3 transmittance for proper per-channel absorption
@@ -244,8 +255,9 @@ VolumeResult volumeRaymarch(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar
         }
 #else
         // NON-DISPERSION PATH: LAZY GRADIENT - only compute when visible
-        // Step 1: Quick density check (1 sample instead of 4)
-        vec3 densityInfo = sampleDensityWithPhase(pos, animTime);
+        // OPTIMIZED: Use sampleDensityWithPhaseAndFlow to get flowedPos for gradient reuse
+        vec3 flowedPos;
+        vec3 densityInfo = sampleDensityWithPhaseAndFlow(pos, animTime, flowedPos);
         float rho = densityInfo.x;
         float sCenter = densityInfo.y;
         float phase = densityInfo.z;
@@ -280,8 +292,8 @@ VolumeResult volumeRaymarch(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar
             centroidSum += pos * weight;
             centroidWeight += weight;
 
-            // Step 2: Compute gradient only for visible samples (4 samples)
-            vec3 gradient = computeGradientTetrahedral(pos, animTime, 0.05);
+            // Step 2: Compute gradient at flowed position (skips 4 redundant applyFlow calls)
+            vec3 gradient = computeGradientTetrahedralAtFlowedPos(flowedPos, animTime, 0.05);
 
             // Compute emission with lighting
             vec3 emission = computeEmissionLit(rho, phase, pos, gradient, viewDir);
@@ -449,8 +461,9 @@ VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tF
         }
 #else
         // NON-DISPERSION PATH: LAZY GRADIENT - only compute when visible
-        // Step 1: Quick density check (1 sample instead of 4)
-        vec3 densityInfo = sampleDensityWithPhase(pos, animTime);
+        // OPTIMIZED: Use sampleDensityWithPhaseAndFlow to get flowedPos for gradient reuse
+        vec3 flowedPos;
+        vec3 densityInfo = sampleDensityWithPhaseAndFlow(pos, animTime, flowedPos);
         float rho = densityInfo.x;
         float sCenter = densityInfo.y;
         float phase = densityInfo.z;
@@ -486,8 +499,8 @@ VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tF
             centroidSum += pos * weight;
             centroidWeight += weight;
 
-            // Step 2: Compute gradient only for visible samples (4 samples)
-            vec3 gradient = computeGradientTetrahedral(pos, animTime, 0.05);
+            // Step 2: Compute gradient at flowed position (skips 4 redundant applyFlow calls)
+            vec3 gradient = computeGradientTetrahedralAtFlowedPos(flowedPos, animTime, 0.05);
 
             // Compute emission (all channels same density since no dispersion)
             vec3 emission = computeEmissionLit(rho, phase, pos, gradient, viewDir);

@@ -385,6 +385,112 @@ vec3 sampleDensityWithPhase(vec3 pos, float t) {
 
     return vec3(rho, s, spatialPhase);
 }
+
+// Sample density with phase, also returning the flowed position for gradient reuse
+// Returns: vec3(rho, logRho, spatialPhase)
+// Out: flowedPosOut - the curl-flowed position for use in gradient sampling
+// OPTIMIZED: Allows gradient computation to skip redundant applyFlow() calls
+vec3 sampleDensityWithPhaseAndFlow(vec3 pos, float t, out vec3 flowedPosOut) {
+    // Apply Animated Flow (Curl Noise) - computed once and returned
+    vec3 flowedPos = applyFlow(pos, t);
+    flowedPosOut = flowedPos;
+
+    // Map 3D position to ND coordinates (uses unrolled dimension-specific mapping)
+    float xND[MAX_DIM];
+    mapPosToND(flowedPos, xND);
+
+    // OPTIMIZED: Single-pass evaluation for both time-dependent density and spatial phase
+    vec4 psiResult = evalPsiWithSpatialPhase(xND, t);
+    vec2 psi = psiResult.xy;
+    float spatialPhase = psiResult.z;
+
+    float rho = rhoFromPsi(psi);
+
+    // Hydrogen orbital density boost
+#ifdef HYDROGEN_MODE_ENABLED
+    if (uQuantumMode == QUANTUM_MODE_HYDROGEN) {
+        float fn = float(uPrincipalN);
+        float fl = float(uAzimuthalL);
+        float lBoost = pow(3.0, fl);
+        float hydrogenBoost = 50.0 * fn * fn * lBoost;
+        rho *= hydrogenBoost;
+    }
+#endif
+
+    // Hydrogen ND density boost
+#ifdef HYDROGEN_ND_MODE_ENABLED
+    if (uQuantumMode == QUANTUM_MODE_HYDROGEN_ND) {
+        float fn = float(uPrincipalN);
+        float fl = float(uAzimuthalL);
+        float lBoost = pow(3.0, fl);
+        float dimFactor = 1.0 + float(uDimension - 3) * 0.3;
+        float hydrogenNDBoost = 50.0 * fn * fn * lBoost * dimFactor;
+        rho *= hydrogenNDBoost;
+    }
+#endif
+
+    // Apply Edge Erosion
+    rho = erodeDensity(rho, flowedPos);
+
+#ifdef USE_SHIMMER
+    // Uncertainty Shimmer
+    if (uShimmerEnabled && uShimmerStrength > 0.0) {
+        if (rho > 0.001 && rho < 0.5) {
+            float time = uTime * uTimeScale;
+            vec3 noisePos = flowedPos * 5.0 + vec3(0.0, 0.0, time * 2.0);
+            float shimmer = gradientNoise(noisePos);
+            shimmer = shimmer * 0.5 + 0.5;
+            float uncertainty = 1.0 - clamp(rho * 2.0, 0.0, 1.0);
+            rho *= (1.0 + (shimmer - 0.5) * uShimmerStrength * uncertainty);
+        }
+    }
+#endif
+
+    float s = sFromRho(rho);
+
+    return vec3(rho, s, spatialPhase);
+}
+
+// Sample density at a pre-flowed position (skips applyFlow)
+// Use this for gradient sampling when flowedPos is already computed
+// OPTIMIZED: Saves 4 expensive applyFlow() calls per visible sample in gradient computation
+float sampleDensityAtFlowedPos(vec3 flowedPos, float t) {
+    // Map pre-flowed 3D position to ND coordinates
+    float xND[MAX_DIM];
+    mapPosToND(flowedPos, xND);
+
+    // Evaluate wavefunction and density
+    vec2 psi = evalPsi(xND, t);
+    float rho = rhoFromPsi(psi);
+
+    // Hydrogen orbital density boost
+#ifdef HYDROGEN_MODE_ENABLED
+    if (uQuantumMode == QUANTUM_MODE_HYDROGEN) {
+        float fn = float(uPrincipalN);
+        float fl = float(uAzimuthalL);
+        float lBoost = pow(3.0, fl);
+        float hydrogenBoost = 50.0 * fn * fn * lBoost;
+        rho *= hydrogenBoost;
+    }
+#endif
+
+    // Hydrogen ND density boost
+#ifdef HYDROGEN_ND_MODE_ENABLED
+    if (uQuantumMode == QUANTUM_MODE_HYDROGEN_ND) {
+        float fn = float(uPrincipalN);
+        float fl = float(uAzimuthalL);
+        float lBoost = pow(3.0, fl);
+        float dimFactor = 1.0 + float(uDimension - 3) * 0.3;
+        float hydrogenNDBoost = 50.0 * fn * fn * lBoost * dimFactor;
+        rho *= hydrogenNDBoost;
+    }
+#endif
+
+    // Apply Edge Erosion (using flowedPos since it's already flowed)
+    rho = erodeDensity(rho, flowedPos);
+
+    return rho;
+}
 `
 
 /**
