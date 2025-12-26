@@ -19,10 +19,12 @@ describe('Black Hole Horizon Detection', () => {
     expect(fragmentShader).toContain('IMMEDIATE HORIZON CHECK')
 
     // Check for the post-step radius calculation
-    expect(fragmentShader).toContain('postStepRadius')
+    // PERF (OPT-BH-1): postStepRadius was renamed to ndRadius for loop carry optimization.
+    // The pattern now computes ndRadius once after stepping and reuses it next iteration.
+    expect(fragmentShader).toContain('ndRadius = ndDistance(pos)')
 
-    // Check for isInsideHorizon call
-    expect(fragmentShader).toContain('isInsideHorizon(postStepRadius)')
+    // Check for isInsideHorizon call with ndRadius (was postStepRadius before OPT-BH-1)
+    expect(fragmentShader).toContain('isInsideHorizon(ndRadius)')
 
     // Check for the visual horizon check in horizon.glsl.ts
     expect(fragmentShader).toContain('ndRadius < uVisualEventHorizon')

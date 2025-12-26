@@ -51,10 +51,11 @@ float photonShellMask(float ndRadius) {
 /**
  * Calculate photon shell emission.
  * Bright ring at the photon sphere.
+ *
+ * PERF (OPT-BH-2): Added version that accepts pre-computed mask to avoid
+ * redundant photonShellMask() call when mask was already computed in shellStepModifier.
  */
-vec3 photonShellEmission(float ndRadius, vec3 pos) {
-  float mask = photonShellMask(ndRadius);
-
+vec3 photonShellEmissionWithMask(float mask, vec3 pos) {
   if (mask < 0.001) return vec3(0.0);
 
   // Starburst interference pattern
@@ -77,24 +78,47 @@ vec3 photonShellEmission(float ndRadius, vec3 pos) {
 }
 
 /**
- * Get adaptive step size modifier near shell.
+ * Calculate photon shell emission (convenience wrapper).
+ * Computes mask internally - use photonShellEmissionWithMask if mask is already available.
+ */
+vec3 photonShellEmission(float ndRadius, vec3 pos) {
+  float mask = photonShellMask(ndRadius);
+  return photonShellEmissionWithMask(mask, pos);
+}
+
+/**
+ * Get adaptive step size modifier near shell, also outputs the computed mask.
  * Smaller steps near the photon sphere for accurate capture.
  *
- * PERF OPTIMIZATION: Uses precomputed shellRp and shellDelta from CPU.
- * This eliminates log() and multiple multiplications per-pixel.
+ * PERF (OPT-BH-2): Returns mask via out parameter to avoid redundant
+ * photonShellMask() call in photonShellEmission.
+ *
+ * @param ndRadius - N-dimensional radius
+ * @param outMask - Output: the computed shell mask (0 if outside shell region)
+ * @returns Step size modifier (1.0 = no change, <1.0 = smaller steps)
  */
-float shellStepModifier(float ndRadius) {
+float shellStepModifierWithMask(float ndRadius, out float outMask) {
   // PERF: Use precomputed values for early exit check
   // shellDelta * 2.0 gives a conservative bounding region
   if (abs(ndRadius - uShellRpPrecomputed) > uShellDeltaPrecomputed * 2.0) {
+    outMask = 0.0;
     return 1.0;
   }
 
   // Inside potential shell region - compute full mask
-  float mask = photonShellMask(ndRadius);
+  outMask = photonShellMask(ndRadius);
 
   // Reduce step size near shell
   // mix(1.0, shellStepMul, mask) → smaller steps when on shell
-  return mix(1.0, uShellStepMul, mask);
+  return mix(1.0, uShellStepMul, outMask);
+}
+
+/**
+ * Get adaptive step size modifier near shell (convenience wrapper).
+ * Use shellStepModifierWithMask if you also need the mask for emission.
+ */
+float shellStepModifier(float ndRadius) {
+  float unusedMask;
+  return shellStepModifierWithMask(ndRadius, unusedMask);
 }
 `

@@ -235,17 +235,19 @@ float flowNoise(vec3 p, float time) {
 /**
  * Calculate density of the accretion disk at a given point.
  *
+ * PERF (OPT-BH-3): Accepts pre-computed r to avoid redundant length() calls.
+ *
  * @param pos - Position in space (relative to black hole center)
  * @param time - Animation time
+ * @param r - Pre-computed radial distance length(pos.xz)
  * @returns Density value (0.0 to ~1.0+)
  */
-float getDiskDensity(vec3 pos, float time) {
-    float r = length(pos.xz);
+float getDiskDensity(vec3 pos, float time, float r) {
     float h = abs(pos.y);
 
-    // Radii
-    float innerR = uHorizonRadius * uDiskInnerRadiusMul;
-    float outerR = uHorizonRadius * uDiskOuterRadiusMul;
+    // PERF (OPT-BH-6): Use pre-computed disk radii uniforms
+    float innerR = uDiskInnerR;
+    float outerR = uDiskOuterR;
 
     // 1. Basic Bounds Check
     // No plunging region extension - keep disk bounds simple
@@ -317,11 +319,20 @@ float getDiskDensity(vec3 pos, float time) {
     float rotSpeed = 5.0 * pow(safeInnerR / safeR, 1.5);
     float phase = angle + time * rotSpeed;
 
+    // Per-pixel noise offset to break coherent sampling (ring artifacts)
+    // Uses screen-space coordinates to ensure nearby pixels sample slightly different noise
+    // The offset is small (0.1) to maintain noise continuity while breaking aliasing
+    // Adding time creates temporal variation for smooth animation
+    vec2 pixelCoord = gl_FragCoord.xy;
+    float pixelHash = fract(sin(dot(pixelCoord + fract(time) * 100.0, vec2(12.9898, 78.233))) * 43758.5453);
+    float noiseOffset = pixelHash * 0.1;
+
     // Streak coordinates: High freq in R, Low freq in Angle
+    // Add per-pixel offset to r-component to break concentric ring patterns
     vec3 noiseCoord = vec3(
-        r * 1.5,           // Ring frequency
-        phase * 2.0,       // Angular frequency (streaks)
-        h * 4.0            // Vertical structure
+        r * 1.5 + noiseOffset,  // Ring frequency + per-pixel offset
+        phase * 2.0,            // Angular frequency (streaks)
+        h * 4.0                 // Vertical structure
     );
 
     // Sample high quality noise
@@ -346,7 +357,8 @@ float getDiskDensity(vec3 pos, float time) {
 
     // 5. Dust Lanes (dark rings) - RESTORED TO ORIGINAL LOCATION
     // Sine wave modulation on radius
-    float dustLanes = 0.5 + 0.5 * sin(r * DUST_LANE_FREQUENCY / uHorizonRadius);
+    // Apply per-pixel offset to break coherent ring patterns in dust lanes too
+    float dustLanes = 0.5 + 0.5 * sin((r + noiseOffset) * DUST_LANE_FREQUENCY / uHorizonRadius);
     dustLanes = pow(dustLanes, 0.5); // Sharpen
     rDensity *= mix(1.0, dustLanes, DUST_LANE_STRENGTH * uNoiseAmount); // Subtle banding
 
@@ -509,10 +521,15 @@ vec3 computeVolumetricDiskNormal(vec3 pos, vec3 rayDir) {
     float eps = 0.02 * uHorizonRadius;
     float time = uTime * uTimeScale;
 
-    float d0 = getDiskDensity(pos, time);
-    float dx = getDiskDensity(pos + vec3(eps, 0.0, 0.0), time) - d0;
-    float dy = getDiskDensity(pos + vec3(0.0, eps, 0.0), time) - d0;
-    float dz = getDiskDensity(pos + vec3(0.0, 0.0, eps), time) - d0;
+    // Compute r for each sample position (getDiskDensity now requires pre-computed r)
+    vec3 posX = pos + vec3(eps, 0.0, 0.0);
+    vec3 posY = pos + vec3(0.0, eps, 0.0);
+    vec3 posZ = pos + vec3(0.0, 0.0, eps);
+    
+    float d0 = getDiskDensity(pos, time, length(pos.xz));
+    float dx = getDiskDensity(posX, time, length(posX.xz)) - d0;
+    float dy = getDiskDensity(posY, time, length(posY.xz)) - d0;
+    float dz = getDiskDensity(posZ, time, length(posZ.xz)) - d0;
 
     vec3 grad = vec3(dx, dy, dz);
 

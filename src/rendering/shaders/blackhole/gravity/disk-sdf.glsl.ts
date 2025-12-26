@@ -31,8 +31,9 @@ float sdfDisk(vec3 pos3d) {
   float r = length(pos3d.xz);
   float h = abs(pos3d.y);
 
-  float innerR = uHorizonRadius * uDiskInnerRadiusMul;
-  float outerR = uHorizonRadius * uDiskOuterRadiusMul;
+  // PERF (OPT-BH-6): Use pre-computed disk radii uniforms
+  float innerR = uDiskInnerR;
+  float outerR = uDiskOuterR;
   float thickness = uManifoldThickness * uHorizonRadius * getManifoldThicknessScale();
   float halfThick = thickness * 0.5;
 
@@ -67,9 +68,8 @@ float sdfDisk(vec3 pos3d) {
  */
 bool isInDiskBounds(vec3 pos3d) {
   float r = length(pos3d.xz);
-  float innerR = uHorizonRadius * uDiskInnerRadiusMul;
-  float outerR = uHorizonRadius * uDiskOuterRadiusMul;
-  return r >= innerR && r <= outerR;
+  // PERF (OPT-BH-6): Use pre-computed disk radii uniforms
+  return r >= uDiskInnerR && r <= uDiskOuterR;
 }
 
 /**
@@ -158,8 +158,9 @@ vec3 computeDiskNormal(vec3 pos3d, vec3 approachDir) {
  */
 vec3 shadeDiskHit(vec3 hitPos, vec3 rayDir, int hitIndex, float time) {
   float r = length(hitPos.xz);
-  float innerR = uHorizonRadius * uDiskInnerRadiusMul;
-  float outerR = uHorizonRadius * uDiskOuterRadiusMul;
+  // PERF (OPT-BH-6): Use pre-computed disk radii uniforms
+  float innerR = uDiskInnerR;
+  float outerR = uDiskOuterR;
 
   // Normalized radial position [0, 1] (0 = inner edge, 1 = outer edge)
   // Guard against division by zero when innerR >= outerR (invalid but possible configuration)

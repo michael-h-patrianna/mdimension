@@ -34,8 +34,15 @@ vec2 intersectSphere(vec3 ro, vec3 rd, float rad) {
 
 /**
  * Calculate adaptive step size based on position.
+ *
+ * PERF (OPT-BH-2): Added version that outputs shell mask to avoid
+ * redundant photonShellMask() computation in photonShellEmission.
+ *
+ * @param ndRadius - N-dimensional radius
+ * @param outShellMask - Output: photon shell mask (0 if outside shell region)
+ * @returns Adaptive step size
  */
-float adaptiveStepSize(float ndRadius) {
+float adaptiveStepSizeWithMask(float ndRadius, out float outShellMask) {
   // Base step - scale with distance to allow efficient travel far from hole
   float step = uStepBase * (1.0 + ndRadius * 0.5);
 
@@ -43,8 +50,8 @@ float adaptiveStepSize(float ndRadius) {
   float gravityFactor = 1.0 / (1.0 + uStepAdaptG * uGravityStrength / max(ndRadius, uEpsilonMul));
   step *= gravityFactor;
 
-  // Reduce step near photon shell
-  float shellMod = shellStepModifier(ndRadius);
+  // Reduce step near photon shell - capture mask for reuse in shell emission
+  float shellMod = shellStepModifierWithMask(ndRadius, outShellMask);
   step *= shellMod;
 
   // Reduce step when close to horizon
@@ -60,6 +67,14 @@ float adaptiveStepSize(float ndRadius) {
   float dynamicMax = uStepMax * (1.0 + ndRadius * 0.5);
 
   return clamp(step, uStepMin, dynamicMax);
+}
+
+/**
+ * Calculate adaptive step size based on position (convenience wrapper).
+ */
+float adaptiveStepSize(float ndRadius) {
+  float unusedMask;
+  return adaptiveStepSizeWithMask(ndRadius, unusedMask);
 }
 
 /**
@@ -150,9 +165,11 @@ RaymarchResult finalizeAccumulation(
     ? state.weightedPosSum / state.totalWeight
     : fallbackPos;
 
-  // Compute final normal direction
-  result.averageNormal = length(state.normalSum) > 0.001
-    ? normalize(state.normalSum)
+  // PERF (OPT-BH-8): Compute final normal direction using dot() + inversesqrt()
+  // This avoids two sqrt() calls (length() + normalize()) by using one inversesqrt().
+  float normalLenSq = dot(state.normalSum, state.normalSum);
+  result.averageNormal = normalLenSq > 1e-6
+    ? state.normalSum * inversesqrt(normalLenSq)
     : normalize(rayDir);
 
   // First hit position for depth buffer
@@ -165,12 +182,22 @@ RaymarchResult finalizeAccumulation(
 /**
  * Accumulate disk hit into raymarch result.
  * Handles transparency/absorption per hit.
+ *
+ * PERF (OPT-BH-7): absorptionFactor is pre-computed before the raymarch loop
+ * to avoid repeated exp() calls per disk hit.
+ *
+ * @param accum - Accumulation state to update
+ * @param hitColor - Color at hit point
+ * @param hitPos - Position of hit
+ * @param normal - Surface normal at hit
+ * @param absorptionFactor - Pre-computed exp(-uAbsorption * 0.5), or 0.0 if absorption disabled
  */
 void accumulateDiskHit(
   inout AccumulationState accum,
   vec3 hitColor,
   vec3 hitPos,
-  vec3 normal
+  vec3 normal,
+  float absorptionFactor
 ) {
   // Record first hit for depth buffer
   if (accum.hasFirstHit < 0.5) {
@@ -181,10 +208,10 @@ void accumulateDiskHit(
   // For surface hits, use opacity-based blending
   float hitOpacity = 0.85;
 
+  // PERF (OPT-BH-7): Use pre-computed absorptionFactor instead of exp() per hit
   if (uEnableAbsorption) {
-    float absorption = exp(-uAbsorption * 0.5);
-    accum.color += hitColor * accum.transmittance * (1.0 - absorption);
-    accum.transmittance *= absorption;
+    accum.color += hitColor * accum.transmittance * (1.0 - absorptionFactor);
+    accum.transmittance *= absorptionFactor;
   } else {
     accum.color += hitColor * accum.transmittance * hitOpacity;
     accum.transmittance *= (1.0 - hitOpacity);
@@ -231,6 +258,7 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
   float tFar = intersect.y;
 
   // Dithering to hide banding (Interleaved Gradient Noise)
+  // Generate a per-pixel random value that varies spatially and temporally
   float dither = interleavedGradientNoise(gl_FragCoord.xy + fract(time));
 
   // Apply dithering to start position (jitter along ray)
@@ -241,16 +269,28 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
   vec3 dir = rayDir;
   vec3 prevPos = pos;
 
+  // Per-step jitter state - use golden ratio for low-discrepancy sequence
+  // This breaks coherent sampling patterns that cause ring artifacts
+  float stepJitter = dither;
+
   float totalDist = tNear + startOffset;
   float maxDist = tFar;
 
+  // PERF (OPT-BH-1): Compute ndRadius once before loop, then carry forward from each iteration.
+  // This eliminates triple ndDistance() calls per iteration (was: pre-loop, loop start, post-step).
+  // Now: single call before loop, single call at end of each iteration (reused as next iteration's start).
+  float ndRadius = ndDistance(pos);
+
   // Pre-bend ray (initial deflection)
-  float entryNdRadius = ndDistance(pos);
-  dir = bendRay(dir, pos, 0.1, entryNdRadius);
+  dir = bendRay(dir, pos, 0.1, ndRadius);
   vec3 bentDirection = dir;
 
   bool hitHorizon = false;
   int diskCrossings = 0;
+
+  // PERF (OPT-BH-7): Pre-compute absorption factor before loop
+  // This is constant for the entire ray, so compute once instead of per disk hit.
+  float absorptionFactor = uEnableAbsorption ? exp(-uAbsorption * 0.5) : 0.0;
 
   // Adaptive quality: reduce max steps based on screen coverage
   // When zoomed in close, uQualityMultiplier decreases to maintain FPS
@@ -261,7 +301,7 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
     if (totalDist > maxDist) break;
     if (accum.transmittance < uTransmittanceCutoff) break; // Early exit for opaque
 
-    float ndRadius = ndDistance(pos);
+    // ndRadius is already computed (from initial before loop OR from previous iteration's post-step)
 
     // Horizon check - Volumetric Absorption
     // Instead of breaking, we absorb all light if we hit the visual horizon.
@@ -274,33 +314,42 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
       break;
     }
 
-    // Adaptive step size
-    float stepSize = adaptiveStepSize(ndRadius);
+    // PERF (OPT-BH-2): Adaptive step size with cached shell mask
+    // shellMask is computed once here and reused in photonShellEmissionWithMask below
+    float shellMask;
+    float stepSize = adaptiveStepSizeWithMask(ndRadius, shellMask);
 
     // In volumetric mode, we might want smaller steps inside the disk
     #ifdef USE_VOLUMETRIC_DISK
     float diskH = abs(pos.y);
     float diskR = length(pos.xz);
     // Simple check if we are near the disk plane
+    // PERF (OPT-BH-6): Use pre-computed uDiskInnerR/uDiskOuterR
     if (diskH < uManifoldThickness * uHorizonRadius * 2.0 &&
-        diskR > uHorizonRadius * uDiskInnerRadiusMul * 0.8 &&
-        diskR < uHorizonRadius * uDiskOuterRadiusMul * 1.2) {
+        diskR > uDiskInnerR * 0.8 &&
+        diskR < uDiskOuterR * 1.2) {
        // Relax step size in fast mode (0.1) vs high quality (0.05)
        float diskStepLimit = uFastMode ? 0.1 : 0.05;
        stepSize = min(stepSize, diskStepLimit * uHorizonRadius); // Force smaller steps in disk
     }
     #endif
 
+    // Apply per-step jitter to break coherent sampling patterns (ring artifacts)
+    // Golden ratio (φ-1 ≈ 0.618) gives optimal low-discrepancy distribution
+    // Jitter range [-0.2, +0.2] of step size prevents aliasing without excessive noise
+    stepJitter = fract(stepJitter + 0.618033988749);
+    float jitterScale = (stepJitter - 0.5) * 0.4; // Map [0,1] to [-0.2, 0.2]
+    stepSize *= (1.0 + jitterScale);
+
     // Apply lensing
     dir = bendRay(dir, pos, stepSize, ndRadius);
     bentDirection = dir;
 
-    // Sample photon shell (volumetric glow effect)
-    // Uses conservative bounding check for early exit - only compute
-    // full shell emission when within 2× shell thickness of photon sphere
-    float shellBoundDist = abs(ndRadius - uShellRpPrecomputed);
-    if (shellBoundDist < uShellDeltaPrecomputed * 2.0) {
-      vec3 shellEmit = photonShellEmission(ndRadius, pos);
+    // PERF (OPT-BH-2): Use cached shell mask from adaptiveStepSizeWithMask
+    // The mask was already computed for step size adaptation, so reuse it here.
+    // shellMask > 0 only when within 2× shell thickness of photon sphere.
+    if (shellMask > 0.001) {
+      vec3 shellEmit = photonShellEmissionWithMask(shellMask, pos);
       // Volumetric integration: accumulate emission weighted by transmittance
       accum.color += shellEmit * stepSize * accum.transmittance;
     }
@@ -317,14 +366,13 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
     // 3. Next iteration exits via "totalDist > maxDist" BEFORE horizon check
     // 4. hitHorizon remains false → background is added → TRANSPARENCY BUG
     //
-    // This check ensures rays are caught the instant they cross the horizon.
-    {
-      float postStepRadius = ndDistance(pos);
-      if (isInsideHorizon(postStepRadius)) {
-        accum.transmittance = 0.0;
-        hitHorizon = true;
-        break;
-      }
+    // PERF (OPT-BH-1): Compute ndRadius for new position and reuse it in next iteration.
+    // This replaces the separate postStepRadius computation, eliminating one ndDistance() call.
+    ndRadius = ndDistance(pos);
+    if (isInsideHorizon(ndRadius)) {
+      accum.transmittance = 0.0;
+      hitHorizon = true;
+      break;
     }
 
     // === ACCRETION DISK ===
@@ -332,10 +380,9 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
     #ifdef USE_VOLUMETRIC_DISK
     // Volumetric sampling
     // PERF: Reuse diskR from step size calculation, update for new position
-    // diskInnerR pre-computed to pass to getDiskEmission (avoids redundant calculation)
+    // PERF (OPT-BH-6): Use pre-computed uDiskInnerR uniform
     diskR = length(pos.xz); // Update diskR for the new position after stepping
-    float diskInnerR = uHorizonRadius * uDiskInnerRadiusMul;
-    float density = getDiskDensity(pos, time);
+    float density = getDiskDensity(pos, time, diskR);
     if (density > 0.001) {
         // Calculate normal if needed for coloring or if likely needed for depth
         // Optimization: reuse normal for both
@@ -348,8 +395,8 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
         }
 
         // Calculate emission with Doppler support (pass dir as viewDir)
-        // PERF: Pass pre-computed r and innerR to avoid redundant calculations
-        vec3 emission = getDiskEmission(pos, density, time, dir, stepNormal, diskR, diskInnerR);
+        // PERF (OPT-BH-6): Pass pre-computed r and use uDiskInnerR uniform
+        vec3 emission = getDiskEmission(pos, density, time, dir, stepNormal, diskR, uDiskInnerR);
 
         // Beer-Lambert law integration
         // transmittance *= exp(-density * stepSize * absorption_coeff)
@@ -393,7 +440,8 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
       if (detectDiskCrossing(prevPos, pos, crossingPos)) {
         vec3 hitColor = shadeDiskHit(crossingPos, dir, diskCrossings, time);
         vec3 diskNormal = vec3(0.0, sign(prevPos.y), 0.0); // Simple normal for thin disk
-        accumulateDiskHit(accum, hitColor, crossingPos, diskNormal);
+        // PERF (OPT-BH-7): Pass pre-computed absorptionFactor
+        accumulateDiskHit(accum, hitColor, crossingPos, diskNormal, absorptionFactor);
         diskCrossings++;
       }
     }
@@ -406,7 +454,8 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
       if (detectDiskCrossing(prevPos, pos, crossingPos)) {
         vec3 hitColor = shadeDiskHit(crossingPos, dir, diskCrossings, time);
         vec3 diskNormal = computeDiskNormal(crossingPos, dir);
-        accumulateDiskHit(accum, hitColor, crossingPos, diskNormal);
+        // PERF (OPT-BH-7): Pass pre-computed absorptionFactor
+        accumulateDiskHit(accum, hitColor, crossingPos, diskNormal, absorptionFactor);
         diskCrossings++;
       }
     }

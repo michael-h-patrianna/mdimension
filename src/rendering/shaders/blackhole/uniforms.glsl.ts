@@ -56,6 +56,9 @@ uniform int uManifoldType;          // 0=auto, 1=disk, 2=sheet, 3=slab, 4=field
 uniform float uDensityFalloff;      // Density falloff exponent
 uniform float uDiskInnerRadiusMul;  // Inner disk radius multiplier
 uniform float uDiskOuterRadiusMul;  // Outer disk radius multiplier
+// PERF (OPT-BH-6): Pre-computed disk radii to avoid per-pixel multiplications
+uniform float uDiskInnerR;          // Pre-computed: uHorizonRadius * uDiskInnerRadiusMul
+uniform float uDiskOuterR;          // Pre-computed: uHorizonRadius * uDiskOuterRadiusMul
 uniform float uRadialSoftnessMul;   // Radial edge softness
 uniform float uThicknessPerDimMax;  // Max thickness per extra dimension
 uniform float uHighDimWScale;       // W coordinate scaling for high-D

@@ -102,6 +102,9 @@ export function useBlackHoleUniforms() {
       uDensityFalloff: { value: 6.0 },
       uDiskInnerRadiusMul: { value: 2.6 }, // Match store default (ISCO for Interstellar-style disk)
       uDiskOuterRadiusMul: { value: 8.0 },
+      // PERF (OPT-BH-6): Pre-computed disk radii (horizonRadius * multiplier)
+      uDiskInnerR: { value: 5.2 }, // Default: 2.0 * 2.6 = 5.2
+      uDiskOuterR: { value: 16.0 }, // Default: 2.0 * 8.0 = 16.0
       uRadialSoftnessMul: { value: 0.2 },
       uThicknessPerDimMax: { value: 4.0 },
       uHighDimWScale: { value: 2.0 },

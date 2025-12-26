@@ -436,6 +436,13 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
     setUniform(u, 'uShellRpPrecomputed', shellRp)
     setUniform(u, 'uShellDeltaPrecomputed', shellDelta)
 
+    // PERF OPTIMIZATION (OPT-BH-6): Pre-compute disk radii on CPU
+    // Avoids repeated uHorizonRadius * uDiskXxxRadiusMul per-pixel across multiple shader files
+    const diskInnerR = bhState.horizonRadius * bhState.diskInnerRadiusMul
+    const diskOuterR = bhState.horizonRadius * bhState.diskOuterRadiusMul
+    setUniform(u, 'uDiskInnerR', diskInnerR)
+    setUniform(u, 'uDiskOuterR', diskOuterR)
+
     // Manifold
     setUniform(u, 'uManifoldType', MANIFOLD_TYPE_MAP[bhState.manifoldType] ?? 0)
 

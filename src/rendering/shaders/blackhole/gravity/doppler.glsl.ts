@@ -59,13 +59,12 @@ float dopplerFactor(vec3 pos3d, vec3 viewDir) {
   float approaching = -dot(velocity, viewDir);
 
   // Keplerian orbital speed: v ∝ 1/√r
-  // Use inner disk radius as reference point for velocity scaling
-  float innerR = uHorizonRadius * uDiskInnerRadiusMul;
-  float safeRadius = max(r, max(innerR, DOPPLER_EPSILON));
+  // PERF (OPT-BH-6): Use pre-computed uDiskInnerR uniform
+  float safeRadius = max(r, max(uDiskInnerR, DOPPLER_EPSILON));
 
   // Normalize velocity so that innerR gives orbitSpeed ≈ 1.0
   // This makes uDopplerStrength act as the peak velocity (in units of c)
-  float orbitSpeed = sqrt(innerR / safeRadius);
+  float orbitSpeed = sqrt(uDiskInnerR / safeRadius);
 
   float dopplerShift = approaching * orbitSpeed * uDopplerStrength;
 
