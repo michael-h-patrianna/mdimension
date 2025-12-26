@@ -190,7 +190,7 @@ describe('Geometry Benchmarks', () => {
         [2, 3],
       ]
 
-      const faces = computeTriangleFaces(vertices, edges, 3)
+      const faces = computeTriangleFaces(vertices, edges)
 
       // Tetrahedron has 4 triangular faces
       expect(faces.length).toBe(4)
@@ -226,7 +226,7 @@ describe('Geometry Benchmarks', () => {
       ]
 
       const start = performance.now()
-      const faces = computeTriangleFaces(vertices, edges, 3)
+      const faces = computeTriangleFaces(vertices, edges)
       const elapsed = performance.now() - start
 
       // Should complete quickly
@@ -273,7 +273,7 @@ describe('Geometry Benchmarks', () => {
       const { vertices, edges } = createTriangularMesh(5)
 
       const start = performance.now()
-      const faces = computeTriangleFaces(vertices, edges, 3)
+      const faces = computeTriangleFaces(vertices, edges)
       const elapsed = performance.now() - start
 
       expect(faces.length).toBeGreaterThan(0)

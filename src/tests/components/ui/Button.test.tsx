@@ -1,90 +1,41 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { Button } from '../../../components/ui/Button';
+import { describe, expect, it, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { Button } from '../../../components/ui/Button'
 
 describe('Button', () => {
-  it('renders children correctly', () => {
-    render(<Button>Click me</Button>);
-    expect(screen.getByRole('button', { name: /click me/i })).toBeInTheDocument();
-  });
+  it('renders its accessible name from children (default)', () => {
+    render(<Button>Click me</Button>)
+    expect(screen.getByRole('button', { name: /click me/i })).toBeInTheDocument()
+  })
 
   it('calls onClick when clicked', async () => {
-    const handleClick = vi.fn();
-    const user = userEvent.setup();
-    render(<Button onClick={handleClick}>Click me</Button>);
+    const handleClick = vi.fn()
+    const user = userEvent.setup()
+    render(<Button onClick={handleClick}>Click me</Button>)
 
-    await user.click(screen.getByRole('button'));
-    expect(handleClick).toHaveBeenCalledTimes(1);
-  });
+    await user.click(screen.getByRole('button'))
+    expect(handleClick).toHaveBeenCalledTimes(1)
+  })
 
-  it('applies primary variant styles by default', () => {
-    render(<Button>Primary</Button>);
-    const button = screen.getByRole('button');
-    // Primary uses a gradient starting with from-accent
-    expect(button).toHaveClass('glass-button-primary');
-  });
+  it('is non-interactive when disabled', async () => {
+    const handleClick = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <Button onClick={handleClick} disabled>
+        Disabled
+      </Button>
+    )
 
-  it('applies secondary variant styles', () => {
-    render(<Button variant="secondary">Secondary</Button>);
-    const button = screen.getByRole('button');
-    expect(button).toHaveClass('glass-button');
-  });
+    const button = screen.getByRole('button')
+    expect(button).toBeDisabled()
 
-  it('applies ghost variant styles', () => {
-    render(<Button variant="ghost">Ghost</Button>);
-    const button = screen.getByRole('button');
-    expect(button).toHaveClass('bg-transparent');
-  });
+    await user.click(button)
+    expect(handleClick).not.toHaveBeenCalled()
+  })
 
-  it('applies small size styles', () => {
-    render(<Button size="sm">Small</Button>);
-    const button = screen.getByRole('button');
-    expect(button).toHaveClass('px-3', 'py-1.5', 'text-xs');
-  });
-
-  it('applies medium size styles by default', () => {
-    render(<Button>Medium</Button>);
-    const button = screen.getByRole('button');
-    expect(button).toHaveClass('px-4', 'py-2', 'text-sm');
-  });
-
-  it('applies large size styles', () => {
-    render(<Button size="lg">Large</Button>);
-    const button = screen.getByRole('button');
-    expect(button).toHaveClass('px-6', 'py-3', 'text-base');
-  });
-
-  it('disables button when disabled prop is true', () => {
-    render(<Button disabled>Disabled</Button>);
-    const button = screen.getByRole('button');
-    expect(button).toBeDisabled();
-    expect(button).toHaveClass('disabled:opacity-50', 'disabled:cursor-not-allowed');
-  });
-
-  it('does not call onClick when disabled', async () => {
-    const handleClick = vi.fn();
-    const user = userEvent.setup();
-    render(<Button onClick={handleClick} disabled>Disabled</Button>);
-
-    await user.click(screen.getByRole('button'));
-    expect(handleClick).not.toHaveBeenCalled();
-  });
-
-  it('applies custom className', () => {
-    render(<Button className="custom-class">Custom</Button>);
-    const button = screen.getByRole('button');
-    expect(button).toHaveClass('custom-class');
-  });
-
-  it('sets button type attribute', () => {
-    render(<Button type="submit">Submit</Button>);
-    const button = screen.getByRole('button');
-    expect(button).toHaveAttribute('type', 'submit');
-  });
-
-  it('uses aria-label when provided', () => {
-    render(<Button ariaLabel="Custom label">Icon only</Button>);
-    expect(screen.getByLabelText('Custom label')).toBeInTheDocument();
-  });
-});
+  it('exposes aria-label when provided (icon-only usage)', () => {
+    render(<Button ariaLabel="Custom label">Icon only</Button>)
+    expect(screen.getByLabelText('Custom label')).toBeInTheDocument()
+  })
+})

@@ -5,7 +5,7 @@
  * Falls back to synchronous generation for other object types.
  */
 
-import type { ExtendedObjectParams, NdGeometry } from '@/lib/geometry'
+import type { ExtendedObjectParams, NdGeometry, ObjectType } from '@/lib/geometry'
 import { generateGeometry } from '@/lib/geometry'
 import { generateRootSystem } from '@/lib/geometry/extended/root-system'
 import { generateWythoffPolytopeWithWarnings } from '@/lib/geometry/wythoff'
@@ -28,7 +28,7 @@ export interface GeometryGeneratorResult {
   /** Dimension of the geometry */
   dimension: number
   /** Object type being generated */
-  objectType: string
+  objectType: ObjectType
   /** Whether generation is in progress */
   isLoading: boolean
   /** Current progress (0-100) */

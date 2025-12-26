@@ -67,12 +67,6 @@ const globalPendingRequests = new Map<
 >()
 
 /**
- * Flag indicating worker WASM is initialized and ready.
- * Used for logging/debugging; worker handles queuing internally.
- */
-let workerReady = false
-
-/**
  * Callbacks waiting for worker ready state
  */
 const readyCallbacks: Array<() => void> = []
@@ -85,7 +79,6 @@ function handleWorkerMessage(event: MessageEvent<WorkerResponse>): void {
 
   // Handle worker lifecycle messages (no request ID)
   if (response.type === 'ready') {
-    workerReady = true
     if (import.meta.env.DEV) {
       console.log('[useGeometryWorker] Worker WASM initialized and ready')
     }
@@ -216,7 +209,6 @@ function releaseWorker(): void {
     workerInstance.terminate()
     workerInstance = null
     workerRefCount = 0
-    workerReady = false
     readyCallbacks.length = 0
 
     if (import.meta.env.DEV) {
@@ -289,17 +281,26 @@ export function useGeometryWorker(): UseGeometryWorkerResult {
 
   // Cleanup on unmount
   useEffect(() => {
+    // Capture ref values at effect setup time for cleanup
+    const requestIds = localRequestIds.current
+    const worker = workerRef.current
+
     return () => {
-      if (!workerRef.current) return
+      if (!worker) return
 
       // Cancel all local requests on unmount
-      for (const id of localRequestIds.current) {
+      // Wrap in try-catch as worker may already be terminated
+      for (const id of requestIds) {
         if (globalPendingRequests.has(id)) {
-          workerRef.current.postMessage({ type: 'cancel', id })
+          try {
+            worker.postMessage({ type: 'cancel', id })
+          } catch {
+            // Worker already terminated - ignore
+          }
           globalPendingRequests.delete(id)
         }
       }
-      localRequestIds.current.clear()
+      requestIds.clear()
 
       releaseWorker()
       workerRef.current = null

@@ -226,10 +226,6 @@ export const DEFAULT_SHOW_GROUND_GRID = true
 export const DEFAULT_GROUND_GRID_COLOR = '#dbdcdb'
 export const DEFAULT_GROUND_GRID_SPACING = 5.0
 
-// Ground material (legacy - use PBR defaults below)
-export const DEFAULT_GROUND_MATERIAL_ROUGHNESS = 0.2
-export const DEFAULT_GROUND_MATERIAL_METALNESS = 0.6
-
 // ============================================================================
 // PBR Settings Defaults (Unified for Face, Edge, Ground)
 // ============================================================================

@@ -10,7 +10,6 @@ describe('Shader Composition - Toggle Functionality', () => {
     shadows: true,
     temporal: true,
     ambientOcclusion: true,
-    opacityMode: 'simpleAlpha',
     overrides: []
   };
 
@@ -65,7 +64,6 @@ describe('Schrödinger Shader Composition - Dimension-Specific Optimization', ()
       shadows: false,
       temporal: false,
       ambientOcclusion: false,
-      opacityMode: 'solid',
       quantumMode: 'hydrogenND',
       overrides: [],
     });
@@ -93,7 +91,6 @@ describe('Schrödinger Shader Composition - Dimension-Specific Optimization', ()
       shadows: false,
       temporal: false,
       ambientOcclusion: false,
-      opacityMode: 'solid',
       quantumMode: 'hydrogenND',
       overrides: [],
     });
@@ -109,7 +106,6 @@ describe('Schrödinger Shader Composition - Dimension-Specific Optimization', ()
       shadows: false,
       temporal: false,
       ambientOcclusion: false,
-      opacityMode: 'solid',
       quantumMode: 'harmonicOscillator',
       overrides: [],
     });
@@ -127,7 +123,6 @@ describe('Schrödinger Shader Composition - Dimension-Specific Optimization', ()
       shadows: false,
       temporal: false,
       ambientOcclusion: false,
-      opacityMode: 'solid',
       quantumMode: 'hydrogenND',
       overrides: [],
     });
@@ -144,7 +139,6 @@ describe('Schrödinger Shader Composition - Quantum Volume Effects', () => {
     shadows: false,
     temporal: false,
     ambientOcclusion: false,
-    opacityMode: 'solid' as const,
     overrides: [] as string[],
   };
 

@@ -9,6 +9,9 @@ describe('Black Hole Horizon Detection', () => {
   it('should include immediate horizon check after ray step', () => {
     const { fragmentShader } = composeBlackHoleShader({
       dimension: 3,
+      shadows: false,
+      temporal: false,
+      ambientOcclusion: false,
       volumetricDisk: true,
     })
 
@@ -28,6 +31,9 @@ describe('Black Hole Horizon Detection', () => {
   it('should use uVisualEventHorizon for horizon check', () => {
     const { fragmentShader } = composeBlackHoleShader({
       dimension: 3,
+      shadows: false,
+      temporal: false,
+      ambientOcclusion: false,
       volumetricDisk: true,
     })
 
@@ -39,6 +45,9 @@ describe('Black Hole Horizon Detection', () => {
   it('should set hitHorizon and transmittance when crossing horizon', () => {
     const { fragmentShader } = composeBlackHoleShader({
       dimension: 3,
+      shadows: false,
+      temporal: false,
+      ambientOcclusion: false,
       volumetricDisk: true,
     })
 

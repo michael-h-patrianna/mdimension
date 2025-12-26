@@ -1,410 +1,230 @@
 # Testing Guide for LLM Coding Agents
 
-**Purpose**: Instructions for writing and running tests in this project.
-
-**Read This When**: Writing tests, running test suites, or debugging test failures.
-
-**Tech Stack**: Vitest (Unit/Component), Playwright (E2E), Testing Library
-
-**CRITICAL**: Maintain 100% test coverage. Every new feature needs tests.
-
----
-
-## Testing Principles
-
-### 1. Layered Testing
--   **Unit Tests (`*.test.ts`)**: For pure math/logic in `src/lib/`.
--   **Component Tests (`*.test.tsx`)**: For UI components and Hook behavior.
--   **E2E Tests (`scripts/playwright/`)**: For critical user flows and 3D visualization correctness.
-
-### 2. Mocking 3D
-**Rule**: Deeply testing Three.js canvas in unit tests is hard.
-**Strategy**: Mock `ResizeObserver` and Canvas context for component tests. Use E2E for visual verification.
-
----
-
-## How to Write Tests
-
-### 1. Unit Tests (Logic)
-**Location**: `src/tests/lib/` or alongside source.
-**Template**:
-```typescript
-import { describe, it, expect } from 'vitest';
-import { myMathFunction } from '@/lib/math/myMath';
-
-describe('myMathFunction', () => {
-  it('calculates correctly', () => {
-    const result = myMathFunction(2, 2);
-    expect(result).toBe(4);
-  });
-});
-```
-
-### 2. Component/Hook Tests
-**Location**: `src/tests/components/`
-**Template**:
-```tsx
-import { render, screen, fireEvent } from '@testing-library/react';
-import { MyComponent } from '@/components/ui/MyComponent';
-
-describe('MyComponent', () => {
-  it('renders button and handles click', () => {
-    render(<MyComponent />);
-    
-    const button = screen.getByRole('button');
-    fireEvent.click(button);
-    
-    expect(screen.getByText('Clicked')).toBeInTheDocument();
-  });
-});
-```
-
-### 3. E2E Tests (Playwright)
-**Location**: `scripts/playwright/`
-**Template**:
-```javascript
-import { test, expect } from '@playwright/test';
-
-test('feature works correctly', async ({ page }) => {
-  await page.goto('/');
-  
-  // Interact with UI
-  await page.getByTestId('my-button').click();
-  
-  // Verify Result
-  await expect(page.getByTestId('result-area')).toContainText('Success');
-});
-```
-
----
-
-## Running Tests
-
-### Unit & Component Tests
-```bash
-npm test          # Run all Vitest tests
-npm test -- ui    # Run only UI related tests
-```
-
-### E2E Tests
-```bash
-npx playwright test
-```
-
----
-
-## Common Mistakes
-❌ **Don't**: Test `three.js` internals (e.g., checking if a mesh has a specific matrix).
-✅ **Do**: Test the *inputs* (Store state) and *outputs* (Logic functions). Leave visual verification to E2E.
-
-❌ **Don't**: Forget `await` in Playwright tests.
-
----
-
-## Test File Location Decision Tree
-
-| Creating tests for... | Put test file at... |
-|----------------------|---------------------|
-| `src/lib/math/vector.ts` | `src/tests/lib/math/vector.test.ts` |
-| `src/stores/geometryStore.ts` | `src/tests/stores/geometryStore.test.ts` |
-| `src/hooks/useAnimationLoop.ts` | `src/tests/hooks/useAnimationLoop.test.ts` |
-| `src/components/ui/Button.tsx` | `src/tests/components/ui/Button.test.tsx` |
-| `src/components/canvas/Scene.tsx` | `src/tests/components/canvas/Scene.test.tsx` |
-| Full user flow | `scripts/playwright/*.mjs` |
-
----
-
-## How to Write a Store Test
-
-**Template** (`src/tests/stores/{name}Store.test.ts`):
-```typescript
-import { describe, it, expect, beforeEach } from 'vitest';
-import { use{Name}Store } from '@/stores/{name}Store';
-
-describe('{name}Store', () => {
-  beforeEach(() => {
-    // Reset store to initial state before each test
-    use{Name}Store.getState().reset();
-  });
-
-  it('has correct initial state', () => {
-    const state = use{Name}Store.getState();
-    expect(state.value).toBe(DEFAULT_VALUE);
-  });
-
-  it('setValue updates value', () => {
-    const { setValue } = use{Name}Store.getState();
-    setValue(5);
-    expect(use{Name}Store.getState().value).toBe(5);
-  });
-
-  it('setValue clamps to valid range', () => {
-    const { setValue } = use{Name}Store.getState();
-    setValue(100); // Exceeds MAX
-    expect(use{Name}Store.getState().value).toBe(MAX_VALUE);
-  });
-
-  it('reset returns to initial state', () => {
-    const { setValue, reset } = use{Name}Store.getState();
-    setValue(5);
-    reset();
-    expect(use{Name}Store.getState().value).toBe(DEFAULT_VALUE);
-  });
-});
-```
-
----
-
-## How to Write a Hook Test
-
-**Template** (`src/tests/hooks/use{Name}.test.ts`):
-```typescript
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
-import { use{Name} } from '@/hooks/use{Name}';
-
-// Mock dependencies
-vi.mock('@react-three/fiber', () => ({
-  useThree: () => ({ camera: mockCamera }),
-  useFrame: (callback: Function) => mockUseFrame(callback),
-}));
-
-describe('use{Name}', () => {
-  beforeEach(() => {
-    // Setup mocks
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it('returns expected value', () => {
-    const { result } = renderHook(() => use{Name}());
-    expect(result.current).toBeDefined();
-  });
-
-  it('updates on dependency change', () => {
-    const { result, rerender } = renderHook(
-      ({ prop }) => use{Name}(prop),
-      { initialProps: { prop: 1 } }
-    );
-
-    expect(result.current).toBe(expectedValue1);
-
-    rerender({ prop: 2 });
-
-    expect(result.current).toBe(expectedValue2);
-  });
-});
-```
-
----
-
-## How to Write a Component Test
-
-**Template** (`src/tests/components/ui/{Name}.test.tsx`):
-```tsx
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { {Name} } from '@/components/ui/{Name}';
-
-describe('{Name}', () => {
-  it('renders correctly', () => {
-    render(<{Name}>Content</{Name}>);
-    expect(screen.getByText('Content')).toBeInTheDocument();
-  });
-
-  it('calls onClick when clicked', async () => {
-    const handleClick = vi.fn();
-    const user = userEvent.setup();
-
-    render(<{Name} onClick={handleClick}>Click me</{Name}>);
-    await user.click(screen.getByRole('button'));
-
-    expect(handleClick).toHaveBeenCalledTimes(1);
-  });
-
-  it('is disabled when disabled prop is true', () => {
-    render(<{Name} disabled>Disabled</{Name}>);
-    expect(screen.getByRole('button')).toBeDisabled();
-  });
-
-  it('applies custom className', () => {
-    render(<{Name} className="custom">Styled</{Name}>);
-    expect(screen.getByRole('button')).toHaveClass('custom');
-  });
-});
-```
-
----
-
-## How to Write a Math/Geometry Test
-
-**Template** (`src/tests/lib/geometry/{name}.test.ts`):
-```typescript
-import { describe, it, expect } from 'vitest';
-import { generate{Name} } from '@/lib/geometry/{name}';
-
-describe('generate{Name}', () => {
-  it('throws if dimension < 2', () => {
-    expect(() => generate{Name}(1)).toThrow();
-  });
-
-  it('generates correct vertex count for 3D', () => {
-    const result = generate{Name}(3);
-    expect(result.vertices.length).toBe(EXPECTED_COUNT_3D);
-  });
-
-  it('generates correct edge count for 4D', () => {
-    const result = generate{Name}(4);
-    expect(result.edges.length).toBe(EXPECTED_COUNT_4D);
-  });
-
-  it('scales vertices correctly', () => {
-    const scale = 2.0;
-    const result = generate{Name}(3, scale);
-
-    // Check vertices are within expected bounds
-    result.vertices.forEach(v => {
-      v.forEach(coord => {
-        expect(Math.abs(coord)).toBeLessThanOrEqual(scale);
-      });
-    });
-  });
-
-  it('edges reference valid vertex indices', () => {
-    const result = generate{Name}(4);
-    const maxIndex = result.vertices.length - 1;
-
-    result.edges.forEach(([a, b]) => {
-      expect(a).toBeGreaterThanOrEqual(0);
-      expect(a).toBeLessThanOrEqual(maxIndex);
-      expect(b).toBeGreaterThanOrEqual(0);
-      expect(b).toBeLessThanOrEqual(maxIndex);
-    });
-  });
-});
-```
-
----
-
-## How to Write an E2E Test (Playwright)
-
-**Location**: `scripts/playwright/`
-**Template** (`scripts/playwright/test-{feature}.mjs`):
-```javascript
-/**
- * E2E Test: {Feature Description}
- */
-import { chromium } from 'playwright';
-import { strict as assert } from 'assert';
-
-const BASE_URL = 'http://localhost:3000';
-const SCREENSHOT_DIR = 'screenshots/{feature}';
-
-async function runTests() {
-  const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage();
-
-  console.log('Testing {feature}...');
-
-  await page.goto(BASE_URL, { waitUntil: 'networkidle' });
-  await page.waitForTimeout(1000);
-
-  // Test 1: Element exists
-  const element = await page.locator('[data-testid="my-element"]').count();
-  assert(element > 0, 'Expected element to exist');
-
-  // Test 2: Interaction works
-  await page.locator('[data-testid="my-button"]').click();
-  await page.waitForTimeout(500);
-
-  // Test 3: Visual verification
-  await page.screenshot({ path: `${SCREENSHOT_DIR}/result.png` });
-
-  console.log('All tests passed!');
-  await browser.close();
-}
-
-// Create screenshot directory
-import { mkdirSync } from 'fs';
-try { mkdirSync(SCREENSHOT_DIR, { recursive: true }); } catch {}
-
-runTests().catch(err => {
-  console.error('Test failed:', err);
-  process.exit(1);
-});
-```
-
-**Run with**: `node scripts/playwright/test-{feature}.mjs`
-
----
-
-## Memory-Safe Test Practices
-
-**CRITICAL**: Tests previously caused OOM. Follow these rules:
-
-1. **Worker limit**: Never modify `maxWorkers: 4` in vitest.config.ts
-2. **Thread pool**: Keep `pool: 'threads'` (not forks)
-3. **Batch large data**: Process arrays in chunks of 100
-4. **Clean up**: Always call `cleanup()` in afterEach
-
-```typescript
-import { cleanup } from '@testing-library/react';
-
-afterEach(() => {
-  cleanup();
-  vi.restoreAllMocks();
-});
-```
-
-**If tests hang**:
-```bash
-killall -9 node
-node scripts/cleanup-vitest.mjs
-```
-
----
-
-## Running Tests
+**Purpose**: This teaches you HOW to write, place, and run tests in this repo (Vitest + Playwright) while staying memory-safe and WebGL-aware.
+
+**Non-negotiable**:
+- Maintain **100% test coverage** for new functionality.
+- Do **not** “fix” failing tests by weakening assertions. Fix the code.
+- Do **not** use fetch-based debugging. For runtime debugging use **Playwright + console logs**.
+
+## Test Stack
+
+- **Unit + integration + component tests**: Vitest (`npm test`) with `happy-dom`
+- **E2E/acceptance**: Playwright (`@playwright/test`) in `scripts/playwright/`
+- **React assertions**: Testing Library (`@testing-library/react`, `@testing-library/user-event`)
+
+## Where Tests Live (Placement Rules)
+
+- Vitest tests: `src/tests/**`
+- Playwright tests: `scripts/playwright/**/*.spec.ts`
+- Test-only mocks: `src/tests/__mocks__/`
+
+### Decision tree: where does this test go?
+
+| If you changed… | Put tests in… |
+|---|---|
+| Pure math/geometry `src/lib/...` | `src/tests/lib/...` |
+| Zustand store `src/stores/...` | `src/tests/stores/...` |
+| Hook `src/hooks/...` | `src/tests/hooks/...` |
+| UI primitive `src/components/ui/...` | `src/tests/components/ui/...` |
+| Rendering pipeline `src/rendering/...` | `src/tests/rendering/...` and/or `src/tests/integration/...` |
+| Visual correctness / WebGL errors / render graph issues | `scripts/playwright/*.spec.ts` |
+
+## What the Test Environment Already Provides (Do not re-implement)
+
+Vitest is configured with `src/tests/setup.ts` which already:
+- Calls `cleanup()` after each test.
+- Mocks `ResizeObserver` and `matchMedia`.
+- Provides in-memory `localStorage`/`sessionStorage` (for Zustand persist).
+- Provides a **comprehensive WebGL2 mock** for Three.js.
+- Suppresses known benign R3F warnings (so tests fail on real problems).
+- Mocks the WASM module via alias:
+  - `mdimension-core` is aliased to `src/tests/__mocks__/mdimension-core.ts`
+
+## How to Run Tests (Commands)
 
 ```bash
-# Run all unit/component tests (required before commit)
+# All Vitest tests (CI-safe)
 npm test
 
-# Run single test file
-npx vitest run src/tests/path/to/file.test.ts
+# Single Vitest file
+npx vitest run src/tests/path/to/test.test.ts
 
-# Run tests matching pattern
-npx vitest run -t "pattern"
+# Tests matching a name/pattern
+npx vitest run -t "Render graph"
 
-# E2E tests (start dev server first!)
-npm run dev &
-node scripts/playwright/e2e.test.mjs
+# Playwright E2E (auto-starts dev server via playwright.config.ts)
+npx playwright test
+
+# Single Playwright spec file
+npx playwright test scripts/playwright/object-types-rendering.spec.ts
 ```
 
----
+### Watch mode rule
 
-## More Common Mistakes
+- **Never** run watch mode in automation.
+- For local interactive debugging only: `npm run test:watch` (human-authorized).
 
-❌ **Don't**: Use `vitest --watch` in CI/automation
-✅ **Do**: Use `npm test` (runs `vitest run`)
+## Templates (Copy/Paste)
 
-❌ **Don't**: Generate 1000+ data points in a single test
-✅ **Do**: Process in batches, clear arrays between batches
+### Template: unit test (pure logic)
 
-4.  **No Logic in UI Tests**: Pure logic should be tested in `.test.ts` files, not `.test.tsx`.
-    *   ✅ **Do**: `expect(calculateLayout(data)).toEqual(expected)`
-    *   ❌ **Don't**: Load DOM environment for pure logic tests
-    *   **Why**: DOM environments are expensive (memory/CPU). Pure logic tests run 10x faster in a raw Node environment (though current config uses happy-dom globally for simplicity, keeping logic separate is still good practice).
-✅ **Do**: Use `.test.ts` for logic, `.test.tsx` only for components
+Create: `src/tests/lib/<area>/<thing>.test.ts`
 
-❌ **Don't**: Test implementation details (internal state)
-✅ **Do**: Test behavior and outputs
+```ts
+import { describe, expect, it } from 'vitest'
+import { <FUNCTION> } from '@/lib/<area>/<module>'
 
-❌ **Don't**: Skip store reset in beforeEach
-✅ **Do**: Always reset stores to prevent test pollution
+describe('<FUNCTION>', () => {
+  it('returns expected output for a simple case', () => {
+    expect(<FUNCTION>(/* input */)).toEqual(/* expected */)
+  })
 
-❌ **Don't**: Hardcode expected vertex/edge counts
-✅ **Do**: Calculate expected values from formulas (e.g., `2^n` for hypercube vertices)
+  it('throws on invalid input', () => {
+    expect(() => <FUNCTION>(/* invalid */)).toThrow()
+  })
+})
+```
+
+### Template: Zustand store test
+
+Create: `src/tests/stores/<store>.test.ts`
+
+```ts
+import { beforeEach, describe, expect, it } from 'vitest'
+import { use<Domain>Store } from '@/stores'
+
+describe('use<Domain>Store', () => {
+  beforeEach(() => {
+    // Prefer store-provided reset; otherwise setState to initial values.
+    use<Domain>Store.getState().reset?.()
+  })
+
+  it('has stable initial state', () => {
+    const s = use<Domain>Store.getState()
+    expect(s).toBeDefined()
+  })
+
+  it('updates state via an action', () => {
+    const { setValue } = use<Domain>Store.getState()
+    setValue(123)
+    expect(use<Domain>Store.getState().value).toBe(123)
+  })
+})
+```
+
+### Template: UI component test (Testing Library)
+
+Create: `src/tests/components/ui/<Component>.test.tsx`
+
+```tsx
+import { describe, expect, it, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { <Component> } from '@/components/ui/<Component>'
+
+describe('<Component>', () => {
+  it('renders', () => {
+    render(<<Component> />)
+    // Prefer role-based queries
+    expect(screen.getByTestId('<test-id>')).toBeInTheDocument()
+  })
+
+  it('fires callbacks', async () => {
+    const user = userEvent.setup()
+    const onClick = vi.fn()
+
+    render(<<Component> onClick={onClick} data-testid="<test-id>" />)
+    await user.click(screen.getByTestId('<test-id>'))
+
+    expect(onClick).toHaveBeenCalledTimes(1)
+  })
+})
+```
+
+### Template: hook test
+
+Create: `src/tests/hooks/<hook>.test.ts(x)`
+
+```ts
+import { describe, expect, it } from 'vitest'
+import { renderHook } from '@testing-library/react'
+import { use<Hook> } from '@/hooks/use<Hook>'
+
+describe('use<Hook>', () => {
+  it('returns a stable shape', () => {
+    const { result } = renderHook(() => use<Hook>())
+    expect(result.current).toBeDefined()
+  })
+})
+```
+
+## Playwright Patterns (This project’s way)
+
+### When to use Playwright (decision tree)
+
+- If the change can cause **WebGL errors**, **shader compile issues**, **render graph warnings**, or “canvas is black” → write/extend a Playwright test.
+- If you need to debug runtime behavior: use **Playwright + page console collection**, not fetch.
+
+### Template: Playwright acceptance test with console collection
+
+Create: `scripts/playwright/<feature>.spec.ts`
+
+```ts
+import { ConsoleMessage, expect, test } from '@playwright/test'
+
+test('<feature> does not emit WebGL or render graph errors', async ({ page }) => {
+  const errors: string[] = []
+  const warnings: string[] = []
+
+  page.on('pageerror', (err) => errors.push(err.message))
+  page.on('console', (msg: ConsoleMessage) => {
+    if (msg.type() === 'error') errors.push(msg.text())
+    if (msg.type() === 'warning') warnings.push(msg.text())
+  })
+
+  // IMPORTANT: set listeners BEFORE navigation to catch early errors
+  await page.goto('/')
+
+  await page.waitForSelector('canvas', { state: 'visible' })
+  await page.waitForTimeout(1500)
+
+  // Fast “gate”: fail on hard errors
+  expect(errors.join('\n')).not.toMatch(/WebGL|GLSL|shader|RenderGraph|Graph compilation/i)
+})
+```
+
+### Recommended “gates” (order by cost)
+
+1. **Console gate**: fail fast on WebGL/shader/render-graph errors.
+2. **Center pixel gate**: sample a small canvas region to detect “all black” renders.
+3. **Full screenshot analysis**: only when necessary (most expensive).
+
+## Memory-Safe Testing Rules (Do not break these)
+
+- Do **not** increase Vitest workers. Keep `maxWorkers: 4` and `pool: 'threads'` in `vitest.config.ts`.
+- Keep tests small: avoid huge arrays; batch in chunks of 100.
+- Always clean up timers/listeners you create in tests.
+
+## Common Mistakes
+
+❌ **Don't**: Write tests outside `src/tests/` or Playwright specs outside `scripts/playwright/`.
+✅ **Do**: Follow the placement rules and mirror source structure.
+
+❌ **Don't**: Add ad-hoc WebGL mocks inside individual tests.
+✅ **Do**: Use the shared environment in `src/tests/setup.ts` and only mock narrowly when needed.
+
+❌ **Don't**: Use fetch-based debugging or remote logging in tests.
+✅ **Do**: Use Playwright console capture (`page.on('console')`) and assert on collected logs.
+
+❌ **Don't**: Run Vitest watch mode in automation.
+✅ **Do**: Use `npm test` (`vitest run`) for CI-safe execution.
+
+❌ **Don't**: Test Three.js internals (exact matrices, internal renderer state) in Vitest.
+✅ **Do**: Test your own inputs/outputs and use Playwright for visual/WebGL validation.
+
+❌ **Don't**: Forget store resets (test pollution).
+✅ **Do**: Reset stores in `beforeEach` (or `setState` to initial state).
+
+❌ **Don't**: Change `maxWorkers`/pool config to “make tests faster”.
+✅ **Do**: Keep worker limits stable to prevent memory exhaustion.

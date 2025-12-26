@@ -51,13 +51,11 @@ pub fn generate_a_roots(dimension: usize, scale: f64) -> Vec<f64> {
 /// * `scale` - Scale factor for the roots
 ///
 /// # Returns
-/// Flat array of vertex coordinates
-///
-/// # Panics
-/// Panics if dimension < 4
+/// Flat array of vertex coordinates, or empty vector if dimension < 4
 pub fn generate_d_roots(dimension: usize, scale: f64) -> Vec<f64> {
     if dimension < 4 {
-        panic!("D_n root system requires dimension >= 4");
+        // Return empty instead of panicking - let caller handle invalid dimension
+        return vec![];
     }
 
     let n = dimension;
@@ -178,19 +176,33 @@ pub struct RootSystemResult {
 /// * `scale` - Scale factor
 ///
 /// # Returns
-/// Complete root system result with vertices and edges
+/// Complete root system result with vertices and edges.
+/// Returns empty result if dimension constraints are not met:
+/// - E8 requires dimension = 8
+/// - D requires dimension >= 4
 pub fn generate_root_system(root_type: &str, dimension: usize, scale: f64) -> RootSystemResult {
+    // Helper to return empty result for invalid configurations
+    let empty_result = || RootSystemResult {
+        vertices: vec![],
+        edges: vec![],
+        dimension,
+        vertex_count: 0,
+        edge_count: 0,
+    };
+
     // Generate vertices based on root type
     let (vertices, actual_dim) = match root_type {
         "E8" => {
             if dimension != 8 {
-                panic!("E8 root system requires dimension = 8");
+                // E8 requires exactly 8 dimensions - return empty instead of panicking
+                return empty_result();
             }
             (generate_e8_roots(scale), 8)
         }
         "D" => {
             if dimension < 4 {
-                panic!("D_n root system requires dimension >= 4");
+                // D_n requires dimension >= 4 - return empty instead of panicking
+                return empty_result();
             }
             (generate_d_roots(dimension, scale), dimension)
         }

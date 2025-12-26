@@ -35,7 +35,7 @@ float sdf6D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
         float t3 = r3 > EPS ? acos(clamp(z3 / max(r3, EPS), -1.0, 1.0)) : 0.0;
         float t4 = atan(z5, z4);
 
-        float rp = pow(r, pwr);
+        float rp = pow(max(r, EPS), pwr);
         float s0 = sin((t0+phaseT)*pwr), c0 = cos((t0+phaseT)*pwr);
         float s1 = sin((t1+phaseP)*pwr), c1 = cos((t1+phaseP)*pwr);
         float s2 = sin(t2*pwr), c2 = cos(t2*pwr);
@@ -52,7 +52,7 @@ float sdf6D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
         escIt = i;
     }
 
-    trap = exp(-minP * 5.0) * 0.3 + exp(-minA * 3.0) * 0.2 + exp(-minS * 8.0) * 0.2 + float(escIt) / float(maxIt) * 0.3;
+    trap = exp(-minP * 5.0) * 0.3 + exp(-minA * 3.0) * 0.2 + exp(-minS * 8.0) * 0.2 + float(escIt) / float(max(maxIt, 1)) * 0.3;
     return max(0.5 * log(max(r, EPS)) * r / max(dr, EPS), EPS);
 }
 
@@ -79,7 +79,7 @@ float sdf6D_simple(vec3 pos, float pwr, float bail, int maxIt) {
         float r2 = sqrt(zy*zy+z3*z3+z4*z4+z5*z5); float t2 = r2>EPS ? acos(clamp(zy / max(r2, EPS),-1.0,1.0)) : 0.0;
         float r3 = sqrt(z3*z3+z4*z4+z5*z5); float t3 = r3>EPS ? acos(clamp(z3 / max(r3, EPS),-1.0,1.0)) : 0.0;
         float t4 = atan(z5, z4);
-        float rp = pow(r, pwr);
+        float rp = pow(max(r, EPS), pwr);
         float s0=sin((t0+phaseT)*pwr),c0=cos((t0+phaseT)*pwr),s1=sin((t1+phaseP)*pwr),c1=cos((t1+phaseP)*pwr);
         float s2=sin(t2*pwr),c2=cos(t2*pwr),s3=sin(t3*pwr),c3_=cos(t3*pwr);
         float s4=sin(t4*pwr),c4_=cos(t4*pwr);

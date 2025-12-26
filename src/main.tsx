@@ -23,17 +23,17 @@ import { usePostProcessingStore } from '@/stores/postProcessingStore'
 import { useUIStore } from '@/stores/uiStore'
 
 if (import.meta.env.DEV) {
-  // @ts-ignore
+  // @ts-expect-error - Dev-only debug store access
   window.__GEOMETRY_STORE__ = useGeometryStore
-  // @ts-ignore
+  // @ts-expect-error - Dev-only debug store access
   window.__UI_STORE__ = useUIStore
-  // @ts-ignore
+  // @ts-expect-error - Dev-only debug store access
   window.__ENVIRONMENT_STORE__ = useEnvironmentStore
-  // @ts-ignore
+  // @ts-expect-error - Dev-only debug store access
   window.__APPEARANCE_STORE__ = useAppearanceStore
-  // @ts-ignore
+  // @ts-expect-error - Dev-only debug store access
   window.__LAYOUT_STORE__ = useLayoutStore
-  // @ts-ignore
+  // @ts-expect-error - Dev-only debug store access
   window.__POST_PROCESSING_STORE__ = usePostProcessingStore
 }
 

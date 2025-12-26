@@ -10,7 +10,7 @@ interface CameraStore {
   controls: OrbitControlsImpl | null
   savedState: CameraState | null
   
-  registerControls: (controls: OrbitControlsImpl) => void
+  registerControls: (controls: OrbitControlsImpl | null) => void
   captureState: () => CameraState | null
   applyState: (state: CameraState) => void
   reset: () => void

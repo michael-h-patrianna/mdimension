@@ -40,7 +40,7 @@ float sdf9D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
         float t6 = acos(clamp(z6 / max(tail, EPS), -1.0, 1.0));
         float t7 = atan(z8, z7);
 
-        float rp=pow(r,pwr);
+        float rp=pow(max(r,EPS),pwr);
         float s0=sin((t0+phaseT)*pwr),c0=cos((t0+phaseT)*pwr);
         float s1=sin((t1+phaseP)*pwr),c1=cos((t1+phaseP)*pwr);
 
@@ -65,7 +65,7 @@ float sdf9D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
 
         escIt=i;
     }
-    trap=exp(-minP*5.0)*0.3+exp(-minA*3.0)*0.2+exp(-minS*8.0)*0.2+float(escIt)/float(maxIt)*0.3;
+    trap=exp(-minP*5.0)*0.3+exp(-minA*3.0)*0.2+exp(-minS*8.0)*0.2+float(escIt)/float(max(maxIt,1))*0.3;
     return max(0.5*log(max(r,EPS))*r/max(dr,EPS),EPS);
 }
 
@@ -101,7 +101,7 @@ float sdf9D_simple(vec3 pos, float pwr, float bail, int maxIt) {
         float t6 = acos(clamp(z6 / max(tail, EPS), -1.0, 1.0));
         float t7 = atan(z8, z7);
 
-        float rp=pow(r,pwr);
+        float rp=pow(max(r,EPS),pwr);
         float s0=sin((t0+phaseT)*pwr),c0=cos((t0+phaseT)*pwr);
         float s1=sin((t1+phaseP)*pwr),c1=cos((t1+phaseP)*pwr);
 

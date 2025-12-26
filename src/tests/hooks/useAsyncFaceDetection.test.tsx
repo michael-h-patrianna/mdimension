@@ -11,6 +11,7 @@ import { act } from 'react'
 import { useAsyncFaceDetection } from '@/hooks/useAsyncFaceDetection'
 import { generateGeometry } from '@/lib/geometry'
 import type { NdGeometry } from '@/lib/geometry/types'
+import { DEFAULT_EXTENDED_OBJECT_PARAMS } from '@/lib/geometry/extended/types'
 
 // Helper to generate edges from vertices (all pairs within distance threshold)
 function generateEdgesFromVertices(
@@ -21,8 +22,10 @@ function generateEdgesFromVertices(
   for (let i = 0; i < vertices.length; i++) {
     for (let j = i + 1; j < vertices.length; j++) {
       let dist = 0
-      for (let k = 0; k < vertices[i].length; k++) {
-        const diff = vertices[i][k] - vertices[j][k]
+      const vi = vertices[i]!
+      const vj = vertices[j]!
+      for (let k = 0; k < vi.length; k++) {
+        const diff = vi[k]! - vj[k]!
         dist += diff * diff
       }
       if (Math.sqrt(dist) <= threshold) {
@@ -76,7 +79,7 @@ describe('useAsyncFaceDetection', () => {
   describe('object types with no face detection', () => {
     it('should return empty faces for simplex (uses triangles method)', async () => {
       // Use actual simplex geometry
-      const simplex = generateGeometry('simplex', 3, {})
+      const simplex = generateGeometry('simplex', 3, DEFAULT_EXTENDED_OBJECT_PARAMS)
 
       const { result } = renderHook(() =>
         useAsyncFaceDetection(simplex, 'simplex')
@@ -96,12 +99,10 @@ describe('useAsyncFaceDetection', () => {
     it('should detect faces for root-system via metadata (pre-computed analyticalFaces)', async () => {
       // Use actual root-system geometry (which includes edges and analyticalFaces in metadata)
       const rootGeometry = generateGeometry('root-system', 4, {
+        ...DEFAULT_EXTENDED_OBJECT_PARAMS,
         rootSystem: {
           rootType: 'A',
-          rank: 4,
           scale: 1.0,
-          showPositive: true,
-          showNegative: true,
         },
       })
 
@@ -127,12 +128,10 @@ describe('useAsyncFaceDetection', () => {
     it('should detect faces for D_4 root system (24-cell) via metadata', async () => {
       // D_4 roots in 4D (24 roots = 24-cell)
       const rootGeometry = generateGeometry('root-system', 4, {
+        ...DEFAULT_EXTENDED_OBJECT_PARAMS,
         rootSystem: {
           rootType: 'D',
-          rank: 4,
           scale: 1.0,
-          showPositive: true,
-          showNegative: true,
         },
       })
 
@@ -152,12 +151,10 @@ describe('useAsyncFaceDetection', () => {
     it('should cover all vertices with faces for high-D A root system', async () => {
       // A_7 (8D) - the case from the bug where convex-hull failed to cover all vertices
       const rootGeometry = generateGeometry('root-system', 8, {
+        ...DEFAULT_EXTENDED_OBJECT_PARAMS,
         rootSystem: {
           rootType: 'A',
-          rank: 8,
           scale: 1.0,
-          showPositive: true,
-          showNegative: true,
         },
       })
 
@@ -183,12 +180,10 @@ describe('useAsyncFaceDetection', () => {
     it('should update faces when geometry changes', async () => {
       // Start with A-type root system
       const aGeometry = generateGeometry('root-system', 4, {
+        ...DEFAULT_EXTENDED_OBJECT_PARAMS,
         rootSystem: {
           rootType: 'A',
-          rank: 4,
           scale: 1.0,
-          showPositive: true,
-          showNegative: true,
         },
       })
 
@@ -206,12 +201,10 @@ describe('useAsyncFaceDetection', () => {
 
       // Switch to D-type root system
       const dGeometry = generateGeometry('root-system', 4, {
+        ...DEFAULT_EXTENDED_OBJECT_PARAMS,
         rootSystem: {
           rootType: 'D',
-          rank: 4,
           scale: 1.0,
-          showPositive: true,
-          showNegative: true,
         },
       })
 

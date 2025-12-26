@@ -267,6 +267,14 @@ export const PostProcessingV2 = memo(function PostProcessingV2() {
     horizonRadius: s.blackhole.horizonRadius,
     skyCubemapResolution: s.blackhole.skyCubemapResolution,
     schroedingerIsoEnabled: s.schroedinger.isoEnabled,
+    // Gravity settings (from blackhole config)
+    gravityStrength: s.blackhole.gravityStrength,
+    bendScale: s.blackhole.bendScale,
+    lensingFalloff: s.blackhole.distanceFalloff, // Aliased from distanceFalloff
+    // DEPRECATED: Deferred lensing properties (pass is always disabled, use defaults)
+    deferredLensingStrength: 0,
+    deferredLensingChromaticAberration: 0,
+    deferredLensingRadius: 1.0,
   }));
   const blackHoleState = useExtendedObjectStore(blackHoleSelector);
 

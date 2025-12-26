@@ -12,8 +12,8 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   className = ''
 }) => {
   return (
-    <div className={`flex items-center justify-center ${className}`} role="status">
-      <svg 
+    <div className={`flex items-center justify-center ${className}`} role="status" aria-live="polite" aria-label="Loading">
+      <svg aria-hidden="true" 
         width={size} 
         height={size} 
         viewBox="0 0 24 24" 

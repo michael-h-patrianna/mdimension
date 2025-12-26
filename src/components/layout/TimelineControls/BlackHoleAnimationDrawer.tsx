@@ -45,8 +45,6 @@ export const BlackHoleAnimationDrawer: React.FC = React.memo(() => {
     setPulseEnabled: state.setBlackHolePulseEnabled,
     setPulseSpeed: state.setBlackHolePulseSpeed,
     setPulseAmount: state.setBlackHolePulseAmount,
-    // Jets Animation
-    setJetsPulsation: state.setBlackHoleJetsPulsation,
     // Slice Animation
     setSliceAnimationEnabled: state.setBlackHoleSliceAnimationEnabled,
     setSliceSpeed: state.setBlackHoleSliceSpeed,
@@ -62,7 +60,6 @@ export const BlackHoleAnimationDrawer: React.FC = React.memo(() => {
     setPulseEnabled,
     setPulseSpeed,
     setPulseAmount,
-    setJetsPulsation,
     setSliceAnimationEnabled,
     setSliceSpeed,
     setSliceAmplitude,
@@ -202,28 +199,6 @@ export const BlackHoleAnimationDrawer: React.FC = React.memo(() => {
           />
         </div>
       </div>
-
-      {/* Jets Pulsation (if jets enabled) */}
-      {config.jetsEnabled && (
-        <div className="space-y-4" data-testid="animation-panel-jets">
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">
-              Jets Pulsation
-            </label>
-          </div>
-          <div className="space-y-3">
-            <Slider
-              label="Speed"
-              min={0}
-              max={2.0}
-              step={0.1}
-              value={config.jetsPulsation}
-              onChange={setJetsPulsation}
-              showValue
-            />
-          </div>
-        </div>
-      )}
 
       {/* Dimension info */}
       <div className="space-y-2 px-1">

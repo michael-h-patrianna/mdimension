@@ -27,7 +27,8 @@ const ADVANCED_RENDERING_OBJECT_TYPES = [
 ];
 
 // Object types that have raymarching quality controls
-const RAYMARCHING_OBJECT_TYPES = ['mandelbulb', 'quaternion-julia', 'schroedinger', 'blackhole'];
+// Note: mandelbulb and quaternion-julia use maxIterations directly, not raymarchQuality
+const RAYMARCHING_OBJECT_TYPES = ['schroedinger', 'blackhole'];
 
 export const AdvancedObjectControls: React.FC = () => {
   const objectType = useGeometryStore(state => state.objectType);
@@ -99,18 +100,12 @@ const getQualityDescription = (quality: RaymarchQuality, objectType: string): st
  */
 const RaymarchingQualityControl: React.FC<{ objectType: string }> = ({ objectType }) => {
   const extendedObjectSelector = useShallow((state: ExtendedObjectState) => ({
-    mandelbulbQuality: state.mandelbulb.raymarchQuality,
-    setMandelbulbQuality: state.setMandelbulbRaymarchQuality,
-    juliaQuality: state.quaternionJulia.raymarchQuality,
-    setJuliaQuality: state.setQuaternionJuliaRaymarchQuality,
     schroedingerQuality: state.schroedinger.raymarchQuality,
     setSchroedingerQuality: state.setSchroedingerRaymarchQuality,
     blackholeQuality: state.blackhole.raymarchQuality,
     setBlackholeQuality: state.setBlackHoleRaymarchQuality,
   }));
   const {
-    mandelbulbQuality, setMandelbulbQuality,
-    juliaQuality, setJuliaQuality,
     schroedingerQuality, setSchroedingerQuality,
     blackholeQuality, setBlackholeQuality,
   } = useExtendedObjectStore(extendedObjectSelector);
@@ -119,13 +114,7 @@ const RaymarchingQualityControl: React.FC<{ objectType: string }> = ({ objectTyp
   let quality: RaymarchQuality;
   let setQuality: (q: RaymarchQuality) => void;
 
-  if (objectType === 'mandelbulb') {
-    quality = mandelbulbQuality;
-    setQuality = setMandelbulbQuality;
-  } else if (objectType === 'quaternion-julia') {
-    quality = juliaQuality;
-    setQuality = setJuliaQuality;
-  } else if (objectType === 'blackhole') {
+  if (objectType === 'blackhole') {
     quality = blackholeQuality;
     setQuality = setBlackholeQuality;
   } else {

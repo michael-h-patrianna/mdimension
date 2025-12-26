@@ -271,19 +271,19 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
       accum.transmittance = 0.0;
       hitHorizon = true;
       // We can break here because transmittance is 0, which is handled by the loop condition
-      break; 
+      break;
     }
 
     // Adaptive step size
     float stepSize = adaptiveStepSize(ndRadius);
-    
+
     // In volumetric mode, we might want smaller steps inside the disk
     #ifdef USE_VOLUMETRIC_DISK
     float diskH = abs(pos.y);
     float diskR = length(pos.xz);
     // Simple check if we are near the disk plane
-    if (diskH < uManifoldThickness * uHorizonRadius * 2.0 && 
-        diskR > uHorizonRadius * uDiskInnerRadiusMul * 0.8 && 
+    if (diskH < uManifoldThickness * uHorizonRadius * 2.0 &&
+        diskR > uHorizonRadius * uDiskInnerRadiusMul * 0.8 &&
         diskR < uHorizonRadius * uDiskOuterRadiusMul * 1.2) {
        // Relax step size in fast mode (0.1) vs high quality (0.05)
        float diskStepLimit = uFastMode ? 0.1 : 0.05;
@@ -296,19 +296,13 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
     bentDirection = dir;
 
     // Sample photon shell (volumetric glow effect)
-    // PERF: Quick bounding check before expensive emission calculation
-    // Photon shell radius = horizonRadius * (photonShellRadiusMul + dimBias * log(DIMENSION))
-    // Skip if clearly outside shell region to avoid mask/starburst computation
-    // Note: Must match getPhotonShellRadius() formula in shell.glsl.ts
-    float shellDimBias = uPhotonShellRadiusDimBias * log(float(DIMENSION));
-    float shellRp = uHorizonRadius * (uPhotonShellRadiusMul + shellDimBias);
-    float shellDelta = uPhotonShellWidth * uHorizonRadius * 2.0; // Conservative bound
-    if (abs(ndRadius - shellRp) < shellDelta) {
-      vec3 shellColor = photonShellEmission(ndRadius, pos);
-      // PERF: dot() avoids sqrt in length()
-      if (dot(shellColor, shellColor) > 0.000001) {
-        accum.color += shellColor * accum.transmittance * stepSize * 2.0;
-      }
+    // Uses conservative bounding check for early exit - only compute
+    // full shell emission when within 2× shell thickness of photon sphere
+    float shellBoundDist = abs(ndRadius - uShellRpPrecomputed);
+    if (shellBoundDist < uShellDeltaPrecomputed * 2.0) {
+      vec3 shellEmit = photonShellEmission(ndRadius, pos);
+      // Volumetric integration: accumulate emission weighted by transmittance
+      accum.color += shellEmit * stepSize * accum.transmittance;
     }
 
     prevPos = pos;
@@ -334,7 +328,7 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
     }
 
     // === ACCRETION DISK ===
-    
+
     #ifdef USE_VOLUMETRIC_DISK
     // Volumetric sampling
     // PERF: Reuse diskR from step size calculation, update for new position
@@ -356,24 +350,24 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
         // Calculate emission with Doppler support (pass dir as viewDir)
         // PERF: Pass pre-computed r and innerR to avoid redundant calculations
         vec3 emission = getDiskEmission(pos, density, time, dir, stepNormal, diskR, diskInnerR);
-        
+
         // Beer-Lambert law integration
         // transmittance *= exp(-density * stepSize * absorption_coeff)
         // For emission-absorption:
         // L_out = L_in * T + L_emit * (1-T)
         // Here we approximate with additive blending damped by transmittance
-        
+
         float absorption = density * uAbsorption * 2.0;
         float stepTransmittance = exp(-absorption * stepSize);
-        
+
         // Emission contribution
         // Physically: emission * (1 - stepTransmittance) / absorption
         // Simply: emission * stepSize * transmittance
-        
+
         vec3 stepEmission = emission * stepSize * accum.transmittance;
         accum.color += stepEmission;
         accum.transmittance *= stepTransmittance;
-        
+
         // Update depth/normal info if this is the first significant hit
         if (accum.hasFirstHit < 0.5 && density > 0.5) {
              accum.firstHitPos = pos;
@@ -383,13 +377,13 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
              }
              accum.normalSum = stepNormal;
         }
-        
+
         // Accumulate weighted position
         float weight = (1.0 - stepTransmittance) * accum.transmittance;
         accum.weightedPosSum += pos * weight;
         accum.totalWeight += weight;
     }
-    
+
     // === DISK PLANE CROSSING DETECTION (Einstein Ring) ===
     // Even in volumetric mode, we detect disk plane crossings to create
     // the Einstein ring effect. Rays bending around the black hole cross
@@ -415,17 +409,6 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
         accumulateDiskHit(accum, hitColor, crossingPos, diskNormal);
         diskCrossings++;
       }
-    }
-    #endif
-
-    // Sample polar jets
-    #ifdef USE_JETS
-    float jetDens = jetDensity(pos, time);
-    if (jetDens > 0.001) {
-      vec3 jetColor = jetEmission(pos, jetDens, time);
-      float jetAbsorption = exp(-jetDens * uAbsorption * 0.5 * stepSize);
-      accum.color += jetColor * accum.transmittance * (1.0 - jetAbsorption);
-      accum.transmittance *= jetAbsorption;
     }
     #endif
 

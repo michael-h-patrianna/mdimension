@@ -480,11 +480,4 @@ export const createMandelbulbSlice: StateCreator<ExtendedObjectSlice, [], [], Ma
       mandelbulb: { ...state.mandelbulb, internalFogDensity: clamped },
     }))
   },
-
-  // --- Raymarching Quality ---
-  setMandelbulbRaymarchQuality: (quality) => {
-    set((state) => ({
-      mandelbulb: { ...state.mandelbulb, raymarchQuality: quality },
-    }))
-  },
 })

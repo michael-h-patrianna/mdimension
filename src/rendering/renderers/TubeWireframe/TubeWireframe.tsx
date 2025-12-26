@@ -279,7 +279,6 @@ export function TubeWireframe({
   // Compute shader configuration for tracking (used outside the hook)
   const { glsl: fragmentShaderString, modules: shaderModules, features: shaderFeatures } = useMemo(() => {
     return composeTubeWireframeFragmentShader({
-      fog: false, // Physical fog handled by post-process
       sss: sssEnabled,
       fresnel: fresnelEnabled,
     })

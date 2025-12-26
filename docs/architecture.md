@@ -1,620 +1,232 @@
 # Architecture Guide for LLM Coding Agents
 
-**Purpose**: Instructions for where to put code, what patterns to follow, and how to create new features.
+**Purpose**: This teaches you HOW to add code to this repo without breaking folder boundaries, performance constraints, or WebGL2 shader requirements.
 
-**Read This When**: Creating new files, implementing features, or unsure about project structure.
+**Read this first**: `docs/meta/styleguide.md` (mandatory engineering + shader rules).
 
----
+## Tech Stack (Generate code for these tools only)
 
-## Tech Stack
-
-### Core Framework
-- **React** 19.2.3 - UI library
-- **TypeScript** 5.6.3 - Type-safe JavaScript
-- **Vite** 7.2.7 - Build tool and dev server
-
-### 3D Graphics & Rendering
-- **Three.js** 0.181.0 - WebGL2 3D library
-- **@react-three/fiber** 9.4.2 - React renderer for Three.js
-- **@react-three/drei** 10.7.7 - Three.js utilities
-- **@react-three/postprocessing** 3.0.4 - Post-processing effects
-- **postprocessing** 6.38.0 - Post-processing library
-- **WebGL2 / GLSL ES 3.00** - All shaders use modern GLSL syntax (no `attribute`/`varying`/`gl_FragColor`)
-
-### UI & Styling
-- **Tailwind CSS** 4.1.18 - Utility-first CSS framework
-- **@tailwindcss/vite** 4.1.18 - Vite plugin for Tailwind
-- **Motion** 12.23.26 - Animation library
-
-### State Management & Utilities
-- **Zustand** 5.0.2 - State management
-- **convex-hull** 1.0.3 - Computational geometry
-
-### Testing
-- **vitest** 4.0.15 - Unit testing framework
-- **happy-dom** 15.11.7 - DOM implementation for testing
-- **playwright** 1.57.0 - E2E testing framework
-
-### Development Tools
-- **ESLint** 9.15.0 - Code linting
-- **@typescript-eslint/parser** 8.15.0 - TypeScript ESLint parser
-- **@typescript-eslint/eslint-plugin** 8.15.0 - TypeScript linting rules
-- **eslint-plugin-react-hooks** 5.0.0 - React Hooks linting
-- **eslint-plugin-react-refresh** 0.4.14 - React Refresh linting
-- **eslint-plugin-jsdoc** 61.5.0 - JSDoc linting
-- **Prettier** 3.4.1 - Code formatting
-- **@vitejs/plugin-react** 5.1.2 - Vite React plugin
-
----
-
-## Core Architectural Principles
-
-### 1. Visualization-First Architecture
-**Mental Model**: The application is a pipeline that transforms abstract mathematical data into 3D visual geometry.
-**Flow**: `Math/Logic` → `State (Zustand)` → `Canvas (Three.js)` → `User Interaction`
-
-### 2. Separation of Concerns
-- **Math/Geometry**: Pure functions in `src/lib/`. No React, no Three.js dependencies (unless absolutely necessary for shaders).
-- **State**: Zustand stores in `src/stores/`. Manages "what is being displayed".
-- **View**: React components in `src/components/`. Two types:
-    - **UI Components**: HTML overlays (`src/components/ui/`).
-    - **Canvas Components**: Interactive 3D helpers/controls (`src/components/canvas/`).
-    - **Rendering**: Core 3D scene and pipeline (`src/rendering/`).
-- **Integration**: Custom hooks in `src/hooks/`. Connects Stores/Math to Components.
-
----
+- **App**: React 19 + TypeScript + Vite
+- **3D**: Three.js + @react-three/fiber (+ drei)
+- **State**: Zustand 5 (selectors + `useShallow` for perf)
+- **Styling**: Tailwind CSS 4 tokens defined in `src/index.css` (`@theme` + `@utility`)
+- **Testing**: Vitest (happy-dom) + Playwright (`@playwright/test`)
 
 ## Where to Put New Code
 
 ```
 src/
 ├── components/
-│   ├── canvas/       # 3D Objects that are NOT the main scene (Gizmos, Controls)
-│   ├── layout/       # Layout structure (Editors, Panels, Overlays)
-│   ├── sections/     # Sidebar/Editor sections (Geometry, Appearance, etc.)
-│   └── ui/           # Reusable Core UI Components (Button, Slider, etc.)
-├── hooks/            # React Hooks (Business Logic)
-├── lib/              # Pure Logic (Math, Geometry)
-│   ├── geometry/     # ND Generation Logic
-│   └── math/         # Matrix/Vector Math
-├── rendering/        # Rendering Pipeline (Three.js/R3F integration)
-│   ├── Scene.tsx     # Main Scene Entry Point
-│   ├── core/         # Core Rendering Logic (Loops, Layers)
-│   ├── renderers/    # Specific Object Renderers (Polytope, Mandelbulb)
-│   ├── environment/  # Environment Setup (Lights, PostProcessing)
-│   ├── shaders/      # GLSL Shaders
-│   ├── lights/       # Lighting Logic
-│   └── materials/    # Three.js Materials
-├── stores/           # Global State (Zustand)
-├── theme/            # Styling Constants
-└── workers/          # Web Workers (Heavy Computation)
-    ├── geometry.worker.ts  # Wythoff/Face computation
-    └── types.ts           # Worker message types
+│   ├── ui/            # ONLY reusable UI primitives (Button, Slider, Modal, etc.)
+│   ├── layout/        # Layout frames, panels, top bars, drawers
+│   ├── sections/      # Sidebar/editor sections (feature groupings)
+│   ├── canvas/        # Small R3F helpers (controllers, gizmos) not core pipeline
+│   └── ...            # Domain components (presets, share, etc.)
+├── hooks/             # React hooks that wire stores + rendering + UI
+├── lib/               # Pure logic (math, geometry, shaders-as-strings helpers)
+├── rendering/         # Rendering pipeline (Scene, render graph, shaders, passes)
+├── stores/            # Zustand stores + slices (global state)
+├── workers/           # Web Workers (expensive geometry computations)
+└── theme/             # CSS helper utilities (currently `themeUtils.tsx`)
+scripts/
+├── playwright/        # Playwright E2E tests ONLY (must be `*.spec.ts`)
+└── tools/             # One-off utilities / verification scripts
+screenshots/           # Visual artifacts (png/jpg/json) — never in repo root
+docs/                  # Documentation
 ```
 
-### Decision Tree: "Where do I put X?"
-1. **Is it a pure mathematical formula?** → `src/lib/math/` or `src/lib/geometry/`
-2. **Is it global state (e.g., current dimension)?** → `src/stores/`
-3. **Is it a React Hook?** → `src/hooks/`
-4. **Is it a core rendering component (Scene, Renderer)?** → `src/rendering/`
-5. **Is it a specific object renderer?** → `src/rendering/renderers/`
-6. **Is it a shader?** → `src/rendering/shaders/`
-7. **Is it a reusable UI element (Button)?** → `src/components/ui/`
-8. **Is it a functional section of the editor?** → `src/components/sections/`
-9. **Is it a layout component?** → `src/components/layout/`
-10. **Is it computationally expensive and can run off main thread?** → `src/workers/`
+### Decision tree: where does this code go?
 
----
+- **Creating/adjusting UI controls**:
+  - **Reusable primitive** (Button/Select/Slider/Modal) → `src/components/ui/`
+  - **Feature control group / panel section** → `src/components/sections/<Feature>/`
+  - **Layout container** (top bar, drawers, split panes) → `src/components/layout/`
+- **Creating/adjusting global state**:
+  - **Zustand store** (new domain) → `src/stores/<domain>Store.ts`
+  - **Store slice** (extend existing store) → `src/stores/slices/...`
+  - **Default constants** → `src/stores/defaults/...`
+- **Creating/adjusting rendering**:
+  - **Scene wiring** / top-level render graph → `src/rendering/`
+  - **A specific renderer** (polytope / mandelbulb / etc.) → `src/rendering/renderers/`
+  - **Shader code** or shader helpers → `src/rendering/shaders/` (or `src/lib/shaders/` if pure helpers)
+- **Pure math/geometry** (no React) → `src/lib/`
+- **Heavy computation** that blocks the main thread → `src/workers/` + a `src/hooks/use…Worker.ts` wrapper
 
-## Component Patterns
+## Naming & Import Rules
 
-### 1. Canvas Components (`src/components/canvas/` & `src/rendering/`)
-**Rule**: Must be rendered inside a `<Canvas>` (R3F).
-**Pattern**:
+- **Always use path aliases** (`@/...`) instead of deep relative imports.
+- **File naming**:
+  - Components: `PascalCase.tsx`
+  - Hooks: `useCamelCase.ts`
+  - Stores: `camelCaseStore.ts`
+  - Slices: `*Slice.ts`
+  - Tests: `*.test.ts` or `*.test.tsx`
+  - Playwright: `*.spec.ts`
+
+## UI Rules (Do NOT bypass the UI library)
+
+- **Always** build UI out of `src/components/ui/*` primitives.
+- **Never** introduce raw `<input>`, `<select>`, ad-hoc `<button>` styling, or bespoke modals unless there is no suitable primitive.
+- **Always** use the project’s Tailwind tokens + utilities:
+  - Theme tokens live in `src/index.css` (`@theme` variables).
+  - Premium utilities exist (e.g. `glass-panel`, `glass-button-primary`, `glass-input`).
+- **If you need inline styles**, prefer `src/theme/themeUtils.tsx` helpers for consistency.
+
+### Template: new UI primitive
+
+Create: `src/components/ui/<NAME>.tsx`, export it from `src/components/ui/index.ts`.
+
 ```tsx
-import { useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
-import * as THREE from 'three';
+import React from 'react'
 
-export function My3DObject({ prop }: Props) {
-  const meshRef = useRef<THREE.Mesh>(null);
-
-  // Animation loop
-  useFrame((state, delta) => {
-    if (meshRef.current) {
-      meshRef.current.rotation.y += delta;
-    }
-  });
-
-  return (
-    <mesh ref={meshRef}>
-      <boxGeometry />
-      <meshStandardMaterial color="hotpink" />
-    </mesh>
-  );
+export interface <NAME>Props {
+  className?: string
+  disabled?: boolean
+  'data-testid'?: string
 }
-```
 
-### 2. UI Components (`src/components/ui/`)
-**Rule**: Standard React DOM components. Use Tailwind CSS.
-**Pattern**:
-```tsx
-export function ControlPanel() {
-  const { value, setValue } = useStore();
-
+export function <NAME>({ className = '', disabled = false, 'data-testid': testId }: <NAME>Props) {
   return (
-    <div className="absolute top-4 left-4 bg-black/50 p-4 rounded">
-      <button
-        onClick={() => setValue(value + 1)}
-        className="px-4 py-2 bg-blue-500 rounded hover:bg-blue-600"
-      >
-        Increment
-      </button>
+    <div data-testid={testId} className={`glass-panel ${className}`} aria-disabled={disabled}>
+      {/* TODO: implement */}
     </div>
-  );
+  )
 }
 ```
 
----
+## Zustand Rules (Performance-critical)
 
-## State Management Pattern
-**Library**: Zustand
-**Pattern**: Split stores by domain (Geometry, UI, Animation).
-**Location**: `src/stores/`
+- **Never** subscribe to an entire store object in a React component.
+- **Always** use either:
+  - Individual selectors (`useStore(s => s.value)`) OR
+  - A shallow object selector via `useShallow`.
 
----
+### CRITICAL `useShallow` rule (React 19 + Zustand 5)
 
-## Common Mistakes
-❌ **Don't**: Put complex math logic inside React components.
-✅ **Do**: Extract math to `src/lib/` and use it via hooks.
+`useShallow` is a hook. **Do not call it inside another hook call**.
 
-❌ **Don't**: Mix DOM elements (`<div>`) inside `<Canvas>` components.
-✅ **Do**: Keep 3D and 2D components separate; use `drei/Html` if 3D-attached text is needed.
+✅ Correct pattern:
 
-❌ **Don't**: Use `useState` for rapidly changing animation values (causes re-renders).
-✅ **Do**: Use `useRef` or `useFrame` for animation loops.
+```ts
+import { useShallow } from 'zustand/react/shallow'
+import { useUIStore } from '@/stores'
 
-❌ **Don't**: Create geometry generators that return different vertex counts on each call.
-✅ **Do**: Return deterministic vertex arrays based on dimension/parameters.
+const uiSelector = useShallow((s: ReturnType<typeof useUIStore.getState>) => ({
+  isOpen: s.isOpen,
+  setOpen: s.setOpen,
+}))
 
-❌ **Don't**: Put new scripts in project root.
-✅ **Do**: Put Playwright scripts in `scripts/playwright/`, utilities in `scripts/tools/`.
-
-❌ **Don't**: Add new stores without exporting from `src/stores/index.ts`.
-✅ **Do**: Always export new stores from the index file.
-
-❌ **Don't**: Create components without accompanying tests.
-✅ **Do**: Create test file in `src/tests/` mirroring source structure.
-
----
-
-## How to Create a New Geometry Generator
-
-**Location**: `src/lib/geometry/`
-**Template**:
-```typescript
-/**
- * {Name} generation
- * {Brief mathematical description}
- */
-
-import type { VectorND } from '@/lib/math';
-import { createVector } from '@/lib/math';
-import type { PolytopeGeometry } from './types';
-
-/**
- * Generates a {name} in n-dimensional space
- *
- * @param dimension - Dimensionality (must be >= 2)
- * @param scale - Scale factor (default: 1.0)
- * @returns PolytopeGeometry representing the {name}
- * @throws {Error} If dimension < 2
- */
-export function generate{Name}(dimension: number, scale = 1.0): PolytopeGeometry {
-  if (dimension < 2) {
-    throw new Error('{Name} dimension must be at least 2');
-  }
-
-  const vertices: VectorND[] = [];
-  const edges: [number, number][] = [];
-
-  // Generate vertices
-  // [Your vertex generation logic]
-
-  // Generate edges
-  // [Your edge generation logic]
-
-  return {
-    vertices,
-    edges,
-    dimension,
-    type: '{name}' as const,
-  };
+export function Component() {
+  const { isOpen, setOpen } = useUIStore(uiSelector)
+  // ...
 }
 ```
 
-**Steps**:
-1. Create file at `src/lib/geometry/{name}.ts`
-2. Add type to `ObjectType` in `src/lib/geometry/types.ts`
-3. Add generator to `useGeometryGenerator` hook
-4. Create tests in `src/tests/lib/geometry/{name}.test.ts`
+❌ Incorrect pattern:
 
----
-
-## Web Worker Patterns
-
-**Purpose**: Offload heavy computations (e.g., complex geometry generation) to background threads to prevent UI freezing.
-
-### Geometry Worker Architecture
-
-The geometry worker (`src/workers/geometry.worker.ts`) handles computationally intensive operations:
-- **Wythoff Polytope Generation**: Complex polytope generation for high dimensions (4D-11D)
-- **Convex Hull Face Detection**: Face computation for root systems and Wythoff polytopes
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        Main Thread                                   │
-├──────────────────────┬──────────────────────────────────────────────┤
-│  useGeometryGenerator │  useFaceDetection                            │
-│         │             │         │                                    │
-│         ▼             │         ▼                                    │
-│  useGeometryWorker ───┴──▶ useAsyncFaceDetection                    │
-│         │                                                            │
-│         ▼                                                            │
-│   sendRequest()/cancelRequest()                                      │
-│         │                                                            │
-└─────────│────────────────────────────────────────────────────────────┘
-          │ postMessage (WorkerRequest)
-          ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                    geometry.worker.ts                                │
-│  ┌─────────────────┐  ┌──────────────────┐  ┌──────────────────┐   │
-│  │ generate-wythoff │  │   compute-faces   │  │     cancel       │   │
-│  └────────┬────────┘  └────────┬─────────┘  └────────┬─────────┘   │
-│           │                     │                     │             │
-│           ▼                     ▼                     ▼             │
-│  generateWythoffPolytope  computeConvexHullFaces  Cancel pending   │
-│           │                     │                                   │
-│           └──────────┬──────────┘                                   │
-│                      ▼                                              │
-│           Progress updates (0-100%, stage)                          │
-│                      │                                              │
-└──────────────────────│──────────────────────────────────────────────┘
-                       │ postMessage (WorkerResponse)
-                       ▼
-               Promise resolution on main thread
+```ts
+// DO NOT DO THIS
+const { isOpen } = useUIStore(useShallow((s) => ({ isOpen: s.isOpen })))
 ```
 
-**Files**:
-- `src/workers/types.ts` - Type definitions for worker messages
-- `src/workers/geometry.worker.ts` - Worker implementation
-- `src/hooks/useGeometryWorker.ts` - Singleton worker management hook
-- `src/hooks/useAsyncFaceDetection.ts` - Async face detection hook
-- `src/lib/geometry/transfer.ts` - Zero-copy transfer utilities
+### Template: add a new store
 
-### Request/Response Types
+Create: `src/stores/<domain>Store.ts`, export from `src/stores/index.ts`, add tests in `src/tests/stores/`.
 
-```typescript
-// Request types (discriminated union)
-type WorkerRequest =
-  | { type: 'generate-wythoff'; id: string; dimension: number; config: WythoffConfig }
-  | { type: 'compute-faces'; id: string; vertices: Float64Array; dimension: number }
-  | { type: 'cancel'; id: string }
+```ts
+import { create } from 'zustand'
 
-// Response types (discriminated union)
-type WorkerResponse =
-  | { type: 'result'; id: string; geometry?: TransferableGeometry; faces?: Uint32Array }
-  | { type: 'progress'; id: string; progress: number; stage: GenerationStage }
-  | { type: 'error'; id: string; error: string }
-  | { type: 'cancelled'; id: string }
-```
-
-### Zero-Copy Transfer Pattern
-For large datasets, use `Transferable` objects (TypedArrays) to move memory ownership between threads instantly, avoiding expensive serialization/copying.
-
-1. **Flatten Data**: Convert objects to `Float64Array`/`Uint32Array`.
-2. **Transfer**: Pass buffers in the `transfer` list of `postMessage`.
-3. **Inflate**: Reconstruct objects on the receiving end.
-
-**Example**:
-```typescript
-// Worker: Flatten and Transfer
-const { transferable, buffers } = flattenGeometry(result);
-self.postMessage({ type: 'result', id, geometry: transferable }, buffers);
-
-// Main Thread: Inflate
-const inflated = inflateGeometry(response.geometry);
-```
-
-**Transfer Utilities** (`src/lib/geometry/transfer.ts`):
-- `flattenGeometry` / `inflateGeometry` - Full geometry objects
-- `flattenFaces` / `inflateFaces` - Face triangle indices
-- `flattenVerticesOnly` / `inflateVerticesOnly` - Vertex data only
-
-### Using the Worker Hook
-
-```typescript
-import { useGeometryWorker, generateRequestId } from '@/hooks/useGeometryWorker';
-
-function MyComponent() {
-  const { sendRequest, cancelRequest } = useGeometryWorker();
-
-  const generatePolytope = async () => {
-    const requestId = generateRequestId('wythoff');
-
-    try {
-      const response = await sendRequest(
-        {
-          type: 'generate-wythoff',
-          id: requestId,
-          dimension: 4,
-          config: { preset: 'regular', symmetryGroup: 'B' },
-        },
-        (progress, stage) => {
-          console.log(`${stage}: ${progress}%`);
-        }
-      );
-
-      if (response.type === 'result' && response.geometry) {
-        const geometry = inflateGeometry(response.geometry);
-        // Use geometry...
-      }
-    } catch (err) {
-      console.error('Generation failed:', err);
-    }
-  };
-
-  // Cleanup on parameter change
-  useEffect(() => {
-    return () => cancelRequest(requestId);
-  }, [params]);
-}
-```
-
-### Important Notes
-- The worker uses a **singleton pattern** with reference counting
-- Request IDs must be unique (use `generateRequestId()`)
-- Always cancel pending requests on unmount or parameter changes
-- In test environments (happy-dom), Worker is unavailable - the hook gracefully returns a rejection, allowing hooks to fall back to synchronous generation
-
----
-
-## How to Create a New Zustand Store
-
-**Location**: `src/stores/`
-**Template**:
-```typescript
-/**
- * {Name} state management using Zustand
- */
-
-import { create } from 'zustand';
-
-/** Default values */
-export const DEFAULT_VALUE = 1;
-export const MIN_VALUE = 0;
-export const MAX_VALUE = 10;
-
-interface {Name}State {
-  /** State property */
-  value: number;
-
-  // Actions
-  setValue: (value: number) => void;
-  reset: () => void;
+export interface <Domain>State {
+  value: number
+  setValue: (value: number) => void
+  reset: () => void
 }
 
-export const use{Name}Store = create<{Name}State>((set) => ({
+const DEFAULT_VALUE = 0
+
+export const use<Domain>Store = create<<Domain>State>((set) => ({
   value: DEFAULT_VALUE,
-
-  setValue: (value: number) => {
-    const clamped = Math.max(MIN_VALUE, Math.min(MAX_VALUE, value));
-    set({ value: clamped });
-  },
-
-  reset: () => {
-    set({ value: DEFAULT_VALUE });
-  },
-}));
+  setValue: (value) => set({ value }),
+  reset: () => set({ value: DEFAULT_VALUE }),
+}))
 ```
 
-**Steps**:
-1. Create file at `src/stores/{name}Store.ts`
-2. Export from `src/stores/index.ts`
-3. Create tests in `src/tests/stores/{name}Store.test.ts`
+## WebGL2 / Shader Rules (Non-negotiable)
 
----
+- **All shaders must be WebGL2 / GLSL ES 3.00**.
+- **Never** use WebGL1 syntax (`attribute`, `varying`, `gl_FragColor`, `texture2D`, `textureCube`).
+- When using `THREE.ShaderMaterial`, **always** set `glslVersion: THREE.GLSL3`.
 
-## How to Add a Sidebar Section
-
-**Location**: `src/components/sections/`
-**Steps**:
-1. Create folder: `src/components/sections/{Name}/`
-2. Create component: `{Name}Section.tsx`
-3. Create index: `index.ts` exporting the section
-4. Add to `EditorRightPanel.tsx` (or relevant container):
-```tsx
-import { {Name}Section } from '@/components/sections/{Name}';
-// In render:
-<{Name}Section />
-```
-
----
-
-## File Naming Conventions
-
-| Type | Pattern | Example |
-|------|---------|---------|
-| Component | `PascalCase.tsx` | `DimensionSelector.tsx` |
-| Hook | `useCamelCase.ts` | `useAnimationLoop.ts` |
-| Store | `camelCaseStore.ts` | `geometryStore.ts` |
-| Utility | `camelCase.ts` | `axisUtils.ts` |
-| Test | `*.test.ts(x)` | `Button.test.tsx` |
-| Types | `types.ts` or `index.ts` | `src/lib/geometry/types.ts` |
-
----
-
-## Import Aliases
-
-Always use path aliases instead of relative imports:
-```typescript
-// GOOD
-import { Button } from '@/components/ui/Button';
-import { useGeometryStore } from '@/stores';
-import { createVector } from '@/lib/math';
-import { Scene } from '@/rendering/Scene';
-
-// BAD
-import { Button } from '../../../components/ui/Button';
-```
-
-Available aliases (from vite.config.ts):
-- `@/` → `src/`
-- `@/components` → `src/components`
-- `@/lib` → `src/lib`
-- `@/hooks` → `src/hooks`
-- `@/stores` → `src/stores`
-- `@/rendering` → `src/rendering`
-- `@/types` → `src/types`
-- `@/utils` → `src/utils`
-
----
-
-## How to Create a Shader
-
-**CRITICAL**: All shaders MUST use WebGL2 / GLSL ES 3.00 syntax. This is mandatory with no exceptions.
-
-### Required GLSL ES 3.00 Syntax
-
-| WebGL1 (FORBIDDEN) | WebGL2 (REQUIRED) |
-|-------------------|-------------------|
-| `attribute` | `in` (vertex shader) |
-| `varying` (vertex) | `out` |
-| `varying` (fragment) | `in` |
-| `gl_FragColor` | `layout(location = N) out vec4 varName;` |
-| `texture2D()` | `texture()` |
-| `textureCube()` | `texture()` |
-
-### Shader File Types
-
-- `.glsl.ts` - TypeScript template strings (preferred for dynamic shaders)
-- `.vert` / `.frag` - Raw GLSL files (for static shaders)
-
-### Location
-
-- `src/rendering/shaders/[feature]/` - Shader blocks and composers
-
-### Template (TypeScript template string)
-
-**File**: `src/rendering/shaders/[feature]/[name].glsl.ts`
-```typescript
-/**
- * {Name} Shader Block
- * {Brief description}
- */
-
-/**
- * {Name} shader block for use in composed shaders.
- * @glsl WebGL2 / GLSL ES 3.00
- */
-export const {name}Block = /* glsl */ `
-  // GLSL ES 3.00 - use 'in' not 'attribute', 'out' not 'varying'
-
-  // Uniform declarations
-  uniform float uMyUniform;
-
-  // Function implementations
-  vec3 myShaderFunction(vec3 input) {
-    return input * uMyUniform;
-  }
-`;
-```
-
-### Vertex Shader Pattern
+### Template: fragment shader output (GLSL3)
 
 ```glsl
 precision highp float;
 precision highp int;
 
-// Inputs (WebGL2: 'in' not 'attribute')
-in vec3 position;
-in vec3 normal;
-
-// Outputs to fragment shader (WebGL2: 'out' not 'varying')
-out vec3 vWorldPosition;
-out vec3 vNormal;
-
-void main() {
-  vec4 worldPos = modelMatrix * vec4(position, 1.0);
-  gl_Position = projectionMatrix * viewMatrix * worldPos;
-  vWorldPosition = worldPos.xyz;
-  vNormal = normalize(mat3(modelMatrix) * normal);
-}
-```
-
-### Fragment Shader Pattern
-
-```glsl
-precision highp float;
-precision highp int;
-
-// Inputs from vertex shader (WebGL2: 'in' not 'varying')
-in vec3 vWorldPosition;
-in vec3 vNormal;
-
-// Output (WebGL2: 'layout' not 'gl_FragColor')
 layout(location = 0) out vec4 fragColor;
 
 void main() {
-  vec3 color = vNormal * 0.5 + 0.5;
-  fragColor = vec4(color, 1.0);
+  fragColor = vec4(1.0);
 }
 ```
 
-### MRT (Multiple Render Target) Pattern
+### Critical Three.js DPR/viewport gotcha (RenderTargets)
+
+When rendering to a `WebGLRenderTarget` at non-standard resolution: **never call `gl.setViewport()`** (it multiplies by DPR).
+
+✅ Correct:
+
+```ts
+target.viewport.set(0, 0, target.width, target.height)
+gl.setRenderTarget(target)
+```
+
+❌ Incorrect:
+
+```ts
+gl.setRenderTarget(target)
+gl.setViewport(0, 0, target.width, target.height)
+```
+
+### Fullscreen quad vertex rule (manual quad rendering)
+
+If you render a fullscreen quad manually (not via ShaderPass), use direct NDC:
 
 ```glsl
-// Fragment shader with multiple outputs (G-Buffer)
-layout(location = 0) out vec4 gColor;   // Color buffer
-layout(location = 1) out vec4 gNormal;  // Normal buffer (RGB = normal, A = metallic)
-
+in vec3 position;
 void main() {
-  gColor = vec4(albedo, 1.0);
-  gNormal = vec4(normal * 0.5 + 0.5, metallic);
+  gl_Position = vec4(position.xy, 0.0, 1.0);
 }
 ```
 
-### Using with Three.js ShaderMaterial
+## How to Add a New Feature (Standard Procedure)
 
-```typescript
-import * as THREE from 'three';
+1. **Decide ownership**: store vs hook vs rendering vs UI.
+2. **Add/extend store** in `src/stores/` (selectors + `useShallow`).
+3. **Add hook** in `src/hooks/` if any orchestration or derived state is needed.
+4. **Add UI** using `src/components/ui` primitives (no raw controls).
+5. **Add tests** in `src/tests/` mirroring the folder structure.
+6. **If it impacts visual output**, add Playwright coverage in `scripts/playwright/`.
 
-const material = new THREE.ShaderMaterial({
-  glslVersion: THREE.GLSL3,  // REQUIRED for WebGL2
-  vertexShader: myVertexShader,
-  fragmentShader: myFragmentShader,
-  uniforms: {
-    uMyUniform: { value: 1.0 },
-  },
-});
-```
+## Common Mistakes
 
-### Common Mistakes (Shaders)
+❌ **Don't**: Add bespoke HTML controls with ad-hoc Tailwind classes when a UI primitive exists.
+✅ **Do**: Extend or compose `src/components/ui/*` primitives.
 
-❌ **Don't**: Use `attribute` keyword
-✅ **Do**: Use `in` in vertex shaders
+❌ **Don't**: Hardcode colors (hex literals) or invent new “design tokens”.
+✅ **Do**: Use Tailwind theme variables and utilities from `src/index.css`.
 
-❌ **Don't**: Use `varying` keyword
-✅ **Do**: Use `out` in vertex shaders, `in` in fragment shaders
+❌ **Don't**: Subscribe to a whole Zustand store object (causes rerenders on unrelated changes).
+✅ **Do**: Use individual selectors or `useShallow` selectors.
 
-❌ **Don't**: Use `gl_FragColor`
-✅ **Do**: Use `layout(location = 0) out vec4 fragColor;`
+❌ **Don't**: Call `useShallow` inside another hook call.
+✅ **Do**: Create the selector via `useShallow(...)` first, then pass it to the store hook.
 
-❌ **Don't**: Use `texture2D()` or `textureCube()`
-✅ **Do**: Use `texture()` for all texture sampling
+❌ **Don't**: Write WebGL1 shaders (`gl_FragColor`, `varying`, `texture2D`).
+✅ **Do**: Write GLSL ES 3.00 shaders with `layout(location=0) out vec4 ...;` and `texture()`.
 
-❌ **Don't**: Forget `glslVersion: THREE.GLSL3` in ShaderMaterial
-✅ **Do**: Always set this for WebGL2 compatibility
+❌ **Don't**: Use `gl.setViewport()` when rendering to `WebGLRenderTarget`.
+✅ **Do**: Use `target.viewport.set(...)` to avoid DPR multiplication bugs.
 
-❌ **Don't**: Use `gl.setViewport()` with WebGLRenderTarget (DPR multiplication bug)
-✅ **Do**: Use `target.viewport.set(0, 0, width, height)` directly
+❌ **Don't**: Put scripts or screenshots in the repo root.
+✅ **Do**: Use `scripts/tools/`, `scripts/playwright/`, and `screenshots/`.

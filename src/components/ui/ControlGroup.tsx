@@ -30,6 +30,13 @@ export const ControlGroup: React.FC<ControlGroupProps> = ({
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (collapsible && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault();
+      toggle();
+    }
+  };
+
   const isCard = variant === 'card';
 
   return (
@@ -37,13 +44,18 @@ export const ControlGroup: React.FC<ControlGroupProps> = ({
       ${isCard ? 'border border-white/5 rounded-lg bg-white/2 overflow-hidden' : 'border-b border-white/5 pb-2 last:border-0'}
       ${className}
     `}>
-      <div 
+      <div
+        role={collapsible ? 'button' : undefined}
+        tabIndex={collapsible ? 0 : undefined}
+        aria-expanded={collapsible ? isOpen : undefined}
+        aria-label={collapsible ? `${title} section, ${isOpen ? 'expanded' : 'collapsed'}` : undefined}
         className={`
           flex items-center justify-between py-1.5
           ${isCard ? 'px-3 bg-white/3 border-b border-white/5' : ''}
-          ${collapsible ? 'cursor-pointer hover:text-text-primary transition-colors' : ''}
+          ${collapsible ? 'cursor-pointer hover:text-text-primary transition-colors focus:outline-none focus:ring-1 focus:ring-accent/50 focus:ring-inset' : ''}
         `}
         onClick={toggle}
+        onKeyDown={handleKeyDown}
       >
         <div className="flex items-center gap-2">
           {collapsible && (

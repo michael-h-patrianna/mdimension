@@ -37,7 +37,7 @@ float sdfHighD(vec3 pos, int D, float pwr, float bail, int maxIt, out float trap
         t[D-2]=atan(z[D-1],z[D-2]);
 
         // Power map and reconstruct with phase shifts on first two angles
-        float rp=pow(r,pwr);
+        float rp=pow(max(r,EPS),pwr);
         float s0=sin((t[0]+phaseT)*pwr),c0=cos((t[0]+phaseT)*pwr);
         float s1=sin((t[1]+phaseP)*pwr),c1=cos((t[1]+phaseP)*pwr);
         z[0]=rp*c0+c[0];
@@ -55,7 +55,7 @@ float sdfHighD(vec3 pos, int D, float pwr, float bail, int maxIt, out float trap
         for(int k=D;k<11;k++)z[k]=0.0;
         escIt=i;
     }
-    trap=exp(-minP*5.0)*0.3+exp(-minA*3.0)*0.2+exp(-minS*8.0)*0.2+float(escIt)/float(maxIt)*0.3;
+    trap=exp(-minP*5.0)*0.3+exp(-minA*3.0)*0.2+exp(-minS*8.0)*0.2+float(escIt)/float(max(maxIt,1))*0.3;
     return max(0.5*log(max(r,EPS))*r/max(dr,EPS),EPS);
 }
 
@@ -84,7 +84,7 @@ float sdfHighD_simple(vec3 pos, int D, float pwr, float bail, int maxIt) {
         for(int k=0;k<D-2;k++){float tail=sqrt(max(tail2,EPS));t[k]=acos(clamp(z[k] / max(tail, EPS),-1.0,1.0));tail2-=z[k]*z[k];}
         t[D-2]=atan(z[D-1],z[D-2]);
 
-        float rp=pow(r,pwr);
+        float rp=pow(max(r,EPS),pwr);
         // Apply phase shifts to first two angles (theta, phi)
         float s0=sin((t[0]+phaseT)*pwr),c0=cos((t[0]+phaseT)*pwr);
         float s1=sin((t[1]+phaseP)*pwr),c1=cos((t[1]+phaseP)*pwr);

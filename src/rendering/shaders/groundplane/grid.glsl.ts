@@ -34,7 +34,9 @@ export const gridFunctionsBlock = `
  */
 float getGrid(vec2 localXY, float size, float thickness) {
   vec2 r = localXY / size;
-  vec2 grid = abs(fract(r - 0.5) - 0.5) / fwidth(r);
+  // Guard against fwidth() returning zero in flat regions
+  vec2 fw = max(fwidth(r), vec2(0.0001));
+  vec2 grid = abs(fract(r - 0.5) - 0.5) / fw;
   float line = min(grid.x, grid.y) + 1.0 - thickness;
   return 1.0 - min(line, 1.0);
 }

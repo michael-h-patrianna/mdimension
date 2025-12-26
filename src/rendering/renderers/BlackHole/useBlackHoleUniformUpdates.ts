@@ -103,6 +103,9 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
   // When this happens, we need to force-sync all uniforms before the first render.
   const prevMaterialRef = useRef<THREE.ShaderMaterial | null>(null)
 
+  // PERF: Pre-allocated array for origin values to avoid allocation every frame
+  const originValuesRef = useRef(new Array(MAX_DIMENSION).fill(0) as number[])
+
   // CRITICAL: Sync uniforms immediately on mount to prevent first-frame rendering issues.
   // Without this, the shader uses stale initial values until useFrame runs,
   // causing ray bending/lensing to not work on initial page load.
@@ -292,9 +295,6 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
     // Note: lightingState no longer needed here - specular now via 'pbr-face' source
     const cache = colorCacheRef.current
 
-    // Visual scale: Handled by mesh.scale now
-    // setUniform(u, 'uScale', scale)
-
     // Update dimension (from subscribed value at top of hook)
     setUniform(u, 'uDimension', dimension)
 
@@ -354,8 +354,10 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
     // ============================================
     // Origin Update (separate from basis vectors)
     // ============================================
-    // Build origin values array for rotation
-    const originValues = new Array(MAX_DIMENSION).fill(0)
+    // Build origin values array for rotation (using pre-allocated array)
+    const originValues = originValuesRef.current
+    // Clear the array before reuse
+    originValues.fill(0)
     const currentParamValues = bhState.parameterValues
     for (let i = 3; i < dimension; i++) {
       originValues[i] = currentParamValues[i - 3] ?? 0

@@ -5,8 +5,9 @@
  * - Active walls (floor, back, left, right, top)
  * - Ground plane appearance (offset, color, type, size)
  * - Ground grid settings
- * - Ground material PBR properties
  * - IBL (environment reflections on objects)
+ *
+ * Note: Ground PBR material properties are managed by pbrStore (state.ground)
  */
 
 import type { StateCreator } from 'zustand'
@@ -17,8 +18,6 @@ import {
   DEFAULT_ACTIVE_WALLS,
   DEFAULT_GROUND_GRID_COLOR,
   DEFAULT_GROUND_GRID_SPACING,
-  DEFAULT_GROUND_MATERIAL_METALNESS,
-  DEFAULT_GROUND_MATERIAL_ROUGHNESS,
   DEFAULT_GROUND_PLANE_COLOR,
   DEFAULT_GROUND_PLANE_OFFSET,
   DEFAULT_GROUND_PLANE_SIZE_SCALE,
@@ -53,10 +52,6 @@ export interface GroundSliceState {
   groundGridColor: string
   groundGridSpacing: number
 
-  // --- Ground Material ---
-  groundMaterialRoughness: number
-  groundMaterialMetalness: number
-
   // --- IBL (Wall Reflections) ---
   iblQuality: IBLQuality
   iblIntensity: number
@@ -75,10 +70,6 @@ export interface GroundSliceActions {
   setShowGroundGrid: (show: boolean) => void
   setGroundGridColor: (color: string) => void
   setGroundGridSpacing: (spacing: number) => void
-
-  // --- Ground Material Actions ---
-  setGroundMaterialRoughness: (roughness: number) => void
-  setGroundMaterialMetalness: (metalness: number) => void
 
   // --- IBL Actions ---
   setIBLQuality: (quality: IBLQuality) => void
@@ -103,10 +94,6 @@ export const GROUND_INITIAL_STATE: GroundSliceState = {
   showGroundGrid: DEFAULT_SHOW_GROUND_GRID,
   groundGridColor: DEFAULT_GROUND_GRID_COLOR,
   groundGridSpacing: DEFAULT_GROUND_GRID_SPACING,
-
-  // Ground material
-  groundMaterialRoughness: DEFAULT_GROUND_MATERIAL_ROUGHNESS,
-  groundMaterialMetalness: DEFAULT_GROUND_MATERIAL_METALNESS,
 
   // IBL
   iblQuality: DEFAULT_IBL_QUALITY,
@@ -167,15 +154,6 @@ export const createGroundSlice: StateCreator<GroundSlice, [], [], GroundSlice> =
 
   setGroundGridSpacing: (spacing: number) => {
     set({ groundGridSpacing: Math.max(0.5, Math.min(5, spacing)) })
-  },
-
-  // --- Ground Material Actions ---
-  setGroundMaterialRoughness: (roughness: number) => {
-    set({ groundMaterialRoughness: Math.max(0, Math.min(1, roughness)) })
-  },
-
-  setGroundMaterialMetalness: (metalness: number) => {
-    set({ groundMaterialMetalness: Math.max(0, Math.min(1, metalness)) })
   },
 
   // --- IBL Actions ---

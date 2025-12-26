@@ -355,7 +355,7 @@ export class ResourceStateMachine {
   beginFrame(): void {
     this.frameNumber++
 
-    for (const [resourceId, info] of this.resources) {
+    for (const [_resourceId, info] of this.resources) {
       if (info.state !== ResourceState.Disposed) {
         // Reset to created state for new frame
         const previousState = info.state

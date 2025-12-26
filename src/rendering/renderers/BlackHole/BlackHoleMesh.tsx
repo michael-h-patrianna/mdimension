@@ -53,7 +53,6 @@ const BlackHoleMesh = () => {
   }, [rawDimension])
 
   // Black hole specific settings that affect shader compilation
-  const jetsEnabled = useExtendedObjectStore((state) => state.blackhole.jetsEnabled)
   const dopplerEnabled = useExtendedObjectStore((state) => state.blackhole.dopplerEnabled)
   const temporalEnabled = useExtendedObjectStore(
     (state) => state.blackhole.temporalAccumulationEnabled
@@ -66,7 +65,6 @@ const BlackHoleMesh = () => {
   // Scale and Bounds
   const farRadius = useExtendedObjectStore((state) => state.blackhole.farRadius)
   const horizonRadius = useExtendedObjectStore((state) => state.blackhole.horizonRadius)
-  const jetsHeight = useExtendedObjectStore((state) => state.blackhole.jetsHeight)
 
   // Create uniforms using extracted hook
   const uniforms = useBlackHoleUniforms()
@@ -102,24 +100,22 @@ const BlackHoleMesh = () => {
       temporal: false,
       ambientOcclusion: false,
       temporalAccumulation: temporalEnabled,
-      jets: jetsEnabled,
       doppler: dopplerEnabled,
       envMap: true,
-      fog: false,
       sliceAnimation: sliceAnimationEnabled,
       volumetricDisk: true,
       noiseTexture: true, // PERF (OPT-BH-1): Enable noise texture for faster rendering
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dimension, temporalEnabled, jetsEnabled, dopplerEnabled, sliceAnimationEnabled, SHADER_VERSION])
+  }, [dimension, temporalEnabled, dopplerEnabled, sliceAnimationEnabled, SHADER_VERSION])
 
   // Generate vertex shader
   const vertexShader = useMemo(() => generateBlackHoleVertexShader(), [])
 
   // Generate material key for caching
   const materialKey = useMemo(() => {
-    return `blackhole-${dimension}-${temporalEnabled}-${jetsEnabled}-${dopplerEnabled}-${sliceAnimationEnabled}-v${SHADER_VERSION}`
-  }, [dimension, temporalEnabled, jetsEnabled, dopplerEnabled, sliceAnimationEnabled, SHADER_VERSION])
+    return `blackhole-${dimension}-${temporalEnabled}-${dopplerEnabled}-${sliceAnimationEnabled}-v${SHADER_VERSION}`
+  }, [dimension, temporalEnabled, dopplerEnabled, sliceAnimationEnabled, SHADER_VERSION])
 
   // Note: Material disposal is handled automatically by React Three Fiber
   // when TrackedShaderMaterial unmounts (materialKey change causes remount).
@@ -135,14 +131,9 @@ const BlackHoleMesh = () => {
 
   // Calculate box size to ensure it covers the entire visual effect
   // Shader uses farRadius * horizonRadius as the bounding sphere radius for raymarching.
-  // Jets extend vertically by jetsHeight * horizonRadius.
-  // We use the maximum of these to size the box, preventing clipping.
+  // Use 2.2x radius (diameter + 10% padding) to prevent clipping.
   const shaderRadius = farRadius * horizonRadius
-  const jetsRadius = jetsEnabled ? jetsHeight * horizonRadius : 0
-  const maxRadius = Math.max(shaderRadius, jetsRadius)
-  
-  // Use 2.2x max radius (diameter + 10% padding)
-  const boxSize = maxRadius * 2.2
+  const boxSize = shaderRadius * 2.2
 
   return (
     <mesh ref={meshRef} layers={RENDER_LAYERS.MAIN_OBJECT} frustumCulled={true} scale={[1, 1, 1]}>

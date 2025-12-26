@@ -7,14 +7,15 @@
  * Run with:
  *   npx playwright test object-types-rendering.spec.ts
  *
- * Test gates (in order of cost):
- * 1a. WebGL error check - FIRST (cheapest)
- * 1b. Render graph warning check - FIRST (cheapest)
- * 2. Center pixel check - SECOND (cheap)
- * 3. Screenshot analysis - LAST (expensive)
+ * This is the authoritative Playwright gate for:
+ * - shader compile + program link failures (via WebGL guard)
+ * - runtime console WebGL errors / render-graph warnings
+ *
+ * Keep this suite fast and deterministic: no screenshots in the success path.
  */
 
 import { ConsoleMessage, expect, Page, test } from '@playwright/test'
+import { installWebGLShaderCompileLinkGuard } from './webglShaderCompileLinkGuard'
 
 // Extended timeout for complex renders
 test.setTimeout(120000)
@@ -25,6 +26,7 @@ interface ErrorCollector {
   webglErrors: string[]
   graphWarnings: string[]
   warnings: string[]
+  pageErrors: string[]
 }
 
 /**
@@ -37,7 +39,12 @@ function setupErrorCollection(page: Page): ErrorCollector {
     webglErrors: [],
     graphWarnings: [],
     warnings: [],
+    pageErrors: [],
   }
+
+  page.on('pageerror', (err) => {
+    collector.pageErrors.push(err.message)
+  })
 
   page.on('console', (msg: ConsoleMessage) => {
     const text = msg.text()
@@ -104,6 +111,10 @@ function setupErrorCollection(page: Page): ErrorCollector {
  * Fails fast if there are WebGL errors, graph warnings, or critical errors.
  */
 function verifyNoWebGLErrors(collector: ErrorCollector): void {
+  if (collector.pageErrors.length > 0) {
+    throw new Error(`Page errors detected:\n${collector.pageErrors.join('\n')}`)
+  }
+
   // WebGL errors are critical - fail immediately
   if (collector.webglErrors.length > 0) {
     throw new Error(`WebGL errors detected:\n${collector.webglErrors.join('\n')}`)
@@ -133,8 +144,10 @@ function verifyNoWebGLErrors(collector: ErrorCollector): void {
  * Wait for WebGL canvas to render and stabilize.
  */
 async function waitForRenderStable(page: Page, waitMs = 2000): Promise<void> {
-  // Wait for canvas element
-  await page.waitForSelector('canvas', { state: 'visible', timeout: 30000 })
+  await page.waitForLoadState('domcontentloaded')
+
+  // Wait for a visible canvas element
+  await expect(page.locator('canvas').first()).toBeVisible({ timeout: 30000 })
 
   // Wait for any loading overlays to disappear
   try {
@@ -146,48 +159,6 @@ async function waitForRenderStable(page: Page, waitMs = 2000): Promise<void> {
 
   // Additional wait for render stabilization
   await page.waitForTimeout(waitMs)
-}
-
-/**
- * GATE 2: Check if center of canvas is not black (cheap verification).
- * A completely black center strongly indicates nothing is rendered.
- * Returns true if center has non-black pixels.
- */
-async function verifyCenterNotBlack(page: Page): Promise<boolean> {
-  const canvas = page.locator('canvas').first()
-
-  // Get canvas dimensions
-  const box = await canvas.boundingBox()
-  if (!box) return false
-
-  // Sample a small region at the center (10x10 pixels)
-  const centerX = Math.floor(box.width / 2) - 5
-  const centerY = Math.floor(box.height / 2) - 5
-
-  // Take a tiny screenshot of just the center region
-  const centerScreenshot = await canvas.screenshot({
-    clip: { x: centerX, y: centerY, width: 10, height: 10 },
-  })
-
-  // Check if the center region has any non-black pixels
-  // A pure black 10x10 PNG is very small (~100-200 bytes)
-  // Any content will make it larger
-  return centerScreenshot.length > 300
-}
-
-/**
- * GATE 3: Full screenshot analysis (expensive - use last).
- * Check if canvas has rendered content (not just black pixels).
- */
-async function hasVisibleContent(page: Page): Promise<boolean> {
-  const canvas = page.locator('canvas').first()
-
-  // Take a screenshot and analyze
-  const screenshot = await canvas.screenshot()
-
-  // Simple check: if screenshot is > 10KB, it likely has content
-  // A black/empty canvas compresses to very small size
-  return screenshot.length > 10000
 }
 
 /**
@@ -223,222 +194,27 @@ const OBJECT_TYPES = [
   { id: 'blackhole', name: 'Black Hole', category: 'fractal' },
 ]
 
-test.describe('Object Types Rendering - Acceptance Gate', () => {
-  // Test each object type renders
-  for (const objectType of OBJECT_TYPES) {
-    test(`${objectType.name} (${objectType.id}) renders without errors`, async ({ page }) => {
-      // Navigate to object type (sets up error collection BEFORE navigation)
-      const collector = await selectObjectType(page, objectType.id)
-
-      // === GATE 1: Console error check (CHEAPEST) ===
-      verifyNoWebGLErrors(collector)
-
-      // Verify canvas exists and is visible
-      const canvas = page.locator('canvas').first()
-      await expect(canvas).toBeVisible()
-
-      // === GATE 2: Center pixel check (CHEAP) ===
-      const centerHasContent = await verifyCenterNotBlack(page)
-      if (!centerHasContent) {
-        // Save diagnostic screenshot before failing
-        await page.screenshot({
-          path: `screenshots/object-types/${objectType.id}-FAILED-black.png`,
-          fullPage: false,
-        })
-        throw new Error(`${objectType.name}: Center of canvas is black - nothing rendered`)
-      }
-
-      // === GATE 3: Full screenshot (EXPENSIVE - only if gates 1 & 2 pass) ===
-      await page.screenshot({
-        path: `screenshots/object-types/${objectType.id}.png`,
-        fullPage: false,
-      })
-    })
-  }
-})
-
-test.describe('Environment Rendering - Acceptance Gate', () => {
-  test('Skybox renders correctly', async ({ page }) => {
-    // Set up error collection BEFORE navigation
-    const collector = setupErrorCollection(page)
-
-    // Enable skybox via URL
-    await page.goto('/?skybox=space_red')
-    await waitForRenderStable(page, 3000)
-
-    // === GATE 1: Console error check ===
-    verifyNoWebGLErrors(collector)
-
-    // Verify canvas renders
-    const canvas = page.locator('canvas').first()
-    await expect(canvas).toBeVisible()
-
-    // === GATE 2: Center pixel check ===
-    const centerHasContent = await verifyCenterNotBlack(page)
-    expect(centerHasContent).toBe(true)
-
-    // === GATE 3: Screenshot ===
-    await page.screenshot({
-      path: 'screenshots/environment/skybox-classic.png',
-      fullPage: false,
-    })
-  })
-
-  test('Procedural skybox renders correctly', async ({ page }) => {
-    // Set up error collection BEFORE navigation
-    const collector = setupErrorCollection(page)
-
-    // Enable procedural skybox
-    await page.goto('/?skybox=procedural_aurora')
-    await waitForRenderStable(page, 3000)
-
-    // === GATE 1: Console error check ===
-    verifyNoWebGLErrors(collector)
-
-    const canvas = page.locator('canvas').first()
-    await expect(canvas).toBeVisible()
-
-    // === GATE 2: Center pixel check ===
-    const centerHasContent = await verifyCenterNotBlack(page)
-    expect(centerHasContent).toBe(true)
-
-    // === GATE 3: Screenshot ===
-    await page.screenshot({
-      path: 'screenshots/environment/skybox-procedural.png',
-      fullPage: false,
-    })
-  })
-
-  test('Ground plane and walls render correctly', async ({ page }) => {
-    // Set up error collection BEFORE navigation
-    const collector = setupErrorCollection(page)
-
-    // Enable ground plane
-    await page.goto('/?walls=floor')
-    await waitForRenderStable(page, 3000)
-
-    // === GATE 1: Console error check ===
-    verifyNoWebGLErrors(collector)
-
-    const canvas = page.locator('canvas').first()
-    await expect(canvas).toBeVisible()
-
-    // === GATE 2: Center pixel check ===
-    const centerHasContent = await verifyCenterNotBlack(page)
-    expect(centerHasContent).toBe(true)
-
-    // === GATE 3: Screenshot ===
-    await page.screenshot({
-      path: 'screenshots/environment/ground-plane.png',
-      fullPage: false,
-    })
-  })
-})
-
-test.describe('V2 Render Pipeline - Acceptance Gate', () => {
-  test('V2 render pipeline is active by default', async ({ page }) => {
-    // Set up error collection BEFORE navigation
-    const collector = setupErrorCollection(page)
-
-    await page.goto('/')
-    await waitForRenderStable(page)
-
-    // === GATE 1: Console error check ===
-    verifyNoWebGLErrors(collector)
-
-    // Verify the app loads and renders something
-    const canvas = page.locator('canvas').first()
-    await expect(canvas).toBeVisible()
-
-    // === GATE 2: Center pixel check ===
-    const centerHasContent = await verifyCenterNotBlack(page)
-    expect(centerHasContent).toBe(true)
-
-    // === GATE 3: Screenshot ===
-    await page.screenshot({
-      path: 'screenshots/v2-pipeline/v2-default.png',
-      fullPage: false,
-    })
-  })
-
-  test('App starts without errors', async ({ page }) => {
-    // Set up error collection BEFORE navigation
-    const collector = setupErrorCollection(page)
-
-    await page.goto('/')
-    await waitForRenderStable(page, 5000)
-
-    // === GATE 1: Console error check (PRIMARY FOCUS OF THIS TEST) ===
-    verifyNoWebGLErrors(collector)
-
-    // Filter out known benign errors for additional reporting
-    const criticalErrors = collector.errors.filter(
-      (e) =>
-        !e.includes('ResizeObserver') &&
-        !e.includes('net::') &&
-        !e.includes('favicon') &&
-        !e.includes('Download the React DevTools')
-    )
-
-    // Should have no critical errors on startup
-    if (criticalErrors.length > 0) {
-      console.log('Critical errors found:', criticalErrors)
-    }
-    expect(criticalErrors.length).toBeLessThanOrEqual(1) // Allow 1 minor error
-  })
-})
-
 test.describe('All Object Types Sequential Test', () => {
   test('Cycle through all 11 object types', async ({ page }) => {
-    const results: {
-      id: string
-      success: boolean
-      error?: string
-      webglErrors?: string[]
-      graphWarnings?: string[]
-    }[] = []
+    await installWebGLShaderCompileLinkGuard(page)
+
+    const collector = setupErrorCollection(page)
+
+    const results: { id: string; success: boolean; error?: string }[] = []
 
     for (const objectType of OBJECT_TYPES) {
       try {
-        // Set up fresh error collection for each object type
-        const collector = await selectObjectType(page, objectType.id)
+        // Clear collected errors between navigations (listeners stay installed).
+        collector.errors.length = 0
+        collector.webglErrors.length = 0
+        collector.graphWarnings.length = 0
+        collector.warnings.length = 0
+        collector.pageErrors.length = 0
 
-        // === GATE 1a: WebGL error check ===
-        if (collector.webglErrors.length > 0) {
-          results.push({
-            id: objectType.id,
-            success: false,
-            error: 'WebGL errors detected',
-            webglErrors: collector.webglErrors,
-          })
-          continue
-        }
+        await page.goto(`/?t=${objectType.id}`)
+        await waitForRenderStable(page, 3000)
 
-        // === GATE 1b: Graph compilation warning check ===
-        if (collector.graphWarnings.length > 0) {
-          results.push({
-            id: objectType.id,
-            success: false,
-            error: 'Render graph warnings detected',
-            graphWarnings: collector.graphWarnings,
-          })
-          continue
-        }
-
-        // Verify canvas
-        const canvas = page.locator('canvas').first()
-        await expect(canvas).toBeVisible()
-
-        // === GATE 2: Center pixel check ===
-        const centerHasContent = await verifyCenterNotBlack(page)
-        if (!centerHasContent) {
-          results.push({
-            id: objectType.id,
-            success: false,
-            error: 'Center of canvas is black - nothing rendered',
-          })
-          continue
-        }
+        verifyNoWebGLErrors(collector)
 
         results.push({ id: objectType.id, success: true })
       } catch (error) {

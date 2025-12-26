@@ -29,7 +29,6 @@ uniform sampler2D uPrevPositionBuffer;
 // Matrices for reprojection
 uniform mat4 uPrevViewProjectionMatrix;
 uniform mat4 uViewProjectionMatrix;
-uniform mat4 uInverseViewProjectionMatrix;
 
 // Current camera position
 uniform vec3 uCameraPosition;
@@ -86,7 +85,9 @@ void main() {
 
     // Project this world position to CURRENT frame to see where it went
     vec4 currentClip = uViewProjectionMatrix * vec4(worldPos, 1.0);
-    vec2 currentUV = (currentClip.xy / currentClip.w) * 0.5 + 0.5;
+    // Guard against division by zero in perspective divide
+    float safeW = sign(currentClip.w) * max(abs(currentClip.w), 0.0001);
+    vec2 currentUV = (currentClip.xy / safeW) * 0.5 + 0.5;
 
     // Compute how far the content has "moved" on screen
     vec2 screenMotion = currentUV - vUv;

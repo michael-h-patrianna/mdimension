@@ -52,6 +52,9 @@ const MandelbulbMesh = () => {
   // Note: Light color caching now handled by LightingSource via UniformManager
   const colorCacheRef = useRef(createColorCache());
 
+  // PERF: Pre-allocated array for origin values to avoid allocation every frame
+  const originValuesRef = useRef(new Array(MAX_DIMENSION).fill(0) as number[]);
+
   // Assign main object layer for depth-based effects (SSR, refraction, bokeh)
   useLayerAssignment(meshRef);
 
@@ -244,7 +247,6 @@ const MandelbulbMesh = () => {
       overrides: shaderOverrides,
       sss: sssEnabled,
       fresnel: edgesVisible,
-      fog: false, // Physical fog handled by post-process
     });
   }, [dimension, shadowEnabled, temporalEnabled, shaderOverrides, sssEnabled, edgesVisible]);
 
@@ -264,7 +266,6 @@ const MandelbulbMesh = () => {
     if (hasErroredRef.current) return;
 
     try {
-    const isPlaying = useAnimationStore.getState().isPlaying;
     const accumulatedTime = useAnimationStore.getState().accumulatedTime;
 
     if (meshRef.current) {
@@ -454,8 +455,10 @@ const MandelbulbMesh = () => {
       const { rotationMatrix: cachedRotationMatrix } = rotationUpdates;
 
       if (needsOriginUpdate && cachedRotationMatrix) {
-        // Build origin values array for rotation
-        const originValues = new Array(MAX_DIMENSION).fill(0);
+        // Build origin values array for rotation (using pre-allocated array)
+        const originValues = originValuesRef.current;
+        // Clear the array before reuse
+        originValues.fill(0);
 
         // Apply origin drift if enabled (Technique C)
         if (originDriftEnabled && D > 3) {

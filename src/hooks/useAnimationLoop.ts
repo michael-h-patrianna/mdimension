@@ -108,7 +108,7 @@ export function useAnimationLoop(): void {
         frameRef.current = requestAnimationFrame(animate)
       } catch (error) {
         console.error('Animation Loop Error:', error)
-        
+
         // Stop animation
         useAnimationStore.getState().pause()
         if (frameRef.current !== null) {
@@ -116,24 +116,29 @@ export function useAnimationLoop(): void {
           frameRef.current = null
         }
 
-        // Show error message
-        showMsgBox(
-          'Animation Error',
-          `The animation loop encountered an error and has been stopped.\n\n${error instanceof Error ? error.message : 'Unknown error'}`,
-          'error',
-          [
-            {
-              label: 'Reload Page',
-              onClick: () => window.location.reload(),
-              variant: 'danger'
-            },
-            {
-              label: 'Close',
-              onClick: () => useMsgBoxStore.getState().closeMsgBox(),
-              variant: 'secondary'
-            }
-          ]
-        )
+        // Show error message - wrap in try-catch to prevent double-error crashes
+        try {
+          showMsgBox(
+            'Animation Error',
+            `The animation loop encountered an error and has been stopped.\n\n${error instanceof Error ? error.message : 'Unknown error'}`,
+            'error',
+            [
+              {
+                label: 'Reload Page',
+                onClick: () => window.location.reload(),
+                variant: 'danger'
+              },
+              {
+                label: 'Close',
+                onClick: () => useMsgBoxStore.getState().closeMsgBox(),
+                variant: 'secondary'
+              }
+            ]
+          )
+        } catch (msgBoxError) {
+          // If message box fails, log but don't crash
+          console.error('Failed to show animation error dialog:', msgBoxError)
+        }
       }
     },
     [getRotationDelta, getRotationRadians, updateRotations, showMsgBox]

@@ -75,6 +75,8 @@ const QuaternionJuliaMesh = () => {
   // Cached colors for non-lighting uniforms
   const colorCacheRef = useRef(createColorCache())
 
+  // PERF: Pre-allocated array for origin values to avoid allocation every frame
+  const originValuesRef = useRef(new Array(MAX_DIMENSION).fill(0) as number[])
 
   // Get dimension from geometry store (used for useEffect dependency)
   const dimension = useGeometryStore((state) => state.dimension)
@@ -115,7 +117,6 @@ const QuaternionJuliaMesh = () => {
       overrides: shaderOverrides,
       sss: sssEnabled,
       fresnel: edgesVisible,
-      fog: false, // Physical fog handled by post-process
     })
   }, [dimension, shadowEnabled, temporalEnabled, shaderOverrides, sssEnabled, edgesVisible])
 
@@ -270,8 +271,10 @@ const QuaternionJuliaMesh = () => {
     // Origin Update (separate from basis vectors)
     // ============================================
     if (basisChanged) {
-      // Build origin values array for rotation
-      const originValues = new Array(MAX_DIMENSION).fill(0)
+      // Build origin values array for rotation (using pre-allocated array)
+      const originValues = originValuesRef.current
+      // Clear the array before reuse
+      originValues.fill(0)
 
       // Set extra dimension values from parameters
       for (let i = 0; i < config.parameterValues.length; i++) {

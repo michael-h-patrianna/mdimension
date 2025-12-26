@@ -437,7 +437,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
   const { glsl: faceFragmentShader, modules: faceShaderModules, features: faceShaderFeatures } = useMemo(() => {
     return buildFaceFragmentShader({
       shadows: shadowEnabled,
-      fog: false, // Physical fog handled by post-process
       sss: sssEnabled,
       fresnel: surfaceSettings.fresnelEnabled,
     });
@@ -689,9 +688,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
     let outIdx = 0;
     const vertexBound = baseVertices.length;
 
-    // Debug: Track which vertex indices are used by faces vs edges
-    const faceVertexIndices = new Set<number>();
-
     for (const face of faces) {
       const vis = face.vertices;
 
@@ -699,9 +695,6 @@ export const PolytopeScene = React.memo(function PolytopeScene({
       // This can happen during async face detection when geometry changes
       const hasValidIndices = vis.every((idx) => idx >= 0 && idx < vertexBound);
       if (!hasValidIndices) continue;
-
-      // Track used indices
-      vis.forEach(idx => faceVertexIndices.add(idx));
 
       if (vis.length === 3) {
         // Triangle: each vertex needs to know its 2 neighbors

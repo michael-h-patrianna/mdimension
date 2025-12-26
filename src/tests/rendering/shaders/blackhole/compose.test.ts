@@ -23,7 +23,6 @@ describe('composeBlackHoleShader', () => {
         shadows: false,
         temporal: false,
         ambientOcclusion: false,
-        opacityMode: 'solid',
       }
 
       const { fragmentShader, features } = composeBlackHoleShader(config)
@@ -53,7 +52,6 @@ describe('composeBlackHoleShader', () => {
         shadows: false,
         temporal: false,
         ambientOcclusion: false,
-        opacityMode: 'solid',
       }
 
       const { fragmentShader } = composeBlackHoleShader(config)
@@ -69,7 +67,6 @@ describe('composeBlackHoleShader', () => {
         shadows: false,
         temporal: false,
         ambientOcclusion: false,
-        opacityMode: 'solid',
         doppler: true,
       }
 
@@ -85,7 +82,6 @@ describe('composeBlackHoleShader', () => {
         shadows: false,
         temporal: false,
         ambientOcclusion: false,
-        opacityMode: 'solid',
         temporalAccumulation: true,
       }
 
@@ -105,7 +101,6 @@ describe('composeBlackHoleShader', () => {
         shadows: false,
         temporal: false,
         ambientOcclusion: false,
-        opacityMode: 'solid',
         envMap: true,
       }
 
@@ -123,7 +118,6 @@ describe('composeBlackHoleShader', () => {
         shadows: false,
         temporal: false,
         ambientOcclusion: false,
-        opacityMode: 'solid',
         doppler: true,
         overrides: ['Doppler'],
       }
@@ -142,7 +136,6 @@ describe('composeBlackHoleShader', () => {
         shadows: false,
         temporal: false,
         ambientOcclusion: false,
-        opacityMode: 'solid',
       }
 
       const { fragmentShader, features } = composeBlackHoleShader(config)
@@ -157,7 +150,6 @@ describe('composeBlackHoleShader', () => {
         shadows: false,
         temporal: false,
         ambientOcclusion: false,
-        opacityMode: 'solid',
       }
 
       const { fragmentShader, features } = composeBlackHoleShader(config)
@@ -176,7 +168,6 @@ describe('composeBlackHoleShader', () => {
         shadows: false, // shadows not implemented for black holes
         temporal: false,
         ambientOcclusion: false,
-        opacityMode: 'solid',
         temporalAccumulation: true,
         doppler: true,
       }

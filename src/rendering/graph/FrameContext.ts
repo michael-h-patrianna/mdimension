@@ -162,7 +162,6 @@ export interface FrozenPerformanceState {
  * Only captures render-critical fields.
  */
 export interface FrozenBlackHoleState {
-  readonly scale: number
   readonly horizonRadius: number
   readonly spin: number
   readonly gravityStrength: number
@@ -459,7 +458,6 @@ function captureBlackHoleState(
 ): FrozenBlackHoleState {
   const state = getter()
   return {
-    scale: state.scale,
     horizonRadius: state.horizonRadius,
     spin: state.spin,
     gravityStrength: state.gravityStrength,
@@ -643,7 +641,6 @@ export function createEmptyFrameContext(): FrozenFrameContext {
         isShaderCompiling: false,
       },
       blackHole: {
-        scale: 0.5,
         horizonRadius: 1,
         spin: 0,
         gravityStrength: 1,

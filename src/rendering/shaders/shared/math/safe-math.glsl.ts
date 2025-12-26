@@ -109,7 +109,9 @@ vec3 safeDivide(vec3 v, float s) {
  * @returns v.xyz / v.w with w clamped to safe minimum
  */
 vec3 safePerspectiveDivide(vec4 v) {
-  float safeW = abs(v.w) < SAFE_EPSILON ? sign(v.w + SAFE_EPSILON) * SAFE_EPSILON : v.w;
+  // Preserve sign of w, defaulting to positive when w is exactly zero
+  float signW = v.w >= 0.0 ? 1.0 : -1.0;
+  float safeW = abs(v.w) < SAFE_EPSILON ? signW * SAFE_EPSILON : v.w;
   return v.xyz / safeW;
 }
 
@@ -288,7 +290,9 @@ vec3 guardNaN(vec3 v, vec3 fallback) {
  * @returns 1/x with x clamped away from zero
  */
 float safeReciprocal(float x) {
-  return 1.0 / (abs(x) < SAFE_EPSILON ? sign(x + SAFE_EPSILON) * SAFE_EPSILON : x);
+  // Preserve sign of x, defaulting to positive when x is exactly zero
+  float signX = x >= 0.0 ? 1.0 : -1.0;
+  return 1.0 / (abs(x) < SAFE_EPSILON ? signX * SAFE_EPSILON : x);
 }
 `
 

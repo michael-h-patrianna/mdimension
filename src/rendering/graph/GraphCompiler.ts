@@ -11,7 +11,7 @@
  * @module rendering/graph/GraphCompiler
  */
 
-import { ResourceState, ResourceStateMachine, type TransitionValidation } from './ResourceStateMachine'
+import { ResourceState, ResourceStateMachine } from './ResourceStateMachine'
 import type { CompiledGraph, CompileOptions, RenderPass, RenderResourceConfig } from './types'
 
 // =============================================================================

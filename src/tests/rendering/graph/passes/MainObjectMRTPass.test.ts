@@ -127,31 +127,36 @@ describe('MainObjectMRTPass', () => {
       expect(traverseSpy).toHaveBeenCalledTimes(1);
     });
 
-    it('should reuse material cache on subsequent executes', () => {
+    it('should rebuild material cache on each execute for dynamic layer support', () => {
+      // Material cache is rebuilt on each execute because:
+      // 1. Mesh layers may be set AFTER first render (via ref callbacks)
+      // 2. Materials may change at runtime
+      // 3. Transparency state may change dynamically
       pass.execute(ctx);
       pass.execute(ctx);
       pass.execute(ctx);
-      // Only traversed once - cache was reused
-      expect(traverseSpy).toHaveBeenCalledTimes(1);
+      // Traversed 3 times - cache is rebuilt each time
+      expect(traverseSpy).toHaveBeenCalledTimes(3);
     });
 
-    it('should rebuild cache after invalidateCache()', () => {
+    it('should support invalidateCache() method', () => {
+      // invalidateCache clears the cache, but cache is rebuilt every execute anyway
       pass.execute(ctx);
       expect(traverseSpy).toHaveBeenCalledTimes(1);
 
       pass.invalidateCache();
       pass.execute(ctx);
-      // Traversed again after invalidation
+      // Traversed again (would happen regardless due to always-rebuild behavior)
       expect(traverseSpy).toHaveBeenCalledTimes(2);
     });
 
-    it('should rebuild cache after setLayers()', () => {
+    it('should support setLayers() method', () => {
       pass.execute(ctx);
       expect(traverseSpy).toHaveBeenCalledTimes(1);
 
       pass.setLayers([1]);
       pass.execute(ctx);
-      // Traversed again after layer change
+      // Traversed again (would happen regardless due to always-rebuild behavior)
       expect(traverseSpy).toHaveBeenCalledTimes(2);
     });
 

@@ -108,7 +108,9 @@ VolumeResult volumeRaymarch(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar
         float dispAmount = uDispersionStrength * 0.15;
 
         if (uDispersionDirection == 1) { // View-aligned
-            vec3 right = normalize(cross(rayDir, vec3(0.0, 1.0, 0.0)));
+            // Use alternative up vector when rayDir is nearly vertical to avoid NaN from zero cross product
+            vec3 up = abs(rayDir.y) > 0.999 ? vec3(1.0, 0.0, 0.0) : vec3(0.0, 1.0, 0.0);
+            vec3 right = normalize(cross(rayDir, up));
             dispOffsetR = right * dispAmount;
             dispOffsetB = -right * dispAmount;
         }
@@ -310,7 +312,9 @@ VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tF
         if (uDispersionDirection == 0) { // Radial (from center)
              // Updated inside loop
         } else { // View-aligned
-             vec3 right = normalize(cross(rayDir, vec3(0.0, 1.0, 0.0)));
+             // Use alternative up vector when rayDir is nearly vertical to avoid NaN from zero cross product
+             vec3 up = abs(rayDir.y) > 0.999 ? vec3(1.0, 0.0, 0.0) : vec3(0.0, 1.0, 0.0);
+             vec3 right = normalize(cross(rayDir, up));
              dispOffsetR = right * dispAmount;
              dispOffsetB = -right * dispAmount;
         }

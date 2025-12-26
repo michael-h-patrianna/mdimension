@@ -6,18 +6,18 @@
  * Resource creation is tested at a logical level.
  */
 
-import { describe, expect, it, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest'
 
-import * as THREE from 'three';
+import * as THREE from 'three'
 
-import { ResourcePool } from '@/rendering/graph/ResourcePool';
+import { ResourcePool } from '@/rendering/graph/ResourcePool'
 
 describe('ResourcePool', () => {
-  let pool: ResourcePool;
+  let pool: ResourcePool
 
   beforeEach(() => {
-    pool = new ResourcePool();
-  });
+    pool = new ResourcePool()
+  })
 
   describe('registration', () => {
     it('should register resources', () => {
@@ -67,38 +67,26 @@ describe('ResourcePool', () => {
     });
   });
 
-  describe('size management', () => {
-    it('should update screen size', () => {
-      pool.updateSize(1920, 1080);
-      // No direct assertion, but should not throw
-    });
-
-    it('should clamp size to minimum of 1', () => {
-      pool.updateSize(0, 0);
-      // Should not throw - internally clamped
-    });
-  });
-
   describe('resource access', () => {
     it('should return null for non-existent resource', () => {
-      const result = pool.get('nonexistent');
-      expect(result).toBeNull();
-    });
+      const result = pool.get('nonexistent')
+      expect(result).toBeNull()
+    })
 
     it('should return null texture for non-existent resource', () => {
-      const texture = pool.getTexture('nonexistent');
-      expect(texture).toBeNull();
-    });
+      const texture = pool.getTexture('nonexistent')
+      expect(texture).toBeNull()
+    })
 
     it('should return null read target for non-existent resource', () => {
-      const target = pool.getReadTarget('nonexistent');
-      expect(target).toBeNull();
-    });
+      const target = pool.getReadTarget('nonexistent')
+      expect(target).toBeNull()
+    })
 
     it('should return null write target for non-existent resource', () => {
-      const target = pool.getWriteTarget('nonexistent');
-      expect(target).toBeNull();
-    });
+      const target = pool.getWriteTarget('nonexistent')
+      expect(target).toBeNull()
+    })
   });
 
   describe('depth textures and attachments', () => {

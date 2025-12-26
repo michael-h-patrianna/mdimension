@@ -70,7 +70,7 @@ export const GroundPlaneMaterial = forwardRef<THREE.ShaderMaterial, GroundPlaneM
 
     // Compile shaders
     const { glsl: fragmentShader } = useMemo(
-      () => composeGroundPlaneFragmentShader({ shadows: shadowEnabled, fog: false }),
+      () => composeGroundPlaneFragmentShader({ shadows: shadowEnabled }),
       [shadowEnabled]
     )
     const vertexShader = useMemo(() => composeGroundPlaneVertexShader(), [])

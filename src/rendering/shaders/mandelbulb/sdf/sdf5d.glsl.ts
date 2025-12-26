@@ -36,7 +36,7 @@ float sdf5D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
         float t2 = r2 > EPS ? acos(clamp(zy / max(r2, EPS), -1.0, 1.0)) : 0.0;
         float t3 = atan(z4, z3);
 
-        float rp = pow(r, pwr);
+        float rp = pow(max(r, EPS), pwr);
         float s0 = sin((t0+phaseT)*pwr), c0 = cos((t0+phaseT)*pwr);
         float s1 = sin((t1+phaseP)*pwr), c1 = cos((t1+phaseP)*pwr);
         float s2 = sin(t2*pwr), c2 = cos(t2*pwr);
@@ -51,7 +51,7 @@ float sdf5D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
         escIt = i;
     }
 
-    trap = exp(-minP * 5.0) * 0.3 + exp(-minA * 3.0) * 0.2 + exp(-minS * 8.0) * 0.2 + float(escIt) / float(maxIt) * 0.3;
+    trap = exp(-minP * 5.0) * 0.3 + exp(-minA * 3.0) * 0.2 + exp(-minS * 8.0) * 0.2 + float(escIt) / float(max(maxIt, 1)) * 0.3;
     return max(0.5 * log(max(r, EPS)) * r / max(dr, EPS), EPS);
 }
 
@@ -80,7 +80,7 @@ float sdf5D_simple(vec3 pos, float pwr, float bail, int maxIt) {
         float t2 = r2 > EPS ? acos(clamp(zy / max(r2, EPS), -1.0, 1.0)) : 0.0;
         float t3 = atan(z4, z3);
 
-        float rp = pow(r, pwr);
+        float rp = pow(max(r, EPS), pwr);
         float s0 = sin((t0+phaseT)*pwr), c0 = cos((t0+phaseT)*pwr);
         float s1 = sin((t1+phaseP)*pwr), c1 = cos((t1+phaseP)*pwr);
         float s2 = sin(t2*pwr), c2 = cos(t2*pwr);

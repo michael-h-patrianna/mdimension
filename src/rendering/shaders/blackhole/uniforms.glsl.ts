@@ -16,9 +16,6 @@ export const blackHoleUniformsBlock = /* glsl */ `
 // Time
 uniform float uTime;                // Global time for animations
 
-// Visual scale
-uniform float uScale;               // 3D scale factor (0.1-2.0, default 0.25)
-
 // Physics (Kerr black hole)
 uniform float uHorizonRadius;       // Schwarzschild radius rs = 2M
 uniform float uVisualEventHorizon;  // Kerr event horizon r+ = M(1+√(1-χ²)), shrinks with spin

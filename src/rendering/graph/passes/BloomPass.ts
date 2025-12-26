@@ -37,8 +37,10 @@ const HDRLuminosityHighPassShader = {
     hdrPeak: { value: 5.0 },
   },
 
+  glslVersion: THREE.GLSL3,
+
   vertexShader: /* glsl */ `
-    varying vec2 vUv;
+    out vec2 vUv;
     void main() {
       vUv = uv;
       gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
@@ -46,6 +48,8 @@ const HDRLuminosityHighPassShader = {
   `,
 
   fragmentShader: /* glsl */ `
+    precision highp float;
+
     uniform sampler2D tDiffuse;
     uniform vec3 defaultColor;
     uniform float defaultOpacity;
@@ -53,10 +57,11 @@ const HDRLuminosityHighPassShader = {
     uniform float smoothWidth;
     uniform float hdrPeak;
 
-    varying vec2 vUv;
+    in vec2 vUv;
+    layout(location = 0) out vec4 fragColor;
 
     void main() {
-      vec4 texel = texture2D(tDiffuse, vUv);
+      vec4 texel = texture(tDiffuse, vUv);
 
       // Calculate luminance (Rec. 709 coefficients)
       float v = dot(texel.rgb, vec3(0.2126, 0.7152, 0.0722));
@@ -70,7 +75,7 @@ const HDRLuminosityHighPassShader = {
       // Apply threshold with smoothing on normalized luminance
       float alpha = smoothstep(luminosityThreshold, luminosityThreshold + smoothWidth, normalizedV);
 
-      gl_FragColor = mix(outputColor, texel, alpha);
+      fragColor = mix(outputColor, texel, alpha);
     }
   `,
 };
@@ -233,6 +238,7 @@ export class BloomPass extends BasePass {
       // This normalizes luminance by hdrPeak before thresholding, making
       // the threshold and smoothing parameters work intuitively with HDR content
       this.hdrHighPassMaterial = new THREE.ShaderMaterial({
+        glslVersion: HDRLuminosityHighPassShader.glslVersion,
         uniforms: THREE.UniformsUtils.clone(HDRLuminosityHighPassShader.uniforms),
         vertexShader: HDRLuminosityHighPassShader.vertexShader,
         fragmentShader: HDRLuminosityHighPassShader.fragmentShader,
@@ -244,7 +250,7 @@ export class BloomPass extends BasePass {
       // highPassUniforms still points to the old material's uniforms and nothing renders!
       const oldMaterial = this.bloomPass.materialHighPassFilter;
       this.bloomPass.materialHighPassFilter = this.hdrHighPassMaterial;
-      (this.bloomPass as unknown as { highPassUniforms: typeof this.hdrHighPassMaterial.uniforms }).highPassUniforms = this.hdrHighPassMaterial.uniforms;
+      (this.bloomPass as unknown as { highPassUniforms: THREE.ShaderMaterial['uniforms'] }).highPassUniforms = this.hdrHighPassMaterial.uniforms;
       oldMaterial.dispose();
 
       // Create reusable render targets for bloom processing

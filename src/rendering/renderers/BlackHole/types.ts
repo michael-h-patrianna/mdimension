@@ -94,23 +94,3 @@ export const LIGHTING_MODE_MAP: Record<string, number> = {
   emissiveOnly: 0,
   fakeLit: 1,
 }
-
-/** Mapping from color algorithm string to shader integer */
-export const COLOR_ALGORITHM_MAP: Record<string, number> = {
-  monochromatic: 0,
-  analogous: 1,
-  cosine: 2,
-  normal: 3,
-  distance: 4,
-  lch: 5,
-  multiSource: 6,
-  radial: 7,
-  phase: 8,
-  mixed: 9,
-  blackbody: 10,
-  // Black hole-specific
-  accretionGradient: 11,
-  gravitationalRedshift: 12,
-  lensingIntensity: 13,
-  jetsEmission: 14,
-}

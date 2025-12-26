@@ -402,8 +402,8 @@ describe('ResourceStateMachine', () => {
 
       expect(info?.history.length).toBe(3)
       // First transition should have been removed
-      expect(info?.history[0].passId).toBe('pass1')
-      expect(info?.history[0].toState).toBe(ResourceState.ShaderRead)
+      expect(info?.history[0]!.passId).toBe('pass1')
+      expect(info?.history[0]!.toState).toBe(ResourceState.ShaderRead)
 
       smallHistoryMachine.dispose()
     })

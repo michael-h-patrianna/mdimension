@@ -638,9 +638,6 @@ export interface MandelbulbConfig {
   /** Internal fog density (0.0-1.0) */
   internalFogDensity: number
 
-  // === Raymarching Quality ===
-  /** Unified raymarching quality preset (affects step count) */
-  raymarchQuality: RaymarchQuality
 }
 
 /**
@@ -720,9 +717,6 @@ export const DEFAULT_MANDELBROT_CONFIG: MandelbulbConfig = {
   fogEnabled: false,
   fogContribution: 1.0,
   internalFogDensity: 0.0,
-
-  // Raymarching Quality
-  raymarchQuality: 'balanced',
 }
 
 // ============================================================================
@@ -1375,10 +1369,6 @@ export interface QuaternionJuliaConfig {
   fogContribution: number
   /** Internal fog density (0.0-1.0) */
   internalFogDensity: number
-
-  // === Raymarching Quality ===
-  /** Unified raymarching quality preset (affects step count) */
-  raymarchQuality: RaymarchQuality
 }
 
 /**
@@ -1455,9 +1445,6 @@ export const DEFAULT_QUATERNION_JULIA_CONFIG: QuaternionJuliaConfig = {
   fogEnabled: false,
   fogContribution: 1.0,
   internalFogDensity: 0.0,
-
-  // Raymarching Quality
-  raymarchQuality: 'balanced',
 }
 
 // ============================================================================

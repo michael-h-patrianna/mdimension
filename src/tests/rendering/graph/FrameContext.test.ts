@@ -109,7 +109,6 @@ describe('FrameContext', () => {
         isShaderCompiling: false,
       }),
       getBlackHoleState: vi.fn().mockReturnValue({
-        scale: 0.5,
         horizonRadius: 1.0,
         spin: 0.5,
         gravityStrength: 1.0,
@@ -190,7 +189,6 @@ describe('FrameContext', () => {
     it('should capture black hole state', () => {
       const context = captureFrameContext(0, mockScene, mockCamera, mockStoreGetters)
 
-      expect(context.stores.blackHole.scale).toBe(0.5)
       expect(context.stores.blackHole.horizonRadius).toBe(1.0)
       expect(context.stores.blackHole.spin).toBe(0.5)
       expect(context.stores.blackHole.paletteMode).toBe('diskGradient')

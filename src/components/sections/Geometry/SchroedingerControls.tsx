@@ -661,3 +661,5 @@ export const SchroedingerControls: React.FC<SchroedingerControlsProps> = React.m
     </div>
   );
 });
+
+SchroedingerControls.displayName = 'SchroedingerControls';

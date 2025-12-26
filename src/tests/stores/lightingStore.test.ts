@@ -1,116 +1,74 @@
-import { useLightingStore } from '@/stores/lightingStore';
-import {
-  DEFAULT_LIGHT_COLOR,
-  DEFAULT_LIGHT_STRENGTH,
-  DEFAULT_TRANSFORM_MODE,
-} from '@/stores/defaults/visualDefaults';
-import { act, renderHook } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest'
+import { useLightingStore } from '@/stores/lightingStore'
+import { MAX_LIGHTS, MIN_LIGHTS } from '@/rendering/lights/types'
 
-describe('lightingStore', () => {
+describe('lightingStore (invariants)', () => {
   beforeEach(() => {
-    act(() => {
-      useLightingStore.getState().reset();
-    });
-  });
+    useLightingStore.getState().reset()
+  })
 
-  it('should have correct initial values', () => {
-    const state = useLightingStore.getState();
-    expect(state.lights.length).toBeGreaterThan(0);
-    expect(state.transformMode).toBe(DEFAULT_TRANSFORM_MODE);
-  });
+  it('addLight selects the newly added light, respects MAX_LIGHTS, and increments version', () => {
+    const initial = useLightingStore.getState()
+    const initialVersion = initial.version
+    const initialCount = initial.lights.length
 
-  it('should add a new light', () => {
-    const { result } = renderHook(() => useLightingStore());
-    const initialCount = result.current.lights.length;
-    
-    act(() => {
-      result.current.addLight('point');
-    });
-    
-    expect(result.current.lights.length).toBe(initialCount + 1);
-    const newLight = result.current.lights[result.current.lights.length - 1];
-    if (newLight) {
-        expect(newLight.type).toBe('point');
-        expect(newLight.color).toBe(DEFAULT_LIGHT_COLOR);
-        expect(newLight.intensity).toBe(DEFAULT_LIGHT_STRENGTH);
+    const id = useLightingStore.getState().addLight('point')
+    const afterAdd = useLightingStore.getState()
+    expect(id).not.toBeNull()
+    expect(afterAdd.lights.length).toBe(initialCount + 1)
+    expect(afterAdd.selectedLightId).toBe(id)
+    expect(afterAdd.version).toBeGreaterThan(initialVersion)
+
+    // Fill to max and verify further additions are rejected.
+    while (useLightingStore.getState().lights.length < MAX_LIGHTS) {
+      useLightingStore.getState().addLight('point')
     }
-  });
+    const beforeRejectCount = useLightingStore.getState().lights.length
+    const rejected = useLightingStore.getState().addLight('point')
+    expect(rejected).toBeNull()
+    expect(useLightingStore.getState().lights.length).toBe(beforeRejectCount)
+  })
 
-  it('should remove a light', () => {
-    const { result } = renderHook(() => useLightingStore());
-    // Ensure we have at least one light
-    if (result.current.lights.length === 0) {
-      act(() => {
-        result.current.addLight('point');
-      });
+  it('removeLight is a no-op when at MIN_LIGHTS, and clears selection when removing selected', () => {
+    // Ensure we can remove down to MIN_LIGHTS.
+    while (useLightingStore.getState().lights.length > MIN_LIGHTS) {
+      const id = useLightingStore.getState().lights[0]!.id
+      useLightingStore.getState().removeLight(id)
     }
-    const light = result.current.lights[0];
-    if (light) {
-        const lightId = light.id;
-        const initialCount = result.current.lights.length;
+    expect(useLightingStore.getState().lights.length).toBe(MIN_LIGHTS)
 
-        act(() => {
-            result.current.removeLight(lightId);
-        });
+    // No-op at min.
+    useLightingStore.getState().removeLight('does-not-exist')
+    expect(useLightingStore.getState().lights.length).toBe(MIN_LIGHTS)
 
-        expect(result.current.lights.length).toBe(initialCount - 1);
-        expect(result.current.lights.find(l => l.id === lightId)).toBeUndefined();
-    }
-  });
+    // Add one, select it, then remove it => selection clears.
+    const added = useLightingStore.getState().addLight('spot')
+    expect(added).not.toBeNull()
+    useLightingStore.getState().selectLight(added)
+    useLightingStore.getState().removeLight(added!)
+    expect(useLightingStore.getState().selectedLightId).toBeNull()
+  })
 
-  it('should update light properties', () => {
-    const { result } = renderHook(() => useLightingStore());
-    act(() => {
-        if (result.current.lights.length === 0) result.current.addLight('point');
-    });
-    
-    const light = result.current.lights[0];
-    if (light) {
-        const lightId = light.id;
-        const newColor = '#ff00ff';
+  it('updateLight clamps intensity/coneAngle/penumbra and normalizes rotation into [-π, π)', () => {
+    const id = useLightingStore.getState().addLight('spot')
+    expect(id).not.toBeNull()
 
-        act(() => {
-            result.current.updateLight(lightId, { color: newColor });
-        });
+    useLightingStore.getState().updateLight(id!, {
+      intensity: 999,
+      coneAngle: 999,
+      penumbra: -5,
+      rotation: [100 * Math.PI, -100 * Math.PI, 0],
+    })
 
-        const updatedLight = result.current.lights.find(l => l.id === lightId);
-        expect(updatedLight?.color).toBe(newColor);
-    }
-  });
+    const light = useLightingStore.getState().lights.find((l) => l.id === id)!
+    expect(light.intensity).toBe(3)
+    expect(light.coneAngle).toBe(120)
+    expect(light.penumbra).toBe(0)
 
-  it('should select a light', () => {
-    const { result } = renderHook(() => useLightingStore());
-    act(() => {
-        if (result.current.lights.length === 0) result.current.addLight('point');
-    });
-    
-    const light = result.current.lights[0];
-    if (light) {
-        const lightId = light.id;
-
-        act(() => {
-            result.current.selectLight(lightId);
-        });
-
-        expect(result.current.selectedLightId).toBe(lightId);
-
-        act(() => {
-            result.current.selectLight(null);
-        });
-
-        expect(result.current.selectedLightId).toBeNull();
-    }
-  });
-
-  it('should toggle gizmos', () => {
-    const { result } = renderHook(() => useLightingStore());
-    const initial = result.current.showLightGizmos;
-
-    act(() => {
-      result.current.setShowLightGizmos(!initial);
-    });
-
-    expect(result.current.showLightGizmos).toBe(!initial);
-  });
-});
+    // Signed normalization: each component should be within [-π, π)
+    expect(light.rotation[0]).toBeGreaterThanOrEqual(-Math.PI)
+    expect(light.rotation[0]).toBeLessThan(Math.PI)
+    expect(light.rotation[1]).toBeGreaterThanOrEqual(-Math.PI)
+    expect(light.rotation[1]).toBeLessThan(Math.PI)
+  })
+})

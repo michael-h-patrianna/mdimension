@@ -202,8 +202,8 @@ export function useShadowPatching(
         mesh.customDepthMaterial = depthMaterial
         mesh.customDistanceMaterial = distanceMaterial
       } else if (mesh) {
-        mesh.customDepthMaterial = undefined as unknown as THREE.Material
-        mesh.customDistanceMaterial = undefined as unknown as THREE.Material
+        mesh.customDepthMaterial = undefined
+        mesh.customDistanceMaterial = undefined
       }
     },
     [shadowEnabled, depthMaterial, distanceMaterial]
@@ -219,8 +219,8 @@ export function useShadowPatching(
       mesh.customDepthMaterial = depthMaterial
       mesh.customDistanceMaterial = distanceMaterial
     } else {
-      mesh.customDepthMaterial = undefined as unknown as THREE.Material
-      mesh.customDistanceMaterial = undefined as unknown as THREE.Material
+      mesh.customDepthMaterial = undefined
+      mesh.customDistanceMaterial = undefined
     }
   }, [shadowEnabled, depthMaterial, distanceMaterial])
 

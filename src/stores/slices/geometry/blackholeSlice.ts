@@ -771,7 +771,6 @@ export const createBlackHoleSlice: StateCreator<ExtendedObjectSlice, [], [], Bla
     if (config.lightingMode !== undefined) validated.lightingMode = config.lightingMode
     if (config.baseColor !== undefined) validated.baseColor = config.baseColor
     if (config.shellGlowColor !== undefined) validated.shellGlowColor = config.shellGlowColor
-    if (config.visualPreset !== undefined) validated.visualPreset = config.visualPreset
     if (config.dopplerEnabled !== undefined) validated.dopplerEnabled = config.dopplerEnabled
     if (config.enableAbsorption !== undefined) validated.enableAbsorption = config.enableAbsorption
     if (config.temporalAccumulationEnabled !== undefined)

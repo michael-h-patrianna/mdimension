@@ -53,7 +53,7 @@ float sdf3D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
     }
 
     trap = exp(-minPlane * 5.0) * 0.3 + exp(-minAxis * 3.0) * 0.2 +
-           exp(-minSphere * 8.0) * 0.2 + float(escIt) / float(maxIt) * 0.3;
+           exp(-minSphere * 8.0) * 0.2 + float(escIt) / float(max(maxIt, 1)) * 0.3;
     return max(0.5 * log(max(r, EPS)) * r / max(dr, EPS), EPS);
 }
 

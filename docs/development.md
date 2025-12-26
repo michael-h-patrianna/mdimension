@@ -1,165 +1,94 @@
 # Development Guide for LLM Coding Agents
 
-**Purpose**: Instructions for setup, running, building, and development workflow.
+**Purpose**: This teaches you HOW to set up, run, build, and debug this project with the exact commands and conventions used here.
 
-**Read This When**: Setting up the project, running commands, or troubleshooting.
+**Read this first**:
+- `docs/architecture.md` for file placement rules.
+- `docs/testing.md` for test patterns and Playwright debugging.
+- `docs/meta/styleguide.md` for mandatory engineering + WebGL2 shader rules.
 
----
-
-## Quick Start
+## Setup (One-time)
 
 ```bash
-# 1. Install dependencies
+# Install dependencies (npm is the expected package manager)
 npm install
+```
 
-# 2. Start development server
+## Run Locally (Dev Server)
+
+```bash
+# Starts Vite dev server on port 3000
 npm run dev
-
-# 3. Open in browser
-# Default: http://localhost:3000
 ```
 
-No additional configuration needed. Client-side only React app.
-
-## Key Commands
-
-| Task | Command | Description |
-|------|---------|-------------|
-| Dev server | `npm run dev` | Start Vite dev server with HMR |
-| Run tests | `npm test` | Run all Vitest tests once |
-| Watch tests | `npm run test:watch` | Interactive test watch mode |
-| Build | `npm run build` | TypeScript check + Vite production build |
-| Preview | `npm run preview` | Preview production build locally |
-| Lint | `npm run lint` | ESLint check |
-| Format | `npm run format` | Prettier formatting |
-| Type check | `npx tsc --noEmit` | TypeScript check without emit |
-
-## Development Workflow
-
-### 1. Before Starting Work
+- Dev URL: `http://localhost:3000`
+- Port is fixed by the script (`vite --port 3000`). If you must change it, pass a different port:
 
 ```bash
-# Ensure clean state
-npm test              # All tests pass
-npx tsc --noEmit      # No type errors
+npm run dev -- --port 3001
 ```
 
-### 2. During Development
+## Key Commands (Use these; do not invent new ones)
+
+| Task | Command |
+|---|---|
+| Dev server | `npm run dev` |
+| Unit/integration/component tests | `npm test` |
+| Build | `npm run build` |
+| Preview production build | `npm run preview` |
+| Lint | `npm run lint` |
+| Format | `npm run format` |
+| E2E / acceptance tests | `npx playwright test` |
+
+## Standard Workflow (What to do when changing code)
+
+### Before you start (fast sanity)
 
 ```bash
-# Terminal 1: Dev server
-npm run dev
-
-# Terminal 2: Test watch (optional)
-npm run test:watch
+npm test
 ```
 
-### 3. Before Committing
+### While developing
+
+- Keep `npm run dev` running for manual iteration.
+- When debugging runtime issues, prefer **Playwright + console logs** (see `docs/testing.md`).
+
+### Before you claim work is done (required)
 
 ```bash
-# Required checks
-npm test              # All tests pass
-npx tsc --noEmit      # No type errors
-npm run lint          # No lint errors
-npm run build         # Build succeeds
+npm test
+npm run lint
+npm run build
 ```
 
-## Project Scripts Explained
+## Decision Tree: “What command should I run?”
 
-```json
-{
-  "dev": "vite",                    // HMR dev server
-  "build": "tsc -b && vite build",  // Type check + production build
-  "preview": "vite preview",        // Serve built files
-  "test": "vitest run",             // Run tests once (CI mode)
-  "test:watch": "vitest",           // Interactive watch mode
-  "lint": "eslint ...",             // Code quality check
-  "format": "prettier --write ..."  // Auto-format code
-}
-```
+- If you changed TypeScript/React logic and want confidence → `npm test`
+- If you changed rendering/shaders and need WebGL validation → `npx playwright test`
+- If you changed dependencies, config, or build pipeline → `npm run build`
+- If you touched formatting/style → `npm run lint` and `npm run format`
 
-## Environment
+## Debugging Rules (Project-specific)
 
-- **Node**: 18+ recommended
-- **Package Manager**: npm (lockfile committed)
-- **No backend**: Client-side only React app
-- **No env vars required**: All configuration in code
+- **Never use fetch-based debugging**. Do not add “reporting endpoints” or send logs over HTTP.
+- For runtime bugs:
+  - Add `console.log` (temporarily) in the browser code.
+  - Capture and assert logs via Playwright (`page.on('console', ...)`).
+  - Remove noisy logs after resolving.
 
-## Vite Configuration
-
-Dev server runs on port 3000 by default. Key features:
-- Hot Module Replacement (HMR)
-- Path aliases (`@/` → `src/`)
-- TypeScript support
-- React Fast Refresh
-
-## TypeScript Configuration
-
-Strict mode enabled. Key settings:
-- `strict: true`
-- `noUnusedLocals: true`
-- `noUnusedParameters: true`
-
-Path aliases configured:
-```typescript
-import { X } from '@/components/...'
-import { Y } from '@/lib/...'
-import { Z } from '@/stores/...'
-import { W } from '@/hooks/...'
-```
-
-## Test Configuration
-
-Vitest with React Testing Library. Key settings:
-- `maxWorkers: 4` (memory safety)
-- `pool: 'threads'` (not forks)
-  test: {
-    globals: true,
-    environment: 'happy-dom',
-    setupFiles: './src/tests/setup.ts',
-  },
-
-Playwright tests are separate in `scripts/playwright/`.
-
-## Adding New Dependencies
+## Adding Dependencies (Do this exactly)
 
 ```bash
-# Production dependency
-npm install package-name
+# Runtime dependency
+npm install <pkg>
 
-# Dev dependency (testing, build tools)
-npm install -D package-name
+# Dev dependency
+npm install -D <pkg>
 ```
 
-**Check before adding**:
-1. Is it tree-shakeable?
-2. Bundle size impact?
-3. Actively maintained?
-
-## Debugging
-
-### Browser DevTools
-- React DevTools extension for component inspection
-- Three.js debugging: Use `scene.children` in console
-
-### Test Debugging
-```bash
-# Run single test file with output
-npx vitest run src/tests/path/to/test.test.ts
-
-# Run with debugging
-node --inspect-brk ./node_modules/vitest/vitest.mjs run
-```
-
-### Memory Issues
-If tests crash with OOM:
-```bash
-# Kill stuck processes
-killall -9 node
-
-# Run with limited workers
-npx vitest run --maxWorkers=2
-```
+Rules:
+- Prefer small, tree-shakeable, maintained packages.
+- Do not add “UI component libraries” — this repo already has `src/components/ui`.
 
 ## Build Output
 
@@ -167,164 +96,61 @@ npx vitest run --maxWorkers=2
 npm run build
 ```
 
-Creates `dist/` folder:
-- `dist/index.html` - Entry point
-- `dist/assets/*.js` - Bundled JavaScript
-- `dist/assets/*.css` - Bundled styles
-
-Serve with any static file server.
-
-## Common Tasks
-
-### Check Everything Before PR
-```bash
-npm test && npx tsc --noEmit && npm run lint && npm run build
-```
-
-### Fresh Install
-```bash
-rm -rf node_modules package-lock.json
-npm install
-```
-
-### Update Dependencies
-```bash
-npm outdated          # Check for updates
-npm update            # Update within semver range
-npm install pkg@latest # Update specific package
-```
+Build artifacts go to `dist/`. Treat `dist/` as output only (do not edit it by hand).
 
 ## Troubleshooting
 
-**Problem**: Dev server not starting
-**Solution**: Check port 3000 is free, try `npm run dev -- --port 3000`
+### Dev server won’t start
 
-**Problem**: Type errors after install
-**Solution**: `npx tsc --noEmit` to see all errors, may need `npm install`
+- Check if port 3000 is already in use.
+- Try a different port:
 
-**Problem**: Tests hanging/OOM
-**Solution**: `killall -9 node`, check `maxWorkers: 4` in vitest.config.ts
-
-**Problem**: HMR not working
-**Solution**: Hard refresh browser, restart dev server
-
-**Problem**: Import path errors
-**Solution**: Check `@/` alias maps to `src/`, may need IDE restart
-
-## IDE Setup (VS Code)
-
-Recommended extensions:
-- ESLint
-- Prettier
-- TypeScript + JavaScript
-- Tailwind CSS IntelliSense
-- Vitest Runner
-
-Settings sync with project:
-```json
-{
-  "editor.formatOnSave": true,
-  "editor.defaultFormatter": "esbenp.prettier-vscode"
-}
-```
-
----
-
-## Verification Checklist
-
-**Before claiming work is complete, run ALL of these**:
-
-```bash
-# 1. Type check
-npx tsc --noEmit
-
-# 2. Run all tests
-npm test
-
-# 3. Lint check
-npm run lint
-
-# 4. Build succeeds
-npm run build
-```
-
-**All must pass with zero errors.**
-
----
-
-## Common Development Tasks
-
-### Adding a New Feature
-
-1. Create feature files in appropriate directories
-2. Create tests in `src/tests/` mirroring source structure
-3. Run `npm test` to verify tests pass
-4. Run `npx tsc --noEmit` to verify types
-5. Run `npm run lint` to verify code style
-
-### Modifying Existing Code
-
-1. Read existing tests to understand expected behavior
-2. Make changes
-3. Run `npm test` to verify nothing broke
-4. Update tests if behavior intentionally changed
-
-### Debugging Failing Tests
-
-```bash
-# Run single file with verbose output
-npx vitest run src/tests/path/to/file.test.ts --reporter=verbose
-
-# Run with pattern matching
-npx vitest run -t "test name pattern"
-```
-
----
-
-## Directory Rules (CRITICAL)
-
-| Activity | Required Directory |
-|----------|-------------------|
-| Playwright scripts | `scripts/playwright/` |
-| Utility scripts | `scripts/tools/` |
-| Screenshots | `screenshots/` |
-| Documentation | `docs/` |
-| Experiments | `src/dev-tools/` |
-
-**NEVER place scripts, screenshots, or docs in project root.**
-
----
-
-## Port Configuration
-
-| Service | Port |
-|---------|------|
-| Dev server | 3000 |
-| Preview | 4173 |
-
-If port 3000 is busy:
 ```bash
 npm run dev -- --port 3001
 ```
 
----
+### Tests hang or the system gets sluggish
+
+- Stop running node processes:
+
+```bash
+killall -9 node
+```
+
+- Re-run a single test file to isolate:
+
+```bash
+npx vitest run src/tests/path/to/test.test.ts
+```
+
+### Playwright fails to launch the app
+
+- Playwright expects `http://localhost:3000` and auto-starts the dev server via `playwright.config.ts`.
+- If you already have a server running, Playwright will reuse it (local mode).
+
+## Directory Rules (Keep the repo root clean)
+
+| Activity | Required directory |
+|---|---|
+| Playwright tests | `scripts/playwright/` |
+| Utility scripts | `scripts/tools/` |
+| Screenshots/visual artifacts | `screenshots/` |
+| Docs | `docs/` |
+| Temporary experiments | `src/dev-tools/` |
 
 ## Common Mistakes
 
-❌ **Don't**: Skip type checking before commit
-✅ **Do**: Always run `npx tsc --noEmit`
+❌ **Don't**: Run `vitest` watch mode in automation or scripts.
+✅ **Do**: Use `npm test` (`vitest run`) for CI-safe runs.
 
-❌ **Don't**: Use relative imports like `../../../`
-✅ **Do**: Use path aliases like `@/components/...`
+❌ **Don't**: Debug with fetch calls, remote log collectors, or “debug endpoints”.
+✅ **Do**: Use Playwright and inspect/capture console logs.
 
-❌ **Don't**: Leave tests failing
-✅ **Do**: Fix tests or update expected values if behavior changed intentionally
+❌ **Don't**: Put scripts, scratch docs, or screenshots in the repo root.
+✅ **Do**: Use `scripts/tools/`, `docs/`, and `screenshots/`.
 
-❌ **Don't**: Commit without running full verification
-✅ **Do**: Run `npm test && npx tsc --noEmit && npm run lint && npm run build`
+❌ **Don't**: Add raw HTML controls or a new UI library.
+✅ **Do**: Use/extend `src/components/ui` primitives.
 
-❌ **Don't**: Run vitest in watch mode during automation
-✅ **Do**: Use `npm test` which runs `vitest run`
-
-❌ **Don't**: Modify vitest worker count (causes OOM)
-✅ **Do**: Keep `maxWorkers: 4` in vitest.config.ts
+❌ **Don't**: Skip `npm run build` after pipeline-level changes.
+✅ **Do**: Always run `npm run build` before claiming the change is complete.

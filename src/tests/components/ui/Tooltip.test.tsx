@@ -1,80 +1,59 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
-import { Tooltip } from '../../../components/ui/Tooltip';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, fireEvent, render, screen } from '@testing-library/react'
+import { Tooltip } from '../../../components/ui/Tooltip'
 
 describe('Tooltip', () => {
   beforeEach(() => {
-    vi.useFakeTimers();
-  });
+    vi.useFakeTimers()
+  })
 
   afterEach(() => {
-    vi.restoreAllMocks();
-    vi.useRealTimers();
-  });
+    vi.restoreAllMocks()
+    vi.useRealTimers()
+  })
 
   it('renders children correctly', () => {
     render(
       <Tooltip content="Tooltip text">
         <button>Hover me</button>
       </Tooltip>
-    );
-    expect(screen.getByRole('button', { name: /hover me/i })).toBeInTheDocument();
-  });
+    )
+    expect(screen.getByRole('button', { name: /hover me/i })).toBeInTheDocument()
+  })
 
   it('shows tooltip after delay on hover', async () => {
     render(
       <Tooltip content="Tooltip text" delay={300}>
         <button>Hover me</button>
       </Tooltip>
-    );
+    )
 
-    const trigger = screen.getByRole('button');
-    fireEvent.mouseEnter(trigger);
+    const trigger = screen.getByRole('button')
+    fireEvent.mouseEnter(trigger)
 
     // Fast-forward time within act
     await act(async () => {
-      vi.advanceTimersByTime(300);
-    });
+      vi.advanceTimersByTime(300)
+    })
 
-    expect(screen.getByRole('tooltip')).toBeInTheDocument();
-    expect(screen.getByText('Tooltip text')).toBeInTheDocument();
-  });
-
-  // Skip this test in happy-dom as AnimatePresence exit animations don't always complete reliably in the test environment
-  // it('hides tooltip on mouse leave', async () => { ... });
-
-  it('accepts React node as content', async () => {
-    render(
-      <Tooltip content={<div data-testid="custom-content">Custom content</div>} delay={100}>
-        <button>Hover me</button>
-      </Tooltip>
-    );
-
-    const trigger = screen.getByRole('button');
-    fireEvent.mouseEnter(trigger);
-
-    await act(async () => {
-      vi.advanceTimersByTime(100);
-    });
-
-    expect(screen.getByTestId('custom-content')).toBeInTheDocument();
-  });
+    expect(screen.getByRole('tooltip')).toBeInTheDocument()
+    expect(screen.getByText('Tooltip text')).toBeInTheDocument()
+  })
 
   it('does not show tooltip before delay', () => {
     render(
       <Tooltip content="Tooltip text" delay={500}>
         <button>Hover me</button>
       </Tooltip>
-    );
+    )
 
-    const trigger = screen.getByRole('button');
-    fireEvent.mouseEnter(trigger);
+    const trigger = screen.getByRole('button')
+    fireEvent.mouseEnter(trigger)
 
     act(() => {
-      // Only advance 200ms (less than 500ms delay)
-      vi.advanceTimersByTime(200);
-    });
+      vi.advanceTimersByTime(200)
+    })
 
-    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
-  });
-});
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+  })
+})

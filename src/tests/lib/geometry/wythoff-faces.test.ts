@@ -5,13 +5,16 @@
 import { describe, it, expect } from 'vitest'
 import { generateGeometry } from '@/lib/geometry'
 import { detectFaces, getFaceDetectionMethod } from '@/lib/geometry'
+import { DEFAULT_EXTENDED_OBJECT_PARAMS } from '@/lib/geometry/extended/types'
 
 describe('Wythoff polytope face detection', () => {
   it('should detect faces for wythoff-polytope in 4D', () => {
     const geo = generateGeometry('wythoff-polytope', 4, {
+      ...DEFAULT_EXTENDED_OBJECT_PARAMS,
       wythoffPolytope: {
         symmetryGroup: 'B',
         preset: 'regular',
+        customSymbol: [],
         scale: 1.0,
         snub: false,
       }
@@ -34,9 +37,11 @@ describe('Wythoff polytope face detection', () => {
 
   it('should detect faces for wythoff-polytope in 6D', () => {
     const geo = generateGeometry('wythoff-polytope', 6, {
+      ...DEFAULT_EXTENDED_OBJECT_PARAMS,
       wythoffPolytope: {
         symmetryGroup: 'B',
         preset: 'regular',
+        customSymbol: [],
         scale: 1.0,
         snub: false,
       }
@@ -45,7 +50,7 @@ describe('Wythoff polytope face detection', () => {
     console.log('=== 6D Wythoff Regular ===')
     console.log('Vertices:', geo.vertices.length)
     console.log('Edges:', geo.edges.length)
-    console.log('analyticalFaces in metadata:', geo.metadata?.properties?.analyticalFaces?.length ?? 'MISSING')
+    console.log('analyticalFaces in metadata:', (geo.metadata?.properties?.analyticalFaces as number[][] | undefined)?.length ?? 'MISSING')
 
     const faceMethod = getFaceDetectionMethod('wythoff-polytope')
     console.log('Face detection method:', faceMethod)
@@ -58,9 +63,11 @@ describe('Wythoff polytope face detection', () => {
 
   it('should detect faces for wythoff-polytope rectified preset', () => {
     const geo = generateGeometry('wythoff-polytope', 4, {
+      ...DEFAULT_EXTENDED_OBJECT_PARAMS,
       wythoffPolytope: {
         symmetryGroup: 'B',
         preset: 'rectified',
+        customSymbol: [],
         scale: 1.0,
         snub: false,
       }
@@ -69,7 +76,7 @@ describe('Wythoff polytope face detection', () => {
     console.log('=== 4D Wythoff Rectified ===')
     console.log('Vertices:', geo.vertices.length)
     console.log('Edges:', geo.edges.length)
-    console.log('analyticalFaces in metadata:', geo.metadata?.properties?.analyticalFaces?.length ?? 'MISSING')
+    console.log('analyticalFaces in metadata:', (geo.metadata?.properties?.analyticalFaces as number[][] | undefined)?.length ?? 'MISSING')
 
     const faceMethod = getFaceDetectionMethod('wythoff-polytope')
     console.log('Face detection method:', faceMethod)
@@ -83,12 +90,10 @@ describe('Wythoff polytope face detection', () => {
 
   it('should detect faces for root-system in 6D', () => {
     const geo = generateGeometry('root-system', 6, {
+      ...DEFAULT_EXTENDED_OBJECT_PARAMS,
       rootSystem: {
         rootType: 'D',
-        rank: 6,
         scale: 1.0,
-        showPositive: true,
-        showNegative: true,
       }
     })
 
@@ -109,12 +114,10 @@ describe('Wythoff polytope face detection', () => {
   it('should cover all vertices with faces for A_7 root-system (8D)', () => {
     // This is the specific case from the bug report where convex-hull was failing
     const geo = generateGeometry('root-system', 8, {
+      ...DEFAULT_EXTENDED_OBJECT_PARAMS,
       rootSystem: {
         rootType: 'A',
-        rank: 8,
         scale: 1.0,
-        showPositive: true,
-        showNegative: true,
       }
     })
 

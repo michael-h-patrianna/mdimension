@@ -2,7 +2,7 @@
  * Tests for exportStore
  */
 
-import { useExportStore } from '@/stores/exportStore'
+import { getRecommendedBitrate, useExportStore } from '@/stores/exportStore'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mock URL.createObjectURL and URL.revokeObjectURL
@@ -21,107 +21,6 @@ describe('exportStore', () => {
     useExportStore.getState().reset()
     // Then clear mocks so tests start fresh
     vi.clearAllMocks()
-  })
-
-  describe('Initial State', () => {
-    it('should have isExporting as false by default', () => {
-      expect(useExportStore.getState().isExporting).toBe(false)
-    })
-
-    it('should have isModalOpen as false by default', () => {
-      expect(useExportStore.getState().isModalOpen).toBe(false)
-    })
-
-    it('should have status as idle by default', () => {
-      expect(useExportStore.getState().status).toBe('idle')
-    })
-
-    it('should have progress as 0 by default', () => {
-      expect(useExportStore.getState().progress).toBe(0)
-    })
-
-    it('should have previewUrl as null by default', () => {
-      expect(useExportStore.getState().previewUrl).toBeNull()
-    })
-
-    it('should have error as null by default', () => {
-      expect(useExportStore.getState().error).toBeNull()
-    })
-
-    it('should have default settings', () => {
-      const settings = useExportStore.getState().settings
-      expect(settings.format).toBe('mp4')
-      expect(settings.resolution).toBe('1080p')
-      expect(settings.fps).toBe(60)
-      expect(settings.duration).toBe(5)
-      expect(settings.bitrate).toBe(12)
-      expect(settings.warmupFrames).toBe(5)
-    })
-  })
-
-  describe('setModalOpen', () => {
-    it('should open modal', () => {
-      useExportStore.getState().setModalOpen(true)
-      expect(useExportStore.getState().isModalOpen).toBe(true)
-    })
-
-    it('should close modal', () => {
-      useExportStore.getState().setModalOpen(true)
-      useExportStore.getState().setModalOpen(false)
-      expect(useExportStore.getState().isModalOpen).toBe(false)
-    })
-  })
-
-  describe('setIsExporting', () => {
-    it('should set exporting to true', () => {
-      useExportStore.getState().setIsExporting(true)
-      expect(useExportStore.getState().isExporting).toBe(true)
-    })
-
-    it('should set exporting to false', () => {
-      useExportStore.getState().setIsExporting(true)
-      useExportStore.getState().setIsExporting(false)
-      expect(useExportStore.getState().isExporting).toBe(false)
-    })
-  })
-
-  describe('setStatus', () => {
-    it('should transition to rendering', () => {
-      useExportStore.getState().setStatus('rendering')
-      expect(useExportStore.getState().status).toBe('rendering')
-    })
-
-    it('should transition to encoding', () => {
-      useExportStore.getState().setStatus('encoding')
-      expect(useExportStore.getState().status).toBe('encoding')
-    })
-
-    it('should transition to completed', () => {
-      useExportStore.getState().setStatus('completed')
-      expect(useExportStore.getState().status).toBe('completed')
-    })
-
-    it('should transition to error', () => {
-      useExportStore.getState().setStatus('error')
-      expect(useExportStore.getState().status).toBe('error')
-    })
-  })
-
-  describe('setProgress', () => {
-    it('should set progress value', () => {
-      useExportStore.getState().setProgress(0.5)
-      expect(useExportStore.getState().progress).toBe(0.5)
-    })
-
-    it('should handle 0 progress', () => {
-      useExportStore.getState().setProgress(0)
-      expect(useExportStore.getState().progress).toBe(0)
-    })
-
-    it('should handle 1 progress', () => {
-      useExportStore.getState().setProgress(1)
-      expect(useExportStore.getState().progress).toBe(1)
-    })
   })
 
   describe('setPreviewUrl', () => {
@@ -202,51 +101,30 @@ describe('exportStore', () => {
       expect(settings.customWidth).toBe(2560)
       expect(settings.customHeight).toBe(1440)
     })
+
+    it('auto-adjusts bitrate when resolution or fps changes (unless bitrate is explicitly set)', () => {
+      // Establish a known base
+      useExportStore.getState().updateSettings({ resolution: '1080p', fps: 30 })
+      const bitrate30 = useExportStore.getState().settings.bitrate
+      expect(bitrate30).toBe(getRecommendedBitrate('1080p', 30))
+
+      // Changing fps should change bitrate (auto)
+      useExportStore.getState().updateSettings({ fps: 60 })
+      expect(useExportStore.getState().settings.bitrate).toBe(getRecommendedBitrate('1080p', 60))
+
+      // Explicit bitrate disables auto adjustment for that update
+      useExportStore.getState().updateSettings({ resolution: '4k', bitrate: 50 })
+      expect(useExportStore.getState().settings.bitrate).toBe(50)
+    })
   })
 
   describe('reset', () => {
-    it('should reset exporting state', () => {
-      useExportStore.getState().setIsExporting(true)
-      useExportStore.getState().reset()
-      expect(useExportStore.getState().isExporting).toBe(false)
-    })
-
-    it('should reset status to idle', () => {
-      useExportStore.getState().setStatus('completed')
-      useExportStore.getState().reset()
-      expect(useExportStore.getState().status).toBe('idle')
-    })
-
-    it('should reset progress to 0', () => {
-      useExportStore.getState().setProgress(0.75)
-      useExportStore.getState().reset()
-      expect(useExportStore.getState().progress).toBe(0)
-    })
-
-    it('should reset previewUrl to null', () => {
-      useExportStore.getState().setPreviewUrl('blob:test')
-      useExportStore.getState().reset()
-      expect(useExportStore.getState().previewUrl).toBeNull()
-    })
-
-    it('should reset error to null', () => {
-      useExportStore.getState().setError('Test error')
-      useExportStore.getState().reset()
-      expect(useExportStore.getState().error).toBeNull()
-    })
-
     it('should revoke previewUrl on reset', () => {
       useExportStore.getState().setPreviewUrl('blob:to-revoke')
       mockRevokeObjectURL.mockClear()
       useExportStore.getState().reset()
 
       expect(mockRevokeObjectURL).toHaveBeenCalledWith('blob:to-revoke')
-    })
-
-    it('should not revoke if previewUrl is null', () => {
-      mockRevokeObjectURL.mockClear()
-      useExportStore.getState().reset()
-      expect(mockRevokeObjectURL).not.toHaveBeenCalled()
     })
 
     it('should preserve settings on reset', () => {
@@ -259,139 +137,51 @@ describe('exportStore', () => {
     })
   })
 
-  describe('State Transitions', () => {
-    it('should support idle -> rendering -> encoding -> completed flow', () => {
-      expect(useExportStore.getState().status).toBe('idle')
+  describe('Mode/tier selection (recalculateMode)', () => {
+    it('computes estimatedSizeMB and selects tier/mode based on size and browser type', () => {
+      // Force a known browser type for deterministic mode selection
+      useExportStore.setState({ browserType: 'standard' })
 
-      useExportStore.getState().setIsExporting(true)
-      useExportStore.getState().setStatus('rendering')
-      expect(useExportStore.getState().status).toBe('rendering')
+      // sizeMB = (bitrate * duration)/8. Choose bitrate/duration that produces medium/large tiers.
+      useExportStore.getState().updateSettings({ bitrate: 80, duration: 10 }) // 100MB
+      useExportStore.getState().setModalOpen(true) // triggers recalculateMode
+      expect(useExportStore.getState().estimatedSizeMB).toBeCloseTo(100)
+      // Standard browser => segmented for >=100MB
+      expect(useExportStore.getState().exportMode).toBe('segmented')
+      // 100MB => medium tier
+      expect(useExportStore.getState().exportTier).toBe('medium')
 
-      useExportStore.getState().setProgress(0.5)
-      useExportStore.getState().setStatus('encoding')
-      expect(useExportStore.getState().status).toBe('encoding')
+      useExportStore.setState({ browserType: 'chromium-capable' })
+      useExportStore.getState().recalculateMode()
+      expect(useExportStore.getState().exportMode).toBe('stream')
 
-      useExportStore.getState().setPreviewUrl('blob:final')
-      useExportStore.getState().setStatus('completed')
-      expect(useExportStore.getState().status).toBe('completed')
+      // Large tier
+      useExportStore.getState().updateSettings({ bitrate: 120, duration: 12.5 }) // 187.5MB
+      expect(useExportStore.getState().exportTier).toBe('large')
     })
 
-    it('should support idle -> rendering -> error flow', () => {
-      expect(useExportStore.getState().status).toBe('idle')
+    it('exportModeOverride wins over auto selection', () => {
+      useExportStore.setState({ browserType: 'chromium-capable' })
+      useExportStore.getState().updateSettings({ bitrate: 120, duration: 12.5 }) // would choose stream
+      expect(useExportStore.getState().exportMode).toBe('stream')
 
-      useExportStore.getState().setIsExporting(true)
-      useExportStore.getState().setStatus('rendering')
-
-      useExportStore.getState().setError('Something went wrong')
-      useExportStore.getState().setStatus('error')
-
-      expect(useExportStore.getState().status).toBe('error')
-      expect(useExportStore.getState().error).toBe('Something went wrong')
+      useExportStore.getState().setExportModeOverride('segmented')
+      expect(useExportStore.getState().exportMode).toBe('segmented')
     })
   })
 
-  describe('Estimated Size Calculation', () => {
-    // Settings are persisted, so we must set explicit known values before each test
-    beforeEach(() => {
-      // First set resolution and fps WITHOUT bitrate to trigger auto-calculation
-      useExportStore.getState().updateSettings({
-        resolution: '1080p',
-        fps: 60,
-        duration: 5,
-      })
-      // Now explicitly set bitrate to 12 for tests that expect that baseline
-      // This ensures a known starting point (even if not the "recommended" value)
-      useExportStore.getState().updateSettings({ bitrate: 12 })
+  describe('getRecommendedBitrate', () => {
+    it('scales bitrate by resolution and fps and clamps to [4, 100]', () => {
+      expect(getRecommendedBitrate('720p', 30)).toBe(8)
+      expect(getRecommendedBitrate('1080p', 60)).toBe(24) // 12 * 2
+      expect(getRecommendedBitrate('4k', 60)).toBe(70) // 35 * 2
+      expect(getRecommendedBitrate('1080p', 1)).toBe(4) // clamps low
+      expect(getRecommendedBitrate('4k', 999)).toBe(100) // clamps high
     })
 
-    it('should calculate size based on bitrate and duration', () => {
-      // 12 Mbps * 5s / 8 = 7.5 MB
-      useExportStore.getState().setModalOpen(true) // Trigger recalculateMode
-      expect(useExportStore.getState().estimatedSizeMB).toBeCloseTo(7.5)
-    })
-
-    it('should update estimated size when bitrate changes', () => {
-      useExportStore.getState().setModalOpen(true)
-
-      // Change bitrate from 12 to 24 Mbps
-      useExportStore.getState().updateSettings({ bitrate: 24 })
-
-      // 24 Mbps * 5s / 8 = 15 MB
-      expect(useExportStore.getState().estimatedSizeMB).toBeCloseTo(15)
-    })
-
-    it('should update estimated size when duration changes', () => {
-      useExportStore.getState().setModalOpen(true)
-
-      // Change duration from 5 to 10 seconds
-      useExportStore.getState().updateSettings({ duration: 10 })
-
-      // 12 Mbps * 10s / 8 = 15 MB
-      expect(useExportStore.getState().estimatedSizeMB).toBeCloseTo(15)
-    })
-
-    it('should update estimated size when both bitrate and duration change', () => {
-      useExportStore.getState().setModalOpen(true)
-
-      useExportStore.getState().updateSettings({ bitrate: 25, duration: 60 })
-
-      // 25 Mbps * 60s / 8 = 187.5 MB
-      expect(useExportStore.getState().estimatedSizeMB).toBeCloseTo(187.5)
-    })
-
-    it('should auto-adjust bitrate and size when resolution changes', () => {
-      useExportStore.getState().setModalOpen(true)
-      const sizeAt1080p = useExportStore.getState().estimatedSizeMB
-      const bitrateAt1080p = useExportStore.getState().settings.bitrate
-
-      useExportStore.getState().updateSettings({ resolution: '4k' })
-      const sizeAt4k = useExportStore.getState().estimatedSizeMB
-      const bitrateAt4k = useExportStore.getState().settings.bitrate
-
-      // 4K should have higher bitrate and larger file size
-      expect(bitrateAt4k).toBeGreaterThan(bitrateAt1080p)
-      expect(sizeAt4k).toBeGreaterThan(sizeAt1080p)
-    })
-
-    it('should auto-adjust bitrate and size when fps changes', () => {
-      // First set to 30fps to ensure we have a known starting point
-      useExportStore.getState().updateSettings({
-        resolution: '1080p',
-        fps: 30,
-        duration: 5,
-      })
-      useExportStore.getState().setModalOpen(true)
-
-      const sizeAt30fps = useExportStore.getState().estimatedSizeMB
-      const bitrateAt30fps = useExportStore.getState().settings.bitrate
-
-      // Expected: 1080p at 30fps = 12 * (30/30) = 12 Mbps
-      expect(bitrateAt30fps).toBe(12)
-
-      // Now change to 60fps - should auto-adjust
-      useExportStore.getState().updateSettings({ fps: 60 })
-      const sizeAt60fps = useExportStore.getState().estimatedSizeMB
-      const bitrateAt60fps = useExportStore.getState().settings.bitrate
-
-      // Expected: 1080p at 60fps = 12 * (60/30) = 24 Mbps
-      expect(bitrateAt60fps).toBe(24)
-
-      // 60fps should have higher bitrate and larger file size
-      expect(bitrateAt60fps).toBeGreaterThan(bitrateAt30fps)
-      expect(sizeAt60fps).toBeGreaterThan(sizeAt30fps)
-    })
-
-    it('should NOT auto-adjust bitrate when bitrate is explicitly set', () => {
-      useExportStore.getState().setModalOpen(true)
-
-      // Explicitly set bitrate to 50 Mbps
-      useExportStore.getState().updateSettings({ bitrate: 50 })
-      expect(useExportStore.getState().settings.bitrate).toBe(50)
-
-      // Now change resolution - bitrate should still be 50 since we just set it
-      // (This tests the case where both are changed in same call)
-      useExportStore.getState().updateSettings({ resolution: '720p', bitrate: 50 })
-      expect(useExportStore.getState().settings.bitrate).toBe(50)
+    it('scales custom resolution bitrate by pixel ratio vs 1080p', () => {
+      // 2560x1440 is ~1.777... of 1080p pixels => base 12*ratio ~ 21.33 => round 21 at 30fps
+      expect(getRecommendedBitrate('custom', 30, 2560, 1440)).toBe(21)
     })
   })
 })

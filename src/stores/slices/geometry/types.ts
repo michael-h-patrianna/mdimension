@@ -201,9 +201,6 @@ export interface MandelbulbSliceActions {
   setMandelbulbFogEnabled: (value: boolean) => void
   setMandelbulbFogContribution: (value: number) => void
   setMandelbulbInternalFogDensity: (value: number) => void
-
-  // Raymarching Quality
-  setMandelbulbRaymarchQuality: (quality: RaymarchQuality) => void
 }
 
 export type MandelbulbSlice = MandelbulbSliceState & MandelbulbSliceActions
@@ -269,9 +266,6 @@ export interface QuaternionJuliaSliceActions {
   setQuaternionJuliaFogEnabled: (value: boolean) => void
   setQuaternionJuliaFogContribution: (value: number) => void
   setQuaternionJuliaInternalFogDensity: (value: number) => void
-
-  // Raymarching Quality
-  setQuaternionJuliaRaymarchQuality: (quality: RaymarchQuality) => void
 }
 
 export type QuaternionJuliaSlice = QuaternionJuliaSliceState & QuaternionJuliaSliceActions

@@ -337,11 +337,4 @@ export const createQuaternionJuliaSlice: StateCreator<
       quaternionJulia: { ...state.quaternionJulia, internalFogDensity: clamped },
     }))
   },
-
-  // --- Raymarching Quality ---
-  setQuaternionJuliaRaymarchQuality: (quality) => {
-    set((state) => ({
-      quaternionJulia: { ...state.quaternionJulia, raymarchQuality: quality },
-    }))
-  },
 })

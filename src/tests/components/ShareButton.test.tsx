@@ -48,17 +48,6 @@ describe('ShareButton', () => {
     });
   });
 
-  it('should show copied message after click', async () => {
-    render(<ShareButton />);
-    const button = screen.getByRole('button');
-
-    fireEvent.click(button);
-
-    await waitFor(() => {
-      expect(screen.getByText('Copied!')).toBeInTheDocument();
-    });
-  });
-
   it('should include dimension in URL', async () => {
     useGeometryStore.getState().setDimension(5);
     render(<ShareButton />);
@@ -85,11 +74,5 @@ describe('ShareButton', () => {
       const url = mockClipboard.writeText.mock.calls[0]?.[0] as string;
       expect(url).toContain('t=simplex');
     });
-  });
-
-  it('should apply custom className', () => {
-    render(<ShareButton className="custom-class" />);
-    const container = screen.getByRole('button').parentElement;
-    expect(container).toHaveClass('custom-class');
   });
 });

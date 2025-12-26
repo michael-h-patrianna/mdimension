@@ -73,8 +73,19 @@ const MAX_DIMENSION = 11
 /** Maximum number of faces to prevent memory exhaustion */
 const MAX_FACE_COUNT = 500000
 
-/** Minimum vertices required for convex hull (tetrahedron) */
+/** Minimum vertices required for convex hull (tetrahedron) - used in validateVertexCount */
 const MIN_CONVEX_HULL_VERTICES = 4
+
+/**
+ * Validates vertex count meets minimum requirements for convex hull
+ */
+function validateVertexCount(vertexCount: number): void {
+  if (vertexCount < MIN_CONVEX_HULL_VERTICES) {
+    throw new Error(
+      `Vertex count ${vertexCount} is below minimum ${MIN_CONVEX_HULL_VERTICES} required for convex hull`
+    )
+  }
+}
 
 // ============================================================================
 // Validation Helpers
@@ -140,6 +151,15 @@ function validateGridProps(gridProps: unknown): gridProps is GridFacePropsWorker
  */
 const activeRequests = new Set<string>()
 
+/**
+ * Set of request IDs that were cancelled while in the pending queue.
+ * When processing the pending queue after WASM init, we check this set
+ * to skip requests that were cancelled before they could be processed.
+ * This prevents the race condition where both 'cancelled' and 'result'
+ * responses are sent for the same request ID.
+ */
+const cancelledWhilePending = new Set<string>()
+
 // ============================================================================
 // Message Handler
 // ============================================================================
@@ -165,9 +185,13 @@ function handleRequest(request: WorkerRequest): void {
       handleCancellation(request.id)
       break
 
-    default:
+    default: {
       // Type guard ensures this is unreachable, but handle gracefully
-      sendError('unknown', `Unknown request type: ${(request as { type: string }).type}`)
+      // Extract ID if available to allow main thread to match the error
+      const unknownRequest = request as { type: string; id?: string }
+      const errorId = unknownRequest.id ?? 'unknown'
+      sendError(errorId, `Unknown request type: ${unknownRequest.type}`)
+    }
   }
 }
 
@@ -258,8 +282,11 @@ function handleWythoffGeneration(request: GenerateWythoffRequest): void {
        // wasmResult.faces is flat [v0, v1, v2, v0, v1, v2, ...]
        const analyticalFaces: number[][] = [];
        const wasmFaces = wasmResult.faces || [];
-       for (let i = 0; i < wasmFaces.length; i += 3) {
-         analyticalFaces.push([wasmFaces[i]!, wasmFaces[i + 1]!, wasmFaces[i + 2]!]);
+       // Only process complete triangles (length must be divisible by 3)
+       const completeTriangleCount = Math.floor(wasmFaces.length / 3);
+       for (let i = 0; i < completeTriangleCount; i++) {
+         const idx = i * 3;
+         analyticalFaces.push([wasmFaces[idx]!, wasmFaces[idx + 1]!, wasmFaces[idx + 2]!]);
        }
 
        // Construct TransferablePolytopeGeometry directly
@@ -403,10 +430,12 @@ function handleRootSystemGeneration(request: GenerateRootSystemRequest): void {
       vertices.push(Array.from(wasmResult.vertices.slice(start, start + dimension)))
     }
 
-    // Convert flat edges to pairs
+    // Convert flat edges to pairs (only complete edge pairs)
     const edges: [number, number][] = []
-    for (let i = 0; i < wasmResult.edges.length; i += 2) {
-      edges.push([wasmResult.edges[i]!, wasmResult.edges[i + 1]!])
+    const completeEdgeCount = Math.floor(wasmResult.edges.length / 2)
+    for (let i = 0; i < completeEdgeCount; i++) {
+      const idx = i * 2
+      edges.push([wasmResult.edges[idx]!, wasmResult.edges[idx + 1]!])
     }
 
     // Generate faces using WASM triangle detection
@@ -414,10 +443,12 @@ function handleRootSystemGeneration(request: GenerateRootSystemRequest): void {
     const flatEdges = new Uint32Array(wasmResult.edges)
     const flatFaces = detect_faces_wasm(flatVertices, flatEdges, dimension, 'triangles')
 
-    // Convert flat faces to triangles
+    // Convert flat faces to triangles (only complete triangles)
     const faces: number[][] = []
-    for (let i = 0; i < flatFaces.length; i += 3) {
-      faces.push([flatFaces[i]!, flatFaces[i + 1]!, flatFaces[i + 2]!])
+    const completeFaceCount = Math.floor(flatFaces.length / 3)
+    for (let i = 0; i < completeFaceCount; i++) {
+      const idx = i * 3
+      faces.push([flatFaces[idx]!, flatFaces[idx + 1]!, flatFaces[idx + 2]!])
     }
 
     // Build NdGeometry object - dimension and type must be at top level
@@ -506,6 +537,12 @@ function handleFaceComputation(request: ComputeFacesRequest): void {
 
     if (method === 'convex-hull' || method === 'triangles') {
        // --- WASM PATH (Unified) ---
+
+       // Validate vertex count for convex hull (needs at least 4 vertices for tetrahedron)
+       if (method === 'convex-hull') {
+           const vertexCount = flatVertices.length / dimension
+           validateVertexCount(vertexCount)
+       }
 
        if (method === 'triangles') {
            if (!flatEdges || flatEdges.length === 0) {
@@ -616,6 +653,12 @@ function handleCancellation(id: string): void {
   // Remove from active requests (ongoing operations will check this)
   const wasActive = activeRequests.delete(id)
 
+  // If the request wasn't active, it might be in the pending queue
+  // Track it so we can skip it when processing the queue
+  if (!wasActive) {
+    cancelledWhilePending.add(id)
+  }
+
   // Send confirmation
   const response: CancelledResponse = {
     type: 'cancelled',
@@ -624,8 +667,12 @@ function handleCancellation(id: string): void {
 
   self.postMessage(response)
 
-  if (import.meta.env.DEV && wasActive) {
-    console.log(`[GeometryWorker] Cancelled request: ${id}`)
+  if (import.meta.env.DEV) {
+    if (wasActive) {
+      console.log(`[GeometryWorker] Cancelled active request: ${id}`)
+    } else {
+      console.log(`[GeometryWorker] Cancelled pending request: ${id}`)
+    }
   }
 }
 
@@ -676,15 +723,23 @@ init().then(() => {
   // Mark WASM as ready
   wasmReady = true
 
-  // Process any queued requests
+  // Process any queued requests, skipping those that were cancelled
   if (pendingQueue.length > 0) {
     if (import.meta.env.DEV) {
       console.log(`[GeometryWorker] Processing ${pendingQueue.length} queued request(s)`)
     }
     for (const request of pendingQueue) {
+      // Skip requests that were cancelled while in the pending queue
+      if ('id' in request && cancelledWhilePending.has(request.id)) {
+        if (import.meta.env.DEV) {
+          console.log(`[GeometryWorker] Skipping cancelled request: ${request.id}`)
+        }
+        continue
+      }
       handleRequest(request)
     }
     pendingQueue.length = 0 // Clear the queue
+    cancelledWhilePending.clear() // Clear the cancelled set
   }
 
   // Notify main thread that worker is ready

@@ -22,8 +22,14 @@ const MIN_SAFE_DISTANCE: f64 = 0.01;
 /// * `dimension` - Matrix/vector dimension
 ///
 /// # Returns
-/// Result vector of length n
+/// Result vector of length n, or zeros if inputs have incorrect size
 pub fn multiply_matrix_vector(matrix: &[f64], vector: &[f64], dimension: usize) -> Vec<f64> {
+    // Bounds check: matrix must be dimension*dimension, vector must be dimension
+    let expected_matrix_size = dimension * dimension;
+    if dimension == 0 || matrix.len() < expected_matrix_size || vector.len() < dimension {
+        return vec![0.0; dimension];
+    }
+
     let mut result = vec![0.0; dimension];
 
     for i in 0..dimension {
@@ -46,10 +52,20 @@ pub fn multiply_matrix_vector(matrix: &[f64], vector: &[f64], dimension: usize) 
 /// * `dimension` - Matrix dimension
 ///
 /// # Returns
-/// Result matrix (n×n, row-major)
+/// Result matrix (n×n, row-major), or identity matrix if inputs have incorrect size
 pub fn multiply_matrices(a: &[f64], b: &[f64], dimension: usize) -> Vec<f64> {
     let matrix_size = dimension * dimension;
     let mut result = vec![0.0; matrix_size];
+
+    // Bounds check: both matrices must be dimension*dimension
+    if dimension == 0 || a.len() < matrix_size || b.len() < matrix_size {
+        // Return identity matrix on invalid input
+        for i in 0..dimension {
+            result[i * dimension + i] = 1.0;
+        }
+        return result;
+    }
+
     multiply_matrices_into(&mut result, a, b, dimension);
     result
 }

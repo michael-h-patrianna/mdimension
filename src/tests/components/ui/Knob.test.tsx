@@ -1,31 +1,24 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { Knob } from '../../../components/ui/Knob';
+import { describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { Knob } from '../../../components/ui/Knob'
 
 describe('Knob', () => {
-  it('renders correctly', () => {
-    render(<Knob value={50} onChange={() => {}} label="Volume" />);
-    expect(screen.getByRole('slider')).toBeInTheDocument();
-    expect(screen.getByText('Volume')).toBeInTheDocument();
-  });
+  it('exposes slider semantics and calls onChange on keyboard interaction', () => {
+    const handleChange = vi.fn()
+    render(<Knob value={50} min={0} max={100} onChange={handleChange} label="Volume" />)
 
-  it('displays correct aria values', () => {
-    render(<Knob value={25} min={0} max={100} onChange={() => {}} />);
-    const slider = screen.getByRole('slider');
-    expect(slider).toHaveAttribute('aria-valuenow', '25');
-    expect(slider).toHaveAttribute('aria-valuemin', '0');
-    expect(slider).toHaveAttribute('aria-valuemax', '100');
-  });
+    expect(screen.getByText('Volume')).toBeInTheDocument()
+    const slider = screen.getByRole('slider')
 
-  it('calls onChange when using keyboard', () => {
-    const handleChange = vi.fn();
-    render(<Knob value={50} onChange={handleChange} />);
-    const slider = screen.getByRole('slider');
-    
-    fireEvent.keyDown(slider, { key: 'ArrowUp' });
-    expect(handleChange).toHaveBeenCalledWith(51);
-    
-    fireEvent.keyDown(slider, { key: 'ArrowDown' });
-    expect(handleChange).toHaveBeenCalledWith(49);
-  });
-});
+    // A11y attributes are important for this custom control
+    expect(slider).toHaveAttribute('aria-valuenow', '50')
+    expect(slider).toHaveAttribute('aria-valuemin', '0')
+    expect(slider).toHaveAttribute('aria-valuemax', '100')
+
+    fireEvent.keyDown(slider, { key: 'ArrowUp' })
+    expect(handleChange).toHaveBeenCalledWith(51)
+
+    fireEvent.keyDown(slider, { key: 'ArrowDown' })
+    expect(handleChange).toHaveBeenCalledWith(49)
+  })
+})

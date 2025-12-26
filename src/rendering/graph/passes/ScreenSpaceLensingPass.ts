@@ -196,7 +196,7 @@ export class ScreenSpaceLensingPass extends BasePass {
   }
 
   execute(ctx: RenderContext): void {
-    const { renderer, camera, scene } = ctx
+    const { renderer, camera } = ctx
 
     // Get input textures
     const colorTexture = ctx.getReadTexture(this.inputColorResourceId)

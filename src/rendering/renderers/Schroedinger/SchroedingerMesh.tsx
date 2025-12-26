@@ -89,6 +89,9 @@ const SchroedingerMesh = () => {
   // Cached linear colors for non-lighting uniforms
   const colorCacheRef = useRef(createColorCache());
 
+  // PERF: Pre-allocated array for origin values to avoid allocation every frame
+  const originValuesRef = useRef(new Array(MAX_DIMENSION).fill(0) as number[]);
+
   // ============================================
   // PERFORMANCE OPTIMIZATION: Only subscribe to values that affect shader compilation
   // All other values are read via getState() in useFrame to avoid unnecessary re-renders
@@ -295,7 +298,6 @@ const SchroedingerMesh = () => {
       quantumMode: quantumMode, // Modular compilation: only include required quantum modules
       sss: sssEnabled,
       fresnel: edgesVisible,
-      fog: false, // Physical fog handled by post-process
       // Quantum volume effects (compile-time optimization)
       curl: curlEnabled,
       dispersion: dispersionEnabled,
@@ -692,8 +694,10 @@ const SchroedingerMesh = () => {
       const { rotationMatrix: cachedRotationMatrix } = rotationUpdates;
 
       if (needsOriginUpdate && cachedRotationMatrix) {
-        // Build origin values array for rotation
-        const originValues = new Array(MAX_DIMENSION).fill(0);
+        // Build origin values array for rotation (using pre-allocated array)
+        const originValues = originValuesRef.current;
+        // Clear the array before reuse
+        originValues.fill(0);
 
         if (originDriftEnabled && D > 3) {
           const driftConfig: OriginDriftConfig = {

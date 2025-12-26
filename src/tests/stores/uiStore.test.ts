@@ -30,53 +30,23 @@ describe('uiStore.fps', () => {
       expect(useUIStore.getState().maxFps).toBe(30)
     })
 
-    it('should set maxFps to minimum value (15)', () => {
-      useUIStore.getState().setMaxFps(15)
-      expect(useUIStore.getState().maxFps).toBe(MIN_MAX_FPS)
-      expect(useUIStore.getState().maxFps).toBe(15)
-    })
+    it('clamps to the allowed range', () => {
+      const cases: Array<{ input: number; expected: number }> = [
+        { input: MIN_MAX_FPS - 1, expected: MIN_MAX_FPS },
+        { input: MIN_MAX_FPS, expected: MIN_MAX_FPS },
+        { input: MIN_MAX_FPS + 1, expected: MIN_MAX_FPS + 1 },
+        { input: MAX_MAX_FPS - 1, expected: MAX_MAX_FPS - 1 },
+        { input: MAX_MAX_FPS, expected: MAX_MAX_FPS },
+        { input: MAX_MAX_FPS + 1, expected: MAX_MAX_FPS },
+        { input: -30, expected: MIN_MAX_FPS },
+        { input: 999, expected: MAX_MAX_FPS },
+      ]
 
-    it('should set maxFps to maximum value (120)', () => {
-      useUIStore.getState().setMaxFps(120)
-      expect(useUIStore.getState().maxFps).toBe(MAX_MAX_FPS)
-      expect(useUIStore.getState().maxFps).toBe(120)
-    })
-
-    it('should clamp value below minimum to 15', () => {
-      useUIStore.getState().setMaxFps(5)
-      expect(useUIStore.getState().maxFps).toBe(MIN_MAX_FPS)
-    })
-
-    it('should clamp value above maximum to 120', () => {
-      useUIStore.getState().setMaxFps(200)
-      expect(useUIStore.getState().maxFps).toBe(MAX_MAX_FPS)
-    })
-
-    it('should clamp negative values to minimum', () => {
-      useUIStore.getState().setMaxFps(-30)
-      expect(useUIStore.getState().maxFps).toBe(MIN_MAX_FPS)
-    })
-
-    it('should handle boundary value at minimum', () => {
-      useUIStore.getState().setMaxFps(14)
-      expect(useUIStore.getState().maxFps).toBe(MIN_MAX_FPS)
-
-      useUIStore.getState().setMaxFps(15)
-      expect(useUIStore.getState().maxFps).toBe(15)
-
-      useUIStore.getState().setMaxFps(16)
-      expect(useUIStore.getState().maxFps).toBe(16)
-    })
-
-    it('should handle boundary value at maximum', () => {
-      useUIStore.getState().setMaxFps(119)
-      expect(useUIStore.getState().maxFps).toBe(119)
-
-      useUIStore.getState().setMaxFps(120)
-      expect(useUIStore.getState().maxFps).toBe(120)
-
-      useUIStore.getState().setMaxFps(121)
-      expect(useUIStore.getState().maxFps).toBe(MAX_MAX_FPS)
+      for (const { input, expected } of cases) {
+        useUIStore.setState(UI_INITIAL_STATE)
+        useUIStore.getState().setMaxFps(input)
+        expect(useUIStore.getState().maxFps).toBe(expected)
+      }
     })
   })
 

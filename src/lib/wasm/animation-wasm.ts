@@ -80,7 +80,7 @@ export async function initAnimationWasm(): Promise<void> {
 
   wasmInitPromise = (async () => {
     // Skip WASM loading in test environment
-    if (import.meta.env.MODE === 'test' || typeof process !== 'undefined') {
+    if (import.meta.env.MODE === 'test' || import.meta.env.SSR) {
       wasmError = new Error('WASM disabled in test environment')
       return
     }
@@ -126,10 +126,10 @@ export function isAnimationWasmReady(): boolean {
  * Compose multiple rotations using WASM if available.
  * Falls back to null if WASM is not ready (caller should use JS fallback).
  *
- * @param dimension - The dimensionality of the space
+ * @param dimension - The dimensionality of the space (must be >= 2)
  * @param planeNames - Array of plane names (e.g., ["XY", "XW", "ZW"])
- * @param angles - Array of rotation angles in radians
- * @returns Flat rotation matrix as Float64Array, or null if WASM not ready
+ * @param angles - Array of rotation angles in radians (must match planeNames length)
+ * @returns Flat rotation matrix as Float64Array, or null if WASM not ready or invalid input
  */
 export function composeRotationsWasm(
   dimension: number,
@@ -137,6 +137,17 @@ export function composeRotationsWasm(
   angles: number[]
 ): Float64Array | null {
   if (!wasmReady || !wasmModule) {
+    return null
+  }
+
+  // Input validation
+  if (!Number.isInteger(dimension) || dimension < 2) {
+    return null
+  }
+  if (planeNames.length !== angles.length) {
+    return null
+  }
+  if (!angles.every(Number.isFinite)) {
     return null
   }
 
@@ -154,9 +165,9 @@ export function composeRotationsWasm(
  * Project nD vertices to 3D using WASM if available.
  *
  * @param flatVertices - Flat array of vertex coordinates
- * @param dimension - Dimensionality of each vertex
- * @param projectionDistance - Distance from projection plane
- * @returns Float32Array of 3D positions, or null if WASM not ready
+ * @param dimension - Dimensionality of each vertex (must be >= 3)
+ * @param projectionDistance - Distance from projection plane (must be positive)
+ * @returns Float32Array of 3D positions, or null if WASM not ready or invalid input
  */
 export function projectVerticesWasm(
   flatVertices: Float64Array,
@@ -164,6 +175,17 @@ export function projectVerticesWasm(
   projectionDistance: number
 ): Float32Array | null {
   if (!wasmReady || !wasmModule) {
+    return null
+  }
+
+  // Input validation
+  if (!Number.isInteger(dimension) || dimension < 3) {
+    return null
+  }
+  if (flatVertices.length === 0 || flatVertices.length % dimension !== 0) {
+    return null
+  }
+  if (!Number.isFinite(projectionDistance) || projectionDistance <= 0) {
     return null
   }
 
@@ -181,10 +203,10 @@ export function projectVerticesWasm(
  * Project edge pairs to 3D positions using WASM if available.
  *
  * @param flatVertices - Flat array of vertex coordinates
- * @param dimension - Dimensionality of each vertex
+ * @param dimension - Dimensionality of each vertex (must be >= 3)
  * @param flatEdges - Flat array of edge indices [start0, end0, start1, end1, ...]
- * @param projectionDistance - Distance from projection plane
- * @returns Float32Array of edge positions, or null if WASM not ready
+ * @param projectionDistance - Distance from projection plane (must be positive)
+ * @returns Float32Array of edge positions, or null if WASM not ready or invalid input
  */
 export function projectEdgesWasm(
   flatVertices: Float64Array,
@@ -193,6 +215,20 @@ export function projectEdgesWasm(
   projectionDistance: number
 ): Float32Array | null {
   if (!wasmReady || !wasmModule) {
+    return null
+  }
+
+  // Input validation
+  if (!Number.isInteger(dimension) || dimension < 3) {
+    return null
+  }
+  if (flatVertices.length === 0 || flatVertices.length % dimension !== 0) {
+    return null
+  }
+  if (flatEdges.length === 0 || flatEdges.length % 2 !== 0) {
+    return null
+  }
+  if (!Number.isFinite(projectionDistance) || projectionDistance <= 0) {
     return null
   }
 
@@ -211,8 +247,8 @@ export function projectEdgesWasm(
  *
  * @param matrix - Flat n×n matrix (row-major) as Float64Array
  * @param vector - Input vector as Float64Array
- * @param dimension - Matrix/vector dimension
- * @returns Result vector as Float64Array, or null if WASM not ready
+ * @param dimension - Matrix/vector dimension (must be > 0)
+ * @returns Result vector as Float64Array, or null if WASM not ready or invalid input
  */
 export function multiplyMatrixVectorWasm(
   matrix: Float64Array,
@@ -220,6 +256,17 @@ export function multiplyMatrixVectorWasm(
   dimension: number
 ): Float64Array | null {
   if (!wasmReady || !wasmModule) {
+    return null
+  }
+
+  // Input validation
+  if (!Number.isInteger(dimension) || dimension < 1) {
+    return null
+  }
+  if (matrix.length < dimension * dimension) {
+    return null
+  }
+  if (vector.length < dimension) {
     return null
   }
 
@@ -242,8 +289,8 @@ export function multiplyMatrixVectorWasm(
  *
  * @param a - First matrix (n×n, row-major) as Float64Array
  * @param b - Second matrix (n×n, row-major) as Float64Array
- * @param dimension - Matrix dimension
- * @returns Result matrix as Float64Array, or null if WASM not ready
+ * @param dimension - Matrix dimension (must be > 0)
+ * @returns Result matrix as Float64Array, or null if WASM not ready or invalid input
  */
 export function multiplyMatricesWasm(
   a: Float64Array,
@@ -251,6 +298,15 @@ export function multiplyMatricesWasm(
   dimension: number
 ): Float64Array | null {
   if (!wasmReady || !wasmModule) {
+    return null
+  }
+
+  // Input validation
+  if (!Number.isInteger(dimension) || dimension < 1) {
+    return null
+  }
+  const expectedSize = dimension * dimension
+  if (a.length < expectedSize || b.length < expectedSize) {
     return null
   }
 
