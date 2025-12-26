@@ -85,8 +85,11 @@ void main() {
 
     // Project this world position to CURRENT frame to see where it went
     vec4 currentClip = uViewProjectionMatrix * vec4(worldPos, 1.0);
-    // Guard against division by zero in perspective divide
-    float safeW = sign(currentClip.w) * max(abs(currentClip.w), 0.0001);
+    // Guard against division by zero in perspective divide while preserving sign
+    // Note: sign(0) = 0 which would cause division by zero, so use ternary instead
+    float safeW = abs(currentClip.w) < 0.0001
+        ? (currentClip.w >= 0.0 ? 0.0001 : -0.0001)
+        : currentClip.w;
     vec2 currentUV = (currentClip.xy / safeW) * 0.5 + 0.5;
 
     // Compute how far the content has "moved" on screen

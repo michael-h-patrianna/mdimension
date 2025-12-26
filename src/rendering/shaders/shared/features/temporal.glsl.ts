@@ -62,10 +62,8 @@ float getTemporalDepth(vec3 ro, vec3 rd, vec3 worldRayDir) {
     }
 
     // Ray distance is already in world-space units
-    // Convert to model-space (approximation assuming uniform scale)
-    float modelDepth = rayDistance;
-
-    // Apply safety margin - step back 5% to handle surface movement
-    return max(0.0, modelDepth * 0.95);
+    // Safety margin is applied in core.glsl.ts via uTemporalSafetyMargin uniform
+    // This allows per-object-type tuning (e.g., 0.5 for Mandelbulb, 0.33 for Julia)
+    return max(0.0, rayDistance);
 }
 `;

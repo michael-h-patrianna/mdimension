@@ -209,6 +209,9 @@ const MandelbulbMesh = () => {
 
       // Temporal Reprojection - Texture must be manually handled as it comes from context
       uPrevDepthTexture: { value: null },
+      // Conservative safety margin for Mandelbulb - surface moves during power/slice/drift animations
+      // 0.5 = start raymarching at 50% of previous depth (handles up to 50% surface movement)
+      uTemporalSafetyMargin: { value: 0.5 },
 
       // IBL (Image-Based Lighting) uniforms - PMREM texture (sampler2D)
       uEnvMap: { value: null },
@@ -363,6 +366,13 @@ const MandelbulbMesh = () => {
       // Apply centralized uniform sources (Lighting, Temporal, Quality, Color, PBR)
       // These sources auto-update from stores in UniformLifecycleController
       UniformManager.applyToMaterial(material, ['lighting', 'temporal', 'quality', 'color', 'pbr-face']);
+
+      // IMPORTANT: Override temporal safety margin AFTER applyToMaterial
+      // TemporalSource uses 0.95 (aggressive), but Mandelbulb needs 0.5 (conservative)
+      // to handle surface movement during power/slice/drift animations
+      if (material.uniforms.uTemporalSafetyMargin) {
+        material.uniforms.uTemporalSafetyMargin.value = 0.5;
+      }
 
       // SSS (Subsurface Scattering) properties
       const visuals = useAppearanceStore.getState();

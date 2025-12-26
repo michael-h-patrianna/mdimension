@@ -3,7 +3,7 @@ use nalgebra::DVector;
 use std::collections::{HashSet, HashMap};
 use itertools::Itertools;
 
-use crate::hull;
+use crate::faces;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct WythoffConfig {
@@ -800,45 +800,25 @@ fn generate_triangle_faces(vertices: &[DVector<f64>], edges: &[[usize; 2]]) -> V
     faces
 }
 
-/// Generate faces using convex hull algorithm
-/// 
-/// This properly handles non-triangular faces (squares, hexagons, etc.)
-/// by computing the actual convex hull of the polytope.
-/// 
-/// Performance: O(V × F) where F can be O(V^⌊d/2⌋) worst case
-/// Best for polytopes with <1000 vertices
-fn generate_convex_hull_faces(vertices: &[DVector<f64>], dim: usize) -> Vec<u32> {
-    // Need at least dim+1 vertices for a non-degenerate simplex in dim-D
-    // and dim must be at least 3 for meaningful face generation
-    if vertices.len() < dim + 1 || dim < 3 {
+/// Generate polygon faces using edge-walking algorithm.
+///
+/// This handles faces of any size (triangles, squares, pentagons, hexagons, etc.)
+/// by walking around face boundaries using angular ordering.
+///
+/// Much more robust than 3-cycle detection for polytopes with non-triangular faces.
+/// Performance: O(E × k) where k is average face size (typically 3-8).
+fn generate_polygon_faces(vertices: &[DVector<f64>], edges: &[[usize; 2]]) -> Vec<u32> {
+    if vertices.is_empty() || edges.is_empty() {
         return vec![];
     }
-    
-    // Convert DVector to Vec<f64> for hull module
-    let vec_vertices: Vec<Vec<f64>> = vertices.iter()
-        .map(|v| v.iter().cloned().collect())
+
+    // Convert edges from [[usize; 2]] to flat [u32]
+    let flat_edges: Vec<u32> = edges.iter()
+        .flat_map(|[a, b]| [*a as u32, *b as u32])
         .collect();
-    
-    // Project to affine hull (handles degenerate cases)
-    let (projected, actual_dim) = hull::project_to_affine_hull(&vec_vertices, dim);
-    
-    // Need at least 3D for triangular faces and enough points
-    if actual_dim < 3 || projected.len() < actual_dim + 1 {
-        return vec![];
-    }
-    
-    // Use catch_unwind to gracefully handle any edge cases in convex hull
-    let result = std::panic::catch_unwind(|| {
-        hull::convex_hull(&projected, actual_dim)
-    });
-    
-    match result {
-        Ok(hull_indices) => hull_indices.into_iter().map(|idx| idx as u32).collect(),
-        Err(_) => {
-            // Convex hull failed - return empty faces rather than crashing
-            vec![]
-        }
-    }
+
+    // Use the edge-walking algorithm from faces module
+    faces::find_polygon_faces(vertices, &flat_edges)
 }
 
 /// Main entry point for generation (to be exposed via lib.rs)
@@ -891,20 +871,28 @@ pub fn generate_wythoff(config: &WythoffConfig) -> PolytopeResult {
             generate_demihypercube_faces(&vertices, dim)
         }
         ("B", "rectified") | ("B", "truncated") | ("B", "runcinated") => {
-            // Use convex hull for proper face detection on these convex polytopes
-            // These have manageable vertex counts (<1000 in most dimensions)
-            // Now uses ridge-based extraction for correct faces
-            if !vertices.is_empty() {
-                generate_convex_hull_faces(&vertices, dim)
+            // Use edge-walking for proper face detection on these polytopes
+            // These have non-triangular faces (squares, hexagons, etc.)
+            if !vertices.is_empty() && !edges.is_empty() {
+                generate_polygon_faces(&vertices, &edges)
+            } else {
+                vec![]
+            }
+        }
+        ("B", "cantellated") | ("B", "omnitruncated") => {
+            // Cantellated and omnitruncated have non-triangular faces
+            // Use edge-walking algorithm which handles any polygon size
+            if !vertices.is_empty() && !edges.is_empty() {
+                generate_polygon_faces(&vertices, &edges)
             } else {
                 vec![]
             }
         }
         _ => {
-            // Other presets (cantellated, omnitruncated): use triangle face detection
-            // Convex hull would be too slow for high vertex counts
+            // Default: use edge-walking for proper polygon face detection
+            // This handles any polygon size (triangles, squares, pentagons, etc.)
             if !vertices.is_empty() && !edges.is_empty() {
-                generate_triangle_faces(&vertices, &edges)
+                generate_polygon_faces(&vertices, &edges)
             } else {
                 vec![]
             }

@@ -317,6 +317,13 @@ const QuaternionJuliaMesh = () => {
     // Update centralized uniform sources (Lighting, Temporal, Quality, Color, PBR)
     UniformManager.applyToMaterial(material, ['lighting', 'temporal', 'quality', 'color', 'pbr-face'])
 
+    // IMPORTANT: Override temporal safety margin AFTER applyToMaterial
+    // TemporalSource uses 0.95 (aggressive), but Julia needs 0.33 (very conservative)
+    // because shape changes significantly during N-dimensional rotation
+    if (u.uTemporalSafetyMargin) {
+      u.uTemporalSafetyMargin.value = 0.33
+    }
+
     // SSS (Subsurface Scattering) properties
     if (u.uSssEnabled) u.uSssEnabled.value = appStore.sssEnabled
     if (u.uSssIntensity) u.uSssIntensity.value = appStore.sssIntensity

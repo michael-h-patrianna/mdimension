@@ -30,6 +30,10 @@ float getPhotonShellRadius() {
  * Calculate photon shell mask.
  * Returns 1 when on the shell, 0 elsewhere.
  *
+ * NOTE: Shell emission is now handled in main.glsl.ts using transmittance gradient.
+ * This function is kept for compatibility but is not used for the actual shell glow.
+ * The transmittance-based shell naturally follows the lensing-deformed horizon shape.
+ *
  * PERF OPTIMIZATION: Uses precomputed Rp and delta from CPU.
  *
  * mask = 1 - smoothstep(0, Δ, |r - R_p|)
@@ -39,21 +43,13 @@ float photonShellMask(float ndRadius) {
   float Rp = uShellRpPrecomputed;
   float delta = uShellDeltaPrecomputed;
 
-  // HARD CHECK: Shell must be OUTSIDE the visual horizon
-  // Use uShellRpPrecomputed (shell center = visualHorizon * 1.15)
-  // Require ndRadius > visualHorizon, i.e. ndRadius > Rp * 0.87
-  if (ndRadius < uShellRpPrecomputed * 0.87) {
-    return 0.0;
-  }
-
+  // Use smooth falloff - no hard cutoffs to prevent ring artifacts
   float dist = abs(ndRadius - Rp);
 
-  // Sharp ring falloff: use smoothstep with tighter inner edge
-  // Inner 30% is full intensity, outer 70% falls off
-  float innerEdge = delta * 0.3;
-  float mask = 1.0 - smoothstep(innerEdge, delta, dist);
+  // Smooth ring falloff using smoothstep
+  float mask = 1.0 - smoothstep(0.0, delta, dist);
 
-  // Apply contrast boost for even sharper ring (default 1.0 = no change)
+  // Apply contrast boost for sharper ring (default 1.0 = no change)
   mask = pow(mask, 1.0 / max(uShellContrastBoost, 0.1));
 
   return mask;
@@ -61,44 +57,26 @@ float photonShellMask(float ndRadius) {
 
 /**
  * Calculate photon shell emission.
- * Bright ring at the photon sphere.
  *
- * PERF (OPT-BH-2): Added version that accepts pre-computed mask to avoid
- * redundant photonShellMask() call when mask was already computed in shellStepModifier.
+ * NOTE: Shell emission is now handled directly in main.glsl.ts using
+ * lensing-aware closest approach tracking. This function is kept as a
+ * stub for compatibility but returns vec3(0.0).
+ *
+ * The new implementation emits glow when a ray is at its closest approach
+ * to the black hole, which naturally follows the lensing-deformed visual
+ * shape instead of being a geometric sphere.
  */
 vec3 photonShellEmissionWithMask(float mask, vec3 pos) {
-  // DISABLED: Shell uses spherical geometry but visual horizon is lensing-deformed
-  // TODO: Implement lensing-aware shell that follows the apparent horizon shape
+  // Shell emission moved to main.glsl.ts for lensing-aware rendering
   return vec3(0.0);
-  if (mask < 0.1) return vec3(0.0);
-
-  // Starburst interference pattern
-  // High frequency angular modulation
-  float angle = atan(pos.z, pos.x);
-
-  // Use a combination of sines for a "caustic" look
-  float starburst = 0.5 + 0.5 * sin(angle * 40.0 + uTime * 0.5) * sin(angle * 13.0 - uTime * 0.2);
-  starburst = starburst * starburst; // PERF: Sharpen spikes (x² instead of pow)
-
-  float intensityMod = 0.7 + 0.3 * starburst;
-
-  // Pulse
-  float pulse = 1.0 + 0.1 * sin(uTime * 2.0);
-
-  // Shell color with intensity
-  // uShellGlowStrength controls visibility (default 8.0)
-  vec3 emission = uShellGlowColor * uShellGlowStrength * mask * pulse * intensityMod;
-
-  return emission;
 }
 
 /**
  * Calculate photon shell emission (convenience wrapper).
- * Computes mask internally - use photonShellEmissionWithMask if mask is already available.
+ * NOTE: Shell emission is now handled in main.glsl.ts
  */
 vec3 photonShellEmission(float ndRadius, vec3 pos) {
-  float mask = photonShellMask(ndRadius);
-  return photonShellEmissionWithMask(mask, pos);
+  return vec3(0.0);
 }
 
 /**
@@ -108,32 +86,30 @@ vec3 photonShellEmission(float ndRadius, vec3 pos) {
  * PERF (OPT-BH-2): Returns mask via out parameter to avoid redundant
  * photonShellMask() call in photonShellEmission.
  *
+ * NOTE: Shell emission is now handled in main.glsl.ts using transmittance gradient.
+ * This function is kept for adaptive step sizing but the mask is unused for emission.
+ *
  * @param ndRadius - N-dimensional radius
  * @param outMask - Output: the computed shell mask (0 if outside shell region)
  * @returns Step size modifier (1.0 = no change, <1.0 = smaller steps)
  */
 float shellStepModifierWithMask(float ndRadius, out float outMask) {
-  // HARD CHECK: No shell inside the visual horizon
-  // Use uShellRpPrecomputed (shell center = visualHorizon * 1.15)
-  // So visualHorizon ≈ uShellRpPrecomputed / 1.15
-  // Require ndRadius > visualHorizon, i.e. ndRadius > Rp / 1.15 = Rp * 0.87
-  if (ndRadius < uShellRpPrecomputed * 0.87) {
-    outMask = 0.0;
-    return 1.0;
-  }
+  // Use smooth transitions instead of hard cutoffs to prevent aliasing artifacts.
+  // The shell emission is now based on transmittance gradient, so this is only
+  // for step size adaptation.
 
-  // PERF: Use precomputed values for early exit check
-  // shellDelta * 2.0 gives a conservative bounding region
-  if (abs(ndRadius - uShellRpPrecomputed) > uShellDeltaPrecomputed * 2.0) {
-    outMask = 0.0;
-    return 1.0;
-  }
+  // Smooth step size reduction near the visual horizon
+  // Use uVisualEventHorizon for the center of the adaptive region
+  float adaptiveCenter = uShellRpPrecomputed;
+  float adaptiveWidth = uShellDeltaPrecomputed * 2.0;
 
-  // Inside potential shell region - compute full mask
-  outMask = photonShellMask(ndRadius);
+  float dist = abs(ndRadius - adaptiveCenter);
 
-  // Reduce step size near shell
-  // mix(1.0, shellStepMul, mask) → smaller steps when on shell
+  // Smooth mask using smoothstep (no hard cutoffs)
+  outMask = 1.0 - smoothstep(0.0, adaptiveWidth, dist);
+
+  // Reduce step size smoothly near the region of interest
+  // This helps capture details near the horizon/shell without causing aliasing
   return mix(1.0, uShellStepMul, outMask);
 }
 

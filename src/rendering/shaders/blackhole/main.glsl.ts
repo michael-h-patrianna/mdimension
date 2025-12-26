@@ -123,6 +123,10 @@ struct AccumulationState {
   vec3 normalSum;          // Accumulated normal direction
   vec3 firstHitPos;        // First hit position for depth
   float hasFirstHit;       // 1.0 if recorded, 0.0 otherwise (avoid bool for GPU compat)
+  float closestApproach;   // Minimum ndRadius achieved during raymarch (for lensing-aware effects)
+  vec3 closestApproachPos; // Position at closest approach
+  float totalDeflection;   // Cumulative ray bending angle (for lensing-aware shell)
+  vec3 maxDeflectionPos;   // Position where deflection rate was highest
 };
 
 /**
@@ -138,6 +142,10 @@ AccumulationState initAccumulation() {
   s.normalSum = vec3(0.0);
   s.firstHitPos = vec3(0.0);
   s.hasFirstHit = 0.0;
+  s.closestApproach = 1000.0;    // Start far away
+  s.closestApproachPos = vec3(0.0);
+  s.totalDeflection = 0.0;       // No bending yet
+  s.maxDeflectionPos = vec3(0.0);
   return s;
 }
 
@@ -308,27 +316,12 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
     float shellMask;
     float stepSize = adaptiveStepSizeWithMask(ndRadius, shellMask);
 
-    // CRITICAL: Emit photon shell BEFORE horizon check!
-    // The visual event horizon (shadow radius) is larger than the photon shell radius.
-    // If we check horizon first, rays would be absorbed before emitting shell glow.
-    // By emitting first, we capture the shell's contribution then absorb the ray.
-    // Threshold 0.1 prevents soft gradients from low mask values accumulating
-    if (shellMask > 0.1) {
-      vec3 shellEmit = photonShellEmissionWithMask(shellMask, pos);
-      // Volumetric integration: accumulate emission weighted by transmittance
-      accum.color += shellEmit * stepSize * accum.transmittance;
-    }
+    // NOTE: Shell emission moved to AFTER the raymarch loop (see below)
+    // This ensures we use the ray's TRUE closest approach, not intermediate values
 
-    // Horizon check - Volumetric Absorption
-    // Instead of breaking, we absorb all light if we hit the visual horizon.
-    // This prevents the "black sticker" artifact by allowing the loop to
-    // naturally handle the transition.
-    if (isInsideHorizon(ndRadius)) {
-      accum.transmittance = 0.0;
-      hitHorizon = true;
-      // We can break here because transmittance is 0, which is handled by the loop condition
-      break;
-    }
+    // NOTE: Geometric horizon check REMOVED to eliminate circular artifact.
+    // Horizon absorption is now handled ONLY by lensing-aware absorption after the loop.
+    // This ensures the visual horizon follows the lensing-deformed shape for Kerr black holes.
 
     // In volumetric mode, we might want smaller steps inside the disk
     #ifdef USE_VOLUMETRIC_DISK
@@ -352,12 +345,22 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
     float jitterScale = (stepJitter - 0.5) * 0.4; // Map [0,1] to [-0.2, 0.2]
     stepSize *= (1.0 + jitterScale);
 
-    // Apply lensing
+    // Apply lensing and track deflection
+    vec3 prevDir = dir;
     dir = bendRay(dir, pos, stepSize, ndRadius);
     bentDirection = dir;
 
-    // NOTE: Shell emission moved BEFORE horizon check (see above)
-    // This ensures shell glow is captured even when absorption radius > shell radius
+    // Track cumulative ray deflection (for lensing-aware shell emission)
+    // Frame dragging causes ASYMMETRIC deflection - prograde vs retrograde rays
+    // bend differently. This is key for deformed shell appearance.
+    float stepDeflection = acos(clamp(dot(prevDir, dir), -1.0, 1.0));
+    accum.totalDeflection += stepDeflection;
+
+    // Track position of maximum deflection rate (where shell should emit)
+    if (stepDeflection > 0.001) {
+      // Weight position by deflection strength
+      accum.maxDeflectionPos = mix(accum.maxDeflectionPos, pos, stepDeflection * 10.0);
+    }
 
     prevPos = pos;
     pos += dir * stepSize;
@@ -374,11 +377,17 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
     // PERF (OPT-BH-1): Compute ndRadius for new position and reuse it in next iteration.
     // This replaces the separate postStepRadius computation, eliminating one ndDistance() call.
     ndRadius = ndDistance(pos);
-    if (isInsideHorizon(ndRadius)) {
-      accum.transmittance = 0.0;
-      hitHorizon = true;
-      break;
+
+    // Track ray's closest approach to black hole center
+    // Used for lensing-aware horizon absorption and photon shell emission
+    if (ndRadius < accum.closestApproach) {
+      accum.closestApproach = ndRadius;
+      accum.closestApproachPos = pos;
     }
+
+    // NOTE: Geometric horizon check REMOVED here too.
+    // Lensing-aware absorption after the loop handles all horizon detection.
+    // This prevents the circular artifact inside the deformed horizon.
 
     // === ACCRETION DISK ===
 
@@ -466,6 +475,78 @@ RaymarchResult raymarchBlackHole(vec3 rayOrigin, vec3 rayDir, float time) {
     }
     #endif
 
+  }
+
+  // LENSING-AWARE HORIZON: Pure exponential absorption with NO THRESHOLDS
+  //
+  // KEY INSIGHT: Any formula using "closestApproach < constant" creates a
+  // CIRCULAR boundary because closestApproach is Euclidean distance.
+  // The deformed outer silhouette works because lensing affects WHICH RAYS
+  // cross a threshold. But any specific closestApproach VALUE is circular.
+  //
+  // SOLUTION: Use purely exponential absorption based on closestApproach
+  // with no thresholds. This creates smooth absorption that gets stronger
+  // as rays get closer, with no circular boundaries.
+  //
+  // Save transmittance BEFORE absorption to measure gradient for shell emission
+  float preAbsorptionTransmittance = accum.transmittance;
+
+  // Pure exponential absorption: strength = 1 - exp(-k * (Rh/r)^n)
+  // - No thresholds = no circular boundaries
+  // - Absorption increases smoothly as closestApproach decreases
+  // - Scale factor k controls overall absorption strength
+  // - Power n controls how sharply absorption increases near horizon
+  float r = max(accum.closestApproach, 0.001); // Prevent division by zero
+  float Rh = uVisualEventHorizon;
+
+  // Absorption strength using inverse-square-like falloff
+  // When r = Rh: ratio = 1, absorption is strong
+  // When r = 2*Rh: ratio = 0.5, absorption is moderate
+  // When r >> Rh: ratio → 0, no absorption
+  float ratio = Rh / r;
+  float absorptionStrength = 1.0 - exp(-uGravityStrength * ratio * ratio * 0.5);
+
+  // Apply absorption
+  accum.transmittance *= (1.0 - absorptionStrength);
+
+  // Mark as horizon hit only if nearly fully absorbed
+  if (accum.transmittance < 0.01) {
+    accum.transmittance = 0.0;
+    hitHorizon = true;
+  }
+
+  // PHOTON SHELL: Emit glow based on RAY DEFLECTION, not closestApproach
+  //
+  // KEY INSIGHT: closestApproach is Euclidean distance - thresholds on it create circles.
+  // But RAY DEFLECTION is affected by frame dragging ASYMMETRICALLY:
+  // - Prograde rays (going with rotation) are deflected MORE
+  // - Retrograde rays (against rotation) are deflected LESS
+  //
+  // By emitting shell where deflection is high, we get a DEFORMED shape that
+  // follows the actual lensing asymmetry, not a geometric circle.
+  //
+  // Shell emits for rays that were:
+  // 1. Strongly deflected (high totalDeflection)
+  // 2. But still escaped (not absorbed into horizon)
+  if (!hitHorizon && accum.totalDeflection > 0.3) {
+    // Shell intensity based on total deflection
+    // Higher deflection = stronger shell glow
+    // Normalize by typical deflection values (0.3 to 2.0 radians)
+    float deflectionNorm = (accum.totalDeflection - 0.3) / 1.5;
+    deflectionNorm = clamp(deflectionNorm, 0.0, 1.0);
+
+    // Peak at moderate deflection, fall off at very high deflection
+    // (very high deflection rays are mostly absorbed anyway)
+    float shellIntensity = deflectionNorm * (1.0 - deflectionNorm * 0.5);
+    shellIntensity = pow(shellIntensity, 0.8);
+
+    // Starburst pattern at max deflection position
+    float angle = atan(accum.maxDeflectionPos.z, accum.maxDeflectionPos.x);
+    float starburst = 0.5 + 0.5 * sin(angle * 40.0 + uTime * 0.5) * sin(angle * 13.0 - uTime * 0.2);
+    float intensityMod = 0.7 + 0.3 * starburst * starburst;
+
+    vec3 shellEmit = uShellGlowColor * uShellGlowStrength * shellIntensity * intensityMod;
+    accum.color += shellEmit * accum.transmittance;
   }
 
   // Handle horizon or background
