@@ -196,11 +196,6 @@ export interface MandelbulbSliceActions {
   setMandelbulbSssIntensity: (value: number) => void
   setMandelbulbSssColor: (value: string) => void
   setMandelbulbSssThickness: (value: number) => void
-
-  // Atmosphere
-  setMandelbulbFogEnabled: (value: boolean) => void
-  setMandelbulbFogContribution: (value: number) => void
-  setMandelbulbInternalFogDensity: (value: number) => void
 }
 
 export type MandelbulbSlice = MandelbulbSliceState & MandelbulbSliceActions

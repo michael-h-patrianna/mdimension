@@ -18,6 +18,7 @@ import { RefinementIndicator } from '@/components/canvas/RefinementIndicator';
 import { EditorLayout } from '@/components/layout/EditorLayout';
 import { ContextLostOverlay } from '@/components/overlays/ContextLostOverlay';
 import { MsgBox } from '@/components/overlays/MsgBox';
+import { ScreenshotModal } from '@/components/overlays/ScreenshotModal';
 import { ShaderCompilationOverlay } from '@/components/overlays/ShaderCompilationOverlay';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { GeometryLoadingIndicator } from '@/components/ui/GeometryLoadingIndicator';
@@ -273,6 +274,9 @@ function AppContent() {
         <ShaderCompilationOverlay />
 
         {showPerfMonitor && <PerformanceMonitor />}
+
+        {/* Screenshot Preview Modal */}
+        <ScreenshotModal />
       </div>
     </EditorLayout>
   );

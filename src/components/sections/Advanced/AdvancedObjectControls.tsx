@@ -1,6 +1,8 @@
 import { Section } from '@/components/sections/Section';
 import { ColorPicker } from '@/components/ui/ColorPicker';
+import { ControlGroup } from '@/components/ui/ControlGroup';
 import { Slider } from '@/components/ui/Slider';
+import { Switch } from '@/components/ui/Switch';
 import { ToggleButton } from '@/components/ui/ToggleButton';
 import type { BlackHoleRayBendingMode } from '@/lib/geometry/extended/types';
 import { useAppearanceStore, type AppearanceSlice } from '@/stores/appearanceStore';
@@ -49,7 +51,6 @@ export const AdvancedObjectControls: React.FC = () => {
       {/* Object-Specific Settings */}
       {objectType === 'schroedinger' && <SchroedingerAdvanced />}
       {objectType === 'blackhole' && <BlackHoleAdvanced />}
-      {objectType === 'mandelbulb' && <MandelbulbAdvanced />}
       {isPolytope && <PolytopeAdvanced />}
     </Section>
   );
@@ -229,32 +230,108 @@ const SchroedingerAdvanced: React.FC = () => {
     setErosionNoiseType,
   } = useExtendedObjectStore(extendedObjectSelector);
 
+  // Emission settings from appearance store
+  const emissionSelector = useShallow((state: AppearanceSlice) => ({
+    faceEmission: state.faceEmission,
+    faceEmissionThreshold: state.faceEmissionThreshold,
+    faceEmissionColorShift: state.faceEmissionColorShift,
+    faceEmissionPulsing: state.faceEmissionPulsing,
+    faceRimFalloff: state.faceRimFalloff,
+    setFaceEmission: state.setFaceEmission,
+    setFaceEmissionThreshold: state.setFaceEmissionThreshold,
+    setFaceEmissionColorShift: state.setFaceEmissionColorShift,
+    setFaceEmissionPulsing: state.setFaceEmissionPulsing,
+    setFaceRimFalloff: state.setFaceRimFalloff,
+  }));
+  const {
+    faceEmission,
+    faceEmissionThreshold,
+    faceEmissionColorShift,
+    faceEmissionPulsing,
+    faceRimFalloff,
+    setFaceEmission,
+    setFaceEmissionThreshold,
+    setFaceEmissionColorShift,
+    setFaceEmissionPulsing,
+    setFaceRimFalloff,
+  } = useAppearanceStore(emissionSelector);
+
   return (
     <div className="space-y-4">
-      <Slider
-        label="Density Gain"
-        min={0.1}
-        max={5.0}
-        step={0.1}
-        value={config.densityGain}
-        onChange={setDensityGain}
-        showValue
-        data-testid="schroedinger-density-gain"
-      />
+      {/* Emission & Rim */}
+      <ControlGroup title="Emission & Rim" collapsible defaultOpen>
+        <Slider
+          label="Emission Strength"
+          min={0}
+          max={5}
+          step={0.1}
+          value={faceEmission}
+          onChange={setFaceEmission}
+          showValue
+          data-testid="schroedinger-emission-strength"
+        />
+        <Slider
+          label="Emission Threshold"
+          min={0}
+          max={1}
+          step={0.05}
+          value={faceEmissionThreshold}
+          onChange={setFaceEmissionThreshold}
+          showValue
+          data-testid="schroedinger-emission-threshold"
+        />
+        <Slider
+          label="Color Shift"
+          min={-1}
+          max={1}
+          step={0.1}
+          value={faceEmissionColorShift}
+          onChange={setFaceEmissionColorShift}
+          showValue
+          data-testid="schroedinger-emission-color-shift"
+        />
+        <div className="flex items-center justify-between py-2">
+          <label className="text-xs text-text-secondary">Pulsing</label>
+          <Switch
+            checked={faceEmissionPulsing}
+            onCheckedChange={setFaceEmissionPulsing}
+            data-testid="schroedinger-emission-pulsing"
+          />
+        </div>
+        <Slider
+          label="Rim Falloff"
+          min={0}
+          max={10}
+          step={0.5}
+          value={faceRimFalloff}
+          onChange={setFaceRimFalloff}
+          showValue
+          data-testid="schroedinger-rim-falloff"
+        />
+      </ControlGroup>
 
-      <Slider
-        label="Powder Effect"
-        min={0.0}
-        max={2.0}
-        step={0.1}
-        value={config.powderScale}
-        onChange={setPowderScale}
-        showValue
-        data-testid="schroedinger-powder-scale"
-      />
-
-      {/* Anisotropy (Phase) */}
-      <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
+      {/* Volume Rendering (includes Volume Effects) */}
+      <ControlGroup title="Volume Rendering" collapsible defaultOpen>
+        <Slider
+          label="Density Gain"
+          min={0.1}
+          max={5.0}
+          step={0.1}
+          value={config.densityGain}
+          onChange={setDensityGain}
+          showValue
+          data-testid="schroedinger-density-gain"
+        />
+        <Slider
+          label="Powder Effect"
+          min={0.0}
+          max={2.0}
+          step={0.1}
+          value={config.powderScale}
+          onChange={setPowderScale}
+          showValue
+          data-testid="schroedinger-powder-scale"
+        />
         <Slider
           label="Anisotropy (Phase)"
           min={-0.9}
@@ -265,16 +342,9 @@ const SchroedingerAdvanced: React.FC = () => {
           showValue
           data-testid="schroedinger-anisotropy"
         />
-      </div>
 
-      {/* Volume Effects */}
-      <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
-        <div className="flex items-center justify-between">
-          <label className="text-xs text-text-secondary font-semibold">Volume Effects</label>
-        </div>
-
-        {/* Shadows & AO */}
-        <div className="flex items-center justify-between mt-2">
+        {/* Volumetric Shadows */}
+        <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
           <label className="text-xs text-text-secondary">Volumetric Shadows</label>
           <ToggleButton
             pressed={config.shadowsEnabled ?? false}
@@ -297,6 +367,7 @@ const SchroedingerAdvanced: React.FC = () => {
           />
         )}
 
+        {/* Volumetric AO */}
         <div className="flex items-center justify-between mt-2">
           <label className="text-xs text-text-secondary">Volumetric AO</label>
           <ToggleButton
@@ -319,70 +390,42 @@ const SchroedingerAdvanced: React.FC = () => {
             showValue
           />
         )}
-      </div>
 
-      {/* Chromatic Dispersion */}
-      <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
-        <div className="flex items-center justify-between">
-          <label className="text-xs text-text-secondary font-semibold">Chromatic Dispersion</label>
+        {/* Isosurface Mode */}
+        <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
+          <label className="text-xs text-text-secondary">Isosurface Mode</label>
           <ToggleButton
-            pressed={config.dispersionEnabled ?? false}
-            onToggle={() => setDispersionEnabled(!(config.dispersionEnabled ?? false))}
+            pressed={config.isoEnabled}
+            onToggle={() => setIsoEnabled(!config.isoEnabled)}
             className="text-xs px-2 py-1 h-auto"
-            ariaLabel="Toggle dispersion"
-            data-testid="schroedinger-dispersion-toggle"
+            ariaLabel="Toggle isosurface mode"
+            data-testid="schroedinger-iso-toggle"
           >
-            {config.dispersionEnabled ? 'ON' : 'OFF'}
+            {config.isoEnabled ? 'ON' : 'OFF'}
           </ToggleButton>
         </div>
-        {config.dispersionEnabled && (
-          <>
-            <Slider
-              label="Strength"
-              min={0.0}
-              max={1.0}
-              step={0.05}
-              value={config.dispersionStrength ?? 0.2}
-              onChange={setDispersionStrength}
-              showValue
-              data-testid="schroedinger-dispersion-strength"
-            />
-            <div className="flex gap-2 pt-2">
-              <div className="flex-1">
-                <label className="text-xs text-text-secondary">Direction</label>
-                <select
-                  className="w-full bg-surface-dark border border-white/10 rounded px-2 py-1 text-xs text-text-primary mt-1 focus:outline-none focus:border-accent"
-                  value={config.dispersionDirection ?? 0}
-                  onChange={(e) => setDispersionDirection(parseInt(e.target.value))}
-                  data-testid="schroedinger-dispersion-direction"
-                >
-                  <option value={0}>Radial</option>
-                  <option value={1}>View</option>
-                </select>
-              </div>
-              <div className="flex-1">
-                <label className="text-xs text-text-secondary">Quality</label>
-                <select
-                  className="w-full bg-surface-dark border border-white/10 rounded px-2 py-1 text-xs text-text-primary mt-1 focus:outline-none focus:border-accent"
-                  value={config.dispersionQuality ?? 0}
-                  onChange={(e) => setDispersionQuality(parseInt(e.target.value))}
-                  data-testid="schroedinger-dispersion-quality"
-                >
-                  <option value={0}>Fast (Grad)</option>
-                  <option value={1}>High (Sample)</option>
-                </select>
-              </div>
-            </div>
-          </>
+        {config.isoEnabled && (
+          <Slider
+            label="Iso Threshold (log)"
+            min={-6}
+            max={0}
+            step={0.1}
+            value={config.isoThreshold}
+            onChange={setIsoThreshold}
+            showValue
+            data-testid="schroedinger-iso-threshold"
+          />
         )}
-      </div>
+        <p className="text-xs text-text-tertiary">
+          {config.isoEnabled
+            ? 'Sharp surface at constant probability density'
+            : 'Volumetric cloud visualization'
+          }
+        </p>
+      </ControlGroup>
 
       {/* Quantum Effects */}
-      <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
-        <div className="flex items-center justify-between">
-          <label className="text-xs text-text-secondary font-semibold">Quantum Effects</label>
-        </div>
-
+      <ControlGroup title="Quantum Effects" collapsible defaultOpen>
         {/* Nodal Surfaces */}
         <div className="space-y-1">
           <div className="flex items-center justify-between">
@@ -463,138 +506,118 @@ const SchroedingerAdvanced: React.FC = () => {
             />
           )}
         </div>
-      </div>
+      </ControlGroup>
 
-      {/* Isosurface Mode */}
-      <div className="space-y-2 pt-2">
-        <div className="flex items-center justify-between">
-          <label className="text-xs text-text-secondary">
-            Isosurface Mode
-          </label>
-          <ToggleButton
-            pressed={config.isoEnabled}
-            onToggle={() => setIsoEnabled(!config.isoEnabled)}
-            className="text-xs px-2 py-1 h-auto"
-            ariaLabel="Toggle isosurface mode"
-            data-testid="schroedinger-iso-toggle"
-          >
-            {config.isoEnabled ? 'ON' : 'OFF'}
-          </ToggleButton>
-        </div>
-        {config.isoEnabled && (
-          <Slider
-            label="Iso Threshold (log)"
-            min={-6}
-            max={0}
-            step={0.1}
-            value={config.isoThreshold}
-            onChange={setIsoThreshold}
-            showValue
-            data-testid="schroedinger-iso-threshold"
-          />
-        )}
-        <p className="text-xs text-text-tertiary">
-          {config.isoEnabled
-            ? 'Sharp surface at constant probability density'
-            : 'Volumetric cloud visualization'
-          }
-        </p>
-      </div>
-
-      {/* Edge Erosion */}
-      <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
-        <div className="flex items-center justify-between">
-          <label className="text-xs text-text-secondary font-semibold">Edge Erosion</label>
-        </div>
-        <Slider
-          label="Strength"
-          min={0.0}
-          max={1.0}
-          step={0.05}
-          value={config.erosionStrength ?? 0.0}
-          onChange={setErosionStrength}
-          showValue
-          data-testid="schroedinger-erosion-strength"
-        />
-        {(config.erosionStrength ?? 0) > 0 && (
-          <>
-            <Slider
-              label="Scale"
-              min={0.25}
-              max={4.0}
-              step={0.25}
-              value={config.erosionScale ?? 1.0}
-              onChange={setErosionScale}
-              showValue
-              data-testid="schroedinger-erosion-scale"
-            />
-            <Slider
-              label="Turbulence"
-              min={0.0}
-              max={1.0}
-              step={0.1}
-              value={config.erosionTurbulence ?? 0.5}
-              onChange={setErosionTurbulence}
-              showValue
-              data-testid="schroedinger-erosion-turbulence"
-            />
-            <div className="pt-2">
-              <label className="text-xs text-text-secondary">Noise Type</label>
-              <select
-                className="w-full bg-surface-dark border border-white/10 rounded px-2 py-1 text-xs text-text-primary mt-1 focus:outline-none focus:border-accent"
-                value={config.erosionNoiseType ?? 0}
-                onChange={(e) => setErosionNoiseType(parseInt(e.target.value))}
-                data-testid="schroedinger-erosion-type"
-              >
-                <option value={0}>Worley (Cloudy)</option>
-                <option value={1}>Perlin (Smooth)</option>
-                <option value={2}>Hybrid (Billowy)</option>
-              </select>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
-};
-
-const MandelbulbAdvanced: React.FC = () => {
-  const extendedObjectSelector = useShallow((state: ExtendedObjectState) => ({
-    config: state.mandelbulb,
-    // Atmosphere
-    setFogEnabled: state.setMandelbulbFogEnabled,
-    setFogContribution: state.setMandelbulbFogContribution,
-    setInternalFogDensity: state.setMandelbulbInternalFogDensity,
-  }));
-  const {
-    config,
-    setFogEnabled,
-    setFogContribution,
-    setInternalFogDensity,
-  } = useExtendedObjectStore(extendedObjectSelector);
-
-  return (
-    <div className="space-y-6">
-      {/* Atmosphere */}
-      <div className="space-y-3 pt-2">
-        <div className="flex items-center justify-between">
-          <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider">Atmosphere</label>
-          <ToggleButton
-            pressed={config.fogEnabled}
-            onToggle={() => setFogEnabled(!config.fogEnabled)}
-            className="text-xs px-2 py-1 h-auto"
-            ariaLabel="Toggle atmosphere"
-          >
-            {config.fogEnabled ? 'ON' : 'OFF'}
-          </ToggleButton>
-        </div>
-        {config.fogEnabled && (
-          <div className="space-y-3 pl-2 border-l border-white/10">
-            <Slider label="Contribution" min={0} max={2} step={0.1} value={config.fogContribution} onChange={setFogContribution} showValue />
-            <Slider label="Internal Fog" min={0} max={1} step={0.05} value={config.internalFogDensity} onChange={setInternalFogDensity} showValue />
+      {/* Artistic - Chromatic Dispersion & Erosion */}
+      <ControlGroup title="Artistic" collapsible defaultOpen>
+        {/* Chromatic Dispersion */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-xs text-text-secondary font-medium">Chromatic Dispersion</label>
+            <ToggleButton
+              pressed={config.dispersionEnabled ?? false}
+              onToggle={() => setDispersionEnabled(!(config.dispersionEnabled ?? false))}
+              className="text-xs px-2 py-1 h-auto"
+              ariaLabel="Toggle dispersion"
+              data-testid="schroedinger-dispersion-toggle"
+            >
+              {config.dispersionEnabled ? 'ON' : 'OFF'}
+            </ToggleButton>
           </div>
-        )}
-      </div>
+          {config.dispersionEnabled && (
+            <div className="pl-2 border-l border-white/10 space-y-2">
+              <Slider
+                label="Strength"
+                min={0.0}
+                max={1.0}
+                step={0.05}
+                value={config.dispersionStrength ?? 0.2}
+                onChange={setDispersionStrength}
+                showValue
+                data-testid="schroedinger-dispersion-strength"
+              />
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="text-xs text-text-secondary">Direction</label>
+                  <select
+                    className="w-full bg-surface-dark border border-white/10 rounded px-2 py-1 text-xs text-text-primary mt-1 focus:outline-none focus:border-accent"
+                    value={config.dispersionDirection ?? 0}
+                    onChange={(e) => setDispersionDirection(parseInt(e.target.value))}
+                    data-testid="schroedinger-dispersion-direction"
+                  >
+                    <option value={0}>Radial</option>
+                    <option value={1}>View</option>
+                  </select>
+                </div>
+                <div className="flex-1">
+                  <label className="text-xs text-text-secondary">Quality</label>
+                  <select
+                    className="w-full bg-surface-dark border border-white/10 rounded px-2 py-1 text-xs text-text-primary mt-1 focus:outline-none focus:border-accent"
+                    value={config.dispersionQuality ?? 0}
+                    onChange={(e) => setDispersionQuality(parseInt(e.target.value))}
+                    data-testid="schroedinger-dispersion-quality"
+                  >
+                    <option value={0}>Fast (Grad)</option>
+                    <option value={1}>High (Sample)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Edge Erosion */}
+        <div className="space-y-2 mt-3 pt-3 border-t border-white/5">
+          <label className="text-xs text-text-secondary font-medium">Edge Erosion</label>
+          <Slider
+            label="Strength"
+            min={0.0}
+            max={1.0}
+            step={0.05}
+            value={config.erosionStrength ?? 0.0}
+            onChange={setErosionStrength}
+            showValue
+            data-testid="schroedinger-erosion-strength"
+          />
+          {(config.erosionStrength ?? 0) > 0 && (
+            <div className="pl-2 border-l border-white/10 space-y-2">
+              <Slider
+                label="Scale"
+                min={0.25}
+                max={4.0}
+                step={0.25}
+                value={config.erosionScale ?? 1.0}
+                onChange={setErosionScale}
+                showValue
+                data-testid="schroedinger-erosion-scale"
+              />
+              <Slider
+                label="Turbulence"
+                min={0.0}
+                max={1.0}
+                step={0.1}
+                value={config.erosionTurbulence ?? 0.5}
+                onChange={setErosionTurbulence}
+                showValue
+                data-testid="schroedinger-erosion-turbulence"
+              />
+              <div>
+                <label className="text-xs text-text-secondary">Noise Type</label>
+                <select
+                  className="w-full bg-surface-dark border border-white/10 rounded px-2 py-1 text-xs text-text-primary mt-1 focus:outline-none focus:border-accent"
+                  value={config.erosionNoiseType ?? 0}
+                  onChange={(e) => setErosionNoiseType(parseInt(e.target.value))}
+                  data-testid="schroedinger-erosion-type"
+                >
+                  <option value={0}>Worley (Cloudy)</option>
+                  <option value={1}>Perlin (Smooth)</option>
+                  <option value={2}>Hybrid (Billowy)</option>
+                </select>
+              </div>
+            </div>
+          )}
+        </div>
+      </ControlGroup>
     </div>
   );
 };
@@ -658,11 +681,9 @@ const GravityAdvanced: React.FC = () => {
   const isEnabled = isBlackHole ? true : ppState.gravityEnabled;
 
   return (
-
-      <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
-        <div className="flex items-center justify-between">
-          <label className="text-xs text-text-secondary font-semibold">Gravitational Lensing</label>
-
+    <ControlGroup title="Gravitational Lensing" collapsible defaultOpen>
+      <div className="flex items-center justify-between">
+        <label className="text-xs text-text-secondary">Enable</label>
         <ToggleButton
           pressed={isEnabled}
           onToggle={() => !isBlackHole && ppState.setGravityEnabled(!ppState.gravityEnabled)}
@@ -682,7 +703,7 @@ const GravityAdvanced: React.FC = () => {
       )}
 
       {isEnabled && (
-        <div className="space-y-3 pl-2 border-l border-white/10">
+        <>
           <Slider
             label="Strength"
             min={0.1}
@@ -723,9 +744,9 @@ const GravityAdvanced: React.FC = () => {
             showValue
             data-testid="gravity-chromatic-aberration"
           />
-        </div>
+        </>
       )}
-    </div>
+    </ControlGroup>
   );
 };
 
@@ -783,9 +804,27 @@ const BlackHoleAdvanced: React.FC = () => {
   } = useExtendedObjectStore(extendedObjectSelector);
 
   return (
-    <div className="space-y-6">
-      {/* Bloom Boost - kept separate from global gravity */}
-      <div className="space-y-3 pt-2">
+    <div className="space-y-4">
+      {/* Accretion Disk */}
+      <ControlGroup title="Accretion Disk" collapsible defaultOpen>
+        <Slider
+          label="Intensity"
+          min={0}
+          max={10.0}
+          step={0.1}
+          value={config.manifoldIntensity}
+          onChange={setManifoldIntensity}
+          showValue
+        />
+        <Slider
+          label="Temperature (K)"
+          min={1000}
+          max={40000}
+          step={100}
+          value={config.diskTemperature}
+          onChange={setDiskTemperature}
+          showValue
+        />
         <Slider
           label="Bloom Boost"
           min={0}
@@ -797,74 +836,9 @@ const BlackHoleAdvanced: React.FC = () => {
           data-testid="blackhole-bloom-boost"
         />
 
-        {/* Advanced Lensing Parameters (non-gravity) */}
-        <div className="p-3 bg-black/20 rounded border border-white/5 space-y-3">
-          <label className="text-xs text-text-tertiary font-medium">Advanced Lensing</label>
-          <Slider
-            label="Dim. Emphasis"
-            min={0}
-            max={2}
-            step={0.1}
-            value={config.dimensionEmphasis}
-            onChange={setDimensionEmphasis}
-            showValue
-          />
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <label className="text-xs text-text-tertiary">Mode</label>
-              <select
-                className="w-full bg-surface-tertiary border border-white/10 rounded px-2 py-1 text-xs text-text-primary mt-1 focus:outline-none focus:border-accent"
-                value={config.rayBendingMode}
-                onChange={(e) => setRayBendingMode(e.target.value as BlackHoleRayBendingMode)}
-              >
-                <option value="spiral">Spiral</option>
-                <option value="orbital">Orbital</option>
-              </select>
-            </div>
-            <div className="flex-1">
-              <label className="text-xs text-text-tertiary">Stability</label>
-              <input
-                type="number"
-                step="0.001"
-                min="0.0001"
-                max="0.5"
-                value={config.epsilonMul}
-                onChange={(e) => setEpsilonMul(parseFloat(e.target.value))}
-                className="w-full bg-surface-tertiary border border-white/10 rounded px-2 py-1 text-xs text-text-primary mt-1 focus:outline-none focus:border-accent"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Accretion Visuals */}
-      <div className="space-y-3 pt-2 border-t border-white/5">
-        <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider">Accretion Disk</label>
-
-        <Slider
-          label="Intensity"
-          min={0}
-          max={10.0}
-          step={0.1}
-          value={config.manifoldIntensity}
-          onChange={setManifoldIntensity}
-          showValue
-        />
-
-        <Slider
-          label="Temperature (K)"
-          min={1000}
-          max={40000}
-          step={100}
-          value={config.diskTemperature}
-          onChange={setDiskTemperature}
-          showValue
-        />
-
-
-
-        <div className="p-3 bg-black/20 rounded border border-white/5 space-y-3">
-          <label className="text-xs text-text-tertiary font-medium">Turbulence</label>
+        {/* Turbulence */}
+        <div className="space-y-2 mt-3 pt-3 border-t border-white/5">
+          <label className="text-xs text-text-secondary font-medium">Turbulence</label>
           <Slider
             label="Noise Amount"
             min={0}
@@ -884,12 +858,62 @@ const BlackHoleAdvanced: React.FC = () => {
             showValue
           />
         </div>
-      </div>
+
+        {/* Absorption */}
+        <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
+          <label className="text-xs text-text-secondary">Absorption</label>
+          <ToggleButton
+            pressed={config.enableAbsorption}
+            onToggle={() => setEnableAbsorption(!config.enableAbsorption)}
+            className="text-xs px-2 py-1 h-auto"
+            ariaLabel="Toggle absorption"
+            data-testid="blackhole-absorption-toggle"
+          >
+            {config.enableAbsorption ? 'ON' : 'OFF'}
+          </ToggleButton>
+        </div>
+        {config.enableAbsorption && (
+          <Slider
+            label="Absorption Strength"
+            min={0}
+            max={5}
+            step={0.1}
+            value={config.absorption}
+            onChange={setAbsorption}
+            showValue
+            data-testid="blackhole-absorption"
+          />
+        )}
+
+        {/* Motion Blur */}
+        <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
+          <label className="text-xs text-text-secondary">Motion Blur</label>
+          <ToggleButton
+            pressed={config.motionBlurEnabled}
+            onToggle={() => setMotionBlurEnabled(!config.motionBlurEnabled)}
+            className="text-xs px-2 py-1 h-auto"
+            ariaLabel="Toggle motion blur"
+            data-testid="blackhole-motion-blur-toggle"
+          >
+            {config.motionBlurEnabled ? 'ON' : 'OFF'}
+          </ToggleButton>
+        </div>
+        {config.motionBlurEnabled && (
+          <Slider
+            label="Blur Strength"
+            min={0}
+            max={2}
+            step={0.1}
+            value={config.motionBlurStrength}
+            onChange={setMotionBlurStrength}
+            showValue
+            data-testid="blackhole-motion-blur-strength"
+          />
+        )}
+      </ControlGroup>
 
       {/* Photon Shell */}
-      <div className="space-y-3 pt-2 border-t border-white/5">
-        <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider">Photon Shell</label>
-
+      <ControlGroup title="Photon Shell" collapsible defaultOpen>
         <Slider
           label="Width"
           min={0}
@@ -899,7 +923,6 @@ const BlackHoleAdvanced: React.FC = () => {
           onChange={setPhotonShellWidth}
           showValue
         />
-
         <Slider
           label="Glow Strength"
           min={0}
@@ -909,7 +932,6 @@ const BlackHoleAdvanced: React.FC = () => {
           onChange={setShellGlowStrength}
           showValue
         />
-
         <div className="flex items-center justify-between">
           <label className="text-xs text-text-secondary">Color</label>
           <ColorPicker
@@ -919,12 +941,12 @@ const BlackHoleAdvanced: React.FC = () => {
             className="w-24"
           />
         </div>
-      </div>
+      </ControlGroup>
 
       {/* Relativistic Effects */}
-      <div className="space-y-3 pt-2 border-t border-white/5">
+      <ControlGroup title="Relativistic Effects" collapsible defaultOpen>
         <div className="flex items-center justify-between">
-          <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider">Relativistic Effects</label>
+          <label className="text-xs text-text-secondary">Doppler Effect</label>
           <ToggleButton
             pressed={config.dopplerEnabled}
             onToggle={() => setDopplerEnabled(!config.dopplerEnabled)}
@@ -934,25 +956,21 @@ const BlackHoleAdvanced: React.FC = () => {
             {config.dopplerEnabled ? 'ON' : 'OFF'}
           </ToggleButton>
         </div>
-
         {config.dopplerEnabled && (
-          <div className="space-y-3 pl-2 border-l border-white/10">
-            <Slider
-              label="Doppler Strength"
-              min={0}
-              max={2.0}
-              step={0.1}
-              value={config.dopplerStrength}
-              onChange={setDopplerStrength}
-              showValue
-            />
-          </div>
+          <Slider
+            label="Doppler Strength"
+            min={0}
+            max={2.0}
+            step={0.1}
+            value={config.dopplerStrength}
+            onChange={setDopplerStrength}
+            showValue
+          />
         )}
-      </div>
+      </ControlGroup>
 
-      {/* Rendering Quality */}
-      <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
-        <label className="text-xs text-text-secondary font-semibold">Rendering</label>
+      {/* Rendering */}
+      <ControlGroup title="Rendering" collapsible defaultOpen>
         <Slider
           label="Max Steps"
           min={128}
@@ -976,59 +994,46 @@ const BlackHoleAdvanced: React.FC = () => {
         <p className="text-xs text-text-tertiary">
           Lower step size = higher quality, slower. Higher max steps = more detail.
         </p>
-        <div className="flex items-center justify-between">
-          <label className="text-xs text-text-secondary">Absorption</label>
-          <ToggleButton
-            pressed={config.enableAbsorption}
-            onToggle={() => setEnableAbsorption(!config.enableAbsorption)}
-            className="text-xs px-2 py-1 h-auto"
-            ariaLabel="Toggle absorption"
-            data-testid="blackhole-absorption-toggle"
-          >
-            {config.enableAbsorption ? 'ON' : 'OFF'}
-          </ToggleButton>
-        </div>
-        {config.enableAbsorption && (
-          <Slider
-            label="Absorption"
-            min={0}
-            max={5}
-            step={0.1}
-            value={config.absorption}
-            onChange={setAbsorption}
-            showValue
-            data-testid="blackhole-absorption"
-          />
-        )}
-      </div>
 
-      {/* Motion Blur */}
-      <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
-        <div className="flex items-center justify-between">
-          <label className="text-xs text-text-secondary font-semibold">Motion Blur</label>
-          <ToggleButton
-            pressed={config.motionBlurEnabled}
-            onToggle={() => setMotionBlurEnabled(!config.motionBlurEnabled)}
-            className="text-xs px-2 py-1 h-auto"
-            ariaLabel="Toggle motion blur"
-            data-testid="blackhole-motion-blur-toggle"
-          >
-            {config.motionBlurEnabled ? 'ON' : 'OFF'}
-          </ToggleButton>
-        </div>
-        {config.motionBlurEnabled && (
+        {/* Advanced Lensing */}
+        <div className="space-y-2 mt-3 pt-3 border-t border-white/5">
+          <label className="text-xs text-text-secondary font-medium">Advanced Lensing</label>
           <Slider
-            label="Strength"
+            label="Dim. Emphasis"
             min={0}
             max={2}
             step={0.1}
-            value={config.motionBlurStrength}
-            onChange={setMotionBlurStrength}
+            value={config.dimensionEmphasis}
+            onChange={setDimensionEmphasis}
             showValue
-            data-testid="blackhole-motion-blur-strength"
           />
-        )}
-      </div>
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <label className="text-xs text-text-secondary">Mode</label>
+              <select
+                className="w-full bg-surface-dark border border-white/10 rounded px-2 py-1 text-xs text-text-primary mt-1 focus:outline-none focus:border-accent"
+                value={config.rayBendingMode}
+                onChange={(e) => setRayBendingMode(e.target.value as BlackHoleRayBendingMode)}
+              >
+                <option value="spiral">Spiral</option>
+                <option value="orbital">Orbital</option>
+              </select>
+            </div>
+            <div className="flex-1">
+              <label className="text-xs text-text-secondary">Stability</label>
+              <input
+                type="number"
+                step="0.001"
+                min="0.0001"
+                max="0.5"
+                value={config.epsilonMul}
+                onChange={(e) => setEpsilonMul(parseFloat(e.target.value))}
+                className="w-full bg-surface-dark border border-white/10 rounded px-2 py-1 text-xs text-text-primary mt-1 focus:outline-none focus:border-accent"
+              />
+            </div>
+          </div>
+        </div>
+      </ControlGroup>
 
       {/* NOTE: Deferred Lensing / Gravity controls moved to global GravityAdvanced section */}
     </div>

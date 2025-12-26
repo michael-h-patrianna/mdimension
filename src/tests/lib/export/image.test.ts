@@ -41,14 +41,42 @@ describe('image export', () => {
       expect(canvas).toBeNull();
     });
 
-    it('should find canvas element', () => {
+    it('should find canvas element inside main-webgl-canvas wrapper', () => {
+      // Create the wrapper div that R3F uses
+      const wrapper = document.createElement('div');
+      wrapper.id = 'main-webgl-canvas';
+      
       const testCanvas = document.createElement('canvas');
+      wrapper.appendChild(testCanvas);
+      document.body.appendChild(wrapper);
+
+      const canvas = findThreeCanvas();
+      expect(canvas).toBe(testCanvas);
+
+      document.body.removeChild(wrapper);
+    });
+
+    it('should return canvas directly if wrapper is a canvas element', () => {
+      // Edge case: if the wrapper itself is a canvas
+      const testCanvas = document.createElement('canvas');
+      testCanvas.id = 'main-webgl-canvas';
       document.body.appendChild(testCanvas);
 
       const canvas = findThreeCanvas();
       expect(canvas).toBe(testCanvas);
 
       document.body.removeChild(testCanvas);
+    });
+
+    it('should return null when wrapper exists but has no canvas', () => {
+      const wrapper = document.createElement('div');
+      wrapper.id = 'main-webgl-canvas';
+      document.body.appendChild(wrapper);
+
+      const canvas = findThreeCanvas();
+      expect(canvas).toBeNull();
+
+      document.body.removeChild(wrapper);
     });
   });
 });

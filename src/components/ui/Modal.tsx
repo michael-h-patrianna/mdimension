@@ -7,9 +7,17 @@ interface ModalProps {
   title: string;
   children: React.ReactNode;
   width?: string;
+  'data-testid'?: string;
 }
 
-export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, width = 'max-w-md' }) => {
+export const Modal: React.FC<ModalProps> = ({
+  isOpen,
+  onClose,
+  title,
+  children,
+  width = 'max-w-md',
+  'data-testid': dataTestId,
+}) => {
   const overlayRef = useRef<HTMLDivElement>(null);
 
   // Handle escape key
@@ -45,7 +53,10 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
         className="absolute inset-0"
         onClick={onClose}
       />
-      <div className={`relative w-full ${width} bg-panel-bg border border-panel-border rounded-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200`}>
+      <div
+        className={`relative w-full ${width} bg-panel-bg border border-panel-border rounded-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200`}
+        data-testid={dataTestId}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-panel-border bg-panel-header/50">
           <h2 className="text-sm font-bold text-text-primary tracking-wide uppercase">{title}</h2>

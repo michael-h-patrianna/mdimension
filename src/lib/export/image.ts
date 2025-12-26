@@ -56,6 +56,9 @@ export function exportCanvasToPNG(
   document.body.removeChild(link);
 }
 
+// Import the store (circular dependency avoided by using useScreenshotStore.getState())
+import { useScreenshotStore } from '@/stores/screenshotStore';
+
 /**
  * Finds the Three.js canvas in the document
  *
@@ -74,10 +77,10 @@ export function findThreeCanvas(): HTMLCanvasElement | null {
 }
 
 /**
- * Exports the current Three.js scene to PNG
+ * Captures the current Three.js scene and opens the preview modal
  *
- * @param options - Export options
- * @returns True if export was successful, false otherwise
+ * @param options - Export options (filename ignored in favor of modal flow)
+ * @returns True if capture was successful
  */
 export function exportSceneToPNG(options: ExportOptions = {}): boolean {
   const canvas = findThreeCanvas();
@@ -89,7 +92,13 @@ export function exportSceneToPNG(options: ExportOptions = {}): boolean {
   }
 
   try {
-    exportCanvasToPNG(canvas, options);
+    // We strictly need to preserveDrawingBuffer: true or capture synchronously after render
+    // `toDataURL` is synchronous and blocks the main thread, which is fine for a screenshot
+    const dataUrl = canvas.toDataURL('image/png');
+
+    // Open the modal with the captured image
+    useScreenshotStore.getState().openModal(dataUrl);
+
     return true;
   } catch (error) {
     // Handle specific error cases with helpful messages
@@ -106,6 +115,7 @@ export function exportSceneToPNG(options: ExportOptions = {}): boolean {
     return false;
   }
 }
+
 
 /**
  * Generates a timestamp-based filename

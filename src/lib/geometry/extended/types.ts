@@ -629,14 +629,6 @@ export interface MandelbulbConfig {
   sssColor: string
   /** SSS thickness (0.1-5.0) */
   sssThickness: number
-
-  // === Atmosphere ===
-  /** Enable scene fog integration */
-  fogEnabled: boolean
-  /** Fog contribution (0.0-2.0) */
-  fogContribution: number
-  /** Internal fog density (0.0-1.0) */
-  internalFogDensity: number
 }
 
 /**
@@ -711,11 +703,6 @@ export const DEFAULT_MANDELBROT_CONFIG: MandelbulbConfig = {
   sssIntensity: 1.0,
   sssColor: '#ff8844',
   sssThickness: 1.0,
-
-  // Atmosphere
-  fogEnabled: false,
-  fogContribution: 1.0,
-  internalFogDensity: 0.0,
 }
 
 // ============================================================================

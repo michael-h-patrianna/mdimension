@@ -462,25 +462,4 @@ export const createMandelbulbSlice: StateCreator<ExtendedObjectSlice, [], [], Ma
       mandelbulb: { ...state.mandelbulb, sssThickness: clamped },
     }))
   },
-
-  // --- Atmosphere Actions ---
-  setMandelbulbFogEnabled: (value) => {
-    set((state) => ({
-      mandelbulb: { ...state.mandelbulb, fogEnabled: value },
-    }))
-  },
-
-  setMandelbulbFogContribution: (value) => {
-    const clamped = Math.max(0.0, Math.min(2.0, value))
-    set((state) => ({
-      mandelbulb: { ...state.mandelbulb, fogContribution: clamped },
-    }))
-  },
-
-  setMandelbulbInternalFogDensity: (value) => {
-    const clamped = Math.max(0.0, Math.min(1.0, value))
-    set((state) => ({
-      mandelbulb: { ...state.mandelbulb, internalFogDensity: clamped },
-    }))
-  },
 })
