@@ -41,36 +41,58 @@ float getVolumeTime() {
     return uTime * uTimeScale;
 }
 
-// Compute gradient of log-density for pseudo-normals (central differences - higher accuracy)
-// Used by isosurface mode where precision matters
-vec3 computeDensityGradient(vec3 pos, float t, float delta) {
-    vec3 grad;
+// ============================================
+// Tetrahedral Gradient Sampling
+// ============================================
+// Uses symmetric 4-point stencil for combined density+gradient computation
+// More accurate than forward differences (O(h^2) vs O(h)) with same sample count
 
-    float sxp = sFromRho(sampleDensity(pos + vec3(delta, 0.0, 0.0), t));
-    float sxn = sFromRho(sampleDensity(pos - vec3(delta, 0.0, 0.0), t));
-    grad.x = sxp - sxn;
+// Tetrahedral stencil vertices (regular tetrahedron, equidistant from origin)
+// Normalized to unit distance: each vertex is 1/sqrt(3) from origin
+const vec3 TETRA_V0 = vec3(+1.0, +1.0, -1.0) * 0.5773503;
+const vec3 TETRA_V1 = vec3(+1.0, -1.0, +1.0) * 0.5773503;
+const vec3 TETRA_V2 = vec3(-1.0, +1.0, +1.0) * 0.5773503;
+const vec3 TETRA_V3 = vec3(-1.0, -1.0, -1.0) * 0.5773503;
 
-    float syp = sFromRho(sampleDensity(pos + vec3(0.0, delta, 0.0), t));
-    float syn = sFromRho(sampleDensity(pos - vec3(0.0, delta, 0.0), t));
-    grad.y = syp - syn;
+// Result structure for combined density+gradient sampling
+struct TetraSample {
+    float rho;      // Probability density (averaged from 4 samples)
+    float s;        // Log-density (averaged)
+    float phase;    // Spatial phase (averaged)
+    vec3 gradient;  // Gradient of log-density
+};
 
-    float szp = sFromRho(sampleDensity(pos + vec3(0.0, 0.0, delta), t));
-    float szn = sFromRho(sampleDensity(pos - vec3(0.0, 0.0, delta), t));
-    grad.z = szp - szn;
-
-    return grad / (2.0 * delta);
+// Combined density+gradient via tetrahedral finite differences
+// Samples 4 points in symmetric tetrahedral pattern
+// Returns: averaged density/phase at center + O(h^2) accurate gradient
+TetraSample sampleWithTetrahedralGradient(vec3 pos, float t, float delta) {
+    // Sample at 4 tetrahedral vertices
+    vec3 d0 = sampleDensityWithPhase(pos + TETRA_V0 * delta, t);
+    vec3 d1 = sampleDensityWithPhase(pos + TETRA_V1 * delta, t);
+    vec3 d2 = sampleDensityWithPhase(pos + TETRA_V2 * delta, t);
+    vec3 d3 = sampleDensityWithPhase(pos + TETRA_V3 * delta, t);
+    
+    // Average for center approximation
+    float rho = (d0.x + d1.x + d2.x + d3.x) * 0.25;
+    float s = (d0.y + d1.y + d2.y + d3.y) * 0.25;
+    float phase = (d0.z + d1.z + d2.z + d3.z) * 0.25;
+    
+    // Gradient from tetrahedral stencil (scale factor: 3/(4*delta) = 0.75/delta)
+    vec3 grad = (TETRA_V0 * d0.y + TETRA_V1 * d1.y + 
+                 TETRA_V2 * d2.y + TETRA_V3 * d3.y) * (0.75 / delta);
+    
+    return TetraSample(rho, s, phase, grad);
 }
 
-// OPTIMIZED: Compute gradient using forward differences with pre-computed center value
-// Reduces samples from 6 to 3 by reusing the already-computed center density
-// Used by volumetric mode where speed matters more than precision
-vec3 computeDensityGradientFast(vec3 pos, float t, float delta, float sCenter) {
-    // Forward differences: f'(x) ≈ (f(x+h) - f(x)) / h
-    float sxp = sFromRho(sampleDensity(pos + vec3(delta, 0.0, 0.0), t));
-    float syp = sFromRho(sampleDensity(pos + vec3(0.0, delta, 0.0), t));
-    float szp = sFromRho(sampleDensity(pos + vec3(0.0, 0.0, delta), t));
-
-    return vec3(sxp - sCenter, syp - sCenter, szp - sCenter) / delta;
+// Convenience function: gradient-only (for cold path where density already known)
+// Still uses 4 tetrahedral samples for symmetric O(h^2) accuracy
+vec3 computeGradientTetrahedral(vec3 pos, float t, float delta) {
+    float s0 = sFromRho(sampleDensity(pos + TETRA_V0 * delta, t));
+    float s1 = sFromRho(sampleDensity(pos + TETRA_V1 * delta, t));
+    float s2 = sFromRho(sampleDensity(pos + TETRA_V2 * delta, t));
+    float s3 = sFromRho(sampleDensity(pos + TETRA_V3 * delta, t));
+    
+    return (TETRA_V0 * s0 + TETRA_V1 * s1 + TETRA_V2 * s2 + TETRA_V3 * s3) * (0.75 / delta);
 }
 
 // Main volume raymarching function (Fast Mode)
@@ -139,11 +161,13 @@ VolumeResult volumeRaymarch(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar
 
         vec3 pos = rayOrigin + rayDir * t;
 
-        // Sample density with phase info
-        vec3 densityInfo = sampleDensityWithPhase(pos, animTime);
-        float rho = densityInfo.x;
-        float sCenter = densityInfo.y; // Pre-computed log-density
-        float phase = densityInfo.z;
+        // Combined density+gradient via tetrahedral sampling (4 samples total)
+        // More accurate O(h^2) gradient with same sample count as before
+        TetraSample tetra = sampleWithTetrahedralGradient(pos, animTime, 0.05);
+        float rho = tetra.rho;
+        float sCenter = tetra.s;
+        float phase = tetra.phase;
+        vec3 gradient = tetra.gradient;
 
         // Early exit if density is consistently low (harmonic oscillator only)
         if (allowEarlyExit && rho < MIN_DENSITY) {
@@ -152,10 +176,6 @@ VolumeResult volumeRaymarch(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar
         } else {
             lowDensityCount = 0;
         }
-
-        // Compute gradient for lighting (Fast version - 3 taps)
-        // Must be computed BEFORE dispersion to enable gradient-based density extrapolation
-        vec3 gradient = computeDensityGradientFast(pos, animTime, 0.05, sCenter);
 
 #ifdef USE_DISPERSION
         // Chromatic Dispersion: compute per-channel densities BEFORE alpha check
@@ -279,7 +299,7 @@ VolumeResult volumeRaymarch(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar
 }
 
 // High-quality volume integration with lighting
-// OPTIMIZED: Uses forward differences gradient (3 samples) instead of central (6 samples)
+// OPTIMIZED: Uses tetrahedral gradient sampling (4 samples) for O(h^2) accuracy
 //
 // Fixed sample counts: 64 for HQ, 32 for fast mode
 VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tFar) {
@@ -337,14 +357,13 @@ VolumeResult volumeRaymarchHQ(vec3 rayOrigin, vec3 rayDir, float tNear, float tF
         }
 #endif
 
-        vec3 densityInfo = sampleDensityWithPhase(pos, animTime);
-        float rho = densityInfo.x;
-        float sCenter = densityInfo.y; // Pre-computed log-density
-        float phase = densityInfo.z;
-
-        // OPTIMIZATION: Compute gradient ONCE for reuse by both dispersion and lighting
-        // This eliminates the duplicate gradient computation that was wasting 3 density samples
-        vec3 gradient = computeDensityGradientFast(pos, animTime, 0.05, sCenter);
+        // Combined density+gradient via tetrahedral sampling (4 samples total)
+        // More accurate O(h^2) gradient with same sample count as before
+        TetraSample tetra = sampleWithTetrahedralGradient(pos, animTime, 0.05);
+        float rho = tetra.rho;
+        float sCenter = tetra.s;
+        float phase = tetra.phase;
+        vec3 gradient = tetra.gradient;
 
         // Chromatic Dispersion Logic
         vec3 rhoRGB = vec3(rho); // Default: all channels same

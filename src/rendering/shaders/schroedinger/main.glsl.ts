@@ -177,7 +177,7 @@ void main() {
     // For volumetric objects, compute density gradient at weighted center as surface normal
     // This gives actual surface structure rather than just view-dependent gradient
     float animTime = uTime * uTimeScale;
-    vec3 modelNormal = computeDensityGradient(volumeResult.weightedCenter, animTime, 0.02);
+    vec3 modelNormal = computeGradientTetrahedral(volumeResult.weightedCenter, animTime, 0.02);
 
     // If gradient is too weak (flat region), fall back to ray direction
     float gradientLength = length(modelNormal);
@@ -280,7 +280,7 @@ void main() {
 
     // Compute surface point and normal
     vec3 p = ro + rd * hitT;
-    vec3 n = normalize(computeDensityGradient(p, animTime, 0.01));
+    vec3 n = normalize(computeGradientTetrahedral(p, animTime, 0.01));
 
     // Sample for color
     vec3 densityInfo = sampleDensityWithPhase(p, animTime);
