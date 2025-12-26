@@ -75,6 +75,50 @@ function correctWindingOrder(
 }
 
 /**
+ * Generates all k-combinations of an array
+ * @param arr - Source array
+ * @param k - Combination size
+ * @returns Array of all k-combinations
+ */
+function generateCombinations(arr: number[], k: number): number[][] {
+  if (k === 0) return [[]]
+  if (arr.length < k) return []
+
+  const result: number[][] = []
+  for (let i = 0; i <= arr.length - k; i++) {
+    const rest = generateCombinations(arr.slice(i + 1), k - 1)
+    for (const combo of rest) {
+      result.push([arr[i]!, ...combo])
+    }
+  }
+  return result
+}
+
+/**
+ * Collects unique ridges from convex hull facets.
+ * A ridge is a (d-2)-face of a (d-1)-simplex facet.
+ * In a closed convex hull, each ridge is shared by exactly 2 facets.
+ *
+ * @param hull - Array of facets (each facet is an array of vertex indices)
+ * @param ridgeSize - Number of vertices per ridge
+ * @returns Set of unique ridge keys (sorted, comma-separated indices)
+ */
+function collectUniqueRidges(hull: number[][], ridgeSize: number): Set<string> {
+  const ridgeSet = new Set<string>()
+
+  for (const facet of hull) {
+    // Generate all (ridgeSize)-subsets of facet vertices
+    const ridges = generateCombinations(facet, ridgeSize)
+    for (const ridge of ridges) {
+      const key = [...ridge].sort((a, b) => a - b).join(',')
+      ridgeSet.add(key)
+    }
+  }
+
+  return ridgeSet
+}
+
+/**
  * Computes the centroid of a set of vertices
  * @param vertices - Array of n-dimensional vertices
  * @returns Centroid coordinates
@@ -190,8 +234,9 @@ function projectToAffineHull(vertices: number[][]): {
  *
  * @remarks
  * - For 3D, the convex hull gives triangular facets directly
- * - For 4D+, each (d-1)-simplex has d vertices; we extract all C(d,3) triangles
- * - Duplicate triangles are deduplicated using a string key set
+ * - For 4D, ridges ARE triangles - extracts only boundary ridges (count === 1)
+ * - For 5D+, extracts triangles from boundary (d-2)-ridges
+ * - Uses ridge adjacency counting to avoid interior triangles
  * - Returns empty array for degenerate cases (< 4 points)
  * - Handles degenerate point sets (e.g., A_n roots in a hyperplane) by
  *   projecting to the affine hull first
@@ -241,35 +286,48 @@ export function computeConvexHullFaces(vertices: number[][]): [number, number, n
       })
   }
 
-  // For higher dimensions, extract triangular 2-faces from (d-1)-simplices
-  // Each (d-1)-simplex has d vertices; triangles are all 3-combinations
-  const faceSet = new Set<string>()
+  // For higher dimensions, use ridge-based extraction to get 2-faces
+  // In a closed convex hull, each ridge is shared by exactly 2 facets
+  // All ridges are valid boundary faces - no need to filter by count
   const triangles: [number, number, number][] = []
 
-  for (const simplex of hull) {
-    const n = simplex.length
+  // For 4D: ridges ARE triangles (3 vertices each)
+  // Each ridge is a (d-2)=2-face, which is a triangle
+  if (actualDimension === 4) {
+    const ridgeSet = collectUniqueRidges(hull, 3)
 
-    // Extract all C(n, 3) triangular faces
-    for (let i = 0; i < n; i++) {
-      for (let j = i + 1; j < n; j++) {
-        for (let k = j + 1; k < n; k++) {
-          const v0 = simplex[i]!
-          const v1 = simplex[j]!
-          const v2 = simplex[k]!
-
-          // Use sorted key for deduplication
-          const sortedKey = [v0, v1, v2].sort((a, b) => a - b).join(',')
-
-          if (!faceSet.has(sortedKey)) {
-            faceSet.add(sortedKey)
-            // Apply winding correction to ensure normals point outward
-            triangles.push(correctWindingOrder(v0, v1, v2, vertices, centroid))
-          }
-        }
-      }
+    for (const key of ridgeSet) {
+      const [v0, v1, v2] = key.split(',').map(Number) as [number, number, number]
+      triangles.push(correctWindingOrder(v0, v1, v2, vertices, centroid))
     }
+    return triangles
   }
 
+  // For 5D+: ridges are (d-2)-simplices with (d-1) vertices
+  // Extract all triangular 2-faces from each ridge
+  if (actualDimension >= 5) {
+    const ridgeSize = actualDimension - 1 // (d-2)-face has (d-1) vertices
+    const ridgeSet = collectUniqueRidges(hull, ridgeSize)
+    const triangleSet = new Set<string>()
+
+    for (const ridgeKey of ridgeSet) {
+      const ridgeVerts = ridgeKey.split(',').map(Number)
+      const tris = generateCombinations(ridgeVerts, 3)
+      for (const tri of tris) {
+        const triKey = [...tri].sort((a, b) => a - b).join(',')
+        triangleSet.add(triKey)
+      }
+    }
+
+    // Add all unique triangles
+    for (const triKey of triangleSet) {
+      const [v0, v1, v2] = triKey.split(',').map(Number) as [number, number, number]
+      triangles.push(correctWindingOrder(v0, v1, v2, vertices, centroid))
+    }
+    return triangles
+  }
+
+  // Fallback for unexpected dimensions (shouldn't reach here)
   return triangles
 }
 

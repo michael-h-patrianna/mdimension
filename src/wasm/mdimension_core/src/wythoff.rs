@@ -570,6 +570,145 @@ fn generate_hypercube_faces(dim: usize) -> Vec<u32> {
     faces
 }
 
+/// Generate faces for a cross-polytope analytically.
+///
+/// Cross-polytope faces connect 3 vertices from 3 different coordinate axes.
+/// Each axis has 2 vertices (±1 on that axis), giving 8 sign combinations per triple.
+///
+/// # Arguments
+/// * `dim` - Dimensionality of the cross-polytope
+///
+/// # Returns
+/// Flattened triangle indices [v0, v1, v2, ...]
+///
+/// # Face count formula
+/// Number of triangular faces = C(dim, 3) * 8 = 4 * dim * (dim-1) * (dim-2) / 3
+fn generate_cross_polytope_faces(dim: usize) -> Vec<u32> {
+    let mut faces = Vec::new();
+
+    // Vertices are indexed: 0,1 = ±x; 2,3 = ±y; 4,5 = ±z; etc.
+    // Iterate over all triples of axes
+    for a1 in 0..dim {
+        for a2 in (a1 + 1)..dim {
+            for a3 in (a2 + 1)..dim {
+                // 8 sign combinations for 3 axes
+                for signs in 0u32..8 {
+                    let v1 = (2 * a1 + (signs & 1) as usize) as u32;
+                    let v2 = (2 * a2 + ((signs >> 1) & 1) as usize) as u32;
+                    let v3 = (2 * a3 + ((signs >> 2) & 1) as usize) as u32;
+
+                    // Winding based on sign parity
+                    // XOR of all sign bits determines if we need to flip winding
+                    let parity = (signs & 1) ^ ((signs >> 1) & 1) ^ ((signs >> 2) & 1);
+                    if parity == 0 {
+                        faces.push(v1);
+                        faces.push(v2);
+                        faces.push(v3);
+                    } else {
+                        faces.push(v1);
+                        faces.push(v3);
+                        faces.push(v2);
+                    }
+                }
+            }
+        }
+    }
+
+    faces
+}
+
+/// Generate faces for a demihypercube analytically.
+///
+/// Demihypercube is the half-hypercube with even-parity vertices only.
+/// Triangular faces connect 3 vertices where each pair differs in exactly 2 coordinates.
+///
+/// # Arguments
+/// * `vertices` - Demihypercube vertices (already generated with even parity)
+/// * `dim` - Dimensionality
+///
+/// # Returns
+/// Flattened triangle indices [v0, v1, v2, ...]
+fn generate_demihypercube_faces(vertices: &[DVector<f64>], dim: usize) -> Vec<u32> {
+    let mut faces = Vec::new();
+    let n = vertices.len();
+
+    // Count coordinate differences between two vertices
+    let count_diffs = |v1: &DVector<f64>, v2: &DVector<f64>| -> usize {
+        (0..dim).filter(|&d| (v1[d] - v2[d]).abs() > 0.1).count()
+    };
+
+    // Triangular faces: all triples where each pair differs in exactly 2 coords
+    for i in 0..n {
+        for j in (i + 1)..n {
+            let diff_ij = count_diffs(&vertices[i], &vertices[j]);
+            if diff_ij != 2 {
+                continue; // Early exit if first pair doesn't match
+            }
+
+            for k in (j + 1)..n {
+                let diff_jk = count_diffs(&vertices[j], &vertices[k]);
+                let diff_ik = count_diffs(&vertices[i], &vertices[k]);
+
+                if diff_jk == 2 && diff_ik == 2 {
+                    // All pairs differ in exactly 2 coordinates - valid face
+                    // Check winding order using centroid direction
+                    let p0 = &vertices[i];
+                    let p1 = &vertices[j];
+                    let p2 = &vertices[k];
+
+                    // Get first 3 coords for cross product
+                    let get_3d = |v: &DVector<f64>| -> [f64; 3] {
+                        [
+                            *v.get(0).unwrap_or(&0.0),
+                            *v.get(1).unwrap_or(&0.0),
+                            *v.get(2).unwrap_or(&0.0),
+                        ]
+                    };
+
+                    let a = get_3d(p0);
+                    let b = get_3d(p1);
+                    let c = get_3d(p2);
+
+                    // Edge vectors
+                    let edge1 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+                    let edge2 = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+
+                    // Cross product for normal
+                    let normal = [
+                        edge1[1] * edge2[2] - edge1[2] * edge2[1],
+                        edge1[2] * edge2[0] - edge1[0] * edge2[2],
+                        edge1[0] * edge2[1] - edge1[1] * edge2[0],
+                    ];
+
+                    // Triangle centroid
+                    let centroid = [
+                        (a[0] + b[0] + c[0]) / 3.0,
+                        (a[1] + b[1] + c[1]) / 3.0,
+                        (a[2] + b[2] + c[2]) / 3.0,
+                    ];
+
+                    // Dot product to determine winding
+                    let dot = normal[0] * centroid[0]
+                        + normal[1] * centroid[1]
+                        + normal[2] * centroid[2];
+
+                    if dot >= 0.0 {
+                        faces.push(i as u32);
+                        faces.push(j as u32);
+                        faces.push(k as u32);
+                    } else {
+                        faces.push(i as u32);
+                        faces.push(k as u32);
+                        faces.push(j as u32);
+                    }
+                }
+            }
+        }
+    }
+
+    faces
+}
+
 /// Generate triangle faces via 3-cycle detection in edge graph
 fn generate_triangle_faces(vertices: &[DVector<f64>], edges: &[[usize; 2]]) -> Vec<u32> {
     use std::collections::{HashMap, HashSet};
@@ -731,18 +870,30 @@ pub fn generate_wythoff(config: &WythoffConfig) -> PolytopeResult {
     center_and_scale(&mut vertices, config.scale);
 
     // Generate faces based on preset type
+    // Use analytical methods where possible for correctness and performance
     let faces = match (config.symmetry_group.as_str(), config.preset.as_str()) {
         ("B", "regular") => {
             // Regular hypercube: use analytical quad face generation
             generate_hypercube_faces(dim)
         }
-        ("A", "regular") | ("B", "cross") | ("B", "orthoplex") => {
-            // Simplex and cross-polytope: use triangle face detection
+        ("B", "cross") | ("B", "orthoplex") => {
+            // Cross-polytope: use analytical face generation
+            // Faces connect 3 vertices from 3 different axes
+            generate_cross_polytope_faces(dim)
+        }
+        ("A", "regular") => {
+            // Simplex: use triangle face detection (all vertices connected)
             generate_triangle_faces(&vertices, &edges)
+        }
+        ("D", "regular") | ("D", _) => {
+            // Demihypercube: use analytical face generation
+            // Faces connect 3 vertices differing pairwise in 2 coordinates
+            generate_demihypercube_faces(&vertices, dim)
         }
         ("B", "rectified") | ("B", "truncated") | ("B", "runcinated") => {
             // Use convex hull for proper face detection on these convex polytopes
             // These have manageable vertex counts (<1000 in most dimensions)
+            // Now uses ridge-based extraction for correct faces
             if !vertices.is_empty() {
                 generate_convex_hull_faces(&vertices, dim)
             } else {

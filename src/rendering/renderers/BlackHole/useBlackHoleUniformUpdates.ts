@@ -142,6 +142,7 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
 
     const u = material.uniforms
     const bhState = useExtendedObjectStore.getState().blackhole
+    const ppState = usePostProcessingStore.getState()
 
     // Sync critical ray bending uniforms from store
     setUniform(u, 'uHorizonRadius', bhState.horizonRadius)
@@ -149,9 +150,9 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
     setUniform(u, 'uVisualEventHorizon', computeVisualEventHorizon(bhState.horizonRadius, bhState.spin))
     setUniform(u, 'uSpin', bhState.spin)
     setUniform(u, 'uDiskTemperature', bhState.diskTemperature)
-    // Use blackhole store's gravity settings directly (not postProcessing which may not be synced)
-    setUniform(u, 'uGravityStrength', bhState.gravityStrength)
-    setUniform(u, 'uBendScale', bhState.bendScale)
+    // Use GLOBAL gravity settings from postProcessingStore (controlled by UI slider)
+    setUniform(u, 'uGravityStrength', ppState.gravityStrength)
+    setUniform(u, 'uBendScale', ppState.gravityDistortionScale)
     setUniform(u, 'uBendMaxPerStep', bhState.bendMaxPerStep)
     // ManifoldIntensity is for accretion disk, NOT gravity - keep from bhState
     setUniform(u, 'uManifoldIntensity', bhState.manifoldIntensity)
@@ -164,10 +165,11 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
     setUniform(u, 'uFarRadius', bhState.farRadius)
 
     // CRITICAL: Sync shell precomputed values on mount
-    // Shell center 15% outside shadow radius, width 25% of shadow radius
+    // Shell center 15% outside shadow radius
+    // Shell width: use photonShellWidth setting (scaled by 5.0 so default 0.05 ≈ old 0.25)
     const initVisualHorizon = computeVisualEventHorizon(bhState.horizonRadius, bhState.spin)
     const initShellRp = initVisualHorizon * 1.15
-    const initShellDelta = initVisualHorizon * 0.25
+    const initShellDelta = initVisualHorizon * bhState.photonShellWidth * 5.0
     setUniform(u, 'uShellRpPrecomputed', initShellRp)
     setUniform(u, 'uShellDeltaPrecomputed', initShellDelta)
     setUniform(u, 'uShellGlowStrength', bhState.shellGlowStrength)
@@ -212,18 +214,28 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
 
       // Force-sync all critical ray bending uniforms that affect bounding sphere and lensing
       const bhState = useExtendedObjectStore.getState().blackhole
+      const ppState = usePostProcessingStore.getState()
       setUniform(u, 'uHorizonRadius', bhState.horizonRadius)
       // Compute visual event horizon on-demand from horizonRadius and spin (Kerr physics)
-      setUniform(u, 'uVisualEventHorizon', computeVisualEventHorizon(bhState.horizonRadius, bhState.spin))
+      const initVisualHorizon = computeVisualEventHorizon(bhState.horizonRadius, bhState.spin)
+      setUniform(u, 'uVisualEventHorizon', initVisualHorizon)
       setUniform(u, 'uFarRadius', bhState.farRadius)
-      // Use blackhole store's gravity settings directly
-      setUniform(u, 'uGravityStrength', bhState.gravityStrength)
-      setUniform(u, 'uBendScale', bhState.bendScale)
+      // Use GLOBAL gravity settings from postProcessingStore (controlled by UI slider)
+      setUniform(u, 'uGravityStrength', ppState.gravityStrength)
+      setUniform(u, 'uBendScale', ppState.gravityDistortionScale)
       setUniform(u, 'uBendMaxPerStep', bhState.bendMaxPerStep)
       // ManifoldIntensity is for accretion disk, NOT gravity - keep from bhState
       setUniform(u, 'uManifoldIntensity', bhState.manifoldIntensity)
       setUniform(u, 'uDiskInnerRadiusMul', bhState.diskInnerRadiusMul)
       setUniform(u, 'uDiskOuterRadiusMul', bhState.diskOuterRadiusMul)
+
+      // CRITICAL: Sync shell precomputed values on material change
+      // Without this, shell is invisible until user moves a slider
+      const initShellRp = initVisualHorizon * 1.15
+      const initShellDelta = initVisualHorizon * bhState.photonShellWidth * 5.0
+      setUniform(u, 'uShellRpPrecomputed', initShellRp)
+      setUniform(u, 'uShellDeltaPrecomputed', initShellDelta)
+      setUniform(u, 'uShellGlowStrength', bhState.shellGlowStrength)
 
       // Also check if scene.background is ready and sync envMap state
       // Read from frozen frame context for frame-consistent state
@@ -291,6 +303,8 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
 
     // Get black hole state for coverage and temporal calculations
     const bhState = useExtendedObjectStore.getState().blackhole
+    // Get GLOBAL gravity settings (controlled by UI slider)
+    const ppState = usePostProcessingStore.getState()
 
     // Calculate actual black hole visual radius for accurate coverage estimation
     // The visual extent is farRadius * horizonRadius (scale is always 1.0 now)
@@ -412,8 +426,8 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
     setUniform(u, 'uVisualEventHorizon', computeVisualEventHorizon(bhState.horizonRadius, bhState.spin))
     setUniform(u, 'uSpin', bhState.spin)
     setUniform(u, 'uDiskTemperature', bhState.diskTemperature)
-    // Use blackhole store's gravity settings directly (not postProcessing which may not be synced)
-    setUniform(u, 'uGravityStrength', bhState.gravityStrength)
+    // Use GLOBAL gravity settings from postProcessingStore (controlled by UI slider)
+    setUniform(u, 'uGravityStrength', ppState.gravityStrength)
     // ManifoldIntensity is for accretion disk, NOT gravity - keep from bhState
     setUniform(u, 'uManifoldIntensity', bhState.manifoldIntensity)
     setUniform(u, 'uManifoldThickness', bhState.manifoldThickness)
@@ -442,11 +456,12 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
     // Palette mode (still supported for black hole specific modes)
     setUniform(u, 'uPaletteMode', PALETTE_MODE_MAP[bhState.paletteMode] ?? 0)
 
-    // Lensing - Use blackhole store's settings directly
+    // Lensing - Use blackhole store's settings (except bendScale which uses global gravity)
     setUniform(u, 'uDimensionEmphasis', bhState.dimensionEmphasis)
     setUniform(u, 'uDistanceFalloff', bhState.distanceFalloff)
     setUniform(u, 'uEpsilonMul', bhState.epsilonMul)
-    setUniform(u, 'uBendScale', bhState.bendScale)
+    // Use GLOBAL gravity distortion scale from postProcessingStore (controlled by UI slider)
+    setUniform(u, 'uBendScale', ppState.gravityDistortionScale)
     setUniform(u, 'uBendMaxPerStep', bhState.bendMaxPerStep)
     setUniform(u, 'uLensingClamp', bhState.lensingClamp)
     setUniform(u, 'uRayBendingMode', RAY_BENDING_MODE_MAP[bhState.rayBendingMode] ?? 0)
@@ -472,9 +487,9 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
     // Shell center 15% outside shadow radius (so the ring is clearly visible)
     const shellCenterOffset = 1.15
     const shellRp = visualHorizon * shellCenterOffset
-    // Shell width: 25% of shadow radius (extends from ~shadow edge to ~1.4x shadow)
-    // This ensures a wide, visible ring around the black hole
-    const shellDelta = visualHorizon * 0.25
+    // Shell width: use photonShellWidth UI setting (scaled by 5.0 so default 0.05 ≈ old 0.25)
+    // This makes the UI slider control the ring thickness
+    const shellDelta = visualHorizon * bhState.photonShellWidth * 5.0
     setUniform(u, 'uShellRpPrecomputed', shellRp)
     setUniform(u, 'uShellDeltaPrecomputed', shellDelta)
 

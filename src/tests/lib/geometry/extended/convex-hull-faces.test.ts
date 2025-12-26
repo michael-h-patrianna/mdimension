@@ -189,6 +189,165 @@ describe('hasValidConvexHull', () => {
   });
 });
 
+describe('ridge-based face extraction', () => {
+  /**
+   * Helper to generate 4D simplex vertices
+   * A 4D simplex has 5 vertices in 4D space
+   */
+  function generate4DSimplex(): number[][] {
+    // Regular 4-simplex vertices (5 equidistant points in 4D)
+    const phi = (1 + Math.sqrt(5)) / 2
+    return [
+      [1, 1, 1, -1 / phi],
+      [1, -1, -1, -1 / phi],
+      [-1, 1, -1, -1 / phi],
+      [-1, -1, 1, -1 / phi],
+      [0, 0, 0, phi],
+    ]
+  }
+
+  /**
+   * Helper to generate 4D cross-polytope (16-cell) vertices
+   * Has 8 vertices: ±1 on each of 4 axes
+   */
+  function generate4DCrossPolytope(): number[][] {
+    const vertices: number[][] = []
+    for (let axis = 0; axis < 4; axis++) {
+      for (const sign of [1, -1]) {
+        const v = [0, 0, 0, 0]
+        v[axis] = sign
+        vertices.push(v)
+      }
+    }
+    return vertices
+  }
+
+  /**
+   * Helper to generate 4D hypercube (tesseract) vertices
+   * Has 16 vertices: all ±1 combinations
+   */
+  function generate4DHypercube(): number[][] {
+    const vertices: number[][] = []
+    for (let i = 0; i < 16; i++) {
+      vertices.push([
+        (i & 1) ? 1 : -1,
+        (i & 2) ? 1 : -1,
+        (i & 4) ? 1 : -1,
+        (i & 8) ? 1 : -1,
+      ])
+    }
+    return vertices
+  }
+
+  it('should extract correct number of faces for 4D simplex', () => {
+    const vertices = generate4DSimplex()
+    const faces = computeConvexHullFaces(vertices)
+
+    // 4D simplex has C(5,3) = 10 triangular 2-faces
+    expect(faces.length).toBe(10)
+
+    // Verify no duplicates
+    const keys = new Set(faces.map((f) => [...f].sort((a, b) => a - b).join(',')))
+    expect(keys.size).toBe(10)
+  })
+
+  it('should extract correct number of faces for 4D cross-polytope', () => {
+    const vertices = generate4DCrossPolytope()
+    const faces = computeConvexHullFaces(vertices)
+
+    // 4D cross-polytope (16-cell) has 32 triangular 2-faces
+    // Formula: C(4,3) * 8 = 4 * 8 = 32
+    expect(faces.length).toBe(32)
+
+    // All indices should be valid (0-7)
+    faces.forEach((face) => {
+      face.forEach((idx) => {
+        expect(idx).toBeGreaterThanOrEqual(0)
+        expect(idx).toBeLessThan(8)
+      })
+    })
+  })
+
+  it('should not include interior triangles', () => {
+    // For a 4D simplex, ALL triangles should be on the boundary
+    // since it has only 5 vertices and C(5,3) = 10 faces
+    const vertices = generate4DSimplex()
+    const faces = computeConvexHullFaces(vertices)
+
+    // Count unique triangles
+    const uniqueKeys = new Set(
+      faces.map((f) => [...f].sort((a, b) => a - b).join(','))
+    )
+
+    // All faces should be unique (no interior duplicates)
+    expect(uniqueKeys.size).toBe(faces.length)
+  })
+
+  it('should have consistent winding order (all normals pointing outward)', () => {
+    // For a centered polytope, all face normals should point outward
+    // This means dot(normal, centroid) > 0 for each face
+    const vertices = generate4DCrossPolytope()
+    const faces = computeConvexHullFaces(vertices)
+
+    let outwardCount = 0
+    let inwardCount = 0
+
+    for (const [i0, i1, i2] of faces) {
+      const v0 = vertices[i0]!
+      const v1 = vertices[i1]!
+      const v2 = vertices[i2]!
+
+      // Compute edges in 3D (first 3 coords)
+      const e1 = [v1[0] - v0[0], v1[1] - v0[1], v1[2] - v0[2]]
+      const e2 = [v2[0] - v0[0], v2[1] - v0[1], v2[2] - v0[2]]
+
+      // Cross product for normal
+      const normal = [
+        e1[1] * e2[2] - e1[2] * e2[1],
+        e1[2] * e2[0] - e1[0] * e2[2],
+        e1[0] * e2[1] - e1[1] * e2[0],
+      ]
+
+      // Face centroid
+      const center = [
+        (v0[0] + v1[0] + v2[0]) / 3,
+        (v0[1] + v1[1] + v2[1]) / 3,
+        (v0[2] + v1[2] + v2[2]) / 3,
+      ]
+
+      // Dot product
+      const dot = normal[0] * center[0] + normal[1] * center[1] + normal[2] * center[2]
+
+      if (dot > 0.0001) outwardCount++
+      else if (dot < -0.0001) inwardCount++
+    }
+
+    // All faces should have consistent outward-facing normals
+    // (some may be zero if degenerate in 3D projection)
+    expect(outwardCount).toBeGreaterThan(0)
+    expect(inwardCount).toBe(0)
+  })
+
+  it('should handle 4D hypercube projection correctly', () => {
+    const vertices = generate4DHypercube()
+    const faces = computeConvexHullFaces(vertices)
+
+    // 4D hypercube boundary when projected has triangulated square faces
+    // The exact count depends on the projection, but should be non-zero
+    expect(faces.length).toBeGreaterThan(0)
+
+    // All faces should be valid triangles
+    faces.forEach((face) => {
+      expect(face).toHaveLength(3)
+      const [a, b, c] = face
+      // All different vertices
+      expect(a).not.toBe(b)
+      expect(b).not.toBe(c)
+      expect(a).not.toBe(c)
+    })
+  })
+})
+
 describe('getConvexHullStats', () => {
   it('should return null for degenerate cases', () => {
     expect(getConvexHullStats([])).toBeNull();

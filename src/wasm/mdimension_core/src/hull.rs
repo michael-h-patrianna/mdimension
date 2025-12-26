@@ -311,31 +311,91 @@ pub fn convex_hull(vertices: &[Vec<f64>], dim: usize) -> Vec<usize> {
         }
     }
 
-    // 3. Extract Triangles with Deduplication
-    // The facets are (d-1)-simplices. We need to convert them to triangles (3 vertices).
-    // For 3D, facets ARE triangles.
-    // For 4D+, facets are higher-order simplices -> C(d,3) triangles each.
-    // Adjacent facets share triangles, so we must deduplicate.
-    let mut seen: HashSet<[usize; 3]> = HashSet::new();
+    // 3. Extract Triangles using Ridge-Based Method
+    // A ridge is a (d-2)-face of a facet.
+    // In a closed convex hull, each ridge is shared by exactly 2 facets.
+    // All ridges are valid boundary faces - collect unique ridges.
+    // For 3D: facets ARE triangles, return directly
+    // For 4D: ridges are triangles (3 vertices)
+    // For 5D+: ridges are (d-2)-simplices, extract triangles from each
     let mut triangles = Vec::new();
 
-    for facet in facets {
-        let n = facet.vertices.len(); // Should be dim
-        for i in 0..n {
-            for j in (i+1)..n {
-                for k in (j+1)..n {
-                    // Create sorted triangle key for deduplication
-                    let mut tri = [facet.vertices[i], facet.vertices[j], facet.vertices[k]];
-                    tri.sort();
+    if dim == 3 {
+        // 3D: facets are already triangles
+        for facet in facets {
+            for &v in &facet.vertices {
+                triangles.push(v);
+            }
+        }
+    } else if dim == 4 {
+        // 4D: ridges ARE triangles (3 vertices each)
+        // Collect unique ridges (deduplication via HashSet)
+        let mut ridge_set: HashSet<[usize; 3]> = HashSet::new();
 
-                    // Only add if not already seen
-                    if seen.insert(tri) {
-                        triangles.push(tri[0]);
-                        triangles.push(tri[1]);
-                        triangles.push(tri[2]);
+        for facet in &facets {
+            let n = facet.vertices.len(); // Should be 4
+            // Generate all 3-vertex subsets (ridges)
+            for skip in 0..n {
+                let mut tri = [0usize; 3];
+                let mut idx = 0;
+                for (i, &v) in facet.vertices.iter().enumerate() {
+                    if i != skip {
+                        tri[idx] = v;
+                        idx += 1;
+                    }
+                }
+                tri.sort();
+                ridge_set.insert(tri);
+            }
+        }
+
+        // All ridges are boundary 2-faces
+        for tri in ridge_set {
+            triangles.push(tri[0]);
+            triangles.push(tri[1]);
+            triangles.push(tri[2]);
+        }
+    } else {
+        // 5D+: ridges are (d-2)-simplices with (d-1) vertices
+        // Collect unique ridges
+        let mut ridge_set: HashSet<Vec<usize>> = HashSet::new();
+
+        for facet in &facets {
+            let n = facet.vertices.len();
+            // Generate all (d-1)-vertex subsets
+            for skip in 0..n {
+                let mut ridge: Vec<usize> = Vec::with_capacity(n - 1);
+                for (i, &v) in facet.vertices.iter().enumerate() {
+                    if i != skip {
+                        ridge.push(v);
+                    }
+                }
+                ridge.sort();
+                ridge_set.insert(ridge);
+            }
+        }
+
+        // Extract all triangular 2-faces from each ridge
+        let mut triangle_set: HashSet<[usize; 3]> = HashSet::new();
+
+        for ridge in ridge_set {
+            let n = ridge.len();
+            for i in 0..n {
+                for j in (i+1)..n {
+                    for k in (j+1)..n {
+                        let mut tri = [ridge[i], ridge[j], ridge[k]];
+                        tri.sort();
+                        triangle_set.insert(tri);
                     }
                 }
             }
+        }
+
+        // Add all unique triangles
+        for tri in triangle_set {
+            triangles.push(tri[0]);
+            triangles.push(tri[1]);
+            triangles.push(tri[2]);
         }
     }
 

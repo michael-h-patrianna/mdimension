@@ -61,18 +61,19 @@ vec3 photonShellEmissionWithMask(float mask, vec3 pos) {
   // Starburst interference pattern
   // High frequency angular modulation
   float angle = atan(pos.z, pos.x);
-  
+
   // Use a combination of sines for a "caustic" look
   float starburst = 0.5 + 0.5 * sin(angle * 40.0 + uTime * 0.5) * sin(angle * 13.0 - uTime * 0.2);
   starburst = starburst * starburst; // PERF: Sharpen spikes (x² instead of pow)
-  
+
   float intensityMod = 0.7 + 0.3 * starburst;
-  
+
   // Pulse
   float pulse = 1.0 + 0.1 * sin(uTime * 2.0);
 
   // Shell color with intensity
-  vec3 emission = uShellGlowColor * uShellGlowStrength * mask * pulse * intensityMod;
+  // Boosted by 3x to ensure visibility against bright Einstein ring
+  vec3 emission = uShellGlowColor * uShellGlowStrength * mask * pulse * intensityMod * 3.0;
 
   return emission;
 }
