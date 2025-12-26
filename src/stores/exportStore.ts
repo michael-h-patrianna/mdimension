@@ -9,6 +9,30 @@ export type BrowserType = 'chromium-capable' | 'standard'
 
 export type VideoCodec = 'avc' | 'hevc' | 'vp9' | 'av1'
 
+export interface TextOverlaySettings {
+  enabled: boolean
+  text: string
+  fontFamily: string
+  fontSize: number
+  fontWeight: number // 100-900
+  textAlign: 'left' | 'center' | 'right'
+  letterSpacing: number
+  color: string
+  opacity: number
+  shadowColor: string
+  shadowBlur: number
+  positionX: number // 0-1 (percentage)
+  positionY: number // 0-1 (percentage)
+}
+
+export interface CropSettings {
+  enabled: boolean
+  x: number // 0-1
+  y: number // 0-1
+  width: number // 0-1
+  height: number // 0-1
+}
+
 export interface ExportSettings {
   format: ExportFormat
   codec: VideoCodec
@@ -21,6 +45,10 @@ export interface ExportSettings {
   bitrateMode: 'constant' | 'variable'
   hardwareAcceleration: 'no-preference' | 'prefer-hardware' | 'prefer-software'
   warmupFrames: number
+  
+  // New Features
+  textOverlay: TextOverlaySettings
+  crop: CropSettings
 }
 
 export interface CompletionDetails {
@@ -32,6 +60,7 @@ export interface CompletionDetails {
 interface ExportStore {
   isExporting: boolean
   isModalOpen: boolean
+  isCropEditorOpen: boolean // New: Toggle for crop editor UI
   status: 'idle' | 'rendering' | 'previewing' | 'encoding' | 'completed' | 'error'
   progress: number // 0 to 1
   previewUrl: string | null
@@ -46,22 +75,26 @@ interface ExportStore {
   exportTier: ExportTier
   estimatedSizeMB: number
   completionDetails: CompletionDetails | null
+  canvasAspectRatio: number // Current canvas width/height ratio for dynamic crop presets
 
   // Actions
   setModalOpen: (isOpen: boolean) => void
+  setCropEditorOpen: (isOpen: boolean) => void // New
+  setCanvasAspectRatio: (ratio: number) => void
   setIsExporting: (isExporting: boolean) => void
   setStatus: (status: ExportStore['status']) => void
   setProgress: (progress: number) => void
   setPreviewUrl: (url: string | null) => void
   setEta: (eta: string | null) => void
   setError: (error: string | null) => void
-  updateSettings: (settings: Partial<ExportSettings>) => void
+  updateSettings: (settings: Partial<ExportSettings> | ((prev: ExportSettings) => Partial<ExportSettings>)) => void
   setExportModeOverride: (mode: ExportMode | null) => void
   setCompletionDetails: (details: CompletionDetails | null) => void
   reset: () => void
 
   // Computed helpers
   recalculateMode: () => void
+  applyPreset: (presetName: string) => void // New
 }
 
 const DEFAULT_SETTINGS: ExportSettings = {
@@ -71,11 +104,34 @@ const DEFAULT_SETTINGS: ExportSettings = {
   customWidth: 1920,
   customHeight: 1080,
   fps: 60,
-  duration: 5,
+  duration: 30,
   bitrate: 12,
   bitrateMode: 'constant',
   hardwareAcceleration: 'prefer-software',
   warmupFrames: 5,
+  
+  textOverlay: {
+    enabled: false,
+    text: 'mdimension',
+    fontFamily: 'Inter, sans-serif',
+    fontSize: 48,
+    fontWeight: 700,
+    textAlign: 'center',
+    letterSpacing: 0,
+    color: '#ffffff',
+    opacity: 1,
+    shadowColor: 'rgba(0,0,0,0.5)',
+    shadowBlur: 10,
+    positionX: 0.5,
+    positionY: 0.9,
+  },
+  crop: {
+    enabled: false,
+    x: 0,
+    y: 0,
+    width: 1,
+    height: 1,
+  }
 }
 
 const detectBrowser = (): BrowserType => {
@@ -184,6 +240,7 @@ export const useExportStore = create<ExportStore>()(
     (set, get) => ({
       isExporting: false,
       isModalOpen: false,
+      isCropEditorOpen: false,
       status: 'idle',
       progress: 0,
       previewUrl: null,
@@ -197,6 +254,7 @@ export const useExportStore = create<ExportStore>()(
       exportTier: 'small',
       estimatedSizeMB: 0,
       completionDetails: null,
+      canvasAspectRatio: 16 / 9, // Default assumption
 
       setModalOpen: (isOpen) => {
         set({ isModalOpen: isOpen })
@@ -205,6 +263,8 @@ export const useExportStore = create<ExportStore>()(
           get().recalculateMode()
         }
       },
+      setCropEditorOpen: (isOpen) => set({ isCropEditorOpen: isOpen }),
+      setCanvasAspectRatio: (ratio) => set({ canvasAspectRatio: ratio }),
       setIsExporting: (isExporting) => set({ isExporting }),
       setStatus: (status) => set({ status }),
       setProgress: (progress) => set({ progress }),
@@ -217,9 +277,17 @@ export const useExportStore = create<ExportStore>()(
         }),
       setEta: (eta) => set({ eta }),
       setError: (error) => set({ error }),
-      updateSettings: (newSettings) => {
+      updateSettings: (newSettingsOrFn) => {
         const currentSettings = get().settings
+        const newSettings = typeof newSettingsOrFn === 'function' 
+            ? newSettingsOrFn(currentSettings) 
+            : newSettingsOrFn
+            
         const updatedSettings = { ...currentSettings, ...newSettings }
+
+        // Deep merge for nested objects if they are partials
+        if (newSettings.textOverlay) updatedSettings.textOverlay = { ...currentSettings.textOverlay, ...newSettings.textOverlay }
+        if (newSettings.crop) updatedSettings.crop = { ...currentSettings.crop, ...newSettings.crop }
 
         // Auto-adjust bitrate when resolution, fps, or custom dimensions change
         // (but NOT when bitrate itself is being explicitly set)
@@ -250,6 +318,82 @@ export const useExportStore = create<ExportStore>()(
         get().recalculateMode()
       },
       setCompletionDetails: (details) => set({ completionDetails: details }),
+      
+      applyPreset: (presetName) => {
+          const defaults = DEFAULT_SETTINGS
+          const canvasRatio = get().canvasAspectRatio
+
+          // Helper to calculate crop for target aspect ratio based on canvas aspect ratio
+          const calculateCropForRatio = (targetRatio: number) => {
+              if (canvasRatio > targetRatio) {
+                  // Canvas is wider than target - crop width
+                  const cropWidth = targetRatio / canvasRatio
+                  return { x: (1 - cropWidth) / 2, y: 0, width: cropWidth, height: 1 }
+              } else {
+                  // Canvas is taller than target - crop height
+                  const cropHeight = canvasRatio / targetRatio
+                  return { x: 0, y: (1 - cropHeight) / 2, width: 1, height: cropHeight }
+              }
+          }
+
+          if (presetName === 'instagram-story') {
+              const crop = calculateCropForRatio(9 / 16)
+              get().updateSettings({
+                  resolution: 'custom',
+                  customWidth: 1080,
+                  customHeight: 1920,
+                  duration: 15,
+                  fps: 30,
+                  bitrate: 8,
+                  crop: { ...defaults.crop, enabled: true, ...crop }
+              })
+          } else if (presetName === 'instagram-post') {
+              const crop = calculateCropForRatio(1) // Square
+              get().updateSettings({
+                  resolution: 'custom',
+                  customWidth: 1080,
+                  customHeight: 1080,
+                  duration: 15,
+                  fps: 30,
+                  bitrate: 10,
+                  crop: { ...defaults.crop, enabled: true, ...crop }
+              })
+          } else if (presetName === 'youtube-shorts') {
+              const crop = calculateCropForRatio(9 / 16)
+              get().updateSettings({
+                  resolution: 'custom',
+                  customWidth: 1080,
+                  customHeight: 1920,
+                  duration: 60,
+                  fps: 60,
+                  bitrate: 15,
+                  crop: { ...defaults.crop, enabled: true, ...crop }
+              })
+          } else if (presetName === 'twitter-video') {
+              get().updateSettings({
+                  resolution: '1080p',
+                  duration: 30,
+                  fps: 60,
+                  bitrate: 12,
+                  crop: { ...defaults.crop, enabled: false }
+              })
+          } else if (presetName === 'cinematic') {
+               get().updateSettings({
+                  resolution: '4k',
+                  fps: 24,
+                  bitrate: 40
+              })
+          } else if (presetName === 'default') {
+              get().updateSettings({
+                  resolution: '1080p',
+                  fps: 60,
+                  duration: 30,
+                  bitrate: 12,
+                  crop: { ...defaults.crop, enabled: false },
+                  textOverlay: { ...defaults.textOverlay, enabled: false }
+              })
+          }
+      },
 
       recalculateMode: () => {
         const state = get()
@@ -316,6 +460,26 @@ export const useExportStore = create<ExportStore>()(
     {
       name: 'mdimension-export-settings',
       partialize: (state) => ({ settings: state.settings }), // Only persist settings
+      merge: (persistedState, currentState) => {
+        const persisted = persistedState as { settings?: Partial<ExportSettings> }
+        // Deep merge persisted settings with defaults to handle new properties
+        return {
+          ...currentState,
+          settings: {
+            ...DEFAULT_SETTINGS,
+            ...persisted?.settings,
+            // Deep merge nested objects to preserve new defaults
+            textOverlay: {
+              ...DEFAULT_SETTINGS.textOverlay,
+              ...persisted?.settings?.textOverlay,
+            },
+            crop: {
+              ...DEFAULT_SETTINGS.crop,
+              ...persisted?.settings?.crop,
+            },
+          },
+        }
+      },
     }
   )
 )

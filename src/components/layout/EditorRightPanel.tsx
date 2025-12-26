@@ -78,7 +78,7 @@ export const EditorRightPanel: React.FC = () => {
   ];
 
   return (
-    <div className="h-full flex flex-col bg-panel-bg border-l border-panel-border w-80 shrink-0 overflow-hidden">
+    <div className="h-full flex flex-col bg-panel-bg w-full shrink-0 overflow-hidden">
       {/* Header Section */}
       <div className="p-4 border-b border-panel-border bg-panel-bg/50 backdrop-blur-sm z-10 shrink-0 flex items-center gap-2">
         <Icon name="menu" className="text-text-secondary" />

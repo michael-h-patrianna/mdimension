@@ -928,17 +928,17 @@ export const PolytopeScene = React.memo(function PolytopeScene({
         if (u.uSssJitter) u.uSssJitter.value = sssJitter;
 
         // IBL (Image-Based Lighting) uniforms
+        // Compute isPMREM first to gate quality (prevents null texture sampling)
+        const env = scene.environment;
+        const isPMREM = env && env.mapping === THREE.CubeUVReflectionMapping;
         const iblState = environmentStateRef.current;
         if (u.uIBLQuality) {
           const qualityMap = { off: 0, low: 1, high: 2 } as const;
-          u.uIBLQuality.value = qualityMap[iblState.iblQuality];
+          // Force IBL off when no valid PMREM texture
+          u.uIBLQuality.value = isPMREM ? qualityMap[iblState.iblQuality] : 0;
         }
         if (u.uIBLIntensity) u.uIBLIntensity.value = iblState.iblIntensity;
         if (u.uEnvMap) {
-          // Use scene.environment (PMREM texture) for IBL
-          // PMREM produces CubeUVReflectionMapping textures (sampler2D, not samplerCube)
-          const env = scene.environment;
-          const isPMREM = env && env.mapping === THREE.CubeUVReflectionMapping;
           u.uEnvMap.value = isPMREM ? env : null;
         }
 

@@ -1,19 +1,34 @@
-Important: This is a test of your autonomous capabilities.
+Important: This is a test of your autonomous capabilities and your UI/UX design and frontend coding abilities.
 
 You cannot break anything. The project in this local folder is backed up and can be restored. You can create, modify, and delete files as necessary to complete the tasks assigned to you. You have full autonomy to make decisions and take actions to achieve the desired outcomes.
 
 Your task:
-This project has a video export function that renders the scene canvas with its animation to video and allows the user to downlaod the video. this core function works very well. but it lacks a bit of polish and user delight features - something that goes beyond of just "working well".
+This project has a rich and very well design ui. But it needs a final polish. No new features or big changes, just aligning and polishing and giving everything the professional finishing touch.
 
-Your task is to design and implement a few user delight features:
-- User can select another tab in the export modal "Text" and enter there a line of text and select styles and position (check what Mediabunny offers) and this text is then overlayed and added to the video export
-- User can choose to select a crop area of the canvas that is used for the export, so not the whole canvas is used for the export. Should look nice, for example user can click a "Select crop area button" that turns the canvas into "cinematic mode" and hides the video export modal and instead user gets to see the scene with a crop control and other controls that allow them to select exactly the area of the canvas that will be used for the video export.
-- Presets with video settings and crop/size for social media platforms sharing (note: the main object is always in 0,0,0)
-- 4 other user delight features
+Workflow:
+- Review the UI and components in detail. Understand how information and interaction elements are organized, structured and presenting hierarchy visually.
+- Identify inconsistencies where the same functionality is presented or working in different ways.
+- Identify inconsistencies in the overall design, layout and animation style.
+- Identify inconsistencies in the application of sound design (e.g. one popup has an open sound, one doesn't. or some buttons have hover sounds, some don't).
+- Identify lack of best-practices applied.
+- Find issues where hierarchy is visually not well expressed. There are a lot of controls and the ui can get overwhelming when hierarchy, grouping, categories are not clearly skimmable.
+- Identify poor UI and visual bugs.
+- Identify "cheap" or "amateurish" looking UI.
+- Identify poor user interaction paths and design.
+Workflow:
+- Inspect the code and understand how the video export functionality works and what functionality the UI provides.
+- Identify lack of responsiveness for mobile browser support.
+- Identify overloaded UI / cognitive overload.
+- Identify usage of raw html elements instead of existing custom ui components from our library.
+- Identify usage of hardcoded styles not using our theming solution.
+- Design a comprehensive plan for fixing all issues and turns the UI into a "million bucks".
+- Implement
+- Write Playwright tests that confirm the functionality of all features.
+- Test and fix until green
 
-Important Reminder: This is a test of your autonomous capabilities. You are expected to take initiative and make decisions independently. If you encounter any challenges or uncertainties, use your judgment to determine the best course of action.
+Important Reminder: This is a test of your autonomous capabilities and your ability to design and implemented exceptional modern web and mobile UI. You are expected to take initiative and make decisions independently. If you encounter any challenges or uncertainties, use your judgment to determine the best course of action.
 
-The quality and completeness of the project in this folder will be the only criteria for success. If you deliver unfinished or less than exceptional looking work, this test and you are a failure. Be exceptional. Do not just complete the task. Ace it. There is no time or token limit. Do it right instead of fast.
+The quality and completeness of the project in this folder when you return the prompt to the user will be the only criteria for success. If you deliver unfinished or less than exceptional looking work, this test and you are a failure. Be exceptional. Do not just complete the task. Ace it. There is no time or token limit. Do it right instead of fast. Be exceptional.
 
 
 
@@ -130,3 +145,5 @@ notes:
    * Cons:
        * Invasive: Requires modifying the shader code for every object type in the scene that needs to be lensed.
        * Tessellation Dependent: If the walls are simple cubes with few vertices, the distortion will look jagged unless highly subdivided.
+
+Do a full in-depth code review of the new feature(s). Is the implementation 100% complete. Is the integration 100% complete (you tend to forget to integrate features). Were any bugs, race conditions, performance issues or side effects introduced? Is legacy code removed? Is all code and all patterns in line with our current tech stack's abilities and constraints? Is everything fully functional and integrated and ready to be used in production?

@@ -603,14 +603,16 @@ export function TubeWireframe({
     UniformManager.applyToMaterial(material, ['lighting', 'pbr-edge'])
 
     // IBL (Image-Based Lighting) uniforms - use cached ref for performance
-    const iblState = environmentStateRef.current
-    const qualityMap = { off: 0, low: 1, high: 2 } as const
-    u.uIBLQuality!.value = qualityMap[iblState.iblQuality]
-    u.uIBLIntensity!.value = iblState.iblIntensity
-    // Use scene.environment (PMREM texture) for IBL
+    // Compute isPMREM first to gate quality (prevents null texture sampling)
     const env = scene.environment
     const isPMREM = env && env.mapping === THREE.CubeUVReflectionMapping
     u.uEnvMap!.value = isPMREM ? env : null
+
+    const iblState = environmentStateRef.current
+    const qualityMap = { off: 0, low: 1, high: 2 } as const
+    // Force IBL off when no valid PMREM texture
+    u.uIBLQuality!.value = isPMREM ? qualityMap[iblState.iblQuality] : 0
+    u.uIBLIntensity!.value = iblState.iblIntensity
 
     // Update shadow map uniforms if shadows are enabled
     // Pass store lights to ensure shadow data ordering matches uniform indices

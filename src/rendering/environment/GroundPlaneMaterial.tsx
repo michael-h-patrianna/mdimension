@@ -168,14 +168,15 @@ export const GroundPlaneMaterial = forwardRef<THREE.ShaderMaterial, GroundPlaneM
       // Use scene.environment (PMREM texture) which is set at the END of each frame
       // by CubemapCapturePass. This means we read the PREVIOUS frame's environment,
       // which provides frame consistency and avoids feedback loops.
-      const iblState = useEnvironmentStore.getState()
-      const qualityMap = { off: 0, low: 1, high: 2 } as const
-      u.uIBLQuality!.value = qualityMap[iblState.iblQuality]
-      u.uIBLIntensity!.value = iblState.iblIntensity
-      // Use scene.environment (PMREM texture) for IBL
       const env = state.scene.environment
       const isPMREM = env && env.mapping === THREE.CubeUVReflectionMapping
       u.uEnvMap!.value = isPMREM ? env : null
+
+      const iblState = useEnvironmentStore.getState()
+      const qualityMap = { off: 0, low: 1, high: 2 } as const
+      // Force IBL off when no valid PMREM texture (prevents null texture sampling)
+      u.uIBLQuality!.value = isPMREM ? qualityMap[iblState.iblQuality] : 0
+      u.uIBLIntensity!.value = iblState.iblIntensity
 
       // Update grid uniforms
       u.uShowGrid!.value = showGrid

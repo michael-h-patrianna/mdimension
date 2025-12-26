@@ -36,6 +36,9 @@ export function VideoExportController() {
   const originalPixelRatioRef = useRef<number>(1)
   const originalPerfSettingsRef = useRef<{ quality: number; lowQualityAnim: boolean; progressiveRefinementEnabled: boolean }>({ quality: 1, lowQualityAnim: true, progressiveRefinementEnabled: true })
 
+  // Rotation state snapshot for stream mode (save after warmup, restore before main recording)
+  const rotationSnapshotRef = useRef<Record<string, number> | null>(null)
+
   // Refs for loop management
   const loopStateRef = useRef({
     phase: 'warmup' as 'warmup' | 'preview' | 'recording',
@@ -67,6 +70,9 @@ export function VideoExportController() {
     perfStore.setProgressiveRefinementEnabled(originalPerfSettingsRef.current.progressiveRefinementEnabled)
     perfStore.setRefinementStage('final')
     perfStore.setFractalAnimationLowQuality(originalPerfSettingsRef.current.lowQualityAnim)
+
+    // Clear rotation snapshot
+    rotationSnapshotRef.current = null
   }, [gl])
 
   const handleError = useCallback((e: unknown) => {
@@ -205,6 +211,10 @@ export function VideoExportController() {
               if (state.warmupFrame >= settings.warmupFrames) {
                   // Transition to next phase
                   if (exportMode === 'stream') {
+                      // Save rotation state after warmup for restoration before main recording
+                      const currentRotations = useRotationStore.getState().rotations
+                      rotationSnapshotRef.current = Object.fromEntries(currentRotations)
+
                       state.phase = 'preview'
                       // Re-init recorder for Preview (Buffer mode)
                       const { fps, bitrate, resolution, customWidth, customHeight } = settings
@@ -223,7 +233,9 @@ export function VideoExportController() {
                           codec: settings.codec,
                           duration: previewDuration,
                           hardwareAcceleration: settings.hardwareAcceleration,
-                          bitrateMode: settings.bitrateMode
+                          bitrateMode: settings.bitrateMode,
+                          textOverlay: settings.textOverlay,
+                          crop: settings.crop
                       })
                       await recorder.initialize()
                       recorderRef.current = recorder
@@ -266,6 +278,12 @@ export function VideoExportController() {
                   state.phase = 'recording'
                   setStatus('rendering')
 
+                  // Restore rotation state to post-warmup snapshot for consistent main recording
+                  if (rotationSnapshotRef.current) {
+                      const restoredRotations = new Map(Object.entries(rotationSnapshotRef.current))
+                      useRotationStore.getState().updateRotations(restoredRotations)
+                  }
+
                   // Setup Main Recording
                   const { fps, bitrate, duration, resolution, customWidth, customHeight } = settings
                   let width = 1920, height = 1080
@@ -278,10 +296,13 @@ export function VideoExportController() {
                       width, height, fps, bitrate, format: settings.format,
                       codec: settings.codec,
                       duration,
+                      totalDuration: duration, // Full video duration for fade calculations
                       streamHandle: state.mainStreamHandle,
                       onProgress: (p) => setProgress(p),
                       hardwareAcceleration: settings.hardwareAcceleration,
-                      bitrateMode: settings.bitrateMode
+                      bitrateMode: settings.bitrateMode,
+                      textOverlay: settings.textOverlay,
+                      crop: settings.crop
                   })
                   await recorder.initialize()
                   recorderRef.current = recorder
@@ -291,25 +312,6 @@ export function VideoExportController() {
                   state.totalFrames = Math.ceil(duration * fps)
                   state.exportStartTime = Date.now()
                   state.startTime = performance.now() // Reset timeline base
-
-                  // Reset Scene for consistency?
-                  // No, we continue from where warmup left off?
-                  // Actually, if we generated 3s of preview, the scene advanced 3s.
-                  // Ideally, main export should start from frame 0 (post-warmup).
-                  // But we modified the scene state in place.
-                  // To be perfect, we should probably restore scene state or run warmup again.
-                  // For now, let's just continue (the preview is part of the flow) OR
-                  // better: The requirement implies preview is "first 3 seconds".
-                  // So we should have rendered the same frames.
-                  // Since we are deterministic, we can just reset `state.frameId` to 0 and `startTime`
-                  // but we need to reset the RotationStore state too?
-                  // That's hard.
-                  // ALTERNATIVE: The preview generation advances the scene.
-                  // If we want main export to be identical, we must reset the scene rotation.
-                  // Let's rely on the fact that we are in a deterministic loop relative to `advance`.
-                  // But `useRotationStore` updates are persistent.
-                  // We should probably save the rotation state after warmup and restore it.
-                  // Let's implement a simple rotation restore.
                   continue
               }
 
@@ -368,8 +370,11 @@ export function VideoExportController() {
                       width, height, fps, bitrate, format: settings.format,
                       codec: settings.codec,
                       duration: nextSegFrames / fps, // Duration of THIS segment
+                      totalDuration: settings.duration, // Full video duration for fade calculations
                       hardwareAcceleration: settings.hardwareAcceleration,
-                      bitrateMode: settings.bitrateMode
+                      bitrateMode: settings.bitrateMode,
+                      textOverlay: settings.textOverlay,
+                      crop: settings.crop
                   })
                   await recorder.initialize()
                   recorderRef.current = recorder
@@ -383,11 +388,13 @@ export function VideoExportController() {
               advance(timestamp)
 
               // 3. Capture
-              // Video time relative to CURRENT SEGMENT (or 0 for simple modes)
-              const relativeVideoTime = (state.frameId * state.frameDuration) - state.segmentStartTimeVideo
+              // Video time relative to CURRENT SEGMENT for encoding
+              const globalVideoTime = state.frameId * state.frameDuration
+              const relativeVideoTime = globalVideoTime - state.segmentStartTimeVideo
 
               if (recorderRef.current) {
-                  await recorderRef.current.captureFrame(relativeVideoTime, state.frameDuration)
+                  // Pass globalVideoTime for fade calculations (critical for segmented mode)
+                  await recorderRef.current.captureFrame(relativeVideoTime, state.frameDuration, globalVideoTime)
               }
 
               state.frameId++
@@ -436,6 +443,14 @@ export function VideoExportController() {
     if (exportStartedRef.current) {
         return
     }
+
+    // Additional guard: check current status from store (more reliable than captured value)
+    // This prevents race conditions when effect re-runs with stale callback references
+    const currentStatus = useExportStore.getState().status
+    if (currentStatus !== 'idle') {
+        return
+    }
+
     exportStartedRef.current = true
 
     // For stream mode, show file picker FIRST before any state changes
@@ -451,12 +466,17 @@ export function VideoExportController() {
             return
         }
 
+        // Set status before file picker to prevent re-entry from effect re-runs
+        // This is critical: while file picker is open, effect may re-run due to
+        // callback reference changes, but this status check prevents double execution
+        setStatus('rendering')
+
         try {
             // Ask user for file location BEFORE starting export
             const extension = settings.format === 'webm' ? '.webm' : '.mp4'
             const description = settings.format === 'webm' ? 'WebM Video' : 'MP4 Video'
             const mimeType = settings.format === 'webm' ? 'video/webm' : 'video/mp4'
-            
+
             streamHandle = await window.showSaveFilePicker({
                 suggestedName: `mdimension-${Date.now()}${extension}`,
                 types: [{
@@ -465,10 +485,11 @@ export function VideoExportController() {
                 }],
             })
         } catch (pickerError: unknown) {
-            // User cancelled - don't start export
+            // User cancelled - don't start export, restore idle state
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             if ((pickerError as any).name === 'AbortError') {
                 useExportStore.getState().setIsExporting(false)
+                setStatus('idle')
                 exportStartedRef.current = false
                 return
             }
@@ -492,7 +513,10 @@ export function VideoExportController() {
     }
 
     try {
-      setStatus('rendering')
+      // For non-stream modes, set status now. For stream mode, already set before file picker.
+      if (exportMode !== 'stream') {
+          setStatus('rendering')
+      }
       abortRef.current = false
 
       // Force High Quality - disable progressive refinement to prevent it from overriding
@@ -534,10 +558,37 @@ export function VideoExportController() {
       exportWidth = Math.floor(exportWidth / 2) * 2
       exportHeight = Math.floor(exportHeight / 2) * 2
 
+      // Calculate Render Dimensions (Zoom to Fill Logic for Crop)
+      let renderWidth = exportWidth
+      let renderHeight = exportHeight
+
+      if (settings.crop.enabled && settings.crop.width > 0 && settings.crop.height > 0) {
+          // Calculate required resolution to maintain 1:1 pixel quality in crop
+          renderWidth = Math.round(exportWidth / settings.crop.width)
+          renderHeight = Math.round(exportHeight / settings.crop.height)
+
+          // Clamp to hardware limits (safe bet: 4096 or 8192)
+          // WebGL max texture size is often 16384, but renderbuffers can be smaller.
+          // Query the hardware limit to be safe.
+          const maxTextureSize = gl.capabilities.maxTextureSize || 4096
+          const safeLimit = Math.min(maxTextureSize, 8192) // Cap at 8K even if hardware supports more
+          
+          if (renderWidth > safeLimit || renderHeight > safeLimit) {
+              const ratio = Math.min(safeLimit / renderWidth, safeLimit / renderHeight)
+              renderWidth = Math.floor(renderWidth * ratio)
+              renderHeight = Math.floor(renderHeight * ratio)
+          }
+      }
+      
+      // Ensure even
+      renderWidth = Math.floor(renderWidth / 2) * 2
+      renderHeight = Math.floor(renderHeight / 2) * 2
+
+
       // 3. Resize Renderer
       try {
         gl.setPixelRatio(1)
-        gl.setSize(exportWidth, exportHeight, false)
+        gl.setSize(renderWidth, renderHeight, false)
       } catch (resizeError) {
         console.error('Renderer resize failed:', resizeError)
         throw new Error('Failed to resize renderer for export')
@@ -591,6 +642,7 @@ export function VideoExportController() {
             height: exportHeight,
             fps,
             duration: exportMode === 'segmented' ? (segmentDurationFrames / fps) : duration,
+            totalDuration: duration, // Full video duration for fade calculations
             bitrate,
             format: settings.format,
             codec: settings.codec,
@@ -598,7 +650,9 @@ export function VideoExportController() {
                 if (exportMode !== 'segmented') setProgress(p)
             },
             hardwareAcceleration: settings.hardwareAcceleration,
-            bitrateMode: settings.bitrateMode
+            bitrateMode: settings.bitrateMode,
+            textOverlay: settings.textOverlay,
+            crop: settings.crop
           })
 
           recorderRef.current = recorder
@@ -639,7 +693,11 @@ export function VideoExportController() {
          abortRef.current = true
          restoreState()
        }
-       exportStartedRef.current = false
+       // Do NOT reset exportStartedRef.current here. 
+       // If the component re-renders (e.g. status change, store update), the effect cleans up.
+       // If we reset this flag, the effect body (startExport) will be allowed to run again immediately
+       // on the next render, potentially causing infinite loops if startExport is async/blocking (like file picker).
+       // The flag should only be reset when the export is truly finished or cancelled (via handlers above).
     }
   }, [isExporting, status, startExport, restoreState])
 

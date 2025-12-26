@@ -1,6 +1,7 @@
 import { CanvasContextMenu } from '@/components/layout/CanvasContextMenu';
 import { CommandPalette } from '@/components/layout/CommandPalette';
 import { ShortcutsOverlay } from '@/components/layout/ShortcutsOverlay';
+import { CropEditor } from '@/components/overlays/CropEditor';
 import { ExportModal } from '@/components/overlays/ExportModal';
 import { GlobalProgress } from '@/components/ui/GlobalProgress';
 import { useKonamiCode } from '@/hooks/useKonamiCode';
@@ -156,7 +157,7 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
   return (
     <div
         ref={spotlightRef}
-        className="relative h-screen w-screen bg-background overflow-hidden selection:bg-accent selection:text-white font-sans text-text-primary group/app"
+        className="relative h-screen supports-[height:100dvh]:h-[100dvh] w-screen bg-background overflow-hidden selection:bg-accent selection:text-white font-sans text-text-primary group/app"
     >
       {/* 0. Spotlight & Vignette Layer */}
       <div
@@ -183,6 +184,7 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
       >
         <GlobalProgress />
         <ExportModal />
+        <CropEditor />
 
         {!isCinematicMode && (
             <div className="pointer-events-auto shrink-0 z-50">
@@ -248,7 +250,7 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
                             ${!isDesktop ? 'absolute left-2 top-0 bottom-2 z-30 shadow-2xl' : 'relative z-20'}
                         `}
                     >
-                        <div className="w-full h-full overflow-y-auto custom-scrollbar p-1">
+                        <div className="w-full h-full overflow-hidden">
                             <EditorLeftPanel />
                         </div>
                     </m.div>
@@ -292,7 +294,7 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({ children }) => {
                             ${!isDesktop ? 'absolute right-2 top-0 bottom-2 z-30 shadow-2xl' : 'relative z-20'}
                         `}
                     >
-                        <div className="w-full h-full overflow-y-auto custom-scrollbar p-1">
+                        <div className="w-full h-full overflow-hidden">
                             <EditorRightPanel />
                         </div>
                     </m.div>

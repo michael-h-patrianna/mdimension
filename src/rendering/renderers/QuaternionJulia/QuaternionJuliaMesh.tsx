@@ -362,14 +362,16 @@ const QuaternionJuliaMesh = () => {
     u.uAoEnabled.value = usePostProcessingStore.getState().ssaoEnabled
 
     // IBL (Image-Based Lighting) uniforms
-    const iblState = useEnvironmentStore.getState()
-    const qualityMap = { off: 0, low: 1, high: 2 } as const
-    u.uIBLQuality.value = qualityMap[iblState.iblQuality]
-    u.uIBLIntensity.value = iblState.iblIntensity
-    // Use scene.environment (PMREM texture) for IBL
+    // Compute isPMREM first to gate quality (prevents null texture sampling)
     const env = state.scene.environment
     const isPMREM = env && env.mapping === THREE.CubeUVReflectionMapping
     u.uEnvMap.value = isPMREM ? env : null
+
+    const iblState = useEnvironmentStore.getState()
+    const qualityMap = { off: 0, low: 1, high: 2 } as const
+    // Force IBL off when no valid PMREM texture
+    u.uIBLQuality.value = isPMREM ? qualityMap[iblState.iblQuality] : 0
+    u.uIBLIntensity.value = iblState.iblIntensity
   }, FRAME_PRIORITY.RENDERER_UNIFORMS)
 
   // Generate unique key to force material recreation when shader changes or context is restored

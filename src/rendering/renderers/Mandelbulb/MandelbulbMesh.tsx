@@ -414,18 +414,19 @@ const MandelbulbMesh = () => {
       }
 
       // IBL (Image-Based Lighting) uniforms
+      // Compute isPMREM first to gate quality (prevents null texture sampling)
+      const env = state.scene.environment;
+      const isPMREM = env && env.mapping === THREE.CubeUVReflectionMapping;
       const iblState = useEnvironmentStore.getState();
       if (material.uniforms.uIBLQuality) {
         const qualityMap = { off: 0, low: 1, high: 2 } as const;
-        material.uniforms.uIBLQuality.value = qualityMap[iblState.iblQuality];
+        // Force IBL off when no valid PMREM texture
+        material.uniforms.uIBLQuality.value = isPMREM ? qualityMap[iblState.iblQuality] : 0;
       }
       if (material.uniforms.uIBLIntensity) {
         material.uniforms.uIBLIntensity.value = iblState.iblIntensity;
       }
       if (material.uniforms.uEnvMap) {
-        // Use scene.environment (PMREM texture) for IBL
-        const env = state.scene.environment;
-        const isPMREM = env && env.mapping === THREE.CubeUVReflectionMapping;
         material.uniforms.uEnvMap.value = isPMREM ? env : null;
       }
 

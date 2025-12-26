@@ -41,7 +41,7 @@ export const EditorLeftPanel: React.FC = () => {
 
   return (
     <div
-      className="h-full flex flex-col bg-panel-bg/50 border-r border-panel-border shrink-0 overflow-hidden relative backdrop-blur-md w-[320px]"
+      className="h-full flex flex-col bg-panel-bg/50 border-r border-panel-border shrink-0 overflow-hidden relative backdrop-blur-md w-full"
     >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-panel-border bg-panel-bg/50 backdrop-blur-sm z-20 shrink-0 h-[60px]">

@@ -157,18 +157,18 @@ export const Slider: React.FC<SliderProps> = ({
 
   return (
     <div 
-      className={`group/slider relative select-none ${className} ${disabled ? 'opacity-50 pointer-events-none' : ''}`}
+      className={`group/slider relative select-none w-full ${className} ${disabled ? 'opacity-50 pointer-events-none' : ''}`}
       onMouseEnter={() => { setIsHovered(true); soundManager.playHover(); }}
       onMouseLeave={() => setIsHovered(false)}
       data-testid={dataTestId}
     >
       {/* Header: Label and Value */}
-      <div className="flex items-center justify-between mb-2 min-h-[1.25rem]">
+      <div className="flex items-center justify-between mb-2 h-5">
         <label
           htmlFor={id}
           className={`
-            text-[11px] font-medium transition-colors tracking-wide flex items-center gap-1 border-b border-transparent hover:border-dashed hover:border-accent/50
-            ${isLabelDragging ? 'text-accent cursor-ew-resize border-dashed border-accent' : 'text-text-secondary group-hover/slider:text-text-primary cursor-ew-resize'}
+            text-[11px] font-medium transition-colors tracking-wide flex items-center gap-1 min-w-0 truncate
+            ${isLabelDragging ? 'text-accent cursor-ew-resize' : 'text-text-secondary group-hover/slider:text-text-primary cursor-ew-resize'}
           `}
           title="Drag label to adjust value"
           onMouseDown={handleLabelMouseDown}
@@ -177,8 +177,8 @@ export const Slider: React.FC<SliderProps> = ({
         </label>
         
         {showValue && (
-          <div className="flex items-center gap-1.5 shrink-0 relative">
-            <div className="relative group/input">
+          <div className="flex items-center shrink-0 ml-2">
+            <div className="relative w-[8ch] h-5 flex items-center">
                 <input
                   type="text"
                   value={inputValue}
@@ -191,9 +191,12 @@ export const Slider: React.FC<SliderProps> = ({
                   onKeyDown={handleKeyDown}
                   disabled={disabled}
                   className="
-                    glass-input
-                    w-[8ch] px-1.5 py-0.5 text-right font-mono text-[10px] h-auto
-                    focus:w-[10ch] focus:absolute focus:right-0 focus:z-10 transition-all duration-200
+                    w-full h-full px-1.5 text-right font-mono text-[10px]
+                    bg-black/20 border border-white/8 rounded
+                    text-text-primary
+                    hover:border-white/15 hover:bg-black/25
+                    focus:outline-none focus:border-accent/50 focus:bg-black/30
+                    transition-colors duration-150
                   "
                   data-testid={dataTestId ? `${dataTestId}-input` : undefined}
                 />

@@ -23,7 +23,9 @@ export type IconName =
   | 'download'
   | 'copy'
   | 'chevron-right'
-  | 'chevron-down';
+  | 'chevron-down'
+  | 'sparkles'
+  | 'crop';
 
 interface IconProps {
   name: IconName;
@@ -54,7 +56,9 @@ const icons: Record<IconName, React.ReactNode> = {
   download: <path d="M14 11v2h-12v-2h-2v4h16v-4h-2zM12 6h-3v-6h-2v6h-3l4 5 4-5z" />,
   copy: <path d="M10 0H2C0.9 0 0 0.9 0 2v10h2V2h8V0zm4 4H6C4.9 4 4 4.9 4 6v10c0 1.1 0.9 2 2 2h8c1.1 0 2-0.9 2-2V6c0-1.1-0.9-2-2-2zm0 12H6V6h8v10z" />,
   'chevron-right': <path d="M5.5 3L10.5 8L5.5 13" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
-  'chevron-down': <path d="M3 5.5L8 10.5L13 5.5" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  'chevron-down': <path d="M3 5.5L8 10.5L13 5.5" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
+  sparkles: <path d="M10 1l1.5 3.5L15 6l-3.5 1.5L10 11l-1.5-3.5L5 6l3.5-1.5L10 1zm-5 7l.75 1.75L7.5 10.5l-1.75.75L5 13l-.75-1.75L2.5 10.5l1.75-.75L5 8zm10-7l.5 1.25L16.75 2.75l-1.25.5L15 4.5l-.5-1.25L13.25 2.75l1.25-.5L15 1z" />,
+  crop: <path d="M5 0v2H2v12h12v2h2v-2h2v-2H14V2h-2v10H4V2H2V0h3zm2 4v2h2V4H7z" />
 };
 
 export const Icon: React.FC<IconProps> = ({ name, className = "", size = 16 }) => {

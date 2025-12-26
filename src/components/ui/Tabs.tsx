@@ -3,13 +3,13 @@
  *
  * A reusable tab component for organizing content into switchable panels.
  * Follows the project's premium aesthetic with subtle motion and glass effects.
- * 
+ *
  * Optimized to avoid forced reflows and support "keep-alive" with "mount-on-demand" for tab content.
  */
 
-import React, { useCallback, useEffect, useRef, useState, useTransition } from 'react';
-import { m } from 'motion/react';
 import { soundManager } from '@/lib/audio/SoundManager';
+import { m } from 'motion/react';
+import React, { useCallback, useEffect, useId, useRef, useState, useTransition } from 'react';
 
 export interface Tab {
   /** Unique identifier for the tab */
@@ -84,6 +84,7 @@ export const Tabs: React.FC<TabsProps> = ({
   fullWidth = false,
   'data-testid': testId,
 }) => {
+  const instanceId = useId();
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -117,7 +118,7 @@ export const Tabs: React.FC<TabsProps> = ({
     const checkScroll = () => {
       if (!container) return;
       const { scrollLeft, scrollWidth, clientWidth } = container;
-      setCanScrollLeft(scrollLeft > 1); 
+      setCanScrollLeft(scrollLeft > 1);
       setCanScrollRight(Math.ceil(scrollLeft + clientWidth) < scrollWidth - 1);
     };
 
@@ -189,10 +190,10 @@ export const Tabs: React.FC<TabsProps> = ({
   );
 
   // Styling logic
-  const listContainerStyles = variant === 'pills' 
-    ? 'bg-black/20 rounded-lg p-1 gap-1' 
-    : 'border-b border-white/5 pb-[1px]'; 
-    
+  const listContainerStyles = variant === 'pills'
+    ? 'bg-black/20 rounded-lg p-1 gap-1'
+    : 'border-b border-white/5 pb-[1px]';
+
   const widthStyles = fullWidth ? 'w-full' : 'min-w-full w-max';
 
   return (
@@ -221,7 +222,7 @@ export const Tabs: React.FC<TabsProps> = ({
           >
             {tabs.map((tab, index) => {
               const isActive = tab.id === value;
-              
+
               return (
                 <button
                   key={tab.id}
@@ -236,7 +237,8 @@ export const Tabs: React.FC<TabsProps> = ({
                   onMouseEnter={() => !isActive && soundManager.playHover()}
                   onKeyDown={(e) => handleKeyDown(e, index)}
                   className={`
-                    relative px-4 py-2 text-[10px] uppercase tracking-widest font-bold whitespace-nowrap outline-none select-none transition-colors duration-200 cursor-pointer
+                    relative px-4 py-2 text-[10px] uppercase tracking-widest font-bold whitespace-nowrap select-none transition-colors duration-200 cursor-pointer
+                    outline-none focus:outline-none focus-visible:outline-none border-none focus:ring-0
                     ${fullWidth ? 'flex-1' : ''}
                     ${isActive ? 'text-accent text-glow-subtle' : 'text-text-secondary hover:text-text-primary'}
                     ${variant === 'pills' && isActive ? 'bg-white/5 rounded shadow-sm' : ''}
@@ -247,17 +249,13 @@ export const Tabs: React.FC<TabsProps> = ({
                 >
                   {isActive && variant !== 'pills' && (
                     <m.div
-                      layoutId={`activeTab-${testId || 'default'}`}
+                      layoutId={`activeTab-${instanceId}`}
                       className="absolute bottom-[-1px] left-0 right-0 h-[2px] bg-accent shadow-[0_0_8px_var(--color-accent)]"
                       transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
                     />
                   )}
                   {isActive && variant !== 'pills' && (
-                     <m.div 
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="absolute inset-0 bg-gradient-to-t from-accent/5 to-transparent pointer-events-none"
-                     />
+                     <div className="absolute inset-0 bg-gradient-to-t from-accent/5 to-transparent pointer-events-none" />
                   )}
                   <span className="relative z-10">{tab.label}</span>
                 </button>
@@ -279,7 +277,7 @@ export const Tabs: React.FC<TabsProps> = ({
       </div>
 
       {/* Content Panel - Keep Alive with Mount on Demand */}
-      <div className={`flex-1 min-h-0 relative overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent ${contentClassName}`}>
+      <div className={`flex-1 min-h-0 relative overflow-y-auto scrollbar-none ${contentClassName}`}>
         {tabs.map((tab) => {
             // Only render if it has been mounted at least once
             if (!mountedTabs.has(tab.id)) return null;

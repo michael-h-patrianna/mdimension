@@ -72,7 +72,7 @@ export const Section: React.FC<SectionProps> = ({
                 }, 100);
             }
           }}
-          className="flex-1 flex items-center justify-between py-3 px-4 text-left focus:outline-none z-10"
+          className="flex-1 flex items-center justify-between py-3 px-4 text-left outline-none focus:outline-none focus-visible:outline-none border-none focus:ring-0 z-10"
           aria-expanded={isOpen}
           data-testid={dataTestId ? `${dataTestId}-header` : undefined}
         >
