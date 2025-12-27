@@ -35,7 +35,8 @@ vec3 getDeepOcean(vec3 dir, float time) {
     float caustic3 = sin(c3.x * 4.0 + sin(c3.z * 5.0 + c3.y * 2.0)) *
                      sin(c3.z * 4.0 + sin(c3.x * 5.0 - c3.y * 2.0));
     caustic3 = clamp(caustic3 * 0.5 + 0.5, 0.0, 1.0);
-    caustic3 = pow(caustic3, 2.0);
+    // PERF: Use multiplication instead of pow(x, 2.0)
+    caustic3 = caustic3 * caustic3;
 
     // Combine caustics - controlled by caustic intensity uniform
     float caustics = (caustic1 * 0.4 + caustic2 * 0.35 + caustic3 * 0.25);
@@ -140,16 +141,17 @@ vec3 getDeepOcean(vec3 dir, float time) {
         vec2 shimmerUV = dir.xz * uScale * 6.0;
 
         // Primary shimmer - larger, slower waves
+        // PERF: Use multiplications instead of pow()
         float shimmer1 = sin(shimmerUV.x * 2.0 + time * 0.4) *
                         sin(shimmerUV.y * 2.5 + time * 0.35);
         shimmer1 = shimmer1 * 0.5 + 0.5;
-        shimmer1 = pow(shimmer1, 2.0);
+        shimmer1 = shimmer1 * shimmer1; // pow 2
 
         // Secondary shimmer - smaller, faster ripples
         float shimmer2 = sin(shimmerUV.x * 5.0 - time * 0.6) *
                         sin(shimmerUV.y * 4.5 + time * 0.55);
         shimmer2 = shimmer2 * 0.5 + 0.5;
-        shimmer2 = pow(shimmer2, 3.0);
+        shimmer2 = shimmer2 * shimmer2 * shimmer2; // pow 3
 
         // Combine shimmers with noise modulation for organic feel
         float shimmerNoise = noise(vec3(shimmerUV * 0.5, time * 0.1));

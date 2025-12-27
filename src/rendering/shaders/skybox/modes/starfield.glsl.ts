@@ -162,7 +162,10 @@ vec3 getStarfield(vec3 dir, float time) {
 
     // === AMBIENT SPACE GLOW ===
     // Subtle directional glow suggesting galactic plane
-    float galacticGlow = pow(1.0 - abs(dir.y), 4.0) * 0.015;
+    // PERF: Use multiplications instead of pow(x, 4.0)
+    float galacticT = 1.0 - abs(dir.y);
+    float galacticT2 = galacticT * galacticT;
+    float galacticGlow = galacticT2 * galacticT2 * 0.015;
     if (uUsePalette > 0.5) {
         col += cosinePalette(0.5, uPalA, uPalB, uPalC, uPalD) * galacticGlow * uComplexity;
     } else {

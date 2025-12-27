@@ -182,9 +182,12 @@ export const SSRShader = {
     }
 
     // Fresnel approximation (Schlick)
+    // PERF: Use multiplications instead of pow(x, 5.0)
     float fresnel(vec3 viewDir, vec3 normal, float f0) {
       float cosTheta = max(dot(viewDir, normal), 0.0);
-      return f0 + (1.0 - f0) * pow(1.0 - cosTheta, 5.0);
+      float t = 1.0 - cosTheta;
+      float t2 = t * t;
+      return f0 + (1.0 - f0) * t2 * t2 * t;
     }
 
     void main() {

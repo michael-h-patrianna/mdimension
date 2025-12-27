@@ -96,10 +96,12 @@ void main() {
   }
 
   // Fresnel rim lighting
+  // PERF: Use multiplications instead of pow(x, 3.0)
 #ifdef USE_FRESNEL
   if (uFresnelEnabled && uFresnelIntensity > 0.0) {
     float NdotV = max(dot(N, V), 0.0);
-    float rim = pow(1.0 - NdotV, 3.0) * uFresnelIntensity * 2.0;
+    float t = 1.0 - NdotV;
+    float rim = t * t * t * uFresnelIntensity * 2.0;
     rim *= (0.3 + 0.7 * totalNdotL);
     Lo += uRimColor * rim;
   }

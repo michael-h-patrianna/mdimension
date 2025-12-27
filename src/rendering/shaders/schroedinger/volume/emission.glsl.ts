@@ -328,7 +328,8 @@ vec3 computeEmissionLit(float rho, float phase, vec3 p, vec3 gradient, vec3 view
         
         if (normalizedRho > uEmissionThreshold) {
             float emissionFactor = (normalizedRho - uEmissionThreshold) / (1.0 - uEmissionThreshold);
-            emissionFactor = pow(emissionFactor, 2.0);
+            // PERF: Use multiplication instead of pow(x, 2.0)
+            emissionFactor = emissionFactor * emissionFactor;
             
             vec3 emissionColor = surfaceColor;
             

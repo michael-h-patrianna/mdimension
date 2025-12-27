@@ -367,7 +367,8 @@ float getDiskDensity(vec3 pos, float time, float r) {
     // Sine wave modulation on radius
     // Apply per-pixel offset to break coherent ring patterns in dust lanes too
     float dustLanes = 0.5 + 0.5 * sin((r + noiseOffset) * DUST_LANE_FREQUENCY / uHorizonRadius);
-    dustLanes = pow(dustLanes, 0.5); // Sharpen
+    // PERF: Use sqrt() instead of pow(x, 0.5)
+    dustLanes = sqrt(dustLanes); // Sharpen
     rDensity *= mix(1.0, dustLanes, DUST_LANE_STRENGTH * uNoiseAmount); // Subtle banding
 
     return hDensity * rDensity * uManifoldIntensity * DISK_BASE_INTENSITY;

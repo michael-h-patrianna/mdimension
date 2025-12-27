@@ -13,8 +13,11 @@ vec3 getVoid(vec3 dir, float time) {
     float focusDist = 1.0 - max(0.0, dot(dir, focusDir));
 
     // Multiple soft gradient layers for depth
-    float layer1 = pow(1.0 - focusDist, 2.0); // Bright center
-    float layer2 = pow(1.0 - focusDist * 0.7, 3.0); // Soft outer glow
+    // PERF: Use multiplications instead of pow()
+    float t1 = 1.0 - focusDist;
+    float layer1 = t1 * t1; // Bright center (pow 2)
+    float t2 = 1.0 - focusDist * 0.7;
+    float layer2 = t2 * t2 * t2; // Soft outer glow (pow 3)
     float layer3 = smoothstep(1.0, 0.0, focusDist * 1.5); // Wide ambient
 
     // Subtle breathing animation
@@ -52,7 +55,10 @@ vec3 getVoid(vec3 dir, float time) {
     }
 
     // Subtle vignette toward edges
-    float edgeFade = 1.0 - pow(abs(dir.y), 4.0) * 0.3;
+    // PERF: Use multiplications instead of pow(x, 4.0)
+    float absY = abs(dir.y);
+    float absY2 = absY * absY;
+    float edgeFade = 1.0 - absY2 * absY2 * 0.3;
     col *= edgeFade;
 
     return col;

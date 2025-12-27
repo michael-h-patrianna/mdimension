@@ -63,13 +63,15 @@ vec3 getCrystalline(vec3 dir, float time) {
         // Add subtle facet highlights
         col = mix(col * 0.3, col, edge1 * edge2);
         // Shimmer on edges using palette highlight color
+        // PERF: Use multiplication instead of pow(x, 2.0)
         vec3 shimmerColor = cosinePalette(0.9, uPalA, uPalB, uPalC, uPalD);
-        col += shimmerColor * 0.15 * (1.0 - edge1) * pow(iridescence, 2.0);
+        col += shimmerColor * 0.15 * (1.0 - edge1) * iridescence * iridescence;
     } else {
         col = mix(uColor1, uColor2, iridescence);
         col = mix(col * 0.2, col, edge1 * edge2);
         // Shimmer using secondary color
-        col += uColor2 * 0.15 * (1.0 - edge1) * pow(iridescence, 2.0);
+        // PERF: Use multiplication instead of pow(x, 2.0)
+        col += uColor2 * 0.15 * (1.0 - edge1) * iridescence * iridescence;
     }
 
     return col;

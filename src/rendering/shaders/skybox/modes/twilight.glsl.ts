@@ -14,7 +14,9 @@ vec3 getTwilight(vec3 dir, float time) {
     float sunDist = 1.0 - max(0.0, dot(dir, sunDir));
 
     // Atmospheric scattering simulation (simplified)
-    float scatter = pow(1.0 - abs(y), 2.0);
+    // PERF: Use multiplication instead of pow(x, 2.0)
+    float scatterT = 1.0 - abs(y);
+    float scatter = scatterT * scatterT;
 
     // Create layered gradient
     float gradientY = y * 0.5 + 0.5;
@@ -29,10 +31,14 @@ vec3 getTwilight(vec3 dir, float time) {
         vec3 skyColor = cosinePalette(palettePos, uPalA, uPalB, uPalC, uPalD);
         vec3 horizonColor = cosinePalette(0.5 + tempShift * 0.3, uPalA, uPalB, uPalC, uPalD);
 
-        col = mix(horizonColor, skyColor, pow(abs(y), 0.5));
+        // PERF: Use sqrt() instead of pow(x, 0.5)
+        col = mix(horizonColor, skyColor, sqrt(abs(y)));
 
         // Sun glow
-        float sunGlow = pow(max(0.0, dot(dir, sunDir)), 4.0);
+        // PERF: Use multiplications instead of pow(x, 4.0)
+        float sunDotVal = max(0.0, dot(dir, sunDir));
+        float sunDot2 = sunDotVal * sunDotVal;
+        float sunGlow = sunDot2 * sunDot2;
         vec3 sunColor = cosinePalette(tempShift, uPalA, uPalB, uPalC, uPalD) * 1.5;
         col = mix(col, sunColor, sunGlow * 0.5);
     } else {
@@ -44,11 +50,15 @@ vec3 getTwilight(vec3 dir, float time) {
         if (y > 0.0) {
             col = mix(horizonColor, topColor, pow(y, 0.7));
         } else {
-            col = mix(horizonColor, bottomColor, pow(-y, 0.5));
+            // PERF: Use sqrt() instead of pow(x, 0.5)
+            col = mix(horizonColor, bottomColor, sqrt(-y));
         }
 
         // Sun glow using brighter blend of user colors
-        float sunGlow = pow(max(0.0, dot(dir, sunDir)), 4.0);
+        // PERF: Use multiplications instead of pow(x, 4.0)
+        float sunDotVal = max(0.0, dot(dir, sunDir));
+        float sunDot2 = sunDotVal * sunDotVal;
+        float sunGlow = sunDot2 * sunDot2;
         vec3 sunColor = mix(uColor2, uColor1, tempShift) * 1.5;
         col = mix(col, sunColor, sunGlow * 0.5);
     }
