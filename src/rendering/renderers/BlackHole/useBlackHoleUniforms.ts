@@ -158,6 +158,10 @@ export function useBlackHoleUniforms() {
       uPulseSpeed: { value: 0.3 },
       uPulseAmount: { value: 0.2 },
 
+      // Keplerian disk rotation (from rotation system)
+      uDiskRotationAngle: { value: 0 },
+      uKeplerianDifferential: { value: 0.5 },
+
       // Motion blur
       uMotionBlurEnabled: { value: false },
       uMotionBlurStrength: { value: 0.5 },

@@ -112,6 +112,10 @@ uniform bool uPulseEnabled;          // Enable pulse animation
 uniform float uPulseSpeed;           // Pulse speed
 uniform float uPulseAmount;          // Pulse amount
 
+// Keplerian disk rotation (from rotation system)
+uniform float uDiskRotationAngle;    // Accumulated rotation angle from rotationStore (radians)
+uniform float uKeplerianDifferential; // 0 = uniform rotation, 1 = full Keplerian (inner faster)
+
 // Note: N-dimensional basis vectors (uBasisX, uBasisY, uBasisZ, uOrigin) are in shared/core/uniforms.glsl.ts
 // Note: uParamValues is declared in compose.ts with dynamic size based on dimension
 // Note: uInverseViewProjectionMatrix is in shared/core/uniforms.glsl.ts

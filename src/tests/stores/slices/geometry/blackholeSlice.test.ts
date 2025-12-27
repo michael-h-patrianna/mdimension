@@ -153,6 +153,23 @@ describe('blackholeSlice', () => {
     })
   })
 
+  describe('Keplerian rotation actions', () => {
+    it('should set Keplerian differential with clamping', () => {
+      const { setBlackHoleKeplerianDifferential } = useExtendedObjectStore.getState()
+
+      setBlackHoleKeplerianDifferential(0.5)
+      expect(useExtendedObjectStore.getState().blackhole.keplerianDifferential).toBe(0.5)
+
+      // Test clamping - too low (min is 0)
+      setBlackHoleKeplerianDifferential(-0.5)
+      expect(useExtendedObjectStore.getState().blackhole.keplerianDifferential).toBe(0)
+
+      // Test clamping - too high (max is 1)
+      setBlackHoleKeplerianDifferential(1.5)
+      expect(useExtendedObjectStore.getState().blackhole.keplerianDifferential).toBe(1)
+    })
+  })
+
   describe('animation actions', () => {
     it('should toggle swirl animation', () => {
       const { setBlackHoleSwirlAnimationEnabled } = useExtendedObjectStore.getState()

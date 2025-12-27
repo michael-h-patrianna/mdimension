@@ -312,12 +312,20 @@ float getDiskDensity(vec3 pos, float time, float r) {
     // Map (x,y,z) -> (radius, angle, height)
     float angle = atan(pos.z, pos.x);
 
-    // Differential rotation: Inner parts move faster (Keplerian)
-    // Omega ~ r^(-1.5)
-    // Guard against r and innerR being zero to prevent NaN
-    float safeR = max(r, max(safeInnerR * 0.1, 0.001));
-    float rotSpeed = 5.0 * pow(safeInnerR / safeR, 1.5);
-    float phase = angle + time * rotSpeed;
+    // Keplerian disk rotation from animation system
+    // uDiskRotationAngle comes from rotationStore (accumulated by animation loop)
+    // uKeplerianDifferential controls inner/outer speed ratio:
+    //   0 = uniform rotation (all radii same speed)
+    //   1 = full Keplerian (ω ∝ r^-1.5, inner ~3x faster than outer)
+    float phase = angle + uDiskRotationAngle;
+    if (uKeplerianDifferential > 0.001) {
+      float safeR = max(r, max(safeInnerR * 0.1, 0.001));
+      float ratio = safeInnerR / safeR;
+      // PERF: x^1.5 = x * sqrt(x) is faster than pow(x, 1.5) on GPU
+      float keplerianFactor = ratio * sqrt(ratio);
+      float rotSpeed = mix(1.0, keplerianFactor, uKeplerianDifferential);
+      phase = angle + uDiskRotationAngle * rotSpeed;
+    }
 
     // Per-pixel noise offset to break coherent sampling (ring artifacts)
     // Uses screen-space coordinates to ensure nearby pixels sample slightly different noise

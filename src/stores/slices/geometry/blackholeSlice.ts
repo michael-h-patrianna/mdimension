@@ -683,6 +683,14 @@ export const createBlackHoleSlice: StateCreator<ExtendedObjectSlice, [], [], Bla
     }))
   },
 
+  // === Keplerian Disk Rotation ===
+  setBlackHoleKeplerianDifferential: (differential) => {
+    const clamped = Math.max(0, Math.min(1, differential))
+    set((state) => ({
+      blackhole: { ...state.blackhole, keplerianDifferential: clamped },
+    }))
+  },
+
   // === Config Operations ===
   setBlackHoleConfig: (config) => {
     // Validate and clamp numeric fields to prevent invalid values

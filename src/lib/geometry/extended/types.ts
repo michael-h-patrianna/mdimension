@@ -1709,6 +1709,15 @@ export interface BlackHoleConfig {
   /** Slice animation amplitude (0.1-1.0, default 0.3) */
   sliceAmplitude: number
 
+  // === Keplerian Disk Rotation ===
+  /**
+   * Keplerian differential strength for disk rotation (0-1, default 0.5).
+   * Controls how much faster the inner disk rotates vs outer disk.
+   * 0 = uniform rotation (all radii same speed)
+   * 1 = full Keplerian (ω ∝ r^-1.5, inner ~3x faster than outer)
+   */
+  keplerianDifferential: number
+
 }
 
 /**
@@ -1865,6 +1874,9 @@ export const DEFAULT_BLACK_HOLE_CONFIG: BlackHoleConfig = {
   sliceAnimationEnabled: false,
   sliceSpeed: 0.02,
   sliceAmplitude: 0.3,
+
+  // Keplerian Disk Rotation
+  keplerianDifferential: 0.5, // Half Keplerian by default (moderate inner/outer speed difference)
 }
 
 // ============================================================================

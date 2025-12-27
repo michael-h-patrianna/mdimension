@@ -589,6 +589,14 @@ export function useBlackHoleUniformUpdates({ meshRef }: UseBlackHoleUniformUpdat
     setUniform(u, 'uSliceSpeed', bhState.sliceSpeed)
     setUniform(u, 'uSliceAmplitude', bhState.sliceAmplitude)
 
+    // Keplerian disk rotation (from rotation system)
+    // Read rotation angle from rotationStore - XZ is the primary disk rotation plane
+    const rotations = useRotationStore.getState().rotations
+    const diskAngle = rotations.get('XZ') ?? 0
+    setUniform(u, 'uDiskRotationAngle', diskAngle)
+    // Use keplerianDifferential from store (or default 0.5)
+    setUniform(u, 'uKeplerianDifferential', bhState.keplerianDifferential ?? 0.5)
+
     // Note: Lighting and PBR uniforms already applied at line ~301 via UniformManager
     // ['lighting', 'quality', 'color', 'pbr-face']
 

@@ -544,6 +544,9 @@ export interface BlackHoleSliceActions {
   setBlackHoleSliceSpeed: (speed: number) => void
   setBlackHoleSliceAmplitude: (amplitude: number) => void
 
+  // Keplerian Disk Rotation
+  setBlackHoleKeplerianDifferential: (differential: number) => void
+
   // Config Operations
   setBlackHoleConfig: (config: Partial<BlackHoleConfig>) => void
   initializeBlackHoleForDimension: (dimension: number) => void

@@ -220,11 +220,25 @@ vec3 manifoldColor(vec3 pos3d, float ndRadius, float density, float time) {
     }
   }
 
-  // Add swirl pattern
+  // Add swirl pattern with Keplerian rotation from animation system
   if (uSwirlAmount > 0.001) {
     // Angle in XZ plane
     float angle = atan(pos3d.z, pos3d.x);
-    float swirlPhase = angle * 3.0 + r * 0.5 - time * 0.5;
+
+    // Keplerian rotation: inner disk rotates faster than outer
+    // Skip expensive calculation only when differential is 0 (uniform rotation)
+    float rotationOffset = uDiskRotationAngle;
+    if (uKeplerianDifferential > 0.001) {
+      // Guard safeR to prevent extreme keplerianFactor when r is near innerR
+      float innerR = max(uDiskInnerR, 0.001);
+      float safeR = max(r, max(innerR * 0.1, 0.001));
+      float ratio = innerR / safeR;
+      // PERF: x^1.5 = x * sqrt(x) is faster than pow(x, 1.5) on GPU
+      float keplerianFactor = ratio * sqrt(ratio);
+      rotationOffset *= mix(1.0, keplerianFactor, uKeplerianDifferential);
+    }
+
+    float swirlPhase = angle * 3.0 + r * 0.5 + rotationOffset;
     float swirlBright = 0.5 + 0.5 * sin(swirlPhase);
     color *= mix(0.7, 1.3, swirlBright * uSwirlAmount);
   }

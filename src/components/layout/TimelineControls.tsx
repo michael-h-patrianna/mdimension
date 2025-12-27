@@ -63,6 +63,10 @@ export const TimelineControls: FC = () => {
 
     const { mandelbulbConfig, polytopeConfig, schroedingerConfig, blackholeConfig } = useExtendedObjectStore(extendedObjectSelector);
 
+    // Black hole specific: Keplerian differential control
+    const setKeplerianDifferential = useExtendedObjectStore((state) => state.setBlackHoleKeplerianDifferential);
+    const isBlackHole = getConfigStoreKey(objectType) === 'blackhole';
+
     const planes = useMemo(() => getRotationPlanes(dimension), [dimension]);
     const hasAnimatingPlanes = animatingPlanes.size > 0;
 
@@ -166,6 +170,22 @@ export const TimelineControls: FC = () => {
                                     );
                                 })}
                             </div>
+
+                            {/* Keplerian Differential - Black Hole Only */}
+                            {isBlackHole && (
+                                <div className="mt-4 pt-4 border-t border-white/10">
+                                    <Slider
+                                        label="Keplerian Differential"
+                                        min={0}
+                                        max={1}
+                                        step={0.05}
+                                        value={blackholeConfig.keplerianDifferential}
+                                        onChange={setKeplerianDifferential}
+                                        showValue
+                                        tooltip="0 = uniform rotation, 1 = inner disk rotates faster"
+                                    />
+                                </div>
+                            )}
                         </div>
                     </m.div>
                 )}
