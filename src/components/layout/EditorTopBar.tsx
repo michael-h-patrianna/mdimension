@@ -42,7 +42,7 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
     isCinematicMode: state.isCinematicMode,
     toggleCinematicMode: state.toggleCinematicMode,
   }));
-  const { toggleShortcuts, showLeftPanel, toggleLeftPanel, isCinematicMode, toggleCinematicMode } = useLayoutStore(layoutSelector);
+  const { toggleShortcuts, showLeftPanel, toggleLeftPanel, toggleCinematicMode } = useLayoutStore(layoutSelector);
 
   // New Preset Manager Store
   const presetSelector = useShallow((state: PresetManagerState) => ({
@@ -250,9 +250,6 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
   ];
 
   // --- Style Menu ---
-  const handleSaveStyle = () => {
-    setSaveStyleOpen(true);
-  };
 
   const onConfirmSaveStyle = (name: string) => {
     if (name) {
@@ -263,9 +260,6 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
   };
 
   // --- Scene Menu ---
-  const handleSaveScene = () => {
-    setSaveSceneOpen(true);
-  };
 
   const onConfirmSaveScene = (name: string) => {
     if (name) {

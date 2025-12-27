@@ -4,9 +4,12 @@
  */
 
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
+import { Button } from '@/components/ui/Button';
 import { MAX_DIMENSION, MIN_DIMENSION, useGeometryStore, type GeometryState } from '@/stores/geometryStore';
 import React, { useEffect, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
+import { Icon } from '@/components/ui/Icon';
+import { soundManager } from '@/lib/audio/SoundManager';
 
 export interface DimensionSelectorProps {
   className?: string;
@@ -27,38 +30,6 @@ const DIMENSION_OPTIONS = (() => {
   }
   return options;
 })();
-
-const ChevronLeft = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="16"
-    height="16"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M15 18l-6-6 6-6" />
-  </svg>
-);
-
-const ChevronRight = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="16"
-    height="16"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M9 18l6-6-6-6" />
-  </svg>
-);
 
 export const DimensionSelector: React.FC<DimensionSelectorProps> = React.memo(({
   className = '',
@@ -135,7 +106,9 @@ export const DimensionSelector: React.FC<DimensionSelectorProps> = React.memo(({
     };
   }, [dimension]);
 
-  const scroll = (direction: 'left' | 'right') => {
+  const scroll = (e: React.MouseEvent, direction: 'left' | 'right') => {
+    e.preventDefault();
+    e.stopPropagation();
     if (scrollContainerRef.current) {
       const scrollAmount = 150;
       scrollContainerRef.current.scrollBy({
@@ -156,14 +129,18 @@ export const DimensionSelector: React.FC<DimensionSelectorProps> = React.memo(({
     <div className={`${className}`}>
       <div className="relative group">
         {canScrollLeft && (
-          <button
-            type="button"
-            onClick={() => scroll('left')}
-            className="absolute left-0 top-0 bottom-0 z-10 px-1 bg-gradient-to-r from-panel-bg via-panel-bg/90 to-transparent flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors rounded-l-lg"
-            aria-label="Scroll left"
-          >
-            <ChevronLeft />
-          </button>
+          <div className="absolute left-0 top-0 bottom-0 z-20 flex items-center">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={(e) => scroll(e, 'left')}
+              onMouseEnter={() => soundManager.playHover()}
+              className="h-full rounded-l-lg rounded-r-none border-none bg-gradient-to-r from-panel-bg via-panel-bg/90 to-transparent hover:bg-gradient-to-r px-1 w-auto"
+              ariaLabel="Scroll left"
+            >
+              <Icon name="chevron-left" />
+            </Button>
+          </div>
         )}
 
         <div
@@ -176,20 +153,24 @@ export const DimensionSelector: React.FC<DimensionSelectorProps> = React.memo(({
             onChange={handleChange}
             disabled={disabled}
             ariaLabel="Select dimension"
-            className="min-w-full w-max"
+            className="min-w-full w-max flex-nowrap"
             data-testid="dimension-selector"
           />
         </div>
 
         {canScrollRight && (
-          <button
-            type="button"
-            onClick={() => scroll('right')}
-            className="absolute right-0 top-0 bottom-0 z-10 px-1 bg-gradient-to-l from-panel-bg via-panel-bg/90 to-transparent flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors rounded-r-lg"
-            aria-label="Scroll right"
-          >
-            <ChevronRight />
-          </button>
+          <div className="absolute right-0 top-0 bottom-0 z-20 flex items-center">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={(e) => scroll(e, 'right')}
+              onMouseEnter={() => soundManager.playHover()}
+              className="h-full rounded-r-lg rounded-l-none border-none bg-gradient-to-l from-panel-bg via-panel-bg/90 to-transparent hover:bg-gradient-to-l px-1 w-auto"
+              ariaLabel="Scroll right"
+            >
+              <Icon name="chevron-right" />
+            </Button>
+          </div>
         )}
       </div>
 

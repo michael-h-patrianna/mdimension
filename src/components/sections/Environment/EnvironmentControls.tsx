@@ -10,6 +10,7 @@ import { Select } from '@/components/ui/Select';
 import { Slider } from '@/components/ui/Slider';
 import { Switch } from '@/components/ui/Switch';
 import { Tabs } from '@/components/ui/Tabs';
+import { Button } from '@/components/ui/Button';
 import { DEFAULT_GROUND_PBR, type GroundPlaneType, type WallPosition } from '@/stores/defaults/visualDefaults';
 import { useEnvironmentStore, type EnvironmentStore } from '@/stores/environmentStore';
 import { usePBRStore, type PBRSlice } from '@/stores/pbrStore';
@@ -217,13 +218,15 @@ export const EnvironmentControls: React.FC<EnvironmentControlsProps> = React.mem
           disableAlpha={true}
         />
         {specularColor !== DEFAULT_GROUND_PBR.specularColor && (
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => setSpecularColor(DEFAULT_GROUND_PBR.specularColor)}
-            className="text-xs text-accent hover:text-accent/80 transition-colors"
+            className="h-6 px-2 text-xs text-accent hover:text-accent/80"
             title="Reset to default"
           >
             Reset
-          </button>
+          </Button>
         )}
       </div>
 

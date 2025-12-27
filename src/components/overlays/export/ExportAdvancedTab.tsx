@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useExportStore, VideoCodec, ExportMode } from '@/stores/exportStore'
 import { ToggleGroup } from '@/components/ui/ToggleGroup'
 import { Slider } from '@/components/ui/Slider'
-import { Icon } from '@/components/ui/Icon'
 
 export const ExportAdvancedTab = () => {
     const { settings, updateSettings, exportMode, exportModeOverride, setExportModeOverride } = useExportStore()
@@ -28,16 +27,17 @@ export const ExportAdvancedTab = () => {
         <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
             {/* Bitrate */}
             <div className="space-y-4">
-                <div className="flex justify-between items-baseline">
-                    <label className="text-xs font-bold text-text-secondary uppercase tracking-widest pl-1">Target Bitrate</label>
-                    <span className="text-[10px] text-text-tertiary">Higher = Better Quality, Larger File</span>
-                </div>
                 <Slider
+                    label="TARGET BITRATE"
                     value={settings.bitrate}
                     onChange={(val) => updateSettings({ bitrate: val })}
                     min={2} max={100} step={1}
                     unit=" Mbps"
+                    tooltip="Higher = Better Quality, Larger File"
                 />
+                 <div className="flex justify-end -mt-2">
+                     <span className="text-[10px] text-text-tertiary">Higher = Better Quality, Larger File</span>
+                </div>
             </div>
 
             <div className="h-px bg-white/5" />

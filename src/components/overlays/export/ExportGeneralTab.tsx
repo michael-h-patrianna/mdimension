@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useExportStore, VideoCodec, ExportResolution } from '@/stores/exportStore'
 import { ToggleGroup } from '@/components/ui/ToggleGroup'
 import { NumberInput } from '@/components/ui/NumberInput'
@@ -48,7 +48,7 @@ export const ExportGeneralTab = () => {
             <div className="space-y-4">
                 <div className="flex justify-between items-center">
                     <h3 className="text-sm font-bold text-text-primary uppercase tracking-wider flex items-center gap-2">
-                        <Icon name="settings" className="w-4 h-4 text-accent" />
+                        <Icon name="cog" className="w-4 h-4 text-accent" />
                         Output Format
                     </h3>
                 </div>
@@ -118,7 +118,7 @@ export const ExportGeneralTab = () => {
             {/* Timing & Quality */}
             <div className="space-y-4">
                 <h3 className="text-sm font-bold text-text-primary uppercase tracking-wider flex items-center gap-2">
-                    <Icon name="activity" className="w-4 h-4 text-accent" />
+                    <Icon name="info" className="w-4 h-4 text-accent" />
                     Timing & Smoothness
                 </h3>
 

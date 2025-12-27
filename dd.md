@@ -21,6 +21,7 @@ Workflow:
 - Identify overloaded UI / cognitive overload.
 - Identify usage of raw html elements instead of existing custom ui components from our library.
 - Identify usage of hardcoded styles not using our theming solution.
+- Identify repeating html/design patterns that could be turned into custom UI components for better code readability and UI consistency.
 - Design a comprehensive plan for fixing all issues and turns the UI into a "million bucks".
 - Implement
 - Write Playwright tests that confirm the functionality of all features.

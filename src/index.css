@@ -321,6 +321,10 @@
   text-shadow: 0 0 8px color-mix(in oklch, var(--theme-accent-glow) 40%, transparent);
 }
 
+@utility text-muted {
+  color: var(--color-text-tertiary);
+}
+
 @utility border-glow {
   box-shadow: 0 0 8px color-mix(in oklch, var(--theme-accent-glow) 15%, transparent);
 }
