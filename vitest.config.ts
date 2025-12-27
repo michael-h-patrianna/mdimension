@@ -10,11 +10,7 @@ export default defineConfig({
     setupFiles: './src/tests/setup.ts',
     css: true,
     pool: 'threads',
-    poolOptions: {
-      threads: {
-        maxWorkers: 4,
-      },
-    },
+    maxWorkers: 4,
     exclude: [
       '**/node_modules/**',
       '**/dist/**',

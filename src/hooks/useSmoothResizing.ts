@@ -24,7 +24,9 @@ const SPRING_CONFIG = { damping: 25, stiffness: 200 };
 export function useSmoothResizing() {
   const { size, camera } = useThree();
   const prevHeight = useRef(size.height);
-  
+  // Track pending RAF to cancel on rapid resizes
+  const rafIdRef = useRef<number | null>(null);
+
   // Spring to animate zoom. Default 1.0.
   const zoomCorrection = useSpring(1, SPRING_CONFIG);
 
@@ -32,24 +34,31 @@ export function useSmoothResizing() {
     // We only care about height changes for the "jump" artifact.
     // Width changes (in vertical FOV cameras) just reveal more side content smoothly.
     const heightChanged = Math.abs(size.height - prevHeight.current) > 1;
-    
+
     // Ignore the very first mount/resize to 0
     const isValidResize = prevHeight.current > 0 && size.height > 0;
 
     if (heightChanged && isValidResize) {
+       // Cancel any pending RAF from previous resize to prevent race condition
+       if (rafIdRef.current !== null) {
+         cancelAnimationFrame(rafIdRef.current);
+         rafIdRef.current = null;
+       }
+
        // Calculate ratio needed to keep objects same pixel height
        // OldHeight = NewHeight * Ratio
        // Ratio = OldHeight / NewHeight
        const compensationRatio = prevHeight.current / size.height;
-       
+
        // 1. Snap immediately to the compensated zoom level
        // This neutralizes the visual jump in the very next frame
        zoomCorrection.set(compensationRatio);
-       
+
        // 2. Animate back to natural zoom (1.0)
        // This creates the smooth "settling" or "reveal" effect
        // We use a slight delay or just set it in the next microtask to ensure the spring starts
-       requestAnimationFrame(() => {
+       rafIdRef.current = requestAnimationFrame(() => {
+           rafIdRef.current = null;
            zoomCorrection.set(1);
        });
     } else if (!isValidResize) {
@@ -58,6 +67,14 @@ export function useSmoothResizing() {
     }
 
     prevHeight.current = size.height;
+
+    // Cleanup on unmount
+    return () => {
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
+    };
   }, [size.height, zoomCorrection]);
 
   useFrame(() => {

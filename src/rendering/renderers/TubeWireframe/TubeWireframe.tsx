@@ -72,13 +72,13 @@ uniform float uExtraRotationCols[28];
 uniform float uDepthRowSums[11];
 uniform float uRadius;
 
-// Instance attributes for tube start/end points
-attribute vec3 instanceStart;
-attribute vec3 instanceEnd;
-attribute vec4 instanceStartExtraA;
-attribute vec4 instanceStartExtraB;
-attribute vec4 instanceEndExtraA;
-attribute vec4 instanceEndExtraB;
+// Instance inputs for tube start/end points (WebGL2 GLSL ES 3.00)
+in vec3 instanceStart;
+in vec3 instanceEnd;
+in vec4 instanceStartExtraA;
+in vec4 instanceStartExtraB;
+in vec4 instanceEndExtraA;
+in vec4 instanceEndExtraB;
 
 // Transform a single nD point to 3D
 vec3 ndTransformPoint(vec3 pos, vec4 extraA, vec4 extraB) {

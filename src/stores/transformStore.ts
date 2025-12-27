@@ -43,6 +43,8 @@ interface TransformState {
   // General actions
   setDimension: (dimension: number) => void
   resetAll: () => void
+  /** Reset store to initial state (alias for resetAll for API consistency) */
+  reset: () => void
 }
 
 /**
@@ -158,6 +160,14 @@ export const useTransformStore = create<TransformState>((set, get) => ({
   },
 
   resetAll: () => {
+    set((state) => ({
+      uniformScale: DEFAULT_SCALE,
+      perAxisScale: createDefaultScales(state.dimension),
+      scaleLocked: true,
+    }))
+  },
+
+  reset: () => {
     set((state) => ({
       uniformScale: DEFAULT_SCALE,
       perAxisScale: createDefaultScales(state.dimension),

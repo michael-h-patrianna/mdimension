@@ -15,6 +15,20 @@ import { usePostProcessingStore, type PostProcessingSlice } from '@/stores/postP
 import React, { useCallback, useEffect } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
+// Selector for black hole state - defined outside component per useShallow rules
+const blackHoleSelector = (s: ReturnType<typeof useExtendedObjectStore.getState>) => ({
+  gravityStrength: s.blackhole.gravityStrength,
+  setGravityStrength: s.setBlackHoleGravityStrength,
+  bendScale: s.blackhole.bendScale,
+  setBendScale: s.setBlackHoleBendScale,
+  lensingFalloff: s.blackhole.lensingFalloff,
+  setLensingFalloff: s.setBlackHoleLensingFalloff,
+  distanceFalloff: s.blackhole.distanceFalloff,
+  setDistanceFalloff: s.setBlackHoleDistanceFalloff,
+  chromaticAberration: s.blackhole.deferredLensingChromaticAberration,
+  setChromaticAberration: s.setBlackHoleDeferredLensingChromaticAberration,
+});
+
 export const GravityControls: React.FC = () => {
   // Global State
   const ppSelector = useShallow((state: PostProcessingSlice) => ({
@@ -33,18 +47,8 @@ export const GravityControls: React.FC = () => {
 
   // Black Hole State - for syncing when black hole is active
   const isBlackHole = useGeometryStore(s => s.objectType === 'blackhole');
-  const blackHoleState = useExtendedObjectStore(useShallow(s => ({
-    gravityStrength: s.blackhole.gravityStrength,
-    setGravityStrength: s.setBlackHoleGravityStrength,
-    bendScale: s.blackhole.bendScale,
-    setBendScale: s.setBlackHoleBendScale,
-    lensingFalloff: s.blackhole.lensingFalloff,
-    setLensingFalloff: s.setBlackHoleLensingFalloff,
-    distanceFalloff: s.blackhole.distanceFalloff,
-    setDistanceFalloff: s.setBlackHoleDistanceFalloff,
-    chromaticAberration: s.blackhole.deferredLensingChromaticAberration,
-    setChromaticAberration: s.setBlackHoleDeferredLensingChromaticAberration,
-  })));
+  const bhSelector = useShallow(blackHoleSelector);
+  const blackHoleState = useExtendedObjectStore(bhSelector);
 
   // When black hole is selected, sync global gravity settings from black hole
   useEffect(() => {

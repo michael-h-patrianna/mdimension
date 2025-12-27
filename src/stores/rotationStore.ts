@@ -53,6 +53,9 @@ export interface RotationState {
   /** Reset all rotations to 0 */
   resetAllRotations: () => void
 
+  /** Reset store to initial state (alias for resetAllRotations for API consistency) */
+  reset: () => void
+
   /** Update state when dimension changes */
   setDimension: (dimension: number) => void
 }
@@ -108,6 +111,10 @@ export const useRotationStore = create<RotationState>((set) => ({
   },
 
   resetAllRotations: () => {
+    set((state) => ({ rotations: new Map(), version: state.version + 1 }))
+  },
+
+  reset: () => {
     set((state) => ({ rotations: new Map(), version: state.version + 1 }))
   },
 

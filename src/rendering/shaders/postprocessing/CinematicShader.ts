@@ -78,8 +78,8 @@ export const CinematicShader = {
         color += noise * uNoiseIntensity;
       }
 
-      // Clamp to valid range
-      color = clamp(color, 0.0, 1.0);
+      // Preserve HDR values for tone mapping - only prevent negative
+      color = max(color, vec3(0.0));
 
       fragColor = vec4(color, 1.0);
     }

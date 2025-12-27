@@ -2,7 +2,7 @@ import { Icon } from '@/components/ui/Icon'
 import { soundManager } from '@/lib/audio/SoundManager'
 import { useExportStore } from '@/stores/exportStore'
 import { useState, useEffect } from 'react'
-import { useShallow } from 'zustand/shallow'
+import { useShallow } from 'zustand/react/shallow'
 import { Button } from '../ui/Button'
 import { Modal } from '../ui/Modal'
 import { ConfirmModal } from '../ui/ConfirmModal'
@@ -15,7 +15,28 @@ import { ExportAdvancedTab } from './export/ExportAdvancedTab'
 
 type ExportTabId = 'presets' | 'general' | 'text' | 'advanced'
 
+// Create selector outside component to avoid hook rules violation
+const exportModalSelector = (state: ReturnType<typeof useExportStore.getState>) => ({
+  isModalOpen: state.isModalOpen,
+  setModalOpen: state.setModalOpen,
+  isExporting: state.isExporting,
+  setIsExporting: state.setIsExporting,
+  status: state.status,
+  setStatus: state.setStatus,
+  progress: state.progress,
+  previewUrl: state.previewUrl,
+  eta: state.eta,
+  reset: state.reset,
+  estimatedSizeMB: state.estimatedSizeMB,
+  exportTier: state.exportTier,
+  exportMode: state.exportMode,
+  completionDetails: state.completionDetails,
+  setCanvasAspectRatio: state.setCanvasAspectRatio,
+  settings: state.settings
+})
+
 export const ExportModal = () => {
+  const selector = useShallow(exportModalSelector)
   const {
     isModalOpen,
     setModalOpen,
@@ -33,24 +54,7 @@ export const ExportModal = () => {
     completionDetails,
     setCanvasAspectRatio,
     settings
-  } = useExportStore(useShallow((state) => ({
-    isModalOpen: state.isModalOpen,
-    setModalOpen: state.setModalOpen,
-    isExporting: state.isExporting,
-    setIsExporting: state.setIsExporting,
-    status: state.status,
-    setStatus: state.setStatus,
-    progress: state.progress,
-    previewUrl: state.previewUrl,
-    eta: state.eta,
-    reset: state.reset,
-    estimatedSizeMB: state.estimatedSizeMB,
-    exportTier: state.exportTier,
-    exportMode: state.exportMode,
-    completionDetails: state.completionDetails,
-    setCanvasAspectRatio: state.setCanvasAspectRatio,
-    settings: state.settings
-  })))
+  } = useExportStore(selector)
 
   const [activeTab, setActiveTab] = useState<ExportTabId>('presets')
   const [showStopConfirm, setShowStopConfirm] = useState(false)

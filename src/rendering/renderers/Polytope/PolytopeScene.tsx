@@ -204,9 +204,9 @@ uniform float uModFrequency;
 uniform float uModWave;
 uniform float uModBias;
 
-// Packed extra dimension attributes
-attribute vec4 aExtraDims0_3;
-attribute vec3 aExtraDims4_6;
+// Packed extra dimension inputs (WebGL2 GLSL ES 3.00)
+in vec4 aExtraDims0_3;
+in vec3 aExtraDims4_6;
 
 vec3 ndTransformVertex(vec3 pos) {
   float scaledInputs[11];

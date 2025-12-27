@@ -20,6 +20,39 @@ import { ProceduralSkyboxWithEnvironment } from './ProceduralSkyboxWithEnvironme
 // Import all skybox ktx2 files as URLs
 const skyboxAssets = import.meta.glob('/src/assets/skyboxes/**/*.ktx2', { eager: true, import: 'default', query: '?url' }) as Record<string, string>;
 
+// Selectors defined outside components to comply with useShallow hook rules
+const skyboxMeshEnvSelector = (state: ReturnType<typeof useEnvironmentStore.getState>) => ({
+  skyboxMode: state.skyboxMode,
+  skyboxIntensity: state.skyboxIntensity,
+  skyboxBlur: state.skyboxBlur,
+  skyboxRotation: state.skyboxRotation,
+  skyboxAnimationMode: state.skyboxAnimationMode,
+  skyboxAnimationSpeed: state.skyboxAnimationSpeed,
+  proceduralSettings: state.proceduralSettings
+});
+
+const skyboxMeshAppearanceSelector = (state: ReturnType<typeof useAppearanceStore.getState>) => ({
+  colorAlgorithm: state.colorAlgorithm,
+  cosineCoefficients: state.cosineCoefficients,
+  distribution: state.distribution,
+  lchLightness: state.lchLightness,
+  lchChroma: state.lchChroma,
+  faceColor: state.faceColor
+});
+
+const skyboxLoaderEnvSelector = (state: ReturnType<typeof useEnvironmentStore.getState>) => ({
+  skyboxEnabled: state.skyboxEnabled,
+  skyboxTexture: state.skyboxTexture,
+  skyboxHighQuality: state.skyboxHighQuality,
+  setSkyboxLoading: state.setSkyboxLoading,
+  setClassicCubeTexture: state.setClassicCubeTexture,
+});
+
+const skyboxMainEnvSelector = (state: ReturnType<typeof useEnvironmentStore.getState>) => ({
+  skyboxEnabled: state.skyboxEnabled,
+  skyboxMode: state.skyboxMode
+});
+
 // --- Main Component ---
 
 interface SkyboxMeshProps {
@@ -46,6 +79,7 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
     (meshRef as React.MutableRefObject<THREE.Mesh | null>).current = mesh;
   }, []);
 
+  const envSelector = useShallow(skyboxMeshEnvSelector);
   const {
     skyboxMode,
     skyboxIntensity,
@@ -54,24 +88,10 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
     skyboxAnimationMode,
     skyboxAnimationSpeed,
     proceduralSettings
-  } = useEnvironmentStore(useShallow((state) => ({
-    skyboxMode: state.skyboxMode,
-    skyboxIntensity: state.skyboxIntensity,
-    skyboxBlur: state.skyboxBlur,
-    skyboxRotation: state.skyboxRotation,
-    skyboxAnimationMode: state.skyboxAnimationMode,
-    skyboxAnimationSpeed: state.skyboxAnimationSpeed,
-    proceduralSettings: state.proceduralSettings
-  })));
+  } = useEnvironmentStore(envSelector);
 
-  const { colorAlgorithm, cosineCoefficients, distribution, lchLightness, lchChroma, faceColor } = useAppearanceStore(useShallow((state) => ({
-    colorAlgorithm: state.colorAlgorithm,
-    cosineCoefficients: state.cosineCoefficients,
-    distribution: state.distribution,
-    lchLightness: state.lchLightness,
-    lchChroma: state.lchChroma,
-    faceColor: state.faceColor
-  })));
+  const appearanceSelector = useShallow(skyboxMeshAppearanceSelector);
+  const { colorAlgorithm, cosineCoefficients, distribution, lchLightness, lchChroma, faceColor } = useAppearanceStore(appearanceSelector);
   const isPlaying = useAnimationStore((state) => state.isPlaying);
   const setShaderDebugInfo = usePerformanceStore((state) => state.setShaderDebugInfo);
 
@@ -505,19 +525,14 @@ export const SkyboxMesh: React.FC<SkyboxMeshProps> = ({ texture }) => {
  * @returns React element handling async skybox texture loading
  */
 const SkyboxLoader: React.FC = () => {
+  const loaderEnvSelector = useShallow(skyboxLoaderEnvSelector);
   const {
     skyboxEnabled,
     skyboxTexture,
     skyboxHighQuality,
     setSkyboxLoading,
     setClassicCubeTexture,
-  } = useEnvironmentStore(useShallow((state) => ({
-    skyboxEnabled: state.skyboxEnabled,
-    skyboxTexture: state.skyboxTexture,
-    skyboxHighQuality: state.skyboxHighQuality,
-    setSkyboxLoading: state.setSkyboxLoading,
-    setClassicCubeTexture: state.setClassicCubeTexture,
-  })));
+  } = useEnvironmentStore(loaderEnvSelector);
 
   const gl = useThree((state) => state.gl);
 
@@ -658,10 +673,8 @@ const SkyboxLoader: React.FC = () => {
  * @returns React element rendering the skybox with async texture loading
  */
 export const Skybox: React.FC = () => {
-  const { skyboxEnabled, skyboxMode } = useEnvironmentStore(useShallow((state) => ({
-    skyboxEnabled: state.skyboxEnabled,
-    skyboxMode: state.skyboxMode
-  })));
+  const mainEnvSelector = useShallow(skyboxMainEnvSelector);
+  const { skyboxEnabled, skyboxMode } = useEnvironmentStore(mainEnvSelector);
 
   if (!skyboxEnabled) return null;
 
