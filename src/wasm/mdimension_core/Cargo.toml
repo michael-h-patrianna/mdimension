@@ -18,9 +18,11 @@ nalgebra = { version = "0.32", features = ["serde-serialize"] }
 itertools = "0.12"
 console_error_panic_hook = "0.1.7"
 
-# Optimization profile for Release builds (Small binary size)
+# Optimization profile for Release builds (MAXIMUM SPEED)
 [profile.release]
-opt-level = "s"
-lto = true
-strip = true
-codegen-units = 1
+opt-level = 3           # Maximum optimization for speed
+lto = "fat"             # Full LTO for cross-crate optimization  
+strip = true            # Strip debug symbols
+codegen-units = 1       # Single codegen unit for better optimization
+panic = "abort"         # Faster panic handling
+overflow-checks = false # Skip overflow checks (we validate inputs)

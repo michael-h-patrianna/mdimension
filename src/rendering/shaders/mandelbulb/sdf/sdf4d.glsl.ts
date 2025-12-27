@@ -4,8 +4,6 @@ export const sdf4dBlock = `
 // ============================================
 
 float sdf4D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
-    // c = uOrigin + pos.x * uBasisX + pos.y * uBasisY + pos.z * uBasisZ
-    // Mandelbulb mode: z starts at c (sample point)
     float cx = uOrigin[0] + pos.x*uBasisX[0] + pos.y*uBasisY[0] + pos.z*uBasisZ[0];
     float cy = uOrigin[1] + pos.x*uBasisX[1] + pos.y*uBasisY[1] + pos.z*uBasisZ[1];
     float cz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
@@ -22,9 +20,8 @@ float sdf4D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
     for (int i = 0; i < MAX_ITER_HQ; i++) {
         if (i >= maxIt) break;
 
-        // r = |z|
-        float r2 = zx*zx + zy*zy + zz*zz + zw*zw;
-        r = sqrt(r2);
+        // Compute r first - needed for both bailout check and distance estimation
+        r = sqrt(zx*zx + zy*zy + zz*zz + zw*zw);
         if (r > bail) { escIt = i; break; }
 
         // Orbit traps (using z-axis primary convention)
@@ -38,14 +35,12 @@ float sdf4D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
         dr = rpMinus1 * pwr * dr + 1.0;
 
         // To hyperspherical: z-axis primary (like Mandelbulb)
-        // 4D: (z, x, y, w) -> (x1, x2, x3, x4) hyperspherical
-        float theta = acos(clamp(zz / max(r, EPS), -1.0, 1.0));  // From z-axis (like Mandelbulb)
+        float theta = acos(clamp(zz / max(r, EPS), -1.0, 1.0));
         
-        // Optimization: derive rxyw from r2 to avoid 3 muls and 2 adds
-        float rxyw = sqrt(max(0.0, r2 - zz*zz));
+        float rxyw = sqrt(max(0.0, zx*zx + zy*zy + zw*zw));
         
-        float phi = rxyw > EPS ? acos(clamp(zx / max(rxyw, EPS), -1.0, 1.0)) : 0.0;  // From x in xyw
-        float psi = atan(zw, zy);  // In yw plane
+        float phi = rxyw > EPS ? acos(clamp(zx / max(rxyw, EPS), -1.0, 1.0)) : 0.0;
+        float psi = atan(zw, zy);
 
         // Power map: angles * n (with optional phase shift)
         float thetaN = (theta + (uPhaseEnabled ? uPhaseTheta : 0.0)) * pwr;
@@ -59,10 +54,10 @@ float sdf4D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
 
         float rSinTheta = rp * sTheta;
         float rSinThetaSinPhi = rSinTheta * sPhi;
-        zz = rp * cTheta + cz;              // z = r * cos(theta)
-        zx = rSinTheta * cPhi + cx;         // x = r * sin(theta) * cos(phi)
-        zy = rSinThetaSinPhi * cPsi + cy;   // y = r * sin(theta) * sin(phi) * cos(psi)
-        zw = rSinThetaSinPhi * sPsi + cw;   // w = r * sin(theta) * sin(phi) * sin(psi)
+        zz = rp * cTheta + cz;
+        zx = rSinTheta * cPhi + cx;
+        zy = rSinThetaSinPhi * cPsi + cy;
+        zw = rSinThetaSinPhi * sPsi + cw;
         escIt = i;
     }
 
@@ -72,7 +67,6 @@ float sdf4D(vec3 pos, float pwr, float bail, int maxIt, out float trap) {
 }
 
 float sdf4D_simple(vec3 pos, float pwr, float bail, int maxIt) {
-    // Mandelbulb mode: z starts at c (sample point)
     float cx = uOrigin[0] + pos.x*uBasisX[0] + pos.y*uBasisY[0] + pos.z*uBasisZ[0];
     float cy = uOrigin[1] + pos.x*uBasisX[1] + pos.y*uBasisY[1] + pos.z*uBasisZ[1];
     float cz = uOrigin[2] + pos.x*uBasisX[2] + pos.y*uBasisY[2] + pos.z*uBasisZ[2];
@@ -82,8 +76,8 @@ float sdf4D_simple(vec3 pos, float pwr, float bail, int maxIt) {
 
     for (int i = 0; i < MAX_ITER_HQ; i++) {
         if (i >= maxIt) break;
-        float r2 = zx*zx + zy*zy + zz*zz + zw*zw;
-        r = sqrt(r2);
+        
+        r = sqrt(zx*zx + zy*zy + zz*zz + zw*zw);
         if (r > bail) break;
 
         // Optimized power calculation
@@ -93,7 +87,7 @@ float sdf4D_simple(vec3 pos, float pwr, float bail, int maxIt) {
 
         // z-axis primary (like Mandelbulb)
         float theta = acos(clamp(zz / max(r, EPS), -1.0, 1.0));
-        float rxyw = sqrt(max(0.0, r2 - zz*zz));
+        float rxyw = sqrt(max(0.0, zx*zx + zy*zy + zw*zw));
         float phi = rxyw > EPS ? acos(clamp(zx / max(rxyw, EPS), -1.0, 1.0)) : 0.0;
         float psi = atan(zw, zy);
 

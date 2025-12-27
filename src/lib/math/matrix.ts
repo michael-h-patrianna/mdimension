@@ -140,6 +140,8 @@ function getAliasScratch(dim: number): MatrixND {
  * IMPORTANT: Handles aliasing safely - if out === a or out === b, uses internal
  * scratch buffer to compute result before copying to out.
  *
+ * OPT-MAT-1: Specialized unrolled path for 4×4 matrices (most common case)
+ *
  * @param out - Pre-allocated output matrix. Modified in place.
  * @param a - First matrix
  * @param b - Second matrix
@@ -156,13 +158,43 @@ export function multiplyMatricesInto(out: MatrixND, a: MatrixND, b: MatrixND): v
     }
   }
 
+  // OPT-MAT-1: Fast path for 4×4 matrices (most common case in 4D visualization)
+  if (len === 16) {
+    // Handle aliasing: if out is the same reference as a or b, we need a temp buffer
+    const isAliased = out === a || out === b
+    const target = isAliased ? getAliasScratch(4) : out
+    
+    // Fully unrolled 4×4 matrix multiplication (no loops)
+    target[0] = a[0]*b[0] + a[1]*b[4] + a[2]*b[8] + a[3]*b[12]
+    target[1] = a[0]*b[1] + a[1]*b[5] + a[2]*b[9] + a[3]*b[13]
+    target[2] = a[0]*b[2] + a[1]*b[6] + a[2]*b[10] + a[3]*b[14]
+    target[3] = a[0]*b[3] + a[1]*b[7] + a[2]*b[11] + a[3]*b[15]
+    target[4] = a[4]*b[0] + a[5]*b[4] + a[6]*b[8] + a[7]*b[12]
+    target[5] = a[4]*b[1] + a[5]*b[5] + a[6]*b[9] + a[7]*b[13]
+    target[6] = a[4]*b[2] + a[5]*b[6] + a[6]*b[10] + a[7]*b[14]
+    target[7] = a[4]*b[3] + a[5]*b[7] + a[6]*b[11] + a[7]*b[15]
+    target[8] = a[8]*b[0] + a[9]*b[4] + a[10]*b[8] + a[11]*b[12]
+    target[9] = a[8]*b[1] + a[9]*b[5] + a[10]*b[9] + a[11]*b[13]
+    target[10] = a[8]*b[2] + a[9]*b[6] + a[10]*b[10] + a[11]*b[14]
+    target[11] = a[8]*b[3] + a[9]*b[7] + a[10]*b[11] + a[11]*b[15]
+    target[12] = a[12]*b[0] + a[13]*b[4] + a[14]*b[8] + a[15]*b[12]
+    target[13] = a[12]*b[1] + a[13]*b[5] + a[14]*b[9] + a[15]*b[13]
+    target[14] = a[12]*b[2] + a[13]*b[6] + a[14]*b[10] + a[15]*b[14]
+    target[15] = a[12]*b[3] + a[13]*b[7] + a[14]*b[11] + a[15]*b[15]
+    
+    if (isAliased) {
+      out.set(target)
+    }
+    return
+  }
+
   const dim = Math.sqrt(len)
 
   // Handle aliasing: if out is the same reference as a or b, we need a temp buffer
   const isAliased = out === a || out === b
   const target = isAliased ? getAliasScratch(dim) : out
 
-  // Compute matrix multiplication into target
+  // Generic path for other dimensions
   for (let i = 0; i < dim; i++) {
     const rowOffset = i * dim
     for (let j = 0; j < dim; j++) {

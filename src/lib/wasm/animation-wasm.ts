@@ -410,6 +410,47 @@ export function subtractVectorsWasm(a: Float64Array, b: Float64Array): Float64Ar
 // Helper Functions for Data Conversion
 // ============================================================================
 
+// OPT-WASM-1: Pool Float64Array instances to avoid per-call allocations
+// Key: size, Value: pooled array (simple single-item pool per size)
+const float64Pool = new Map<number, Float64Array>()
+const uint32Pool = new Map<number, Uint32Array>()
+
+/** Maximum pooled buffer size (64KB of float64s = 8KB) */
+const MAX_POOL_SIZE = 8192
+
+/**
+ * Get or create a pooled Float64Array of the requested size.
+ * The returned array may contain stale data - caller must fill it.
+ */
+function getPooledFloat64(size: number): Float64Array {
+  if (size > MAX_POOL_SIZE) {
+    return new Float64Array(size)
+  }
+  const pooled = float64Pool.get(size)
+  if (pooled) {
+    return pooled
+  }
+  const fresh = new Float64Array(size)
+  float64Pool.set(size, fresh)
+  return fresh
+}
+
+/**
+ * Get or create a pooled Uint32Array of the requested size.
+ */
+function getPooledUint32(size: number): Uint32Array {
+  if (size > MAX_POOL_SIZE) {
+    return new Uint32Array(size)
+  }
+  const pooled = uint32Pool.get(size)
+  if (pooled) {
+    return pooled
+  }
+  const fresh = new Uint32Array(size)
+  uint32Pool.set(size, fresh)
+  return fresh
+}
+
 /**
  * Convert a MatrixND (Float32Array) to Float64Array for WASM input.
  * @param matrix - Input matrix as Float32Array
@@ -439,13 +480,15 @@ export function float64ToVector(vector: Float64Array): VectorND {
 
 /**
  * Flatten 2D vertices array to Float64Array.
+ * OPT-WASM-1: Uses pooled arrays to avoid per-call allocations.
  * @param vertices - Array of vertex arrays
- * @returns Flat Float64Array
+ * @returns Flat Float64Array (may be pooled - do not store reference long-term)
  */
 export function flattenVertices(vertices: VectorND[]): Float64Array {
   if (vertices.length === 0) return new Float64Array(0)
   const dimension = vertices[0]!.length
-  const flat = new Float64Array(vertices.length * dimension)
+  const size = vertices.length * dimension
+  const flat = getPooledFloat64(size)
   for (let i = 0; i < vertices.length; i++) {
     const v = vertices[i]!
     const offset = i * dimension
@@ -458,11 +501,13 @@ export function flattenVertices(vertices: VectorND[]): Float64Array {
 
 /**
  * Flatten edge pairs to Uint32Array.
+ * OPT-WASM-1: Uses pooled arrays to avoid per-call allocations.
  * @param edges - Array of edge pairs
- * @returns Flat Uint32Array
+ * @returns Flat Uint32Array (may be pooled - do not store reference long-term)
  */
 export function flattenEdges(edges: [number, number][]): Uint32Array {
-  const flat = new Uint32Array(edges.length * 2)
+  const size = edges.length * 2
+  const flat = getPooledUint32(size)
   for (let i = 0; i < edges.length; i++) {
     flat[i * 2] = edges[i]![0]
     flat[i * 2 + 1] = edges[i]![1]

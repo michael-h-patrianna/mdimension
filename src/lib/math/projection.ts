@@ -399,26 +399,126 @@ export function projectVerticesToPositions(
     // WASM failed, fall through to JS implementation
   }
 
-  const numHigherDims = dimension - 3
-  const normalizationFactor = numHigherDims > 0 ? Math.sqrt(numHigherDims) : 1
+  // OPT-PROJ-1: Specialized paths for common dimensions (unrolled loops)
+  switch (dimension) {
+    case 3:
+      projectVertices3D(vertices, positions, projectionDistance, offset, len)
+      break
+    case 4:
+      projectVertices4D(vertices, positions, projectionDistance, offset, len)
+      break
+    case 5:
+      projectVertices5D(vertices, positions, projectionDistance, offset, len)
+      break
+    default:
+      projectVerticesND(vertices, positions, projectionDistance, offset, len, dimension)
+      break
+  }
 
-  // Perspective projection (JS fallback)
+  return len
+}
+
+/** 3D projection - no higher dims, just perspective divide */
+function projectVertices3D(
+  vertices: VectorND[],
+  positions: Float32Array,
+  projectionDistance: number,
+  offset: number,
+  len: number
+): void {
+  const scale = 1 / projectionDistance
+  for (let i = 0; i < len; i++) {
+    const v = vertices[i]!
+    const idx = offset + i * 3
+    positions[idx] = v[0]! * scale
+    positions[idx + 1] = v[1]! * scale
+    positions[idx + 2] = v[2]! * scale
+  }
+}
+
+/** 4D projection - single higher dim, unrolled */
+function projectVertices4D(
+  vertices: VectorND[],
+  positions: Float32Array,
+  projectionDistance: number,
+  offset: number,
+  len: number
+): void {
+  // numHigherDims = 1, normalizationFactor = 1.0
+  for (let i = 0; i < len; i++) {
+    const v = vertices[i]!
+    const x = v[0]!
+    const y = v[1]!
+    const z = v[2]!
+    const w = v[3]!  // Direct access, no loop
+    
+    let denom = projectionDistance - w
+    if (Math.abs(denom) < MIN_SAFE_DISTANCE) {
+      denom = denom >= 0 ? MIN_SAFE_DISTANCE : -MIN_SAFE_DISTANCE
+    }
+    const scale = 1 / denom
+    
+    const idx = offset + i * 3
+    positions[idx] = x * scale
+    positions[idx + 1] = y * scale
+    positions[idx + 2] = z * scale
+  }
+}
+
+/** 5D projection - two higher dims, unrolled */
+function projectVertices5D(
+  vertices: VectorND[],
+  positions: Float32Array,
+  projectionDistance: number,
+  offset: number,
+  len: number
+): void {
+  const SQRT2_INV = 0.7071067811865475  // 1 / sqrt(2)
+  for (let i = 0; i < len; i++) {
+    const v = vertices[i]!
+    const x = v[0]!
+    const y = v[1]!
+    const z = v[2]!
+    // Direct access to both higher dims, no loop
+    const effectiveDepth = (v[3]! + v[4]!) * SQRT2_INV
+    
+    let denom = projectionDistance - effectiveDepth
+    if (Math.abs(denom) < MIN_SAFE_DISTANCE) {
+      denom = denom >= 0 ? MIN_SAFE_DISTANCE : -MIN_SAFE_DISTANCE
+    }
+    const scale = 1 / denom
+    
+    const idx = offset + i * 3
+    positions[idx] = x * scale
+    positions[idx + 1] = y * scale
+    positions[idx + 2] = z * scale
+  }
+}
+
+/** Generic N-D projection fallback */
+function projectVerticesND(
+  vertices: VectorND[],
+  positions: Float32Array,
+  projectionDistance: number,
+  offset: number,
+  len: number,
+  dimension: number
+): void {
+  const numHigherDims = dimension - 3
+  const normalizationFactor = Math.sqrt(numHigherDims)
+  
   for (let i = 0; i < len; i++) {
     const vertex = vertices[i]!
     const x = vertex[0]!
     const y = vertex[1]!
     const z = vertex[2]!
 
-    // Calculate effective depth from higher dimensions
     let effectiveDepth = 0
-    if (numHigherDims > 0) {
-      for (let d = 3; d < dimension; d++) {
-        effectiveDepth += vertex[d]!
-      }
-      effectiveDepth = effectiveDepth / normalizationFactor
+    for (let d = 3; d < dimension; d++) {
+      effectiveDepth += vertex[d]!
     }
+    effectiveDepth = effectiveDepth / normalizationFactor
 
-    // Apply perspective division
     let denominator = projectionDistance - effectiveDepth
     if (Math.abs(denominator) < MIN_SAFE_DISTANCE) {
       denominator = denominator >= 0 ? MIN_SAFE_DISTANCE : -MIN_SAFE_DISTANCE
@@ -430,8 +530,6 @@ export function projectVerticesToPositions(
     positions[idx + 1] = y * scale
     positions[idx + 2] = z * scale
   }
-
-  return len
 }
 
 /**

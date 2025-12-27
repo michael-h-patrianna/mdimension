@@ -107,6 +107,30 @@ export function getRotationPlaneCount(dimension: number): number {
 
 const planesCache = new Map<number, RotationPlane[]>()
 
+// OPT-ROT-1: Cache plane name to indices mapping for O(1) lookup
+const planeIndicesCache = new Map<number, Map<string, [number, number]>>()
+
+/**
+ * Gets cached plane indices lookup for a dimension
+ * OPT-ROT-1: Avoids O(n) find() in hot path
+ * @param dimension - The dimensionality of the space
+ * @returns Map from plane name to indices tuple
+ */
+function getPlaneIndicesLookup(dimension: number): Map<string, [number, number]> {
+  let lookup = planeIndicesCache.get(dimension)
+  if (!lookup) {
+    lookup = new Map()
+    for (let i = 0; i < dimension; i++) {
+      for (let j = i + 1; j < dimension; j++) {
+        const name = getAxisName(i) + getAxisName(j)
+        lookup.set(name, [i, j])
+      }
+    }
+    planeIndicesCache.set(dimension, lookup)
+  }
+  return lookup
+}
+
 /**
  * Gets all rotation planes for a given dimension
  * Each plane is defined by a pair of axis indices
@@ -260,9 +284,8 @@ export function composeRotations(
     resetToIdentity(result, dimension)
   }
 
-  // Get all valid planes for validation
-  const validPlanes = getRotationPlanes(dimension)
-  const validPlaneNames = import.meta.env.DEV ? new Set(validPlanes.map((p) => p.name)) : null
+  // OPT-ROT-1: Use cached lookup for O(1) plane name to indices resolution
+  const planeIndices = getPlaneIndicesLookup(dimension)
 
   // Get scratch matrices for this dimension
   const scratch = getScratchMatrices(dimension)
@@ -274,23 +297,23 @@ export function composeRotations(
 
   // Apply each rotation using swap-based composition
   for (const [planeName, angle] of angles.entries()) {
+    // OPT-ROT-1: O(1) lookup instead of O(n) find()
+    const indices = planeIndices.get(planeName)
+    
     // Validate plane name (DEV only)
-    if (import.meta.env.DEV && validPlaneNames && !validPlaneNames.has(planeName)) {
+    if (import.meta.env.DEV && !indices) {
       throw new Error(`Invalid plane name "${planeName}" for ${dimension}D space`)
     }
-
-    // Find the plane
-    const plane = validPlanes.find((p) => p.name === planeName)
-    if (import.meta.env.DEV && !plane) {
-      throw new Error(`Plane "${planeName}" not found`)
-    }
+    
+    // Skip invalid planes in production (shouldn't happen with valid input)
+    if (!indices) continue
 
     // Create rotation matrix directly into scratch buffer
     createRotationMatrixInto(
       scratch.rotation,
       dimension,
-      plane!.indices[0],
-      plane!.indices[1],
+      indices[0],
+      indices[1],
       angle
     )
 

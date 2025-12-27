@@ -3,20 +3,42 @@
 //! Connects each point to its k nearest neighbors to create a wireframe
 //! structure from a point cloud.
 //!
-//! Performance: O(n² log k) - computes pairwise distances and maintains k-smallest
+//! OPT-WASM-RUST-5: Performance O(n² log k) using BinaryHeap instead of full sort
 
-use std::collections::HashSet;
+use std::collections::{BinaryHeap, HashSet};
+use std::cmp::Ordering;
+
+/// Wrapper for distance comparison (max-heap, so we can pop the largest)
+#[derive(PartialEq)]
+struct DistEntry {
+    idx: usize,
+    dist_sq: f64,
+}
+
+impl Eq for DistEntry {}
+
+impl PartialOrd for DistEntry {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        // Reverse ordering for max-heap behavior (largest distance at top)
+        self.dist_sq.partial_cmp(&other.dist_sq)
+    }
+}
+
+impl Ord for DistEntry {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.partial_cmp(other).unwrap_or(Ordering::Equal)
+    }
+}
 
 /// Computes squared Euclidean distance between two n-dimensional points
 #[inline]
 fn distance_squared(a: &[f64], b: &[f64]) -> f64 {
-    a.iter()
-        .zip(b.iter())
-        .map(|(ai, bi)| {
-            let d = ai - bi;
-            d * d
-        })
-        .sum()
+    let mut sum = 0.0;
+    for (ai, bi) in a.iter().zip(b.iter()) {
+        let d = ai - bi;
+        sum += d * d;
+    }
+    sum
 }
 
 /// Builds edges connecting each point to its k nearest neighbors
@@ -51,24 +73,29 @@ pub fn build_knn_edges(flat_points: &[f64], dimension: usize, k: usize) -> Vec<u
     let mut edge_set: HashSet<(u32, u32)> = HashSet::new();
 
     for i in 0..n {
-        // Compute distances to all other points
-        let mut distances: Vec<(usize, f64)> = Vec::with_capacity(n - 1);
+        // Use max-heap to maintain k smallest distances (O(n log k) instead of O(n log n))
+        let mut heap: BinaryHeap<DistEntry> = BinaryHeap::with_capacity(effective_k + 1);
 
         for j in 0..n {
             if j == i {
                 continue;
             }
             let d2 = distance_squared(points[i], points[j]);
-            distances.push((j, d2));
+            
+            if heap.len() < effective_k {
+                heap.push(DistEntry { idx: j, dist_sq: d2 });
+            } else if let Some(top) = heap.peek() {
+                if d2 < top.dist_sq {
+                    heap.pop();
+                    heap.push(DistEntry { idx: j, dist_sq: d2 });
+                }
+            }
         }
 
-        // Partial sort to find k smallest - O(n log k) using selection
-        // For simplicity, we sort fully (O(n log n)) which is fine for moderate n
-        distances.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
-
-        // Take k nearest neighbors
-        for (j, _) in distances.iter().take(effective_k) {
-            let (min_idx, max_idx) = if i < *j { (i as u32, *j as u32) } else { (*j as u32, i as u32) };
+        // Extract k nearest neighbors from heap
+        for entry in heap {
+            let j = entry.idx;
+            let (min_idx, max_idx) = if i < j { (i as u32, j as u32) } else { (j as u32, i as u32) };
             edge_set.insert((min_idx, max_idx));
         }
     }

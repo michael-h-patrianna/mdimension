@@ -80,10 +80,11 @@ export function useAnimationLoop(): void {
         const updates = updatesRef.current
         updates.clear()
 
-        // Update each animating plane with per-plane bias multiplier
+        // OPT-ANIM-1: Update each animating plane with per-plane bias multiplier
+        // Using for...of instead of forEach to avoid closure allocation overhead
         const totalPlanes = currentAnimatingPlanes.size
         let planeIndex = 0
-        currentAnimatingPlanes.forEach((plane) => {
+        for (const plane of currentAnimatingPlanes) {
           const currentAngle = getRotationRadians(plane)
           // Apply per-plane bias multiplier using golden ratio spread
           const multiplier = getPlaneMultiplier(planeIndex, totalPlanes, animationBias)
@@ -99,7 +100,7 @@ export function useAnimationLoop(): void {
 
           updates.set(plane, newAngle)
           planeIndex++
-        })
+        }
 
         if (updates.size > 0) {
           updateRotations(updates)

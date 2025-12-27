@@ -83,15 +83,10 @@ pub fn generate_d_roots(dimension: usize, scale: f64) -> Vec<f64> {
     vertices
 }
 
-/// Counts the number of set bits in an integer
+/// Counts the number of set bits in an integer using hardware intrinsic
 #[inline]
-fn popcount(mut n: u32) -> u32 {
-    let mut count = 0;
-    while n > 0 {
-        count += n & 1;
-        n >>= 1;
-    }
-    count
+fn popcount(n: u32) -> u32 {
+    n.count_ones()
 }
 
 /// Generates E8 root system in R^8

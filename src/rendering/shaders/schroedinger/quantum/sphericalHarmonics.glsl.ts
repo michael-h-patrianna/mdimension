@@ -17,16 +17,38 @@
 export const sphericalHarmonicsBlock = `
 // ============================================
 // Spherical Harmonics Y_lm(θ, φ)
+// OPT-SH-1: Factorial lookup table instead of loop
 // ============================================
 
+// OPT-SH-1: Precomputed factorial lookup table (0! to 12!)
+// Eliminates loop overhead in hot path
+// 12! = 479001600 is the largest integer factorial that fits in float32
+const float FACTORIAL_LUT[13] = float[13](
+    1.0,           // 0!
+    1.0,           // 1!
+    2.0,           // 2!
+    6.0,           // 3!
+    24.0,          // 4!
+    120.0,         // 5!
+    720.0,         // 6!
+    5040.0,        // 7!
+    40320.0,       // 8!
+    362880.0,      // 9!
+    3628800.0,     // 10!
+    39916800.0,    // 11!
+    479001600.0    // 12!
+);
+
 /**
- * Factorial function for small integers
- * Used in normalization constants
+ * Factorial function using lookup table (OPT-SH-1)
+ * Falls back to loop for n > 12 (rare in practice for quantum viz)
  */
 float factorial(int n) {
     if (n <= 1) return 1.0;
-    float result = 1.0;
-    for (int i = 2; i <= n; i++) {
+    if (n <= 12) return FACTORIAL_LUT[n];
+    // Fallback for large n (rarely needed)
+    float result = FACTORIAL_LUT[12];
+    for (int i = 13; i <= n; i++) {
         result *= float(i);
     }
     return result;

@@ -80,6 +80,12 @@ pub fn multiply_matrices(a: &[f64], b: &[f64], dimension: usize) -> Vec<f64> {
 /// * `b` - Second matrix (row-major)
 /// * `dimension` - Matrix dimension
 fn multiply_matrices_into(out: &mut [f64], a: &[f64], b: &[f64], dimension: usize) {
+    // OPT-WASM-RUST-2: Specialized 4×4 matrix multiply (fully unrolled)
+    if dimension == 4 {
+        multiply_matrices_4x4(out, a, b);
+        return;
+    }
+    // Generic path for other dimensions
     for i in 0..dimension {
         let row_offset = i * dimension;
         for j in 0..dimension {
@@ -90,6 +96,31 @@ fn multiply_matrices_into(out: &mut [f64], a: &[f64], b: &[f64], dimension: usiz
             out[row_offset + j] = sum;
         }
     }
+}
+
+/// Specialized 4×4 matrix multiplication (fully unrolled, no loops)
+#[inline(always)]
+fn multiply_matrices_4x4(out: &mut [f64], a: &[f64], b: &[f64]) {
+    // Row 0
+    out[0] = a[0]*b[0] + a[1]*b[4] + a[2]*b[8] + a[3]*b[12];
+    out[1] = a[0]*b[1] + a[1]*b[5] + a[2]*b[9] + a[3]*b[13];
+    out[2] = a[0]*b[2] + a[1]*b[6] + a[2]*b[10] + a[3]*b[14];
+    out[3] = a[0]*b[3] + a[1]*b[7] + a[2]*b[11] + a[3]*b[15];
+    // Row 1
+    out[4] = a[4]*b[0] + a[5]*b[4] + a[6]*b[8] + a[7]*b[12];
+    out[5] = a[4]*b[1] + a[5]*b[5] + a[6]*b[9] + a[7]*b[13];
+    out[6] = a[4]*b[2] + a[5]*b[6] + a[6]*b[10] + a[7]*b[14];
+    out[7] = a[4]*b[3] + a[5]*b[7] + a[6]*b[11] + a[7]*b[15];
+    // Row 2
+    out[8] = a[8]*b[0] + a[9]*b[4] + a[10]*b[8] + a[11]*b[12];
+    out[9] = a[8]*b[1] + a[9]*b[5] + a[10]*b[9] + a[11]*b[13];
+    out[10] = a[8]*b[2] + a[9]*b[6] + a[10]*b[10] + a[11]*b[14];
+    out[11] = a[8]*b[3] + a[9]*b[7] + a[10]*b[11] + a[11]*b[15];
+    // Row 3
+    out[12] = a[12]*b[0] + a[13]*b[4] + a[14]*b[8] + a[15]*b[12];
+    out[13] = a[12]*b[1] + a[13]*b[5] + a[14]*b[9] + a[15]*b[13];
+    out[14] = a[12]*b[2] + a[13]*b[6] + a[14]*b[10] + a[15]*b[14];
+    out[15] = a[12]*b[3] + a[13]*b[7] + a[14]*b[11] + a[15]*b[15];
 }
 
 /// Resets a matrix to identity in-place
@@ -154,26 +185,43 @@ fn parse_axis_name_to_index(name: &str) -> Option<usize> {
 
 /// Parses a plane name (e.g., "XY", "XW") into axis indices
 /// Returns (index1, index2) where index1 < index2
+/// OPT-WASM-RUST-4: Avoid Vec<char> allocation - use byte slices directly
 fn parse_plane_name(plane_name: &str) -> Option<(usize, usize)> {
-    let chars: Vec<char> = plane_name.chars().collect();
-
-    // Two-character format (XY, XZ, etc.)
-    if chars.len() == 2 {
-        let name1 = chars[0].to_string();
-        let name2 = chars[1].to_string();
-        let idx1 = parse_axis_name_to_index(&name1)?;
-        let idx2 = parse_axis_name_to_index(&name2)?;
+    let bytes = plane_name.as_bytes();
+    
+    // Fast path: Two-character format (XY, XZ, etc.) - most common case
+    if bytes.len() == 2 {
+        let idx1 = parse_axis_byte(bytes[0])?;
+        let idx2 = parse_axis_byte(bytes[1])?;
         if idx1 == idx2 {
             return None;
         }
         return Some(if idx1 < idx2 { (idx1, idx2) } else { (idx2, idx1) });
     }
 
-    // Handle formats like "A6A7", "XA6", etc.
-    // Split by capital letter
-    let mut parts = Vec::new();
+    // Slow path: Handle formats like "A6A7", "XA6", etc.
+    parse_plane_name_extended(plane_name)
+}
+
+/// Parse single axis character to index (no allocation)
+#[inline(always)]
+fn parse_axis_byte(b: u8) -> Option<usize> {
+    match b {
+        b'X' => Some(0),
+        b'Y' => Some(1),
+        b'Z' => Some(2),
+        b'W' => Some(3),
+        b'V' => Some(4),
+        b'U' => Some(5),
+        _ => None,
+    }
+}
+
+/// Extended parsing for A6, A7, etc. format (rare case, allocation okay)
+fn parse_plane_name_extended(plane_name: &str) -> Option<(usize, usize)> {
+    let mut parts = Vec::with_capacity(2);
     let mut current = String::new();
-    for c in chars {
+    for c in plane_name.chars() {
         if c.is_ascii_uppercase() && !current.is_empty() {
             parts.push(current);
             current = String::new();
@@ -282,42 +330,107 @@ pub fn project_vertices_to_positions(
     let vertex_count = flat_vertices.len() / dimension;
     let mut positions = vec![0.0f32; vertex_count * 3];
 
-    let num_higher_dims = dimension - 3;
-    let normalization_factor = if num_higher_dims > 0 {
-        (num_higher_dims as f64).sqrt()
-    } else {
-        1.0
-    };
+    // OPT-WASM-RUST-6: Specialized paths for common dimensions
+    match dimension {
+        3 => project_vertices_3d(&mut positions, flat_vertices, vertex_count, projection_distance),
+        4 => project_vertices_4d(&mut positions, flat_vertices, vertex_count, projection_distance),
+        5 => project_vertices_5d(&mut positions, flat_vertices, vertex_count, projection_distance),
+        _ => project_vertices_nd(&mut positions, flat_vertices, vertex_count, dimension, projection_distance),
+    }
 
-    for i in 0..vertex_count {
-        let offset = i * dimension;
-        let x = flat_vertices[offset];
-        let y = flat_vertices[offset + 1];
-        let z = flat_vertices[offset + 2];
+    positions
+}
 
-        // Calculate effective depth from higher dimensions
-        let mut effective_depth = 0.0;
-        if num_higher_dims > 0 {
-            for d in 3..dimension {
-                effective_depth += flat_vertices[offset + d];
-            }
-            effective_depth /= normalization_factor;
-        }
-
-        // Apply perspective division
-        let mut denominator = projection_distance - effective_depth;
-        if denominator.abs() < MIN_SAFE_DISTANCE {
-            denominator = if denominator >= 0.0 { MIN_SAFE_DISTANCE } else { -MIN_SAFE_DISTANCE };
-        }
-        let scale = 1.0 / denominator;
-
+/// 3D projection (no higher dims, just perspective divide)
+#[inline(always)]
+fn project_vertices_3d(positions: &mut [f32], verts: &[f64], count: usize, proj_dist: f64) {
+    for i in 0..count {
+        let offset = i * 3;
+        let x = verts[offset];
+        let y = verts[offset + 1];
+        let z = verts[offset + 2];
+        let scale = 1.0 / proj_dist;
         let out_idx = i * 3;
         positions[out_idx] = (x * scale) as f32;
         positions[out_idx + 1] = (y * scale) as f32;
         positions[out_idx + 2] = (z * scale) as f32;
     }
+}
 
-    positions
+/// 4D projection (unrolled, single higher dim)
+#[inline(always)]
+fn project_vertices_4d(positions: &mut [f32], verts: &[f64], count: usize, proj_dist: f64) {
+    for i in 0..count {
+        let offset = i * 4;
+        let x = verts[offset];
+        let y = verts[offset + 1];
+        let z = verts[offset + 2];
+        let w = verts[offset + 3];
+        // num_higher_dims = 1, normalization_factor = 1.0
+        let effective_depth = w;
+        let mut denom = proj_dist - effective_depth;
+        if denom.abs() < MIN_SAFE_DISTANCE {
+            denom = if denom >= 0.0 { MIN_SAFE_DISTANCE } else { -MIN_SAFE_DISTANCE };
+        }
+        let scale = 1.0 / denom;
+        let out_idx = i * 3;
+        positions[out_idx] = (x * scale) as f32;
+        positions[out_idx + 1] = (y * scale) as f32;
+        positions[out_idx + 2] = (z * scale) as f32;
+    }
+}
+
+/// 5D projection (unrolled, two higher dims)
+#[inline(always)]
+fn project_vertices_5d(positions: &mut [f32], verts: &[f64], count: usize, proj_dist: f64) {
+    const NORM_FACTOR: f64 = 1.4142135623730951; // sqrt(2)
+    for i in 0..count {
+        let offset = i * 5;
+        let x = verts[offset];
+        let y = verts[offset + 1];
+        let z = verts[offset + 2];
+        let w = verts[offset + 3];
+        let v = verts[offset + 4];
+        let effective_depth = (w + v) / NORM_FACTOR;
+        let mut denom = proj_dist - effective_depth;
+        if denom.abs() < MIN_SAFE_DISTANCE {
+            denom = if denom >= 0.0 { MIN_SAFE_DISTANCE } else { -MIN_SAFE_DISTANCE };
+        }
+        let scale = 1.0 / denom;
+        let out_idx = i * 3;
+        positions[out_idx] = (x * scale) as f32;
+        positions[out_idx + 1] = (y * scale) as f32;
+        positions[out_idx + 2] = (z * scale) as f32;
+    }
+}
+
+/// Generic N-D projection (fallback)
+fn project_vertices_nd(positions: &mut [f32], verts: &[f64], count: usize, dim: usize, proj_dist: f64) {
+    let num_higher_dims = dim - 3;
+    let normalization_factor = (num_higher_dims as f64).sqrt();
+    
+    for i in 0..count {
+        let offset = i * dim;
+        let x = verts[offset];
+        let y = verts[offset + 1];
+        let z = verts[offset + 2];
+        
+        let mut effective_depth = 0.0;
+        for d in 3..dim {
+            effective_depth += verts[offset + d];
+        }
+        effective_depth /= normalization_factor;
+        
+        let mut denom = proj_dist - effective_depth;
+        if denom.abs() < MIN_SAFE_DISTANCE {
+            denom = if denom >= 0.0 { MIN_SAFE_DISTANCE } else { -MIN_SAFE_DISTANCE };
+        }
+        let scale = 1.0 / denom;
+        let out_idx = i * 3;
+        positions[out_idx] = (x * scale) as f32;
+        positions[out_idx + 1] = (y * scale) as f32;
+        positions[out_idx + 2] = (z * scale) as f32;
+    }
 }
 
 /// Projects edge pairs directly into positions for LineSegments2 geometry.

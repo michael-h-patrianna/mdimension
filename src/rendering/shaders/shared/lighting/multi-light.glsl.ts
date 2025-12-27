@@ -1,7 +1,37 @@
 export const multiLightBlock = `
 // ============================================
 // Multi-Light System Helper Functions
+// OPT-LIGHT-2: Use inversesqrt for combined length/normalize
 // ============================================
+
+/**
+ * OPT-LIGHT-2: Fast normalize using inversesqrt
+ * Avoids separate length() and divide operations.
+ * Returns (0, 1, 0) for zero-length vectors.
+ */
+vec3 fastNormalize(vec3 v) {
+    float lenSq = dot(v, v);
+    // Guard against zero-length vector
+    if (lenSq < 0.00000001) return vec3(0.0, 1.0, 0.0);
+    return v * inversesqrt(lenSq);
+}
+
+/**
+ * OPT-LIGHT-2: Fast normalize with length output
+ * Computes both normalized vector and length in one pass.
+ * Returns length via out parameter, normalized direction via return.
+ */
+vec3 fastNormalizeWithLength(vec3 v, out float len) {
+    float lenSq = dot(v, v);
+    // Guard against zero-length vector
+    if (lenSq < 0.00000001) {
+        len = 0.0;
+        return vec3(0.0, 1.0, 0.0);
+    }
+    float invLen = inversesqrt(lenSq);
+    len = lenSq * invLen;  // len = lenSq / sqrt(lenSq) = sqrt(lenSq)
+    return v * invLen;
+}
 
 /**
  * Calculate light direction for a given light index.
@@ -12,17 +42,14 @@ vec3 getLightDirection(int lightIndex, vec3 fragPos) {
 
     if (lightType == LIGHT_TYPE_POINT || lightType == LIGHT_TYPE_SPOT) {
         vec3 diff = uLightPositions[lightIndex] - fragPos;
-        float len = length(diff);
-        // Guard against zero-length vector (light at fragment position)
-        return len > 0.0001 ? diff / len : vec3(0.0, 1.0, 0.0);
+        // OPT-LIGHT-2: Use fast normalize
+        return fastNormalize(diff);
     }
     else if (lightType == LIGHT_TYPE_DIRECTIONAL) {
         // Directional lights: stored direction points Light -> Surface
         // We need L vector: Surface -> Light, so we negate it
-        vec3 dir = -uLightDirections[lightIndex];
-        float len = length(dir);
-        // Guard against zero-length direction
-        return len > 0.0001 ? dir / len : vec3(0.0, 1.0, 0.0);
+        // OPT-LIGHT-2: Use fast normalize
+        return fastNormalize(-uLightDirections[lightIndex]);
     }
 
     return vec3(0.0, 1.0, 0.0);
@@ -33,10 +60,8 @@ vec3 getLightDirection(int lightIndex, vec3 fragPos) {
  * Uses precomputed cosines (uSpotCosInner/uSpotCosOuter) to avoid per-fragment trig.
  */
 float getSpotAttenuation(int lightIndex, vec3 lightToFrag) {
-    vec3 dir = uLightDirections[lightIndex];
-    float dirLen = length(dir);
-    // Guard against zero-length direction
-    vec3 normDir = dirLen > 0.0001 ? dir / dirLen : vec3(0.0, -1.0, 0.0);
+    // OPT-LIGHT-2: Use fast normalize
+    vec3 normDir = fastNormalize(uLightDirections[lightIndex]);
     float cosAngle = dot(lightToFrag, normDir);
     return smoothstep(uSpotCosOuter[lightIndex], uSpotCosInner[lightIndex], cosAngle);
 }
