@@ -1,6 +1,5 @@
-import React, { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useExportStore } from '@/stores/exportStore'
-import { m, AnimatePresence } from 'motion/react'
 import { Icon } from '@/components/ui/Icon'
 
 export const ExportPreview = () => {

@@ -190,6 +190,7 @@ export class EnvironmentCompositePass extends BasePass {
   /**
    * Update shell glow configuration.
    * Call this before rendering to control the photon shell appearance.
+   * @param config - Partial shell glow configuration to apply
    */
   setShellConfig(config: Partial<ShellGlowConfig>): void {
     if (config.enabled !== undefined) {
@@ -205,6 +206,7 @@ export class EnvironmentCompositePass extends BasePass {
 
   /**
    * Get current shell glow configuration.
+   * @returns Current shell glow configuration
    */
   getShellConfig(): ShellGlowConfig {
     return {

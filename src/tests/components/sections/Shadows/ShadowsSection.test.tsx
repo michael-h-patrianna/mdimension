@@ -66,7 +66,7 @@ describe('ShadowsSection', () => {
 
       render(<ShadowsSection defaultOpen />);
       expect(screen.getByTestId('shadow-enabled-toggle')).toBeInTheDocument();
-      expect(screen.getByText('Enable Shadows')).toBeInTheDocument();
+      expect(screen.getByText('Enable shadows')).toBeInTheDocument();
     });
 
     it('should accept defaultOpen prop for expansion state', () => {
@@ -98,10 +98,10 @@ describe('ShadowsSection', () => {
 
       render(<ShadowsSection defaultOpen />);
 
-      expect(screen.getByText('Raymarched Shadows')).toBeInTheDocument();
+      // Component shows the shadow type label, not a settings header
+      expect(screen.getByText(/Self-Shadow \(Raymarched\)/)).toBeInTheDocument();
       expect(screen.getByTestId('shadow-quality-select')).toBeInTheDocument();
       expect(screen.getByTestId('shadow-softness-slider')).toBeInTheDocument();
-      expect(screen.getByText(/Self-Shadow \(Raymarched\)/)).toBeInTheDocument();
     });
 
     it('should show SDF controls for quaternion-julia', () => {
@@ -110,7 +110,8 @@ describe('ShadowsSection', () => {
 
       render(<ShadowsSection defaultOpen />);
 
-      expect(screen.getByText('Raymarched Shadows')).toBeInTheDocument();
+      // Component shows the shadow type label, not a settings header
+      expect(screen.getByText(/Self-Shadow \(Raymarched\)/)).toBeInTheDocument();
       expect(screen.getByTestId('shadow-quality-select')).toBeInTheDocument();
       expect(screen.getByTestId('shadow-softness-slider')).toBeInTheDocument();
     });
@@ -121,10 +122,10 @@ describe('ShadowsSection', () => {
 
       render(<ShadowsSection defaultOpen />);
 
-      expect(screen.getByText('Volumetric Self-Shadowing')).toBeInTheDocument();
+      // Component shows "Self-Shadow (Volumetric)" label
+      expect(screen.getByText(/Self-Shadow \(Volumetric\)/)).toBeInTheDocument();
       expect(screen.getByTestId('schroedinger-shadow-strength')).toBeInTheDocument();
       expect(screen.getByTestId('schroedinger-shadow-steps')).toBeInTheDocument();
-      expect(screen.getByText(/Self-Shadow \(Volumetric\)/)).toBeInTheDocument();
     });
 
     it('should show Shadow Map controls (Bias, Blur) for polytope', () => {
@@ -133,10 +134,10 @@ describe('ShadowsSection', () => {
 
       render(<ShadowsSection defaultOpen />);
 
-      expect(screen.getByText('Shadow Map Settings')).toBeInTheDocument();
+      // Component shows "Environment Shadow" label, no separate header
+      expect(screen.getByText(/Environment Shadow/)).toBeInTheDocument();
       expect(screen.getByTestId('shadow-map-bias')).toBeInTheDocument();
       expect(screen.getByTestId('shadow-map-blur')).toBeInTheDocument();
-      expect(screen.getByText(/Environment Shadow/)).toBeInTheDocument();
     });
 
     it('should not show SDF controls when object is schroedinger', () => {

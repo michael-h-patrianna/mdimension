@@ -1,8 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { ExportModal } from '@/components/overlays/ExportModal';
 import { useExportStore } from '@/stores/exportStore';
-import { vi } from 'vitest';
-import React from 'react';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 // Mock dependencies
 vi.mock('@/components/ui/Icon', () => ({
@@ -38,19 +37,46 @@ vi.mock('@/components/overlays/export/ExportAdvancedTab', () => ({
 
 describe('ExportModal', () => {
   beforeEach(() => {
-    // Reset store state
+    // Reset store state with valid ExportMode and complete settings
     useExportStore.setState({
       isModalOpen: true,
       status: 'idle',
-      exportMode: 'video',
+      exportMode: 'in-memory',
       estimatedSizeMB: 10,
       settings: {
+        format: 'mp4',
+        codec: 'avc',
         resolution: '1080p',
+        customWidth: 1920,
+        customHeight: 1080,
         fps: 60,
         duration: 10,
-        format: 'mp4',
-        quality: 'high',
-        bitrate: 10
+        bitrate: 10,
+        bitrateMode: 'constant',
+        hardwareAcceleration: 'prefer-software',
+        warmupFrames: 5,
+        textOverlay: {
+          enabled: false,
+          text: 'mdimension',
+          fontFamily: 'Inter, sans-serif',
+          fontSize: 48,
+          fontWeight: 700,
+          textAlign: 'center',
+          letterSpacing: 0,
+          color: '#ffffff',
+          opacity: 1,
+          shadowColor: 'rgba(0,0,0,0.5)',
+          shadowBlur: 10,
+          positionX: 0.5,
+          positionY: 0.9,
+        },
+        crop: {
+          enabled: false,
+          x: 0,
+          y: 0,
+          width: 1,
+          height: 1,
+        }
       }
     });
   });

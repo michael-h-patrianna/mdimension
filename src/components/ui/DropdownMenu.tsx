@@ -23,6 +23,14 @@ export interface DropdownMenuProps {
 
 /**
  * Portaled submenu that positions itself relative to a trigger rect
+ * @param props - Component properties
+ * @param props.items - Menu items to render
+ * @param props.triggerRect - Bounding rect of the trigger element
+ * @param props.onClose - Callback when menu should close
+ * @param props.depth - Nesting depth for z-index calculation
+ * @param props.onMouseEnter - Mouse enter handler
+ * @param props.onMouseLeave - Mouse leave handler
+ * @returns Rendered submenu portal
  */
 const PortaledSubmenu: React.FC<{
   items: DropdownMenuItem[];
@@ -96,6 +104,11 @@ const PortaledSubmenu: React.FC<{
 
 /**
  * Renders menu items with submenu support
+ * @param props - Component properties
+ * @param props.items - Menu items to render
+ * @param props.onClose - Callback when menu should close
+ * @param props.depth - Nesting depth for z-index calculation
+ * @returns Rendered menu items
  */
 const MenuItems: React.FC<{
   items: DropdownMenuItem[];
@@ -320,7 +333,7 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
 
   const menuVariants = {
     closed: { opacity: 0, y: -8, scale: 0.95, transition: { duration: 0.1 } },
-    open: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', damping: 25, stiffness: 400, mass: 0.5 } }
+    open: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring' as const, damping: 25, stiffness: 400, mass: 0.5 } }
   };
 
   return (

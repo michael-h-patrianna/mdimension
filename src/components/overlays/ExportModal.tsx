@@ -13,6 +13,8 @@ import { ExportGeneralTab } from './export/ExportGeneralTab'
 import { ExportTextTab } from './export/ExportTextTab'
 import { ExportAdvancedTab } from './export/ExportAdvancedTab'
 
+type ExportTabId = 'presets' | 'general' | 'text' | 'advanced'
+
 export const ExportModal = () => {
   const {
     isModalOpen,
@@ -24,7 +26,6 @@ export const ExportModal = () => {
     progress,
     previewUrl,
     eta,
-    error,
     reset,
     estimatedSizeMB,
     exportTier,
@@ -42,7 +43,6 @@ export const ExportModal = () => {
     progress: state.progress,
     previewUrl: state.previewUrl,
     eta: state.eta,
-    error: state.error,
     reset: state.reset,
     estimatedSizeMB: state.estimatedSizeMB,
     exportTier: state.exportTier,
@@ -52,7 +52,7 @@ export const ExportModal = () => {
     settings: state.settings
   })))
 
-  const [activeTab, setActiveTab] = useState<'presets' | 'general' | 'text' | 'advanced'>('presets')
+  const [activeTab, setActiveTab] = useState<ExportTabId>('presets')
   const [showStopConfirm, setShowStopConfirm] = useState(false)
 
   // Update canvas aspect ratio when modal opens
@@ -288,7 +288,7 @@ export const ExportModal = () => {
                         <Tabs
                             className="flex-1 flex flex-col min-h-0"
                             value={activeTab}
-                            onChange={(id) => setActiveTab(id as any)}
+                            onChange={(id) => setActiveTab(id as ExportTabId)}
                             fullWidth
                             tabs={[
                                 { id: 'presets', label: 'Presets', content: <div className="pt-6"><ExportPresets /></div> },

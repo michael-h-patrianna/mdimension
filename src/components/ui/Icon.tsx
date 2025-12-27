@@ -1,16 +1,16 @@
 import React from 'react';
 
-export type IconName = 
-  | 'eye' 
-  | 'sphere' 
-  | 'cog' 
-  | 'home' 
-  | 'image' 
-  | 'play' 
-  | 'pause' 
-  | 'stop' 
-  | 'undo' 
-  | 'redo' 
+export type IconName =
+  | 'eye'
+  | 'sphere'
+  | 'cog'
+  | 'home'
+  | 'image'
+  | 'play'
+  | 'pause'
+  | 'stop'
+  | 'undo'
+  | 'redo'
   | 'menu'
   | 'arrow-left'
   | 'arrow-right'
@@ -26,7 +26,10 @@ export type IconName =
   | 'chevron-right'
   | 'chevron-down'
   | 'sparkles'
-  | 'crop';
+  | 'crop'
+  | 'clock'
+  | 'settings'
+  | 'layers';
 
 interface IconProps {
   name: IconName;
@@ -60,7 +63,10 @@ const icons: Record<IconName, React.ReactNode> = {
   'chevron-right': <path d="M5.5 3L10.5 8L5.5 13" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
   'chevron-down': <path d="M3 5.5L8 10.5L13 5.5" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
   sparkles: <path d="M10 1l1.5 3.5L15 6l-3.5 1.5L10 11l-1.5-3.5L5 6l3.5-1.5L10 1zm-5 7l.75 1.75L7.5 10.5l-1.75.75L5 13l-.75-1.75L2.5 10.5l1.75-.75L5 8zm10-7l.5 1.25L16.75 2.75l-1.25.5L15 4.5l-.5-1.25L13.25 2.75l1.25-.5L15 1z" />,
-  crop: <path d="M5 0v2H2v12h12v2h2v-2h2v-2H14V2h-2v10H4V2H2V0h3zm2 4v2h2V4H7z" />
+  crop: <path d="M5 0v2H2v12h12v2h2v-2h2v-2H14V2h-2v10H4V2H2V0h3zm2 4v2h2V4H7z" />,
+  clock: <path d="M8 0C3.58 0 0 3.58 0 8s3.58 8 8 8 8-3.58 8-8-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6zm.5-10H7v5l4.25 2.55.75-1.23-3.5-2.08V4z" />,
+  settings: <path d="M14.59 9.535c-0.839-1.454-0.335-3.317 1.127-4.164l-1.572-2.723c-0.449 0.263-0.972 0.414-1.529 0.414-1.68 0-3.042-1.371-3.042-3.062h-3.145c0.004 0.522-0.126 1.051-0.406 1.535-0.839 1.454-2.706 1.948-4.17 1.106l-1.572 2.723c0.453 0.257 0.845 0.634 1.123 1.117 0.838 1.452 0.336 3.311-1.12 4.16l1.572 2.723c0.448-0.261 0.967-0.41 1.522-0.41 1.675 0 3.033 1.362 3.042 3.046h3.145c-0.001-0.517 0.129-1.040 0.406-1.519 0.838-1.452 2.7-1.947 4.163-1.11l1.572-2.723c-0.45-0.257-0.839-0.633-1.116-1.113zM8 11.24c-1.789 0-3.24-1.45-3.24-3.24s1.45-3.24 3.24-3.24c1.789 0 3.24 1.45 3.24 3.24s-1.45 3.24-3.24 3.24z" />,
+  layers: <path d="M8 0L0 4l8 4 8-4-8-4zM0 8l8 4 8-4M0 12l8 4 8-4" stroke="currentColor" fill="none" strokeWidth="1.5" strokeLinejoin="round" />
 };
 
 export const Icon: React.FC<IconProps> = ({ name, className = "", size = 16 }) => {

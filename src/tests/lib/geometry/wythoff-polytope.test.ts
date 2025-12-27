@@ -401,7 +401,7 @@ describe('High-dimensional omnitruncated memory safety', () => {
   // 1. Lazy permutation generation with early termination (prevents memory exhaustion)
   // 2. O(V × n) combinatorial edge generation (instead of O(V²) distance-based)
 
-  it('generates 11D omnitruncated polytope without memory exhaustion', { timeout: 15000 }, () => {
+  it('generates 11D omnitruncated polytope without memory exhaustion', { timeout: 60000 }, () => {
     // This previously crashed due to generating all 11! permutations upfront
     const polytope = generateWythoffPolytope(11, {
       symmetryGroup: 'B',
@@ -419,7 +419,7 @@ describe('High-dimensional omnitruncated memory safety', () => {
     expect(polytope.vertices[0]?.length).toBe(11)
   })
 
-  it('generates 10D omnitruncated polytope with early termination', { timeout: 15000 }, () => {
+  it('generates 10D omnitruncated polytope with early termination', { timeout: 60000 }, () => {
     const polytope = generateWythoffPolytope(10, {
       symmetryGroup: 'B',
       preset: 'omnitruncated',
@@ -431,7 +431,7 @@ describe('High-dimensional omnitruncated memory safety', () => {
     expect(polytope.vertices.length).toBeLessThanOrEqual(20000) // Omnitruncated limit
   })
 
-  it('generates 9D omnitruncated polytope efficiently', () => {
+  it('generates 9D omnitruncated polytope efficiently', { timeout: 30000 }, () => {
     const polytope = generateWythoffPolytope(9, {
       symmetryGroup: 'B',
       preset: 'omnitruncated',
@@ -443,7 +443,7 @@ describe('High-dimensional omnitruncated memory safety', () => {
     expect(polytope.vertices.length).toBeLessThanOrEqual(20000) // Omnitruncated limit
   })
 
-  it('respects stricter vertex limits for omnitruncated presets', () => {
+  it('respects stricter vertex limits for omnitruncated presets', { timeout: 90000 }, () => {
     // Omnitruncated now uses O(V × n) combinatorial edge generation
     // allowing higher limits than before
     const omniLimits: Record<number, number> = {

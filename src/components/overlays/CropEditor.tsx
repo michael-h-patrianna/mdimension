@@ -2,7 +2,7 @@ import { useExportStore } from '@/stores/exportStore'
 import { useLayoutStore } from '@/stores/layoutStore'
 import { Button } from '../ui/Button'
 import { Icon } from '../ui/Icon'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { type PointerEvent as ReactPointerEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { m, useMotionValue } from 'motion/react'
 import { useShallow } from 'zustand/shallow'
 
@@ -95,7 +95,7 @@ export const CropEditor = () => {
 
   // --- Resize Handlers ---
   const startResize = useCallback(
-    (e: React.PointerEvent, handle: string) => {
+    (e: ReactPointerEvent, handle: string) => {
       e.preventDefault()
       e.stopPropagation()
 

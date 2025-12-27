@@ -193,6 +193,7 @@ describe('ridge-based face extraction', () => {
   /**
    * Helper to generate 4D simplex vertices
    * A 4D simplex has 5 vertices in 4D space
+   * @returns 4D simplex vertex coordinates
    */
   function generate4DSimplex(): number[][] {
     // Regular 4-simplex vertices (5 equidistant points in 4D)
@@ -209,6 +210,7 @@ describe('ridge-based face extraction', () => {
   /**
    * Helper to generate 4D cross-polytope (16-cell) vertices
    * Has 8 vertices: ±1 on each of 4 axes
+   * @returns 4D cross-polytope vertex coordinates
    */
   function generate4DCrossPolytope(): number[][] {
     const vertices: number[][] = []
@@ -225,6 +227,7 @@ describe('ridge-based face extraction', () => {
   /**
    * Helper to generate 4D hypercube (tesseract) vertices
    * Has 16 vertices: all ±1 combinations
+   * @returns 4D hypercube vertex coordinates
    */
   function generate4DHypercube(): number[][] {
     const vertices: number[][] = []
@@ -298,25 +301,25 @@ describe('ridge-based face extraction', () => {
       const v2 = vertices[i2]!
 
       // Compute edges in 3D (first 3 coords)
-      const e1 = [v1[0] - v0[0], v1[1] - v0[1], v1[2] - v0[2]]
-      const e2 = [v2[0] - v0[0], v2[1] - v0[1], v2[2] - v0[2]]
+      const e1 = [v1[0]! - v0[0]!, v1[1]! - v0[1]!, v1[2]! - v0[2]!]
+      const e2 = [v2[0]! - v0[0]!, v2[1]! - v0[1]!, v2[2]! - v0[2]!]
 
       // Cross product for normal
       const normal = [
-        e1[1] * e2[2] - e1[2] * e2[1],
-        e1[2] * e2[0] - e1[0] * e2[2],
-        e1[0] * e2[1] - e1[1] * e2[0],
+        e1[1]! * e2[2]! - e1[2]! * e2[1]!,
+        e1[2]! * e2[0]! - e1[0]! * e2[2]!,
+        e1[0]! * e2[1]! - e1[1]! * e2[0]!,
       ]
 
       // Face centroid
       const center = [
-        (v0[0] + v1[0] + v2[0]) / 3,
-        (v0[1] + v1[1] + v2[1]) / 3,
-        (v0[2] + v1[2] + v2[2]) / 3,
+        (v0[0]! + v1[0]! + v2[0]!) / 3,
+        (v0[1]! + v1[1]! + v2[1]!) / 3,
+        (v0[2]! + v1[2]! + v2[2]!) / 3,
       ]
 
       // Dot product
-      const dot = normal[0] * center[0] + normal[1] * center[1] + normal[2] * center[2]
+      const dot = normal[0]! * center[0]! + normal[1]! * center[1]! + normal[2]! * center[2]!
 
       if (dot > 0.0001) outwardCount++
       else if (dot < -0.0001) inwardCount++

@@ -118,9 +118,9 @@ export class VideoRecorder {
    * Captures the current state of the canvas as a frame.
    * @param timestamp - The timestamp of the frame in seconds (segment-relative for encoding).
    * @param duration - The duration of the frame in seconds.
-   * @param globalTimestamp - Optional global video timestamp for fade calculations (defaults to timestamp).
+   * @param _globalTimestamp - Optional global video timestamp for fade calculations (reserved for future use).
    */
-  async captureFrame(timestamp: number, duration: number, globalTimestamp?: number) {
+  async captureFrame(timestamp: number, duration: number, _globalTimestamp?: number) {
     if (!this.source || !this.isRecording) {
       throw new Error('Recorder not initialized or not recording')
     }

@@ -163,7 +163,7 @@ export function VideoExportController() {
           recorderRef.current = null
       }
     }
-  }, [setStatus, restoreState, setPreviewUrl, setProgress, handleError])
+  }, [setStatus, restoreState, setPreviewUrl, setProgress, handleError, settings.format])
 
   const updateSceneState = useCallback((deltaTimeSec: number) => {
       const animatingPlanes = useAnimationStore.getState().animatingPlanes

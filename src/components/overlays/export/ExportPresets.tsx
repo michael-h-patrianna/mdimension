@@ -1,4 +1,3 @@
-import React from 'react'
 import { useExportStore } from '@/stores/exportStore'
 import { Icon } from '@/components/ui/Icon'
 import { soundManager } from '@/lib/audio/SoundManager'
@@ -11,7 +10,6 @@ import iconTwitter from '@/assets/exporter/twitter.svg'
 import iconCinematic from '@/assets/exporter/cinematic.svg'
 
 interface PresetCardProps {
-    id: string
     label: string
     description: string
     iconSrc: string
@@ -20,7 +18,7 @@ interface PresetCardProps {
     onClick: () => void
 }
 
-const PresetCard = ({ id, label, description, iconSrc, aspectRatio, isActive, onClick }: PresetCardProps) => (
+const PresetCard = ({ label, description, iconSrc, aspectRatio, isActive, onClick }: PresetCardProps) => (
     <button
         onClick={onClick}
         className={`

@@ -10,6 +10,7 @@ import {
   updateNDTransformUniforms,
 } from '@/rendering/shaders/transforms/ndTransform';
 import { createIdentityMatrix, createRotationMatrix } from '@/lib/math';
+import { fcos, fsin } from '@/lib/math/trig';
 
 describe('ndTransform', () => {
   describe('constants', () => {
@@ -57,8 +58,9 @@ describe('ndTransform', () => {
 
       expect(result.dimension).toBe(4);
 
-      const cos45 = Math.cos(Math.PI / 4);
-      const sin45 = Math.sin(Math.PI / 4);
+      // Use fcos/fsin to match what createRotationMatrix uses (fast trig approximations)
+      const cos45 = fcos(Math.PI / 4);
+      const sin45 = fsin(Math.PI / 4);
 
       // Column-major order for Three.js
       const elements = result.rotationMatrix4D.elements;
@@ -90,7 +92,8 @@ describe('ndTransform', () => {
       const matrix = createRotationMatrix(5, 0, 4, angle);
       const result = matrixToGPUUniforms(matrix, 5);
 
-      const sin45 = Math.sin(angle);
+      // Use fsin to match what createRotationMatrix uses (fast trig approximations)
+      const sin45 = fsin(angle);
 
       // extraRotationCols should contain matrix[row][col] for row=0..3, col=4
       // extraRotationCols[0] = matrix[0][4] = -sin(45)
@@ -109,8 +112,9 @@ describe('ndTransform', () => {
       const matrix = createRotationMatrix(5, 0, 4, angle);
       const result = matrixToGPUUniforms(matrix, 5);
 
-      const cos45 = Math.cos(angle);
-      const sin45 = Math.sin(angle);
+      // Use fcos/fsin to match what createRotationMatrix uses (fast trig approximations)
+      const cos45 = fcos(angle);
+      const sin45 = fsin(angle);
 
       // depthRowSums[j] = sum of matrix[i][j] for i >= 4
       // For XV rotation, matrix[4][0] = sin(45), matrix[4][4] = cos(45)
@@ -131,8 +135,9 @@ describe('ndTransform', () => {
 
       // Input point: [1, 0, 0, 0, 1] (x=1, v=1)
       const input = [1, 0, 0, 0, 1];
-      const cos45 = Math.cos(angle);
-      const sin45 = Math.sin(angle);
+      // Use fcos/fsin to match what createRotationMatrix uses (fast trig approximations)
+      const cos45 = fcos(angle);
+      const sin45 = fsin(angle);
 
       // Expected CPU result:
       // rotated[0] = cos*1 + (-sin)*1 = cos - sin ≈ 0

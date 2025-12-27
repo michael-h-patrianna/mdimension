@@ -8,6 +8,7 @@
  */
 
 import { NDTransformSource } from '@/rendering/uniforms/sources/NDTransformSource'
+import { fcos, fsin } from '@/lib/math/trig'
 import * as THREE from 'three'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
@@ -351,8 +352,9 @@ describe('NDTransformSource', () => {
 
       // XY rotation affects the first 2 rows/cols
       // Rotation matrix should have cos at [0,0] and [1,1], sin at [0,1] and -sin at [1,0]
-      const cos45 = Math.cos(angle)
-      const sin45 = Math.sin(angle)
+      // Use fcos/fsin to match what the rotation matrix computation uses (fast trig approximations)
+      const cos45 = fcos(angle)
+      const sin45 = fsin(angle)
 
       expect(m[0]).toBeCloseTo(cos45, 5)
       expect(m[1]).toBeCloseTo(sin45, 5)

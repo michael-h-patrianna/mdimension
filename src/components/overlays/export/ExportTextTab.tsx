@@ -1,4 +1,3 @@
-import React from 'react'
 import { useExportStore } from '@/stores/exportStore'
 import { Switch } from '@/components/ui/Switch'
 import { Input } from '@/components/ui/Input'
@@ -81,7 +80,8 @@ export const ExportTextTab = () => {
                         </div>
                          <div className="space-y-2">
                              <label className="text-[10px] text-text-tertiary uppercase font-bold tracking-widest">Opacity</label>
-                             <Slider 
+                             <Slider
+                                label="Opacity"
                                 value={textOverlay.opacity}
                                 onChange={(val) => update({ opacity: val })}
                                 min={0} max={1} step={0.1}
