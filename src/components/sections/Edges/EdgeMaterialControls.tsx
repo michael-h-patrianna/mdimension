@@ -75,6 +75,17 @@ export const EdgeMaterialControls: React.FC<EdgeMaterialControlsProps> = React.m
           showValue
         />
 
+         {/* Specular Intensity */}
+        <Slider
+          label="Specular Intensity"
+          min={0}
+          max={2}
+          step={0.1}
+          value={specularIntensity}
+          onChange={setSpecularIntensity}
+          showValue
+        />
+
         {/* Specular Color */}
         <div className="flex items-center justify-between">
           <ColorPicker
@@ -94,16 +105,7 @@ export const EdgeMaterialControls: React.FC<EdgeMaterialControlsProps> = React.m
           )}
         </div>
 
-        {/* Specular Intensity */}
-        <Slider
-          label="Specular Intensity"
-          min={0}
-          max={2}
-          step={0.1}
-          value={specularIntensity}
-          onChange={setSpecularIntensity}
-          showValue
-        />
+
       </ControlGroup>
     )
   }

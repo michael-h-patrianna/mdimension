@@ -8,19 +8,18 @@
  */
 
 import { Section } from '@/components/sections/Section';
-import { ControlGroup } from '@/components/ui/ControlGroup';
 import { Select, type SelectOption } from '@/components/ui/Select';
 import { Slider } from '@/components/ui/Slider';
 import { Switch } from '@/components/ui/Switch';
 import { isPolytopeCategory } from '@/lib/geometry/registry/helpers';
+import type { LightSource } from '@/rendering/lights/types';
 import {
-    SHADOW_QUALITY_LABELS,
-    SHADOW_QUALITY_OPTIONS,
-    SHADOW_QUALITY_TOOLTIPS,
-    SHADOW_SOFTNESS_RANGE,
+  SHADOW_QUALITY_LABELS,
+  SHADOW_QUALITY_OPTIONS,
+  SHADOW_QUALITY_TOOLTIPS,
+  SHADOW_SOFTNESS_RANGE,
 } from '@/rendering/shadows/constants';
 import type { ShadowQuality } from '@/rendering/shadows/types';
-import type { LightSource } from '@/rendering/lights/types';
 import { useExtendedObjectStore, type ExtendedObjectState } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useLightingStore, type LightingSlice } from '@/stores/lightingStore';
@@ -157,18 +156,13 @@ export const ShadowsSection: React.FC<ShadowsSectionProps> = ({
           </div>
 
           {/* Main Shadow Toggle */}
-          <ControlGroup
-            title="Enable Shadows"
-            rightElement={
+
               <Switch
                 checked={effectiveShadowEnabled}
                 onCheckedChange={handleShadowToggle}
                 data-testid="shadow-enabled-toggle"
+                label="Enable shadows"
               />
-            }
-          >
-            <span />
-          </ControlGroup>
 
           {/* Shadow Settings - conditionally rendered based on shadow enabled */}
           <div
@@ -178,7 +172,6 @@ export const ShadowsSection: React.FC<ShadowsSectionProps> = ({
 
             {/* SDF Fractal Controls (Mandelbulb, Julia) */}
             {isSdfFractal && (
-              <ControlGroup title="Raymarched Shadows">
                 <div className="space-y-3">
                   <div className="space-y-1">
                     <Select<ShadowQuality>
@@ -204,12 +197,11 @@ export const ShadowsSection: React.FC<ShadowsSectionProps> = ({
                     data-testid="shadow-softness-slider"
                   />
                 </div>
-              </ControlGroup>
             )}
 
             {/* Schrödinger Volumetric Shadow Controls */}
             {isSchroedinger && (
-              <ControlGroup title="Volumetric Self-Shadowing">
+              <div>
                 <p className="text-[10px] text-text-secondary mb-2">
                   Expensive volumetric light integration for realistic cloud-like shadows.
                 </p>
@@ -238,12 +230,12 @@ export const ShadowsSection: React.FC<ShadowsSectionProps> = ({
                     </p>
                   </div>
                 </div>
-              </ControlGroup>
+              </div>
             )}
 
             {/* Polytope Shadow Map Controls */}
             {isPolytope && (
-              <ControlGroup title="Shadow Map Settings">
+              <div>
                 <div className="space-y-3">
                   <div className="space-y-1">
                     <Select<ShadowQuality>
@@ -280,7 +272,7 @@ export const ShadowsSection: React.FC<ShadowsSectionProps> = ({
                     data-testid="shadow-map-blur"
                   />
                 </div>
-              </ControlGroup>
+              </div>
             )}
           </div>
         </div>

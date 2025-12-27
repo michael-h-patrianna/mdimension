@@ -14,6 +14,7 @@
  * @see docs/prd/fractal-morphing-animation.md
  */
 
+import { fsin } from '@/lib/math/trig'
 import { GOLDEN_RATIO } from './biasCalculation'
 
 /**
@@ -92,7 +93,7 @@ export function computeMixingMatrix(
         // Use unique phase for each pair based on golden ratio
         const pairIndex = i * dimension + j
         const phase = PHASE_OFFSET + pairIndex * GOLDEN_RATIO * animationBias
-        const mixValue = config.intensity * Math.sin(time * effectiveFrequency + phase)
+        const mixValue = config.intensity * fsin(time * effectiveFrequency + phase)
         matrix[idx] = mixValue
         // Mirror to lower triangle for symmetry
         matrix[j * dimension + i] = mixValue
@@ -148,7 +149,7 @@ export function computeMixingMatrixInPlace(
       } else if (i < j) {
         const pairIndex = i * dimension + j
         const phase = PHASE_OFFSET + pairIndex * GOLDEN_RATIO * animationBias
-        const mixValue = config.intensity * Math.sin(time * effectiveFrequency + phase)
+        const mixValue = config.intensity * fsin(time * effectiveFrequency + phase)
         output[idx] = mixValue
         output[j * dimension + i] = mixValue
       }

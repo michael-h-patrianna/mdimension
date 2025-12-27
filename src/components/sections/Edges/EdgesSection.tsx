@@ -9,7 +9,6 @@
 import { Section } from '@/components/sections/Section';
 import React from 'react';
 import { EdgeControls } from './EdgeControls';
-import { ShaderSettings } from './ShaderSettings';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 
 export interface EdgesSectionProps {
@@ -24,8 +23,6 @@ export const EdgesSection: React.FC<EdgesSectionProps> = ({
   return (
     <Section title="Edges" defaultOpen={defaultOpen}>
       <div className={`space-y-6 transition-opacity duration-300 ${!edgesVisible ? 'opacity-40 pointer-events-none grayscale' : ''}`}>
-        {/* Per-Shader Settings (shown when faces are visible) */}
-        <ShaderSettings />
         <EdgeControls />
         
         {!edgesVisible && (

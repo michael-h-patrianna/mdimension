@@ -78,3 +78,6 @@ export {
   projectVerticesToPositions,
   sortByDepth,
 } from './projection'
+
+// Fast trigonometric approximations (for animations)
+export { fcos, fsin } from './trig'

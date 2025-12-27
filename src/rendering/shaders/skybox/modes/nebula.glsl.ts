@@ -12,15 +12,15 @@ vec3 getNebula(vec3 dir, float time) {
     p += uEvolution * 3.0;
 
     // --- Layer 1: Deep background (large scale structure) ---
+    // Displacement fbm removed for performance (subtle effect)
     vec3 bgCoord = p * 0.5;
-    bgCoord.x += fbm(p * 0.3 + time * 0.02, 2) * uTurbulence * 0.5;
     float bgDensity = fbm(bgCoord, 3);
     bgDensity = smoothstep(0.3, 0.7, bgDensity);
 
     // --- Layer 2: Mid-ground emission clouds ---
     vec3 midCoord = p * 1.0;
     midCoord += fbm(p + vec3(time * 0.1, 0.0, 0.0), 2) * uTurbulence;
-    int octaves = int(mix(2.0, 5.0, uComplexity));
+    int octaves = int(mix(2.0, 3.0, uComplexity)); // Capped at 3 for performance
     float midDensity = fbm(midCoord, octaves);
     midDensity = smoothstep(0.25, 0.75, midDensity);
 

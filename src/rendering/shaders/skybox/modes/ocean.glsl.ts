@@ -18,23 +18,24 @@ vec3 getDeepOcean(vec3 dir, float time) {
     float caustic2 = 0.0;
 
     // First caustic layer - primary seaweed pattern
+    // Clamp to [0,1] before pow() to avoid NaN from negative values
     vec3 c1 = p + vec3(time * 0.03, time * 0.02, 0.0);
     caustic1 = sin(c1.x * 2.0 + sin(c1.z * 3.0)) * sin(c1.z * 2.0 + sin(c1.x * 3.0));
-    caustic1 = caustic1 * 0.5 + 0.5;
-    caustic1 = pow(caustic1, 2.5); // Slightly less aggressive power for more visible structure
+    caustic1 = clamp(caustic1 * 0.5 + 0.5, 0.0, 1.0);
+    caustic1 = pow(caustic1, 2.5);
 
     // Second caustic layer (different frequency) - secondary detail
     vec3 c2 = p * 1.5 + vec3(-time * 0.02, time * 0.015, time * 0.01);
     caustic2 = sin(c2.x * 3.0 + sin(c2.z * 2.0)) * sin(c2.z * 3.0 + sin(c2.x * 2.0));
-    caustic2 = caustic2 * 0.5 + 0.5;
+    caustic2 = clamp(caustic2 * 0.5 + 0.5, 0.0, 1.0);
     caustic2 = pow(caustic2, 2.5);
 
     // Third layer - fine seaweed detail with sharper edges
     vec3 c3 = p * 2.5 + vec3(time * 0.01, -time * 0.025, time * 0.02);
     float caustic3 = sin(c3.x * 4.0 + sin(c3.z * 5.0 + c3.y * 2.0)) *
                      sin(c3.z * 4.0 + sin(c3.x * 5.0 - c3.y * 2.0));
-    caustic3 = caustic3 * 0.5 + 0.5;
-    caustic3 = pow(caustic3, 2.0); // Even less power = more visible fine detail
+    caustic3 = clamp(caustic3 * 0.5 + 0.5, 0.0, 1.0);
+    caustic3 = pow(caustic3, 2.0);
 
     // Combine caustics - controlled by caustic intensity uniform
     float caustics = (caustic1 * 0.4 + caustic2 * 0.35 + caustic3 * 0.25);
@@ -110,8 +111,8 @@ vec3 getDeepOcean(vec3 dir, float time) {
     // Animation Layer 1: Rising Bubbles / Particles
     // Creates subtle ascending particles that drift upward
     if (uOceanBubbleDensity > 0.01) {
-        // Multiple bubble streams at different speeds and positions
-        for (int i = 0; i < 3; i++) {
+        // Multiple bubble streams at different speeds and positions (2 for performance)
+        for (int i = 0; i < 2; i++) {
             float fi = float(i);
             // Offset each stream spatially and temporally
             vec3 bubblePos = dir * uScale * (8.0 + fi * 2.0);
@@ -160,9 +161,12 @@ vec3 getDeepOcean(vec3 dir, float time) {
     }
 
     // Subtle light rays from above - enhanced visibility
-    float rays = smoothstep(0.7, 1.0, dir.y);
-    rays *= noise(vec3(dir.xz * 2.0, time * 0.1)) * 0.35;
-    col += rays * seaweedHighlight * (1.0 - depth) * 0.25;
+    // Skip noise when rays would be zero anyway (dir.y < 0.7)
+    if (dir.y > 0.7) {
+        float rays = smoothstep(0.7, 1.0, dir.y);
+        rays *= noise(vec3(dir.xz * 2.0, time * 0.1)) * 0.35;
+        col += rays * seaweedHighlight * (1.0 - depth) * 0.25;
+    }
 
     return col;
 }

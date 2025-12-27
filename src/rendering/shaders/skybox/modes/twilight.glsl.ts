@@ -53,12 +53,13 @@ vec3 getTwilight(vec3 dir, float time) {
         col = mix(col, sunColor, sunGlow * 0.5);
     }
 
-    // Subtle atmospheric layers (horizontal bands)
-    float layers = sin(y * 20.0 + noise(dir * 3.0) * 2.0) * 0.02;
+    // Subtle atmospheric layers and haze (reuse single noise sample)
+    float atmNoise = noise(dir * 4.0 + time * 0.01);
+    float layers = sin(y * 20.0 + atmNoise * 2.0) * 0.02;
     col += layers * scatter;
 
-    // Atmospheric dust/haze
-    float haze = scatter * noise(dir * 5.0 + time * 0.01) * 0.1;
+    // Atmospheric dust/haze (reuse noise)
+    float haze = scatter * atmNoise * 0.1;
     col = mix(col, col * 1.2, haze);
 
     return col;

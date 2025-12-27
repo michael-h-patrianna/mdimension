@@ -43,25 +43,29 @@ vec3 getStarfield(vec3 dir, float time) {
     bg = max(bg, vec3(0.005, 0.005, 0.015)); // Ensure deep space darkness
 
     // Subtle nebula dust clouds in background (controlled by complexity)
-    float nebulaValue = fbm(dir * 1.5 + uEvolution * 2.0, 3);
-    vec3 nebulaColor;
-    if (uUsePalette > 0.5) {
-        nebulaColor = cosinePalette(nebulaValue * 0.5 + 0.25, uPalA, uPalB, uPalC, uPalD);
-    } else {
-        nebulaColor = mix(uColor1, uColor2, nebulaValue);
+    vec3 col = bg;
+    if (uComplexity > 0.01) {
+        float nebulaValue = fbm(dir * 1.5 + uEvolution * 2.0, 3);
+        vec3 nebulaColor;
+        if (uUsePalette > 0.5) {
+            nebulaColor = cosinePalette(nebulaValue * 0.5 + 0.25, uPalA, uPalB, uPalC, uPalD);
+        } else {
+            nebulaColor = mix(uColor1, uColor2, nebulaValue);
+        }
+        // Nebula intensity based on complexity
+        float nebulaIntensity = smoothstep(0.3, 0.7, nebulaValue) * 0.08 * uComplexity;
+        col += nebulaColor * nebulaIntensity;
     }
-    // Nebula intensity based on complexity
-    float nebulaIntensity = smoothstep(0.3, 0.7, nebulaValue) * 0.08 * uComplexity;
-    vec3 col = bg + nebulaColor * nebulaIntensity;
 
     // === STAR RENDERING ===
     // Density threshold - maps uStarDensity (0-1) to probability threshold
-    float densityThreshold = 1.0 - uStarDensity * 0.15; // 0.85 to 1.0 range
+    // Lower threshold = more stars. Range 0.6 to 0.95 for good visual density.
+    float densityThreshold = 0.95 - uStarDensity * 0.35;
 
-    // Base size for star point spread function
-    float baseSize = 0.03 + uStarSize * 0.08; // 0.03 to 0.11
+    // Base size for star point spread function, also affected by scale
+    float baseSize = (0.03 + uStarSize * 0.08) * (0.5 + uScale * 0.5); // 0.03 to 0.11, scaled
 
-    // Multiple star layers for depth and parallax
+    // Multiple star layers for depth and parallax (4 layers for full starfield)
     for (int layer = 0; layer < 4; layer++) {
         // Layer configuration
         float layerScale = 40.0 + float(layer) * 25.0; // 40, 65, 90, 115
@@ -112,12 +116,10 @@ vec3 getStarfield(vec3 dir, float time) {
             glow = pow(glow, 2.5) * (7.0 - magnitude) / 6.0; // Brighter stars have more glow
 
             // === TWINKLING (Scintillation) ===
-            // Multi-frequency for natural atmospheric effect
+            // Combined twinkle: primary frequency dominates, secondary adds texture
             float twinklePhase = hash(starCell + 7.0) * TAU;
-            float twinkle1 = sin(time * 2.0 + twinklePhase) * 0.15;
-            float twinkle2 = sin(time * 5.3 + twinklePhase * 1.7) * 0.08;
-            float twinkle3 = sin(time * 11.7 + twinklePhase * 2.3) * 0.05;
-            float twinkle = 1.0 + (twinkle1 + twinkle2 + twinkle3) * uStarTwinkle;
+            float twinkleBase = time * 2.0 + twinklePhase;
+            float twinkle = 1.0 + sin(twinkleBase) * (0.15 + 0.08 * sin(twinkleBase * 2.65) + 0.05 * sin(twinkleBase * 5.85)) * uStarTwinkle;
 
             // Bright stars twinkle less (atmospheric physics)
             twinkle = mix(1.0, twinkle, magnitude / 6.0);
@@ -149,8 +151,9 @@ vec3 getStarfield(vec3 dir, float time) {
             float coreIntensity = core * baseBrightness * twinkle;
             float glowIntensity = glow * baseBrightness * 0.3 * uStarGlow;
 
-            // Apply overall brightness control
-            float totalIntensity = (coreIntensity + glowIntensity) * uStarBrightness * layerBrightnessMod;
+            // Apply overall brightness control (complexity adds extra glow)
+            float complexityBoost = 1.0 + uComplexity * 0.3;
+            float totalIntensity = (coreIntensity + glowIntensity) * uStarBrightness * layerBrightnessMod * complexityBoost;
 
             // Add to accumulator
             col += starColor * totalIntensity;

@@ -3,9 +3,8 @@
  * Controls for customizing the visual appearance of polytopes edges and raymarching rim lighting (which appears as pseudo-edges).
  */
 
-import { Slider } from '@/components/ui/Slider';
 import { ColorPicker } from '@/components/ui/ColorPicker';
-import { ControlGroup } from '@/components/ui/ControlGroup';
+import { Slider } from '@/components/ui/Slider';
 import { Switch } from '@/components/ui/Switch';
 import { useAppearanceStore, type AppearanceSlice } from '@/stores/appearanceStore';
 import React from 'react';
@@ -39,10 +38,9 @@ export const EdgeControls: React.FC<EdgesControlsProps> = React.memo(({
 
   return (
     <div className={`space-y-4 ${className}`}>
-      <ControlGroup title="Appearance" defaultOpen>
         {/* Edge Color */}
         <ColorPicker
-            label="Edge Color"
+            label="Color"
             value={edgeColor}
             onChange={setEdgeColor}
             disableAlpha={true}
@@ -50,7 +48,7 @@ export const EdgeControls: React.FC<EdgesControlsProps> = React.memo(({
 
         {/* Edge Thickness */}
         <Slider
-            label="Edge Thickness"
+            label="Thickness"
             min={0}
             max={5}
             step={0.1}
@@ -68,7 +66,6 @@ export const EdgeControls: React.FC<EdgesControlsProps> = React.memo(({
             data-testid="tube-caps-toggle"
           />
         )}
-      </ControlGroup>
 
       {/* Edge Material Controls (only visible when thickness > 1) */}
       <EdgeMaterialControls />

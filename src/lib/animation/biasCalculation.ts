@@ -9,6 +9,8 @@
  * At bias=1: Planes rotate at "wildly different" speeds (0.2x to 1.8x range)
  */
 
+import { fsin } from '@/lib/math/trig'
+
 /**
  * The golden ratio (phi) creates maximally-spaced, non-repeating patterns.
  * Used to distribute rotation speed variations evenly across planes.
@@ -61,7 +63,7 @@ export function getPlaneMultiplier(
   // from all previous planes on the circle
   // PHASE_OFFSET ensures plane 0 doesn't start at sin(0) = 0
   const goldenAngle = PHASE_OFFSET + planeIndex * GOLDEN_RATIO * 2 * Math.PI
-  const spread = Math.sin(goldenAngle) // Value in [-1, 1]
+  const spread = fsin(goldenAngle) // Value in [-1, 1] using fast approximation
 
   // Calculate multiplier:
   // - At bias=0: multiplier = 1.0 (no change)

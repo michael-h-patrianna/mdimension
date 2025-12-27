@@ -6,6 +6,7 @@
  */
 
 import { copyMatrix, createIdentityMatrix, multiplyMatricesInto } from './matrix'
+import { fcos, fsin } from './trig'
 import type { MatrixND, RotationPlane } from './types'
 import { composeRotationsWasm, isAnimationWasmReady } from '@/lib/wasm'
 
@@ -77,8 +78,10 @@ function createRotationMatrixInto(
   // Reset to identity
   resetToIdentity(out, dimension)
 
-  const cos = Math.cos(angleRadians)
-  const sin = Math.sin(angleRadians)
+  // Use fast trig approximation for animation performance
+  // Precision is not critical for visual rotation - smooth motion matters
+  const cos = fcos(angleRadians)
+  const sin = fsin(angleRadians)
 
   // Set rotation plane elements
   // out[i * dimension + j]
@@ -187,8 +190,9 @@ export function createRotationMatrix(
   // Start with identity matrix
   const matrix = createIdentityMatrix(dimension)
 
-  const cos = Math.cos(angleRadians)
-  const sin = Math.sin(angleRadians)
+  // Use fast trig approximation for animation performance
+  const cos = fcos(angleRadians)
+  const sin = fsin(angleRadians)
 
   // Set rotation plane elements
   matrix[planeIndex1 * dimension + planeIndex1] = cos

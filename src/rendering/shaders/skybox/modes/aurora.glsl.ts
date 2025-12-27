@@ -18,7 +18,6 @@ vec3 getAurora(vec3 dir, float time) {
     // Multiple curtain layers with different speeds and frequencies
     float curtain1 = 0.0;
     float curtain2 = 0.0;
-    float curtain3 = 0.0;
 
     // Layer 1: Primary slow-moving curtains
     // Use only integer multipliers of theta for seamless wrapping
@@ -33,10 +32,7 @@ vec3 getAurora(vec3 dir, float time) {
     float fold2 = sin(phi * 12.0 * waveFreq + wave2 * 3.0 * uTurbulence + time * 0.7);
     curtain2 = smoothstep(0.1, 0.7, fold2) * smoothstep(0.9, 0.4, fold2);
 
-    // Layer 3: Fine detail shimmer
-    float h3 = theta * 8.0 + 3.0;
-    float fold3 = sin(phi * 20.0 * waveFreq + sin(h3 + time) * uTurbulence + time * 1.2);
-    curtain3 = smoothstep(0.3, 0.6, fold3) * smoothstep(0.8, 0.5, fold3) * 0.5;
+    // Layer 3 shimmer removed for performance
 
     // Layer 4: Slow pulsing glow (subtle brightness variation)
     float pulse1 = sin(time * 0.15 + theta * 2.0) * 0.5 + 0.5;
@@ -48,9 +44,10 @@ vec3 getAurora(vec3 dir, float time) {
     float driftLayer = smoothstep(0.2, 0.5, drift) * smoothstep(0.7, 0.4, drift) * 0.3;
 
     // Combine curtain layers with vertical fade
+    // Adjusted weights after Layer 3 removal: curtain1 0.50, curtain2 0.35, driftLayer 0.15
     float verticalFade = pow(clamp(dir.y + 0.2, 0.0, 1.0), 0.5);
     float bottomFade = smoothstep(-0.3, 0.2, dir.y);
-    float intensity = (curtain1 * 0.45 + curtain2 * 0.30 + curtain3 * 0.12 + driftLayer * 0.13) * verticalFade * bottomFade;
+    float intensity = (curtain1 * 0.50 + curtain2 * 0.35 + driftLayer * 0.15) * verticalFade * bottomFade;
 
     // Apply pulsing glow
     intensity *= pulseGlow;

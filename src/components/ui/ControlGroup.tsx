@@ -38,45 +38,49 @@ export const ControlGroup: React.FC<ControlGroupProps> = ({
   };
 
   const isCard = variant === 'card';
+  const showTitleSection = collapsible || title.trim() !== '';
+
   return (
     <div className={`
       ${isCard ? 'border border-white/5 rounded-lg bg-white/2 overflow-hidden' : 'border-b border-white/5 pb-2 last:border-0'}
       ${className}
     `}>
-      <div
-        role={collapsible ? 'button' : undefined}
-        tabIndex={collapsible ? 0 : undefined}
-        aria-expanded={collapsible ? isOpen : undefined}
-        aria-label={collapsible ? `${title} section, ${isOpen ? 'expanded' : 'collapsed'}` : undefined}
-        className={`
-          flex items-center justify-between py-1.5
-          ${isCard ? 'px-3 bg-white/3 border-b border-white/5' : ''}
-          ${collapsible ? 'cursor-pointer hover:text-text-primary transition-colors focus:outline-none focus:ring-1 focus:ring-accent/50 focus:ring-inset' : ''}
-        `}
-        onClick={toggle}
-        onKeyDown={handleKeyDown}
-      >
-        <div className="flex items-center gap-2">
-          {collapsible && (
-            <m.div
-              animate={{ rotate: isOpen ? 90 : 0 }}
-              transition={{ duration: 0.2 }}
-              className="text-text-tertiary"
-            >
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
-            </m.div>
-          )}
-          <span className={`text-xs font-semibold uppercase tracking-wider ${collapsible ? 'text-text-secondary group-hover:text-text-primary' : 'text-text-secondary'}`}>
-            {title}
-          </span>
-        </div>
-
-        {rightElement && (
-          <div onClick={(e) => e.stopPropagation()}>
-            {rightElement}
+      {showTitleSection && (
+        <div
+          role={collapsible ? 'button' : undefined}
+          tabIndex={collapsible ? 0 : undefined}
+          aria-expanded={collapsible ? isOpen : undefined}
+          aria-label={collapsible ? `${title} section, ${isOpen ? 'expanded' : 'collapsed'}` : undefined}
+          className={`
+            flex items-center justify-between py-1.5
+            ${isCard ? 'px-3 bg-white/3 border-b border-white/5' : ''}
+            ${collapsible ? 'cursor-pointer hover:text-text-primary transition-colors focus:outline-none focus:ring-1 focus:ring-accent/50 focus:ring-inset' : ''}
+          `}
+          onClick={toggle}
+          onKeyDown={handleKeyDown}
+        >
+          <div className="flex items-center gap-2">
+            {collapsible && (
+              <m.div
+                animate={{ rotate: isOpen ? 90 : 0 }}
+                transition={{ duration: 0.2 }}
+                className="text-text-tertiary"
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+              </m.div>
+            )}
+            <span className={`text-xs font-semibold uppercase tracking-wider ${collapsible ? 'text-text-secondary group-hover:text-text-primary' : 'text-text-secondary'}`}>
+              {title}
+            </span>
           </div>
-        )}
-      </div>
+
+          {rightElement && (
+            <div onClick={(e) => e.stopPropagation()}>
+              {rightElement}
+            </div>
+          )}
+        </div>
+      )}
 
       <AnimatePresence initial={false}>
         {(isOpen || !collapsible) && (

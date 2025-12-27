@@ -129,7 +129,11 @@ export const DimensionSelector: React.FC<DimensionSelectorProps> = React.memo(({
     <div className={`${className}`}>
       <div className="relative group">
         {canScrollLeft && (
-          <div className="absolute left-0 top-0 bottom-0 z-20 flex items-center">
+          <div
+            className="absolute left-0 top-0 bottom-0 z-20 flex items-center"
+            onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
+            onMouseDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
+          >
             <Button
               variant="ghost"
               size="icon"
@@ -159,7 +163,11 @@ export const DimensionSelector: React.FC<DimensionSelectorProps> = React.memo(({
         </div>
 
         {canScrollRight && (
-          <div className="absolute right-0 top-0 bottom-0 z-20 flex items-center">
+          <div
+            className="absolute right-0 top-0 bottom-0 z-20 flex items-center"
+            onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
+            onMouseDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
+          >
             <Button
               variant="ghost"
               size="icon"

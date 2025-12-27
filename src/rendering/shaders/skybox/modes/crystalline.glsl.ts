@@ -1,5 +1,6 @@
 export const crystallineBlock = `
 // Voronoi distance function for Crystalline mode
+// Uses 3D input for seamless spherical mapping (no seams)
 vec2 voronoi(vec3 x) {
     vec3 p = floor(x);
     vec3 f = fract(x);

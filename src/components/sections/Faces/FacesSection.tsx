@@ -13,7 +13,6 @@
 
 import { Section } from '@/components/sections/Section';
 import { ColorPicker } from '@/components/ui/ColorPicker';
-import { ControlGroup } from '@/components/ui/ControlGroup';
 import { Slider } from '@/components/ui/Slider';
 import { Tabs } from '@/components/ui/Tabs';
 import { isRaymarchingFractal } from '@/lib/geometry/registry';
@@ -195,17 +194,13 @@ const ColorsTabContent: React.FC<ColorsTabContentProps> = ({
   return (
     <div className="space-y-4">
       {/* Color Algorithm Selection */}
-      <ControlGroup title="Algorithm">
         <ColorAlgorithmSelector />
-      </ControlGroup>
 
       {/* Live Preview */}
-      <ControlGroup title="Preview">
         <ColorPreview />
-      </ControlGroup>
 
       {/* Algorithm-Specific Controls */}
-      <ControlGroup title="Settings" defaultOpen>
+
         {/* Monochromatic and Analogous use base color */}
         {(colorAlgorithm === 'monochromatic' ||
           colorAlgorithm === 'analogous') && (
@@ -294,7 +289,7 @@ const ColorsTabContent: React.FC<ColorsTabContentProps> = ({
             <DistributionControls />
           </div>
         )}
-      </ControlGroup>
+
     </div>
   );
 };
@@ -353,7 +348,7 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
 
       {/* PBR Material - Only when lighting is enabled */}
       {showLightingControls && (
-        <ControlGroup title="PBR Material" collapsible defaultOpen>
+        <div>
 
           {/* Metallic */}
           <Slider
@@ -413,7 +408,7 @@ const MaterialTabContent: React.FC<MaterialTabContentProps> = ({
                 </button>
               )}
           </div>
-        </ControlGroup>
+        </div>
       )}
 
       {!showLightingControls && (

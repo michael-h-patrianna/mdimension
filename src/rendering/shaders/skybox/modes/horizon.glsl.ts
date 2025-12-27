@@ -81,8 +81,11 @@ vec3 getHorizonGradient(vec3 dir, float time) {
     col *= ambientPulse;
 
     // Premium film-like micro-texture (very subtle)
-    float microTexture = noise(dir * 50.0) * 0.015 * uComplexity;
-    col += microTexture;
+    // Skip when complexity is near zero
+    if (uComplexity > 0.01) {
+        float microTexture = noise(dir * 50.0) * 0.015 * uComplexity;
+        col += microTexture;
+    }
 
     // Soft radial falloff from center (spotlight feel)
     // Controlled by uHorizonSpotlightFocus

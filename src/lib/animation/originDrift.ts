@@ -11,6 +11,7 @@
  * @see docs/prd/fractal-morphing-animation.md
  */
 
+import { fsin } from '@/lib/math/trig'
 import { GOLDEN_RATIO } from './biasCalculation'
 
 /**
@@ -86,8 +87,8 @@ export function computeDriftedOrigin(
     // Bias controls how spread out the phases are
     const phase = PHASE_OFFSET + dimIndex * GOLDEN_RATIO * 2 * Math.PI * animationBias
 
-    // Calculate displacement
-    const offset = config.amplitude * Math.sin(time * freq * 2 * Math.PI + phase)
+    // Calculate displacement using fast trig for animation performance
+    const offset = config.amplitude * fsin(time * freq * 2 * Math.PI + phase)
 
     const baseValue = baseValues[i]
     result[i] = (baseValue !== undefined ? baseValue : 0) + offset
@@ -145,7 +146,7 @@ export function computeDriftedOriginInPlace(
     const freqMultiplier = 1 + i * config.frequencySpread * 0.5
     const freq = effectiveFrequency * freqMultiplier
     const phase = PHASE_OFFSET + dimIndex * GOLDEN_RATIO * 2 * Math.PI * animationBias
-    const offset = config.amplitude * Math.sin(time * freq * 2 * Math.PI + phase)
+    const offset = config.amplitude * fsin(time * freq * 2 * Math.PI + phase)
 
     const baseValue = baseValues[i]
     output[i + 3] = (baseValue !== undefined ? baseValue : 0) + offset
