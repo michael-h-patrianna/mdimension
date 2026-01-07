@@ -38,15 +38,16 @@ export function useDeviceCapabilities(): { webgl2Supported: boolean } {
   const hasRun = useRef(false)
 
   // Combined selector with useShallow to prevent unnecessary re-renders (CIB-002)
-  const { deviceCapabilitiesDetected, gpuTier } = usePerformanceStore(
+  const { deviceCapabilitiesDetected, webgl2Support } = usePerformanceStore(
     useShallow((s) => ({
       deviceCapabilitiesDetected: s.deviceCapabilitiesDetected,
-      gpuTier: s.gpuTier,
+      webgl2Support: s.webgl2Supported,
     }))
   )
 
   // Get webgl2 support from detection result, default to true until detected
-  const webgl2Supported = deviceCapabilitiesDetected ? gpuTier > 0 : true
+  // CRITICAL: Don't use gpuTier > 0 - tier can be 0 for performance reasons while WebGL2 is still available
+  const webgl2Supported = deviceCapabilitiesDetected ? webgl2Support : true
 
   useEffect(() => {
     // Only run once

@@ -74,6 +74,9 @@ function createMockGL(supportsTimerQuery = true): {
       // Query ended
     }),
 
+    // Required for isWebGLRenderer/getWebGLContext checks in rendererUtils
+    drawBuffers: vi.fn(),
+
     getParameter: vi.fn((pname: number) => {
       if (ext && pname === ext.GPU_DISJOINT_EXT) {
         return disjoint

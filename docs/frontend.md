@@ -4,27 +4,92 @@
 
 **Read This When**: Creating UI components, 3D renderers, or working with state management.
 
-**Stack**: React 19 + React Three Fiber + Zustand + Tailwind CSS 4
+**Stack**: React 19 + React Three Fiber + Zustand 5 + Tailwind CSS 4 + Motion
 
 ## Component Categories
 
 | Category | Location | Purpose |
 |----------|----------|---------|
 | UI Primitives | `src/components/ui/` | Reusable base components (Button, Slider, etc.) |
-| Controls | `src/components/controls/` | Domain-specific control panels |
-| Canvas | `src/components/canvas/` | Three.js/R3F 3D rendering |
-| Layout | `src/components/` | App layout components |
+| Controls | `src/components/controls/` | Domain-specific control components |
+| Canvas | `src/components/canvas/` | Three.js/R3F 3D rendering helpers |
+| Layout | `src/components/layout/` | App layout, panels, drawers |
+| Sections | `src/components/sections/` | Sidebar sections organized by feature |
+| Overlays | `src/components/overlays/` | Modals, dialogs, overlays |
+| Presets | `src/components/presets/` | Scene/style preset management |
+
+## Complete UI Component Catalog
+
+### Core Input Components
+
+| Component | Props | Usage |
+|-----------|-------|-------|
+| `Button` | `variant`, `size`, `disabled`, `onClick` | Primary/secondary/ghost buttons |
+| `Slider` | `label`, `min`, `max`, `step`, `value`, `onChange`, `unit`, `formatValue` | Numeric range with label drag |
+| `NumberInput` | `value`, `onChange`, `min`, `max`, `step` | Numeric input with validation |
+| `Input` | `value`, `onChange`, `placeholder`, `disabled` | Text input |
+| `Select` | `options`, `value`, `onChange`, `label` | Dropdown selection |
+| `Switch` | `checked`, `onChange`, `label`, `disabled` | Boolean toggle |
+| `Knob` | `value`, `onChange`, `min`, `max`, `size` | Rotary control |
+| `ColorPicker` | `color`, `onChange`, `label` | Color selection |
+
+### Selection Components
+
+| Component | Props | Usage |
+|-----------|-------|-------|
+| `ToggleGroup` | `options`, `value`, `onChange` | Exclusive single selection |
+| `MultiToggleGroup` | `options`, `value`, `onChange` | Multi-select toggle |
+| `Tabs` | `tabs`, `activeTab`, `onChange` | Tabbed content |
+
+### Overlay Components
+
+| Component | Props | Usage |
+|-----------|-------|-------|
+| `Modal` | `isOpen`, `onClose`, `title`, `children` | Dialog overlay |
+| `ConfirmModal` | `isOpen`, `onConfirm`, `onCancel`, `title`, `message` | Confirmation dialog |
+| `InputModal` | `isOpen`, `onSubmit`, `onCancel`, `title`, `initialValue` | Text input dialog |
+| `Popover` | `trigger`, `content`, `placement` | Click-triggered popover |
+| `Tooltip` | `content`, `children`, `placement` | Hover tooltip |
+| `DropdownMenu` | `trigger`, `items` | Context/dropdown menu |
+
+### Layout Components
+
+| Component | Props | Usage |
+|-----------|-------|-------|
+| `ControlGroup` | `label`, `children` | Grouped controls with label |
+| `Section` | `title`, `defaultOpen`, `children` | Collapsible section |
+| `SpotlightCard` | `children`, `className` | Highlighted card with glow |
+
+### Feedback Components
+
+| Component | Props | Usage |
+|-----------|-------|-------|
+| `LoadingSpinner` | `size`, `className` | Loading indicator |
+| `GlobalProgress` | `progress`, `label` | Progress bar |
+| `ErrorBoundary` | `fallback`, `children` | Error catching wrapper |
+| `GeometryLoadingIndicator` | - | Geometry computation indicator |
+
+### Utility Components
+
+| Component | Props | Usage |
+|-----------|-------|-------|
+| `Icon` | `name`, `size`, `className` | SVG icon wrapper |
+| `InlineEdit` | `value`, `onChange`, `onCancel` | Inline editable text |
+| `Envelope` | `attack`, `decay`, `sustain`, `release`, `onChange` | ADSR envelope editor |
+| `WebGPUBadge` | - | WebGPU support indicator |
 
 ## How to Create a UI Primitive
 
 **Template** (`src/components/ui/{Name}.tsx`):
+
 ```tsx
 /**
  * {Name} Component
  * {Brief description}
  */
 
-import React from 'react';
+import React, { useCallback } from 'react';
+import { soundManager } from '@/lib/audio/SoundManager';
 
 export interface {Name}Props {
   /** Primary prop description */
@@ -35,6 +100,8 @@ export interface {Name}Props {
   className?: string;
   /** Disabled state */
   disabled?: boolean;
+  /** Test ID for Playwright */
+  'data-testid'?: string;
 }
 
 /**
@@ -48,97 +115,117 @@ export interface {Name}Props {
  * <{Name} value="example" onChange={handleChange} />
  * ```
  */
-export const {Name}: React.FC<{Name}Props> = ({
+export const {Name}: React.FC<{Name}Props> = React.memo(({
   value,
   onChange,
   className = '',
   disabled = false,
+  'data-testid': dataTestId,
 }) => {
+  const handleChange = useCallback((newValue: string) => {
+    if (disabled) return;
+    soundManager.playClick();
+    onChange?.(newValue);
+  }, [disabled, onChange]);
+
   return (
-    <div className={`{base-styles} ${className}`}>
+    <div 
+      data-testid={dataTestId} 
+      className={`glass-panel ${className} ${disabled ? 'opacity-50 pointer-events-none' : ''}`}
+    >
       {/* Implementation */}
     </div>
   );
-};
+});
+
+{Name}.displayName = '{Name}';
 ```
 
 **Steps**:
 1. Create file at `src/components/ui/{Name}.tsx`
 2. Define Props interface with JSDoc comments
-3. Use Tailwind for styling
-4. Export from `src/components/ui/index.ts`
+3. Use Tailwind utilities from the theme
+4. Include `data-testid` prop for testing
+5. Use `React.memo` for performance
+6. Set `displayName` for DevTools
+7. Export from `src/components/ui/index.ts`
+8. Create test in `src/tests/components/ui/{Name}.test.tsx`
 
-## How to Create a Control Component
+## How to Create a Section Component
 
-**Template** (`src/components/controls/{Name}Controls.tsx`):
+**Template** (`src/components/sections/{Feature}/{Feature}Section.tsx`):
+
 ```tsx
 /**
- * {Name} Controls Component
- * {Brief description of what this controls}
+ * {Feature} Section Component
+ * Controls for {feature description}
  */
 
 import React from 'react';
+import { Section } from '@/components/sections/Section';
 import { Slider } from '@/components/ui/Slider';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { use{Domain}Store } from '@/stores/{domain}Store';
 
-export interface {Name}ControlsProps {
-  className?: string;
-  disabled?: boolean;
+export interface {Feature}SectionProps {
+  defaultOpen?: boolean;
 }
 
-export const {Name}Controls: React.FC<{Name}ControlsProps> = ({
-  className = '',
-  disabled = false,
+export const {Feature}Section: React.FC<{Feature}SectionProps> = ({
+  defaultOpen = false,
 }) => {
-  // Individual selectors for performance
+  // Use individual selectors for performance
   const value = use{Domain}Store((state) => state.value);
   const setValue = use{Domain}Store((state) => state.setValue);
   const options = use{Domain}Store((state) => state.options);
+  const selectedOption = use{Domain}Store((state) => state.selectedOption);
+  const setOption = use{Domain}Store((state) => state.setOption);
 
   return (
-    <div className={`space-y-4 ${className}`}>
-      <Slider
-        label="Value Label"
-        min={0}
-        max={100}
-        step={1}
-        value={value}
-        onChange={setValue}
-        disabled={disabled}
-        showValue
-      />
+    <Section title="{Feature}" defaultOpen={defaultOpen}>
+      <div className="space-y-4">
+        <Slider
+          label="Value Label"
+          min={0}
+          max={100}
+          step={1}
+          value={value}
+          onChange={setValue}
+          showValue
+          data-testid="{feature}-value-slider"
+        />
 
-      <ToggleGroup
-        options={options}
-        value={selectedOption}
-        onChange={setOption}
-        disabled={disabled}
-      />
-    </div>
+        <ToggleGroup
+          options={options}
+          value={selectedOption}
+          onChange={setOption}
+          data-testid="{feature}-option-toggle"
+        />
+      </div>
+    </Section>
   );
 };
 ```
 
 ## How to Create a Three.js Renderer
 
-**Template** (`src/components/canvas/{Name}Renderer.tsx`):
+**Template** (`src/rendering/renderers/{Name}/{Name}Mesh.tsx`):
+
 ```tsx
 /**
  * {Name} Renderer Component
  * {Description of what this renders in 3D}
  */
 
-import { useMemo } from 'react';
-import { Vector3, BufferGeometry, Float32BufferAttribute } from 'three';
-import type { Vector3D } from '@/lib/math/types';
-import { useVisualStore } from '@/stores/visualStore';
+import { useMemo, useRef } from 'react';
+import { BufferGeometry, Float32BufferAttribute, Mesh, ShaderMaterial } from 'three';
+import { useFrame } from '@react-three/fiber';
+import { FRAME_PRIORITY } from '@/rendering/core/framePriorities';
+import { useAppearanceStore } from '@/stores/appearanceStore';
 
-export interface {Name}RendererProps {
+export interface {Name}MeshProps {
   /** 3D vertices to render */
-  vertices: Vector3D[];
-  /** Edge connections as index pairs */
-  edges: [number, number][];
+  vertices: Float32Array;
   /** Opacity (0-1) */
   opacity?: number;
 }
@@ -147,166 +234,233 @@ export interface {Name}RendererProps {
  * Renders {description}
  *
  * @param props - Renderer props
- * @returns Three.js group with geometry
+ * @returns Three.js mesh with geometry
  */
-export function {Name}Renderer({
+export function {Name}Mesh({
   vertices,
-  edges,
   opacity = 1.0,
-}: {Name}RendererProps) {
+}: {Name}MeshProps) {
+  const meshRef = useRef<Mesh>(null);
+  
   // Get visual settings from store
-  const color = useVisualStore((state) => state.edgeColor);
-  const thickness = useVisualStore((state) => state.edgeThickness);
+  const color = useAppearanceStore((state) => state.color);
 
   // Memoize geometry creation
   const geometry = useMemo(() => {
     if (vertices.length === 0) return null;
 
-    const positions = new Float32Array(
-      edges.flatMap(([start, end]) => [
-        ...vertices[start],
-        ...vertices[end],
-      ])
-    );
-
     const geo = new BufferGeometry();
-    geo.setAttribute('position', new Float32BufferAttribute(positions, 3));
+    geo.setAttribute('position', new Float32BufferAttribute(vertices, 3));
+    geo.computeVertexNormals();
     return geo;
-  }, [vertices, edges]);
+  }, [vertices]);
+
+  // Memoize material creation
+  const material = useMemo(() => {
+    return new ShaderMaterial({
+      glslVersion: THREE.GLSL3,
+      vertexShader: /* glsl */`
+        in vec3 position;
+        in vec3 normal;
+        out vec3 vNormal;
+        
+        uniform mat4 modelViewMatrix;
+        uniform mat4 projectionMatrix;
+        uniform mat3 normalMatrix;
+        
+        void main() {
+          vNormal = normalMatrix * normal;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: /* glsl */`
+        precision highp float;
+        in vec3 vNormal;
+        layout(location = 0) out vec4 fragColor;
+        
+        uniform vec3 uColor;
+        uniform float uOpacity;
+        
+        void main() {
+          vec3 normal = normalize(vNormal);
+          float lighting = dot(normal, normalize(vec3(1.0, 1.0, 1.0))) * 0.5 + 0.5;
+          fragColor = vec4(uColor * lighting, uOpacity);
+        }
+      `,
+      uniforms: {
+        uColor: { value: color },
+        uOpacity: { value: opacity },
+      },
+      transparent: opacity < 1,
+    });
+  }, [color, opacity]);
+
+  // Update uniforms each frame
+  useFrame(() => {
+    if (meshRef.current && material) {
+      material.uniforms.uOpacity.value = opacity;
+    }
+  }, FRAME_PRIORITY.RENDER);
 
   if (!geometry) return null;
 
   return (
-    <group>
-      <lineSegments geometry={geometry}>
-        <lineBasicMaterial
-          color={color}
-          linewidth={thickness}
-          transparent={opacity < 1}
-          opacity={opacity}
-        />
-      </lineSegments>
-    </group>
+    <mesh ref={meshRef} geometry={geometry} material={material} />
   );
 }
 ```
 
-## Available UI Components
+## Tailwind CSS 4 Theme System
 
-### Slider
-```tsx
-<Slider
-  label="Label Text"
-  min={0}
-  max={100}
-  step={1}
-  value={value}
-  onChange={setValue}
-  showValue
-  disabled={false}
-/>
+This project uses Tailwind CSS 4 with the Vite plugin. Theme tokens are defined in `src/index.css`.
+
+### Theme Variables
+
+```css
+/* Available via @theme in src/index.css */
+
+/* Backgrounds */
+--color-background    /* Main app background */
+--color-panel         /* Panel background */
+--color-surface       /* Surface background */
+--color-elevated      /* Elevated elements */
+--color-glass         /* Glass effect background */
+--color-overlay       /* Overlay backdrop */
+
+/* Text */
+--color-text-primary    /* Main text */
+--color-text-secondary  /* Subdued text */
+--color-text-tertiary   /* Muted text */
+--color-text-muted      /* Very muted text */
+--color-text-inverse    /* Inverse text */
+
+/* Accent */
+--color-accent          /* Theme accent color */
+--color-accent-glow     /* Accent glow effect */
+--color-accent-subtle   /* Subtle accent */
+--color-accent-muted    /* Muted accent */
+
+/* Status Colors */
+--color-danger          /* Error text */
+--color-danger-bg       /* Error background */
+--color-success         /* Success text */
+--color-success-bg      /* Success background */
+--color-warning         /* Warning text */
+--color-warning-bg      /* Warning background */
+
+/* Borders */
+--color-border-subtle   /* Subtle borders */
+--color-border-default  /* Default borders */
+--color-border-strong   /* Strong borders */
 ```
 
-### Button
-```tsx
-<Button
-  variant="primary" // 'primary' | 'secondary' | 'ghost'
-  size="md"         // 'sm' | 'md' | 'lg'
-  onClick={handler}
-  disabled={false}
->
-  Button Text
-</Button>
+### Premium Glass Utilities
+
+```css
+/* Glass panels */
+.glass-panel         /* Standard glass panel with blur */
+.glass-panel-dark    /* Darker glass panel */
+
+/* Glass inputs */
+.glass-input         /* Input with glass effect and focus states */
+
+/* Glass buttons */
+.glass-button        /* Secondary button with glass effect */
+.glass-button-primary /* Primary accent button */
+
+/* Effects */
+.glass-separator     /* Gradient separator line */
+.text-glow           /* Text glow effect */
+.text-glow-subtle    /* Subtle text glow */
+.border-glow         /* Border glow effect */
+.led-glow            /* LED indicator glow */
+.shimmer-text        /* Animated shimmer text */
+.hover-card          /* Hover lift effect */
+
+/* Status badges */
+.status-danger       /* Danger badge */
+.status-success      /* Success badge */
+.status-warning      /* Warning badge */
+
+/* Health indicators (performance monitor) */
+.health-high         /* Good performance */
+.health-medium       /* Medium performance */
+.health-low          /* Poor performance */
+
+/* Accent glows */
+.glow-accent-sm      /* Small accent glow */
+.glow-accent-md      /* Medium accent glow */
+.glow-accent-lg      /* Large accent glow */
+
+/* Overlay */
+.overlay-backdrop    /* Modal backdrop with blur */
+
+/* Scrollbar */
+.scrollbar-none      /* Hide scrollbar */
 ```
 
-### ToggleGroup
+### Usage Examples
+
 ```tsx
-<ToggleGroup
-  options={[
-    { value: 'a', label: 'Option A' },
-    { value: 'b', label: 'Option B' },
-  ]}
-  value={selected}
-  onChange={setSelected}
-/>
-```
+// Panel with glass effect
+<div className="glass-panel rounded-lg p-4">
+  Content
+</div>
 
-### Select
-```tsx
-<Select
-  label="Select Label"
-  options={[
-    { value: 'a', label: 'Option A' },
-    { value: 'b', label: 'Option B' },
-  ]}
-  value={selected}
-  onChange={setSelected}
-/>
-```
+// Primary button
+<button className="glass-button-primary px-4 py-2 rounded-md">
+  Submit
+</button>
 
-### Section (Collapsible)
-```tsx
-<Section title="Section Title" defaultOpen={true}>
-  <div>Section content</div>
-</Section>
-```
+// Input with focus states
+<input className="glass-input rounded-md px-3 py-2" />
 
-### Tooltip
-```tsx
-<Tooltip content="Tooltip text">
-  <span>Hover me</span>
-</Tooltip>
-```
+// Status badge
+<span className="status-success px-2 py-1 rounded text-xs">
+  Success
+</span>
 
-## Tailwind Patterns
-
-### Color Tokens (from tailwind.config.js)
-```tsx
-// Background
-className="bg-app-bg"       // Main app background
-className="bg-panel-bg"     // Panel background
-className="bg-panel-border" // Border color as background
-
-// Text
-className="text-text-primary"   // Main text
-className="text-text-secondary" // Subdued text
-
-// Accent colors
-className="text-accent-cyan"    // Cyan accent
-className="bg-accent-cyan/20"   // Cyan with opacity
-```
-
-### Common Patterns
-```tsx
-// Spacing
-className="space-y-4"  // Vertical stack with gap
-className="gap-4"      // Flex/grid gap
-
-// Flex layouts
-className="flex items-center justify-between"
-className="flex flex-col"
-
-// Interactive states
-className="hover:bg-panel-border transition-colors"
-className="disabled:opacity-50 disabled:cursor-not-allowed"
-
-// Borders
-className="border border-panel-border rounded-md"
+// Accent text with glow
+<h1 className="text-accent text-glow">
+  Title
+</h1>
 ```
 
 ## State Management Pattern
 
-### Connecting Component to Store
+### Connecting Component to Store (CRITICAL)
+
 ```tsx
-// GOOD: Individual selectors (prevents unnecessary re-renders)
+// ✅ GOOD: Individual selectors (prevents unnecessary re-renders)
 const dimension = useGeometryStore((state) => state.dimension);
 const setDimension = useGeometryStore((state) => state.setDimension);
 
-// BAD: Full store (re-renders on any change)
+// ❌ BAD: Full store (re-renders on any change)
 const { dimension, setDimension } = useGeometryStore();
 ```
 
+### useShallow Pattern (React 19 + Zustand 5)
+
+```tsx
+import { useShallow } from 'zustand/react/shallow';
+import { useGeometryStore } from '@/stores/geometryStore';
+
+// Create selector OUTSIDE component or at top level
+const geometrySelector = useShallow((state: ReturnType<typeof useGeometryStore.getState>) => ({
+  dimension: state.dimension,
+  objectType: state.objectType,
+  setDimension: state.setDimension,
+}));
+
+export function Component() {
+  // Use the pre-created selector
+  const { dimension, objectType, setDimension } = useGeometryStore(geometrySelector);
+  // ...
+}
+```
+
 ### Syncing Multiple Stores
+
 ```tsx
 import { useLayoutEffect } from 'react';
 
@@ -321,9 +475,29 @@ function Component() {
 }
 ```
 
+### Reading State in Animation Callbacks
+
+```tsx
+import { useFrame } from '@react-three/fiber';
+import { useCallback } from 'react';
+
+function AnimatedComponent() {
+  const animationCallback = useCallback((state, delta) => {
+    // Read via getState() for fresh values without closure issues
+    const { speed } = useAnimationStore.getState();
+    const { rotations } = useRotationStore.getState();
+    
+    // ... animation logic
+  }, []); // Empty deps - all state read via getState()
+
+  useFrame(animationCallback, FRAME_PRIORITY.ANIMATION);
+}
+```
+
 ## Performance Patterns
 
 ### Memoize Expensive Computations
+
 ```tsx
 const transformedData = useMemo(() => {
   return expensiveTransform(data);
@@ -331,25 +505,52 @@ const transformedData = useMemo(() => {
 ```
 
 ### Memoize Callback References
+
 ```tsx
 const handleChange = useCallback((value: number) => {
-  setValue(value);
+  React.startTransition(() => {
+    setValue(value);
+  });
 }, [setValue]);
 ```
 
-### Avoid Inline Objects in JSX
-```tsx
-// BAD: Creates new object every render
-<Mesh position={{ x: 0, y: 0, z: 0 }} />
+### React.startTransition for Non-Urgent Updates
 
-// GOOD: Stable reference
+```tsx
+// For slider/drag updates that can be deferred
+const handleSliderChange = useCallback((value: number) => {
+  React.startTransition(() => {
+    store.setValue(value);
+  });
+}, []);
+```
+
+### Avoid Inline Objects in JSX
+
+```tsx
+// ❌ BAD: Creates new object every render
+<mesh position={{ x: 0, y: 0, z: 0 }} />
+
+// ✅ GOOD: Stable reference
 const position = useMemo(() => [0, 0, 0] as const, []);
-<Mesh position={position} />
+<mesh position={position} />
+```
+
+### Component Memoization
+
+```tsx
+// Wrap with React.memo for pure components
+export const ExpensiveComponent = React.memo(({ data }: Props) => {
+  // ...
+});
+
+ExpensiveComponent.displayName = 'ExpensiveComponent';
 ```
 
 ## Three.js/R3F Patterns
 
 ### Basic Scene Structure
+
 ```tsx
 <Canvas camera={{ position: [0, 0, 5], fov: 60 }}>
   <SceneLighting />
@@ -360,6 +561,7 @@ const position = useMemo(() => [0, 0, 0] as const, []);
 ```
 
 ### Accessing Three.js Objects
+
 ```tsx
 import { useThree } from '@react-three/fiber';
 
@@ -369,9 +571,11 @@ function MyComponent() {
 }
 ```
 
-### Animation Loop
+### Animation Loop with Priorities
+
 ```tsx
 import { useFrame } from '@react-three/fiber';
+import { FRAME_PRIORITY } from '@/rendering/core/framePriorities';
 
 function AnimatedMesh() {
   const meshRef = useRef<Mesh>(null);
@@ -380,58 +584,61 @@ function AnimatedMesh() {
     if (meshRef.current) {
       meshRef.current.rotation.y += delta;
     }
-  });
+  }, FRAME_PRIORITY.ANIMATION);
 
   return <mesh ref={meshRef}>...</mesh>;
 }
 ```
 
-## Adding to Layout
-
-To add a new control section:
+### Cleanup GPU Resources
 
 ```tsx
-// In src/components/Layout.tsx
-import { NewControls } from './controls/NewControls';
+import { useEffect, useRef } from 'react';
+import { BufferGeometry, Material } from 'three';
 
-// Inside ControlPanel
-<Section title="New Section" defaultOpen={false}>
-  <NewControls />
-</Section>
+function MyComponent() {
+  const geometryRef = useRef<BufferGeometry | null>(null);
+  const materialRef = useRef<Material | null>(null);
+
+  useEffect(() => {
+    return () => {
+      // Clean up on unmount
+      geometryRef.current?.dispose();
+      materialRef.current?.dispose();
+    };
+  }, []);
+}
 ```
 
-## Common Mistakes
+## Animation with Motion
 
-**Don't**: Create components without TypeScript interfaces
-**Do**: Define Props interface for every component
+```tsx
+import { m, AnimatePresence } from 'motion/react';
 
-**Don't**: Use inline styles for layout
-**Do**: Use Tailwind utility classes
+// Fade in/out
+<AnimatePresence>
+  {isVisible && (
+    <m.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      transition={{ duration: 0.2 }}
+    >
+      Content
+    </m.div>
+  )}
+</AnimatePresence>
 
-**Don't**: Subscribe to entire store state
-**Do**: Use individual state selectors
+// Scale animation
+<m.button
+  whileHover={{ scale: 1.05 }}
+  whileTap={{ scale: 0.95 }}
+>
+  Click me
+</m.button>
+```
 
-**Don't**: Create Three.js objects in render function
-**Do**: Memoize geometry/material creation with useMemo
-
-**Don't**: Put business logic in components
-**Do**: Extract to hooks or lib modules
-
-**Don't**: Skip memoization for expensive Three.js geometry
-**Do**: Always useMemo for BufferGeometry, materials, etc.
-
-**Don't**: Use arbitrary color values
-**Do**: Use Tailwind color tokens (`accent-cyan`, `text-primary`, etc.)
-
-**Don't**: Create new arrays/objects in JSX props
-**Do**: Create stable references with useMemo or outside component
-
-**Don't**: Forget cleanup in useEffect
-**Do**: Return cleanup function for subscriptions/timers
-
----
-
-## How to Add data-testid for E2E Testing
+## Adding data-testid for E2E Testing
 
 Always add `data-testid` to interactive elements:
 
@@ -450,113 +657,67 @@ Always add `data-testid` to interactive elements:
 >
   ...
 </select>
+
+<Slider
+  data-testid="rotation-speed-slider"
+  value={speed}
+  onChange={setSpeed}
+/>
 ```
 
----
+## Sound Feedback
 
-## Sidebar Section Template
+Use `soundManager` for UI sound feedback:
 
-**Location**: `src/components/sidebar/{Name}/`
-
-**File structure**:
-```
-src/components/sidebar/{Name}/
-├── index.ts           # Export section
-└── {Name}Section.tsx  # Section component
-```
-
-**Template** (`{Name}Section.tsx`):
 ```tsx
-/**
- * {Name} Section Component
- */
+import { soundManager } from '@/lib/audio/SoundManager';
 
-import React from 'react';
-import { Section } from '@/components/ui/Section';
-import { Slider } from '@/components/ui/Slider';
-import { use{Domain}Store } from '@/stores/{domain}Store';
+// On click
+soundManager.playClick();
 
-export interface {Name}SectionProps {
-  defaultOpen?: boolean;
-}
+// On hover
+soundManager.playHover();
 
-export const {Name}Section: React.FC<{Name}SectionProps> = ({
-  defaultOpen = false,
-}) => {
-  // Use individual selectors
-  const value = use{Domain}Store((state) => state.value);
-  const setValue = use{Domain}Store((state) => state.setValue);
-
-  return (
-    <Section title="{Name}" defaultOpen={defaultOpen}>
-      <div className="space-y-4">
-        <Slider
-          label="Value"
-          min={0}
-          max={100}
-          value={value}
-          onChange={setValue}
-        />
-      </div>
-    </Section>
-  );
-};
+// In event handlers
+const handleMouseEnter = useCallback(() => {
+  soundManager.playHover();
+}, []);
 ```
 
-**Template** (`index.ts`):
-```typescript
-export { {Name}Section } from './{Name}Section';
-```
+## Common Mistakes
 
----
+❌ **Don't**: Create components without TypeScript interfaces
+✅ **Do**: Define Props interface for every component
 
-## Hook Decision Tree
+❌ **Don't**: Use inline styles for layout
+✅ **Do**: Use Tailwind utility classes
 
-| Need to... | Create hook in... | Pattern |
-|------------|-------------------|---------|
-| Connect store to component | `src/hooks/use{Name}.ts` | Return store values + memoized callbacks |
-| Animate in Three.js | `src/hooks/use{Name}.ts` | Use `useFrame` from R3F |
-| Transform geometry | `src/hooks/use{Name}.ts` | Memoize with useMemo based on inputs |
-| Handle keyboard input | `src/hooks/use{Name}.ts` | Use useEffect with event listeners |
-| Sync multiple stores | `src/hooks/useSynced{Name}.ts` | Use useLayoutEffect |
+❌ **Don't**: Subscribe to entire store state
+✅ **Do**: Use individual state selectors
 
----
+❌ **Don't**: Create Three.js objects in render function
+✅ **Do**: Memoize geometry/material creation with useMemo
 
-## Tailwind CSS 4 Notes
+❌ **Don't**: Put business logic in components
+✅ **Do**: Extract to hooks or lib modules
 
-This project uses Tailwind CSS 4 with the Vite plugin. Key differences:
+❌ **Don't**: Skip memoization for expensive Three.js geometry
+✅ **Do**: Always useMemo for BufferGeometry, materials, etc.
 
-1. **No tailwind.config.js** - Configuration in CSS
-2. **CSS variables for theming** - `--color-accent`, `--color-panel-bg`, etc.
-3. **`@theme` directive** - Define design tokens in CSS
+❌ **Don't**: Use arbitrary color values
+✅ **Do**: Use Tailwind color tokens (`accent`, `text-primary`, etc.)
 
-```css
-/* Theme variables available */
-var(--color-accent)
-var(--color-panel-bg)
-var(--color-panel-border)
-var(--color-text-primary)
-var(--color-text-secondary)
-```
+❌ **Don't**: Create new arrays/objects in JSX props
+✅ **Do**: Create stable references with useMemo or outside component
 
----
+❌ **Don't**: Forget cleanup in useEffect
+✅ **Do**: Return cleanup function for subscriptions/timers
 
-## More Common Mistakes
+❌ **Don't**: Call useShallow inside another hook call
+✅ **Do**: Create selector with useShallow first, then pass to store hook
 
-❌ **Don't**: Create new components without Props interface
-✅ **Do**: Always define and export `{Name}Props` interface
+❌ **Don't**: Forget data-testid on interactive elements
+✅ **Do**: Add data-testid for Playwright testing
 
-❌ **Don't**: Use `any` type
-✅ **Do**: Define proper TypeScript types
-
-❌ **Don't**: Forget to export from index files
-✅ **Do**: Add exports to `src/components/ui/index.ts` or similar
-
-❌ **Don't**: Create components without tests
-✅ **Do**: Create test file in `src/tests/components/`
-
-❌ **Don't**: Mix HTML and Three.js elements
-✅ **Do**: Keep DOM components and Canvas components separate
-
-❌ **Don't**: Import Three.js in non-canvas components
-✅ **Do**: Only use Three.js in `src/components/canvas/` and `src/lib/`
+❌ **Don't**: Use raw HTML form elements
+✅ **Do**: Use `src/components/ui/*` primitives

@@ -40,3 +40,6 @@ build
 #screenshots/
 scripts/playwright/videos/
 scripts/playwright/screenshots/
+
+# Local SSL certificates
+certs/

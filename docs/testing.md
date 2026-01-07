@@ -4,7 +4,7 @@
 
 **Non-negotiable**:
 - Maintain **100% test coverage** for new functionality.
-- Do **not** “fix” failing tests by weakening assertions. Fix the code.
+- Do **not** "fix" failing tests by weakening assertions. Fix the code.
 - Do **not** use fetch-based debugging. For runtime debugging use **Playwright + console logs**.
 
 ## Test Stack
@@ -29,6 +29,8 @@
 | UI primitive `src/components/ui/...` | `src/tests/components/ui/...` |
 | Rendering pipeline `src/rendering/...` | `src/tests/rendering/...` and/or `src/tests/integration/...` |
 | Visual correctness / WebGL errors / render graph issues | `scripts/playwright/*.spec.ts` |
+| Store slice `src/stores/slices/...` | `src/tests/stores/slices/...` |
+| Shader compilation | `scripts/playwright/` (needs real WebGL context) |
 
 ## What the Test Environment Already Provides (Do not re-implement)
 
@@ -36,10 +38,13 @@ Vitest is configured with `src/tests/setup.ts` which already:
 - Calls `cleanup()` after each test.
 - Mocks `ResizeObserver` and `matchMedia`.
 - Provides in-memory `localStorage`/`sessionStorage` (for Zustand persist).
-- Provides a **comprehensive WebGL2 mock** for Three.js.
+- Provides a **comprehensive WebGL2 mock** for Three.js (400+ lines).
 - Suppresses known benign R3F warnings (so tests fail on real problems).
 - Mocks the WASM module via alias:
   - `mdimension-core` is aliased to `src/tests/__mocks__/mdimension-core.ts`
+- Mocks `AudioContext` for sound manager tests.
+- Mocks Popover API (`showPopover`, `hidePopover`, `togglePopover`).
+- Mocks `HTMLDialogElement` (`showModal`, `close`).
 
 ## How to Run Tests (Commands)
 
@@ -58,6 +63,12 @@ npx playwright test
 
 # Single Playwright spec file
 npx playwright test scripts/playwright/object-types-rendering.spec.ts
+
+# Playwright with headed browser (for debugging)
+npx playwright test --headed
+
+# Playwright with UI mode (interactive debugging)
+npx playwright test --ui
 ```
 
 ### Watch mode rule
@@ -148,7 +159,7 @@ Create: `src/tests/hooks/<hook>.test.ts(x)`
 
 ```ts
 import { describe, expect, it } from 'vitest'
-import { renderHook } from '@testing-library/react'
+import { renderHook, act } from '@testing-library/react'
 import { use<Hook> } from '@/hooks/use<Hook>'
 
 describe('use<Hook>', () => {
@@ -156,15 +167,54 @@ describe('use<Hook>', () => {
     const { result } = renderHook(() => use<Hook>())
     expect(result.current).toBeDefined()
   })
+
+  it('updates state correctly', () => {
+    const { result } = renderHook(() => use<Hook>())
+
+    act(() => {
+      result.current.someAction()
+    })
+
+    expect(result.current.someValue).toBe(/* expected */)
+  })
 })
 ```
 
-## Playwright Patterns (This project’s way)
+### Template: render graph pass test
+
+Create: `src/tests/rendering/graph/<PassName>.test.ts`
+
+```ts
+import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { <PassName> } from '@/rendering/graph/passes/<PassName>'
+
+describe('<PassName>', () => {
+  let pass: <PassName>
+
+  beforeEach(() => {
+    pass = new <PassName>()
+  })
+
+  it('has correct config', () => {
+    expect(pass.id).toBe('<pass-id>')
+    expect(pass.config.inputs).toHaveLength(/* expected */)
+    expect(pass.config.outputs).toHaveLength(/* expected */)
+  })
+
+  it('declares correct resource dependencies', () => {
+    const inputIds = pass.config.inputs.map(i => i.resourceId)
+    expect(inputIds).toContain('<expected-input>')
+  })
+})
+```
+
+## Playwright Patterns (This project's way)
 
 ### When to use Playwright (decision tree)
 
-- If the change can cause **WebGL errors**, **shader compile issues**, **render graph warnings**, or “canvas is black” → write/extend a Playwright test.
+- If the change can cause **WebGL errors**, **shader compile issues**, **render graph warnings**, or "canvas is black" → write/extend a Playwright test.
 - If you need to debug runtime behavior: use **Playwright + page console collection**, not fetch.
+- If testing UI interactions that require real browser APIs (popover, dialog, canvas).
 
 ### Template: Playwright acceptance test with console collection
 
@@ -189,22 +239,271 @@ test('<feature> does not emit WebGL or render graph errors', async ({ page }) =>
   await page.waitForSelector('canvas', { state: 'visible' })
   await page.waitForTimeout(1500)
 
-  // Fast “gate”: fail on hard errors
+  // Fast "gate": fail on hard errors
   expect(errors.join('\n')).not.toMatch(/WebGL|GLSL|shader|RenderGraph|Graph compilation/i)
 })
 ```
 
-### Recommended “gates” (order by cost)
+### Template: Playwright with WebGL shader guard
+
+```ts
+import { expect, test } from '@playwright/test'
+import { installWebGLShaderCompileLinkGuard } from './webglShaderCompileLinkGuard'
+
+test('Shader compilation succeeds', async ({ page }) => {
+  // Install guard BEFORE navigation
+  await installWebGLShaderCompileLinkGuard(page)
+
+  await page.goto('/')
+  await page.waitForSelector('canvas', { state: 'visible' })
+  await page.waitForTimeout(2000)
+
+  // Guard throws on compile/link failures
+})
+```
+
+### Template: Playwright with object type cycling
+
+```ts
+import { ConsoleMessage, expect, test } from '@playwright/test'
+import { installWebGLShaderCompileLinkGuard } from './webglShaderCompileLinkGuard'
+
+const OBJECT_TYPES = [
+  'hypercube', 'simplex', 'cross-polytope', 'wythoff-polytope', 'root-system',
+  'clifford-torus', 'nested-torus', 'mandelbulb', 'quaternion-julia',
+  'schroedinger', 'blackhole'
+]
+
+test.describe('Object type rendering', () => {
+  test('All object types render without errors', async ({ page }) => {
+    await installWebGLShaderCompileLinkGuard(page)
+
+    const errors: string[] = []
+    page.on('console', (msg: ConsoleMessage) => {
+      if (msg.type() === 'error') errors.push(msg.text())
+    })
+
+    for (const objectType of OBJECT_TYPES) {
+      errors.length = 0  // Clear between types
+
+      // Use URL parameter for reliable selection
+      await page.goto(`/?t=${objectType}`)
+      await page.waitForSelector('canvas', { state: 'visible' })
+      await page.waitForTimeout(2000)
+
+      const webglErrors = errors.filter(e =>
+        /WebGL|GLSL|shader|compile|link/i.test(e)
+      )
+      expect(webglErrors, `${objectType} failed`).toHaveLength(0)
+    }
+  })
+})
+```
+
+### Template: Visual regression with screenshot
+
+```ts
+import { expect, test } from '@playwright/test'
+
+test('Visual appearance is correct', async ({ page }) => {
+  await page.goto('/?t=hypercube')
+  await page.waitForSelector('canvas', { state: 'visible' })
+  await page.waitForTimeout(3000)  // Wait for render stabilization
+
+  // Screenshot the canvas
+  const canvas = page.locator('canvas').first()
+  await expect(canvas).toHaveScreenshot('hypercube-default.png', {
+    maxDiffPixels: 100  // Allow minor differences
+  })
+})
+```
+
+### Template: Console log debugging
+
+```ts
+import { expect, test } from '@playwright/test'
+
+test('Debug shader uniforms', async ({ page }) => {
+  const logs: string[] = []
+
+  page.on('console', (msg) => {
+    if (msg.text().includes('[DEBUG]')) {
+      logs.push(msg.text())
+    }
+  })
+
+  await page.goto('/')
+  await page.waitForTimeout(2000)
+
+  // Log captured debug messages
+  console.log('Captured logs:', logs)
+
+  // Assert on specific log patterns
+  expect(logs.some(l => l.includes('uQualityMultiplier'))).toBe(true)
+})
+```
+
+### Recommended "gates" (order by cost)
 
 1. **Console gate**: fail fast on WebGL/shader/render-graph errors.
-2. **Center pixel gate**: sample a small canvas region to detect “all black” renders.
+2. **Center pixel gate**: sample a small canvas region to detect "all black" renders.
 3. **Full screenshot analysis**: only when necessary (most expensive).
+
+### Playwright Configuration
+
+The project uses `playwright.config.ts`:
+
+```ts
+{
+  testDir: './scripts/playwright',
+  baseURL: 'http://localhost:3000',
+  webServer: {
+    command: 'npm run dev',
+    url: 'http://localhost:3000',
+    reuseExistingServer: !process.env.CI,
+  },
+  projects: [{ name: 'chromium', use: devices['Desktop Chrome'] }]
+}
+```
 
 ## Memory-Safe Testing Rules (Do not break these)
 
-- Do **not** increase Vitest workers. Keep `maxWorkers: 4` and `pool: 'threads'` in `vitest.config.ts`.
-- Keep tests small: avoid huge arrays; batch in chunks of 100.
-- Always clean up timers/listeners you create in tests.
+### Configuration Safeguards (DO NOT MODIFY without review)
+
+- `maxWorkers: 4` in `vitest.config.ts` - Prevents excessive process spawning
+- `pool: 'threads'` - Uses memory-efficient threading instead of forks
+- `environment: 'happy-dom'` - Fast DOM implementation for all tests
+
+### Writing Memory-Safe Tests
+
+- **DON'T**: Generate 1000+ data points in a single test without batching
+- **DO**: Process in batches of 100 and clear arrays between batches
+- **DON'T**: Rely on DOM for pure logic tests if not needed
+- **DO**: Use component tests (`.test.tsx`) only for UI components
+- **DON'T**: Forget to cleanup timers/listeners in afterEach
+- **DO**: Call `cleanup()` from @testing-library/react in test teardown (already done in setup.ts)
+
+### Emergency Response
+
+If system becomes unresponsive during tests:
+
+```bash
+killall -9 node  # Force kill all Node processes
+node scripts/cleanup-vitest.mjs  # Clean up lingering workers
+```
+
+## Testing Specific Domains
+
+### Testing Stores with Cross-Store Dependencies
+
+```ts
+import { beforeEach, describe, expect, it } from 'vitest'
+import { useGeometryStore } from '@/stores/geometryStore'
+import { useAnimationStore } from '@/stores/animationStore'
+import { useRotationStore } from '@/stores/rotationStore'
+
+describe('GeometryStore cross-store effects', () => {
+  beforeEach(() => {
+    useGeometryStore.getState().reset?.()
+    useAnimationStore.getState().reset?.()
+    useRotationStore.getState().reset?.()
+  })
+
+  it('updates animation store when dimension changes', () => {
+    const { setDimension } = useGeometryStore.getState()
+
+    setDimension(5)
+
+    // Check that dependent stores were updated
+    const animState = useAnimationStore.getState()
+    expect(animState.animatingPlanes.size).toBeLessThanOrEqual(10)  // 5D has 10 planes
+  })
+})
+```
+
+### Testing Geometry Generation
+
+```ts
+import { describe, expect, it } from 'vitest'
+import { generateHypercube } from '@/lib/geometry/hypercube'
+
+describe('Hypercube geometry', () => {
+  it('generates correct vertex count for 4D', () => {
+    const result = generateHypercube(4)
+    expect(result.vertices).toHaveLength(16)  // 2^4
+  })
+
+  it('generates valid edges', () => {
+    const result = generateHypercube(4)
+    for (const [a, b] of result.edges) {
+      expect(a).toBeGreaterThanOrEqual(0)
+      expect(b).toBeLessThan(result.vertices.length)
+      expect(a).not.toBe(b)
+    }
+  })
+
+  // Batch test for memory safety
+  it('handles high dimensions in batches', () => {
+    for (let dim = 3; dim <= 8; dim++) {
+      const result = generateHypercube(dim)
+      expect(result.vertices).toHaveLength(Math.pow(2, dim))
+      // Clear references to help GC
+    }
+  })
+})
+```
+
+### Testing Hooks with R3F
+
+For hooks that use R3F's `useFrame`, create a test wrapper:
+
+```tsx
+import { describe, expect, it, vi } from 'vitest'
+import { renderHook } from '@testing-library/react'
+import { ReactNode } from 'react'
+
+// Mock useFrame for testing
+vi.mock('@react-three/fiber', () => ({
+  useFrame: vi.fn((callback) => {
+    // Optionally call immediately for testing
+  }),
+}))
+
+import { useAnimationLoop } from '@/hooks/useAnimationLoop'
+
+describe('useAnimationLoop', () => {
+  it('registers with useFrame', () => {
+    const { useFrame } = require('@react-three/fiber')
+
+    renderHook(() => useAnimationLoop())
+
+    expect(useFrame).toHaveBeenCalled()
+  })
+})
+```
+
+### Testing Shaders (Unit Level)
+
+Test shader string generation without WebGL:
+
+```ts
+import { describe, expect, it } from 'vitest'
+import { generateMandelbulbFragment } from '@/rendering/shaders/mandelbulb/fragment'
+
+describe('Mandelbulb shader', () => {
+  it('generates valid GLSL 3.00 output declaration', () => {
+    const shader = generateMandelbulbFragment({ power: 8 })
+    expect(shader).toContain('layout(location = 0) out vec4')
+    expect(shader).not.toContain('gl_FragColor')
+  })
+
+  it('includes required uniforms', () => {
+    const shader = generateMandelbulbFragment({ power: 8 })
+    expect(shader).toContain('uniform float uPower')
+    expect(shader).toContain('uniform float uTime')
+  })
+})
+```
 
 ## Common Mistakes
 
@@ -226,5 +525,14 @@ test('<feature> does not emit WebGL or render graph errors', async ({ page }) =>
 ❌ **Don't**: Forget store resets (test pollution).
 ✅ **Do**: Reset stores in `beforeEach` (or `setState` to initial state).
 
-❌ **Don't**: Change `maxWorkers`/pool config to “make tests faster”.
+❌ **Don't**: Change `maxWorkers`/pool config to "make tests faster".
 ✅ **Do**: Keep worker limits stable to prevent memory exhaustion.
+
+❌ **Don't**: Write Playwright tests that depend on exact timing.
+✅ **Do**: Use `waitForSelector`, `waitForTimeout`, and robust element queries.
+
+❌ **Don't**: Create massive test data in a single test.
+✅ **Do**: Use small representative samples and batch processing.
+
+❌ **Don't**: Skip cleanup in afterEach for timers, listeners, or resources.
+✅ **Do**: Always clean up subscriptions, intervals, and event listeners.

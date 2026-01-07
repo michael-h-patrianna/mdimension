@@ -44,6 +44,7 @@ import { ContextEventHandler } from '@/rendering/core/ContextEventHandler';
 import { UniformLifecycleController } from '@/rendering/core/UniformLifecycleController';
 import { VisibilityHandler } from '@/rendering/core/VisibilityHandler';
 import { initializeGlobalMRT } from '@/rendering/graph/MRTStateManager';
+import { isWebGPUBackend } from '@/rendering/core/rendererUtils';
 import { Scene } from '@/rendering/Scene';
 import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useGeometryStore } from '@/stores/geometryStore';
@@ -55,6 +56,11 @@ import { Canvas, type RootState } from '@react-three/fiber';
 import { domMax, LazyMotion } from 'motion/react';
 import { useCallback, useEffect, useMemo } from 'react';
 import * as THREE from 'three';
+import { WebGPURenderer } from 'three/webgpu';
+// REMOVED: WebGPU.isAvailable() creates a test context that can fail and break subsequent contexts
+// import WebGPU from 'three/addons/capabilities/WebGPU.js';
+import { useRendererStore } from '@/stores/rendererStore';
+import { WebGPUBadgeStore } from '@/components/ui/WebGPUBadge';
 
 /**
  * Extract 3D positions from N-D vertices for ground plane bounds calculation.
@@ -209,10 +215,36 @@ function AppContent() {
   // Get performance monitor state
   const showPerfMonitor = useUIStore((state) => state.showPerfMonitor);
 
+  // Get renderer store actions
+  const initializeRenderer = useRendererStore((state) => state.initialize);
+
   // Handle clicks on empty space to deselect lights
   const handlePointerMissed = () => {
     selectLight(null);
   };
+
+  // Check if WebGL fallback should be forced via URL parameter
+  const shouldForceWebGL = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    const params = new URLSearchParams(window.location.search);
+    return params.get('forceWebGL') === 'true' || params.get('backend') === 'webgl';
+  }, []);
+
+  // Check if WebGPU should be attempted
+  // IMPORTANT: Do NOT call WebGPU.isAvailable() here - it creates a test context
+  // which can fail and poison subsequent context creation attempts.
+  // Instead, just check for the API and let createRenderer handle actual initialization.
+  const shouldTryWebGPU = useMemo(() => {
+    if (shouldForceWebGL) {
+      console.log('[App] WebGL forced via URL parameter');
+      return false;
+    }
+
+    // Only check for API availability (no context creation)
+    const hasWebGPUAPI = typeof navigator !== 'undefined' && 'gpu' in navigator;
+    console.log('[App] WebGPU API available:', hasWebGPUAPI);
+    return hasWebGPUAPI;
+  }, [shouldForceWebGL]);
 
   // ==========================================================================
   // CRITICAL: Initialize MRT state management on Canvas creation
@@ -223,13 +255,107 @@ function AppContent() {
   // to MRT targets before drawBuffers is properly configured, causing
   // GL_INVALID_OPERATION: Active draw buffers with missing fragment shader outputs
   const handleCanvasCreated = useCallback((state: RootState) => {
-
     initializeGlobalMRT(state.gl);
 
+    // Detect and store renderer backend info
+    const renderer = state.gl as unknown as {
+      backend?: {
+        isWebGPU?: boolean;
+        parameters?: { adapterInfo?: GPUAdapterInfo };
+      };
+      capabilities?: { maxTextureSize?: number };
+    };
+
+    const isWebGPU = isWebGPUBackend(state.gl);
+    const gpuName = renderer.backend?.parameters?.adapterInfo?.description;
+    const maxTextureSize = renderer.capabilities?.maxTextureSize ?? 4096;
+
+    initializeRenderer({
+      backend: isWebGPU ? 'webgpu' : 'webgl',
+      gpuName,
+      maxTextureSize,
+      isWebGLForced: shouldForceWebGL,
+    });
+
     if (import.meta.env.DEV) {
-      console.log('[App] Canvas created, MRT state manager initialized');
+      console.log(
+        `[App] Canvas created with ${isWebGPU ? 'WebGPU' : 'WebGL'} backend`,
+        gpuName ? `(${gpuName})` : ''
+      );
     }
-  }, []);
+  }, [initializeRenderer, shouldForceWebGL]);
+
+  // ==========================================================================
+  // WebGPU Renderer Factory (async)
+  // ==========================================================================
+  // Creates a WebGPURenderer with automatic WebGL fallback.
+  // The async gl prop pattern is required for WebGPU because:
+  // 1. WebGPU adapter/device acquisition is async
+  // 2. WebGPURenderer.init() must complete before any rendering
+  //
+  // R3F v9 supports async gl callbacks that receive DefaultGLProps
+  const createRenderer = useCallback(
+    async (props: Record<string, unknown>) => {
+      const canvas = props.canvas as HTMLCanvasElement;
+
+      // If WebGPU is not available or forced off, create WebGLRenderer
+      if (!shouldTryWebGPU) {
+        const renderer = new THREE.WebGLRenderer({
+          canvas,
+          alpha: false,
+          antialias: false,
+          preserveDrawingBuffer: true,
+        });
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.0;
+        return renderer;
+      }
+
+      try {
+        // Create WebGPU renderer with fallback capability
+        // CRITICAL: Request higher limits for MRT with 3x RGBA32Float (48 bytes)
+        // Default maxColorAttachmentBytesPerSample is 32, we need 48+ for full MRT
+        const renderer = new WebGPURenderer({
+          canvas,
+          antialias: false, // Match existing config
+          alpha: false,
+          powerPreference: 'high-performance',
+          requiredLimits: {
+            // MRT uses 3x RGBA32Float: output, normal, position = 3 * 16 = 48 bytes
+            maxColorAttachmentBytesPerSample: 128,
+          },
+        });
+
+        // Initialize the renderer (async operation)
+        await renderer.init();
+
+        // Configure tone mapping
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.0;
+
+        if (import.meta.env.DEV) {
+          const backend = isWebGPUBackend(renderer) ? 'WebGPU' : 'WebGL (fallback)';
+          console.log(`[App] Renderer initialized with ${backend}`);
+        }
+
+        return renderer;
+      } catch (error) {
+        // Fallback to WebGL on any error
+        console.warn('[App] WebGPU initialization failed, falling back to WebGL:', error);
+
+        const renderer = new THREE.WebGLRenderer({
+          canvas,
+          alpha: false,
+          antialias: false,
+          preserveDrawingBuffer: true,
+        });
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.0;
+        return renderer;
+      }
+    },
+    [shouldTryWebGPU]
+  );
 
   return (
     <EditorLayout>
@@ -241,7 +367,10 @@ function AppContent() {
           <ErrorBoundary fallback={<div className="flex h-full w-full items-center justify-center text-red-400 bg-black/90">Renderer Crashed. Reload page.</div>}>
             <Canvas
               id="main-webgl-canvas"
-              frameloop="never"
+              // CRITICAL: WebGPU requires frameloop="always" for proper frame presentation
+              // The "never" mode with advance() doesn't present WebGPU frames correctly
+              // TODO: Implement FPS limiting for WebGPU in a different way
+              frameloop={shouldTryWebGPU ? 'always' : 'never'}
               camera={{
                 position: [0, 3.125, 7.5], // Closer angled view for prominent Interstellar look (25% further out)
                 fov: 60,
@@ -258,7 +387,9 @@ function AppContent() {
               }}
               shadows="soft"
               flat
-              gl={{ alpha: false, antialias: false, preserveDrawingBuffer: true }}
+              // R3F v9 supports async gl callbacks for WebGPU initialization
+              // Type assertion needed as R3F types may not fully reflect async support
+              gl={createRenderer as unknown as THREE.WebGLRendererParameters}
               style={{ background: backgroundColor }}
               onPointerMissed={handlePointerMissed}
               onCreated={handleCanvasCreated}
@@ -289,6 +420,9 @@ function AppContent() {
         <ShaderCompilationOverlay />
 
         {showPerfMonitor && <PerformanceMonitor />}
+
+        {/* WebGPU Backend Indicator (outside Canvas, uses store) */}
+        <WebGPUBadgeStore position="bottom-right" />
 
         {/* Screenshot Preview Modal */}
         <ScreenshotModal />

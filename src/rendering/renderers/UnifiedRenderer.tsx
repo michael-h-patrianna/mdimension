@@ -14,14 +14,20 @@
 
 import type { Face } from '@/lib/geometry/faces';
 import type { NdGeometry, ObjectType } from '@/lib/geometry/types';
+import { isWebGPURenderer } from '@/rendering/core/rendererUtils';
 import { useAppearanceStore } from '@/stores/appearanceStore';
+import { useThree } from '@react-three/fiber';
 import React, { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { BlackHoleMesh } from './BlackHole';
+import { BlackHoleMeshTSL } from './BlackHole/tsl';
 import MandelbulbMesh from './Mandelbulb/MandelbulbMesh';
-import { PolytopeScene } from './Polytope';
+import { MandelbulbMeshTSL } from './Mandelbulb/tsl';
+import { PolytopeScene, PolytopeSceneTSL } from './Polytope';
 import QuaternionJuliaMesh from './QuaternionJulia/QuaternionJuliaMesh';
+import { JuliaMeshTSL } from './QuaternionJulia/tsl';
 import SchroedingerMesh from './Schroedinger/SchroedingerMesh';
+import { SchroedingerMeshTSL } from './Schroedinger/tsl';
 import { determineRenderMode } from './utils';
 
 /**
@@ -64,6 +70,16 @@ export const UnifiedRenderer = React.memo(function UnifiedRenderer({
     useShallow((state) => state.facesVisible)
   );
 
+  // Get renderer to determine which scene implementation to use
+  // TSL components work with WebGPURenderer even when it falls back to WebGL
+  const gl = useThree((state) => state.gl);
+
+  // Check if the renderer is a WebGPURenderer (supports TSL node materials)
+  // This is different from checking if the backend is WebGPU - TSL works even with WebGL fallback
+  const useTSL = useMemo(() => {
+    return isWebGPURenderer(gl);
+  }, [gl]);
+
   // Determine render mode
   const renderMode = useMemo(
     () => determineRenderMode(geometry, objectType, dimension, facesVisible),
@@ -73,10 +89,21 @@ export const UnifiedRenderer = React.memo(function UnifiedRenderer({
   // Type assertion for edges (no computation needed, just cast)
   const edges = geometry.edges as [number, number][];
 
+
   return (
     <>
-      {/* Polytope rendering (hypercube, simplex, cross-polytope) */}
-      {renderMode === 'polytope' && (
+      {/* Polytope rendering - use TSL scene for WebGPURenderer, GLSL scene for WebGLRenderer */}
+      {renderMode === 'polytope' && useTSL && (
+        <PolytopeSceneTSL
+          baseVertices={geometry.vertices}
+          edges={edges}
+          faces={faces}
+          dimension={dimension}
+          faceDepths={faceDepths}
+          opacity={opacity}
+        />
+      )}
+      {renderMode === 'polytope' && !useTSL && (
         <PolytopeScene
           baseVertices={geometry.vertices}
           edges={edges}
@@ -87,17 +114,21 @@ export const UnifiedRenderer = React.memo(function UnifiedRenderer({
         />
       )}
 
-      {/* Raymarched 3D-11D Mandelbulb/Mandelbulb surface (unified renderer) */}
-      {renderMode === 'raymarch-mandelbulb' && <MandelbulbMesh />}
+      {/* Raymarched 3D-11D Mandelbulb surface - use TSL for WebGPU, GLSL for WebGL */}
+      {renderMode === 'raymarch-mandelbulb' && useTSL && <MandelbulbMeshTSL />}
+      {renderMode === 'raymarch-mandelbulb' && !useTSL && <MandelbulbMesh />}
 
-      {/* Raymarched 3D-11D Quaternion Julia */}
-      {renderMode === 'raymarch-quaternion-julia' && <QuaternionJuliaMesh />}
+      {/* Raymarched 3D-11D Quaternion Julia - use TSL for WebGPU, GLSL for WebGL */}
+      {renderMode === 'raymarch-quaternion-julia' && useTSL && <JuliaMeshTSL />}
+      {renderMode === 'raymarch-quaternion-julia' && !useTSL && <QuaternionJuliaMesh />}
 
-      {/* Raymarched 3D-11D Schroedinger */}
-      {renderMode === 'raymarch-schroedinger' && <SchroedingerMesh />}
+      {/* Raymarched 3D-11D Schroedinger - use TSL for WebGPU, GLSL for WebGL */}
+      {renderMode === 'raymarch-schroedinger' && useTSL && <SchroedingerMeshTSL />}
+      {renderMode === 'raymarch-schroedinger' && !useTSL && <SchroedingerMesh />}
 
-      {/* Raymarched 3D-11D Black Hole */}
-      {renderMode === 'raymarch-blackhole' && <BlackHoleMesh />}
+      {/* Raymarched 3D-11D Black Hole - use TSL for WebGPU, GLSL for WebGL */}
+      {renderMode === 'raymarch-blackhole' && useTSL && <BlackHoleMeshTSL />}
+      {renderMode === 'raymarch-blackhole' && !useTSL && <BlackHoleMesh />}
     </>
   );
 });

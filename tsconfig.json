@@ -38,7 +38,9 @@
       "@/hooks/*": ["./src/hooks/*"],
       "@/stores/*": ["./src/stores/*"],
       "@/types/*": ["./src/types/*"],
-      "@/utils/*": ["./src/utils/*"]
+      "@/utils/*": ["./src/utils/*"],
+      "three/tsl": ["./node_modules/@types/three/build/three.tsl.d.ts"],
+      "three/webgpu": ["./node_modules/@types/three/build/three.webgpu.d.ts"]
     }
   },
   "include": ["src"]

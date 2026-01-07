@@ -382,6 +382,21 @@ describe('Shadow Uniform Utilities', () => {
   })
 
   describe('collectShadowDataFromScene', () => {
+    it('should not report castsShadow when directional shadow map texture is null', () => {
+      const scene = new THREE.Scene()
+      const light = new THREE.DirectionalLight()
+      light.castShadow = true
+
+      // Simulate a render target existing but without a usable texture yet
+      ;(light.shadow as unknown as { map?: unknown }).map = { texture: null }
+      scene.add(light)
+
+      const shadowData = collectShadowDataFromScene(scene)
+      expect(shadowData[0]!.lightType).toBe(1)
+      expect(shadowData[0]!.shadowMap).toBeNull()
+      expect(shadowData[0]!.castsShadow).toBe(false)
+    })
+
     it('should collect shadow data from point lights', () => {
       const scene = new THREE.Scene()
       const pointLight = createMockPointLight([5, 5, 5], true)

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>WebGPU + R3F Minimal Test</title>
+  <style>
+    body { margin: 0; background: #111; color: white; font-family: monospace; }
+    #root { width: 100vw; height: 100vh; }
+    #info { position: absolute; top: 10px; left: 10px; z-index: 100; background: rgba(0,0,0,0.8); padding: 10px; }
+  </style>
+</head>
+<body>
+  <div id="info">Loading R3F + WebGPU test...</div>
+  <div id="root"></div>
+
+  <!-- React + R3F from CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.181.0/build/three.module.js",
+      "three/webgpu": "https://cdn.jsdelivr.net/npm/three@0.181.0/build/three.webgpu.js",
+      "three/tsl": "https://cdn.jsdelivr.net/npm/three@0.181.0/build/three.tsl.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.181.0/examples/jsm/",
+      "@react-three/fiber": "https://esm.sh/@react-three/fiber@9.0.0-rc.3?external=react,react-dom,three"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { WebGPURenderer } from 'three/webgpu';
+
+    const info = document.getElementById('info');
+
+    function log(msg) {
+      console.log(msg);
+      info.innerHTML += '<br>' + msg;
+    }
+
+    // ========================================
+    // TEST WITHOUT R3F FIRST (sanity check)
+    // ========================================
+    async function runPureThreeTest() {
+      log('=== Pure Three.js WebGPU Test ===');
+
+      if (!navigator.gpu) {
+        log('ERROR: WebGPU not available');
+        return false;
+      }
+
+      const renderer = new WebGPURenderer({ antialias: false });
+      await renderer.init();
+      renderer.setSize(400, 300);
+      document.body.appendChild(renderer.domElement);
+      renderer.domElement.style.position = 'absolute';
+      renderer.domElement.style.top = '100px';
+      renderer.domElement.style.left = '10px';
+      renderer.domElement.style.border = '2px solid green';
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(75, 400/300, 0.1, 1000);
+      camera.position.z = 5;
+
+      // Simple red cube
+      const geometry = new THREE.BoxGeometry(1, 1, 1);
+      const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+      const cube = new THREE.Mesh(geometry, material);
+      scene.add(cube);
+
+      // Render once
+      renderer.render(scene, camera);
+      log('Pure Three.js: RED cube should appear (green border)');
+
+      // Animate
+      function animate() {
+        requestAnimationFrame(animate);
+        cube.rotation.x += 0.01;
+        cube.rotation.y += 0.01;
+        renderer.render(scene, camera);
+      }
+      animate();
+
+      return true;
+    }
+
+    // ========================================
+    // TEST WITH R3F (the actual test)
+    // ========================================
+    async function runR3FTest() {
+      log('=== R3F + WebGPU Test ===');
+      log('NOTE: R3F CDN loading is complex. If this fails, the issue is CDN setup, not the bug.');
+
+      try {
+        // Dynamic import R3F
+        const { Canvas, useFrame } = await import('@react-three/fiber');
+        log('R3F loaded successfully');
+
+        // This is where we'd test R3F + WebGPU
+        // But R3F from CDN with WebGPU is complex due to async gl prop
+        log('R3F test skipped - use Playwright with actual app for R3F testing');
+
+      } catch (err) {
+        log('R3F import failed (expected with CDN): ' + err.message);
+      }
+    }
+
+    // Run tests
+    (async () => {
+      const pureOk = await runPureThreeTest();
+      if (pureOk) {
+        log('');
+        log('=== RESULT ===');
+        log('Pure Three.js WebGPU works correctly.');
+        log('If app is black, issue is in R3F integration or render graph.');
+      }
+    })();
+  </script>
+</body>
+</html>

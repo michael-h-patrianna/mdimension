@@ -1,4 +1,5 @@
 import { usePerformanceMetricsStore } from '@/stores/performanceMetricsStore';
+import { useRendererStore } from '@/stores/rendererStore';
 import React, { useEffect, useMemo, useRef } from 'react';
 import { FPS_COLORS, getFpsColorLevel, type FpsColorLevel } from './utils';
 
@@ -11,6 +12,10 @@ export const CollapsedView = React.memo(function CollapsedView() {
   const sparklineRef = useRef<SVGPathElement>(null);
   const indicatorRef = useRef<HTMLSpanElement>(null);
   const fpsContainerRef = useRef<HTMLSpanElement>(null);
+  const backendRef = useRef<HTMLSpanElement>(null);
+
+  // Get renderer backend - updates when store changes
+  const backend = useRendererStore((state) => state.backend);
 
   // Track previous values to avoid unnecessary DOM updates
   const prevValuesRef = useRef({
@@ -162,6 +167,26 @@ export const CollapsedView = React.memo(function CollapsedView() {
         </span>
         <span className="text-[8px] text-text-tertiary">ms</span>
       </div>
+
+      {/* Renderer Backend Badge - shows actual runtime backend */}
+      {backend !== 'unknown' && (
+        <>
+          <div className="w-px h-6 bg-[var(--bg-active)]" />
+          <div
+            className={`flex items-center gap-1 px-2 py-1 rounded-full ${
+              backend === 'webgpu'
+                ? 'bg-emerald-500/20 text-emerald-400'
+                : 'bg-amber-500/20 text-amber-400'
+            }`}
+            title={backend === 'webgpu' ? 'Using WebGPU renderer' : 'Using WebGL renderer'}
+          >
+            <span className="text-sm">{backend === 'webgpu' ? '⚡' : '🔷'}</span>
+            <span ref={backendRef} className="text-[10px] font-bold uppercase tracking-wider">
+              {backend === 'webgpu' ? 'WebGPU' : 'WebGL'}
+            </span>
+          </div>
+        </>
+      )}
     </div>
   );
 });

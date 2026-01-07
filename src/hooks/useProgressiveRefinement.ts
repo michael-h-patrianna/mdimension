@@ -80,55 +80,44 @@ export function useProgressiveRefinement(
 
   // Timer refs
   const stageTimersRef = useRef<number[]>([])
-  const progressRafRef = useRef<number | null>(null)
-  const startTimeRef = useRef<number>(0)
 
   // Clear all timers
   const clearTimers = useCallback(() => {
     stageTimersRef.current.forEach((timer) => window.clearTimeout(timer))
     stageTimersRef.current = []
-
-    if (progressRafRef.current !== null) {
-      cancelAnimationFrame(progressRafRef.current)
-      progressRafRef.current = null
-    }
   }, [])
 
+  // Progress values for each stage (percentage complete)
+  // low=0%, medium=20%, high=60%, final=100% (based on timing: 0, 100, 300, 500ms)
+  const STAGE_PROGRESS: Record<RefinementStage, number> = {
+    low: 0,
+    medium: 20,
+    high: 60,
+    final: 100,
+  }
+
   // Start refinement sequence
+  // PERFORMANCE FIX: Updates store only 4 times (once per stage) instead of ~30-60 times
+  // (previous RAF-based approach updated every frame, causing excessive React re-renders)
   const startRefinement = useCallback(() => {
     if (!enabled) return
 
     clearTimers()
-    startTimeRef.current = performance.now()
 
-    // Set initial stage
+    // Set initial stage with progress
     setRefinementStage('low')
-    setRefinementProgress(0)
+    setRefinementProgress(STAGE_PROGRESS.low)
 
-    // Schedule stage transitions
+    // Schedule stage transitions with corresponding progress updates
     const stages = REFINEMENT_STAGES.slice(1) // Skip 'low', already set
     stages.forEach((stageKey) => {
       const delay = REFINEMENT_STAGE_TIMING[stageKey]
       const timer = window.setTimeout(() => {
         setRefinementStage(stageKey)
+        setRefinementProgress(STAGE_PROGRESS[stageKey])
       }, delay)
       stageTimersRef.current.push(timer)
     })
-
-    // Start progress animation using RAF for proper frame sync
-    const totalDuration = REFINEMENT_STAGE_TIMING.final
-    const updateProgress = () => {
-      const elapsed = performance.now() - startTimeRef.current
-      const newProgress = Math.min(100, (elapsed / totalDuration) * 100)
-      setRefinementProgress(newProgress)
-
-      if (newProgress < 100) {
-        progressRafRef.current = requestAnimationFrame(updateProgress)
-      } else {
-        progressRafRef.current = null
-      }
-    }
-    progressRafRef.current = requestAnimationFrame(updateProgress)
   }, [enabled, clearTimers, setRefinementStage, setRefinementProgress])
 
   // Stop refinement (reset to low)

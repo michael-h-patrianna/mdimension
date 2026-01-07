@@ -30,3 +30,15 @@
 - [x] **Implement GPU Timing Instrumentation** (Optional/Optimization)
     - [x] Modify `src/rendering/graph/GPUTimer.ts` to implement WebGL2 `EXT_disjoint_timer_query_webgl2` support.
     - [x] Update `RenderGraph.ts` to record queries around pass execution.
+
+
+an AI coding agent attempted to refactor the project to add WebGPU support.
+
+original plan: docs/reports/webgpu-migration-plan.md
+
+this failed. they delivered broken, unfinished AI slop.
+
+your task:
+1. review the status of the migration. what has been done? what is missing? what is broken and needs to be rewritten?
+2. plan how to salvage the project, how to best fix all broken code and add missing code to complete the webgpu project at a high quality standard.
+3. write all todos and implement.

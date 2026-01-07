@@ -23,6 +23,9 @@ export {
 export { useTrackedShaderMaterial } from './useTrackedShaderMaterial';
 export type { TrackedShaderMaterialResult } from './useTrackedShaderMaterial';
 
+export { useTrackedTSLMaterial } from './useTrackedTSLMaterial';
+export type { TrackedTSLMaterialResult } from './useTrackedTSLMaterial';
+
 export { TrackedShaderMaterial } from './TrackedShaderMaterial';
 
 // ============================================================================
@@ -40,6 +43,12 @@ export {
   createSkyboxShaderDefaults,
   skyboxGlslVersion,
 } from './skybox/SkyboxShader'
+
+
+
+
+
+
 
 
 

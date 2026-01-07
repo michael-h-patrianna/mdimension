@@ -1,3 +1,4 @@
+import fs from 'fs'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
@@ -61,6 +62,10 @@ export default defineConfig(({ mode }) => ({
   server: {
     port: 3000,
     open: true,
+    https: {
+      key: fs.readFileSync('./certs/localhost+2-key.pem'),
+      cert: fs.readFileSync('./certs/localhost+2.pem'),
+    },
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin',
       'Cross-Origin-Embedder-Policy': 'require-corp',

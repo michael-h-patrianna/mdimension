@@ -3,6 +3,8 @@
  *
  * Uses the same GGX BRDF as other custom shaders for visual consistency.
  * Supports multi-light system, shadow maps, and IBL.
+ *
+ * Automatically uses TSL NodeMaterial when WebGPU renderer is active.
  */
 
 import { createColorCache, updateLinearColorUniform } from '@/rendering/colors/linearCache'
@@ -14,9 +16,11 @@ import {
   SHADOW_MAP_SIZES,
   updateShadowMapUniforms,
 } from '@/rendering/shadows'
+import { GroundPlaneMaterialTSL } from '@/rendering/tsl/materials/GroundPlaneMaterialTSL'
 import { UniformManager } from '@/rendering/uniforms/UniformManager'
 import { useEnvironmentStore } from '@/stores/environmentStore'
 import { useLightingStore } from '@/stores/lightingStore'
+import { useRendererStore } from '@/stores/rendererStore'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, type Ref } from 'react'
 import * as THREE from 'three'
@@ -39,16 +43,16 @@ export interface GroundPlaneMaterialProps {
   gridFadeDistance?: number
   gridFadeStrength?: number
   // React 19: ref as regular prop
-  ref?: Ref<THREE.ShaderMaterial>
+  ref?: Ref<THREE.ShaderMaterial | THREE.Material>
   // Note: PBR properties (metallic, roughness, specularIntensity, specularColor)
   // are managed via UniformManager using 'pbr-ground' source
 }
 
 /**
- * Custom shader material for ground plane that matches GGX BRDF of other objects.
- * React 19: Uses ref as regular prop instead of forwardRef.
+ * WebGL GLSL-based ground plane material implementation.
+ * Internal component - use GroundPlaneMaterial instead.
  */
-export function GroundPlaneMaterial({
+function GroundPlaneMaterialGLSL({
   color,
   opacity,
   side = THREE.DoubleSide,
@@ -124,7 +128,7 @@ export function GroundPlaneMaterial({
       if (typeof ref === 'function') {
         ref(materialRef.current)
       } else {
-        ref.current = materialRef.current
+        ;(ref as React.MutableRefObject<THREE.ShaderMaterial | null>).current = materialRef.current
       }
     }
   }, [ref])
@@ -207,7 +211,11 @@ export function GroundPlaneMaterial({
     if (groundChanged) {
       u.uShowGrid!.value = showGrid
       updateLinearColorUniform(cache.gridColor, u.uGridColor!.value as THREE.Color, gridColor)
-      updateLinearColorUniform(cache.sectionColor, u.uSectionColor!.value as THREE.Color, sectionColor)
+      updateLinearColorUniform(
+        cache.sectionColor,
+        u.uSectionColor!.value as THREE.Color,
+        sectionColor
+      )
       u.uGridSpacing!.value = gridSpacing
       u.uSectionSpacing!.value = gridSpacing * 5
       u.uGridThickness!.value = gridThickness
@@ -233,4 +241,33 @@ export function GroundPlaneMaterial({
       polygonOffsetUnits={1}
     />
   )
+}
+
+/**
+ * Custom shader material for ground plane that matches GGX BRDF of other objects.
+ * React 19: Uses ref as regular prop instead of forwardRef.
+ *
+ * Automatically delegates to TSL version when WebGPU renderer is active.
+ */
+export function GroundPlaneMaterial(props: GroundPlaneMaterialProps) {
+  // Use TSL material for WebGPU renderer
+  // Direct detection from renderer is more reliable than store during initial render
+  const gl = useThree((state) => state.gl)
+  const storeBackend = useRendererStore((state) => state.backend)
+
+  const isWebGPU = useMemo(() => {
+    // Three.js r181+ uses isWebGPUBackend property
+    const rendererBackend = (gl as { backend?: { isWebGPUBackend?: boolean } }).backend
+    if (rendererBackend?.isWebGPUBackend !== undefined) {
+      return rendererBackend.isWebGPUBackend
+    }
+    return storeBackend === 'webgpu'
+  }, [gl, storeBackend])
+
+  // Delegate to appropriate implementation based on renderer backend
+  if (isWebGPU) {
+    return <GroundPlaneMaterialTSL {...props} />
+  }
+
+  return <GroundPlaneMaterialGLSL {...props} />
 }

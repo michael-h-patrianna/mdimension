@@ -165,3 +165,69 @@ Do a full in-depth code review of the new feature(s). Is the implementation 100%
   - Easy to add sharpness slider
 
   Want me to implement CAS in ToScreenPass with a sharpness control?
+
+
+do a comparison between the webgl and the webgpu/tsl implementation of the mandelbulb and julia object types. only compare code and
+  architecture. do not run tests or do anything else than looking at code. this requires a thorough deep review to find all gaps in terms of features and optimizations (including microoptimizations). no quick
+  scan!
+
+BE AS CLOSE AS POSSIBLE TO WEBGL!!!! WE HAVE SOLVED SO MANY PROBLEMS ALREADY IN WEBGL!!! I DO NOT WANT YOU TO WRITE AI SLOP AND THEN WE SPEND ANOTHER 2 WEEKS TO SOLVE THE PROBLEMS AGAIN BECAUSE YOU REFUSE TO
+ FOLLOW THE INSTRUCTION: 100% WEBGL PARITY!!! ONLY PORT WHAT NEEDS TO BE PORTED TO MAKE THIS ALSO WORK FULLY IN WEBGPU
+
+
+Compare in detail the WebGPU port of the perfectly fine working and well optimized WebGL implemetion of the mandelbulb and julia objects.
+
+Find missing features. Find added features not existing in WebGL. Find deviations that are unnecessary for making WebGPU work. Find anything that is not closely following WebGL and is not required to make WebGPU work.
+
+Do a thorough and in-depth comparison. No quick scan!!!
+
+Guiding Principle: 100% WebGL Parity Through Exact Porting
+
+  Core Rule: Port WebGL code line-by-line. Do not reinvent, abstract, or "improve."
+
+  What This Means in Practice
+
+  1. Read WebGL first, then port
+    - Before writing any TSL code, read the exact WebGL implementation
+    - Match the structure, variable names, and logic flow
+    - If WebGL does something inline, TSL does it inline
+    - If WebGL uses a helper function, TSL uses an equivalent helper function
+  2. No new abstractions
+    - If a function doesn't exist in WebGL, don't create it in TSL
+    - If WebGL calculates PBR inline in a loop, TSL calculates PBR inline in a loop
+    - Abstractions that "seem cleaner" are forbidden - they hide bugs and diverge from the proven WebGL code
+  3. Reuse existing TSL infrastructure
+    - Check what already exists in src/rendering/tsl/ before writing new code
+    - The polytope code already has working lighting, color algorithms, SSS, IBL
+    - Import and reuse, don't duplicate
+  4. Same uniforms, same names, same defaults
+    - Uniform names must match WebGL exactly
+    - Default values must match WebGL exactly
+    - Array sizes must match WebGL exactly
+  5. The WebGL code is the specification
+    - It's been battle-tested and debugged
+    - Every "optimization" or "improvement" I might think of has likely already been considered and rejected for good reason
+    - My job is to translate, not to design
+
+
+
+we chose MeshBasicNodeMaterial to avoid double-lighting issues with MeshStandardNodeMaterial
+
+NodeMaterial
+
+"USER GOAL: Create a truly custom material in WebGPU/TSL like WebGL's ShaderMaterial. WebGL approach: ShaderMaterial with complete custom GLSL - vertex shader (transform-nd.glsl), fragment shader (compose.ts), all uniforms manually declared, NO reliance on Three.js built-in lighting/shadows. TSL equivalent:
+                                       Use base NodeMaterial (NOT MeshStandardNodeMaterial), set vertexNode for custom vertex transforms, set fragmentNode for complete fragment output. This gives same control as ShaderMaterial. Need to: 1) Review how WebGL ShaderMaterial is instantiated, 2) Plan TSL NodeMaterial equivalent, 3) Ensure all features work (IBL,
+                                       PBR, multi-light, shadows, SSS, MRT, custom colors
+
+
+ Now I see the complete WebGL fragment shader structure. The key flow:
+
+  1. Normal (screen-space dFdx/dFdy or vertex-computed)
+  2. Color algorithm → baseColor
+  3. PBR F0 = mix(0.04, baseColor, metallic)
+  4. Ambient (energy-conserved)
+  5. Light loop: direction, attenuation, shadow, NdotL, diffuse, specular, SSS
+  6. Fresnel rim (after loop)
+  7. IBL (after loop)
+  8. MRT output: gColor, gNormal, gPosition
+For TSL, I need to create a fragmentNode that does EXACTLY this same computation. Let me create a complete custom material:

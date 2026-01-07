@@ -15,6 +15,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import { useShallow } from 'zustand/react/shallow';
+import { useRendererStore } from '@/stores/rendererStore';
+import { SkyboxTextureMeshTSL } from '@/rendering/tsl/materials/skybox/SkyboxTextureMeshTSL';
 import { ProceduralSkyboxWithEnvironment } from './ProceduralSkyboxWithEnvironment';
 
 // Import all skybox ktx2 files as URLs
@@ -568,6 +570,16 @@ const SkyboxLoader: React.FC = () => {
   } = useEnvironmentStore(loaderEnvSelector);
 
   const gl = useThree((state) => state.gl);
+  const storeBackend = useRendererStore((state) => state.backend);
+
+  // Detect WebGPU backend
+  const isWebGPU = useMemo(() => {
+    const rendererBackend = (gl as { backend?: { isWebGPUBackend?: boolean } }).backend;
+    if (rendererBackend?.isWebGPUBackend !== undefined) {
+      return rendererBackend.isWebGPUBackend;
+    }
+    return storeBackend === 'webgpu';
+  }, [gl, storeBackend]);
 
   // Manual async texture loading state
   const [texture, setTexture] = useState<THREE.CubeTexture | null>(null);
@@ -692,8 +704,10 @@ const SkyboxLoader: React.FC = () => {
   return (
     <>
         {/* Skybox mesh for visual rendering - uses loaded texture directly */}
+        {/* WebGPU: Use TSL-based material for native WebGPU rendering */}
+        {/* WebGL: Fall back to GLSL ShaderMaterial */}
         {shouldRenderSkybox && texture && (
-            <SkyboxMesh texture={texture} />
+            isWebGPU ? <SkyboxTextureMeshTSL texture={texture} /> : <SkyboxMesh texture={texture} />
         )}
     </>
   );
@@ -708,6 +722,11 @@ const SkyboxLoader: React.FC = () => {
 export const Skybox: React.FC = () => {
   const mainEnvSelector = useShallow(skyboxMainEnvSelector);
   const { skyboxEnabled, skyboxMode } = useEnvironmentStore(mainEnvSelector);
+
+  // Debug: Log skybox state
+  if (import.meta.env.DEV) {
+    console.log('[Skybox] enabled:', skyboxEnabled, 'mode:', skyboxMode);
+  }
 
   if (!skyboxEnabled) return null;
 

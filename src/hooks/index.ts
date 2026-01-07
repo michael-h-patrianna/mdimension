@@ -12,3 +12,14 @@ export { useGeometryWorker, generateRequestId, type UseGeometryWorkerResult } fr
 export { useInteractionState } from './useInteractionState'
 export { useProgressiveRefinement } from './useProgressiveRefinement'
 export { useWebGLCleanup } from './useWebGLCleanup'
+export {
+  useRendererBackend,
+  useActiveRendererBackend,
+  checkWebGPUAvailable,
+  isWebGLForced,
+  isWebGPUForced,
+  determineBackend,
+  getRendererBackendInfo,
+  type RendererBackend,
+  type RendererBackendInfo,
+} from './useRendererBackend'

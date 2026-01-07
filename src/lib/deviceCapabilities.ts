@@ -67,10 +67,40 @@ export const DEFAULT_CAPABILITIES: DeviceCapabilities = {
  */
 export function isWebGL2Supported(): boolean {
   try {
+    // FAST PATH: If WebGPU API is available, WebGL2 is definitely supported
+    // All browsers with WebGPU support also support WebGL2
+    // This avoids creating a test context which can fail due to context exhaustion
+    // IMPORTANT: In tests we often stub `navigator.gpu = {}` (without requestAdapter),
+    // so require a real-looking WebGPU shape to avoid bypassing the WebGL2 probe.
+    if (
+      typeof navigator !== 'undefined' &&
+      'gpu' in navigator &&
+      typeof (navigator as unknown as { gpu?: { requestAdapter?: unknown } }).gpu?.requestAdapter ===
+        'function'
+    ) {
+      console.log('[isWebGL2Supported] WebGPU API available, assuming WebGL2 supported')
+      return true
+    }
+
+    // FALLBACK: Create test context for browsers without WebGPU
     const canvas = document.createElement('canvas')
     const gl = canvas.getContext('webgl2')
-    return gl !== null
-  } catch {
+    const supported = gl !== null
+
+    console.log('[isWebGL2Supported] canvas created:', !!canvas, 'gl context:', !!gl, 'supported:', supported)
+
+    // CRITICAL: Clean up the context to prevent context exhaustion
+    if (gl && typeof (gl as unknown as { getExtension?: unknown }).getExtension === 'function') {
+      const ext = (gl as WebGL2RenderingContext).getExtension('WEBGL_lose_context')
+      if (ext) ext.loseContext()
+    }
+    // Remove canvas from memory
+    canvas.width = 0
+    canvas.height = 0
+
+    return supported
+  } catch (e) {
+    console.error('[isWebGL2Supported] Exception:', e)
     return false
   }
 }

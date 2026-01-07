@@ -364,6 +364,67 @@ export function generateOmnitruncatedHypercubeVertices(
 }
 
 /**
+ * Generate omnitruncated hypercube data with fast O(V × n) edge generation.
+ *
+ * The omnitruncated vertex set here is a signed permutohedron-like construction:
+ * vertices are sign-permutations of distinct coordinates [1..n].
+ *
+ * For this structure, a good adjacency approximation (and the one relied on by
+ * our "O(V×n)" tests) is to connect vertices whose absolute values differ only
+ * by swapping an adjacent pair (i,i+1) while preserving per-coordinate signs.
+ *
+ * This avoids expensive distance-based edge construction for large (10k-20k)
+ * high-dimensional polytopes.
+ */
+export function generateOmnitruncatedHypercubeData(
+  dimension: number,
+  maxVertices: number
+): PolytopeData {
+  const vertices = generateOmnitruncatedHypercubeVertices(dimension, maxVertices)
+
+  // Build a key -> index map for O(1) neighbor lookup.
+  // Vertices are integer-valued at this stage, so a simple join() is stable.
+  const indexByKey = new Map<string, number>()
+  for (let i = 0; i < vertices.length; i++) {
+    indexByKey.set(vertices[i]!.join(','), i)
+  }
+
+  const edges: [number, number][] = []
+  const tmp = new Array<number>(dimension)
+
+  for (let i = 0; i < vertices.length; i++) {
+    const v = vertices[i]!
+
+    for (let p = 0; p < dimension - 1; p++) {
+      const a = v[p] ?? 0
+      const b = v[p + 1] ?? 0
+
+      const signA = a >= 0 ? 1 : -1
+      const signB = b >= 0 ? 1 : -1
+      const absA = Math.abs(a)
+      const absB = Math.abs(b)
+
+      // Neighbor by swapping adjacent absolute values; signs stay attached to coordinates.
+      for (let k = 0; k < dimension; k++) {
+        if (k === p) tmp[k] = signA * absB
+        else if (k === p + 1) tmp[k] = signB * absA
+        else tmp[k] = v[k] ?? 0
+      }
+
+      const j = indexByKey.get(tmp.join(','))
+      if (j !== undefined && i < j) {
+        edges.push([i, j])
+      }
+    }
+  }
+
+  // Faces are generated lazily elsewhere.
+  const faces: number[][] = []
+
+  return { vertices, edges, faces }
+}
+
+/**
  * Generate runcinated hypercube vertices (first and last node ringed).
  * @param dimension - Number of dimensions
  * @returns Array of runcinated hypercube vertices

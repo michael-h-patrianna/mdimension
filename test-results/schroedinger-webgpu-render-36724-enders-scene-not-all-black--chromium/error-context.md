@@ -1,0 +1,434 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - generic [ref=e5]:
+    - generic [ref=e11] [cursor=pointer]:
+      - generic [ref=e15]:
+        - generic [ref=e16]: "139"
+        - generic [ref=e17]: FPS
+      - img [ref=e20]
+      - generic [ref=e22]:
+        - generic [ref=e23]: "7.2"
+        - generic [ref=e24]: ms
+      - generic "Using WebGPU renderer" [ref=e26]:
+        - generic [ref=e27]: ⚡
+        - generic [ref=e28]: WebGPU
+    - generic:
+      - generic: ⚡
+      - generic: WebGPU
+  - generic:
+    - generic [ref=e30]:
+      - generic [ref=e31]:
+        - button "Toggle Explorer" [ref=e32] [cursor=pointer]:
+          - img [ref=e34]
+        - generic [ref=e36]:
+          - button "FILE" [ref=e37] [cursor=pointer]:
+            - button "FILE" [ref=e38]:
+              - generic [ref=e39]: FILE
+          - button "VIEW" [ref=e40] [cursor=pointer]:
+            - button "VIEW" [ref=e41]:
+              - generic [ref=e42]: VIEW
+          - button "SCENES" [ref=e43] [cursor=pointer]:
+            - button "SCENES" [ref=e44]:
+              - generic [ref=e45]: SCENES
+          - button "STYLES" [ref=e46] [cursor=pointer]:
+            - button "STYLES" [ref=e47]:
+              - generic [ref=e48]: STYLES
+      - generic [ref=e50]:
+        - generic [ref=e51]:
+          - button "Toggle edges" [pressed] [ref=e53] [cursor=pointer]: Edges
+          - button "Toggle faces" [pressed] [ref=e55] [cursor=pointer]: Faces
+        - button "Performance Monitor" [pressed] [ref=e57] [cursor=pointer]:
+          - img [ref=e58]
+        - button "Fullscreen" [ref=e60] [cursor=pointer]:
+          - img [ref=e61]
+        - button "Mute Sound" [pressed] [ref=e67] [cursor=pointer]:
+          - img [ref=e68]
+        - button "Cinematic Mode" [ref=e71] [cursor=pointer]:
+          - img [ref=e72]
+      - button "Toggle Inspector" [ref=e75] [cursor=pointer]:
+        - img [ref=e77]
+    - generic:
+      - generic [ref=e81]:
+        - generic [ref=e82]:
+          - img [ref=e83]
+          - heading "Geometry" [level=2] [ref=e85]
+        - generic [ref=e86]:
+          - generic [ref=e87]:
+            - generic [ref=e89]: Dimensions
+            - generic [ref=e92]:
+              - radiogroup "Select dimension" [ref=e94]:
+                - radio "3D" [ref=e95] [cursor=pointer]
+                - radio "4D" [checked] [ref=e96] [cursor=pointer]: 4D
+                - radio "5D" [ref=e98] [cursor=pointer]
+                - radio "6D" [ref=e99] [cursor=pointer]
+                - radio "7D" [ref=e100] [cursor=pointer]
+                - radio "8D" [ref=e101] [cursor=pointer]
+                - radio "9D" [ref=e102] [cursor=pointer]
+                - radio "10D" [ref=e103] [cursor=pointer]
+                - radio "11D" [ref=e104] [cursor=pointer]
+              - button "Scroll right" [ref=e106] [cursor=pointer]:
+                - img [ref=e108]
+          - generic [ref=e111]:
+            - tablist [ref=e115]:
+              - tab "Type" [selected] [ref=e116] [cursor=pointer]:
+                - generic [ref=e118]:
+                  - img [ref=e119]
+                  - generic [ref=e121]: Type
+              - tab "Geometry" [ref=e122] [cursor=pointer]:
+                - generic [ref=e124]:
+                  - img [ref=e125]
+                  - generic [ref=e127]: Geometry
+            - tabpanel "Type" [ref=e129]:
+              - generic [ref=e131]:
+                - button "Hypercube Generalization of a cube to n dimensions (n-cube)" [ref=e132] [cursor=pointer]:
+                  - generic [ref=e134]: Hypercube
+                  - generic [ref=e135]: Generalization of a cube to n dimensions (n-cube)
+                - button "Simplex Generalization of a tetrahedron to n dimensions (n-simplex)" [ref=e136] [cursor=pointer]:
+                  - generic [ref=e138]: Simplex
+                  - generic [ref=e139]: Generalization of a tetrahedron to n dimensions (n-simplex)
+                - button "Cross-Polytope Generalization of an octahedron to n dimensions (n-orthoplex)" [ref=e140] [cursor=pointer]:
+                  - generic [ref=e142]: Cross-Polytope
+                  - generic [ref=e143]: Generalization of an octahedron to n dimensions (n-orthoplex)
+                - button "Wythoff Polytope Uniform polytopes via Wythoff kaleidoscopic construction" [ref=e144] [cursor=pointer]:
+                  - generic [ref=e146]: Wythoff Polytope
+                  - generic [ref=e147]: Uniform polytopes via Wythoff kaleidoscopic construction
+                - button "Root System Root polytopes from Lie algebra (A, D, or E8)" [ref=e148] [cursor=pointer]:
+                  - generic [ref=e150]: Root System
+                  - generic [ref=e151]: Root polytopes from Lie algebra (A, D, or E8)
+                - 'button "Clifford Torus Flat torus with independent circles (3D: torus, 4D+: Clifford)" [ref=e152] [cursor=pointer]':
+                  - generic [ref=e154]: Clifford Torus
+                  - generic [ref=e155]: "Flat torus with independent circles (3D: torus, 4D+: Clifford)"
+                - 'button "Nested Torus Coupled tori with Hopf-like structure (4D: Hopf fibration, 5D-11D: n-tori)" [ref=e156] [cursor=pointer]':
+                  - generic [ref=e158]: Nested Torus
+                  - generic [ref=e159]: "Coupled tori with Hopf-like structure (4D: Hopf fibration, 5D-11D: n-tori)"
+                - 'button "Mandelbulb Fractal via escape-time iteration (3D: Mandelbulb, 4D+: Mandelbulb)" [ref=e160] [cursor=pointer]':
+                  - generic [ref=e162]: Mandelbulb
+                  - generic [ref=e163]: "Fractal via escape-time iteration (3D: Mandelbulb, 4D+: Mandelbulb)"
+                - button "Quaternion Julia Julia set fractal using quaternion algebra (z = z^n + c)" [ref=e164] [cursor=pointer]:
+                  - generic [ref=e166]: Quaternion Julia
+                  - generic [ref=e167]: Julia set fractal using quaternion algebra (z = z^n + c)
+                - button "Schrödinger Slices Organic volumes from an N-dimensional wavefunction." [ref=e168] [cursor=pointer]:
+                  - generic [ref=e170]: Schrödinger Slices
+                  - generic [ref=e174]: Organic volumes from an N-dimensional wavefunction.
+                - button "Black Hole N-dimensional black hole with gravitational lensing and accretion disk" [ref=e175] [cursor=pointer]:
+                  - generic [ref=e177]: Black Hole
+                  - generic [ref=e178]: N-dimensional black hole with gravitational lensing and accretion disk
+      - generic [ref=e182]:
+        - generic [ref=e183]:
+          - button "Pause" [ref=e184] [cursor=pointer]:
+            - img [ref=e186]
+          - button "Enable reverse" [ref=e188] [cursor=pointer]:
+            - img [ref=e189]
+        - generic [ref=e192]:
+          - generic [ref=e193]:
+            - generic "Drag label to adjust value" [ref=e194]: SPEED
+            - generic [ref=e196]:
+              - textbox [ref=e197]: "0.2"
+              - generic: x
+          - slider "SPEED" [ref=e201] [cursor=pointer]: "0.2"
+        - generic [ref=e203]:
+          - generic [ref=e204]:
+            - generic "Drag label to adjust value" [ref=e205]: BIAS
+            - textbox [ref=e208]: "0.00"
+          - slider "BIAS" [ref=e211] [cursor=pointer]: "0"
+        - generic [ref=e212]:
+          - button "Toggle animations drawer" [ref=e213] [cursor=pointer]: Anim1
+          - button "Toggle rotation drawer" [ref=e214] [cursor=pointer]: Rotate6
+      - generic [ref=e217]:
+        - generic [ref=e218]:
+          - img [ref=e219]
+          - heading "Visuals" [level=2] [ref=e221]
+        - generic [ref=e223]:
+          - tablist [ref=e227]:
+            - tab "Object" [selected] [ref=e228] [cursor=pointer]:
+              - generic [ref=e230]:
+                - img [ref=e231]
+                - generic [ref=e233]: Object
+            - tab "Scene" [ref=e234] [cursor=pointer]:
+              - generic [ref=e236]:
+                - img [ref=e237]
+                - generic [ref=e239]: Scene
+            - tab "System" [ref=e240] [cursor=pointer]:
+              - generic [ref=e242]:
+                - img [ref=e243]
+                - generic [ref=e245]: System
+          - tabpanel "Object" [ref=e247]:
+            - generic [ref=e248]:
+              - generic [ref=e249]:
+                - button "Faces" [expanded] [ref=e251] [cursor=pointer]:
+                  - heading "Faces" [level=3] [ref=e256]
+                  - img [ref=e258]
+                - generic [ref=e263]:
+                  - generic [ref=e265]:
+                    - tablist [ref=e267]:
+                      - tab "Colors" [selected] [ref=e268] [cursor=pointer]: Colors
+                      - tab "Material" [ref=e269] [cursor=pointer]
+                    - button [ref=e270] [cursor=pointer]:
+                      - img [ref=e271]
+                  - tabpanel "Colors" [ref=e274]:
+                    - generic [ref=e275]:
+                      - generic [ref=e278]:
+                        - combobox [ref=e279] [cursor=pointer]:
+                          - option "Monochromatic"
+                          - option "Analogous"
+                          - option "Cosine Gradient"
+                          - option "Normal-Based"
+                          - option "Distance Field"
+                          - option "LCH Perceptual"
+                          - option "Multi-Source"
+                          - option "Radial (from center)"
+                          - option "Phase (Quantum)" [selected]
+                          - option "Mixed (Phase/Density)"
+                          - option "Blackbody (Heat)"
+                        - generic:
+                          - img
+                      - generic [ref=e282]:
+                        - generic [ref=e284]:
+                          - generic [ref=e285]: Palette Preset
+                          - generic [ref=e286]:
+                            - combobox "Palette Preset" [ref=e287] [cursor=pointer]:
+                              - option "Powder Blue"
+                              - option "Dusty Rose"
+                              - option "Soft Lavender"
+                              - option "Pale Peach"
+                              - option "Steel Blue"
+                              - option "Storm Cloud"
+                              - option "Deep Sea"
+                              - option "Slate"
+                              - option "Fog"
+                              - option "Crimson Fade" [selected]
+                              - option "Dried Rose"
+                              - option "Terracotta"
+                              - option "Clay"
+                              - option "Burgundy Mist"
+                              - option "Mauve"
+                              - option "Stone"
+                              - option "Driftwood"
+                              - option "Charcoal"
+                              - option "Espresso"
+                              - option "Rose Steel"
+                              - option "Dusty Twilight"
+                              - option "Warm Fog"
+                              - option "Cool Ember"
+                              - option "Electric"
+                              - option "Plasma"
+                              - option "Nebula"
+                              - option "Prism"
+                              - option "Glitch"
+                              - option "Infrared"
+                              - option "Acid Wash"
+                              - option "Void Pulse"
+                              - option "Solar Flare"
+                              - option "Deep Fry"
+                              - option "Ghostwave"
+                              - option "Toxic Spill"
+                              - option "Binary Fade"
+                              - option "Chromatic Shift"
+                              - option "Custom"
+                            - generic:
+                              - img
+                        - button "Advanced Editor" [ref=e289] [cursor=pointer]:
+                          - generic [ref=e290]:
+                            - generic [ref=e291]: Advanced Editor
+                            - img [ref=e292]
+                        - generic [ref=e294]:
+                          - generic [ref=e295]: Distribution
+                          - generic [ref=e296]:
+                            - generic [ref=e297]:
+                              - generic "Drag label to adjust value" [ref=e298]: Power
+                              - textbox [ref=e301]: "1.00"
+                            - slider "Power" [ref=e305] [cursor=pointer]: "1"
+                          - generic [ref=e306]:
+                            - generic [ref=e307]:
+                              - generic "Drag label to adjust value" [ref=e308]: Cycles
+                              - textbox [ref=e311]: "1.0"
+                            - slider "Cycles" [ref=e315] [cursor=pointer]: "1"
+                          - generic [ref=e316]:
+                            - generic [ref=e317]:
+                              - generic "Drag label to adjust value" [ref=e318]: Offset
+                              - textbox [ref=e321]: "0.00"
+                            - slider "Offset" [ref=e324] [cursor=pointer]: "0"
+              - button "Edges" [ref=e327] [cursor=pointer]:
+                - heading "Edges" [level=3] [ref=e331]
+                - img [ref=e333]
+              - button "Shadows" [ref=e337] [cursor=pointer]:
+                - heading "Shadows" [level=3] [ref=e341]
+                - img [ref=e343]
+              - button "Reflections" [ref=e347] [cursor=pointer]:
+                - heading "Reflections" [level=3] [ref=e351]
+                - img [ref=e353]
+              - generic [ref=e355]:
+                - button "Advanced Rendering" [expanded] [ref=e357] [cursor=pointer]:
+                  - heading "Advanced Rendering" [level=3] [ref=e362]
+                  - img [ref=e364]
+                - generic [ref=e367]:
+                  - generic [ref=e368]:
+                    - button "Subsurface Scattering section, collapsed" [ref=e370] [cursor=pointer]:
+                      - generic [ref=e371]:
+                        - img [ref=e373]
+                        - generic [ref=e375]: Subsurface Scattering
+                      - switch [ref=e379]
+                    - button "Fresnel Rim section, collapsed" [ref=e382] [cursor=pointer]:
+                      - generic [ref=e383]:
+                        - img [ref=e385]
+                        - generic [ref=e387]: Fresnel Rim
+                      - switch [ref=e391]
+                  - generic [ref=e393]:
+                    - generic [ref=e394]:
+                      - button "Emission & Rim section, expanded" [expanded] [ref=e395] [cursor=pointer]:
+                        - generic [ref=e396]:
+                          - img [ref=e398]
+                          - generic [ref=e400]: Emission & Rim
+                      - generic [ref=e402]:
+                        - generic [ref=e403]:
+                          - generic [ref=e404]:
+                            - generic "Drag label to adjust value" [ref=e405]: Emission Strength
+                            - textbox [ref=e408]: "0.9"
+                          - slider "Emission Strength" [ref=e412] [cursor=pointer]: "0.9"
+                        - generic [ref=e413]:
+                          - generic [ref=e414]:
+                            - generic "Drag label to adjust value" [ref=e415]: Emission Threshold
+                            - textbox [ref=e418]: "0.15"
+                          - slider "Emission Threshold" [ref=e422] [cursor=pointer]: "0.15"
+                        - generic [ref=e423]:
+                          - generic [ref=e424]:
+                            - generic "Drag label to adjust value" [ref=e425]: Color Shift
+                            - textbox [ref=e428]: "0.0"
+                          - slider "Color Shift" [ref=e432] [cursor=pointer]: "0"
+                        - generic [ref=e433]:
+                          - generic [ref=e434]: Pulsing
+                          - switch [ref=e437] [cursor=pointer]
+                        - generic [ref=e439]:
+                          - generic [ref=e440]:
+                            - generic "Drag label to adjust value" [ref=e441]: Rim Falloff
+                            - textbox [ref=e444]: "0.0"
+                          - slider "Rim Falloff" [ref=e447] [cursor=pointer]: "0"
+                    - generic [ref=e448]:
+                      - button "Volume Rendering section, expanded" [expanded] [ref=e449] [cursor=pointer]:
+                        - generic [ref=e450]:
+                          - img [ref=e452]
+                          - generic [ref=e454]: Volume Rendering
+                      - generic [ref=e456]:
+                        - generic [ref=e457]:
+                          - generic [ref=e458]:
+                            - generic "Drag label to adjust value" [ref=e459]: Density Gain
+                            - textbox [ref=e462]: "2.0"
+                          - slider "Density Gain" [ref=e466] [cursor=pointer]: "2"
+                        - generic [ref=e467]:
+                          - generic [ref=e468]:
+                            - generic "Drag label to adjust value" [ref=e469]: Powder Effect
+                            - textbox [ref=e472]: "1.6"
+                          - slider "Powder Effect" [ref=e476] [cursor=pointer]: "1.6"
+                        - generic [ref=e477]:
+                          - generic [ref=e478]:
+                            - generic "Drag label to adjust value" [ref=e479]: Anisotropy (Phase)
+                            - textbox [ref=e482]: "-0.60"
+                          - slider "Anisotropy (Phase)" [ref=e486] [cursor=pointer]: "-0.6"
+                        - generic [ref=e487]:
+                          - generic [ref=e488]: Volumetric Shadows
+                          - button "Toggle shadows" [ref=e489] [cursor=pointer]: "OFF"
+                        - generic [ref=e490]:
+                          - generic [ref=e491]: Volumetric AO
+                          - button "Toggle AO" [ref=e492] [cursor=pointer]: "OFF"
+                        - generic [ref=e493]:
+                          - generic [ref=e494]: Isosurface Mode
+                          - button "Toggle isosurface mode" [ref=e495] [cursor=pointer]: "OFF"
+                        - paragraph [ref=e496]: Volumetric cloud visualization
+                    - generic [ref=e497]:
+                      - button "Quantum Effects section, expanded" [expanded] [ref=e498] [cursor=pointer]:
+                        - generic [ref=e499]:
+                          - img [ref=e501]
+                          - generic [ref=e503]: Quantum Effects
+                      - generic [ref=e505]:
+                        - generic [ref=e506]:
+                          - generic [ref=e507]:
+                            - generic [ref=e508]: Nodal Surfaces
+                            - button "Toggle nodal surfaces" [pressed] [ref=e509] [cursor=pointer]: "ON"
+                          - generic [ref=e510]:
+                            - generic [ref=e511]:
+                              - generic [ref=e512]:
+                                - generic "Drag label to adjust value" [ref=e513]: Strength
+                                - textbox [ref=e516]: "0.4"
+                              - slider "Strength" [ref=e520] [cursor=pointer]: "0.4"
+                            - generic [ref=e521]:
+                              - generic [ref=e522]: Color
+                              - button "#ff00c5" [ref=e524] [cursor=pointer]:
+                                - generic [ref=e529]: "#ff00c5"
+                        - generic [ref=e530]:
+                          - generic [ref=e531]: Energy Coloring
+                          - button "Toggle energy coloring" [pressed] [ref=e532] [cursor=pointer]: "ON"
+                        - generic [ref=e533]:
+                          - generic [ref=e534]:
+                            - generic [ref=e535]: Uncertainty Shimmer
+                            - button "Toggle shimmer" [pressed] [ref=e536] [cursor=pointer]: "ON"
+                          - generic [ref=e537]:
+                            - generic [ref=e538]:
+                              - generic "Drag label to adjust value" [ref=e539]: Strength
+                              - textbox [ref=e542]: "0.5"
+                            - slider "Strength" [ref=e546] [cursor=pointer]: "0.5"
+                    - generic [ref=e547]:
+                      - button "Artistic section, expanded" [expanded] [ref=e548] [cursor=pointer]:
+                        - generic [ref=e549]:
+                          - img [ref=e551]
+                          - generic [ref=e553]: Artistic
+                      - generic [ref=e555]:
+                        - generic [ref=e556]:
+                          - generic [ref=e557]:
+                            - generic [ref=e558]: Chromatic Dispersion
+                            - button "Toggle dispersion" [pressed] [ref=e559] [cursor=pointer]: "ON"
+                          - generic [ref=e560]:
+                            - generic [ref=e561]:
+                              - generic [ref=e562]:
+                                - generic "Drag label to adjust value" [ref=e563]: Strength
+                                - textbox [ref=e566]: "0.50"
+                              - slider "Strength" [ref=e570] [cursor=pointer]: "0.5"
+                            - generic [ref=e571]:
+                              - generic [ref=e573]:
+                                - generic [ref=e574]: Direction
+                                - generic [ref=e575]:
+                                  - combobox "Direction" [ref=e576] [cursor=pointer]:
+                                    - option "Radial" [selected]
+                                    - option "View"
+                                  - generic:
+                                    - img
+                              - generic [ref=e578]:
+                                - generic [ref=e579]: Quality
+                                - generic [ref=e580]:
+                                  - combobox "Quality" [ref=e581] [cursor=pointer]:
+                                    - option "Fast (Grad)" [selected]
+                                    - option "High (Sample)"
+                                  - generic:
+                                    - img
+                        - generic [ref=e582]:
+                          - text: Edge Erosion
+                          - generic [ref=e583]:
+                            - generic [ref=e584]:
+                              - generic "Drag label to adjust value" [ref=e585]: Strength
+                              - textbox [ref=e588]: "0.75"
+                            - slider "Strength" [ref=e592] [cursor=pointer]: "0.75"
+                          - generic [ref=e593]:
+                            - generic [ref=e594]:
+                              - generic [ref=e595]:
+                                - generic "Drag label to adjust value" [ref=e596]: Scale
+                                - textbox [ref=e599]: "0.8"
+                              - slider "Scale" [ref=e603] [cursor=pointer]: "0.75"
+                            - generic [ref=e604]:
+                              - generic [ref=e605]:
+                                - generic "Drag label to adjust value" [ref=e606]: Turbulence
+                                - textbox [ref=e609]: "0.5"
+                              - slider "Turbulence" [ref=e613] [cursor=pointer]: "0.5"
+                            - generic [ref=e614]:
+                              - generic [ref=e615]: Noise Type
+                              - generic [ref=e616]:
+                                - combobox "Noise Type" [ref=e617] [cursor=pointer]:
+                                  - option "Worley (Cloudy)" [selected]
+                                  - option "Perlin (Smooth)"
+                                  - option "Hybrid (Billowy)"
+                                - generic:
+                                  - img
+                            - generic [ref=e618]:
+                              - generic [ref=e619]: HQ Mode
+                              - button "Toggle high quality erosion mode" [ref=e620] [cursor=pointer]: "OFF"
+```

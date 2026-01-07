@@ -9,11 +9,13 @@
  * - Async result retrieval (GPU queries are async by nature)
  * - Query pool reuse to avoid allocation pressure
  * - Disjoint detection for reliable measurements
+ * - Safe handling of WebGPU renderer (returns unavailable)
  *
  * @module rendering/graph/GPUTimer
  */
 
 import type * as THREE from 'three'
+import { getWebGLContext, isWebGLRenderer } from '@/rendering/core/rendererUtils'
 
 // =============================================================================
 // WebGL Extension Type Declaration
@@ -114,22 +116,34 @@ export class GPUTimer {
   /**
    * Initialize the GPU timer with a Three.js renderer.
    *
-   * @param renderer - Three.js WebGL renderer
+   * @param renderer - Three.js WebGL renderer (or WebGPU - will gracefully fail)
    * @returns Whether GPU timing is available
    */
   initialize(renderer: THREE.WebGLRenderer): boolean {
-    const context = renderer.getContext()
+    // Check if this is a WebGL renderer (WebGPU doesn't support timer queries this way)
+    if (!isWebGLRenderer(renderer)) {
+      // WebGPU renderer - timer queries not available through this API
+      this.available = false
+      return false
+    }
+
+    const context = getWebGLContext(renderer)
 
     // Must be WebGL2 - check if WebGL2RenderingContext exists (not available in Node.js/test env)
     // and if context is an instance of it
+    if (!context) {
+      this.available = false
+      return false
+    }
+
     const isWebGL2 =
       typeof WebGL2RenderingContext !== 'undefined' && context instanceof WebGL2RenderingContext
 
     if (!isWebGL2) {
       // Also check if context looks like WebGL2 by duck-typing
       // This handles mock contexts in tests
-      if (!context || typeof context.getExtension !== 'function') {
-        console.warn('GPUTimer: WebGL2 context required')
+      if (typeof context.getExtension !== 'function') {
+        console.info('GPUTimer: WebGL2 context required')
         this.available = false
         return false
       }

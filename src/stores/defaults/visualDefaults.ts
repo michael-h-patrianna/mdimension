@@ -454,7 +454,9 @@ export interface SkyboxProceduralSettings {
   ocean: OceanSettings
 }
 
-export const DEFAULT_SKYBOX_MODE: SkyboxMode = 'procedural_aurora'
+// DEFAULT_SKYBOX_MODE should be 'classic' when DEFAULT_SKYBOX_SELECTION is 'none'
+// to maintain consistency (deriveStateFromSelection returns 'classic' for 'none')
+export const DEFAULT_SKYBOX_MODE: SkyboxMode = 'classic'
 
 export const DEFAULT_SKYBOX_PROCEDURAL_SETTINGS: SkyboxProceduralSettings = {
   scale: 1.0,

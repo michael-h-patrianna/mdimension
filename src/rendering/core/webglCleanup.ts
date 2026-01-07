@@ -22,7 +22,7 @@ import { disposeShadowPlaceholders } from '@/rendering/shadows'
  * @param options.resetPrograms - Force program cache cleanup (expensive, use sparingly)
  */
 export function cleanupWebGLState(
-  gl: THREE.WebGLRenderer,
+  gl: THREE.WebGLRenderer | unknown,
   options: {
     resetRenderLists?: boolean
     resetInfo?: boolean
@@ -31,24 +31,35 @@ export function cleanupWebGLState(
 ): void {
   const { resetRenderLists = true, resetInfo = false, resetPrograms = false } = options
 
+  // Guard: Check if renderer exists and has expected properties
+  // WebGPU renderer doesn't have renderLists, so skip if not available
+  if (!gl || typeof gl !== 'object') {
+    return
+  }
+
+  const renderer = gl as THREE.WebGLRenderer
+
   // Dispose render lists - clears accumulated render list entries
   // This is safe to call and recommended when switching scenes
-  if (resetRenderLists) {
-    gl.renderLists.dispose()
+  // Note: WebGPU renderer doesn't have renderLists, so check before calling
+  if (resetRenderLists && renderer.renderLists?.dispose) {
+    renderer.renderLists.dispose()
   }
 
   // Reset info counters - useful for debugging but not strictly necessary
-  if (resetInfo) {
-    gl.info.reset()
+  // Note: WebGPU renderer may have different info structure
+  if (resetInfo && renderer.info?.reset) {
+    renderer.info.reset()
   }
 
   // Force program cleanup - expensive operation, use only when necessary
   // This logs program count for debugging; actual disposal is managed by Three.js
-  if (resetPrograms && gl.info.programs) {
+  // Note: WebGPU renderer may not have programs property
+  if (resetPrograms && renderer.info?.programs) {
     // Programs are auto-managed by Three.js based on usage
     // We just note the count here; forcing disposal would cause recompilation
     if (import.meta.env.DEV) {
-      console.debug(`[WebGL] Active shader programs: ${gl.info.programs.length}`)
+      console.debug(`[WebGL] Active shader programs: ${renderer.info.programs.length}`)
     }
   }
 
@@ -57,24 +68,36 @@ export function cleanupWebGLState(
 }
 
 /**
- * Get WebGL memory statistics for debugging.
+ * Get WebGL/WebGPU memory statistics for debugging.
  *
- * @param gl - The WebGL renderer instance
+ * @param gl - The renderer instance (WebGL or WebGPU)
  * @returns Memory statistics object
  */
-export function getWebGLMemoryStats(gl: THREE.WebGLRenderer): {
+export function getWebGLMemoryStats(gl: THREE.WebGLRenderer | unknown): {
   geometries: number
   textures: number
   programs: number
   calls: number
   triangles: number
 } {
-  const info = gl.info
+  // Guard: Handle null/undefined renderer or WebGPU renderer without info
+  if (!gl || typeof gl !== 'object') {
+    return { geometries: 0, textures: 0, programs: 0, calls: 0, triangles: 0 }
+  }
+
+  const renderer = gl as THREE.WebGLRenderer
+  const info = renderer.info
+
+  // WebGPU renderer may have different info structure
+  if (!info) {
+    return { geometries: 0, textures: 0, programs: 0, calls: 0, triangles: 0 }
+  }
+
   return {
-    geometries: info.memory.geometries,
-    textures: info.memory.textures,
+    geometries: info.memory?.geometries ?? 0,
+    textures: info.memory?.textures ?? 0,
     programs: info.programs?.length ?? 0,
-    calls: info.render.calls,
-    triangles: info.render.triangles,
+    calls: info.render?.calls ?? 0,
+    triangles: info.render?.triangles ?? 0,
   }
 }

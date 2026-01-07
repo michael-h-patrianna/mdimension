@@ -51,6 +51,7 @@ import {
   generateCantellatedHypercubeVertices,
   generateDemihypercubeVertices,
   generateHypercubeData,
+  generateOmnitruncatedHypercubeData,
   generateOmnitruncatedHypercubeVertices,
   generateRectifiedHypercubeVertices,
   generateRuncinatedHypercubeVertices,
@@ -184,9 +185,7 @@ export function generateWythoffPolytope(
           polytopeData = generateGenericPolytopeData(generateRuncinatedHypercubeVertices(dimension))
           break
         case 'omnitruncated':
-          polytopeData = generateGenericPolytopeData(
-            generateOmnitruncatedHypercubeVertices(dimension, maxVerts)
-          )
+          polytopeData = generateOmnitruncatedHypercubeData(dimension, maxVerts)
           break
         case 'custom':
         default:

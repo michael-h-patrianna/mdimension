@@ -31,6 +31,7 @@ describe('ResourcePool.invalidateFramebuffers', () => {
     const mockGl = {
       invalidateFramebuffer,
       bindFramebuffer,
+      drawBuffers: vi.fn(), // Required for getWebGLContext check
       FRAMEBUFFER: 0x8D40,
       COLOR_ATTACHMENT0: 0x8CE0,
       DEPTH_ATTACHMENT: 0x8D00,
@@ -64,6 +65,7 @@ describe('ResourcePool.invalidateFramebuffers', () => {
     const mockGl = {
       invalidateFramebuffer,
       bindFramebuffer: vi.fn(),
+      drawBuffers: vi.fn(), // Required for getWebGLContext check
       FRAMEBUFFER: 0x8D40,
       COLOR_ATTACHMENT0: 0x8CE0,
     }
@@ -92,6 +94,7 @@ describe('ResourcePool.invalidateFramebuffers', () => {
     const mockGl = {
       invalidateFramebuffer,
       bindFramebuffer: vi.fn(),
+      drawBuffers: vi.fn(), // Required for getWebGLContext check
       FRAMEBUFFER: 0x8D40,
       COLOR_ATTACHMENT0: 0x8CE0,
     }
@@ -119,6 +122,7 @@ describe('ResourcePool.invalidateFramebuffers', () => {
     const mockGl = {
       invalidateFramebuffer,
       bindFramebuffer: vi.fn(),
+      drawBuffers: vi.fn(), // Required for getWebGLContext check
       FRAMEBUFFER: 0x8D40,
       COLOR_ATTACHMENT0: 0x8CE0,
       DEPTH_ATTACHMENT: 0x8D00,
@@ -151,6 +155,7 @@ describe('ResourcePool.invalidateFramebuffers', () => {
     const mockGl = {
       invalidateFramebuffer,
       bindFramebuffer: vi.fn(),
+      drawBuffers: vi.fn(), // Required for getWebGLContext check
       FRAMEBUFFER: 0x8D40,
       COLOR_ATTACHMENT0,
     }
@@ -181,6 +186,7 @@ describe('ResourcePool.invalidateFramebuffers', () => {
     const mockGl = {
       invalidateFramebuffer: undefined,
       bindFramebuffer: vi.fn(),
+      drawBuffers: vi.fn(), // Required for getWebGLContext check
     }
 
     const mockRenderer = {
@@ -206,6 +212,7 @@ describe('ResourcePool.invalidateFramebuffers', () => {
     const mockGl = {
       invalidateFramebuffer: vi.fn(),
       bindFramebuffer,
+      drawBuffers: vi.fn(), // Required for getWebGLContext check
       FRAMEBUFFER: 0x8D40,
       COLOR_ATTACHMENT0: 0x8CE0,
     }

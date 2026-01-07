@@ -1,4 +1,5 @@
 import { FRAME_PRIORITY } from '@/rendering/core/framePriorities';
+import { getGPUName, isWebGLRenderer } from '@/rendering/core/rendererUtils';
 import { usePerformanceMetricsStore } from '@/stores/performanceMetricsStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useFrame, useThree } from '@react-three/fiber';
@@ -68,13 +69,10 @@ export function PerformanceStatsCollector() {
 
   // Initialization: Hardware Detection (always runs once)
   useEffect(() => {
-    // Attempt to get GPU renderer name
-    const debugInfo = gl.getContext().getExtension('WEBGL_debug_renderer_info');
-    if (debugInfo) {
-      const renderer = gl.getContext().getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
-      // Clean up strings like "ANGLE (Apple, Apple M1 Pro, OpenGL 4.1)"
-      const cleanName = renderer.replace(/angle\s*\((.+)\)/i, '$1').split(',')[1]?.trim() || renderer;
-      setGpuName(cleanName);
+    // Attempt to get GPU renderer name (works with both WebGL and WebGPU)
+    const gpuName = getGPUName(gl);
+    if (gpuName) {
+      setGpuName(gpuName);
     }
 
     // Expose store for e2e testing
@@ -95,7 +93,9 @@ export function PerformanceStatsCollector() {
   // Hook: Render Instrumentation - ONLY when Stats tab needs CPU time + GPU stats
   useEffect(() => {
     // Only wrap gl.render when we need CPU time and GPU stats (Stats tab)
+    // Only works with WebGLRenderer (WebGPU has different API)
     if (measurementTier !== TIER_FULL_STATS) return;
+    if (!isWebGLRenderer(gl)) return;
 
     const originalRender = gl.render;
     gl.render = function (...args) {

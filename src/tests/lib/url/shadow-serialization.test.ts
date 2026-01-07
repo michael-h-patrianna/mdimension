@@ -35,15 +35,15 @@ describe('Shadow URL Serialization', () => {
       expect(result).not.toContain(URL_KEY_SHADOW_ANIMATION_MODE);
     });
 
-    it('should serialize shadowEnabled when true', () => {
+    it('should serialize shadowEnabled when false (default is true)', () => {
       const state: ShareableState = {
         dimension: 4,
         objectType: 'mandelbulb',
-        shadowEnabled: true,
+        shadowEnabled: false,
       };
 
       const result = serializeState(state);
-      expect(result).toContain(`${URL_KEY_SHADOW_ENABLED}=1`);
+      expect(result).toContain(`${URL_KEY_SHADOW_ENABLED}=0`);
     });
 
     it('should serialize non-default shadow quality as string', () => {
@@ -111,6 +111,7 @@ describe('Shadow URL Serialization', () => {
       const state: ShareableState = {
         dimension: 4,
         objectType: 'mandelbulb',
+        // Default is enabled; the URL should omit this to stay minimal
         shadowEnabled: true,
         shadowQuality: 'ultra',
         shadowSoftness: 1.8,
@@ -118,7 +119,7 @@ describe('Shadow URL Serialization', () => {
       };
 
       const result = serializeState(state);
-      expect(result).toContain(`${URL_KEY_SHADOW_ENABLED}=1`);
+      expect(result).not.toContain(URL_KEY_SHADOW_ENABLED);
       expect(result).toContain(`${URL_KEY_SHADOW_QUALITY}=ultra`);
       expect(result).toContain(`${URL_KEY_SHADOW_SOFTNESS}=1.8`);
       expect(result).toContain(`${URL_KEY_SHADOW_ANIMATION_MODE}=full`);
@@ -207,17 +208,17 @@ describe('Shadow URL Serialization', () => {
   });
 
   describe('Round-trip serialization', () => {
-    it('should preserve shadowEnabled through round-trip', () => {
+    it('should preserve shadowEnabled=false through round-trip (default is true)', () => {
       const original: ShareableState = {
         dimension: 4,
         objectType: 'mandelbulb',
-        shadowEnabled: true,
+        shadowEnabled: false,
       };
 
       const serialized = serializeState(original);
       const deserialized = deserializeState(serialized);
 
-      expect(deserialized.shadowEnabled).toBe(true);
+      expect(deserialized.shadowEnabled).toBe(false);
     });
 
     it('should preserve shadow quality through round-trip', () => {
@@ -285,6 +286,7 @@ describe('Shadow URL Serialization', () => {
       const original: ShareableState = {
         dimension: 4,
         objectType: 'mandelbulb',
+        // Default is enabled; should not be serialized and will round-trip as undefined
         shadowEnabled: true,
         shadowQuality: 'high',
         shadowSoftness: 0.8,
@@ -294,7 +296,7 @@ describe('Shadow URL Serialization', () => {
       const serialized = serializeState(original);
       const deserialized = deserializeState(serialized);
 
-      expect(deserialized.shadowEnabled).toBe(true);
+      expect(deserialized.shadowEnabled).toBeUndefined();
       expect(deserialized.shadowQuality).toBe('high');
       expect(deserialized.shadowSoftness).toBe(0.8);
       expect(deserialized.shadowAnimationMode).toBe('full');

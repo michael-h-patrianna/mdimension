@@ -19,3 +19,5 @@ export { composeFaceVertexShaderScreenSpace as buildFaceVertexShaderScreenSpace 
 export type { PolytopeShaderConfig } from '../../shaders/polytope/compose'
 export { PolytopeScene } from './PolytopeScene'
 export type { PolytopeSceneProps } from './PolytopeScene'
+export { PolytopeSceneTSL } from './PolytopeSceneTSL'
+export type { PolytopeSceneTSLProps } from './PolytopeSceneTSL'

@@ -10,6 +10,7 @@ import type { ObjectType } from '@/lib/geometry/types'
 import type { AllShaderSettings, ShaderType, ToneMappingAlgorithm } from '@/rendering/shaders/types'
 import {
   DEFAULT_SHADOW_ANIMATION_MODE,
+  DEFAULT_SHADOW_ENABLED,
   DEFAULT_SHADOW_QUALITY,
   DEFAULT_SHADOW_SOFTNESS,
   SHADOW_ANIMATION_MODE_OPTIONS,
@@ -193,8 +194,8 @@ export function serializeState(state: ShareableState): string {
   }
 
   // Shadow settings (omit defaults for shorter URLs)
-  if (state.shadowEnabled === true) {
-    params.set(URL_KEY_SHADOW_ENABLED, '1')
+  if (state.shadowEnabled !== undefined && state.shadowEnabled !== DEFAULT_SHADOW_ENABLED) {
+    params.set(URL_KEY_SHADOW_ENABLED, state.shadowEnabled ? '1' : '0')
   }
   if (state.shadowQuality && state.shadowQuality !== DEFAULT_SHADOW_QUALITY) {
     params.set(URL_KEY_SHADOW_QUALITY, state.shadowQuality)

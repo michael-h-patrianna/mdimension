@@ -324,11 +324,17 @@ export const createLightingSlice: StateCreator<LightingSlice, [], [], LightingSl
 
   // --- Shadow System Actions ---
   setShadowEnabled: (enabled: boolean) => {
-    set({ shadowEnabled: enabled })
+    set((state) => ({
+      shadowEnabled: enabled,
+      version: state.version + 1, // Bump version so uniforms update
+    }))
   },
 
   setShadowQuality: (quality: ShadowQuality) => {
-    set({ shadowQuality: quality })
+    set((state) => ({
+      shadowQuality: quality,
+      version: state.version + 1, // Bump version so uniforms update
+    }))
   },
 
   setShadowSoftness: (softness: number) => {
@@ -346,11 +352,17 @@ export const createLightingSlice: StateCreator<LightingSlice, [], [], LightingSl
 
   // --- Shadow Map Actions (for mesh-based objects) ---
   setShadowMapBias: (bias: number) => {
-    set({ shadowMapBias: Math.max(0, Math.min(0.01, bias)) })
+    set((state) => ({
+      shadowMapBias: Math.max(0, Math.min(0.01, bias)),
+      version: state.version + 1, // Bump version so uniforms update
+    }))
   },
 
   setShadowMapBlur: (blur: number) => {
-    set({ shadowMapBlur: Math.max(0, Math.min(10, blur)) })
+    set((state) => ({
+      shadowMapBlur: Math.max(0, Math.min(10, blur)),
+      version: state.version + 1, // Bump version so uniforms update
+    }))
   },
 
   bumpVersion: () => {

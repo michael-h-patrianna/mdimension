@@ -65,3 +65,9 @@
 ## Notes
 - All suggestions preserve visual output; no quality presets, LOD, or adaptive quality changes are proposed. 
 
+
+
+
+
+
+

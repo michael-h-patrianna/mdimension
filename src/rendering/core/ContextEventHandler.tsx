@@ -14,6 +14,7 @@
  * @module rendering/core/ContextEventHandler
  */
 
+import { getWebGLExtension, isContextLost, isWebGLRenderer } from '@/rendering/core/rendererUtils'
 import { useWebGLContextStore } from '@/stores/webglContextStore'
 import { useThree } from '@react-three/fiber'
 import { useCallback, useEffect, useRef } from 'react'
@@ -43,12 +44,15 @@ export function ContextEventHandler(): null {
   /**
    * Get or cache the WEBGL_lose_context extension.
    * Used for both debug context loss and manual restoration.
+   * Returns null for WebGPU renderer (context loss handled differently).
    */
   const getExtension = useCallback((): WEBGL_lose_context | null => {
+    // Only available on WebGL renderer
+    if (!isWebGLRenderer(gl)) {
+      return null
+    }
     if (!loseContextExtRef.current) {
-      loseContextExtRef.current = gl.getContext().getExtension(
-        'WEBGL_lose_context'
-      ) as WEBGL_lose_context | null
+      loseContextExtRef.current = getWebGLExtension<WEBGL_lose_context>(gl, 'WEBGL_lose_context')
     }
     return loseContextExtRef.current
   }, [gl])
@@ -183,8 +187,8 @@ export function ContextEventHandler(): null {
     const handlePageShow = (event: PageTransitionEvent): void => {
       if (event.persisted) {
         // Page was restored from bfcache
-        const context = gl.getContext()
-        if (context && context.isContextLost()) {
+        // Check context loss (safe for both WebGL and WebGPU)
+        if (isContextLost(gl)) {
           store().onContextLost()
         }
       }

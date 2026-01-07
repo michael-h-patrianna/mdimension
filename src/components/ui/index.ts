@@ -17,3 +17,4 @@ export * from './Tabs';
 export * from './ToggleButton';
 export * from './ToggleGroup';
 export * from './Tooltip';
+export * from './WebGPUBadge';

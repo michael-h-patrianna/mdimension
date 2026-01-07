@@ -333,12 +333,13 @@ export function collectShadowDataFromScene(
             cameraFar: light.shadow.camera.far,
           }
         } else {
+          const shadowTexture = light.shadow.map?.texture ?? null
           shadowData[i] = {
             lightType: matched.type,
-            shadowMap: light.shadow.map?.texture ?? null,
+            shadowMap: shadowTexture,
             pointShadowMap: null,
             shadowMatrix: light.shadow.matrix,
-            castsShadow: light.shadow.map !== null,
+            castsShadow: shadowTexture !== null,
             cameraNear: light.shadow.camera.near,
             cameraFar: light.shadow.camera.far,
           }
@@ -379,12 +380,13 @@ export function collectShadowDataFromScene(
           cameraFar: light.shadow.camera.far,
         }
       } else {
+        const shadowTexture = light.shadow.map?.texture ?? null
         shadowData[lightIdx] = {
           lightType: sceneLight.type,
-          shadowMap: light.shadow.map?.texture ?? null,
+          shadowMap: shadowTexture,
           pointShadowMap: null,
           shadowMatrix: light.shadow.matrix,
-          castsShadow: light.shadow.map !== null,
+          castsShadow: shadowTexture !== null,
           cameraNear: light.shadow.camera.near,
           cameraFar: light.shadow.camera.far,
         }

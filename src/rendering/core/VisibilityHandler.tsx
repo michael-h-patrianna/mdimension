@@ -11,6 +11,7 @@
  * @module rendering/core/VisibilityHandler
  */
 
+import { isContextLost } from '@/rendering/core/rendererUtils'
 import { useWebGLContextStore } from '@/stores/webglContextStore'
 import { useThree } from '@react-three/fiber'
 import { useEffect } from 'react'
@@ -37,8 +38,8 @@ export function VisibilityHandler(): null {
       if (isVisible) {
         // Check if context was lost while page was hidden
         // This commonly happens on mobile when app is backgrounded
-        const context = gl.getContext()
-        if (context && context.isContextLost()) {
+        // Note: isContextLost() handles both WebGL and WebGPU renderers safely
+        if (isContextLost(gl)) {
           const currentStatus = store().status
           // Only trigger if not already in lost/restoring/failed state
           if (currentStatus === 'active') {

@@ -21,12 +21,15 @@ import { LightGizmoManager } from '@/rendering/controllers/LightGizmoManager'
 import { PerformanceManager } from '@/rendering/controllers/PerformanceManager'
 import { GroundPlane } from '@/rendering/environment/GroundPlane'
 import { PostProcessingV2 } from '@/rendering/environment/PostProcessingV2'
+import { PostProcessingV2TSL } from '@/rendering/environment/PostProcessingV2TSL'
 import { SceneLighting } from '@/rendering/environment/SceneLighting'
 import { Skybox } from '@/rendering/environment/Skybox'
 import { UnifiedRenderer } from '@/rendering/renderers/UnifiedRenderer'
 import { useEnvironmentStore } from '@/stores/environmentStore'
+import { useRendererStore } from '@/stores/rendererStore'
 import { useUIStore } from '@/stores/uiStore'
-import React from 'react'
+import { useThree } from '@react-three/fiber'
+import React, { useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
 /**
@@ -100,6 +103,20 @@ export const Scene = React.memo(function Scene({
 
   const showAxisHelper = useUIStore((state) => state.showAxisHelper)
 
+  // Get renderer backend to determine which post-processing to use
+  // Direct detection from renderer is more reliable than store during initial render
+  const gl = useThree((state) => state.gl)
+  const storeBackend = useRendererStore((state) => state.backend)
+
+  const isWebGPU = useMemo(() => {
+    // Three.js r181+ uses isWebGPUBackend property
+    const rendererBackend = (gl as { backend?: { isWebGPUBackend?: boolean } }).backend
+    if (rendererBackend?.isWebGPUBackend !== undefined) {
+      return rendererBackend.isWebGPUBackend
+    }
+    return storeBackend === 'webgpu'
+  }, [gl, storeBackend])
+
   // Handle camera viewport offset for smooth sidebar animations
   useViewportOffset()
 
@@ -123,8 +140,9 @@ export const Scene = React.memo(function Scene({
       {/* Light gizmos for manipulating lights */}
       <LightGizmoManager />
 
-      {/* Post-processing effects (Render Graph V2) */}
-      <PostProcessingV2 />
+      {/* Post-processing effects */}
+      {/* WebGPU uses TSL-based render graph, WebGL uses GLSL-based render graph */}
+      {isWebGPU ? <PostProcessingV2TSL /> : <PostProcessingV2 />}
 
       {/* Camera controls */}
       <CameraController autoRotate={autoRotate} />

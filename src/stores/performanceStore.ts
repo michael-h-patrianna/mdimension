@@ -58,7 +58,8 @@ function loadPersistedResolutionScale(): number | null {
     const stored = localStorage.getItem(RESOLUTION_SCALE_KEY)
     if (stored !== null) {
       const value = parseFloat(stored)
-      if (!isNaN(value) && value >= 0.1 && value <= 1.0) {
+      // Render resolution scale is clamped to [0.5, 1.0] (half-res to full-res).
+      if (!isNaN(value) && value >= 0.5 && value <= 1.0) {
         return value
       }
     }
@@ -148,6 +149,9 @@ interface PerformanceState {
 
   /** GPU name/identifier (for debugging) */
   gpuName: string
+
+  /** Whether WebGL2 is supported (separate from tier, since tier 0 can still have WebGL2) */
+  webgl2Supported: boolean
 
   /** Whether device capability detection has completed */
   deviceCapabilitiesDetected: boolean
@@ -305,6 +309,7 @@ export const usePerformanceStore = create<PerformanceState>((set, get) => ({
   gpuTier: DEFAULT_CAPABILITIES.gpuTier,
   isMobileGPU: DEFAULT_CAPABILITIES.isMobileGPU,
   gpuName: DEFAULT_CAPABILITIES.gpuName,
+  webgl2Supported: true, // Default to true until detection completes
   deviceCapabilitiesDetected: false,
 
   // Interaction State
@@ -320,7 +325,8 @@ export const usePerformanceStore = create<PerformanceState>((set, get) => ({
   qualityMultiplier: 1.0,
 
   // Temporal Reprojection
-  temporalReprojectionEnabled: true,
+  // TEMPORARILY DISABLED: Fix basic Schroedinger render first, then temporal reprojection
+  temporalReprojectionEnabled: false,
   cameraTeleported: false,
 
   // Fractal Animation Quality
@@ -354,6 +360,7 @@ export const usePerformanceStore = create<PerformanceState>((set, get) => ({
       gpuTier: capabilities.gpuTier,
       isMobileGPU: capabilities.isMobileGPU,
       gpuName: capabilities.gpuName,
+      webgl2Supported: capabilities.webgl2Supported,
       deviceCapabilitiesDetected: true,
     })
   },
@@ -427,7 +434,7 @@ export const usePerformanceStore = create<PerformanceState>((set, get) => ({
 
   // Render Resolution Scale
   setRenderResolutionScale: (scale: number) => {
-    const clampedScale = Math.max(0.1, Math.min(1.0, scale))
+    const clampedScale = Math.max(0.5, Math.min(1.0, scale))
     set({ renderResolutionScale: clampedScale })
     persistResolutionScale(clampedScale)
   },

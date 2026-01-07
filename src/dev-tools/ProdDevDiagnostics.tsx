@@ -10,6 +10,7 @@
  * @see docs/bugfixing/log/prod-slower-fps-than-dev.md
  */
 
+import { getGPUName, getWebGLContext } from '@/rendering/core/rendererUtils';
 import { usePerformanceStore } from '@/stores/performanceStore';
 import { useThree, useFrame } from '@react-three/fiber';
 import { useEffect, useRef } from 'react';
@@ -109,8 +110,8 @@ export function ProdDevDiagnostics() {
   // Log diagnostics every 5 seconds
   useEffect(() => {
     const logDiagnostics = () => {
-      const context = gl.getContext() as WebGL2RenderingContext;
-      const debugInfo = context.getExtension('WEBGL_debug_renderer_info');
+      const context = getWebGLContext(gl);
+      const debugInfo = context?.getExtension('WEBGL_debug_renderer_info') ?? null;
 
       const canvas = gl.domElement;
       const dpr = viewport.dpr;
@@ -138,27 +139,44 @@ export function ProdDevDiagnostics() {
       const geometryCount = info.memory?.geometries ?? 0;
       const textureCount = info.memory?.textures ?? 0;
 
-      // Get WebGL capabilities (precision, extensions)
-      const fragPrecision = context.getShaderPrecisionFormat(context.FRAGMENT_SHADER, context.HIGH_FLOAT);
-      const vertPrecision = context.getShaderPrecisionFormat(context.VERTEX_SHADER, context.HIGH_FLOAT);
-      const fragmentPrecision = fragPrecision ? `${fragPrecision.precision}bit (${fragPrecision.rangeMin}-${fragPrecision.rangeMax})` : 'unknown';
-      const vertexPrecision = vertPrecision ? `${vertPrecision.precision}bit (${vertPrecision.rangeMin}-${vertPrecision.rangeMax})` : 'unknown';
-      const extensions = context.getSupportedExtensions();
-      const extensionCount = extensions?.length ?? 0;
+      // Get WebGL capabilities (precision, extensions) - only for WebGL renderer
+      let fragmentPrecision = 'unknown';
+      let vertexPrecision = 'unknown';
+      let extensionCount = 0;
+      let contextAttributes: WebGLContextAttributes | null = null;
+      let rendererName = 'unknown';
+      let vendorName = 'unknown';
+      let maxTextureSize = 0;
+      let maxViewportDims: number[] = [];
+
+      if (context) {
+        const fragPrecision = context.getShaderPrecisionFormat(context.FRAGMENT_SHADER, context.HIGH_FLOAT);
+        const vertPrecision = context.getShaderPrecisionFormat(context.VERTEX_SHADER, context.HIGH_FLOAT);
+        fragmentPrecision = fragPrecision ? `${fragPrecision.precision}bit (${fragPrecision.rangeMin}-${fragPrecision.rangeMax})` : 'unknown';
+        vertexPrecision = vertPrecision ? `${vertPrecision.precision}bit (${vertPrecision.rangeMin}-${vertPrecision.rangeMax})` : 'unknown';
+        const extensions = context.getSupportedExtensions();
+        extensionCount = extensions?.length ?? 0;
+        contextAttributes = context.getContextAttributes();
+        rendererName = debugInfo ? context.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : 'unknown';
+        vendorName = debugInfo ? context.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) : 'unknown';
+        maxTextureSize = context.getParameter(context.MAX_TEXTURE_SIZE);
+        maxViewportDims = context.getParameter(context.MAX_VIEWPORT_DIMS);
+      } else {
+        // WebGPU renderer - get info from renderer capabilities
+        rendererName = getGPUName(gl) ?? 'WebGPU';
+        vendorName = 'WebGPU';
+        maxTextureSize = gl.capabilities?.maxTextureSize ?? 0;
+      }
 
       const data: DiagnosticData = {
         mode: import.meta.env.MODE,
         userAgent: navigator.userAgent.slice(0, 100),
 
-        contextAttributes: context.getContextAttributes(),
-        renderer: debugInfo
-          ? context.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL)
-          : 'unknown',
-        vendor: debugInfo
-          ? context.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL)
-          : 'unknown',
-        maxTextureSize: context.getParameter(context.MAX_TEXTURE_SIZE),
-        maxViewportDims: context.getParameter(context.MAX_VIEWPORT_DIMS),
+        contextAttributes,
+        renderer: rendererName,
+        vendor: vendorName,
+        maxTextureSize,
+        maxViewportDims,
 
         programCount,
         geometryCount,

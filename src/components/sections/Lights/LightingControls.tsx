@@ -13,6 +13,7 @@ import { ControlGroup } from '@/components/ui/ControlGroup';
 import { Select, type SelectOption } from '@/components/ui/Select';
 import { Slider } from '@/components/ui/Slider';
 import { Switch } from '@/components/ui/Switch';
+import { useAppearanceStore } from '@/stores/appearanceStore';
 import { useExtendedObjectStore, type ExtendedObjectState } from '@/stores/extendedObjectStore';
 import { useGeometryStore } from '@/stores/geometryStore';
 import { useLightingStore, type LightingSlice } from '@/stores/lightingStore';
@@ -37,21 +38,20 @@ const AO_QUALITY_OPTIONS: SelectOption<string>[] = [
 export const LightingControls: React.FC<LightingControlsProps> = React.memo(({
   className = '',
 }) => {
+  // Lighting controls are only relevant for shaded (surface) rendering.
+  // IMPORTANT: Keep hooks unconditional (no hook-count changes across renders).
+  const shaderType = useAppearanceStore((state) => state.shaderType);
+
   // Get current object type for AO type switching
   const objectType = useGeometryStore((state) => state.objectType);
   const isSchroedinger = objectType === 'schroedinger';
 
-  const {
-    selectedLightId,
-    showLightGizmos,
-    setShowLightGizmos,
-  } = useLightingStore(
-    useShallow((state: LightingSlice) => ({
-      selectedLightId: state.selectedLightId,
-      showLightGizmos: state.showLightGizmos,
-      setShowLightGizmos: state.setShowLightGizmos,
-    }))
-  );
+  const lightingSelector = useShallow((state: LightingSlice) => ({
+    selectedLightId: state.selectedLightId,
+    showLightGizmos: state.showLightGizmos,
+    setShowLightGizmos: state.setShowLightGizmos,
+  }));
+  const { selectedLightId, showLightGizmos, setShowLightGizmos } = useLightingStore(lightingSelector);
 
   // Global SSAO settings (for non-Schrödinger objects)
   const postProcessingSelector = useShallow((state: PostProcessingSlice) => ({
@@ -125,6 +125,10 @@ export const LightingControls: React.FC<LightingControlsProps> = React.memo(({
 
 
   const hasSelectedLight = selectedLightId !== null;
+
+  if (shaderType === 'wireframe') {
+    return null;
+  }
 
   return (
     <div className={`space-y-4 ${className}`}>

@@ -77,6 +77,13 @@ export interface RenderResourceConfig {
   /** Per-attachment formats for MRT */
   attachmentFormats?: THREE.PixelFormat[]
 
+  /**
+   * Per-attachment names for MRT (for WebGPU).
+   * CRITICAL: These names must match the output names in material.mrtNode or renderer.setMRT().
+   * Default names if not specified: ['output', 'normal', 'position', 'data']
+   */
+  attachmentNames?: string[]
+
   /** MSAA sample count (0 or 1 for no MSAA) */
   samples?: number
 

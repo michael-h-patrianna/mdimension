@@ -15,6 +15,7 @@
  * - Pauses rendering when WebGL context is lost or page is not visible
  */
 
+import { isContextLost } from '@/rendering/core/rendererUtils'
 import { useAnimationStore } from '@/stores/animationStore'
 import { useExportStore } from '@/stores/exportStore'
 import { usePerformanceStore } from '@/stores/performanceStore'
@@ -49,6 +50,7 @@ export function FpsController(): null {
     const tick = (now: number): void => {
       rafRef.current = requestAnimationFrame(tick)
 
+
       // Batch all store reads at start of tick (avoids multiple getState() calls)
       const contextStore = useWebGLContextStore.getState()
       const { status, isPageVisible, onContextLost } = contextStore
@@ -69,8 +71,8 @@ export function FpsController(): null {
 
       // Double-check context isn't actually lost (defensive check)
       // This catches cases where the event hasn't fired yet
-      const context = gl.getContext()
-      if (context && context.isContextLost()) {
+      // Note: isContextLost() handles both WebGL and WebGPU renderers safely
+      if (isContextLost(gl)) {
         // Trigger context lost handling if not already in progress
         if (status === 'active') {
           onContextLost()

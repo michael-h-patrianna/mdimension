@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>WebGPU Minimal Test</title>
+  <style>
+    body { margin: 0; background: #111; color: white; font-family: monospace; }
+    #info { position: absolute; top: 10px; left: 10px; z-index: 100; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <div id="info">Loading...</div>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.181.0/build/three.module.js",
+      "three/webgpu": "https://cdn.jsdelivr.net/npm/three@0.181.0/build/three.webgpu.js",
+      "three/tsl": "https://cdn.jsdelivr.net/npm/three@0.181.0/build/three.tsl.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.181.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module">
+    import * as THREE from 'three';
+    import { WebGPURenderer } from 'three/webgpu';
+    import { Fn, vec4, texture, screenUV, uv } from 'three/tsl';
+    import { MeshBasicNodeMaterial, NodeMaterial } from 'three/webgpu';
+
+    const info = document.getElementById('info');
+    let testNumber = 0;
+
+    async function log(msg) {
+      console.log(msg);
+      info.innerHTML += msg + '<br>';
+    }
+
+    async function runTests() {
+      // Check WebGPU availability
+      if (!navigator.gpu) {
+        log('ERROR: WebGPU not available');
+        return;
+      }
+      log('WebGPU available: YES');
+
+      // Create renderer
+      const renderer = new WebGPURenderer({ antialias: false });
+      await renderer.init();
+      renderer.setSize(800, 600);
+      document.body.appendChild(renderer.domElement);
+      log('Renderer created: WebGPURenderer');
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+      // ================================================================
+      // TEST 1: Simple THREE.MeshBasicMaterial (no TSL)
+      // ================================================================
+      log('\n--- TEST 1: MeshBasicMaterial (red) ---');
+      {
+        const geom = new THREE.PlaneGeometry(2, 2);
+        const mat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        const mesh = new THREE.Mesh(geom, mat);
+        mesh.frustumCulled = false;
+        scene.add(mesh);
+
+        renderer.setRenderTarget(null);
+        renderer.render(scene, camera);
+
+        log('TEST 1: Rendered red quad with MeshBasicMaterial');
+        await new Promise(r => setTimeout(r, 2000));
+
+        scene.remove(mesh);
+        geom.dispose();
+        mat.dispose();
+      }
+
+      // ================================================================
+      // TEST 2: MeshBasicNodeMaterial with outputNode = vec4(0,1,0,1)
+      // ================================================================
+      log('\n--- TEST 2: MeshBasicNodeMaterial + outputNode (green) ---');
+      {
+        const geom = new THREE.PlaneGeometry(2, 2);
+        const mat = new MeshBasicNodeMaterial();
+        mat.outputNode = vec4(0, 1, 0, 1);
+
+        const mesh = new THREE.Mesh(geom, mat);
+        mesh.frustumCulled = false;
+        scene.add(mesh);
+
+        renderer.setRenderTarget(null);
+        renderer.render(scene, camera);
+
+        log('TEST 2: Rendered green quad with MeshBasicNodeMaterial.outputNode');
+        await new Promise(r => setTimeout(r, 2000));
+
+        scene.remove(mesh);
+        geom.dispose();
+        mat.dispose();
+      }
+
+      // ================================================================
+      // TEST 3: NodeMaterial with fragmentNode = vec4(0,0,1,1)
+      // ================================================================
+      log('\n--- TEST 3: NodeMaterial + fragmentNode (blue) ---');
+      {
+        const geom = new THREE.PlaneGeometry(2, 2);
+        const mat = new NodeMaterial();
+        mat.fragmentNode = vec4(0, 0, 1, 1);
+
+        const mesh = new THREE.Mesh(geom, mat);
+        mesh.frustumCulled = false;
+        scene.add(mesh);
+
+        renderer.setRenderTarget(null);
+        renderer.render(scene, camera);
+
+        log('TEST 3: Rendered blue quad with NodeMaterial.fragmentNode');
+        await new Promise(r => setTimeout(r, 2000));
+
+        scene.remove(mesh);
+        geom.dispose();
+        mat.dispose();
+      }
+
+      // ================================================================
+      // TEST 4: Sample from DataTexture
+      // ================================================================
+      log('\n--- TEST 4: Sample DataTexture (should be gray) ---');
+      {
+        // Create a gray DataTexture
+        const size = 64;
+        const data = new Uint8Array(size * size * 4);
+        for (let i = 0; i < data.length; i += 4) {
+          data[i] = 128;     // R
+          data[i + 1] = 128; // G
+          data[i + 2] = 128; // B
+          data[i + 3] = 255; // A
+        }
+        const tex = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
+        tex.needsUpdate = true;
+
+        const geom = new THREE.PlaneGeometry(2, 2);
+        const mat = new NodeMaterial();
+        mat.fragmentNode = texture(tex).sample(uv());
+
+        const mesh = new THREE.Mesh(geom, mat);
+        mesh.frustumCulled = false;
+        scene.add(mesh);
+
+        renderer.setRenderTarget(null);
+        renderer.render(scene, camera);
+
+        log('TEST 4: Rendered DataTexture sample');
+        await new Promise(r => setTimeout(r, 2000));
+
+        scene.remove(mesh);
+        geom.dispose();
+        mat.dispose();
+        tex.dispose();
+      }
+
+      // ================================================================
+      // TEST 5: Render to RenderTarget, then sample to screen
+      // ================================================================
+      log('\n--- TEST 5: RenderTarget -> Screen (should be cyan) ---');
+      {
+        // Create render target
+        const rt = new THREE.WebGLRenderTarget(256, 256, {
+          format: THREE.RGBAFormat,
+          type: THREE.UnsignedByteType,
+        });
+
+        // Render cyan to RT
+        const rtScene = new THREE.Scene();
+        const rtGeom = new THREE.PlaneGeometry(2, 2);
+        const rtMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+        const rtMesh = new THREE.Mesh(rtGeom, rtMat);
+        rtScene.add(rtMesh);
+
+        renderer.setRenderTarget(rt);
+        renderer.render(rtScene, camera);
+        log('  - Rendered cyan to RenderTarget');
+
+        // Now sample RT to screen
+        const geom = new THREE.PlaneGeometry(2, 2);
+        const texNode = texture(rt.texture);
+        const mat = new NodeMaterial();
+        mat.fragmentNode = texNode.sample(uv());
+
+        const mesh = new THREE.Mesh(geom, mat);
+        mesh.frustumCulled = false;
+        scene.add(mesh);
+
+        renderer.setRenderTarget(null);
+        renderer.render(scene, camera);
+
+        log('TEST 5: Sampled RenderTarget to screen');
+        await new Promise(r => setTimeout(r, 2000));
+
+        scene.remove(mesh);
+        rtScene.remove(rtMesh);
+        geom.dispose();
+        mat.dispose();
+        rtGeom.dispose();
+        rtMat.dispose();
+        rt.dispose();
+      }
+
+      // ================================================================
+      // TEST 6: Render to RenderTarget, sample with screenUV (our pattern)
+      // ================================================================
+      log('\n--- TEST 6: RenderTarget -> Screen with screenUV (yellow) ---');
+      {
+        const rt = new THREE.WebGLRenderTarget(256, 256);
+
+        // Render yellow to RT
+        const rtScene = new THREE.Scene();
+        const rtGeom = new THREE.PlaneGeometry(2, 2);
+        const rtMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+        const rtMesh = new THREE.Mesh(rtGeom, rtMat);
+        rtScene.add(rtMesh);
+
+        renderer.setRenderTarget(rt);
+        renderer.render(rtScene, camera);
+
+        // Sample with screenUV (like ToScreenPassTSL)
+        const geom = new THREE.PlaneGeometry(2, 2);
+        const texNode = texture(rt.texture);
+        const mat = new NodeMaterial();
+        mat.fragmentNode = Fn(() => {
+          return texNode.sample(screenUV);
+        })();
+
+        const mesh = new THREE.Mesh(geom, mat);
+        mesh.frustumCulled = false;
+        scene.add(mesh);
+
+        renderer.setRenderTarget(null);
+        renderer.render(scene, camera);
+
+        log('TEST 6: Used screenUV for sampling');
+        await new Promise(r => setTimeout(r, 2000));
+
+        scene.remove(mesh);
+        geom.dispose();
+        mat.dispose();
+        rt.dispose();
+      }
+
+      log('\n=== ALL TESTS COMPLETE ===');
+      log('Check canvas for last rendered result');
+
+      // Keep rendering the last test result
+      function animate() {
+        requestAnimationFrame(animate);
+        // Re-render to keep the result visible
+        renderer.setRenderTarget(null);
+        renderer.render(scene, camera);
+      }
+      animate();
+    }
+
+    runTests().catch(err => {
+      log('ERROR: ' + err.message);
+      console.error(err);
+    });
+  </script>
+</body>
+</html>

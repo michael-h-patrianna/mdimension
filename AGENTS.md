@@ -169,11 +169,18 @@ node scripts/cleanup-vitest.mjs  # Clean up lingering workers
 - **@vitejs/plugin-react** 5.1.2 - Vite React plugin
 
 ## MANDATORY DOCUMENT READS
-- Project architecture and folder structure: `docs/architecture.md`
-- Development environment: `docs/testing.md`
-- Testing setup: `docs/testing.md`
-- Frontend setup: `docs/frontend.md`
-- Coding agents must follow `docs/meta/styleguide.md` - No exceptions!
-- Understanding math used for object creation, transformation and projection: `docs/research/nd-dimensional-react-threejs-guide.md`
-- PRD: `docs/prd/ndimensional-visualizer.md`
-- Rendering pipeline PRD: `docs/prd/enhanced-visuals-rendering-pipeline.md`
+
+### Core Documentation (Read at start of session)
+- **Architecture & folder structure**: `docs/architecture.md` - Where to put code, naming rules, templates
+- **Development setup**: `docs/development.md` - Commands, WASM builds, troubleshooting
+- **Testing guide**: `docs/testing.md` - Vitest, Playwright patterns, memory-safe tests
+- **Frontend patterns**: `docs/frontend.md` - React components, Three.js, state management
+- **API reference**: `docs/api.md` - Zustand stores, React hooks quick reference
+
+### Mandatory Rules (No exceptions!)
+- **Code style**: `docs/meta/styleguide.md` - Engineering standards, CSS patterns, JSDoc
+
+### Domain Knowledge
+- **ND Math**: `docs/research/nd-dimensional-react-threejs-guide.md` - Geometry, projection, rotation
+- **PRD**: `docs/prd/ndimensional-visualizer.md` - Product requirements
+- **Rendering PRD**: `docs/prd/enhanced-visuals-rendering-pipeline.md` - Visual pipeline specs

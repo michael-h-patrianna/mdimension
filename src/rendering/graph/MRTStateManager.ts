@@ -29,6 +29,7 @@
  */
 
 import * as THREE from 'three'
+import { getWebGLContext, isWebGLRenderer } from '@/rendering/core/rendererUtils'
 
 /**
  * Pre-built drawBuffers arrays to avoid allocation in hot path.
@@ -110,10 +111,19 @@ export class MRTStateManager {
    *
    * Must be called once with a valid renderer before any rendering.
    * Safe to call multiple times - will only initialize once.
+   * Skips initialization for WebGPU renderer (MRT handled differently).
    *
-   * @param renderer - Three.js WebGL renderer to patch
+   * @param renderer - Three.js WebGL renderer to patch (or WebGPU - will skip)
    */
   initialize(renderer: THREE.WebGLRenderer): void {
+    // Skip for WebGPU renderer - MRT is handled differently
+    if (!isWebGLRenderer(renderer)) {
+      if (import.meta.env.DEV) {
+        console.info('[MRTStateManager] Skipping for WebGPU renderer')
+      }
+      return
+    }
+
     if (this.initialized && this.renderer === renderer) {
       return // Already initialized with this renderer
     }
@@ -124,7 +134,12 @@ export class MRTStateManager {
     }
 
     this.renderer = renderer
-    this.gl = renderer.getContext() as WebGL2RenderingContext
+    this.gl = getWebGLContext(renderer)
+
+    if (!this.gl) {
+      console.warn('[MRTStateManager] Failed to get WebGL context')
+      return
+    }
 
     this.initializeDrawBufferArrays()
     this.patchRenderer()

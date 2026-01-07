@@ -26,6 +26,7 @@ function debugLog(category: string, ...args: unknown[]): void {
 
 import * as THREE from 'three'
 
+import { getWebGLContext, isWebGLRenderer } from '@/rendering/core/rendererUtils'
 import type { RenderResourceConfig, ResourceSize } from './types'
 
 // =============================================================================
@@ -222,7 +223,6 @@ export class ResourcePool {
   get(id: string): THREE.WebGLRenderTarget | null {
     const entry = this.resources.get(id)
     if (!entry) {
-      console.warn(`ResourcePool: Resource '${id}' not found`)
       return null
     }
 
@@ -459,6 +459,9 @@ export class ResourcePool {
         debugLog('createMRT', `  Created new textures array with ${count} textures`);
       }
 
+      // Default texture names for MRT - must match mrt() output names in TSL shaders
+      const defaultNames = ['output', 'normal', 'position', 'data']
+
       for (let i = 0; i < count; i++) {
         const texture = target.textures[i] ?? new THREE.Texture()
         texture.format = config.attachmentFormats?.[i] ?? THREE.RGBAFormat
@@ -470,8 +473,11 @@ export class ResourcePool {
         if (internalFormat) {
           texture.internalFormat = internalFormat
         }
+        // CRITICAL for WebGPU: Set texture names to match mrt() output names
+        // Without this, WebGPU can't map shader outputs to render target attachments
+        texture.name = config.attachmentNames?.[i] ?? defaultNames[i] ?? `attachment${i}`
         target.textures[i] = texture
-        debugLog('createMRT', `  Texture[${i}]: format=${texture.format}, type=${texture.type}, uuid=${texture.uuid.substring(0, 8)}`);
+        debugLog('createMRT', `  Texture[${i}]: name=${texture.name}, format=${texture.format}, type=${texture.type}, uuid=${texture.uuid.substring(0, 8)}`);
       }
 
       // Ensure target.texture points to attachment 0
@@ -498,6 +504,11 @@ export class ResourcePool {
     if (internalFormat) {
       target.texture.internalFormat = internalFormat
     }
+    // CRITICAL for WebGPU: Set texture name to 'output' for single render targets.
+    // Materials with mrtNode (like raymarched objects) use mrt({ output: ... }) which
+    // looks for a texture named 'output' at index 0. Without this name, the MRT mapping
+    // fails with "Color target has no corresponding fragment stage output" in WebGPU.
+    target.texture.name = 'output'
 
     if (config.depthTexture) {
       target.depthTexture = this.createDepthTexture(config, width, height)
@@ -531,22 +542,21 @@ export class ResourcePool {
 
   /**
    * Get default internal format based on data type.
-   * Returns the appropriate WebGL2 internal format.
-   * Uses THREE.PixelFormatGPU type for Three.js r181+ compatibility.
-   * @param dataType - The texture data type
-   * @returns The appropriate internal format or null
+   *
+   * IMPORTANT: For WebGPU compatibility, we return null to let Three.js
+   * infer the correct format from `format` and `type` properties.
+   * WebGPU uses different format names (e.g., 'rgba32float' instead of 'RGBA32F')
+   * and setting explicit WebGL-style format strings causes errors.
+   *
+   * @param _dataType - The texture data type (unused - format inferred by Three.js)
+   * @returns null to let Three.js handle format selection
    */
-  private getDefaultInternalFormat(dataType?: THREE.TextureDataType): THREE.PixelFormatGPU | null {
-    switch (dataType) {
-      case THREE.FloatType:
-        return 'RGBA32F' as THREE.PixelFormatGPU
-      case THREE.HalfFloatType:
-        return 'RGBA16F' as THREE.PixelFormatGPU
-      case THREE.UnsignedByteType:
-        return 'RGBA8' as THREE.PixelFormatGPU
-      default:
-        return null // Let Three.js use its default
-    }
+  private getDefaultInternalFormat(_dataType?: THREE.TextureDataType): THREE.PixelFormatGPU | null {
+    // Let Three.js infer format from format + type for WebGPU compatibility
+    // WebGL-style format strings like 'RGBA32F' cause WebGPU errors:
+    // "Failed to execute 'createTexture' on 'GPUDevice': The provided value 'RGBA32F'
+    //  is not a valid enum value of type GPUTextureFormat"
+    return null
   }
 
   // ==========================================================================
@@ -578,14 +588,18 @@ export class ResourcePool {
    * this signals that intermediate render target data can be discarded,
    * allowing the GPU to skip expensive tile store operations to main memory.
    *
-   * @param renderer - The Three.js WebGL renderer
+   * @param renderer - The Three.js WebGL renderer (skipped for WebGPU)
    * @param pingPongResources - Set of resource IDs that need ping-pong (skip these)
    */
   invalidateFramebuffers(
     renderer: THREE.WebGLRenderer,
     pingPongResources: Set<string>
   ): void {
-    const gl = renderer.getContext() as WebGL2RenderingContext
+    // Only works with WebGL renderer
+    if (!isWebGLRenderer(renderer)) return
+
+    const gl = getWebGLContext(renderer)
+    if (!gl) return
 
     // Check WebGL2 availability - invalidateFramebuffer is WebGL2 only
     if (!gl.invalidateFramebuffer) return
