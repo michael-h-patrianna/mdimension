@@ -37,15 +37,13 @@ import {
   smoothstep,
   sqrt,
   sub,
+  texture3D,
   uniform,
   uniformArray,
   vec2,
   vec3,
   vec4,
 } from 'three/tsl'
-// texture3D is not exported from three/tsl types but exists at runtime
-// Use texture() for 3D textures - TSL auto-detects Data3DTexture
-import { texture3D } from 'three/src/nodes/accessors/Texture3DNode.js'
 import { MeshBasicNodeMaterial } from 'three/webgpu'
 
 /**
@@ -71,6 +69,7 @@ import { MAX_DIM, MAX_TERMS, createHONDForTerm, type HONDUniforms } from './quan
 import type { HOTextureResult } from './quantum/hoTexture'
 import { evalHydrogenPsiTime } from './quantum/hydrogenPsi'
 import {
+  MAX_TERMS as PSI_MAX_TERMS,
   QUANTUM_MODE_HARMONIC,
   QUANTUM_MODE_HYDROGEN,
   QUANTUM_MODE_HYDROGEN_ND,
@@ -83,10 +82,6 @@ type Vec3Uniform = UniformNode<THREE.Vector3>
 type Vec4Uniform = UniformNode<THREE.Vector4>
 type ColorUniform = UniformNode<THREE.Color>
 type Mat4Uniform = UniformNode<THREE.Matrix4>
-type FloatNode = ReturnType<typeof float>
-
-// TSL atan is overloaded to accept 2 args (like atan2) but types don't reflect this
-const atan2 = atan as unknown as (y: Node, x: Node) => FloatNode
 
 // Constants
 const MAX_VOLUME_SAMPLES = 64
@@ -755,12 +750,14 @@ export function composeSchroedingerTSL(
     for (let k = 0; k < Math.min(termCount, MAX_TERMS); k++) {
       const tex = textures[k]
       if (tex) {
-        hoTextureNodes.push(texture3D(tex, null, 0))
+        hoTextureNodes.push(texture3D(tex))
       }
     }
 
     if (import.meta.env.DEV) {
-      console.log(`[composeSchroedingerTSL] Using texture-based eigenfunctions: ${hoTextureNodes.length} terms, fieldScale=${fieldScale}`)
+      console.log(
+        `[composeSchroedingerTSL] Using texture-based eigenfunctions: ${hoTextureNodes.length} terms, fieldScale=${fieldScale}`
+      )
     }
   }
 
@@ -768,12 +765,17 @@ export function composeSchroedingerTSL(
   // Note: With MAX_TERMS=8, inline evaluation will cause freeze - textures are required!
   // We create max 2 evaluators for fallback to prevent freeze in edge cases.
   const FALLBACK_MAX_TERMS = 2
-  const hoNDTermEvaluators = (!useTextureEigenfunctions && quantumMode === 'harmonicOscillator')
-    ? Array.from({ length: FALLBACK_MAX_TERMS }, (_, k) => createHONDForTerm(dimension, hoNDUniforms, k))
-    : []
+  const hoNDTermEvaluators =
+    !useTextureEigenfunctions && quantumMode === 'harmonicOscillator'
+      ? Array.from({ length: FALLBACK_MAX_TERMS }, (_, k) =>
+          createHONDForTerm(dimension, hoNDUniforms, k)
+        )
+      : []
 
   if (!useTextureEigenfunctions && quantumMode === 'harmonicOscillator' && import.meta.env.DEV) {
-    console.warn(`[composeSchroedingerTSL] No eigenfunction textures provided - falling back to ${FALLBACK_MAX_TERMS}-term inline computation`)
+    console.warn(
+      `[composeSchroedingerTSL] No eigenfunction textures provided - falling back to ${FALLBACK_MAX_TERMS}-term inline computation`
+    )
   }
 
   // Build emission uniforms
@@ -1007,7 +1009,9 @@ export function composeSchroedingerTSL(
       //   }
       if (quantumMode === 'harmonicOscillator') {
         // Determine which evaluation method to use
-        const termCount = useTextureEigenfunctions ? hoTextureNodes.length : hoNDTermEvaluators.length
+        const termCount = useTextureEigenfunctions
+          ? hoTextureNodes.length
+          : hoNDTermEvaluators.length
 
         if (useTextureEigenfunctions) {
           // ============================================
@@ -1018,8 +1022,8 @@ export function composeSchroedingerTSL(
           // Compute normalized texture coordinates from flowedPos
           // Texture stores values for [-fieldScale, +fieldScale]³ → [0, 1]³
           const texCoord = vec3(flowedPos)
-            .div(hoTextureFieldScale * 2)  // [-0.5, 0.5]
-            .add(0.5)                       // [0, 1]
+            .div(hoTextureFieldScale * 2) // [-0.5, 0.5]
+            .add(0.5) // [0, 1]
 
           // JS-unrolled loop over texture terms
           for (let k = 0; k < termCount; k++) {
@@ -1027,8 +1031,7 @@ export function composeSchroedingerTSL(
             if (!textureNode) continue
 
             // Sample eigenfunction from 3D texture (R32F format, value in .x)
-            // Type assertion needed: texture3D import has different Node type than three/tsl
-            const spatial = textureNode.sample(texCoord as unknown as Parameters<typeof textureNode.sample>[0]).x
+            const spatial = textureNode.sample(texCoord).x
 
             // Time phase factor: e^{-iE_k t}
             const phase = uEnergy.element(k).negate().mul(time)
@@ -1041,8 +1044,7 @@ export function composeSchroedingerTSL(
             const term = cmul(coeff, timeFactor)
 
             // Accumulate: ψ += c_k · Φ_k(x) · e^{-iE_k t}
-            // Type assertion needed: spatial comes from texture3D module with different Node type
-            const termResult = cscale(spatial as unknown as Node, term)
+            const termResult = cscale(spatial, term)
             psi.assign(
               select(
                 float(k).lessThan(uTermCount),
@@ -1214,9 +1216,8 @@ export function composeSchroedingerTSL(
       rho.assign(shouldShimmer.select(shimmeredRho, rho))
 
       // Apply density gain and return vec2(density, phase)
-      // Phase extracted from complex wavefunction: arg(ψ) = atan2(ψ.y, ψ.x)
-      const phase = atan2(psi.y, psi.x)
-      return vec2(rho.mul(uDensityGain), phase)
+      // Phase is 0 for basic sampling (use phase-aware version for coloring)
+      return vec2(rho.mul(uDensityGain), float(0))
     })
   }
 
@@ -1323,8 +1324,7 @@ export function composeSchroedingerTSL(
     const rdModel = safeNormalizeUp(invModel.mul(vec4(worldRayDir, 0.0)).xyz).toVar()
 
     // Intersect with bounding sphere
-    // NOTE: Use fixed BOUND_R = 2.0 to match WebGL (not multiplied by fieldScale)
-    const sphereRadius = float(2.0)
+    const sphereRadius = float(2.0).mul(uVolumeScale)
     const tRange = sphereIntersect(roModel, rdModel, sphereRadius)
     const tNear = max(tRange.x, float(0)).toVar()
     const tFar = tRange.y.toVar()
@@ -1497,8 +1497,7 @@ export function composeSchroedingerTSL(
     const rdModel = safeNormalizeUp(invModel.mul(vec4(worldRayDir, 0.0)).xyz).toVar()
 
     // Intersect with bounding sphere
-    // NOTE: Use fixed BOUND_R = 2.0 to match WebGL (not multiplied by fieldScale)
-    const sphereRadius = float(2.0)
+    const sphereRadius = float(2.0).mul(uVolumeScale)
     const tRange = sphereIntersect(roModel, rdModel, sphereRadius)
     const tNearOriginal = max(tRange.x, float(0)).toVar()
     const tNear = tNearOriginal.toVar()
@@ -1608,30 +1607,21 @@ export function composeSchroedingerTSL(
         If(alpha.greaterThan(0.001), () => {
           hasValidSamples.assign(1)
 
-          // Compute gradient: tetrahedral in HQ mode, radial in fast mode
-          // With texture-based eigenfunctions, tetrahedral gradient is now viable
-          const radialGradLen = max(length(pos), float(0.001))
-          const radialGrad = pos.div(radialGradLen).negate()
-
-          // HQ mode: O(h²) accurate tetrahedral gradient
-          const tetraGrad = computeGradient(pos, animTime, float(0.05))
-          const tetraLen = max(length(tetraGrad), float(0.0001))
-          const tetraNormGrad = tetraGrad.div(tetraLen).negate()
-
-          // Select based on fast mode
-          const useTetra = uFastMode.not().and(alpha.greaterThan(0.01))
-          const gradient = select(useTetra, tetraNormGrad, radialGrad)
+          // PERF: Use fast gradient approximation from position
+          // Full computeGradient would call sampleDensity 4× per step,
+          // which with 8-term HO evaluations creates too large a shader graph.
+          // This radial approximation works well for spherically-centered wavefunctions.
+          const gradLen = max(length(pos), float(0.001))
+          const gradient = pos.div(gradLen).negate()
 
           // Accumulate weighted center for normal estimation
           const weight = alpha.mul(transmittance)
           weightedCenter.addAssign(pos.mul(weight))
           totalWeight.addAssign(weight)
 
-          // Compute emission: simplified phase-based HSV coloring
-          // NOTE: Full computeEmissionLit causes "Invalid PipelineLayout" in volumetric loop
-          // (called 32-64x per ray, too complex for WebGPU pipeline)
-          // computeEmissionVolumetric also fails to render visible output
-          // Phase-based coloring is the key visual feature for quantum wavefunctions
+          // PERF: Use simplified emission (density-based color)
+          // Full computeEmissionLit is too expensive for real-time with complex wavefunctions.
+          // This still produces visually interesting results with phase-based coloring.
           const hue = phase.mul(0.15915).add(0.5) // phase / 2π + 0.5
           const emission = vec3(
             sin(hue.mul(6.283)).mul(0.5).add(0.5),
